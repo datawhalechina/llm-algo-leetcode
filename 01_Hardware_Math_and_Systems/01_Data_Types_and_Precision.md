@@ -1,9 +1,9 @@
 # 讨论题 1：大模型的数据格式与混合精度 (Data Types & Precision)
 
-> **相关阅读**:  
-
-> 👉 [`../02_PyTorch_Algorithms/16_Quantization_W8A16.ipynb`](../02_PyTorch_Algorithms/16_Quantization_W8A16.ipynb)
-> 👉 [`../03_CUDA_and_Triton_Kernels/11_Triton_Quantization_Support.ipynb`](../03_CUDA_and_Triton_Kernels/11_Triton_Quantization_Support.ipynb)
+> **相关阅读**:
+> 请前往实战篇进行相关代码练习：
+> [`../02_PyTorch_Algorithms/16_Quantization_W8A16.ipynb`](../02_PyTorch_Algorithms/16_Quantization_W8A16.ipynb)
+> [`../03_CUDA_and_Triton_Kernels/11_Triton_Quantization_Support.ipynb`](../03_CUDA_and_Triton_Kernels/11_Triton_Quantization_Support.ipynb)
 
 **难度：** Easy | **标签：** `基础概念`, `混合精度` | **目标人群：**通用基础 (算法/Infra)
 
@@ -14,7 +14,7 @@
 ## Q1：请写出 FP32, FP16, BF16, INT8 分别占用几个字节 (Bytes)？
 
 <details>
-<summary>💡 点击展开查看解析</summary>
+<summary>点击展开查看解析</summary>
 
 在计算机中，1 Byte (字节) = 8 bits (位)。
 - **FP32 (单精度浮点数)**: 32 bits = **4 Bytes**
@@ -31,7 +31,7 @@
 ## Q2：为什么大语言模型（LLM）的预训练目前几乎全部采用 BF16 而不是 FP16？
 
 <details>
-<summary>💡 点击展开查看解析</summary>
+<summary>点击展开查看解析</summary>
 
 这涉及浮点数在底层的位分布设计：一个浮点数由 符号位(Sign) + 指数位(Exponent) + 尾数/精度位(Mantissa/Fraction) 组成。
 

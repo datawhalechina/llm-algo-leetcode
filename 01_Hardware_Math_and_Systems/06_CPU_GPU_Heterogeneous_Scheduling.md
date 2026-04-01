@@ -1,8 +1,8 @@
 # 讨论题 6：CPU-GPU 异构协同与卸载 (Heterogeneous Co-Design & Offloading)
 
-> **相关阅读**:  
-> 理论千遍不如手写一遍，去实战 CUDA Streams 异步重叠通信与计算：
-> 👉 [`../03_CUDA_and_Triton_Kernels/15_PyTorch_CUDA_Streams_and_Transfer.ipynb`](../03_CUDA_and_Triton_Kernels/15_PyTorch_CUDA_Streams_and_Transfer.ipynb)
+> **相关阅读**:
+> 请前往实战篇进行相关代码练习：
+> [`../03_CUDA_and_Triton_Kernels/15_PyTorch_CUDA_Streams_and_Transfer.ipynb`](../03_CUDA_and_Triton_Kernels/15_PyTorch_CUDA_Streams_and_Transfer.ipynb)
 
 **难度：** Hard | **标签：** `系统架构`, `异构计算`, `DeepSpeed` | **目标人群：**核心 Infra 与算子开发
 
@@ -13,7 +13,7 @@
 ## Q1：在 LLM 训练和推理中，CPU Offload (CPU 卸载) 是什么技术？请举例说明。
 
 <details>
-<summary>💡 点击展开查看解析</summary>
+<summary>点击展开查看解析</summary>
 
 **CPU 只是指挥官，GPU 才是干活的。** 当 GPU 干活的空间（显存）不够时，指挥官会把数据存在自己宽敞的办公室（系统内存/Host RAM）里。
 
@@ -26,7 +26,7 @@
 ## Q2：跨设备传输（PCIe）这么慢，有什么技术可以重叠 (Overlap) 通信和计算的时间？
 
 <details>
-<summary>💡 点击展开查看解析</summary>
+<summary>点击展开查看解析</summary>
 
 大厂底层优化团队的必杀技：**Overlap Computation and Communication (计算与通信重叠)**。
 

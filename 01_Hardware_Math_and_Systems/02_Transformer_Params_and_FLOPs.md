@@ -9,7 +9,7 @@
 ## Q1：假设隐藏层维度为 $d$，词表大小为 $V$。请推导一个包含 $L$ 层的标准 Transformer Decoder 的总参数量。
 
 <details>
-<summary>💡 点击展开查看解析</summary>
+<summary>点击展开查看解析</summary>
 
 我们把 Transformer 拆解为三大部分（忽略极小的 bias 和 LayerNorm 的权重，它们对百亿参数的占比不到千分之一）：
 
@@ -47,7 +47,7 @@
 ## Q2：训练大模型时，什么是算力利用率 (MFU, Model FLOPs Utilization)？
 
 <details>
-<summary>💡 点击展开查看解析</summary>
+<summary>点击展开查看解析</summary>
 
 MFU 是衡量大模型训练工程质量的最核心指标。
 

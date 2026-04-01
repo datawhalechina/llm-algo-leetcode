@@ -1,9 +1,9 @@
 # 讨论题 3：通信拓扑与分布式基石 (Communication & Distributed Topology)
 
-> **相关阅读**:  
-> 掌握了 TP/DP 和 All-Reduce，去实战多进程的集合通信原语和 TP 矩阵切片：
-> 👉 [`../02_PyTorch_Algorithms/20_Tensor_Parallelism_Sim.ipynb`](../02_PyTorch_Algorithms/20_Tensor_Parallelism_Sim.ipynb)
-> 👉 [`../03_CUDA_and_Triton_Kernels/16_Distributed_Communication_Primitives.ipynb`](../03_CUDA_and_Triton_Kernels/16_Distributed_Communication_Primitives.ipynb)
+> **相关阅读**:
+> 请前往实战篇进行相关代码练习：
+> [`../02_PyTorch_Algorithms/20_Tensor_Parallelism_Sim.ipynb`](../02_PyTorch_Algorithms/20_Tensor_Parallelism_Sim.ipynb)
+> [`../03_CUDA_and_Triton_Kernels/16_Distributed_Communication_Primitives.ipynb`](../03_CUDA_and_Triton_Kernels/16_Distributed_Communication_Primitives.ipynb)
 
 **难度：** Hard | **标签：** `系统架构`, `分布式训练`, `Megatron` | **目标人群：**核心 Infra 与算子开发
 
@@ -14,7 +14,7 @@
 ## Q1：机内通信与机外通信的带宽差距有多大？为什么这是分布式策略设计的核心？
 
 <details>
-<summary>💡 点击展开查看解析 (Solutions)</summary>
+<summary>点击展开查看解析 (Solutions)</summary>
 
 在现代 AI 服务器集群（如基于 NVIDIA DGX A100/H100）中，GPU 之间交换数据有两条主要的高速公路：
 
@@ -38,7 +38,7 @@
 ## Q2：请简述大模型最常用的三种集合通信原语：All-Reduce, All-Gather, Reduce-Scatter 的区别。
 
 <details>
-<summary>💡 点击展开查看解析 (Solutions)</summary>
+<summary>点击展开查看解析 (Solutions)</summary>
 
 这些是 MPI（Message Passing Interface）以及 NVIDIA 的 NCCL（NVIDIA Collective Communication Library）中最核心的操作。理解它们，就能徒推导导 ZeRO 优化器和各种并行的通信量。
 
@@ -68,7 +68,7 @@
 ## Q3：为什么张量并行（TP）通常被限制在单机内？而流水线并行（PP）可以跨机？
 
 <details>
-<summary>💡 点击展开查看解析 (Solutions)</summary>
+<summary>点击展开查看解析 (Solutions)</summary>
 
 这是大模型分布式训练（如 Megatron-LM）架构设计中最基础的黄金法则。
 

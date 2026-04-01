@@ -1,10 +1,10 @@
 # 讨论题 4：Attention 变体与显存优化 (MQA / GQA / MLA)
 
-> **相关阅读**:  
-> 了解了 MQA/GQA 之后，去实战手撕它们以及 vLLM 的 PagedAttention：
-> 👉 [`../02_PyTorch_Algorithms/04_Attention_MHA_GQA.ipynb`](../02_PyTorch_Algorithms/04_Attention_MHA_GQA.ipynb)
-> 👉 [`../02_PyTorch_Algorithms/15_vLLM_PagedAttention.ipynb`](../02_PyTorch_Algorithms/15_vLLM_PagedAttention.ipynb)
-> 👉 [`../03_CUDA_and_Triton_Kernels/10_Triton_KV_Cache_and_PagedAttention.ipynb`](../03_CUDA_and_Triton_Kernels/10_Triton_KV_Cache_and_PagedAttention.ipynb)
+> **相关阅读**:
+> 请前往实战篇进行相关代码练习：
+> [`../02_PyTorch_Algorithms/04_Attention_MHA_GQA.ipynb`](../02_PyTorch_Algorithms/04_Attention_MHA_GQA.ipynb)
+> [`../02_PyTorch_Algorithms/15_vLLM_PagedAttention.ipynb`](../02_PyTorch_Algorithms/15_vLLM_PagedAttention.ipynb)
+> [`../03_CUDA_and_Triton_Kernels/10_Triton_KV_Cache_and_PagedAttention.ipynb`](../03_CUDA_and_Triton_Kernels/10_Triton_KV_Cache_and_PagedAttention.ipynb)
 
 **难度：** Medium | **标签：** `模型架构`, `Attention`, `KV Cache` | **目标人群：**通用基础 (算法/Infra)
 
@@ -16,7 +16,7 @@
 ## Q1：请简述 MQA, GQA 和 MLA 的本质区别，以及它们是如何优化 KV Cache 占用的？
 
 <details>
-<summary>💡 点击展开查看解析</summary>
+<summary>点击展开查看解析</summary>
 
 假设隐藏层维度为 $d$。每个 Token 的 KV Cache 占用 $2 \times d \times 2$ (Bytes, 假设 BF16)。
 

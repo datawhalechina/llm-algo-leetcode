@@ -1,9 +1,9 @@
 # 03. GPU 物理架构、内存层级与核心硬件单元
 
-> **相关阅读**:  
-> 本节讲解了 SRAM、HBM 与 Tensor Core。去看看工业界如何用代码榨干它们：
-> 👉 [`../03_CUDA_and_Triton_Kernels/04_Triton_GEMM_Tutorial.ipynb`](../03_CUDA_and_Triton_Kernels/04_Triton_GEMM_Tutorial.ipynb)
-> 👉 [`../03_CUDA_and_Triton_Kernels/08_Triton_Flash_Attention.ipynb`](../03_CUDA_and_Triton_Kernels/08_Triton_Flash_Attention.ipynb)
+> **相关阅读**:
+> 请前往实战篇进行相关代码练习：
+> [`../03_CUDA_and_Triton_Kernels/04_Triton_GEMM_Tutorial.ipynb`](../03_CUDA_and_Triton_Kernels/04_Triton_GEMM_Tutorial.ipynb)
+> [`../03_CUDA_and_Triton_Kernels/08_Triton_Flash_Attention.ipynb`](../03_CUDA_and_Triton_Kernels/08_Triton_Flash_Attention.ipynb)
 
 在算法工程师的面试中，仅仅懂 PyTorch 是不够的。大语言模型 (LLM) 是典型的 **Memory Bound (访存受限)** 与 **Compute Bound (算力受限)** 交织的产物。
 如果你不能将软件算法映射到 GPU 的物理硬件上，就无法写出高性能的 Triton/CUDA 算子。

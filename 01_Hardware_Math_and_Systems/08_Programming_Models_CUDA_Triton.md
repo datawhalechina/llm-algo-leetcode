@@ -1,9 +1,9 @@
 # 讨论题 4：异构编程模型 (CUDA vs Triton)
 
-> **相关阅读**:  
-> 不要停留在理论！直接去手写原生 CUDA C++ 感受降维打击：
-> 👉 [`../03_CUDA_and_Triton_Kernels/18_CUDA_Custom_Kernel_Intro.ipynb`](../03_CUDA_and_Triton_Kernels/18_CUDA_Custom_Kernel_Intro.ipynb)
-> 👉 [`../03_CUDA_and_Triton_Kernels/19_CUDA_Shared_Memory_Optimization.ipynb`](../03_CUDA_and_Triton_Kernels/19_CUDA_Shared_Memory_Optimization.ipynb)
+> **相关阅读**:
+> 请前往实战篇进行相关代码练习：
+> [`../03_CUDA_and_Triton_Kernels/18_CUDA_Custom_Kernel_Intro.ipynb`](../03_CUDA_and_Triton_Kernels/18_CUDA_Custom_Kernel_Intro.ipynb)
+> [`../03_CUDA_and_Triton_Kernels/19_CUDA_Shared_Memory_Optimization.ipynb`](../03_CUDA_and_Triton_Kernels/19_CUDA_Shared_Memory_Optimization.ipynb)
 
 **难度：** Hard | **标签：** `算子开发`, `编程模型`, `CUDA` | **目标人群：**核心 Infra 与算子开发
 
@@ -14,7 +14,7 @@
 ## Q1：请简述 CUDA 的线程层级结构与 GPU 硬件执行单元的对应关系。
 
 <details>
-<summary>💡 点击展开查看解析 (Solutions)</summary>
+<summary>点击展开查看解析 (Solutions)</summary>
 
 在 NVIDIA 的 CUDA 编程模型中，理解软件概念（线程）与硬件概念（流式多处理器）的映射，是写出极致性能算子的第一步。
 
@@ -39,7 +39,7 @@
 ## Q2：为什么 OpenAI 的 Triton 语言能够大幅度降低算子开发的门槛？它与 CUDA 的本质区别是什么？
 
 <details>
-<summary>💡 点击展开查看解析 (Solutions)</summary>
+<summary>点击展开查看解析 (Solutions)</summary>
 
 写一个高性能的 CUDA Kernel（比如 FlashAttention 或者 Fused RMSNorm），哪怕是资深的 C++ 工程师也要花费几天甚至几周的时间。因为你需要手动管理非常繁琐的底层细节：
 1. 计算共享内存 (Shared Memory) 的大小并分配。

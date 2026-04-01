@@ -9,7 +9,7 @@
 ## Q1：为什么 PyTorch 1.x (Eager Mode 动态图) 在大模型推理时会遇到严重的性能瓶颈？
 
 <details>
-<summary>💡 点击展开查看解析</summary>
+<summary>点击展开查看解析</summary>
 
 这主要是由于 **Kernel Launch Overhead (算子下发开销)** 导致的。
 
@@ -25,7 +25,7 @@
 ## Q2：AI 编译器在拿到计算图 (Compute Graph) 后，做的最核心、收益最大的优化是什么？
 
 <details>
-<summary>💡 点击展开查看解析</summary>
+<summary>点击展开查看解析</summary>
 
 答案是：**算子融合 (Operator Fusion)**。
 
@@ -43,7 +43,7 @@ AI 编译器（如 TorchInductor, XLA, TensorRT）在分析整个计算图时，
 ## Q3：请一句话厘清目前工业界主流 AI 编译工具栈的定位：TensorRT、XLA、Triton 和 TVM 有什么区别？
 
 <details>
-<summary>💡 点击展开查看解析</summary>
+<summary>点击展开查看解析</summary>
 
 面对纷繁复杂的 Infra 缩写，面试官最看重你的大局观（Big Picture）：
 

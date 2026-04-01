@@ -1,9 +1,9 @@
 # 讨论题 1：大模型显存占用 (VRAM Calculation) 计算指南
 
-> **相关阅读**:  
-> 这里只是数学推导，想看看真正的 ZeRO-1 和 激活值重计算是怎么用代码切分的？
-> 👉 [`../02_PyTorch_Algorithms/17_Gradient_Checkpointing.ipynb`](../02_PyTorch_Algorithms/17_Gradient_Checkpointing.ipynb)
-> 👉 [`../02_PyTorch_Algorithms/19_ZeRO_1_Optimizer_Sim.ipynb`](../02_PyTorch_Algorithms/19_ZeRO_1_Optimizer_Sim.ipynb)
+> **相关阅读**:
+> 请前往实战篇进行相关代码练习：
+> [`../02_PyTorch_Algorithms/17_Gradient_Checkpointing.ipynb`](../02_PyTorch_Algorithms/17_Gradient_Checkpointing.ipynb)
+> [`../02_PyTorch_Algorithms/19_ZeRO_1_Optimizer_Sim.ipynb`](../02_PyTorch_Algorithms/19_ZeRO_1_Optimizer_Sim.ipynb)
 
 **难度：** Hard | **标签：** `算力评估`, `ZeRO` | **目标人群：**模型微调与工程部署
 
@@ -42,7 +42,7 @@
 ---
 
 <details>
-<summary>💡 点击展开查看详细解答 (Solutions)</summary>
+<summary>点击展开查看详细解答 (Solutions)</summary>
 
 ### 答案 1：不使用 ZeRO (单卡理论值)
 根据上述公式，每个参数占用 16 字节。
