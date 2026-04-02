@@ -13,3 +13,5 @@ remove_tldr.py
 repair_notebooks.py
 unify_audience.py
 fix_chapter1_refs.py
+.DS_Store
+**/.DS_Store
