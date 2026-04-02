@@ -1,4 +1,7 @@
-# 13. Triton 算子开发实战避坑指南 (Best Practices & FAQ)
+
+# 14. Triton 算子开发实战避坑指南 (Best Practices & FAQ)
+
+**难度：** Hard | **标签：** `Triton`, `End-to-End Project`, `LLaMA-3`, `Integration` | **目标人群：** 核心 Infra 与算子开发
 
 在工业界使用 Triton 开发加速算子时，写出数学公式往往只占工作量的 20%，剩下的 80% 时间都花在与显存越界 (Segmentation Fault)、数值不对 (Race Condition) 和死锁 (Deadlock) 作斗争上。
 

@@ -2,20 +2,15 @@
 
 **难度：** Hard | **标签：** `硬件架构`, `GPU`, `内存层级` | **目标人群：** 核心 Infra 与算子开发
 
-> **相关阅读**:
-> 请前往实战篇进行相关代码练习：
-> [`../03_CUDA_and_Triton_Kernels/04_Triton_GEMM_Tutorial.ipynb`](../03_CUDA_and_Triton_Kernels/04_Triton_GEMM_Tutorial.ipynb)
-> [`../03_CUDA_and_Triton_Kernels/08_Triton_Flash_Attention.ipynb`](../03_CUDA_and_Triton_Kernels/08_Triton_Flash_Attention.ipynb)
-
-> **相关阅读**:
-> 请前往实战篇进行相关代码练习：
-> [`../03_CUDA_and_Triton_Kernels/04_Triton_GEMM_Tutorial.ipynb`](../03_CUDA_and_Triton_Kernels/04_Triton_GEMM_Tutorial.ipynb)
-> [`../03_CUDA_and_Triton_Kernels/08_Triton_Flash_Attention.ipynb`](../03_CUDA_and_Triton_Kernels/08_Triton_Flash_Attention.ipynb)
-
 在算法工程师的面试中，仅仅懂 PyTorch 是不够的。大语言模型 (LLM) 是典型的 **Memory Bound (访存受限)** 与 **Compute Bound (算力受限)** 交织的产物。
 如果你不能将软件算法映射到 GPU 的物理硬件上，就无法写出高性能的 Triton/CUDA 算子。
 
 本节我们将深入 GPU 的核心物理架构，涵盖计算单元 (Tensor Core)、内存结构 (SRAM vs HBM)、以及它们在现代大模型算法（如 FlashAttention）中的实际应用。
+
+> **相关阅读**:
+> 请前往实战篇进行相关代码练习：
+> [`../03_CUDA_and_Triton_Kernels/04_Triton_GEMM_Tutorial.ipynb`](../03_CUDA_and_Triton_Kernels/04_Triton_GEMM_Tutorial.ipynb)
+> [`../03_CUDA_and_Triton_Kernels/08_Triton_Flash_Attention.ipynb`](../03_CUDA_and_Triton_Kernels/08_Triton_Flash_Attention.ipynb)
 
 ---
 

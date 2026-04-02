@@ -2,15 +2,12 @@
 
 **难度：** Hard | **标签：** `系统架构`, `异构计算`, `DeepSpeed` | **目标人群：** 核心 Infra 与算子开发
 
-> **相关阅读**:
-> 请前往实战篇进行相关代码练习：
-> [`../03_CUDA_and_Triton_Kernels/15_PyTorch_CUDA_Streams_and_Transfer.ipynb`](../03_CUDA_and_Triton_Kernels/15_PyTorch_CUDA_Streams_and_Transfer.ipynb)
-
-> **相关阅读**:
-> 请前往实战篇进行相关代码练习：
-> [`../03_CUDA_and_Triton_Kernels/15_PyTorch_CUDA_Streams_and_Transfer.ipynb`](../03_CUDA_and_Triton_Kernels/15_PyTorch_CUDA_Streams_and_Transfer.ipynb)
-
 当 GPU 显存（如 80GB）不仅塞不下庞大的模型参数，甚至连切分后的状态都塞不下时，我们不得不向廉价但海量的 CPU 内存借空间。
+
+> **相关阅读**:
+> 请前往实战篇进行相关代码练习：
+> [`../03_CUDA_and_Triton_Kernels/15_PyTorch_CUDA_Streams_and_Transfer.ipynb`](../03_CUDA_and_Triton_Kernels/15_PyTorch_CUDA_Streams_and_Transfer.ipynb)
+
 
 ---
 

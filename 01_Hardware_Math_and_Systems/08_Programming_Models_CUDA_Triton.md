@@ -2,17 +2,12 @@
 
 **难度：** Hard | **标签：** `算子开发`, `编程模型`, `CUDA` | **目标人群：** 核心 Infra 与算子开发
 
-> **相关阅读**:
-> 请前往实战篇进行相关代码练习：
-> [`../03_CUDA_and_Triton_Kernels/18_CUDA_Custom_Kernel_Intro.ipynb`](../03_CUDA_and_Triton_Kernels/18_CUDA_Custom_Kernel_Intro.ipynb)
-> [`../03_CUDA_and_Triton_Kernels/19_CUDA_Shared_Memory_Optimization.ipynb`](../03_CUDA_and_Triton_Kernels/19_CUDA_Shared_Memory_Optimization.ipynb)
-
-> **相关阅读**:
-> 请前往实战篇进行相关代码练习：
-> [`../03_CUDA_and_Triton_Kernels/18_CUDA_Custom_Kernel_Intro.ipynb`](../03_CUDA_and_Triton_Kernels/18_CUDA_Custom_Kernel_Intro.ipynb)
-> [`../03_CUDA_and_Triton_Kernels/19_CUDA_Shared_Memory_Optimization.ipynb`](../03_CUDA_and_Triton_Kernels/19_CUDA_Shared_Memory_Optimization.ipynb)
-
 在大模型训练和推理的底层优化中，经常会遇到自己实现高性能算子的场景。当前主流的两种异构计算编程模型就是 NVIDIA 原生的 **CUDA C++** 和 OpenAI 提出的 **Triton** (基于 Python)。
+
+> **相关阅读**:
+> 请前往实战篇进行相关代码练习：
+> [`../03_CUDA_and_Triton_Kernels/18_CUDA_Custom_Kernel_Intro.ipynb`](../03_CUDA_and_Triton_Kernels/18_CUDA_Custom_Kernel_Intro.ipynb)
+> [`../03_CUDA_and_Triton_Kernels/19_CUDA_Shared_Memory_Optimization.ipynb`](../03_CUDA_and_Triton_Kernels/19_CUDA_Shared_Memory_Optimization.ipynb)
 
 ---
 

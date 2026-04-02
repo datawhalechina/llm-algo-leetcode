@@ -2,17 +2,13 @@
 
 **难度：** Hard | **标签：** `系统架构`, `分布式训练`, `Megatron` | **目标人群：** 核心 Infra 与算子开发
 
-> **相关阅读**:
-> 请前往实战篇进行相关代码练习：
-> [`../02_PyTorch_Algorithms/20_Tensor_Parallelism_Sim.ipynb`](../02_PyTorch_Algorithms/20_Tensor_Parallelism_Sim.ipynb)
-> [`../03_CUDA_and_Triton_Kernels/16_Distributed_Communication_Primitives.ipynb`](../03_CUDA_and_Triton_Kernels/16_Distributed_Communication_Primitives.ipynb)
-
-> **相关阅读**:
-> 请前往实战篇进行相关代码练习：
-> [`../02_PyTorch_Algorithms/20_Tensor_Parallelism_Sim.ipynb`](../02_PyTorch_Algorithms/20_Tensor_Parallelism_Sim.ipynb)
-> [`../03_CUDA_and_Triton_Kernels/16_Distributed_Communication_Primitives.ipynb`](../03_CUDA_and_Triton_Kernels/16_Distributed_Communication_Primitives.ipynb)
 
 在大模型的训练中，单卡的算力是微不足道的。所有的千亿参数模型都是在几千甚至上万张 GPU 组成的集群上跑出来的。当算法工程师跨过单机代码的门槛，面临的最大挑战就是**通信瓶颈 (Communication Bottleneck)**。
+
+> **相关阅读**:
+> 请前往实战篇进行相关代码练习：
+> [`../02_PyTorch_Algorithms/20_Tensor_Parallelism_Sim.ipynb`](../02_PyTorch_Algorithms/20_Tensor_Parallelism_Sim.ipynb)
+> [`../03_CUDA_and_Triton_Kernels/16_Distributed_Communication_Primitives.ipynb`](../03_CUDA_and_Triton_Kernels/16_Distributed_Communication_Primitives.ipynb)
 
 ---
 

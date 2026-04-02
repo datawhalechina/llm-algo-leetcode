@@ -2,18 +2,13 @@
 
 **难度：** Hard | **标签：** `算力评估`, `ZeRO` | **目标人群：** 模型微调与工程部署
 
-> **相关阅读**:
-> 请前往实战篇进行相关代码练习：
-> [`../02_PyTorch_Algorithms/17_Gradient_Checkpointing.ipynb`](../02_PyTorch_Algorithms/17_Gradient_Checkpointing.ipynb)
-> [`../02_PyTorch_Algorithms/19_ZeRO_1_Optimizer_Sim.ipynb`](../02_PyTorch_Algorithms/19_ZeRO_1_Optimizer_Sim.ipynb)
-
-> **相关阅读**:
-> 请前往实战篇进行相关代码练习：
-> [`../02_PyTorch_Algorithms/17_Gradient_Checkpointing.ipynb`](../02_PyTorch_Algorithms/17_Gradient_Checkpointing.ipynb)
-> [`../02_PyTorch_Algorithms/19_ZeRO_1_Optimizer_Sim.ipynb`](../02_PyTorch_Algorithms/19_ZeRO_1_Optimizer_Sim.ipynb)
-
 在真实的工业界和面试中，最常被问到的问题之一就是：“给定一个 7B 的模型，我要用多少张 A100 才能把它跑起来？”
 这个问题不仅考察你对混合精度训练的理解，还考察你对 DeepSpeed ZeRO 优化器各个阶段（Stage 1/2/3）通信原理的掌握。
+
+> **相关阅读**:
+> 请前往实战篇进行相关代码练习：
+> [`../02_PyTorch_Algorithms/17_Gradient_Checkpointing.ipynb`](../02_PyTorch_Algorithms/17_Gradient_Checkpointing.ipynb)
+> [`../02_PyTorch_Algorithms/19_ZeRO_1_Optimizer_Sim.ipynb`](../02_PyTorch_Algorithms/19_ZeRO_1_Optimizer_Sim.ipynb)
 
 ---
 
