@@ -6,7 +6,7 @@
 
 ---
 
-## 🛑 1. 致命报错：`Segmentation Fault (core dumped)`
+## 1. 致命报错：`Segmentation Fault (core dumped)`
 
 当你运行包含 Triton 算子的 Python 脚本时，如果整个进程直接崩溃，不报任何 Python 异常栈，只留下一句 `Segmentation Fault`，这通常是**显存越界访问**。
 
@@ -41,7 +41,7 @@ x = tl.load(ptr + offsets, mask=mask)
 
 ---
 
-## 🐛 2. 隐式错误：输出结果存在随机的“脏数据”或 NaN
+## 2. 隐式错误：输出结果存在随机的“脏数据”或 NaN
 
 有时程序不会崩溃，但每次运行输出的结果都不一样，或者突然出现极大/极小值。
 
@@ -67,7 +67,7 @@ x = tl.load(ptr + offsets, mask=mask, other=-float('inf'))
 
 ---
 
-##  3. 性能不达预期：比 PyTorch 原生还慢？
+## 3. 性能不达预期：比 PyTorch 原生还慢？
 
 如果你成功跑通了算子，但在 `triton.testing.perf_report` 中发现带宽吞吐极低。
 
@@ -93,7 +93,7 @@ x = tl.load(ptr + offsets, mask=mask, other=-float('inf'))
 
 ---
 
-## 🛠 4. Debug 终极武器
+## 4. Debug 终极武器
 
 当逻辑极其复杂（例如 PagedAttention 的四维指针偏移查表），你完全不知道算子内部到底读取了什么数据时：
 

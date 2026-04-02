@@ -14,9 +14,9 @@ hero:
       link: https://github.com/your-username/LLM-LeetCode
 
 features:
-  - title: 🚀 高度垂直
+  - title:  高度垂直
     details: 专注 Transformer、MoE、量化、推理加速与显存优化。
-  - title: 💻 工程导向
+  - title:  工程导向
     details: 要求使用 PyTorch、Triton 或原生的 CUDA C++ 实现核心算子和系统逻辑。
   - title: 🧪 测试驱动
     details: 每一道题都内置了工业级测试验证与 Benchmark 性能基准测试。

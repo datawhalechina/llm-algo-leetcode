@@ -19,7 +19,7 @@
 - **AI 研发人员**：希望从代码底层理解大模型运作机制（如分布式通信、显存优化、Triton/CUDA 算子）的从业者。
 - **前置要求**：具备 Python 和深度学习基础，熟悉 PyTorch。高级章节需一定 C++/CUDA 基础。
 
-## 🎯 项目特点
+##  项目特点
 
 1. **高度垂直**：专注 Transformer、MoE、量化、推理加速与显存优化。
 2. **工程导向**：要求使用 PyTorch、Triton 或原生的 CUDA C++ 实现核心算子和系统逻辑。
@@ -41,7 +41,7 @@
 
 ---
 
-## 💻 硬件要求与学习路线建议
+##  硬件要求与学习路线建议
 
 | 你的环境 | 可学内容 | 覆盖面试考点 |
 | ---- | ---- | ---- |
@@ -50,7 +50,7 @@
 
 > 没有 GPU 的同学不用担心！Chapter 1（理论）和 Chapter 2（PyTorch 实现）中的绝大部分代码都可以在纯 CPU 环境下运行和测试。只有 Chapter 3（Triton / CUDA 算子）必须在 Linux + NVIDIA GPU 环境下编译运行。
 
-## 🚀 快速开始
+##  快速开始
 
 ```bash
 # 0. 系统前置依赖 (Ubuntu/Debian，仅需执行一次)
@@ -109,7 +109,7 @@ Unlike traditional "text-only interview cheat sheets," this project strictly foc
 - **Job Seekers**: Covering high-frequency concepts for LLM Algorithm Engineers and Kernel Optimization Engineers.
 - **AI Practitioners**: Developers seeking a bottom-up understanding of LLM mechanisms like Distributed Communication, VRAM Optimization, and Triton/CUDA.
 
-## 🎯 Features
+##  Features
 1. **Highly Vertical**: Focuses exclusively on Transformers, MoE, Quantization, Inference Acceleration, and VRAM Optimization.
 2. **Engineering-Oriented**: Requires implementing core operators and system logic using PyTorch, Triton, or native CUDA C++.
 3. **Test-Driven**: Every exercise includes built-in test validations aligned with industrial open-source implementations (e.g., HuggingFace, vLLM).
