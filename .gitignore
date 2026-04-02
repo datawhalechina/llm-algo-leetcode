@@ -15,3 +15,7 @@ unify_audience.py
 fix_chapter1_refs.py
 .DS_Store
 **/.DS_Store
+format_skill.py
+fix_chapter1_refs.py
+fix_chapter_03.py
+fix_02_notebooks.py
