@@ -1,11 +1,18 @@
 # 讨论题 04：Attention 变体与显存优化 (MQA / GQA / MLA)
+
+**难度：** Medium | **标签：** `模型架构`, `Attention`, `KV Cache` | **目标人群：** 通用基础 (算法/Infra)
+
 > **相关阅读**:
 > 请前往实战篇进行相关代码练习：
 > [`../02_PyTorch_Algorithms/04_Attention_MHA_GQA.ipynb`](../02_PyTorch_Algorithms/04_Attention_MHA_GQA.ipynb)
 > [`../02_PyTorch_Algorithms/15_vLLM_PagedAttention.ipynb`](../02_PyTorch_Algorithms/15_vLLM_PagedAttention.ipynb)
 > [`../03_CUDA_and_Triton_Kernels/10_Triton_KV_Cache_and_PagedAttention.ipynb`](../03_CUDA_and_Triton_Kernels/10_Triton_KV_Cache_and_PagedAttention.ipynb)
 
-**难度：** Medium | **标签：** `模型架构`, `Attention`, `KV Cache` | **目标人群：** 通用基础 (算法/Infra)
+> **相关阅读**:
+> 请前往实战篇进行相关代码练习：
+> [`../02_PyTorch_Algorithms/04_Attention_MHA_GQA.ipynb`](../02_PyTorch_Algorithms/04_Attention_MHA_GQA.ipynb)
+> [`../02_PyTorch_Algorithms/15_vLLM_PagedAttention.ipynb`](../02_PyTorch_Algorithms/15_vLLM_PagedAttention.ipynb)
+> [`../03_CUDA_and_Triton_Kernels/10_Triton_KV_Cache_and_PagedAttention.ipynb`](../03_CUDA_and_Triton_Kernels/10_Triton_KV_Cache_and_PagedAttention.ipynb)
 
 在上一节我们得知，大模型的自回归生成是极度的 Memory-bound，因为每次生成都要读取之前所有 Token 的 KV Cache。
 为了强行减小这个庞大的内存读取量，算法界对 Attention 的架构动了刀子。

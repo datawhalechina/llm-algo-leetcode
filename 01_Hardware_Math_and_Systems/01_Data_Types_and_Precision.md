@@ -1,10 +1,16 @@
 # 讨论题 01：大模型的数据格式与混合精度 (Data Types & Precision)
+
+**难度：** Easy | **标签：** `基础概念`, `混合精度` | **目标人群：** 通用基础 (算法/Infra)
+
 > **相关阅读**:
 > 请前往实战篇进行相关代码练习：
 > [`../02_PyTorch_Algorithms/16_Quantization_W8A16.ipynb`](../02_PyTorch_Algorithms/16_Quantization_W8A16.ipynb)
 > [`../03_CUDA_and_Triton_Kernels/11_Triton_Quantization_Support.ipynb`](../03_CUDA_and_Triton_Kernels/11_Triton_Quantization_Support.ipynb)
 
-**难度：** Easy | **标签：** `基础概念`, `混合精度` | **目标人群：** 通用基础 (算法/Infra)
+> **相关阅读**:
+> 请前往实战篇进行相关代码练习：
+> [`../02_PyTorch_Algorithms/16_Quantization_W8A16.ipynb`](../02_PyTorch_Algorithms/16_Quantization_W8A16.ipynb)
+> [`../03_CUDA_and_Triton_Kernels/11_Triton_Quantization_Support.ipynb`](../03_CUDA_and_Triton_Kernels/11_Triton_Quantization_Support.ipynb)
 
 在计算任何大模型的显存或算力之前，我们必须彻底搞懂“数据”在 GPU 中到底长什么样。这是所有硬件推导和量化算法的基石。
 
