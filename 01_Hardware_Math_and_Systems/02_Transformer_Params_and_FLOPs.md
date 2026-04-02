@@ -1,5 +1,4 @@
-# 讨论题 2：Transformer 参数量与算力推导 (Params & FLOPs Math)
-
+# 讨论题 02：Transformer 参数量与算力推导 (Params & FLOPs Math)
 **难度：** Medium | **标签：** `数学推导`, `Transformer` | **目标人群：** 通用基础 (算法/Infra)
 
 面试官最喜欢问：“你平时用 7B 模型，那你能手算一下一个标准 Transformer Block 的参数量是怎么分布的吗？”

@@ -1,5 +1,4 @@
-# 讨论题 4：异构编程模型 (CUDA vs Triton)
-
+# 讨论题 08：异构编程模型 (CUDA vs Triton)
 > **相关阅读**:
 > 请前往实战篇进行相关代码练习：
 > [`../03_CUDA_and_Triton_Kernels/18_CUDA_Custom_Kernel_Intro.ipynb`](../03_CUDA_and_Triton_Kernels/18_CUDA_Custom_Kernel_Intro.ipynb)

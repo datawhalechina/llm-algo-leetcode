@@ -1,5 +1,4 @@
-# 讨论题 3：通信拓扑与分布式基石 (Communication & Distributed Topology)
-
+# 讨论题 07：通信拓扑与分布式基石 (Communication & Distributed Topology)
 > **相关阅读**:
 > 请前往实战篇进行相关代码练习：
 > [`../02_PyTorch_Algorithms/20_Tensor_Parallelism_Sim.ipynb`](../02_PyTorch_Algorithms/20_Tensor_Parallelism_Sim.ipynb)

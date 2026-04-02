@@ -1,5 +1,4 @@
-# 讨论题 6：CPU-GPU 异构协同与卸载 (Heterogeneous Co-Design & Offloading)
-
+# 讨论题 06：CPU-GPU 异构协同与卸载 (Heterogeneous Co-Design & Offloading)
 > **相关阅读**:
 > 请前往实战篇进行相关代码练习：
 > [`../03_CUDA_and_Triton_Kernels/15_PyTorch_CUDA_Streams_and_Transfer.ipynb`](../03_CUDA_and_Triton_Kernels/15_PyTorch_CUDA_Streams_and_Transfer.ipynb)

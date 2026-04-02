@@ -1,5 +1,4 @@
-# 讨论题 1：大模型的数据格式与混合精度 (Data Types & Precision)
-
+# 讨论题 01：大模型的数据格式与混合精度 (Data Types & Precision)
 > **相关阅读**:
 > 请前往实战篇进行相关代码练习：
 > [`../02_PyTorch_Algorithms/16_Quantization_W8A16.ipynb`](../02_PyTorch_Algorithms/16_Quantization_W8A16.ipynb)

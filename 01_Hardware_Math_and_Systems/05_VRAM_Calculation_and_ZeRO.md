@@ -1,5 +1,4 @@
-# 讨论题 1：大模型显存占用 (VRAM Calculation) 计算指南
-
+# 讨论题 05：大模型显存占用 (VRAM Calculation) 计算指南
 > **相关阅读**:
 > 请前往实战篇进行相关代码练习：
 > [`../02_PyTorch_Algorithms/17_Gradient_Checkpointing.ipynb`](../02_PyTorch_Algorithms/17_Gradient_Checkpointing.ipynb)

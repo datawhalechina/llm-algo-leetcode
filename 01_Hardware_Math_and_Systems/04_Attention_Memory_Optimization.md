@@ -1,5 +1,4 @@
-# 讨论题 4：Attention 变体与显存优化 (MQA / GQA / MLA)
-
+# 讨论题 04：Attention 变体与显存优化 (MQA / GQA / MLA)
 > **相关阅读**:
 > 请前往实战篇进行相关代码练习：
 > [`../02_PyTorch_Algorithms/04_Attention_MHA_GQA.ipynb`](../02_PyTorch_Algorithms/04_Attention_MHA_GQA.ipynb)
