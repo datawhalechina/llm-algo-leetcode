@@ -14,8 +14,8 @@
 我们把 Transformer 拆解为三大部分（忽略极小的 bias 和 LayerNorm 的权重，它们对百亿参数的占比不到千分之一）：
 
 **1. 嵌入层 (Embedding Layer) 与 输出层 (LM Head)**
-- Token Embedding: 形状 $[V, d]$，参数量为 $V \times d$。
-- LM Head (输出映射): 形状 $[d, V]$，参数量为 $V \times d$。
+- Token Embedding: 形状 $[V, d]$，参数量为 $V \t\times d$。
+- LM Head (输出映射): 形状 $[d, V]$，参数量为 $V \t\times d$。
 - *(注：很多模型如 Gemma/Qwen 会共享这两个权重，参数量减半。这里我们假设不共享)*。
 
 **2. 注意力机制 (Multi-Head Attention, MHA)**
@@ -30,15 +30,15 @@
 - 升维矩阵 $W_{up}$：$[d, 4d]$，参数量 $4d^2$。
 - 降维矩阵 $W_{down}$：$[4d, d]$，参数量 $4d^2$。
 - **FFN 总参数量 = $8d^2$**。
-*(如果在 LLaMA 中使用 SwiGLU，维度会变为 $\frac{8}{3}d$，但有 3 个矩阵，总参数量依然是 $3 \times \frac{8}{3}d^2 = 8d^2$)*。
+*(如果在 LLaMA 中使用 SwiGLU，维度会变为 $\frac{8}{3}d$，但有 3 个矩阵，总参数量依然是 $3 \t\times \frac{8}{3}d^2 = 8d^2$)*。
 
 **综上所述：**
 - 一个 Block 的参数量 = $4d^2$ (Attn) + $8d^2$ (MLP) = **$12d^2$**。
-- 总参数量 $\approx 2Vd + L \times 12d^2$。
+- 总参数量 $\approx 2Vd + L \t\times 12d^2$。
 
 *带入 LLaMA-7B 感受一下：$d=4096, L=32, V=32000$*
-*Block 参数 = $32 \times 12 \times 4096^2 \approx 6.4 \text{ Billion}$*
-*Embedding = $2 \times 32000 \times 4096 \approx 0.26 \text{ Billion}$*
+*Block 参数 = $32 \t\times 12 \t\times 4096^2 \approx 6.4 \text{ Billion}$*
+*Embedding = $2 \t\times 32000 \t\times 4096 \approx 0.26 \text{ Billion}$*
 *总计约 6.7B，也就是所谓的 7B 模型！*
 </details>
 

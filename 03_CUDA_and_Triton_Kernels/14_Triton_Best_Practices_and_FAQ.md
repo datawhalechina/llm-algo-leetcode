@@ -67,7 +67,7 @@ x = tl.load(ptr + offsets, mask=mask, other=-float('inf'))
 
 ---
 
-## 🚀 3. 性能不达预期：比 PyTorch 原生还慢？
+##  3. 性能不达预期：比 PyTorch 原生还慢？
 
 如果你成功跑通了算子，但在 `triton.testing.perf_report` 中发现带宽吞吐极低。
 
@@ -93,7 +93,7 @@ x = tl.load(ptr + offsets, mask=mask, other=-float('inf'))
 
 ---
 
-## 🛠️ 4. Debug 终极武器
+## 🛠 4. Debug 终极武器
 
 当逻辑极其复杂（例如 PagedAttention 的四维指针偏移查表），你完全不知道算子内部到底读取了什么数据时：
 

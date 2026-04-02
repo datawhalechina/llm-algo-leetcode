@@ -18,7 +18,7 @@
 <details>
 <summary>点击展开查看解析</summary>
 
-假设隐藏层维度为 $d$。每个 Token 的 KV Cache 占用 $2 \times d \times 2$ (Bytes, 假设 BF16)。
+假设隐藏层维度为 $d$。每个 Token 的 KV Cache 占用 $2 \t\times d \t\times 2$ (Bytes, 假设 BF16)。
 
 1. **MQA (Multi-Query Attention)**：
    - *做法*：无论有多少个 Query 头，强行让它们**共享仅仅 1 个 Key 头和 1 个 Value 头**。

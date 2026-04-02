@@ -46,9 +46,9 @@
 
 ### 答案 1：不使用 ZeRO (单卡理论值)
 根据上述公式，每个参数占用 16 字节。
-7B = $7 \times 10^9$ 个参数。
-总显存 = $7 \times 10^9 \times 16 \text{ bytes}$
-$$= 112 \times 10^9 \text{ bytes} \approx 112 \text{ GB}$$
+7B = $7 \t\times 10^9$ 个参数。
+总显存 = $7 \t\times 10^9 \t\times 16 \text{ bytes}$
+$$= 112 \t\times 10^9 \text{ bytes} \approx 112 \text{ GB}$$
 
 *结论：单卡 80GB 的 A100 是绝对跑不起来 7B 模型的全参微调的，必然 OOM（Out of Memory）。这也是为什么必须引入分布式并行。*
 
@@ -56,9 +56,9 @@ $$= 112 \times 10^9 \text{ bytes} \approx 112 \text{ GB}$$
 ZeRO-1 将占用最大头（12 bytes/参数）的**优化器状态 (Optimizer States)** 平分到 $N$ 张卡上。
 权重和梯度依然在每张卡上保留全量备份。
 
-- **每卡权重**: 2 bytes $\times 7\text{B} = 14 \text{ GB}$
-- **每卡梯度**: 2 bytes $\times 7\text{B} = 14 \text{ GB}$
-- **每卡优化器状态**: $\frac{12}{8} \text{ bytes} \times 7\text{B} = 1.5 \text{ bytes} \times 7\text{B} = 10.5 \text{ GB}$
+- **每卡权重**: 2 bytes $\t\times 7\text{B} = 14 \text{ GB}$
+- **每卡梯度**: 2 bytes $\t\times 7\text{B} = 14 \text{ GB}$
+- **每卡优化器状态**: $\frac{12}{8} \text{ bytes} \t\times 7\text{B} = 1.5 \text{ bytes} \t\times 7\text{B} = 10.5 \text{ GB}$
 
 **单卡显存总计 = $14 + 14 + 10.5 = 38.5 \text{ GB}$**
 *结论：使用 ZeRO-1 后，8 张 40GB/80GB 的 A100 都可以轻松跑起来（如果不算激活值的话）。*
@@ -66,8 +66,8 @@ ZeRO-1 将占用最大头（12 bytes/参数）的**优化器状态 (Optimizer St
 ### 答案 3：使用 ZeRO-3 (切分所有状态，8卡 DP)
 ZeRO-3 是终极的显存优化方案，它将**优化器状态、梯度、以及模型权重**全部平分到 $N$ 张卡上。计算前向或反向时，通过网络 (All-Gather) 临时拉取所需的参数。
 
-- **单卡总显存 (理论下限)** = $\frac{16 \text{ bytes}}{N} \times \text{参数量}$
-- 在 $N=8$ 的情况下：$\frac{16}{8} \times 7\text{B} = 2 \text{ bytes} \times 7\text{B} = 14 \text{ GB}$
+- **单卡总显存 (理论下限)** = $\frac{16 \text{ bytes}}{N} \t\times \text{参数量}$
+- 在 $N=8$ 的情况下：$\frac{16}{8} \t\times 7\text{B} = 2 \text{ bytes} \t\times 7\text{B} = 14 \text{ GB}$
 
 *结论：理论上每张卡只需要 14GB 的显存存放切片。但在真实工程中，ZeRO-3 需要维护通信缓冲区 (Communication Buffers)，这通常会带来几十 GB 的额外开销。因此实际显存占用远大于 14GB。*
 </details>
