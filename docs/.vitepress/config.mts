@@ -15,6 +15,7 @@ export default defineConfig({
   themeConfig: {
     logo: '/datawhale-logo.png',
     nav: [
+      { text: '开始刷题', link: '/01_Hardware_Math_and_Systems/01_Data_Types_and_Precision' },
       { text: 'GitHub 仓库', link: 'https://github.com/lynnyulinlin-debug/llm-algo-leetcode' },
     ],
     search: {

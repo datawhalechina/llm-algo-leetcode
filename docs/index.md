@@ -10,6 +10,9 @@ hero:
     alt: LLM-LeetCode
   actions:
     - theme: brand
+      text: 开始刷题 (Start Here)
+      link: /01_Hardware_Math_and_Systems/01_Data_Types_and_Precision
+    - theme: alt
       text: GitHub 仓库
       link: https://github.com/lynnyulinlin-debug/llm-algo-leetcode
 
