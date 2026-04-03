@@ -43,6 +43,38 @@ Triton 的语法非常固定，通常包含以下三板斧：
 **要求**：请补全下方 `add_kernel`，实现向量 `Z = X + Y` 的底层计算。
 
 
+::: details 💡 点击查看官方解析与参考代码
+
+## 官方解析与参考代码
+
+**解析：**
+1. **TODO 1 (Offsets)：** Triton 是基于 Block 计算的（而不是 CUDA C++ 的线程计算）。每个 `pid` 处理连续的一块数据。`tl.arange(0, BLOCK_SIZE)` 会生成一个 `[0, 1, 2, ..., BLOCK_SIZE-1]` 的向量，加上基址 `block_start`，我们就得到了当前 block 需要处理的所有元素的全局索引。
+2. **TODO 2 (Mask)：** 因为数组的总长度 `n_elements` 未必是 `BLOCK_SIZE` 的整数倍，最后一个 block 算出来的 offsets 会超出数组边界！因此需要一个布尔型掩码 `mask = offsets < n_elements` 保护内存，防止引发段错误 (Segmentation Fault)。
+3. **TODO 3 (Load)：** SRAM 读取。直接利用刚才算出来的全局指针地址 `x_ptr + offsets`，配合 `mask` 加载到片上。
+4. **TODO 4 (Compute & Store)：** Triton 自动做矢量化计算 `z = x + y`。最后使用 `tl.store` 加 `mask` 写回到 HBM。
+
+
+```python
+@triton.jit
+def add_kernel_solution(x_ptr, y_ptr, z_ptr, n_elements, BLOCK_SIZE: tl.constexpr):
+    pid = tl.program_id(axis=0)
+    
+    # TODO 1: 计算内存偏移量
+    block_start = pid * BLOCK_SIZE
+    offsets = block_start + tl.arange(0, BLOCK_SIZE)
+    
+    # TODO 2: 边界保护 Mask
+    mask = offsets < n_elements
+    
+    # TODO 3: 加载数据到 SRAM
+    x = tl.load(x_ptr + offsets, mask=mask)
+    y = tl.load(y_ptr + offsets, mask=mask)
+    
+    # TODO 4: 计算并存回 HBM
+    z = x + y
+    tl.store(z_ptr + offsets, z, mask=mask)
+```
+
 ```python
 import torch
 import triton
@@ -138,6 +170,8 @@ def test_vector_add():
 test_vector_add()
 
 ```
+
+:::
 
 ---
 

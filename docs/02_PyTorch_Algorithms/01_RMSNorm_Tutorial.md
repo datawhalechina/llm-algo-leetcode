@@ -85,6 +85,36 @@ class RMSNorm(nn.Module):
 
 ```
 
+::: details 💡 点击查看官方解析与参考代码
+
+## 官方解析与参考代码
+
+**解析：**
+1. **TODO 1 (可学习参数)：** RMSNorm 的 `weight` (通常论文中称为 $\gamma$) 是逐元素乘以归一化结果的，所以它的形状应该和特征维度 `hidden_size` 一致，并且初始化为全 1。
+2. **TODO 2 (核心计算)：** 这一步最关键的是防溢出机制。大模型特征的平方和非常容易越界，因此计算方差前必须转换到 `float32`。求均值时指定 `dim=-1` 和 `keepdim=True` 是为了保持形状 `(batch_size, seq_len, 1)` 以便后续进行广播相除。推荐使用 `torch.rsqrt(x)`（相当于 $1/\sqrt{x}$），这在底层会调用专用的 CUDA 快速倒数平方根指令，比 `1.0 / torch.sqrt(x)` 快很多。
+3. **TODO 3 (类型恢复)：** 为了实现混合精度，我们计算完了 float32 的高精度 norm 后，需要转回模型原生的数据类型（如 `bfloat16`），然后再乘以同样精度的 `weight`。
+
+
+```python
+class RMSNormSolution(nn.Module):
+    def __init__(self, hidden_size: int, eps: float = 1e-6):
+        super().__init__()
+        self.eps = eps
+        # TODO 1: 定义可学习参数 weight
+        self.weight = nn.Parameter(torch.ones(hidden_size))
+
+    def _norm(self, x: torch.Tensor) -> torch.Tensor:
+        # TODO 2: 实现 RMSNorm 核心计算逻辑
+        x_fp32 = x.to(torch.float32)
+        variance = x_fp32.pow(2).mean(dim=-1, keepdim=True)
+        return x_fp32 * torch.rsqrt(variance + self.eps)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # TODO 3: 类型回退并应用权重缩放
+        output = self._norm(x).to(x.dtype)
+        return output * self.weight
+```
+
 ```python
 # 运行此单元格以测试你的实现
 def test_rmsnorm():
@@ -125,6 +155,8 @@ def test_rmsnorm():
 test_rmsnorm()
 
 ```
+
+:::
 
 ---
 
