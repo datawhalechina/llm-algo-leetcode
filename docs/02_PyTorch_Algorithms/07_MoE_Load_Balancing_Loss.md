@@ -1,17 +1,17 @@
-# 06 MoE Load Balancing Loss
+# 07 MoE Load Balancing Loss
 
 > 🚀 **云端运行环境**
 > 
 > 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
 > 
-> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lynnyulinlin-debug/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/06_MoE_Load_Balancing_Loss.ipynb)  
+> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lynnyulinlin-debug/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/07_MoE_Load_Balancing_Loss.ipynb)  
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 # 06. MoE 进阶：负载均衡损失函数 (Load Balancing Loss)
 
 **难度：** Hard | **标签：** `MoE`, `Loss Function`, `Mixtral` | **目标人群：** 核心 Infra 与算子开发
 
-在上一节 `05_MoE_Router` 中，我们实现了 Top-K 路由。但在真实的 MoE 模型（如 Mixtral 8x7B, DeepSeek）训练中，会遇到一个非常致命的问题：**路由崩塌 (Router Collapse)**。
+在上一节 `06_MoE_Router` 中，我们实现了 Top-K 路由。但在真实的 MoE 模型（如 Mixtral 8x7B, DeepSeek）训练中，会遇到一个非常致命的问题：**路由崩塌 (Router Collapse)**。
 即门控网络“偷懒”，把所有的 Token 都发给了第 0 号和第 1 号专家，导致其他专家被饿死（闲置），不仅失去了 MoE 的意义，还会导致算力极度不均衡（OOM）。
 因此，面试官极度爱考：**如何用代码实现 MoE 的辅助损失函数 (Auxiliary Loss) 来强制负载均衡？**
 

@@ -23,7 +23,7 @@
 ### Step 1: 算子替换与模块集成规范
 
 > **PyTorch 原生实现为什么慢？**
-> 我们在 `02_PyTorch_Algorithms/07_LLaMA3_Block_Tutorial` 中写的 Block：
+> 我们在 `02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial` 中写的 Block：
 > `x = x + Attention(RMSNorm(x))`
 > `x = x + MLP(RMSNorm(x))`
 > 这个过程产生了大量的中间张量 (Intermediate Tensors)，由于频繁的内存读写 (Memory Bound)，严重拖慢了速度。
