@@ -7,8 +7,6 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lynnyulinlin-debug/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/04_Attention_MHA_GQA.ipynb)  
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-::: details 💡 点击查看官方解析与参考代码
-
 # 04. 注意力机制与 KV Cache (MHA / GQA / MQA)
 
 **难度：** Medium | **标签：** `基础架构`, `PyTorch`, `推理优化` | **目标人群：** 模型微调与工程部署
@@ -197,6 +195,8 @@ test_mha_mqa_gqa()
 <br><br><br><br><br><br><br><br><br><br>
 
 ---
+
+::: details 💡 点击查看官方解析与参考代码
 
 Attention 算子的核心是张量维度的追踪与变换。首先要用 view + transpose 将 QKV 转为多头形式 [batch_size, num_heads, seq_len, head_dim]。如果是自回归推理，将历史的 KV cache 与当前的 xk, xv 在 seq_len 维度进行拼接。接着计算 Attention Scores 时，只需用 xq @ xk.transpose(2, 3) 进行最后两维的矩阵乘法，得到注意力权重后再去乘 xv。对于 GQA 支持，借助外部传入的重复函数 repeat_kv，先将少量 KV 头扩充到 Query 头的数量再进行运算。
 

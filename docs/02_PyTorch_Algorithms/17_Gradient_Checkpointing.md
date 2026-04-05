@@ -130,8 +130,6 @@ test_gradient_checkpointing()
 
 ```
 
-::: details 💡 点击查看官方解析与参考代码
-
 ---
 
 🛑 **STOP HERE** 🛑
@@ -142,10 +140,16 @@ test_gradient_checkpointing()
 
 ---
 
-temp_17_exp.md
+::: details 💡 点击查看官方解析与参考代码
+
+梯度检查点（Gradient Checkpointing）是一种以计算换显存的技术。它的核心是在前向传播时不保存部分激活值，而在反向传播需要时重新计算这些激活值，从而在有限的显存中训练超大规模模型。
 
 ```python
-temp_17_sol.py
+def gradient_checkpointing_forward(module, *inputs):
+    def custom_forward(*inputs):
+        return module(*inputs)
+    
+    return torch.utils.checkpoint.checkpoint(custom_forward, *inputs, use_reentrant=False)
 ```
 
 :::

@@ -161,8 +161,6 @@ test_swiglu()
 
 ```
 
-::: details 💡 点击查看官方解析与参考代码
-
 ---
 
 🛑 **STOP HERE** 🛑
@@ -172,6 +170,8 @@ test_swiglu()
 <br><br><br><br><br><br><br><br><br><br>
 
 ---
+
+::: details 💡 点击查看官方解析与参考代码
 
 SwiGLU 替代了传统 MLP，用门控机制（Gate 和 Up）进行升维，然后点乘再 Down 降维。通过推导公式 3 * d * h = 8 * d^2，隐藏层维度为 8/3 倍。为了提升硬件的访存效率，我们还需要将该维度向上取整对齐到 multiple_of 的倍数。代码中实现了计算这个对齐大小，以及前向计算 down_proj(SiLU(gate_proj(x)) * up_proj(x))。
 

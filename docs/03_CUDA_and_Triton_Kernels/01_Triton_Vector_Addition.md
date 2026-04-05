@@ -139,8 +139,6 @@ test_vector_add()
 
 ```
 
-::: details 💡 点击查看官方解析与参考代码
-
 ---
 
 🛑 **STOP HERE** 🛑
@@ -151,6 +149,8 @@ test_vector_add()
 
 ---
 
+
+::: details 💡 点击查看官方解析与参考代码
 
 ## 官方解析与参考代码
 

@@ -7,8 +7,6 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lynnyulinlin-debug/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/05_MoE_Router.ipynb)  
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-::: details 💡 点击查看官方解析与参考代码
-
 # 05. 混合专家架构 (MoE): 稀疏路由与负载均衡
 
 **难度：** Medium | **标签：** `模型架构`, `MoE`, `PyTorch` | **目标人群：** 模型微调与工程部署
@@ -205,6 +203,8 @@ test_moe_router()
 <br><br><br><br><br><br><br><br><br><br>
 
 ---
+
+::: details 💡 点击查看官方解析与参考代码
 
 混合专家模型（MoE）的灵魂在于稀疏路由机制。输入特征首先通过一个门控全连接层映射到所有专家的得分。接着利用 torch.topk 选取得分最高的 K 个专家（保留分数与索引），对这 K 个分数做局部 Softmax 归一化。在聚合阶段，不同于常规稠密计算，只有被选中的专家才会对特定 Token 的计算进行加权求和，从而以极小的激活参数量扩展了模型的总容量。
 

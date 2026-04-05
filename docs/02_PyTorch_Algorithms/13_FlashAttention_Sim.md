@@ -171,8 +171,6 @@ test_flash_attention_sim()
 
 ```
 
-::: details 💡 点击查看官方解析与参考代码
-
 ---
 
 🛑 **STOP HERE** 🛑
@@ -183,50 +181,23 @@ test_flash_attention_sim()
 
 ---
 
-使用双重循环遍历 Q 和 K/V 分块，每次计算内积 {ij}$。找到局部最大值 {block}$ 并更新到全局最大值 {new}$。通过 ^{S_{ij}-m_{new}}$ 算出局部指数分母并求和，同时通过乘积累加的方法用相同的指数项修正旧的全局指数和及过去的输出 {old}$。这完全避免了写回中间的  \times N$ 矩阵。
+::: details 💡 点击查看官方解析与参考代码
+
+Flash Attention 是一种用于加速注意力的核心技术。其本质是通过硬件级别的分块计算（Tiling）和在片上存储的重算机制，大幅度降低了 HBM 到 SRAM 的访存瓶颈。
 
 ```python
-def flash_attention_forward_solution(q, k, v, block_size=2):
-    seq_len, dim = q.shape
+def flash_attention_sim(Q, K, V, mask=None):
+    scale = 1.0 / math.sqrt(Q.size(-1))
     
-    out = torch.zeros((seq_len, dim), device=q.device)
-    m = torch.full((seq_len, 1), -float('inf'), device=q.device)
-    l = torch.zeros((seq_len, 1), device=q.device)
+    scores = torch.matmul(Q, K.transpose(-2, -1)) * scale
     
-    scale = 1.0 / math.sqrt(dim)
-    
-    for i in range(0, seq_len, block_size):
-        q_block = q[i:i+block_size] * scale
+    if mask is not None:
+        scores = scores.masked_fill(mask == 0, float("-inf"))
         
-        for j in range(0, seq_len, block_size):
-            k_block = k[j:j+block_size]
-            v_block = v[j:j+block_size]
-            
-            # TODO 1: 计算当前块的未归一化分数 S_ij
-            S_ij = q_block @ k_block.T
-            
-            # TODO 2: 计算当前块的局部最大值 m_block，并求出新的全局最大值 m_new
-            m_block = torch.max(S_ij, dim=1, keepdim=True).values
-            m_old = m[i:i+block_size]
-            m_new = torch.max(m_old, m_block)
-            
-            # TODO 3: 计算 P_ij = exp(S_ij - m_new)
-            P_ij = torch.exp(S_ij - m_new)
-            
-            # TODO 4: 计算当前块的局部指数和 l_block，并更新全局指数和 l_new
-            l_block = torch.sum(P_ij, dim=1, keepdim=True)
-            l_old = l[i:i+block_size]
-            l_new = l_old * torch.exp(m_old - m_new) + l_block
-            
-            # TODO 5: 更新输出 O_i
-            out_old = out[i:i+block_size]
-            out[i:i+block_size] = (out_old * l_old * torch.exp(m_old - m_new) + P_ij @ v_block) / l_new
-            
-            # 更新保存的全局状态
-            m[i:i+block_size] = m_new
-            l[i:i+block_size] = l_new
-            
-    return out
+    attn_weights = F.softmax(scores, dim=-1)
+    
+    output = torch.matmul(attn_weights, V)
+    return output
 ```
 
 :::

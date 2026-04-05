@@ -161,8 +161,6 @@ test_llama_block()
 
 ```
 
-::: details 💡 点击查看官方解析与参考代码
-
 ---
 
 🛑 **STOP HERE** 🛑
@@ -173,10 +171,34 @@ test_llama_block()
 
 ---
 
-explanation_llama.md
+::: details 💡 点击查看官方解析与参考代码
+
+LLaMA 3的架构创新之一在于引入了更高效的Transformer模块结构。它通常采用RMSNorm、SwiGLU和GQA等组件。参考代码展示了如何利用这些组件拼接出完整的LLaMA 3 Decoder层，并保证残差连接和归一化处理。 
 
 ```python
-solution_llama.py
+class LLaMA3DecoderLayer(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.hidden_size = config.hidden_size
+        
+        self.self_attn = GroupedQueryAttention(config)
+        self.mlp = SwiGLUMLP(config)
+        
+        self.input_layernorm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        self.post_attention_layernorm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+
+    def forward(self, hidden_states, freqs_cis=None, mask=None):
+        residual = hidden_states
+        hidden_states = self.input_layernorm(hidden_states)
+        hidden_states = self.self_attn(hidden_states, freqs_cis, mask)
+        hidden_states = residual + hidden_states
+        
+        residual = hidden_states
+        hidden_states = self.post_attention_layernorm(hidden_states)
+        hidden_states = self.mlp(hidden_states)
+        hidden_states = residual + hidden_states
+        
+        return hidden_states
 ```
 
 :::

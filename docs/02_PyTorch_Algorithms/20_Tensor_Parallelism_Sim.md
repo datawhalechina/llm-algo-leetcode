@@ -142,8 +142,6 @@ test_tensor_parallel()
 
 ```
 
-::: details 💡 点击查看官方解析与参考代码
-
 ---
 
 🛑 **STOP HERE** 🛑
@@ -154,10 +152,29 @@ test_tensor_parallel()
 
 ---
 
-temp_20_exp.md
+::: details 💡 点击查看官方解析与参考代码
+
+张量并行（Tensor Parallelism）是对单个庞大矩阵乘法进行分布式切分的技术（如行并行和列并行）。在实现中，前向和反向传播都需要根据切分方式插入 All-Reduce 通信，以保证结果和单卡计算一致。
 
 ```python
-temp_20_sol.py
+class ColumnParallelLinear(nn.Module):
+    def __init__(self, in_features, out_features, world_size, rank):
+        super().__init__()
+        self.in_features = in_features
+        self.out_features_per_partition = out_features // world_size
+        self.world_size = world_size
+        self.rank = rank
+        
+        self.weight = nn.Parameter(torch.Tensor(self.out_features_per_partition, self.in_features))
+        self.bias = nn.Parameter(torch.Tensor(self.out_features_per_partition))
+        
+        nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+        fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.weight)
+        bound = 1 / math.sqrt(fan_in)
+        nn.init.uniform_(self.bias, -bound, bound)
+
+    def forward(self, x):
+        return F.linear(x, self.weight, self.bias)
 ```
 
 :::

@@ -21,7 +21,8 @@
 > **数值稳定性 (Safe Softmax)：**
 > 如果直接计算 $e^x$，当 $x$ 较大时（如 50），$e^{50}$ 会导致浮点数溢出 (NaN)。
 > 解决方案：让一行的每一个元素都减去该行的最大值 $m$。
-> $Soft\max(x_i) = \frac{e^{x_i - m}}{\sum e^{x_j - m}}$，这在数学上完全等价，但在计算机浮点表示中更加安全。
+> $Soft\max(x_i) = 
+\frac{e^{x_i - m}}{\sum e^{x_j - m}}$，这在数学上完全等价，但在计算机浮点表示中更加安全。
 
 > **Triton 的行级并行：**
 > 处理形状为 `(M, N)` 的矩阵时，通常分配**一个 Program (线程块) 专门处理矩阵的一行**。
@@ -161,8 +162,6 @@ test_fused_softmax()
 
 ```
 
-::: details 💡 点击查看官方解析与参考代码
-
 ---
 
 🛑 **STOP HERE** 🛑
@@ -172,6 +171,8 @@ test_fused_softmax()
 <br><br><br><br><br><br><br><br><br><br>
 
 ---
+
+::: details 💡 点击查看官方解析与参考代码
 
 ### 📝 Fused Softmax 参考实现解析
 

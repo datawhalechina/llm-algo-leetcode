@@ -7,8 +7,6 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lynnyulinlin-debug/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/09_LoRA_Tutorial.ipynb)  
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-::: details 💡 点击查看官方解析与参考代码
-
 # 09. 参数高效微调 (PEFT): 深入剖析 LoRA
 
 **难度：** Medium | **标签：** `微调`, `PEFT`, `PyTorch` | **目标人群：** 模型微调与工程部署
@@ -158,10 +156,37 @@ test_lora()
 
 ---
 
-explanation_lora.md
+::: details 💡 点击查看官方解析与参考代码
+
+低秩自适应（LoRA）是一种参数高效的微调技术，核心在于通过低秩矩阵分解来更新权重。代码中通过创建并行的降维和升维线性层，并在前向传播时按缩放因子合并结果，大幅降低了可训练参数量。
 
 ```python
-solution_lora.py
+class LoRALinear(nn.Module):
+    def __init__(self, in_features, out_features, r=8, lora_alpha=16, lora_dropout=0.0):
+        super().__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.r = r
+        self.lora_alpha = lora_alpha
+        self.scaling = self.lora_alpha / self.r
+
+        self.linear = nn.Linear(in_features, out_features, bias=False)
+        self.linear.weight.requires_grad = False
+        
+        self.lora_A = nn.Linear(in_features, r, bias=False)
+        self.lora_B = nn.Linear(r, out_features, bias=False)
+        
+        self.dropout = nn.Dropout(p=lora_dropout)
+        
+        nn.init.kaiming_uniform_(self.lora_A.weight, a=math.sqrt(5))
+        nn.init.zeros_(self.lora_B.weight)
+
+    def forward(self, x):
+        result = self.linear(x)
+        if self.r > 0:
+            lora_out = self.lora_B(self.lora_A(self.dropout(x)))
+            result += lora_out * self.scaling
+        return result
 ```
 
 :::

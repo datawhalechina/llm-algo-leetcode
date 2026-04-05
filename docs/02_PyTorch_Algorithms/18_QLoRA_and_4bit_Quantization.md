@@ -143,8 +143,6 @@ test_qlora()
 
 ```
 
-::: details 💡 点击查看官方解析与参考代码
-
 ---
 
 🛑 **STOP HERE** 🛑
@@ -155,10 +153,29 @@ test_qlora()
 
 ---
 
-temp_18_exp.md
+::: details 💡 点击查看官方解析与参考代码
+
+QLoRA 将 LoRA 和 4-bit NormalFloat 权重量化结合起来，在单卡上实现了超大模型的微调。实现重点在于双重量化机制和基于分块的量化参数管理，以此打破微调大模型时的显存瓶颈。
 
 ```python
-temp_18_sol.py
+def quantize_4bit(tensor, block_size=64):
+    num_blocks = tensor.numel() // block_size
+    tensor_reshaped = tensor.view(num_blocks, block_size)
+    
+    absmax = tensor_reshaped.abs().max(dim=1, keepdim=True)[0]
+    scales = absmax / 7.0 
+    
+    quantized = torch.round(tensor_reshaped / scales).clamp(-8, 7).to(torch.int8)
+    
+    return quantized.view_as(tensor), scales
+    
+def dequantize_4bit(quantized, scales, block_size=64):
+    num_blocks = quantized.numel() // block_size
+    quantized_reshaped = quantized.view(num_blocks, block_size).float()
+    
+    dequantized = quantized_reshaped * scales
+    
+    return dequantized.view_as(quantized)
 ```
 
 :::

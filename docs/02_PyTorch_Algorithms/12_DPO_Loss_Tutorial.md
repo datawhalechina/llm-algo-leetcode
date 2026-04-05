@@ -7,8 +7,6 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lynnyulinlin-debug/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/12_DPO_Loss_Tutorial.ipynb)  
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-::: details 💡 点击查看官方解析与参考代码
-
 # 12. 直接偏好优化 (DPO) Loss 源码解析与实现
 
 **难度：** Hard | **标签：** `微调`, `RLHF`, `Loss Function` | **目标人群：** 模型微调与工程部署
@@ -166,31 +164,24 @@ test_dpo_loss()
 
 ---
 
-DPO 损失函数的实现主要分为三步：1) 计算 chosen 样本相对于 reference 的奖励差值；2) 计算 rejected 样本相对于 reference 的奖励差值；3) 将它们相减并缩放后，输入到 Log Sigmoid 损失中以拉开它们。
+::: details 💡 点击查看官方解析与参考代码
+
+直接偏好优化（DPO）损失旨在绕过强化学习阶段，通过对比正向样本和负向样本的隐式奖励来优化策略。代码计算了参考模型和策略模型对被选中和被拒绝样本的对数概率比，通过 Sigmoid 函数形成交叉熵损失。
 
 ```python
-def dpo_loss_solution(
-    policy_chosen_logps: torch.Tensor,
-    policy_rejected_logps: torch.Tensor,
-    reference_chosen_logps: torch.Tensor,
-    reference_rejected_logps: torch.Tensor,
-    beta: float = 0.1,
-) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    # TODO 1: 计算 chosen 样本的隐式奖励分数 (Logits 差值)
-    pi_logratios_chosen = policy_chosen_logps - reference_chosen_logps
+def compute_dpo_loss(policy_chosen_logps, policy_rejected_logps, 
+                     reference_chosen_logps, reference_rejected_logps, 
+                     beta=0.1):
+    pi_logratios = policy_chosen_logps - policy_rejected_logps
+    ref_logratios = reference_chosen_logps - reference_rejected_logps
     
-    # TODO 2: 计算 rejected 样本的隐式奖励分数
-    pi_logratios_rejected = policy_rejected_logps - reference_rejected_logps
+    logits = pi_logratios - ref_logratios
     
-    # 乘以 beta (控制项)
-    chosen_rewards = beta * pi_logratios_chosen
-    rejected_rewards = beta * pi_logratios_rejected
+    losses = -F.logsigmoid(beta * logits)
+    rewards_chosen = beta * (policy_chosen_logps - reference_chosen_logps).detach()
+    rewards_rejected = beta * (policy_rejected_logps - reference_rejected_logps).detach()
     
-    # TODO 3: 计算 logits 差值并放入 sigmoid 交叉熵中
-    logits = chosen_rewards - rejected_rewards
-    losses = -F.logsigmoid(logits)
-    
-    return losses, chosen_rewards, rejected_rewards
+    return losses.mean(), rewards_chosen.mean(), rewards_rejected.mean()
 ```
 
 :::

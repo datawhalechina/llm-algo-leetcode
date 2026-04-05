@@ -193,8 +193,6 @@ test_shared_gemm()
 
 ```
 
-::: details 💡 点击查看官方解析与参考代码
-
 ---
 
 🛑 **STOP HERE** 🛑
@@ -204,6 +202,8 @@ test_shared_gemm()
 <br><br><br><br><br><br><br><br><br><br>
 
 ---
+
+::: details 💡 点击查看官方解析与参考代码
 
 
 ### 💡 核心实现原理解析

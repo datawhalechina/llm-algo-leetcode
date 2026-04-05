@@ -7,8 +7,6 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lynnyulinlin-debug/llm-algo-leetcode/blob/main/03_CUDA_and_Triton_Kernels/17_DeepSpeed_Zero_Config.ipynb)  
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-::: details 💡 点击查看官方解析与参考代码
-
 # 17. 分布式工程落地：解析 DeepSpeed ZeRO 配置文件与 CPU Offload
 
 **难度：** Medium | **标签：** `Distributed Training`, `DeepSpeed`, `JSON Config` | **目标人群：** 核心 Infra 与算子开发
@@ -148,6 +146,8 @@ test_deepspeed_config()
 <br><br><br><br><br><br><br><br><br><br>
 
 ---
+
+::: details 💡 点击查看官方解析与参考代码
 
 
 ### 💡 核心实现原理解析

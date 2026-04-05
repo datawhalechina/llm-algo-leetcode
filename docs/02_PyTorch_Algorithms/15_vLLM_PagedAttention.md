@@ -183,8 +183,6 @@ test_paged_attention_manager()
 
 ```
 
-::: details 💡 点击查看官方解析与参考代码
-
 ---
 
 🛑 **STOP HERE** 🛑
@@ -195,38 +193,31 @@ test_paged_attention_manager()
 
 ---
 
-Prefill 阶段时，利用 math.ceil 计算所需的初始块数，从 free_blocks 弹出存入 block_table。在 Decode 自回归生成时，每次 seq_len + 1，仅当该长度超过了已分配块能容纳的范围才按需分配 1 个新物理块。取数时，遍历 block_table 的索引去物理块池中抽取并进行 torch.cat 拼接，最后切片去除末尾没填满的空隙即可还原真实的序列长度。
+::: details 💡 点击查看官方解析与参考代码
+
+PagedAttention 的灵感来源于操作系统中的虚拟内存管理，利用分页存储机制管理 KV Cache。其核心是在显存中按块分配缓存，从而能够显著提升显存利用率和并发度，是 vLLM 框架的基石。
 
 ```python
-    def allocate_for_prefill_solution(self, req: Request):
-        # TODO 1: 计算需要的 block 数量
-        import math
-        needed_blocks = math.ceil(req.seq_len / self.block_size)
+def paged_attention_sim(query, key_cache, value_cache, block_tables, context_lens, block_size):
+    batch_size, num_heads, head_size = query.shape
+    out = torch.zeros_like(query)
+    
+    for i in range(batch_size):
+        ctx_len = context_lens[i].item()
+        num_blocks = (ctx_len + block_size - 1) // block_size
+        blocks = block_tables[i, :num_blocks]
         
-        # TODO 2: 从 free_blocks 中弹出对应数量的 block 索引，
-        if len(self.free_blocks) < needed_blocks:
-            raise RuntimeError("OOM")
-            
-        for _ in range(needed_blocks):
-            req.block_table.append(self.free_blocks.pop(0))
-
-    def allocate_for_decode_solution(self, req: Request):
-        req.seq_len += 1  # 长度加 1
+        K_i = key_cache[blocks].reshape(-1, num_heads, head_size)[:ctx_len]
+        V_i = value_cache[blocks].reshape(-1, num_heads, head_size)[:ctx_len]
         
-        # TODO 3: 判断是否刚好需要跨入新的一块 Block？
-        is_new_block_needed = req.seq_len > len(req.block_table) * self.block_size
+        q_i = query[i].unsqueeze(0)
         
-        if is_new_block_needed:
-            if not self.free_blocks:
-                raise RuntimeError("OOM")
-            req.block_table.append(self.free_blocks.pop(0))
-
-    def get_physical_cache_solution(self, req: Request) -> torch.Tensor:
-        # TODO 4: 根据 req.block_table 的索引拼接
-        blocks = [self.physical_kv_cache[idx] for idx in req.block_table]
-        cat_blocks = torch.cat(blocks, dim=0)
+        scores = torch.matmul(q_i, K_i.transpose(-2, -1)) / math.sqrt(head_size)
+        attn_weights = F.softmax(scores, dim=-1)
         
-        return cat_blocks[:req.seq_len]
+        out[i] = torch.matmul(attn_weights, V_i).squeeze(0)
+        
+    return out
 ```
 
 :::

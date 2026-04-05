@@ -195,8 +195,6 @@ run_end_to_end_benchmark()
 
 ```
 
-::: details 💡 点击查看官方解析与参考代码
-
 ---
 
 🛑 **STOP HERE** 🛑
@@ -206,6 +204,8 @@ run_end_to_end_benchmark()
 <br><br><br><br><br><br><br><br><br><br>
 
 ---
+
+::: details 💡 点击查看官方解析与参考代码
 
 ### 💡 参考解答：组装 LLaMA-3 Triton Block
 

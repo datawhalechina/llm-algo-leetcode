@@ -197,8 +197,6 @@ test_warmup()
 
 ```
 
-::: details 💡 点击查看官方解析与参考代码
-
 ---
 
 🛑 **STOP HERE** 🛑
@@ -208,6 +206,8 @@ test_warmup()
 <br><br><br><br><br><br><br><br><br><br>
 
 ---
+
+::: details 💡 点击查看官方解析与参考代码
 
 本节通过三个实战任务带你快速复习 PyTorch 核心操作。在张量维度变换中，原生的 permute+reshape 和 einops.rearrange 都能完成通道转换与展平；在 Embedding 层模拟中，深入体会了 nn.Embedding 本质就是权重的查表；在反向传播推导中，我们利用链式法则计算了经过 ReLU 和 Linear 层的梯度，这是理解大模型底层 Autograd 机制的关键。
 

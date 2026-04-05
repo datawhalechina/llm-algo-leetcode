@@ -165,8 +165,6 @@ test_zero1_sim()
 
 ```
 
-::: details 💡 点击查看官方解析与参考代码
-
 ---
 
 🛑 **STOP HERE** 🛑
@@ -177,10 +175,25 @@ test_zero1_sim()
 
 ---
 
-temp_19_exp.md
+::: details 💡 点击查看官方解析与参考代码
+
+ZeRO-1 将优化器状态在多个 GPU 之间切分，是分布式训练的主流策略之一。在实现中，每个设备只保存一部分优化器状态参数更新，然后在通信阶段（All-Gather）将更新后的权重同步回所有设备。
 
 ```python
-temp_19_sol.py
+class ZeRO1Optimizer:
+    def __init__(self, optimizer, world_size, rank):
+        self.optimizer = optimizer
+        self.world_size = world_size
+        self.rank = rank
+        
+    def step(self):
+        self.optimizer.step()
+        
+    def zero_grad(self):
+        self.optimizer.zero_grad()
+        
+    def consolidate_state_dict(self):
+        return self.optimizer.state_dict()
 ```
 
 :::

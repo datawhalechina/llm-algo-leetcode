@@ -184,8 +184,6 @@ test_fused_swiglu()
 
 ```
 
-::: details 💡 点击查看官方解析与参考代码
-
 ---
 
 🛑 **STOP HERE** 🛑
@@ -195,6 +193,8 @@ test_fused_swiglu()
 <br><br><br><br><br><br><br><br><br><br>
 
 ---
+
+::: details 💡 点击查看官方解析与参考代码
 
 ### 📝 SwiGLU 参考实现解析
 

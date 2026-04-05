@@ -145,8 +145,6 @@ test_tricks()
 
 ```
 
-::: details 💡 点击查看官方解析与参考代码
-
 ---
 
 🛑 **STOP HERE** 🛑
@@ -157,10 +155,24 @@ test_tricks()
 
 ---
 
-explanation_tricks.md
+::: details 💡 点击查看官方解析与参考代码
+
+在构建现代语言模型时，各种架构技巧（如参数初始化、特定的注意力调整）往往决定了模型的最终性能。这些实现通过精心设计张量操作，来防止训练早期的梯度爆炸和消失。
 
 ```python
-solution_tricks.py
+def apply_rotary_emb(xq, xk, freqs_cos, freqs_sin):
+    xq_r, xq_i = xq.float().reshape(xq.shape[:-1] + (-1, 2)).unbind(-1)
+    xk_r, xk_i = xk.float().reshape(xk.shape[:-1] + (-1, 2)).unbind(-1)
+    
+    xq_out_r = xq_r * freqs_cos - xq_i * freqs_sin
+    xq_out_i = xq_r * freqs_sin + xq_i * freqs_cos
+    xk_out_r = xk_r * freqs_cos - xk_i * freqs_sin
+    xk_out_i = xk_r * freqs_sin + xk_i * freqs_cos
+    
+    xq_out = torch.stack([xq_out_r, xq_out_i], dim=-1).flatten(3)
+    xk_out = torch.stack([xk_out_r, xk_out_i], dim=-1).flatten(3)
+
+    return xq_out.type_as(xq), xk_out.type_as(xk)
 ```
 
 :::

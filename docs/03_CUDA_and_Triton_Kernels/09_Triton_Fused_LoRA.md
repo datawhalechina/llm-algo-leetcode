@@ -210,8 +210,6 @@ test_multi_lora()
 
 ```
 
-::: details 💡 点击查看官方解析与参考代码
-
 ---
 
 🛑 **STOP HERE** 🛑
@@ -221,6 +219,8 @@ test_multi_lora()
 <br><br><br><br><br><br><br><br><br><br>
 
 ---
+
+::: details 💡 点击查看官方解析与参考代码
 
 ### 💡 参考解答：Triton 融合 Multi-LoRA 计算
 

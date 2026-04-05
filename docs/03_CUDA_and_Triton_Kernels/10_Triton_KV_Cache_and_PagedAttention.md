@@ -252,8 +252,6 @@ test_paged_attention()
 
 ```
 
-::: details 💡 点击查看官方解析与参考代码
-
 ---
 
 🛑 **STOP HERE** 🛑
@@ -263,6 +261,8 @@ test_paged_attention()
 <br><br><br><br><br><br><br><br><br><br>
 
 ---
+
+::: details 💡 点击查看官方解析与参考代码
 
 ### 💡 参考解答：Triton PagedAttention (KV Cache 间接寻址)
 

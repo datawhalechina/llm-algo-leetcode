@@ -216,8 +216,6 @@ test_w8a16_gemm()
 
 ```
 
-::: details 💡 点击查看官方解析与参考代码
-
 ---
 
 🛑 **STOP HERE** 🛑
@@ -227,6 +225,8 @@ test_w8a16_gemm()
 <br><br><br><br><br><br><br><br><br><br>
 
 ---
+
+::: details 💡 点击查看官方解析与参考代码
 
 ### 💡 参考解答：Triton 量化算子 W8A16 融合 GEMM
 

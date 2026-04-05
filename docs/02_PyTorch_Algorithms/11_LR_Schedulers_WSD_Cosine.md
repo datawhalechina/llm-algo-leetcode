@@ -196,8 +196,6 @@ test_and_plot_wsd()
 
 ```
 
-::: details 💡 点击查看官方解析与参考代码
-
 ---
 
 🛑 **STOP HERE** 🛑
@@ -208,10 +206,20 @@ test_and_plot_wsd()
 
 ---
 
-explanation_wsd.md
+::: details 💡 点击查看官方解析与参考代码
+
+学习率调度器对于稳定训练至关重要。代码中展示了经典的余弦退火和带有Warmup的调度策略，通过逐步改变学习率，确保模型在初期能够快速收敛，在后期能精细搜索最优解。
 
 ```python
-solution_wsd.py
+def get_cosine_schedule_with_warmup(optimizer, num_warmup_steps, num_training_steps, num_cycles=0.5):
+    def lr_lambda(current_step):
+        if current_step < num_warmup_steps:
+            return float(current_step) / float(max(1, num_warmup_steps))
+        
+        progress = float(current_step - num_warmup_steps) / float(max(1, num_training_steps - num_warmup_steps))
+        return max(0.0, 0.5 * (1.0 + math.cos(math.pi * float(num_cycles) * 2.0 * progress)))
+
+    return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
 ```
 
 :::

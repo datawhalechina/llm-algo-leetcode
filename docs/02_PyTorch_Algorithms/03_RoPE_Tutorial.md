@@ -7,8 +7,6 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lynnyulinlin-debug/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/03_RoPE_Tutorial.ipynb)  
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-::: details 💡 点击查看官方解析与参考代码
-
 # 03. 旋转位置编码 (RoPE)
 
 **难度：** Medium | **标签：** `基础架构`, `PyTorch` | **目标人群：** 模型微调与工程部署
@@ -157,6 +155,8 @@ test_rope()
 <br><br><br><br><br><br><br><br><br><br>
 
 ---
+
+::: details 💡 点击查看官方解析与参考代码
 
 RoPE (旋转位置编码) 巧妙地将位置信息注入到内积操作中。实现的核心在于利用 PyTorch 的复数数据类型。先将倒数维切成两半作为实部和虚部 (通过 reshape(-1, 2) 和 view_as_complex)，然后通过 torch.polar 构造指数复数 ^{i\theta}$。完成复数乘法旋转后，再用 view_as_real 和 flatten(3) 转回实数张量。
 

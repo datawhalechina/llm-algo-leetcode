@@ -149,8 +149,6 @@ except Exception as e:
 
 ```
 
-::: details 💡 点击查看官方解析与参考代码
-
 ---
 
 🛑 **STOP HERE** 🛑
@@ -160,6 +158,8 @@ except Exception as e:
 <br><br><br><br><br><br><br><br><br><br>
 
 ---
+
+::: details 💡 点击查看官方解析与参考代码
 
 ### 💡 参考解答：Triton 内存模型避坑与 Debug
 

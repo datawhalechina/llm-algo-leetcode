@@ -207,8 +207,6 @@ test_decoding()
 
 ```
 
-::: details 💡 点击查看官方解析与参考代码
-
 ---
 
 🛑 **STOP HERE** 🛑
@@ -219,46 +217,22 @@ test_decoding()
 
 ---
 
-对模型的输出概率进行调整主要有三招。Temperature 最简单，就是将原 logits 直接除以一个非零标量 $。Top-K 则是使用 torch.topk 提取第 K 大的值，利用布尔掩码把小于它的所有词概率置为负无穷。Top-p 比较精细，需要先对概率降序排列并计算累加和。当累加和超过 p 后，利用平移掩码的方式保留刚过线的那一个 token，将其余后方尾巴丢弃，最后再利用  散布回原先的词表位置。
+::: details 💡 点击查看官方解析与参考代码
+
+自回归模型的解码策略（如Top-K和Top-P/Nucleus Sampling）直接影响文本生成的多样性和连贯性。此实现通过在 logits 上进行排序或累积概率筛选，过滤掉低概率词汇，然后重新归一化以便进行多项式采样。
 
 ```python
-def apply_temperature_solution(logits: torch.Tensor, temperature: float) -> torch.Tensor:
-    # TODO 1: 确保 temperature 大于极小值
-    temp = max(temperature, 1e-6)
-    return logits / temp
-
-def apply_top_k_solution(logits: torch.Tensor, top_k: int) -> torch.Tensor:
-    if top_k <= 0 or top_k >= logits.size(-1):
-        return logits
-        
-    # TODO 2: 实现 Top-K 截断
-    kth_values = torch.topk(logits, top_k, dim=-1)[0][..., -1, None]
-    logits[logits < kth_values] = float('-inf')
-    return logits
-
-def apply_top_p_solution(logits: torch.Tensor, top_p: float) -> torch.Tensor:
-    if top_p <= 0.0 or top_p >= 1.0:
-        return logits
-        
+def top_p_filtering(logits, top_p=0.9, filter_value=-float('Inf')):
     sorted_logits, sorted_indices = torch.sort(logits, descending=True)
     cumulative_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
-    
-    # TODO 3: 实现 Top-P 核心逻辑
+
     sorted_indices_to_remove = cumulative_probs > top_p
-    
-    # 向右平移掩码
     sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
     sorted_indices_to_remove[..., 0] = 0
-    
-    # 将需要剔除的设为负无穷
-    sorted_logits[sorted_indices_to_remove] = float('-inf')
-    
-    # 散布回原始的顺序中
-    restored_logits = torch.zeros_like(logits).scatter_(
-        dim=-1, index=sorted_indices, src=sorted_logits
-    )
-    
-    return restored_logits
+
+    indices_to_remove = sorted_indices_to_remove.scatter(1, sorted_indices, sorted_indices_to_remove)
+    logits[indices_to_remove] = filter_value
+    return logits
 ```
 
 :::

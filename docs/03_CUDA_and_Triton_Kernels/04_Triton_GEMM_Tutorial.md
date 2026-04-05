@@ -204,8 +204,6 @@ test_fused_gemm()
 
 ```
 
-::: details 💡 点击查看官方解析与参考代码
-
 ---
 
 🛑 **STOP HERE** 🛑
@@ -215,6 +213,8 @@ test_fused_gemm()
 <br><br><br><br><br><br><br><br><br><br>
 
 ---
+
+::: details 💡 点击查看官方解析与参考代码
 
 ### 📝 GEMM 参考实现解析
 

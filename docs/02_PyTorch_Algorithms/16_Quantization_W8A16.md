@@ -204,8 +204,6 @@ test_quantization()
 
 ```
 
-::: details 💡 点击查看官方解析与参考代码
-
 ---
 
 🛑 **STOP HERE** 🛑
@@ -216,35 +214,20 @@ test_quantization()
 
 ---
 
-量化时计算权重的最大绝对值得到缩放因子 Scale (127.0/absmax)，通过乘以该因子、四舍五入并强制截断到 INT8 区间来完成转换。在线性层前向传播时，必须将 INT8 张量即时转换为浮点型并除以 Scale 恢复其真实大小（反量化），之后与激活值进行 F.linear。这样权重显存缩小至四分之一，有效减轻了访存瓶颈。
+::: details 💡 点击查看官方解析与参考代码
+
+权重量化（W8A16）是一种能够在不明显损失精度的前提下，将模型权重的显存占用减半的技术。在实现中，我们将 FP16 权重转换为 INT8，并在推理计算前进行反量化，或者在特定的自定义算子中直接计算。
 
 ```python
-def absmax_quantize_solution(x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-    # TODO 1: 计算张量的绝对最大值 absmax
-    absmax = torch.max(torch.abs(x))
+def quantize_to_int8(tensor):
+    scale = tensor.abs().max() / 127.0
     
-    if absmax == 0:
-        absmax = torch.tensor(1e-8)
-        
-    # TODO 2: 计算缩放因子 scale (映射到 [-127, 127])
-    scale = 127.0 / absmax
+    quantized_tensor = torch.round(tensor / scale).to(torch.int8)
     
-    # TODO 3: 量化过程
-    x_scaled = x * scale
-    x_quant = torch.clamp(torch.round(x_scaled), -128, 127).to(torch.int8)
+    return quantized_tensor, scale
     
-    return x_quant, scale
-
-class W8A16LinearSolution(nn.Module):
-    # (初始化方法同原题...)
-    
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # TODO 4: 反量化与前向传播
-        w_fp = self.weight_int8.to(x.dtype)
-        w_dequant = w_fp / self.scale
-        
-        out = F.linear(x, w_dequant, self.bias)
-        return out
+def dequantize_from_int8(quantized_tensor, scale, dtype=torch.float16):
+    return (quantized_tensor.to(dtype) * scale)
 ```
 
 :::

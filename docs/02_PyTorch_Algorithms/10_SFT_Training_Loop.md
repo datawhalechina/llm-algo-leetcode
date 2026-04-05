@@ -173,8 +173,6 @@ test_sft_pipeline()
 
 ```
 
-::: details 💡 点击查看官方解析与参考代码
-
 ---
 
 🛑 **STOP HERE** 🛑
@@ -185,10 +183,27 @@ test_sft_pipeline()
 
 ---
 
-explanation_sft.md
+::: details 💡 点击查看官方解析与参考代码
+
+监督微调（SFT）的训练循环与普通模型的训练非常类似，重点在于只对特定的输出Token计算损失。通常需要将标签中对应输入部分的掩盖为特殊值（如-100），以此确保模型只在生成正确回复时获得梯度。
 
 ```python
-solution_sft.py
+def create_sft_labels(input_ids, prompt_length, ignore_index=-100):
+    labels = input_ids.clone()
+    labels[:, :prompt_length] = ignore_index
+    return labels
+
+def compute_sft_loss(logits, labels, ignore_index=-100):
+    shift_logits = logits[..., :-1, :].contiguous()
+    shift_labels = labels[..., 1:].contiguous()
+    
+    loss_fct = nn.CrossEntropyLoss(ignore_index=ignore_index)
+    
+    shift_logits = shift_logits.view(-1, shift_logits.size(-1))
+    shift_labels = shift_labels.view(-1)
+    
+    loss = loss_fct(shift_logits, shift_labels)
+    return loss
 ```
 
 :::

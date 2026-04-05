@@ -139,8 +139,6 @@ test_aux_loss()
 
 ```
 
-::: details 💡 点击查看官方解析与参考代码
-
 ---
 
 🛑 **STOP HERE** 🛑
@@ -151,10 +149,23 @@ test_aux_loss()
 
 ---
 
-explanation_moe.md
+::: details 💡 点击查看官方解析与参考代码
+
+混合专家模型（MoE）的负载均衡损失函数（Load Balancing Loss）旨在解决专家不平衡问题。它通过计算各专家被路由的平均概率与平均分配比例的乘积，并求和，确保所有的 Token 能够均匀地分配给不同的专家，防止少数专家过载而大部分专家空闲。
 
 ```python
-solution_moe.py
+def compute_load_balancing_loss(routing_weights, selected_experts, num_experts):
+    batch_size_x_seq_len, top_k = selected_experts.shape
+    total_tokens = batch_size_x_seq_len
+    
+    expert_mask = torch.nn.functional.one_hot(selected_experts, num_classes=num_experts)
+    tokens_per_expert = expert_mask.sum(dim=(0, 1)).float()
+    f_i = tokens_per_expert / (total_tokens * top_k)
+    
+    P_i = routing_weights.mean(dim=0)
+    
+    loss = (f_i * P_i).sum() * num_experts
+    return loss
 ```
 
 :::
