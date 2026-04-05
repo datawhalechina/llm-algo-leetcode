@@ -46,14 +46,14 @@
 1. **标准 MLP 参数量**：
    输入为 $d$，隐藏层为 $h$。
    有两个投影矩阵（升维 $d \to h$，降维 $h \to d$）。
-   总参数量 = $2 \cdot (d \t\times h)$。
+   总参数量 = $2 \cdot (d \times h)$。
    当 $h = 4d$ 时，总参数量 = $2 \cdot 4d^2 = \mathbf{8d^2}$。
 
 2. **SwiGLU MLP 参数量**：
    输入为 $d$，隐藏层为 $h_{swiglu}$。
    因为有**门控机制**，升维阶段需要**两个**投影矩阵（$W_{gate}$ 和 $W_{up}$，均是 $d \to h_{swiglu}$）。
    降维阶段需要**一个**矩阵（$W_{down}$，是 $h_{swiglu} \to d$）。
-   总参数量 = $3 \cdot (d \t\times h_{swiglu})$。
+   总参数量 = $3 \cdot (d \times h_{swiglu})$。
 
 3. **对齐参数量**：
    为了使得 SwiGLU 的计算开销（参数量）与原始模型完全相同：

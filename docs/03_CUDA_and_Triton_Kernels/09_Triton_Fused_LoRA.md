@@ -33,7 +33,7 @@
 > **SRAM 内部的极致并行：**
 > - Triton `pid` 处理矩阵 $X$ 的某一行（某个 Token）。
 > - 我们直接在内核里根据 `lora_idx = tl.load(lora_indices + pid)`，算出指向内存池中特定 LoRA A 和 B 的偏移量！
-> - 一次性读取 $X_i$ 和专属的 $A_{idx}, B_{idx}$，在极速的 SRAM 中完成 $X_i \t\times A \t\times B$，最后写回 $H_i$。
+> - 一次性读取 $X_i$ 和专属的 $A_{idx}, B_{idx}$，在极速的 SRAM 中完成 $X_i \times A \times B$，最后写回 $H_i$。
 > 这样，**原本必须串行计算的不同模型请求，被完美地合并在了一个 Triton Kernel 调用中（Batch Inference）！**
 
 

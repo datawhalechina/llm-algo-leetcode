@@ -49,7 +49,7 @@
 
 3. **量化 (Quantize)**：
    将张量乘以缩放因子，然后四舍五入 (Round) 变成整数，并截断 (Clamp) 到 INT8 范围内，防止异常值越界：
-   $X_{int8} = 	ext{Clamp}(	ext{Round}(X \t\times S), -128, 127)$
+   $X_{int8} = 	ext{Clamp}(	ext{Round}(X \times S), -128, 127)$
 
 4. **反量化 (Dequantize)**：
    在真正做矩阵乘法前（如果是 W8A16 这种 Weight-only 量化），需要把 INT8 恢复成 FP16 参与计算：

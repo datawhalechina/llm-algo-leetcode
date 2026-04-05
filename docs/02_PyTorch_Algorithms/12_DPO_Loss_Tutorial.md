@@ -33,8 +33,10 @@
 给定一段 Prompt $x$，模型生成了两个回复：好的回复 $y_w$ (Chosen/Win) 和差的回复 $y_l$ (Rejected/Lose)。
 
 1. **计算策略比率的对数差 (Log Prob Ratios)：**
-   $$ \pi_{	heta}(y|x) $$ 代表当前训练模型（Actor）对生成的 Token 的对数概率。
-   $$ \pi_{ref}(y|x) $$ 代表冻结的参考模型（Reference）对生成的 Token 的对数概率。
+   $ \pi_{\theta}(y|x) $
+   代表当前训练模型（Actor）对生成的 Token 的对数概率。
+   $ \pi_{ref}(y|x) $ 
+   代表冻结的参考模型（Reference）对生成的 Token 的对数概率。
    
    计算差距：
    $$ \hat{r}(x,y) = \beta \log \frac{\pi_	heta(y|x)}{\pi_{ref}(y|x)} = \beta (\log \pi_	heta(y|x) - \log \pi_{ref}(y|x)) $$
@@ -42,8 +44,7 @@
 
 2. **DPO Loss (二元交叉熵变体)：**
    我们要最大化 Chosen 和 Rejected 之间的 Reward 差，即最小化其负对数 Sigmoid：
-   $$ L_{DPO} = -\log \sigma \l\left( \hat{r}(x, y_w) - \hat{r}(x, y_l) 
-\r\right) $$
+   $$ L_{DPO} = -\log \sigma \left( \hat{r}(x, y_w) - \hat{r}(x, y_l) \right) $$
 
    其中 $\beta$ 是控制偏离 Reference Model 程度的温度参数（如 `0.1`）。
 

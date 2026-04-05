@@ -36,9 +36,7 @@
 ###  Step 3: 核心公式与 Triton 编程模型
 
 **RMSNorm 公式回顾：**
-$$ y = 
-\frac{x}{\sqrt{
-frac{1}{sqrt{frac{1}{d} sum_{i=1}^d x_i^2 + epsilon}} odot gamma 
+$$ y = \frac{x}{\sqrt{\frac{1}{d} \sum_{i=1}^d x_i^2 + \epsilon}} \odot \gamma $$
 
 **Triton 编程范式：**
 1. `tl.program_id(0)`: 获取当前处理的行号（Row Index）。在大模型中，通常一行代表一个 Token 的特征向量（维度为 $d$）。
