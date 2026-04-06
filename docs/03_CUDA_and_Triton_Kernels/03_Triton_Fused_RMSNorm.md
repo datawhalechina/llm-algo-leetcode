@@ -140,6 +140,10 @@ def triton_rmsnorm(x: torch.Tensor, weight: torch.Tensor, eps: float = 1e-6):
 # 运行此单元格以测试你的实现
 def test_triton_rmsnorm():
     try:
+    if not torch.cuda.is_available():
+        print("⏭️ 忽略测试：无 GPU。本节编译和运行 Triton/CUDA 算子必须依赖 NVIDIA GPU。")
+        return
+        
         # 1. 功能性测试 (Correctness)
         print("1. 测试数值正确性...")
         torch.manual_seed(0)

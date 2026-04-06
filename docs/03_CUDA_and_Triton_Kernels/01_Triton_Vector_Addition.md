@@ -107,6 +107,10 @@ def triton_add(x: torch.Tensor, y: torch.Tensor):
 ```python
 # 测试你的实现
 def test_vector_add():
+    if not torch.cuda.is_available():
+        print("⏭️ 忽略测试：无 GPU。本节编译和运行 Triton/CUDA 算子必须依赖 NVIDIA GPU。")
+        return
+        
     try:
         torch.manual_seed(0)
         size = 98432  # 故意不用 2 的幂次方，测试 mask 是否生效
