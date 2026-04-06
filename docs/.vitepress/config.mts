@@ -75,15 +75,16 @@ export default defineConfig({
           { text: '10. SFT Training Loop', link: '/02_PyTorch_Algorithms/10_SFT_Training_Loop' },
           { text: '11. LR Schedulers WSD Cosine', link: '/02_PyTorch_Algorithms/11_LR_Schedulers_WSD_Cosine' },
           { text: '12. DPO Loss Tutorial', link: '/02_PyTorch_Algorithms/12_DPO_Loss_Tutorial' },
-          { text: '13. Attention Backward Math', link: '/02_PyTorch_Algorithms/13_Attention_Backward_Math' },
+          { text: '13. Attention 反向传播推导', link: '/02_PyTorch_Algorithms/13_Attention_Backward_Math' },
           { text: '14. FlashAttention Sim', link: '/02_PyTorch_Algorithms/14_FlashAttention_Sim' },
           { text: '15. Decoding Strategies', link: '/02_PyTorch_Algorithms/15_Decoding_Strategies' },
           { text: '16. vLLM PagedAttention', link: '/02_PyTorch_Algorithms/16_vLLM_PagedAttention' },
-          { text: '17. Quantization W8A16', link: '/02_PyTorch_Algorithms/17_Quantization_W8A16' },
-          { text: '18. Gradient Checkpointing', link: '/02_PyTorch_Algorithms/18_Gradient_Checkpointing' },
-          { text: '19. QLoRA and 4bit Quantization', link: '/02_PyTorch_Algorithms/19_QLoRA_and_4bit_Quantization' },
-          { text: '20. ZeRO 1 Optimizer Sim', link: '/02_PyTorch_Algorithms/20_ZeRO_1_Optimizer_Sim' },
-          { text: '21. Tensor Parallelism Sim', link: '/02_PyTorch_Algorithms/21_Tensor_Parallelism_Sim' }
+          { text: '17. SGLang RadixAttention', link: '/02_PyTorch_Algorithms/17_SGLang_RadixAttention' },
+          { text: '18. Quantization W8A16', link: '/02_PyTorch_Algorithms/18_Quantization_W8A16' },
+          { text: '19. Gradient Checkpointing', link: '/02_PyTorch_Algorithms/19_Gradient_Checkpointing' },
+          { text: '20. QLoRA and 4bit Quantization', link: '/02_PyTorch_Algorithms/20_QLoRA_and_4bit_Quantization' },
+          { text: '21. ZeRO 1 Optimizer Sim', link: '/02_PyTorch_Algorithms/21_ZeRO_1_Optimizer_Sim' },
+          { text: '22. Tensor Parallelism Sim', link: '/02_PyTorch_Algorithms/22_Tensor_Parallelism_Sim' }
         ]
       },
       {
@@ -104,11 +105,11 @@ export default defineConfig({
           { text: '14. Triton Llama3 Block Project', link: '/03_CUDA_and_Triton_Kernels/14_Triton_Llama3_Block_Project' },
           { text: '15. Triton Best Practices and FAQ', link: '/03_CUDA_and_Triton_Kernels/15_Triton_Best_Practices_and_FAQ' },
           { text: '16. PyTorch CUDA Streams and Transfer', link: '/03_CUDA_and_Triton_Kernels/16_PyTorch_CUDA_Streams_and_Transfer' },
-          { text: '17. Distributed Communication Primitives', link: '/03_CUDA_and_Triton_Kernels/17_Distributed_Communication_Primitives' },
-          { text: '18. DeepSpeed Zero Config', link: '/03_CUDA_and_Triton_Kernels/18_DeepSpeed_Zero_Config' },
-          { text: '19. CUDA Custom Kernel Intro', link: '/03_CUDA_and_Triton_Kernels/19_CUDA_Custom_Kernel_Intro' },
-          { text: '20. CUDA Shared Memory Optimization', link: '/03_CUDA_and_Triton_Kernels/20_CUDA_Shared_Memory_Optimization' },
-          { text: '21. CUDA vs Triton vs PyTorch', link: '/03_CUDA_and_Triton_Kernels/21_CUDA_vs_Triton_vs_PyTorch' }
+          { text: '18. Distributed Communication Primitives', link: '/03_CUDA_and_Triton_Kernels/18_Distributed_Communication_Primitives' },
+          { text: '19. DeepSpeed Zero Config', link: '/03_CUDA_and_Triton_Kernels/19_DeepSpeed_Zero_Config' },
+          { text: '20. CUDA Custom Kernel Intro', link: '/03_CUDA_and_Triton_Kernels/20_CUDA_Custom_Kernel_Intro' },
+          { text: '21. CUDA Shared Memory Optimization', link: '/03_CUDA_and_Triton_Kernels/21_CUDA_Shared_Memory_Optimization' },
+          { text: '22. CUDA vs Triton vs PyTorch', link: '/03_CUDA_and_Triton_Kernels/22_CUDA_vs_Triton_vs_PyTorch' }
         ]
       }
     ],

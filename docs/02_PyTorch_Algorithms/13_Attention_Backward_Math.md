@@ -7,7 +7,7 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lynnyulinlin-debug/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/13_Attention_Backward_Math.ipynb)  
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-# 13. Attention 反向传播数学推导与 Custom Autograd
+# 13. 注意力机制反向传播推导与自定义 Autograd 算子
 
 **难度：** Hard | **标签：** `微积分`, `PyTorch`, `Autograd` | **目标人群：** 底层算子开发、高阶算法面试
 

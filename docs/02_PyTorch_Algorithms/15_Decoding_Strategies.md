@@ -7,7 +7,7 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lynnyulinlin-debug/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/15_Decoding_Strategies.ipynb)  
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-# 14. 大模型解码策略：Top-K, Top-p (Nucleus) 与 Temperature
+# 15. 大模型解码策略：Top-K, Top-p (Nucleus) 与 Temperature
 
 **难度：** Medium | **标签：** `推理算法`, `Decoding` | **目标人群：** 模型微调与工程部署
 
