@@ -7,7 +7,7 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lynnyulinlin-debug/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/23_ZeRO_Optimizer_Sim.ipynb)  
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-# 21. 显存优化进阶：模拟 ZeRO-1 切分与 ZeRO-2/3 原理 (DeepSpeed)
+# 23. 显存优化进阶：模拟 ZeRO-1 切分与 ZeRO 原理 (ZeRO Optimizer)
 
 **难度：** Hard | **标签：** `Distributed Training`, `ZeRO`, `Memory Bound` | **目标人群：** 核心 Infra 与算子开发
 

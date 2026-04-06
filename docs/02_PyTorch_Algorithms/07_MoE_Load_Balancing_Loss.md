@@ -7,7 +7,7 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lynnyulinlin-debug/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/07_MoE_Load_Balancing_Loss.ipynb)  
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-# 06. MoE 进阶：负载均衡损失函数 (Load Balancing Loss)
+# 07. MoE 进阶：负载均衡损失函数 (Load Balancing Loss)
 
 **难度：** Hard | **标签：** `MoE`, `Loss Function`, `Mixtral` | **目标人群：** 核心 Infra 与算子开发
 

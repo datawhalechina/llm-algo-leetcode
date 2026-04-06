@@ -7,7 +7,7 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lynnyulinlin-debug/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/00_PyTorch_Warmup.ipynb)  
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-# 00. PyTorch 核心基础热身: 张量、前反向传播与 Embedding
+# 00. PyTorch 核心基础热身: 张量、前反向传播与 Embedding (Warmup)
 
 **难度：** Easy | **标签：** `PyTorch`, `Foundation` | **目标人群：** 通用基础 (算法/Infra)
 

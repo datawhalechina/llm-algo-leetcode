@@ -7,7 +7,7 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lynnyulinlin-debug/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/08_Architecture_Tricks.ipynb)  
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-# 08. 经典架构变体：Qwen 与 Gemma 的核心 Tricks
+# 08. 经典架构变体：Qwen 与 Gemma 的核心机制 (Architecture Tricks)
 
 **难度：** Easy | **标签：** `模型架构`, `Qwen`, `Gemma` | **目标人群：** 模型微调与工程部署
 

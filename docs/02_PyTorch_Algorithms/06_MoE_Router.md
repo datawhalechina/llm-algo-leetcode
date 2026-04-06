@@ -7,7 +7,7 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lynnyulinlin-debug/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/06_MoE_Router.ipynb)  
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-# TEMP_07. 混合专家架构 (MoE): 稀疏路由与负载均衡
+# 06. 混合专家架构: 稀疏路由与负载均衡 (MoE)
 
 **难度：** Medium | **标签：** `模型架构`, `MoE`, `PyTorch` | **目标人群：** 模型微调与工程部署
 

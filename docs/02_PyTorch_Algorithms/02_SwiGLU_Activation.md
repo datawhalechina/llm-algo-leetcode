@@ -7,7 +7,7 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lynnyulinlin-debug/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/02_SwiGLU_Activation.ipynb)  
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-# 02. 激活函数与门控机制：深入理解 SwiGLU
+# 02. 激活函数与门控机制 (SwiGLU Activation)
 
 **难度：** Easy | **标签：** `模型架构`, `激活函数` | **目标人群：** 模型微调与工程部署
 

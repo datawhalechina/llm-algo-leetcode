@@ -7,7 +7,7 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lynnyulinlin-debug/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.ipynb)  
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-# 07. 经典模型搭建: LLaMA-3 Transformer Block 组装
+# 05. 经典模型搭建: LLaMA-3 Transformer Block
 
 **难度：** Medium | **标签：** `模型架构`, `PyTorch` | **目标人群：** 模型微调与工程部署
 

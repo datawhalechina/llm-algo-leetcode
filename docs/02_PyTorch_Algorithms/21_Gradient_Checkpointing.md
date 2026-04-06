@@ -7,7 +7,7 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lynnyulinlin-debug/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/21_Gradient_Checkpointing.ipynb)  
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-# 19. 极致显存优化：激活值重计算 (Gradient Checkpointing)
+# 21. 极致显存优化：激活值重计算 (Gradient Checkpointing)
 
 **难度：** Medium | **标签：** `训练优化`, `Memory Bound`, `PyTorch` | **目标人群：** 核心 Infra 与算子开发
 

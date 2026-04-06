@@ -7,7 +7,7 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lynnyulinlin-debug/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/17_vLLM_PagedAttention.ipynb)  
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-# 16. 经典推理框架: 模拟 Continuous Batching 与 PagedAttention
+# 17. 经典推理框架: 模拟 Continuous Batching 与 PagedAttention
 
 **难度：** Hard | **标签：** `推理架构`, `vLLM` | **目标人群：** 核心 Infra 与算子开发
 

@@ -7,7 +7,7 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lynnyulinlin-debug/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/25_Pipeline_Parallelism_MicroBatch.ipynb)  
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-# 25. 分布式进阶：流水线并行 (Pipeline Parallelism) 与微批次气泡
+# 25. 分布式进阶：流水线并行与微批次气泡 (Pipeline Parallelism)
 
 **难度：** Hard | **标签：** `Distributed Training`, `Pipeline Parallelism` | **目标人群：** 核心 Infra 开发
 

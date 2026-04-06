@@ -7,7 +7,7 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lynnyulinlin-debug/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/12_RLHF_PPO_Memory.ipynb)  
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-# 12. RLHF 对齐：PPO 算法的核心 Loss 与显存流转
+# 12. RLHF 对齐：PPO 算法的核心 Loss 与显存流转 (RLHF PPO)
 
 **难度：** Hard | **标签：** `RLHF`, `PPO`, `Alignment` | **目标人群：** 模型微调与对齐算法工程师
 

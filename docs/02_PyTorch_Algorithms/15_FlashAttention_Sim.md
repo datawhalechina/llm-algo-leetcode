@@ -7,7 +7,7 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lynnyulinlin-debug/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/15_FlashAttention_Sim.ipynb)  
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-# 14. 深入理解 FlashAttention：分块计算与 Online Softmax (纯 PyTorch 模拟)
+# 15. 深入理解 FlashAttention：分块计算与 Online Softmax
 
 **难度：** Hard | **标签：** `FlashAttention`, `Memory Bound`, `PyTorch` | **目标人群：** 核心 Infra 与算子开发
 
