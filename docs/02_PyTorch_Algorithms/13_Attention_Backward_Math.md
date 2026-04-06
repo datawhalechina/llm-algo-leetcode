@@ -11,13 +11,13 @@
 
 **难度：** Hard | **标签：** `微积分`, `PyTorch`, `Autograd` | **目标人群：** 底层算子开发、高阶算法面试
 
-在第 04 节，我们完成了多头注意力机制（MHA）的前向传播搭建。然而，**“大模型训练”与“推理”最大的天堑，就在于反向传播 (Backward Pass)。**
+在第 04 节，我们完成了多头注意力机制（MHA）的前向传播搭建。然而，**“大模型训练”与“推理”核心挑战之一在于反向传播 (Backward Pass)。**
 
-为什么各大厂商都在死磕 FlashAttention？因为在训练时，为了计算反向传播的梯度，框架必须在显存中保存尺寸为 $N \times N$ (序列长度的平方) 的庞大注意力分数矩阵（Attention Probabilities）。当序列长度达到 128K 时，仅这一个中间变量就会瞬间撑爆任何 GPU 的显存 (OOM)。
+为什么各大厂商都在持续优化 FlashAttention？因为在训练时，为了计算反向传播的梯度，框架必须在显存中保存尺寸为 $N \times N$ (序列长度的平方) 的庞大注意力分数矩阵（Attention Probabilities）。当序列长度达到 128K 时，仅这一个中间变量就会极易导致 GPU 显存溢出 (OOM)。
 
-在下一节正式进入 FlashAttention 之前，我们必须跨过这座高山：**彻底搞懂 Attention 反向传播的微积分推导，并抛弃 PyTorch 原生的 `.backward()`，亲手利用 `torch.autograd.Function` 写出它的反向梯度计算代码！**
+在下一节正式进入 FlashAttention 之前，我们必须跨过这座高山：**彻底搞懂 Attention 反向传播的微积分推导，并抛弃 PyTorch 原生的 `.backward()`，利用 `torch.autograd.Function` 写出它的反向梯度计算代码！**
 
-这是大厂算法底层架构岗最爱考的“手撕”题，没有之一。
+这是底层架构岗位的常见考核点。
 
 ### Step 1: 前向传播回顾与变量定义
 
@@ -44,7 +44,7 @@ $$ dV = P^T \cdot dO $$
 同样因为 $O = P V$，对 $P$ 求导可得：
 $$ dP = dO \cdot V^T $$
 
-**3. 跨越 Softmax (全场最难，请深呼吸)**
+**3. 跨越 Softmax (核心难点)**
 我们需要从 $dP$ 求得 $dS$。Softmax 的雅可比矩阵极其特殊：
 已知 $P_i = \frac{e^{S_i}}{\sum e^{S_j}}$，其对于 $S$ 的导数在应用链式法则后，会化简为一个极其优美的形式：
 $$ dS = P \odot (dP - \text{row\_sum}(P \odot dP)) $$
@@ -169,12 +169,12 @@ test_attention_backward()
 
 看看你刚才写的 `ctx.save_for_backward(q, k, v, p)`。这行代码在反向传播被调用前，会**一直把 $P$ 锁在显存里**。
 
-如果现在的上下文是 $128K$（如 GPT-4），$P$ 的大小就是 $128K \times 128K$。即便在 FP16 精度下，**单单存这一个 $P$ 矩阵，一个 Batch 就需要吃掉至少 32 GB 的显存！** 稍微开大点 Batch Size，连 80G 的 A100 都会瞬间 OOM（显存爆炸）。
+如果现在的上下文是 $128K$（如 GPT-4），$P$ 的大小就是 $128K \times 128K$。即便在 FP16 精度下，**单单存这一个 $P$ 矩阵，一个 Batch 就需要占用约 32 GB 的显存！** 稍微开大点 Batch Size，连 80G 的 A100 都会触发 OOM。
 
 > **思考题**：如果你是底层算法工程师，怎么解决这个问题？
 > **答案预告**：不存 $P$！我们在反向传播需要 $P$ 的时候，**拿 $Q$ 和 $K$ 现场重算一次 $P$（Recomputation）！** 通过巧妙的 SRAM 分块加载机制，虽然计算量变大了，但因为避免了把庞大的 $P$ 写入又读出极其缓慢的 HBM，最终不但不 OOM，**速度反而变快了 3 倍！**
 
-这就是下一节大名鼎鼎的 **FlashAttention** 所做的事。
+这就是下一节业界广泛使用的 **FlashAttention** 所做的事。
 
 ---
 

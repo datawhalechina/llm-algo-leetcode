@@ -11,15 +11,15 @@
 
 **难度：** Medium | **标签：** `SGLang`, `Radix Tree`, `KV Cache` | **目标人群：** 模型部署与推理引擎开发
 
-上一节我们学习了大名鼎鼎的 **vLLM (PagedAttention)**。它完美解决了单次生成长文本时的**内存碎片**问题。
+上一节我们学习了业界广泛使用的 **vLLM (PagedAttention)**。它完美解决了单次生成长文本时的**内存碎片**问题。
 但在实际的生产环境中，我们经常遇到以下场景：
 - **庞大且共享的 System Prompt**（如几百字的设定语，每个用户请求都带着）。
 - **多轮对话（Multi-turn Chat）**（只增加了最后一句用户提问，前面几万字的聊天记录都是相同的）。
 - **Few-shot Prompting**（给所有请求都塞入相同的 few-shot 示例）。
 
-vLLM 会对每一个请求**从头开始（重新计算）**这些共享前缀的 KV Cache，这浪费了巨量的时间（导致 TTFT 首字响应极慢）和显存。
+vLLM 会对每一个请求**从头开始（重新计算）**这些共享前缀的 KV Cache，这浪费了大量的时间（导致 TTFT 首字响应极慢）和显存。
 
-**SGLang (LMSYS, 2024)** 横空出世，它的核心创新 **RadixAttention** 引入了**基数树 (Radix Tree)** 来管理系统的 KV Cache。当系统发现新的请求和旧请求有着相同的前缀（Prefix）时，它会**直接复用**树节点里的 KV Cache，彻底跳过了重复的 Prefill 阶段！
+**SGLang (LMSYS, 2024)** 的提出，它的核心创新 **RadixAttention** 引入了**基数树 (Radix Tree)** 来管理系统的 KV Cache。当系统发现新的请求和旧请求有着相同的前缀（Prefix）时，它会**直接复用**树节点里的 KV Cache，彻底跳过了重复的 Prefill 阶段！
 
 ### Step 1: 核心机制对比
 
