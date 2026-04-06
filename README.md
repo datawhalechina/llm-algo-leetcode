@@ -46,7 +46,7 @@
 | 模块 | 简介 | 状态 |
 | ---- | ---- | ---- |
 | [**Chapter 1: 硬件、算力推导与系统级理论**](./01_Hardware_Math_and_Systems/) | 包含系统架构与性能优化的高频问答题，适合作为面试前的快速复习材料。涵盖 GPU 架构、显存估算、通信拓扑与国产芯片概览。 | ✅ |
-| [**Chapter 2: PyTorch 核心算法实现实战**](./02_PyTorch_Algorithms/) | 核心代码实战区。要求在 Jupyter 中完成 TODO 填空，涵盖 MHA/GQA、RoPE、MoE、LoRA、ZeRO 优化器模拟及显存优化策略。 | ✅ |
+| [**Chapter 2: PyTorch 核心算法实现实战**](./02_PyTorch_Algorithms/) | 核心代码实战区。包含 MHA/GQA、RoPE、MoE、SFT、LoRA、RLHF (PPO/DPO)、推理加速 (Speculative Decoding) 与分布式模拟 (ZeRO/TP/PP) 等前沿算法。 | ✅ |
 | [**Chapter 3: CUDA C++ 与 Triton 算子开发**](./03_CUDA_and_Triton_Kernels/) | 针对算子加速与高阶架构。包含 Triton Fused 算子、FlashAttention、PagedAttention、以及原生 CUDA 共享内存优化。需 GPU 环境。 | ✅ |
 
 *(详细文件列表请进入各个子目录查看 `README` 或 `.md` / `.ipynb` 文件)*
@@ -57,7 +57,7 @@
 
 | 你的环境 | 可学内容 | 覆盖面试考点 |
 | ---- | ---- | ---- |
-| **无 GPU (CPU only)** | Chapter 1 全部 + Chapter 2 大部分（00~18） | 约 70%，覆盖算法工程师最高频考点 |
+| **无 GPU (CPU only)** | Chapter 1 全部 + Chapter 2 大部分（00~25） | 约 70%，覆盖算法工程师最高频考点 |
 | **有 NVIDIA GPU** | 全部内容 | 100%，额外覆盖算子开发与 Infra 岗 |
 
 > 没有 GPU 的同学不用担心！Chapter 1（理论）和 Chapter 2（PyTorch 实现）中的绝大部分代码都可以在纯 CPU 环境下运行和测试。只有 Chapter 3（Triton / CUDA 算子）必须在 Linux + NVIDIA GPU 环境下编译运行。
