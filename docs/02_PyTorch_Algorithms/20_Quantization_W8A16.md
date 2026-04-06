@@ -19,7 +19,7 @@
 > **相关阅读**:
 > 本节使用纯 PyTorch 实现了算法逻辑与数学推导。
 > 如果你想学习工业界如何打破该算子的 Memory Bound (访存瓶颈)，请前往 Triton 篇：
->  [`../03_Triton_Kernels/10_Triton_Quantization_Support.ipynb`](../03_Triton_Kernels/10_Triton_Quantization_Support.ipynb)
+>  [`../03_CUDA_and_Triton_Kernels/11_Triton_Quantization_Support.ipynb`](../03_CUDA_and_Triton_Kernels/11_Triton_Quantization_Support.ipynb)
 
 
 ### Step 1: 核心思想与概念
