@@ -86,6 +86,10 @@ def run_with_checkpointing(blocks: nn.ModuleList, x: torch.Tensor):
 ```python
 # 运行此单元格以测试你的实现
 def test_gradient_checkpointing():
+    if not torch.cuda.is_available():
+        print("⏭️ 忽略测试：无 GPU。本节由于需要测量真实的 CUDA 显存峰值，只能在 GPU 环境运行。")
+        return
+        
     try:
         # 清空显存
         torch.cuda.empty_cache()
