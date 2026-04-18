@@ -49,11 +49,14 @@
 import torch
 import triton
 import triton.language as tl
+```
 
+
+```python
 @triton.jit
 def fused_multi_lora_kernel(
-    x_ptr, out_ptr, 
-    lora_a_pool_ptr, lora_b_pool_ptr, 
+    x_ptr, out_ptr,
+    lora_a_pool_ptr, lora_b_pool_ptr,
     lora_indices_ptr,
     M, IN_DIM, OUT_DIM, R: tl.constexpr,
     stride_x_m, stride_x_in,
@@ -62,61 +65,51 @@ def fused_multi_lora_kernel(
     stride_b_pool, stride_b_out, stride_b_r,
     BLOCK_IN: tl.constexpr, BLOCK_OUT: tl.constexpr
 ):
-    # 1. 确定当前处理的是哪个 Token (行 M) 和哪个输出维度块 (列 OUT_DIM)
-    pid_m = tl.program_id(0) # 对应 M 维度 (batch_size)
-    pid_n = tl.program_id(1) # 对应 OUT_DIM 维度的分块
-    
-    # 获取输出列的偏移
+    pid_m = tl.program_id(0)
+    pid_n = tl.program_id(1)
+
     offs_n = pid_n * BLOCK_OUT + tl.arange(0, BLOCK_OUT)
-    
-    # 2. 读取当前 Token 专属的 LoRA Index (极其关键的路由逻辑)
-    lora_idx = tl.load(lora_indices_ptr + pid_m)
-    
-    # 3. 计算内存池中该 LoRA A 和 B 的基地址偏移
+
+    # ==========================================
+    # TODO 1: 读取当前 Token 的 LoRA 索引
+    # 提示: 使用 tl.load 从 lora_indices_ptr 中读取当前 Token (pid_m) 对应的索引
+    # ==========================================
+    # lora_idx = ???
+
+    # ==========================================
+    # TODO 2: 计算内存池中该 LoRA 的基地址偏移
+    # 提示: 使用 lora_idx 乘以对应的 stride 来定位 A 和 B 矩阵在内存池中的起始位置
+    # ==========================================
     # a_pool_base_ptr = ???
     # b_pool_base_ptr = ???
-    a_pool_base_ptr = lora_a_pool_ptr + lora_idx * stride_a_pool
-    b_pool_base_ptr = lora_b_pool_ptr + lora_idx * stride_b_pool
+
+    # ==========================================
+    # TODO 3: 计算 x @ A，得到中间激活 h_r
+    # 提示: 循环遍历 IN_DIM，分块加载 x 和 A，累加点积结果到 h_r
+    # ==========================================
+    # acc = tl.zeros((BLOCK_OUT,), dtype=tl.float32)
+    # h_r = tl.zeros((R,), dtype=tl.float32)
+    # num_k_blocks = tl.cdiv(IN_DIM, BLOCK_IN)
+    # for k in range(num_k_blocks):
+    #     ...
+
+    # ==========================================
+    # TODO 4: 计算 h_r @ B，得到最终输出
+    # 提示: 加载 B 矩阵的对应分块，与 h_r 做点积
+    # ==========================================
+    # offs_r = tl.arange(0, R)
+    # b_ptrs = ???
+    # b_val = ???
+    # acc += ???
+
+    # ==========================================
+    # TODO 5: 将结果写回显存
+    # 提示: 使用 tl.store 将 acc 写回 out_ptr 的对应位置
+    # ==========================================
+    # out_ptrs = ???
+    # tl.store(...)
     
-    # 4. 初始化累加器 (当前 Token 加上该分块的所有输出)
-    acc = tl.zeros((BLOCK_OUT,), dtype=tl.float32)
-    
-    # 5. 为了完成 x @ A @ B，我们这里采用极致简化版本 (针对 r 极小的情况)：
-    # 先在 SRAM 中累加 x @ A，得到一个长度为 R 的中间激活 h_r
-    h_r = tl.zeros((R,), dtype=tl.float32)
-    
-    # 5.1 循环遍历 IN_DIM 计算 x @ A (形状: (1, IN_DIM) @ (IN_DIM, R) = (1, R))
-    num_k_blocks = tl.cdiv(IN_DIM, BLOCK_IN)
-    for k in range(num_k_blocks):
-        offs_in = k * BLOCK_IN + tl.arange(0, BLOCK_IN)
-        
-        # 加载 x
-        x_ptrs = x_ptr + pid_m * stride_x_m + offs_in * stride_x_in
-        x_val = tl.load(x_ptrs, mask=offs_in < IN_DIM, other=0.0)
-        
-        # 加载 A 的这一小块 (注意 A 的形状是 R x IN_DIM)
-        # 偏移：r 的维度我们用一个连续的 arange 覆盖整个 R (因为 R 极小)，列用 offs_in
-        offs_r = tl.arange(0, R)
-        a_ptrs = a_pool_base_ptr + offs_r[:, None] * stride_a_r + offs_in[None, :] * stride_a_in
-        a_val = tl.load(a_ptrs, mask=offs_in[None, :] < IN_DIM, other=0.0)
-        
-        # 累加 x @ A.T (也就是 x 和 A 的每一行点积)
-        # tl.sum 对列求和，得到长为 R 的向量
-        h_r += tl.sum(x_val[None, :] * a_val, axis=1)
-        
-    # 5.2 已经拿到了中间激活 h_r (长为 R)。现在计算 h_r @ B
-    # 循环遍历 R (通常不需要循环因为 R 小于 BLOCK 限制，但我们按照规范展开)
-    # B 的形状是 (OUT_DIM, R)，我们需要提取对应的 OUT_DIM 列分块
-    offs_r = tl.arange(0, R)
-    b_ptrs = b_pool_base_ptr + offs_n[:, None] * stride_b_out + offs_r[None, :] * stride_b_r
-    b_val = tl.load(b_ptrs, mask=offs_n[:, None] < OUT_DIM, other=0.0)
-    
-    # 累加 h_r @ B.T
-    acc += tl.sum(h_r[None, :] * b_val, axis=1)
-    
-    # 6. 写回显存 (仅包含 LoRA 的旁路增量，真实使用时需要加回原输出矩阵)
-    out_ptrs = out_ptr + pid_m * stride_out_m + offs_n * stride_out_dim
-    tl.store(out_ptrs, acc.to(out_ptr.dtype.element_ty), mask=offs_n < OUT_DIM)
+    raise NotImplementedError("请完成 TODO 1-5")
 
 def triton_multi_lora_forward(x: torch.Tensor, lora_a_pool: torch.Tensor, lora_b_pool: torch.Tensor, lora_indices: torch.Tensor):
     M, IN_DIM = x.shape
@@ -142,7 +135,6 @@ def triton_multi_lora_forward(x: torch.Tensor, lora_a_pool: torch.Tensor, lora_b
         BLOCK_IN=BLOCK_IN, BLOCK_OUT=BLOCK_OUT
     )
     return out
-
 ```
 
 
@@ -194,8 +186,8 @@ def test_multi_lora():
         print(f"最大误差: {diff.item():.6e}")
         assert diff < 1e-3, "Triton Multi-LoRA 路由或计算结果不正确！"
         
-        print("✅ 完美！你成功实现了类似 S-LoRA / Punica 框架底层的 Token 级别路由融合推理！")
-        print("💡 能够通过一个 kernel 处理并发的多模型请求，这是目前工业界降低大模型服务成本 (Serving Cost) 最核心的架构优化。")
+        print("✅ Multi-LoRA 路由融合推理验证通过。")
+        print("该算子实现了 Token 级别的动态路由，支持 Batch 内多模型并发推理。")
         
     except NotImplementedError:
         print("请先完成 TODO 代码！")
@@ -203,7 +195,6 @@ def test_multi_lora():
         print(f"❌ 测试失败: {e}")
 
 test_multi_lora()
-
 ```
 
 ---
@@ -215,15 +206,8 @@ test_multi_lora()
 <br><br><br><br><br><br><br><br><br><br>
 
 ---
-### 💡 参考解答：Triton 融合 Multi-LoRA 计算
-
-在这个实现中，最核心的逻辑是：
-```python
-a_pool_base_ptr = lora_a_pool_ptr + lora_idx * stride_a_pool
-b_pool_base_ptr = lora_b_pool_ptr + lora_idx * stride_b_pool
-```
-我们将原本的 batch inference 分解到 Triton 的每一个 `program_id(0)`（代表 batch 中的一个 token），通过 `tl.load` 获取对应 token 需要使用的 LoRA 权重索引 `lora_idx`。
-然后，直接利用步长 `stride` 将内存指针跳转到 `lora_a_pool` 和 `lora_b_pool` 中对应的起始位置。这样每个计算单元就能无缝地拉取到自己需要的特有 LoRA 权重，而不需要在 PyTorch 中使用低效的 for 循环去逐个推理，实现了极高的并行度。
+## 参考代码与解析
+### 代码
 
 ```python
 import torch
@@ -242,57 +226,43 @@ def fused_multi_lora_kernel(
     stride_b_pool, stride_b_out, stride_b_r,
     BLOCK_IN: tl.constexpr, BLOCK_OUT: tl.constexpr
 ):
-    # 1. 确定当前处理的是哪个 Token (行 M) 和哪个输出维度块 (列 OUT_DIM)
-    pid_m = tl.program_id(0) # 对应 M 维度 (batch_size)
-    pid_n = tl.program_id(1) # 对应 OUT_DIM 维度的分块
+    pid_m = tl.program_id(0)
+    pid_n = tl.program_id(1)
     
-    # 获取输出列的偏移
     offs_n = pid_n * BLOCK_OUT + tl.arange(0, BLOCK_OUT)
     
-    # 2. 读取当前 Token 专属的 LoRA Index (极其关键的路由逻辑)
+    # TODO 1: 读取当前 Token 的 LoRA 索引
     lora_idx = tl.load(lora_indices_ptr + pid_m)
     
-    # 3. 计算内存池中该 LoRA A 和 B 的基地址偏移
+    # TODO 2: 计算内存池中该 LoRA 的基地址偏移
     a_pool_base_ptr = lora_a_pool_ptr + lora_idx * stride_a_pool
     b_pool_base_ptr = lora_b_pool_ptr + lora_idx * stride_b_pool
     
-    # 4. 初始化累加器 (当前 Token 加上该分块的所有输出)
     acc = tl.zeros((BLOCK_OUT,), dtype=tl.float32)
-    
-    # 5. 为了完成 x @ A @ B，我们这里采用极致简化版本 (针对 r 极小的情况)：
-    # 先在 SRAM 中累加 x @ A，得到一个长度为 R 的中间激活 h_r
     h_r = tl.zeros((R,), dtype=tl.float32)
     
-    # 5.1 循环遍历 IN_DIM 计算 x @ A (形状: (1, IN_DIM) @ (IN_DIM, R) = (1, R))
+    # TODO 3: 计算 x @ A，得到中间激活 h_r
     num_k_blocks = tl.cdiv(IN_DIM, BLOCK_IN)
     for k in range(num_k_blocks):
         offs_in = k * BLOCK_IN + tl.arange(0, BLOCK_IN)
         
-        # 加载 x
         x_ptrs = x_ptr + pid_m * stride_x_m + offs_in * stride_x_in
         x_val = tl.load(x_ptrs, mask=offs_in < IN_DIM, other=0.0)
         
-        # 加载 A 的这一小块 (注意 A 的形状是 R x IN_DIM)
-        # 偏移：r 的维度我们用一个连续的 arange 覆盖整个 R (因为 R 极小)，列用 offs_in
         offs_r = tl.arange(0, R)
         a_ptrs = a_pool_base_ptr + offs_r[:, None] * stride_a_r + offs_in[None, :] * stride_a_in
         a_val = tl.load(a_ptrs, mask=offs_in[None, :] < IN_DIM, other=0.0)
         
-        # 累加 x @ A.T (也就是 x 和 A 的每一行点积)
-        # tl.sum 对列求和，得到长为 R 的向量
         h_r += tl.sum(x_val[None, :] * a_val, axis=1)
-        
-    # 5.2 已经拿到了中间激活 h_r (长为 R)。现在计算 h_r @ B
-    # 循环遍历 R (通常不需要循环因为 R 小于 BLOCK 限制，但我们按照规范展开)
-    # B 的形状是 (OUT_DIM, R)，我们需要提取对应的 OUT_DIM 列分块
+    
+    # TODO 4: 计算 h_r @ B，得到最终输出
     offs_r = tl.arange(0, R)
     b_ptrs = b_pool_base_ptr + offs_n[:, None] * stride_b_out + offs_r[None, :] * stride_b_r
     b_val = tl.load(b_ptrs, mask=offs_n[:, None] < OUT_DIM, other=0.0)
     
-    # 累加 h_r @ B.T
     acc += tl.sum(h_r[None, :] * b_val, axis=1)
     
-    # 6. 写回显存 (仅包含 LoRA 的旁路增量，真实使用时需要加回原输出矩阵)
+    # TODO 5: 将结果写回显存
     out_ptrs = out_ptr + pid_m * stride_out_m + offs_n * stride_out_dim
     tl.store(out_ptrs, acc.to(out_ptr.dtype.element_ty), mask=offs_n < OUT_DIM)
 
@@ -321,3 +291,59 @@ def triton_multi_lora_forward(x: torch.Tensor, lora_a_pool: torch.Tensor, lora_b
     )
     return out
 ```
+
+### 解析
+
+**1. TODO 1: 读取当前 Token 的 LoRA 索引**
+- **实现方式**：`lora_idx = tl.load(lora_indices_ptr + pid_m)`
+- **关键点**：每个 Token（由 `pid_m` 标识）都有自己专属的 LoRA 索引
+- **技术细节**：`lora_indices` 是一个长度为 `batch_size` 的整型数组，记录了每个 Token 应该使用内存池中的哪个 LoRA 模型
+
+**2. TODO 2: 计算内存池中该 LoRA 的基地址偏移**
+- **实现方式**：
+  ```python
+  a_pool_base_ptr = lora_a_pool_ptr + lora_idx * stride_a_pool
+  b_pool_base_ptr = lora_b_pool_ptr + lora_idx * stride_b_pool
+  ```
+- **关键点**：这是 Multi-LoRA 路由的核心逻辑，通过指针偏移实现动态权重选择
+- **技术细节**：`stride_a_pool` 和 `stride_b_pool` 是内存池第一维的步长，乘以 `lora_idx` 后可以直接跳转到对应 LoRA 的起始位置
+
+**3. TODO 3: 计算 x @ A，得到中间激活 h_r**
+- **实现方式**：循环遍历 `IN_DIM`，分块加载 `x` 和 `A`，累加点积结果
+- **关键点**：
+  - 使用 `tl.cdiv(IN_DIM, BLOCK_IN)` 计算需要的块数
+  - 对每个块，加载 `x` 的一段和 `A` 的对应列
+  - 使用 `tl.sum(x_val[None, :] * a_val, axis=1)` 计算点积并累加到 `h_r`
+- **技术细节**：
+  - `A` 的形状是 `(R, IN_DIM)`，我们用 `offs_r[:, None]` 和 `offs_in[None, :]` 构造二维索引
+  - `mask=offs_in[None, :] < IN_DIM` 确保不会越界访问
+
+**4. TODO 4: 计算 h_r @ B，得到最终输出**
+- **实现方式**：
+  ```python
+  b_ptrs = b_pool_base_ptr + offs_n[:, None] * stride_b_out + offs_r[None, :] * stride_b_r
+  b_val = tl.load(b_ptrs, mask=offs_n[:, None] < OUT_DIM, other=0.0)
+  acc += tl.sum(h_r[None, :] * b_val, axis=1)
+  ```
+- **关键点**：`B` 的形状是 `(OUT_DIM, R)`，我们提取对应的输出维度分块
+- **技术细节**：使用 `tl.sum` 对 `R` 维度求和，得到长度为 `BLOCK_OUT` 的输出向量
+
+**5. TODO 5: 将结果写回显存**
+- **实现方式**：
+  ```python
+  out_ptrs = out_ptr + pid_m * stride_out_m + offs_n * stride_out_dim
+  tl.store(out_ptrs, acc.to(out_ptr.dtype.element_ty), mask=offs_n < OUT_DIM)
+  ```
+- **关键点**：使用 `mask` 保护边界，避免越界写入
+- **技术细节**：`acc.to(out_ptr.dtype.element_ty)` 确保数据类型与输出张量一致
+
+**工程优化要点**
+
+- **内存池设计**：将所有 LoRA 权重放入统一的连续内存池，避免频繁的内存分配和释放
+- **Token 级路由**：每个 Token 独立选择 LoRA 权重，实现细粒度的动态路由
+- **指针偏移优化**：使用 `stride` 计算偏移量，避免复杂的索引计算
+- **分块计算**：对 `IN_DIM` 和 `OUT_DIM` 进行分块，充分利用 SRAM 的高速缓存
+- **低秩分解**：利用 LoRA 的低秩特性（`R << IN_DIM, OUT_DIM`），先计算 `x @ A` 再计算 `h_r @ B`，减少计算量
+- **Batch 并行**：不同 Token 的计算完全独立，可以在 GPU 上高度并行
+- **内存访问模式**：使用 `mask` 保护边界访问，确保内存安全
+- **工业应用**：该算子是 S-LoRA、Punica 等多租户推理框架的核心组件，可以在单次 kernel 调用中处理多个用户的不同 LoRA 请求
