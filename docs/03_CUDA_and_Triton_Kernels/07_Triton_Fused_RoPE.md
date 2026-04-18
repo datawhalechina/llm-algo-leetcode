@@ -52,7 +52,10 @@
 import torch
 import triton
 import triton.language as tl
+```
 
+
+```python
 @triton.jit
 def fused_rope_kernel(
     t_ptr, cos_ptr, sin_ptr,
@@ -89,15 +92,21 @@ def fused_rope_kernel(
     
     # ==========================================
     # TODO 1: 执行旋转公式
+    # 提示: 使用复数旋转公式
+    #       out_evens = x_evens * cos_vals - x_odds * sin_vals
+    #       out_odds = x_evens * sin_vals + x_odds * cos_vals
     # ==========================================
-    out_evens = x_evens * cos_vals - x_odds * sin_vals
-    out_odds = x_evens * sin_vals + x_odds * cos_vals
+    # out_evens = ???
+    # out_odds = ???
     
     # ==========================================
     # TODO 2: 将计算结果写回 t_ptr (In-place 修改)
+    # 提示: 使用 tl.store() 函数将结果写回原地址
+    #       tl.store(t_ptr + t_offset + evens, out_evens, mask=mask)
+    #       tl.store(t_ptr + t_offset + odds, out_odds, mask=mask)
     # ==========================================
-    tl.store(t_ptr + t_offset + evens, out_evens, mask=mask)
-    tl.store(t_ptr + t_offset + odds, out_odds, mask=mask)
+    # tl.store(...)
+    # tl.store(...)
 
 def triton_apply_rope(x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor):
     """
@@ -121,7 +130,6 @@ def triton_apply_rope(x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor):
         BLOCK_SIZE=BLOCK_SIZE,
     )
     return x
-
 ```
 
 
@@ -208,74 +216,108 @@ test_fused_rope()
 <br><br><br><br><br><br><br><br><br><br>
 
 ---
-### 📝 Fused RoPE 参考实现解析
+## 参考代码与解析
 
-1. **多维 Grid 寻址**: 不同于之前我们用 1D Grid 自己算偏移，Triton 支持最高 3D 的 Grid。对于 `[Batch, Seq, Head]` 刚好对应 3 个维度。使用 `pid_seq * stride_seq + pid_head * stride_head` 这样的形式可以精准跳转到连续内存中的对应位置。
-2. **交错寻址 (Interleaved)**: 在 LLaMA 中，相邻的两个元素组成一对。我们生成了偶数索引和奇数索引 `evens` 与 `odds`，分别并行读取。
-3. **In-place 修改**: 最后直接 `tl.store` 覆写原地址的显存数据，可以节省一半显存占用。这非常关键。
-4. **复数乘法**: 结合公式将 `[x0, x1]` 旋转角度 $	heta$ 的实现非常简洁。
+### 代码
 
 ```python
-# ==========================================
-# 💡 参考答案
-# ==========================================
-
 import torch
 import triton
 import triton.language as tl
 
 @triton.jit
-def rope_kernel(
+def fused_rope_kernel(
     t_ptr, cos_ptr, sin_ptr,
-    seq_len, head_dim,
-    stride_batch, stride_seq, stride_head, stride_dim,
-    stride_cos_seq, stride_cos_dim,
+    seq_len, n_heads, head_dim,
     BLOCK_SIZE: tl.constexpr,
 ):
-    pid_seq = tl.program_id(0)
-    pid_head = tl.program_id(1)
-    pid_batch = tl.program_id(2)
-
-    t_offset = pid_batch * stride_batch + pid_seq * stride_seq + pid_head * stride_head
-
+    # 1. 获取全局 Token 索引
+    pid = tl.program_id(0)
+    
+    # 2. 定位当前 Token、Head 的特征起始指针
+    t_offset = pid * head_dim
+    
+    # 获取当前 token 位置
+    token_idx = pid // n_heads
+    
+    # 3. 计算偶数和奇数的特征偏移量
     half_dim = head_dim // 2
     evens = tl.arange(0, BLOCK_SIZE // 2) * 2
     odds = evens + 1
-
+    
     mask = evens < head_dim
-    freq_mask = tl.arange(0, BLOCK_SIZE // 2) < half_dim
-
+    
+    # 4. 加载特征 x
     x_evens = tl.load(t_ptr + t_offset + evens, mask=mask)
     x_odds = tl.load(t_ptr + t_offset + odds, mask=mask)
-
-    freq_offset = pid_seq * stride_cos_seq + tl.arange(0, BLOCK_SIZE // 2) * stride_cos_dim
-
+    
+    # 5. 加载 cos 和 sin
+    freq_offset = token_idx * half_dim + tl.arange(0, BLOCK_SIZE // 2)
+    freq_mask = tl.arange(0, BLOCK_SIZE // 2) < half_dim
+    
     cos_vals = tl.load(cos_ptr + freq_offset, mask=freq_mask)
     sin_vals = tl.load(sin_ptr + freq_offset, mask=freq_mask)
-
-    # 1. 执行旋转公式 (复数乘法)
+    
+    # ==========================================
+    # TODO 1: 执行旋转公式
+    # ==========================================
     out_evens = x_evens * cos_vals - x_odds * sin_vals
     out_odds = x_evens * sin_vals + x_odds * cos_vals
-
-    # 2. In-place 写回显存
+    
+    # ==========================================
+    # TODO 2: 将计算结果写回 t_ptr (In-place 修改)
+    # ==========================================
     tl.store(t_ptr + t_offset + evens, out_evens, mask=mask)
     tl.store(t_ptr + t_offset + odds, out_odds, mask=mask)
 
 def triton_apply_rope(x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor):
-    batch_size, seq_len, num_heads, head_dim = x.shape
+    """
+    x: 形状 (seq_len, n_heads, head_dim)
+    cos/sin: 形状 (seq_len, head_dim // 2)
+    """
+    seq_len, n_heads, head_dim = x.shape
+    
+    # 必须保证连续内存
+    x = x.contiguous()
+    cos = cos.contiguous()
+    sin = sin.contiguous()
     
     BLOCK_SIZE = triton.next_power_of_2(head_dim)
+    n_elements = seq_len * n_heads
+    grid = (n_elements, )
     
-    # Grid: 每个序列位置、每个注意力头、每个批次 分配一个 Block
-    grid = (seq_len, num_heads, batch_size)
-    
-    rope_kernel[grid](
+    fused_rope_kernel[grid](
         x, cos, sin,
-        seq_len, head_dim,
-        x.stride(0), x.stride(1), x.stride(2), x.stride(3),
-        cos.stride(0), cos.stride(1),
+        seq_len, n_heads, head_dim,
         BLOCK_SIZE=BLOCK_SIZE,
     )
     return x
-
 ```
+
+### 解析
+
+**1. TODO 1: 执行旋转公式**
+- **实现方式**：使用复数旋转公式计算旋转后的偶数和奇数位置特征
+  ```python
+  out_evens = x_evens * cos_vals - x_odds * sin_vals
+  out_odds = x_evens * sin_vals + x_odds * cos_vals
+  ```
+- **关键点**：这是复数乘法的实部和虚部计算，将相邻的两个特征 $(x_{2i}, x_{2i+1})$ 视为复数进行旋转
+- **技术细节**：旋转角度 $\theta$ 由位置编码决定，通过 $\cos(\theta)$ 和 $\sin(\theta)$ 实现旋转变换。数学上等价于复数乘法 $(x_{2i} + ix_{2i+1}) \cdot (\cos\theta + i\sin\theta)$
+
+**2. TODO 2: In-place 写回显存**
+- **实现方式**：使用 `tl.store()` 将计算结果直接写回原地址
+  ```python
+  tl.store(t_ptr + t_offset + evens, out_evens, mask=mask)
+  tl.store(t_ptr + t_offset + odds, out_odds, mask=mask)
+  ```
+- **关键点**：In-place 修改节省显存，避免分配新的输出张量
+- **技术细节**：通过交错寻址 (evens/odds)，将旋转后的结果按原始顺序写回。使用 mask 保护确保只写入有效位置。
+
+**工程优化要点**
+- **In-place 修改优化**：直接在原张量上修改，相比分配新张量节省 50% 显存，这在大模型推理中至关重要。
+- **交错寻址 (Interleaved Addressing)**：通过 `evens = tl.arange(0, BLOCK_SIZE // 2) * 2` 和 `odds = evens + 1` 实现高效的配对访问，避免复杂的索引计算。
+- **融合算子减少开销**：将 RoPE 的所有操作（加载、旋转、写回）融合在一个 kernel 中，减少 kernel launch 开销和 HBM 访问次数。
+- **1D Grid 并行策略**：每个 Program 处理一个 Token 的一个 Head，简化了索引计算。对于 `(seq_len, n_heads, head_dim)` 的输入，启动 `seq_len * n_heads` 个 Program，充分利用 GPU 并行度。
+- **内存连续性保证**：通过 `x.contiguous()` 确保输入张量在内存中连续存储，避免跨步访问带来的性能损失。
+- **工业级应用**：vLLM、TensorRT-LLM 等主流推理引擎都使用类似的融合 RoPE kernel，相比 PyTorch 原生实现可获得 2-3x 加速。
