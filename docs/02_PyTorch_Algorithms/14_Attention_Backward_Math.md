@@ -14,7 +14,7 @@
 
 为什么各大厂商都在持续优化 FlashAttention？因为在训练时，为了计算反向传播的梯度，框架必须在显存中保存尺寸为 $N \times N$ (序列长度的平方) 的庞大注意力分数矩阵（Attention Probabilities）。当序列长度达到 128K 时，仅这一个中间变量就会极易导致 GPU 显存溢出 (OOM)。
 
-在下一节正式进入 FlashAttention 之前，我们必须跨过这座高山：**彻底搞懂 Attention 反向传播的微积分推导，并抛弃 PyTorch 原生的 `.backward()`，利用 `torch.autograd.Function` 写出它的反向梯度计算代码！**
+在下一节正式进入 FlashAttention 之前，我们必须跨过这座高山：**完全搞懂 Attention 反向传播的微积分推导，并抛弃 PyTorch 原生的 `.backward()`，利用 `torch.autograd.Function` 写出它的反向梯度计算代码！**
 
 这是底层架构岗位的常见考核点。
 ### Step 1: 前向传播回顾与变量定义
@@ -42,8 +42,8 @@ $$ dV = P^T \cdot dO $$
 $$ dP = dO \cdot V^T $$
 
 **3. 跨越 Softmax (核心难点)**
-我们需要从 $dP$ 求得 $dS$。Softmax 的雅可比矩阵极其特殊：
-已知 $P_i = \frac{e^{S_i}}{\sum e^{S_j}}$，其对于 $S$ 的导数在应用链式法则后，会化简为一个极其优美的形式：
+我们需要从 $dP$ 求得 $dS$。Softmax 的雅可比矩阵非常特殊：
+已知 $P_i = \frac{e^{S_i}}{\sum e^{S_j}}$，其对于 $S$ 的导数在应用链式法则后，会化简为一个非常优美的形式：
 $$ dS = P \odot (dP - \text{row\_sum}(P \odot dP)) $$
 (*注：$\odot$ 表示 Element-wise 逐元素乘法。后面的加和项是通过广播机制实现的*)
 
@@ -61,7 +61,10 @@ $$ dK = \frac{dS^T \cdot Q}{\sqrt{d}} $$
 import torch
 import torch.nn.functional as F
 import math
+```
 
+
+```python
 class CustomAttention(torch.autograd.Function):
     @staticmethod
     def forward(ctx, q, k, v):
@@ -69,7 +72,6 @@ class CustomAttention(torch.autograd.Function):
         d_k = q.size(-1)
         scale = 1.0 / math.sqrt(d_k)
         
-        # S = QK^T * scale.  Shape: [batch, N, N]
         scores = torch.matmul(q, k.transpose(-2, -1)) * scale
         
         # 2. Softmax 获取概率 P
@@ -92,19 +94,16 @@ class CustomAttention(torch.autograd.Function):
         
         # ==========================================
         # TODO 1: 求 dV
-        # 公式: dV = P^T * dO
         # ==========================================
         # dv = ???
         
         # ==========================================
         # TODO 2: 求 dP
-        # 公式: dP = dO * V^T
         # ==========================================
         # dp = ???
         
         # ==========================================
         # TODO 3: 穿过 Softmax 求 dS
-        # 公式: dS = P * (dP - row_sum(P * dP))
         # 提示: 使用 .sum(dim=-1, keepdim=True) 计算 row_sum
         # ==========================================
         # dp_mul_p = ???
@@ -113,8 +112,6 @@ class CustomAttention(torch.autograd.Function):
         
         # ==========================================
         # TODO 4: 求 dQ 和 dK (别忘了乘以 scale 缩放因子)
-        # dQ = (dS * K) * scale
-        # dK = (dS^T * Q) * scale
         # ==========================================
         # dq = ???
         # dk = ???
@@ -145,11 +142,10 @@ def test_attention_backward():
         assert torch.allclose(custom_out, ref_out), "前向传播结果不一致！"
         
         print("\n2. 进行黑魔法级别的梯度数值检验 (Gradcheck)...")
-        # torch.autograd.gradcheck 会用极限逼近法计算数值梯度，并与你的解析梯度进行极其严苛的对比
         test_passed = torch.autograd.gradcheck(CustomAttention.apply, (q, k, v), eps=1e-6, atol=1e-4)
         
         if test_passed:
-            print("✅ All Tests Passed! 你成功手推了困扰无数人的 Attention 反向传播微积分！")
+            print("✅ All Tests Passed! Attention 反向传播实现通过测试。")
             
     except NotImplementedError:
         print("请先完成 TODO 部分的代码！")
@@ -169,7 +165,7 @@ test_attention_backward()
 如果现在的上下文是 $128K$（如 GPT-4），$P$ 的大小就是 $128K \times 128K$。即便在 FP16 精度下，**单单存这一个 $P$ 矩阵，一个 Batch 就需要占用约 32 GB 的显存！** 稍微开大点 Batch Size，连 80G 的 A100 都会触发 OOM。
 
 > **思考题**：如果你是底层算法工程师，怎么解决这个问题？
-> **答案预告**：不存 $P$！我们在反向传播需要 $P$ 的时候，**拿 $Q$ 和 $K$ 现场重算一次 $P$（Recomputation）！** 通过巧妙的 SRAM 分块加载机制，虽然计算量变大了，但因为避免了把庞大的 $P$ 写入又读出极其缓慢的 HBM，最终不但不 OOM，**速度反而变快了 3 倍！**
+> **答案预告**：不存 $P$！我们在反向传播需要 $P$ 的时候，**拿 $Q$ 和 $K$ 现场重算一次 $P$（Recomputation）！** 通过巧妙的 SRAM 分块加载机制，虽然计算量变大了，但因为避免了把庞大的 $P$ 写入又读出非常缓慢的 HBM，最终不但不 OOM，**速度反而变快了 3 倍！**
 
 这就是下一节业界广泛使用的 **FlashAttention** 所做的事。
 ---
@@ -181,13 +177,11 @@ test_attention_backward()
 <br><br><br><br><br><br><br><br><br><br>
 
 ---
-Attention 梯度的核心在于处理 Softmax 的雅可比矩阵。对于 $dP$，通过矩阵转置操作可以轻松由链式法则获得；随后通过提取 $P \odot dP$ 并对行求和，构造出 Softmax 的反向传播梯度 $dS$。这也是理解重计算（Recomputation）技术以节省大规模训练显存的理论基础。
+## 参考代码与解析
+
+### 代码
 
 ```python
-import torch
-import torch.nn.functional as F
-import math
-
 class CustomAttention(torch.autograd.Function):
     @staticmethod
     def forward(ctx, q, k, v):
@@ -226,3 +220,7 @@ class CustomAttention(torch.autograd.Function):
         return dq, dk, dv
 
 ```
+
+### 解析
+
+Attention 梯度的核心在于处理 Softmax 的雅可比矩阵。对于 $dP$，通过矩阵转置操作可以轻松由链式法则获得；随后通过提取 $P \odot dP$ 并对行求和，构造出 Softmax 的反向传播梯度 $dS$。这也是理解重计算（Recomputation）技术以节省大规模训练显存的理论基础。
