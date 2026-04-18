@@ -90,8 +90,9 @@ test_pipeline_bubble()
 
 ---
 
-流水线并行（Pipeline Parallelism）是千亿级大模型跨物理机训练的必备组件。通过切分模型深度，配合 Micro-batch 流水作业以及 1F1B（One-Forward-One-Backward）调度算法，可以极大地掩盖设备之间的相互等待时间。气泡比率的公式揭示了一个核心工程实践：微批次的数量必须远大于流水线深度。
+## 参考代码与解析
 
+### 代码
 
 ```python
 def compute_bubble_ratio(p, m):
@@ -100,3 +101,7 @@ def compute_bubble_ratio(p, m):
 
 
 ```
+
+### 解析
+
+流水线并行（Pipeline Parallelism）是千亿级大模型跨物理机训练的必备组件。通过切分模型深度，配合 Micro-batch 流水作业以及 1F1B（One-Forward-One-Backward）调度算法，可以极大地掩盖设备之间的相互等待时间。气泡比率的公式揭示了一个核心工程实践：微批次的数量必须远大于流水线深度。
