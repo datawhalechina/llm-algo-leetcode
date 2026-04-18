@@ -21,7 +21,7 @@
 
 > **Trick 2: RMSNorm 的 "+1 缩放" - Gemma 系列**
 > *   **做法**：标准的 RMSNorm 公式是 $y = \frac{x}{RMS} \cdot w$。而 Google 的 Gemma 把它改成了 $y = \frac{x}{RMS} \cdot (1 + w)$。
-> *   **意义**：在 PyTorch 中，权重的默认初始化通常是 0（或者很小的值）。Gemma 加上 1，使得在训练的极早期（$w pprox 0$ 时），RMSNorm 直接等价于一个不做任何缩放的纯归一化层，**这带来了非常平滑的梯度和极度稳定的早期训练！**
+> *   **意义**：在 PyTorch 中，权重的默认初始化通常是 0（或者很小的值）。Gemma 加上 1，使得在训练的极早期（$w pprox 0$ 时），RMSNorm 直接等价于一个不做任何缩放的纯归一化层，**这带来了非常平滑的梯度和非常稳定的早期训练！**
 
 ### Step 2: Weight Tying 与偏置项的权衡
 Weight Tying（权重绑定）强制 Embedding 层和最终的 LM Head 线性层共享同一个权重矩阵。这种方法在早期的模型中很流行，因为它大幅减少了参数量。但在现代极大规模 LLM 中，解绑通常能获得更好的容量表达。此外，取消大部分 Linear 和 Norm 层中的 Bias 项，可以略微提高计算效率并防止显存浪费。
@@ -39,7 +39,10 @@ Weight Tying（权重绑定）强制 Embedding 层和最终的 LM Head 线性层
 ```python
 import torch
 import torch.nn as nn
+```
 
+
+```python
 # --- Trick 1: Gemma 风格的 RMSNorm ---
 class GemmaRMSNorm(nn.Module):
     def __init__(self, hidden_size: int, eps: float = 1e-6):
@@ -56,7 +59,6 @@ class GemmaRMSNorm(nn.Module):
         
         # ==========================================
         # TODO 1: 实现 Gemma 的 +1 缩放
-        # 公式: y = x_norm * (1.0 + weight)
         # 注意类型转换回 x.dtype
         # ==========================================
         # output = ???
@@ -126,7 +128,7 @@ def test_tricks():
         assert qwen_model.lm_head.weight.data[0, 0] == qwen_model.embed_tokens.weight.data[0, 0], "权重更新未同步！"
         
         print("✅ Qwen Tie Word Embeddings 权重绑定测试通过！")
-        print("\n🔥 面试时遇到大厂专属变体架构，你已经应对自如了！")
+        print("\n架构变体技巧测试通过。")
         
     except NotImplementedError:
         print("请先完成 TODO 代码！")
@@ -139,6 +141,7 @@ def test_tricks():
 
 test_tricks()
 
+
 ```
 
 ---
@@ -150,20 +153,74 @@ test_tricks()
 <br><br><br><br><br><br><br><br><br><br>
 
 ---
-在构建现代语言模型时，各种架构技巧（如参数初始化、特定的注意力调整）往往决定了模型的最终性能。这些实现通过精心设计张量操作，来防止训练早期的梯度爆炸和消失。
+## 参考代码与解析
+
+### 代码
+
 
 ```python
-def apply_rotary_emb(xq, xk, freqs_cos, freqs_sin):
-    xq_r, xq_i = xq.float().reshape(xq.shape[:-1] + (-1, 2)).unbind(-1)
-    xk_r, xk_i = xk.float().reshape(xk.shape[:-1] + (-1, 2)).unbind(-1)
-    
-    xq_out_r = xq_r * freqs_cos - xq_i * freqs_sin
-    xq_out_i = xq_r * freqs_sin + xq_i * freqs_cos
-    xk_out_r = xk_r * freqs_cos - xk_i * freqs_sin
-    xk_out_i = xk_r * freqs_sin + xk_i * freqs_cos
-    
-    xq_out = torch.stack([xq_out_r, xq_out_i], dim=-1).flatten(3)
-    xk_out = torch.stack([xk_out_r, xk_out_i], dim=-1).flatten(3)
+# --- Trick 1: Gemma 风格的 RMSNorm ---
+class GemmaRMSNorm(nn.Module):
+    def __init__(self, hidden_size: int, eps: float = 1e-6):
+        super().__init__()
+        self.eps = eps
+        # weight 初始化为全 0
+        self.weight = nn.Parameter(torch.zeros(hidden_size))
 
-    return xq_out.type_as(xq), xk_out.type_as(xk)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # 计算均方根
+        x_f32 = x.float()
+        variance = x_f32.pow(2).mean(-1, keepdim=True)
+        x_norm = x_f32 * torch.rsqrt(variance + self.eps)
+        
+        # TODO 1: 实现 Gemma 的 +1 缩放
+        output = x_norm * (1 + self.weight)
+        
+        return output.type_as(x)
+
+
+# --- Trick 2: Qwen 风格的权重绑定 ---
+class QwenTieEmbeddings(nn.Module):
+    def __init__(self, vocab_size: int, hidden_size: int):
+        super().__init__()
+        # 1. 定义标准的 Embedding 层
+        self.embed_tokens = nn.Embedding(vocab_size, hidden_size)
+        
+        # 2. 定义最后的 LM Head 预测层，注意不要 bias
+        self.lm_head = nn.Linear(hidden_size, vocab_size, bias=False)
+        
+        # TODO 2: 将 lm_head 的权重在内存级别绑定到 embed_tokens 上
+        # 物理指针级共享：直接让 lm_head.weight 指向 embed_tokens.weight
+        self.lm_head.weight = self.embed_tokens.weight
+        
+    def forward_embed(self, input_ids):
+        return self.embed_tokens(input_ids)
+        
+    def forward_lm_head(self, hidden_states):
+        return self.lm_head(hidden_states)
+
 ```
+
+### 解析
+
+**1. TODO 1: Gemma 的 +1 缩放机制**
+
+- **实现方式**：`output = x_norm * (1 + self.weight)`
+- **核心思想**：在标准 RMSNorm 的基础上，将缩放因子从 `w` 改为 `(1 + w)`。
+- **初始化优势**：权重初始化为 0 时，`(1 + 0) = 1`，此时 RMSNorm 等价于纯归一化层（无缩放），梯度非常平滑。
+- **训练稳定性**：在训练早期（权重接近 0），避免了因权重过小导致的梯度消失问题。随着训练进行，权重逐渐学习到合适的缩放值。
+- **工程细节**：必须先转换为 FP32 计算（`x.float()`），最后再转回原始精度（`type_as(x)`），防止 FP16/BF16 下的数值不稳定。
+
+**2. TODO 2: Qwen 的权重绑定（Weight Tying）**
+
+- **实现方式**：`self.lm_head.weight = self.embed_tokens.weight`
+- **物理指针级共享**：这不是复制权重，而是让两个模块的 `weight` 参数指向同一块内存。修改其中一个，另一个自动同步。
+- **参数量优势**：词表通常很大（15万+），绑定后可以节省一半的参数量。例如，词表 150k、隐藏层 4096 的模型，可以节省 150k × 4096 × 4 bytes ≈ 2.4GB 显存。
+- **梯度更新**：训练时，Embedding 层和 LM Head 的梯度会累加到同一个权重上，使得 Embedding 获得更直接的监督信号。
+- **适用场景**：Qwen、GPT-2 等模型使用此技巧。但在超大规模模型（如 LLaMA 70B）中，解绑通常能获得更好的表达能力。
+
+**工程要点**
+
+- **内存验证**：可以通过 `data_ptr()` 检查两个权重是否指向同一内存地址。
+- **训练同步**：由于是物理指针共享，更新 Embedding 权重时，LM Head 权重会自动同步，无需手动处理。
+- **架构权衡**：权重绑定减少参数但可能限制表达能力；+1 缩放提升训练稳定性但增加计算量（需要额外的加法）。
