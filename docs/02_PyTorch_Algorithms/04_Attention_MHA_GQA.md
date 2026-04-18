@@ -14,15 +14,19 @@
 
 ### Step 1: 核心思想与痛点
 
-> **为什么需要 MQA 和 GQA？**
-> * **MHA (Multi-Head Attention)**: 标准的多头注意力。每个 Query 头都有自己专属的 Key 和 Value 头。在推理（Decode阶段）时，读取巨量的 KV Cache 会遇到**内存带宽瓶颈 (Memory-bound)**。
-> * **MQA (Multi-Query Attention)**: 所有的 Query 头共享**同一个** Key 和 Value 头。极大地减少了 KV Cache 的显存占用和访存量，但模型能力会有所下降。
-> * **GQA (Grouped-Query Attention)**: LLaMA-2/3 采用的折中方案。将 Query 头分组，每组共享一个 Key 和 Value 头。在**性能和显存之间取得了准确的平衡**。
+在大语言模型中，**注意力机制 (Attention)** 决定了模型如何“回顾”并提取历史上下文的信息。随着模型层数加深和序列变长，Attention 模块在推理阶段面临极大的性能挑战。
 
-> **什么是 KV Cache？**
-> 在自回归生成中，每次生成第 $N$ 个 Token，我们都需要前面 $N-1$ 个 Token 的信息。为了避免重复计算前面的特征，我们把前 $N-1$ 步算好的 Key 和 Value 张量**缓存（Cache）**起来，在当前步直接拼接参与计算。
+> **什么是 KV Cache？为什么它是性能瓶颈？**
+> 在自回归生成中，每次生成第 $N$ 个 Token 时，我们需要计算它与前面 $N-1$ 个 Token 的相关性。为了避免重复计算前 $N-1$ 个 Token 的特征，我们将其投影后的 Key 和 Value 张量**缓存（Cache）**在显存中，当前步直接拼接读取。
+> 
+> 然而，读取巨量的 KV Cache 会面临严重的**显存容量瓶颈**和**内存带宽瓶颈 (Memory-bound)**，导致推理极慢。
 
-###  Step 2: 核心公式与张量维度
+> **从 MHA 到 GQA：大模型架构的进化**
+> * **MHA (Multi-Head Attention)**: 标准的多头注意力。每个 Query 头都有自己专属的 Key 和 Value 头。其巨大的 KV Cache 让推理寸步难行。
+> * **MQA (Multi-Query Attention)**: 所有的 Query 头共享**同一个** Key 和 Value 头。极大地减少了 KV Cache 的占用，但由于表达能力锐减，模型效果往往打折。
+> * **GQA (Grouped-Query Attention)**: LLaMA-2/3 采用的折中方案。将 Query 头分组，每组共享一个 Key 和 Value 头。这在**模型效果和显存占用之间取得了良好的工程平衡**。
+
+### Step 2: 核心公式与张量维度
 
 **注意力计算公式：**
 $$ \text{Attention}(Q, K, V) = \text{Softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V $$
@@ -35,13 +39,13 @@ $$ \text{Attention}(Q, K, V) = \text{Softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right
 4. 乘以 Value：`Scores @ V` -> `[B, H, S, S] @ [B, H, S, D]` -> `[B, H, S, D]`
 5. 最后合并多头：转置回 `[B, S, H, D]` 并 `view` 成 `[B, S, H * D]`。
 
-###  Step 3: 工业界源码映射
+### Step 3: 工业界源码映射
 
 在真实的工业界代码中，这段逻辑在哪里？
 * **HuggingFace LLaMA**: `transformers/models/llama/modeling_llama.py` 中的 `LlamaAttention` 类。
 * **vLLM (推理框架)**: 核心关注它的 PagedAttention 实现，用来解决这里 KV Cache 的显存碎片化问题。
 
-###  Step 4: 动手实战
+### Step 4: 动手实战
 
 **要求**：请补全下方 `GroupedQueryAttention` 的 `forward` 函数中的 `TODO` 部分，实现：
 1. 张量的多头切分与 Reshape
@@ -53,7 +57,10 @@ $$ \text{Attention}(Q, K, V) = \text{Softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right
 import torch
 import torch.nn as nn
 import math
+```
 
+
+```python
 def repeat_kv(hidden_states: torch.Tensor, n_rep: int) -> torch.Tensor:
     """
     将 KV 头复制 n_rep 次，以匹配 Query 头的数量 (GQA/MQA 需要)
@@ -172,7 +179,7 @@ def test_mha_mqa_gqa():
         out_decode, new_kv_cache = mha(x_decode, kv_cache=kv_cache)
         assert new_kv_cache[0].shape == (batch_size, num_heads, prefill_len + 1, hidden_dim // num_heads), "KV Cache 更新错误!"
         
-        print("\n✅ All Tests Passed! 恭喜你，大模型核心 Attention 算子实现成功！")
+        print("\n✅ All Tests Passed! Attention 算子实现通过测试。")
     except NotImplementedError:
         print("请先完成 TODO 部分的代码！")
     except Exception as e:
@@ -191,7 +198,9 @@ test_mha_mqa_gqa()
 <br><br><br><br><br><br><br><br><br><br>
 
 ---
-Attention 算子的核心是张量维度的追踪与变换。首先要用 view + transpose 将 QKV 转为多头形式 [batch_size, num_heads, seq_len, head_dim]。如果是自回归推理，将历史的 KV cache 与当前的 xk, xv 在 seq_len 维度进行拼接。接着计算 Attention Scores 时，只需用 xq @ xk.transpose(2, 3) 进行最后两维的矩阵乘法，得到注意力权重后再去乘 xv。对于 GQA 支持，借助外部传入的重复函数 repeat_kv，先将少量 KV 头扩充到 Query 头的数量再进行运算。
+## 参考代码与解析
+
+### 代码
 
 ```python
 def repeat_kv(hidden_states: torch.Tensor, n_rep: int) -> torch.Tensor:
@@ -226,10 +235,12 @@ class GroupedQueryAttention(nn.Module):
         
         xq, xk, xv = self.q_proj(x), self.k_proj(x), self.v_proj(x)
         
+        # TODO 1: Reshape 为多头形式
         xq = xq.view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
         xk = xk.view(batch_size, seq_len, self.num_kv_heads, self.head_dim).transpose(1, 2)
         xv = xv.view(batch_size, seq_len, self.num_kv_heads, self.head_dim).transpose(1, 2)
         
+        # TODO 2: 处理 KV Cache
         if kv_cache is not None:
             k_cache, v_cache = kv_cache
             xk = torch.cat([k_cache, xk], dim=2)
@@ -240,6 +251,7 @@ class GroupedQueryAttention(nn.Module):
         xk = repeat_kv(xk, self.num_queries_per_kv)
         xv = repeat_kv(xv, self.num_queries_per_kv)
         
+        # TODO 3: 计算注意力分数
         scores = torch.matmul(xq, xk.transpose(2, 3)) / math.sqrt(self.head_dim)
         
         if attention_mask is not None:
@@ -248,7 +260,46 @@ class GroupedQueryAttention(nn.Module):
         probs = torch.nn.functional.softmax(scores, dim=-1)
         output = torch.matmul(probs, xv)
         
+        # TODO 4: 恢复形状
         output = output.transpose(1, 2).contiguous().view(batch_size, seq_len, -1)
         
         return self.o_proj(output), new_kv_cache
+
 ```
+
+### 解析
+
+**1. TODO 1 (多头切分与维度转置)**
+
+- **切分多头：** 使用 `view(batch_size, seq_len, num_heads, head_dim)` 将线性投影后的张量从 `[B, S, H*D]` 重塑为 `[B, S, H, D]`，其中 `H` 是头数，`D` 是每个头的维度。
+- **维度转置：** 通过 `.transpose(1, 2)` 将形状从 `[B, S, H, D]` 转为 `[B, H, S, D]`，这是注意力计算的标准格式，方便后续的矩阵乘法。
+- **GQA 的 KV 头数：** 注意 `xk` 和 `xv` 使用 `num_kv_heads` 而不是 `num_heads`，这是 GQA 的核心区别。例如 LLaMA-2 70B 使用 64 个 Query 头但只有 8 个 KV 头。
+- **工程细节：** 为什么要 transpose？因为注意力分数计算 `Q @ K^T` 需要在 `[S, D]` 和 `[D, S]` 维度上进行矩阵乘法，将 heads 维度放在第二个位置可以让 batch 和 heads 维度自动广播。
+
+**2. TODO 2 (KV Cache 拼接)**
+
+- **自回归生成场景：** 在推理时，每次只生成一个新 token，但需要用到之前所有 token 的 Key 和 Value。如果每次都重新计算，时间复杂度是 $O(N^2)$。
+- **Cache 机制：** 将历史的 `k_cache` 和 `v_cache` 与当前步的 `xk`、`xv` 在 `seq_len` 维度（`dim=2`）拼接，形状从 `[B, H, old_len, D]` 变为 `[B, H, old_len+1, D]`。
+- **显存优化：** GQA 的 KV Cache 只需存储 `num_kv_heads` 个头，而不是 `num_heads` 个。例如 LLaMA-2 70B 的 KV Cache 显存占用是 MHA 的 1/8。
+- **工程陷阱：** 必须在 `repeat_kv` 之前进行拼接，否则会重复缓存已扩展的 KV，导致显存浪费。
+
+**3. TODO 3 (Scaled Dot-Product Attention)**
+
+- **注意力分数计算：** `scores = Q @ K^T / sqrt(d_k)`，其中 `xk.transpose(2, 3)` 将 `[B, H, S, D]` 转为 `[B, H, D, S]`，与 `xq` 的 `[B, H, S, D]` 相乘得到 `[B, H, S, S]` 的注意力矩阵。
+- **缩放因子：** 除以 `sqrt(head_dim)` 是为了防止点积结果过大导致 softmax 梯度消失。这是 Transformer 原论文的核心设计。
+- **Mask 机制：** `attention_mask` 通常是一个下三角矩阵（Causal Mask），用 `-inf` 填充上三角部分，确保当前 token 只能看到之前的 token。
+- **Softmax 归一化：** 在最后一个维度（`dim=-1`）上进行 softmax，将注意力分数转为概率分布。
+- **加权求和：** `output = probs @ V` 将注意力权重与 Value 相乘，得到加权后的特征表示。
+
+**4. TODO 4 (多头合并与输出投影)**
+
+- **维度转置：** `.transpose(1, 2)` 将 `[B, H, S, D]` 转回 `[B, S, H, D]`。
+- **内存连续性：** `.contiguous()` 确保张量在内存中是连续存储的，这是 `view` 操作的前提。如果不调用 `contiguous()`，`view` 可能会报错。
+- **合并多头：** `.view(batch_size, seq_len, -1)` 将 `[B, S, H, D]` 展平为 `[B, S, H*D]`，其中 `-1` 自动推断为 `num_heads * head_dim`。
+- **输出投影：** 通过 `o_proj` 线性层将多头特征映射回 `hidden_dim`，这是标准 Transformer 的最后一步。
+
+**进阶思考：GQA 的延迟扩充 (Lazy Expansion)**
+
+- **为什么不直接缓存扩充后的 KV？** 如果在缓存时就用 `repeat_kv` 扩充，显存占用会和 MHA 一样大，失去了 GQA 的优势。
+- **正确做法：** 只缓存原始的 `num_kv_heads` 个头，在每次前向传播时临时扩充。虽然增加了计算量，但由于注意力计算是 Memory-bound（受限于显存带宽而非计算速度），这个开销可以忽略。
+- **工业实践：** vLLM、TensorRT-LLM 等推理框架都采用这种延迟扩充策略，在 70B 模型上可以节省数十 GB 的 KV Cache 显存。
