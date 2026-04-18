@@ -13,12 +13,12 @@
 在 16、17 节中，我们探讨了系统级优化（PagedAttention, SGLang）。本节我们将剖析推理领域近年来最大的**算法级**创新 —— **投机解码 (Speculative Decoding)**。
 
 > **自回归生成的痛点：**
-> 传统的大模型生成 Token 是一个一个蹦的。每生成一个 Token，庞大的模型参数就要从 GPU 的 HBM 读到 SRAM 里一次。这是极度的 **Memory Bound（访存受限）**。GPU 的算力几乎都在闲置等待数据搬运。
+> 传统的大模型生成 Token 是一个一个蹦的。每生成一个 Token，庞大的模型参数就要从 GPU 的 HBM 读到 SRAM 里一次。这是非常的 **Memory Bound（访存受限）**。GPU 的算力几乎都在闲置等待数据搬运。
 
 > **投机解码的破局：**
 > 1. **草拟 (Draft)**：找一个非常小、速度极快的小模型（比如 1B 参数），让它连续盲猜并生成接下来 $K$ 个 Token（比如 4 个）。
 > 2. **验证 (Verify)**：将这 $K$ 个草拟的 Token 一次性喂给庞大的目标模型（如 70B）。因为是并行计算，大模型验证这 4 个 Token 的时间，几乎和生成 1 个 Token 的时间一样短！
-> 3. **接受与拒绝**：如果大模型的输出概率认同小模型的猜测，我们就直接白嫖了这 4 个 Token。如果不认同，我们在出错的地方截断，并用大模型的正确分布重采样。
+> 3. **接受与拒绝**：如果大模型的输出概率认同小模型的猜测，我们就直接免费获取了这 4 个 Token。如果不认同，我们在出错的地方截断，并用大模型的正确分布重采样。
 
 ### 动手实战：核心的接受/拒绝逻辑
 
@@ -30,7 +30,10 @@
 
 ```python
 import torch
+```
 
+
+```python
 def speculative_verify(draft_probs, target_probs, draft_tokens):
     """
     验证小模型生成的 K 个 Token，返回被接受的 Token 列表。
@@ -60,11 +63,9 @@ def speculative_verify(draft_probs, target_probs, draft_tokens):
         #     accepted_tokens.append(token_id)
         # ==========================================
         # TODO 2: 以 p / q 的概率接受
-        # 提示: torch.rand(1).item() 生成 0~1 均匀分布随机数
         # 如果拒绝，立即中止整个验证循环！因为一步错步步错。
         # ==========================================
         # else:
-        #     # r = torch.rand(1).item()
         #     if ???:
         #         accepted_tokens.append(token_id)
         #     else:
@@ -102,7 +103,6 @@ def test_speculative_decoding():
         target_probs[2, 30] = 0.1
         draft_probs[2, 30] = 0.9
         
-        # 既然我们用固定逻辑测，我们把内部的 torch.rand 劫持掉，确保结果恒定
         original_rand = torch.rand
         def mock_rand(*args, **kwargs):
             # 依次返回 0.5, 0.9 供判断
@@ -121,7 +121,7 @@ def test_speculative_decoding():
         torch.rand = original_rand
         
         assert accepted == [10, 20], f"期望只接受前两个 token，但得到 {accepted}"
-        print("✅ 测试通过！成功实现了投机解码的接受与拒绝逻辑。")
+        print("✅ 测试通过！投机解码逻辑实现通过测试。")
         
     except NotImplementedError:
         print("请先完成 TODO 代码。")
@@ -143,8 +143,9 @@ test_speculative_decoding()
 
 ---
 
-投机解码（Speculative Decoding）通过小模型草拟和大模型并行验证，将原本由于 Memory Bound 导致的计算等待时间转化为并发算力。验证时采用 $p/q$ 的接受概率，在数学上完美保证了即使经过了小模型的瞎猜，最终采样的 Token 分布依然和只用大模型自回归生成的分布严格一致，实现了“无损加速”。
+## 参考代码与解析
 
+### 代码
 
 ```python
 def speculative_verify(draft_probs, target_probs, draft_tokens):
@@ -170,3 +171,7 @@ def speculative_verify(draft_probs, target_probs, draft_tokens):
 
 
 ```
+
+### 解析
+
+投机解码（Speculative Decoding）通过小模型草拟和大模型并行验证，将原本由于 Memory Bound 导致的计算等待时间转化为并发算力。验证时采用 $p/q$ 的接受概率，在数学上准确保证了即使经过了小模型的瞎猜，最终采样的 Token 分布依然和只用大模型自回归生成的分布严格一致，实现了“无损加速”。
