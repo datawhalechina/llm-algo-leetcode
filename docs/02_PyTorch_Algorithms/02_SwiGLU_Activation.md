@@ -30,12 +30,9 @@
 > **什么是 SwiGLU？**
 > 就是把 GLU 中的激活函数 $\sigma$ 换成了 **Swish**（即 $x \cdot \text{Sigmoid}(\beta x)$，在 PyTorch 中 $\beta=1$ 时等于 `SiLU`）。
 
-### Step 2: 代码实现框架
-经典的 SwiGLU 实现通常需要三个权重矩阵：`W_gate`, `W_up`, 和 `W_down`。输入 `x` 分别经过前两个线性层，其中一个经过 SiLU 激活，然后两者逐元素相乘，最后再经过 `W_down` 投影回原始维度。
+### Step 2: 核心数学机制：参数量对齐
 
-###  Step 3: 核心数学机制：参数量对齐
-
-**经典的面试拷问：**
+**典型的面试问题：**
 > “在 GPT-2 中，隐藏层维度通常是输入维度 $d$ 的 4 倍（即 $4d$）。但在使用 SwiGLU 的 LLaMA 中，为什么隐藏层维度变成了 $\frac{8}{3}d$ 并向上取整？”
 
 **推导过程：**
@@ -56,8 +53,22 @@
    $3 \cdot d \cdot h_{swiglu} = 8d^2$
    解得：$h_{swiglu} = \mathbf{\frac{8}{3}d}$
    
-*这正是 LLaMA 源码中对中间层维度进行 `int(8 * hidden_size / 3)` 计算的根本原因！*
+这正是 LLaMA 源码中对中间层维度进行 `int(8 * hidden_size / 3)` 计算的根本原因。
+### Step 3: 工业级实现框架与性能陷阱 (Memory Bound)
 
+在理解了 SwiGLU 的基本公式（`down_proj(SiLU(gate_proj(x)) * up_proj(x))`）和 $8/3$ 维度由来后，如何把它写进真实的训练框架中？
+
+**性能陷阱 1：张量并行 (TP) 与内存对齐**
+在真实的 LLaMA 源码中，除了按 $8/3$ 计算出隐藏层维度，还需要将其向上取整对齐到一个 `multiple_of`（通常是 256）的倍数。
+这不仅是为了让单卡 Tensor Core（通常要求 8-byte 或 32-byte 对齐）跑得更快，更是因为大模型训练会使用**张量并行 (Tensor Parallelism)**。如果隐藏层维度不能被 GPU 数量整除（例如 $TP=8$ 时，256 的倍数分给 8 张卡，每张卡至少能分到 32 维），在切分权重矩阵时就会发生严重的报错。
+
+**性能陷阱 2：访存瓶颈 (Memory Bound) 与矩阵融合**
+在最朴素的代码实现中，开发者会分别定义并执行 `gate_proj(x)` 和 `up_proj(x)`。
+由于这两个线性层**共享完全相同的输入张量 $x$**，分开计算会导致巨大的输入 $x$ 被 GPU 从全局显存 (HBM) 中读取两次。
+> **工业界解法 (Matrix Fusion)**：
+> 在 vLLM、Megatron 等主流框架中，标准的做法是将 $W_{gate}$ 和 $W_{up}$ 这两个形状为 `[hidden_size, intermediate_size]` 的权重矩阵，在初始化时拼接成一个**巨大的融合矩阵 `gate_up_proj`**，其形状为 `[hidden_size, 2 * intermediate_size]`。
+> 
+> 在前向传播时，输入 $x$ 只需要被读取一次进行一次大规模矩阵乘法。得到的结果再通过 `torch.chunk(2, dim=-1)` 切分为两半，分别作为 gate 和 up 块。这极大地缓解了内存带宽瓶颈。
 ###  Step 4: 动手实战
 
 **要求**：请补全下方 `calculate_intermediate_size` 和 `SwiGLU` 模块的代码。
@@ -67,7 +78,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+```
 
+
+```python
 def calculate_intermediate_size(hidden_size: int, multiple_of: int = 256):
     """
     计算 LLaMA 风格的 SwiGLU 隐藏层维度
@@ -79,13 +93,13 @@ def calculate_intermediate_size(hidden_size: int, multiple_of: int = 256):
     """
     # ==========================================
     # TODO 1: 计算理论隐藏层大小 (8/3 * hidden_size)
-    # 提示: 使用 int() 或 //
+    # 提示: 注意使用整数除法
     # ==========================================
     # intermediate_size = ???
     
     # ==========================================
     # TODO 2: 向 multiple_of 对齐 (向上取整)
-    # 提示: ((size + multiple_of - 1) // multiple_of) * multiple_of
+    # 提示: 思考如何利用整除的特性实现向上取整
     # ==========================================
     # aligned_size = ???
     
@@ -96,22 +110,24 @@ class SwiGLU_MLP(nn.Module):
     def __init__(self, hidden_size: int, intermediate_size: int):
         super().__init__()
         # ==========================================
-        # TODO 3: 定义 SwiGLU 所需的三个投影矩阵
+        # TODO 3: 定义工业级 SwiGLU 的投影矩阵
+        # 1. 融合的 gate_up_proj (输出维度为 2 * intermediate_size)
+        # 2. 降维的 down_proj
         # (全部无 bias)
         # ==========================================
-        # self.gate_proj = ???
-        # self.up_proj = ???
+        # self.gate_up_proj = ???
         # self.down_proj = ???
         pass
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # ==========================================
-        # TODO 4: 组装 SwiGLU 前向传播
-        # 公式: down_proj( SiLU(gate_proj(x)) * up_proj(x) )
+        # TODO 4: 组装工业级 SwiGLU 前向传播
+        # 1. 经过融合矩阵得到 gate_up 结果
+        # 2. 使用 torch.chunk(2, dim=-1) 切分为 gate 和 up
+        # 3. 计算激活机制与降维
         # ==========================================
         # return ???
         pass
-
 ```
 
 
@@ -134,15 +150,19 @@ def test_swiglu():
         # 标准 MLP: 2 * (4096 * 16384) = 134,217,728
         # LLaMA SwiGLU: 3 * (4096 * 11008) = 135,266,304 (因为向上取整，略大一点点)
         mlp = SwiGLU_MLP(hidden_size, aligned_size)
+        
+        # 检查是否使用了融合矩阵
+        assert hasattr(mlp, 'gate_up_proj'), "请实现融合的 gate_up_proj 矩阵！"
+        
         total_params = sum(p.numel() for p in mlp.parameters())
         assert total_params == 135266304, f"参数量异常！{total_params}"
-        print(f"✅ SwiGLU 实例参数量验证正确：{total_params} 个参数")
+        print(f"✅ SwiGLU 实例参数量验证正确：{total_params} 个参数 (包含融合矩阵)")
         
         # 3. 测试前向传播连通性
         x = torch.randn(2, 10, hidden_size)
         out = mlp(x)
         assert out.shape == x.shape, "输出形状不等于输入形状！"
-        print("\n✅ All Tests Passed! 你已经吃透了当前大模型最主流激活函数的底层数学逻辑！")
+        print("\n✅ All Tests Passed! 你已经掌握了当前大模型最主流激活函数的底层数学逻辑与访存优化！")
         
     except NotImplementedError:
         print("请先完成 TODO 部分的代码！")
@@ -154,7 +174,6 @@ def test_swiglu():
         print(f"❌ 发生异常: {e}")
 
 test_swiglu()
-
 ```
 
 ---
@@ -166,10 +185,13 @@ test_swiglu()
 <br><br><br><br><br><br><br><br><br><br>
 
 ---
-SwiGLU 替代了传统 MLP，用门控机制（Gate 和 Up）进行升维，然后点乘再 Down 降维。通过推导公式 3 * d * h = 8 * d^2，隐藏层维度为 8/3 倍。为了提升硬件的访存效率，我们还需要将该维度向上取整对齐到 multiple_of 的倍数。代码中实现了计算这个对齐大小，以及前向计算 down_proj(SiLU(gate_proj(x)) * up_proj(x))。
+## 参考代码与解析
+
+### 代码
 
 ```python
 def calculate_intermediate_size(hidden_size: int, multiple_of: int = 256):
+    # TODO 1 & 2
     intermediate_size = int(hidden_size * 8 / 3)
     aligned_size = ((intermediate_size + multiple_of - 1) // multiple_of) * multiple_of
     return aligned_size
@@ -177,10 +199,30 @@ def calculate_intermediate_size(hidden_size: int, multiple_of: int = 256):
 class SwiGLU_MLP(nn.Module):
     def __init__(self, hidden_size: int, intermediate_size: int):
         super().__init__()
-        self.gate_proj = nn.Linear(hidden_size, intermediate_size, bias=False)
-        self.up_proj = nn.Linear(hidden_size, intermediate_size, bias=False)
+        # TODO 3
+        self.gate_up_proj = nn.Linear(hidden_size, 2 * intermediate_size, bias=False)
         self.down_proj = nn.Linear(intermediate_size, hidden_size, bias=False)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.down_proj(F.silu(self.gate_proj(x)) * self.up_proj(x))
+        # TODO 4
+        gate_up = self.gate_up_proj(x)
+        gate, up = torch.chunk(gate_up, 2, dim=-1)
+        return self.down_proj(F.silu(gate) * up)
 ```
+
+### 解析
+
+**1. TODO 1 & 2 (隐藏层维度计算)**
+
+- **计算理论值：** 推导公式 $3 \cdot d \cdot h_{swiglu} = 8d^2$ 得出理论隐藏层维度应为 $\frac{8}{3}d$。
+- **硬件对齐：** 为了确保在张量并行时权重矩阵能够被所有 GPU 整除（不报错），并且满足 Tensor Core 对内存的对齐要求，必须将其向上取整对齐到 `multiple_of` 的倍数。
+
+**2. TODO 3 (定义矩阵)**
+
+- **矩阵融合：** 工业级实现的核心。将 `gate_proj` 和 `up_proj` 融合成一个完整的 `gate_up_proj` 线性层（输出维度为 `2 * intermediate_size`）。
+- **进阶思考：** 为什么要合并矩阵？如果分开计算，巨大的输入张量 $x$ 会被 GPU 从全局显存中读取两次。大模型计算受限于显存带宽，合并计算让输入 $x$ 仅被读取一次，显著降低访存开销和算子发射延迟。
+
+**3. TODO 4 (前向传播)**
+
+- **计算与切分：** 得到 `gate_up` 结果后，使用 `torch.chunk(2, dim=-1)` 沿最后一个维度均分为门控块 (`gate`) 和激活块 (`up`)。
+- **公式实现：** 执行 `down_proj(SiLU(gate) * up)` 计算，完成 SwiGLU 激活机制。
