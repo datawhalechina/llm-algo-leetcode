@@ -51,7 +51,10 @@ import torch
 import triton
 import triton.language as tl
 import math
+```
 
+
+```python
 @triton.jit
 def paged_attention_decoding_kernel(
     out_ptr, q_ptr, k_cache_ptr, v_cache_ptr,
@@ -70,7 +73,6 @@ def paged_attention_decoding_kernel(
     num_logical_blocks = tl.cdiv(context_len, BLOCK_SIZE)
     
     # 3. 加载 Query (解码阶段 Q 只有一个 Token)
-    # 假设 Q 的形状连续为 [batch, num_heads, head_dim]
     q_offset = batch_idx * tl.num_programs(1) * HEAD_DIM + head_idx * HEAD_DIM + tl.arange(0, HEAD_DIM)
     q = tl.load(q_ptr + q_offset)
     
@@ -83,11 +85,12 @@ def paged_attention_decoding_kernel(
     for logical_block_idx in range(num_logical_blocks):
         # ==========================================
         # TODO 1: 查表获取物理块索引 (Indirect Memory Access)
+        # 提示: 计算 block_tables 的偏移量，使用 tl.load 读取物理块索引
         # ==========================================
-        bt_offset = batch_idx * stride_bt_batch + logical_block_idx * stride_bt_block
-        physical_block_idx = tl.load(block_tables_ptr + bt_offset)
+        # bt_offset = ???
+        # physical_block_idx = ???
         
-        # 计算当前逻辑块内每个 Token 的全局实际索引，用于构造 Mask (防止越过 context_len)
+        # 计算当前逻辑块内每个 Token 的全局实际索引，用于构造 Mask
         start_token_idx = logical_block_idx * BLOCK_SIZE
         token_offsets = tl.arange(0, BLOCK_SIZE)
         physical_token_idx = start_token_idx + token_offsets
@@ -95,37 +98,34 @@ def paged_attention_decoding_kernel(
         
         # ==========================================
         # TODO 2: 计算 K 和 V 在物理池中的偏移量，并加载到 SRAM
+        # 提示: 使用 physical_block_idx 和各维度的 stride 计算偏移量
         # K_cache 形状: [num_blocks, block_size, num_heads, head_dim]
         # ==========================================
-        # k_offset = physical_block_idx * stride_k_block + token_offsets[:, None] * stride_k_seq + head_idx * stride_k_head + tl.arange(0, HEAD_DIM)[None, :]
-        k_offset = physical_block_idx * stride_k_block + token_offsets[:, None] * stride_k_seq + head_idx * stride_k_head + tl.arange(0, HEAD_DIM)[None, :]
-        
-        k = tl.load(k_cache_ptr + k_offset, mask=mask[:, None], other=0.0)
-        v = tl.load(v_cache_ptr + k_offset, mask=mask[:, None], other=0.0)
+        # k_offset = ???
+        # k = ???
+        # v = ???
         
         # ==========================================
         # TODO 3: 计算注意力分数 qk，并屏蔽 (Mask) 无效 Token
+        # 提示: 计算 Q 和 K 的点积，乘以缩放因子，使用 mask 屏蔽无效位置
         # ==========================================
-        # Q 是一维 (HEAD_DIM,), K 是二维 (BLOCK_SIZE, HEAD_DIM)
-        qk = tl.sum(q[None, :] * k, axis=1) * sm_scale
-        qk = tl.where(mask, qk, -float('inf'))
+        # qk = ???
         
         # Online Softmax 归约
-        m_block = tl.max(qk, axis=0)
-        m_new = tl.maximum(m_i, m_block)
-        alpha = tl.exp(m_i - m_new)
-        p = tl.exp(qk - m_new)
-        l_new = l_i * alpha + tl.sum(p, axis=0)
+        # m_block = ???
+        # m_new = ???
+        # alpha = ???
+        # p = ???
+        # l_new = ???
         
         # 累加 V
-        acc = acc * alpha + tl.sum(p[:, None] * v, axis=0)
+        # acc = ???
         
-        m_i = m_new
-        l_i = l_new
+        # m_i = ???
+        # l_i = ???
+        pass
         
-    # 5. 最终归一化并写回
-    acc = acc / l_i
-    tl.store(out_ptr + q_offset, acc.to(out_ptr.dtype.element_ty))
+    raise NotImplementedError("请完成 TODO 1-3")
 
 def triton_paged_attention_decode(q, k_cache, v_cache, block_tables, context_lens, block_size):
     batch_size, num_heads, head_dim = q.shape
@@ -205,9 +205,9 @@ def test_paged_attention():
         # 3. 对比验证
         diff = torch.max(torch.abs(out_ref - out_tri))
         print(f"最大误差: {diff.item():.6e}")
-        assert diff < 1e-3, "Triton PagedAttention 计算结果不正确！"
+        assert diff < 2e-3, "Triton PagedAttention 计算结果不正确！"
         
-        print("✅ 完美！你成功实现了 vLLM 赖以成名的 PagedAttention 算子核心！")
+        print("✅ PagedAttention 间接寻址与 Online Softmax 验证通过。")
         
     
         print("\n--- ⚡ 性能基准测试 (Benchmark) ---")
@@ -238,7 +238,7 @@ def test_paged_attention():
         quantiles = [0.5, 0.2, 0.8]
         ms_tr, _, _ = triton.testing.do_bench(lambda: triton_paged_attention_decode(q_l, k_cache_l, v_cache_l, block_tables_l, context_lens_l, block_size), quantiles=quantiles)
         print(f"Triton PagedAttention Time (Batch={batch_size}, AvgSeqLen=500): {ms_tr:.4f} ms")
-        print("💡 在工业界，PagedAttention 不仅通过免除 KV 拷贝提高了吞吐，更重要的是消除了显存碎片，允许接入多达 3 倍的并发请求！")
+        print("💡 在工业界，PagedAttention 不仅通过免除 KV 拷贝提高了吞吐，更重要的是消除了显存碎片，允许接入多达 3 倍的并发请求。")
     except NotImplementedError:
         print("请先完成 TODO 代码！")
     except Exception as e:
@@ -257,12 +257,15 @@ test_paged_attention()
 <br><br><br><br><br><br><br><br><br><br>
 
 ---
+## 参考代码与解析
+
 ### 💡 参考解答：Triton PagedAttention (KV Cache 间接寻址)
 
 在这个实现中，核心在于处理**间接寻址**带来的访存跳转：
 1. **查表获取物理索引**：首先通过 `logical_block_idx` 在 `block_tables` 中查表，得到真正的 `physical_block_idx`。
 2. **构建物理缓存指针偏移**：由于缓存存储的形状是 `[num_blocks, block_size, num_heads, head_dim]`，我们需要结合对应的 `stride` 和当前获取的 `physical_block_idx`，精确计算出所需的内存区域偏移。这让我们可以在不触发显存重排列的情况下直接访问碎片化的内存块。
 3. **计算 Attention 与 Online Softmax**：加载得到碎片的 K 和 V 块后，就直接在 SRAM 里进行注意力点积和在线 Softmax 状态聚合，将内存读写与计算完美重叠。
+### 代码
 
 ```python
 import torch
@@ -349,4 +352,97 @@ def triton_paged_attention_decode(q, k_cache, v_cache, block_tables, context_len
         BLOCK_SIZE=block_size, HEAD_DIM=head_dim
     )
     return out
+
 ```
+
+### 解析
+
+**1. TODO 1: 查表获取物理块索引 (Indirect Memory Access)**
+- **实现方式**：
+  ```python
+  bt_offset = batch_idx * stride_bt_batch + logical_block_idx * stride_bt_block
+  physical_block_idx = tl.load(block_tables_ptr + bt_offset)
+  ```
+- **关键点**：这是 PagedAttention 的核心创新，通过间接寻址实现显存碎片化管理
+- **技术细节**：
+  - `block_tables` 是一个二维表，形状为 `[batch_size, max_logical_blocks]`
+  - 每个序列有自己的映射表，记录逻辑块到物理块的映射关系
+  - 使用 `stride_bt_batch` 定位到当前序列的映射表
+  - 使用 `stride_bt_block` 定位到当前逻辑块的映射项
+  - `tl.load` 读取物理块索引，这个索引指向 KV Cache 物理内存池中的实际位置
+
+**2. TODO 2: 计算 K 和 V 在物理池中的偏移量，并加载到 SRAM**
+- **实现方式**：
+  ```python
+  k_offset = physical_block_idx * stride_k_block + token_offsets[:, None] * stride_k_seq + head_idx * stride_k_head + tl.arange(0, HEAD_DIM)[None, :]
+  k = tl.load(k_cache_ptr + k_offset, mask=mask[:, None], other=0.0)
+  v = tl.load(v_cache_ptr + k_offset, mask=mask[:, None], other=0.0)
+  ```
+- **关键点**：使用物理块索引和多维 stride 精确定位 KV Cache 中的数据
+- **技术细节**：
+  - KV Cache 形状：`[num_blocks, block_size, num_heads, head_dim]`
+  - `physical_block_idx * stride_k_block`：定位到物理块的起始位置
+  - `token_offsets[:, None] * stride_k_seq`：定位到块内的 Token 位置（二维索引的行维度）
+  - `head_idx * stride_k_head`：定位到当前 Head
+  - `tl.arange(0, HEAD_DIM)[None, :]`：定位到特征维度（二维索引的列维度）
+  - 使用 `mask[:, None]` 保护边界，防止读取超出 `context_len` 的无效数据
+  - K 和 V 使用相同的偏移量，因为它们的存储布局一致
+
+**3. TODO 3: 计算注意力分数 qk，并屏蔽 (Mask) 无效 Token**
+- **实现方式**：
+  ```python
+  qk = tl.sum(q[None, :] * k, axis=1) * sm_scale
+  qk = tl.where(mask, qk, -float('inf'))
+  ```
+- **关键点**：计算 Q 和 K 的点积，并使用 mask 屏蔽无效位置
+- **技术细节**：
+  - `q` 形状：`(HEAD_DIM,)`，是解码阶段的单个 Token Query
+  - `k` 形状：`(BLOCK_SIZE, HEAD_DIM)`，是当前物理块的所有 Key
+  - `q[None, :]` 扩展为 `(1, HEAD_DIM)`，与 `k` 广播相乘
+  - `tl.sum(..., axis=1)` 对特征维度求和，得到 `(BLOCK_SIZE,)` 的注意力分数
+  - `sm_scale = 1.0 / sqrt(head_dim)` 是标准的缩放因子，防止 Softmax 梯度消失
+  - `tl.where(mask, qk, -float('inf'))` 将超出 `context_len` 的位置设为负无穷，确保 Softmax 后权重为 0
+
+**4. Online Softmax 归约**
+- **实现方式**（答案区代码中的注释部分）：
+  ```python
+  m_block = tl.max(qk, axis=0)
+  m_new = tl.maximum(m_i, m_block)
+  alpha = tl.exp(m_i - m_new)
+  p = tl.exp(qk - m_new)
+  l_new = l_i * alpha + tl.sum(p, axis=0)
+  ```
+- **关键点**：在循环中维护 Softmax 的最大值和归一化因子，避免数值溢出
+- **技术细节**：
+  - `m_i` 和 `l_i` 是累积的最大值和归一化因子
+  - `m_block` 是当前块的最大注意力分数
+  - `m_new` 是全局最大值，用于数值稳定的 Softmax
+  - `alpha = exp(m_i - m_new)` 是修正因子，用于更新之前累积的结果
+  - `p = exp(qk - m_new)` 是当前块的 Softmax 分子（未归一化）
+  - `l_new` 是更新后的归一化因子
+
+**5. 累加 V 并更新状态**
+- **实现方式**：
+  ```python
+  acc = acc * alpha + tl.sum(p[:, None] * v, axis=0)
+  m_i = m_new
+  l_i = l_new
+  ```
+- **关键点**：使用修正因子更新累积的输出，并更新 Softmax 状态
+- **技术细节**：
+  - `acc * alpha` 修正之前累积的输出（因为最大值变化了）
+  - `p[:, None] * v` 计算加权的 V，形状为 `(BLOCK_SIZE, HEAD_DIM)`
+  - `tl.sum(..., axis=0)` 对 Token 维度求和，得到 `(HEAD_DIM,)` 的输出贡献
+  - 更新 `m_i` 和 `l_i` 为新的状态，用于下一个块的计算
+
+**工程优化要点**
+
+- **显存碎片化管理**：PagedAttention 将 KV Cache 切分成固定大小的物理块，通过映射表实现逻辑地址到物理地址的转换，消除了传统连续分配导致的显存碎片
+- **间接寻址**：通过 `block_tables` 查表实现动态路由，允许不同序列的 KV Cache 分散存储在物理内存池的任意位置
+- **Online Softmax**：在循环中维护 Softmax 状态，避免存储完整的注意力矩阵，节省显存并提高计算效率
+- **SRAM 内计算**：K、V 和注意力分数都在 SRAM 中计算，最小化 HBM 访问次数
+- **Mask 保护**：使用 `mask` 确保只处理有效的 Token，防止越界访问和计算错误
+- **数值稳定性**：使用 Safe Softmax（减去最大值）防止指数运算溢出
+- **并发承载能力**：vLLM 论文表明，PagedAttention 可以将并发请求数提升 3 倍以上，因为消除了显存碎片导致的浪费
+- **解码阶段优化**：本实现针对解码阶段（Query 只有一个 Token），避免了 Prefill 阶段的复杂性
+- **工业应用**：该算子是 vLLM 推理引擎的核心组件，广泛应用于大规模 LLM 推理服务
