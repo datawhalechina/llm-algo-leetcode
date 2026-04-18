@@ -43,7 +43,10 @@
 import torch
 import triton
 import triton.language as tl
+```
 
+
+```python
 @triton.jit
 def fused_softmax_kernel(
     output_ptr, input_ptr, input_row_stride, output_row_stride,
@@ -67,27 +70,31 @@ def fused_softmax_kernel(
     
     # ==========================================
     # TODO 1: 寻找当前行的最大值 (安全 Softmax 第一步)
+    # 提示: 使用 tl.max(row, axis=0) 进行归约
     # ==========================================
-    row_max = tl.max(row, axis=0)
+    # row_max = ???
     
     # 减去最大值，避免 exp() 溢出
-    safe_row = row - row_max
+    # safe_row = row - row_max
     
     # ==========================================
     # TODO 2: 计算指数 (Numerator)
+    # 提示: 使用 tl.exp() 函数
     # ==========================================
-    numerator = tl.exp(safe_row)
+    # numerator = ???
     
     # ==========================================
     # TODO 3: 求和 (Denominator)。注意只有 mask 内的值才能参与计算
     # 在 Load 时 other 补的是 -inf，其 exp(-inf) = 0，不影响 sum
+    # 提示: 使用 tl.sum(numerator, axis=0) 进行归约
     # ==========================================
-    denominator = tl.sum(numerator, axis=0)
+    # denominator = ???
     
     # ==========================================
     # TODO 4: 计算最终输出，并存回显存
+    # 提示: softmax_output = numerator / denominator
     # ==========================================
-    softmax_output = numerator / denominator
+    # softmax_output = ???
     
     # 定位输出指针，写回
     output_row_start_ptr = output_ptr + row_idx * output_row_stride
@@ -113,7 +120,6 @@ def triton_softmax(x: torch.Tensor):
         BLOCK_SIZE=BLOCK_SIZE,
     )
     return y
-
 ```
 
 
@@ -166,50 +172,59 @@ test_fused_softmax()
 <br><br><br><br><br><br><br><br><br><br>
 
 ---
-### Fused Softmax 参考实现解析
+## 参考代码与解析
 
-1. **并行策略**: 分配每个 Triton Block 处理矩阵的一行，这意味着 `row_max`, `sum` 都只需要沿 `axis=0` 执行局部归约即可。
-2. **处理溢出 (`Safe Softmax`)**: 寻找每行的最大值并将其从各个元素中减去，再求 `exp()`，这是为了防止浮点数溢出，在深度学习中这是一个非常基础但关键的技巧。
-3. **Mask 的精妙处理**: 越界的元素我们 `load` 了 `-inf`。`-inf` 减去 `row_max` 依然是负无穷；而 $e^{-\infty} = 0$，所以在 `tl.sum` 的阶段自然加的是 0，完全不会干扰分母计算。计算最终结果时越界位置也会得到 $0/1 = 0$，最终写回时被 `mask` 过滤掉。
+### 代码
 
 ```python
-# ==========================================
-# 💡 参考答案
-# ==========================================
-
 import torch
 import triton
 import triton.language as tl
 
 @triton.jit
-def softmax_kernel(
-    input_ptr, output_ptr,
-    input_row_stride, output_row_stride,
+def fused_softmax_kernel(
+    output_ptr, input_ptr, input_row_stride, output_row_stride,
     n_cols,
     BLOCK_SIZE: tl.constexpr,
 ):
+    # 1. 获取当前 program 处理的是哪一行
     row_idx = tl.program_id(0)
-    input_row_start_ptr = input_ptr + row_idx * input_row_stride
     
+    # 2. 定位到当前行的起始指针
+    row_start_ptr = input_ptr + row_idx * input_row_stride
+    
+    # 3. 构造这一行的连续索引和掩码 (防越界)
     col_offsets = tl.arange(0, BLOCK_SIZE)
-    input_ptrs = input_row_start_ptr + col_offsets
+    input_ptrs = row_start_ptr + col_offsets
     mask = col_offsets < n_cols
     
+    # 4. 加载一整行到 SRAM 中
     row = tl.load(input_ptrs, mask=mask, other=-float('inf'))
     
-    # 1. 求最大值以确保数值稳定
+    # ==========================================
+    # TODO 1: 寻找当前行的最大值 (安全 Softmax 第一步)
+    # ==========================================
     row_max = tl.max(row, axis=0)
+    
+    # 减去最大值，避免 exp() 溢出
     safe_row = row - row_max
     
-    # 2. 计算指数
+    # ==========================================
+    # TODO 2: 计算指数 (Numerator)
+    # ==========================================
     numerator = tl.exp(safe_row)
     
-    # 3. 计算分母（越界部分由于 load 了 -inf，exp 后是 0，不影响 sum）
+    # ==========================================
+    # TODO 3: 求和 (Denominator)
+    # ==========================================
     denominator = tl.sum(numerator, axis=0)
     
-    # 4. 最终归一化与写回
+    # ==========================================
+    # TODO 4: 计算最终输出
+    # ==========================================
     softmax_output = numerator / denominator
     
+    # 定位输出指针，写回
     output_row_start_ptr = output_ptr + row_idx * output_row_stride
     output_ptrs = output_row_start_ptr + col_offsets
     tl.store(output_ptrs, softmax_output, mask=mask)
@@ -227,13 +242,41 @@ def triton_softmax(x: torch.Tensor) -> torch.Tensor:
         
     grid = (M,)
     
-    softmax_kernel[grid](
-        x, y,
+    fused_softmax_kernel[grid](
+        y, x,
         x.stride(0), y.stride(0),
         N,
         BLOCK_SIZE=BLOCK_SIZE,
         num_warps=num_warps
     )
     return y
-
 ```
+
+### 解析
+
+**1. TODO 1: 寻找当前行的最大值**
+- **实现方式**：`row_max = tl.max(row, axis=0)`
+- **关键点**：使用 Triton 的归约操作在 SRAM 内高效计算行最大值
+- **技术细节**：这是 Safe Softmax 的第一步，通过减去最大值防止 `exp()` 计算时的数值溢出。由于越界位置在 `tl.load` 时填充了 `-inf`，它们不会影响最大值的计算。
+
+**2. TODO 2: 计算指数**
+- **实现方式**：`numerator = tl.exp(safe_row)`，其中 `safe_row = row - row_max`
+- **关键点**：对减去最大值后的数据计算指数，确保数值稳定性
+- **技术细节**：$e^{x_i - m}$ 在数学上等价于 $e^{x_i} / e^m$，但前者避免了大数值的指数运算。越界位置的 `-inf - row_max` 仍为 `-inf`，其 `exp(-inf) = 0`。
+
+**3. TODO 3: 求和计算分母**
+- **实现方式**：`denominator = tl.sum(numerator, axis=0)`
+- **关键点**：在 SRAM 内对指数值进行归约求和
+- **技术细节**：越界位置的 `exp(-inf) = 0` 不会影响求和结果，这是 mask 处理的精妙之处——通过填充 `-inf` 而非 `0`，使得在 `max` 和 `sum` 两个阶段都能正确处理边界。
+
+**4. TODO 4: 计算最终输出**
+- **实现方式**：`softmax_output = numerator / denominator`
+- **关键点**：逐元素除法得到归一化的 Softmax 概率分布
+- **技术细节**：最终写回时使用 `mask` 过滤，确保只有有效位置被写入输出张量。
+
+**工程优化要点**
+- **内存访问优化**：整行数据只从 HBM 读取一次，所有计算（max、exp、sum、div）都在 SRAM 内完成，最后只写回一次，相比朴素实现减少了 2 次 HBM 往返。
+- **数值稳定性**：Safe Softmax 通过减去最大值避免指数溢出，这是工业级实现的标准做法。
+- **并行策略**：每个 Triton Program 处理一行，行间完全并行，无需同步。
+- **动态 num_warps 调整**：根据 BLOCK_SIZE 动态调整 warp 数量，在答案实现中针对大块尺寸（≥2048）增加并行度以提升性能。
+- **Mask 处理技巧**：使用 `-inf` 作为越界填充值，利用其数学性质（`max` 时被忽略，`exp` 后为 0）优雅地处理边界情况，避免额外的条件分支。
