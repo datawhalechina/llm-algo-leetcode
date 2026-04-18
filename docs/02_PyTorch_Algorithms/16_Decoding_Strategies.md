@@ -51,7 +51,10 @@
 ```python
 import torch
 import torch.nn.functional as F
+```
 
+
+```python
 def apply_temperature(logits: torch.Tensor, temperature: float) -> torch.Tensor:
     """
     应用温度调节。注意：通常 T=1.0 意味着不改变，T 越接近 0 越确定（Greedy）。
@@ -74,11 +77,9 @@ def apply_top_k(logits: torch.Tensor, top_k: int) -> torch.Tensor:
         
     # ==========================================
     # TODO 2: 实现 Top-K 截断
-    # 提示: 使用 torch.topk 找出第 K 大的值，它是个一维标量还是张量？
     # 对于每个 batch，凡是严格小于这个 K_th value 的 logit，一律设为 -float('Inf')
     # ==========================================
     # filter_value = float('-inf')
-    # kth_values = torch.topk(logits, top_k, dim=-1)[0][..., -1, None]
     
     # logits[logits < kth_values] = ???
     # return logits
@@ -116,8 +117,6 @@ def apply_top_p(logits: torch.Tensor, top_p: float) -> torch.Tensor:
     # 将需要剔除的 sorted_logits 设为极小值
     # sorted_logits[sorted_indices_to_remove] = float('-inf')
     
-    # 将其散布回原始的顺序中 (使用 torch.scatter_)
-    # restored_logits = torch.zeros_like(logits).scatter_(
     #     dim=-1, index=sorted_indices, src=sorted_logits
     # )
     
@@ -178,7 +177,6 @@ def test_decoding():
         # 原始概率: [0.01, 0.10, 0.01, 0.03, 0.00, 0.54, 0.22, 0.01, 0.03, 0.00]
         # 降序: 0.54 (idx 5), 0.22 (idx 6), 0.10 (idx 1) ...
         # 累加和: 0.54, 0.76, 0.86
-        # top_p=0.8 时，0.54 + 0.22 = 0.76 < 0.8，还需要加上 0.10 才会超 0.8
         # 所以只有 idx 5, 6, 1 会被保留
         p_logits = apply_top_p(logits.clone(), 0.8)
         valid_count = (p_logits != float('-inf')).sum().item()
@@ -188,7 +186,7 @@ def test_decoding():
         # 4. 测试完整管线
         next_token = decode_next_token(logits.clone(), temperature=0.7, top_k=50, top_p=0.9)
         assert next_token.shape == (1, 1), "解码的词张量维度不对"
-        print(f"\n✅ All Tests Passed! 恭喜你，大模型解码流水线组装完成！本次采样的下一个词汇 ID 是: {next_token.item()}")
+        print(f"\n✅ All Tests Passed! 解码策略实现通过测试。本次采样的下一个词汇 ID 是: {next_token.item()}")
         
     except NotImplementedError:
         print("请先完成 TODO 部分的代码！")
@@ -212,18 +210,112 @@ test_decoding()
 <br><br><br><br><br><br><br><br><br><br>
 
 ---
-自回归模型的解码策略（如Top-K和Top-P/Nucleus Sampling）直接影响文本生成的多样性和连贯性。此实现通过在 logits 上进行排序或累积概率筛选，过滤掉低概率词汇，然后重新归一化以便进行多项式采样。
+## 参考代码与解析
+
+### 代码
 
 ```python
-def top_p_filtering(logits, top_p=0.9, filter_value=-float('Inf')):
-    sorted_logits, sorted_indices = torch.sort(logits, descending=True)
-    cumulative_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
+def apply_temperature(logits: torch.Tensor, temperature: float) -> torch.Tensor:
+    """
+    应用温度调节。注意：通常 T=1.0 意味着不改变，T 越接近 0 越确定（Greedy）。
+    """
+    # TODO 1: 确保 temperature 至少大于一个极小值(如 1e-6) 防止除零
+    temp = max(temperature, 1e-6)
+    return logits / temp
 
-    sorted_indices_to_remove = cumulative_probs > top_p
-    sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
-    sorted_indices_to_remove[..., 0] = 0
-
-    indices_to_remove = sorted_indices_to_remove.scatter(1, sorted_indices, sorted_indices_to_remove)
-    logits[indices_to_remove] = filter_value
+def apply_top_k(logits: torch.Tensor, top_k: int) -> torch.Tensor:
+    """
+    Top-K 截断。只保留值最大的 top_k 个，其余置为 -inf。
+    """
+    if top_k <= 0 or top_k >= logits.size(-1):
+        return logits
+        
+    # TODO 2: 实现 Top-K 截断
+    filter_value = float('-inf')
+    
+    # 找到第 K 大的值
+    kth_values, _ = torch.topk(logits, top_k, dim=-1, largest=True, sorted=True)
+    kth_values = kth_values[..., -1:] # 取最后一个（第 K 大的值）
+    
+    # 将小于第 K 大值的位置设为 -inf
+    logits = torch.where(logits < kth_values, torch.tensor(filter_value, device=logits.device), logits)
     return logits
+
+def apply_top_p(logits: torch.Tensor, top_p: float) -> torch.Tensor:
+    """
+    Top-p (Nucleus) 核采样截断。
+    """
+    if top_p <= 0.0 or top_p >= 1.0:
+        return logits
+        
+    # 1. 首先需要将 logits 从大到小排序
+    sorted_logits, sorted_indices = torch.sort(logits, descending=True)
+    
+    # 2. 对排序后的概率计算累加和
+    cumulative_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
+    
+    # TODO 3: 实现 Top-P 核心逻辑
+    # 找到需要丢弃的掩码
+    sorted_indices_to_remove = cumulative_probs > top_p
+    
+    # 向右平移掩码以保留最后一个刚好超过阈值的 token
+    sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
+    sorted_indices_to_remove[..., 0] = 0  # 确保无论如何最高概率的 token 不被丢弃
+    
+    # 将需要剔除的 sorted_logits 设为极小值
+    sorted_logits[sorted_indices_to_remove] = float('-inf')
+    
+    # 将排序后的 logits 恢复到原始顺序
+    restored_logits = torch.zeros_like(logits).scatter_(
+        dim=-1, index=sorted_indices, src=sorted_logits
+    )
+    
+    return restored_logits
+
+def decode_next_token(logits: torch.Tensor, temperature=0.7, top_k=50, top_p=0.9):
+    """
+    组合以上三种策略，并通过 Multinomial 进行随机多项式采样
+    """
+    # 1. 调温
+    logits = apply_temperature(logits, temperature)
+    
+    # 2. Top-K 截断 (通常先 K 后 p)
+    logits = apply_top_k(logits, top_k)
+    
+    # 3. Top-p 截断
+    logits = apply_top_p(logits, top_p)
+    
+    # 4. 概率重归一化
+    probs = F.softmax(logits, dim=-1)
+    
+    # 5. 从概率分布中采样 1 个词
+    next_token = torch.multinomial(probs, num_samples=1)
+    
+    return next_token
 ```
+
+### 解析
+
+**1. TODO 1: Temperature 温度调节**
+- **实现方式**：`temp = max(temperature, 1e-6)`，`return logits / temp`
+- **关键点**：温度越低（T < 1），分布越尖锐，模型越确定；温度越高（T > 1），分布越平缓，模型越随机
+- **技术细节**：防止除零错误，确保 temperature 至少为 1e-6
+
+**2. TODO 2: Top-K 截断**
+- **实现方式**：`kth_values = torch.topk(logits, top_k)[0][..., -1:]`，`logits = torch.where(logits < kth_values, -inf, logits)`
+- **关键点**：只保留概率最高的 K 个词，其余词的 logits 设为负无穷
+- **技术细节**：使用 `torch.topk` 找到第 K 大的值，然后用 `torch.where` 进行条件替换
+
+**3. TODO 3: Top-p (Nucleus) 核采样**
+- **实现方式**：对 logits 降序排序，计算累积概率，找到累积概率超过 p 的位置并屏蔽，最后用 `scatter_` 恢复原始顺序
+- **关键点**：动态截断——根据概率分布的形状自动决定保留多少个词
+- **技术细节**：
+  - 向右平移掩码（`sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()`）确保保留第一个超过阈值的词
+  - 使用 `scatter_` 将排序后的 logits 恢复到原始索引顺序
+
+**工程优化要点**
+- **Temperature 先行**：温度调节应该在截断之前进行，因为它影响概率分布的形状
+- **Top-K vs Top-p**：Top-K 是固定数量截断，Top-p 是动态截断，通常先应用 Top-K 再应用 Top-p
+- **数值稳定性**：使用 `-float('inf')` 而非直接删除元素，保持张量形状不变
+- **采样策略**：`torch.multinomial` 根据归一化后的概率分布进行多项式采样
+- **工业实践**：不同任务需要不同的超参数组合——代码生成通常用低温度（0.2-0.5），创意写作用高温度（0.7-1.0）
