@@ -22,7 +22,7 @@
 ### Step 1: 核心思想与痛点
 
 > **痛点 1：Static Batching 的低效**
-> 在传统的 PyTorch 推理中，Batch 内的不同请求长度不一。如果 Request A 生成了 10 个 Token 就结束了，而 Request B 需要生成 100 个，那么 A 生成完后 GPU 只能干等 B（即用 Padding 填充计算），导致算力极度浪费。
+> 在传统的 PyTorch 推理中，Batch 内的不同请求长度不一。如果 Request A 生成了 10 个 Token 就结束了，而 Request B 需要生成 100 个，那么 A 生成完后 GPU 只能干等 B（即用 Padding 填充计算），导致算力非常浪费。
 > **解法：Continuous Batching (Orca/vLLM)**
 > 打破 Static Batch 的概念，在 `Step` (Iteration) 粒度上动态重组。A 结束了，立刻把队列里的 Request C 塞进来接着算。
 
@@ -50,7 +50,10 @@
 ```python
 import torch
 from typing import List
+```
 
+
+```python
 class Request:
     def __init__(self, request_id: int, prompt_len: int):
         self.request_id = request_id
@@ -115,7 +118,6 @@ class KVCacheManager:
         """
         # ==========================================
         # TODO 4: 根据 req.block_table 的索引，
-        # 从 self.physical_kv_cache 中取出块，并用 torch.cat 在 seq_len (dim=0) 维度拼接
         # ==========================================
         # blocks = ???
         # cat_blocks = ???
@@ -162,7 +164,7 @@ def test_paged_attention_manager():
         assert cache.shape == (9, 64), f"拼装出来的连续 Cache 形状不对，应为 (9, 64)，实为 {cache.shape}"
         assert cache[0, 0] == 999.0, "数据未正确映射！"
         
-        print("\n✅ All Tests Passed! 恭喜你，你已经掌握了 vLLM / PagedAttention 破局大模型推理瓶颈的核心奥秘！")
+        print("\n✅ All Tests Passed! PagedAttention 内存管理逻辑验证通过。")
         
     except NotImplementedError:
         print("请先完成 TODO 部分的代码！")
@@ -188,27 +190,102 @@ test_paged_attention_manager()
 <br><br><br><br><br><br><br><br><br><br>
 
 ---
-PagedAttention 的灵感来源于操作系统中的虚拟内存管理，利用分页存储机制管理 KV Cache。其核心是在显存中按块分配缓存，从而能够显著提升显存利用率和并发度，是 vLLM 框架的基石。
+## 参考代码与解析
+
+### 代码
 
 ```python
-def paged_attention_sim(query, key_cache, value_cache, block_tables, context_lens, block_size):
-    batch_size, num_heads, head_size = query.shape
-    out = torch.zeros_like(query)
-    
-    for i in range(batch_size):
-        ctx_len = context_lens[i].item()
-        num_blocks = (ctx_len + block_size - 1) // block_size
-        blocks = block_tables[i, :num_blocks]
+class Request:
+    def __init__(self, request_id: int, prompt_len: int):
+        self.request_id = request_id
+        self.seq_len = prompt_len
+        self.block_table: List[int] = []
+
+class KVCacheManager:
+    def __init__(self, num_blocks: int, block_size: int, head_dim: int):
+        self.num_blocks = num_blocks
+        self.block_size = block_size
+        self.head_dim = head_dim
         
-        K_i = key_cache[blocks].reshape(-1, num_heads, head_size)[:ctx_len]
-        V_i = value_cache[blocks].reshape(-1, num_heads, head_size)[:ctx_len]
+        # TODO 1: 模拟预分配一块大显存池
+        self.physical_kv_cache = torch.zeros(num_blocks, block_size, head_dim)
         
-        q_i = query[i].unsqueeze(0)
+        # 跟踪哪些物理块被占用了
+        self.free_blocks: List[int] = list(range(num_blocks))
+
+    def allocate_for_prefill(self, req: Request):
+        """
+        请求刚进来时 (Prefill阶段)，为它的 Prompt 长度分配所需的全部 Block
+        """
+        # TODO 2: 计算需要的 block 数量（向上取整）
+        needed_blocks = (req.seq_len + self.block_size - 1) // self.block_size
         
-        scores = torch.matmul(q_i, K_i.transpose(-2, -1)) / math.sqrt(head_size)
-        attn_weights = F.softmax(scores, dim=-1)
+        # TODO 3: 从 free_blocks 中弹出对应数量的 block 索引
+        if len(self.free_blocks) < needed_blocks:
+            raise RuntimeError("OOM")
         
-        out[i] = torch.matmul(attn_weights, V_i).squeeze(0)
+        for _ in range(needed_blocks):
+            block_id = self.free_blocks.pop(0)
+            req.block_table.append(block_id)
+
+    def allocate_for_decode(self, req: Request):
+        """
+        自回归生成时 (Decode阶段)，检查序列长度。
+        如果当前最后一个 Block 满了，则按需分配 1 个新 Block。
+        """
+        req.seq_len += 1
         
-    return out
+        # TODO 4: 判断是否需要新的 Block
+        is_new_block_needed = (req.seq_len % self.block_size) == 1
+        
+        if is_new_block_needed:
+            if not self.free_blocks:
+                raise RuntimeError("OOM")
+            block_id = self.free_blocks.pop(0)
+            req.block_table.append(block_id)
+
+    def get_physical_cache(self, req: Request) -> torch.Tensor:
+        """
+        根据块表，把不连续的物理块"拼凑"成逻辑上连续的 KV Cache
+        """
+        # TODO 5: 根据 req.block_table 的索引，从物理池中提取对应的块
+        blocks = [self.physical_kv_cache[block_id] for block_id in req.block_table]
+        cat_blocks = torch.cat(blocks, dim=0)
+        
+        # 只截取真实 seq_len 长度返回
+        return cat_blocks[:req.seq_len]
 ```
+
+### 解析
+
+**1. TODO 1: 初始化物理块池**
+- **实现方式**：`self.physical_kv_cache = torch.zeros(num_blocks, block_size, head_dim)`
+- **关键点**：预分配固定大小的显存池，避免动态分配的碎片化
+- **技术细节**：形状为 `[num_blocks, block_size, head_dim]`，每个 block 存储固定数量的 token
+
+**2. TODO 2: 计算 Prefill 阶段需要的 block 数量**
+- **实现方式**：`needed_blocks = (req.seq_len + self.block_size - 1) // self.block_size`
+- **关键点**：向上取整，确保能容纳所有 token
+- **技术细节**：使用 `(a + b - 1) // b` 实现向上取整，避免浮点运算
+
+**3. TODO 3: 分配物理块**
+- **实现方式**：从 `free_blocks` 中弹出 `needed_blocks` 个索引，追加到 `req.block_table`
+- **关键点**：如果空闲块不足，抛出 OOM 异常
+- **技术细节**：使用 `pop(0)` 从队列头部取出，模拟 FIFO 分配策略
+
+**4. TODO 4: Decode 阶段按需分配**
+- **实现方式**：`is_new_block_needed = (req.seq_len % self.block_size) == 1`
+- **关键点**：只有当序列长度刚好跨越 block 边界时才分配新块
+- **技术细节**：`seq_len % block_size == 1` 表示刚进入新块的第一个位置
+
+**5. TODO 5: 拼装物理块**
+- **实现方式**：`blocks = [self.physical_kv_cache[block_id] for block_id in req.block_table]`，`cat_blocks = torch.cat(blocks, dim=0)`
+- **关键点**：根据块表索引，将不连续的物理块拼接成逻辑上连续的 KV Cache
+- **技术细节**：最后截取 `[:req.seq_len]` 因为最后一个块可能未填满
+
+**工程优化要点**
+- **显存利用率**：PagedAttention 将显存利用率从 40% 提升到 90%+，减少内部碎片
+- **动态批处理**：配合 Continuous Batching，实现请求级别的动态调度
+- **块大小权衡**：block_size 太小增加管理开销，太大增加内部碎片，通常选择 16-32
+- **共享机制**：vLLM 支持多个请求共享相同的 Prompt 块（如系统提示词），进一步节省显存
+- **工业实现**：真实的 vLLM 使用 CUDA kernel 实现 PagedAttention，支持多头注意力和批处理
