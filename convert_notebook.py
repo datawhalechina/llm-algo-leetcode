@@ -112,7 +112,7 @@ def main():
     print("=" * 60)
 
     # 1. Clear out all docs chapter directories
-    for d in ["docs/01_Hardware_Math_and_Systems", "docs/02_PyTorch_Algorithms", "docs/03_CUDA_and_Triton_Kernels"]:
+    for d in ["docs/00_Prerequisites", "docs/01_Hardware_Math_and_Systems", "docs/02_PyTorch_Algorithms", "docs/03_CUDA_and_Triton_Kernels"]:
         if os.path.exists(d):
             shutil.rmtree(d)
         os.makedirs(d, exist_ok=True)
@@ -120,7 +120,12 @@ def main():
 
     # 2. Iterate through all IPYNB notebooks
     converted_count = 0
-    for ipynb_path in sorted(glob.glob("02_PyTorch_Algorithms/*.ipynb") + glob.glob("03_CUDA_and_Triton_Kernels/*.ipynb")):
+    for ipynb_path in sorted(
+        glob.glob("00_Prerequisites/*.ipynb") +
+        glob.glob("01_Hardware_Math_and_Systems/*.ipynb") +
+        glob.glob("02_PyTorch_Algorithms/*.ipynb") +
+        glob.glob("03_CUDA_and_Triton_Kernels/*.ipynb")
+    ):
         out_path = os.path.join("docs", ipynb_path.replace(".ipynb", ".md"))
 
         with open(ipynb_path, "r", encoding="utf-8") as f:
