@@ -41,12 +41,26 @@ export default defineConfig({
       {
         text: '介绍',
         items: [
-          { text: '项目概览', link: '/' }
+          { text: '项目概览', link: '/' },
+          { text: '使用指南', link: '/guide' },
+          { text: '贡献指南', link: '/contributing' }
+        ]
+      },
+      {
+        text: '第零部分：前置知识与环境准备',
+        items: [
+          { text: '📖 完整导学', link: '/00_Prerequisites/intro' },
+          { text: '02. PyTorch Tensor Fundamentals', link: '/00_Prerequisites/02_PyTorch_Tensor_Fundamentals' },
+          { text: '03. PyTorch Autograd and Backward', link: '/00_Prerequisites/03_PyTorch_Autograd_and_Backward' },
+          { text: '06. Simple Neural Network Training', link: '/00_Prerequisites/06_Simple_Neural_Network_Training' },
+          { text: '10. PyTorch Profiling Basics', link: '/00_Prerequisites/10_PyTorch_Profiling_Basics' },
+          { text: '11. Memory Profiling and Optimization', link: '/00_Prerequisites/11_Memory_Profiling_and_Optimization' }
         ]
       },
       {
         text: '第一部分：硬件与系统基础',
         items: [
+          { text: '📖 完整导学', link: '/01_Hardware_Math_and_Systems/intro' },
           { text: '01. Data Types and Precision', link: '/01_Hardware_Math_and_Systems/01_Data_Types_and_Precision' },
           { text: '02. LLM Params and FLOPs', link: '/01_Hardware_Math_and_Systems/02_LLM_Params_and_FLOPs' },
           { text: '03. GPU Architecture and Memory', link: '/01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory' },
@@ -62,6 +76,7 @@ export default defineConfig({
       {
         text: '第二部分：PyTorch 核心算法',
         items: [
+          { text: '📖 完整导学', link: '/02_PyTorch_Algorithms/intro' },
 { text: '00. PyTorch Warmup', link: '/02_PyTorch_Algorithms/00_PyTorch_Warmup' },
           { text: '01. RMSNorm Tutorial', link: '/02_PyTorch_Algorithms/01_RMSNorm_Tutorial' },
           { text: '02. SwiGLU Activation', link: '/02_PyTorch_Algorithms/02_SwiGLU_Activation' },
@@ -93,6 +108,7 @@ export default defineConfig({
       {
         text: '第三部分：CUDA 与 Triton 算子',
         items: [
+          { text: '📖 完整导学', link: '/03_CUDA_and_Triton_Kernels/intro' },
           { text: '01. Triton Vector Addition', link: '/03_CUDA_and_Triton_Kernels/01_Triton_Vector_Addition' },
           { text: '02. Triton Fused SwiGLU', link: '/03_CUDA_and_Triton_Kernels/02_Triton_Fused_SwiGLU' },
           { text: '03. Triton Fused RMSNorm', link: '/03_CUDA_and_Triton_Kernels/03_Triton_Fused_RMSNorm' },
