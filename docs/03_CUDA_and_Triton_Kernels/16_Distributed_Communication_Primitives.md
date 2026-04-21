@@ -6,7 +6,7 @@
 >
 > 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
 >
-> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lynnyulinlin-debug/llm-algo-leetcode/blob/main/03_CUDA_and_Triton_Kernels/16_Distributed_Communication_Primitives.ipynb)
+> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/03_CUDA_and_Triton_Kernels/16_Distributed_Communication_Primitives.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 在前几节的 ZeRO-1 和 TP (张量并行) 中，我们只是通过**数组切片**逻辑上模拟了分布式计算。

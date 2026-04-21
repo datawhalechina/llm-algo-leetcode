@@ -6,7 +6,7 @@
 >
 > 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
 >
-> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lynnyulinlin-debug/llm-algo-leetcode/blob/main/03_CUDA_and_Triton_Kernels/19_CUDA_Shared_Memory_Optimization.ipynb)
+> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/03_CUDA_and_Triton_Kernels/19_CUDA_Shared_Memory_Optimization.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
@@ -356,6 +356,56 @@ torch::Tensor shared_gemm_cuda(torch::Tensor A, torch::Tensor B) {
   - 在计算当前Tile时，预取下一个Tile
   - 进一步隐藏内存延迟
   - 需要更多Shared Memory
+
+```python
+cpp_shared_source = '''
+torch::Tensor shared_gemm_cuda(torch::Tensor A, torch::Tensor B);
+'''
+
+# 编译扩展
+print("⏳ 正在编译带有 Shared Memory 的 CUDA GEMM，请稍候...")
+try:
+    shared_gemm_extension = load_inline(
+        name='shared_gemm_ext_answer',
+        cpp_sources=cpp_shared_source,
+        cuda_sources=cuda_shared_gemm_source,
+        functions=['shared_gemm_cuda'],
+        with_cuda=True,
+        extra_cflags=['-O3'],
+        extra_cuda_cflags=['-O3']
+    )
+    print("✅ 编译成功！")
+except Exception as e:
+    print(f"❌ 编译失败: {e}")
+    shared_gemm_extension = None
+
+# 测试函数
+def test_shared_gemm():
+    if not torch.cuda.is_available():
+        print("⏭️ 无 GPU，跳过测试")
+        return
+    
+    if shared_gemm_extension is None:
+        raise RuntimeError("CUDA 扩展编译失败，请检查 nvcc 是否安装")
+    
+    torch.manual_seed(42)
+    N = 1024
+    
+    A = torch.randn(N, N, device='cuda', dtype=torch.float32)
+    B = torch.randn(N, N, device='cuda', dtype=torch.float32)
+    
+    C_ref = A @ B
+    C_cu = shared_gemm_extension.shared_gemm_cuda(A, B)
+    
+    diff = torch.max(torch.abs(C_ref - C_cu))
+    assert diff < 1e-2, f"Shared Memory GEMM 计算结果错误！差异: {diff}"
+    
+    print("✅ Shared Memory GEMM 验证通过。")
+    print("工程实践：两次__syncthreads()分别防止脏读和数据覆盖，是Shared Memory编程的关键。")
+
+test_shared_gemm()
+```
+
 ### 思考与讨论
 
 **1. 为什么需要两次__syncthreads()？**
