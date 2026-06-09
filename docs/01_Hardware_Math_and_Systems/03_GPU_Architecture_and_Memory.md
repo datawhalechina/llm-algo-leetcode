@@ -9,7 +9,7 @@
 
 > **相关阅读**:  
 > 本章对应的练习资产：  
-> [`03_GPU_Architecture_and_Memory_Practice.ipynb`](./03_GPU_Architecture_and_Memory_Practice.ipynb)  
+> [`03_GPU_Architecture_and_Memory_Practice.ipynb`](./03_GPU_Architecture_and_Memory_Practice.md)  
 > [`03_GPU_Architecture_and_Memory_Practice.md`](./03_GPU_Architecture_and_Memory_Practice.md)  
 
 ---

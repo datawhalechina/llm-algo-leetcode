@@ -6,7 +6,7 @@
 
 > **相关阅读**:  
 > 本章对应的练习资产：  
-> [`02_LLM_Params_and_FLOPs_Practice.ipynb`](./02_LLM_Params_and_FLOPs_Practice.ipynb)  
+> [`02_LLM_Params_and_FLOPs_Practice.ipynb`](./02_LLM_Params_and_FLOPs_Practice.md)  
 > [`02_LLM_Params_and_FLOPs_Practice.md`](../docs/01_Hardware_Math_and_Systems/02_LLM_Params_and_FLOPs_Practice.md)  
 
 ---

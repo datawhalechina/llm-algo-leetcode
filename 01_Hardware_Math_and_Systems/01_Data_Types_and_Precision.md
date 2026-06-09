@@ -6,7 +6,7 @@
 
 > **相关阅读**:  
 > 本章对应的练习资产：  
-> [`01_Data_Types_and_Precision_Practice.ipynb`](./01_Data_Types_and_Precision_Practice.ipynb)  
+> [`01_Data_Types_and_Precision_Practice.ipynb`](./01_Data_Types_and_Precision_Practice.md)  
 > [`01_Data_Types_and_Precision_Practice.md`](../docs/01_Hardware_Math_and_Systems/01_Data_Types_and_Precision_Practice.md)    
 
 ---

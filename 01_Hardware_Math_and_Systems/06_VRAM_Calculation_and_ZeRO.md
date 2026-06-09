@@ -7,7 +7,7 @@
 
 > **相关阅读**:  
 > 本章对应的练习资产：  
-> [`06_VRAM_Calculation_and_ZeRO_Practice.ipynb`](./06_VRAM_Calculation_and_ZeRO_Practice.ipynb)  
+> [`06_VRAM_Calculation_and_ZeRO_Practice.ipynb`](./06_VRAM_Calculation_and_ZeRO_Practice.md)  
 > [`06_VRAM_Calculation_and_ZeRO_Practice.md`](../docs/01_Hardware_Math_and_Systems/06_VRAM_Calculation_and_ZeRO_Practice.md)  
 
 ---
