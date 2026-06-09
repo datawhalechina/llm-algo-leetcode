@@ -307,6 +307,26 @@
 
 ---
 
+### 代码练习（Code Practice Notebooks）
+
+为了帮助你将理论转化为实践，我们提供了 4 个 Jupyter Notebook 代码练习文件：
+
+| 文件 | 对应题目 | 内容 | 难度 |
+|:---|:---|:---|:---|
+| `[01_Data_Types_and_Precision_Practice.ipynb](./01_Data_Types_and_Precision_Practice.ipynb)` | 01题 | 显存计算、混合精度、量化 | Easy |
+| `[02_LLM_Params_and_FLOPs_Practice.ipynb](./02_LLM_Params_and_FLOPs_Practice.ipynb)` | 02题 | Transformer 参数计算、FLOPs 推导、Chinchilla 缩放律 | Medium |
+| `[03_GPU_Architecture_and_Memory_Practice.ipynb](./03_GPU_Architecture_and_Memory_Practice.ipynb)` | 03题 | 内存层级分析、Attention 显存、FlashAttention 节省 | Hard |
+| `[06_VRAM_Calculation_and_ZeRO_Practice.ipynb](./06_VRAM_Calculation_and_ZeRO_Practice.ipynb)` | 06题 | 混合精度显存、DDP vs ZeRO、梯度累积、显存优化 | Hard |
+
+**每个 Notebook 包含：**
+- 📝 详细的理论说明
+- 🔧 4-5 个 TODO 代码填空题
+- 🧪 自动化测试用例
+- 📚 参考答案与深度解析
+
+**使用方式：**
+1. 在 Colab 中打开 Notebook
+
 ## 📝 学习检查清单
 
 完成本章学习后，你应该能够：

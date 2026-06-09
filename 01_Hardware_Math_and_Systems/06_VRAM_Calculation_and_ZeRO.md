@@ -6,9 +6,9 @@
 这不仅考察对混合精度训练底层机制的理解，还深度考察对 DeepSpeed ZeRO 优化器各阶段（Stage 1/2/3）分布式切分原理的掌握。
 
 > **相关阅读**:  
-> 请前往实战篇进行相关代码练习：  
-> [`../02_PyTorch_Algorithms/21_Gradient_Checkpointing.md`](../02_PyTorch_Algorithms/21_Gradient_Checkpointing.md)  
-> [`../02_PyTorch_Algorithms/23_ZeRO_Optimizer_Sim.md`](../02_PyTorch_Algorithms/23_ZeRO_Optimizer_Sim.md)  
+> 本章对应的练习资产：  
+> [`06_VRAM_Calculation_and_ZeRO_Practice.ipynb`](./06_VRAM_Calculation_and_ZeRO_Practice.ipynb)  
+> [`06_VRAM_Calculation_and_ZeRO_Practice.md`](../docs/01_Hardware_Math_and_Systems/06_VRAM_Calculation_and_ZeRO_Practice.md)  
 
 ---
 

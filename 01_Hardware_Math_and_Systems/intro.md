@@ -262,6 +262,60 @@
 
 ---
 
+## 🎯 新增学习资源
+
+### 计算练习（Calculation Exercises）
+
+本章每个讨论题都配备了**计算练习**，帮助你巩固理论知识：
+
+**1A: 基础数学**
+- **01题**：5 个计算练习（数据格式、混合精度、量化）
+- **02题**：5 个计算练习（参数量、FLOPs、Chinchilla 定律）
+
+**1B: 硬件架构**
+- **03题**：4 个计算练习（内存层级、Attention 显存、FlashAttention）
+- **04题**：4 个计算练习（MHA/GQA/MLA、PagedAttention）
+- **05题**：3 个计算练习（通信带宽、3D 并行、TP 跨机性能）
+- **06题**：5 个计算练习（DDP、ZeRO-1/2/3、梯度累积）
+
+**1C: 系统与编译**
+- **07题**：3 个计算练习（PCIe 传输、CUDA Streams、CPU Offload）
+- **08题**：3 个计算练习（算子融合、线程层级、Triton 效率）
+- **09题**：3 个计算练习（算子下发开销、融合收益、编译成本）
+- **10题**：2 个计算练习（异构 GPU 对比、迁移成本）
+
+**总计：37 个计算练习**，每个都包含：
+- 📋 问题陈述
+- 📊 已知条件
+- 💡 解题提示
+- ✅ 详细答案与解析
+
+### 代码练习（Code Practice Notebooks）
+
+为了帮助你将理论转化为实践，我们提供了 4 个 Jupyter Notebook 代码练习文件：
+
+| 文件 | 对应题目 | 内容 | 难度 |
+|:---|:---|:---|:---|
+| `[01_Data_Types_and_Precision_Practice.ipynb](./01_Data_Types_and_Precision_Practice.ipynb)` | 01题 | 显存计算、混合精度、量化 | Easy |
+| `[02_LLM_Params_and_FLOPs_Practice.ipynb](./02_LLM_Params_and_FLOPs_Practice.ipynb)` | 02题 | Transformer 参数计算、FLOPs 推导、Chinchilla 缩放律 | Medium |
+| `[03_GPU_Architecture_and_Memory_Practice.ipynb](./03_GPU_Architecture_and_Memory_Practice.ipynb)` | 03题 | 内存层级分析、Attention 显存、FlashAttention 节省 | Hard |
+| `[06_VRAM_Calculation_and_ZeRO_Practice.ipynb](./06_VRAM_Calculation_and_ZeRO_Practice.ipynb)` | 06题 | 混合精度显存、DDP vs ZeRO、梯度累积、显存优化 | Hard |
+
+**每个 Notebook 包含：**
+- 📝 详细的理论说明
+- 🔧 4-5 个 TODO 代码填空题
+- 🧪 自动化测试用例
+- 📚 参考答案与深度解析
+
+**使用方式：**
+1. 在 Colab 中打开 Notebook
+2. 阅读理论说明和 TODO 注释
+3. 自己完成代码实现
+4. 运行测试验证答案
+5. 查看参考答案理解最佳实践
+
+---
+
 ## 💡 学习建议
 
 ### 学习方法
