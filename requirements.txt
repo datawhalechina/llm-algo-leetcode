@@ -1,13 +1,3 @@
-torch
-pytest
-einops
-transformers
-jupyterlab
-ipywidgets
-nbformat
-jupyterlab-mathjax3
-triton
-matplotlib
-termcolor
-nbconvert
-pandas
+-r requirements/base.txt
+-r requirements/dev.txt
+-r requirements/gpu.txt

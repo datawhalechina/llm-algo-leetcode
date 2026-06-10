@@ -5,9 +5,9 @@
 在计算任何大模型的显存或算力之前，我们必须彻底搞懂“数据”在 GPU 中到底长什么样。这是所有硬件推导和量化算法的最底层基石。本节我们将从最基础的字节换算开始，结合工业界最主流的 A100 与最前沿的 H100 架构，一路深入到混合精度的底层逻辑和最新的 FP8 黑科技。
 
 > **相关阅读**:  
-> 请前往实战篇进行相关代码练习：  
-> [`../02_PyTorch_Algorithms/20_Quantization_W8A16.md`](../02_PyTorch_Algorithms/20_Quantization_W8A16.md)    
-> [`../03_CUDA_and_Triton_Kernels/11_Triton_Quantization_Support.md`](../03_CUDA_and_Triton_Kernels/11_Triton_Quantization_Support.md)    
+> 本章对应的练习资产：  
+> [`01_Data_Types_and_Precision_Practice.ipynb`](./01_Data_Types_and_Precision_Practice.md)  
+> [`01_Data_Types_and_Precision_Practice.md`](../docs/01_Hardware_Math_and_Systems/01_Data_Types_and_Precision_Practice.md)    
 
 ---
 

@@ -2,7 +2,7 @@
 
 ## 🎯 本章概览
 
-本章包含 14 道题，覆盖从 Python 基础到 PyTorch 深度学习的完整入门知识。通过本章学习，你将建立扎实的编程基础，为后续章节的学习做好充分准备。
+本章规划覆盖从 Python 基础到 PyTorch 深度学习的完整入门知识。当前已补齐 00/01/04/05/07/08/09/12/13 的练习资产，02/03/06/10/11 的理论文档也已就绪。通过本章学习，你将建立扎实的编程基础，为后续章节的学习做好充分准备。
 
 ### 为什么需要 Chapter 0？
 
@@ -85,8 +85,8 @@
 
 | 题号 | 题目 | 难度 | 核心知识点 |
 |:---|:---|:---|:---|
-| 00 | [Python Essentials for LLM](./00_Python_Essentials_for_LLM.ipynb) | Easy | 列表推导、字典、函数、装饰器、类 |
-| 01 | [NumPy and Einsum](./01_NumPy_and_Einsum.ipynb) | Easy | 数组操作、广播、einsum 符号 |
+| 00 | [Python Essentials for LLM](./00_Python_Essentials_for_LLM.md) | Easy | 列表推导、字典、函数、装饰器、类 |
+| 01 | [NumPy and Einsum](./01_NumPy_and_Einsum.md) | Easy | 数组操作、广播、einsum 符号 |
 
 ### 📖 详细题目指南
 
@@ -145,10 +145,10 @@
 
 | 题号 | 题目 | 难度 | 核心知识点 |
 |:---|:---|:---|:---|
-| 02 | [PyTorch Tensor Fundamentals](./02_PyTorch_Tensor_Fundamentals.ipynb) | Easy | Tensor 创建、操作、设备转移、数据类型 |
-| 03 | [PyTorch Autograd and Backward](./03_PyTorch_Autograd_and_Backward.ipynb) | Medium | 自动求导、梯度计算、反向传播 |
-| 04 | [PyTorch nn.Module Basics](./04_PyTorch_nn_Module_Basics.ipynb) | Medium | 模块定义、前向传播、参数管理 |
-| 05 | [PyTorch Optimizers and Loss](./05_PyTorch_Optimizers_and_Loss.ipynb) | Medium | 损失函数、优化器、学习率 |
+| 02 | [PyTorch Tensor Fundamentals](./02_PyTorch_Tensor_Fundamentals.md) | Easy | Tensor 创建、操作、设备转移、数据类型 |
+| 03 | [PyTorch Autograd and Backward](./03_PyTorch_Autograd_and_Backward.md) | Medium | 自动求导、梯度计算、反向传播 |
+| 04 | [PyTorch nn.Module Basics](./04_PyTorch_nn_Module_Basics.md) | Medium | 模块定义、前向传播、参数管理 |
+| 05 | [PyTorch Optimizers and Loss](./05_PyTorch_Optimizers_and_Loss.md) | Medium | 损失函数、优化器、学习率 |
 
 ### 核心概念解析
 
@@ -213,10 +213,10 @@ class MyFunction(torch.autograd.Function):
 
 | 题号 | 题目 | 难度 | 核心知识点 |
 |:---|:---|:---|:---|
-| 06 | [Simple Neural Network Training](./06_Simple_Neural_Network_Training.ipynb) | Medium | 训练循环、验证、保存模型 |
-| 07 | [Activation Functions](./07_Activation_Functions.ipynb) | Easy | ReLU、GELU、SiLU 的实现与对比 |
-| 08 | [Normalization Techniques](./08_Normalization_Techniques.ipynb) | Medium | BatchNorm、LayerNorm 的原理与实现 |
-| 09 | [Attention Mechanism Intro](./09_Attention_Mechanism_Intro.ipynb) | Medium | Scaled Dot-Product Attention 基础 |
+| 06 | [Simple Neural Network Training](./06_Simple_Neural_Network_Training.md) | Medium | 训练循环、验证、保存模型 |
+| 07 | [Activation Functions](./07_Activation_Functions.md) | Easy | ReLU、GELU、SiLU 的实现与对比 |
+| 08 | [Normalization Techniques](./08_Normalization_Techniques.md) | Medium | BatchNorm、LayerNorm 的原理与实现 |
+| 09 | [Attention Mechanism Intro](./09_Attention_Mechanism_Intro.md) | Medium | Scaled Dot-Product Attention 基础 |
 
 ### 核心概念解析
 
@@ -263,6 +263,8 @@ for epoch in range(num_epochs):
 - 平滑的梯度，训练更稳定
 - 自门控机制，表达能力更强
 
+练习入口：[07 Activation Functions](./07_Activation_Functions.md)
+
 ---
 
 #### 归一化技术（08）
@@ -279,6 +281,8 @@ for epoch in range(num_epochs):
 - 不依赖 batch size，适合序列长度不固定的场景
 - 每个样本独立归一化，适合自回归生成
 
+练习入口：[08 Normalization Techniques](./08_Normalization_Techniques.md)
+
 ---
 
 #### Attention 机制（09）
@@ -292,6 +296,8 @@ Attention(Q, K, V) = softmax(QK^T / √d_k) V
 - **缩放因子 √d_k**：防止 softmax 饱和
 - **Causal Mask**：自回归生成时屏蔽未来信息
 - **多头注意力**：并行计算多个 Attention（Chapter 2 详细讲解）
+
+练习入口：[09 Attention Mechanism Intro](./09_Attention_Mechanism_Intro.md)
 
 ---
 
@@ -308,10 +314,10 @@ Attention(Q, K, V) = softmax(QK^T / √d_k) V
 
 | 题号 | 题目 | 难度 | 核心知识点 |
 |:---|:---|:---|:---|
-| 10 | [PyTorch Profiling Basics](./10_PyTorch_Profiling_Basics.ipynb) | Medium | torch.profiler、性能分析、瓶颈定位 |
-| 11 | [Memory Profiling and Optimization](./11_Memory_Profiling_and_Optimization.ipynb) | Medium | 内存分析、显存优化、梯度累积 |
-| 12 | [Debugging Techniques](./12_Debugging_Techniques.ipynb) | Medium | 梯度检查、NaN 调试、断点调试 |
-| 13 | [Jupyter and Git Basics](./13_Jupyter_and_Git_Basics.ipynb) | Easy | Notebook 使用、版本控制基础 |
+| 10 | [PyTorch Profiling Basics](./10_PyTorch_Profiling_Basics.md) | Medium | torch.profiler、性能分析、瓶颈定位 |
+| 11 | [Memory Profiling and Optimization](./11_Memory_Profiling_and_Optimization.md) | Medium | 内存分析、显存优化、梯度累积 |
+| 12 | [Debugging Techniques](./12_Debugging_Techniques.md) | Medium | 梯度检查、NaN 调试、断点调试 |
+| 13 | [Jupyter and Git Basics](./13_Jupyter_and_Git_Basics.md) | Easy | Notebook 使用、版本控制基础 |
 
 ### 核心概念解析
 
@@ -376,6 +382,17 @@ for name, param in model.named_parameters():
         if torch.isinf(param.grad).any():
             print(f"Inf in {name}")
 ```
+
+练习入口：[12 Debugging Techniques](./12_Debugging_Techniques.md)
+
+#### Jupyter and Git Basics（13）
+
+**实践重点：**
+- 识别 notebook 里的 code / markdown cell
+- 区分应该提交与不应该提交的临时文件
+- 养成先看 `git status` 再做 `git add` 的习惯
+
+练习入口：[13 Jupyter and Git Basics](./13_Jupyter_and_Git_Basics.md)
 
 ---
 

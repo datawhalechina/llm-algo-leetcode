@@ -1,0 +1,57 @@
+name: Preview VitePress site
+
+on:
+  push:
+    branches:
+      - "feat/**"
+      - "docs/**"
+      - "fix/**"
+      - "chore/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./docs
+        run: npm ci
+
+      - name: Build with VitePress
+        working-directory: ./docs
+        run: npm run docs:build
+
+      - name: Normalize artifact name
+        run: echo "ARTIFACT_NAME=vitepress-preview-${GITHUB_REF_NAME//\//-}" >> "$GITHUB_ENV"
+
+      - name: Upload preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: docs/.vitepress/dist
+          retention-days: 7
+
+      - name: Preview summary
+        run: |
+          echo "Preview build finished for branch: ${{ github.ref_name }}"
+          echo "Download the artifact named: $ARTIFACT_NAME"

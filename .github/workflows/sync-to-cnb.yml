@@ -1,0 +1,38 @@
+name: Sync to CNB
+
+on:
+  push:
+    branches:
+      - feat/cnb_adapt
+      - feat/platform-content-restructure
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-to-cnb-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    if: github.repository == 'lynnyulinlin-debug/llm-algo-leetcode'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "cnb-sync-bot"
+          git config user.email "cnb-sync-bot@example.com"
+
+      - name: Sync to CNB
+        env:
+          CNB_TOKEN: ${{ secrets.CNB_TOKEN }}
+        run: |
+          git remote add cnb https://oauth2:${CNB_TOKEN}@cnb.cool/lynn_jingjing/llm-algo-leetcode.git
+          git push cnb HEAD:main --force

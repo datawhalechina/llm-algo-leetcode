@@ -1,0 +1,11 @@
+name: llm_algo_cnb
+channels:
+  - conda-forge
+  - pytorch
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - -r ../requirements/base.txt
+      - -r ../requirements/dev.txt
+      - -r ../requirements/gpu.txt

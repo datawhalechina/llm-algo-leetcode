@@ -5,7 +5,9 @@
 面试常考题：以经典的 LLaMA-7B 模型为例，深度剖析大模型底层参数量的具体分布，并一步步推导前向推理与完整训练所需的真实算力（FLOPs）需求。
 
 > **相关阅读**:  
-> 本节为纯理论与常识科普，暂无强关联的代码实战，推荐作为基石阅读。  
+> 本章对应的练习资产：  
+> [`02_LLM_Params_and_FLOPs_Practice.ipynb`](./02_LLM_Params_and_FLOPs_Practice.md)  
+> [`02_LLM_Params_and_FLOPs_Practice.md`](./02_LLM_Params_and_FLOPs_Practice.md)  
 
 ---
 

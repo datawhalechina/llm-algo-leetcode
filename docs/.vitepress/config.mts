@@ -43,18 +43,28 @@ export default defineConfig({
         items: [
           { text: '项目概览', link: '/' },
           { text: '使用指南', link: '/guide' },
-          { text: '贡献指南', link: '/contributing' }
+          { text: '贡献指南', link: '/contributing' },
+          { text: '维护与发布手册', link: '/maintenance' }
         ]
       },
       {
         text: '第零部分：前置知识与环境准备',
         items: [
           { text: '📖 完整导学', link: '/00_Prerequisites/intro' },
+          { text: '00. Python Essentials for LLM', link: '/00_Prerequisites/00_Python_Essentials_for_LLM' },
+          { text: '01. NumPy and Einsum', link: '/00_Prerequisites/01_NumPy_and_Einsum' },
           { text: '02. PyTorch Tensor Fundamentals', link: '/00_Prerequisites/02_PyTorch_Tensor_Fundamentals' },
           { text: '03. PyTorch Autograd and Backward', link: '/00_Prerequisites/03_PyTorch_Autograd_and_Backward' },
+          { text: '04. PyTorch nn.Module Basics', link: '/00_Prerequisites/04_PyTorch_nn_Module_Basics' },
+          { text: '05. PyTorch Optimizers and Loss', link: '/00_Prerequisites/05_PyTorch_Optimizers_and_Loss' },
           { text: '06. Simple Neural Network Training', link: '/00_Prerequisites/06_Simple_Neural_Network_Training' },
+          { text: '07. Activation Functions', link: '/00_Prerequisites/07_Activation_Functions' },
+          { text: '08. Normalization Techniques', link: '/00_Prerequisites/08_Normalization_Techniques' },
+          { text: '09. Attention Mechanism Intro', link: '/00_Prerequisites/09_Attention_Mechanism_Intro' },
           { text: '10. PyTorch Profiling Basics', link: '/00_Prerequisites/10_PyTorch_Profiling_Basics' },
-          { text: '11. Memory Profiling and Optimization', link: '/00_Prerequisites/11_Memory_Profiling_and_Optimization' }
+          { text: '11. Memory Profiling and Optimization', link: '/00_Prerequisites/11_Memory_Profiling_and_Optimization' },
+          { text: '12. Debugging Techniques', link: '/00_Prerequisites/12_Debugging_Techniques' },
+          { text: '13. Jupyter and Git Basics', link: '/00_Prerequisites/13_Jupyter_and_Git_Basics' }
         ]
       },
       {
@@ -77,59 +87,150 @@ export default defineConfig({
         text: '第二部分：PyTorch 核心算法',
         items: [
           { text: '📖 完整导学', link: '/02_PyTorch_Algorithms/intro' },
-{ text: '00. PyTorch Warmup', link: '/02_PyTorch_Algorithms/00_PyTorch_Warmup' },
-          { text: '01. RMSNorm Tutorial', link: '/02_PyTorch_Algorithms/01_RMSNorm_Tutorial' },
-          { text: '02. SwiGLU Activation', link: '/02_PyTorch_Algorithms/02_SwiGLU_Activation' },
-          { text: '03. RoPE Tutorial', link: '/02_PyTorch_Algorithms/03_RoPE_Tutorial' },
-          { text: '04. Attention MHA GQA', link: '/02_PyTorch_Algorithms/04_Attention_MHA_GQA' },
-          { text: '05. LLaMA3 Block Tutorial', link: '/02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial' },
-          { text: '06. MoE Router', link: '/02_PyTorch_Algorithms/06_MoE_Router' },
-          { text: '07. MoE Load Balancing Loss', link: '/02_PyTorch_Algorithms/07_MoE_Load_Balancing_Loss' },
-          { text: '08. Architecture Tricks', link: '/02_PyTorch_Algorithms/08_Architecture_Tricks' },
-          { text: '09. SFT Training Loop', link: '/02_PyTorch_Algorithms/09_SFT_Training_Loop' },
-          { text: '10. LoRA Tutorial', link: '/02_PyTorch_Algorithms/10_LoRA_Tutorial' },
-          { text: '11. LR Schedulers WSD Cosine', link: '/02_PyTorch_Algorithms/11_LR_Schedulers_WSD_Cosine' },
-          { text: '12. RLHF PPO Memory', link: '/02_PyTorch_Algorithms/12_RLHF_PPO_Memory' },
-          { text: '13. DPO Loss Tutorial', link: '/02_PyTorch_Algorithms/13_DPO_Loss_Tutorial' },
-          { text: '14. Attention Backward Math', link: '/02_PyTorch_Algorithms/14_Attention_Backward_Math' },
-          { text: '15. FlashAttention Sim', link: '/02_PyTorch_Algorithms/15_FlashAttention_Sim' },
-          { text: '16. Decoding Strategies', link: '/02_PyTorch_Algorithms/16_Decoding_Strategies' },
-          { text: '17. vLLM PagedAttention', link: '/02_PyTorch_Algorithms/17_vLLM_PagedAttention' },
-          { text: '18. Speculative Decoding', link: '/02_PyTorch_Algorithms/18_Speculative_Decoding' },
-          { text: '19. SGLang RadixAttention', link: '/02_PyTorch_Algorithms/19_SGLang_RadixAttention' },
-          { text: '20. Quantization W8A16', link: '/02_PyTorch_Algorithms/20_Quantization_W8A16' },
-          { text: '21. Gradient Checkpointing', link: '/02_PyTorch_Algorithms/21_Gradient_Checkpointing' },
-          { text: '22. QLoRA and 4bit Quantization', link: '/02_PyTorch_Algorithms/22_QLoRA_and_4bit_Quantization' },
-          { text: '23. ZeRO Optimizer Sim', link: '/02_PyTorch_Algorithms/23_ZeRO_Optimizer_Sim' },
-          { text: '24. Tensor Parallelism Sim', link: '/02_PyTorch_Algorithms/24_Tensor_Parallelism_Sim' },
-          { text: '25. Pipeline Parallelism MicroBatch', link: '/02_PyTorch_Algorithms/25_Pipeline_Parallelism_MicroBatch' },
-                ]
+          {
+            text: '2.1 基础算子',
+            link: '/02_PyTorch_Algorithms/2_1',
+            items: [
+              { text: '📖 组页', link: '/02_PyTorch_Algorithms/2_1' },
+              { text: '00. PyTorch Warmup', link: '/02_PyTorch_Algorithms/00_PyTorch_Warmup' },
+              { text: '01. RMSNorm Tutorial', link: '/02_PyTorch_Algorithms/01_RMSNorm_Tutorial' },
+              { text: '02. SwiGLU Activation', link: '/02_PyTorch_Algorithms/02_SwiGLU_Activation' },
+              { text: '03. RoPE Tutorial', link: '/02_PyTorch_Algorithms/03_RoPE_Tutorial' },
+              { text: '04. Attention MHA GQA', link: '/02_PyTorch_Algorithms/04_Attention_MHA_GQA' }
+            ]
+          },
+          {
+            text: '2.2 模型架构',
+            link: '/02_PyTorch_Algorithms/2_2',
+            items: [
+              { text: '📖 组页', link: '/02_PyTorch_Algorithms/2_2' },
+              { text: '05. LLaMA3 Block Tutorial', link: '/02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial' },
+              { text: '06. MoE Router', link: '/02_PyTorch_Algorithms/06_MoE_Router' },
+              { text: '07. MoE Load Balancing Loss', link: '/02_PyTorch_Algorithms/07_MoE_Load_Balancing_Loss' },
+              { text: '08. Architecture Tricks', link: '/02_PyTorch_Algorithms/08_Architecture_Tricks' }
+            ]
+          },
+          {
+            text: '2.3 微调与训练技术',
+            link: '/02_PyTorch_Algorithms/2_3',
+            items: [
+              { text: '📖 组页', link: '/02_PyTorch_Algorithms/2_3' },
+              { text: '09. SFT Training Loop', link: '/02_PyTorch_Algorithms/09_SFT_Training_Loop' },
+              { text: '10. LoRA Tutorial', link: '/02_PyTorch_Algorithms/10_LoRA_Tutorial' },
+              { text: '11. LR Schedulers WSD Cosine', link: '/02_PyTorch_Algorithms/11_LR_Schedulers_WSD_Cosine' }
+            ]
+          },
+          {
+            text: '2.4 对齐技术',
+            link: '/02_PyTorch_Algorithms/2_4',
+            items: [
+              { text: '📖 组页', link: '/02_PyTorch_Algorithms/2_4' },
+              { text: '12. RLHF PPO Memory', link: '/02_PyTorch_Algorithms/12_RLHF_PPO_Memory' },
+              { text: '13. DPO Loss Tutorial', link: '/02_PyTorch_Algorithms/13_DPO_Loss_Tutorial' }
+            ]
+          },
+          {
+            text: '2.5 反向传播与显存优化',
+            link: '/02_PyTorch_Algorithms/2_5',
+            items: [
+              { text: '📖 组页', link: '/02_PyTorch_Algorithms/2_5' },
+              { text: '14. Attention Backward Math', link: '/02_PyTorch_Algorithms/14_Attention_Backward_Math' }
+            ]
+          },
+          {
+            text: '2.6 核心推理优化',
+            link: '/02_PyTorch_Algorithms/2_6',
+            items: [
+              { text: '📖 组页', link: '/02_PyTorch_Algorithms/2_6' },
+              { text: '15. FlashAttention Sim', link: '/02_PyTorch_Algorithms/15_FlashAttention_Sim' },
+              { text: '16. Decoding Strategies', link: '/02_PyTorch_Algorithms/16_Decoding_Strategies' },
+              { text: '17. vLLM PagedAttention', link: '/02_PyTorch_Algorithms/17_vLLM_PagedAttention' }
+            ]
+          },
+          {
+            text: '2.7 高级推理优化',
+            link: '/02_PyTorch_Algorithms/2_7',
+            items: [
+              { text: '📖 组页', link: '/02_PyTorch_Algorithms/2_7' },
+              { text: '18. Speculative Decoding', link: '/02_PyTorch_Algorithms/18_Speculative_Decoding' },
+              { text: '19. SGLang RadixAttention', link: '/02_PyTorch_Algorithms/19_SGLang_RadixAttention' },
+              { text: '20. Quantization W8A16', link: '/02_PyTorch_Algorithms/20_Quantization_W8A16' }
+            ]
+          },
+          {
+            text: '2.8 分布式与扩展',
+            link: '/02_PyTorch_Algorithms/2_8',
+            items: [
+              { text: '📖 组页', link: '/02_PyTorch_Algorithms/2_8' },
+              { text: '21. Gradient Checkpointing', link: '/02_PyTorch_Algorithms/21_Gradient_Checkpointing' },
+              { text: '22. QLoRA and 4bit Quantization', link: '/02_PyTorch_Algorithms/22_QLoRA_and_4bit_Quantization' },
+              { text: '23. ZeRO Optimizer Sim', link: '/02_PyTorch_Algorithms/23_ZeRO_Optimizer_Sim' },
+              { text: '24. Tensor Parallelism Sim', link: '/02_PyTorch_Algorithms/24_Tensor_Parallelism_Sim' },
+              { text: '25. Pipeline Parallelism MicroBatch', link: '/02_PyTorch_Algorithms/25_Pipeline_Parallelism_MicroBatch' }
+            ]
+          }
+        ]
       },
       {
         text: '第三部分：CUDA 与 Triton 算子',
         items: [
           { text: '📖 完整导学', link: '/03_CUDA_and_Triton_Kernels/intro' },
-          { text: '01. Triton Vector Addition', link: '/03_CUDA_and_Triton_Kernels/01_Triton_Vector_Addition' },
-          { text: '02. Triton Fused SwiGLU', link: '/03_CUDA_and_Triton_Kernels/02_Triton_Fused_SwiGLU' },
-          { text: '03. Triton Fused RMSNorm', link: '/03_CUDA_and_Triton_Kernels/03_Triton_Fused_RMSNorm' },
-          { text: '04. Triton GEMM Tutorial', link: '/03_CUDA_and_Triton_Kernels/04_Triton_GEMM_Tutorial' },
-          { text: '05. Triton Autotune and Profiling', link: '/03_CUDA_and_Triton_Kernels/05_Triton_Autotune_and_Profiling' },
-          { text: '06. Triton Fused Softmax', link: '/03_CUDA_and_Triton_Kernels/06_Triton_Fused_Softmax' },
-          { text: '07. Triton Fused RoPE', link: '/03_CUDA_and_Triton_Kernels/07_Triton_Fused_RoPE' },
-          { text: '08. Triton Flash Attention', link: '/03_CUDA_and_Triton_Kernels/08_Triton_Flash_Attention' },
-          { text: '09. Triton Fused LoRA', link: '/03_CUDA_and_Triton_Kernels/09_Triton_Fused_LoRA' },
-          { text: '10. Triton KV Cache and PagedAttention', link: '/03_CUDA_and_Triton_Kernels/10_Triton_KV_Cache_and_PagedAttention' },
-          { text: '11. Triton Quantization Support', link: '/03_CUDA_and_Triton_Kernels/11_Triton_Quantization_Support' },
-          { text: '12. Triton Memory Model and Debug', link: '/03_CUDA_and_Triton_Kernels/12_Triton_Memory_Model_and_Debug' },
-          { text: '13. Triton Llama3 Block Project', link: '/03_CUDA_and_Triton_Kernels/13_Triton_Llama3_Block_Project' },
-          { text: '14. Triton Best Practices and FAQ', link: '/03_CUDA_and_Triton_Kernels/14_Triton_Best_Practices_and_FAQ' },
-          { text: '15. PyTorch CUDA Streams and Transfer', link: '/03_CUDA_and_Triton_Kernels/15_PyTorch_CUDA_Streams_and_Transfer' },
-          { text: '16. Distributed Communication Primitives', link: '/03_CUDA_and_Triton_Kernels/16_Distributed_Communication_Primitives' },
-          { text: '17. DeepSpeed Zero Config', link: '/03_CUDA_and_Triton_Kernels/17_DeepSpeed_Zero_Config' },
-          { text: '18. CUDA Custom Kernel Intro', link: '/03_CUDA_and_Triton_Kernels/18_CUDA_Custom_Kernel_Intro' },
-          { text: '19. CUDA Shared Memory Optimization', link: '/03_CUDA_and_Triton_Kernels/19_CUDA_Shared_Memory_Optimization' },
-          { text: '20. CUDA vs Triton vs PyTorch', link: '/03_CUDA_and_Triton_Kernels/20_CUDA_vs_Triton_vs_PyTorch' }
-                ]
+          {
+            text: '3.1 Triton 基础',
+            link: '/03_CUDA_and_Triton_Kernels/3_1',
+            items: [
+              { text: '📖 组页', link: '/03_CUDA_and_Triton_Kernels/3_1' },
+              { text: '01. Triton Vector Addition', link: '/03_CUDA_and_Triton_Kernels/01_Triton_Vector_Addition' },
+              { text: '02. Triton Fused SwiGLU', link: '/03_CUDA_and_Triton_Kernels/02_Triton_Fused_SwiGLU' },
+              { text: '03. Triton Fused RMSNorm', link: '/03_CUDA_and_Triton_Kernels/03_Triton_Fused_RMSNorm' },
+              { text: '04. Triton GEMM Tutorial', link: '/03_CUDA_and_Triton_Kernels/04_Triton_GEMM_Tutorial' },
+              { text: '05. Triton Autotune and Profiling', link: '/03_CUDA_and_Triton_Kernels/05_Triton_Autotune_and_Profiling' }
+            ]
+          },
+          {
+            text: '3.2 Triton 进阶',
+            link: '/03_CUDA_and_Triton_Kernels/3_2',
+            items: [
+              { text: '📖 组页', link: '/03_CUDA_and_Triton_Kernels/3_2' },
+              { text: '06. Triton Fused Softmax', link: '/03_CUDA_and_Triton_Kernels/06_Triton_Fused_Softmax' },
+              { text: '07. Triton Fused RoPE', link: '/03_CUDA_and_Triton_Kernels/07_Triton_Fused_RoPE' },
+              { text: '08. Triton Flash Attention', link: '/03_CUDA_and_Triton_Kernels/08_Triton_Flash_Attention' },
+              { text: '09. Triton Fused LoRA', link: '/03_CUDA_and_Triton_Kernels/09_Triton_Fused_LoRA' },
+              { text: '10. Triton KV Cache and PagedAttention', link: '/03_CUDA_and_Triton_Kernels/10_Triton_KV_Cache_and_PagedAttention' },
+              { text: '11. Triton Quantization Support', link: '/03_CUDA_and_Triton_Kernels/11_Triton_Quantization_Support' }
+            ]
+          },
+          {
+            text: '3.3 Triton 项目',
+            link: '/03_CUDA_and_Triton_Kernels/3_3',
+            items: [
+              { text: '📖 组页', link: '/03_CUDA_and_Triton_Kernels/3_3' },
+              { text: '12. Triton Memory Model and Debug', link: '/03_CUDA_and_Triton_Kernels/12_Triton_Memory_Model_and_Debug' },
+              { text: '13. Triton Llama3 Block Project', link: '/03_CUDA_and_Triton_Kernels/13_Triton_Llama3_Block_Project' },
+              { text: '14. Triton Best Practices and FAQ', link: '/03_CUDA_and_Triton_Kernels/14_Triton_Best_Practices_and_FAQ' }
+            ]
+          },
+          {
+            text: '3.4 CUDA 内核与显存优化',
+            link: '/03_CUDA_and_Triton_Kernels/3_4',
+            items: [
+              { text: '📖 组页', link: '/03_CUDA_and_Triton_Kernels/3_4' },
+              { text: '15. PyTorch CUDA Streams and Transfer', link: '/03_CUDA_and_Triton_Kernels/15_PyTorch_CUDA_Streams_and_Transfer' },
+              { text: '18. CUDA Custom Kernel Intro', link: '/03_CUDA_and_Triton_Kernels/18_CUDA_Custom_Kernel_Intro' },
+              { text: '19. CUDA Shared Memory Optimization', link: '/03_CUDA_and_Triton_Kernels/19_CUDA_Shared_Memory_Optimization' }
+            ]
+          },
+          {
+            text: '3.5 CUDA 系统扩展',
+            link: '/03_CUDA_and_Triton_Kernels/3_5',
+            items: [
+              { text: '📖 组页', link: '/03_CUDA_and_Triton_Kernels/3_5' },
+              { text: '16. Distributed Communication Primitives', link: '/03_CUDA_and_Triton_Kernels/16_Distributed_Communication_Primitives' },
+              { text: '17. DeepSpeed Zero Config', link: '/03_CUDA_and_Triton_Kernels/17_DeepSpeed_Zero_Config' },
+              { text: '20. CUDA vs Triton vs PyTorch', link: '/03_CUDA_and_Triton_Kernels/20_CUDA_vs_Triton_vs_PyTorch' }
+            ]
+          }
+        ]
       }
     ],
     socialLinks: [

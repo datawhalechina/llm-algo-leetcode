@@ -8,9 +8,9 @@
 本节我们将深入 GPU 的核心物理架构，涵盖计算单元 (Tensor Core)、内存结构 (SRAM vs HBM)、以及它们在现代大模型算法（如 FlashAttention）中的实际应用。
 
 > **相关阅读**:  
-> 请前往实战篇进行相关代码练习：  
-> [`../03_CUDA_and_Triton_Kernels/04_Triton_GEMM_Tutorial.md`](../03_CUDA_and_Triton_Kernels/04_Triton_GEMM_Tutorial.md)  
-> [`../03_CUDA_and_Triton_Kernels/08_Triton_Flash_Attention.md`](../03_CUDA_and_Triton_Kernels/08_Triton_Flash_Attention.md)  
+> 本章对应的练习资产：  
+> [`03_GPU_Architecture_and_Memory_Practice.ipynb`](./03_GPU_Architecture_and_Memory_Practice.md)  
+> [`03_GPU_Architecture_and_Memory_Practice.md`](./03_GPU_Architecture_and_Memory_Practice.md)  
 
 ---
 

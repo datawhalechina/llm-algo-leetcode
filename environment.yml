@@ -1,0 +1,10 @@
+name: llm_algo
+channels:
+  - conda-forge
+  - pytorch
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - -r requirements/base.txt
+      - -r requirements/dev.txt
