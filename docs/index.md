@@ -6,7 +6,7 @@
 
 这是一个面向大模型入门到进阶的算法刷题教程，聚焦纯 LLM 领域，把底层算法与系统设计整理成可运行、可验证、可回顾的 Jupyter Notebook 练习。
 
-详细的环境边界、学习方式和章节 GPU 要求统一查看 [使用指南](./guide.md)。
+详细的环境边界、学习方式和章节 GPU 要求见 [使用指南](./guide.md)。
 
 ## 📚 章节概览
 
@@ -22,14 +22,7 @@
 1. 在左侧侧边栏选择感兴趣的章节
 2. 点击 **📖 完整导学** 了解学习路径
 3. 选择具体题目开始学习
-4. 需要环境说明时查看 [使用指南](./guide.md)
-
-```bash
-git clone https://github.com/datawhalechina/llm-algo-leetcode.git
-cd llm-algo-leetcode
-```
-
-详细的本地环境搭建、平台选择和操作系统/硬件支持范围，请查看 [使用指南](./guide.md)。
+4. 环境和平台差异见 [使用指南](./guide.md)
 
 ## 📖 更多资源
 
@@ -37,7 +30,6 @@ cd llm-algo-leetcode
 - [贡献指南](./contributing.md) - 如何参与项目开发和测试
 - [维护与发布手册](./maintenance.md) - 章节、链接、测试与发布的维护约定
 - [自动化测试脚本索引](../project_test_scripts.md) - 各类验证脚本入口
-- [GitHub 仓库](https://github.com/datawhalechina/llm-algo-leetcode) - 源代码和问题反馈
 
 ## 📄 开源协议
 
