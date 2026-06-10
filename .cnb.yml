@@ -7,6 +7,14 @@ $:
       services:
         - vscode
         - docker
+  vscode-gpu:
+    - docker:
+        build: .ide/Dockerfile
+      runner:
+        tags: cnb:arch:amd64:gpu
+      services:
+        - vscode
+        - docker
 
 main:
   push:

@@ -38,6 +38,16 @@
 - `cnb/README.md`
 - `cnb/environment.yml`
 
+#### 版本与包管理约定
+
+- `requirements/base.txt`：基础依赖版本的主来源
+- `requirements/dev.txt`：开发和测试依赖版本的主来源
+- `requirements/gpu.txt`：Chapter 3 / Triton / CUDA 扩展依赖版本的主来源
+- `environment.yml`：只负责 Python 版本和串联依赖，不应重复维护另一套独立版本表
+- `cnb/environment.yml`：CNB 侧环境骨架，原则上复用同一套版本约定
+
+更新依赖时，优先修改 `requirements/*.txt`，再同步 `environment.yml` 和 `cnb/environment.yml`，避免本地、CNB、Docker 出现版本漂移。
+
 ## 源文件与生成物
 
 仓库里的章节内容遵循“源文件在根目录，网页产物在 `docs/`”的原则。
@@ -78,6 +88,14 @@
 - 控制改动范围，避免跨章节的大面积联动回归
 - 将可验证的变更拆成小提交，便于 review 和回滚
 - 让维护工作可以被复用，而不是依赖某个人的记忆
+- 把操作系统、包版本、测试脚本和云端环境纳入同一套维护口径
+
+## 本地 GPU 验证基线
+
+- 当前已验证的本地 GPU 基线是 **Linux 22.04 + 50 系 NVIDIA 显卡 + `llm_algo` conda 环境**
+- Chapter 2 在该环境下的答案区已验证通过
+- Chapter 3 在该环境下的答案区已验证通过
+- 40 系显卡暂未作为已验证基线，后续应单独补充兼容矩阵与版本验证
 
 ## 过程文件约定
 
@@ -257,6 +275,40 @@
 - Chapter 0 / 1：`python test_chapter0_1_notebooks.py`
 - Chapter 2 / 3：`python test_notebook_answers.py --all --dir 02_PyTorch_Algorithms --mode both`
 - Chapter 3：`python test_notebook_answers.py --all --dir 03_CUDA_and_Triton_Kernels --mode both`
+
+### CNB 验证
+
+CNB 的验证顺序应当和本地环境分开记录，先确认交互环境，再跑章节脚本。
+
+1. 激活项目环境：
+   - `conda activate llm_algo_cnb_dev`
+2. 检查基础软件栈：
+   - `python --version`
+   - `python -m pip --version`
+   - `python -c "import torch; print(torch.__version__)"`
+   - `python -c "import triton; print(triton.__version__)"`
+3. 验证 Chapter 0 / 1：
+   - `python test_chapter0_1_notebooks.py`
+4. 验证 Chapter 2：
+   - `python test_notebook_answers.py --all --dir 02_PyTorch_Algorithms --mode both`
+5. 仅在 CNB 实例具备 GPU 时验证 Chapter 3：
+   - `python test_notebook_answers.py --all --dir 03_CUDA_and_Triton_Kernels --mode both`
+
+如果当前 CNB 实例没有 `nvidia-smi` 或 `torch.cuda.is_available()` 返回 `False`，不要把 Chapter 3 的 GPU 结果写成最终验收。
+
+### Chapter 3 GPU 入口
+
+Chapter 3 的 GPU 验证应单独维护，不要塞进默认 CNB CPU 交互环境里。
+
+- CPU 交互环境：验证 Chapter 0 / 1 / 2
+- GPU 验证环境：验证 Chapter 3
+- GPU 验证脚本：`scripts/validate_chapter3_gpu.sh`
+
+新增 GPU 入口时，要明确标注：
+
+- 目标节点是否真的具备 GPU
+- 是否允许 `torch.cuda.is_available() == True` 作为通过条件
+- Chapter 3 的结论是否可以复用到本机 50 系基线之外
 
 ### 站点验证
 
