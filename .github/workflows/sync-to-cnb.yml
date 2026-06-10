@@ -16,6 +16,7 @@ concurrency:
 
 jobs:
   sync:
+    if: github.repository == 'lynnyulinlin-debug/llm-algo-leetcode'
     runs-on: ubuntu-latest
 
     steps:
