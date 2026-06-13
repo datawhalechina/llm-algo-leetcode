@@ -1,9 +1,11 @@
-<h1 align="center"> LLM-Algo-LeetCode（🧪 Beta公测版） </h1>
+<h1 align="center"> 大模型算法实战教程 / LLM Algorithm Practice Lab </h1>
 
 > [!WARNING]
 > 🧪 Beta公测版本提示：教程主体代码与算子已基本构建完成，正在持续优化文档细节与补充注释。欢迎大家提交 Issue 反馈问题或贡献 PR！
 
-[最新更新点]：修复 dead link，并为未完成页面补充占位页，避免学习入口出现 404。
+> 大模型算法实战教程 / LLM Algorithm Practice Lab
+> 
+> A practical LLM algorithm tutorial with theory, walkthroughs, test cases, and solutions.
 
 [中文版 (Chinese)](#中文版) | [English Version](#english-version)
 
@@ -13,22 +15,30 @@
 
 ## 🎯 项目简介
 
-本项目旨在为大语言模型（LLM）算法工程师、AI 基础设施（AI Infra）工程师以及研究实习生等岗位的候选人，提供一个**系统性、可交互、带评测**的工程实战指南。
+这是一个面向大模型入门到进阶的算法实战教程，覆盖 Python、PyTorch、Transformer、推理优化、显存管理与 CUDA/Triton 实战。它不只是讲概念，而是把每个知识点做成可运行、可验证、可回顾的练习，帮助你从“会看”走到“会写、会调、会优化”。
 
-与传统的"文字版八股文面经"不同，本项目严格限定于**纯粹的大语言模型 (LLM) 领域**（不包含 Diffusion 或多模态）。我们提取了现代大模型架构中最核心的底层算法与系统设计，将其封装为独立的 Jupyter Notebook 填空题，并配备本地测试用例，力求提供类似 LeetCode 的刷题体验。
+本项目严格限定于纯粹的大语言模型（LLM）领域，不包含 Diffusion 或多模态。我们将现代大模型架构中的底层算法与系统设计封装为独立的 Jupyter Notebook 填空题，并配备本地测试用例，提供可反复练习和回顾的学习路径。
 
-## 👥 项目受众
-
-- **求职面试者**：巩固 LLM 算法工程师、AI 架构师、算子开发工程师的高频底层考点。
-- **AI 研发人员**：希望从代码底层理解大模型运作机制（如分布式通信、显存优化、Triton/CUDA 算子）的从业者。
-- **前置要求**：具备 Python 和深度学习基础，熟悉 PyTorch。高级章节需一定 C++/CUDA 基础。
-
-## ✨ 项目特点
+### ✨ 项目特点
 
 1. **高度垂直**：专注 Transformer、MoE、量化、推理加速与显存优化。
-2. **工程导向**：要求使用 PyTorch、Triton 或原生的 CUDA C++ 实现核心算子和系统逻辑。
-3. **测试驱动 (Test-Driven)**：每一道题都内置了与工业界开源实现（如 HuggingFace, vLLM）对齐的测试验证，确保输出张量维度与数值的完全正确。并包含详尽的 Benchmark 性能基准测试。
-4. **由浅入深**：分为"理论基础"、"模型组装与训练"、"底层计算加速"三个阶段，覆盖从入门到高阶架构的完整知识链路。
+2. **工程导向**：使用 PyTorch、Triton 或原生 CUDA C++ 实现核心算子和系统逻辑。
+3. **测试驱动**：每道题都配套工业对齐测试和性能验证。
+4. **由浅入深**：覆盖理论基础、模型组装与训练、底层计算加速三个阶段。
+
+### 👥 项目受众
+
+- **求职面试者**：巩固 LLM 算法工程师、AI 架构师、算子开发工程师的高频考点。
+- **AI 研发人员**：从代码底层理解分布式通信、显存优化与 Triton/CUDA 算子。
+- **前置要求**：具备 Python 和深度学习基础，熟悉 PyTorch；高阶章节需一定 C++/CUDA 基础。
+
+## 🆕 更新时间线
+
+- **2026-06-13**：[最新更新点]：修复 dead link，并为未完成页面补充占位页，避免学习入口出现 404。
+- **2026-04-21**：更新 Colab 徽章链接，统一指向官方 `datawhalechina` 仓库。
+- **2026-04-20**：上线站点首页与章节导学；新增 Chapter 0 前置知识与 Chapter 1 练习内容，完善在线阅读入口与学习路径。
+- **2026-04-18 ~ 2026-04-19**：集中重构 Chapter 2 / 3 内容，优化 Notebook、答案区与算子实现说明。
+- **2026-04-02**：完成教程核心 Notebook、文档与测试脚本的初始搭建。
 
 ## 📚 目录结构
 
@@ -182,16 +192,24 @@ This project aims to provide a **systematic, interactive, and test-driven** engi
 
 Unlike traditional "text-only interview cheat sheets," this project strictly focuses on the **pure Large Language Model (LLM) domain** (excluding Diffusion or general Multimodal generation). It adopts a **"Learn then Practice"** approach. We have extracted the core underlying algorithms and system designs of modern LLM architectures, encapsulated them into independent Jupyter Notebook fill-in-the-blank exercises, and equipped them with local test cases to provide a LeetCode-like practice experience.
 
-## Target Audience
-
-- **Job Seekers**: Covering high-frequency concepts for LLM Algorithm Engineers and Kernel Optimization Engineers.
-- **AI Practitioners**: Developers seeking a bottom-up understanding of LLM mechanisms like Distributed Communication, VRAM Optimization, and Triton/CUDA.
-
-## Features
+### Features
 
 1. **Highly Vertical**: Focuses exclusively on Transformers, MoE, Quantization, Inference Acceleration, and VRAM Optimization.
 2. **Engineering-Oriented**: Requires implementing core operators and system logic using PyTorch, Triton, or native CUDA C++.
 3. **Test-Driven**: Every exercise includes built-in test validations aligned with industrial open-source implementations (e.g., HuggingFace, vLLM).
+
+### Target Audience
+
+- **Job Seekers**: Covering high-frequency concepts for LLM Algorithm Engineers and Kernel Optimization Engineers.
+- **AI Practitioners**: Developers seeking a bottom-up understanding of LLM mechanisms like Distributed Communication, VRAM Optimization, and Triton/CUDA.
+
+## Update Timeline
+
+- **2026-06-13**: [Latest update] fixed dead links and added placeholder pages for unfinished content to prevent 404s in learning entry points.
+- **2026-04-21**: Updated Colab badges to point to the official `datawhalechina` repository.
+- **2026-04-20**: Launched the site homepage and chapter guides; added Chapter 0 prerequisites and Chapter 1 practice content to unify the learning path.
+- **2026-04-18 ~ 2026-04-19**: Refactored Chapter 2 / 3 content, polishing notebooks, answer sections, and operator implementation notes.
+- **2026-04-02**: Completed the initial tutorial notebooks, docs, and test scripts.
 
 ## Quick Start
 
