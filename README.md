@@ -35,7 +35,7 @@
 
 ## 🆕 更新时间线
 
-- **2026-06-15**：[最新更新点]推进 Chapter 0 / 1 的分组与导读收口，统一部分级导航，并持续扩展 Chapter 1 的正文、桥接页与 Notebook 结构。
+- **2026-06-15**：[最新更新点]推进 Chapter 0 / 1 的分组与导读收口，统一部分级导航，并完成网页底部评论区接入 GitHub Discussions，同时持续扩展 Chapter 1 的正文、桥接页与 Notebook 结构。
 - **2026-06-13**：修复 dead link，并为未完成页面补充占位页，避免学习入口出现 404。
 - **2026-04-21**：更新 Colab 徽章链接，统一指向官方 `datawhalechina` 仓库。
 - **2026-04-20**：上线站点首页与部分导学；新增第零部分前置知识与第一部分练习内容，完善在线阅读入口与学习路径。
@@ -120,6 +120,7 @@ This project is strictly limited to the Large Language Model (LLM) domain, exclu
 
 ## Update Timeline
 
+- **2026-06-15**: [Latest update] finalized the Chapter 0 / 1 grouping and guide cleanup, unified the part-level navigation, connected the page comments to GitHub Discussions, and continued expanding Chapter 1 content, bridge pages, and notebook structure.
 - **2026-06-13**: [Latest update] fixed dead links and added placeholder pages for unfinished content to prevent 404s in learning entry points.
 - **2026-04-21**: Updated Colab badges to point to the official `datawhalechina` repository.
 - **2026-04-20**: Launched the site homepage and chapter guides; added Chapter 0 prerequisites and Chapter 1 practice content to unify the learning path.
