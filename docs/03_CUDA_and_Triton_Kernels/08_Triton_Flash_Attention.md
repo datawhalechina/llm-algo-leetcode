@@ -10,14 +10,22 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-在 `02_PyTorch_Algorithms/13_FlashAttention_Sim` 和 `03_Triton_Kernels/06_Triton_Fused_Softmax` 中，我们已经完全掌握了 Flash Attention 的两大数学核心：**分块计算 (Tiling)** 和 **在线安全 Softmax 归约 (Online Safe Softmax)**。
+在 `02_PyTorch_Algorithms/13_FlashAttention_Sim` 和 `03_CUDA_and_Triton_Kernels/06_Triton_Fused_Softmax` 中，我们已经完全掌握了 Flash Attention 的两大数学核心：**分块计算 (Tiling)** 和 **在线安全 Softmax 归约 (Online Safe Softmax)**。
 本节我们将把这两者结合起来，利用 Triton 在 SRAM 中的极速读写，编写一个真正的、可运行在 GPU 上的 Flash Attention 前向计算内核。这是大模型推理与训练提速的基石算子。
 
+## 前置
 
-> **相关阅读**:  
-> 本节使用 Triton 实现了底层的显存与计算优化。
-> 如果你对该算子的数学公式推导和纯 PyTorch 高层结构还不熟悉，建议先复习 PyTorch 篇：
-> [`../02_PyTorch_Algorithms/13_FlashAttention_Sim.ipynb`](../02_PyTorch_Algorithms/13_FlashAttention_Sim.md)
+**导语：** 这一节会把分块、在线 Softmax 和注意力核的访存路径接到一起。
+
+- [Part 1: 1B 单卡硬件与访存优化](../01_Hardware_Math_and_Systems/1B.md)
+- [Part 1: 1D 异构调度与算子编程](../01_Hardware_Math_and_Systems/1D.md)
+- [Part 1: 18 Triton Block 模型](../01_Hardware_Math_and_Systems/18_Triton_Block_Model.md)
+- [Part 1: 20 NCCL 与 AllReduce 基础](../01_Hardware_Math_and_Systems/20_NCCL_and_AllReduce_Basics.md)
+
+## 相关阅读
+**导语：** 如果你想先把 FlashAttention 的 PyTorch 推导过一遍，可以继续看这页；不影响继续读本节，但会更容易对齐在线 Softmax。
+- [Part 2: 13 FlashAttention Sim](../02_PyTorch_Algorithms/13_FlashAttention_Sim.md)
+
 ### Step 1: Flash Attention 内核的执行逻辑
 
 > **任务分配 (Grid)：**

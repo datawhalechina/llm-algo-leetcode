@@ -14,6 +14,20 @@
 本节我们将打破 Python 的温室，使用 `torch.utils.cpp_extension.load_inline`，直接在 Jupyter Notebook 的字符串里**手撕原生 CUDA C++ 核函数**，并且在后台即时 (JIT) 编译成 PyTorch 可用的模块。
 我们将从最经典的 Vector Add (向量加法) 开始，直观对比 Triton 的 `pid` 和 CUDA 的 `blockIdx.x * blockDim.x + threadIdx.x`。
 
+这一节会把 Triton 的 block 视角与 CUDA 的 thread 视角对应起来。
+
+## 前置
+
+**导语：** 这一节先看 Part 1 的执行模型和 Triton block 相关 Group，把 CUDA 的 thread / block 层级先接上。
+- [Part 1: 1D 异构调度与算子编程](../01_Hardware_Math_and_Systems/1D.md)
+- [Part 1: 18 Triton Block 模型](../01_Hardware_Math_and_Systems/18_Triton_Block_Model.md)
+- [Part 1: 19 算子融合导论](../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md)
+## 相关阅读
+
+**导语：** 如果想补一层更直接的硬件执行背景，可以继续看这页；不影响继续读本节，但会更容易理解 CUDA 的控制粒度。
+- [Part 1: 23 TensorCore Deep Dive](../01_Hardware_Math_and_Systems/23_TensorCore_Deep_Dive.md)
+
+
 ### Step 1: CUDA 编程模型核心
 
 > **线程层级 (Thread Hierarchy)：**

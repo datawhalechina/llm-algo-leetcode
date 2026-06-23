@@ -18,6 +18,20 @@
 2. 封装 PyTorch 的 `nn.Module` 接口。
 3. 运行端到端的 Benchmark，直观感受到算子融合带来的极致性能提升 (Latency 降低)。
 
+## 前置
+
+**导语：** 这一节会把前面学过的 Triton 单算子真正组合成一个工程化的完整 Block。
+
+- [Part 1: 1B 单卡硬件与访存优化](../01_Hardware_Math_and_Systems/1B.md)
+- [Part 1: 1D 异构调度与算子编程](../01_Hardware_Math_and_Systems/1D.md)
+- [Part 1: 18 Triton Block 模型](../01_Hardware_Math_and_Systems/18_Triton_Block_Model.md)
+- [Part 1: 19 算子融合导论](../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md)
+- [Part 1: 20 NCCL 与 AllReduce 基础](../01_Hardware_Math_and_Systems/20_NCCL_and_AllReduce_Basics.md)
+
+## 相关阅读
+**导语：** 如果你想先把 LLaMA3 Block 的 PyTorch 组装过一遍，可以继续看这页；不影响继续读本节，但会更容易理解工程化集成。
+- [Part 2: 05 LLaMA3 Block Tutorial](../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.md)
+
 ### Step 1: 算子替换与模块集成规范
 
 > **PyTorch 原生实现为什么慢？**

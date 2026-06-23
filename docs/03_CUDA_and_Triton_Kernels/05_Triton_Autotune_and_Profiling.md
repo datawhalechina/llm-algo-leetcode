@@ -14,6 +14,18 @@
 不同大小的张量、不同的 GPU 架构（A100 vs H100）对最佳的 `BLOCK_SIZE` 和 `num_warps` (线程束数量) 的要求是不同的。Triton 提供了 `@triton.autotune` 装饰器来实现**启发式搜索**，以及 `triton.testing.perf_report` 来绘制专业的性能吞吐量曲线图。
 本节我们将以一个 Element-wise 操作为例，展示如何自动化搜索最优配置并生成 Profiling 报告。
 
+## 前置
+
+**导语：** 这一节先看 Part 1 的访存和 Profiling 相关 Group，把“为什么要调优、该看什么指标”先补齐。
+- [Part 1: 1B 单卡硬件与访存优化](../01_Hardware_Math_and_Systems/1B.md)
+- [Part 1: 13 Profiling and Bottleneck Analysis](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
+- [Part 1: 19 算子融合导论](../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md)
+
+## 相关阅读
+
+**导语：** 如果想继续看更系统的访存优化思路，可以回看更偏硬件极限的一页；不影响继续读本节，但会更容易理解为何要做 autotune。
+- [Part 1: 24 SRAM Optimization Techniques](../01_Hardware_Math_and_Systems/24_SRAM_Optimization_Techniques.md)
+
 ### Step 1: 调优与测速的核心概念
 
 > **Auto-Tuning (自动调优)：**

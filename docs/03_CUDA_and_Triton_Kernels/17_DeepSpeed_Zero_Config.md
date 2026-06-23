@@ -14,6 +14,14 @@
 面试中极常考察：“你能解释一下 ZeRO 配置文件中的 `stage`, `overlap_comm`, `cpu_offload` 分别是干什么的吗？”
 本节我们将以一份真实的 DeepSpeed 配置文件为题眼，解析其各个核心字段的工程意义。
 
+这一节会把 ZeRO 参数和通信边界放回真实工程语境。
+
+## 前置
+
+**导语：** 这一节先看 Part 1 的通信与显存共享相关 Group，把 ZeRO 的 stage、offload 和 overlap_comm 放回工程语境。
+- [Part 1: 1C 多卡通信与显存共享](../01_Hardware_Math_and_Systems/1C.md)
+- [Part 1: 20 NCCL 与 AllReduce 基础](../01_Hardware_Math_and_Systems/20_NCCL_and_AllReduce_Basics.md)
+
 ### Step 1: ZeRO 配置文件核心参数深度解析
 
 > **`stage` (优化阶段):**
@@ -27,7 +35,7 @@
 > - **缺点：** 需要频繁地通过 PCIe 总线在 CPU 和 GPU 之间搬运数据，极大降低训练速度 (通常慢 2-5 倍)。需要配合 `pin_memory=True` 缓解。
 
 > **`overlap_comm` (通信计算重叠):**
-> 我们在第 21 节学过，计算和传输应该是并行的！开启此项，DeepSpeed 会在执行矩阵乘法 (Compute) 时，提前异步在后台拉取下一个需要的块的数据 (Communication)。
+> 我们在前面的 Part 1 / Part 3 相关页面已经学过，计算和传输应该是并行的！开启此项，DeepSpeed 会在执行矩阵乘法 (Compute) 时，提前异步在后台拉取下一个需要的块的数据 (Communication)。
 
 ### Step 2: ZeRO 配置文件与显存切分映射
 DeepSpeed 最核心的能力是接管 PyTorch 的底层通信逻辑。在 ZeRO-1 中切分 Optimizer State；ZeRO-2 进一步切分 Gradients；ZeRO-3 甚至把模型 Weights 彻底切碎，只有在经过该层时才动态 Gather 回来。还能通过 `offload_optimizer` 把沉重的 Adam 状态踢到 CPU 内存去计算。

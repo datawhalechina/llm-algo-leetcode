@@ -14,6 +14,21 @@
 在 PyTorch 中，简单的 `.cuda()` 或 `.to('cuda')` 是一把双刃剑：它在底层是同步阻塞的。如果等待数据传完才开始计算，GPU 就会处于饥饿状态 (Compute Starvation)。
 本节我们将深入 PyTorch 底层系统调用，通过 **锁页内存 (Pinned Memory)** 和 **CUDA 多流 (Streams)** 实现数据传输与计算的完全重叠 (Overlap)。
 
+这一节会把 `.cuda()`、`non_blocking=True` 和 `torch.cuda.Stream` 的作用连成一条链。
+
+## 前置
+
+**导语：** 这一节先看 Part 1 的通信、调度和 CUDA Stream 相关 Group，把“传输和计算为什么能重叠”先补齐。
+- [Part 1: 1C 多卡通信与显存共享](../01_Hardware_Math_and_Systems/1C.md)
+- [Part 1: 1D 异构调度与算子编程](../01_Hardware_Math_and_Systems/1D.md)
+- [Part 1: 17 CUDA Stream 与 Asynchrony](../01_Hardware_Math_and_Systems/17_CUDA_Stream_and_Asynchrony.md)
+- [Part 1: 20 NCCL 与 AllReduce 基础](../01_Hardware_Math_and_Systems/20_NCCL_and_AllReduce_Basics.md)
+## 相关阅读
+
+**导语：** 如果想继续看更细的 stream 调度与异步执行案例，可以再看这页；不影响继续读本节，但会更容易理解 overlap 的边界。
+- [Part 1: 29 CUDA Stream Advanced Scheduling](../01_Hardware_Math_and_Systems/29_CUDA_Stream_Advanced_Scheduling.md)
+
+
 ### Step 1: 锁页内存与异步流机制
 
 > **锁页内存 (Pinned / Page-Locked Memory)：**

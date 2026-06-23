@@ -14,6 +14,21 @@
 然而，要真正理解 GPU 的优化极限，你必须手写一次 **Shared Memory Tiling (共享内存分块矩阵乘法)**。
 本节我们将继续使用 C++ JIT 编译，在原生 CUDA 中显式声明 `__shared__` 数组，让 Block 内的 Threads 协作搬运数据，并通过 `__syncthreads()` 完成极速矩阵乘！
 
+这一节会把共享内存优化和 Triton 的 SRAM 视角对应起来。
+
+## 前置
+
+**导语：** 这一节先看 Part 1 的访存、执行模型和 Triton block 相关 Group，把共享内存为什么能提速先补齐。
+- [Part 1: 1B 单卡硬件与访存优化](../01_Hardware_Math_and_Systems/1B.md)
+- [Part 1: 1D 异构调度与算子编程](../01_Hardware_Math_and_Systems/1D.md)
+- [Part 1: 18 Triton Block 模型](../01_Hardware_Math_and_Systems/18_Triton_Block_Model.md)
+- [Part 1: 19 算子融合导论](../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md)
+## 相关阅读
+
+**导语：** 如果想继续看更细的片上缓存与访存优化方法，可以再看这页；不影响继续读本节，但会更容易理解 shared memory 的位置。
+- [Part 1: 24 SRAM Optimization Techniques](../01_Hardware_Math_and_Systems/24_SRAM_Optimization_Techniques.md)
+
+
 ### Step 1: 共享内存在 CUDA 中的使用
 
 > **物理位置：**

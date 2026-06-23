@@ -14,6 +14,17 @@
 然而，在工业级的大模型推理服务 (Serving) 中，面对并发的多个用户请求，如果每个用户的 prompt 挂载了**不同的** LoRA 权重（如用户 A 请求写代码的 LoRA，用户 B 请求翻译的 LoRA），如果将他们拆分并循环执行 PyTorch 的 `linear()`，会严重降低 GPU 的吞吐量（无法利用 Batch 计算）。
 本节我们将手撕 **Multi-LoRA (如 S-LoRA / Punica 论文核心思路)** 的底层 Triton 融合算子：**通过传入 `lora_indices`，让每一个 Token 在 SRAM 内自动去内存池中拉取它专属的 LoRA 权重，完成批量计算！**
 
+## 前置
+
+**导语：** 这一节会把“一个 batch 里多种 LoRA 路由”直接落到 Triton 的 SRAM 访问上。
+
+- [Part 1: 1D 异构调度与算子编程](../01_Hardware_Math_and_Systems/1D.md)
+- [Part 1: 19 算子融合导论](../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md)
+
+## 相关阅读
+**导语：** 如果你想先把 LoRA 的权重分解和训练形式过一遍，可以继续看这页；不影响继续读本节，但会更容易理解 batch 内指针路由。
+- [Part 2: 09 LoRA Tutorial](../02_PyTorch_Algorithms/09_LoRA_Tutorial.md)
+
 > **相关阅读**:
 > 本节使用 Triton 实现了高阶的 Token 级动态路由与融合推理。
 > 如果你对该算子的基础 PyTorch 层面的权重分解与训练不熟悉，建议先复习 PyTorch 篇：

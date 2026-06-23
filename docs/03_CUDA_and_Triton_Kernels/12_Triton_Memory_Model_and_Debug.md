@@ -14,6 +14,15 @@
 与 PyTorch 这种高度抽象的框架不同，Triton 需要你直面 GPU 的物理内存布局（HBM vs SRAM）以及指针偏移计算 (`Stride`)。
 本节我们将深入剖析 Triton 的内存模型，并提供几个"故意写错"的典型算子，让你实战演练 `TRITON_INTERPRET=1` 和 `tl.device_print` 这些关键的 Debug 工具。
 
+## 前置
+
+**导语：** 这一节会把 stride、mask、越界和调试工具串成一条排错链。
+
+- [Part 1: 1B 单卡硬件与访存优化](../01_Hardware_Math_and_Systems/1B.md)
+- [Part 1: 1D 异构调度与算子编程](../01_Hardware_Math_and_Systems/1D.md)
+- [Part 1: 18 Triton Block 模型](../01_Hardware_Math_and_Systems/18_Triton_Block_Model.md)
+- [Part 1: 19 算子融合导论](../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md)
+
 ### Step 1: 内存模型与 Debug 核心概念
 
 > **HBM (全局显存) vs SRAM (片上共享内存)：**

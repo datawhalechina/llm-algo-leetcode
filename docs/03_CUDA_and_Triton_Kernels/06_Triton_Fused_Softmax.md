@@ -14,6 +14,14 @@
 通过 Triton 的 SRAM，我们可以将**一整行 (Row)** 加载到片上缓存，在 SRAM 内部完成 `max`, `exp`, `sum` 以及除法运算，最终只写回显存一次！
 本节我们将实现一个高效率、数值稳定的 Fused Softmax 算子。
 
+## 前置
+
+**导语：** 这一节会把 Softmax 这类归约算子直接接到 Triton 的行级并行模型上。
+
+- [Part 1: 1B 单卡硬件与访存优化](../01_Hardware_Math_and_Systems/1B.md)
+- [Part 1: 1D 异构调度与算子编程](../01_Hardware_Math_and_Systems/1D.md)
+- [Part 1: 19 算子融合导论](../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md)
+
 ### Step 1: Softmax 数值稳定性与 Triton 归约
 
 > **数值稳定性 (Safe Softmax)：**

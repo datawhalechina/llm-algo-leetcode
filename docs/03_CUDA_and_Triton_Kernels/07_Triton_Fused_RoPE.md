@@ -14,11 +14,17 @@
 标准的 PyTorch 实现涉及张量切片 (`x[..., 0::2]`)、拼接 (`cat`) 以及逐元素乘法 (`* cos`, `* sin`)，在推理时高度消耗显存带宽。
 主流推理引擎（如 vLLM 和 TensorRT-LLM）底层普遍使用 **Triton / CUDA 融合算子** 来直接就地 (In-place) 计算 RoPE。本节我们将实现这一工业界高频应用的算子。
 
+## 前置
 
-> **相关阅读**:
-> 本节使用 Triton 实现了底层的极致显存与计算优化。
-> 如果你对该算子的数学公式推导和纯 PyTorch 高层结构还不熟悉，建议先复习 PyTorch 篇：
->  [`../02_PyTorch_Algorithms/03_RoPE_Tutorial.ipynb`](../02_PyTorch_Algorithms/03_RoPE_Tutorial.md)
+**导语：** 这一节先看 Part 1 的执行模型和 Triton Block 相关 Group，把 RoPE 的块级计算和访存路径先接上。
+- [Part 1: 1B 单卡硬件与访存优化](../01_Hardware_Math_and_Systems/1B.md)
+- [Part 1: 1D 异构调度与算子编程](../01_Hardware_Math_and_Systems/1D.md)
+- [Part 1: 18 Triton Block 模型](../01_Hardware_Math_and_Systems/18_Triton_Block_Model.md)
+
+## 相关阅读
+
+**导语：** 如果想对照 RoPE 在 PyTorch 层的旋转实现，可以继续看这页；不影响继续读本节，但会更容易对应公式。
+- [Part 2: 03 RoPE Tutorial](../02_PyTorch_Algorithms/03_RoPE_Tutorial.md)
 
 ### Step 1: RoPE 的物理内存布局与并行策略
 

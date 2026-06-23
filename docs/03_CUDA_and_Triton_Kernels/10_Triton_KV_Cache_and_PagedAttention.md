@@ -14,11 +14,17 @@
 但在真实的 GPU 硬件上，如何高效地实现**间接寻址 (Indirect Memory Access)**？如何根据 `Block Table` (块映射表) 动态去物理内存池 (Block Pool) 里提取不连续的 K 和 V 块，并在 SRAM 内完成 Online Softmax 归约？
 本节我们将用 Triton 编写一个极简版的 PagedAttention 解码阶段 (Decoding) 前向内核。这也是 vLLM 推理引擎的最核心基石。
 
+## 前置
 
-> **相关阅读**:
-> 本节使用 Triton 实现了底层的极致显存与计算优化。
-> 如果你对该算子的数学公式推导和纯 PyTorch 高层结构还不熟悉，建议先复习 PyTorch 篇：
->  [`../02_PyTorch_Algorithms/17_vLLM_PagedAttention.ipynb`](../02_PyTorch_Algorithms/17_vLLM_PagedAttention.md)
+**导语：** 这一节先看 Part 1 的访存与通信边界相关 Group，再回看 Part 2 的 PagedAttention 任务页，把 KV Cache 的前提补齐。
+- [Part 1: 1B 单卡硬件与访存优化](../01_Hardware_Math_and_Systems/1B.md)
+- [Part 1: 1D 异构调度与算子编程](../01_Hardware_Math_and_Systems/1D.md)
+- [Part 1: 20 NCCL 与 AllReduce 基础](../01_Hardware_Math_and_Systems/20_NCCL_and_AllReduce_Basics.md)
+
+## 相关阅读
+
+**导语：** 如果想把 vLLM 的分页管理和纯 Python 模拟再对照一遍，可以继续看这页；不影响继续读本节，但会更容易理解间接寻址。
+- [Part 2: 17 vLLM PagedAttention](../02_PyTorch_Algorithms/17_vLLM_PagedAttention.md)
 
 ### Step 1: Paged KV Cache 的物理存储与逻辑映射
 

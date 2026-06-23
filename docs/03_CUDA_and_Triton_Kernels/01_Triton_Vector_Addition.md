@@ -12,6 +12,14 @@
 
 这是 Triton 编程的“Hello World”。在这里，你将抛弃平时在 PyTorch 里理所当然的 `z = x + y`，而是站在 GPU 硬件的视角，亲自控制“指针”、“内存偏移”和“线程块（Block）”，体会最原始的数据搬运。
 
+## 前置
+
+**导语：** 这一节后面会从 `program_id`、`mask`、`stride` 和块级并行开始动手。
+
+- [Part 1: 1B 单卡硬件与访存优化](../01_Hardware_Math_and_Systems/1B.md)
+- [Part 1: 1D 异构调度与算子编程](../01_Hardware_Math_and_Systems/1D.md)
+- [Part 1: 18 Triton Block 模型](../01_Hardware_Math_and_Systems/18_Triton_Block_Model.md)
+
 ### Step 1: 核心思想与编程模型
 
 > **Triton 的核心理念：基于 Block 的编程**

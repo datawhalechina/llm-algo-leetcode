@@ -14,6 +14,21 @@
 本节作为整个仓库的最终总结，也是面试中最考验你宏观架构视野的一道综合简答题：
 **作为一名 AI Infra 负责人，如果在业务中遇到了一个严重的性能瓶颈，你该如何在 PyTorch、Triton、CUDA C++ 之间进行技术选型和权衡 (Trade-off)？**
 
+这一节会把“算法正确性、Triton 融合和 CUDA 工程极限”放到同一张图里理解。
+
+## 前置
+
+**导语：** 这一节先看 Part 1 的访存、执行模型、编译和算子融合相关 Group，把三层选型的判断框架先立起来。
+- [Part 1: 1B 单卡硬件与访存优化](../01_Hardware_Math_and_Systems/1B.md)
+- [Part 1: 1D 异构调度与算子编程](../01_Hardware_Math_and_Systems/1D.md)
+- [Part 1: 1E 编译优化与算力生态](../01_Hardware_Math_and_Systems/1E.md)
+- [Part 1: 19 算子融合导论](../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md)
+## 相关阅读
+
+**导语：** 如果想继续看更完整的成本与选型框架，可以再看这页；不影响继续读本节，但会更容易做 trade-off。
+- [Part 1: 33 TCO and Cost Model](../01_Hardware_Math_and_Systems/33_TCO_and_Cost_Model.md)
+
+
 ### Step 1: 三重境界的开发成本与性能边界
 
 > **第一层：PyTorch / 组合算子**

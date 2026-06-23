@@ -9,9 +9,18 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/03_CUDA_and_Triton_Kernels/16_Distributed_Communication_Primitives.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
+
 在前几节的 ZeRO-1 和 TP (张量并行) 中，我们只是通过**数组切片**逻辑上模拟了分布式计算。
 但在真实的工业界集群中（如 8 张 A100 甚至千卡集群），GPU 之间必须通过 NCCL (Nvidia Collective Communication Library) 进行真实的物理数据交换。
 本节我们将深入 `torch.distributed`，实战最核心的两大通信原语：`All-Reduce` 和 `All-Gather`。这也是面试极其高频的考点（如何计算通信量？Ring-AllReduce 怎么跑的？）。
+
+这一节会把 `dist.all_reduce` 和 `dist.all_gather` 放到真实分布式训练语境里理解。
+
+## 前置
+
+**导语：** 这一节先看 Part 1 的通信边界相关 Group，把 all-reduce / all-gather 依赖的前提先立起来。
+- [Part 1: 1C 多卡通信与显存共享](../01_Hardware_Math_and_Systems/1C.md)
+- [Part 1: 20 NCCL 与 AllReduce 基础](../01_Hardware_Math_and_Systems/20_NCCL_and_AllReduce_Basics.md)
 
 ### Step 1: 集合通信原语的本质
 
@@ -47,7 +56,8 @@ def run_worker(rank, world_size):
     在子进程中执行的代码。代表单张 GPU 的视角。
     """
     # 1. 初始化进程组 (Backend 推荐 nccl，但如果本地无多卡或只是 CPU 测试，则使用 gloo)
-    backend = 'nccl' if torch.cuda.is_available() else 'gloo'
+    use_cuda = torch.cuda.is_available() and torch.cuda.device_count() >= world_size
+    backend = 'nccl' if use_cuda else 'gloo'
     # 配置临时环境变量，让进程能互相找到
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '12355'
@@ -56,7 +66,7 @@ def run_worker(rank, world_size):
     dist.init_process_group(backend, rank=rank, world_size=world_size)
     
     # 设置设备
-    device = torch.device(f'cuda:{rank}') if torch.cuda.is_available() else torch.device('cpu')
+    device = torch.device(f'cuda:{rank}') if use_cuda else torch.device('cpu')
     
     try:
         # ==========================================
@@ -102,12 +112,12 @@ def simulate_distributed_primitives(num_gpus=2):
     if torch.cuda.device_count() < num_gpus:
         print(f"当前机器可用 GPU 数量少于 {num_gpus}，将使用 CPU (gloo 后端) 模拟多进程通信。")
         
-    # # 使用 mp.spawn 启动多个进程
-    # # 注意: 这个函数会阻塞，直到所有子进程运行完毕
-    # mp.spawn(run_worker,
-    #          args=(num_gpus,),
-    #          nprocs=num_gpus,
-    #          join=True)
+    # 使用 mp.spawn 启动多个进程
+    # 注意: 这个函数会阻塞，直到所有子进程运行完毕
+    mp.spawn(run_worker,
+             args=(num_gpus,),
+             nprocs=num_gpus,
+             join=True)
 
 # 运行分布式模拟测试
 def test_distributed():

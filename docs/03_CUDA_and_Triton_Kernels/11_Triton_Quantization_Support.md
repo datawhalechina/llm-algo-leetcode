@@ -15,10 +15,18 @@
 以 GPTQ/AWQ 为代表的现代量化框架，底层的核心技术是 **On-the-fly Dequantization (即时反量化)**。
 本节我们将编写一个 Triton 算子：在 SRAM 中读入 INT8 的权重和 FP16 的缩放因子 (Scales)，在寄存器里动态反量化为 FP16 后，立即与激活值相乘。
 
+## 前置
 
-> **相关阅读**:  
-> 如果你对量化的数学公式推导和纯 PyTorch 实现还不熟悉，建议先复习 PyTorch 篇：
-> [`../02_PyTorch_Algorithms/20_Quantization_W8A16.ipynb`](../02_PyTorch_Algorithms/20_Quantization_W8A16.md)
+**导语：** 这一节把量化权重的反量化和 GEMM 融合在一起，目标是减少额外的 HBM 往返。
+
+- [Part 1: 1B 单卡硬件与访存优化](../01_Hardware_Math_and_Systems/1B.md)
+- [Part 1: 1D 异构调度与算子编程](../01_Hardware_Math_and_Systems/1D.md)
+- [Part 1: 19 算子融合导论](../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md)
+
+## 相关阅读
+**导语：** 如果你想先把量化公式和 PyTorch 版本过一遍，可以继续看这页；不影响继续读本节，但会更容易理解即时反量化。
+- [Part 2: 20 Quantization W8A16](../02_PyTorch_Algorithms/20_Quantization_W8A16.md)
+
 ### Step 1: 融合反量化矩阵乘法的核心思想
 
 > **计算公式：**
