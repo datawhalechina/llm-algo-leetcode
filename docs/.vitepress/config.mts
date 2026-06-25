@@ -279,7 +279,7 @@ export default defineConfig({
         items: [
           { text: '📖 完整导学', link: '/03_Triton_Kernels/intro' },
           {
-            text: '3.1 Triton 基础',
+            text: '3.1 基础篇',
             link: '/03_Triton_Kernels/3_1',
             collapsed: true,
             items: [
@@ -292,26 +292,42 @@ export default defineConfig({
             ]
           },
           {
-            text: '3.2 Triton 进阶',
+            text: '3.2 过渡篇',
             link: '/03_Triton_Kernels/3_2',
             collapsed: true,
             items: [
               { text: '📖 组页', link: '/03_Triton_Kernels/3_2' },
               { text: '06. Triton Fused Softmax', link: '/03_Triton_Kernels/06_Triton_Fused_Softmax' },
               { text: '06.5 Triton Design Patterns', link: '/03_Triton_Kernels/06_5_Triton_Design_Patterns' },
+            ]
+          },
+          {
+            text: '3.3 进阶A：Attention优化',
+            link: '/03_Triton_Kernels/3_3',
+            collapsed: true,
+            items: [
+              { text: '📖 组页', link: '/03_Triton_Kernels/3_3' },
               { text: '07. Triton Fused RoPE', link: '/03_Triton_Kernels/07_Triton_Fused_RoPE' },
               { text: '08. Triton Flash Attention', link: '/03_Triton_Kernels/08_Triton_Flash_Attention' },
-              { text: '09. Triton PagedAttention', link: '/03_Triton_Kernels/09_Triton_PagedAttention' },
+              { text: '09. Triton PagedAttention', link: '/03_Triton_Kernels/09_Triton_PagedAttention' }
+            ]
+          },
+          {
+            text: '3.4 进阶B：推理优化',
+            link: '/03_Triton_Kernels/3_4',
+            collapsed: true,
+            items: [
+              { text: '📖 组页', link: '/03_Triton_Kernels/3_4' },
               { text: '10. Triton Quantization', link: '/03_Triton_Kernels/10_Triton_Quantization' },
               { text: '11. Triton Multi-LoRA', link: '/03_Triton_Kernels/11_Triton_Multi_LoRA' }
             ]
           },
           {
-            text: '3.3 Triton 项目',
-            link: '/03_Triton_Kernels/3_3',
+            text: '3.5 项目篇',
+            link: '/03_Triton_Kernels/3_5',
             collapsed: true,
             items: [
-              { text: '📖 组页', link: '/03_Triton_Kernels/3_3' },
+              { text: '📖 组页', link: '/03_Triton_Kernels/3_5' },
               { text: '12. Triton Memory Model and Debug', link: '/03_Triton_Kernels/12_Triton_Memory_Model_and_Debug' },
               { text: '13. Triton Llama3 Block Project', link: '/03_Triton_Kernels/13_Triton_Llama3_Block_Project' },
               { text: '14. Triton Best Practices and FAQ', link: '/03_Triton_Kernels/14_Triton_Best_Practices_and_FAQ' }

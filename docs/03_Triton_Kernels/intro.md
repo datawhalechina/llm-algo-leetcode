@@ -12,20 +12,21 @@
 
 | Task | 对应入口 | 一句话目标 |
 |:---|:---|:---|
-| Task 1 | [3.1 Triton 基础](../03_Triton_Kernels/3_1.md) | 认识 Triton 的编程模型和基础 kernel 写法。 |
-| Task 2 | [3.1 Triton 基础](../03_Triton_Kernels/3_1.md) | 从向量加法、RMSNorm、SwiGLU 进入融合算子思维。 |
-| Task 3 | [3.2 Triton 进阶](../03_Triton_Kernels/3_2.md) | 把 softmax、RoPE、FlashAttention 和 KV cache 串起来。 |
-| Task 4 | [3.3 Triton 项目](../03_Triton_Kernels/3_3.md) | 学会调试、profiling 和项目化落地。 |
+| Task 1 | [3.1 基础篇](../03_Triton_Kernels/3_1.md) | 认识 Triton 的编程模型和基础 kernel 写法。 |
+| Task 2 | [3.2 过渡篇](../03_Triton_Kernels/3_2.md) | 通过 Softmax 和设计模式完成从基础算子到复杂算子的过渡。 |
+| Task 3 | [3.3 进阶A：Attention优化](../03_Triton_Kernels/3_3.md) | 把 RoPE、FlashAttention 和 PagedAttention 串成一条 Attention 主线。 |
+| Task 4 | [3.4 进阶B：推理优化](../03_Triton_Kernels/3_4.md) | 进入 Quantization 和 Multi-LoRA 的推理优化线。 |
 | Task 5 | [06.5 Triton 设计模式与过渡总结](../03_Triton_Kernels/06_5_Triton_Design_Patterns.md) | 把 Triton 的常用模式收束成可复用骨架。 |
 
 ### 学习组划分
 
 | 学习组 | 题目范围 | 主题 | 难度 |
 |:---|:---|:---|:---|
-| **3.1: Triton 基础** | 01-05 | Triton 入门与融合 | Medium |
-| **3.2: Triton 进阶** | 06-11 | 复杂算子实现 | Hard |
-| **3.3: Triton 项目** | 12-14 | 调试与综合项目 | Hard |
-| **06.5: Triton 设计模式** | 06.5 | 过渡桥接 | Medium |
+| **3.1: 基础篇** | 01-05 | Triton 入门与基础融合 | Medium |
+| **3.2: 过渡篇** | 06, 06.5 | Safe Softmax 与设计模式桥接 | Medium |
+| **3.3: 进阶A：Attention优化** | 07-09 | RoPE / FlashAttention / PagedAttention | Hard |
+| **3.4: 进阶B：推理优化** | 10-11 | Quantization 与 Multi-LoRA | Hard |
+| **3.5: 项目篇** | 12-14 | 调试、内存模型与综合项目 | Hard |
 
 ### 环境边界（代码审计版）
 
@@ -47,11 +48,12 @@
 - **Triton 前置层**：`18 / 19`
 - **分布式与系统边界**：`20`
 
-如果你对 GPU 访存、block / warp、shared memory、算子融合还不熟，先按 `1B -> 1D -> 18 -> 19` 的顺序回看，再进入 3.1 / 3.2 / 3.3 会更顺。
+如果你对 GPU 访存、block / warp、shared memory、算子融合还不熟，先按 `1B -> 1D -> 18 -> 19` 的顺序回看，再进入 3.1 / 3.2 / 3.3 / 3.4 / 3.5 会更顺。
 
 ### 后续页面
 
-- [3.1 Triton 基础](../03_Triton_Kernels/3_1.md)
+- [3.1 基础篇](../03_Triton_Kernels/3_1.md)
+- [3.2 过渡篇](../03_Triton_Kernels/3_2.md)
 - [06.5 Triton 设计模式与过渡总结](../03_Triton_Kernels/06_5_Triton_Design_Patterns.md)
 
 ### 环境说明
