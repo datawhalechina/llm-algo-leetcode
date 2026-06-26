@@ -1,134 +1,94 @@
 # CNB 环境说明
 
-本目录用于未来的 CNB 云端统一教学环境，目标是为本项目提供一个 **更一致、可复现、对 GPU 友好** 的运行入口。
+本目录用于本项目的 CNB 云端统一教学环境。CNB 的角色不是替代本地开发，而是提供一套更一致、可复现、对 GPU 更友好的远程运行入口。
 
-与公共在线 Notebook 平台相比，CNB 环境的特点不是“临时提供一个能跑的云端 notebook”，而是提供一套 **固定版本组合** 的教学环境，尽量减少不同用户之间的软件栈差异。
-
----
+可以把 CNB 理解为一个基于容器化的云端统一开发与验证环境：它包含 Git 仓库工作区、平台级流水线、在线编辑与运行能力，并可按需接入 GPU 算力。
 
 ## 定位
 
-CNB 环境主要服务以下场景：
+- **GitHub**：主源仓库，负责正文、练习、导学和正式发布
+- **本地环境**：适合日常开发、章节编辑和 Notebook 验证
+- **CNB 环境**：适合统一镜像、云端运行和跨平台复现
 
-- 希望减少本地 Linux / macOS / Windows 差异带来的配置成本
-- 希望减少 CUDA / Triton / 编译工具链带来的安装门槛
-- 希望为 Chapter 3 提供更稳定的一致环境
-- 希望为课程、训练营或团队协作提供统一镜像
+## 初学者怎么选
 
-对于本项目，CNB 环境的角色可以理解为：
+如果你第一次接触这个项目，按下面顺序选环境：
 
-- **根目录 `environment.yml`**：本地学习与普通开发的主入口
-- **在线 Notebook 平台**：适合快速开始、轻量试跑
-- **CNB 环境**：适合统一环境、完整实验和稳定复现
+1. 先看在线站点和 Chapter 0 / 1 导学。
+2. 如果只是入门练习，先用 Colab 或其他在线 Notebook。
+3. 如果要系统学 Chapter 2，优先本地 conda 环境。
+   如果不想手动配置本地环境，Chapter 2 也可以直接用 CNB 作为第二选择。
+4. 如果要做 Chapter 3，再切到本地 GPU 或 CNB GPU 入口。
+5. 如果你想和别人用同一套环境跑，优先 CNB。
 
----
+默认原则：
 
-## 版本策略
+- **先能看懂，再考虑配置**
+- **先用 CPU 跑通，再考虑 GPU**
+- **先验证 Chapter 0 / 1 / 2，再单独处理 Chapter 3**
 
-CNB 环境建议采用 **固定版本组合**，而不是只描述一个模糊的能力边界。
+## 环境骨架
 
-推荐记录并长期维护以下信息：
+- `cnb/environment.yml`：CNB 侧的 conda 环境入口
+- `environment.yml`：本地主入口环境
 
-- Linux 基础镜像版本
-- Python 版本
-- PyTorch 版本
-- CUDA 版本
-- Triton 版本
-- Notebook 相关依赖版本
-- 测试脚本运行约定
+CNB 默认会尽量复用与本地一致的依赖版本，但在实际启动前，仍需要由 `.cnb.yml` 指定最终的镜像和启动方式。
+如果需要更稳定的交互式开发环境，可以优先使用根目录 `.ide/Dockerfile` 作为开发镜像基础，再由 CNB 的 `vscode` 入口启动。
 
-### 当前文档原则
+## 为什么需要 `vscode`
 
-- **公共在线平台**：写能力边界，不写死具体 CUDA 小版本
-- **本地参考环境**：写推荐版本，例如 Ubuntu 22.04
-- **CNB 教学镜像**：写固定版本组合
+本项目的 CNB 不是只跑流水线的 CI 容器，还需要给读者一个可以直接进入、直接运行、直接调试的交互式工作区。
 
-这也是本项目后续环境文档的统一原则。
+- `push` / `pull_request`：负责校验、构建、自动合并等流水线任务
+- `vscode`：负责读者打开后的交互开发环境，要求能直接使用 Python、Notebook、PyTorch、Triton 等基础工具链
 
----
+这样 CNB 才能同时满足两类需求：
 
-## 推荐基础组合（占位模板）
-
-以下内容是未来可落地的模板，当前先作为结构占位：
-
-- **Linux 基础镜像**：Ubuntu 22.04
-- **Python**：3.10
-- **PyTorch**：待固定
-- **CUDA**：11.8 或 12.1 对应的固定组合
-- **Triton**：与当前 PyTorch / CUDA 组合兼容的固定版本
-
-> 注意：
-> 这里的具体版本应在真正制作 CNB 镜像时固定并验证。当前阶段先明确策略，不提前伪造最终版本号。
-
----
-
-## 目录说明
-
-当前目录下建议逐步演进出以下文件：
-
-- `cnb/README.md`
-  - 说明 CNB 环境的定位、版本策略和使用方式
-- `cnb/environment.yml`
-  - 作为 CNB 环境的 conda 入口，默认覆盖 `base + dev + gpu`
-- 未来可能新增的平台配置文件
-  - 镜像说明
-  - 启动参数说明
-  - 平台特定配置
-
----
-
-## 与根目录环境的区别
-
-### 根目录 `environment.yml`
-适合：
-- 本地学习者
-- CPU-only 用户
-- 普通开发者
-- 主要学习 Chapter 0-2 的用户
-
-特点：
-- 更轻量
-- 面向本地环境
-- 默认不包含最重的 GPU / Triton 依赖
-
-### `cnb/environment.yml`
-适合：
-- 需要统一环境的学习者
-- 需要 GPU / Chapter 3 体验的用户
-- 课程、训练营、团队协作场景
-
-特点：
-- 更完整
-- 面向云端统一环境
-- 默认包含更完整的教学依赖
-
----
-
-## 预期使用方式（后续补充）
-
-未来 CNB 方案完善后，这里建议补充：
-
-1. 如何选择或构建 CNB 镜像
-2. 如何启动 notebook 环境
-3. 如何进入项目目录
-4. 如何运行测试脚本
-5. 如何区分基础学习环境与 Chapter 3 环境
-
-当前阶段，这部分先作为结构预留。
-
----
+1. 仓库改动的自动化验证
+2. 学习者和维护者的交互式开发与运行
 
 ## 当前状态
 
-当前目录和文件已经完成第一版结构骨架：
+- GitHub -> CNB 单向同步已跑通
+- CNB 仓库已收到当前集成分支内容
+- 统一启动配置 `.cnb.yml` 已存在，但交互会话是否真正吃到最新镜像，还需要实机确认
 
-- `cnb/README.md`
-- `cnb/environment.yml`
+## 在 CNB 里怎么验
 
-后续将根据真实 CNB 镜像方案继续补充：
+先激活项目环境，再按章节验证。
 
-- 固定版本清单
-- 平台使用说明
-- 启动流程
-- 镜像构建或选择方式
-- 与本地 / 在线 Notebook 路径的协同关系
+```bash
+. /opt/conda/etc/profile.d/conda.sh
+conda activate llm_algo_cnb_dev
+
+python --version
+python -m pip --version
+python -c "import torch; print(torch.__version__)"
+python -c "import triton; print(triton.__version__)"
+
+python test_chapter0_1_notebooks.py
+python test_notebook_answers.py --all --dir 02_PyTorch_Algorithms --mode both
+```
+
+如果当前 CNB 实例没有 GPU，`nvidia-smi` 可能不可用，`torch.cuda.is_available()` 也可能是 `False`。这种情况下，Chapter 3 只能验证导学页、链接和非 GPU 路径，不能把 GPU 结果当成最终通过。
+
+## Chapter 3 GPU 入口
+
+Chapter 3 需要独立的 GPU 会话，不应默认依赖当前这套 CPU 交互环境。
+
+- CPU 交互环境：用于 Chapter 0 / 1 / 2
+- GPU 验证环境：用于 Chapter 3 的内核、显存和通信验证
+- 对应的 CNB 入口名：`vscode-gpu`
+- 统一验证脚本：`scripts/validate_chapter3_gpu.sh`
+
+如果平台分配的当前会话没有 GPU，只能把它视为 Chapter 0 / 1 / 2 的统一环境，不要把 Chapter 3 的 GPU 结果当作最终验收。
+
+## 适用场景
+
+- 希望减少本地系统差异带来的配置成本
+- 希望为 Chapter 3 提供更稳定的 GPU / Triton 实验入口
+- 希望为课程、训练营或团队协作提供统一环境
+
+## 说明
+
+CNB 的具体启动流程、镜像选择、Notebook 打开方式和测试脚本运行方式，将在 `.cnb.yml` 和 `docs/guide.md` 中继续完善。

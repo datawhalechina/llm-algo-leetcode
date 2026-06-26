@@ -5,7 +5,7 @@ const baseConfig = isEdgeOne ? '/' : '/llm-algo-leetcode/'
 
 export default defineConfig({
   lang: 'zh-CN',
-  title: "大模型算法实战教程 / LLM Algorithm Practice Lab",
+  title: "大模型算法实战教程",
   description: "面向大模型入门到进阶的算法实战教程",
   base: baseConfig,
   ignoreDeadLinks: true,
@@ -15,16 +15,19 @@ export default defineConfig({
   themeConfig: {
     logo: '/datawhale-logo.png',
     nav: [
-      { text: '开始刷题', link: '/01_Hardware_Math_and_Systems/01_Data_Types_and_Precision' },
-      { text: 'GitHub 仓库', link: 'https://github.com/datawhalechina/llm-algo-leetcode' },
+      { text: '第零部分\n前置知识与环境准备', link: '/00_Prerequisites/intro' },
+      { text: '第一部分\n硬件与系统基础', link: '/01_Hardware_Math_and_Systems/intro' },
+      { text: '第二部分\nPyTorch 核心算法', link: '/02_PyTorch_Algorithms/intro' },
+      { text: '第三部分\nTriton 算子开发', link: '/03_Triton_Kernels/intro' },
+      { text: '第四部分\nCUDA C++ 与系统优化', link: '/04_CUDA_and_System_Optimization/intro' },
     ],
     search: {
       provider: 'local',
       options: {
         translations: {
           button: {
-            buttonText: '搜索文档',
-            buttonAriaLabel: '搜索文档'
+            buttonText: '搜索',
+            buttonAriaLabel: '搜索'
           },
           modal: {
             noResultsText: '无法找到相关结果',
@@ -53,7 +56,6 @@ export default defineConfig({
           { text: '📖 完整导学', link: '/00_Prerequisites/intro' },
           {
             text: '0A Python 基础',
-            link: '/00_Prerequisites/0A',
             collapsed: true,
             items: [
               { text: '📖 组页', link: '/00_Prerequisites/0A' },
@@ -63,7 +65,6 @@ export default defineConfig({
           },
           {
             text: '0B PyTorch 基础',
-            link: '/00_Prerequisites/0B',
             collapsed: true,
             items: [
               { text: '📖 组页', link: '/00_Prerequisites/0B' },
@@ -75,7 +76,6 @@ export default defineConfig({
           },
           {
             text: '0C 深度学习基础',
-            link: '/00_Prerequisites/0C',
             collapsed: true,
             items: [
               { text: '📖 组页', link: '/00_Prerequisites/0C' },
@@ -87,7 +87,6 @@ export default defineConfig({
           },
           {
             text: '0D 工具与调试',
-            link: '/00_Prerequisites/0D',
             collapsed: true,
             items: [
               { text: '📖 组页', link: '/00_Prerequisites/0D' },
@@ -105,7 +104,6 @@ export default defineConfig({
           { text: '📖 完整导学', link: '/01_Hardware_Math_and_Systems/intro' },
           {
             text: '1A 数值基础与算力估算',
-            link: '/01_Hardware_Math_and_Systems/1A',
             collapsed: true,
             items: [
               { text: '📖 组页', link: '/01_Hardware_Math_and_Systems/1A' },
@@ -117,7 +115,6 @@ export default defineConfig({
           },
           {
             text: '1B 单卡硬件与访存优化',
-            link: '/01_Hardware_Math_and_Systems/1B',
             collapsed: true,
             items: [
               { text: '📖 组页', link: '/01_Hardware_Math_and_Systems/1B' },
@@ -134,7 +131,6 @@ export default defineConfig({
           },
           {
             text: '1C 多卡通信与显存共享',
-            link: '/01_Hardware_Math_and_Systems/1C',
             collapsed: true,
             items: [
               { text: '📖 组页', link: '/01_Hardware_Math_and_Systems/1C' },
@@ -148,7 +144,6 @@ export default defineConfig({
           },
           {
             text: '1D 异构调度与算子编程',
-            link: '/01_Hardware_Math_and_Systems/1D',
             collapsed: true,
             items: [
               { text: '📖 组页', link: '/01_Hardware_Math_and_Systems/1D' },
@@ -166,7 +161,6 @@ export default defineConfig({
           },
           {
             text: '1E 编译优化与算力生态',
-            link: '/01_Hardware_Math_and_Systems/1E',
             collapsed: true,
             items: [
               { text: '📖 组页', link: '/01_Hardware_Math_and_Systems/1E' },
@@ -184,7 +178,6 @@ export default defineConfig({
           { text: '📖 完整导学', link: '/02_PyTorch_Algorithms/intro' },
           {
             text: '2.1 基础算子',
-            link: '/02_PyTorch_Algorithms/2_1',
             collapsed: true,
             items: [
               { text: '📖 组页', link: '/02_PyTorch_Algorithms/2_1' },
@@ -197,7 +190,6 @@ export default defineConfig({
           },
           {
             text: '2.2 模型架构',
-            link: '/02_PyTorch_Algorithms/2_2',
             collapsed: true,
             items: [
               { text: '📖 组页', link: '/02_PyTorch_Algorithms/2_2' },
@@ -209,7 +201,6 @@ export default defineConfig({
           },
           {
             text: '2.3 微调与训练技术',
-            link: '/02_PyTorch_Algorithms/2_3',
             collapsed: true,
             items: [
               { text: '📖 组页', link: '/02_PyTorch_Algorithms/2_3' },
@@ -220,7 +211,6 @@ export default defineConfig({
           },
           {
             text: '2.4 对齐技术',
-            link: '/02_PyTorch_Algorithms/2_4',
             collapsed: true,
             items: [
               { text: '📖 组页', link: '/02_PyTorch_Algorithms/2_4' },
@@ -230,7 +220,6 @@ export default defineConfig({
           },
           {
             text: '2.5 反向传播与显存优化',
-            link: '/02_PyTorch_Algorithms/2_5',
             collapsed: true,
             items: [
               { text: '📖 组页', link: '/02_PyTorch_Algorithms/2_5' },
@@ -239,7 +228,6 @@ export default defineConfig({
           },
           {
             text: '2.6 核心推理优化',
-            link: '/02_PyTorch_Algorithms/2_6',
             collapsed: true,
             items: [
               { text: '📖 组页', link: '/02_PyTorch_Algorithms/2_6' },
@@ -250,7 +238,6 @@ export default defineConfig({
           },
           {
             text: '2.7 高级推理优化',
-            link: '/02_PyTorch_Algorithms/2_7',
             collapsed: true,
             items: [
               { text: '📖 组页', link: '/02_PyTorch_Algorithms/2_7' },
@@ -261,7 +248,6 @@ export default defineConfig({
           },
           {
             text: '2.8 分布式与扩展',
-            link: '/02_PyTorch_Algorithms/2_8',
             collapsed: true,
             items: [
               { text: '📖 组页', link: '/02_PyTorch_Algorithms/2_8' },
@@ -275,67 +261,99 @@ export default defineConfig({
         ]
       },
       {
-        text: '第三部分：CUDA 与 Triton 算子',
+        text: '第三部分：Triton 算子开发',
         items: [
-          { text: '📖 完整导学', link: '/03_CUDA_and_Triton_Kernels/intro' },
+          { text: '📖 完整导学', link: '/03_Triton_Kernels/intro' },
           {
-            text: '3.1 Triton 基础',
-            link: '/03_CUDA_and_Triton_Kernels/3_1',
+            text: '3.1 基础篇',
             collapsed: true,
             items: [
-              { text: '📖 组页', link: '/03_CUDA_and_Triton_Kernels/3_1' },
-              { text: '01. Triton Vector Addition', link: '/03_CUDA_and_Triton_Kernels/01_Triton_Vector_Addition' },
-              { text: '02. Triton Fused SwiGLU', link: '/03_CUDA_and_Triton_Kernels/02_Triton_Fused_SwiGLU' },
-              { text: '03. Triton Fused RMSNorm', link: '/03_CUDA_and_Triton_Kernels/03_Triton_Fused_RMSNorm' },
-              { text: '04. Triton GEMM Tutorial', link: '/03_CUDA_and_Triton_Kernels/04_Triton_GEMM_Tutorial' },
-              { text: '05. Triton Autotune and Profiling', link: '/03_CUDA_and_Triton_Kernels/05_Triton_Autotune_and_Profiling' }
+              { text: '📖 组页', link: '/03_Triton_Kernels/3_1' },
+              { text: '01. Triton Vector Addition', link: '/03_Triton_Kernels/01_Triton_Vector_Addition' },
+              { text: '02. Triton Fused SwiGLU', link: '/03_Triton_Kernels/02_Triton_Fused_SwiGLU' },
+              { text: '03. Triton Fused RMSNorm', link: '/03_Triton_Kernels/03_Triton_Fused_RMSNorm' },
+              { text: '04. Triton GEMM Tutorial', link: '/03_Triton_Kernels/04_Triton_GEMM_Tutorial' },
+              { text: '05. Triton Autotune and Profiling', link: '/03_Triton_Kernels/05_Triton_Autotune_and_Profiling' }
             ]
           },
           {
-            text: '3.2 Triton 进阶',
-            link: '/03_CUDA_and_Triton_Kernels/3_2',
+            text: '3.2 过渡篇',
             collapsed: true,
             items: [
-              { text: '📖 组页', link: '/03_CUDA_and_Triton_Kernels/3_2' },
-              { text: '06. Triton Fused Softmax', link: '/03_CUDA_and_Triton_Kernels/06_Triton_Fused_Softmax' },
-              { text: '07. Triton Fused RoPE', link: '/03_CUDA_and_Triton_Kernels/07_Triton_Fused_RoPE' },
-              { text: '08. Triton Flash Attention', link: '/03_CUDA_and_Triton_Kernels/08_Triton_Flash_Attention' },
-              { text: '09. Triton Fused LoRA', link: '/03_CUDA_and_Triton_Kernels/09_Triton_Fused_LoRA' },
-              { text: '10. Triton KV Cache and PagedAttention', link: '/03_CUDA_and_Triton_Kernels/10_Triton_KV_Cache_and_PagedAttention' },
-              { text: '11. Triton Quantization Support', link: '/03_CUDA_and_Triton_Kernels/11_Triton_Quantization_Support' }
+              { text: '📖 组页', link: '/03_Triton_Kernels/3_2' },
+              { text: '06. Triton Fused Softmax', link: '/03_Triton_Kernels/06_Triton_Fused_Softmax' },
+              { text: '06.5 Triton Design Patterns', link: '/03_Triton_Kernels/06_5_Triton_Design_Patterns' },
             ]
           },
           {
-            text: '3.3 Triton 项目',
-            link: '/03_CUDA_and_Triton_Kernels/3_3',
+            text: '3.3 进阶A：Attention优化',
             collapsed: true,
             items: [
-              { text: '📖 组页', link: '/03_CUDA_and_Triton_Kernels/3_3' },
-              { text: '12. Triton Memory Model and Debug', link: '/03_CUDA_and_Triton_Kernels/12_Triton_Memory_Model_and_Debug' },
-              { text: '13. Triton Llama3 Block Project', link: '/03_CUDA_and_Triton_Kernels/13_Triton_Llama3_Block_Project' },
-              { text: '14. Triton Best Practices and FAQ', link: '/03_CUDA_and_Triton_Kernels/14_Triton_Best_Practices_and_FAQ' }
+              { text: '📖 组页', link: '/03_Triton_Kernels/3_3' },
+              { text: '07. Triton Fused RoPE', link: '/03_Triton_Kernels/07_Triton_Fused_RoPE' },
+              { text: '08. Triton Flash Attention', link: '/03_Triton_Kernels/08_Triton_Flash_Attention' },
+              { text: '09. Triton PagedAttention', link: '/03_Triton_Kernels/09_Triton_PagedAttention' }
             ]
           },
           {
-            text: '3.4 CUDA 内核与显存优化',
-            link: '/03_CUDA_and_Triton_Kernels/3_4',
+            text: '3.4 进阶B：推理优化',
             collapsed: true,
             items: [
-              { text: '📖 组页', link: '/03_CUDA_and_Triton_Kernels/3_4' },
-              { text: '15. PyTorch CUDA Streams and Transfer', link: '/03_CUDA_and_Triton_Kernels/15_PyTorch_CUDA_Streams_and_Transfer' },
-              { text: '18. CUDA Custom Kernel Intro', link: '/03_CUDA_and_Triton_Kernels/18_CUDA_Custom_Kernel_Intro' },
-              { text: '19. CUDA Shared Memory Optimization', link: '/03_CUDA_and_Triton_Kernels/19_CUDA_Shared_Memory_Optimization' }
+              { text: '📖 组页', link: '/03_Triton_Kernels/3_4' },
+              { text: '10. Triton Quantization', link: '/03_Triton_Kernels/10_Triton_Quantization' },
+              { text: '11. Triton Multi-LoRA', link: '/03_Triton_Kernels/11_Triton_Multi_LoRA' }
             ]
           },
           {
-            text: '3.5 CUDA 系统扩展',
-            link: '/03_CUDA_and_Triton_Kernels/3_5',
+            text: '3.5 项目篇',
             collapsed: true,
             items: [
-              { text: '📖 组页', link: '/03_CUDA_and_Triton_Kernels/3_5' },
-              { text: '16. Distributed Communication Primitives', link: '/03_CUDA_and_Triton_Kernels/16_Distributed_Communication_Primitives' },
-              { text: '17. DeepSpeed Zero Config', link: '/03_CUDA_and_Triton_Kernels/17_DeepSpeed_Zero_Config' },
-              { text: '20. CUDA vs Triton vs PyTorch', link: '/03_CUDA_and_Triton_Kernels/20_CUDA_vs_Triton_vs_PyTorch' }
+              { text: '📖 组页', link: '/03_Triton_Kernels/3_5' },
+              { text: '12. Triton Memory Model and Debug', link: '/03_Triton_Kernels/12_Triton_Memory_Model_and_Debug' },
+              { text: '13. Triton Llama3 Block Project', link: '/03_Triton_Kernels/13_Triton_Llama3_Block_Project' },
+              { text: '14. Triton Best Practices and FAQ', link: '/03_Triton_Kernels/14_Triton_Best_Practices_and_FAQ' }
+            ]
+          }
+        ]
+      },
+      {
+        text: '第四部分：CUDA C++ 与系统优化',
+        items: [
+          { text: '📖 完整导学', link: '/04_CUDA_and_System_Optimization/intro' },
+          {
+            text: '4.1 CUDA 编程基础',
+            collapsed: true,
+            items: [
+              { text: '📖 组页', link: '/04_CUDA_and_System_Optimization/4_1' },
+              { text: '15. CUDA Custom Kernel Intro', link: '/04_CUDA_and_System_Optimization/15_CUDA_Custom_Kernel_Intro' },
+              { text: '16. CUDA Shared Memory Optimization', link: '/04_CUDA_and_System_Optimization/16_CUDA_Shared_Memory_Optimization' }
+            ]
+          },
+          {
+            text: '4.2 系统级性能优化',
+            collapsed: true,
+            items: [
+              { text: '📖 组页', link: '/04_CUDA_and_System_Optimization/4_2' },
+              { text: '17. CUDA Streams and Transfer', link: '/04_CUDA_and_System_Optimization/17_PyTorch_CUDA_Streams_and_Transfer' },
+              { text: '18. CUDA Graph and JIT Compile', link: '/04_CUDA_and_System_Optimization/18_CUDA_Graph_and_JIT_Compile' }
+            ]
+          },
+          {
+            text: '4.3 分布式训练工程',
+            collapsed: true,
+            items: [
+              { text: '📖 组页', link: '/04_CUDA_and_System_Optimization/4_3' },
+              { text: '19. Distributed Communication Primitives', link: '/04_CUDA_and_System_Optimization/19_Distributed_Communication_Primitives' },
+              { text: '20. DeepSpeed ZeRO & Offload', link: '/04_CUDA_and_System_Optimization/20_DeepSpeed_Zero_Config' }
+            ]
+          },
+          {
+            text: '4.4 架构视野',
+            collapsed: true,
+            items: [
+              { text: '📖 组页', link: '/04_CUDA_and_System_Optimization/4_4' },
+              { text: '21. CUDA vs Triton vs PyTorch', link: '/04_CUDA_and_System_Optimization/21_CUDA_vs_Triton_vs_PyTorch' },
+              { text: '22. TCO and Hardware Selection', link: '/04_CUDA_and_System_Optimization/22_TCO_and_Hardware_Selection' }
             ]
           }
         ]

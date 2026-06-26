@@ -2,7 +2,7 @@
 
 ## 🎯 本部分概览
 
-本章聚焦 PyTorch 级别的大模型实现，按“基础算子 -> 模型架构 -> 微调与训练技术 -> 对齐技术 -> 反向传播与显存优化 -> 核心推理优化 -> 高级推理优化 -> 分布式与扩展”组织。
+本部分聚焦 PyTorch 级别的大模型实现，按“基础算子 -> 模型架构 -> 微调与训练技术 -> 对齐技术 -> 反向传播与显存优化 -> 核心推理优化 -> 高级推理优化 -> 分布式与扩展”组织。
 
 ### 学习组划分
 
@@ -33,7 +33,7 @@
 - **整体定位：CPU-first**
 - **大多数 notebook**：可在 CPU 环境下完成学习和 correctness 验证
 - **已确认需要 GPU 的 notebook**：`21_Gradient_Checkpointing`，其测试会读取真实 CUDA 显存峰值
-- **学习建议**：为了保持体验一致，建议所有学习者使用同一套 Python 环境；GPU 作为后段实验和真实性能验证的增强条件，而不是 Chapter 2 的统一门槛
+- **学习建议**：为了保持体验一致，建议所有学习者使用同一套 Python 环境；GPU 作为后段实验和真实性能验证的增强条件，而不是第二部分的统一门槛
 
 ### 学习建议
 
@@ -54,8 +54,8 @@
 - [2.5 反向传播与显存优化](../docs/02_PyTorch_Algorithms/2_5.md)
 - [2.6 核心推理优化](../docs/02_PyTorch_Algorithms/2_6.md)
 - [2.8 分布式与扩展](../docs/02_PyTorch_Algorithms/2_8.md)
-- [3.1 Triton 基础](../docs/03_CUDA_and_Triton_Kernels/intro.md)
+- [3.1 Triton 基础](../docs/03_Triton_Kernels/intro.md)
 
 ### 题目与测试
 
-章节题目的占位初始化、答案验证和本地测试方式，统一以 [维护与发布手册](../docs/maintenance.md) 和 [使用指南](../docs/guide.md) 为准。
+部分题目的占位初始化、答案验证和本地测试方式，统一以 [维护与发布手册](../docs/maintenance.md) 和 [使用指南](../docs/guide.md) 为准。

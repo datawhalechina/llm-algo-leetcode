@@ -6,10 +6,23 @@
 
 | 脚本 | 作用 | 说明 |
 | --- | --- | --- |
-| `test_notebook_answers.py` | Chapter 2 / 3 答案验证 | 含防透题检查 |
-| `test_chapter0_1_notebooks.py` | Chapter 0 / 1 顺序执行 | 直接跑练习 notebook |
-| `check_chapter_links.py` | 站内链接检查 | 检查 Chapter 0 / 1 路由 |
-| `check_source_docs_mirror.py` | 章节正文镜像检查 | 检查 source / docs 一致性 |
+| `verify.py` | 统一验证入口 | 推荐日常维护优先使用；与底层脚本是“二选一且有优先级”的关系 |
+| `test_notebook_answers.py` | Part 2 / 3 答案验证 | 含防透题检查 |
+| `test_chapter0_1_notebooks.py` | Part 0 / 1 顺序执行 | 直接跑练习 notebook |
+| `check_chapter_links.py` | 站内链接检查 | 检查 Part 0 / 1 路由 |
+| `check_source_docs_mirror.py` | 部分正文镜像检查 | 检查 source / docs 一致性 |
+
+## 推荐用法
+
+```bash
+python verify.py chapter0_1 --no-build
+python verify.py chapter2 --no-build
+python verify.py chapter3 --no-build
+python verify.py all --no-build
+```
+
+无 GPU 环境下，`verify.py` 会自动跳过 Part 2 / 3 的 GPU-only notebook 答案验证，但仍会保留转换、镜像和链接检查。
+如果只想排查单个 notebook 或单个底层脚本，可以直接用旧脚本；日常维护优先用 `verify.py`。
 
 ## 去向
 

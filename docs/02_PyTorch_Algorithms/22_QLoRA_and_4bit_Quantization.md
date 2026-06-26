@@ -116,7 +116,7 @@ def test_qlora():
         out = layer(x)
         assert out.shape == (batch, seq, out_dim), "输出形状不正确！"
         
-        # 🚀 新增：验证 NF4 查表反量化的数值正确性
+        # 新增：验证 NF4 查表反量化的数值正确性
         # 检查 dequantized_base_weight 是否正确使用了 NF4 查表
         indices_ref = layer.weight_nf4_indices.long()
         dequantized_ref = layer.nf4_table[indices_ref] * layer.weight_scale

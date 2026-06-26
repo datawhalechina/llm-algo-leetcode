@@ -27,7 +27,7 @@
 
 > **相关阅读**:  
 > 请前往实战篇进行相关代码练习：  
-> [`../docs/03_CUDA_and_Triton_Kernels/15_PyTorch_CUDA_Streams_and_Transfer.md`](../docs/03_CUDA_and_Triton_Kernels/15_PyTorch_CUDA_Streams_and_Transfer.md)  
+> [`../04_CUDA_and_System_Optimization/17_PyTorch_CUDA_Streams_and_Transfer.ipynb`](../04_CUDA_and_System_Optimization/17_PyTorch_CUDA_Streams_and_Transfer.ipynb)  
 
 ---
 

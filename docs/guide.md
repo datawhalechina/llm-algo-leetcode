@@ -1,49 +1,57 @@
 # 使用指南
 
-本页只保留三件事：用什么环境、用什么测试脚本、哪些页需要 GPU。
+本页只回答两件事：先在哪看，Notebook 该在哪跑。
 
-## 一句话结论
+## 先记三条
 
-| 目标 | 推荐环境 | 备注 |
-|---|---|---|
-| 第零部分 / 第一部分 | `llm_algo` 或在线 Notebook | 以 Python、Jupyter、NumPy、PyTorch 为主 |
-| 第二部分 | `llm_algo` | CPU-first；少数页需要 GPU |
-| 第三部分 | 独立 GPU 环境 | 需要 Linux + NVIDIA GPU + CUDA / Triton |
-| 团队统一验证 | CNB / Docker / 云端 GPU | 用于复现和协作 |
+- `Colab` 是阅读和运行入口，不是单独的环境层。
+- `CPU-first` / `GPU-required` 是执行能力，不是入口名称。
+- `CNB` / `Docker` / 云端 GPU 是统一交付方式。
 
-## 环境规则
+## 环境怎么选
 
-- `conda activate llm_algo` 是第零部分、第一部分、第二部分的共享验证环境。
-- 第三部分单独使用 GPU 环境，但要尽量兼容前面章节的基础依赖。
-- 第零部分更偏入门和轻量验证，优先保持简单。
-- 第二部分整体是 CPU-first，`21_Gradient_Checkpointing` 需要真实 CUDA 显存峰值。
-- 第三部分是 GPU-required，不应把 GPU 需求扩散到前面章节。
+| 场景 | 建议 |
+|---|---|
+| 只是先看内容 | 在线站点 |
+| Part 0 / Part 1 | 在线 Notebook 或本地基础环境 |
+| Part 2 | 本地 CPU-first / Colab CPU / CNB CPU |
+| Part 3 | 本地 NVIDIA GPU / Colab GPU / CNB GPU |
+| Part 4 | 本地 NVIDIA GPU / Colab GPU / CNB GPU |
+| 团队统一交付 | CNB / Docker / 云端 GPU |
 
-## 测试脚本
+如果只想记一句话：
 
-- 第零部分 / 第一部分：`test_chapter0_1_notebooks.py`
-- 第二部分 / 第三部分：`test_notebook_answers.py`
+**先在线阅读，再按 Part 0-2 / Part 3-4 选择 CPU-first 或 GPU-required 环境；CNB 和 Docker 负责统一交付。**
 
-### 约定
+## 常用验证
 
-- 公开 notebook 要尽量保持可跑、可测、结构完整。
-- 第零部分 / 第一部分的公开 notebook 先向 Chapter 2 / 3 的模板靠拢，但不强制变成 GPU-only。
-- 第三部分保持 GPU-aware 的运行模式开关，不把硬件要求写死在单一脚本里。
+```bash
+python verify.py chapter0_1 --no-build
+python verify.py chapter2 --no-build
+python verify.py chapter3 --no-build
+python verify.py chapter4 --no-build
+python verify.py all --no-build
+```
 
-## Notebook 状态
+如果要定点排查：
 
-- **有 notebook 的页面**
-  - 第零部分：`00, 01, 04, 05, 07, 08, 09, 12, 13`
-  - 第一部分：`03, 06, 21, 22, 29`
-- **先按正文维护**
-  - 第零部分：`02, 03, 06, 10, 11`
-- **占位页**
-  - 第一部分扩展池：`24, 25, 27, 28, 30, 31, 32`
+```bash
+python test_chapter0_1_notebooks.py
+python test_notebook_answers.py path/to/your.ipynb --mode both
+```
 
-## 相关阅读
+## 最小规则
 
-- [维护与发布手册](./maintenance.md)
-- [第零部分导学](./00_Prerequisites/intro.md)
-- [第一部分导学](./01_Hardware_Math_and_Systems/intro.md)
-- [第二部分导学](./02_PyTorch_Algorithms/intro.md)
-- [第三部分导学](./03_CUDA_and_Triton_Kernels/intro.md)
+- Part 0 / Part 1：优先在线 Notebook 或本地基础环境。
+- Part 2：默认 CPU-first，少数题再切 GPU。
+- Part 3 / Part 4：完整验收需要 GPU；没有 GPU 时先阅读。
+- CNB 的目标是统一交付，不是新增一套内容分层。
+
+## 版本约定
+
+- `requirements/base.txt`：基础依赖
+- `requirements/dev.txt`：开发与测试依赖
+- `requirements/gpu.txt`：GPU 扩展依赖
+- `environment.yml`：Python 版本和依赖串联
+- `cnb/environment.yml`：CNB 环境骨架
+

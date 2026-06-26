@@ -1,0 +1,49 @@
+$:
+  vscode:
+    - docker:
+        build: .ide/Dockerfile
+      runner:
+        tags: cnb:arch:amd64
+      services:
+        - vscode
+        - docker
+  vscode-gpu:
+    - docker:
+        build: .ide/Dockerfile
+      runner:
+        tags: cnb:arch:amd64:gpu
+      services:
+        - vscode
+        - docker
+
+main:
+  push:
+    - docker:
+        image: python:3.10
+      stages:
+        - name: setup
+          script: |
+            python -m pip install --upgrade pip
+            pip install -r requirements/base.txt
+            pip install -r requirements/dev.txt
+            pip install -r requirements/gpu.txt
+        - name: smoke-test
+          script: |
+            python --version
+            python -c "import torch, einops, transformers, nbformat; print('python env ok')"
+            python -c "import triton; print('triton ok')"
+
+  pull_request:
+    - name: commit-lint
+      stages:
+        - name: commit lint
+          image: cnbcool/commitlint
+
+  pull_request.mergeable:
+    - name: auto-merge
+      stages:
+        - name: CR 通过后自动合并
+          type: git:auto-merge
+          options:
+            mergeType: squash
+            removeSourceBranch: true

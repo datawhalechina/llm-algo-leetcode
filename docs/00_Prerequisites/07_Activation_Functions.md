@@ -2,6 +2,13 @@
 
 **难度：** Easy | **标签：** `PyTorch`, `Activation`, `GELU`, `SiLU` | **目标人群：** Chapter 0 入门学习者
 
+> 🚀 **云端运行环境**
+>
+> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/00_Prerequisites/07_Activation_Functions.ipynb)
+> [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
+
+本练习配套导学：[Chapter 0 导学](./intro.md)
+
 ## 学习目标
 
 - 理解 ReLU、GELU 和 SiLU 的常见写法

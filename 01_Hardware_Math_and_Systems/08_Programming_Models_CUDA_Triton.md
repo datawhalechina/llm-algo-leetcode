@@ -18,8 +18,8 @@
 
 > **相关阅读**:  
 > 请前往实战篇进行相关代码练习：  
-> [`../docs/03_CUDA_and_Triton_Kernels/18_CUDA_Custom_Kernel_Intro.md`](../docs/03_CUDA_and_Triton_Kernels/18_CUDA_Custom_Kernel_Intro.md)  
-> [`../docs/03_CUDA_and_Triton_Kernels/19_CUDA_Shared_Memory_Optimization.md`](../docs/03_CUDA_and_Triton_Kernels/19_CUDA_Shared_Memory_Optimization.md)  
+> [`../04_CUDA_and_System_Optimization/15_CUDA_Custom_Kernel_Intro.ipynb`](../04_CUDA_and_System_Optimization/15_CUDA_Custom_Kernel_Intro.ipynb)  
+> [`../04_CUDA_and_System_Optimization/16_CUDA_Shared_Memory_Optimization.ipynb`](../04_CUDA_and_System_Optimization/16_CUDA_Shared_Memory_Optimization.ipynb)  
 
 ---
 

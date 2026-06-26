@@ -67,6 +67,19 @@ def process_first_cell(source_text, ipynb_path):
     return '\n'.join(lines)
 
 
+def normalize_markdown_links(source_text):
+    """将 source 侧 Markdown 中的常见链接改写为 docs 镜像可用的路径。"""
+    source_text = re.sub(r'(\]\([^)]+)\.ipynb\)', r'\1.md)', source_text)
+    source_text = re.sub(
+        r'(https://colab\.research\.google\.com/github/datawhalechina/llm-algo-leetcode/blob/main/[^)\s]+)\.md\)',
+        r'\1.ipynb)',
+        source_text,
+    )
+    source_text = re.sub(r'\[([^\]]+)\.ipynb\]\(([^)]+)\.md\)', r'[\1.md](\2.md)', source_text)
+    source_text = source_text.replace('../docs/', '../')
+    return source_text
+
+
 def process_markdown_file(md_path, out_path):
     """处理纯 Markdown 文件，主要是合并双语标题"""
     filename = os.path.basename(md_path)
@@ -76,13 +89,7 @@ def process_markdown_file(md_path, out_path):
         with open(md_path, "r", encoding="utf-8") as f:
             source_text = f.read()
 
-        source_text = re.sub(r'(\]\([^)]+)\.ipynb\)', r'\1.md)', source_text)
-        source_text = re.sub(
-            r'(https://colab\.research\.google\.com/github/datawhalechina/llm-algo-leetcode/blob/main/[^)\s]+)\.md\)',
-            r'\1.ipynb)',
-            source_text,
-        )
-        source_text = source_text.replace('../docs/', '../')
+        source_text = normalize_markdown_links(source_text)
 
         with open(out_path, "w", encoding="utf-8") as f:
             f.write(source_text)
@@ -94,14 +101,7 @@ def process_markdown_file(md_path, out_path):
     with open(md_path, "r", encoding="utf-8") as f:
         source_text = f.read()
 
-    source_text = re.sub(r'(\]\([^)]+)\.ipynb\)', r'\1.md)', source_text)
-    source_text = re.sub(
-        r'(https://colab\.research\.google\.com/github/datawhalechina/llm-algo-leetcode/blob/main/[^)\s]+)\.md\)',
-        r'\1.ipynb)',
-        source_text,
-    )
-    source_text = re.sub(r'\[([^\]]+)\.ipynb\]\(([^)]+)\.md\)', r'[\1.md](\2.md)', source_text)
-    source_text = source_text.replace('../docs/', '../')
+    source_text = normalize_markdown_links(source_text)
     lines = source_text.split('\n')
 
     if lines and lines[0].startswith('# '):
