@@ -7,6 +7,17 @@
 
 本手册总结了开发 Triton 算子时最高频的报错案例、根本原因及最佳实践。
 
+## 本节定位
+
+这不是一节新的实战课，而是 Part 3 的参考手册。
+你可以把它当作：
+
+- 遇到 `Segmentation Fault` 时的排障清单
+- 遇到性能不达预期时的调优备忘
+- 做 13 节工程集成前后的 FAQ
+
+如果你在学习 01-13 节时遇到问题，先回到这里查常见错误模式，再回到正文继续动手。
+
 ---
 
 ## 1. 致命报错：`Segmentation Fault (core dumped)`
@@ -60,6 +71,8 @@ local_max = tl.max(x) # 结果变成了 999999.0
 根据后续的归约操作，提供合适的 `other` 参数。
 - 如果后接 `tl.max`，补负无穷：`other=-float('inf')`
 - 如果后接 `tl.sum`，补零：`other=0.0`
+- 如果后接 `tl.min`，补正无穷：`other=float('inf')`
+- 如果后接 `tl.dot`，越界元素也应贡献 `0.0`
 ```python
 x = tl.load(ptr + offsets, mask=mask, other=-float('inf'))
 ```
@@ -94,6 +107,13 @@ x = tl.load(ptr + offsets, mask=mask, other=-float('inf'))
 )
 ```
 
+### 常见性能诊断方法
+
+- 先用 `triton.testing.do_bench` 观察单个 kernel 的 baseline 时间，再和 PyTorch 参考实现对比
+- 如果怀疑 `num_stages` 不合适，优先看流水线是否被填满，而不是只盯着平均时延
+- 如果性能突然掉得很厉害，可以先怀疑 Register Spilling，再看 tile 是否过大、`num_warps` 是否过高
+- 如果要看更细的硬件层指标，再配合 Nsight Compute 观察 HBM 吞吐、寄存器使用率和访存合并情况
+
 ---
 
 ## 4. Debug 终极武器
@@ -113,4 +133,38 @@ TRITON_INTERPRET=1 python my_script.py
 if pid == 0:  # 强烈建议只在一个 block 里打印，否则终端会瞬间被几万行日志淹没
     tl.device_print("My Offsets:", offsets)
 ```
-注意：`device_print` 只能打印张量（如 `offsets` 或 `x`），不能打印纯 Python 标量，且必须配合小数据量的测试用例使用。
+注意：
+- `device_print` 只能打印 `tl.tensor`，不能打印纯 Python 标量
+- 大张量会输出很多行，建议只打印少量元素或在 `pid == 0` 时打印
+- 它的开销很大，只适合调试，不适合留在生产代码里
+
+---
+
+## 综合诊断练习
+
+下面给出一个故意带有多个错误的 Triton 片段。请你用本节的方法定位并修复：
+
+1. `stride` 计算错误
+2. `mask` / `other` 处理不完整
+3. `BLOCK_SIZE` 选得不合理
+
+```python
+# 练习：这个 kernel 故意写错了
+@triton.jit
+def broken_kernel(x_ptr, y_ptr, stride_x, stride_y, N, BLOCK_SIZE: tl.constexpr):
+    pid = tl.program_id(0)
+    offsets = pid * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)
+    mask = offsets < N
+
+    # TODO: 修复 stride 与 other
+    x = tl.load(x_ptr + offsets, mask=mask)
+    y = x + 1.0
+    tl.store(y_ptr + offsets, y, mask=mask)
+```
+
+**练习要求：**
+- 先用 `TRITON_INTERPRET=1` 看具体是哪一步出错
+- 再用 `tl.device_print` 打印 `offsets` 或局部输入
+- 最后把 `BLOCK_SIZE` 改成更合适的 2 的幂
+
+> 目标不是写新算子，而是把本节的调试方法真正用起来。

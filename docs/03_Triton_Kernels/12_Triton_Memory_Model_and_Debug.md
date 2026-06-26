@@ -30,13 +30,19 @@
 > - HBM 是一维线性空间！不管你的 PyTorch 张量是几维，在物理内存中它都可以视作一条长长的线，因此通常需要用 `stride` (步长) 来定位。
 
 > **三大高频踩坑点：**
-> 1. **忘记乘 Stride：** 二维矩阵的第 `i` 行起始指针是 `ptr + i * stride_row`，千万不能只写 `ptr + i`。
+> 1. **忘记乘 Stride：** 二维矩阵的第 `i` 行起始指针是 `ptr + i * stride_row`，千万不能只写 `ptr + i`。这里的 `stride` 单位是“元素个数”，不是字节数。
 > 2. **Mask (掩码) 越界：** 当数据大小 `N` 不能被 `BLOCK_SIZE` 整除时，`tl.load(ptr, mask=...)` 中的 `mask` 没写对，会读到别人的显存（脏数据或直接崩掉）。
-> 3. **Block Size 不是 2 的幂：** Triton 通常建议块大小设为 2 的幂（如 128, 256, 1024）。
+> 3. **Block Size 不是 2 的幂：** Triton 通常建议块大小设为 2 的幂（如 128, 256, 1024）；如果输入维度不规则，可以先用 `triton.next_power_of_2(N)` 作为起点，再结合实际 benchmark 微调。
 
 > **两大 Debug 工具：**
 > - `TRITON_INTERPRET=1 python xxx.py`：强制在 CPU 上逐行解释运行 Triton 代码，通常能避免直接在 GPU 侧卡住，并报出 Python 级的越界错误。
 > - `tl.device_print("Debug Info", tensor)`：能在算子内部打印张量的值（建议配合少量数据，否则容易刷屏）。
+
+> **other 参数的选取原则：**
+> - `tl.sum`：`other=0.0`，因为 0 是加法单位元
+> - `tl.max`：`other=-float('inf')`，因为它不会影响最大值
+> - `tl.min`：`other=float('inf')`，因为它不会影响最小值
+> - `tl.dot`：越界位置也应贡献 `0.0`，避免无效值进入乘加累积
 
 ### Step 2: 内存对齐与越界异常
 在 GPU 开发中，内存越界访问是最常见的痛点之一。Triton 封装了复杂的线程交互，但如果指针计算出现差错，程序可能直接报错或退出。此外，由于内存事务（Memory Transactions）是按行对齐抓取的，确保张量维度是连续存放的也是性能优化的重要前提。
@@ -144,6 +150,16 @@ def run_debug_simulations():
 raise NotImplementedError("请先完成 TODO 1-3")
 
 ```
+
+### 课后练习
+
+给定一个 Triton GEMM kernel，故意引入以下任意一种 bug，并尝试用 `TRITON_INTERPRET=1` 定位并修复：
+
+1. 错误计算 `offs_m` / `offs_n`
+2. 忘记做 `tl.trans` 或维度转置
+3. 误用 `stride`
+
+> 目标不是写新 kernel，而是把本节的排错方法真正用起来。
 
 
 ```python

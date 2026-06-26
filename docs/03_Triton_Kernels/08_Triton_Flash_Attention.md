@@ -210,7 +210,7 @@ def test_triton_flash_attention():
             print(f"[{seqlen_q}x{seqlen_k}x{head_dim}] 最大误差: {diff.item():.6e}")
             assert diff < 1e-3, f"Triton Flash Attention 结果不正确！(seqlen_q={seqlen_q}, seqlen_k={seqlen_k}, head_dim={head_dim})"
         
-        print("✅ Triton Flash Attention 前向计算内核实现成功！")
+        print("Triton Flash Attention 前向计算内核实现成功！")
         print(" 实现了 SRAM 中块与块之间的局部最大值归约更新，进一步理解了 Online Softmax 的核心机制。")
         
         print()

@@ -14,9 +14,11 @@
 在工业界，写出几个零散的算子只是 Demo。你需要将这些算子封装成标准的 `torch.autograd.Function` 或标准的 `nn.Module`，去**平替** PyTorch 原生的极度耗时的层，最终拼装出一个完全由 Triton 加速的 `Llama3TritonBlock`。
 
 在本节中，我们将：
-1. 回顾并调用我们在前几节手写的：Triton Fused RMSNorm, Triton Fused RoPE, Triton Flash Attention, Triton Fused SwiGLU。
+1. 回顾并集成我们在前几节手写的 Triton 算子。
 2. 封装 PyTorch 的 `nn.Module` 接口。
-3. 运行端到端的 Benchmark，直观感受到算子融合带来的极致性能提升 (Latency 降低)。
+3. 运行端到端的 Benchmark，直观感受到算子融合带来的性能收益。
+
+**说明：** 为了让 Notebook 可以独立运行，下面先提供一组 reference adapter 作为占位实现；如果你已经在当前 runtime 里加载了前序章节的真实 Triton kernel，可以直接把这些 adapter 替换成真实调用。
 
 ## 前置
 
@@ -83,8 +85,8 @@ import triton
 import math
 
 # ==========================================
-# 这里用纯 PyTorch 参考实现模拟前序章节的 Triton 封装，
-# 这样 Notebook 可以独立运行，同时保留与工程实现一致的接口。
+# 这里先给出纯 PyTorch reference adapter，方便 Notebook 独立运行。
+# 如果前序章节的真实 Triton kernel 已经在当前 runtime 中加载，可以直接替换这些 adapter。
 # ==========================================
 def triton_rmsnorm(x, weight, eps=1e-5):
     return x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + eps) * weight
@@ -136,7 +138,7 @@ class TritonLlama3Block(nn.Module):
         self.norm2_weight = nn.Parameter(torch.ones(dim))
         
     def forward(self, x, cos, sin):
-        # TODO 1: 使用 Triton RMSNorm 替换原生 Norm
+        # TODO 1: 集成 Triton RMSNorm（先确认 shape / stride / dtype 与前序 kernel 对齐）
         h = triton_rmsnorm(x, self.norm1_weight)
         
         # QKV 投影并变维 (batch, seq, n_heads, head_dim)
@@ -145,60 +147,59 @@ class TritonLlama3Block(nn.Module):
         k = self.attn_k(h).view(batch_size, seq_len, self.n_heads, self.head_dim).transpose(1, 2)
         v = self.attn_v(h).view(batch_size, seq_len, self.n_heads, self.head_dim).transpose(1, 2)
         
-        # TODO 2: 使用 Triton 融合 RoPE 处理 q 和 k
+        # TODO 2: 集成 Triton 融合 RoPE（尽量避免在 PyTorch 层做多余 transpose）
         q, k = triton_rope(q, k, cos, sin)
         
-        # TODO 3: 使用 Triton Flash Attention
+        # TODO 3: 集成 Triton Flash Attention（注意输入布局与 causal / non-causal 约定）
         attn_output = triton_flash_attn(q, k, v)
         
         # 恢复形状并输出投影
         attn_output = attn_output.transpose(1, 2).contiguous().view(batch_size, seq_len, -1)
         h = x + self.attn_o(attn_output)
         
-        # TODO 4: MLP 部分
+        # TODO 4: 集成 Triton MLP（关注残差连接、权重布局和融合边界）
         normed_h = triton_rmsnorm(h, self.norm2_weight)
         mlp_out = triton_swiglu(normed_h, self.mlp_gate.weight, self.mlp_up.weight, self.mlp_down.weight)
         out = h + mlp_out
         
         return out
 
-#  # 端到端性能测试
-# import time
+import time
 
-# def run_end_to_end_benchmark():
-#     if not torch.cuda.is_available():
-#         print("⏭️ 无 GPU，跳过测试")
-#         return
+def run_end_to_end_benchmark():
+    if not torch.cuda.is_available():
+        print("⏭️ 无 GPU，跳过测试")
+        return
     
-#     # 模拟 LLaMA-3 的一个标准层配置
-#     dim = 4096
-#     hidden_dim = 14336
-#     n_heads = 32
-#     batch, seq = 2, 2048
+    # 模拟 LLaMA-3 的一个标准层配置
+    dim = 4096
+    hidden_dim = 14336
+    n_heads = 32
+    batch, seq = 2, 2048
     
-#     triton_block = TritonLlama3Block(dim, hidden_dim, n_heads).cuda().half()
-#     x = torch.randn(batch, seq, dim, device='cuda', dtype=torch.float16)
+    triton_block = TritonLlama3Block(dim, hidden_dim, n_heads).cuda().half()
+    x = torch.randn(batch, seq, dim, device='cuda', dtype=torch.float16)
     
-#     # 模拟 cos 和 sin
-#     head_dim = dim // n_heads
-#     cos = torch.randn(seq, head_dim // 2, device='cuda', dtype=torch.float16)
-#     sin = torch.randn(seq, head_dim // 2, device='cuda', dtype=torch.float16)
+    # 模拟 cos 和 sin
+    head_dim = dim // n_heads
+    cos = torch.randn(seq, head_dim // 2, device='cuda', dtype=torch.float16)
+    sin = torch.randn(seq, head_dim // 2, device='cuda', dtype=torch.float16)
     
-#     print(" 开始运行端到端 Benchmark (Warmup 10 次，记录 50 次)...")
-#     # Warmup
-#     for _ in range(10):
-#         _ = triton_block(x, cos, sin)
-#     torch.cuda.synchronize()
+    print(" 开始运行端到端 Benchmark (Warmup 10 次，记录 50 次)...")
+    # Warmup
+    for _ in range(10):
+        _ = triton_block(x, cos, sin)
+    torch.cuda.synchronize()
     
-#     # 测试 Triton 整合版的耗时
-#     start = time.time()
-#     for _ in range(50):
-#         _ = triton_block(x, cos, sin)
-#     torch.cuda.synchronize()
-#     triton_time = (time.time() - start) / 50.0 * 1000 # ms
+    # 测试 Triton 整合版的耗时
+    start = time.time()
+    for _ in range(50):
+        _ = triton_block(x, cos, sin)
+    torch.cuda.synchronize()
+    triton_time = (time.time() - start) / 50.0 * 1000 # ms
     
-#     print(f"✅ 全 Triton 加速的 LLaMA-3 Block 单层前向延迟: {triton_time:.2f} ms")
-#     print(" 通过算子融合和 SRAM 内计算，Triton 实现显著降低了 Memory Bound 操作的开销。")
+    print(f"✅ 全 Triton 加速的 LLaMA-3 Block 单层前向延迟: {triton_time:.2f} ms")
+    print(" 通过算子融合和 SRAM 内计算，Triton 实现显著降低了 Memory Bound 操作的开销。")
 raise NotImplementedError("请先完成 TODO 1-4")
 
 ```
@@ -457,6 +458,26 @@ class TritonLlama3Block(nn.Module):
   - SwiGLU 公式：`SwiGLU(x) = (Swish(x @ W_gate) ⊙ (x @ W_up)) @ W_down`
   - 融合算子避免了中间激活张量的存储，显著降低显存占用
   - 残差连接：`out = h + mlp_out`，保持梯度流动
+
+**真实 Triton 集成模板**
+- 这里的 `triton_rmsnorm / triton_rope / triton_flash_attn / triton_swiglu` 默认是 reference adapter，便于 Notebook 独立运行。
+- 如果前序章节的真实 Triton kernel 已经在当前 runtime 中加载，可以直接把这些 adapter 替换成真实调用。
+- 集成 RMSNorm 时，重点检查 `shape / stride / eps` 是否与前序 kernel 的约定一致。
+- 集成 RoPE 和 FlashAttention 时，重点检查 `transpose`、`causal`、`layout` 是否与 kernel 入口对齐。
+- 集成 MLP 时，重点检查融合边界：是只融合激活，还是把投影和激活一起封装。
+
+```python
+# 示例：如果前序 kernel 已经在当前 runtime 中可用
+# h = triton_rmsnorm_real(x, self.norm1_weight)
+# q, k = triton_rope_real(q, k, cos, sin)
+# attn_output = triton_flash_attn_real(q, k, v)
+# mlp_out = triton_swiglu_real(normed_h, self.mlp_gate.weight, self.mlp_up.weight, self.mlp_down.weight)
+```
+
+**性能测试建议**
+- `run_end_to_end_benchmark()` 建议保留并按需取消注释，而不是长期注释掉。
+- 先跑功能正确性，再跑 benchmark。
+- 对比时至少看三项：前向时延、HBM 访问开销、Triton 与原生 PyTorch 的加速比。
 
 **工程优化要点**
 

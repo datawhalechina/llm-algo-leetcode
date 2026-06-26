@@ -149,7 +149,7 @@ raise NotImplementedError("请先完成 TODO 代码！")
 # 测试你的实现
 def test_fused_rope():
     if not torch.cuda.is_available():
-        print("⏭️ 忽略测试：无 GPU。")
+        print("⏭️忽略测试：无 GPU。")
         return
         
     try:

@@ -14,6 +14,33 @@
 然而，在工业级的大模型推理服务 (Serving) 中，面对并发的多个用户请求，如果每个用户的 prompt 挂载了**不同的** LoRA 权重（如用户 A 请求写代码的 LoRA，用户 B 请求翻译的 LoRA），如果将它们拆分并循环执行 PyTorch 的 `linear()`，通常会降低 GPU 的吞吐量，也不便于利用 Batch 计算。
 本节我们将实现 **Multi-LoRA (如 S-LoRA / Punica 论文思路)** 的底层 Triton 融合算子：**通过传入 `lora_indices`，让每一个 Token 在 SRAM 内按索引读取它对应的 LoRA 权重，完成批量计算。**
 
+## 本节定位：推理服务的多租户优化
+
+在前面的章节中，我们已经完成了三类关键优化：
+- **08. FlashAttention**：单次 Attention 计算更快
+- **09. PagedAttention**：KV Cache 显存管理更高效
+- **10. Quantization**：权重体积更小，单卡可跑更大模型
+
+本节解决第三个问题：**多用户并发推理时，如何避免重复加载 LoRA 权重？**
+
+### 真实业务场景
+
+想象一个 SaaS 推理服务：
+- 用户 A 请求：用“代码生成” LoRA
+- 用户 B 请求：用“翻译” LoRA
+- 用户 C 请求：用“摘要” LoRA
+
+传统做法：逐个用户串行推理，切换 LoRA 时重新加载权重 → **GPU 利用率极低**
+
+Multi-LoRA 的做法：**一个 Batch 内混合不同 LoRA，Token 级动态路由** → **GPU 利用率大幅提升**
+
+## 与 08 节的关系
+
+**Multi-LoRA 和 Attention 的连接：**
+- 08 节：解决 Attention 计算本身的高效实现
+- 11 节：解决多租户推理里‘不同 Token 对应不同 LoRA 权重’的路由问题
+- 实际服务里，LoRA 常常挂在 Q/K/V 或 FFN 投影层上，因此 Multi-LoRA 和 Attention 主线是并行可组合的，而不是技术递进关系
+
 ## 前置
 
 **导语：** 这一节会把“一个 batch 里多种 LoRA 路由”直接落到 Triton 的 SRAM 访问上。
@@ -50,6 +77,16 @@
 
 ### Step 3: 指针路由代码框架
 传入包含所有权重的张量 `lora_pool` 和整数数组 `lora_indices`。在内核中，先读取 `lora_idx = tl.load(lora_indices_ptr + pid_batch)`，将该索引乘上权重的 stride，动态确定当前线程块该加载哪一份 LoRA A 和 B，随后做标准的低秩乘加运算。
+
+### 补充说明：性能对比与边界
+
+这一节的核心卖点是把多个不同 LoRA 请求合并成一次 kernel 调用，所以最好补一个与串行方案的对比口径。
+建议后面在验证区展示：
+- 串行 LoRA 推理的时延
+- Multi-LoRA 融合后的时延
+- 最终加速比
+
+边界条件上，当前实现默认 `num_loras > 0` 且 `R > 0`；如果要继续增强鲁棒性，可以在宿主侧先做参数校验，而不是把异常分支塞进 kernel 主干。
 
 ###  Step 4: 动手实战
 
@@ -127,7 +164,10 @@ def fused_multi_lora_kernel(
     # out_ptrs = ???
     # tl.store(...)
     
+def _question_placeholder_11():
     raise NotImplementedError("请完成 TODO 1-5")
+
+_question_placeholder_11()
 
 def triton_multi_lora_forward(x: torch.Tensor, lora_a_pool: torch.Tensor, lora_b_pool: torch.Tensor, lora_indices: torch.Tensor):
     M, IN_DIM = x.shape
@@ -365,3 +405,25 @@ def triton_multi_lora_forward(x: torch.Tensor, lora_a_pool: torch.Tensor, lora_b
 - **Batch 并行**：不同 Token 的计算完全独立，可以在 GPU 上高度并行
 - **内存访问模式**：使用 `mask` 保护边界访问，确保内存安全
 - **工业应用**：该算子是 S-LoRA、Punica 等多租户推理框架的核心组件，可以在单次 kernel 调用中处理多个用户的不同 LoRA 请求
+### 6. 性能对比建议
+
+- 建议在测试区补一个串行 LoRA 参考实现，和当前 Multi-LoRA 融合版本做对照。
+- 最少展示三项：串行时延、融合时延、加速比。
+- 如果后续要做更完整的工程分析，可以再补 Tensor Core 利用率、HBM 读写和 batch size 变化趋势。
+
+### 推理优化主线收束
+
+Multi-LoRA 是推理优化主线的**收束点**：
+
+- RoPE → 前处理融合
+- FlashAttention → Attention 核心加速
+- PagedAttention → 显存碎片管理
+- Quantization → 显存体积压缩
+- Multi-LoRA → 多租户动态路由
+
+至此，07-11 的两条主线已经覆盖完毕：
+
+- **07-09：Attention 优化**（让单次计算更快）
+- **10-11：推理服务优化**（让系统承载更多用户）
+
+接下来进入 **项目篇（12-14）**：把所有这些算子集成到一个完整的 Llama3 Block 中，用真实数据验证整体性能收益。

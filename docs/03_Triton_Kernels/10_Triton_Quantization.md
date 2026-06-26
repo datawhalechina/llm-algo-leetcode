@@ -15,6 +15,43 @@
 以 GPTQ/AWQ 为代表的现代量化框架，底层的关键技术之一是 **On-the-fly Dequantization (即时反量化)**。
 本节我们将编写一个 Triton 算子：在 SRAM 中读入 INT8 的权重和 FP16 的缩放因子 (Scales)，在寄存器里动态反量化为 FP16 后，立即与激活值相乘。
 
+## 本节定位：推理优化的第二条路径
+
+在上一节（09. PagedAttention）中，我们解决了 **KV Cache 碎片化** 问题，让显存能够更高效地复用。
+
+本节解决另一个核心问题：**权重体积**。
+
+### 为什么需要量化？
+
+| 模型规模 | FP16 权重大小 | A100 80GB 单卡 | 需要张量并行 |
+|---------|-------------|---------------|------------|
+| 7B | 14GB | 可单卡跑 | 不需要 |
+| 13B | 26GB | 可单卡跑 | 不需要 |
+| 70B | 140GB | 需要 2 卡 | 需要 |
+| 70B（INT8） | 70GB | 可单卡跑 | **不需要！** |
+
+**量化带来的核心收益：**
+1. **显存减半**：INT8 权重体积是 FP16 的一半
+2. **带宽减半**：Memory Bound 场景下推理吞吐提升
+3. **部署门槛降低**：大模型更容易在单卡上跑起来
+
+### 与 Attention 主线的关系
+
+量化可以应用在任何 Linear 层上，包括：
+- Q/K/V 投影层（Attention 的一部分）
+- FFN 的 Gate/Up/Down 投影层（MLP 的一部分）
+
+所以量化不是 Attention 的“后继”，而是 **与 Attention 优化并列的另一条推理优化路径**。
+
+如果说 07-09 是在“算得更快”，那 10-11 就是在“省得更多”。
+
+## 与 20 节的关系
+
+**W8A16 Quantization：**
+- 20 节：先在 PyTorch 层讲清量化公式、误差和数据流
+- 10 节：把同一套 W8A16 思路落到 Triton 融合 GEMM 上
+- 核心区别：10 节关注的是即时反量化 + 矩阵乘法融合，而不是重新发明量化定义
+
 ## 前置
 
 **导语：** 这一节把量化权重的反量化和 GEMM 融合在一起，目标是减少额外的 HBM 往返。
@@ -59,6 +96,16 @@ w8a16_gemm_kernel(x_ptr, w_int8_ptr, scales_ptr, y_ptr, M, N, K, ...)
 - **y_ptr**: 输出矩阵，形状 `(M, N)`，数据类型 FP16
 
 Grid 划分为 2D：`(ceil(M/BLOCK_M), ceil(N/BLOCK_N))`，每个 Triton Program 负责输出矩阵中一个 `(BLOCK_M, BLOCK_N)` 大小的子块。
+### 补充说明：性能分析与 Autotune
+
+本节先给出一组足够清晰的 baseline 参数，便于把‘即时反量化 + GEMM 融合’这个主线讲透。
+如果要做更细粒度的性能分析，可以继续用前面章节的工程习惯，结合 Nsight / nvprof / Triton benchmark 对比：
+- 反量化版本 vs 显式反量化版本
+- INT8 权重读带宽 vs FP16 权重读带宽
+- 总时延、HBM 访问量和算子占比
+
+`autotune` 的作用不是改变量化公式，而是替不同的 `M/N/K` 组合挑出更合适的 tile 配置。
+
 ###  Step 4: 动手实战
 
 **要求**：请补全下方 `w8a16_gemm_kernel`。我们需要将 INT8 的权重即时转为 FP16 并完成矩阵乘法。为了简化，这里使用按列量化 (Per-channel Quantization)。
@@ -136,7 +183,10 @@ def w8a16_gemm_kernel(
         # acc += ???
         pass
         
+def _question_placeholder_10():
     raise NotImplementedError("请完成 TODO 1-2")
+
+_question_placeholder_10()
 
 def triton_w8a16_gemm(x: torch.Tensor, w_int8: torch.Tensor, scales: torch.Tensor):
     M, K = x.shape
@@ -198,7 +248,7 @@ def test_w8a16_gemm():
         print("✅ W8A16 即时反量化 GEMM 验证通过。")
         
     
-        print("\n--- 性能基准测试 (Benchmark) ---")
+        print("\n--- 性能观察（基于当前环境）---")
         # 典型的 LLM Linear 层尺寸
         M, N, K = 4096, 4096, 4096
         
@@ -219,8 +269,8 @@ def test_w8a16_gemm():
         
         print(f"PyTorch FP16xFP16 GEMM Time:     {ms_pt:.4f} ms")
         print(f"Triton W8A16 On-the-fly GEMM:    {ms_tr:.4f} ms")
-        print(f"Speedup vs Standard FP16:        {ms_pt / ms_tr:.2f}x")
-        print(" 在 Memory Bound 场景下，读取 INT8 权重（一半带宽）+ SRAM 内反量化的总开销可能低于读取完整 FP16 权重。")
+        print(f"当前环境观测比 (PyTorch / Triton): {ms_pt / ms_tr:.2f}x")
+        print(" 说明：W8A16 的收益更依赖大规模 Memory Bound 场景；在当前矩阵规模和硬件组合下，反量化开销可能抵消部分带宽优势。")
     except NotImplementedError:
         print("请先完成 TODO 代码！")
     except Exception as e:
@@ -368,3 +418,25 @@ def triton_w8a16_gemm(x: torch.Tensor, w_int8: torch.Tensor, scales: torch.Tenso
   - 显存占用减半（INT8 vs FP16）
   - 在 Memory Bound 场景下可获得 1.5-2x 的加速
   - 相比预先反量化的方法，避免了额外的显存分配和数据传输
+### 扩展说明：Group-wise 量化
+
+当 `N` 很大时，per-channel 量化会让 `scales` 数组也跟着变大。
+Group-wise 量化（例如 `group_size=128`）会把 `N` 维切成多个 group，每个 group 共享一个 scale。
+这样可以：
+- 减少 scale 的存储开销
+- 提供比纯 per-tensor 量化更细的粒度
+- 让指针计算稍微复杂一些，但更贴近 GPTQ / AWQ 的工程常见做法
+
+### 扩展说明：对称 / 非对称量化
+
+本节代码使用的是对称量化：`w_fp16 = w_int8 * scale`。
+如果后续要支持非对称量化，则需要在公式里再引入 `zero_point`：`w_fp16 = (w_int8 - zero_point) * scale`。
+这类扩展会让读取 `scales` 的逻辑再增加一组指针，但不会改变‘在 SRAM 内即时反量化并参与 GEMM’这个主干。
+
+### 下一步：从显存压缩到多租户服务
+
+量化解决了**模型体积**的问题，让 70B 模型也能跑在单卡上。
+
+但在真实的推理服务中，还有另一个瓶颈：多个用户同时使用不同 LoRA 权重时，如果逐个串行加载，GPU 的利用率会非常低。
+
+下一节，我们将学习 Multi-LoRA：通过 Token 级动态路由，让一个 Batch 同时服务多个 LoRA 请求，榨干 GPU 的推理吞吐量。

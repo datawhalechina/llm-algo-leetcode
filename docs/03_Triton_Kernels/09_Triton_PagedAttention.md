@@ -14,6 +14,13 @@
 但在真实的 GPU 硬件上，如何实现**间接寻址 (Indirect Memory Access)**？如何根据 `Block Table` (块映射表) 动态去物理内存池 (Block Pool) 里提取不连续的 K 和 V 块，并在 SRAM 内完成 Online Softmax 归约？
 本节我们将用 Triton 编写一个极简版的 PagedAttention 解码阶段 (Decoding) 前向内核。这也是 vLLM 推理引擎的一个重要基石。
 
+## 与 08 节的关系
+
+**PagedAttention vs FlashAttention：**
+- 08 节：处理连续内存的 KV Cache，主要面向 Prefill 阶段
+- 09 节：处理碎片化内存的 KV Cache，主要面向 Decoding 阶段
+- 核心区别：09 节在读取 K/V 之前，先通过 `block_tables` 做一次间接寻址
+
 ## 前置
 
 **导语：** 这一节先看 Part 1 的访存与通信边界相关 Group，再回看 Part 2 的 PagedAttention 任务页，把 KV Cache 的前提补齐。
@@ -44,8 +51,32 @@
 ### Step 2: 物理分页存储映射理论
 在大规模解码期间，如果为每个请求预分配巨大的连续显存存放 KV Cache，会产生极大的内部显存碎片。vLLM 提出的 PagedAttention 将显存切成固定大小的物理块。逻辑序列通过映射表（Block Table）寻找物理块地址，极大地提升了并发承载能力。
 
+### 下一步：从显存管理到显存压缩
+
+PagedAttention 解决的是推理时的 **KV Cache 碎片化** 问题，让显存可以按物理块高效复用。
+但 KV Cache 只是显存占用的一部分。更根本的问题是：**模型权重本身太大了**。
+
+| 粗略估算 | FP16 权重 | 说明 |
+|---------|----------|------|
+| 7B 模型 | ~14GB | 单卡可跑 |
+| 13B 模型 | ~26GB | 单卡可跑 |
+| 70B 模型 | ~140GB | 需要多卡或量化 |
+
+70B 模型在 FP16 下需要约 140GB 显存，即使 PagedAttention 完美管理了 KV Cache，单卡 A100（80GB）仍然无法容纳。
+
+这就引出了推理优化的下一个维度：**量化（Quantization）**。
+
+PagedAttention 解决的是“怎么更好地用显存”，Quantization 解决的是“怎么让模型本身更省显存”。两者结合，才是完整的推理显存优化方案。
+
+下一节，我们将把权重从 FP16 压缩到 INT8，在不显著损失精度的情况下，让更大的模型也能更容易地在单卡或少卡环境中运行。
+
 ### Step 3: PagedAttention 内核代码框架
 在传统的 Flash Attention 内核中加入了一层间接寻址逻辑。在内层遍历序列长度的循环时，计算对应的逻辑块编号 `logical_block_id`。查表 `physical_block_id = tl.load(block_table_ptr + logical_block_id)`，用该物理块 ID 结合 Stride 拼凑出读取 KV 缓存的真实物理地址。
+
+### 补充说明：关于 Autotune
+
+前面几节已经把 `autotune` 作为 Triton 工程化的一部分持续使用了；本节也延续这个思路，只是为了把教学主线聚焦在 `block_tables` 的间接寻址和 Online Softmax 归约上，先把 `BLOCK_SIZE` 固定成一个更容易讲清楚的演示参数。
+如果后续要进一步做工程调优，仍然可以沿用前面章节的做法，把 `BLOCK_SIZE` 作为候选值做离线 benchmark，再按 `context_len` 或 `head_dim` 选择更合适的配置。
 
 ###  Step 4: 动手实战
 
@@ -91,6 +122,8 @@ def paged_attention_decoding_kernel(
     num_logical_blocks = tl.cdiv(context_len, BLOCK_SIZE)
     
     # 3. 加载 Query (解码阶段 Q 只有一个 Token)
+    # tl.num_programs(1) 表示 Y 轴 head 方向的 Program 总数，
+    # 用于在扁平化后的 Q 张量中定位到当前 batch/head 对应的片段。
     q_offset = batch_idx * tl.num_programs(1) * HEAD_DIM + head_idx * HEAD_DIM + tl.arange(0, HEAD_DIM)
     q = tl.load(q_ptr + q_offset)
     
@@ -148,7 +181,10 @@ def paged_attention_decoding_kernel(
         # l_i = ???
         pass
         
+def _question_placeholder_09():
     raise NotImplementedError("请完成 TODO 1-3")
+
+_question_placeholder_09()
 
 def triton_paged_attention_decode(q, k_cache, v_cache, block_tables, context_lens, block_size):
     batch_size, num_heads, head_dim = q.shape
@@ -306,6 +342,8 @@ def paged_attention_decoding_kernel(
     num_logical_blocks = tl.cdiv(context_len, BLOCK_SIZE)
     
     # 3. 加载 Query (解码阶段 Q 只有一个 Token)
+    # tl.num_programs(1) 表示 Y 轴 head 方向的 Program 总数，
+    # 用于在扁平化后的 Q 张量中定位到当前 batch/head 对应的片段。
     q_offset = batch_idx * tl.num_programs(1) * HEAD_DIM + head_idx * HEAD_DIM + tl.arange(0, HEAD_DIM)
     q = tl.load(q_ptr + q_offset)
     
