@@ -1,5 +1,4 @@
 # 17. PyTorch CUDA Streams and Transfer | 突破 PCIe 瓶颈：CPU-GPU 锁页内存与 CUDA 异步流通信
-
 **难度：** Hard | **标签：** `System`, `CUDA Streams`, `Memory Transfer` | **目标人群：** 核心 Infra 与算子开发
 
 > 🚀 **云端运行环境**
@@ -71,24 +70,42 @@ def overlap_transfer_and_compute(cpu_tensors, compute_stream, transfer_stream, c
     - compute_func: 一个耗时的 GPU 计算函数，接收一个 GPU 张量
     """
     # ==========================================
-    # TODO 1: 初始化双缓冲区
+    # TODO 1: 创建两个 GPU 缓冲区
+    # 思考：为什么需要两块 buffer？单缓冲为什么很难隐藏传输开销？
     # ==========================================
-    # 占位初始化（未实现双缓冲）
     if len(cpu_tensors) == 0:
         return
-    gpu_buffer = cpu_tensors[0].cuda()  # 只用单缓冲，未实现双缓冲
+    gpu_buffer_0 = torch.empty_like(cpu_tensors[0], device="cuda")
+    gpu_buffer_1 = torch.empty_like(cpu_tensors[0], device="cuda")
+    buffers = [gpu_buffer_0, gpu_buffer_1]
     
     # ==========================================
-    # TODO 2: 预传输第一个 batch 到 buffer_0
+    # TODO 2: 在 transfer_stream 上异步传输第一批数据到 buffer_0
     # ==========================================
+    with torch.cuda.stream(transfer_stream):
+        buffers[0].copy_(cpu_tensors[0], non_blocking=True)
     
     # ==========================================
-    # TODO 3: 循环处理所有 batch，实现双缓冲和流重叠
+    # TODO 3: 在循环中处理当前 batch，先准备当前 buffer
     # ==========================================
-    # 占位：串行处理，未实现流重叠
     for i in range(len(cpu_tensors)):
-        gpu_tensor = cpu_tensors[i].cuda(non_blocking=False)
-        compute_func(gpu_tensor)
+        current_buffer = buffers[i % 2]
+        next_buffer = buffers[(i + 1) % 2]
+    
+        # ==========================================
+        # TODO 4: 在 compute_stream 上执行当前 batch 的计算
+        # ==========================================
+        compute_stream.wait_stream(transfer_stream)
+        with torch.cuda.stream(compute_stream):
+            compute_func(current_buffer)
+            
+        # ==========================================
+        # TODO 5: 安全地传输下一批数据
+        # ==========================================
+        if i + 1 < len(cpu_tensors):
+            transfer_stream.wait_stream(compute_stream)
+            with torch.cuda.stream(transfer_stream):
+                next_buffer.copy_(cpu_tensors[i + 1], non_blocking=True)
 ```
 
 
@@ -105,18 +122,41 @@ def test_overlap():
     import inspect                                                                                                                                                                        
     source = inspect.getsource(overlap_transfer_and_compute)                                                                                                                              
                                                                                                                                                                                             
-    # 检查必需的实现特征                                                                                                                                                                  
-    required_patterns = [                                                                                                                                                                 
-        ('gpu_buffer_0', 'TODO 1: 必须初始化 gpu_buffer_0'),                                                                                                                              
-        ('gpu_buffer_1', 'TODO 1: 必须初始化 gpu_buffer_1'),                                                                                                                              
-        ('wait_stream', 'TODO: 必须使用 wait_stream 进行流同步'),                                                                                                                         
-        ('with torch.cuda.stream', 'TODO: 必须使用 with torch.cuda.stream 切换流'),                                                                                                       
-    ]                                                                                                                                                                                     
-                                                                                                                                                                                            
-    for pattern, error_msg in required_patterns:                                                                                                                                          
-        if pattern not in source:                         
-            raise AssertionError(error_msg)                                                                                                                                               
-                                                     
+    # 检查必需的实现特征（用 AST 而不是字符串注释，避免误报/漏报）
+    import ast
+    tree = ast.parse(source)
+    fn = next((n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == 'overlap_transfer_and_compute'), None)
+    assert fn is not None, '缺少 overlap_transfer_and_compute 函数'
+
+    assigned = {n.id for n in ast.walk(fn) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store)}
+    assert 'gpu_buffer_0' in assigned and 'gpu_buffer_1' in assigned, 'TODO 1: 必须初始化双缓冲区'
+
+    def _is_attr_call(node, attr_name):
+        return isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == attr_name
+
+    wait_pairs = set()
+    stream_calls = 0
+    copy_has_non_blocking = False
+    for node in ast.walk(fn):
+        if isinstance(node, ast.With):
+            for item in node.items:
+                ctx = item.context_expr
+                if _is_attr_call(ctx, 'stream'):
+                    stream_calls += 1
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            if node.func.attr == 'wait_stream' and isinstance(node.func.value, ast.Name) and node.args:
+                if isinstance(node.args[0], ast.Name):
+                    wait_pairs.add((node.func.value.id, node.args[0].id))
+            if node.func.attr == 'copy_':
+                for kw in node.keywords:
+                    if kw.arg == 'non_blocking' and isinstance(kw.value, ast.Constant) and kw.value.value is True:
+                        copy_has_non_blocking = True
+
+    assert ('compute_stream', 'transfer_stream') in wait_pairs, 'TODO 4: 必须让 compute_stream 等待 transfer_stream'
+    assert ('transfer_stream', 'compute_stream') in wait_pairs, 'TODO 5: 必须让 transfer_stream 等待 compute_stream'
+    assert stream_calls >= 2, 'TODO 2/5: 必须使用 with torch.cuda.stream 切换流'
+    assert copy_has_non_blocking, 'TODO 2/5: 必须使用 non_blocking=True 异步拷贝'
+
     
     # 构造数据，使传输和计算耗时相当，以展示双缓冲的优势
     # 注意：参数已针对当前GPU环境优化，在不同硬件上可能需要调整
@@ -262,30 +302,7 @@ def overlap_transfer_and_compute(cpu_tensors, compute_stream, transfer_stream, c
 
 **1. 为什么增大数据规模反而降低了双缓冲的效果？**
 
-在上面的测试中，我们使用了 `dim=4096` 的矩阵，并获得了约 19% 的性能提升。但如果你尝试将矩阵规模增大到 `dim=8192` 或 `dim=16384`，你可能会发现性能提升变小，甚至出现性能下降。
-
-思考以下问题：
-- 矩阵乘法的计算复杂度是多少？数据传输的复杂度是多少？
-- 当矩阵规模从 4096 增加到 8192 时，传输时间和计算时间分别增加了多少倍？
-- 双缓冲技术能隐藏的是传输时间，但如果传输时间只占总时间的很小一部分，隐藏它能带来多大的收益？
-
-**提示**：双缓冲的效果取决于**传输占比** = 传输时间 / (传输时间 + 计算时间)。
-
-**答案**：
-
-| 配置 | 传输时间 | 计算时间 | 传输占比 | 理论最大收益 | 实际性能提升 |
-|------|---------|---------|---------|------------|------------|
-| dim=4096 | ~5ms | ~11ms | 31% | 可减少31%时间 | +19% ~ +28% |
-| dim=8192 | ~19ms | ~104ms | 15% | 可减少15%时间 | +1% |
-| dim=16384 | ~76ms | ~830ms | 8% | 可减少8%时间 | -3% ~ -5% |
-
-**关键发现**：
-- 矩阵乘法的计算复杂度是 O(n³)，数据传输的复杂度是 O(n²)
-- 当矩阵规模增大时，计算时间增长远快于传输时间
-- 4096→8192：传输增加 3.9 倍，计算增加 9.2 倍
-- 传输占比从 31% 降至 15%，即使完全隐藏传输，总时间也只能减少 15%
-- 而流调度开销（创建流、wait_stream 同步）是固定的约 1-2%
-- 当传输占比 < 15% 时，流调度开销可能超过双缓冲收益，导致性能反而下降
+这个问题的完整推导和性能边界分析，已经单独整理为 [07.1 Double Buffering Deep Dive](./07_Async_Data_Prefetch_and_Double_Buffering.md)。
 
 **2. 在什么场景下双缓冲技术最有效？**
 
@@ -330,11 +347,8 @@ def overlap_transfer_and_compute(cpu_tensors, compute_stream, transfer_stream, c
 - 双缓冲 + FlashAttention
 - 双缓冲 + 模型并行（Tensor/Pipeline Parallelism）
 
-**提示**：这些技术优化的是不同的瓶颈。
-
 **答案**：
-- **双缓冲 + 混合精度**：混合精度减少传输量（fp16比fp32小一半），进一步降低传输时间
-- **双缓冲 + FlashAttention**：FlashAttention 优化了 Attention 的显存和计算，双缓冲优化了数据传输，两者互补
-- **双缓冲 + 模型并行**：在 Pipeline 并行中，不同 stage 之间的激活值传输可以使用双缓冲优化
-
-**工程启示**：性能优化技术的效果高度依赖于工作负载特征。在应用优化技术前，需要先分析瓶颈在哪里，而不是盲目套用"最佳实践"。
+- **双缓冲 + AMP**：可同时减少传输数据量和计算量，是最常见的组合之一
+- **双缓冲 + FlashAttention**：前者优化数据搬运，后者优化 attention 计算，适合叠加
+- **双缓冲 + 模型并行**：多 GPU 下的通信与搬运更复杂，但可以通过流调度提高吞吐
+- **工程启示**：双缓冲通常不是单独使用，而是作为系统级优化链条中的一环

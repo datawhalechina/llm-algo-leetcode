@@ -1,5 +1,4 @@
 # 20. DeepSpeed Zero Config | 分布式工程落地：解析 DeepSpeed ZeRO 配置文件与 CPU Offload
-
 **难度：** Medium | **标签：** `Distributed Training`, `DeepSpeed`, `JSON Config` | **目标人群：** 核心 Infra 与算子开发
 
 > 🚀 **云端运行环境**
@@ -12,9 +11,8 @@
 
 在实际工程中，我们很少会去手写底层的 `dist.all_gather`，而是将 PyTorch 原生模型丢给 **Microsoft DeepSpeed** 或是 **HuggingFace Accelerate**，通过极简的 JSON 配置文件，一键开启 ZeRO-1 / 2 / 3 加速。
 面试中极常考察：“你能解释一下 ZeRO 配置文件中的 `stage`, `overlap_comm`, `cpu_offload` 分别是干什么的吗？”
-本节我们将以一份真实的 DeepSpeed 配置文件为题眼，解析其各个核心字段的工程意义。
-
-这一节会把 ZeRO 参数和通信边界放回真实工程语境。
+本节聚焦 DeepSpeed ZeRO 的配置文件与 CPU Offload 机制，重点回答 `stage`、`overlap_comm`、`cpu_offload` 在训练系统里分别做什么。
+它不是 Triton 算子页，但它负责给自定义 CUDA/Triton 算子提供训练编排、梯度同步和显存分片。
 
 ## 前置
 
@@ -40,8 +38,28 @@
 ### Step 2: ZeRO 配置文件与显存切分映射
 DeepSpeed 最核心的能力是接管 PyTorch 的底层通信逻辑。在 ZeRO-1 中切分 Optimizer State；ZeRO-2 进一步切分 Gradients；ZeRO-3 甚至把模型 Weights 彻底切碎，只有在经过该层时才动态 Gather 回来。还能通过 `offload_optimizer` 把沉重的 Adam 状态踢到 CPU 内存去计算。
 
+
+如果你的模型里已经嵌入了自定义 CUDA/Triton 层，DeepSpeed 依然会接管梯度同步与 offload，所以 ZeRO 配置不是“和 Triton 无关”，而是“围绕 Triton 外层训练系统的配置”。
 ### Step 3: JSON Config 解析框架
 这里不需要写底层 C++。你需要深刻理解 `ds_config.json` 中的字段意义，如 `zero_optimization.stage`, `overlap_comm`, `reduce_scatter` 等。在这个实验中，读取配置字典，分析开启某些开关后对显存和带宽造成的双向影响。
+
+
+这里不仅要填出字典，还要能说明为什么这个配置适合带自定义 CUDA/Triton 算子的训练场景。
+### 工程衔接：DeepSpeed 如何包住自定义 CUDA/Triton 算子
+
+DeepSpeed 负责训练编排、梯度同步和显存分片；Triton / CUDA 负责算子实现。工程里更常见的写法不是“二选一”，而是“内层算子 + 外层运行时”。
+
+```python
+class TritonLinear(nn.Module):
+    def forward(self, x):
+        return triton_gemm(x, self.weight)
+
+engine, optimizer, _, _ = deepspeed.initialize(
+    model=model,
+    model_parameters=model.parameters(),
+    config=build_deepspeed_config(),
+)
+```
 
 ###  Step 4: 动手实战
 
@@ -81,18 +99,18 @@ def build_deepspeed_config():
         },
         
         # ==========================================
-        # TODO 1: 配置 ZeRO 优化阶段
-        # 提示: stage=2 表示切分优化器状态和梯度
+        # TODO 1: 选择 ZeRO-2 作为训练基线
+        # 场景: 模型前向里可能已经嵌入了自定义 CUDA/Triton 层，但我们仍要先把训练系统跑稳
         # ==========================================
 
         # ==========================================
-        # TODO 2: 开启通信计算重叠
-        # 提示: overlap_comm=True 可以在计算时异步传输数据
+        # TODO 2: 打开通信/计算重叠
+        # 场景: 让梯度同步尽量藏在反向传播或自定义算子的计算间隙里
         # ==========================================
 
         # ==========================================
-        # TODO 3: 配置优化器 CPU Offload
-        # 提示: device="cpu" 将优化器状态放到CPU内存，pin_memory=True 加速传输
+        # TODO 3: 在显存紧张时启用优化器 CPU Offload
+        # 场景: 当自定义算子已经把算力吃满、但显存先爆掉时，用 CPU 内存兜底
         # ==========================================
         
         "zero_optimization": {
@@ -211,6 +229,7 @@ def build_deepspeed_config():
     }
     
     return ds_config
+
 ```
 
 ### 解析
@@ -256,21 +275,21 @@ def build_deepspeed_config():
 
 **工程优化要点**
 
-- **ZeRO Stage选择策略**:
-  - 显存充足：使用DDP（无切分）
-  - 7B-13B模型：ZeRO-2（最佳性价比）
-  - 70B+模型：ZeRO-3（最大显存节省）
-  - 选择原则：优先ZeRO-2，只有OOM时才升级到ZeRO-3
+- **ZeRO Stage 选择策略**:
+  - 显存充足：使用 DDP（无切分）
+  - 7B-13B 模型：ZeRO-2（最佳性价比）
+  - 70B+ 模型：ZeRO-3（最大显存节省）
+  - 选择原则：优先 ZeRO-2，只有 OOM 时才升级到 ZeRO-3
 
-- **CPU Offload权衡**:
+- **CPU Offload 权衡**:
   - 优点：突破显存限制，可训练更大模型
-  - 缺点：PCIe带宽瓶颈，训练速度降低20-50%
+  - 缺点：PCIe 带宽瓶颈，训练速度降低 20-50%
   - 优化：pin_memory + 异步传输
-  - 适用场景：显存不足但内存充足（内存至少是显存的2倍）
+  - 适用场景：显存不足但内存充足（内存至少是显存的 2 倍）
 
-- **overlap_comm效果**:
+- **overlap_comm 效果**:
   - 理想情况：完全隐藏通信延迟
-  - 实际效果：10-30%性能提升
+  - 实际效果：10-30% 性能提升
   - 依赖条件：计算时间 > 通信时间
   - 多机训练时效果更明显
 
@@ -286,7 +305,7 @@ def build_deepspeed_config():
   - 权衡：显存 vs 收敛速度
   - 建议：micro_batch_size尽量大，减少累积步数
 
-- **显存占用分析**（以13B模型为例）:
+- **显存占用分析**（以 13B 模型为例）:
   - 模型参数：26GB（fp16）
   - 梯度：26GB
   - 优化器状态：52GB（Adam）
@@ -330,14 +349,14 @@ def build_deepspeed_config():
 | ZeRO-2 + Offload | 25% | 高 | 慢 | 显存不足但内存充足 |
 
 **关键发现**:
-- ZeRO-2是性价比最高的选择（显存节省60%，速度损失<20%）
-- ZeRO-3通信开销大（每层都需要All-Gather参数）
-- CPU Offload适合"显存不够，内存来凑"的场景
+- ZeRO-2 是性价比最高的选择（显存节省约 60%，速度损失通常较小）
+- ZeRO-3 通信开销大（每层都需要 All-Gather 参数）
+- CPU Offload 适合“显存不够，内存来凑”的场景
 
 **工程启示**: 
-- 优先尝试ZeRO-2，只有在OOM时才考虑ZeRO-3或Offload
+- 优先尝试 ZeRO-2，只有在 OOM 时才考虑 ZeRO-3 或 Offload
 - 多机训练时，网络带宽是关键瓶颈
-- 使用`NCCL_DEBUG=INFO`分析通信瓶颈
+- 使用 `NCCL_DEBUG=INFO` 分析通信瓶颈
 
 **2. CPU Offload的性能权衡分析**
 
