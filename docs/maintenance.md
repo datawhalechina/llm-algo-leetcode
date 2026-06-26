@@ -71,3 +71,6 @@ python tools/normalize_notebooks.py
 - `intro.md` 可保留少量章节标记 emoji
 - 正文 notebook 只保留状态符号 `⏭️ / ✅ / ❌` 和 `🛑 STOP HERE`
 
+## 开源协议
+
+本项目采用 [CC BY-NC-SA 4.0](../LICENSE) 进行许可。
