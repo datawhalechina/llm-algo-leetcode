@@ -321,39 +321,50 @@ export default defineConfig({
         items: [
           { text: '📖 完整导学', link: '/04_CUDA_and_System_Optimization/intro' },
           {
-            text: '4.1 CUDA 编程基础',
+            text: '4.1 CUDA 编程基础（01-04）',
             collapsed: true,
             items: [
               { text: '📖 组页', link: '/04_CUDA_and_System_Optimization/4_1' },
-              { text: '15. CUDA Custom Kernel Intro', link: '/04_CUDA_and_System_Optimization/15_CUDA_Custom_Kernel_Intro' },
-              { text: '16. CUDA Shared Memory Optimization', link: '/04_CUDA_and_System_Optimization/16_CUDA_Shared_Memory_Optimization' }
+              { text: '01. CUDA Custom Kernel Intro', link: '/04_CUDA_and_System_Optimization/15_CUDA_Custom_Kernel_Intro' },
+              { text: '02. CUDA Shared Memory Optimization', link: '/04_CUDA_and_System_Optimization/16_CUDA_Shared_Memory_Optimization' },
+              { text: '02.1 Bank Conflict Deep Dive', link: '/04_CUDA_and_System_Optimization/02_1_Bank_Conflict_Deep_Dive' },
+              { text: '03. Tensor Core MMA Programming', link: '/04_CUDA_and_System_Optimization/03_Tensor_Core_MMA_Programming' },
+              { text: '04. Warp-Level Primitives', link: '/04_CUDA_and_System_Optimization/04_Warp_Level_Primitives' }
             ]
           },
           {
-            text: '4.2 系统级性能优化',
+            text: '4.2 系统级性能优化（05-08）',
             collapsed: true,
             items: [
               { text: '📖 组页', link: '/04_CUDA_and_System_Optimization/4_2' },
-              { text: '17. CUDA Streams and Transfer', link: '/04_CUDA_and_System_Optimization/17_PyTorch_CUDA_Streams_and_Transfer' },
-              { text: '18. CUDA Graph and JIT Compile', link: '/04_CUDA_and_System_Optimization/18_CUDA_Graph_and_JIT_Compile' }
+              { text: '05. CUDA Streams and Transfer', link: '/04_CUDA_and_System_Optimization/17_PyTorch_CUDA_Streams_and_Transfer' },
+              { text: '06. CUDA Graph and JIT', link: '/04_CUDA_and_System_Optimization/18_CUDA_Graph_and_JIT_Compile' },
+              { text: '07. 异步数据预取与 Double Buffering', link: '/04_CUDA_and_System_Optimization/07_Async_Data_Prefetch_and_Double_Buffering' },
+              { text: '07.1 Double Buffering Deep Dive', link: '/04_CUDA_and_System_Optimization/07_1_Double_Buffering_Deep_Dive' },
+              { text: '08. 内存池与显存管理', link: '/04_CUDA_and_System_Optimization/08_Memory_Pool_and_VRAM_Management' }
             ]
           },
           {
-            text: '4.3 分布式训练工程',
+            text: '4.3 分布式训练工程（09-12）',
             collapsed: true,
             items: [
               { text: '📖 组页', link: '/04_CUDA_and_System_Optimization/4_3' },
-              { text: '19. Distributed Communication Primitives', link: '/04_CUDA_and_System_Optimization/19_Distributed_Communication_Primitives' },
-              { text: '20. DeepSpeed ZeRO & Offload', link: '/04_CUDA_and_System_Optimization/20_DeepSpeed_Zero_Config' }
+              { text: '09. Distributed Communication Primitives', link: '/04_CUDA_and_System_Optimization/19_Distributed_Communication_Primitives' },
+              { text: '09.1 Ring-AllReduce Deep Dive', link: '/04_CUDA_and_System_Optimization/09_1_Ring_AllReduce_Deep_Dive' },
+              { text: '10. DeepSpeed ZeRO Config', link: '/04_CUDA_and_System_Optimization/20_DeepSpeed_Zero_Config' },
+              { text: '11. 通信计算重叠高级调度', link: '/04_CUDA_and_System_Optimization/11_Communication_Computation_Overlap_Advanced_Scheduling' },
+              { text: '12. 异构训练：CPU Offload 与 NVMe Offload', link: '/04_CUDA_and_System_Optimization/12_Heterogeneous_Training_CPU_Offload_NVMe_Offload' }
             ]
           },
           {
-            text: '4.4 架构视野',
+            text: '4.4 架构视野与总结（13-16）',
             collapsed: true,
             items: [
               { text: '📖 组页', link: '/04_CUDA_and_System_Optimization/4_4' },
-              { text: '21. CUDA vs Triton vs PyTorch', link: '/04_CUDA_and_System_Optimization/21_CUDA_vs_Triton_vs_PyTorch' },
-              { text: '22. TCO and Hardware Selection', link: '/04_CUDA_and_System_Optimization/22_TCO_and_Hardware_Selection' }
+              { text: '13. CUDA vs Triton vs PyTorch', link: '/04_CUDA_and_System_Optimization/21_CUDA_vs_Triton_vs_PyTorch' },
+              { text: '14. TCO and Hardware Selection', link: '/04_CUDA_and_System_Optimization/22_TCO_and_Hardware_Selection' },
+              { text: '15. 推理服务架构设计', link: '/04_CUDA_and_System_Optimization/15_Inference_Service_Architecture_Design' },
+              { text: '16. 未来硬件趋势', link: '/04_CUDA_and_System_Optimization/16_Future_Hardware_Trends' }
             ]
           }
         ]

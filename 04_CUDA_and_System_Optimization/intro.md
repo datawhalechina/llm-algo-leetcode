@@ -2,9 +2,22 @@
 
 ## 🎯 本部分概览
 
-本部分聚焦 CUDA C++、系统性能优化、分布式训练工程和架构选型。它是从 Triton 走向更底层 CUDA 与系统边界的独立章节。
+本部分聚焦 CUDA C++、系统性能优化、分布式训练工程和架构选型。
 
-这条主线可以概括为 `CUDA Kernel -> System Optimization -> Distributed Engineering -> Architecture Trade-off`。
+Part 3 教的是“如何用 Triton 快速写出高性能算子”，Part 4 教的是“Triton 底层是怎么工作的，以及什么时候需要手写 CUDA”。
+
+### 章节结构
+
+- 模块一（01-04）：CUDA 编程基础，手写 Kernel，理解硬件
+- 模块二（05-08）：系统级性能优化，从单卡到多卡的调度
+- 模块三（09-12）：分布式训练工程，多机多卡训练
+- 模块四（13-16）：架构视野与总结，技术选型与成本优化
+
+### 未来扩展
+
+- `02.1`：Bank Conflict Deep Dive
+- `07.1`：Double Buffering Deep Dive
+- `09.1`：Ring-AllReduce Deep Dive
 
 ### 环境边界
 
@@ -13,24 +26,17 @@
 - **代码审计结果**：本章直接面向 CUDA kernel、通信、系统优化和架构选型
 - **阅读说明**：可以先阅读文本，但完整验收需要 GPU 会话
 
-### 学习组划分
-
-| 学习组 | 题目范围 | 主题 | 难度 |
-|:---|:---|:---|:---|
-| **4.1: CUDA 编程基础** | 15-16 | Custom Kernel / Shared Memory | Hard |
-| **4.2: 系统级性能优化** | 17-18 | Streams / Graph / JIT | Hard |
-| **4.3: 分布式训练工程** | 19-20 | 通信原语 / ZeRO & Offload | Very Hard |
-| **4.4: 架构视野** | 21-22 | 技术选型 / TCO | Very Hard |
-
 ### 前置页面
 
-- [3.1 Triton 基础](../03_Triton_Kernels/intro.md)
-- [3.2 Triton 进阶](../03_Triton_Kernels/intro.md)
-- [3.3 Triton 项目](../03_Triton_Kernels/intro.md)
+- [3.1 基础篇](../03_Triton_Kernels/intro.md)
+- [3.2 过渡篇](../03_Triton_Kernels/intro.md)
+- [3.3 进阶 A：Attention 优化](../03_Triton_Kernels/intro.md)
+- [3.4 进阶 B：推理优化](../03_Triton_Kernels/intro.md)
+- [3.5 项目篇](../03_Triton_Kernels/intro.md)
 
 ### Part 3 前导路径
 
-如果你还没有完成 Triton 主线，建议先完成 Part 3 的 `01-14` 再回来继续 Part 4。
+如果你还没有完成 Triton 主线，建议先完成 Part 3 的 `01-14`，尤其是 `07-14` 的 GPU 实战页，再回来继续 Part 4。
 
 ### 后续页面
 
