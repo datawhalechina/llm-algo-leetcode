@@ -1,5 +1,4 @@
 # 16. CUDA Shared Memory Optimization | 榨干硬件极限：CUDA Shared Memory (共享内存) 优化与 GEMM
-
 **难度：** Hard | **标签：** `CUDA C++`, `Shared Memory`, `GEMM` | **目标人群：** 核心 Infra 与算子开发
 
 > 🚀 **云端运行环境**
@@ -465,48 +464,7 @@ test_shared_gemm()
 
 **2. 什么是Bank Conflict？如何避免？**
 
-Shared Memory分为32个Bank，同一warp内的线程同时访问同一Bank会导致串行化。
-
-思考以下问题：
-- Bank Conflict如何影响性能？
-- 本例中是否存在Bank Conflict？
-- 如何设计访问模式避免冲突？
-
-**提示**: 考虑Shared Memory的硬件组织方式。
-
-**答案**:
-
-**Bank Conflict原理**:
-- Shared Memory分为32个Bank（对应warp大小）
-- 每个Bank宽度4字节（一个float）
-- 地址映射：`Bank ID = (address / 4) % 32`
-- 同一warp内多个线程访问同一Bank → 串行执行
-
-**性能影响**:
-- 无冲突：1个周期
-- 2-way冲突：2个周期
-- 32-way冲突：32个周期（性能降低32倍！）
-
-**本例分析**:
-
-读取s_A时：
-```cpp
-s_A[threadIdx.y][k]  // 同一warp内，threadIdx.y相同，k相同
-// 所有线程访问同一个元素 → Broadcast，无冲突
-```
-
-读取s_B时：
-```cpp
-s_B[k][threadIdx.x]  // threadIdx.x = 0,1,2,...,31
-// 连续线程访问连续地址 → 无冲突
-```
-
-**结论**: 本例访问模式良好，无Bank Conflict。
-
-**避免策略**:
-1. **Padding**: 在数组维度上加1，改变Bank映射
-2. **转置**: 调整数据布局
-3. **访问模式设计**: 确保连续线程访问不同Bank
+更完整的推导、地址映射和冲突模式分析，见 [02.1 Bank Conflict Deep Dive](./02_1_Bank_Conflict_Deep_Dive.md)。
 
 **3. 如何选择最优的TILE_SIZE？**
 
