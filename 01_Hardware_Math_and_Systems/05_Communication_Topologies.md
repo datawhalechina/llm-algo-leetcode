@@ -28,8 +28,8 @@
 
 > **相关阅读**:  
 > 请前往实战篇进行相关代码练习：  
-> [`../docs/02_PyTorch_Algorithms/24_Tensor_Parallelism_Sim.md`](../docs/02_PyTorch_Algorithms/24_Tensor_Parallelism_Sim.md)  
-> [`../docs/03_CUDA_and_Triton_Kernels/16_Distributed_Communication_Primitives.md`](../docs/03_CUDA_and_Triton_Kernels/16_Distributed_Communication_Primitives.md)  
+> [`../02_PyTorch_Algorithms/24_Tensor_Parallelism_Sim.ipynb`](../02_PyTorch_Algorithms/24_Tensor_Parallelism_Sim.ipynb)  
+> [`../04_CUDA_and_System_Optimization/19_Distributed_Communication_Primitives.ipynb`](../04_CUDA_and_System_Optimization/19_Distributed_Communication_Primitives.ipynb)  
 
 ---
 

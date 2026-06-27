@@ -1,38 +1,289 @@
-/* ============================================================================
-   公告栏样式
-   ============================================================================ */
-
-/* 关键：告诉 VitePress 公告栏的高度，让导航栏正确下移 */
-:root {
-  --vp-layout-top-height: 40px;
+/* 让顶层布局尽量铺满视口，避免页面主体被居中压缩成窄条 */
+.Layout,
+.VPNavBar,
+.VPContent,
+.VPFooter {
+  width: 100% !important;
 }
 
-.announcement-banner {
-  background: linear-gradient(90deg, #ffdfae 0%, #ffbd53 100%);
-  color: #fff;
-  padding: 8px 16px;
+.VPNavBar .wrapper,
+.VPNavBar .container,
+.VPContent .container,
+.VPFooter .container {
+  width: 100% !important;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.VPNavBar .container,
+.VPContent .container,
+.VPFooter .container {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+/* 顶部导航两行标题样式 */
+.VPNavBarMenuLink {
   text-align: center;
-  color: #000;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1.5;
-  height: var(--vp-layout-top-height);
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  /* 固定在顶部 */
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: var(--vp-z-index-layout-top, 40);
+  white-space: pre-line;
 }
 
-/* 暗色模式下的公告栏样式 */
-.dark .announcement-banner {
-  background: linear-gradient(90deg, #5e4219 0%, #583c10 100%);
-  color: #fff;
+.VPNavBarMenu {
+  align-items: center;
+}
+
+/* 正文排版自适应：不同屏幕下保持相对稳定的阅读尺度 */
+:root {
+  --llm-doc-font-body: clamp(17px, 0.22vw + 16px, 19px);
+  --llm-doc-font-body-wide: clamp(17.5px, 0.18vw + 16px, 19.5px);
+  --llm-doc-font-h1: clamp(30px, 0.55vw + 26px, 38px);
+  --llm-doc-font-h2: clamp(24px, 0.4vw + 21px, 30px);
+  --llm-doc-font-h3: clamp(20px, 0.3vw + 18px, 24px);
+  --llm-doc-font-h4: clamp(18px, 0.18vw + 17px, 20px);
+  --llm-doc-line-body: 1.76;
+  --llm-doc-line-heading: 1.22;
+  --llm-doc-line-code: 1.65;
+  --llm-doc-font-family-base:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC',
+    'Noto Sans SC', sans-serif;
+}
+
+.vp-doc {
+  font-family: var(--llm-doc-font-family-base);
+  font-size: var(--llm-doc-font-body);
+  line-height: var(--llm-doc-line-body);
+  letter-spacing: 0.01em;
+}
+
+@media (min-width: 1280px) {
+  .vp-doc {
+    font-size: var(--llm-doc-font-body-wide);
+  }
+}
+
+@media (max-width: 767px) {
+  .vp-doc {
+    font-size: 16px;
+    line-height: 1.72;
+  }
+}
+
+.vp-doc p,
+.vp-doc summary,
+.vp-doc li,
+.vp-doc td,
+.vp-doc th,
+.vp-doc blockquote > p {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.vp-doc h1 {
+  font-size: var(--llm-doc-font-h1);
+  line-height: var(--llm-doc-line-heading);
+  margin: 0 0 clamp(20px, 1.8vw, 28px);
+  letter-spacing: -0.02em;
+}
+
+.vp-doc h2 {
+  font-size: var(--llm-doc-font-h2);
+  line-height: var(--llm-doc-line-heading);
+  margin: clamp(36px, 2.2vw, 52px) 0 clamp(12px, 1vw, 18px);
+  padding-top: clamp(18px, 1.2vw, 24px);
+  letter-spacing: -0.02em;
+}
+
+.vp-doc h3 {
+  font-size: var(--llm-doc-font-h3);
+  line-height: 1.28;
+  margin: clamp(24px, 1.8vw, 32px) 0 0;
+  letter-spacing: -0.01em;
+}
+
+.vp-doc h4 {
+  font-size: var(--llm-doc-font-h4);
+  line-height: 1.34;
+  margin: clamp(20px, 1.4vw, 24px) 0 0;
+  letter-spacing: -0.01em;
+}
+
+.vp-doc p,
+.vp-doc summary {
+  margin: clamp(14px, 1.1vw, 18px) 0;
+}
+
+.vp-doc ul,
+.vp-doc ol {
+  margin: clamp(14px, 1.1vw, 18px) 0;
+  padding-left: 1.5rem;
+}
+
+.vp-doc :not(pre) > code {
+  font-size: 0.98em;
+}
+
+.vp-doc div[class*='language-'] {
+  font-size: clamp(15.5px, 0.18vw + 14px, 16.5px);
+  margin: clamp(16px, 1.4vw, 22px) 0;
+  border: 1px solid color-mix(in srgb, var(--vp-c-divider) 72%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--vp-c-bg-soft) 88%, transparent);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+.vp-doc div[class*='language-'] code {
+  line-height: var(--llm-doc-line-code);
+}
+
+.vp-doc div[class*='language-'] pre {
+  margin: 0;
+  padding: 16px 18px;
+  background: transparent;
+}
+
+.dark .vp-doc div[class*='language-'] {
+  background: color-mix(in srgb, var(--vp-c-bg-soft) 82%, transparent);
+  border-color: color-mix(in srgb, var(--vp-c-divider) 64%, transparent);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+
+/* 导航栏标题过长时省略，避免挤压搜索框 */
+@media (min-width: 960px) {
+  .VPNavBar.has-sidebar .content {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  .VPNavBarMenu {
+    order: 1;
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .VPNavBarSearch {
+    order: 2;
+    margin-left: auto;
+    flex-grow: 0 !important;
+    flex-shrink: 0 !important;
+    margin-right: 12px;
+  }
+
+  .VPNavBarAppearance {
+    order: 3;
+    flex-shrink: 0;
+  }
+
+  .VPNavBarSocialLinks {
+    order: 4;
+    flex-shrink: 0;
+  }
+
+  .VPNavBarExtra {
+    order: 5;
+  }
+
+  .VPNavBarMenuLink {
+    position: relative;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    height: var(--vp-nav-height) !important;
+    line-height: 1.1 !important;
+    padding: 0 16px !important;
+    overflow: hidden !important;
+    border: 1px solid transparent;
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--vp-c-bg-soft) 58%, var(--vp-c-brand-soft) 42%);
+    transition:
+      background-color 0.18s ease,
+      border-color 0.18s ease,
+      box-shadow 0.18s ease,
+      transform 0.18s ease;
+  }
+
+  .VPNavBarMenuLink + .VPNavBarMenuLink {
+    margin-left: 0;
+  }
+
+  .VPNavBarMenuLink:hover {
+    background: color-mix(in srgb, var(--vp-c-bg-soft) 38%, var(--vp-c-brand-soft) 62%);
+    border-color: color-mix(in srgb, var(--vp-c-brand-2) 36%, transparent);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    transform: translateY(-1px);
+  }
+
+  .dark .VPNavBarMenuLink {
+    background: color-mix(in srgb, var(--vp-c-bg-soft) 60%, var(--vp-c-brand-soft) 40%);
+  }
+
+  .dark .VPNavBarMenuLink:hover {
+    background: color-mix(in srgb, var(--vp-c-bg-soft) 42%, var(--vp-c-brand-soft) 58%);
+    border-color: color-mix(in srgb, var(--vp-c-brand-2) 42%, transparent);
+  }
+
+  .VPNavBarMenuLink > span {
+    display: block !important;
+    line-height: 1.05 !important;
+    white-space: pre-line !important;
+    text-align: center !important;
+  }
+
+  .DocSearch-Button-Keys {
+    display: none !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .vp-doc {
+    font-size: clamp(18px, 0.28vw + 16px, 19px);
+  }
+
+  .vp-doc p,
+  .vp-doc summary,
+  .vp-doc li,
+  .vp-doc td,
+  .vp-doc th,
+  .vp-doc blockquote > p {
+    line-height: 1.82;
+  }
+}
+
+@media (min-width: 960px) {
+  .VPContent .container {
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+
+  .VPDoc.has-aside .content-container,
+  .VPSidebar,
+  .VPDoc.has-aside .aside-container,
+  .VPDoc.has-aside .aside-content {
+    background: color-mix(in srgb, var(--vp-c-bg-soft) 84%, transparent);
+    border: 1px solid color-mix(in srgb, var(--vp-c-divider) 76%, transparent);
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.035);
+  }
+
+  .VPDoc.has-aside .content-container {
+    padding: clamp(20px, 2vw, 30px) clamp(24px, 2.2vw, 36px);
+  }
+
+  .VPSidebar {
+    padding: 12px 10px;
+  }
+
+  .VPDoc.has-aside .aside-container,
+  .VPDoc.has-aside .aside-content {
+    padding: 12px 14px;
+  }
 }
 
 /* 全局图片样式设置 */
@@ -90,7 +341,7 @@
    * - 在小屏幕设备上，VitePress 会自动调整布局为响应式
    * - 建议值范围：1200px - 1800px（固定宽度）或 80% - 95%（百分比）
    */
-  --vp-layout-max-width: 95%;
+  --vp-layout-max-width: 100%;
 }
 
 /* ----------------------------------------------------------------------------
@@ -114,7 +365,10 @@
 /* --vp-sidebar-width: 272px; */
 
 :root {
-  --vp-sidebar-width: 300px;
+  --vp-sidebar-width: 360px;
+  --llm-doc-content-max-width: clamp(1120px, 70vw, 1500px);
+  --llm-doc-content-max-width-code: clamp(1240px, 76vw, 1700px);
+  --llm-doc-content-max-width-table: clamp(1320px, 80vw, 1800px);
 }
 
 /* 侧边栏背景色
@@ -330,7 +584,7 @@
  * 推荐值：1584px（适合 1920px 宽屏）/ 2000px（适合 2560px 宽屏）
  */
 .VPDoc:not(.has-sidebar) .container {
-  max-width: 2000px !important;
+  max-width: 100% !important;
 }
 
 /* 2. 无侧边栏时的内容宽度
@@ -339,7 +593,7 @@
  * 推荐值：1264px（适合 1920px 宽屏）/ 1600px（适合 2560px 宽屏）
  */
 .VPDoc:not(.has-sidebar) .content {
-  max-width: 1264px !important;
+  max-width: 1600px !important;
 }
 
 /* 3. 有右侧目录时的内容容器宽度（最重要）
@@ -352,7 +606,37 @@
  * 如果你的内容区域被限制在 688px，主要就是这个选择器在起作用。
  */
 .VPDoc.has-aside .content-container {
-  max-width: 1168px !important;
+  max-width: min(100%, var(--llm-doc-content-max-width)) !important;
+}
+
+/* 代码密集页 / 表格密集页：适度放宽内容宽度 */
+@media (min-width: 1280px) {
+  .vp-doc:has(pre) .content-container {
+    max-width: min(100%, var(--llm-doc-content-max-width-code)) !important;
+  }
+
+  .vp-doc:has(table) .content-container {
+    max-width: min(100%, var(--llm-doc-content-max-width-table)) !important;
+  }
+}
+
+/* 右侧 outline 也显式收窄，避免内容区两侧都显得过宽 */
+.VPDoc.has-aside .aside {
+  width: 360px !important;
+  min-width: 360px !important;
+  max-width: 360px !important;
+}
+
+.VPDoc.has-aside .aside-container,
+.VPDoc.has-aside .aside-content {
+  width: 360px !important;
+  min-width: 360px !important;
+  max-width: 360px !important;
+}
+
+/* 如果右侧目录本身为空，直接隐藏，避免 intro / group 页右侧空白过大 */
+.VPDoc.has-aside .aside:has(.VPDocOutlineItem.root:empty) {
+  display: none !important;
 }
 
 /* 4. 通用容器边距重置
@@ -360,6 +644,46 @@
  */
 .VPDoc .container {
   margin: 0;
+}
+
+/* 5. 宽屏正文组对齐
+ * 说明：默认主题在宽屏会把“正文 + 右侧目录”整体居中，
+ * 这会造成左右两侧出现很大的空白。这里改为左对齐，让正文占满可用宽度。
+ */
+@media (min-width: 1280px) {
+  .VPSidebarItem .item {
+    min-width: 0;
+  }
+
+  .VPSidebarItem .link {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .VPSidebarItem .text {
+    display: block;
+    min-width: 0;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .VPDoc.has-aside .container {
+    justify-content: flex-start !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .VPDoc.has-aside .content {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+  }
+
+  .VPDoc.has-aside .content-container {
+    width: 100% !important;
+    max-width: min(100%, var(--llm-doc-content-max-width)) !important;
+  }
 }
 
 /* ============================================================================
@@ -441,4 +765,3 @@ td {
 .vp-doc blockquote p {
   margin: 0.5rem 0;
 }
-

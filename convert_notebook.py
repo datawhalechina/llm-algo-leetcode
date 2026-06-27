@@ -3,6 +3,13 @@ import glob
 import shutil
 import json
 import re
+import argparse
+
+SOURCE_DIRS = [
+    "02_PyTorch_Algorithms",
+    "03_Triton_Kernels",
+    "04_CUDA_and_System_Optimization",
+]
 
 def generate_cloud_env_block(ipynb_path):
     """生成云端运行环境区块"""
@@ -71,14 +78,38 @@ def process_first_cell(source_text, ipynb_path):
 
     return '\n'.join(lines)
 
+def normalize_markdown_links(source_text):
+    """将 source 侧 Markdown 中的常见链接改写为 docs 镜像可用的路径。"""
+    source_text = re.sub(r'(\]\([^)]+)\.ipynb\)', r'\1.md)', source_text)
+    source_text = source_text.replace('../docs/', '../')
+    return source_text
+
 def process_markdown_file(md_path, out_path):
     """处理纯 Markdown 文件，主要是合并双语标题"""
     filename = os.path.basename(md_path)
+    # Group pages like 2_1.md / 3_1.md / 4_1.md should keep their
+    # hand-written section titles instead of being rewritten as "2. 1 | ...".
+    if re.fullmatch(r"\d+_\d+\.md", filename):
+        with open(md_path, "r", encoding="utf-8") as f:
+            source_text = f.read()
+
+        source_text = normalize_markdown_links(source_text)
+
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write(source_text)
+        return
+
     # 对于 md 文件，提取方式和 ipynb 略有不同（后缀不同）
     name = filename.replace('.md', '')
     parts = name.split('_')
     if len(parts) < 2:
-        shutil.copy2(md_path, out_path)
+        with open(md_path, "r", encoding="utf-8") as f:
+            source_text = f.read()
+
+        source_text = normalize_markdown_links(source_text)
+
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write(source_text)
         return
 
     number = parts[0]
@@ -87,11 +118,8 @@ def process_markdown_file(md_path, out_path):
     with open(md_path, "r", encoding="utf-8") as f:
         source_text = f.read()
 
-    lines = source_text.split('\n')
-
     # 先把指向源码/镜像目录的常见链接统一改写到 docs 侧可用的相对路径
-    source_text = re.sub(r'(\]\([^)]+)\.ipynb\)', r'\1.md)', source_text)
-    source_text = source_text.replace('../docs/', '../')
+    source_text = normalize_markdown_links(source_text)
     lines = source_text.split('\n')
 
     # 处理双语标题
@@ -111,71 +139,126 @@ def process_markdown_file(md_path, out_path):
     with open(out_path, "w", encoding="utf-8") as f:
         f.write('\n'.join(lines))
 
+
+def collect_targets(args):
+    """收集需要处理的源文件。"""
+    targets = []
+
+    if args.files:
+        targets.extend(args.files)
+
+    if args.dirs:
+        for d in args.dirs:
+            targets.extend(sorted(glob.glob(os.path.join(d, "*.ipynb"))))
+            targets.extend(sorted(glob.glob(os.path.join(d, "*.md"))))
+
+    if not targets:
+        for d in SOURCE_DIRS:
+            targets.extend(sorted(glob.glob(os.path.join(d, "*.ipynb"))))
+        for d in SOURCE_DIRS:
+            targets.extend(sorted(glob.glob(os.path.join(d, "*.md"))))
+
+    deduped = []
+    seen = set()
+    for item in targets:
+        norm = os.path.normpath(item)
+        if norm in seen:
+            continue
+        if not (
+            norm.startswith("02_PyTorch_Algorithms" + os.sep)
+            or norm.startswith("03_Triton_Kernels" + os.sep)
+            or norm.startswith("04_CUDA_and_System_Optimization" + os.sep)
+        ):
+            continue
+        seen.add(norm)
+        deduped.append(norm)
+    return deduped
+
+
+def clean_full_docs_tree():
+    for d in [
+        "docs/02_PyTorch_Algorithms",
+        "docs/03_Triton_Kernels",
+        "docs/04_CUDA_and_System_Optimization",
+    ]:
+        if os.path.exists(d):
+            shutil.rmtree(d)
+        os.makedirs(d, exist_ok=True)
+
+
+def output_path_for_source(source_path):
+    return os.path.join("docs", source_path.replace(".ipynb", ".md"))
+
+
+def write_text(path, content, dry_run=False):
+    if dry_run:
+        print(f"[dry-run] write {path}")
+        return
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+
 def main():
+    parser = argparse.ArgumentParser(description="Convert Chapter 2/3 notebooks and markdown to docs mirror.")
+    parser.add_argument("--dir", dest="dirs", action="append", help="Only convert the specified source directory.")
+    parser.add_argument("--file", dest="files", action="append", help="Only convert the specified source file.")
+    parser.add_argument("--dry-run", action="store_true", help="Print planned actions without writing files.")
+    args = parser.parse_args()
+
     print("=" * 60)
     print("开始构建文档站点...")
     print("=" * 60)
 
-    # 1. Clear out Chapter 2/3 docs chapter directories
-    for d in ["docs/02_PyTorch_Algorithms", "docs/03_CUDA_and_Triton_Kernels"]:
-        if os.path.exists(d):
-            shutil.rmtree(d)
-        os.makedirs(d, exist_ok=True)
-    print("✅ 目录清理完成")
+    targets = collect_targets(args)
+    if not args.dirs and not args.files:
+        if args.dry_run:
+            print("[dry-run] 清理 docs/02_PyTorch_Algorithms 和 docs/03_Triton_Kernels")
+        else:
+            clean_full_docs_tree()
+        print("✅ 目录清理完成")
+    else:
+        print("✅ 局部模式：跳过整树清理")
 
-    # 2. Iterate through Chapter 2/3 IPYNB notebooks
     converted_count = 0
-    for ipynb_path in sorted(
-        glob.glob("02_PyTorch_Algorithms/*.ipynb") +
-        glob.glob("03_CUDA_and_Triton_Kernels/*.ipynb")
-    ):
-        out_path = os.path.join("docs", ipynb_path.replace(".ipynb", ".md"))
+    md_count = 0
+    for source_path in targets:
+        out_path = output_path_for_source(source_path)
 
-        with open(ipynb_path, "r", encoding="utf-8") as f:
-            nb = json.load(f)
+        if source_path.endswith(".ipynb"):
+            if args.dry_run:
+                print(f"[dry-run] convert notebook {source_path} -> {out_path}")
+                converted_count += 1
+                continue
 
-        md_lines = []
-        for i, cell in enumerate(nb['cells']):
-            if cell['cell_type'] == 'markdown':
-                source = "".join(cell['source'])
+            with open(source_path, "r", encoding="utf-8") as f:
+                nb = json.load(f)
 
-                # 处理链接替换
-                source = re.sub(r'(\]\([^)]+)\.ipynb\)', r'\1.md)', source)
+            md_lines = []
+            for i, cell in enumerate(nb['cells']):
+                if cell['cell_type'] == 'markdown':
+                    source = "".join(cell['source'])
+                    source = re.sub(r'(\]\([^)]+)\.ipynb\)', r'\1.md)', source)
+                    if i == 0:
+                        source = process_first_cell(source, source_path)
+                    md_lines.append(source)
 
-                # 如果是第一个 cell，执行特殊处理（标题重构 + 插入云端环境）
-                if i == 0:
-                    source = process_first_cell(source, ipynb_path)
+                elif cell['cell_type'] == 'code':
+                    source = "".join(cell['source'])
+                    if source.strip():
+                        md_lines.append("\n```python\n" + source + "\n```\n")
 
-                md_lines.append(source)
-
-            elif cell['cell_type'] == 'code':
-                source = "".join(cell['source'])
-                if source.strip():
-                    md_lines.append("\n```python\n" + source + "\n```\n")
-
-        with open(out_path, "w", encoding="utf-8") as f:
-            f.write("\n".join(md_lines))
-
-        converted_count += 1
+            write_text(out_path, "\n".join(md_lines))
+            converted_count += 1
+        else:
+            if args.dry_run:
+                print(f"[dry-run] copy markdown {source_path} -> {out_path}")
+                md_count += 1
+                continue
+            os.makedirs(os.path.dirname(out_path), exist_ok=True)
+            process_markdown_file(source_path, out_path)
+            md_count += 1
 
     print(f"✅ 转换完成: {converted_count} 个 Notebook")
-
-    # 3. Process and Copy Chapter 2/3 raw Markdown files
-    md_count = 0
-    for md_path in sorted(glob.glob("*/*.md")):
-        if md_path.startswith("docs/") or md_path.startswith("scripts/"):
-            continue
-        if not (
-            md_path.startswith("02_PyTorch_Algorithms/")
-            or md_path.startswith("03_CUDA_and_Triton_Kernels/")
-        ):
-            continue
-        out_path = os.path.join("docs", md_path)
-        os.makedirs(os.path.dirname(out_path), exist_ok=True)
-
-        # 走处理逻辑而不是直接复制
-        process_markdown_file(md_path, out_path)
-        md_count += 1
 
     print(f"✅ 处理并复制完成: {md_count} 个 Markdown 文件")
     print("=" * 60)

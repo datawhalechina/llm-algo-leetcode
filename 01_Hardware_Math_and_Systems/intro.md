@@ -2,13 +2,14 @@
 
 ## 概览
 
-本部分包含 10 个讨论题，覆盖大模型的硬件基础、数学推导和系统架构。它负责把 Chapter 0 的基础能力，连接到 Chapter 2 / 3 的工程实现。
+本部分包含 10 个讨论题，覆盖大模型的硬件基础、数学推导和系统架构。它负责把第零部分的基础能力，连接到第二 / 第三部分的工程实现。
 
 ## 学习组划分
 
 当前 10 节内容先映射到 5 个主线组；后续新增内容再沿这条链扩展。
 
 > 导航说明：侧边栏和组级入口默认收起，先看总览，再点开具体组页。
+> 组页是知识包，不需要把整组一次性读完；先抓主线，再按需要回看扩展页。
 
 | 学习组 | 核心问题 | 当前内容映射 | 主题 |
 |:---|:---|:---|:---|
@@ -34,6 +35,18 @@
 - 系统学习：1A → 1B → 1C → 1D → 1E
 - 按组维护：优先看对应组页，再回到题目页
 
+## Part 2 / 3 前导路径
+
+Part 1 不只是知识目录，也是 Part 2 和 Part 3 的共同前置。下面这条路径可以直接作为进入后续部分的阅读顺序：
+
+| 路径 | 先看哪些页 | 解决什么问题 | 主要服务 |
+|:---|:---|:---|:---|
+| 基础认知层 | 1A、1B | 把精度、参数量、GPU 架构和访存直觉先立起来 | Part 2 / Part 3 |
+| 执行模型层 | 1C、1D、15-18 | 理解通信、调度、block / warp / shared memory 和 Triton block model | Part 3 |
+| 优化与选型层 | 1E、19-20、13 | 理解编译优化、算子融合、NCCL，以及为什么后面要从 PyTorch 走到 Triton，再走到 CUDA | Part 2 / Part 3 |
+
+如果你已经准备进入 Part 3，建议优先按 `1B -> 1D -> 18 -> 19 -> 20` 的顺序回看；如果你更关心算法实现和训练逻辑，则先看 `1A -> 1B -> 1C`，再回到 Part 2。
+
 ## 🔮 扩展候选池（21-33）
 
 以下页面先作为扩展占位，不进入当前主学习路径。当前 `P0` 项已经进入正文草稿阶段，后续内容成熟后再补 Notebook。
@@ -56,18 +69,17 @@
 
 ## 预留桥接页（11-20）
 
-`11-14` 偏 Chapter 2 前置，`15-20` 偏 Chapter 3 前置。后续直接补正文，不改入口。
+`11-14` 偏第二部分前置，`15-20` 偏第三部分前置。后续直接补正文，不改入口。
 
 | 题号 | 暂定标题 | 归属 | 桥接方向 | 状态 |
 |:---|:---|:---|:---|:---|
-| 11 | KV Cache and Memory Growth | 1B 单卡硬件与访存优化 | Chapter 2 前置 | 占位 |
-| 12 | Tensor Core and Mixed Precision | 1B 单卡硬件与访存优化 | Chapter 2 前置 | 占位 |
-| 13 | Profiling and Bottleneck Analysis | 1B 单卡硬件与访存优化 | Chapter 2 / 3 前置 | 占位 |
-| 14 | FlashAttention Memory Model | 1B 单卡硬件与访存优化 | Chapter 2 前置 | 占位 |
-| 15 | CUDA Execution Model | 1C 系统与编译 | Chapter 3 前置 | 占位 |
-| 16 | Warp, Block, and Shared Memory Basics | 1C 系统与编译 | Chapter 3 前置 | 占位 |
-| 17 | CUDA Stream and Asynchrony | 1C 系统与编译 | Chapter 3 前置 | 占位 |
-| 18 | Triton Block Model | 1C 系统与编译 | Chapter 3 前置 | 占位 |
-| 19 | Operator Fusion Introduction | 1C 系统与编译 | Chapter 3 前置 | 占位 |
-| 20 | NCCL and AllReduce Basics | 1C 系统与编译 | Chapter 2 / 3 前置 | 占位 |
-
+| 11 | KV Cache and Memory Growth | 1B 单卡硬件与访存优化 | 第二部分前置 | 占位 |
+| 12 | Tensor Core and Mixed Precision | 1B 单卡硬件与访存优化 | 第二部分前置 | 占位 |
+| 13 | Profiling and Bottleneck Analysis | 1B 单卡硬件与访存优化 | 第二 / 第三部分前置 | 占位 |
+| 14 | FlashAttention Memory Model | 1B 单卡硬件与访存优化 | 第二部分前置 | 占位 |
+| 15 | CUDA Execution Model | 1C 系统与编译 | 第三部分前置 | 占位 |
+| 16 | Warp, Block, and Shared Memory Basics | 1C 系统与编译 | 第三部分前置 | 占位 |
+| 17 | CUDA Stream and Asynchrony | 1C 系统与编译 | 第三部分前置 | 占位 |
+| 18 | Triton Block Model | 1C 系统与编译 | 第三部分前置 | 占位 |
+| 19 | Operator Fusion Introduction | 1C 系统与编译 | 第三部分前置 | 占位 |
+| 20 | NCCL and AllReduce Basics | 1C 系统与编译 | 第二 / 第三部分前置 | 占位 |

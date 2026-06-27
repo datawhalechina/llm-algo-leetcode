@@ -60,7 +60,7 @@ class RMSNormSolution(nn.Module):
 我们在根目录下按章节拆分转换脚本：
 
 - `convert_chapter0_1.py`：负责第零部分 / 第一部分的 `.ipynb` 与 `.md` 同步生成
-- `convert_notebook.py`：负责第二部分 / 第三部分的 `.ipynb` 与 `.md` 同步生成
+- `convert_notebook.py`：负责第二部分 / 第三部分 / 第四部分的 `.ipynb` 与 `.md` 同步生成
 
 实现“源码写一次，网页自动生成”的工作流。
 
@@ -80,6 +80,6 @@ class RMSNormSolution(nn.Module):
 1. **出题/修改代码**：只在根目录下的相应目录（如 `02_PyTorch_Algorithms/`）打开或新建 `.ipynb`，按照上文的“尾部三段式”模板编写题目和答案。
 2. **生成网页**：
    - 第零部分 / 第一部分：在根目录运行 `python3 convert_chapter0_1.py`
-   - 第二部分 / 第三部分：在根目录运行 `python3 convert_notebook.py`
+   - 第二部分 / 第三部分 / 第四部分：在根目录运行 `python3 convert_notebook.py`
 3. **预览校验**：进入 `docs/` 运行 `npm run docs:preview` 查看网页排版是否完美。
 4. **提交代码**：`git add` 修改过的 `.ipynb` 和 `docs/` 下的 `.md`，然后 `git commit` & `git push`。

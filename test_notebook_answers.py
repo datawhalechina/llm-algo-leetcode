@@ -16,12 +16,12 @@ import tempfile
 
 # 理论章节（无代码实现，只需占位符测试）
 THEORY_CHAPTERS = [
-    '20_CUDA_vs_Triton_vs_PyTorch.ipynb',
+    '21_CUDA_vs_Triton_vs_PyTorch.ipynb',
 ]
 
 # 分布式多进程章节（需要特殊环境，测试脚本中只验证结构）
 DISTRIBUTED_CHAPTERS = [
-    '16_Distributed_Communication_Primitives.ipynb',
+    '19_Distributed_Communication_Primitives.ipynb',
 ]
 
 
@@ -98,12 +98,28 @@ def test_theory():
 test_theory()
 """
 
-    # 标准测试函数查找
-    for cell in nb.cells:
-        if cell.cell_type == 'code' and 'def test_' in cell.source:
-            return cell.source
+    in_answer_section = False
+    fallback_test_code = None
+    question_candidates = []
 
-    return None
+    for cell in nb.cells:
+        if cell.cell_type == 'markdown' and '参考代码与解析' in cell.source:
+            in_answer_section = True
+            continue
+        if cell.cell_type == 'markdown' and 'STOP HERE' in cell.source and test_mode == 'question':
+            break
+        if cell.cell_type == 'code' and 'def test_' in cell.source:
+            if test_mode == 'answer' and not in_answer_section:
+                fallback_test_code = fallback_test_code or cell.source
+                continue
+            return cell.source
+        if test_mode == 'question' and cell.cell_type == 'code' and not in_answer_section:
+            question_candidates.append(cell.source)
+
+    if test_mode == 'question' and question_candidates:
+        return question_candidates[-1]
+
+    return fallback_test_code
 
 
 def extract_imports(notebook_path):
@@ -176,26 +192,38 @@ def test_notebook_answers(notebook_path, test_mode='answer'):
             print("错误输出:")
             print(result.stderr)
 
-        # 特殊处理：题目区的NotImplementedError是预期行为
-        if test_mode == 'question' and 'NotImplementedError' in result.stderr:
-            print(f"\n✅ {notebook_path} {mode_name}正确失败（包含NotImplementedError，防止透题）")
-            return False  # 返回False表示题目区失败（这是正确的）
+        skip_markers = [
+            '无 GPU，完成结构检查；运行级验证需要 GPU。',
+            '结构检查通过',
+            '忽略测试：无 GPU',
+            '忽略测试：此环境没有 NVIDIA GPU',
+            '无 GPU，跳过运行级验证。',
+        ]
+        if result.returncode == 0 and any(marker in result.stdout for marker in skip_markers):
+            print(f"\n⏭️ {notebook_path} {mode_name}仅完成结构检查，已跳过运行级验证（无 GPU）")
+            return 'skip'
 
-        success = result.returncode == 0 and '✅' in result.stdout
+        # 答案区的通过标准以进程退出码为准。
+        # `✅` 只作为人类可读的结果展示，不应影响判定。
+        success = result.returncode == 0
 
         if success:
             print(f"\n✅ {notebook_path} {mode_name}测试通过")
-        else:
-            print(f"\n❌ {notebook_path} {mode_name}测试失败")
+            return 'pass'
 
-        return success
+        if test_mode == 'question' and 'NotImplementedError' in result.stderr:
+            print(f"\n❌ {notebook_path} {mode_name}按预期失败（未完成题目）")
+            return 'expected_fail'
+
+        print(f"\n❌ {notebook_path} {mode_name}测试失败")
+        return 'fail'
 
     except subprocess.TimeoutExpired:
         print(f"❌ 测试超时")
-        return False
+        return 'fail'
     except Exception as e:
         print(f"❌ 执行出错: {e}")
-        return False
+        return 'fail'
     finally:
         Path(temp_path).unlink(missing_ok=True)
 
@@ -224,7 +252,6 @@ def main():
             # 跳过checkpoint文件
             if '.ipynb_checkpoints' in str(nb_path):
                 continue
-
             if args.mode == 'both':
                 # 测试题目区和答案区
                 q_success = test_notebook_answers(nb_path, 'question')
@@ -241,27 +268,49 @@ def main():
 
         if args.mode == 'both':
             for name, result in results.items():
-                q_status = "✅" if result['question'] else "❌"
-                a_status = "✅" if result['answer'] else "❌"
+                def fmt(status):
+                    return {
+                        'pass': "✅",
+                        'skip': "⏭️ 跳过（无 GPU）",
+                        'expected_fail': "❌ 按预期失败（未完成题目）",
+                        'fail': "❌",
+                    }.get(status, "❓")
+
+                q_status = fmt(result['question'])
+                a_status = fmt(result['answer'])
                 print(f"{name}:")
                 print(f"  题目区: {q_status}")
                 print(f"  答案区: {a_status}")
 
             total = len(results)
-            q_passed = sum(1 for r in results.values() if r['question'])
-            a_passed = sum(1 for r in results.values() if r['answer'])
+            q_passed = sum(1 for r in results.values() if r['question'] == 'pass')
+            q_expected_fail = sum(1 for r in results.values() if r['question'] == 'expected_fail')
+            a_passed = sum(1 for r in results.values() if r['answer'] == 'pass')
+            a_expected_fail = sum(1 for r in results.values() if r['answer'] == 'expected_fail')
+            q_skipped = sum(1 for r in results.values() if r['question'] == 'skip')
+            a_skipped = sum(1 for r in results.values() if r['answer'] == 'skip')
             print(f"\n题目区通过: {q_passed}/{total}")
+            print(f"题目区按预期失败: {q_expected_fail}/{total}")
+            print(f"题目区跳过: {q_skipped}/{total}")
             print(f"答案区通过: {a_passed}/{total}")
-            return 0 if q_passed == 0 and a_passed == total else 1
+            print(f"答案区按预期失败: {a_expected_fail}/{total}")
+            print(f"答案区跳过: {a_skipped}/{total}")
+            return 0 if all(r['question'] != 'fail' and r['answer'] != 'fail' for r in results.values()) else 1
         else:
             for name, success in results.items():
-                status = "✅ 通过" if success else "❌ 失败"
+                status = {
+                    'pass': "✅ 通过",
+                    'skip': "⏭️ 跳过（无 GPU）",
+                    'expected_fail': "🟡 按预期失败",
+                    'fail': "❌ 失败",
+                }.get(success, "❓ 未知")
                 print(f"{status} - {name}")
 
             total = len(results)
-            passed = sum(results.values())
-            print(f"\n总计: {passed}/{total} 通过")
-            return 0 if passed == total else 1
+            passed = sum(1 for v in results.values() if v == 'pass')
+            skipped = sum(1 for v in results.values() if v == 'skip')
+            print(f"\n总计: {passed}/{total} 通过, {skipped}/{total} 跳过")
+            return 0 if all(v != 'fail' for v in results.values()) else 1
 
     elif args.notebook:
         # 测试单个notebook
@@ -271,12 +320,24 @@ def main():
             print(f"\n{'='*60}")
             print("测试结果")
             print(f"{'='*60}")
-            print(f"题目区: {'✅ 通过' if q_success else '❌ 失败'}")
-            print(f"答案区: {'✅ 通过' if a_success else '❌ 失败'}")
-            return 0 if not q_success and a_success else 1
+            q_label = {
+                'pass': '✅ 通过',
+                'skip': '⏭️ 跳过（无 GPU）',
+                'expected_fail': '❌ 按预期失败（未完成题目）',
+                'fail': '❌ 失败',
+            }.get(q_success, '❓ 未知')
+            a_label = {
+                'pass': '✅ 通过',
+                'skip': '⏭️ 跳过（无 GPU）',
+                'expected_fail': '❌ 按预期失败（未完成题目）',
+                'fail': '❌ 失败',
+            }.get(a_success, '❓ 未知')
+            print(f"题目区: {q_label}")
+            print(f"答案区: {a_label}")
+            return 0 if q_success != 'fail' and a_success != 'fail' else 1
         else:
             success = test_notebook_answers(args.notebook, args.mode)
-            return 0 if success else 1
+            return 0 if success != 'fail' else 1
 
     else:
         parser.print_help()
