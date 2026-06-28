@@ -14,6 +14,19 @@
 即门控网络“偷懒”，把所有的 Token 都发给了第 0 号和第 1 号专家，导致其他专家被饿死（闲置），不仅失去了 MoE 的意义，还会导致算力非常不均衡（OOM）。
 因此，面试官非常爱考：**如何用代码实现 MoE 的辅助损失函数 (Auxiliary Loss) 来强制负载均衡？**
 
+## 前置
+
+**导语：** 先看 Router，再看负载均衡损失会更容易理解 MoE 为什么会塌缩。
+- [Part 2: 06 MoE Router](./06_MoE_Router.md)
+- [Part 2: 05 LLaMA3 Block Tutorial](./05_LLaMA3_Block_Tutorial.md)
+
+## 相关阅读
+
+**导语：** 如果想继续看架构侧的技巧，可以顺着读 Qwen / Gemma 的变体。
+- [Part 2: 08 Architecture Tricks](./08_Architecture_Tricks.md)
+- [Part 2: 09 SFT Training Loop](./09_SFT_Training_Loop.md)
+
+
 ### Step 1: 核心数学公式
 
 为了让 $T$ 个 Token 均匀地分配给 $E$ 个专家，我们需要设计一个惩罚项，加到总的 CrossEntropy Loss 里。

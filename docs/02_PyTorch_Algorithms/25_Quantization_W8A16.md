@@ -1,24 +1,25 @@
-# 20. Quantization W8A16 | 模型量化基础: INT8 绝对最大值量化与反量化 (Quantization)
-
-**难度：** Medium | **标签：** `推理优化`, `量化`, `PTQ` | **目标人群：** 模型微调与工程部署
+# 25. Quantization W8A16 | 量化推理：W8A16 线性层实现
 
 > 🚀 **云端运行环境**
 >
 > 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
 >
-> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/20_Quantization_W8A16.ipynb)
+> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/25_Quantization_W8A16.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
+## 前置
 
-大模型动辄百亿参数，显存占用极大。为了让 7B 模型能跑在消费级显卡（如 RTX 4090 / 3090）甚至手机端，**模型量化 (Quantization)** 是不可或缺的技术。
-本节我们将实现最基础、也是面试中最常考的 **INT8 对称量化 (Symmetric Quantization)**，理解量化缩放因子 (Scale) 的计算，以及如何在进行矩阵乘法前进行反量化 (Dequantization)。
+**导语：** 先把推理链路看完，再看量化会更容易理解它为什么能省显存和提速。
+- [Part 2: 23 SGLang RadixAttention](./24_SGLang_RadixAttention.md)
+- [Part 2: 22 Speculative Decoding](./23_Speculative_Decoding.md)
 
+## 相关阅读
 
-> **相关阅读**:
-> 本节使用纯 PyTorch 实现了算法逻辑与数学推导。
-> 如果你想学习工业界如何打破该算子的 Memory Bound (访存瓶颈)，请前往 Triton 篇：
->  [`../03_Triton_Kernels/10_Triton_Quantization.ipynb`](../03_Triton_Kernels/10_Triton_Quantization.md)
+**导语：** 量化之后，建议继续看分布式并行策略。
+- [Part 2: 25 ZeRO Optimizer Sim](./27_ZeRO_Optimizer_Sim.md)
+- [Part 2: 26 Pipeline Parallelism MicroBatch](./28_Pipeline_Parallelism_MicroBatch.md)
+
 
 ### Step 1: 核心思想与概念
 

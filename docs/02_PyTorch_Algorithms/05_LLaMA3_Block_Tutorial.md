@@ -12,6 +12,19 @@
 
 本节我们将进入激动人心的“组装阶段”！我们将把之前实现的 **RMSNorm**、**RoPE** 和 **GQA (Grouped-Query Attention)** 拼装在一起，外加一个 **SwiGLU** 激活函数的 MLP 层，构建一个真正的 **LLaMA-3 Decoder Layer**。这也是面试中常考的全局架构题。
 
+## 前置
+
+**导语：** 先把 Attention 和 KV Cache 理顺，再看 LLaMA-3 Block 的整体组装会更自然。
+- [Part 2: 04 Attention MHA GQA](./04_Attention_MHA_GQA.md)
+- [Part 2: 03 RoPE Tutorial](./03_RoPE_Tutorial.md)
+
+## 相关阅读
+
+**导语：** Block 组装后，最自然的延伸是 MoE 和架构技巧。
+- [Part 2: 06 MoE Router](./06_MoE_Router.md)
+- [Part 2: 08 Architecture Tricks](./08_Architecture_Tricks.md)
+
+
 ### Step 1: 核心思想与痛点
 
 > **LLaMA 架构 vs 传统 Transformer (如 GPT-2)**

@@ -1,18 +1,25 @@
-# 24. Tensor Parallelism Sim | 突破单卡显存上限：张量并行 (Tensor Parallelism, TP) 的矩阵切片模拟
-
-**难度：** Hard | **标签：** `Distributed Training`, `Tensor Parallelism`, `Megatron-LM` | **目标人群：** 核心 Infra 与算子开发
+# 29. Tensor Parallelism Sim | 分布式并行：Tensor Parallelism 模拟
 
 > 🚀 **云端运行环境**
 >
 > 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
 >
-> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/24_Tensor_Parallelism_Sim.ipynb)
+> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/29_Tensor_Parallelism_Sim.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-ZeRO 切分了状态，但**模型参数本身（Weights）**在每张卡上依然是完整的。如果模型高达 70B（140GB 显存），甚至连一张 80G 的 A100 都放不下完整的模型，这时 ZeRO-1/2 也无能为力了。
-Megatron-LM 提出了 **Tensor Parallelism (张量并行，TP)**。它将一个大规模的矩阵乘法 $Y = XA$，把权重矩阵 $A$ 切成几小块，分别放在不同的 GPU 上算，最后再把结果拼起来。
-本节我们将纯粹用张量切片操作，模拟 TP 是如何把一个大规模的 Linear 层拆分到 2 张逻辑卡上的。
+## 前置
+
+**导语：** 先看 ZeRO 和 Pipeline，再看 Tensor Parallelism 会更容易把三种并行策略区分开。
+- [Part 2: 25 ZeRO Optimizer Sim](./27_ZeRO_Optimizer_Sim.md)
+- [Part 2: 26 Pipeline Parallelism MicroBatch](./28_Pipeline_Parallelism_MicroBatch.md)
+
+## 相关阅读
+
+**导语：** 并行策略看完后，就可以进入项目实战页做综合收口。
+- [Part 2: 28 LoRA Fine-Tuning Project](./30_LoRA_Fine_Tuning_Project.md)
+- [Part 2: 29 Inference Performance Comparison](./31_Inference_Performance_Comparison.md)
+
 
 ### Step 1: TP的两种切法
 

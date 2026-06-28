@@ -1,24 +1,25 @@
-# 12. RLHF PPO Memory | RLHF 对齐：PPO 算法的核心 Loss 与显存流转 (RLHF PPO)
-
-**难度：** Hard | **标签：** `RLHF`, `PPO`, `Alignment` | **目标人群：** 模型微调与对齐算法工程师
+# 14. RLHF PPO Memory | RLHF 对齐：PPO 算法的核心 Loss 与显存流转 (RLHF PPO)
 
 > 🚀 **云端运行环境**
 >
 > 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
 >
-> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/12_RLHF_PPO_Memory.ipynb)
+> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/14_RLHF_PPO_Memory.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-在下一节我们要学习的 DPO (直接偏好优化) 虽然因为非常节省显存而广受欢迎，但业界顶尖的大模型（如 OpenAI 系列、Llama 3）的终极对齐手段依然是 **RLHF (基于人类反馈的强化学习)**。
+## 前置
 
-为什么 RLHF 很难？因为它的核心算法 **PPO (近端策略优化)** 在训练时需要**同时在显存中周转 4 个大模型**：
-1. **Actor Model (策略模型)**：你要训练的那个模型，负责生成回答。
-2. **Critic Model (价值模型)**：负责给 Actor 生成的每一个 Token 打分（评估当前状态的价值）。
-3. **Reward Model (奖励模型)**：预先训练好的裁判，负责给整句回答打出一个最终的分数。
-4. **Reference Model (参考模型)**：Actor 的冻结克隆版。用来防止 Actor 为了讨好 Reward Model 而输出人类看不懂的乱码（提供 KL 散度惩罚）。
+**导语：** 先确认微调与训练闭环，再看 RLHF / PPO 的对齐训练会更顺。
+- [Part 2: 13 End-to-End Fine-Tuning Experiment](./13_End_to_End_Fine_Tuning_Experiment.md)
+- [Part 2: 12 Gradient Accumulation](./12_Gradient_Accumulation.md)
 
-本节我们将手写 PPO 中最核心的 **Actor Clip Loss**，并梳理这 4 个模型的运转逻辑。
+## 相关阅读
+
+**导语：** PPO 之后最自然的延伸是 DPO。
+- [Part 2: 15 DPO Loss Tutorial](./15_DPO_Loss_Tutorial.md)
+- [Part 2: 16 Autograd Basics](./17_Autograd_Basics.md)
+
 
 ### Step 1: PPO 算法与 Actor Loss 公式
     

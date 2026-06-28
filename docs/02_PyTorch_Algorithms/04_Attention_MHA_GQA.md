@@ -12,6 +12,19 @@
 
 欢迎来到 LLM-LeetCode！本节我们将深入解析大语言模型的核心组件：**注意力机制**，并实现支持 KV Cache 和 GQA (Grouped-Query Attention) 的代码。
 
+## 前置
+
+**导语：** 先把 RoPE 和基本的序列建模概念补齐，再看多头注意力和 KV Cache。
+- [Part 2: 03 RoPE Tutorial](./03_RoPE_Tutorial.md)
+- [Part 1: 1D 异构调度与算子编程](../01_Hardware_Math_and_Systems/1D.md)
+
+## 相关阅读
+
+**导语：** Attention 之后可以继续看模型 block 和 MoE 架构。
+- [Part 2: 05 LLaMA3 Block Tutorial](./05_LLaMA3_Block_Tutorial.md)
+- [Part 2: 06 MoE Router](./06_MoE_Router.md)
+
+
 ### Step 1: 核心思想与痛点
 
 在大语言模型中，**注意力机制 (Attention)** 决定了模型如何“回顾”并提取历史上下文的信息。随着模型层数加深和序列变长，Attention 模块在推理阶段面临极大的性能挑战。

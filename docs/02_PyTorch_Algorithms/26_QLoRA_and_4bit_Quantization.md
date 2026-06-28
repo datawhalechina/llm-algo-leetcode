@@ -1,4 +1,4 @@
-# 22. QLoRA and 4bit Quantization | QLoRA 与 4-bit NormalFloat 量化核心机制 (QLoRA & 4bit)
+# 26. QLoRA and 4bit Quantization | QLoRA 与 4-bit NormalFloat 量化核心机制 (QLoRA & 4bit)
 
 **难度：** Hard | **标签：** `微调`, `QLoRA`, `量化` | **目标人群：** 模型微调与工程部署
 
@@ -6,7 +6,7 @@
 >
 > 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
 >
-> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/22_QLoRA_and_4bit_Quantization.ipynb)
+> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/26_QLoRA_and_4bit_Quantization.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 

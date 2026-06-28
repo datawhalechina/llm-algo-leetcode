@@ -18,6 +18,19 @@
 > 如果你想学习工业界如何打破该算子的 Memory Bound (访存瓶颈)，请前往 Triton 篇：
 >  [`../03_Triton_Kernels/07_Triton_Fused_RoPE.ipynb`](../03_Triton_Kernels/07_Triton_Fused_RoPE.md)
 
+## 前置
+
+**导语：** 先确认 RMSNorm 和 SwiGLU 的算子基础，再看位置编码会更顺。
+- [Part 2: 01 RMSNorm Tutorial](./01_RMSNorm_Tutorial.md)
+- [Part 2: 02 SwiGLU Activation](./02_SwiGLU_Activation.md)
+
+## 相关阅读
+
+**导语：** RoPE 之后最自然的延伸就是 Attention 和 KV Cache。
+- [Part 2: 04 Attention MHA GQA](./04_Attention_MHA_GQA.md)
+- [Part 1: 19 算子融合导论](../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md)
+
+
 ### Step 1: 核心思想与痛点
 
 > **为什么需要 RoPE？**

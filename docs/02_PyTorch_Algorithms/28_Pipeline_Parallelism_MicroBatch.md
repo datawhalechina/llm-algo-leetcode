@@ -1,25 +1,25 @@
-# 25. Pipeline Parallelism MicroBatch | 分布式进阶：流水线并行与微批次气泡 (Pipeline Parallelism)
-
-**难度：** Hard | **标签：** `Distributed Training`, `Pipeline Parallelism` | **目标人群：** 核心 Infra 开发
+# 28. Pipeline Parallelism MicroBatch | 分布式并行：Pipeline Parallelism 微批次模拟
 
 > 🚀 **云端运行环境**
 >
 > 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
 >
-> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/25_Pipeline_Parallelism_MicroBatch.ipynb)
+> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/28_Pipeline_Parallelism_MicroBatch.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-在前面我们学习了 ZeRO (切分优化器/梯度/状态) 和 Tensor Parallelism (把矩阵乘法切成小块)。
-但当模型达到几千亿参数时（例如 Llama 3 400B），单台拥有 8 张 GPU 的服务器连存放切分后的切片都做不到！必须使用跨服务器的大规模集群。跨服务器的网络带宽非常慢，此时只能引入 **3D 混合并行的最后一块拼图：流水线并行 (Pipeline Parallelism, PP)**。
+## 前置
 
-> **流水线并行的本质**：
-> 把一个拥有 80 层的 Transformer 模型按深度切开。GPU 1 负责第 1~10 层，GPU 2 负责 11~20 层，依次类推。
->
-> **气泡痛点 (Pipeline Bubble)**：
-> 前向传播时，必须等 GPU 1 算完，GPU 2 才能开工。反向传播时，必须等 GPU 8 算完，GPU 7 才能接收到梯度。这种严重的等待空窗期被称为 **气泡 (Bubble)**。
+**导语：** 先看 ZeRO，再看 Pipeline 的微批次调度会更容易理解流水线并行。
+- [Part 2: 25 ZeRO Optimizer Sim](./27_ZeRO_Optimizer_Sim.md)
+- [Part 2: 24 Quantization W8A16](./25_Quantization_W8A16.md)
 
-本节我们将推导计算气泡比例的工业级公式，并了解经典的 1F1B 调度。
+## 相关阅读
+
+**导语：** Pipeline 之后，建议继续看 Tensor Parallelism 和项目实战。
+- [Part 2: 27 Tensor Parallelism Sim](./29_Tensor_Parallelism_Sim.md)
+- [Part 2: 28 LoRA Fine-Tuning Project](./30_LoRA_Fine_Tuning_Project.md)
+
 
 ### 理论与公式计算
 

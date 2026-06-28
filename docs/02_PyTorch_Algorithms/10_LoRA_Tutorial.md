@@ -12,6 +12,19 @@
 
 本节我们将解析大语言模型领域最具影响力的微调算法：**LoRA (Low-Rank Adaptation)**。我们将实现一个 `LoRALinear` 层，替换标准的 `nn.Linear`，体验矩阵秩分解是如何极大地节省显存开销的。
 
+## 前置
+
+**导语：** 先把 SFT 的训练闭环看过，再回来看 LoRA 的参数高效微调。
+- [Part 2: 09 SFT Training Loop](./09_SFT_Training_Loop.md)
+- [Part 1: 13 Profiling and Bottleneck Analysis](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
+
+## 相关阅读
+
+**导语：** LoRA 之后可以继续看学习率调度和梯度累积，补齐训练闭环。
+- [Part 2: 11 Warmup-Stable-Decay Scheduler](./11_LR_Schedulers_WSD_Cosine.md)
+- [Part 2: 12 Gradient Accumulation](./12_Gradient_Accumulation.md)
+
+
 ### Step 1: 核心思想与痛点
 
 > **为什么需要 LoRA？**

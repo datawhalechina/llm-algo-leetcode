@@ -1,24 +1,26 @@
-# 19. SGLang RadixAttention | SGLang 与 RadixAttention: 突破 vLLM 多轮对话瓶颈
-
-**难度：** Medium | **标签：** `SGLang`, `Radix Tree`, `KV Cache` | **目标人群：** 模型部署与推理引擎开发
+# 24. SGLang RadixAttention | RadixAttention 与多轮对话缓存
 
 > 🚀 **云端运行环境**
 >
 > 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
 >
-> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/19_SGLang_RadixAttention.ipynb)
+> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/24_SGLang_RadixAttention.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-上一节我们学习了业界广泛使用的 **vLLM (PagedAttention)**。它准确解决了单次生成长文本时的**内存碎片**问题。
-但在实际的生产环境中，我们经常遇到以下场景：
-- **庞大且共享的 System Prompt**（如几百字的设定语，每个用户请求都带着）。
-- **多轮对话（Multi-turn Chat）**（只增加了最后一句用户提问，前面几万字的聊天记录都是相同的）。
-- **Few-shot Prompting**（给所有请求都塞入相同的 few-shot 示例）。
+## 前置
 
-vLLM 会对每一个请求**从头开始（重新计算）**这些共享前缀的 KV Cache，这浪费了大量的时间（导致 TTFT 首字响应极慢）和显存。
+**导语：** 先看投机解码，再看 RadixAttention 会更容易理解多轮对话缓存。
+- [Part 2: 22 Speculative Decoding](./23_Speculative_Decoding.md)
+- [Part 2: 21 vLLM PagedAttention](./22_vLLM_PagedAttention.md)
 
-**SGLang (LMSYS, 2024)** 的提出，它的核心创新 **RadixAttention** 引入了**基数树 (Radix Tree)** 来管理系统的 KV Cache。当系统发现新的请求和旧请求有着相同的前缀（Prefix）时，它会**直接复用**树节点里的 KV Cache，完全跳过了重复的 Prefill 阶段！
+## 相关阅读
+
+**导语：** RadixAttention 后，可以继续看量化和分布式并行。
+- [Part 2: 24 Quantization W8A16](./25_Quantization_W8A16.md)
+- [Part 2: 25 ZeRO Optimizer Sim](./27_ZeRO_Optimizer_Sim.md)
+
+
 ### Step 1: 核心机制对比
 
 > **vLLM PagedAttention：线性的分页存储**

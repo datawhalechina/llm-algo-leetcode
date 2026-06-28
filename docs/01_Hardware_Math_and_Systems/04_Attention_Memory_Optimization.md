@@ -17,7 +17,7 @@
 > **相关阅读**:  
 > 请前往实战篇进行相关代码练习：  
 > [`../02_PyTorch_Algorithms/04_Attention_MHA_GQA.ipynb`](../02_PyTorch_Algorithms/04_Attention_MHA_GQA.md)  
-> [`../02_PyTorch_Algorithms/17_vLLM_PagedAttention.ipynb`](../02_PyTorch_Algorithms/17_vLLM_PagedAttention.md)  
+> [`../02_PyTorch_Algorithms/17_vLLM_PagedAttention.ipynb`](../02_PyTorch_Algorithms/22_vLLM_PagedAttention.md)  
 > [`../03_Triton_Kernels/09_Triton_PagedAttention.ipynb`](../03_Triton_Kernels/09_Triton_PagedAttention.md)  
 
 ---

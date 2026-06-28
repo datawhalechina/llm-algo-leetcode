@@ -13,6 +13,19 @@
 在深入大模型的浩瀚海洋（如 Attention、LoRA、MoE）之前，我们必须确保自己的“底层积木”是非常扎实的。
 本节作为**热身关卡**，将用三个非常经典的实战填空，带你快速找回 PyTorch 的核心肌肉记忆：张量维度变换 (Tensor Reshaping)、嵌入层查表 (Embedding Lookup) 以及链式法则的反向传播 (Backpropagation)。
 
+## 前置
+
+**导语：** 这一节先把后续章节要用到的基础张量、Autograd 和 Embedding 先补齐。
+- [Part 1: 1B 单卡硬件与访存优化](../01_Hardware_Math_and_Systems/1B.md)
+- [Part 1: 13 Profiling and Bottleneck Analysis](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
+
+## 相关阅读
+
+**导语：** 如果想先看更完整的归一化和激活算子，再往后读会更顺。
+- [Part 2: 01 RMSNorm Tutorial](./01_RMSNorm_Tutorial.md)
+- [Part 2: 02 SwiGLU Activation](./02_SwiGLU_Activation.md)
+
+
 
 ```python
 # 导入所有必需的库

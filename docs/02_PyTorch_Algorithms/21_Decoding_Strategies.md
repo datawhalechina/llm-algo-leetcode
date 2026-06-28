@@ -1,19 +1,25 @@
-# 16. Decoding Strategies | 大模型解码策略：Top-K, Top-p (Nucleus) 与 Temperature
-
-**难度：** Medium | **标签：** `推理算法`, `Decoding` | **目标人群：** 模型微调与工程部署
+# 21. Decoding Strategies | 大模型解码策略：Top-K, Top-p (Nucleus) 与 Temperature
 
 > 🚀 **云端运行环境**
 >
 > 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
 >
-> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/16_Decoding_Strategies.ipynb)
+> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/21_Decoding_Strategies.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-有了 `Logits` 之后，我们如何决定大模型生成的下一个词是什么？
-这就是解码策略（Decoding Strategy）解决的问题。如果只取概率最大的词（Greedy Search），模型生成的文本会非常干瘪且容易重复。为了让生成的文本既有逻辑性又有创造性，我们需要引入**温度采样（Temperature）**、**Top-K** 和 **Top-p（核采样）**。
+## 前置
 
-在面试大模型算法岗（无论是微调还是部署）时，这三个算法的张量实现是必考的！
+**导语：** 先看 FlashAttention，再看解码策略更容易把前向和生成过程联系起来。
+- [Part 2: 19 FlashAttention Sim](./20_FlashAttention_Sim.md)
+- [Part 2: 18 Activation Checkpointing & Activation Offload](./19_Activation_Checkpointing_and_Activation_Offload.md)
+
+## 相关阅读
+
+**导语：** 解码策略之后，建议继续看 KV Cache 的工程实现。
+- [Part 2: 21 vLLM PagedAttention](./22_vLLM_PagedAttention.md)
+- [Part 2: 22 Speculative Decoding](./23_Speculative_Decoding.md)
+
 
 ### Step 1: 核心思想与痛点
 

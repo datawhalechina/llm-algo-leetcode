@@ -1,22 +1,26 @@
-# 14. Attention Backward Math | 注意力机制反向传播推导与自定义 Autograd (Attention Backward)
-
-**难度：** Hard | **标签：** `微积分`, `PyTorch`, `Autograd` | **目标人群：** 底层算子开发、高阶算法面试
+# 17. Autograd Basics | Autograd 基础：Attention 反向示例
 
 > 🚀 **云端运行环境**
 >
 > 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
 >
-> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/14_Attention_Backward_Math.ipynb)
+> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/17_Autograd_Basics.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-在第 04 节，我们完成了多头注意力机制（MHA）的前向传播搭建。然而，**“大模型训练”与“推理”核心挑战之一在于反向传播 (Backward Pass)。**
+## 前置
 
-为什么各大厂商都在持续优化 FlashAttention？因为在训练时，为了计算反向传播的梯度，框架必须在显存中保存尺寸为 $N \times N$ (序列长度的平方) 的庞大注意力分数矩阵（Attention Probabilities）。当序列长度达到 128K 时，仅这一个中间变量就会极易导致 GPU 显存溢出 (OOM)。
+**导语：** 先看 RLHF / DPO 的训练闭环，再回到 Autograd 基础会更容易连到反向传播。
+- [Part 2: 15 DPO Loss Tutorial](./15_DPO_Loss_Tutorial.md)
+- [Part 2: 14 RLHF PPO Memory](./14_RLHF_PPO_Memory.md)
 
-在下一节正式进入 FlashAttention 之前，我们必须跨过这座高山：**完全搞懂 Attention 反向传播的微积分推导，并抛弃 PyTorch 原生的 `.backward()`，利用 `torch.autograd.Function` 写出它的反向梯度计算代码！**
+## 相关阅读
 
-这是底层架构岗位的常见考核点。
+**导语：** Autograd 之后，最自然的延伸就是激活函数和损失函数的反向推导。
+- [Part 2: 17 Activation and Loss Backward](./18_Activation_and_Loss_Backward.md)
+- [Part 2: 18 Activation Checkpointing & Activation Offload](./19_Activation_Checkpointing_and_Activation_Offload.md)
+
+
 ### Step 1: 前向传播回顾与变量定义
 
 为了不打断思路，我们先简洁回顾一下 04 节的单头 Attention 前向公式（省略缩放因子 $\sqrt{d}$ 简化推导，后文代码中会加回）：

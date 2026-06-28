@@ -19,6 +19,19 @@
 >  [`../03_Triton_Kernels/02_Triton_Fused_SwiGLU.ipynb`](../03_Triton_Kernels/02_Triton_Fused_SwiGLU.md)
 >
 
+## 前置
+
+**导语：** 先看 RMSNorm 和基础张量运算，再回到门控激活会更容易理解。
+- [Part 2: 01 RMSNorm Tutorial](./01_RMSNorm_Tutorial.md)
+- [Part 1: 1B 单卡硬件与访存优化](../01_Hardware_Math_and_Systems/1B.md)
+
+## 相关阅读
+
+**导语：** 读完门控激活后，建议继续看 RoPE 和 Attention。
+- [Part 2: 03 RoPE Tutorial](./03_RoPE_Tutorial.md)
+- [Part 2: 04 Attention MHA GQA](./04_Attention_MHA_GQA.md)
+
+
 ### Step 1: 核心思想与痛点
 
 > **什么是 GLU (Gated Linear Unit)？**

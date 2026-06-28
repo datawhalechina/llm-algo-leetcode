@@ -1,16 +1,25 @@
-# 13. DPO Loss Tutorial | 直接偏好优化 Loss 源码解析与实现 (DPO)
-
-**难度：** Hard | **标签：** `微调`, `RLHF`, `Loss Function` | **目标人群：** 模型微调与工程部署
+# 15. DPO Loss Tutorial | 直接偏好优化 Loss 源码解析与实现 (DPO)
 
 > 🚀 **云端运行环境**
 >
 > 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
 >
-> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/13_DPO_Loss_Tutorial.ipynb)
+> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/15_DPO_Loss_Tutorial.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-本节我们将实现目前大语言模型领域最炙手可热的对齐算法：**DPO (Direct Preference Optimization)**。相比于 PPO，DPO 将强化学习的 Reward Model 省略，直接利用交叉熵的变体去拟合人类偏好，非常优雅且高效。
+## 前置
+
+**导语：** 先看 PPO，再看 DPO 的隐式对齐路线会更容易理解两者区别。
+- [Part 2: 14 RLHF PPO Memory](./14_RLHF_PPO_Memory.md)
+- [Part 2: 13 End-to-End Fine-Tuning Experiment](./13_End_to_End_Fine_Tuning_Experiment.md)
+
+## 相关阅读
+
+**导语：** 完成对齐章节后，可以继续进入反向传播与显存优化。
+- [Part 2: 16 Autograd Basics](./17_Autograd_Basics.md)
+- [Part 2: 17 Activation and Loss Backward](./18_Activation_and_Loss_Backward.md)
+
 
 ### Step 1: 核心思想与痛点
 

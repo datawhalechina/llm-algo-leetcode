@@ -16,6 +16,19 @@
 > 本节使用纯 PyTorch 实现了算法逻辑与数学推导。
 > 如果你想学习工业界如何打破该算子的 Memory Bound (访存瓶颈)，请前往 Triton 篇：
 >  [03_Triton_Fused_RMSNorm](../03_Triton_Kernels/03_Triton_Fused_RMSNorm.md)
+## 前置
+
+**导语：** 先回看 Part 1 的访存和执行模型，再看 RMSNorm 的算子实现会更顺。
+- [Part 1: 1B 单卡硬件与访存优化](../01_Hardware_Math_and_Systems/1B.md)
+- [Part 1: 1D 异构调度与算子编程](../01_Hardware_Math_and_Systems/1D.md)
+
+## 相关阅读
+
+**导语：** 如果想继续把基础算子链路补完整，可以顺着读激活函数和位置编码。
+- [Part 2: 02 SwiGLU Activation](./02_SwiGLU_Activation.md)
+- [Part 2: 03 RoPE Tutorial](./03_RoPE_Tutorial.md)
+
+
 ### Step 1: 核心思想与痛点
 
 > **为什么抛弃了 LayerNorm？**

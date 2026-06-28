@@ -1,22 +1,24 @@
-# 17. vLLM PagedAttention | 经典推理框架: 模拟 Continuous Batching 与 PagedAttention
-
-**难度：** Hard | **标签：** `推理架构`, `vLLM` | **目标人群：** 核心 Infra 与算子开发
+# 22. vLLM PagedAttention | 高性能 KV Cache：PagedAttention 内核模拟
 
 > 🚀 **云端运行环境**
 >
 > 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
 >
-> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/17_vLLM_PagedAttention.ipynb)
+> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/22_vLLM_PagedAttention.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-本节我们将揭秘工业界大模型推理框架（如 **vLLM**）的两大杀手锏技术：**Continuous Batching (连续批处理/动态批处理)** 和 **PagedAttention (分页注意力池)**。
-这是目前算法面经里含金量最高，但资料最匮乏的部分！
+## 前置
 
-> **相关阅读**:
-> 本节使用纯 PyTorch 实现了算法逻辑与数学推导。
-> 如果你想学习工业界如何打破该算子的 Memory Bound (访存瓶颈)，请前往 Triton 篇：
->  [`../03_Triton_Kernels/09_Triton_PagedAttention.ipynb`](../03_Triton_Kernels/09_Triton_PagedAttention.md)
+**导语：** 先把 FlashAttention 和基础解码策略看完，再看 PagedAttention 会更清楚。
+- [Part 2: 19 FlashAttention Sim](./20_FlashAttention_Sim.md)
+- [Part 2: 20 Decoding Strategies](./21_Decoding_Strategies.md)
+
+## 相关阅读
+
+**导语：** PagedAttention 后，可以继续看投机解码和量化。
+- [Part 2: 22 Speculative Decoding](./23_Speculative_Decoding.md)
+- [Part 2: 24 Quantization W8A16](./25_Quantization_W8A16.md)
 
 
 ### Step 1: 核心思想与痛点

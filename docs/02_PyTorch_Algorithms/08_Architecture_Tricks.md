@@ -13,6 +13,20 @@
 在 `06_LLaMA3_Block_Tutorial` 中我们搭建了 LLaMA 的骨架。但如果你去面试阿里云（通义千问团队）或者谷歌，他们必然会问自家模型与 LLaMA 的区别。
 本节我们将以“打补丁”的方式，在 PyTorch 中快速实现 **Qwen 的 Tie Word Embeddings** 以及 **Gemma 的带偏置 RMSNorm**。
 
+## 前置
+
+**导语：** 先把 LLaMA-3 Block 和 MoE 的主线看完，再看结构变体会更清楚。
+- [Part 2: 05 LLaMA3 Block Tutorial](./05_LLaMA3_Block_Tutorial.md)
+- [Part 2: 06 MoE Router](./06_MoE_Router.md)
+- [Part 2: 07 MoE Load Balancing Loss](./07_MoE_Load_Balancing_Loss.md)
+
+## 相关阅读
+
+**导语：** 架构技巧之后，就可以进入训练主线。
+- [Part 2: 09 SFT Training Loop](./09_SFT_Training_Loop.md)
+- [Part 2: 10 LoRA Tutorial](./10_LoRA_Tutorial.md)
+
+
 ### Step 1: 核心差异与机制
 
 > **Trick 1: Tie Word Embeddings (权重绑定) - Qwen 系列 / GPT-2**

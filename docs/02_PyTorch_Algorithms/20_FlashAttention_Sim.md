@@ -1,27 +1,25 @@
-# 15. FlashAttention Sim | 深入理解 FlashAttention：分块计算与 Online Softmax
-
-**难度：** Hard | **标签：** `FlashAttention`, `Memory Bound`, `PyTorch` | **目标人群：** 核心 Infra 与算子开发
+# 20. FlashAttention Sim | 推理优化：FlashAttention 前向模拟
 
 > 🚀 **云端运行环境**
 >
 > 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
 >
-> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/15_FlashAttention_Sim.ipynb)
+> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/20_FlashAttention_Sim.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-在标准的自注意力 (Self-Attention) 机制中，时间复杂度和空间复杂度都是序列长度 $O(N^2)$。当序列变得极长（如 128k, 1M Token），庞大的 $N \times N$ 注意力分数矩阵 $(QK^T)$ 会直接导致显存溢出 (OOM)。
+## 前置
 
-FlashAttention (Tri Dao et al., 2022) 带来了一场革命。它的核心思想不是减少计算量 (FLOPs 甚至略有增加)，而是通过 **Tiling (分块计算)** 和 **Online Softmax** 完全避免了将大规模的 $N \times N$ 中间结果写回到缓慢的 GPU 显存 (HBM) 中，从而将空间复杂度降为 $O(N)$，并大幅提升了实际运行速度。
+**导语：** 先理解反向传播与显存优化，再看 FlashAttention 的前向模拟会更容易。
+- [Part 2: 18 Activation Checkpointing & Activation Offload](./19_Activation_Checkpointing_and_Activation_Offload.md)
+- [Part 1: 13 Profiling and Bottleneck Analysis](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
 
+## 相关阅读
 
-本节我们将不用 Triton/CUDA，而是仅用 PyTorch 的循环，在数学逻辑上 1:1 模拟 FlashAttention 的前向计算过程，帮助你完全弄懂 Online Softmax 是如何工作的。
+**导语：** FlashAttention 后，可以继续看解码策略和 PagedAttention。
+- [Part 2: 20 Decoding Strategies](./21_Decoding_Strategies.md)
+- [Part 2: 21 vLLM PagedAttention](./22_vLLM_PagedAttention.md)
 
-
-> **相关阅读**:
-> 本节使用纯 PyTorch 实现了算法逻辑与数学推导。
-> 如果你想学习工业界如何打破该算子的 Memory Bound (访存瓶颈)，请前往 Triton 篇：
->  [`../03_Triton_Kernels/08_Triton_Flash_Attention.ipynb`](../03_Triton_Kernels/08_Triton_Flash_Attention.md)
 
 ### Step 1: 核心理论与 Online Softmax
 

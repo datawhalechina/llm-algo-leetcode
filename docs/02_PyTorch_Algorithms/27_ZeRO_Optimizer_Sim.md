@@ -1,18 +1,25 @@
-# 23. ZeRO Optimizer Sim | 显存优化进阶：模拟 ZeRO-1 切分与 ZeRO 原理 (ZeRO Optimizer)
-
-**难度：** Hard | **标签：** `Distributed Training`, `ZeRO`, `Memory Bound` | **目标人群：** 核心 Infra 与算子开发
+# 27. ZeRO Optimizer Sim | 显存优化进阶：模拟 ZeRO-1 切分与 ZeRO 原理 (ZeRO Optimizer)
 
 > 🚀 **云端运行环境**
 >
 > 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
 >
-> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/23_ZeRO_Optimizer_Sim.ipynb)
+> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/27_ZeRO_Optimizer_Sim.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-在 01_Hardware 章节中，我们计算过：对于 AdamW 优化器，它需要保存梯度 (Grad)、一阶动量 (Momentum) 和二阶动量 (Variance)。这意味着在 FP16 混合精度训练下，**优化器状态和梯度占据了绝大部分显存 (至少是模型权重的 6 倍以上)**。
-Microsoft DeepSpeed 提出的 ZeRO (Zero Redundancy Optimizer) 是打破单卡显存壁垒的关键。其中，**ZeRO-1** 仅仅将**优化器状态 (Optimizer States)** 均匀切分到各个 GPU 上，就极大地缓解了显存压力。
-本节我们将用纯 PyTorch 模拟 2 张卡的 ZeRO-1 工作原理。
+## 前置
+
+**导语：** 先看量化与推理优化，再进入 ZeRO 会更容易理解显存切分的意义。
+- [Part 2: 24 Quantization W8A16](./25_Quantization_W8A16.md)
+- [Part 2: 18 Activation Checkpointing & Activation Offload](./19_Activation_Checkpointing_and_Activation_Offload.md)
+
+## 相关阅读
+
+**导语：** ZeRO 后，建议继续看 Pipeline 和 Tensor Parallelism。
+- [Part 2: 26 Pipeline Parallelism MicroBatch](./28_Pipeline_Parallelism_MicroBatch.md)
+- [Part 2: 27 Tensor Parallelism Sim](./29_Tensor_Parallelism_Sim.md)
+
 
 ### Step 1: ZeRO-1 核心思想
 

@@ -28,7 +28,7 @@
 
 > **相关阅读**:  
 > 请前往实战篇进行相关代码练习：  
-> [`../02_PyTorch_Algorithms/24_Tensor_Parallelism_Sim.ipynb`](../02_PyTorch_Algorithms/24_Tensor_Parallelism_Sim.md)  
+> [`../02_PyTorch_Algorithms/29_Tensor_Parallelism_Sim.ipynb`](../02_PyTorch_Algorithms/29_Tensor_Parallelism_Sim.md)  
 > [`../04_CUDA_and_System_Optimization/19_Distributed_Communication_Primitives.ipynb`](../04_CUDA_and_System_Optimization/19_Distributed_Communication_Primitives.md)  
 
 ---

@@ -1,24 +1,25 @@
-# 18. Speculative Decoding | 投机解码：打破推理的访存瓶颈 (Speculative Decoding)
-
-**难度：** Medium | **标签：** `Inference`, `Memory Bound` | **目标人群：** 模型部署与推理引擎开发
+# 23. Speculative Decoding | 投机解码：草稿模型与验证模型协作
 
 > 🚀 **云端运行环境**
 >
 > 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
 >
-> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/18_Speculative_Decoding.ipynb)
+> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/23_Speculative_Decoding.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-在 16、17 节中，我们探讨了系统级优化（PagedAttention, SGLang）。本节我们将剖析推理领域近年来最大的**算法级**创新 —— **投机解码 (Speculative Decoding)**。
+## 前置
 
-> **自回归生成的痛点：**
-> 传统的大模型生成 Token 是一个一个蹦的。每生成一个 Token，庞大的模型参数就要从 GPU 的 HBM 读到 SRAM 里一次。这是非常的 **Memory Bound（访存受限）**。GPU 的算力几乎都在闲置等待数据搬运。
+**导语：** 先看 PagedAttention，再看投机解码会更容易理解草稿模型与验证模型的协作。
+- [Part 2: 21 vLLM PagedAttention](./22_vLLM_PagedAttention.md)
+- [Part 2: 20 Decoding Strategies](./21_Decoding_Strategies.md)
 
-> **投机解码的破局：**
-> 1. **草拟 (Draft)**：找一个非常小、速度极快的小模型（比如 1B 参数），让它连续盲猜并生成接下来 $K$ 个 Token（比如 4 个）。
-> 2. **验证 (Verify)**：将这 $K$ 个草拟的 Token 一次性喂给庞大的目标模型（如 70B）。因为是并行计算，大模型验证这 4 个 Token 的时间，几乎和生成 1 个 Token 的时间一样短！
-> 3. **接受与拒绝**：如果大模型的输出概率认同小模型的猜测，我们就直接免费获取了这 4 个 Token。如果不认同，我们在出错的地方截断，并用大模型的正确分布重采样。
+## 相关阅读
+
+**导语：** 投机解码之后，可以继续看 RadixAttention 和量化。
+- [Part 2: 23 SGLang RadixAttention](./24_SGLang_RadixAttention.md)
+- [Part 2: 24 Quantization W8A16](./25_Quantization_W8A16.md)
+
 
 ### 动手实战：核心的接受/拒绝逻辑
 

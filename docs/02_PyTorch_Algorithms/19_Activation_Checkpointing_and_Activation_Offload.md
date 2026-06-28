@@ -1,17 +1,25 @@
-# 21. Gradient Checkpointing | 极致显存优化：激活值重计算 (Gradient Checkpointing)
-
-**难度：** Medium | **标签：** `训练优化`, `Memory Bound`, `PyTorch` | **目标人群：** 核心 Infra 与算子开发
+# 19. Activation Checkpointing and Activation Offload | 激活检查点与激活卸载
 
 > 🚀 **云端运行环境**
 >
 > 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
 >
-> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/21_Gradient_Checkpointing.ipynb)
+> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/19_Activation_Checkpointing_and_Activation_Offload.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-在计算显存占用时，很多初学者只考虑"权重和优化器"，却发现一跑模型就 OOM（显存溢出）。这是因为在长序列（Long Context）的大模型前向传播中，**保存下来的激活值 (Activations)** 是显存占用的主要来源。
-本节我们将演示如何用"时间换空间"的思想——也就是 **Gradient Checkpointing (梯度检查点 / 重计算)**，将激活值显存占用呈平方根级别缩减。
+## 前置
+
+**导语：** 先把 Autograd 和反向推导补齐，再看 checkpointing / offload 才能理解它为什么能省显存。
+- [Part 2: 16 Autograd Basics](./17_Autograd_Basics.md)
+- [Part 2: 17 Activation and Loss Backward](./18_Activation_and_Loss_Backward.md)
+
+## 相关阅读
+
+**导语：** 看完显存优化后，可以继续进入推理优化主线。
+- [Part 2: 19 FlashAttention Sim](./20_FlashAttention_Sim.md)
+- [Part 2: 20 Decoding Strategies](./21_Decoding_Strategies.md)
+
 
 ### Step 1: 核心思想与痛点
 
