@@ -1,148 +1,140 @@
-# 33. TCO and Cost Model | TCO and Cost Model
+# 33. TCO and Cost Model | 算力评估与 TCO 模型
 
-**难度：** Medium | **标签：** `成本评估`, `TCO`, `硬件选型` | **目标人群：** 需要做 GPU 选型和预算判断的学习者
+**难度：** Medium | **环境：** CPU-first | **标签：** `成本评估`, `TCO` | **目标人群：** 需要做 GPU 选型和预算判断的学习者
 
-这页的重点不是报具体价格，而是建立一个实用的成本评估框架。硬件选型从来不只是“算力更高就更好”，而是要把采购、能源、维护、迁移和风险一起算进去。
+> 🚀 **云端运行环境**
+>
+> 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
+>
+> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/01_Hardware_Math_and_Systems/33_TCO_and_Cost_Model.ipynb)
+> [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-前置阅读建议先看 `1E-02 芯片现状与替代方案`，先把不同硬件的规格、生态和定位搞清楚，再看这页会更顺。
 
-## Q1：TCO 是什么？
+这一页的重点不是报一个最低价格，而是把采购、能耗、运维、迁移和风险放进同一个判断框架里。
 
-<details>
-<summary>点击展开查看解析</summary>
+**关键词：** `TCO`, `cost`, `power`, `migration`, `risk`
+## 前置
 
-TCO（Total Cost of Ownership，总拥有成本）通常不只是设备采购价，还包括：
-- GPU / 服务器采购成本
-- 电力和散热成本
-- 网络和存储成本
-- 运维和人力成本
-- 迁移与适配成本
-- 故障和停机带来的损失
+**导语：** 这一页先把编译、选型和成本判断放到同一条判断链里，再看 TCO 为什么不能只看单卡报价。
 
-因此，判断“哪种硬件更划算”时，不能只看单卡价格或单卡算力。
+## 相关阅读
 
-一个常见误区是只看 `$/TFLOPs`，但对真正的训练和推理系统来说，软件生态和稳定性也会显著影响总成本。
+**导语：** 如果想继续把成本、动态 shape 和虚拟化带来的长期影响串起来，可以接着看这些页。
 
-一个最粗的三年 TCO 视角可以这样看：
+## Q1：TCO 为什么比单卡报价更重要？
 
-| 成本项 | 常见占比 | 说明 |
-| --- | --- | --- |
-| 硬件采购 | 40-50% | GPU、服务器、网络和机柜 |
-| 电力与散热 | 20-30% | PUE、空调、供电 |
-| 运维人力 | 15-25% | 工程师、值守、机房管理 |
-| 网络与存储 | 5-10% | 交换机、共享存储、带宽 |
-| 迁移与适配 | 0-20% | 是否更换生态决定差别很大 |
+<details><summary>点击展开查看解析</summary>
 
-如果用 3 年期做粗算，常见表达式可以写成：
+TCO 看的是总拥有成本，不只是买卡的钱。
 
-```text
-3 年 TCO ≈ 采购成本 + 3 × 电费 + 3 × 运维成本 + 迁移成本 + 风险成本
+它会把采购、能耗、运维、迁移、停机风险和替换成本都放进来。对于长期运行的系统来说，单卡便宜不一定代表整体便宜，因为后续的电费、维护和迁移可能更贵。
+
+所以真正要比较的是一段时间内谁更能稳定地把业务跑起来。
+</details>
+### Q1小验证：为什么长期成本更关键
+
+看总账，而不是只看首付。
+
+```python
+def tco(purchase, power_per_month, ops_per_month, migration, months=12):
+    return purchase + (power_per_month + ops_per_month) * months + migration
+
+gpu_a = tco(120, 3, 2, 10, months=24)
+gpu_b = tco(90, 5, 4, 22, months=24)
+print('A:', gpu_a)
+print('B:', gpu_b)
+print('cheaper:', 'A' if gpu_a < gpu_b else 'B')
 ```
 
-这类估算不追求小数点后精度，目标是帮助你先判断“到底哪一项最贵”。
+## Q2：为什么迁移成本和风险要算进模型里？
+
+<details><summary>点击展开查看解析</summary>
+
+硬件切换不只是换设备，还会带来软件适配、调试、重构和性能回归风险。
+
+如果迁移需要重新适配编译器、kernel、通信库或部署流程，那这些工作本身就是成本的一部分。
+
+所以 TCO 不是财务问题和技术问题的二选一，而是把两者放进同一个判断框架。
 </details>
+### Q2小验证：迁移为什么会贵
 
-## Q2：为什么训练和推理的成本结构不同？
+适配成本本身就是成本。
 
-<details>
-<summary>点击展开查看解析</summary>
+```python
+def migration_cost(adapt, test, rollback):
+    return adapt + test + rollback
 
-训练和推理的成本驱动不一样：
-
-- **训练** 更看重：
-  - 多卡扩展性
-  - 通信效率
-  - 失败重试和 checkpoint
-  - 长时间稳定性
-
-- **推理** 更看重：
-  - 单卡吞吐
-  - 显存容量
-  - 延迟稳定性
-  - 部署和运维复杂度
-
-这意味着同一款硬件，在训练场景和推理场景下的“性价比”可能完全不同。
-
-如果再把单位成本说得更具体一点，可以这么记：
-
-| 指标 | 训练 | 推理 |
-| --- | --- | --- |
-| 核心关注 | `$/GPU-hour`、MFU、通信效率 | `$/1M tokens`、吞吐、尾延迟 |
-| 典型规模 | 百卡 / 千卡集群 | 单卡 / 小集群 |
-| 利用率重点 | 高 MFU，尽量减少 idle | 低延迟 + 高吞吐 |
-| 故障代价 | 高，重跑时间长 | 中，可 fallback |
-
-训练更像“长时间烧卡”，推理更像“持续卖 token”。
-</details>
-
-## Q3：如何快速做一个粗略的成本判断？
-
-<details>
-<summary>点击展开查看解析</summary>
-
-可以先用一个很粗的框架：
-
-```text
-总成本 ≈ 采购成本 + 能耗成本 + 运维成本 + 迁移成本 + 风险成本
+print(migration_cost(5, 3, 2))
 ```
 
-然后再问三个问题：
-- 任务是训练还是推理
-- 当前代码和模型是否已经适配目标平台
-- 团队是否有维护新栈的能力
+## Q3：怎样用成本模型做更合理的选型？
 
-如果硬件更便宜，但迁移和维护成本很高，那它未必真的更划算。
+<details><summary>点击展开查看解析</summary>
 
-如果你要做迁移成本评估，可以把 CUDA → ROCm 当作一个典型参考：
+做选型时，最好把成本、风险和收益放到同一个表里。
 
-| 迁移内容 | 工作量 | 风险 |
-| --- | --- | --- |
-| Python / PyTorch 主体代码 | 低，通常先替换接口 | 低 |
-| 自定义 CUDA kernel | 高，往往需要重写为 HIP 或 Triton | 中高 |
-| 第三方库（xFormers / Apex） | 中，需找替代或移植 | 中 |
-| 通信库（NCCL → RCCL） | 中，API 近似但性能要调优 | 中 |
-| 运维监控与部署 | 中，需要适配新栈 | 中 |
+常见比较维度包括：
+- 初始采购成本；
+- 运行时电力和运维成本；
+- 软件栈成熟度；
+- 迁移和维护风险；
+- 未来扩展的稳定性。
 
-如果团队对新栈没有经验，迁移成本很容易从“几周”变成“几个月”。
+这样得到的不是“最低价”，而是“最适合当前约束的方案”。
 </details>
+### Q3小验证：选型判断先看什么
 
-## Q4：这页最重要的决策建议是什么？
+先看长期约束，再看短期价格。
 
-<details>
-<summary>点击展开查看解析</summary>
+```python
+def score_option(total_cost, risk, growth):
+    # 分数越低越好：成本、风险和增长不确定性一起看。
+    return total_cost + risk * 20 + growth * 10
 
-- **不是所有场景都追求最高峰值算力**
-- **不是所有场景都值得迁移到新平台**
-- **不是所有便宜硬件都是真的低成本**
+options = {
+    'stable_gpu': score_option(60, 0.2, 0.3),
+    'cheap_alt': score_option(45, 0.6, 0.7),
+}
+for name, score in options.items():
+    print(name, score)
+print('choose:', min(options, key=options.get))
+```
 
-更稳妥的思路是：
-- 先确认目标任务
-- 再确认硬件是否满足容量和带宽
-- 最后确认软件生态和运维代价
+## Q4：为什么扩容节奏和折旧周期也会改变 TCO 结论？
 
-这也是为什么 Chapter 1 的最后一页更适合用来做“系统性判断”，而不是只列参数表。
+<details><summary>点击展开查看解析</summary>
+
+TCO 不只是“买得起还是用得起”，还取决于你要在多长时间内把这套系统跑满。
+
+如果扩容太慢，前期买来的算力可能闲置，单位产出成本会被拉高；如果折旧周期太短，硬件还没充分发挥就要更新，账面成本也会迅速上升。
+
+因此真正的成本模型，往往要同时考虑：
+- 初始采购成本；
+- 运行成本；
+- 迁移和切换成本；
+- 扩容与折旧节奏。
+
+把这些变量放在一起看，才更接近真实的技术选型决策。
 </details>
+### Q4小验证：扩容和折旧为什么要一起看
 
-## 小结
+```python
+def effective_cost(purchase, ops, migration, idle, depreciation):
+    return purchase + ops + migration + idle + depreciation
 
-如果你已经能把采购、能耗、运维、迁移和风险放在一起看，这一页的目标基本达成。
+scenarios = {
+    'fast_expand': effective_cost(100, 20, 8, 20, 10),
+    'slow_expand': effective_cost(100, 20, 8, 5, 28),
+}
+for name, cost in scenarios.items():
+    print(name, cost)
+print('more cost effective:', min(scenarios, key=scenarios.get))
 
-## 关联阅读
+```
 
-这一页和 1E-02 是直接互补的，建议一起看：
+## ⚠️ 常见误区
 
-- `1E-02` 芯片现状与替代方案
-- `1C-03` 并行策略决策框架
-
-## 配合练习
-
-这一页建议和后面的练习一起看。这页的练习可以围绕下面四个目标展开：
-
-- 画出不同硬件的 `$/TFLOPs` 和能效曲线
-- 估算一个 3 年期 TCO，看看采购 / 电费 / 运维哪项最重
-- 做一个简单的 TCO 计算器，把迁移成本也加进去
-- 设计一个选型决策树，比较训练和推理场景下的优先级差异
-
-## Notebook 口径
-
-这一页当前保留正文草稿和练习建议，不单独挂独立 Notebook。后续如果补练习，会按 Chapter 1 公开 Notebook 的统一模板来做。
+- 只看采购价会漏掉长期成本。
+- 迁移和运维不是附带项，它们会真实影响 TCO。
+- 选型不是找最便宜，而是找最适合约束的方案。
+- 成本模型应同时覆盖技术和业务风险。
