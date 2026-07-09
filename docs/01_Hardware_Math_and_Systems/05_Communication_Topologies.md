@@ -1,155 +1,141 @@
-# 05. Communication Topologies | 通信拓扑与分布式基石 (Communication & Distributed Topology)
+# 05. Communication Topologies | 通信拓扑与分布式基石
 
-**难度：** Hard | **标签：** `系统架构`, `分布式训练`, `通信机制` | **目标人群：** 核心 Infra 与算子开发
+**难度：** Medium | **环境：** CPU-first | **标签：** `通信拓扑`, `分布式训练` | **目标人群：** 分布式训练入门者
 
-在 [讨论题 03：GPU 物理架构与内存层级](./03_GPU_Architecture_and_Memory.md) 中，我们探讨了单卡内部由 SRAM 和 HBM 构成的访存层级。然而，千亿参数大模型的计算和显存需求远超单卡的承载极限。
-当我们跨入多机多卡的集群环境时，单机的访存受限 (Memory Bound) 将演变为集群间的通信瓶颈 (Communication Bottleneck)。本节我们将从大模型最核心的 **3D 并行策略** 出发，结合 NVIDIA A100/H100 的底层物理拓扑，解析软硬件是如何协同工作的。
+> 🚀 **云端运行环境**
+>
+> 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
+>
+> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/01_Hardware_Math_and_Systems/05_Communication_Topologies.ipynb)
+> [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-如果先记一组带宽直觉，可以先抓住下面这几个数量级：
 
-| 互连 | 典型带宽 | 备注 |
-| --- | --- | --- |
-| PCIe Gen5 x16 | 128 GB/s（双向） | 仍然是通用主机总线 |
-| A100 NVLink 3.0 | 600 GB/s（双向） | 单机 8 卡内高频通信主力 |
-| H100 NVLink 4.0 | 900 GB/s（双向） | 更适合把 TP 放在机内 |
-| 400Gb/s InfiniBand | 50 GB/s（单向，约 25 GB/s 双向等效吞吐） | 跨机通信常见上限量级 |
+在大模型训练中，算力不是唯一限制，通信拓扑往往决定多卡并行能否真正扩展。
 
-这也是为什么“机内 NVLink vs 机外 IB”不是一个小差异，而是一个会直接改变并行策略的物理约束。
+**关键词：** `DP`, `TP`, `PP`, `bandwidth`, `AllReduce`
+## Q1：什么是大模型训练中的 3D 并行 (3D Parallelism)？
 
-## 本节如何和实战篇配合
+<details><summary>点击展开查看解析</summary>
 
-这一节没有单独的 Notebook，而是和后面的实战页一起配合学习：
+3D 并行通常指把数据并行 (DP)、张量并行 (TP) 和流水线并行 (PP) 组合起来使用。
 
-- 先看本文，建立 3D 并行、NVLink / IB、All-Reduce / All-Gather / Reduce-Scatter 的直觉
-- 再去实战篇看张量并行和分布式通信原语，确认这些概念在代码里怎么落地
-- 如果后面要做多卡训练调优，这一页负责告诉你**为什么通信会成为瓶颈**，实战篇负责告诉你**怎么验证瓶颈和收益**
+- **DP**：不同卡处理不同数据批次，再同步梯度。
+- **TP**：把单层中的大张量切到多卡上共同计算。
+- **PP**：把不同层切到不同设备或设备组上形成流水线。
 
-这节的目标不是让你立刻会写分布式代码，而是让你在面对 TP、PP、DP 时，先能判断通信拓扑是否允许这样部署。
-
-> **相关阅读**:  
-> 请前往实战篇进行相关代码练习：  
-> [`../02_PyTorch_Algorithms/29_Tensor_Parallelism_Sim.ipynb`](../02_PyTorch_Algorithms/29_Tensor_Parallelism_Sim.md)  
-> [`../04_CUDA_and_System_Optimization/19_Distributed_Communication_Primitives.ipynb`](../04_CUDA_and_System_Optimization/19_Distributed_Communication_Primitives.md)  
-
----
-
-## Q1：什么是大模型训练中的 3D 并行 (3D Parallelism) 策略？请简述 DP、TP 和 PP 的基本概念。
-
-<details>
-<summary>点击展开查看解析</summary>
-
-当一个模型大到一张 GPU 装不下，且训练数据多到一张 GPU 算不完时，业界（如 Megatron-LM 等）通常采用三种维度的切分方式（俗称 3D 并行）来将任务分摊给整个集群：
-
-1. **数据并行 (Data Parallelism, DP) —— 切分数据**
-   - **概念**：每张 GPU 上都有一份完整的模型副本。我们将海量的训练数据切分成多个小批次 (Mini-batches)，分发给不同的 GPU 同时计算。
-   - **特点**：最基础的并行方式。计算完后，所有 GPU 需要同步一次梯度，以保证大家的模型更新方向一致。
-2. **张量并行 (Tensor Parallelism, TP) —— 切分算子 (层内)**
-   - **概念**：如果一层 Transformer 的矩阵乘法太大，我们就把这个大矩阵“切块”。多张 GPU 分别计算矩阵的一部分，最后将结果拼接起来。
-   - **特点**：它是在“层内部”进行的细粒度切分，因此 GPU 之间需要极高频率地交换中间计算结果。
-3. **流水线并行 (Pipeline Parallelism, PP) —— 切分网络层 (层间)**
-   - **概念**：将一个深达上百层的神经网络“拦腰截断”。例如 GPU 1 负责前 10 层，GPU 2 负责第 11-20 层。像工厂流水线一样，GPU 1 算完后把结果传递给 GPU 2。
-   - **特点**：属于粗粒度切分，只有在相邻层的 GPU 之间才需要传递激活值 (Activations)。
-
-**一个便于记忆的对比表**：
-
-| 策略 | 切分对象 | 通信频率 | 单次通信量 | 常见物理层 | 典型场景 |
-| --- | --- | --- | --- | --- | --- |
-| DP | 数据 | 每个 iteration 一次 | 全量梯度，约 `2P` bytes 量级 | 跨机可行 | 所有训练 |
-| TP | 层内参数 / 激活 | 每层、每 micro-batch 多次 | 激活张量，约 `B × S × H × bytes` 量级 | 机内 NVLink | Megatron-LM |
-| PP | 层间激活 | 每个 micro-batch 边界一次 | 单层激活，约 `B × S × H × bytes` 量级 | 跨机也可行 | 大模型分层部署 |
-
-其中 `P` 代表参数量，`B` 是 batch size，`S` 是 sequence length，`H` 是 hidden dim，`bytes` 是数据类型字节数。  
-从工程上看，TP 和 PP 的单次消息量可能同量级，但 TP 的通信频率更高，所以它更依赖机内高速互连。
+这三者的目标不是“越多越好”，而是让模型、算力和通信拓扑能一起匹配。
 </details>
+### Q1小验证：三种并行分别切什么
 
----
+先把“切数据 / 切张量 / 切层”记住。
 
-## Q2：以 A100/H100 服务器为例，机内与机外通信的物理拓扑和带宽存在怎样的显著差距？
+```python
+def three_d_parallel(dp, tp, pp):
+    # 3D 并行的核心不是三个名词，而是三种切分方式是否能同时成立。
+    return {
+        'dp_groups': dp,
+        'tp_shards': tp,
+        'pp_stages': pp,
+        'effective_workers': dp * tp * pp,
+    }
 
-<details>
-<summary>点击展开查看解析</summary>
+cases = [
+    three_d_parallel(8, 1, 1),
+    three_d_parallel(4, 2, 2),
+    three_d_parallel(2, 4, 4),
+]
+for case in cases:
+    print(case)
+print('3D parallelism = DP × TP × PP')
 
-要将上述的 3D 并行策略部署到真实的物理机房中，我们需要先认清一个明确的硬件现实：节点内和节点间的数据传输由两套不同的物理网络承载。
-
-1. **机内通信 (Intra-node Communication)**:
-   - **硬件基石**：NVIDIA 主板上的 NVLink 互连技术和 NVSwitch 全互联交换芯片。它允许单台服务器内的 8 张 GPU 绕过 CPU，实现点对点直连。
-   - **理论带宽**：A100 双向互连带宽可达 **600 GB/s**；H100 更是提升至 **900 GB/s**。
-   - **特点**：延迟极低，带宽极大。8 张显卡在物理拓扑上就像是一张拥有超大显存的“统一 GPU”。
-
-2. **机外通信 (Inter-node Communication)**:
-   - **硬件基石**：跨服务器交换依赖于网卡，通常使用 InfiniBand (IB) 网络或支持 RDMA 的以太网 (RoCE)。
-   - **理论带宽**：主流 400Gb/s IB 的单向吞吐量约为 **50 GB/s**，按双向等效看通常只有 **25 GB/s** 左右。
-   - **特点**：受限于网卡、物理交换机及光纤距离，跨机通信带宽受到严格制约。
-
-**核心结论**：机内 NVLink 与机外网络（如 IB）的带宽差距通常达到 12 倍到 18 倍。这个物理层面的“带宽悬崖”是决定 3D 并行策略如何放置的重要约束。
-</details>
-
----
-
-## Q3：硬件拓扑的“带宽悬崖”是如何决定张量并行 (TP) 与流水线并行 (PP) 的部署边界的？
-
-<details>
-<summary>点击展开查看解析</summary>
-
-构建分布式训练系统的核心设计原则是：**让高频、大数据量的通信走高速的 NVLink，让低频、小数据量的通信走机外网络。**
-
-1. **TP 通常优先放在机内**:
-   - TP 在每一层的前向和反向计算中，矩阵切块运算结束后往往需要立即同步结果，否则无法进行后续计算。
-   - 如果跨物理机执行 TP，较低的跨机带宽会让 GPU 长时间阻塞等待，整体算力利用率明显下降。因此，**TP 维度通常优先限制在单台物理机内部**，常见规模会受单机互联拓扑约束。
-
-2. **PP 和 DP 适合跨机分布**:
-   - PP 仅在切分层的边界交接微批次 (Micro-batch) 时，发生一次点对点的发送与接收。且传输的数据仅为单层的激活值张量，体积远小于动辄几 GB 的参数。
-   - DP 虽然要同步全量梯度，但它只在整个反向传播结束时才执行一次，频率相对较低（并且可以与反向传播计算进行 Overlap 隐藏通信时间）。
-   - 因此，**流水线并行和数据并行通常作为跨机扩展的主要手段**，以容忍跨机网络的带宽上限。
-
-**一个便于部署时快速判断的决策树**：
-
-```text
-TP 维度应该多大？
-├─ 单机 8 卡 → TP ≤ 8，通常 TP=8 最能吃满 NVLink
-├─ 需要跨机 → TP 尽量不要跨机，优先改成 PP / DP
-└─ 多机但有特殊 NVLink 互联平台 → 仍要看拓扑，不要默认 TP 可以无限扩展
-
-PP 和 DP 怎么放？
-├─ PP → 可跨机，因为单次激活传输量较小，频率也较低
-└─ DP → 适合跨机扩展，并尽量和反向传播做 overlap
 ```
+
+## Q2：以 A100/H100 服务器为例，机内与机外通信的物理拓扑和带宽差距有多大？
+
+<details><summary>点击展开查看解析</summary>
+
+机内通常可以通过 NVLink / NVSwitch 获得更高带宽，而机外则常常受限于 PCIe 或网络链路。
+
+这意味着：
+- 机内通信更适合高频同步；
+- 机外通信更容易成为瓶颈；
+- 只看 GPU 数量不看拓扑，很容易高估扩展收益。
+
+所以通信拓扑不是背景信息，而是并行策略能否成立的前提。
 </details>
+### Q2小验证：带宽差距会带来什么
 
----
+带宽差距越大，越需要谨慎决定通信放在哪里。
 
-## Q4：在上述并行策略下，请简述最常用的三种集合通信原语：All-Reduce, All-Gather, Reduce-Scatter 的区别。
+```python
+def bandwidth_ratio(intra=900, inter=64):
+    return intra / inter
 
-<details>
-<summary>点击展开查看解析</summary>
+print(f'ratio ≈ {bandwidth_ratio():.1f}x')
+```
 
-当我们在宏观上决定了 TP/PP/DP 的部署位置后，底层的通信库（如 NCCL）会通过以下核心通信原语 (Primitives) 来执行实际的数据搬运：
+## Q3：带宽悬崖如何决定 TP 与 PP 的部署边界？
 
-假设当前通信组内有 4 张 GPU，每张卡上持有一段局部数据：
+<details><summary>点击展开查看解析</summary>
 
-1. **All-Reduce (全规约)**:
-   - **操作**：将所有卡上大小相等的张量按照指定的运算（通常是求和 `Sum`）进行合并，然后将合并结果完整地广播回所有卡上。
-   - **应用场景**：数据并行 (DP) 汇总梯度；张量并行 (TP) 同步局部矩阵乘加的结果。
-   - **量级例子**：以 7B 参数模型、FP16 梯度为例，单卡梯度大小约为 `14 GB`，8 卡 DP 做一次 All-Reduce 时，每卡累计发送/接收量可到 `28 GB` 量级。若放在 900 GB/s 的机内 NVLink 上，时间可能是几十毫秒量级；若落到 50 GB/s 级别的跨机网络上，时间会被拉长到数百毫秒级别。
+当硬件带宽出现明显断层时，跨断层的通信成本会骤增。
 
-2. **All-Gather (全收集)**:
-   - **操作**：每张卡拥有一个被切分的张量片段。各卡相互交换片段，最终每张卡都拼接并持有一份完整的大张量。
-   - **应用场景**：序列并行 (Sequence Parallelism) 中收集被分布处理的文本序列；ZeRO-3 获取切片的模型权重。
+如果张量并行需要频繁跨很慢的链路同步，那它的扩展效果就会受限；如果流水线并行能够把通信切在更合适的边界上，它就可能更合适。
 
-3. **Reduce-Scatter (规约并散布)**:
-   - **操作**：Reduce + Scatter 的组合。首先对所有卡的张量按位置求和，然后将求和结果均匀切分，每张卡只接收并保存自己对应的切片部分。
-   - **应用场景**：ZeRO-2 计算并保存切片的梯度。
-
-*系统洞察*：在 A100/H100 节点内部，NCCL 会充分利用 NVSwitch 的全互联特性，使得这些集合通信原语的执行效率逼近机内物理硬件的极限带宽。
-
+所以部署边界不是拍脑袋定的，而是由带宽悬崖、同步频率和模型切分方式共同决定。
 </details>
+### Q3小验证：带宽悬崖会放大通信代价
 
----
+```python
+def comm_time_ms(size_mb, bandwidth_gbps):
+    # size_mb -> Mb, divide by Gbps, then convert s to ms.
+    return size_mb * 8 / bandwidth_gbps
+
+payload_mb = 256
+nvlink_gbps = 900
+pcie_gbps = 64
+nvlink_time = comm_time_ms(payload_mb, nvlink_gbps)
+pcie_time = comm_time_ms(payload_mb, pcie_gbps)
+ratio = pcie_time / nvlink_time
+
+print(f'{payload_mb} MB over NVLink: {nvlink_time:.2f} ms')
+print(f'{payload_mb} MB over PCIe: {pcie_time:.2f} ms')
+print(f'PCIe / NVLink time ratio: {ratio:.1f}x')
+
+```
+
+## Q4：All-Reduce、All-Gather、Reduce-Scatter 分别有什么区别？
+
+<details><summary>点击展开查看解析</summary>
+
+这三种集合通信原语分别对应不同的数据流：
+
+- **All-Reduce**：所有设备做归约，并把结果广播回每一张卡。
+- **All-Gather**：把各卡局部数据收集到一起，形成完整结果。
+- **Reduce-Scatter**：先归约，再把结果切分发回各卡。
+
+它们在数据并行、张量并行和流水线并行中会以不同方式出现，决定了同步成本和通信模式。
+</details>
+### Q4小验证：通信原语各自做什么
+
+先把“聚合”“收集”“切分再发回”记清楚。
+
+```python
+def collective(kind):
+    table = {
+        'allreduce': 'reduce + broadcast',
+        'allgather': 'gather all pieces',
+        'reducescatter': 'reduce then scatter',
+    }
+    return table.get(kind, 'unknown')
+
+for k in ['allreduce', 'allgather', 'reducescatter']:
+    print(k, '->', collective(k))
+```
 
 ## ⚠️ 常见误区
 
-- `NVLink` 很快，不代表所有多卡通信都会自动加速；通信库和拓扑没配好，仍然可能退化到 `PCIe`。
-- `TP` 维度越大不一定越好；TP 越大，通信频率和同步成本越高。
-- `PP` 不是没有通信，而是通信次数更少、单次更小。
-- `All-Reduce` 不只可以做求和，也可以在不同算法里承担平均、规约等变体。
-- `机外带宽` 看起来也不低，但对 DP 这种大块梯度同步来说，几十 GB 级别的单轮通信仍然很容易成为瓶颈。
+- 3D 并行不是把三种并行简单相加。
+- 机内和机外通信不是同一个成本级别。
+- 带宽悬崖会直接改变部署策略。
+- 选并行方案时，通信原语和拓扑要一起看。
