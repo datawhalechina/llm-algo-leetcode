@@ -1,6 +1,6 @@
-# 01. RMSNorm Tutorial | 均方根层归一化 (RMSNorm)
+# 01. RMSNorm Tutorial | RMSNorm 教程
 
-**难度：** Easy | **标签：** `基础架构`, `PyTorch` | **目标人群：** 模型微调与工程部署
+**难度：** Easy | **环境：** CPU-first | **标签：** `基础架构`, `PyTorch` | **目标人群：** 模型微调与工程部署
 
 > 🚀 **云端运行环境**
 >
@@ -12,21 +12,20 @@
 
 本节我们将实现大语言模型（如 LLaMA、Gemma）中最常用的归一化技术：**RMSNorm (Root Mean Square Normalization)**。相比于传统的 LayerNorm，它能带来可观的训练加速，同时几乎不损失模型表现。
 
-> **相关阅读**:
-> 本节使用纯 PyTorch 实现了算法逻辑与数学推导。
-> 如果你想学习工业界如何打破该算子的 Memory Bound (访存瓶颈)，请前往 Triton 篇：
->  [03_Triton_Fused_RMSNorm](../03_Triton_Kernels/03_Triton_Fused_RMSNorm.md)
-## 前置
+**关键词：** `RMSNorm`, `LayerNorm`, `normalization`, `variance`
 
-**导语：** 先回看 Part 1 的访存和执行模型，再看 RMSNorm 的算子实现会更顺。
-- [Part 1: 1B 单卡硬件与访存优化](../01_Hardware_Math_and_Systems/1B.md)
-- [Part 1: 1D 异构调度与算子编程](../01_Hardware_Math_and_Systems/1D.md)
+## 前置阅读
+
+**导语：** 如果还没把单卡访存瓶颈和执行粒度之间的关系理顺，先看下面两页会更顺。
+- [Group 1B: Single-GPU Hardware and Memory Optimization | 1B: 单卡硬件与访存优化](../01_Hardware_Math_and_Systems/1B.md)
+- [Group 1D: Heterogeneous Scheduling and Operator Programming | 1D: 异构调度与算子编程](../01_Hardware_Math_and_Systems/1D.md)
 
 ## 相关阅读
 
-**导语：** 如果想继续把基础算子链路补完整，可以顺着读激活函数和位置编码。
-- [Part 2: 02 SwiGLU Activation](./02_SwiGLU_Activation.md)
-- [Part 2: 03 RoPE Tutorial](./03_RoPE_Tutorial.md)
+**导语：** 本节先用纯 PyTorch 讲清 RMSNorm 的归一化逻辑与数值稳定性；如果想看同一算子在更高吞吐实现里的做法，再看 Triton 版。
+- [02. SwiGLU Activation | SwiGLU 激活](./02_SwiGLU_Activation.md)
+- [03. RoPE Tutorial | RoPE 教程](./03_RoPE_Tutorial.md)
+- [03. Triton 算子开发实战：Fused RMSNorm](../03_Triton_Kernels/03_Triton_Fused_RMSNorm.md)
 
 
 ### Step 1: 核心思想与痛点

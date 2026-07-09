@@ -1,6 +1,6 @@
-# 04. Attention MHA GQA | 注意力机制与键值缓存 (MHA / GQA / MQA)
+# 04. Attention MHA GQA | 多头注意力
 
-**难度：** Medium | **标签：** `基础架构`, `PyTorch`, `推理优化` | **目标人群：** 模型微调与工程部署
+**难度：** Medium | **环境：** CPU-first | **标签：** `基础架构`, `PyTorch`, `推理优化` | **目标人群：** 模型微调与工程部署
 
 > 🚀 **云端运行环境**
 >
@@ -10,19 +10,21 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-欢迎来到 LLM-LeetCode！本节我们将深入解析大语言模型的核心组件：**注意力机制**，并实现支持 KV Cache 和 GQA (Grouped-Query Attention) 的代码。
+本节我们将深入解析大语言模型的核心组件：**注意力机制**，并实现支持 KV Cache 和 GQA (Grouped-Query Attention) 的代码。
 
-## 前置
+**关键词：** `Attention`, `MHA`, `GQA`, `KV Cache`
 
-**导语：** 先把 RoPE 和基本的序列建模概念补齐，再看多头注意力和 KV Cache。
-- [Part 2: 03 RoPE Tutorial](./03_RoPE_Tutorial.md)
-- [Part 1: 1D 异构调度与算子编程](../01_Hardware_Math_and_Systems/1D.md)
+## 前置阅读
+
+**导语：** 如果还没把 RoPE 和基本的序列建模概念补齐，先看下面两页，再进入多头注意力和 KV Cache 会更顺。
+- [03. RoPE Tutorial | RoPE 教程](./03_RoPE_Tutorial.md)
+- [Group 1D: Heterogeneous Scheduling and Operator Programming | 1D: 异构调度与算子编程](../01_Hardware_Math_and_Systems/1D.md)
 
 ## 相关阅读
 
-**导语：** Attention 之后可以继续看模型 block 和 MoE 架构。
-- [Part 2: 05 LLaMA3 Block Tutorial](./05_LLaMA3_Block_Tutorial.md)
-- [Part 2: 06 MoE Router](./06_MoE_Router.md)
+**导语：** 本节先把多头注意力、GQA 和 KV Cache 的关系讲清楚；如果想继续看模型 block 和 MoE 结构，再接下面两页。
+- [05. LLaMA3 Block Tutorial | LLaMA3 Block 教程](./05_LLaMA3_Block_Tutorial.md)
+- [06. MoE Router | MoE 路由](./06_MoE_Router.md)
 
 
 ### Step 1: 核心思想与痛点

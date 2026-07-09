@@ -1,6 +1,6 @@
-# 06. MoE Router | 混合专家架构: 稀疏路由与负载均衡 (MoE)
+# 06. MoE Router | MoE 路由器
 
-**难度：** Medium | **标签：** `模型架构`, `MoE`, `PyTorch` | **目标人群：** 模型微调与工程部署
+**难度：** Medium | **环境：** CPU-first | **标签：** `模型架构`, `MoE`, `PyTorch` | **目标人群：** 模型微调与工程部署
 
 > 🚀 **云端运行环境**
 >
@@ -13,17 +13,18 @@
 本节我们将解析目前最火爆的模型架构：**MoE (Mixture of Experts)**。这也是 Mixtral、Grok、DeepSeek 等顶级开源模型背后的核心技术。
 面试中最常考的并不是专家的内部结构，而是那个“交通警察”——**路由机制 (Router) 和专家权重计算**。
 
-## 前置
+**关键词：** `MoE`, `Router`, `Top-K`, `Sparse Routing`
+## 前置阅读
 
-**导语：** 先确认 Block 组装和路由之前的基础，再进入 MoE 结构。
-- [Part 2: 05 LLaMA3 Block Tutorial](./05_LLaMA3_Block_Tutorial.md)
-- [Part 2: 04 Attention MHA GQA](./04_Attention_MHA_GQA.md)
+**导语：** 如果还没把 Block 组装和 Attention 主线理顺，先看下面两页再进入 MoE 结构会更顺。
+- [05. LLaMA3 Block Tutorial | LLaMA3 Block 教程](./05_LLaMA3_Block_Tutorial.md)
+- [04. Attention MHA GQA | 注意力机制（MHA / GQA）](./04_Attention_MHA_GQA.md)
 
 ## 相关阅读
 
-**导语：** 看完 Router 后，最好继续理解负载均衡和架构变体。
-- [Part 2: 07 MoE Load Balancing Loss](./07_MoE_Load_Balancing_Loss.md)
-- [Part 2: 08 Architecture Tricks](./08_Architecture_Tricks.md)
+**导语：** 本节先把 Router 的路由决策讲清楚；如果想继续看训练时如何避免专家塌缩，再看负载均衡损失。
+- [07. MoE Load Balancing Loss | MoE 负载均衡损失](./07_MoE_Load_Balancing_Loss.md)
+- [08. Architecture Tricks | 架构技巧](./08_Architecture_Tricks.md)
 
 
 ### Step 1: 核心思想与痛点

@@ -1,6 +1,6 @@
-# 00. PyTorch Warmup | PyTorch 核心基础热身: 张量、前反向传播与 Embedding (Warmup)
+# 00. PyTorch Warmup | PyTorch 热身
 
-**难度：** Easy | **标签：** `PyTorch`, `Foundation` | **目标人群：** 通用基础 (算法/Infra)
+**难度：** Easy | **环境：** CPU-first | **标签：** `PyTorch`, `Foundation` | **目标人群：** 通用基础 (算法/Infra)
 
 > 🚀 **云端运行环境**
 >
@@ -13,17 +13,19 @@
 在深入大模型的浩瀚海洋（如 Attention、LoRA、MoE）之前，我们必须确保自己的“底层积木”是非常扎实的。
 本节作为**热身关卡**，将用三个非常经典的实战填空，带你快速找回 PyTorch 的核心肌肉记忆：张量维度变换 (Tensor Reshaping)、嵌入层查表 (Embedding Lookup) 以及链式法则的反向传播 (Backpropagation)。
 
-## 前置
+**关键词：** `Tensor`, `reshape`, `Embedding`, `backward`
+
+## 前置阅读
 
 **导语：** 这一节先把后续章节要用到的基础张量、Autograd 和 Embedding 先补齐。
-- [Part 1: 1B 单卡硬件与访存优化](../01_Hardware_Math_and_Systems/1B.md)
-- [Part 1: 13 Profiling and Bottleneck Analysis](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
+- [Group 1B: Single-GPU Hardware and Memory Optimization | 1B: 单卡硬件与访存优化](../01_Hardware_Math_and_Systems/1B.md)
+- [Group 1D: Heterogeneous Scheduling and Operator Programming | 1D: 异构调度与算子编程](../01_Hardware_Math_and_Systems/1D.md)
 
 ## 相关阅读
 
-**导语：** 如果想先看更完整的归一化和激活算子，再往后读会更顺。
-- [Part 2: 01 RMSNorm Tutorial](./01_RMSNorm_Tutorial.md)
-- [Part 2: 02 SwiGLU Activation](./02_SwiGLU_Activation.md)
+**导语：** 本节先把 PyTorch 的热身算子讲清楚；如果想继续看 01-02 的基础算子页，再顺着读下面这些页。
+- [01. RMSNorm Tutorial | RMSNorm 教程](./01_RMSNorm_Tutorial.md)
+- [02. SwiGLU Activation | SwiGLU 激活](./02_SwiGLU_Activation.md)
 
 
 

@@ -1,6 +1,6 @@
-# 02. SwiGLU Activation | 激活函数与门控机制 (SwiGLU Activation)
+# 02. SwiGLU Activation | SwiGLU 激活
 
-**难度：** Easy | **标签：** `模型架构`, `激活函数` | **目标人群：** 模型微调与工程部署
+**难度：** Easy | **环境：** CPU-first | **标签：** `模型架构`, `激活函数` | **目标人群：** 模型微调与工程部署
 
 > 🚀 **云端运行环境**
 >
@@ -13,23 +13,21 @@
 在组装 LLaMA-3 的那一节中，我们使用了 `SwiGLU` 作为 MLP 的激活函数。为什么所有主流大模型（LLaMA, Qwen, Mistral, PaLM）都在抛弃 ReLU/GELU 而转向 SwiGLU？
 本节我们将深入推导 SwiGLU 的设计原理，特别是**如何调整隐藏层的维度**，以保证参数量与标准 Transformer 严格对齐。这是面试中非常经典的**架构推导题**。
 
-> **相关阅读**:
-> 本节使用纯 PyTorch 实现了算法逻辑与数学推导。
-> 如果你想学习工业界如何打破该算子的 Memory Bound (访存瓶颈)，请前往 Triton 篇：
->  [`../03_Triton_Kernels/02_Triton_Fused_SwiGLU.ipynb`](../03_Triton_Kernels/02_Triton_Fused_SwiGLU.md)
->
+**关键词：** `SwiGLU`, `GLU`, `gating`, `hidden dimension`
 
-## 前置
 
-**导语：** 先看 RMSNorm 和基础张量运算，再回到门控激活会更容易理解。
-- [Part 2: 01 RMSNorm Tutorial](./01_RMSNorm_Tutorial.md)
-- [Part 1: 1B 单卡硬件与访存优化](../01_Hardware_Math_and_Systems/1B.md)
+## 前置阅读
+
+**导语：** 如果还没把 RMSNorm 的输出形状和基础张量运算理顺，先看下面两页会更容易进入门控激活。
+- [01. RMSNorm Tutorial | RMSNorm 教程](./01_RMSNorm_Tutorial.md)
+- [Group 1B: Single-GPU Hardware and Memory Optimization | 1B: 单卡硬件与访存优化](../01_Hardware_Math_and_Systems/1B.md)
 
 ## 相关阅读
 
-**导语：** 读完门控激活后，建议继续看 RoPE 和 Attention。
-- [Part 2: 03 RoPE Tutorial](./03_RoPE_Tutorial.md)
-- [Part 2: 04 Attention MHA GQA](./04_Attention_MHA_GQA.md)
+**导语：** 本节先用纯 PyTorch 讲清 SwiGLU 的门控原理与维度变化；如果想看同一结构在更高吞吐实现里怎么落地，再看 Triton 版。
+- [03. RoPE Tutorial | RoPE 教程](./03_RoPE_Tutorial.md)
+- [04. Attention MHA GQA | 注意力机制（MHA / GQA）](./04_Attention_MHA_GQA.md)
+- [02. Triton 算子开发：融合门控激活函数 (Fused SwiGLU)](../03_Triton_Kernels/02_Triton_Fused_SwiGLU.md)
 
 
 ### Step 1: 核心思想与痛点

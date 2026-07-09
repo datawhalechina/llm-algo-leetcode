@@ -1,6 +1,6 @@
-# 03. RoPE Tutorial | 旋转位置编码 (RoPE)
+# 03. RoPE Tutorial | 旋转位置编码教程
 
-**难度：** Medium | **标签：** `基础架构`, `PyTorch` | **目标人群：** 模型微调与工程部署
+**难度：** Medium | **环境：** CPU-first | **标签：** `基础架构`, `PyTorch` | **目标人群：** 模型微调与工程部署
 
 > 🚀 **云端运行环境**
 >
@@ -12,23 +12,19 @@
 
 本节我们将解析大模型当前最主流的位置编码方式：**RoPE (Rotary Position Embedding)**，并亲手用复数形式（Complex Tensor）实现它。这是 LLaMA, Qwen, DeepSeek 的标配！
 
+**关键词：** `RoPE`, `positional encoding`, `rotation`, `complex tensor`
+## 前置阅读
 
-> **相关阅读**:
-> 本节使用纯 PyTorch 实现了算法逻辑与数学推导。
-> 如果你想学习工业界如何打破该算子的 Memory Bound (访存瓶颈)，请前往 Triton 篇：
->  [`../03_Triton_Kernels/07_Triton_Fused_RoPE.ipynb`](../03_Triton_Kernels/07_Triton_Fused_RoPE.md)
-
-## 前置
-
-**导语：** 先确认 RMSNorm 和 SwiGLU 的算子基础，再看位置编码会更顺。
-- [Part 2: 01 RMSNorm Tutorial](./01_RMSNorm_Tutorial.md)
-- [Part 2: 02 SwiGLU Activation](./02_SwiGLU_Activation.md)
+**导语：** 如果还没把 RMSNorm、SwiGLU 和基础张量变换理顺，先看下面两页再进入 RoPE 会更顺。
+- [01. RMSNorm Tutorial | RMSNorm 教程](./01_RMSNorm_Tutorial.md)
+- [02. SwiGLU Activation | SwiGLU 激活](./02_SwiGLU_Activation.md)
 
 ## 相关阅读
 
-**导语：** RoPE 之后最自然的延伸就是 Attention 和 KV Cache。
-- [Part 2: 04 Attention MHA GQA](./04_Attention_MHA_GQA.md)
-- [Part 1: 19 算子融合导论](../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md)
+**导语：** 本节先把 RoPE 的旋转位置编码数学推导讲清楚；如果想看它和 Attention 融合后在实现层怎么落地，再看后面的 Attention 与 Triton 页。
+- [04. Attention MHA GQA | 注意力机制（MHA / GQA）](./04_Attention_MHA_GQA.md)
+- [19. Operator Fusion Introduction | 算子融合导论](../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md)
+- [07. Triton Fused RoPE | 融合旋转位置编码](../03_Triton_Kernels/07_Triton_Fused_RoPE.md)
 
 
 ### Step 1: 核心思想与痛点

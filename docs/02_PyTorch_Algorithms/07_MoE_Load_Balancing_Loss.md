@@ -1,6 +1,6 @@
-# 07. MoE Load Balancing Loss | MoE 进阶：负载均衡损失函数 (Load Balancing Loss)
+# 07. MoE Load Balancing Loss | MoE 负载均衡损失
 
-**难度：** Hard | **标签：** `MoE`, `Loss Function`, `Mixtral` | **目标人群：** 核心 Infra 与算子开发
+**难度：** Hard | **环境：** CPU-first | **标签：** `MoE`, `Loss Function`, `Mixtral` | **目标人群：** 核心 Infra 与算子开发
 
 > 🚀 **云端运行环境**
 >
@@ -14,17 +14,18 @@
 即门控网络“偷懒”，把所有的 Token 都发给了第 0 号和第 1 号专家，导致其他专家被饿死（闲置），不仅失去了 MoE 的意义，还会导致算力非常不均衡（OOM）。
 因此，面试官非常爱考：**如何用代码实现 MoE 的辅助损失函数 (Auxiliary Loss) 来强制负载均衡？**
 
-## 前置
+**关键词：** `MoE`, `Load Balancing`, `Auxiliary Loss`, `Router Collapse`
+## 前置阅读
 
 **导语：** 先看 Router，再看负载均衡损失会更容易理解 MoE 为什么会塌缩。
-- [Part 2: 06 MoE Router](./06_MoE_Router.md)
-- [Part 2: 05 LLaMA3 Block Tutorial](./05_LLaMA3_Block_Tutorial.md)
+- [06. MoE Router | MoE 路由](./06_MoE_Router.md)
+- [05. LLaMA3 Block Tutorial | LLaMA3 Block 教程](./05_LLaMA3_Block_Tutorial.md)
 
 ## 相关阅读
 
 **导语：** 如果想继续看架构侧的技巧，可以顺着读 Qwen / Gemma 的变体。
-- [Part 2: 08 Architecture Tricks](./08_Architecture_Tricks.md)
-- [Part 2: 09 SFT Training Loop](./09_SFT_Training_Loop.md)
+- [08. Architecture Tricks | 架构技巧](./08_Architecture_Tricks.md)
+- [09. SFT Training Loop | SFT 训练循环](./09_SFT_Training_Loop.md)
 
 
 ### Step 1: 核心数学公式

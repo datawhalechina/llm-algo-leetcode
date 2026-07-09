@@ -1,6 +1,6 @@
-# 08. Architecture Tricks | 经典架构变体：Qwen 与 Gemma 的核心机制 (Architecture Tricks)
+# 08. Architecture Tricks | 架构技巧
 
-**难度：** Easy | **标签：** `模型架构`, `Qwen`, `Gemma` | **目标人群：** 模型微调与工程部署
+**难度：** Easy | **环境：** CPU-first | **标签：** `模型架构`, `Qwen`, `Gemma` | **目标人群：** 模型微调与工程部署
 
 > 🚀 **云端运行环境**
 >
@@ -13,18 +13,20 @@
 在 `06_LLaMA3_Block_Tutorial` 中我们搭建了 LLaMA 的骨架。但如果你去面试阿里云（通义千问团队）或者谷歌，他们必然会问自家模型与 LLaMA 的区别。
 本节我们将以“打补丁”的方式，在 PyTorch 中快速实现 **Qwen 的 Tie Word Embeddings** 以及 **Gemma 的带偏置 RMSNorm**。
 
-## 前置
+**关键词：** `Qwen`, `Gemma`, `Architecture Tricks`, `Tie Embeddings`
 
-**导语：** 先把 LLaMA-3 Block 和 MoE 的主线看完，再看结构变体会更清楚。
-- [Part 2: 05 LLaMA3 Block Tutorial](./05_LLaMA3_Block_Tutorial.md)
-- [Part 2: 06 MoE Router](./06_MoE_Router.md)
-- [Part 2: 07 MoE Load Balancing Loss](./07_MoE_Load_Balancing_Loss.md)
+## 前置阅读
+
+**导语：** 如果还没把 Block、Router 和负载均衡主线理顺，先看下面几页再进入结构变体会更顺。
+- [05. LLaMA3 Block Tutorial | LLaMA3 Block 教程](./05_LLaMA3_Block_Tutorial.md)
+- [06. MoE Router | MoE 路由](./06_MoE_Router.md)
+- [07. MoE Load Balancing Loss | MoE 负载均衡损失](./07_MoE_Load_Balancing_Loss.md)
 
 ## 相关阅读
 
-**导语：** 架构技巧之后，就可以进入训练主线。
-- [Part 2: 09 SFT Training Loop](./09_SFT_Training_Loop.md)
-- [Part 2: 10 LoRA Tutorial](./10_LoRA_Tutorial.md)
+**导语：** 本节先把结构变体讲清楚；如果想继续看训练与微调主线，再顺着看后面的页面。
+- [09. SFT Training Loop | SFT 训练循环](./09_SFT_Training_Loop.md)
+- [10. LoRA Tutorial | LoRA 教程](./10_LoRA_Tutorial.md)
 
 
 ### Step 1: 核心差异与机制
