@@ -1,112 +1,133 @@
-# 10. Domestic AI Chips Overview | 算力现状与替代方案 (AI Chips Overview)
+# 10. Domestic AI Chips Overview | 算力现状与替代方案
 
-**难度：** Medium | **标签：** `系统架构`, `异构算力`, `拓展阅读` | **目标人群：** 核心 Infra 与算子开发
+**难度：** Medium | **环境：** CPU-first | **标签：** `系统架构`, `异构算力` | **目标人群：** 芯片选型入门者
 
-在真实的大模型基建环境中，虽然 NVIDIA 的硬件体系长期占据主导地位，但随着全球供应链的变化和算力需求的多样化，各类异构 GPU（如 AMD、国内新兴的高性能 GPGPU 厂商）在智算中心的部署比例正逐步上升。
-对于 AI Infra 工程师而言，了解主流 GPU 的架构特点以及跨硬件平台的生态适配策略，是一项非常重要的架构设计能力。
-
-先抓一组量级直觉：
-
-| 平台 | 显存 | 带宽 | FP16 Tensor 算力 | 软件生态 |
-| --- | --- | --- | --- | --- |
-| NVIDIA H100 SXM | 80 GB | 3.35 TB/s | 1,979 TFLOPS | CUDA，成熟 |
-| AMD MI300X | 192 GB | 5.3 TB/s | 2,614.9 TFLOPS（带稀疏） | ROCm / HIP，追赶中 |
-| Google TPU v5 系列 | 按版本不同 | 按版本不同 | 按版本不同 | XLA / JAX，专用 |
-| 国产 GPGPU（典型） | 32-64 GB | 1-2 TB/s | 100-300 TFLOPS 量级 | 生态仍在打磨 |
-
-这里的核心结论不是“哪家纸面规格最高”，而是“硬件规格、软件栈成熟度和分布式通信稳定性需要一起看”。
-
-## 本节如何和后续章节配合
-
-这一节同样不单独配 Notebook，它更像 Chapter 1 的扩展阅读：
-
-- 先看本文，建立不同算力路线、软件栈和迁移成本的直觉
-- 再回看 Chapter 1 前面的 GPU、通信、编译和异构调度章节，理解它们为什么决定迁移难度
-- 如果后面要做多平台部署，这一页负责告诉你**有哪些硬件路线可选**，前面的章节负责告诉你**迁移时哪里最容易出问题**
-
-这节的目标不是让你给所有国产芯片排优劣，而是让你能判断：迁移是算子对齐问题、通信问题，还是数值对齐问题。
-
-> **相关阅读**:  
-> 本节为纯理论与常识科普，暂无强关联的代码实战，推荐作为基石阅读。  
+> 🚀 **云端运行环境**
+>
+> 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
+>
+> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/01_Hardware_Math_and_Systems/10_Domestic_AI_Chips_Overview.ipynb)
+> [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
+这一页把硬件规格、软件栈成熟度和迁移成本放到同一个框架里看，重点不是比纸面峰值，而是判断哪条路线更适合落地。
 
-## Q1：除了 NVIDIA 体系这一重要参照，目前在数据中心和智算集群中还有哪些重要的 GPU/GPGPU 路线？
+**关键词：** `GPU ecosystem`, `alternatives`, `software stack`, `migration cost`
+## 前置
+**导语：** 这一页先把硬件规格、软件栈成熟度和迁移成本放到同一个框架里，再判断哪条路线更适合落地。
+- [Part 1: 1B 单卡硬件与访存优化](./1B.md)
+- [Part 1: 1C 多卡通信与显存共享](./1C.md)
+- [Part 1: 1E 编译优化与算力生态](./1E.md)
+## 相关阅读
+**导语：** 如果想继续把选型、编译和通信侧的判断补完整，可以接着看这些页。
+- [Part 3: 05 Triton Autotune and Profiling](../03_Triton_Kernels/05_Triton_Autotune_and_Profiling.md)
+- [Part 4: 01 CUDA Custom Kernel Intro](../04_CUDA_and_System_Optimization/01_CUDA_Custom_Kernel_Intro.md)
+- [Part 4: 19 Distributed Communication Primitives](../04_CUDA_and_System_Optimization/19_Distributed_Communication_Primitives.md)
+## Q1：选芯片时为什么不能只看算力峰值？
 
-<details>
-<summary>点击展开查看解析</summary>
+<details><summary>点击展开查看解析</summary>
 
-除了大家都熟知的 NVIDIA (A100/H100 + CUDA 生态) 之外，工业界中目前主要有以下几条具有代表性的算力路线：
+纸面峰值只说明“理论上能跑多快”，不说明“真实工作负载里能不能持续跑快”。
 
-1. **AMD 生态 (如 MI300X)**:
-   - **架构特点**：拥有极高的显存容量和内存带宽，其底层架构 (CDNA) 同样为高度并行的 GPGPU 设计。
-   - **软件栈**：**ROCm (Radeon Open Compute)** 平台。AMD 官方文档明确说明，ROCm 具备 HIP 和 CUDA-to-HIP 的迁移路径，能把一部分 CUDA 代码平移过去，但这不等于“低成本迁移”。在真实工程中，算子库、通信库和调试链路仍需要逐项验证。
+实际选型还要看：
+- 软件栈是否成熟；
+- 编译器和 kernel 是否可用；
+- 通信和调度能力是否匹配；
+- 迁移和维护成本是否可控。
 
-2. **高性能 GPGPU 新势力 (如摩尔线程 Moore Threads)**:
-   - **架构特点**：采用全功能 GPU 架构（如 MUSA 架构），不仅强调 AI 训练和推理的算力，同时也兼顾传统的图形渲染与通用科学计算。
-   - **软件栈**：提供兼容主流深度学习框架的软硬件平台。需要注意的是，这类平台的硬件规格与软件栈成熟度通常不同步，生产环境前需要做充分验证。
-
-3. **专攻全精度算力的新兴 GPGPU (如沐曦 MetaX)**:
-   - **架构特点**：同样走高性能通用 GPU (GPGPU) 路线，通常强调提供完整的高低精度算力（如 FP64/FP32 到 FP16/INT8 等）。
-   - **定位**：旨在打造能够较平滑接入现有 AI 训练集群和高性能计算 (HPC) 节点的通用加速核心。这里更稳妥的判断方式是把它们视作“可选项”，而不是“可替代 NVIDIA 的即插即用方案”。
-
-4. **定制化 ASIC/NPU 路线 (如 Google TPU 或部分专有 AI 芯片)**:
-   - **架构特点**：放弃如图形处理等无关功能，内部核心往往是一个巨大的矩阵乘法阵列（如 TPU 的 Systolic Array 脉动阵列）。
-   - **定位**：在特定的网络结构或编译图下能达到极高的计算效率，但通用性不如 GPGPU。
-
-**风险提示**：新兴 GPGPU 产品在硬件规格上正在快速追赶，但软件栈（编译器成熟度、算子库完备性、分布式通信稳定性）与 NVIDIA 的 CUDA 生态仍有明显差距。生产环境部署前需要做充分验证，不要只看 TFLOPS。
+所以选型不是单一性能数字的比较，而是端到端可落地性的比较。
 </details>
+### Q1小验证：选型时先看什么
 
+先看能不能稳定跑，再看峰值。
 
+```python
+def score(hw, stack, migration):
+    return hw * 0.4 + stack * 0.4 - migration * 0.2
 
-## Q2：作为 Infra 工程师，将大模型训练任务从现有的 NVIDIA 集群迁移到其他异构 GPU 平台时，主要的技术挑战是什么？
+print(score(9, 8, 3))
+```
 
-<details>
-<summary>点击展开查看解析</summary>
+## Q2：为什么软件栈成熟度会直接影响硬件可用性？
 
-跨硬件平台的迁移从来不是简单的“换张显卡”，它涉及整个软件系统栈的重构。核心的技术挑战集中在以下三个层面：
+<details><summary>点击展开查看解析</summary>
 
-**1. 底层算子对齐与计算图融合 (Kernel Alignment & Graph Fusion)**
-- 原生 PyTorch 的大模型代码深度绑定了特定硬件优化的算子（例如严重依赖 NVIDIA PTX 汇编的 `FlashAttention` 或 `xFormers`）。
-   - **痛点**：目标异构 GPU 可能暂时缺乏同等优化水平的手工算子。如果回退到用基础小算子（如单独调用加法、乘法）拼接，会导致明显的 Memory Bound 问题。
-- **解法**：通常需要依赖 AI 编译器（如支持多后端的 OpenAI Triton、Apache TVM 或厂商自研编译器）在计算图层面进行算子融合 (Operator Fusion) 和目标机器码的自动生成。
-- **迁移成本直觉**：如果只是纯 Python / 高层 PyTorch 模型，很多代码几乎可以直接跑；但只要碰到自定义 CUDA kernel、FlashAttention、xFormers、Apex 这类强依赖 CUDA 的算子，往往就会进入“重写 / 替代 / 调参”阶段。工程上常见的改动量通常是数百到数千行，迁移周期可能是数周到数月，具体取决于自定义算子和测试覆盖度。
+硬件不是孤立存在的，真正决定效率的是软件栈是否把它用起来。可用性判断的关键，不是某一层名词是否存在，而是 driver / compiler / runtime / kernel 是否能闭环。
 
-**2. 集合通信库的替换 (Collective Communication)**
-- 万卡规模的大模型训练通常非常依赖高效的网络通信原语（如 NVIDIA 的 NCCL）。
-- **痛点**：异构 GPU 平台通常需要提供功能上可替代、性能上尽量接近 NCCL 的通信库（例如针对其私有互联协议优化的通信实现）。
-- **解法**：该通信库需要尽量兼容 PyTorch 的 `torch.distributed` 协议。否则，在执行张量并行 (TP) 的前反向同步或 ZeRO-3 的参数切片拉取时，可能引发严重阻塞，甚至出现网络死锁。
-- **补充说明**：通信库不是“能跑就行”，还要看拓扑感知、带宽利用率和故障恢复能力。单纯把 NCCL 替换掉，不意味着性能就能自动对齐。
+如果编译器、驱动、通信库和 kernel 支持不完整，硬件峰值往往到不了生产场景里。相反，软件栈成熟的设备即使纸面指标没那么夸张，也可能在端到端流程里更稳。
 
-**3. 算术精度与数值对齐 (Numerical Alignment)**
-- 不同厂商的硬件在底层乘加运算 (FMA) 单元的设计上存在微小差异（例如不同的硬件舍入策略、是否原生支持 BF16、对 NaN/Inf 的处理逻辑等）。
-- **痛点**：在百亿参数的深层网络中，微小的数值计算差异可能会被逐层放大，最终导致迁移后的训练 Loss 不收敛，或者在训练中期频繁出现数值尖峰 (Spike)。
-- **解法**：要求 Infra 团队具备极强的调试追踪能力，建立自动化的逐层对齐机制，找出偏离标准浮点模型 (Golden Reference) 的具体网络层或算子并进行修正。
+所以“可替代方案”判断里，软件生态本身就是性能的一部分。
 </details>
+### Q2小验证：为什么生态会影响体验
+
+硬件能力要经过软件栈才能落地。
+
+```python
+def stack_readiness(driver, compiler, runtime, kernel):
+    # 软件栈是否成熟，不是看有没有层级名，而是看关键层是否都能闭环。
+    weights = {'driver': 0.3, 'compiler': 0.3, 'runtime': 0.2, 'kernel': 0.2}
+    support = {'driver': driver, 'compiler': compiler, 'runtime': runtime, 'kernel': kernel}
+    score = sum(weights[name] * support[name] for name in weights)
+    missing = [name for name, ok in support.items() if not ok]
+    return round(score, 2), missing
+
+cases = {
+    'stack_ready': {'driver': 1, 'compiler': 1, 'runtime': 1, 'kernel': 1},
+    'compiler_gaps': {'driver': 1, 'compiler': 0, 'runtime': 1, 'kernel': 1},
+    'runtime_gaps': {'driver': 1, 'compiler': 1, 'runtime': 0, 'kernel': 1},
+}
+
+for name, support in cases.items():
+    score, missing = stack_readiness(**support)
+    print(name, '->', score, 'missing:', missing)
+print('readiness score is a proxy for whether hardware can be used end-to-end')
+
+```
+
+## Q3：什么时候替代方案比主流 GPU 更值得考虑？
+
+<details><summary>点击展开查看解析</summary>
+
+当预算、供应链、功耗、部署环境或合规要求发生变化时，替代方案就不只是备选，而可能成为主方案。
+
+但替代方案是否值得选，仍然要回到三件事：
+- 能不能跑；
+- 跑得稳不稳；
+- 长期维护成本高不高。
+
+所以这里的核心不是“谁最强”，而是“谁更适合当前约束”。
+</details>
+### Q3小验证：替代方案什么时候更合理
+
+把硬件能力、软件栈成熟度和迁移成本放在一起，看看什么时候替代方案更值得考虑。
 
 
+```python
+def alternative_choice(hw_score, stack_score, migration_cost, power_budget=0.0):
+    # 替代方案是否更合适，取决于综合分数而不是单项峰值。
+    score = hw_score * 0.4 + stack_score * 0.4 - migration_cost * 0.15 - power_budget * 0.05
+    if score >= 6.5:
+        decision = 'consider_alternative'
+    elif score >= 5.0:
+        decision = 'context_dependent'
+    else:
+        decision = 'stay_with_gpu'
+    return {'score': round(score, 2), 'decision': decision}
 
-## Q3：如果真的要评估“该不该迁移”，应该怎么做决策？
+cases = [
+    ('stable_gpu', 9, 9, 1, 1),
+    ('alt_ready', 7, 7, 2, 2),
+    ('migration_heavy', 8, 5, 5, 2),
+]
+for name, hw, stack, migration, power in cases:
+    print(name, '->', alternative_choice(hw, stack, migration, power))
+print('alternative hardware becomes attractive only when the full constraint score is strong enough')
 
-<details>
-<summary>点击展开查看解析</summary>
-
-可以把问题拆成“值得迁移吗”和“能不能稳定迁移”两层：
-
-| 场景 | 倾向 |
-| --- | --- |
-| 成本敏感、想降低单机采购压力 | 可以评估迁移 |
-| NVIDIA 供给不稳定或有供应链风险 | 可以评估迁移 |
-| 主要是推理部署，且模型结构相对稳定 | 可以评估迁移 |
-| 追求较高训练性能 | 通常先保留 NVIDIA 主力 |
-| 依赖大量第三方 CUDA 库 | 暂缓迁移 |
-| 团队没有足够的算子 / 通信调试资源 | 暂缓迁移 |
+```
 
 ## ⚠️ 常见误区
 
-- 硬件规格高，不代表训练速度一定更快；软件栈成熟度同样重要
-- CUDA 代码通过工具自动转换，不代表就能直接稳定上线
-- ROCm / HIP 具备迁移能力，但不等于完全兼容所有边界情况
-- 国产 GPGPU 不能被简单视为 NVIDIA 的无缝替代品
-- TPU 并不是“覆盖所有任务”，它更适合特定模型和编译图
-</details>
+- 不要把纸面峰值当成真实吞吐。
+- 软硬件栈成熟度会直接影响落地效果。
+- 迁移成本往往比初始采购价更重要。
+- 选型本质上是在一组约束下做最优折中。
