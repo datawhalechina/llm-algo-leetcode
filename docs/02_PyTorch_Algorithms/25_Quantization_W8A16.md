@@ -1,4 +1,5 @@
-# 25. Quantization W8A16 | 量化推理：W8A16 线性层实现
+# 25. Quantization W8A16 | W8A16 量化
+**难度：** Medium | **环境：** CPU-first | **标签：** `量化`, `推理`, `Linear` | **目标人群：** 推理优化与模型压缩
 
 > 🚀 **云端运行环境**
 >
@@ -8,18 +9,22 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-## 前置
+先把推理链路看完，再看量化会更容易理解它为什么能省显存和提速。
+
+**关键词：** `INT8`, `W8A16`, `quantization`, `inference`
+
+
+## 前置阅读
 
 **导语：** 先把推理链路看完，再看量化会更容易理解它为什么能省显存和提速。
-- [Part 2: 23 SGLang RadixAttention](./24_SGLang_RadixAttention.md)
-- [Part 2: 22 Speculative Decoding](./23_Speculative_Decoding.md)
+- [24. SGLang RadixAttention | SGLang RadixAttention](./24_SGLang_RadixAttention.md)
+- [23. Speculative Decoding | 投机解码](./23_Speculative_Decoding.md)
 
 ## 相关阅读
 
 **导语：** 量化之后，建议继续看分布式并行策略。
-- [Part 2: 25 ZeRO Optimizer Sim](./27_ZeRO_Optimizer_Sim.md)
-- [Part 2: 26 Pipeline Parallelism MicroBatch](./28_Pipeline_Parallelism_MicroBatch.md)
-
+- [27. ZeRO Optimizer Sim | ZeRO 优化器模拟](./27_ZeRO_Optimizer_Sim.md)
+- [28. Pipeline Parallelism MicroBatch | Pipeline 并行微批次](./28_Pipeline_Parallelism_MicroBatch.md)
 
 ### Step 1: 核心思想与概念
 

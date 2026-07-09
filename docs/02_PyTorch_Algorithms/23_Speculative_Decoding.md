@@ -1,4 +1,5 @@
-# 23. Speculative Decoding | 投机解码：草稿模型与验证模型协作
+# 23. Speculative Decoding | 投机解码
+**难度：** Hard | **环境：** GPU required | **标签：** `解码`, `Speculative Decoding`, `推理优化` | **目标人群：** 推理加速与系统工程
 
 > 🚀 **云端运行环境**
 >
@@ -8,18 +9,22 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-## 前置
+先把 PagedAttention 和生成路径看清，再理解草稿模型与验证模型如何协作。
+
+**关键词：** `speculative`, `draft model`, `verification`, `throughput`
+
+
+## 前置阅读
 
 **导语：** 先看 PagedAttention，再看投机解码会更容易理解草稿模型与验证模型的协作。
-- [Part 2: 21 vLLM PagedAttention](./22_vLLM_PagedAttention.md)
-- [Part 2: 20 Decoding Strategies](./21_Decoding_Strategies.md)
+- [22. vLLM PagedAttention | vLLM 分页注意力](./22_vLLM_PagedAttention.md)
+- [21. Decoding Strategies | 解码策略](./21_Decoding_Strategies.md)
 
 ## 相关阅读
 
 **导语：** 投机解码之后，可以继续看 RadixAttention 和量化。
-- [Part 2: 23 SGLang RadixAttention](./24_SGLang_RadixAttention.md)
-- [Part 2: 24 Quantization W8A16](./25_Quantization_W8A16.md)
-
+- [24. SGLang RadixAttention | SGLang RadixAttention](./24_SGLang_RadixAttention.md)
+- [25. Quantization W8A16 | W8A16 量化](./25_Quantization_W8A16.md)
 
 ### 动手实战：核心的接受/拒绝逻辑
 

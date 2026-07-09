@@ -1,4 +1,5 @@
-# 24. SGLang RadixAttention | RadixAttention 与多轮对话缓存
+# 24. SGLang RadixAttention | SGLang 基数注意力
+**难度：** Hard | **环境：** GPU required | **标签：** `RadixAttention`, `KV Cache`, `推理优化` | **目标人群：** 推理系统与缓存工程
 
 > 🚀 **云端运行环境**
 >
@@ -8,18 +9,21 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-## 前置
+先看投机解码和分页式 KV 管理，再看 RadixAttention 会更容易理解多轮对话缓存。
+
+**关键词：** `RadixAttention`, `cache`, `prefix tree`, `multi-turn`
+
+## 前置阅读
 
 **导语：** 先看投机解码，再看 RadixAttention 会更容易理解多轮对话缓存。
-- [Part 2: 22 Speculative Decoding](./23_Speculative_Decoding.md)
-- [Part 2: 21 vLLM PagedAttention](./22_vLLM_PagedAttention.md)
+- [23. Speculative Decoding | 投机解码](./23_Speculative_Decoding.md)
+- [22. vLLM PagedAttention | vLLM 分页注意力](./22_vLLM_PagedAttention.md)
 
 ## 相关阅读
 
 **导语：** RadixAttention 后，可以继续看量化和分布式并行。
-- [Part 2: 24 Quantization W8A16](./25_Quantization_W8A16.md)
-- [Part 2: 25 ZeRO Optimizer Sim](./27_ZeRO_Optimizer_Sim.md)
-
+- [25. Quantization W8A16 | W8A16 量化](./25_Quantization_W8A16.md)
+- [27. ZeRO Optimizer Sim | ZeRO 优化器模拟](./27_ZeRO_Optimizer_Sim.md)
 
 ### Step 1: 核心机制对比
 

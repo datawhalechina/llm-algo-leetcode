@@ -1,4 +1,5 @@
-# 21. Decoding Strategies | 大模型解码策略：Top-K, Top-p (Nucleus) 与 Temperature
+# 21. Decoding Strategies | 解码策略
+**难度：** Medium | **环境：** CPU-first | **标签：** `解码`, `推理`, `Sampling` | **目标人群：** 推理与部署工程师
 
 > 🚀 **云端运行环境**
 >
@@ -8,18 +9,22 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-## 前置
+先把生成时的采样与搜索策略理顺，再理解解码阶段为什么会影响吞吐和质量。
+
+**关键词：** `top-k`, `top-p`, `temperature`, `decoding`
+
+
+## 前置阅读
 
 **导语：** 先看 FlashAttention，再看解码策略更容易把前向和生成过程联系起来。
-- [Part 2: 19 FlashAttention Sim](./20_FlashAttention_Sim.md)
-- [Part 2: 18 Activation Checkpointing & Activation Offload](./19_Activation_Checkpointing_and_Activation_Offload.md)
+- [20. FlashAttention Sim | FlashAttention 模拟](./20_FlashAttention_Sim.md)
+- [19. Activation Checkpointing and Activation Offload | 激活检查点与激活卸载](./19_Activation_Checkpointing_and_Activation_Offload.md)
 
 ## 相关阅读
 
 **导语：** 解码策略之后，建议继续看 KV Cache 的工程实现。
-- [Part 2: 21 vLLM PagedAttention](./22_vLLM_PagedAttention.md)
-- [Part 2: 22 Speculative Decoding](./23_Speculative_Decoding.md)
-
+- [22. vLLM PagedAttention | vLLM 分页注意力](./22_vLLM_PagedAttention.md)
+- [23. Speculative Decoding | 投机解码](./23_Speculative_Decoding.md)
 
 ### Step 1: 核心思想与痛点
 

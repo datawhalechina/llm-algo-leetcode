@@ -1,4 +1,5 @@
-# 20. FlashAttention Sim | 推理优化：FlashAttention 前向模拟
+# 20. FlashAttention Sim | FlashAttention 模拟
+**难度：** Hard | **环境：** GPU required | **标签：** `推理优化`, `FlashAttention`, `Attention` | **目标人群：** 推理优化与系统开发
 
 > 🚀 **云端运行环境**
 >
@@ -8,18 +9,22 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-## 前置
+先把反向传播后的显存压力和前向计算路径看清，再进入 FlashAttention 的前向模拟会更顺。
+
+**关键词：** `FlashAttention`, `tiling`, `SRAM`, `online softmax`
+
+
+## 前置阅读
 
 **导语：** 先理解反向传播与显存优化，再看 FlashAttention 的前向模拟会更容易。
-- [Part 2: 18 Activation Checkpointing & Activation Offload](./19_Activation_Checkpointing_and_Activation_Offload.md)
-- [Part 1: 13 Profiling and Bottleneck Analysis](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
+- [19. Activation Checkpointing and Activation Offload | 激活检查点与激活卸载](./19_Activation_Checkpointing_and_Activation_Offload.md)
+- [13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
 
 ## 相关阅读
 
 **导语：** FlashAttention 后，可以继续看解码策略和 PagedAttention。
-- [Part 2: 20 Decoding Strategies](./21_Decoding_Strategies.md)
-- [Part 2: 21 vLLM PagedAttention](./22_vLLM_PagedAttention.md)
-
+- [21. Decoding Strategies | 解码策略](./21_Decoding_Strategies.md)
+- [22. vLLM PagedAttention | vLLM 分页注意力](./22_vLLM_PagedAttention.md)
 
 ### Step 1: 核心理论与 Online Softmax
 

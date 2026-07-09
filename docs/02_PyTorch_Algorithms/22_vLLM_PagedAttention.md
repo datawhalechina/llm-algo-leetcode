@@ -1,4 +1,5 @@
-# 22. vLLM PagedAttention | 高性能 KV Cache：PagedAttention 内核模拟
+# 22. vLLM PagedAttention | vLLM 分页注意力
+**难度：** Hard | **环境：** GPU required | **标签：** `KV Cache`, `PagedAttention`, `推理优化` | **目标人群：** 推理系统与内核工程
 
 > 🚀 **云端运行环境**
 >
@@ -8,18 +9,21 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-## 前置
+先把 FlashAttention 和解码策略理顺，再看 PagedAttention 的分页式 KV 管理会更清楚。
+
+**关键词：** `vLLM`, `PagedAttention`, `KV cache`, `page`
+
+## 前置阅读
 
 **导语：** 先把 FlashAttention 和基础解码策略看完，再看 PagedAttention 会更清楚。
-- [Part 2: 19 FlashAttention Sim](./20_FlashAttention_Sim.md)
-- [Part 2: 20 Decoding Strategies](./21_Decoding_Strategies.md)
+- [20. FlashAttention Sim | FlashAttention 模拟](./20_FlashAttention_Sim.md)
+- [21. Decoding Strategies | 解码策略](./21_Decoding_Strategies.md)
 
 ## 相关阅读
 
 **导语：** PagedAttention 后，可以继续看投机解码和量化。
-- [Part 2: 22 Speculative Decoding](./23_Speculative_Decoding.md)
-- [Part 2: 24 Quantization W8A16](./25_Quantization_W8A16.md)
-
+- [23. Speculative Decoding | 投机解码](./23_Speculative_Decoding.md)
+- [25. Quantization W8A16 | W8A16 量化](./25_Quantization_W8A16.md)
 
 ### Step 1: 核心思想与痛点
 

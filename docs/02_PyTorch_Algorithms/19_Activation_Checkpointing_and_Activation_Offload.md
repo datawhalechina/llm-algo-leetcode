@@ -1,5 +1,7 @@
 # 19. Activation Checkpointing and Activation Offload | 激活检查点与激活卸载
 
+**难度：** Hard | **环境：** GPU required
+
 > 🚀 **云端运行环境**
 >
 > 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
@@ -7,19 +9,21 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/19_Activation_Checkpointing_and_Activation_Offload.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
+**标签：** `显存优化`, `Checkpointing`, `Offload` | **目标人群：** 模型微调与工程部署
 
-## 前置
+**关键词：** `checkpoint`, `offload`, `activation`, `memory`
+
+## 前置阅读
 
 **导语：** 先把 Autograd 和反向推导补齐，再看 checkpointing / offload 才能理解它为什么能省显存。
-- [Part 2: 16 Autograd Basics](./17_Autograd_Basics.md)
-- [Part 2: 17 Activation and Loss Backward](./18_Activation_and_Loss_Backward.md)
+- [17. Autograd Basics | Autograd 基础](./17_Autograd_Basics.md)
+- [18. Activation and Loss Backward | 激活与损失反向](./18_Activation_and_Loss_Backward.md)
 
 ## 相关阅读
 
 **导语：** 看完显存优化后，可以继续进入推理优化主线。
-- [Part 2: 19 FlashAttention Sim](./20_FlashAttention_Sim.md)
-- [Part 2: 20 Decoding Strategies](./21_Decoding_Strategies.md)
-
+- [20. FlashAttention Sim | FlashAttention 模拟](./20_FlashAttention_Sim.md)
+- [21. Decoding Strategies | 解码策略](./21_Decoding_Strategies.md)
 
 ### Step 1: 核心思想与痛点
 
