@@ -1,4 +1,6 @@
-# 29. Tensor Parallelism Sim | 分布式并行：Tensor Parallelism 模拟
+# 29. Tensor Parallelism Sim | Tensor 并行模拟
+
+**难度：** Hard | **环境：** CPU-first | **标签：** `分布式训练`, `Tensor Parallelism`, `通信` | **目标人群：** 分布式训练工程师
 
 > 🚀 **云端运行环境**
 >
@@ -8,17 +10,21 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-## 前置
+先把张量切分和通信模式理清，再看 Column / Row Parallelism 的组合关系会更容易理解张量并行。
+
+**关键词：** `Tensor Parallelism`, `Column Parallel`, `Row Parallel`, `All-Gather`
+
+## 前置阅读
 
 **导语：** 先看 ZeRO 和 Pipeline，再看 Tensor Parallelism 会更容易把三种并行策略区分开。
-- [Part 2: 25 ZeRO Optimizer Sim](./27_ZeRO_Optimizer_Sim.md)
-- [Part 2: 26 Pipeline Parallelism MicroBatch](./28_Pipeline_Parallelism_MicroBatch.md)
+- [27. ZeRO Optimizer Sim | ZeRO 优化器模拟](./27_ZeRO_Optimizer_Sim.md)
+- [28. Pipeline Parallelism MicroBatch | Pipeline 并行微批次](./28_Pipeline_Parallelism_MicroBatch.md)
 
 ## 相关阅读
 
 **导语：** 并行策略看完后，就可以进入项目实战页做综合收口。
-- [Part 2: 28 LoRA Fine-Tuning Project](./30_LoRA_Fine_Tuning_Project.md)
-- [Part 2: 29 Inference Performance Comparison](./31_Inference_Performance_Comparison.md)
+- [30. LoRA Fine-Tuning Project | LoRA 微调项目](./30_LoRA_Fine_Tuning_Project.md)
+- [31. Inference Performance Comparison | 推理性能对比实验](./31_Inference_Performance_Comparison.md)
 
 
 ### Step 1: TP的两种切法

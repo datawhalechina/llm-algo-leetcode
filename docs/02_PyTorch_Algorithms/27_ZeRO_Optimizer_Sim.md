@@ -1,4 +1,6 @@
-# 27. ZeRO Optimizer Sim | 显存优化进阶：模拟 ZeRO-1 切分与 ZeRO 原理 (ZeRO Optimizer)
+# 27. ZeRO Optimizer Sim | ZeRO 优化器模拟
+
+**难度：** Hard | **环境：** CPU-first | **标签：** `分布式训练`, `ZeRO`, `显存优化` | **目标人群：** 分布式训练工程师
 
 > 🚀 **云端运行环境**
 >
@@ -8,17 +10,21 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-## 前置
+先把优化器状态切分和通信代价看清，再看 ZeRO 的分层策略会更容易理解显存优化的本质。
+
+**关键词：** `ZeRO`, `Reduce-Scatter`, `All-Gather`, `optimizer state`
+
+## 前置阅读
 
 **导语：** 先看量化与推理优化，再进入 ZeRO 会更容易理解显存切分的意义。
-- [Part 2: 24 Quantization W8A16](./25_Quantization_W8A16.md)
-- [Part 2: 18 Activation Checkpointing & Activation Offload](./19_Activation_Checkpointing_and_Activation_Offload.md)
+- [25. Quantization W8A16 | W8A16 量化](./25_Quantization_W8A16.md)
+- [19. Activation Checkpointing and Activation Offload | 激活检查点与激活卸载](./19_Activation_Checkpointing_and_Activation_Offload.md)
 
 ## 相关阅读
 
 **导语：** ZeRO 后，建议继续看 Pipeline 和 Tensor Parallelism。
-- [Part 2: 26 Pipeline Parallelism MicroBatch](./28_Pipeline_Parallelism_MicroBatch.md)
-- [Part 2: 27 Tensor Parallelism Sim](./29_Tensor_Parallelism_Sim.md)
+- [28. Pipeline Parallelism MicroBatch | Pipeline 并行微批次](./28_Pipeline_Parallelism_MicroBatch.md)
+- [29. Tensor Parallelism Sim | Tensor 并行模拟](./29_Tensor_Parallelism_Sim.md)
 
 
 ### Step 1: ZeRO-1 核心思想

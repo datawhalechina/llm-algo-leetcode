@@ -1,4 +1,6 @@
-# 28. Pipeline Parallelism MicroBatch | 分布式并行：Pipeline Parallelism 微批次模拟
+# 28. Pipeline Parallelism MicroBatch | Pipeline 并行微批次
+
+**难度：** Hard | **环境：** CPU-first | **标签：** `分布式训练`, `Pipeline Parallelism`, `调度` | **目标人群：** 分布式训练工程师
 
 > 🚀 **云端运行环境**
 >
@@ -8,17 +10,21 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-## 前置
+先把流水线分段和微批次调度的关系理清，再看 1F1B 的气泡分析会更顺。
+
+**关键词：** `Pipeline Parallelism`, `Micro-batch`, `1F1B`, `bubble ratio`
+
+## 前置阅读
 
 **导语：** 先看 ZeRO，再看 Pipeline 的微批次调度会更容易理解流水线并行。
-- [Part 2: 25 ZeRO Optimizer Sim](./27_ZeRO_Optimizer_Sim.md)
-- [Part 2: 24 Quantization W8A16](./25_Quantization_W8A16.md)
+- [27. ZeRO Optimizer Sim | ZeRO 优化器模拟](./27_ZeRO_Optimizer_Sim.md)
+- [25. Quantization W8A16 | W8A16 量化](./25_Quantization_W8A16.md)
 
 ## 相关阅读
 
 **导语：** Pipeline 之后，建议继续看 Tensor Parallelism 和项目实战。
-- [Part 2: 27 Tensor Parallelism Sim](./29_Tensor_Parallelism_Sim.md)
-- [Part 2: 28 LoRA Fine-Tuning Project](./30_LoRA_Fine_Tuning_Project.md)
+- [29. Tensor Parallelism Sim | Tensor 并行模拟](./29_Tensor_Parallelism_Sim.md)
+- [30. LoRA Fine-Tuning Project | LoRA 微调项目](./30_LoRA_Fine_Tuning_Project.md)
 
 
 ### 理论与公式计算
