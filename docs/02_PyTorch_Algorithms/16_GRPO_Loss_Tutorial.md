@@ -1,6 +1,6 @@
-# 16. GRPO Loss Tutorial | 组相对策略优化 (GRPO)
+# 16. GRPO Loss Tutorial | 群体相对策略优化损失教程
 
-**难度：** Medium-Hard | **标签：** `对齐`, `RL`, `PyTorch` | **目标人群：** 模型对齐与训练工程
+**难度：** Medium-Hard | **环境：** CPU-first | **标签：** `对齐`, `RL`, `PyTorch` | **目标人群：** 模型对齐与训练工程
 
 > 🚀 **云端运行环境**
 >
@@ -12,17 +12,18 @@
 
 GRPO (Group Relative Policy Optimization) 可以看作面向组内比较的策略优化方法。它通常不依赖显式 Critic，而是把同一组样本的奖励做相对归一化，再结合策略比率限制更新幅度。本页提供一个简化版的 GRPO Loss 实现，用来把 `RLHF -> DPO -> GRPO` 这条对齐链路补齐。
 
-## 前置
+**关键词：** `GRPO`, `group relative`, `policy optimization`, `reward`
+## 前置阅读
 
 **导语：** 先看 RLHF 和 DPO，再看 GRPO 会更容易理解它的组内相对优化思想。
-- [Part 2: 14 RLHF PPO Memory](./14_RLHF_PPO_Memory.md)
-- [Part 2: 15 DPO Loss Tutorial](./15_DPO_Loss_Tutorial.md)
+- [14. RLHF PPO Memory | RLHF PPO 内存](./14_RLHF_PPO_Memory.md)
+- [15. DPO Loss Tutorial | DPO 损失教程](./15_DPO_Loss_Tutorial.md)
 
 ## 相关阅读
 
 **导语：** 完成对齐链路后，可以继续看反向传播与显存优化。
-- [Part 2: 17 Autograd Basics](./17_Autograd_Basics.md)
-- [Part 2: 18 Activation and Loss Backward](./18_Activation_and_Loss_Backward.md)
+- [17. Autograd Basics | Autograd 基础](./17_Autograd_Basics.md)
+- [18. Activation and Loss Backward | 激活与损失反向](./18_Activation_and_Loss_Backward.md)
 
 ### Step 1: 核心思想
 
@@ -56,6 +57,11 @@ $$
 
 ```python
 import torch
+
+```
+
+
+```python
 
 def compute_grpo_loss(log_probs_new, log_probs_old, rewards, group_ids, clip_range=0.2, eps=1e-6):
     """

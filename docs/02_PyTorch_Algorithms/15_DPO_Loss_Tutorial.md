@@ -1,4 +1,6 @@
-# 15. DPO Loss Tutorial | 直接偏好优化 Loss 源码解析与实现 (DPO)
+# 15. DPO Loss Tutorial | 直接偏好优化损失教程
+
+**难度：** Hard | **环境：** CPU-first | **标签：** `DPO`, `RLHF`, `Loss Function` | **目标人群：** 模型微调与工程部署
 
 > 🚀 **云端运行环境**
 >
@@ -8,18 +10,20 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-## 前置
+DPO 通过更轻的偏好学习路径，把 RLHF 的复杂训练闭环收敛成一个更容易实现的损失函数。先看清它如何把偏好比较转成 log prob 差，再去看代码会更顺。
+
+**关键词：** `DPO`, `preference`, `alignment`, `loss`
+## 前置阅读
 
 **导语：** 先看 PPO，再看 DPO 的隐式对齐路线会更容易理解两者区别。
-- [Part 2: 14 RLHF PPO Memory](./14_RLHF_PPO_Memory.md)
-- [Part 2: 13 End-to-End Fine-Tuning Experiment](./13_End_to_End_Fine_Tuning_Experiment.md)
+- [14. RLHF PPO Memory | RLHF PPO 内存](./14_RLHF_PPO_Memory.md)
+- [13. End-to-End Fine-Tuning Experiment | 端到端微调实验](./13_End_to_End_Fine_Tuning_Experiment.md)
 
 ## 相关阅读
 
-**导语：** 完成对齐章节后，可以继续进入反向传播与显存优化。
-- [Part 2: 16 Autograd Basics](./17_Autograd_Basics.md)
-- [Part 2: 17 Activation and Loss Backward](./18_Activation_and_Loss_Backward.md)
-
+**导语：** 完成 DPO 后，可以继续看组内后续的优化链路。
+- [16. GRPO Loss Tutorial | GRPO 损失教程](./16_GRPO_Loss_Tutorial.md)
+- [17. Autograd Basics | Autograd 基础](./17_Autograd_Basics.md)
 
 ### Step 1: 核心思想与痛点
 

@@ -1,4 +1,6 @@
-# 17. Autograd Basics | Autograd 基础：Attention 反向示例
+# 17. Autograd Basics | 自动微分基础
+
+**难度：** Medium | **环境：** CPU-first | **标签：** `Autograd`, `Backward`, `Attention` | **目标人群：** 底层算子开发与算法基础训练
 
 > 🚀 **云端运行环境**
 >
@@ -8,18 +10,20 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-## 前置
+先把 Attention 前向、链式法则和 PyTorch Autograd 的回传关系串起来，再去看激活函数和损失函数的反向，推导会更顺。
 
-**导语：** 先看 RLHF / DPO 的训练闭环，再回到 Autograd 基础会更容易连到反向传播。
-- [Part 2: 15 DPO Loss Tutorial](./15_DPO_Loss_Tutorial.md)
-- [Part 2: 14 RLHF PPO Memory](./14_RLHF_PPO_Memory.md)
+**关键词：** `Autograd`, `backward`, `attention`, `gradients`
+## 前置阅读
+
+**导语：** 先看对齐训练的梯度路径，再回到 Autograd 基础会更容易连到反向传播。
+- [15. DPO Loss Tutorial | DPO 损失教程](./15_DPO_Loss_Tutorial.md)
+- [16. GRPO Loss Tutorial | GRPO 损失教程](./16_GRPO_Loss_Tutorial.md)
 
 ## 相关阅读
 
 **导语：** Autograd 之后，最自然的延伸就是激活函数和损失函数的反向推导。
-- [Part 2: 17 Activation and Loss Backward](./18_Activation_and_Loss_Backward.md)
-- [Part 2: 18 Activation Checkpointing & Activation Offload](./19_Activation_Checkpointing_and_Activation_Offload.md)
-
+- [18. Activation and Loss Backward | 激活与损失反向](./18_Activation_and_Loss_Backward.md)
+- [19. Activation Checkpointing and Activation Offload | 激活检查点与激活卸载](./19_Activation_Checkpointing_and_Activation_Offload.md)
 
 ### Step 1: 前向传播回顾与变量定义
 

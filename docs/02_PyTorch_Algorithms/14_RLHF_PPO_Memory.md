@@ -1,4 +1,6 @@
-# 14. RLHF PPO Memory | RLHF 对齐：PPO 算法的核心 Loss 与显存流转 (RLHF PPO)
+# 14. RLHF PPO Memory | RLHF 与 PPO 显存占用与流转
+
+**难度：** Hard | **环境：** CPU-first | **标签：** `RLHF`, `PPO`, `Alignment` | **目标人群：** 模型微调与对齐算法工程师
 
 > 🚀 **云端运行环境**
 >
@@ -8,18 +10,20 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-## 前置
+先把 PPO 的 Actor Loss、Reference / Reward / Critic 四模型流转和显存压力讲清楚，再去理解为什么 RLHF 依然是很多对齐系统里的主路径，直觉会更稳。
 
-**导语：** 先确认微调与训练闭环，再看 RLHF / PPO 的对齐训练会更顺。
-- [Part 2: 13 End-to-End Fine-Tuning Experiment](./13_End_to_End_Fine_Tuning_Experiment.md)
-- [Part 2: 12 Gradient Accumulation](./12_Gradient_Accumulation.md)
+**关键词：** `RLHF`, `PPO`, `actor loss`, `memory flow`
+## 前置阅读
+
+**导语：** 先补齐微调与训练闭环，再看 RLHF / PPO 的对齐训练会更顺。
+- [13. End-to-End Fine-Tuning Experiment | 端到端微调实验](./13_End_to_End_Fine_Tuning_Experiment.md)
+- [12. Gradient Accumulation | 梯度累积](./12_Gradient_Accumulation.md)
 
 ## 相关阅读
 
-**导语：** PPO 之后最自然的延伸是 DPO。
-- [Part 2: 15 DPO Loss Tutorial](./15_DPO_Loss_Tutorial.md)
-- [Part 2: 16 Autograd Basics](./17_Autograd_Basics.md)
-
+**导语：** PPO 之后最自然的延伸是 DPO 和 GRPO。
+- [15. DPO Loss Tutorial | DPO 损失教程](./15_DPO_Loss_Tutorial.md)
+- [16. GRPO Loss Tutorial | GRPO 损失教程](./16_GRPO_Loss_Tutorial.md)
 
 ### Step 1: PPO 算法与 Actor Loss 公式
     
