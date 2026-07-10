@@ -83,7 +83,7 @@ flowchart LR
 
 | 模块 | 覆盖范围 | 内容定位 | 适合对象 | 状态 |
 | ---- | ---- | ---- | ---- | ---- |
-| [`组队学习专题`](./team_study/intro.md) | 不固定 | 历史组队学习计划、每个 Task 的优秀笔记、助教出题与组队讨论沉淀。 | 想通过共学沉淀知识、题目与复盘记录的学习者。 | 🛠 建设中 |
+| [`组队学习专题`](./team_study/intro.md) | 不固定 | [`part2_l1_202606`](./team_study/part2_l1_202606/intro.md) / [`part2_l1_202607`](./team_study/part2_l1_202607/intro.md) / [`part2_l2_202607`](./team_study/part2_l2_202607/intro.md) | 想通过共学沉淀知识、题目与复盘记录的学习者。 | 🛠 建设中 |
 
 ## 🆕 更新时间线
 
@@ -244,7 +244,7 @@ You do not need to start from `00` in strict order. `00` is the prerequisite lan
 
 | Module | Coverage | Content Positioning | Suitable For | Status |
 | ---- | ---- | ---- | ---- | ---- |
-| [Team Study Topic](./team_study/intro.md) | Not fixed | Historical study plans, Task notes, TA questions, and group discussions. | Learners who want to accumulate knowledge and review records through collaborative study. | 🛠 In progress |
+| [Team Study Topic](./team_study/intro.md) | Not fixed | [part2_l1_202606](./team_study/part2_l1_202606/intro.md) / [part2_l1_202607](./team_study/part2_l1_202607/intro.md) / [part2_l2_202607](./team_study/part2_l2_202607/intro.md) | Learners who want to accumulate knowledge and review records through collaborative study. | 🛠 In progress |
 
 ## 🆕 Update Timeline
 
