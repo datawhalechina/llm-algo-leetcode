@@ -163,7 +163,7 @@ print('摘要:', activation_summary(x))
 ```python
 x = torch.linspace(-3, 3, steps=7)
 summary = activation_summary(x)
-assert summary['relu_mean'] <= summary['silu_mean'] + 1e-6
+assert summary['relu_mean'] >= summary['silu_mean'] - 1e-6
 print('✅ 激活与统计通过')
 
 ```

@@ -18,7 +18,7 @@
 **导语：** 先看 0C 组页，把模型封装和状态管理的边界对齐，再进入这一页会更顺。
 - [09. PyTorch nn.Module Basics | PyTorch nn.Module 基础](./09_PyTorch_nn_Module_Basics.md)
 - [0C 组页](./0C.md)
-- [28. Fault Tolerance and 检查点 | 容错与检查点](../01_Hardware_Math_and_Systems/28_Fault_Tolerance_and_检查点.md)
+- [28. Fault Tolerance and Checkpointing | 容错与检查点](../01_Hardware_Math_and_Systems/28_Fault_Tolerance_and_Checkpointing.md)
 
 ## 相关阅读
 **导语：** 本页先把状态保存和恢复的最小判断讲清楚；如果想继续看优化器和损失函数，再顺着看下面这一页。
