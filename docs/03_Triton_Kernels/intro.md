@@ -16,11 +16,11 @@ Part 3 更像一张 Triton 实战地图：基础 kernel、设计模式、Attenti
 
 | 学习组 | 职责作用 | 当前内容映射 | 每组多少节 |
 |:---|:---|:---|:---|
-| [3.1](./3_1.md) | 建立 Triton 编程模型和基础 kernel 直觉 | [01](./01_Triton_Vector_Addition.ipynb)、[02](./02_Triton_Fused_SwiGLU.ipynb)、[03](./03_Triton_Fused_RMSNorm.ipynb)、[04](./04_Triton_GEMM_Tutorial.ipynb)、[05](./05_Triton_Autotune_and_Profiling.ipynb) | 5 |
-| [3.2](./3_2.md) | 过渡到 Softmax 和设计模式 | [06](./06_Triton_Fused_Softmax.ipynb)、[06.5](./06_5_Triton_Design_Patterns.md) | 2 |
-| [3.3](./3_3.md) | 推进 Attention 路径上的算子优化 | [07](./07_Triton_Fused_RoPE.ipynb)、[08](./08_Triton_Flash_Attention.ipynb)、[09](./09_Triton_PagedAttention.ipynb) | 3 |
-| [3.4](./3_4.md) | 补齐推理侧的压缩和多 LoRA | [10](./10_Triton_Quantization.ipynb)、[11](./11_Triton_Multi_LoRA.ipynb) | 2 |
-| [3.5](./3_5.md) | 收口调试、内存模型与综合项目 | [12](./12_Triton_Memory_Model_and_Debug.ipynb)、[13](./13_Triton_Llama3_Block_Project.ipynb)、[14](./14_Triton_Best_Practices_and_FAQ.md) | 3 |
+| [3.1](./3_1.md) | 建立 Triton 编程模型和基础 kernel 直觉 | [01](./01_Triton_Vector_Addition.md)、[02](./02_Triton_Fused_SwiGLU.md)、[03](./03_Triton_Fused_RMSNorm.md)、[04](./04_Triton_GEMM_Tutorial.md)、[05](./05_Triton_Autotune_and_Profiling.md) | 5 |
+| [3.2](./3_2.md) | 过渡到 Softmax 和设计模式 | [06](./06_Triton_Fused_Softmax.md)、[06.5](./06_5_Triton_Design_Patterns.md) | 2 |
+| [3.3](./3_3.md) | 推进 Attention 路径上的算子优化 | [07](./07_Triton_Fused_RoPE.md)、[08](./08_Triton_Flash_Attention.md)、[09](./09_Triton_PagedAttention.md) | 3 |
+| [3.4](./3_4.md) | 补齐推理侧的压缩和多 LoRA | [10](./10_Triton_Quantization.md)、[11](./11_Triton_Multi_LoRA.md) | 2 |
+| [3.5](./3_5.md) | 收口调试、内存模型与综合项目 | [12](./12_Triton_Memory_Model_and_Debug.md)、[13](./13_Triton_Llama3_Block_Project.md)、[14](./14_Triton_Best_Practices_and_FAQ.md) | 3 |
 
 ## Learning Path | 学习路径
 
