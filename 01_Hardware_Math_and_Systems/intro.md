@@ -38,11 +38,11 @@ flowchart TB
 
 | 学习组 | 核心职责 | 当前内容映射 | 每组多少节 |
 |:---|:---|:---|:---|
-| [1A](./1A.md) | 建立数量级与资源账本 | [01](./01_Data_Types_and_Precision.ipynb)、[02](./02_LLM_Params_and_FLOPs.ipynb)、[21](./21_Quantization_Theory_and_INT4_INT8.ipynb)、[22](./22_MoE_Parameter_and_Compute.ipynb) | 4 |
-| [1B](./1B.md) | 识别单卡瓶颈与访存路径 | [03](./03_GPU_Architecture_and_Memory.ipynb)、[04](./04_Attention_Memory_Optimization.ipynb)、[23](./23_TensorCore_Deep_Dive.ipynb)、[24](./24_SRAM_Optimization_Techniques.ipynb)、[25](./25_Sparse_Computation_and_Sparse_Attention.ipynb) | 5 |
-| [1C](./1C.md) | 刻画多卡通信边界与切分代价 | [05](./05_Communication_Topologies.ipynb)、[06](./06_VRAM_Calculation_and_ZeRO.ipynb)、[26](./26_Parallel_Strategy_Decision_Framework.ipynb)、[27](./27_Communication_Scheduling_Optimization.ipynb)、[28](./28_Fault_Tolerance_and_Checkpointing.ipynb) | 5 |
-| [1D](./1D.md) | 掌握运行时调度与算子映射 | [07](./07_CPU_GPU_Heterogeneous_Scheduling.ipynb)、[08](./08_Programming_Models_CUDA_Triton.ipynb)、[29](./29_CUDA_Stream_Advanced_Scheduling.ipynb)、[30](./30_Dynamic_Shape_Handling.ipynb)、[31](./31_GPU_Virtualization_and_MIG.ipynb) | 5 |
-| [1E](./1E.md) | 建立编译优化与选型判断 | [09](./09_AI_Compilers_and_Graph_Optimization.ipynb)、[10](./10_Domestic_AI_Chips_Overview.ipynb)、[32](./32_TVM_MLIR_Deep_Practice.ipynb)、[33](./33_TCO_and_Cost_Model.ipynb) | 4 |
+| [Group 1A: Numerical Foundations and Scale Estimation | 1A: 数值基础与算力估算](./1A.md) | 建立数量级与资源账本 | [01. Data Types and Precision | 大模型的数据格式与混合精度](./01_Data_Types_and_Precision.ipynb)、[02. LLM Params and FLOPs | 大模型参数量与算力推导](./02_LLM_Params_and_FLOPs.ipynb)、[21. Quantization Theory and INT4/INT8 | 量化理论与 INT4/INT8](./21_Quantization_Theory_and_INT4_INT8.ipynb)、[22. MoE Parameter and Compute | MoE 模型参数量计算](./22_MoE_Parameter_and_Compute.ipynb) | 4 |
+| [Group 1B: Single-GPU Hardware and Memory Optimization | 1B: 单卡硬件与访存优化](./1B.md) | 识别单卡瓶颈与访存路径 | [03. GPU Architecture and Memory | GPU 物理架构与内存层级](./03_GPU_Architecture_and_Memory.ipynb)、[04. Attention Variants and Memory Optimization | 注意力机制变体与显存优化](./04_Attention_Memory_Optimization.ipynb)、[23. TensorCore Deep Dive | Tensor Core 深度剖析](./23_TensorCore_Deep_Dive.ipynb)、[24. SRAM Optimization Techniques | SRAM 优化技术](./24_SRAM_Optimization_Techniques.ipynb)、[25. Sparse Computation and Sparse Attention | 稀疏计算与稀疏注意力](./25_Sparse_Computation_and_Sparse_Attention.ipynb) | 5 |
+| [Group 1C: Distributed Communication and Memory Sharing | 1C: 多卡通信与显存共享](./1C.md) | 刻画多卡通信边界与切分代价 | [05. Communication Topologies | 通信拓扑与分布式基石](./05_Communication_Topologies.ipynb)、[06. VRAM Calculation and ZeRO | 显存计算与 ZeRO 优化](./06_VRAM_Calculation_and_ZeRO.ipynb)、[26. Parallel Strategy Decision Framework | 并行策略决策框架](./26_Parallel_Strategy_Decision_Framework.ipynb)、[27. Communication Scheduling Optimization | 通信调度优化](./27_Communication_Scheduling_Optimization.ipynb)、[28](./28_Fault_Tolerance_and_检查点.ipynb) | 5 |
+| [Group 1D: Heterogeneous Scheduling and Operator Programming | 1D: 异构调度与算子编程](./1D.md) | 掌握运行时调度与算子映射 | [07. CPU and GPU Heterogeneous Scheduling | CPU 与 GPU 异构调度](./07_CPU_GPU_Heterogeneous_Scheduling.ipynb)、[08. Programming Models and CUDA/Triton | 编程模型演进](./08_Programming_Models_CUDA_Triton.ipynb)、[29. CUDA Stream Advanced Scheduling | CUDA Stream 高级调度](./29_CUDA_Stream_Advanced_Scheduling.ipynb)、[30. Dynamic Shape Handling | 动态 Shape 处理](./30_Dynamic_Shape_Handling.ipynb)、[31. GPU Virtualization and MIG | GPU 虚拟化与 MIG](./31_GPU_Virtualization_and_MIG.ipynb) | 5 |
+| [Group 1E: Compiler Optimization and Hardware Ecosystem | 1E: 编译优化与硬件生态](./1E.md) | 建立编译优化与选型判断 | [09. AI Compilers and Graph Optimization | AI 编译器与计算图优化](./09_AI_Compilers_and_Graph_Optimization.ipynb)、[10. AI Chips Overview and Alternatives | 算力现状与替代方案](./10_Domestic_AI_Chips_Overview.ipynb)、[32. TVM / MLIR Deep Practice | TVM / MLIR 深度实践](./32_TVM_MLIR_Deep_Practice.ipynb)、[33. TCO and Cost Model | 算力评估与 TCO 模型](./33_TCO_and_Cost_Model.ipynb) | 4 |
 
 ## Learning Path | 学习路径
 
@@ -56,14 +56,14 @@ flowchart LR
 
 ### Recommended Order | 推荐顺序
 
-- 快速入门：先看 [1A](./1A.md) → [1B](./1B.md)
-- 系统学习：按 [1A](./1A.md) → [1B](./1B.md) → [1C](./1C.md) → [1D](./1D.md) → [1E](./1E.md) 顺序推进
+- 快速入门：先看 [Group 1A: Numerical Foundations and Scale Estimation | 1A: 数值基础与算力估算](./1A.md) → [Group 1B: Single-GPU Hardware and Memory Optimization | 1B: 单卡硬件与访存优化](./1B.md)
+- 系统学习：按 [Group 1A: Numerical Foundations and Scale Estimation | 1A: 数值基础与算力估算](./1A.md) → [Group 1B: Single-GPU Hardware and Memory Optimization | 1B: 单卡硬件与访存优化](./1B.md) → [Group 1C: Distributed Communication and Memory Sharing | 1C: 多卡通信与显存共享](./1C.md) → [Group 1D: Heterogeneous Scheduling and Operator Programming | 1D: 异构调度与算子编程](./1D.md) → [Group 1E: Compiler Optimization and Hardware Ecosystem | 1E: 编译优化与硬件生态](./1E.md) 顺序推进
 
 ### Next Steps | 后续衔接
 
-- 先看 [1A](./1A.md)、[1B](./1B.md)，把精度、参数量、GPU 架构和访存直觉先立起来，主要服务 Part 2 / Part 3。
-- 先看 [1C](./1C.md)、[1D](./1D.md)，把通信、调度、block / warp / shared memory 和 Triton block model 理顺，主要服务 Part 3。
-- 先看 [1E](./1E.md)，再结合 [19 | 减少融合中的中间结果开销](./19_Operator_Fusion_Introduction.ipynb)、[32 | 理解编译器分层和 lowering 流程](./32_TVM_MLIR_Deep_Practice.ipynb)、[33 | 算清总体拥有成本](./33_TCO_and_Cost_Model.ipynb)，理解编译优化、算子融合、TCO，以及为什么后面会从 PyTorch 走到 Triton，再走到 CUDA，主要服务 Part 2 / Part 3。
+- 先看 [Group 1A: Numerical Foundations and Scale Estimation | 1A: 数值基础与算力估算](./1A.md)、[Group 1B: Single-GPU Hardware and Memory Optimization | 1B: 单卡硬件与访存优化](./1B.md)，把精度、参数量、GPU 架构和访存直觉先立起来，主要服务 Part 2 / Part 3。
+- 先看 [Group 1C: Distributed Communication and Memory Sharing | 1C: 多卡通信与显存共享](./1C.md)、[Group 1D: Heterogeneous Scheduling and Operator Programming | 1D: 异构调度与算子编程](./1D.md)，把通信、调度、block / warp / shared memory 和 Triton block model 理顺，主要服务 Part 3。
+- 先看 [Group 1E: Compiler Optimization and Hardware Ecosystem | 1E: 编译优化与硬件生态](./1E.md)，再结合 [19. Operator Fusion Introduction | 算子融合导论](./19_Operator_Fusion_Introduction.ipynb)、[32. TVM / MLIR Deep Practice | TVM / MLIR 深度实践](./32_TVM_MLIR_Deep_Practice.ipynb)、[33. TCO and Cost Model | 算力评估与 TCO 模型](./33_TCO_and_Cost_Model.ipynb)，理解编译优化、算子融合、TCO，以及为什么后面会从 PyTorch 走到 Triton，再走到 CUDA，主要服务 Part 2 / Part 3。
 
 ## Environment Notes | 环境说明
 
