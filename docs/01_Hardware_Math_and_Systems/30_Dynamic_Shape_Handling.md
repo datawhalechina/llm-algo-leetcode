@@ -26,8 +26,8 @@
 **导语：** 如果想继续把动态输入和后续的调度、虚拟化、成本判断串起来，可以接着看这些页。
 
 - [19. Operator Fusion Introduction | 算子融合导论](./19_Operator_Fusion_Introduction.md)
-- [01 CUDA Custom Kernel Intro](../04_CUDA_and_System_Optimization/01_CUDA_Custom_Kernel_Intro.md)
-- [06 CUDA Graph and Launch Optimization](../04_CUDA_and_System_Optimization/06_CUDA_Graph_and_Launch_Optimization.md)
+- [15. CUDA Custom Kernel Intro | CUDA 自定义算子入门](../04_CUDA_and_System_Optimization/15_CUDA_Custom_Kernel_Intro.md)
+- [18. CUDA Graph and JIT Compile | CUDA Graph 与 JIT 编译](../04_CUDA_and_System_Optimization/18_CUDA_Graph_and_JIT_Compile.md)
 
 ## Q1：动态 shape 为什么会让复用变差？
 

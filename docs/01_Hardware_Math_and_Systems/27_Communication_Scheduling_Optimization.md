@@ -27,7 +27,7 @@
 **导语：** 如果还想把通信优化和实现细节连起来，可以接着看通信原语、异步调度和容错，把调度、同步和恢复放在一起理解。
 
 - [20. NCCL and AllReduce Basics | NCCL 与 AllReduce 基础](./20_NCCL_and_AllReduce_Basics.md)
-- [28. Fault Tolerance and 检查点 | 容错与检查点](./28_Fault_Tolerance_and_检查点.md)
+- [28. Fault Tolerance and Checkpointing | 容错与检查点](./28_Fault_Tolerance_and_Checkpointing.md)
 - [17. CUDA Stream and Asynchrony | CUDA Stream 与异步执行](./17_CUDA_Stream_and_Asynchrony.md)
 
 ## Q1：为什么通信优化首先是调度问题？

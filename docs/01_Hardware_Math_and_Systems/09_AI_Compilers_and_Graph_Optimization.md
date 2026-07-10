@@ -22,7 +22,7 @@
 **导语：** 如果想继续把图优化和执行后端的关系补完整，可以接着看这些页。
 - [04. Triton 矩阵乘法 (GEMM) 与自动调优 (Autotune)](../03_Triton_Kernels/04_Triton_GEMM_Tutorial.md)
 - [05. Triton 性能调优与基准测试 (Autotune & Profiling)](../03_Triton_Kernels/05_Triton_Autotune_and_Profiling.md)
-- [06 CUDA Graph and Launch Optimization](../04_CUDA_and_System_Optimization/06_CUDA_Graph_and_Launch_Optimization.md)
+- [18. CUDA Graph and JIT Compile | CUDA Graph 与 JIT 编译](../04_CUDA_and_System_Optimization/18_CUDA_Graph_and_JIT_Compile.md)
 ## Q1：AI 编译器到底在压缩什么成本向量？
 
 <details><summary>点击展开查看解析</summary>

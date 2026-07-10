@@ -10,7 +10,7 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-这一页把 Chapter 1 的数据格式和显存直觉，推进到混合精度、Tensor Core 和吞吐判断上。
+这一页把 Part 1 的数据格式和显存直觉，推进到混合精度、Tensor Core 和吞吐判断上。
 
 **关键词：** `FP16`, `BF16`, `Tensor Core`
 ## 前置阅读
