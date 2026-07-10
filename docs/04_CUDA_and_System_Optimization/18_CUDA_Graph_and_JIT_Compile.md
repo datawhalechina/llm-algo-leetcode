@@ -59,7 +59,7 @@ for _ in range(num_iters):
 
 ## 导航
 
-- [Chapter 4 导学](./intro.md)
+- [Part 4 导学](./intro.md)
 - [上一组 4.2 系统级性能优化](./4_2.md)
 - [下一组 4.3 分布式训练工程](./4_3.md)
 

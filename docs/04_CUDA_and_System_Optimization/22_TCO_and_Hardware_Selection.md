@@ -63,7 +63,7 @@ TCO（Total Cost of Ownership，总拥有成本）就是把这些问题放进同
 
 ## 导航
 
-- [Chapter 4 导学](./intro.md)
+- [Part 4 导学](./intro.md)
 - [上一组 4.4 架构视野](./4_4.md)
 
 ## 当前状态
