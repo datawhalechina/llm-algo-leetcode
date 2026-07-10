@@ -11,6 +11,7 @@
 | `sync` | `tools/sync_docs_index.py`、`tools/sync_docs_navigation.py` | 首页 / 导学页 / 组页同步 |
 | `check` | `check_source_docs_mirror.py`、`check_chapter_links.py` | 镜像和链接检查 |
 | `test` | `test_chapter0_1_notebooks.py`、`test_notebook_answers.py` | Notebook 校验 |
+| `migration` | `tools/md_to_notebook.py` | markdown -> notebook 迁移辅助 |
 
 ## 推荐用法
 
@@ -22,6 +23,7 @@ python verify.py all --no-build
 ```
 
 无 GPU 时，`verify.py` 会跳过 Part 2 / 3 的 GPU-only 答案验证，但仍保留转换、镜像和链接检查。单独排查时直接用底层脚本。
+`tools/md_to_notebook.py` 仅用于历史迁移，不进入日常主流程。
 
 ## 去向
 
