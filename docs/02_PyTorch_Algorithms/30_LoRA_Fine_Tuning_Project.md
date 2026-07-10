@@ -1,4 +1,4 @@
-# 30. LoRA Fine-Tuning Project | LoRA 微调项目
+# 30. LoRA Fine Tuning Project | LoRA 微调项目
 
 **难度：** Hard | **环境：** CPU-first
 
