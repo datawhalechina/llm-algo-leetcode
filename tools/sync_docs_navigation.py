@@ -2,7 +2,7 @@
 """Sync navigation pages from source parts into docs/.
 
 This script mirrors each Part's intro page and group pages into docs/.
-It does not touch notebook chapter mirrors, which remain the job of
+It does not touch notebook part mirrors, which remain the job of
 convert_notebook.py.
 """
 
@@ -47,7 +47,8 @@ def sync_navigation() -> None:
             if not src.exists():
                 continue
             dst = dst_dir / name
-            shutil.copyfile(src, dst)
+            text = src.read_text(encoding="utf-8")
+            dst.write_text(text.replace(".ipynb)", ".md)"), encoding="utf-8")
             copied += 1
     print(f"Synced {copied} navigation files into docs/")
 

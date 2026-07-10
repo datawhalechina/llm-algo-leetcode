@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Unified verification entrypoint for the tutorial repo.
 
-This script orchestrates the existing chapter-specific converters and checks
+This script orchestrates the existing part-specific converters and checks
 without changing their individual responsibilities.
 """
 
@@ -69,7 +69,7 @@ def resolve_candidates(source: Path, raw_link: str) -> list[Path]:
 
 
 def check_chapter3_intro_links() -> None:
-    """Verify source/docs entry-page links for Chapter 3."""
+    """Verify source/docs entry-page links for Part 3."""
     link_re = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
     paths = [
         ROOT / "03_Triton_Kernels/intro.md",
@@ -85,16 +85,16 @@ def check_chapter3_intro_links() -> None:
                 missing.append((str(path.relative_to(ROOT)), link))
 
     if missing:
-        print("[verify] Chapter 3 intro link check failed:")
+        print("[verify] Part 3 intro link check failed:")
         for path, link in missing:
             print(f"  - {path}: {link}")
         raise SystemExit(1)
 
-    print("[verify] Chapter 3 intro links are valid in source and docs.")
+    print("[verify] Part 3 intro links are valid in source and docs.")
 
 
 def check_chapter4_intro_links() -> None:
-    """Verify source/docs entry-page links for Chapter 4."""
+    """Verify source/docs entry-page links for Part 4."""
     link_re = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
     paths = [
         ROOT / "04_CUDA_and_System_Optimization/intro.md",
@@ -110,15 +110,16 @@ def check_chapter4_intro_links() -> None:
                 missing.append((str(path.relative_to(ROOT)), link))
 
     if missing:
-        print("[verify] Chapter 4 intro link check failed:")
+        print("[verify] Part 4 intro link check failed:")
         for path, link in missing:
             print(f"  - {path}: {link}")
         raise SystemExit(1)
 
-    print("[verify] Chapter 4 intro links are valid in source and docs.")
+    print("[verify] Part 4 intro links are valid in source and docs.")
 
 
 def verify_chapter0_1(*, build_docs: bool) -> None:
+    # Legacy compatibility path for the Part 0 / Part 1 notebook-first closeout.
     run_python("convert_chapter0_1.py")
     run_python("check_chapter_links.py", "--scope", "source")
     run_python("check_chapter_links.py", "--scope", "docs")
@@ -133,7 +134,7 @@ def verify_chapter2(*, build_docs: bool) -> None:
     if has_cuda():
         run_python("test_notebook_answers.py", "--all", "--dir", "02_PyTorch_Algorithms", "--mode", "both")
     else:
-        print("[verify] GPU not available, skipping Chapter 2 notebook answer tests.")
+        print("[verify] GPU not available, skipping Part 2 notebook answer tests.")
     if build_docs:
         run_docs_build()
 
@@ -144,7 +145,7 @@ def verify_chapter3(*, build_docs: bool) -> None:
     if has_cuda():
         run_python("test_notebook_answers.py", "--all", "--dir", "03_Triton_Kernels", "--mode", "both")
     else:
-        print("[verify] GPU not available, skipping Chapter 3 notebook answer tests.")
+        print("[verify] GPU not available, skipping Part 3 notebook answer tests.")
     check_chapter3_intro_links()
     if build_docs:
         run_docs_build()
@@ -156,7 +157,7 @@ def verify_chapter4(*, build_docs: bool) -> None:
     if has_cuda():
         run_python("test_notebook_answers.py", "--all", "--dir", "04_CUDA_and_System_Optimization", "--mode", "both")
     else:
-        print("[verify] GPU not available, skipping Chapter 4 notebook answer tests.")
+        print("[verify] GPU not available, skipping Part 4 notebook answer tests.")
     check_chapter4_intro_links()
     if build_docs:
         run_docs_build()
@@ -168,7 +169,7 @@ def verify_all(*, build_docs: bool) -> None:
     verify_chapter3(build_docs=build_docs)
     verify_chapter4(build_docs=build_docs)
     if build_docs:
-        # Chapter 3 already built docs; keep the all-target behavior explicit.
+        # Part 3 already built docs; keep the all-target behavior explicit.
         pass
 
 
@@ -177,11 +178,15 @@ def main() -> int:
 
     sub = parser.add_subparsers(dest="target")
     sub.required = False
-    sub.add_parser("chapter0_1", help="Verify Chapter 0 / 1.")
-    sub.add_parser("chapter2", help="Verify Chapter 2.")
-    sub.add_parser("chapter3", help="Verify Chapter 3.")
-    sub.add_parser("chapter4", help="Verify Chapter 4.")
-    sub.add_parser("all", help="Verify all chapters.")
+    sub.add_parser("part0_1", help="Verify Part 0 / Part 1.")
+    sub.add_parser("part2", help="Verify Part 2.")
+    sub.add_parser("part3", help="Verify Part 3.")
+    sub.add_parser("part4", help="Verify Part 4.")
+    sub.add_parser("chapter0_1", help="Verify Part 0 / Part 1 (legacy compatibility).")
+    sub.add_parser("chapter2", help="Verify Part 2 (legacy compatibility).")
+    sub.add_parser("chapter3", help="Verify Part 3 (legacy compatibility).")
+    sub.add_parser("chapter4", help="Verify Part 4 (legacy compatibility).")
+    sub.add_parser("all", help="Verify all Parts.")
 
     raw_args = sys.argv[1:]
     build_docs = "--no-build" not in raw_args
@@ -189,13 +194,13 @@ def main() -> int:
     args = parser.parse_args(filtered_args)
     target = args.target or "all"
 
-    if target == "chapter0_1":
+    if target in {"part0_1", "chapter0_1"}:
         verify_chapter0_1(build_docs=build_docs)
-    elif target == "chapter2":
+    elif target in {"part2", "chapter2"}:
         verify_chapter2(build_docs=build_docs)
-    elif target == "chapter3":
+    elif target in {"part3", "chapter3"}:
         verify_chapter3(build_docs=build_docs)
-    elif target == "chapter4":
+    elif target in {"part4", "chapter4"}:
         verify_chapter4(build_docs=build_docs)
     elif target == "all":
         verify_all(build_docs=build_docs)

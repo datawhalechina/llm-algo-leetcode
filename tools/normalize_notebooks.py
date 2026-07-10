@@ -75,7 +75,7 @@ def main() -> int:
     parser.add_argument(
         "paths",
         nargs="*",
-        help="Notebook files or directories to normalize. Defaults to all chapter source directories.",
+        help="Notebook files or directories to normalize. Defaults to all part source directories.",
     )
     parser.add_argument(
         "--check",
