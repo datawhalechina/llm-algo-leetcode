@@ -248,8 +248,9 @@ export default defineConfig({
             collapsed: true,
             items: [
               { text: '组内导读', link: '/02_PyTorch_Algorithms/2_4' },
-              { text: '12. 梯度累积', link: '/02_PyTorch_Algorithms/12_Gradient_Accumulation' },
-              { text: '13. 直接偏好优化损失教程', link: '/02_PyTorch_Algorithms/13_DPO_Loss_Tutorial' }
+              { text: '14. RLHF 与 PPO 显存占用与流转', link: '/02_PyTorch_Algorithms/14_RLHF_PPO_Memory' },
+              { text: '15. 直接偏好优化损失教程', link: '/02_PyTorch_Algorithms/15_DPO_Loss_Tutorial' },
+              { text: '16. 群体相对策略优化损失教程', link: '/02_PyTorch_Algorithms/16_GRPO_Loss_Tutorial' }
             ]
           },
           {
@@ -257,39 +258,40 @@ export default defineConfig({
             collapsed: true,
             items: [
               { text: '组内导读', link: '/02_PyTorch_Algorithms/2_5' },
-              { text: '14. Attention 反向传播数学', link: '/02_PyTorch_Algorithms/14_Attention_Backward_Math' }
+              { text: '17. 自动微分基础', link: '/02_PyTorch_Algorithms/17_Autograd_Basics' },
+              { text: '18. 激活与损失反向', link: '/02_PyTorch_Algorithms/18_Activation_and_Loss_Backward' },
+              { text: '19. 激活检查点与激活卸载', link: '/02_PyTorch_Algorithms/19_Activation_Checkpointing_and_Activation_Offload' }
             ]
           },
           {
-            text: '2.6 核心推理优化',
+            text: '2.6 推理加速与缓存',
             collapsed: true,
             items: [
               { text: '组内导读', link: '/02_PyTorch_Algorithms/2_6' },
-              { text: '15. FlashAttention 模拟', link: '/02_PyTorch_Algorithms/15_FlashAttention_Sim' },
-              { text: '16. 解码策略', link: '/02_PyTorch_Algorithms/16_Decoding_Strategies' },
-              { text: '17. vLLM 分页注意力', link: '/02_PyTorch_Algorithms/17_vLLM_PagedAttention' }
+              { text: '20. FlashAttention 模拟', link: '/02_PyTorch_Algorithms/20_FlashAttention_Sim' },
+              { text: '21. 解码策略', link: '/02_PyTorch_Algorithms/21_Decoding_Strategies' },
+              { text: '22. vLLM 分页注意力', link: '/02_PyTorch_Algorithms/22_vLLM_PagedAttention' }
             ]
           },
           {
-            text: '2.7 高级推理优化',
+            text: '2.7 高级推理与压缩',
             collapsed: true,
             items: [
               { text: '组内导读', link: '/02_PyTorch_Algorithms/2_7' },
-              { text: '18. 投机解码', link: '/02_PyTorch_Algorithms/18_Speculative_Decoding' },
-              { text: '19. SGLang 基数注意力', link: '/02_PyTorch_Algorithms/19_SGLang_RadixAttention' },
-              { text: '20. W8A16 量化', link: '/02_PyTorch_Algorithms/20_Quantization_W8A16' }
+              { text: '23. 投机解码', link: '/02_PyTorch_Algorithms/23_Speculative_Decoding' },
+              { text: '24. SGLang 基数注意力', link: '/02_PyTorch_Algorithms/24_SGLang_RadixAttention' },
+              { text: '25. W8A16 量化', link: '/02_PyTorch_Algorithms/25_Quantization_W8A16' },
+              { text: '26. QLoRA 与 4-bit 量化', link: '/02_PyTorch_Algorithms/26_QLoRA_and_4bit_Quantization' }
             ]
           },
           {
-            text: '2.8 分布式与扩展',
+            text: '2.8 分布式与并行',
             collapsed: true,
             items: [
               { text: '组内导读', link: '/02_PyTorch_Algorithms/2_8' },
-              { text: '21. 梯度检查点', link: '/02_PyTorch_Algorithms/21_Gradient_Checkpointing' },
-              { text: '22. QLoRA 与 4-bit 量化', link: '/02_PyTorch_Algorithms/22_QLoRA_and_4bit_Quantization' },
-              { text: '23. ZeRO 优化器模拟', link: '/02_PyTorch_Algorithms/23_ZeRO_Optimizer_Sim' },
-              { text: '24. Tensor 并行模拟', link: '/02_PyTorch_Algorithms/24_Tensor_Parallelism_Sim' },
-              { text: '25. Pipeline 并行微批次', link: '/02_PyTorch_Algorithms/25_Pipeline_Parallelism_MicroBatch' }
+              { text: '27. ZeRO 优化器模拟', link: '/02_PyTorch_Algorithms/27_ZeRO_Optimizer_Sim' },
+              { text: '28. Pipeline 并行微批次', link: '/02_PyTorch_Algorithms/28_Pipeline_Parallelism_MicroBatch' },
+              { text: '29. Tensor 并行模拟', link: '/02_PyTorch_Algorithms/29_Tensor_Parallelism_Sim' }
             ]
           }
         ]

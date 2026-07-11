@@ -1,6 +1,6 @@
 # 02. SwiGLU Activation | SwiGLU 激活
 
-**难度：** Easy | **环境：** CPU-first | **标签：** `模型架构`, `激活函数` | **目标人群：** 模型微调与工程部署
+**难度：** Easy | **环境：** CPU-first | **标签：** `模型架构`, `激活函数`, `PyTorch` | **目标人群：** 模型微调与工程部署
 
 > 🚀 **云端运行环境**
 >
@@ -13,22 +13,21 @@
 在组装 LLaMA-3 的那一节中，我们使用了 `SwiGLU` 作为 MLP 的激活函数。为什么所有主流大模型（LLaMA, Qwen, Mistral, PaLM）都在抛弃 ReLU/GELU 而转向 SwiGLU？
 本节我们将深入推导 SwiGLU 的设计原理，特别是**如何调整隐藏层的维度**，以保证参数量与标准 Transformer 严格对齐。这是面试中非常经典的**架构推导题**。
 
-**关键词：** `SwiGLU`, `GLU`, `gating`, `hidden dimension`
-
-
+**关键词：** `SwiGLU`, `GLU`, `gating`
 ## 前置阅读
 
-**导语：** 如果还没把 RMSNorm 的输出形状和基础张量运算理顺，先看下面两页会更容易进入门控激活。
-- [01. RMSNorm Tutorial | RMSNorm 教程](./01_RMSNorm_Tutorial.md)
-- [Group 1B: Single-GPU Hardware and Memory Optimization | 1B: 单卡硬件与访存优化](../01_Hardware_Math_and_Systems/1B.md)
+**导语：** 如果还没把张量运算、激活函数和归一化顺理清楚，先看下面几页会更容易进入门控激活。
+
+- [05. PyTorch Tensor Fundamentals | PyTorch 张量基础操作](../00_Prerequisites/05_PyTorch_Tensor_Fundamentals.md)
+- [14. Activation Functions | 激活函数](../00_Prerequisites/14_Activation_Functions.md)
+- [15. Normalization Techniques | 归一化技术](../00_Prerequisites/15_Normalization_Techniques.md)
 
 ## 相关阅读
 
-**导语：** 本节先用纯 PyTorch 讲清 SwiGLU 的门控原理与维度变化；如果想看同一结构在更高吞吐实现里怎么落地，再看 Triton 版。
-- [03. RoPE Tutorial | RoPE 教程](./03_RoPE_Tutorial.md)
-- [04. Attention MHA GQA | 注意力机制（MHA / GQA）](./04_Attention_MHA_GQA.md)
-- [02. Triton 算子开发：融合门控激活函数 (Fused SwiGLU)](../03_Triton_Kernels/02_Triton_Fused_SwiGLU.md)
+**导语：** 本节先用纯 PyTorch 讲清 SwiGLU 的门控原理与维度变化；如果想看同一结构在更高吞吐实现里怎么落地，再看混合精度和算子融合相关页面。
 
+- [12. TensorCore and Mixed Precision | Tensor Core 与混合精度](../01_Hardware_Math_and_Systems/12_TensorCore_and_Mixed_Precision.md)
+- [19. Operator Fusion Introduction | 算子融合导论](../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md)
 
 ### Step 1: 核心思想与痛点
 
@@ -114,8 +113,7 @@ def calculate_intermediate_size(hidden_size: int, multiple_of: int = 256):
     # ==========================================
     # aligned_size = ???
     
-    # return aligned_size
-    pass
+    return aligned_size
 
 class SwiGLU_MLP(nn.Module):
     def __init__(self, hidden_size: int, intermediate_size: int):
@@ -125,14 +123,14 @@ class SwiGLU_MLP(nn.Module):
         # ==========================================
         # self.gate_up_proj = ???
         # self.down_proj = ???
-        pass
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # ==========================================
         # TODO 4: 组装工业级 SwiGLU 前向传播
         # ==========================================
-        # return ???
-        pass
+        # output = ???
+        return output
+
 ```
 
 
@@ -171,14 +169,24 @@ def test_swiglu():
         
     except NotImplementedError:
         print("请先完成 TODO 部分的代码！")
+        raise
+    except (AttributeError, NameError, TypeError) as e:
+        if isinstance(e, AttributeError):
+            print("代码未完成，无法找到必要的属性")
+        elif isinstance(e, NameError):
+            print("代码可能未完成，导致了变量未定义")
+        else:
+            print("代码可能未完成，导致了操作错误。")
+        raise NotImplementedError("请先完成 TODO 部分的代码！") from e
     except AssertionError as e:
         print(f"❌ 测试失败: {e}")
-    except TypeError as e:
-        print("代码可能未完成，导致了操作错误。")
+        raise
     except Exception as e:
         print(f"❌ 发生异常: {e}")
+        raise
 
 test_swiglu()
+
 ```
 
 ---
