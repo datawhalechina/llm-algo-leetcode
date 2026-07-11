@@ -1,6 +1,6 @@
 # 17. Autograd Basics | 自动微分基础
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `Autograd`, `Backward`, `Attention` | **目标人群：** 底层算子开发与算法基础训练
+**难度：** Medium | **环境：** CPU-first | **标签：** `Autograd`, `Backward`, `梯度` | **目标人群：** 底层算子开发与算法基础训练
 
 > 🚀 **云端运行环境**
 >
@@ -12,18 +12,21 @@
 
 先把 Attention 前向、链式法则和 PyTorch Autograd 的回传关系串起来，再去看激活函数和损失函数的反向，推导会更顺。
 
-**关键词：** `Autograd`, `backward`, `attention`, `gradients`
+**关键词：** `Autograd`, `backward`, `gradcheck`
 ## 前置阅读
 
-**导语：** 先看对齐训练的梯度路径，再回到 Autograd 基础会更容易连到反向传播。
-- [15. DPO Loss Tutorial | DPO 损失教程](./15_DPO_Loss_Tutorial.md)
-- [16. GRPO Loss Tutorial | GRPO 损失教程](./16_GRPO_Loss_Tutorial.md)
+**导语：** 先把 Autograd 的反向传播路径补齐，再回到自定义反传实现会更顺。
+
+- [07. PyTorch Autograd and Backward | PyTorch 自动求导与反向传播](../00_Prerequisites/07_PyTorch_Autograd_and_Backward.md)
+- [13. Simple Neural Network Training | 简单神经网络训练循环](../00_Prerequisites/13_Simple_Neural_Network_Training.md)
+
 
 ## 相关阅读
 
-**导语：** Autograd 之后，最自然的延伸就是激活函数和损失函数的反向推导。
-- [18. Activation and Loss Backward | 激活与损失反向](./18_Activation_and_Loss_Backward.md)
-- [19. Activation Checkpointing and Activation Offload | 激活检查点与激活卸载](./19_Activation_Checkpointing_and_Activation_Offload.md)
+**导语：** 自定义反传之后，最自然的延伸就是激活函数和损失函数的反向推导。
+
+- [13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
+- [18. Activation and Loss Backward | 激活函数与损失反向传播](../02_PyTorch_Algorithms/18_Activation_and_Loss_Backward.md)
 
 ### Step 1: 前向传播回顾与变量定义
 
@@ -64,6 +67,7 @@ $$ dK = \frac{dS^T \cdot Q}{\sqrt{d}} $$
 现在，把你刚才看到的微积分公式，转化为能够实际运行的代码。我们将继承 `torch.autograd.Function`。
 
 **要求**：完成 `backward` 函数中 TODO 的数学推导代码。你可以使用 `ctx.saved_tensors` 来获取前向传播时保存的 $Q, K, V, P$ 等变量。
+这一节的实现顺序就是先求 `dV / dP`，再穿过 Softmax 得到 `dS`，最后回到 `dQ / dK`。
 
 ```python
 import torch
@@ -104,13 +108,11 @@ class CustomAttention(torch.autograd.Function):
         # TODO 1: 求 dV
         # ==========================================
         # dv = ???
-        dv = torch.zeros_like(v)  # 占位初始化
         
         # ==========================================
         # TODO 2: 求 dP
         # ==========================================
         # dp = ???
-        dp = torch.zeros_like(p)  # 占位初始化
         
         # ==========================================
         # TODO 3: 穿过 Softmax 求 dS
@@ -118,19 +120,15 @@ class CustomAttention(torch.autograd.Function):
         # dp_mul_p = ???
         # row_sum = ???
         # ds = ???
-        dp_mul_p = torch.zeros_like(p)  # 占位初始化
-        row_sum = torch.zeros(p.shape[:-1] + (1,), device=p.device, dtype=p.dtype)  # 占位初始化
-        ds = torch.zeros_like(p)  # 占位初始化
         
         # ==========================================
         # TODO 4: 求 dQ 和 dK (别忘了乘以 scale 缩放因子)
         # ==========================================
         # dq = ???
         # dk = ???
-        dq = torch.zeros_like(q)  # 占位初始化
-        dk = torch.zeros_like(k)  # 占位初始化
         
         return dq, dk, dv
+
 ```
 
 
@@ -163,12 +161,24 @@ def test_attention_backward():
             
     except NotImplementedError:
         print("请先完成 TODO 部分的代码！")
-    except AssertionError as e:
-        print(f"❌ 测试失败: {e}")
-        raise e
+        raise
+    except (AttributeError, NameError, TypeError, ValueError, AssertionError, RuntimeError) as e:
+        if isinstance(e, AttributeError):
+            print("代码未完成，无法找到必要的属性")
+        elif isinstance(e, NameError):
+            print("代码可能未完成，导致了变量未定义")
+        elif isinstance(e, TypeError):
+            print("代码可能未完成，导致了类型错误")
+        elif isinstance(e, ValueError):
+            print("代码可能未完成，导致了张量维度错误")
+        elif isinstance(e, AssertionError):
+            print(f"代码可能未完成，导致了断言失败: {e}")
+        else:
+            print("代码可能未完成，导致了 gradcheck 或反向传播异常")
+        raise NotImplementedError("请先完成 TODO 部分的代码！") from e
     except Exception as e:
-        print(f"❌ 发生异常 (很可能是梯度公式写错了): {e}")
-        raise e
+        print(f"❌ 发生异常: {e}")
+        raise
 
 test_attention_backward()
 
@@ -218,18 +228,18 @@ class CustomAttention(torch.autograd.Function):
         q, k, v, p = ctx.saved_tensors
         scale = ctx.scale
         
-        # 1. dV = P^T * dO
+        # TODO 1: 求 dV
         dv = torch.matmul(p.transpose(-2, -1), dout)
         
-        # 2. dP = dO * V^T
+        # TODO 2: 求 dP
         dp = torch.matmul(dout, v.transpose(-2, -1))
         
-        # 3. dS = P * (dP - row_sum(P * dP))
+        # TODO 3: 穿过 Softmax 求 dS
         dp_mul_p = dp * p
         row_sum = dp_mul_p.sum(dim=-1, keepdim=True)
         ds = p * (dp - row_sum)
         
-        # 4. dQ 和 dK
+        # TODO 4: 求 dQ 和 dK
         dq = torch.matmul(ds, k) * scale
         dk = torch.matmul(ds.transpose(-2, -1), q) * scale
         
@@ -239,4 +249,32 @@ class CustomAttention(torch.autograd.Function):
 
 ### 解析
 
-Attention 梯度的核心在于处理 Softmax 的雅可比矩阵。对于 $dP$，通过矩阵转置操作可以轻松由链式法则获得；随后通过提取 $P \odot dP$ 并对行求和，构造出 Softmax 的反向传播梯度 $dS$。这也是理解重计算（Recomputation）技术以节省大规模训练显存的理论基础。
+**1. TODO 1: 求 dV**
+
+- **实现方式**：`dv = torch.matmul(p.transpose(-2, -1), dout)`
+- **数学原理**：输出 `out = P V`，所以对 `V` 的梯度就是把上游梯度乘回去。
+- **工程意义**：这是 Attention 反向里最直接的一步，先把 Value 方向的梯度拿到。
+
+**2. TODO 2: 求 dP**
+
+- **实现方式**：`dp = torch.matmul(dout, v.transpose(-2, -1))`
+- **数学原理**：同样由 `out = P V` 得到，对 `P` 的梯度可以直接通过矩阵乘法反推。
+- **工程意义**：这一步把输出梯度重新映射回注意力概率矩阵。
+
+**3. TODO 3: 穿过 Softmax 求 dS**
+
+- **实现方式**：先算 `dp_mul_p = dp * p`，再对行求和得到 `row_sum`，最后得到 `ds = p * (dp - row_sum)`。
+- **数学原理**：Softmax 的反向可以化成一个稳定的逐行修正项，不需要显式构造完整雅可比矩阵。
+- **工程意义**：这是 Attention 反向里最关键的一步，也是很多讲解容易卡住的地方。
+
+**4. TODO 4: 求 dQ 和 dK**
+
+- **实现方式**：`dq = torch.matmul(ds, k) * scale`，`dk = torch.matmul(ds.transpose(-2, -1), q) * scale`
+- **数学原理**：因为 `scores = QK^T / sqrt(d)`，所以最后回到 `Q` 和 `K` 时还要乘上缩放因子。
+- **工程意义**：这一步把 Attention 的反向梯度真正落回输入表示。
+
+**进阶思考**
+
+- 如果不保存 `P`，反向传播还能怎么做？
+- 为什么这会自然引出 FlashAttention 的重计算思想？
+- 你能把这条链路和第 20 节的在线 Softmax 对上吗？
