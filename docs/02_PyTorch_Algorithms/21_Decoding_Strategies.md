@@ -1,5 +1,5 @@
 # 21. Decoding Strategies | 解码策略
-**难度：** Medium | **环境：** CPU-first | **标签：** `解码`, `推理`, `Sampling` | **目标人群：** 推理与部署工程师
+**难度：** Medium | **环境：** CPU-first | **标签：** `解码`, `Sampling`, `推理优化` | **目标人群：** 推理与部署工程师
 
 > 🚀 **云端运行环境**
 >
@@ -11,20 +11,22 @@
 
 先把生成时的采样与搜索策略理顺，再理解解码阶段为什么会影响吞吐和质量。
 
-**关键词：** `top-k`, `top-p`, `temperature`, `decoding`
+**关键词：** `top-k`, `top-p`, `temperature`
 
 
 ## 前置阅读
 
-**导语：** 先看 FlashAttention，再看解码策略更容易把前向和生成过程联系起来。
-- [20. FlashAttention Sim | FlashAttention 模拟](./20_FlashAttention_Sim.md)
-- [19. Activation Checkpointing and Activation Offload | 激活检查点与激活卸载](./19_Activation_Checkpointing_and_Activation_Offload.md)
+**导语：** 先理解张量、训练闭环和显存分析，再看解码策略会更容易。
+- [11. PyTorch Optimizers and Loss | PyTorch 优化器与损失函数](../00_PyTorch_Fundamentals/11_PyTorch_Optimizers_and_Loss.md)
+- [12. PyTorch Minimal Training Interface | PyTorch 最小训练接口](../00_PyTorch_Fundamentals/12_PyTorch_Minimal_Training_Interface.md)
+- [13. Simple Neural Network Training | 简单神经网络训练循环](../00_PyTorch_Fundamentals/13_Simple_Neural_Network_Training.md)
 
 ## 相关阅读
 
-**导语：** 解码策略之后，建议继续看 KV Cache 的工程实现。
-- [22. vLLM PagedAttention | vLLM 分页注意力](./22_vLLM_PagedAttention.md)
-- [23. Speculative Decoding | 投机解码](./23_Speculative_Decoding.md)
+**导语：** 解码策略之后，可以继续看 KV Cache、显存增长和 FlashAttention。
+- [11. KV Cache and Memory Growth | KV Cache 与显存增长](../01_Hardware_Math_and_Systems/11_KV_Cache_and_Memory_Growth.md)
+- [13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
+- [14. FlashAttention Memory Model | FlashAttention 显存模型](../01_Hardware_Math_and_Systems/14_FlashAttention_Memory_Model.md)
 
 ### Step 1: 核心思想与痛点
 
@@ -38,12 +40,17 @@
 > 2. **Top-K 截断**：只保留得分最高的 $K$ 个词的概率，把排名第 $K+1$ 之后的词全部强制剔除（概率置为 $-\infty$）。
 > 3. **Top-p (Nucleus) 核采样**：动态截断。按概率从大到小排序，当累加的概率刚好超过阈值 $p$ 时，截断后面的词。它可以根据分布的平缓程度，自动决定截断的数量。
 
+
+这三种策略本质上都是在修改 logits 的分布形状，下一步看它们如何串成完整的解码流水线。
+
 ### Step 2: 代码实现框架
 在自回归解码中，我们获取最后一个 Token 的概率分布后：
 - **Temperature**: 将 Logits 除以 $T$。
 - **Top-K**: 用 `torch.topk` 找出前 K 个最大的概率，将其他的 Logits 置为 $-\infty$。
 - **Top-P (Nucleus)**: 对 Logits 降序排列并计算累积概率，将累积概率超过 $P$ 的位置对应的 Logits 屏蔽掉。
 最后使用 `torch.multinomial` 依概率进行采样。
+
+这一步的顺序就是先 Temperature，再 Top-K / Top-p，最后 Softmax 重归一化并用 Multinomial 采样。
 
 ###  Step 3: 核心机制：Softmax 截断与重整化
 
@@ -53,6 +60,8 @@
 2. 找出那些**累加和超过 0.85 的位置**（即 `[False, False, True, True, True]`）
 3. 把这些位置对应的原始 Logits 强制设为 `-inf`
 4. 对剩下的有效 Logits 重新执行一次 `Softmax` 进行概率归一化。
+
+最后记住：前面三步修改的是 logits 的筛选范围，最后的 Softmax 和采样才决定真正输出哪个 token。
 
 ###  Step 4: 动手实战
 
@@ -71,29 +80,25 @@ def apply_temperature(logits: torch.Tensor, temperature: float) -> torch.Tensor:
     应用温度调节。注意：通常 T=1.0 意味着不改变，T 越接近 0 越确定（Greedy）。
     """
     # ==========================================
-    # TODO 1: 确保 temperature 至少大于一个极小值(如 1e-6) 防止除零
-    # 然后让 logits 统一除以 temperature
+    # TODO 1: 温度下限与缩放
     # ==========================================
-    # temp = max(temperature, 1e-6)
-    # return ???
-    pass
+    # temp = ???
+    return logits / temp
 
 def apply_top_k(logits: torch.Tensor, top_k: int) -> torch.Tensor:
     """
     Top-K 截断。只保留值最大的 top_k 个，其余置为 -inf。
     """
-    # 如果 top_k 是 0 或超过词表大小，不处理
     if top_k <= 0 or top_k >= logits.size(-1):
         return logits
         
     # ==========================================
-    # TODO 2: 实现 Top-K 截断
+    # TODO 2: Top-K 截断
     # ==========================================
-    # filter_value = float('-inf')
-    
-    # logits[logits < kth_values] = ???
-    # return logits
-    pass
+    # filter_value = ???
+    # kth_values = ???
+    # logits = ???
+    return logits
 
 def apply_top_p(logits: torch.Tensor, top_p: float) -> torch.Tensor:
     """
@@ -110,28 +115,12 @@ def apply_top_p(logits: torch.Tensor, top_p: float) -> torch.Tensor:
     cumulative_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
     
     # ==========================================
-    # TODO 3: 实现 Top-P 核心逻辑
-    # 1. 找出 cumulative_probs > top_p 的所有位置。这就是我们需要剔除(丢弃)的 token
-    # 2. 我们想保留第一个累加概率 > p 的词，所以需要把这个掩码向右平移一位
-    # 3. 将这些被剔除位置对应的 sorted_logits 设为 -inf
-    # 4. 把剔除后的 sorted_logits 按照 sorted_indices 散布 (scatter) 回原来的形状里
+    # TODO 3: Top-p 核心逻辑
     # ==========================================
-    
-    # 找到需要丢弃的掩码
-    # sorted_indices_to_remove = cumulative_probs > top_p
-    
-    # 向右平移掩码以保留最后一个刚好超过阈值的 token
-    # sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
-    # sorted_indices_to_remove[..., 0] = 0  # 确保无论如何最高概率的 token 不被丢弃
-    
-    # 将需要剔除的 sorted_logits 设为极小值
-    # sorted_logits[sorted_indices_to_remove] = float('-inf')
-    
-    #     dim=-1, index=sorted_indices, src=sorted_logits
-    # )
-    
-    # return restored_logits
-    pass
+    # sorted_indices_to_remove = ???
+    # sorted_logits[sorted_indices_to_remove] = ???
+    # restored_logits = ???
+    return restored_logits
 
 def decode_next_token(logits: torch.Tensor, temperature=0.7, top_k=50, top_p=0.9):
     """
@@ -200,12 +189,24 @@ def test_decoding():
         
     except NotImplementedError:
         print("请先完成 TODO 部分的代码！")
-    except AssertionError as e:
-        print(f"❌ 测试失败: {e}")
-    except TypeError as e:
-        print("代码可能未完成，导致了操作错误。")
+        raise
+    except (AttributeError, NameError, TypeError, ValueError, AssertionError, RuntimeError) as e:
+        if isinstance(e, AttributeError):
+            print("代码未完成，无法找到必要的属性")
+        elif isinstance(e, NameError):
+            print("代码可能未完成，导致了变量未定义")
+        elif isinstance(e, TypeError):
+            print("代码可能未完成，导致了操作错误")
+        elif isinstance(e, ValueError):
+            print("代码可能未完成，导致了张量维度错误")
+        elif isinstance(e, RuntimeError):
+            print("代码可能未完成，导致了运行时错误")
+        else:
+            print("代码可能未完成，导致了断言失败")
+        raise NotImplementedError("请先完成 TODO 部分的代码！") from e
     except Exception as e:
-        print(f"❌ 发生未知异常: {e}")
+        print(f"❌ 测试失败: {e}")
+        raise
 
 test_decoding()
 
