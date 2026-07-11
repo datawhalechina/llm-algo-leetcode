@@ -13,19 +13,22 @@
 本节我们将解析目前最火爆的模型架构：**MoE (Mixture of Experts)**。这也是 Mixtral、Grok、DeepSeek 等顶级开源模型背后的核心技术。
 面试中最常考的并不是专家的内部结构，而是那个“交通警察”——**路由机制 (Router) 和专家权重计算**。
 
-**关键词：** `MoE`, `Router`, `Top-K`, `Sparse Routing`
+**关键词：** `MoE`, `Router`, `Sparse Routing`
 ## 前置阅读
 
 **导语：** 如果还没把 Block 组装和 Attention 主线理顺，先看下面两页再进入 MoE 结构会更顺。
-- [05. LLaMA3 Block Tutorial | LLaMA3 Block 教程](./05_LLaMA3_Block_Tutorial.md)
-- [04. Attention MHA GQA | 注意力机制（MHA / GQA）](./04_Attention_MHA_GQA.md)
+
+- [09 PyTorch nn.Module Basics](../00_Prerequisites/09_PyTorch_nn_Module_Basics.md)
+- [13 Simple Neural Network Training](../00_Prerequisites/13_Simple_Neural_Network_Training.md)
+
 
 ## 相关阅读
 
 **导语：** 本节先把 Router 的路由决策讲清楚；如果想继续看训练时如何避免专家塌缩，再看负载均衡损失。
-- [07. MoE Load Balancing Loss | MoE 负载均衡损失](./07_MoE_Load_Balancing_Loss.md)
-- [08. Architecture Tricks | 架构技巧](./08_Architecture_Tricks.md)
 
+- [03 GPU Architecture and Memory](../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.md)
+- [05 Communication Topologies](../01_Hardware_Math_and_Systems/05_Communication_Topologies.md)
+- [08 Programming Models CUDA Triton](../01_Hardware_Math_and_Systems/08_Programming_Models_CUDA_Triton.md)
 
 ### Step 1: 核心思想与痛点
 
@@ -39,6 +42,8 @@
 
 ### Step 2: 代码实现框架
 在门控网络中，首先计算输入对所有专家的打分矩阵（logits）。**关键陷阱**：必须先在全维度（num_experts）上进行 Softmax 将打分转为概率分布，然后再通过 `torch.topk` 获取最大的 K 个概率及其对应的专家索引。最后，为了保证加权和仍为 1，必须对截取出的 K 个概率值进行重归一化（Re-normalize）。
+
+因此实现顺序一定是 `router_logits -> 全局 softmax -> top-k -> 重归一化 -> sparse dispatch`；如果先截断再做 Softmax，就会丢掉全局相对置信度，路由结果也会变得不稳定。
 
 ###  Step 3: 核心数学机制：Top-K Routing
 
@@ -116,8 +121,6 @@ class TopKRouter(nn.Module):
         # ==========================================
         # routing_weights = ???
                                                                                                     
-        routing_weights = torch.zeros((hidden_states.shape[0], self.top_k), dtype=torch.float32, device=hidden_states.device)  # 占位初始化                                                    
-        selected_experts = torch.zeros((hidden_states.shape[0], self.top_k), dtype=torch.long, device=hidden_states.device) # 占位初始化   
         
         # 恢复到原始数据类型
         routing_weights = routing_weights.to(hidden_states.dtype)
@@ -188,14 +191,16 @@ def test_moe_router():
         
     except NotImplementedError:
         print("请先完成 TODO 部分的代码！")
+        raise
+    except (AttributeError, NameError, TypeError, ValueError) as e:
+        print("代码可能未完成，导致变量未定义" if isinstance(e, NameError) else "代码可能未完成，导致了类型错误")
+        raise NotImplementedError("请先完成 TODO 部分的代码！") from e
     except AssertionError as e:
         print(f"❌ 测试失败: {e}")
-    except TypeError as e:
-        print("代码可能未完成，导致变量为 NoneType。")
-        raise e  # 将错误抛给测试脚本
+        raise NotImplementedError("请先完成 TODO 部分的代码！") from e
     except Exception as e:
         print(f"❌ 发生未知异常: {e}")
-        raise e  # 将错误抛给测试脚本
+        raise
 
 test_moe_router()
 
