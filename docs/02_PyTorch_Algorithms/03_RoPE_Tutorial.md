@@ -1,6 +1,6 @@
 # 03. RoPE Tutorial | 旋转位置编码教程
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `基础架构`, `PyTorch` | **目标人群：** 模型微调与工程部署
+**难度：** Medium | **环境：** CPU-first | **标签：** `基础架构`, `位置编码`, `PyTorch` | **目标人群：** 模型微调与工程部署
 
 > 🚀 **云端运行环境**
 >
@@ -12,20 +12,21 @@
 
 本节我们将解析大模型当前最主流的位置编码方式：**RoPE (Rotary Position Embedding)**，并亲手用复数形式（Complex Tensor）实现它。这是 LLaMA, Qwen, DeepSeek 的标配！
 
-**关键词：** `RoPE`, `positional encoding`, `rotation`, `complex tensor`
+**关键词：** `RoPE`, `positional encoding`, `complex tensor`
 ## 前置阅读
 
-**导语：** 如果还没把 RMSNorm、SwiGLU 和基础张量变换理顺，先看下面两页再进入 RoPE 会更顺。
-- [01. RMSNorm Tutorial | RMSNorm 教程](./01_RMSNorm_Tutorial.md)
-- [02. SwiGLU Activation | SwiGLU 激活](./02_SwiGLU_Activation.md)
+**导语：** 如果还没把张量变换、自动求导和注意力直觉理顺，先看下面几页再进入 RoPE 会更顺。
+
+- [05. PyTorch Tensor Fundamentals | PyTorch 张量基础操作](../00_Prerequisites/05_PyTorch_Tensor_Fundamentals.md)
+- [07. PyTorch Autograd and Backward | PyTorch 自动求导与反向传播](../00_Prerequisites/07_PyTorch_Autograd_and_Backward.md)
+- [16. Attention Mechanism Intro | 注意力机制导论](../00_Prerequisites/16_Attention_Mechanism_Intro.md)
 
 ## 相关阅读
 
-**导语：** 本节先把 RoPE 的旋转位置编码数学推导讲清楚；如果想看它和 Attention 融合后在实现层怎么落地，再看后面的 Attention 与 Triton 页。
-- [04. Attention MHA GQA | 注意力机制（MHA / GQA）](./04_Attention_MHA_GQA.md)
-- [19. Operator Fusion Introduction | 算子融合导论](../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md)
-- [07. Triton Fused RoPE | 融合旋转位置编码](../03_Triton_Kernels/07_Triton_Fused_RoPE.md)
+**导语：** 本节先把 RoPE 的旋转位置编码数学推导讲清楚；如果想看它和 Attention 融合后在实现层怎么落地，再看硬件直觉和算子融合页面。
 
+- [03. GPU Architecture and Memory | GPU 物理架构与内存层级](../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.md)
+- [19. Operator Fusion Introduction | 算子融合导论](../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md)
 
 ### Step 1: 核心思想与痛点
 
@@ -37,6 +38,9 @@
 ### Step 2: 代码实现框架
 在 PyTorch 中，最高效的 RoPE 实现方式之一是利用复数乘法。我们将最后一维切分为两半并组合成复数形式，再乘以预先计算好的复数旋转矩阵 $e^{im\theta}$。完成旋转后，再使用 `torch.view_as_real` 恢复为实数表示。
 
+
+因此实现时的主线其实很固定：先算出 `freqs_cis`，再把它和 `xq / xk` 做广播对齐，最后完成复数旋转并回到原始实数形状。这样学习者在写 `TODO 1/2/3` 时，就能清楚知道每一步是在接哪一段链路。
+
 ###  Step 3: 核心公式与张量维度
 
 1. **预计算旋转角 (Precompute Frequencies):**
@@ -46,6 +50,8 @@
 2. **应用旋转 (Apply Rotary Embedding):**
    将输入的 Query 或 Key 视为复数：`x = x_real + i * x_imag`
    利用复数乘法直接完成旋转矩阵的运算：$x_{rotated} = x \times e^{i m \Theta}$
+
+**实现提示：** `reshape_for_broadcast` 的作用是把 `freqs_cis` 调整成和 `xq_ / xk_` 可广播对齐的形状。先对齐维度，再做复数乘法，旋转位置编码才会同时作用到 batch 和 head 维度。
 
 ###  Step 4: 动手实战
 
@@ -65,15 +71,13 @@ def precompute_freqs_cis(dim: int, end: int, theta: float = 10000.0):
     """
     # ==========================================
     # TODO 1: 用极坐标生成复数张量 (提示: torch.polar)
-    # ==========================================
     # freqs = ???
     # t = ???
     # freqs_cis = ???
-                 
-    freqs_cis = torch.ones((end, dim // 2), dtype=torch.complex64)  # 占位初始化（错误实现，供测试框架捕获）                                                                                                             
-    return freqs_cis   
-    
+    # ==========================================
+    return freqs_cis
 
+# 将频率张量扩展到可广播形状，供 Step 3 的复数乘法使用
 def reshape_for_broadcast(freqs_cis: torch.Tensor, x: torch.Tensor):
     ndim = x.ndim
     shape = [d if i == 1 or i == ndim - 1 else 1 for i, d in enumerate(x.shape)]
@@ -89,26 +93,18 @@ def apply_rotary_emb(
     """
     # ==========================================
     # TODO 2: 将 xq, xk 从实数张量转为复数张量
-    # 提示: 
-    # ==========================================
+    # 提示: 先把最后一维拆成两个一组，再转成复数
     # xq_ = ???
     # xk_ = ???
-                                                                                                                                                                     
-    xq_ = torch.view_as_complex(torch.zeros(*xq.shape[:-1], xq.shape[-1] // 2, 2, dtype=xq.dtype, device=xq.device)) # 占位初始化     
-    xk_ = torch.view_as_complex(torch.zeros(*xk.shape[:-1], xk.shape[-1] // 2, 2, dtype=xk.dtype, device=xk.device)) # 占位初始化        
-    
-    
+    # ==========================================
+    return xq_, xk_
+
     # ==========================================
     # TODO 3: 进行复数乘法，并转回实数张量
-    # 提示: 
-    # ==========================================
     # xq_out = ???
     # xk_out = ???
-
-    xq_out = torch.zeros_like(xq)  # 占位初始化                                                                                                                                                               
-    xk_out = torch.zeros_like(xk)  # 占位初始化                                                                                                                                                               
-                 
-    return xq_out.type_as(xq), xk_out.type_as(xk)      
+    # ==========================================
+    return xq_out, xk_out
 
 ```
 
@@ -179,14 +175,16 @@ def test_rope():
 
     except NotImplementedError:
         print("\n❌ 测试失败: 请先完成 TODO 部分的代码！")
-    except TypeError as e:
+        raise
+    except (AttributeError, NameError, TypeError) as e:
         print(f"\n❌ 测试失败: 代码可能未完成")
+        raise NotImplementedError("请先完成 TODO 部分的代码！") from e
     except AssertionError as e:
         print(f"\n❌ 测试失败: {e}")
-        raise e  # 将错误抛给测试脚本
+        raise
     except Exception as e:
         print(f"\n❌ 发生未知异常: {type(e).__name__}: {e}")
-        raise e  # 将错误抛给测试脚本
+        raise
 
 test_rope()
 
