@@ -9,21 +9,25 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/19_Activation_Checkpointing_and_Activation_Offload.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-**标签：** `显存优化`, `Checkpointing`, `Offload` | **目标人群：** 模型微调与工程部署
+**标签：** `激活显存优化`, `Checkpointing`, `Offload` | **目标人群：** 模型微调与工程部署
 
-**关键词：** `checkpoint`, `offload`, `activation`, `memory`
+**关键词：** `checkpointing`, `offload`, `recompute`
 
 ## 前置阅读
 
-**导语：** 先把 Autograd 和反向推导补齐，再看 checkpointing / offload 才能理解它为什么能省显存。
-- [17. Autograd Basics | Autograd 基础](./17_Autograd_Basics.md)
-- [18. Activation and Loss Backward | 激活与损失反向](./18_Activation_and_Loss_Backward.md)
+**导语：** 先把训练闭环和性能分析基础补齐，再看 checkpointing / offload 才能理解它为什么能省显存。
+
+- [13. Simple Neural Network Training | 简单神经网络训练循环](../00_Prerequisites/13_Simple_Neural_Network_Training.md)
+- [20. Profiling and Memory Ledger | 性能分析与显存账本](../00_Prerequisites/20_Profiling_and_Memory_Ledger.md)
+
 
 ## 相关阅读
 
-**导语：** 看完显存优化后，可以继续进入推理优化主线。
-- [20. FlashAttention Sim | FlashAttention 模拟](./20_FlashAttention_Sim.md)
-- [21. Decoding Strategies | 解码策略](./21_Decoding_Strategies.md)
+**导语：** 看完显存优化后，可以继续进入性能分析和推理优化主线。
+
+- [13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
+- [18. Activation Checkpointing and Activation Offload | 激活检查点与激活卸载](../01_Hardware_Math_and_Systems/18_Activation_Checkpointing_and_Activation_Offload.md)
+- [20. FlashAttention Sim | FlashAttention 模拟](../02_PyTorch_Algorithms/20_FlashAttention_Sim.md)
 
 ### Step 1: 核心思想与痛点
 
@@ -40,10 +44,18 @@
 
 ### Step 3: 代码实现框架
 在 PyTorch 中，这可以通过调用 `torch.utils.checkpoint.checkpoint` 轻松实现。你只需要将需要重计算的前向传播函数包装进去即可。底层的 Autograd 会自动替你管理何时释放、何时重新计算激活图。
+这里的实现单位是 Transformer Block 级别的 checkpoint，而不是子层级别的 checkpoint。
 
 ###  Step 4: 动手实战
 
 **要求**：请补全下方 `run_with_checkpointing` 函数。使用原生 PyTorch 提供的 `torch.utils.checkpoint` 模块，包裹我们传入的一系列神经网络层（如 Transformer Blocks）。
+
+### 工程要点
+
+- `Gradient Checkpointing` 的本质是 **时间换空间**：不保留所有中间激活，而是在反向时重算一小段前向。
+- 这和 `Activation Offload` 的思路不同：checkpointing 更偏向“重算”，offload 更偏向“搬运到别的存储层”。
+- 在更深的模型、更长的序列里，激活值占比会更高，因此 checkpointing 的收益通常更明显。
+- 本节的实现只需要把 `checkpoint(...)` 包裹到每个 block 上，所以题目区只保留一个核心 TODO 即可。
 
 
 ```python
@@ -83,11 +95,11 @@ def run_with_checkpointing(blocks: nn.ModuleList, x: torch.Tensor):
     """
     for block in blocks:
         # ==========================================
-        # 提示: checkpoint(被调用的模块, 输入参数, use_reentrant=False)
-        # 注意: 现代 PyTorch 推荐使用 use_reentrant=False 避免很多底层的坑
+        # TODO: 使用 checkpoint 包裹前向传播
+        # 提示: 关注 checkpoint 的函数签名与 use_reentrant 参数
         # ==========================================
         # x = ???
-        raise NotImplementedError("请完成 TODO 部分的代码")
+        pass
     return x
 
 ```
@@ -150,9 +162,25 @@ def test_gradient_checkpointing():
             print(f"❌ 显存占用反而增加了。请检查实现是否正确。")
         
     except NotImplementedError:
-        print("请先完成 TODO 代码！")
+        print("请先完成 TODO 部分的代码！")
+        raise
+    except (AttributeError, NameError, TypeError, ValueError, AssertionError, RuntimeError) as e:
+        if isinstance(e, AttributeError):
+            print("代码未完成，无法找到必要的属性")
+        elif isinstance(e, NameError):
+            print("代码可能未完成，导致了变量未定义")
+        elif isinstance(e, TypeError):
+            print("代码可能未完成，导致了类型错误")
+        elif isinstance(e, ValueError):
+            print("代码可能未完成，导致了张量维度错误")
+        elif isinstance(e, AssertionError):
+            print(f"代码可能未完成，导致了断言失败: {e}")
+        else:
+            print("代码可能未完成，导致了运行时错误")
+        raise NotImplementedError("请先完成 TODO 部分的代码！") from e
     except Exception as e:
         print(f"❌ 测试失败: {e}\n提示: 本用例必须在拥有 NVIDIA GPU 的环境下运行。")
+        raise
 
 test_gradient_checkpointing()
 

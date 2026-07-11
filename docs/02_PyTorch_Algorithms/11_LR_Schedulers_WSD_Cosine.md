@@ -1,6 +1,6 @@
 # 11. LR Schedulers WSD Cosine | WSD 余弦学习率调度器
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `训练技巧`, `LR Schedule`, `WSD` | **目标人群：** 模型微调与工程部署
+**难度：** Medium | **环境：** CPU-first | **标签：** `训练技巧`, `学习率调度`, `WSD` | **目标人群：** 模型微调与工程部署
 
 > 🚀 **云端运行环境**
 >
@@ -10,18 +10,22 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-**关键词：** `warmup`, `stable`, `decay`, `scheduler`
+本节我们将实现一个支持 Warmup-Stable-Decay 的学习率调度器，把训练前期预热、中期稳定和后期退火这三段曲线串成一个完整的调度逻辑。
+
+**关键词：** `warmup`, `stable`, `decay`
 ## 前置阅读
 
-**导语：** 先看 SFT 和 LoRA 的训练主线，再理解为什么需要 WSD 调度器。
-- [09. SFT Training Loop | SFT 训练循环](./09_SFT_Training_Loop.md)
-- [10. LoRA Tutorial | LoRA 教程](./10_LoRA_Tutorial.md)
+**导语：** 先补齐 PyTorch 学习率调度和训练闭环所需的基础，再来看 WSD 退火策略。
+- [11. PyTorch Optimizers and Loss | 优化器与损失](../00_Prerequisites/11_PyTorch_Optimizers_and_Loss.md)
+- [12. PyTorch Minimal Training Interface | 最小训练接口](../00_Prerequisites/12_PyTorch_Minimal_Training_Interface.md)
+- [13. Simple Neural Network Training | 简单神经网络训练](../00_Prerequisites/13_Simple_Neural_Network_Training.md)
 
 ## 相关阅读
 
-**导语：** 学完学习率调度后，可以继续看梯度累积和端到端微调实验。
-- [12. Gradient Accumulation | 梯度累积](./12_Gradient_Accumulation.md)
-- [13. End-to-End Fine-Tuning Experiment | 端到端微调实验](./13_End_to_End_Fine_Tuning_Experiment.md)
+**导语：** WSD 的学习率曲线和训练稳定性，也可以结合性能分析与调度背景一起理解。
+- [13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
+- [17. CUDA Stream and Asynchrony | CUDA 流与异步](../01_Hardware_Math_and_Systems/17_CUDA_Stream_and_Asynchrony.md)
+- [19. Operator Fusion Introduction | 算子融合导论](../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md)
 ### Step 1: 核心机制剖析
 
 > **为什么一定要有 Warmup (预热)？**
@@ -39,7 +43,7 @@
 Warmup-Stable-Decay (WSD) 是现代预训练（如 LLaMA-3）的标配。它的三个阶段是：
 1. **Warmup**: 学习率从 0 线性增长到最大值 $\eta_{max}$。
 2. **Stable**: 保持最大值 $\eta_{max}$ 训练绝大部分 Token（占整体的 70%~90%）。
-3. **Decay**: 在最后阶段（如退火阶段）使用余弦退火或线性衰减，将学习率迅速降至 $\eta_{min}$。这极大地帮助了模型在最后阶段收敛。
+3. **Decay**: 在最后阶段（如退火阶段）使用余弦退火或线性衰减，将学习率迅速降至 $\eta_{min}$。这极大地帮助了模型在最后阶段收敛。后面的 `TODO 1-3` 就是在把这三段曲线翻译成代码分支。
 
 ### Step 3: 代码实现框架
 继承自 `torch.optim.lr_scheduler.LRScheduler`，你需要实现核心的 `get_lr()` 方法。在其中利用 `self.last_epoch` 判断当前步数处于哪一个阶段，然后根据上述的数学公式计算并返回此时的学习率数组。
@@ -83,7 +87,7 @@ class WSD_Scheduler(LRScheduler):
             # ==========================================
             if step < self.num_warmup_steps:
                 # current_lr = ???
-                current_lr = base_lr * 0.5  # 占位初始化
+                pass
             
             # ==========================================
             # TODO 2: Stable 阶段
@@ -91,7 +95,7 @@ class WSD_Scheduler(LRScheduler):
             # ==========================================
             elif step < (self.num_warmup_steps + self.num_stable_steps):
                 # current_lr = ???
-                current_lr = base_lr * 0.5  # 占位初始化
+                pass
                 
             # ==========================================
             # TODO 3: Cosine Decay 阶段
@@ -100,7 +104,7 @@ class WSD_Scheduler(LRScheduler):
             # ==========================================
             else:
                 # current_lr = ???
-                current_lr = base_lr * 0.5  # 占位初始化
+                pass
                 
             lrs.append(current_lr)
             
@@ -116,56 +120,63 @@ def test_and_plot_wsd():
         dummy_model = torch.nn.Linear(2, 2)
         max_lr = 3e-4
         optimizer = torch.optim.AdamW(dummy_model.parameters(), lr=max_lr)
-        
+
         # 2. 设定 WSD 的三个阶段步数
         warmup = 1000   # 10%
         stable = 7000   # 70%
         decay = 2000    # 20%
         total = warmup + stable + decay
-        
+
         # 3. 初始化我们实现的 Scheduler
         scheduler = WSD_Scheduler(
-            optimizer, 
-            num_warmup_steps=warmup, 
-            num_stable_steps=stable, 
-            num_decay_steps=decay, 
+            optimizer,
+            num_warmup_steps=warmup,
+            num_stable_steps=stable,
+            num_decay_steps=decay,
             min_lr_ratio=0.1
         )
-        
+
         # 4. 模拟训练过程，收集学习率
         lrs = []
         for _ in range(total):
             lrs.append(optimizer.param_groups[0]['lr'])
             optimizer.step()
             scheduler.step()
-            
+
         # 5. 断言关键点的正确性
         assert lrs[0] == 0.0, "第一步应该是 0 (或者极小值)"
         assert abs(lrs[warmup] - max_lr) < 1e-8, "Warmup 结束时应该是最大学习率"
         assert abs(lrs[warmup + stable - 1] - max_lr) < 1e-8, "Stable 阶段应该维持最大学习率"
         assert abs(lrs[-1] - (max_lr * 0.1)) < 1e-8, "Decay 结束时应该是最小学习率 (max_lr * 0.1)"
-        
+
         print("✅ 数学逻辑断言通过！")
-        
+
         # 6. 画出学习率曲线
         plt.figure(figsize=(10, 5))
         plt.plot(lrs, label="Learning Rate", color='blue', linewidth=2)
         plt.axvline(x=warmup, color='r', linestyle='--', alpha=0.5, label='End Warmup')
-        plt.axvline(x=warmup+stable, color='g', linestyle='--', alpha=0.5, label='Start Decay')
+        plt.axvline(x=warmup + stable, color='g', linestyle='--', alpha=0.5, label='Start Decay')
         plt.title("LLaMA-3 Style WSD (Warmup-Stable-Decay) Scheduler")
         plt.xlabel("Training Steps")
         plt.ylabel("Learning Rate")
         plt.grid(True, alpha=0.3)
         plt.legend()
-        plt.show()
-        
+        plt.close()
+
         print(" 你成功实现并可视化了目前最先进的大模型学习率调度器。现在你不怕被面试官问到 LLaMA-3 的退火策略了！")
-        
+
     except NotImplementedError:
         print("请先完成 TODO 代码！")
+        raise
+    except (AttributeError, NameError, TypeError, ValueError) as e:
+        print("代码可能未完成，导致变量未定义" if isinstance(e, NameError) else "代码可能未完成，导致了类型错误")
+        raise NotImplementedError("请先完成 TODO 代码！") from e
+    except AssertionError as e:
+        print(f"❌ 测试失败: {e}")
+        raise NotImplementedError("请先完成 TODO 代码！") from e
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        raise e  # 将错误抛给测试脚本
+        raise
 
 test_and_plot_wsd()
 ```

@@ -12,20 +12,24 @@
 
 先把优化器状态切分和通信代价看清，再看 ZeRO 的分层策略会更容易理解显存优化的本质。
 
-**关键词：** `ZeRO`, `Reduce-Scatter`, `All-Gather`, `optimizer state`
+**关键词：** `ZeRO`, `Reduce-Scatter`, `All-Gather`
 
 ## 前置阅读
 
 **导语：** 先看量化与推理优化，再进入 ZeRO 会更容易理解显存切分的意义。
-- [25. Quantization W8A16 | W8A16 量化](./25_Quantization_W8A16.md)
-- [19. Activation Checkpointing and Activation Offload | 激活检查点与激活卸载](./19_Activation_Checkpointing_and_Activation_Offload.md)
+
+- [11. PyTorch Optimizers and Loss | PyTorch 优化器与损失函数](../00_Prerequisites/11_PyTorch_Optimizers_and_Loss.md)
+- [13. Simple Neural Network Training | 简单神经网络训练循环](../00_Prerequisites/13_Simple_Neural_Network_Training.md)
+- [20. Profiling and Memory Ledger | 性能剖析与显存账本](../00_Prerequisites/20_Profiling_and_Memory_Ledger.md)
+
 
 ## 相关阅读
 
 **导语：** ZeRO 后，建议继续看 Pipeline 和 Tensor Parallelism。
-- [28. Pipeline Parallelism MicroBatch | Pipeline 并行微批次](./28_Pipeline_Parallelism_MicroBatch.md)
-- [29. Tensor Parallelism Sim | Tensor 并行模拟](./29_Tensor_Parallelism_Sim.md)
 
+- [05. Communication Topologies | 通信拓扑与分布式基石](../01_Hardware_Math_and_Systems/05_Communication_Topologies.md)
+- [17. CUDA Stream and Asynchrony | CUDA Stream 与异步执行](../01_Hardware_Math_and_Systems/17_CUDA_Stream_and_Asynchrony.md)
+- [26. Parallel Strategy Decision Framework | 并行策略决策框架](../01_Hardware_Math_and_Systems/26_Parallel_Strategy_Decision_Framework.md)
 
 ### Step 1: ZeRO-1 核心思想
 
@@ -39,10 +43,10 @@
 > 2. **切分：** 优化器状态被切分成 $N$ 份（假设有 $N$ 张卡），每张卡只负责维护 $\frac{1}{N}$ 的优化器状态，并只负责更新这 $\frac{1}{N}$ 的模型权重。
 > 3. **通信：** 反向传播结束后，不需要对所有梯度做 `All-Reduce`，而是做 `Reduce-Scatter`，让每张卡只拿到属于自己那 $\frac{1}{N}$ 权重的平均梯度。
 > 4. 每张卡更新自己负责的 $\frac{1}{N}$ 权重后，再通过 `All-Gather` 将更新后的片段广播给所有卡，拼合出完整的新权重。
-### Step 1: 代码实现框架
+### Step 2: 代码实现框架
 我们需要模拟一个分布式环境（可以简单用 Python 列表或字典代替不同的 GPU 节点）。在优化器初始化时，收集所有的模型参数，并将它们的 FP32 梯度和 Optimizer State（例如 Adam 的 Momentum 和 Variance）切分成 N 块，分别存放在对应的 GPU 上。在更新时，每张卡只负责计算自己那一小块的参数更新。
 
-###  Step 2: 动手实战
+###  Step 3: 动手实战
 
 **要求**：请补全下方 `ZeRO1_Optimizer_Sim`。我们将模拟在单机上用逻辑 Tensor 划分来代替真实的跨卡通信 (All-Gather / Reduce-Scatter)。
 
@@ -77,22 +81,20 @@ class ZeRO1_Optimizer_Sim:
         self.params = list(model_params)
         
         # ==========================================
-        # TODO 1: 模拟将参数切分给不同的 GPU 负责 (分配负责区域)
+        # TODO 1: 将参数切分给不同的 GPU 负责
         # 提示: GPU 0 负责前半部分参数，GPU 1 负责后半部分参数
-        # 构造一个 self.gpu_partitions 字典，结构为 {gpu_id: [参数列表]}
-        # ==========================================
         # half_idx = ???
         # self.gpu_partitions = ???
-        half_idx = 1  # 占位初始化（错误实现，供测试框架捕获）
-        self.gpu_partitions = {0: [], 1: []}  # 占位初始化（错误实现，供测试框架捕获）
-        
         # ==========================================
-        # TODO 2: 为每个 GPU 初始化局部状态 (节省显存的核心)
-        # 提示: 为每张卡只初始化属于它的参数的动量字典，这里初始为全 0
-        # 构造一个 self.optimizer_states 字典，结构为 {gpu_id: {id(p): tensor}}
+        pass
+
         # ==========================================
+        # TODO 2: 为每个 GPU 初始化局部状态
+        # 提示: 只为各自负责的参数保存动量，初始值全为 0
         # self.optimizer_states = ???
-        self.optimizer_states = {0: {}, 1: {}}  # 占位初始化（错误实现，供测试框架捕获）
+        # ==========================================
+        pass
+
         
     def step(self, gradients_from_all_gpus: dict):
         """
@@ -101,23 +103,18 @@ class ZeRO1_Optimizer_Sim:
         """
         # ==========================================
         # TODO 3: 模拟每张卡只更新自己负责的那部分权重
-        # 遍历每个 gpu_id，拿到它负责的 params 和 gradients
+        # 对于每个 gpu_id:
+        #   params = ???
+        #   grads = ???
+        #   states = ???
         # 对于每个参数：
-        #   1. 更新该参数对应的动量 
-        #   2. 使用动量更新该参数的值 
+        #   momentum = ???
+        #   states[id(p)] = ???
+        #   p.data = ???
         # ==========================================
         for gpu_id in range(self.num_gpus):
-            # YOUR CODE HERE
             pass
             
-        # ==========================================
-        # TODO 4: 模拟 All-Gather (同步)
-        # 实际中，每张卡更新完自己的那 1/N 权重后，需要把新权重广播给所有卡。
-        # 在我们的单机模拟中，因为修改的是 p.data 原位引用，相当于自动完成了 All-Gather。
-        # 你不需要写代码，只需理解这一步在真实多卡环境中的必要性。
-        # ==========================================
-        pass
-
     def zero_grad(self):
         for p in self.params:
             if p.grad is not None:
@@ -165,9 +162,24 @@ def test_zero1_sim():
         
     except NotImplementedError:
         print("请先完成 TODO 代码！")
+        raise
+    except (AttributeError, NameError, TypeError, ValueError, AssertionError, RuntimeError) as e:
+        if isinstance(e, AttributeError):
+            print("代码未完成，无法找到必要的属性")
+        elif isinstance(e, NameError):
+            print("代码可能未完成，导致了变量未定义")
+        elif isinstance(e, TypeError):
+            print("代码可能未完成，导致了类型错误")
+        elif isinstance(e, ValueError):
+            print("代码可能未完成，导致了张量维度错误")
+        elif isinstance(e, AssertionError):
+            print("代码可能未完成，导致了断言失败")
+        else:
+            print("代码可能未完成，导致了运行时错误")
+        raise NotImplementedError("请先完成 TODO 代码！") from e
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        raise e  # 将错误抛给测试脚本
+        raise
 
 test_zero1_sim()
 ```
@@ -232,7 +244,7 @@ class ZeRO1_Optimizer_Sim:
         # 将所有参数的引用收集起来
         self.params = list(model_params)
         
-        # TODO 1: 模拟将参数切分给不同的 GPU 负责
+        # TODO 1: 将参数切分给不同的 GPU 负责
         half_idx = len(self.params) // 2
         self.gpu_partitions = {
             0: self.params[:half_idx],
@@ -268,6 +280,7 @@ class ZeRO1_Optimizer_Sim:
         for p in self.params:
             if p.grad is not None:
                 p.grad.zero_()
+
 ```
 
 ### 解析
@@ -278,7 +291,7 @@ class ZeRO1_Optimizer_Sim:
 - **技术细节**：使用字典存储每个 GPU 负责的参数列表
 
 **2. TODO 2: 初始化局部优化器状态**
-- **实现方式**：`self.optimizer_states = {gpu_id: {id(p): torch.zeros_like(p.data) for p in self.gpu_partitions[gpu_id]}}`
+- **实现方式**：`self.optimizer_states = {0: {id(p): torch.zeros_like(p.data) for p in self.gpu_partitions[0]}, 1: {id(p): torch.zeros_like(p.data) for p in self.gpu_partitions[1]}}`
 - **关键点**：每个 GPU 只维护自己负责的参数的优化器状态（如动量、方差）
 - **技术细节**：使用参数的 `id()` 作为键，避免参数对象本身作为字典键的问题
 
@@ -288,6 +301,7 @@ class ZeRO1_Optimizer_Sim:
 - **技术细节**：`momentum = momentum + g`，`p.data = p.data - self.lr * momentum`
 
 **ZeRO 系列对比**
+
 | 方案 | 切分内容 | 显存占用 | 通信开销 | 适用场景 |
 |------|---------|---------|---------|---------|
 | **Data Parallel** | 无切分 | $16\Phi$ | All-Reduce | 小模型 |

@@ -11,27 +11,42 @@
 
 先把 PagedAttention 和生成路径看清，再理解草稿模型与验证模型如何协作。
 
-**关键词：** `speculative`, `draft model`, `verification`, `throughput`
+**关键词：** `speculative decoding`, `draft model`, `verification`
 
 
 ## 前置阅读
 
 **导语：** 先看 PagedAttention，再看投机解码会更容易理解草稿模型与验证模型的协作。
-- [22. vLLM PagedAttention | vLLM 分页注意力](./22_vLLM_PagedAttention.md)
-- [21. Decoding Strategies | 解码策略](./21_Decoding_Strategies.md)
+
+- [11. KV Cache and Memory Growth | KV Cache 与显存增长](../01_Hardware_Math_and_Systems/11_KV_Cache_and_Memory_Growth.md)
+- [14. FlashAttention Memory Model | FlashAttention 显存模型](../01_Hardware_Math_and_Systems/14_FlashAttention_Memory_Model.md)
+
 
 ## 相关阅读
 
 **导语：** 投机解码之后，可以继续看 RadixAttention 和量化。
-- [24. SGLang RadixAttention | SGLang RadixAttention](./24_SGLang_RadixAttention.md)
-- [25. Quantization W8A16 | W8A16 量化](./25_Quantization_W8A16.md)
 
-### 动手实战：核心的接受/拒绝逻辑
+- [13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
+- [17. CUDA Stream and Asynchrony | CUDA Stream 与异步执行](../01_Hardware_Math_and_Systems/17_CUDA_Stream_and_Asynchrony.md)
 
-面试中最常考的，就是如何对比草拟概率 $q(x)$ 和目标概率 $p(x)$ 来决定是否接受该 Token。
-**算法法则**：
-- 如果目标概率大于草拟概率 ($p \ge q$)，**100% 接受**。
-- 如果目标概率小于草拟概率 ($p < q$)，以 $p/q$ 的概率接受它（丢硬币）。
+### Step 1: 原理与公式
+
+投机解码（Speculative Decoding）的核心，不是“让小模型直接替代大模型”，而是让小模型先草拟一段 token，再用大模型逐个验证。这样做的关键问题是：**如何在不改变最终分布的前提下，尽量减少大模型的逐 token 推理次数**。
+
+> **接受概率公式**
+> 对于草拟 token $x$，小模型给出的概率记为 $q(x)$，大模型给出的概率记为 $p(x)$。
+> - 若 $p(x) \ge q(x)$，直接接受该 token。
+> - 若 $p(x) < q(x)$，则以 $\frac{p(x)}{q(x)}$ 的概率接受它。
+> 
+> 等价地，接受概率可以写成：
+> $$\alpha(x) = \min\left(1, \frac{p(x)}{q(x)}\right)$$
+
+**为什么这能做到“无损加速”？**
+因为在拒绝的情况下，系统会立刻停止后续草稿 token 的验证，并交还给大模型重新采样，因此最终输出的分布仍然和“只用大模型自回归生成”一致。
+
+### Step 2: 代码实现框架
+
+下面的代码只需要实现一个验证循环：逐个比较 `draft_probs` 和 `target_probs` 中对应 token 的概率，先按 $\alpha(x)$ 决定是否接受，再在拒绝时停止后续验证。这个过程本质上是“带终止条件的接受-拒绝采样”：前面 token 的接受与否，会直接决定后续草稿还能不能继续被验证。
 
 
 ```python
@@ -64,18 +79,18 @@ def speculative_verify(draft_probs, target_probs, draft_tokens):
         
         # ==========================================
         # TODO 1: 判断是否 100% 接受
-        # ==========================================
-        # if ???:
+        # 提示: p >= q 时直接接受
+        # if p >= q:
         #     accepted_tokens.append(token_id)
         # ==========================================
         # TODO 2: 以 p / q 的概率接受
-        # 如果拒绝，立即中止整个验证循环！因为一步错步步错。
-        # ==========================================
+        # 提示: 否则按 p/q 掷硬币，拒绝则停止验证
+        # r = ???
+        # if r < p / q:
+        #     accepted_tokens.append(token_id)
         # else:
-        #     if ???:
-        #         accepted_tokens.append(token_id)
-        #     else:
-        #         break
+        #     break
+        pass
     
     return accepted_tokens
 
@@ -131,11 +146,28 @@ def test_speculative_decoding():
         
     except NotImplementedError:
         print("请先完成 TODO 代码。")
+        raise
+    except (AttributeError, NameError, TypeError, ValueError, AssertionError, RuntimeError) as e:
+        if isinstance(e, AttributeError):
+            print("代码未完成，无法找到必要的属性")
+        elif isinstance(e, NameError):
+            print("代码可能未完成，导致了变量未定义")
+        elif isinstance(e, TypeError):
+            print("代码可能未完成，导致了操作错误")
+        elif isinstance(e, ValueError):
+            print("代码可能未完成，导致了张量维度错误")
+        elif isinstance(e, AssertionError):
+            print("代码可能未完成，导致了断言失败")
+        elif isinstance(e, RuntimeError):
+            print("代码可能未完成，导致了运行时错误")
+        else:
+            print("代码可能未完成，导致了断言失败")
+        raise NotImplementedError("请先完成 TODO 代码！") from e
     except Exception as e:
         print(f"❌ 测试失败: {e}")
+        raise
 
 test_speculative_decoding()
-
 
 ```
 
@@ -163,9 +195,11 @@ def speculative_verify(draft_probs, target_probs, draft_tokens):
         p = target_probs[i, token_id].item()
         q = draft_probs[i, token_id].item()
         
+        # TODO 1: 目标概率不小于草拟概率时，直接接受
         if p >= q:
             accepted_tokens.append(token_id)
         else:
+            # TODO 2: 按 p / q 的概率决定是否接受
             r = torch.rand(1).item()
             if r < p / q:
                 accepted_tokens.append(token_id)
@@ -180,4 +214,17 @@ def speculative_verify(draft_probs, target_probs, draft_tokens):
 
 ### 解析
 
-投机解码（Speculative Decoding）通过小模型草拟和大模型并行验证，将原本由于 Memory Bound 导致的计算等待时间转化为并发算力。验证时采用 $p/q$ 的接受概率，在数学上准确保证了即使经过了小模型的瞎猜，最终采样的 Token 分布依然和只用大模型自回归生成的分布严格一致，实现了“无损加速”。
+**1. TODO 1（目标概率不小于草拟概率时，直接接受）**
+- 对每个草拟 token，先读取大模型概率 $p(x)$ 和小模型概率 $q(x)$。
+- 当 $p(x) \ge q(x)$ 时，接受概率 $\alpha(x)$ 直接变成 1。
+- 这意味着目标模型已经认为这个 token 足够合理，不需要再额外掷硬币。
+
+**2. TODO 2（按 $p/q$ 的概率决定是否接受）**
+- 当 $p(x) < q(x)$ 时，接受概率退化为 $\alpha(x) = p(x)/q(x)$。
+- 这一步本质上是在校正小模型过于激进的草拟结果。
+- 如果硬币没过，就必须立刻停止当前草稿链路。
+
+**3. 进阶思考**
+- 草拟模型的目标不是“替代”大模型，而是“提速候选生成”。
+- 终止条件之所以重要，是因为后续草稿 token 都建立在前缀被接受的前提上。
+- 这也是为什么 Speculative Decoding 能在不改变输出分布的前提下减少大模型调用次数。

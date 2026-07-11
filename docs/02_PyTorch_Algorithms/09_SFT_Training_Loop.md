@@ -13,18 +13,22 @@
 在面试大模型算法工程师时，面试官极大概率会问：“在做 SFT（监督微调）时，你是怎么构造 `input_ids` 和 `labels` 的？”、“为什么要 `shift logits`？”
 本节我们将实现 SFT 训练中最容易写错的代码：**Prompt Masking**（忽略提问部分的 Loss）和 **交叉熵对齐**。
 
-**关键词：** `SFT`, `masking`, `shift logits`, `labels`
+**关键词：** `SFT`, `masking`, `shift logits`
 ## 前置阅读
 
-**导语：** 先把前面的模型结构和数据流看清，再读 SFT 的训练框架会更顺。
-- [08. Architecture Tricks | 架构技巧](./08_Architecture_Tricks.md)
-- [13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
+**导语：** 先把模型封装、训练循环和优化器基础看清，再读 SFT 的训练框架会更顺。
+
+- [09. PyTorch nn.Module Basics | PyTorch nn.Module 基础](../00_Prerequisites/09_PyTorch_nn_Module_Basics.md)
+- [11. PyTorch Optimizers and Loss | PyTorch 优化器与损失](../00_Prerequisites/11_PyTorch_Optimizers_and_Loss.md)
+- [13. Simple Neural Network Training | 简单神经网络训练循环](../00_Prerequisites/13_Simple_Neural_Network_Training.md)
 
 ## 相关阅读
 
-**导语：** 读完 SFT 后，建议继续看 LoRA 和 WSD 调度器。
-- [10. LoRA Tutorial | LoRA 教程](./10_LoRA_Tutorial.md)
-- [11. LR Schedulers WSD Cosine | WSD 调度器](./11_LR_Schedulers_WSD_Cosine.md)
+**导语：** 读完 SFT 后，建议继续看显存账本和性能剖析。
+
+- [17. PyTorch Profiling Basics | PyTorch 性能剖析基础](../00_Prerequisites/17_PyTorch_Profiling_Basics.md)
+- [18. Memory Profiling and Optimization | 显存剖析与优化](../00_Prerequisites/18_Memory_Profiling_and_Optimization.md)
+
 ### Step 1: 核心思想与痛点
 
 > **预训练 (Pre-training) vs 微调 (SFT)**
@@ -34,6 +38,8 @@
 > **如何解决？（Loss Masking）**
 > 在 PyTorch 的 `CrossEntropyLoss` 中，有一个神仙参数叫 `ignore_index`，默认值是 `-100`。我们只要把 `labels` 中属于 `Prompt` 和 `Padding` 的部分全部替换成 `-100`，这部分就不会产生任何梯度！
 
+后面的 `Step 2 / Step 3` 就围绕这条链路，把 logits 对齐、loss 计算和训练流程串起来。
+
 ### Step 2: Causal Masking 与 Shift Logits
 
 在自回归语言模型中，预测第 $t+1$ 个词完全依赖于前 $t$ 个词。因此，在计算 CrossEntropyLoss 时，模型的预测输出序列（Logits）需要向左偏移（Shift）一位，与真实的标签序列（Labels）对齐。此外，对于 SFT 提示词部分，通常需要设置 `ignore_index = -100` 以避免它们产生梯度传播。
@@ -41,6 +47,8 @@
 ### Step 3: 动手实战
 
 **要求**：请补全下方 `build_sft_data`（构造单条 SFT 数据）和 `compute_sft_loss`（计算损失）的 `TODO` 逻辑。
+
+这一步会把“数据构造 -> 标签 mask -> next-token 对齐”真正串成一个最小训练闭环。
 
 
 ```python
@@ -50,6 +58,7 @@ import torch.nn as nn
 
 
 ```python
+
 def build_sft_data(prompt_ids: list[int], response_ids: list[int], pad_id: int = 0, max_len: int = 16):
     """
     构造单条 SFT 训练数据
@@ -80,8 +89,6 @@ def build_sft_data(prompt_ids: list[int], response_ids: list[int], pad_id: int =
     # pad_len = ???
     # input_ids = ???
     # labels = ???
-    labels = input_ids.copy() # 占位初始化
-    
     return torch.tensor(input_ids, dtype=torch.long), torch.tensor(labels, dtype=torch.long)
 
 def compute_sft_loss(logits: torch.Tensor, labels: torch.Tensor):
@@ -105,7 +112,6 @@ def compute_sft_loss(logits: torch.Tensor, labels: torch.Tensor):
     # loss_fct = ???
     # loss = ???
     
-    loss = torch.tensor(100.0, device=logits.device) # 占位初始化
     return loss
 
 ```
@@ -149,15 +155,16 @@ def test_sft_pipeline():
         
     except NotImplementedError:
         print("请先完成 TODO 部分的代码！")
+        raise
+    except (AttributeError, NameError, TypeError, ValueError) as e:
+        print("代码可能未完成，导致变量未定义" if isinstance(e, NameError) else "代码可能未完成，导致了类型错误")
+        raise NotImplementedError("请先完成 TODO 部分的代码！") from e
     except AssertionError as e:
         print(f"❌ 测试失败: {e}")
-        raise e
-    except TypeError as e:
-        print("代码未完成导致返回 None 错误。")
-        raise e
+        raise NotImplementedError("请先完成 TODO 部分的代码！") from e
     except Exception as e:
         print(f"❌ 发生异常: {e}")
-        raise e
+        raise
 
 test_sft_pipeline()
 

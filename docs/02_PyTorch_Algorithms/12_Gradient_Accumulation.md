@@ -12,19 +12,20 @@
 
 在做大模型微调时，显存通常先被 batch size 吃满。梯度累积的核心思路是：把一个大 batch 拆成多个 micro-batch，分多次 backward，最后只 step 一次，从而在不增加峰值显存的前提下，模拟更大的有效 batch。
 
-**关键词：** `gradient accumulation`, `micro-batch`, `effective batch`, `memory`
-
+**关键词：** `gradient accumulation`, `micro-batch`, `effective batch`
 ## 前置阅读
 
-**导语：** 先看 SFT、LoRA 和学习率调度，再进入梯度累积会更容易理解它的用途。
-- [09. SFT Training Loop | SFT 训练循环](./09_SFT_Training_Loop.md)
-- [11. LR Schedulers WSD Cosine | WSD 调度器](./11_LR_Schedulers_WSD_Cosine.md)
+**导语：** 先把梯度累积需要的 PyTorch 训练接口和张量操作补齐，再来看小 batch 聚合更新。
+- [09. PyTorch nn.Module Basics | nn.Module 基础](../00_Prerequisites/09_PyTorch_nn_Module_Basics.md)
+- [11. PyTorch Optimizers and Loss | 优化器与损失](../00_Prerequisites/11_PyTorch_Optimizers_and_Loss.md)
+- [13. Simple Neural Network Training | 简单神经网络训练](../00_Prerequisites/13_Simple_Neural_Network_Training.md)
 
 ## 相关阅读
 
-**导语：** 梯度累积之后，最自然的收口就是端到端微调实验。
-- [13. End-to-End Fine-Tuning Experiment | 端到端微调实验](./13_End_to_End_Fine_Tuning_Experiment.md)
-- [14. RLHF PPO Memory | RLHF PPO 内存](./14_RLHF_PPO_Memory.md)
+**导语：** 梯度累积和训练性能、显存占用关系紧密，可结合硬件和 profiling 一起看。
+- [06. VRAM Calculation and ZeRO | 显存估算与 ZeRO](../01_Hardware_Math_and_Systems/06_VRAM_Calculation_and_ZeRO.md)
+- [13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
+- [20. NCCL and AllReduce Basics | NCCL 与 AllReduce 基础](../01_Hardware_Math_and_Systems/20_NCCL_and_AllReduce_Basics.md)
 ### Step 1: 为什么需要梯度累积
 
 > **大 batch 的好处**：梯度更稳定，更新方向更平滑。
@@ -45,6 +46,7 @@ $$
 工程上最关键的细节只有两个：
 1. 每次 `backward()` 前把 loss 除以 `accum_steps`。
 2. 只在最后一个 micro-batch 后执行 `optimizer.step()` 和 `optimizer.zero_grad()`。
+这也是为什么 `train_step_with_accumulation` 的实现要先缩放再反传。
 
 ### Step 3: 代码实现框架
 
@@ -102,15 +104,28 @@ def train_step_with_accumulation(model, optimizer, x, y, accum_steps=4):
     micro_size = x.size(0) // accum_steps
     total_loss = 0.0
     for idx in range(accum_steps):
-        xb = x[idx * micro_size:(idx + 1) * micro_size]
-        yb = y[idx * micro_size:(idx + 1) * micro_size]
-        pred = model(xb)
-        loss = criterion(pred, yb) / accum_steps
-        loss.backward()
-        total_loss += loss.detach().item()
+        # ==========================================
+        # TODO 1: 切分当前 micro-batch
+        # 提示: 从 x / y 中按 idx 和 micro_size 取出对应片段
+        # ==========================================
+        # xb = ???
+        # yb = ???
 
-    optimizer.step()
-    optimizer.zero_grad()
+        pred = model(xb)
+
+        # ==========================================
+        # TODO 2: 处理当前 micro-batch 的 loss
+        # 提示: 先算出当前 micro-batch 的 loss，再完成后续的训练动作
+        # ==========================================
+        # loss = ???
+        loss.backward()
+        # total_loss = ???
+
+    # ==========================================
+    # TODO 3: 完成一次参数更新并返回结果
+    # 提示: 这一部分对应整轮 micro-batch 的收尾
+    # ==========================================
+    # 优化器操作
     return total_loss
 
 ```
@@ -143,12 +158,18 @@ def test_gradient_accumulation():
         print("✅ 测试通过！梯度累积与完整 batch 的参数更新一致。")
     except NotImplementedError:
         print("请先完成 TODO 部分。")
+        raise
+    except (AttributeError, NameError, TypeError, ValueError) as e:
+        print("代码可能未完成，导致变量未定义" if isinstance(e, NameError) else "代码可能未完成，导致了类型错误")
+        raise NotImplementedError("请先完成 TODO 部分。") from e
+    except AssertionError as e:
+        print(f"❌ 测试失败: {e}")
+        raise NotImplementedError("请先完成 TODO 部分。") from e
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        raise e
+        raise
 
 test_gradient_accumulation()
-
 ```
 
 ---
@@ -205,31 +226,45 @@ def train_step_with_accumulation(model, optimizer, x, y, accum_steps=4):
     micro_size = x.size(0) // accum_steps
     total_loss = 0.0
     for idx in range(accum_steps):
+        # TODO 1: 切分当前 micro-batch
         xb = x[idx * micro_size:(idx + 1) * micro_size]
         yb = y[idx * micro_size:(idx + 1) * micro_size]
+
         pred = model(xb)
+
+        # TODO 2: 缩放 loss 并反传
         loss = criterion(pred, yb) / accum_steps
         loss.backward()
         total_loss += loss.detach().item()
 
+    # TODO 3: 统一更新参数并返回累计 loss
     optimizer.step()
     optimizer.zero_grad()
     return total_loss
-
 ```
 
 ### 解析
 
-**1. 为什么要把 loss 除以 `accum_steps`**
+**1. TODO 1 (切分当前 micro-batch)**
 
-如果不缩放，累积出来的梯度会比完整 batch 的梯度大 `accum_steps` 倍，等价于悄悄提高了学习率。正确做法是让每个 micro-batch 的 loss 先按累积次数缩放，再执行反向传播。
+- **切分逻辑：** 梯度累积不是一次喂完整 batch，而是先把 `x / y` 按 `accum_steps` 拆成多个 micro-batch。
+- **训练目标：** 每一轮循环都只处理当前片段，这样才能模拟大 batch 的效果，同时把峰值显存压低。
+- **实现重点：** 这里要先确定当前 micro-batch 的切片范围，再把输入和标签切出来。
 
-**2. 为什么只在最后一步 `optimizer.step()`**
+**2. TODO 2 (缩放 loss 并反传)**
 
-梯度累积的本质就是“先攒梯度，再统一更新”。如果每个 micro-batch 都 step，一次大 batch 会被拆成多次小更新，训练行为就变了。
+- **梯度对齐：** 每个 micro-batch 的 loss 必须先除以 `accum_steps`，再执行 `backward()`。
+- **等价性：** 这样累积出来的总梯度才和完整 batch 的梯度一致，不会悄悄把更新幅度放大 `accum_steps` 倍。
+- **实现重点：** 这一层的核心是“先缩放，再反传，再累加”。
 
-**3. 什么时候最适合使用梯度累积**
+**3. TODO 3 (统一更新参数并返回累计 loss)**
 
-- 显存不足以支持目标 batch size。
-- 训练希望保持较大的有效 batch。
-- 多卡训练下，希望在不改模型结构的前提下提高吞吐和稳定性。
+- **先攒后更：** 所有 micro-batch 都完成 backward 之后，再统一执行一次 `optimizer.step()` 和 `optimizer.zero_grad()`。
+- **闭环意义：** 这样一次参数更新就等价于完整 batch 的更新，梯度累积的逻辑才真正闭环。
+- **结果记录：** 最后返回累计 `history` 或 `total_loss`，方便观察训练过程中 loss 是否下降。
+
+**4. 进阶思考：为什么要做重复样本验证？**
+
+- **一致性检查：** 通过重复样本验证，可以确认梯度累积是否真的等价于完整 batch。
+- **工程价值：** 只要这套链路对齐，后续再切换更复杂的数据和更大的 batch 也更稳。
+- **实践意义：** 这一步把 `SFT Loss`、`梯度累积`、`参数更新` 连接成一个可运行的小闭环。

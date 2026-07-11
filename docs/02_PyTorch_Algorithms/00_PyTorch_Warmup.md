@@ -1,6 +1,6 @@
 # 00. PyTorch Warmup | PyTorch 热身
 
-**难度：** Easy | **环境：** CPU-first | **标签：** `PyTorch`, `Foundation` | **目标人群：** 通用基础 (算法/Infra)
+**难度：** Easy | **环境：** CPU-first | **标签：** `PyTorch`, `基础入门`, `反向传播` | **目标人群：** 通用基础 (算法/Infra)
 
 > 🚀 **云端运行环境**
 >
@@ -13,20 +13,21 @@
 在深入大模型的浩瀚海洋（如 Attention、LoRA、MoE）之前，我们必须确保自己的“底层积木”是非常扎实的。
 本节作为**热身关卡**，将用三个非常经典的实战填空，带你快速找回 PyTorch 的核心肌肉记忆：张量维度变换 (Tensor Reshaping)、嵌入层查表 (Embedding Lookup) 以及链式法则的反向传播 (Backpropagation)。
 
-**关键词：** `Tensor`, `reshape`, `Embedding`, `backward`
-
+**关键词：** `reshape`, `Embedding`, `backpropagation`
 ## 前置阅读
 
-**导语：** 这一节先把后续章节要用到的基础张量、Autograd 和 Embedding 先补齐。
-- [Group 1B: Single-GPU Hardware and Memory Optimization | 1B: 单卡硬件与访存优化](../01_Hardware_Math_and_Systems/1B.md)
-- [Group 1D: Heterogeneous Scheduling and Operator Programming | 1D: 异构调度与算子编程](../01_Hardware_Math_and_Systems/1D.md)
+**导语：** 这一节先把后续章节要用到的基础张量、Autograd 和训练接口先补齐。
+
+- [05. PyTorch Tensor Fundamentals | PyTorch 张量基础操作](../00_Prerequisites/05_PyTorch_Tensor_Fundamentals.md)
+- [07. PyTorch Autograd and Backward | PyTorch 自动求导与反向传播](../00_Prerequisites/07_PyTorch_Autograd_and_Backward.md)
+- [09. PyTorch nn.Module Basics | PyTorch nn.Module 基础](../00_Prerequisites/09_PyTorch_nn_Module_Basics.md)
 
 ## 相关阅读
 
-**导语：** 本节先把 PyTorch 的热身算子讲清楚；如果想继续看 01-02 的基础算子页，再顺着读下面这些页。
-- [01. RMSNorm Tutorial | RMSNorm 教程](./01_RMSNorm_Tutorial.md)
-- [02. SwiGLU Activation | SwiGLU 激活](./02_SwiGLU_Activation.md)
+**导语：** 本节先把 PyTorch 的热身算子讲清楚；如果想继续看张量数据类型和 GPU 架构，再顺着读下面这些页。
 
+- [01. Data Types and Precision | 大模型的数据格式与混合精度](../01_Hardware_Math_and_Systems/01_Data_Types_and_Precision.md)
+- [03. GPU Architecture and Memory | GPU 物理架构与内存层级](../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.md)
 
 
 ```python
@@ -68,9 +69,8 @@ def tensor_warmup(x: torch.Tensor):
     # 提示: 使用括号表示要合并的维度
     # ==========================================
     # x_einops = ???
-    
-    # return x_native, x_einops
-    pass
+    return x_native, x_einops
+
 ```
 
 ### Part 2: 嵌入层 (Embedding Layer) 的本质
@@ -101,9 +101,7 @@ def embedding_warmup(input_ids: torch.Tensor, vocab_size: int, hidden_dim: int):
     # 提示: Embedding 的本质是查表，思考如何用索引从权重矩阵中提取向量
     # ==========================================
     # out_manual = ???
-    
-    # return out_official, out_manual
-    pass
+    return out_official, out_manual
 ```
 
 ### Part 3: 前向传播与反向传播 (Forward & Backward)
@@ -121,6 +119,9 @@ def embedding_warmup(input_ids: torch.Tensor, vocab_size: int, hidden_dim: int):
 > - 前向传播如何计算输出并保存中间结果
 > - 反向传播如何利用链式法则计算梯度
 > - 为什么需要在前向传播时保存某些张量（如 mask）
+> 
+> **闭环提示：** 先算 `Linear -> ReLU`，再保存 `mask`；反向时先过 `mask`，再把梯度回传到输入和参数。
+
 
 ```python
 class LinearReLUFunction(torch.autograd.Function):
@@ -142,8 +143,7 @@ class LinearReLUFunction(torch.autograd.Function):
         # y = ???
         # mask = ???
         # ctx.save_for_backward(???)
-        # return ???
-        pass
+        return y
 
     @staticmethod
     def backward(ctx, grad_output):
@@ -168,8 +168,8 @@ class LinearReLUFunction(torch.autograd.Function):
         # grad_weight = ???
         # grad_bias = ???
         
-        # return grad_x, grad_weight, grad_bias
-        pass
+        return grad_x, grad_weight, grad_bias
+
 ```
 
 
@@ -299,13 +299,22 @@ def test_warmup():
         
     except NotImplementedError:
         print("\n❌ 测试失败: 请先完成 TODO 部分的代码！")
-    except TypeError as e:
-        print(f"\n❌ 测试失败: 代码可能未完成，导致类型错误")
-        print(f"   错误信息: {e}")
+        raise
+    except (AttributeError, NameError, TypeError) as e:
+        if isinstance(e, AttributeError):
+            print("\n❌ 测试失败: 代码未完成，无法找到必要的属性")
+        elif isinstance(e, NameError):
+            print("\n❌ 测试失败: 代码可能未完成，导致了变量未定义")
+        else:
+            print("\n❌ 测试失败: 代码可能未完成，导致类型错误")
+            print(f"   错误信息: {e}")
+        raise NotImplementedError("请先完成 TODO 部分的代码！") from e
     except AssertionError as e:
         print(f"\n❌ 测试失败: {e}")
+        raise
     except Exception as e:
         print(f"\n❌ 发生未知异常: {type(e).__name__}: {e}")
+        raise
 
 test_warmup()
 ```

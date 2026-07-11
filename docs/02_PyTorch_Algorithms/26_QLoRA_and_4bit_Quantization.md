@@ -13,20 +13,21 @@
 QLoRA 是 2023-2024 年微调界最具重要的论文。它通过引入 **4-bit NormalFloat (NF4)** 数据类型和 **双重量化 (Double Quantization)**，让算法工程师在一张非常廉价的 24GB 显卡上微调高达 33B 的大语言模型成为了现实。
 本节我们将实现模拟 QLoRA 的训练过程：冻结低精度的基础权重，在计算前向/反向时动态反量化，只更新高精度的 LoRA 参数。
 
-**关键词：** `QLoRA`, `NF4`, `double quantization`, `LoRA`
+**关键词：** `QLoRA`, `NF4`, `LoRA`
 
-## 前置
+## 前置阅读
 
 **导语：** 这一节先把显存、量化和低秩适配的基础概念补齐，再看 QLoRA 会更顺。
-- [11. Memory Profiling and Optimization | 显存分析与优化](../00_Prerequisites/11_Memory_Profiling_and_Optimization.md)
+- [21. Quantization Theory and INT4/INT8 | 量化理论与 INT4/INT8](../01_Hardware_Math_and_Systems/21_Quantization_Theory_and_INT4_INT8.md)
 - [06. VRAM Calculation and ZeRO | 显存计算与 ZeRO 优化](../01_Hardware_Math_and_Systems/06_VRAM_Calculation_and_ZeRO.md)
-- [25. Quantization W8A16 | W8A16 量化](./25_Quantization_W8A16.md)
+- [12. TensorCore and Mixed Precision | Tensor Core 与混合精度](../01_Hardware_Math_and_Systems/12_TensorCore_and_Mixed_Precision.md)
 
 ## 相关阅读
 
 **导语：** 如果你想继续往 Triton 量化和多租户 LoRA 路由延伸，可以接着看这些页面。
-- [10. Triton Quantization | Triton 量化算子：W8A16 权重量化融合矩阵乘法 (Quantization GEMM)](../03_Triton_Kernels/10_Triton_Quantization.md)
-- [11. Triton Multi-LoRA | Triton 多租户路由与融合推理](../03_Triton_Kernels/11_Triton_Multi_LoRA.md)
+- [13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
+- [24. SRAM Optimization Techniques | SRAM 优化技术](../01_Hardware_Math_and_Systems/24_SRAM_Optimization_Techniques.md)
+- [19. Operator Fusion Introduction | 算子融合导论](../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md)
 
 ### Step 1: 核心机制
 
@@ -36,16 +37,17 @@ QLoRA 是 2023-2024 年微调界最具重要的论文。它通过引入 **4-bit 
 > 我们预先根据标准正态分布的面积，计算出 16 个分位点（Quantiles）。这 16 个值虽然在内存里用 4 个 bit 存储（代表索引 0 到 15），但它们对应的真实浮点数值是非常精确的、密度集中在 0 附近的浮点数。
 
 > **QLoRA 的训练流：**
-> 1. 基础权重 (Base Weights) 被非常压缩为 NF4 (冻结不更新)。
-> 2. 前向传播时，读取 NF4 的索引 -> 查表得到高精度 BF16 值 -> 和输入相乘。
-> 3. 旁边挂载的 LoRA 矩阵 A 和 B 是高精度的 BF16/FP32，并且 `requires_grad=True`。
-> 4. 反向传播时，梯度从输出流向 LoRA（更新参数），也流向基础权重（但不更新它，仅仅为了传递梯度）。
+> 1. 基础权重 (Base Weights) 被压缩为 NF4 并冻结，不参与更新。
+> 2. 前向传播时，先查表把 NF4 索引还原成高精度权重，再交给线性层计算。
+> 3. 旁边挂载的 LoRA 矩阵 A 和 B 保持高精度，并且 `requires_grad=True`。
+> 4. 反向传播时，梯度主要更新 LoRA；底座权重只负责提供稳定的量化存储。
+> **一句话总结：** QLoRA 不是把一切都量化，而是在冻结底座权重的同时保留可训练的 LoRA 旁路，用 NF4 查表把显存压下来，再用高精度适配器把微调能力保住。
 
 ### Step 2: 4-bit NormalFloat (NF4) 原理
-QLoRA 的核心在于 NF4 数据类型。由于神经网络的权重通常服从均值为 0 的正态分布，NF4 根据正态分布的累积概率函数，将信息密度高的地方划分更密集的量化区间。配合双重分块量化（Double Quantization），能够把底座模型的显存消耗压榨到极限的 4 bits 每参数。
+QLoRA 的核心在于 NF4 数据类型。由于神经网络的权重通常服从均值为 0 的正态分布，NF4 会按照正态分布的累积概率函数，把 16 个量化点更密地放在 0 附近、把更少的点放在尾部。这样它比均匀分布的 INT4 更贴近权重统计特性，也更适合作为冻结底座的存储格式。配合双重分块量化（Double Quantization），还能进一步压缩 scale 本身，把底座模型的显存消耗压榨到极限的 4 bits 每参数。
 
 ### Step 3: 代码实现框架
-本节我们将模拟一个 16 个元素的 NF4 查表（Lookup Table）。在实际的 QLoRA 层中，权重的类型是 `torch.uint8`，但在前向传播的那一刻，我们利用这个查表将它瞬间恢复为 FP16，然后用 FP16 与输入特征做矩阵乘法。这个过程虽然比原生的 FP16 慢，但却能在一张消费级显卡上微调几百亿参数的模型。
+本节我们将模拟一个 16 个元素的 NF4 查表（Lookup Table）。在实际的 QLoRA 层中，权重通常以低精度索引的形式存放，但在前向传播时会先通过查表把它恢复成高精度权重，再交给线性层完成计算。下面的代码会把这条链路拆成两步：先做 NF4 反量化，再把基础分支和 LoRA 旁路合在一起，这样就能把原理和实现一一对上。
 
 ###  Step 4: 动手实战
 
@@ -92,25 +94,17 @@ class QLoRALinearSim(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # ==========================================
-        # TODO 1: 基础权重反量化 (Dequantization)
-        # 1. 将 weight_nf4_indices 转换为长整型 (long)，以作为查表的索引
-        # 2. 从 nf4_table 中取出对应的浮点数值
-        # 3. 乘以 weight_scale 恢复范围
+        # TODO 1: 基础权重反量化（查表还原）
         # ==========================================
         # indices = ???
         # dequantized_base_weight = ???
-        indices = torch.zeros_like(self.weight_nf4_indices, dtype=torch.long)  # 占位初始化
-        dequantized_base_weight = torch.zeros_like(self.weight_nf4_indices, dtype=x.dtype)  # 占位初始化
-        
+
         # ==========================================
-        # TODO 2: 分别计算基础前向和 LoRA 旁路前向
+        # TODO 2: 计算基础分支和 LoRA 旁路分支
         # ==========================================
         # base_out = ???
         # lora_out = ???
-        # 占位初始化：使用错误的维度计算确保梯度流通但结果错误
-        base_out = F.linear(x, dequantized_base_weight)  # 占位初始化：使用全零权重，结果错误
-        lora_out = (x @ self.lora_A.T) @ self.lora_B.T * (self.scaling * 0.5)  # 占位初始化： 错误的scaling因子
-        
+
         return base_out + lora_out
 
 ```
@@ -121,56 +115,79 @@ class QLoRALinearSim(nn.Module):
 def test_qlora():
     try:
         torch.manual_seed(42)
-        batch, seq, in_dim, out_dim = 2, 8, 64, 128
-        x = torch.randn(batch, seq, in_dim, requires_grad=True)
-        
-        # 初始化 QLoRA 层
-        layer = QLoRALinearSim(in_features=in_dim, out_features=out_dim)
-        
-        # 1. 验证前向传播 (必须能跑通且形状对齐)
+
+        # 使用一个更小、可精确对照的配置，直接验证 NF4 查表 + LoRA 旁路的公式链路
+        batch, seq, in_dim, out_dim, r = 1, 2, 4, 3, 2
+        x = torch.tensor([[[0.1, -0.2, 0.3, -0.4], [0.5, 0.6, -0.7, 0.8]]], requires_grad=True)
+        layer = QLoRALinearSim(in_features=in_dim, out_features=out_dim, r=r, alpha=8.0)
+
+        with torch.no_grad():
+            layer.weight_nf4_indices.copy_(torch.tensor([
+                [0, 1, 2, 3],
+                [4, 5, 6, 7],
+                [8, 9, 10, 11],
+            ], dtype=torch.int8))
+            layer.weight_scale.copy_(torch.tensor(0.5))
+            layer.lora_A.copy_(torch.tensor([
+                [0.1, 0.2, 0.3, 0.4],
+                [0.5, 0.6, 0.7, 0.8],
+            ], dtype=layer.lora_A.dtype))
+            layer.lora_B.copy_(torch.tensor([
+                [0.9, -0.1],
+                [0.2, 0.3],
+                [-0.4, 0.7],
+            ], dtype=layer.lora_B.dtype))
+
         out = layer(x)
         assert out.shape == (batch, seq, out_dim), "输出形状不正确！"
-        
-        # 新增：验证 NF4 查表反量化的数值正确性
-        # 检查 dequantized_base_weight 是否正确使用了 NF4 查表
+
         indices_ref = layer.weight_nf4_indices.long()
         dequantized_ref = layer.nf4_table[indices_ref] * layer.weight_scale
-        
-        # 手动计算参考输出
         base_out_ref = F.linear(x, dequantized_ref)
         lora_out_ref = (x @ layer.lora_A.T) @ layer.lora_B.T * layer.scaling
         out_ref = base_out_ref + lora_out_ref
-        
-        # 验证输出是否与参考实现接近
-        assert torch.allclose(out, out_ref, atol=1e-5), f"输出数值不正确！查表反量化或 LoRA 计算有误。\n期望输出范围: [{out_ref.min():.4f}, {out_ref.max():.4f}]\n实际输出范围: [{out.min():.4f}, {out.max():.4f}]"
-        
+        assert torch.allclose(out, out_ref, atol=1e-5), "输出数值不正确！查表反量化或 LoRA 计算有误。"
+        assert not torch.allclose(out, base_out_ref, atol=1e-6), "LoRA 旁路应该参与输出，不能退化为纯基础分支！"
+
         # 2. 验证反向传播时的梯度断点机制 (QLoRA 的灵魂)
         out.sum().backward()
-        
-        # 检查输入 x 是否有梯度 (因为我们要微调底层，必须允许梯度回传)
         assert x.grad is not None, "输入 x 没有获得梯度！"
-        
-        # 检查 LoRA A 和 B 是否有梯度 (必须有)
         assert layer.lora_A.grad is not None, "LoRA_A 没有更新梯度！"
         assert layer.lora_B.grad is not None, "LoRA_B 没有更新梯度！"
-        
-        # 检查基础权重不能有梯度 (冻结状态)
         assert not layer.weight_nf4_indices.requires_grad, "基础权重的索引不应该有梯度！"
-        
+        assert layer.weight_nf4_indices.grad is None, "冻结的基础权重不应该产生梯度！"
+        assert layer.weight_scale.grad is None, "冻结的缩放因子不应该产生梯度！"
+
         print("✅ 查表反量化逻辑正确！")
         print("✅ 梯度流向正确：低精度冻结，高精度更新！")
         print("\n QLoRA 核心模拟测试准确通过！你已经掌握了如何在 24G 显卡上微调百亿大模型的密码。")
-        
+
     except NotImplementedError:
         print("请先完成 TODO 代码！")
-    except TypeError as e:
-        print("代码可能未完成，导致了操作错误。")
-        raise e 
+        raise
+    except (AttributeError, NameError, TypeError, ValueError, AssertionError, RuntimeError) as e:
+        if isinstance(e, AttributeError):
+            print("代码未完成，无法找到必要的属性")
+        elif isinstance(e, NameError):
+            print("代码可能未完成，导致了变量未定义")
+        elif isinstance(e, TypeError):
+            print("代码可能未完成，导致了操作错误")
+        elif isinstance(e, ValueError):
+            print("代码可能未完成，导致了张量维度错误")
+        elif isinstance(e, AssertionError):
+            print("代码可能未完成，导致了断言失败")
+        elif isinstance(e, RuntimeError):
+            print("代码可能未完成，导致了运行时错误")
+        else:
+            print("代码可能未完成，导致了断言失败")
+        raise NotImplementedError("请先完成 TODO 代码！") from e
     except Exception as e:
-        print(f"❌ 测试失败: {e}")
-        raise e
+        print(f"❌ 发生未知异常: {e}")
+        raise
+
 
 test_qlora()
+
 ```
 
 ---
@@ -215,7 +232,7 @@ class QLoRALinearSim(nn.Module):
         self.scaling = alpha / r
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # TODO 1: 基础权重反量化 (Dequantization)
+        # TODO 1: 基础权重反量化（查表还原）
         # 1. 将 weight_nf4_indices 转换为长整型 (long)，以作为查表的索引
         indices = self.weight_nf4_indices.long()
         
@@ -223,7 +240,7 @@ class QLoRALinearSim(nn.Module):
         # 3. 乘以 weight_scale 恢复范围
         dequantized_base_weight = self.nf4_table[indices] * self.weight_scale
         
-        # TODO 2: 分别计算基础前向和 LoRA 旁路前向
+        # TODO 2: 分别计算基础分支和 LoRA 旁路分支
         base_out = F.linear(x, dequantized_base_weight)
         lora_out = (x @ self.lora_A.T) @ self.lora_B.T * self.scaling
         

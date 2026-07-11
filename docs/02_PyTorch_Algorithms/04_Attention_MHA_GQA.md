@@ -1,6 +1,6 @@
 # 04. Attention MHA GQA | 多头注意力
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `基础架构`, `PyTorch`, `推理优化` | **目标人群：** 模型微调与工程部署
+**难度：** Medium | **环境：** CPU-first | **标签：** `基础架构`, `注意力机制`, `推理优化` | **目标人群：** 模型微调与工程部署
 
 > 🚀 **云端运行环境**
 >
@@ -12,20 +12,22 @@
 
 本节我们将深入解析大语言模型的核心组件：**注意力机制**，并实现支持 KV Cache 和 GQA (Grouped-Query Attention) 的代码。
 
-**关键词：** `Attention`, `MHA`, `GQA`, `KV Cache`
-
+**关键词：** `Attention`, `GQA`, `KV Cache`
 ## 前置阅读
 
-**导语：** 如果还没把 RoPE 和基本的序列建模概念补齐，先看下面两页，再进入多头注意力和 KV Cache 会更顺。
-- [03. RoPE Tutorial | RoPE 教程](./03_RoPE_Tutorial.md)
-- [Group 1D: Heterogeneous Scheduling and Operator Programming | 1D: 异构调度与算子编程](../01_Hardware_Math_and_Systems/1D.md)
+**导语：** 如果还没把 RoPE 和基础的注意力概念补齐，先看下面几页，再进入多头注意力和 KV Cache 会更顺。
+
+- [05. PyTorch Tensor Fundamentals | PyTorch 张量基础操作](../00_Prerequisites/05_PyTorch_Tensor_Fundamentals.md)
+- [07. PyTorch Autograd and Backward | PyTorch 自动求导与反向传播](../00_Prerequisites/07_PyTorch_Autograd_and_Backward.md)
+- [16. Attention Mechanism Intro | 注意力机制导论](../00_Prerequisites/16_Attention_Mechanism_Intro.md)
 
 ## 相关阅读
 
-**导语：** 本节先把多头注意力、GQA 和 KV Cache 的关系讲清楚；如果想继续看模型 block 和 MoE 结构，再接下面两页。
-- [05. LLaMA3 Block Tutorial | LLaMA3 Block 教程](./05_LLaMA3_Block_Tutorial.md)
-- [06. MoE Router | MoE 路由](./06_MoE_Router.md)
+**导语：** 本节先把多头注意力、GQA 和 KV Cache 的关系讲清楚；如果想继续看硬件与并行背景，再接下面几页。
 
+- [03. GPU Architecture and Memory | GPU 物理架构与内存层级](../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.md)
+- [05. Communication Topologies | 通信拓扑与分布式基石](../01_Hardware_Math_and_Systems/05_Communication_Topologies.md)
+- [13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
 
 ### Step 1: 核心思想与痛点
 
@@ -60,7 +62,12 @@ $$ \text{Attention}(Q, K, V) = \text{Softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right
 * **HuggingFace LLaMA**: `transformers/models/llama/modeling_llama.py` 中的 `LlamaAttention` 类。
 * **vLLM (推理框架)**: 核心关注它的 PagedAttention 实现，用来解决这里 KV Cache 的显存碎片化问题。
 
+
+因此，`TODO 1-4` 的实现顺序也可以直接按这条主线来读：先 reshape 出多头张量，再处理 KV Cache 与 `repeat_kv`，接着算 attention scores 和 softmax，最后恢复输出形状。这样题目区的每一步就都能对回完整链路。
+
 ### Step 4: 动手实战
+
+**实现提示：** `repeat_kv` 的作用是先保留更少的 KV 头，在注意力计算前再扩充到 Query 头数。这样可以理解 GQA 如何在保持效果的同时减少 KV 侧的开销。
 
 **要求**：请补全下方 `GroupedQueryAttention` 的 `forward` 函数中的 `TODO` 部分，实现：
 1. 张量的多头切分与 Reshape
@@ -115,14 +122,15 @@ class GroupedQueryAttention(nn.Module):
         
         # ==========================================
         # TODO 1: Reshape xq, xk, xv 以适配多头注意力计算
-        # ==========================================
+        # 提示: 先把最后一维映射成 [num_heads, head_dim] / [num_kv_heads, head_dim]，再把头维挪到前面
         # xq = ???
         # xk = ???
         # xv = ???
-        
-        
+        # ==========================================
+
         # ==========================================
         # TODO 2: 处理 KV Cache
+        # 提示: 如果有 cache，就把历史 KV 接到当前 KV 前面
         # ==========================================
         if kv_cache is not None:
             k_cache, v_cache = kv_cache
@@ -153,8 +161,7 @@ class GroupedQueryAttention(nn.Module):
         # ==========================================
         # output = ???
         
-        # return self.o_proj(output), new_kv_cache
-        pass
+        return self.o_proj(output), new_kv_cache
 
 ```
 
@@ -191,8 +198,20 @@ def test_mha_mqa_gqa():
         print("\n✅ All Tests Passed! Attention 算子实现通过测试。")
     except NotImplementedError:
         print("请先完成 TODO 部分的代码！")
+        raise
+    except (AttributeError, NameError, TypeError, ValueError) as e:
+        if isinstance(e, AttributeError):
+            print("代码未完成，无法找到必要的属性")
+        elif isinstance(e, NameError):
+            print("代码可能未完成，导致了变量未定义")
+        elif isinstance(e, TypeError):
+            print("代码可能未完成，导致了类型错误")
+        else:
+            print("代码可能未完成，导致了张量维度错误")
+        raise NotImplementedError("请先完成 TODO 部分的代码！") from e
     except Exception as e:
         print(f"\n❌ 测试失败，请检查张量维度: {e}")
+        raise
 
 test_mha_mqa_gqa()
 

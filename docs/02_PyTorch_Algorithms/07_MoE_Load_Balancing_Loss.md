@@ -1,6 +1,6 @@
 # 07. MoE Load Balancing Loss | MoE 负载均衡损失
 
-**难度：** Hard | **环境：** CPU-first | **标签：** `MoE`, `Loss Function`, `Mixtral` | **目标人群：** 核心 Infra 与算子开发
+**难度：** Hard | **环境：** CPU-first | **标签：** `MoE`, `损失函数`, `PyTorch` | **目标人群：** 核心 Infra 与算子开发
 
 > 🚀 **云端运行环境**
 >
@@ -14,19 +14,22 @@
 即门控网络“偷懒”，把所有的 Token 都发给了第 0 号和第 1 号专家，导致其他专家被饿死（闲置），不仅失去了 MoE 的意义，还会导致算力非常不均衡（OOM）。
 因此，面试官非常爱考：**如何用代码实现 MoE 的辅助损失函数 (Auxiliary Loss) 来强制负载均衡？**
 
-**关键词：** `MoE`, `Load Balancing`, `Auxiliary Loss`, `Router Collapse`
+**关键词：** `MoE`, `Load Balancing`, `Auxiliary Loss`
 ## 前置阅读
 
 **导语：** 先看 Router，再看负载均衡损失会更容易理解 MoE 为什么会塌缩。
-- [06. MoE Router | MoE 路由](./06_MoE_Router.md)
-- [05. LLaMA3 Block Tutorial | LLaMA3 Block 教程](./05_LLaMA3_Block_Tutorial.md)
+
+- [13 Simple Neural Network Training](../00_Prerequisites/13_Simple_Neural_Network_Training.md)
+- [20 Profiling and Memory Ledger](../00_Prerequisites/20_Profiling_and_Memory_Ledger.md)
+
 
 ## 相关阅读
 
 **导语：** 如果想继续看架构侧的技巧，可以顺着读 Qwen / Gemma 的变体。
-- [08. Architecture Tricks | 架构技巧](./08_Architecture_Tricks.md)
-- [09. SFT Training Loop | SFT 训练循环](./09_SFT_Training_Loop.md)
 
+- [05 Communication Topologies](../01_Hardware_Math_and_Systems/05_Communication_Topologies.md)
+- [06 VRAM Calculation and ZeRO](../01_Hardware_Math_and_Systems/06_VRAM_Calculation_and_ZeRO.md)
+- [13 Profiling and Bottleneck Analysis](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
 
 ### Step 1: 核心数学公式
 
@@ -65,6 +68,8 @@ $$
 
 **关键点**：本实现支持 Top-K 路由（$K \ge 1$），每个 Token 选择 `top_k` 个专家。统计 $f_i$ 时按总分配次数 `total_tokens * top_k` 归一化；统计 $P_i$ 时按 token 总数 `total_tokens` 归一化。
 
+这里可以把它理解成两个视角的乘积：$P_i$ 描述路由器“想把 token 分给谁”，$f_i$ 描述实际“分给了谁”；只有两者同时偏向同一批专家时，loss 才会明显上升，从而把路由从塌缩状态拉回均匀状态。
+
 ### Step 3: 动手实战
 
 **要求**：请补全下方 `compute_load_balancing_loss` 的逻辑。
@@ -83,6 +88,7 @@ import torch.nn.functional as F
 
 
 ```python
+
 def compute_load_balancing_loss(
     routing_weights: torch.Tensor, 
     selected_experts: torch.Tensor, 
@@ -123,8 +129,6 @@ def compute_load_balancing_loss(
     # ==========================================
     # aux_loss = ???
 
-    aux_loss = torch.tensor(0.0, device=routing_weights.device)
-                                                                                                                                                                                  
     return aux_loss
 
 ```
@@ -173,14 +177,16 @@ def test_aux_loss():
         
     except NotImplementedError:
         print("请先完成 TODO 代码！")
-    except TypeError:
-        print("代码未完成导致返回 None 错误。")
+        raise
+    except (AttributeError, NameError, TypeError, ValueError) as e:
+        print("代码可能未完成，导致变量未定义" if isinstance(e, NameError) else "代码可能未完成，导致了类型错误")
+        raise NotImplementedError("请先完成 TODO 代码！") from e
+    except AssertionError as e:
+        print(f"❌ 测试失败: {e}")
+        raise NotImplementedError("请先完成 TODO 代码！") from e
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        raise e
-    except Exception as e:
-        print(f"\n❌ 发生未知异常: {type(e).__name__}: {e}")
-        raise e
+        raise
 
 test_aux_loss()
 

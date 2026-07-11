@@ -1,6 +1,6 @@
 # 01. RMSNorm Tutorial | RMSNorm 教程
 
-**难度：** Easy | **环境：** CPU-first | **标签：** `基础架构`, `PyTorch` | **目标人群：** 模型微调与工程部署
+**难度：** Easy | **环境：** CPU-first | **标签：** `基础架构`, `PyTorch`, `归一化` | **目标人群：** 模型微调与工程部署
 
 > 🚀 **云端运行环境**
 >
@@ -12,21 +12,21 @@
 
 本节我们将实现大语言模型（如 LLaMA、Gemma）中最常用的归一化技术：**RMSNorm (Root Mean Square Normalization)**。相比于传统的 LayerNorm，它能带来可观的训练加速，同时几乎不损失模型表现。
 
-**关键词：** `RMSNorm`, `LayerNorm`, `normalization`, `variance`
-
+**关键词：** `RMSNorm`, `LayerNorm`, `normalization`
 ## 前置阅读
 
-**导语：** 如果还没把单卡访存瓶颈和执行粒度之间的关系理顺，先看下面两页会更顺。
-- [Group 1B: Single-GPU Hardware and Memory Optimization | 1B: 单卡硬件与访存优化](../01_Hardware_Math_and_Systems/1B.md)
-- [Group 1D: Heterogeneous Scheduling and Operator Programming | 1D: 异构调度与算子编程](../01_Hardware_Math_and_Systems/1D.md)
+**导语：** 如果还没把张量基础和归一化直觉理顺，先看下面几页会更顺。
+
+- [05. PyTorch Tensor Fundamentals | PyTorch 张量基础操作](../00_Prerequisites/05_PyTorch_Tensor_Fundamentals.md)
+- [13. Simple Neural Network Training | 简单神经网络训练循环](../00_Prerequisites/13_Simple_Neural_Network_Training.md)
+- [15. Normalization Techniques | 归一化技术](../00_Prerequisites/15_Normalization_Techniques.md)
 
 ## 相关阅读
 
-**导语：** 本节先用纯 PyTorch 讲清 RMSNorm 的归一化逻辑与数值稳定性；如果想看同一算子在更高吞吐实现里的做法，再看 Triton 版。
-- [02. SwiGLU Activation | SwiGLU 激活](./02_SwiGLU_Activation.md)
-- [03. RoPE Tutorial | RoPE 教程](./03_RoPE_Tutorial.md)
-- [03. Triton 算子开发实战：Fused RMSNorm](../03_Triton_Kernels/03_Triton_Fused_RMSNorm.md)
+**导语：** 本节先用纯 PyTorch 讲清 RMSNorm 的归一化逻辑与数值稳定性；如果想看同一算子在更高吞吐实现里的做法，再看硬件与融合优化相关页面。
 
+- [03. GPU Architecture and Memory | GPU 物理架构与内存层级](../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.md)
+- [19. Operator Fusion Introduction | 算子融合导论](../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md)
 
 ### Step 1: 核心思想与痛点
 
@@ -64,7 +64,9 @@
 
 **要求**：请补全下方 `RMSNorm` 的 `forward` 方法。
 **注意：**
-1. 确保在浮点数精度较高的情况下计算 RMS，以防止半精度（FP16/BF16）溢出。即：强制转换 `x` 为 `float32` 计算 `pow(2).mean()`。
+1. 先在 `float32` 下完成归一化，再乘以可学习的 `weight`，最后转回输入精度。
+2. 确保在浮点数精度较高的情况下计算 RMS，以防止半精度（FP16/BF16）溢出。即：强制转换 `x` 为 `float32` 计算 `pow(2).mean()`。
+
 
 ```python
 import torch
@@ -83,8 +85,6 @@ class RMSNorm(nn.Module):
         # 提示: 使用 nn.Parameter 包装张量使其可学习
         # ==========================================
         # self.weight = ???
-        pass
-        
 
     def _norm(self, x: torch.Tensor) -> torch.Tensor:
         # ==========================================
@@ -96,18 +96,17 @@ class RMSNorm(nn.Module):
         # 4. 返回归一化后的结果（保持高精度，便于后续操作）
         # ==========================================
         # variance = ???
-        # return ???
-        pass
-
+        x_fp32 = x if x.dtype == torch.float32 else x.float()
+        return x_fp32 * torch.rsqrt(variance + self.eps)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # ==========================================
-        # TODO 3: 组合归一化与权重缩放
-        # 提示: 调用 _norm 进行归一化，乘以可学习的 weight，最后转回输入精度
+        # TODO 3: 先归一化，再缩放并转回输入精度
+        # 提示: 调用 _norm 进行归一化后，乘以可学习的 weight，最后转回输入精度
         # ==========================================
-        # output = ???
-        # return ???
-        pass
+        # weight = ???
+        return (weight * self._norm(x)).to(x.dtype)
+
 ```
 
 
@@ -145,8 +144,15 @@ def test_rmsnorm():
         
     except NotImplementedError:
         print("请先完成 TODO 部分的代码！")
-    except AttributeError:
-        print("代码未完成，无法找到 Parameter")
+        raise
+    except (AttributeError, NameError, TypeError) as e:
+        if isinstance(e, AttributeError):
+            print("代码未完成，无法找到 Parameter")
+        elif isinstance(e, NameError):
+            print("代码可能未完成，导致了变量未定义")
+        else:
+            print("代码可能未完成，导致了类型错误")
+        raise NotImplementedError("请先完成 TODO 部分的代码！") from e
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
 

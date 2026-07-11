@@ -1,6 +1,6 @@
 # 08. Architecture Tricks | 架构技巧
 
-**难度：** Easy | **环境：** CPU-first | **标签：** `模型架构`, `Qwen`, `Gemma` | **目标人群：** 模型微调与工程部署
+**难度：** Easy | **环境：** CPU-first | **标签：** `模型架构`, `架构技巧`, `PyTorch` | **目标人群：** 模型微调与工程部署
 
 > 🚀 **云端运行环境**
 >
@@ -13,21 +13,23 @@
 在 `06_LLaMA3_Block_Tutorial` 中我们搭建了 LLaMA 的骨架。但如果你去面试阿里云（通义千问团队）或者谷歌，他们必然会问自家模型与 LLaMA 的区别。
 本节我们将以“打补丁”的方式，在 PyTorch 中快速实现 **Qwen 的 Tie Word Embeddings** 以及 **Gemma 的带偏置 RMSNorm**。
 
-**关键词：** `Qwen`, `Gemma`, `Architecture Tricks`, `Tie Embeddings`
-
+**关键词：** `Qwen`, `Gemma`, `Tie Embeddings`
 ## 前置阅读
 
 **导语：** 如果还没把 Block、Router 和负载均衡主线理顺，先看下面几页再进入结构变体会更顺。
-- [05. LLaMA3 Block Tutorial | LLaMA3 Block 教程](./05_LLaMA3_Block_Tutorial.md)
-- [06. MoE Router | MoE 路由](./06_MoE_Router.md)
-- [07. MoE Load Balancing Loss | MoE 负载均衡损失](./07_MoE_Load_Balancing_Loss.md)
+
+- [05 PyTorch Tensor Fundamentals](../00_Prerequisites/05_PyTorch_Tensor_Fundamentals.md)
+- [13 Simple Neural Network Training](../00_Prerequisites/13_Simple_Neural_Network_Training.md)
+- [20 Profiling and Memory Ledger](../00_Prerequisites/20_Profiling_and_Memory_Ledger.md)
+
 
 ## 相关阅读
 
 **导语：** 本节先把结构变体讲清楚；如果想继续看训练与微调主线，再顺着看后面的页面。
-- [09. SFT Training Loop | SFT 训练循环](./09_SFT_Training_Loop.md)
-- [10. LoRA Tutorial | LoRA 教程](./10_LoRA_Tutorial.md)
 
+- [12 TensorCore and Mixed Precision](../01_Hardware_Math_and_Systems/12_TensorCore_and_Mixed_Precision.md)
+- [08 Programming Models CUDA Triton](../01_Hardware_Math_and_Systems/08_Programming_Models_CUDA_Triton.md)
+- [09 AI Compilers and Graph Optimization](../01_Hardware_Math_and_Systems/09_AI_Compilers_and_Graph_Optimization.md)
 
 ### Step 1: 核心差异与机制
 
@@ -41,6 +43,9 @@
 
 ### Step 2: Weight Tying 与偏置项的权衡
 Weight Tying（权重绑定）强制 Embedding 层和最终的 LM Head 线性层共享同一个权重矩阵。这种方法在早期的模型中很流行，因为它大幅减少了参数量。但在现代极大规模 LLM 中，解绑通常能获得更好的容量表达。此外，取消大部分 Linear 和 Norm 层中的 Bias 项，可以略微提高计算效率并防止显存浪费。
+
+
+这里的重点是：Gemma / Qwen 这类技巧不是单纯的‘省参数’，而是围绕训练稳定性、表达能力和内存布局做的工程取舍；因此实现时要同时关注数值公式和权重共享方式。
 
 ### Step 3: 代码实现框架
 要实现权重绑定，只需在网络初始化时将 LM Head 的 `weight` 引用直接指向 Embedding 层的 `weight`。注意，这意味着隐藏层维度必须与词表维度兼容（或者存在中间投影层）。
@@ -59,6 +64,7 @@ import torch.nn as nn
 
 
 ```python
+
 # --- Trick 1: Gemma 风格的 RMSNorm ---
 class GemmaRMSNorm(nn.Module):
     def __init__(self, hidden_size: int, eps: float = 1e-6):
@@ -79,9 +85,6 @@ class GemmaRMSNorm(nn.Module):
         # ==========================================
         # output = ???
 
-        # 占位初始化（返回错误值，确保数值测试失败）                                                                                                                                 
-        output = torch.zeros_like(x)                                                                                                                                                 
-  
         return output     
         
 
@@ -151,14 +154,16 @@ def test_tricks():
         
     except NotImplementedError:
         print("请先完成 TODO 代码！")
-    except AttributeError:
-        print("代码未完成导致变量属性错误。")
+        raise
+    except (AttributeError, NameError, TypeError, ValueError) as e:
+        print("代码未完成导致变量属性错误。" if isinstance(e, AttributeError) else "代码可能未完成，导致了类型错误")
+        raise NotImplementedError("请先完成 TODO 代码！") from e
     except AssertionError as e:
         print(f"❌ 测试失败: {e}")
-        raise e
+        raise NotImplementedError("请先完成 TODO 代码！") from e
     except Exception as e:
         print(f"❌ 发生未知异常: {e}")
-        raise e
+        raise
 
 test_tricks()
 

@@ -11,19 +11,22 @@
 
 先把 FlashAttention 和解码策略理顺，再看 PagedAttention 的分页式 KV 管理会更清楚。
 
-**关键词：** `vLLM`, `PagedAttention`, `KV cache`, `page`
+**关键词：** `PagedAttention`, `KV cache`, `block table`
 
 ## 前置阅读
 
 **导语：** 先把 FlashAttention 和基础解码策略看完，再看 PagedAttention 会更清楚。
-- [20. FlashAttention Sim | FlashAttention 模拟](./20_FlashAttention_Sim.md)
-- [21. Decoding Strategies | 解码策略](./21_Decoding_Strategies.md)
+
+- [05. PyTorch Tensor Fundamentals | PyTorch 张量基础操作](../00_Prerequisites/05_PyTorch_Tensor_Fundamentals.md)
+- [20. Profiling and Memory Ledger | 性能剖析与显存账本](../00_Prerequisites/20_Profiling_and_Memory_Ledger.md)
+
 
 ## 相关阅读
 
 **导语：** PagedAttention 后，可以继续看投机解码和量化。
-- [23. Speculative Decoding | 投机解码](./23_Speculative_Decoding.md)
-- [25. Quantization W8A16 | W8A16 量化](./25_Quantization_W8A16.md)
+
+- [13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
+- [14. FlashAttention Memory Model | FlashAttention 显存模型](../01_Hardware_Math_and_Systems/14_FlashAttention_Memory_Model.md)
 
 ### Step 1: 核心思想与痛点
 
@@ -35,10 +38,12 @@
 > **痛点 2：KV Cache 的显存碎片化**
 > KV Cache 的显存大小是**不可预知的**（你不知道模型最终会生成多长的回复）。如果我们提前按 `max_len` 分配整块显存，会造成严重的内部碎片（超过 60% 浪费）。
 > **解法：PagedAttention (vLLM)**
-> 借鉴操作系统的虚拟内存管理。把显存切分成固定大小的 **Block** (比如 1个Block存16个Token)。在生成时，按需分配物理 Block，并通过 `Block Table` (块表) 记录虚拟 Token 序列到物理块的映射。
+> 借鉴操作系统的虚拟内存管理。把显存切分成固定大小的 **Block**（比如 1 个 Block 存 16 个 Token）。在生成时，按需分配物理 Block，并通过 `Block Table` 记录逻辑 Token 序列到物理块的映射。
+
+> **一句话闭环：** PagedAttention 的核心不是把 KV Cache 变“小”，而是把它变成“可按块寻址、可按需复用”的结构。这样一来，prefill 负责一次性申请所需 Block，decode 只在越界时补 1 个 Block，最后再通过块表把离散物理块恢复成逻辑连续缓存。
 
 ### Step 2: 代码实现框架
-系统需要维护一个 `BlockTable`，它是一个二维字典或矩阵，记录了每个序列的逻辑 Block 对应着显存池（K_Cache 和 V_Cache 池）中的哪个物理 Block ID。在解码时，通过查询这个表，将散落的物理 Block 重新聚集起来，与当前的 Query 向量进行 Attention 点积。
+系统需要维护一个 `BlockTable`，它本质上就是“逻辑块编号 → 物理块 ID”的映射表。prefill 阶段先按序列长度向上取整，申请足够的物理 Block；decode 阶段只在跨过 block 边界时额外申请 1 个 Block；真正做 attention 时，再按 block_table 把离散的物理块重新拼回逻辑序列。下面的代码会把这条链路拆成 5 个小动作：初始化缓存池、计算所需 block 数、分配 prefill block、判断 decode 是否跨块、按块表恢复缓存。
 
 ###  Step 3: PagedAttention 模拟机制
 
@@ -95,7 +100,8 @@ class KVCacheManager:
         # 并追加到请求的 block_table 中
         # 如果 free_blocks 不够了，抛出 RuntimeError("OOM")
         # ==========================================
-        # ???
+        # block_id = ???
+        # req.block_table = ???
         pass
 
     def allocate_for_decode(self, req: Request):
@@ -123,14 +129,11 @@ class KVCacheManager:
         根据块表，把不连续的物理块“拼凑”成逻辑上连续的 KV Cache (仅作验证用途)
         """
         # ==========================================
-        # TODO 4: 根据 req.block_table 的索引，
+        # TODO 5: 根据 req.block_table 恢复物理缓存
         # ==========================================
         # blocks = ???
         # cat_blocks = ???
-        
-        # 最后，只截取真实 seq_len 长度返回 (因为最后一个块可能没填满)
-        # return cat_blocks[:req.seq_len]
-        pass
+        return cat_blocks[:req.seq_len]
 
 ```
 
@@ -139,49 +142,85 @@ class KVCacheManager:
 # 运行此单元格以测试你的实现
 def test_paged_attention_manager():
     try:
+        # Case 1: 典型 Prefill + Decode + Cache 拼装
         manager = KVCacheManager(num_blocks=10, block_size=4, head_dim=64)
         print("初始化内存池...")
-        
-        # 1. 模拟一个 Request (Prompt 长度为 6)
+
         req1 = Request(request_id=1, prompt_len=6)
-        
         manager.allocate_for_prefill(req1)
         assert len(req1.block_table) == 2, "长度 6 的请求应分配 2 个 Block！"
         assert len(manager.free_blocks) == 8, "池中应该剩下 8 个空闲块！"
         print(f"✅ Prefill 测试通过！Req1 分配的块表: {req1.block_table}")
-        
-        # 2. 模拟 Decode 阶段生成 Token (产生第 7 个 token，不需要新块)
+
         manager.allocate_for_decode(req1)
         assert len(req1.block_table) == 2, "生成第 7 个 token 时不应该分配新块！"
-        
-        # 3. 产生第 8，再产生第 9 个 Token (跨过 Block 边界，需要新块)
-        manager.allocate_for_decode(req1) # 长度变为 8
-        manager.allocate_for_decode(req1) # 长度变为 9，触发新分配
-        
+
+        manager.allocate_for_decode(req1)
+        manager.allocate_for_decode(req1)
         assert len(req1.block_table) == 3, "生成第 9 个 token 时应当分配了第 3 个新块！"
         assert len(manager.free_blocks) == 7, "池中应该剩下 7 个空闲块！"
         print(f"✅ Decode 动态分配测试通过！Req1 最新块表: {req1.block_table}")
-        
-        # 4. 模拟底层 PagedAttention 组装验证
-        # 手动往第一块里写点假数据
-        manager.physical_kv_cache[req1.block_table[0], 0, 0] = 999.0
-        
+
+        for block_id, value in zip(req1.block_table, [1.0, 2.0, 3.0]):
+            manager.physical_kv_cache[block_id].fill_(value)
         cache = manager.get_physical_cache(req1)
         assert cache.shape == (9, 64), f"拼装出来的连续 Cache 形状不对，应为 (9, 64)，实为 {cache.shape}"
-        assert cache[0, 0] == 999.0, "数据未正确映射！"
-        
+        assert torch.all(cache[:4] == 1.0), "第 1 个 Block 未正确拼装！"
+        assert torch.all(cache[4:8] == 2.0), "第 2 个 Block 未正确拼装！"
+        assert torch.all(cache[8:] == 3.0), "第 3 个 Block 的截断拼装不正确！"
+        print("✅ Cache 拼装测试通过！多块物理缓存被正确恢复为逻辑连续序列。")
+
+        # Case 2: 恰好跨越 block 边界时，Decode 应该分配新块，并正确截断最后一块
+        manager2 = KVCacheManager(num_blocks=4, block_size=4, head_dim=8)
+        req2 = Request(request_id=2, prompt_len=4)
+        manager2.allocate_for_prefill(req2)
+        assert len(req2.block_table) == 1, "长度 4 的请求应只分配 1 个 Block！"
+        manager2.allocate_for_decode(req2)
+        assert len(req2.block_table) == 2, "长度 5 的请求应分配第 2 个 Block！"
+        manager2.physical_kv_cache[req2.block_table[0]].fill_(7.0)
+        manager2.physical_kv_cache[req2.block_table[1]].fill_(8.0)
+        cache2 = manager2.get_physical_cache(req2)
+        assert cache2.shape == (5, 8), f"拼装出来的连续 Cache 形状不对，应为 (5, 8)，实为 {cache2.shape}"
+        assert torch.all(cache2[:4] == 7.0), "边界块的前 4 个 token 不正确！"
+        assert torch.all(cache2[4:] == 8.0), "边界块的最后 1 个 token 不正确！"
+        print("✅ 边界分配与截断测试通过！")
+
+        # Case 3: OOM 分支必须抛出 RuntimeError
+        oom_manager = KVCacheManager(num_blocks=1, block_size=4, head_dim=8)
+        oom_req = Request(request_id=3, prompt_len=5)
+        try:
+            oom_manager.allocate_for_prefill(oom_req)
+        except RuntimeError as e:
+            assert "OOM" in str(e), "OOM 异常信息不正确！"
+            print("✅ OOM 测试通过！")
+        else:
+            raise AssertionError('显存池不足时应该抛出 RuntimeError("OOM")！')
+
         print("\n✅ All Tests Passed! PagedAttention 内存管理逻辑验证通过。")
-        
+
     except NotImplementedError:
         print("请先完成 TODO 部分的代码！")
-    except AssertionError as e:
-        print(f"❌ 测试失败: {e}")
-    except RuntimeError as e:
-        print(f"❌ 运行时错误: {e}")
-    except TypeError as e:
-        print("代码可能未完成，导致变量为 NoneType。")
+        raise
+    except (AttributeError, NameError, TypeError, ValueError, AssertionError, RuntimeError) as e:
+        if isinstance(e, AttributeError):
+            print("代码未完成，无法找到必要的属性")
+        elif isinstance(e, NameError):
+            print("代码可能未完成，导致变量为 NoneType。")
+        elif isinstance(e, TypeError):
+            print("代码可能未完成，导致变量为 NoneType。")
+        elif isinstance(e, ValueError):
+            print("代码可能未完成，导致了张量维度错误")
+        elif isinstance(e, AssertionError):
+            print("代码可能未完成，导致了断言失败")
+        elif isinstance(e, RuntimeError):
+            print("代码可能未完成，导致了运行时错误")
+        else:
+            print("代码可能未完成，导致了断言失败")
+        raise NotImplementedError("请先完成 TODO 部分的代码！") from e
     except Exception as e:
-        print(f"❌ 发生未知异常: {e}")
+        print(f"❌ 测试失败: {e}")
+        raise
+
 
 test_paged_attention_manager()
 

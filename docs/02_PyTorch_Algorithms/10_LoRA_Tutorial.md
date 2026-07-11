@@ -12,19 +12,20 @@
 
 本节我们将解析大语言模型领域最具影响力的微调算法：**LoRA (Low-Rank Adaptation)**。我们将实现一个 `LoRALinear` 层，替换标准的 `nn.Linear`，体验矩阵秩分解是如何极大地节省显存开销的。
 
-**关键词：** `LoRA`, `PEFT`, `low-rank`, `adapter`
-
+**关键词：** `LoRA`, `PEFT`, `adapter`
 ## 前置阅读
 
-**导语：** 先把 SFT 的训练闭环看过，再回来看 LoRA 的参数高效微调。
-- [09. SFT Training Loop | SFT 训练循环](./09_SFT_Training_Loop.md)
-- [13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
+**导语：** 先把 LoRA 依赖的 PyTorch 基础和训练闭环补齐，再来看参数高效微调。
+- [09. PyTorch nn.Module Basics | nn.Module 基础](../00_Prerequisites/09_PyTorch_nn_Module_Basics.md)
+- [11. PyTorch Optimizers and Loss | 优化器与损失](../00_Prerequisites/11_PyTorch_Optimizers_and_Loss.md)
+- [13. Simple Neural Network Training | 简单神经网络训练](../00_Prerequisites/13_Simple_Neural_Network_Training.md)
 
 ## 相关阅读
 
-**导语：** LoRA 之后可以继续看学习率调度和梯度累积，补齐训练闭环。
-- [11. LR Schedulers WSD Cosine | WSD 调度器](./11_LR_Schedulers_WSD_Cosine.md)
-- [12. Gradient Accumulation | 梯度累积](./12_Gradient_Accumulation.md)
+**导语：** LoRA 的参数高效与显存收益，可以结合硬件、VRAM 和性能分析一起理解。
+- [03. GPU Architecture and Memory | GPU 架构与显存](../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.md)
+- [06. VRAM Calculation and ZeRO | 显存估算与 ZeRO](../01_Hardware_Math_and_Systems/06_VRAM_Calculation_and_ZeRO.md)
+- [13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
 ### Step 1: 核心思想与痛点
 
 > **为什么需要 LoRA？**
@@ -78,10 +79,7 @@ class LoRALinear(nn.Module):
         # self.linear.weight.requires_grad = ???
         # self.lora_A = ???
         # self.lora_B = ???
-        self.linear = nn.Linear(in_features, out_features, bias=False)   # 占位初始化      
-        self.lora_A = nn.Parameter(torch.zeros(r, in_features))  # 占位初始化                                                                                                                 
-        self.lora_B = nn.Parameter(torch.zeros(out_features, r)) # 占位初始化    
-
+        pass
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -91,11 +89,8 @@ class LoRALinear(nn.Module):
         # nn.init.kaiming_uniform_(???)
         # nn.init.kaiming_uniform_(???)
         # nn.init.zeros_(???)
+        pass
         
-        # 占位初始化
-        nn.init.ones_(self.linear.weight)  # 占位初始化
-        nn.init.ones_(self.lora_A) # 占位初始化
-        nn.init.ones_(self.lora_B)  # 占位初始化
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # ==========================================
@@ -107,9 +102,7 @@ class LoRALinear(nn.Module):
         # ==========================================
         # result = ???
         # lora_out = ???
-
-        return torch.zeros(x.shape[0], x.shape[1], self.linear.out_features, device=x.device) # 占位初始化
-        
+        return result
 
     def merge_weights(self):
         # ==========================================
@@ -117,7 +110,7 @@ class LoRALinear(nn.Module):
         # 提示: 将 LoRA 的低秩更新合并到主权重中
         # ==========================================
         # self.linear.weight.data += ???
-        
+        pass
 
 ```
 
@@ -129,36 +122,42 @@ def test_lora():
         in_dim, out_dim = 128, 256
         batch_size, seq_len = 32, 10
         layer = LoRALinear(in_dim, out_dim, r=8, lora_alpha=16)
-        
+
         x = torch.randn(batch_size, seq_len, in_dim)
-        
+
         # 1. 验证初始化导致 B 全零，所以初始输出等于冻结权重的输出
         with torch.no_grad():
             out_lora = layer(x)
             out_base = layer.linear(x)
             assert torch.allclose(out_lora, out_base), "初始化错误: lora_B 未被初始化为 0"
-        
+
         # 2. 模拟训练一步，改变 B 的值
         layer.lora_B.data.normal_(0, 0.02)
-        
+
         out_trained = layer(x)
         assert not torch.allclose(out_trained, out_base), "前向传播错误: 旁路未能注入梯度值"
-        
+
         # 3. 验证合并权重的正确性
         layer.merge_weights()
         out_merged = layer.linear(x)
         assert torch.allclose(out_trained, out_merged, atol=1e-5), "权重合并错误: 合并后的输出与分离时的输出不一致！"
-        
+
         print("\n✅ All Tests Passed! LoRA 核心算子实现正确。")
-        
+
     except NotImplementedError:
         print("请先完成 TODO 部分的代码！")
+        raise
+    except (AttributeError, NameError, TypeError, ValueError) as e:
+        print("代码可能未完成，导致变量未定义" if isinstance(e, NameError) else "代码可能未完成，导致了类型错误")
+        raise NotImplementedError("请先完成 TODO 部分的代码！") from e
+    except AssertionError as e:
+        print(f"❌ 测试失败: {e}")
+        raise NotImplementedError("请先完成 TODO 部分的代码！") from e
     except Exception as e:
-        print(f"\n❌ 测试失败: {e}")
-        raise e
+        print(f"❌ 发生异常: {e}")
+        raise
 
 test_lora()
-
 ```
 
 ---
