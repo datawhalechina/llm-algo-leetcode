@@ -17,9 +17,9 @@
 ## 前置阅读
 
 **导语：** 先理解张量、训练闭环和显存分析，再看解码策略会更容易。
-- [11. PyTorch Optimizers and Loss | PyTorch 优化器与损失函数](../00_PyTorch_Fundamentals/11_PyTorch_Optimizers_and_Loss.md)
-- [12. PyTorch Minimal Training Interface | PyTorch 最小训练接口](../00_PyTorch_Fundamentals/12_PyTorch_Minimal_Training_Interface.md)
-- [13. Simple Neural Network Training | 简单神经网络训练循环](../00_PyTorch_Fundamentals/13_Simple_Neural_Network_Training.md)
+- [11. PyTorch Optimizers and Loss | PyTorch 优化器与损失函数](../00_Prerequisites/11_PyTorch_Optimizers_and_Loss.md)
+- [12. PyTorch Minimal Training Interface | PyTorch 最小训练接口](../00_Prerequisites/12_PyTorch_Minimal_Training_Interface.md)
+- [13. Simple Neural Network Training | 简单神经网络训练循环](../00_Prerequisites/13_Simple_Neural_Network_Training.md)
 
 ## 相关阅读
 
