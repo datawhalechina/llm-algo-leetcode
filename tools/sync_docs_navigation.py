@@ -37,6 +37,8 @@ NAV_FILES = {
     "team_study": [
         "intro.md",
         "part2_l1_202606/intro.md",
+        "part2_l1_202606/group_topic_1.md",
+        "part2_l1_202606/group_topic_2.md",
         "part2_l1_202607/intro.md",
         "part2_l2_202607/intro.md",
     ],
