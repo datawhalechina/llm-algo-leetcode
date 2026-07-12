@@ -10,7 +10,7 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-在 `02_PyTorch_Algorithms/09_LoRA_Tutorial.ipynb` 中，我们在 PyTorch 层面实现了 LoRA ($h = xW + xAB$) 的逻辑。
+在 `02_PyTorch_Algorithms/10_LoRA_Tutorial.ipynb` 中，我们在 PyTorch 层面实现了 LoRA ($h = xW + xAB$) 的逻辑。
 然而，在工业级的大模型推理服务 (Serving) 中，面对并发的多个用户请求，如果每个用户的 prompt 挂载了**不同的** LoRA 权重（如用户 A 请求写代码的 LoRA，用户 B 请求翻译的 LoRA），如果将它们拆分并循环执行 PyTorch 的 `linear()`，通常会降低 GPU 的吞吐量，也不便于利用 Batch 计算。
 本节我们将实现 **Multi-LoRA (如 S-LoRA / Punica 论文思路)** 的底层 Triton 融合算子：**通过传入 `lora_indices`，让每一个 Token 在 SRAM 内按索引读取它对应的 LoRA 权重，完成批量计算。**
 
@@ -22,13 +22,13 @@
 
 - [Part 1: 1D 异构调度与算子编程](../01_Hardware_Math_and_Systems/1D.md)
 - [Part 1: 19 算子融合导论](../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md)
-- [Part 2: 09 LoRA Tutorial](../02_PyTorch_Algorithms/09_LoRA_Tutorial.md)
+- [Part 2: 10 LoRA Tutorial](../02_PyTorch_Algorithms/10_LoRA_Tutorial.md)
 
 ## 相关阅读
 
 **导语：** 如果想先回顾 LoRA 的 PyTorch 版本，可以先看这页，帮助理解后面的指针路由。
 
-- [Part 2: 09 LoRA Tutorial](../02_PyTorch_Algorithms/09_LoRA_Tutorial.md)
+- [Part 2: 10 LoRA Tutorial](../02_PyTorch_Algorithms/10_LoRA_Tutorial.md)
 
 ### Step 1: Multi-LoRA 内存池与 Batch 路由
 

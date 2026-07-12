@@ -62,7 +62,7 @@
 
 ## 相关阅读
 **导语：** 如果你想先把量化公式和 PyTorch 版本过一遍，可以继续看这页；不影响继续读本节，但会更容易理解即时反量化。
-- [Part 2: 20 Quantization W8A16](../02_PyTorch_Algorithms/20_Quantization_W8A16.md)
+- [Part 2: 25 Quantization W8A16](../02_PyTorch_Algorithms/25_Quantization_W8A16.md)
 
 ### Step 1: 融合反量化矩阵乘法的主要思想
 
