@@ -7,10 +7,10 @@
 | 层 | 脚本 | 作用 |
 |---|---|---|
 | `verify` | `verify.py` | 统一验证入口 |
-| `convert` | `convert_notebook.py` | 正文镜像主链路 |
+| `convert` | `tools/convert_notebook.py` | 正文镜像主链路 |
 | `sync` | `tools/sync_docs_index.py`、`tools/sync_docs_navigation.py` | 首页 / 导学页 / 组页同步 |
-| `check` | `check_source_docs_mirror.py`、`check_chapter_links.py` | 镜像和链接检查 |
-| `test` | `test_chapter0_1_notebooks.py`、`test_notebook_answers.py` | Notebook 校验 |
+| `check` | `tools/check_source_docs_mirror.py`、`tools/check_chapter_links.py` | 镜像和链接检查 |
+| `test` | `tools/test_chapter0_1_notebooks.py`、`tools/test_notebook_answers.py` | Notebook 校验 |
 | `migration` | `tools/md_to_notebook.py` | markdown -> notebook 迁移辅助 |
 
 ## 推荐用法
