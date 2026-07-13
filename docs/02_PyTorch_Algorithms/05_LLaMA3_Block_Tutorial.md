@@ -89,22 +89,16 @@ class DummyAttention(nn.Module):
 class LlamaMLP(nn.Module):
     def __init__(self, hidden_size: int, intermediate_size: int):
         super().__init__()
-        # ==========================================
-        # TODO 1: 定义 SwiGLU 所需的三个线性层 (无 bias)
-        # 提示: gate_proj / up_proj / down_proj 都是 Linear(hidden_size, intermediate_size/hidden_size)
-        # self.gate_proj = ???
-        # self.up_proj = ???
-        # self.down_proj = ???
-        # ==========================================
-        return
+        self.gate_proj = nn.Linear(hidden_size, intermediate_size, bias=False)
+        self.up_proj = nn.Linear(hidden_size, intermediate_size, bias=False)
+        self.down_proj = nn.Linear(intermediate_size, hidden_size, bias=False)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # ==========================================
         # TODO 2: 实现 SwiGLU 的前向传播
         # 提示: gate 分支先过 F.silu，再和 up 分支逐元素相乘，最后过 down_proj
-        # hidden_states = ???
-        # output = ???
-        # ==========================================
+        hidden_states = F.silu(self.gate_proj(x)) * self.up_proj(x)
+        output = self.down_proj(hidden_states)
         return output
 
 class LlamaDecoderLayer(nn.Module):
@@ -127,14 +121,17 @@ class LlamaDecoderLayer(nn.Module):
         # ==========================================
         
         # --- Attention Block ---
-        # residual = ???
-        # hidden_states = ???
-        # hidden_states = ???
+         residual = hidden_states
+         hidden_states = self.input_layernorm(hidden_states)
+         hidden_states = self.self_attn(hidden_states)
+         hidden_states = residual + hidden_states
+
         
         # --- MLP Block ---
-        # residual = ???
-        # hidden_states = ???
-        # out = ???
+         residual = hidden_states
+         hidden_states = self.post_attention_layernorm(hidden_states)
+         hidden_states = self.mlp(hidden_states)
+         out = residual + hidden_states
         
         return out
 
