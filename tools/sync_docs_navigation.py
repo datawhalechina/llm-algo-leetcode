@@ -3,7 +3,7 @@
 
 This script mirrors each Part's intro page and group pages into docs/.
 It does not touch notebook part mirrors, which remain the job of
-convert_notebook.py.
+tools/convert_notebook.py.
 """
 
 from __future__ import annotations

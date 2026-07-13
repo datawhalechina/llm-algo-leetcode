@@ -157,7 +157,7 @@ CNB 的具体使用方式和适用范围见 [使用指南](./guide.md)。
 - [使用指南](./guide.md) - 环境与学习方式
 - [贡献指南](./contributing.md) - 如何参与项目开发和测试
 - [维护与发布手册](./maintenance.md) - 部分、链接、测试与发布的维护约定
-- [自动化测试脚本索引](../project_test_scripts.md) - 各类验证脚本入口
+- [自动化测试脚本索引](./maintenance.md#测试脚本索引) - 各类验证脚本入口
 
 ## 👨‍💻 贡献者名单
 
@@ -315,7 +315,7 @@ See [docs/guide.md](./guide.md) for the exact environment rules and scope.
 - [docs/guide.md](./guide.md) - environment and learning modes
 - [docs/contributing.md](./contributing.md) - how to contribute to development and testing
 - [docs/maintenance.md](./maintenance.md) - maintenance rules for parts, links, tests, and releases
-- [project_test_scripts.md](../project_test_scripts.md) - entry points for automated verification scripts
+- [Automated Test Script Index](./maintenance.md#测试脚本索引) - entry points for automated verification scripts
 
 ## 👨‍💻 Contributors
 

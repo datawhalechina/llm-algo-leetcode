@@ -26,7 +26,7 @@ python verify.py all --no-build
 单个 notebook：
 
 ```bash
-python test_notebook_answers.py path/to/your.ipynb --mode both
+python tools/test_notebook_answers.py path/to/your.ipynb --mode both
 ```
 
 ## 提交前检查

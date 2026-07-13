@@ -31,8 +31,8 @@ python verify.py all --no-build
 定点排查时用：
 
 ```bash
-python test_chapter0_1_notebooks.py
-python test_notebook_answers.py path/to/your.ipynb --mode both
+python tools/test_chapter0_1_notebooks.py
+python tools/test_notebook_answers.py path/to/your.ipynb --mode both
 ```
 
 ## 最小规则

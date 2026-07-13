@@ -3,8 +3,8 @@
 通用的 Notebook 答案验证脚本
 
 用法:
-    python test_notebook_answers.py 00_PyTorch_Warmup.ipynb
-    python test_notebook_answers.py --all  # 测试所有notebook
+    python tools/test_notebook_answers.py 00_PyTorch_Warmup.ipynb
+    python tools/test_notebook_answers.py --all  # 测试所有notebook
 """
 
 import sys

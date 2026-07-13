@@ -6,7 +6,7 @@ tree is expected to mirror the prose pages. Notebook files are validated by
 separate notebook tests; this script only checks Markdown pages.
 
 Usage:
-    python3 check_source_docs_mirror.py
+    python3 tools/check_source_docs_mirror.py
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ import argparse
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[1]
 SOURCE_DIRS = [
     ROOT / "00_Prerequisites",
     ROOT / "01_Hardware_Math_and_Systems",

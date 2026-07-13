@@ -120,19 +120,19 @@ def check_chapter4_intro_links() -> None:
 
 def verify_chapter0_1(*, build_docs: bool) -> None:
     # Legacy compatibility path for the Part 0 / Part 1 notebook-first closeout.
-    run_python("convert_chapter0_1.py")
-    run_python("check_chapter_links.py", "--scope", "source")
-    run_python("check_chapter_links.py", "--scope", "docs")
-    run_python("test_chapter0_1_notebooks.py")
+    run_python("tools/convert_chapter0_1.py")
+    run_python("tools/check_chapter_links.py", "--scope", "source")
+    run_python("tools/check_chapter_links.py", "--scope", "docs")
+    run_python("tools/test_chapter0_1_notebooks.py")
     if build_docs:
         run_docs_build()
 
 
 def verify_chapter2(*, build_docs: bool) -> None:
-    run_python("convert_notebook.py", "--dir", "02_PyTorch_Algorithms")
-    run_python("check_source_docs_mirror.py")
+    run_python("tools/convert_notebook.py", "--dir", "02_PyTorch_Algorithms")
+    run_python("tools/check_source_docs_mirror.py")
     if has_cuda():
-        run_python("test_notebook_answers.py", "--all", "--dir", "02_PyTorch_Algorithms", "--mode", "both")
+        run_python("tools/test_notebook_answers.py", "--all", "--dir", "02_PyTorch_Algorithms", "--mode", "both")
     else:
         print("[verify] GPU not available, skipping Part 2 notebook answer tests.")
     if build_docs:
@@ -140,10 +140,10 @@ def verify_chapter2(*, build_docs: bool) -> None:
 
 
 def verify_chapter3(*, build_docs: bool) -> None:
-    run_python("convert_notebook.py", "--dir", "03_Triton_Kernels")
-    run_python("check_source_docs_mirror.py")
+    run_python("tools/convert_notebook.py", "--dir", "03_Triton_Kernels")
+    run_python("tools/check_source_docs_mirror.py")
     if has_cuda():
-        run_python("test_notebook_answers.py", "--all", "--dir", "03_Triton_Kernels", "--mode", "both")
+        run_python("tools/test_notebook_answers.py", "--all", "--dir", "03_Triton_Kernels", "--mode", "both")
     else:
         print("[verify] GPU not available, skipping Part 3 notebook answer tests.")
     check_chapter3_intro_links()
@@ -152,10 +152,10 @@ def verify_chapter3(*, build_docs: bool) -> None:
 
 
 def verify_chapter4(*, build_docs: bool) -> None:
-    run_python("convert_notebook.py", "--dir", "04_CUDA_and_System_Optimization")
-    run_python("check_source_docs_mirror.py")
+    run_python("tools/convert_notebook.py", "--dir", "04_CUDA_and_System_Optimization")
+    run_python("tools/check_source_docs_mirror.py")
     if has_cuda():
-        run_python("test_notebook_answers.py", "--all", "--dir", "04_CUDA_and_System_Optimization", "--mode", "both")
+        run_python("tools/test_notebook_answers.py", "--all", "--dir", "04_CUDA_and_System_Optimization", "--mode", "both")
     else:
         print("[verify] GPU not available, skipping Part 4 notebook answer tests.")
     check_chapter4_intro_links()

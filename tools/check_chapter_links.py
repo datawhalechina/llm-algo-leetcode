@@ -2,7 +2,7 @@
 """Check local markdown links for Chapter 0 / Chapter 1 documentation.
 
 Usage:
-    python check_chapter_links.py
+    python tools/check_chapter_links.py
 
 The script can scan either the docs site content or the source markdown copies
 of Chapter 0 / Chapter 1, then verify that local relative links resolve to
@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Iterable
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[1]
 DOC_ROOT = ROOT / "docs"
 
 

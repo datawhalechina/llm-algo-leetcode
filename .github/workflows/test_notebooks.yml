@@ -26,14 +26,9 @@ jobs:
         pip install -r requirements.txt
         pip install nbconvert termcolor
         
-    - name: Run notebook tests (CPU-only, skip GPU-dependent notebooks)
+    - name: Run notebook verification (CPU-only, skip GPU-dependent notebooks)
       run: |
-        # Test Chapter 2 (00-20, skip 21-25 which require GPU)
-        for i in {00..20}; do
-          file="02_PyTorch_Algorithms/${i}_*.ipynb"
-          if ls $file 1> /dev/null 2>&1; then
-            python test_notebook_answers.py $file --mode answer || true
-          fi
-        done
-
-        # Skip Chapter 3 entirely (all require NVIDIA GPU for CUDA/Triton)
+        python verify.py part0_1 --no-build
+        python verify.py part2 --no-build
+        python verify.py part3 --no-build
+        python verify.py part4 --no-build

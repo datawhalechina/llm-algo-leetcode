@@ -66,8 +66,8 @@ python -m pip --version
 python -c "import torch; print(torch.__version__)"
 python -c "import triton; print(triton.__version__)"
 
-python test_chapter0_1_notebooks.py
-python test_notebook_answers.py --all --dir 02_PyTorch_Algorithms --mode both
+python tools/test_chapter0_1_notebooks.py
+python tools/test_notebook_answers.py --all --dir 02_PyTorch_Algorithms --mode both
 ```
 
 如果当前 CNB 实例没有 GPU，`nvidia-smi` 可能不可用，`torch.cuda.is_available()` 也可能是 `False`。这种情况下，Chapter 3 只能验证导学页、链接和非 GPU 路径，不能把 GPU 结果当成最终通过。

@@ -37,7 +37,7 @@
 
 这套教程分为纵深主线、横切专题和共学沉淀三层：`Part 0` 和 `Part 1` 是共同前置，`Part 2 -> Part 5` 是主线实战层，`topic_discussion` 承载 profiling、AI compiler 等跨 Part 主题，`team_study` 则单独作为动态共学沉淀层，当前主要对应 Part 2。整体关系可以理解为前置打底 -> PyTorch 主线 -> Triton -> CUDA，横切专题和组队学习分别服务于性能分析、编译视野和共学沉淀。
 
-![教程总览保底图](./image-1.png)
+![教程总览保底图](./docs/image-1.png)
 
 ```mermaid
 flowchart LR
@@ -157,7 +157,7 @@ CNB 的具体使用方式和适用范围见 [使用指南](./docs/guide.md)。
 - [使用指南](./docs/guide.md) - 环境与学习方式
 - [贡献指南](./docs/contributing.md) - 如何参与项目开发和测试
 - [维护与发布手册](./docs/maintenance.md) - 部分、链接、测试与发布的维护约定
-- [自动化测试脚本索引](./project_test_scripts.md) - 各类验证脚本入口
+- [自动化测试脚本索引](./docs/maintenance.md#测试脚本索引) - 各类验证脚本入口
 
 ## 👨‍💻 贡献者名单
 
@@ -199,7 +199,7 @@ This is a practical LLM algorithm tutorial from beginner to advanced, built arou
 
 This tutorial is organized into a vertical main line and two cross-cutting tracks: the main line connects `Part 0 -> Part 4 (with Part 5 reserved)`, `topic_discussion` covers profiling and AI compiler, and `team_study` is maintained as a separate collaborative-learning lane. The overview is summarized in the asset and topic tables below.
 
-![Tutorial overview fallback](./image-1.png)
+![Tutorial overview fallback](./docs/image-1.png)
 
 ```mermaid
 flowchart LR
@@ -315,7 +315,7 @@ See [docs/guide.md](./docs/guide.md) for the exact environment rules and scope.
 - [docs/guide.md](./docs/guide.md) - environment and learning modes
 - [docs/contributing.md](./docs/contributing.md) - how to contribute to development and testing
 - [docs/maintenance.md](./docs/maintenance.md) - maintenance rules for parts, links, tests, and releases
-- [project_test_scripts.md](./project_test_scripts.md) - entry points for automated verification scripts
+- [Automated Test Script Index](./docs/maintenance.md#测试脚本索引) - entry points for automated verification scripts
 
 ## 👨‍💻 Contributors
 

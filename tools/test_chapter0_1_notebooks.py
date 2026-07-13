@@ -6,9 +6,9 @@ use inline assertions / demo cells, rather than the "question section + answer
 section" layout used by later chapters.
 
 Usage:
-    python test_chapter0_1_notebooks.py
-    python test_chapter0_1_notebooks.py --dir 00_Prerequisites
-    python test_chapter0_1_notebooks.py --dir 01_Hardware_Math_and_Systems
+    python tools/test_chapter0_1_notebooks.py
+    python tools/test_chapter0_1_notebooks.py --dir 00_Prerequisites
+    python tools/test_chapter0_1_notebooks.py --dir 01_Hardware_Math_and_Systems
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ import traceback
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DIRS = [
     ROOT / "00_Prerequisites",
     ROOT / "01_Hardware_Math_and_Systems",
