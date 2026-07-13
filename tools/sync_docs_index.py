@@ -18,7 +18,10 @@ DOCS_INDEX = ROOT / "docs/index.md"
 def sync_docs_index() -> None:
     text = README.read_text(encoding="utf-8")
     text = text.replace("](./docs/", "](./")
-    text = text.replace("](./project_test_scripts.md)", "](../project_test_scripts.md)")
+    text = text.replace(
+        "](./project_test_scripts.md)",
+        "](./maintenance.md#%E6%B5%8B%E8%AF%95%E8%84%9A%E6%9C%AC%E7%B4%A2%E5%BC%95)",
+    )
     DOCS_INDEX.write_text(text, encoding="utf-8")
     print(f"Synced {DOCS_INDEX.relative_to(ROOT)} from {README.relative_to(ROOT)}")
 
