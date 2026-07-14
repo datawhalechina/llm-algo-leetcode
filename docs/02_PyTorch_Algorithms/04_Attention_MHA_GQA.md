@@ -11,6 +11,7 @@
 
 
 本节我们将深入解析大语言模型的核心组件：**注意力机制**，并实现支持 KV Cache 和 GQA (Grouped-Query Attention) 的代码。
+可以先把 Attention 记成“当前 token 去回看历史 token”，KV Cache 是把历史信息存起来避免重复算，GQA 则是在效果和显存之间做折中。
 
 **关键词：** `Attention`, `GQA`, `KV Cache`
 ## 前置阅读
@@ -31,6 +32,8 @@
 
 ### Step 1: 核心思想与痛点
 
+这一节先把为什么 Attention 会慢、为什么要缓存，以及为什么会从 MHA 走到 GQA 讲清楚。
+
 在大语言模型中，**注意力机制 (Attention)** 决定了模型如何“回顾”并提取历史上下文的信息。随着模型层数加深和序列变长，Attention 模块在推理阶段面临极大的性能挑战。
 
 > **什么是 KV Cache？为什么它是性能瓶颈？**
@@ -45,6 +48,8 @@
 
 ### Step 2: 核心公式与张量维度
 
+这一节先把 Q/K/V 的 shape 走一遍，后面的代码就是把这条维度链路落到张量操作里。
+
 **注意力计算公式：**
 $$ \text{Attention}(Q, K, V) = \text{Softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V $$
 
@@ -58,6 +63,8 @@ $$ \text{Attention}(Q, K, V) = \text{Softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right
 
 ### Step 3: 工业界源码映射
 
+这一节把概念和真实实现对上，方便你知道这些 TODO 在工程里分别对应什么位置。
+
 在真实的工业界代码中，这段逻辑在哪里？
 * **HuggingFace LLaMA**: `transformers/models/llama/modeling_llama.py` 中的 `LlamaAttention` 类。
 * **vLLM (推理框架)**: 核心关注它的 PagedAttention 实现，用来解决这里 KV Cache 的显存碎片化问题。
@@ -66,6 +73,8 @@ $$ \text{Attention}(Q, K, V) = \text{Softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right
 因此，`TODO 1-4` 的实现顺序也可以直接按这条主线来读：先 reshape 出多头张量，再处理 KV Cache 与 `repeat_kv`，接着算 attention scores 和 softmax，最后恢复输出形状。这样题目区的每一步就都能对回完整链路。
 
 ### Step 4: 动手实战
+
+这里开始把多头切分、KV Cache 和注意力计算串成最小可运行前向路径，重点看张量怎么流动。
 
 **实现提示：** `repeat_kv` 的作用是先保留更少的 KV 头，在注意力计算前再扩充到 Query 头数。这样可以理解 GQA 如何在保持效果的同时减少 KV 侧的开销。
 
@@ -263,11 +272,13 @@ class GroupedQueryAttention(nn.Module):
         
         xq, xk, xv = self.q_proj(x), self.k_proj(x), self.v_proj(x)
         
+        # 先把投影后的向量拆成多头格式，方便后续按 head 做注意力。
         # TODO 1: Reshape 为多头形式
         xq = xq.view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
         xk = xk.view(batch_size, seq_len, self.num_kv_heads, self.head_dim).transpose(1, 2)
         xv = xv.view(batch_size, seq_len, self.num_kv_heads, self.head_dim).transpose(1, 2)
         
+        # 先把历史 cache 和当前步拼起来，再决定是否需要扩展 KV 头。
         # TODO 2: 处理 KV Cache
         if kv_cache is not None:
             k_cache, v_cache = kv_cache
@@ -295,7 +306,11 @@ class GroupedQueryAttention(nn.Module):
 
 ```
 
-### 解析
+### 答案与直觉
+
+- **这一题要解决什么：** 把多头注意力、KV Cache 和 GQA 的前向链路写成可运行代码。
+- **为什么这样拆：** 先切头、再处理缓存、再算 attention，顺序和真实推理路径一致。
+- **带走的直觉：** Attention 的核心不是单个矩阵乘法，而是“形状变换 + 缓存 + 权重归一化”的组合。
 
 **1. TODO 1 (多头切分与维度转置)**
 

@@ -11,6 +11,7 @@
 
 
 本节我们将解析大模型当前最主流的位置编码方式：**RoPE (Rotary Position Embedding)**，并亲手用复数形式（Complex Tensor）实现它。这是 LLaMA, Qwen, DeepSeek 的标配！
+可以先把 RoPE 记成一件事：它不是给 token 加一个独立的位置向量，而是通过旋转 Query/Key 让位置信息进入注意力点积里。
 
 **关键词：** `RoPE`, `positional encoding`, `complex tensor`
 ## 前置阅读
@@ -30,18 +31,23 @@
 
 ### Step 1: 核心思想与痛点
 
+这一节先把“为什么要用旋转”说清楚，后面的复数表示只是把这个想法写成更紧凑的张量运算。
+
 > **为什么需要 RoPE？**
 > 原生的 Transformer 使用绝对位置编码（如正弦波或可学习参数），导致模型很难泛化到比训练集更长的序列。我们希望模型能在计算 Attention 时感知到 Token 之间的**相对距离**。
 > **RoPE 的本质：**
 > “借用复数的旋转”。通过将 Query 和 Key 的向量映射到复数空间并旋转特定角度，在计算内积（Dot-product）时，结果自然就带有了相对位置信息 $(m-n)$。
 
 ### Step 2: 代码实现框架
+
 在 PyTorch 中，最高效的 RoPE 实现方式之一是利用复数乘法。我们将最后一维切分为两半并组合成复数形式，再乘以预先计算好的复数旋转矩阵 $e^{im\theta}$。完成旋转后，再使用 `torch.view_as_real` 恢复为实数表示。
 
 
 因此实现时的主线其实很固定：先算出 `freqs_cis`，再把它和 `xq / xk` 做广播对齐，最后完成复数旋转并回到原始实数形状。这样学习者在写 `TODO 1/2/3` 时，就能清楚知道每一步是在接哪一段链路。
 
 ###  Step 3: 核心公式与张量维度
+
+这一节把频率、位置和维度对齐关系摆清楚，方便把数学公式和代码里的广播一步一步对上。
 
 1. **预计算旋转角 (Precompute Frequencies):**
    频率计算公式：$\Theta = 10000^{-2i/d}$，其中 $i$ 是维度索引，$d$ 是 Head Dimension。
@@ -54,6 +60,8 @@
 **实现提示：** `reshape_for_broadcast` 的作用是把 `freqs_cis` 调整成和 `xq_ / xk_` 可广播对齐的形状。先对齐维度，再做复数乘法，旋转位置编码才会同时作用到 batch 和 head 维度。
 
 ###  Step 4: 动手实战
+
+这里开始把频率预计算、复数转换和旋转还原落到最小可运行代码里，重点看每一步张量形状怎么变。
 
 **要求**：请补全下方 `precompute_freqs_cis` 和 `apply_rotary_emb` 函数。
 提示：可以使用 `torch.view_as_complex` 和 `torch.view_as_real` 这两个核心函数！
@@ -205,6 +213,7 @@ test_rope()
 
 ```python
 def precompute_freqs_cis(dim: int, end: int, theta: float = 10000.0):
+    # 先按维度间隔计算逆频率，再把位置和频率组合成复数旋转角。
     # TODO 1: 计算逆频率并生成复数张量
     freqs = 1.0 / (theta ** (torch.arange(0, dim, 2)[: (dim // 2)].float() / dim))
     t = torch.arange(end, device=freqs.device, dtype=torch.float32)
@@ -222,12 +231,14 @@ def apply_rotary_emb(
     xk: torch.Tensor,
     freqs_cis: torch.Tensor,
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    # 先把最后一维两两配对，再提升到 FP32 后解释成复数。
     # TODO 2: 转换为复数张量（注意精度提升）
     xq_ = torch.view_as_complex(xq.float().reshape(*xq.shape[:-1], -1, 2))
     xk_ = torch.view_as_complex(xk.float().reshape(*xk.shape[:-1], -1, 2))
     
     freqs_cis = reshape_for_broadcast(freqs_cis, xq_)
     
+    # 复数乘法完成旋转，再把结果转回实数张量。
     # TODO 3: 复数乘法并转回实数
     xq_out = torch.view_as_real(xq_ * freqs_cis).flatten(3)
     xk_out = torch.view_as_real(xk_ * freqs_cis).flatten(3)
@@ -235,7 +246,11 @@ def apply_rotary_emb(
     return xq_out.type_as(xq), xk_out.type_as(xk)
 ```
 
-### 解析
+### 答案与直觉
+
+- **这一题要解决什么：** 把相对位置信息写进 Query/Key，让注意力直接感知 token 间距离。
+- **为什么这样做：** 复数乘法天然对应二维旋转，和 RoPE 的几何直觉完全一致。
+- **带走的直觉：** 先算频率、再做广播、最后旋转还原，是 RoPE 的固定实现路径。
 
 **1. TODO 1 (预计算旋转频率与极坐标复数生成)**
 

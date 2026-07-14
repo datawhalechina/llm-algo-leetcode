@@ -10,7 +10,7 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-这一页把前面的训练要素串起来：数据构造、SFT Loss、梯度累积和参数更新。目标不是造一个大而全的框架，而是搭一个最小但完整的微调闭环，让你能把 2.3 组学到的内容真正跑通。
+这一页把前面的训练要素串起来：数据构造、SFT Loss、梯度累积和参数更新。目标不是造一个大而全的框架，而是搭一个最小但完整的微调闭环，让你能把输入构造、loss 对齐和参数更新真正对上。可以先把它记成：先拼样本，再算 loss，最后走完整个更新链路。
 
 **关键词：** `end-to-end`, `fine-tuning`, `loop`
 ## 前置阅读
@@ -28,6 +28,7 @@
 - [20. NCCL and AllReduce Basics | NCCL 与 AllReduce 基础](../01_Hardware_Math_and_Systems/20_NCCL_and_AllReduce_Basics.md)
 
 ### Step 1: 端到端训练闭环长什么样
+这一节先把数据、模型、loss 和优化器四层怎么接起来说清楚。
 
 一个完整的微调实验通常包含四层：
 1. **数据层**：把 prompt / response 整理成 `input_ids` 和 `labels`。
@@ -38,6 +39,7 @@
 这节更像 `00-12` 的阶段性项目收口页：我们用一个极小的语言模型，把这些步骤串成一个可训练的闭环。后面的 `TODO 1-3` 会分别把这四层拆开实现，再重新合回一个训练闭环。
 
 ### Step 2: 为什么要把它做成实验
+这一段先说明为什么要把单点函数串成完整实验，再进入代码。
 
 如果只会单点函数，很容易在面试或真实项目里出现“会公式，不会落地”的问题。端到端实验的价值在于：
 - 你能确认数据、模型、loss、优化器之间的接口是对的。
@@ -45,6 +47,7 @@
 - 你能快速定位是数据问题、loss 问题，还是优化器问题。
 
 ### Step 3: 代码实现框架
+这一段把三个 TODO 对应到三步闭环：构造样本、计算损失、执行训练更新。
 
 下面会实现三个函数：
 - `build_sft_batch`：构造一批 SFT 样本。
@@ -64,6 +67,7 @@ import torch.nn as nn
 ```python
 def build_sft_batch(prompt_ids, response_ids, pad_id=0, max_len=10):
     # ==========================================
+    # 先拼接 prompt 和 response，再决定哪些位置参与监督。
     # TODO 1: 构造 SFT 样本
     # 提示: prompt 部分的 labels 需要 mask 成 -100，response 部分保留原标签
     # ==========================================
@@ -97,6 +101,7 @@ class TinyCausalLM(nn.Module):
 
 def compute_sft_loss(logits, labels):
     # ==========================================
+    # 先把时间步错一位，再做 token 级分类损失。
     # TODO 2: 对齐 next-token 预测并计算 SFT loss
     # 提示: 先 shift logits / labels，再用 CrossEntropyLoss(ignore_index=-100)
     # ==========================================
@@ -114,6 +119,7 @@ def run_finetuning_experiment(model, optimizer, input_ids, labels, accum_steps=2
         raise ValueError("batch size 必须能被 accum_steps 整除")
 
     # ==========================================
+    # 先按 micro-batch 跑 forward/backward，最后统一 step。
     # TODO 3: 端到端训练闭环
     # 提示: 切 micro-batch -> 缩放 loss 并 backward -> 最后 step / zero_grad / 返回 history
     # ==========================================
@@ -206,6 +212,7 @@ import torch.nn as nn
 
 
 def build_sft_batch(prompt_ids, response_ids, pad_id=0, max_len=10):
+    # 先拼接 prompt 和 response，再决定哪些位置参与监督。
     # TODO 1: 构造 SFT 样本
     input_ids = prompt_ids + response_ids
     labels = [-100] * len(prompt_ids) + response_ids
@@ -236,6 +243,7 @@ class TinyCausalLM(nn.Module):
 
 
 def compute_sft_loss(logits, labels):
+    # 先把时间步错一位，再做 token 级分类损失。
     # TODO 2: 对齐 next-token 预测并计算 SFT loss
     shift_logits = logits[..., :-1, :].contiguous()
     shift_labels = labels[..., 1:].contiguous()
@@ -244,6 +252,7 @@ def compute_sft_loss(logits, labels):
 
 
 def run_finetuning_experiment(model, optimizer, input_ids, labels, accum_steps=2, num_updates=40):
+    # 先按 micro-batch 跑 forward/backward，最后统一 step。
     # TODO 3: 端到端训练闭环
     if input_ids.size(0) % accum_steps != 0:
         raise ValueError("batch size 必须能被 accum_steps 整除")
@@ -270,7 +279,11 @@ def run_finetuning_experiment(model, optimizer, input_ids, labels, accum_steps=2
     return history
 ```
 
-### 解析
+### 答案与直觉
+
+- **这一题要解决什么**：把 SFT 数据构造、loss 计算和训练更新串成一个最小闭环。
+- **为什么这样做**：只有把输入、监督信号和优化器路径全部对齐，实验结果才有可解释性。
+- **带走的直觉**：端到端实验的重点不是堆功能，而是确认整条训练链路能稳定跑通。
 
 **1. TODO 1 (构造 SFT 样本)**
 

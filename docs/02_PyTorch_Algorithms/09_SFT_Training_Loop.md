@@ -12,6 +12,7 @@
 
 在面试大模型算法工程师时，面试官极大概率会问：“在做 SFT（监督微调）时，你是怎么构造 `input_ids` 和 `labels` 的？”、“为什么要 `shift logits`？”
 本节我们将实现 SFT 训练中最容易写错的代码：**Prompt Masking**（忽略提问部分的 Loss）和 **交叉熵对齐**。
+可以先把 SFT 记成一句话：模型要学的是“回答”，不是“复述提问”，所以只有 Response 部分应该真正参与损失。
 
 **关键词：** `SFT`, `masking`, `shift logits`
 ## 前置阅读
@@ -31,6 +32,8 @@
 
 ### Step 1: 核心思想与痛点
 
+这一节先把预训练和 SFT 的目标差异说清楚，再看为什么 prompt 需要被 mask 掉。
+
 > **预训练 (Pre-training) vs 微调 (SFT)**
 > * **预训练**：模型预测下一个 Token。给定一本书，每一个字都要算 Loss。
 > * **SFT**：给定 `[Prompt] + [Response]`。我们**只关心**模型能不能输出正确的 `Response`。如果把 `Prompt` 也纳入 Loss 计算，模型就会去“背诵”人类的提问方式，而不是去“回答”问题。
@@ -42,9 +45,11 @@
 
 ### Step 2: Causal Masking 与 Shift Logits
 
+
 在自回归语言模型中，预测第 $t+1$ 个词完全依赖于前 $t$ 个词。因此，在计算 CrossEntropyLoss 时，模型的预测输出序列（Logits）需要向左偏移（Shift）一位，与真实的标签序列（Labels）对齐。此外，对于 SFT 提示词部分，通常需要设置 `ignore_index = -100` 以避免它们产生梯度传播。
 
 ### Step 3: 动手实战
+
 
 **要求**：请补全下方 `build_sft_data`（构造单条 SFT 数据）和 `compute_sft_loss`（计算损失）的 `TODO` 逻辑。
 
@@ -67,6 +72,7 @@ def build_sft_data(prompt_ids: list[int], response_ids: list[int], pad_id: int =
     input_ids = prompt_ids + response_ids
     
     # ==========================================
+    # Prompt 部分先统一标成 ignore_index，确保只对 Response 计算损失。
     # TODO 1: 构造 labels
     # 规则：
     # - 长度与 input_ids 相同
@@ -192,6 +198,7 @@ def build_sft_data(prompt_ids: list[int], response_ids: list[int], pad_id: int =
     # TODO 1: 构造 labels
     labels = [-100] * len(prompt_ids) + response_ids
     
+    # 长度超限就截断，不足则补 pad；labels 的 pad 位置也必须保持忽略。
     # TODO 2: 截断与填充
     if len(input_ids) > max_len:
         input_ids = input_ids[:max_len]
@@ -204,10 +211,12 @@ def build_sft_data(prompt_ids: list[int], response_ids: list[int], pad_id: int =
     return torch.tensor(input_ids, dtype=torch.long), torch.tensor(labels, dtype=torch.long)
 
 def compute_sft_loss(logits: torch.Tensor, labels: torch.Tensor):
+    # 预测位置向左对齐一位，对应 next-token prediction。
     # TODO 3: 实现 Shift 错位对齐
     shift_logits = logits[..., :-1, :].contiguous()
     shift_labels = labels[..., 1:].contiguous()
     
+    # 展平后按 ignore_index 计算交叉熵，忽略 prompt 和 pad 区域。
     # TODO 4: 展平并计算交叉熵
     loss_fct = nn.CrossEntropyLoss(ignore_index=-100)
     shift_logits = shift_logits.view(-1, shift_logits.size(-1))
@@ -218,7 +227,11 @@ def compute_sft_loss(logits: torch.Tensor, labels: torch.Tensor):
 
 ```
 
-### 解析
+### 答案与直觉
+
+- **这一题要解决什么：** 把 SFT 的 prompt/response 数据构造和 next-token loss 对齐成一个最小训练闭环。
+- **为什么这样做：** 只让 Response 参与损失，模型才会学会回答而不是复述提问；shift 则保证预测和标签一一对应。
+- **带走的直觉：** SFT 的关键不是“把序列喂进去”，而是“哪些位置该学、哪些位置该忽略”。
 
 **1. TODO 1: 构造 labels**
 

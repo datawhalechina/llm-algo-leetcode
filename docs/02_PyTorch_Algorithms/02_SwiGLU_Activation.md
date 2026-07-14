@@ -12,6 +12,7 @@
 
 在组装 LLaMA-3 的那一节中，我们使用了 `SwiGLU` 作为 MLP 的激活函数。为什么所有主流大模型（LLaMA, Qwen, Mistral, PaLM）都在抛弃 ReLU/GELU 而转向 SwiGLU？
 本节我们将深入推导 SwiGLU 的设计原理，特别是**如何调整隐藏层的维度**，以保证参数量与标准 Transformer 严格对齐。这是面试中非常经典的**架构推导题**。
+如果你对 Transformer 的 MLP 还不熟，可以先记住一个最小概念：`hidden size` 是 token 向量的长度，`gate` 和 `up` 是 SwiGLU 里并行的两条投影分支。
 
 **关键词：** `SwiGLU`, `GLU`, `gating`
 ## 前置阅读
@@ -31,6 +32,8 @@
 
 ### Step 1: 核心思想与痛点
 
+这一节先把“门控”是什么意思说清楚，后面再看公式和代码时，你就知道 gate 和 up 各自负责什么。
+
 > **什么是 GLU (Gated Linear Unit)？**
 > 传统 MLP 是 $W_{down}(\sigma(W_{up}x))$。
 > 门控机制 (GLU) 引入了“两条路”：一条路做激活（作为门控开关），另一条路保持线性，然后两者逐元素相乘（Hadamard Product）。
@@ -41,6 +44,8 @@
 > 就是把 GLU 中的激活函数 $\sigma$ 换成了 **Swish**（即 $x \cdot \text{Sigmoid}(\beta x)$，在 PyTorch 中 $\beta=1$ 时等于 `SiLU`）。
 
 ### Step 2: 核心数学机制：参数量对齐
+
+这一节的目标不是死记 8/3，而是理解为什么门控结构会改变参数量，以及为什么要把它对齐回标准 Transformer。
 
 **典型的面试问题：**
 > “在 GPT-2 中，隐藏层维度通常是输入维度 $d$ 的 4 倍（即 $4d$）。但在使用 SwiGLU 的 LLaMA 中，为什么隐藏层维度变成了 $\frac{8}{3}d$ 并向上取整？”
@@ -66,6 +71,8 @@
 这正是 LLaMA 源码中对中间层维度进行 `int(8 * hidden_size / 3)` 计算的根本原因。
 ### Step 3: 工业级实现框架与性能陷阱 (Memory Bound)
 
+这一节把理论翻译成工程实现，重点看融合矩阵和并行对齐为什么会出现在真实代码里。
+
 在理解了 SwiGLU 的基本公式（`down_proj(SiLU(gate_proj(x)) * up_proj(x))`）和 $8/3$ 维度由来后，如何把它写进真实的训练框架中？
 
 **性能陷阱 1：张量并行 (TP) 与内存对齐**
@@ -80,6 +87,8 @@
 > 
 > 在前向传播时，输入 $x$ 只需要被读取一次进行一次大规模矩阵乘法。得到的结果再通过 `torch.chunk(2, dim=-1)` 切分为两半，分别作为 gate 和 up 块。这极大地缓解了内存带宽瓶颈。
 ###  Step 4: 动手实战
+
+这里开始把参数量推导和门控逻辑落实到最小可运行代码里，重点看每个张量是怎么流动的。
 
 **要求**：请补全下方 `calculate_intermediate_size` 和 `SwiGLU` 模块的代码。
 
@@ -204,6 +213,7 @@ test_swiglu()
 
 ```python
 def calculate_intermediate_size(hidden_size: int, multiple_of: int = 256):
+    # 先按 8/3 算出理论中间维度，再按 multiple_of 向上对齐。
     # TODO 1 & 2
     intermediate_size = int(hidden_size * 8 / 3)
     aligned_size = ((intermediate_size + multiple_of - 1) // multiple_of) * multiple_of
@@ -212,30 +222,34 @@ def calculate_intermediate_size(hidden_size: int, multiple_of: int = 256):
 class SwiGLU_MLP(nn.Module):
     def __init__(self, hidden_size: int, intermediate_size: int):
         super().__init__()
+        # gate_up_proj 把 gate 和 up 两条分支合并成一次线性投影。
         # TODO 3
         self.gate_up_proj = nn.Linear(hidden_size, 2 * intermediate_size, bias=False)
         self.down_proj = nn.Linear(intermediate_size, hidden_size, bias=False)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # 先切分 gate / up，再让门控分支通过 SiLU。
         # TODO 4
         gate_up = self.gate_up_proj(x)
         gate, up = torch.chunk(gate_up, 2, dim=-1)
         return self.down_proj(F.silu(gate) * up)
 ```
 
-### 解析
+### 答案与直觉
 
 **1. TODO 1 & 2 (隐藏层维度计算)**
 
-- **计算理论值：** 推导公式 $3 \cdot d \cdot h_{swiglu} = 8d^2$ 得出理论隐藏层维度应为 $\frac{8}{3}d$。
-- **硬件对齐：** 为了确保在张量并行时权重矩阵能够被所有 GPU 整除（不报错），并且满足 Tensor Core 对内存的对齐要求，必须将其向上取整对齐到 `multiple_of` 的倍数。
+- **这一题要解决什么：** 先算出 SwiGLU 的理论中间维度，再把它对齐到硬件友好的倍数。
+- **为什么是 8/3：** 门控结构多了一条投影分支，所以参数量公式从标准 MLP 的 `2dh` 变成 `3dh_swiglu`，对齐后得到 $\frac{8}{3}d$。
+- **为什么还要对齐：** 在张量并行和 Tensor Core 场景里，维度必须能被后续切分和硬件访问友好处理。
 
 **2. TODO 3 (定义矩阵)**
 
-- **矩阵融合：** 工业级实现的核心。将 `gate_proj` 和 `up_proj` 融合成一个完整的 `gate_up_proj` 线性层（输出维度为 `2 * intermediate_size`）。
-- **进阶思考：** 为什么要合并矩阵？如果分开计算，巨大的输入张量 $x$ 会被 GPU 从全局显存中读取两次。大模型计算受限于显存带宽，合并计算让输入 $x$ 仅被读取一次，显著降低访存开销和算子发射延迟。
+- **这一题要解决什么：** 把两条并行投影合并成一个矩阵，减少重复读取输入张量。
+- **为什么要融合：** gate 和 up 共享同一个输入 `x`，合并后只需要做一次大矩阵乘法，能明显降低访存压力。
 
 **3. TODO 4 (前向传播)**
 
-- **计算与切分：** 得到 `gate_up` 结果后，使用 `torch.chunk(2, dim=-1)` 沿最后一个维度均分为门控块 (`gate`) 和激活块 (`up`)。
-- **公式实现：** 执行 `down_proj(SiLU(gate) * up)` 计算，完成 SwiGLU 激活机制。
+- **这一题要解决什么：** 把融合后的输出切回两条分支，再按 SwiGLU 公式完成前向计算。
+- **为什么先切分再激活：** `gate` 负责门控，`up` 负责保留线性信息；先把它们拆开，语义最清楚。
+- **带走的直觉：** SwiGLU 不是单个激活函数，而是“门控 + 线性分支 + 融合投影”的一整套结构。

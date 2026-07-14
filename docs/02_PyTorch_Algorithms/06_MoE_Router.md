@@ -12,6 +12,7 @@
 
 本节我们将解析目前最火爆的模型架构：**MoE (Mixture of Experts)**。这也是 Mixtral、Grok、DeepSeek 等顶级开源模型背后的核心技术。
 面试中最常考的并不是专家的内部结构，而是那个“交通警察”——**路由机制 (Router) 和专家权重计算**。
+可以先把 MoE 记成“不是每个 token 都跑所有参数”，而是让 Router 决定它该去找哪几个专家，从而用稀疏激活换取更大的参数容量。
 
 **关键词：** `MoE`, `Router`, `Sparse Routing`
 ## 前置阅读
@@ -32,6 +33,8 @@
 
 ### Step 1: 核心思想与痛点
 
+这一节先把稠密模型为什么贵、MoE 为什么能省算力讲清楚。
+
 > **Dense (稠密) 模型的痛点：**
 > 在标准的 Transformer 中，每一个 Token 都必须经过全网络的所有参数（比如 70B 的 LLaMA）。这导致随着模型变大，推理和训练的计算量呈线性爆炸。
 > 
@@ -41,11 +44,14 @@
 > 这样，即便总参数量有 8x7B=56B，实际每个 Token 只激活了 2x7B=14B 的参数。**计算量骤降，而知识容量剧增。**
 
 ### Step 2: 代码实现框架
+
 在门控网络中，首先计算输入对所有专家的打分矩阵（logits）。**关键陷阱**：必须先在全维度（num_experts）上进行 Softmax 将打分转为概率分布，然后再通过 `torch.topk` 获取最大的 K 个概率及其对应的专家索引。最后，为了保证加权和仍为 1，必须对截取出的 K 个概率值进行重归一化（Re-normalize）。
 
 因此实现顺序一定是 `router_logits -> 全局 softmax -> top-k -> 重归一化 -> sparse dispatch`；如果先截断再做 Softmax，就会丢掉全局相对置信度，路由结果也会变得不稳定。
 
 ###  Step 3: 核心数学机制：Top-K Routing
+
+这一节把 Router、Top-K 和重归一化的顺序摆清楚，后面的代码就是按这条链路落地。
 
 **1. 门控网络 (Gating / Router)：**
 给定输入 Token 的特征 $x \in \mathbb{R}^d$，我们用一个线性层将其映射到各个专家的打分：
@@ -67,6 +73,8 @@ Token 经过这 $K$ 个专家的计算后，按最新权重加权求和：
 $$ y = \sum_{i \in TopK} w_i \cdot \text{Expert}_{idx_i}(x) $$
 
 ###  Step 4: 动手实战
+
+这里开始把全局 Softmax、Top-K 截取和稀疏专家分发写成最小可运行实现。
 
 **要求**：请补全下方 `TopKRouter` 函数。
 这也是面试中非常经典的 `torch.topk`、`scatter` 和 `gather` 等高级张量操作的考察点。
@@ -233,12 +241,15 @@ class TopKRouter(nn.Module):
         
         router_logits = self.gate(hidden_states)
         
+        # 先把所有专家的打分归一化成全局概率分布，再做截取。
         # TODO 1: 全局 Softmax 转换为概率分布
         routing_probs = F.softmax(router_logits.float(), dim=-1)
         
+        # 只保留概率最大的 K 个专家，形成稀疏路由。
         # TODO 2: 截取概率最大的 Top-K 专家
         routing_weights, selected_experts = torch.topk(routing_probs, self.top_k, dim=-1)
         
+        # 把截取后的 K 个权重重新归一化，保证加权和仍为 1。
         # TODO 3: 重归一化
         routing_weights = routing_weights / routing_weights.sum(dim=-1, keepdim=True)
         
@@ -274,7 +285,11 @@ class SparseMoEBlock(nn.Module):
 
 ```
 
-### 解析
+### 答案与直觉
+
+- **这一题要解决什么：** 用 Router 从所有专家里挑出最相关的少数几个，并给出对应权重。
+- **为什么这样做：** 先全局 Softmax，再 Top-K，再重归一化，才能同时保留全局置信度和稀疏性。
+- **带走的直觉：** MoE 的重点不是“专家很多”，而是“只激活少数专家，但路由必须稳定”。
 
 **1. TODO 1: 全局 Softmax 转换**
 

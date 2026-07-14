@@ -10,7 +10,7 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-在做大模型微调时，显存通常先被 batch size 吃满。梯度累积的核心思路是：把一个大 batch 拆成多个 micro-batch，分多次 backward，最后只 step 一次，从而在不增加峰值显存的前提下，模拟更大的有效 batch。
+在做大模型微调时，显存通常先被 batch size 吃满。梯度累积的核心思路是：把一个大 batch 拆成多个 micro-batch，分多次 backward，最后只 step 一次，从而在不增加峰值显存的前提下，模拟更大的有效 batch。可以先把它记成：把大 batch 拆成小块，分多次反传，最后一次更新。
 
 **关键词：** `gradient accumulation`, `micro-batch`, `effective batch`
 ## 前置阅读
@@ -27,6 +27,7 @@
 - [13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
 - [20. NCCL and AllReduce Basics | NCCL 与 AllReduce 基础](../01_Hardware_Math_and_Systems/20_NCCL_and_AllReduce_Basics.md)
 ### Step 1: 为什么需要梯度累积
+这一节先把“大 batch 更稳，但显存不够”这个矛盾说清楚。
 
 > **大 batch 的好处**：梯度更稳定，更新方向更平滑。
 >
@@ -36,6 +37,7 @@
 > - 只要每个 micro-batch 的 loss 按 `accum_steps` 做缩放，最终效果就和一次性喂入大 batch 非常接近。
 
 ### Step 2: 数学等价性
+这里要抓住的重点不是公式本身，而是缩放和反传的顺序。
 
 设一个完整 batch 被切成 `K` 个 micro-batch。若每个 micro-batch 的损失记为 `L_i`，则梯度累积相当于计算：
 
@@ -49,6 +51,7 @@ $$
 这也是为什么 `train_step_with_accumulation` 的实现要先缩放再反传。
 
 ### Step 3: 代码实现框架
+这一段把完整 batch 和累积 batch 的更新路径并排对齐。
 
 下面我们实现两个更新步骤：
 - `train_step_full_batch`：一次性使用完整 batch 更新。
@@ -105,6 +108,7 @@ def train_step_with_accumulation(model, optimizer, x, y, accum_steps=4):
     total_loss = 0.0
     for idx in range(accum_steps):
         # ==========================================
+        # 先切出当前 micro-batch，逐个处理而不是一次性喂完整 batch。
         # TODO 1: 切分当前 micro-batch
         # 提示: 从 x / y 中按 idx 和 micro_size 取出对应片段
         # ==========================================
@@ -226,24 +230,31 @@ def train_step_with_accumulation(model, optimizer, x, y, accum_steps=4):
     micro_size = x.size(0) // accum_steps
     total_loss = 0.0
     for idx in range(accum_steps):
+        # 先切出当前 micro-batch，逐个处理而不是一次性喂完整 batch。
         # TODO 1: 切分当前 micro-batch
         xb = x[idx * micro_size:(idx + 1) * micro_size]
         yb = y[idx * micro_size:(idx + 1) * micro_size]
 
         pred = model(xb)
 
+        # 先缩放 loss，确保累积后的总梯度尺度和完整 batch 一致。
         # TODO 2: 缩放 loss 并反传
         loss = criterion(pred, yb) / accum_steps
         loss.backward()
         total_loss += loss.detach().item()
 
+    # 所有 micro-batch 反传完后再统一更新参数。
     # TODO 3: 统一更新参数并返回累计 loss
     optimizer.step()
     optimizer.zero_grad()
     return total_loss
 ```
 
-### 解析
+### 答案与直觉
+
+- **这一题要解决什么**：把大 batch 的更新效果用 micro-batch 累积模拟出来。
+- **为什么这样做**：显存不够时靠多次 backward、一次 step 保持等价更新。
+- **带走的直觉**：梯度累积的关键不是拆 batch，而是保持梯度尺度不变并延后参数更新。
 
 **1. TODO 1 (切分当前 micro-batch)**
 
