@@ -10,8 +10,8 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-本节我们将进入激动人心的“组装阶段”！我们将把之前实现的 **RMSNorm**、**RoPE** 和 **GQA (Grouped-Query Attention)** 拼装在一起，外加一个 **SwiGLU** 激活函数的 MLP 层，构建一个真正的 **LLaMA-3 Decoder Layer**。这也是面试中常考的全局架构题。
-可以先把 Decoder Layer 记成一条固定流水线：先归一化，再做 Attention / MLP 变换，最后用残差把原始信息绕回主干。
+本节进入激动人心的“组装阶段”！我们会把之前实现的 **RMSNorm**、**RoPE** 和 **GQA (Grouped-Query Attention)** 拼装在一起，外加一个 **SwiGLU** 激活函数的 MLP 层，构建一个真正的 **LLaMA-3 Decoder Layer**。这也是面试中常考的全局架构题。
+可以先把 Decoder Layer 记成一条固定流水线：先归一化，再做 Attention / MLP 变换，最后通过残差连接保留原始输入，并和新特征相加。
 
 **关键词：** `LLaMA3`, `Transformer Block`, `Decoder Layer`
 ## 前置阅读
