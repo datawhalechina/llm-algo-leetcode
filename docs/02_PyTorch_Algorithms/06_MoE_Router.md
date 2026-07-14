@@ -19,17 +19,16 @@
 
 **导语：** 如果还没把 Block 组装和 Attention 主线理顺，先看下面两页再进入 MoE 结构会更顺。
 
-- [09 PyTorch nn.Module Basics](../00_Prerequisites/09_PyTorch_nn_Module_Basics.md)
-- [13 Simple Neural Network Training](../00_Prerequisites/13_Simple_Neural_Network_Training.md)
+- [05. LLaMA3 Block Tutorial | LLaMA3 Block 教程](../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.md)
+- [P0: 09. PyTorch nn.Module Basics | PyTorch nn.Module 基础](../00_Prerequisites/09_PyTorch_nn_Module_Basics.md)
 
 
 ## 相关阅读
 
 **导语：** 本节先把 Router 的路由决策讲清楚；如果想继续看训练时如何避免专家塌缩，再看负载均衡损失。
 
-- [03 GPU Architecture and Memory](../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.md)
-- [05 Communication Topologies](../01_Hardware_Math_and_Systems/05_Communication_Topologies.md)
-- [08 Programming Models CUDA Triton](../01_Hardware_Math_and_Systems/08_Programming_Models_CUDA_Triton.md)
+- [P1: 03. GPU Architecture and Memory | GPU 物理架构与内存层级](../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.md)
+- [P1: 05. Communication Topologies | 通信拓扑与分布式基石](../01_Hardware_Math_and_Systems/05_Communication_Topologies.md)
 
 ### Step 1: 核心思想与痛点
 

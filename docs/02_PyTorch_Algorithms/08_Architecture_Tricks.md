@@ -19,18 +19,18 @@
 
 **导语：** 如果还没把 Block、Router 和负载均衡主线理顺，先看下面几页再进入结构变体会更顺。
 
-- [05 PyTorch Tensor Fundamentals](../00_Prerequisites/05_PyTorch_Tensor_Fundamentals.md)
-- [13 Simple Neural Network Training](../00_Prerequisites/13_Simple_Neural_Network_Training.md)
-- [20 Profiling and Memory Ledger](../00_Prerequisites/20_Profiling_and_Memory_Ledger.md)
+- [01. RMSNorm Tutorial | RMSNorm 教程](../02_PyTorch_Algorithms/01_RMSNorm_Tutorial.md)
+- [05. LLaMA3 Block Tutorial | LLaMA3 Block 教程](../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.md)
+- [P0: 09. PyTorch nn.Module Basics | PyTorch nn.Module 基础](../00_Prerequisites/09_PyTorch_nn_Module_Basics.md)
 
 
 ## 相关阅读
 
 **导语：** 本节先把结构变体讲清楚；如果想继续看训练与微调主线，再顺着看后面的页面。
 
-- [12 TensorCore and Mixed Precision](../01_Hardware_Math_and_Systems/12_TensorCore_and_Mixed_Precision.md)
-- [08 Programming Models CUDA Triton](../01_Hardware_Math_and_Systems/08_Programming_Models_CUDA_Triton.md)
-- [09 AI Compilers and Graph Optimization](../01_Hardware_Math_and_Systems/09_AI_Compilers_and_Graph_Optimization.md)
+- [P1: 12. TensorCore and Mixed Precision | Tensor Core 与混合精度](../01_Hardware_Math_and_Systems/12_TensorCore_and_Mixed_Precision.md)
+- [P1: 08. Programming Models CUDA Triton | 编程模型演进](../01_Hardware_Math_and_Systems/08_Programming_Models_CUDA_Triton.md)
+- [P1: 09. AI Compilers and Graph Optimization | AI 编译器与计算图优化](../01_Hardware_Math_and_Systems/09_AI_Compilers_and_Graph_Optimization.md)
 
 ### Step 1: 核心差异与机制
 
