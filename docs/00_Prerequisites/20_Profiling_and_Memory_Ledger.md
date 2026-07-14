@@ -93,9 +93,9 @@ print('dominant:', 'activation' if ledger['activation_mb'] > ledger['adam_state_
 
 ```
 
-## Q4：什么时候先优化 batch、checkpoint、accumulation？
+## Q4：显存压力出现时，先用 batch、accumulation 还是 checkpoint？
 
-如果是放不下，先看显存账本；如果是跑得慢，先看热点；如果是通信或同步开销大，再考虑 accumulation 或 checkpoint。
+先判断是不是显存真的放不下；如果是，先缩 batch，再看是否需要 accumulation 保住有效 batch，最后才把 checkpoint 当作进一步降峰值的手段。
 
 
 ```python
@@ -117,9 +117,9 @@ print('case3:', choose_memory_action(True, 'backward', True))
 
 ```
 
-## Q5：latency 高和 throughput 低，分别说明什么？
+## Q5：latency 高但 throughput 低，通常先怀疑什么？
 
-先把延迟和吞吐拆开看，避免把单步慢和整体产出低混成同一个问题。
+先判断是单步慢、整体产出低，还是两者同时发生；把症状拆开后，才知道该先看数据、算子还是训练骨架。
 
 
 ```python

@@ -25,9 +25,9 @@
 **导语：** 本页先把显存账本和优化手段的最小判断讲清楚；如果想继续看调试技巧，再顺着看下面这一页。
 - [19. Debugging and Anomaly Localization | 调试与异常定位](./19_Debugging_and_Anomaly_Localization.md)
 
-## Q1：显存账本先看哪几项？
+## Q1：显存账本先分哪几层？
 
-先把参数、梯度、优化器状态和激活拆开；只看 `allocated` 不够，得看每一项分别占多少。
+先把常驻显存（参数、梯度、优化器状态）和动态显存（激活、临时 buffer）拆开；只看 `allocated` 不够，还要知道峰值是在哪一层堆起来的。
 
 
 ```python
@@ -167,9 +167,9 @@ print("store tensors only when you really need the graph")
 
 ```
 
-## Q5：参数、梯度、优化器状态、激活，谁最先吃满显存？
+## Q5：常驻显存和动态显存，谁更像当前瓶颈？
 
-先把四类显存拆开看，再判断当前瓶颈是参数规模、优化器状态，还是训练过程里的激活峰值。
+先把常驻显存和动态显存分开看，再判断当前瓶颈是参数规模、优化器状态，还是训练过程里的激活峰值；这样才能知道是改模型大小，还是改训练策略。
 
 
 ```python
@@ -190,9 +190,9 @@ print('dominant:', winner)
 
 ```
 
-## Q6：batch、gradient accumulation、checkpoint 三者怎么选？
+## Q6：batch、gradient accumulation、checkpoint 的决策顺序怎么定？
 
-先把可用显存、激活峰值和通信开销算出来，再决定是缩 batch、做 accumulation，还是上 checkpoint，而不是先拍脑袋改训练超参。
+先看 batch 是否还能缩，再看 accumulation 是否足够保住有效 batch，最后才把 checkpoint 当作进一步降峰值的兜底方案；顺序定清楚，才不会把三者混成一团。
 
 
 ```python
