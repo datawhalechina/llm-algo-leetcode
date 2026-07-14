@@ -10,7 +10,7 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-本页聚焦：理解 `loss` 和 `optimizer` 的分工；掌握 `zero_grad()`、`backward()`、`step()` 的顺序；能跑通一个最小训练步。
+本页聚焦：理解 `loss` 和 `optimizer` 的分工；掌握 `zero_grad()`、`backward()`、`step()` 的顺序；能跑通一个最小训练步。前面已经看过模型怎么存，这一页开始看模型怎么更新。阅读顺序可以按这条线走：先分清 loss 和 optimizer 的角色，再看训练步顺序，然后学会先排查训练流程，最后把最小闭环跑通。这里先把它当成 Part 2 里最常回看的“训练步入口”来看：你看到一段训练代码，先找 loss、梯度清理和参数更新分别在哪。训练模式切换通常也会出现在这一步里，`model.train()` / `model.eval()` 影响的是模型行为，不是 loss 的定义。
 
 **关键词：** `loss`, `optimizer`, `step`
 
@@ -26,7 +26,7 @@
 
 ## Q1：loss 和 optimizer 分别解决什么问题？
 
-`loss` 把任务目标变成一个可以优化的标量，`optimizer` 负责根据梯度更新参数。训练能不能学起来，先看这两个角色是不是分清了。
+`loss` 把任务目标变成一个可以优化的标量，`optimizer` 负责根据梯度更新参数。训练能不能学起来，先看这两个角色是不是分清了。这里先记住：`loss` 负责“算差多少”，`optimizer` 负责“怎么改参数”。
 
 
 ```python
@@ -36,10 +36,12 @@ import torch.nn.functional as F
 
 
 def mse_loss(pred, target):
+    # 回归任务里，loss 通常就是把误差压成一个标量。
     return torch.mean((pred - target) ** 2)
 
 
 def cross_entropy_loss(logits, target):
+    # 分类任务里，logits 是未归一化分数，target 是类别 id。
     return F.cross_entropy(logits, target)
 
 
@@ -74,16 +76,19 @@ print('✅ loss 基本验证通过')
 
 ## Q2：什么时候必须先清梯度，再 backward，再 step？
 
-训练循环里最容易乱的就是顺序：先清梯度，再前向，再反向，再更新。顺序错了，看到的就不是当前 batch 的结果。
+训练循环里最容易乱的就是顺序：先清梯度，再前向，再反向，再更新。顺序错了，看到的就不是当前 batch 的结果。这里先记住训练步的标准三连：`zero_grad()` -> `backward()` -> `step()`；如果模型里有 dropout 或 norm 之类的行为切换，也要先明确是 `train()` 还是 `eval()`。
 
 
 ```python
 def train_one_step(model, x, target, optimizer):
+    # `train()` 会把模型切到训练行为，dropout / norm 之类模块会据此工作。
     model.train()
+    # 先清掉上一轮残留梯度，再做前向和反向。
     optimizer.zero_grad()
     pred = model(x)
     loss = mse_loss(pred, target)
     loss.backward()
+    # `step()` 才是真正更新参数的地方。
     optimizer.step()
     return loss.item()
 
@@ -125,7 +130,7 @@ print('✅ 一步训练通过，before=', before, 'after=', after)
 
 ## Q3：什么时候必须先检查 zero_grad 和训练流程？
 
-如果 loss 在变小，但模型表现没变，先检查训练流程是否正确，而不是马上换模型。常见错误往往是梯度没清、更新没发生或者顺序错了。
+如果 loss 在变小，但模型表现没变，先检查训练流程是否正确，而不是马上换模型。常见错误往往是梯度没清、更新没发生或者顺序错了。这里重点是把“问题在流程还是在模型”先分开；Q3 主要是排错，别和上面的训练步顺序混在一起。
 
 
 ```python
@@ -165,7 +170,7 @@ print('✅ zero_grad / 累积通过')
 
 ## Q4：什么时候必须把训练步串成一个最小闭环？
 
-只要你要验证一套训练逻辑，最好先把单步更新跑通，再去谈更复杂的 batch、scheduler 或混合精度。
+只要你要验证一套训练逻辑，最好先把单步更新跑通，再去谈更复杂的 batch、scheduler 或混合精度。这里的最小闭环就是：前向算 loss，反向拿梯度，optimizer 更新参数。验证时还可以顺手把 `model.eval()` 和 `model.train()` 的行为差别看一眼；Q4 负责把前面的概念收成一条完整训练链。
 
 
 ```python
@@ -173,6 +178,12 @@ model = nn.Linear(1, 1)
 with torch.no_grad():
     model.weight.zero_()
     model.bias.zero_()
+
+print('初始 training mode:', model.training)
+model.eval()
+print('eval mode:', model.training)
+model.train()
+print('train mode:', model.training)
 
 x = torch.tensor([[1.0], [2.0], [3.0], [4.0]])
 target = 2 * x + 1
