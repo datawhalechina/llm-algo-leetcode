@@ -83,7 +83,7 @@ export default defineConfig({
               { text: '01. Python 基础与数据表示', link: '/00_Prerequisites/01_Python_Essentials_for_LLM' },
               { text: '02. NumPy 与 Einsum', link: '/00_Prerequisites/02_NumPy_and_Einsum' },
               { text: '03. Python 面向对象与工具模式', link: '/00_Prerequisites/03_Python_OOP_and_Utility_Patterns' },
-              { text: '04. Python 配置与 I/O 模式', link: '/00_Prerequisites/04_Python_Config_and_IO_Patterns' }
+              { text: '04. Python 配置与数据入口', link: '/00_Prerequisites/04_Python_Config_and_Data_Entry' }
             ]
           },
           {
