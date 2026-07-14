@@ -18,12 +18,11 @@
 **导语：** 先看 0A 组页，把 Part 0 里 Python 基础和数组思维的边界对齐，再进入这一页会更顺。
 - [01. Python Essentials for LLM | Python 基础与数据表示](./01_Python_Essentials_for_LLM.md)
 - [0A 组页](./0A.md)
-- [01. Data Types and Precision | 大模型的数据格式与混合精度](../01_Hardware_Math_and_Systems/01_Data_Types_and_Precision.md)
+- [P1: 01. Data Types and Precision | 大模型的数据格式与混合精度](../01_Hardware_Math_and_Systems/01_Data_Types_and_Precision.md)
 
 ## 相关阅读
 **导语：** 本页先把 ndarray、广播和 einsum 的最小判断讲清楚；如果想继续把对象封装和配置 / I/O 的写法补完整，可以顺着看下面这些页。
 - [03. Python OOP and Utility Patterns | Python 面向对象与工具模式](./03_Python_OOP_and_Utility_Patterns.md)
-- [03. GPU Architecture and Memory | GPU 物理架构、内存层级与核心硬件单元](../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.md)
 
 ## Q1：ndarray、索引和广播分别解决什么问题？
 

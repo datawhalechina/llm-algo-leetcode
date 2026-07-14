@@ -17,13 +17,13 @@
 ## 前置阅读
 **导语：** 先看 0A 组页，把 Part 0 里 Python 基础页的边界和阅读顺序对齐，再进入这一页。
 - [0A 组页](./0A.md)
-- [01. Data Types and Precision | 大模型的数据格式与混合精度](../01_Hardware_Math_and_Systems/01_Data_Types_and_Precision.md)
+- [P1: 01. Data Types and Precision | 大模型的数据格式与混合精度](../01_Hardware_Math_and_Systems/01_Data_Types_and_Precision.md)
 
 ## 相关阅读
 **导语：** 本页先把 Python 的最小工程写法讲清楚；如果想继续把张量、对象和 I/O 的写法补完整，可以顺着看下面这些页。这里的目标不是把语法讲满，而是先把 `list / dict / class / with` 这条最小表达链立住。
 - [02. NumPy and Einsum | NumPy 与 Einsum](./02_NumPy_and_Einsum.md)
 - [03. Python OOP and Utility Patterns | Python 面向对象与工具模式](./03_Python_OOP_and_Utility_Patterns.md)
-- [04. Python Config, I/O, and Data Entry | Python 配置、I/O 与数据入口](./04_Python_Config_and_Data_Entry.md)
+- [04. Python Config and Data Entry | Python 配置与数据入口](./04_Python_Config_and_Data_Entry.md)
 
 ## Q1：list / dict / class / with 各自负责什么？
 

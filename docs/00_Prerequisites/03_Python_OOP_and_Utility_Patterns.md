@@ -18,12 +18,10 @@
 **导语：** 先看 0A 组页，把 Python 基础和对象封装的边界对齐，再进入这一页会更顺。
 - [02. NumPy and Einsum | NumPy 与 Einsum](./02_NumPy_and_Einsum.md)
 - [0A 组页](./0A.md)
-- [28. Fault Tolerance and Checkpointing | 容错与检查点](../01_Hardware_Math_and_Systems/28_Fault_Tolerance_and_Checkpointing.md)
 
 ## 相关阅读
 **导语：** 本页先把对象封装和工具模式的最小判断讲清楚；如果想继续把配置和 I/O 的写法补完整，可以顺着看下面这些页。
-- [04. Python Config, I/O, and Data Entry | Python 配置、I/O 与数据入口](./04_Python_Config_and_Data_Entry.md)
-- [33. TCO and Cost Model | TCO 与成本模型](../01_Hardware_Math_and_Systems/33_TCO_and_Cost_Model.md)
+- [04. Python Config and Data Entry | Python 配置与数据入口](./04_Python_Config_and_Data_Entry.md)
 
 ## Q1：什么时候该把配置收成对象？
 

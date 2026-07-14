@@ -1,4 +1,4 @@
-# 04. Python Config and Data Entry | Python 配置、I/O 与数据入口
+# 04. Python Config and Data Entry | Python 配置与数据入口
 
 **难度：** Easy | **环境：** CPU-first | **标签：** `Python`, `配置`, `I/O` | **目标人群：** Part 2-4 前置补课者
 
@@ -18,12 +18,10 @@
 **导语：** 先看 0A 组页，把 Python 对象封装和文件操作的边界对齐，再进入这一页会更顺。
 - [03. Python OOP and Utility Patterns | Python 面向对象与工具模式](./03_Python_OOP_and_Utility_Patterns.md)
 - [0A 组页](./0A.md)
-- [28. Fault Tolerance and Checkpointing | 容错与检查点](../01_Hardware_Math_and_Systems/28_Fault_Tolerance_and_Checkpointing.md)
 
 ## 相关阅读
 **导语：** 本页先把配置合并、路径读写、临时目录和数据 schema 的最小判断讲清楚；如果想继续把张量和模型前置补完整，可以顺着看下面这些页。
 - [05. PyTorch Tensor Fundamentals | PyTorch 张量基础操作](./05_PyTorch_Tensor_Fundamentals.md)
-- [28. Fault Tolerance and Checkpointing | 容错与检查点](../01_Hardware_Math_and_Systems/28_Fault_Tolerance_and_Checkpointing.md)
 
 ## Q1：配置、路径和资源管理分别解决什么问题？
 
