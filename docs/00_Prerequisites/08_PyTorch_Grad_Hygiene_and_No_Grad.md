@@ -17,7 +17,6 @@
 **导语：** 先看 0B 组页，把 Autograd 和梯度边界对齐，再进入这一页会更顺。
 - [07. PyTorch Autograd and Backward | PyTorch 自动求导与反向传播](./07_PyTorch_Autograd_and_Backward.md)
 - [0B 组页](./0B.md)
-- [06. VRAM Calculation and ZeRO | 显存计算与 ZeRO](../01_Hardware_Math_and_Systems/06_VRAM_Calculation_and_ZeRO.md)
 
 ## 相关阅读
 **导语：** 本页先把训练、验证和推理中的梯度边界讲清楚；如果想继续看模型封装和参数管理，再顺着看下面这一页。

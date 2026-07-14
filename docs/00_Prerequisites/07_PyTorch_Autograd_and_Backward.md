@@ -20,11 +20,12 @@
 **导语：** 先看 0B 组页，把张量布局和梯度边界对齐，再进入这一页会更顺。
 - [06. PyTorch Tensor Layout and Indexing | PyTorch 张量布局与索引](./06_PyTorch_Tensor_Layout_and_Indexing.md)
 - [0B 组页](./0B.md)
-- [01. Data Types and Precision | 大模型的数据格式与混合精度](../01_Hardware_Math_and_Systems/01_Data_Types_and_Precision.md)
 
 ## 相关阅读
 **导语：** 本页先把 Autograd 和 backward 的最小判断讲清楚；如果想继续看梯度清理和无梯度模式，再顺着看下面这一页。
 - [08. PyTorch Grad Hygiene and No-Grad | PyTorch 梯度习惯与无梯度模式](./08_PyTorch_Grad_Hygiene_and_No_Grad.md)
+
+## Q1：Autograd 机制和计算图分别解决什么问题？
 
 PyTorch 的 autograd 负责自动记录前向计算，并在 `backward()` 时把梯度一路回传到需要梯度的叶子节点。前向计算可以先理解成临时搭出一张计算图：每次运算都会记下输入和输出的依赖关系，`backward()` 再沿着这张图把梯度回传。先把这个机制看成“自动记账”，后面就不会把梯度问题误解成普通数值问题。这里重点熟悉 `requires_grad=True`、`backward()` 和 `.grad` 这三个最常见的接口。
 

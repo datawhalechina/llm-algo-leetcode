@@ -18,12 +18,13 @@
 
 ## 前置阅读
 **导语：** 先看 0B 组页，把张量思维和 NumPy 的边界对齐，再进入这一页会更顺。
-- [04. Python Config, I/O, and Data Entry | Python 配置、I/O 与数据入口](./04_Python_Config_and_Data_Entry.md)
+- [04. Python Config and Data Entry | Python 配置与数据入口](./04_Python_Config_and_Data_Entry.md)
 - [0B 组页](./0B.md)
-- [01. Data Types and Precision | 大模型的数据格式与混合精度](../01_Hardware_Math_and_Systems/01_Data_Types_and_Precision.md)
+- [P1: 01. Data Types and Precision | 大模型的数据格式与混合精度](../01_Hardware_Math_and_Systems/01_Data_Types_and_Precision.md)
 
 ## 相关阅读
 **导语：** 本页先把 Tensor、shape 和 dtype 的最小判断讲清楚，再去看后面的 shape/mask 练习会更顺。
+- [P1: 12. TensorCore and Mixed Precision | Tensor Core 与混合精度](../01_Hardware_Math_and_Systems/12_TensorCore_and_Mixed_Precision.md)
 
 ## Q1：Tensor、shape 和 dtype 分别解决什么问题？
 

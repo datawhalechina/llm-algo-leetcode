@@ -18,12 +18,11 @@
 **导语：** 先看 0B 组页，把 Tensor 的形状和 layout 边界对齐，再进入这一页会更顺。
 - [05. PyTorch Tensor Fundamentals | PyTorch 张量基础操作](./05_PyTorch_Tensor_Fundamentals.md)
 - [0B 组页](./0B.md)
-- [03. GPU Architecture and Memory | GPU 物理架构、内存层级与核心硬件单元](../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.md)
 
 ## 相关阅读
 **导语：** 本页先把 layout、索引和连续性的最小判断讲清楚；如果想继续看自动求导和 attention 显存视角，再顺着看下面这一页。
 - [07. PyTorch Autograd and Backward | PyTorch 自动求导与反向传播](./07_PyTorch_Autograd_and_Backward.md)
-- [04. Attention Memory Optimization | Attention 显存优化](../01_Hardware_Math_and_Systems/04_Attention_Memory_Optimization.md)
+- [P1: 04. Attention Memory Optimization | Attention 显存优化](../01_Hardware_Math_and_Systems/04_Attention_Memory_Optimization.md)
 
 ## Q1：shape、stride 和 contiguous 分别解决什么问题？
 
