@@ -10,7 +10,9 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-本页聚焦：理解 BatchNorm 和 LayerNorm 的最小区别；知道训练态和推理态统计量为什么不同；会看最小归一化实现和输出分布。
+本页聚焦：理解 BatchNorm 和 LayerNorm 的最小区别；知道训练态和推理态统计量为什么不同；会看最小归一化实现和输出分布。激活函数看完之后，下一步就是看数值为什么能稳住。对还不熟大模型结构的人来说，可以先把归一化理解成“帮模型把数值范围稳住”的工具：它会在深层网络、残差块和 Transformer block 里反复出现。
+
+如果你把 block 先想成“Embedding 之后反复堆叠的稳定单元”，那么 norm 的作用就是稳住每一层的输入分布，再让 Attention 和 MLP 更容易学到变化。
 
 **关键词：** `BatchNorm`, `LayerNorm`, `running stats`
 
@@ -26,7 +28,7 @@
 
 ## Q1：BatchNorm 和 LayerNorm 分别解决什么问题？
 
-归一化的核心作用，是让训练中的数值分布更稳定。BatchNorm 更依赖 batch 统计，LayerNorm 更偏向样本内部统计。
+归一化的核心作用，是让训练中的数值分布更稳定。BatchNorm 更依赖 batch 统计，LayerNorm 更偏向样本内部统计。对于没有大模型基础的人，可以先把它们理解成两种“稳住数值范围”的方式，只是统计维度不同。
 
 
 ```python
@@ -86,7 +88,7 @@ print('✅ BatchNorm 基本验证通过')
 
 ## Q2：什么时候必须区分训练态和推理态？
 
-训练态和推理态可能用不同统计量。BatchNorm 在训练时看 batch，在推理时看 running stats；LayerNorm 通常不依赖 batch 统计。
+训练态和推理态可能用不同统计量。BatchNorm 在训练时看 batch，在推理时看 running stats；LayerNorm 通常不依赖 batch 统计。这里先把它当成“统计来源切换”来看，而不只是一个模式开关。
 
 
 ```python
@@ -125,7 +127,7 @@ print('✅ running stats 通过')
 
 ## Q3：什么时候必须把归一化和数值分布一起看？
 
-如果训练震荡严重，先别急着换架构，先看归一化和学习率是否合理。归一化本质上是在控制每层特征的统计范围。
+如果训练震荡严重，先别急着换架构，先看归一化和学习率是否合理。归一化本质上是在控制每层特征的统计范围。对没有大模型基础的人，可以先记住：norm 不是为了让数字“好看”，而是为了让后面的层更容易学。
 
 
 ```python
@@ -158,7 +160,7 @@ print('✅ LayerNorm 通过')
 
 ## Q4：什么时候必须同时看归一化、激活和残差？
 
-后面你看到 Transformer block、Pre-Norm、Post-Norm 时，归一化通常不是孤立出现的，而是和激活、残差一起控制稳定性。
+后面你看到 Transformer block、Pre-Norm、Post-Norm 时，归一化通常不是孤立出现的，而是和激活、残差一起控制稳定性。这里要把它看成一个小配件组，而不是单独的层。
 
 
 ```python
@@ -195,7 +197,7 @@ print('✅ 归一化对照通过')
 
 ## Q5：什么时候先调归一化，再调激活或残差？
 
-如果问题主要来自层间统计漂移、训练震荡或不同层数值范围差异，先调归一化；如果统计本身已经稳了，再去看激活和残差。
+如果问题主要来自层间统计漂移、训练震荡或不同层数值范围差异，先调归一化；如果统计本身已经稳了，再去看激活和残差。对于新手，可以简单记成：先稳数值，再调非线性，最后再看信息通路。
 
 
 ```python
@@ -215,7 +217,7 @@ print(fix_norm_first(False, False, True))
 
 ## Q6：什么时候归一化会改变训练动态而不是只改输出值？
 
-只要归一化影响了梯度尺度、running stats 或不同 token / feature 的相对关系，它改变的就不只是输出值，而是训练动态本身。
+只要归一化影响了梯度尺度、running stats 或不同 token / feature 的相对关系，它改变的就不只是输出值，而是训练动态本身。也就是说，norm 是训练行为的一部分，不只是前向里的一个公式。
 
 
 ```python

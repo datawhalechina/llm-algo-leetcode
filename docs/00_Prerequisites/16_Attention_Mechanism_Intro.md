@@ -10,7 +10,11 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-本页聚焦：理解 Q / K / V 的维度职责；理解 causal mask 的作用；能写出最小的 scaled dot-product attention。
+本页聚焦：理解 Q / K / V 的维度职责；理解 causal mask 的作用；能写出最小的 scaled dot-product attention。前面已经看过训练、激活和归一化，现在来到把 token 关系串起来的核心模块。对不熟 NLP / Transformer / LLM 的学习者来说，可以先把它理解成“序列模型里让 token 彼此建立联系的核心模块”：Embedding 先把 token id 变成向量，Attention 再决定每个 token 应该关注哪些位置。
+
+这一页先看最小闭环：语义、mask、score、value 聚合。
+
+如果你把前面的 block 看成“Norm + Attention + MLP + Residual”的组合，这一页就是第一次把其中最核心的 token 交互部分单独拆出来。
 
 **关键词：** `Q`, `K`, `V`
 
@@ -27,7 +31,7 @@
 
 ## Q1：Q / K / V 分别承担什么职责？
 
-Attention 的核心不是公式，而是三组向量的分工：Q 提出查询，K 提供可匹配的信息，V 提供被聚合的内容。先把这三个职责分开，后面看代码才不会混。
+Attention 的核心不是公式，而是三组向量的分工：Q 提出查询，K 提供可匹配的信息，V 提供被聚合的内容。先把这三个职责分开，后面看代码才不会混。对于没有大模型基础的人，可以先把它理解成“token 之间如何互相问答”：Q 负责问，K 负责被比对，V 负责被取回。
 
 
 ```python
@@ -96,7 +100,7 @@ print('✅ attention_weights 通过')
 
 ## Q2：什么时候必须先看 causal mask 的语义？
 
-只要是自回归场景，就必须遮住未来 token。mask 不是附加项，而是保证语义正确的必要条件。
+只要是自回归场景，就必须遮住未来 token。mask 不是附加项，而是保证语义正确的必要条件。这里可以先把它理解成“只允许看见历史，不允许偷看未来”。
 
 
 ```python
@@ -128,7 +132,7 @@ print('✅ causal mask 通过')
 
 ## Q3：什么时候必须先看 softmax 的数值稳定性？
 
-Attention 里 score 常常会先减去最大值再做 softmax，目的不是“多写一步”，而是避免数值爆掉。
+Attention 里 score 常常会先减去最大值再做 softmax，目的不是“多写一步”，而是避免数值爆掉。对于序列很长的模型，这一步会直接影响训练是否稳定。
 
 
 ```python
@@ -158,7 +162,7 @@ print('✅ masked_softmax 通过')
 
 ## Q4：什么时候必须把 QK^T、mask 和 V 串成一个最小闭环？
 
-只要你想读懂 Attention 的实现，就必须先把 score、mask、softmax 和 value 聚合串起来看，而不是分开背公式。
+只要你想读懂 Attention 的实现，就必须先把 score、mask、softmax 和 value 聚合串起来看，而不是分开背公式。这里的最小闭环，其实就是 Transformer block 里最核心的那一小段。
 
 
 ```python
@@ -193,7 +197,7 @@ print('✅ Attention 闭环通过')
 
 ## Q5：Q / K / V 的 shape contract 怎么判断？
 
-先看 batch、head、seq、hidden 四个维度是否拆对，再谈 attention 是否能对齐。
+先看 batch、head、seq、hidden 四个维度是否拆对，再谈 attention 是否能对齐。对没有架构基础的人，可以先把它记成“query、key、value 必须在同一个批次和头数下对齐”。
 
 
 ```python
@@ -212,7 +216,7 @@ print('bad:', attention_contract_ok((2, 4, 8, 16), (2, 4, 7, 16), (2, 4, 8, 16))
 
 ## Q6：mask 放在 softmax 前还是后，为什么？
 
-mask 必须先作用在 logits 上，再做 softmax；如果先 softmax，再 mask，概率归一化就会被破坏。
+mask 必须先作用在 logits 上，再做 softmax；如果先 softmax，再 mask，概率归一化就会被破坏。这里可以先记成一句最小规则：先遮住不该看的位置，再把剩下的位置归一化。
 
 
 ```python
@@ -230,7 +234,7 @@ print('case2:', mask_before_softmax(False))
 
 ## Q7：attention 里最常见的错误是逻辑错还是布局错？
 
-先分清是 mask / softmax / 聚合逻辑错，还是 head / seq / hidden 的布局错；这两类错的修法完全不同。
+先分清是 mask / softmax / 聚合逻辑错，还是 head / seq / hidden 的布局错；这两类错的修法完全不同。对于刚接触 Transformer 的人，逻辑错更像“算错了该看谁”，布局错更像“维度排错了”。
 
 
 ```python
@@ -252,7 +256,7 @@ print(classify_attention_bug(True, False))
 
 ## Q8：什么时候该停在最小 attention，什么时候该继续看优化实现？
 
-当最小 attention 已经能解释语义，但性能或显存成了主问题时，再去看 fused softmax、FlashAttention 或更底层实现。
+当最小 attention 已经能解释语义，但性能或显存成了主问题时，再去看 fused softmax、FlashAttention 或更底层实现。这里的分界很简单：先保证你看得懂语义，再考虑让它更快更省。
 
 
 ```python

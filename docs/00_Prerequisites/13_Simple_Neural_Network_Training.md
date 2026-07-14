@@ -10,7 +10,9 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-本页聚焦：会写完整但最小的训练循环；会切换 train / eval 模式；会把保存、早停和验证指标串起来。
+本页聚焦：会写完整但最小的训练循环；会切换 train / eval 模式；会把保存、早停和验证指标串起来。前面已经把模型和数据接口接起来了，这一页开始把它们串成一个会跑的训练骨架。这里先把它当成 Part 2 里最常回看的“训练骨架入口”来看：你看到一段训练代码，先找 forward、loss、backward、step、validate 和 save 分别在哪里。
+
+如果你还没有形成模型结构感，可以先把一个最小 LLaMA 风格 block 理解成“Embedding -> Attention -> MLP -> Residual / Norm”的堆叠单元；这一页先不展开 block 细节，只把训练骨架跑顺。
 
 **关键词：** `train`, `eval`, `checkpoint`
 
@@ -26,7 +28,7 @@
 
 ## Q1：训练循环的固定骨架是什么？
 
-训练不是孤立的 forward/backward，而是一条固定流程：数据进来、前向、算损失、反向、更新、验证、保存。先把这个骨架记住，后面改模型才不会乱。
+训练不是孤立的 forward/backward，而是一条固定流程：数据进来、前向、算损失、反向、更新、验证、保存。先把这个骨架记住，后面改模型才不会乱。这里先把它看成“训练骨架”而不是“几行代码”。
 
 
 ```python
@@ -68,7 +70,7 @@ print('✅ batch shape 通过')
 
 ## Q2：什么时候必须切换 train / eval？
 
-只要模型里有 Dropout、BatchNorm 或类似的训练态组件，就必须切换 train / eval。训练和评估不是同一种执行方式。
+只要模型里有 Dropout、BatchNorm 或类似的训练态组件，就必须切换 train / eval。训练和评估不是同一种执行方式。这里可以先记住：`train()` 影响训练行为，`eval()` 影响评估行为。
 
 
 ```python
@@ -110,7 +112,7 @@ print('✅ train / eval 通过')
 
 ## Q3：什么时候必须把验证和保存绑在一起？
 
-保存最好的模型，通常不看训练损失，而是看验证指标。只要你开始比较不同 epoch，就应该把验证和保存绑到一起。
+保存最好的模型，通常不看训练损失，而是看验证指标。只要你开始比较不同 epoch，就应该把验证和保存绑到一起。这里的关键是：保存的不只是“权重文件”，而是验证指标最优时的模型状态。
 
 
 ```python
@@ -140,7 +142,7 @@ def validate(model, loader, criterion):
 
 train_loader = make_data()
 val_loader = make_data()
-print("train loss:", train_one_epoch(model, train_loader, optimizer, criterion))
+print('train loss:', train_one_epoch(model, train_loader, optimizer, criterion))
 
 ```
 
@@ -160,7 +162,7 @@ print('✅ 验证循环通过，val_loss =', val_loss)
 
 ## Q4：什么时候必须把早停和 checkpoint 接进训练骨架？
 
-只要你开始对比不同 epoch 的结果，就应该把早停和 checkpoint 接到同一条训练骨架上，而不是写成临时脚本。
+只要你开始对比不同 epoch 的结果，就应该把早停和 checkpoint 接到同一条训练骨架上，而不是写成临时脚本。这里重点是：checkpoint 通常跟着验证指标走，而不是跟着训练损失走。
 
 
 ```python
@@ -196,7 +198,7 @@ print('✅ 训练骨架闭环通过')
 
 ## Q5：什么时候训练骨架里的顺序不能乱？
 
-只要你还要维护可复现的训练过程，forward、loss、backward、step、validate、save 的顺序就不能随便改；顺序一乱，结果就很难比较。
+只要你还要维护可复现的训练过程，forward、loss、backward、step、validate、save 的顺序就不能随便改；顺序一乱，结果就很难比较。这里把它理解成“训练流程的执行顺序表”。
 
 
 ```python
@@ -219,7 +221,7 @@ print(training_order_ok(['forward', 'backward', 'loss', 'step', 'validate', 'sav
 
 ## Q6：什么时候早停应该看验证集而不是训练集？
 
-只要训练集和验证集的表现开始分叉，早停就应该盯验证集而不是训练集；训练集继续下降不代表模型真的更好。
+只要训练集和验证集的表现开始分叉，早停就应该盯验证集而不是训练集；训练集继续下降不代表模型真的更好。这里的核心不是“停得快”，而是“停得对”。
 
 
 ```python
