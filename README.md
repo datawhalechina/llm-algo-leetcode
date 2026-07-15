@@ -13,6 +13,10 @@
 
 # 中文版
 
+## 📄 许可声明
+
+本仓库所有 `.ipynb` 文件中的文字内容（Markdown 单元格、公式、图示说明）采用 CC BY 4.0 协议；代码内容（Code 单元格、可执行实现）采用 Apache-2.0 协议。使用、转载、改编时，请按单元格类型分别遵守对应协议。文字协议见 [`LICENSE`](./LICENSE)，代码协议见 [`LICENSE-CODE`](./LICENSE-CODE)。
+
 ## 🎯 项目简介
 
 这是一个面向大模型入门到进阶的算法实战教程，以 LLM 为主线，帮助读者通过可运行、可验证、可回顾的 Notebook，从“会看”走到“会写、会调、会优化”。
@@ -169,11 +173,15 @@ CNB 的具体使用方式和适用范围见 [使用指南](./docs/guide.md)。
 
 ## 📄 开源协议
 
-本项目采用 [CC BY-NC-SA 4.0](./LICENSE) 协议进行许可。
+本仓库中的教程文字采用 [CC BY 4.0](./LICENSE) 协议；代码采用 [Apache-2.0](./LICENSE-CODE) 协议。`.ipynb` 文件为混合内容，使用时请按单元格类型分别遵守对应协议。
 
 ---
 
 # English Version
+
+## 📄 License Notice
+
+All `.ipynb` files in this repository are mixed-content notebooks: Markdown cells (tutorial text, formulas, and figure captions) are licensed under CC BY 4.0, while Code cells (executable implementations) are licensed under Apache-2.0. Please comply with the corresponding license by cell type when using, redistributing, or adapting this repository. See [`LICENSE`](./LICENSE) for text and [`LICENSE-CODE`](./LICENSE-CODE) for code.
 
 ## 🎯 Project Introduction
 
@@ -327,4 +335,4 @@ See [docs/guide.md](./docs/guide.md) for the exact environment rules and scope.
 
 ## 📄 License
 
-This project is licensed under [CC BY-NC-SA 4.0](./LICENSE).
+Tutorial text in this repository is licensed under [CC BY 4.0](./LICENSE), and code is licensed under [Apache-2.0](./LICENSE-CODE). `.ipynb` files are mixed-content notebooks, so please follow the corresponding license by cell type.

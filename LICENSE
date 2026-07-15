@@ -1,15 +1,12 @@
-Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International Public License
+Creative Commons Attribution 4.0 International
 
 Copyright (c) 2026 Datawhale and contributors
 
-This work is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
-You may obtain a copy of the license at:
+This repository's tutorial text, including Markdown cells in `.ipynb` notebooks and mirrored documentation files, is licensed under the Creative Commons Attribution 4.0 International License (CC BY 4.0).
 
-https://creativecommons.org/licenses/by-nc-sa/4.0/
+You may share and adapt the material, including for commercial use, provided that you give appropriate credit, indicate whether changes were made, and do not impose legal terms or technological measures that legally restrict others from doing anything the license permits.
 
-In short:
-- You may share and adapt this work for non-commercial purposes.
-- You must give appropriate credit and indicate changes.
-- If you remix, transform, or build upon the material, you must distribute your contributions under the same license.
+The canonical legal code is available at:
+https://creativecommons.org/licenses/by/4.0/legalcode
 
-This summary is not a substitute for the full legal code.
+This file is a repository-level license notice. For the full legal terms, please refer to the official legal code above.
