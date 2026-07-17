@@ -42,7 +42,7 @@ import einops
 
 ### Part 1: 张量维度变换与 `einops`
 
-这一题先把张量形状重排的直觉补起来，后面无论是注意力里的多头合并，还是各种特征整理，都会反复用到同一类操作。
+无论是注意力里的多头合并，还是各种特征整理，都会反复用到张量形状重排同一类操作。
 
 > **为什么我们需要 `einops`？**
 > 在大模型开发中，张量形状不匹配（`RuntimeError: size mismatch`）是最高频的调试痛点之一。熟练掌握原生的 `view`, `reshape`, `transpose`, `permute` 是算法工程师的基础功底。
@@ -83,12 +83,11 @@ def tensor_warmup(x: torch.Tensor):
 
 ### Part 2: 嵌入层 (Embedding Layer) 的本质
 
-这一题把“离散 token 如何变成连续向量”这件事讲透，后面进入词表、输入层和模型主体时，你会一直用到这个查表直觉。
-这里的 `token id` 可以先理解成词典里的编号，`Embedding` 的作用就是把编号映射成向量；这个向量的长度通常就叫 `hidden size` 或 `hidden dim`。
-如果把一句话拆成多个 token，这些向量按顺序拼起来，就形成了模型看到的 `sequence`。
 
->文本是离散的（Token IDs，如 `[10, 42, 99]`）。神经网络只能处理连续的稠密向量（Dense Vectors）。
->**Embedding 层的本质：** 就是一个大规模的查表（Lookup Table）。给定一个 ID 列表，它直接把对应的行向量抽出来拼在一起。
+大模型的第一步，是把离散的文本转化为连续的数学表示：
+原始文本经字节对编码(Byte Pair Encoding，BPE)分词后得到`token id`（即词典里的编号），再通过嵌入层（`Embedding`）查表，将该编号映射为固定长度的连续向量（其维度称为`hidden dim`或者`hidden size`）；随后注入旋转位置编码（主流方案如`RoPE`及其变体）以保留顺序信息。若一句话包含多个token，这些向量会按顺序拼接成完整的输入序列（`sequence`），供模型后续处理，从而让模型真正开始“阅读”和理解文本。
+
+>**那 Embedding 层本质上是什么？就是一张巨大的查找表（Lookup Table）。** 给定一个 ID 列表，它直接把对应的行向量抽出来拼在一起。
 >它在数学上等价于：把离散的 ID 转换成 One-hot 向量，然后去乘以一个全连接层（Linear）。
 
 
@@ -122,7 +121,6 @@ def embedding_warmup(input_ids: torch.Tensor, vocab_size: int, hidden_dim: int):
 
 ### Part 3: 前向传播与反向传播 (Forward & Backward)
 
-这一题把“前向保存什么、反向依赖什么”讲清楚，目的是让你在后面看训练循环、loss 计算和自定义算子时，知道梯度是怎么一路回来的。
 
 > **为什么要理解前向和反向传播？**
 > 大模型的训练机制完全建立在**反向传播算法 (Backpropagation)** 与 **链式法则 (Chain Rule)** 之上。

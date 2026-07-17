@@ -10,8 +10,7 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-本节我们将实现大语言模型（如 LLaMA、Gemma）中最常用的归一化技术：**RMSNorm (Root Mean Square Normalization)**。相比于传统的 LayerNorm，它能带来可观的训练加速，同时几乎不损失模型表现。
-本页不从零解释归一化概念，而是直接把 RMSNorm 的公式、精度处理和代码实现串成一条可运行的学习链。
+本节我们将实现大语言模型（如 LLaMA、Gemma）中最常用的归一化技术：**RMSNorm (Root Mean Square Normalization)**。相比于传统的 LayerNorm，它能带来可观的训练加速，同时几乎不损失模型表现。本节聚焦 RMSNorm 的公式、精度实现和可运行代码上，让你快速上手。
 
 **关键词：** `RMSNorm`, `LayerNorm`, `normalization`
 ## 前置阅读
@@ -31,7 +30,7 @@
 
 ### Step 1: 核心思想与痛点
 
-这一节先把 RMSNorm 相比 LayerNorm 的取舍讲清楚，后面公式和代码里的每个步骤才有落点。
+RMSNorm 的核心洞察很朴素：既然大模型的中间层均值通常已接近0，何不干脆省掉"减去均值"这一步，只用均方根做归一化？
 
 > **为什么抛弃了 LayerNorm？**
 > 标准的 LayerNorm 需要计算均值（Mean）和方差（Variance）。
@@ -40,7 +39,7 @@
 
 ### Step 2: 核心公式与张量维度
 
-这一节把输入、输出和参数维度摆清楚，后面的实现只是在把这组公式翻译成张量操作。
+明确了 RMSNorm 的设计取舍后，我们把它的数学公式摆出来。输入输出维度先理清楚，后面代码实现只是在把这组公式翻译成张量操作。
 
 给定输入向量 $x \in \mathbb{R}^d$，RMSNorm 的输出 $y$ 为：
 
@@ -54,7 +53,7 @@
 
 ### Step 3: 代码实现与混合精度 (AMP) 陷阱
 
-这一节把数值稳定性单独拎出来，因为 RMSNorm 真正容易出问题的不是公式，而是 FP16/BF16 下的平方溢出。
+数学公式翻译成代码并不难，真正需要小心的是混合精度训练时的数值稳定性——FP16 下平方运算极易溢出，这里给出标准处理方案。
 
 在 PyTorch 中，我们需要通过 `torch.mean` 计算均方，加上一个极小的 `eps` 防止除以零，最后乘以可学习的参数 `weight`。
 
