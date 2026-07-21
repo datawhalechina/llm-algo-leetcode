@@ -87,7 +87,15 @@ import torch
 ```python
 def precompute_freqs_cis(dim: int, end: int, theta: float = 10000.0):
     """
-    计算复数指数频率张量 (cis = cos + i * sin)
+    预计算复数旋转因子 freqs_cis。
+    
+    Args:
+        dim: head_dim，必须为偶数
+        end: 序列长度
+        theta: 基数，默认 10000
+    
+    Returns:
+        freqs_cis: 形状为 [end, dim//2] 的复数张量
     """
     # ==========================================
     # TODO 1: 用极坐标生成复数张量 (提示: torch.polar)
