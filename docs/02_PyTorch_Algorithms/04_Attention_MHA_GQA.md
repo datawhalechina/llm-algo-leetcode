@@ -31,53 +31,72 @@
 
 ### Step 1: 核心思想与痛点
 
-这一节先把为什么 Attention 会慢、为什么要缓存，以及为什么会从 MHA 走到 GQA 讲清楚。
+本节阐述 Attention 在推理阶段的性能挑战，以及从 MHA 演进到 GQA 的动机与路径。
 
 在大语言模型中，**注意力机制 (Attention)** 决定了模型如何“回顾”并提取历史上下文的信息。随着模型层数加深和序列变长，Attention 模块在推理阶段面临极大的性能挑战。
 
-> **什么是 KV Cache？为什么它是性能瓶颈？**
-> 在自回归生成中，每次生成第 $N$ 个 Token 时，我们需要计算它与前面 $N-1$ 个 Token 的相关性。为了避免重复计算前 $N-1$ 个 Token 的特征，我们将其投影后的 Key 和 Value 张量**缓存（Cache）**在显存中，当前步直接拼接读取。
-> 
-> 然而，读取巨量的 KV Cache 会面临严重的**显存容量瓶颈**和**内存带宽瓶颈 (Memory-bound)**，导致推理极慢。
+**什么是 KV Cache？**
 
-> **从 MHA 到 GQA：大模型架构的进化**
-> * **MHA (Multi-Head Attention)**: 标准的多头注意力。每个 Query 头都有自己专属的 Key 和 Value 头。其巨大的 KV Cache 让推理寸步难行。
-> * **MQA (Multi-Query Attention)**: 所有的 Query 头共享**同一个** Key 和 Value 头。极大地减少了 KV Cache 的占用，但由于表达能力锐减，模型效果往往打折。
-> * **GQA (Grouped-Query Attention)**: LLaMA-2/3 采用的折中方案。将 Query 头分组，每组共享一个 Key 和 Value 头。这在**模型效果和显存占用之间取得了良好的工程平衡**。
+在自回归生成中，每次生成第 $N$ 个 Token 时，我们需要计算它与前面 $N-1$ 个 Token 的相关性。为了避免重复计算前 $N-1$ 个 Token 的特征，我们将其投影后的 Key 和 Value 张量缓存 (Cache)在显存中，当前步直接拼接读取。
+
+然而，读取巨量的 KV Cache 会面临严重的**显存容量瓶颈**和**内存带宽瓶颈 (Memory-bound)**，导致推理极慢。
+
+**从 MHA 到 GQA：大模型架构的进化**
+
+- **MHA (Multi-Head Attention)**: 标准的多头注意力。每个 Query 头都有自己专属的 Key 和 Value 头。即 $n$ 个 Q 头对应 $n$ 个 KV 头。KV Cache 占用最大（与 Q 头数成正比），推理时显存压力最大，但表达能力最强。
+- **MQA (Multi-Query Attention)**: 所有的 Query 头共享**同一个** Key 和 Value 头。即 $n$ 个 Q 头对应 1 个 KV 头。KV Cache 占用大幅减少（单层仅为 MHA 的 $1/n$），但由于 KV 表达能力锐减，模型效果往往打折扣。
+- **GQA (Grouped-Query Attention)**: LLaMA-2/3 采用的折中方案。将 Query 头分组，每组共享一个 Key 和 Value 头。即 $n$ 个 Q 头对应 $g$ 个 KV 头（$1<g<n$，$g$ 为组数）。KV Cache 占用介于 MHA 和 MQA 之间（单层为 MHA 的 $g/n$），在模型效果和显存占用之间取得了良好的工程平衡。
+
+**MLA：DeepSeek 的极致 KV 压缩方案**
+
+- MLA (Multi-Head Latent Attention) 是 DeepSeek-V2/V3 采用的注意力机制，核心思路是不再缓存完整的 K/V 张量，而是缓存压缩后的潜在向量，计算时再实时解压。
+
+**不同架构的 KV Cache 对比（单 Token 单层）**
+
+| 架构 | KV Cache 大小 | 代表模型 |
+| --- | --- | --- |
+| MHA | ~32 KB | 原始 Transformer |
+| GQA | ~4 KB | LLaMA-2/3 |
+| MLA | ~1.13 KB | DeepSeek-V2/V3 |
+
+相比 MHA，MLA 的 KV Cache 缩减约 28 倍，这也是 DeepSeek 能支持 1M 上下文的工程基础之一。
+
+**注意**：GQA 的压缩来自"共享头数"，MLA 的压缩来自"压缩维度"，两条路线可以结合使用。如果你对 MLA 的数学原理和代码实现感兴趣，可以查阅 DeepSeek-V2 技术报告。
 
 ### Step 2: 核心公式与张量维度
 
-这一节先把 Q/K/V 的 shape 走一遍，后面的代码就是把这条维度链路落到张量操作里。
+本节追踪 Q/K/V 张量的形状变化，后续代码将沿这条维度链路实现张量操作。
 
-**注意力计算公式：**
+**经过线性投影后，注意力计算公式：**
 $$ \text{Attention}(Q, K, V) = \text{Softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V $$
 
-**张量维度追踪 (Shape Tracking) - 算法工程师的灵魂：**
+**张量维度追踪 (Shape Tracking)**
+
 假设 `Batch=B`, `Seq_len=S`, `Num_Heads=H`, `Head_Dim=D`
-1. 线性投影后：`Q` 形状为 `[B, S, H * D]`
-2. 切分多头后：转置为 `[B, H, S, D]`
-3. 注意力分数计算：`Q @ K^T` -> `[B, H, S, D] @ [B, H, D, S]` -> `[B, H, S, S]`
-4. 乘以 Value：`Scores @ V` -> `[B, H, S, S] @ [B, H, S, D]` -> `[B, H, S, D]`
-5. 最后合并多头：转置回 `[B, S, H, D]` 并 `view` 成 `[B, S, H * D]`。
+1. 线性投影后：`Q/K/V ` 形状为 `[B, S, H * D]`
+2. 切分多头后：reshape 为 `[B, S, H, D]`（将最后一维 H * D 拆解为 H 个 D 维向量），保持 `seq_len` 在第二维，便于与 KV Cache（形状同为 `[B, S, H, D]`）在 `seq_len` 维度上拼接（每生成一个新 Token，KV Cache 在 `seq_len` 维度上增长 1）。
+3. 注意力分数计算：`Q @ K^T -> [B, S, H, D] @ [B, H, D, S] -> [B, H, S, S]`（K 转置最后两维得到`[B, H, D, S]`）。注：Q 在 `[B, S, H, D] `下无法直接与 `K^T` 做矩阵乘，需将 Q 转置为 `[B, H, S, D]`（或使用 `torch.matmul` 的自动广播机制）后计算。
+4. 加权 Value：`Scores @ V` -> `[B, H, S, S] @ [B, H, S, D]` -> `[B, H, S, D]`
+5. 最后合并多头：转置回 `[B, S, H, D]` 并 `reshape` 成 `[B, S, H * D]`。
 
 ### Step 3: 工业界源码映射
 
-这一节把概念和真实实现对上，方便你知道这些 TODO 在工程里分别对应什么位置。
+将核心概念与真实工业界实现代码对应起来，有助于理解 TODO 在工程中的具体落点。
 
 在真实的工业界代码中，这段逻辑在哪里？
 * **HuggingFace LLaMA**: `transformers/models/llama/modeling_llama.py` 中的 `LlamaAttention` 类。
-* **vLLM (推理框架)**: 核心关注它的 PagedAttention 实现，用来解决这里 KV Cache 的显存碎片化问题。
+* **vLLM (推理框架)**: 核心关注它的 `PagedAttention` 实现，用来解决这里 KV Cache 的显存碎片化问题。
 
 
-因此，`TODO 1-4` 的实现顺序也可以直接按这条主线来读：先 reshape 出多头张量，再处理 KV Cache 与 `repeat_kv`，接着算 attention scores 和 softmax，最后恢复输出形状。这样题目区的每一步就都能对回完整链路。
+因此，`TODO 1-4` 的实现顺序也可以直接按这条主线来读：先 reshape 出多头张量，再处理 KV Cache 与 `repeat_kv`，接着算注意力分数（attention scores） 和 softmax，最后恢复输出形状。这样题目区的每一步就都能对回完整链路。
 
 ### Step 4: 动手实战
 
-这里开始把多头切分、KV Cache 和注意力计算串成最小可运行前向路径，重点看张量怎么流动。
+请补全下方 `GroupedQueryAttention` 的 `forward` 函数中的 `TODO` 部分，通过实现多头切分、KV Cache 拼接和注意力计算，串联出一条最小可运行的前向路径。
 
 **实现提示：** `repeat_kv` 的作用是先保留更少的 KV 头，在注意力计算前再扩充到 Query 头数。这样可以理解 GQA 如何在保持效果的同时减少 KV 侧的开销。
 
-**要求**：请补全下方 `GroupedQueryAttention` 的 `forward` 函数中的 `TODO` 部分，实现：
+**要求**：补全`forward` 函数中的 `TODO` 部分，实现：
 1. 张量的多头切分与 Reshape
 2. KV Cache 的拼接逻辑
 3. 注意力分数的计算
@@ -87,6 +106,7 @@ $$ \text{Attention}(Q, K, V) = \text{Softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right
 import torch
 import torch.nn as nn
 import math
+import torch.nn.functional as F
 ```
 
 
@@ -94,11 +114,13 @@ import math
 def repeat_kv(hidden_states: torch.Tensor, n_rep: int) -> torch.Tensor:
     """
     将 KV 头复制 n_rep 次，以匹配 Query 头的数量 (GQA/MQA 需要)
+    当 n_rep == 1 时（即 MHA），直接返回原张量。
     """
     batch, num_kv_heads, slen, head_dim = hidden_states.shape
     if n_rep == 1:
         return hidden_states
-    hidden_states = hidden_states[:, :, None, :, :].expand(batch, num_kv_heads, n_rep, slen, head_dim)
+    #hidden_states = hidden_states[:, :, None, :, :].expand(batch, num_kv_heads, n_rep, slen, head_dim)
+    hidden_states = hidden_states.unsqueeze(2).expand(-1, -1, n_rep, -1, -1)
     return hidden_states.reshape(batch, num_kv_heads * n_rep, slen, head_dim)
 
 class GroupedQueryAttention(nn.Module):
@@ -107,6 +129,10 @@ class GroupedQueryAttention(nn.Module):
         self.hidden_dim = hidden_dim
         self.num_heads = num_heads
         self.num_kv_heads = num_kv_heads if num_kv_heads is not None else num_heads
+        
+        # 确保 num_heads 能被 num_kv_heads 整除
+        assert num_heads % self.num_kv_heads == 0, \
+            f"num_heads ({num_heads}) must be divisible by num_kv_heads ({self.num_kv_heads})"
         
         self.num_queries_per_kv = self.num_heads // self.num_kv_heads
         self.head_dim = hidden_dim // num_heads
@@ -123,6 +149,18 @@ class GroupedQueryAttention(nn.Module):
         attention_mask: torch.Tensor = None, 
         kv_cache: tuple[torch.Tensor, torch.Tensor] = None
     ):
+        """
+        前向传播。
+
+        Args:
+            x: 输入张量，形状 [batch, seq_len, hidden_dim]
+            attention_mask: 注意力掩码，形状应为 [batch, 1, 1, seq_len]（因果掩码）
+                        或 [batch, 1, seq_len, seq_len]，会广播到 scores。
+            kv_cache: 缓存的 (K, V) 张量，用于自回归生成。
+    
+        Returns:
+            输出张量 [batch, seq_len, hidden_dim]，更新后的 KV Cache
+        """
         batch_size, seq_len, _ = x.shape
         
         # 1. 线性投影
@@ -130,15 +168,17 @@ class GroupedQueryAttention(nn.Module):
         
         # ==========================================
         # TODO 1: Reshape xq, xk, xv 以适配多头注意力计算
-        # 提示: 先把最后一维映射成 [num_heads, head_dim] / [num_kv_heads, head_dim]，再把头维挪到前面
+        # 提示: 先把最后一维拆成 [num_heads, head_dim] / [num_kv_heads, head_dim]（使用 reshape 或 view），
+        # 再将seq_len和num_heads换位，得到 [B, num_heads, S, head_dim] / [B, num_kv_heads, S, head_dim]
+        # ==========================================
         # xq = ???
         # xk = ???
         # xv = ???
-        # ==========================================
 
         # ==========================================
         # TODO 2: 处理 KV Cache
-        # 提示: 如果有 cache，就把历史 KV 接到当前 KV 前面
+        # 提示: 如果有 cache，将历史 KV 拼接在当前 KV 的 seq_len 维度前
+        # 注意: 拼接维度是 dim=2 (seq_len)
         # ==========================================
         if kv_cache is not None:
             k_cache, v_cache = kv_cache
@@ -153,6 +193,10 @@ class GroupedQueryAttention(nn.Module):
         
         # ==========================================
         # TODO 3: 计算注意力分数 (Scaled Dot-Product)
+        # 公式: scores = Q @ K^T / sqrt(head_dim)
+        # 提示: 使用 torch.matmul，并对 K 转置最后两维
+        # 注意: attention_mask 形状为 [batch, 1, 1, seq_len]（因果掩码），
+        #       会广播到 scores 的 [batch, num_heads, seq_len, seq_len]
         # ==========================================
         # scores = ???
         
@@ -166,6 +210,7 @@ class GroupedQueryAttention(nn.Module):
         # ==========================================
         # TODO 4: 恢复形状并输出
         # [B, H, S, D] -> [B, S, H*D]
+        # 提示: transpose + contiguous + view
         # ==========================================
         # output = ???
         
@@ -240,10 +285,15 @@ test_mha_mqa_gqa()
 
 ```python
 def repeat_kv(hidden_states: torch.Tensor, n_rep: int) -> torch.Tensor:
+    """
+    将 KV 头复制 n_rep 次，以匹配 Query 头的数量 (GQA/MQA 需要)。
+    当 n_rep == 1 时（即 MHA），直接返回原张量。
+    """
     batch, num_kv_heads, slen, head_dim = hidden_states.shape
     if n_rep == 1:
         return hidden_states
-    hidden_states = hidden_states[:, :, None, :, :].expand(batch, num_kv_heads, n_rep, slen, head_dim)
+    #hidden_states = hidden_states[:, :, None, :, :].expand(batch, num_kv_heads, n_rep, slen, head_dim)
+    hidden_states = hidden_states.unsqueeze(2).expand(-1, -1, n_rep, -1, -1)
     return hidden_states.reshape(batch, num_kv_heads * n_rep, slen, head_dim)
 
 class GroupedQueryAttention(nn.Module):
@@ -252,6 +302,10 @@ class GroupedQueryAttention(nn.Module):
         self.hidden_dim = hidden_dim
         self.num_heads = num_heads
         self.num_kv_heads = num_kv_heads if num_kv_heads is not None else num_heads
+
+        # 确保 num_heads 能被 num_kv_heads 整除
+        assert num_heads % self.num_kv_heads == 0, \
+            f"num_heads ({num_heads}) must be divisible by num_kv_heads ({self.num_kv_heads})"
         
         self.num_queries_per_kv = self.num_heads // self.num_kv_heads
         self.head_dim = hidden_dim // num_heads
@@ -267,18 +321,30 @@ class GroupedQueryAttention(nn.Module):
         attention_mask: torch.Tensor = None, 
         kv_cache: tuple[torch.Tensor, torch.Tensor] = None
     ):
+        """
+        前向传播。
+
+        Args:
+            x: 输入张量，形状 [batch, seq_len, hidden_dim]
+            attention_mask: 注意力掩码，形状应为 [batch, 1, 1, seq_len]（因果掩码）
+                        或 [batch, 1, seq_len, seq_len]，会广播到 scores。
+            kv_cache: 缓存的 (K, V) 张量，用于自回归生成。
+    
+        Returns:
+            输出张量 [batch, seq_len, hidden_dim]，更新后的 KV Cache
+        """
         batch_size, seq_len, _ = x.shape
         
         xq, xk, xv = self.q_proj(x), self.k_proj(x), self.v_proj(x)
         
         # 先把投影后的向量拆成多头格式，方便后续按 head 做注意力。
-        # TODO 1: Reshape 为多头形式
-        xq = xq.view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
-        xk = xk.view(batch_size, seq_len, self.num_kv_heads, self.head_dim).transpose(1, 2)
-        xv = xv.view(batch_size, seq_len, self.num_kv_heads, self.head_dim).transpose(1, 2)
+        # TODO 1: Reshape 为多头形式[B, H, S, D]
+        xq = xq.reshape(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
+        xk = xk.reshape(batch_size, seq_len, self.num_kv_heads, self.head_dim).transpose(1, 2)
+        xv = xv.reshape(batch_size, seq_len, self.num_kv_heads, self.head_dim).transpose(1, 2)
         
         # 先把历史 cache 和当前步拼起来，再决定是否需要扩展 KV 头。
-        # TODO 2: 处理 KV Cache
+        # TODO 2: 处理 KV Cache（在 seq_len 维度拼接）
         if kv_cache is not None:
             k_cache, v_cache = kv_cache
             xk = torch.cat([k_cache, xk], dim=2)
@@ -289,17 +355,18 @@ class GroupedQueryAttention(nn.Module):
         xk = repeat_kv(xk, self.num_queries_per_kv)
         xv = repeat_kv(xv, self.num_queries_per_kv)
         
-        # TODO 3: 计算注意力分数
+        # TODO 3: 计算 Scaled Dot-Product Attention
         scores = torch.matmul(xq, xk.transpose(2, 3)) / math.sqrt(self.head_dim)
         
         if attention_mask is not None:
             scores = scores + attention_mask
             
-        probs = torch.nn.functional.softmax(scores, dim=-1)
+        probs = F.softmax(scores, dim=-1)
         output = torch.matmul(probs, xv)
         
-        # TODO 4: 恢复形状
-        output = output.transpose(1, 2).contiguous().view(batch_size, seq_len, -1)
+        # TODO 4: 恢复形状[B, S, H*D]
+        #output = output.transpose(1, 2).contiguous().view(batch_size, seq_len, -1)
+        output = output.transpose(1, 2).reshape(batch_size, seq_len, -1)
         
         return self.o_proj(output), new_kv_cache
 
@@ -313,7 +380,7 @@ class GroupedQueryAttention(nn.Module):
 
 **1. TODO 1 (多头切分与维度转置)**
 
-- **切分多头：** 使用 `view(batch_size, seq_len, num_heads, head_dim)` 将线性投影后的张量从 `[B, S, H*D]` 重塑为 `[B, S, H, D]`，其中 `H` 是头数，`D` 是每个头的维度。
+- **切分多头：** 使用 `reshape(batch_size, seq_len, num_heads, head_dim)` 将线性投影后的张量从 `[B, S, H*D]` 重塑为 `[B, S, H, D]`，其中 `H` 是头数，`D` 是每个头的维度。相比 `view`，`reshape` 更安全，不需要额外调用`contiguous()` 来确保内存连续性。
 - **维度转置：** 通过 `.transpose(1, 2)` 将形状从 `[B, S, H, D]` 转为 `[B, H, S, D]`，这是注意力计算的标准格式，方便后续的矩阵乘法。
 - **GQA 的 KV 头数：** 注意 `xk` 和 `xv` 使用 `num_kv_heads` 而不是 `num_heads`，这是 GQA 的核心区别。例如 LLaMA-2 70B 使用 64 个 Query 头但只有 8 个 KV 头。
 - **工程细节：** 为什么要 transpose？因为注意力分数计算 `Q @ K^T` 需要在 `[S, D]` 和 `[D, S]` 维度上进行矩阵乘法，将 heads 维度放在第二个位置可以让 batch 和 heads 维度自动广播。
@@ -329,15 +396,14 @@ class GroupedQueryAttention(nn.Module):
 
 - **注意力分数计算：** `scores = Q @ K^T / sqrt(d_k)`，其中 `xk.transpose(2, 3)` 将 `[B, H, S, D]` 转为 `[B, H, D, S]`，与 `xq` 的 `[B, H, S, D]` 相乘得到 `[B, H, S, S]` 的注意力矩阵。
 - **缩放因子：** 除以 `sqrt(head_dim)` 是为了防止点积结果过大导致 softmax 梯度消失。这是 Transformer 原论文的核心设计。
-- **Mask 机制：** `attention_mask` 通常是一个下三角矩阵（Causal Mask），用 `-inf` 填充上三角部分，确保当前 token 只能看到之前的 token。
+- **Mask 机制：** `attention_mask` 通常是一个下三角矩阵（Causal Mask），形状为 `[B, 1, 1, S]`，会自动广播到 `scores` 的 `[B, H, S, S]` 形状，用 `-inf` 填充上三角部分，确保当前 token 只能看到之前的 token。
 - **Softmax 归一化：** 在最后一个维度（`dim=-1`）上进行 softmax，将注意力分数转为概率分布。
 - **加权求和：** `output = probs @ V` 将注意力权重与 Value 相乘，得到加权后的特征表示。
 
 **4. TODO 4 (多头合并与输出投影)**
 
 - **维度转置：** `.transpose(1, 2)` 将 `[B, H, S, D]` 转回 `[B, S, H, D]`。
-- **内存连续性：** `.contiguous()` 确保张量在内存中是连续存储的，这是 `view` 操作的前提。如果不调用 `contiguous()`，`view` 可能会报错。
-- **合并多头：** `.view(batch_size, seq_len, -1)` 将 `[B, S, H, D]` 展平为 `[B, S, H*D]`，其中 `-1` 自动推断为 `num_heads * head_dim`。
+- **合并多头：** `.reshape(batch_size, seq_len, -1)` 将 `[B, S, H, D]` 展平为 `[B, S, H*D]`，其中 `-1` 自动推断为 `num_heads * head_dim`。`reshape` 比 `view `更安全，不需要额外调用 `.contiguous()` 来确保内存连续性。
 - **输出投影：** 通过 `o_proj` 线性层将多头特征映射回 `hidden_dim`，这是标准 Transformer 的最后一步。
 
 **进阶思考：GQA 的延迟扩充 (Lazy Expansion)**
