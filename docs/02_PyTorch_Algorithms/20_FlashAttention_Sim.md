@@ -52,7 +52,33 @@
 ### Step 3: 代码实现框架
 核心是三层嵌套的循环（或者是二维 Grid）。对于当前处理的一小块 $Q_{block}$，在内层遍历所有 $K_{block}$ 时，动态地更新局部最大值 $m$ 和局部指数和 $l$。这是在纯 PyTorch 中使用 `for` 循环来模拟底层 C++ 内存块调度的绝佳方式。
 
-###  Step 4: 动手实战
+### Step 4: 工业界的演进 —— FlashAttention V1 vs V2 vs V3
+
+了解了基础的 Online Softmax 和分块机制后，我们再看业界是如何一步步把 GPU 硬件性能榨出来的。这一段是理解 FlashAttention 演进脉络的核心，也是高阶面试里经常会被追问的部分。
+
+> **FlashAttention-1 (2022)：打破显存墙**
+> - **核心创新**：通过 Tiling（分块）和 Recomputation（重计算），把空间复杂度从 $O(N^2)$ 降到 $O(N)$。
+> - **局限**：Thread Block 内部的 Non-Matmul 计算偏多，且在短 Batch / 长序列场景下 Occupancy 不高。
+
+> **FlashAttention-2 (2023)：算法级优化与多维并行**
+> - **核心创新 1：减少 Non-Matmul FLOPs**。调整内部循环和归一化逻辑，减少每步不必要的标量运算，把更多算力留给 Tensor Core。
+> - **核心创新 2：Sequence Parallelism（序列级并行）**。把序列长度维度也纳入切块调度，让长文本推理时 GPU 更容易保持满载。
+
+> **FlashAttention-3 (2024)：绑定 Hopper (H100) 的极限压榨**
+> - **核心创新 1：WGMMA 异步计算**。利用 Warp Group 级指令，让 Tensor Core 在后台异步执行。
+> - **核心创新 2：TMA（Tensor Memory Accelerator）**。使用硬件级搬运器把数据从全局显存搬到共享内存，释放搬运线程。
+> - **核心创新 3：2-Stage to Ping-Pong Pipeline**。通过更高效的软件流水线掩盖访存延迟，实现计算与访存的重叠。
+
+> **FlashAttention-4：CuTeDSL 与 Blackwell 方向**
+> - **核心方向**：继续沿着工程化优化推进，把更底层的 kernel 构建、内存调度和流水线协同做得更细。
+> - **直观理解**：相比 V1/V2/V3 更强调“代码生成 + kernel 组织”的一体化优化，而不是只停留在数学公式层面的改写。
+> - **教学定位**：这一版可以理解为 FlashAttention 工程演进的最新补充，读者只要知道它是继续面向新 GPU 架构演化即可。
+
+### 思考题
+
+在 V1 的算法中，我们在内层循环每次更新块时，都会执行 `v_block = v_block * scale1 + v_i * scale2`。这个标量乘法是跑在 CUDA Core 上的，速度很慢。
+如果我们要朝着 FlashAttention-2 的方向优化上面的纯 PyTorch 模拟代码，应该怎么在数学上修改这段 `Online Softmax`，使得 `v_block` 的缩放只在整个循环结束时发生一次？
+### Step 5: 动手实战
 
 **要求**：请补全下方 `flash_attention_forward_sim` 函数，实现分块 (Tiling) 的 QKV 乘法以及 Online Softmax 逻辑。
 
