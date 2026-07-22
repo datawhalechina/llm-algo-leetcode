@@ -10,47 +10,41 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-这个项目把训练链路里的性能问题拆开：数据准备、前向反向和显存压力，判断到底哪个环节拖慢了系统。它应该能接住 `2.3` 的训练闭环、`2.5` 的显存优化，以及 `Part 1` 的 profiling 入口。
 
 **关键词：** `training`, `profiling`, `memory`, `step time`
 
-## 前置阅读
+这个项目把训练链路里的性能问题拆开：数据准备、前向反向和显存压力，判断到底哪个环节拖慢了系统。它接住 `2.3` 的训练闭环、`2.5` 的显存优化，以及 `Part 1` 的 profiling 入口。
 
-**导语：** 先把训练闭环、显存优化和项目实战看完，再做训练性能分析会更容易定位瓶颈。
-- [Part 2: 13 End-to-End Fine-Tuning Experiment](./13_End_to_End_Fine_Tuning_Experiment.md)
-- [19. Activation Checkpointing and Activation Offload | 激活检查点与激活卸载](./19_Activation_Checkpointing_and_Activation_Offload.md)
-- [30. LoRA Fine-Tuning Project | LoRA 微调项目](./30_LoRA_Fine_Tuning_Project.md)
+### Step 1: 定义问题与固定 baseline
+选择一个 baseline，明确想优化的对象、指标和约束。
 
-## 相关阅读
+- 先固定模型、数据、batch size、seq len 和评测方式。
+- 只看一组核心指标，例如 step time / peak memory / throughput / loss。
+- 如果需要，再补一条精度或收敛约束，避免只追求更快。
 
-**导语：** 如果想继续往更底层的性能分析延伸，可以回看 Part 1 的 profiling 章节。
-- [13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
-- [19. Operator Fusion Introduction | 算子融合导论](../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md)
+### Step 2: 测量与定位
 
+记录 profiling 结果，分清数据准备、前向反向和显存瓶颈。
 
-## 项目目标
+- 先跑一轮 baseline，再看时间分布、显存曲线和热点算子。
+- 把问题拆成数据等待、前向 / 反向算子和峰值显存三类。
+- 这一步的目标是把“慢”具体化，而不是先急着改代码。
 
-这个项目的目标是把训练链路里的性能问题拆开：到底是数据准备慢、前向反向慢，还是显存压力把系统拖慢。它应该能接住 `2.3` 的训练闭环、`2.5` 的显存优化，以及 `Part 1` 的 profiling 入口。
+### Step 3: 修改与复测
 
-- 观察训练 step 的耗时构成。
-- 记录峰值显存、梯度累积和 checkpointing 对训练开销的影响。
-- 输出一个“改前 / 改后”的训练性能对照结论。
+针对瓶颈做最小修改，再次测量验证收益。
 
-## 实验对象
+- 一次只改一个方向，避免优化结果不可归因。
+- 改完后重新测同样的指标，比较改前 / 改后差异。
+- 如果某个改动只是在一项指标上变好，却让另一项变差，要把取舍写清楚。
 
-建议沿用一个尽量稳定的小训练任务，例如微型因果语言模型、分类模型或前面章节已经跑通的 SFT 样本。关键是保持输入、批大小和优化器设置尽量固定，避免比较对象不一致。
+### Step 4: 复盘与沉淀
 
-1. **训练输入**：固定一批样本，尽量复用同一数据切片。
-2. **训练配置**：固定 optimizer、lr、batch size 和 accumulation 策略。
-3. **对照变量**：只改一个变量，例如是否开启 checkpointing、是否使用 offload、是否改变 accumulation。
+输出改动前后对比表、profiling 截图和最终判断，把这次经验收成可复用的优化记录。
 
-## 实现步骤
-
-1. **建立基线**：先跑一个最简单的训练循环，记录 step time 和 peak memory。
-2. **引入变量**：逐个切换 gradient accumulation、activation checkpointing、offload 或更小 batch。
-3. **记录变化**：对比每种设置下的吞吐、显存和 loss 下降速度。
-4. **找出瓶颈**：判断是数据、计算、通信，还是显存回收机制在限制训练速度。
-5. **回到正文**：把结果和 `13` 的 profiling 方法一起解释清楚。
+- 记录本次瓶颈来自哪里，以及下次优先看哪一层。
+- 把这次优化的取舍和结论写成可复用的排障路径。
+- 如果还有后续优化空间，就把下一轮优先级列出来。
 
 
 ```python
@@ -103,6 +97,25 @@ print(summarize_training_result(baseline, tuned))
 
 ```
 
+
+```python
+# ==========================================
+# TODO: 完成训练性能统计的两个函数
+# 1. 统计 measure_train_step(train_step_fn, warmup=2, iters=8)
+# 2. 汇总 baseline 和 tuned 的 step_time / peak_mem 差值
+# ==========================================
+def measure_train_step(train_step_fn, warmup=2, iters=8):
+    # TODO 1: 记录平均 step time 和 peak memory
+    pass
+
+def summarize_training_result(base_metrics, tuned_metrics):
+    # TODO 2: 比较 baseline 和 tuned 的指标差值
+    pass
+
+raise NotImplementedError("请先完成 TODO 代码！")
+
+```
+
 🛑 **STOP HERE** 🛑
 
 ## 参考代码与解析
@@ -111,10 +124,7 @@ print(summarize_training_result(baseline, tuned))
 
 
 ```python
-import time
-import torch
-
-
+# TODO 1: 测量训练 step 的平均耗时和峰值显存
 def measure_train_step(train_step_fn, warmup=2, iters=8):
     for _ in range(warmup):
         train_step_fn()
@@ -136,7 +146,7 @@ def measure_train_step(train_step_fn, warmup=2, iters=8):
         'peak_mem_mb': round(peak_mem_mb, 2),
     }
 
-
+# TODO 2: 汇总 baseline 和 tuned 的差异
 def summarize_training_result(base_metrics, tuned_metrics):
     time_delta = base_metrics['step_time_ms'] - tuned_metrics['step_time_ms']
     mem_delta = base_metrics['peak_mem_mb'] - tuned_metrics['peak_mem_mb']
@@ -147,7 +157,18 @@ def summarize_training_result(base_metrics, tuned_metrics):
         'memory_improved': mem_delta > 0,
     }
 
+counter = {'n': 0}
+def train_step():
+    counter['n'] += 1
+print(measure_train_step(train_step, warmup=0, iters=2))
+
 ```
+
+### 解析
+
+- `measure_train_step` 负责把训练一步的平均耗时和峰值显存抽出来。
+- `summarize_training_result` 负责比较 baseline 和 tuned 的差值。
+- 这页的核心不是单看快慢，而是看性能和显存的取舍。
 
 ### 测试
 

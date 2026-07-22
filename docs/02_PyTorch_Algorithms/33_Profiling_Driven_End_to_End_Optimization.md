@@ -1,0 +1,154 @@
+# 33. Profiling Driven End to End Optimization | profiling 驱动的端到端优化
+
+**难度：** Hard | **环境：** CPU-first | **标签：** `项目实战` | **目标人群：** 工程实践
+
+> 🚀 **云端运行环境**
+>
+> 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
+>
+> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/33_Profiling_Driven_End_to_End_Optimization.ipynb)
+> [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
+
+
+**关键词：** `profiling, optimization, end-to-end`
+
+这个项目把测量、定位、修改和复测串成一个完整闭环，目标是把 profiling 方法真正落到一个可复现的优化流程里。它接住 `Part 1` 的 profiling 方法论，也能和 `2.3`、`2.5`、`2.6` 串起来做工程判断。
+
+## 前置阅读
+
+**导语：** 先把最小前置看完，再进入项目会更容易把问题拆开。
+- [P1: 13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
+- [2.3. Fine-Tuning and Training Workflow | 微调与训练流程](./2_3.md)
+- [2.5. Backward and Memory Optimization | 反向传播与显存优化](./2_5.md)
+- [2.6. Core Inference Optimization | 核心推理优化](./2_6.md)
+
+## 相关阅读
+
+**导语：** 如果想继续往更底层的工程背景延伸，可以看这些页面。
+- [30. LoRA Fine-Tuning Project | LoRA 微调项目](./30_LoRA_Fine_Tuning_Project.md)
+- [31. Inference Performance Comparison | 推理性能对比实验](./31_Inference_Performance_Comparison.md)
+- [32. Training Performance Analysis | 训练性能分析](./32_Training_Performance_Analysis.md)
+
+### Step 1: 定义问题与固定 baseline
+先固定模型、输入、batch 和评测指标，让不同方案站在同一条起跑线上。
+
+- 模型结构、参数量、输入长度和 batch size 保持一致。
+- 明确比较目标，例如 latency、throughput、peak memory 和 step time。
+- 如果是训练任务，再补一条精度或 loss 约束，避免只追求更快。
+
+### Step 2: 测量与定位
+
+记录 profiling 结果，分清数据、算子、通信和显存瓶颈。
+
+- 先跑一轮 baseline，再看时间分布、显存曲线和热点算子。
+- 把问题拆成数据等待、前向 / 反向算子、通信同步和峰值显存四类。
+- 这一步的目标是把“慢”具体化，而不是先急着改代码。
+
+### Step 3: 修改与复测
+
+针对瓶颈做最小修改，再次测量验证收益。
+
+- 一次只改一个方向，避免优化结果不可归因。
+- 改完后重新测同样的指标，比较改前 / 改后差异。
+- 如果某个改动只是在一项指标上变好，却让另一项变差，要把取舍写清楚。
+
+### Step 4: 复盘与沉淀
+
+输出改动前后对比表、profiling 截图和最终判断，把这次经验收成可复用的优化记录。
+
+- 记录本次瓶颈来自哪里，以及下次优先看哪一层。
+- 把这次优化的取舍和结论写成可复用的排障路径。
+- 一张性能对比表，至少包含 latency / throughput / peak memory / step time。
+- 一组 baseline 和优化后的指标对比。
+- 一段结论，说明哪种改动更适合当前瓶颈。
+- 一份可复用的优化记录，便于后续复查。
+
+### 代码
+
+
+```python
+# ==========================================
+# TODO: 完成 profiling 优化模板的两个函数
+# 1. 统计 benchmark_fn(fn, warmup=3, iters=10)
+# 2. 汇总 baseline 和 tuned 的 step_time / peak_mem
+# ==========================================
+def benchmark_fn(fn, warmup=3, iters=10):
+    # TODO 1: 先做 warmup，再返回平均耗时
+    pass
+
+def summarize_optimization_result(base_metrics, tuned_metrics):
+    # TODO 2: 汇总优化前后差异
+    pass
+
+raise NotImplementedError("请先完成 TODO 代码！")
+
+```
+
+🛑 **STOP HERE** 🛑
+
+## 参考代码与解析
+
+### 代码
+
+
+```python
+# TODO 1: 统计平均 benchmark 耗时
+import time
+
+def benchmark_fn(fn, warmup=3, iters=10):
+    for _ in range(warmup):
+        fn()
+    start = time.perf_counter()
+    for _ in range(iters):
+        fn()
+    total = time.perf_counter() - start
+    return total / iters
+
+# TODO 2: 汇总优化前后差异
+def summarize_optimization_result(base_metrics, tuned_metrics):
+    time_delta = base_metrics['step_time_ms'] - tuned_metrics['step_time_ms']
+    mem_delta = base_metrics['peak_mem_mb'] - tuned_metrics['peak_mem_mb']
+    return {
+        'step_time_delta_ms': round(time_delta, 2),
+        'peak_mem_delta_mb': round(mem_delta, 2),
+        'time_improved': time_delta > 0,
+        'memory_improved': mem_delta > 0,
+    }
+
+baseline = {'step_time_ms': 120.0, 'peak_mem_mb': 8192.0}
+tuned = {'step_time_ms': 98.0, 'peak_mem_mb': 6144.0}
+print(summarize_optimization_result(baseline, tuned))
+
+```
+
+### 解析
+
+- `benchmark_fn` 负责把优化前后的运行时间标准化成平均值。
+- `summarize_optimization_result` 负责把 step time 和 peak memory 的差值收口。
+- `time_improved` / `memory_improved` 帮助判断优化是不是同时改善了性能和显存。
+
+### 测试
+
+
+```python
+def test_optimization_project_template():
+    counter = {'n': 0}
+
+    def fn():
+        counter['n'] += 1
+
+    result = benchmark_fn(fn, warmup=0, iters=2)
+    assert counter['n'] == 2
+    assert result >= 0.0
+
+    baseline = {'step_time_ms': 10.0, 'peak_mem_mb': 20.0}
+    tuned = {'step_time_ms': 8.0, 'peak_mem_mb': 18.0}
+    summary = summarize_optimization_result(baseline, tuned)
+    assert summary['time_improved'] is True
+    assert summary['memory_improved'] is True
+    print("✅ profiling 驱动的端到端优化项目模板代码通过基础校验。")
+
+
+test_optimization_project_template()
+
+```

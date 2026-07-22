@@ -10,47 +10,41 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-这个项目围绕同一个模型、同一批输入，把不同推理策略的延迟、吞吐和显存占用拉到一张表里比较。它的作用是把 `2.6`、`2.7` 和 `2.8` 的内容落到一个可复现的工程判断上。
 
 **关键词：** `benchmark`, `latency`, `throughput`, `memory`
 
-## 前置阅读
+这个项目围绕同一个模型、同一批输入，把不同推理策略的延迟、吞吐和显存占用拉到一张表里比较，最后形成可复现的推理选型结论。它承接 `2.6`、`2.7` 和 `2.8` 的内容，也借用 `Part 1` 的 profiling 方法来判断瓶颈和取舍。
 
-**导语：** 先把核心推理优化、量化和分布式并行看完，再做推理性能对比会更有意义。
-- [20. FlashAttention Sim | FlashAttention 模拟](./20_FlashAttention_Sim.md)
-- [22. vLLM PagedAttention | vLLM 分页注意力](./22_vLLM_PagedAttention.md)
-- [25. Quantization W8A16 | W8A16 量化](./25_Quantization_W8A16.md)
+### Step 1: 定义问题与固定 baseline
+选择一个 baseline，明确想优化的对象、指标和约束。
 
-## 相关阅读
+- 先固定模型、数据、batch size、seq len 和评测方式。
+- 只看一组核心指标，例如 latency / throughput / peak memory / step time。
+- 如果是训练任务，再补一条精度或 loss 约束，避免只追求更快。
 
-**导语：** 推理性能对比之后，建议继续看训练性能分析。
-- [32. Training Performance Analysis | 训练性能分析](./32_Training_Performance_Analysis.md)
-- [13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
+### Step 2: 测量与定位
 
+记录 profiling 结果，分清数据、算子、通信和显存瓶颈。
 
-## 项目目标
+- 先跑一轮 baseline，再看时间分布、显存曲线和热点算子。
+- 把问题拆成数据等待、前向 / 反向算子、通信同步和峰值显存四类。
+- 这一步的目标是把“慢”具体化，而不是先急着改代码。
 
-这个项目不是单纯跑一个推理 demo，而是围绕同一个模型、同一批输入，把不同推理策略的延迟、吞吐和显存占用拉到一张表里比较。它的作用是把 `2.6`、`2.7` 和 `2.8` 的内容落到一个可复现的工程判断上。
+### Step 3: 修改与复测
 
-- 对比预填充阶段和解码阶段的耗时差异。
-- 比较不同 batch size、不同上下文长度、不同 cache 策略下的吞吐变化。
-- 把推理上的性能结论和 `Part 1` 的 profiling 入口接起来。
+针对瓶颈做最小修改，再次测量验证收益。
 
-## 实验对象
+- 一次只改一个方向，避免优化结果不可归因。
+- 改完后重新测同样的指标，比较改前 / 改后差异。
+- 如果某个改动只是在一项指标上变好，却让另一项变差，要把取舍写清楚。
 
-建议固定一个小型因果语言模型或已经训练好的微型检查点，避免模型本身变化掩盖策略差异。输入也尽量固定成一组短、中、长三档 prompt，以便比较：
+### Step 4: 复盘与沉淀
 
-1. **短输入**：看启动开销和 prefill 的基础代价。
-2. **中等输入**：看缓存是否开始发挥作用。
-3. **长输入**：看 KV cache、分页和推理调度是否成为主要瓶颈。
+输出改动前后对比表、profiling 截图和最终判断，把这次经验收成可复用的优化记录。
 
-## 实现步骤
-
-1. **建立基线**：先跑一个最简单的 greedy decoding 或 teacher-forcing 风格推理，记录基础 latency 和 throughput。
-2. **逐项替换**：在同一模型上比较 `FlashAttention / PagedAttention / 量化 / batch` 等不同策略对性能的影响。
-3. **拆分阶段**：把 prefill 和 decode 分开统计，避免只看总耗时而丢掉阶段差异。
-4. **记录资源**：至少记录 `token/s`、`latency`、`peak memory` 和 `decode stability`。
-5. **做结论表**：输出一张“策略 -> 代价 -> 收益”的对照表，给后面的训练性能分析做参照。
+- 记录本次瓶颈来自哪里，以及下次优先看哪一层。
+- 把这次优化的取舍和结论写成可复用的排障路径。
+- 如果还有后续优化空间，就把下一轮优先级列出来。
 
 
 ```python
@@ -60,8 +54,6 @@ import time
 
 
 ```python
-import time
-
 
 def benchmark_fn(fn, warmup=3, iters=10):
     for _ in range(warmup):
@@ -90,6 +82,25 @@ print(example)
 
 ```
 
+
+```python
+# ==========================================
+# TODO: 完成推理性能统计的两个函数
+# 1. 计算 benchmark_fn(fn, warmup=3, iters=10)
+# 2. 汇总 prefill / decode / total / decode_share / peak_mem_mb
+# ==========================================
+def benchmark_fn(fn, warmup=3, iters=10):
+    # TODO 1: 先做 warmup，再返回平均耗时
+    pass
+
+def summarize_inference_result(prefill_ms, decode_ms, peak_mem_mb):
+    # TODO 2: 汇总 prefill / decode / total / decode_share / peak_mem_mb
+    pass
+
+raise NotImplementedError("请先完成 TODO 代码！")
+
+```
+
 🛑 **STOP HERE** 🛑
 
 ## 参考代码与解析
@@ -98,10 +109,9 @@ print(example)
 
 
 ```python
-import time
-
-
+# TODO 1: 统计平均 benchmark 耗时
 def benchmark_fn(fn, warmup=3, iters=10):
+    """Measure average runtime after warmup."""
     for _ in range(warmup):
         fn()
     start = time.perf_counter()
@@ -110,7 +120,7 @@ def benchmark_fn(fn, warmup=3, iters=10):
     total = time.perf_counter() - start
     return total / iters
 
-
+# TODO 2: 汇总推理指标
 def summarize_inference_result(prefill_ms, decode_ms, peak_mem_mb):
     total = prefill_ms + decode_ms
     decode_share = decode_ms / total if total else 0.0
@@ -122,7 +132,16 @@ def summarize_inference_result(prefill_ms, decode_ms, peak_mem_mb):
         'peak_mem_mb': round(peak_mem_mb, 2),
     }
 
+for prefill_ms, decode_ms, peak_mem_mb in [(42.5, 18.0, 5120.0)]:
+    print(summarize_inference_result(prefill_ms, decode_ms, peak_mem_mb))
+
 ```
+
+### 解析
+
+- `benchmark_fn` 负责在 warmup 之后测平均耗时，便于稳定比较。
+- `summarize_inference_result` 负责把 prefill / decode / total / decode_share / peak_mem_mb 统一收口。
+- `decode_share` 可以帮助判断 decode 是否成为主要瓶颈。
 
 ### 测试
 
