@@ -15,6 +15,19 @@
 
 `tools/convert_chapter0_1.py` 只保留 legacy 兼容。
 
+## Part 0-4 维护分工
+
+- `Part 00` 和 `Part 01` 一起作为前置知识层，重点是基础语言、张量、系统视角和性能边界。
+- `Part 02` 是主干实现层，重点是 PyTorch 里的训练、推理、并行、量化和项目收口。
+- `Part 03` 是 Triton / kernel 过渡层，重点是把框架级实现继续下沉到高性能算子。
+- `Part 04` 是 CUDA / 系统优化层，重点是继续向硬件、通信、调度和架构收口。
+- 维护时可以按下面的验证分段理解：
+  - `verify.py part0_1`：检查 `Part 00 / Part 01`
+  - `verify.py part2`：检查 `Part 02`
+  - `verify.py part3`：检查 `Part 03`
+  - `verify.py part4`：检查 `Part 04`
+- 横向专题主要横切 `Part 00 / Part 01 / Part 02`，后续若继续下探性能和实现，可以逐步接到 `Part 03 / Part 04`。
+
 ## 日常流程
 
 1. 先改 source。
