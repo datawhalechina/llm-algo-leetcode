@@ -1,11 +1,7 @@
 <h1 align="center">llm-algo-leetcode | 大模型算法与系统教程</h1>
 <p align="center">Notebook-first tutorial for LLM algorithms and systems.<br>面向大模型算法与系统的 Notebook-first 教程。</p>
 
-> [!WARNING]
-> 🧪 Beta公测版本提示：教程主体代码与算子已基本构建完成，正在持续优化文档细节与补充注释。欢迎大家提交 Issue 反馈问题或贡献 PR！
-
->
-> A practical tutorial with theory, walkthroughs, test cases, and solutions.
+<p align="center">A practical tutorial with theory, walkthroughs, test cases, and solutions.</p>
 
 [中文版 (Chinese)](#中文版) | [English Version](#english-version)
 
@@ -37,9 +33,20 @@
 - 具备 Python 和深度学习基础，熟悉 PyTorch。
 - 高阶内容需要一定 C++/CUDA 基础。
 
+### 🧭 专题快捷入口
+
+如果你不想从 Part 顺序硬读，可以先从下面这些专题进入：
+如果你只想先解决一个问题，可以直接从专题进入。
+
+- [Profiling 专题](./topic_discussion/profiling/intro.md)
+- [推理优化专题](./topic_discussion/inference_optimization/intro.md)
+- [通信与并行专题](./topic_discussion/communication_parallel/intro.md)
+- [显存优化与性能调优专题](./topic_discussion/memory_performance_tuning/intro.md)
+- [编译与图优化专题](./topic_discussion/compiler_graph_optimization/intro.md)
+
 ## 🌐 教程总览
 
-这套教程分为纵深主线、横切专题和共学沉淀三层：`Part 0` 和 `Part 1` 是共同前置，`Part 2 -> Part 5` 是主线实战层，`topic_discussion` 承载 profiling、AI compiler 等跨 Part 主题，`team_study` 则单独作为动态共学沉淀层，当前主要对应 Part 2。整体关系可以理解为前置打底 -> PyTorch 主线 -> Triton -> CUDA，横切专题和组队学习分别服务于性能分析、编译视野和共学沉淀。
+这套教程分为纵深主线、横切专题和共学沉淀三层：`Part 0` 和 `Part 1` 是共同前置，`Part 2 -> Part 5` 是主线实战层，`topic_discussion` 承载 profiling、编译与图优化、推理优化、通信与并行、显存优化与性能调优等跨 Part 主题，`team_study` 则单独作为动态共学沉淀层，当前主要对应 Part 2。整体关系可以理解为前置打底 -> PyTorch 主线 -> Triton -> CUDA，横切专题和组队学习分别服务于性能分析、编译视野和共学沉淀。
 
 ![教程总览保底图](./docs/image-1.png)
 
@@ -57,10 +64,20 @@ flowchart LR
   Profiling --> P3
   Profiling --> P4
 
-  Compiler["AI Compiler 专题"] --> P1
+  Compiler["编译与图优化专题"] --> P1
   Compiler --> P2
   Compiler --> P3
   Compiler --> P4
+
+  Inference["推理优化专题"] --> P1
+  Inference --> P2
+
+  Parallel["通信与并行专题"] --> P1
+  Parallel --> P2
+
+  Memory["显存优化与性能调优专题"] --> P0
+  Memory --> P1
+  Memory --> P2
 
   Study["组队学习 / 共学沉淀"] --> P2
 ```
@@ -82,8 +99,11 @@ flowchart LR
 
 | 专题 | 覆盖范围 | 内容定位 | 适合对象 | 状态 |
 | ---- | ---- | ---- | ---- | ---- |
-| [`Profiling 专题`](./topic_discussion/profiling/intro.md) | 所有part | 性能意识、profiling 方法、瓶颈定位经验。 | 想系统补性能意识与排障方法的学习者。 | 🛠 建设中 |
-| [`AI Compiler 专题`](./topic_discussion/ai_compiler/intro.md) | 所有part | 图优化、编译链路、自动优化策略。 | 想补齐编译视野与自动优化思路的学习者。 | 🛠 建设中 |
+| [`Profiling 专题`](./topic_discussion/profiling/intro.md) | 所有part | 导读：[intro](./topic_discussion/profiling/intro.md)；正文：[casebook](./topic_discussion/profiling/casebook.md)。性能意识、profiling 方法、瓶颈定位经验。 | 想系统补性能意识与排障方法的学习者。 | 🛠 建设中 |
+| [`编译与图优化专题`](./topic_discussion/compiler_graph_optimization/intro.md) | Part 1-4 | 导读：[intro](./topic_discussion/compiler_graph_optimization/intro.md)；正文：[casebook](./topic_discussion/compiler_graph_optimization/casebook.md)。图优化、融合、lowering、调度和代码生成视角。 | 想理解图级优化与编译链路的学习者。 | 🛠 建设中 |
+| [`推理优化专题`](./topic_discussion/inference_optimization/intro.md) | Part 1-2 | 导读：[intro](./topic_discussion/inference_optimization/intro.md)；正文：[casebook](./topic_discussion/inference_optimization/casebook.md)。FlashAttention、解码、PagedAttention、cache 优化。 | 想系统理解推理加速路径的学习者。 | 🛠 建设中 |
+| [`通信与并行专题`](./topic_discussion/communication_parallel/intro.md) | Part 1-2 | 导读：[intro](./topic_discussion/communication_parallel/intro.md)；正文：[casebook](./topic_discussion/communication_parallel/casebook.md)。NCCL、AllReduce、ZeRO、Pipeline、TP。 | 想理解多卡训练和通信边界的学习者。 | 🛠 建设中 |
+| [`显存优化与性能调优专题`](./topic_discussion/memory_performance_tuning/intro.md) | Part 0-2 | 导读：[intro](./topic_discussion/memory_performance_tuning/intro.md)；正文：[casebook](./topic_discussion/memory_performance_tuning/casebook.md)。VRAM、activation、checkpointing、offload、benchmark。 | 想系统优化显存和端到端性能的学习者。 | 🛠 建设中 |
 
 ### 🤝 共学沉淀
 
@@ -205,7 +225,7 @@ This is a practical LLM algorithm tutorial from beginner to advanced, built arou
 
 ## 🌐 Tutorial Overview
 
-This tutorial is organized into a vertical main line and two cross-cutting tracks: the main line connects `Part 0 -> Part 4 (with Part 5 reserved)`, `topic_discussion` covers profiling and AI compiler, and `team_study` is maintained as a separate collaborative-learning lane. The overview is summarized in the asset and topic tables below.
+This tutorial is organized into a vertical main line and cross-cutting tracks: the main line connects `Part 0 -> Part 4 (with Part 5 reserved)`, `topic_discussion` covers profiling, compiler and graph optimization, inference optimization, communication and parallelism, and memory and performance tuning topics, and `team_study` is maintained as a separate collaborative-learning lane. The overview is summarized in the asset and topic tables below.
 
 ![Tutorial overview fallback](./docs/image-1.png)
 
@@ -223,10 +243,20 @@ flowchart LR
   Profiling --> P3
   Profiling --> P4
 
-  Compiler["AI Compiler Topic"] --> P1
+  Compiler["Compiler and Graph Optimization Topic"] --> P1
   Compiler --> P2
   Compiler --> P3
   Compiler --> P4
+
+  Inference["Inference Optimization Topic"] --> P1
+  Inference --> P2
+
+  Parallel["Communication and Parallelism Topic"] --> P1
+  Parallel --> P2
+
+  Memory["Memory and Performance Tuning Topic"] --> P0
+  Memory --> P1
+  Memory --> P2
 
   Study["Team Study / Shared Learning"] --> P2
 ```
@@ -249,8 +279,11 @@ You do not need to start from `00` in strict order. `00` is the prerequisite lan
 | Topic | Coverage | Content Positioning | Suitable For | Status |
 | ---- | ---- | ---- | ---- | ---- |
 | [Topic Discussion Axis](./topic_discussion/intro.md) | All parts | Cross-Part topic discussion and case stitching. | Learners who want to consolidate methods and cases across parts. | 🛠 In progress |
-| [Profiling Topic](./topic_discussion/profiling/intro.md) | All parts | Performance awareness, profiling methods, bottleneck localization. | Learners who want systematic performance diagnosis and debugging methods. | 🛠 In progress |
-| [AI Compiler Topic](./topic_discussion/ai_compiler/intro.md) | All parts | Graph optimization, compiler pipelines, automated optimization strategies. | Learners who want compiler vision and automated optimization ideas. | 🛠 In progress |
+| [Profiling Topic](./topic_discussion/profiling/intro.md) | All parts | Guide: [intro](./topic_discussion/profiling/intro.md); casebook: [casebook](./topic_discussion/profiling/casebook.md). Performance awareness, profiling methods, bottleneck localization. | Learners who want systematic performance diagnosis and debugging methods. | 🛠 In progress |
+| [Compiler and Graph Optimization Topic](./topic_discussion/compiler_graph_optimization/intro.md) | Part 1-4 | Guide: [intro](./topic_discussion/compiler_graph_optimization/intro.md); casebook: [casebook](./topic_discussion/compiler_graph_optimization/casebook.md). Graph optimization, fusion, lowering, scheduling, and code generation. | Learners who want compiler and graph-level optimization vision. | 🛠 In progress |
+| [Inference Optimization Topic](./topic_discussion/inference_optimization/intro.md) | Part 1-2 | Guide: [intro](./topic_discussion/inference_optimization/intro.md); casebook: [casebook](./topic_discussion/inference_optimization/casebook.md). FlashAttention, decoding, PagedAttention, and cache optimization. | Learners who want to understand practical inference acceleration. | 🛠 In progress |
+| [Communication and Parallelism Topic](./topic_discussion/communication_parallel/intro.md) | Part 1-2 | Guide: [intro](./topic_discussion/communication_parallel/intro.md); casebook: [casebook](./topic_discussion/communication_parallel/casebook.md). NCCL, AllReduce, ZeRO, Pipeline, and Tensor Parallelism. | Learners who want to understand multi-GPU scaling and communication cost. | 🛠 In progress |
+| [Memory and Performance Tuning Topic](./topic_discussion/memory_performance_tuning/intro.md) | Part 0-2 | Guide: [intro](./topic_discussion/memory_performance_tuning/intro.md); casebook: [casebook](./topic_discussion/memory_performance_tuning/casebook.md). VRAM, activation, checkpointing, offload, and benchmark. | Learners who want to optimize memory usage and end-to-end performance. | 🛠 In progress |
 
 ### 🤝 Collaborative Study
 
