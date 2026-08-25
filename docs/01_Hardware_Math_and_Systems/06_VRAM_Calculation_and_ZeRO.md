@@ -16,12 +16,9 @@
 
 这一页用可运行代码计算 DDP、ZeRO 和训练状态账本。参数、梯度和优化器状态先单独核算；激活值、通信缓冲区、allocator reserved、kernel workspace 等完整峰值需要在真实 workload 中测量。
 
-这一页是 `Part 01` 的显存账本基础，主要服务 `监督微调路线` 的训练预算，也连接 `显存优化专题` 中的 ZeRO、LoRA 和 QLoRA 讨论。
+这一页是 `Part 01` 的显存账本基础，主要服务 `监督微调路线` 的训练预算，也连接 `显存优化专题` 中的 ZeRO、LoRA 和 QLoRA 讨论。本节是 **CPU-first；GPU 用于扩展验证**：CPU 代码可以验证参数、梯度、optimizer state 和 ZeRO 分摊公式，但不能证明 activation、通信缓冲、workspace、碎片和 reserved memory 的真实峰值。完成后，你应该能把单卡训练状态拆成参数、梯度和 optimizer state，并说明 ZeRO 改变了哪一部分驻留关系；真实峰值仍需在目标 workload 上测量。
 
 **关键词：** `VRAM`, `ZeRO`, `AdamW`
-
-## 证据边界与显存路线映射
-本节是 **CPU-first；GPU 用于扩展验证**：CPU 代码可以验证参数、梯度、optimizer state 和 ZeRO 分摊公式；它不能证明 activation、通信缓冲、临时 workspace、碎片和 reserved memory 的真实峰值，也不能保证某个配置实际不 OOM。
 
 本节主对应显存优化路线的 Task1（账本底座）。公式结果可以作为 Task3 / 73 / 76 的预算假设，并由 75 放入真实结果做预算判断；本节本身不是 Task6 的 profiling 收口。
 
@@ -129,6 +126,11 @@ ZeRO 的核心思想是把训练状态分摊到多张 GPU 上：
 
 ```python
 def calculate_zero_memory(num_params_b, zero_stage, num_gpus, model_dtype='fp16', optimizer='adam'):
+    """估算理想均匀切分下的单卡训练状态显存。
+
+    只计算参数、梯度和优化器状态；不包含 activation、通信 buffer、
+    workspace、切分粒度和 allocator reserve，因此不能直接保证不 OOM。
+    """
     if num_params_b < 0 or num_gpus <= 0:
         raise ValueError('num_params_b must be non-negative and num_gpus must be positive')
     try:
@@ -190,9 +192,12 @@ def max_trainable_params(gpu_memory_gb, num_gpus, zero_stage, overhead_ratio=0.2
     if not 0 <= overhead_ratio < 1:
         raise ValueError('overhead_ratio must be in [0, 1)')
     available_memory = gpu_memory_gb * (1 - overhead_ratio)
-    model_bytes = {'fp32': 4, 'fp16': 2, 'bf16': 2}[model_dtype]
-    gradient_bytes = model_bytes
-    optimizer_bytes = {'adam': 12, 'sgd': 4}[optimizer]
+    try:
+        model_bytes = {'fp32': 4, 'fp16': 2, 'bf16': 2}[model_dtype]
+        gradient_bytes = model_bytes
+        optimizer_bytes = {'adam': 12, 'sgd': 4}[optimizer]
+    except KeyError as exc:
+        raise ValueError('unsupported dtype or optimizer') from exc
 
     if zero_stage == 0 or zero_stage == 'ddp':
         bytes_per_param = model_bytes + gradient_bytes + optimizer_bytes

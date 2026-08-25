@@ -16,12 +16,9 @@
 
 在计算任何大模型的显存或算力之前，先把“数据”在 GPU 中的表示方式搞清楚。这是硬件推导和量化算法的基础。本节主线从 bit / byte 换算、权重占用和混合精度开始；A100、H100、TF32 与 FP8 作为后续硬件与低精度扩展，不作为前置假设。
 
-这一页是 `Part 01` 的数值与精度基础，主要服务训练稳定性、显存账本和量化前的 dtype 判断。它与 `监督微调路线`、`量化与压缩专题` 共享数值表示基础。
+这一页是 `Part 01` 的数值与精度基础，主要服务训练稳定性、显存账本和量化前的 dtype 判断。它与 `监督微调路线`、`量化与压缩专题` 共享数值表示基础。本节是 **CPU-first；GPU 用于扩展验证**：CPU 练习可以验证 bit / byte 换算、dtype 的理论字节数和简单账本关系；它不能证明真实 kernel 吞吐、CUDA workspace、allocator reserved 或具体显存节省比例。完成后，你应该能把参数量、dtype 和理论字节数接成一条可检查的账本；如果要判断实际峰值、吞吐或数值稳定性，应把同一 dtype 放入固定 workload 做项目验证。
 
 **关键词：** `FP16`, `BF16`, `INT8`
-
-## 证据边界与显存路线映射
-本节是 **CPU-first；GPU 用于扩展验证**：CPU 练习可以验证 bit / byte 换算、dtype 的理论字节数和简单账本关系；它不能证明真实 kernel 吞吐、CUDA workspace、allocator reserved 或具体显存节省比例。
 
 对应显存优化路线的 Task1（显存与性能认知底座）和 Task5（量化优化）。只有当 dtype 选择进入真实训练或推理 workload 时，才需要在 73 / 76 或 66 / 67 中验证；本节本身不要求进入 73–76。
 
@@ -92,7 +89,11 @@ def calculate_model_memory(num_params_b, dtype):
         'int4': 0.5
     }
     
-    memory_gb = num_params_b * bytes_per_param[dtype]
+    try:
+        bytes_per_element = bytes_per_param[dtype]
+    except KeyError as exc:
+        raise ValueError(f'unsupported dtype: {dtype}') from exc
+    memory_gb = num_params_b * bytes_per_element
     return memory_gb
 ```
 
@@ -159,7 +160,7 @@ for dtype in dtypes:
 
 2. **BF16 (Brain Float 16) 的结构**：1 位符号 + **8 位指数** + 7 位尾数。
    - 它是 Google Brain 专门为深度学习发明的。它其实就是直接把 FP32（8位指数）砍掉了后面的 16 位尾数！
-   - 因为拥有 8 位指数，BF16 能表示的最大数值范围和 FP32 一模一样（高达 $3.4 \times 10^{38}$），**极难发生数值溢出**。代价是尾数位从 10 降到了 7，牺牲了一点数值的“精确度”。
+   - 因为拥有 8 位指数，BF16 的指数范围与 FP32 相同（最大有限值约为 $3.4 \times 10^{38}$），在许多训练 workload 中比 FP16 更不容易因范围不足而溢出；这不等于不会出现 Inf/NaN。代价是尾数位从 10 降到了 7，舍入精度相对较低。
 </details>
 
 ### Q2小验证：混合精度训练显存计算
@@ -182,6 +183,10 @@ for dtype in dtypes:
 def calculate_training_memory(num_params_b, model_dtype='fp16', optimizer='adam'):
     """
     计算训练状态显存的理论近似，不代表完整的 peak memory。
+
+    当前教学账本按参数和梯度各占 model dtype 字节数，Adam 状态按
+    12 bytes/parameter、SGD 状态按 4 bytes/parameter 估算；具体实现
+    是否包含 master weights 等细节会改变这个常数。
     
     Args:
         num_params_b: 参数量（单位：B）
@@ -200,7 +205,10 @@ def calculate_training_memory(num_params_b, model_dtype='fp16', optimizer='adam'
     if optimizer not in {'adam', 'sgd'}:
         raise ValueError("optimizer must be 'adam' or 'sgd'")
 
-    model_bytes = {'fp32': 4, 'fp16': 2, 'bf16': 2}[model_dtype]
+    try:
+        model_bytes = {'fp32': 4, 'fp16': 2, 'bf16': 2}[model_dtype]
+    except KeyError as exc:
+        raise ValueError(f'unsupported model_dtype: {model_dtype}') from exc
     gradient_bytes = model_bytes
     optimizer_bytes = 12 if optimizer == 'adam' else 4
     total_memory_gb = num_params_b * (model_bytes + gradient_bytes + optimizer_bytes)
@@ -298,10 +306,10 @@ FP16 训练中常见的配套措施是 **Loss Scaling（损失缩放）**：
 | 格式 | 指数位 | 尾数位 | 最大值 | 训练稳定性 | 主要应用 |
 |------|--------|--------|--------|-----------|---------|
 | FP32 | 8 | 23 | $10^{38}$ | 最稳定 | 基准/调试 |
-| FP16 | 5 | 10 | $6.5 \times 10^4$ | 需 Loss Scaling | 推理优化 |
+| FP16 | 5 | 10 | $6.5 \times 10^4$ | 常需关注 Loss Scaling | 训练或推理均可，取决于 workload |
 | BF16 | 8 | 7 | $10^{38}$ | 极稳定 | **大模型训练** ✅ |
 
-**补充说明**：FP16 并未被完全”抛弃”——在推理场景中，由于不涉及梯度计算，数值范围需求较小，FP16 的更高精度（10 位尾数）反而能带来更好的输出质量，许多推理框架（如 TensorRT、vLLM）仍优先使用 FP16。
+**补充说明**：FP16 仍常用于训练和推理；在推理场景中是否优先选择 FP16，要结合模型、硬件、框架和质量测试判断，不能仅凭位宽推断输出质量。
 
 **总结**：BF16 的优势主要来自较大的指数范围和较广的硬件支持，但它不是脱离 workload 的固定答案。
 </details>
@@ -396,6 +404,10 @@ def max_model_size(gpu_memory_gb, dtype, overhead_ratio=0.2):
         >>> max_model_size(80, 'fp16', 0.2)
         32.0
     """
+    if gpu_memory_gb <= 0:
+        raise ValueError('gpu_memory_gb must be positive')
+    if not 0 <= overhead_ratio < 1:
+        raise ValueError('overhead_ratio must be in [0, 1)')
     bytes_per_param = {
         'fp32': 4,
         'fp16': 2,
@@ -403,8 +415,12 @@ def max_model_size(gpu_memory_gb, dtype, overhead_ratio=0.2):
         'int8': 1,
         'int4': 0.5,
     }
+    try:
+        bytes_per_element = bytes_per_param[dtype]
+    except KeyError as exc:
+        raise ValueError(f'unsupported dtype: {dtype}') from exc
     available_memory = gpu_memory_gb * (1 - overhead_ratio)
-    max_params_b = available_memory / bytes_per_param[dtype]
+    max_params_b = available_memory / bytes_per_element
     return max_params_b
 ```
 

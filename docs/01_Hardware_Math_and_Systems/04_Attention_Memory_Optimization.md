@@ -16,7 +16,7 @@
 
 自回归生成里的 attention 往往不是单纯算得慢，而是读得太多。每生成一个新 token，都要反复访问之前积累下来的 KV cache；上下文一长，瓶颈就会很快从矩阵乘法转到显存访问和缓存组织上。也正因为如此，注意力优化既有模型侧的结构改动，也有系统侧的内存管理改动。
 
-这是一节**机制前置节**：它区分 Attention 结构、KV Cache 表示和缓存组织三类问题，主要服务 `推理优化路线`，也为 `显存优化路线` 提供 KV Cache 视角。
+这是一节**机制前置节**：它区分 Attention 结构、KV Cache 表示和缓存组织三类问题，主要服务 `推理优化路线`，也为 `显存优化路线` 提供 KV Cache 视角。本节是 **CPU-first；GPU 用于扩展验证**：CPU 代码可以验证张量形状、缓存增长和理论字节数；真实 GPU 或 backend 才能验证实际峰值显存、带宽、并发和服务吞吐。显存路线在这里重点观察 KV Cache 如何进入显存账本，不把本节的理论结果当成具体设备结论。
 
 **关键词：** `MHA`, `MQA`, `GQA`
 
@@ -74,9 +74,13 @@ KV Cache 的容量通常随层数、序列长度、并发序列数和 KV 头数�
 
 ```python
 def kv_cache_bytes(seq_len, layers, heads, head_dim, dtype_bytes=2, batch_size=1):
-    """估算 KV Cache 理论字节数；不包含 block metadata、padding 和量化开销。"""
-    if min(seq_len, layers, heads, head_dim, batch_size) < 0:
-        raise ValueError('shape values must be non-negative')
+    """估算 decode 阶段 KV Cache 的理论字节数。
+
+    不包含 block metadata、padding、量化 scale、allocator reserve 或
+    runtime workspace；这里的 heads 应该是 KV heads，而不是 query heads。
+    """
+    if min(seq_len, layers, heads, head_dim, dtype_bytes, batch_size) <= 0:
+        raise ValueError('shape values 和 dtype_bytes 必须为正数')
     return 2 * batch_size * seq_len * layers * heads * head_dim * dtype_bytes
 
 for seq_len in [1024, 2048, 4096]:
@@ -105,8 +109,8 @@ for seq_len in [1024, 2048, 4096]:
 固定上下文长度，只改变 KV 头数，看看缓存怎么缩。
 
 ```python
-def kv_cache_gb(seq_len, layers, kv_heads, head_dim, dtype_bytes=2):
-    return 2 * seq_len * layers * kv_heads * head_dim * dtype_bytes / 1e9
+def kv_cache_gb(seq_len, layers, kv_heads, head_dim, dtype_bytes=2, batch_size=1):
+    return kv_cache_bytes(seq_len, layers, kv_heads, head_dim, dtype_bytes, batch_size) / 1e9
 
 seq_len = 4096
 layers = 32
@@ -179,6 +183,12 @@ MLA 通过额外计算和表示变换换取更小的缓存；是否值得取决�
 
 ```python
 def mla_gain(seq_len, kv_heads, compression_ratio=0.5):
+    """用一个比例模型展示 KV 表示压缩的数量级直觉。
+
+    这不是 MLA 的完整 cache 公式，也不代表实际质量或吞吐收益。
+    """
+    if seq_len <= 0 or kv_heads <= 0 or not 0 < compression_ratio <= 1:
+        raise ValueError('seq_len、kv_heads 必须为正数，compression_ratio 必须在 (0, 1]')
     # MLA 不是简单压缩，而是把 KV cache 里的冗余表示换成更紧凑的路径。
     base = 2 * seq_len * kv_heads
     compressed = base * compression_ratio
