@@ -1,12 +1,28 @@
 {
   "task": "task3_training_memory_optimization",
   "stage": "activation_checkpoint_offload_benchmark",
-  "source_baseline": "73_real_gpu_training.json",
+  "source_baseline": "benchmarks/results/73_real_gpu_training.json",
+  "baseline_validation": {
+    "status": "matched",
+    "config": {
+      "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+      "batch_size": 1,
+      "seq_len": 768,
+      "dtype": "float32",
+      "optimizer": "AdamW",
+      "workload": "pressure",
+      "warmup": 2,
+      "iters": 5
+    }
+  },
+  "evidence_level": "fixed_workload_strategy_smoke",
   "config": {
     "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
     "workload": "pressure",
     "batch_size": 1,
     "seq_len": 768,
+    "dtype": "float32",
+    "optimizer": "AdamW",
     "warmup": 2,
     "iters": 5,
     "strategies": [
@@ -31,8 +47,8 @@
     {
       "name": "baseline",
       "status": "ok",
-      "step_time_ms": 476.764,
-      "samples_per_s": 2.097,
+      "step_time_ms": 497.839,
+      "samples_per_s": 2.009,
       "loss": 11.477463,
       "eval_loss": 12.356503,
       "peak_memory_mb": 9782.74,
@@ -41,8 +57,8 @@
     {
       "name": "checkpoint",
       "status": "ok",
-      "step_time_ms": 592.849,
-      "samples_per_s": 1.687,
+      "step_time_ms": 567.74,
+      "samples_per_s": 1.761,
       "loss": 11.477463,
       "eval_loss": 12.356503,
       "peak_memory_mb": 9450.76,
@@ -51,8 +67,8 @@
     {
       "name": "offload",
       "status": "ok",
-      "step_time_ms": 1894.917,
-      "samples_per_s": 0.528,
+      "step_time_ms": 1877.559,
+      "samples_per_s": 0.533,
       "loss": 11.477463,
       "eval_loss": 12.356503,
       "peak_memory_mb": 9448.33,
@@ -61,8 +77,8 @@
     {
       "name": "hybrid",
       "status": "ok",
-      "step_time_ms": 766.367,
-      "samples_per_s": 1.305,
+      "step_time_ms": 783.478,
+      "samples_per_s": 1.276,
       "loss": 11.477463,
       "eval_loss": 12.356503,
       "peak_memory_mb": 9454.64,
@@ -71,6 +87,9 @@
   ],
   "summary": {
     "candidate_count": 4,
+    "measured_count": 4,
+    "oom_count": 0,
+    "invalid_count": 0,
     "feasible_count": 3,
     "best_candidate": "checkpoint",
     "quality_failed_count": 0,
@@ -82,7 +101,7 @@
     "baseline_peak_memory_mb": 9782.74,
     "best_peak_memory_mb": 9450.76,
     "memory_saving_mb": 331.97999999999956,
-    "throughput_ratio": 0.8044825941821651
+    "throughput_ratio": 0.8765555002488801
   },
   "decision": {
     "decision": "tune",

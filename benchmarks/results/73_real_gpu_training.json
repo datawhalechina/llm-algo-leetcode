@@ -5,39 +5,90 @@
   "config": {
     "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
     "batch_size": 1,
-    "seq_len": 256,
-    "warmup": 3,
-    "iters": 10,
+    "seq_len": 768,
+    "dtype": "float32",
+    "optimizer": "AdamW",
+    "workload": "pressure",
+    "warmup": 2,
+    "iters": 5,
     "amp_dtype": "torch.bfloat16",
     "torch": "2.11.0+cu128",
     "torch_cuda": "12.8",
     "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
-    "seed": 42
+    "seed": 42,
+    "repeats": 3
   },
   "baseline": {
-    "step_time_ms": 251.137,
-    "samples_per_s": 3.982,
-    "loss": 3.483021,
-    "peak_mem_mb": 9474.12,
-    "peak_reserved_mb": 10674.0
+    "step_time_ms": 482.753,
+    "samples_per_s": 2.072,
+    "loss": 11.477,
+    "peak_mem_mb": 9782.563,
+    "peak_reserved_mb": 10766.0,
+    "runs": [
+      {
+        "step_time_ms": 480.837,
+        "samples_per_s": 2.08,
+        "loss": 11.477463,
+        "peak_mem_mb": 9782.73,
+        "peak_reserved_mb": 10750.0
+      },
+      {
+        "step_time_ms": 482.176,
+        "samples_per_s": 2.074,
+        "loss": 11.477463,
+        "peak_mem_mb": 9782.48,
+        "peak_reserved_mb": 10774.0
+      },
+      {
+        "step_time_ms": 485.246,
+        "samples_per_s": 2.061,
+        "loss": 11.477463,
+        "peak_mem_mb": 9782.48,
+        "peak_reserved_mb": 10774.0
+      }
+    ]
   },
   "tuned": {
-    "step_time_ms": 193.89,
-    "samples_per_s": 5.158,
-    "loss": 5.371336,
-    "peak_mem_mb": 9466.15,
-    "peak_reserved_mb": 10088.0
+    "step_time_ms": 237.998,
+    "samples_per_s": 4.202,
+    "loss": 11.716,
+    "peak_mem_mb": 9477.25,
+    "peak_reserved_mb": 10624.0,
+    "runs": [
+      {
+        "step_time_ms": 234.352,
+        "samples_per_s": 4.267,
+        "loss": 11.714277,
+        "peak_mem_mb": 9477.25,
+        "peak_reserved_mb": 10624.0
+      },
+      {
+        "step_time_ms": 238.898,
+        "samples_per_s": 4.186,
+        "loss": 11.717899,
+        "peak_mem_mb": 9477.25,
+        "peak_reserved_mb": 10624.0
+      },
+      {
+        "step_time_ms": 240.745,
+        "samples_per_s": 4.154,
+        "loss": 11.716588,
+        "peak_mem_mb": 9477.25,
+        "peak_reserved_mb": 10624.0
+      }
+    ]
   },
   "summary": {
-    "step_time_delta_ms": 57.25,
-    "peak_mem_delta_mb": 7.97,
+    "step_time_delta_ms": 244.75,
+    "peak_mem_delta_mb": 305.31,
     "time_improved": true,
     "memory_improved": true,
-    "time_improvement_pct": 22.8,
-    "memory_improvement_pct": 0.08,
+    "time_improvement_pct": 50.7,
+    "memory_improvement_pct": 3.12,
     "meaningful_memory_improved": false
   },
-  "loss_delta_tuned_minus_baseline": 1.888315,
+  "loss_delta_tuned_minus_baseline": 0.239,
+  "evidence_level": "fixed_workload_performance_smoke",
   "decision": {
     "decision": "tune",
     "reason": "至少有一项收益成立，但还没形成稳定项目结论，先继续微调。"

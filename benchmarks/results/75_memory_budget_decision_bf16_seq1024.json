@@ -1,0 +1,47 @@
+{
+  "task": "task3_training_memory_optimization",
+  "stage": "memory_budget_decision",
+  "source": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/76_real_gpu_memory_bf16_seq1024.json",
+  "budget": {
+    "memory_cap_mb": 9600.0,
+    "min_samples_per_s": 1.0
+  },
+  "quality_floor": {
+    "max_val_loss": 12.446954
+  },
+  "candidates": [
+    {
+      "name": "baseline",
+      "peak_memory_mb": 10037.52,
+      "samples_per_s": 3.366,
+      "eval_loss": 12.202896,
+      "val_loss": 12.202896
+    },
+    {
+      "name": "checkpoint",
+      "peak_memory_mb": 10010.36,
+      "samples_per_s": 2.919,
+      "eval_loss": 12.202565,
+      "val_loss": 12.202565
+    }
+  ],
+  "summary": {
+    "candidate_count": 2,
+    "measured_count": 2,
+    "oom_count": 0,
+    "invalid_count": 0,
+    "feasible_count": 0,
+    "best_candidate": null,
+    "quality_failed_count": 0,
+    "feasible_names": [],
+    "baseline_peak_memory_mb": 10037.52,
+    "throughput_ratio": null,
+    "best_peak_memory_mb": null,
+    "memory_saving_mb": 0.0
+  },
+  "decision": {
+    "decision": "reject",
+    "reason": "no_strategy_meets_budget_and_quality",
+    "next_action": "tighten_batch_or_rework_memory_plan"
+  }
+}
