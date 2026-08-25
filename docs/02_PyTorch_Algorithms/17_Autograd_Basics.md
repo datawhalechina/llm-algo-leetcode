@@ -1,4 +1,4 @@
-# 17. Autograd Basics | 自动微分基础
+# 17. Autograd Basics | Attention 反向传播与自定义 Autograd
 
 **难度：** Medium | **环境：** CPU-first | **标签：** `显存优化`, `Autograd`, `反向传播` | **目标人群：** 显存优化学习者
 
@@ -14,9 +14,11 @@
 
 ## 本节导读
 
-写完 Attention 前向以后，模型虽然能算出输出，但训练时还要回答另一个问题：损失的梯度到底怎样回到 $Q$、$K$、$V$？如果只是调用 `loss.backward()`，这条路径会被 PyTorch 自动处理；但一旦要写自定义算子、排查梯度异常，或者理解后面 FlashAttention 的反向传播，就必须把这条链路拆开看。
+在掌握 Part00 07 节的计算图、`backward()` 和 `autograd.Function` 基础后，再来看 Attention 的反向路径：损失的梯度到底怎样回到 $Q$、$K$、$V$？如果只是调用 `loss.backward()`，这条路径会被 PyTorch 自动处理；但一旦要写自定义算子、排查梯度异常，或者理解后面 FlashAttention 的反向传播，就需要把这条链路拆开看。
 
-本节不从 Autograd 的概念定义讲起，而是沿着一个简化版 Attention 反向走一遍：输出梯度先回到 $V$ 和注意力概率 $P$，再穿过 Softmax 回到打分矩阵 $S$，最后回到 $Q$ 和 $K$。完成后，你应该能把 Attention backward 的关键公式写进 `torch.autograd.Function`，理解为什么前向要保存中间张量，并用 PyTorch 自动求导结果校验手写梯度是否正确。
+本节不重复 Autograd 的通用定义，而是沿着一个简化版 Attention 反向走一遍：输出梯度先回到 $V$ 和注意力概率 $P$，再穿过 Softmax 回到打分矩阵 $S$，最后回到 $Q$ 和 $K$。完成后，你应该能把 Attention backward 的关键公式写进 `torch.autograd.Function`，理解为什么前向要保存中间张量，并用 PyTorch 自动求导结果校验手写梯度是否正确。
+
+本节的代码任务是完成简化 Attention backward，并用 reference 和 `gradcheck` 验证：输出梯度沿矩阵乘法和 Softmax 回传到 `Q / K / V`。范围限于无 mask、无 dropout 的 CPU-first 实现；`ctx.save_for_backward` 只用于说明本题需要的状态，不代表真实 GPU 显存、带宽、GQA/MQA、KV Cache 或 FlashAttention 性能结论。
 
 **关键词：** `Autograd`, `backward`, `gradcheck`
 
@@ -40,21 +42,21 @@
 
 ### Step 1: 前向传播回顾与变量定义
 
-为了不打断思路，我们先简洁回顾一下 04 节的单头 Attention 前向公式（省略缩放因子 $\sqrt{d}$ 简化推导，后文代码中会加回）：
+为了和后面的代码保持一致，我们先回顾 04 节的缩放点积 Attention 前向公式：
 
-1. **打分矩阵**：$S = Q K^T$
+1. **打分矩阵**：$S = \frac{Q K^T}{\sqrt{d}}$
 2. **概率矩阵**：$P = \text{Softmax}(S, \text{dim}=-1)$
 3. **最终输出**：$O = P V$
 
 > **张量形状说明：**
-> - $Q, K, V \in \mathbb{R}^{N \times d}$ (序列长度 $N$，特征维数 $d$)
-> - $S, P \in \mathbb{R}^{N \times N}$
-> - $O \in \mathbb{R}^{N \times d}$
-### Step 2: 链式法则逆流而上 (微积分时间)
+> - $Q, K, V \in \mathbb{R}^{B \times N \times d}$（batch $B$、序列长度 $N$、特征维数 $d$）
+> - $S, P \in \mathbb{R}^{B \times N \times N}$
+> - $O \in \mathbb{R}^{B \times N \times d}$
+### Step 2: 链式法则
 
 假设下游的损失函数已经帮我们算好了输出张量 $O$ 的梯度 $\nabla O$（通常简写为 $dO$）。我们的任务是求出 $dQ, dK, dV$。
 
-**1. 求 $dV$（最简单的）**
+**1. 求 $dV$**
 因为 $O = P V$，根据矩阵乘法求导法则：
 $$ dV = P^T \cdot dO $$
 
@@ -62,16 +64,16 @@ $$ dV = P^T \cdot dO $$
 同样因为 $O = P V$，对 $P$ 求导可得：
 $$ dP = dO \cdot V^T $$
 
-**3. 跨越 Softmax (核心难点)**
+**3. 计算 Softmax 的梯度**
 我们需要从 $dP$ 求得 $dS$。Softmax 的雅可比矩阵非常特殊：
-已知 $P_i = \frac{e^{S_i}}{\sum e^{S_j}}$，其对于 $S$ 的导数在应用链式法则后，会化简为一个非常优美的形式：
+已知 $P_i = \frac{e^{S_i}}{\sum e^{S_j}}$，应用链式法则后，可以按行写成下面的形式：
 $$ dS = P \odot (dP - \text{row\_sum}(P \odot dP)) $$
 (*注：$\odot$ 表示 Element-wise 逐元素乘法。后面的加和项是通过广播机制实现的*)
 
 **4. 求 $dQ$ 和 $dK$**
-此时我们已经拿到了 $dS$。因为 $S = Q K^T$（如果带缩放因子则是 $S = \frac{Q K^T}{\sqrt{d}}$）：
-$$ dQ = \frac{dS \cdot K}{\sqrt{d}} $$
-$$ dK = \frac{dS^T \cdot Q}{\sqrt{d}} $$
+此时我们已经拿到了 $dS$。本节统一使用缩放点积定义 $S = \frac{Q K^T}{\sqrt{d}}$，因此：
+$$ dQ = dS \cdot K \cdot \frac{1}{\sqrt{d}} $$
+$$ dK = dS^T \cdot Q \cdot \frac{1}{\sqrt{d}} $$
 
 ![Attention backward 图](/02_PyTorch_Algorithms/17_autograd_attention_backward.svg)
 
@@ -80,11 +82,13 @@ $$ dK = \frac{dS^T \cdot Q}{\sqrt{d}} $$
 现在，把你刚才看到的微积分公式，转化为能够实际运行的代码。我们将继承 `torch.autograd.Function`。
 
 **要求**：完成 `backward` 函数中 TODO 的数学推导代码。你可以使用 `ctx.saved_tensors` 来获取前向传播时保存的 $Q, K, V, P$ 等变量。
+
+本题只实现无 mask、无 dropout 的缩放点积 Attention backward；causal mask、GQA/MQA 和 KV Cache 不在本题范围内。
 这一节的实现顺序就是先求 `dV / dP`，再穿过 Softmax 得到 `dS`，最后回到 `dQ / dK`。
 ### 提示
 
 - 反向顺序可以记成 `dV -> dP -> dS -> dQ / dK`，先把最容易的分支算出来，再往 Softmax 和输入侧回推。
-- `ctx.save_for_backward` 里保存的是反向需要的最小状态，不是把所有中间量都留下。
+- `ctx.save_for_backward` 里保存的是本题手写 backward 所需的状态；生产实现可能通过重算、分块或其他数据流减少保存量。
 - Softmax 的反向不要去构造完整雅可比，按行做修正项即可。
 
 
@@ -97,8 +101,30 @@ import math
 
 ```python
 class CustomAttention(torch.autograd.Function):
+    """无 mask、无 dropout 的教学版缩放点积 Attention。
+
+    输入和输出均使用 [B, N, d]；本题只实现单头、等长 Q/K/V 的路径。
+    """
     @staticmethod
     def forward(ctx, q, k, v):
+        """计算缩放点积 Attention。
+
+        Args:
+            q, k, v: [B, N, d] 张量，device 和 dtype 必须一致。
+
+        Returns:
+            [B, N, d] 的 attention 输出。
+        """
+        if q.ndim != 3 or k.ndim != 3 or v.ndim != 3:
+            raise ValueError('q、k、v 必须是 [batch, seq_len, head_dim] 三维张量')
+        if q.shape[:2] != k.shape[:2] or k.shape[:2] != v.shape[:2]:
+            raise ValueError('q、k、v 的 batch 和序列长度必须一致')
+        if q.size(-1) != k.size(-1) or v.size(-1) != q.size(-1):
+            raise ValueError('q、k、v 的 head_dim 必须一致')
+        if q.device != k.device or k.device != v.device:
+            raise ValueError('q、k、v 必须位于同一 device')
+        if q.dtype != k.dtype or k.dtype != v.dtype:
+            raise TypeError('q、k、v 必须使用相同 dtype')
         # 1. 缩放点积
         d_k = q.size(-1)
         scale = 1.0 / math.sqrt(d_k)
@@ -119,22 +145,33 @@ class CustomAttention(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, dout):
+        """根据上游输出梯度返回 q、k、v 的梯度。
+
+        Args:
+            dout: 与 forward 输出同形状的上游梯度。
+
+        Returns:
+            dq、dk、dv，形状分别与 q、k、v 相同。
+        """
         # 提取前向保存的张量
         q, k, v, p = ctx.saved_tensors
         scale = ctx.scale
         
         # ==========================================
         # TODO 1: 求 dV
+        # 提示：由 out = P @ V，使用 P.transpose(-2, -1) @ dout。
         # ==========================================
         # dv = ???
         
         # ==========================================
         # TODO 2: 求 dP
+        # 提示：由 out = P @ V，使用 dout @ V.transpose(-2, -1)。
         # ==========================================
         # dp = ???
         
         # ==========================================
         # TODO 3: 穿过 Softmax 求 dS
+        # 提示：对最后一维求 row_sum，避免显式构造 Softmax 雅可比矩阵。
         # ==========================================
         # dp_mul_p = ???
         # row_sum = ???
@@ -142,6 +179,7 @@ class CustomAttention(torch.autograd.Function):
         
         # ==========================================
         # TODO 4: 求 dQ 和 dK (别忘了乘以 scale 缩放因子)
+        # 提示：由 S = Q @ K.transpose(-2, -1) * scale 回传到 q / k。
         # ==========================================
         # dq = ???
         # dk = ???
@@ -174,9 +212,24 @@ def test_attention_backward():
         ref_out = torch.matmul(F.softmax(scores, dim=-1), v)
         
         assert torch.allclose(custom_out, ref_out), "前向传播结果不一致！"
+        assert custom_out.shape == (B, N, d), "Attention 输出形状不一致！"
         
         print("\n2. 进行梯度数值检验 (Gradcheck)...")
         test_passed = torch.autograd.gradcheck(CustomAttention.apply, (q, k, v), eps=1e-6, atol=1e-4)
+
+        # 用同一组输入分别回传，检查 q/k/v 的梯度形状和数值。
+        q_ref, k_ref, v_ref = [t.detach().clone().requires_grad_() for t in (q, k, v)]
+        ref_scores = torch.matmul(q_ref, k_ref.transpose(-2, -1)) / math.sqrt(d)
+        ref_output = torch.matmul(F.softmax(ref_scores, dim=-1), v_ref)
+        ref_output.sum().backward()
+        q_custom, k_custom, v_custom = [t.detach().clone().requires_grad_() for t in (q, k, v)]
+        CustomAttention.apply(q_custom, k_custom, v_custom).sum().backward()
+        assert q_custom.grad.shape == q_custom.shape
+        assert k_custom.grad.shape == k_custom.shape
+        assert v_custom.grad.shape == v_custom.shape
+        assert torch.allclose(q_custom.grad, q_ref.grad, atol=1e-5)
+        assert torch.allclose(k_custom.grad, k_ref.grad, atol=1e-5)
+        assert torch.allclose(v_custom.grad, v_ref.grad, atol=1e-5)
         
         if test_passed:
             print("✅ All Tests Passed! Attention 反向传播实现通过测试。")
@@ -206,16 +259,16 @@ test_attention_backward()
 
 ```
 
-### Step 4: 工业界的现实与破局（预告）
+### Step 4: 从显式 Attention 到分块实现（预告）
 
 看看你刚才写的 `ctx.save_for_backward(q, k, v, p)`。这行代码在反向传播被调用前，会**一直把 $P$ 锁在显存里**。
 
-如果现在的上下文是 $128K$（如 GPT-4），$P$ 的大小就是 $128K \times 128K$。即便在 FP16 精度下，**单单存这一个 $P$ 矩阵，一个 Batch 就需要占用约 32 GB 的显存！** 稍微开大点 Batch Size，连 80G 的 A100 都会触发 OOM。
+如果序列长度为 $N$，$P$ 的形状就是 $N \times N$。在显式保存 Attention 概率矩阵的实现中，它的存储和 HBM 读写都会随 $N^2$ 增长；这可能成为长上下文场景中的显存压力来源。具体占用还取决于 batch、head 数、dtype 和实现方式，不能只凭序列长度给出统一结论。
 
-> **思考题**：如果你是底层算法工程师，怎么解决这个问题？
-> **答案预告**：不存 $P$！我们在反向传播需要 $P$ 的时候，**拿 $Q$ 和 $K$ 现场重算一次 $P$（Recomputation）！** 通过巧妙的 SRAM 分块加载机制，虽然计算量变大了，但因为避免了把庞大的 $P$ 写入又读出非常缓慢的 HBM，最终不但不 OOM，**速度反而变快了 3 倍！**
+> **思考题**：怎样减少这个中间矩阵的驻留和搬运？
+> **提示**：FlashAttention 通过分块计算、在线 Softmax 和片上数据复用，避免显式保存完整的 $P$。实际显存和速度收益仍需结合 GPU、序列长度、dtype 和 workload 测量。
 
-这就是下一节业界广泛使用的 **FlashAttention** 所做的事。
+下一节将用一个简化实现说明 FlashAttention 如何改变这条数据流。
 ---
 
 🛑 **STOP HERE** 🛑
@@ -231,8 +284,30 @@ test_attention_backward()
 
 ```python
 class CustomAttention(torch.autograd.Function):
+    """无 mask、无 dropout 的教学版缩放点积 Attention。
+
+    输入和输出均使用 [B, N, d]；本题只实现单头、等长 Q/K/V 的路径。
+    """
     @staticmethod
     def forward(ctx, q, k, v):
+        """计算缩放点积 Attention。
+
+        Args:
+            q, k, v: [B, N, d] 张量，device 和 dtype 必须一致。
+
+        Returns:
+            [B, N, d] 的 attention 输出。
+        """
+        if q.ndim != 3 or k.ndim != 3 or v.ndim != 3:
+            raise ValueError('q、k、v 必须是 [batch, seq_len, head_dim] 三维张量')
+        if q.shape[:2] != k.shape[:2] or k.shape[:2] != v.shape[:2]:
+            raise ValueError('q、k、v 的 batch 和序列长度必须一致')
+        if q.size(-1) != k.size(-1) or v.size(-1) != q.size(-1):
+            raise ValueError('q、k、v 的 head_dim 必须一致')
+        if q.device != k.device or k.device != v.device:
+            raise ValueError('q、k、v 必须位于同一 device')
+        if q.dtype != k.dtype or k.dtype != v.dtype:
+            raise TypeError('q、k、v 必须使用相同 dtype')
         d_k = q.size(-1)
         scale = 1.0 / math.sqrt(d_k)
         
@@ -247,21 +322,33 @@ class CustomAttention(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, dout):
+        """根据上游输出梯度返回 q、k、v 的梯度。
+
+        Args:
+            dout: 与 forward 输出同形状的上游梯度。
+
+        Returns:
+            dq、dk、dv，形状分别与 q、k、v 相同。
+        """
         q, k, v, p = ctx.saved_tensors
         scale = ctx.scale
         
         # TODO 1: 求 dV
+        # 提示：由 out = P @ V，使用 P.transpose(-2, -1) @ dout。
         dv = torch.matmul(p.transpose(-2, -1), dout)
         
         # TODO 2: 求 dP
+        # 提示：由 out = P @ V，使用 dout @ V.transpose(-2, -1)。
         dp = torch.matmul(dout, v.transpose(-2, -1))
         
         # TODO 3: 穿过 Softmax 求 dS
+        # 提示：对最后一维求 row_sum，避免显式构造 Softmax 雅可比矩阵。
         dp_mul_p = dp * p
         row_sum = dp_mul_p.sum(dim=-1, keepdim=True)
         ds = p * (dp - row_sum)
         
         # TODO 4: 求 dQ 和 dK
+        # 提示：由 S = Q @ K.transpose(-2, -1) * scale 回传到 q / k。
         dq = torch.matmul(ds, k) * scale
         dk = torch.matmul(ds.transpose(-2, -1), q) * scale
         
@@ -287,7 +374,7 @@ class CustomAttention(torch.autograd.Function):
 
 - **实现方式**：先算 `dp_mul_p = dp * p`，再对行求和得到 `row_sum`，最后得到 `ds = p * (dp - row_sum)`。
 - **数学原理**：Softmax 的反向可以化成一个稳定的逐行修正项，不需要显式构造完整雅可比矩阵。
-- **工程意义**：这是 Attention 反向里最关键的一步，也是很多讲解容易卡住的地方。
+- **工程意义**：这一步决定了 Softmax 输出梯度如何回到打分矩阵，是实现中需要重点检查的环节。
 
 **4. TODO 4: 求 dQ 和 dK**
 
