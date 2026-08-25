@@ -324,7 +324,8 @@ print(measure_train_step(train_step, warmup=0, iters=2))
 
 ```python
 RUN_REAL_GPU = True  # 是否运行真实 GPU 测量；实测时显式改为 True。
-REAL_RUN_MODE = 'paired'  # paired：FP32/BF16 对比；bf16_probe：只探测 BF16 容量。
+#REAL_RUN_MODE = 'paired'  # paired：FP32/BF16 对比；bf16_probe：只探测 BF16 容量。
+REAL_RUN_MODE =  'bf16_probe'
 MODEL_PROFILES = {
     'qwen25_small': 'Qwen/Qwen2.5-0.5B-Instruct',
     'deepseek_r1_small': 'deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B',
@@ -347,7 +348,7 @@ ITERS = 10  # 由 WORKLOADS 自动覆盖；正式测量轮数。
 LEARNING_RATE = 1e-5  # baseline 与 tuned 必须保持一致。
 SEED = 42  # 固定输入和初始化，减少方案间随机差异。
 from pathlib import Path
-OUTPUT_RELATIVE_PATH = Path('benchmarks/results/73_real_gpu_training_seq1024.json')
+OUTPUT_RELATIVE_PATH = Path('benchmarks/results/73_real_gpu_training_bf16.json')
 
 ```
 

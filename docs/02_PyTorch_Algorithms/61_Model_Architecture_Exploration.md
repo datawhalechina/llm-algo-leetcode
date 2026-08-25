@@ -86,6 +86,9 @@
 | 对比 | score delta、memory delta、部署影响 | 判断是否值得 adopt |
 | 决策 | accept / tune / reject | 输出项目结论 |
 
+### 参数口径说明
+
+本节主要是 CPU-first 决策模板，没有真实模型运行配置。`baseline` 固定为参照结构；candidate 的 `changed_modules` 只描述改动位置，`params`、`memory_mb`、`step_time_ms` 和 `score` 分别表示参数量、显存、步时和任务得分；`deploy_cost` 表示实现或部署额外成本。比较 candidate 时一次只改变结构变量，不能同时改变数据、训练步数和评测口径。
 
 ```python
 from typing import Dict, List
@@ -348,3 +351,36 @@ def recommend_candidate(baseline: Dict[str, object], candidates: List[Dict[str, 
 - **实现方式**：先校验 baseline，再按参数预算、显存、step time 和部署边界输出 `accept / tune / reject`。
 - **关键点**：`accept` 要求收益与边界同时达标；只要 score 提升但资源或部署边界仍偏高，就更适合 `tune`。
 - **项目意义**：这一步让页面真正回答“这次架构改动值不值得继续采用”，而不是只做候选排序。
+
+### 可选：统一项目报告导出
+默认不导出，避免把演示数据误当成实测结果。完成 baseline、candidate 和评测后，将 `PROJECT_REPORT` 组装完整，再把 `RUN_PROJECT_EXPORT` 改为 `True`。报告模板见 `docs/verification/fine_tuning_projects.md`。
+
+```python
+try:
+    from tools.fine_tuning_project_runtime import runtime_snapshot, save_project_report, validate_project_config
+except ModuleNotFoundError:
+    runtime_snapshot = lambda: {'device': 'unknown'}
+    validate_project_config = lambda config: []
+    save_project_report = None
+
+PROJECT_ID = '61_model_architecture_exploration'
+PROJECT_RESULT_PATH = 'benchmarks/results/61_architecture_exploration.json'
+PROJECT_CONFIG = {
+    'project': PROJECT_ID, 'model': 'template', 'dtype': 'fp32',
+    'batch_size': 1, 'seq_len': 128, 'steps': 1, 'seed': 42,
+}
+RUN_PROJECT_EXPORT = False  # True 只保存你已经完成的报告，不会自动制造测量结果。
+config_errors = validate_project_config(PROJECT_CONFIG)
+if config_errors:
+    raise ValueError('; '.join(config_errors))
+print('runtime:', runtime_snapshot())
+
+if RUN_PROJECT_EXPORT:
+    if 'PROJECT_REPORT' not in globals():
+        raise RuntimeError('请先组装包含 baseline/candidates/quality/resources/decision 的 PROJECT_REPORT')
+    PROJECT_REPORT.setdefault('project', PROJECT_ID)
+    PROJECT_REPORT.setdefault('config', PROJECT_CONFIG)
+    PROJECT_REPORT.setdefault('environment', runtime_snapshot())
+    save_project_report(PROJECT_RESULT_PATH, PROJECT_REPORT)
+
+```

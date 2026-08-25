@@ -108,6 +108,8 @@ LoRA 的收益必须和稳定 baseline 对比，不能只看 LoRA 自己能不�
 | 交付 | adapter、tokenizer、merge check、sanity generation | 判断是否能交付 |
 | 决策 | accept / tune / reject | 输出项目结论 |
 
+60 作为 60–65 的统一模板，最终报告外层使用 `fine-tuning-project/v1`：`config / baseline / candidates / quality / resources / artifacts / decision / environment`。后续 62–65 只替换项目特有指标，不改变这组公共区域。
+
 #### 图解：微调项目 v2 的交付链路
 
 ```text
@@ -125,7 +127,6 @@ import math
 
 
 ```python
-import math
 
 # TODO: 完成 LoRA 项目的 5 个核心判断：数据审计、loss 核对、项目汇总、交付检查和最终决策
 # 目标：从 09-13 的训练闭环收束到 baseline vs LoRA 项目交付报告
@@ -242,6 +243,23 @@ def build_adapter_artifact_record(adapter_path, tokenizer_path, merge_checked, s
         'tokenizer_path': tokenizer_path,
         'merge_checked': merge_checked,
         'sanity_generation_checked': sanity_generation_checked,
+    }
+
+# 给定实现：组装 60 项目的统一结果报告
+def build_lora_project_report(config, baseline, candidates, quality, resources, artifacts, decision, environment=None):
+    """组装 fine-tuning-project/v1 的公共报告外壳。"""
+    return {
+        'schema_version': 'fine-tuning-project/v1',
+        'project': '60_lora_fine_tuning',
+        'stage': 'project_decision',
+        'config': config,
+        'baseline': baseline,
+        'candidates': candidates,
+        'quality': quality,
+        'resources': resources,
+        'artifacts': artifacts,
+        'decision': decision,
+        'environment': environment or {},
     }
 
 def check_lora_project_readiness(data_audit, mask_report, artifact_record):
@@ -374,6 +392,17 @@ def test_lora_project_template():
             merge_checked=True,
             sanity_generation_checked=True,
         )
+        project_report = build_lora_project_report(
+            config={'model': 'tiny-llama', 'dtype': 'bf16', 'seed': 42},
+            baseline=baseline,
+            candidates=[{'name': 'lora', **lora}],
+            quality={'train_loss': 0.42, 'val_loss': 0.52, 'task_metrics': {}},
+            resources={'trainable_params': 100, 'peak_memory_mb': 768.0, 'step_time_ms': 22.0},
+            artifacts={'adapter': artifact},
+            decision={'decision': 'accept', 'reason': 'test'},
+        )
+        for section in ('config', 'baseline', 'candidates', 'quality', 'resources', 'artifacts', 'decision', 'environment'):
+            assert section in project_report, f'报告缺少 {section} 区域！'
         clean_audit = {'total_samples': 2, 'empty_response_count': 0, 'duplicate_count': 0, 'over_length_count': 0, 'avg_total_chars': 12.0}
         clean_report = {'total_tokens': 8, 'non_padding_tokens': 5, 'supervised_tokens': 3, 'padding_supervised_tokens': 0, 'supervised_ratio': 0.6}
         readiness = check_lora_project_readiness(clean_audit, clean_report, artifact)
@@ -440,6 +469,7 @@ test_lora_project_template()
 
 
 ```python
+
 # TODO 1: 审计 SFT 样本
 def audit_sft_examples(examples, max_total_chars):
     seen = set()
@@ -566,6 +596,22 @@ def build_adapter_artifact_record(adapter_path, tokenizer_path, merge_checked, s
         'sanity_generation_checked': sanity_generation_checked,
     }
 
+# 给定实现：组装 60 项目的统一结果报告
+def build_lora_project_report(config, baseline, candidates, quality, resources, artifacts, decision, environment=None):
+    return {
+        'schema_version': 'fine-tuning-project/v1',
+        'project': '60_lora_fine_tuning',
+        'stage': 'project_decision',
+        'config': config,
+        'baseline': baseline,
+        'candidates': candidates,
+        'quality': quality,
+        'resources': resources,
+        'artifacts': artifacts,
+        'decision': decision,
+        'environment': environment or {},
+    }
+
 # TODO 4: 检查项目是否可以交付
 def check_lora_project_readiness(data_audit, mask_report, artifact_record):
     issues = []
@@ -641,8 +687,18 @@ lora = {'trainable_params': 100, 'step_time_ms': 22.0, 'peak_mem_mb': 768.0, 'fi
 summary = summarize_lora_project(baseline, lora)
 artifact = build_adapter_artifact_record('outputs/lora-adapter', 'outputs/tokenizer', True, True)
 readiness = check_lora_project_readiness(audit, mask_report, artifact)
+project_report = build_lora_project_report(
+    config={'model': 'tiny-llama', 'dtype': 'bf16', 'seed': 42},
+    baseline=baseline,
+    candidates=[{'name': 'lora', **lora}],
+    quality={'train_loss': lora['final_train_loss'], 'val_loss': lora['final_val_loss'], 'task_metrics': {}},
+    resources={'trainable_params': lora['trainable_params'], 'peak_memory_mb': lora['peak_mem_mb'], 'step_time_ms': lora['step_time_ms']},
+    artifacts={'adapter': artifact},
+    decision=recommend_lora_decision(summary, readiness),
+)
 print(summary)
 print(readiness)
+print(project_report)
 print(recommend_lora_decision(summary, readiness))
 
 ```
@@ -702,3 +758,452 @@ print(recommend_lora_decision(summary, readiness))
 - **tune**：交付检查未通过，或参数节省达标但 val loss 损失偏大，或显存收益偏弱且速度恶化。
 - **reject**：交付检查通过，但参数节省不足，LoRA 没有带来足够训练成本收益。
 - **项目意义**：决策不再只看 LoRA 参数比例，而是同时看数据可信度、loss 口径、artifact 交付、资源收益和效果损失。
+
+## Step 6（可选）：真实模型 LoRA 验证
+
+这一步对应 66 节的真实 backend 分支，但验证对象不同：66 验证推理服务，60 验证真实模型、tokenizer、LoRA adapter、训练 step 和 artifact 保存链路。默认关闭，不影响 CPU-first 练习。
+
+真实运行只完成小规模 smoke test，不等于完整微调效果结论；要形成正式结论，还需要固定数据集、训练步数、验证集和同口径 baseline。Colab / ModelScope 运行前请先阅读[训练微调项目验证清单](../docs/verification/fine_tuning_projects.md)。
+
+数据可以从 `inline`、Hugging Face、ModelScope 或本地 JSON/JSONL 读取。远程数据集支持 `instruction / input / output` 或 `prompt / response` 字段；真实项目建议使用固定版本、固定抽样数量，并把数据集 ID、来源和审计结果写入报告。
+
+
+```python
+# 只需要修改这一格；默认关闭真实模型下载和 GPU 训练
+RUN_REAL_TRAINING = False
+REAL_MODEL_SOURCE = 'huggingface'  # 模型来源：auto / modelscope / huggingface / local。
+REAL_MODEL_ID = 'Qwen/Qwen2.5-0.5B-Instruct'  # 基座模型；小模型便于 Colab 和约 12 GB 显存设备运行。
+# 缓存、结果和本地数据路径均由 Notebook 根据仓库根目录自动推导，不需要手填路径。
+REAL_DTYPE = 'auto'  # auto 优先 BF16（硬件支持时），否则回退 FP16；也可写 bfloat16 / float16。
+REAL_MAX_SEQ_LEN = 256  # 每条样本最大 token 长度；影响截断、显存和 step time。
+REAL_STEPS = 3  # Step 6 smoke test 的更新步数；Step 7 使用 MATCHED_STEPS。
+REAL_LR = 2e-4
+AUTO_INSTALL_REAL_DEPS = True  # 自动安装 transformers / peft / datasets 等当前内核依赖。
+REAL_DATA_SOURCE = 'huggingface'  # 数据来源：inline 仅适合 smoke test；正式比较用 huggingface / modelscope / local。
+REAL_DATASET_ID = 'tatsu-lab/alpaca'
+REAL_DATA_FILE = None  # None 时自动搜索 benchmarks/data/ 和 data/
+REAL_MAX_SAMPLES = 32  # 最多读取样本数；baseline 和 LoRA 必须使用同一批数据。
+REAL_SEED = 2024  # 模型初始化、训练随机性的种子；不同实验可改变它。
+SPLIT_SEED = 42  # 训练/验证集划分种子；跨实验固定，避免验证集随 REAL_SEED 改变。
+RUN_REAL_MATCHED = True  # Step 7：需要正式采集时再改为 True。
+MATCHED_BATCH_SIZE = 1  # 每次送入 GPU 的 micro-batch，不是有效 batch 总大小。
+MATCHED_VAL_RATIO = 0.2  # 固定留作验证的数据比例。
+MATCHED_STEPS = 20  # baseline 和 LoRA 必须使用相同更新步数。
+
+```
+
+
+```python
+# 可选：打开真实模型验证后，自动为当前 Notebook 内核补齐依赖
+# 必须先运行上一格配置，再运行这一格。
+if (RUN_REAL_TRAINING or RUN_REAL_MATCHED) and AUTO_INSTALL_REAL_DEPS:
+    import subprocess
+    import sys
+    packages = ['transformers', 'peft', 'accelerate', 'datasets', 'httpx[socks]']
+    if REAL_MODEL_SOURCE == 'modelscope' or REAL_DATA_SOURCE == 'modelscope':
+        packages.append('modelscope')
+    subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-U', *packages])
+    print('真实模型和数据集依赖安装完成，请继续运行后续单元。')
+elif not (RUN_REAL_TRAINING or RUN_REAL_MATCHED):
+    print('跳过依赖安装：真实模型验证未开启。')
+
+```
+
+
+```python
+if RUN_REAL_TRAINING:
+    import random
+    def _real_audit(records, max_total_chars):
+        pairs = [(item.get('prompt', ''), item.get('response', '')) for item in records]
+        return {'total_samples': len(records), 'empty_response_count': sum(not response.strip() for _, response in pairs), 'duplicate_count': len(pairs) - len(set(pairs)), 'over_length_count': sum(len(prompt) + len(response) > max_total_chars for prompt, response in pairs), 'avg_total_chars': round(sum(len(prompt) + len(response) for prompt, response in pairs) / len(records), 2) if records else 0.0}
+    def _real_report(**sections):
+        return {'schema_version': 'fine-tuning-project/v1', 'project': '60_lora_fine_tuning', 'stage': 'project_decision', **sections}
+    import json
+    import os
+    import sys
+    import time
+    from pathlib import Path
+
+    import torch
+    random.seed(REAL_SEED)
+    torch.manual_seed(REAL_SEED)
+    torch.cuda.manual_seed_all(REAL_SEED)
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+    try:
+        from peft import LoraConfig, get_peft_model
+    except ImportError as exc:
+        raise RuntimeError('真实 LoRA 验证需要 peft：请先安装 transformers peft accelerate。') from exc
+
+    project_root = next((path for path in [Path.cwd(), *Path.cwd().parents] if (path / 'tools').is_dir()), None)
+    if project_root is None:
+        raise RuntimeError('未找到项目根目录，请从仓库根目录启动 Notebook。')
+    os.chdir(project_root)
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+    from tools.model_runtime import resolve_model
+
+    if not torch.cuda.is_available():
+        raise RuntimeError('RUN_REAL_TRAINING=True 需要可用 CUDA GPU。')
+    device = torch.device('cuda')
+    if REAL_DTYPE == 'auto':
+        dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+    else:
+        dtype = getattr(torch, REAL_DTYPE)
+    model_path = resolve_model(REAL_MODEL_ID, REAL_MODEL_SOURCE)
+    tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    model = AutoModelForCausalLM.from_pretrained(model_path, torch_dtype=dtype)
+    model.config.use_cache = False
+    model = get_peft_model(model, LoraConfig(
+        r=8, lora_alpha=16, lora_dropout=0.05,
+        target_modules=['q_proj', 'v_proj'], task_type='CAUSAL_LM',
+    ))
+    model.to(device).train()
+    model.print_trainable_parameters()
+
+    if REAL_DATA_SOURCE == 'inline':
+        examples = [
+            {'prompt': '用一句话解释 LoRA。', 'response': 'LoRA 是一种低秩参数高效微调方法。'},
+            {'prompt': '用一句话解释梯度累积。', 'response': '梯度累积通过多次小批量反向传播模拟更大的 batch。'},
+            {'prompt': '用一句话解释验证集。', 'response': '验证集用于检查模型对未参与训练样本的泛化表现。'},
+            {'prompt': '用一句话解释 adapter。', 'response': 'adapter 是挂载在基座模型上的可训练增量参数。'},
+        ]
+    elif REAL_DATA_SOURCE == 'local':
+        search_roots = [project_root / 'benchmarks' / 'data', project_root / 'data']
+        candidates = [path for root in search_roots if root.exists() for path in root.glob('*') if path.suffix.lower() in {'.json', '.jsonl'}]
+        data_path = Path(REAL_DATA_FILE) if REAL_DATA_FILE else (candidates[0] if candidates else None)
+        if data_path is None:
+            raise FileNotFoundError('未在 benchmarks/data 或 data 中找到 JSON/JSONL 数据文件')
+        if not data_path.exists():
+            raise FileNotFoundError(f'本地数据文件不存在：{data_path}')
+        if data_path.suffix.lower() == '.jsonl':
+            records = [json.loads(line) for line in data_path.read_text(encoding='utf-8').splitlines() if line.strip()]
+        else:
+            records = json.loads(data_path.read_text(encoding='utf-8'))
+    elif REAL_DATA_SOURCE == 'huggingface':
+        from datasets import load_dataset
+        records = load_dataset(REAL_DATASET_ID, split='train')
+    elif REAL_DATA_SOURCE == 'modelscope':
+        from modelscope.msdatasets import MsDataset
+        records = MsDataset.load(REAL_DATASET_ID, split='train')
+        if hasattr(records, 'to_hf_dataset'):
+            records = records.to_hf_dataset()
+    else:
+        raise ValueError('REAL_DATA_SOURCE 必须是 inline / huggingface / modelscope / local')
+    if REAL_DATA_SOURCE != 'inline':
+        examples = []
+        for record in list(records)[:REAL_MAX_SAMPLES]:
+            if 'prompt' in record and 'response' in record:
+                prompt, response = record['prompt'], record['response']
+            else:
+                prompt = str(record.get('instruction', '')) + str(record.get('input', ''))
+                response = record.get('output', record.get('response', ''))
+            if prompt and response:
+                examples.append({'prompt': str(prompt), 'response': str(response)})
+        if not examples:
+            raise ValueError('数据集中没有识别到 prompt/response 或 instruction/input/output 字段')
+    examples = examples[:REAL_MAX_SAMPLES]
+    data_audit = _real_audit(examples, max_total_chars=REAL_MAX_SEQ_LEN * 4)
+    texts = [item['prompt'] + '\n' + item['response'] for item in examples]
+    batch = tokenizer(texts, return_tensors='pt', padding=True, truncation=True, max_length=REAL_MAX_SEQ_LEN)
+    input_ids = batch['input_ids'].to(device)
+    attention_mask = batch['attention_mask'].to(device)
+    labels = input_ids.masked_fill(attention_mask == 0, -100)
+    optimizer = torch.optim.AdamW((p for p in model.parameters() if p.requires_grad), lr=REAL_LR)
+    for _ in range(2):
+        optimizer.zero_grad(set_to_none=True)
+        loss = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels).loss
+        loss.backward()
+        optimizer.step()
+    torch.cuda.synchronize()
+    torch.cuda.reset_peak_memory_stats()
+    started = time.perf_counter()
+    losses = []
+    for _ in range(REAL_STEPS):
+        optimizer.zero_grad(set_to_none=True)
+        loss = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels).loss
+        loss.backward()
+        optimizer.step()
+        losses.append(float(loss.detach().item()))
+    torch.cuda.synchronize()
+    elapsed = time.perf_counter() - started
+    output_dir = project_root / 'benchmarks' / 'results' / '60_real_lora'
+    output_dir.mkdir(parents=True, exist_ok=True)
+    adapter_dir = output_dir / 'adapter'
+    model.save_pretrained(adapter_dir)
+    tokenizer.save_pretrained(output_dir / 'tokenizer')
+    report_builder = globals().get('build_lora_project_report', _real_report)
+    report = report_builder(
+        config={'model': REAL_MODEL_ID, 'model_path': model_path, 'dtype': str(dtype), 'batch_size': len(examples), 'seq_len': REAL_MAX_SEQ_LEN, 'steps': REAL_STEPS, 'seed': REAL_SEED},
+        baseline={'status': 'not_run', 'reason': 'real smoke test does not run a matched full-parameter baseline'},
+        candidates=[{'name': 'real_lora_smoke', 'status': 'ok', 'losses': losses}],
+        quality={'train_loss': losses[-1], 'val_loss': None, 'task_metrics': {}, 'data_audit': data_audit, 'quality_status': 'smoke_only'},
+        resources={'trainable_params': sum(p.numel() for p in model.parameters() if p.requires_grad), 'peak_memory_mb': round(torch.cuda.max_memory_allocated() / 2**20, 2), 'step_time_ms': round(elapsed / REAL_STEPS * 1000, 2), 'tokens_per_s': round(input_ids.numel() * REAL_STEPS / elapsed, 2)},
+        artifacts={'adapter': str(adapter_dir), 'tokenizer': str(output_dir / 'tokenizer'), 'report': str(output_dir / '60_real_lora.json')},
+        decision={'decision': 'tune', 'reason': '真实 LoRA smoke test 已完成，但尚未与同口径 baseline 和验证集比较。', 'next_action': 'run_matched_baseline_and_validation'},
+        environment={'python': sys.version, 'torch': torch.__version__, 'torch_cuda': torch.version.cuda, 'device': torch.cuda.get_device_name(0)},
+    )
+    (output_dir / '60_real_lora.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    print(json.dumps(report, ensure_ascii=False, indent=2))
+else:
+    print('跳过真实模型验证：保持 CPU-first 模式。')
+
+```
+
+## Step 7（可选）：自动采集 baseline vs LoRA
+
+Step 6 只验证真实 LoRA 链路；Step 7 才用于正式采集。它会自动固定 train/validation 划分，按 batch 分批，并依次运行 full-parameter baseline 与 LoRA。
+
+默认关闭。打开 `RUN_REAL_MATCHED = True` 后，不需要复制训练代码或填写路径；结果会保存为 `benchmarks/results/60_real_lora/60_real_lora_matched.json`。
+
+### 已有三组真实数据：先看表，再决定是否继续实验
+
+下面三组结果来自同一份真实数据和同一套训练配置，只改变模型初始化用的 `REAL_SEED`；`SPLIT_SEED=42` 在三组中固定。每一组内部都使用同一数据切分、同一 batch、同一序列长度和同一步数，因此可以比较 baseline 与 LoRA；不同 seed 之间用于观察训练波动，不应当作三次独立数据集实验。
+
+**共同实验条件**
+
+| 条件 | 取值 | 说明 |
+|---|---|---|
+| 基座模型 | `Qwen/Qwen2.5-0.5B-Instruct` | 真实 Hugging Face 模型；三组使用同一缓存快照 |
+| 数据 | `tatsu-lab/alpaca`，32 条 | `prompt / response` 规范化；空回答和重复样本均为 0 |
+| 数据切分 | `val_ratio=0.2` | baseline 与 LoRA 在每组内共享切分 |
+| dtype | `torch.bfloat16` | RTX 5070 Ti Laptop GPU，BF16 可用 |
+| micro-batch | `1` | 不是有效 batch；本实验未使用梯度累积 |
+| 最大序列长度 | `256` | 影响截断、显存和吞吐 |
+| 更新步数 | `20` | baseline 与 LoRA 完全一致 |
+| 评测 | validation loss | 当前还没有 task-level 生成指标，因此结论仍是 `tune` |
+| 环境 | Python 3.10.20，PyTorch 2.11.0+cu128，CUDA 12.8 | NVIDIA GeForce RTX 5070 Ti Laptop GPU，约 12 GB 显存 |
+
+**三组 matched 结果**
+
+| REAL_SEED | SPLIT_SEED | baseline val loss | LoRA val loss | baseline 峰值显存 MB | LoRA 峰值显存 MB | baseline step ms | LoRA step ms | baseline token/s | LoRA token/s | 数据审计 |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| 42 | 42 | 4.3103 | 2.0299 | 4774.92 | 1741.94 | 126.91 | 39.14 | 558.28 | 1810.38 | 32 条；超长 3 |
+| 123 | 42 | 4.3103 | 2.0263 | 4786.98 | 1741.94 | 106.09 | 41.87 | 667.82 | 1692.22 | 32 条；超长 3 |
+| 2024 | 42 | 4.3103 | 2.0307 | 4786.98 | 1741.94 | 107.62 | 38.62 | 658.31 | 1834.62 | 32 条；超长 3 |
+| **均值** | **42** | **4.3103** | **2.0289** | **4782.96** | **1741.94** | **113.54** | **39.88** | **628.14** | **1779.07** | **每组超长 3** |
+
+这三组结果支持一个**暂定资源结论**：LoRA 的峰值显存约降低 63.6%，step time 约降低 64.9%，token 吞吐约提高 2.83 倍；LoRA validation loss 约为 2.029，低于 matched baseline 的 4.310。但由于样本只有 32 条、每组有 3 条超出字符审计阈值，且还没有生成质量指标，暂不把它写成最终 `accept`。本轮数据采集先冻结；后续只在需要补生成质量、实际截断统计或压力实验时继续。
+
+`over_length_count=3` 表示字符长度代理指标超过 `REAL_MAX_SEQ_LEN * 4`，不等于一定发生 token 截断；后续应把实际 tokenizer 截断数也记录下来。
+
+```python
+# 先画已有结果和后续实验计划；本单元只读 JSON，不启动模型、不下载数据。
+import json
+from pathlib import Path
+
+import pandas as pd
+from IPython.display import display
+
+RESULT_DIR = Path('benchmarks/results/60_real_lora')
+RESULT_FILES = sorted(RESULT_DIR.glob('60_real_lora_matched_seed*.json'))
+
+rows = []
+for path in RESULT_FILES:
+    report = json.loads(path.read_text(encoding='utf-8'))
+    cfg = report['config']
+    audit = report['quality']['data_audit']
+    baseline = report['baseline']
+    # 兼容旧报告：早期版本把 LoRA 放在 candidates[name='lora'] 中。
+    lora = report.get('lora')
+    if lora is None:
+        lora = next(item for item in report.get('candidates', []) if item.get('name') == 'lora')
+    rows.append({
+        'seed': cfg['seed'],
+        'split_seed': cfg.get('split_seed', 'legacy'),
+        'samples': audit['total_samples'],
+        'val_ratio': cfg['val_ratio'],
+        'baseline_val_loss': round(baseline['val_loss'], 4),
+        'lora_val_loss': round(lora['val_loss'], 4),
+        'baseline_peak_MB': round(baseline['peak_memory_mb'], 2),
+        'lora_peak_MB': round(lora['peak_memory_mb'], 2),
+        'baseline_step_ms': round(baseline['step_time_ms'], 2),
+        'lora_step_ms': round(lora['step_time_ms'], 2),
+        'baseline_tok/s': round(baseline['tokens_per_s'], 2),
+        'lora_tok/s': round(lora['tokens_per_s'], 2),
+        'over_length': audit['over_length_count'],
+        'file': path.name,
+    })
+
+results_df = pd.DataFrame(rows).sort_values('seed') if rows else pd.DataFrame()
+display(results_df)
+
+# 后续实验矩阵：先画计划表，完成每组实验后再把 status 改为 measured。
+EXPERIMENT_PLAN = pd.DataFrame([
+    {'id': 'S1', 'variable': 'seed', 'value': 42, 'fixed': '真实数据 / batch=1 / seq=256 / steps=20', 'status': 'measured'},
+    {'id': 'S2', 'variable': 'seed', 'value': 123, 'fixed': '真实数据 / batch=1 / seq=256 / steps=20', 'status': 'measured'},
+    {'id': 'S3', 'variable': 'seed', 'value': 2024, 'fixed': '真实数据 / batch=1 / seq=256 / steps=20', 'status': 'measured'},
+    {'id': 'B1', 'variable': 'matched_steps', 'value': 40, 'fixed': '固定 split seed / batch=1 / seq=256', 'status': 'planned'},
+    {'id': 'B2', 'variable': 'seq_len', 'value': 512, 'fixed': '固定数据 / seed / batch=1 / steps=20', 'status': 'planned'},
+    {'id': 'B3', 'variable': 'batch_size', 'value': 2, 'fixed': '固定数据 / seed / seq=256 / steps=20', 'status': 'planned'},
+    {'id': 'B4', 'variable': 'task_metric', 'value': 'generation_eval', 'fixed': '固定 split / prompt / max_new_tokens', 'status': 'planned'},
+])
+display(EXPERIMENT_PLAN)
+print('说明：一次只改变 variable；不要同时改变 seed、数据切分、seq_len、batch 或 steps。')
+
+```
+
+
+```python
+if RUN_REAL_MATCHED:
+    import random
+    def _matched_audit(records, max_total_chars):
+        pairs = [(item.get('prompt', ''), item.get('response', '')) for item in records]
+        return {'total_samples': len(records), 'empty_response_count': sum(not response.strip() for _, response in pairs), 'duplicate_count': len(pairs) - len(set(pairs)), 'over_length_count': sum(len(prompt) + len(response) > max_total_chars for prompt, response in pairs), 'avg_total_chars': round(sum(len(prompt) + len(response) for prompt, response in pairs) / len(records), 2) if records else 0.0}
+    def _matched_report(**sections):
+        return {'schema_version': 'fine-tuning-project/v1', 'project': '60_lora_fine_tuning', 'stage': 'project_decision', **sections}
+    import gc
+    import json
+    import os
+    import sys
+    import time
+    from pathlib import Path
+
+    import torch
+    random.seed(REAL_SEED)
+    torch.manual_seed(REAL_SEED)
+    torch.cuda.manual_seed_all(REAL_SEED)
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+    from peft import LoraConfig, get_peft_model
+
+    project_root = next((path for path in [Path.cwd(), *Path.cwd().parents] if (path / 'tools').is_dir()), None)
+    if project_root is None:
+        raise RuntimeError('未找到项目根目录，请从仓库根目录启动 Notebook。')
+    os.chdir(project_root)
+    if not torch.cuda.is_available():
+        raise RuntimeError('RUN_REAL_MATCHED=True 需要可用 CUDA GPU。')
+    from tools.model_runtime import resolve_model
+
+    model_path = resolve_model(REAL_MODEL_ID, REAL_MODEL_SOURCE)
+    dtype = torch.bfloat16 if REAL_DTYPE == 'auto' and torch.cuda.is_bf16_supported() else torch.float16
+    if REAL_DTYPE != 'auto':
+        dtype = getattr(torch, REAL_DTYPE)
+    tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    # 优先复用 Step 6 已经加载的数据；否则按同一配置自动加载。
+    if 'examples' not in globals() or REAL_DATA_SOURCE != 'inline':
+        if REAL_DATA_SOURCE == 'inline':
+            records = [
+                {'prompt': '用一句话解释 LoRA。', 'response': 'LoRA 是一种低秩参数高效微调方法。'},
+                {'prompt': '用一句话解释梯度累积。', 'response': '梯度累积通过多次小批量反向传播模拟更大的 batch。'},
+                {'prompt': '用一句话解释验证集。', 'response': '验证集用于检查模型对未参与训练样本的泛化表现。'},
+                {'prompt': '用一句话解释 adapter。', 'response': 'adapter 是挂载在基座模型上的可训练增量参数。'},
+            ]
+        elif REAL_DATA_SOURCE == 'huggingface':
+            from datasets import load_dataset
+            records = load_dataset(REAL_DATASET_ID, split='train')
+        elif REAL_DATA_SOURCE == 'modelscope':
+            from modelscope.msdatasets import MsDataset
+            records = MsDataset.load(REAL_DATASET_ID, split='train')
+            if hasattr(records, 'to_hf_dataset'):
+                records = records.to_hf_dataset()
+        elif REAL_DATA_SOURCE == 'local':
+            search_roots = [project_root / 'benchmarks' / 'data', project_root / 'data']
+            data_candidates = [path for root in search_roots if root.exists() for path in root.glob('*') if path.suffix.lower() in {'.json', '.jsonl'}]
+            data_path = Path(REAL_DATA_FILE) if REAL_DATA_FILE else (data_candidates[0] if data_candidates else None)
+            if data_path is None:
+                raise FileNotFoundError('未在 benchmarks/data 或 data 中找到 JSON/JSONL 数据文件')
+            records = [json.loads(line) for line in data_path.read_text(encoding='utf-8').splitlines() if line.strip()] if data_path.suffix.lower() == '.jsonl' else json.loads(data_path.read_text(encoding='utf-8'))
+        else:
+            raise ValueError('REAL_DATA_SOURCE 必须是 inline / huggingface / modelscope / local')
+        examples = []
+        for record in list(records)[:REAL_MAX_SAMPLES]:
+            prompt = record.get('prompt', record.get('instruction', ''))
+            if 'prompt' not in record:
+                prompt = str(prompt) + str(record.get('input', ''))
+            response = record.get('response', record.get('output', ''))
+            if prompt and response:
+                examples.append({'prompt': str(prompt), 'response': str(response)})
+        if not examples:
+            raise ValueError('数据集中没有识别到 prompt/response 或 instruction/input/output 字段')
+    examples = examples[:REAL_MAX_SAMPLES]
+    # 数据划分使用独立且固定的种子；不要用 REAL_SEED，否则质量变化会混入切分变化。
+    random.Random(SPLIT_SEED).shuffle(examples)
+    split = max(1, int(len(examples) * (1 - MATCHED_VAL_RATIO)))
+    train_examples, val_examples = examples[:split], examples[split:] or examples[-1:]
+
+    def encode_records(records):
+        texts = [item['prompt'] + '\n' + item['response'] for item in records]
+        batch = tokenizer(texts, return_tensors='pt', padding=True, truncation=True, max_length=REAL_MAX_SEQ_LEN)
+        batch['labels'] = batch['input_ids'].masked_fill(batch['attention_mask'] == 0, -100)
+        return batch
+
+    train_batch = encode_records(train_examples)
+    val_batch = encode_records(val_examples)
+    device = torch.device('cuda')
+
+    def batches(encoded):
+        size = encoded['input_ids'].shape[0]
+        for start in range(0, size, MATCHED_BATCH_SIZE):
+            yield {key: value[start:start + MATCHED_BATCH_SIZE].to(device) for key, value in encoded.items()}
+
+    def run_candidate(name):
+        random.seed(REAL_SEED)
+        torch.manual_seed(REAL_SEED)
+        torch.cuda.manual_seed_all(REAL_SEED)
+        model = AutoModelForCausalLM.from_pretrained(model_path, torch_dtype=dtype)
+        model.config.use_cache = False
+        if name == 'lora':
+            model = get_peft_model(model, LoraConfig(r=8, lora_alpha=16, lora_dropout=0.05, target_modules=['q_proj', 'v_proj'], task_type='CAUSAL_LM'))
+        model.to(device).train()
+        trainable_params = sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad)
+        optimizer = torch.optim.AdamW((parameter for parameter in model.parameters() if parameter.requires_grad), lr=REAL_LR)
+        torch.cuda.empty_cache()
+        torch.cuda.reset_peak_memory_stats()
+        losses = []
+        processed_tokens = 0
+        started = time.perf_counter()
+        train_batches = list(batches(train_batch))
+        for step in range(MATCHED_STEPS):
+            batch = train_batches[step % len(train_batches)]
+            processed_tokens += int(batch['attention_mask'].sum().item())
+            optimizer.zero_grad(set_to_none=True)
+            loss = model(**batch).loss
+            loss.backward()
+            optimizer.step()
+            losses.append(float(loss.detach().item()))
+        torch.cuda.synchronize()
+        elapsed = time.perf_counter() - started
+        model.eval()
+        with torch.no_grad():
+            val_losses = [float(model(**batch).loss.item()) for batch in batches(val_batch)]
+        peak_memory = round(torch.cuda.max_memory_allocated() / 2**20, 2)
+        result = {'name': name, 'status': 'ok', 'train_losses': losses, 'train_loss': losses[-1], 'val_loss': sum(val_losses) / len(val_losses), 'trainable_params': trainable_params, 'peak_memory_mb': peak_memory, 'step_time_ms': round(elapsed / MATCHED_STEPS * 1000, 2), 'tokens_per_s': round(processed_tokens / elapsed, 2)}
+        if name == 'lora':
+            output_dir = project_root / 'benchmarks' / 'results' / '60_real_lora'
+            output_dir.mkdir(parents=True, exist_ok=True)
+            model.save_pretrained(output_dir / 'matched_adapter')
+        del optimizer, model
+        gc.collect()
+        torch.cuda.empty_cache()
+        return result
+
+    candidates = [run_candidate('baseline'), run_candidate('lora')]
+    baseline = candidates[0]
+    lora = candidates[1]
+    report_builder = globals().get('build_lora_project_report', _matched_report)
+    report = report_builder(
+        config={'model': REAL_MODEL_ID, 'model_path': model_path, 'dtype': str(dtype), 'batch_size': MATCHED_BATCH_SIZE, 'seq_len': REAL_MAX_SEQ_LEN, 'steps': MATCHED_STEPS, 'val_ratio': MATCHED_VAL_RATIO, 'seed': REAL_SEED, 'split_seed': SPLIT_SEED},
+        baseline=baseline, candidates=candidates,
+        quality={'train_loss': lora['train_loss'], 'val_loss': lora['val_loss'], 'baseline_val_loss': baseline['val_loss'], 'data_audit': _matched_audit(examples, REAL_MAX_SEQ_LEN * 4)},
+        resources={'trainable_params': lora['trainable_params'], 'peak_memory_mb': lora['peak_memory_mb'], 'step_time_ms': lora['step_time_ms'], 'tokens_per_s': lora['tokens_per_s']},
+        artifacts={'adapter': str(project_root / 'benchmarks' / 'results' / '60_real_lora' / 'matched_adapter'), 'report': str(project_root / 'benchmarks' / 'results' / '60_real_lora' / '60_real_lora_matched.json')},
+        decision={'decision': 'tune', 'reason': 'matched baseline 与 LoRA 已完成，仍需增加重复运行和任务指标后再决定是否采用。', 'next_action': 'repeat_with_fixed_validation_and_task_metric'},
+        environment={'python': sys.version, 'torch': torch.__version__, 'torch_cuda': torch.version.cuda, 'device': torch.cuda.get_device_name(0)},
+    )
+    report_dir = project_root / 'benchmarks' / 'results' / '60_real_lora'
+    report_path = report_dir / '60_real_lora_matched.json'
+    seed_report_path = report_dir / f'60_real_lora_matched_seed{REAL_SEED}.json'
+    report_text = json.dumps(report, ensure_ascii=False, indent=2) + '\n'
+    report_path.write_text(report_text, encoding='utf-8')
+    seed_report_path.write_text(report_text, encoding='utf-8')
+    print(f'报告已保存：{report_path}')
+    print(f'按 seed 保存：{seed_report_path}')
+    print(json.dumps(report, ensure_ascii=False, indent=2))
+else:
+    print('跳过 matched baseline：保持 CPU-first / smoke-test 模式。')
+
+```

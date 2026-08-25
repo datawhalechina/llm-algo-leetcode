@@ -94,6 +94,9 @@ QLoRA 选型不能只看显存是否下降，还要把训练质量和工程代�
 | 结果对比 | peak memory、step time、val loss | 统一看收益与代价 |
 | 项目结论 | accept / tune / reject | 输出方案选择 |
 
+### 参数口径说明
+
+`memory_cap_mb` 是显存上限，`min_tokens_per_s` 是最低吞吐，`max_val_loss` 是质量上限；三者共同定义 candidate 是否可行。`bit_width`、量化格式、double quant、LoRA rank 和 target modules 属于候选配置，比较时只能改变量化/适配器变量，不能同时改变数据、训练步数和质量评测口径。
 
 ```python
 from typing import Dict, List
@@ -313,3 +316,31 @@ def decide_qlora_project(summary: Dict[str, object]) -> Dict[str, object]:
 - **实现方式**：把候选可行性和最优方案统一收成 `accept / tune / reject`。
 - **关键点**：项目结论必须回答“当前预算下 QLoRA 是否值得继续采用”，而不是只输出一个候选名字。
 - **项目意义**：这一步把 `65` 收成低资源微调路线中的正式选型项目。
+
+### 可选：统一项目报告导出
+默认关闭。完成预算、吞吐和质量筛选后，再导出 QLoRA 选型报告。报告模板见 `docs/verification/fine_tuning_projects.md`。
+
+```python
+try:
+    from tools.fine_tuning_project_runtime import runtime_snapshot, save_project_report, validate_project_config
+except ModuleNotFoundError:
+    runtime_snapshot = lambda: {'device': 'unknown'}
+    validate_project_config = lambda config: []
+    save_project_report = None
+PROJECT_ID = '65_qlora_selection'
+PROJECT_RESULT_PATH = 'benchmarks/results/65_qlora_selection.json'
+PROJECT_CONFIG = {'project': PROJECT_ID, 'model': 'template', 'dtype': 'fp32', 'batch_size': 1, 'seq_len': 128, 'steps': 1, 'seed': 42}
+RUN_PROJECT_EXPORT = False  # True 只保存已完成的 QLoRA 选型报告。
+config_errors = validate_project_config(PROJECT_CONFIG)
+if config_errors:
+    raise ValueError('; '.join(config_errors))
+print('runtime:', runtime_snapshot())
+if RUN_PROJECT_EXPORT:
+    if 'PROJECT_REPORT' not in globals():
+        raise RuntimeError('请先组装完整的 PROJECT_REPORT')
+    PROJECT_REPORT.setdefault('project', PROJECT_ID)
+    PROJECT_REPORT.setdefault('config', PROJECT_CONFIG)
+    PROJECT_REPORT.setdefault('environment', runtime_snapshot())
+    save_project_report(PROJECT_RESULT_PATH, PROJECT_REPORT)
+
+```

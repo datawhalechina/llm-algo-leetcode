@@ -93,6 +93,9 @@
 | 评测覆盖 | 核心任务样例数、格式覆盖、缺口 | 判断训练后是否可验证 |
 | 项目结论 | accept / tune / reject | 输出训练前决策 |
 
+### 参数口径说明
+
+`max_prompt_chars` 和 `max_response_chars` 是数据审计阈值，用于发现风险，不等于 tokenizer 的实际截断长度；`required_keys` 定义模板必须存在的字段；`eval_cases` 决定评测覆盖。正式数据准入还应记录清洗前后样本数、重复率、长度分位数和实际 token 截断数。
 
 ```python
 from typing import Dict, List
@@ -315,3 +318,31 @@ def review_sft_data_project(sample_audit: Dict[str, float], template_audit: Dict
 - **项目意义**：这一步把 `64` 固定成训练前的数据质量闸门，而不是一组分散的清洗脚本。
 - **关键点**：项目结论不只依赖样本数，还要看 blocker 是否会直接破坏训练与评测解释力。
 - **项目意义**：这一步把 `64` 收成训练前的数据质量闸门，而不是单纯的清洗脚本集合。
+
+### 可选：统一项目报告导出
+默认关闭。完成样本审计、模板审计和评测样例检查后，再导出项目报告。报告模板见 `docs/verification/fine_tuning_projects.md`。
+
+```python
+try:
+    from tools.fine_tuning_project_runtime import runtime_snapshot, save_project_report, validate_project_config
+except ModuleNotFoundError:
+    runtime_snapshot = lambda: {'device': 'unknown'}
+    validate_project_config = lambda config: []
+    save_project_report = None
+PROJECT_ID = '64_sft_data_quality'
+PROJECT_RESULT_PATH = 'benchmarks/results/64_sft_data_quality.json'
+PROJECT_CONFIG = {'project': PROJECT_ID, 'model': 'template', 'dtype': 'fp32', 'batch_size': 1, 'seq_len': 128, 'steps': 1, 'seed': 42}
+RUN_PROJECT_EXPORT = False  # True 只保存已完成的数据质量报告。
+config_errors = validate_project_config(PROJECT_CONFIG)
+if config_errors:
+    raise ValueError('; '.join(config_errors))
+print('runtime:', runtime_snapshot())
+if RUN_PROJECT_EXPORT:
+    if 'PROJECT_REPORT' not in globals():
+        raise RuntimeError('请先组装完整的 PROJECT_REPORT')
+    PROJECT_REPORT.setdefault('project', PROJECT_ID)
+    PROJECT_REPORT.setdefault('config', PROJECT_CONFIG)
+    PROJECT_REPORT.setdefault('environment', runtime_snapshot())
+    save_project_report(PROJECT_RESULT_PATH, PROJECT_REPORT)
+
+```

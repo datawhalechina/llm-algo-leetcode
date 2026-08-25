@@ -87,6 +87,9 @@
 | 样例 | 训练后最小回答抽检 | 判断输出是否可交付 |
 | 决策 | accept / tune / reject | 输出项目结论 |
 
+### 参数口径说明
+
+本节主要是数据与交付模板。`max_prompt_chars` 是 prompt 长度审计阈值，不是模型的 token 上限；`instruction / input / response` 是数据字段，必须固定字段映射；`eval_cases` 是训练后样例评测集合。真实训练时还要固定 model、dtype、batch、seq_len、steps 和验证集，不能只凭格式检查宣布项目完成。
 
 ```python
 from typing import Dict, List
@@ -305,3 +308,31 @@ def build_instruction_project_report(summary: Dict[str, float], format_check: Di
 - **实现方式**：把数据摘要、格式检查和样例抽检统一收成 `accept / tune / reject`，同时给出 `next_action`。
 - **关键点**：数据或格式硬问题走 `reject`；数据和格式过关但样例任务完成度不稳时走 `tune`；只有样例格式和任务完成度都稳定时才 `accept`。
 - **项目意义**：这一步让页面真正回答“这一轮指令微调能不能交付”，而不是只回答“训练有没有跑通”。
+
+### 可选：统一项目报告导出
+默认不导出。完成数据审计、格式检查和样例评测后，再开启导出，避免把模板演示结果当成真实项目结论。报告模板见 `docs/verification/fine_tuning_projects.md`。
+
+```python
+try:
+    from tools.fine_tuning_project_runtime import runtime_snapshot, save_project_report, validate_project_config
+except ModuleNotFoundError:
+    runtime_snapshot = lambda: {'device': 'unknown'}
+    validate_project_config = lambda config: []
+    save_project_report = None
+PROJECT_ID = '62_instruction_fine_tuning'
+PROJECT_RESULT_PATH = 'benchmarks/results/62_instruction_fine_tuning.json'
+PROJECT_CONFIG = {'project': PROJECT_ID, 'model': 'template', 'dtype': 'fp32', 'batch_size': 1, 'seq_len': 128, 'steps': 1, 'seed': 42}
+RUN_PROJECT_EXPORT = False  # True 只保存已完成的项目报告。
+config_errors = validate_project_config(PROJECT_CONFIG)
+if config_errors:
+    raise ValueError('; '.join(config_errors))
+print('runtime:', runtime_snapshot())
+if RUN_PROJECT_EXPORT:
+    if 'PROJECT_REPORT' not in globals():
+        raise RuntimeError('请先组装完整的 PROJECT_REPORT')
+    PROJECT_REPORT.setdefault('project', PROJECT_ID)
+    PROJECT_REPORT.setdefault('config', PROJECT_CONFIG)
+    PROJECT_REPORT.setdefault('environment', runtime_snapshot())
+    save_project_report(PROJECT_RESULT_PATH, PROJECT_REPORT)
+
+```

@@ -82,6 +82,9 @@ LoRA 变体比较必须用统一口径同时看收益与成本，单一分数只
 | 对比 | 效果、显存、步时、参数占比 | 判断是否值得 adopt |
 | 决策 | accept / tune / reject | 输出 benchmark 结论 |
 
+### 参数口径说明
+
+`rank` 控制 LoRA 低秩容量，`alpha` 控制缩放，`dropout` 影响正则化，`target_modules` 决定 adapter 挂载位置。benchmark 时固定模型、数据、split、batch、seq_len、学习率和 steps，只改变这些 LoRA 变量；`train_loss / val_loss / step_time_ms / memory_mb / trainable_ratio` 分别用于效果、资源和参数效率比较。
 
 ```python
 from typing import Dict, List
@@ -248,3 +251,31 @@ def recommend_lora_variant(baseline: Dict[str, float], variants: List[Dict[str, 
 - **实现方式**：结合 baseline、显存预算和候选效果，输出 `accept / tune / reject` 与下一轮动作。
 - **关键点**：预算内效果更好时才 `accept`；效果可用但预算边界偏紧时走 `tune`；没有稳定收益时 `reject`。
 - **项目意义**：这一步把页面从“变体排序”推进到“项目选型”，回答的是哪种 LoRA 配置值得继续采用。
+
+### 可选：统一项目报告导出
+默认关闭。只有完成 baseline、LoRA 变体、预算和质量比较后，才导出统一 JSON。报告模板见 `docs/verification/fine_tuning_projects.md`。
+
+```python
+try:
+    from tools.fine_tuning_project_runtime import runtime_snapshot, save_project_report, validate_project_config
+except ModuleNotFoundError:
+    runtime_snapshot = lambda: {'device': 'unknown'}
+    validate_project_config = lambda config: []
+    save_project_report = None
+PROJECT_ID = '63_lora_variants_benchmark'
+PROJECT_RESULT_PATH = 'benchmarks/results/63_lora_variants.json'
+PROJECT_CONFIG = {'project': PROJECT_ID, 'model': 'template', 'dtype': 'fp32', 'batch_size': 1, 'seq_len': 128, 'steps': 1, 'seed': 42}
+RUN_PROJECT_EXPORT = False  # True 只保存已完成的 benchmark 报告。
+config_errors = validate_project_config(PROJECT_CONFIG)
+if config_errors:
+    raise ValueError('; '.join(config_errors))
+print('runtime:', runtime_snapshot())
+if RUN_PROJECT_EXPORT:
+    if 'PROJECT_REPORT' not in globals():
+        raise RuntimeError('请先组装完整的 PROJECT_REPORT')
+    PROJECT_REPORT.setdefault('project', PROJECT_ID)
+    PROJECT_REPORT.setdefault('config', PROJECT_CONFIG)
+    PROJECT_REPORT.setdefault('environment', runtime_snapshot())
+    save_project_report(PROJECT_RESULT_PATH, PROJECT_REPORT)
+
+```

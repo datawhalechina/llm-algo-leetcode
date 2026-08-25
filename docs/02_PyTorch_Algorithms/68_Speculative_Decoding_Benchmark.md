@@ -177,3 +177,47 @@ def recommend_speculative_run(baseline: Dict[str, float], candidate: Dict[str, f
 - **实现方式**：把 comparison 收成 `accept / tune / reject` 与下一轮动作。
 - **关键点**：吞吐和 acceptance rate 可用但 verify cost 偏高时，应该走 `tune`，而不是直接 `accept`。
 - **项目意义**：这一步让 `68` 真正回答“这条 speculative 链路值不值得继续采用”，而不是只给一组指标。 
+### 可选 Practice-P2：真实 backend 结果入口
+
+本节的 speculative candidate 需要 backend 同时提供 draft model、verify 逻辑或对应启动参数，因此共享 helper 只自动处理模型下载、dtype、空闲端口和结果保存；它不会假装普通 vLLM 服务已经完成 speculative 实验。没有这些能力时，使用本节的本地/模拟 benchmark，并把 strategy-specific 的 acceptance rate、verify cost 写入 `strategy_metrics`。
+
+```python
+try:
+    from tools.inference_project_runtime import locate_repo_root
+    REPO_ROOT = locate_repo_root()
+    from tools.inference_project_runtime import (
+        shared_project_config, save_project_result, start_optional_vllm,
+        stop_optional_vllm, run_backend_benchmark,
+    )
+except ModuleNotFoundError:
+    def shared_project_config(**kwargs): return kwargs
+    def save_project_result(*args, **kwargs): raise RuntimeError('需要从仓库根目录运行真实 backend 入口')
+
+MODEL_ID = 'Qwen/Qwen2.5-0.5B-Instruct'  # target 模型；正式实验还需配置 draft 模型。
+RESULT_PATH = 'benchmarks/results/68_speculative_decoding.json'  # 统一结果文件。
+project_config = shared_project_config(
+    model=MODEL_ID, backend='vllm', dtype='auto', generated_tokens=64,
+    cache_policy='default', draft_model=None,
+)
+print(project_config)
+RUN_BACKEND_SMOKE = False  # 仅验证 baseline endpoint，不等于 speculative 已启用。
+if RUN_BACKEND_SMOKE:
+    server, log_path, port, selected_dtype, model_path = start_optional_vllm(
+        model_id=MODEL_ID, model_source='auto', dtype='auto',
+        served_model_name=MODEL_ID,
+    )
+    try:
+        report = run_backend_benchmark(
+            project='68', base_url=f'http://127.0.0.1:{port}', model=MODEL_ID,
+            label='vllm-baseline-for-speculative',
+            output='benchmarks/results/68_backend_smoke.json',
+            dtype=selected_dtype,
+        )
+        print(report['normalized_result'])
+    finally:
+        stop_optional_vllm(server, log_path)
+# save_project_result(RESULT_PATH, project='68', strategy='speculative',
+#     config=project_config, metrics=metrics,
+#     strategy_metrics={'acceptance_rate': acceptance_rate, 'verify_cost_ms': verify_cost_ms},
+#     decision=decision)
+```
