@@ -16,6 +16,8 @@
 
 **关键词：** `tensor`, `shape`, `dtype`
 
+**显存路线视角：** Tensor 的 `dtype`、`device` 和 shape 会直接影响数据对象的大小与搬运位置；本页只验证对象属性和基础转换，不测真实显存峰值。后续进入显存路线时，可在 [18 显存分析](./18_Memory_Profiling_and_Optimization.md) 和 [20 显存账本](./20_Profiling_and_Memory_Ledger.md) 中把这些属性放回训练状态账本。
+
 ## 前置阅读
 **导语：** 先看 0B 组页，把张量思维和 NumPy 的边界对齐，再进入这一页会更顺。
 - [04. Python Config and Data Entry | Python 配置与数据入口](./04_Python_Config_and_Data_Entry.md)
@@ -25,6 +27,8 @@
 ## 相关阅读
 **导语：** 本页先把 Tensor、shape 和 dtype 的最小判断讲清楚，再去看后面的 shape/mask 练习会更顺。
 - [P1: 12. TensorCore and Mixed Precision | Tensor Core 与混合精度](../01_Hardware_Math_and_Systems/12_TensorCore_and_Mixed_Precision.md)
+- [18. Memory Profiling and Optimization | 显存分析与优化](./18_Memory_Profiling_and_Optimization.md)
+- [20. Profiling and Memory Ledger | 性能剖析与显存账本](./20_Profiling_and_Memory_Ledger.md)
 
 ## Q1：Tensor、shape 和 dtype 分别解决什么问题？
 

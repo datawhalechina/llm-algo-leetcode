@@ -16,6 +16,8 @@
 
 **关键词：** `nn.Module`, `Parameter`, `state_dict`
 
+**显存路线视角：** 参数、buffer 和普通属性的注册方式决定哪些对象会进入模型状态、迁移到 device 或被保存；本页只验证模块和状态边界，不估算完整训练峰值。完整账本还要把参数、梯度和 optimizer state 放在一起，可参阅 [20 显存账本](./20_Profiling_and_Memory_Ledger.md)。
+
 ## 前置阅读
 **导语：** 先看 0C 组页，把梯度边界和模型封装的边界对齐，再进入这一页会更顺。
 - [08. PyTorch Grad Hygiene and No-Grad | PyTorch 梯度习惯与无梯度模式](./08_PyTorch_Grad_Hygiene_and_No_Grad.md)
@@ -24,6 +26,7 @@
 ## 相关阅读
 **导语：** 本页先把 `nn.Module`、参数注册和状态保存的最小判断讲清楚；如果想继续看 state_dict 的持久化细节，再顺着看下面这一页。
 - [10. PyTorch State_dict and Persistence | PyTorch 状态管理与持久化](./10_PyTorch_State_dict_and_Persistence.md)
+- [20. Profiling and Memory Ledger | 性能剖析与显存账本](./20_Profiling_and_Memory_Ledger.md)
 
 ## Q1：`nn.Module` 解决什么问题？
 

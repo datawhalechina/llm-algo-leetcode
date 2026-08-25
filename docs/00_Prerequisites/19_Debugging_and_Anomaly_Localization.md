@@ -10,7 +10,9 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-本页聚焦异常定位的最小判断链：先分问题类型，再看 shape、dtype、device、数值异常和梯度边界，不把排错写成经验罗列。
+本页练习一套异常定位顺序：先分问题类型，再检查 shape、dtype、device、数值异常和梯度边界。排错结论要建立在最小复现上，而不是只套用经验。
+
+**显存路线视角：** OOM、NaN 和 device mismatch 可能有相似表象，但处理路径不同；本页负责先定位错误类型和最小复现，不把一次 OOM 直接归因于 activation。真实显存对象和策略收益要回到 18 / 20 以及 73 / 76 验证。
 
 **关键词：** `shape`, `dtype`, `device`, `NaN`
 
@@ -21,6 +23,7 @@
 ## 相关阅读
 **导语：** 如果想把异常定位接上 Part 1 的性能和硬件视角，可以顺着看下面这一页。
 - [P1: 03. GPU Architecture and Memory | GPU 物理架构、内存层级与核心硬件单元](../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.md)
+- [76. Activation / Checkpoint / Offload Benchmark | 显存策略对比](../02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.md)
 
 ## Q1：异常先归到哪几类，才能开始排查？
 

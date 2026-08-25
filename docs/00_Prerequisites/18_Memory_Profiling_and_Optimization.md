@@ -10,7 +10,9 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-本页聚焦显存分析和优化的最小判断链：先拆参数、梯度、优化器状态、激活和临时缓冲区，再决定是缩 batch、做 accumulation，还是上 checkpoint，不把显存优化写成经验清单。
+本页从显存账本出发，拆开参数、梯度、优化器状态、激活和临时缓冲区，再比较缩 batch、做 accumulation 或使用 checkpoint 等方案。这里的账本是教学估算，不是 CUDA allocator 的实测峰值；真实显存、吞吐和 OOM 边界要在 Part 2 的 73 / 76 中验证。
+
+> **证据边界：** 本页可以说明显存对象如何组成、策略大致影响哪一项，以及下一步该测什么；不能从简化公式推出统一的显存节省比例。实际占用还会受到参数与 optimizer dtype、临时张量、CUDA context、allocator reserved memory 和实现细节影响。
 
 **关键词：** `memory`, `checkpoint`, `accumulation`
 
@@ -24,7 +26,7 @@
 
 ## Q1：显存账本先分哪几层？
 
-先把常驻显存（参数、梯度、优化器状态）和动态显存（激活、临时 buffer）拆开；只看 `allocated` 不够，还要知道峰值是在哪一层堆起来的。
+先把常驻显存（参数、梯度、优化器状态）和动态显存（激活、临时 buffer）拆开；只看 `allocated` 不够，还要知道峰值是在哪一层堆起来的。这里的账本用于定位主要项，不等同于 `torch.cuda.max_memory_allocated()` 的完整结果。
 
 
 ```python
@@ -68,7 +70,7 @@ print(f"one activation block:    {pretty_mb(activation_bytes)}")
 
 ## Q2：什么时候该缩 batch，什么时候该做梯度累积？
 
-两者都在降显存压力，但只有梯度累积能保住有效 batch；代价是更多次前向/反向。
+两者都在降显存压力，但只有梯度累积能保住有效 batch；代价是更多次前向/反向。它主要降低单个 micro-batch 的 activation 峰值，不会自动减少参数、梯度或 optimizer state 的长期占用。
 
 
 ```python
@@ -96,7 +98,7 @@ print("same effective batch, but activation peak follows micro batch")
 
 ## Q3：混合精度和梯度检查点分别省什么？
 
-混合精度主要省 dtype bytes；检查点主要省要保存的激活。它们常常是叠加关系，不是互相替代。
+混合精度主要改变 dtype bytes；检查点主要减少需要为 backward 保存的 activation。它们常常可以叠加，但实际收益取决于参数、梯度、optimizer state、临时张量和 activation 在总账本中的占比。
 
 
 ```python
@@ -106,6 +108,7 @@ layers = 12
 batch_size, seq_len, hidden_size = 8, 32, 512
 
 def activation_mb(dtype_bytes, checkpoint_factor=1):
+    """教学估算：用保存激活层数的比例近似 checkpoint 影响。"""
     saved_layers = math.ceil(layers / checkpoint_factor)
     return saved_layers * batch_size * seq_len * hidden_size * dtype_bytes / 1024**2
 
@@ -125,7 +128,7 @@ print("checkpointing mainly reduces saved activations; bf16 mainly cuts dtype by
 
 ## Q4：显存泄漏怎么排查？
 
-先看是不是把 Tensor、loss 或中间激活长期挂在容器里；再看是不是该用 `detach()`、`no_grad()` 或显式清理。
+先看是不是把 Tensor、loss 或中间激活长期挂在容器里；再看是不是该用 `detach()`、`no_grad()` 或显式清理。切断梯度关系、关闭梯度追踪和释放对象引用不是同一件事，最终仍需结合对象生命周期和实际 memory snapshot 判断。
 
 
 ```python
@@ -166,7 +169,7 @@ print("store tensors only when you really need the graph")
 
 ## Q5：常驻显存和动态显存，谁更像当前瓶颈？
 
-先把常驻显存和动态显存分开看，再判断当前瓶颈是参数规模、优化器状态，还是训练过程里的激活峰值；这样才能知道是改模型大小，还是改训练策略。
+先把常驻显存和动态显存分开看，再判断当前瓶颈是参数规模、优化器状态，还是训练过程里的激活峰值；这样才能提出“改模型大小还是改训练策略”的待验证假设，而不是直接下工程结论。
 
 
 ```python
@@ -189,12 +192,17 @@ print('dominant:', winner)
 
 ## Q6：batch、gradient accumulation、checkpoint 的决策顺序怎么定？
 
-先看 batch 是否还能缩，再看 accumulation 是否足够保住有效 batch，最后才把 checkpoint 当作进一步降峰值的兜底方案；顺序定清楚，才不会把三者混成一团。
+先看 batch 是否还能缩，再看 accumulation 是否足够保住有效 batch，最后才把 checkpoint 当作进一步降峰值的候选方案；如果涉及 offload、混合精度或通信，还要把搬运、重算、同步和质量代价一起交给 73 / 76 测量。
 
 
 ```python
-def estimate_step_budget(param_mb, grad_mb, optim_mb, activation_mb, can_fit):
+def estimate_step_budget(param_mb, grad_mb, optim_mb, activation_mb, can_fit=None, memory_cap_mb=None):
+    """教学预算判断；不替代 CUDA allocator 的实测峰值。"""
     total_mb = param_mb + grad_mb + optim_mb + activation_mb
+    if can_fit is None:
+        if memory_cap_mb is None:
+            raise ValueError('can_fit 和 memory_cap_mb 至少提供一个')
+        can_fit = total_mb <= memory_cap_mb
     if not can_fit:
         return 'reduce_batch_or_checkpoint', total_mb
     if activation_mb >= optim_mb:

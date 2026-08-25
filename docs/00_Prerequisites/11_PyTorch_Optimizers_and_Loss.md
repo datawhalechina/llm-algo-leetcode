@@ -12,6 +12,8 @@
 
 本页聚焦：理解 `loss` 和 `optimizer` 的分工；掌握 `zero_grad()`、`backward()`、`step()` 的顺序；能跑通一个最小训练步。前面已经看过模型怎么存，这一页开始看模型怎么更新。阅读顺序可以按这条线走：先分清 loss 和 optimizer 的角色，再看训练步顺序，然后学会先排查训练流程，最后把最小闭环跑通。这里先把它当成 Part 2 里最常回看的“训练步入口”来看：你看到一段训练代码，先找 loss、梯度清理和参数更新分别在哪。训练模式切换通常也会出现在这一步里，`model.train()` / `model.eval()` 影响的是模型行为，不是 loss 的定义。
 
+**显存路线视角：** 参数、梯度和 optimizer state 都属于训练状态账本的一部分；本页验证更新顺序，不假设 Adam 状态大小或具体 dtype，也不输出真实显存结论。预算和占用分析见 Part00 的 18 / 20。
+
 **关键词：** `loss`, `optimizer`, `step`
 
 ## 前置阅读
@@ -22,6 +24,8 @@
 ## 相关阅读
 **导语：** 本页先把 loss、optimizer 和最小训练步讲清楚；如果想继续看数据接口和 batch 契约，再顺着看下面这一页。
 - [12. PyTorch Minimal Training Interface | PyTorch 最小训练接口](./12_PyTorch_Minimal_Training_Interface.md)
+- [18. Memory Profiling and Optimization | 显存分析与优化](./18_Memory_Profiling_and_Optimization.md)
+- [20. Profiling and Memory Ledger | 性能剖析与显存账本](./20_Profiling_and_Memory_Ledger.md)
 
 ## Q1：loss 和 optimizer 分别解决什么问题？
 

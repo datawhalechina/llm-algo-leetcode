@@ -10,7 +10,9 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-本页聚焦性能剖析与显存账本的最小判断链：先看 latency、throughput 和热点，再拆参数、梯度、优化器状态和激活，不把优化写成拍脑袋试错。
+本页把性能指标、热点和显存账本放到同一条排查路径中：先看 latency、throughput 和热点，再拆参数、梯度、优化器状态和激活。本页的阈值和账本是 CPU-first 的教学示例；真实 GPU 峰值、吞吐、OOM 和 profiler 归因需要在 Part 2 的 73 / 74 / 76 中验证。
+
+> **证据边界：** profiler 热点是下一步排查的线索，不等于已经确认根因；显存账本是对象级估算，不等同于 CUDA allocator 的完整占用。
 
 **关键词：** `profiler`, `latency`, `memory`
 
@@ -24,7 +26,7 @@
 
 ## Q1：性能问题先看哪几个指标？
 
-先分清 latency、throughput、GPU 利用率和 CPU 等待时间，再决定问题到底是算子慢、数据慢还是调度慢。
+先分清 latency、throughput、GPU 利用率和 CPU 等待时间，再提出问题到底可能是算子慢、数据慢还是调度慢的假设；阈值只是本例的教学参数，不是通用标准。
 
 
 ```python
@@ -48,7 +50,7 @@ print('bottleneck:', 'data' if summary['cpu_wait_ms'] > 40 and summary['gpu_busy
 
 ## Q2：怎么用 profiler 找热点？
 
-先看前向、反向、优化器更新和数据加载各占多少时间，再决定是不是该先改数据管线还是算子。
+先看前向、反向、优化器更新和数据加载各占多少时间，再决定下一步先验证数据管线、算子还是训练骨架；热点本身不等于根因。
 
 
 ```python
@@ -68,7 +70,7 @@ print('focus:', hotspots[0][0])
 
 ## Q3：显存账本怎么拆？
 
-先分清参数、梯度、优化器状态、激活和临时缓冲，再决定是缩 batch、做 accumulation，还是上 checkpoint。
+先分清参数、梯度、优化器状态、激活和临时缓冲，再提出是缩 batch、做 accumulation，还是上 checkpoint 的候选方案；最终选择要交给固定 workload 的 benchmark。
 
 
 ```python
@@ -93,17 +95,18 @@ print('dominant:', 'activation' if ledger['activation_mb'] > ledger['adam_state_
 
 ## Q4：显存压力出现时，先用 batch、accumulation 还是 checkpoint？
 
-先判断是不是显存真的放不下；如果是，先缩 batch，再看是否需要 accumulation 保住有效 batch，最后才把 checkpoint 当作进一步降峰值的手段。
+先判断是不是显存真的放不下；如果是，可先评估缩 batch，再看 accumulation 是否能保住有效 batch，最后比较 checkpoint、offload 或混合精度。这个顺序是排查起点，不是所有 workload 的固定答案。
 
 
 ```python
 def choose_memory_action(can_fit, hotspot, communication_heavy):
+    """返回下一步排查方向，不直接替代真实 benchmark 决策。"""
     if not can_fit:
-        return 'reduce_batch_or_use_checkpoint'
+        return 'reduce_batch_or_compare_checkpoint_offload'
     if hotspot == "dataloader":
         return 'optimize_input_pipeline'
     if communication_heavy:
-        return 'consider_accumulation'
+        return 'inspect_communication_frequency_and_overlap'
     return 'profile_more'
 
 
@@ -111,13 +114,13 @@ print('case1:', choose_memory_action(False, 'backward', False))
 print('case2:', choose_memory_action(True, 'dataloader', False))
 print('case3:', choose_memory_action(True, 'backward', True))
 
-# 输出示例: reduce_batch_or_use_checkpoint / optimize_input_pipeline / consider_accumulation
+# 输出示例: 这些结果只是下一步排查方向，不能直接当成最终优化结论
 
 ```
 
 ## Q5：latency 高但 throughput 低，通常先怀疑什么？
 
-先判断是单步慢、整体产出低，还是两者同时发生；把症状拆开后，才知道该先看数据、算子还是训练骨架。
+先判断是单步慢、整体产出低，还是两者同时发生；把症状拆开后，再用 profiler 或 benchmark 验证数据、算子、同步还是训练骨架是否是真正瓶颈。
 
 
 ```python
@@ -148,7 +151,7 @@ print('signal:', signal)
 
 ## Q6：profiler 看到热点后，先改数据、算子还是训练骨架？
 
-先看热点落在 data / forward / backward / optimizer 哪一层，再决定是改数据管线、算子实现还是训练骨架。
+先看热点落在 data / forward / backward / optimizer 哪一层，再决定下一步验证数据管线、算子实现、通信同步还是训练骨架；不要只凭单个热点直接改代码。
 
 
 ```python

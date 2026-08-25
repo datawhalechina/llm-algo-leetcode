@@ -16,6 +16,8 @@
 
 **关键词：** `BatchNorm`, `LayerNorm`, `running stats`
 
+**显存路线视角：** 归一化会引入统计量和临时中间结果，训练态与推理态的保存需求也可能不同。BatchNorm 依赖运行统计量，而 LayerNorm / RMSNorm 通常按当前输入计算统计量；具体保存内容和 kernel workspace 仍取决于实现。本页验证统计行为和数值稳定性，不比较真实显存峰值；代价要由 73 / 76 在固定训练 workload 上测量。
+
 ## 前置阅读
 **导语：** 先看 0D 组页，把激活函数和训练稳定性的边界对齐，再进入这一页会更顺。
 - [14. Activation Functions | 激活函数](./14_Activation_Functions.md)
@@ -24,6 +26,7 @@
 **导语：** 本页先把 BatchNorm、LayerNorm 和训练态 / 推理态的最小判断讲清楚；如果想继续看 Attention 如何接上这些稳定性直觉，再顺着看下面这一页。
 - [P1: 12. TensorCore and Mixed Precision | TensorCore 与混合精度](../01_Hardware_Math_and_Systems/12_TensorCore_and_Mixed_Precision.md)
 - [16. Attention Mechanism Intro | Attention 机制导论](./16_Attention_Mechanism_Intro.md)
+- [20. Profiling and Memory Ledger | 性能剖析与显存账本](./20_Profiling_and_Memory_Ledger.md)
 
 ## Q1：BatchNorm 和 LayerNorm 分别解决什么问题？
 

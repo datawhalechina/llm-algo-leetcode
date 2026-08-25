@@ -14,6 +14,8 @@
 
 **关键词：** `shape`, `stride`, `contiguous`
 
+**显存路线视角：** `permute`、`view`、`reshape` 和 `contiguous` 不只是 shape API，也可能改变数据是否需要复制；本页验证 layout 契约，不给出复制成本或显存节省结论。复制是否成为瓶颈，要在具体 workload 中结合 73 / 76 或 profiler 观察。
+
 ## 前置阅读
 **导语：** 先看 0B 组页，把 Tensor 的形状和 layout 边界对齐，再进入这一页会更顺。
 - [05. PyTorch Tensor Fundamentals | PyTorch 张量基础操作](./05_PyTorch_Tensor_Fundamentals.md)
@@ -23,6 +25,8 @@
 **导语：** 本页先把 layout、索引和连续性的最小判断讲清楚；如果想继续看自动求导和 attention 显存视角，再顺着看下面这一页。
 - [07. PyTorch Autograd and Backward | PyTorch 自动求导与反向传播](./07_PyTorch_Autograd_and_Backward.md)
 - [P1: 04. Attention Memory Optimization | Attention 显存优化](../01_Hardware_Math_and_Systems/04_Attention_Memory_Optimization.md)
+- [18. Memory Profiling and Optimization | 显存分析与优化](./18_Memory_Profiling_and_Optimization.md)
+- [20. Profiling and Memory Ledger | 性能剖析与显存账本](./20_Profiling_and_Memory_Ledger.md)
 
 ## Q1：shape、stride 和 contiguous 分别解决什么问题？
 
