@@ -16,7 +16,7 @@
 
 自回归生成里的 attention 往往不是单纯算得慢，而是读得太多。每生成一个新 token，都要反复访问之前积累下来的 KV cache；上下文一长，瓶颈就会很快从矩阵乘法转到显存访问和缓存组织上。也正因为如此，注意力优化既有模型侧的结构改动，也有系统侧的内存管理改动。
 
-这是一节**机制前置节**：在整个教程的纵向主线里，它属于 `Part 01` 的推理与显存基础页，优先服务 `推理优化路线`，也给 `显存优化路线` 补一层 KV cache 视角。学完这里，后面再看 `14 / 22 / 34 / 66` 时，你会更容易分清某种优化到底是在改 attention 结构、压 KV cache 规模，还是在调整缓存组织；如果这里没学明白，后面很容易把 `MQA / GQA / MLA` 和 `PagedAttention` 混成一类优化手段。按专题归类，这一页同时属于 `推理优化专题`，并和 `显存优化专题` 共享一部分问题入口。
+这是一节**机制前置节**：它区分 Attention 结构、KV Cache 表示和缓存组织三类问题，主要服务 `推理优化路线`，也为 `显存优化路线` 提供 KV Cache 视角。
 
 **关键词：** `MHA`, `MQA`, `GQA`
 
@@ -66,15 +66,18 @@ Bytes_per_param = 2（FP16）
 ```
 
 **为什么它是主要瓶颈？**
-随着生成长度 (Sequence Length) 和并发请求数 (Batch Size) 的增加，KV Cache 的体积会呈线性甚至超线性增长。由于自回归生成每步只产生一个 Token，GPU 往往需要频繁读取之前积累的庞大 KV Cache，将其从显存 (HBM) 送入计算所需的片上缓存 (如 SRAM) 参与计算。这种极低的计算/访存比 (Arithmetic Intensity) 导致 GPU 的计算核心大量时间处于空闲等待状态，形成严重的访存受限 (Memory Bound)。
+KV Cache 的容量通常随层数、序列长度、并发序列数和 KV 头数近似线性增长；prefill 阶段的 Attention 计算量还会随序列长度呈二次增长。decode 阶段每步只产生一个 Token，却要反复读取已有 KV Cache，因此可能受到显存带宽和缓存组织影响，是否成为 Memory Bound 仍取决于模型、dtype、并发和实现。
 </details>
 ### Q1小验证：KV Cache 的线性增长直觉
 
 把上下文长度翻倍，再看缓存大小是不是也近似翻倍。
 
 ```python
-def kv_cache_bytes(seq_len, layers, heads, head_dim, dtype_bytes=2):
-    return 2 * seq_len * layers * heads * head_dim * dtype_bytes
+def kv_cache_bytes(seq_len, layers, heads, head_dim, dtype_bytes=2, batch_size=1):
+    """估算 KV Cache 理论字节数；不包含 block metadata、padding 和量化开销。"""
+    if min(seq_len, layers, heads, head_dim, batch_size) < 0:
+        raise ValueError('shape values must be non-negative')
+    return 2 * batch_size * seq_len * layers * heads * head_dim * dtype_bytes
 
 for seq_len in [1024, 2048, 4096]:
     size_gb = kv_cache_bytes(seq_len, 32, 32, 128) / 1e9
@@ -86,16 +89,16 @@ for seq_len in [1024, 2048, 4096]:
 <details>
 <summary>点击展开查看解析</summary>
 
-为了从根本上削减需要搬运的数据量，研究人员改变了 Attention 的投影结构：
+为了减少需要搬运的数据量，研究人员改变了 Attention 的投影结构：
 
 1. **MQA (Multi-Query Attention)**:
    - **机制**：无论有多少个 Query 头，所有 Query 头都**共享仅仅 1 个 Key 头和 1 个 Value 头**。
    - **收益**：KV Cache 中与 Key/Value 相关的头数从 `H` 降到 `1`，因此缓存大小近似缩小为 MHA 的 `1/H`。这会明显降低访存需求，并提升推理速度。
-   - **代价**：模型表达能力有所下降，可能影响复杂任务的生成质量，且训练不够稳定。
+   - **代价**：共享 K/V 头会改变模型表达容量，可能影响部分任务质量；影响程度取决于模型结构、训练方式和具体 checkpoint。
 
 2. **GQA (Grouped-Query Attention)**:
    - **机制**：一种折中方案。将 Query 头进行分组（例如 32 个 Query 头分成 8 组），每组内的 Query 头共享 1 对 Key/Value 头。
-   - **收益**：KV Cache 中与 Key/Value 相关的头数从 `H` 降到 `G`，因此缓存大小近似缩小为 MHA 的 `G/H`。例如 `H = 32, G = 8` 时，KV Cache 约为 MHA 的 `1/4`，也就是压缩了 `75%`。在保持较强表达能力的同时，推理成本明显下降，是目前工业界的主流方案之一。
+   - **收益**：KV Cache 中与 Key/Value 相关的头数从 `H` 降到 `G`，因此在其他条件相同时，缓存大小近似缩小为 MHA 的 `G/H`。例如 `H = 32, G = 8` 时，KV Cache 约为 MHA 的 `1/4`；实际速度和质量变化仍取决于模型与 backend。
 </details>
 ### Q2小验证：头数变化为什么会直接影响缓存
 
@@ -129,7 +132,7 @@ for name, kv_heads in [('MHA', 32), ('GQA', 8), ('MQA', 1)]:
 1. **分页管理**：将 KV Cache 划分为固定大小的内存块（Block，例如每个 Block 存放 16 个 Token 的数据）。
 2. **非连续存储**：不同 Token 的 Block 在物理显存中不需要连续存储，而是通过一个块表 (Block Table) 进行映射。
 3. **按需分配**：只有当系统真正生成新 Token 且当前 Block 写满时，才会动态分配下一个物理 Block。
-**收益**：显著缓解了显存外部碎片问题，提升了显存利用率，从而允许服务器在相同显存下承载更多的并发请求。
+**收益**：可以减少连续预分配带来的浪费，并改善可用显存的组织；实际并发提升还取决于 block size、调度、kernel 和其他 workspace。
 
 一个简化判断是：连续预分配更容易“显存被切碎”，PagedAttention 更接近“按页管理、按需扩展”，因此通常更适合长短不一、并发较高的推理场景。
 </details>
@@ -163,7 +166,7 @@ print(f'Paged waste: {waste:.1%}')
 <details>
 <summary>点击展开查看解析</summary>
 
-MLA (Multi-Head Latent Attention) 是 DeepSeek-V2/V3 模型中首创的核心架构，旨在尽量保留接近 MHA 的表达能力，同时实现比 MQA 更小的 KV Cache。
+MLA (Multi-Head Latent Attention) 是以 DeepSeek-V2/V3 为代表的一类 latent attention 设计，目标是在保留有效注意力信息的同时压缩 KV Cache 表示。具体缓存格式、RoPE 处理和收益取决于模型实现。
 
 **机制与原理**：
 1. **低秩压缩 (Low-Rank Compression)**：MLA 并不直接缓存庞大的 K 和 V 矩阵。相反，它将过去的 KV 信息压缩成一个低维度的隐状态向量 (Latent Vector, c_t) 进行存储。
@@ -171,7 +174,7 @@ MLA (Multi-Head Latent Attention) 是 DeepSeek-V2/V3 模型中首创的核心架
 3. **RoPE 解耦**：为了兼容旋转位置编码 (RoPE)，MLA 将位置信息与内容信息解耦，单独缓存少量的 RoPE 相关的 Key 向量。
 
 **收益**：
-MLA 通过计算换显存。虽然在推理时增加了少量的矩阵乘法计算量，但由于大模型推理是 Memory Bound 的，这种权衡极具性价比。它在保持接近 MHA 的表达能力的同时，将 KV Cache 的体积压缩到更低的水平。对于具体能压缩多少，仍取决于 latent 维度、RoPE 处理方式和模型配置。
+MLA 通过额外计算和表示变换换取更小的缓存；是否值得取决于 latent 维度、RoPE 处理方式、模型质量和 backend。它可能降低 KV Cache 占用，但不能据此直接推出固定的速度或质量收益。
 </details>
 
 ```python

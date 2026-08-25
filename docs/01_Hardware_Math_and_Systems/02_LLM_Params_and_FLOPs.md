@@ -16,14 +16,19 @@
 
 先把参数量的构成拆开，再把前向推理与完整训练的 FLOPs 粗算清楚，这样后面的训练成本、吞吐评估和模型选型才会有统一的底座。
 
-这一页在整个教程的纵向主线里属于 `Part 01` 的规模估算基础页，优先服务 `监督微调路线` 的训练预算与项目估算前置。学完这里，后面再看 `10 / 13 / 60 / 63` 时，你会更容易分清全参模型参数量、训练 FLOPs 和 LoRA 可训练参数比例之间的关系；如果这里没学明白，后面很容易只比较模型名字和参数规模，却判断不清为什么某个 LoRA 方案在资源和收益上更值得采用。按专题归类，这一页主要属于 `监督微调路线` 的预算前置，也和 `Profiling 专题` 共享一部分吞吐估算视角。
+这一页是 `Part 01` 的规模估算基础，主要服务参数量、训练 FLOPs 和 LoRA 资源预算判断，也为 `Profiling 专题` 提供吞吐估算的共同口径。
 
 **关键词：** `parameters`, `FLOPs`, `MFU`
+
+## 证据边界与显存路线映射
+本节是 **CPU-first；GPU 用于扩展验证**：CPU 练习可以验证参数量、FLOPs 和数量级估算；它不能证明实际 step time、GPU 利用率、显存峰值或某个模型的真实吞吐。估算还会受到 tied weights、实现细节、dtype 和 runtime 临时缓冲影响。
+
+对应显存优化路线的 Task1（规模与预算认知），也为训练微调路线的模型选型提供基础。需要真实训练资源结论时进入 73；如果要比较 checkpoint / offload 对峰值的影响，再进入 76，本节不单独产出 73–76 报告。
 
 ---
 
 ## 前置阅读
-**导语：** 这一页要把“参数量 -> FLOPs -> 训练成本”这条线讲完整；如果你正在走 `监督微调路线`，这里会直接服务后面的 `10 / 13 / 60 / 63`，因为 LoRA 的可训练参数比例、端到端实验的预算口径和项目里值不值得采用某个方案，本质上都先靠这里建立数量级直觉。
+**导语：** 本页沿着“参数量 → FLOPs → 训练成本”计算，得到后续微调项目需要的数量级估算。
 
 - [Group 0B: PyTorch Tensors and Autograd | 0B: PyTorch 张量与自动求导](../00_Prerequisites/0B.md)
 - [01. Data Types and Precision | 大模型的数据格式与混合精度](./01_Data_Types_and_Precision.md)
@@ -35,7 +40,7 @@
 - [10. LoRA Tutorial | LoRA 教程](../02_PyTorch_Algorithms/10_LoRA_Tutorial.md)
 
 ---
-## Q1：假设隐藏层维度为 $d$，词表大小为 $V$。请推导一个包含 $L$ 层的标准 Transformer Decoder 的总参数量。
+## Q1：假设隐藏层维度为 $d$，词表大小为 $V$。请推导一个 Decoder 的总参数量，并比较标准 FFN 与 SwiGLU。
 
 <details>
 <summary>点击展开查看解析</summary>
@@ -65,7 +70,7 @@
 - 一个 Block 的参数量 = $4d^2$ (Attn) + $8d^2$ (MLP) = **$12d^2$**。
 - 总参数量 $\approx 2Vd + L \times 12d^2$。
 
-*带入 LLaMA-7B 感受一下：$d=4096, L=32, V=32000$*
+*以一个约 7B 参数规模的配置为例：$d=4096, L=32, V=32000$*
 *Block 参数 = $32 \times 12 \times 4096^2 \approx 6.4 \text{ Billion}$*
 *Embedding = $2 \times 32000 \times 4096 \approx 0.26 \text{ Billion}$*
 *总计约 6.7B，也就是所谓的 7B 模型！*
@@ -133,7 +138,7 @@ print("提示：不同实现会因为是否共享词嵌入、是否计入偏置�
 
 在了解了参数量之后，我们来看大模型在进行推理（前向传播）时需要多少算力。
 
-**核心经验法则：1 个参数处理 1 个 Token，大约需要 2 次浮点运算（FLOPs）。**
+**核心数量级估算：对 dense Transformer，1 个参数处理 1 个 Token 常用约 2 次浮点运算（FLOPs）估算。**
 为什么是 2 次？因为在矩阵乘法 $Y = W \times X$ 中，对于每一个权重元素，我们需要做一次**乘法**和一次**加法**（Multiply-Accumulate, MAC）。
 
 **推理 FLOPs 公式：**
@@ -143,11 +148,11 @@ $$ C_{forward} \approx 2 \times P \times T $$
 - $P$ 是模型的总参数量（Parameters）
 - $T$ 是处理的 Token 数量（Tokens）
 
-*(注：这里忽略了少量的 Attention 矩阵乘积算力等，因为在大模型中，线性层的矩阵乘法占了绝对大头，通常占 99% 以上)*
+*(注：这里忽略了 Attention 矩阵乘积、归一化、激活函数、padding 和其他算子；占比会随序列长度、模型结构和 batch 改变，不能固定写成 99%。)*
 </details>
 ### Q2小验证：训练与推理 FLOPs 计算
 
-大模型训练常用近似公式：`训练 FLOPs ≈ 6 × 参数量 × token 数`。
+大模型训练常用近似公式：`训练 FLOPs ≈ 6 × 参数量 × token 数`。它适合做 dense Transformer 的数量级预算，不是对每个模型和 workload 都精确成立。
 
 ```python
 def calculate_training_flops(num_params_b, num_tokens, flops_per_param_token=6):
@@ -198,7 +203,7 @@ def estimate_training_time(num_params_b, num_tokens, gpu_tflops, num_gpus, effic
 
 因此，反向传播的计算量大约是前向传播的 **2 倍**。
 
-**训练 FLOPs 公式：**
+**训练 FLOPs 公式（数量级近似）：**
 $$ C_{train} = C_{forward} + C_{backward} \approx 2PT + 4PT = 6 \times P \times T $$
 
 **实战估算：**
@@ -235,28 +240,28 @@ for name, gpu_tflops, num_gpus, eff in scenarios:
 
 - **理论算力 (Peak FLOPs)**：显卡说明书上写的算力。比如 A100 BF16 理论峰值是 312 TFLOPs（每秒执行 312 万亿次浮点运算）。
 - **实际算力 (Observed FLOPs)**：即我们用 $6PT$ 算出的整个训练所需的理论运算量，除以跑完这些步骤所花的**实际时间**。
-- **MFU = 实际算力 / 理论算力**。
+- **MFU = 实际模型 FLOPs / 硬件理论峰值 FLOPs**。实际模型 FLOPs 通常需要结合模型结构和 token 数估算，不能直接把一个时间占比当成 MFU。
 
 **为什么 MFU 很难达到 100%？**
 因为在真正的训练集群中，存在 **Memory-bound (显存墙)** 和 **Communication (通信瓶颈)**。GPU 很多时间在等待数据从内存搬运过来，或者在等其他机器的 All-Reduce 数据传过来，并没有在做有效的乘加运算。
 
 目前顶级的工业界预训练集群，MFU 通常在 **40% 到 60%** 之间。如果你微调时的 MFU 只有 10%，说明你的代码里存在严重的通信或 IO 阻塞（比如没开梯度累加，或者数据读取成了瓶颈）。
 </details>
-### Q4小验证：MFU 的时间分解
+### Q4小验证：计算时间占比与瓶颈分解
 
-把计算、显存等待和通信等待拆开，看看为什么实际利用率很难接近峰值。
+把计算、显存等待和通信等待拆开，观察时间线上哪些部分在拖慢执行。下面的函数计算的是教学用的计算时间占比，不是严格 MFU。
 
 
 ```python
-def mfu_from_time_split(compute_ms, memory_wait_ms, comm_wait_ms):
+def compute_time_fraction(compute_ms, memory_wait_ms, comm_wait_ms):
     total_ms = compute_ms + memory_wait_ms + comm_wait_ms
     if total_ms <= 0:
         return {'mfu': 0.0, 'dominant_stall': 'none'}
-    mfu = compute_ms / total_ms
+    compute_fraction = compute_ms / total_ms
     stalls = {'memory': memory_wait_ms, 'communication': comm_wait_ms}
     dominant = max(stalls, key=stalls.get)
     return {
-        'mfu': round(mfu, 3),
+        'compute_time_fraction': round(compute_fraction, 3),
         'dominant_stall': dominant,
         'stall_ratio': round((memory_wait_ms + comm_wait_ms) / total_ms, 3),
     }
@@ -267,7 +272,7 @@ cases = [
     (100, 10, 5),
 ]
 for case in cases:
-    print(case, '->', mfu_from_time_split(*case))
-print('MFU is high only when compute dominates the timeline')
+    print(case, '->', compute_time_fraction(*case))
+print('A high compute-time fraction does not by itself prove high MFU')
 
 ```
