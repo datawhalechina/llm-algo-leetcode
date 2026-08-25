@@ -31,7 +31,9 @@
 2. 再分清 parameters、gradients、optimizer state、activations 谁是主因。
 3. 如果 activation 是主因，就继续看 checkpointing 和 offload。
 4. 如果 optimizer state 或参数常驻太高，就回到 sharding / ZeRO / 量化路线。
-5. 最后把收益放回 `73 / 74` 看时间代价。
+5. 最后把收益放回 `73 → 76 → 75 → 74`：先建立 baseline，再比较策略、检查预算敏感性，最后用 profiling 解释时间代价。
+
+Task1 到 Task2 的边界在这里：Task1 只建立参数、梯度、optimizer state、activation 等对象的预算模型；Task2 才讨论 accumulation、checkpoint 和 offload 如何改变 activation 的生命周期或驻留位置。不要用 Task1 的理论账本直接替代 Task2 的真实训练测量。
 
 ## 关键取舍
 
@@ -51,6 +53,8 @@
 - `12` Gradient Accumulation
 - `17 / 18 / 19` backward、activation、checkpointing / offload
 - `73` Training Performance Analysis
+
+本页只讨论训练侧显存压力。若压力来自 KV Cache、请求并发或上下文增长，应转到 [04 Inference Cache and Memory Budget](./04_inference_cache_and_memory_budget.md)；若需要判断训练策略是否值得采用，再进入 [06 Benchmark and Trade-off Decision](./06_benchmark_and_tradeoff_decision.md)。
 
 ## 典型阅读入口
 

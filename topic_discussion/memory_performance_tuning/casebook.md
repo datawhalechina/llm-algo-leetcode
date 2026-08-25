@@ -6,6 +6,17 @@
 
 显存优化主要连接 Infra-L1 的容量与带宽、Infra-L2 的访存与 kernel、Infra-L3 的框架状态管理，并延伸到 Infra-L4 的 KV Cache、量化和 Serving 配置。每项策略都要同时检查容量、重算、搬运、通信、吞吐和质量；Infra-L5 只负责资源治理、回归和部署流程。
 
+## 总判断链：对象 → 生命周期 → 证据 → 策略
+
+遇到显存问题时，先沿下面四步走，不要直接从技巧名称开始：
+
+1. **确认对象。** 先区分参数、梯度、optimizer state、activation、KV Cache 和临时 buffer；训练和推理的对象账本不能混写。
+2. **确认生命周期。** 判断对象是在 forward、backward、optimizer step、prefill、decode 还是请求排队阶段驻留或增长。
+3. **确认证据。** 区分公式 / toy 机制、CPU 功能验证、单 GPU benchmark 和真实 profiler trace；证据等级不足时，只保留待验证假设。
+4. **选择策略。** 根据对象和瓶颈选择 accumulation、checkpoint、offload、paging、prefix reuse、量化或 kernel / graph 优化，并记录代价转移到了计算、带宽、通信、延迟还是质量。
+
+这四步对应整条路线：Task0–1 建立对象和生命周期语言，Task2 学习训练侧策略，Task3 采集训练证据，Task4–5 处理推理与量化分支，Task6 负责跨策略的 profiling 和决策收口。
+
 ## 同一机制的显存目标
 
 显存专题与推理专题可以共享同一份机制 Notebook，但这里把 checkpoint、offload、paging、KV Cache 和量化看成资源预算策略：先确认减少了哪类状态的驻留，再判断代价转移到了重算、带宽、通信还是质量。
@@ -21,7 +32,7 @@
 
 ## 判断表
 
-先分清问题在训练侧还是推理侧，再分清主要资源对象是 `activation`、`optimizer state`、`KV cache` 还是临时 buffer，最后判断省下来的显存有没有把时间代价一起控制住。
+先按“对象 → 生命周期 → 证据 → 策略”的顺序分流，再判断省下来的显存有没有把时间代价一起控制住。
 
 | 现象 | 优先判断 | 先看哪条线 | 常见动作 |
 |:---|:---|:---|:---|

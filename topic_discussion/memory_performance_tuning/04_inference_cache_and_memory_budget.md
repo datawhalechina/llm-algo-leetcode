@@ -28,6 +28,8 @@ KV cache 一方面能让 decode 不必重复计算历史 token，另一方面又
 
 推理优化路线主要问“请求怎样更快、服务怎样更稳”；本页主要问“KV Cache 如何在有限预算中驻留、复用和增长”。因此同一个 [66 Inference Performance Comparison](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.ipynb) 在推理专题中比较 TTFT、TPOT 和吞吐，在本专题中还必须记录 cache policy、命中率、峰值显存和并发容量。这样可以避免把“延迟变快”误读成“显存管理已经优化”。
 
+这与 Task2 的训练显存不是同一个对象：训练侧主要观察 activation、梯度和 optimizer state 的生命周期，推理侧主要观察 KV Cache 的增长、复用和驻留。两者共享账本和带宽语言，但不能把 checkpoint/offload 的训练结论直接迁移到推理服务。
+
 ## 演化路径
 
 1. 先看 cache 增长是否自然且可接受。

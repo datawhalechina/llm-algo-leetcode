@@ -27,15 +27,16 @@
 
 ## 它如何承接 Task0
 
-[17 Autograd Basics](../../02_PyTorch_Algorithms/17_Autograd_Basics.ipynb) 解释计算图和梯度流，[18 Activation and Loss Backward](../../02_PyTorch_Algorithms/18_Activation_and_Loss_Backward.ipynb) 进一步说明 loss、logits 和中间激活在反向传播中的生命周期。本页把这些机制转换成显存问题：哪些张量必须保留、哪些张量可以重算、哪些状态只是 optimizer 或 batch 组织带来的常驻成本。
+[Part00 07 Autograd and Backward](../../00_Prerequisites/07_PyTorch_Autograd_and_Backward.ipynb) 解释计算图和梯度流，[18 Activation and Loss Backward](../../02_PyTorch_Algorithms/18_Activation_and_Loss_Backward.ipynb) 进一步说明 loss、logits 和中间激活在反向传播中的生命周期；需要研究 Attention 反向时再看 [17 Attention Backward](../../02_PyTorch_Algorithms/17_Autograd_Basics.ipynb)。本页把这些机制转换成显存问题：哪些张量必须保留、哪些张量可以重算、哪些状态只是 optimizer 或 batch 组织带来的常驻成本。
 
 ## 演化路径
 
 1. 先从 batch / sequence length 的粗调开始。
 2. 再分清 parameters、gradients、optimizer state、activations 谁是主因。
-3. 如果确认 activation 是主因，再进入 checkpointing 和 offload；如果主因是参数、梯度或 optimizer state，则转向分片、量化或其他状态压缩路线。
-4. 如果 optimizer state 或参数常驻太高，就回到 sharding / ZeRO / 量化路线。
-5. 最后把收益放回 `73 / 74` 看时间代价。
+3. 如果确认 activation 是主因，再进入 checkpointing 和 offload；如果主因是参数、梯度或 optimizer state，则转向 sharding、ZeRO、量化或其他状态压缩路线。
+4. 把候选收益放回 `73 → 76 → 75 → 74`：先建立 baseline，再比较策略、检查预算敏感性，最后用 profiling 解释时间代价。
+
+Task1 到 Task2 的边界在这里：Task1 负责说明对象、规模和硬件代价；Task2 才讨论 accumulation、checkpoint 和 offload 如何改变 activation 的生命周期或驻留位置。不要用 Task1 的理论账本直接替代 Task2 的真实训练测量。
 
 ## 关键取舍
 
@@ -53,7 +54,7 @@
 ## 对应 Part 02
 
 - [12 Gradient Accumulation](../../02_PyTorch_Algorithms/12_Gradient_Accumulation.ipynb)
-- [17 Autograd Basics](../../02_PyTorch_Algorithms/17_Autograd_Basics.ipynb)、[18 Activation and Loss Backward](../../02_PyTorch_Algorithms/18_Activation_and_Loss_Backward.ipynb)、[19 Activation Checkpointing and Activation Offload](../../02_PyTorch_Algorithms/19_Activation_Checkpointing_and_Activation_Offload.ipynb)
+- [Part00 07 Autograd and Backward](../../00_Prerequisites/07_PyTorch_Autograd_and_Backward.ipynb)、[18 Activation and Loss Backward](../../02_PyTorch_Algorithms/18_Activation_and_Loss_Backward.ipynb)、[19 Activation Checkpointing and Activation Offload](../../02_PyTorch_Algorithms/19_Activation_Checkpointing_and_Activation_Offload.ipynb)
 - [73 Training Performance Analysis](../../02_PyTorch_Algorithms/73_Training_Performance_Analysis.ipynb)
 
 ## 典型阅读入口
