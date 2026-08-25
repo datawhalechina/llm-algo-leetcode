@@ -12,6 +12,8 @@
 
 本页聚焦：会用 `torch.profiler` 找热点；会看 CPU / CUDA 时间分布；会把 profiling 结果变成下一步排查动作。
 
+**显存路线视角：** CPU profiler 可以帮助拆分阶段和验证调用流程；CUDA profiler 才能补充 kernel 时间、显存生命周期和同步证据。热点排序只是排查线索，不能单独证明某种显存策略有效；73 建立基线，74 再做 profiling 验证。
+
 **关键词：** `profiler`, `trace`, `latency`
 
 ## 前置阅读
@@ -21,6 +23,8 @@
 ## 相关阅读
 **导语：** 本页先把 profiling 的最小判断讲清楚；如果想继续看显存占用和内存账本，再顺着看下面这一页。
 - [18. Memory Profiling and Optimization | 显存分析与优化](./18_Memory_Profiling_and_Optimization.md)
+- [20. Profiling and Memory Ledger | 性能剖析与显存账本](./20_Profiling_and_Memory_Ledger.md)
+- [74. Profiling Driven End-to-End Optimization | Profiling 驱动的端到端优化](../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.md)
 
 ## Q1：性能问题先要回答哪几个判断？
 

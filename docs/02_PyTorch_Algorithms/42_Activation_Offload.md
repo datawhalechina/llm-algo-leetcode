@@ -15,11 +15,13 @@
 
 ## 本节导读
 
-当 activation 太大、GPU 显存放不下时，除了 checkpointing 以外，还有一条路线：把一部分“暂时不热”的激活临时搬到 CPU 或 host memory，等反向传播需要时再取回来。本节不做真实的分布式搬运实现，而是用一个最小 offload 计划器把“省了多少显存、付出多少搬运成本、值不值得”这条链路跑通。
+当 activation 占用超过 GPU 预算时，除了 checkpointing，还可以把部分激活搬到 CPU 或 host memory，并在反向传播需要时取回。本节不实现真实的分布式搬运，而是用预算模型计算保留量、搬运量和理论传输时间。
 
 这是一节**机制原理节**：它和 `19` 是兄弟关系。`19` 主讲 checkpointing 的重算路线；`42` 主讲 offload 的搬运路线。两者都在回答“怎么把训练显存压下来”，但实现机制不同，代价模型也不同。
 
-在显存路线里，一个实用判断可以先保持简单：如果 GPU 显存是硬约束、而额外重算会明显拖慢训练，可以优先评估 offload；如果 host / PCIe / NVLink 带宽本身已经紧张，或者搬运时间很可能吞掉收益，就不要急着把 offload 当成默认答案，而应先回到 checkpointing、batch 或 mixed precision 这些更便宜的手段。
+在显存路线里，offload 是否值得采用取决于 GPU 预算、可搬运对象、host / PCIe / NVLink 带宽和额外传输时间。若传输代价过高，应同时比较 checkpointing、batch 调整和 mixed precision 等方案。
+
+本节的代码任务是完成 offload 预算汇总、可行性判断和教学用策略比较：按简化的复用距离选择搬运对象，计算保留量和理论传输时间。它不执行真实 CPU↔GPU copy，也不验证异步重叠、往返带宽、真实 step time 或生产决策；这些结论需要回到 `76` 的固定 workload benchmark。
 
 **关键词：** `offload`, `transfer`, `bandwidth`
 
@@ -51,6 +53,14 @@
 > - checkpointing 是**重算**：前向时少存，反向时再算一遍。
 > - offload 是**搬运**：前向时先搬走，反向时再搬回来。
 >
+> **两条路线的对照：**
+> | 路线 | 前向阶段 | 反向阶段 | 主要代价 | 本节对应 |
+> |---|---|---|---|---|
+> | Checkpointing | 减少区段内部激活保存 | 重新执行部分前向 | 额外计算与 step time | [19](./19_Activation_Checkpointing_and_Activation_Offload.md) |
+> | Offload | 将短期不需要的激活搬离 GPU | 需要时搬回 | CPU/host 带宽、同步与传输时间 | 本节 |
+>
+> 两者也可以组合，但组合后的收益和代价不能由这张表直接推出，仍需在相同 workload 下测量。
+>
 > **核心权衡：**
 > offload 省的是 GPU 显存，但代价是 PCIe / NVLink / 内存带宽上的搬运时间。网络越慢、搬得越多，收益就越容易被传输开销吞掉。
 
@@ -60,34 +70,44 @@
 
 - 如果 `A <= B`，说明理论上不需要 offload。
 - 如果 `A > B`，可以优先把“较冷”的激活块搬出 GPU。
-- 搬运代价近似为：`transfer_ms = offloaded_bytes / bandwidth`
-- offload 不是越多越好；如果搬运时间过长，整体 step time 会被拖慢。
+- 本节先用单程理论时间近似：`transfer_ms = offloaded_bytes / bandwidth`；真实反向通常还要考虑搬回 GPU 的往返流量。
+- offload 不是越多越好；如果搬运时间过长，整体 step time 会被拖慢。若不可搬运对象仍使 `kept_bytes` 超过预算，方案就是不可行。
 
 这一步的重点不是精确模拟硬件，而是把“GPU 显存节省”和“数据搬运成本”放到同一张账上。
 
 ### Step 3: 代码实现框架
 
-我们先定义激活块规格，再根据 `keep_score` 做一个最小的 offload 计划器：
+本题是**显存预算模拟**，不是实际的 CPU↔GPU 搬运。每个激活块保留四个教学字段：名称、大小、`reuse_delay_layers`（距离下一次使用预计还有多少层）和 `offloadable`。这里用复用距离近似冷热程度，不等同于真实运行时的调度指标；真实系统还需要结合反向顺序、生命周期、带宽和同步。延迟越大，在本题模型中越适合优先搬出 GPU。
 
 1. 统计总激活大小。
-2. 按 `keep_score` 从低到高优先 offload。
+2. 按 `reuse_delay_layers` 从高到低优先 offload。
 3. 计算 offload 后的 GPU 剩余占用和搬运时间。
-4. 再根据收益和代价给出 `accept / tune / reject`。
+4. 先检查预算是否可行，再根据本题预设的教学阈值给出 `accept / tune / reject`；这个结果只用于练习，不代表真实工程决策。
 
-### Step 4: 动手实战
+#### 字段说明与手算示例
 
-完成下面三个函数：
+| 字段 | 含义 | 单位 | 本题如何使用 |
+|---|---|---|---|
+| `bytes_` | 一个激活块占用的字节数 | byte | 汇总总激活量和搬运量 |
+| `reuse_delay_layers` | 距离该激活下一次使用预计还有多少层 | layer | 数值越大越优先 offload |
+| `gpu_budget_bytes` | 允许激活继续留在 GPU 的预算 | byte | 当保留量超过预算时开始搬运 |
+| `bandwidth_gbps` | 假设的有效搬运带宽（代码按 GiB/s 解释） | GiB/s | 估算单程理论传输时间 |
 
-1. `summarize_activation_offload`：汇总 offload 计划、显存节省和搬运成本。
-2. `recommend_offload_policy`：根据节省比例和搬运时间给出 `accept / tune / reject`。
-3. `compare_offload_vs_checkpointing`：比较 offload 和 checkpointing 的性价比，看看哪条路线更划算。
+例如总激活为 736 MiB、GPU 预算为 384 MiB，需要搬出 352 MiB；若假设带宽为 8 GiB/s，**单程**理论时间约为 `352 / 8 × 1000 = 44 ms`。真实训练通常还要考虑搬回 GPU 的另一程，以及 pinned memory、异步拷贝和重叠；这里的数值只是纸面估算，不等于真实 step time。
+### Step 4: 动手实战（预算模拟）
+
+完成下面三个函数。先说明边界：本题只验证“预算不足时搬哪些块、理论上搬多少数据、估算多少传输时间”，不创建 CUDA tensor，也不执行真实 CPU↔GPU copy。完成后仍必须在 `76` 的真实 GPU benchmark 中验证。
+
+1. `summarize_activation_offload`：汇总 offload 计划、显存节省、搬运成本和预算可行性。
+2. `recommend_offload_policy`：根据预设的节省比例和理论搬运时间阈值给出教学用的 `accept / tune / reject`。
+3. `compare_offload_vs_checkpointing`：**扩展题**，用一个教学用粗略分数比较两条路线；它不包含质量、吞吐、往返搬运和重叠效果，不能作为工程结论。
 
 ### 提示
 
-- `keep_score` 越高，表示这块激活越应该留在 GPU 上。
-- offload 先搬运“冷”的块，不要先搬运最重要的块。
-- `bandwidth_gbps` 越低，搬运时间越长。
-- 比较 offload 和 checkpointing 时，可以先看“单位时间省了多少显存”。
+- `reuse_delay_layers` 是教学模型中的“距离下一次使用的层数”，不是硬件指标；数值越大，表示这块激活越冷。
+- offload 先搬运冷块，但真实系统还要考虑反向访问顺序、pinned memory、异步拷贝、往返搬运、重叠和同步，这些不在本题模拟范围内。
+- `bandwidth_gbps` 是理论有效带宽假设，代码按 GiB/s 解释；它不是 `nvidia-smi` 能直接给出的实测传输带宽。这里保留旧字段名以兼容示例，实际含义更接近 `bandwidth_gib_per_s`。
+- 比较 offload 和 checkpointing 时，可以先看“单位时间省了多少显存”，但只有在预算可行、质量和吞吐都满足要求时才有工程意义。
 
 
 ```python
@@ -99,13 +119,15 @@ from dataclasses import dataclass
 ```python
 @dataclass
 class ActivationChunkSpec:
-    name: str
-    bytes_: int
-    keep_score: float
-    offloadable: bool = True
+    """用于预算模拟的一个激活块描述。"""
+    name: str  # 激活块名称，便于解释最终搬出/保留了谁
+    bytes_: int  # 激活块大小，单位 byte
+    reuse_delay_layers: int  # 距离下一次使用的预计层数，越大越冷
+    offloadable: bool = True  # 是否允许本策略搬出
 
 @dataclass
 class ActivationOffloadSummary:
+    """记录 offload 后的显存、传输和预算可行性指标。"""
     total_bytes: int
     gpu_budget_bytes: int
     kept_bytes: int
@@ -115,11 +137,20 @@ class ActivationOffloadSummary:
     saved_ratio: float
     offloaded_names: list
     kept_names: list
+    feasible: bool
+    overflow_bytes: int
 
 
 def summarize_activation_offload(chunks, gpu_budget_bytes, bandwidth_gbps=12.0):
-    """
-    汇总一次 activation offload 计划。
+    """汇总一次 activation offload 预算计划，不执行真实 tensor 搬运。
+
+    Args:
+        chunks: ActivationChunkSpec 或等价 dict 的序列。
+        gpu_budget_bytes: 允许保留在 GPU 的 activation 预算，单位 byte。
+        bandwidth_gbps: 理论有效带宽，代码按 GiB/s 解释。
+
+    Returns:
+        ActivationOffloadSummary；feasible 表示不可搬运对象也没有超预算。
     """
     if gpu_budget_bytes <= 0:
         raise ValueError("gpu_budget_bytes must be positive")
@@ -135,13 +166,21 @@ def summarize_activation_offload(chunks, gpu_budget_bytes, bandwidth_gbps=12.0):
         else:
             raise TypeError("chunks must contain ActivationChunkSpec or dict")
 
+    names = [c.name for c in normalized]
+    if len(names) != len(set(names)):
+        raise ValueError("chunk names must be unique")
+    if any(c.bytes_ < 0 for c in normalized):
+        raise ValueError("chunk bytes must be non-negative")
+    if any(c.reuse_delay_layers < 0 for c in normalized):
+        raise ValueError("reuse_delay_layers must be non-negative")
+
     total_bytes = sum(c.bytes_ for c in normalized)
     kept_bytes = total_bytes
     offloaded_names = []
 
     candidates = sorted(
         [c for c in normalized if c.offloadable],
-        key=lambda c: (c.keep_score, c.bytes_, c.name),
+        key=lambda c: (-c.reuse_delay_layers, -c.bytes_, c.name),
     )
 
     for chunk in candidates:
@@ -155,8 +194,11 @@ def summarize_activation_offload(chunks, gpu_budget_bytes, bandwidth_gbps=12.0):
     # ==========================================
     # TODO 1: 汇总 offload 结果和显存/带宽指标
     # 提示：先算 offloaded_bytes = total_bytes - kept_bytes，
-    # 再根据带宽估算 transfer_ms，并补出 pressure_ratio / saved_ratio。
+    # 再根据带宽估算 transfer_ms，并补出 pressure_ratio / saved_ratio；
+    # overflow_bytes > 0 时 feasible 必须为 False。
     # ==========================================
+    overflow_bytes = max(kept_bytes - gpu_budget_bytes, 0)
+    feasible = overflow_bytes == 0
     # offloaded_bytes = ???
     # transfer_ms = ???
     # pressure_ratio = ???
@@ -172,20 +214,31 @@ def summarize_activation_offload(chunks, gpu_budget_bytes, bandwidth_gbps=12.0):
         saved_ratio=round(saved_ratio, 3),
         offloaded_names=offloaded_names,
         kept_names=kept_names,
+        feasible=feasible,
+        overflow_bytes=overflow_bytes,
     )
 
 
 def recommend_offload_policy(summary: ActivationOffloadSummary, min_saved_ratio=0.25, max_transfer_ms=60.0):
-    """
-    根据 offload summary 返回 'accept' / 'tune' / 'reject'。
+    """根据教学阈值返回策略建议。
+
+    Args:
+        summary: summarize_activation_offload 返回的预算摘要。
+        min_saved_ratio: 教学用最低显存节省比例。
+        max_transfer_ms: 教学用单程理论传输时间上限。
+
+    Returns:
+        'accept'、'tune' 或 'reject'；不代表真实工程决策。
     """
     if summary.offloaded_bytes <= 0:
         return "reject"
 
+    if not summary.feasible:
+        return "reject"
     # ==========================================
     # TODO 2: 补全策略判断逻辑
-    # 提示：先判断什么时候可以 accept，
-    # 再判断“有收益但搬运偏贵”的 tune，剩下的统一 reject。
+    # 提示：先拒绝不可行方案，再检查 saved_ratio 和 transfer_ms；
+    # 收益达到阈值且传输可接受时 accept，边界放宽时 tune，其余 reject。
     # ==========================================
     # if ???:
     #     return "accept"
@@ -196,13 +249,21 @@ def recommend_offload_policy(summary: ActivationOffloadSummary, min_saved_ratio=
 
 
 def compare_offload_vs_checkpointing(offload_summary: ActivationOffloadSummary, checkpoint_saved_bytes, checkpoint_extra_ms):
-    """
-    用“单位时间省下的显存”做一个最小对比，看看 offload 和 checkpointing 哪条更划算。
+    """用理论节省字节数除以理论额外代价做教学比较。
+
+    Args:
+        offload_summary: offload 预算摘要。
+        checkpoint_saved_bytes: checkpoint 理论节省字节数。
+        checkpoint_extra_ms: checkpoint 理论额外时间，单位 ms。
+
+    Returns:
+        包含两种 score 和 preferred 的字典；不替代真实 benchmark。
     """
     # ==========================================
     # TODO 3: 完成 offload 与 checkpointing 的性价比比较
-    # 提示：两边都按“节省字节数 / 额外时间”算 score，
-    # 再比较哪个更大，返回 preferred。
+    # 提示：只比较“理论节省字节数 / 理论额外时间”；
+    # offload 使用 offloaded_bytes / transfer_ms，checkpoint 使用
+    # checkpoint_saved_bytes / checkpoint_extra_ms，返回 score 更大的 preferred。
     # ==========================================
     # offload_score = ???
     # checkpoint_score = ???
@@ -223,10 +284,10 @@ def compare_offload_vs_checkpointing(offload_summary: ActivationOffloadSummary, 
 def test_activation_offload():
     try:
         chunks = [
-            ActivationChunkSpec("embed", 256 * 1024 * 1024, 0.9),
-            ActivationChunkSpec("mid_a", 192 * 1024 * 1024, 0.4),
-            ActivationChunkSpec("mid_b", 160 * 1024 * 1024, 0.2),
-            ActivationChunkSpec("tail", 128 * 1024 * 1024, 0.7),
+            ActivationChunkSpec("embed", 256 * 1024 * 1024, 0),
+            ActivationChunkSpec("mid_a", 192 * 1024 * 1024, 2),
+            ActivationChunkSpec("mid_b", 160 * 1024 * 1024, 3),
+            ActivationChunkSpec("tail", 128 * 1024 * 1024, 1),
         ]
         summary = summarize_activation_offload(chunks, gpu_budget_bytes=384 * 1024 * 1024, bandwidth_gbps=8.0)
         assert summary.total_bytes == 736 * 1024 * 1024
@@ -246,14 +307,39 @@ def test_activation_offload():
 
         empty = summarize_activation_offload(chunks, gpu_budget_bytes=1024 * 1024 * 1024, bandwidth_gbps=8.0)
         assert empty.offloaded_bytes == 0
+        assert empty.feasible is True
+        assert empty.overflow_bytes == 0
         assert recommend_offload_policy(empty) == "reject"
+
+        blocked = summarize_activation_offload(
+            [ActivationChunkSpec("fixed", 512 * 1024 * 1024, 0, offloadable=False)],
+            gpu_budget_bytes=256 * 1024 * 1024,
+            bandwidth_gbps=8.0,
+        )
+        assert blocked.feasible is False
+        assert blocked.overflow_bytes == 256 * 1024 * 1024
+        assert recommend_offload_policy(blocked) == "reject"
+
+        invalid_specs = [
+            [ActivationChunkSpec("bad", -1, 0)],
+            [ActivationChunkSpec("bad", 1, -1)],
+            [ActivationChunkSpec("dup", 1, 0), ActivationChunkSpec("dup", 1, 1)],
+        ]
+        for invalid in invalid_specs:
+            try:
+                summarize_activation_offload(invalid, gpu_budget_bytes=1, bandwidth_gbps=1.0)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("invalid activation metadata should be rejected")
 
         better_offload = compare_offload_vs_checkpointing(summary, checkpoint_saved_bytes=300 * 1024 * 1024, checkpoint_extra_ms=80.0)
         assert better_offload["preferred"] == "offload"
 
         better_ckpt = compare_offload_vs_checkpointing(summary, checkpoint_saved_bytes=500 * 1024 * 1024, checkpoint_extra_ms=20.0)
         assert better_ckpt["preferred"] == "checkpointing"
-        print("activation offload passed")
+        print("✅ 预算模拟验证通过：offload 计划、可行性和教学策略判断符合预期。")
+        print("证据边界：这是理论预算模拟，不是实际 CPU↔GPU 搬运或真实 step time 测量。")
     except NotImplementedError:
         print("请先完成 TODO 部分的代码！")
         raise
@@ -293,10 +379,10 @@ test_activation_offload()
 ```python
 @dataclass
 class ActivationChunkSpec:
-    name: str
-    bytes_: int
-    keep_score: float
-    offloadable: bool = True
+    name: str  # 激活块名称，便于解释最终搬出/保留了谁
+    bytes_: int  # 激活块大小，单位 byte
+    reuse_delay_layers: int  # 距离下一次使用的预计层数，越大越冷
+    offloadable: bool = True  # 是否允许本策略搬出
 
 @dataclass
 class ActivationOffloadSummary:
@@ -309,11 +395,20 @@ class ActivationOffloadSummary:
     saved_ratio: float
     offloaded_names: list
     kept_names: list
+    feasible: bool
+    overflow_bytes: int
 
 
 def summarize_activation_offload(chunks, gpu_budget_bytes, bandwidth_gbps=12.0):
-    """
-    汇总一次 activation offload 计划。
+    """汇总一次 activation offload 预算计划，不执行真实 tensor 搬运。
+
+    Args:
+        chunks: ActivationChunkSpec 或等价 dict 的序列。
+        gpu_budget_bytes: GPU activation 预算，单位 byte。
+        bandwidth_gbps: 理论有效带宽，代码按 GiB/s 解释。
+
+    Returns:
+        ActivationOffloadSummary；feasible 表示最终保留量未超过预算。
     """
     if gpu_budget_bytes <= 0:
         raise ValueError("gpu_budget_bytes must be positive")
@@ -329,13 +424,21 @@ def summarize_activation_offload(chunks, gpu_budget_bytes, bandwidth_gbps=12.0):
         else:
             raise TypeError("chunks must contain ActivationChunkSpec or dict")
 
+    names = [c.name for c in normalized]
+    if len(names) != len(set(names)):
+        raise ValueError("chunk names must be unique")
+    if any(c.bytes_ < 0 for c in normalized):
+        raise ValueError("chunk bytes must be non-negative")
+    if any(c.reuse_delay_layers < 0 for c in normalized):
+        raise ValueError("reuse_delay_layers must be non-negative")
+
     total_bytes = sum(c.bytes_ for c in normalized)
     kept_bytes = total_bytes
     offloaded_names = []
 
     candidates = sorted(
         [c for c in normalized if c.offloadable],
-        key=lambda c: (c.keep_score, c.bytes_, c.name),
+        key=lambda c: (-c.reuse_delay_layers, -c.bytes_, c.name),
     )
 
     for chunk in candidates:
@@ -349,8 +452,11 @@ def summarize_activation_offload(chunks, gpu_budget_bytes, bandwidth_gbps=12.0):
     # ==========================================
     # TODO 1: 汇总 offload 结果和显存/带宽指标
     # 提示：先算 offloaded_bytes = total_bytes - kept_bytes，
-    # 再根据带宽估算 transfer_ms，并补出 pressure_ratio / saved_ratio。
+    # 再根据带宽估算 transfer_ms，并补出 pressure_ratio / saved_ratio；
+    # overflow_bytes > 0 时 feasible 必须为 False。
     # ==========================================
+    overflow_bytes = max(kept_bytes - gpu_budget_bytes, 0)
+    feasible = overflow_bytes == 0
     offloaded_bytes = total_bytes - kept_bytes
     transfer_ms = offloaded_bytes / (bandwidth_gbps * (1024 ** 3)) * 1000 if offloaded_bytes else 0.0
     pressure_ratio = total_bytes / gpu_budget_bytes
@@ -366,21 +472,32 @@ def summarize_activation_offload(chunks, gpu_budget_bytes, bandwidth_gbps=12.0):
         saved_ratio=round(saved_ratio, 3),
         offloaded_names=offloaded_names,
         kept_names=kept_names,
+        feasible=feasible,
+        overflow_bytes=overflow_bytes,
     )
 
 
 def recommend_offload_policy(summary: ActivationOffloadSummary, min_saved_ratio=0.25, max_transfer_ms=60.0):
-    """
-    根据 offload summary 返回 'accept' / 'tune' / 'reject'。
+    """根据教学阈值返回策略建议。
+
+    Args:
+        summary: summarize_activation_offload 返回的预算摘要。
+        min_saved_ratio: 教学用最低显存节省比例。
+        max_transfer_ms: 教学用单程理论传输时间上限。
+
+    Returns:
+        'accept'、'tune' 或 'reject'；不代表真实工程决策。
     """
     if summary.offloaded_bytes <= 0:
         return "reject"
 
     # ==========================================
     # TODO 2: 补全策略判断逻辑
-    # 提示：先判断什么时候可以 accept，
-    # 再判断“有收益但搬运偏贵”的 tune，剩下的统一 reject。
+    # 提示：先拒绝不可行方案，再检查 saved_ratio 和 transfer_ms；
+    # 收益达到阈值且传输可接受时 accept，边界放宽时 tune，其余 reject。
     # ==========================================
+    if not summary.feasible:
+        return "reject"
     if summary.kept_bytes <= summary.gpu_budget_bytes and summary.saved_ratio >= min_saved_ratio and summary.transfer_ms <= max_transfer_ms:
         return "accept"
     if summary.saved_ratio >= min_saved_ratio / 2 and summary.transfer_ms <= max_transfer_ms * 2:
@@ -390,13 +507,21 @@ def recommend_offload_policy(summary: ActivationOffloadSummary, min_saved_ratio=
 
 
 def compare_offload_vs_checkpointing(offload_summary: ActivationOffloadSummary, checkpoint_saved_bytes, checkpoint_extra_ms):
-    """
-    用“单位时间省下的显存”做一个最小对比，看看 offload 和 checkpointing 哪条更划算。
+    """用理论节省字节数除以理论额外代价做教学比较。
+
+    Args:
+        offload_summary: offload 预算摘要。
+        checkpoint_saved_bytes: checkpoint 理论节省字节数。
+        checkpoint_extra_ms: checkpoint 理论额外时间，单位 ms。
+
+    Returns:
+        包含两种 score 和 preferred 的字典；不替代真实 benchmark。
     """
     # ==========================================
     # TODO 3: 完成 offload 与 checkpointing 的性价比比较
-    # 提示：两边都按“节省字节数 / 额外时间”算 score，
-    # 再比较哪个更大，返回 preferred。
+    # 提示：只比较“理论节省字节数 / 理论额外时间”；
+    # offload 使用 offloaded_bytes / transfer_ms，checkpoint 使用
+    # checkpoint_saved_bytes / checkpoint_extra_ms，返回 score 更大的 preferred。
     # ==========================================
     offload_score = offload_summary.offloaded_bytes / max(offload_summary.transfer_ms, 1e-6)
     checkpoint_score = checkpoint_saved_bytes / max(checkpoint_extra_ms, 1e-6)
@@ -411,7 +536,7 @@ def compare_offload_vs_checkpointing(offload_summary: ActivationOffloadSummary, 
 ### 解析
 
 **1. TODO 1：汇总 offload 结果和显存/带宽指标**
-- **实现方式**：先用 `offloaded_bytes = total_bytes - kept_bytes` 得到真实搬运量，再按 `带宽 = bytes / time` 反推 `transfer_ms`，最后补出 `pressure_ratio` 和 `saved_ratio`。
+- **实现方式**：先用 `offloaded_bytes = total_bytes - kept_bytes` 得到本题预算模型中的搬运量，再按假设带宽估算 `transfer_ms`，最后补出 `pressure_ratio` 和 `saved_ratio`。它不是实际 CUDA copy 的测量值。
 - **关键点**：`kept_bytes` 反映 offload 后还留在 GPU 上的激活量，`offloaded_bytes` 反映这次计划实际搬走了多少。
 - **工程意义**：这一组指标把“省了多少显存”和“付出了多少搬运代价”放到同一张账上，是后面做策略判断的前提。
 

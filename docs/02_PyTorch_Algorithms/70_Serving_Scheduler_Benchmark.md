@@ -237,3 +237,48 @@ def recommend_serving_scheduler_run(
 - 实现方式：先复用 baseline 对比结果，再按吞吐阈值、公平性边界和延迟收益输出 `accept / tune / reject`。
 - 关键点：`tune` 主要对应吞吐和利用率已有改善，但公平性、TTFT 或 TPOT 还没有一起收稳。
 - 项目意义：serving 调度项目不是只追吞吐，而是判断这套调度策略值不值得继续上线、调优或回退。
+### 可选 Practice-P2：真实 serving backend 结果入口
+
+本节可以复用 vLLM / SGLang 的 OpenAI-compatible endpoint，但调度策略是否真正生效取决于 backend 的启动参数和版本。共享字段固定记录模型、backend、dtype、batch、并发与 cache policy；公平性、队列长度和 GPU 利用率等调度指标放入 `strategy_metrics`。
+
+```python
+try:
+    from tools.inference_project_runtime import locate_repo_root
+    REPO_ROOT = locate_repo_root()
+    from tools.inference_project_runtime import (
+        shared_project_config, save_project_result, start_optional_vllm,
+        stop_optional_vllm, run_backend_benchmark,
+    )
+except ModuleNotFoundError:
+    RUN_REAL_BACKEND = False
+    def shared_project_config(**kwargs): return kwargs
+    def save_project_result(*args, **kwargs): raise RuntimeError('需要从仓库根目录运行真实 backend 入口')
+
+MODEL_ID = 'Qwen/Qwen2.5-0.5B-Instruct'  # 固定基座模型。
+RESULT_PATH = 'benchmarks/results/70_scheduler.json'  # 统一结果文件。
+project_config = shared_project_config(
+    model=MODEL_ID, backend='vllm', dtype='auto', generated_tokens=64,
+    concurrency=4, cache_policy='default',
+)
+print(project_config)
+RUN_REAL_BACKEND = False  # 是否启动真实 backend；默认保持 CPU-first。
+if RUN_REAL_BACKEND:
+    server, log_path, port, selected_dtype, model_path = start_optional_vllm(
+        model_id=MODEL_ID, model_source='auto', dtype='auto',
+        served_model_name=MODEL_ID,
+    )
+    try:
+        report = run_backend_benchmark(
+            project='70', base_url=f'http://127.0.0.1:{port}', model=MODEL_ID,
+            label='vllm-scheduler', output=RESULT_PATH, concurrency=4,
+            dtype=selected_dtype, cache_policy='default',
+        )
+        print(report['normalized_result'])
+    finally:
+        stop_optional_vllm(server, log_path)
+# save_project_result(RESULT_PATH, project='70', strategy='scheduler',
+#     config=project_config, metrics=metrics,
+#     strategy_metrics={'fairness': fairness, 'queue_wait_ms': queue_wait_ms,
+#                       'gpu_utilization_pct': gpu_utilization_pct},
+#     decision=decision)
+```

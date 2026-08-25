@@ -18,6 +18,8 @@
 
 **关键词：** `Q`, `K`, `V`
 
+**显存路线视角：** Q / K / V 和 attention score 的 shape 决定中间张量规模；标准实现中的 attention score 通常接近 `[batch, heads, seq_len, seq_len]`，长序列下可能带来随 `seq_len²` 增长的临时空间压力。本文的 CPU 示例不代表真实 GPU 峰值。推理侧还要进一步区分 attention 临时空间与自回归生成过程中跨 decoding step 保留的 KV Cache。
+
 ## 前置阅读
 **导语：** 先看 0D 组页，把归一化和训练稳定性的边界对齐，再进入这一页会更顺。
 - [15. Normalization Techniques | 归一化技术](./15_Normalization_Techniques.md)
@@ -27,6 +29,8 @@
 - [P1: 04. Attention Memory Optimization | Attention 显存优化](../01_Hardware_Math_and_Systems/04_Attention_Memory_Optimization.md)
 - [17. PyTorch Profiling Basics | PyTorch 性能分析基础](./17_PyTorch_Profiling_Basics.md)
 - [P1: 14. FlashAttention Memory Model | FlashAttention 显存模型](../01_Hardware_Math_and_Systems/14_FlashAttention_Memory_Model.md)
+- [22. vLLM PagedAttention | vLLM PagedAttention](../02_PyTorch_Algorithms/22_vLLM_PagedAttention.md)
+- [34. Prefix Caching and Chunked Prefill | 前缀缓存与分块预填充](../02_PyTorch_Algorithms/34_Prefix_Caching_and_Chunked_Prefill.md)
 
 ## Q1：Q / K / V 分别承担什么职责？
 

@@ -27,12 +27,10 @@
 - [51. Online DPO | 在线 DPO](./51_Online_DPO.md)
 - [84. DPO Preference Project | DPO 偏好优化项目](./84_DPO_Preference_Project.md)
 - [85. GRPO Groupwise Alignment Project | GRPO 组内对齐项目](./85_GRPO_Groupwise_Alignment_Project.md)
-- [后训练与对齐专题入口](../topic_discussion/post_training_alignment/intro.md)
-- [06 Project Decision and Delivery | 项目决策与交付](../topic_discussion/post_training_alignment/06_project_decision_and_delivery.md)
 
 ## 相关阅读
 
-**导语：** 做完在线 DPO benchmark 后，最自然的下一步是回到对齐专题收口页，把离线和在线项目统一放进交付决策闭环。
+**导语：** 做完在线 DPO benchmark 后，回到对齐专题和项目决策页，把离线和在线项目统一放进交付决策闭环。
 - [后训练与对齐专题入口](../topic_discussion/post_training_alignment/intro.md)
 - [06 Project Decision and Delivery | 项目决策与交付](../topic_discussion/post_training_alignment/06_project_decision_and_delivery.md)
 ### Step 1: 定义在线 benchmark 目标

@@ -1,0 +1,56 @@
+{
+  "task": "task3_training_memory_optimization",
+  "stage": "bf16_capacity_probe",
+  "config": {
+    "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "batch_size": 1,
+    "seq_len": 1024,
+    "dtype": "float32",
+    "optimizer": "AdamW",
+    "workload": "pressure_1024",
+    "warmup": 2,
+    "iters": 5,
+    "amp_dtype": "torch.bfloat16",
+    "torch": "2.11.0+cu128",
+    "torch_cuda": "12.8",
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "mode": "bf16_probe",
+    "seed": 42,
+    "repeats": 3
+  },
+  "candidate": {
+    "step_time_ms": 293.893,
+    "samples_per_s": 3.404,
+    "loss": 11.83,
+    "peak_mem_mb": 10024.58,
+    "peak_reserved_mb": 10542.0,
+    "runs": [
+      {
+        "step_time_ms": 297.053,
+        "samples_per_s": 3.366,
+        "loss": 11.830729,
+        "peak_mem_mb": 10024.58,
+        "peak_reserved_mb": 10542.0
+      },
+      {
+        "step_time_ms": 297.743,
+        "samples_per_s": 3.359,
+        "loss": 11.82928,
+        "peak_mem_mb": 10024.58,
+        "peak_reserved_mb": 10542.0
+      },
+      {
+        "step_time_ms": 286.883,
+        "samples_per_s": 3.486,
+        "loss": 11.830463,
+        "peak_mem_mb": 10024.58,
+        "peak_reserved_mb": 10542.0
+      }
+    ]
+  },
+  "decision": {
+    "decision": "measure",
+    "reason": "BF16 probe does not compare against FP32 baseline."
+  },
+  "evidence_level": "fixed_workload_capacity_probe"
+}

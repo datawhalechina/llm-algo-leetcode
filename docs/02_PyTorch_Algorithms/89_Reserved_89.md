@@ -20,12 +20,14 @@
 
 ## 前置阅读
 
-**导语：** 先看上下游章节，再看这个预留页；这一页的作用是为后续扩展保留统一入口。
-- - [84. DPO Preference Project | DPO 偏好项目](./84_DPO_Preference_Project.md)
-- - [85. GRPO Groupwise Alignment Project | GRPO 分组对齐项目](./85_GRPO_Groupwise_Alignment_Project.md)
-- - [87. Reserved 87 | 通用预留](./87_Reserved_87.md)
-- - [88. Reserved 88 | 通用预留](./88_Reserved_88.md)
+**导语：** 先看后训练对齐项目，再看这个通用预留页；这一页只保留后续扩展的统一入口。
+- [84. DPO Preference Project | DPO 偏好项目](./84_DPO_Preference_Project.md)
+- [85. GRPO Groupwise Alignment Project | GRPO 分组对齐项目](./85_GRPO_Groupwise_Alignment_Project.md)
+- [86. DPO Online Benchmark | DPO 在线基准](./86_DPO_Online_Benchmark.md)
 
+## 相关阅读
+
+- [2.10 项目验证与工程收口](./2_10.md)
 ### Step 1: 定义这个预留位的未来职责
 先回答一个问题：这个编号后续要承接的是哪类内容，是概念补位、项目补位，还是评估补位？
 

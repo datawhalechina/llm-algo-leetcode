@@ -14,17 +14,19 @@
 
 ## 本节导读
 
-这一页把 DDP、ZeRO 和激活值显存的理论推导落成可运行代码，帮助你从“会算”走到“会验证”。
+这一页用可运行代码计算 DDP、ZeRO 和训练状态账本。参数、梯度和优化器状态先单独核算；激活值、通信缓冲区、allocator reserved、kernel workspace 等完整峰值需要在真实 workload 中测量。
 
-这一页在整个教程的纵向主线里属于 `Part 01` 的显存账本基础页，优先服务 `监督微调路线` 的训练预算判断。学完这里，后面再看 `12 / 26 / 60 / 65` 时，你会更容易理解全参微调、LoRA、QLoRA 和 ZeRO/FSDP 为什么会有完全不同的显存账本；如果这里没学明白，后面很容易只剩方法结论，而没有预算直觉，判断不清显存压力究竟来自参数、优化器状态还是激活值。按专题归类，这一页主要属于 `显存优化专题`，也直接支撑 `监督微调路线` 的训练预算分析。
+这一页是 `Part 01` 的显存账本基础，主要服务 `监督微调路线` 的训练预算，也连接 `显存优化专题` 中的 ZeRO、LoRA 和 QLoRA 讨论。本节是 **CPU-first；GPU 用于扩展验证**：CPU 代码可以验证参数、梯度、optimizer state 和 ZeRO 分摊公式，但不能证明 activation、通信缓冲、workspace、碎片和 reserved memory 的真实峰值。完成后，你应该能把单卡训练状态拆成参数、梯度和 optimizer state，并说明 ZeRO 改变了哪一部分驻留关系；真实峰值仍需在目标 workload 上测量。
 
 **关键词：** `VRAM`, `ZeRO`, `AdamW`
+
+本节主对应显存优化路线的 Task1（账本底座）。公式结果可以作为 Task3 / 73 / 76 的预算假设，并由 75 放入真实结果做预算判断；本节本身不是 Task6 的 profiling 收口。
 
 ---
 
 ## 前置阅读
 
-**导语：** 这一页先把混合精度训练和显存计算的底层推导接上；如果你正在走 `监督微调路线`，这里会直接服务 LoRA / QLoRA 与多卡训练预算判断，因为后面到底该全参微调、LoRA、QLoRA 还是 ZeRO/FSDP，本质上都先要把这本显存账算清楚。
+**导语：** 先用混合精度和训练状态公式建立预算，再把结果用于 LoRA、QLoRA 和 ZeRO/FSDP 的方案比较。
 
 - [05. Communication Topologies | 通信拓扑与分布式基石](./05_Communication_Topologies.md)
 - [03. GPU Architecture and Memory | GPU 物理架构与内存层级](./03_GPU_Architecture_and_Memory.md)
@@ -43,24 +45,48 @@
 <details>
 <summary>点击展开查看解析</summary>
 
-在 DDP 下，每张卡都保存完整模型、完整梯度和完整优化器状态。对于 Adam + FP16/BF16 训练，常用的粗略估算是 **16Φ**：
+在 DDP 下，每张卡都保存完整模型、完整梯度和完整优化器状态。对一种常见的混合精度 Adam 近似，模型参数和梯度按 2 bytes/parameter，优化器状态按 12 bytes/parameter，得到 **16Φ**。这不是普适常数：优化器、master weights、参数/梯度 dtype 和实现都会改变结果。
 
 - 模型参数：`2Φ`
 - 梯度：`2Φ`
 - 优化器状态：`12Φ`
 
-把这三部分相加，就得到 `16Φ` 这一条经验公式。
+把这三部分相加，就得到 `16Φ` 这一条训练状态估算。它不包含 activation、通信缓冲、临时 workspace、显存碎片或框架的 reserved memory，因此不能直接当作训练峰值或 OOM 上限。
 
 </details>
 ### Q1小验证：DDP 显存计算
 
 ```python
+def training_state_breakdown(num_params_b, model_dtype='fp16', optimizer='adam'):
+    """Return a theoretical training-state ledger in decimal GB.
+
+    The result covers parameters, gradients and optimizer state only.
+    It assumes one byte accounting per parameter and does not model
+    activations, communication buffers, workspace or allocator reserve.
+    """
+    if num_params_b < 0:
+        raise ValueError('num_params_b must be non-negative')
+    try:
+        model_bytes = {'fp32': 4, 'fp16': 2, 'bf16': 2}[model_dtype]
+        optimizer_bytes = {'adam': 12, 'sgd': 4}[optimizer]
+    except KeyError as exc:
+        raise ValueError('unsupported dtype or optimizer') from exc
+    values = {
+        'parameters_gb': num_params_b * model_bytes,
+        'gradients_gb': num_params_b * model_bytes,
+        'optimizer_state_gb': num_params_b * optimizer_bytes,
+    }
+    values['training_state_gb'] = sum(values.values())
+    return values
+
+
 def calculate_ddp_memory(num_params_b, model_dtype='fp16', optimizer='adam'):
-    model_bytes = {'fp32': 4, 'fp16': 2, 'bf16': 2}[model_dtype]
-    gradient_bytes = model_bytes
-    optimizer_bytes = {'adam': 12, 'sgd': 4}[optimizer]
-    total_bytes = model_bytes + gradient_bytes + optimizer_bytes
-    return num_params_b * total_bytes
+    return training_state_breakdown(num_params_b, model_dtype, optimizer)['training_state_gb']
+
+ledger = training_state_breakdown(7, 'bf16', 'adam')
+print('7B parameters, BF16 + Adam theoretical training-state ledger (decimal GB):')
+for name, value in ledger.items():
+    print(f'  {name}: {value:.1f}')
 ```
 
 
@@ -100,9 +126,19 @@ ZeRO 的核心思想是把训练状态分摊到多张 GPU 上：
 
 ```python
 def calculate_zero_memory(num_params_b, zero_stage, num_gpus, model_dtype='fp16', optimizer='adam'):
-    model_bytes = {'fp32': 4, 'fp16': 2, 'bf16': 2}[model_dtype]
+    """估算理想均匀切分下的单卡训练状态显存。
+
+    只计算参数、梯度和优化器状态；不包含 activation、通信 buffer、
+    workspace、切分粒度和 allocator reserve，因此不能直接保证不 OOM。
+    """
+    if num_params_b < 0 or num_gpus <= 0:
+        raise ValueError('num_params_b must be non-negative and num_gpus must be positive')
+    try:
+        model_bytes = {'fp32': 4, 'fp16': 2, 'bf16': 2}[model_dtype]
+        optimizer_bytes = {'adam': 12, 'sgd': 4}[optimizer]
+    except KeyError as exc:
+        raise ValueError('unsupported dtype or optimizer') from exc
     gradient_bytes = model_bytes
-    optimizer_bytes = {'adam': 12, 'sgd': 4}[optimizer]
 
     if zero_stage == 0 or zero_stage == 'ddp':
         bytes_per_param = model_bytes + gradient_bytes + optimizer_bytes
@@ -146,10 +182,22 @@ test_calculate_zero_memory()
 
 ```python
 def max_trainable_params(gpu_memory_gb, num_gpus, zero_stage, overhead_ratio=0.2, model_dtype='fp16', optimizer='adam'):
+    """Estimate parameter scale after a lumped safety reserve.
+
+    ``overhead_ratio`` is a teaching knob for activations and communication;
+    it is not a measured peak-memory fraction and cannot guarantee no OOM.
+    """
+    if gpu_memory_gb <= 0 or num_gpus <= 0:
+        raise ValueError('gpu_memory_gb and num_gpus must be positive')
+    if not 0 <= overhead_ratio < 1:
+        raise ValueError('overhead_ratio must be in [0, 1)')
     available_memory = gpu_memory_gb * (1 - overhead_ratio)
-    model_bytes = {'fp32': 4, 'fp16': 2, 'bf16': 2}[model_dtype]
-    gradient_bytes = model_bytes
-    optimizer_bytes = {'adam': 12, 'sgd': 4}[optimizer]
+    try:
+        model_bytes = {'fp32': 4, 'fp16': 2, 'bf16': 2}[model_dtype]
+        gradient_bytes = model_bytes
+        optimizer_bytes = {'adam': 12, 'sgd': 4}[optimizer]
+    except KeyError as exc:
+        raise ValueError('unsupported dtype or optimizer') from exc
 
     if zero_stage == 0 or zero_stage == 'ddp':
         bytes_per_param = model_bytes + gradient_bytes + optimizer_bytes
@@ -186,14 +234,14 @@ test_max_trainable_params()
 
 ## Q3：8×80GB GPU 下的最大模型规模估算
 
-**问题：** 如果你手上只有 8 张 80GB GPU，并且希望预留 20% 显存给 activation 和通信开销，DDP、ZeRO-1、ZeRO-2、ZeRO-3 分别能支撑多大的模型？
+**问题：** 如果你手上只有 8 张标称 80GB 的 GPU，并且用一个 20% 的教学预留系数近似 activation 和通信开销，DDP、ZeRO-1、ZeRO-2、ZeRO-3 的训练状态估算分别能支撑多大的模型？
 
 请把四种策略放在同一个表里比较最大可训练模型规模。
 
 <details>
 <summary>点击展开查看解析</summary>
 
-把 DDP、ZeRO-1、ZeRO-2、ZeRO-3 放在同一个表里，比较不同策略的可训练模型规模。这个问题的目标是把前面的 DDP / ZeRO 公式真正落到工程场景里，而不是只停留在概念层。
+把 DDP、ZeRO-1、ZeRO-2、ZeRO-3 放在同一个表里，比较不同策略的理论参数规模。这个结果只表示“在当前账本和预留假设下可能容纳”，不等于真实训练可运行上限；最终仍要用目标 batch、序列长度、checkpoint、通信和优化器实现做 GPU 实测。
 
 </details>
 

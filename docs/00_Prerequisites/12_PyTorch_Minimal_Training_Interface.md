@@ -14,6 +14,8 @@
 
 **关键词：** `Dataset`, `DataLoader`, `collate`
 
+**显存路线视角：** batch size、padding、序列长度和 mask 会改变每个 step 的输入与 activation 规模；本页只验证 batch 契约和数据对齐，不测真实吞吐或显存峰值。在 73 / 76 中，应固定这些 workload 参数并把它们写入报告。
+
 ## 前置阅读
 **导语：** 先看 0C 组页，把训练闭环和数据接口的边界对齐，再进入这一页会更顺。
 - [11. PyTorch Optimizers and Loss | PyTorch 优化器与损失函数](./11_PyTorch_Optimizers_and_Loss.md)
@@ -22,6 +24,7 @@
 ## 相关阅读
 **导语：** 本页先把 Dataset、DataLoader 和 batch 契约讲清楚；如果想继续看训练循环怎么把这些接口串起来，再顺着看下面这一页。
 - [13. Simple Neural Network Training | 简单神经网络训练循环](./13_Simple_Neural_Network_Training.md)
+- [73. Training Performance Analysis | 训练性能分析](../02_PyTorch_Algorithms/73_Training_Performance_Analysis.md)
 
 ## Q1：Dataset 和 DataLoader 分别解决什么问题？
 

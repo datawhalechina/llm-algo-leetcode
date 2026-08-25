@@ -73,13 +73,15 @@ total memory budget
 ## 与 Task0-6 的关系
 
 - `Task0` 负责理解 autograd 和 backward 生命周期；`Task1` 才把这些状态放回 GPU 显存层级中。
-- `Task0-6` 负责学习顺序，告诉读者先读哪些 notebook。
+- `intro` 负责学习顺序，告诉读者先读哪些 Notebook；本页负责解释账本为什么这样组织。
 - `01-06` 负责知识组织，把训练、推理和验证三条显存线收成同一套判断框架。
 - 因此，这一页是诊断起点，不是目录索引。
 
 ## 本页输出与下一步
 
-读完本页，至少应能写出一份简化显存账本：参数、梯度、optimizer state、activation、KV cache 和框架 buffer 分别占什么位置，峰值出现在哪个阶段，以及下一步应该测什么。然后进入 [03 GPU Architecture and Memory](../../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.ipynb) 和 [20 FlashAttention Sim](../../02_PyTorch_Algorithms/20_FlashAttention_Sim.ipynb)，把账本对象连接到带宽、访存和计算路径。
+读完本页，至少应能写出一份简化显存账本：参数、梯度、optimizer state、activation、KV cache 和框架 buffer 分别占什么位置，峰值出现在哪个阶段，以及下一步应该测什么。接着按 Task1 主线回看 [02 LLM Params and FLOPs](../../01_Hardware_Math_and_Systems/02_LLM_Params_and_FLOPs.ipynb)、[03 GPU Architecture and Memory](../../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.ipynb) 和 [06 VRAM Calculation and ZeRO](../../01_Hardware_Math_and_Systems/06_VRAM_Calculation_and_ZeRO.ipynb)；需要连接 attention 访存时，再补充 [20 FlashAttention Sim](../../02_PyTorch_Algorithms/20_FlashAttention_Sim.ipynb)。
+
+在 Part01 主线中，这个账本由 `01 dtype → 02 参数规模 → 03 硬件代价 → 06 状态分摊` 逐步建立。这里的账本是估算和诊断语言；真实峰值、吞吐和 OOM 边界仍由 73、76 和 74 验证。
 
 ## 文献锚点
 

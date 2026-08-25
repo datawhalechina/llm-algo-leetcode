@@ -20,12 +20,16 @@
 
 ## 前置阅读
 
-**导语：** 先看上下游章节，再看这个预留页；这一页的作用是为后续扩展保留统一入口。
-- - [79. Distributed Parallel Benchmark | 分布式并行基准](./79_Distributed_Parallel_Benchmark.md)
-- - [80. MoE Expert Parallel Benchmark | MoE 专家并行基准](./80_MoE_Expert_Parallel_Benchmark.md)
-- - [84. DPO Preference Project | DPO 偏好项目](./84_DPO_Preference_Project.md)
-- - [85. GRPO Groupwise Alignment Project | GRPO 分组对齐项目](./85_GRPO_Groupwise_Alignment_Project.md)
+**导语：** 先看通信与并行项目及专题入口，再看这个预留页；这一页只保留后续扩展的统一入口。
+- [79. Distributed Parallel Benchmark | 分布式并行基准](./79_Distributed_Parallel_Benchmark.md)
+- [80. MoE Expert Parallel Benchmark | MoE 专家并行基准](./80_MoE_Expert_Parallel_Benchmark.md)
+- [81. Distributed Inference Project | 分布式推理项目](./81_Distributed_Inference_Project.md)
+- [2.9 通信与并行专题入口](./2_9.md)
 
+## 相关阅读
+
+- [46. Communication Profiling with NCCL | NCCL 通信 Profiling](./46_Communication_Profiling_with_NCCL.md)
+- [2.10 项目验证与工程收口](./2_10.md)
 ### Step 1: 定义这个预留位的未来职责
 先回答一个问题：这个编号后续要承接的是哪类内容，是概念补位、项目补位，还是评估补位？
 

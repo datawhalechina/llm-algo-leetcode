@@ -16,19 +16,19 @@
 
 大模型训练里，算力并不是唯一瓶颈。很多任务从单卡扩到多卡后，吞吐并不会线性提升，问题往往不在矩阵乘法，而在通信路径本身：数据并行怎么同步，张量并行怎么切分，流水线并行为什么会产生等待，不同拓扑下这些通信会不会直接压过计算收益。
 
-这是一节**并行前置节**：在整个教程的纵向主线里，它属于 `Part 01` 的多卡通信基础页，优先服务 `监督微调路线`。学完这里，后面再看 `06 / 20 / 27 / 60` 时，你会更容易先把 `DP / TP / PP` 放到同一张通信图里看；如果这里没学明白，后面很容易只记住不同并行方式在切什么，却说不清通信主要走哪条链路，以及为什么同样的切分策略在不同拓扑下扩展效率会明显不同。按专题归类，这一页主要属于 `通信与并行专题`，也直接支撑训练工程里的多卡判断。
+这是一节**并行前置节**：它从 DP、TP、PP 和通信拓扑出发，解释多卡训练为什么会受到带宽和同步影响，主要服务 `监督微调路线` 与 `通信与并行专题`。
 
 **关键词：** `DP`, `TP`, `PP`
 
 ---
 
 ## 前置阅读
-**导语：** 先把硬件拓扑和显存切分的基础接上，再看这页的并行策略，会更容易把通信和计算放到同一张图里；如果你正在走 `监督微调路线`，这里会直接服务多卡训练预算和并行切分判断。
+**导语：** 先复习 GPU 拓扑和显存切分，再用本页的示例比较并行方式、链路带宽与通信代价。
 - [03. GPU Architecture and Memory | GPU 物理架构与内存层级](./03_GPU_Architecture_and_Memory.md)
 - [06. VRAM Calculation and ZeRO | 显存计算与 ZeRO 优化](./06_VRAM_Calculation_and_ZeRO.md)
 
 ## 相关阅读
-**导语：** 如果想把通信拓扑继续往并行策略和通信优化里接，可以接着看下面几页，把“拓扑长什么样”继续收成“训练为什么扩不动、该怎么切并行”的判断链。
+**导语：** 后续页面把本页的拓扑判断接到 NCCL、并行策略和通信调度。
 - [20. NCCL and AllReduce Basics | NCCL 与 AllReduce 基础](./20_NCCL_and_AllReduce_Basics.md)
 - [26. Parallel Strategy Decision Framework | 并行策略决策框架](./26_Parallel_Strategy_Decision_Framework.md)
 - [27. Communication Scheduling Optimization | 通信调度优化](./27_Communication_Scheduling_Optimization.md)
@@ -70,11 +70,11 @@ print('3D parallelism = DP × TP × PP')
 
 ```
 
-## Q2：以 A100/H100 服务器为例，机内与机外通信的物理拓扑和带宽差距有多大？
+## Q2：用一组示例带宽比较机内与机外通信
 
 <details><summary>点击展开查看解析</summary>
 
-机内通常可以通过 NVLink / NVSwitch 获得更高带宽，而机外则常常受限于 PCIe 或网络链路。
+机内通常可以通过 NVLink / NVSwitch 获得更高带宽，而机外则常常受限于 PCIe 或网络链路。下面的数值只是教学用的链路带宽假设，不代表所有 A100/H100、主板、驱动或网络配置；真实实验应以 `nvidia-smi topo -m`、NCCL 测试或厂商规格为准。
 
 这意味着：
 - 机内通信更适合高频同步；
@@ -89,6 +89,9 @@ print('3D parallelism = DP × TP × PP')
 
 ```python
 def bandwidth_ratio(intra=900, inter=64):
+    """Return an illustrative link-bandwidth ratio in the same unit (Gb/s)."""
+    if intra <= 0 or inter <= 0:
+        raise ValueError('intra and inter bandwidths must be positive')
     return intra / inter
 
 print(f'ratio ≈ {bandwidth_ratio():.1f}x')
@@ -108,7 +111,17 @@ print(f'ratio ≈ {bandwidth_ratio():.1f}x')
 
 ```python
 def comm_time_ms(size_mb, bandwidth_gbps):
-    # size_mb -> Mb, divide by Gbps, then convert s to ms.
+    """Estimate ideal one-way payload transfer time in milliseconds.
+
+    This is a bandwidth-only lower-bound proxy: it excludes latency,
+    protocol overhead, collective algorithms, contention, directionality
+    and topology. ``size_mb`` is decimal MB and bandwidth is Gb/s.
+    """
+    if size_mb < 0:
+        raise ValueError('size_mb must be non-negative')
+    if bandwidth_gbps <= 0:
+        raise ValueError('bandwidth_gbps must be positive')
+    # MB -> Mb, divide by Gb/s, then convert seconds to milliseconds.
     return size_mb * 8 / bandwidth_gbps
 
 payload_mb = 256
@@ -134,7 +147,7 @@ print(f'PCIe / NVLink time ratio: {ratio:.1f}x')
 - **All-Gather**：把各卡局部数据收集到一起，形成完整结果。
 - **Reduce-Scatter**：先归约，再把结果切分发回各卡。
 
-它们在数据并行、张量并行和流水线并行中会以不同方式出现，决定了同步成本和通信模式。
+它们在数据并行、张量并行和流水线并行中会以不同方式出现，影响同步成本和通信模式；实际耗时还取决于消息大小、world size、拓扑、collective 算法与通信库实现。下面的代码只做概念映射，不是在模拟 NCCL。
 </details>
 ### Q4小验证：通信原语各自做什么
 

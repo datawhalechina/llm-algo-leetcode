@@ -582,24 +582,24 @@ print({'vllm_on_current_kernel': importlib.util.find_spec('vllm') is not None, '
 
 ```python
 # 只需要修改这一格
-RUN_REAL_BACKEND = False
-MODEL_SOURCE = 'auto'  # auto / modelscope / huggingface / local
-MODEL_CACHE_DIR = 'model_cache'
+RUN_REAL_BACKEND = False  # 是否启动真实 vLLM；False 只完成 CPU-first 模板。
+MODEL_SOURCE = 'auto'  # 模型来源：auto / modelscope / huggingface / local。
+MODEL_CACHE_DIR = 'model_cache'  # 模型缓存目录；通常不需要修改。
 MODEL_PROFILES = {
     'qwen25_small': 'Qwen/Qwen2.5-0.5B-Instruct',
     'deepseek_r1_small': 'deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B',
 }
-MODEL_PROFILE = 'qwen25_small'
-MODEL_ID = MODEL_PROFILES[MODEL_PROFILE]
-DTYPE = 'auto'
+MODEL_PROFILE = 'qwen25_small'  # 先用小模型完成 smoke test。
+MODEL_ID = MODEL_PROFILES[MODEL_PROFILE]  # 实际加载的模型 ID。
+DTYPE = 'auto'  # auto 根据 GPU 选择；也可显式写 bfloat16 / float16。
 VLLM_COMMAND = None  # 为空时自动查找当前环境中的 vllm
 VLLM_ENV = None  # 云端保持当前 runtime；本地多环境时再填写环境名
-MAX_MODEL_LEN = 2048
-GPU_MEMORY_UTILIZATION = 0.8
+MAX_MODEL_LEN = 2048  # 最大上下文长度；越大越占 KV Cache。
+GPU_MEMORY_UTILIZATION = 0.8  # vLLM 使用显存比例；需为桌面和其他进程留余量。
 ENFORCE_EAGER = True  # 先保证 RTX 50 系列等架构可复现；稳定后可尝试 False
-NUM_PROMPTS = 5  # 与当前 fixed.jsonl 的 5 条请求一致
-CONCURRENCY = 1  # 先完成 smoke test，再改为 4 做并发对照
-WARMUP = 1  # smoke test；正式实验建议提高到 3-10
+NUM_PROMPTS = 5  # 请求总数；正式实验应大于 smoke test。
+CONCURRENCY = 1  # 同时在途请求数；只做并发实验时改变它。
+WARMUP = 1  # 预热请求数；正式实验建议提高到 3-10。
 
 ```
 
@@ -638,13 +638,20 @@ if RUN_REAL_BACKEND:
             '--base-url', f'http://127.0.0.1:{port}',
             '--model', MODEL_ID,
             '--label', 'vllm-real',
+            '--project', '66',
+            '--backend', 'vllm',
+            '--dtype', selected_dtype,
+            '--batch', '1',
+            '--cache-policy', 'default',
             '--workload', 'benchmarks/workloads/fixed.jsonl',
             '--num-prompts', str(NUM_PROMPTS),
             '--concurrency', str(CONCURRENCY),
             '--warmup', str(WARMUP),
             '--output', str(output_path),
         ], check=True)
-        print(json.loads(output_path.read_text(encoding='utf-8'))['metrics'])
+        saved = json.loads(output_path.read_text(encoding='utf-8'))
+        print(saved['metrics'])
+        print('统一结果：', json.dumps(saved['normalized_result'], ensure_ascii=False, indent=2))
     finally:
         stop_backend(server, server_log)
 else:

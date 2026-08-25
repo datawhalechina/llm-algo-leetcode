@@ -49,6 +49,9 @@ downstream -> project / evaluation continuation
 
 本节最小产物：
 
+## 练习代码
+
+下面的代码是学习者需要完成的练习；运行到中止提示后，再查看后面的参考代码。
 
 ```python
 from typing import Dict, List

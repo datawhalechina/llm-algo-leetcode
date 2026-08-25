@@ -194,3 +194,48 @@ def recommend_prefix_cache_run(baseline: Dict[str, float], candidate: Dict[str, 
 - 实现方式：先复用对比结果，再按命中率下限、TTFT 收益和开销上限输出 `accept / tune / reject`。
 - 关键点：`tune` 主要对应命中率和延迟收益可用，但 chunk 粒度、缓存失效或维护成本还没有收稳。
 - 项目意义：prefix cache 项目不是只看 hit rate，而是判断这套策略值不值得继续部署、调优或回退。
+### 可选 Practice-P2：真实 backend 结果入口
+
+vLLM / SGLang 的 prefix-cache 开关、服务版本和 cache policy 可能不同；先用共享 helper 自动准备模型和服务，再把实际 policy 写入统一配置。普通服务启动成功不代表 prefix cache 已启用，必须在结果中保留 `cache_policy`、命中率和失效开销。
+
+```python
+try:
+    from tools.inference_project_runtime import locate_repo_root
+    REPO_ROOT = locate_repo_root()
+    from tools.inference_project_runtime import (
+        shared_project_config, save_project_result, start_optional_vllm,
+        stop_optional_vllm, run_backend_benchmark,
+    )
+except ModuleNotFoundError:
+    RUN_REAL_BACKEND = False
+    def shared_project_config(**kwargs): return kwargs
+    def save_project_result(*args, **kwargs): raise RuntimeError('需要从仓库根目录运行真实 backend 入口')
+
+MODEL_ID = 'Qwen/Qwen2.5-0.5B-Instruct'  # 固定基座模型。
+CACHE_POLICY = 'prefix_cache'  # candidate 策略；baseline 应使用 default。
+RESULT_PATH = 'benchmarks/results/69_prefix_cache.json'  # 统一结果文件。
+project_config = shared_project_config(
+    model=MODEL_ID, backend='vllm', dtype='auto', generated_tokens=64,
+    cache_policy=CACHE_POLICY,
+)
+print(project_config)
+RUN_REAL_BACKEND = False  # 是否启动真实 backend；默认不下载模型、不占用 GPU。
+if RUN_REAL_BACKEND:
+    server, log_path, port, selected_dtype, model_path = start_optional_vllm(
+        model_id=MODEL_ID, model_source='auto', dtype='auto',
+        served_model_name=MODEL_ID,
+    )
+    try:
+        report = run_backend_benchmark(
+            project='69', base_url=f'http://127.0.0.1:{port}', model=MODEL_ID,
+            label='vllm-prefix-cache', output=RESULT_PATH, concurrency=1,
+            dtype=selected_dtype, cache_policy=CACHE_POLICY,
+        )
+        print(report['normalized_result'])
+    finally:
+        stop_optional_vllm(server, log_path)
+# save_project_result(RESULT_PATH, project='69', strategy='prefix_cache',
+#     config=project_config, metrics=metrics,
+#     strategy_metrics={'hit_rate': hit_rate, 'maintenance_overhead_ms': overhead_ms},
+#     decision=decision)
+```

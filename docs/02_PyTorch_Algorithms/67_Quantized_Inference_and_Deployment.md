@@ -370,3 +370,59 @@ def recommend_quantized_deployment(summary, min_latency_delta_ms=5.0, min_throug
 - 实现方式：把 latency、throughput、VRAM、error 放到同一张表，再补一句部署建议。
 - 关键点：报告必须同时呈现收益和误差预算，避免只凭显存下降就直接上线。
 - 项目意义：量化部署项目最后要回答的不是“能不能量化”，而是“这套方案是否满足部署约束，下一轮该扩大回归还是继续校准”。
+
+### 可选 Practice-P2：真实 backend 与统一结果保存
+
+默认保持 Practice-P1 的本地/模拟量化实验；需要接入 vLLM 时，将 `RUN_REAL_BACKEND` 改为 `True`。模型来源支持 `auto`、`modelscope`、`huggingface` 或本地目录，dtype 与端口由共享 helper 自动选择。不同量化格式是否被 backend 支持，仍需单独验证，不能把服务启动成功等同于量化收益成立。
+
+Colab / ModelScope：先确保 Notebook 位于仓库根目录（或先 clone 仓库），再运行下面单元；没有 GPU 时保留 `False`，不会阻断前面的 CPU-first 练习。
+
+```python
+try:
+    from tools.inference_project_runtime import locate_repo_root
+    REPO_ROOT = locate_repo_root()
+    from tools.inference_project_runtime import (
+        shared_project_config, save_project_result, start_optional_vllm,
+        stop_optional_vllm, run_backend_benchmark,
+    )
+except ModuleNotFoundError:
+    # 题目测试或纯 CPU 环境可能没有仓库工具；真实 backend 入口保持关闭。
+    RUN_REAL_BACKEND = False
+    def shared_project_config(**kwargs): return kwargs
+    def save_project_result(*args, **kwargs): raise RuntimeError('需要从仓库根目录运行真实 backend 入口')
+
+RUN_REAL_BACKEND = False  # 是否启动真实 backend；默认只练习量化决策模板。
+MODEL_ID = 'Qwen/Qwen2.5-0.5B-Instruct'  # 量化前后必须保持同一基座模型。
+MODEL_SOURCE = 'auto'  # 模型来源：auto / modelscope / huggingface / local。
+DTYPE = 'auto'  # 非量化计算 dtype；auto 根据当前 GPU 选择。
+BACKEND = 'vllm'  # 推理运行时；更换 backend 会改变 kernel 支持范围。
+CACHE_POLICY = 'default'  # KV Cache 策略；对照实验中应固定。
+RESULT_PATH = 'benchmarks/results/67_quantized_deployment.json'  # 统一结果文件。
+
+project_config = shared_project_config(
+    model=MODEL_ID, backend=BACKEND, dtype=DTYPE,
+    generated_tokens=64, cache_policy=CACHE_POLICY,
+)
+print(project_config)
+
+# 量化候选完成本地测量后，用下面的调用保存统一结果：
+# save_project_result(RESULT_PATH, project='67', strategy='w8a16',
+#     config=project_config, metrics=metrics, quality=quality, decision=decision)
+
+# 真实 backend 先验证服务链路；量化格式专用启动参数需要按实际引擎补充。
+if RUN_REAL_BACKEND:
+    server, log_path, port, selected_dtype, model_path = start_optional_vllm(
+        model_id=MODEL_ID, model_source=MODEL_SOURCE, dtype=DTYPE,
+        served_model_name=MODEL_ID,
+    )
+    try:
+        report = run_backend_benchmark(
+            project='67', base_url=f'http://127.0.0.1:{port}', model=MODEL_ID,
+            label='vllm-deployment-smoke', output=RESULT_PATH,
+            dtype=selected_dtype, cache_policy=CACHE_POLICY,
+        )
+        print({'model_path': model_path, 'dtype': selected_dtype, 'port': port})
+        print(report['normalized_result'])
+    finally:
+        stop_optional_vllm(server, log_path)
+```

@@ -14,11 +14,13 @@
 
 ## 本节导读
 
-理解大模型系统瓶颈，不能只停留在“GPU 很快”这种抽象印象上。真正决定 attention kernel、prefill 吞吐和算子优化边界的，往往是更底层的物理事实：Tensor Core 适合什么计算模式，HBM 和 SRAM 的带宽差距有多大，数据为什么一旦反复搬运就会让算子很快变成 memory bound。
+理解大模型系统瓶颈，不能只停留在“GPU 很快”这种抽象印象上。影响 attention kernel、prefill 吞吐和算子优化边界的因素包括：Tensor Core 适合什么计算模式，HBM 和 SRAM 的带宽差距有多大，以及数据搬运是否让算子更接近 memory bound。
 
-这是一节**硬件前置节**：在整个教程的纵向主线里，它属于 `Part 01` 的硬件与访存基础页，优先服务 `推理优化路线`。学完这里，后面再看 `20 / 34 / 66` 时，你会更容易建立“硬件层级 -> 访存瓶颈 -> attention kernel”这条判断链；如果这里没学明白，后面很容易把 FlashAttention、cache 和 kernel 优化都误看成单纯算力问题，而忽略带宽和存储层级才是很多瓶颈的起点。按专题归类，这一页主要属于 `推理优化专题`，也给 `编译与图优化专题` 提供硬件背景前置。
+这是一节**硬件前置节**：它解释 GPU 层级、带宽和片上存储如何影响访存瓶颈，主要服务 `推理优化路线`，也为 `编译与图优化专题` 提供硬件背景；显存路线使用其中的容量、带宽和数据移动部分。本节是 **GPU optional**：CPU 模拟只能建立相对关系，不能证明具体设备的带宽、kernel、峰值显存或 OOM 边界。完成后，你应该能根据算术强度和数据移动路径提出待验证的瓶颈假设，并区分容量、带宽和计算问题。
 
 **关键词：** `Tensor Core`, `SRAM`, `HBM`
+
+对应显存优化路线的 Task1，也支撑推理优化路线的 Task1–2。它不直接进入 73–76；当 profiling 需要解释训练或显存策略的计算、带宽代价时，再把这里的机制用于 73 / 76 / 74 的证据解读。
 
 ---
 
@@ -40,7 +42,7 @@
 <details>
 <summary>点击展开查看解析</summary>
 
-NVIDIA 的 GPU 架构代际演进，本质上是为了适应深度学习（尤其是 Transformer）对**混合精度矩阵计算**和**极高显存带宽**的持续攀升需求。
+NVIDIA 的 GPU 架构演进可以从深度学习（尤其是 Transformer）对**混合精度矩阵计算**、显存带宽和数据搬运的需求来理解；不同代际和 SKU 的能力并不完全相同。
 
 *   **Volta 架构 (V100 - 2017)**: 
     *   **关键引入**：首次引入了专为深度学习矩阵乘加 (MMA) 设计的 **Tensor Core (张量核心)**，支持 FP16 混合精度计算。
@@ -65,11 +67,11 @@ from typing import Dict
 def bytes_to_gb(bytes_val: float) -> float:
     return bytes_val / 1e9
 
-# GPU 内存层级的带宽（字节/秒）
+# 教学用带宽数量级（字节/秒；不是当前设备的实测值）
 MEMORY_BANDWIDTH = {
-    'shared_memory': 19e12,  # 19 TB/s (A100)
-    'l2_cache': 1.5e12,      # 1.5 TB/s
-    'hbm': 1.5e12,           # 1.5 TB/s (A100)
+    'shared_memory': 19e12,  # 教学数量级
+    'l2_cache': 1.5e12,      # 教学数量级
+    'hbm': 1.5e12,           # A100 HBM 数量级
 }
 
 def analyze_memory_hierarchy() -> Dict[str, Dict[str, float]]:
@@ -80,14 +82,14 @@ def analyze_memory_hierarchy() -> Dict[str, Dict[str, float]]:
     
     for mem_type, bandwidth in MEMORY_BANDWIDTH.items():
         # ==========================================
-        # TODO 1.1: 计算访问延迟（访问 1 KB 数据）
-        # latency_ns = (1024 / bandwidth) * 1e9
+        # TODO 1.1: 计算传输 1 KB 的理论时间（不是硬件访问延迟）
+        # time_for_1kb_ns = (1024 / bandwidth) * 1e9
         # ==========================================
-        latency_ns = (1024 / bandwidth) * 1e9
+        time_for_1kb_ns = (1024 / bandwidth) * 1e9
         
         result[mem_type] = {
             'bandwidth_tb_s': bandwidth / 1e12,
-            'latency_ns': latency_ns,
+            'time_for_1kb_ns': time_for_1kb_ns,
         }
     
     return result
@@ -95,7 +97,7 @@ def analyze_memory_hierarchy() -> Dict[str, Dict[str, float]]:
 # 测试
 mem_analysis = analyze_memory_hierarchy()
 for mem_type, stats in mem_analysis.items():
-    print(f"{mem_type:15s}: {stats['bandwidth_tb_s']:6.1f} TB/s, Latency: {stats['latency_ns']:6.2f} ns")
+    print(f"{mem_type:15s}: {stats['bandwidth_tb_s']:6.1f} TB/s, 1KB transfer proxy: {stats['time_for_1kb_ns']:6.2f} ns")
 ```
 
 ### 数量级速览
@@ -107,15 +109,15 @@ for mem_type, stats in mem_analysis.items():
 | H100 | FP8 + 更强调度与搬运机制 | FP8 Tensor Core 可达 1,979 TFLOPS，HBM 带宽可达 3.35 TB/s，NVLink 可达 900 GB/s |
 | Blackwell | 更低精度与更强互连 | 原生 FP4，NVLink 提升到 1.8 TB/s 级别（平台实现有差异） |
 
-这一张表是为了把 GPU 架构代际演进的数量级直觉和后面的内存层级、Attention 访存模式接起来。
+这一张表只用于建立代际变化的数量级直觉；具体带宽、算力、互连和 dtype 支持取决于 SKU、驱动和平台，应以对应硬件文档为准。
 ## Q2：什么是 Tensor Core？它与普通的 CUDA Core 有何本质区别，为什么能明显加速矩阵计算？
 
 <details>
 <summary>点击展开查看解析</summary>
 
 **普通 CUDA Core vs Tensor Core**
-*   **CUDA Core (FP32/INT32)**: 每次时钟周期只能执行一个标量的 FMA (Fused Multiply-Add，乘加) 操作：`d = a * b + c`。
-*   **Tensor Core (FP16/BF16/FP8)**: 专为矩阵乘法设计。在单个时钟周期内，它可以执行一个完整的 $4 \times 4$ 矩阵的 MMA (Matrix Multiply-Accumulate) 操作：`D = A * B + C`。
+*   **CUDA Core (FP32/INT32)**: 主要执行线程级标量或向量指令，例如 `d = a * b + c`；实际吞吐取决于架构和指令类型。
+*   **Tensor Core (FP16/BF16/FP8 等)**: 面向矩阵乘加（MMA）和相关低精度路径；具体 tile 形状、支持 dtype 和吞吐取决于 GPU 架构，不能用一个固定的 $4 \times 4$ 周期模型代表所有设备。
 
 **为什么它这么快？**
 Tensor Core 利用了半精度 (FP16) 或更低精度 (FP8) 来加速乘法，同时使用单精度 (FP32) 的累加器来保证加法精度。由于 Transformer 的自注意力和 MLP 几乎全是密集的矩阵乘法 (GEMM)，Tensor Core 的算力在这类场景下通常会显著高于普通 CUDA Core（例如 A100 的 FP16 Tensor Core 算力可达 312 TFLOPs）。
@@ -131,28 +133,33 @@ def calculate_attention_vram(
     seq_len: int,
     num_heads: int,
     head_dim: int,
-    dtype_bytes: int = 2
+    dtype_bytes: int = 2,
+    batch_size: int = 1,
 ) -> Dict[str, float]:
+    """估算标准 Attention 前向中几个主要张量的理论存储量。
+
+    这里按 [batch, heads, seq, seq] 估算 attention matrix，
+    只用于数量级比较，不代表完整模型的 CUDA peak memory。
     """
-    计算标准 Attention 的显存占用。
-    """
+    if min(seq_len, num_heads, head_dim, dtype_bytes, batch_size) <= 0:
+        raise ValueError('所有形状和 dtype_bytes 都必须为正数')
     # ==========================================
     # TODO 2.1: 计算 Q、K、V 的显存占用
-    # qkv_vram = 3 * seq_len * num_heads * head_dim * dtype_bytes
+    # qkv_vram = 3 * batch_size * seq_len * num_heads * head_dim * dtype_bytes
     # ==========================================
-    qkv_vram = 3 * seq_len * num_heads * head_dim * dtype_bytes
+    qkv_vram = 3 * batch_size * seq_len * num_heads * head_dim * dtype_bytes
     
     # ==========================================
     # TODO 2.2: 计算 Attention 矩阵的显存占用
-    # attention_matrix_vram = seq_len * seq_len * dtype_bytes
+    # attention_matrix_vram = batch_size * num_heads * seq_len * seq_len * dtype_bytes
     # ==========================================
-    attention_matrix_vram = seq_len * seq_len * dtype_bytes
+    attention_matrix_vram = batch_size * num_heads * seq_len * seq_len * dtype_bytes
     
     # ==========================================
     # TODO 2.3: 计算输出的显存占用
-    # output_vram = seq_len * num_heads * head_dim * dtype_bytes
+    # output_vram = batch_size * seq_len * num_heads * head_dim * dtype_bytes
     # ==========================================
-    output_vram = seq_len * num_heads * head_dim * dtype_bytes
+    output_vram = batch_size * seq_len * num_heads * head_dim * dtype_bytes
     
     # ==========================================
     # TODO 2.4: 总显存占用
@@ -186,7 +193,7 @@ GPU 的内存结构像一个金字塔，越靠近计算单元的速度越快，�
     *   如果变量太多发生 **Register Spilling (寄存器溢出)**，数据会被回退到较慢的 Local Memory (物理上位于 HBM)。
 2.  **Shared Memory (SRAM / 片上共享内存)**：
     *   速度极快（~19 TB/s），每个 SM (流多处理器) 只有几百 KB。
-    *   **很关键**：它是同一个 Block 内所有线程协作、交换数据的主要高速通道。**Triton 的一个重要作用，就是帮你自动化管理 SRAM 的分配和调度。**
+    *   **作用**：它是同一个 Block 内线程协作、交换数据的主要高速通道。Triton 用 block 抽象和编译器分析降低了手写这类索引与搬运逻辑的负担，但具体 tile 大小和数据复用仍需设计与测量。
 3.  **L2 Cache**: 
     *   所有 SM 共享，几十 MB，用于缓冲 HBM 的读写。
 4.  **HBM (全局显存 / Global Memory)**:
@@ -210,28 +217,34 @@ def calculate_flash_attention_vram(
     seq_len: int,
     num_heads: int,
     head_dim: int,
-    dtype_bytes: int = 2
+    dtype_bytes: int = 2,
+    batch_size: int = 1,
 ) -> Dict[str, float]:
+    """估算 FlashAttention 前向的简化工作集。
+
+    这里不物化完整 attention matrix；online softmax 状态按 FP32 的
+    m 和 l 两个标量估算。真实 kernel 还会受到 tile、寄存器、
+    shared memory、workspace 和实现细节影响。
     """
-    计算 FlashAttention 的显存占用。
-    """
+    if min(seq_len, num_heads, head_dim, dtype_bytes, batch_size) <= 0:
+        raise ValueError('所有形状和 dtype_bytes 都必须为正数')
     # ==========================================
     # TODO 3.1: 计算 Q、K、V 的显存占用
-    # qkv_vram = 3 * seq_len * num_heads * head_dim * dtype_bytes
+    # qkv_vram = 3 * batch_size * seq_len * num_heads * head_dim * dtype_bytes
     # ==========================================
-    qkv_vram = 3 * seq_len * num_heads * head_dim * dtype_bytes
+    qkv_vram = 3 * batch_size * seq_len * num_heads * head_dim * dtype_bytes
     
     # ==========================================
     # TODO 3.2: FlashAttention 只需存储 Online Softmax 的中间值
-    # online_softmax_vram = seq_len * num_heads * 2 * 4
+    # online_softmax_vram = batch_size * seq_len * num_heads * 2 * 4
     # ==========================================
-    online_softmax_vram = seq_len * num_heads * 2 * 4
+    online_softmax_vram = batch_size * seq_len * num_heads * 2 * 4
     
     # ==========================================
     # TODO 3.3: 计算输出的显存占用
     # output_vram = seq_len * num_heads * head_dim * dtype_bytes
     # ==========================================
-    output_vram = seq_len * num_heads * head_dim * dtype_bytes
+    output_vram = batch_size * seq_len * num_heads * head_dim * dtype_bytes
     
     # ==========================================
     # TODO 3.4: 总显存占用
@@ -274,7 +287,7 @@ test_gpu_memory_practice()
 <summary>点击展开查看解析</summary>
 
 在标准的自注意力机制中，$S = QK^T$ 产生了一个尺寸为 $N \times N$ 的巨大矩阵。
-*   **PyTorch 原生**：计算出 $S$，把它**写回 HBM**；读取 $S$ 计算 Softmax，再**写回 HBM**；读取 Softmax 结果和 $V$，计算出最终结果。这种反复读写 $O(N^2)$ 大小数据的行为，直接导致了显存溢出 (OOM) 和速度极慢。
+*   **朴素实现**：可能把 $S$ 或 Softmax 中间结果物化并多次读写 HBM；这会增加峰值显存和内存流量，是否 OOM 取决于 batch、head、dtype 和实现。
 
 *   **FlashAttention 的底层逻辑 (Tiling + SRAM)**：
     1.  **切块 (Tiling)**：将巨大的 $Q, K, V$ 切成小块 (Blocks)，使得这些小块**刚好能塞进容量只有几百 KB 的 SRAM 中**。
@@ -282,7 +295,7 @@ test_gpu_memory_practice()
     3.  **在线归约 (Online Softmax)**：在 SRAM 内部直接更新局部最大值和指数和，避免写回 $S$。
     4.  最后再乘以 $V_{block}$，把最终结果写回 HBM。
     
-**结论**：把 $O(N^2)$ 的 HBM 读写明显压缩到接近 $O(N)$ 的读写。**FlashAttention 不是减少了计算量，而是通过 SRAM 缓解了 Memory Bound 的影响。**
+**结论**：FlashAttention 通过分块和在线归约避免物化完整的 $N \times N$ 中间矩阵，使辅助显存从二次增长降到近似线性；它也改变 IO 路径和 kernel 执行方式，但不是简单地把所有 HBM 流量都变成 $O(N)$。**FlashAttention 不是凭空减少主要矩阵计算，而是通过片上复用缓解 Memory Bound。**
 
 对学习者来说，最重要的不是死记某个固定 GB 数，而是记住它把 attention 的 IO 模式从“反复搬运大矩阵”改成了“分块在 SRAM 中完成”。FlashAttention-2 再进一步优化了 work partitioning，因此在长序列场景里会更有优势。
 </details>
@@ -330,6 +343,12 @@ print(f'IO reduction factor (rough): {reduction:.0f}x')
 
 ```python
 def pcie_vs_nvlink(payload_mb, pcie_gbps=64, nvlink_gbps=900):
+    """按 Gbit/s 带宽估算 payload 的理想传输时间。
+
+    这里只比较带宽上限，不包含协议、同步、拓扑和端到端软件开销。
+    """
+    if payload_mb <= 0 or pcie_gbps <= 0 or nvlink_gbps <= 0:
+        raise ValueError('payload 和带宽必须为正数')
     # 带宽差异真正影响的是把一块数据搬过去要花多少时间。
     pcie_ms = payload_mb * 8 / pcie_gbps
     nvlink_ms = payload_mb * 8 / nvlink_gbps

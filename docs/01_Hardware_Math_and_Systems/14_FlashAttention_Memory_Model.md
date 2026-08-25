@@ -14,11 +14,13 @@
 
 ## 本节导读
 
-标准 attention 在长序列下的问题，往往不是公式本身，而是中间结果和反复搬运把 HBM 很快压成瓶颈。只要 `QK^T`、softmax 和后续乘法之间需要频繁落到显存，attention 就会从“矩阵乘法问题”变成“访存组织问题”。
+标准 attention 在长序列下的压力，往往不只来自公式本身，也来自中间结果和反复搬运；在特定形状和硬件上，HBM 带宽可能成为瓶颈。如果 `QK^T`、softmax 和后续乘法之间需要频繁落到显存，attention 就可能从“矩阵乘法问题”转成“访存组织问题”。
 
-这一页在整个教程的纵向主线里属于 `Part 01` 的 attention 访存基础页，优先服务 `推理优化路线`，也给后续 kernel 实现页建立 SRAM 复用视角。学完这里，后面再看 `20 / 34 / 66` 以及相关 kernel 实现时，你会更容易把“长序列 attention 为什么慢”改写成“哪一段数据搬运最贵”；如果这里没学明白，后面很容易把 prefill 慢误看成单纯算力问题，而忽略中间结果落地和 HBM 往返才是主瓶颈。按专题归类，这一页主要属于 `推理优化专题`，也和 `编译与图优化专题` 共享一部分访存优化视角。
+这一页在整个教程的纵向主线里属于 `Part 01` 的 attention 访存基础页，优先服务 `推理优化路线`，也给后续 kernel 实现页建立 SRAM 复用视角。学完这里，后面再看 `20 / 34 / 66` 以及相关 kernel 实现时，你会更容易把“长序列 attention 为什么慢”改写成“哪一段数据搬运最贵”；如果这里没学明白，后面容易把 prefill 慢误看成单纯算力问题，而忽略中间结果落地和 HBM 往返可能带来的影响。按专题归类，这一页主要属于 `推理优化专题`，也和 `编译与图优化专题` 共享一部分访存优化视角。本节是 **CPU-first；GPU 用于扩展验证**：CPU 模拟可以验证 attention 中间矩阵的规模、分块计算和访存次数的变化；真实 GPU 才能验证 kernel 融合、HBM 带宽、实际峰值显存、prefill 吞吐和不同序列长度下的收益。显存路线在这里重点观察 Attention 工作集和中间张量的增长，不把模拟结果直接写成 73–76 的项目结论。
 
 **关键词：** `FlashAttention`, `tiling`, `SRAM`
+
+对应显存优化路线的 Task1（显存与性能认知）以及推理优化路线的 Task2。它通常不直接进入 73–76；如果把 attention 访存策略放进训练 workload，应由 73 / 76 测量，由 74 用 profiler 解释，而不是把模拟节的结论直接当成项目结论。
 
 ---
 ## 前置阅读
@@ -86,21 +88,33 @@ FlashAttention 的核心是把大问题拆成小块处理。
 </details>
 ### Q2小验证：分块之后为什么更稳
 
-把一个大矩阵拆成多个小块，再看每一步需要保留的中间状态会变少多少。
+把一个大矩阵拆成多个小块，再区分一维 tile 数、二维 score tile 数和单个 score tile 的理论大小。这里的数值是工作集模型，不是完整 kernel 的 shared memory 或寄存器占用。
 
 ```python
-def num_tiles(seq_len, tile_size):
+def num_1d_tiles(seq_len, tile_size):
+    """返回一条序列维度上的 tile 数；不代表 Attention 的二维 tile 总数。"""
+    if seq_len <= 0 or tile_size <= 0:
+        raise ValueError('seq_len 和 tile_size 必须为正数')
     return (seq_len + tile_size - 1) // tile_size
 
-def tile_working_set(tile_size, dtype_bytes=2):
-    # 一个 tile 的局部工作集，便于和完整 attention matrix 对比。
+def num_score_tiles(seq_len, tile_size):
+    """返回 Q tile 与 K tile 组合形成的二维 score tile 数。"""
+    tiles_1d = num_1d_tiles(seq_len, tile_size)
+    return tiles_1d * tiles_1d
+
+def score_tile_bytes(tile_size, dtype_bytes=2):
+    """只估算一个 score tile，不代表完整 FlashAttention 工作集。"""
+    if tile_size <= 0 or dtype_bytes <= 0:
+        raise ValueError('tile_size 和 dtype_bytes 必须为正数')
     return tile_size * tile_size * dtype_bytes
+
 
 seq_len = 4096
 for tile in [64, 128, 256]:
-    tiles = num_tiles(seq_len, tile)
-    working_set_kb = tile_working_set(tile) / 1024
-    print(f'tile={tile:3d} -> tiles={tiles:3d}, tile working set ≈ {working_set_kb:6.1f} KB')
+    tiles_1d = num_1d_tiles(seq_len, tile)
+    score_tiles = num_score_tiles(seq_len, tile)
+    score_tile_kb = score_tile_bytes(tile) / 1024
+    print(f'tile={tile:3d} -> 1D tiles={tiles_1d:3d}, score tiles={score_tiles:4d}, score tile ≈ {score_tile_kb:6.1f} KB')
 
 ```
 
@@ -122,15 +136,18 @@ FlashAttention 的设计就是尽量让中间数据停留在 SRAM 里，把 HBM 
 把“HBM 负责大容量，SRAM 负责局部复用”这条链记住，再看优化思路会更顺。
 
 ```python
-def io_pressure(seq_len, tile_size, dtype_bytes=2):
-    # 粗略比较：完整矩阵的 HBM 压力 vs tile 级工作集的峰值压力。
+def score_materialization_ratio(seq_len, tile_size, dtype_bytes=2):
+    """比较完整 score 矩阵与单个 score tile 的理论存储规模。
+
+    这不是实际 HBM 流量、kernel 加速比或端到端性能指标。
+    """
     full = attention_score_bytes(seq_len, dtype_bytes)
-    tile = tile_working_set(tile_size, dtype_bytes)
+    tile = score_tile_bytes(tile_size, dtype_bytes)
     return full / tile
 
 for tile in [64, 128, 256]:
-    print(f'tile={tile:3d} -> IO pressure reduction ≈ {io_pressure(4096, tile):.0f}x')
-print('smaller tile => smaller working set, but more tiles to schedule')
+    print(f'tile={tile:3d} -> score materialization ratio ≈ {score_materialization_ratio(4096, tile):.0f}x')
+print('smaller tile => smaller score tile, but more tiles and more scheduling work')
 
 ```
 

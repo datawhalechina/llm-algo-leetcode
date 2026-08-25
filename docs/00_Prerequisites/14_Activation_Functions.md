@@ -16,6 +16,8 @@
 
 **关键词：** `relu`, `gelu`, `silu`
 
+**显存路线视角：** 激活函数通常不是显存峰值的唯一决定因素；还要看它所在的 MLP / 门控结构会保存哪些中间结果，以及这些结果是否参与 backward。本文只验证数值形状和分布，不输出 activation 峰值或显存节省结论。
+
 ## 前置阅读
 **导语：** 先看 0D 组页，把训练骨架和激活分布的边界对齐，再进入这一页会更顺。
 - [13. Simple Neural Network Training | 简单神经网络训练循环](./13_Simple_Neural_Network_Training.md)
@@ -24,6 +26,7 @@
 **导语：** 本页先把常见激活函数和数值分布的最小判断讲清楚；如果想继续看归一化怎么配合激活使用，再顺着看下面这一页。
 - [P1: 12. TensorCore and Mixed Precision | TensorCore 与混合精度](../01_Hardware_Math_and_Systems/12_TensorCore_and_Mixed_Precision.md)
 - [15. Normalization Techniques | 归一化技术](./15_Normalization_Techniques.md)
+- [18. Memory Profiling and Optimization | 显存分析与优化](./18_Memory_Profiling_and_Optimization.md)
 
 ## Q1：激活函数在模型里解决什么问题？
 
