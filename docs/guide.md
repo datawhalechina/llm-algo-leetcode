@@ -44,6 +44,46 @@ python tools/test_notebook_answers.py path/to/your.ipynb --mode both
 建议先完成 CPU-first 验证，再按 Notebook 中的开关进入真实 backend；没有 GPU 时不要把
 Practice-P1 的本地/模拟结果当作 Practice-P2 的真实服务结论。
 
+### 项目环境预检与安装
+
+项目节可以独立运行。进入某一节后，先运行该节的“环境预检”代码块；它会检查项目根目录、当前 Python / PyTorch、CUDA、GPU 显存、必需包、模型或 backend 能力，以及 `benchmarks/results/` 是否可写。预检状态含义如下：
+
+| 状态 | 含义 | 处理方式 |
+|---|---|---|
+| `ok` | 当前配置满足本节实验要求 | 继续运行 |
+| `warning` | 可运行降级路径，但可选能力不可用 | 按提示选择 CPU 或跳过扩展 |
+| `blocked` | 当前配置不能安全运行目标实验 | 先按 `next_actions` 修复，不加载模型 |
+
+也可以在仓库根目录直接执行：
+
+```bash
+python tools/environment_preflight.py --packages transformers
+```
+
+真实 GPU 项目使用：
+
+```bash
+python tools/environment_preflight.py \
+  --gpu \
+  --packages transformers \
+  --output benchmarks/results/preflight.json
+```
+
+推理 backend 项目按本节要求追加 `vllm` 或 `sglang`；QLoRA 项目追加 `peft`、`bitsandbytes`；LoRA / SFT 项目追加 `accelerate`、`datasets`。普通依赖使用当前 Notebook 内核的 Python 安装：
+
+```python
+import sys
+!{sys.executable} -m pip install -U transformers accelerate peft datasets
+```
+
+不要在预检失败时直接重装 PyTorch。若 `torch.version.cuda` 为 `None` 或 `cuda_available` 为 `False`，先确认 Colab 已启用 GPU，再重启 runtime；只有确认运行时仍缺少 CUDA wheel 时，才按平台说明选择对应的 PyTorch 安装命令。vLLM、SGLang 和 TensorRT-LLM 也必须先确认 CUDA、驱动和版本匹配后再安装。
+
+预检通过后再下载模型、启动 backend 或执行训练。结果统一保存到 `benchmarks/results/`，并记录预检报告、模型、dtype、workload、设备、软件版本和实验状态。
+
+每个需要额外环境的项目页，在实验开关附近只保留以下提示，并链接回本节：
+
+> **运行提示：** 先查看[使用指南中的项目环境预检与安装说明](./guide.md#项目环境预检与安装)，再打开本节的真实实验开关。CPU-first 路径不要求 GPU；真实 GPU 或 backend 路径必须先通过预检。
+
 ## 最小规则
 
 - Part 0 / Part 1：优先在线 Notebook 或本地基础环境。
