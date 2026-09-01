@@ -39,7 +39,7 @@
 - 通信热点是否解释了收益变化；
 - 最终是继续保留、继续调优，还是换方案。
 
-![Parallel benchmark decision flow](/topic_discussion/communication_parallel/parallel_benchmark_decision.svg)
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 文献与工程入口
 

@@ -38,7 +38,7 @@ Expert Parallel 的核心矛盾是：稀疏计算可以减少无效算力，但�
 - profiling 在这里不是辅助工具，而是主诊断入口。
 - 如果热点解释不清，继续加卡或继续加 expert 通常只会把问题放大。
 
-![Expert parallel and communication hotspots](/topic_discussion/communication_parallel/expert_parallel_hotspots.svg)
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 文献锚点
 

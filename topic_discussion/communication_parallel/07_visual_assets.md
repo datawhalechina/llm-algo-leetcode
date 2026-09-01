@@ -25,27 +25,27 @@
 
 ### 01 为什么系统会走向并行
 
-![Why systems move to parallelism](/topic_discussion/communication_parallel/parallel_overview.svg)
+> 图示占位：Why systems move to parallelism 尚未生成。
 
 ### 02 数据并行与同步
 
-![Data parallelism and synchronization](/topic_discussion/communication_parallel/data_parallel_sync.svg)
+> 图示占位：Data parallelism and synchronization 尚未生成。
 
 ### 03 ZeRO / 状态切分
 
-![State sharding and ZeRO](/topic_discussion/communication_parallel/zero_sharding.svg)
+> 图示占位：State sharding and ZeRO 尚未生成。
 
 ### 04 Pipeline / Tensor Parallel
 
-![Pipeline and tensor parallel](/topic_discussion/communication_parallel/pipeline_tensor_parallel.svg)
+> 图示占位：Pipeline and tensor parallel 尚未生成。
 
 ### 05 Expert Parallel / Hotspots
 
-![Expert parallel and communication hotspots](/topic_discussion/communication_parallel/expert_parallel_hotspots.svg)
+> 图示占位：Expert parallel and communication hotspots 尚未生成。
 
 ### 06 Benchmark / Keep-Tune-Switch
 
-![Parallel benchmark decision flow](/topic_discussion/communication_parallel/parallel_benchmark_decision.svg)
+> 图示占位：Parallel benchmark decision flow 尚未生成。
 
 ## 建议顺序
 
@@ -64,6 +64,6 @@
 
 ## 相关跳转
 
-- 回到 [通信与并行专题入口](./intro.md)
+- 回到 [通信与并行入口](./intro.md)
 - 回到 [通信与并行正文](./casebook.md)
 - 回到 [通信与并行深入阅读](./walkthrough.md)

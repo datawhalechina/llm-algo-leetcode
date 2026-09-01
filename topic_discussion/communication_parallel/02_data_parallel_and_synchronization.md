@@ -36,7 +36,7 @@
 - batch 扩大可能带来吞吐收益，也可能带来优化行为变化。
 - 同步问题不解决，后续加更多卡只会继续放大等待。
 
-![Data parallelism and synchronization](/topic_discussion/communication_parallel/data_parallel_sync.svg)
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 文献锚点
 
