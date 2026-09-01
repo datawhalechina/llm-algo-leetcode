@@ -2,13 +2,13 @@
 
 ## 页面目标
 
-这一页不讲新的训练机制，而是回答一个更实际的问题：
+本页不引入新的训练机制，而是回答一个实现问题：
 
 前面讲的 backward、mixed precision、checkpointing、profiling，在 PyTorch 里分别由哪些训练工具承接？
 
 它是 `反向传播与训练机制专题` 的桥接附录页，不替代 `01-06` 主线，只负责把“机制理解”接到“训练实现”。
 
-## 这一页解决什么
+## 本页解决什么
 
 如果你已经知道：
 
@@ -56,7 +56,7 @@
 
 ## 最小训练工具顺序
 
-下面是一条最小、最常见的 PyTorch 训练顺序：
+下面是一条最小、最常见的 PyTorch 训练顺序。代码是调用顺序示意，运行前需要由训练循环提供 `scaler`、`use_fp16`、`should_step` 和 `max_norm`；它不是可直接复制的完整训练脚本。
 
 ```python
 with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
@@ -119,9 +119,9 @@ if should_step:
 
 适合把“感觉更快”变成“证据上更快”。
 
-## 不要在这一页展开什么
+## 不在本页展开什么
 
-这一页故意不展开：
+以下内容不在本页展开：
 
 - `DDP / FSDP / ZeRO`
 - 完整 trainer 框架
@@ -132,11 +132,11 @@ if should_step:
 
 ## 对应来源
 
-- `17 Autograd Basics`
-- `19 Activation Checkpointing and Activation Offload`
-- `12 Gradient Accumulation`
-- `13 End-to-End Fine-Tuning Experiment`
-- `74 Profiling Driven End-to-End Optimization`
+- [Part 02 · 17 自动求导基础](../../02_PyTorch_Algorithms/17_Autograd_Basics.md)
+- [Part 02 · 19 激活检查点与 Offload](../../02_PyTorch_Algorithms/19_Activation_Checkpointing_and_Activation_Offload.md)
+- [Part 02 · 12 梯度累积](../../02_PyTorch_Algorithms/12_Gradient_Accumulation.md)
+- [Part 02 · 13 端到端微调实验](../../02_PyTorch_Algorithms/13_End_to_End_Fine_Tuning_Experiment.md)
+- [Part 02 · 74 Profiling 驱动的端到端优化](../../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.md)
 
 ## 工程资料
 

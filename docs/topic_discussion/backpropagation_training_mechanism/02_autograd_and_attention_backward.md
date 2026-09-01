@@ -2,7 +2,7 @@
 
 ## 页面目标
 
-这一页把 PyTorch 的 autograd 机制和 attention 的反向链路放在一起看，目标是把“机制接口”和“算子级梯度路径”对齐。
+本页将 PyTorch 的 autograd 机制与 attention 的反向链路放在一起，目标是对齐“机制接口”和“算子级梯度路径”。
 
 本页的输出是算子级反传证据：能解释 `grad_fn`、`saved_tensors` 与 attention backward 的关系，并区分公式不变和执行路径改变。
 
@@ -97,6 +97,10 @@ FlashAttention 不是只优化前向，它同样会重写 backward 的执行路�
 - 哪些状态按块重算更划算
 - 哪些状态通过 fused kernel 顺手带过去
 
+## 如何把公式和实现对上
+
+先用小张量检查 `dQ / dK / dV` 的形状、数值和 causal mask，再观察实现是否 materialize 完整的 score 或 probability。CPU 小例子能够验证公式和 mask；它不能推出 FlashAttention、fused backward 或其他 kernel 在某张 GPU 上的吞吐收益。需要比较真实保存、重算和 IO 代价时，应进入 GPU benchmark 或 profiler。
+
 这也是为什么 `saved_tensors`、`FlashAttention` 和 `recompute` 应该放在同一页里看，而不是完全拆开。
 
 ## 典型误区
@@ -110,7 +114,7 @@ FlashAttention 不是只优化前向，它同样会重写 backward 的执行路�
 
 ## 对应来源
 
-- `17 Autograd Basics`
+- [Part 02 · 17 自动求导基础](../../02_PyTorch_Algorithms/17_Autograd_Basics.md)
 
 ## 经典论文
 
@@ -136,4 +140,4 @@ FlashAttention 不是只优化前向，它同样会重写 backward 的执行路�
 
 ## 进入下一页
 
-进入 [03 Loss Backward、标签对齐与显存账本](./03_loss_alignment_memory_ledger.md)，先保证监督口径正确，再分析 backward 的显存组成。
+进入 [03 损失对齐与显存账本](./03_loss_alignment_memory_ledger.md)，先保证监督口径正确，再分析 backward 的显存组成。

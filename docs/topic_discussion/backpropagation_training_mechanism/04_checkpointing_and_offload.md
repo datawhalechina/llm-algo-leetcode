@@ -2,7 +2,7 @@
 
 ## 页面目标
 
-这一页讲两种最重要的显存优化策略：重算换显存和搬运换显存。
+本页比较两种常见的显存策略：用重算换空间，以及用搬运换空间。
 
 本页的输出是策略边界：明确 checkpointing 消除的是哪类保存，offload 改变的是状态驻留位置，以及算力、带宽和 wall time 各自承担什么代价。
 
@@ -28,15 +28,19 @@ checkpointing / offload 不是同一个维度的方案：
 - offload 改变的是“状态保留在哪里”
 - 两者都能省 GPU 显存，但一个吃算力，一个吃带宽
 
-所以它们的边界一定要先看清：
+因此需要先区分它们的作用边界：
 
 - 如果显存不够但算力还富余，checkpointing 往往更直接
 - 如果显存特别紧但重算已经太贵，offload 才更有价值
 - 如果带宽太弱，offload 可能把瓶颈从显存换成传输
 
-![Checkpointing 取舍图](/topic_discussion/backpropagation_training_mechanism/checkpointing_tradeoff.svg)
+> 图册占位：Checkpointing 取舍图尚未生成，当前以本页的计算、显存和时间代价说明为准。
 
-![Offload 取舍图](/topic_discussion/backpropagation_training_mechanism/offload_tradeoff.svg)
+> 图册占位：Offload 取舍图尚未生成，当前以本页的搬运、显存和吞吐代价说明为准。
+
+## 选择前先确认压力来源
+
+如果峰值主要来自 activation，checkpointing 才有直接作用；如果状态可以安全地放到 CPU 且 PCIe / NVLink 传输仍可接受，offload 才值得尝试；如果峰值来自参数、梯度或 optimizer state，应转向 dtype、LoRA、ZeRO 等方案。小 workload 可能看不出明显节省，不能用一次 CPU 运行推断 GPU 收益。实际策略比较由 [Part 02 · 76 激活检查点与 Offload 对比](../../02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.md)负责。
 
 ## 典型误区
 
@@ -46,8 +50,8 @@ checkpointing / offload 不是同一个维度的方案：
 
 ## 对应来源
 
-- `19 Activation Checkpointing and Activation Offload`
-- `42 Activation Offload`
+- [Part 02 · 19 激活检查点与 Offload](../../02_PyTorch_Algorithms/19_Activation_Checkpointing_and_Activation_Offload.md)
+- [Part 02 · 42 激活 Offload](../../02_PyTorch_Algorithms/42_Activation_Offload.md)
 
 ## 经典论文
 
