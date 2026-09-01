@@ -4,7 +4,7 @@
 
 这一页回答的是：当 `SFT / LoRA` 已经能跑、训练工程也已经搭起来之后，怎样把实验真正收成可恢复、可复盘、可交付的项目结果。
 
-它是 `监督微调专题` 的项目交付附录页，不替代 `05 Project Delivery` 主线，只负责把“训练完成”推进到“结果可交付”。
+它是 `监督微调与训练工程` 的项目交付附录页，不替代 `05 Project Delivery` 主线，只负责把“训练完成”推进到“结果可交付”。
 
 ## 这页负责什么
 
@@ -13,6 +13,8 @@
 - `logging / experiment tracking`：关注训练过程是否留下足够证据支撑最终结论。
 - `report template`：关注 baseline、candidate、资源指标和采用建议怎么写清楚。
 
+60–65 的公共报告协议见[训练微调项目验证清单](../../verification/fine_tuning_projects.md)，用于统一结果外层结构；本附录继续负责 checkpoint、artifact、tracking 和交付证据的细节。
+
 ## 这页不展开什么
 
 - `LoRA / QLoRA` 的机制差异
@@ -20,7 +22,7 @@
 - `DDP / FSDP / ZeRO / DeepSpeed` 的并行机制细节
 - 完整训练平台、模型仓库和在线部署系统
 
-这些分别放在 `监督微调主线`、`训练工程附录`、`通信与并行专题` 和项目页里更合适。
+这些分别放在 `监督微调主线`、`训练工程附录`、`通信与并行` 和项目页里更合适。
 
 ## 最小交付闭环
 
@@ -114,8 +116,8 @@
 ## 相关专题
 
 - [训练工程附录](./training_engineering_appendix.md)：当你还在搭 `Trainer / Accelerate / DeepSpeed / Lightning` 这层工程闭环时先看那里。
-- [Profiling 专题](../profiling/intro.md)：当你需要补吞吐、显存和训练热点证据时先看这里。
-- [显存优化专题](../memory_performance_tuning/intro.md)：当项目交付需要解释 OOM、checkpointing 或资源账本时先看这里。
+- [性能分析](../profiling/intro.md)：当你需要补吞吐、显存和训练热点证据时先看这里。
+- [显存优化](../memory_performance_tuning/intro.md)：当项目交付需要解释 OOM、checkpointing 或资源账本时先看这里。
 
 ## 本节要点
 
