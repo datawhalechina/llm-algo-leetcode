@@ -2,7 +2,7 @@
 
 ## 页面目标
 
-这一页把训练里最容易出错的两件事放在一起看：监督口径到底在哪里，和 backward 为什么会把显存吃满。
+本页集中处理训练中最容易混淆的两件事：监督边界如何定义，以及 backward 为什么会增加显存压力。
 
 本页的输出是可信账本：确认 labels、mask、shift、ignore_index 的监督边界，并拆开 activation、参数、梯度、优化器状态和系统缓冲。
 
@@ -39,6 +39,10 @@ label alignment 里最关键的不是“有没有算 loss”，而是“loss 在
 
 都会参与训练预算。
 
+## 账本与测量的对应关系
+
+理论账本回答“哪些对象可能占用显存”，CUDA 统计回答“本次 workload 的峰值如何表现”。两者不应直接画等号：allocator reserved、算子 workspace 和系统进程可能使实测值高于账本；反之，某些 activation 在阶段结束后已经释放，也不会一直叠加。CPU 可以检查账本公式和监督边界，GPU 才能验证峰值与 OOM 边界。
+
 ## 典型误区
 
 - `ignore_index` 不是“随便填个值”，它是监督边界的一部分。
@@ -47,9 +51,9 @@ label alignment 里最关键的不是“有没有算 loss”，而是“loss 在
 
 ## 对应来源
 
-- `09 SFT Training Loop`
-- `18 Activation and Loss Backward`
-- `19 Activation Checkpointing and Activation Offload`
+- [Part 02 · 09 SFT 训练循环](../../02_PyTorch_Algorithms/09_SFT_Training_Loop.ipynb)
+- [Part 02 · 18 激活与损失反向传播](../../02_PyTorch_Algorithms/18_Activation_and_Loss_Backward.ipynb)
+- [Part 02 · 19 激活检查点](../../02_PyTorch_Algorithms/19_Activation_Checkpointing_and_Activation_Offload.ipynb)
 
 ## 经典论文
 

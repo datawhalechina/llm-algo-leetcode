@@ -2,7 +2,7 @@
 
 ## 页面目标
 
-这一页把 backward 放回训练节奏里，回答为什么梯度累积、调度和 profiling 必须一起看。
+本页把 backward 放回训练节奏，说明梯度累积、更新调度和 profiling 为什么需要联合分析。
 
 本页的输出是训练闭环决策：明确 micro-batch、accumulation、optimizer step、AMP 和 profiling 的顺序，并把显存收益与吞吐、质量一起验证。
 
@@ -49,6 +49,8 @@ gradient accumulation 里最容易混淆的是三个概念：
 
 `autocast forward -> scaled loss backward -> accumulation -> unscale(if needed) -> gradient clipping -> optimizer.step() -> profiler validate`
 
+这里的顺序不是固定 API 清单，而是需要按训练目标核对的依赖关系：FP16 是否需要 scaler、梯度是否已经累积、clipping 应该作用于哪个时点，都要由实现和 workload 决定。CPU 可以核对 step 次数与 effective batch；GPU 才能比较 accumulation 对吞吐、峰值显存和同步的影响。
+
 如果这一层没理顺，就很容易出现两类问题：
 
 - loss 看起来正常，但梯度早就在低精度里下溢或爆掉
@@ -62,7 +64,7 @@ gradient accumulation 里最容易混淆的是三个概念：
 - 再决定是积累、重算还是 offload
 - 最后用 profiling 验证优化是否真的成立
 
-![训练闭环决策图](/topic_discussion/backpropagation_training_mechanism/training_decision_flow.svg)
+> 图册占位：训练闭环决策图尚未生成，当前按 73 → 76 → 75 → 74 的项目链路阅读。
 
 ## 典型误区
 
@@ -74,10 +76,10 @@ gradient accumulation 里最容易混淆的是三个概念：
 
 ## 对应来源
 
-- `12 Gradient Accumulation`
-- `13 End-to-End Fine-Tuning Experiment`
-- `14 RLHF PPO Memory`
-- `74 Profiling-Driven End-to-End Optimization`
+- [Part 02 · 12 梯度累积](../../02_PyTorch_Algorithms/12_Gradient_Accumulation.ipynb)
+- [Part 02 · 13 端到端微调实验](../../02_PyTorch_Algorithms/13_End_to_End_Fine_Tuning_Experiment.ipynb)
+- [Part 02 · 14 RLHF / PPO 显存](../../02_PyTorch_Algorithms/14_RLHF_PPO_Memory.ipynb)
+- [Part 02 · 74 Profiling 驱动的端到端优化](../../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.ipynb)
 
 ## 经典论文
 

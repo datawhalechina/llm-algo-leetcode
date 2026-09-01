@@ -16,13 +16,13 @@
 
 一旦进入 attention，问题就不再只是“梯度能不能回去”，而是“回去时到底保存了什么、重算了什么”。这时要去看 `grad_fn`、`saved_tensors` 和 attention 的 `dV -> dP -> dS -> dQ/dK` 链路。很多人真正卡住的不是公式，而是公式和执行路径没对上。
 
-这一步对应 [02 Autograd 与 Attention Backward](./02_autograd_and_attention_backward.md)。
+这一步对应 [02 自动微分与 Attention 反向传播](./02_autograd_and_attention_backward.md)。
 
 ## 第三段：loss 对齐以后，显存账本才有意义
 
 如果 `labels / mask / shift / ignore_index` 没对齐，后面的 loss 曲线本身就不可信。只有监督口径成立了，activation、参数、梯度和 optimizer state 的显存账本才值得继续分析。
 
-这一步对应 [03 Loss Backward、标签对齐与显存账本](./03_loss_alignment_memory_ledger.md)。
+这一步对应 [03 损失对齐与显存账本](./03_loss_alignment_memory_ledger.md)。
 
 ## 第四段：checkpointing 与 offload 改的不是同一类代价
 
@@ -34,4 +34,4 @@
 
 真正的闭环结束点不是“显存降了”，而是 accumulation、optimizer step、effective batch 和 profiling 口径都统一了。把这条故事走完以后，一个更像真实结论的说法通常不是“我们用了 checkpointing”，而是：梯度路径清楚、监督口径正确、activation 保存点明确，最终训练节奏和显存代价都能被解释。
 
-这一步对应 [05 梯度累积、训练闭环与 Profiling](./05_accumulation_decision_profiling.md)，并回到 `73 / 76 / 75` 项目页验证。
+这一步对应 [05 梯度累积、训练闭环与 Profiling](./05_accumulation_decision_profiling.md)，并回到 [Part 02 · 73 训练性能分析](../../02_PyTorch_Algorithms/73_Training_Performance_Analysis.ipynb) → [Part 02 · 76 激活检查点与 Offload benchmark](../../02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.ipynb) → [Part 02 · 75 显存预算压缩](../../02_PyTorch_Algorithms/75_Memory_Budget_Compression_Project.ipynb) 验证。

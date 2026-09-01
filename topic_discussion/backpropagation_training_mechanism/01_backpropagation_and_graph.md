@@ -2,7 +2,7 @@
 
 ## 页面目标
 
-这一页把“为什么要单独看 backward”说清楚，并把它和计算图、链式法则、显存和调度边界连起来。
+本页说明为什么需要单独分析 backward，并把它和计算图、链式法则、显存及调度边界连起来。
 
 本页的输出是训练图总览：明确梯度沿哪里回传、哪些中间状态必须保留，以及这些保存边界为什么会影响显存和调度。
 
@@ -34,6 +34,10 @@ forward 负责产生输出，backward 负责把 loss 的信号沿计算图传回
 2. 计算图也是调试入口，出了梯度异常时，最先要回头看的通常就是 graph 的分支和保存点。
 3. 计算图还决定了 checkpointing 的边界，因为只有明确哪些段可以重算，显存优化才有机会成立。
 
+## 从图到可测对象
+
+把一次训练 step 拆成 `forward → loss → backward → optimizer.step()` 后，可以分别记录：参数是否收到梯度、哪些张量仍被引用、每个阶段耗时以及显存峰值。CPU 实验适合验证梯度路径和释放时机；GPU 实验才适合判断 activation residency、workspace 和真实 step time。图结构正确，不等于某种 GPU 优化已经有效。
+
 ## 典型误区
 
 - backward 不是 forward 的附属函数，它常常决定训练能不能跑起来。
@@ -42,8 +46,8 @@ forward 负责产生输出，backward 负责把 loss 的信号沿计算图传回
 
 ## 对应来源
 
-- `Part 1B / 1D`
-- `Part 2.0`
+- [Part 00 · 07 PyTorch 自动求导与反向传播](../../00_Prerequisites/07_PyTorch_Autograd_and_Backward.ipynb)
+- [Part 02 · 17 自动求导基础](../../02_PyTorch_Algorithms/17_Autograd_Basics.ipynb)
 
 ## 经典论文
 
@@ -60,4 +64,4 @@ forward 负责产生输出，backward 负责把 loss 的信号沿计算图传回
 
 ## 进入下一页
 
-进入 [02 Autograd 与 Attention Backward](./02_autograd_and_attention_backward.md)，把计算图上的抽象梯度路径对齐到 PyTorch autograd 和 attention 算子。
+进入 [02 自动微分与 Attention 反向传播](./02_autograd_and_attention_backward.md)，把计算图上的抽象梯度路径对齐到 PyTorch autograd 和 attention 算子。
