@@ -2,7 +2,7 @@
 
 ## 页面目标
 
-这一页收口显存优化专题的关键图，方便后续把训练账本、checkpointing / offload、推理 cache、量化预算和最终验证串起来。
+这一页收口显存优化的关键图，方便后续把训练账本、checkpointing / offload、推理 cache、量化预算和最终验证串起来。
 
 ## 图册职责
 
@@ -14,6 +14,7 @@
 
 ## 建议图册
 
+- 显存优化路线总图：训练侧、推理侧和量化分支汇入 `74` 最终验证
 - VRAM / memory ledger 总图
 - training memory pressure 图
 - checkpointing / offload trade-off 图
@@ -23,38 +24,54 @@
 
 ## 当前已落地图
 
+### 00 显存优化路线总图
+
+```mermaid
+flowchart LR
+    A[Task 1 显存账本] --> B[Task 2 训练显存机制]
+    B --> C[73 训练基线]
+    C --> D[76 策略比较]
+    D --> E[75 预算决策]
+    F[Task 4 推理侧显存<br/>22 → 34 → 66] --> H[74 Profiling 驱动最终验证]
+    G[Task 5 量化显存<br/>21 → 25 → 67] --> H
+    E --> H
+```
+
+这张图只表达路线关系，不替代各页对 checkpoint、KV Cache 或量化机制的解释。
+
 ### 01 VRAM / Memory Ledger
 
-![VRAM ledger](/topic_discussion/memory_performance_tuning/vram_ledger.svg)
+> 图示占位：VRAM ledger 尚未生成。
 
 ### 02 Training Memory Pressure
 
-![Training memory pressure](/topic_discussion/memory_performance_tuning/training_memory_pressure.svg)
+> 图示占位：Training memory pressure 尚未生成。
 
 ### 03 Checkpointing / Offload
 
-![Checkpointing and offload trade-off](/topic_discussion/memory_performance_tuning/checkpointing_offload.svg)
+> 图示占位：Checkpointing and offload trade-off 尚未生成。
 
 ### 04 KV Cache Budget
 
-![KV cache budget](/topic_discussion/memory_performance_tuning/kv_cache_budget.svg)
+> 图示占位：KV cache budget 尚未生成。
 
 ### 05 Quantization as a Memory Tool
 
-![Quantization as a memory tool](/topic_discussion/memory_performance_tuning/quantization_memory_tool.svg)
+> 图示占位：Quantization as a memory tool 尚未生成。
 
 ### 06 Benchmark / Keep-Tune-Switch
 
-![Memory benchmark decision flow](/topic_discussion/memory_performance_tuning/memory_benchmark_decision.svg)
+> 图示占位：Memory benchmark decision flow 尚未生成。
 
 ## 建议顺序
 
-1. 账本总图：对应 `01`
-2. 训练侧显存压力图：对应 `02`
-3. checkpointing / offload 图：对应 `03`
-4. 推理 cache 与预算图：对应 `04`
-5. 量化作为显存手段图：对应 `05`
-6. benchmark / 决策图：对应 `06`
+1. 路线总图：先确认训练侧主线和推理 / 量化扩展的汇合点
+2. 账本总图：对应 `01`
+3. 训练侧显存压力图：对应 `02`
+4. checkpointing / offload 图：对应 `03`
+5. 推理 cache 与预算图：对应 `04`
+6. 量化作为显存手段图：对应 `05`
+7. benchmark / 决策图：对应 `06`
 
 ## 图的风格约束
 
@@ -64,6 +81,6 @@
 
 ## 相关跳转
 
-- 回到 [显存优化专题入口](./intro.md)
+- 回到 [显存优化入口](./intro.md)
 - 回到 [显存优化与性能调优正文](./casebook.md)
 - 回到 [显存优化与性能调优深入阅读](./walkthrough.md)

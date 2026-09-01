@@ -2,7 +2,7 @@
 
 ## 页面目标
 
-这一页回答两个问题：
+本节回答两个问题：
 
 - 显存优化为什么要先从资源账本开始，而不是直接缩 batch 或量化？
 - `peak memory`、`reserved memory`、`throughput` 和时间代价应该怎么一起看？
@@ -37,6 +37,18 @@ total memory budget
   └─ framework / backend buffers
 ```
 
+账本中的对象不能只按名称罗列，还要记录它们在计算过程中的变化：
+
+| 对象 | 主要变化因素 | 先做什么 | 最终证据 |
+|:---|:---|:---|:---|
+| 参数、梯度 | 参数量、dtype、训练/推理模式 | 计算理论容量 | GPU 峰值与是否能加载 |
+| optimizer state | 优化器类型、参数量、更新状态 | 单独估算常驻成本 | 训练显存与 step 稳定性 |
+| activation | batch、sequence length、保存策略 | 观察生命周期 | checkpoint 前后峰值和重算时间 |
+| KV cache | 层数、KV heads、上下文、并发 | 计算每请求增长 | backend 并发、命中率和峰值 |
+| workspace / fragment | kernel、allocator、backend | 作为剩余预算保留 | `reserved memory`、trace 或 OOM |
+
+这些对象的峰值不一定同时出现，因此理论账本是上界或诊断近似，不应机械地把每个阶段的峰值相加。
+
 ## 为什么账本先于技巧
 
 显存优化的动作很多，但每个动作只改其中一部分对象：
@@ -48,8 +60,6 @@ total memory budget
 - 量化可能改权重，也可能改 activation 或 cache。
 
 所以如果账本没拆开，就不知道该动哪一个对象，也不知道副作用落在哪。
-
-这也是 Task1 的收口：`Part01/01` 先确定 dtype 的字节数，`02` 提供参数规模，`03` 解释硬件和数据移动代价，`06` 再把参数、梯度和 optimizer state 放入单卡或分片账本。这个顺序建立的是预算假设，不是实际峰值报告；真实峰值要在 73、76 中测量。
 
 ## 指标口径
 
@@ -70,13 +80,20 @@ total memory budget
 3. 当前动作是在省驻留对象，还是在搬运、重算或压缩？
 4. 节省的资源是否值得对应的时间代价？
 
-![VRAM ledger](/topic_discussion/memory_performance_tuning/vram_ledger.svg)
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
-## 与 Task1-6 的关系
+## 与 Task0-6 的关系
 
-- `Task1-6` 负责学习顺序，告诉读者先读哪些 notebook。
+- `Task0` 负责理解 autograd 和 backward 生命周期；`Task1` 才把这些状态放回 GPU 显存层级中。
+- `intro` 负责学习顺序，告诉读者先读哪些 Notebook；本节负责解释账本为什么这样组织。
 - `01-06` 负责知识组织，把训练、推理和验证三条显存线收成同一套判断框架。
-- 因此，这一页是诊断起点，不是目录索引。
+- 因此，本节是诊断起点，不是目录索引。
+
+## 本节输出与下一步
+
+读完本节，至少应能写出一份简化显存账本：参数、梯度、optimizer state、activation、KV cache 和框架 buffer 分别占什么位置，峰值出现在哪个阶段，以及下一步应该测什么。接着按 Task1 主线回看 [02 LLM Params and FLOPs](../../01_Hardware_Math_and_Systems/02_LLM_Params_and_FLOPs.md)、[03 GPU Architecture and Memory](../../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.md) 和 [06 VRAM Calculation and ZeRO](../../01_Hardware_Math_and_Systems/06_VRAM_Calculation_and_ZeRO.md)；需要连接 attention 访存时，再补充 [20 FlashAttention Sim](../../02_PyTorch_Algorithms/20_FlashAttention_Sim.md)。
+
+在 Part01 主线中，这个账本由 `01 dtype → 02 参数规模 → 03 硬件代价 → 06 状态分摊` 逐步建立。这里的账本是估算和诊断语言；真实峰值、吞吐和 OOM 边界仍由 73、76 和 74 验证。
 
 ## 文献锚点
 
@@ -84,15 +101,17 @@ total memory budget
 - PyTorch profiler / memory profiling 文档：帮助理解实测峰值和保留显存的区别。
 - ZeRO / activation checkpointing 相关论文：帮助理解为什么账本要先拆成对象。
 
+## 证据边界
+
+CPU 可以验证字节数、对象分类和账本加总；它不能证明 CUDA allocator 的峰值、reserved memory、kernel 访存或 OOM 边界。真实峰值和吞吐需要在固定 workload 下运行 GPU 项目，账本只用于提出测量假设。
+
 ## 对应 Part 02
 
-- `12` Gradient Accumulation
-- `19` Activation Checkpointing and Activation Offload
-- `22` vLLM PagedAttention
-- `25 / 40 / 41 / 67` 量化与部署
-- `73 / 74` 性能分析与端到端优化
-
-这里要区分两类显存：`12 / 19 / 42` 主要讨论训练过程中的 activation、梯度节奏、重算和搬运；`22 / 24 / 34 / 37` 主要讨论推理过程中的 KV Cache、分页、复用和调度。账本相同，但对象生命周期和指标不同。
+- [12 Gradient Accumulation](../../02_PyTorch_Algorithms/12_Gradient_Accumulation.md)
+- [19 Activation Checkpointing and Activation Offload](../../02_PyTorch_Algorithms/19_Activation_Checkpointing_and_Activation_Offload.md)
+- [22 vLLM PagedAttention](../../02_PyTorch_Algorithms/22_vLLM_PagedAttention.md)
+- [25 W8A16](../../02_PyTorch_Algorithms/25_Quantization_W8A16.md)、[40 GPTQ / AWQ](../../02_PyTorch_Algorithms/40_GPTQ_and_AWQ_Weight_Quantization.md)、[41 FP8 / KV Cache Quantization](../../02_PyTorch_Algorithms/41_FP8_and_KV_Cache_Quantization.md)、[67 Quantized Deployment](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.md)
+- [73 Training Performance Analysis](../../02_PyTorch_Algorithms/73_Training_Performance_Analysis.md)、[74 Profiling Driven Optimization](../../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.md)
 
 ## 典型阅读入口
 

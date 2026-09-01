@@ -2,7 +2,7 @@
 
 ## 页面目标
 
-这一页回答的是：当量化被放进显存专题时，应该怎么看它，而不是把它当成独立的“更快”或“更先进”方案。
+本节回答的是：当量化被放进显存专题时，应该怎么看它，而不是把它当成独立的“更快”或“更先进”方案。
 
 ## 问题起点
 
@@ -24,6 +24,10 @@
 
 量化通过降低数值表示成本来省显存和带宽，但它一定会同时引入精度、kernel、兼容性或部署复杂度上的代价。因此，这条线的核心不是“能不能量化”，而是“量化是否值得作为显存优化工具”。
 
+## 量化对象与证据顺序
+
+先区分权重、activation 和 KV Cache 三个对象，再决定使用哪一种量化路线：[21 Quantization Theory](../../01_Hardware_Math_and_Systems/21_Quantization_Theory_and_INT4_INT8.md) 和 [25 W8A16](../../02_PyTorch_Algorithms/25_Quantization_W8A16.md) 适合建立基础；[40 GPTQ / AWQ](../../02_PyTorch_Algorithms/40_GPTQ_and_AWQ_Weight_Quantization.md) 进入后训练权重量化扩展，[41 FP8 / KV Cache Quantization](../../02_PyTorch_Algorithms/41_FP8_and_KV_Cache_Quantization.md) 进入运行时与 KV Cache 扩展；GGUF 作为文件格式与部署路径，最后统一用 [67 Quantized Inference and Deployment](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.md) 按对应 backend 验证显存、速度和质量是否同时满足约束。
+
 ## 演化路径
 
 1. 先识别预算对象是权重还是 cache。
@@ -36,19 +40,23 @@
 - KV cache quantization 更适合“长上下文和并发先装下”。
 - 如果显存省了，但 TPOT、TTFT 或质量退化太大，量化就不应该被视作成功。
 
-![Quantization as a memory tool](/topic_discussion/memory_performance_tuning/quantization_memory_tool.svg)
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 文献锚点
 
 - GPTQ / AWQ：看权重量化如何在有限损失下省驻留。
 - FP8 / KV cache quantization 资料：看缓存压缩怎样改变显存预算。
 
+## 证据边界
+
+CPU 可以验证量化误差、理论字节数和预算计算；真实格式能否加载、使用哪个 kernel、峰值显存、吞吐和任务质量，必须在对应 GPU backend 上用同一 workload 对比 baseline。理论压缩率不等于端到端收益。
+
 ## 对应 Part 02
 
-- `25` Quantization W8A16
-- `40` GPTQ and AWQ Weight Quantization
-- `41` FP8 and KV Cache Quantization
-- `67` Quantized Inference and Deployment
+- [25 Quantization W8A16](../../02_PyTorch_Algorithms/25_Quantization_W8A16.md)
+- [40 GPTQ and AWQ Weight Quantization](../../02_PyTorch_Algorithms/40_GPTQ_and_AWQ_Weight_Quantization.md)
+- [41 FP8 and KV Cache Quantization](../../02_PyTorch_Algorithms/41_FP8_and_KV_Cache_Quantization.md)
+- [67 Quantized Inference and Deployment](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.md)
 
 ## 典型阅读入口
 
