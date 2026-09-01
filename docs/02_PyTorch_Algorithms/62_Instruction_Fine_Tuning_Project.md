@@ -41,14 +41,21 @@
 - 记录 instruction、input、response 的字段约定，避免样本格式漂移。
 - baseline 至少要回答两个问题：不用微调时格式是否稳定，已有微调方案是否已经能满足任务。
 
-### Step 2: 先做数据与格式合法性检查
+| 实验组 | 环境 | 固定内容 | 主要验证 |
+|:---|:---|:---|:---|
+| CPU 机制 | CPU 或 GPU | 人工样例、字段和评测输入 | 数据、模板和决策逻辑 |
+| GPU SFT | 单卡 GPU | 模型、数据 split、dtype、batch、steps | train/val loss、资源和生成结果 |
+
+CPU 结果不能证明模型效果；GPU 结果也必须同时保留数据审计和评测样例。
+
+### Step 2（CPU 项目设计）: 先做数据与格式合法性检查
 
 指令微调必须先确认数据和格式口径可信，训练结论才有交付意义。
 - 训练前先做数据审计：样本数、空 response、重复样本、超长 prompt。
 - 再做格式抽检：是否存在缺字段、空 instruction、空 response 或模板拼接异常。
 - 如果数据和格式检查不通过，这一轮实验最多只能产出 blocker，而不是有效训练结论。
 
-### Step 3: 用统一口径收训练与评测结果
+### Step 3（GPU 项目设计，可选）: 用统一口径收训练与评测结果
 
 训练和评测结果必须放在统一口径下比较，不能把指标改善和格式稳定性割裂开看。
 - 统一记录 train / val 指标、step time、资源消耗和最小样例抽检结果。
@@ -59,7 +66,10 @@
 
 - 最终结论不只回答“能不能训”，而要回答“能不能交付”。
 - 项目结论建议统一成 `accept / tune / reject` 三档。
-- 若进入 `tune`，下一轮应优先回到数据模板、评测样本或训练配置，而不是盲目继续加步数。 
+- 若进入 `tune`，下一轮应优先回到数据模板、评测样本或训练配置，而不是盲目继续加步数。
+
+### Step 5（CPU 代码练习）: 实现数据、格式和输出评测
+下面的题目区只实现可在 CPU 检查的函数；真实 SFT 训练和 GPU 资源采集不放进题目区。
 #### 图解：09-13 如何收束到 62 指令微调项目
 
 `62` 把 SFT 数据工程和训练闭环组合成一个项目交付模板。
@@ -99,22 +109,51 @@ from typing import Dict, List
 
 ```python
 # 4 个核心 TODO：数据审计、格式检查、样例抽检、项目总结
-# 目标：把 instruction / input / response 数据整理成统一项目报告，而不是只看训练指标
+# 目标：把 instruction / input / response 数据整理成统一项目报告，而不是只看训练指标。
+# CPU 题目区验证数据与格式口径；GPU 扩展才验证真实模型的 loss、生成质量和资源。
 
-# TODO 1: 统计指令数据集摘要
+# TODO 1：统计指令数据集摘要
 def summarize_instruction_dataset(records: List[Dict[str, str]], max_prompt_chars: int) -> Dict[str, float]:
+    """统计样本数、空 response、重复样本和 prompt 长度风险。
+
+    每条记录使用 instruction、input、response 字段；返回摘要字典，
+    不计算模型 loss，也不把字符数当成 tokenizer token 数。
+    """
+    # 提示：重复键使用三字段组合；空 response 只按 response 判定。
+    # total_samples = ???；empty_response_count = ???；duplicate_count = ???；over_length_count = ???。
     raise NotImplementedError("请先完成 TODO 代码！")
 
-# TODO 2: 检查格式是否合法
+# TODO 2：检查格式是否合法
 def check_instruction_format(batch: List[Dict[str, str]]) -> Dict[str, int]:
+    """检查 instruction / response 必填字段和非空约束。
+
+    返回 valid_count、missing_field_count 和 format_issue_count；
+    缺字段与字段存在但为空必须分开统计。
+    """
+    # 提示：只有 instruction、response 都存在且非空时才计入 valid_count。
+    # missing_field_count = ???；format_issue_count = ???；valid_count = ???。
     raise NotImplementedError("请先完成 TODO 代码！")
 
-# TODO 3: 汇总训练后样例抽检结果
+# TODO 3：汇总训练后样例抽检结果
 def review_instruction_outputs(outputs: List[Dict[str, object]]) -> Dict[str, object]:
+    """汇总固定样例的格式通过率和任务通过率。
+
+    输入记录至少包含 format_ok、task_ok；空列表时通过率应为 0.0。
+    通过率是样例级诊断，不等同于完整评测集的模型能力。
+    """
+    # 提示：分别统计 format_pass_count / task_pass_count，并保留样例总数。
+    # sample_count = ???；format_pass_count = ???；task_pass_count = ???；pass_rate = ???。
     raise NotImplementedError("请先完成 TODO 代码！")
 
-# TODO 4: 输出项目交付结论
+# TODO 4：输出项目交付结论
 def build_instruction_project_report(summary: Dict[str, float], format_check: Dict[str, int], output_review: Dict[str, object]) -> Dict[str, object]:
+    """把数据摘要、格式检查和样例抽检收成项目决策。
+
+    存在字段/格式 blocker 时应 reject；输入合规但样例任务不稳定时可 tune；
+    仅凭 CPU 审计不能输出真实训练效果的 accept。
+    """
+    # 提示：返回 decision、project_ready 和 next_action 三个核心字段。
+    # blockers = ???；project_ready = ???；decision = ???；next_action = ???。
     raise NotImplementedError("请先完成 TODO 代码！")
 
 ```
@@ -144,6 +183,8 @@ def test_instruction_project_template():
     ])
     assert output_review['format_pass_count'] == 2
     assert output_review['task_pass_count'] == 1
+    assert output_review['format_pass_rate'] == 1.0
+    assert output_review['task_pass_rate'] == 0.5
 
     report = build_instruction_project_report(summary, format_check, output_review)
     assert report['decision'] == 'reject'
@@ -245,10 +286,14 @@ def check_instruction_format(batch: List[Dict[str, str]]) -> Dict[str, int]:
 def review_instruction_outputs(outputs: List[Dict[str, object]]) -> Dict[str, object]:
     format_pass_count = sum(1 for item in outputs if item.get('format_ok', False))
     task_pass_count = sum(1 for item in outputs if item.get('task_ok', False))
+    sample_count = len(outputs)
     return {
+        'sample_count': sample_count,
         'format_pass_count': format_pass_count,
         'task_pass_count': task_pass_count,
-        'sample_ready': bool(outputs) and format_pass_count == len(outputs),
+        'format_pass_rate': round(format_pass_count / sample_count, 4) if sample_count else 0.0,
+        'task_pass_rate': round(task_pass_count / sample_count, 4) if sample_count else 0.0,
+        'sample_ready': bool(outputs) and format_pass_count == sample_count,
     }
 
 
@@ -314,19 +359,27 @@ def build_instruction_project_report(summary: Dict[str, float], format_check: Di
 
 ```python
 try:
-    from tools.fine_tuning_project_runtime import runtime_snapshot, save_project_report, validate_project_config
+    from tools.fine_tuning_project_runtime import preflight_runtime, runtime_snapshot, save_project_report, validate_project_config
 except ModuleNotFoundError:
+    preflight_runtime = lambda torch_module, run_mode='cpu', **kwargs: {'run_mode': run_mode, 'ready': False, 'reasons': ['共享运行时工具不可用']}
     runtime_snapshot = lambda: {'device': 'unknown'}
     validate_project_config = lambda config: []
     save_project_report = None
+RUN_MODE = 'cpu'  # cpu / dry_run / real_gpu；默认不启动真实训练。
 PROJECT_ID = '62_instruction_fine_tuning'
 PROJECT_RESULT_PATH = 'benchmarks/results/62_instruction_fine_tuning.json'
-PROJECT_CONFIG = {'project': PROJECT_ID, 'model': 'template', 'dtype': 'fp32', 'batch_size': 1, 'seq_len': 128, 'steps': 1, 'seed': 42}
+PROJECT_CONFIG = {'project': PROJECT_ID, 'model': 'template', 'dtype': 'fp32', 'batch_size': 1, 'seq_len': 128, 'steps': 1, 'seed': 42, 'run_mode': RUN_MODE}
 RUN_PROJECT_EXPORT = False  # True 只保存已完成的项目报告。
 config_errors = validate_project_config(PROJECT_CONFIG)
 if config_errors:
     raise ValueError('; '.join(config_errors))
 print('runtime:', runtime_snapshot())
+if RUN_MODE == 'dry_run':
+    try:
+        import torch
+        print('dry_run:', preflight_runtime(torch, run_mode='dry_run'))
+    except ImportError as exc:
+        print({'run_mode': 'dry_run', 'ready': False, 'reasons': [f'缺少 torch：{exc}']})
 if RUN_PROJECT_EXPORT:
     if 'PROJECT_REPORT' not in globals():
         raise RuntimeError('请先组装完整的 PROJECT_REPORT')

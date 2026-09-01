@@ -14,7 +14,19 @@
 
 ## 本节导读
 
-本节承接第 13 节的端到端 SFT 小项目，把“训练链路能否跑通”推进为“LoRA 方案是否值得交付”。你需要先固定数据、训练步数和评测口径，分别跑通 baseline 与 LoRA，再记录可训练参数量、显存、训练耗时、验证结果和生成样例。最后根据效果损失是否可接受、资源收益是否真实存在，判断 LoRA 方案应该采用、调整还是放弃。
+本节承接第 13 节的端到端 SFT 小项目，把“训练链路能否跑通”推进为“LoRA 方案是否值得交付”。你需要先固定数据、训练步数和评测口径，分别比较 baseline 与 LoRA，再记录可训练参数量、显存、训练耗时、验证结果和生成样例。
+
+**实验分层：** Step 1-5 是 CPU-first 的项目判断练习，验证数据审计、loss mask、参数账本、报告字段和决策逻辑；它们不证明模型训练效果或 GPU 显存收益。Step 6 是真实 GPU smoke test，只验证模型、数据、LoRA 和 artifact 链路；Step 7 才是同口径 baseline / LoRA 对比。只有固定数据、验证集和重复运行后，才能讨论是否值得交付。
+
+**本节机制边界：** 本节承接第 10、12、13 节，把冻结基座、低秩 A/B、target modules、rank/alpha/dropout、optimizer state、effective batch、loss mask 和 adapter 交付串成项目闭环。QLoRA/NF4、LoRA 变体、学习率调度、显存 profiling 和量化部署分别由 26/65、63、11/13、73/74 和 67 负责，本节只记录它们对项目决策的接口。
+
+| 目标 | 重点检查 | 证据等级 |
+|:---|:---|:---|
+| 参数高效 | trainable params、参数占比、target modules、rank | CPU 账本可验证；真实参数量需 GPU/模型加载确认 |
+| 训练正确 | 数据审计、labels、padding mask、train/validation split | CPU 测试可验证口径；效果需 GPU 训练和验证集 |
+| 资源收益 | optimizer state、peak memory、step time、tokens/s | 只能由同口径 GPU benchmark 支持 |
+| 可交付性 | adapter、tokenizer、merge 和生成 sanity check | 真实模型运行后才能确认 |
+
 
 **关键词：** `LoRA`, `training`, `project`, `profiling`, `report`
 
@@ -34,8 +46,16 @@
 - [73. Training Performance Analysis | 训练性能分析](./73_Training_Performance_Analysis.md)
 
 ---
-### Step 1: 定义 LoRA 微调目标
+### Step 1（CPU 项目设计）: 定义 LoRA 微调目标
 先回答一个问题：在尽量少训练参数的前提下，LoRA 能否完成目标任务，并保留可接受的 train / val loss 表现？
+
+| 实验组 | 环境 | 比较内容 | 只允许改变什么 | 主要输出 |
+|:---|:---|:---|:---|:---|
+| CPU 机制 | CPU 或 GPU | 数据、mask、参数账本和决策函数 | 输入样例或候选配置 | 逻辑测试结果 |
+| GPU smoke | 单卡 GPU | 真实模型与 LoRA 链路 | 不做 baseline 对照 | 模型加载、反向传播和 adapter 是否成功 |
+| GPU matched | 单卡 GPU | full-parameter baseline vs LoRA | 只改变是否启用 LoRA | 显存、速度、验证损失和生成质量 |
+
+CPU 结果用于检查口径，GPU 结果用于支持资源和效果结论；三组实验不能混用。
 
 - 固定底座模型、数据集、batch size、seq len、优化器、学习率和训练 step 数。
 - 明确 baseline 是全参数微调、冻结底座不训练，还是已有的普通微调配置。
@@ -45,7 +65,7 @@
 - 统一记录核心指标：可训练参数量、参数占比、step time、peak memory、train loss、val loss。
 - 这节先建立 LoRA 项目交付模板，再把数据、loss、参数、显存、速度、效果和 artifact 收成一份项目汇总。
 
-### Step 2: 跑通 baseline 并记录账本
+### Step 2（CPU 项目设计）: 固定 baseline 口径并建立账本
 
 LoRA 的收益必须和稳定 baseline 对比，不能只看 LoRA 自己能不能跑。
 
@@ -54,7 +74,7 @@ LoRA 的收益必须和稳定 baseline 对比，不能只看 LoRA 自己能不�
 - 确认 baseline loss 能正常下降，再进入 LoRA 对比。
 - 如果 baseline 本身不稳定，后面的 LoRA 结果就没有可解释性。
 
-### Step 3: 插入 LoRA 并做同口径对比
+### Step 3（CPU 项目设计）: 比较 LoRA 配置与资源账本
 
 把 LoRA adapter 插到 attention projection 或 MLP linear layer 上，只训练低秩旁路。
 
@@ -63,7 +83,7 @@ LoRA 的收益必须和稳定 baseline 对比，不能只看 LoRA 自己能不�
 - 用同样的 batch、输入长度、训练步数和评估方式比较 LoRA 与 baseline。
 - 重点看三个问题：参数量省了多少，显存 / 速度是否改善，train/val loss 是否仍然正常。
 
-### Step 4: 输出微调项目结论
+### Step 4（CPU 项目设计）: 按约束输出项目结论
 
 最后把 LoRA 和 baseline 放到同一张表里，说明这次微调方案是否值得采用。
 
@@ -74,7 +94,7 @@ LoRA 的收益必须和稳定 baseline 对比，不能只看 LoRA 自己能不�
 - 如果效果不足，下一轮优先调整 rank、插层范围、学习率或 gradient accumulation。
 - 最终产物应回答：数据和 loss 是否可信，LoRA 少训练了多少参数，换来了多少显存 / 速度收益，val loss 损失是否还能接受，adapter 是否可以交付。
 
-### Step 5: 最小代码模板
+### Step 5（CPU 代码练习）: 最小代码模板
 
 上面的 Step 1-4 是完整 LoRA 微调项目流程。下面的代码实现其中最小、可复用的六块：数据审计、loss mask 核对、项目配置、LoRA 参数账本、结果汇总和交付检查。
 #### 图解：09-13 如何收束到 LoRA 项目报告
@@ -763,14 +783,22 @@ print(recommend_lora_decision(summary, readiness))
 
 这一步对应 66 节的真实 backend 分支，但验证对象不同：66 验证推理服务，60 验证真实模型、tokenizer、LoRA adapter、训练 step 和 artifact 保存链路。默认关闭，不影响 CPU-first 练习。
 
-真实运行只完成小规模 smoke test，不等于完整微调效果结论；要形成正式结论，还需要固定数据集、训练步数、验证集和同口径 baseline。Colab / ModelScope 运行前请先阅读[训练微调项目验证清单](../docs/verification/fine_tuning_projects.md)。
+真实运行只完成小规模 smoke test，不等于完整微调效果结论；它主要检查 GPU、模型下载、tokenizer、LoRA 注入、反向传播和 adapter 保存是否连通。要形成正式结论，还需要固定数据集、训练步数、验证集和同口径 baseline。Colab / ModelScope 运行前请先阅读[训练微调项目验证清单](../docs/verification/fine_tuning_projects.md)。
+
+| 实验层级 | 运行位置 | 固定内容 | 可以得出的结论 | 不能得出的结论 |
+|:---|:---|:---|:---|:---|
+| CPU 题目区 | CPU 或 GPU | 人工构造的小样本、函数输入 | 数据审计、mask、参数账本和决策逻辑正确 | LoRA 训练有效、GPU 显存收益 |
+| GPU smoke | 有 CUDA 的单卡 | 模型、tokenizer、LoRA 配置 | 真实模型链路和 adapter 能否保存 | baseline 对比、泛化能力、稳定收益 |
+| GPU matched | 目标 GPU | 同一数据切分、dtype、batch、seq_len、steps | baseline 与 LoRA 的资源和 validation loss 差异 | 更大模型、更多数据或其他 GPU 的结论 |
+
 
 数据可以从 `inline`、Hugging Face、ModelScope 或本地 JSON/JSONL 读取。远程数据集支持 `instruction / input / output` 或 `prompt / response` 字段；真实项目建议使用固定版本、固定抽样数量，并把数据集 ID、来源和审计结果写入报告。
 
 
 ```python
-# 只需要修改这一格；默认关闭真实模型下载和 GPU 训练
-RUN_REAL_TRAINING = False
+# 只需要修改这一格；默认只运行 CPU 代码。
+RUN_MODE = 'cpu'  # cpu / dry_run / real_gpu；dry_run 只检查环境，不训练。
+RUN_REAL_TRAINING = False  # 兼容旧入口；real_gpu 模式下再显式打开对应实验。
 REAL_MODEL_SOURCE = 'huggingface'  # 模型来源：auto / modelscope / huggingface / local。
 REAL_MODEL_ID = 'Qwen/Qwen2.5-0.5B-Instruct'  # 基座模型；小模型便于 Colab 和约 12 GB 显存设备运行。
 # 缓存、结果和本地数据路径均由 Notebook 根据仓库根目录自动推导，不需要手填路径。
@@ -785,7 +813,7 @@ REAL_DATA_FILE = None  # None 时自动搜索 benchmarks/data/ 和 data/
 REAL_MAX_SAMPLES = 32  # 最多读取样本数；baseline 和 LoRA 必须使用同一批数据。
 REAL_SEED = 2024  # 模型初始化、训练随机性的种子；不同实验可改变它。
 SPLIT_SEED = 42  # 训练/验证集划分种子；跨实验固定，避免验证集随 REAL_SEED 改变。
-RUN_REAL_MATCHED = True  # Step 7：需要正式采集时再改为 True。
+RUN_REAL_MATCHED = False  # Step 7：需要正式采集时显式改为 True。
 MATCHED_BATCH_SIZE = 1  # 每次送入 GPU 的 micro-batch，不是有效 batch 总大小。
 MATCHED_VAL_RATIO = 0.2  # 固定留作验证的数据比例。
 MATCHED_STEPS = 20  # baseline 和 LoRA 必须使用相同更新步数。
@@ -846,7 +874,11 @@ if RUN_REAL_TRAINING:
         raise RuntimeError('RUN_REAL_TRAINING=True 需要可用 CUDA GPU。')
     device = torch.device('cuda')
     if REAL_DTYPE == 'auto':
-        dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+        try:
+            bf16_supported = torch.cuda.is_bf16_supported(including_emulation=False)
+        except TypeError:
+            bf16_supported = torch.cuda.get_device_capability(0)[0] >= 8
+        dtype = torch.bfloat16 if bf16_supported else torch.float16
     else:
         dtype = getattr(torch, REAL_DTYPE)
     model_path = resolve_model(REAL_MODEL_ID, REAL_MODEL_SOURCE)
@@ -951,9 +983,38 @@ else:
 
 ```
 
-## Step 7（可选）：自动采集 baseline vs LoRA
 
-Step 6 只验证真实 LoRA 链路；Step 7 才用于正式采集。它会自动固定 train/validation 划分，按 batch 分批，并依次运行 full-parameter baseline 与 LoRA。
+```python
+# dry_run 只做环境预检：不下载模型、不读取数据、不创建 optimizer。
+if globals().get('RUN_MODE', 'cpu') == 'dry_run':
+    import importlib.util
+    import sys
+    from pathlib import Path
+
+    project_root = next((path for path in [Path.cwd(), *Path.cwd().parents] if (path / 'tools').is_dir()), None)
+    if project_root is None:
+        raise RuntimeError('未找到项目根目录，请先 clone 仓库或从仓库启动 Notebook。')
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+    try:
+        import torch
+        from tools.fine_tuning_project_runtime import preflight_runtime
+        preflight = preflight_runtime(torch, run_mode='dry_run')
+    except ImportError as exc:
+        preflight = {'run_mode': 'dry_run', 'ready': False, 'reasons': [f'缺少运行依赖：{exc}'], 'next_action': 'install_dependencies'}
+    dependencies = {name: importlib.util.find_spec(name) is not None for name in ('transformers', 'peft', 'datasets')}
+    preflight['dependencies'] = dependencies
+    print('dry_run 预检结果：')
+    print(preflight)
+    print('提示：预检通过后，将 RUN_MODE 改为 real_gpu，并显式打开对应 GPU 实验开关。')
+
+```
+
+## Step 7（GPU 项目实验，可选）：自动采集 baseline vs LoRA
+
+Step 6 只验证真实 LoRA 链路；Step 7 才用于正式采集。它会自动固定 train/validation 划分，按 batch 分批，并依次运行 full-parameter baseline 与 LoRA。这里比较的是同一模型、同一数据切分、同一 dtype、同一训练步数下的资源与 validation loss，不是完整任务能力评测。
+
+正式采集前必须确认：模型快照、数据集版本和样本数、`SPLIT_SEED`、`MATCHED_BATCH_SIZE`、`REAL_MAX_SEQ_LEN`、`MATCHED_STEPS`、dtype、GPU 和 PyTorch/CUDA 版本均已写入报告。更换其中任一项，都应视为新的实验条件。
 
 默认关闭。打开 `RUN_REAL_MATCHED = True` 后，不需要复制训练代码或填写路径；结果会保存为 `benchmarks/results/60_real_lora/60_real_lora_matched.json`。
 
@@ -1076,7 +1137,11 @@ if RUN_REAL_MATCHED:
     from tools.model_runtime import resolve_model
 
     model_path = resolve_model(REAL_MODEL_ID, REAL_MODEL_SOURCE)
-    dtype = torch.bfloat16 if REAL_DTYPE == 'auto' and torch.cuda.is_bf16_supported() else torch.float16
+    try:
+        bf16_supported = torch.cuda.is_bf16_supported(including_emulation=False)
+    except TypeError:
+        bf16_supported = torch.cuda.get_device_capability(0)[0] >= 8
+    dtype = torch.bfloat16 if REAL_DTYPE == 'auto' and bf16_supported else torch.float16
     if REAL_DTYPE != 'auto':
         dtype = getattr(torch, REAL_DTYPE)
     tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
@@ -1156,9 +1221,13 @@ if RUN_REAL_MATCHED:
         losses = []
         processed_tokens = 0
         started = time.perf_counter()
-        train_batches = list(batches(train_batch))
+        # 训练数据保留在 CPU；每个 step 只把当前 micro-batch 搬到 GPU，避免把整个数据集计入显存峰值。
+        train_batch_iterator = batches(train_batch)
         for step in range(MATCHED_STEPS):
-            batch = train_batches[step % len(train_batches)]
+            batch = next(train_batch_iterator, None)
+            if batch is None:
+                train_batch_iterator = batches(train_batch)
+                batch = next(train_batch_iterator)
             processed_tokens += int(batch['attention_mask'].sum().item())
             optimizer.zero_grad(set_to_none=True)
             loss = model(**batch).loss

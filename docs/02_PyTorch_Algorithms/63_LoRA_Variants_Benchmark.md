@@ -40,13 +40,20 @@
 - 明确候选 LoRA 变体，例如不同 rank、alpha、dropout、target modules 或初始化策略。
 - 统一记录 train loss、val loss、step time、peak memory、可训练参数量和参数占比。
 
-### Step 2: 先确认 baseline 和预算口径合法
+| 实验组 | 环境 | 固定内容 | 单一变量 | 主要输出 |
+|:---|:---|:---|:---|:---|
+| CPU 机制 | CPU 或 GPU | 候选配置和模拟指标 | 候选字段 | 排序、预算过滤和决策逻辑 |
+| GPU benchmark | 单卡 GPU | 模型、数据 split、dtype、batch、steps | rank 或 alpha 或 dropout 或 target_modules 之一 | loss、显存、步时、吞吐和任务质量 |
+
+CPU 评分中的权重只用于教学排序，不代表真实业务收益；真实结论必须来自同 workload 的 GPU 对照。
+
+### Step 2（CPU 项目设计）: 先确认 baseline 和预算口径合法
 
 LoRA 变体 benchmark 必须先确认 baseline 和预算口径稳定，不能脱离基线项目页单独存在。
 - 至少要先知道基础 LoRA 配置的资源口径和效果基线，再去比较不同变体。
 - 如果预算本身不清楚，排序结果再漂亮也没有部署意义。
 
-### Step 3: 用统一口径比较收益与成本
+### Step 3（GPU 项目设计，可选）: 用单变量口径比较收益与成本
 
 LoRA 变体比较必须用统一口径同时看收益与成本，单一分数只能帮助排序，不能直接替代项目结论。
 - 真正的判断至少要同时看效果、显存、步时和训练参数占比。
@@ -56,6 +63,9 @@ LoRA 变体比较必须用统一口径同时看收益与成本，单一分数只
 
 - 这页最终要输出 `accept / tune / reject`，而不是只给一个“推荐第一名”。
 - 若进入 `tune`，下一轮优先回调 rank、target modules 和 dropout，而不是盲目增加更多变体。
+
+### Step 5（CPU 代码练习）: 实现校验、评分、排序和决策
+下面的题目区只实现候选校验和 benchmark 决策函数；真实训练和 GPU 资源测量属于后续可选实验。
 #### 图解：10-60 如何收束到 63 LoRA Benchmark
 
 `63` 把 LoRA 机制和项目经验收成一张统一的 benchmark 表。
@@ -93,16 +103,50 @@ from typing import Dict, List
 
 
 ```python
-# 3 个核心 TODO：变体评分、排序、项目推荐
-# 目标：把不同 LoRA 变体转成统一 benchmark 结果，而不是只给一张排名表
+# 4 个核心 TODO：变体校验、评分、排序、项目推荐
+# 目标：把不同 LoRA 变体转成统一 benchmark 结果，而不是只给一张排名表。
+# CPU 代码只验证输入、排序和预算逻辑；真实质量、显存和吞吐必须来自固定 workload 的 GPU 对照。
+
+def validate_lora_variant(variant: Dict[str, float]) -> List[str]:
+    """检查变体是否包含可比较的 loss、资源和参数比例字段。
+
+    返回错误列表；空列表表示可以进入评分。缺失字段不能默认填 0，
+    否则会把未测量候选误认为低成本方案。
+    """
+    # TODO 0：required 至少包含 name、train_loss、val_loss、step_time_ms、memory_mb、trainable_ratio。
+    # 提示：数值字段必须可转换、有限且资源值不为负；trainable_ratio 不应超过 1。
+    # required = ???；issues = ???；is_valid = ???。
+    raise NotImplementedError("请先完成 TODO 代码！")
 
 def score_lora_variant(variant: Dict[str, float]) -> Dict[str, float]:
+    """按给定权重计算教学用综合成本，并保留原始关键指标。
+
+    综合成本只用于 CPU 示例排序，不代表业务效用或 GPU 性能；调用前应先校验输入。
+    """
+    # TODO 1：使用 val_loss、train_loss、step_time_ms、memory_mb 和 trainable_ratio。
+    # 提示：成本越低排名越靠前；不要在函数内偷偷改变权重或补缺失指标。
+    # composite_cost = ???；score_parts = ???。
     raise NotImplementedError("请先完成 TODO 代码！")
 
 def rank_lora_variants(variants: List[Dict[str, float]]) -> List[Dict[str, float]]:
+    """校验并按综合成本升序返回变体评分结果。
+
+    空输入应返回空列表；非法候选应明确报错，不能静默跳过。
+    """
+    # TODO 2：对每个 variant 调用 score_lora_variant，再按 composite_cost 排序。
+    # 提示：排序结果必须稳定，返回值至少保留 name、composite_cost 和关键资源字段。
+    # scored_variants = ???；ranked = ???。
     raise NotImplementedError("请先完成 TODO 代码！")
 
 def recommend_lora_variant(baseline: Dict[str, float], variants: List[Dict[str, float]], memory_budget_mb: int) -> Dict[str, object]:
+    """在显存预算下比较候选与 baseline，并输出项目推荐。
+
+    推荐结果至少包含 decision、recommended_name 和 next_action；
+    只有满足预算且质量没有明显退化的候选才可 accept。
+    """
+    # TODO 3：先过滤 memory_mb <= memory_budget_mb，再结合 baseline 的 val_loss 判断。
+    # 提示：无可行候选返回 reject；可行但不是当前推荐方案时返回 tune。
+    # feasible = ???；recommended_name = ???；decision = ???；next_action = ???。
     raise NotImplementedError("请先完成 TODO 代码！")
 
 ```
@@ -117,6 +161,8 @@ def test_lora_benchmark_template():
         {'name': 'rank8', 'train_loss': 1.1, 'val_loss': 1.2, 'step_time_ms': 110, 'memory_mb': 1350, 'trainable_ratio': 0.08},
         {'name': 'rank16', 'train_loss': 1.0, 'val_loss': 1.15, 'step_time_ms': 140, 'memory_mb': 1700, 'trainable_ratio': 0.16},
     ]
+    assert validate_lora_variant(variants[0]) == []
+    assert validate_lora_variant({'name': 'broken', 'val_loss': -1})
     assert 'composite_cost' in score_lora_variant(variants[0])
     ranked = rank_lora_variants(variants)
     assert isinstance(ranked, list) and ranked[0]['name'] == 'rank8'
@@ -165,8 +211,35 @@ print('测试通过：LoRA 变体 benchmark 模板可以工作。')
 
 
 ```python
+# TODO 0: 校验 LoRA 变体输入，避免缺失字段被默认成 0
+def validate_lora_variant(variant: Dict[str, float]) -> List[str]:
+    errors = []
+    required = ('name', 'train_loss', 'val_loss', 'step_time_ms', 'memory_mb', 'trainable_ratio')
+    for key in required:
+        if key not in variant:
+            errors.append(f'missing:{key}')
+    if errors:
+        return errors
+    for key in ('train_loss', 'val_loss', 'step_time_ms', 'memory_mb', 'trainable_ratio'):
+        try:
+            value = float(variant[key])
+        except (TypeError, ValueError):
+            errors.append(f'non_numeric:{key}')
+            continue
+        if value != value or value in (float('inf'), float('-inf')):
+            errors.append(f'non_finite:{key}')
+        if key in ('step_time_ms', 'memory_mb', 'trainable_ratio') and value < 0:
+            errors.append(f'negative:{key}')
+    if float(variant.get('trainable_ratio', 0.0)) > 1.0:
+        errors.append('trainable_ratio>1')
+    return errors
+
+
 # TODO 1: 计算 LoRA 变体的综合成本
 def score_lora_variant(variant: Dict[str, float]) -> Dict[str, float]:
+    errors = validate_lora_variant(variant)
+    if errors:
+        raise ValueError(f'非法 LoRA 变体: {errors}')
     train_loss = float(variant.get('train_loss', 0.0))
     val_loss = float(variant.get('val_loss', 0.0))
     step_time_ms = float(variant.get('step_time_ms', 0.0))
@@ -257,19 +330,27 @@ def recommend_lora_variant(baseline: Dict[str, float], variants: List[Dict[str, 
 
 ```python
 try:
-    from tools.fine_tuning_project_runtime import runtime_snapshot, save_project_report, validate_project_config
+    from tools.fine_tuning_project_runtime import preflight_runtime, runtime_snapshot, save_project_report, validate_project_config
 except ModuleNotFoundError:
+    preflight_runtime = lambda torch_module, run_mode='cpu', **kwargs: {'run_mode': run_mode, 'ready': False, 'reasons': ['共享运行时工具不可用']}
     runtime_snapshot = lambda: {'device': 'unknown'}
     validate_project_config = lambda config: []
     save_project_report = None
+RUN_MODE = 'cpu'  # cpu / dry_run / real_gpu；本节默认只运行 CPU 决策逻辑。
 PROJECT_ID = '63_lora_variants_benchmark'
 PROJECT_RESULT_PATH = 'benchmarks/results/63_lora_variants.json'
-PROJECT_CONFIG = {'project': PROJECT_ID, 'model': 'template', 'dtype': 'fp32', 'batch_size': 1, 'seq_len': 128, 'steps': 1, 'seed': 42}
+PROJECT_CONFIG = {'project': PROJECT_ID, 'model': 'template', 'dtype': 'fp32', 'batch_size': 1, 'seq_len': 128, 'steps': 1, 'seed': 42, 'run_mode': RUN_MODE}
 RUN_PROJECT_EXPORT = False  # True 只保存已完成的 benchmark 报告。
 config_errors = validate_project_config(PROJECT_CONFIG)
 if config_errors:
     raise ValueError('; '.join(config_errors))
 print('runtime:', runtime_snapshot())
+if RUN_MODE == 'dry_run':
+    try:
+        import torch
+        print('dry_run:', preflight_runtime(torch, run_mode='dry_run'))
+    except ImportError as exc:
+        print({'run_mode': 'dry_run', 'ready': False, 'reasons': [f'缺少 torch：{exc}']})
 if RUN_PROJECT_EXPORT:
     if 'PROJECT_REPORT' not in globals():
         raise RuntimeError('请先组装完整的 PROJECT_REPORT')
