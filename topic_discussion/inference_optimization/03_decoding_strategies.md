@@ -2,11 +2,11 @@
 
 ## 页面目标
 
-这一页回答的是：token 怎么生成，如何减少 decode 循环成本。
+本节回答：token 怎么生成，如何减少 decode 循环成本。
 
 ## 本节在路线中的位置
 
-本节对应 **Task3：Decode 与生成策略**。它承接 01 的指标口径和 02 的 Prefill 判断，关注首 token 之后的生成阶段；完成后继续进入 Task4，判断 KV Cache、请求组织和调度是否成为主要瓶颈。
+本节对应 **Task2：Decode 与生成策略**。它承接 01 的指标口径和 02 的 Prefill 判断，关注首 token 之后的生成阶段；完成后进入 Task3，判断 KV Cache、请求组织和调度是否成为主要瓶颈。
 
 本节先建立解码策略的共同判断框架，再把 speculative decoding、multi-token decoding 和 decode scheduling 作为不同层次的候选动作。它们不是同一种优化，也不能只用吞吐一个指标比较。
 
@@ -64,7 +64,7 @@ decode 阶段的核心不是“选哪种采样”，而是“每轮生成能不�
 
 核心结论应能够区分：是每轮 Decode 计算太慢、循环轮数太多，还是请求组织和 KV Cache 访问拖慢了生成。
 
-![Decode strategy comparison](/topic_discussion/inference_optimization/decode_strategies.svg)
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 文献锚点
 
@@ -85,6 +85,10 @@ decode 阶段的核心不是“选哪种采样”，而是“每轮生成能不�
 - `35` Multi-Token Decoding
 - `36` Decode Scheduling
 - `66` Inference Performance Comparison
+
+## 证据边界
+
+CPU 可以验证 sampling、draft / verify 和接受率的计算逻辑；真实 acceptance rate、TPOT、吞吐和调度收益需要目标模型、draft model 与固定请求 workload。普通解码实验不能直接证明 speculative decoding 已生效。
 
 ## 经典阅读入口
 

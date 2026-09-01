@@ -2,7 +2,7 @@
 
 ## 页面目标
 
-这一页回答两个问题：
+本节回答两个问题：
 
 - 一个请求从进来到输出 token，链路长什么样？
 - TTFT、TPOT、throughput、peak memory 这些指标应该怎么一起看？
@@ -107,15 +107,15 @@ e2e latency
 | peak memory 顶到预算、batch 上不去 | `memory-bound` | `04` + `05` |
 | 没有明显单点瓶颈 | 需要回到端到端判断 | `06` |
 
-![Inference request lifecycle](/topic_discussion/inference_optimization/request_lifecycle.svg)
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 与 Part 02 Task0-6 的关系
 
-这页不是简单复述 `Task0-6`。它承担的是“知识组织层”的入口作用：
+本节不是简单复述 `Task0-6`。它承担的是“知识组织层”的入口作用：
 
 - `Task0-6` 负责学习顺序，告诉读者该先读哪些 Notebook；
 - `01` 负责把这些 notebook 放回同一条请求链路里，告诉读者“为什么要分 prefill、decode、KV cache、量化这几条线”；
-- 因此，这一页更像诊断起点，而不是文件索引。
+- 因此，本节是诊断起点，而不是文件索引。
 
 ## 文献锚点
 
@@ -169,6 +169,10 @@ e2e latency
 - `40 / 41 / 67` 量化推理与部署
 - `68 / 69 / 70` 推理策略与服务扩展项目
 - `66` Inference Performance Comparison
+
+## 证据边界
+
+CPU 可以验证请求阶段划分、指标计算和报告字段；真实 TTFT、TPOT、吞吐、P99 与峰值显存需要固定 workload 下的 GPU 或 backend 实验。本节统一测量口径，不把指标模板当成性能结论。
 
 ## 典型阅读入口
 
