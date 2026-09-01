@@ -28,7 +28,7 @@
 
 ## 可视化入口
 
-![Divergent Optima Board](/topic_discussion/compiler_graph_optimization/divergent_optima_board.svg)
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 对应 Part
 

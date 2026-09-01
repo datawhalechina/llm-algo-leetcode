@@ -30,7 +30,7 @@
 
 ## 可视化入口
 
-![Graph to Backend Chain](/topic_discussion/compiler_graph_optimization/graph_to_backend_chain.svg)
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 对应 Part
 
