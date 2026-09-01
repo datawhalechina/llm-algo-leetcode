@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import platform
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -130,8 +131,10 @@ def start_optional_vllm(
     vllm_environment: str | None = None,
     max_model_len: int = 2048,
     gpu_memory_utilization: float = 0.8,
-    enforce_eager: bool = True,
-    served_model_name: str | None = None,
+               enforce_eager: bool = True,
+               served_model_name: str | None = None,
+               enable_prefix_caching: bool = False,
+               quantization_args: list[str] | None = None,
 ) -> tuple[Any, Path, int, str, str]:
     """Resolve a model and launch vLLM for an optional Practice-P2 run.
 
@@ -152,8 +155,65 @@ def start_optional_vllm(
         gpu_memory_utilization=gpu_memory_utilization,
         enforce_eager=enforce_eager,
         served_model_name=served_model_name or model_id,
+        enable_prefix_caching=enable_prefix_caching,
+        quantization_args=quantization_args,
     )
     return server, log_path, port, selected_dtype, str(model_path)
+
+
+def start_speculative_vllm(
+    *,
+    target_model_id: str,
+    draft_model_id: str,
+    model_source: str = "auto",
+    cache_dir: str | Path = "model_cache",
+    dtype: str = "auto",
+    proposal_length: int = 5,
+    vllm_command: str | None = None,
+    vllm_environment: str | None = None,
+    max_model_len: int = 2048,
+    gpu_memory_utilization: float = 0.8,
+    enforce_eager: bool = True,
+    served_model_name: str | None = None,
+):
+    """Launch vLLM speculative decoding using detected CLI syntax.
+
+    The function fails before model loading when the installed CLI does not
+    expose a supported speculative interface. It does not verify model
+    compatibility or acceptance metrics; callers must check those separately.
+    """
+
+    if target_model_id == draft_model_id:
+        raise ValueError("target_model_id 与 draft_model_id 不能相同")
+    from tools.backend_runtime import (
+        build_vllm_speculative_args,
+        probe_vllm_speculative_support,
+        resolve_model,
+        start_vllm,
+    )
+
+    capability = probe_vllm_speculative_support(vllm_command, vllm_environment)
+    if capability["status"] != "supported":
+        raise RuntimeError(
+            "当前 vLLM CLI 不支持可识别的 speculative 参数："
+            + json.dumps(capability, ensure_ascii=False)
+        )
+    target_path = resolve_model(target_model_id, model_source, cache_dir=cache_dir)
+    speculative_args = build_vllm_speculative_args(
+        capability, draft_model=draft_model_id, proposal_length=proposal_length
+    )
+    server, log_path, port, selected_dtype = start_vllm(
+        target_path,
+        dtype,
+        vllm_command=vllm_command,
+        vllm_environment=vllm_environment,
+        max_model_len=max_model_len,
+        gpu_memory_utilization=gpu_memory_utilization,
+        enforce_eager=enforce_eager,
+        served_model_name=served_model_name or target_model_id,
+        speculative_args=speculative_args,
+    )
+    return server, log_path, port, selected_dtype, str(target_path), capability
 
 
 def stop_optional_vllm(server: Any, log_path: str | Path) -> None:
@@ -162,6 +222,43 @@ def stop_optional_vllm(server: Any, log_path: str | Path) -> None:
     from tools.backend_runtime import stop_backend
 
     stop_backend(server, Path(log_path))
+
+
+def start_external_openai_backend(
+    command_template: str | list[str],
+    *,
+    model_path: str,
+    port: int,
+    log_path: str | Path,
+    ready_timeout_s: float = 120.0,
+) -> tuple[Any, Path]:
+    """Start a user-specified OpenAI-compatible backend.
+
+    The template must contain ``{model_path}`` and ``{port}``.  This adapter
+    deliberately does not assume a GGUF engine or its CLI flags; the learner
+    must provide the engine-specific command and record it in the report.
+    """
+
+    if not model_path:
+        raise ValueError("model_path 不能为空")
+    if port <= 0:
+        raise ValueError("port 必须大于 0")
+    tokens = shlex.split(command_template) if isinstance(command_template, str) else list(command_template)
+    if not tokens or "{model_path}" not in tokens or "{port}" not in tokens:
+        raise ValueError("command_template 必须包含 {model_path} 和 {port} 占位符")
+    command = [token.format(model_path=model_path, port=port) for token in tokens]
+    log_file_path = Path(log_path)
+    log_file_path.parent.mkdir(parents=True, exist_ok=True)
+    log_file = log_file_path.open("w", encoding="utf-8")
+    process = subprocess.Popen(command, stdout=log_file, stderr=subprocess.STDOUT)
+    try:
+        from tools.backend_runtime import wait_until_ready
+        wait_until_ready(port, timeout_s=ready_timeout_s)
+    except Exception:
+        from tools.backend_runtime import stop_backend
+        stop_backend(process, log_file)
+        raise
+    return process, log_file_path
 
 
 def run_backend_benchmark(
