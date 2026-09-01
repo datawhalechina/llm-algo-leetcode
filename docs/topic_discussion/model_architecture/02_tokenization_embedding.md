@@ -1,4 +1,4 @@
-# 02 Tokenization / BPE / Embedding
+# 02 分词、BPE 与 Embedding（Tokenization / BPE / Embedding）
 
 ## 页面目标
 

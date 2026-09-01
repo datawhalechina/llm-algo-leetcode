@@ -1,4 +1,4 @@
-# 07 MLP / FFN Evolution
+# 07 MLP / FFN 演化（MLP / FFN Evolution）
 
 ## 页面目标
 
@@ -96,9 +96,9 @@ Attention 负责 token 之间的信息交互，但每个 token 自己内部的�
 
 ## 与 Part 02 的对应关系
 
-- `02` 直接讲 SwiGLU
-- `05` 里可以看到 MLP / FFN 如何进入 block
-- `06`、`07` 里可以看到 FFN 如何进一步升级为 MoE
+- [Part 02 · 02 SwiGLU](../../02_PyTorch_Algorithms/02_SwiGLU_Activation.md) 直接讲 SwiGLU
+- [Part 02 · 05 LLaMA3 Block](../../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.md) 里可以看到 MLP / FFN 如何进入 block
+- [Part 02 · 06 MoE Router](../../02_PyTorch_Algorithms/06_MoE_Router.md) 和 [Part 02 · 07 MoE 负载均衡损失](../../02_PyTorch_Algorithms/07_MoE_Load_Balancing_Loss.md) 展示 FFN 如何进一步升级为 MoE
 
 ## 可视化提示
 

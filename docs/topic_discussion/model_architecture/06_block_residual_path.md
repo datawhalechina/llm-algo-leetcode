@@ -1,4 +1,4 @@
-# 06 Block / Residual Path
+# 06 Block 与 Residual 主干（Block / Residual Path）
 
 ## 页面目标
 
@@ -108,10 +108,10 @@ pre-norm 的流行本质上是在解决深层优化中的“信号衰减”问�
 
 ## 与 Part 02 的对应关系
 
-- `01`、`02`、`03`、`04` 的组件都在这里重新组装
-- `05` 是最直接的 block 级案例
-- `06`、`07` 是把 MLP 换成 MoE 的扩展方式
-- `08` 是真实模型里 block 变体的来源
+- [Part 02 · 01 RMSNorm](../../02_PyTorch_Algorithms/01_RMSNorm_Tutorial.md)、[Part 02 · 02 SwiGLU](../../02_PyTorch_Algorithms/02_SwiGLU_Activation.md)、[Part 02 · 03 RoPE](../../02_PyTorch_Algorithms/03_RoPE_Tutorial.md) 和 [Part 02 · 04 Attention（MHA/GQA）](../../02_PyTorch_Algorithms/04_Attention_MHA_GQA.md) 的组件都在这里重新组装
+- [Part 02 · 05 LLaMA3 Block](../../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.md) 是最直接的 block 级案例
+- [Part 02 · 06 MoE Router](../../02_PyTorch_Algorithms/06_MoE_Router.md) 和 [Part 02 · 07 MoE 负载均衡损失](../../02_PyTorch_Algorithms/07_MoE_Load_Balancing_Loss.md) 展示把 MLP 扩展为 MoE 的方式
+- [Part 02 · 08 架构技巧](../../02_PyTorch_Algorithms/08_Architecture_Tricks.md) 和 [Part 02 · 61 模型架构探索](../../02_PyTorch_Algorithms/61_Model_Architecture_Exploration.md) 用于核对真实模型中的 block 变体
 
 ## 可视化提示
 
