@@ -36,7 +36,7 @@ SFT 更像在回答“模型会不会按示例格式作答”。
 
 ## 可视化入口
 
-![Post-Training Alignment Lifecycle](/topic_discussion/post_training_alignment/alignment_lifecycle.svg)
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 关键取舍
 

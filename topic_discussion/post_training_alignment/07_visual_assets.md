@@ -2,7 +2,7 @@
 
 ## 页面目标
 
-这页收口后训练与对齐专题的图册资产。第一阶段先固定“该有什么图、图用来回答什么问题”，后续再逐步补成正式 SVG。
+这页收口后训练优化的图册资产。第一阶段先固定“该有什么图、图用来回答什么问题”，后续再逐步补成正式 SVG。
 
 ## 图册顺序
 
@@ -11,32 +11,32 @@
 1. `alignment_lifecycle`
 - 从 `SFT model -> alignment gap -> method choice -> eval -> project decision`
 
-![Post-Training Alignment Lifecycle](/topic_discussion/post_training_alignment/alignment_lifecycle.svg)
+> 图示占位：Post-Training Alignment Lifecycle 尚未生成。
 
 2. `rlhf_ppo_system_loop`
 - policy / reference / reward / rollout / update 的完整链路
 
-![RLHF and PPO System Loop](/topic_discussion/post_training_alignment/rlhf_ppo_system_loop.svg)
+> 图示占位：RLHF and PPO System Loop 尚未生成。
 
 3. `dpo_pairwise_objective`
 - chosen / rejected / reference 的关系图
 
-![DPO Pairwise Objective](/topic_discussion/post_training_alignment/dpo_pairwise_objective.svg)
+> 图示占位：DPO Pairwise Objective 尚未生成。
 
 4. `grpo_groupwise_candidates`
 - group candidates、relative comparison 和候选组评测
 
-![GRPO Groupwise Candidates](/topic_discussion/post_training_alignment/grpo_groupwise_candidates.svg)
+> 图示占位：GRPO Groupwise Candidates 尚未生成。
 
 5. `preference_eval_matrix`
 - win-rate / pairwise accuracy / judge score 的口径对照
 
-![Preference Data and Evaluation Matrix](/topic_discussion/post_training_alignment/preference_eval_matrix.svg)
+> 图示占位：Preference Data and Evaluation Matrix 尚未生成。
 
 6. `project_decision_board`
 - adopt / tune / reject 的项目决策图
 
-![Post-Training Project Decision Board](/topic_discussion/post_training_alignment/project_decision_board.svg)
+> 图示占位：Post-Training Project Decision Board 尚未生成。
 
 ## 图的职责
 

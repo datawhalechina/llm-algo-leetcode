@@ -59,7 +59,7 @@
 
 ## 可视化入口
 
-![Post-Training Project Decision Board](/topic_discussion/post_training_alignment/project_decision_board.svg)
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 常见失败模式
 
@@ -74,7 +74,7 @@
 - `85 GRPO Groupwise Alignment Project`
 - `86 DPO Online Benchmark`
 - 前置回跳：`15 / 16 / 50`
-- 专题入口回跳：[后训练与对齐专题](./intro.md)
+- 专题入口回跳：[后训练优化入口](./intro.md)
 
 ## 文献锚点
 
