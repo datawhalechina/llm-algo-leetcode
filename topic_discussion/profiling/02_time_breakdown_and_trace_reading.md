@@ -2,9 +2,9 @@
 
 ## 页面目标
 
-这一页负责把“为什么慢”先拆成可观察的时间问题：operator、kernel、launch、等待和阶段切换。
+本节负责把“为什么慢”先拆成可观察的时间问题：operator、kernel、launch、等待和阶段切换。
 
-本页的输出是时间瓶颈假设：问题主要属于计算、调度、启动开销还是等待。只有当时间线显示出内存驻留或分配行为时，才进入下一页。
+本节的输出是时间瓶颈假设：问题主要属于计算、调度、启动开销还是等待。只有当时间线显示出内存驻留或分配行为时，才进入下一节。
 
 ## 问题起点
 
@@ -25,15 +25,21 @@
 - step 内阶段切换
 - CPU / GPU overlap
 
+## 时间线如何解释
+
+`operator` 是框架层调用，`kernel` 是设备上的执行单元，`launch` 是提交开销，空白区间可能表示同步、数据准备或资源等待。它们出现在不同层级，不能把 operator 名称直接当成 kernel 瓶颈。
+
+阅读 trace 时先按阶段切片，再比较同一阶段的总时长、调用次数和空闲区间；需要进一步归因时，再结合 shape、输入管线和 CUDA Event。单个 kernel 的耗时不能替代完整 step 或请求的端到端耗时。
+
 ## 可视化入口
 
-![Time Breakdown and Trace Reading](/topic_discussion/profiling/time_breakdown_trace.svg)
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 对应 Part
 
-- `17 PyTorch Profiling Basics`
-- `20 Profiling and Memory Ledger`
-- `74 Profiling Driven End-to-End Optimization`
+- [Part 00 · 17 Profiling 基础](../../00_Prerequisites/17_PyTorch_Profiling_Basics.ipynb)
+- [Part 00 · 20 Profiling 与显存账本](../../00_Prerequisites/20_Profiling_and_Memory_Ledger.ipynb)
+- [Part 02 · 74 Profiling 驱动的端到端优化](../../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.ipynb)
 
 ## 本节要点
 

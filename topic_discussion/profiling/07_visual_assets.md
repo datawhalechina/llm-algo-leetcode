@@ -9,32 +9,32 @@
 1. `profiling_evidence_chain`
 - 从问题提出到采证、归因、验证、行动的总图
 
-![Profiling Evidence Chain](/topic_discussion/profiling/profiling_evidence_chain.svg)
+> 图示占位：Profiling Evidence Chain 尚未生成。
 
 2. `time_breakdown_trace`
 - operator / kernel / wait / launch 的时间拆分图
 
-![Time Breakdown and Trace Reading](/topic_discussion/profiling/time_breakdown_trace.svg)
+> 图示占位：Time Breakdown and Trace Reading 尚未生成。
 
 3. `memory_timeline_diagnosis`
 - memory timeline 和 residency 的诊断图
 
-![Memory Timeline Diagnosis](/topic_discussion/profiling/memory_timeline_diagnosis.svg)
+> 图示占位：Memory Timeline Diagnosis 尚未生成。
 
 4. `communication_overlap_map`
 - 多卡等待与 overlap 关系图
 
-![Communication Wait and Overlap Map](/topic_discussion/profiling/communication_overlap_map.svg)
+> 图示占位：Communication Wait and Overlap Map 尚未生成。
 
 5. `benchmark_validation_board`
 - before / after、波动和回归设计图
 
-![Benchmark Validation Board](/topic_discussion/profiling/benchmark_validation_board.svg)
+> 图示占位：Benchmark Validation Board 尚未生成。
 
 6. `action_decision_board`
 - keep observing / inspect / optimize / revert 的决策图
 
-![Diagnosis and Action Decision](/topic_discussion/profiling/action_decision_board.svg)
+> 图示占位：Diagnosis and Action Decision 尚未生成。
 
 ## 当前状态
 

@@ -2,9 +2,9 @@
 
 ## 页面目标
 
-这一页负责把 profiling 的视角扩到多卡：谁在等、哪里没 overlap、为什么理论并行收益没有兑现。
+本节负责把 profiling 的视角扩到多卡：谁在等、哪里没 overlap、为什么理论并行收益没有兑现。
 
-本页的输出是通信归因：等待发生在哪个集体通信或阶段、是否存在可重叠空间，以及问题属于切分策略、拓扑还是 workload。不要把 GPU 利用率低直接等同于算力不足。
+本节的输出是通信归因：等待发生在哪个集体通信或阶段、是否存在可重叠空间，以及问题属于切分策略、拓扑还是 workload。不要把 GPU 利用率低直接等同于算力不足。
 
 ## 问题起点
 
@@ -26,15 +26,21 @@
 - pipeline bubble
 - overlap 是否存在
 
+## 通信归因的最小条件
+
+先建立单卡或单进程 baseline，再观察 collective 的持续时间、调用频率、等待空洞和计算重叠。`all-reduce`、`all-gather` 或 `all-to-all` 的时间变长，只能说明通信路径发生变化；要判断它是否是扩展效率下降的主因，还要对齐计算时间、消息大小、卡间拓扑和同步点。
+
+因此，“GPU 利用率低”不是充分证据，“通信占比高”也不自动等于通信可以优化。需要用同一 workload 对比单卡、多卡或不同切分方案。
+
 ## 可视化入口
 
-![Communication Wait and Overlap Map](/topic_discussion/profiling/communication_overlap_map.svg)
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 对应 Part
 
-- `46 Communication Profiling with NCCL`
-- `79 Distributed Parallel Benchmark`
-- `74 Profiling Driven End-to-End Optimization`
+- [Part 02 · 46 NCCL 通信性能分析](../../02_PyTorch_Algorithms/46_Communication_Profiling_with_NCCL.ipynb)
+- [Part 02 · 79 分布式并行基准测试](../../02_PyTorch_Algorithms/79_Distributed_Parallel_Benchmark.ipynb)
+- [Part 02 · 74 Profiling 驱动的端到端优化](../../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.ipynb)
 
 ## 本节要点
 
