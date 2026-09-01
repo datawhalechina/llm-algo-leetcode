@@ -2,7 +2,7 @@
 
 ## 页面目标
 
-这一页回答的是：当量化被放进显存专题时，应该怎么看它，而不是把它当成独立的“更快”或“更先进”方案。
+本节回答的是：当量化被放进显存专题时，应该怎么看它，而不是把它当成独立的“更快”或“更先进”方案。
 
 ## 问题起点
 
@@ -26,7 +26,7 @@
 
 ## 量化对象与证据顺序
 
-先区分权重、activation 和 KV Cache 三个对象，再决定使用哪一种量化路线：[21 Quantization Theory](../../01_Hardware_Math_and_Systems/21_Quantization_Theory_and_INT4_INT8.ipynb) 和 [25 W8A16](../../02_PyTorch_Algorithms/25_Quantization_W8A16.ipynb) 适合建立基础；[40 GPTQ / AWQ](../../02_PyTorch_Algorithms/40_GPTQ_and_AWQ_Weight_Quantization.ipynb) 和 [41 FP8 / KV Cache Quantization](../../02_PyTorch_Algorithms/41_FP8_and_KV_Cache_Quantization.ipynb) 进入扩展路线；最后用 [67 Quantized Inference and Deployment](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.ipynb) 验证显存、速度和质量是否同时满足约束。
+先区分权重、activation 和 KV Cache 三个对象，再决定使用哪一种量化路线：[21 Quantization Theory](../../01_Hardware_Math_and_Systems/21_Quantization_Theory_and_INT4_INT8.ipynb) 和 [25 W8A16](../../02_PyTorch_Algorithms/25_Quantization_W8A16.ipynb) 适合建立基础；[40 GPTQ / AWQ](../../02_PyTorch_Algorithms/40_GPTQ_and_AWQ_Weight_Quantization.ipynb) 进入后训练权重量化扩展，[41 FP8 / KV Cache Quantization](../../02_PyTorch_Algorithms/41_FP8_and_KV_Cache_Quantization.ipynb) 进入运行时与 KV Cache 扩展；GGUF 作为文件格式与部署路径，最后统一用 [67 Quantized Inference and Deployment](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.ipynb) 按对应 backend 验证显存、速度和质量是否同时满足约束。
 
 ## 演化路径
 
@@ -40,12 +40,16 @@
 - KV cache quantization 更适合“长上下文和并发先装下”。
 - 如果显存省了，但 TPOT、TTFT 或质量退化太大，量化就不应该被视作成功。
 
-![Quantization as a memory tool](/topic_discussion/memory_performance_tuning/quantization_memory_tool.svg)
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 文献锚点
 
 - GPTQ / AWQ：看权重量化如何在有限损失下省驻留。
 - FP8 / KV cache quantization 资料：看缓存压缩怎样改变显存预算。
+
+## 证据边界
+
+CPU 可以验证量化误差、理论字节数和预算计算；真实格式能否加载、使用哪个 kernel、峰值显存、吞吐和任务质量，必须在对应 GPU backend 上用同一 workload 对比 baseline。理论压缩率不等于端到端收益。
 
 ## 对应 Part 02
 

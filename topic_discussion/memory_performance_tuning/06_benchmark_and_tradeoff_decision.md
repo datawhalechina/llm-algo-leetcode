@@ -2,7 +2,7 @@
 
 ## 页面目标
 
-这一页负责把前面的显存判断收束到收益验证：显存到底省了多少、时间赔了多少、最终值不值得留下来。
+本节负责把前面的显存判断收束到收益验证：显存到底省了多少、时间赔了多少、最终值不值得留下来。
 
 运行 73–76 项目的具体命令、结果文件和预算敏感性检查，参见[73–76 显存优化项目验证清单](../../docs/verification/memory_projects.md)。
 
@@ -20,9 +20,9 @@
 - baseline 和 candidate 是否只改一个变量。
 - 峰值显存下降是否伴随吞吐、延迟或稳定性变化。
 
-## 本页在路线中的位置
+## 本节在路线中的位置
 
-前面的页面负责回答“显存由谁占用、可以改什么、代价在哪里”；本页负责把答案变成可复查的项目决策。训练侧按 [73 Training Performance Analysis](../../02_PyTorch_Algorithms/73_Training_Performance_Analysis.ipynb) → [76 Activation / Checkpoint / Offload Benchmark](../../02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.ipynb) → [75 Memory Budget Compression](../../02_PyTorch_Algorithms/75_Memory_Budget_Compression_Project.ipynb) 收集证据，最后由 [74 Profiling Driven End-to-End Optimization](../../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.ipynb) 检查瓶颈解释是否成立。
+前面的页面负责回答“显存由谁占用、可以改什么、代价在哪里”；本节负责把答案变成可复查的项目决策。训练侧按 [73 Training Performance Analysis](../../02_PyTorch_Algorithms/73_Training_Performance_Analysis.ipynb) → [76 Activation / Checkpoint / Offload Benchmark](../../02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.ipynb) → [75 Memory Budget Compression](../../02_PyTorch_Algorithms/75_Memory_Budget_Compression_Project.ipynb) 收集证据，最后由 [74 Profiling Driven End-to-End Optimization](../../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.ipynb) 检查瓶颈解释是否成立。
 
 ## 为什么 benchmark 是最后一页
 
@@ -63,7 +63,7 @@
 - 这次变化有没有扩大 batch、上下文或部署空间；
 - 最终是继续保留、继续调优，还是换方案。
 
-![Memory benchmark decision flow](/topic_discussion/memory_performance_tuning/memory_benchmark_decision.svg)
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 文献与工程入口
 
