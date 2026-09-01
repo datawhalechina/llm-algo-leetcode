@@ -1,4 +1,4 @@
-# 04 Attention Evolution
+# 04 Attention 演化（Attention Evolution）
 
 ## 页面目标
 
@@ -178,11 +178,11 @@ FlashAttention 这类工作不是重新定义 attention 语义，而是重新定
 
 ## 与 Part 02 的对应关系
 
-- `04` 直接讲 MHA / GQA / MQA 的 head 关系
-- `05` 里可以看到 attention 如何放进 block
-- `08` 里可以看到真实模型中的 attention 变体
-- `22`、`24`、`67` 等页面和这里形成系统侧衔接
-- `09` 里会看到稀疏化和路由在更大结构中的位置
+- [Part 02 · 04 Attention（MHA/GQA）](../../02_PyTorch_Algorithms/04_Attention_MHA_GQA.ipynb) 直接讲 MHA / GQA / MQA 的 head 关系
+- [Part 02 · 05 LLaMA3 Block](../../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.ipynb) 里可以看到 attention 如何放进 block
+- [Part 02 · 08 架构技巧](../../02_PyTorch_Algorithms/08_Architecture_Tricks.ipynb) 和 [Part 02 · 61 模型架构探索](../../02_PyTorch_Algorithms/61_Model_Architecture_Exploration.ipynb) 可以用于核对真实模型中的 attention 变体
+- [Part 02 · 22 PagedAttention](../../02_PyTorch_Algorithms/22_vLLM_PagedAttention.ipynb)、[Part 02 · 24 RadixAttention](../../02_PyTorch_Algorithms/24_SGLang_RadixAttention.ipynb) 和 [Part 02 · 67 量化推理与部署](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.ipynb) 形成系统侧衔接
+- [Part 02 · 06 MoE Router](../../02_PyTorch_Algorithms/06_MoE_Router.ipynb) 和 [Part 02 · 07 MoE 负载均衡损失](../../02_PyTorch_Algorithms/07_MoE_Load_Balancing_Loss.ipynb) 展示稀疏化和路由在更大结构中的位置
 
 ## 一张最小对照表
 

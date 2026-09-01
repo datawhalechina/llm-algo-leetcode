@@ -1,4 +1,4 @@
-# 08 Representative Models / Cross Module Comparison
+# 08 代表模型与结构对照（Representative Models / Cross-Module Comparison）
 
 ## 页面目标
 
@@ -300,9 +300,9 @@ DeepSeek-V3.2 把这条线推进到 `DSA`（DeepSeek Sparse Attention）。
 
 建议在这一页放两张图，把“模型选择”和“横向对照”分开：
 
-![代表模型结构矩阵](/topic_discussion/model_architecture/representative_models_matrix.svg)
+> 图册占位：代表模型结构矩阵尚未生成，当前先以本页的对照表作为依据。
 
-![跨模块知识地图](/topic_discussion/model_architecture/cross_module_map.svg)
+> 图册占位：跨模块知识地图尚未生成，当前先按 `01-09` 页面的引用关系阅读。
 
 第一张图负责快速看清 LLaMA、Mistral、Qwen、Gemma、DeepSeek 各自的结构选择；第二张图负责把 01-09 页串成一张知识导航图。
 
@@ -325,10 +325,10 @@ DeepSeek-V3.2 把这条线推进到 `DSA`（DeepSeek Sparse Attention）。
 
 ## 与 Part 02 的对应关系
 
-- `01-08` 是这些模型结构设计的底层来源
-- `05` 直接对应 decoder block 的核心样式
-- `04`、`03`、`02`、`01` 决定这些模型 block 具体怎么搭
-- `06 / 07 / 09` 对应 MoE 或稀疏结构扩展
+- [Part 02 · 01 RMSNorm](../../02_PyTorch_Algorithms/01_RMSNorm_Tutorial.ipynb)、[Part 02 · 02 SwiGLU](../../02_PyTorch_Algorithms/02_SwiGLU_Activation.ipynb)、[Part 02 · 03 RoPE](../../02_PyTorch_Algorithms/03_RoPE_Tutorial.ipynb) 和 [Part 02 · 04 Attention（MHA/GQA）](../../02_PyTorch_Algorithms/04_Attention_MHA_GQA.ipynb) 是这些模型结构设计的组件来源
+- [Part 02 · 05 LLaMA3 Block](../../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.ipynb) 直接对应 decoder block 的核心样式
+- [Part 02 · 08 架构技巧](../../02_PyTorch_Algorithms/08_Architecture_Tricks.ipynb) 和 [Part 02 · 61 模型架构探索](../../02_PyTorch_Algorithms/61_Model_Architecture_Exploration.ipynb) 用于核对真实模型的结构组合
+- [Part 02 · 06 MoE Router](../../02_PyTorch_Algorithms/06_MoE_Router.ipynb)、[Part 02 · 07 MoE 负载均衡损失](../../02_PyTorch_Algorithms/07_MoE_Load_Balancing_Loss.ipynb) 对应 MoE 或稀疏结构扩展
 
 ## 阅读建议
 

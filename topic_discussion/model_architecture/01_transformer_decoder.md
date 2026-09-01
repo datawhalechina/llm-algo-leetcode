@@ -1,4 +1,4 @@
-# 01 Transformer Decoder
+# 01 Decoder-only 结构（Transformer Decoder）
 
 ## 页面目标
 
@@ -86,9 +86,9 @@ Transformer 不是只有 encoder 和 decoder 两条分支，但在大模型时�
 
 ## 与 Part 02 的对应关系
 
-- `05` 的 LLaMA Block 直接落在 decoder-only 主干上
-- `04`、`03`、`01` 的组件都服务于 decoder-only block
-- `22`、`24`、`67` 等推理页讨论的 KV cache 和 decode loop 也依赖这个结构
+- [Part 02 · 05 LLaMA3 Block](../../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.ipynb) 直接落在 decoder-only 主干上
+- [Part 02 · 01 RMSNorm](../../02_PyTorch_Algorithms/01_RMSNorm_Tutorial.ipynb)、[Part 02 · 03 RoPE](../../02_PyTorch_Algorithms/03_RoPE_Tutorial.ipynb) 和 [Part 02 · 04 Attention（MHA/GQA）](../../02_PyTorch_Algorithms/04_Attention_MHA_GQA.ipynb) 的组件都服务于 decoder-only block
+- [Part 02 · 22 vLLM PagedAttention](../../02_PyTorch_Algorithms/22_vLLM_PagedAttention.ipynb)、[Part 02 · 24 SGLang RadixAttention](../../02_PyTorch_Algorithms/24_SGLang_RadixAttention.ipynb) 和 [Part 02 · 67 量化推理与部署](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.ipynb) 讨论的 KV Cache 和 decode loop 也依赖这个结构
 
 ## 可视化提示
 

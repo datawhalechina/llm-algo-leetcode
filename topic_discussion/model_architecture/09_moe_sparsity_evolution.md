@@ -1,4 +1,4 @@
-# 09 MoE / Sparsity Evolution
+# 09 MoE 与稀疏化演化（MoE / Sparsity Evolution）
 
 ## 页面目标
 
@@ -94,11 +94,11 @@ MoE 不是只改模型结构，它还会把训练和推理都拖进系统问题�
 
 ## 与 Part 02 的对应关系
 
-- `06` 直接讲 router 如何分配 token
-- `07` 直接讲为什么 MoE 需要负载均衡损失
+- [Part 02 · 06 MoE Router](../../02_PyTorch_Algorithms/06_MoE_Router.ipynb) 直接讲 router 如何分配 token
+- [Part 02 · 07 MoE 负载均衡损失](../../02_PyTorch_Algorithms/07_MoE_Load_Balancing_Loss.ipynb) 直接讲为什么 MoE 需要负载均衡损失
 - `06_block_residual_path` 说明 MoE 在 block 里替换 dense MLP 的位置
 - `08_representative_models` 里可以看到哪些模型已经把 MoE 当成结构选项
-- `79 / 80` 这类项目页会把 MoE 的工程化和 benchmark 进一步展开
+- [Part 02 · 79 分布式并行 benchmark](../../02_PyTorch_Algorithms/79_Distributed_Parallel_Benchmark.ipynb) 和 [Part 02 · 80 MoE 专家并行 benchmark](../../02_PyTorch_Algorithms/80_MoE_Expert_Parallel_Benchmark.ipynb) 会把 MoE 的工程化和 benchmark 进一步展开
 
 ## 可视化提示
 
@@ -109,7 +109,7 @@ MoE 不是只改模型结构，它还会把训练和推理都拖进系统问题�
 
 如果要再往前走一步，可以把 `Top-K`、负载均衡和 expert parallel 分别标在不同层级上，这样能看出 MoE 为什么同时是模型问题和系统问题。
 
-![MoE / Sparsity 演进图](/02_PyTorch_Algorithms/09_moe_sparsity_evolution.svg)
+> 图册占位：MoE / Sparsity 演进图尚未生成，当前先使用本页的 dense → router → experts 文字流程。
 
 ## 进入下一页
 

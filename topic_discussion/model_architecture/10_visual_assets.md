@@ -25,7 +25,7 @@
 
 这张图的作用是让读者先知道“演化顺序”，再去看每个单页。
 
-![模块演进时间线](/topic_discussion/model_architecture/timeline.png)
+> 图册占位：模块演进时间线尚未生成，当前以本节列出的演进顺序为准。
 
 ### 2. Block 总图
 
@@ -42,7 +42,7 @@
 
 这张图是 `06_block_residual_path.md` 的视觉版本，也是 `01-08` 的总对照图。
 
-![Decoder Block 总图](/topic_discussion/model_architecture/block_overview.png)
+> 图册占位：Decoder Block 总图尚未生成，当前参考 `06_block_residual_path.md` 中的文字路径。
 
 ### 3. 代表模型结构矩阵
 
@@ -55,7 +55,7 @@
 
 这张矩阵建议后续用表格 + 图结合呈现；当前已经补了一版视觉锚点：
 
-![代表模型结构矩阵](/topic_discussion/model_architecture/representative_models_matrix.svg)
+> 图册占位：代表模型结构矩阵尚未生成，当前参考 `08_representative_models.md` 中的对照表。
 
 ### 3.1 国产模型版本分层图
 
@@ -86,7 +86,7 @@
 
 专题页之间的关系图，当前已经补了一版：
 
-![跨模块知识地图](/topic_discussion/model_architecture/cross_module_map.svg)
+> 图册占位：跨模块知识地图尚未生成，当前参考本专题各页面的“进入下一页”链接。
 
 ## 当前图册
 
@@ -99,16 +99,11 @@
 5. `代表模型结构矩阵`、`跨模块知识地图`
 6. `Qwen 版本分层图`、`DeepSeek 版本分层图`
 
-- [专题总导航图](/topic_discussion/model_architecture/overview_map.svg)
-- [模块演进时间线](/topic_discussion/model_architecture/timeline.png)
-- [Decoder Block 总图](/topic_discussion/model_architecture/block_overview.png)
-- [DeepSeek Attention 演进图](/topic_discussion/model_architecture/deepseek_attention.png)
-- [MoE / Sparsity 路由图](/topic_discussion/model_architecture/moe_sparsity.png)
-- [MoE / Sparsity 演进图](/02_PyTorch_Algorithms/09_moe_sparsity_evolution.svg)
-- [代表模型结构矩阵](/topic_discussion/model_architecture/representative_models_matrix.svg)
-- [跨模块知识地图](/topic_discussion/model_architecture/cross_module_map.svg)
-- [Qwen 版本分层图](/topic_discussion/model_architecture/qwen_version_split.svg)
-- [DeepSeek 版本分层图](/topic_discussion/model_architecture/deepseek_version_split.svg)
+- 专题总导航图、模块演进时间线、Decoder Block 总图：待补资产
+- DeepSeek Attention 演进图、MoE / Sparsity 路由图、MoE / Sparsity 演进图：待补资产
+- 代表模型结构矩阵、跨模块知识地图：待补资产
+- 图示占位：Qwen 版本分层图尚未纳入镜像，当前以本页文字说明为准。
+- 图示占位：DeepSeek 版本分层图尚未纳入镜像，当前以本页文字说明为准。
 
 ## 设计原则
 

@@ -1,4 +1,4 @@
-# 03 Norm Evolution
+# 03 归一化演化（Norm Evolution）
 
 ## 页面目标
 
@@ -132,9 +132,9 @@ DyT 就是这类思路的代表之一：它用类似 `tanh` 的动态门控式�
 
 ## 与 Part 02 的对应关系
 
-- `01` 直接讲 RMSNorm
-- `05` 里可以看到 norm 如何进入 block 组装
-- `08` 里可以看到真实模型中 norm 的局部变体
+- [Part 02 · 01 RMSNorm](../../02_PyTorch_Algorithms/01_RMSNorm_Tutorial.ipynb) 直接讲 RMSNorm
+- [Part 02 · 05 LLaMA3 Block](../../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.ipynb) 里可以看到 norm 如何进入 block 组装
+- [Part 02 · 08 架构技巧](../../02_PyTorch_Algorithms/08_Architecture_Tricks.ipynb) 和 [Part 02 · 61 模型架构探索](../../02_PyTorch_Algorithms/61_Model_Architecture_Exploration.ipynb) 可以用于核对真实模型中的 norm 变体
 
 ## 可视化提示
 

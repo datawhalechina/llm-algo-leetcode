@@ -1,4 +1,4 @@
-# 05 RoPE / Position Encoding
+# 05 RoPE 与位置编码（RoPE / Position Encoding）
 
 ## 页面目标
 
@@ -116,9 +116,9 @@ RoPE 的强项不只是“效果不错”，而是它把位置信息嵌进了 at
 
 ## 与 Part 02 的对应关系
 
-- `03` 直接讲 RoPE 的作用位置
-- `05` 里可以看到 RoPE 如何嵌进 block
-- `08` 里可以看到真实模型对 RoPE 的局部修正
+- [Part 02 · 03 RoPE](../../02_PyTorch_Algorithms/03_RoPE_Tutorial.ipynb) 直接讲 RoPE 的作用位置
+- [Part 02 · 05 LLaMA3 Block](../../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.ipynb) 里可以看到 RoPE 如何嵌进 block
+- [Part 02 · 08 架构技巧](../../02_PyTorch_Algorithms/08_Architecture_Tricks.ipynb) 和 [Part 02 · 61 模型架构探索](../../02_PyTorch_Algorithms/61_Model_Architecture_Exploration.ipynb) 可以用于核对真实模型对 RoPE 的局部修正
 
 ## 可视化提示
 
