@@ -2,13 +2,13 @@
 
 ## 页面目标
 
-这一页负责把前面的量化判断收束到部署和 benchmark：量化是否真的值得切换。
+本节把前面的量化判断收束到部署和 benchmark：量化是否真的值得切换。
 
-本页的输出是可交付决策：在质量、显存、吞吐、延迟和部署复杂度之间，明确采用、继续调优或回退的理由。
+本节的输出是可交付决策：在质量、显存、吞吐、延迟和部署复杂度之间，明确采用、继续调优或回退的理由。
 
 ## 问题起点
 
-量化最常见的误判是：显存降了，所以一定值得。工程上真正要问的是：
+量化最常见的误判是：显存下降，就默认值得切换。工程上还要问：
 
 - 显存和带宽收益是否真实；
 - 速度是否真的提升或至少没有明显变差；
@@ -21,15 +21,28 @@
 - baseline 和 candidate 是否只改一个关键变量。
 - 你的目标更偏精度、显存、吞吐，还是部署成本。
 
-## 为什么这一页必须存在
+## 为什么需要部署收口
 
-没有这一页，量化专题就会停在“方法清单”。有了这一页，量化才会回到真正的工程问题：这次压缩有没有带来值得保留的系统收益。
+如果没有部署收口，量化专题容易停在“方法清单”；部署收口要回答的是：这次压缩在目标 workload 上是否带来值得保留的系统收益。
 
 ## 判定原则
 
 - `keep`：收益不明显，或者精度 / 部署代价太高。
 - `tune`：方向对，但量化粒度、后端、cache policy 或 workload 还要继续调。
 - `switch`：收益稳定，并且和目标硬件、服务目标匹配。
+
+## 最小实验设计
+
+先固定模型、采样参数、prompt / generated tokens、并发和上下文长度，再只替换量化候选。每个候选至少经历以下状态：
+
+`artifact 可定位 → backend 可加载 → 格式 / kernel 可确认 → workload 可完成 → 质量达标 → 资源指标可比较`
+
+| 阶段 | 必须记录 | 失败时的结论 |
+|:---|:---|:---|
+| 加载 | 模型格式、量化方法、backend、版本、错误信息 | `reject` 或记录为兼容性问题 |
+| 运行 | 显存、TTFT、TPOT、端到端延迟、吞吐、并发 | 不能只依据文件大小判断 |
+| 质量 | 固定评测集或任务指标、输出差异 | 质量不达门槛不能 `switch` |
+| 重复与对照 | baseline、重复次数、硬件和 workload | 证据不足只能 `tune` |
 
 ## 报告应该怎么写
 
@@ -41,17 +54,24 @@
 - backend 和部署复杂度有没有额外代价；
 - 最终是继续保留、继续调优，还是换路线。
 
+## 证据等级
+
+- `simulation`：只验证公式、误差或决策逻辑；
+- `load_smoke`：真实 artifact 能加载并完成少量请求；
+- `fixed_benchmark`：baseline 与候选使用相同 workload 完成对比；
+- `deployment_decision`：有质量门槛、重复运行和适用边界，才可形成部署建议。
+
 ## 文献与工程入口
 
-- `67` Quantized Inference and Deployment
-- `66` Inference Performance Comparison
+- `67` 量化推理与部署
+- `66` 推理性能比较
 - Part 03 `10` Triton Quantization
 
 ## 典型阅读入口
 
-- [02 PTQ and QAT Timing](./02_ptq_and_qat_timing.md)
-- [04 Weight-Only Compression](./04_weight_only_compression.md)
-- [05 FP8 and KV Cache Quantization](./05_fp8_and_kv_cache_quantization.md)
+- [02 PTQ 与 QAT 的介入时机](./02_ptq_and_qat_timing.md)
+- [04 权重量化与后训练压缩](./04_weight_only_compression.md)
+- [05 FP8 与 KV Cache 量化](./05_fp8_and_kv_cache_quantization.md)
 
 ## 项目结论
 

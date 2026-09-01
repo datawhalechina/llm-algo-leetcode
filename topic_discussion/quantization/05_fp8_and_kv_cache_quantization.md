@@ -2,11 +2,9 @@
 
 ## 页面目标
 
-这一页回答的是：什么时候应该压执行路径或 KV cache，而不是继续压权重；以及硬件、后端和上下文长度如何改变这项选择。
+本节回答两个相互关联但不能混为一谈的问题：什么时候应该压执行路径或 KV Cache，而不是继续压权重；硬件、backend 和上下文长度如何改变这项选择。
 
-本页的输出是推理侧候选：FP8 或 KV cache 量化能释放什么资源，是否会改变 kernel、缓存容量、延迟或质量边界。
-
-这一页回答的是：FP8 和 KV cache quantization 为什么总被放在一起讨论，以及它们到底改的是哪一类成本。
+输出是推理侧候选：FP8 或 KV Cache 量化能释放什么资源，是否会改变 kernel、缓存容量、延迟或质量边界。
 
 ## 问题起点
 
@@ -27,6 +25,17 @@
 
 FP8 的核心矛盾是：更低精度的执行路径能带来更好的吞吐和存储效果，但要求硬件和 kernel 栈配合；KV cache quantization 的核心矛盾是：缓存压缩能扩大上下文和并发预算，但会影响表示精度和服务稳定性。
 
+## 机制链
+
+FP8 主要改变计算或数据搬运路径，需要 scale 管理、硬件指令和 kernel 共同支持；KV Cache 量化则改变请求生命周期中 K/V 状态的存储与读取方式。二者都可能减少字节数，但影响的时间段不同：前者贯穿算子执行，后者集中在 decode 阶段的 cache 读写。
+
+| 路线 | 主要对象 | 关键变量 | 需要对齐的 workload |
+|:---|:---|:---|:---|
+| FP8 | 权重、激活或矩阵乘输入输出 | scaling、硬件能力、kernel、混合精度边界 | prefill / decode、输入长度、输出长度 |
+| KV Cache 量化 | 每个请求的 K/V 状态 | cache dtype、量化粒度、更新与反量化位置 | 上下文长度、并发、prefix sharing、TPOT |
+
+权重量化与 KV Cache 量化可以同时出现，但必须分别记录显存账本和质量影响，不能把两者的收益相加后直接作为部署结论。
+
 ## 演化路径
 
 1. 先判断问题是在执行路径还是缓存预算。
@@ -40,7 +49,11 @@ FP8 的核心矛盾是：更低精度的执行路径能带来更好的吞吐和�
 - KV cache quantization 更依赖 workload 的上下文长度和并发特征。
 - 二者都不能只看理论压缩率，必须回到服务目标和 benchmark。
 
-![FP8 and KV cache quantization](/topic_discussion/quantization/fp8_kv_cache.svg)
+## 证据边界
+
+CPU 实验适合验证 FP8 数值范围、scale 计算和 KV Cache 字节数估算；真实 GPU / serving backend 才能验证硬件执行路径、cache 分配、TTFT、TPOT、并发容量和任务质量。`torch.cuda.is_bf16_supported()` 或格式字段本身不能替代 kernel 和 workload 实测。
+
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 文献锚点
 
@@ -49,13 +62,13 @@ FP8 的核心矛盾是：更低精度的执行路径能带来更好的吞吐和�
 
 ## 对应 Part 02
 
-- `41` FP8 and KV Cache Quantization
-- `67` Quantized Inference and Deployment
+- `41` FP8 与 KV Cache 量化
+- `67` 量化推理与部署
 
 ## 典型阅读入口
 
-- [04 Weight-Only Compression](./04_weight_only_compression.md)
-- [06 Deployment and Benchmark Decision](./06_deployment_and_benchmark_decision.md)
+- [04 权重量化与后训练压缩](./04_weight_only_compression.md)
+- [06 部署与 Benchmark 决策](./06_deployment_and_benchmark_decision.md)
 
 ## 本节要点
 

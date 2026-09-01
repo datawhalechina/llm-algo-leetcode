@@ -2,12 +2,12 @@
 
 ## 页面目标
 
-这一页回答两个问题：
+本节回答两个问题：
 
 - 量化到底在压什么，压的是权重、激活，还是 KV cache？
 - 为什么量化的核心不是“位宽更小”，而是“误差能不能被系统接受”？
 
-本页的输出是量化问题定义：压缩对象、目标约束、误差来源和可接受的质量边界。没有这四项，后面的算法比较没有共同口径。
+本节的输出是量化问题定义：压缩对象、目标约束、误差来源和可接受的质量边界。没有这四项，后面的算法比较没有共同口径。
 
 ## 问题起点
 
@@ -29,6 +29,26 @@
 
 量化的核心矛盾是：低比特表示能显著降低存储和带宽成本，但也会引入表示误差。量化专题的主线，就是在“压缩率”和“误差可接受性”之间找平衡。
 
+## 机制链
+
+对一个浮点值 `x` 做线性量化时，常见形式是：
+
+```text
+q = clamp(round(x / scale) + zero_point, q_min, q_max)
+x_hat = (q - zero_point) * scale
+```
+
+`scale` 决定数值范围映射到多少个离散等级，`zero_point` 负责非对称范围的平移，`clamp` 处理超出范围的值。误差不只来自 bit width，还来自校准样本、分组或通道粒度、异常值处理以及反量化发生的位置。
+
+| 决策变量 | 改变什么 | 需要观察的结果 |
+|:---|:---|:---|
+| bit width | 可表示等级数量和存储大小 | 量化误差、模型大小、加载显存 |
+| scale / zero-point | 浮点范围到整数范围的映射 | 饱和比例、均方误差、输出偏差 |
+| 粒度 | 一组数值共享一套量化参数的范围 | 参数开销、误差分布、kernel 适配 |
+| 校准数据 | 量化参数覆盖的输入分布 | 代表性变化时的质量稳定性 |
+
+这条链只能说明误差如何产生，不能单独推出下游任务质量或 GPU 速度。后者还取决于模型结构、backend 和 workload。
+
 ## 演化路径
 
 1. 先识别压缩对象：权重、激活、KV cache。
@@ -42,7 +62,11 @@
 - 激活量化更容易碰到执行路径和精度稳定性问题。
 - KV cache 量化更偏推理预算，不应与权重量化混为一谈。
 
-![Quantization objects and error routes](/topic_discussion/quantization/quantization_objects.svg)
+## 证据边界
+
+CPU 或纯 PyTorch 实验可以验证量化公式、舍入、截断、误差统计和不同粒度的差异；它不能证明目标 GPU 是否调用了低比特 kernel，也不能替代 backend 的加载、显存和吞吐测试。进入 [67 量化推理与部署](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.ipynb) 后，才检查真实 artifact 和执行路径。
+
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 文献锚点
 
@@ -51,16 +75,16 @@
 
 ## 对应 Part 02
 
-- `25` Quantization W8A16
-- `40` GPTQ and AWQ Weight Quantization
-- `41` FP8 and KV Cache Quantization
-- `67` Quantized Inference and Deployment
+- `25` W8A16 量化
+- `40` GPTQ / AWQ 权重量化
+- `41` FP8 与 KV Cache 量化
+- `67` 量化推理与部署
 
 ## 典型阅读入口
 
-- [02 PTQ and QAT Timing](./02_ptq_and_qat_timing.md)
-- [04 Weight-Only Compression](./04_weight_only_compression.md)
-- [05 FP8 and KV Cache Quantization](./05_fp8_and_kv_cache_quantization.md)
+- [02 PTQ 与 QAT 的介入时机](./02_ptq_and_qat_timing.md)
+- [04 权重量化与后训练压缩](./04_weight_only_compression.md)
+- [05 FP8 与 KV Cache 量化](./05_fp8_and_kv_cache_quantization.md)
 
 ## 本节要点
 
