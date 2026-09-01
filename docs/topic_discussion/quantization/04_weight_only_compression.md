@@ -2,9 +2,9 @@
 
 ## 页面目标
 
-这一页回答的是：GPTQ、AWQ 和 weight-only 路线在解决什么问题，为什么它们经常成为后训练量化的主轴。
+本节回答的是：GPTQ、AWQ 和 weight-only 路线在解决什么问题，为什么它们经常成为后训练量化的主轴。
 
-本页的输出是权重量化候选：模型权重、校准数据、量化粒度、后端支持和精度风险是否匹配当前部署目标。
+本节的输出是权重量化候选：模型权重、校准数据、量化粒度、backend 支持和精度风险是否匹配当前部署目标。
 
 ## 问题起点
 
@@ -19,11 +19,22 @@ GPTQ / AWQ 就是在这个问题上出现的。
 
 - 权重驻留是不是预算主因。
 - 你更看重极限压缩率，还是更稳的精度保持。
-- 你有没有继续训练预算；如果没有，这一页通常就是主轴。
+- 你有没有继续训练预算；如果没有，权重量化通常应先进入候选。
 
 ## 核心矛盾
 
 权重量化的核心矛盾是：低比特能显著降低模型驻留成本，但某些层、通道和矩阵对误差异常敏感。GPTQ / AWQ 的存在，就是为了在后训练阶段尽量保住这些敏感位置。
+
+## 机制链
+
+权重量化通常保留低比特权重，并额外保存分组或通道级量化参数。执行时，矩阵乘法可能在 kernel 内完成反量化，也可能先生成更高精度临时值；这决定了模型常驻显存下降后，实际 workspace、带宽和延迟是否仍然可接受。
+
+| 方法 | 误差控制思路 | 依赖的输入 | 不能忽略的代价 |
+|:---|:---|:---|:---|
+| GPTQ | 根据权重重建误差逐步调整量化值 | 校准样本、权重统计和量化配置 | 校准耗时、格式与执行 kernel 绑定 |
+| AWQ | 利用激活敏感性保护重要通道或权重 | 代表性激活、分组和缩放配置 | 激活分布变化、backend 支持和额外参数 |
+
+两种方法都不是单独的 runtime backend。最终收益还取决于导出的格式、加载器和目标硬件。
 
 ## 演化路径
 
@@ -37,7 +48,11 @@ GPTQ / AWQ 就是在这个问题上出现的。
 - AWQ 更偏激活感知，优先保护敏感通道。
 - 两者都属于后训练路线，但侧重点不同，不是简单替换关系。
 
-![Weight-only compression](/topic_discussion/quantization/weight_only_compression.svg)
+## 证据边界
+
+CPU 或机制模拟可以验证分组量化、权重重建误差和敏感性排序；它不能证明真实 GPTQ / AWQ artifact 能被目标 backend 加载，也不能证明使用了预期的低比特 kernel。部署结论必须比较未量化 baseline 与量化候选，并记录质量、显存、延迟、吞吐和失败原因。
+
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 文献锚点
 
@@ -46,14 +61,14 @@ GPTQ / AWQ 就是在这个问题上出现的。
 
 ## 对应 Part 02
 
-- `25` Quantization W8A16
-- `40` GPTQ and AWQ Weight Quantization
-- `67` Quantized Inference and Deployment
+- `25` W8A16 量化
+- `40` GPTQ / AWQ 权重量化
+- `67` 量化推理与部署
 
 ## 典型阅读入口
 
-- [01 Quantization Object and Error](./01_quantization_object_and_error.md)
-- [06 Deployment and Benchmark Decision](./06_deployment_and_benchmark_decision.md)
+- [01 量化对象与误差直觉](./01_quantization_object_and_error.md)
+- [06 部署与 Benchmark 决策](./06_deployment_and_benchmark_decision.md)
 
 ## 本节要点
 

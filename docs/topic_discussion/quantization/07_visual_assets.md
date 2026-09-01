@@ -2,7 +2,7 @@
 
 ## 页面目标
 
-这一页收口量化专题的关键图，方便后续把量化对象、训练时机、后训练压缩、执行栈低精度和部署决策串起来。
+本页收口量化专题的关键图，方便后续把量化对象、训练时机、后训练压缩、执行栈低精度和部署决策串起来。
 
 ## 图册职责
 
@@ -25,19 +25,19 @@
 
 ### 01 Quantization Object / Error
 
-![Quantization objects and error routes](/topic_discussion/quantization/quantization_objects.svg)
+> 图示占位：Quantization objects and error routes 尚未生成。
 
 ### 02 PTQ / QAT Timing
 
-![PTQ and QAT timing](/topic_discussion/quantization/ptq_qat_timing.svg)
+> 图示占位：PTQ and QAT timing 尚未生成。
 
 ### 04 Weight-Only Compression
 
-![Weight-only compression](/topic_discussion/quantization/weight_only_compression.svg)
+> 图示占位：Weight-only compression 尚未生成。
 
 ### 05 FP8 / KV Cache Quantization
 
-![FP8 and KV cache quantization](/topic_discussion/quantization/fp8_kv_cache.svg)
+> 图示占位：FP8 and KV cache quantization 尚未生成。
 
 ## 建议顺序
 
@@ -56,6 +56,6 @@
 
 ## 相关跳转
 
-- 回到 [量化与压缩专题入口](./intro.md)
+- 回到 [量化与压缩入口](./intro.md)
 - 回到 [量化与压缩正文](./casebook.md)
 - 回到 [量化与压缩深入阅读](./walkthrough.md)

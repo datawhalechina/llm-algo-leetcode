@@ -2,9 +2,9 @@
 
 ## 页面目标
 
-这一页回答的是：当纯 PTQ 不够时，为什么会出现 QAT、LoRA / QLoRA 这类“训练适配量化”的路线。
+本节回答的是：当纯 PTQ 不够时，为什么会出现 QAT、LoRA / QLoRA 这类“训练适配量化”的路线。
 
-本页的输出是训练适配边界：质量损失是否值得通过额外训练恢复，以及训练显存、时间和稳定性是否被纳入收益计算。
+本节的输出是训练适配边界：质量损失是否值得通过额外训练恢复，以及训练显存、时间和稳定性是否被纳入收益计算。
 
 ## 问题起点
 
@@ -20,6 +20,18 @@
 
 低比特训练适配的核心矛盾是：系统希望把模型表示压低，但模型本身又需要重新吸收这部分误差。于是，量化不再只是表示问题，而会变成训练稳定性和微调效率问题。
 
+## 机制链
+
+QLoRA 等路线通常把基座模型以低比特形式加载，计算时使用指定的 compute dtype，同时只更新 LoRA adapter。它减少的是可训练参数、梯度和 optimizer state 的规模；这不等于基座权重、激活和训练临时张量全部变成低比特。
+
+| 状态 | 典型表示 | 主要显存来源 | 需要确认的边界 |
+|:---|:---|:---|:---|
+| 基座权重 | INT4 / NF4 等低比特存储 | 量化权重、scale 和加载临时空间 | 是否由训练库正确加载并支持反量化 |
+| adapter 参数 | FP16 / BF16 或 FP32 | adapter、梯度、optimizer state | trainable 参数量和优化器状态是否匹配 |
+| 前向与反向 | 通常使用 compute dtype | activation、临时张量和重算 | 序列长度、batch 与 checkpoint 是否改变峰值 |
+
+因此，QLoRA 的收益应拆成“训练状态减少”和“运行时计算代价”两部分，不能只用模型文件大小解释训练显存或速度。
+
 ## 演化路径
 
 1. 先判断 PTQ 是否已经足够。
@@ -32,6 +44,10 @@
 - LoRA / QLoRA 更像“低比特前提下的适配折中”。
 - 如果任务本身变化不大，继续训练未必比更好的 PTQ / AWQ / GPTQ 更划算。
 
+## 证据边界
+
+CPU 或小模型实验可以验证 adapter 是否只更新目标参数、量化配置字段、梯度路径和损失计算；真实 GPU 才能验证训练峰值、低比特 kernel、step time、OOM 和数值稳定性。训练适配后的 adapter 还要经过独立的合并或加载测试，不能直接当成 67 的推理量化 artifact。
+
 ## 文献锚点
 
 - QAT 经典资料：理解量化误差如何被训练过程显式吸收。
@@ -39,13 +55,13 @@
 
 ## 对应 Part 02
 
-- `26` QLoRA and 4bit Quantization
-- `60` LoRA Fine-Tuning Project
+- `26` QLoRA 与 4bit 量化
+- `60` LoRA 微调项目
 
 ## 典型阅读入口
 
-- [02 PTQ and QAT Timing](./02_ptq_and_qat_timing.md)
-- [06 Deployment and Benchmark Decision](./06_deployment_and_benchmark_decision.md)
+- [02 PTQ 与 QAT 的介入时机](./02_ptq_and_qat_timing.md)
+- [06 部署与 Benchmark 决策](./06_deployment_and_benchmark_decision.md)
 
 ## 本节要点
 

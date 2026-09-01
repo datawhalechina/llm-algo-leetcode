@@ -2,9 +2,9 @@
 
 ## 页面目标
 
-这一页回答的是：什么时候先做 PTQ，什么时候必须把量化误差带回训练过程。
+本节回答的是：什么时候先做 PTQ，什么时候必须把量化误差带回训练过程。
 
-本页的输出是介入时机决策：先用 PTQ 验证收益，还是为精度恢复付出 QAT / 量化微调成本。
+本节的输出是介入时机决策：先用 PTQ 验证收益，还是为精度恢复付出 QAT / 量化微调成本。
 
 ## 问题起点
 
@@ -24,6 +24,18 @@
 
 PTQ 便宜、快、适合快速验证；QAT 更重，但能让模型在训练时学会适应量化误差。两者的差别，不只是“训练前后”的时间点，而是你愿意把多少复杂度付给训练过程。
 
+## 机制链
+
+PTQ 通常先使用代表性数据估计量化参数，再冻结量化表示评估模型；QAT 则在训练过程中插入 fake quantization 或等价的量化误差模拟，让前向路径感知离散化带来的偏差，反向传播仍需要可训练的近似梯度。
+
+| 阶段 | 主要状态 | 主要风险 | 最小证据 |
+|:---|:---|:---|:---|
+| PTQ 校准 | 模型参数基本不变，估计 scale / zero-point | 校准数据不代表目标输入 | 校准集摘要、误差分布、任务质量 |
+| PTQ 部署 | 量化参数冻结，由 backend 执行 | 格式或 kernel 不匹配 | 成功加载、显存、延迟、吞吐 |
+| QAT / 量化微调 | 训练过程适应量化噪声 | 训练成本、收敛和部署格式不一致 | train / val 曲线、最终 artifact、部署复验 |
+
+“先做 PTQ”是一种成本控制策略，不是质量保证；“改用 QAT”也不意味着部署后一定更快。两种方案都要使用同一验证集和同一部署目标比较。
+
 ## 演化路径
 
 1. 先用 PTQ 建立第一版收益账本。
@@ -37,7 +49,11 @@ PTQ 便宜、快、适合快速验证；QAT 更重，但能让模型在训练时
 - QAT 更适合“量化误差已经成为主矛盾”。
 - 继续训练并不总比 PTQ 更划算，因为训练成本本身也要算进部署收益。
 
-![PTQ and QAT timing](/topic_discussion/quantization/ptq_qat_timing.svg)
+## 证据边界
+
+CPU 实验适合验证 PTQ / QAT 的流程、量化误差注入、校准统计和决策逻辑；它不能证明低比特训练 kernel、真实训练显存或部署吞吐。GPU 训练还需要记录 dtype、batch、序列长度、训练步数、峰值显存、step time、验证质量和 OOM 状态；量化推理则应转到固定 backend 的对比实验。
+
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 文献锚点
 
@@ -46,14 +62,14 @@ PTQ 便宜、快、适合快速验证；QAT 更重，但能让模型在训练时
 
 ## 对应 Part 02
 
-- `25` Quantization W8A16
-- `26` QLoRA and 4bit Quantization
-- `67` Quantized Inference and Deployment
+- `25` W8A16 量化
+- `26` QLoRA 与 4bit 量化
+- `67` 量化推理与部署
 
 ## 典型阅读入口
 
-- [03 Low-Bit Training Adaptation](./03_low_bit_training_adaptation.md)
-- [06 Deployment and Benchmark Decision](./06_deployment_and_benchmark_decision.md)
+- [03 低比特训练适配](./03_low_bit_training_adaptation.md)
+- [06 部署与 Benchmark 决策](./06_deployment_and_benchmark_decision.md)
 
 ## 本节要点
 
