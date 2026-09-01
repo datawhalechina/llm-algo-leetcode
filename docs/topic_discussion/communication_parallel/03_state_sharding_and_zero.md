@@ -33,7 +33,7 @@ ZeRO 的核心矛盾是：它通过切分状态换显存，但切分后的访问
 - 通信越贵，ZeRO 的副作用越明显。
 - ZeRO 解决的是“状态驻留”，不是所有并行问题。
 
-![State sharding and ZeRO](/topic_discussion/communication_parallel/zero_sharding.svg)
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 文献锚点
 

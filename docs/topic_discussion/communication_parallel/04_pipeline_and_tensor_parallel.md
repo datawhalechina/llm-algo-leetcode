@@ -40,7 +40,7 @@ Pipeline 的核心矛盾是：层被切开后，计算可以分摊，但不同�
 - Tensor Parallel 更怕高频同步和小 batch 下通信吞噬收益。
 - 两者都不是“切开就更快”，而是“切开后换一种成本”。
 
-![Pipeline and tensor parallel](/topic_discussion/communication_parallel/pipeline_tensor_parallel.svg)
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 文献锚点
 

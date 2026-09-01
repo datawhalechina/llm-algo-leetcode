@@ -1,12 +1,12 @@
-# 通信与并行专题
+# 通信与并行（Communication and Parallelism）
 
-## 专题定位
+> 专题类型：横切支撑　主服务目标：多卡切分与通信取舍
 
-本专题用于串起多卡并行主线：先看通信原语和拓扑，再看 DDP、FSDP、ZeRO、Pipeline、Tensor Parallel 和专家并行分别切了什么，最后把通信热点和 benchmark 收回并行选型结论。这里重点关注切分层级与通信代价；如果问题先表现为单机推理速度，应转到推理优化专题。
+## 专题定位与 Infra 层定位
 
-## Infra 层定位
+本专题串起多卡并行主线：先看通信原语和拓扑，再看 DDP、FSDP、ZeRO、Pipeline、Tensor Parallel 和专家并行分别切了什么，最后把通信热点和 benchmark 收回并行选型结论。它横跨五层：Infra-L1 决定互联拓扑和带宽，Infra-L2 提供 NCCL 等通信原语，Infra-L3 决定切分与运行时，Infra-L4 延伸到分布式 Serving，Infra-L5 才负责集群资源调度、多机实验和服务治理。
 
-通信与并行横跨五层：L1 决定互联拓扑和带宽，L2 提供 NCCL 等通信原语，L3 决定 DDP/FSDP/ZeRO 等切分与运行时，L4 负责分布式 Serving，L5 负责资源调度和多机实验。并行结论必须同时解释计算、显存、通信和扩展效率的变化。
+这里重点关注切分层级与通信代价；并行结论必须同时解释计算、显存、通信和扩展效率的变化。若问题先表现为单机推理速度，应转到推理优化；若问题只剩单个通信 kernel 或算子实现，应转到算子优化；若涉及图变换、IR 或 backend 选择，再转到编译与图优化。
 
 ## 推荐入口
 
@@ -14,7 +14,7 @@
 
 ## 前置阅读
 
-建议先掌握 `Part 01: 1C` 的 GPU、通信与系统基础，再补读 Part 01 中的并行和 NCCL 相关内容。进入真实 benchmark 前，应理解 world size、rank、集体通信、数据/张量/流水线/专家并行，以及显存、通信和计算之间的基本权衡。
+建议先掌握 [Part 01 · 05 Communication Topologies](../../01_Hardware_Math_and_Systems/05_Communication_Topologies.md) 与 [Part 01 · 20 NCCL and AllReduce Basics](../../01_Hardware_Math_and_Systems/20_NCCL_and_AllReduce_Basics.md) 提供的 GPU、通信与系统基础，再补读并行相关内容。进入真实 benchmark 前，应理解 world size、rank、集体通信、数据/张量/流水线/专家并行，以及显存、通信和计算之间的基本权衡。
 
 ## 主学习线
 
@@ -22,19 +22,19 @@
 
 | Task | 学习内容 | 主学习线 | 专题正文 |
 |:---|:---|:---|:---|
-| Task1 | 通信拓扑与 AllReduce 前置 | `Part 01:1C -> 05 -> 20` | [01 Why Parallel and Communication](./01_why_parallel_and_communication.md) |
-| Task2 | DDP 到 FSDP / ZeRO 的状态分摊 | `06 -> 27` | [02 Data Parallel and Synchronization](./02_data_parallel_and_synchronization.md) |
-| Task3 | Pipeline Parallel 的时序与气泡 | `28` | [04 Pipeline and Tensor Parallel](./04_pipeline_and_tensor_parallel.md) |
-| Task4 | Tensor Parallel 的切分与代价 | `29` | [04 Pipeline and Tensor Parallel](./04_pipeline_and_tensor_parallel.md) |
-| Task5 | 通信 profiling、热点定位与策略选型 | `46 -> 47 -> 48 -> 49 -> 79` | [05 Expert Parallel and Communication Hotspots](./05_expert_parallel_and_communication_hotspots.md) |
-| Task6 | 并行项目收口 | `80 -> 81` | [06 Benchmark and Parallel Decision](./06_benchmark_and_parallel_decision.md) |
+| Task1 | 通信拓扑与 AllReduce 前置 | [Part 01 · 05 通信拓扑](../../01_Hardware_Math_and_Systems/05_Communication_Topologies.md) → [Part 01 · 20 NCCL 与 AllReduce 基础](../../01_Hardware_Math_and_Systems/20_NCCL_and_AllReduce_Basics.md) | [01 为什么需要并行与通信](./01_why_parallel_and_communication.md) |
+| Task2 | DDP 到 FSDP / ZeRO 的状态分摊 | [Part 01 · 06 显存计算与 ZeRO](../../01_Hardware_Math_and_Systems/06_VRAM_Calculation_and_ZeRO.md) → [Part 02 · 27 ZeRO 优化器模拟](../../02_PyTorch_Algorithms/27_ZeRO_Optimizer_Sim.md) | [02 数据并行与同步](./02_data_parallel_and_synchronization.md) |
+| Task3 | Pipeline Parallel 的时序与气泡 | [Part 02 · 28 流水线并行与微批次](../../02_PyTorch_Algorithms/28_Pipeline_Parallelism_MicroBatch.md) | [04 流水线并行与张量并行](./04_pipeline_and_tensor_parallel.md) |
+| Task4 | Tensor Parallel 的切分与代价 | [Part 02 · 29 张量并行模拟](../../02_PyTorch_Algorithms/29_Tensor_Parallelism_Sim.md) | [04 流水线并行与张量并行](./04_pipeline_and_tensor_parallel.md) |
+| Task5 | 通信 profiling、热点定位与策略选型 | [Part 02 · 46 通信性能分析与 NCCL](../../02_PyTorch_Algorithms/46_Communication_Profiling_with_NCCL.md) → [Part 02 · 47 MoE 专家并行](../../02_PyTorch_Algorithms/47_MoE_Expert_Parallel.md) → [Part 02 · 48 通信热点与缓解](../../02_PyTorch_Algorithms/48_Communication_Hotspots_and_Mitigation.md) → [Part 02 · 49 并行策略选型](../../02_PyTorch_Algorithms/49_Parallelism_Strategy_Selection.md) → [Part 02 · 79 分布式并行基准测试](../../02_PyTorch_Algorithms/79_Distributed_Parallel_Benchmark.md) | [05 专家并行与通信热点](./05_expert_parallel_and_communication_hotspots.md) |
+| Task6 | 并行项目收口 | [Part 02 · 80 MoE 专家并行基准测试](../../02_PyTorch_Algorithms/80_MoE_Expert_Parallel_Benchmark.md) → [Part 02 · 81 分布式推理项目](../../02_PyTorch_Algorithms/81_Distributed_Inference_Project.md) | [06 基准测试与并行决策](./06_benchmark_and_parallel_decision.md) |
 
 ## 正文与跳转
 
 先按上面的 `Task1-6` 走 notebook 主线；遇到“为什么多卡不一定更快”“不同切分到底换来了什么”时，再回来看对应的专题正文。想看汇总版就进 [通信与并行正文](./casebook.md)，想按连续故事线走一遍就进 [通信与并行深入阅读](./walkthrough.md)。
 
 如果问题已经跨到别的专题：
-[Profiling 专题](../profiling/intro.md) 负责证据链与等待热点，[显存优化专题](../memory_performance_tuning/intro.md) 负责显存分摊 trade-off，[监督微调专题](../fine_tuning_training/intro.md) 负责训练工程闭环，[编译与图优化专题](../compiler_graph_optimization/intro.md) 负责执行模型与 backend 约束。
+[性能分析](../profiling/intro.md) 负责证据链与等待热点，[显存优化](../memory_performance_tuning/intro.md) 负责显存分摊 trade-off，[监督微调与训练工程](../fine_tuning_training/intro.md) 负责训练工程闭环，[算子优化](../operator_optimization/intro.md) 负责具体 kernel 与算子实现，[编译与图优化](../compiler_graph_optimization/intro.md) 负责执行模型与 backend 约束。
 
 ## 项目结论
 

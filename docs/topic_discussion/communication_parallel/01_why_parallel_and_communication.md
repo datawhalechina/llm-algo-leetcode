@@ -41,7 +41,7 @@
 - 一加卡，问题就会迁移到同步和调度。
 - 并行不是默认更快，而是默认“更复杂”。
 
-![Why systems move to parallelism](/topic_discussion/communication_parallel/parallel_overview.svg)
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 文献锚点
 
