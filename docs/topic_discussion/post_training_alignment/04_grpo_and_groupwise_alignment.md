@@ -45,7 +45,7 @@ GRPO 想利用组内相对信息，但代价是：
 
 ## 可视化入口
 
-![GRPO Groupwise Candidates](/topic_discussion/post_training_alignment/grpo_groupwise_candidates.svg)
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 常见误区
 

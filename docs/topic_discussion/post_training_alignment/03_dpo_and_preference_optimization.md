@@ -40,7 +40,7 @@ DPO 的直觉是：
 
 ## 可视化入口
 
-![DPO Pairwise Objective](/topic_discussion/post_training_alignment/dpo_pairwise_objective.svg)
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 常见误区
 

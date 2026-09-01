@@ -39,7 +39,7 @@ RLHF / PPO 试图更完整地表达“偏好优化”，但代价是：
 
 ## 可视化入口
 
-![RLHF and PPO System Loop](/topic_discussion/post_training_alignment/rlhf_ppo_system_loop.svg)
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 关键取舍
 
