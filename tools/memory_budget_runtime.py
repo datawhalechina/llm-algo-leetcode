@@ -22,22 +22,37 @@ def summarize_memory_strategies(
     quality_failed = 0
     invalid_count = 0
     oom_count = 0
+    evaluations = []
 
     for candidate in candidates:
         if candidate.get("status", "ok") == "oom":
             oom_count += 1
+            evaluations.append({"name": candidate.get("name"), "status": "oom", "reasons": ["oom"]})
             continue
         memory = candidate.get("peak_memory_mb")
         throughput = candidate.get("samples_per_s")
         eval_loss = candidate.get("eval_loss", candidate.get("val_loss"))
         if not all(isinstance(value, (int, float)) for value in (memory, throughput, eval_loss)):
             invalid_count += 1
+            evaluations.append({"name": candidate.get("name"), "status": "invalid", "reasons": ["missing_or_non_numeric_metric"]})
             continue
         memory_ok = memory <= budget["memory_cap_mb"]
         speed_ok = throughput >= budget["min_samples_per_s"]
         quality_ok = eval_loss <= quality_floor["max_val_loss"]
         if not quality_ok:
             quality_failed += 1
+        reasons = []
+        if not memory_ok:
+            reasons.append("memory_over_budget")
+        if not speed_ok:
+            reasons.append("throughput_below_floor")
+        if not quality_ok:
+            reasons.append("quality_over_floor")
+        evaluations.append({
+            "name": candidate.get("name"),
+            "status": "feasible" if not reasons else "rejected",
+            "reasons": reasons,
+        })
         if memory_ok and speed_ok and quality_ok:
             feasible.append(candidate)
 
@@ -83,6 +98,9 @@ def summarize_memory_strategies(
             if baseline and best
             else 0.0
         ),
+        "min_memory_saving_mb": budget.get("min_memory_saving_mb", 512.0),
+        "min_throughput_ratio": budget.get("min_throughput_ratio", 0.70),
+        "evaluations": evaluations,
     }
 
 
@@ -97,10 +115,13 @@ def decide_memory_budget_project(summary: Dict[str, object]) -> Dict[str, object
             "reason": "no_strategy_meets_budget_and_quality",
             "next_action": "tighten_batch_or_rework_memory_plan",
         }
-    meaningful_memory_gain = summary.get("memory_saving_mb", 0.0) >= 512.0
+    meaningful_memory_gain = summary.get("memory_saving_mb", 0.0) >= summary.get(
+        "min_memory_saving_mb", 512.0
+    )
     acceptable_throughput = (
         summary.get("throughput_ratio") is None
-        or summary.get("throughput_ratio") >= 0.70
+        or summary.get("throughput_ratio")
+        >= summary.get("min_throughput_ratio", 0.70)
     )
     if (
         best_candidate in {"checkpoint", "offload", "hybrid"}
