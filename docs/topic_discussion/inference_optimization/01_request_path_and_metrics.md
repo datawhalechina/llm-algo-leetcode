@@ -2,10 +2,16 @@
 
 ## 页面目标
 
-这一页回答两个问题：
+本节回答两个问题：
 
 - 一个请求从进来到输出 token，链路长什么样？
 - TTFT、TPOT、throughput、peak memory 这些指标应该怎么一起看？
+
+## 本节在路线中的位置
+
+本节对应 **Task0：推理结构与请求链路基础**。它不是性能优化项目，也不要求学习者马上启动 vLLM 或 SGLang；它先把后续 Notebook 和项目共同使用的 workload、阶段划分和指标口径固定下来。
+
+本节的核心产物不是一组性能数字，而是一份可复用的 benchmark contract：后续每次比较都应该说明同一个模型、backend、输入输出长度、batch、并发、dtype 和 cache policy。
 
 ## 问题起点
 
@@ -22,6 +28,8 @@
 - workload 是否固定：模型、backend、batch、prompt tokens、generated tokens、dtype、cache policy。
 - 是否拆分 prefill 和 decode，而不是只报 total latency。
 - 是否同时报告 TTFT、TPOT、throughput 和 peak memory。
+
+如果是多请求服务，还要补充请求到达模式、并发窗口、队列等待时间和 P50/P95/P99；如果是策略实验，还要补充 acceptance rate、cache hit rate 或质量约束。
 
 ## 链路骨架
 
@@ -69,6 +77,18 @@ benchmark report
 | `prefill_share` | prefill 占总耗时比例 | prompt length、attention 访存 |
 | `decode_share` | decode 占总耗时比例 | KV cache、sampling、decode scheduling |
 
+在线服务还应区分端到端延迟的组成：
+
+```text
+e2e latency
+  = queue wait
+  + prefill / TTFT
+  + decode time
+  + detokenize / transport
+```
+
+因此，`TTFT` 变差不一定是 Attention 变慢，也可能是排队或 batch 组装时间增加；`TPOT` 变差也不一定是单个 kernel 变慢，还可能来自 cache 压力和调度等待。
+
 ## 诊断框架
 
 把一条推理链路压成 4 个问题，会比背优化名词更稳：
@@ -87,15 +107,15 @@ benchmark report
 | peak memory 顶到预算、batch 上不去 | `memory-bound` | `04` + `05` |
 | 没有明显单点瓶颈 | 需要回到端到端判断 | `06` |
 
-![Inference request lifecycle](/topic_discussion/inference_optimization/request_lifecycle.svg)
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
-## 与 Part 02 Task1-6 的关系
+## 与 Part 02 Task0-6 的关系
 
-这页不是简单复述 `Task1-6`。它承担的是“知识组织层”的入口作用：
+本节不是简单复述 `Task0-6`。它承担的是“知识组织层”的入口作用：
 
-- `Task1-6` 负责学习顺序，告诉读者该先读哪些 notebook；
+- `Task0-6` 负责学习顺序，告诉读者该先读哪些 Notebook；
 - `01` 负责把这些 notebook 放回同一条请求链路里，告诉读者“为什么要分 prefill、decode、KV cache、量化这几条线”；
-- 因此，这一页更像诊断起点，而不是文件索引。
+- 因此，本节是诊断起点，而不是文件索引。
 
 ## 文献锚点
 
@@ -110,6 +130,29 @@ benchmark report
 - workload 没固定，就比较优化结果。
 - 只看单条请求，不看请求分布。
 
+## 学习者交付物
+
+完成本节后，至少应能写出一份最小 workload 配置和一张指标表：
+
+| 配置或指标 | 最小记录内容 |
+|:---|:---|
+| workload | 模型、backend、prompt tokens、generated tokens、batch、concurrency |
+| runtime | dtype、硬件、cache policy、warm-up、测量轮数 |
+| latency | TTFT、TPOT、e2e latency，必要时补 P50/P95/P99 |
+| capacity | throughput、peak memory、并发上限或队列等待 |
+| diagnosis | prefill-bound、decode-bound、memory-bound 或 serving-bound |
+| next action | 下一步进入 02、03、04、05，还是直接做项目 benchmark |
+
+这张表不需要追求复杂，但必须能够让另一个人复现“你比较的是什么”。
+
+## 对应项目
+
+- **核心综合项目：** [66 Inference Performance Comparison](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.md)，把本节的 workload contract 和指标口径用于真实对比。
+- **主题项目：** [67 Quantized Inference and Deployment](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.md)、[69 Prefix Caching Benchmark](../../02_PyTorch_Algorithms/69_Prefix_Caching_Benchmark.md)。
+- **扩展项目：** [68 Speculative Decoding Benchmark](../../02_PyTorch_Algorithms/68_Speculative_Decoding_Benchmark.md)、[70 Serving Scheduler Benchmark](../../02_PyTorch_Algorithms/70_Serving_Scheduler_Benchmark.md)。
+
+本节只负责统一测量口径，不替代这些项目中的策略实现和最终 `accept / tune / reject` 判断。
+
 ## 对应 Part 02
 
 - `20` FlashAttention Sim
@@ -117,8 +160,19 @@ benchmark report
 - `22` vLLM PagedAttention
 - `23` Speculative Decoding
 - `24` SGLang RadixAttention
-- `25 / 40 / 41 / 67` 量化推理与部署
+- `25` Quantization W8A16
+- `34` Prefix Caching and Chunked Prefill
+- `35` Multi-Token Decoding
+- `36` Decode Scheduling
+- `37` KV Cache Scheduling
+- `38` Prefill-Decode Disaggregation
+- `40 / 41 / 67` 量化推理与部署
+- `68 / 69 / 70` 推理策略与服务扩展项目
 - `66` Inference Performance Comparison
+
+## 证据边界
+
+CPU 可以验证请求阶段划分、指标计算和报告字段；真实 TTFT、TPOT、吞吐、P99 与峰值显存需要固定 workload 下的 GPU 或 backend 实验。本节统一测量口径，不把指标模板当成性能结论。
 
 ## 典型阅读入口
 

@@ -2,7 +2,7 @@
 
 ## 页面目标
 
-这一页收口推理优化专题的关键图，方便后续把请求链路、prefill、KV cache、decode、量化和选型串起来。
+这一页收口推理优化的关键图，方便后续把请求链路、prefill、KV cache、decode、量化和选型串起来。
 
 ## 图册职责
 
@@ -23,27 +23,27 @@
 
 ### 01 请求链路总图
 
-![Inference request lifecycle](/topic_discussion/inference_optimization/request_lifecycle.svg)
+> 图示占位：Inference request lifecycle 尚未生成。
 
 ### 02 Prefill / Attention Kernel
 
-![Prefill and attention kernel](/topic_discussion/inference_optimization/prefill_attention.svg)
+> 图示占位：Prefill and attention kernel 尚未生成。
 
 ### 04 KV Cache 生命周期与调度
 
-![KV cache lifecycle and scheduling](/topic_discussion/inference_optimization/kv_cache_scheduling.svg)
+> 图示占位：KV cache lifecycle and scheduling 尚未生成。
 
 ### 05 量化推理与部署
 
-![Quantized inference and deployment](/topic_discussion/inference_optimization/quantized_deployment.svg)
+> 图示占位：Quantized inference and deployment 尚未生成。
 
 ### 03 Decode 策略对照图
 
-![Decode strategy comparison](/topic_discussion/inference_optimization/decode_strategies.svg)
+> 图示占位：Decode strategy comparison 尚未生成。
 
 ### 06 Benchmark / Keep-Tune-Switch 决策图
 
-![Benchmark decision flow](/topic_discussion/inference_optimization/benchmark_decision.svg)
+> 图示占位：Benchmark decision flow 尚未生成。
 
 ## 建议顺序
 
@@ -71,6 +71,6 @@
 
 ## 相关跳转
 
-- 回到 [推理优化专题入口](./intro.md)
+- 回到 [推理优化入口](./intro.md)
 - 回到 [推理优化正文](./casebook.md)
 - 回到 [推理优化深入阅读](./walkthrough.md)

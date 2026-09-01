@@ -53,11 +53,11 @@
 
 ## 第五段：最后回到同一 workload 做结论
 
-前面几段都还是局部判断，真正做结论时，必须回到同一个 benchmark 框架里。核心收口页是：
+前面几段都还是局部判断，真正做结论时，必须回到同一个 benchmark 框架里。核心收口页是 66；68、69、70 是按 Decode、Cache 和 Serving 目标选择的扩展项目：
 
-- Part 02 [66 Inference Performance Comparison](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.md)
-- Part 02 [68 Speculative Decoding Benchmark](../../02_PyTorch_Algorithms/68_Speculative_Decoding_Benchmark.md)
-- Part 02 [69 Prefix Caching Benchmark](../../02_PyTorch_Algorithms/69_Prefix_Caching_Benchmark.md)
-- Part 02 [70 Serving Scheduler Benchmark](../../02_PyTorch_Algorithms/70_Serving_Scheduler_Benchmark.md)
+- **核心项目：** Part 02 [66 Inference Performance Comparison](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.md)
+- **扩展项目：** Part 02 [68 Speculative Decoding Benchmark](../../02_PyTorch_Algorithms/68_Speculative_Decoding_Benchmark.md)
+- **主题项目：** Part 02 [69 Prefix Caching Benchmark](../../02_PyTorch_Algorithms/69_Prefix_Caching_Benchmark.md)
+- **扩展项目：** Part 02 [70 Serving Scheduler Benchmark](../../02_PyTorch_Algorithms/70_Serving_Scheduler_Benchmark.md)
 
 真正的 benchmark 收口不是“这个方法更先进”，而是 `accept / tune / reject`：它是否适合当前 workload 和服务目标。把这条故事走完以后，一个更像真实交付的结论通常是：长 prompt 下先解决 prefill，随后瓶颈转到 decode 与调度，再往后是 cache 和量化共同决定服务边界，最终被接受的不是某个单点技巧，而是一组在同一 workload 下同时站得住的链路优化组合。
