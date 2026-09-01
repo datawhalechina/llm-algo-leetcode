@@ -2,11 +2,11 @@
 
 ## 页面目标
 
-这一页回答的是：KV cache 怎么增长、复用、分页、驱逐，decode 请求怎么排。
+本节回答：KV Cache 怎么增长、复用、分页和驱逐，以及多请求如何组织。
 
 ## 本节在路线中的位置
 
-本节对应 **Task4：KV Cache 与推理服务内存管理**。它承接 03 的 Decode 生成循环，进一步解释为什么并发、长上下文和重复前缀会把服务推到显存或调度边界；完成后可以进入 Task5 的量化部署，或先用 69 / 70 做缓存与调度项目验证。
+本节对应 **Task3：KV Cache 表示、复用与 Chunked Prefill**。它承接 03 的 Decode 生成循环，解释并发、长上下文和重复前缀如何把服务推到显存边界；完成后进入 Task4 的 Serving 调度，或先用 69 验证缓存复用。
 
 本节同时覆盖 Infra-L3 运行时和 Infra-L4 服务优化：KV Cache 的布局、分页和复用属于运行时执行机制；请求排队、batch 组织和服务内存边界属于服务实例内部的优化。跨模型路由、扩缩容和灰度发布仍属于 Infra-L5，不在本节主线内。
 
@@ -18,7 +18,7 @@
 - 一旦 cache 顶到预算，batch、上下文和并发都上不去；
 - 就算还没 OOM，碎片、分页和调度也会直接拖慢 TPOT。
 
-这就是为什么 `KV cache` 会同时出现在推理优化和显存优化专题里，但两边看的目标不同。
+这就是为什么 `KV cache` 会同时出现在推理优化和显存优化里，但两边看的目标不同。
 
 ## 你要先确认什么
 
@@ -49,7 +49,7 @@ KV cache 是推理链路里最容易成为硬约束的部分。
 - `RadixAttention` 更强调前缀共享和树式组织，但也要求请求模式与系统实现匹配。
 - `KV cache quantization` 能继续压预算，但不应替代复用、分页和调度本身。
 
-因此，这一页的读法应该是：先看 cache 是否成为硬约束，再决定先做复用、分页、调度还是压缩。
+因此，本节应先判断 cache 是否成为硬约束，再决定采用复用、分页、调度还是压缩。单请求的 cache 表示、增长和复用属于 Task3；多请求的资源池、排队、PD 分离和调度属于 Task4。
 
 ## 学习者交付物
 
@@ -65,7 +65,7 @@ KV cache 是推理链路里最容易成为硬约束的部分。
 
 核心结论应能够区分：当前问题是 cache 容量不够、cache 复用不足、内存碎片，还是请求调度没有把可并行的工作组织起来。
 
-![KV cache lifecycle and scheduling](/topic_discussion/inference_optimization/kv_cache_scheduling.svg)
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 文献锚点
 
@@ -86,6 +86,10 @@ KV cache 是推理链路里最容易成为硬约束的部分。
 - `34` Prefix Caching and Chunked Prefill
 - `37` KV Cache Scheduling
 - `41` FP8 and KV Cache Quantization
+
+## 证据边界
+
+CPU 可以验证 KV Cache shape、容量估算、分页逻辑和请求调度模拟；真实 cache 命中率、分页收益、并发容量、TTFT / TPOT 和服务显存需要 vLLM / SGLang 等 backend 的 GPU 实验。单请求模拟不能证明多请求服务收益。
 
 ## 经典阅读入口
 

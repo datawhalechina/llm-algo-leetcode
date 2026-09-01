@@ -2,9 +2,9 @@
 
 ## 页面目标
 
-这一页负责把前面的机制判断收束到 `66` 的 benchmark report 里。
+本节负责把前面的机制判断收束到 `66` 的 benchmark report 里。
 
-完整的命令、运行开关、结果文件和 JSON schema 检查见[66–70 推理项目验证清单](../../docs/verification/inference_projects.md)；本页只保留统一口径、项目分级和 `accept / tune / reject` 的判断规则。
+完整的命令、运行开关、结果文件和 JSON schema 检查见[66–70 推理项目验证清单](../../docs/verification/inference_projects.md)；本节只保留统一口径、项目分级和 `accept / tune / reject` 的判断规则。
 
 ## 本节在路线中的位置
 
@@ -16,7 +16,7 @@
 
 如果前面的 `01-05` 负责解释“慢在哪里、为什么会慢、有哪些候选动作”，那么 `06` 负责回答最后一个问题：**这次优化值不值得留下来**。
 
-没有这一页，专题就会停在“知道很多技巧”；有了这一页，才算把技巧变成可复用的工程判断。
+如果缺少统一 benchmark，前面的技巧就无法转化为可复查的工程判断。
 
 ## 你要先确认什么
 
@@ -85,7 +85,11 @@ accept / tune / reject
 - 是否满足服务目标、质量约束和资源预算；
 - 下一步是 `accept`、`tune` 还是 `reject`。
 
-![Benchmark decision flow](/topic_discussion/inference_optimization/benchmark_decision.svg)
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
+
+## 证据边界
+
+CPU 可以执行指标聚合、schema 检查和 `accept / tune / reject` 逻辑；真实的推理性能结论需要固定 workload、可复现的 backend 运行和完整报告。单次 smoke test 只能证明服务可用，不能代表稳定 benchmark。
 
 ## 报告清单
 
@@ -155,7 +159,7 @@ decision:
 - [68 Speculative Decoding Benchmark](../../02_PyTorch_Algorithms/68_Speculative_Decoding_Benchmark.ipynb)
 - [69 Prefix Caching Benchmark](../../02_PyTorch_Algorithms/69_Prefix_Caching_Benchmark.ipynb)
 - [70 Serving Scheduler Benchmark](../../02_PyTorch_Algorithms/70_Serving_Scheduler_Benchmark.ipynb)
-- Profiling 专题：当报告还无法证明慢点在哪里时先回去补 profiling。
+- 性能分析：当报告还无法证明慢点在哪里时先回去补 profiling。
 - 推理优化 `01-05`：当报告还不能解释“为什么该切换/保留”时，回到对应问题页。
 
 ## 经典阅读入口
