@@ -2,7 +2,7 @@
 
 ## 页面目标
 
-这一页回答的是：训练为什么会 OOM，训练显存通常先被谁吃掉，以及 batch、activation、optimizer state 应该怎么分开看。
+本节回答的是：训练为什么会 OOM，训练显存通常先被谁吃掉，以及 batch、activation、optimizer state 应该怎么分开看。
 
 ## 问题起点
 
@@ -25,9 +25,11 @@
 
 训练侧的核心矛盾是：模型希望保留足够多的中间状态做反传，但系统又必须把这些状态压进有限显存预算。越大的 effective batch、越长的序列、越深的模型，越会把这个矛盾推到前台。
 
+需要区分两个 batch：`micro-batch` 决定一次前向/反向需要保留多少 activation，`effective batch` 还包含梯度累积的步数。梯度累积通常可以降低单次 activation 峰值，但不会自动减少参数、梯度或 optimizer state；如果原本已经是 `batch_size=1`，继续增加累积步数主要改变优化步节奏，不会继续降低单步 activation 峰值。
+
 ## 它如何承接 Task0
 
-[Part00 07 Autograd and Backward](../../00_Prerequisites/07_PyTorch_Autograd_and_Backward.ipynb) 解释计算图和梯度流，[18 Activation and Loss Backward](../../02_PyTorch_Algorithms/18_Activation_and_Loss_Backward.ipynb) 进一步说明 loss、logits 和中间激活在反向传播中的生命周期；需要研究 Attention 反向时再看 [17 Attention Backward](../../02_PyTorch_Algorithms/17_Autograd_Basics.ipynb)。本页把这些机制转换成显存问题：哪些张量必须保留、哪些张量可以重算、哪些状态只是 optimizer 或 batch 组织带来的常驻成本。
+[Part00 07 Autograd and Backward](../../00_Prerequisites/07_PyTorch_Autograd_and_Backward.ipynb) 解释计算图和梯度流，[18 Activation and Loss Backward](../../02_PyTorch_Algorithms/18_Activation_and_Loss_Backward.ipynb) 进一步说明 loss、logits 和中间激活在反向传播中的生命周期；需要研究 Attention 反向时再看 [17 Attention Backward](../../02_PyTorch_Algorithms/17_Autograd_Basics.ipynb)。本节把这些机制转换成显存问题：哪些张量必须保留、哪些张量可以重算、哪些状态只是 optimizer 或 batch 组织带来的常驻成本。
 
 ## 演化路径
 
@@ -44,12 +46,16 @@ Task1 到 Task2 的边界在这里：Task1 负责说明对象、规模和硬件�
 - `gradient accumulation` 看似省显存，本质是在时间和 step 组织上换空间。
 - activation 优化通常能立刻见效，但很少没有时间代价。
 
-![Training memory pressure](/topic_discussion/memory_performance_tuning/training_memory_pressure.svg)
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 文献锚点
 
 - large batch / gradient accumulation 相关资料：理解 effective batch 如何改变显存与优化步节奏。
 - activation memory / training system 论文：理解训练峰值为何多在中间状态上。
+
+## 证据边界
+
+CPU 实验可以检查张量生命周期、梯度对齐和策略账本；GPU 实验才能确认 activation 峰值、重算代价、搬运代价和 OOM 边界。本节的估算或小规模运行不替代 73、76 的固定 workload 结果。
 
 ## 对应 Part 02
 

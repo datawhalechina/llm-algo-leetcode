@@ -2,7 +2,7 @@
 
 ## 页面目标
 
-这一页回答的是：为什么 checkpointing 和 offload 会成为训练显存优化主线，以及它们分别在拿什么换空间。
+本节回答的是：为什么 checkpointing 和 offload 会成为训练显存优化主线，以及它们分别在拿什么换空间。
 
 ## 问题起点
 
@@ -32,7 +32,7 @@
 
 ## 从机制到项目证据
 
-本页的关键不是背诵 checkpoint 和 offload 的定义，而是为每个候选方案写清楚三件事：减少了哪类 GPU 驻留、把代价转移到重算还是搬运、需要用哪一个指标证明代价可接受。对应项目链是 [73 Training Performance Analysis](../../02_PyTorch_Algorithms/73_Training_Performance_Analysis.ipynb) 先建立 baseline，再用 [76 Activation / Checkpoint / Offload Benchmark](../../02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.ipynb) 比较候选，由 [75 Memory Budget Compression](../../02_PyTorch_Algorithms/75_Memory_Budget_Compression_Project.ipynb) 按预算门槛做选择，最后由 [74 Profiling Driven Optimization](../../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.ipynb) 检查重算、搬运和 kernel 代价是否真的解释了结果。
+本节的关键不是背诵 checkpoint 和 offload 的定义，而是为每个候选方案写清楚三件事：减少了哪类 GPU 驻留、把代价转移到重算还是搬运、需要用哪一个指标证明代价可接受。对应项目链是 [73 Training Performance Analysis](../../02_PyTorch_Algorithms/73_Training_Performance_Analysis.ipynb) 先建立 baseline，再用 [76 Activation / Checkpoint / Offload Benchmark](../../02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.ipynb) 比较候选，由 [75 Memory Budget Compression](../../02_PyTorch_Algorithms/75_Memory_Budget_Compression_Project.ipynb) 按预算门槛做选择，最后由 [74 Profiling Driven Optimization](../../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.ipynb) 检查重算、搬运和 kernel 代价是否真的解释了结果。
 
 ## 关键取舍
 
@@ -52,7 +52,7 @@
 
 本节的出口不是选出一个永远最优的策略，而是写出一条可验证的假设：例如“checkpoint 预计减少激活驻留，但允许不超过某个吞吐损失”；随后由 `73 / 76 / 75` 用同一 workload 验证，再由 `74` 检查假设是否与 profiler 证据一致。
 
-![Checkpointing and offload trade-off](/topic_discussion/memory_performance_tuning/checkpointing_offload.svg)
+> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
 
 ## 文献锚点
 
