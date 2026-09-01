@@ -12,6 +12,8 @@
 
 如果你还没有明确的性能或系统问题，先从四条主路线中选一条；横向专题用于补方法和机制，不要求全部顺序完成。四条路线是并列入口，不代表必须按页面顺序学习。
 
+专题轴包含四条学习路线、三个横切支撑专题和四个基础支撑专题；教程的纵向主线仍由 `Part 00–04` 构成。
+
 | 路线 | 主入口 | 适合什么时候进入 |
 |:---|:---|:---|
 | 推理优化路线 | [推理优化（Inference Optimization）](./inference_optimization/intro.md) | 当你要系统理解 prefill、decode、KV cache、服务和 benchmark 时 |
@@ -95,13 +97,13 @@ Profiling 与 Evaluation 横跨五层：前者负责采集证据，后者负责�
 
 ### 能力与组件边界
 
-这些内容连接五层结构，但承担的角色不同：算子优化是主路线，编译与图优化是基础支撑，异构并行与通信是横切支撑，MLSys 是跨专题的方法框架。
+这些内容连接五层结构，但承担的角色不同：算子优化是主路线，编译与图优化是基础支撑，通信与并行是横切支撑，MLSys 是跨专题的方法框架，不是独立的第 12 个专题。
 
 | 能力 | 主要连接 | 在专题中的展开位置 | 当前项目入口 |
 |:---|:---|:---|:---|
 | 算子优化 | Infra-L1–Infra-L3 | [算子优化](./operator_optimization/intro.md)、[Part 03](../03_Triton_Kernels/intro.md)、[Part 04](../04_CUDA_and_System_Optimization/intro.md)；必要时用 [Part 02 · 74 Profiling](../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.ipynb) 验证 kernel 对端到端结果的影响 | [Part 03](../03_Triton_Kernels/intro.md) / [Part 04](../04_CUDA_and_System_Optimization/intro.md) |
 | 编译与图优化 | Infra-L2–Infra-L3 | [编译与图优化](./compiler_graph_optimization/intro.md)，负责图变换、IR、lowering 和 backend 决策 | [Part 03](../03_Triton_Kernels/intro.md) / [Part 04](../04_CUDA_and_System_Optimization/intro.md) |
-| 异构并行与通信 | Infra-L1–Infra-L5 | 通信与并行；性能分析负责定位计算、内存、通信等待 | [Part 02 · 79 分布式并行](../02_PyTorch_Algorithms/79_Distributed_Parallel_Benchmark.ipynb) / [Part 02 · 80 MoE 专家并行](../02_PyTorch_Algorithms/80_MoE_Expert_Parallel_Benchmark.ipynb) / [Part 02 · 81 分布式推理](../02_PyTorch_Algorithms/81_Distributed_Inference_Project.ipynb) |
+| 异构并行与通信 | 主要连接 Infra-L1–Infra-L3；资源编排延伸到 Infra-L5 | 通信与并行；性能分析负责定位计算、内存、通信等待 | [Part 02 · 79 分布式并行](../02_PyTorch_Algorithms/79_Distributed_Parallel_Benchmark.ipynb) / [Part 02 · 80 MoE 专家并行](../02_PyTorch_Algorithms/80_MoE_Expert_Parallel_Benchmark.ipynb) / [Part 02 · 81 分布式推理](../02_PyTorch_Algorithms/81_Distributed_Inference_Project.ipynb) |
 | MLSys 方法 | Infra-L2–Infra-L5 | 作为跨专题方法：约束建模、profiling、benchmark、资源调度和回归决策 | [Part 02 · 74 Profiling](../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.ipynb) / [Part 02 · 75 显存预算](../02_PyTorch_Algorithms/75_Memory_Budget_Compression_Project.ipynb) / [Part 02 · 79 分布式并行](../02_PyTorch_Algorithms/79_Distributed_Parallel_Benchmark.ipynb) |
 
 库的归属按主要职责判断：NCCL 和算子库偏 Infra-L2，训练与并行框架偏 Infra-L3，服务和资源编排分别进入 Infra-L4、Infra-L5。专题不重复介绍同一个库，而是解释它在当前问题中的作用和代价。
