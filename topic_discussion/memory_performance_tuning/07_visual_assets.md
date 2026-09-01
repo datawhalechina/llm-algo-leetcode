@@ -2,7 +2,7 @@
 
 ## 页面目标
 
-这一页收口显存优化专题的关键图，方便后续把训练账本、checkpointing / offload、推理 cache、量化预算和最终验证串起来。
+这一页收口显存优化的关键图，方便后续把训练账本、checkpointing / offload、推理 cache、量化预算和最终验证串起来。
 
 ## 图册职责
 
@@ -41,27 +41,27 @@ flowchart LR
 
 ### 01 VRAM / Memory Ledger
 
-![VRAM ledger](/topic_discussion/memory_performance_tuning/vram_ledger.svg)
+> 图示占位：VRAM ledger 尚未生成。
 
 ### 02 Training Memory Pressure
 
-![Training memory pressure](/topic_discussion/memory_performance_tuning/training_memory_pressure.svg)
+> 图示占位：Training memory pressure 尚未生成。
 
 ### 03 Checkpointing / Offload
 
-![Checkpointing and offload trade-off](/topic_discussion/memory_performance_tuning/checkpointing_offload.svg)
+> 图示占位：Checkpointing and offload trade-off 尚未生成。
 
 ### 04 KV Cache Budget
 
-![KV cache budget](/topic_discussion/memory_performance_tuning/kv_cache_budget.svg)
+> 图示占位：KV cache budget 尚未生成。
 
 ### 05 Quantization as a Memory Tool
 
-![Quantization as a memory tool](/topic_discussion/memory_performance_tuning/quantization_memory_tool.svg)
+> 图示占位：Quantization as a memory tool 尚未生成。
 
 ### 06 Benchmark / Keep-Tune-Switch
 
-![Memory benchmark decision flow](/topic_discussion/memory_performance_tuning/memory_benchmark_decision.svg)
+> 图示占位：Memory benchmark decision flow 尚未生成。
 
 ## 建议顺序
 
@@ -81,6 +81,6 @@ flowchart LR
 
 ## 相关跳转
 
-- 回到 [显存优化专题入口](./intro.md)
+- 回到 [显存优化入口](./intro.md)
 - 回到 [显存优化与性能调优正文](./casebook.md)
 - 回到 [显存优化与性能调优深入阅读](./walkthrough.md)
