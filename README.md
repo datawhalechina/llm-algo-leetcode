@@ -146,6 +146,7 @@ git clone https://github.com/datawhalechina/llm-algo-leetcode.git
 cd llm-algo-leetcode
 conda env create -f environment.yml
 conda activate llm_algo
+python -m pip install -r requirements/torch-cpu.txt
 jupyter lab
 ```
 
@@ -156,6 +157,17 @@ jupyter lab
 - 想自己控制 Python / PyTorch / CUDA 版本
 - 想做更稳定的离线调试
 - Part 03 / 04 需要本地 NVIDIA GPU
+
+如果要运行真实训练、显存或推理项目，请改用 CUDA 环境：
+
+```bash
+conda env create -f environment-gpu.yml
+conda activate llm_algo_gpu
+python -m pip install -r requirements/torch-cu128.txt
+jupyter lab
+```
+
+已有 CUDA PyTorch 的云端或 Colab 环境不需要执行上述安装；先运行项目环境预检，确认当前 Kernel 的 PyTorch、CUDA 和 GPU 可用。
 
 ### 方式 3：CNB 统一环境
 
@@ -317,6 +329,7 @@ git clone https://github.com/datawhalechina/llm-algo-leetcode.git
 cd llm-algo-leetcode
 conda env create -f environment.yml
 conda activate llm_algo
+python -m pip install -r requirements/torch-cpu.txt
 jupyter lab
 ```
 
@@ -325,6 +338,17 @@ Suitable for:
 - Controlling your own Python / PyTorch / CUDA versions
 - More stable offline debugging
 - Part 03 / 04 require a local NVIDIA GPU
+
+For real training, memory, or inference projects, use the CUDA environment instead:
+
+```bash
+conda env create -f environment-gpu.yml
+conda activate llm_algo_gpu
+python -m pip install -r requirements/torch-cu128.txt
+jupyter lab
+```
+
+Cloud runtimes or Colab sessions that already provide CUDA PyTorch do not need this installation. Run the project preflight first and reuse the current Kernel when its PyTorch, CUDA, and GPU checks pass.
 
 For environment details and platform differences, see [docs/guide.md](./docs/guide.md).
 
