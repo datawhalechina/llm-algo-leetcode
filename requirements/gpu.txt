@@ -1,2 +1,4 @@
--r base.txt
+# Legacy convenience profile for a CUDA 12.8 development environment.
+# Prefer installing requirements/base.txt and one explicit capability profile.
+-r torch-cu128.txt
 triton

@@ -1,11 +1,12 @@
-torch
 einops
 transformers
 jupyterlab
+ipykernel
 ipywidgets
 nbformat
 nbconvert
 jupyterlab-mathjax3
 matplotlib
+numpy
 pandas
 termcolor

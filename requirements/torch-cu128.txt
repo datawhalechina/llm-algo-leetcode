@@ -1,0 +1,4 @@
+# PyTorch with CUDA 12.8 user-space runtime.
+# The NVIDIA driver is installed on the host and is not supplied by pip.
+--index-url https://download.pytorch.org/whl/cu128
+torch
