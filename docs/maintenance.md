@@ -36,6 +36,16 @@
   - `verify.py part4`：检查 `Part 04`
 - 横向专题主要横切 `Part 00 / Part 01 / Part 02`，后续若继续下探性能和实现，可以逐步接到 `Part 03 / Part 04`。
 
+## 依赖 profile 维护规则
+
+- `requirements/base.txt` 只放跨平台通用包，不放 `torch`、GPU 驱动或 vLLM。
+- `requirements/torch-cpu.txt` 与 `requirements/torch-cu128.txt` 是互斥的 PyTorch 平台 profile；默认根依赖 `requirements.txt` 不自动选择 GPU。Conda environment 文件也不直接合并这两个 profile，避免 PyTorch 专用 index 覆盖通用包的下载源。
+- `fine-tuning.txt`、`qlora.txt`、`reinforcement-learning.txt`、`distributed.txt`、`inference-vllm.txt`、`inference-sglang.txt` 和 `profiling.txt` 是能力层 profile，依赖 base，但不负责判断主机是否有 GPU。
+- GPU 环境说明必须同时区分驱动、PyTorch CUDA wheel 和上层能力包；不能把 `nvidia-smi` 的 CUDA 字段写成 PyTorch 的 CUDA 版本。
+- Colab、ModelScope 和云端预装环境优先复用当前 Kernel 的 PyTorch。Notebook 自动化可以补普通 Python 包，但不能静默替换 CUDA PyTorch、驱动、vLLM 或 SGLang。
+- 新增 backend（如 TensorRT-LLM、Unsloth、LLaMA-Factory）前，先建立独立 profile 或官方版本矩阵，并说明与已有 profile 的兼容边界。SGLang 使用 `requirements/inference-sglang.txt`，与 vLLM profile 分开维护。
+- 后训练项目使用 `requirements/reinforcement-learning.txt`；分布式项目使用 `requirements/distributed.txt`，二者都必须与一个明确的 CPU 或 CUDA PyTorch profile 组合，不能把 GPU、RL 和分布式依赖默认塞进 `requirements.txt`。
+
 ## 教程信息架构口径
 
 后续写导学页、组导航页、专题页和 `Part 01` 正文导读时，统一使用下面四类概念，不再混写：
