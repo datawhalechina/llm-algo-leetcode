@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">60 LoRA 微调项目学习与实验路径</title>
+  <desc id="desc">09 到 13 节提供训练基础，60 节组织两种训练方式的比较，并依次检查数据、运行真实训练和查看结果报告。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0 0 L0 6 L9 3 Z" fill="#52606d"/></marker>
+    <style>
+      .title{font:700 26px sans-serif;fill:#172b4d}.section{font:700 19px sans-serif;fill:#172b4d}.label{font:700 17px sans-serif;fill:#172b4d}.small{font:15px sans-serif;fill:#52606d}.box{stroke:#829ab1;stroke-width:2;rx:14}.line{stroke:#52606d;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1200" height="760" fill="#f8fafc"/>
+  <text x="600" y="42" text-anchor="middle" class="title">60 LoRA 微调项目：从知识基础到实验交付</text>
+  <text x="600" y="73" text-anchor="middle" class="small">先理解训练组件，再比较 LoRA，最后根据实验结果做出选择</text>
+
+  <text x="600" y="112" text-anchor="middle" class="section">共同基础：理解训练闭环</text>
+  <g transform="translate(35,135)"><rect width="250" height="82" fill="#e8f1fb" class="box"/><text x="125" y="31" text-anchor="middle" class="label">09 SFT 训练循环</text><text x="125" y="60" text-anchor="middle" class="small">数据、labels、loss</text></g>
+  <g transform="translate(315,135)"><rect width="250" height="82" fill="#eaf7ef" class="box"/><text x="125" y="31" text-anchor="middle" class="label">10 LoRA 适配</text><text x="125" y="60" text-anchor="middle" class="small">冻结底座、训练 adapter</text></g>
+  <g transform="translate(595,135)"><rect width="250" height="82" fill="#fff4e5" class="box"/><text x="125" y="31" text-anchor="middle" class="label">11 学习率调度</text><text x="125" y="60" text-anchor="middle" class="small">控制参数更新</text></g>
+  <g transform="translate(875,135)"><rect width="250" height="82" fill="#f0eafa" class="box"/><text x="125" y="31" text-anchor="middle" class="label">12 梯度累积</text><text x="125" y="60" text-anchor="middle" class="small">单次批量、有效批量</text></g>
+  <path d="M160 217 V245 M440 217 V245 M720 217 V245 M1000 217 V245 M160 245 H1000 M600 245 V270" class="line"/>
+  <g transform="translate(385,275)"><rect width="430" height="78" fill="#dff3f5" class="box"/><text x="215" y="31" text-anchor="middle" class="label">13 训练循环与验证</text><text x="215" y="59" text-anchor="middle" class="small">训练、验证、参数更新</text></g>
+  <path d="M600 353 V385" class="line"/>
+
+  <g transform="translate(330,395)"><rect width="540" height="82" fill="#fde7e7" class="box"/><text x="270" y="32" text-anchor="middle" class="label">60 LoRA 微调项目入口</text><text x="270" y="61" text-anchor="middle" class="small">固定任务，比较两种训练方式</text></g>
+  <path d="M600 477 V500 H192 V545" class="line"/>
+  <text x="600" y="520" text-anchor="middle" class="section">实验怎么进行</text>
+  <g transform="translate(35,545)"><rect width="315" height="118" fill="#e8f1fb" class="box"/><text x="157" y="35" text-anchor="middle" class="label">CPU：检查机制与报告</text><text x="157" y="66" text-anchor="middle" class="small">数据审计、loss mask</text><text x="157" y="91" text-anchor="middle" class="small">参数账本、指标逻辑</text></g>
+  <g transform="translate(442,545)"><rect width="315" height="118" fill="#eaf7ef" class="box"/><text x="157" y="35" text-anchor="middle" class="label">GPU：采集真实指标</text><text x="157" y="66" text-anchor="middle" class="small">baseline / LoRA 对照</text><text x="157" y="91" text-anchor="middle" class="small">loss、显存、速度</text></g>
+  <g transform="translate(850,545)"><rect width="315" height="118" fill="#fff4e5" class="box"/><text x="157" y="35" text-anchor="middle" class="label">结果：保存报告并判断</text><text x="157" y="66" text-anchor="middle" class="small">adapter、tokenizer</text><text x="157" y="91" text-anchor="middle" class="small">是否保留当前方案</text></g>
+  <path d="M350 604 H432 M757 604 H840" class="line"/>
+  <text x="600" y="715" text-anchor="middle" class="small">先检查实验逻辑，再运行真实对照，最后查看结果报告</text>
+</svg>

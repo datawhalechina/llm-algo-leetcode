@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
+  <title id="title">60 GPU 对照实验资产与流程</title>
+  <desc id="desc">固定模型、数据和训练条件后，分别运行 baseline 与 LoRA，比较资源和验证损失，保存模型产物与 JSON 报告，并输出项目决策。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#52606d"/>
+    </marker>
+    <style>
+      .title { font: 700 24px sans-serif; fill: #172b4d; }
+      .label { font: 700 18px sans-serif; fill: #172b4d; }
+      .body { font: 15px sans-serif; fill: #334e68; }
+      .small { font: 14px sans-serif; fill: #486581; }
+      .box { stroke-width: 2; rx: 14; }
+      .arrow { stroke: #52606d; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1200" height="500" fill="#f8fafc"/>
+  <text x="600" y="42" text-anchor="middle" class="title">Step 7：GPU 对照实验如何形成项目资产</text>
+
+  <rect x="55" y="90" width="230" height="125" class="box" fill="#e8f1fb" stroke="#4c86c6"/>
+  <text x="170" y="125" text-anchor="middle" class="label">固定输入</text>
+  <text x="170" y="158" text-anchor="middle" class="body">模型 · 数据 · 切分</text>
+  <text x="170" y="183" text-anchor="middle" class="body">dtype · batch · steps</text>
+
+  <path d="M285 152 H350" class="arrow"/>
+
+  <rect x="350" y="70" width="230" height="165" class="box" fill="#fff4db" stroke="#d99a2b"/>
+  <text x="465" y="108" text-anchor="middle" class="label">两条训练分支</text>
+  <text x="465" y="145" text-anchor="middle" class="body">baseline</text>
+  <text x="465" y="168" text-anchor="middle" class="small">更新底座权重</text>
+  <text x="465" y="200" text-anchor="middle" class="body">LoRA</text>
+  <text x="465" y="223" text-anchor="middle" class="small">冻结底座，更新 adapter</text>
+
+  <path d="M580 152 H645" class="arrow"/>
+
+  <rect x="645" y="90" width="230" height="125" class="box" fill="#e8f5ee" stroke="#4f9d69"/>
+  <text x="760" y="125" text-anchor="middle" class="label">对照指标</text>
+  <text x="760" y="158" text-anchor="middle" class="body">train / val loss</text>
+  <text x="760" y="183" text-anchor="middle" class="body">速度 · 显存 · 参数量</text>
+
+  <path d="M875 152 H940" class="arrow"/>
+
+  <rect x="940" y="70" width="205" height="165" class="box" fill="#f0eafa" stroke="#8561a8"/>
+  <text x="1042" y="108" text-anchor="middle" class="label">项目资产</text>
+  <text x="1042" y="143" text-anchor="middle" class="body">adapter / tokenizer</text>
+  <text x="1042" y="168" text-anchor="middle" class="body">seed 报告</text>
+  <text x="1042" y="193" text-anchor="middle" class="body">汇总 JSON</text>
+
+  <path d="M760 215 V315" class="arrow"/>
+  <path d="M1042 235 V280 H960 V315" class="arrow"/>
+  <rect x="475" y="315" width="570" height="105" class="box" fill="#ffffff" stroke="#9fb3c8"/>
+  <text x="760" y="352" text-anchor="middle" class="label">决策依据</text>
+  <text x="760" y="382" text-anchor="middle" class="body">资源收益 + loss 变化 + 数据 / 交付检查</text>
+  <text x="760" y="405" text-anchor="middle" class="small">accept / tune / reject；结论仅适用于当前 workload</text>
+</svg>
