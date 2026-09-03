@@ -14,9 +14,9 @@
 
 ## 本节导读
 
-把模型结构写出来以后，下一步就是让它按监督数据学习回答。但 SFT 最容易出错的地方并不在 optimizer，而在数据和 loss 的对齐：模型输入通常是 `[prompt + response]`，真正应该学习的是 response，而不是让模型去复述 prompt。
+把模型结构写出来以后，下一步就是让它按监督数据学习回答。Fine-tuning 是继续训练预训练模型以适应下游任务的总称，SFT（监督微调）是其中使用 prompt-response 标注数据的一种训练方式。SFT 最容易出错的地方并不在 optimizer，而在数据和 loss 的对齐：模型输入通常是 `[prompt + response]`，真正应该学习的是 response，而不是让模型去复述 prompt。
 
-本节聚焦 SFT 训练循环里最关键的三件事：用 prompt masking 把不该学习的位置设为 `ignore_index`，用 `attention_mask` 区分真实 token 和 padding，再通过 shift logits / labels 对齐下一个 token 预测。完成后，你应该能看懂 `input_ids`、`attention_mask`、`labels` 和 cross entropy 之间的关系，并为后面的端到端微调实验、LoRA 和 RLHF 对齐训练打基础。
+本节聚焦 SFT 训练循环中的数据与 loss 对齐：用 prompt masking 将上下文位置设为 `ignore_index`，用 `attention_mask` 区分真实 token 和 padding，再通过 shift logits / labels 对齐下一个 token 预测。完成后，你应该能看懂 `input_ids`、`attention_mask`、`labels` 和 cross entropy 之间的关系。参数更新、评估和 LoRA / RLHF 训练将在后续内容中沿用这套对齐规则。
 
 **关键词：** `SFT`, `masking`, `attention_mask`, `shift logits`
 
@@ -39,78 +39,64 @@
 - [P0: 18. Memory Profiling and Optimization | 显存剖析与优化](../00_Prerequisites/18_Memory_Profiling_and_Optimization.md)
 
 ---
-### Step 1: 核心思想与痛点
+### Step 1：从一条问答样本理解 SFT
 
-SFT 和预训练的关键差异在于 loss 只应该作用在 response 上，而不是 prompt 上。
+SFT 使用“输入—回答”样本训练模型。例如：
 
-> **预训练 (Pre-training) vs 微调 (SFT)**
-> * **预训练**：模型预测下一个 Token。给定一本书，每一个字都要算 Loss。
-> * **SFT**：给定 `[Prompt] + [Response]`。我们**只关心**模型能不能输出正确的 `Response`。如果把 `Prompt` 也纳入 Loss 计算，模型就会去“背诵”人类的提问方式，而不是去“回答”问题。
-> 
-> **如何解决？（Loss Masking）**
-> 在 PyTorch 的 `CrossEntropyLoss` 中，`ignore_index=-100` 的位置不会产生梯度。我们把 `labels` 中属于 Prompt 和 Padding 的位置设为 `-100`，只保留 Response 和必要的 EOS 作为监督信号。
+- prompt：`请计算 2 + 2。`
+- response：`答案是 4。`
 
-真实微调里通常还会多一层 chat template：先把多轮 `messages` 渲染成模型约定的 prompt/response 文本，再 tokenizer 成 token id。无论模板长什么样，最后进入训练循环时都要落成三件套：
+`EOS`（end of sequence）是表示序列结束的特殊 token。它让模型知道回答何时结束。
 
-- `input_ids`：prompt、response、可选 EOS 和 padding 后的完整 token 序列。
-- `attention_mask`：真实 token 为 `1`，padding 为 `0`，告诉模型哪些位置是有效上下文。
-- `labels`：prompt 和 padding 为 `-100`，response / EOS 保留原 token id，告诉 loss 哪些位置要学习。
+![SFT 训练序列与预测目标](../docs/public/02_PyTorch_Algorithms/09_sft_example_flow.svg)
 
-后面的 `Step 2 / Step 3` 就围绕这条链路，把 logits 对齐、loss 计算和训练流程串起来。
+<div align="center"><strong>SFT 训练序列与预测目标：</strong> 训练时将 prompt 与 response 拼接成序列并逐位置预测下一个 token；推理时只输入 prompt，再逐步生成 response。</div>
 
-### Step 2: Attention Mask、Loss Mask 与 Shift Logits
+本节先从问答样本理解模型如何逐步生成回答，再逐步实现数据张量与 loss 对齐。
 
-`attention_mask` 和 `labels=-100` 解决的是两个不同问题，不能混在一起理解。
+### Step 2: 构造输入数据三件套
 
-- `attention_mask=0`：告诉模型 padding 位置不是有效上下文，真实 Transformer 会用它避免 attention 看到 padding。
-- `labels=-100`：告诉 loss 这些位置不参与监督，通常包括 prompt 和 padding。
-- `EOS`：如果模板要求模型学会在回答结束时停止，EOS 应该作为 response 的一部分参与监督。
+一条 SFT 样本进入模型前，至少要整理成 `input_ids`、`attention_mask` 和 `labels`。本 Step 先关注序列构造与 padding 对齐；监督目标和 loss 规则放到 Step 3。
 
-在自回归语言模型中，position `t` 的 logits 预测 position `t+1` 的 label。因此计算 CrossEntropyLoss 前要做一位 shift：`logits[..., :-1, :]` 对齐 `labels[..., 1:]`。如果截断后 response 被全部截掉，labels 里就没有有效监督 token，这种样本应该被过滤或报错，而不是静默参与训练。
+`padding` 是为了让同一 batch 的序列长度一致而补的占位位置；`mask` 用来标记哪些位置有效、哪些位置需要忽略。
 
-#### 对齐表：input_ids / attention_mask / labels
-
-下面这张表把一条 `[prompt + response + EOS + padding]` 样本拆开看。读 SFT 代码时，先确认这三行是否对齐，再看 loss。
+下面的表先只检查序列结构；`labels` 的监督位置和 next-token 对齐规则留到 Step 3。
 
 | 位置 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | 语义 | prompt | prompt | prompt | response | response | response | response | EOS | padding |
 | `input_ids` | 10 | 20 | 30 | 40 | 50 | 60 | 70 | 2 | 0 |
 | `attention_mask` | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 0 |
-| `labels` | -100 | -100 | -100 | 40 | 50 | 60 | 70 | 2 | -100 |
-| shift 后谁被预测 | 20 | 30 | 40 | 50 | 60 | 70 | 2 | 0 | - |
+| `labels` | 先不填 | 先不填 | 先不填 | 先不填 | 先不填 | 先不填 | 先不填 | 先不填 | 先不填 |
 
-关键判断：
-- prompt 位置可以被模型看见，但不参与 loss。
-- response 和 EOS 参与 loss，模型才会学习回答和结束。
-- padding 既不应该被 attention 当成有效上下文，也不应该参与 loss。
+读表时先确认：真实 token 的 `attention_mask` 为 1，padding 位为 0；`input_ids` 可以包含 padding，但 padding 不应成为训练目标。Step 3 再把 prompt、response 和 EOS 映射为具体的 `labels`。
+### Step 3: 对齐 next-token loss
 
-![SFT 对齐图](/02_PyTorch_Algorithms/09_sft_alignment.svg)
+先记住一个位置关系：模型读到位置 `t` 的内容后，要预测位置 `t+1` 的 token。模型对词表中每个 token 给出的分数叫 `logits`；计算 loss 前，要把最后一个 logit 去掉，并把 labels 从第二个位置开始取，也就是 `logits[..., :-1, :]` 对齐 `labels[..., 1:]`。
 
-#### 数据审计与样本边界
+交叉熵可以看成“预测错得有多严重”：先把 logits 转成概率，再查看正确目标 token 的概率；概率越低，loss 越大。Step 2 的序列中，prompt 和 padding 的 label 设为 `-100`，response 与可选 EOS 保留目标 token；`CrossEntropyLoss(ignore_index=-100)` 会跳过 `-100` 位置并对其余目标求平均。若传入 `attention_mask`，还要同步屏蔽 shift 后的 padding。
 
-在真实 SFT 数据里，`labels` 正确与否只是第一步，还要再过一层样本审计，避免“能跑但学不到”的脏样本进入训练：
+**实现约束：** response 至少要留下一个监督 token；如果加入 EOS，它放在 response 后面；本节构造函数采用右侧 padding。截断后没有监督 token 时，应该调大 `max_len`、过滤样本或报错。
 
-| 检查项 | 你要确认什么 | 常见问题 |
-|:---|:---|:---|
-| `prompt` 是否可见 | prompt 只负责提供上下文，不参与 loss | prompt 被误当成监督目标 |
-| `response` 是否存在 | 至少有一段可学习的回答 | 空 response、模板残缺 |
-| `EOS` 是否保留 | 让模型学会结束回答 | 只学会续写，不学会停 |
-| 截断后是否仍有监督 token | `max_len` 不能把 response 全截没 | 截断后 loss 全是 `-100` |
-| padding 是否只在尾部 | padding 只能补在真实 token 之后 | 中间 padding 破坏 causal 结构 |
+下表把 label 的监督范围与 shift 后的预测位置放在一起，帮助检查 logits、目标 token 和 loss 是否对应。
 
-工程上最常见的坏例子有三类：
+| 预测位置 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| logit 预测的 token | 20 | 30 | 40 | 50 | 60 | 70 | 2 | 0 |
+| shift 后的 label | -100 | -100 | 40 | 50 | 60 | 70 | 2 | -100 |
+| 是否计入 loss | 否 | 否 | 是 | 是 | 是 | 是 | 是 | 否 |
 
-- **格式坏样本**：chat template 没渲染完整，`prompt / response` 边界不清楚。
-- **监督坏样本**：`labels` 不是 `-100` 就是错位 token，loss 看似下降但学不到回答。
-- **长度坏样本**：`max_len` 太短把 response 截没了，样本等于无监督数据。
+表中 `labels=-100` 决定哪些目标参与交叉熵，shift 决定 logits 与目标 token 的时间位置；两者缺一不可。
 
-所以这节的真实目标不是“把 token 拼起来”，而是先确认：**哪些 token 是上下文，哪些 token 是监督，哪些样本应该直接过滤。**
-### Step 3: 动手实战
+![SFT 数据与损失对齐](../docs/public/02_PyTorch_Algorithms/09_sft_alignment.svg)
 
-**要求**：请补全下方 `build_sft_data`（构造单条 SFT 数据）和 `compute_sft_loss`（计算损失）的 `TODO` 逻辑。
+<div align="center"><strong>SFT 数据与损失对齐：</strong> 图中展示 labels、shift 和有效监督位置的关系；具体 mask 规则见本 Step 说明。</div>
 
-接下来把“数据构造 -> attention mask -> 标签 mask -> next-token 对齐”串成一个最小训练闭环。这里仍然使用 token id 直接演示；真实工程中的 chat template 和 tokenizer 会在进入本函数前完成。
+### Step 4: 完成 TODO 并运行测试
+
+**要求**：请补全下方两个函数的 `TODO`。TODO 1–3 对应 Step 2 的数据阶段：labels、截断检查和 padding；TODO 4–5 对应 Step 3 的 loss 阶段：shift 对齐、有效监督检查和交叉熵。
+
+这里仍然使用 token id 直接演示；真实工程中的 chat template 和 tokenizer 会在进入本函数前完成。完成代码后运行测试，检查样本结构和 loss 对齐。
 
 
 ```python
@@ -128,8 +114,15 @@ def build_sft_data(
     max_len: int = 16,
     min_response_tokens: int = 1,
 ):
-    """
-    构造单条 SFT 训练数据，返回 input_ids / attention_mask / labels。
+    """构造一条右侧 padding 的 SFT 样本。
+
+    参数：prompt_ids / response_ids 为 token id 列表；pad_id 和 eos_id
+    分别指定 padding 与可选 EOS；max_len 是输出固定长度；
+    min_response_tokens 是截断后必须保留的监督 token 数。
+
+    返回三个长度为 max_len 的 torch.long 张量：input_ids、
+    attention_mask 和 labels；labels 中的 -100 不参与交叉熵。
+    截断后有效监督 token 不足时抛出 ValueError。
     """
     response_with_eos = response_ids + ([] if eos_id is None else [eos_id])
 
@@ -147,9 +140,10 @@ def build_sft_data(
     # labels = ???
 
     # ==========================================
-    # TODO 2: 截断 (Truncation) 与有效监督检查
+    # TODO 2: 截断（Truncation）与有效监督检查
     # 规则：
-    # - 如果超出 max_len，从末尾截断
+    # - input_ids 和 labels 使用同一个 [:max_len] 范围截断
+    # - 从截断后的 labels 统计有效监督 token
     # - 截断后至少保留 min_response_tokens 个可监督 token
     # ==========================================
     # input_ids = ???
@@ -161,14 +155,12 @@ def build_sft_data(
     # ==========================================
     # TODO 3: attention mask 与填充 (Padding)
     # 规则：
-    # - padding 前的真实 token 位置为 1
-    # - input_ids 填 pad_id，attention_mask 填 0，labels 填 -100
+    # - 真实 token 的 attention_mask 为 1
+    # - 计算 pad_len；若大于 0，再分别追加 pad_id、0 和 -100
     # ==========================================
     # attention_mask = ???
     # pad_len = ???
-    # input_ids = ???
-    # attention_mask = ???
-    # labels = ???
+    # if pad_len > 0: 追加 padding 到三个序列
 
     return (
         torch.tensor(input_ids, dtype=torch.long),
@@ -178,12 +170,11 @@ def build_sft_data(
 
 
 def compute_sft_loss(logits: torch.Tensor, labels: torch.Tensor, attention_mask: torch.Tensor | None = None):
-    """
-    计算自回归 SFT Loss
-    Args:
-        logits: [batch_size, seq_len, vocab_size]
-        labels: [batch_size, seq_len]
-        attention_mask: [batch_size, seq_len]，可选，用于二次保护 padding 位置
+    """计算自回归 SFT 的 token-level cross entropy。
+
+    logits 的 shape 为 [batch_size, seq_len, vocab_size]；labels 和
+    attention_mask 的 shape 为 [batch_size, seq_len]。返回标量 loss；
+    shift 后没有有效监督 token 时抛出 ValueError。
     """
     # ==========================================
     # TODO 4: 实现 Shift 错位对齐
@@ -198,7 +189,10 @@ def compute_sft_loss(logits: torch.Tensor, labels: torch.Tensor, attention_mask:
     #     shift_labels = ???
 
     # ==========================================
-    # TODO 5: 检查是否存在有效监督 token，并计算交叉熵
+    # TODO 5: 检查有效监督 token，并计算交叉熵
+    # 提示：loss_fct 使用 ignore_index=-100；计算前将
+    # shift_logits 整理为 [有效位置数, vocab_size]，
+    # shift_labels 整理为 [有效位置数]。
     # ==========================================
     # if ???:
     #     raise ValueError(...)
@@ -256,6 +250,26 @@ def test_sft_pipeline():
 
         assert loss.item() < 0.01, f"Loss 异常偏大，可能包含了 Prompt 或 Padding 的计算！Loss = {loss.item()}"
 
+        # --- 验证监督范围：prompt 的预测分数不应改变 loss ---
+        neutral_logits = torch.zeros_like(logits)
+        masked_prompt_logits = neutral_logits.clone()
+        masked_prompt_logits[0, 0, 99] = 50.0
+        masked_prompt_loss = compute_sft_loss(masked_prompt_logits, labels_batch, attention_batch)
+        neutral_loss = compute_sft_loss(neutral_logits, labels_batch, attention_batch)
+        assert torch.allclose(masked_prompt_loss, neutral_loss), "Prompt 位置不应参与 loss"
+
+        # response 位置的目标概率变化，应当反映到 loss。
+        response_logits = neutral_logits.clone()
+        response_logits[0, 2, 40] = 10.0
+        response_loss = compute_sft_loss(response_logits, labels_batch, attention_batch)
+        assert response_loss < neutral_loss, "response 目标位置没有参与 loss"
+
+        # 即使错误地给 padding 写入 token id，attention_mask 也应将其屏蔽。
+        labels_with_pad_target = labels_batch.clone()
+        labels_with_pad_target[0, -1] = 99
+        protected_loss = compute_sft_loss(neutral_logits, labels_with_pad_target, attention_batch)
+        assert torch.allclose(protected_loss, neutral_loss), "padding 目标没有被 attention_mask 屏蔽"
+
         print("\n✅ All Tests Passed! SFT 数据与 loss 对齐逻辑实现正确。")
 
     except NotImplementedError:
@@ -298,6 +312,15 @@ def build_sft_data(
     max_len: int = 16,
     min_response_tokens: int = 1,
 ):
+    """构造一条右侧 padding 的 SFT 样本。
+
+    参数：prompt_ids / response_ids 为 token id 列表；pad_id 和 eos_id
+    指定 padding 与可选 EOS；max_len 是输出固定长度；
+    min_response_tokens 是截断后必须保留的监督 token 数。
+
+    返回三个长度为 max_len 的 torch.long 张量；labels 中的 -100 不参与交叉熵。
+    截断后有效监督 token 不足 min_response_tokens 时抛出 ValueError。
+    """
     response_with_eos = response_ids + ([] if eos_id is None else [eos_id])
     input_ids = prompt_ids + response_with_eos
 
@@ -327,6 +350,11 @@ def build_sft_data(
 
 
 def compute_sft_loss(logits: torch.Tensor, labels: torch.Tensor, attention_mask: torch.Tensor | None = None):
+    """按 next-token 对齐规则计算忽略 padding 的交叉熵。
+
+    logits、labels 和 attention_mask 的 shape 分别为 [B, T, V]、
+    [B, T] 和可选的 [B, T]；返回标量 loss。
+    """
     # 预测位置向左对齐一位，对应 next-token prediction。
     # TODO 4: 实现 Shift 错位对齐
     shift_logits = logits[..., :-1, :].contiguous()
@@ -349,11 +377,9 @@ def compute_sft_loss(logits: torch.Tensor, labels: torch.Tensor, attention_mask:
 
 ```
 
-### 答案与直觉
+### 解析
 
-- **这一题要解决什么：** 把 SFT 的 prompt/response 数据构造、attention mask 和 next-token loss 对齐成一个最小训练闭环。
-- **为什么这样做：** 只让 Response/EOS 参与损失，模型才会学会回答并学会结束；shift 则保证预测和标签一一对应。
-- **带走的直觉：** SFT 的关键不是“把序列喂进去”，而是“哪些位置可见、哪些位置该学、哪些位置该忽略”。
+以下内容按题目区 TODO 1–5 展开，围绕 SFT 的数据构造与 loss 对齐说明每一步的原因。
 
 **1. TODO 1: 构造 labels**
 
@@ -365,7 +391,7 @@ def compute_sft_loss(logits: torch.Tensor, labels: torch.Tensor, attention_mask:
 **2. TODO 2: 截断与有效监督检查**
 
 - **截断逻辑**：`input_ids = input_ids[:max_len]`，`labels = labels[:max_len]`。
-- **监督检查**：截断后至少要保留一个非 `-100` 的 label，否则样本没有训练信号。
+- **监督检查**：截断后至少要保留 `min_response_tokens` 个非 `-100` 的 label，否则样本没有足够的训练信号。
 - **工程细节**：真实微调里如果 prompt 太长、response 被截没，应该调大 `max_len`、缩短 prompt，或直接过滤样本。
 
 **3. TODO 3: attention mask 与填充**
@@ -403,3 +429,5 @@ def compute_sft_loss(logits: torch.Tensor, labels: torch.Tensor, attention_mask:
 - **形状要求**：`CrossEntropyLoss` 期望 logits 形状为 `[N, C]`，labels 形状为 `[N]`。
 - **有效监督检查**：如果整个 batch 的 labels 都是 `-100`，loss 没有意义，应该显式报错。
 - **数据构造**：真实工程中通常在 tokenizer / DataLoader / collator 里批量生成这三件套，而不是逐条手写。
+
+测试区还额外检查了三件事：改变 prompt 位置的分数不会改变 loss，改变 response 目标位置会改变 loss，以及给 padding 错写目标 token 后仍会被 `attention_mask` 屏蔽。它们验证的是 mask 规则真正参与了 loss 计算，而不只是检查张量形状。
