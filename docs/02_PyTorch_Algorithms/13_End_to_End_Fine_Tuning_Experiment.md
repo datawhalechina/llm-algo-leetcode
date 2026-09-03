@@ -18,7 +18,7 @@
 
 本节把这些训练要素收成一个最小端到端 SFT 实验：先构造 train / val 样本，再计算自回归 loss，最后走完 backward、梯度累积、optimizer step 和周期性评估。它是本部分第一个训练闭环小项目：前面分别实现训练组件，这里验证组件能否共同产出可解释的训练结果；后续第 64 节先检查数据准入，第 62 节验证指令微调任务，第 60 节再比较全参数更新与 LoRA 适配是否值得交付。
 
-主线使用 CPU 即可完成；有 GPU 时可选运行 Step 5 的真实 SFT smoke，用于确认真实模型和真实数据能够走通训练闭环。GPU 实验的配置、自动下载方式和证据边界见 Step 5；环境安装与预检见[使用指南](../docs/guide.md)。
+主线使用 CPU 即可完成；有 GPU 时可选运行 Step 5 的真实 SFT smoke，用于确认真实模型和真实数据能够走通训练闭环。GPU 实验的配置、自动下载方式和证据边界见 Step 5；环境安装与预检见[使用指南](../guide.md)。
 
 **关键词：** `end-to-end`, `fine-tuning`, `train/val`, `report`
 
@@ -51,7 +51,7 @@
 
 前面的训练组件分别解决了局部问题；本节把它们放进一个极小语言模型的完整训练循环，观察数据如何经过前向、loss、反向传播和参数更新，并在 train / val 中形成可检查的报告。模型已经给出，具体实现任务见 Step 4。
 
-![端到端微调的五个组成部分](../docs/public/02_PyTorch_Algorithms/13_training_components.svg)
+![端到端微调的五个组成部分](../public/02_PyTorch_Algorithms/13_training_components.svg)
 
 <div align="center"><strong>端到端微调的组成部分：</strong> 图片按功能拆开数据、模型、优化、训练控制和评估五个部分，帮助你建立后续代码的阅读索引。</div>
 
@@ -81,7 +81,7 @@
 
 下面的图把这些接口之间的数据流展开；阅读时重点看每个接口的输入、输出，以及它在训练闭环中的位置。
 
-![端到端训练闭环](../docs/public/02_PyTorch_Algorithms/13_training_loop.svg)
+![端到端训练闭环](../public/02_PyTorch_Algorithms/13_training_loop.svg)
 
 <div align="center"><strong>端到端训练闭环：</strong> 图中箭头表示 batch、loss 和参数在训练闭环中的数据或控制流，不表示运行时间、显存占用或性能比例。</div>
 
@@ -528,7 +528,7 @@ def run_finetuning_experiment(model, optimizer, train_batch, val_batch=None, acc
 
 | 环境 | 内容 |
 |:---|:---|
-| GPU + 监督微调环境 | CUDA PyTorch、`transformers`、`datasets`、`accelerate`；环境预检和安装方式见[使用指南](../docs/guide.md)与 60 节实验入口 |
+| GPU + 监督微调环境 | CUDA PyTorch、`transformers`、`datasets`、`accelerate`；环境预检和安装方式见[使用指南](../guide.md)与 60 节实验入口 |
 | 默认组合 | `qwen25_small` + `alpaca`，与 60 节一致，适合 T4、12GB 笔记本 GPU 和 Colab smoke |
 | 可选组合 | `qwen25_medium`、`deepseek_r1_small`；用于观察模型规模或模型类型变化，不与默认结果直接横比 |
 | 数据选择 | `alpaca` 或 `alpaca_cleaned`，都按 `instruction / input / output` 字段读取 |

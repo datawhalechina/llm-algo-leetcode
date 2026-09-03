@@ -48,7 +48,7 @@ SFT 使用“输入—回答”样本训练模型。例如：
 
 `EOS`（end of sequence）是表示序列结束的特殊 token。它让模型知道回答何时结束。
 
-![SFT 训练序列与预测目标](../docs/public/02_PyTorch_Algorithms/09_sft_example_flow.svg)
+![SFT 训练序列与预测目标](../public/02_PyTorch_Algorithms/09_sft_example_flow.svg)
 
 <div align="center"><strong>SFT 训练序列与预测目标：</strong> 训练时将 prompt 与 response 拼接成序列并逐位置预测下一个 token；推理时只输入 prompt，再逐步生成 response。</div>
 
@@ -88,7 +88,7 @@ SFT 使用“输入—回答”样本训练模型。例如：
 
 表中 `labels=-100` 决定哪些目标参与交叉熵，shift 决定 logits 与目标 token 的时间位置；两者缺一不可。
 
-![SFT 数据与损失对齐](../docs/public/02_PyTorch_Algorithms/09_sft_alignment.svg)
+![SFT 数据与损失对齐](../public/02_PyTorch_Algorithms/09_sft_alignment.svg)
 
 <div align="center"><strong>SFT 数据与损失对齐：</strong> 图中展示 labels、shift 和有效监督位置的关系；具体 mask 规则见本 Step 说明。</div>
 

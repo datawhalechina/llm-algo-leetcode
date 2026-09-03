@@ -53,7 +53,7 @@ LoRA 的基本做法是冻结原始模型，只在部分 `Linear`（线性层）
 
 下面的结构图先标出这些投影层在 Decoder Block 中的位置；低秩分支的矩阵形状和初始化规则放到 Step 2。
 
-![LoRA 挂载位置图](../docs/public/02_PyTorch_Algorithms/10_lora_target_modules.svg)
+![LoRA 挂载位置图](../public/02_PyTorch_Algorithms/10_lora_target_modules.svg)
 
 <div align="center"><strong>LoRA 挂载位置：</strong> Attention 和 MLP 中的线性投影都可以作为适配入口，具体选择需要结合任务和预算。</div>
 
@@ -69,7 +69,7 @@ LoRA 的基本做法是冻结原始模型，只在部分 `Linear`（线性层）
 - 可训练参数量等于 `r * (in_features + out_features)`。
 - `r` 是低秩维度，`alpha / r` 控制旁路更新的缩放；`dropout` 只作用在 LoRA 分支输入上。
 
-![LoRA 旁路结构图](../docs/public/02_PyTorch_Algorithms/10_lora_adapter.svg)
+![LoRA 旁路结构图](../public/02_PyTorch_Algorithms/10_lora_adapter.svg)
 
 <div align="center"><strong>LoRA 旁路结构：</strong> 主分支保留冻结权重，低秩分支负责学习增量。</div>
 

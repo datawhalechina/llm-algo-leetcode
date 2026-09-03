@@ -51,7 +51,7 @@
 | 输出结果 | 生成数据审计、参数账本、指标汇总和决策逻辑；不包含真实训练指标 | 生成真实模型的 train / val loss、可训练参数、峰值显存和 step time，并保存 LoRA 适配器与 JSON 报告 | CPU 提供字段、计算逻辑和报告格式；GPU 填入真实结果 |
 
 
-![60 LoRA 微调项目学习与实验路径](../docs/public/02_PyTorch_Algorithms/60_lora_project_map.svg)
+![60 LoRA 微调项目学习与实验路径](../public/02_PyTorch_Algorithms/60_lora_project_map.svg)
 <div align="center"><strong>60 LoRA 微调项目学习与实验路径：</strong>09–13 提供训练口径，60 节依次组织 CPU 检查、GPU 对照和项目交付。</div>
 
 ### Step 2（项目设计）：固定两组对照条件
@@ -814,7 +814,7 @@ Step 6 是 GPU 实验入口，先回答一个问题：当前环境能否加载�
 | 异常处理 | 记录下载、数据、显存或保存错误 | 修复错误后重新运行，不进入 Step 7 |
 
 
-![60 LoRA GPU 实验流程](../docs/public/02_PyTorch_Algorithms/60_gpu_experiment_flow.svg)
+![60 LoRA GPU 实验流程](../public/02_PyTorch_Algorithms/60_gpu_experiment_flow.svg)
 <div align="center"><strong>先确认环境和训练链路，再进入固定条件下的 baseline / LoRA 对照。</strong></div>
 
 
@@ -1056,7 +1056,7 @@ Step 7 做 GPU 对照实验：在相同模型、数据、切分和训练条件�
 
 需要采集时，将 `RUN_REAL_MATCHED` 设为 `True`，运行 GPU 对照实验代码块；随后运行结果汇总代码块读取 JSON。具体指标和产物见下图，结论只适用于当前模型、数据和 workload。
 
-![60 GPU 对照实验资产与流程](../docs/public/02_PyTorch_Algorithms/60_matched_assets_flow.svg)
+![60 GPU 对照实验资产与流程](../public/02_PyTorch_Algorithms/60_matched_assets_flow.svg)
 
 
 ```python
