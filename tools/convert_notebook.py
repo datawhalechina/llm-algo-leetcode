@@ -243,7 +243,7 @@ def main():
             for i, cell in enumerate(nb['cells']):
                 if cell['cell_type'] == 'markdown':
                     source = "".join(cell['source'])
-                    source = re.sub(r'(\]\([^)]+)\.ipynb\)', r'\1.md)', source)
+                    source = normalize_markdown_links(source)
                     if i == 0:
                         source = process_first_cell(source, source_path)
                     md_lines.append(source)
