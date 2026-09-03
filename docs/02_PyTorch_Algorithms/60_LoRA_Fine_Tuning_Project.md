@@ -1,6 +1,6 @@
 # 60. LoRA Fine Tuning Project | LoRA 微调项目
 
-**难度：** Hard | **环境：** CPU-first | **标签：** `训练微调`, `LoRA`, `项目评估` | **目标人群：** 项目决策练习者
+**难度：** Hard | **环境：** CPU-first | **标签：** `训练微调`, `LoRA`, `项目评估` | **目标人群：** 具备基础训练经验、开始做微调项目的学习者
 
 > 🚀 **云端运行环境**
 >
@@ -14,18 +14,7 @@
 
 ## 本节导读
 
-本节承接第 13 节的端到端 SFT 小项目，把“训练链路能否跑通”推进为“LoRA 方案是否值得交付”。你需要先固定数据、训练步数和评测口径，分别比较 baseline 与 LoRA，再记录可训练参数量、显存、训练耗时、验证结果和生成样例。
-
-**实验分层：** Step 1-5 是 CPU-first 的项目判断练习，验证数据审计、loss mask、参数账本、报告字段和决策逻辑；它们不证明模型训练效果或 GPU 显存收益。Step 6 是真实 GPU smoke test，只验证模型、数据、LoRA 和 artifact 链路；Step 7 才是同口径 baseline / LoRA 对比。只有固定数据、验证集和重复运行后，才能讨论是否值得交付。
-
-**本节机制边界：** 本节承接第 10、12、13 节，把冻结基座、低秩 A/B、target modules、rank/alpha/dropout、optimizer state、effective batch、loss mask 和 adapter 交付串成项目闭环。QLoRA/NF4、LoRA 变体、学习率调度、显存 profiling 和量化部署分别由 26/65、63、11/13、73/74 和 67 负责，本节只记录它们对项目决策的接口。
-
-| 目标 | 重点检查 | 证据等级 |
-|:---|:---|:---|
-| 参数高效 | trainable params、参数占比、target modules、rank | CPU 账本可验证；真实参数量需 GPU/模型加载确认 |
-| 训练正确 | 数据审计、labels、padding mask、train/validation split | CPU 测试可验证口径；效果需 GPU 训练和验证集 |
-| 资源收益 | optimizer state、peak memory、step time、tokens/s | 只能由同口径 GPU benchmark 支持 |
-| 可交付性 | adapter、tokenizer、merge 和生成 sanity check | 真实模型运行后才能确认 |
+本节以指令跟随任务为例，比较全参数微调与 LoRA，观察 LoRA 是否能够减少训练成本并保持可接受的验证效果。实验同时检查可训练参数、训练速度、峰值显存和 adapter 产物。CPU 部分用于检查数据、loss mask、参数账本、指标汇总和决策逻辑；GPU 部分使用真实模型和数据，验证训练损失、验证损失、显存和速度。具体模型、数据集和运行条件见 Step 1。
 
 
 **关键词：** `LoRA`, `training`, `project`, `profiling`, `report`
@@ -33,135 +22,117 @@
 ---
 ## 前置阅读
 
-**导语：** 先把 LoRA 机制、有效 batch 口径和端到端训练闭环理顺，再进入这个项目；本节默认你已经知道训练循环怎么跑，重点转向 LoRA 方案是否值得采用。
+**导语：** 前置内容提供 LoRA 机制、有效 batch 口径和端到端训练闭环；进入本项目后，沿着这些基础比较 LoRA 方案的资源成本、质量变化和交付条件。
+- [09. SFT Training Loop | SFT 训练循环](./09_SFT_Training_Loop.md)
 - [10. LoRA Tutorial | LoRA 教程](./10_LoRA_Tutorial.md)
 - [12. Gradient Accumulation | 梯度累积](./12_Gradient_Accumulation.md)
 - [13. End-to-End Fine-Tuning Experiment | 端到端微调实验](./13_End_to_End_Fine_Tuning_Experiment.md)
-- [11. LR Schedulers WSD Cosine | WSD 余弦学习率调度器](./11_LR_Schedulers_WSD_Cosine.md)
 
 ## 相关阅读
 
-**导语：** 做完基础 LoRA 项目后，最自然的下一步是继续比较 LoRA 变体，或回看训练成本是否真的划算。
+**导语：** 做完基础 LoRA 项目后，可以继续比较 LoRA 变体，或回看训练成本是否符合当前任务需求。
+- [11. LR Schedulers WSD Cosine | WSD 余弦学习率调度器](./11_LR_Schedulers_WSD_Cosine.md)
 - [63. LoRA Variants Benchmark | LoRA 变体对比项目](./63_LoRA_Variants_Benchmark.md)
 - [73. Training Performance Analysis | 训练性能分析](./73_Training_Performance_Analysis.md)
 
 ---
-### Step 1（CPU 项目设计）: 定义 LoRA 微调目标
-先回答一个问题：在尽量少训练参数的前提下，LoRA 能否完成目标任务，并保留可接受的 train / val loss 表现？
+### Step 1（项目设计与运行入口）：明确实验目标与对照
 
-| 实验组 | 环境 | 比较内容 | 只允许改变什么 | 主要输出 |
+本项目以指令跟随为任务，比较全参数微调与 LoRA 的训练成本和效果。每条样本由 `instruction / input` 组成输入，`output` 作为监督目标。
+
+| 项目内容 | CPU：机制验证 | GPU：真实对照 | 实验约定 |
+| :--- | :--- | :--- | :--- |
+| 任务目标 | 用少量示例检查 `instruction / input → output` 的任务格式和判断逻辑 | 在指令跟随任务上比较全参数微调与 LoRA | 观察训练成本是否下降、效果是否可接受 |
+| 指标与判断依据 | 用示例字段检查指标是否齐全、差值方向是否正确；不生成真实训练指标 | 记录可训练参数、峰值显存、每步耗时、token throughput、train loss 和 val loss | 资源指标用于比较训练成本，loss 指标用于检查效果变化，最终决策结合两类指标 |
+| 实验对象 | 不加载模型；用示例参数计算全参数与 LoRA 的参数账本 | 默认加载 `Qwen/Qwen2.5-0.5B-Instruct` 的未微调权重 | 可选 `Qwen/Qwen2.5-1.5B-Instruct` 或 `deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B`；GPU 对照两组使用同一模型 ID / revision，CPU 只验证示例账本 |
+| 输入数据 | 用少量内置示例模拟字段审计、loss mask 和报告字段 | 默认使用 `tatsu-lab/alpaca`，最多 32 条样本、最大长度 256 token | GPU 对照实验复用同一批样本、训练 / 验证切分、tokenizer 截断与 padding 规则；CPU 只使用内置示例验证机制 |
+| 实验变量 | 用示例数字检查 baseline / LoRA 的比较逻辑 | baseline 更新底座权重；LoRA 冻结底座，只更新 LoRA 适配器 | 只改变参数更新方式 |
+| 训练条件 | 不运行模型训练，只用示例结果测试汇总和决策函数 | 按硬件选择计算精度和训练配置 | 两组 GPU 实验保持训练条件一致 |
+| 输出结果 | 生成数据审计、参数账本、指标汇总和决策逻辑；不包含真实训练指标 | 生成真实模型的 train / val loss、可训练参数、峰值显存和 step time，并保存 LoRA 适配器与 JSON 报告 | CPU 提供字段、计算逻辑和报告格式；GPU 填入真实结果 |
+
+
+![60 LoRA 微调项目学习与实验路径](../docs/public/02_PyTorch_Algorithms/60_lora_project_map.svg)
+<div align="center"><strong>60 LoRA 微调项目学习与实验路径：</strong>09–13 提供训练口径，60 节依次组织 CPU 检查、GPU 对照和项目交付。</div>
+
+### Step 2（项目设计）：固定两组对照条件
+
+为了判断 LoRA 是否带来真实收益，两组实验都从同一个模型 ID 的未微调权重开始，使用同一批训练集和验证集，以及相同的 tokenizer、截断、padding、训练和评测设置。实验变量是参数更新方式：baseline 更新底座模型的全部可训练权重；LoRA 挂载适配器后冻结底座，只更新 LoRA 适配器参数。Step 6 / Step 7 的 GPU 对照实验用验证集上有效监督 token 的平均 `val_loss` 作为主要评测结果。
+
+| 对照项 | 全参数更新组（baseline） | LoRA 更新组 | 必须保持一致 |
+|:---|:---|:---|:---|
+| 训练对象 | 更新底座模型的全部可训练权重（Embedding、Attention、MLP、Norm 和输出层） | 冻结底座模型，只更新 LoRA 适配器 | 只改变参数更新方式 |
+| 模型起点 | 使用同一模型 ID 的未微调权重 | 使用同一份未微调权重，并挂载 LoRA 适配器 | 模型权重版本一致 |
+| 数据与切分 | 当前默认使用 `tatsu-lab/alpaca` 的一批训练集和验证集 | 完全复用 baseline 的训练集和验证集 | 更换数据集时也要保持版本、样本顺序和 `SPLIT_SEED` 一致 |
+| 训练条件 | 使用相同 dtype、micro-batch、序列长度、优化器、学习率和步数 | 与 baseline 完全相同 | 训练条件一致 |
+| 评测方式 | 对同一验证集进行无梯度前向，只统计有效监督 token 的平均 `val_loss` | 使用相同验证集和 loss mask 规则 | tokenizer、截断、padding 和 loss 计算一致 |
+
+
+### Step 3（项目设计）：确定项目检查内容
+
+A–E 是本项目需要完成的五类检查。Step 5 使用示例数据验证这些检查的实现；Step 6 / Step 7 再把相同字段用于真实 GPU 实验报告。
+
+| 环节 | 函数名 | 检查内容 | 作用 | CPU 验证方式 |
 |:---|:---|:---|:---|:---|
-| CPU 机制 | CPU 或 GPU | 数据、mask、参数账本和决策函数 | 输入样例或候选配置 | 逻辑测试结果 |
-| GPU smoke | 单卡 GPU | 真实模型与 LoRA 链路 | 不做 baseline 对照 | 模型加载、反向传播和 adapter 是否成功 |
-| GPU matched | 单卡 GPU | full-parameter baseline vs LoRA | 只改变是否启用 LoRA | 显存、速度、验证损失和生成质量 |
+| A | `build_lora_project_config` | 配置与有效批大小（micro-batch × 梯度累积步数） | 固定底座模型、LoRA 参数和训练条件 | 检查配置字段与有效批大小计算 |
+| B | `lora_trainable_params`、`full_linear_params`、`lora_param_ratio` | 参数账本 | 比较完整参数与 LoRA 参数成本 | 使用维度和 rank 计算公式 |
+| C | `summarize_lora_project` | baseline / LoRA 指标差值 | 汇总资源和损失变化 | 使用示例指标计算差值 |
+| D | `audit_sft_examples`、`loss_mask_report`、`build_adapter_artifact_record`、`check_lora_project_readiness` | 数据、监督位置和产物检查 | 判断实验输入和输出是否可用 | 使用示例数据和路径状态检查 |
+| E | `recommend_lora_decision` | 决策条件和原因 | 输出 `accept / tune / reject` | 使用示例指标测试决策分支 |
 
-CPU 结果用于检查口径，GPU 结果用于支持资源和效果结论；三组实验不能混用。
 
-- 固定底座模型、数据集、batch size、seq len、优化器、学习率和训练 step 数。
-- 明确 baseline 是全参数微调、冻结底座不训练，还是已有的普通微调配置。
-- 训练前先做数据审计：样本数、空 response、重复样本、超长样本和长度分布。
-- 抽样核对 `input_ids / attention_mask / labels`：response 是否进入 loss，padding 是否被 `-100` 屏蔽。
-- 记录 LoRA 配置：target modules、rank、alpha、dropout、learning rate、micro batch、accum steps 和 scheduler。
-- 统一记录核心指标：可训练参数量、参数占比、step time、peak memory、train loss、val loss。
-- 这节先建立 LoRA 项目交付模板，再把数据、loss、参数、显存、速度、效果和 artifact 收成一份项目汇总。
+### Step 4（CPU 实验设计）：阅读 CPU 报告字段
 
-### Step 2（CPU 项目设计）: 固定 baseline 口径并建立账本
+下面先阅读 CPU 报告中的主要字段，理解每个字段记录什么、检查什么，以及它如何参与项目判断。Step 5 再实现对应函数。CPU 只验证数据审计、参数账本、指标计算和决策逻辑，不生成真实训练结果。
 
-LoRA 的收益必须和稳定 baseline 对比，不能只看 LoRA 自己能不能跑。
 
-- 先在同一批样本和同一套训练配置下跑通 baseline。
-- 记录 baseline 的可训练参数量、train/val loss、平均 step time 和 peak memory。
-- 确认 baseline loss 能正常下降，再进入 LoRA 对比。
-- 如果 baseline 本身不稳定，后面的 LoRA 结果就没有可解释性。
+| 报告字段 | 记录内容 | CPU 中如何验证 | 用于判断 |
+|:---|:---|:---|:---|
+| 数据审计 | 样本数、空回答、重复样本、超长样本 | 使用示例数据调用审计函数 | 数据是否可以进入训练 |
+| 监督 token | 参与 loss 的 token 数、padding 中误参与 loss 的 token 数 | 检查 `attention_mask` 与 `labels` | loss 监督位置是否正确 |
+| LoRA 配置 | 底座模型、目标层、rank、alpha、dropout、有效批大小 | 读取配置对象 | 本轮使用了什么训练设置 |
+| 参数账本 | 全参数量、LoRA 可训练参数量、参数占比 | 使用公式计算 | LoRA 是否减少训练参数 |
+| 对照指标 | baseline 与 LoRA 的参数、显存、耗时、train loss、val loss 差值 | 使用示例数值调用汇总函数 | 比较逻辑是否正确 |
+| 交付检查 | adapter 路径、tokenizer 路径、合并检查、生成检查 | 检查字段和布尔状态 | 产物是否具备交付条件 |
+| 项目决策 | `accept / tune / reject` 及原因 | 使用示例指标和阈值测试分支 | 是否进入下一步实验 |
 
-### Step 3（CPU 项目设计）: 比较 LoRA 配置与资源账本
 
-把 LoRA adapter 插到 attention projection 或 MLP linear layer 上，只训练低秩旁路。
 
-- 冻结底座权重，只让 LoRA 的 `A / B` 矩阵参与训练。
-- 先计算单层 LoRA 参数量，再估算多层插入后的总可训练参数量。
-- 用同样的 batch、输入长度、训练步数和评估方式比较 LoRA 与 baseline。
-- 重点看三个问题：参数量省了多少，显存 / 速度是否改善，train/val loss 是否仍然正常。
+### Step 5（CPU 代码练习）：实现项目检查函数
 
-### Step 4（CPU 项目设计）: 按约束输出项目结论
+下面只实现三项核心 TODO：数据审计、loss mask 核对和 baseline / LoRA 指标汇总。配置打包、参数公式、交付检查和决策规则作为给定实现；完成后先运行题目区测试，再进入 Step 6 / Step 7 的 GPU 实验。
 
-最后把 LoRA 和 baseline 放到同一张表里，说明这次微调方案是否值得采用。
 
-- 输出 baseline vs LoRA 对比表，至少包含 trainable params、param ratio、step time、peak memory、train loss、val loss。
-- 写清楚 LoRA 节省的是训练参数和优化器状态，不等于底座模型权重不存在。
-- 记录本次 target modules、rank、alpha、dropout、学习率、effective batch 和 scheduler，方便后续复现实验。
-- 保存 adapter，并记录 tokenizer、special tokens、merge 检查和最小生成样例检查。
-- 如果效果不足，下一轮优先调整 rank、插层范围、学习率或 gradient accumulation。
-- 最终产物应回答：数据和 loss 是否可信，LoRA 少训练了多少参数，换来了多少显存 / 速度收益，val loss 损失是否还能接受，adapter 是否可以交付。
-
-### Step 5（CPU 代码练习）: 最小代码模板
-
-上面的 Step 1-4 是完整 LoRA 微调项目流程。下面的代码实现其中最小、可复用的六块：数据审计、loss mask 核对、项目配置、LoRA 参数账本、结果汇总和交付检查。
-#### 图解：09-13 如何收束到 LoRA 项目报告
-
-`60` 不重复实现训练循环，而是把前面几节已经跑通的机制收成一份可复现的项目报告。
-
-```text
-09 SFT data       input_ids / attention_mask / labels
-      │
-10 LoRA           target modules / rank / alpha / dropout
-      │
-11 Scheduler      lr schedule counted by optimizer update
-      │
-12 Accumulation   micro batch -> effective batch
-      │
-13 E2E report     initial/final train loss + val loss
-      │
-      ▼
-60 LoRA project   data audit + loss mask + parameter ledger + artifacts + decision
-```
-
-项目页最小产物：
-
-| 模块 | 必须记录 | 用途 |
-|:---|:---|:---|
-| 数据 | 样本数、空 response、重复样本、超长样本 | 证明训练输入可信 |
-| Loss | supervised tokens、padding supervised tokens | 证明 loss 口径正确 |
-| 配置 | target modules、rank、alpha、dropout、lr、effective batch | 保证可复现 |
-| 账本 | trainable params、param ratio | 证明 LoRA 是否省参数 |
-| 训练结果 | train/val loss、step time、peak memory | 判断效果和成本 |
-| 交付 | adapter、tokenizer、merge check、sanity generation | 判断是否能交付 |
-| 决策 | accept / tune / reject | 输出项目结论 |
-
-60 作为 60–65 的统一模板，最终报告外层使用 `fine-tuning-project/v1`：`config / baseline / candidates / quality / resources / artifacts / decision / environment`。后续 62–65 只替换项目特有指标，不改变这组公共区域。
-
-#### 图解：微调项目 v2 的交付链路
-
-```text
-training data ──► data audit ──► loss mask check ──► baseline run
-                                                        │
-                                                        ▼
-LoRA config ──► adapter training ──► metric comparison ──► artifact check ──► final decision
-```
 
 
 ```python
 import math
-
 ```
 
 
 ```python
 
-# TODO: 完成 LoRA 项目的 5 个核心判断：数据审计、loss 核对、项目汇总、交付检查和最终决策
-# 目标：从 09-13 的训练闭环收束到 baseline vs LoRA 项目交付报告
-
+# 目标：把 09-13 的训练闭环收束为 baseline vs LoRA 的项目报告；本代码只验证 CPU 可检查的口径，不虚构 GPU 结果。
 def audit_sft_examples(examples, max_total_chars):
-    """审计 SFT 样本，输出训练前最小数据可信度摘要。"""
+    """统计 SFT 样本完整性；不执行 tokenizer，也不判断模型训练效果。
+
+    参数:
+        examples: 包含 prompt / response 字段的样本列表。
+        max_total_chars: 单条样本 prompt 与 response 的字符预算。
+    返回:
+        样本数、空回答、重复样本、超长样本和平均字符数。
+    """
     # ==========================================
     # TODO 1: 审计 SFT 样本
-    # 提示：检查样本数、空 response、重复 prompt/response 和超长样本。
+    # 提示：先用 seen / total_chars / 各计数器保存中间状态，再遍历样本。
+    # prompt = example.get('prompt', ???)；response = example.get('response', ???)
+    # pair = (prompt, response)；total = len(prompt) + len(response)
     # ==========================================
     # total_samples = ???
     # empty_response_count = ???
     # duplicate_count = ???
     # over_length_count = ???
     # avg_total_chars = ???
+    raise NotImplementedError("请先完成 TODO 1")
     return {
         'total_samples': total_samples,
         'empty_response_count': empty_response_count,
@@ -171,16 +142,24 @@ def audit_sft_examples(examples, max_total_chars):
     }
 
 def loss_mask_report(attention_mask, labels, ignore_index=-100):
-    """汇总真正参与监督损失的 token 口径。"""
+    """按 attention mask 和 labels 统计监督 token；不运行 backward。
+
+    `labels == ignore_index` 的位置不参与 loss；padding 位置若仍被监督，
+    应作为数据管线问题报告，而不是被静默忽略。
+    """
     # ==========================================
     # TODO 2: 核对 loss mask
-    # 提示：labels != -100 的 token 会参与 loss；attention_mask == 0 的 padding 不应参与 loss。
+    # 提示：先展平并检查长度，再计算四个计数；不要把 supervised_tokens
+    # 直接当成 response token 数，也不要把 padding_supervised_tokens 截断掉。
+    # mask_flat = [value for row in attention_mask for value in row]
+    # labels_flat = [value for row in labels for value in row]
     # ==========================================
     # total_tokens = ???
     # non_padding_tokens = ???
     # supervised_tokens = ???
     # padding_supervised_tokens = ???
     # supervised_ratio = ???
+    raise NotImplementedError("请先完成 TODO 2")
     return {
         'total_tokens': total_tokens,
         'non_padding_tokens': non_padding_tokens,
@@ -189,7 +168,7 @@ def loss_mask_report(attention_mask, labels, ignore_index=-100):
         'supervised_ratio': round(supervised_ratio, 4),
     }
 
-# 给定实现：汇总 LoRA 项目配置
+# A：汇总 LoRA 项目配置
 def build_lora_project_config(
     base_model,
     target_modules,
@@ -201,7 +180,20 @@ def build_lora_project_config(
     accum_steps,
     scheduler,
 ):
-    """打包一次 LoRA 训练的最小复现实验配置。"""
+    """打包一次 LoRA 训练的最小复现实验配置。
+
+    参数：
+        base_model: 底座模型标识。
+        target_modules: 注入 LoRA 的线性层名称。
+        rank: 低秩矩阵的秩。
+        alpha: LoRA 缩放系数。
+        dropout: adapter dropout。
+        learning_rate: 优化器学习率。
+        micro_batch_size: 单次前向使用的 micro-batch 大小。
+        accum_steps: 梯度累积步数。
+        scheduler: 学习率调度器名称。
+    返回：包含原始配置和 effective_batch_size 的字典。
+    """
     effective_batch_size = micro_batch_size * accum_steps
     return {
         'base_model': base_model,
@@ -216,37 +208,47 @@ def build_lora_project_config(
         'scheduler': scheduler,
     }
 
-# 给定实现：计算单层 LoRA 的可训练参数量
+# B：计算 LoRA adapter 参数量
 def lora_trainable_params(in_dim, out_dim, rank):
-    """估算单层 LoRA 需要训练的参数量。"""
+    """估算单个线性层新增的 LoRA 参数量，不包含冻结底座权重。
+
+    参数量为 `rank * in_dim + rank * out_dim`；这里只计算 adapter，
+    不代表整个模型的可训练参数量。
+    """
     trainable_params = rank * (in_dim + out_dim)
     return trainable_params
 
-# 给定实现：计算完整线性层的参数量
+# C：计算完整线性层参数量
 def full_linear_params(in_dim, out_dim):
-    """计算对应完整线性层的参数量。"""
+    """计算对应完整线性层的 weight 参数量，不额外计入 bias。"""
     total_params = in_dim * out_dim
     return total_params
 
-# 给定实现：计算 LoRA 参数占比
+# D：计算 LoRA 参数占比
 def lora_param_ratio(in_dim, out_dim, rank):
-    """计算 LoRA 可训练参数占完整层参数的比例。"""
+    """计算单个线性层中 LoRA 参数占完整 weight 参数的比例。"""
     trainable = lora_trainable_params(in_dim, out_dim, rank)
     total = full_linear_params(in_dim, out_dim)
     ratio = trainable / total
     return ratio
 
 def summarize_lora_project(baseline_metrics, lora_metrics):
-    """把 baseline 与 LoRA 指标收束成项目对比摘要。"""
+    """把 baseline 与 LoRA 的同口径指标收束成项目对比摘要。
+
+    资源字段使用 `baseline - lora`，正数表示 LoRA 更省或更快；
+    loss 字段使用 `lora - baseline`，正数表示 LoRA 的 loss 更高。
+    """
     # ==========================================
     # TODO 3: 汇总 baseline 和 LoRA 的项目指标
-    # 提示：这里重点只补 5 个项目判断量，资源类 delta = baseline - lora；loss delta = lora - baseline。
+    # 提示：只补 5 个项目判断量；参数/资源收益用 baseline - lora，
+    # loss 代价用 lora - baseline，正负号必须在字段名中保持一致。
     # ==========================================
     # param_reduction = 1.0 - ??? / ???
     # memory_delta = ??? - ???
     # time_delta = ??? - ???
     # train_loss_delta = ??? - ???
     # val_loss_delta = ??? - ???
+    raise NotImplementedError("请先完成 TODO 3")
     return {
         'param_reduction': round(param_reduction, 4),
         'peak_mem_delta_mb': round(memory_delta, 2),
@@ -255,9 +257,9 @@ def summarize_lora_project(baseline_metrics, lora_metrics):
         'final_val_loss_delta': round(val_loss_delta, 4),
     }
 
-# 给定实现：记录 adapter 交付物
+# E：记录 adapter 交付物
 def build_adapter_artifact_record(adapter_path, tokenizer_path, merge_checked, sanity_generation_checked):
-    """记录 adapter 交付所需的最小产物信息。"""
+    """记录 adapter 交付所需的路径和两项最小可用性检查。"""
     return {
         'adapter_path': adapter_path,
         'tokenizer_path': tokenizer_path,
@@ -265,9 +267,12 @@ def build_adapter_artifact_record(adapter_path, tokenizer_path, merge_checked, s
         'sanity_generation_checked': sanity_generation_checked,
     }
 
-# 给定实现：组装 60 项目的统一结果报告
+# 给定实现：生成报告、检查交付和输出项目决策
 def build_lora_project_report(config, baseline, candidates, quality, resources, artifacts, decision, environment=None):
-    """组装 fine-tuning-project/v1 的公共报告外壳。"""
+    """组装 `fine-tuning-project/v1` 的公共报告外壳。
+
+    该函数只负责组织字段，不验证训练质量，也不替代 GPU 实验。
+    """
     return {
         'schema_version': 'fine-tuning-project/v1',
         'project': '60_lora_fine_tuning',
@@ -283,64 +288,55 @@ def build_lora_project_report(config, baseline, candidates, quality, resources, 
     }
 
 def check_lora_project_readiness(data_audit, mask_report, artifact_record):
-    """检查数据、loss 口径和交付产物是否达到上线前闸门。"""
-    # ==========================================
-    # TODO 4: 检查项目是否可以交付
-    # 提示：这里只补关键闸门条件，把 issue 名称按下面给定字符串挂上去即可。
-    # ==========================================
+    """检查数据、loss 口径和交付产物是否满足项目要求。
+
+    这是给定实现；学习者重点阅读 issues 如何阻断最终决策。
+    """
     issues = []
-    # 这里只做训练前闸门判断，不在这里做最终 accept / reject。
-    # if data_audit['empty_response_count'] > ???:
-    #     issues.append('empty_response')
-    # if data_audit['duplicate_count'] > ???:
-    #     issues.append('duplicate_examples')
-    # if mask_report['padding_supervised_tokens'] > ???:
-    #     issues.append('padding_supervised')
-    # if mask_report['supervised_tokens'] == ???:
-    #     issues.append('no_supervised_tokens')
-    # if not artifact_record['merge_checked']:
-    #     issues.append('merge_not_checked')
-    # if not artifact_record['sanity_generation_checked']:
-    #     issues.append('sanity_generation_not_checked')
+    if data_audit['empty_response_count'] > 0:
+        issues.append('empty_response')
+    if data_audit['duplicate_count'] > 0:
+        issues.append('duplicate_examples')
+    if mask_report['padding_supervised_tokens'] > 0:
+        issues.append('padding_supervised')
+    if mask_report['supervised_tokens'] == 0:
+        issues.append('no_supervised_tokens')
+    if not artifact_record['merge_checked']:
+        issues.append('merge_not_checked')
+    if not artifact_record['sanity_generation_checked']:
+        issues.append('sanity_generation_not_checked')
     return {'ready': len(issues) == 0, 'issues': issues}
 
 def recommend_lora_decision(summary, readiness, min_param_reduction=0.5, max_val_loss_delta=0.03, min_peak_mem_delta_mb=128.0, min_step_time_delta_ms=-3.0):
-    """根据项目摘要输出 accept / tune / reject 结论。"""
-    # ==========================================
-    # TODO 5: 根据项目汇总和交付检查给出采用建议
-    # 规则：
-    # - 数据、loss 或 artifact 未准备好：tune
-    # - 参数节省达标、val loss 损失可接受，且显存收益足够或速度没有明显恶化：accept
-    # - 参数节省达标、val loss 可接受，但显存收益偏弱且速度变慢：tune
-    # - 参数节省达标但 val loss 损失偏大：tune
-    # - 参数节省不达标：reject
-    # ==========================================
-    # 资源判断不是只看省了多少参数，还要看显存收益和速度代价是否值得。
-    # memory_gain_ok = summary['peak_mem_delta_mb'] >= ???
-    # speed_not_too_bad = summary['step_time_delta_ms'] >= ???
-    # if ???:
-    #     decision = ???
-    #     reason = ???
-    # elif ???:
-    #     decision = ???
-    #     reason = ???
-    # elif ??? and not (memory_gain_ok or speed_not_too_bad):
-    #     decision = ???
-    #     reason = ???
-    # elif ???:
-    #     decision = ???
-    #     reason = ???
-    # else:
-    #     decision = ???
-    #     reason = ???
+    """根据项目摘要和交付检查结果输出 accept / tune / reject。
+
+    这是给定实现；阈值由参数传入，学习者重点解释分支顺序。
+    """
+    memory_gain_ok = summary['peak_mem_delta_mb'] >= min_peak_mem_delta_mb
+    speed_not_too_bad = summary['step_time_delta_ms'] >= min_step_time_delta_ms
+    if not readiness['ready']:
+        decision = 'tune'
+        reason = '数据、loss mask 或 adapter 交付检查未通过，先修复项目可信度问题。'
+    elif summary['param_reduction'] < min_param_reduction:
+        decision = 'reject'
+        reason = '参数节省不足，LoRA 没有带来足够训练成本收益。'
+    elif summary['final_val_loss_delta'] > max_val_loss_delta:
+        decision = 'tune'
+        reason = '参数节省达标，但验证集 loss 损失偏大，优先调 rank、target modules 或学习率。'
+    elif not (memory_gain_ok or speed_not_too_bad):
+        decision = 'tune'
+        reason = '参数节省和验证损失可接受，但显存收益偏弱且速度恶化，优先继续调 rank、插层范围或 batch 配置。'
+    else:
+        decision = 'accept'
+        reason = '参数节省达标，验证集损失可接受，交付检查通过，可以保留当前 LoRA 配置。'
     return {'decision': decision, 'reason': reason}
 
 ```
 
 
 ```python
-# 测试你的实现
-def test_lora_project_template():
+# 测试你的 CPU 逻辑实现
+def test_lora_project_cpu_logic():
     try:
         examples = [
             {'prompt': '问：什么是 LoRA？', 'response': '答：LoRA 是低秩适配方法。'},
@@ -354,6 +350,10 @@ def test_lora_project_template():
         assert audit['duplicate_count'] == 1, "重复样本统计不正确！"
         assert audit['over_length_count'] == 1, "超长样本统计不正确！"
 
+        empty_audit = audit_sft_examples([], max_total_chars=30)
+        assert empty_audit['total_samples'] == 0, "空数据集的样本数应为 0！"
+        assert empty_audit['avg_total_chars'] == 0.0, "空数据集的平均长度应为 0！"
+
         mask = [[1, 1, 1, 0], [1, 1, 0, 0]]
         labels = [[-100, 7, 8, -100], [-100, 9, -100, 3]]
         report = loss_mask_report(mask, labels)
@@ -362,6 +362,16 @@ def test_lora_project_template():
         assert report['supervised_tokens'] == 4, "supervised_tokens 统计不正确！"
         assert report['padding_supervised_tokens'] == 1, "padding_supervised_tokens 统计不正确！"
         assert report['supervised_ratio'] == 0.8, "supervised_ratio 计算不正确！"
+
+        no_token_report = loss_mask_report([[0, 0]], [[-100, -100]])
+        assert no_token_report['supervised_tokens'] == 0, "无有效 token 时监督数应为 0！"
+        assert no_token_report['supervised_ratio'] == 0.0, "无有效 token 时监督比例应为 0！"
+        try:
+            loss_mask_report([[1]], [[-100, -100]])
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("mask 与 labels 长度不一致时应抛出 ValueError！")
 
         config = build_lora_project_config(
             base_model='tiny-llama',
@@ -456,7 +466,7 @@ def test_lora_project_template():
     except NotImplementedError:
         print("请先完成 TODO 代码！")
         raise
-    except (AttributeError, NameError, TypeError, ValueError, AssertionError, RuntimeError) as e:
+    except (AttributeError, NameError, TypeError, ValueError, RuntimeError) as e:
         if isinstance(e, AttributeError):
             print("代码未完成，无法找到必要的属性")
         elif isinstance(e, NameError):
@@ -465,19 +475,32 @@ def test_lora_project_template():
             print("代码可能未完成，导致了操作错误")
         elif isinstance(e, ValueError):
             print("代码可能未完成，导致了数值错误")
-        elif isinstance(e, AssertionError):
-            print(f"❌ 测试失败: {e}")
         elif isinstance(e, RuntimeError):
             print("代码可能未完成，导致了运行时错误")
-        else:
-            print("代码可能未完成，导致了断言失败")
-        raise NotImplementedError("请先完成 TODO 代码！") from e
+        raise
     except Exception as e:
         print(f"❌ 发生未知异常: {e}")
         raise
 
 
-test_lora_project_template()
+test_lora_project_cpu_logic()
+
+```
+
+完成上述 CPU 函数后，继续运行下面的决策模拟。它使用同一份项目摘要，每次只改变一个指标或决策阈值；比较输出，理解为什么同一个 LoRA 方案会因为质量要求或资源代价不同而得到不同决策。本练习只验证 CPU 决策逻辑，不代表真实训练结果。
+
+
+```python
+scenario_summary = {'param_reduction': 0.9, 'peak_mem_delta_mb': 256.0, 'step_time_delta_ms': -2.0, 'final_train_loss_delta': 0.02, 'final_val_loss_delta': 0.02}
+scenario_readiness = {'ready': True, 'issues': []}
+scenarios = {
+    '基准条件': (scenario_summary, {}),
+    '验证损失超过默认阈值': ({**scenario_summary, 'final_val_loss_delta': 0.08}, {}),
+    '放宽验证损失阈值': ({**scenario_summary, 'final_val_loss_delta': 0.08}, {'max_val_loss_delta': 0.10}),
+    '显存收益小且训练变慢': ({**scenario_summary, 'peak_mem_delta_mb': 32.0, 'step_time_delta_ms': -6.0}, {}),
+}
+for name, (metrics, policy) in scenarios.items():
+    print(name, '->', recommend_lora_decision(metrics, scenario_readiness, **policy))
 
 ```
 
@@ -492,6 +515,13 @@ test_lora_project_template()
 
 # TODO 1: 审计 SFT 样本
 def audit_sft_examples(examples, max_total_chars):
+    """统计 SFT 样本完整性；不执行 tokenizer，也不判断模型训练效果。
+
+    参数：
+        examples: 包含 prompt / response 字段的样本列表。
+        max_total_chars: 单条样本 prompt 与 response 的字符预算。
+    返回：样本数、空回答、重复样本、超长样本和平均字符数。
+    """
     seen = set()
     total_chars = 0
     empty_response_count = 0
@@ -526,6 +556,11 @@ def audit_sft_examples(examples, max_total_chars):
 
 # TODO 2: 核对 loss mask
 def loss_mask_report(attention_mask, labels, ignore_index=-100):
+    """按 attention mask 和 labels 统计监督 token；不运行 backward。
+
+    `labels == ignore_index` 的位置不参与 loss；padding 位置若仍被监督，
+    应作为数据管线问题报告，而不是被静默忽略。
+    """
     mask_flat = [value for row in attention_mask for value in row]
     labels_flat = [value for row in labels for value in row]
 
@@ -548,7 +583,7 @@ def loss_mask_report(attention_mask, labels, ignore_index=-100):
         'supervised_ratio': round(supervised_ratio, 4),
     }
 
-# 给定实现：汇总 LoRA 项目配置
+# A：汇总 LoRA 项目配置
 def build_lora_project_config(
     base_model,
     target_modules,
@@ -574,18 +609,18 @@ def build_lora_project_config(
         'scheduler': scheduler,
     }
 
-# 给定实现：计算单层 LoRA 的可训练参数量
+# B：计算 LoRA adapter 参数量
 def lora_trainable_params(in_dim, out_dim, rank):
     """Estimate trainable LoRA parameters for a single linear layer."""
     trainable_params = rank * (in_dim + out_dim)
     return trainable_params
 
-# 给定实现：计算完整线性层的参数量
+# C：计算完整线性层参数量
 def full_linear_params(in_dim, out_dim):
     total_params = in_dim * out_dim
     return total_params
 
-# 给定实现：计算 LoRA 参数占比
+# D：计算 LoRA 参数占比
 def lora_param_ratio(in_dim, out_dim, rank):
     trainable = lora_trainable_params(in_dim, out_dim, rank)
     total = full_linear_params(in_dim, out_dim)
@@ -594,6 +629,11 @@ def lora_param_ratio(in_dim, out_dim, rank):
 
 # TODO 3: 汇总 baseline 和 LoRA 项目指标
 def summarize_lora_project(baseline_metrics, lora_metrics):
+    """把 baseline 与 LoRA 的同口径指标汇总成项目对比摘要。
+
+    资源字段使用 `baseline - lora`，正数表示 LoRA 更省或更快；
+    loss 字段使用 `lora - baseline`，正数表示 LoRA 的 loss 更高。
+    """
     param_reduction = 1.0 - lora_metrics['trainable_params'] / baseline_metrics['trainable_params']
     memory_delta = baseline_metrics['peak_mem_mb'] - lora_metrics['peak_mem_mb']
     time_delta = baseline_metrics['step_time_ms'] - lora_metrics['step_time_ms']
@@ -607,7 +647,7 @@ def summarize_lora_project(baseline_metrics, lora_metrics):
         'final_val_loss_delta': round(val_loss_delta, 4),
     }
 
-# 给定实现：记录 adapter 交付物
+# E：记录 adapter 交付物
 def build_adapter_artifact_record(adapter_path, tokenizer_path, merge_checked, sanity_generation_checked):
     return {
         'adapter_path': adapter_path,
@@ -616,7 +656,7 @@ def build_adapter_artifact_record(adapter_path, tokenizer_path, merge_checked, s
         'sanity_generation_checked': sanity_generation_checked,
     }
 
-# 给定实现：组装 60 项目的统一结果报告
+# 给定实现：生成报告、检查交付和输出项目决策
 def build_lora_project_report(config, baseline, candidates, quality, resources, artifacts, decision, environment=None):
     return {
         'schema_version': 'fine-tuning-project/v1',
@@ -632,7 +672,6 @@ def build_lora_project_report(config, baseline, candidates, quality, resources, 
         'environment': environment or {},
     }
 
-# TODO 4: 检查项目是否可以交付
 def check_lora_project_readiness(data_audit, mask_report, artifact_record):
     issues = []
     if data_audit['empty_response_count'] > 0:
@@ -649,7 +688,6 @@ def check_lora_project_readiness(data_audit, mask_report, artifact_record):
         issues.append('sanity_generation_not_checked')
     return {'ready': len(issues) == 0, 'issues': issues}
 
-# TODO 5: 根据项目汇总和交付检查给出采用建议
 def recommend_lora_decision(summary, readiness, min_param_reduction=0.5, max_val_loss_delta=0.03, min_peak_mem_delta_mb=128.0, min_step_time_delta_ms=-3.0):
     memory_gain_ok = summary['peak_mem_delta_mb'] >= min_peak_mem_delta_mb
     speed_not_too_bad = summary['step_time_delta_ms'] >= min_step_time_delta_ms
@@ -725,7 +763,7 @@ print(recommend_lora_decision(summary, readiness))
 
 ### 解析
 
-这一版题目区保留 `5` 个核心 TODO：数据审计、loss 核对、项目汇总、交付检查和最终决策；其余配置打包、参数公式和 artifact 字段整理改成给定实现，把练习重点收回到项目判断本身。
+这一版题目区保留 `3` 个核心 TODO：数据审计、loss 核对和项目汇总；配置打包、参数公式、交付检查和决策规则作为给定实现，重点放在数据与指标口径，避免把项目练习变成大量重复分支填空。测试区之后的场景观察不新增 TODO，只用于理解单变量变化如何影响项目决策。
 
 
 **1. TODO 1: 审计 SFT 样本**
@@ -736,67 +774,52 @@ print(recommend_lora_decision(summary, readiness))
 **2. TODO 2: 核对 loss mask**
 - **实现方式**：把 `attention_mask` 和 `labels` 展平后对齐检查，统计非 padding token、参与监督的 token，以及 padding 中错误参与 loss 的 token。
 - **关键点**：`labels != -100` 的 token 会参与 loss；`attention_mask == 0` 的 padding token 不应该参与 loss。
-- **项目意义**：这是 SFT 项目最关键的正确性检查之一。loss 下降不代表训练对了，必须确认监督 token 的位置正确。
+- **项目意义**：这是 SFT 项目中需要优先检查的正确性问题之一。loss 下降不代表训练口径正确，还要确认监督 token 的位置。
 
-**给定实现 A：汇总 LoRA 项目配置**
-- **实现方式**：把 base model、target modules、rank、alpha、dropout、学习率、micro batch、accum steps 和 scheduler 放进同一个配置对象。
-- **关键点**：`effective_batch_size = micro_batch_size * accum_steps`，这要和第 12 节的梯度累积口径一致。
-- **项目意义**：这部分更偏复现实验的脚手架，因此直接给出实现，不占用核心 TODO 配额。
-
-**给定实现 B：计算单层 LoRA 的可训练参数量**
-- **实现方式**：LoRA 为一个线性层增加两个低秩矩阵，`A` 的参数量是 `rank * in_dim`，`B` 的参数量是 `rank * out_dim`，合起来是 `rank * (in_dim + out_dim)`。
-- **关键点**：这里统计的是 LoRA adapter 的可训练参数，不包括冻结的底座权重。
-- **项目意义**：这是 LoRA 微调项目的第一张账本，但公式本身偏机械，因此也改为给定实现。
-
-**给定实现 C：计算完整线性层的参数量**
-- **实现方式**：完整线性层的 weight 参数量是 `in_dim * out_dim`。本节为了突出主线，不额外统计 bias。
-- **关键点**：全参线性层是 baseline，用来衡量 LoRA 的参数节省比例。
-- **技术细节**：如果真实模型中包含 bias 或多个投影层，需要把这些层逐项累加。
-
-**给定实现 D：计算 LoRA 参数占比**
-- **实现方式**：先分别计算 LoRA 参数量和完整线性层参数量，再用 `trainable / total` 得到参数占比。
-- **关键点**：参数占比越小，说明同一层上需要训练和保存的 adapter 越少。
-- **项目意义**：这个比例可以和 step time、peak memory、train/val loss 一起放进项目报告，但不需要读者再为基础公式分散注意力。
+| 环节 | 函数名 | 实现方式 | 关键点 | 项目意义 |
+|:---|:---|:---|:---|:---|
+| A | `build_lora_project_config` | 将 base model、target modules、rank、alpha、dropout、学习率、micro batch、accum steps 和 scheduler 放入同一个配置对象 | `effective_batch_size = micro_batch_size * accum_steps`，与第 12 节的梯度累积口径一致 | 提供可复现实验所需的配置 |
+| B | `lora_trainable_params`、`full_linear_params`、`lora_param_ratio` | 分别计算 LoRA 参数量、完整线性层参数量和参数占比 | LoRA 参数只包含适配器，不包含冻结的底座权重；完整层暂不计 bias | 建立参数账本和节省比例参照 |
+| C | `summarize_lora_project` | 汇总 baseline / LoRA 的参数、显存、耗时和 train / val loss 差值 | 资源收益使用 `baseline - lora`，损失变化使用 `lora - baseline` | 为项目判断提供对照指标 |
+| D | `audit_sft_examples`、`loss_mask_report`、`build_adapter_artifact_record`、`check_lora_project_readiness` | 检查数据、监督位置和实验产物 | 空回答、padding 参与 loss、无监督 token 或产物检查失败时不能直接 accept | 判断实验输入和输出是否可用 |
+| E | `recommend_lora_decision` | 根据指标、阈值和 readiness 输出决策及原因 | `accept / tune / reject` 不是单看参数比例 | 决定是否进入下一步实验 |
 
 **3. TODO 3: 汇总 baseline 和 LoRA 项目指标**
 - **实现方式**：资源类指标使用 `baseline - LoRA`，正数表示 LoRA 更省或更快；loss 指标使用 `LoRA - baseline`，正数表示 LoRA 效果更差。
 - **关键点**：train loss 和 val loss 要分开看。train loss 接近不代表泛化可接受，最终决策更应该看 val loss delta。
 - **工程判断**：如果参数和显存明显下降，但 val loss 损失很小，LoRA 方案通常值得保留；如果 val loss 明显变差，需要继续调整 rank、插层位置或学习率。
 
-**给定实现 E：记录 adapter 交付物**
-- **实现方式**：记录 adapter 路径、tokenizer 路径、merge 检查和最小生成样例检查。
-- **关键点**：LoRA 微调的交付物不是一行 loss，而是一组可加载、可复现、能做 sanity check 的 artifact。
-- **项目意义**：这一步把训练实验推进到交付边界，但字段整理本身不应挤占核心 TODO。
-
-**4. TODO 4: 检查项目是否可以交付**
+**给定实现：交付检查**
 - **实现方式**：把数据审计、loss mask 报告和 artifact 记录合并检查，返回 `ready` 和问题列表。
 - **关键点**：只要存在空 response、padding 参与 loss、无监督 token、merge 未检查或生成样例未检查，就不应该直接把项目判为 accept。
 - **项目意义**：这一步让项目报告不只比较指标，也能说明指标是否可信。
 
-**5. TODO 5: 输出采用建议**
+**给定实现：输出采用建议**
 - **accept**：交付检查通过，参数节省达标，val loss 损失在阈值内。
 - **tune**：交付检查未通过，或参数节省达标但 val loss 损失偏大，或显存收益偏弱且速度恶化。
 - **reject**：交付检查通过，但参数节省不足，LoRA 没有带来足够训练成本收益。
 - **项目意义**：决策不再只看 LoRA 参数比例，而是同时看数据可信度、loss 口径、artifact 交付、资源收益和效果损失。
 
-## Step 6（可选）：真实模型 LoRA 验证
+### Step 6（GPU 实验准备，可选）：运行真实模型 LoRA smoke test
 
-这一步对应 66 节的真实 backend 分支，但验证对象不同：66 验证推理服务，60 验证真实模型、tokenizer、LoRA adapter、训练 step 和 artifact 保存链路。默认关闭，不影响 CPU-first 练习。
-
-真实运行只完成小规模 smoke test，不等于完整微调效果结论；它主要检查 GPU、模型下载、tokenizer、LoRA 注入、反向传播和 adapter 保存是否连通。要形成正式结论，还需要固定数据集、训练步数、验证集和同口径 baseline。Colab / ModelScope 运行前请先阅读[训练微调项目验证清单](../docs/verification/fine_tuning_projects.md)。
-
-| 实验层级 | 运行位置 | 固定内容 | 可以得出的结论 | 不能得出的结论 |
-|:---|:---|:---|:---|:---|
-| CPU 题目区 | CPU 或 GPU | 人工构造的小样本、函数输入 | 数据审计、mask、参数账本和决策逻辑正确 | LoRA 训练有效、GPU 显存收益 |
-| GPU smoke | 有 CUDA 的单卡 | 模型、tokenizer、LoRA 配置 | 真实模型链路和 adapter 能否保存 | baseline 对比、泛化能力、稳定收益 |
-| GPU matched | 目标 GPU | 同一数据切分、dtype、batch、seq_len、steps | baseline 与 LoRA 的资源和 validation loss 差异 | 更大模型、更多数据或其他 GPU 的结论 |
+Step 6 是 GPU 实验入口，先回答一个问题：当前环境能否加载选定的真实模型和数据，并完成一次最小 LoRA 更新。它只检查运行链路与产物，不比较 baseline 和 LoRA；对照实验放在 Step 7。
 
 
-数据可以从 `inline`、Hugging Face、ModelScope 或本地 JSON/JSONL 读取。远程数据集支持 `instruction / input / output` 或 `prompt / response` 字段；真实项目建议使用固定版本、固定抽样数量，并把数据集 ID、来源和审计结果写入报告。
+
+| 检查环节 | 学习者要做什么 | 看到结果后怎么做 |
+|:---|:---|:---|
+| 环境 | 运行 **【实验配置｜只修改这一格】** 和 `dry_run`，确认 CUDA、依赖、模型来源和 dtype | 通过后继续运行 smoke test；CUDA 或依赖缺失时先修复环境 |
+| 最小训练 | 用 `real_gpu` 加载真实模型；使用 `inline` 数据完成一次 LoRA 更新 | loss 正常且无异常，说明训练链路可以进入 Step 7；正式对照再固定模型、数据和切分 |
+| 产物 | 查看 adapter、tokenizer 和 JSON 报告路径 | 文件都已生成后再进入 Step 7；缺失时先检查保存路径 |
+| 异常处理 | 记录下载、数据、显存或保存错误 | 修复错误后重新运行，不进入 Step 7 |
+
+
+![60 LoRA GPU 实验流程](../docs/public/02_PyTorch_Algorithms/60_gpu_experiment_flow.svg)
+<div align="center"><strong>先确认环境和训练链路，再进入固定条件下的 baseline / LoRA 对照。</strong></div>
 
 
 ```python
-# 只需要修改这一格；默认只运行 CPU 代码。
+# 【实验配置｜只修改这一格】默认只运行 CPU 代码。
 RUN_MODE = 'cpu'  # cpu / dry_run / real_gpu；dry_run 只检查环境，不训练。
 RUN_REAL_TRAINING = False  # 兼容旧入口；real_gpu 模式下再显式打开对应实验。
 REAL_MODEL_SOURCE = 'huggingface'  # 模型来源：auto / modelscope / huggingface / local。
@@ -806,7 +829,8 @@ REAL_DTYPE = 'auto'  # auto 优先 BF16（硬件支持时），否则回退 FP16
 REAL_MAX_SEQ_LEN = 256  # 每条样本最大 token 长度；影响截断、显存和 step time。
 REAL_STEPS = 3  # Step 6 smoke test 的更新步数；Step 7 使用 MATCHED_STEPS。
 REAL_LR = 2e-4
-AUTO_INSTALL_REAL_DEPS = True  # 自动安装 transformers / peft / datasets 等当前内核依赖。
+AUTO_INSTALL_REAL_DEPS = True  # 自动安装当前内核缺失的普通依赖。
+AUTO_INSTALL_ALLOW_BREAK_SYSTEM_PACKAGES = True  # 云端 PEP 668 环境允许安装普通依赖；不会重装 PyTorch。
 REAL_DATA_SOURCE = 'huggingface'  # 数据来源：inline 仅适合 smoke test；正式比较用 huggingface / modelscope / local。
 REAL_DATASET_ID = 'tatsu-lab/alpaca'
 REAL_DATA_FILE = None  # None 时自动搜索 benchmarks/data/ 和 data/
@@ -825,15 +849,58 @@ MATCHED_STEPS = 20  # baseline 和 LoRA 必须使用相同更新步数。
 # 可选：打开真实模型验证后，自动为当前 Notebook 内核补齐依赖
 # 必须先运行上一格配置，再运行这一格。
 if (RUN_REAL_TRAINING or RUN_REAL_MATCHED) and AUTO_INSTALL_REAL_DEPS:
+    import importlib.util
     import subprocess
     import sys
+    from pathlib import Path
     packages = ['transformers', 'peft', 'accelerate', 'datasets', 'httpx[socks]']
     if REAL_MODEL_SOURCE == 'modelscope' or REAL_DATA_SOURCE == 'modelscope':
         packages.append('modelscope')
-    subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-U', *packages])
-    print('真实模型和数据集依赖安装完成，请继续运行后续单元。')
+    module_names = [package.split('[', 1)[0] for package in packages]
+    missing = [package for package, module in zip(packages, module_names) if importlib.util.find_spec(module) is None]
+    if not missing:
+        print('当前 Kernel 已具备真实实验依赖，跳过安装。')
+    else:
+        install_cmd = [sys.executable, '-m', 'pip', 'install', '-U', *missing]
+        managed_markers = [Path(sys.prefix) / 'EXTERNALLY-MANAGED', Path(sys.executable).parent.parent / 'EXTERNALLY-MANAGED']
+        is_managed_python = any(marker.is_file() for marker in managed_markers)
+        if is_managed_python:
+            if not AUTO_INSTALL_ALLOW_BREAK_SYSTEM_PACKAGES:
+                raise RuntimeError('检测到 PEP 668 受管 Python。请将 AUTO_INSTALL_ALLOW_BREAK_SYSTEM_PACKAGES 设为 True，或改用独立虚拟环境。')
+            install_cmd[3:3] = ['--break-system-packages']
+            print('检测到 PEP 668 受管 Python：仅对缺失的普通依赖使用 --break-system-packages。')
+        print('正在使用当前 Kernel 安装：', missing)
+        subprocess.check_call(install_cmd)
+        print('依赖安装完成；如当前 Kernel 仍找不到新包，请重启 Kernel 后继续。')
 elif not (RUN_REAL_TRAINING or RUN_REAL_MATCHED):
     print('跳过依赖安装：真实模型验证未开启。')
+
+```
+
+
+```python
+# dry_run 只做环境预检：不下载模型、不读取数据、不创建 optimizer。
+if globals().get('RUN_MODE', 'cpu') == 'dry_run':
+    import importlib.util
+    import sys
+    from pathlib import Path
+
+    project_root = next((path for path in [Path.cwd(), *Path.cwd().parents] if (path / 'tools').is_dir()), None)
+    if project_root is None:
+        raise RuntimeError('未找到项目根目录，请先 clone 仓库或从仓库启动 Notebook。')
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+    try:
+        import torch
+        from tools.fine_tuning_project_runtime import preflight_runtime
+        preflight = preflight_runtime(torch, run_mode='dry_run')
+    except ImportError as exc:
+        preflight = {'run_mode': 'dry_run', 'ready': False, 'reasons': [f'缺少运行依赖：{exc}'], 'next_action': 'install_dependencies'}
+    dependencies = {name: importlib.util.find_spec(name) is not None for name in ('transformers', 'peft', 'datasets')}
+    preflight['dependencies'] = dependencies
+    print('dry_run 预检结果：')
+    print(preflight)
+    print('提示：预检通过后，将 RUN_MODE 改为 real_gpu，并显式打开对应 GPU 实验开关。')
 
 ```
 
@@ -983,130 +1050,17 @@ else:
 
 ```
 
+### Step 7（GPU 项目实验，可选）：采集 baseline / LoRA 对照数据
 
-```python
-# dry_run 只做环境预检：不下载模型、不读取数据、不创建 optimizer。
-if globals().get('RUN_MODE', 'cpu') == 'dry_run':
-    import importlib.util
-    import sys
-    from pathlib import Path
+Step 7 做 GPU 对照实验：在相同模型、数据、切分和训练条件下比较 baseline 与 LoRA，唯一改变训练方式。`SPLIT_SEED` 固定数据切分，`REAL_SEED` 用于重复运行。
 
-    project_root = next((path for path in [Path.cwd(), *Path.cwd().parents] if (path / 'tools').is_dir()), None)
-    if project_root is None:
-        raise RuntimeError('未找到项目根目录，请先 clone 仓库或从仓库启动 Notebook。')
-    if str(project_root) not in sys.path:
-        sys.path.insert(0, str(project_root))
-    try:
-        import torch
-        from tools.fine_tuning_project_runtime import preflight_runtime
-        preflight = preflight_runtime(torch, run_mode='dry_run')
-    except ImportError as exc:
-        preflight = {'run_mode': 'dry_run', 'ready': False, 'reasons': [f'缺少运行依赖：{exc}'], 'next_action': 'install_dependencies'}
-    dependencies = {name: importlib.util.find_spec(name) is not None for name in ('transformers', 'peft', 'datasets')}
-    preflight['dependencies'] = dependencies
-    print('dry_run 预检结果：')
-    print(preflight)
-    print('提示：预检通过后，将 RUN_MODE 改为 real_gpu，并显式打开对应 GPU 实验开关。')
+需要采集时，将 `RUN_REAL_MATCHED` 设为 `True`，运行 GPU 对照实验代码块；随后运行结果汇总代码块读取 JSON。具体指标和产物见下图，结论只适用于当前模型、数据和 workload。
 
-```
-
-## Step 7（GPU 项目实验，可选）：自动采集 baseline vs LoRA
-
-Step 6 只验证真实 LoRA 链路；Step 7 才用于正式采集。它会自动固定 train/validation 划分，按 batch 分批，并依次运行 full-parameter baseline 与 LoRA。这里比较的是同一模型、同一数据切分、同一 dtype、同一训练步数下的资源与 validation loss，不是完整任务能力评测。
-
-正式采集前必须确认：模型快照、数据集版本和样本数、`SPLIT_SEED`、`MATCHED_BATCH_SIZE`、`REAL_MAX_SEQ_LEN`、`MATCHED_STEPS`、dtype、GPU 和 PyTorch/CUDA 版本均已写入报告。更换其中任一项，都应视为新的实验条件。
-
-默认关闭。打开 `RUN_REAL_MATCHED = True` 后，不需要复制训练代码或填写路径；结果会保存为 `benchmarks/results/60_real_lora/60_real_lora_matched.json`。
-
-### 已有三组真实数据：先看表，再决定是否继续实验
-
-下面三组结果来自同一份真实数据和同一套训练配置，只改变模型初始化用的 `REAL_SEED`；`SPLIT_SEED=42` 在三组中固定。每一组内部都使用同一数据切分、同一 batch、同一序列长度和同一步数，因此可以比较 baseline 与 LoRA；不同 seed 之间用于观察训练波动，不应当作三次独立数据集实验。
-
-**共同实验条件**
-
-| 条件 | 取值 | 说明 |
-|---|---|---|
-| 基座模型 | `Qwen/Qwen2.5-0.5B-Instruct` | 真实 Hugging Face 模型；三组使用同一缓存快照 |
-| 数据 | `tatsu-lab/alpaca`，32 条 | `prompt / response` 规范化；空回答和重复样本均为 0 |
-| 数据切分 | `val_ratio=0.2` | baseline 与 LoRA 在每组内共享切分 |
-| dtype | `torch.bfloat16` | RTX 5070 Ti Laptop GPU，BF16 可用 |
-| micro-batch | `1` | 不是有效 batch；本实验未使用梯度累积 |
-| 最大序列长度 | `256` | 影响截断、显存和吞吐 |
-| 更新步数 | `20` | baseline 与 LoRA 完全一致 |
-| 评测 | validation loss | 当前还没有 task-level 生成指标，因此结论仍是 `tune` |
-| 环境 | Python 3.10.20，PyTorch 2.11.0+cu128，CUDA 12.8 | NVIDIA GeForce RTX 5070 Ti Laptop GPU，约 12 GB 显存 |
-
-**三组 matched 结果**
-
-| REAL_SEED | SPLIT_SEED | baseline val loss | LoRA val loss | baseline 峰值显存 MB | LoRA 峰值显存 MB | baseline step ms | LoRA step ms | baseline token/s | LoRA token/s | 数据审计 |
-|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| 42 | 42 | 4.3103 | 2.0299 | 4774.92 | 1741.94 | 126.91 | 39.14 | 558.28 | 1810.38 | 32 条；超长 3 |
-| 123 | 42 | 4.3103 | 2.0263 | 4786.98 | 1741.94 | 106.09 | 41.87 | 667.82 | 1692.22 | 32 条；超长 3 |
-| 2024 | 42 | 4.3103 | 2.0307 | 4786.98 | 1741.94 | 107.62 | 38.62 | 658.31 | 1834.62 | 32 条；超长 3 |
-| **均值** | **42** | **4.3103** | **2.0289** | **4782.96** | **1741.94** | **113.54** | **39.88** | **628.14** | **1779.07** | **每组超长 3** |
-
-这三组结果支持一个**暂定资源结论**：LoRA 的峰值显存约降低 63.6%，step time 约降低 64.9%，token 吞吐约提高 2.83 倍；LoRA validation loss 约为 2.029，低于 matched baseline 的 4.310。但由于样本只有 32 条、每组有 3 条超出字符审计阈值，且还没有生成质量指标，暂不把它写成最终 `accept`。本轮数据采集先冻结；后续只在需要补生成质量、实际截断统计或压力实验时继续。
-
-`over_length_count=3` 表示字符长度代理指标超过 `REAL_MAX_SEQ_LEN * 4`，不等于一定发生 token 截断；后续应把实际 tokenizer 截断数也记录下来。
-
-```python
-# 先画已有结果和后续实验计划；本单元只读 JSON，不启动模型、不下载数据。
-import json
-from pathlib import Path
-
-import pandas as pd
-from IPython.display import display
-
-RESULT_DIR = Path('benchmarks/results/60_real_lora')
-RESULT_FILES = sorted(RESULT_DIR.glob('60_real_lora_matched_seed*.json'))
-
-rows = []
-for path in RESULT_FILES:
-    report = json.loads(path.read_text(encoding='utf-8'))
-    cfg = report['config']
-    audit = report['quality']['data_audit']
-    baseline = report['baseline']
-    # 兼容旧报告：早期版本把 LoRA 放在 candidates[name='lora'] 中。
-    lora = report.get('lora')
-    if lora is None:
-        lora = next(item for item in report.get('candidates', []) if item.get('name') == 'lora')
-    rows.append({
-        'seed': cfg['seed'],
-        'split_seed': cfg.get('split_seed', 'legacy'),
-        'samples': audit['total_samples'],
-        'val_ratio': cfg['val_ratio'],
-        'baseline_val_loss': round(baseline['val_loss'], 4),
-        'lora_val_loss': round(lora['val_loss'], 4),
-        'baseline_peak_MB': round(baseline['peak_memory_mb'], 2),
-        'lora_peak_MB': round(lora['peak_memory_mb'], 2),
-        'baseline_step_ms': round(baseline['step_time_ms'], 2),
-        'lora_step_ms': round(lora['step_time_ms'], 2),
-        'baseline_tok/s': round(baseline['tokens_per_s'], 2),
-        'lora_tok/s': round(lora['tokens_per_s'], 2),
-        'over_length': audit['over_length_count'],
-        'file': path.name,
-    })
-
-results_df = pd.DataFrame(rows).sort_values('seed') if rows else pd.DataFrame()
-display(results_df)
-
-# 后续实验矩阵：先画计划表，完成每组实验后再把 status 改为 measured。
-EXPERIMENT_PLAN = pd.DataFrame([
-    {'id': 'S1', 'variable': 'seed', 'value': 42, 'fixed': '真实数据 / batch=1 / seq=256 / steps=20', 'status': 'measured'},
-    {'id': 'S2', 'variable': 'seed', 'value': 123, 'fixed': '真实数据 / batch=1 / seq=256 / steps=20', 'status': 'measured'},
-    {'id': 'S3', 'variable': 'seed', 'value': 2024, 'fixed': '真实数据 / batch=1 / seq=256 / steps=20', 'status': 'measured'},
-    {'id': 'B1', 'variable': 'matched_steps', 'value': 40, 'fixed': '固定 split seed / batch=1 / seq=256', 'status': 'planned'},
-    {'id': 'B2', 'variable': 'seq_len', 'value': 512, 'fixed': '固定数据 / seed / batch=1 / steps=20', 'status': 'planned'},
-    {'id': 'B3', 'variable': 'batch_size', 'value': 2, 'fixed': '固定数据 / seed / seq=256 / steps=20', 'status': 'planned'},
-    {'id': 'B4', 'variable': 'task_metric', 'value': 'generation_eval', 'fixed': '固定 split / prompt / max_new_tokens', 'status': 'planned'},
-])
-display(EXPERIMENT_PLAN)
-print('说明：一次只改变 variable；不要同时改变 seed、数据切分、seq_len、batch 或 steps。')
-
-```
+![60 GPU 对照实验资产与流程](../docs/public/02_PyTorch_Algorithms/60_matched_assets_flow.svg)
 
 
 ```python
+# matched 实验代码块：在固定条件下分别运行 baseline 与 LoRA，并保存报告。
 if RUN_REAL_MATCHED:
     import random
     def _matched_audit(records, max_total_chars):
@@ -1240,7 +1194,8 @@ if RUN_REAL_MATCHED:
         with torch.no_grad():
             val_losses = [float(model(**batch).loss.item()) for batch in batches(val_batch)]
         peak_memory = round(torch.cuda.max_memory_allocated() / 2**20, 2)
-        result = {'name': name, 'status': 'ok', 'train_losses': losses, 'train_loss': losses[-1], 'val_loss': sum(val_losses) / len(val_losses), 'trainable_params': trainable_params, 'peak_memory_mb': peak_memory, 'step_time_ms': round(elapsed / MATCHED_STEPS * 1000, 2), 'tokens_per_s': round(processed_tokens / elapsed, 2)}
+        peak_reserved = round(torch.cuda.max_memory_reserved() / 2**20, 2)
+        result = {'name': name, 'status': 'ok', 'train_losses': losses, 'train_loss': losses[-1], 'val_loss': sum(val_losses) / len(val_losses), 'trainable_params': trainable_params, 'peak_memory_mb': peak_memory, 'peak_reserved_mb': peak_reserved, 'processed_tokens': processed_tokens, 'step_time_ms': round(elapsed / MATCHED_STEPS * 1000, 2), 'tokens_per_s': round(processed_tokens / elapsed, 2)}
         if name == 'lora':
             output_dir = project_root / 'benchmarks' / 'results' / '60_real_lora'
             output_dir.mkdir(parents=True, exist_ok=True)
@@ -1253,14 +1208,22 @@ if RUN_REAL_MATCHED:
     candidates = [run_candidate('baseline'), run_candidate('lora')]
     baseline = candidates[0]
     lora = candidates[1]
+    baseline_for_summary = {'trainable_params': baseline['trainable_params'], 'peak_mem_mb': baseline['peak_memory_mb'], 'step_time_ms': baseline['step_time_ms'], 'final_train_loss': baseline['train_loss'], 'final_val_loss': baseline['val_loss']}
+    lora_for_summary = {'trainable_params': lora['trainable_params'], 'peak_mem_mb': lora['peak_memory_mb'], 'step_time_ms': lora['step_time_ms'], 'final_train_loss': lora['train_loss'], 'final_val_loss': lora['val_loss']}
+    summary = summarize_lora_project(baseline_for_summary, lora_for_summary) if 'summarize_lora_project' in globals() else {'param_reduction': round(1 - lora['trainable_params'] / baseline['trainable_params'], 4), 'peak_mem_delta_mb': round(baseline['peak_memory_mb'] - lora['peak_memory_mb'], 2), 'step_time_delta_ms': round(baseline['step_time_ms'] - lora['step_time_ms'], 2), 'final_train_loss_delta': round(lora['train_loss'] - baseline['train_loss'], 4), 'final_val_loss_delta': round(lora['val_loss'] - baseline['val_loss'], 4)}
+    data_audit = _matched_audit(examples, REAL_MAX_SEQ_LEN * 4)
+    mask_report = {'supervised_tokens': int((train_batch['labels'] != -100).sum().item()), 'padding_supervised_tokens': int(((train_batch['attention_mask'] == 0) & (train_batch['labels'] != -100)).sum().item())}
+    artifact_record = {'merge_checked': False, 'sanity_generation_checked': False}
+    readiness = check_lora_project_readiness(data_audit, mask_report, artifact_record) if 'check_lora_project_readiness' in globals() else {'ready': False, 'issues': ['artifact_checks_not_implemented']}
+    decision = recommend_lora_decision(summary, readiness) if 'recommend_lora_decision' in globals() else {'decision': 'tune', 'reason': '缺少统一决策函数。', 'next_action': 'inspect_report'}
     report_builder = globals().get('build_lora_project_report', _matched_report)
     report = report_builder(
         config={'model': REAL_MODEL_ID, 'model_path': model_path, 'dtype': str(dtype), 'batch_size': MATCHED_BATCH_SIZE, 'seq_len': REAL_MAX_SEQ_LEN, 'steps': MATCHED_STEPS, 'val_ratio': MATCHED_VAL_RATIO, 'seed': REAL_SEED, 'split_seed': SPLIT_SEED},
         baseline=baseline, candidates=candidates,
-        quality={'train_loss': lora['train_loss'], 'val_loss': lora['val_loss'], 'baseline_val_loss': baseline['val_loss'], 'data_audit': _matched_audit(examples, REAL_MAX_SEQ_LEN * 4)},
+        quality={'train_loss': lora['train_loss'], 'val_loss': lora['val_loss'], 'baseline_val_loss': baseline['val_loss'], 'data_audit': data_audit, 'mask_report': mask_report, 'comparison_summary': summary},
         resources={'trainable_params': lora['trainable_params'], 'peak_memory_mb': lora['peak_memory_mb'], 'step_time_ms': lora['step_time_ms'], 'tokens_per_s': lora['tokens_per_s']},
         artifacts={'adapter': str(project_root / 'benchmarks' / 'results' / '60_real_lora' / 'matched_adapter'), 'report': str(project_root / 'benchmarks' / 'results' / '60_real_lora' / '60_real_lora_matched.json')},
-        decision={'decision': 'tune', 'reason': 'matched baseline 与 LoRA 已完成，仍需增加重复运行和任务指标后再决定是否采用。', 'next_action': 'repeat_with_fixed_validation_and_task_metric'},
+        decision=decision,
         environment={'python': sys.version, 'torch': torch.__version__, 'torch_cuda': torch.version.cuda, 'device': torch.cuda.get_device_name(0)},
     )
     report_dir = project_root / 'benchmarks' / 'results' / '60_real_lora'
@@ -1276,3 +1239,98 @@ else:
     print('跳过 matched baseline：保持 CPU-first / smoke-test 模式。')
 
 ```
+
+
+```python
+# 结果汇总代码块：实验完成后读取 JSON，展示结果和实验计划，不启动模型。
+import json
+from pathlib import Path
+
+import pandas as pd
+from IPython.display import display
+
+RESULT_DIR = Path('benchmarks/results/60_real_lora')
+RESULT_FILES = sorted(RESULT_DIR.glob('60_real_lora_matched_seed*.json'))
+
+rows = []
+for path in RESULT_FILES:
+    report = json.loads(path.read_text(encoding='utf-8'))
+    cfg = report['config']
+    audit = report['quality']['data_audit']
+    baseline = report['baseline']
+    # 兼容旧报告：早期版本把 LoRA 放在 candidates[name='lora'] 中。
+    lora = report.get('lora')
+    if lora is None:
+        lora = next(item for item in report.get('candidates', []) if item.get('name') == 'lora')
+    rows.append({
+        'seed': cfg['seed'],
+        'split_seed': cfg.get('split_seed', 'legacy'),
+        'samples': audit['total_samples'],
+        'val_ratio': cfg['val_ratio'],
+        'baseline_val_loss': round(baseline['val_loss'], 4),
+        'lora_val_loss': round(lora['val_loss'], 4),
+        'baseline_peak_MB': round(baseline['peak_memory_mb'], 2),
+        'lora_peak_MB': round(lora['peak_memory_mb'], 2),
+        'baseline_step_ms': round(baseline['step_time_ms'], 2),
+        'lora_step_ms': round(lora['step_time_ms'], 2),
+        'baseline_tok/s': round(baseline['tokens_per_s'], 2),
+        'lora_tok/s': round(lora['tokens_per_s'], 2),
+        'over_length': audit['over_length_count'],
+        'file': path.name,
+    })
+
+results_df = pd.DataFrame(rows).sort_values('seed') if rows else pd.DataFrame()
+display(results_df)
+
+# 后续实验矩阵：先画计划表，完成每组实验后再把 status 改为 measured。
+EXPERIMENT_PLAN = pd.DataFrame([
+    {'id': 'S1', 'variable': 'seed', 'value': 42, 'fixed': '真实数据 / batch=1 / seq=256 / steps=20', 'status': 'measured'},
+    {'id': 'S2', 'variable': 'seed', 'value': 123, 'fixed': '真实数据 / batch=1 / seq=256 / steps=20', 'status': 'measured'},
+    {'id': 'S3', 'variable': 'seed', 'value': 2024, 'fixed': '真实数据 / batch=1 / seq=256 / steps=20', 'status': 'measured'},
+    {'id': 'B1', 'variable': 'matched_steps', 'value': 40, 'fixed': '固定 split seed / batch=1 / seq=256', 'status': 'planned'},
+    {'id': 'B2', 'variable': 'seq_len', 'value': 512, 'fixed': '固定数据 / seed / batch=1 / steps=20', 'status': 'planned'},
+    {'id': 'B3', 'variable': 'batch_size', 'value': 2, 'fixed': '固定数据 / seed / seq=256 / steps=20', 'status': 'planned'},
+    {'id': 'B4', 'variable': 'task_metric', 'value': 'generation_eval', 'fixed': '固定 split / prompt / max_new_tokens', 'status': 'planned'},
+])
+display(EXPERIMENT_PLAN)
+print('说明：一次只改变 variable；不要同时改变 seed、数据切分、seq_len、batch 或 steps。')
+
+```
+
+### 实验报告（运行 Step 7 后查看）：三组 GPU 对比结果
+
+下面记录当前已经完成的三组个人 GPU 实测结果。三组实验使用同一模型、数据、切分和训练条件，只改变 `REAL_SEED`；`SPLIT_SEED=42` 始终固定，实验条件与结果总表如下。
+
+在 RTX 5070 Ti Laptop GPU、12 GB 显存和当前 workload 下，下列结论由表格中的三组实测结果计算得到：LoRA 峰值显存约降低 63.6%，step time 约降低 64.9%，token 吞吐约提高 2.83 倍；LoRA validation loss 约为 2.029，低于 baseline 的 4.310。当前仍标记为 `tune`，原因是样本只有 32 条、每组有 3 条字符超长样本，且尚无生成质量指标。
+
+学习者应使用自己的 GPU、实际 workload 和对应 JSON 填写表格，不能直接套用 5070 Ti 的数值。条件行记录固定设置，结果行按 baseline 和 LoRA 分开记录；调整 GPU、模型、数据或训练参数时，请新增一个配置区块并单独计算均值。
+
+
+<table>
+<thead><tr><th>类别</th><th>项目</th><th>单位</th><th>训练方式</th><th>seed=42</th><th>seed=123</th><th>seed=2024</th><th>均值</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td rowspan=5>共同条件</td><td>GPU / 显存</td><td>—</td><td colspan=5>RTX 5070 Ti Laptop / 12 GB</td><td>个人实测环境</td></tr>
+<tr><td>模型与数据</td><td>—</td><td colspan=5>Qwen/Qwen2.5-0.5B-Instruct；tatsu-lab/alpaca 32 条</td><td>三组使用同一缓存模型和数据版本</td></tr>
+<tr><td>切分与训练</td><td>—</td><td colspan=5>SPLIT_SEED=42；val_ratio=0.2；micro-batch=1；seq_len=256；steps=20</td><td>baseline 与 LoRA 共享切分和训练条件</td></tr>
+<tr><td>dtype 与评测</td><td>—</td><td colspan=5>BF16；同一验证集平均 val_loss</td><td>当前没有 task-level 生成指标</td></tr>
+<tr><td>数据审计</td><td>条</td><td colspan=5>32 条；每组超长 3 条</td><td>字符超长是代理指标</td></tr>
+<tr><td rowspan=11>结果</td><td rowspan=2>val loss</td><td>无量纲</td><td>baseline</td><td>4.3103</td><td>4.3103</td><td>4.3103</td><td>4.3103</td><td rowspan=2>越低越好</td></tr>
+<tr><td>无量纲</td><td>LoRA</td><td>2.0299</td><td>2.0263</td><td>2.0307</td><td>2.0289</td></tr>
+<tr><td rowspan=2>峰值显存</td><td>MB</td><td>baseline</td><td>4774.92</td><td>4786.98</td><td>4786.98</td><td>4782.96</td><td rowspan=2>越低越好</td></tr>
+<tr><td>MB</td><td>LoRA</td><td>1741.94</td><td>1741.94</td><td>1741.94</td><td>1741.94</td></tr>
+<tr><td rowspan=2>峰值保留显存</td><td>MB</td><td>baseline</td><td>未记录</td><td>未记录</td><td>未记录</td><td>未记录</td><td rowspan=2>后续补采</td></tr>
+<tr><td>MB</td><td>LoRA</td><td>未记录</td><td>未记录</td><td>未记录</td><td>未记录</td></tr>
+<tr><td rowspan=2>step time</td><td>ms</td><td>baseline</td><td>126.91</td><td>106.09</td><td>107.62</td><td>113.54</td><td rowspan=2>越低越好</td></tr>
+<tr><td>ms</td><td>LoRA</td><td>39.14</td><td>41.87</td><td>38.62</td><td>39.88</td></tr>
+<tr><td rowspan=2>token throughput</td><td>token/s</td><td>baseline</td><td>558.28</td><td>667.82</td><td>658.31</td><td>628.14</td><td rowspan=2>越高越好</td></tr>
+<tr><td>token/s</td><td>LoRA</td><td>1810.38</td><td>1692.22</td><td>1834.62</td><td>1779.07</td></tr>
+<tr><td>OOM / status</td><td>状态</td><td colspan=5>未记录</td><td>应由 JSON 报告写入</td></tr>
+<tr><td rowspan=8>待采集</td><td>RTX 4090 / 24 GB</td><td>—</td><td>baseline</td><td>待填写</td><td>待填写</td><td>待填写</td><td>待填写</td><td>使用同一字段补充</td></tr>
+<tr><td>RTX 4090 / 24 GB</td><td>—</td><td>LoRA</td><td>待填写</td><td>待填写</td><td>待填写</td><td>待填写</td><td>使用同一字段补充</td></tr>
+<tr><td>其他 GPU / 显存</td><td>—</td><td>baseline</td><td>待填写</td><td>待填写</td><td>待填写</td><td>待填写</td><td>记录 GPU、显存和完整配置</td></tr>
+<tr><td>其他 GPU / 显存</td><td>—</td><td>LoRA</td><td>待填写</td><td>待填写</td><td>待填写</td><td>待填写</td><td>记录 GPU、显存和完整配置</td></tr>
+<tr><td>其他配置 1</td><td>—</td><td>baseline / LoRA</td><td>待填写</td><td>待填写</td><td>待填写</td><td>待填写</td><td>记录模型、数据和 workload</td></tr>
+<tr><td>其他配置 2</td><td>—</td><td>baseline / LoRA</td><td>待填写</td><td>待填写</td><td>待填写</td><td>待填写</td><td>记录模型、数据和 workload</td></tr>
+<tr><td>其他配置 3</td><td>—</td><td>baseline / LoRA</td><td>待填写</td><td>待填写</td><td>待填写</td><td>待填写</td><td>记录模型、数据和 workload</td></tr>
+<tr><td>其他配置 4</td><td>—</td><td>baseline / LoRA</td><td>待填写</td><td>待填写</td><td>待填写</td><td>待填写</td><td>记录模型、数据和 workload</td></tr>
+</tbody></table>
