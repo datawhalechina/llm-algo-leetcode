@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 690" role="img" aria-labelledby="title desc">
-  <title id="title">LoRA adapter diagram</title>
-  <desc id="desc">Shows frozen base linear branch and a trainable low-rank LoRA branch with A and B matrices and merge path.</desc>
+  <title id="title">LoRA 旁路结构图</title>
+  <desc id="desc">展示冻结的基础线性层分支、可训练的低秩 LoRA 分支，以及 A/B 矩阵和权重合并路径。</desc>
   <defs>
     <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
       <stop offset="0%" stop-color="#f8fafc"/>
@@ -20,43 +20,43 @@
     </style>
   </defs>
   <rect width="1600" height="690" fill="url(#bg)"/>
-  <text x="64" y="66" class="title">LoRA: frozen base branch + trainable low-rank branch</text>
-  <text x="64" y="96" class="sub">Freeze W0, train only A and B, then optionally merge the low-rank delta back for inference.</text>
+  <text x="64" y="66" class="title">LoRA：冻结主分支 + 可训练低秩分支</text>
+  <text x="64" y="96" class="sub">冻结 W0，只训练 A 和 B；部署前可以将低秩增量合并回主权重。</text>
 
   <rect x="80" y="210" width="140" height="90" class="box" fill="#fff7ed" stroke="#f59e0b"/>
-  <text x="150" y="244" text-anchor="middle" class="label">input x</text>
-  <text x="150" y="270" text-anchor="middle" class="small">hidden state</text>
+  <text x="150" y="244" text-anchor="middle" class="label">输入 x</text>
+  <text x="150" y="270" text-anchor="middle" class="small">隐状态</text>
 
   <rect x="280" y="200" width="230" height="110" class="box" fill="#eff6ff" stroke="#3b82f6"/>
-  <text x="395" y="235" text-anchor="middle" class="label">Frozen W0</text>
-  <text x="395" y="262" text-anchor="middle" class="small">base Linear branch</text>
+  <text x="395" y="235" text-anchor="middle" class="label">冻结的 W0</text>
+  <text x="395" y="262" text-anchor="middle" class="small">基础线性层分支</text>
   <text x="395" y="286" text-anchor="middle" class="small">requires_grad = False</text>
 
   <rect x="280" y="390" width="230" height="110" class="box" fill="#ecfccb" stroke="#65a30d"/>
   <text x="395" y="425" text-anchor="middle" class="label">LoRA A</text>
-  <text x="395" y="452" text-anchor="middle" class="small">d -> r down-projection</text>
-  <text x="395" y="476" text-anchor="middle" class="small">trainable low-rank path</text>
+  <text x="395" y="452" text-anchor="middle" class="small">d → r 降维投影</text>
+  <text x="395" y="476" text-anchor="middle" class="small">可训练低秩分支</text>
 
   <rect x="590" y="390" width="230" height="110" class="box" fill="#ecfccb" stroke="#65a30d"/>
   <text x="705" y="425" text-anchor="middle" class="label">LoRA B</text>
-  <text x="705" y="452" text-anchor="middle" class="small">r -> d up-projection</text>
-  <text x="705" y="476" text-anchor="middle" class="small">delta W = B A</text>
+  <text x="705" y="452" text-anchor="middle" class="small">r → d 升维投影</text>
+  <text x="705" y="476" text-anchor="middle" class="small">ΔW = B A</text>
 
   <rect x="590" y="200" width="230" height="110" class="box" fill="#fff1f2" stroke="#e11d48"/>
-  <text x="705" y="235" text-anchor="middle" class="label">base output</text>
+  <text x="705" y="235" text-anchor="middle" class="label">基础分支输出</text>
   <text x="705" y="262" text-anchor="middle" class="small">W0 x</text>
-  <text x="705" y="286" text-anchor="middle" class="small">frozen representation</text>
+  <text x="705" y="286" text-anchor="middle" class="small">冻结权重的输出</text>
 
   <rect x="900" y="240" width="140" height="90" class="box" fill="#f5f3ff" stroke="#8b5cf6"/>
   <text x="970" y="274" text-anchor="middle" class="label">+</text>
-  <text x="970" y="298" text-anchor="middle" class="small">merge / sum</text>
+  <text x="970" y="298" text-anchor="middle" class="small">合并 / 求和</text>
 
   <rect x="1090" y="210" width="170" height="90" class="box" fill="#ecfeff" stroke="#0891b2"/>
-  <text x="1175" y="244" text-anchor="middle" class="label">output</text>
+  <text x="1175" y="244" text-anchor="middle" class="label">输出</text>
   <text x="1175" y="270" text-anchor="middle" class="small">W0 x + BAx</text>
 
   <rect x="1290" y="210" width="240" height="90" class="box" fill="#fdf2f8" stroke="#db2777"/>
-  <text x="1410" y="244" text-anchor="middle" class="label">merged weight</text>
+  <text x="1410" y="244" text-anchor="middle" class="label">合并后的权重</text>
   <text x="1410" y="270" text-anchor="middle" class="small">W0 + alpha/r * B A</text>
 
   <path d="M 220 255 L 280 255" class="arrow"/>
@@ -69,6 +69,6 @@
   <path d="M 1260 255 L 1290 255" class="arrow"/>
 
   <rect x="80" y="570" width="1440" height="90" class="box" fill="#ffffff" stroke="#cbd5e1"/>
-  <text x="110" y="608" class="label">Read it in one line</text>
-  <text x="110" y="642" class="small">LoRA keeps the base branch frozen, learns a small low-rank correction on the side, and can merge that correction back before deployment.</text>
+  <text x="110" y="608" class="label">说明</text>
+  <text x="110" y="642" class="small">LoRA 冻结主分支，在旁路学习小型低秩增量；部署前可将增量合并回主权重。</text>
 </svg>

@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="620" viewBox="0 0 1600 620">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+    </marker>
+    <style>
+      .title { font-family: Noto Sans CJK SC; font-size: 30px; font-weight: 700; fill: #0f172a; }
+      .subtitle { font-family: Noto Sans CJK SC; font-size: 20px; fill: #475569; }
+      .label { font-family: Noto Sans CJK SC; font-size: 22px; font-weight: 700; fill: #0f172a; }
+      .text { font-family: Noto Sans CJK SC; font-size: 19px; fill: #334155; }
+      .code { font-family: monospace; font-size: 18px; font-weight: 700; fill: #0f172a; }
+      .small { font-family: Noto Sans CJK SC; font-size: 17px; fill: #475569; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="620" fill="#f8fafc"/>
+  <text x="800" y="48" text-anchor="middle" class="title">LoRA 可以插入哪些线性层</text>
+  <text x="800" y="82" text-anchor="middle" class="subtitle">先定位适配路径，再决定目标模块</text>
+
+  <rect x="70" y="145" width="250" height="170" rx="18" fill="#e2e8f0" stroke="#94a3b8" stroke-width="2"/>
+  <text x="195" y="185" text-anchor="middle" class="label">Decoder Block</text>
+  <text x="195" y="250" text-anchor="middle" class="text">Block 内的隐藏状态</text>
+
+  <path d="M320 230 H425" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M425 230 V170 H510" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)" fill="none"/>
+  <path d="M425 230 V390 H510" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)" fill="none"/>
+
+  <rect x="510" y="115" width="480" height="190" rx="18" fill="#dbeafe" stroke="#60a5fa" stroke-width="2"/>
+  <text x="750" y="157" text-anchor="middle" class="label">Attention：注意力路径</text>
+  <text x="550" y="205" class="code">q_proj / k_proj / v_proj / o_proj</text>
+  <text x="750" y="263" text-anchor="middle" class="small">先从较少投影层开始，再按任务扩展</text>
+
+  <rect x="510" y="335" width="480" height="190" rx="18" fill="#dcfce7" stroke="#4ade80" stroke-width="2"/>
+  <text x="750" y="377" text-anchor="middle" class="label">MLP：前馈变换路径</text>
+  <text x="550" y="425" class="code">gate_proj / up_proj / down_proj</text>
+  <text x="750" y="483" text-anchor="middle" class="small">可学习参数更多，显存开销也会增加</text>
+
+  <path d="M990 210 H1080" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M990 430 H1080" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="1080" y="145" width="430" height="330" rx="18" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="1295" y="205" text-anchor="middle" class="label">选择原则</text>
+  <text x="1295" y="270" text-anchor="middle" class="text">先少后多</text>
+  <text x="1295" y="325" text-anchor="middle" class="text">结合任务和模型结构</text>
+  <text x="1295" y="380" text-anchor="middle" class="text">再检查参数与显存预算</text>
+
+  <rect x="70" y="555" width="1440" height="40" rx="12" fill="#e0f2fe"/>
+  <text x="800" y="582" text-anchor="middle" class="small">说明：图中只示意 LoRA 的挂载位置，未展开 Attention 与 MLP 的完整数据流。</text>
+</svg>
