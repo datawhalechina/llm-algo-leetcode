@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 700" role="img" aria-labelledby="title desc">
-  <title id="title">End-to-end fine-tuning training loop</title>
-  <desc id="desc">Shows the full path from samples to collate, model forward, loss, accumulation, optimizer step, evaluation, and report.</desc>
+  <title id="title">端到端微调训练闭环</title>
+  <desc id="desc">展示从样本、批处理、模型前向、损失、梯度累积、优化器更新到评估和报告的完整路径。</desc>
   <defs>
     <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
       <stop offset="0%" stop-color="#f8fafc"/>
@@ -19,32 +19,32 @@
     </style>
   </defs>
   <rect width="1600" height="700" fill="url(#bg)"/>
-  <text x="64" y="66" class="title">End-to-end fine-tuning: the training loop as a closed system</text>
-  <text x="64" y="96" class="sub">A valid experiment connects data, model, loss, optimization, evaluation, and reporting into one closed loop.</text>
+  <text x="64" y="66" class="title">端到端微调：训练闭环如何接通</text>
+  <text x="64" y="96" class="sub">一个可验证的实验，需要把数据、模型、损失、优化、评估和报告连接起来。</text>
 
   <rect x="70" y="180" width="180" height="92" class="box" fill="#fff7ed" stroke="#f59e0b"/>
-  <text x="160" y="214" text-anchor="middle" class="label">Samples</text>
+  <text x="160" y="214" text-anchor="middle" class="label">样本</text>
   <text x="160" y="240" text-anchor="middle" class="small">prompt / response</text>
 
   <rect x="300" y="180" width="190" height="92" class="box" fill="#eff6ff" stroke="#3b82f6"/>
-  <text x="395" y="214" text-anchor="middle" class="label">Collate</text>
+  <text x="395" y="214" text-anchor="middle" class="label">批处理</text>
   <text x="395" y="240" text-anchor="middle" class="small">input_ids / mask / labels</text>
 
   <rect x="540" y="180" width="210" height="92" class="box" fill="#ecfccb" stroke="#65a30d"/>
-  <text x="645" y="214" text-anchor="middle" class="label">Model forward</text>
+  <text x="645" y="214" text-anchor="middle" class="label">模型前向</text>
   <text x="645" y="240" text-anchor="middle" class="small">logits</text>
 
   <rect x="800" y="180" width="170" height="92" class="box" fill="#f5f3ff" stroke="#8b5cf6"/>
-  <text x="885" y="214" text-anchor="middle" class="label">Loss</text>
+  <text x="885" y="214" text-anchor="middle" class="label">损失</text>
   <text x="885" y="240" text-anchor="middle" class="small">SFT / next token</text>
 
   <rect x="1020" y="180" width="220" height="92" class="box" fill="#ecfeff" stroke="#0891b2"/>
-  <text x="1130" y="214" text-anchor="middle" class="label">Accumulation</text>
-  <text x="1130" y="240" text-anchor="middle" class="small">backward over micro-batches</text>
+  <text x="1130" y="214" text-anchor="middle" class="label">梯度累积</text>
+  <text x="1130" y="240" text-anchor="middle" class="small">多个 micro-batch 反向传播</text>
 
   <rect x="1290" y="180" width="220" height="92" class="box" fill="#fdf2f8" stroke="#db2777"/>
-  <text x="1400" y="214" text-anchor="middle" class="label">Optimizer step</text>
-  <text x="1400" y="240" text-anchor="middle" class="small">update / zero_grad</text>
+  <text x="1400" y="214" text-anchor="middle" class="label">优化器更新</text>
+  <text x="1400" y="240" text-anchor="middle" class="small">step / zero_grad</text>
 
   <path d="M 250 226 L 300 226" class="arrow"/>
   <path d="M 490 226 L 540 226" class="arrow"/>
@@ -53,25 +53,25 @@
   <path d="M 1240 226 L 1290 226" class="arrow"/>
 
   <rect x="250" y="340" width="360" height="112" class="box" fill="#ffffff" stroke="#cbd5e1"/>
-  <text x="430" y="376" text-anchor="middle" class="label">Evaluation path</text>
+  <text x="430" y="376" text-anchor="middle" class="label">评估路径</text>
   <text x="430" y="404" text-anchor="middle" class="small">train loss / val loss / sanity check</text>
-  <text x="430" y="430" text-anchor="middle" class="small">did the loop really learn?</text>
+  <text x="430" y="430" text-anchor="middle" class="small">确认闭环确实产生学习</text>
 
   <rect x="680" y="340" width="360" height="112" class="box" fill="#ffffff" stroke="#cbd5e1"/>
-  <text x="860" y="376" text-anchor="middle" class="label">Report path</text>
-  <text x="860" y="404" text-anchor="middle" class="small">initial / final loss / history</text>
-  <text x="860" y="430" text-anchor="middle" class="small">samples and notes</text>
+  <text x="860" y="376" text-anchor="middle" class="label">报告路径</text>
+  <text x="860" y="404" text-anchor="middle" class="small">初始 / 最终 loss / history</text>
+  <text x="860" y="430" text-anchor="middle" class="small">样本与实验记录</text>
 
   <rect x="1110" y="340" width="360" height="112" class="box" fill="#ffffff" stroke="#cbd5e1"/>
-  <text x="1290" y="376" text-anchor="middle" class="label">Control path</text>
-  <text x="1290" y="404" text-anchor="middle" class="small">repeat, accumulate, step, evaluate</text>
-  <text x="1290" y="430" text-anchor="middle" class="small">a loop, not a one-shot call</text>
+  <text x="1290" y="376" text-anchor="middle" class="label">训练控制</text>
+  <text x="1290" y="404" text-anchor="middle" class="small">重复、累积、更新、评估</text>
+  <text x="1290" y="430" text-anchor="middle" class="small">循环训练，而非单次调用</text>
 
   <path d="M 1400 272 C 1400 320 1290 320 1290 340" class="arrow"/>
   <path d="M 1130 272 C 1130 320 860 320 860 340" class="arrow"/>
   <path d="M 885 272 C 885 320 430 320 430 340" class="arrow"/>
 
   <rect x="70" y="520" width="1460" height="110" class="box" fill="#ffffff" stroke="#cbd5e1"/>
-  <text x="100" y="558" class="label">Read it in one line</text>
-  <text x="100" y="592" class="small">This page is about proving that data construction, loss, optimizer cadence, evaluation, and reporting all belong to the same experiment loop.</text>
+  <text x="100" y="558" class="label">一条线读懂</text>
+  <text x="100" y="592" class="small">本节要验证：数据构造、损失计算、更新节奏、评估和报告属于同一个训练实验。</text>
 </svg>

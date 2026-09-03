@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+  <title id="title">端到端微调训练组件</title>
+  <desc id="desc">展示端到端微调实验中的数据、模型、损失、优化器和评估五个组成部分，以及它们之间的数据流。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#eff6ff"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+    </marker>
+    <style>
+      .title { font: 700 30px "Inter", "Noto Sans SC", sans-serif; fill: #0f172a; }
+      .sub { font: 500 16px "Inter", "Noto Sans SC", sans-serif; fill: #475569; }
+      .label { font: 700 18px "Inter", "Noto Sans SC", sans-serif; fill: #111827; }
+      .small { font: 500 14px "Inter", "Noto Sans SC", sans-serif; fill: #334155; }
+      .box { stroke-width: 2.5; rx: 16; ry: 16; }
+      .arrow { stroke: #475569; stroke-width: 4; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1500" height="470" fill="url(#bg)"/>
+  <text x="60" y="58" class="title">端到端微调的五个组成部分</text>
+  <text x="60" y="88" class="sub">从数据构造开始，经模型与损失计算完成参数更新，再用评估检查训练结果。</text>
+
+  <rect x="60" y="160" width="220" height="110" class="box" fill="#fff7ed" stroke="#f59e0b"/>
+  <text x="170" y="201" text-anchor="middle" class="label">数据层</text>
+  <text x="170" y="229" text-anchor="middle" class="small">prompt / response</text>
+  <text x="170" y="251" text-anchor="middle" class="small">batch 与 labels</text>
+
+  <rect x="350" y="160" width="220" height="110" class="box" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="460" y="201" text-anchor="middle" class="label">模型层</text>
+  <text x="460" y="229" text-anchor="middle" class="small">embedding → backbone</text>
+  <text x="460" y="251" text-anchor="middle" class="small">输出 logits</text>
+
+  <rect x="640" y="160" width="220" height="110" class="box" fill="#f5f3ff" stroke="#8b5cf6"/>
+  <text x="750" y="201" text-anchor="middle" class="label">损失层</text>
+  <text x="750" y="229" text-anchor="middle" class="small">next-token 对齐</text>
+  <text x="750" y="251" text-anchor="middle" class="small">忽略 prompt / padding</text>
+
+  <rect x="930" y="160" width="220" height="110" class="box" fill="#ecfeff" stroke="#0891b2"/>
+  <text x="1040" y="201" text-anchor="middle" class="label">优化层</text>
+  <text x="1040" y="229" text-anchor="middle" class="small">backward / 累积梯度</text>
+  <text x="1040" y="251" text-anchor="middle" class="small">optimizer.step()</text>
+
+  <rect x="1220" y="160" width="220" height="110" class="box" fill="#fdf2f8" stroke="#db2777"/>
+  <text x="1330" y="201" text-anchor="middle" class="label">评估层</text>
+  <text x="1330" y="229" text-anchor="middle" class="small">train / val loss</text>
+  <text x="1330" y="251" text-anchor="middle" class="small">sanity check</text>
+
+  <path d="M 280 215 L 350 215" class="arrow"/>
+  <path d="M 570 215 L 640 215" class="arrow"/>
+  <path d="M 860 215 L 930 215" class="arrow"/>
+  <path d="M 1150 215 L 1220 215" class="arrow"/>
+
+  <rect x="230" y="350" width="1040" height="62" class="box" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="750" y="389" text-anchor="middle" class="label">实验判据：接口对齐 · 参数更新 · loss 下降 · 结果可记录</text>
+</svg>
