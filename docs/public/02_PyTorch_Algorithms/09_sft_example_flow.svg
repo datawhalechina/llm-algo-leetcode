@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 520" role="img" aria-labelledby="title desc">
+  <title id="title">SFT 训练序列与逐个 token 的预测</title>
+  <desc id="desc">展示 prompt 与多 token response 拼接成训练序列后，模型按顺序预测下一个 token，并将 response 与 EOS 作为目标 token。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop offset="0%" stop-color="#f8fafc"/><stop offset="100%" stop-color="#eef2ff"/></linearGradient>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0,0 L12,6 L0,12 Z" fill="#64748b"/></marker>
+    <style>
+      .title { font: 700 30px "Inter", "Noto Sans SC", sans-serif; fill: #0f172a; }
+      .label { font: 700 20px "Inter", "Noto Sans SC", sans-serif; fill: #111827; }
+      .body { font: 500 18px "Inter", "Noto Sans SC", sans-serif; fill: #334155; }
+      .small { font: 500 16px "Inter", "Noto Sans SC", sans-serif; fill: #475569; }
+      .box { stroke-width: 2.5; rx: 16; ry: 16; }
+      .arrow { stroke: #64748b; stroke-width: 3; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1600" height="520" fill="url(#bg)"/>
+  <text x="64" y="60" class="title">从问答样本到训练序列</text>
+  <rect x="64" y="120" width="310" height="150" class="box" fill="#fff7ed" stroke="#f59e0b"/>
+  <text x="219" y="158" text-anchor="middle" class="label">问答样本</text>
+  <text x="92" y="205" class="body">prompt：请计算 2 + 2。</text>
+  <text x="92" y="242" class="body">response：答案是 4。</text>
+  <line x1="395" y1="195" x2="485" y2="195" class="arrow"/>
+  <rect x="505" y="120" width="350" height="150" class="box" fill="#e0f2fe" stroke="#0284c7"/>
+  <text x="680" y="158" text-anchor="middle" class="label">训练序列</text>
+  <text x="680" y="213" text-anchor="middle" class="body">[请, 计算, 2+2, 。, 答案, 是, 4, 。, EOS]</text>
+  <text x="680" y="248" text-anchor="middle" class="small">示意 token 序列：prompt + 多 token response + EOS</text>
+  <line x1="875" y1="195" x2="965" y2="195" class="arrow"/>
+  <rect x="985" y="120" width="250" height="150" class="box" fill="#ede9fe" stroke="#8b5cf6"/>
+  <text x="1110" y="158" text-anchor="middle" class="label">模型预测</text>
+  <text x="1110" y="213" text-anchor="middle" class="body">next-token</text>
+  <text x="1110" y="248" text-anchor="middle" class="small">位置 t → 预测 t+1</text>
+  <line x1="1255" y1="195" x2="1345" y2="195" class="arrow"/>
+  <rect x="1365" y="120" width="170" height="150" class="box" fill="#ecfccb" stroke="#65a30d"/>
+  <text x="1450" y="158" text-anchor="middle" class="label">目标 token</text>
+  <text x="1450" y="207" text-anchor="middle" class="body">答案 / 是 / 4</text>
+  <text x="1450" y="235" text-anchor="middle" class="body">。 / EOS</text>
+  <text x="1450" y="260" text-anchor="middle" class="small">逐位置预测</text>
+  <rect x="64" y="335" width="1471" height="105" class="box" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="92" y="375" class="label">说明</text>
+  <text x="92" y="413" class="body">训练时将 prompt 与 response 拼接成序列，并逐位置预测下一个 token；推理时只输入 prompt，再逐步生成 response。</text>
+</svg>

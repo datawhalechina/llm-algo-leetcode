@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 700" role="img" aria-labelledby="title desc">
-  <title id="title">SFT alignment diagram</title>
-  <desc id="desc">Shows prompt, response, eos, padding, attention mask, labels, and next-token shift alignment in supervised fine-tuning.</desc>
+  <title id="title">SFT 数据与损失对齐</title>
+  <desc id="desc">展示 prompt、response、EOS、padding、attention mask、labels 以及 next-token shift 在监督微调中的对齐关系。</desc>
   <defs>
     <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
       <stop offset="0%" stop-color="#f8fafc"/>
@@ -17,10 +17,10 @@
     </style>
   </defs>
   <rect width="1600" height="700" fill="url(#bg)"/>
-  <text x="64" y="66" class="title">SFT alignment: input_ids, attention_mask, labels</text>
-  <text x="64" y="96" class="sub">Prompt gives context, response carries supervision, padding is ignored, and logits shift by one step for next-token loss.</text>
+  <text x="64" y="66" class="title">SFT 数据对齐：input_ids、attention_mask、labels</text>
+  <text x="64" y="96" class="sub">Prompt 提供上下文，response 提供监督；padding 被忽略，logits 与 labels 错开一位计算 next-token loss。</text>
 
-  <text x="70" y="160" class="label">Token positions</text>
+  <text x="70" y="160" class="label">Token 位置</text>
   <line x1="220" y1="154" x2="1460" y2="154" class="axis"/>
   <g>
     <rect x="220" y="120" width="150" height="70" class="box" fill="#fff7ed" stroke="#f59e0b"/>
@@ -46,19 +46,19 @@
 
   <rect x="70" y="230" width="1460" height="90" class="chip"/>
   <text x="96" y="262" class="label">input_ids</text>
-  <text x="310" y="262" class="small">prompt token ids + response token ids + EOS + pad</text>
+  <text x="310" y="262" class="small">prompt token ids + response token ids + EOS + padding</text>
   <text x="96" y="292" class="label">attention_mask</text>
-  <text x="310" y="292" class="small">1 for real tokens, 0 for padding</text>
+  <text x="310" y="292" class="small">真实 token 为 1，padding 为 0</text>
 
   <rect x="70" y="360" width="1460" height="100" class="chip"/>
   <text x="96" y="392" class="label">labels</text>
-  <text x="220" y="392" class="small">prompt and pad positions -> -100</text>
-  <text x="220" y="422" class="small">response / EOS keep original token ids</text>
-  <text x="96" y="450" class="label">loss target</text>
-  <text x="220" y="450" class="small">next-token prediction after shift: logits[t] -> labels[t+1]</text>
+  <text x="220" y="392" class="small">prompt 和 padding 位置 → -100</text>
+  <text x="220" y="422" class="small">response / EOS 保留原 token id</text>
+  <text x="96" y="450" class="label">loss 目标</text>
+  <text x="220" y="450" class="small">错位一位后：logits[t] → labels[t+1]</text>
 
   <rect x="70" y="500" width="1460" height="120" class="chip"/>
-  <text x="96" y="536" class="label">Read it in one line</text>
-  <text x="120" y="574" class="small">Prompt tokens are visible context, response and EOS provide supervision, and padding should affect neither attention nor loss.</text>
-  <text x="120" y="604" class="small">Training only works when the shifted labels still contain real supervised tokens after truncation.</text>
+  <text x="96" y="536" class="label">说明</text>
+  <text x="120" y="574" class="small">Prompt 提供上下文，response / EOS 提供监督；padding 在当前 mask 配置下不参与 attention 和 loss。</text>
+  <text x="120" y="604" class="small">截断后仍需保留有效监督 token。</text>
 </svg>
