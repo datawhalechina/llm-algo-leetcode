@@ -28,7 +28,7 @@
 
 ## 学习顺序
 
-先阅读 Part 01 的算子融合基础，再用 Part 03 的 RMSNorm、Softmax 和 FlashAttention 实现观察不同组合。复杂图变换、IR 和 lowering 进入编译与图优化专题，不在本页展开。
+先阅读 Part 01 的算子融合基础，再用 Part 03 的 RMSNorm、Softmax 和 FlashAttention 实现观察不同组合。复杂图变换、IR 和 lowering 进入本专题的[图级优化与编译支撑模块](./graph_compiler/intro.md)。
 
 ## 本页出口
 

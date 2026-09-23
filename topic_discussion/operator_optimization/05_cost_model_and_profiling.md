@@ -38,3 +38,9 @@
 ## 本页出口
 
 你应能把一个 profiling 现象映射到可验证的优化动作，并说明为什么“某个 shape 上最快”不等于“所有 workload 上最优”。
+
+## 从 Part 02 · 44 迁移的自动调优机制
+
+原 [Part 02 · 44 通用预留](../../02_PyTorch_Algorithms/44_Reserved_44.ipynb) 的自动调优内容已归入本页：先用显存和延迟约束筛掉不可行配置，再对候选配置评分，最后保留候选、约束、评分和推荐理由。这里的重点是把 autotune 当作受约束的搜索与证据记录，而不是只报告一次最快运行。
+
+迁移后的统一记录至少包括：shape、dtype、block 配置、num warps、num stages、显存上限、延迟上限、编译时间、重复运行结果和最终选择理由。原 Notebook 仅保留迁移入口；算子优化路线中的 [Task 5：成本模型与 Profiling](./05_cost_model_and_profiling.md) 负责完整机制，Task 6 负责把候选搜索接入端到端项目。
