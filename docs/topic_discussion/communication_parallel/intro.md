@@ -42,7 +42,7 @@
 先按上面的 `Task1-6` 走 notebook 主线；遇到“为什么多卡不一定更快”“不同切分到底换来了什么”时，再回来看对应的专题正文。想看汇总版就进 [通信与并行正文](./casebook.md)，想按连续故事线走一遍就进 [通信与并行深入阅读](./walkthrough.md)。
 
 如果问题已经跨到别的专题：
-[性能分析](../profiling/intro.md) 负责证据链与等待热点，[显存优化](../memory_performance_tuning/intro.md) 负责显存分摊 trade-off，[监督微调与训练工程](../fine_tuning_training/intro.md) 负责训练工程闭环，[算子优化](../operator_optimization/intro.md) 负责具体 kernel 与算子实现，[编译与图优化](../compiler_graph_optimization/intro.md) 负责执行模型与 backend 约束。
+[性能分析](../profiling/intro.md) 负责证据链与等待热点，[显存优化](../memory_performance_tuning/intro.md) 负责显存分摊 trade-off，[监督微调与训练工程](../post_training_optimization/sft_foundation/intro.md) 负责训练工程闭环，[算子优化](../operator_optimization/intro.md) 负责具体 kernel 与算子实现，[编译与图优化](../operator_optimization/graph_compiler/intro.md) 负责执行模型与 backend 约束。
 
 ## 项目结论
 

@@ -21,8 +21,6 @@
 
 **关键词：** `GPTQ`, `AWQ`, `weight quantization`
 
-![GPTQ 与 AWQ 的校准路径](../public/02_PyTorch_Algorithms/40_gptq_awq_map_cn.svg)
-
 ---
 
 ## 前置阅读
@@ -34,34 +32,56 @@
 
 ---
 
-### Step 1: 为什么 4-bit 量化需要校准
+### Step 1: 低比特权重如何进入部署前校准
 
-W8A16 已经说明低比特可以减少权重存储，但继续压到 4-bit 后，所有权重使用同一套规则可能放大敏感通道的误差。本节先建立一个判断框架：校准数据提供激活统计，分组 scale 控制局部动态范围，GPTQ / AWQ 再用不同方式处理误差或保护敏感通道。
+W8A16 已经说明低比特可以减少权重存储，但继续压到 4-bit 后，量化误差会更容易影响敏感通道。先把一轮校准看成一条数据流：输入权重和代表性激活，提取校准统计，按分组确定 scale，再输出低比特权重、保护信息和可检查的重构误差。
 
-本节只模拟机制变量，不生成真实 GPTQ / AWQ artifact。学习重点是看清输入、校准信息、量化决策和重构误差之间的关系。
+量化结果还要经过保存、读取和执行三个环节：先形成可追溯的 artifact，再由 loader 读取并映射到 backend，最后由 kernel 执行。训练侧也可能量化梯度或优化器状态，但那服务于训练显存和更新稳定性，不属于本节的部署主线。
+
+| 部署环节 | 需要确认什么 | 学习时观察什么 |
+|---|---|---|
+| 校准与量化 | 校准样本、bit、group size、保护策略 | 统计是否稳定、误差是否可解释 |
+| Artifact | 权重、scale、保护信息和版本是否可追溯 | 表示是否完整、配置是否可复查 |
+| Loader / backend | 是否按目标 dtype 和格式读取，是否发生 fallback | 实际加载路径和 dtype |
+| Kernel / 服务 | 是否执行目标低比特路径，端到端是否受益 | 延迟、吞吐、显存和质量 |
+
+![量化对象、处理时机与部署验证](../public/02_PyTorch_Algorithms/40_quantization_landscape_cn.svg)
 
 ### Step 2: 校准数据与分组 scale
 
-校准样本不是训练数据，而是用来观察激活分布的代表性输入。模拟器先按输入通道汇总激活强度，再把权重按 `group_size` 划分，每组使用独立 scale。需要观察两个变量：校准统计是否能区分敏感通道，以及分组粒度变化后误差和元数据如何变化。
+校准样本不是训练数据，而是用来观察激活分布的代表性输入。模拟器先按输入通道汇总激活强度，再把权重按 `group_size` 划分，每组使用独立 scale。先比较样本量对统计稳定性的影响，再比较量化粒度对误差和元数据成本的影响。
 
-| 变量 | 改变什么 | 观察结果 |
-|---|---|---|
-| `calibration_samples` | 激活统计的样本量 | 重要性估计是否稳定 |
-| `group_size` | 每组共享 scale 的范围 | 重构误差与 scale 数量 |
+| 变量 / 粒度 | 改变什么 | 主要收益 | 主要代价与观察结果 |
+|---|---|---|---|
+| `calibration_samples` | 激活统计的样本量 | 统计更稳定 | 样本少时敏感通道判断可能抖动 |
+| per-tensor | 整个权重张量共享 scale | 元数据少、实现简单 | 局部异常值影响整层 |
+| per-channel | 每个通道独立 scale | 适应通道差异 | scale 数量增加 |
+| group-wise / `group_size` | 固定数量输入通道共享 scale | 在误差与元数据之间折中 | 分组越粗越容易受异常值影响，边界组需要单独处理 |
 
 ### Step 3: GPTQ 与 AWQ 的策略差异
 
-两种方法都属于部署前的权重量化，但关注点不同：
+两种方法都使用代表性输入帮助决定低比特权重如何处理，但观察对象不同。先比较它们使用的校准信号，再观察量化决策如何影响敏感通道、重构误差和元数据。可以把共同过程具体化为：校准激活 → 统计重要性 → 计算分组 scale → 保护或调整敏感权重 → 反量化 → 比较输出误差。
 
-- GPTQ：以层输出重构误差为主要观察对象；
-- AWQ：利用激活统计识别敏感通道，再对这些通道采取保护策略；
-- 共同点：都需要校准输入，且都不能仅凭权重绝对值判断最终质量。
+本节的 GPTQ/AWQ 模拟器把两种方法的核心决策信号放在同一组输入上：GPTQ 观察重构误差，AWQ 观察激活感知的通道重要性。真实工具链还会涉及 Hessian 或近似二阶信息、逐层误差补偿、缩放搜索和权重打包；学习者可以先用模拟结果建立判断，再把这些判断带到真实模型和部署结果中。
 
-本节的模拟结果只回答“分组、校准和保护策略如何影响局部误差”，真实模型质量和 backend 速度留给 67 节。
+| 方法 | 校准时主要观察什么 | 典型处理思路 | 本节可观察的结果 |
+|---|---|---|---|
+| GPTQ | 量化前后层输出的重构误差 | 根据校准信息调整量化结果，使层输出尽量接近原始输出 | 重构误差与分组配置的关系 |
+| AWQ | 激活统计中的敏感通道 | 对高影响通道采取保护或重缩放，再量化其余权重 | 敏感通道标记与误差变化 |
+| 共同基础 | 代表性校准输入、分组 scale 和低比特权重 | 先取得统计，再生成可部署的权重表示 | 权重恢复形状、误差和元数据成本 |
+
+![GPTQ 与 AWQ 的校准路径](../public/02_PyTorch_Algorithms/40_gptq_awq_map_cn.svg)
 
 ### Step 4: 实现、测试与结果解读
 
-下面的题目区实现 `WeightQuantizerSim`，测试区检查量化权重 dtype、scale 形状、敏感通道标记、恢复形状和重构误差。完成后再阅读参考实现和解析，重点对照每个 TODO 如何改变量化状态。
+题目区采用“固定骨架 + 机制 TODO”的设计：`WeightQuantizerSim` 已提供输入契约、状态字段、循环结构和错误检查，学习者只补全校准统计、分组数量、敏感通道掩码、scale、反量化和误差计算。每个 TODO 对应一个可验证的机制责任，并保留变量级提示；答案区与题目区使用相同的函数签名和控制流，只补上这些 TODO。
+
+| 实现部分 | 代码需要完成的工作 | 验证重点 |
+|---|---|---|
+| 校准统计 | 汇总输入通道激活强度 | 能识别用于保护的敏感通道 |
+| 分组量化 | 计算分组数量和 scale，并生成低比特权重 | dtype、scale 形状和边界分组正确 |
+| 反量化与误差 | 恢复权重并计算重构误差 | 输出形状一致，误差可计算且无异常值 |
+| 量化状态契约 | 保留量化配置、scale 和保护信息 | 能区分模拟结果与真实 artifact / backend 证据 |
 
 
 ```python
@@ -74,7 +94,11 @@ import torch.nn.functional as F
 
 ```python
 class WeightQuantizerSim(nn.Module):
-    """极简版 GPTQ / AWQ 权重量化模拟器。"""
+    """教学用 GPTQ / AWQ 权重量化模拟器。
+
+    它只保留校准统计、分组 scale、敏感通道保护、反量化和重构误差
+    这些机制骨架，不生成真实 GPTQ / AWQ artifact，也不代表目标
+    backend 已经使用低比特 kernel。"""
 
     def __init__(self, bits: int = 4, group_size: int = 32, method: str = "gptq", protect_ratio: float = 0.05, eps: float = 1e-8):
         super().__init__()
@@ -219,36 +243,67 @@ class WeightQuantizerSim(nn.Module):
 
 
 ```python
-# 测试你的实现
-def test_weight_quantizer():
-    try:
-        torch.manual_seed(0)
-        weight = torch.randn(4, 8)
-        acts = torch.randn(16, 8)
-        sim = WeightQuantizerSim(bits=4, group_size=4, method="awq", protect_ratio=0.25).fit(weight, acts)
-        restored = sim.dequantize()
-        y = sim.forward(torch.randn(2, 8))
-
-        assert sim.qweight.dtype == torch.int8
-        assert sim.scales.shape == (4, 2)
-        assert sim.importance.shape == (8,)
-        assert sim.protected_mask.any()
-        assert restored.shape == weight.shape
-        assert y.shape == (2, 4)
-        assert float(sim.mse(weight)) >= 0.0
-
-        gptq = WeightQuantizerSim(bits=4, group_size=4, method="gptq").fit(weight, acts)
-        assert not gptq.protected_mask.any()
-        assert gptq.dequantize().shape == weight.shape
-
-        print("✅ WeightQuantizerSim 测试通过")
-    except NotImplementedError as e:
-        raise NotImplementedError("请先完成 TODO 代码！") from e
-    except (AttributeError, NameError, TypeError, ValueError, RuntimeError, AssertionError) as e:
-        raise NotImplementedError("请先完成 TODO 代码！") from e
+def test_calibration_importance_contract():
+    torch.manual_seed(0)
+    sim = WeightQuantizerSim(bits=4, group_size=4, method='awq', protect_ratio=0.25)
+    acts = torch.randn(16, 8)
+    importance = sim._collect_importance(acts, 8)
+    assert importance.shape == (8,)
+    assert torch.isfinite(importance).all()
 
 
-test_weight_quantizer()
+def test_group_partition_contract():
+    weight = torch.randn(4, 10)
+    sim = WeightQuantizerSim(bits=4, group_size=4, method='gptq').fit(weight)
+    assert sim.scales.shape == (4, 3)
+    assert sim.qweight.shape == weight.shape
+    assert sim.dequantize().shape == weight.shape
+
+
+def test_awq_protection_contract():
+    torch.manual_seed(0)
+    weight = torch.randn(4, 8)
+    acts = torch.randn(16, 8)
+    sim = WeightQuantizerSim(bits=4, group_size=4, method='awq', protect_ratio=0.25).fit(weight, acts)
+    assert sim.protected_mask.any()
+    assert sim.protected_weight[sim.protected_mask].numel() > 0
+    restored = sim.dequantize()
+    assert torch.allclose(restored[sim.protected_mask], sim.protected_weight[sim.protected_mask])
+
+
+def test_dequantization_contract():
+    weight = torch.randn(4, 8)
+    sim = WeightQuantizerSim(bits=4, group_size=4, method='gptq').fit(weight)
+    restored = sim.dequantize()
+    assert restored.shape == weight.shape
+    assert torch.isfinite(restored).all()
+    assert float(sim.mse(weight)) >= 0.0
+
+
+def test_gptq_awq_difference_contract():
+    torch.manual_seed(0)
+    weight = torch.randn(4, 8)
+    acts = torch.randn(16, 8)
+    gptq = WeightQuantizerSim(bits=4, group_size=4, method='gptq').fit(weight, acts)
+    awq = WeightQuantizerSim(bits=4, group_size=4, method='awq', protect_ratio=0.25).fit(weight, acts)
+    assert not gptq.protected_mask.any()
+    assert awq.protected_mask.any()
+    assert awq.dequantize().shape == gptq.dequantize().shape
+
+
+def run_gptq_awq_tests():
+    for test in (
+        test_calibration_importance_contract,
+        test_group_partition_contract,
+        test_awq_protection_contract,
+        test_dequantization_contract,
+        test_gptq_awq_difference_contract,
+    ):
+        test()
+    print('✅ GPTQ/AWQ 模拟机制测试通过：校准、分组、保护、反量化与方法差异均已验证。')
+
+
+run_gptq_awq_tests()
 
 ```
 
@@ -459,9 +514,29 @@ class WeightQuantizerSim(nn.Module):
 
 ![GPTQ AWQ GPU 机制实验流程](../public/02_PyTorch_Algorithms/40_gptq_awq_gpu_mechanism_flow.svg)
 
-实验从真实模型的 `q_proj` forward hook 取得校准激活，再在 GPU 上比较 GPTQ / AWQ 教学模拟器的校准耗时、分组和重构误差。它验证的是“真实模型状态上的机制模拟”，不生成真实 GPTQ / AWQ artifact，也不启动 vLLM / SGLang；证据等级记为 `gpu_simulation_on_real_model_state`。
+实验从真实模型的 q_proj forward hook 取得校准激活，再在 GPU 上比较 GPTQ / AWQ 教学模拟器的校准耗时、分组和重构误差。它验证的是“真实模型状态上的机制模拟”，不生成真实 GPTQ / AWQ artifact，也不启动 vLLM / SGLang；证据等级记为 gpu_simulation_on_real_model_state。
 
-先运行 `dry_run` 检查环境，再切换到 `real_gpu`。`CALIBRATION_SAMPLES` 会控制重复校准文本的数量；真实 artifact、kernel、吞吐和任务质量转到 67 节。
+#### 5.1 环境与校准 workload
+
+先确认 CUDA、模型版本、dtype 和校准文本数量。CALIBRATION_SAMPLES 控制校准文本数量；每次复测都应保留相同输入、bits、group_size、protect_ratio、warmup 和重复次数。
+
+#### 5.2 执行校准并保存 JSON
+
+先运行 dry_run 检查环境，再切换到 real_gpu。代码保存校准耗时、分组配置、runtime、失败状态和重构误差，便于复测。真实 artifact、kernel、吞吐和任务质量转到 67 节。
+
+#### 5.3 读取结果并解释证据
+
+结果只用于判断真实模型状态上的 GPTQ / AWQ 模拟路径；模拟误差只反映校准样本上的局部关系，不代表真实量化后端收益。
+
+#### 5.4 GPU 实验结果记录
+
+成熟库 artifact 还必须经过 backend 加载、kernel、延迟、吞吐和任务质量验证。
+
+| role | baseline / candidate | artifact | method | bits | group_size | calibration samples | runtime | weight MSE | output MSE | failure | evidence level | decision |
+|---|---|---|---|---:|---:|---:|---|---:|---:|---|---|---|
+| reference | baseline | FP16 layer / JSON path | none |  |  |  |  |  |  |  | gpu_simulation_on_real_model_state |  |
+| simulated | candidate | teaching artifact / JSON path | GPTQ or AWQ |  |  |  |  |  |  |  | gpu_simulation_on_real_model_state | accept / tune / reject |
+| mature path | candidate artifact | saved model artifact / backend path | GPTQ or AWQ |  |  |  |  |  |  |  | mature_library_artifact / backend_benchmark_pending | accept / tune / reject |
 
 
 ```python
@@ -483,6 +558,7 @@ PROTECT_RATIO = 0.05
 WARMUP = 2
 ITERS = 10
 OUTPUT_PATH = Path('benchmarks/results/40_gptq_awq_gpu.json')
+ARTIFACT_DIR = Path('benchmarks/results/40_gptq_awq_artifacts')
 
 torch.manual_seed(SEED)
 cuda_available = torch.cuda.is_available()
@@ -505,11 +581,16 @@ def _measure(fn):
     return round((time.perf_counter() - start) * 1000 / ITERS, 4)
 
 evidence_level = 'environment_preflight' if RUN_MODE == 'dry_run' else 'gpu_simulation_on_real_model_state'
-result = {'stage': evidence_level, 'run_mode': RUN_MODE, 'runtime': runtime, 'config': {
+result = {'stage': evidence_level, 'run_mode': RUN_MODE, 'runtime': runtime, 'json_path': str(OUTPUT_PATH),
+          'workload': {'model_id': MODEL_ID, 'layer_scope': 'q_proj',
+                       'calibration_samples': CALIBRATION_SAMPLES, 'calibration_prompts': CALIBRATION_PROMPTS},
+          'config': {
     'out_features': OUT_FEATURES, 'in_features': IN_FEATURES, 'calibration_samples': CALIBRATION_SAMPLES,
     'bits': BITS, 'group_size': GROUP_SIZE, 'protect_ratio': PROTECT_RATIO,
     'warmup': WARMUP, 'iters': ITERS, 'seed': SEED, 'model_id': MODEL_ID,
-}, 'evidence_level': evidence_level}
+}, 'evidence_level': evidence_level, 'baseline': 'FP16 layer and calibration output',
+   'candidate': ['GPTQ simulation', 'AWQ simulation'], 'artifact_dir': str(ARTIFACT_DIR),
+   'failure': None}
 if RUN_MODE == 'dry_run':
     result['decision'] = {'decision': 'ready_to_measure', 'reason': '仅完成环境与配置检查，尚未运行 GPU 校准测量。'}
 else:
@@ -535,15 +616,28 @@ else:
         weight = torch.randn(OUT_FEATURES, IN_FEATURES, device=device)
         activations = torch.randn(CALIBRATION_SAMPLES, IN_FEATURES, device=device)
     runs = {}
+    calibration_output = activations @ weight.t()
     for method in ('gptq', 'awq'):
         if device.type == 'cuda': torch.cuda.reset_peak_memory_stats()
         sim = WeightQuantizerSim(bits=BITS, group_size=GROUP_SIZE, method=method, protect_ratio=PROTECT_RATIO).to(device)
         elapsed = _measure(lambda: sim.fit(weight, activations))
         restored = sim.dequantize()
+        approx_output = activations @ restored.t()
+        artifact_path = ARTIFACT_DIR / f'{method}_simulation.pt'
+        ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
+        torch.save({'method': method, 'bits': BITS, 'group_size': GROUP_SIZE,
+                    'protect_ratio': PROTECT_RATIO, 'qweight': sim.qweight.cpu(),
+                    'scales': sim.scales.cpu(), 'protected_mask': sim.protected_mask.cpu(),
+                    'weight_shape': sim.weight_shape, 'evidence_level': 'teaching_simulation_artifact'},
+                   artifact_path)
         peak = torch.cuda.max_memory_allocated() / 2**20 if device.type == 'cuda' else None
         runs[method] = {'latency_ms': elapsed, 'peak_memory_mb': None if peak is None else round(peak, 2),
-                       'reconstruction_mse': round(float(sim.mse(weight)), 8),
-                       'protected_channels': int(sim.protected_mask.any(dim=0).sum())}
+                       'weight_reconstruction_mse': round(float(sim.mse(weight)), 8),
+                       'calibration_output_mse': round(float(torch.mean((calibration_output - approx_output) ** 2)), 8),
+                       'calibration_samples': int(activations.shape[0]),
+                       'protected_channels': int(sim.protected_mask.any(dim=0).sum()),
+                       'artifact_path': str(artifact_path),
+                       'evidence_level': 'teaching_simulation_artifact'}
     result['config'].update({'out_features': OUT_FEATURES, 'in_features': IN_FEATURES,
                             'actual_activation_shape': list(activations.shape), 'actual_calibration_samples': int(batch['input_ids'].shape[0]) if RUN_MODE == 'real_gpu' else CALIBRATION_SAMPLES,
                             'state_source': 'real_model_q_proj_hook' if RUN_MODE == 'real_gpu' else 'synthetic_cpu'})
@@ -554,21 +648,79 @@ OUTPUT_PATH.write_text(json.dumps(result, ensure_ascii=False, indent=2), encodin
 print(json.dumps(result, ensure_ascii=False, indent=2))
 ```
 
-#### GPU 实验结果记录
+**成熟库探针（可选）**：GPTQ 使用 Transformers 当前推荐的 GPT-QModel 路径；AWQ 使用 AutoAWQ 或加载已有 AWQ artifact。两者依赖和 kernel 兼容性不同，不在默认 CPU 验证中执行。
 
-| 方法 | bits | group_size | calibration samples | protect_ratio | reconstruction MSE | latency (ms) | peak memory (MB) | evidence level |
-|---|---:|---:|---:|---:|---:|---:|---:|---|
-| GPTQ simulation |  |  |  | 0 |  |  |  | gpu_simulation_on_real_model_state |
-| AWQ simulation |  |  |  |  |  |  |  | gpu_simulation_on_real_model_state |
+GPTQ / AWQ 的成熟库探针只记录校准数据、配置、artifact 路径和加载状态；真正的延迟、吞吐和任务质量仍需在固定 backend 中验证。
 
-模拟器结果只说明校准统计和重构误差关系；真实 GPTQ / AWQ artifact、kernel 和任务质量需要转到 67。
+```python
+RUN_MATURE_QUANT_PROBE = False  # 默认关闭；量化过程可能耗时且依赖独立 profile
+MATURE_QUANT_METHOD = 'gptq'  # gptq / awq；awq 默认加载已有兼容 artifact
+AWQ_MODEL_ID = ''  # 可选：已有 AWQ 模型目录或 Hub ID；不填写时不会伪造 AWQ 量化
+MATURE_OUTPUT_PATH = Path('benchmarks/results/40_mature_quant_probe.json')
+
+if not RUN_MATURE_QUANT_PROBE:
+    print('mature GPTQ/AWQ probe skipped; use the dedicated quantization profile to enable it.')
+else:
+    if not torch.cuda.is_available():
+        raise RuntimeError('RUN_MATURE_QUANT_PROBE=True requires CUDA.')
+    from transformers import AutoTokenizer
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, use_fast=True)
+    if MATURE_QUANT_METHOD == 'gptq':
+        from transformers import AutoModelForCausalLM, GPTQConfig
+        quant_config = GPTQConfig(bits=BITS, dataset=CALIBRATION_PROMPTS, tokenizer=tokenizer)
+        model = AutoModelForCausalLM.from_pretrained(MODEL_ID, device_map='auto',
+                                                     quantization_config=quant_config)
+        artifact_dir = Path('benchmarks/results/40_gptq_awq_artifacts/gptq_model')
+        model.to('cpu')
+        model.save_pretrained(artifact_dir)
+        tokenizer.save_pretrained(artifact_dir)
+        library = 'transformers + gptqmodel'
+    elif MATURE_QUANT_METHOD == 'awq':
+        if not AWQ_MODEL_ID:
+            raise ValueError('AWQ 需要已有 AutoAWQ/llm-awq 兼容 artifact；请先填写 AWQ_MODEL_ID。')
+        from transformers import AutoModelForCausalLM, AwqConfig
+        model = AutoModelForCausalLM.from_pretrained(AWQ_MODEL_ID, device_map='auto',
+                                                     quantization_config=AwqConfig(bits=BITS, group_size=GROUP_SIZE))
+        artifact_dir = Path('benchmarks/results/40_gptq_awq_artifacts/awq_loaded_model')
+        model.to('cpu')
+        model.save_pretrained(artifact_dir)
+        tokenizer.save_pretrained(artifact_dir)
+        library = 'transformers + AutoAWQ-compatible artifact'
+    else:
+        raise ValueError('MATURE_QUANT_METHOD must be gptq or awq.')
+    mature_result = {'json_path': str(MATURE_OUTPUT_PATH),
+                     'workload': {'model_id': MODEL_ID, 'calibration_prompts': CALIBRATION_PROMPTS,
+                                  'bits': BITS, 'group_size': GROUP_SIZE},
+                     'baseline': 'FP16 model or source artifact',
+                     'candidate': f'{MATURE_QUANT_METHOD} saved model artifact',
+                     'method': MATURE_QUANT_METHOD, 'library': library,
+                     'model_id': MODEL_ID, 'calibration_prompts': CALIBRATION_PROMPTS,
+                     'bits': BITS, 'artifact_path': str(artifact_dir),
+                     'evidence_level': 'mature_library_artifact', 'failure': None,
+                     'decision': 'artifact_created_backend_benchmark_pending'}
+    MATURE_OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    MATURE_OUTPUT_PATH.write_text(json.dumps(mature_result, ensure_ascii=False, indent=2), encoding='utf-8')
+    print(json.dumps(mature_result, ensure_ascii=False, indent=2))
+
+```
+
+#### 5.4 GPU 实验结果记录
+
+模拟器的 weight MSE 和 calibration output MSE 只说明校准样本上的局部误差关系；成熟库 artifact 还必须经过 backend 加载、kernel、延迟、吞吐和任务质量验证。
+
+| role | baseline / candidate | artifact | method | bits | group_size | calibration samples | runtime | weight MSE | output MSE | failure | evidence level | decision |
+|---|---|---|---|---:|---:|---:|---|---:|---:|---|---|---|
+| reference | baseline | FP16 layer / JSON path | none |  |  |  |  |  |  |  | gpu_simulation_on_real_model_state |  |
+| simulated | candidate | `.pt` teaching artifact / JSON path | GPTQ or AWQ |  |  |  |  |  |  |  | gpu_simulation_on_real_model_state | accept / tune / reject |
+| mature path | candidate artifact | saved model artifact / backend path | GPTQ or AWQ |  |  |  |  |  |  |  | mature_library_artifact / backend_benchmark_pending | accept / tune / reject |
 ## 相关阅读
 
 完成校准、分组、敏感通道保护和误差检查后，可以继续阅读 GPTQ / AWQ 原论文与真实部署项目。
 
 - [GPTQ 原论文：GPTQ: Accurate Post-Training Quantization for Generative Pre-trained Transformers](https://arxiv.org/abs/2210.17323)
 - [AWQ 原论文：Activation-aware Weight Quantization for LLM Compression and Acceleration](https://arxiv.org/abs/2306.00978)
-- [AutoGPTQ 官方仓库](https://github.com/AutoGPTQ/AutoGPTQ)
+- [Transformers GPTQ 官方文档（GPT-QModel）](https://huggingface.co/docs/transformers/quantization/gptq)
+- [Transformers AWQ 官方文档](https://huggingface.co/docs/transformers/quantization/awq)
 - [41. FP8 and KV Cache Quantization | FP8 与 KV Cache 量化](./41_FP8_and_KV_Cache_Quantization.md)
 - [67. Quantized Inference and Deployment | 量化推理与部署](./67_Quantized_Inference_and_Deployment.md)
 - [75. Memory Budget Compression Project | 显存预算压缩项目](./75_Memory_Budget_Compression_Project.md)

@@ -30,15 +30,8 @@ GRPO 的重点就是把这种“组内比较”变成训练信号：先把同组
 - [15. DPO Loss Tutorial | 直接偏好优化损失教程](../02_PyTorch_Algorithms/15_DPO_Loss_Tutorial.md)
 
 
-## 相关阅读
-
-**导语：** 完成对齐损失后，可以继续从性能分析和通信基础理解大规模对齐训练的工程瓶颈。
-
-- [P1: 13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
-- [P1: 20. NCCL and AllReduce Basics | NCCL 与 AllReduce 基础](../01_Hardware_Math_and_Systems/20_NCCL_and_AllReduce_Basics.md)
-
 ---
-### Step 1: 核心思想
+### Step 1：GRPO 的组内比较
 
 > **为什么需要 GRPO？**
 > GRPO 关注的是同一组样本内部的相对优劣，而不是把每个样本都单独拉到一个绝对奖励空间里。
@@ -46,6 +39,10 @@ GRPO 的重点就是把这种“组内比较”变成训练信号：先把同组
 > - 训练目标更稳，减少极端奖励对更新方向的冲击。
 > - 可以和策略比率裁剪一起使用，限制一次更新的幅度。
 > - 在某些场景下可以减少对显式 Critic 的依赖。
+
+如果任务有可验证的结果，例如数学答案、代码测试或格式约束，可以把规则验证器产生的结果作为 RLVR（Reinforcement Learning from Verifiable Rewards）信号。此时仍然要区分“验证器分数”和“真实任务质量”：验证器只覆盖它写出的规则。
+
+![GRPO 从候选组到策略更新的总览](/02_PyTorch_Algorithms/16_grpo_overview_cn.svg)
 
 #### 组内比较为什么更稳
 
@@ -72,7 +69,7 @@ GRPO 不直接拿这 4 个分数去做全局比较，而是分别在各自组内
 - 策略更新更关注“同一个 prompt 下谁更好”，而不是“不同 prompt 的 reward 绝对值有多大”。
 
 这也是 GRPO 适合做组内排序、候选比较和生成优化的原因。
-### Step 2: 数学形式
+### Step 2：组内优势与裁剪目标
 
 给定同一组中的奖励 $r_i$，先计算组内均值和标准差：
 
@@ -91,23 +88,41 @@ $$
 $$
 L = -\mathbb{E}[\min(ratio \cdot A, clip(ratio) \cdot A)]
 $$
-这一节的实现链路就是先做组内归一化，再构造 clipped surrogate，最后汇总成 GRPO loss。
+这条机制链先把奖励变成组内相对优势，再用策略比率和 clipped objective 限制更新幅度。代码实现留到 Step 4。
 
-### Step 3: 代码实现框架与任务拆解
+![GRPO 组内优势机制](/02_PyTorch_Algorithms/16_grpo_groupwise_mechanism_cn.svg)
 
-这一节的实现顺序很简单：先把同一组候选的奖励做组内归一化，再构造策略比率和 clipped surrogate，最后汇总成 GRPO loss。
+### Step 3：从奖励分组到策略更新
 
-#### 实现顺序
+把同一组候选的奖励做归一化后，正负优势会决定更新方向；策略比率和 clipped objective 再限制一次更新的幅度。这里先沿着机制链理解每个量的作用，代码实现留到 Step 4。
 
-1. `advantages`：按 `group_ids` 分组，把 reward 做去均值和标准差归一化。
-2. `ratio / surr1 / surr2`：再算策略比率，并构造两个 surrogate 目标。
-3. `loss`：最后取更保守的一侧，得到最终的 GRPO loss。
+#### 机制顺序
 
-#### 实现节奏
+1. 同一组候选共享一个比较基准：高于组均值的样本得到正优势，低于组均值的样本得到负优势。
+2. 策略比率表示新旧策略对同一响应的偏移程度，clipped objective 用于限制过大的偏移。
+3. 最终目标同时保留组内排序信号和更新幅度约束。
 
-- 如果 `advantages` 的组内中心化错了，后面的 loss 没有意义。
-- 如果 `ratio` 或 `clamp` 口径错了，GRPO 就会退化成错误的策略更新。
-- 如果 `loss` 没有取 `min(surr1, surr2)`，就失去了 clipped objective 的稳定性。
+#### 观察重点
+
+- 如果组内中心化错了，奖励尺度会重新干扰更新方向。
+- 如果策略比率偏移过大，单次更新可能破坏已有策略。
+- 如果缺少保守的 clipped objective，组内排序信号就可能被过激更新放大。
+
+#### RLVR 与 reward hacking
+
+| 情况 | 表面现象 | 应检查什么 |
+|:---|:---|:---|
+| 验证器过窄 | reward 上升，但答案只是在迎合格式 | 独立题集、人工抽检和反例 |
+| 奖励项失衡 | 长答案或固定模板获得高分 | 各奖励项分布、长度相关性和消融结果 |
+| 组内投机 | 同组候选分数拉开，但绝对质量没有提高 | baseline 质量、组外评测和失败案例 |
+| 验证器泄漏 | 训练集上 reward 很高，换规则后崩溃 | 独立 verifier、隐藏测试和数据隔离 |
+
+因此 GRPO 的 `advantage` 只说明候选在当前组内相对更好，不等于模型已经获得真实能力。RLVR 训练至少需要保留 verifier 版本、奖励组成、独立评测和失败样本，避免把 reward 上升直接当作能力提升。
+
+### Step 4：实现并验证 GRPO Loss
+
+请补全下方 `compute_grpo_loss` 函数，并运行测试，确认组内优势、策略比率、裁剪目标和梯度回传均符合前面定义的机制。
+
 
 ```python
 import torch
@@ -144,7 +159,7 @@ def compute_grpo_loss(log_probs_new, log_probs_old, rewards, group_ids, clip_ran
 
 ```python
 # 运行此单元格以测试你的实现
-def test_grpo_loss():
+def _legacy_test_grpo_loss():
     try:
         log_new = torch.tensor([-1.0, -0.5, -1.5, -0.2], requires_grad=True)
         log_old = torch.tensor([-1.1, -0.4, -1.6, -0.3])
@@ -175,6 +190,43 @@ def test_grpo_loss():
     except Exception as e:
         print(f"❌ 测试失败: {e}")
         raise
+
+# 机制测试入口：组内归一化、策略比率、clipping 和梯度分别验证。
+def _build_grpo_loss_case():
+    log_new = torch.tensor([-1.0, -0.5, -1.5, -0.2], requires_grad=True)
+    log_old = torch.tensor([-1.1, -0.4, -1.6, -0.3])
+    rewards = torch.tensor([1.0, 2.0, 0.5, 1.5])
+    group_ids = torch.tensor([0, 0, 1, 1])
+    return log_new, log_old, rewards, group_ids
+
+def _assert_group_normalization(advantages, group_ids):
+    for group_id in group_ids.unique(sorted=True):
+        group_advantage = advantages[group_ids == group_id]
+        assert torch.allclose(group_advantage.mean(), torch.tensor(0.0), atol=1e-6), "组内优势均值不为 0"
+
+def _assert_grpo_loss_and_ratio(log_new, log_old, rewards, group_ids):
+    loss, advantages = compute_grpo_loss(log_new, log_old, rewards, group_ids)
+    assert loss.ndim == 0 and torch.isfinite(loss), "Loss 必须是有限标量"
+    ratio = torch.exp(log_new.detach() - log_old)
+    assert torch.all(ratio > 0), "策略比率必须为正"
+    return loss, advantages
+
+def _assert_grpo_gradient(loss, log_new):
+    loss.backward()
+    assert log_new.grad is not None and torch.isfinite(log_new.grad).all(), "梯度没有回传到新策略"
+
+def test_grpo_loss():
+    try:
+        log_new, log_old, rewards, group_ids = _build_grpo_loss_case()
+        loss, advantages = _assert_grpo_loss_and_ratio(log_new, log_old, rewards, group_ids)
+        _assert_group_normalization(advantages, group_ids)
+        _assert_grpo_gradient(loss, log_new)
+        print("✅ GRPO 组内归一化、策略比率、clipping 和梯度测试通过。")
+    except (AttributeError, NameError, TypeError, ValueError) as e:
+        raise NotImplementedError("请先完成 TODO 部分的代码！") from e
+    except AssertionError as e:
+        print(f"❌ 测试失败: {e}")
+        raise NotImplementedError("请先完成 TODO 部分的代码！") from e
 
 test_grpo_loss()
 
@@ -257,3 +309,11 @@ def compute_grpo_loss(log_probs_new, log_probs_old, rewards, group_ids, clip_ran
 - 为什么 GRPO 通常不需要显式 Critic？
 - 如果把组内归一化换成全局归一化，会发生什么？
 - 这个实现和 PPO 的 clipped surrogate 有哪些本质相同与不同？
+
+## 相关阅读
+
+完成 GRPO Loss 后，可以继续阅读 GRPO/RLVR 的论文与训练框架实现。
+
+- [GRPO 原论文](https://arxiv.org/abs/2402.03300)
+- [TRL GRPOTrainer 文档](https://huggingface.co/docs/trl/grpo_trainer)
+- [13. End-to-End Fine-Tuning Experiment | 端到端微调实验](../02_PyTorch_Algorithms/13_End_to_End_Fine_Tuning_Experiment.md)

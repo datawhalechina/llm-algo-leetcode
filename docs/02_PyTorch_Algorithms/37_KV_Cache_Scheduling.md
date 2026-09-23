@@ -26,14 +26,14 @@
 
 **导语：** 进入本节前，先能读出一个缓存块的容量、命中和最近访问状态，再观察这些状态如何影响保留与驱逐顺序。
 - [22. vLLM PagedAttention | vLLM 分页注意力](./22_vLLM_PagedAttention.md)
-- [34. Prefix Caching and Chunked Prefill | 前缀缓存与分块预填充](./34_Prefix_Caching_and_Chunked_Prefill.md)
+- [34. Prefix Cache Matching and Reuse | Prefix Cache 匹配与复用](./34_Prefix_Cache_Matching_and_Reuse.md)
 - [36. Decode Scheduling | 解码调度](./36_Decode_Scheduling.md)
 
 ---
 
 ### Step 1: 为什么 KV Cache 需要调度
 
-多个请求同时生成时，KV Cache 不仅要保存可复用状态，还要在容量有限时决定保留谁、驱逐谁。前缀缓存提供复用线索，分页管理提供可分配的 block，请求访问过程持续更新命中次数和最近访问时间。
+多个请求同时生成时，KV Cache 不仅要保存可复用状态，还要在容量有限时决定保留谁、驱逐谁。前缀缓存提供复用线索，分页管理提供可分配的 block，请求访问过程持续更新命中次数和最近访问时间。本节位于四层调度的第二层：Cache 资源级调度，关注“谁还能继续占用状态空间”，不替代 36 的请求选择。
 
 本节的输入是缓存访问事件、单条缓存的大小与访问状态，以及全局容量；输出是可比较的缓存价值、驱逐顺序和容量快照。
 
@@ -585,6 +585,6 @@ else:
 
 - [PagedAttention 原论文：Efficient Memory Management for Large Language Model Serving](https://arxiv.org/abs/2309.06180)
 - [vLLM 官方仓库](https://github.com/vllm-project/vllm)
-- [38. Prefill-Decode Disaggregation | PD 分离](./38_Prefill_Decode_Disaggregation.md)
-- [39. Inference Fallback and Tiers | 推理分层与回退策略](./39_Inference_Fallback_and_Tiers.md)
+- [38. Prefill/Decode Scheduling | Prefill/Decode 调度](./38_Prefill_Decode_Scheduling.md)
+- [39. Hetero PD and Serving Tiers | 异构 PD 与服务分层](./39_Hetero_PD_and_Serving_Tiers.md)
 - [70. Serving Scheduler Benchmark | 服务调度基准项目](./70_Serving_Scheduler_Benchmark.md)

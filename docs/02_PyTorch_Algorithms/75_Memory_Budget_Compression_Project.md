@@ -22,7 +22,7 @@
 ## 前置阅读
 
 **导语：** 先了解激活检查点和卸载如何改变训练状态，再查看训练测量与 checkpoint / offload 对照结果，最后进入本节的显存预算筛选与决策。
-- [19. Activation Checkpointing | 激活检查点](./19_Activation_Checkpointing_and_Activation_Offload.md)
+- [19. Activation Checkpointing | 激活检查点](./19_Activation_Checkpointing.md)
 - [42. Activation Offload | 激活卸载](./42_Activation_Offload.md)
 - [73. Training Performance Analysis | 训练性能分析](./73_Training_Performance_Analysis.md)
 - [76. Activation Checkpoint Offload Benchmark | Activation / Checkpoint / Offload 对比项目](./76_Activation_Checkpoint_Offload_Benchmark.md)
@@ -38,6 +38,15 @@
 | 候选集合 | `baseline`、`checkpoint`、`offload`、`hybrid` | 这次准备比较哪些方案 |
 | 输出字段 | `feasible_names`、`best_candidate`、`memory_saving_mb`、`throughput_ratio` | 为后续比较准备统一字段 |
 
+
+预算不足时，不应直接把所有策略叠加，而要按峰值来源和代价安排裁剪顺序：先处理可解释、可回退的 activation 策略，再评估搬运、batch / sequence length 或模型规模变化。
+
+| 候选动作 | 优先观察 | 主要代价 |
+|:---|:---|:---|
+| checkpoint | activation 峰值与额外重算时间 | 计算时间增加 |
+| offload | 可迁移状态与传输路径 | 搬运、同步和调度开销 |
+| batch / sequence length | workload 是否允许缩小 | 吞吐、质量或服务能力变化 |
+| 模型规模 / dtype | 是否仍满足任务质量门槛 | 能力、精度或部署兼容性变化 |
 
 ![75 显存预算决策流程](../public/02_PyTorch_Algorithms/75_budget_decision_flow.svg)
 
@@ -272,7 +281,8 @@ def validate_memory_budget(budget: Dict[str, float], quality_floor: Dict[str, fl
     不为缺失字段补默认值；显存、吞吐、收益和质量阈值的单位由输入报告约定。
     """
     # ==========================================
-    # TODO 1 对应题目区：收集必需字段，并区分 missing_keys 与 invalid_keys。
+    # TODO 1 对应变量 required_budget_keys：收集预算必需字段。
+    # TODO 1 对应变量 missing_keys / invalid_keys：分别记录缺失字段和非法字段。
     # 提示：required_budget_keys / required_quality_keys 定义输入契约；
     # missing_keys 记录缺失字段，numeric_values 汇总待检查值，invalid_keys 记录非法字段。
     # ==========================================
@@ -316,7 +326,8 @@ def summarize_memory_strategies(candidates: List[Dict[str, object]], budget: Dic
     OOM、重复名称和缺失指标分别记录，不把失败实验伪装成零值。
     """
     # ==========================================
-    # TODO 2 对应题目区：evaluations 追踪状态，feasible 只保存通过三项门槛的候选。
+    # TODO 2 对应变量 evaluations / feasible：记录候选状态并保留可行候选。
+    # TODO 2 对应派生判断 memory_ok / speed_ok / quality_ok：对应显存、吞吐和质量门槛。
     # 提示：先处理 OOM、重复名称和无效指标，再用 memory_ok / speed_ok / quality_ok 筛选。
     # baseline 只用于计算显存节省和吞吐保留率，不参与候选排序。
     # ==========================================
@@ -394,7 +405,9 @@ def decide_memory_budget_project(summary: Dict[str, object]) -> Dict[str, object
     返回 decision、reason 和 next_action，供项目报告记录下一步动作。
     """
     # ==========================================
-    # TODO 3 对应题目区：按固定顺序把摘要字段收束为项目结论。
+    # TODO 3 对应变量 feasible_count：确认是否存在可行候选。
+    # TODO 3 对应派生判断 meaningful_memory_gain / acceptable_throughput：检查收益门槛。
+    # TODO 3 对应结果 decision / reason / next_action：收束为项目结论。
     # 提示：先读取 baseline_available / feasible_count，再判断收益布尔量，最后返回三个结论字段。
     # ==========================================
     feasible_count = summary['feasible_count']  # 可行候选数量

@@ -17,7 +17,7 @@
 
 ##### Task5：MoE 与结构技巧 - [07 MoE Load Balancing Loss](../../02_PyTorch_Algorithms/07_MoE_Load_Balancing_Loss.md) - [08 Architecture Tricks](../../02_PyTorch_Algorithms/08_Architecture_Tricks.md)
 
-##### Task6：训练、微调与学习率策略 - [09 SFT Training Loop](../../02_PyTorch_Algorithms/09_SFT_Training_Loop.md) - [10 LoRA Tutorial](../../02_PyTorch_Algorithms/10_LoRA_Tutorial.md) - [11 LR Schedulers WSD Cosine](../../02_PyTorch_Algorithms/11_LR_Schedulers_WSD_Cosine.md)
+##### Task6：训练、微调与学习率策略 - [09 SFT Training Loop](../../02_PyTorch_Algorithms/09_SFT_Training_Loop.md) - [10 LoRA Tutorial](../../02_PyTorch_Algorithms/10_LoRA_Tutorial.md) - [11 Optimizer Updates and Learning Rate Scheduling](../../02_PyTorch_Algorithms/11_Optimizer_Updates_and_Learning_Rate_Scheduling.md)
 
 ## 3. 群内讨论
 [Top 10 大模型算法系统核心基础知识](./group_topic_1.md)

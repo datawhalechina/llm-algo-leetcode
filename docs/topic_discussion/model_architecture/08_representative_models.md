@@ -286,7 +286,7 @@ DeepSeek-V3.2 把这条线推进到 `DSA`（DeepSeek Sparse Attention）。
 | `DeepSeek-V2` | 结构前沿起点 | `MLA`、KV cache 压缩 | `04`、`08` |
 | `DeepSeek-V3 / V3.2` | 稀疏 attention 深化 | `DSA`、长上下文、硬件友好稀疏执行 | `04`、`08`、`09` |
 | `DeepSeek-V4` | 新的结构代际入口 | 是否形成新的 attention / MoE / 系统组合样式 | `08` |
-| `DeepSeek-R1` | 后训练 / reasoning 分支 | reasoning 强化、后训练与推理模式，而非 block 主线 | `08`，后续更适合衔接 `post_training_alignment` |
+| `DeepSeek-R1` | 后训练 / reasoning 分支 | reasoning 强化、后训练与推理模式，而非 block 主线 | `08`，后续更适合衔接 `post_training_optimization` |
 
 这张表的核心作用不是追型号，而是先把问题分清楚：
 

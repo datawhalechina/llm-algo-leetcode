@@ -30,7 +30,7 @@
 - [17. PyTorch Profiling Basics | PyTorch 性能分析基础](./17_PyTorch_Profiling_Basics.md)
 - [P1: 14. FlashAttention Memory Model | FlashAttention 显存模型](../01_Hardware_Math_and_Systems/14_FlashAttention_Memory_Model.md)
 - [22. vLLM PagedAttention | vLLM PagedAttention](../02_PyTorch_Algorithms/22_vLLM_PagedAttention.md)
-- [34. Prefix Caching and Chunked Prefill | 前缀缓存与分块预填充](../02_PyTorch_Algorithms/34_Prefix_Caching_and_Chunked_Prefill.md)
+- [34. Prefix Cache Matching and Reuse | Prefix Cache 匹配与复用](../02_PyTorch_Algorithms/34_Prefix_Cache_Matching_and_Reuse.md)
 
 ## Q1：Q / K / V 分别承担什么职责？
 
@@ -163,9 +163,9 @@ print('✅ masked_softmax 通过')
 
 ```
 
-## Q4：什么时候必须把 QK^T、mask 和 V 串成一个最小闭环？
+## Q4：如何把 QK^T、mask、softmax 和 V 串成 Attention 闭环？
 
-只要你想读懂 Attention 的实现，就必须先把 score、mask、softmax 和 value 聚合串起来看，而不是分开背公式。这里的最小闭环，其实就是 Transformer block 里最核心的那一小段。
+读 Attention 实现时，要把 score、mask、softmax 和 value 聚合放回同一条数据流，而不是分开背公式。这个闭环就是 Transformer block 中最核心的一段：先得到匹配分数，再屏蔽未来位置，最后按权重聚合 V。
 
 
 ```python
@@ -198,9 +198,9 @@ print('✅ Attention 闭环通过')
 
 ```
 
-## Q5：Q / K / V 的 shape contract 怎么判断？
+## Q5：Attention 闭环中的 Q / K / V shape contract 如何检查？
 
-先看 batch、head、seq、hidden 四个维度是否拆对，再谈 attention 是否能对齐。对没有架构基础的人，可以先把它记成“query、key、value 必须在同一个批次和头数下对齐”。
+先检查 batch、head、seq、hidden 四个维度是否拆对，再判断 Attention 是否能对齐。对刚接触架构的学习者，可以先把它理解成：Q、K、V 必须在批次和 head 维度上对应，矩阵乘法只发生在约定的序列和特征维度上。
 
 
 ```python

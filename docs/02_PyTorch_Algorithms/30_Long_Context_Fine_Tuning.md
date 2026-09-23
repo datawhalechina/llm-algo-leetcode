@@ -32,7 +32,7 @@
 
 - [11. KV Cache and Memory Growth | KV Cache 与显存增长](../01_Hardware_Math_and_Systems/11_KV_Cache_and_Memory_Growth.md)
 - [12. Gradient Accumulation | 梯度累积](./12_Gradient_Accumulation.md)
-- [19. Activation Checkpointing and Activation Offload | 激活检查点与激活卸载](./19_Activation_Checkpointing_and_Activation_Offload.md)
+- [19. Activation Checkpointing | 激活检查点](./19_Activation_Checkpointing.md)
 
 ---
 

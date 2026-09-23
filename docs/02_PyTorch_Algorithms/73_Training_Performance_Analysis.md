@@ -159,7 +159,7 @@ def summarize_training_memory_ledger(model, optimizer):
 
     parameter_bytes = sum(tensor_bytes(parameter) for parameter in model.parameters())
     gradient_bytes = sum(tensor_bytes(parameter.grad) for parameter in model.parameters() if parameter.grad is not None)
-    optimizer_state_bytes = sum(tensor_bytes(value) for state in optimizer.state.values() for value in state.values() if hasattr(value, 'numel'))
+    optimizer_state_bytes = sum(tensor_bytes(value) for state in optimizer.state.values() for value in state.values() if torch.is_tensor(value))
     first_parameter = next(model.parameters(), None)
     return {
         'parameter_bytes': parameter_bytes,

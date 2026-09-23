@@ -66,7 +66,7 @@ x_hat = (q - zero_point) * scale
 
 CPU 或纯 PyTorch 实验可以验证量化公式、舍入、截断、误差统计和不同粒度的差异；它不能证明目标 GPU 是否调用了低比特 kernel，也不能替代 backend 的加载、显存和吞吐测试。进入 [67 量化推理与部署](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.md) 后，才检查真实 artifact 和执行路径。
 
-> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
+> 正文暂不嵌入未审核图示；专题路线图和知识地图统一见[量化与低比特适配深入阅读](./walkthrough.md)。
 
 ## 文献锚点
 

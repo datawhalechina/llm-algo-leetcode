@@ -29,9 +29,10 @@ RadixAttention 要解决的就是前缀复用问题：把已经算过的 prompt 
 
 ---
 
-### Step 1: 公共前缀与缓存复用
+### Step 1: RadixAttention 如何组织公共前缀复用
 
-重复出现的 System Prompt 或历史上下文会让请求反复执行相同的 prefill。RadixAttention 把已经出现过的 token 前缀登记成可查找的树路径，新请求先查找最长公共前缀，再只计算未命中的后缀。
+重复出现的 System Prompt 或历史上下文会让请求反复执行相同的 prefill。RadixAttention 的输入是已登记的 token 前缀和新请求 prompt，处理方式是沿 Radix Tree 查找最长公共前缀；输出是可复用的命中范围和需要继续计算的未命中后缀。
+先通过表格区分公共前缀、树路径、命中范围和未命中后缀，再观察主图中的查找与复用过程。本节先建立“前缀登记 → 最长匹配 → 命中复用 / 后缀计算”的整体视野；实际 KV Tensor 的存储、引用计数和释放由运行时缓存管理继续承接。
 
 | 概念 | 它记录什么 | 对请求执行的作用 |
 |---|---|---|
@@ -40,13 +41,11 @@ RadixAttention 要解决的就是前缀复用问题：把已经算过的 prompt 
 | 未命中后缀 | 从首个不一致 token 开始的剩余序列 | 继续执行 prefill，并登记为新分支 |
 | PagedAttention 对照 | 按物理 Block 管理 KV Cache；RadixAttention 按 token 前缀组织共享路径 | 前者解决分页分配，后者强调前缀查找与复用 |
 
-本节先建立“前缀登记 → 最长匹配 → 命中复用 / 后缀计算”的整体视野；实际 KV Tensor 的存储、引用计数和释放仍由 backend 的缓存管理负责。
-
 ![RadixAttention 前缀树图](../public/02_PyTorch_Algorithms/24_radix_attention_tree.svg)
 
 ### Step 2: Radix Tree 的插入、分裂与匹配
 
-用两条有公共前缀的请求观察路径如何插入、分裂和匹配：先沿共享边查找最长公共前缀，再把未命中的 token 留给后续 prefill。题目区会据此检查插入、边分裂、最长匹配和 prompt 拆分。
+用两条有公共前缀的请求观察路径如何插入、分裂和匹配：先沿共享边查找最长公共前缀，再把未命中的 token 留给后续 prefill。表格把每个操作与树的变化对应起来，帮助你从请求路径理解数据结构。
 
 | 操作 | 输入 | 树的变化 | 要观察的结果 |
 |---|---|---|---|
@@ -57,7 +56,7 @@ RadixAttention 要解决的就是前缀复用问题：把已经算过的 prompt 
 
 ### Step 3: 命中范围如何进入执行计划
 
-树匹配返回 token 范围，执行器还要把它转换成“复用多少、重新计算多少”的执行计划。最长公共前缀为：
+树匹配返回 token 范围，执行器还要把它转换成“复用多少、重新计算多少”的执行计划。先用公式说明命中长度，再用表格把命中前缀、未命中后缀和缓存句柄对应到下一步动作。最长公共前缀为：
 $$H = \max_j \operatorname{lcp}(prompt\_tokens, cached\_path_j)$$
 | 字段 | 含义 | 下一步 |
 |---|---|---|
@@ -72,22 +71,14 @@ $$H = \max_j \operatorname{lcp}(prompt\_tokens, cached\_path_j)$$
 
 ### Step 4: 实现并验证前缀缓存索引
 
-实现时把索引操作和执行计划分开检查，便于定位是树结构错误，还是命中范围转换错误。
-完成插入、`match_prefix`、`split_prompt` 后，确认四件事：公共边是否共享、最长命中长度是否正确、可复用前缀是否正确拆出、没有命中的 prompt 是否能回退到完整重算。
+代码接收已登记的 token 路径和新请求 prompt，完成插入、`match_prefix`、`split_prompt`，输出共享边、`hit_prefix` 与 `miss_suffix`。开始实现前，先明确每个函数要维护的状态，以及它如何影响命中结果和后续执行计划。
+实现时注意三点：`insert` 负责维护共享树结构，`match_prefix` 负责从 prompt 开头寻找完整命中，`split_prompt` 负责把命中部分与待计算部分交给执行器。部分重叠边必须分裂，未命中或空 prompt 不能误报命中。
 | 实现部分 | 需要完成的内容 | 验证重点 |
 |---|---|---|
+| 公共前缀计算 | `_lcp_len` 为边分裂和路径匹配提供公共边长度 | 遇到首个不一致 token 立即停止 |
 | 索引操作 | `insert`、`match_prefix`、`split_prompt` | 公共边共享，部分重叠时正确分裂 |
 | 执行计划 | 根据 `hit_len` 拆出 `hit_prefix` 与 `miss_suffix` | 命中部分复用，后缀继续 prefill |
 | 退化路径 | 处理未命中或空 prompt | 能回退到完整重算，不误报命中 |
-### 提示
-
-- `insert` 遇到部分重叠边时需要分裂旧边，不能继续把整条路径挂在根节点下。
-- `match_prefix` 只允许从 prompt 开头沿完整缓存边连续命中。
-- `split_prompt` 要把命中部分和未命中部分明确拆开。
-- Radix Tree 这里是教学简化版，重点看最长前缀匹配逻辑，不要被树结构本身带偏。
-### 测试
-
-运行下面的测试单元，确认最长前缀命中、拆分和回退逻辑都正确。
 
 ```python
 import torch
@@ -96,6 +87,7 @@ import torch
 
 ```python
 class TreeNode:
+    """表示一条压缩边及其子路径；`terminal` 表示完整路径在此结束。"""
     def __init__(self, key_tokens, terminal=False):
         self.key_tokens = list(key_tokens)  # 这条边上的 Token 序列
         self.children = []            # 子节点列表
@@ -103,6 +95,7 @@ class TreeNode:
         self.terminal = terminal      # 是否有完整请求在此结束
 
 class SimpleRadixCache:
+    """用压缩 Radix Tree 模拟公共 token 前缀的登记与匹配。"""
     def __init__(self):
         # 根节点是空的
         self.root = TreeNode([])
@@ -115,20 +108,21 @@ class SimpleRadixCache:
         node = self.root
         offset = 0
         while offset < len(tokens):
-            # TODO 1: 找到首 token 相同的 child，并计算公共边长度
-            # child = ???
-            # common = ???
+            # TODO 1: 找到首 token 相同的 child，并计算公共边长度。
+            # child = ???；common = ???
+            # 若没有同首 token 的 child，新增叶节点时要标记 terminal=True，
+            # 因为这条完整 token 路径已经登记，可以作为后续复用候选。
             if child is None:
-                node.children.append(TreeNode(tokens[offset:]))
+                node.children.append(TreeNode(tokens[offset:], terminal=True))
                 return
             if common == len(child.key_tokens):
                 node, offset = child, offset + common
                 continue
-            # TODO 2: 用 shared 边替换 child，并挂接旧后缀和新后缀
+            # TODO 2: 用 shared 边替换 child，并挂接旧后缀和新后缀。
             # shared = ???
             # old_suffix = ???
             # child.key_tokens = ???
-            # shared.children = ???
+            # shared.children = ???；同时保留旧 child 的 terminal、子节点和缓存指针。
             # node.children[...] = shared
             return
         
@@ -159,12 +153,14 @@ class SimpleRadixCache:
                 break
             offset += common
             node = child
-            # TODO 5: 只有终止节点才算完整可复用前缀
-            # best_match_len = ???
+            # TODO 5: 只有终止节点才算完整可复用前缀。
+            # 逐条边完整命中后，才根据 node.terminal 更新 best_match_len = ???
         return best_match_len
 
     def split_prompt(self, prompt_tokens):
-        """把 prompt 拆成可复用前缀和需要重算的后缀。"""
+        """把 prompt 拆成可复用前缀和需要重算的后缀。
+
+        `hit_prefix` 必须来自 prompt 的开头，`miss_suffix` 从首个未命中 token 开始。"""
         # ==========================================
         # TODO 6: 先找命中长度，再拆出前缀和后缀
         # 提示: hit_len 是可复用的前缀长度
@@ -193,6 +189,7 @@ def test_radix_attention():
         # 2. 多候选路径下，应该选择最长命中前缀
         match_len = cache.match_prefix([0, 1, 2, 3, 4, 5])
         assert match_len == 5, "匹配失败！应该命中最长的 5 个 token 前缀。"
+        assert cache.match_prefix([9, 9, 9]) == 3, "新建完整路径必须标记为 terminal！"
         assert cache.match_prefix([7, 6, 5]) == 0, "错误匹配！不该匹配到任何东西。"
         assert len(cache.root.children) == 2, "公共前缀没有被合并为共享边"
         shared = next(child for child in cache.root.children if child.key_tokens[0] == 0)
@@ -213,6 +210,19 @@ def test_radix_attention():
         assert hit_prefix2 == [], "无命中时前缀应为空！"
         assert miss_suffix2 == [7, 6, 5], "无命中时后缀应保持原样！"
         assert cache.split_prompt([0, 1, 2, 3, 4]) == ([0, 1, 2, 3, 4], [], 5), "完整命中时 suffix 应为空"
+        assert cache.match_prefix([]) == 0, "空 prompt 不应产生命中"
+        assert cache.split_prompt([]) == ([], [], 0), "空 prompt 的拆分结果不正确"
+        try:
+            cache.insert([])
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('空 token 路径不能登记')
+        # 反向分裂：新路径是旧路径的前缀，shared 节点仍需成为 terminal
+        reverse_cache = SimpleRadixCache()
+        reverse_cache.insert([4, 5, 6, 7])
+        reverse_cache.insert([4, 5])
+        assert reverse_cache.match_prefix([4, 5, 8]) == 2, "反向边分裂未保留 terminal"
         print("✅ 前缀拆分与回退逻辑正确！")
 
         print("\n 所有测试通过：共享边、最长命中和 prompt 拆分逻辑正确。")
@@ -260,6 +270,7 @@ test_radix_attention()
 
 ```python
 class TreeNode:
+    """表示一条压缩边及其子路径；`terminal` 表示完整路径在此结束。"""
     def __init__(self, key_tokens, terminal=False):
         self.key_tokens = list(key_tokens)
         self.children = []
@@ -267,14 +278,17 @@ class TreeNode:
         self.terminal = terminal
 
 class SimpleRadixCache:
+    """用压缩 Radix Tree 模拟公共 token 前缀的登记与匹配。"""
     def __init__(self):
         self.root = TreeNode([])
         
     def _find_child(self, node, token):
+        """返回首 token 匹配的子边；同一节点下不应出现重复首 token。"""
         return next((child for child in node.children if child.key_tokens and child.key_tokens[0] == token), None)
 
     def insert(self, tokens):
         """插入路径；部分重叠时分裂边，公共边由多个请求共享。"""
+        # TODO 1：参考实现——按首 token 找候选子边，并计算公共边长度。
         tokens = list(tokens)
         if not tokens:
             raise ValueError('tokens 不能为空')
@@ -288,6 +302,7 @@ class SimpleRadixCache:
             if common == len(child.key_tokens):
                 node, offset = child, offset + common
                 continue
+            # TODO 2：参考实现——保留旧后缀及其 terminal、子节点和缓存指针。
             shared = TreeNode(child.key_tokens[:common])
             old_suffix = TreeNode(child.key_tokens[common:], terminal=child.terminal)
             old_suffix.children = child.children
@@ -315,6 +330,7 @@ class SimpleRadixCache:
         """
         在现有树中，为新的 prompt_tokens 寻找最长的匹配前缀。
         """
+        # TODO 4：参考实现——只沿 prompt 开头的完整共享边向下匹配。
         prompt_tokens = list(prompt_tokens)
         node, offset, best_match_len = self.root, 0, 0
         while offset < len(prompt_tokens):
@@ -326,6 +342,7 @@ class SimpleRadixCache:
                 break
             offset += match_len
             node = child
+            # TODO 5：参考实现——只有 terminal 节点才更新可复用命中长度。
             if node.terminal:
                 best_match_len = offset
         return best_match_len
@@ -417,6 +434,6 @@ RadixAttention 可以继续从 SGLang 实现、前缀缓存和调度策略三个
 - [SGLang 官方仓库](https://github.com/sgl-project/sglang)
 - [SGLang 官方文档](https://docs.sglang.ai/)
 - [22. vLLM PagedAttention | vLLM 分页注意力](./22_vLLM_PagedAttention.md)
-- [34. Prefix Caching and Chunked Prefill | 前缀缓存与分块预填充](./34_Prefix_Caching_and_Chunked_Prefill.md)
+- [34. Prefix Cache Matching and Reuse | Prefix Cache 匹配与复用](./34_Prefix_Cache_Matching_and_Reuse.md)
 - [37. KV Cache Scheduling | KV Cache 调度](./37_KV_Cache_Scheduling.md)
 - [69. Prefix Caching Benchmark | 前缀缓存基准项目](./69_Prefix_Caching_Benchmark.md)

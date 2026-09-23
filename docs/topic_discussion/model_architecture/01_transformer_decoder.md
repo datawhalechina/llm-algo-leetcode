@@ -6,6 +6,10 @@
 
 本页的输出是结构总览：明确 token 如何进入自回归 decoder，以及后续 norm、attention、RoPE、MLP 和 residual 为什么都要围绕 block 组织。
 
+本页在 Task0 中负责说明“主干是什么、信息如何流动”；具体组件的数学和实现分别放在后续页面。阅读时先沿着 hidden state 的路径看完整结构，再回到每个组件理解细节。
+
+![Transformer Block 总览](../../public/topic_discussion/model_architecture/block_overview.svg)
+
 ## 问题起点
 
 Transformer 不是只有 encoder 和 decoder 两条分支，但在大模型时代，decoder-only 成了最常见的主干选择。
@@ -92,7 +96,7 @@ Transformer 不是只有 encoder 和 decoder 两条分支，但在大模型时�
 
 ## 可视化提示
 
-建议画一张 `encoder-decoder` 到 `decoder-only` 的对比图，标出：
+上图先作为 Task0 的 Block 总览。若需要补充 encoder-decoder 对比图，应单独标出：
 
 - 输入路径
 - causal mask
@@ -101,7 +105,7 @@ Transformer 不是只有 encoder 和 decoder 两条分支，但在大模型时�
 
 ## 进入下一页
 
-先进入 [02 Tokenization / BPE / Embedding](./02_tokenization_embedding.md)，确认 decoder block 接收的 hidden state 从哪里来。
+先进入 [02 Tokenization / BPE / Embedding](./02_tokenization_embedding.md)，确认 decoder block 接收的 hidden state 从哪里来；再依次阅读 Norm、Attention、RoPE、MLP，最后回到 [06 Block / Residual 主干](./06_block_residual_path.md) 组装完整路径。
 
 ## 阅读建议
 

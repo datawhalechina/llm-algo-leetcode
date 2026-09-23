@@ -29,7 +29,7 @@ Task1 再把对象放回硬件和运行时环境：dtype 决定对象的字节�
 故事可以从一个常见症状开始：某个 batch、序列长度或训练阶段触发 OOM。第一反应往往是缩 batch，但这通常只是止血动作，不是判断结论。更稳的做法是先沿训练侧显存链路排一遍：
 
 - Part 02 [12 Gradient Accumulation](../../02_PyTorch_Algorithms/12_Gradient_Accumulation.md)
-- Part 02 [19 Activation Checkpointing and Activation Offload](../../02_PyTorch_Algorithms/19_Activation_Checkpointing_and_Activation_Offload.md)
+- Part 02 [19 Activation Checkpointing](../../02_PyTorch_Algorithms/19_Activation_Checkpointing.md)
 - Part 02 [42 Activation Offload](../../02_PyTorch_Algorithms/42_Activation_Offload.md)
 - Part 02 [73 Training Performance Analysis](../../02_PyTorch_Algorithms/73_Training_Performance_Analysis.md)
 - Part 02 [76 Activation / Checkpoint / Offload Benchmark](../../02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.md)
@@ -50,7 +50,7 @@ Task1 再把对象放回硬件和运行时环境：dtype 决定对象的字节�
 推理侧不要求先完成训练项目；只要问题对象从 activation / optimizer state 转为权重、KV Cache 或推理临时空间，就可以从 Task1 直接进入这条分支。典型现象是模型能加载，但只要上下文拉长、并发上去，显存就被 KV Cache 顶满。这时要切到推理侧显存链路：
 
 - Part 02 [22 vLLM PagedAttention](../../02_PyTorch_Algorithms/22_vLLM_PagedAttention.md)
-- Part 02 [34 Prefix Caching and Chunked Prefill](../../02_PyTorch_Algorithms/34_Prefix_Caching_and_Chunked_Prefill.md)
+- Part 02 [34 Prefix Cache Matching and Reuse](../../02_PyTorch_Algorithms/34_Prefix_Cache_Matching_and_Reuse.md)
 - Part 02 [66 Inference Performance Comparison](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.md)
 
 核心路径先看 `22 -> 34`，再用 `66` 完成单 backend 最小验证；`24 RadixAttention`、`37 KV Cache Scheduling` 属于推理侧运行时扩展，`41 KV Cache Quantization` 和 `67` 的真实量化 backend 部署转入量化分支。请求路由、扩缩容和服务治理回到推理优化路线，不在这里继续展开。

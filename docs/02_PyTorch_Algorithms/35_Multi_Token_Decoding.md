@@ -1,5 +1,5 @@
-# 35. Multi Token Decoding | 多 Token 解码
-**难度：** Hard | **环境：** CPU-first | **标签：** `推理优化`, `解码`, `Multi-Token Decoding` | **目标人群：** 推理优化学习者
+# 35. Multi Token Decoding | 多 Token 投机解码
+**难度：** Hard | **环境：** CPU-first | **标签：** `推理优化`, `投机解码`, `Multi-Token Decoding` | **目标人群：** 推理优化学习者
 
 > 🚀 **云端运行环境**
 >
@@ -13,35 +13,40 @@
 
 ## 本节导读
 
-自回归生成最朴素的路径是“一次生成一个 token”：每轮推进一次状态，再进入下一轮解码。输出越长，解码轮数越多，单轮推进量就越值得关注。
+经典投机解码由独立草稿模型提出候选；另一类策略会通过多 token 预测头、多个候选或其他并行路径，在一轮中尝试推进更多 token。它们同样需要验证与回退，但候选来源、验证组织和质量保证方式可能不同。
 
-本节关注一次解码步实际推进多少 token：先提出一段候选，再按顺序验证，保留连续通过的前缀，并在首次拒绝处回退。学习重点是接受长度、`progress_per_round` 和验证成本之间的关系；它与 23 节共享外层流程，但更关注单轮推进效率，并为 36 节的调度和 68 节的 backend 基准提供指标。
+本节把多 Token 推进作为投机式生成的一条策略分支：先观察候选如何形成，再看连续接受、首次拒绝和回退如何决定有效推进量，最后把候选长度与验证成本放进同一条收益判断。
 
-**关键词：** `multi-token decoding`, `draft model`, `verification`, `rollback`
-
----
-
+**关键词：** `multi-token decoding`, `speculative decoding`, `verification`, `rollback`
 ## 前置阅读
 
-**导语：** 进入本节前，先理解单 token 解码和投机验证的顺序，再观察一次请求如何在一轮中推进多个候选 token。
+**导语：** 先理解单 token 解码怎样更新状态，以及投机验证怎样按位置推进；再观察一次请求如何在一轮中处理多个候选 token。
 - [21. Decoding Strategies | 解码策略](./21_Decoding_Strategies.md)
 - [23. Speculative Decoding | 投机解码](./23_Speculative_Decoding.md)
 
 ---
 
-### Step 1: 单轮多 Token 推进的机制
+### Step 1: 多 Token 推进在投机策略谱系中的位置
+
+多 Token 解码与经典 draft / target 投机解码共享“候选 → 验证 → 有效推进”的骨架，但不要求候选一定来自独立草稿模型。候选可以来自草稿模型、多预测头或多条候选路径；因此先明确候选来源与验证语义，不能把所有实现都默认视为同一种无损采样算法。
+
+| 路径 | 候选来源 | 验证与回退重点 | 阅读入口 |
+|---|---|---|---|
+| 经典投机解码 | 独立 draft model | 概率接受、residual correction、bonus | [23](./23_Speculative_Decoding.md) |
+| 多 Token 推进 | 多 token 候选序列或预测头 | 连续接受、首次拒绝、有效前缀 | 本节 |
+| 多候选 / 树验证 | 多条并行候选路径 | 覆盖范围与验证开销 | 扩展概念 |
 
 单 token 解码每轮只推进一个 token，需要反复进入 decoder 并更新 KV Cache。Multi-Token Decoding 先提出一段候选，再由目标模型顺序验证；连续通过的候选可以在同一轮推进，首次拒绝后则回退到更保守的生成路径。
 
-本节用教学规则记录接受长度和有效推进比例，帮助学习者先看清单轮控制流，再理解真实实现中的分布校正和 backend 成本。
+本节先用接受长度和有效推进比例描述一轮到底推进了多少 token，再把验证成本纳入收益判断。这样可以先看清控制流，再理解候选更长并不自动带来端到端收益。
 
 | 参与对象 | 输入 | 输出 | 本节观察重点 |
 |---|---|---|---|
 | 草稿模型（draft） | 当前上下文 | 候选 token 序列与概率 | 一轮提出多少候选 |
 | 目标模型（target） | 候选序列与当前前缀 | 每个候选的验证结果 | 从左到右接受到哪里 |
 | 解码状态 | 接受前缀、首次拒绝位置、回退后缀 | 下一轮的有效前缀 | 本轮实际推进多少 token |
-![多 Token 解码总览](../public/02_PyTorch_Algorithms/35_multi_token_overview.svg)
 
+![多 Token 解码总览](../public/02_PyTorch_Algorithms/35_multi_token_overview.svg)
 ### Step 2: 候选序列与验证状态
 
 先固定一轮验证所需的输入和状态，再观察候选如何从提议进入顺序验证。`draft_tokens`、`draft_probs` 和 `target_probs` 分别表示候选 token、草稿概率和目标概率；状态沿着“提议 → 顺序验证 → 首次拒绝 → 切分结果”变化。
@@ -69,7 +74,7 @@
 
 ### Step 4: 实现多 Token 解码器
 
-请补全下方 `MultiTokenDecoderSim`，实现一轮候选提议、逐 token 验证、首次拒绝停止和回退后缀切分。
+请补全下方 `MultiTokenDecoderSim`，实现一轮候选提议、逐 token 验证、首次拒绝停止和回退后缀切分。这里的回退后缀只标记待丢弃或重新生成的候选，不在本题中真正生成 correction token。
 | 实现部分 | TODO 关注点 | 结果检查 |
 |---|---|---|
 | 候选提议 | 按 `max_proposal_len` 截取候选 | 不超过最大提议长度 |
@@ -119,7 +124,7 @@ class MultiTokenDecoderSim:
         # ==========================================
         # TODO 2: 判断单个候选 token 是否被目标模型接受
         # 提示：正常情况下，target_prob 至少要达到
-        # draft_prob * min_accept_ratio；draft_prob <= 0 时单独处理。
+        # draft_prob * min_accept_ratio；draft_prob <= 0 时单独处理，并保持布尔返回值。
         # ==========================================
         if draft_prob <= 0:
             return target_prob > 0
@@ -155,7 +160,8 @@ class MultiTokenDecoderSim:
             target_prob = float(target_probs[i, token_id])
             # ==========================================
             # TODO 3: 逐个验证候选 token，遇到第一次拒绝就停止
-            # 提示: 调用 _accept_token 得到 accepted；后续接受/拒绝分支已经给出
+            # 提示：调用 _accept_token 得到 accepted；只有当前 token 被接受才能继续，
+            #       第一个拒绝位置写入 rejected_at，并立即停止后续验证。
             # ==========================================
             # accepted = ???
 
@@ -179,8 +185,8 @@ class MultiTokenDecoderSim:
         proposed = self.propose(draft_tokens)
         accepted_tokens, rejected_at = self.verify(draft_probs, target_probs, draft_tokens)
         # ==========================================
-        # TODO 4: 切出被拒绝后缀，形成完整解码结果
-        # 提示: rejected_at 为 None 表示全部接受；否则从 rejected_at 开始都是回退后缀
+        # TODO 4: 切出待丢弃或重新生成的回退后缀
+        # 提示：rejected_at 为 None 表示全部接受，返回空后缀；否则从 rejected_at 开始切出。
         # ==========================================
         # rejected_suffix = ???
 
@@ -311,7 +317,7 @@ class MultiTokenDecoderSim:
         # ==========================================
         # TODO 2: 判断单个候选 token 是否被目标模型接受
         # 提示：正常情况下，target_prob 至少要达到
-        # draft_prob * min_accept_ratio；draft_prob <= 0 时单独处理。
+        # draft_prob * min_accept_ratio；draft_prob <= 0 时单独处理，并保持布尔返回值。
         # ==========================================
         if draft_prob <= 0:
             return target_prob > 0
@@ -347,7 +353,8 @@ class MultiTokenDecoderSim:
             target_prob = float(target_probs[i, token_id])
             # ==========================================
             # TODO 3: 逐个验证候选 token，遇到第一次拒绝就停止
-            # 提示: 调用 _accept_token 得到 accepted；后续接受/拒绝分支已经给出
+            # 提示：调用 _accept_token 得到 accepted；只有当前 token 被接受才能继续，
+            #       第一个拒绝位置写入 rejected_at，并立即停止后续验证。
             # ==========================================
             accepted = self._accept_token(draft_prob, target_prob)
 
@@ -371,8 +378,8 @@ class MultiTokenDecoderSim:
         proposed = self.propose(draft_tokens)
         accepted_tokens, rejected_at = self.verify(draft_probs, target_probs, draft_tokens)
         # ==========================================
-        # TODO 4: 切出被拒绝后缀，形成完整解码结果
-        # 提示: rejected_at 为 None 表示全部接受；否则从 rejected_at 开始都是回退后缀
+        # TODO 4: 切出待丢弃或重新生成的回退后缀
+        # 提示：rejected_at 为 None 表示全部接受，返回空后缀；否则从 rejected_at 开始切出。
         # ==========================================
         rejected_suffix = proposed[rejected_at:] if rejected_at is not None else []
 
@@ -424,11 +431,11 @@ class MultiTokenDecoderSim:
 
 ## 相关阅读
 
-完成候选生成、逐 token 验证和回退后缀处理后，可以继续阅读投机解码论文、推理引擎接口和真实 benchmark。
+完成候选生成、顺序验证和回退处理后，可以继续比较不同投机式生成路径的候选来源、验证成本与真实 benchmark。
 
 - [Medusa 原论文：Simple LLM Inference Acceleration Framework with Multiple Decoding Heads](https://arxiv.org/abs/2401.10782)
+- [Speculative Sampling 原论文](https://arxiv.org/abs/2302.01318)
 - [vLLM Speculative Decoding 文档](https://docs.vllm.ai/en/latest/features/spec_decode.html)
-- [Part 02 · 22 vLLM 分页注意力](./22_vLLM_PagedAttention.md)
-- [Part 02 · 36 解码调度](./36_Decode_Scheduling.md)
-- [Part 02 · 38 Prefill / Decode 分离](./38_Prefill_Decode_Disaggregation.md)
-- [Part 02 · 68 投机解码基准项目](./68_Speculative_Decoding_Benchmark.md)
+- [23. Speculative Decoding | 投机解码](./23_Speculative_Decoding.md)
+- [36. Decode Scheduling | Decode 调度](./36_Decode_Scheduling.md)
+- [68. Speculative Decoding Benchmark | 投机解码基准](./68_Speculative_Decoding_Benchmark.md)

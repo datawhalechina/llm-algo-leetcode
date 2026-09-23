@@ -242,7 +242,7 @@ assert 0 < utilization <= 1
 - [vLLM PagedAttention](https://arxiv.org/abs/2309.06180)：了解 KV Cache 分页管理如何进入真实推理服务。
 - [22. vLLM PagedAttention](../02_PyTorch_Algorithms/22_vLLM_PagedAttention.md)：观察 block 分配与分页寻址的机制模拟。
 - [24. SGLang RadixAttention](../02_PyTorch_Algorithms/24_SGLang_RadixAttention.md)：观察 Radix Tree 如何组织共享前缀。
-- [34. Prefix Caching and Chunked Prefill](../02_PyTorch_Algorithms/34_Prefix_Caching_and_Chunked_Prefill.md)：连接前缀复用与分块预填充。
+- [34. Prefix Cache Matching and Reuse](../02_PyTorch_Algorithms/34_Prefix_Cache_Matching_and_Reuse.md)：连接共享前缀匹配与复用；分块预填充见 38。
 - [37. KV Cache Scheduling](../02_PyTorch_Algorithms/37_KV_Cache_Scheduling.md)：继续学习多请求缓存调度。
 - [Part 01 · 11 KV Cache 与显存增长](./11_KV_Cache_and_Memory_Growth.md)
 - [Part 01 · 14 FlashAttention 显存模型](./14_FlashAttention_Memory_Model.md)

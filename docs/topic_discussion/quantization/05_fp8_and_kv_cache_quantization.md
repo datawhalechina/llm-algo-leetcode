@@ -27,10 +27,11 @@ FP8 的核心矛盾是：更低精度的执行路径能带来更好的吞吐和�
 
 ## 机制链
 
-FP8 主要改变计算或数据搬运路径，需要 scale 管理、硬件指令和 kernel 共同支持；KV Cache 量化则改变请求生命周期中 K/V 状态的存储与读取方式。二者都可能减少字节数，但影响的时间段不同：前者贯穿算子执行，后者集中在 decode 阶段的 cache 读写。
+激活量化先改变中间张量的表示，再决定 FP8 是否能沿着硬件和 kernel 路径执行；KV Cache 量化则改变请求生命周期中 K/V 状态的存储与读取方式。三者都可能减少字节数，但影响的时间段不同：激活量化影响算子之间的中间状态，FP8 影响执行路径，KV Cache 量化集中在 decode 阶段的 cache 读写。
 
 | 路线 | 主要对象 | 关键变量 | 需要对齐的 workload |
 |:---|:---|:---|:---|
+| 激活量化 | 中间激活与矩阵乘输入输出 | calibration、scale、异常值、累积精度 | prefill / decode、输入长度、输出长度 |
 | FP8 | 权重、激活或矩阵乘输入输出 | scaling、硬件能力、kernel、混合精度边界 | prefill / decode、输入长度、输出长度 |
 | KV Cache 量化 | 每个请求的 K/V 状态 | cache dtype、量化粒度、更新与反量化位置 | 上下文长度、并发、prefix sharing、TPOT |
 
@@ -51,9 +52,15 @@ FP8 主要改变计算或数据搬运路径，需要 scale 管理、硬件指令
 
 ## 证据边界
 
-CPU 实验适合验证 FP8 数值范围、scale 计算和 KV Cache 字节数估算；真实 GPU / serving backend 才能验证硬件执行路径、cache 分配、TTFT、TPOT、并发容量和任务质量。`torch.cuda.is_bf16_supported()` 或格式字段本身不能替代 kernel 和 workload 实测。
+| 证据层级 | 能回答什么 | 不能替代什么 |
+|:---|:---|:---|
+| CPU / 数值模拟 | scale、量化误差、字节数、KV Cache 账本 | 真实 kernel、显存和服务延迟 |
+| GPU 探针 | FP8 dtype、scale、Tensor Core 候选路径是否可运行 | 目标 serving backend 的完整行为 |
+| backend benchmark | cache 分配、TTFT、TPOT、并发、质量和回退路径 | 不同 workload 下的泛化结论 |
 
-> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
+`torch.cuda.is_bf16_supported()` 或格式字段本身不能替代 kernel 和 workload 实测。激活量化、FP8 探针、KV Cache 模拟和 serving backend 结果必须分别记录，不能合并成一个“量化有效”结论。
+
+> 正文暂不嵌入未审核图示；专题路线图和知识地图统一见[量化与低比特适配深入阅读](./walkthrough.md)。
 
 ## 文献锚点
 
@@ -62,8 +69,11 @@ CPU 实验适合验证 FP8 数值范围、scale 计算和 KV Cache 字节数估�
 
 ## 对应 Part 02
 
-- `41` FP8 与 KV Cache 量化
-- `67` 量化推理与部署
+- `41` 负责 CPU 机制、真实 KV 状态模拟和 FP8 GPU 探针；
+- `66` 提供同一模型与 workload 的浮点 baseline；
+- `67` 负责真实量化 artifact、backend 加载和部署 benchmark。
+
+如果量化导致任务质量低于门槛，不要把 `41` 的模拟结果直接当成训练方案；可以转入 `65` 评估 QLoRA 训练适配，生成新的 adapter 或 merged model 后，再回到 `66` 建立浮点参照，并由 `67` 验证最终推理 artifact。
 
 ## 典型阅读入口
 

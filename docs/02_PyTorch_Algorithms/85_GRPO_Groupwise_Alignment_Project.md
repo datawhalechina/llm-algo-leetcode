@@ -20,14 +20,14 @@
 - [2.4](./2_4.md)
 - [50. Preference Data and Evaluation | 偏好数据与评测](./50_Preference_Data_and_Evaluation.md)
 - [84. DPO Preference Project | DPO 偏好优化项目](./84_DPO_Preference_Project.md)
-- [后训练与对齐专题入口](../topic_discussion/post_training_alignment/intro.md)
-- [06 Project Decision and Delivery | 项目决策与交付](../topic_discussion/post_training_alignment/06_project_decision_and_delivery.md)
+- [后训练与对齐专题入口](../topic_discussion/post_training_optimization/intro.md)
+- [06 Project Decision and Delivery | 项目决策与交付](../topic_discussion/post_training_optimization/06_project_decision_and_delivery.md)
 
 ## 相关阅读
 
 **导语：** 做完 group-wise 对齐项目后，最自然的下一步是把离线结论推进到在线基准，或回到专题收口页统一看 adopt / tune / reject 的交付口径。
 - [86. DPO Online Benchmark | DPO 在线基准](./86_DPO_Online_Benchmark.md)
-- [06 Project Decision and Delivery | 项目决策与交付](../topic_discussion/post_training_alignment/06_project_decision_and_delivery.md)
+- [06 Project Decision and Delivery | 项目决策与交付](../topic_discussion/post_training_optimization/06_project_decision_and_delivery.md)
 ### Step 1: 定义组内对齐项目目标
 
 - 固定 baseline、group 组织方式、奖励口径和评测窗口。

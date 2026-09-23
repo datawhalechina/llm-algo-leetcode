@@ -13,9 +13,9 @@
 
 ## 本节导读
 
-自回归生成的时间压力，常常来自目标模型必须一个 token 一个 token 地推进。前面先用 KV Cache 建立了单步生成的状态视角，本节进一步观察另一种思路：让草稿模型先提出多个候选，再由目标模型集中验证。
+自回归生成中，目标模型通常要逐个 token 推进；当每一步都要重复进入模型时，单步成本会直接累积到整段输出。本节从已有的 KV Cache 状态视角出发，引入草稿模型：先提出多个候选，再由目标模型集中验证。
 
-本节沿着“提议 → 验证 → 接受或修正”的顺序学习投机解码：先理解接受概率为什么需要 residual correction，再看全部接受时为什么还要追加 bonus token。核心判断是，在保持目标模型分布的前提下，是否能够减少目标模型的逐 token 推进。
+学习路径沿着“提议 → 验证 → 接受或修正”展开：先看候选如何与目标概率对齐，再理解接受概率、residual correction 和 bonus token 分别解决什么问题。最后把这些状态变化串成一轮生成，理解减少逐 token 推进的条件。
 
 **关键词：** `speculative decoding`, `draft model`, `verification`
 
@@ -28,9 +28,18 @@
 
 ---
 
-### Step 1: 草稿提议与目标验证
+### Step 1: 投机式生成策略如何减少目标模型推进
 
-投机解码让草稿模型（draft model）先提出一段 token，再由目标模型（target model）集中验证。草稿模型负责快速提议，目标模型负责最终确认；学习重点是理解两者如何协作，减少目标模型逐 token 推进的次数，同时保持目标分布的生成语义。
+投机解码不是单一实现，而是一类“先并行提出候选，再由更可靠路径验证”的生成加速策略。本节聚焦最经典的 draft / target 模型协作；多 Token、多候选树或模型内部草稿头都共享“提高每轮有效推进量”的目标，但验证接口与质量约束不同。
+
+| 策略分支 | 候选从哪里来 | 本节 / 后续入口 | 共同判断标准 |
+|---|---|---|---|
+| draft / target | 小草稿模型提出连续 token | 本节核心 | 接受率、验证成本、有效推进量 |
+| multi-token / 多头候选 | 多个 token 或预测头并行提出候选 | [35](./35_Multi_Token_Decoding.md) | 首次拒绝后的有效推进 |
+| self-speculative / early exit | 同一模型的浅层或中间层提出候选 | 扩展概念，真实 backend 验证 | 额外草稿成本是否低于收益 |
+| tree / multi-candidate | 同轮提出多条候选路径 | 扩展概念，关注验证结构 | 候选覆盖、tree verify 成本 |
+
+一轮投机解码的输入是当前上下文和两个模型的候选分布，草稿模型（draft model）先提出一段 token，目标模型（target model）再集中验证。输出是已接受的 token、一个修正 token，或在全部通过时追加的 bonus token；两者的协作目标是减少目标模型逐 token 推进的次数，同时保持目标分布的生成语义。
 
 | 参与者 | 负责什么 | 产生什么 |
 |---|---|---|
@@ -40,9 +49,9 @@
 
 ![Speculative Decoding 流程图](../public/02_PyTorch_Algorithms/23_speculative_decoding_flow.svg)
 
-### Step 2: 验证位置与概率输入
+### Step 2: 草稿候选与目标概率如何对齐
 
-一轮验证需要把草稿 token、草稿概率和目标概率按位置对齐。`K` 表示草稿 token 数，目标模型需要提供前 `K` 行验证概率，并额外提供一行用于全部接受时的 bonus token。
+一轮验证需要把草稿 token、草稿概率和目标概率按位置对齐。`K` 表示草稿 token 数，目标模型提供前 `K` 行来验证候选，并额外提供一行用于全部接受时的 bonus token。位置对齐是后续计算接受概率的前提。
 
 | 输入 / 状态 | 形状或内容 | 用途 |
 |---|---|---|
@@ -51,12 +60,12 @@
 | `draft_tokens` | 长度为 K 的 token 序列 | 指出每个位置实际提出的候选 |
 | 输入检查 | 非负、行归一化、长度和词表维度 | 防止概率与位置错位后继续计算 |
 
-### Step 3: 接受、修正与生成推进
-按草稿位置从前到后处理：接受就继续验证，拒绝就从 residual distribution 采样修正 token 并结束本轮；全部 `K` 个草稿都接受时，再从目标模型的 bonus 位置采样一个 token。接受概率为：
+### Step 3: 接受、修正与 bonus 如何决定推进长度
+按草稿位置从前到后处理：接受就继续验证，拒绝就从 residual distribution 采样修正 token 并结束本轮；全部 `K` 个草稿都接受时，再从目标模型的 bonus 位置采样一个 token。接受概率决定本轮能推进多长，公式为：
 
 $$\alpha(x) = \min\left(1, \frac{p(x)}{q(x)}\right)$$
 
-CPU 题目区验证概率归一化、接受/拒绝、residual correction、bonus token 和控制流；真实 acceptance rate、目标模型 forward 次数、TTFT、TPOT 和吞吐由 68 的匹配 backend 实验验证。
+题目区验证经典 draft / target 路径的概率归一化、接受/拒绝、residual correction、bonus token 和控制流。不同策略分支的真实性能都取决于候选质量和验证结构；68 用统一 workload 检查 acceptance、目标模型 forward 次数、TTFT、TPOT 与吞吐。
 
 | 结果 | 接受规则或使用的分布 | 本轮推进 |
 |---|---|---|
@@ -67,14 +76,13 @@ CPU 题目区验证概率归一化、接受/拒绝、residual correction、bonus
 ![Speculative Decoding：验证结果决定下一步](../public/02_PyTorch_Algorithms/23_speculative_acceptance_flow.svg)
 
 ### Step 4: 实现并验证单轮投机解码
-本 Step 将前面的流程实现为 `speculative_decode_step`。题目区按输入检查、逐位置接受、拒绝修正和全接受 bonus 四个阶段返回结果；返回值至少包含最终 token、接受数量、是否拒绝和检查到的 target 位置。
+本 Step 将前面的流程实现为 `speculative_decode_step`。输入是草稿 token、草稿概率和目标概率，输出至少包含最终 token、接受数量、是否拒绝和检查到的 target 位置。题目区按输入检查、逐位置接受、拒绝修正和全接受 bonus 四个阶段完成实现。
 
 | 实现阶段 | 主要任务 | 验证重点 |
 |---|---|---|
 | 输入检查 | 检查概率形状、归一化和 token 位置 | 非法输入明确报错 |
 | 接受判断 | 按位置计算接受概率并采样 | 接受数量和停止位置正确 |
 | 修正与 bonus | 分别处理拒绝和全接受 | residual 与 bonus 分支不混淆 |
-
 
 ```python
 import torch
@@ -102,6 +110,10 @@ def speculative_decode_step(draft_probs, target_probs, draft_tokens, generator=N
     if not (torch.isfinite(draft_probs).all() and torch.isfinite(target_probs).all()):
         raise ValueError('概率分布不能包含 NaN 或 Inf')
     # TODO 1: 检查概率非负，并验证每一行和约等于 1
+    # 输入契约：draft_probs / target_probs 是有限、非负且按行归一化的概率；
+    # draft_tokens 是长度为 K 的一维整数 token 序列，位置必须与概率行对齐。
+    # 要求：draft_probs 和 target_probs 都必须是有限、非负且按行归一化的概率；
+    #       后续接受概率和 residual 计算只能建立在这个输入契约上。
     # 提示：归一化检查使用与输入相同 device / dtype 的全 1 张量。
     # if ...:
     #     raise ValueError('输入必须是归一化概率分布')
@@ -117,16 +129,18 @@ def speculative_decode_step(draft_probs, target_probs, draft_tokens, generator=N
         
         # ==========================================
         # TODO 2: 计算 alpha，并据此决定当前候选是否接受
-        # 提示：alpha = min(1, p / q)；q=0 时先处理除零边界。
-        # 接受后追加当前 token 并继续；拒绝后进入 TODO 3。
+        # 提示：alpha = min(1, p / q)；q=0 时先处理除零边界：q=0 且 p>0 可直接接受，
+        #       q=0 且 p=0 不能直接相除，应进入拒绝分支。接受后追加 token 并继续；
+        #       一旦拒绝，只处理当前第一个拒绝位置，不再验证后续草稿 token。
         # r = torch.rand((), generator=generator).item()
         # if ...:
         #     accepted_tokens.append(int(token_id))
         #     continue
         # ==========================================
-        # TODO 3: 拒绝时从 residual=max(p-q, 0) 归一化后采样
+        # TODO 3: 拒绝时从 residual=max(target - draft, 0) 归一化后采样
         # residual = ???
         # residual_mass = ???  # 先确认存在可采样的剩余概率质量
+        # residual = ???       # 这是完整 vocab 向量，除以 residual_mass 后才能采样
         # if residual_mass <= 0:
         #     raise ValueError('residual 概率质量必须大于 0')
         # correction = torch.multinomial(???, 1, generator=generator).item()
@@ -134,6 +148,8 @@ def speculative_decode_step(draft_probs, target_probs, draft_tokens, generator=N
         pass
     
     # TODO 4: 全部接受后，从 target_probs[K] 采样 bonus token
+    # 要求：bonus 使用额外的第 K 行 target_probs，而不是最后一个草稿验证位置；
+    #       返回 accepted_count=K、rejected=False、target_positions_checked=K。
     # bonus = torch.multinomial(???, 1, generator=generator).item()
     # return {'tokens': accepted_tokens + [bonus], 'accepted_count': K, 'rejected': False, 'target_positions_checked': K}
 
@@ -244,6 +260,7 @@ def speculative_decode_step(draft_probs, target_probs, draft_tokens, generator=N
     if not (torch.isfinite(draft_probs).all() and torch.isfinite(target_probs).all()):
         raise ValueError('概率分布不能包含 NaN 或 Inf')
     # TODO 1：检查概率非负，并验证每一行和约等于 1（参考实现）
+    # 先建立合法概率输入契约，再进入接受概率和 residual 计算；token 序列需与概率行对齐。
     if (draft_probs < 0).any() or (target_probs < 0).any():
         raise ValueError('概率分布不能包含负数')
     ones_draft = torch.ones(K, device=draft_probs.device, dtype=draft_probs.dtype)
@@ -259,14 +276,16 @@ def speculative_decode_step(draft_probs, target_probs, draft_tokens, generator=N
         p = target_probs[i, token_id].item()
         q = draft_probs[i, token_id].item()
         # TODO 2: 处理 q=0，并按 alpha 决定接受或拒绝
-        # 提示：alpha = min(1, p / q)；接受时追加 token，拒绝时保留
+        # 提示：alpha = min(1, p / q)；q=0 且 p>0 直接接受，q=0 且 p=0 进入拒绝分支。
+        # 首次拒绝后立即采样 correction 并结束本轮，不再处理后续位置。
         # accepted_tokens 作为前缀并进入 TODO 3。
         alpha = 1.0 if q == 0.0 and p > 0.0 else (min(1.0, p / q) if q > 0.0 else 0.0)
         r = torch.rand((), generator=generator).item()
         if r < alpha:
             accepted_tokens.append(int(token_id))
             continue
-        # TODO 3: 拒绝时从 residual=max(p-q, 0) 归一化后采样
+        # TODO 3: 拒绝时从 residual=max(target - draft, 0) 归一化后采样
+        # residual 是完整词表向量；先计算剩余质量并确认可采样，再归一化 residual。
         residual = torch.clamp(target_probs[i] - draft_probs[i], min=0)
         residual_mass = residual.sum()
         if residual_mass <= 0:
@@ -276,6 +295,7 @@ def speculative_decode_step(draft_probs, target_probs, draft_tokens, generator=N
         return {'tokens': accepted_tokens + [correction], 'accepted_count': len(accepted_tokens), 'rejected': True, 'target_positions_checked': i + 1}
                 
     # TODO 4: 全部接受后追加 target 的 bonus token
+    # bonus 来自额外的 target_probs[K]，不是最后一个草稿验证位置；全接受时返回 K+1 个 token。
     bonus = torch.multinomial(target_probs[K], 1, generator=generator).item()
     return {'tokens': accepted_tokens + [bonus], 'accepted_count': K, 'rejected': False, 'target_positions_checked': K}
 
@@ -300,17 +320,18 @@ def speculative_decode_step(draft_probs, target_probs, draft_tokens, generator=N
 - 如果 K 个草稿全部接受，还要从 `target_probs[K]` 采样一个 bonus token。
 - 真实实现应由目标模型一次 forward 产生 K 个验证位置和一个 bonus 位置；CPU 代码中的 `[K+1, vocab]` 只是这个接口的抽象。
 
-**4. 证据边界**
+**5. 证据边界**
 - 本节能验证接受/拒绝控制流和分布修正逻辑。
 - 本节不能证明 GPU 加速、目标模型调用减少或输出质量无损；这些结论需要 68 节用真实模型和 backend 采集 acceptance rate、forward 次数、TTFT、TPOT 和吞吐。
 
 ## 相关阅读
 
-投机解码可以继续从接受采样的论文、Transformers 接口和真实推理 backend 三个角度阅读。
+投机式生成可从经典接受采样、内部草稿和多候选验证三条路径继续阅读；比较实现时应始终同时检查接受率、验证成本与端到端收益。
+
 - [Speculative Sampling 原论文](https://arxiv.org/abs/2302.01318)
+- [Fast Inference from Transformers via Speculative Decoding](https://arxiv.org/abs/2211.17192)
+- [Medusa 原论文：Multiple Decoding Heads](https://arxiv.org/abs/2401.10782)
 - [Transformers Assisted Generation 文档](https://huggingface.co/docs/transformers/main/en/generation_strategies)
 - [vLLM Speculative Decoding 文档](https://docs.vllm.ai/en/latest/features/spec_decode.html)
-- [Part 02 · 22 vLLM 分页注意力](./22_vLLM_PagedAttention.md)
-- [Part 02 · 35 多 Token 解码](./35_Multi_Token_Decoding.md)
-- [Part 02 · 36 解码调度](./36_Decode_Scheduling.md)
-- [Part 02 · 68 投机解码基准项目](./68_Speculative_Decoding_Benchmark.md)
+- [35. Multi-Token Decoding | 多 Token 解码](./35_Multi_Token_Decoding.md)
+- [68. Speculative Decoding Benchmark | 投机解码基准](./68_Speculative_Decoding_Benchmark.md)

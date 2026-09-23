@@ -85,7 +85,7 @@ def kv_cache_bytes_attention(batch_size: int, seq_len: int, num_layers: int, num
 
     K 和 V 各占一份缓存；所有维度和 dtype_bytes 都参与计算。
     """
-    # TODO 0：校验所有维度为正数，使用上述变量计算 K 和 V 两份缓存。
+    # TODO 3：校验所有维度为正数，使用上述变量计算 K 和 V 两份缓存。
     # kv_elements = ???；kv_bytes = ???。
     #       返回整数 bytes；不要混入模型权重、临时张量或 CUDA reserved memory。
     # 返回整数 bytes；不要混入模型权重、临时张量或 CUDA reserved memory。
@@ -96,7 +96,7 @@ def summarize_mla_config(config: Dict[str, int]) -> Dict[str, object]:
 
     latent_dim、rope_dim 和 dtype_bytes 必须来自显式配置，不为缺失值猜默认值。
     """
-    # TODO 1：读取 model、num_layers、num_attention_heads、num_kv_heads、
+    # TODO 2：读取 model、num_layers、num_attention_heads、num_kv_heads、
     # normalized = ???；missing_fields = ???。
     # latent_dim、rope_dim、head_dim、dtype_bytes；标记缺失字段。
     raise NotImplementedError('请先完成 TODO 代码！')
@@ -106,7 +106,7 @@ def build_cache_comparison_table(config: Dict[str, object]) -> list[Dict[str, ob
 
     表格至少保留 representation、bytes、evidence；evidence 应标记理论估算。
     """
-    # TODO 5：先提取并检查配置，再分别计算 MHA、GQA 和本节简化 MLA；
+    # TODO 6：先提取并检查配置，再分别计算 MHA、GQA 和本节简化 MLA；
     # mha_bytes = ???；gqa_bytes = ???；mla_bytes = ???；comparison_rows = ???。
     # 返回 representation、bytes、evidence 三列，缺字段时明确报错。
     #       compression_ratio 只能表示理论容量变化，不能表示质量或吞吐收益。
@@ -117,7 +117,7 @@ def extract_attention_dimensions(config: Dict[str, object]) -> Dict[str, object]
 
     返回 normalized 字段和 missing_fields；字段别名只用于兼容命名。
     """
-    # TODO 4：兼容 num_hidden_layers / n_layer、num_attention_heads /
+    # TODO 1：兼容 num_hidden_layers / n_layer、num_attention_heads /
     # normalized = ???；missing_fields = ???；head_dim = ???。
     # n_head 等常见别名；hidden_size 可与 attention heads 推出 head_dim，
     # 但 dtype_bytes 必须由实验显式提供。返回 normalized 字段和 missing_fields。
@@ -128,7 +128,7 @@ def compare_kv_representations(baseline_bytes: int, candidate_bytes: int) -> Dic
 
     compression_ratio 仅在 candidate_bytes > 0 时有定义；saving_ratio 是容量比例变化。
     """
-    # TODO 2：计算 bytes_delta、compression_ratio、saving_ratio；
+    # TODO 5：计算 bytes_delta、compression_ratio、saving_ratio；
     # bytes_delta = ???；compression_ratio = ???；saving_ratio = ???。
     # baseline_bytes > 0，candidate_bytes >= 0。
     raise NotImplementedError('请先完成 TODO 代码！')
@@ -138,7 +138,7 @@ def mla_cache_bytes(batch_size: int, seq_len: int, num_layers: int, latent_dim: 
 
     latent_dim 和 rope_dim 是账本模型变量，不等于任何特定 DeepSeek 版本的 cache layout。
     """
-    # TODO 3：校验维度，按本节的简化模型计算 latent 和 positional 两部分 bytes；
+    # TODO 4：校验维度，按本节的简化模型计算 latent 和 positional 两部分 bytes；
     # latent_bytes = ???；positional_bytes = ???；total_bytes = ???。
     # 注意：这不是 DeepSeek MLA 的完整 kernel 或 cache layout，也不能推出真实吞吐。
     raise NotImplementedError('请先完成 TODO 代码！')
@@ -176,8 +176,8 @@ def test_mla_kv_cache_template():
     assert [row['representation'] for row in table] == ['mha', 'gqa', 'mla']
     assert all(row['evidence'] == 'cpu_theoretical_ledger' for row in table)
     assert mla_cache_bytes(1, 1024, 2, 512, 64, 2) == 2359296
-    for invalid in ({'batch_size': 0}, {'dtype_bytes': 0}):
-        try: kv_cache_bytes_attention(1, 4, 1, 1, 8, 2, **invalid)
+    for invalid_args in ((0, 4, 1, 1, 8, 2), (1, 4, 1, 1, 8, 0)):
+        try: kv_cache_bytes_attention(*invalid_args)
         except ValueError: pass
         else: raise AssertionError('非法 KV Cache 配置应明确拒绝！')
     print('测试通过：MLA KV Cache 账本模板可以工作。')
@@ -195,18 +195,21 @@ test_mla_kv_cache_template()
 ### 代码
 
 ```python
+# TODO 3 对应实现：普通 MHA/GQA KV Cache 的 K/V 双份账本。
 def kv_cache_bytes_attention(batch_size: int, seq_len: int, num_layers: int, num_kv_heads: int, head_dim: int, dtype_bytes: int = 2) -> int:
     """计算 K/V 两份缓存的理论字节数。"""
     values = (batch_size, seq_len, num_layers, num_kv_heads, head_dim, dtype_bytes)
     if any(not isinstance(value, int) or value <= 0 for value in values): raise ValueError('KV Cache 配置必须为正整数')
     return batch_size * seq_len * num_layers * num_kv_heads * head_dim * dtype_bytes * 2
 
+# TODO 2 对应实现：整理模型配置字段，并保留缺失字段。
 def summarize_mla_config(config: Dict[str, int]) -> Dict[str, object]:
     """整理 MLA 账本字段，并保留缺失字段。"""
     required = ('model','num_layers','num_attention_heads','num_kv_heads','head_dim','latent_dim','rope_dim','dtype_bytes')
     missing = [key for key in required if key not in config]
     return {'model': config.get('model'), 'fields': {key: config.get(key) for key in required}, 'missing_fields': missing, 'ready_for_estimate': not missing}
 
+# TODO 1 对应实现：兼容配置别名，提取 attention / latent / rope 维度。
 def extract_attention_dimensions(config: Dict[str, object]) -> Dict[str, object]:
     """从 Hugging Face 风格配置提取账本字段，不猜测缺失值。"""
     aliases = {
@@ -231,12 +234,14 @@ def extract_attention_dimensions(config: Dict[str, object]) -> Dict[str, object]
     missing = [key for key, value in normalized.items() if value is None]
     return {'normalized': normalized, 'missing_fields': missing, 'ready_for_estimate': not missing}
 
+# TODO 5 对应实现：比较 baseline 与 candidate 的理论容量差异。
 def compare_kv_representations(baseline_bytes: int, candidate_bytes: int) -> Dict[str, float]:
     """计算理论容量差异；结果不等于 GPU 实测显存。"""
     if baseline_bytes <= 0 or candidate_bytes < 0: raise ValueError('baseline_bytes 必须 > 0，candidate_bytes 不能为负数')
     delta = baseline_bytes - candidate_bytes
     return {'bytes_delta': delta, 'compression_ratio': candidate_bytes / baseline_bytes, 'saving_ratio': delta / baseline_bytes}
 
+# TODO 4 对应实现：计算简化 MLA latent 与位置相关缓存账本。
 def mla_cache_bytes(batch_size: int, seq_len: int, num_layers: int, latent_dim: int, rope_dim: int, dtype_bytes: int = 2) -> int:
     """估算 MLA latent 与位置相关缓存的理论字节数。"""
     values = (batch_size, seq_len, num_layers, latent_dim, rope_dim, dtype_bytes)
@@ -244,6 +249,7 @@ def mla_cache_bytes(batch_size: int, seq_len: int, num_layers: int, latent_dim: 
         raise ValueError('MLA 缓存配置必须为正整数')
     return batch_size * seq_len * num_layers * (latent_dim + rope_dim) * dtype_bytes
 
+# TODO 6 对应实现：生成 MHA/GQA/MLA 理论容量对照表，并标注证据等级。
 def build_cache_comparison_table(config: Dict[str, object]) -> list[Dict[str, object]]:
     """生成 toy MHA/GQA/MLA 理论 bytes 表，不代表真实 backend。"""
     extracted = extract_attention_dimensions(config)
@@ -294,8 +300,11 @@ test_mla_kv_cache_template()
 
 ### 解析
 
-- **TODO 0**：普通 KV Cache 包含 K 和 V 两份张量；`num_kv_heads` 区分 MHA 与 GQA。MLA 不能用固定比例代替，必须根据 latent 与位置相关分量建模。
-- **TODO 1**：配置汇总只保留事实字段，缺少 `latent_dim` 或 `rope_dim` 时不猜默认值。
-- **TODO 2**：压缩比例是理论容量比较，不能推出质量、TTFT、TPOT 或 allocator 峰值。
+- **TODO 1**：先从不同配置命名中提取维度，缺失字段必须显式保留，不能猜默认值。
+- **TODO 2**：整理模型配置和账本字段，为后续 MHA/GQA/MLA 计算准备输入。
+- **TODO 3**：普通 KV Cache 包含 K 和 V 两份张量；`num_kv_heads` 区分 MHA 与 GQA。
+- **TODO 4**：MLA 按 latent 与位置相关分量建模，不能用固定比例代替。
+- **TODO 5**：压缩比例是理论容量比较，不能推出质量、TTFT、TPOT 或 allocator 峰值。
+- **TODO 6**：将三种表示整理成带 evidence 的对照表，明确这是 CPU 理论账本。
 
 真实模型建议使用 `deepseek-ai/DeepSeek-V2-Lite`；如果 backend 不支持 MLA，71 仍可完成 CPU 账本，但 74 不能伪造 CUDA trace。

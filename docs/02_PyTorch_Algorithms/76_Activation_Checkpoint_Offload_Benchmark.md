@@ -22,7 +22,7 @@
 ## 前置阅读
 
 **导语：** 先理解 checkpoint 和 offload 如何改变激活值的保存与计算，再参考 73 节的测量口径，比较同一训练任务下不同策略的显存收益和速度代价。
-- [19. Activation Checkpointing | 激活检查点](./19_Activation_Checkpointing_and_Activation_Offload.md)
+- [19. Activation Checkpointing | 激活检查点](./19_Activation_Checkpointing.md)
 - [42. Activation Offload | 激活卸载](./42_Activation_Offload.md)
 - [73. Training Performance Analysis | 训练性能分析](./73_Training_Performance_Analysis.md)
 
@@ -94,10 +94,10 @@ def validate_strategy_budget(budget: Dict[str, float], quality_floor: Dict[str, 
     # ==========================================
     # TODO 1：完成预算和质量阈值校验。
     # 提示：先列出两组必需字段，再分别收集缺失字段和非法数值。
-    # required_budget_keys = [...]
-    # required_quality_keys = [...]
-    # missing_keys = [...]
-    # invalid_keys = [...]
+    # required_budget_keys = ???
+    # required_quality_keys = ???
+    # missing_keys = ???
+    # invalid_keys = ???
     # 返回 is_valid、missing_keys 和 invalid_keys；不负责判断某个策略是否最优。
     # ==========================================
     raise NotImplementedError("请先完成 TODO 代码！")
@@ -108,10 +108,10 @@ def summarize_memory_strategy_candidates(candidates: List[Dict[str, object]], bu
     # TODO 2：完成候选汇总，区分无效候选、不可行候选和可行候选。
     # 候选字段：name、status、peak_memory_mb、samples_per_s、eval_loss / val_loss。
     # 提示：先处理 OOM、重复和无效指标，再检查显存、吞吐和质量条件。
-    # evaluations = []
-    # feasible = []
-    # seen_names = set()
-    # memory_ok / speed_ok / quality_ok = ???
+    # evaluations = ???
+    # feasible = ???
+    # seen_names = ???
+    #       memory_ok、speed_ok、quality_ok 是每个候选的派生判断，不单独挖空；
     # evaluations 保存每个候选的可追溯状态，feasible 只保存通过全部门槛的候选。
     # ==========================================
     raise NotImplementedError("请先完成 TODO 代码！")
@@ -124,10 +124,10 @@ def decide_memory_strategy_project(summary: Dict[str, object]) -> Dict[str, obje
     # ==========================================
     # TODO 3：完成项目决策。
     # 提示：先检查 baseline，再检查可行候选，最后判断显存收益和吞吐保留率。
-    # baseline_available = ...
-    # feasible_count = ...
-    # best_candidate = ...
-    # meaningful_memory_gain / acceptable_throughput = ...
+    # baseline_available = ???
+    # feasible_count = ???
+    # best_candidate = ???
+    #       meaningful_memory_gain、acceptable_throughput 根据 summary 派生；不单独挖空。
     # 返回 decision、reason 和 next_action；不要硬编码具体策略名称。
     # ==========================================
     raise NotImplementedError("请先完成 TODO 代码！")
@@ -345,9 +345,10 @@ import math
 from typing import Dict, List
 def validate_strategy_budget(budget: Dict[str, float], quality_floor: Dict[str, float]) -> Dict[str, object]:
     # ==========================================
-    # TODO 1 对应题目区：收集预算与质量校验字段。
+    # TODO 1 对应变量 required_budget_keys / required_quality_keys：收集两组契约字段。
     required_budget_keys = ['memory_cap_mb', 'min_samples_per_s', 'min_memory_saving_mb', 'min_throughput_ratio']  # 预算必需字段
     required_quality_keys = ['max_val_loss']
+    # TODO 1 对应变量 missing_keys / invalid_keys：分别记录缺失字段和非法数值。
     missing_keys = [key for key in required_budget_keys if key not in budget]
     missing_keys += [key for key in required_quality_keys if key not in quality_floor]
     numeric_values = {key: budget.get(key) for key in required_budget_keys}
@@ -381,9 +382,8 @@ def validate_strategy_budget(budget: Dict[str, float], quality_floor: Dict[str, 
 
 def summarize_memory_strategy_candidates(candidates: List[Dict[str, object]], budget: Dict[str, float], quality_floor: Dict[str, float]) -> Dict[str, object]:
     # ==========================================
-    # TODO 2 对应题目区：汇总候选状态，并筛选通过全部门槛的方案。
-    # 提示：evaluations 记录每个候选的状态；feasible 只保留可行候选；
-    # memory_ok / speed_ok / quality_ok 分别对应显存、吞吐和质量条件。
+    # TODO 2 对应变量 evaluations / feasible / seen_names：记录候选状态、可行候选和去重名称。
+    # 提示：memory_ok / speed_ok / quality_ok 是每个候选的派生门槛，不作为独立挖空。
     # ==========================================
     feasible: List[Dict[str, float]] = []  # 通过全部门槛的候选
     quality_failed = 0
@@ -460,8 +460,8 @@ def decide_memory_strategy_project(summary: Dict[str, object]) -> Dict[str, obje
     """根据基线、可行候选和预算阈值输出 accept、tune 或 reject。"""
     # 决策顺序固定为：基线完整性、可行候选、显存收益和吞吐保留率。
     # ==========================================
-    # TODO 3 对应题目区：按基线、可行候选和收益阈值输出项目结论。
-    # 提示：先读取 baseline_available / feasible_count，再判断两个收益布尔量。
+    # TODO 3 对应变量 baseline_available / feasible_count / best_candidate：确定决策输入。
+    # 提示：meaningful_memory_gain / acceptable_throughput 根据 summary 派生，再按顺序输出结论。
     # ==========================================
     feasible_count = summary['feasible_count']  # 可行候选数量
     best_candidate = summary['best_candidate']

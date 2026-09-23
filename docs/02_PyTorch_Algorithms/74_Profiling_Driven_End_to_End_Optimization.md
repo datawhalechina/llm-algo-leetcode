@@ -183,7 +183,6 @@ def recommend_optimization_decision(summary, min_time_delta_ms=10.0, min_memory_
         decision = 'reject'
         reason = '当前优化没有形成稳定的端到端收益，建议回退或重新定位瓶颈。'
     return {'decision': decision, 'reason': reason}
-    raise NotImplementedError
 
 ```
 
@@ -350,12 +349,14 @@ def format_optimization_report(summary, bottleneck, next_action):
 
 
 def recommend_optimization_decision(summary, min_time_delta_ms=10.0, min_memory_delta_mb=512.0, min_throughput_delta=5.0):
-    strong_time_gain = summary['step_time_delta_ms'] >= min_time_delta_ms  # TODO 3a 对应挖空
+    # TODO 3 对应变量 strong_time_gain：对照 min_time_delta_ms。
+    strong_time_gain = summary['step_time_delta_ms'] >= min_time_delta_ms
     strong_memory_gain = summary['peak_mem_delta_mb'] >= min_memory_delta_mb
     strong_throughput_gain = summary['throughput_delta'] >= min_throughput_delta
     positive_memory_gain = summary['peak_mem_delta_mb'] > 0
     positive_throughput_gain = summary['throughput_delta'] > 0
-    positive_resource_gain = positive_memory_gain or positive_throughput_gain  # TODO 3b 对应挖空
+    # TODO 3 对应变量 positive_resource_gain：显存或吞吐任一出现正向变化。
+    positive_resource_gain = positive_memory_gain or positive_throughput_gain
     if strong_time_gain and (strong_memory_gain or strong_throughput_gain):
         decision = 'accept'
         reason = '时间达到阈值，且显存或吞吐至少一项达到阈值，当前优化值得保留。'

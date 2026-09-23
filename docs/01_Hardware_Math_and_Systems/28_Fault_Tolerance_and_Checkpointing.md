@@ -198,7 +198,7 @@ print('the most common mistakes come from incomplete state, wrong cadence, and m
 **导语：** 如果还想把容错和工程实现连起来，可以接着看训练恢复、项目交付和训练工程附录，把保存、恢复和 artifact 放在一起理解，也把“保存了什么”与“能不能从同一训练点恢复”分清楚。
 
 - [29. CUDA Stream Advanced Scheduling | CUDA Stream 高级调度](./29_CUDA_Stream_Advanced_Scheduling.md)
-- [project_delivery_appendix.md | 项目交付附录](../topic_discussion/fine_tuning_training/project_delivery_appendix.md)
+- [project_delivery_appendix.md | 项目交付附录](../topic_discussion/post_training_optimization/sft_foundation/project_delivery_appendix.md)
 - [62. Instruction Fine Tuning Project | 指令微调项目](../02_PyTorch_Algorithms/62_Instruction_Fine_Tuning_Project.md)
 - [PyTorch Distributed Checkpoint | PyTorch 分布式检查点文档](https://pytorch.org/docs/stable/distributed.checkpoint.html)
 - [DeepSpeed Model Checkpointing | DeepSpeed 模型检查点文档](https://www.deepspeed.ai/tutorials/model-checkpointing/)

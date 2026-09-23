@@ -95,4 +95,4 @@ CPU 验证应当先保证机制和代码正确；真实 GPU 验证再回答容�
 → 73 → 76 → 75 → 74
 ```
 
-如果问题转向 SFT、LoRA 或数据处理，进入 [监督微调与训练工程](../fine_tuning_training/intro.md)；如果问题转向显存预算和策略选择，进入 [显存优化](../memory_performance_tuning/intro.md)；如果需要定位真实时间热点，进入 [性能分析](../profiling/intro.md)。
+如果问题转向 SFT、LoRA 或数据处理，进入 [监督微调与训练工程](../post_training_optimization/sft_foundation/intro.md)；如果问题转向显存预算和策略选择，进入 [显存优化](../memory_performance_tuning/intro.md)；如果需要定位真实时间热点，进入 [性能分析](../profiling/intro.md)。

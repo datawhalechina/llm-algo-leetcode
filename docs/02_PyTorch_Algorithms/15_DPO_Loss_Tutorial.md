@@ -31,16 +31,10 @@ DPO 的切入点更直接：既然偏好数据本身已经告诉我们“哪个�
 - [14. RLHF PPO Memory | RLHF/PPO 显存拆解](../02_PyTorch_Algorithms/14_RLHF_PPO_Memory.md)
 
 
-## 相关阅读
+---
+### Step 1：DPO 的动机与偏好数据
 
-**导语：** 完成 DPO 后，可以继续看组内相对优化、训练系统开销和分布式通信对对齐训练的影响。
-
-- [P1: 06. VRAM Calculation and ZeRO | 显存计算与 ZeRO 优化](../01_Hardware_Math_and_Systems/06_VRAM_Calculation_and_ZeRO.md)
-- [P1: 13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
-- [P1: 20. NCCL and AllReduce Basics | NCCL 与 AllReduce 基础](../01_Hardware_Math_and_Systems/20_NCCL_and_AllReduce_Basics.md)
-- [16. GRPO Loss Tutorial | 群体相对策略优化损失教程](../02_PyTorch_Algorithms/16_GRPO_Loss_Tutorial.md)
-
-### Step 1: 核心思想与痛点
+![DPO 从偏好数据到策略更新的总览](/02_PyTorch_Algorithms/15_dpo_overview_cn.svg)
 
 > **RLHF 的问题：**
 > 标准的 RLHF（如 PPO）需要训练 4 个模型：Actor（你要训练的模型）、Reference（参考模型，防止跑偏）、Reward Model（根据偏好训练的打分模型）和 Value Model（Critic）。训练非常不稳定，显存占用极大。
@@ -64,11 +58,15 @@ DPO 不是把 PPO 换个名字，而是把偏好对齐的训练对象、训练�
 - `beta` 控制 policy 相对 reference 偏移的力度；太小会学得慢，太大容易偏离参考分布。
 - chosen / rejected 不是任意两条回复，而是同一个 prompt 下的偏好对。
 - 所以 DPO 的关键不是“算一个 loss”，而是先把偏好数据配成正确的 pair，再把 pair 变成稳定的 logprob 差值。
-### Step 2: DPO 损失代码框架
-需要四组对齐的数据：选中的 Logprobs ($y_w$) 和拒绝的 Logprobs ($y_l$)，分别来自当前策略模型（Policy）和冻结的参考模型（Reference）。计算它们之间的隐式奖励差，并将其送入 `-F.logsigmoid()` 以获得最终梯度损失。
-这一节的实现链路就是先算 chosen / rejected 的隐式奖励，再组合成 DPO logits，最后得到损失。
+### Step 2：偏好对与隐式奖励
+先确认同一个 prompt 下的 chosen / rejected 是成对样本，再分别取得 Policy 和 Reference 对两条回复的 log probability。两组 policy-reference 差值就是后续的隐式奖励输入；本 Step 只负责对齐数据来源和符号，不展开最终 loss。
 
-###  Step 3: 核心公式
+一条偏好对至少要通过三项检查：chosen 与 rejected 回答的是同一个 prompt；差异确实来自质量、正确性或安全性，而不是长度、格式或是否泄漏答案；标注规则和来源可以追溯。若两条回复都正确、都错误，或只是长短不同，应标为不确定或移出训练集。
+
+Reference Model 通常从已经完成 SFT 的 checkpoint 初始化：SFT 先提供可用的格式和任务能力，DPO 再在此基础上调整偏好。若 reference 仍是未经 SFT 的 base model，log-probability 差值会同时混入格式学习和偏好学习，难以解释。
+
+Reference Model 通常从已经完成 SFT 的 checkpoint 初始化：SFT 先提供可用的格式和任务能力，DPO 再在此基础上调整偏好。若 reference 仍是未经 SFT 的 base model，log-probability 差值会同时混入格式学习和偏好学习，难以解释。
+### Step 3：DPO logits、β 与损失
 
 给定一段 Prompt $x$，模型生成了两个回复：好的回复 $y_w$ (Chosen/Win) 和差的回复 $y_l$ (Rejected/Lose)。
 
@@ -86,9 +84,13 @@ DPO 不是把 PPO 换个名字，而是把偏好对齐的训练对象、训练�
    我们要最大化 Chosen 和 Rejected 之间的 Reward 差，即最小化其负对数 Sigmoid：
    $$ L_{DPO} = -\log \sigma \left( \hat{r}(x, y_w) - \hat{r}(x, y_l) \right) $$
 
-   其中 $\beta$ 是控制偏离 Reference Model 程度的温度参数（如 `0.1`）。
+   其中 $\beta$ 是控制偏离 Reference Model 程度的温度参数（如 `0.1`）。$\beta$ 越大，偏离 reference 的代价越强，更新通常更保守；$\beta$ 越小，偏好差异的推动更激进，但更容易放大噪声。
 
-###  Step 4: 动手实战
+DPO 依赖已经收集好的离线偏好对，不会像 PPO/GRPO 那样通过 rollout 主动探索新回答。因此它适合先利用稳定的 chosen/rejected 数据做偏好迁移；如果任务需要环境反馈、可验证奖励或持续发现新策略，就需要进入 GRPO/PPO 或在线对齐路线。
+
+![DPO 损失计算路径](/02_PyTorch_Algorithms/15_dpo_loss_flow_cn.svg)
+
+### Step 4：实现并验证 DPO Loss
 
 **要求**：请补全下方 `dpo_loss` 函数。
 为了简化代码，我们假设你已经通过前向传播拿到了 Chosen 和 Rejected 样本的 `Log Probs`（对数概率和）。
@@ -346,3 +348,11 @@ def dpo_loss(
   - `beta`：通常设为 0.1-0.5，控制偏离参考模型的程度。
   - Reference Model：通常使用 SFT 后的模型作为参考模型，确保策略模型不会偏离有监督微调的分布太远。
 - **实际应用**：DPO 已被广泛应用于开源模型的对齐训练，如 Zephyr、Mistral-Instruct 等，是目前最流行的 RLHF 替代方案。
+
+## 相关阅读
+
+完成 DPO 后，可以继续看 GRPO 以及偏好优化在真实框架中的实现。
+
+- [16. GRPO Loss Tutorial | 群体相对策略优化损失教程](../02_PyTorch_Algorithms/16_GRPO_Loss_Tutorial.md)
+- [DPO 原论文](https://arxiv.org/abs/2305.18290)
+- [TRL DPO Trainer 官方文档](https://huggingface.co/docs/trl/dpo_trainer)

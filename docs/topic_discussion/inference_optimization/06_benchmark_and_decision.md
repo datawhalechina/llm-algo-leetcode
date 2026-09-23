@@ -1,4 +1,4 @@
-# 06. Benchmark and Decision | 端到端对比与选型
+# 06. Benchmark and Decision | 端到端基准与决策
 
 ## 页面目标
 
@@ -6,7 +6,7 @@
 
 ## 核心机制
 
-`01–05` 负责解释瓶颈和候选动作，`06` 负责把它们放回同一套实验口径。公平比较要固定模型、backend、dtype、prompt tokens、generated tokens、batch、concurrency 和 cache policy，并确保 baseline 与 candidate 只改变一个主要变量。下图先展示从 workload 到决策的完整流程，表格再说明每个阶段需要产出什么。
+`01–05、07、08` 负责解释瓶颈和候选动作，`06` 负责把它们放回同一套实验口径。公平比较要固定模型、backend、dtype、prompt tokens、generated tokens、batch、concurrency 和 cache policy，并确保 baseline 与 candidate 只改变一个主要变量。下图先展示从 workload 到决策的完整流程，表格再说明每个阶段需要产出什么。
 
 ![Benchmark 决策流程](../../public/topic_discussion/inference_optimization/benchmark_decision_zh.svg)
 
@@ -44,35 +44,9 @@ Benchmark 的结论还要绑定服务目标。在线交互、离线批处理和�
 | 失败代价 | 超时、拒绝、重试和质量不达标请求的比例 |
 | 容量收益 | 同一 SLA 下可接纳的并发或 tokens/s |
 
-为了让结果可以复查，性能数字还需要有来源。最小证据链包括运行条件、原始请求结果、服务指标和必要的 trace；汇总表只保存结论，不应替代原始数据。这样才能区分“系统真的变快”与“采集范围或 workload 发生了变化”。
-
-| 证据来源 | 记录内容 | 主要用途 |
-|:---|:---|:---|
-| 配置与环境 | model revision、backend、dtype、硬件、启动参数 | 复现执行条件 |
-| 请求级结果 | 每个请求的 TTFT、TPOT、E2E、状态和错误 | 计算分位数、发现异常请求 |
-| 服务级指标 | throughput、队列、Cache、GPU/显存利用率 | 解释容量和资源变化 |
-| Trace / profile | kernel、同步、通信、阶段时间 | 定位瓶颈和验证归因 |
-
-项目报告可以统一收束为下面的最小结构。它既适用于 66 的综合比较，也适用于 67–71 的主题项目；主题项目只填写与自身机制相关的额外字段，最后仍回到同一组服务目标和证据等级。
-
-```text
-问题：当前 workload 的主要约束是什么？
-固定条件：模型、revision、backend、dtype、硬件、Prompt、输出长度、batch、并发
-改变变量：本次只改变哪一个机制或部署条件？
-主要结果：TTFT、TPOT、E2E、throughput、P99、peak memory
-质量与稳定性：质量指标、错误、超时、拒绝、acceptance 或 cache hit
-证据等级：CPU proxy / GPU smoke test / stable benchmark / production-like
-决策：accept / tune / reject
-下一步：继续调参、补证据，或转向另一个机制
-```
-
-参考入口：论文 [MLPerf Inference Benchmark](https://arxiv.org/abs/1911.02549)；开源基准套件 [MLPerf Inference](https://github.com/mlcommons/inference)。
-
-66 是核心综合项目；67、69、71 验证量化、Prefix Cache 和 MLA / KV Cache 等主题机制；68、70 分别扩展 Decode 策略和 Serving 调度。主题项目提供局部证据，最终仍需回到统一 workload 判断。
-
 ## 判断框架
 
-本节承接 `01–05` 的指标和机制判断。先明确服务目标：在线交互优先关注 TTFT / P99，离线批处理可能优先 throughput / cost；再检查报告是否记录下表字段。`accept` 表示当前约束下值得采用，`tune` 表示方向有效但证据或配置不足，`reject` 表示收益不足、代价过高或质量不达标。
+本节承接 `01–05、07、08` 的指标和机制判断。先明确服务目标：在线交互优先关注 TTFT / P99，离线批处理可能优先 throughput / cost；再检查报告是否记录下表字段。`accept` 表示当前约束下值得采用，`tune` 表示方向有效但证据或配置不足，`reject` 表示收益不足、代价过高或质量不达标。
 
 运行开关、结果文件和 JSON schema 见 [66–70 推理项目验证清单](../../verification/inference_projects.md)；CPU 可先验证指标聚合和决策逻辑，真实服务指标仍需固定 workload 的 GPU backend。
 

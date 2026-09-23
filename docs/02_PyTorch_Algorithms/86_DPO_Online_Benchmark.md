@@ -31,8 +31,8 @@
 ## 相关阅读
 
 **导语：** 做完在线 DPO benchmark 后，回到对齐专题和项目决策页，把离线和在线项目统一放进交付决策闭环。
-- [后训练与对齐专题入口](../topic_discussion/post_training_alignment/intro.md)
-- [06 Project Decision and Delivery | 项目决策与交付](../topic_discussion/post_training_alignment/06_project_decision_and_delivery.md)
+- [后训练与对齐专题入口](../topic_discussion/post_training_optimization/intro.md)
+- [06 Project Decision and Delivery | 项目决策与交付](../topic_discussion/post_training_optimization/06_project_decision_and_delivery.md)
 ### Step 1: 定义在线 benchmark 目标
 
 - 固定初始模型、偏好流、更新频率、batch size 和评估窗口。
@@ -56,7 +56,19 @@
 
 - 在线 DPO 最终不是输出“胜率有没有涨”，而是输出这套在线更新方案在当前反馈流下是否值得继续保留、微调或上线。
 - 最终建议统一为 `accept / tune / reject`。
-- 若进入 `tune`，下一轮优先回更新频率、反馈流质量和安全阈值，而不是只盯住 win rate。 
+- 若进入 `tune`，下一轮优先回更新频率、反馈流质量和安全阈值，而不是只盯住 win rate。
+
+### 在线 benchmark 的证据字段
+
+| 字段 | 至少记录 | 用途 |
+|:---|:---|:---|
+| feedback stream | 来源、过滤规则、重复率、时间窗口 | 判断分布漂移或污染 |
+| policy freshness | policy 版本、更新间隔、样本年龄 | 判断反馈是否代表当前策略 |
+| update cost | 更新时延、显存、吞吐、queue wait | 判断在线更新是否影响服务 |
+| safety gate | safety score、拒答率、回滚阈值 | 作为硬上线约束 |
+| evidence | 重复次数、失败记录、backend、checkpoint | 区分 smoke、benchmark 和生产证据 |
+
+至少比较 baseline、online candidate 和回滚后的稳定状态；如果在线收益只在短时间窗口出现，或安全指标随后下降，应输出 `tune/reject`，而不是把短期 win-rate 提升直接当成上线结论。
 #### 图解：50-51-84-85 如何收束到 86 在线基准
 
 ```text

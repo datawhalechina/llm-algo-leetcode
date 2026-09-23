@@ -7,9 +7,9 @@
 <p align="center">
   <strong>主学习路线 / Core Routes</strong><br>
   <a href="./topic_discussion/inference_optimization/intro.md">推理优化 / Inference Optimization</a> ·
-  <a href="./topic_discussion/memory_performance_tuning/intro.md">显存优化 / Memory Optimization</a> ·
+  <a href="./topic_discussion/performance_optimization/intro.md">性能优化 / Performance Optimization</a> ·
   <a href="./topic_discussion/operator_optimization/intro.md">算子优化 / Operator Optimization（建设中 / In progress）</a> ·
-  <a href="./topic_discussion/post_training_alignment/intro.md">后训练优化 / Post-Training Optimization（建设中 / In progress）</a>
+  <a href="./topic_discussion/post_training_optimization/intro.md">后训练优化 / Post-Training Optimization（建设中 / In progress）</a>
 </p>
 
 <p align="center">
@@ -71,7 +71,7 @@
 | [`第二部分：PyTorch 算法实战（10 组，已完成，持续优化）`](./02_PyTorch_Algorithms/intro.md) | [`2.1 基础算子`](./02_PyTorch_Algorithms/2_1.md) / [`2.2 模型架构`](./02_PyTorch_Algorithms/2_2.md) / [`2.3 训练与微调闭环`](./02_PyTorch_Algorithms/2_3.md) / [`2.4 偏好优化与对齐`](./02_PyTorch_Algorithms/2_4.md) / [`2.5 反向传播与显存优化`](./02_PyTorch_Algorithms/2_5.md) / [`2.6 核心推理优化`](./02_PyTorch_Algorithms/2_6.md) / [`2.7 高级推理策略`](./02_PyTorch_Algorithms/2_7.md) / [`2.8 模型压缩与量化`](./02_PyTorch_Algorithms/2_8.md) / [`2.9 分布式并行策略`](./02_PyTorch_Algorithms/2_9.md) / [`2.10 项目实战`](./02_PyTorch_Algorithms/2_10.md) | 在 PyTorch 层把算法、模型、推理、压缩、并行与项目验证先跑通。 | 希望先用熟悉工具建立实现感的人。 | ✅ 已完成，持续优化 |
 | [`第三部分：Triton 算子开发（5 组 / 15 节，已完成，持续优化）`](./03_Triton_Kernels/intro.md) | [`3.1 基础篇（5 节）`](./03_Triton_Kernels/intro.md) / [`3.2 过渡篇（2 节）`](./03_Triton_Kernels/intro.md) / [`3.3 进阶A：Attention优化（3 节）`](./03_Triton_Kernels/intro.md) / [`3.4 进阶B：推理优化（2 节）`](./03_Triton_Kernels/intro.md) / [`3.5 项目篇（3 节）`](./03_Triton_Kernels/intro.md) | 把前面学到的算子和优化思路落到 GPU kernel。 | 希望从 PyTorch 走向 Triton 的学习者。 | ✅ 已完成，持续优化 |
 | [`第四部分：CUDA C++ 与系统优化（4 组 / 16 节，建设中）`](./04_CUDA_and_System_Optimization/intro.md) | [`4.1 CUDA 编程基础（4 节）`](./04_CUDA_and_System_Optimization/intro.md) / [`4.2 系统级性能优化（4 节）`](./04_CUDA_and_System_Optimization/intro.md) / [`4.3 分布式训练工程（4 节）`](./04_CUDA_and_System_Optimization/intro.md) / [`4.4 架构视野（4 节）`](./04_CUDA_and_System_Optimization/intro.md) | 进一步下探到 CUDA、系统调优和工程化架构。 | 准备做底层性能优化和工程落地的人。 | 🛠 建设中 |
-| [`第五部分：CUDA Rust（预留）`](./05_CUDA_Rust/intro.md) | 预留中 | 预留中 | 预留中 | 🚧 预留 |
+| [`第五部分：综合项目与架构决策`](./05_Integrated_Projects_and_Decisions/intro.md) | 综合项目、架构选型与成本决策 | 汇总多条主线的机制、实验和工程约束。 | 已完成主线学习、准备进行系统收口的人。 | 🛠 建设中 |
 
 </details>
 
@@ -81,18 +81,19 @@
 | 层级 | 入口 | 内容定位 | 适合对象 | 状态 |
 | ---- | ---- | ---- | ---- | ---- |
 | 主学习路线 | [`推理优化（Inference Optimization）`](./topic_discussion/inference_optimization/intro.md) | FlashAttention、解码、PagedAttention、cache 与 benchmark。 | 想系统理解推理加速路径的学习者。 | ✅ 持续优化 |
-| 主学习路线 | [`显存优化（Memory Optimization）`](./topic_discussion/memory_performance_tuning/intro.md) | VRAM、activation、checkpointing、offload 和 trade-off。 | 想系统优化显存和端到端性能的学习者。 | ✅ 持续优化 |
-| 主学习路线（建设中） | [`算子优化（Operator Optimization）`](./topic_discussion/operator_optimization/intro.md) | Triton、CUDA、访存、fusion、autotune 和 kernel 到端到端的验证；图变换与 lowering 仍见编译与图优化专题。 | 想从算子实现走向 kernel 和端到端性能优化的学习者。 | 🛠 建设中 |
-| 主学习路线（建设中） | [`后训练优化（Post-Training Optimization）`](./topic_discussion/post_training_alignment/intro.md) | SFT 衔接、偏好数据、DPO、GRPO 与项目交付。 | 想从监督微调继续进入偏好优化与对齐的学习者。 | 🛠 建设中 |
+| 主学习路线 | [`性能优化（Performance Optimization）`](./topic_discussion/performance_optimization/intro.md) | 从性能分析、显存管理、通信代价到端到端决策。 | 想系统定位并优化训练、推理和系统性能的学习者。 | 🛠 建设中 |
+| 主学习路线（建设中） | [`算子优化（Operator Optimization）`](./topic_discussion/operator_optimization/intro.md) | 从硬件直觉、图级优化、Triton、经典算子、Attention 到 CUDA 与端到端验证。 | 想从算子实现走向 kernel 和端到端性能优化的学习者。 | 🛠 建设中 |
+| 主学习路线（建设中） | [`后训练优化（Post-Training Optimization）`](./topic_discussion/post_training_optimization/intro.md) | SFT / LoRA 基础、偏好数据、DPO、GRPO 与项目交付。 | 想从监督微调继续进入偏好优化与对齐的学习者。 | 🛠 建设中 |
 | 横切支撑专题 | [`量化与压缩（Quantization and Compression）`](./topic_discussion/quantization/intro.md) | PTQ、QAT、GPTQ、AWQ、FP8 与部署决策。 | 想同时考虑精度、显存、吞吐和部署取舍的学习者。 | ✅ 持续优化 |
 | 横切支撑专题 | [`通信与并行（Communication and Parallelism）`](./topic_discussion/communication_parallel/intro.md) | NCCL、AllReduce、ZeRO、PP、TP 和并行验证。 | 想理解多卡训练和通信边界的学习者。 | ✅ 持续优化 |
+| 横切支撑专题 | [`显存优化（Memory Optimization）`](./topic_discussion/memory_performance_tuning/intro.md) | VRAM、activation、checkpointing、offload 和资源权衡。 | 想深入理解显存对象与资源策略的学习者。 | ✅ 持续优化 |
 | 横切支撑专题 | [`性能分析（Performance Analysis）`](./topic_discussion/profiling/intro.md) | 性能取证、trace 阅读、回归验证和行动决策。 | 想系统补性能意识与排障方法的学习者。 | ✅ 持续优化 |
 | 横切支撑专题（建设中） | [`多模态（Multimodal）`](./topic_discussion/multimodal/intro.md) | 以多模态推理为主线，覆盖视觉表示、对齐、视觉 token、推理成本和任务评测；训练作为共享前置。 | 想进入视觉语言模型、文档理解或图文推理的学习者。 | 🛠 建设中 |
 | 横切支撑专题（建设中） | [`部署与异构系统（Deployment and Heterogeneous Systems）`](./topic_discussion/deployment_heterogeneous/intro.md) | 模型产物、推理 backend、CPU/GPU/NPU 协同、资源编排和部署验证。 | 想理解模型如何从文件进入可交付服务的学习者。 | 🛠 建设中 |
-| 基础支撑专题 | [`监督微调与训练工程（Supervised Fine-Tuning and Training Engineering）`](./topic_discussion/fine_tuning_training/intro.md) | SFT、LoRA、训练控制、数据工程和项目准备。 | 想补齐监督微调与训练工程基础的学习者。 | ✅ 持续优化 |
+| 基础支撑专题 | [`SFT / LoRA 基础模块`](./topic_discussion/post_training_optimization/sft_foundation/intro.md) | SFT、LoRA、训练控制、数据工程和项目接口。 | 需要补齐后训练前置训练能力的学习者。 | ✅ 持续优化 |
 | 基础支撑专题 | [`反向传播与训练机制（Backpropagation and Training Mechanics）`](./topic_discussion/backpropagation_training_mechanism/intro.md) | autograd、backward、checkpointing、offload 与训练节奏。 | 想补训练机制底座的学习者。 | ✅ 持续优化 |
 | 基础支撑专题 | [`大模型架构（Model Architecture）`](./topic_discussion/model_architecture/intro.md) | 结构演进、代表模型和 MoE / 稀疏化。 | 想补模型结构背景与横向对照的学习者。 | ✅ 持续优化 |
-| 基础支撑专题 | [`编译与图优化（Compiler and Graph Optimization）`](./topic_discussion/compiler_graph_optimization/intro.md) | 图变换、IR、lowering、执行计划和 backend 约束。 | 想理解计算图如何变成可执行程序的学习者。 | ✅ 持续优化 |
+| 算子优化支撑模块 | [`图级优化与编译支撑`](./topic_discussion/operator_optimization/graph_compiler/intro.md) | 图变换、IR、lowering、执行计划和 backend 约束。 | 想理解计算图如何进入 kernel 执行的学习者。 | ✅ 持续优化 |
 
 </details>
 
@@ -260,7 +261,7 @@ You do not need to start from `00` in strict order. `00` is the prerequisite lan
 | [部分导读：PyTorch 算法实战（10 groups）](./02_PyTorch_Algorithms/intro.md) | [组内导读：2.1 Basic Operators](./02_PyTorch_Algorithms/2_1.md) / [组内导读：2.2 Model Architecture](./02_PyTorch_Algorithms/2_2.md) / [组内导读：2.3 Training and Fine-Tuning Loop](./02_PyTorch_Algorithms/2_3.md) / [组内导读：2.4 Preference Optimization and Alignment](./02_PyTorch_Algorithms/2_4.md) / [组内导读：2.5 Backpropagation and VRAM Optimization](./02_PyTorch_Algorithms/2_5.md) / [组内导读：2.6 Core Inference Optimization](./02_PyTorch_Algorithms/2_6.md) / [组内导读：2.7 Advanced Inference Strategies](./02_PyTorch_Algorithms/2_7.md) / [组内导读：2.8 Model Compression and Quantization](./02_PyTorch_Algorithms/2_8.md) / [组内导读：2.9 Distributed Parallel Strategy](./02_PyTorch_Algorithms/2_9.md) / [组内导读：2.10 Projects](./02_PyTorch_Algorithms/2_10.md) | PyTorch-level practice for algorithms, models, inference, compression, parallelism, and project validation. | Learners who want to build implementation intuition with familiar tools. | ✅ Complete, continuously refining |
 | [部分导读：Triton Kernel Development (5 groups / 15 lessons)](./03_Triton_Kernels/intro.md) | [组内导读：3.1 Foundations (5 lessons)](./03_Triton_Kernels/intro.md) / [组内导读：3.2 Transition (2 lessons)](./03_Triton_Kernels/intro.md) / [组内导读：3.3 Advanced A: Attention Optimization (3 lessons)](./03_Triton_Kernels/intro.md) / [组内导读：3.4 Advanced B: Inference Optimization (2 lessons)](./03_Triton_Kernels/intro.md) / [组内导读：3.5 Projects (3 lessons)](./03_Triton_Kernels/intro.md) | Triton kernel development. | Learners who want to move from PyTorch to Triton. | ✅ Complete, continuously refining |
 | [Part 04: CUDA C++ and System Optimization (4 groups / 16 lessons)](./04_CUDA_and_System_Optimization/intro.md) | [4.1 CUDA Programming Basics (4 lessons)](./04_CUDA_and_System_Optimization/intro.md) / [4.2 System-Level Performance Optimization (4 lessons)](./04_CUDA_and_System_Optimization/intro.md) / [4.3 Distributed Training Engineering (4 lessons)](./04_CUDA_and_System_Optimization/intro.md) / [4.4 Architecture Perspective (4 lessons)](./04_CUDA_and_System_Optimization/intro.md) | CUDA C++ and system optimization. | Learners preparing for low-level performance optimization and engineering deployment. | 🛠 In progress |
-| [Part 05: CUDA Rust (reserved)](./05_CUDA_Rust/intro.md) | Reserved | Reserved | Reserved | 🚧 Reserved |
+| [Part 05: Integrated Projects and Architecture Decisions](./05_Integrated_Projects_and_Decisions/intro.md) | Integrated projects, architecture selection, and cost decisions | Consolidates mechanisms, experiments, and engineering constraints across the main routes. | Learners ready to close the loop with system-level decisions. | 🛠 In progress |
 
 </details>
 
@@ -270,18 +271,18 @@ You do not need to start from `00` in strict order. `00` is the prerequisite lan
 | Layer | Entry | Content Positioning | Suitable For | Status |
 | ---- | ---- | ---- | ---- | ---- |
 | Main Study Path | [Inference Optimization Topic](./topic_discussion/inference_optimization/intro.md) | FlashAttention, decoding, PagedAttention, cache, and benchmark. | Learners who want practical inference acceleration. | ✅ Ongoing |
-| Main Study Path | [Memory Optimization Topic](./topic_discussion/memory_performance_tuning/intro.md) | VRAM, activation, checkpointing, offload, and trade-offs. | Learners who want to optimize memory usage and end-to-end performance. | ✅ Ongoing |
+| Main Study Path | [Performance Optimization Topic](./topic_discussion/performance_optimization/intro.md) | Performance analysis, memory management, communication costs, and end-to-end decisions. | Learners who want to diagnose and optimize training, inference, and system performance. | 🛠 In progress |
 | Main Study Path (In Progress) | [Operator Optimization Topic](./topic_discussion/operator_optimization/intro.md) | Triton, CUDA, memory access, fusion, autotuning, and kernel-to-end-to-end validation; graph rewrites and lowering remain in the compiler and graph optimization topic. | Learners who want to move from operator implementation to kernel and end-to-end optimization. | 🛠 In progress |
-| Main Study Path (In Progress) | [Post-Training Optimization Topic](./topic_discussion/post_training_alignment/intro.md) | SFT transition, preference data, DPO, GRPO, and project delivery. | Learners who want to continue from supervised fine-tuning into alignment. | 🛠 In progress |
+| Main Study Path (In Progress) | [Post-Training Optimization Topic](./topic_discussion/post_training_optimization/intro.md) | SFT / LoRA foundations, preference data, DPO, GRPO, and project delivery. | Learners who want to continue from supervised fine-tuning into alignment. | 🛠 In progress |
 | Cross-Cutting Topic | [Quantization and Compression Topic](./topic_discussion/quantization/intro.md) | PTQ, QAT, GPTQ, AWQ, FP8, and deployment decisions. | Learners balancing accuracy, memory, throughput, and deployment cost. | ✅ Ongoing |
 | Cross-Cutting Topic | [Communication and Parallelism Topic](./topic_discussion/communication_parallel/intro.md) | NCCL, AllReduce, ZeRO, PP, TP, and validation. | Learners who want to understand multi-GPU scaling and communication cost. | ✅ Ongoing |
 | Cross-Cutting Topic | [Performance Analysis Topic](./topic_discussion/profiling/intro.md) | Evidence collection, trace reading, regression validation, and action decisions. | Learners who want systematic performance diagnosis and debugging methods. | ✅ Ongoing |
 | Cross-Cutting Topic (In Progress) | [Multimodal Topic](./topic_discussion/multimodal/intro.md) | Multimodal inference as the main line: visual representations, alignment, visual tokens, inference cost, and task evaluation; training is shared prerequisite. | Learners entering vision-language models, document understanding, or multimodal reasoning. | 🛠 In progress |
 | Cross-Cutting Topic (In Progress) | [Deployment and Heterogeneous Systems Topic](./topic_discussion/deployment_heterogeneous/intro.md) | Model artifacts, inference backends, CPU/GPU/NPU coordination, resource orchestration, and deployment validation. | Learners who want to understand how models become deployable services. | 🛠 In progress |
-| Foundation Topic | [Supervised Fine-Tuning and Training Engineering Topic](./topic_discussion/fine_tuning_training/intro.md) | SFT, LoRA, training control, data engineering, and project preparation. | Learners who want stronger supervised fine-tuning and training-engineering foundations. | ✅ Ongoing |
+| Foundation Topic | [SFT / LoRA Foundation Module](./topic_discussion/post_training_optimization/sft_foundation/intro.md) | SFT, LoRA, training control, data engineering, and project interface. | Learners who need the training foundation before post-training alignment. | ✅ Ongoing |
 | Foundation Topic | [Backpropagation and Training Mechanics Topic](./topic_discussion/backpropagation_training_mechanism/intro.md) | Autograd, backward, checkpointing, offload, and training rhythm. | Learners who want stronger training-mechanism foundations. | ✅ Ongoing |
 | Foundation Topic | [Model Architecture Topic](./topic_discussion/model_architecture/intro.md) | Structure evolution, representative models, and MoE/sparsity. | Learners who want structural background and model comparison. | ✅ Ongoing |
-| Foundation Topic | [Compiler and Graph Optimization Topic](./topic_discussion/compiler_graph_optimization/intro.md) | Graph rewrites, IR, lowering, execution plans, and backend constraints. | Learners who want to understand how computation graphs become executable programs. | ✅ Ongoing |
+| Operator Support Module | [Graph Optimization and Compiler Support](./topic_discussion/operator_optimization/graph_compiler/intro.md) | Graph rewrites, IR, lowering, execution plans, and backend constraints. | Learners who want to understand how graphs enter kernel execution. | ✅ Ongoing |
 
 </details>
 

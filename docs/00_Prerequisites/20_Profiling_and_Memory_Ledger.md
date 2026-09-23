@@ -10,7 +10,7 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-前面三节分别学习了如何观察时间、整理显存对象和定位异常。本节把这些观察合并成一次可复查的分析：先记录 baseline，再找出最值得展开的时间热点，接着判断显存风险来自哪个对象，最后只改变一个条件，设计下一项验证。学习目标不是记住更多指标，而是学会把观察结果转成实验动作。
+前面三节分别学习了如何观察时间、整理显存对象和定位异常。本节把这些观察合并成一次可复查的分析：先记录 baseline，再找出最值得展开的时间热点，接着判断显存风险来自哪个对象，最后只改变一个条件，设计下一项验证。你将在这个过程中把观察结果转成具体的实验动作。
 
 **关键词：** `profiler`, `latency`, `memory`
 

@@ -14,9 +14,9 @@
 
 ## 本节导读
 
-训练中的梯度信号既要由目标产生，也要沿模型结构传递。本节帮助你建立观察反向训练信号的共同框架，理解局部环节如何影响整体更新，并为后续的显存与训练性能分析准备统一的语言。
+训练中的梯度信号既要由目标产生，也要沿模型结构传递。本节作为 2.5 的通用反向传播基础，帮助你建立观察反向训练信号的共同框架，理解局部环节如何影响整体更新，并为后续的显存与训练性能分析准备统一的语言。Attention 中更昂贵的矩阵级反向链，放在相邻的 17 节展开。
 
-学习时先观察训练信号从目标到模型内部的路径，再比较不同局部环节对信号方向、范围和缩放的影响，最后用小规模结果检查自己的判断。Attention backward 的专门推导放在相邻的 17 节。
+学习时先观察训练信号从目标到模型内部的路径，再比较不同局部环节对信号方向、范围和缩放的影响，最后用小规模结果检查自己的判断。这样先建立通用反向语言，再进入 17 节的 Attention 高成本案例。
 
 **关键词：** `activation`, `loss`, `gradients`
 
@@ -28,6 +28,7 @@
 
 - [P0: 07. PyTorch Autograd and Backward | PyTorch 自动求导与反向传播](../00_Prerequisites/07_PyTorch_Autograd_and_Backward.md)
 - [P0: 13. Simple Neural Network Training | 简单神经网络训练循环](../00_Prerequisites/13_Simple_Neural_Network_Training.md)
+
 ---
 ### Step 1: 激活与损失如何形成反向训练信号
 
@@ -149,7 +150,7 @@ def softmax_ce_loss_and_grad(logits, labels, reduction="mean"):
 运行下面的测试单元，确认手写 ReLU / CrossEntropy backward 和 PyTorch 自动求导一致。
 
 ```python
-def test_activation_and_loss_backward():
+def _legacy_test_activation_and_loss_backward():
     """验证两个局部 backward 的数值、边界行为和输入契约。"""
     x = torch.tensor([-2.0, -0.5, 0.0, 1.0, 3.0], requires_grad=True)
     upstream = torch.tensor([0.5, -1.0, 2.0, 0.25, -0.75])
@@ -213,6 +214,62 @@ def test_activation_and_loss_backward():
     print(f"ReLU grad: {x.grad.tolist()}")
     print(f"CE loss  : {loss.item():.4f}")
     print("✅ 测试通过！激活与损失的反向直觉和 PyTorch 自动求导一致。")
+
+# 机制测试入口：分别验证 ReLU 门控、交叉熵梯度、reduction、稳定性和输入契约。
+def _build_activation_backward_case():
+    x = torch.tensor([-2.0, -0.5, 0.0, 1.0, 3.0], requires_grad=True)
+    upstream = torch.tensor([0.5, -1.0, 2.0, 0.25, -0.75])
+    logits = torch.tensor([[1.0, 0.5, -0.2], [0.2, -0.3, 1.2]], requires_grad=True)
+    labels = torch.tensor([0, 2])
+    return x, upstream, logits, labels
+
+def _assert_relu_backward(x, upstream):
+    F.relu(x).backward(upstream)
+    manual = relu_backward(upstream, x.detach())
+    assert torch.allclose(x.grad, manual), "ReLU backward 不一致"
+    assert torch.isfinite(manual).all(), "ReLU 梯度包含非有限值"
+
+def _assert_cross_entropy_backward(logits, labels):
+    loss, manual_grad = softmax_ce_loss_and_grad(logits, labels)
+    reference = F.cross_entropy(logits, labels)
+    reference.backward()
+    assert torch.allclose(loss, reference.detach(), atol=1e-6), "CrossEntropy loss 不一致"
+    assert torch.allclose(logits.grad, manual_grad, atol=1e-6), "CrossEntropy backward 不一致"
+    return loss, manual_grad
+
+def _assert_reduction_and_stability(logits, labels, mean_loss, mean_grad):
+    sum_logits = logits.detach().clone().requires_grad_()
+    sum_loss = F.cross_entropy(sum_logits, labels, reduction='sum')
+    sum_loss.backward()
+    manual_sum_loss, manual_sum_grad = softmax_ce_loss_and_grad(sum_logits.detach(), labels, reduction='sum')
+    assert torch.allclose(manual_sum_loss, sum_loss.detach(), atol=1e-6)
+    assert torch.allclose(manual_sum_grad, sum_logits.grad, atol=1e-6)
+    assert torch.allclose(sum_loss, mean_loss.detach() * labels.numel(), atol=1e-6)
+    edge_logits = torch.tensor([[1000.0, 0.0, -1000.0]], requires_grad=True)
+    edge_loss, edge_grad = softmax_ce_loss_and_grad(edge_logits, torch.tensor([0]))
+    assert torch.isfinite(edge_loss) and torch.isfinite(edge_grad).all(), "大数值输入产生了非有限值"
+
+def _assert_input_contract():
+    try:
+        softmax_ce_loss_and_grad(torch.zeros(1, 3), torch.tensor([3]))
+    except ValueError as error:
+        assert "类别范围" in str(error)
+    else:
+        raise AssertionError("越界标签应该触发 ValueError")
+    try:
+        relu_backward(torch.ones(2), torch.ones(3))
+    except ValueError as error:
+        assert "相同形状" in str(error)
+    else:
+        raise AssertionError("ReLU 输入形状不一致应该触发 ValueError")
+
+def test_activation_and_loss_backward():
+    x, upstream, logits, labels = _build_activation_backward_case()
+    _assert_relu_backward(x, upstream)
+    mean_loss, mean_grad = _assert_cross_entropy_backward(logits, labels)
+    _assert_reduction_and_stability(logits, labels, mean_loss, mean_grad)
+    _assert_input_contract()
+    print("✅ 激活与损失的反向机制测试通过。")
 
 test_activation_and_loss_backward()
 
@@ -327,7 +384,7 @@ def softmax_ce_loss_and_grad(logits, labels, reduction="mean"):
 - [PyTorch CrossEntropyLoss 官方文档](https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html)
 - [PyTorch 激活函数文档](https://pytorch.org/docs/stable/nn.html#non-linear-activations)
 - [17. Attention 反向传播与自定义 Autograd](../02_PyTorch_Algorithms/17_Autograd_Basics.md)
-- [19. 激活检查点与激活卸载](../02_PyTorch_Algorithms/19_Activation_Checkpointing_and_Activation_Offload.md)
+- [19. 激活检查点](../02_PyTorch_Algorithms/19_Activation_Checkpointing.md)
 - [20. FlashAttention 模拟](../02_PyTorch_Algorithms/20_FlashAttention_Sim.md)
 - [P0: 20. 性能分析与显存账本](../00_Prerequisites/20_Profiling_and_Memory_Ledger.md)
 - [P1: 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)

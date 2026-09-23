@@ -10,7 +10,7 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-当程序报错或训练结果异常时，最先看到的现象不一定是最接近原因的位置。一个 loss 变成 NaN，可能早在 activation 或 gradient 阶段就已经出现问题；一个 grad 为 None，也可能来自计算图断开、梯度追踪关闭或参数未注册。本节按“异常分类 → 张量契约 → 数值状态 → 梯度链路”的顺序，练习如何从现象回到最小复现。
+当程序报错或训练结果异常时，最先看到的现象不一定是最接近原因的位置。一个 loss 变成 NaN，可能早在 activation 或 gradient 阶段就已经出现问题；一个 grad 为 None，也可能来自计算图断开、梯度追踪关闭或参数未注册。本节从异常现象开始，依次检查张量契约、数值状态和梯度链路，练习把问题缩小到可复现的最小位置。
 
 
 **关键词：** `shape`, `dtype`, `device`, `NaN`
@@ -243,7 +243,8 @@ for records in [
 ```
 
 ## 相关阅读
-**导语：** 完成本节后，可以继续学习 Autograd 的梯度语义，并把异常定位连接到显存策略和真实项目验证。
+**导语：** 完成本节后，可以继续学习 Autograd 的梯度语义，并把异常定位结果带入显存策略和真实项目验证。
 - [PyTorch Autograd 官方文档](https://docs.pytorch.org/docs/stable/notes/autograd.html)
+- [PyTorch 异常检测官方文档](https://docs.pytorch.org/docs/stable/autograd.html#debugging-and-anomaly-detection)
 - [20. Profiling and Memory Ledger | 性能剖析与显存账本](./20_Profiling_and_Memory_Ledger.md)
 - [76. Activation / Checkpoint / Offload Benchmark | 激活检查点与卸载对比](../02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.md)

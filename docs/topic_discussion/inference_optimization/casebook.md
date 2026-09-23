@@ -81,7 +81,7 @@
 | backend smoke | 服务能否启动和基本指标 | 稳定 benchmark 与普遍结论 |
 | repeated benchmark | 固定 workload 下的相对收益 | 其他模型或 workload 的普遍收益 |
 
-`66` 负责建立浮点推理 baseline 和统一指标口径；`68–71` 分别验证推测解码、缓存复用、调度和架构扩展。任何候选方案都应在固定模型、backend、dtype、prompt / generated tokens、并发和请求分布下比较。
+`66` 负责建立浮点推理 baseline 和统一指标口径；`68–71` 分别验证投机解码、缓存复用、调度和架构扩展。任何候选方案都应在固定模型、backend、dtype、prompt / generated tokens、并发和请求分布下比较。
 
 形成结论时按以下顺序检查：
 

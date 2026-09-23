@@ -37,12 +37,24 @@
 
 `artifact 可定位 → backend 可加载 → 格式 / kernel 可确认 → workload 可完成 → 质量达标 → 资源指标可比较`
 
+每次实验同时维护一份 manifest。它把“这次测了什么”与结果文件绑定，避免只保留一个无法复现的数字：
+
+| 字段组 | 最少字段 |
+|:---|:---|
+| artifact | model id / revision、文件或 adapter 路径、量化方法、dtype、校准数据版本、配置摘要 |
+| backend | loader、backend 版本、kernel / fallback、硬件、驱动与 PyTorch 版本 |
+| workload | prompt 集、输入 / 输出长度、batch、并发、warmup、重复次数、采样参数 |
+| result | 结果 JSON 路径、运行时间、成功 / 失败状态、原始日志或 trace 位置 |
+| decision | baseline / candidate、质量门槛、资源预算、证据等级、accept / tune / reject |
+
 | 阶段 | 必须记录 | 失败时的结论 |
 |:---|:---|:---|
 | 加载 | 模型格式、量化方法、backend、版本、错误信息 | `reject` 或记录为兼容性问题 |
 | 运行 | 显存、TTFT、TPOT、端到端延迟、吞吐、并发 | 不能只依据文件大小判断 |
 | 质量 | 固定评测集或任务指标、输出差异 | 质量不达门槛只能 `tune` 或 `reject` |
 | 重复与对照 | baseline、重复次数、硬件和 workload | 证据不足只能 `tune` |
+
+基准比较使用固定矩阵：同一模型、硬件、backend 和 workload 下，只替换一个候选变量；同时报告质量、显存、TTFT、TPOT、端到端延迟、吞吐和 P95 / P99。若出现 kernel fallback、加载成功但执行路径未切换、或只改善文件大小而没有服务收益，应单独记录为证据状态，不写成优化收益。
 
 训练适配产物和推理量化产物要分开记录。QLoRA 输出通常是 adapter 或合并后的训练模型；GPTQ / AWQ / GGUF / FP8 输出则是面向推理加载或执行的 artifact。它们可以在同一项目链路中衔接，但不能用“adapter 能加载”替代“量化 backend 能加载”。
 
@@ -66,6 +78,16 @@
 
 QLoRA 的训练适配结果需要经过单独的 artifact 转换链：先确认 adapter 或 merged model 的 revision 和质量，再选择部署前权重量化或运行时配置，最后回到 66 的浮点 baseline 与 67 的真实 backend 对照。adapter 能加载，只能证明训练产物可用；它不能证明量化部署路径可用。
 
+### 65 → 66 → 67 的入口契约
+
+| 输入阶段 | 必须存在 | 下一阶段如何使用 |
+|:---|:---|:---|
+| 65 QLoRA 选型 | `65_qlora_artifact_manifest.json`、模型 revision、adapter / merged model 路径、质量结果 | 需要训练适配时，先转换或合并为可部署模型；不能跳过 artifact 检查 |
+| 66 浮点 baseline | `66_g0_vllm_baseline.json`、固定 workload、backend/runtime、`quantization_format=none` | 作为 67 的 G0 参照，只允许 67 改变量化 artifact 或明确的 backend 变量 |
+| 67 量化部署 | 量化 artifact、format metadata、kernel evidence、独立结果 JSON 和失败记录 | 判断当前硬件与 workload 下的 `accept / tune / reject` |
+
+这条契约把训练适配、浮点性能和量化部署分开：任何一个环节缺少路径、版本、workload 或失败状态，都只能标记为待复测，不能把局部结果写成端到端收益。
+
 | 阶段 | 主要产物 | 最小检查 |
 |:---|:---|:---|
 | 训练适配 | adapter 或 merged model | revision、合并方式、任务质量 |
@@ -82,18 +104,20 @@ QLoRA 的训练适配结果需要经过单独的 artifact 转换链：先确认 
 - 精度损失是否可接受；
 - backend 和部署复杂度有没有额外代价；
 - 最终是继续保留、继续调优，还是换路线。
+- artifact manifest、结果 JSON 和失败记录是否能让别人复测。
 
 ## 证据等级
 
 - `simulation`：只验证公式、误差或决策逻辑；
 - `load_smoke`：真实 artifact 能加载并完成少量请求；
 - `fixed_benchmark`：baseline 与候选使用相同 workload 完成对比；
-- `deployment_decision`：有质量门槛、重复运行和适用边界，才可形成部署建议。
+- `deployment_decision`：有 manifest、质量门槛、重复运行、适用边界和 accept / tune / reject，才可形成部署建议。
 
 ## 文献与工程入口
 
-- `67` 量化推理与部署
-- `66` 推理性能比较
+- `66` 负责固定 workload 的浮点 baseline 和统一指标；
+- `67` 负责真实量化 artifact 的加载、backend/kernel 证据和部署对照；
+- `65` 负责 QLoRA 训练适配和 artifact manifest，不直接替代推理 baseline；
 - Part 03 `10` Triton Quantization
 
 ## 典型阅读入口

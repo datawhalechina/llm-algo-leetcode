@@ -32,7 +32,7 @@
 
 ### Step 1: 多请求为什么需要解码调度
 
-把多个请求放进同一个等待队列后，它们可能处于不同阶段，拥有不同的生成进度、优先级和缓存状态。调度器需要先把这些信息组织成请求状态，再依据选择规则决定下一步推进谁。
+把多个请求放进同一个等待队列后，它们可能处于不同阶段，拥有不同的生成进度、优先级和缓存状态。调度器需要先把这些信息组织成请求状态，再依据选择规则决定下一步推进谁。本节位于四层调度的第一层：请求级调度，关注“这一轮推进哪个请求”，而不是批次如何重组或资源池如何拆分。
 
 调度器选择的不只是请求，还包括一次推进多少工作：普通 Decode 通常推进一个 token，而投机或多 Token 路径可能一次接受一段 token。推进量、等待时间和公平性共同影响服务顺序。
 
@@ -594,5 +594,5 @@ else:
 - [Orca 原论文：A Distributed Serving System for Transformer-Based Generative Models](https://www.usenix.org/conference/osdi22/presentation/yu)
 - [vLLM 官方仓库](https://github.com/vllm-project/vllm)
 - [37. KV Cache Scheduling | KV Cache 调度](./37_KV_Cache_Scheduling.md)
-- [38. Prefill-Decode Disaggregation | PD 分离](./38_Prefill_Decode_Disaggregation.md)
+- [38. Prefill/Decode Scheduling | Prefill/Decode 调度](./38_Prefill_Decode_Scheduling.md)
 - [70. Serving Scheduler Benchmark | 服务调度基准项目](./70_Serving_Scheduler_Benchmark.md)
