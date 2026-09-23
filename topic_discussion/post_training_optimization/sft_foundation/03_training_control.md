@@ -32,9 +32,9 @@
 
 ## 经典阅读入口
 
-- [11 LR Schedulers WSD Cosine](../../02_PyTorch_Algorithms/11_LR_Schedulers_WSD_Cosine.ipynb)
-- [12 Gradient Accumulation](../../02_PyTorch_Algorithms/12_Gradient_Accumulation.ipynb)
-- [13 End-to-End Fine-Tuning Experiment](../../02_PyTorch_Algorithms/13_End_to_End_Fine_Tuning_Experiment.ipynb)
+- [11 Optimizer Updates and Learning Rate Scheduling](../../../02_PyTorch_Algorithms/11_Optimizer_Updates_and_Learning_Rate_Scheduling.ipynb)
+- [12 Gradient Accumulation](../../../02_PyTorch_Algorithms/12_Gradient_Accumulation.ipynb)
+- [13 End-to-End Fine-Tuning Experiment](../../../02_PyTorch_Algorithms/13_End_to_End_Fine_Tuning_Experiment.ipynb)
 
 ## 前置关系
 

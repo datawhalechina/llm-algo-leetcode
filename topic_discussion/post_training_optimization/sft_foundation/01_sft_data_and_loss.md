@@ -33,9 +33,9 @@ SFT 不是先写 loss，而是先把样本拆成可监督的三件套。
 
 ## 经典阅读入口
 
-- [09 SFT Training Loop](../../02_PyTorch_Algorithms/09_SFT_Training_Loop.ipynb)
-- [17 Autograd Basics](../../02_PyTorch_Algorithms/17_Autograd_Basics.ipynb)
-- [18 Activation and Loss Backward](../../02_PyTorch_Algorithms/18_Activation_and_Loss_Backward.ipynb)
+- [09 SFT Training Loop](../../../02_PyTorch_Algorithms/09_SFT_Training_Loop.ipynb)
+- [17 Autograd Basics](../../../02_PyTorch_Algorithms/17_Autograd_Basics.ipynb)
+- [18 Activation and Loss Backward](../../../02_PyTorch_Algorithms/18_Activation_and_Loss_Backward.ipynb)
 
 ## 前置关系
 

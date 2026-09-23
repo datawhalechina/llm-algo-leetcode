@@ -4,7 +4,7 @@
 
 这一页回答的是：SFT 闭环是否真的跑通，以及跑通之后能不能拿出可解释的实验结果。
 
-它承接 [32 SFT 数据工程](../../02_PyTorch_Algorithms/32_Data_Engineering_for_SFT.ipynb) 和 [33 Fine-Tuning Readiness](../../02_PyTorch_Algorithms/33_Fine_Tuning_Readiness.ipynb) 的项目准备，也承接 [13 End-to-End Fine-Tuning Experiment](../../02_PyTorch_Algorithms/13_End_to_End_Fine_Tuning_Experiment.ipynb) 的实际运行，最后把结果交给 [60 LoRA Fine-Tuning Project](../../02_PyTorch_Algorithms/60_LoRA_Fine_Tuning_Project.ipynb) 做项目交付。
+它承接 [32 SFT 数据工程](../../../02_PyTorch_Algorithms/32_Data_Engineering_for_SFT.ipynb) 和 [33 Fine-Tuning Readiness](../../../02_PyTorch_Algorithms/33_Fine_Tuning_Readiness.ipynb) 的项目准备，也承接 [13 End-to-End Fine-Tuning Experiment](../../../02_PyTorch_Algorithms/13_End_to_End_Fine_Tuning_Experiment.ipynb) 的实际运行，最后把结果交给 [60 LoRA Fine-Tuning Project](../../../02_PyTorch_Algorithms/60_LoRA_Fine_Tuning_Project.ipynb) 做项目交付。
 
 ## 你要先确认什么
 
@@ -34,8 +34,8 @@
 
 ## 经典阅读入口
 
-- [13 End-to-End Fine-Tuning Experiment](../../02_PyTorch_Algorithms/13_End_to_End_Fine_Tuning_Experiment.ipynb)
-- [60 LoRA Fine-Tuning Project](../../02_PyTorch_Algorithms/60_LoRA_Fine_Tuning_Project.ipynb)
+- [13 End-to-End Fine-Tuning Experiment](../../../02_PyTorch_Algorithms/13_End_to_End_Fine_Tuning_Experiment.ipynb)
+- [60 LoRA Fine-Tuning Project](../../../02_PyTorch_Algorithms/60_LoRA_Fine_Tuning_Project.ipynb)
 
 ## 前置关系
 

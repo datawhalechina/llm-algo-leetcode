@@ -13,7 +13,7 @@
 - `logging / experiment tracking`：关注训练过程是否留下足够证据支撑最终结论。
 - `report template`：关注 baseline、candidate、资源指标和采用建议怎么写清楚。
 
-60–65 的公共报告协议见[训练微调项目验证清单](../../docs/verification/fine_tuning_projects.md)，用于统一结果外层结构；本附录继续负责 checkpoint、artifact、tracking 和交付证据的细节。
+60–65 的公共报告协议见[训练微调项目验证清单](../../../docs/verification/fine_tuning_projects.md)，用于统一结果外层结构；本附录继续负责 checkpoint、artifact、tracking 和交付证据的细节。
 
 ## 这页不展开什么
 
@@ -116,8 +116,8 @@
 ## 相关专题
 
 - [训练工程附录](./training_engineering_appendix.md)：当你还在搭 `Trainer / Accelerate / DeepSpeed / Lightning` 这层工程闭环时先看那里。
-- [性能分析](../profiling/intro.md)：当你需要补吞吐、显存和训练热点证据时先看这里。
-- [显存优化](../memory_performance_tuning/intro.md)：当项目交付需要解释 OOM、checkpointing 或资源账本时先看这里。
+- [性能分析](../../profiling/intro.md)：当你需要补吞吐、显存和训练热点证据时先看这里。
+- [显存优化](../../memory_performance_tuning/intro.md)：当项目交付需要解释 OOM、checkpointing 或资源账本时先看这里。
 
 ## 本节要点
 

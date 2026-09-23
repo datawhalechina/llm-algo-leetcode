@@ -10,7 +10,7 @@
 
 ## 推荐入口
 
-推荐把本专题作为 [监督微调与训练工程](../fine_tuning_training/intro.md) 或 [显存优化](../memory_performance_tuning/intro.md) 的机制桥接。需要理解训练为什么变慢、爆显存或必须做 checkpointing 时，再进入对应的 Task，而不是把本专题当作独立项目线顺序完成。
+推荐把本专题作为 [监督微调与训练工程](../post_training_optimization/sft_foundation/intro.md) 或 [显存优化](../memory_performance_tuning/intro.md) 的机制桥接。需要理解训练为什么变慢、爆显存或必须做 checkpointing 时，再进入对应的 Task，而不是把本专题当作独立项目线顺序完成。
 
 ## 前置阅读
 
@@ -33,7 +33,7 @@
 先按上面的 `Task1-5` 走 notebook 主线；遇到“梯度到底怎么回去”“为什么 activation 要保存”“checkpointing 和 offload 本质差别是什么”时，再回来看对应的专题正文。想看汇总版就进 [反向传播与训练机制正文](./casebook.md)，想按连续故事线走一遍就进 [反向传播与训练机制深入阅读](./walkthrough.md)。工具层补充放在 [训练工具桥](./training_tooling_bridge.md)，图册补充放在 [06 视觉资产](./06_visual_assets.md)。
 
 如果问题已经跨到别的专题：
-[监督微调与训练工程](../fine_tuning_training/intro.md) 负责训练闭环与项目交付，[显存优化](../memory_performance_tuning/intro.md) 负责训练侧显存 trade-off，[性能分析](../profiling/intro.md) 负责证据链与热点定位。
+[监督微调与训练工程](../post_training_optimization/sft_foundation/intro.md) 负责训练闭环与项目交付，[显存优化](../memory_performance_tuning/intro.md) 负责训练侧显存 trade-off，[性能分析](../profiling/intro.md) 负责证据链与热点定位。
 
 ## 环境与验证
 

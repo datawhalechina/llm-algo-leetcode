@@ -84,6 +84,39 @@
 
 扩展实验至少保存：框架版本、模型版本、量化方式、dtype、LoRA target modules、数据切分、有效 batch、梯度累积、评测脚本和导出 artifact。否则“更快”可能只是默认配置或数据口径不同造成的表象。
 
+## 强化学习与在线对齐框架
+
+SFT 之后进入 DPO、GRPO 或在线对齐时，框架选择应服务于“采样—打分—更新—评测”的闭环，而不是只比较 API 是否方便。
+
+| 框架或组件 | 适合承担的职责 | 需要保留的证据 |
+|:---|:---|:---|
+| [`TRL`](https://huggingface.co/docs/trl/index) | 教学和小规模实验；承接 SFT、DPO、GRPO 的训练循环 | 算法配置、reference/policy 来源、reward 或 preference 数据、评测结果 |
+| [`verl`](https://verl.readthedocs.io/en/latest/) | 生产化 RLHF/RLVR；编排 rollout、训练、奖励和资源调度 | rollout backend、采样策略、更新频率、GPU 分配、吞吐与显存 |
+| [`OpenRLHF`](https://openrlhf.readthedocs.io/en/latest/) | 分布式 PPO/GRPO 与多阶段 RLHF 对照 | actor/reference/reward/critic 角色、并行策略、通信和失败记录 |
+| [`vLLM`](https://docs.vllm.ai/) / [`SGLang`](https://docs.sglang.ai/) | 作为 rollout / sampling backend 提供批量生成 | 模型版本、采样参数、queue wait、生成吞吐和 handoff cost |
+| `Ray` | 管理 rollout、训练、评测之间的任务和资源编排 | placement、等待时间、重试、资源占用和回滚点 |
+
+推荐的学习顺序是：先用 CPU 或最小 `TRL` 理解机制，再用 `TRL` 跑通小规模 DPO/GRPO，最后根据资源和并行需求迁移到 `vLLM/SGLang + verl` 或 `OpenRLHF`。框架扩展必须沿用同一 workload、评测集和决策阈值，不能把框架默认值当成算法结论。
+
+### 框架实验放在哪些项目节
+
+框架实验作为项目节的可选扩展，不改变 CPU 机制主线；每个扩展都要复用项目已有的模型、数据、checkpoint 和评测口径。
+
+| 项目节 | 默认实现 | 可选框架实验 | 需要比较的结果 |
+|:---|:---|:---|:---|
+| `13` 端到端 SFT | `Transformers` / PyTorch | 用 `TRL` 的 SFT 流程复现最小 smoke | checkpoint、loss、更新耗时、产物字段 |
+| `60` LoRA 项目 | `PEFT` + Transformers | `TRL`、`LLaMA-Factory` 或 `Unsloth` 三选一 | 同一 workload 下的显存、吞吐、验证 loss、adapter |
+| `62` 指令微调项目 | CPU 报告 + 可选 GPU SFT | 选择 `TRL` 或 `LLaMA-Factory` 完成真实模型对照 | chat template、生成质量、资源和可复现配置 |
+| `84` DPO 项目 | 最小 DPO 机制实现 | `TRL` DPOTrainer 对照 | policy/reference checkpoint、偏好指标、训练成本 |
+| `85` GRPO 项目 | 组内采样与奖励机制 | `TRL` GRPOTrainer；需要更大 rollout 时再试 `verl` | reward 分布、group size、rollout 吞吐、显存 |
+| `86` 在线 benchmark | CPU 决策与结果汇总 | `vLLM/SGLang` rollout + `verl` 编排作为扩展 | policy freshness、更新代价、安全门槛、回滚证据 |
+
+学习者不需要同时运行所有框架；每个项目保留一个机制基线，再选择一个框架扩展即可。这样能把“框架能不能跑”与“算法或数据是否有效”分开判断。
+
+### SFT checkpoint 如何进入对齐项目
+
+SFT 项目结束时至少保存 `model_id / revision`、完整 checkpoint 或 LoRA adapter、tokenizer/chat template、数据版本、dtype、训练配置和验证结果。进入 DPO 时，通常用该 SFT checkpoint 初始化 policy，并用同一 SFT checkpoint 的冻结副本作为 reference；进入 GRPO 时，则以 SFT 或已通过评测的 DPO checkpoint 初始化 policy，再记录 rollout backend 和 reward 版本。后续项目必须能回答“使用了哪个 checkpoint、何时导出、与哪份评测结果对应”，不能只保存 loss 曲线。
+
 ## 输入管线该管到什么程度
 
 训练工程最容易被低估的不是模型，而是输入管线。
@@ -120,9 +153,9 @@
 
 ## 相关专题
 
-- [反向传播与训练机制专题](../backpropagation_training_mechanism/intro.md)：当你需要先理解 `autograd / AMP / checkpointing` 是怎么工作的，再回来看工程封装。
-- [通信与并行](../communication_parallel/intro.md)：当你开始比较 `DDP / FSDP / ZeRO / DeepSpeed` 的并行与状态分摊边界时先看这里。
-- [显存优化](../memory_performance_tuning/intro.md)：当训练脚本已经能跑，但 OOM 和显存账本还没压住时先看这里。
+- [反向传播与训练机制专题](../../backpropagation_training_mechanism/intro.md)：当你需要先理解 `autograd / AMP / checkpointing` 是怎么工作的，再回来看工程封装。
+- [通信与并行](../../communication_parallel/intro.md)：当你开始比较 `DDP / FSDP / ZeRO / DeepSpeed` 的并行与状态分摊边界时先看这里。
+- [显存优化](../../memory_performance_tuning/intro.md)：当训练脚本已经能跑，但 OOM 和显存账本还没压住时先看这里。
 
 ## 本节要点
 

@@ -26,7 +26,7 @@
 
 ## 60 的实验步骤
 
-完整代码和参数说明见 [60 LoRA Fine-Tuning Project](../../02_PyTorch_Algorithms/60_LoRA_Fine_Tuning_Project.ipynb)。执行时按以下顺序建立证据：
+完整代码和参数说明见 [60 LoRA Fine-Tuning Project](../../../02_PyTorch_Algorithms/60_LoRA_Fine_Tuning_Project.ipynb)。执行时按以下顺序建立证据：
 
 1. 固定真实模型、数据集版本、`SPLIT_SEED`、验证集比例、`dtype`、`seq_len` 和训练步数。
 2. 先运行同口径 full-parameter baseline，再运行 LoRA candidate；两者使用同一批数据和同一评测集。
@@ -38,15 +38,15 @@
 
 ## 项目分流
 
-完成 [13 End-to-End Fine-Tuning Experiment](../../02_PyTorch_Algorithms/13_End_to_End_Fine_Tuning_Experiment.ipynb) 后，不同项目应按问题分流，而不是全部同时运行：
+完成 [13 End-to-End Fine-Tuning Experiment](../../../02_PyTorch_Algorithms/13_End_to_End_Fine_Tuning_Experiment.ipynb) 后，不同项目应按问题分流，而不是全部同时运行：
 
 | 项目 | 适合什么时候进入 | 主要产出 |
 |:---|:---|:---|
-| [60 LoRA Fine-Tuning](../../02_PyTorch_Algorithms/60_LoRA_Fine_Tuning_Project.ipynb) | 第一个完整 LoRA 交付 | adapter、tokenizer、config、评测和采用决策 |
-| [62 Instruction Fine-Tuning](../../02_PyTorch_Algorithms/62_Instruction_Fine_Tuning_Project.ipynb) | 任务格式和 instruction 数据需要单独验证 | 指令格式、训练结果和任务样例 |
-| [63 LoRA Variants Benchmark](../../02_PyTorch_Algorithms/63_LoRA_Variants_Benchmark.ipynb) | 已有稳定 baseline，需要比较 adapter 方案 | 统一规格、质量、参数效率和资源对比 |
-| [64 SFT Data Quality](../../02_PyTorch_Algorithms/64_SFT_Data_Quality_Project.ipynb) | loss 或样例异常，怀疑数据质量 | 数据审计、清洗规则和质量报告 |
-| [65 QLoRA Selection](../../02_PyTorch_Algorithms/65_QLoRA_Selection_Project.ipynb) | 单卡显存不足或需要低比特训练 | 量化配置、显存、吞吐、质量和选型决策 |
+| [60 LoRA Fine-Tuning](../../../02_PyTorch_Algorithms/60_LoRA_Fine_Tuning_Project.ipynb) | 第一个完整 LoRA 交付 | adapter、tokenizer、config、评测和采用决策 |
+| [62 Instruction Fine-Tuning](../../../02_PyTorch_Algorithms/62_Instruction_Fine_Tuning_Project.ipynb) | 任务格式和 instruction 数据需要单独验证 | 指令格式、训练结果和任务样例 |
+| [63 LoRA Variants Benchmark](../../../02_PyTorch_Algorithms/63_LoRA_Variants_Benchmark.ipynb) | 已有稳定 baseline，需要比较 adapter 方案 | 统一规格、质量、参数效率和资源对比 |
+| [64 SFT Data Quality](../../../02_PyTorch_Algorithms/64_SFT_Data_Quality_Project.ipynb) | loss 或样例异常，怀疑数据质量 | 数据审计、清洗规则和质量报告 |
+| [65 QLoRA Selection](../../../02_PyTorch_Algorithms/65_QLoRA_Selection_Project.ipynb) | 单卡显存不足或需要低比特训练 | 量化配置、显存、吞吐、质量和选型决策 |
 
 核心路径先完成 60；只有当问题与任务格式、LoRA 变体、数据质量或显存预算相关时，再进入对应扩展项目。扩展项目的结论必须回填到统一的 baseline / candidate / quality / resource / decision 报告中。
 
@@ -62,7 +62,7 @@ quality / resources / artifacts
 decision / environment
 ```
 
-公共结构由 [`fine_tuning_result_schema.py`](../../tools/fine_tuning_result_schema.py) 维护；项目可以增加自己的扩展字段，但不能省略比较基线、质量证据、资源证据和决策原因。详细执行步骤见[训练微调项目验证清单](../../docs/verification/fine_tuning_projects.md)。
+公共结构由 [`fine_tuning_result_schema.py`](https://github.com/datawhalechina/llm-algo-leetcode/blob/main/tools/fine_tuning_result_schema.py) 维护；项目可以增加自己的扩展字段，但不能省略比较基线、质量证据、资源证据和决策原因。详细执行步骤见[训练微调项目验证清单](https://github.com/datawhalechina/llm-algo-leetcode/blob/main/docs/verification/fine_tuning_projects.md)。
 
 这与 66–70、73–76 的做法一致：统一的是结果接口和证据边界，不是把 TTFT、KV Cache 等推理指标套到训练微调项目上。
 
@@ -75,13 +75,13 @@ decision / environment
 
 ## 经典阅读入口
 
-- [60 LoRA Fine-Tuning Project](../../02_PyTorch_Algorithms/60_LoRA_Fine_Tuning_Project.ipynb)
-- [26 QLoRA and 4bit Quantization](../../02_PyTorch_Algorithms/26_QLoRA_and_4bit_Quantization.ipynb)
-- [13 End-to-End Fine-Tuning Experiment](../../02_PyTorch_Algorithms/13_End_to_End_Fine_Tuning_Experiment.ipynb)
-- [62 Instruction Fine-Tuning Project](../../02_PyTorch_Algorithms/62_Instruction_Fine_Tuning_Project.ipynb)
-- [63 LoRA Variants Benchmark](../../02_PyTorch_Algorithms/63_LoRA_Variants_Benchmark.ipynb)
-- [64 SFT Data Quality Project](../../02_PyTorch_Algorithms/64_SFT_Data_Quality_Project.ipynb)
-- [65 QLoRA Selection Project](../../02_PyTorch_Algorithms/65_QLoRA_Selection_Project.ipynb)
+- [60 LoRA Fine-Tuning Project](../../../02_PyTorch_Algorithms/60_LoRA_Fine_Tuning_Project.ipynb)
+- [26 QLoRA and 4bit Quantization](../../../02_PyTorch_Algorithms/26_QLoRA_and_4bit_Quantization.ipynb)
+- [13 End-to-End Fine-Tuning Experiment](../../../02_PyTorch_Algorithms/13_End_to_End_Fine_Tuning_Experiment.ipynb)
+- [62 Instruction Fine-Tuning Project](../../../02_PyTorch_Algorithms/62_Instruction_Fine_Tuning_Project.ipynb)
+- [63 LoRA Variants Benchmark](../../../02_PyTorch_Algorithms/63_LoRA_Variants_Benchmark.ipynb)
+- [64 SFT Data Quality Project](../../../02_PyTorch_Algorithms/64_SFT_Data_Quality_Project.ipynb)
+- [65 QLoRA Selection Project](../../../02_PyTorch_Algorithms/65_QLoRA_Selection_Project.ipynb)
 
 ## 前置关系
 
