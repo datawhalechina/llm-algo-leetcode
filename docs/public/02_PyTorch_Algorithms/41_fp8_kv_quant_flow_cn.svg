@@ -1,12 +1,42 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" role="img" aria-labelledby="title desc">
-  <title id="title">FP8 与 KV Cache 量化路径</title>
-  <desc id="desc">运行时张量或 KV Cache 经过 scale、低精度存储和恢复，分别影响计算带宽或缓存容量。</desc>
-  <defs><marker id="a41" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker><style>.t{font:700 30px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.s{font:500 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.h{font:700 21px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#111827}.b{font:500 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.box{stroke-width:2.5;rx:18}.l{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a41)}</style></defs>
-  <rect width="1200" height="600" fill="#f8fafc"/><text x="60" y="58" class="t">FP8 / KV Cache：运行时量化改变的对象不同</text><text x="60" y="90" class="s">FP8 主要观察计算与带宽，KV Cache 主要观察长上下文和并发容量。</text>
-  <rect x="60" y="190" width="220" height="160" class="box" fill="#dbeafe" stroke="#2563eb"/><text x="118" y="240" class="h">运行时张量</text><text x="95" y="278" class="b">hidden state / 激活</text><text x="95" y="307" class="s">FP8 近似计算路径</text>
-  <rect x="360" y="190" width="220" height="160" class="box" fill="#fef3c7" stroke="#d97706"/><text x="438" y="240" class="h">scale</text><text x="396" y="278" class="b">确定动态范围</text><text x="396" y="307" class="s">全局或分组记录</text>
-  <rect x="660" y="125" width="220" height="160" class="box" fill="#dcfce7" stroke="#16a34a"/><text x="720" y="175" class="h">FP8 路径</text><text x="696" y="213" class="b">降低计算 / 带宽</text><text x="696" y="242" class="s">需要硬件 kernel</text>
-  <rect x="660" y="355" width="220" height="160" class="box" fill="#dcfce7" stroke="#16a34a"/><text x="710" y="405" class="h">KV Cache 路径</text><text x="696" y="443" class="b">降低缓存容量</text><text x="696" y="472" class="s">影响上下文 / 并发</text>
-  <rect x="960" y="235" width="180" height="160" class="box" fill="#fce7f3" stroke="#db2777"/><text x="1005" y="285" class="h">恢复使用</text><text x="986" y="323" class="b">反量化 + attention</text><text x="986" y="352" class="s">检查误差与质量</text>
-  <path d="M280 270H360" class="l"/><path d="M580 250L660 205" class="l"/><path d="M580 310L660 435" class="l"/><path d="M880 205L960 285" class="l"/><path d="M880 435L960 345" class="l"/><text x="60" y="565" class="s">CPU 可解释 scale、分组和误差；真实 FP8 kernel、缓存峰值与端到端收益需要 GPU/backend。</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="600" viewBox="0 0 1240 600" role="img" aria-labelledby="title desc">
+  <title id="title">FP8 与 KV Cache 量化的对象和收益不同</title>
+  <desc id="desc">FP8 面向前向计算中的激活或权重表示，KV Cache 量化面向已生成 token 的状态存储。两条路径分别检查计算路径和上下文容量，不能混为同一项证据。</desc>
+  <defs>
+    <style>
+      .title{font:700 28px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324d}.sub{font:15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#526b7d}.group{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#35526b}.h{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324d}.t{font:14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#526b7d}.frame{fill:#fff;stroke:#c7d9e7;stroke-width:1.5}.blue{fill:#e8f3fb;stroke:#3978a8;stroke-width:2}.green{fill:#eaf7ef;stroke:#4c9870;stroke-width:2}.orange{fill:#fff1df;stroke:#c78335;stroke-width:2}.purple{fill:#f1eafa;stroke:#8b6bb1;stroke-width:2}.flow{stroke:#3978a8;stroke-width:3;fill:none;marker-end:url(#arrow)}.fp8{stroke:#4c9870;stroke-width:3;fill:none;marker-end:url(#greenArrow)}.kv{stroke:#8b6bb1;stroke-width:3;fill:none;marker-end:url(#purpleArrow)}
+    </style>
+    <marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#3978a8"/></marker>
+    <marker id="greenArrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#4c9870"/></marker>
+    <marker id="purpleArrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#8b6bb1"/></marker>
+  </defs>
+  <rect width="1240" height="600" rx="24" fill="#f8fbfd"/>
+  <text x="620" y="48" text-anchor="middle" class="title">FP8 / KV Cache：运行时量化面对的对象与收益不同</text>
+  <text x="620" y="76" text-anchor="middle" class="sub">先区分量化发生在计算路径还是状态存储路径，再选择对应的误差与性能证据</text>
+
+  <rect x="50" y="135" width="535" height="310" rx="18" class="frame"/>
+  <text x="75" y="166" class="group">FP8 计算路径</text>
+  <rect x="75" y="205" width="205" height="80" rx="15" class="blue"/>
+  <text x="178" y="237" text-anchor="middle" class="h">激活 / 权重表示</text><text x="178" y="262" text-anchor="middle" class="t">前向计算中的张量</text>
+  <rect x="350" y="205" width="205" height="80" rx="15" class="green"/>
+  <text x="453" y="237" text-anchor="middle" class="h">FP8 scale 与计算</text><text x="453" y="262" text-anchor="middle" class="t">动态范围与 kernel 路径</text>
+  <path d="M280 245H350" class="fp8"/>
+  <rect x="160" y="335" width="315" height="62" rx="14" class="green"/>
+  <text x="318" y="362" text-anchor="middle" class="h">观察计算与带宽路径</text><text x="318" y="384" text-anchor="middle" class="t">误差、吞吐与硬件支持</text>
+  <path d="M453 285V315H318V335" class="fp8"/>
+
+  <rect x="655" y="135" width="535" height="310" rx="18" class="frame"/>
+  <text x="680" y="166" class="group">KV Cache 状态路径</text>
+  <rect x="680" y="205" width="205" height="80" rx="15" class="blue"/>
+  <text x="783" y="237" text-anchor="middle" class="h">已生成 K / V</text><text x="783" y="262" text-anchor="middle" class="t">随上下文持续驻留</text>
+  <rect x="955" y="205" width="205" height="80" rx="15" class="purple"/>
+  <text x="1058" y="237" text-anchor="middle" class="h">分组量化与读取</text><text x="1058" y="262" text-anchor="middle" class="t">量化值必须匹配 scale</text>
+  <path d="M885 245H955" class="kv"/>
+  <rect x="765" y="335" width="315" height="62" rx="14" class="purple"/>
+  <text x="923" y="362" text-anchor="middle" class="h">观察容量与上下文质量</text><text x="923" y="384" text-anchor="middle" class="t">bytes、恢复误差与并发</text>
+  <path d="M1058 285V315H923V335" class="kv"/>
+
+  <rect x="350" y="500" width="540" height="48" rx="15" class="orange"/>
+  <text x="620" y="530" text-anchor="middle" class="h">各自形成 baseline / candidate；不要用一种路径的证据替代另一种</text>
+  <path d="M318 397V470H520V500" class="flow"/>
+  <path d="M923 397V470H720V500" class="flow"/>
 </svg>

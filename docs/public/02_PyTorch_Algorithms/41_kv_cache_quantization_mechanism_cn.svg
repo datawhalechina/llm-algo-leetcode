@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
+  <title id="title">KV Cache 分组量化的状态契约</title>
+  <desc id="desc">新 K/V 状态沿最后一维分组，每组保存独立 scale；读取时必须使用同一位置的量化值与 scale 恢复近似状态。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#315f9b"/></marker>
+    <style>.title{font:700 26px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#18324b}.sub{font:500 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#486581}.group{font:700 18px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#18324b}.label{font:600 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#18324b}.small{font:15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#405466}.box{stroke:#315f9b;stroke-width:2;rx:14}.line{stroke:#315f9b;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
+  </defs>
+  <rect width="1200" height="500" fill="#f7fafc"/>
+  <text x="600" y="42" text-anchor="middle" class="title">KV Cache 分组量化：状态写入与读取必须匹配</text>
+  <text x="600" y="70" text-anchor="middle" class="sub">量化减少每个状态的字节数；scale 必须随对应分组一起保存和读取</text>
+
+  <rect x="40" y="112" width="300" height="190" fill="#eef6ff" stroke="#7aa7d3" class="box"/>
+  <text x="65" y="143" class="group">写入状态</text>
+  <rect x="70" y="166" width="240" height="88" fill="#ffffff" stroke="#9dbfe0" class="box"/>
+  <text x="190" y="201" text-anchor="middle" class="label">新增 K / V</text>
+  <text x="190" y="228" text-anchor="middle" class="small">沿最后一维划分 group</text>
+
+  <rect x="450" y="112" width="300" height="190" fill="#fff8eb" stroke="#d9a747" class="box"/>
+  <text x="475" y="143" class="group">保存量化状态</text>
+  <rect x="480" y="166" width="240" height="88" fill="#ffffff" stroke="#e2bf70" class="box"/>
+  <text x="600" y="195" text-anchor="middle" class="label">每组：低精度值 + scale</text>
+  <text x="600" y="222" text-anchor="middle" class="small">尾部不足一组也保留独立记录</text>
+
+  <rect x="860" y="112" width="300" height="190" fill="#f2eefb" stroke="#a18bc5" class="box"/>
+  <text x="885" y="143" class="group">读取状态</text>
+  <rect x="890" y="166" width="240" height="88" fill="#ffffff" stroke="#b7a6d4" class="box"/>
+  <text x="1010" y="201" text-anchor="middle" class="label">按同一 group 恢复</text>
+  <text x="1010" y="228" text-anchor="middle" class="small">量化值与 scale 不能错配</text>
+
+  <path d="M310 210H480" class="line"/>
+  <path d="M720 210H890" class="line"/>
+  <path d="M600 254V345H1010V254" class="line" stroke-dasharray="8 6"/>
+  <text x="805" y="337" text-anchor="middle" class="small">同一组定位</text>
+
+  <rect x="175" y="365" width="850" height="88" fill="#ffffff" stroke="#9bb2c8" stroke-width="2" rx="16"/>
+  <text x="600" y="398" text-anchor="middle" class="label">观察三项量化代价</text>
+  <text x="365" y="428" text-anchor="middle" class="small">量化字节数（含 scale）</text>
+  <text x="600" y="428" text-anchor="middle" class="small">恢复误差 MSE</text>
+  <text x="840" y="428" text-anchor="middle" class="small">量化 / 恢复耗时</text>
+</svg>

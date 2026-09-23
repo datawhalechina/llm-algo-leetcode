@@ -1,11 +1,44 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" role="img" aria-labelledby="title desc">
-  <title id="title">GPTQ 与 AWQ 的校准路径</title>
-  <desc id="desc">校准数据经过统计后分别进入 GPTQ 误差重构或 AWQ 敏感通道保护，最终生成部署 artifact。</desc>
-  <defs><marker id="a40" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker><style>.t{font:700 30px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.s{font:500 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.h{font:700 21px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#111827}.b{font:500 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.box{stroke-width:2.5;rx:18}.l{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a40)}</style></defs>
-  <rect width="1200" height="600" fill="#fffbeb"/><text x="60" y="58" class="t">GPTQ / AWQ：同一部署目标，不同校准信号</text><text x="60" y="90" class="s">两者都属于后训练权重量化；本节用模拟解释决策信号，67 再验证真实 artifact。</text>
-  <rect x="60" y="205" width="220" height="150" class="box" fill="#dbeafe" stroke="#2563eb"/><text x="112" y="255" class="h">校准数据</text><text x="95" y="293" class="b">输入样本</text><text x="95" y="322" class="s">暴露层输出与激活分布</text>
-  <rect x="360" y="130" width="260" height="150" class="box" fill="#fef3c7" stroke="#d97706"/><text x="454" y="180" class="h">GPTQ</text><text x="400" y="218" class="b">重构误差与误差补偿</text><text x="400" y="247" class="s">尽量保持层输出</text>
-  <rect x="360" y="350" width="260" height="150" class="box" fill="#dcfce7" stroke="#16a34a"/><text x="454" y="400" class="h">AWQ</text><text x="400" y="438" class="b">激活感知与敏感通道</text><text x="400" y="467" class="s">保护重要通道</text>
-  <rect x="730" y="205" width="310" height="150" class="box" fill="#fce7f3" stroke="#db2777"/><text x="818" y="255" class="h">量化 artifact</text><text x="785" y="293" class="b">分组、scale、格式与元数据</text><text x="785" y="322" class="s">交给目标 backend 加载</text>
-  <path d="M280 260L360 205" class="l"/><path d="M280 300L360 425" class="l"/><path d="M620 205L730 260" class="l"/><path d="M620 425L730 300" class="l"/><text x="60" y="555" class="s">CPU 可验证：校准统计、分组和重构误差；GPU/backend 才能验证 kernel、显存、速度和任务质量。</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="540" viewBox="0 0 1240 540" role="img" aria-labelledby="title desc">
+  <title id="title">GPTQ 与 AWQ 的校准策略差异</title>
+  <desc id="desc">校准输入先形成共同的分组和 scale 基线，再分别进入 GPTQ 的层输出误差路径和 AWQ 的激活敏感通道路径，最终生成同类量化输出。</desc>
+  <defs>
+    <style>
+      .title{font:700 27px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.sub{font:15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.group{font:700 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.h{font:700 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#111827}.t{font:14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.frame{fill:#fff;stroke:#cbd5e1;stroke-width:1.5}.blue{fill:#dbeafe;stroke:#2563eb;stroke-width:2}.purple{fill:#f1eafa;stroke:#8b6bb1;stroke-width:2}.green{fill:#eaf7ee;stroke:#4c9870;stroke-width:2}.orange{fill:#fff5df;stroke:#c78335;stroke-width:2}.pink{fill:#fce7f3;stroke:#db2777;stroke-width:2}.flow{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#arrow)}.gptq{stroke:#8b6bb1;stroke-width:3;fill:none;marker-end:url(#purpleArrow)}.awq{stroke:#4c9870;stroke-width:3;fill:none;marker-end:url(#greenArrow)}
+    </style>
+    <marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#64748b"/></marker>
+    <marker id="purpleArrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#8b6bb1"/></marker>
+    <marker id="greenArrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#4c9870"/></marker>
+  </defs>
+  <rect width="1240" height="540" rx="22" fill="#fffbeb"/>
+  <text x="620" y="46" text-anchor="middle" class="title">GPTQ / AWQ：共享校准基础，选择不同的误差控制信号</text>
+  <text x="620" y="74" text-anchor="middle" class="sub">左侧准备共同量化基线；中间两条并列路径决定各自的权重处理方式</text>
+
+  <rect x="45" y="210" width="175" height="82" rx="15" class="blue"/>
+  <text x="133" y="242" text-anchor="middle" class="h">校准输入</text><text x="133" y="266" text-anchor="middle" class="t">代表性样本与层输出</text>
+  <rect x="275" y="210" width="175" height="82" rx="15" class="orange"/>
+  <text x="363" y="242" text-anchor="middle" class="h">共同准备</text><text x="363" y="266" text-anchor="middle" class="t">分组、scale 与统计</text>
+  <path d="M220 251H275" class="flow"/>
+
+  <rect x="500" y="110" width="370" height="130" rx="18" class="frame"/>
+  <text x="523" y="140" class="group">GPTQ：层输出误差路径</text>
+  <rect x="523" y="165" width="140" height="48" rx="12" class="purple"/><text x="593" y="195" text-anchor="middle" class="h">比较恢复误差</text>
+  <rect x="695" y="165" width="150" height="48" rx="12" class="purple"/><text x="770" y="195" text-anchor="middle" class="h">补偿并量化</text>
+  <path d="M663 189H695" class="gptq"/>
+
+  <rect x="500" y="300" width="370" height="130" rx="18" class="frame"/>
+  <text x="523" y="330" class="group">AWQ：激活敏感通道路径</text>
+  <rect x="523" y="355" width="140" height="48" rx="12" class="green"/><text x="593" y="385" text-anchor="middle" class="h">识别敏感通道</text>
+  <rect x="695" y="355" width="150" height="48" rx="12" class="green"/><text x="770" y="385" text-anchor="middle" class="h">保护并重缩放</text>
+  <path d="M663 379H695" class="awq"/>
+
+  <rect x="955" y="210" width="235" height="92" rx="17" class="pink"/>
+  <text x="1073" y="243" text-anchor="middle" class="h">共同量化输出</text><text x="1073" y="267" text-anchor="middle" class="t">低比特权重、scale 与 metadata</text>
+  <rect x="955" y="335" width="235" height="58" rx="14" class="blue"/>
+  <text x="1073" y="360" text-anchor="middle" class="h">artifact 与恢复误差</text><text x="1073" y="382" text-anchor="middle" class="t">交给 loader / backend 复核</text>
+
+  <path d="M450 251H475V189H523" class="gptq"/>
+  <path d="M450 251H475V379H523" class="awq"/>
+  <path d="M845 189H910V245H955" class="gptq"/>
+  <path d="M845 379H910V267H955" class="awq"/>
+  <path d="M1073 302V335" class="flow"/>
 </svg>
