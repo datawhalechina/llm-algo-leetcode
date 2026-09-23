@@ -1,9 +1,40 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1400" height="560" viewBox="0 0 1400 560" role="img" aria-labelledby="title desc">
-<title id="title">Activation Offload 的设备间搬运路径</title><desc id="desc">激活在 GPU 上产生，暂时不用时搬到 CPU 或 Host，反向需要时再取回 GPU，搬运和同步决定收益。</desc>
-<defs><style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",Arial,sans-serif;fill:#172033}.title{font-size:29px;font-weight:700}.sub{font-size:15px;fill:#475569}.label{font-size:18px;font-weight:700}.small{font-size:13px;fill:#475569}.lane{stroke-width:2;rx:16}.node{fill:#fff;stroke-width:2;rx:12}.flow{stroke-width:3;fill:none}.arrow{fill:#475569}.transfer{stroke:#0891b2;stroke-width:3;stroke-dasharray:9 6;fill:none}.transferArrow{fill:#0891b2}</style></defs>
-<rect width="1400" height="560" fill="#f8fafc"/><text x="700" y="42" text-anchor="middle" class="title">Activation Offload：激活在设备之间移动</text><text x="700" y="70" text-anchor="middle" class="sub">GPU 负责计算，CPU / Host 暂存冷激活；反向时按需取回</text>
-<rect x="55" y="120" width="1290" height="150" class="lane" fill="#eff6ff" stroke="#93c5fd"/><text x="95" y="157" class="label">GPU：计算与有限驻留空间</text><rect x="120" y="185" width="250" height="58" class="node" fill="#fff" stroke="#3b82f6"/><text x="245" y="220" text-anchor="middle" class="label">前向产生 activation</text><rect x="1050" y="185" width="250" height="58" class="node" fill="#fff" stroke="#3b82f6"/><text x="1175" y="220" text-anchor="middle" class="label">反向取回并计算</text>
-<rect x="55" y="335" width="1290" height="150" class="lane" fill="#ecfeff" stroke="#67e8f9"/><text x="95" y="372" class="label">CPU / Host：暂存与带宽</text><rect x="575" y="400" width="250" height="58" class="node" fill="#fff" stroke="#0891b2"/><text x="700" y="435" text-anchor="middle" class="label">暂存冷 activation</text>
-<path d="M245 243V300H700V400" class="transfer"/><polygon points="700,406 694,394 706,394" class="transferArrow"/><path d="M700 400V300H1175V243" class="transfer"/><polygon points="1175,237 1169,249 1181,249" class="transferArrow"/>
-<text x="455" y="289" text-anchor="middle" class="small">搬出：释放 GPU 驻留空间</text><text x="945" y="289" text-anchor="middle" class="small">搬回：支付带宽与同步等待</text>
+  <title id="title">Activation Offload 的设备间生命周期</title>
+  <desc id="desc">前向在 GPU 产生激活，冷激活搬到 CPU 或 Host 暂存，反向需要时再回传 GPU。</desc>
+  <defs>
+    <style>
+      text { font-family: "Noto Sans CJK SC", "Microsoft YaHei", Arial, sans-serif; fill: #172033; }
+      .title { font-size: 29px; font-weight: 700; }
+      .sub { font-size: 15px; fill: #475569; }
+      .lane-label { font-size: 18px; font-weight: 700; }
+      .label { font-size: 18px; font-weight: 700; }
+      .small { font-size: 14px; fill: #475569; }
+      .line-label { font-size: 13px; fill: #0f766e; paint-order: stroke; stroke: #f8fafc; stroke-width: 5; stroke-linejoin: round; }
+      .lane { stroke-width: 2; rx: 16; }
+      .node { fill: #fff; stroke-width: 2.5; rx: 13; }
+      .transfer { stroke: #0891b2; stroke-width: 3.5; fill: none; stroke-dasharray: 9 6; }
+    </style>
+  </defs>
+  <rect width="1400" height="560" fill="#f8fafc"/>
+  <text x="700" y="44" text-anchor="middle" class="title">Activation Offload：激活在设备之间移动</text>
+  <text x="700" y="72" text-anchor="middle" class="sub">不丢弃 activation；改变的是反向到达前的驻留位置</text>
+
+  <rect x="55" y="120" width="1290" height="150" class="lane" fill="#eff6ff" stroke="#93c5fd"/>
+  <rect x="150" y="155" width="280" height="62" class="node" stroke="#3b82f6"/>
+  <text x="290" y="192" text-anchor="middle" class="label">前向产生 activation</text>
+  <rect x="990" y="155" width="280" height="62" class="node" stroke="#3b82f6"/>
+  <text x="1130" y="192" text-anchor="middle" class="label">反向取回并计算</text>
+  <text x="95" y="252" class="lane-label">GPU：计算与驻留</text>
+
+  <rect x="55" y="335" width="1290" height="150" class="lane" fill="#ecfeff" stroke="#67e8f9"/>
+  <rect x="560" y="400" width="280" height="62" class="node" stroke="#0891b2"/>
+  <text x="700" y="437" text-anchor="middle" class="label">Host 暂存 activation</text>
+  <text x="95" y="465" class="lane-label">CPU / Host：暂存</text>
+
+  <path d="M290 217 V431 H560" class="transfer"/>
+  <polygon points="560,431 547,424 547,438" fill="#0891b2"/>
+  <text x="425" y="420" text-anchor="middle" class="line-label">反向暂不使用：D2H 搬出并释放 GPU 驻留</text>
+  <path d="M840 431 H1130 V217" class="transfer"/>
+  <polygon points="1130,217 1123,230 1137,230" fill="#0891b2"/>
+  <text x="985" y="420" text-anchor="middle" class="line-label">反向将读取：H2D 预取回 GPU</text>
 </svg>

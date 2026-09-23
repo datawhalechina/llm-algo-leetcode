@@ -16,6 +16,99 @@ from pathlib import Path
 from typing import Any, Mapping
 
 
+def inspect_quantization_upstream_contract(
+    *,
+    baseline_path: str | Path,
+    adapter_manifest_path: str | Path | None = None,
+    expected_baseline: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Inspect the optional 65/66 inputs used by project 67 without a GPU.
+
+    A 65 manifest records the origin of an adapter or merged model.  It is
+    deliberately *not* accepted as a GPTQ/AWQ/GGUF artifact.  A 66 result is
+    reusable only when it has the standard baseline contract and agrees with
+    the selected model/workload/backend fields.  Project 67 may still run its
+    own paired G0/G1 measurement when either upstream record is unavailable.
+    """
+
+    baseline_file = Path(baseline_path)
+    expected = dict(expected_baseline or {})
+    required = {
+        "schema_version",
+        "project",
+        "experiment_group",
+        "role",
+        "quantization_format",
+        "model_revision",
+        "backend",
+        "workload_path",
+        "dtype",
+        "evidence_level",
+    }
+    baseline: dict[str, Any] = {
+        "status": "pending_baseline",
+        "path": str(baseline_file),
+        "missing": ["result_json"],
+        "mismatches": {},
+        "contract": None,
+    }
+    if baseline_file.exists():
+        try:
+            payload = json.loads(baseline_file.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            baseline.update(status="invalid_json", missing=["valid_json"], error=str(error))
+        else:
+            contract = payload.get("experiment_contract") or payload.get("baseline_contract") or {}
+            missing = sorted(required - set(contract))
+            mismatches = {
+                key: {"expected": value, "actual": contract.get(key)}
+                for key, value in expected.items()
+                if value is not None and contract.get(key) != value
+            }
+            failure = payload.get("failure") or contract.get("failure") or {}
+            if failure.get("status") == "recorded":
+                status = "failure_recorded"
+            elif missing:
+                status = "legacy_or_incomplete"
+            elif mismatches:
+                status = "mismatch"
+            else:
+                status = "compatible"
+            baseline.update(status=status, missing=missing, mismatches=mismatches, contract=contract)
+
+    manifest: dict[str, Any] = {
+        "status": "not_provided",
+        "path": str(adapter_manifest_path) if adapter_manifest_path else None,
+        "artifact_role": "provenance_only",
+        "can_replace_quantization_artifact": False,
+    }
+    if adapter_manifest_path:
+        manifest_file = Path(adapter_manifest_path)
+        if not manifest_file.exists():
+            manifest["status"] = "pending_manifest"
+        else:
+            try:
+                payload = json.loads(manifest_file.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as error:
+                manifest.update(status="invalid_json", error=str(error))
+            else:
+                ready = payload.get("status") == "ready" and bool(payload.get("artifact_path"))
+                manifest.update(
+                    status="ready_provenance" if ready else "not_ready",
+                    model_revision=payload.get("model_revision") or payload.get("model_id"),
+                    artifact_format=payload.get("artifact_format"),
+                    result_json=payload.get("result_json"),
+                )
+
+    return {
+        "status": "compatible" if baseline["status"] == "compatible" else "standalone_pair_required",
+        "baseline": baseline,
+        "adapter_manifest": manifest,
+        "matched_measurement": baseline["status"] == "compatible",
+        "standalone_pair_allowed": True,
+    }
+
+
 def locate_repo_root(start: str | Path | None = None) -> Path:
     """Find the repository root from a notebook working directory."""
 
@@ -273,6 +366,7 @@ def run_backend_benchmark(
     max_tokens: int = 64,
     concurrency: int = 1,
     warmup: int = 1,
+    repeats: int = 1,
     backend: str = "vllm",
     dtype: str = "unknown",
     batch: int = 1,
@@ -300,6 +394,7 @@ def run_backend_benchmark(
         "--max-tokens", str(max_tokens),
         "--concurrency", str(concurrency),
         "--warmup", str(warmup),
+        "--repeats", str(repeats),
         "--output", str(output_path),
     ]
     subprocess.run(command, cwd=root, check=True)

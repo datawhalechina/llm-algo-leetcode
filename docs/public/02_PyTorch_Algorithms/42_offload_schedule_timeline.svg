@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="600" viewBox="0 0 1500 600" role="img" aria-labelledby="title desc">
+  <title id="title">Activation Offload 的搬出与预取时间线</title>
+  <desc id="desc">Offload 调度器根据下一次使用时间和预算，在前向后搬出 activation，并在反向消费前预取回 GPU，尽量与其他计算重叠。</desc>
+  <defs>
+    <style>
+      text { font-family: "Noto Sans CJK SC", "Microsoft YaHei", Arial, sans-serif; fill: #172033; }
+      .title { font-size: 28px; font-weight: 700; }
+      .sub { font-size: 15px; fill: #475569; }
+      .lane-label { font-size: 18px; font-weight: 700; }
+      .label { font-size: 17px; font-weight: 700; }
+      .small { font-size: 13px; fill: #475569; }
+      .line-label { font-size: 13px; fill: #0f766e; paint-order: stroke; stroke: #f8fafc; stroke-width: 5; stroke-linejoin: round; }
+      .lane { stroke-width: 2; rx: 16; }
+      .node { stroke-width: 2.5; rx: 13; }
+      .event { stroke: #475569; stroke-width: 2.5; fill: none; }
+      .compute-flow { stroke: #475569; stroke-width: 3; fill: none; }
+      .transfer { stroke: #0891b2; stroke-width: 3.5; fill: none; }
+      .guide { stroke: #94a3b8; stroke-width: 2; stroke-dasharray: 7 6; fill: none; }
+    </style>
+  </defs>
+  <rect width="1500" height="600" fill="#f8fafc"/>
+  <text x="70" y="52" class="title">Offload 调度时间线：在反向消费前预取回 GPU</text>
+  <text x="70" y="80" class="sub">调度器利用“下一次使用时间 + 预算 + 带宽”安排搬出与取回；是否真正重叠需要实测</text>
+
+  <path d="M120 115 H1370" class="event"/><polygon points="1370,115 1357,108 1357,122" fill="#475569"/><text x="1375" y="120" class="small">时间</text>
+  <rect x="55" y="145" width="1370" height="145" class="lane" fill="#eff6ff" stroke="#93c5fd"/>
+  <text x="90" y="180" class="lane-label">GPU 计算</text>
+  <rect x="155" y="205" width="230" height="58" class="node" fill="#fff" stroke="#3b82f6"/>
+  <text x="270" y="240" text-anchor="middle" class="label">前向产生 activation</text>
+  <rect x="615" y="205" width="300" height="58" class="node" fill="#fff" stroke="#3b82f6"/>
+  <text x="765" y="231" text-anchor="middle" class="label">其他 GPU 计算</text>
+  <text x="765" y="253" text-anchor="middle" class="small">可能覆盖 D2H / H2D</text>
+  <rect x="1140" y="205" width="240" height="58" class="node" fill="#fff" stroke="#3b82f6"/>
+  <text x="1260" y="240" text-anchor="middle" class="label">反向消费 activation</text>
+  <path d="M385 234 H615" class="compute-flow"/><polygon points="615,234 602,227 602,241" fill="#475569"/>
+  <path d="M915 234 H1140" class="compute-flow"/><polygon points="1140,234 1127,227 1127,241" fill="#475569"/>
+
+  <rect x="55" y="340" width="1370" height="155" class="lane" fill="#ecfeff" stroke="#67e8f9"/>
+  <text x="90" y="375" class="lane-label">传输与 Host 驻留</text>
+  <rect x="375" y="405" width="190" height="58" class="node" fill="#fff" stroke="#0891b2"/>
+  <text x="470" y="440" text-anchor="middle" class="label">D2H 搬出</text>
+  <rect x="655" y="405" width="190" height="58" class="node" fill="#fff" stroke="#0891b2"/>
+  <text x="750" y="440" text-anchor="middle" class="label">Host 暂存</text>
+  <rect x="935" y="405" width="190" height="58" class="node" fill="#fff" stroke="#0891b2"/>
+  <text x="1030" y="440" text-anchor="middle" class="label">H2D 预取</text>
+
+  <path d="M270 263 V434 H375" class="transfer"/><polygon points="375,434 362,427 362,441" fill="#0891b2"/>
+  <text x="322" y="423" text-anchor="middle" class="line-label">冷且超预算：搬出</text>
+  <path d="M565 434 H655" class="transfer"/><polygon points="655,434 642,427 642,441" fill="#0891b2"/>
+  <path d="M845 434 H935" class="transfer"/><polygon points="935,434 922,427 922,441" fill="#0891b2"/>
+  <path d="M1125 434 H1260 V263" class="transfer"/><polygon points="1260,263 1253,276 1267,276" fill="#0891b2"/>
+  <text x="1192" y="423" text-anchor="middle" class="line-label">H2D 预取回 GPU</text>
+
+  <path d="M615 285 V385" class="guide"/><path d="M915 285 V385" class="guide"/>
+  <text x="765" y="315" text-anchor="middle" class="small">可重叠窗口：搬运若被此段计算覆盖，等待可能减少</text>
+</svg>

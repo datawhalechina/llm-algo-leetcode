@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
+  <title id="title">GRPO 组内优势机制</title>
+  <desc id="desc">组内 reward 经过中心化和标准化形成 advantage，再与策略比率和裁剪目标结合。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+    <style>.h{font:700 26px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.s{font:500 15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.l{font:700 18px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#111827}.b{font:500 14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.box{stroke-width:3;rx:16}.f{stroke:#475569;stroke-width:4;fill:none;marker-end:url(#arrow)}</style>
+  </defs>
+  <rect width="1200" height="500" fill="#f8fafc"/>
+  <text x="50" y="55" class="h">GRPO：从组内 reward 到策略更新</text>
+  <text x="50" y="83" class="s">每个 prompt 单独建立比较基准，避免不同任务的绝对奖励尺度直接混合。</text>
+  <rect x="55" y="190" width="220" height="110" class="box" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="165" y="232" text-anchor="middle" class="l">组内 reward</text><text x="165" y="263" text-anchor="middle" class="b">r₁, r₂, …, rₖ</text>
+  <rect x="345" y="190" width="220" height="110" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <text x="455" y="232" text-anchor="middle" class="l">中心化 / 标准化</text><text x="455" y="263" text-anchor="middle" class="b">(r − mean) / std</text>
+  <rect x="635" y="190" width="220" height="110" class="box" fill="#ecfccb" stroke="#65a30d"/>
+  <text x="745" y="232" text-anchor="middle" class="l">相对优势 A</text><text x="745" y="263" text-anchor="middle" class="b">正负决定方向</text>
+  <rect x="930" y="115" width="210" height="100" class="box" fill="#fff1f2" stroke="#e11d48"/>
+  <text x="1035" y="155" text-anchor="middle" class="l">策略比率</text><text x="1035" y="185" text-anchor="middle" class="b">new / old</text>
+  <rect x="930" y="275" width="210" height="100" class="box" fill="#f5f3ff" stroke="#8b5cf6"/>
+  <text x="1035" y="315" text-anchor="middle" class="l">clipped objective</text><text x="1035" y="345" text-anchor="middle" class="b">限制更新幅度</text>
+  <path d="M275 245H345M565 245H635M855 230L930 165M855 260L930 325" class="f"/>
+</svg>

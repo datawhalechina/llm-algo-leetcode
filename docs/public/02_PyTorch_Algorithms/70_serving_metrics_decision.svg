@@ -7,9 +7,9 @@
   <rect width="1360" height="590" rx="24" fill="#f8fbfd"/>
   <text x="680" y="48" text-anchor="middle" class="title">Serving benchmark：指标如何共同进入决策</text>
   <rect x="70" y="100" width="250" height="125" rx="18" class="b"/>
-  <text x="195" y="138" text-anchor="middle" class="h">用户体验</text><text x="195" y="171" text-anchor="middle" class="t">TTFT、TPOT</text><text x="195" y="198" text-anchor="middle" class="t">queue wait、P99</text>
+  <text x="195" y="138" text-anchor="middle" class="h">请求等待</text><text x="195" y="171" text-anchor="middle" class="t">queue wait</text><text x="195" y="198" text-anchor="middle" class="t">完成时间 makespan</text>
   <rect x="70" y="285" width="250" height="125" rx="18" class="g"/>
-  <text x="195" y="323" text-anchor="middle" class="h">服务能力</text><text x="195" y="356" text-anchor="middle" class="t">throughput</text><text x="195" y="383" text-anchor="middle" class="t">worker utilization</text>
+  <text x="195" y="323" text-anchor="middle" class="h">服务能力</text><text x="195" y="356" text-anchor="middle" class="t">throughput_tps</text><text x="195" y="383" text-anchor="middle" class="t">worker utilization</text>
   <rect x="70" y="470" width="250" height="75" rx="18" class="p"/>
   <text x="195" y="515" text-anchor="middle" class="h">公平性</text>
   <rect x="520" y="210" width="300" height="170" rx="18" class="o"/>

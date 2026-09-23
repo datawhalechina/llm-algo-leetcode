@@ -32,7 +32,7 @@
 ## 相关阅读
 
 **导语：** 学完在线 DPO 后，下一步重点不是继续背更新公式，而是看它怎样进入阈值判断、项目验证和 benchmark 闭环，确认“更新更快”是否真的等于“对齐更好”。
-- [52. Alignment Conflicts and Thresholds | 对齐冲突与阈值](./52_Alignment_Conflicts_and_Thresholds.md)
+- [52. Reserved 52 | 通用预留](./52_Reserved_52.md)
 - [84. DPO Preference Project | DPO 偏好优化项目](./84_DPO_Preference_Project.md)
 - [86. DPO Online Benchmark | DPO 在线 Benchmark](./86_DPO_Online_Benchmark.md)
 
@@ -43,6 +43,12 @@
 - 固定初始模型、反馈流、更新频率、batch size 和评估窗口。
 - 明确在线样本来源、过滤规则和是否允许重复反馈。
 - 统一比较口径：win rate、loss 波动、更新时间和安全阈值。
+
+在线闭环应明确记录：
+
+`online request/feedback → filter/deduplicate/risk check → new preference pair or reward sample → policy update / checkpoint → independent eval and safety gate → accept/defer/rollback`
+
+与离线 DPO 相比，在线 DPO 还要关注 `policy freshness`（反馈产生时使用的 policy 版本与当前 policy 的距离）、reference 更新策略、反馈分布漂移和更新期间的回滚点。
 
 #### 图解：50-15-16-84-85 如何收束到 51 在线 DPO
 

@@ -6,7 +6,7 @@
 
 输出是推理侧候选：FP8 或 KV Cache 量化能释放什么资源，是否会改变 kernel、缓存容量、延迟或质量边界。
 
-## 问题起点
+## 核心机制
 
 这两条路线容易被误解成“又一种更低比特”。但它们的意义并不在于位宽本身，而在于：
 
@@ -15,66 +15,102 @@
 
 它们都和传统 weight-only 路线不同。
 
-## 你要先确认什么
+### 判断入口
 
 - 当前瓶颈来自执行栈，还是来自 cache 预算。
 - 硬件是否已经原生支持 FP8。
 - 长上下文和并发是否已经把 KV cache 顶成第一约束。
 
-## 核心矛盾
+### 机制取舍
 
 FP8 的核心矛盾是：更低精度的执行路径能带来更好的吞吐和存储效果，但要求硬件和 kernel 栈配合；KV cache quantization 的核心矛盾是：缓存压缩能扩大上下文和并发预算，但会影响表示精度和服务稳定性。
 
-## 机制链
+### 运行时路径
 
-FP8 主要改变计算或数据搬运路径，需要 scale 管理、硬件指令和 kernel 共同支持；KV Cache 量化则改变请求生命周期中 K/V 状态的存储与读取方式。二者都可能减少字节数，但影响的时间段不同：前者贯穿算子执行，后者集中在 decode 阶段的 cache 读写。
+激活量化先改变中间张量的表示，再决定 FP8 是否能沿着硬件和 kernel 路径执行；KV Cache 量化则改变请求生命周期中 K/V 状态的存储与读取方式。三者都可能减少字节数，但影响的时间段不同：激活量化影响算子之间的中间状态，FP8 影响执行路径，KV Cache 量化集中在 decode 阶段的 cache 读写。
 
 | 路线 | 主要对象 | 关键变量 | 需要对齐的 workload |
 |:---|:---|:---|:---|
+| 激活量化 | 中间激活与矩阵乘输入输出 | calibration、scale、异常值、累积精度 | prefill / decode、输入长度、输出长度 |
 | FP8 | 权重、激活或矩阵乘输入输出 | scaling、硬件能力、kernel、混合精度边界 | prefill / decode、输入长度、输出长度 |
 | KV Cache 量化 | 每个请求的 K/V 状态 | cache dtype、量化粒度、更新与反量化位置 | 上下文长度、并发、prefix sharing、TPOT |
 
+![FP8 与 KV Cache 量化的路径分流](../../docs/public/topic_discussion/quantization/fp8_kv_cache.svg)
+
 权重量化与 KV Cache 量化可以同时出现，但必须分别记录显存账本和质量影响，不能把两者的收益相加后直接作为部署结论。
 
-## 演化路径
+## 判断框架
 
 1. 先判断问题是在执行路径还是缓存预算。
 2. 如果是执行栈和硬件支持，优先看 FP8。
 3. 如果是长上下文和高并发预算，优先看 KV cache quantization。
 4. 最后再回到推理和显存专题，看它们在请求链路和预算中的综合效果。
 
-## 关键取舍
+### 三条低精度路径如何分流
+
+激活量化、FP8 和 KV Cache 量化都可能减少字节数，但它们改变的对象和证据不同：
+
+| 路径 | 主要改变的环节 | 首要收益 | 需要优先验证的风险 |
+|:---|:---|:---|:---|
+| 激活量化 | 层间中间张量和矩阵乘输入 | 带宽、workspace 或执行效率 | 激活范围、异常值和累积精度 |
+| FP8 | 低精度矩阵乘执行路径 | Tensor Core 吞吐和部分存储成本 | 硬件、scale、kernel 或 fallback |
+| KV Cache 量化 | decode 阶段的 K/V 状态 | 并发、上下文容量和缓存带宽 | 长上下文质量、cache 读写与 TPOT |
+
+### 运行时状态如何变化
+
+运行时低精度的关键不只是“存成几 bit”，还包括 scale 由谁计算、何时更新，以及读取时在哪里恢复精度：
+
+| 状态 | 量化参数通常在哪里产生 | 读取 / 计算时需要确认什么 |
+|:---|:---|:---|
+| 激活 | 校准阶段或运行时统计 | scale 是否覆盖当前输入，累积精度是否足够 |
+| FP8 输入 / 权重 | 模型配置、历史统计或动态 scale | Tensor Core 路径、累积 dtype、fallback |
+| KV Cache | cache 初始化或按块 / 按 token 更新 | 量化粒度、反量化位置、cache 读写开销 |
+
+这解释了为什么同样的低比特表示，在离线张量误差上看起来可接受，进入长上下文服务后仍可能出现 TPOT、质量或并发收益不稳定。
+
+证据应按三层递进：先用 CPU / 数值模拟验证公式和误差，再用 GPU 探针确认 dtype 与执行候选，最后在固定 backend 和 workload 上验证服务指标。三层结果不能互相替代，也不能把 FP8 的执行证据直接当成 KV Cache 量化的服务证据。
+
+### 路线取舍
 
 - FP8 更依赖硬件和 backend 的成熟度。
 - KV cache quantization 更依赖 workload 的上下文长度和并发特征。
 - 二者都不能只看理论压缩率，必须回到服务目标和 benchmark。
 
-## 证据边界
+### 证据等级
 
-CPU 实验适合验证 FP8 数值范围、scale 计算和 KV Cache 字节数估算；真实 GPU / serving backend 才能验证硬件执行路径、cache 分配、TTFT、TPOT、并发容量和任务质量。`torch.cuda.is_bf16_supported()` 或格式字段本身不能替代 kernel 和 workload 实测。
+| 证据层级 | 能回答什么 | 不能替代什么 |
+|:---|:---|:---|
+| CPU / 数值模拟 | scale、量化误差、字节数、KV Cache 账本 | 真实 kernel、显存和服务延迟 |
+| GPU 探针 | FP8 dtype、scale、Tensor Core 候选路径是否可运行 | 目标 serving backend 的完整行为 |
+| backend benchmark | cache 分配、TTFT、TPOT、并发、质量和回退路径 | 不同 workload 下的泛化结论 |
 
-> 正文暂不嵌入未审核图示；相关图册与占位说明见 [视觉资产页](./07_visual_assets.md)。
+`torch.cuda.is_bf16_supported()` 或格式字段本身不能替代 kernel 和 workload 实测。激活量化、FP8 探针、KV Cache 模拟和 serving backend 结果必须分别记录，不能合并成一个“量化有效”结论。
 
-## 文献锚点
+> 正文暂不嵌入未审核图示；专题路线图和知识地图统一见[量化与低比特适配深入阅读](./walkthrough.md)。
+
+## 参考入口
 
 - FP8 相关资料：理解低精度执行路径如何和硬件协同。
 - KV cache quantization 资料：理解缓存压缩为什么首先是推理预算问题。
 
-## 对应 Part 02
+### 对应 Part 02
 
-- `41` FP8 与 KV Cache 量化
-- `67` 量化推理与部署
+- `41` 负责 CPU 机制、真实 KV 状态模拟和 FP8 GPU 探针；
+- `66` 提供同一模型与 workload 的浮点 baseline；
+- `67` 负责真实量化 artifact、backend 加载和部署 benchmark。
 
-## 典型阅读入口
+如果量化导致任务质量低于门槛，不要把 `41` 的模拟结果直接当成训练方案；可以转入 `65` 评估 QLoRA 训练适配，生成新的 adapter 或 merged model 后，再回到 `66` 建立浮点参照，并由 `67` 验证最终推理 artifact。
+
+### 典型阅读入口
 
 - [04 权重量化与后训练压缩](./04_weight_only_compression.md)
 - [06 部署与 Benchmark 决策](./06_deployment_and_benchmark_decision.md)
 
-## 本节要点
+### 本节要点
 
 FP8 更接近执行路径与硬件支持问题，KV cache quant 更接近长上下文下的缓存预算问题；二者都不能只用模型文件大小判断价值。
 
-## 进入下一页
+### 进入下一页
 
 把权重、执行路径和 KV cache 的候选放到 [06 部署与 Benchmark 决策](./06_deployment_and_benchmark_decision.md) 中，用同一 workload 做最终比较。
 

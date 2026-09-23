@@ -50,7 +50,7 @@ Task1 再把对象放回硬件和运行时环境：dtype 决定对象的字节�
 推理侧不要求先完成训练项目；只要问题对象从 activation / optimizer state 转为权重、KV Cache 或推理临时空间，就可以从 Task1 直接进入这条分支。典型现象是模型能加载，但只要上下文拉长、并发上去，显存就被 KV Cache 顶满。这时要切到推理侧显存链路：
 
 - Part 02 [22 vLLM PagedAttention](../../02_PyTorch_Algorithms/22_vLLM_PagedAttention.ipynb)
-- Part 02 [34 Prefix Caching and Chunked Prefill](../../02_PyTorch_Algorithms/34_Prefix_Caching_and_Chunked_Prefill.ipynb)
+- Part 02 [34 Prefix Cache Matching and Reuse](../../02_PyTorch_Algorithms/34_Prefix_Cache_Matching_and_Reuse.ipynb)
 - Part 02 [66 Inference Performance Comparison](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.ipynb)
 
 核心路径先看 `22 -> 34`，再用 `66` 完成单 backend 最小验证；`24 RadixAttention`、`37 KV Cache Scheduling` 属于推理侧运行时扩展，`41 KV Cache Quantization` 和 `67` 的真实量化 backend 部署转入量化分支。请求路由、扩缩容和服务治理回到推理优化路线，不在这里继续展开。

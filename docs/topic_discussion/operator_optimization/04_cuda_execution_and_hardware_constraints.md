@@ -32,7 +32,7 @@
 
 ## 从框架调用到 Kernel
 
-一个算子通常经过 `PyTorch eager → torch.compile / Inductor → Triton 或 CUDA kernel → GPU runtime`。本专题重点观察最后两层的语义和执行代价；图变换、IR、lowering 和自动选择由编译与图优化专题负责。写出候选 kernel 后，还要确认模型或 Block 是否真的调用了它。
+一个算子通常经过 `PyTorch eager → torch.compile / Inductor → Triton 或 CUDA kernel → GPU runtime`。本专题重点观察最后两层的语义和执行代价；图变换、IR、lowering 和自动选择由[图级优化与编译支撑模块](./graph_compiler/intro.md)负责。写出候选 kernel 后，还要确认模型或 Block 是否真的调用了它。
 
 | 实验层级 | 观察内容 | 适合回答的问题 |
 |:---|:---|:---|

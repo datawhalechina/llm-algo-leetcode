@@ -6,7 +6,9 @@
 
 ## 核心机制
 
-Decode 是一轮一轮的小步生成：每一步读取已有 KV 状态，得到 logits，再选择下一个 token，并把新的 token 和状态追加到序列中。先用贪心解码建立基线：直接选择 logits 最大的 token，直到遇到 EOS 或达到最大长度；再比较采样、speculative decoding 和 multi-token decoding。本页重点是单条请求的生成决策；多个请求如何组织执行，放到 Task4 的调度正文中。
+Decode 是一轮一轮的小步生成：每一步读取已有 KV 状态，得到 logits，再选择下一个 token，并把新的 token 和状态追加到序列中。先用贪心解码建立基线；再把投机式生成看成一条策略链：经典 draft / target 验证、多个 token 推进与更一般的多候选验证，目标都是提高每轮有效推进量。本页重点是单条请求的生成决策；多个请求如何组织执行，放到 Task4 的调度正文中。
+
+这里的“加速”不是简单地减少模型调用次数，而是提高每次验证真正提交的 token 数。可以用 `effective_output_tokens / decode_step` 表示单轮有效推进量；它必须和 `acceptance_rate`、验证耗时、回退次数以及最终质量一起观察。这样才能区分“候选更多”与“有效生成更多”。
 
 ![Decode 策略对照](../../docs/public/topic_discussion/inference_optimization/decode_strategies_zh.svg)
 
@@ -14,9 +16,11 @@ Decode 是一轮一轮的小步生成：每一步读取已有 KV 状态，得到
 |:---|:---|:---|
 | 贪心 Decode（基线） | 每轮选择 logits 最大的一个 token | 输出长度、TPOT、KV Cache 访问、质量 |
 | 随机采样 | 按 temperature、top-k / top-p 选择 token | 质量、重复率、TPOT、输出稳定性 |
-| Speculative Decoding | draft 提议、target 验证 | acceptance rate、draft cost、TPOT |
-| Multi-token Decoding | 单轮尝试产出多个 token | 接受与回退、generated tokens/s |
-| Decode Scheduling | 不同请求的执行顺序 | 吞吐、TPOT、P99 |
+| 经典投机解码 | draft 提议、target 验证与修正 | acceptance rate、验证成本、TPOT |
+| 多 Token 投机式推进 | 单轮提出多个 token 或候选 | 有效推进、首次拒绝与回退 |
+| 块级并行草稿（DFlash） | block diffusion 一次提出 token block | block 接受率、draft cost、verify cost |
+| 半自回归草稿（DSpark） | 置信度驱动地决定候选推进与验证预算 | confidence、proposal budget、负载下 TPOT |
+| Decode Scheduling | 不同请求的执行顺序，属于 Task4 的请求级调度 | 吞吐、TPOT、P99 |
 
 单请求的 Decode 可以按“读取状态 → 计算 logits → 选择 token → 检查停止 → 追加状态”理解。策略改变的是其中的候选生成、验证或单轮产出；它不会自动消除 KV Cache 的容量约束，也不能用吞吐提升替代质量检查。比较 speculative decoding 或 multi-token decoding 时，还要记录接受情况和回退成本。
 
@@ -29,18 +33,30 @@ Decode 是一轮一轮的小步生成：每一步读取已有 KV 状态，得到
 
 生成策略的比较需要把“可重复性”和“质量门槛”一起固定。贪心 Decode 适合作为确定性基线；采样实验应固定随机种子和采样参数；speculative decoding 还要记录 draft 与 target 的版本、接受率和拒绝后的回退路径。只有在输出质量达到同一门槛后，TPOT 或吞吐的改善才可以作为性能收益。
 
+### 候选生成的两条扩展路径
+
+经典 speculative decoding 的草稿阶段仍然通常按 token 自回归推进；多 Token 或多预测头可以扩大候选数量，但不一定消除草稿阶段的串行依赖。DFlash 将轻量 block diffusion 模型用于并行产生一个候选 block，再交给 target 模型集中验证；它改变的是候选生成路径，不改变“验证—接受—回退”的证据要求。[DFlash 论文](https://arxiv.org/abs/2602.06036) 和 [DFlash 开源实现](https://github.com/z-lab/dflash) 可作为扩展阅读。
+
+DSpark 进一步采用半自回归候选生成，并用置信度调度候选长度和验证预算。它同时连接了 Task2 的候选生成机制与 Task4 的服务调度：在单请求中观察置信度和有效推进量，在多请求中还要观察队列等待、TPOT 和尾延迟。[DSpark 论文](https://arxiv.org/abs/2607.05147) 和 [vLLM Speculators 中的 DSpark 文档](https://docs.vllm.ai/projects/speculators/en/latest/user_guide/algorithms/dspark/) 可用于了解实现入口。
+
+| 扩展路径 | 候选生成方式 | Task2 重点 | Task4 交叉问题 |
+|:---|:---|:---|:---|
+| DFlash | block diffusion 并行提出候选 block | block 长度、接受前缀、verify 成本 | batch 中不同请求的 block 预算 |
+| DSpark | 半自回归 + 置信度调度 | 置信度、候选长度、回退语义 | 高负载下的动态 speculation budget |
+
 | 对照条件 | 应固定的内容 | 额外记录 |
 |:---|:---|:---|
 | 贪心基线 | 模型、Prompt、最大输出长度、停止条件 | 输出 token、TPOT、E2E、质量基线 |
 | 随机采样 | seed、temperature、top-k/top-p、Prompt 集 | 重复率、格式成功率、质量分布 |
-| Speculative | draft/target 模型、proposal 长度、验证规则 | acceptance rate、回退次数、额外显存 |
-| Multi-token | 单轮候选数量、接受与回退规则 | 有效输出 tokens/s、失败比例、TPOT |
+| 经典投机解码 | draft/target 模型、proposal 长度、验证规则 | acceptance rate、回退次数、额外显存 |
+| 多 Token 投机式推进 | 候选来源、单轮候选数量、接受与回退规则 | 有效推进、验证成本、TPOT |
+| DFlash / DSpark | draft family、proposal mode、候选预算、置信度规则 | block 接受率、draft/verify cost、负载下 TPOT |
 
-参考入口：论文 [Fast Inference from Transformers via Speculative Decoding](https://arxiv.org/abs/2211.17192)；开源实现 [vLLM Speculative Decoding](https://docs.vllm.ai/en/latest/features/speculative_decoding/)。
+参考入口：论文 [Fast Inference from Transformers via Speculative Decoding](https://arxiv.org/abs/2211.17192)；开源实现 [vLLM Speculative Decoding](https://docs.vllm.ai/en/latest/features/speculative_decoding/)。DFlash 和 DSpark 作为候选生成与动态预算的扩展，不要求在本页重写真实 draft model。
 
 ## 判断框架
 
-本节承接 `02` 的 Prefill 与 Attention，先用 [21 Decoding Strategies](../../02_PyTorch_Algorithms/21_Decoding_Strategies.ipynb) 建立单步生成口径，再用 [23 Speculative Decoding](../../02_PyTorch_Algorithms/23_Speculative_Decoding.ipynb) 和 [35 Multi Token Decoding](../../02_PyTorch_Algorithms/35_Multi_Token_Decoding.ipynb) 比较生成策略，最后通过 [36 Decode Scheduling](../../02_PyTorch_Algorithms/36_Decode_Scheduling.ipynb) 观察请求组织。阅读下表时，先固定 `TPOT`、`decode_share`、generated tokens 和质量约束，再根据现象选择下一步动作。
+本节承接 `02` 的 Prefill 与 Attention，先用 [21 Decoding Strategies](../../02_PyTorch_Algorithms/21_Decoding_Strategies.ipynb) 建立单步生成口径，再用 [23 Speculative Decoding](../../02_PyTorch_Algorithms/23_Speculative_Decoding.ipynb) 理解经典 draft / target 验证，用 [35 Multi-Token Speculative Decoding](../../02_PyTorch_Algorithms/35_Multi_Token_Decoding.ipynb) 比较候选推进分支，随后由 [68 Benchmark](../../02_PyTorch_Algorithms/68_Speculative_Decoding_Benchmark.ipynb) 固定质量与成本口径；最后才通过 [36 Decode Scheduling](../../02_PyTorch_Algorithms/36_Decode_Scheduling.ipynb) 观察多请求组织。阅读下表时，先固定 `TPOT`、`decode_share`、generated tokens 和质量约束，再根据现象选择下一步动作。
 
 | 观察到的现象 | 优先判断 | 下一步 |
 |:---|:---|:---|

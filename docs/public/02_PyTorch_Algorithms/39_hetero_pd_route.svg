@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1160" height="650" viewBox="0 0 1160 650" role="img" aria-labelledby="title desc">
+  <title id="title">Hetero PD 路由与状态交接</title>
+  <desc id="desc">请求压力和资源画像进入异构 PD 路由，系统在 KV 传输、Prefill 重算和保持同池之间选择，再由服务等级与资源压力触发回退。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52606d"/></marker>
+    <style>
+      text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#172b4d}.title{font-size:28px;font-weight:700}.sub{font-size:16px;fill:#52606d}.group{font-size:17px;font-weight:700;fill:#52606d}.label{font-size:18px;font-weight:700}.small{font-size:14px;fill:#344563}.box{stroke-width:2.5;rx:18;ry:18}.flow{stroke:#52606d;stroke-width:3;fill:none;marker-end:url(#arrow)}.transfer{stroke:#2563eb;stroke-width:3;fill:none;marker-end:url(#arrow)}.recompute{stroke:#c79a46;stroke-width:3;fill:none;marker-end:url(#arrow)}.fallback{stroke:#b45309;stroke-width:3;fill:none;stroke-dasharray:8 7;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1160" height="650" fill="#f8fafc"/>
+  <rect x="36" y="28" width="1088" height="594" rx="26" fill="#fffdf7" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="70" y="76" class="title">Hetero PD：资源画像决定状态交接</text>
+  <text x="70" y="106" class="sub">服务池 / 通信级调度（四层中的第四层）：比较传输、重算与同池执行。</text>
+
+  <text x="82" y="154" class="group">输入与路由</text>
+  <rect x="82" y="180" width="250" height="100" class="box" fill="#e0f2fe" stroke="#0284c7"/>
+  <text x="207" y="218" text-anchor="middle" class="label">请求压力</text>
+  <text x="207" y="246" text-anchor="middle" class="small">Prefill-heavy / Decode-heavy</text>
+  <rect x="430" y="180" width="250" height="100" class="box" fill="#f3e8ff" stroke="#9333ea"/>
+  <text x="555" y="218" text-anchor="middle" class="label">资源画像</text>
+  <text x="555" y="246" text-anchor="middle" class="small">显存 · 算力 · 链路 · backend</text>
+  <rect x="778" y="180" width="250" height="100" class="box" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="903" y="218" text-anchor="middle" class="label">异构 PD 路由</text>
+  <text x="903" y="246" text-anchor="middle" class="small">选择池与交接方案</text>
+  <path d="M332 230H430" class="flow"/>
+  <path d="M680 230H778" class="flow"/>
+
+  <text x="82" y="344" class="group">状态交接候选</text>
+  <rect x="82" y="374" width="250" height="100" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="207" y="412" text-anchor="middle" class="label">KV 传输</text>
+  <text x="207" y="440" text-anchor="middle" class="small">链路足够快、状态可共享</text>
+  <rect x="430" y="374" width="250" height="100" class="box" fill="#fff5df" stroke="#c79a46"/>
+  <text x="555" y="412" text-anchor="middle" class="label">Prefill 重算</text>
+  <text x="555" y="440" text-anchor="middle" class="small">传输代价高或不兼容</text>
+  <rect x="778" y="374" width="250" height="100" class="box" fill="#f1f5f9" stroke="#64748b"/>
+  <text x="903" y="412" text-anchor="middle" class="label">保持同池</text>
+  <text x="903" y="440" text-anchor="middle" class="small">异构收益不足时回退</text>
+  <path d="M903 280V326H207V374" class="transfer"/>
+  <path d="M903 280V326H555V374" class="recompute"/>
+  <path d="M903 280V326H903V374" class="fallback"/>
+
+  <rect x="315" y="530" width="530" height="56" rx="16" fill="#fef3c7" stroke="#d97706" stroke-width="1.8"/>
+  <text x="580" y="565" text-anchor="middle" class="small">SLO 回退：限流、降级、转移或保留当前路由</text>
+  <path d="M207 474V505H420V530" class="flow"/>
+  <path d="M555 474V530" class="flow"/>
+  <path d="M903 474V505H740V530" class="flow"/>
+</svg>

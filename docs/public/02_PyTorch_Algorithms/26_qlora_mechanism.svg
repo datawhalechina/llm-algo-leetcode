@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 620" role="img" aria-labelledby="title desc">
+  <title id="title">QLoRA NF4 反量化与 LoRA 前向汇合</title>
+  <desc id="desc">冻结的 NF4 底座经过查表和缩放恢复为近似权重，输入同时进入 LoRA 低秩分支，两个结果在输出处汇合。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#475569"/>
+    </marker>
+    <style>
+      .title{font:700 28px sans-serif;fill:#0f172a}.sub{font:16px sans-serif;fill:#475569}
+      .group{font:700 18px sans-serif;fill:#334155}.head{font:700 18px sans-serif;fill:#0f172a}
+      .body{font:15px sans-serif;fill:#334155}.small{font:13px sans-serif;fill:#64748b}
+      .box{stroke-width:2}.line{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1400" height="620" fill="#f8fafc"/>
+  <text x="60" y="52" class="title">QLoRA：NF4 底座与 LoRA 旁路如何汇合</text>
+  <text x="60" y="82" class="sub">存储路径压缩底座；计算前恢复近似权重；训练路径只更新适配器。</text>
+
+  <rect x="45" y="120" width="1310" height="205" rx="18" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2"/>
+  <text x="70" y="153" class="group">冻结底座：索引、码点与 scale 共同恢复计算权重</text>
+  <rect x="80" y="190" width="220" height="90" rx="12" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="190" y="225" text-anchor="middle" class="head">NF4 index</text>
+  <text x="190" y="252" text-anchor="middle" class="body">4-bit 码点索引</text>
+  <path d="M300 235 H390" class="line"/>
+  <rect x="390" y="190" width="220" height="90" rx="12" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <text x="500" y="225" text-anchor="middle" class="head">codebook 查表</text>
+  <text x="500" y="252" text-anchor="middle" class="body">索引 → NF4 码点</text>
+  <path d="M610 235 H700" class="line"/>
+  <rect x="700" y="190" width="220" height="90" rx="12" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <text x="810" y="225" text-anchor="middle" class="head">乘以 scale</text>
+  <text x="810" y="252" text-anchor="middle" class="body">恢复范围</text>
+  <path d="M920 235 H1010" class="line"/>
+  <rect x="1010" y="190" width="270" height="90" rx="12" class="box" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="1145" y="225" text-anchor="middle" class="head">近似底座权重 Ŵ</text>
+  <text x="1145" y="252" text-anchor="middle" class="body">冻结，不接收梯度</text>
+
+  <rect x="45" y="360" width="1310" height="180" rx="18" fill="#faf5ff" stroke="#d8b4fe" stroke-width="2"/>
+  <text x="70" y="393" class="group">训练路径：输入同时进入底座分支和 LoRA 旁路</text>
+  <rect x="80" y="430" width="220" height="75" rx="12" class="box" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="190" y="462" text-anchor="middle" class="head">激活 x</text>
+  <text x="190" y="486" text-anchor="middle" class="small">同一输入</text>
+  <path d="M300 467 H390" class="line"/>
+  <rect x="390" y="430" width="220" height="75" rx="12" class="box" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="500" y="462" text-anchor="middle" class="head">LoRA A → B</text>
+  <text x="500" y="486" text-anchor="middle" class="small">低秩可训练增量</text>
+  <path d="M610 467 H760" class="line"/>
+  <path d="M1145 280 V467 H1010" class="line"/>
+  <text x="1160" y="382" class="small">Ŵx</text>
+  <rect x="760" y="430" width="250" height="75" rx="12" class="box" fill="#f3e8ff" stroke="#9333ea"/>
+  <text x="885" y="462" text-anchor="middle" class="head">按 α/r 缩放</text>
+  <text x="885" y="486" text-anchor="middle" class="small">LoRA 增量 BAx</text>
+  <path d="M1010 467 H1120" class="line"/>
+  <rect x="1120" y="430" width="200" height="75" rx="12" class="box" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="1220" y="462" text-anchor="middle" class="head">输出</text>
+  <text x="1220" y="486" text-anchor="middle" class="small">Ŵx + BAx·α/r</text>
+  <path d="M1010 467 H1120" class="line"/>
+  <text x="70" y="585" class="small">颜色语义：蓝=底座表示，黄=反量化处理，紫=LoRA 训练分支，绿=汇合结果。</text>
+</svg>

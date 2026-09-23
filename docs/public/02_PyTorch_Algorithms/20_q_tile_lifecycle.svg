@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="430" viewBox="0 0 1180 430" role="img" aria-labelledby="title desc">
+  <title id="title">一个 Q 分块吸收全部 K/V 分块的生命周期</title>
+  <desc id="desc">固定一个 Q 分块，依次处理多个 K/V 分块，每轮更新在线 softmax 状态，最后写回输出分块。</desc>
+  <defs>
+    <style>
+      .title{font:700 25px sans-serif;fill:#17324d}.label{font:700 18px sans-serif;fill:#17324d}.text{font:16px sans-serif;fill:#334e68}.small{font:14px sans-serif;fill:#486581}.box{stroke:#829ab1;stroke-width:2;rx:14}.line{stroke:#486581;stroke-width:3;fill:none}.arrow{fill:#486581}
+    </style>
+  </defs>
+  <rect width="1180" height="430" fill="#f7fafc"/>
+  <text x="590" y="38" text-anchor="middle" class="title">一个 Q tile 的状态生命周期</text>
+
+  <rect x="40" y="125" width="210" height="130" fill="#e6f6f5" class="box"/>
+  <text x="145" y="166" text-anchor="middle" class="label">固定 Q tile</text>
+  <text x="145" y="198" text-anchor="middle" class="text">Q[i : i+Bq]</text>
+  <text x="145" y="226" text-anchor="middle" class="small">外层循环中保持不变</text>
+
+  <rect x="350" y="95" width="250" height="190" fill="#eef2ff" class="box"/>
+  <text x="475" y="136" text-anchor="middle" class="label">在线状态</text>
+  <text x="385" y="177" class="text">m：当前最大值</text>
+  <text x="385" y="210" class="text">l：归一化指数和</text>
+  <text x="385" y="243" class="text">O：累计输出贡献</text>
+
+  <rect x="710" y="75" width="205" height="76" fill="#fff4e6" class="box"/>
+  <text x="812" y="107" text-anchor="middle" class="label">当前 K/V tile</text>
+  <text x="812" y="133" text-anchor="middle" class="small">K[j:j+Bk], V[j:j+Bk]</text>
+  <rect x="710" y="177" width="205" height="76" fill="#fff4e6" class="box"/>
+  <text x="812" y="209" text-anchor="middle" class="label">下一 K/V tile</text>
+  <text x="812" y="235" text-anchor="middle" class="small">继续吸收上下文</text>
+  <rect x="710" y="279" width="205" height="76" fill="#fff4e6" class="box"/>
+  <text x="812" y="311" text-anchor="middle" class="label">最后 K/V tile</text>
+  <text x="812" y="337" text-anchor="middle" class="small">处理尾块也遵循同一规则</text>
+
+  <rect x="990" y="125" width="150" height="130" fill="#e9f7ef" class="box"/>
+  <text x="1065" y="166" text-anchor="middle" class="label">写回输出</text>
+  <text x="1065" y="198" text-anchor="middle" class="text">out[i : i+Bq]</text>
+  <text x="1065" y="226" text-anchor="middle" class="small">完成一个 Q tile</text>
+
+  <path d="M250 190 H350" class="line"/><polygon points="350,190 340,185 340,195" class="arrow"/>
+  <path d="M710 113 H655 V154 H600" class="line"/><polygon points="600,154 610,149 610,159" class="arrow"/>
+  <path d="M710 215 H655 V190 H600" class="line"/><polygon points="600,190 610,185 610,195" class="arrow"/>
+  <path d="M710 317 H655 V226 H600" class="line"/><polygon points="600,226 610,221 610,231" class="arrow"/>
+  <path d="M475 285 V365 H1065 V255" class="line"/><polygon points="1065,255 1060,265 1070,265" class="arrow"/>
+  <text x="770" y="355" text-anchor="middle" class="small">全部 K/V tile 处理完成后写回</text>
+  <text x="812" y="390" text-anchor="middle" class="small">每轮先形成局部 score，再更新 m / l / O；Q tile 始终不变。</text>
+</svg>

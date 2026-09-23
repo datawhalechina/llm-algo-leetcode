@@ -57,7 +57,9 @@
 | model、dtype、batch、seq_len | 保证输入规模一致 | 配置与环境快照 |
 | warmup 和 repeats | 排除首次编译与偶然抖动 | warmup 次数、重复次数 |
 | CUDA synchronize | 让异步 GPU 工作正确计时 | 是否显式同步 |
-| step time、throughput、peak memory | 同时观察速度与资源代价 | 均值 / P99、显存峰值 |
+| `step_time_ms`、`throughput`、`peak_memory` | 同时观察速度与资源代价 | 训练 step 的均值 / 方差；显存峰值及 allocated / reserved 来源 |
+
+训练项目使用 `step_time_ms` 和 `samples/s` 或 `tokens/s`；请求项目再使用 `latency_ms`、TTFT、TPOT 和 P50/P99。P50/P99 需要足够多的重复请求，不能直接替代单次训练 step 的统计。
 
 固定条件后，再把阶段耗时拆成前向、反向、数据搬运和同步，形成第一轮瓶颈假设。
 </details>

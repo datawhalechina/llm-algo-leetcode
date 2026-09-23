@@ -10,6 +10,8 @@
 
 KV Cache 随层数、KV heads、上下文长度和 batch 增长。先把“每个请求独立建立 Cache、没有前缀复用”的普通 Cache 作为参考行为，观察 Cache 随序列长度和并发增长的显存曲线。它能减少 Decode 的重复计算，却会持续占用显存；当 cache 接近预算时，batch、上下文和并发都会受到限制。图片先展示“增长 → 复用 → 容量边界”的关系，表格再区分不同机制；请求排队和 Prefill / Decode 拆池将在 07 中继续展开。
 
+本节把 Cache 看成一个持续变化的状态对象，而不是单次计算的中间张量：请求进入时建立，Decode 时追加，命中前缀时复用，容量不足时驱逐或重算，结束后释放或按策略保留。后续调度决定“谁先执行”，本节先说明“请求状态如何占用和回收资源”。
+
 ![KV Cache 生命周期与资源边界](../../docs/public/topic_discussion/inference_optimization/kv_cache_lifecycle_zh.svg)
 
 | Cache 角色 | 主要改变什么 | 适用问题 | 主要指标与入口 |

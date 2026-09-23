@@ -10,17 +10,14 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-当一次运行变慢时，先不要直接修改模型或硬件配置。先用 profiler 观察一次运行由哪些算子和阶段组成，再比较单次延迟、处理吞吐和训练阶段耗时。本节从一个 CPU 可运行的小模型开始，学习如何读汇总表、导出 trace，并把局部热点放回完整训练步骤。
+当一次运行变慢时，先用 profiler 观察一次运行由哪些算子和阶段组成，再比较单次 `latency_ms`、带单位的 `throughput` 和训练阶段耗时。本节从一个 CPU 可运行的小模型开始，学习如何读汇总表、导出 trace，并把局部 hotspot 放回完整训练步骤。这样可以把“感觉变慢”转换成下一步可复查的时间证据。
 
-示例默认使用 CPU；设备侧时间需要在 GPU 环境中单独测量。
+先用 CPU 建立稳定的测量方法，再把相同的记录字段迁移到 GPU 实验中。
 
 **关键词：** `profiler`, `trace`, `latency`
 
 ![Profiling 时间证据图](../public/00_Prerequisites/17_profiling_evidence_map.svg)
 
-## 前置阅读
-**导语：** 先从 0E 组页了解性能问题的观察入口，再用本页的最小模型把一次运行拆成可比较的时间证据。
-- [0E 组页](./0E.md)
 ## 前置阅读
 **导语：** 先从 0E 组页了解性能问题的观察入口，再用本页的最小模型把一次运行拆成可比较的时间证据。
 - [0E 组页](./0E.md)
@@ -101,7 +98,7 @@ print('✅ CPU 性能基线与热点记录通过')
 
 
 ```python
-# 本节只运行 CPU profiler；CUDA kernel 时间留给 Part02 的 GPU 实验。
+# 这里先记录 CPU profiler 的算子时间；GPU kernel 时间在对应 GPU 实验中记录。
 with profile(activities=[ProfilerActivity.CPU]) as prof:
     _ = model(inputs)
 print(prof.key_averages().table(sort_by='cpu_time_total', row_limit=5))

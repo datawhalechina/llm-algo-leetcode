@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="620" viewBox="0 0 1120 620" role="img" aria-labelledby="title desc">
+  <title id="title">Prefix Cache 匹配与复用</title>
+  <desc id="desc">请求输入经过最长前缀匹配，分成复用已有 KV 状态和继续处理未命中 suffix 两条路径，最后写回新增状态。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52606d"/></marker>
+    <style>
+      text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#172b4d}.title{font-size:28px;font-weight:700}.sub{font-size:16px;fill:#52606d}.group{font-size:17px;font-weight:700;fill:#52606d}.label{font-size:19px;font-weight:700}.small{font-size:14px;fill:#344563}.box{stroke-width:2.5;rx:18;ry:18}.flow{stroke:#52606d;stroke-width:3;fill:none;marker-end:url(#arrow)}.reuse{stroke:#5b9b70;stroke-width:3;fill:none;marker-end:url(#arrow)}.new{stroke:#b58a3b;stroke-width:3;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1120" height="620" fill="#f8fafc"/>
+  <rect x="36" y="28" width="1048" height="564" rx="26" fill="#fffdf7" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="70" y="76" class="title">Prefix Cache：从最长匹配到新增状态</text>
+  <text x="70" y="106" class="sub">先判断“能复用多少”，再计算本次仍需 Prefill 的 suffix。</text>
+
+  <text x="80" y="154" class="group">请求路径</text>
+  <rect x="80" y="178" width="230" height="92" class="box" fill="#e0f2fe" stroke="#0284c7"/>
+  <text x="195" y="215" text-anchor="middle" class="label">请求 prompt</text>
+  <text x="195" y="242" text-anchor="middle" class="small">system / history / user</text>
+  <rect x="440" y="178" width="240" height="92" class="box" fill="#f3e8ff" stroke="#9333ea"/>
+  <text x="560" y="215" text-anchor="middle" class="label">最长前缀匹配</text>
+  <text x="560" y="242" text-anchor="middle" class="small">只比较开头的连续 token</text>
+  <path d="M310 224H440" class="flow"/>
+  <text x="355" y="210" text-anchor="middle" class="small">逐 token 比较</text>
+
+  <text x="80" y="334" class="group">命中结果</text>
+  <rect x="120" y="366" width="270" height="100" class="box" fill="#e8f4ec" stroke="#5b9b70"/>
+  <text x="255" y="404" text-anchor="middle" class="label">复用已有 KV 状态</text>
+  <text x="255" y="432" text-anchor="middle" class="small">hit_len / reusable_prefix</text>
+  <rect x="730" y="366" width="270" height="100" class="box" fill="#fff5df" stroke="#c79a46"/>
+  <text x="865" y="404" text-anchor="middle" class="label">继续处理 suffix</text>
+  <text x="865" y="432" text-anchor="middle" class="small">uncached_tokens / 新增 Prefill</text>
+  <path d="M520 270V320H255V366" class="reuse"/>
+  <path d="M600 270V320H865V366" class="new"/>
+  <text x="338" y="310" text-anchor="middle" class="small">命中前缀</text>
+  <text x="780" y="310" text-anchor="middle" class="small">首个不一致 token 之后</text>
+
+  <rect x="380" y="510" width="360" height="54" rx="16" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="560" y="544" text-anchor="middle" class="small">新增 suffix 状态写回；容量与淘汰另行治理</text>
+  <path d="M865 466V492H740" class="new"/>
+  <path d="M255 466V492H380" class="reuse"/>
+</svg>

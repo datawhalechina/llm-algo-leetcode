@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="600" viewBox="0 0 1240 600" role="img" aria-labelledby="title desc">
+  <title id="title">GPTQ 与 AWQ 的校准信号和权重量化路径</title>
+  <desc id="desc">同一组权重和代表性激活先形成校准统计。GPTQ 以层输出误差为核心信号，AWQ 以激活敏感通道为核心信号，二者都产出可部署的低比特权重和恢复误差。</desc>
+  <defs>
+    <style>
+      .title{font:700 28px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324d}.sub{font:15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#526b7d}.group{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#35526b}.h{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324d}.t{font:14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#526b7d}.frame{fill:#fff;stroke:#c7d9e7;stroke-width:1.5}.blue{fill:#e8f3fb;stroke:#3978a8;stroke-width:2}.purple{fill:#f1eafa;stroke:#8b6bb1;stroke-width:2}.green{fill:#eaf7ef;stroke:#4c9870;stroke-width:2}.orange{fill:#fff1df;stroke:#c78335;stroke-width:2}.flow{stroke:#3978a8;stroke-width:3;fill:none;marker-end:url(#arrow)}.gptq{stroke:#8b6bb1;stroke-width:3;fill:none;marker-end:url(#purpleArrow)}.awq{stroke:#4c9870;stroke-width:3;fill:none;marker-end:url(#greenArrow)}
+    </style>
+    <marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#3978a8"/></marker>
+    <marker id="purpleArrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#8b6bb1"/></marker>
+    <marker id="greenArrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#4c9870"/></marker>
+  </defs>
+  <rect width="1240" height="600" rx="24" fill="#f8fbfd"/>
+  <text x="620" y="48" text-anchor="middle" class="title">部署前权重量化：校准信号如何指导 GPTQ 与 AWQ</text>
+  <text x="620" y="76" text-anchor="middle" class="sub">两种方法有相同的量化目标，但使用不同的校准信号决定哪些误差需要优先控制</text>
+
+  <rect x="370" y="108" width="500" height="72" rx="18" class="blue"/>
+  <text x="620" y="138" text-anchor="middle" class="h">权重 W + 代表性激活样本</text>
+  <text x="620" y="162" text-anchor="middle" class="t">同一校准数据既用于统计，也用于比较量化前后的恢复误差</text>
+
+  <rect x="445" y="225" width="350" height="80" rx="17" class="orange"/>
+  <text x="620" y="256" text-anchor="middle" class="h">共同校准账本</text>
+  <text x="620" y="281" text-anchor="middle" class="t">分组范围、scale、激活分布与敏感通道</text>
+  <path d="M620 180V225" class="flow"/>
+
+  <rect x="70" y="365" width="470" height="125" rx="18" class="frame"/>
+  <text x="95" y="397" class="group">GPTQ：优先控制层输出误差</text>
+  <rect x="95" y="420" width="190" height="46" rx="12" class="purple"/><text x="190" y="450" text-anchor="middle" class="h">误差补偿</text>
+  <rect x="325" y="420" width="190" height="46" rx="12" class="purple"/><text x="420" y="450" text-anchor="middle" class="h">逐组低比特权重</text>
+  <path d="M285 443H325" class="gptq"/>
+
+  <rect x="700" y="365" width="470" height="125" rx="18" class="frame"/>
+  <text x="725" y="397" class="group">AWQ：优先保护激活敏感通道</text>
+  <rect x="725" y="420" width="190" height="46" rx="12" class="green"/><text x="820" y="450" text-anchor="middle" class="h">通道保护与缩放</text>
+  <rect x="955" y="420" width="190" height="46" rx="12" class="green"/><text x="1050" y="450" text-anchor="middle" class="h">逐组低比特权重</text>
+  <path d="M915 443H955" class="awq"/>
+  <path d="M620 305V335H190V420" class="gptq"/>
+  <path d="M620 305V335H820V420" class="awq"/>
+
+  <rect x="385" y="535" width="470" height="42" rx="14" class="blue"/>
+  <text x="620" y="562" text-anchor="middle" class="h">artifact + 恢复误差 + 任务质量，共同决定是否部署</text>
+  <path d="M420 466V515H520V535" class="gptq"/>
+  <path d="M1050 466V515H720V535" class="awq"/>
+</svg>

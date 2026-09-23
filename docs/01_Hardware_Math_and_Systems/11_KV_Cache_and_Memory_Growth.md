@@ -202,5 +202,5 @@ else:
 - [KV Cache 与 PagedAttention 论文](https://arxiv.org/abs/2309.06180)
 - [22. vLLM 与 PagedAttention](../02_PyTorch_Algorithms/22_vLLM_PagedAttention.md)
 - [24. SGLang 与 RadixAttention](../02_PyTorch_Algorithms/24_SGLang_RadixAttention.md)
-- [34. 前缀缓存与分块预填充](../02_PyTorch_Algorithms/34_Prefix_Caching_and_Chunked_Prefill.md)
+- [34. Prefix Cache 匹配与复用](../02_PyTorch_Algorithms/34_Prefix_Cache_Matching_and_Reuse.md)
 ---

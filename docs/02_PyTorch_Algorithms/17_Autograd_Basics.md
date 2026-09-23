@@ -14,7 +14,7 @@
 
 ## 本节导读
 
-Attention 的前向计算把 $Q$、$K$、$V$ 组合成输出；反向传播则沿着相反的依赖关系，把输出梯度传回这三个输入。本节从这条梯度链出发，说明中间状态为什么会影响反向计算的显存占用，并把它与后续的分块计算联系起来。
+Attention 的前向计算把 $Q$、$K$、$V$ 组合成输出；反向传播则沿着相反的依赖关系，把输出梯度传回这三个输入。本节不再重复通用的损失—激活反向，而是用 Attention 这个中间状态昂贵的案例，说明反向阶段为什么会产生显存压力，并把它与后续的分块计算联系起来。
 
 学习时可以先沿着 $dO \rightarrow dV、dP \rightarrow dS \rightarrow dQ、dK$ 的方向观察依赖关系，再把每个中间量的形状、保存状态和显存代价对应起来。
 
@@ -27,7 +27,7 @@ Attention 的前向计算把 $Q$、$K$、$V$ 组合成输出；反向传播则�
 
 - [P0: 07. PyTorch Autograd and Backward | PyTorch 自动求导与反向传播](../00_Prerequisites/07_PyTorch_Autograd_and_Backward.md)
 - [04. Attention MHA/GQA | 多头注意力与 KV Cache](../02_PyTorch_Algorithms/04_Attention_MHA_GQA.md)
-- [辅助阅读：P0: 13. Simple Neural Network Training | 简单神经网络训练循环](../00_Prerequisites/13_Simple_Neural_Network_Training.md)
+- [P0: 13. Simple Neural Network Training | 简单神经网络训练循环](../00_Prerequisites/13_Simple_Neural_Network_Training.md)
 
 ---
 
@@ -201,7 +201,7 @@ class CustomAttention(torch.autograd.Function):
 
 ```python
 # 运行此单元格以测试你的实现
-def test_attention_backward():
+def _legacy_test_attention_backward():
     """验证前向数值、输入梯度形状、梯度数值和输入校验。"""
     torch.manual_seed(42)
     B, N, d = 2, 8, 16
@@ -243,6 +243,55 @@ def test_attention_backward():
         raise AssertionError("不匹配的序列长度应该触发 ValueError")
 
     print("✅ All Tests Passed! Attention 反向传播实现通过测试。")
+
+# 机制测试入口：把前向、梯度、gradcheck 和输入契约分别验证。
+def _build_attention_backward_case():
+    torch.manual_seed(42)
+    q = torch.randn(2, 8, 16, dtype=torch.double, requires_grad=True)
+    k = torch.randn(2, 8, 16, dtype=torch.double, requires_grad=True)
+    v = torch.randn(2, 8, 16, dtype=torch.double, requires_grad=True)
+    return q, k, v
+
+def _assert_attention_forward(q, k, v):
+    output = CustomAttention.apply(q, k, v)
+    scores = (q @ k.transpose(-2, -1)) / (q.shape[-1] ** 0.5)
+    expected = torch.softmax(scores, dim=-1) @ v
+    assert torch.allclose(output, expected, atol=1e-8), "forward 数值不一致"
+
+def _assert_attention_gradients(q, k, v):
+    output = CustomAttention.apply(q, k, v)
+    output.sum().backward()
+    assert q.grad is not None and k.grad is not None and v.grad is not None, "输入梯度缺失"
+    assert q.grad.shape == q.shape and k.grad.shape == k.shape and v.grad.shape == v.shape, "梯度形状错误"
+
+def _assert_attention_gradcheck():
+    torch.manual_seed(7)
+    q = torch.randn(1, 3, 4, dtype=torch.double, requires_grad=True)
+    k = torch.randn(1, 3, 4, dtype=torch.double, requires_grad=True)
+    v = torch.randn(1, 3, 4, dtype=torch.double, requires_grad=True)
+    assert torch.autograd.gradcheck(CustomAttention.apply, (q, k, v), eps=1e-6, atol=1e-4), "gradcheck 未通过"
+
+def _assert_attention_input_contract():
+    q = torch.randn(2, 3, 4)
+    try:
+        CustomAttention.apply(q, q[:, :2], q)
+    except ValueError:
+        return
+    raise AssertionError("不匹配的序列长度应该触发 ValueError")
+
+def test_attention_backward():
+    try:
+        q, k, v = _build_attention_backward_case()
+        _assert_attention_forward(q, k, v)
+        _assert_attention_gradients(q, k, v)
+        _assert_attention_gradcheck()
+        _assert_attention_input_contract()
+        print("✅ Attention 反向传播的前向、梯度和输入契约测试通过。")
+    except (AttributeError, NameError, TypeError, ValueError) as e:
+        raise NotImplementedError("请先完成 TODO 部分。") from e
+    except AssertionError as e:
+        print(f"❌ 测试失败: {e}")
+        raise NotImplementedError("请先完成 TODO 部分。") from e
 
 test_attention_backward()
 

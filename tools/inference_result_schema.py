@@ -13,6 +13,29 @@ from typing import Any, Mapping
 
 SCHEMA_VERSION = "inference-benchmark/v1"
 
+COMMON_METRIC_KEYS = (
+    "ttft_ms",
+    "tpot_ms",
+    "throughput_tokens_per_s",
+    "throughput_requests_per_s",
+    "p95_ms",
+    "p99_ms",
+    "peak_memory_mb",
+    "queue_wait_ms",
+    "input_transfer_bytes",
+    "input_transfer_ms",
+    "transfer_bytes",
+    "handoff_ms",
+    "recompute_ms",
+    "network_wait_ms",
+    "communication_ms",
+    "exposed_comm_ms",
+    "overlap_ratio",
+    "idle_gap_ms",
+    "model_load_ms",
+    "stream_output_ms",
+)
+
 
 def make_result(
     *,
@@ -29,7 +52,9 @@ def make_result(
 
     ``config`` contains the common experiment dimensions while ``metrics``
     contains measured values. Strategy-specific measurements stay under
-    ``strategy_metrics`` instead of changing the shared contract.
+    ``strategy_metrics`` instead of changing the shared contract. Missing
+    common measurements remain explicit as ``None`` so unsupported metrics are
+    not confused with zero or omitted evidence.
     """
 
     common_config = {
@@ -51,17 +76,35 @@ def make_result(
             if key not in common_config and value is not None
         }
     )
+    normalized_metrics = {key: metrics.get(key) for key in COMMON_METRIC_KEYS}
+    normalized_metrics.update(dict(metrics))
+    strategy_values = dict(strategy_metrics or {})
+    quality_values = dict(quality or {})
+    decision_values = dict(decision or {"decision": "not_evaluated"})
+    role = str(config.get("role") or ("baseline" if "baseline" in strategy else "candidate"))
+    evidence_level = strategy_values.get(
+        "evidence_level",
+        quality_values.get("evidence_level", "not_recorded"),
+    )
+    failure = {
+        "failure_reason": quality_values.get("failure_reason"),
+        "retest_path": quality_values.get("retest_path"),
+    }
     result: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "project": str(project),
         "strategy": strategy,
+        "role": role,
         "config": common_config,
-        "metrics": dict(metrics),
-        "quality": dict(quality or {}),
-        "decision": dict(decision or {"decision": "not_evaluated"}),
+        "metrics": normalized_metrics,
+        "quality": quality_values,
+        "status": quality_values.get("status", "not_recorded"),
+        "evidence_level": evidence_level,
+        "failure": failure,
+        "decision": decision_values,
     }
-    if strategy_metrics:
-        result["strategy_metrics"] = dict(strategy_metrics)
+    if strategy_values:
+        result["strategy_metrics"] = strategy_values
     if source:
         result["source"] = source
     return result

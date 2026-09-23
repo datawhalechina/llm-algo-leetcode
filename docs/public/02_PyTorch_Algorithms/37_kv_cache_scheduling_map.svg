@@ -2,7 +2,7 @@
   <rect width="1280" height="700" fill="#F7F9FC"/>
   <rect x="44" y="34" width="1192" height="632" rx="28" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
   <text x="82" y="78" fill="#0F172A" font-size="28" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">KV Cache 调度的概念关系</text>
-  <text x="82" y="110" fill="#475569" font-size="17" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">前置机制提供缓存信息，调度器根据状态变化安排保留与驱逐。</text>
+  <text x="82" y="110" fill="#475569" font-size="17" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">Cache 资源级调度（四层中的第二层）：根据状态变化安排保留与驱逐。</text>
 
   <rect x="92" y="156" width="260" height="92" rx="18" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
   <text x="168" y="194" fill="#075985" font-size="22" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">分页管理</text>

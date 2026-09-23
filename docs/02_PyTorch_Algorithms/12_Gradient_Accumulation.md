@@ -14,9 +14,9 @@
 
 ## 本节导读
 
-训练规模、更新节奏和显存预算往往需要同时考虑：扩大训练规模可能改善统计稳定性，却也会提高单次计算的资源压力。本节帮助你建立这三者之间的判断口径，理解如何在资源受限时保持可比较的训练目标。
+训练规模、更新节奏和显存预算往往需要同时考虑：扩大训练规模可能改善统计稳定性，却也会提高单次计算的资源压力。本节帮助你建立这三者之间的判断口径，理解 micro-batch 如何累积成 effective batch，以及什么时候才执行一次 `optimizer.step()`。
 
-学习过程中，你会逐步区分一次更新看到了多少数据、单次计算承担了多少数据，以及资源代价应该如何记录；随后可以把这套口径用于微调和训练性能实验，比较显存、吞吐与更新结果。
+学习过程中，你会逐步区分一次更新看到了多少数据、单次计算承担了多少数据，以及 optimizer update 和 scheduler 应该以什么节奏发生；随后可以把这些计算方法用于微调和训练性能实验，比较显存、吞吐与更新结果。
 
 **关键词：** `gradient accumulation`, `micro-batch`, `effective batch`
 
@@ -29,9 +29,9 @@
 - [P0: 13. Simple Neural Network Training | 简单神经网络训练](../00_Prerequisites/13_Simple_Neural_Network_Training.md)
 
 ---
-### Step 1: 梯度累积如何组织一次参数更新
+### Step 1: 一次逻辑更新由什么组成
 完整 batch 不能一次放入显存时，可以把一次逻辑参数更新拆成多个较小的 micro-batch：每个 micro-batch 完成前向和反向，梯度暂时汇总，达到设定次数后再完成一次更新。先明确一次更新看到多少样本，以及一次计算与一次更新分别承担什么任务。
-下面的表格定义比较对象，主图展示从逻辑 batch 到参数更新的推进关系；显存账本的变化放到 Step 2，更新等价条件放到 Step 3。
+下面的表格定义本节的输入与输出，主图展示从逻辑 batch 到参数更新的推进关系；显存账本和更新一致性将在后续继续展开。
 
 | 观察对象 | 它回答的问题 | 梯度累积带来的变化 |
 | --- | --- | --- |
@@ -41,8 +41,8 @@
 
 ![梯度累积总览](../public/02_PyTorch_Algorithms/12_gradient_accumulation_overview.svg)
 
-### Step 2: 梯度累积如何改变显存账本
-Step 1 先定义了有效 batch，本步只观察一次 micro-batch 执行时显存账本如何变化。梯度累积主要影响单次 activation 峰值；参数、梯度和 optimizer state 仍需持续驻留。比较时保持有效 batch、数据顺序和优化器条件一致，不在本步判断参数更新是否等价。
+### Step 2: 单次计算的显存账本如何变化
+梯度累积把一次更新拆成多个 micro-batch 后，最直接的变化发生在单次计算的 activation 峰值；参数、梯度和 optimizer state 仍需持续驻留。观察显存时，同时记录单次计算的峰值和整个训练过程中的长期状态。
 
 | 账本对象 | 梯度累积改变什么 | 梯度累积不改变什么 | 需要观察的结果 |
 | --- | --- | --- | --- |
@@ -50,8 +50,8 @@ Step 1 先定义了有效 batch，本步只观察一次 micro-batch 执行时显
 | 梯度缓存 | 在多个 micro-batch 之间持续累积 | 缓存大小通常与模型参数规模相关，不会随累积次数按比例缩小 | 累积期间的显存占用 |
 | 参数与 optimizer state | — | 一次更新期间持续驻留 | 长期显存占用 |
 
-### Step 3: 如何保持梯度与更新口径一致
-显存峰值下降并不自动意味着参数更新一致。设一个完整 batch 被切成 `K` 个 micro-batch；如果每个 micro-batch 使用 `mean` reduction，就需要先按 `K` 缩放 loss，再累积梯度。
+### Step 3: 如何让梯度累积与完整 batch 对齐
+显存峰值下降后，还要确认参数更新仍然对应同一个逻辑 batch。设一个完整 batch 被切成 `K` 个 micro-batch；如果每个 micro-batch 使用 `mean` reduction，就需要先按 `K` 缩放 loss，再累积梯度。
 
 $$\nabla L = \frac{1}{K} \sum_{i=1}^{K} \nabla L_i$$
 
@@ -65,8 +65,8 @@ $$\nabla L = \frac{1}{K} \sum_{i=1}^{K} \nabla L_i$$
 | 更新时机 | 累积完成后只执行一次 `optimizer.step()` | 参数更新次数不同 |
 
 ![梯度累积的更新一致性条件](../public/02_PyTorch_Algorithms/12_gradient_accumulation_update_contract.svg)
-### Step 4: 实现并验证梯度累积
-本步把前面的机制落到三个对象：切分 batch、建立 full batch 对照、完成梯度累积更新。题目区要求 batch 可被 `accum_steps` 整除，测试区检查 loss、输出、参数更新、异常输入和 `optimizer.step()` 次数。
+### Step 4: 实现一次逻辑更新并验证
+本步把前面的机制落到三个对象：切分 batch、建立 full batch 对照、完成梯度累积更新。题目区要求 batch 可被 `accum_steps` 整除，测试区检查 loss、输出、参数更新、异常输入和 `optimizer.step()` 次数。`slice_micro_batch` 用于验证多字段 batch 的同步切分；当前回归训练路径直接切分 `x/y`，两者遵循相同的索引原则。日志保留未缩放的 mean loss，反向传播使用缩放后的 loss。
 
 | 实现对象 | 作用 | 输入 | 输出 | TODO / 验证重点 |
 | --- | --- | --- | --- | --- |
@@ -154,38 +154,41 @@ def train_step_with_accumulation(model, optimizer, x, y, accum_steps=4):
     for idx in range(accum_steps):
         # ==========================================
         # 先切出当前 micro-batch，逐个处理而不是一次性喂完整 batch。
-        # TODO 1: 切分当前 micro-batch
+        # TODO 1：切分当前 micro-batch
         # 提示：按 idx 和 micro_size 使用同一个 [start:end] 范围切分 x / y，保持样本对应；不要在这里重新打乱样本。
         # ==========================================
-        # xb = ???
-        # yb = ???
+        # xb = ???  # 当前 micro-batch 的输入
+        # yb = ???  # 当前 micro-batch 的目标
 
         pred = model(xb)
 
         # ==========================================
-        # TODO 2: 处理当前 micro-batch 的 loss
-        # 提示: 先计算未缩放的 micro_loss，再除以 accum_steps 后调用 backward()，
-        #       保证累积后的梯度仍然对应完整 batch 的平均梯度；日志仍记录未缩放的 micro_loss。
+        # TODO 2：计算 micro_loss，生成 scaled_loss 并完成反向传播
+        # 提示：先得到未缩放的 micro_loss，再构造 scaled_loss 用于 backward；
+        #       日志累计仍使用未缩放的 micro_loss，保证与 full batch 的 mean loss 同口径。
         #       当前使用 MSELoss(reduction='mean')。
         # ==========================================
-        # loss = ???
-        loss.backward()
-        # total_loss = ???
+        # micro_loss = ???  # 当前 micro-batch 的原始 mean loss
+        # scaled_loss = ???  # 用于 backward 的缩放后 loss
+        # scaled_loss.backward()
+        # total_loss += micro_loss.detach().item() / accum_steps
 
     # ==========================================
-    # TODO 3: 完成一次参数更新并返回结果
-    # 提示: 所有 micro-batch 都 backward 后，只调用一次 optimizer.step()；
-    #       返回按原始 mean loss 口径记录的累计值，不返回缩放后的反向 loss。
+    # TODO 3：完成一次参数更新并返回结果
+    # 提示：所有 micro-batch 都完成 backward 后，只调用一次 optimizer.step()；
+    #       然后清空梯度，返回各 micro_loss 的平均值，不返回 scaled_loss。
     # ==========================================
-    # 优化器操作
-    return total_loss
+    # optimizer_step = ???  # 只执行一次逻辑更新：调用 optimizer.step()
+    # clear_grad = ???  # 为下一次逻辑 batch 清空梯度：调用 optimizer.zero_grad()
+    # result = ???  # 返回未缩放 loss 的平均值：使用 total_loss
+    return result
 
 ```
 
 
 ```python
 # 运行此单元格以测试你的实现
-def test_gradient_accumulation():
+def _legacy_test_gradient_accumulation():
     try:
         torch.manual_seed(42)
         x = torch.randn(8, 4)
@@ -231,6 +234,8 @@ def test_gradient_accumulation():
         mb = slice_micro_batch(sft_batch, idx=1, accum_steps=4)
         assert mb["input_ids"].shape == (2, 3), "SFT micro-batch 切分 shape 错误"
         assert torch.equal(mb["input_ids"], sft_batch["input_ids"][2:4]), "SFT micro-batch 切分范围错误"
+        assert torch.equal(mb["attention_mask"], sft_batch["attention_mask"][2:4]), "attention_mask 未同步切分"
+        assert torch.equal(mb["labels"], sft_batch["labels"][2:4]), "labels 未同步切分"
 
         with torch.no_grad():
             output_full = model_full(x)
@@ -274,6 +279,76 @@ def test_gradient_accumulation():
     except Exception as e:
         print(f"❌ 测试失败: {e}")
         raise
+
+# 19 节风格的机制测试入口：每个辅助函数只负责一类证据。
+def _build_accumulation_case():
+    torch.manual_seed(42)
+    return torch.randn(8, 4), torch.randn(8, 2), TinyRegressor()
+
+def _assert_micro_batch_contract():
+    batch = {
+        "input_ids": torch.arange(24).view(8, 3),
+        "attention_mask": torch.ones(8, 3, dtype=torch.long),
+        "labels": torch.arange(24).view(8, 3),
+    }
+    micro = slice_micro_batch(batch, idx=1, accum_steps=4)
+    for name, value in batch.items():
+        assert torch.equal(micro[name], value[2:4]), f"{name} 未同步切分"
+
+def _assert_step_count_and_loss(x, y, base_model):
+    full_model = copy.deepcopy(base_model)
+    accum_model = copy.deepcopy(base_model)
+    full_opt = torch.optim.SGD(full_model.parameters(), lr=0.1)
+    accum_opt = torch.optim.SGD(accum_model.parameters(), lr=0.1)
+    full_calls, accum_calls = [0], [0]
+    full_step, accum_step = full_opt.step, accum_opt.step
+    def counted_full_step(*args, **kwargs):
+        full_calls[0] += 1
+        return full_step(*args, **kwargs)
+    def counted_accum_step(*args, **kwargs):
+        accum_calls[0] += 1
+        return accum_step(*args, **kwargs)
+    full_opt.step = counted_full_step
+    accum_opt.step = counted_accum_step
+    loss_full = train_step_full_batch(full_model, full_opt, x, y)
+    loss_accum = train_step_with_accumulation(accum_model, accum_opt, x, y, accum_steps=4)
+    assert abs(loss_full - loss_accum) < 1e-6, "loss 口径不一致"
+    assert full_calls[0] == 1 and accum_calls[0] == 1, "一次逻辑 batch 必须只更新一次"
+    return full_model, accum_model
+
+def _assert_update_equivalence(full_model, accum_model, x):
+    with torch.no_grad():
+        assert torch.allclose(full_model(x), accum_model(x), atol=1e-6), "更新后的输出不一致"
+    for full_param, accum_param in zip(full_model.parameters(), accum_model.parameters()):
+        assert torch.allclose(full_param, accum_param, atol=1e-6), "参数更新不一致"
+
+def _assert_invalid_inputs(x, y, base_model):
+    for bad_steps in (0, 3):
+        try:
+            train_step_with_accumulation(copy.deepcopy(base_model), torch.optim.SGD(base_model.parameters(), lr=0.1), x, y, bad_steps)
+        except ValueError:
+            continue
+        raise AssertionError(f"accum_steps={bad_steps} 应被拒绝")
+    try:
+        train_step_with_accumulation(copy.deepcopy(base_model), torch.optim.SGD(base_model.parameters(), lr=0.1), x, y[:-1], 4)
+    except ValueError:
+        return
+    raise AssertionError("x 和 y 的 batch 维度不一致时应被拒绝")
+
+def test_gradient_accumulation():
+    try:
+        x, y, base_model = _build_accumulation_case()
+        _assert_micro_batch_contract()
+        full_model, accum_model = _assert_step_count_and_loss(x, y, base_model)
+        _assert_update_equivalence(full_model, accum_model, x)
+        _assert_invalid_inputs(x, y, base_model)
+        print("✅ CPU 机制验证通过：梯度累积与完整 batch 的更新口径一致。")
+    except (AttributeError, NameError, TypeError, ValueError) as e:
+        print("代码可能未完成，请先完成 TODO。")
+        raise NotImplementedError("请先完成 TODO 部分。") from e
+    except AssertionError as e:
+        print(f"❌ 测试失败: {e}")
+        raise NotImplementedError("请先完成 TODO 部分。") from e
 
 test_gradient_accumulation()
 ```
@@ -379,25 +454,27 @@ def train_step_with_accumulation(model, optimizer, x, y, accum_steps=4):
     total_loss = 0.0
     for idx in range(accum_steps):
         # 先切出当前 micro-batch，逐个处理而不是一次性喂完整 batch。
-        # TODO 1: 切分当前 micro-batch
-        xb = x[idx * micro_size:(idx + 1) * micro_size]
-        yb = y[idx * micro_size:(idx + 1) * micro_size]
+        # TODO 1：切分当前 micro-batch
+        xb = x[idx * micro_size:(idx + 1) * micro_size]  # TODO 1 对应挖空：xb，当前 micro-batch 输入
+        yb = y[idx * micro_size:(idx + 1) * micro_size]  # TODO 1 对应挖空：yb，当前 micro-batch 目标
 
         pred = model(xb)
 
-        # 先缩放 loss，确保累积后的总梯度尺度和完整 batch 一致。
-        # TODO 2: 缩放 loss 并反传
-        # 提示：当前使用 MSELoss(reduction='mean')，先除以 accum_steps 再 backward。
-        loss = criterion(pred, yb) / accum_steps
-        loss.backward()
-        total_loss += loss.detach().item()
+        # 先缩放反向 loss，确保累积后的总梯度尺度和完整 batch 一致；日志仍使用未缩放值。
+        # TODO 2：计算 micro_loss，生成 scaled_loss 并完成反向传播
+        # 先得到 micro_loss，再构造 scaled_loss；日志使用 micro_loss，反向使用 scaled_loss。
+        micro_loss = criterion(pred, yb)  # TODO 2 对应挖空：micro_loss，原始 mean loss
+        scaled_loss = micro_loss / accum_steps  # TODO 2 对应挖空：scaled_loss，反向传播 loss
+        scaled_loss.backward()
+        total_loss += micro_loss.detach().item() / accum_steps
 
     # 所有 micro-batch 反传完后再统一更新参数。
-    # TODO 3: 统一更新参数并返回累计 loss
-    # 提示：只调用一次 optimizer.step()，返回按原始 mean loss 口径记录的日志 loss。
-    optimizer.step()
-    optimizer.zero_grad()
-    return total_loss
+    # TODO 3：统一更新参数并返回累计 loss
+    # 只调用一次 optimizer.step()，随后清空梯度；返回各 micro_loss 的平均值。
+    optimizer_step = optimizer.step()  # TODO 3 对应挖空：optimizer_step，调用一次逻辑更新
+    clear_grad = optimizer.zero_grad()  # TODO 3 对应挖空：clear_grad，清空累计梯度
+    result = total_loss  # TODO 3 对应挖空：result，保存平均日志 loss
+    return result
 ```
 
 ### 解析：实现说明与验证口径

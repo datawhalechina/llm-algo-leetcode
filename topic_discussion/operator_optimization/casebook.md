@@ -41,4 +41,4 @@
 - 想顺序学习：回到[算子优化专题入口](./intro.md)。
 - 想沿一个 kernel 项目推进：阅读[算子优化问题链](./walkthrough.md)。
 - 想定位系统热点：转到[性能分析](../profiling/intro.md)。
-- 想理解图变换与 lowering：转到[编译与图优化](../compiler_graph_optimization/intro.md)。
+- 想理解图变换与 lowering：转到[图级优化与编译支撑](./graph_compiler/intro.md)。

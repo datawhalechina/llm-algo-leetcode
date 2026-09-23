@@ -1,12 +1,45 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
-  <title id="title">67 GPU 量化实验流程</title>
-  <desc id="desc">GPU 环境预检、模型加载、kernel 确认、固定 workload 测量和报告保存。</desc>
-  <defs><marker id="a67g" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker><style>.t{font:700 30px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.s{font:500 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.h{font:700 19px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#111827}.b{font:500 15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.box{stroke-width:2.5;rx:18}.l{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a67g)}</style></defs>
-  <rect width="1200" height="520" fill="#f8fafc"/><text x="60" y="58" class="t">GPU 可选实验：从可运行到可复核</text><text x="60" y="90" class="s">每一步都保存证据，避免把“服务启动”误读成“量化有效”。</text>
-  <rect x="55" y="180" width="200" height="145" class="box" fill="#dbeafe" stroke="#2563eb"/><text x="103" y="230" class="h">环境预检</text><text x="82" y="268" class="b">GPU / CUDA / backend</text><text x="82" y="296" class="s">模型与依赖可用</text>
-  <rect x="300" y="180" width="200" height="145" class="box" fill="#fef3c7" stroke="#d97706"/><text x="348" y="230" class="h">加载 G0 / G1</text><text x="329" y="268" class="b">记录格式与 artifact</text><text x="329" y="296" class="s">保存服务日志</text>
-  <rect x="545" y="180" width="200" height="145" class="box" fill="#dcfce7" stroke="#16a34a"/><text x="606" y="230" class="h">核对执行路径</text><text x="570" y="268" class="b">kernel / dtype / 量化状态</text><text x="570" y="296" class="s">加载成功不等于收益</text>
-  <rect x="790" y="180" width="200" height="145" class="box" fill="#fce7f3" stroke="#db2777"/><text x="842" y="230" class="h">固定 workload</text><text x="816" y="268" class="b">延迟 / 吞吐 / 峰值显存</text><text x="816" y="296" class="s">同输入检查质量</text>
-  <rect x="1035" y="180" width="120" height="145" class="box" fill="#e0e7ff" stroke="#4f46e5"/><text x="1060" y="230" class="h">报告</text><text x="1052" y="268" class="b">JSON</text><text x="1052" y="296" class="b">决策</text>
-  <path d="M255 252H300" class="l"/><path d="M500 252H545" class="l"/><path d="M745 252H790" class="l"/><path d="M990 252H1035" class="l"/><text x="60" y="425" class="s">推荐顺序：先 G0，再 G1；另一种格式或 backend 作为 G2 另行运行。结果表必须保留硬件、模型、格式、kernel、workload、质量和 evidence level。</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
+  <title id="title">67 GPU 量化实验的固定条件</title>
+  <desc id="desc">为了比较 G0、G1 和可选 G2，需要同时固定运行环境、输入 workload 和对照变量。</desc>
+  <defs>
+    <marker id="a67g" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#64748b"/>
+    </marker>
+    <style>
+      .title{font:700 30px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}
+      .subtitle{font:500 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}
+      .head{font:700 21px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#111827}
+      .body{font:500 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}
+      .group{font:700 18px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}
+      .box{stroke-width:2.5;rx:18}
+      .line{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a67g)}
+    </style>
+  </defs>
+
+  <rect width="1200" height="500" fill="#f8fafc"/>
+  <text x="60" y="52" class="title">5.1：固定 G0 / G1 / G2 的比较条件</text>
+  <text x="60" y="84" class="subtitle">三类条件同时固定，后续性能和显存差异才可以比较。</text>
+
+  <rect x="390" y="115" width="420" height="82" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <text x="497" y="151" class="head">可比较的实验对照</text>
+  <text x="478" y="180" class="body">G0 浮点 · G1 量化 · G2 可选</text>
+
+  <rect x="45" y="245" width="1110" height="190" class="box" fill="#f8fafc" stroke="#94a3b8"/>
+  <text x="465" y="278" class="group">三类同时固定的实验条件</text>
+
+  <rect x="75" y="310" width="300" height="90" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="171" y="347" class="head">运行环境</text>
+  <text x="143" y="376" class="body">GPU · CUDA · backend</text>
+
+  <rect x="450" y="310" width="300" height="90" class="box" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="535" y="347" class="head">输入 workload</text>
+  <text x="523" y="376" class="body">模型 · 请求 · cache</text>
+
+  <rect x="825" y="310" width="300" height="90" class="box" fill="#e0e7ff" stroke="#4f46e5"/>
+  <text x="910" y="347" class="head">对照变量</text>
+  <text x="879" y="376" class="body">G0 / G1 / G2 格式</text>
+
+  <path d="M600 197V220H225V310" class="line"/>
+  <path d="M600 197V310" class="line"/>
+  <path d="M600 197V220H975V310" class="line"/>
 </svg>

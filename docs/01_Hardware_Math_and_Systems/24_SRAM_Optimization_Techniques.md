@@ -203,5 +203,5 @@ assert not spill_tradeoff(40, 64, 1, 0.9)['spill']
 - [Triton](https://github.com/triton-lang/triton)：观察 block、tile 和片上数据复用如何写成 kernel。
 - [18. Triton Block Model | Triton Block 模型](./18_Triton_Block_Model.md)
 - [20. FlashAttention Sim | FlashAttention 模拟](../02_PyTorch_Algorithms/20_FlashAttention_Sim.md)
-- [34. Prefix Caching and Chunked Prefill | 前缀缓存与分块预填充](../02_PyTorch_Algorithms/34_Prefix_Caching_and_Chunked_Prefill.md)
+- [34. Prefix Cache Matching and Reuse | Prefix Cache 匹配与复用](../02_PyTorch_Algorithms/34_Prefix_Cache_Matching_and_Reuse.md)
 ---

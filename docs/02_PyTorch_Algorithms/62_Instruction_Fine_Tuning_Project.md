@@ -24,7 +24,7 @@
 
 - [09. SFT Training Loop | SFT 训练循环](./09_SFT_Training_Loop.md)
 - [10. LoRA Tutorial | LoRA 教程](./10_LoRA_Tutorial.md)
-- [11. LR Schedulers WSD Cosine | WSD 余弦学习率调度器](./11_LR_Schedulers_WSD_Cosine.md)
+- [11. Optimizer Updates and Learning Rate Scheduling | 优化器更新与学习率调度](./11_Optimizer_Updates_and_Learning_Rate_Scheduling.md)
 - [13. End-to-End Fine-Tuning Experiment | 端到端微调实验](./13_End_to_End_Fine_Tuning_Experiment.md)
 ---
 
@@ -75,6 +75,8 @@ GPU 实验验证微调后的模型是否满足任务和资源要求；数据审�
 | 项目验收 | 固定数据、格式和任务规则 | 数据、格式、任务指标 | 交给 Step 5 输出决策 |
 
 实验流程：固定数据和模板 → 评测基础模型 → 完成指令微调 → 在同一评测集生成结果 → 对比 loss、格式和任务完成度 → 记录资源 → 进入 Step 5。
+
+SFT 通过后要保存可复用的 checkpoint 或 adapter，而不是只保留项目报告。进入 DPO/GRPO 时，使用本节确定的 SFT checkpoint、tokenizer/chat template 和数据版本初始化 policy/reference，并把本节评测结果作为后续对齐的 baseline。
 
 ### Step 5：把证据合成交付决策
 将 Step 2 的数据准入结果和 Step 4 的模型对照结果放在同一张报告中：先检查数据准入，再检查验证损失、格式/任务指标和资源是否达到预设门槛。项目决策综合数据准入、任务指标、资源记录和可复现产物；train loss 作为其中一项训练信号。

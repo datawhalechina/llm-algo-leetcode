@@ -6,6 +6,8 @@
 
 本页的输出是输入接口：token 序列、embedding 维度和上下文表示方式必须能与后续 block 对接。
 
+本页在 Task0 中负责解释“Block 的输入从哪里来”。它不负责讨论 Attention 变体或 tokenizer 的性能排名，而是先建立 token id → embedding → hidden state 的输入契约。
+
 这一页不只解释“词怎么切”，而是回答三件事：
 
 - 为什么大模型必须先处理 tokenization
@@ -129,7 +131,7 @@ Embedding 则把离散 token 变成可训练的连续表示，是大模型结构
 
 ## 进入下一页
 
-进入 [03 Norm Evolution](./03_norm_evolution.md)，观察 hidden state 进入深层 block 后如何保持数值和优化稳定。
+进入 [03 Norm Evolution](./03_norm_evolution.md)，观察 hidden state 进入深层 block 后如何保持数值和优化稳定；完成 Norm、Attention、RoPE 与 MLP 后，再回到 [06 Block / Residual 主干](./06_block_residual_path.md) 汇总完整 Block。
 
 ## 阅读建议
 

@@ -28,9 +28,9 @@
 - [10. PyTorch State_dict and Persistence | PyTorch 状态管理与持久化](./10_PyTorch_State_dict_and_Persistence.md)
 - [20. Profiling and Memory Ledger | 性能剖析与显存账本](./20_Profiling_and_Memory_Ledger.md)
 
-## Q1：`nn.Module` 解决什么问题？
+## Q1：如何把模型组织成一个可调用的 `nn.Module`？
 
-模型不是一堆散落函数，而是一个有边界的对象。`nn.Module` 的作用，就是把参数注册、前向逻辑、子模块组合和状态保存统一起来。这里先把它当成 Part 2 里最常见的“模型对象入口”来看：你先确认这个对象怎么成立，再往下看它的状态和前向怎么组织。
+模型不是一堆散落函数，而是一个有边界、可调用、可递归组合的对象。`nn.Module` 先提供三个入口：用 `__init__()` 注册参数和子模块，用 `forward()` 描述计算，用 `model(x)` 触发前向。状态保存放到 Q4 再处理。
 
 
 ```python
@@ -65,6 +65,7 @@ class TwoLayerMLP(nn.Module):
 
 
 def count_parameters(module):
+    """统计模块及其子模块中已注册参数的总元素数。"""
     return sum(param.numel() for param in module.parameters())
 
 
@@ -106,9 +107,15 @@ test_two_layer_mlp()
 
 ```
 
-## Q2：什么时候必须区分 `Parameter`、`buffer` 和普通属性？
+## Q2：`Parameter`、`buffer` 和普通属性分别会进入哪里？
 
-当你开始关心模型里哪些东西会被训练、哪些东西只该保存、哪些东西只是临时配置时，就要先把状态边界看清。这里可以先按这个顺序判断：会不会训练更新 -> 会不会落进 `state_dict()` -> 只是临时配置还是长期状态。
+阅读一个模块时，先用“是否训练、是否保存、是否随模块迁移”三件事判断对象的归属。下面的表格给出本节需要掌握的最小区别。
+
+| 对象 | 会被优化器更新 | 进入 `state_dict()` | 随模块迁移 device | 常见用途 |
+|:---|:---:|:---:|:---:|:---|
+| `Parameter` | 是 | 是 | 是 | 权重、偏置 |
+| `buffer` | 否 | 是 | 是 | mask、统计量、固定缩放值 |
+| 普通属性 | 否 | 否 | 否 | 配置、名称、临时标记 |
 
 
 ```python
@@ -118,6 +125,7 @@ class ToyModule(nn.Module):
         self.weight = nn.Parameter(torch.tensor([1.0]))
         # `buffer` 常用于 mask、统计量、缓存这类“要保存但不训练”的状态。
         self.register_buffer('scale', torch.tensor([2.0]))
+        # 普通属性不会进入 state_dict，也不会随模块自动迁移到其他 device。
         self.name = 'toy'
 
     def forward(self, x):
@@ -146,9 +154,9 @@ print('✅ state_dict 结构通过')
 
 ```
 
-## Q3：什么时候必须看 `forward()` 和子模块组合？
+## Q3：如何阅读 `forward()` 和子模块组合？
 
-当状态边界已经清楚后，再看 `forward()` 怎么把子模块串起来。这里真正重要的不是“写法”，而是“前向逻辑和模块边界是否清楚”。`children()`、`named_children()`、`modules()` 和 `named_modules()` 这几类接口，都是帮你快速看懂层级结构的入口。
+先沿着 `forward()` 看数据经过哪些子模块，再用 `named_children()` 或 `named_modules()` 对照模块层级。这里关注的是数据流和模块边界，不是记住每个接口的名称。
 
 
 ```python
@@ -176,9 +184,9 @@ print('✅ forward 和子模块组合通过')
 
 ```
 
-## Q4：什么时候需要处理 `state_dict` 的保存和恢复？
+## Q4：如何完成模型状态的最小保存与恢复？
 
-当模型对象和前向结构都看顺以后，最后就要把状态稳定落盘和恢复。这里记住：`state_dict()` 负责拿到当前模型状态，`load_state_dict()` 负责把状态恢复回去；它们关心的是权重和 buffer，不关心训练过程本身。
+模型结构确定后，再把参数和 buffer 做一次最小保存—恢复闭环。`state_dict()` 负责取得当前模型状态，`load_state_dict()` 负责恢复这些状态；它们处理的是模型状态，不包含 optimizer、学习率和训练步数。
 
 
 ```python

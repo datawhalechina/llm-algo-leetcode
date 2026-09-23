@@ -14,34 +14,26 @@
 
 ## 本节导读
 
-本节要求你验证一个量化推理方案是否满足部署条件。先固定 workload、运行后端和误差阈值，再比较 baseline 与量化方案的延迟、吞吐、显存和输出误差，同时记录 kernel 支持与反量化开销。最终输出一份部署建议，并明确方案适用的模型和服务条件。
-**层级定位：** 本项目主落在 L4，关注量化模型如何被加载、执行和服务；低比特 kernel 属于 L2，模型版本、灰度发布和集群资源治理属于 L5，不在本项目内混为同一个结论。
-**主责与复用边界：** 本项目主责是量化 artifact 的加载、执行和部署判断；显存优化路线只复用权重 / KV Cache 的容量证据，推理性能路线复用 TTFT、TPOT 和吞吐口径，训练侧 QLoRA 不在本项目重复验证。
+本节带你完成一次量化部署判断：固定模型、workload、backend 和误差阈值，比较 baseline 与量化方案的延迟、吞吐、显存和输出质量，最后写出部署建议。
 
 **关键词：** `quantization`, `inference`, `deployment`
-
-![量化推理部署决策流程](/02_PyTorch_Algorithms/67_quantized_deployment_flow.svg)
 
 ---
 
 ## 前置阅读
 
-**导语：** 先把 W8A16、QLoRA、量化理论和基础推理对比看过，再进入量化部署项目会更容易判断压缩收益是否值得保留。
+**导语：** 先了解量化对象、常见权重量化格式和推理性能指标，再开始部署对照实验。
 - [25. Quantization W8A16 | W8A16 量化](./25_Quantization_W8A16.md)
-- [26. QLoRA and 4bit Quantization | QLoRA 与 4-bit 量化](./26_QLoRA_and_4bit_Quantization.md)
+- [65. QLoRA Selection Project | QLoRA 选型项目（需要训练适配时）](./65_QLoRA_Selection_Project.md)
+- [40. GPTQ and AWQ Weight Quantization | GPTQ 与 AWQ 权重量化](./40_GPTQ_and_AWQ_Weight_Quantization.md)
 - [66. Inference Performance Comparison | 推理性能对比实验](./66_Inference_Performance_Comparison.md)
-- [P1: 21. Quantization Theory and INT4/INT8 | 量化理论与 INT4/INT8](../01_Hardware_Math_and_Systems/21_Quantization_Theory_and_INT4_INT8.md)
 
-## 相关阅读
+完成前置阅读后，先做 CPU 对照，再按需复测真实 GPU/backend。
 
-**导语：** 完成量化部署选型后，用 74 检查收益是否有 profiler 证据；如果需要观察请求级行为，再进入 70 的 serving 调度基准。
-- [74. Profiling-Driven End-to-End Optimization | profiling 驱动的端到端优化](./74_Profiling_Driven_End_to_End_Optimization.md)
-- [70. Serving Scheduler Benchmark | 推理服务调度基准](./70_Serving_Scheduler_Benchmark.md)
+### Step 1：定义量化部署问题与对照组
+先回答一个具体问题：在同一模型、请求负载、硬件和服务 backend 下，量化 artifact 是否带来足够的显存或性能收益，同时保持质量和兼容性在预算内。低 bit 只是候选条件，不是部署结论。
 
-### Step 1: 定义量化部署项目目标
-先固定模型、tokenizer、workload、硬件和 backend，再只改变量化 artifact 或量化格式。实验目标由显存、速度、质量和兼容性四类指标共同决定；低 bit 本身不是部署结论。
-
-先按 66 的 G0/G1/G2 方式划分实验组：
+先按 66 的 G0/G1/G2 方式划分实验组：完成 C0/C1 的机制和决策练习，再按 G0→G1→G2 进行真实对照；每次只改变一个主要变量，并记录 bit、dtype 和 backend。
 
 | 组别 | 环境 | 实验内容 | 主要回答的问题 |
 |---|---|---|---|
@@ -49,54 +41,48 @@
 | C1 决策模拟 | CPU | 输入 baseline / candidate 指标和误差预算 | 什么条件下值得继续部署？ |
 | G0 浮点 baseline | GPU/backend | 固定模型和 workload，运行 FP16/BF16 | 当前硬件和 backend 的基线是什么？ |
 | G1 真实量化 | GPU/backend | 只改变一种量化格式或 artifact | 量化是否真的降低显存或延迟？ |
-| G2 格式/backend 对照 | GPU/backend | 比较多个已确认支持的格式或 backend | 收益是否来自量化本身且值得迁移？ |
+| G2 扩展或组合对照 | GPU/backend | 在 G0/G1 后比较另一个格式、backend 或组合 | 收益是否来自可复核的变化且值得迁移？ |
 
-C0/C1 是 CPU-first 主线；G0/G1 需要真实 GPU 和量化 artifact；G2 是可选扩展。没有真实 artifact 时，G1 只能报告链路检查，不能填写量化收益。量化 bit、dtype 和 backend 必须作为不同变量记录。
+![量化推理部署决策流程](../public/02_PyTorch_Algorithms/67_quantized_deployment_flow.svg)
 
-| 候选 | 本项目要验证的机制 | 最小真实证据 |
-|---|---|---|
-| GPTQ | 校准后的权重量化与误差补偿 | GPTQ artifact 被目标 backend 加载，并确认量化执行路径 |
-| AWQ | 激活感知与敏感权重保护 | AWQ artifact 被目标 backend 加载，并记录校准与 kernel 信息 |
-| GGUF | 文件封装、格式兼容与部署加载 | GGUF artifact 被对应 GGUF backend 加载；不能沿用 GPTQ/AWQ 的启动参数 |
+### Step 2：确认模型、artifact 与运行口径
 
-### Step 2: 先确认 baseline 与量化口径合法
+先确认浮点 baseline 能够加载，再检查量化 artifact、模型版本和目标 backend。下面先固定两组实验的输入和环境，再核对候选格式需要补齐的证据：
 
-先跑通 FP16/BF16 baseline，再只替换量化 artifact 或量化格式。下面的表格用于检查两组实验是否真的同口径：
+| 检查项 | G0 baseline | G1/G2 candidate | 需要留下的记录 |
+|---|---|---|---|
+| 模型与 tokenizer | 固定版本 | 与 G0 相同 | 模型版本、tokenizer 版本 |
+| workload | prompt、生成长度、batch、并发、cache policy | 与 G0 相同 | workload 配置文件 |
+| 运行环境 | GPU、driver、PyTorch/CUDA、backend 版本 | 尽量相同 | 环境快照 |
+| 唯一变量 | FP16/BF16 浮点权重 | 量化 artifact、格式或明确 backend | 变化字段 |
+| artifact / 格式 | 浮点权重 | GPTQ、AWQ 或 GGUF | artifact 路径、格式元数据、加载状态 |
+| 校准与验证 | 不适用 | split、样本数、最大长度、版本 | calibration / evaluation manifest |
+| 执行证据 | 浮点执行路径 | 量化格式与目标 kernel | backend、kernel evidence、结果 JSON |
 
-| 条件 | G0 baseline | G1/G2 candidate |
-|---|---|---|
-| 模型与 tokenizer | 固定版本 | 与 G0 相同 |
-| workload | prompt、生成长度、batch、并发、cache policy | 与 G0 相同 |
-| 运行环境 | GPU、driver、PyTorch/CUDA、backend 版本 | 尽量相同 |
-| 唯一变量 | FP16/BF16 浮点权重 | 量化 artifact、格式或明确 backend |
-| 校准记录 | 不适用 | split、样本数、最大长度、版本 |
+### Step 3：建立性能、质量与证据协议
 
-### Step 3: 用统一口径比较收益与代价
+同时比较加载、性能、显存、数值误差和任务质量，并把每个指标关联到同一组 workload、artifact 和结果文件；比较结果时一并核对格式和 kernel 路径。
 
-同时比较性能、显存、数值误差和任务质量；每个指标都要能追溯到同一组 workload 和结果文件。
+![量化部署证据链](../public/02_PyTorch_Algorithms/67_quantization_evidence_flow.svg)
 
 | 指标组 | 记录字段 | 用来回答什么 |
 |---|---|---|
-| 性能 | latency / TTFT / TPOT / throughput | 是否更快，是否适合当前请求负载 |
+| 性能 | load time / TTFT / TPOT / E2E / throughput | 是否更快，是否适合当前请求负载 |
 | 容量 | peak VRAM / load status | 是否装得下，是否提高并发或上下文上限 |
 | 质量 | error / task metric | 量化误差是否超过预算 |
-| 兼容性 | format / kernel evidence / backend version | 收益是否来自可复核的执行路径 |
+| 兼容性与证据 | format / kernel evidence / backend version / artifact path | 收益是否来自可复核的执行路径 |
 
-### Step 4: 输出部署选型结论
+### Step 4：CPU 实验——设计决策实现并形成部署结论
 
-按质量门槛、兼容性和性能收益输出 accept / tune / reject：
+把题目区拆成四类机制辅助函数：校验配置与 artifact、汇总 baseline/candidate 指标、计算差值与误差预算、输出 `accept / tune / reject`。
+
+按质量、兼容性和性能收益输出 accept / tune / reject；报告保留量化格式、粒度、校准信息、backend、硬件和完整 workload。本 Step 用 CPU 代码实现量化账本、模拟耗时、指标比较和部署决策。
 
 | 决策 | 条件 | 下一步 |
 |---|---|---|
 | accept | 真实 artifact 加载成功、kernel/格式已确认、质量达标且性能或容量有收益 | 保留配置并扩大 workload 回归 |
 | tune | 质量达标但收益不稳定，或校准、粒度、backend 仍需调整 | 补采数据或调整单一变量 |
 | reject | 质量超预算、无法加载、kernel 不支持或没有可接受收益 | 更换格式、backend 或回到 baseline |
-
-报告必须保留量化格式、粒度、校准信息、backend、硬件和完整 workload；没有真实加载和 kernel 证据时，只能报告链路检查。
-
-### Step 5：CPU 实验——量化账本与误差机制
-
-上面的 Step 1-4 定义项目口径；下面用 CPU 代码实现量化账本、模拟耗时、指标比较和部署决策。真实量化、校准、任务评估与压测放在 Step 6。
 
 
 ```python
@@ -108,7 +94,6 @@ from typing import Dict, List
 
 
 ```python
-# TODO 0：实现 per-group 量化、反量化，并统计存储与误差
 def simulate_weight_quantization(weights: List[float], bits: int = 8, group_size: int = 2) -> Dict[str, float]:
     """用对称 per-group 量化模拟存储压缩和反量化误差。
 
@@ -200,8 +185,10 @@ def format_deployment_report(quant_name, summary, recommendation):
     """
     # ==========================================
     # TODO 3: 生成量化部署报告
-    # 提示：把 latency、throughput、VRAM、error 的变化和 recommendation 放在一起。
-    #       量化报告中的 error 仍是模拟/重构指标，真实任务质量要另行评测。
+    # 提示：rows 必须覆盖 latency、throughput、VRAM、error 四类证据，
+    #       每行同时展示变化值和判断结果；不要只报告压缩率或显存下降。
+    #       conclusion 需要同时包含 recommendation['decision'] 和 recommendation['next_action']；
+    #       error 仍是模拟/重构指标，不能直接写成真实任务质量结论。
     # ==========================================
     header = "| 指标 | 变化 | 判断 |"
     sep = "| --- | --- | --- |"
@@ -222,28 +209,19 @@ def recommend_quantized_deployment(summary, min_latency_delta_ms=5.0, min_throug
     """
     # ==========================================
     # TODO 4: 输出部署决策
-    # 规则：
-    # - 延迟或吞吐有明显收益，VRAM 也改善，且误差在预算内：accept
-    # - 误差在预算内，但收益还不够稳：tune
-    # - 误差超预算，或收益不足：reject
-    # 提示：先计算四个布尔变量，再按质量门槛优先的顺序返回决策。
+    # 决策顺序：先检查误差预算，再检查显存收益，最后检查延迟或吞吐收益。
+    # - error 超预算：无论速度是否提升，都必须 reject。
+    # - 误差合格但收益不足：tune，并指出应继续调整粒度、校准集或 backend。
+    # - 误差合格且显存、延迟/吞吐收益均达标：accept。
+    # 提示：先计算四个布尔变量，再完成三种 decision 的 reason 和 next_action。
     # ==========================================
     # strong_latency_gain = ???
     # strong_throughput_gain = ???
     # strong_vram_gain = ???
     # error_ok = ???
-    # if ???:
-    #     decision = ???
-    #     reason = ???
-    #     next_action = ???
-    # elif ???:
-    #     decision = ???
-    #     reason = ???
-    #     next_action = ???
-    # else:
-    #     decision = ???
-    #     reason = ???
-    #     next_action = ???
+    # decision = ???
+    # reason = ???
+    # next_action = ???
     # return {'decision': decision, 'reason': reason, 'next_action': next_action}
 
 ```
@@ -252,6 +230,36 @@ def recommend_quantized_deployment(summary, min_latency_delta_ms=5.0, min_throug
 
 
 ```python
+def test_quantization_accounting_contract():
+    report = simulate_weight_quantization([0.0, 1.0, -2.0, 3.0, 0.5], bits=4, group_size=2)
+    assert report['parameter_count'] == 5 and report['groups'] == 3
+    assert report['quantized_bytes'] < report['original_bytes']
+    print('✅ quantization accounting contract')
+
+def test_quantization_timing_contract():
+    counter = {'n': 0}
+    def fn():
+        counter['n'] += 1
+    latency = benchmark_fn(fn, warmup=1, iters=2)
+    assert counter['n'] == 3 and latency >= 0.0
+    print('✅ quantization timing contract')
+
+def test_quantization_comparison_contract():
+    baseline = {'latency_ms': 100.0, 'throughput': 80.0, 'vram_mb': 12000.0, 'error': 0.0}
+    quantized = {'latency_ms': 72.0, 'throughput': 120.0, 'vram_mb': 7000.0, 'error': 0.012, 'error_budget': 0.02}
+    summary = summarize_quantized_result(baseline, quantized)
+    assert summary['latency_delta_ms'] == 28.0 and summary['throughput_delta'] == 40.0
+    assert summary['vram_delta_mb'] == 5000.0 and summary['error_within_budget'] is True
+    print('✅ quantization comparison contract')
+
+def test_quantization_decision_contract():
+    summary = {'latency_delta_ms': 28.0, 'throughput_delta': 40.0, 'vram_delta_mb': 5000.0, 'error_within_budget': True, 'latency_improved': True, 'throughput_improved': True, 'vram_improved': True}
+    decision = recommend_quantized_deployment(summary, 5.0, 5.0, 256.0)
+    assert decision['decision'] == 'accept'
+    rejected = dict(summary, error_within_budget=False)
+    assert recommend_quantized_deployment(rejected, 5.0, 5.0, 256.0)['decision'] == 'reject'
+    print('✅ quantization decision contract')
+
 def test_quantized_project_template():
     try:
         weights = [0.0, 1.0, -2.0, 3.0, 0.5]
@@ -318,10 +326,13 @@ def test_quantized_project_template():
         bad_decision = recommend_quantized_deployment(bad_summary, min_latency_delta_ms=5.0, min_throughput_delta=5.0, min_vram_delta_mb=256.0)
         assert bad_decision['decision'] == 'reject'
 
-        report = format_deployment_report('W8A16', summary, decision['reason'])
+        report = format_deployment_report('W8A16', summary, decision)
         assert 'W8A16' in report
         assert '| 指标 | 变化 | 判断 |' in report
+        for metric in ('latency', 'throughput', 'VRAM', 'error'):
+            assert metric in report, f'报告缺少 {metric} 证据'
         assert '值得推进到更大样本部署回归' in report
+        assert 'promote_to_extended_regression' in report
 
         print("✅ 量化推理与部署项目模板代码通过基础校验。")
     except NotImplementedError:
@@ -335,7 +346,12 @@ def test_quantized_project_template():
         raise NotImplementedError("请先完成 TODO 代码！") from e
 
 
-test_quantized_project_template()
+def run_quantized_project_tests():
+    for test in (test_quantization_accounting_contract, test_quantization_timing_contract, test_quantization_comparison_contract, test_quantization_decision_contract, test_quantized_project_template):
+        test()
+    print('✅ 量化部署项目：机制测试与集成测试全部通过。')
+
+run_quantized_project_tests()
 
 ```
 
@@ -354,7 +370,7 @@ test_quantized_project_template()
 
 
 ```python
-# TODO 0: 参考实现：per-group 量化、反量化，以及存储/误差统计
+
 def simulate_weight_quantization(weights: List[float], bits: int = 8, group_size: int = 2) -> Dict[str, float]:
     """用对称 per-group 量化模拟存储压缩和反量化误差。"""
     if bits < 2 or bits > 8 or group_size < 1 or not weights:
@@ -436,7 +452,10 @@ def format_deployment_report(quant_name, summary, recommendation):
         f"| VRAM | {summary['vram_delta_mb']} MB | {'改善' if summary['vram_improved'] else '未改善'} |",
         f"| error | {summary['error_delta']} | {'满足预算' if summary['error_within_budget'] else '超出预算'} |",
     ]
-    conclusion = f"部署建议：{recommendation}。"
+    conclusion = (
+        f"部署建议：{recommendation['decision']}；"
+        f"原因：{recommendation['reason']}；下一步：{recommendation['next_action']}。"
+    )
     return "\n".join([f"量化方案：{quant_name}", header, sep] + rows + [conclusion])
 
 
@@ -490,9 +509,11 @@ def recommend_quantized_deployment(summary, min_latency_delta_ms=5.0, min_throug
 - 关键点：报告必须同时呈现收益和误差预算，避免只凭显存下降就直接上线。
 - 项目意义：量化部署项目最后要回答的不是“能不能量化”，而是“这套方案是否满足部署约束，下一轮该扩大回归还是继续校准”。
 
-### Step 6（可选）：GPU/backend 实验——真实量化部署
+### Step 5（可选）：GPU/backend 实验——真实量化部署
 
-![GPU 量化实验流程](/02_PyTorch_Algorithms/67_quantized_gpu_experiment_flow.svg)
+#### 5.1 环境、输入与固定条件
+
+![GPU 量化实验流程](../public/02_PyTorch_Algorithms/67_quantized_gpu_experiment_flow.svg)
 
 **实验条件表**
 
@@ -503,27 +524,41 @@ def recommend_quantized_deployment(summary, min_latency_delta_ms=5.0, min_throug
 | calibration / evaluation | 不适用 / 独立评估 | 记录数据集、split、样本数 | 分别记录 |
 | backend / 硬件 | 固定 | 固定 | 尽量固定 |
 
-**结果表模板**
+#### 5.2 环境启动检查
 
-| 实验组 | format | prompt/output | batch/concurrency | TTFT/latency | throughput | peak VRAM | error/task quality | load/kernel | decision |
-|---|---|---|---|---:|---:|---:|---|---|---|
-| G0 | FP16/BF16 | 固定 | 固定 | 待采集 | 待采集 | 待采集 | 参考输出 | 成功/待确认 | 待判断 |
-| G1 | 真实量化格式 | 与 G0 相同 | 与 G0 相同 | 待采集 | 待采集 | 待采集 | 待采集 | 成功/待确认 | 待判断 |
+先确认当前 Python、PyTorch、CUDA、GPU、backend 和模型来源可用，再继续配置量化实验。没有 GPU 或真实 artifact 时，保留检查结果并完成 CPU 练习，不填写虚构的量化收益。
 
-**执行顺序**：先运行 G0，确认浮点模型、backend 和固定 workload 能正常完成；再只替换量化 artifact 或量化启动参数运行 G1；最后把另一种格式或另一种 backend 作为 G2 单独重跑。每一组都要保留 `load_status`、`format`、`kernel_evidence`、`TTFT/latency`、`throughput`、`peak_vram` 和 `quality`，然后再生成 `accept / tune / reject`。
+在 Colab / ModelScope 中，先确保 Notebook 位于仓库根目录（或先 clone 仓库），再运行下面单元；没有 GPU 时保留 `False`。
 
-**证据边界**：CPU 模拟只能支持存储量和误差机制结论。只有真实量化权重被 backend 加载、目标 kernel 或格式得到确认，并在相同 workload 下测量延迟、吞吐、显存和质量，才能支持量化部署收益结论。
+#### 5.3 配置数据、artifact 与对照组
 
-本节推荐的真实 GPU 数据口径是：Qwen2.5-1.5B-Instruct，WikiText-2 train 子集用于 calibration，validation 子集用于评估；0.5B 仅作为快速 smoke 档。
-数据准备单元只下载独立 split 并保存口径清单；当前的长度限制是字符级近似，真正执行 GPTQ/AWQ 前必须使用目标 tokenizer 重新截断和打包。
-按 66 的统一分组执行：先固定模型、tokenizer、workload、backend 和硬件，运行 G0 浮点 baseline；再只替换一份真实量化 artifact，运行 G1；最后才把 GPTQ、AWQ、GGUF 或不同 backend 分别作为 G2 对照。G0 与 G1 必须写入同一份配对报告，至少包含加载状态、格式、kernel 证据、延迟、吞吐、峰值显存和质量字段。只有真正加载量化权重或量化启动参数，才可记录量化收益；服务启动成功本身不等于量化收益成立。GGUF 继续使用独立 backend 路径，不与 vLLM 的 GPTQ/AWQ 启动参数混写。
+推荐使用 Qwen2.5-1.5B-Instruct；WikiText-2 train 子集用于 calibration，validation 子集用于评估，0.5B 作为快速 smoke 档。数据准备单元保存独立 split 和口径清单；真正执行 GPTQ/AWQ 前，使用目标 tokenizer 重新截断和打包。
 
-默认保持 Practice-P1 的本地/模拟量化实验；需要接入 backend 时，将 `RUN_REAL_BACKEND` 改为 `True`。模型来源支持 `auto`、`modelscope`、`huggingface` 或本地目录，dtype 与端口由共享 helper 自动选择。当前 vLLM 路径会依次启动 G0 和 G1，并把两个结果合并保存；G2 需要修改 `QUANTIZATION_FORMAT` 或 backend 后另行运行。若目标格式或 backend 尚未接入专用启动参数，入口会主动停止，不能把 artifact 加载成功等同于量化收益成立。
+配置 G0 浮点 baseline、G1 量化 candidate 和可选 G2 对照，记录 artifact 路径、格式元数据、模型版本、backend、硬件和 workload。GGUF 使用独立 backend 路径，不与 vLLM 的 GPTQ/AWQ 启动参数混用。
 
-Colab / ModelScope：先确保 Notebook 位于仓库根目录（或先 clone 仓库），再运行下面单元；没有 GPU 时保留 `False`，不会阻断前面的 CPU-first 练习。
+#### 5.4 执行实验并保存 JSON
+
+先运行 G0，再只替换量化 artifact 或启动参数运行 G1，最后把另一种格式、backend 或已验证组合作为 G2 单独重跑。每组保留 `load_status`、`format`、`kernel_evidence`、`TTFT/latency`、`throughput`、`peak_vram` 和 `quality`，并将原始结果写入独立 JSON。
+
+默认使用 Practice-P1 的本地/模拟量化实验；接入 backend 时，将 `RUN_REAL_BACKEND` 改为 `True`。模型来源支持 `auto`、`modelscope`、`huggingface` 或本地目录，dtype 与端口由共享 helper 自动选择。vLLM 路径会依次启动 G0 和 G1，并合并保存结果；G2 通过修改 `QUANTIZATION_FORMAT` 或 backend 单独运行。
+
+#### 5.5 实测结果与复测记录
+
+读取结果后，先比较同一 workload 下的加载状态、TTFT、TPOT、吞吐、峰值显存、质量和 kernel evidence。当前没有统一的历史量化结果时，保留下面的复测表，学习者应填写自己的 G0/G1/G2 记录。运行失败、artifact 不存在、kernel 不支持或 OOM 也要写入结果文件，便于区分“未执行”“执行失败”和“量化收益未成立”。
+
+| 实验组 | GPU / 显存 | 模型与 artifact | backend | format | workload / JSON | TTFT / TPOT | throughput | peak VRAM | quality | kernel evidence | evidence level | failure | decision |
+|---|---|---|---|---|---|---:|---:|---:|---|---|---|---|---|
+| G0 baseline | 待填写 | 浮点模型路径 | 待填写 | FP16/BF16 | 待填写 / JSON | 待填写 | 待填写 | 待填写 | 参考输出 | 待确认 | 待填写 | none / 待记录 | pending |
+| G1 candidate | 待填写 | 量化 artifact 路径 | 待填写 | GPTQ/AWQ/GGUF | 与 G0 相同 / JSON | 待填写 | 待填写 | 待填写 | 待填写 | 待确认 | 待填写 | none / 待记录 | pending |
+| G2 optional | 待填写 | 另一 artifact 路径 | 待填写 | 另一格式/backend | 与 G0 相同 / JSON | 待填写 | 待填写 | 待填写 | 待填写 | 待确认 | 待填写 | none / 待记录 | pending |
+
+#### 5.6 解释结果与形成决策
+
+比较 TTFT、TPOT、吞吐、显存、质量和 kernel evidence，并核对真实量化权重是否加载、目标 kernel 或格式是否生效；字段完整且质量达标后，再输出 `accept / tune / reject`。
 
 ```python
 import json
+from datetime import datetime
 from pathlib import Path
 
 try:
@@ -571,10 +606,14 @@ CONCURRENCY = 1  # 只在单独的并发实验中修改。
 NUM_PROMPTS = 5  # smoke 请求数；正式实验应扩大并重复。
 MAX_TOKENS = 64  # 每个请求的生成上限。
 WARMUP = 1  # 不计入正式统计的预热请求数。
+REPEATS = 3  # G0/G1 每组正式重复次数；smoke 可暂时改为 1。
 MAX_MODEL_LEN = 2048  # backend 的上下文上限，影响 KV Cache 预算。
 BACKEND = 'vllm'  # 推理运行时；更换 backend 会改变 kernel 支持范围。
 CACHE_POLICY = 'default'  # KV Cache 策略；对照实验中应固定。
-RESULT_PATH = 'benchmarks/results/67_quantized_deployment.json'  # 统一结果文件。
+RUN_ID = datetime.now().strftime('%Y%m%d_%H%M%S')
+RESULT_PATH = f'benchmarks/results/67_quantized_deployment_{RUN_ID}.json'  # 每次 GPU 运行独立保存。
+UPSTREAM_BASELINE_RESULT = 'benchmarks/results/66_g0_vllm_baseline.json'  # 由 66 提供的固定 workload baseline。
+UPSTREAM_ADAPTER_MANIFEST = 'benchmarks/results/65_qlora_artifact_manifest.json'  # 仅在 65 生成训练适配产物时填写。
 DATA_MANIFEST_PATH = 'benchmarks/results/67_quantization_data_manifest.json'  # 只保存数据口径，不保存数据正文。
 
 project_config = shared_project_config(
@@ -585,9 +624,34 @@ project_config = shared_project_config(
     calibration_split=CALIBRATION_SPLIT, calibration_samples=CALIBRATION_SAMPLES,
     calibration_max_length=CALIBRATION_MAX_LENGTH, eval_dataset=EVAL_DATASET,
     eval_split=EVAL_SPLIT, eval_samples=EVAL_SAMPLES,
-    generated_tokens=MAX_TOKENS, batch=BATCH_SIZE, concurrency=CONCURRENCY,
+    generated_tokens=MAX_TOKENS, batch=BATCH_SIZE, concurrency=CONCURRENCY, repeats=REPEATS,
     cache_policy=CACHE_POLICY,
+    upstream_baseline_result=UPSTREAM_BASELINE_RESULT,
+    upstream_adapter_manifest=UPSTREAM_ADAPTER_MANIFEST,
+    result_json=RESULT_PATH,
 )
+def inspect_upstream_contract():
+    """检查 66 基线和可选 65 artifact 是否具备可复用的公开字段。"""
+    baseline_path = Path(UPSTREAM_BASELINE_RESULT)
+    if not baseline_path.exists():
+        return {'status': 'pending_baseline', 'path': str(baseline_path), 'missing': ['result_json']}
+    baseline_payload = json.loads(baseline_path.read_text(encoding='utf-8'))
+    contract = baseline_payload.get('experiment_contract') or baseline_payload.get('baseline_contract') or {}
+    required = {'schema_version', 'project', 'role', 'model_revision', 'backend', 'workload_path', 'dtype', 'evidence_level'}
+    missing = sorted(required - set(contract))
+    manifest_status = 'not_required'
+    if UPSTREAM_ADAPTER_MANIFEST:
+        manifest_path = Path(UPSTREAM_ADAPTER_MANIFEST)
+        if not manifest_path.exists():
+            manifest_status = 'pending_manifest'
+        else:
+            manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+            manifest_status = 'ready' if manifest.get('artifact_path') and manifest.get('status') == 'ready' else 'not_ready'
+    return {'status': 'ready' if not missing else 'incomplete', 'path': str(baseline_path), 'missing': missing, 'manifest': manifest_status}
+
+UPSTREAM_CONTRACT = inspect_upstream_contract()
+project_config['upstream_contract'] = UPSTREAM_CONTRACT
+print('upstream contract:', UPSTREAM_CONTRACT)
 print(project_config)
 
 def validate_quantization_setup():
@@ -711,7 +775,7 @@ if RUN_REAL_BACKEND and QUANTIZATION_FORMAT == 'gguf':
             label='gguf-deployment-smoke', output=RESULT_PATH, backend=QUANTIZATION_BACKEND,
             dtype=DTYPE, cache_policy=CACHE_POLICY, batch=BATCH_SIZE,
             concurrency=CONCURRENCY, num_prompts=NUM_PROMPTS, max_tokens=MAX_TOKENS,
-            warmup=WARMUP,
+            warmup=WARMUP, repeats=REPEATS,
         )
         print(report['normalized_result'])
     finally:
@@ -735,7 +799,7 @@ def run_vllm_candidate(label, model_id, model_source, quantization_args, output_
             label=label, output=output_path, backend=BACKEND,
             dtype=selected_dtype, cache_policy=CACHE_POLICY,
             batch=BATCH_SIZE, concurrency=CONCURRENCY, num_prompts=NUM_PROMPTS,
-            max_tokens=MAX_TOKENS, warmup=WARMUP,
+            max_tokens=MAX_TOKENS, warmup=WARMUP, repeats=REPEATS,
         )
         return {
             'label': label, 'model_path': str(model_path),
@@ -768,7 +832,12 @@ if RUN_REAL_BACKEND and QUANTIZATION_FORMAT != 'gguf':
     paired_result = {
         'schema_version': 'quantized-inference-project/v1',
         'project': '67_quantized_inference_and_deployment',
+        'upstream': {
+            'baseline_result': UPSTREAM_BASELINE_RESULT,
+            'adapter_manifest': UPSTREAM_ADAPTER_MANIFEST or None,
+        },
         'stage': 'matched_backend_measurement',
+        'experiment_groups': {'baseline': 'G0', 'candidate': 'G1', 'extension': 'G2'},
         'config': project_config,
         'comparison': {
             'fixed': ['model_tokenizer', 'workload', 'backend', 'hardware', 'dtype_policy', 'cache_policy'],
@@ -797,3 +866,14 @@ if RUN_REAL_BACKEND and QUANTIZATION_FORMAT != 'gguf':
     result_root.write_text(json.dumps(paired_result, ensure_ascii=False, indent=2), encoding='utf-8')
     print(json.dumps(paired_result, ensure_ascii=False, indent=2))
 ```
+
+## 相关阅读
+
+完成量化部署实验后，可以用这些资料继续理解量化算法、artifact 和 backend；论文用于理解方法，官方文档和开源实现用于核对实际加载路径。
+- [74. Profiling-Driven End-to-End Optimization | profiling 驱动的端到端优化](./74_Profiling_Driven_End_to_End_Optimization.md)
+- [70. Serving Scheduler Benchmark | 推理服务调度基准](./70_Serving_Scheduler_Benchmark.md)
+- [GPTQ: Accurate Post-Training Quantization for Generative Pre-trained Transformers](https://arxiv.org/abs/2210.17323)
+- [AWQ: Activation-aware Weight Quantization for LLM Compression and Acceleration](https://arxiv.org/abs/2306.00978)
+- [Hugging Face Transformers quantization overview](https://huggingface.co/docs/transformers/main/en/quantization/overview)
+- [vLLM quantization documentation](https://docs.vllm.ai/en/latest/features/quantization/)
+- [bitsandbytes open-source implementation](https://github.com/bitsandbytes-foundation/bitsandbytes)

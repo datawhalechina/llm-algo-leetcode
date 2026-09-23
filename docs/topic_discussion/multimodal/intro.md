@@ -1,58 +1,88 @@
-# 多模态（Multimodal）
+# 多模态推理（Multimodal Inference）
 
-> 专题类型：横切支撑专题（建设中）　主服务目标：以多模态推理为主线，理解视觉输入如何影响模型执行、显存、服务和质量
+> 专题类型：领域专题（建设中）　主服务目标：理解视觉语言模型如何处理图像输入，并完成可测量、可复核的推理服务优化
 
 ## 页面导语
 
-多模态推理的难点不只是“把图片传给模型”，而是要把不同模态转换成可以共同计算的表示，并继续回答三个工程问题：信息如何对齐、视觉 Token 如何改变请求成本、输出是否真的依据了输入内容。
+本专题第一阶段聚焦**视觉语言模型（VLM）和图像输入**。学习者将沿着一条完整链路推进：原始图像如何变成视觉表示，视觉 token 如何进入语言模型，视觉输入如何改变 Prefill、Decode、KV Cache 和服务成本，最后如何用质量与性能证据做部署决策。
 
-本专题面向已经掌握 Transformer、Attention 和基础推理流程，希望进入视觉语言模型、文档理解或图文推理的学习者。训练、数据工程和评测作为共享支撑出现；主线先解决多模态请求如何运行、如何测量和如何部署。当前专题先建立路线和问题框架，具体 Notebook、数据集与 GPU 项目将按 Task 逐步补齐。
+视频、音频、文档 OCR 和复杂多模态训练暂不作为第一阶段主线；它们会在图像推理路线稳定后作为扩展项目加入。这样可以先用一个固定模态建立可复用的 workload、benchmark 和调优方法，再扩展到更复杂的输入。
 
-![多模态学习路线：从输入对齐到可复核系统](../../public/topic_discussion/multimodal/multimodal_overview.svg)
-
-上图先说明多模态系统的共同链路；下面的 Task0–6 再把每个环节对应到需要回答的问题和验证出口。
+![多模态推理路线：从视觉表示到可复核服务](../../public/topic_discussion/multimodal/multimodal_overview.svg)
 
 ## 如何开始
 
-- **主学习线：** 先从 Task0 建立模态、表示和任务的共同语言，再按 Task1–6 进入表示、融合、训练、推理和评测。
-- **已有推理基础：** 可以从 Task1 或 Task4 进入，重点观察视觉 token 如何改变序列长度、KV Cache 和请求成本。
-- **已有训练基础：** 可以从 Task2 或 Task3 进入，重点观察视觉表示如何进入生成过程。
-- **只想做应用验证：** 可以从 Task5 开始，先固定图文请求和质量指标，再回补前面的机制。
+- **第一次学习：** 从 Task0 开始，先理解视觉编码器、连接器、视觉 token 和语言模型之间的数据流。
+- **已有推理基础：** 从 Task1 进入，先建立图像请求与纯文本请求的 baseline，再学习 token 预算和缓存管理。
+- **已有性能分析基础：** 从 Task5 进入，先固定模型、图片、分辨率和输出长度，完成一次端到端 profiling。
+- **只想完成项目：** 从 Task6 进入，但需要先复用 Task1 的 workload 和质量指标，避免把一次演示误当成性能结论。
 
-多模态推理会复用推理优化、显存优化、量化与压缩、后训练优化和性能分析的方法，但不会把这些专题的项目结果直接当成多模态结论。
+本专题会复用推理优化、性能优化、显存优化、量化和算子优化的方法；这些专题负责通用机制，多模态专题负责验证这些机制在视觉输入场景中的变化。
+
+## 第一阶段范围
+
+| 纳入主线 | 暂不纳入主线 |
+|:---|:---|
+| 图像输入的视觉语言模型 | 音频输入的完整推理链路 |
+| 视觉编码器、连接器和视觉 token | 视频理解的完整工程链路 |
+| 图像分辨率与 token budget | 多模态预训练和大规模训练 |
+| 多模态 Prefill / Decode | 通用 OCR 产品建设 |
+| visual / text KV Cache 与输入缓存 | 不同模型、不同后端的全面排名 |
+| vLLM、SGLang 的图像服务验证 | 没有统一 workload 的性能结论 |
 
 ## 主学习线与核心问题
 
-`Task0–6` 是规划中的学习顺序。当前只有共享前置和关联项目入口，具体多模态 Notebook、数据集和真实 GPU 项目会在对应任务开发时补入。
+`Task0–6` 是第一阶段的推荐顺序。每个 Task 都要求同时保留机制解释、固定 workload、质量指标和性能证据；论文中的结果作为案例，不直接当作本教程的实测结论。
 
 | Task | 核心问题 | 主要机制 | 预期验证出口 |
 |:---|:---|:---|:---|
-| Task0 | 图片、文本和其他模态如何进入同一个推理请求？ | 模态、token、embedding、任务形式与输入输出契约 | 能画出一次图文请求的数据流，并区分原始输入、模型输入和模型输出 |
-| Task1 | 图像如何被转换成视觉 token，分辨率为什么会改变成本？ | patch / visual token、位置编码、动态分辨率、视觉序列长度 | 计算 token 数、显存和上下文预算，解释输入分辨率变化的代价 |
-| Task2 | 不同模态如何对齐并交互？ | projector、线性映射、cross-attention、early / late fusion | 用小规模例子检查形状、维度、mask 和跨模态信息流 |
-| Task3 | 多模态模型如何把视觉信息带入 Prefill 和 Decode？ | 视觉 Token 注入、生成路径、Prefill / Decode、输出条件依赖 | 在固定图文请求上观察视觉输入对首 token 和后续生成的影响 |
-| Task4 | 多图、长图和高分辨率请求为什么更容易变慢或爆显存？ | 视觉 Token 缓存、KV Cache、批处理、动态分辨率、请求调度 | 在固定模型和 workload 下记录延迟、吞吐、峰值显存与 OOM 边界 |
-| Task5 | 如何选择多模态量化、缓存和 backend 部署方案？ | 权重量化、视觉编码器开销、batch、并发和服务配置 | 同时记录任务质量、延迟、吞吐、显存和失败样例 |
-| Task6 | 如何根据质量、性能和成本做出多模态部署决策？ | 质量—延迟—显存—数据成本的联合决策与回归验证 | 输出可复查的 benchmark 报告和 accept / tune / reject 决策 |
+| Task0：VLM 架构与数据流 | 视觉信息如何进入语言模型？ | 视觉编码器、连接器、视觉 token、Cross-Attention、token 注入 | 画出从图像到文本输出的数据流，并标注各阶段的输入输出 |
+| Task1：Workload 与 Baseline | 图像请求为什么比纯文本请求更复杂？ | 预处理、视觉编码、projector、Prefill、Decode、分辨率与输出长度 | 对照记录阶段耗时、TTFT、TPOT、吞吐和峰值显存 |
+| Task2：视觉 Token 预算与压缩 | 如何减少视觉 token，同时控制质量损失？ | 动态分辨率、token pruning、token merging、帧采样、质量门槛 | 在固定 VQA workload 上比较 token 数、质量、延迟和显存 |
+| Task3：多模态 KV Cache 与输入缓存 | 视觉 KV、文本 KV 和媒体处理缓存如何管理？ | modality-aware cache、视觉复用、多轮对话、分页与淘汰 | 对比复用前后的显存、TTFT、命中率和质量回归 |
+| Task4：多模态推理引擎接入 | 不同 backend 如何接收和处理图像输入？ | chat template、processor、placeholder、输入缓存、服务配置 | 用同一模型和 workload 对照 vLLM / SGLang 的结果 |
+| Task5：多模态 Profiling 与调优 | 慢在图像处理、视觉编码、Prefill 还是 Decode？ | 阶段拆解、数据传输、batch、分辨率、token budget、显存峰值 | 形成瓶颈归因、优化动作和前后对照报告 |
+| Task6：图像问答综合项目 | 如何在质量、延迟、显存和成本之间做部署决策？ | 模型选择、缓存、压缩、服务配置、回归验证 | 输出可复查的图像问答服务报告和 accept / tune / reject 决策 |
+
+## 每个 Task 的统一证据口径
+
+多模态性能不能只记录端到端延迟。每次对照至少固定并记录：
+
+| 类别 | 必须记录的字段 |
+|:---|:---|
+| 模型 | VLM 名称、视觉编码器、连接器、权重精度、backend 版本 |
+| 输入 | 图片数量、分辨率、宽高比、视觉 token 数、文本长度 |
+| 请求 | batch size、并发数、最大输出长度、warmup、重复次数 |
+| 质量 | VQA / OCR / grounding 等任务指标、失败样例、人工抽检规则 |
+| 性能 | 预处理、视觉编码、Prefill、Decode、TTFT、TPOT、吞吐 |
+| 资源 | 峰值显存、权重占用、KV / 输入缓存占用、OOM 或请求失败 |
+
+同一模型和 workload 下，先建立 baseline，再改变一个变量。token 压缩、缓存策略和 backend 对照都必须同时观察质量与性能，不能只用 token 减少率或吞吐提升率下结论。
 
 ## 共享前置与关联专题
 
-| 需要补的能力 | 入口 | 作用 |
+| 需要补的能力 | 入口 | 在本专题中的作用 |
 |:---|:---|:---|
-| Attention 与 Block | [04 Attention（MHA / GQA）](../../02_PyTorch_Algorithms/04_Attention_MHA_GQA.md)、[05 LLaMA3 Block](../../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.md) | 理解文本 token、视觉 token 与注意力计算的共同形式 |
-| 模型架构 | [大模型架构专题](../model_architecture/intro.md) | 补充视觉塔、投影层、融合层和模型变体的结构背景 |
-| 训练与微调 | [09 SFT Training Loop](../../02_PyTorch_Algorithms/09_SFT_Training_Loop.md)、[10 LoRA](../../02_PyTorch_Algorithms/10_LoRA_Tutorial.md) | 作为视觉语言模型训练和参数高效微调的共享前置 |
-| 推理与显存 | [推理优化](../inference_optimization/intro.md)、[显存优化](../memory_performance_tuning/intro.md) | 分析视觉 token、KV Cache、并发和显存预算 |
-| 证据与评测 | [性能分析](../profiling/intro.md)、[后训练优化](../post_training_alignment/intro.md) | 建立性能证据、任务指标和输出质量的联合判断 |
+| Transformer 与 Attention | [Attention（MHA / GQA）](../../02_PyTorch_Algorithms/04_Attention_MHA_GQA.md)、[LLaMA3 Block](../../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.md) | 理解视觉 token 与文本 token 进入同一注意力计算的方式 |
+| 模型架构 | [大模型架构专题](../model_architecture/intro.md) | 补充视觉塔、连接器、融合层和模型变体 |
+| 推理服务 | [推理优化](../inference_optimization/intro.md) | 复用 Prefill / Decode、请求调度和服务指标 |
+| 性能证据 | [性能优化](../performance_optimization/intro.md)、[显存优化](../memory_performance_tuning/intro.md) | 复用 profiling、显存账本和 benchmark 方法 |
+| 算子与量化 | [算子优化](../operator_optimization/intro.md)、[量化部署](../quantization/intro.md) | 作为视觉编码器和低精度路径的扩展支撑 |
+| 质量与对齐 | [后训练优化](../post_training_optimization/intro.md) | 复用任务指标、行为回归和质量门槛 |
 
-## 环境与验证
+## 参考入口
 
-前期机制可使用 CPU 和基础 PyTorch 环境完成；真实视觉语言模型、图像预处理、GPU 显存、吞吐和 backend 对比需要 GPU 环境。数据集、模型权重和评测协议确定后，再在本页补充对应的环境组合与自动化入口。
+- [vLLM 多模态输入](https://docs.vllm.ai/en/stable/features/multimodal_inputs/)：图像、视频、音频输入，以及多模态输入缓存和服务接口。
+- [TensorRT-LLM 多模态支持](https://nvidia.github.io/TensorRT-LLM/features/multi-modality.html)：多模态处理器、视觉编码器和 LLM 解码器的工程组合。
+- [VL-Cache](https://arxiv.org/abs/2410.23317)：视觉与文本 token 的稀疏性和 KV Cache 压缩案例。
+- [TokenCarve](https://arxiv.org/abs/2503.10501)：视觉 token 压缩、质量和推理代价的案例。
 
-多模态项目至少需要记录：模型与视觉编码器、图像分辨率、视觉 token 数、文本长度、dtype、batch / concurrency、任务指标、延迟、吞吐、峰值显存和失败样例。
+这些链接用于理解公开实现和研究问题；它们的实验数字不能直接替代本教程在固定 workload 上的复测结果。
 
-## 当前建设状态
+## 环境与建设状态
 
-- 已完成：以多模态推理为主线的路线定位、Task0–6 核心问题、与现有专题的共享前置关系。
-- 待补齐：视觉 token / projector 机制 Notebook、图文数据工程、真实模型项目、评测数据表和 GPU 验证脚本。
-- 当前不输出：没有真实模型和固定数据集之前，不给出多模态模型或 backend 的性能排名。
+机制和小规模数据流验证可以先使用 CPU 与基础 PyTorch 环境完成；真实 VLM、图像预处理、GPU 显存、吞吐和 backend 对照需要单独准备 GPU 环境。第一阶段优先建设图像 VQA 的固定数据集和单模型 baseline，再扩展到多模型、视频和音频。
+
+- **已完成：** 第一阶段范围、Task0–6 路线、统一证据字段和专题边界。
+- **待补齐：** VLM 架构 Notebook、图像 workload、token budget 实验、输入缓存实验、vLLM / SGLang 对照和 GPU 项目。
+- **当前不输出：** 在没有固定模型、数据集、硬件和评测协议之前，不给出模型或 backend 的性能排名。

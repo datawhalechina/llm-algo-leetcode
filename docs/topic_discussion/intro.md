@@ -8,22 +8,40 @@
 - 为跨路线反复出现的方法轴提供统一的判断框架；
 - 为基础机制、项目指标和专题边界补充背景解释，帮助读者理解结论来自什么机制、需要什么证据。
 
-## 入口与主学习路线
+## 入口与专题层级
 
-如果你还没有明确的性能或系统问题，先从四条主路线中选一条；横向专题用于补方法和机制，不要求全部顺序完成。四条路线是并列入口，不代表必须按页面顺序学习。
+专题轴不是另一条线性课程，而是把纵向 Part、四条主学习路线、横向工程能力和基础/领域入口组织在一起。没有明确问题时，可以从四条主路线中选择；已经知道瓶颈对象时，直接进入对应的横向专题或基础支撑专题。
 
-专题轴包含四条学习路线、四个横切支撑专题和四个基础支撑专题；教程的纵向主线仍由 `Part 00–04` 构成。
+![专题讨论轴：纵向 Part、主学习路线、横向支撑与收口层](../public/topic_discussion/topic_discussion_overview.svg)
 
-![专题讨论轴：从 Notebook 主线到跨 Part 路线](../public/topic_discussion/topic_discussion_overview.svg)
+专题页负责组织关系和学习入口，具体机制、题目和实验仍以对应 Part 的 Notebook 为准。主路线关注优化目标，横向专题关注通用方法，基础与领域专题提供认知和应用背景，最终由 Part 05 收口到综合项目和架构决策。
 
-专题页负责组织关系和学习入口，具体机制、题目和实验仍以对应 Part 的 Notebook 为准。
+### 主学习路线
 
-| 路线 | 主入口 | 适合什么时候进入 |
+| 路线 | 主入口 | 主要回答的问题 |
 |:---|:---|:---|
-| 推理优化路线 | [推理优化（Inference Optimization）](./inference_optimization/intro.md) | 当你要系统理解 prefill、decode、KV cache、服务和 benchmark 时 |
-| 显存优化路线 | [显存优化（Memory Optimization）](./memory_performance_tuning/intro.md) | 当你要把训练显存、推理 cache、量化预算和 trade-off 串起来时 |
-| 算子优化路线 | [算子优化（Operator Optimization）](./operator_optimization/intro.md) | 当你要从 Triton、CUDA、访存和 fusion 进入 kernel 与端到端性能优化时 |
-| 后训练优化路线 | [后训练优化（Post-Training Optimization）](./post_training_alignment/intro.md) | 当你要从监督微调继续走到偏好数据、DPO、GRPO 和对齐项目时 |
+| 推理优化 | [推理优化（Inference Optimization）](./inference_optimization/intro.md) | 请求、Prefill、Decode、KV Cache、Serving 如何协同提升端到端推理性能？ |
+| 性能优化 | [性能优化（Performance Optimization）](./performance_optimization/intro.md) | 性能分析、显存管理、通信代价和成本决策如何串成证据链？ |
+| 算子优化 | [算子优化（Operator Optimization）](./operator_optimization/intro.md) | 如何从访存、Kernel、Fusion 和执行约束提升局部与端到端性能？ |
+| 后训练优化 | [后训练优化（Post-Training Optimization）](./post_training_optimization/intro.md) | 如何从监督微调走向偏好数据、DPO、GRPO 和对齐项目？ |
+
+### 横向工程专题
+
+| 专题 | 主入口 | 主要作用 |
+|:---|:---|:---|
+| 显存优化 | [显存优化（Memory Optimization）](./memory_performance_tuning/intro.md) | 深入理解 VRAM、Activation、Checkpoint、Offload、KV Cache 和资源权衡。 |
+| 性能分析 | [性能分析（Performance Analysis）](./profiling/intro.md) | 提供跨训练、推理和系统层的测量、Trace 和瓶颈归因方法。 |
+| 量化与压缩 | [量化与压缩（Quantization and Compression）](./quantization/intro.md) | 比较表示压缩、精度、显存、吞吐和部署格式。 |
+| 通信与并行 | [通信与并行（Communication and Parallelism）](./communication_parallel/intro.md) | 解释多卡切分、通信原语、拓扑和扩展效率。 |
+| 部署与异构 | [部署与异构系统（Deployment and Heterogeneous Systems）](./deployment_heterogeneous/intro.md) | 组织模型产物、Backend、设备协同和部署验证。 |
+
+### 基础与领域专题
+
+基础专题包括[反向传播与训练机制](./backpropagation_training_mechanism/intro.md)、[大模型架构](./model_architecture/intro.md)和[SFT / LoRA 基础模块](./post_training_optimization/sft_foundation/intro.md)；图级优化与编译已经并入[算子优化](./operator_optimization/intro.md)的支撑模块；领域专题包括[多模态](./multimodal/intro.md)等。它们按需补充机制、模型结构、数据工程和应用背景，不要求在主路线之前全部学完。
+
+### 收口层
+
+[Part 05：综合项目与架构决策](../05_Integrated_Projects_and_Decisions/intro.md)负责把多条路线的证据汇总到一个工程问题中，完成方案组合、成本估算、架构选型和最终交付判断。
 
 ## Infra 层与证据维度
 
@@ -64,7 +82,7 @@ Profiling 与 Evaluation 横跨五层：前者负责采集证据，后者负责�
 | 如果你主要遇到 | 优先进入 | 重点观察 |
 |:---|:---|:---|
 | 请求延迟、吞吐、并发或服务调度 | 推理优化 | TTFT、TPOT、吞吐、P99、KV Cache |
-| OOM、activation、optimizer state 或显存预算 | 显存优化 | peak memory、带宽、重算、搬运、OOM 边界 |
+| OOM、activation、optimizer state 或显存预算 | 性能优化 → Task2 | peak memory、带宽、重算、搬运、OOM 边界 |
 | 单个 kernel 慢、访存低效或融合收益不明显 | 算子优化 | kernel time、带宽利用率、occupancy、端到端收益 |
 | SFT 后的偏好、奖励、DPO 或 GRPO 问题 | 后训练优化 | 偏好质量、任务指标、稳定性、训练代价 |
 
@@ -89,8 +107,8 @@ Profiling 与 Evaluation 横跨五层：前者负责采集证据，后者负责�
 
 常见跳转：
 
-- `偏好数据 / DPO / GRPO / 对齐项目` -> [后训练优化专题](./post_training_alignment/intro.md)
-- `结构前置 / SFT / LoRA / 训练工程` -> [监督微调与训练工程](./fine_tuning_training/intro.md)
+- `偏好数据 / DPO / GRPO / 对齐项目` -> [后训练优化专题](./post_training_optimization/intro.md)
+- `结构前置 / SFT / LoRA / 训练工程` -> [SFT / LoRA 基础模块](./post_training_optimization/sft_foundation/intro.md)
 - `prefill / decode / PagedAttention / benchmark` -> [推理优化](./inference_optimization/intro.md)
 - `VRAM / checkpoint / offload / memory trade-off` -> [显存优化](./memory_performance_tuning/intro.md)
 - `量化是否值得做` -> [量化与压缩](./quantization/intro.md)
@@ -101,12 +119,12 @@ Profiling 与 Evaluation 横跨五层：前者负责采集证据，后者负责�
 
 ### 能力与组件边界
 
-这些内容连接五层结构，但承担的角色不同：算子优化是主路线，编译与图优化是基础支撑，通信与并行是横切支撑，MLSys 是跨专题的方法框架，不是独立的第 12 个专题。
+这些内容连接五层结构，但承担的角色不同：算子优化是主路线，图级优化与编译是其 Task1 支撑模块，通信与并行是横切支撑，MLSys 是跨专题的方法框架，不是独立的第 12 个专题。
 
 | 能力 | 主要连接 | 在专题中的展开位置 | 当前项目入口 |
 |:---|:---|:---|:---|
 | 算子优化 | Infra-L1–Infra-L3 | [算子优化](./operator_optimization/intro.md)、[Part 03](../03_Triton_Kernels/intro.md)、[Part 04](../04_CUDA_and_System_Optimization/intro.md)；必要时用 [Part 02 · 74 Profiling](../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.md) 验证 kernel 对端到端结果的影响 | [Part 03](../03_Triton_Kernels/intro.md) / [Part 04](../04_CUDA_and_System_Optimization/intro.md) |
-| 编译与图优化 | Infra-L2–Infra-L3 | [编译与图优化](./compiler_graph_optimization/intro.md)，负责图变换、IR、lowering 和 backend 决策 | [Part 03](../03_Triton_Kernels/intro.md) / [Part 04](../04_CUDA_and_System_Optimization/intro.md) |
+| 图级优化与编译 | Infra-L2–Infra-L3 | [算子优化支撑模块](./operator_optimization/graph_compiler/intro.md)，负责图变换、IR、lowering 和 backend 决策 | [Part 03](../03_Triton_Kernels/intro.md) / [Part 04](../04_CUDA_and_System_Optimization/intro.md) |
 | 异构并行与通信 | 主要连接 Infra-L1–Infra-L3；资源编排延伸到 Infra-L5 | 通信与并行；性能分析负责定位计算、内存、通信等待 | [Part 02 · 79 分布式并行](../02_PyTorch_Algorithms/79_Distributed_Parallel_Benchmark.md) / [Part 02 · 80 MoE 专家并行](../02_PyTorch_Algorithms/80_MoE_Expert_Parallel_Benchmark.md) / [Part 02 · 81 分布式推理](../02_PyTorch_Algorithms/81_Distributed_Inference_Project.md) |
 | MLSys 方法 | Infra-L2–Infra-L5 | 作为跨专题方法：约束建模、profiling、benchmark、资源调度和回归决策 | [Part 02 · 74 Profiling](../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.md) / [Part 02 · 75 显存预算](../02_PyTorch_Algorithms/75_Memory_Budget_Compression_Project.md) / [Part 02 · 79 分布式并行](../02_PyTorch_Algorithms/79_Distributed_Parallel_Benchmark.md) |
 
@@ -116,9 +134,9 @@ Profiling 与 Evaluation 横跨五层：前者负责采集证据，后者负责�
 
 一个项目可以被多个专题复用，但只保留一个主叙事入口。主专题负责定义项目问题和最终结论，关联专题只复用其中的指标、机制或实验结果；例如 `66` 的主专题是推理优化，但量化、编译、显存和性能分析可以分别解释它的低比特、kernel、预算和证据视角。项目资产表中的“主专题 / 关联专题 / Infra 层”用于记录这种关系，避免把同一个项目误读成多个独立项目。
 
-### 横切与基础支撑入口
+### 按需入口与基础支撑
 
-这些专题不替代主路线，而是把跨路线反复出现的方法轴单独拉出来：
+这些入口不替代主路线，而是把跨路线反复出现的方法轴单独拉出来。性能优化负责把测量、资源和决策串起来；下面的专题负责深入某一类机制或工程手段：
 
 **横切支撑专题**
 
@@ -127,8 +145,13 @@ Profiling 与 Evaluation 横跨五层：前者负责采集证据，后者负责�
 | 量化与压缩 | [量化与压缩（Quantization and Compression）](./quantization/intro.md) | 当你同时要看精度、显存、带宽和部署取舍时 |
 | 通信与并行 | [通信与并行（Communication and Parallelism）](./communication_parallel/intro.md) | 当你开始进入多卡训练、并行切分和通信瓶颈时 |
 | 性能分析 | [性能分析（Performance Analysis）](./profiling/intro.md) | 当你需要拿证据，而不是只靠经验猜测时 |
-| 多模态 | [多模态（Multimodal）](./multimodal/intro.md) | 当你要把图像、文本等多种输入接入训练、推理和评测时 |
 | 部署与异构系统 | [部署与异构系统（Deployment and Heterogeneous Systems）](./deployment_heterogeneous/intro.md) | 当你要理解模型产物、backend、设备协同和部署交付时 |
+
+**领域入口**
+
+| 专题 | 主入口 | 更适合什么时候进入 |
+|:---|:---|:---|
+| 多模态 | [多模态（Multimodal）](./multimodal/intro.md) | 当你要把图像、文本等多种输入接入训练、推理和评测时 |
 
 **基础支撑专题**
 
@@ -138,5 +161,5 @@ Profiling 与 Evaluation 横跨五层：前者负责采集证据，后者负责�
 |:---|:---|:---|
 | 反向传播与训练机制 | [反向传播与训练机制（Backpropagation and Training Mechanics）](./backpropagation_training_mechanism/intro.md) | 训练微调、显存优化 |
 | 大模型架构 | [大模型架构（Model Architecture）](./model_architecture/intro.md) | 训练微调、推理优化 |
-| 监督微调与训练工程 | [监督微调与训练工程（Supervised Fine-Tuning and Training Engineering）](./fine_tuning_training/intro.md) | 后训练优化、训练项目 |
-| 编译与图优化 | [编译与图优化（Compiler and Graph Optimization）](./compiler_graph_optimization/intro.md) | 推理优化、系统优化 |
+| SFT / LoRA 基础模块 | [SFT / LoRA 基础模块](./post_training_optimization/sft_foundation/intro.md) | 后训练优化、训练项目 |
+| 图级优化与编译 | [算子优化支撑模块](./operator_optimization/graph_compiler/intro.md) | 算子优化、推理优化、系统优化 |

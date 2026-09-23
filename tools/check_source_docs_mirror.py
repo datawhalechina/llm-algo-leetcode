@@ -24,12 +24,21 @@ SOURCE_DIRS = [
     ROOT / "04_CUDA_and_System_Optimization",
 ]
 DOCS_DIR = ROOT / "docs"
+
+
+def is_generated_path(path: Path) -> bool:
+    """Skip local/generated artifacts that are not tutorial source pages."""
+    return "model_cache" in path.parts or "__pycache__" in path.parts
+
+
 def iter_source_pages() -> set[Path]:
     expected: set[Path] = set()
     for base in SOURCE_DIRS:
         if not base.exists():
             continue
         for path in base.rglob("*"):
+            if is_generated_path(path):
+                continue
             if path.suffix != ".md":
                 continue
             rel = path.relative_to(ROOT)
@@ -44,6 +53,8 @@ def iter_docs_pages() -> set[Path]:
         if not docs_base.exists():
             continue
         for path in docs_base.rglob("*.md"):
+            if is_generated_path(path):
+                continue
             actual.add(path.relative_to(ROOT))
     return actual
 

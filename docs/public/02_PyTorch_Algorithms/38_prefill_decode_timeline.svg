@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1160" height="620" viewBox="0 0 1160 620" role="img" aria-labelledby="title desc">
+  <title id="title">Prefill 与 Decode 的连续批处理总览</title>
+  <desc id="desc">同一请求流产生 Prefill 与 Decode 两类可执行工作；Continuous Batching 在每轮从两者中组织当前 batch，并将结果反馈到下一轮请求状态。</desc>
+  <defs>
+    <style>
+      .title{font:700 27px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#102a43}.sub{font:15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#486581}.group{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#243b53}.h{font:700 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#102a43}.t{font:14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#486581}.s{font:14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#627d98}.frame{fill:#fff;stroke:#c7d9e7;stroke-width:1.5}.blue{fill:#e8f3fb;stroke:#3978a8;stroke-width:2}.green{fill:#eaf7ef;stroke:#4c9870;stroke-width:2}.purple{fill:#f1eafa;stroke:#8b6bb1;stroke-width:2}.orange{fill:#fff1df;stroke:#c78335;stroke-width:2}.flow{stroke:#3978a8;stroke-width:3;fill:none;marker-end:url(#arrow)}.feedback{stroke:#8b6bb1;stroke-width:2.5;stroke-dasharray:8 6;fill:none;marker-end:url(#purpleArrow)}
+    </style>
+    <marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#3978a8"/></marker>
+    <marker id="purpleArrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#8b6bb1"/></marker>
+  </defs>
+  <rect width="1160" height="620" rx="22" fill="#f8fafc"/>
+  <text x="580" y="48" text-anchor="middle" class="title">Continuous Batching：两类阶段如何共享同一轮准入</text>
+  <text x="580" y="76" text-anchor="middle" class="sub">先识别当前可执行工作，再在每轮服务开始前重新组织 batch</text>
+
+  <rect x="410" y="102" width="340" height="64" rx="17" class="blue"/>
+  <text x="580" y="130" text-anchor="middle" class="h">同一组请求流</text>
+  <text x="580" y="152" text-anchor="middle" class="t">输入长度、生成长度、缓存状态与到达时间</text>
+
+  <rect x="55" y="220" width="390" height="165" rx="18" class="frame"/>
+  <text x="250" y="250" text-anchor="middle" class="group">Prefill 工作</text>
+  <rect x="78" y="275" width="150" height="76" rx="14" class="blue"/>
+  <text x="153" y="305" text-anchor="middle" class="h">处理输入</text><text x="153" y="329" text-anchor="middle" class="t">计算与输入访存</text>
+  <rect x="260" y="275" width="160" height="76" rx="14" class="blue"/>
+  <text x="340" y="305" text-anchor="middle" class="h">可执行 suffix</text><text x="340" y="329" text-anchor="middle" class="t">等待进入 Prefill</text>
+  <path d="M228 313H260" class="flow"/>
+
+  <rect x="715" y="220" width="390" height="165" rx="18" class="frame"/>
+  <text x="910" y="250" text-anchor="middle" class="group">Decode 工作</text>
+  <rect x="738" y="275" width="150" height="76" rx="14" class="green"/>
+  <text x="813" y="305" text-anchor="middle" class="h">读取 KV</text><text x="813" y="329" text-anchor="middle" class="t">逐 token 推进</text>
+  <rect x="920" y="275" width="160" height="76" rx="14" class="green"/>
+  <text x="1000" y="305" text-anchor="middle" class="h">等待下一轮</text><text x="1000" y="329" text-anchor="middle" class="t">关注 TPOT 与抖动</text>
+  <path d="M888 313H920" class="flow"/>
+
+  <rect x="400" y="440" width="360" height="64" rx="17" class="purple"/>
+  <text x="580" y="468" text-anchor="middle" class="h">Continuous Batching</text>
+  <text x="580" y="491" text-anchor="middle" class="t">从两类 ready 工作中组织当前 active batch</text>
+  <rect x="400" y="532" width="360" height="64" rx="17" class="orange"/>
+  <text x="580" y="560" text-anchor="middle" class="h">结果账本</text>
+  <text x="580" y="583" text-anchor="middle" class="t">TTFT · TPOT · P95/P99 · batch 利用率</text>
+
+  <path d="M580 166V190H153V275" class="flow"/>
+  <path d="M580 166V190H813V275" class="flow"/>
+  <path d="M340 351V415H500V440" class="flow"/>
+  <path d="M1000 351V415H660V440" class="flow"/>
+  <path d="M580 504V532" class="flow"/>
+  <path d="M760 472H1130V313H1080" class="feedback"/>
+  <text x="805" y="455" class="s">完成后重新进入 ready 集合</text>
+</svg>

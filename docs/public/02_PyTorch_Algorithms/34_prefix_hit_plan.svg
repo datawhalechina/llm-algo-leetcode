@@ -1,38 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="537" viewBox="0 0 1240 640" role="img" aria-labelledby="title desc">
-  <title id="title">Chunked Prefill 的后缀分块执行计划</title>
-  <desc id="desc">未命中后缀按照 block_size 切分为多个 chunk，逐块进入 Chunked Prefill，并把新状态写回 KV Cache 后进入 Decode。</desc>
+  <title id="title">最长前缀命中与请求拆分计划</title>
+  <desc id="desc">请求从开头逐 token 比较缓存路径，得到最长命中前缀；命中部分复用，首个不一致 token 之后形成 suffix，继续进入 Prefill。</desc>
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8fafc"/><stop offset="1" stop-color="#fff8ed"/></linearGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8fafc"/><stop offset="1" stop-color="#eef6fb"/></linearGradient>
     <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52606d"/></marker>
-    <marker id="gold" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#b58a3b"/></marker>
     <marker id="green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#5b9b70"/></marker>
-    <style>
-      text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#172b4d}.title{font-size:29px;font-weight:700}.sub{font-size:15px;fill:#52606d}.group{font-size:17px;font-weight:700;fill:#52606d}.label{font-size:18px;font-weight:700}.small{font-size:14px;fill:#344563}.panel{stroke-width:2;rx:24;ry:24}.n{stroke-width:2.5;rx:18;ry:18}.flow{stroke:#52606d;stroke-width:3;fill:none;marker-end:url(#arrow)}.compute{stroke:#b58a3b;stroke-width:3;fill:none;marker-end:url(#gold)}.reuse{stroke:#5b9b70;stroke-width:3;fill:none;marker-end:url(#green)}
-    </style>
+    <marker id="gold" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#b58a3b"/></marker>
+    <style>text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#172b4d}.title{font-size:29px;font-weight:700}.sub{font-size:15px;fill:#52606d}.group{font-size:17px;font-weight:700;fill:#52606d}.label{font-size:18px;font-weight:700}.small{font-size:14px;fill:#344563}.panel{stroke-width:2;rx:24;ry:24}.n{stroke-width:2.5;rx:18;ry:18}.flow{stroke:#52606d;stroke-width:3;fill:none;marker-end:url(#arrow)}.reuse{stroke:#5b9b70;stroke-width:3;fill:none;marker-end:url(#green)}.compute{stroke:#b58a3b;stroke-width:3;fill:none;marker-end:url(#gold)}</style>
   </defs>
   <rect width="1240" height="640" fill="url(#bg)"/>
-  <text x="54" y="54" class="title">Chunked Prefill：后缀如何变成分块执行计划</text>
-  <text x="54" y="84" class="sub">Step 2 先确定 suffix，Step 3 再用 block_size 控制单次工作集和执行粒度。</text>
-
-  <rect x="50" y="112" width="1140" height="205" class="panel" fill="#fbfaf5" stroke="#dfd3b5"/>
-  <text x="74" y="296" text-anchor="start" class="group">后缀切分：从一段输入到多个 chunk</text>
-  <rect x="100" y="185" width="230" height="82" class="n" fill="#ffffff" stroke="#7b8794"/><text x="215" y="218" text-anchor="middle" class="label">未命中 suffix</text><text x="215" y="245" text-anchor="middle" class="small">来自请求拆分</text>
-  <rect x="400" y="185" width="230" height="82" class="n" fill="#fff5df" stroke="#c79a46"/><text x="515" y="218" text-anchor="middle" class="label">block_size</text><text x="515" y="245" text-anchor="middle" class="small">控制每块 token 数</text>
-  <rect x="700" y="160" width="430" height="132" class="n" fill="#fffaf0" stroke="#c79a46"/>
-  <text x="915" y="185" text-anchor="middle" class="small">chunks：按边界组织执行单元</text>
-  <rect x="730" y="210" width="110" height="55" class="n" fill="#ffffff" stroke="#c79a46"/><text x="785" y="243" text-anchor="middle" class="small">chunk_1</text>
-  <rect x="860" y="210" width="110" height="55" class="n" fill="#ffffff" stroke="#c79a46"/><text x="915" y="243" text-anchor="middle" class="small">chunk_2</text>
-  <rect x="990" y="210" width="110" height="55" class="n" fill="#ffffff" stroke="#c79a46"/><text x="1045" y="243" text-anchor="middle" class="small">尾块</text>
-
+  <text x="54" y="54" class="title">最长前缀匹配：从 token 路径到复用范围</text>
+  <text x="54" y="84" class="sub">只比较请求开头的连续路径；首个不一致 token 将 prompt 拆成可复用前缀和待处理 suffix。</text>
+  <rect x="50" y="112" width="1140" height="205" class="panel" fill="#f1f6fb" stroke="#c5d7e8"/>
+  <text x="74" y="296" class="group">从请求开头逐 token 比较</text>
+  <rect x="100" y="180" width="270" height="90" class="n" fill="#e7f0ff" stroke="#7b9bc7"/><text x="235" y="215" text-anchor="middle" class="label">请求 prompt</text><text x="235" y="243" text-anchor="middle" class="small">[S, y, s, u, r, ...]</text>
+  <rect x="485" y="180" width="270" height="90" class="n" fill="#e8f4ec" stroke="#79a889"/><text x="620" y="215" text-anchor="middle" class="label">缓存路径</text><text x="620" y="243" text-anchor="middle" class="small">[S, y, s, t, ...]</text>
+  <rect x="870" y="180" width="250" height="90" class="n" fill="#fffaf0" stroke="#c79a46"/><text x="995" y="215" text-anchor="middle" class="label">首个不一致位置</text><text x="995" y="243" text-anchor="middle" class="small">从这里停止命中</text>
   <rect x="50" y="355" width="1140" height="220" class="panel" fill="#f5faf6" stroke="#c5ddca"/>
-  <text x="74" y="554" text-anchor="start" class="group">执行与状态：逐块计算并写回缓存</text>
-  <rect x="155" y="440" width="240" height="78" class="n" fill="#ffffff" stroke="#91a3b5" stroke-dasharray="7 5"/><text x="275" y="473" text-anchor="middle" class="label">Decode / 下一轮调度</text><text x="275" y="498" text-anchor="middle" class="small">继续生成或处理新请求</text>
-  <rect x="485" y="440" width="240" height="78" class="n" fill="#e8f4ec" stroke="#79a889"/><text x="605" y="473" text-anchor="middle" class="label">KV Cache 写回</text><text x="605" y="498" text-anchor="middle" class="small">登记新计算状态</text>
-  <rect x="795" y="440" width="240" height="78" class="n" fill="#fff5df" stroke="#c79a46"/><text x="915" y="473" text-anchor="middle" class="label">Chunked Prefill</text><text x="915" y="498" text-anchor="middle" class="small">控制单次工作集</text>
-
-  <path d="M330 226H400" class="flow"/>
-  <path d="M630 226H700" class="compute"/>
-  <path d="M915 292V440" class="compute"/>
-  <path d="M795 479H725" class="reuse"/>
-  <path d="M485 479H395" class="flow"/>
+  <text x="74" y="554" class="group">拆分结果：复用前缀与待处理 suffix</text>
+  <rect x="125" y="430" width="300" height="82" class="n" fill="#e8f4ec" stroke="#79a889"/><text x="275" y="463" text-anchor="middle" class="label">reusable_prefix</text><text x="275" y="490" text-anchor="middle" class="small">hit_len 之前 · 跳过重复 Prefill</text>
+  <rect x="470" y="430" width="300" height="82" class="n" fill="#fff5df" stroke="#c79a46"/><text x="620" y="463" text-anchor="middle" class="label">suffix</text><text x="620" y="490" text-anchor="middle" class="small">首个不一致位置之后 · 仍需 Prefill</text>
+  <rect x="815" y="430" width="270" height="82" class="n" fill="#ffffff" stroke="#91a3b5"/><text x="950" y="463" text-anchor="middle" class="label">复用账本</text><text x="950" y="490" text-anchor="middle" class="small">hit_len · uncached_tokens</text>
+  <path d="M370 225H485" class="flow"/><path d="M755 225H870" class="flow"/><path d="M995 270V390H275V430" class="reuse"/><path d="M995 270V390H620V430" class="compute"/><path d="M770 471H815" class="flow"/>
 </svg>

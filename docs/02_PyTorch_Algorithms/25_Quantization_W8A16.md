@@ -32,9 +32,10 @@
 
 ---
 
-### Step 1: 核心思想与概念
+### Step 1: 量化对象、时机与 W8A16 总览
 
-量化首先改变的是模型状态的表示方式：本节把对象固定为权重，把激活保持在 FP16/FP32，并沿着“浮点权重 → INT8 与 scale → 反量化前向”的链路观察存储和误差。图中把通用权重量化、校准与敏感性分析、运行时与状态量化放在同一张关系图中，帮助你建立完整的量化视野。
+量化首先改变的是模型状态的表示方式：本节把对象固定为权重，把激活保持在 FP16/FP32，并沿着“浮点权重 → INT8 与 scale → 反量化前向”的链路观察存储和误差。`W8` 表示权重以 8-bit 形式保存，`A16` 表示激活仍沿用 16-bit（教学实现也允许 FP32）路径；它描述的是表示组合，不等于已经调用了 INT8 Tensor Core kernel。主图同时标出量化对象、处理阶段和 W8A16 前向路径，帮助你把本节机制放进完整的量化视野。
+这四个对象的关系是：权重决定存储账本，INT8 表示决定保存格式，反量化决定教学实现的计算路径，GPU 实验只验证真实模型层上的局部代价。
 
 | 本节对象 | 输入 | 机制 | 输出与观察指标 |
 |---|---|---|---|
@@ -44,7 +45,7 @@
 
 ![W8A16 量化流程图](../public/02_PyTorch_Algorithms/25_quantization_pipeline_cn.svg)
 
-### Step 2: 量化流程与数据流
+### Step 2: 量化数据流如何改变存储与计算表示
 
 本步先把量化看成一条数据流：高精度权重根据动态范围映射到整数表示，同时保存缩放信息；前向计算时，再让低比特权重和高精度激活共同产生输出。这里先理解每一步保存什么、改变什么，具体函数实现放到 Step 4。
 
@@ -55,11 +56,9 @@
 | 存储 | 权重以低比特形式保存，激活仍保持较高精度 | INT8 权重、scale、FP16 / FP32 激活 | 权重存储与计算精度分开 |
 | 前向 | 反量化参与矩阵计算并产生近似输出 | 输出张量 | 形状、误差与计算代价 |
 
-### Step 3: Absmax、scale 与反量化
+### Step 3: 如何由动态范围得到量化与反量化结果
 
-![W8A16 对称量化机制图](../public/02_PyTorch_Algorithms/25_w8a16_math_flow_cn.svg)
-
-按照图片中的顺序，W8A16 只需要先确定一组 scale，再完成整数映射和恢复：
+W8A16 先根据动态范围确定 scale，再完成整数映射和恢复。这里的公式解释了 Step 2 中“映射”和“前向”两个阶段如何衔接。采用以 127 为正向上限的对称教学实现，整数结果会被限制在 INT8 可表示范围内。比如权重 `x=2.5` 且 `absmax=2.5` 时，`scale=127/2.5=50.8`，量化值约为 `round(2.5×50.8)=127`，恢复后再得到接近 `2.5` 的浮点值。量化误差来自舍入和截断，不等于完整模型质量损失。
 
 | 阶段 | 公式 / 操作 | 需要观察的结果 |
 |---|---|---|
@@ -68,11 +67,10 @@
 | 量化 | `round(x * scale)` 后截断到 INT8 范围 | 存储为 `torch.int8` |
 | 反量化 | `x_dequant = x_int8 / scale` | 得到近似浮点权重 |
 
-这里采用以 127 为正向上限的对称教学实现，代码中的 `clamp(-128, 127)` 与 INT8 存储范围保持一致。量化误差来自舍入和截断；它不等于完整模型质量损失。
-
+![W8A16 对称量化机制图](../public/02_PyTorch_Algorithms/25_w8a16_math_flow_cn.svg)
 ### Step 4: 实现、测试与结果解读
 
-题目区围绕两个实现对象展开：`absmax_quantize` 负责浮点权重到 INT8 的映射，`W8A16Linear` 负责在前向前恢复近似浮点权重。测试区检查全零输入、整数 dtype、输出形状和数值误差；完成后再用权重字节数解释“权重节省”与“完整模型显存”的区别。
+题目区围绕两个实现对象展开：输入是浮点权重、缩放配置和线性层输入，输出是 INT8 权重、scale 以及反量化后的前向结果。`absmax_quantize` 负责浮点权重到 INT8 的映射，`W8A16Linear` 负责在前向前恢复近似浮点权重。测试区检查全零输入、整数 dtype、输出形状和数值误差；完成后再用权重字节数解释“权重节省”与“完整模型显存”的区别。
 
 | 实现对象 | 题目区关注点 | 测试观察 |
 |---|---|---|
@@ -150,7 +148,7 @@ class W8A16Linear(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # ==========================================
         # TODO 4: 反量化与前向传播
-        # 1. 将 weight_int8 转换回与输入 x 相同的类型 (如 float32/float16)
+        # 1. 将 weight_int8 转换回与输入 x 相同的类型 (如 float32/float16)；输入激活仍走高精度计算路径
         # 2. 除以 self.scale 恢复其数值范围
         # 3. 将 bias 也对齐到输入 dtype，再使用 F.linear
         # ==========================================
@@ -165,104 +163,87 @@ class W8A16Linear(nn.Module):
 
 
 ```python
-# 测试你的实现
-def test_quantization():
-    try:
-        torch.manual_seed(42)
+def test_absmax_quantization_contract():
+    zero_q, zero_scale = absmax_quantize(torch.zeros(5))
+    assert zero_q.dtype == torch.int8
+    assert torch.count_nonzero(zero_q) == 0
+    assert torch.isfinite(torch.as_tensor(zero_scale)).item()
 
-        # 1. 测试 absmax_quantize 的基础边界
-        zero_q, zero_scale = absmax_quantize(torch.zeros(5))
-        assert zero_q.dtype == torch.int8, "量化后的权重存储必须是 torch.int8！"
-        assert torch.count_nonzero(zero_q) == 0, "全 0 张量量化后仍应保持全 0！"
-        assert torch.isfinite(torch.as_tensor(zero_scale)).item(), "全零输入的 scale 不能是 NaN/Inf！"
-
-        # 继续沿用带符号样本验证 scale 和 round 行为
-        x_fp = torch.tensor([-0.8, 1.5, -3.0, 2.5, 0.0])
-        # 绝对最大值是 3.0。Scale = 127 / 3.0 = 42.333
-        # 2.5 * 42.333 = 105.8 -> 106
-        x_q, scale = absmax_quantize(x_fp)
-        assert x_q.dtype == torch.int8, "量化后的权重存储必须是 torch.int8！"
-        assert torch.allclose(scale, torch.tensor(127.0 / 3.0)), "Scale 计算不正确！"
-        assert x_q[3].item() == 106, "量化后的四舍五入数值计算不正确！"
-        print("✅ absmax_quantize 核心算法测试通过！")
-
-        # 2. 测试 W8A16 线性层
-        in_dim, out_dim = 128, 64
-        batch, seq = 2, 10
-
-        fp_linear = nn.Linear(in_dim, out_dim)
-        q_linear = W8A16Linear(in_dim, out_dim)
-        q_linear.from_float(fp_linear)
-
-        fp_bytes = fp_linear.weight.element_size() * fp_linear.weight.numel()
-        q_bytes = q_linear.weight_int8.element_size() * q_linear.weight_int8.numel()
-        #assert q_bytes == fp_bytes // 4, "INT8 权重的内存占用必须是 FP32 的四分之一！"
-        expected_ratio = fp_linear.weight.element_size() // q_linear.weight_int8.element_size()
-        assert q_bytes * expected_ratio == fp_bytes, \
-            f"INT8 权重内存占用应为原大小的 1/{expected_ratio}，实际比例为 {fp_bytes / q_bytes:.1f}"
-
-        x_input = torch.randn(batch, seq, in_dim)
-        out_fp = fp_linear(x_input)
-        out_q = q_linear(x_input)
-        cos_sim = F.cosine_similarity(out_fp.flatten(), out_q.flatten(), dim=0)
-        # 余弦相似度 > 0.99 只说明这个小样本的输出方向接近，不代表任务质量不变
-        assert out_q.shape == out_fp.shape, "量化前后输出形状必须一致！"
-        assert torch.isfinite(out_q).all(), "反量化输出不能包含 NaN/Inf！"
-        assert torch.isfinite(out_fp - out_q).all(), "量化误差必须可以计算且为有限值！"
-        assert cos_sim > 0.99, f"反量化计算出的张量差异过大，相似度仅为: {cos_sim.item():.4f}"
-
-        # 3. 用一个确定性小矩阵，直接验证“量化权重 -> 反量化 -> 线性层”的公式链路
-        fp_linear_small = nn.Linear(4, 3)
-        with torch.no_grad():
-            fp_linear_small.weight.copy_(torch.tensor([
-                [1.0, -2.0, 3.0, -4.0],
-                [0.5, 0.25, -0.75, 1.5],
-                [-1.0, 0.0, 1.0, -2.0],
-            ]))
-            fp_linear_small.bias.copy_(torch.tensor([0.1, -0.2, 0.3]))
-
-        q_linear_small = W8A16Linear(4, 3)
-        q_linear_small.from_float(fp_linear_small)
-        x_small = torch.tensor([[1.0, -1.0, 0.5, 2.0], [0.0, 1.0, -1.0, 3.0]])
-        out_small = q_linear_small(x_small)
-        w_dequant = q_linear_small.weight_int8.to(x_small.dtype) / q_linear_small.scale
-        out_ref = F.linear(x_small, w_dequant, q_linear_small.bias)
-        assert torch.allclose(out_small, out_ref, atol=1e-6), "小矩阵下的反量化前向公式不正确！"
-
-        # 3. FP16 输入边界：检查权重和 bias 都能与输入 dtype 对齐
-        x_half = x_input.to(torch.float16)
-        fp_half = fp_linear.to(torch.float16)(x_half)
-        q_half = q_linear(x_half)
-        assert q_half.dtype == torch.float16, "FP16 输入时输出 dtype 应保持一致！"
-        assert q_half.shape == fp_half.shape, "FP16 前向输出形状不一致！"
-
-        print(f"✅ W8A16Linear 测试通过！输出相似度: {cos_sim.item():.4f}，INT8 权重存储检查通过。")
-
-    except NotImplementedError:
-        print("请先完成 TODO 代码！")
-        raise
-    except (AttributeError, NameError, TypeError, ValueError, AssertionError, RuntimeError) as e:
-        if isinstance(e, AttributeError):
-            print("代码未完成导致变量属性错误。")
-        elif isinstance(e, NameError):
-            print("代码可能未完成，导致了变量未定义。")
-        elif isinstance(e, TypeError):
-            print("代码可能未完成，导致了操作错误。")
-        elif isinstance(e, ValueError):
-            print("代码可能未完成，导致了张量维度错误。")
-        elif isinstance(e, AssertionError):
-            print(f"❌ 测试失败: {e}")
-        elif isinstance(e, RuntimeError):
-            print("代码可能未完成，导致了运行时错误。")
-        else:
-            print("代码可能未完成，导致了断言失败。")
-        raise NotImplementedError("请先完成 TODO 代码！") from e
-    except Exception as e:
-        print(f"❌ 发生未知异常: {e}")
-        raise
+    x_fp = torch.tensor([-0.8, 1.5, -3.0, 2.5, 0.0])
+    x_q, scale = absmax_quantize(x_fp)
+    assert torch.allclose(scale, torch.tensor(127.0 / 3.0))
+    assert x_q[3].item() == 106
 
 
-test_quantization()
+def test_w8a16_storage_contract():
+    fp_linear = nn.Linear(128, 64)
+    q_linear = W8A16Linear(128, 64)
+    q_linear.from_float(fp_linear)
+    fp_bytes = fp_linear.weight.element_size() * fp_linear.weight.numel()
+    q_bytes = q_linear.weight_int8.element_size() * q_linear.weight_int8.numel()
+    assert q_linear.weight_int8.dtype == torch.int8
+    assert q_bytes * (fp_linear.weight.element_size() // q_linear.weight_int8.element_size()) == fp_bytes
+
+
+def test_dequantized_linear_contract():
+    fp_linear = nn.Linear(4, 3)
+    with torch.no_grad():
+        fp_linear.weight.copy_(torch.tensor([
+            [1.0, -2.0, 3.0, -4.0],
+            [0.5, 0.25, -0.75, 1.5],
+            [-1.0, 0.0, 1.0, -2.0],
+        ]))
+        fp_linear.bias.copy_(torch.tensor([0.1, -0.2, 0.3]))
+    q_linear = W8A16Linear(4, 3)
+    q_linear.from_float(fp_linear)
+    x = torch.tensor([[1.0, -1.0, 0.5, 2.0], [0.0, 1.0, -1.0, 3.0]])
+    out = q_linear(x)
+    restored_weight = q_linear.weight_int8.to(x.dtype) / q_linear.scale
+    reference = F.linear(x, restored_weight, q_linear.bias)
+    assert torch.allclose(out, reference, atol=1e-6)
+
+
+def test_dtype_and_output_contract():
+    torch.manual_seed(42)
+    fp_linear = nn.Linear(128, 64)
+    q_linear = W8A16Linear(128, 64)
+    q_linear.from_float(fp_linear)
+    x_fp32 = torch.randn(2, 10, 128)
+    out_fp = fp_linear(x_fp32)
+    out_q = q_linear(x_fp32)
+    cosine = F.cosine_similarity(out_fp.flatten(), out_q.flatten(), dim=0)
+    assert out_q.shape == out_fp.shape
+    assert torch.isfinite(out_q).all()
+    assert cosine > 0.99
+
+    x_half = x_fp32.to(torch.float16)
+    q_half = q_linear(x_half)
+    assert q_half.dtype == torch.float16
+    assert q_half.shape == out_fp.shape
+
+
+def test_w8a16_integration():
+    torch.manual_seed(42)
+    fp_linear = nn.Linear(8, 4)
+    q_linear = W8A16Linear(8, 4)
+    q_linear.from_float(fp_linear)
+    x = torch.randn(2, 8)
+    assert q_linear(x).shape == fp_linear(x).shape
+
+
+def run_w8a16_tests():
+    for test in (
+        test_absmax_quantization_contract,
+        test_w8a16_storage_contract,
+        test_dequantized_linear_contract,
+        test_dtype_and_output_contract,
+        test_w8a16_integration,
+    ):
+        test()
+    print('✅ W8A16 机制测试通过：量化、存储、反量化、dtype 与集成路径均已验证。')
+
+
+run_w8a16_tests()
 
 ```
 
@@ -328,8 +309,8 @@ class W8A16Linear(nn.Module):
         # 1. 将 weight_int8 转换回与输入 x 相同的类型
         w_fp = self.weight_int8.to(x.dtype)
         
-        # 2. 除以 self.scale 恢复其数值范围
-        w_dequant = w_fp / self.scale
+        # 2. 将 scale 对齐到输入 dtype，再恢复其数值范围
+        w_dequant = w_fp / self.scale.to(dtype=x.dtype)
         
         # 3. 使用 F.linear 进行标准的矩阵乘法
         bias = self.bias.to(dtype=x.dtype)
@@ -370,9 +351,34 @@ class W8A16Linear(nn.Module):
 
 ![W8A16 GPU 机制实验流程](../public/02_PyTorch_Algorithms/25_w8a16_gpu_mechanism_flow.svg)
 
-实验在 FP16 baseline 和 W8A16 线性层之间做对照。`real_gpu` 会从 `Qwen/Qwen2.5-0.5B-Instruct` 抽取一个真实 `q_proj`，但只测这一层的权重存储、前向耗时、峰值显存和输出误差；它不是完整模型部署，也不等价于真实 INT8 kernel。结果证据等级记为 `gpu_mechanism_on_real_layer`。
+实验在 FP16 baseline 和 W8A16 线性层之间做对照。它只测真实层的权重存储、前向耗时、峰值显存和输出误差；不等价于真实 INT8 kernel，也不是完整模型部署。
 
-先运行 `dry_run` 检查环境，再切换到 `real_gpu`。如果修改层大小、batch 或序列长度，必须把配置和结果一起记录；完整模型、真实 backend 和端到端质量转到 67 节。
+#### 5.1 环境、固定 workload 与证据边界
+
+先运行 dry_run 检查环境，固定模型 revision、层尺寸、dtype、batch、序列长度、warmup 和重复次数。当前小节只比较真实模型层的 W8A16 存储与教学反量化路径；真实 INT8 kernel 和端到端部署收益由 67 节验证。
+
+| 证据等级 | 本节可以说明什么 | 不应直接推出什么 |
+|:---|:---|:---|
+| environment_preflight | 当前环境、模型来源和配置可以开始测量 | 没有产生 GPU 性能或质量结论 |
+| gpu_real_model_state_measurement | 真实模型层的权重字节数、教学反量化路径和固定输入下的相对变化 | 目标 GPU 是否使用真实 INT8 kernel、完整模型吞吐或服务质量 |
+| real_backend_benchmark | 由 67 在固定 backend 和 workload 下验证加载、kernel、显存、延迟、吞吐和质量 | 不能外推到其他硬件、版本或 workload |
+
+#### 5.2 执行对照并保存 JSON
+
+将 RUN_MODE 切换为 real_gpu 后运行代码，保存 baseline / candidate、配置、runtime、失败状态和结果 JSON。
+
+#### 5.3 读取结果并解释证据
+
+读取 JSON 后，先核对实际环境和固定配置，再比较 FP16 baseline 与 W8A16 的权重字节数、前向耗时、峰值显存和输出误差。结果证据等级为 gpu_real_model_state_measurement；完整模型、真实 backend 和端到端质量转到 67 节。
+
+#### 5.4 GPU 实验结果记录
+
+权重字节数只描述本层权重存储，不等于完整模型显存；真实 INT8 kernel 和部署收益转到 67 验证。
+
+| role | baseline / candidate | artifact | runtime/config | dtype | batch / seq_len | 权重存储 | forward latency | peak memory | output MSE | failure | evidence level | decision |
+|---|---|---|---|---|---|---:|---:|---:|---:|---|---|---|
+| reference | baseline | FP16 model layer in memory / JSON path |  |  |  |  |  |  |  |  | gpu_real_model_state_measurement |  |
+| quantized | candidate | W8A16 layer in memory / JSON path |  |  |  |  |  |  |  |  | gpu_real_model_state_measurement | accept / tune / reject |
 
 
 ```python
@@ -426,7 +432,9 @@ evidence_level = 'environment_preflight' if RUN_MODE == 'dry_run' else 'gpu_real
 result = {'stage': evidence_level, 'run_mode': RUN_MODE, 'runtime': runtime, 'config': {
     'in_features': IN_FEATURES, 'out_features': OUT_FEATURES, 'batch_size': BATCH_SIZE,
     'seq_len': SEQ_LEN, 'dtype': str(DTYPE), 'model_id': MODEL_ID, 'warmup': WARMUP, 'iters': ITERS, 'seed': SEED,
-}, 'evidence_level': evidence_level}
+}, 'workload': {'model_id': MODEL_ID, 'layer_scope': 'one q_proj-like linear layer', 'batch_size': BATCH_SIZE, 'seq_len': SEQ_LEN},
+   'json_path': str(OUTPUT_PATH), 'evidence_level': evidence_level, 'baseline': 'FP16 layer in memory',
+   'candidate': 'W8A16 layer in memory', 'artifact_path': None, 'failure': None}
 if RUN_MODE == 'dry_run':
     result['decision'] = {'decision': 'ready_to_measure', 'reason': '仅完成环境与配置检查，尚未运行 GPU 机制测量。'}
 else:
@@ -470,14 +478,59 @@ OUTPUT_PATH.write_text(json.dumps(result, ensure_ascii=False, indent=2), encodin
 print(json.dumps(result, ensure_ascii=False, indent=2))
 ```
 
-#### GPU 实验结果记录
+**成熟库探针（可选）**：如果环境已安装兼容版本的 `torchao`，可以在同一固定 workload 下验证 PyTorch 原生 INT8 weight-only 路径。该探针不替代上面的手写实现，也不把单层结果解释为完整模型收益。
 
-| 实验组 | dtype | batch / seq_len | 权重存储 | forward latency | peak memory | output MSE | evidence level |
-|---|---|---|---:|---:|---:|---:|---|
-| FP16 baseline |  |  |  |  |  |  | gpu mechanism |
-| W8A16 |  |  |  |  |  |  | gpu mechanism |
 
-权重字节数只描述本层权重存储，不等于完整模型显存；真实 INT8 kernel 和部署收益转到 67 验证。
+```python
+RUN_TORCHAO_PROBE = False  # 默认关闭；需要成熟库验证时改为 True
+TORCHAO_OUTPUT = Path('benchmarks/results/25_w8a16_torchao_probe.json')
+
+if not RUN_TORCHAO_PROBE:
+    print('torchao probe skipped; set RUN_TORCHAO_PROBE=True on a compatible CUDA environment.')
+else:
+    if not torch.cuda.is_available():
+        raise RuntimeError('RUN_TORCHAO_PROBE=True requires CUDA.')
+    try:
+        from torchao.quantization import Int8WeightOnlyConfig, quantize_
+    except ImportError as exc:
+        raise ImportError('请安装与当前 PyTorch 兼容的 torchao，再运行成熟库探针。') from exc
+    torch.manual_seed(SEED)
+    probe = nn.Linear(IN_FEATURES, OUT_FEATURES, device='cuda', dtype=DTYPE).eval()
+    probe_input = torch.randn(BATCH_SIZE, SEQ_LEN, IN_FEATURES, device='cuda', dtype=DTYPE)
+    quantize_(probe, Int8WeightOnlyConfig())
+    torch.cuda.synchronize()
+    with torch.inference_mode():
+        probe_output = probe(probe_input)
+    torch.cuda.synchronize()
+    probe_result = {
+        'json_path': str(TORCHAO_OUTPUT),
+        'workload': {'layer_scope': 'one Linear layer', 'batch_size': BATCH_SIZE, 'seq_len': SEQ_LEN},
+        'baseline': 'FP16 Linear in memory', 'candidate': 'torchao Int8WeightOnlyConfig',
+        'library': 'torchao',
+        'config': 'Int8WeightOnlyConfig',
+        'input_shape': list(probe_input.shape),
+        'output_shape': list(probe_output.shape),
+        'device': torch.cuda.get_device_name(0),
+        'torchao_version': getattr(__import__('torchao'), '__version__', 'unknown'),
+        'evidence_level': 'mature_library_gpu_probe',
+        'decision': 'api_path_executed_not_full_backend_benchmark',
+        'artifact_path': None,
+        'failure': None,
+    }
+    TORCHAO_OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    TORCHAO_OUTPUT.write_text(json.dumps(probe_result, ensure_ascii=False, indent=2), encoding='utf-8')
+    print(json.dumps(probe_result, ensure_ascii=False, indent=2))
+
+```
+
+#### 5.4 GPU 实验结果记录
+
+权重字节数只描述本层权重存储，不等于完整模型显存；真实 INT8 kernel 和部署收益转到 67 验证。复测时如果环境、模型或 workload 不一致，应在 failure 中记录原因。
+
+| role | baseline / candidate | artifact | runtime/config | dtype | batch / seq_len | 权重存储 | forward latency | peak memory | output MSE | failure | evidence level | decision |
+|---|---|---|---|---|---|---:|---:|---:|---:|---|---|---|
+| reference | baseline | FP16 model layer in memory / JSON path |  |  |  |  |  |  |  |  | gpu_real_model_state_measurement |  |
+| quantized | candidate | W8A16 layer in memory / JSON path |  |  |  |  |  |  |  |  | gpu_real_model_state_measurement | accept / tune / reject |
 ## 相关阅读
 
 完成 W8A16 的最小实现后，可以继续阅读量化校准方法和真实部署 backend。

@@ -53,7 +53,7 @@ label alignment 里最关键的不是“有没有算 loss”，而是“loss 在
 
 - [Part 02 · 09 SFT 训练循环](../../02_PyTorch_Algorithms/09_SFT_Training_Loop.md)
 - [Part 02 · 18 激活与损失反向传播](../../02_PyTorch_Algorithms/18_Activation_and_Loss_Backward.md)
-- [Part 02 · 19 激活检查点](../../02_PyTorch_Algorithms/19_Activation_Checkpointing_and_Activation_Offload.md)
+- [Part 02 · 19 激活检查点](../../02_PyTorch_Algorithms/19_Activation_Checkpointing.md)
 
 ## 经典论文
 

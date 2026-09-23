@@ -20,8 +20,8 @@
 - [2.4](./2_4.md)
 - [50. Preference Data and Evaluation | 偏好数据与评测](./50_Preference_Data_and_Evaluation.md)
 - [51. Online DPO | 在线 DPO](./51_Online_DPO.md)
-- [后训练与对齐专题入口](../topic_discussion/post_training_alignment/intro.md)
-- [06 Project Decision and Delivery | 项目决策与交付](../topic_discussion/post_training_alignment/06_project_decision_and_delivery.md)
+- [后训练与对齐专题入口](../topic_discussion/post_training_optimization/intro.md)
+- [06 Project Decision and Delivery | 项目决策与交付](../topic_discussion/post_training_optimization/06_project_decision_and_delivery.md)
 
 ## 相关阅读
 

@@ -12,7 +12,7 @@
 
 训练时，模型参数只是显存占用的一部分。反向传播还需要保存梯度、优化器状态、activation 和临时缓冲，因此“模型能够加载”不等于“一步训练能够完成”。本节先建立显存账本，再根据主导对象比较 batch、梯度累积、混合精度和 checkpoint 等策略。
 
-本节先用可运行的理论账本建立判断方法；真实峰值和 OOM 结果需要结合具体 GPU workload 测量。
+本节先用可运行的理论账本建立判断方法，再把账本中的对象映射到实际运行的 `allocated`、`reserved` 和 `peak`，为后续 GPU workload 测量准备记录口径。
 
 **关键词：** `memory`, `checkpoint`, `accumulation`
 
@@ -290,6 +290,7 @@ print('decision:', decision)
 ## 相关阅读
 **导语：** 完成本节后，可以继续学习 PyTorch 的显存分配语义，并把理论账本与训练侧策略比较连接起来。
 - [PyTorch CUDA 显存管理文档](https://docs.pytorch.org/docs/stable/notes/cuda.html)
+- [PyTorch memory_snapshot 官方说明](https://docs.pytorch.org/docs/stable/torch_cuda_memory.html)
 - [19. Debugging and Anomaly Localization | 调试与异常定位](./19_Debugging_and_Anomaly_Localization.md)
 - [20. Profiling and Memory Ledger | 性能剖析与显存账本](./20_Profiling_and_Memory_Ledger.md)
 - [76. Activation / Checkpoint / Offload Benchmark | 激活检查点与卸载对比](../02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.md)

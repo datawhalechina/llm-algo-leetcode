@@ -16,7 +16,7 @@
 
 前面的小节已经分别讲过模型封装、优化器、损失函数和梯度累积，但真实微调不是把这些概念单独跑通就结束。只要数据构造、label 对齐、loss 计算或参数更新里有一个环节接错，训练就会表现成 loss 不降、shape 对不上，或者看似运行但模型没有真正学习。
 
-本节把这些训练要素收成一个最小端到端 SFT 实验：先构造 train / val 样本，再计算自回归 loss，最后走完 backward、梯度累积、optimizer step 和周期性评估。它是本部分第一个训练闭环小项目：前面分别实现训练组件，这里验证组件能否共同产出可解释的训练结果；后续第 64 节先检查数据准入，第 62 节验证指令微调任务，第 60 节再比较全参数更新与 LoRA 适配是否值得交付。
+本节把这些训练要素收成一个最小端到端 SFT 实验：从 train / val 样本出发，经过自回归 loss、梯度累积、参数更新和周期性评估，形成一份可解释的训练结果。它是本部分第一个训练闭环小项目：前面分别实现训练组件，这里验证数据、更新和评估能否共同工作；后续第 64 节先检查数据准入，第 62 节验证指令微调任务，第 60 节再比较全参数更新与 LoRA 适配是否值得交付。
 
 主线使用 CPU 即可完成；有 GPU 时可选运行 Step 5 的真实 SFT smoke，用于确认真实模型和真实数据能够走通训练闭环。GPU 实验的配置、自动下载方式和证据边界见 Step 5；环境安装与预检见[使用指南](../guide.md)。
 
@@ -68,9 +68,9 @@
 
 如果某一步没有出现预期现象，就回到表格中的对应环节排查。
 
-### Step 3: 先读懂四个接口各自负责什么
+### Step 3: 先读懂训练闭环中的四类职责
 
-先不要修改模型。`TinyCausalLM` 只是一个可快速运行的验证模型；本节真正要接通的是它周围的四个接口：
+先不要修改模型。`TinyCausalLM` 只是一个可快速运行的验证模型；本节要接通的是数据、loss、评估和训练控制四类职责：
 
 | 接口 | 负责的事情 | 你要关注的连接 |
 |:---|:---|:---|
@@ -79,7 +79,7 @@
 | `evaluate_loss` | 在不更新参数的情况下计算 loss | `eval()` 和 `no_grad()` 的作用范围 |
 | `run_finetuning_experiment` | 累积梯度、更新参数并记录报告 | 一个 update 如何串起 forward 到 train / val |
 
-下面的图把这些接口之间的数据流展开；阅读时重点看每个接口的输入、输出，以及它在训练闭环中的位置。
+下面的图把这些职责之间的数据流展开；阅读时重点看每一类输入、输出，以及它在训练闭环中的位置。
 
 ![端到端训练闭环](../public/02_PyTorch_Algorithms/13_training_loop.svg)
 
@@ -98,20 +98,20 @@ import torch.nn as nn
 
 ```python
 
+# 题目设计：把 SFT 的数据、loss、评估和有效参数更新串成一个最小闭环。
+# TODO 只保留四个机制责任；切片、派生字段和报告格式由骨架提供。
 def build_sft_batch(prompt_ids, response_ids, pad_id=0, eos_id=2, max_len=10):
     """拼接一条 SFT 样本，并返回定长的输入、掩码和监督标签。
 
     prompt 只提供上下文，response + EOS 才是监督目标；padding 不应产生 loss。
     """
     # ==========================================
-    # TODO 1: 构造单条 SFT 样本
-    # 提示：先拼接 prompt 与 response_with_eos；prompt 的 labels 填 -100，
-    #       response/EOS 保留原 token。截断后必须仍有一个有效监督 token。
-    #       最后右侧 padding 到 max_len，并返回三个等长的 long tensor。
+    # TODO 1：构造 input_ids 和 labels，建立 prompt / response 的监督契约。
+    # 提示：prompt 位置填 -100，response/EOS 保留目标 token；截断后至少保留一个有效目标。
     # ==========================================
     response_with_eos = response_ids + [eos_id]
-    # input_ids = ??? prompt_ids + response_with_eos
-    # labels = ??? prompt 部分填 -100，response_with_eos 保留原 token
+    # input_ids = ???
+    # labels = ???
 
     if len(input_ids) > max_len:
         input_ids = input_ids[:max_len]
@@ -119,11 +119,11 @@ def build_sft_batch(prompt_ids, response_ids, pad_id=0, eos_id=2, max_len=10):
     if not any(label != -100 for label in labels):
         raise ValueError("截断后没有有效监督 token")
 
-    # attention_mask = ??? 真实 token 为 1，padding 为 0
-    # pad_len = ??? max_len - len(input_ids)
-    # input_ids = ??? 在右侧补 pad_id
-    # attention_mask = ??? 在右侧补 0
-    # labels = ??? 在右侧补 -100
+    attention_mask = [1] * len(input_ids)
+    pad_len = max_len - len(input_ids)
+    input_ids = input_ids + [pad_id] * pad_len
+    attention_mask = attention_mask + [0] * pad_len
+    labels = labels + [-100] * pad_len
 
     return {
         "input_ids": torch.tensor(input_ids, dtype=torch.long),
@@ -156,7 +156,7 @@ class TinyCausalLM(nn.Module):
 def compute_sft_loss(logits, labels, attention_mask=None):
     """按 causal LM 的 next-token 对齐规则计算 SFT loss。"""
     # ==========================================
-    # TODO 2: 对齐 next-token 预测并计算 SFT loss
+    # TODO 2：完成 next-token 对齐，建立有效监督位置后计算标量 loss。
     # 提示：logits 取前 t-1 个位置，labels 取后 t-1 个位置；
     #       attention_mask 只需作用在目标 label 位置，并继续使用 -100 忽略。
     #       使用 CrossEntropyLoss(ignore_index=-100)，返回一个标量 loss。
@@ -164,10 +164,10 @@ def compute_sft_loss(logits, labels, attention_mask=None):
     # shift_logits = ??? 保留前 t-1 个位置
     # shift_labels = ??? 从第 2 个 token 开始对齐
     # if attention_mask is not None:
-    #     shift_attention_mask = ??? 取目标 token 对应的 mask
-    #     shift_labels = ??? 将 padding 对应位置改为 -100
+    #     shift_attention_mask = attention_mask[:, 1:]
+    #     shift_labels = shift_labels.masked_fill(shift_attention_mask == 0, -100)
     # if 没有任何 shift_labels != -100:  # 应主动拒绝空监督 batch
-    #     raise ValueError(???)
+    #     raise ValueError("没有有效监督 token")
     # loss = ??? CrossEntropyLoss(ignore_index=-100)(...)
     return loss
 
@@ -175,21 +175,19 @@ def compute_sft_loss(logits, labels, attention_mask=None):
 def evaluate_loss(model, batch):
     """在不记录梯度的条件下，用统一口径计算一个 batch 的 loss。"""
     # ==========================================
-    # TODO 3: 在 eval 模式下计算 batch loss
-    # 提示：切换到 eval 模式并关闭梯度记录；调用同一个 loss 函数，
-    #       保持训练和验证的 label / padding 口径一致，返回 Python float。
+    # TODO 3：在 eval 模式下使用同一个 loss 口径，返回 Python float。
+    # 提示：切换 eval、关闭梯度记录，只需补全 logits 和 loss 的调用。
     # ==========================================
-    # model.eval()
-    # with torch.no_grad():
-    #     logits = ???
-    #     loss = ???
-    # return ???
-    pass
+    model.eval()
+    with torch.no_grad():
+        # logits = ??? 使用 batch 的 input_ids 和 attention_mask 调用模型
+        loss = compute_sft_loss(logits, batch["labels"], batch["attention_mask"])
+    return float(loss.item())
 
 
-def run_finetuning_experiment(model, optimizer, train_batch, val_batch=None, accum_steps=2, num_updates=40, eval_every=10):
+def run_finetuning_experiment(model, optimizer, train_batch, val_batch=None, accum_steps=2, num_updates=40, eval_every=10, scheduler=None):
     """
-    在小批样本上训练，验证梯度累积、参数更新和 train / val 报告。
+    在小批样本上训练，验证梯度累积、参数更新、可选学习率调度和 train / val 报告。
 
     每次 optimizer.step() 前处理 accum_steps 个等大的 micro-batch。
     """
@@ -197,9 +195,9 @@ def run_finetuning_experiment(model, optimizer, train_batch, val_batch=None, acc
         raise ValueError("batch size 必须能被 accum_steps 整除")
 
     # ==========================================
-    # TODO 4: 端到端训练闭环与报告
-    # 提示：先记录初始 train/val loss；每次 update 切分等大的 micro-batch，
-    #       累积梯度后只调用一次 optimizer.step()，并在指定节点追加 history。
+    # TODO 4：完成一次有效 update 的梯度累积、参数更新和报告记录。
+    # 提示：骨架已给出切分和报告字段；重点补齐 micro-batch 的前向/loss、
+    #       一次 update 的 step 顺序，以及评估节点的 history 记录。
     # ==========================================
     report = {
         "initial_train_loss": evaluate_loss(model, train_batch),
@@ -208,21 +206,23 @@ def run_finetuning_experiment(model, optimizer, train_batch, val_batch=None, acc
         "final_val_loss": None,
         "history": [],
     }
-    # micro_size = ??? train_batch 大小 / accum_steps
+    micro_size = train_batch["input_ids"].size(0) // accum_steps
     for step in range(1, num_updates + 1):
         model.train()
         optimizer.zero_grad()
         for idx in range(accum_steps):
-            # mb = ??? 取出第 idx 个 micro-batch
-            # logits = ??? 调用模型得到输出
-            # loss = ??? 当前 micro-batch 的 loss / accum_steps
+            # mb = train_batch 的第 idx 个 micro-batch
+            # logits = model(mb["input_ids"], mb["attention_mask"])
+            # loss = compute_sft_loss(logits, mb["labels"], mb["attention_mask"]) / accum_steps
             # loss.backward()
             pass
         # optimizer.step()
-        # if ??? 第 1 步、评估间隔或最后一步:
+        # if scheduler is not None:
+        #     scheduler.step()
+        # if step == 1 or step % eval_every == 0 or step == num_updates:
         #     report["history"].append(...)
-    # report["final_train_loss"] = ???
-    # report["final_val_loss"] = ???
+    # report["final_train_loss"] = evaluate_loss(model, train_batch)
+    # report["final_val_loss"] = evaluate_loss(model, val_batch) if val_batch is not None else None
     # return report
     pass
 
@@ -279,6 +279,7 @@ def test_end_to_end_finetuning():
 
         model = TinyCausalLM(vocab_size=64, hidden_size=32)
         optimizer = torch.optim.AdamW(model.parameters(), lr=0.05)
+        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda update: 1.0 / (1.0 + 0.01 * update))
         before_update = {name: parameter.detach().clone() for name, parameter in model.named_parameters()}
 
         report = run_finetuning_experiment(
@@ -289,11 +290,13 @@ def test_end_to_end_finetuning():
             accum_steps=2,
             num_updates=30,
             eval_every=10,
+            scheduler=scheduler,
         )
 
         changed = any(not torch.equal(before_update[name], parameter.detach()) for name, parameter in model.named_parameters())
         assert changed, "optimizer.step() 后至少应有一组参数发生变化"
         assert len(optimizer.state) > 0, "完成 optimizer.step() 后应生成 optimizer state"
+        assert scheduler.last_epoch == 30, "scheduler 应按有效 optimizer update 推进，而不是按 micro-batch 推进"
 
         print(f"Initial train loss: {report['initial_train_loss']:.4f}")
         print(f"Final train loss  : {report['final_train_loss']:.4f}")
@@ -447,9 +450,9 @@ def evaluate_loss(model, batch):
     return loss.item()
 
 
-def run_finetuning_experiment(model, optimizer, train_batch, val_batch=None, accum_steps=2, num_updates=40, eval_every=10):
+def run_finetuning_experiment(model, optimizer, train_batch, val_batch=None, accum_steps=2, num_updates=40, eval_every=10, scheduler=None):
     # TODO 4: 端到端训练闭环与报告
-    """在小批样本上训练，验证梯度累积、参数更新和 train / val 报告。"""
+    """在小批样本上训练，验证梯度累积、参数更新、可选学习率调度和 train / val 报告。"""
     # 提示：每次 update 切分等大的 micro-batch；累积梯度后只调用一次 step()，再按间隔记录 history。
     if train_batch["input_ids"].size(0) % accum_steps != 0:
         raise ValueError("batch size 必须能被 accum_steps 整除")
@@ -476,6 +479,8 @@ def run_finetuning_experiment(model, optimizer, train_batch, val_batch=None, acc
             loss.backward()
 
         optimizer.step()
+        if scheduler is not None:
+            scheduler.step()
 
         if step == 1 or step % eval_every == 0 or step == num_updates:
             record = {"step": step, "train_loss": evaluate_loss(model, train_batch)}
@@ -524,7 +529,10 @@ def run_finetuning_experiment(model, optimizer, train_batch, val_batch=None, acc
 
 ### Step 5：在真实 GPU 上跑通最小 SFT
 
-完成 Step 4 并通过 CPU 测试后，再运行本步。它用真实模型和真实指令数据走通一次最小 SFT 链路，检查模型加载、监督标签、反向传播、参数更新和结果保存；它不是性能 benchmark，也不能据此判断训练质量。没有 GPU 时保持 `RUN_GPU_SMOKE = False`。
+完成 Step 4 并通过 CPU 测试后，再运行本步。13 节的 GPU 实验关注真实模型、真实指令数据和训练闭环证据，不把一次 smoke 运行写成性能或质量结论。没有 GPU 时保持 `RUN_GPU_SMOKE = False`。
+
+#### 5.1 真实 workload 与环境
+先确认模型、数据、dtype、序列长度和有效更新次数；这些字段共同定义一次 SFT smoke 的比较口径。
 
 | 环境 | 内容 |
 |:---|:---|
@@ -534,6 +542,9 @@ def run_finetuning_experiment(model, optimizer, train_batch, val_batch=None, acc
 | 数据选择 | `alpaca` 或 `alpaca_cleaned`，都按 `instruction / input / output` 字段读取 |
 | 下载与产物 | 自动下载或复用缓存，不手填路径；实际 profile、ID、dtype 和指标写入 `benchmarks/results/13_real_gpu_sft.json` |
 | 证据范围 | 真实模型 / 真实数据的 CUDA smoke，不是性能 benchmark 或质量结论 |
+
+#### 5.2 执行实验并保存 JSON
+配置单元只负责选择 profile 和 workload；下一个实验单元负责加载、训练、收集 loss、耗时和显存，并保存 `13_real_gpu_sft.json`。不同模型、数据集、dtype 或序列长度的结果不能混在同一份结论中。
 
 
 ```python
@@ -624,18 +635,20 @@ else:
     model.to(device).train()
     batch = {key: value.to(device) for key, value in batch.items()}
     optimizer = torch.optim.AdamW(model.parameters(), lr=2e-5)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max(GPU_UPDATES, 1))
     torch.cuda.empty_cache()
     torch.cuda.reset_peak_memory_stats()
     torch.cuda.synchronize()
     start = time.perf_counter()
     losses = []
-    # 每次更新都完整执行 zero_grad → forward → backward → optimizer.step。
+    # 每次有效更新都完整执行 zero_grad → forward → backward → optimizer.step → scheduler.step。
     for _ in range(GPU_UPDATES):
         optimizer.zero_grad(set_to_none=True)
         with torch.autocast(device_type='cuda', dtype=dtype):
             loss = model(**batch).loss
         loss.backward()
         optimizer.step()
+        scheduler.step()
         losses.append(float(loss.detach().item()))
     torch.cuda.synchronize()
     elapsed = time.perf_counter() - start
@@ -650,6 +663,7 @@ else:
         'dtype': str(dtype),
         'device': torch.cuda.get_device_name(0),
         'updates': GPU_UPDATES,
+        'final_learning_rate': optimizer.param_groups[0]['lr'],
         'wall_time_ms_per_update': round(elapsed * 1000 / GPU_UPDATES, 3),
         'peak_memory_mb': round(torch.cuda.max_memory_allocated() / 1024**2, 2),
         'peak_reserved_mb': round(torch.cuda.max_memory_reserved() / 1024**2, 2),
@@ -664,3 +678,37 @@ else:
     torch.cuda.empty_cache()
 
 ```
+
+
+```python
+# Step 5.3：独立读取 GPU smoke 结果；没有运行 GPU 实验时不阻断 CPU 主线。
+import json
+from pathlib import Path
+
+result_path = Path('benchmarks/results/13_real_gpu_sft.json')
+if not result_path.exists():
+    print(f'尚未找到结果文件：{result_path}')
+else:
+    result = json.loads(result_path.read_text(encoding='utf-8'))
+    for key in ('model', 'dataset', 'dtype', 'device', 'updates', 'wall_time_ms_per_update', 'peak_memory_mb', 'evidence_level'):
+        print(f'{key}: {result.get(key)}')
+    print(f'losses: {result.get("losses")}')
+
+```
+
+#### 5.3 读取 JSON 结果
+
+读取 `benchmarks/results/13_real_gpu_sft.json` 后，先核对实际环境与 workload，再解释训练闭环证据。重点查看：
+
+| 指标 | 用途 | 结论边界 |
+|:---|:---|:---|
+| `losses` | 查看有限更新内 loss 是否下降 | 只说明 smoke 训练链路产生了学习信号，不代表任务质量 |
+| `wall_time_ms_per_update` | 记录一次有效更新的耗时 | 不作为稳定性能 benchmark，需固定 workload 后重复测量 |
+| `peak_memory_mb` / `peak_reserved_mb` | 观察真实模型训练的显存压力 | 只对应当前模型、dtype、序列长度和 batch |
+| `dtype` / `device` / `evidence_level` | 确认结果来自什么硬件和证据层级 | 不同环境之间不能直接横向比较 |
+
+#### 5.4 指标解释与结论
+如果 JSON 缺少模型、数据、dtype、设备或 workload 字段，应先视为证据不完整。只有在环境、workload 和指标字段完整时，才能解释本次 smoke 是否跑通；不要只根据 loss 下降就接受该实验。13 节的 GPU 结果是端到端 SFT smoke，完整吞吐、显存和质量对照应在 60 / 62 项目中进行。
+
+#### SFT checkpoint 交给后续对齐
+本节完成后，若要进入 DPO/GRPO，至少保留 `model_id / revision`、SFT checkpoint 或 adapter、tokenizer/chat template、训练数据版本、dtype、评测结果和导出配置。后续 DPO 通常以该 SFT checkpoint 初始化 policy/reference，GRPO 则以 SFT 或 DPO checkpoint 作为 policy 起点；不能只保存 loss 数值而丢失模型来源。
