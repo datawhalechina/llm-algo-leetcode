@@ -1,14 +1,54 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
-  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#486581"/></marker><style>.title{font:700 29px sans-serif;fill:#17324d}.label{font:700 20px sans-serif;fill:#17324d}.text{font:16px sans-serif;fill:#334e68}.small{font:14px sans-serif;fill:#486581}.box{stroke:#829ab1;stroke-width:2;rx:14}.line{stroke:#486581;stroke-width:3;fill:none;marker-end:url(#arrow)}.dash{stroke:#829ab1;stroke-width:2;stroke-dasharray:8 7;fill:none;marker-end:url(#arrow)}</style></defs>
-  <rect width="1200" height="720" fill="#f7fafc"/><text x="600" y="48" text-anchor="middle" class="title">专题讨论轴：从 Notebook 主线到跨 Part 路线</text>
-  <rect x="365" y="85" width="470" height="92" fill="#e6f6f5" class="box"/><text x="600" y="125" text-anchor="middle" class="label">Part 00–04：纵向 Notebook 主线</text><text x="600" y="155" text-anchor="middle" class="small">代码、题目、答案、实验与项目资产</text>
-  <path d="M600 177 V245" class="line"/>
-  <rect x="310" y="245" width="580" height="100" fill="#fff4e6" class="box"/><text x="600" y="285" text-anchor="middle" class="label">topic_discussion：路线与判断框架</text><text x="600" y="318" text-anchor="middle" class="small">组织入口 · 解释机制 · 对齐证据 · 说明边界</text>
-  <path d="M390 345 L170 430" class="line"/><path d="M500 345 L430 430" class="line"/><path d="M700 345 L770 430" class="line"/><path d="M810 345 L1030 430" class="line"/>
-  <rect x="55" y="430" width="230" height="130" fill="#eef2ff" class="box"/><text x="170" y="470" text-anchor="middle" class="label">推理优化</text><text x="170" y="505" text-anchor="middle" class="small">请求、KV Cache、量化、Serving</text><text x="170" y="535" text-anchor="middle" class="small">66–71</text>
-  <rect x="315" y="430" width="230" height="130" fill="#eef2ff" class="box"/><text x="430" y="470" text-anchor="middle" class="label">显存优化</text><text x="430" y="505" text-anchor="middle" class="small">账本、重算、搬运、预算</text><text x="430" y="535" text-anchor="middle" class="small">73–76</text>
-  <rect x="655" y="430" width="230" height="130" fill="#eef2ff" class="box"/><text x="770" y="470" text-anchor="middle" class="label">算子优化</text><text x="770" y="505" text-anchor="middle" class="small">访存、kernel、fusion</text><text x="770" y="535" text-anchor="middle" class="small">Part 03–04</text>
-  <rect x="915" y="430" width="230" height="130" fill="#eef2ff" class="box"/><text x="1030" y="470" text-anchor="middle" class="label">后训练优化</text><text x="1030" y="505" text-anchor="middle" class="small">SFT、偏好、DPO、GRPO</text><text x="1030" y="535" text-anchor="middle" class="small">60–65、84–86</text>
-  <path d="M170 560 V625 H1030 V560" class="dash"/>
-  <rect x="155" y="625" width="890" height="58" fill="#f0f4f8" class="box"/><text x="600" y="660" text-anchor="middle" class="small">横切支撑：量化与压缩 · 性能分析 · 通信与并行 · 模型架构 · 反向传播与训练机制</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="820" viewBox="0 0 1400 820" role="img" aria-labelledby="title desc">
+  <title id="title">专题讨论轴层级总览</title>
+  <desc id="desc">纵向 Part 提供 Notebook 主线，四条主学习路线位于中间，横向工程专题和基础领域专题提供支撑，Part 05 负责综合项目与架构决策收口。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#486581"/></marker>
+    <style>
+      text{font-family:"Noto Sans CJK SC","Microsoft YaHei",Arial,sans-serif;fill:#17324d}
+      .title{font-size:29px;font-weight:700}.group{font-size:18px;font-weight:700}.head{font-size:19px;font-weight:700}.body{font-size:14px;fill:#486581}.small{font-size:13px;fill:#627d98}
+      .box{stroke:#829ab1;stroke-width:2;rx:16}.main{stroke:#2680c2;stroke-width:2}.support{stroke:#8b74c9;stroke-width:2}.base{stroke:#49a078;stroke-width:2}.line{stroke:#486581;stroke-width:2.4;fill:none;marker-end:url(#arrow)}.dash{stroke:#829ab1;stroke-width:2;stroke-dasharray:8 7;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1400" height="820" fill="#f7fafc"/>
+  <text x="700" y="45" text-anchor="middle" class="title">专题讨论轴：主学习路线、横向支撑与收口层</text>
+
+  <rect x="485" y="78" width="430" height="78" fill="#e6f6f5" class="box"/>
+  <text x="700" y="111" text-anchor="middle" class="group">Part 00–04：纵向 Notebook 主线</text>
+  <text x="700" y="137" text-anchor="middle" class="body">代码、题目、答案、实验与项目资产</text>
+  <path d="M700 156V198" class="line"/>
+
+  <rect x="55" y="198" width="1290" height="165" fill="#fffaf0" class="box"/>
+  <text x="80" y="230" class="group">主学习路线：围绕优化目标组织连续学习</text>
+  <rect x="85" y="255" width="270" height="78" fill="#eef6ff" class="box main"/>
+  <text x="220" y="286" text-anchor="middle" class="head">推理优化</text>
+  <text x="220" y="311" text-anchor="middle" class="body">请求、KV Cache、Serving</text>
+  <rect x="395" y="255" width="270" height="78" fill="#eef6ff" class="box main"/>
+  <text x="530" y="286" text-anchor="middle" class="head">性能优化</text>
+  <text x="530" y="311" text-anchor="middle" class="body">分析、显存、通信、决策</text>
+  <rect x="735" y="255" width="270" height="78" fill="#eef6ff" class="box main"/>
+  <text x="870" y="286" text-anchor="middle" class="head">算子优化</text>
+  <text x="870" y="311" text-anchor="middle" class="body">访存、Kernel、Fusion</text>
+  <rect x="1075" y="255" width="220" height="78" fill="#eef6ff" class="box main"/>
+  <text x="1185" y="286" text-anchor="middle" class="head">后训练优化</text>
+  <text x="1185" y="311" text-anchor="middle" class="body">数据、SFT、偏好、对齐</text>
+
+  <path d="M220 363V410" class="dash"/><path d="M530 363V410" class="dash"/><path d="M870 363V410" class="dash"/><path d="M1185 363V410" class="dash"/>
+
+  <rect x="55" y="410" width="610" height="155" fill="#f5f1ff" class="box support"/>
+  <text x="80" y="442" class="group">横向工程专题：跨路线复用的方法</text>
+  <text x="85" y="480" class="head">量化与压缩</text><text x="85" y="506" class="body">表示、精度、显存与部署</text>
+  <text x="300" y="480" class="head">通信与并行</text><text x="300" y="506" class="body">切分、通信、拓扑与扩展</text>
+  <text x="520" y="480" class="head">部署与异构</text><text x="520" y="506" class="body">产物、Backend 与设备协同</text>
+  <text x="85" y="542" class="small">性能分析贯穿所有层，负责测量、Trace、归因与回归验证</text>
+
+  <rect x="735" y="410" width="610" height="155" fill="#f0fdf4" class="box base"/>
+  <text x="760" y="442" class="group">基础与领域专题：按需补充认知</text>
+  <text x="765" y="480" class="head">公共底座</text><text x="765" y="506" class="body">Part 00、Part 01、反向传播与训练机制</text>
+  <text x="765" y="542" class="head">模型与应用</text><text x="970" y="542" class="body">大模型架构、监督微调、Agent、多模态</text>
+
+  <path d="M700 565V620" class="line"/>
+  <rect x="250" y="620" width="900" height="120" fill="#fff4e6" class="box"/>
+  <text x="700" y="660" text-anchor="middle" class="group">Part 05：综合项目与架构决策</text>
+  <text x="700" y="689" text-anchor="middle" class="body">组合候选方案 · 汇总性能、显存、通信、质量与成本证据</text>
+  <text x="700" y="714" text-anchor="middle" class="small">输出架构选型、交付约束与 accept / tune / reject 决策</text>
 </svg>
