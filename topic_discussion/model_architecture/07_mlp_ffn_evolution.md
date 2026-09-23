@@ -6,6 +6,8 @@
 
 本页的输出是容量扩展接口：理解 gate、up、down 和激活如何改变 block 表达能力，以及为什么 MLP 是 MoE 替换的主要位置。
 
+本页在 Task0 中负责说明 Block 的第二条主要计算分支：Attention 处理 token 间交互，MLP / FFN 负责逐 token 的通道变换。读完后应能把 dense FFN、SwiGLU 和 MoE-FFN 放回同一个 Block 位置比较。
+
 ## 问题起点
 
 Attention 负责 token 之间的信息交互，但每个 token 自己内部的非线性变换主要依赖 MLP / FFN。
@@ -117,7 +119,7 @@ Attention 负责 token 之间的信息交互，但每个 token 自己内部的�
 
 ## 进入下一页
 
-进入 [09 MoE / Sparsity Evolution](./09_moe_sparsity_evolution.md)，观察 dense MLP 如何进一步变成 router 与 experts 组成的稀疏路径。
+进入 [06 Block / Residual 主干](./06_block_residual_path.md)，把 MLP 分支与 Attention、Norm 和 residual 重新组装；MoE 的 router 与 experts 再在 [09 MoE / Sparsity Evolution](./09_moe_sparsity_evolution.md) 中展开。
 
 ## 阅读建议
 
