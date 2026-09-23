@@ -1,51 +1,73 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1440" height="650" viewBox="0 0 1440 650" role="img" aria-labelledby="title desc">
-  <title id="title">多 Token 解码的一轮推进</title>
-  <desc id="desc">当前上下文经过候选形成、逐位置验证和状态更新，形成接受前缀或回退后缀。</desc>
-  <style>text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:30px;font-weight:700}.sub{font-size:16px;fill:#475569}.group{font-size:18px;font-weight:700;fill:#334155}.label{font-size:17px;font-weight:700}.small{font-size:13px;fill:#475569}.panel{stroke-width:2;rx:20;ry:20}.node{stroke-width:2;rx:14;ry:14}.line{stroke:#52606d;stroke-width:3;stroke-linecap:round;fill:none}.branch{stroke:#94a3b8;stroke-width:3;stroke-linecap:round;fill:none}.green{stroke:#5b9b70;stroke-width:3;stroke-linecap:round;fill:none}.red{stroke:#c56b6b;stroke-width:3;stroke-linecap:round;fill:none}</style>
+  <title id="title">投机解码与 Multi-Token 解码的关系</title>
+  <desc id="desc">经典 draft target、多 Token、多候选以及 DFlash 和 DSpark 采用不同候选产生方式，但共享目标模型验证、接受或回退和下一轮推进的闭环；本图展开 Multi-Token 分支的一轮状态流。</desc>
+  <style>text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:30px;font-weight:700}.sub{font-size:16px;fill:#475569}.group{font-size:18px;font-weight:700;fill:#334155}.label{font-size:17px;font-weight:700}.small{font-size:13px;fill:#475569}.panel{stroke-width:2;rx:20;ry:20}.node{stroke-width:2;rx:14;ry:14}.line{stroke:#52606d;stroke-width:3;stroke-linecap:round;fill:none}.branch{stroke:#94a3b8;stroke-width:3;stroke-linecap:round;fill:none}.feedback{stroke:#7c8da6;stroke-width:3;stroke-dasharray:8 7;stroke-linecap:round;fill:none}.green{stroke:#5b9b70;stroke-width:3;stroke-linecap:round;fill:none}.red{stroke:#c56b6b;stroke-width:3;stroke-linecap:round;fill:none}</style>
   <rect width="1440" height="650" fill="#f8fafc"/>
-  <text x="58" y="55" class="title">多 Token 解码：一轮如何形成有效推进</text>
-  <text x="58" y="86" class="sub">候选先被提出，再按位置验证；接受前缀决定本轮推进量，首次拒绝决定回退范围。</text>
+  <text x="58" y="55" class="title">投机解码与 Multi-Token 解码</text>
+  <text x="58" y="86" class="sub">不同候选产生方式，共享验证与下一轮推进闭环</text>
 
-  <rect x="535" y="105" width="370" height="88" class="node" fill="#e0f2fe" stroke="#38bdf8"/>
-  <text x="720" y="143" text-anchor="middle" class="label">一轮多 Token 解码</text>
-  <text x="720" y="171" text-anchor="middle" class="small">提议 → 验证 → 保留有效前缀</text>
+  <rect x="180" y="95" width="1080" height="140" class="node" fill="#e0f2fe" stroke="#38bdf8"/>
+  <text x="720" y="123" text-anchor="middle" class="label">候选产生方式</text>
+  <text x="720" y="148" text-anchor="middle" class="small">不同策略如何形成候选序列</text>
+  <rect x="200" y="168" width="180" height="46" class="node" fill="#ffffff" stroke="#64748b"/>
+  <text x="290" y="197" text-anchor="middle" class="small">经典 draft / target</text>
+  <rect x="450" y="168" width="180" height="46" class="node" fill="#fef3c7" stroke="#d97706"/>
+  <text x="540" y="197" text-anchor="middle" class="small">本节：Multi-Token</text>
+  <rect x="700" y="168" width="180" height="46" class="node" fill="#f0fdf4" stroke="#65a30d"/>
+  <text x="790" y="190" text-anchor="middle" class="small">DFlash</text>
+  <text x="790" y="207" text-anchor="middle" class="small">block 级候选</text>
+  <rect x="950" y="168" width="180" height="46" class="node" fill="#f0fdf4" stroke="#65a30d"/>
+  <text x="1040" y="190" text-anchor="middle" class="small">DSpark</text>
+  <text x="1040" y="207" text-anchor="middle" class="small">半自回归 + 置信度</text>
 
-  <rect x="40" y="255" width="400" height="305" class="panel" fill="#fff7ed" stroke="#fdba74"/>
-  <text x="60" y="292" text-anchor="start" class="group">候选形成</text>
-  <rect x="90" y="335" width="300" height="70" class="node" fill="#ffffff" stroke="#f59e0b"/>
-  <text x="240" y="365" text-anchor="middle" class="label">当前上下文</text>
-  <text x="240" y="389" text-anchor="middle" class="small">作为草稿模型输入</text>
-  <rect x="90" y="455" width="300" height="70" class="node" fill="#ffffff" stroke="#f59e0b"/>
-  <text x="240" y="485" text-anchor="middle" class="label">候选序列与长度 K</text>
-  <text x="240" y="509" text-anchor="middle" class="small">token 与草稿概率按位置保存</text>
-  <line x1="240" y1="405" x2="240" y2="455" class="line"/><path d="M232 447L240 455L248 447Z" fill="#52606d"/>
+  <rect x="40" y="255" width="440" height="305" class="panel" fill="#fff7ed" stroke="#fdba74"/>
+  <text x="60" y="292" text-anchor="start" class="group">候选准备</text>
+  <rect x="220" y="335" width="220" height="70" class="node" fill="#ffffff" stroke="#f59e0b"/>
+  <text x="330" y="365" text-anchor="middle" class="label">当前上下文</text>
+  <text x="330" y="389" text-anchor="middle" class="small">作为草稿模型输入</text>
+  <rect x="220" y="455" width="220" height="70" class="node" fill="#ffffff" stroke="#f59e0b"/>
+  <text x="330" y="485" text-anchor="middle" class="label">候选序列与长度 K</text>
+  <text x="330" y="509" text-anchor="middle" class="small">token 与概率按位置保存</text>
+  <line x1="330" y1="405" x2="330" y2="455" class="line"/><path d="M322 447L330 455L338 447Z" fill="#52606d"/>
 
   <rect x="520" y="255" width="400" height="305" class="panel" fill="#eef2ff" stroke="#818cf8"/>
-  <text x="540" y="292" text-anchor="start" class="group">逐位置验证</text>
+  <text x="540" y="292" text-anchor="start" class="group">目标模型验证</text>
   <rect x="570" y="335" width="300" height="70" class="node" fill="#ffffff" stroke="#6366f1"/>
   <text x="720" y="365" text-anchor="middle" class="label">目标模型批量计算</text>
   <text x="720" y="389" text-anchor="middle" class="small">得到每个位置的目标概率</text>
   <rect x="570" y="455" width="300" height="70" class="node" fill="#ffffff" stroke="#6366f1"/>
-  <text x="720" y="485" text-anchor="middle" class="label">比较 p 与 q</text>
+  <text x="720" y="485" text-anchor="middle" class="label">比较目标侧 p / 草稿侧 q</text>
   <text x="720" y="509" text-anchor="middle" class="small">从左到右判断是否接受</text>
   <line x1="720" y1="405" x2="720" y2="455" class="line"/><path d="M712 447L720 455L728 447Z" fill="#52606d"/>
 
   <rect x="1000" y="255" width="400" height="305" class="panel" fill="#ecfdf5" stroke="#86efac"/>
   <text x="1020" y="292" text-anchor="start" class="group">状态更新</text>
-  <rect x="1100" y="335" width="200" height="58" class="node" fill="#ffffff" stroke="#94a3b8"/>
-  <text x="1200" y="371" text-anchor="middle" class="label">验证结果</text>
+  <rect x="1010" y="335" width="200" height="58" class="node" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="1110" y="371" text-anchor="middle" class="label">验证结果</text>
   <rect x="1020" y="455" width="180" height="70" class="node" fill="#ffffff" stroke="#5b9b70"/>
   <text x="1110" y="484" text-anchor="middle" class="label">接受前缀</text>
   <text x="1110" y="507" text-anchor="middle" class="small">继续推进</text>
   <rect x="1210" y="455" width="180" height="70" class="node" fill="#ffffff" stroke="#c56b6b"/>
   <text x="1290" y="484" text-anchor="middle" class="label">首次拒绝后的回退</text>
   <text x="1290" y="507" text-anchor="middle" class="small">停止采用后缀</text>
-  <line x1="1200" y1="393" x2="1200" y2="425" class="branch"/><line x1="1110" y1="425" x2="1290" y2="425" class="branch"/>
+  <line x1="1110" y1="393" x2="1110" y2="425" class="branch"/><line x1="1110" y1="425" x2="1290" y2="425" class="branch"/>
   <line x1="1110" y1="425" x2="1110" y2="455" class="green"/><path d="M1102 447L1110 455L1118 447Z" fill="#5b9b70"/>
   <line x1="1290" y1="425" x2="1290" y2="455" class="red"/><path d="M1282 447L1290 455L1298 447Z" fill="#c56b6b"/>
 
-  <line x1="720" y1="193" x2="720" y2="225" class="branch"/><line x1="240" y1="225" x2="1200" y2="225" class="branch"/>
-  <line x1="240" y1="225" x2="240" y2="335" class="line"/><path d="M232 327L240 335L248 327Z" fill="#52606d"/>
-  <line x1="720" y1="225" x2="720" y2="335" class="line"/><path d="M712 327L720 335L728 327Z" fill="#52606d"/>
-  <line x1="1200" y1="225" x2="1200" y2="335" class="line"/><path d="M1192 327L1200 335L1208 327Z" fill="#52606d"/>
+  <line x1="440" y1="370" x2="570" y2="370" class="line"/><path d="M562 362L570 370L562 378Z" fill="#52606d"/>
+  <text x="455" y="357" text-anchor="middle" class="small">候选序列</text>
+  <line x1="870" y1="370" x2="1010" y2="370" class="line"/><path d="M1002 362L1010 370L1002 378Z" fill="#52606d"/>
+  <text x="960" y="357" text-anchor="middle" class="small">验证结果</text>
+
+  <path d="M1110 525V590H170V370H220" class="feedback"/>
+  <path d="M212 362L220 370L212 378Z" fill="#7c8da6"/>
+  <text x="720" y="620" text-anchor="middle" class="small">接受前缀 → 下一轮上下文；回退后缀不进入输出</text>
+
+  <line x1="290" y1="214" x2="290" y2="240" class="branch"/>
+  <line x1="540" y1="214" x2="540" y2="240" class="branch"/>
+  <line x1="790" y1="214" x2="790" y2="240" class="branch"/>
+  <line x1="1040" y1="214" x2="1040" y2="240" class="branch"/>
+  <line x1="290" y1="240" x2="1040" y2="240" class="branch"/>
+  <path d="M290 240H180V490H220" class="line"/>
+  <path d="M212 482L220 490L212 498Z" fill="#52606d"/>
 </svg>
