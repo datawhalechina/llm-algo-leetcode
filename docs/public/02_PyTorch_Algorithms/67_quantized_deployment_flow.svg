@@ -1,12 +1,52 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
-  <title id="title">量化推理部署决策流程</title>
-  <desc id="desc">从浮点 baseline 到真实量化 artifact，再到统一指标和部署决策。</desc>
-  <defs><marker id="a67" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker><style>.t{font:700 30px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.s{font:500 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.h{font:700 20px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#111827}.b{font:500 15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.box{stroke-width:2.5;rx:18}.l{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a67)}</style></defs>
-  <rect width="1200" height="560" fill="#f8fafc"/><text x="60" y="58" class="t">67：量化 artifact 是否值得进入部署</text><text x="60" y="90" class="s">先配对测量，再用格式、kernel、性能、显存和质量共同做决定。</text>
-  <rect x="55" y="190" width="190" height="145" class="box" fill="#dbeafe" stroke="#2563eb"/><text x="112" y="238" class="h">G0 浮点基线</text><text x="82" y="276" class="b">同模型 / workload</text><text x="82" y="302" class="s">记录速度、显存、质量</text>
-  <rect x="300" y="190" width="190" height="145" class="box" fill="#fef3c7" stroke="#d97706"/><text x="358" y="238" class="h">G1 真实量化</text><text x="327" y="276" class="b">加载 GPTQ / AWQ</text><text x="327" y="302" class="s">确认格式与 kernel</text>
-  <rect x="545" y="190" width="190" height="145" class="box" fill="#dcfce7" stroke="#16a34a"/><text x="598" y="238" class="h">统一指标</text><text x="572" y="276" class="b">TTFT / 吞吐 / 显存</text><text x="572" y="302" class="s">输出质量与误差</text>
-  <rect x="790" y="190" width="190" height="145" class="box" fill="#fce7f3" stroke="#db2777"/><text x="837" y="238" class="h">G2 对照</text><text x="812" y="276" class="b">另一格式或 backend</text><text x="812" y="302" class="s">一次只改变一项</text>
-  <rect x="1020" y="190" width="130" height="145" class="box" fill="#e0e7ff" stroke="#4f46e5"/><text x="1040" y="238" class="h">决策</text><text x="1040" y="276" class="b">接受</text><text x="1040" y="302" class="b">调优 / 拒绝</text>
-  <path d="M245 262H300" class="l"/><path d="M490 262H545" class="l"/><path d="M735 262H790" class="l"/><path d="M980 262H1020" class="l"/><text x="60" y="430" class="s">G0/G1 的 workload、硬件、backend 和 cache policy 固定；GGUF 走独立 backend 路径，不直接套用 GPTQ/AWQ 启动方式。</text><text x="60" y="470" class="s">没有真实 artifact、kernel 证据或任务质量时，只能报告链路检查，不能宣称量化收益。</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="600" viewBox="0 0 1240 600" role="img" aria-labelledby="title desc">
+  <title id="title">量化推理部署的统一对照与决策</title>
+  <desc id="desc">先固定模型、workload 和运行环境，在 CPU 账本确认量化表示与质量门槛，再比较浮点 baseline、量化 candidate 和可选 backend，最后依据性能、质量和证据形成部署判断。</desc>
+  <defs>
+    <style>
+      .title{font:700 28px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324d}.sub{font:15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#526b7d}.group{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#35526b}.h{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324d}.t{font:14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#526b7d}.frame{fill:#fff;stroke:#c7d9e7;stroke-width:1.5}.blue{fill:#e8f3fb;stroke:#3978a8;stroke-width:2}.purple{fill:#f1eafa;stroke:#8b6bb1;stroke-width:2}.green{fill:#eaf7ef;stroke:#4c9870;stroke-width:2}.orange{fill:#fff1df;stroke:#c78335;stroke-width:2}.flow{stroke:#3978a8;stroke-width:3;fill:none;marker-end:url(#arrow)}.optional{stroke:#8b6bb1;stroke-width:2.5;stroke-dasharray:8 6;fill:none;marker-end:url(#purpleArrow)}
+    </style>
+    <marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#3978a8"/></marker>
+    <marker id="purpleArrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#8b6bb1"/></marker>
+  </defs>
+  <rect width="1240" height="600" rx="24" fill="#f8fbfd"/>
+  <text x="620" y="48" text-anchor="middle" class="title">量化部署：从统一对照到可复核的部署判断</text>
+  <text x="620" y="76" text-anchor="middle" class="sub">比较对象必须共享模型、workload 与运行环境，才能解释性能与质量的变化</text>
+
+  <rect x="370" y="110" width="500" height="68" rx="18" class="blue"/>
+  <text x="620" y="139" text-anchor="middle" class="h">统一比较条件</text>
+  <text x="620" y="162" text-anchor="middle" class="t">模型 · workload · backend · dtype · 生成长度</text>
+
+  <rect x="45" y="245" width="250" height="128" rx="18" class="frame"/>
+  <text x="68" y="276" class="group">CPU 机制账本</text>
+  <rect x="68" y="300" width="204" height="48" rx="12" class="blue"/>
+  <text x="170" y="331" text-anchor="middle" class="h">量化表示与误差门槛</text>
+
+  <rect x="345" y="245" width="250" height="128" rx="18" class="frame"/>
+  <text x="368" y="276" class="group">浮点 baseline</text>
+  <rect x="368" y="300" width="204" height="48" rx="12" class="green"/>
+  <text x="470" y="331" text-anchor="middle" class="h">延迟、吞吐、显存与质量</text>
+
+  <rect x="645" y="245" width="250" height="128" rx="18" class="frame"/>
+  <text x="668" y="276" class="group">量化 candidate</text>
+  <rect x="668" y="300" width="204" height="48" rx="12" class="orange"/>
+  <text x="770" y="331" text-anchor="middle" class="h">同一 workload 下的对照</text>
+
+  <rect x="945" y="245" width="250" height="128" rx="18" class="frame"/>
+  <text x="968" y="276" class="group">可选 backend 扩展</text>
+  <rect x="968" y="300" width="204" height="48" rx="12" class="purple"/>
+  <text x="1070" y="331" text-anchor="middle" class="h">artifact、格式与执行证据</text>
+
+  <path d="M620 178V205H170V245" class="flow"/>
+  <path d="M620 178V205H470V245" class="flow"/>
+  <path d="M620 178V205H770V245" class="flow"/>
+  <path d="M620 178V205H1070V245" class="optional"/>
+
+  <rect x="260" y="455" width="720" height="86" rx="18" class="green"/>
+  <text x="620" y="487" text-anchor="middle" class="h">统一结果表与部署判断</text>
+  <text x="620" y="513" text-anchor="middle" class="t">性能与显存 · 任务质量与兼容性 · artifact 与 evidence level</text>
+  <text x="620" y="533" text-anchor="middle" class="t">accept · tune · reject</text>
+  <path d="M170 373V415H440V455" class="flow"/>
+  <path d="M470 373V455" class="flow"/>
+  <path d="M770 373V455" class="flow"/>
+  <path d="M1070 373V415H800V455" class="optional"/>
 </svg>

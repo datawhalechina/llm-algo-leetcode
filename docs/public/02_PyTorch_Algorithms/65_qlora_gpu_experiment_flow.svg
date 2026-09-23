@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 390" role="img" aria-labelledby="title desc">
+  <title id="title">QLoRA GPU 复测流程</title>
+  <desc id="desc">从固定训练环境到 LoRA 与 QLoRA 对照、结果记录、adapter manifest 和选型决策。</desc>
+  <defs>
+    <marker id="a65" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
+    <style>
+      .t{font:700 28px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}
+      .s{font:500 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}
+      .h{font:700 18px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#111827}
+      .b{font:500 14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}
+      .box{stroke-width:2.5;rx:16}.line{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a65)}
+    </style>
+  </defs>
+  <rect width="1200" height="390" fill="#f8fafc"/>
+  <text x="48" y="48" class="t">QLoRA：从预算筛选到真实训练证据</text>
+  <text x="48" y="76" class="s">固定 workload，只改变 adapter / quantization 配置，再核对质量与 artifact。</text>
+  <rect x="45" y="135" width="180" height="105" class="box" fill="#e0e7ff" stroke="#4f46e5"/>
+  <text x="91" y="176" class="h">环境与口径</text><text x="73" y="207" class="b">模型 / 数据 / seed</text><text x="73" y="227" class="b">batch / seq_len / steps</text>
+  <rect x="270" y="135" width="180" height="105" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="328" y="176" class="h">LoRA baseline</text><text x="300" y="207" class="b">显存 / 速度 / loss</text><text x="300" y="227" class="b">adapter 配置</text>
+  <rect x="495" y="135" width="180" height="105" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <text x="552" y="176" class="h">QLoRA</text><text x="525" y="207" class="b">NF4 / double quant</text><text x="525" y="227" class="b">显存 / 速度 / loss</text>
+  <rect x="720" y="135" width="180" height="105" class="box" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="760" y="176" class="h">结果与产物</text><text x="748" y="207" class="b">JSON / manifest</text><text x="748" y="227" class="b">adapter / merged model</text>
+  <rect x="945" y="135" width="210" height="105" class="box" fill="#fce7f3" stroke="#db2777"/>
+  <text x="1003" y="176" class="h">选型决策</text><text x="989" y="207" class="b">accept / tune / reject</text><text x="989" y="227" class="b">下一步复测</text>
+  <path d="M225 187H270M450 187H495M675 187H720M900 187H945" class="line"/>
+  <text x="600" y="320" class="s">CPU 账本先筛选候选；GPU 复测确认真实显存、速度、质量和产物可用性。</text>
+</svg>

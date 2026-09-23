@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+  <title id="title">量化部署证据链</title>
+  <desc id="desc">从统一实验口径出发，分别采集性能、容量、质量和执行路径证据，再进行 baseline 与 candidate 比较并形成部署判断。</desc>
+  <defs>
+    <marker id="a67e" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
+    <style>
+      .t{font:700 28px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}
+      .s{font:500 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}
+      .h{font:700 19px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#111827}
+      .b{font:500 14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}
+      .box{stroke-width:2.5;rx:16}.line{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a67e)}
+    </style>
+  </defs>
+  <rect width="1200" height="520" fill="#f8fafc"/>
+  <text x="48" y="48" class="t">量化部署：从统一口径到可复核证据</text>
+  <text x="48" y="77" class="s">同一模型、workload 和 backend 下，四类证据共同支撑部署判断。</text>
+
+  <rect x="440" y="115" width="320" height="90" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <text x="535" y="153" class="h">统一实验口径</text>
+  <text x="492" y="184" class="b">模型 · workload · backend 固定</text>
+
+  <rect x="35" y="265" width="245" height="95" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="128" y="303" class="h">性能</text>
+  <text x="88" y="333" class="b">TTFT · TPOT · 吞吐 · E2E</text>
+  <rect x="315" y="265" width="245" height="95" class="box" fill="#e0e7ff" stroke="#4f46e5"/>
+  <text x="408" y="303" class="h">容量</text>
+  <text x="390" y="333" class="b">peak VRAM · load status</text>
+  <rect x="595" y="265" width="245" height="95" class="box" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="688" y="303" class="h">质量</text>
+  <text x="650" y="333" class="b">error · task metric · budget</text>
+  <rect x="875" y="265" width="290" height="95" class="box" fill="#fce7f3" stroke="#db2777"/>
+  <text x="967" y="303" class="h">执行证据</text>
+  <text x="910" y="333" class="b">artifact · format · kernel · JSON</text>
+
+  <path d="M535 205 C475 225 260 225 157 265" class="line"/>
+  <path d="M575 205 C545 225 480 230 437 265" class="line"/>
+  <path d="M625 205 C655 225 720 230 717 265" class="line"/>
+  <path d="M665 205 C745 225 920 225 1020 265" class="line"/>
+
+  <rect x="370" y="415" width="270" height="70" class="box" fill="#f0fdf4" stroke="#16a34a"/>
+  <text x="430" y="443" class="h">统一比较</text>
+  <text x="416" y="469" class="b">baseline / candidate · evidence level</text>
+  <rect x="700" y="415" width="250" height="70" class="box" fill="#eef2ff" stroke="#4f46e5"/>
+  <text x="765" y="443" class="h">部署判断</text>
+  <text x="752" y="469" class="b">accept · tune · reject</text>
+
+  <path d="M157 360 C215 390 380 385 440 415" class="line"/>
+  <path d="M437 360 C450 385 475 395 490 415" class="line"/>
+  <path d="M717 360 C680 390 570 390 540 415" class="line"/>
+  <path d="M1020 360 C925 390 650 390 590 415" class="line"/>
+  <path d="M640 450H700" class="line"/>
+</svg>
