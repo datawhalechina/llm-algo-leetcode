@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 500" role="img" aria-labelledby="title desc">
+  <title id="title">QLoRA GPU smoke 实验流程</title>
+  <desc id="desc">固定模型和 workload，加载 NF4 底座，挂载 LoRA，执行少量训练步，保存并重新加载 adapter，最后记录 JSON 证据。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#475569"/>
+    </marker>
+    <style>
+      .title{font:700 27px sans-serif;fill:#0f172a}.sub{font:16px sans-serif;fill:#475569}
+      .head{font:700 17px sans-serif;fill:#0f172a}.body{font:14px sans-serif;fill:#334155}
+      .small{font:13px sans-serif;fill:#64748b}.box{stroke-width:2}.line{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1280" height="500" fill="#f8fafc"/>
+  <text x="50" y="48" class="title">QLoRA GPU smoke：底座、适配器与证据交付</text>
+  <text x="50" y="78" class="sub">固定 workload，只验证低比特底座能否接入 LoRA 并产出可重新加载的 adapter。</text>
+
+  <rect x="50" y="145" width="190" height="125" rx="14" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="145" y="188" text-anchor="middle" class="head">固定 workload</text>
+  <text x="75" y="220" class="body">模型、数据、seed</text>
+  <text x="75" y="245" class="small">batch / steps / dtype</text>
+  <path d="M240 208 H300" class="line"/>
+  <rect x="300" y="145" width="190" height="125" rx="14" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <text x="395" y="188" text-anchor="middle" class="head">NF4 底座</text>
+  <text x="325" y="220" class="body">加载量化权重</text>
+  <text x="325" y="245" class="small">冻结 base model</text>
+  <path d="M490 208 H550" class="line"/>
+  <rect x="550" y="145" width="190" height="125" rx="14" class="box" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="645" y="188" text-anchor="middle" class="head">挂载 LoRA</text>
+  <text x="575" y="220" class="body">配置 r / α</text>
+  <text x="575" y="245" class="small">仅 adapter 可训练</text>
+  <path d="M740 208 H800" class="line"/>
+  <rect x="800" y="145" width="190" height="125" rx="14" class="box" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="895" y="188" text-anchor="middle" class="head">少量 smoke 训练</text>
+  <text x="825" y="220" class="body">loss / peak memory</text>
+  <text x="825" y="245" class="small">不代表完整质量</text>
+  <path d="M990 208 H1050" class="line"/>
+  <rect x="1050" y="145" width="180" height="125" rx="14" class="box" fill="#f1f5f9" stroke="#64748b"/>
+  <text x="1140" y="188" text-anchor="middle" class="head">保存与 reload</text>
+  <text x="1075" y="220" class="body">adapter / tokenizer</text>
+  <text x="1075" y="245" class="small">检查 artifact 可用</text>
+
+  <path d="M1140 270 V350 H895" class="line"/>
+  <rect x="720" y="350" width="350" height="85" rx="14" class="box" fill="#f1f5f9" stroke="#64748b"/>
+  <text x="895" y="385" text-anchor="middle" class="head">JSON 结果与证据等级</text>
+  <text x="895" y="410" text-anchor="middle" class="body">runtime · failure · artifact · decision</text>
+  <text x="50" y="462" class="small">证据边界：GPU smoke 证明接入与交付链路，不直接证明任务质量、长时间稳定性或部署吞吐。</text>
+</svg>

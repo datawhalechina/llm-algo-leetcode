@@ -1,74 +1,43 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800" role="img" aria-labelledby="title desc">
-  <title id="title">量化基础、W8A16 机制与部署验证的关系</title>
-  <desc id="desc">量化对象和处理阶段是共同基础，W8A16 使用低比特权重和高精度激活，随后让反量化参与前向计算，并在真实部署中观察资源与质量代价。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="600" viewBox="0 0 1240 600" role="img" aria-labelledby="title desc">
+  <title id="title">W8A16 权重量化的存储与前向路径</title>
+  <desc id="desc">浮点权重经缩放量化为 INT8 权重与 scale；前向时激活保持 FP16 或 BF16，按 scale 恢复近似权重参与线性计算，并记录恢复误差。</desc>
   <defs>
-    <marker id="arrow25" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
     <style>
-      .title{font:700 27px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}
-      .subtitle{font:500 18px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}
-      .section{font:700 20px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#1e293b}
-      .head{font:700 21px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#111827}
-      .body{font:500 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}
-      .small{font:500 15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}
-      .box{stroke-width:2.5;rx:18}
-      .group{stroke-width:2;rx:22}
-      .arrow{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#arrow25)}
-      .dash{stroke:#94a3b8;stroke-width:2.5;stroke-dasharray:8 7;fill:none;marker-end:url(#arrow25)}
-      .guide{stroke:#94a3b8;stroke-width:2.5;stroke-dasharray:8 7;fill:none}
+      .title{font:700 28px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324d}.sub{font:15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#526b7d}.group{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#35526b}.h{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324d}.t{font:14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#526b7d}.frame{fill:#fff;stroke:#c7d9e7;stroke-width:1.5}.blue{fill:#e8f3fb;stroke:#3978a8;stroke-width:2}.orange{fill:#fff1df;stroke:#c78335;stroke-width:2}.green{fill:#eaf7ef;stroke:#4c9870;stroke-width:2}.purple{fill:#f1eafa;stroke:#8b6bb1;stroke-width:2}.flow{stroke:#3978a8;stroke-width:3;fill:none;marker-end:url(#arrow)}.measure{stroke:#8b6bb1;stroke-width:2.5;stroke-dasharray:8 6;fill:none;marker-end:url(#purpleArrow)}
     </style>
+    <marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#3978a8"/></marker>
+    <marker id="purpleArrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#8b6bb1"/></marker>
   </defs>
-  <rect width="1280" height="800" fill="#f8fafc"/>
-  <text x="60" y="55" class="title">量化机制总览</text>
+  <rect width="1240" height="600" rx="24" fill="#f8fbfd"/>
+  <text x="620" y="48" text-anchor="middle" class="title">W8A16：低比特权重如何参与高精度前向</text>
+  <text x="620" y="76" text-anchor="middle" class="sub">本节只跟踪权重从浮点表示到 INT8 存储，再到近似线性计算的路径</text>
 
-  <rect x="40" y="85" width="760" height="190" class="group" fill="#eef2ff" stroke="#c7d2fe"/>
-  <text x="60" y="108" class="section">共同基础：量化对象与处理阶段</text>
-  <rect x="80" y="130" width="280" height="120" class="box" fill="#e0e7ff" stroke="#4f46e5"/>
-  <text x="108" y="169" class="head">被量化的对象</text>
-  <text x="108" y="202" class="body">权重 · 激活 · KV Cache</text>
-  <rect x="440" y="130" width="280" height="120" class="box" fill="#fef3c7" stroke="#d97706"/>
-  <text x="468" y="169" class="head">量化发生的阶段</text>
-  <text x="468" y="202" class="body">训练后校准与转换（PTQ）</text>
-  <text x="468" y="230" class="small">训练中模拟量化（QAT）</text>
+  <rect x="55" y="125" width="730" height="190" rx="18" class="frame"/>
+  <text x="78" y="155" class="group">权重表示与存储</text>
+  <rect x="78" y="190" width="180" height="80" rx="15" class="blue"/>
+  <text x="168" y="222" text-anchor="middle" class="h">浮点权重 W</text><text x="168" y="247" text-anchor="middle" class="t">FP16 / FP32 参考值</text>
+  <rect x="330" y="190" width="180" height="80" rx="15" class="orange"/>
+  <text x="420" y="222" text-anchor="middle" class="h">缩放与量化</text><text x="420" y="247" text-anchor="middle" class="t">分组范围决定 scale</text>
+  <rect x="582" y="190" width="180" height="80" rx="15" class="purple"/>
+  <text x="672" y="222" text-anchor="middle" class="h">INT8 权重 + scale</text><text x="672" y="247" text-anchor="middle" class="t">压缩后的存储表示</text>
+  <path d="M258 230H330" class="flow"/><path d="M510 230H582" class="flow"/>
 
-  <rect x="40" y="320" width="1200" height="205" class="group" fill="#f0fdf4" stroke="#bbf7d0"/>
-  <text x="60" y="335" class="section">本节机制：低比特权重如何参与前向计算</text>
-  <rect x="60" y="360" width="250" height="145" class="box" fill="#dbeafe" stroke="#2563eb"/>
-  <text x="88" y="400" class="head">输入权重</text>
-  <text x="88" y="434" class="body">FP16 / FP32</text>
-  <text x="88" y="463" class="small">量化前 · 误差参照</text>
-  <rect x="365" y="360" width="250" height="145" class="box" fill="#dcfce7" stroke="#16a34a"/>
-  <text x="393" y="400" class="head">量化机制</text>
-  <text x="393" y="431" class="body">动态范围与缩放</text>
-  <text x="393" y="460" class="small">取整 · 截断 → 整数表示</text>
-  <rect x="670" y="360" width="250" height="145" class="box" fill="#fce7f3" stroke="#db2777"/>
-  <text x="698" y="400" class="head">存储表示</text>
-  <text x="698" y="434" class="body">INT8 权重 + scale</text>
-  <text x="698" y="463" class="small">激活保持 FP16 / FP32</text>
-  <path d="M310 438H365" class="arrow"/>
-  <path d="M615 438H670" class="arrow"/>
+  <rect x="855" y="125" width="330" height="190" rx="18" class="frame"/>
+  <text x="878" y="155" class="group">激活保持高精度</text>
+  <rect x="878" y="190" width="284" height="80" rx="15" class="green"/>
+  <text x="1020" y="222" text-anchor="middle" class="h">激活 A</text><text x="1020" y="247" text-anchor="middle" class="t">FP16 / BF16，不量化为 INT8</text>
 
-  <rect x="970" y="360" width="250" height="145" class="box" fill="#fce7f3" stroke="#db2777"/>
-  <text x="998" y="400" class="head">计算阶段</text>
-  <text x="998" y="434" class="body">反量化参与前向</text>
-  <text x="998" y="463" class="small">近似数值 → 计算输出</text>
-  <path d="M920 438H970" class="arrow"/>
-
-  <path d="M220 250V295H410" class="guide"/>
-  <path d="M580 250V295H410" class="guide"/>
-  <path d="M410 295V320" class="dash"/>
-  <rect x="60" y="545" width="1160" height="200" rx="12" fill="#f1f5f9" stroke="#cbd5e1"/>
-  <text x="85" y="565" class="head">扩展机制与验证出口</text>
-  <rect x="140" y="580" width="360" height="70" class="box" fill="#ede9fe" stroke="#7c3aed"/>
-  <text x="170" y="608" class="body">校准与敏感性</text>
-  <text x="170" y="633" class="small">误差预算 · GPTQ / AWQ</text>
-  <rect x="780" y="580" width="360" height="70" class="box" fill="#cffafe" stroke="#0891b2"/>
-  <text x="810" y="608" class="body">运行时与状态</text>
-  <text x="810" y="633" class="small">计算表示 · FP8 / KV Cache</text>
-  <path d="M490 505V530H320V580" class="dash"/>
-  <path d="M1097 505V530H960V580" class="dash"/>
-  <rect x="430" y="670" width="420" height="65" class="box" fill="#fee2e2" stroke="#dc2626"/>
-  <text x="465" y="696" class="head">部署与结果验证</text>
-  <text x="465" y="720" class="small">模型与推理后端 · 显存 · 延迟 · 吞吐 · 质量</text>
-  <path d="M320 650V660H640V670" class="dash"/>
-  <path d="M960 650V660H640V670" class="dash"/>
+  <rect x="175" y="390" width="890" height="135" rx="18" class="frame"/>
+  <text x="198" y="420" class="group">前向计算与检查</text>
+  <rect x="205" y="440" width="205" height="58" rx="14" class="purple"/>
+  <text x="308" y="466" text-anchor="middle" class="h">按 scale 反量化</text><text x="308" y="487" text-anchor="middle" class="t">恢复近似 Ŵ</text>
+  <rect x="515" y="440" width="205" height="58" rx="14" class="green"/>
+  <text x="618" y="466" text-anchor="middle" class="h">线性前向</text><text x="618" y="487" text-anchor="middle" class="t">A × Ŵ</text>
+  <rect x="825" y="440" width="205" height="58" rx="14" class="orange"/>
+  <text x="928" y="466" text-anchor="middle" class="h">误差与结果</text><text x="928" y="487" text-anchor="middle" class="t">输出差异、存储节省</text>
+  <path d="M672 270V350H308V440" class="flow"/>
+  <path d="M1020 270V350H618V440" class="flow"/>
+  <path d="M410 469H515" class="flow"/><path d="M720 469H825" class="flow"/>
+  <path d="M168 270V555H928V498" class="measure"/>
+  <text x="535" y="578" text-anchor="middle" class="t">用原始 W 与近似 Ŵ 对照，检查量化误差是否处于可接受范围</text>
 </svg>
