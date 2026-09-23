@@ -24,11 +24,96 @@ DISTRIBUTED_CHAPTERS = [
     '19_Distributed_Communication_Primitives.ipynb',
 ]
 
+# 迁移到结构化测试的 notebook 使用这一组标签。尚未迁移的旧 notebook
+# 保持原有的标题/位置解析逻辑，避免一次性改动全部历史内容。
+CORE_TUTORIAL_TAGS = (
+    'tutorial-imports',
+    'tutorial-question',
+    'tutorial-test',
+    'tutorial-answer',
+)
+GPU_TUTORIAL_TAGS = (
+    'tutorial-gpu-config',
+    'tutorial-gpu-experiment',
+    'tutorial-gpu-results',
+)
+SKIP_ANSWER_TEST_TAG = 'skip_answer_test'
+
+
+def tagged_code_cells(notebook, tag):
+    """Return code cells carrying one tutorial metadata tag, in notebook order."""
+    return [
+        cell.source
+        for cell in notebook.cells
+        if cell.cell_type == 'code' and tag in cell.metadata.get('tags', [])
+    ]
+
+
+def tutorial_tag_issues(notebook):
+    """Validate the minimal tag contract for a structured tutorial notebook.
+
+    A notebook without tutorial tags is intentionally treated as a legacy
+    notebook and falls back to the existing extractor. Once any core tutorial
+    tag is present, all four core cells must be present exactly once so test
+    selection never depends on headings or cell positions again.
+    """
+    tag_locations = {tag: [] for tag in (*CORE_TUTORIAL_TAGS, *GPU_TUTORIAL_TAGS)}
+    for index, cell in enumerate(notebook.cells):
+        if cell.cell_type != 'code':
+            continue
+        tags = cell.metadata.get('tags', [])
+        for tag in tag_locations:
+            if tag in tags:
+                tag_locations[tag].append(index)
+
+    has_core_tags = any(tag_locations[tag] for tag in CORE_TUTORIAL_TAGS)
+    if not has_core_tags:
+        return []
+
+    issues = []
+    for tag in CORE_TUTORIAL_TAGS:
+        count = len(tag_locations[tag])
+        if count != 1:
+            issues.append(f'{tag} 应恰好标注 1 个代码单元，当前为 {count} 个')
+
+    for tag in GPU_TUTORIAL_TAGS:
+        for index in tag_locations[tag]:
+            tags = notebook.cells[index].metadata.get('tags', [])
+            if SKIP_ANSWER_TEST_TAG not in tags and not notebook.cells[index].metadata.get(
+                SKIP_ANSWER_TEST_TAG, False
+            ):
+                issues.append(
+                    f'第 {index + 1} 个单元带有 {tag}，应同时标注 {SKIP_ANSWER_TEST_TAG}'
+                )
+    return issues
+
+
+def validate_notebook_tags(notebook_path, *, verbose=True):
+    """Return whether a notebook satisfies the structured-tag contract."""
+    with open(notebook_path, 'r', encoding='utf-8') as f:
+        notebook = nbformat.read(f, as_version=4)
+
+    issues = tutorial_tag_issues(notebook)
+    if not issues:
+        if verbose:
+            print(f'✅ 标签结构通过: {notebook_path}')
+        return True
+
+    if verbose:
+        print(f'❌ 标签结构不完整: {notebook_path}')
+        for issue in issues:
+            print(f'  - {issue}')
+    return False
+
 
 def extract_question_code(notebook_path):
     """从notebook中提取题目区的代码（TODO部分）"""
     with open(notebook_path, 'r', encoding='utf-8') as f:
         nb = nbformat.read(f, as_version=4)
+
+    tagged_cells = tagged_code_cells(nb, 'tutorial-question')
+    if tagged_cells:
+        return '\n\n'.join(tagged_cells)
 
     question_code = []
     in_question_section = False
@@ -57,6 +142,10 @@ def extract_answer_code(notebook_path):
     """从notebook中提取答案区的代码"""
     with open(notebook_path, 'r', encoding='utf-8') as f:
         nb = nbformat.read(f, as_version=4)
+
+    tagged_cells = tagged_code_cells(nb, 'tutorial-answer')
+    if tagged_cells:
+        return '\n\n'.join(tagged_cells)
 
     answer_code = []
     in_answer_section = False
@@ -88,6 +177,10 @@ def extract_test_code(notebook_path, test_mode='answer'):
 
     with open(notebook_path, 'r', encoding='utf-8') as f:
         nb = nbformat.read(f, as_version=4)
+
+    tagged_cells = tagged_code_cells(nb, 'tutorial-test')
+    if tagged_cells:
+        return '\n\n'.join(tagged_cells)
 
     # 检查是否是理论章节
     if notebook_name in THEORY_CHAPTERS:
@@ -129,6 +222,10 @@ def extract_imports(notebook_path):
     with open(notebook_path, 'r', encoding='utf-8') as f:
         nb = nbformat.read(f, as_version=4)
 
+    tagged_cells = tagged_code_cells(nb, 'tutorial-imports')
+    if tagged_cells:
+        return '\n\n'.join(tagged_cells)
+
     # 查找第一个代码cell（通常是import cell）
     for cell in nb.cells:
         if cell.cell_type == 'code' and 'import' in cell.source:
@@ -148,6 +245,9 @@ def test_notebook_answers(notebook_path, test_mode='answer'):
     print(f"\n{'='*60}")
     print(f"测试: {notebook_path} ({mode_name})")
     print(f"{'='*60}\n")
+
+    if not validate_notebook_tags(notebook_path, verbose=True):
+        return 'fail'
 
     # 提取代码
     imports = extract_imports(notebook_path)
@@ -237,6 +337,8 @@ def main():
     parser.add_argument('--dir', default='.', help='Notebook目录路径')
     parser.add_argument('--mode', choices=['answer', 'question', 'both'], default='answer',
                         help='测试模式: answer=答案区, question=题目区, both=两者都测试')
+    parser.add_argument('--check-tags', action='store_true',
+                        help='仅校验 tutorial tags 结构，不执行代码')
 
     args = parser.parse_args()
 
@@ -254,7 +356,9 @@ def main():
             # 跳过checkpoint文件
             if '.ipynb_checkpoints' in str(nb_path):
                 continue
-            if args.mode == 'both':
+            if args.check_tags:
+                results[nb_path.name] = 'pass' if validate_notebook_tags(nb_path) else 'fail'
+            elif args.mode == 'both':
                 # 测试题目区和答案区
                 q_success = test_notebook_answers(nb_path, 'question')
                 a_success = test_notebook_answers(nb_path, 'answer')
@@ -262,6 +366,11 @@ def main():
             else:
                 success = test_notebook_answers(nb_path, args.mode)
                 results[nb_path.name] = success
+
+        if args.check_tags:
+            failed = [name for name, status in results.items() if status == 'fail']
+            print(f'\n标签结构校验: {len(results) - len(failed)}/{len(results)} 通过')
+            return 0 if not failed else 1
 
         # 汇总结果
         print(f"\n{'='*60}")
@@ -315,6 +424,8 @@ def main():
             return 0 if all(v != 'fail' for v in results.values()) else 1
 
     elif args.notebook:
+        if args.check_tags:
+            return 0 if validate_notebook_tags(args.notebook) else 1
         # 测试单个notebook
         if args.mode == 'both':
             q_success = test_notebook_answers(args.notebook, 'question')
