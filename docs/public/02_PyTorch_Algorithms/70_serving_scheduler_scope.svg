@@ -1,25 +1,53 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1360" height="560" viewBox="0 0 1360 560">
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="620" viewBox="0 0 1440 620">
   <defs>
     <style>
-      .title{font:700 28px sans-serif;fill:#17324d}.h{font:700 19px sans-serif;fill:#17324d}.t{font:16px sans-serif;fill:#35526b}.s{font:15px sans-serif;fill:#526b7d}.line{stroke:#3978a8;stroke-width:3;fill:none;marker-end:url(#a)}.dash{stroke:#8b6bb1;stroke-width:2.5;stroke-dasharray:9 7;fill:none;marker-end:url(#p)}.b{fill:#e8f3fb;stroke:#3978a8;stroke-width:2}.g{fill:#eaf7ef;stroke:#4c9870;stroke-width:2}.o{fill:#fff1df;stroke:#c78335;stroke-width:2}.p{fill:#f1eafa;stroke:#8b6bb1;stroke-width:2}
+      .title{font:700 28px sans-serif;fill:#17324d}.group{font:700 18px sans-serif;fill:#17324d}.h{font:700 16px sans-serif;fill:#17324d}.t{font:15px sans-serif;fill:#35526b}.s{font:14px sans-serif;fill:#526b7d}.flow{stroke:#3978a8;stroke-width:3;fill:none;marker-end:url(#arrow)}.feedback{stroke:#8b6bb1;stroke-width:2.5;stroke-dasharray:9 7;fill:none;marker-end:url(#purple)}.frame{fill:#fff;stroke:#c7d9e7;stroke-width:1.5}.blue{fill:#e8f3fb;stroke:#3978a8;stroke-width:2}.purple{fill:#f1eafa;stroke:#8b6bb1;stroke-width:2}.green{fill:#eaf7ef;stroke:#4c9870;stroke-width:2}.orange{fill:#fff1df;stroke:#c78335;stroke-width:2}
     </style>
-    <marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#3978a8"/></marker>
-    <marker id="p" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#8b6bb1"/></marker>
+    <marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#3978a8"/></marker>
+    <marker id="purple" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#8b6bb1"/></marker>
   </defs>
-  <rect width="1360" height="560" rx="24" fill="#f8fbfd"/>
-  <text x="680" y="48" text-anchor="middle" class="title">Serving 实例级调度：从请求到服务决策</text>
-  <rect x="55" y="125" width="220" height="105" rx="18" class="b"/>
-  <text x="165" y="163" text-anchor="middle" class="h">请求到达</text><text x="165" y="194" text-anchor="middle" class="t">到达时间、输入长度</text><text x="165" y="218" text-anchor="middle" class="t">生成长度、请求优先级</text>
-  <rect x="350" y="125" width="220" height="105" rx="18" class="p"/>
-  <text x="460" y="163" text-anchor="middle" class="h">执行队列</text><text x="460" y="194" text-anchor="middle" class="t">等待、排序、状态</text><text x="460" y="218" text-anchor="middle" class="t">公平性与排队代价</text>
-  <rect x="645" y="125" width="220" height="105" rx="18" class="g"/>
-  <text x="755" y="163" text-anchor="middle" class="h">Batch 组织</text><text x="755" y="194" text-anchor="middle" class="t">batch size、并行请求</text><text x="755" y="218" text-anchor="middle" class="t">worker busy time</text>
-  <rect x="940" y="125" width="220" height="105" rx="18" class="o"/>
-  <text x="1050" y="163" text-anchor="middle" class="h">服务执行</text><text x="1050" y="194" text-anchor="middle" class="t">prefill / decode</text><text x="1050" y="218" text-anchor="middle" class="t">吞吐与延迟</text>
-  <rect x="450" y="345" width="460" height="105" rx="18" class="b"/>
-  <text x="680" y="383" text-anchor="middle" class="h">调度策略比较</text><text x="680" y="414" text-anchor="middle" class="t">TTFT、TPOT、吞吐、公平性、P99、利用率</text><text x="680" y="438" text-anchor="middle" class="t">accept / tune / reject</text>
-  <path d="M275 177H350M570 177H645M865 177H940M1050 230V345" class="line"/>
-  <path d="M680 345V230" class="dash"/>
-  <text x="690" y="300" class="s">调整策略或 workload</text>
-  <text x="680" y="510" text-anchor="middle" class="s">实线：请求执行流程　　虚线：指标反馈与下一轮调参</text>
+  <rect width="1440" height="620" rx="24" fill="#f8fbfd"/>
+  <text x="720" y="48" text-anchor="middle" class="title">Serving 实例级调度：把请求选择变成可比较的服务结果</text>
+
+  <rect x="45" y="78" width="310" height="70" rx="18" class="blue"/>
+  <text x="200" y="108" text-anchor="middle" class="h">同一组请求流</text>
+  <text x="200" y="132" text-anchor="middle" class="t">到达时间、服务成本、优先级与输出长度</text>
+
+  <rect x="45" y="205" width="310" height="190" rx="18" class="frame"/>
+  <text x="68" y="235" class="group">请求状态</text>
+  <rect x="68" y="255" width="120" height="105" rx="14" class="blue"/>
+  <text x="128" y="290" text-anchor="middle" class="h">到达</text><text x="128" y="316" text-anchor="middle" class="t">pending</text><text x="128" y="340" text-anchor="middle" class="t">ready 条件</text>
+  <rect x="212" y="255" width="120" height="105" rx="14" class="blue"/>
+  <text x="272" y="290" text-anchor="middle" class="h">等待队列</text><text x="272" y="316" text-anchor="middle" class="t">queue wait</text><text x="272" y="340" text-anchor="middle" class="t">请求未丢失</text>
+  <path d="M188 307H212" class="flow"/>
+
+  <rect x="405" y="205" width="310" height="190" rx="18" class="frame"/>
+  <text x="428" y="235" class="group">批次准入</text>
+  <rect x="428" y="255" width="120" height="105" rx="14" class="purple"/>
+  <text x="488" y="285" text-anchor="middle" class="h">选择规则</text><text x="488" y="310" text-anchor="middle" class="t">FIFO / shortest</text><text x="488" y="334" text-anchor="middle" class="t">priority</text>
+  <rect x="572" y="255" width="120" height="105" rx="14" class="purple"/>
+  <text x="632" y="285" text-anchor="middle" class="h">准入 batch</text><text x="632" y="310" text-anchor="middle" class="t">ready only</text><text x="632" y="334" text-anchor="middle" class="t">batch 上限</text>
+  <path d="M548 307H572" class="flow"/>
+
+  <rect x="765" y="205" width="310" height="190" rx="18" class="frame"/>
+  <text x="788" y="235" class="group">服务窗口</text>
+  <rect x="788" y="255" width="120" height="105" rx="14" class="green"/>
+  <text x="848" y="290" text-anchor="middle" class="h">active batch</text><text x="848" y="316" text-anchor="middle" class="t">并行服务</text><text x="848" y="340" text-anchor="middle" class="t">worker busy</text>
+  <rect x="932" y="255" width="120" height="105" rx="14" class="green"/>
+  <text x="992" y="290" text-anchor="middle" class="h">完成与释放</text><text x="992" y="316" text-anchor="middle" class="t">completed</text><text x="992" y="340" text-anchor="middle" class="t">下一轮可选</text>
+  <path d="M908 307H932" class="flow"/>
+
+  <rect x="1125" y="205" width="270" height="190" rx="18" class="frame"/>
+  <text x="1148" y="235" class="group">结果与决策</text>
+  <rect x="1148" y="255" width="224" height="60" rx="14" class="orange"/>
+  <text x="1260" y="282" text-anchor="middle" class="h">服务指标</text><text x="1260" y="304" text-anchor="middle" class="t">TTFT · TPOT · 吞吐 · P99</text>
+  <rect x="1148" y="330" width="224" height="42" rx="14" class="orange"/>
+  <text x="1260" y="357" text-anchor="middle" class="h">accept / tune / reject</text>
+  <path d="M1260 315V330" class="flow"/>
+
+  <path d="M200 148V205" class="flow"/>
+  <path d="M332 307H428M692 307H788M1052 307H1148" class="flow"/>
+  <path d="M1260 372V470H488V360" class="feedback"/>
+  <text x="780" y="494" class="s">结果反馈：调整选择规则、batch 上限或请求分层后，用同一请求流复测</text>
+  <text x="720" y="575" text-anchor="middle" class="s">实线：一次服务循环　　虚线：依据结果调整后进入下一轮对照</text>
 </svg>

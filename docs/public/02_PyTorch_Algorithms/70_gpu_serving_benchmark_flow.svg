@@ -1,19 +1,40 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="430" viewBox="0 0 1500 430">
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="600" viewBox="0 0 1500 600">
   <defs>
-    <style>.title{font:700 28px sans-serif;fill:#17324d}.h{font:700 19px sans-serif;fill:#17324d}.t{font:16px sans-serif;fill:#35526b}.s{font:15px sans-serif;fill:#526b7d}.line{stroke:#3978a8;stroke-width:3;fill:none;marker-end:url(#a)}.dash{stroke:#8b6bb1;stroke-width:2.5;stroke-dasharray:9 7;fill:none;marker-end:url(#p)}.b{fill:#e8f3fb;stroke:#3978a8;stroke-width:2}.g{fill:#eaf7ef;stroke:#4c9870;stroke-width:2}.o{fill:#fff1df;stroke:#c78335;stroke-width:2}.p{fill:#f1eafa;stroke:#8b6bb1;stroke-width:2}</style>
-    <marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#3978a8"/></marker>
-    <marker id="p" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#8b6bb1"/></marker>
+    <style>
+      .title{font:700 28px sans-serif;fill:#17324d}.group{font:700 18px sans-serif;fill:#17324d}.h{font:700 16px sans-serif;fill:#17324d}.t{font:15px sans-serif;fill:#35526b}.s{font:14px sans-serif;fill:#526b7d}.flow{stroke:#3978a8;stroke-width:3;fill:none;marker-end:url(#arrow)}.merge{stroke:#8b6bb1;stroke-width:3;fill:none;marker-end:url(#purple)}.frame{fill:#fff;stroke:#c7d9e7;stroke-width:1.5}.blue{fill:#e8f3fb;stroke:#3978a8;stroke-width:2}.purple{fill:#f1eafa;stroke:#8b6bb1;stroke-width:2}.green{fill:#eaf7ef;stroke:#4c9870;stroke-width:2}.orange{fill:#fff1df;stroke:#c78335;stroke-width:2}
+    </style>
+    <marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#3978a8"/></marker>
+    <marker id="purple" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#8b6bb1"/></marker>
   </defs>
-  <rect width="1500" height="430" rx="24" fill="#f8fbfd"/>
-  <text x="750" y="48" text-anchor="middle" class="title">GPU/backend serving benchmark：从环境到证据</text>
-  <rect x="45" y="135" width="200" height="105" rx="18" class="b"/><text x="145" y="173" text-anchor="middle" class="h">环境预检</text><text x="145" y="205" text-anchor="middle" class="t">GPU、CUDA、backend</text><text x="145" y="228" text-anchor="middle" class="t">模型与端口</text>
-  <rect x="315" y="135" width="200" height="105" rx="18" class="p"/><text x="415" y="173" text-anchor="middle" class="h">固定 workload</text><text x="415" y="205" text-anchor="middle" class="t">请求流、dtype</text><text x="415" y="228" text-anchor="middle" class="t">并发、cache policy</text>
-  <rect x="585" y="135" width="180" height="105" rx="18" class="g"/><text x="675" y="173" text-anchor="middle" class="h">G0</text><text x="675" y="205" text-anchor="middle" class="t">serving baseline</text><text x="675" y="228" text-anchor="middle" class="t">共同参照</text>
-  <rect x="835" y="135" width="180" height="105" rx="18" class="g"/><text x="925" y="173" text-anchor="middle" class="h">G1</text><text x="925" y="205" text-anchor="middle" class="t">负载扫描</text><text x="925" y="228" text-anchor="middle" class="t">并发 / 到达率</text>
-  <rect x="1085" y="135" width="180" height="105" rx="18" class="o"/><text x="1175" y="173" text-anchor="middle" class="h">G2</text><text x="1175" y="205" text-anchor="middle" class="t">策略对照</text><text x="1175" y="228" text-anchor="middle" class="t">单变量变化</text>
-  <rect x="1330" y="135" width="125" height="105" rx="18" class="b"/><text x="1392" y="173" text-anchor="middle" class="h">JSON</text><text x="1392" y="205" text-anchor="middle" class="t">指标</text><text x="1392" y="228" text-anchor="middle" class="t">决策</text>
-  <path d="M245 187H315M515 187H585M765 187H835M1015 187H1085M1265 187H1330" class="line"/>
-  <path d="M1175 240C1175 330 925 350 675 240" class="dash"/>
-  <text x="850" y="350" class="s">G2 与 G0 使用同一 workload；G1 只说明负载敏感性</text>
-  <text x="750" y="395" text-anchor="middle" class="s">实线：实验执行流程　　虚线：基线回看与对照约束</text>
+  <rect width="1500" height="600" rx="24" fill="#f8fbfd"/>
+  <text x="750" y="48" text-anchor="middle" class="title">GPU / backend Serving 基准：共同基线、两类对照与可追溯证据</text>
+
+  <rect x="45" y="150" width="335" height="260" rx="18" class="frame"/>
+  <text x="68" y="182" class="group">共同实验条件</text>
+  <rect x="68" y="205" width="135" height="145" rx="14" class="blue"/>
+  <text x="136" y="240" text-anchor="middle" class="h">环境</text><text x="136" y="266" text-anchor="middle" class="t">GPU / CUDA</text><text x="136" y="290" text-anchor="middle" class="t">backend / 模型</text><text x="136" y="314" text-anchor="middle" class="t">dtype</text>
+  <rect x="222" y="205" width="135" height="145" rx="14" class="blue"/>
+  <text x="290" y="240" text-anchor="middle" class="h">workload</text><text x="290" y="266" text-anchor="middle" class="t">请求流</text><text x="290" y="290" text-anchor="middle" class="t">并发 / 到达率</text><text x="290" y="314" text-anchor="middle" class="t">缓存策略</text>
+
+  <rect x="455" y="220" width="220" height="120" rx="18" class="purple"/>
+  <text x="565" y="258" text-anchor="middle" class="h">G0 共同基线</text><text x="565" y="285" text-anchor="middle" class="t">固定 backend 与默认策略</text><text x="565" y="310" text-anchor="middle" class="t">记录初始服务指标</text>
+
+  <rect x="760" y="105" width="240" height="125" rx="18" class="green"/>
+  <text x="880" y="142" text-anchor="middle" class="h">G1 负载敏感性</text><text x="880" y="170" text-anchor="middle" class="t">改变并发、到达率</text><text x="880" y="195" text-anchor="middle" class="t">观察排队与饱和点</text>
+  <rect x="760" y="350" width="240" height="125" rx="18" class="orange"/>
+  <text x="880" y="387" text-anchor="middle" class="h">G2 策略对照</text><text x="880" y="415" text-anchor="middle" class="t">固定 workload</text><text x="880" y="440" text-anchor="middle" class="t">只改变一项调度策略</text>
+
+  <rect x="1085" y="220" width="205" height="120" rx="18" class="blue"/>
+  <text x="1188" y="258" text-anchor="middle" class="h">JSON 证据</text><text x="1188" y="285" text-anchor="middle" class="t">指标、配置、失败状态</text><text x="1188" y="310" text-anchor="middle" class="t">baseline / candidate</text>
+  <rect x="1335" y="235" width="120" height="90" rx="18" class="orange"/>
+  <text x="1395" y="270" text-anchor="middle" class="h">决策</text><text x="1395" y="296" text-anchor="middle" class="t">accept</text><text x="1395" y="316" text-anchor="middle" class="t">tune / reject</text>
+
+  <path d="M380 280H455" class="flow"/>
+  <path d="M675 280H710V168H760" class="flow"/>
+  <path d="M675 280H710V413H760" class="flow"/>
+  <path d="M1000 168H1040V260H1085" class="merge"/>
+  <path d="M1000 413H1040V300H1085" class="merge"/>
+  <path d="M1290 280H1335" class="flow"/>
+  <text x="720" y="92" text-anchor="middle" class="s">G1 与 G2 都以 G0 为共同基线：前者扫描负载，后者比较策略，二者不是串行阶段</text>
+  <text x="750" y="545" text-anchor="middle" class="s">蓝：固定条件与可追溯记录　紫：共同参照　绿：负载扫描　橙：策略或结论</text>
 </svg>
