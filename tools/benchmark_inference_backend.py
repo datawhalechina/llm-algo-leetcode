@@ -168,6 +168,7 @@ def benchmark(args: argparse.Namespace) -> dict[str, Any]:
             "max_tokens": args.max_tokens,
             "concurrency": args.concurrency,
             "warmup": args.warmup,
+            "repeats": 1,
         },
         "metrics": {
             "successful_requests": len(successful),
@@ -189,6 +190,34 @@ def benchmark(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def aggregate_repeated_reports(reports: list[dict[str, Any]]) -> dict[str, Any]:
+    """Aggregate repeated fixed-workload runs without hiding per-run evidence."""
+    if not reports:
+        raise ValueError("至少需要一轮 benchmark 结果")
+    if len(reports) == 1:
+        return reports[0]
+    aggregate = json.loads(json.dumps(reports[0]))
+    aggregate["runs"] = reports
+    aggregate["workload"] = dict(aggregate.get("workload", {}), repeats=len(reports))
+    metrics = dict(aggregate.get("metrics", {}))
+    for key, value in list(metrics.items()):
+        if isinstance(value, (int, float)):
+            values = [run.get("metrics", {}).get(key) for run in reports]
+            values = [item for item in values if isinstance(item, (int, float))]
+            if values:
+                metrics[key] = round(statistics.mean(values), 4)
+        elif isinstance(value, dict):
+            nested = dict(value)
+            for nested_key, nested_value in value.items():
+                values = [run.get("metrics", {}).get(key, {}).get(nested_key) for run in reports]
+                values = [item for item in values if isinstance(item, (int, float))]
+                if values:
+                    nested[nested_key] = round(statistics.mean(values), 4)
+            metrics[key] = nested
+    aggregate["metrics"] = metrics
+    return aggregate
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", default="http://127.0.0.1:8000")
@@ -207,11 +236,14 @@ def main() -> None:
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--concurrency", type=int, default=1)
     parser.add_argument("--warmup", type=int, default=2)
+    parser.add_argument("--repeats", type=int, default=1)
     parser.add_argument("--timeout", type=float, default=180.0)
     parser.add_argument("--include-requests", action="store_true")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
-    report = benchmark(args)
+    if args.repeats <= 0:
+        parser.error("--repeats 必须为正数")
+    report = aggregate_repeated_reports([benchmark(args) for _ in range(args.repeats)])
     normalized = from_backend_report(
         report,
         project=args.project,
