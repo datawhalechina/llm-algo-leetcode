@@ -3,7 +3,7 @@
   <rect x="44" y="36" width="1192" height="840" rx="28" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
 
   <text x="88" y="86" fill="#0F172A" font-size="30" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">Decode 调度：请求如何被选择和推进</text>
-  <text x="88" y="120" fill="#475569" font-size="18" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">请求携带状态进入队列，调度器反复选择并推进。</text>
+  <text x="88" y="120" fill="#475569" font-size="18" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">请求级调度（四层中的第一层）：请求携带状态进入队列，调度器反复选择并推进。</text>
 
   <rect x="88" y="176" width="236" height="76" rx="16" fill="#F1F5F9" stroke="#64748B" stroke-width="2"/>
   <text x="142" y="207" fill="#334155" font-size="20" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">解码规则</text>

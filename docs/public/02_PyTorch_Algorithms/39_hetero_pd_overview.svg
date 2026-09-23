@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="620" viewBox="0 0 1240 620" role="img" aria-labelledby="title desc">
+  <title id="title">异构 Prefill/Decode 服务的路由决策总览</title>
+  <desc id="desc">同一 serving workload 提供请求压力和资源画像，两类输入共同形成阶段路由，再比较 KV 传输、重算和同池执行，最后按 SLO 风险选择服务动作。</desc>
+  <defs>
+    <style>
+      .title{font:700 28px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#102a43}.sub{font:15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#486581}.group{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#243b53}.h{font:700 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#102a43}.t{font:14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#486581}.s{font:14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#627d98}.frame{fill:#fff;stroke:#c7d9e7;stroke-width:1.5}.blue{fill:#e8f3fb;stroke:#3978a8;stroke-width:2}.purple{fill:#f1eafa;stroke:#8b6bb1;stroke-width:2}.green{fill:#eaf7ef;stroke:#4c9870;stroke-width:2}.orange{fill:#fff1df;stroke:#c78335;stroke-width:2}.flow{stroke:#496a87;stroke-width:3;fill:none;marker-end:url(#arrow)}.risk{stroke:#b56b42;stroke-width:2.5;stroke-dasharray:8 6;fill:none;marker-end:url(#riskArrow)}
+    </style>
+    <marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#496a87"/></marker>
+    <marker id="riskArrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#b56b42"/></marker>
+  </defs>
+  <rect width="1240" height="620" rx="24" fill="#f7fafc"/>
+  <text x="620" y="48" text-anchor="middle" class="title">异构 PD：请求压力与资源条件共同决定路由</text>
+  <text x="620" y="76" text-anchor="middle" class="sub">先形成同一份请求与资源账本，再选择阶段位置、状态交接方式和 SLO 回退动作</text>
+
+  <rect x="450" y="102" width="340" height="64" rx="17" class="blue"/>
+  <text x="620" y="130" text-anchor="middle" class="h">当前 serving workload</text>
+  <text x="620" y="152" text-anchor="middle" class="t">请求形态、服务等级与资源快照</text>
+
+  <rect x="45" y="215" width="250" height="145" rx="18" class="frame"/>
+  <text x="68" y="245" class="group">请求压力</text>
+  <rect x="68" y="265" width="204" height="34" rx="11" class="blue"/><text x="170" y="288" text-anchor="middle" class="h">长 prompt / TTFT</text>
+  <rect x="68" y="311" width="204" height="34" rx="11" class="blue"/><text x="170" y="334" text-anchor="middle" class="h">长 decode / TPOT</text>
+
+  <rect x="345" y="215" width="250" height="145" rx="18" class="frame"/>
+  <text x="368" y="245" class="group">资源画像</text>
+  <rect x="368" y="265" width="204" height="34" rx="11" class="purple"/><text x="470" y="288" text-anchor="middle" class="h">算力与输入带宽</text>
+  <rect x="368" y="311" width="204" height="34" rx="11" class="purple"/><text x="470" y="334" text-anchor="middle" class="h">KV 容量与链路</text>
+
+  <rect x="665" y="215" width="250" height="145" rx="18" class="frame"/>
+  <text x="688" y="245" class="group">阶段路由</text>
+  <rect x="688" y="265" width="204" height="34" rx="11" class="green"/><text x="790" y="288" text-anchor="middle" class="h">Prefill / Decode 池</text>
+  <rect x="688" y="311" width="204" height="34" rx="11" class="green"/><text x="790" y="334" text-anchor="middle" class="h">shared 基线与回退</text>
+
+  <rect x="965" y="215" width="230" height="145" rx="18" class="frame"/>
+  <text x="988" y="245" class="group">交接选择</text>
+  <rect x="988" y="265" width="184" height="34" rx="11" class="orange"/><text x="1080" y="288" text-anchor="middle" class="h">传输 / 重算 / 同池</text>
+  <rect x="988" y="311" width="184" height="34" rx="11" class="orange"/><text x="1080" y="334" text-anchor="middle" class="h">bytes、时间与兼容性</text>
+
+  <rect x="335" y="445" width="570" height="72" rx="17" class="orange"/>
+  <text x="620" y="475" text-anchor="middle" class="h">SLO 风险检查与服务动作</text>
+  <text x="620" y="499" text-anchor="middle" class="t">保持异构路由 · 回退同池 · 排队 / 限流 / 扩容</text>
+
+  <path d="M620 166V190H170V215" class="flow"/>
+  <path d="M620 166V190H470V215" class="flow"/>
+  <path d="M170 360V392H790V360" class="flow"/>
+  <path d="M595 328H630V305H665" class="flow"/>
+  <path d="M915 288H965" class="flow"/>
+  <path d="M1080 360V481H905" class="risk"/>
+  <text x="900" y="425" text-anchor="middle" class="s">链路退化、容量压力或尾延迟升高时重新选择服务动作</text>
+</svg>

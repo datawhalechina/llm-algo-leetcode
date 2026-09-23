@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="610" viewBox="0 0 1240 610" role="img" aria-labelledby="title desc">
+  <title id="title">Chunked Prefill 的后缀分块与让出点</title>
+  <desc id="desc">未命中 suffix 根据 chunk size 切分为有序块。每完成一个块，状态写入 KV Cache，调度器可重新决定继续 Prefill 或优先服务 Decode。</desc>
+  <defs>
+    <style>
+      .title{font:700 28px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#172b4d}.sub{font:15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#52606d}.group{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#52606d}.h{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#172b4d}.t{font:14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#344563}.frame{fill:#fff;stroke:#cbd5e1;stroke-width:1.5}.blue{fill:#e8f3fb;stroke:#3978a8;stroke-width:2}.orange{fill:#fff5df;stroke:#c79a46;stroke-width:2}.green{fill:#e8f4ec;stroke:#79a889;stroke-width:2}.purple{fill:#f1eafa;stroke:#8b6bb1;stroke-width:2}.flow{stroke:#52606d;stroke-width:3;fill:none;marker-end:url(#arrow)}.compute{stroke:#b58a3b;stroke-width:3;fill:none;marker-end:url(#gold)}.feedback{stroke:#5b9b70;stroke-width:3;fill:none;marker-end:url(#greenArrow)}
+    </style>
+    <marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#52606d"/></marker>
+    <marker id="gold" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#b58a3b"/></marker>
+    <marker id="greenArrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#5b9b70"/></marker>
+  </defs>
+  <rect width="1240" height="610" rx="22" fill="#f8fafc"/>
+  <text x="54" y="52" class="title">Chunked Prefill：后缀如何变成可让出的执行计划</text>
+  <text x="54" y="82" class="sub">只切分未命中 suffix；每个 chunk 完成后，调度器获得一次重新组织 batch 的机会。</text>
+
+  <rect x="50" y="112" width="1140" height="185" rx="20" class="frame"/>
+  <text x="74" y="143" class="group">准备执行单元</text>
+  <rect x="105" y="180" width="210" height="78" rx="15" class="blue"/>
+  <text x="210" y="211" text-anchor="middle" class="h">未命中 suffix</text><text x="210" y="236" text-anchor="middle" class="t">仍需完成的输入 token</text>
+  <rect x="420" y="180" width="210" height="78" rx="15" class="orange"/>
+  <text x="525" y="211" text-anchor="middle" class="h">chunk_size</text><text x="525" y="236" text-anchor="middle" class="t">单轮最多处理的 token</text>
+  <rect x="735" y="160" width="370" height="118" rx="15" class="orange"/>
+  <text x="920" y="189" text-anchor="middle" class="h">有序 chunks</text>
+  <rect x="765" y="210" width="90" height="42" rx="11" class="frame"/><text x="810" y="237" text-anchor="middle" class="t">chunk 1</text>
+  <rect x="875" y="210" width="90" height="42" rx="11" class="frame"/><text x="920" y="237" text-anchor="middle" class="t">chunk 2</text>
+  <rect x="985" y="210" width="90" height="42" rx="11" class="frame"/><text x="1030" y="237" text-anchor="middle" class="t">尾块</text>
+  <path d="M315 219H420" class="flow"/>
+  <path d="M630 219H735" class="compute"/>
+
+  <rect x="50" y="345" width="1140" height="200" rx="20" class="frame"/>
+  <text x="74" y="376" class="group">逐块执行并回到调度器</text>
+  <rect x="105" y="425" width="220" height="78" rx="15" class="orange"/>
+  <text x="215" y="456" text-anchor="middle" class="h">执行一个 chunk</text><text x="215" y="481" text-anchor="middle" class="t">只占用当前轮 Prefill</text>
+  <rect x="470" y="425" width="220" height="78" rx="15" class="green"/>
+  <text x="580" y="456" text-anchor="middle" class="h">写入 KV Cache</text><text x="580" y="481" text-anchor="middle" class="t">保存已完成的状态</text>
+  <rect x="835" y="425" width="220" height="78" rx="15" class="purple"/>
+  <text x="945" y="456" text-anchor="middle" class="h">回到 ready 集合</text><text x="945" y="481" text-anchor="middle" class="t">继续 Prefill 或服务 Decode</text>
+  <path d="M920 278V385H215V425" class="compute"/>
+  <path d="M325 464H470" class="flow"/>
+  <path d="M690 464H835" class="feedback"/>
+</svg>
