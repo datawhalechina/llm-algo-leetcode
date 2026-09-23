@@ -43,7 +43,7 @@
   <rect x="390" y="280" width="430" height="72" fill="#ffffff" stroke="#829ab1" class="box"/>
   <text x="605" y="310" text-anchor="middle" class="task">Decode 与 KV Cache</text><text x="605" y="335" text-anchor="middle" class="small">逐 token 读取、追加与复用；对应 Task2 / Task3</text>
   <rect x="860" y="280" width="270" height="72" fill="#ffffff" stroke="#829ab1" class="box"/>
-  <text x="995" y="310" text-anchor="middle" class="task">Serving 与调度</text><text x="995" y="335" text-anchor="middle" class="small">对应 Task4</text>
+  <text x="995" y="310" text-anchor="middle" class="task">Serving 与调度</text><text x="995" y="335" text-anchor="middle" class="small">对应 Task4：请求、I/O 与批处理</text>
   <rect x="1170" y="280" width="310" height="72" fill="#ffffff" stroke="#829ab1" class="box"/>
   <text x="1325" y="310" text-anchor="middle" class="task">部署、输出与证据</text><text x="1325" y="335" text-anchor="middle" class="small">对应 Task5 / Task6</text>
   <path d="M130 190 V280" class="map"/><path d="M300 190 V280" class="map"/>
@@ -60,11 +60,11 @@
   <rect x="650" y="440" width="180" height="140" fill="#fff5e6" stroke="#e0a23b" class="box"/>
   <text x="740" y="472" text-anchor="middle" class="task">Task 3</text><text x="740" y="506" text-anchor="middle" class="text">KV Cache 管理与复用</text><text x="740" y="550" text-anchor="middle" class="small">分页、复用与容量边界</text>
   <rect x="860" y="440" width="180" height="140" fill="#fff5e6" stroke="#e0a23b" class="box"/>
-  <text x="950" y="472" text-anchor="middle" class="task">Task 4</text><text x="950" y="506" text-anchor="middle" class="text">Serving 与多请求调度</text><text x="950" y="550" text-anchor="middle" class="small">批处理、Cache 与 PD 分离</text>
+  <text x="950" y="472" text-anchor="middle" class="task">Task 4</text><text x="950" y="506" text-anchor="middle" class="text">Serving 与多请求调度</text><text x="950" y="550" text-anchor="middle" class="small">批处理、I/O 与 PD 分离</text>
   <rect x="1070" y="440" width="180" height="140" fill="#f0eefb" stroke="#8069b5" class="box"/>
   <text x="1160" y="472" text-anchor="middle" class="task">Task 5</text><text x="1160" y="506" text-anchor="middle" class="text">量化与 backend 部署</text><text x="1160" y="550" text-anchor="middle" class="small">权重、KV Cache 与质量</text>
   <rect x="1280" y="440" width="180" height="140" fill="#f0eefb" stroke="#8069b5" class="box"/>
-  <text x="1370" y="472" text-anchor="middle" class="task">Task 6</text><text x="1370" y="506" text-anchor="middle" class="text">综合基准与决策</text><text x="1370" y="550" text-anchor="middle" class="small">指标、质量与证据</text>
+  <text x="1370" y="472" text-anchor="middle" class="task">Task 6</text><text x="1370" y="506" text-anchor="middle" class="text">综合基准、并行与决策</text><text x="1370" y="550" text-anchor="middle" class="small">通信、部署与证据</text>
   <path d="M200 527 H230" class="sequence"/><path d="M410 527 H440" class="sequence"/><path d="M620 527 H650" class="sequence"/><path d="M830 527 H860" class="sequence"/><path d="M1040 527 H1070" class="sequence"/><path d="M1250 527 H1280" class="sequence"/>
   <path d="M110 352 V440" class="map"/><path d="M320 352 V440" class="map"/><path d="M530 352 V440" class="map"/><path d="M740 352 V440" class="map"/><path d="M950 352 V440" class="map"/><path d="M1090 352 V440" class="map"/><path d="M1370 352 V440" class="map"/>
 

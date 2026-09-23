@@ -59,7 +59,7 @@
   <text x="921" y="431" text-anchor="middle" class="text">Batching：合并可执行请求</text>
   <text x="921" y="456" text-anchor="middle" class="text">Scheduling：分配计算与 Cache</text>
   <text x="921" y="493" text-anchor="middle" class="small">Prefill / Decode 的资源竞争</text>
-  <text x="921" y="518" text-anchor="middle" class="small">PD 分离与多请求协作</text>
+  <text x="921" y="518" text-anchor="middle" class="small">PD 分离、通信与并行协作</text>
 
   <rect x="1110" y="370" width="330" height="178" fill="#f0eefb" stroke="#8069b5" class="box"/>
   <text x="1275" y="402" text-anchor="middle" class="head">部署表示</text>
