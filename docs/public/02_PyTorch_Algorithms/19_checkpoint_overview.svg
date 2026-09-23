@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-labelledby="title desc">
-  <title id="title">Checkpoint 训练路径总览</title>
-  <desc id="desc">前向产生 activation 后，训练可以直接保存中间状态，也可以只保存边界并在反向时重算；两条路径最后都要经过输出、梯度和随机状态的一致性验证。</desc>
+  <title id="title">训练一步中的 Activation Checkpointing</title>
+  <desc id="desc">一次训练步骤先通过前向产生 activation，再选择直接保存或 checkpoint 保存边界；反向阶段分别读取或重算这些状态以计算梯度。</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
     <style>
@@ -14,17 +14,17 @@
   </defs>
 
   <rect width="1200" height="600" fill="#f8fafc"/>
-  <text x="60" y="45" class="title">Checkpoint：保存边界，反向时重算区段</text>
-  <text x="60" y="74" class="sub">同一份 activation 有两种处理路径；Checkpoint 用额外计算换取更低的中间状态驻留</text>
+  <text x="60" y="45" class="title">训练一步：activation 保存与 checkpoint 重算</text>
+  <text x="60" y="74" class="sub">前向产生 activation；Checkpoint 改变其保存方式，使反向阶段以重算换取更少的中间状态驻留</text>
 
   <rect x="55" y="238" width="205" height="116" class="box" fill="#e0f2fe" stroke="#38bdf8"/>
-  <text x="157" y="276" text-anchor="middle" class="head">前向产生</text>
-  <text x="157" y="306" text-anchor="middle" class="label">activation</text>
-  <text x="157" y="331" text-anchor="middle" class="small">反向需要部分中间状态</text>
+  <text x="157" y="276" text-anchor="middle" class="head">训练前向</text>
+  <text x="157" y="306" text-anchor="middle" class="label">产生 activation</text>
+  <text x="157" y="331" text-anchor="middle" class="small">反向传播需要这些中间状态</text>
 
   <path d="M260 296H295V205H330" class="flow"/>
   <path d="M260 296H295V405H330" class="flow"/>
-  <text x="300" y="286" text-anchor="middle" class="small">路径选择</text>
+  <text x="300" y="286" text-anchor="middle" class="small">activation 处理选择</text>
 
   <rect x="330" y="135" width="485" height="145" class="box" fill="#eff6ff" stroke="#60a5fa"/>
   <text x="355" y="168" class="head">直接保存</text>
@@ -50,11 +50,9 @@
   <path d="M815 417H855V355H895" class="flow"/>
 
   <rect x="895" y="245" width="250" height="180" class="box" fill="#ecfccb" stroke="#84cc16"/>
-  <text x="1020" y="280" text-anchor="middle" class="head">一致性验证</text>
+  <text x="1020" y="280" text-anchor="middle" class="head">反向完成</text>
   <rect x="925" y="302" width="190" height="88" class="node"/>
-  <text x="1020" y="327" text-anchor="middle" class="label">输出与输入梯度</text>
-  <text x="1020" y="351" text-anchor="middle" class="small">重算结果应与普通前向一致</text>
-  <text x="1020" y="373" text-anchor="middle" class="small">同时检查随机状态</text>
-
-  <text x="600" y="540" text-anchor="middle" class="sub">比较两条路径时记录 peak memory、step time 与梯度一致性；具体粒度再见第二张图</text>
+  <text x="1020" y="327" text-anchor="middle" class="label">得到输出与梯度</text>
+  <text x="1020" y="351" text-anchor="middle" class="small">两条路径应得到等价结果</text>
+  <text x="1020" y="373" text-anchor="middle" class="small">测试时额外检查随机状态</text>
 </svg>

@@ -1,26 +1,46 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 560" role="img" aria-labelledby="title desc">
-  <title id="title">Activation Offload 的代价模型</title>
-  <desc id="desc">Offload 通过搬走激活降低 GPU 驻留，但需要用传输量和带宽估算时间代价。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="560" viewBox="0 0 1500 560" role="img" aria-labelledby="title desc">
+  <title id="title">Activation Offload 的容量与传输账本</title>
+  <desc id="desc">总 activation 与 GPU 预算先形成预算缺口，块级搬运计划再决定实际搬运量、GPU 保留量和单程、往返传输时间。</desc>
   <defs>
-    <linearGradient id="bg" x1="0" x2="1"><stop stop-color="#f8fafc"/><stop offset="1" stop-color="#ecfdf5"/></linearGradient>
     <style>
-      .title { font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif; font-size: 28px; font-weight: 700; fill: #0f172a; }
-      .sub { font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif; font-size: 15px; font-weight: 500; fill: #475569; }
-      .label { font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif; font-size: 18px; font-weight: 700; fill: #111827; }
-      .small { font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif; font-size: 13px; font-weight: 500; fill: #334155; }
-      .box { stroke-width: 3; rx: 16; ry: 16; }
-      .flow { stroke: #0891b2; stroke-width: 4; stroke-dasharray: 9 7; fill: none; marker-end: url(#cyan); }
+      text { font-family: "Noto Sans CJK SC", "Microsoft YaHei", Arial, sans-serif; fill: #172033; }
+      .title { font-size: 28px; font-weight: 700; }
+      .sub { font-size: 15px; fill: #475569; }
+      .label { font-size: 18px; font-weight: 700; }
+      .small { font-size: 14px; fill: #475569; }
+      .box { stroke-width: 2.5; rx: 15; }
+      .flow { stroke: #475569; stroke-width: 3; fill: none; }
+      .plan { stroke: #0891b2; stroke-width: 3.5; fill: none; }
+      .time { stroke: #8b5cf6; stroke-width: 3.5; fill: none; }
+      .benefit { stroke: #65a30d; stroke-width: 3; fill: none; }
     </style>
-    <marker id="cyan" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#0891b2"/></marker>
   </defs>
-  <rect width="1500" height="560" fill="url(#bg)"/>
-  <text x="60" y="54" class="title">Offload 代价模型：省下多少显存，付出多少搬运</text>
-  <text x="60" y="82" class="sub">先计算可搬运激活，再用带宽估算传输时间，最后判断预算和 step time 是否可接受</text>
-  <rect x="80" y="220" width="230" height="100" class="box" fill="#eff6ff" stroke="#3b82f6"/><text x="195" y="260" text-anchor="middle" class="label">GPU 激活</text><text x="195" y="290" text-anchor="middle" class="small">总激活量</text>
-  <rect x="410" y="220" width="250" height="100" class="box" fill="#ecfeff" stroke="#0891b2"/><text x="535" y="260" text-anchor="middle" class="label">选择搬运块</text><text x="535" y="290" text-anchor="middle" class="small">可搬运数据量</text>
-  <rect x="760" y="220" width="250" height="100" class="box" fill="#f5f3ff" stroke="#8b5cf6"/><text x="885" y="260" text-anchor="middle" class="label">传输估算</text><text x="885" y="290" text-anchor="middle" class="small">搬运量 ÷ 带宽</text>
-  <rect x="1110" y="150" width="280" height="100" class="box" fill="#ecfccb" stroke="#65a30d"/><text x="1250" y="190" text-anchor="middle" class="label">显存收益</text><text x="1250" y="220" text-anchor="middle" class="small">GPU 保留量下降</text>
-  <rect x="1110" y="350" width="280" height="100" class="box" fill="#fff1f2" stroke="#e11d48"/><text x="1250" y="390" text-anchor="middle" class="label">时间代价</text><text x="1250" y="420" text-anchor="middle" class="small">同步 + 往返传输</text>
-  <path d="M310 270 L410 270" class="flow"/><path d="M660 270 L760 270" class="flow"/><path d="M1010 250 C1060 220 1070 200 1110 200" class="flow"/><path d="M1010 290 C1060 350 1070 400 1110 400" class="flow"/>
-  <text x="90" y="505" class="small">决策时同时检查：GPU 是否仍超预算、搬运是否能与计算重叠、以及实际 workload 的峰值显存与 step time。</text>
+  <rect width="1500" height="560" fill="#f8fafc"/>
+  <text x="70" y="54" class="title">Offload 成本账本：从预算缺口到实际搬运与传输时间</text>
+  <text x="70" y="82" class="sub">预算缺口给出最低释放需求；块级计划决定实际搬运量，再换算显存保留量与单程、往返时间</text>
+
+  <rect x="80" y="165" width="235" height="92" class="box" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="198" y="203" text-anchor="middle" class="label">总 activation A</text><text x="198" y="231" text-anchor="middle" class="small">当前 GPU 驻留量</text>
+  <rect x="80" y="335" width="235" height="92" class="box" fill="#f0fdf4" stroke="#65a30d"/>
+  <text x="198" y="373" text-anchor="middle" class="label">GPU 预算 B</text><text x="198" y="401" text-anchor="middle" class="small">允许保留的上限</text>
+
+  <rect x="430" y="240" width="275" height="112" class="box" fill="#fff7ed" stroke="#f97316"/>
+  <text x="568" y="281" text-anchor="middle" class="label">预算缺口</text><text x="568" y="312" text-anchor="middle" class="small">最低释放：max(A − B, 0)</text>
+  <path d="M315 211 H365 V273 H430" class="flow"/><polygon points="430,273 417,266 417,280" fill="#475569"/>
+  <path d="M315 381 H365 V319 H430" class="flow"/><polygon points="430,319 417,312 417,326" fill="#475569"/>
+
+  <rect x="760" y="240" width="250" height="112" class="box" fill="#ecfeff" stroke="#0891b2"/>
+  <text x="885" y="281" text-anchor="middle" class="label">块级搬运计划</text><text x="885" y="312" text-anchor="middle" class="small">offloaded_bytes = A − kept_bytes</text>
+  <path d="M705 296 H760" class="plan"/><polygon points="760,296 747,289 747,303" fill="#0891b2"/>
+
+  <rect x="1110" y="240" width="280" height="92" class="box" fill="#ecfccb" stroke="#65a30d"/>
+  <text x="1250" y="278" text-anchor="middle" class="label">GPU 保留量下降</text><text x="1250" y="306" text-anchor="middle" class="small">kept_bytes 决定显存收益</text>
+  <path d="M1010 296 H1110" class="benefit"/><polygon points="1110,296 1097,289 1097,303" fill="#65a30d"/>
+
+  <rect x="760" y="385" width="250" height="92" class="box" fill="#f5f3ff" stroke="#8b5cf6"/>
+  <text x="885" y="423" text-anchor="middle" class="label">单程传输时间</text><text x="885" y="451" text-anchor="middle" class="small">offloaded_bytes ÷ bandwidth</text>
+  <rect x="1110" y="385" width="280" height="92" class="box" fill="#fff1f2" stroke="#e11d48"/>
+  <text x="1250" y="423" text-anchor="middle" class="label">往返传输时间</text><text x="1250" y="451" text-anchor="middle" class="small">2 × 单程时间</text>
+  <path d="M885 352 V385" class="time"/><polygon points="885,385 878,372 892,372" fill="#8b5cf6"/>
+  <path d="M1010 431 H1110" class="time"/><polygon points="1110,431 1097,424 1097,438" fill="#8b5cf6"/>
 </svg>
