@@ -14,7 +14,6 @@
   <rect width="1360" height="900" fill="url(#bg)"/>
   <text x="54" y="56" class="title">前缀缓存与分块预填充：从重复计算到路径复用</text>
   <text x="54" y="86" class="sub">先理解 prompt 如何形成 KV Cache，再看共享前缀如何改变后续 Prefill 的执行路径。</text>
-
   <rect x="145" y="115" width="1100" height="205" class="panel" fill="#f1f6fb" stroke="#c5d7e8"/>
   <text x="175" y="300" text-anchor="start" class="group">前置知识：请求、Prefill 与上下文状态</text>
   <rect x="145" y="165" width="230" height="90" class="n" fill="#e7f0ff" stroke="#7b9bc7"/><text x="260" y="202" text-anchor="middle" class="label">请求 prompt</text><text x="260" y="232" text-anchor="middle" class="small">系统提示词 + 用户输入</text>
@@ -22,42 +21,19 @@
   <rect x="695" y="165" width="230" height="90" class="n" fill="#ffffff" stroke="#7b8794"/><text x="810" y="202" text-anchor="middle" class="label">KV Cache</text><text x="810" y="232" text-anchor="middle" class="small">状态复用 · 精度与存储成本</text>
   <rect x="990" y="165" width="230" height="90" class="n" fill="#e8f4ec" stroke="#79a889"/><text x="1105" y="202" text-anchor="middle" class="label">共享前缀</text><text x="1105" y="232" text-anchor="middle" class="small">多个请求复用相同 token 路径</text>
   <rect x="695" y="270" width="230" height="36" class="n" fill="#ffffff" stroke="#91a3b5"/><text x="810" y="294" text-anchor="middle" class="small">PagedAttention：分页管理 KV Cache</text>
-
   <rect x="145" y="345" width="1100" height="230" class="panel" fill="#fbfaf5" stroke="#dfd3b5"/>
   <text x="175" y="555" text-anchor="start" class="group">本节机制：登记、匹配、拆分并调度</text>
   <rect x="695" y="385" width="230" height="72" class="n" fill="#e8f4ec" stroke="#79a889"/><text x="810" y="414" text-anchor="middle" class="label">Prefix Cache</text><text x="810" y="438" text-anchor="middle" class="small">登记共享前缀</text>
   <rect x="955" y="385" width="230" height="72" class="n" fill="#ffffff" stroke="#7b8794"/><text x="1070" y="414" text-anchor="middle" class="label">RadixAttention</text><text x="1070" y="438" text-anchor="middle" class="small">最长前缀匹配 · token 路径</text>
   <rect x="695" y="475" width="230" height="72" class="n" fill="#fffaf0" stroke="#c79a46"/><text x="810" y="504" text-anchor="middle" class="label">调度决策</text><text x="810" y="528" text-anchor="middle" class="small">容量 · 批处理 · 执行顺序</text>
   <rect x="955" y="475" width="230" height="72" class="n" fill="#ffffff" stroke="#7b8794"/><text x="1070" y="504" text-anchor="middle" class="label">请求拆分</text><text x="1070" y="528" text-anchor="middle" class="small">命中前缀 / 未命中后缀</text>
-
   <rect x="145" y="590" width="1100" height="230" class="panel" fill="#f5faf6" stroke="#c5ddca"/>
   <text x="175" y="800" text-anchor="start" class="group">执行路径：复用或分块后进入 Decode</text>
   <rect x="430" y="630" width="240" height="64" class="n" fill="#e8f4ec" stroke="#79a889"/><text x="550" y="656" text-anchor="middle" class="label">复用命中前缀</text><text x="550" y="680" text-anchor="middle" class="small">已有状态可直接使用</text>
   <rect x="950" y="630" width="240" height="64" class="n" fill="#fff5df" stroke="#c79a46"/><text x="1070" y="656" text-anchor="middle" class="label">Chunked Prefill</text><text x="1070" y="680" text-anchor="middle" class="small">未命中后缀按 block_size 分块</text>
   <rect x="670" y="735" width="280" height="64" class="n" fill="#ffffff" stroke="#91a3b5"/><text x="810" y="761" text-anchor="middle" class="label">后续 Decode</text><text x="810" y="785" text-anchor="middle" class="small">候选验证与多 Token 推进</text>
-
-  <!-- 连接线最后绘制，避免被分组面板和节点遮挡。 -->
-  <path d="M375 210H400M630 210H695M925 210H990" class="flow"/>
-  <path d="M515 255V330H755V385" class="flow"/>
-  <path d="M1115 255V335H865V385" class="reuse"/>
-  <path d="M810 255V270" class="flow"/>
-  <path d="M925 421H955" class="flow"/>
-  <path d="M1070 457V475" class="flow"/>
-  <path d="M955 511H925" class="flow"/>
-  <path d="M750 547V590H550V630" class="reuse"/>
-  <path d="M870 547V590H1070V630" class="compute"/>
-  <path d="M550 694V710H750V735" class="reuse"/>
-  <path d="M1070 694V710H870V735" class="compute"/>
-  <path d="M670 767H80V105H810V165" class="hint"/>
+  <path d="M375 210H400M630 210H695M925 210H990" class="flow"/><path d="M515 255V330H755V385" class="flow"/><path d="M1115 255V335H865V385" class="reuse"/><path d="M810 255V270" class="flow"/><path d="M925 421H955" class="flow"/><path d="M1070 457V475" class="flow"/><path d="M955 511H925" class="flow"/><path d="M750 547V590H550V630" class="reuse"/><path d="M870 547V590H1070V630" class="compute"/><path d="M550 694V710H750V735" class="reuse"/><path d="M1070 694V710H870V735" class="compute"/><path d="M670 767H80V105H810V165" class="hint"/>
   <text x="0" y="0" transform="translate(62 520) rotate(-90)" class="small">Prefill / Decode 状态写回 · 下一轮调度</text>
-  <g aria-label="颜色与连线图例">
-    <line x1="370" y1="875" x2="420" y2="875" stroke="#7b9bc7" stroke-width="5"/><text x="432" y="880" class="small">输入</text>
-    <line x1="485" y1="875" x2="535" y2="875" stroke="#5b9b70" stroke-width="5"/><text x="547" y="880" class="small">复用</text>
-    <line x1="600" y1="875" x2="650" y2="875" stroke="#b58a3b" stroke-width="5"/><text x="662" y="880" class="small">调度/分块</text>
-    <line x1="755" y1="875" x2="805" y2="875" stroke="#52606d" stroke-width="5"/><text x="817" y="880" class="small">机制</text>
-    <line x1="895" y1="875" x2="945" y2="875" stroke="#91a3b5" stroke-width="4" stroke-dasharray="8 7"/><text x="957" y="880" class="small">反馈</text>
-  </g>
-  <path d="M400 210L386 202L386 218Z" fill="#52606d"/>
-  <path d="M695 210L681 202L681 218Z" fill="#52606d"/>
-  <path d="M990 210L976 202L976 218Z" fill="#52606d"/>
+  <g aria-label="颜色与连线图例"><line x1="370" y1="875" x2="420" y2="875" stroke="#7b9bc7" stroke-width="5"/><text x="432" y="880" class="small">输入</text><line x1="485" y1="875" x2="535" y2="875" stroke="#5b9b70" stroke-width="5"/><text x="547" y="880" class="small">复用</text><line x1="600" y1="875" x2="650" y2="875" stroke="#b58a3b" stroke-width="5"/><text x="662" y="880" class="small">调度/分块</text><line x1="755" y1="875" x2="805" y2="875" stroke="#52606d" stroke-width="5"/><text x="817" y="880" class="small">机制</text><line x1="895" y1="875" x2="945" y2="875" stroke="#91a3b5" stroke-width="4" stroke-dasharray="8 7"/><text x="957" y="880" class="small">反馈</text></g>
+  <path d="M400 210L386 202L386 218Z" fill="#52606d"/><path d="M695 210L681 202L681 218Z" fill="#52606d"/><path d="M990 210L976 202L976 218Z" fill="#52606d"/>
 </svg>
