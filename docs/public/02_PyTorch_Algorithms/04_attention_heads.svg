@@ -1,59 +1,62 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="680" viewBox="0 0 1500 680" role="img" aria-labelledby="title desc">
-<title id="title">Attention 的计算路径与 KV 状态复用</title>
-<desc id="desc">从自回归 Attention 的总览节点分出当前步计算和历史状态复用两条机制分支。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="720" viewBox="0 0 1500 720" role="img" aria-labelledby="title desc">
+<title id="title">Decoder Block 中 Attention 的当前计算与历史状态</title>
+<desc id="desc">从 Transformer Decoder Block 的 Attention 子层出发，展示 Q、K、V 的当前计算路径与 K/V 跨轮保存、读取的状态路径。</desc>
 <defs>
-  <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/></marker>
+  <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker>
   <style>
     .title { font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif; font-size: 30px; font-weight: 700; fill: #0f172a; }
     .sub { font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif; font-size: 16px; font-weight: 500; fill: #475569; }
-    .group { font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif; font-size: 16px; font-weight: 700; fill: #64748b; }
+    .group { font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif; font-size: 17px; font-weight: 700; fill: #475569; }
     .head { font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif; font-size: 18px; font-weight: 700; fill: #111827; }
     .body { font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif; font-size: 14px; font-weight: 500; fill: #334155; }
     .small { font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif; font-size: 13px; font-weight: 500; fill: #475569; }
     .box { stroke-width: 2.5; rx: 16; }
     .panel { stroke-width: 2; rx: 22; }
-  .line { stroke: #475569; stroke-width: 3; fill: none; marker-end: url(#arrow); }
-  .branch { stroke: #64748b; stroke-width: 2.7; fill: none; marker-end: url(#arrow); }
-  .cycle { stroke: #0284c7; stroke-width: 3; fill: none; marker-end: url(#arrow); }
-  .readback { stroke: #7c3aed; stroke-width: 3; fill: none; stroke-dasharray: 9 7; marker-end: url(#arrow); }
+    .line { stroke: #475569; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+    .state { stroke: #7c3aed; stroke-width: 3; fill: none; marker-end: url(#arrow); }
   </style>
 </defs>
-<rect width="1500" height="680" fill="#f8fafc"/>
-<text x="70" y="58" class="title">Attention：计算路径与 KV 状态复用</text>
-<text x="70" y="91" class="sub">从一次自回归计算出发，分别观察当前 token 如何得到上下文，以及历史 K/V 如何被保存和读取。</text>
+<rect width="1500" height="720" fill="#f8fafc"/>
+<text x="70" y="58" class="title">Decoder Block 中的 Attention：当前计算与历史 K/V 状态</text>
+<text x="70" y="91" class="sub">Attention 既把当前 hidden state 转成上下文表示，也把新增 K/V 留给后续 Decode 使用。</text>
 
-<rect x="500" y="120" width="500" height="82" fill="#e0f2fe" class="box" stroke="#0284c7"/>
-<text x="750" y="153" text-anchor="middle" class="head">自回归 Attention</text>
-<text x="750" y="180" text-anchor="middle" class="body">当前 token 读取历史上下文，并产生下一步所需状态</text>
+<rect x="525" y="120" width="450" height="84" fill="#dbeafe" class="box" stroke="#3b82f6"/>
+<text x="750" y="155" text-anchor="middle" class="head">Transformer Decoder Block</text>
+<text x="750" y="183" text-anchor="middle" class="body">Attention 子层读取上一层 hidden state</text>
 
-<rect x="45" y="275" width="760" height="280" fill="#ffffff" class="panel" stroke="#cbd5e1"/>
-<text x="75" y="312" class="group">当前步计算：从输入得到上下文表示</text>
-<rect x="75" y="365" width="155" height="105" fill="#dbeafe" class="box" stroke="#3b82f6"/>
-<text x="152" y="401" text-anchor="middle" class="head">输入表示</text><text x="152" y="430" text-anchor="middle" class="body">hidden state</text><text x="152" y="453" text-anchor="middle" class="small">进入 Q / K / V</text>
-<rect x="265" y="365" width="155" height="105" fill="#dcfce7" class="box" stroke="#16a34a"/>
-<text x="342" y="401" text-anchor="middle" class="head">Q / K / V</text><text x="342" y="430" text-anchor="middle" class="body">查询、索引、内容</text><text x="342" y="453" text-anchor="middle" class="small">K / V 可缓存</text>
-<rect x="455" y="365" width="155" height="105" fill="#fef3c7" class="box" stroke="#d97706"/>
-<text x="532" y="401" text-anchor="middle" class="head">相关性计算</text><text x="532" y="430" text-anchor="middle" class="body">Q 与 K 比较</text><text x="532" y="453" text-anchor="middle" class="small">形成注意力权重</text>
-<rect x="645" y="365" width="155" height="105" fill="#fce7f3" class="box" stroke="#db2777"/>
-<text x="722" y="401" text-anchor="middle" class="head">上下文聚合</text><text x="722" y="430" text-anchor="middle" class="small">权重 × V</text><text x="722" y="453" text-anchor="middle" class="small">得到上下文</text>
-<path d="M230 417 H255" class="line"/><path d="M420 417 H445" class="line"/><path d="M610 417 H635" class="line"/>
+<rect x="505" y="260" width="490" height="100" fill="#dcfce7" class="box" stroke="#16a34a"/>
+<text x="750" y="296" text-anchor="middle" class="head">Q / K / V 表示与位置关系</text>
+<text x="750" y="323" text-anchor="middle" class="body">Q 查询历史；K 匹配位置；V 提供内容；RoPE 作用于 Q / K</text>
+<path d="M750 204 V245" class="line"/>
 
-<rect x="850" y="275" width="605" height="280" fill="#fffbeb" class="panel" stroke="#fcd34d"/>
-<path d="M650 202 V240 H425 V275" class="branch"/>
-<path d="M850 202 V240 H1152 V275" class="branch"/>
-<text x="880" y="312" class="group">历史状态复用：让下一步 Decode 读取已有信息</text>
-<rect x="880" y="365" width="155" height="105" fill="#ede9fe" class="box" stroke="#7c3aed"/>
-<text x="957" y="401" text-anchor="middle" class="head">KV 组织</text><text x="957" y="430" text-anchor="middle" class="body">不同的 KV 组织方式</text><text x="957" y="453" text-anchor="middle" class="small">MHA / GQA / MQA；MLA 见后续扩展</text>
-<rect x="1070" y="365" width="155" height="105" fill="#e0f2fe" class="box" stroke="#0284c7"/>
-<text x="1147" y="401" text-anchor="middle" class="head">保存历史 K / V</text><text x="1147" y="430" text-anchor="middle" class="body">沿序列增长</text><text x="1147" y="453" text-anchor="middle" class="small">占用显存与带宽</text>
-<rect x="1260" y="365" width="155" height="105" fill="#dcfce7" class="box" stroke="#16a34a"/>
-<text x="1337" y="401" text-anchor="middle" class="head">下一步 Decode</text><text x="1337" y="430" text-anchor="middle" class="body">读取历史状态</text><text x="1337" y="453" text-anchor="middle" class="small">继续生成</text>
-<path d="M1035 417 H1060" class="line"/><path d="M1225 417 H1250" class="line"/>
+<rect x="60" y="430" width="770" height="210" fill="#ffffff" class="panel" stroke="#cbd5e1"/>
+<text x="95" y="467" class="group">当前 Attention 计算：得到本轮上下文表示</text>
+<rect x="95" y="512" width="200" height="72" fill="#fef3c7" class="box" stroke="#d97706"/>
+<text x="195" y="541" text-anchor="middle" class="head">Q 读取 K / V</text>
+<text x="195" y="564" text-anchor="middle" class="small">相关性与注意力权重</text>
+<rect x="345" y="512" width="200" height="72" fill="#fce7f3" class="box" stroke="#db2777"/>
+<text x="445" y="541" text-anchor="middle" class="head">上下文聚合</text>
+<text x="445" y="564" text-anchor="middle" class="small">权重与 V 形成结果</text>
+<rect x="595" y="512" width="200" height="72" fill="#e0f2fe" class="box" stroke="#0284c7"/>
+<text x="695" y="541" text-anchor="middle" class="head">写回 Block 路径</text>
+<text x="695" y="564" text-anchor="middle" class="small">进入残差与后续层</text>
+<path d="M295 548 H330" class="line"/>
+<path d="M545 548 H580" class="line"/>
 
-<!-- 两个分组之间的状态循环：当前步写入，下一步读取 -->
-<path d="M342 470 V590 H1147 V470" class="cycle"/>
-<path d="M1337 470 V625 H152 V470" class="readback"/>
-<text x="745" y="570" text-anchor="middle" class="small">当前 token 的 K / V 写入历史 Cache</text>
-<text x="745" y="650" text-anchor="middle" class="small">下一步 Decode 读取历史状态，进入新一轮计算</text>
+<rect x="885" y="430" width="555" height="210" fill="#fffbeb" class="panel" stroke="#fcd34d"/>
+<text x="920" y="467" class="group">跨轮 K / V 状态：供后续生成继续读取</text>
+<rect x="920" y="512" width="145" height="72" fill="#ede9fe" class="box" stroke="#7c3aed"/>
+<text x="992" y="541" text-anchor="middle" class="head">状态表示</text>
+<text x="992" y="564" text-anchor="middle" class="small">MHA / GQA / MQA</text>
+<rect x="1090" y="512" width="145" height="72" fill="#ede9fe" class="box" stroke="#7c3aed"/>
+<text x="1162" y="541" text-anchor="middle" class="head">追加 K / V</text>
+<text x="1162" y="564" text-anchor="middle" class="small">沿历史序列保存</text>
+<rect x="1260" y="512" width="145" height="72" fill="#e0f2fe" class="box" stroke="#0284c7"/>
+<text x="1332" y="541" text-anchor="middle" class="head">后续 Decode</text>
+<text x="1332" y="564" text-anchor="middle" class="small">读取历史状态</text>
+<path d="M1065 548 H1075" class="state"/>
+<path d="M1235 548 H1245" class="state"/>
 
+<path d="M690 360 V405 H195 V512" class="line"/>
+<path d="M810 360 V405 H992 V512" class="state"/>
 </svg>

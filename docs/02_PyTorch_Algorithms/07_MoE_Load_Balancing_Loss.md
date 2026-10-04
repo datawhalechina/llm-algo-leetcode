@@ -23,96 +23,65 @@
 ---
 ## 前置阅读
 
-**导语：** 先看 Router 如何做 Top-K 分配，再看负载均衡损失如何约束专家使用率。
+**导语：** 先理解 Router 如何保留完整概率、选择 Top-K 专家并完成重归一化；随后再从一个 batch 的角度比较“偏好”与“实际派发”。
 
 - [06. MoE Router | MoE 路由器](../02_PyTorch_Algorithms/06_MoE_Router.md)
-- [13. End-to-End Fine-Tuning Experiment | 端到端微调实验](../02_PyTorch_Algorithms/13_End_to_End_Fine_Tuning_Experiment.md)
+- 可选回看：[13. End-to-End Fine-Tuning Experiment | 端到端微调实验](../02_PyTorch_Algorithms/13_End_to_End_Fine_Tuning_Experiment.md)（需要回看辅助损失如何进入训练总损失时使用）
 
+### Step 1：路由正确还不够——还要避免专家拥塞
 
----
-### Step 1: 核心数学公式
+Top-k Router 可以为单个 token 选择专家，却不保证一个 batch 或多个训练 step 的 token 会均匀分布。若多数 token 长期集中到少数专家，capacity overflow、排队、跨卡通信和同步长尾都会放大；均衡机制需要把这种系统风险反馈给 Router。
 
-负载均衡损失的目标，是防止所有 token 长期挤向少数专家，导致 MoE 从稀疏专家系统退化成拥塞路由。
+| 观察层次 | 需要回答的问题 | 对应信号 |
+|---|---|---|
+| 单个 token | 它偏好哪些专家 | 完整概率与 Top-k id |
+| 一个 batch | 偏好和实际派发是否集中 | `P_i`、`f_i`、expert count |
+| 多个 step | 热点是否持续、是否振荡 | 移动统计、路由偏置变化 |
+| 系统执行 | 哪些专家先触及容量 | capacity、overflow、等待与 payload |
 
 ![MoE 负载均衡：让路由真正可训练](../public/02_PyTorch_Algorithms/07_moe_balance.svg)
 
-为了让 $T$ 个 Token 均匀地分配给 $E$ 个专家，我们需要设计一个惩罚项，加到总的 CrossEntropy Loss 里。
-Mixtral / Switch Transformer 使用的经典公式：
+### Step 2：用偏好、派发与容量三类分布观察路由
 
-$$ L_{aux} = \alpha \cdot E \sum_{i=1}^E f_i \cdot P_i $$
+负载均衡至少需要同时看三类量：`P_i` 是 Router 给专家 $i$ 的平均概率质量，`f_i` 是专家实际被 Top-k 选中的比例，capacity / overflow 则说明执行阶段是否还能接收这些 token。只看其中一项可能掩盖“概率看似均匀、离散选择却集中”或“分配尚可、容量配置仍不足”的问题。
 
-**其中：**
-- $T$：当前批次中参与路由统计的 token 总数，通常 $T = batch\_size \times seq\_len$。
-- $K$：每个 token 选择的专家数（通常 $K = 2$）。
-- $E$：专家总数。
-- $p_t$：第 $t$ 个 token 在 **全部 $E$ 个专家上** 的路由概率分布向量，满足 $\sum_{i=1}^E p_{t,i} = 1$。其中 $p_{t,i}$ 表示 token $t$ 分配给专家 $i$ 的 Softmax 概率；$\text{Top-}K(p_t)$ 表示从该向量中选出的前 $K$ 个专家索引。
-- $f_i$：专家 $i$ 的 **分配次数占比**。
-- $P_i$：专家 $i$ 的 **平均路由概率**。
-- $\alpha$：辅助损失的权重系数（通常很小，如 0.01）。
+| 量 | 来源 | 回答的问题 |
+|---|---|---|
+| $P_i$ | 全部专家概率的 token 均值 | Router 的平均偏好是否集中 |
+| $f_i$ | Top-k id 的出现次数 | 实际 dispatch 是否集中 |
+| capacity usage | accepted / capacity | 专家槽位利用是否均衡 |
+| overflow rate | 超容量分配 | 是否需要重路由、丢弃或扩容 |
 
-**在 Top-K 路由（$K \ge 1$）下，本教程统一定义为：**
+![MoE 路由的偏好、派发与容量信号](../public/02_PyTorch_Algorithms/07_router_distributions.svg)
+
+### Step 3：辅助损失与无辅助均衡的不同反馈路径
+
+经典辅助损失把平均偏好 $P_i$ 与实际分配 $f_i$ 放入训练目标：偏好和派发同时集中时惩罚增大。它直接影响梯度，因此系数过大可能干扰主任务。另一类无辅助均衡方法不把额外项加入主 loss，而是根据历史负载动态调整专家选择偏置；这减少了损失耦合，但引入了额外状态、更新节奏和稳定性问题。
 
 $$
- f_i = \frac{1}{T \cdot K} \sum_{t=1}^{T} \mathbf{1}_{i \in \text{Top-}K(p_t)}, \quad P_i = \frac{1}{T} \sum_{t=1}^{T} p_{t,i}
+P_i=\frac{1}{T}\sum_t p_{t,i},\qquad
+f_i=\frac{1}{TK}\sum_t\mathbf{1}_{i\in\operatorname{TopK}(p_t)},\qquad
+L_{balance}=\alpha E\sum_i f_iP_i.
 $$
 
-具体含义：
-- $f_i$ 统计的是“专家 $i$ 被选中的总次数 / 总分配次数 $T \cdot K$”，因此 $\sum_i f_i = 1$。
-- $P_i$ 是对每个 token 在全部 $E$ 个专家上的 Softmax 路由概率做平均，由于每个 token 的路由概率在所有专家上求和为 $1$，因此 $\sum_i P_i = 1$。
+| 路径 | 反馈进入哪里 | 优点 | 需要警惕 |
+|---|---|---|---|
+| Auxiliary loss | 训练总损失与梯度 | 机制直接、统计清晰 | 系数影响主任务，均衡不等于语义路由正确 |
+| Auxiliary-loss-free | 路由选择偏置或控制状态 | 不直接改写主任务 loss | 偏置更新可能振荡，仍需监测 overflow 与质量 |
+| Capacity fallback | 执行阶段重路由或丢弃 | 保护单步可执行性 | 不能替代长期路由训练 |
 
-> **注**：当 $K = 1$ 时，上式退化为 Switch Transformer 的原始定义。上述定义保证了 $\sum_i f_i = \sum_i P_i = 1$，使得辅助损失在任意 $K$ 下都能以统一形式工作。
+本节题目实现辅助损失这一条基础路径；无辅助均衡和 capacity fallback 作为后续 MoE 项目的候选策略，不在同一个函数中混写。
 
-**为什么这个公式有效？**
-根据均值不等式，给定总和为 $1$ 的 $f$ 和 $P$，当且仅当所有的 $f_i = 1/E$ 且 $P_i = 1/E$ 时（即绝对均匀分配），它们的内积（点积）之和最小。优化器为了降低这个 Loss，会拼命把 Token 往不同的专家那里赶！
+### Step 4：代码设计与批次级负载均衡损失
 
-#### 图解：为什么 MoE 需要负载均衡
+本题接收 Router 的两类输出：完整概率用于计算专家平均偏好 `P_i`，Top-K 索引用于统计实际派发比例 `f_i`，再据此得到辅助损失。题目区固定输入契约；学习者补全三处批次统计机制。
 
-如果 Router 总把 token 分给少数专家，MoE 会退化成“少数专家过载、多数专家闲置”。
-
-```text
-bad routing:
-expert 0: ████████████████████  80%
-expert 1: ████                  15%
-expert 2: █                     5%
-expert 3:                       0%
-
-better routing:
-expert 0: █████                 25%
-expert 1: █████                 25%
-expert 2: █████                 25%
-expert 3: █████                 25%
-```
-
-
-负载均衡损失同时看两件事：
-
-| 符号 | 含义 | 来自哪里 |
-|:---|:---|:---|
-| $P_i$ | expert `i` 的平均路由概率 | router softmax 概率 |
-| $f_i$ | expert `i` 实际接到的 token 占比 | top-k 选择结果 |
-
-直觉：如果某个 expert 概率高、实际分配也高，`P_i * f_i` 会变大，auxiliary loss 会推动 Router 不要长期挤向同一批专家。
-
-### Step 2: 代码实现框架
-
-
-你需要统计在当前批次中每个专家被选中的总次数（形成分配次数占比 $f_i$），同时计算路由概率的均值（$P_i$）。将这两个分布点乘并乘以专家总数 $E$ 和超参数 $\alpha$，即可得到最终的 Load Balancing Loss。
-
-**关键点**：本实现支持 Top-K 路由（$K \ge 1$），每个 Token 选择 `top_k` 个专家。统计 $f_i$ 时按总分配次数 `total_tokens * top_k` 归一化；统计 $P_i$ 时按 token 总数 `total_tokens` 归一化。
-
-可以把它理解成两个视角的乘积：$P_i$ 描述路由器“想把 token 分给谁”，$f_i$ 描述实际“分给了谁”；只有两者同时偏向同一批专家时，loss 才会明显上升，从而把路由从塌缩状态拉回均匀状态。
-
-### Step 3: 动手实战
-
-接下来把 $P_i$、$f_i$ 和最终 auxiliary loss 写成可运行代码。
-
-**要求**：请补全下方 `compute_load_balancing_loss` 的逻辑。
-
-**注意**：
-- 本实现支持 Top-K 路由，即每个 Token 选择 K 个专家（通常 K=2）。
-- 计算 $f_i$ 时按总分配次数 `total_tokens * top_k` 归一化；计算 $P_i$ 时按 token 总数 `total_tokens` 归一化。
-- 回顾 Step 1 的数学定义，确保代码与公式对齐。
-
+| TODO | 代码契约与机制责任 | 关键约束 | 测试证据 |
+|---|---|---|---|
+| TODO 1 | 汇总每个专家的平均路由概率 `P_i` | 从完整概率沿 token 维取平均 | `P_i` 总和为 1 |
+| TODO 2 | 统计每个专家的实际 token 分配比例 `f_i` | 根据 Top-K 索引计数并按总分配数归一化 | `f_i` 总和为 1；集中路由可识别 |
+| TODO 3 | 计算辅助均衡损失 | 使用相同专家维度的 `P_i` 与 `f_i` | 均匀路由低于集中路由；返回统计可核对 |
+| 固定骨架 | 检查形状、专家数、`top_k` 与索引范围 | `router_probs` 与 `selected_experts` 共享 token 维 | 非法输入被拒绝 |
 
 ```python
 import torch
@@ -122,122 +91,116 @@ import torch.nn.functional as F
 
 
 ```python
-
 def compute_load_balancing_loss(
-    routing_weights: torch.Tensor, 
-    selected_experts: torch.Tensor, 
-    num_experts: int, 
+    router_probs: torch.Tensor,
+    selected_experts: torch.Tensor,
+    num_experts: int,
     top_k: int,
-    alpha: float = 0.01
+    alpha: float = 0.01,
+    return_stats: bool = False,
 ):
-    """
-    计算 MoE 的负载均衡辅助损失（支持 Top-K 路由）
-    
-    Args:
-        routing_weights: [batch_size * seq_len, top_k]，每个 token 选中的 K 个专家的权重（已归一化）
-        selected_experts: [batch_size * seq_len, top_k]，每个 token 选中的 K 个专家的索引
-        num_experts: 专家总数 E
-        top_k: 每个 token 选择的专家数量 K
-        alpha: 损失权重系数
-    
-    Returns:
-        aux_loss: 标量，负载均衡损失
-    """
-    batch_size_x_seq_len, _ = selected_experts.shape
-    total_tokens = batch_size_x_seq_len
-    
-    # ==========================================
-    # 先统计每个专家拿到的平均路由概率，再做后续归一化。
-    # TODO 1: 计算 P_i（每个专家的平均路由概率得分）
-    # ==========================================
+    """计算 Top-K MoE 的 batch 级负载均衡辅助损失。"""
+    if router_probs.ndim != 2 or selected_experts.ndim != 2:
+        raise ValueError('router_probs 与 selected_experts 都必须是二维张量')
+    total_tokens, probability_experts = router_probs.shape
+    if total_tokens == 0 or probability_experts != num_experts:
+        raise ValueError('router_probs 的 token 数与专家维必须有效')
+    if selected_experts.shape != (total_tokens, top_k):
+        raise ValueError('selected_experts 必须是 [tokens, top_k]')
+    if not 0 < top_k <= num_experts:
+        raise ValueError('top_k 必须在 1 到 num_experts 之间')
+    if selected_experts.dtype != torch.long:
+        raise ValueError('selected_experts 必须为 torch.long')
+    if torch.any((selected_experts < 0) | (selected_experts >= num_experts)):
+        raise ValueError('selected_experts 含越界专家索引')
+
+    # TODO 1：计算每个专家的平均路由概率 P_i。
     # P_i = ???
-    
-    # ==========================================
-    # 再统计每个专家实际被选中的次数，形成分配比例。
-    # TODO 2: 计算 f_i（每个专家实际分到的 Token 比例）
-    # ==========================================
+    raise NotImplementedError('TODO 1：请汇总完整概率分布')
+
+    # TODO 2：计算每个专家的实际分配比例 f_i。
     # expert_mask = ???
     # tokens_per_expert = ???
     # f_i = ???
-    
-    # ==========================================
-    # 最后把两种视角的分布点乘，得到负载均衡损失。
-    # TODO 3: 计算最终的 auxiliary loss
-    # ==========================================
+    raise NotImplementedError('TODO 2：请统计 Top-K 分配比例')
+
+    # TODO 3：计算负载均衡辅助损失。
     # aux_loss = ???
-
-    return aux_loss
-
+    raise NotImplementedError('TODO 3：请计算辅助损失')
+    return (aux_loss, P_i, f_i) if return_stats else aux_loss
 ```
 
 
 ```python
-# 测试你的实现
-def test_aux_loss():
-    try:
-        torch.manual_seed(42)
-        num_experts = 8
-        top_k = 2
-        num_tokens = 1000
-        alpha = 0.01
-        
-        # 模拟路由结果
-        # 1. 极度不均衡：所有 token 都选专家 0 和 1
-        bad_selected = torch.zeros(num_tokens, top_k, dtype=torch.long)
-        bad_selected[:, 0] = 0
-        bad_selected[:, 1] = 1
-        bad_weights = torch.ones(num_tokens, top_k) / top_k
-        
-        loss_bad = compute_load_balancing_loss(bad_weights, bad_selected, num_experts, top_k, alpha)
-        
-        # 2. 绝对均匀：token 均匀分配给所有专家
-        good_selected = torch.zeros(num_tokens, top_k, dtype=torch.long)
-        for i in range(num_tokens):
-            good_selected[i, 0] = (i * 2) % num_experts
-            good_selected[i, 1] = (i * 2 + 1) % num_experts
-        good_weights = torch.ones(num_tokens, top_k) / top_k
-        
-        loss_good = compute_load_balancing_loss(good_weights, good_selected, num_experts, top_k, alpha)
-        
-        print(f"极度不均衡的 Loss: {loss_bad.item():.4f}")
-        print(f"绝对均匀的 Loss  : {loss_good.item():.4f}")
-        
-        # 理论最小值验证（基于当前 Top-K 定义）
-        # 均匀时：f_i = (T*K/E) / (T*K) = 1/E；P_i = 1/E
-        # => sum(f_i * P_i) = E*(1/E)*(1/E) = 1/E
-        # => aux_loss = alpha * E * (1/E) = alpha
-        expected_min = alpha  # 0.01
-        assert torch.allclose(loss_good, torch.tensor(expected_min), atol=1e-4), f"理论最小 Loss 计算错误！期望 {expected_min:.4f}，实际 {loss_good.item():.4f}"
-        assert loss_bad > loss_good * 2, "惩罚项没有对不均衡分布产生足够大的 Loss！"
-        
-        print("\n✅ All Tests Passed! 你成功掌握了 Mixtral / DeepSeek 的防崩塌核心技术！")
-        
-    except NotImplementedError:
-        print("请先完成 TODO 代码！")
-        raise
-    except (AttributeError, NameError, TypeError, ValueError) as e:
-        print("代码可能未完成，导致变量未定义" if isinstance(e, NameError) else "代码可能未完成，导致了类型错误")
-        raise NotImplementedError("请先完成 TODO 代码！") from e
-    except AssertionError as e:
-        print(f"❌ 测试失败: {e}")
-        raise NotImplementedError("请先完成 TODO 代码！") from e
-    except Exception as e:
-        print(f"❌ 测试失败: {e}")
-        raise
+# 测试设计：分别验证均匀、集中、偏好/派发错配和输入契约。
+# 每个测试对应一类 batch 级路由现象，避免把所有判断混在单一大测试中。
 
-test_aux_loss()
 
+def test_uniform_routing_statistics():
+    num_experts, top_k, num_tokens, alpha = 8, 2, 80, 0.01
+    selected = torch.tensor(
+        [[(2 * i) % num_experts, (2 * i + 1) % num_experts] for i in range(num_tokens)],
+        dtype=torch.long,
+    )
+    probs = torch.full((num_tokens, num_experts), 1 / num_experts)
+    loss, P_i, f_i = compute_load_balancing_loss(probs, selected, num_experts, top_k, alpha, True)
+    assert torch.allclose(P_i, torch.full((num_experts,), 1 / num_experts))
+    assert torch.allclose(f_i, torch.full((num_experts,), 1 / num_experts))
+    assert torch.allclose(loss, torch.tensor(alpha), atol=1e-6)
+
+
+def test_concentrated_routing_has_larger_penalty():
+    num_experts, top_k, num_tokens, alpha = 8, 2, 80, 0.01
+    selected = torch.tensor([[0, 1]] * num_tokens, dtype=torch.long)
+    probs = torch.zeros(num_tokens, num_experts)
+    probs[:, :2] = 0.5
+    concentrated = compute_load_balancing_loss(probs, selected, num_experts, top_k, alpha)
+    uniform = torch.tensor(alpha)
+    assert concentrated > uniform * 2
+
+
+def test_preference_and_dispatch_can_differ():
+    num_experts, top_k, num_tokens = 8, 2, 40
+    probs = torch.full((num_tokens, num_experts), 1 / num_experts)
+    selected = torch.tensor([[0, 1]] * num_tokens, dtype=torch.long)
+    _, P_i, f_i = compute_load_balancing_loss(probs, selected, num_experts, top_k, return_stats=True)
+    assert torch.allclose(P_i, torch.full((num_experts,), 1 / num_experts))
+    assert torch.allclose(f_i[:2], torch.tensor([0.5, 0.5]))
+    assert torch.allclose(f_i[2:], torch.zeros(num_experts - 2))
+
+
+def test_load_balance_input_contract():
+    probs = torch.full((4, 4), 0.25)
+    selected = torch.tensor([[0, 1]] * 4, dtype=torch.long)
+    invalid_cases = [
+        (probs[:, :3], selected, 4, 2),
+        (probs, selected.float(), 4, 2),
+        (probs, torch.tensor([[0, 4]] * 4), 4, 2),
+        (probs, selected, 4, 0),
+    ]
+    for args in invalid_cases:
+        try:
+            compute_load_balancing_loss(*args)
+        except ValueError:
+            continue
+        raise AssertionError('非法路由输入应被拒绝')
+
+
+def run_load_balance_tests():
+    test_uniform_routing_statistics()
+    test_concentrated_routing_has_larger_penalty()
+    test_preference_and_dispatch_can_differ()
+    test_load_balance_input_contract()
+    print('✅ 负载均衡：均匀、集中、错配与输入契约测试通过')
+
+
+try:
+    run_load_balance_tests()
+except NotImplementedError:
+    print('请先完成 TODO 1–3，再运行测试。')
+    raise
 ```
 
----
-
-🛑 **STOP HERE** 🛑
-<br><br><br><br><br><br><br><br><br><br>
-> 请先尝试自己完成代码并跑通测试。<br>
-> 如果你正在 Colab 中运行，并且遇到困难没有思路，可以向下滚动查看参考答案。
-<br><br><br><br><br><br><br><br><br><br>
-
----
 ## 参考代码与解析
 
 ### 代码
@@ -245,30 +208,44 @@ test_aux_loss()
 
 ```python
 def compute_load_balancing_loss(
-    routing_weights: torch.Tensor, 
-    selected_experts: torch.Tensor, 
-    num_experts: int, 
+    router_probs: torch.Tensor,
+    selected_experts: torch.Tensor,
+    num_experts: int,
     top_k: int,
-    alpha: float = 0.01
+    alpha: float = 0.01,
+    return_stats: bool = False,
 ):
-    batch_size_x_seq_len, _ = selected_experts.shape
-    total_tokens = batch_size_x_seq_len
-    
-    # TODO 1: 计算 P_i（每个专家的平均路由概率得分）
-    P_i = torch.zeros(num_experts, dtype=routing_weights.dtype, device=routing_weights.device)
-    P_i.scatter_add_(0, selected_experts.flatten(), routing_weights.flatten())
-    P_i = P_i / total_tokens
-    
-    # TODO 2: 计算 f_i（每个专家实际分到的 Token 比例）
+    """计算 Top-K MoE 的 batch 级负载均衡辅助损失。"""
+    if router_probs.ndim != 2 or selected_experts.ndim != 2:
+        raise ValueError('router_probs 与 selected_experts 都必须是二维张量')
+    total_tokens, probability_experts = router_probs.shape
+    if total_tokens == 0 or probability_experts != num_experts:
+        raise ValueError('router_probs 的 token 数与专家维必须有效')
+    if selected_experts.shape != (total_tokens, top_k):
+        raise ValueError('selected_experts 必须是 [tokens, top_k]')
+    if not 0 < top_k <= num_experts:
+        raise ValueError('top_k 必须在 1 到 num_experts 之间')
+    if selected_experts.dtype != torch.long:
+        raise ValueError('selected_experts 必须为 torch.long')
+    if torch.any((selected_experts < 0) | (selected_experts >= num_experts)):
+        raise ValueError('selected_experts 含越界专家索引')
+
+    # TODO 1：计算每个专家的平均路由概率 P_i。
+    # P_i = ???
+    P_i = router_probs.mean(dim=0)
+
+    # TODO 2：计算每个专家的实际分配比例 f_i。
+    # expert_mask = ???
+    # tokens_per_expert = ???
+    # f_i = ???
     expert_mask = F.one_hot(selected_experts, num_classes=num_experts)
     tokens_per_expert = expert_mask.sum(dim=(0, 1)).float()
     f_i = tokens_per_expert / (total_tokens * top_k)
-    
-    # TODO 3: 计算最终的 auxiliary loss
-    aux_loss = alpha * num_experts * (f_i * P_i).sum()
-    
-    return aux_loss
 
+    # TODO 3：计算负载均衡辅助损失。
+    # aux_loss = ???
+    aux_loss = alpha * num_experts * (f_i * P_i).sum()
+    return (aux_loss, P_i, f_i) if return_stats else aux_loss
 ```
 
 ### 答案与直觉
@@ -279,15 +256,10 @@ def compute_load_balancing_loss(
 
 **1. TODO 1: 计算 P_i（平均路由概率）**
 
-- **实现方式**：
-  ```python
-  P_i = torch.zeros(num_experts, dtype=routing_weights.dtype, device=routing_weights.device)
-  P_i.scatter_add_(0, selected_experts.flatten(), routing_weights.flatten())
-  P_i = P_i / total_tokens
-  ```
-- **核心逻辑**：使用 `scatter_add_` 将每个 token 对选中专家的权重累加到对应专家的位置。
-- **归一化**：除以 token 总数 `total_tokens` 得到平均路由概率。
-- **物理含义**：$P_i$ 表示专家 $i$ 在所有 token 上的平均路由概率得分。
+- **实现方式**：`P_i = router_probs.mean(dim=0)`。
+- **核心逻辑**：沿 token 维度求均值，保留 Router 对每个专家的完整概率偏好。
+- **归一化**：每个 token 的完整概率和为 1，因此均值后的 $P_i$ 仍满足 $\sum_i P_i=1$。
+- **物理含义**：$P_i$ 表示专家 $i$ 在所有 token 上获得的平均概率质量，而非只统计已 dispatch 的权重。
 
 **2. TODO 2: 计算 f_i（分配次数比例）**
 
@@ -318,11 +290,9 @@ def compute_load_balancing_loss(
 
 ## 相关阅读
 
-负载均衡损失连接了路由公式和系统执行：论文用于确认目标，项目入口用于继续观察通信、显存和性能代价。
+负载均衡将 Router 的统计量连接到专家并行中的容量与通信问题；下列材料分别用于核对公式、真实模型和项目级证据。
 
 - [Switch Transformers 原论文](https://arxiv.org/abs/2101.03961)
-- [Mixtral 开源模型说明](https://huggingface.co/docs/transformers/main/en/model_doc/mixtral)
-- [06. MoE 路由器](../02_PyTorch_Algorithms/06_MoE_Router.md)
+- [Mixtral 模型实现说明](https://huggingface.co/docs/transformers/main/en/model_doc/mixtral)
+- [80. MoE 专家并行基准](../02_PyTorch_Algorithms/80_MoE_Expert_Parallel_Benchmark.md)
 - [P1: 通信拓扑与分布式基石](../01_Hardware_Math_and_Systems/05_Communication_Topologies.md)
-- [P1: 显存计算与 ZeRO 优化](../01_Hardware_Math_and_Systems/06_VRAM_Calculation_and_ZeRO.md)
-- [P1: 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)

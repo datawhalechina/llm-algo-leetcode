@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 720" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 540" role="img" aria-labelledby="title desc">
   <title id="title">MoE Router 路由主路径</title>
   <desc id="desc">Token 经过路由器打分、Top-K 选择、专家计算和加权合并，形成稀疏激活路径。</desc>
   <defs>
@@ -15,7 +15,7 @@
     <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker>
     <marker id="arrowPink" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#db2777"/></marker>
   </defs>
-  <rect width="1600" height="720" fill="url(#bg)"/>
+  <rect width="1600" height="540" fill="url(#bg)"/>
   <text x="60" y="60" class="title">MoE Router：一个 token 如何选择少数专家</text>
   <text x="60" y="90" class="sub">路由器控制计算路径；Top-K 让总参数容量变大，但每个 token 只激活少数专家</text>
 
@@ -30,6 +30,4 @@
   <path d="M260 315 L330 315" class="flow"/><path d="M550 315 L620 315" class="flow"/>
   <path d="M830 315 C870 315 875 205 920 205" class="route"/><path d="M830 315 C870 315 875 435 920 435" class="route"/>
   <path d="M1150 205 C1190 205 1200 315 1240 315" class="flow"/><path d="M1150 435 C1190 435 1200 315 1240 315" class="flow"/>
-  <rect x="200" y="555" width="1200" height="82" class="box" fill="#ffffff" stroke="#cbd5e1"/>
-  <text x="800" y="588" text-anchor="middle" class="label">系统含义</text><text x="800" y="615" text-anchor="middle" class="small">稀疏激活降低单 token 计算量，但 dispatch、容量限制和专家间通信成为新的工程问题</text>
 </svg>

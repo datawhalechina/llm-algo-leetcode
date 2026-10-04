@@ -1,38 +1,62 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
-<title id="title">Attention 中 Q、K、V 的张量形状流转</title>
-<desc id="desc">从输入隐藏状态出发，展示线性投影、多头切分、注意力计算和输出合并，并分出 KV Cache 的形状变化。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="560" viewBox="0 0 1500 560" role="img" aria-labelledby="title desc">
+<title id="title">MHA、GQA、MQA 的 QKV 张量分支</title>
+<desc id="desc">输入产生 Q 与 K/V 两条不同 head 数的张量分支。它们共同参与 Attention，K/V 同时进入 KV Cache。</desc>
 <defs>
-  <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker>
+  <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker>
   <style>
     .title { font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif; font-size: 29px; font-weight: 700; fill: #0f172a; }
     .sub { font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif; font-size: 16px; font-weight: 500; fill: #475569; }
     .head { font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif; font-size: 18px; font-weight: 700; fill: #111827; }
     .body { font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif; font-size: 14px; font-weight: 500; fill: #334155; }
     .shape { font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif; font-size: 15px; font-weight: 700; fill: #0f172a; }
+    .small { font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif; font-size: 13px; font-weight: 500; fill: #475569; }
     .box { stroke-width: 2.5; rx: 16; }
+    .panel { stroke-width: 2; rx: 20; }
     .line { stroke: #475569; stroke-width: 3; fill: none; marker-end: url(#arrow); }
-    .branch { stroke: #64748b; stroke-width: 2.7; fill: none; marker-end: url(#arrow); }
+    .state { stroke: #7c3aed; stroke-width: 3; fill: none; marker-end: url(#arrow); }
   </style>
 </defs>
-<rect width="1500" height="470" fill="#f8fafc"/>
-<text x="750" y="52" text-anchor="middle" class="title">Attention 的张量链路：形状对齐与 Cache 分支</text>
-<text x="750" y="84" text-anchor="middle" class="sub">B 是 batch，S 是序列长度，H 是 Query head 数，Hₖᵥ 是 KV head 数，D 是单个 head 的维度。</text>
+<rect width="1500" height="560" fill="#f8fafc"/>
+<text x="70" y="58" class="title">MHA、GQA、MQA：Q 与 K/V 的张量分支</text>
+<text x="70" y="91" class="sub">B 是 batch，S 是序列长度，H 是 Query head 数，Hₖᵥ 是 KV head 数，D 是每个 head 的特征宽度。</text>
 
-<rect x="40" y="145" width="190" height="165" fill="#dbeafe" class="box" stroke="#3b82f6"/>
-<text x="135" y="185" text-anchor="middle" class="head">输入隐藏状态</text><text x="135" y="225" text-anchor="middle" class="body">进入 Q/K/V 投影</text><text x="135" y="270" text-anchor="middle" class="shape">[B, S, D_model]</text>
-<rect x="280" y="145" width="190" height="165" fill="#e0f2fe" class="box" stroke="#0284c7"/>
-<text x="375" y="185" text-anchor="middle" class="head">线性投影</text><text x="375" y="220" text-anchor="middle" class="body">分别得到 Q、K、V</text><text x="375" y="258" text-anchor="middle" class="shape">Q：[B,S,H×D]</text><text x="375" y="286" text-anchor="middle" class="shape">K/V：[B,S,Hₖᵥ×D]</text>
-<rect x="520" y="145" width="190" height="165" fill="#dcfce7" class="box" stroke="#16a34a"/>
-<text x="615" y="185" text-anchor="middle" class="head">多头切分</text><text x="615" y="225" text-anchor="middle" class="body">reshape 并转置</text><text x="615" y="270" text-anchor="middle" class="shape">[B, H, S, D]</text>
-<rect x="760" y="145" width="190" height="165" fill="#fef3c7" class="box" stroke="#d97706"/>
-<text x="855" y="185" text-anchor="middle" class="head">注意力分数</text><text x="855" y="225" text-anchor="middle" class="body">Q × Kᵀ / √D</text><text x="855" y="270" text-anchor="middle" class="shape">[B, H, S, S]</text>
-<rect x="1000" y="145" width="190" height="165" fill="#fce7f3" class="box" stroke="#db2777"/>
-<text x="1095" y="185" text-anchor="middle" class="head">加权 Value</text><text x="1095" y="225" text-anchor="middle" class="body">Softmax 权重 × V</text><text x="1095" y="270" text-anchor="middle" class="shape">[B, H, S, D]</text>
-<rect x="1240" y="145" width="190" height="165" fill="#ede9fe" class="box" stroke="#7c3aed"/>
-<text x="1335" y="185" text-anchor="middle" class="head">多头合并</text><text x="1335" y="225" text-anchor="middle" class="body">转置并 reshape</text><text x="1335" y="270" text-anchor="middle" class="shape">[B, S, H×D]</text>
-<path d="M230 227 H270" class="line"/><path d="M470 227 H510" class="line"/><path d="M710 227 H750" class="line"/><path d="M950 227 H990" class="line"/><path d="M1190 227 H1230" class="line"/>
+<rect x="45" y="215" width="185" height="110" fill="#dbeafe" class="box" stroke="#3b82f6"/>
+<text x="137" y="252" text-anchor="middle" class="head">输入表示</text>
+<text x="137" y="280" text-anchor="middle" class="shape">[B, S, D_model]</text>
 
-<rect x="385" y="345" width="460" height="78" fill="#fff4e6" class="box" stroke="#d97706"/>
-<text x="615" y="372" text-anchor="middle" class="head">KV Cache 分支</text><text x="615" y="397" text-anchor="middle" class="body">仅保存历史 K/V，沿 S 维增长</text><text x="615" y="419" text-anchor="middle" class="small">GQA 使用 H<tspan baseline-shift="sub" font-size="12">kv</tspan>，Decode 时对齐到 H</text>
-<path d="M615 310 V345" class="branch"/>
+<rect x="300" y="195" width="225" height="150" fill="#e0f2fe" class="box" stroke="#0284c7"/>
+<text x="412" y="234" text-anchor="middle" class="head">Q / K / V 投影</text>
+<text x="412" y="282" text-anchor="middle" class="body">生成 Query 与 K/V 状态</text>
+<path d="M230 270 H285" class="line"/>
+
+<rect x="590" y="120" width="230" height="138" fill="#ede9fe" class="box" stroke="#7c3aed"/>
+<text x="705" y="157" text-anchor="middle" class="head">K/V：KV head</text>
+<text x="705" y="188" text-anchor="middle" class="shape">[B, Hₖᵥ, S, D]</text>
+<text x="705" y="216" text-anchor="middle" class="small">MHA：Hₖᵥ=H；GQA：Hₖᵥ&lt;H；MQA：Hₖᵥ=1</text>
+
+<rect x="590" y="345" width="230" height="128" fill="#dcfce7" class="box" stroke="#16a34a"/>
+<text x="705" y="382" text-anchor="middle" class="head">Q：Query head</text>
+<text x="705" y="413" text-anchor="middle" class="shape">[B, H, S, D]</text>
+<text x="705" y="441" text-anchor="middle" class="small">当前位置发起查询</text>
+<path d="M525 245 H555 V184 H590" class="state"/>
+<path d="M525 295 H555 V409 H590" class="line"/>
+
+<rect x="905" y="120" width="220" height="128" fill="#fef3c7" class="box" stroke="#d97706"/>
+<text x="1015" y="157" text-anchor="middle" class="head">Q × Kᵀ 与权重</text>
+<text x="1015" y="188" text-anchor="middle" class="body">相关性计算后归一化</text>
+<text x="1015" y="216" text-anchor="middle" class="shape">[B, H, S, S]</text>
+<path d="M820 184 H905" class="state"/>
+<path d="M820 409 H860 V248 H1015" class="line"/>
+
+<rect x="1190" y="120" width="255" height="128" fill="#fce7f3" class="box" stroke="#db2777"/>
+<text x="1317" y="157" text-anchor="middle" class="head">权重 × V 与多头输出</text>
+<text x="1317" y="188" text-anchor="middle" class="body">权重聚合 V，形成上下文表示</text>
+<text x="1317" y="216" text-anchor="middle" class="shape">[B, S, H×D]</text>
+<path d="M1125 184 H1190" class="line"/>
+
+<rect x="930" y="345" width="330" height="138" fill="#fff4e6" class="box" stroke="#d97706"/>
+<text x="1095" y="382" text-anchor="middle" class="head">KV Cache</text>
+<text x="1095" y="413" text-anchor="middle" class="body">仅保存历史 K/V，沿 S 维增长</text>
+<text x="1095" y="441" text-anchor="middle" class="shape">[B, Hₖᵥ, S_cache, D]</text>
+<path d="M705 258 V300 H1095 V345" class="state"/>
 </svg>

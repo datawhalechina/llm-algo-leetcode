@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 560" role="img" aria-labelledby="title desc">
+  <title id="title">RoPE 的频率与长度外推</title><desc id="desc">展示位置、频率、旋转角与训练长度共同决定 RoPE 外推时的风险。</desc>
+  <defs><style>.t{font:700 28px sans-serif;fill:#0f172a}.s{font:500 16px sans-serif;fill:#475569}.h{font:700 18px sans-serif;fill:#0f172a}.b{font:500 15px sans-serif;fill:#334155}.box{stroke-width:2.5;rx:18}.a{stroke:#64748b;stroke-width:3.5;fill:none;marker-end:url(#m)}</style><marker id="m" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#64748b"/></marker></defs>
+  <rect width="1400" height="560" fill="#f8fafc"/><text x="55" y="58" class="t">RoPE 长上下文：位置与频率共同决定旋转角</text><text x="55" y="88" class="s">CPU 旋转测试可以验证机制；是否在更长上下文保持质量，仍需要目标任务的长度阶梯证据。</text>
+  <rect x="80" y="190" width="230" height="120" class="box" fill="#eff6ff" stroke="#2563eb"/><text x="110" y="232" class="h">位置 m</text><text x="110" y="262" class="b">第几个 token</text>
+  <rect x="390" y="190" width="230" height="120" class="box" fill="#ecfeff" stroke="#0891b2"/><text x="420" y="232" class="h">频率 θ_j</text><text x="420" y="262" class="b">每对维度的旋转速度</text>
+  <rect x="700" y="190" width="230" height="120" class="box" fill="#f5f3ff" stroke="#7c3aed"/><text x="730" y="232" class="h">旋转角 mθ_j</text><text x="730" y="262" class="b">作用到 Q / K 成对维</text>
+  <rect x="1010" y="140" width="300" height="100" class="box" fill="#fff7ed" stroke="#d97706"/><text x="1040" y="180" class="h">训练长度内</text><text x="1040" y="208" class="b">位置组合有训练分布支持</text>
+  <rect x="1010" y="330" width="300" height="100" class="box" fill="#fff1f2" stroke="#e11d48"/><text x="1040" y="370" class="h">训练长度外</text><text x="1040" y="398" class="b">需要验证外推与 scaling 取舍</text>
+  <path d="M310 250H390" class="a"/><path d="M620 250H700" class="a"/><path d="M930 250H970V190H1010" class="a"/><path d="M930 250H970V380H1010" class="a"/>
+  <text x="86" y="500" class="s">比较 scaling 时固定任务、prompt、生成长度、模型版本和 backend；同时查看短上下文回归与长距离检索，而不是只看最大长度。</text>
+</svg>
