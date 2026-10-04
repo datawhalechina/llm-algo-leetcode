@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 850" role="img" aria-labelledby="title desc">
+  <title id="title">大模型架构演进知识地图</title>
+  <desc id="desc">展示 Block 主干、Attention 表示、位置与访问范围、稳定性、MoE 容量和递推记忆的关系，以及它们如何连接推理、性能、算子、通信、后训练和量化专题。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f8fafc"/><stop offset="1" stop-color="#f0fdfa"/></linearGradient>
+    <style>.title{font:700 34px sans-serif;fill:#0f172a}.sub{font:500 17px sans-serif;fill:#475569}.box{stroke-width:2.5;rx:20}.head{font:700 19px sans-serif;fill:#0f172a}.body{font:500 15px sans-serif;fill:#334155}.arrow{stroke:#64748b;stroke-width:3.5;fill:none;marker-end:url(#arrow)}.dash{stroke:#94a3b8;stroke-width:3;fill:none;stroke-dasharray:9 8;marker-end:url(#grayArrow)}</style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#64748b"/></marker><marker id="grayArrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#94a3b8"/></marker>
+  </defs>
+  <rect width="1680" height="850" fill="url(#bg)"/>
+  <text x="70" y="64" class="title">大模型架构知识地图：先确认结构，再验证下游影响</text>
+  <text x="70" y="96" class="sub">实线是模型内部的结构关系；虚线指向需要用其他专题的测量、实现或项目继续验证的影响。</text>
+
+  <rect x="70" y="160" width="260" height="132" class="box" fill="#eff6ff" stroke="#2563eb"/><text x="98" y="200" class="head">Decoder Block 基线</text><text x="98" y="230" class="body">token / embedding / residual</text><text x="98" y="256" class="body">组件组合与状态主干</text>
+  <rect x="390" y="160" width="270" height="132" class="box" fill="#ecfeff" stroke="#0891b2"/><text x="418" y="200" class="head">Attention 表示</text><text x="418" y="230" class="body">04 head sharing → ARCH-MLA</text><text x="418" y="256" class="body">MHA / GQA / latent KV</text>
+  <rect x="720" y="160" width="270" height="132" class="box" fill="#fff7ed" stroke="#d97706"/><text x="748" y="200" class="head">位置与访问范围</text><text x="748" y="230" class="body">RoPE / 长度外推</text><text x="748" y="256" class="body">窗口 / 局部 / 稀疏可见性</text>
+  <rect x="1050" y="160" width="260" height="132" class="box" fill="#f5f3ff" stroke="#7c3aed"/><text x="1078" y="200" class="head">稳定性与通道</text><text x="1078" y="230" class="body">Pre-Norm / RMSNorm</text><text x="1078" y="256" class="body">SwiGLU / Dense FFN</text>
+  <rect x="1370" y="160" width="240" height="132" class="box" fill="#fff1f2" stroke="#e11d48"/><text x="1398" y="200" class="head">MoE 容量扩展</text><text x="1398" y="230" class="body">top-k / capacity</text><text x="1398" y="256" class="body">overflow / dispatch</text>
+  <path d="M330 226 H390" class="arrow"/><path d="M660 226 H720" class="arrow"/><path d="M990 226 H1050" class="arrow"/><path d="M1310 226 H1370" class="arrow"/>
+
+  <rect x="565" y="410" width="360" height="134" class="box" fill="#fdf2f8" stroke="#db2777"/><text x="595" y="450" class="head">递推状态、SSM 与混合记忆</text><text x="595" y="480" class="body">45 递推状态 → ARCH-HYBRID-MEMORY</text><text x="595" y="506" class="body">固定状态递推 / Attention–SSM 混合</text>
+  <path d="M855 292 V350 H745 V410" class="arrow"/>
+
+  <rect x="80" y="655" width="230" height="108" class="box" fill="#f0fdf4" stroke="#16a34a"/><text x="108" y="695" class="head">推理优化</text><text x="108" y="723" class="body">KV 生命周期、服务策略</text>
+  <rect x="370" y="655" width="230" height="108" class="box" fill="#fff7ed" stroke="#d97706"/><text x="398" y="695" class="head">性能优化</text><text x="398" y="723" class="body">计算、显存、I/O 证据</text>
+  <rect x="660" y="655" width="230" height="108" class="box" fill="#fdf2f8" stroke="#db2777"/><text x="688" y="695" class="head">算子优化</text><text x="688" y="723" class="body">Attention / MLP kernel</text>
+  <rect x="950" y="655" width="270" height="108" class="box" fill="#fefce8" stroke="#ca8a04"/><text x="978" y="695" class="head">通信与后训练</text><text x="978" y="723" class="body">dispatch、训练行为与对齐</text>
+  <rect x="1280" y="655" width="250" height="108" class="box" fill="#eff6ff" stroke="#2563eb"/><text x="1308" y="695" class="head">量化与压缩</text><text x="1308" y="723" class="body">权重、激活、KV 表示</text>
+  <path d="M525 292 V610 H195 V655" class="dash"/><path d="M855 292 V610 H485 V655" class="dash"/><path d="M1180 292 V610 H775 V655" class="dash"/><path d="M1490 292 V610 H1085 V655" class="dash"/><path d="M745 544 V610 H1405 V655" class="dash"/>
+  <text x="70" y="820" class="sub">读模型报告时，先判断它改变的是表示、可见性、容量还是记忆；再到对应专题验证延迟、显存、通信、质量或成本是否真的变化。</text>
+</svg>

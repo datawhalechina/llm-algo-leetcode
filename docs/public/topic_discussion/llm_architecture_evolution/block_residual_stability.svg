@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="360" viewBox="0 0 1120 360">
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#52606d"/></marker></defs>
+  <rect width="1120" height="360" rx="18" fill="#f7f9fc"/>
+  <text x="40" y="44" font-family="sans-serif" font-size="24" font-weight="700" fill="#172b4d">残差主干：每个 Block 写入两次增量</text>
+  <g font-family="sans-serif" text-anchor="middle">
+    <g fill="#e8f1ff" stroke="#4c78a8" stroke-width="2"><rect x="55" y="135" width="165" height="72" rx="12"/><rect x="310" y="90" width="210" height="72" rx="12"/><rect x="310" y="225" width="210" height="72" rx="12"/><rect x="610" y="135" width="175" height="72" rx="12"/><rect x="875" y="135" width="185" height="72" rx="12"/></g>
+    <g fill="#172b4d" font-size="17"><text x="137" y="178">主干状态 h</text><text x="415" y="119">Norm → Attention</text><text x="415" y="145" font-size="14">上下文增量</text><text x="415" y="254">Norm → MLP</text><text x="415" y="280" font-size="14">通道增量</text><text x="697" y="178">更新后的 h</text><text x="967" y="169">下一个 Block</text><text x="967" y="192" font-size="14">重复状态更新</text></g>
+    <g stroke="#52606d" stroke-width="2.5" fill="none" marker-end="url(#a)"><path d="M220 160 H260 V126 H300"/><path d="M220 182 H260 V261 H300"/><path d="M520 126 H560 V160 H600"/><path d="M520 261 H560 V182 H600"/><path d="M785 171 H865"/></g>
+    <text x="557" y="331" fill="#5c4300" font-size="15">深度稳定性取决于增量尺度、Norm 位置、初始化与训练控制，而不只是层数</text>
+  </g>
+</svg>

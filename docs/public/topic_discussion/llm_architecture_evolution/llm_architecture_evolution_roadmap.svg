@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 860" role="img" aria-labelledby="title desc">
+  <title id="title">大模型架构演进学习路线</title>
+  <desc id="desc">从 Decoder Block 基线出发，分别理解 Attention 表示与访问范围、Block 稳定性与 MoE 容量、递推状态与混合记忆，最终形成架构审计与选型结论。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f8fafc"/><stop offset="1" stop-color="#eff6ff"/></linearGradient>
+    <style>.title{font:700 34px sans-serif;fill:#0f172a}.sub{font:500 17px sans-serif;fill:#475569}.node{stroke-width:2.5;rx:20}.head{font:700 20px sans-serif;fill:#0f172a}.body{font:500 15px sans-serif;fill:#334155}.tag{font:600 14px sans-serif;fill:#334155}.arrow{stroke:#64748b;stroke-width:3.5;fill:none;marker-end:url(#arrow)}</style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#64748b"/></marker>
+  </defs>
+  <rect width="1680" height="860" fill="url(#bg)"/>
+  <text x="70" y="64" class="title">大模型架构演进：从 Block 到选型判断</text>
+  <text x="70" y="96" class="sub">先拆开“表示什么、能访问什么、是否保留 token 历史、如何扩展容量”，再把结构选择写成可检查的结论。</text>
+
+  <rect x="650" y="140" width="380" height="156" class="node" fill="#eff6ff" stroke="#2563eb"/>
+  <text x="682" y="180" class="head">Task0 · Decoder Block 与架构基线</text>
+  <text x="682" y="212" class="body">token → embedding → norm → attention / MLP</text>
+  <text x="682" y="238" class="body">residual → logits：组件在何处读写状态</text>
+  <rect x="682" y="254" width="208" height="26" rx="13" fill="#dbeafe"/><text x="698" y="273" class="tag">产出：Block 数据流图</text>
+
+  <rect x="110" y="400" width="330" height="170" class="node" fill="#ecfeff" stroke="#0891b2"/>
+  <text x="140" y="440" class="head">Task1 · Attention 表示与 KV Cache</text>
+  <text x="140" y="472" class="body">04 Head 共享 → ARCH-MLA</text><text x="140" y="498" class="body">MHA / GQA / latent KV</text>
+  <rect x="140" y="524" width="202" height="26" rx="13" fill="#cffafe"/><text x="156" y="543" class="tag">产出：表示账本</text>
+
+  <rect x="500" y="400" width="330" height="170" class="node" fill="#fff7ed" stroke="#d97706"/>
+  <text x="530" y="440" class="head">Task3 · 位置、访问范围与长上下文</text>
+  <text x="530" y="472" class="body">RoPE 与长度外推</text><text x="530" y="498" class="body">全局 / 窗口 / 局部 / 稀疏访问</text>
+  <rect x="530" y="524" width="216" height="26" rx="13" fill="#ffedd5"/><text x="546" y="543" class="tag">产出：访问取舍表</text>
+
+  <rect x="890" y="400" width="330" height="170" class="node" fill="#f5f3ff" stroke="#7c3aed"/>
+  <text x="920" y="440" class="head">Task2 · Block 稳定性与通道演进</text>
+  <text x="920" y="472" class="body">Pre-Norm / RMSNorm</text><text x="920" y="498" class="body">SwiGLU / FFN 的容量与代价</text>
+  <rect x="920" y="524" width="216" height="26" rx="13" fill="#ede9fe"/><text x="936" y="543" class="tag">产出：组件取舍表</text>
+
+  <rect x="1280" y="400" width="290" height="170" class="node" fill="#fff1f2" stroke="#e11d48"/>
+  <text x="1310" y="440" class="head">Task4 · MoE 容量扩展</text>
+  <text x="1310" y="472" class="body">router / top-k / capacity</text><text x="1310" y="498" class="body">overflow / dispatch / 通信</text>
+  <rect x="1310" y="524" width="184" height="26" rx="13" fill="#ffe4e6"/><text x="1326" y="543" class="tag">产出：容量证据</text>
+
+  <rect x="500" y="660" width="360" height="150" class="node" fill="#fdf2f8" stroke="#db2777"/>
+  <text x="530" y="700" class="head">Task5 · 递推状态、SSM 与混合记忆</text>
+  <text x="530" y="728" class="body">45 递推状态 → ARCH-HYBRID-MEMORY</text><text x="530" y="752" class="body">Attention / SSM 层级分工</text>
+  <rect x="530" y="778" width="216" height="26" rx="13" fill="#fce7f3"/><text x="546" y="797" class="tag">产出：长度阶梯证据</text>
+
+  <rect x="1020" y="660" width="360" height="150" class="node" fill="#f0fdf4" stroke="#15803d"/>
+  <text x="1050" y="700" class="head">Task6 · 架构审计与选型决策</text>
+  <text x="1050" y="732" class="body">结构候选 → 理论账本 → 证据等级 → 决策</text>
+  <rect x="1050" y="754" width="194" height="26" rx="13" fill="#dcfce7"/><text x="1066" y="773" class="tag">产出：架构审计卡</text>
+
+  <path d="M760 296 V348 H275 V400" class="arrow"/><path d="M760 296 V400" class="arrow"/><path d="M920 296 V348 H1055 V400" class="arrow"/>
+  <path d="M440 485 H500" class="arrow"/><path d="M1055 570 V620 H680 V660" class="arrow"/><path d="M1430 570 V620 H1200 V660" class="arrow"/><path d="M860 735 H1020" class="arrow"/>
+  <text x="70" y="840" class="sub">阅读顺序：Task0 → Task1 → Task3 → Task5；Task0 → Task2 → Task4；两条分支都在 Task6 汇成基于场景、预算和证据的选型结论。</text>
+</svg>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="330" viewBox="0 0 1120 330">
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#52606d"/></marker></defs>
+  <rect width="1120" height="330" rx="18" fill="#f7f9fc"/>
+  <text x="40" y="45" font-family="sans-serif" font-size="24" font-weight="700" fill="#172b4d">文本如何成为 Decoder Block 的输入状态</text>
+  <g font-family="sans-serif" text-anchor="middle">
+    <g fill="#e8f1ff" stroke="#4c78a8" stroke-width="2"><rect x="45" y="105" width="180" height="92" rx="12"/><rect x="300" y="105" width="180" height="92" rx="12"/><rect x="555" y="105" width="180" height="92" rx="12"/><rect x="810" y="105" width="250" height="92" rx="12"/></g>
+    <g fill="#172b4d" font-size="18"><text x="135" y="143">原始文本</text><text x="135" y="171" font-size="14">语言与字符分布</text><text x="390" y="143">Tokenizer</text><text x="390" y="171" font-size="14">词表 · 切分规则 · revision</text><text x="645" y="143">Token IDs</text><text x="645" y="171" font-size="14">序列长度与截断</text><text x="935" y="143">Embedding / Hidden State</text><text x="935" y="171" font-size="14">[batch, sequence, hidden]</text></g>
+    <g stroke="#52606d" stroke-width="2.5" fill="none" marker-end="url(#a)"><path d="M225 151 H290"/><path d="M480 151 H545"/><path d="M735 151 H800"/></g>
+    <rect x="300" y="245" width="760" height="52" rx="10" fill="#fff4df" stroke="#d99b2b" stroke-width="2"/>
+    <text x="680" y="268" fill="#5c4300" font-size="15">Tokenizer 改变 token 数 → 影响训练预算、上下文容量、KV Cache 与 prefill 成本</text>
+  </g>
+</svg>

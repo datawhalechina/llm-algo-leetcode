@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="350" viewBox="0 0 1120 350">
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#52606d"/></marker></defs>
+  <rect width="1120" height="350" rx="18" fill="#f7f9fc"/>
+  <text x="40" y="44" font-family="sans-serif" font-size="24" font-weight="700" fill="#172b4d">归一化演进：统计对象、Block 位置与稳定性</text>
+  <g font-family="sans-serif" text-anchor="middle">
+    <g fill="#e8f1ff" stroke="#4c78a8" stroke-width="2"><rect x="45" y="95" width="210" height="86" rx="12"/><rect x="315" y="95" width="210" height="86" rx="12"/><rect x="585" y="95" width="210" height="86" rx="12"/><rect x="855" y="95" width="210" height="86" rx="12"/></g>
+    <g fill="#172b4d"><text x="150" y="130" font-size="18">BatchNorm</text><text x="150" y="157" font-size="14">跨样本 batch 统计</text><text x="420" y="130" font-size="18">LayerNorm</text><text x="420" y="157" font-size="14">token 内中心化 + 缩放</text><text x="690" y="130" font-size="18">Pre-Norm</text><text x="690" y="157" font-size="14">分支读取前控制尺度</text><text x="960" y="130" font-size="18">RMSNorm</text><text x="960" y="157" font-size="14">只保留均方根缩放</text></g>
+    <g stroke="#52606d" stroke-width="2.5" fill="none" marker-end="url(#a)"><path d="M255 138 H305"/><path d="M525 138 H575"/><path d="M795 138 H845"/></g>
+    <rect x="270" y="235" width="580" height="70" rx="12" fill="#e7f7ef" stroke="#3b8c68" stroke-width="2"/>
+    <text x="560" y="263" fill="#174d39" font-size="17">共同目标：让残差主干与梯度在深层堆叠中保持可控</text>
+    <text x="560" y="288" fill="#174d39" font-size="14">验证：激活尺度 · 梯度范数 · loss · NaN/溢出 · 成本</text>
+  </g>
+</svg>

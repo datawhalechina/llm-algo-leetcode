@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="360" viewBox="0 0 1120 360">
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#52606d"/></marker></defs>
+  <rect width="1120" height="360" rx="18" fill="#f7f9fc"/>
+  <text x="40" y="44" font-family="sans-serif" font-size="24" font-weight="700" fill="#172b4d">RoPE 长上下文扩展：改变位置映射，也改变证据要求</text>
+  <g font-family="sans-serif" text-anchor="middle">
+    <rect x="65" y="120" width="210" height="90" rx="12" fill="#e8f1ff" stroke="#4c78a8" stroke-width="2"/><text x="170" y="155" fill="#172b4d" font-size="18">训练长度内 RoPE</text><text x="170" y="183" fill="#172b4d" font-size="14">Q/K 旋转编码相对距离</text>
+    <rect x="430" y="75" width="250" height="82" rx="12" fill="#fff4df" stroke="#d99b2b" stroke-width="2"/><text x="555" y="108" fill="#5c4300" font-size="17">位置插值 / scaling</text><text x="555" y="134" fill="#5c4300" font-size="14">压缩位置或调整频率</text>
+    <rect x="430" y="215" width="250" height="82" rx="12" fill="#f4eefe" stroke="#8a63b8" stroke-width="2"/><text x="555" y="248" fill="#4b2d73" font-size="17">访问范围改变</text><text x="555" y="274" fill="#4b2d73" font-size="14">窗口 / 稀疏 / 检索</text>
+    <rect x="835" y="120" width="220" height="90" rx="12" fill="#e7f7ef" stroke="#3b8c68" stroke-width="2"/><text x="945" y="151" fill="#174d39" font-size="17">有效长上下文</text><text x="945" y="178" fill="#174d39" font-size="14">质量 + 成本 + 失败样例</text>
+    <g stroke="#52606d" stroke-width="2.5" fill="none" marker-end="url(#a)"><path d="M275 150 H365 V116 H420"/><path d="M275 180 H365 V256 H420"/><path d="M680 116 H760 V150 H825"/><path d="M680 256 H760 V180 H825"/></g>
+  </g>
+</svg>

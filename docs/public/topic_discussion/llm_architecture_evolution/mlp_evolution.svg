@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="350" viewBox="0 0 1120 350">
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#52606d"/></marker></defs>
+  <rect width="1120" height="350" rx="18" fill="#f7f9fc"/>
+  <text x="40" y="44" font-family="sans-serif" font-size="24" font-weight="700" fill="#172b4d">FFN 演进：增加容量，同时控制每 token 成本</text>
+  <g font-family="sans-serif" text-anchor="middle">
+    <g fill="#e8f1ff" stroke="#4c78a8" stroke-width="2"><rect x="65" y="105" width="250" height="105" rx="12"/><rect x="435" y="105" width="250" height="105" rx="12"/><rect x="805" y="105" width="250" height="105" rx="12"/></g>
+    <g fill="#172b4d"><text x="190" y="137" font-size="18">Dense FFN</text><text x="190" y="165" font-size="14">up → GELU/ReLU → down</text><text x="190" y="188" font-size="14">统一参数路径</text><text x="560" y="137" font-size="18">SwiGLU</text><text x="560" y="165" font-size="14">gate ⊙ up → down</text><text x="560" y="188" font-size="14">内容相关门控</text><text x="930" y="137" font-size="18">MoE-FFN</text><text x="930" y="165" font-size="14">router → experts → combine</text><text x="930" y="188" font-size="14">稀疏激活容量</text></g>
+    <g stroke="#52606d" stroke-width="2.5" fill="none" marker-end="url(#a)"><path d="M315 157 H425"/><path d="M685 157 H795"/></g>
+    <rect x="265" y="260" width="590" height="52" rx="10" fill="#fff4df" stroke="#d99b2b" stroke-width="2"/>
+    <text x="560" y="291" fill="#5c4300" font-size="15">比较时固定参数预算，并分别记录激活计算、路由负载与通信成本</text>
+  </g>
+</svg>
