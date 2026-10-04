@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="520" viewBox="0 0 1120 520">
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#475569"/></marker></defs>
+  <rect width="1120" height="520" rx="24" fill="#f8fafc"/>
+  <text x="56" y="54" font-size="28" font-family="sans-serif" font-weight="700" fill="#0f172a">MHA、GQA 与 MLA：三种历史状态表示</text>
+  <rect x="56" y="92" width="1008" height="92" rx="16" fill="#dbeafe" stroke="#60a5fa"/>
+  <text x="560" y="132" text-anchor="middle" font-size="21" font-family="sans-serif" font-weight="700" fill="#1e3a8a">当前 hidden state</text>
+  <text x="560" y="160" text-anchor="middle" font-size="16" font-family="sans-serif" fill="#334155">投影为 Query 与需要写入历史的状态</text>
+  <path d="M560 184 V220 H208 V252" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#a)"/>
+  <path d="M560 220 V252" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#a)"/>
+  <path d="M560 220 H912 V252" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#a)"/>
+  <g font-family="sans-serif">
+    <rect x="56" y="252" width="304" height="150" rx="18" fill="#fee2e2" stroke="#f87171"/>
+    <text x="208" y="290" text-anchor="middle" font-size="22" font-weight="700" fill="#991b1b">MHA</text>
+    <text x="208" y="326" text-anchor="middle" font-size="17" fill="#334155">每个 Query head</text><text x="208" y="352" text-anchor="middle" font-size="17" fill="#334155">保存一组 K / V</text>
+    <rect x="408" y="252" width="304" height="150" rx="18" fill="#fef3c7" stroke="#fbbf24"/>
+    <text x="560" y="290" text-anchor="middle" font-size="22" font-weight="700" fill="#92400e">MQA / GQA</text>
+    <text x="560" y="326" text-anchor="middle" font-size="17" fill="#334155">多个 Query head</text><text x="560" y="352" text-anchor="middle" font-size="17" fill="#334155">共享较少 K / V heads</text>
+    <rect x="760" y="252" width="304" height="150" rx="18" fill="#dcfce7" stroke="#4ade80"/>
+    <text x="912" y="290" text-anchor="middle" font-size="22" font-weight="700" fill="#166534">MLA</text>
+    <text x="912" y="326" text-anchor="middle" font-size="17" fill="#334155">保存低维 latent</text><text x="912" y="352" text-anchor="middle" font-size="17" fill="#334155">与必要位置分量</text>
+    <text x="208" y="446" text-anchor="middle" font-size="17" fill="#64748b">完整保存</text>
+    <text x="560" y="446" text-anchor="middle" font-size="17" fill="#64748b">少存几组</text>
+    <text x="912" y="446" text-anchor="middle" font-size="17" fill="#64748b">每组存得更紧凑</text>
+  </g>
+</svg>

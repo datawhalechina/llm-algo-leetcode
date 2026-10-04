@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="470" viewBox="0 0 1120 470">
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker></defs>
+  <rect width="1120" height="470" rx="24" fill="#f8fafc"/>
+  <text x="56" y="54" font-size="28" font-family="sans-serif" font-weight="700" fill="#0f172a">远程信息如何到达当前 token</text>
+  <g font-family="sans-serif" text-anchor="middle">
+    <rect x="56" y="100" width="1008" height="130" rx="18" fill="#dbeafe" stroke="#60a5fa"/>
+    <text x="112" y="132" text-anchor="start" font-size="18" font-weight="700" fill="#1e3a8a">局部窗口：逐层传播</text>
+    <circle cx="184" cy="182" r="25" fill="#fff" stroke="#3b82f6"/><text x="184" y="188" font-size="16">t-6</text>
+    <circle cx="376" cy="182" r="25" fill="#fff" stroke="#3b82f6"/><text x="376" y="188" font-size="16">t-4</text>
+    <circle cx="568" cy="182" r="25" fill="#fff" stroke="#3b82f6"/><text x="568" y="188" font-size="16">t-2</text>
+    <circle cx="760" cy="182" r="25" fill="#fff" stroke="#3b82f6"/><text x="760" y="188" font-size="16">t</text>
+    <path d="M209 182H351" stroke="#475569" stroke-width="3" marker-end="url(#a)"/><path d="M401 182H543" stroke="#475569" stroke-width="3" marker-end="url(#a)"/><path d="M593 182H735" stroke="#475569" stroke-width="3" marker-end="url(#a)"/>
+    <text x="918" y="188" font-size="16" fill="#64748b">路径随距离变长</text>
+    <rect x="56" y="276" width="1008" height="130" rx="18" fill="#dcfce7" stroke="#4ade80"/>
+    <text x="112" y="308" text-anchor="start" font-size="18" font-weight="700" fill="#166534">块 / 选择性稀疏：保留远程捷径</text>
+    <circle cx="184" cy="358" r="25" fill="#fff" stroke="#22c55e"/><text x="184" y="364" font-size="16">远程</text>
+    <circle cx="568" cy="358" r="25" fill="#fff" stroke="#22c55e"/><text x="568" y="364" font-size="16">局部</text>
+    <circle cx="952" cy="358" r="25" fill="#fff" stroke="#22c55e"/><text x="952" y="364" font-size="16">当前</text>
+    <path d="M209 358H927" stroke="#475569" stroke-width="3" marker-end="url(#a)"/><path d="M593 358H927" stroke="#475569" stroke-width="3" marker-end="url(#a)"/>
+  </g>
+</svg>

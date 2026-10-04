@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="570" viewBox="0 0 1120 570" role="img" aria-labelledby="title desc">
+  <title id="title">Attention 访问范围：Dense、滑动窗口与规则块稀疏</title>
+  <desc id="desc">以同一 Query-Key 访问网格比较完整因果三角、局部对角带和局部加远程块三种访问模式，再连接到直接可达范围、连接账本和远程传播路径。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#496580"/></marker>
+  </defs>
+  <rect width="1120" height="570" rx="22" fill="#f7fafc"/>
+  <text x="560" y="43" text-anchor="middle" font-family="Arial, sans-serif" font-size="25" font-weight="700" fill="#18324a">同一段历史上下文：每种 Attention 允许当前 Query 看见哪些 Key？</text>
+  <text x="560" y="70" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" fill="#486275">深色单元表示允许读取；三种模式改变的是访问关系，而不是 Q / K / V 的含义。</text>
+
+  <g font-family="Arial, sans-serif">
+    <text x="180" y="112" text-anchor="middle" font-size="19" font-weight="700" fill="#18324a">Dense causal</text>
+    <text x="180" y="135" text-anchor="middle" font-size="14" fill="#486275">完整因果三角</text>
+    <rect x="100" y="155" width="160" height="160" rx="10" fill="#fff" stroke="#8aa9c1" stroke-width="2"/>
+    <g fill="#8fb2d0">
+      <path d="M100 155 H260 V315 H100 Z"/>
+    </g>
+    <g fill="#fff">
+      <path d="M100 155 H260 V175 H120 V315 H100 Z"/>
+      <path d="M120 175 H260 V195 H140 V315 H120 Z"/>
+      <path d="M140 195 H260 V215 H160 V315 H140 Z"/>
+      <path d="M160 215 H260 V235 H180 V315 H160 Z"/>
+      <path d="M180 235 H260 V255 H200 V315 H180 Z"/>
+      <path d="M200 255 H260 V275 H220 V315 H200 Z"/>
+      <path d="M220 275 H260 V295 H240 V315 H220 Z"/>
+    </g>
+    <g stroke="#d2e0eb" stroke-width="1"><path d="M120 155V315 M140 155V315 M160 155V315 M180 155V315 M200 155V315 M220 155V315 M240 155V315 M100 175H260 M100 195H260 M100 215H260 M100 235H260 M100 255H260 M100 275H260 M100 295H260"/></g>
+    <text x="180" y="338" text-anchor="middle" font-size="14" fill="#486275">每个 Query 可直接读取全部历史</text>
+
+    <text x="560" y="112" text-anchor="middle" font-size="19" font-weight="700" fill="#18324a">Sliding window</text>
+    <text x="560" y="135" text-anchor="middle" font-size="14" fill="#486275">局部因果对角带</text>
+    <rect x="480" y="155" width="160" height="160" rx="10" fill="#fff" stroke="#8aa9c1" stroke-width="2"/>
+    <g fill="#8dc8a9"><path d="M480 155 H640 V315 H480 Z"/></g>
+    <g fill="#fff"><path d="M480 155 H640 V215 H540 V315 H480 Z"/><path d="M500 175 H640 V235 H560 V315 H500 Z"/><path d="M520 195 H640 V255 H580 V315 H520 Z"/><path d="M540 215 H640 V275 H600 V315 H540 Z"/><path d="M560 235 H640 V295 H620 V315 H560 Z"/></g>
+    <g stroke="#d4e7dc" stroke-width="1"><path d="M500 155V315 M520 155V315 M540 155V315 M560 155V315 M580 155V315 M600 155V315 M620 155V315 M480 175H640 M480 195H640 M480 215H640 M480 235H640 M480 255H640 M480 275H640 M480 295H640"/></g>
+    <text x="560" y="338" text-anchor="middle" font-size="14" fill="#486275">远程信息需经过多层局部传播</text>
+
+    <text x="940" y="112" text-anchor="middle" font-size="19" font-weight="700" fill="#18324a">Rule-based block sparse</text>
+    <text x="940" y="135" text-anchor="middle" font-size="14" fill="#486275">局部块 + 远程捷径</text>
+    <rect x="860" y="155" width="160" height="160" rx="10" fill="#fff" stroke="#8aa9c1" stroke-width="2"/>
+    <g fill="#f2c879"><rect x="860" y="255" width="60" height="60"/><rect x="920" y="195" width="60" height="60"/><rect x="960" y="155" width="60" height="60"/></g>
+    <g fill="#d99f75"><rect x="860" y="155" width="40" height="40"/></g>
+    <g stroke="#eadfc8" stroke-width="1"><path d="M880 155V315 M900 155V315 M920 155V315 M940 155V315 M960 155V315 M980 155V315 M1000 155V315 M860 175H1020 M860 195H1020 M860 215H1020 M860 235H1020 M860 255H1020 M860 275H1020 M860 295H1020"/></g>
+    <text x="940" y="338" text-anchor="middle" font-size="14" fill="#486275">远程块是否命中决定信息捷径</text>
+
+    <path d="M180 365 V405 H560" fill="none" stroke="#496580" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <path d="M560 365 V405" fill="none" stroke="#496580" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <path d="M940 365 V405 H560" fill="none" stroke="#496580" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <rect x="365" y="405" width="390" height="104" rx="14" fill="#eaf2f8" stroke="#8aa9c1" stroke-width="2"/>
+    <text x="560" y="436" text-anchor="middle" font-size="18" font-weight="700" fill="#18324a">比较时分别记录三类证据</text>
+    <text x="560" y="463" text-anchor="middle" font-size="15" fill="#486275">直接可达范围 / 连接账本 / 长依赖质量与实现成本</text>
+    <text x="560" y="488" text-anchor="middle" font-size="14" fill="#486275">连接更少不等于更快；显式 mask 也不等于稀疏 kernel。</text>
+  </g>
+</svg>

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="520" viewBox="0 0 1100 520" role="img" aria-labelledby="title desc">
+  <title id="title">显式历史访问与线性 Attention 递推状态</title>
+  <desc id="desc">左侧标准 Attention 保留 token 级历史关系；右侧线性 Attention 将历史压缩为状态和归一化量，再由当前 Query 读取。</desc>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#496580"/></marker></defs>
+  <rect width="1100" height="520" rx="22" fill="#f7fafc"/>
+  <text x="550" y="46" text-anchor="middle" font-family="Arial, sans-serif" font-size="25" font-weight="700" fill="#18324a">两类历史记忆：显式 token 访问与固定形状递推状态</text>
+  <rect x="50" y="90" width="465" height="340" rx="18" fill="#fff" stroke="#8aa9c1" stroke-width="2"/>
+  <text x="282" y="126" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#18324a">标准 causal Attention</text>
+  <rect x="110" y="168" width="345" height="62" rx="10" fill="#eaf2f8"/>
+  <text x="282" y="194" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#18324a">历史 K / V 按 token 保留</text>
+  <text x="282" y="215" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#486275">当前 Q 与所有可见 Key 配对</text>
+  <path d="M282 230 V266" stroke="#496580" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <rect x="110" y="278" width="345" height="78" rx="10" fill="#edf4fb"/>
+  <text x="282" y="307" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#18324a">显式 QKᵀ 分数与加权聚合</text>
+  <text x="282" y="332" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#486275">访问关系随序列长度扩展</text>
+  <rect x="585" y="90" width="465" height="340" rx="18" fill="#fff" stroke="#8aa9c1" stroke-width="2"/>
+  <text x="817" y="126" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#18324a">线性 Attention 的递推状态</text>
+  <rect x="645" y="168" width="345" height="62" rx="10" fill="#e8f5ef"/>
+  <text x="817" y="194" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#1d6042">φ(Kₜ)、Vₜ 写入聚合状态</text>
+  <text x="817" y="215" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#486275">Sₜ 与 zₜ 的形状不随长度增长</text>
+  <path d="M817 230 V266" stroke="#496580" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <rect x="645" y="278" width="345" height="78" rx="10" fill="#edf7f1"/>
+  <text x="817" y="307" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#1d6042">φ(Qₜ) 读取 Sₜ / zₜ</text>
+  <text x="817" y="332" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#486275">以累计状态生成当前输出</text>
+  <path d="M817 356 C1000 375 1000 160 974 184" fill="none" stroke="#6d8f7e" stroke-width="2.5" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+  <text x="945" y="260" font-family="Arial, sans-serif" font-size="13" fill="#486275">下一 token 更新状态</text>
+  <text x="550" y="477" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" fill="#486275">递推状态改变的是历史表示方式；它与 SSM 同属状态式序列建模邻域，但不等同于 SSM。</text>
+</svg>

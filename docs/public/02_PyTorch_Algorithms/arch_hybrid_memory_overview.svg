@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="520" viewBox="0 0 1120 520">
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#475569"/></marker></defs>
+  <rect width="1120" height="520" rx="24" fill="#f8fafc"/>
+  <text x="56" y="54" font-size="28" font-family="sans-serif" font-weight="700" fill="#0f172a">显式历史、累计统计与选择性状态</text>
+  <g font-family="sans-serif" text-anchor="middle">
+    <rect x="56" y="98" width="1008" height="78" rx="16" fill="#e2e8f0" stroke="#94a3b8"/>
+    <text x="560" y="145" font-size="20" font-weight="700" fill="#334155">输入序列 x₁ → x₂ → … → xₜ</text>
+    <rect x="56" y="244" width="304" height="166" rx="18" fill="#dbeafe" stroke="#60a5fa"/>
+    <text x="208" y="286" font-size="21" font-weight="700" fill="#1e3a8a">Full Attention</text><text x="208" y="322" font-size="16" fill="#334155">保存 token 级 K / V</text><text x="208" y="350" font-size="16" fill="#334155">可按 Query 重读历史</text><text x="208" y="378" font-size="16" fill="#64748b">状态随长度增长</text>
+    <rect x="408" y="244" width="304" height="166" rx="18" fill="#dcfce7" stroke="#4ade80"/>
+    <text x="560" y="286" font-size="21" font-weight="700" fill="#166534">Linear Attention</text><text x="560" y="322" font-size="16" fill="#334155">累计特征映射统计</text><text x="560" y="350" font-size="16" fill="#334155">递推产生当前输出</text><text x="560" y="378" font-size="16" fill="#64748b">固定形状状态</text>
+    <rect x="760" y="244" width="304" height="166" rx="18" fill="#fef3c7" stroke="#fbbf24"/>
+    <text x="912" y="286" font-size="21" font-weight="700" fill="#92400e">SSM / Mamba</text><text x="912" y="322" font-size="16" fill="#334155">状态转移与输入注入</text><text x="912" y="350" font-size="16" fill="#334155">输入相关选择性更新</text><text x="912" y="378" font-size="16" fill="#64748b">固定形状状态</text>
+  </g>
+  <path d="M560 176 V208 H208 V244" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#a)"/>
+  <path d="M560 208 V244" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#a)"/>
+  <path d="M560 208 H912 V244" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#a)"/>
+  <text x="56" y="464" font-size="17" font-family="sans-serif" fill="#64748b">固定状态降低增长成本，但不会自动保留任意 token 级精确检索能力。</text>
+</svg>
