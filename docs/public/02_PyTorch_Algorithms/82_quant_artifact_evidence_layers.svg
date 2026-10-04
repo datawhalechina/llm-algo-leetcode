@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="500" viewBox="0 0 1120 500" role="img" aria-labelledby="title desc">
+  <title id="title">Independent quantization evidence layers</title>
+  <desc id="desc">Calibration, quality and compatibility are independent checks that jointly form an artifact gate.</desc>
+  <style>text{font-family:"Noto Sans","Microsoft YaHei",Arial,sans-serif;fill:#172033}.title{font-size:24px;font-weight:700}.sub{font-size:14px;fill:#536174}.label{font-size:16px;font-weight:700}.body{font-size:13px;fill:#45556d}.tiny{font-size:12px;fill:#536174}.box{stroke:#9ba9bc;stroke-width:1.5;rx:13}.arrow{fill:none;stroke:#62728a;stroke-width:2;marker-end:url(#arrow)}</style>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#62728a"/></marker></defs>
+  <rect width="1120" height="500" fill="#fff"/>
+  <text x="48" y="48" class="title">Three records answer three different questions</text><text x="48" y="73" class="sub">No individual record can stand in for the other two.</text>
+  <rect x="70" y="140" width="250" height="132" class="box" fill="#fff3d9"/><text x="195" y="174" class="label" text-anchor="middle">Calibration</text><text x="195" y="200" class="body" text-anchor="middle">dataset revision · sample count</text><text x="195" y="222" class="body" text-anchor="middle">error summary</text><text x="195" y="245" class="tiny" text-anchor="middle">numeric approximation</text>
+  <rect x="435" y="140" width="250" height="132" class="box" fill="#eaf8f1"/><text x="560" y="174" class="label" text-anchor="middle">Held-out quality</text><text x="560" y="200" class="body" text-anchor="middle">metric · baseline · threshold</text><text x="560" y="222" class="body" text-anchor="middle">evaluation split</text><text x="560" y="245" class="tiny" text-anchor="middle">task capability</text>
+  <rect x="800" y="140" width="250" height="132" class="box" fill="#f3ebff"/><text x="925" y="174" class="label" text-anchor="middle">Compatibility</text><text x="925" y="200" class="body" text-anchor="middle">backend · version · loader status</text><text x="925" y="222" class="body" text-anchor="middle">failure log</text><text x="925" y="245" class="tiny" text-anchor="middle">executable path</text>
+  <path d="M195 272 V350 H462" class="arrow"/><path d="M462 345 L472 350 L462 355 Z" fill="#62728a"/>
+  <path d="M560 272 V342" class="arrow"/><path d="M555 342 L560 352 L565 342 Z" fill="#62728a"/>
+  <path d="M925 272 V350 H658" class="arrow"/><path d="M658 345 L648 350 L658 355 Z" fill="#62728a"/>
+  <rect x="420" y="350" width="280" height="82" class="box" fill="#e8f0ff"/><text x="560" y="382" class="label" text-anchor="middle">Artifact gate</text><text x="560" y="407" class="body" text-anchor="middle">accept · tune · reject → next benchmark</text>
+</svg>

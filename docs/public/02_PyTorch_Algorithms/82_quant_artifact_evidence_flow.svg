@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="520" viewBox="0 0 1120 520" role="img" aria-labelledby="title desc">
+  <title id="title">Quantization artifact evidence flow</title>
+  <desc id="desc">A quantized artifact is audited through manifest, calibration and quality, loader compatibility, then handed to deployment and serving benchmarks.</desc>
+  <style>text{font-family:"Noto Sans","Microsoft YaHei",Arial,sans-serif;fill:#172033}.title{font-size:24px;font-weight:700}.sub{font-size:14px;fill:#536174}.label{font-size:16px;font-weight:700}.body{font-size:13px;fill:#45556d}.tiny{font-size:12px;fill:#536174}.box{stroke:#9ba9bc;stroke-width:1.5;rx:13}.group{fill:#f7f9fc;stroke:#d6deea;stroke-width:1.5;rx:16}.arrow{fill:none;stroke:#62728a;stroke-width:2;marker-end:url(#arrow)}</style>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#62728a"/></marker></defs>
+  <rect width="1120" height="520" fill="#fff"/>
+  <text x="48" y="48" class="title">Artifact gate before deployment profiling</text><text x="48" y="73" class="sub">Loading a file, preserving quality and measuring a service are separate evidence steps.</text>
+  <rect x="50" y="150" width="200" height="106" class="box" fill="#e8f0ff"/><text x="150" y="184" class="label" text-anchor="middle">Quantized artifact</text><text x="150" y="208" class="body" text-anchor="middle">weights · config · tokenizer</text><text x="150" y="229" class="body" text-anchor="middle">format · bits · group size</text>
+  <path d="M250 203 H332" class="arrow"/><path d="M332 198 L342 203 L332 208 Z" fill="#62728a"/>
+  <rect x="342" y="100" width="340" height="210" class="group"/><text x="368" y="132" class="label">82 · artifact gate</text>
+  <rect x="370" y="154" width="284" height="42" class="box" fill="#eaf8f1"/><text x="512" y="181" class="body" text-anchor="middle">manifest and file contract</text>
+  <rect x="370" y="211" width="284" height="42" class="box" fill="#fff3d9"/><text x="512" y="238" class="body" text-anchor="middle">calibration / held-out quality</text>
+  <rect x="370" y="268" width="284" height="42" class="box" fill="#f3ebff"/><text x="512" y="295" class="body" text-anchor="middle">loader compatibility and failure log</text>
+  <path d="M682 205 H762" class="arrow"/><path d="M762 200 L772 205 L762 210 Z" fill="#62728a"/>
+  <rect x="772" y="150" width="130" height="106" class="box" fill="#eef4fa"/><text x="837" y="181" class="label" text-anchor="middle">66 → 67</text><text x="837" y="205" class="body" text-anchor="middle">float baseline</text><text x="837" y="226" class="body" text-anchor="middle">→ quant deployment</text>
+  <path d="M902 203 H962" class="arrow"/><path d="M962 198 L972 203 L962 208 Z" fill="#62728a"/>
+  <rect x="972" y="150" width="110" height="106" class="box" fill="#eef4fa"/><text x="1027" y="184" class="label" text-anchor="middle">83</text><text x="1027" y="208" class="body" text-anchor="middle">Serving</text><text x="1027" y="229" class="body" text-anchor="middle">profiles</text>
+  <text x="560" y="397" class="tiny" text-anchor="middle">82 accepts an artifact for the next experiment; it does not claim that the artifact is the fastest production choice.</text>
+</svg>
