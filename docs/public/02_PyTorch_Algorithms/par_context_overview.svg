@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+  <title id="title">Context Parallelism 总览</title>
+  <desc id="desc">长上下文压力分别经过 TP 和 CP 两种切分路径，并在 TP 与 CP 组合中形成二维 rank mesh。</desc>
+  <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#52667a"/></marker><style>.box{rx:14;stroke-width:2}.h{font:700 22px sans-serif;fill:#18324a}.t{font:17px sans-serif;fill:#30485d}.s{font:15px sans-serif;fill:#52667a}.line{stroke:#52667a;stroke-width:2.5;fill:none;marker-end:url(#arrow)}</style></defs>
+  <rect width="1200" height="620" fill="#f8fbfd"/>
+  <text x="600" y="48" text-anchor="middle" class="h">长上下文下，切特征维与切序列维解决不同压力</text>
+  <rect x="420" y="82" width="360" height="82" fill="#e8f1fb" stroke="#4f83b6" class="box"/>
+  <text x="600" y="116" text-anchor="middle" class="h">完整 Attention 状态</text><text x="600" y="143" text-anchor="middle" class="t">Head / hidden × sequence tokens</text>
+  <path d="M535 164V214H270V250" class="line"/><path d="M665 164V214H930V250" class="line"/>
+  <rect x="90" y="250" width="360" height="180" fill="#fff7df" stroke="#d39a27" class="box"/>
+  <text x="270" y="286" text-anchor="middle" class="h">Tensor Parallelism</text><text x="270" y="321" text-anchor="middle" class="t">切 Head / hidden 维</text><text x="270" y="353" text-anchor="middle" class="s">每个 rank 仍看见完整序列</text><text x="270" y="385" text-anchor="middle" class="s">层内 Reduce / Gather</text>
+  <rect x="750" y="250" width="360" height="180" fill="#e9f8ef" stroke="#3e9a67" class="box"/>
+  <text x="930" y="286" text-anchor="middle" class="h">Context Parallelism</text><text x="930" y="321" text-anchor="middle" class="t">切 sequence 维</text><text x="930" y="353" text-anchor="middle" class="s">每个 rank 保存本地 token</text><text x="930" y="385" text-anchor="middle" class="s">交换远端 K/V 分片</text>
+  <path d="M270 430V480H510" class="line"/><path d="M930 430V480H690" class="line"/>
+  <rect x="410" y="480" width="380" height="92" fill="#f3ecfb" stroke="#8462b6" class="box"/>
+  <text x="600" y="516" text-anchor="middle" class="h">TP × CP 二维组合</text><text x="600" y="548" text-anchor="middle" class="t">模型维与序列维分别组成通信组</text>
+</svg>

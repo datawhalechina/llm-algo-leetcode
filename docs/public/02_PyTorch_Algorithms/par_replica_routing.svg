@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="610" viewBox="0 0 1200 610" role="img" aria-labelledby="title desc">
+  <title id="title">队列与缓存局部性的路由决策</title><desc id="desc">路由器先找到最短队列，再判断会话或前缀局部性是否处于可接受等待范围内。</desc>
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52667a"/></marker><style>.b{rx:14;stroke-width:2}.h{font:700 21px sans-serif;fill:#18324a}.t{font:16px sans-serif;fill:#30485d}.s{font:14px sans-serif;fill:#52667a}.l{stroke:#52667a;stroke-width:2.4;fill:none;marker-end:url(#a)}</style></defs>
+  <rect width="1200" height="610" fill="#f8fbfd"/><text x="600" y="45" text-anchor="middle" class="h">局部性收益必须受到排队 slack 约束</text>
+  <rect x="445" y="80" width="310" height="78" fill="#e8f1fb" stroke="#4f83b6" class="b"/><text x="600" y="114" text-anchor="middle" class="h">到达的新请求</text><text x="600" y="141" text-anchor="middle" class="s">arrival · prefix · session</text>
+  <path d="M600 158V220" class="l"/><rect x="420" y="220" width="360" height="88" fill="#fff7df" stroke="#d39a27" class="b"/><text x="600" y="254" text-anchor="middle" class="h">先计算最短预计等待</text><text x="600" y="284" text-anchor="middle" class="t">queue_choice 与 best_wait</text>
+  <path d="M500 308V360H260V405" class="l"/><path d="M700 308V360H940V405" class="l"/>
+  <rect x="90" y="405" width="340" height="112" fill="#e9f8ef" stroke="#3e9a67" class="b"/><text x="260" y="441" text-anchor="middle" class="h">存在 Session / Prefix 命中</text><text x="260" y="473" text-anchor="middle" class="t">locality_wait ≤ best_wait + slack</text><text x="260" y="499" text-anchor="middle" class="s">选择局部性副本</text>
+  <rect x="770" y="405" width="340" height="112" fill="#f3ecfb" stroke="#8462b6" class="b"/><text x="940" y="441" text-anchor="middle" class="h">无命中或等待过长</text><text x="940" y="473" text-anchor="middle" class="t">放弃局部性收益</text><text x="940" y="499" text-anchor="middle" class="s">回退最短队列</text>
+  <text x="600" y="574" text-anchor="middle" class="t">复测：Queue Wait · P95/P99 · Cache Hit Rate · Throughput · Load Skew</text>
+</svg>

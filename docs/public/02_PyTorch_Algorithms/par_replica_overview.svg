@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="610" viewBox="0 0 1200 610" role="img" aria-labelledby="title desc">
+  <title id="title">Serving 副本路由总览</title><desc id="desc">请求入口读取队列、缓存和会话信号，将请求发送到多个独立模型副本，并汇总服务指标。</desc>
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52667a"/></marker><style>.b{rx:14;stroke-width:2}.h{font:700 21px sans-serif;fill:#18324a}.t{font:16px sans-serif;fill:#30485d}.s{font:14px sans-serif;fill:#52667a}.l{stroke:#52667a;stroke-width:2.4;fill:none;marker-end:url(#a)}</style></defs>
+  <rect width="1200" height="610" fill="#f8fbfd"/><text x="600" y="45" text-anchor="middle" class="h">Serving Replica：复制模型，路由独立请求</text>
+  <rect x="70" y="120" width="220" height="100" fill="#e8f1fb" stroke="#4f83b6" class="b"/><text x="180" y="158" text-anchor="middle" class="h">请求入口</text><text x="180" y="188" text-anchor="middle" class="t">arrival · prefix · session</text>
+  <path d="M290 170H390" class="l"/><rect x="390" y="95" width="300" height="150" fill="#fff7df" stroke="#d39a27" class="b"/><text x="540" y="132" text-anchor="middle" class="h">Replica Router</text><text x="540" y="164" text-anchor="middle" class="t">队列可用时间</text><text x="540" y="192" text-anchor="middle" class="t">Prefix Cache / Session</text><text x="540" y="220" text-anchor="middle" class="s">局部性 slack</text>
+  <path d="M690 135H790" class="l"/><path d="M690 170H790" class="l"/><path d="M690 205H790" class="l"/>
+  <rect x="790" y="80" width="300" height="82" fill="#e9f8ef" stroke="#3e9a67" class="b"/><text x="940" y="115" text-anchor="middle" class="h">Replica A</text><text x="940" y="143" text-anchor="middle" class="s">独立队列与缓存</text>
+  <rect x="790" y="180" width="300" height="82" fill="#e9f8ef" stroke="#3e9a67" class="b"/><text x="940" y="215" text-anchor="middle" class="h">Replica B</text><text x="940" y="243" text-anchor="middle" class="s">独立队列与缓存</text>
+  <rect x="790" y="280" width="300" height="82" fill="#e9f8ef" stroke="#3e9a67" class="b"/><text x="940" y="315" text-anchor="middle" class="h">Replica C</text><text x="940" y="343" text-anchor="middle" class="s">独立队列与缓存</text>
+  <path d="M940 362V425H650" class="l"/><path d="M940 262V400H650" class="l"/><path d="M940 162V375H650" class="l"/>
+  <rect x="310" y="425" width="680" height="112" fill="#f3ecfb" stroke="#8462b6" class="b"/><text x="650" y="462" text-anchor="middle" class="h">服务证据</text><text x="650" y="494" text-anchor="middle" class="t">Queue Wait · P95/P99 · Throughput · Cache Hit Rate</text><text x="650" y="520" text-anchor="middle" class="s">副本请求数与忙碌时间解释负载偏斜</text>
+</svg>

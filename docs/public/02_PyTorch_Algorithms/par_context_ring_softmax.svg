@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="590" viewBox="0 0 1200 590" role="img" aria-labelledby="title desc">
+  <title id="title">K/V 分片轮转与在线 Softmax</title>
+  <desc id="desc">本地 Query 依次处理多个 K/V 分片，生成局部统计，再通过在线归一化合并为全局 Attention 输出。</desc>
+  <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#52667a"/></marker><style>.box{rx:13;stroke-width:2}.h{font:700 21px sans-serif;fill:#18324a}.t{font:16px sans-serif;fill:#30485d}.s{font:14px sans-serif;fill:#52667a}.line{stroke:#52667a;stroke-width:2.4;fill:none;marker-end:url(#arrow)}</style></defs>
+  <rect width="1200" height="590" fill="#f8fbfd"/>
+  <text x="600" y="46" text-anchor="middle" class="h">本地 Query 依次消费全部 K/V 分片</text>
+  <rect x="55" y="105" width="190" height="90" fill="#e8f1fb" stroke="#4f83b6" class="box"/><text x="150" y="140" text-anchor="middle" class="h">本地 Q</text><text x="150" y="169" text-anchor="middle" class="s">固定在当前 rank</text>
+  <rect x="330" y="86" width="190" height="68" fill="#e9f8ef" stroke="#3e9a67" class="box"/><text x="425" y="127" text-anchor="middle" class="t">本地 K/V 分片</text>
+  <rect x="330" y="172" width="190" height="68" fill="#e9f8ef" stroke="#3e9a67" class="box"/><text x="425" y="213" text-anchor="middle" class="t">远端 K/V 分片</text>
+  <path d="M245 150H290V120H330" class="line"/><path d="M245 150H290V206H330" class="line"/>
+  <path d="M520 120H615" class="line"/><path d="M520 206H570V150H615" class="line"/>
+  <rect x="615" y="96" width="245" height="108" fill="#fff7df" stroke="#d39a27" class="box"/><text x="737" y="132" text-anchor="middle" class="h">局部统计</text><text x="737" y="163" text-anchor="middle" class="t">最大值 mᵢ · 指数和 lᵢ</text><text x="737" y="187" text-anchor="middle" class="s">加权和 oᵢ</text>
+  <path d="M860 150H955" class="line"/>
+  <rect x="955" y="96" width="190" height="108" fill="#f3ecfb" stroke="#8462b6" class="box"/><text x="1050" y="132" text-anchor="middle" class="h">在线合并</text><text x="1050" y="163" text-anchor="middle" class="t">对齐全局最大值</text><text x="1050" y="187" text-anchor="middle" class="s">更新 m、l、o</text>
+  <path d="M1050 204V300H780" class="line"/>
+  <rect x="580" y="300" width="400" height="94" fill="#e8f1fb" stroke="#4f83b6" class="box"/><text x="780" y="338" text-anchor="middle" class="h">处理完全部分片</text><text x="780" y="369" text-anchor="middle" class="t">Attention output = o / l</text>
+  <path d="M780 394V466" class="line"/>
+  <rect x="420" y="466" width="720" height="72" fill="#ffffff" stroke="#94a7b8" class="box"/><text x="780" y="496" text-anchor="middle" class="t">正确性不变量：每个 Query 看见所有 K/V，分块结果与 dense Attention 一致</text><text x="780" y="521" text-anchor="middle" class="s">性能证据：rounds · payload · exposed communication · overlap</text>
+</svg>
