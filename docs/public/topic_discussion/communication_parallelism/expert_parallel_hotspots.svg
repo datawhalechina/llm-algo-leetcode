@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="700" viewBox="0 0 1400 700">
+  <defs><marker id="a" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5 0 9Z" fill="#475569"/></marker><style>.title{font:700 30px sans-serif;fill:#172033}.sub{font:18px sans-serif;fill:#526071}.h{font:700 20px sans-serif;fill:#172033}.t{font:16px sans-serif;fill:#334155}.line{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#a)}</style></defs><rect width="1400" height="700" fill="#fbfaf7"/>
+  <text x="70" y="65" class="title">Expert Parallel：路由如何形成通信热点</text><text x="70" y="98" class="sub">token 分布决定 All-to-All 负载；热点 rank 决定完整步骤的结束时间。</text>
+  <rect x="70" y="175" width="220" height="125" rx="18" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="125" y="218" class="h">Router</text><text x="105" y="258" class="t">top-k expert 选择</text>
+  <rect x="380" y="175" width="220" height="125" rx="18" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="425" y="218" class="h">Dispatch</text><text x="414" y="258" class="t">All-to-All 发送</text>
+  <rect x="690" y="135" width="350" height="205" rx="22" fill="#fff0c2" stroke="#d97706" stroke-width="2"/><text x="785" y="180" class="h">Rank-local Experts</text>
+  <g fill="#fff" stroke="#d97706"><rect x="735" y="220" width="55" height="80" rx="10"/><rect x="810" y="195" width="55" height="105" rx="10"/><rect x="885" y="160" width="55" height="140" rx="10"/><rect x="960" y="235" width="40" height="65" rx="10"/></g><text x="736" y="323" class="t">E0　 E1　 E2 热点　 E3</text>
+  <rect x="1130" y="175" width="200" height="125" rx="18" fill="#fce7f3" stroke="#db2777" stroke-width="2"/><text x="1173" y="218" class="h">Combine</text><text x="1167" y="258" class="t">返回并恢复顺序</text>
+  <path d="M290 238H380" class="line"/><path d="M600 238H690" class="line"/><path d="M1040 238H1130" class="line"/>
+  <rect x="180" y="430" width="1040" height="150" rx="20" fill="#f8fafc" stroke="#64748b" stroke-width="2"/><text x="220" y="472" class="h">热点证据必须成组读取</text>
+  <text x="225" y="520" class="t">expert counts / max-mean load</text><text x="545" y="520" class="t">capacity / overflow</text><text x="790" y="520" class="t">All-to-All bytes / time</text><text x="1040" y="520" class="t">max-rank step time</text>
+  <text x="360" y="635" class="sub">平均通信量不变，也可能因路由偏斜而增加等待与拥塞。</text>
+</svg>

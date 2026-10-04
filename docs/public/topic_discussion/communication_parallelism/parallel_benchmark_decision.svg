@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="700" viewBox="0 0 1400 700">
+  <defs><marker id="a" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5 0 9Z" fill="#475569"/></marker><style>.title{font:700 30px sans-serif;fill:#172033}.sub{font:18px sans-serif;fill:#526071}.h{font:700 20px sans-serif;fill:#172033}.t{font:16px sans-serif;fill:#334155}.line{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#a)}</style></defs><rect width="1400" height="700" fill="#fbfaf7"/>
+  <text x="70" y="65" class="title">多卡 Benchmark：从可比实验到并行决策</text><text x="70" y="98" class="sub">运行成功不是结论；容量、通信和系统收益必须来自同一 workload。</text>
+  <g stroke-width="2"><rect x="70" y="165" width="250" height="125" rx="18" fill="#dbeafe" stroke="#2563eb"/><rect x="390" y="165" width="250" height="125" rx="18" fill="#fff0c2" stroke="#d97706"/><rect x="710" y="165" width="250" height="125" rx="18" fill="#dcfce7" stroke="#16a34a"/><rect x="1030" y="165" width="300" height="125" rx="18" fill="#fce7f3" stroke="#db2777"/></g>
+  <text x="120" y="208" class="h">固定比较契约</text><text x="105" y="247" class="t">模型 · token · 硬件 · 拓扑</text>
+  <text x="450" y="208" class="h">采集成组证据</text><text x="425" y="247" class="t">显存 · 时间 · 通信 · 质量</text>
+  <text x="765" y="208" class="h">解释关键代价</text><text x="752" y="247" class="t">同步 · Bubble · 偏斜 · 长尾</text>
+  <text x="1100" y="208" class="h">形成项目决策</text><text x="1082" y="247" class="t">accept / tune / reject</text>
+  <path d="M320 228H390" class="line"/><path d="M640 228H710" class="line"/><path d="M960 228H1030" class="line"/>
+  <path d="M1180 290V350H305V405" class="line"/><path d="M1180 350H700V405" class="line"/><path d="M1180 350H1095V405" class="line"/>
+  <rect x="150" y="405" width="310" height="145" rx="20" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="255" y="447" class="h">accept</text><text x="190" y="486" class="t">收益稳定且通过正确性/质量门槛</text><text x="220" y="520" class="t">固化配置并进入回归</text>
+  <rect x="545" y="405" width="310" height="145" rx="20" fill="#fff0c2" stroke="#d97706" stroke-width="2"/><text x="662" y="447" class="h">tune</text><text x="585" y="486" class="t">方向成立，但仍有可定位浪费</text><text x="602" y="520" class="t">单变量调整后复测</text>
+  <rect x="940" y="405" width="310" height="145" rx="20" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/><text x="1045" y="447" class="h">reject</text><text x="980" y="486" class="t">失败、不可比或通信吞掉收益</text><text x="1010" y="520" class="t">回退或更换切分方式</text>
+  <text x="250" y="625" class="sub">训练状态 · 模型内部 · MoE 专家 · 分布式推理：四类并列项目，共享同一证据纪律。</text>
+</svg>

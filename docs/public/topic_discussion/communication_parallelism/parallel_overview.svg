@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="700" viewBox="0 0 1400 700">
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#475569"/></marker>
+    <style>.title{font:700 30px sans-serif;fill:#172033}.sub{font:18px sans-serif;fill:#526071}.h{font:700 21px sans-serif;fill:#172033}.t{font:17px sans-serif;fill:#334155}.note{font:16px sans-serif;fill:#475569}.box{stroke-width:2;rx:18}.line{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
+  </defs>
+  <rect width="1400" height="700" fill="#fbfaf7"/>
+  <text x="70" y="65" class="title">并行问题：从单卡约束到多卡证据</text>
+  <text x="70" y="98" class="sub">先选择切分对象，再解释跨卡交换，最后判断系统收益。</text>
+  <rect x="70" y="165" width="255" height="150" class="box" fill="#fff0c2" stroke="#d97706"/>
+  <text x="98" y="208" class="h">单卡约束</text><text x="98" y="247" class="t">容量不足 · 吞吐不足</text><text x="98" y="278" class="t">模型形状或上下文受限</text>
+  <rect x="395" y="165" width="255" height="150" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="423" y="208" class="h">选择切分对象</text><text x="423" y="247" class="t">状态 · 层 · 张量 · 序列</text><text x="423" y="278" class="t">专家 · 请求</text>
+  <rect x="720" y="165" width="255" height="150" class="box" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="748" y="208" class="h">跨卡协同</text><text x="748" y="247" class="t">Collective · P2P</text><text x="748" y="278" class="t">同步 · 路由 · Handoff</text>
+  <rect x="1045" y="165" width="285" height="150" class="box" fill="#fce7f3" stroke="#db2777"/>
+  <text x="1073" y="208" class="h">新的系统约束</text><text x="1073" y="247" class="t">等待 · Bubble · 负载不均</text><text x="1073" y="278" class="t">拓扑与长尾</text>
+  <path d="M325 240 H395" class="line"/><path d="M650 240 H720" class="line"/><path d="M975 240 H1045" class="line"/>
+  <rect x="150" y="410" width="1100" height="170" class="box" fill="#f8fafc" stroke="#64748b"/>
+  <text x="190" y="455" class="h">判断并行是否值得：三类证据必须同时成立</text>
+  <rect x="205" y="488" width="270" height="62" rx="14" fill="#fff0c2" stroke="#d97706"/><text x="245" y="527" class="t">容量：显存与可承载规模</text>
+  <rect x="565" y="488" width="270" height="62" rx="14" fill="#dbeafe" stroke="#2563eb"/><text x="605" y="527" class="t">通信：payload 与关键路径</text>
+  <rect x="925" y="488" width="270" height="62" rx="14" fill="#dcfce7" stroke="#16a34a"/><text x="962" y="527" class="t">系统：吞吐、长尾、扩展效率</text>
+  <text x="372" y="635" class="note">并行收益 = 切分释放的容量或计算压力 − 通信、同步与调度代价</text>
+</svg>

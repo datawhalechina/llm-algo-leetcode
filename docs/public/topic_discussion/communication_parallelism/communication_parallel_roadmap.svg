@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="760" viewBox="0 0 1500 760" role="img" aria-labelledby="title desc">
+  <title id="title">通信与并行路线图</title>
+  <desc id="desc">从多卡约束出发，依次学习集合通信、状态分片、并行切分、MoE 路由、通信调度和多卡基准决策。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#52606d"/></marker>
+    <marker id="blue" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#4c8eda"/></marker>
+    <style>
+      .title{font:700 30px sans-serif;fill:#172b4d}.group{font:700 17px sans-serif;fill:#36526f}.task{font:700 18px sans-serif;fill:#172b4d}.text{font:15px sans-serif;fill:#243b53}.small{font:14px sans-serif;fill:#52606d}.box{stroke-width:2;rx:15}.band{stroke-width:2;rx:20}.flow{stroke:#52606d;stroke-width:2.2;fill:none;marker-end:url(#arrow)}.seq{stroke:#4c8eda;stroke-width:2.8;fill:none;marker-end:url(#blue)}
+    </style>
+  </defs>
+  <rect width="1500" height="760" fill="#f7fafc"/>
+  <text x="750" y="44" text-anchor="middle" class="title">通信与并行路线图：从多卡分工到系统决策</text>
+
+  <rect x="28" y="78" width="1444" height="128" fill="#eef6ff" stroke="#8ab4df" class="band"/>
+  <text x="52" y="106" class="group">起点：单卡约束推动多卡分工</text>
+  <rect x="110" y="126" width="280" height="54" fill="#e8f1fb" stroke="#4c8eda" class="box"/>
+  <text x="250" y="150" text-anchor="middle" class="task">容量与训练规模</text><text x="250" y="170" text-anchor="middle" class="small">模型、状态、batch 放不下</text>
+  <rect x="610" y="126" width="280" height="54" fill="#e8f7ef" stroke="#45a36b" class="box"/>
+  <text x="750" y="150" text-anchor="middle" class="task">分布式分工</text><text x="750" y="170" text-anchor="middle" class="small">谁保存、计算、更新</text>
+  <rect x="1110" y="126" width="280" height="54" fill="#fff5e6" stroke="#e0a23b" class="box"/>
+  <text x="1250" y="150" text-anchor="middle" class="task">通信协同</text><text x="1250" y="170" text-anchor="middle" class="small">交换什么、何时交换</text>
+  <path d="M390 153 H610" class="flow"/><path d="M890 153 H1110" class="flow"/>
+
+  <rect x="28" y="230" width="1444" height="260" fill="#f1f8f3" stroke="#8bc39c" class="band"/>
+  <text x="52" y="258" class="group">主学习线：先建立共同语言，再进入切分、路由与调度</text>
+  <rect x="45" y="292" width="190" height="145" fill="#e8f7ef" stroke="#45a36b" class="box"/>
+  <text x="140" y="325" text-anchor="middle" class="task">Task0</text><text x="140" y="354" text-anchor="middle" class="text">多卡心智模型</text><text x="140" y="386" text-anchor="middle" class="small">容量、计算、同步</text><text x="140" y="408" text-anchor="middle" class="small">为什么需要多卡</text>
+  <rect x="260" y="292" width="190" height="145" fill="#e8f7ef" stroke="#45a36b" class="box"/>
+  <text x="355" y="325" text-anchor="middle" class="task">Task1</text><text x="355" y="354" text-anchor="middle" class="text">拓扑与 Collective</text><text x="355" y="386" text-anchor="middle" class="small">AllReduce / Gather</text><text x="355" y="408" text-anchor="middle" class="small">payload 与链路</text>
+  <rect x="475" y="292" width="190" height="145" fill="#fff5e6" stroke="#e0a23b" class="box"/>
+  <text x="570" y="325" text-anchor="middle" class="task">Task2</text><text x="570" y="354" text-anchor="middle" class="text">状态分片与 ZeRO</text><text x="570" y="386" text-anchor="middle" class="small">参数、梯度、状态</text><text x="570" y="408" text-anchor="middle" class="small">显存与通信交换</text>
+  <rect x="690" y="292" width="190" height="145" fill="#fff5e6" stroke="#e0a23b" class="box"/>
+  <text x="785" y="325" text-anchor="middle" class="task">Task3</text><text x="785" y="354" text-anchor="middle" class="text">模型、上下文与请求切分</text><text x="785" y="386" text-anchor="middle" class="small">PP / TP / CP / Replica</text><text x="785" y="408" text-anchor="middle" class="small">通信位置与布局</text>
+  <rect x="905" y="292" width="190" height="145" fill="#f0eefb" stroke="#8069b5" class="box"/>
+  <text x="1000" y="325" text-anchor="middle" class="task">Task4</text><text x="1000" y="354" text-anchor="middle" class="text">MoE 动态路由</text><text x="1000" y="386" text-anchor="middle" class="small">All-to-All</text><text x="1000" y="408" text-anchor="middle" class="small">容量与负载均衡</text>
+  <rect x="1120" y="292" width="190" height="145" fill="#f0eefb" stroke="#8069b5" class="box"/>
+  <text x="1215" y="325" text-anchor="middle" class="task">Task5</text><text x="1215" y="354" text-anchor="middle" class="text">证据与 Overlap</text><text x="1215" y="386" text-anchor="middle" class="small">payload、频率、trace</text><text x="1215" y="408" text-anchor="middle" class="small">减少暴露通信</text>
+  <path d="M235 364 H260" class="seq"/><path d="M450 364 H475" class="seq"/><path d="M665 364 H690" class="seq"/><path d="M880 364 H905" class="seq"/><path d="M1095 364 H1120" class="seq"/>
+
+  <rect x="28" y="518" width="1444" height="150" fill="#f5f2fc" stroke="#a795d0" class="band"/>
+  <text x="52" y="546" class="group">验证出口：用真实多卡证据完成系统级选择</text>
+  <rect x="270" y="572" width="300" height="58" fill="#eef6ff" stroke="#4c8eda" class="box"/>
+  <text x="420" y="596" text-anchor="middle" class="task">Task6 · 多卡基准</text><text x="420" y="616" text-anchor="middle" class="small">固定 workload、拓扑与 baseline</text>
+  <rect x="630" y="572" width="300" height="58" fill="#fff8eb" stroke="#e0a23b" class="box"/>
+  <text x="780" y="596" text-anchor="middle" class="task">证据比较</text><text x="780" y="616" text-anchor="middle" class="small">显存、通信、吞吐、长尾、失败</text>
+  <rect x="990" y="572" width="300" height="58" fill="#f2effc" stroke="#8069b5" class="box"/>
+  <text x="1140" y="596" text-anchor="middle" class="task">并行决策</text><text x="1140" y="616" text-anchor="middle" class="small">accept / tune / reject</text>
+  <path d="M1215 437 V540 H420 V572" class="seq"/><path d="M570 601 H630" class="seq"/><path d="M930 601 H990" class="seq"/>
+  <rect x="250" y="694" width="1000" height="42" fill="#fff" stroke="#c5d1de" class="box"/>
+  <text x="750" y="721" text-anchor="middle" class="small">核心判断：切分收益必须同时覆盖容量、通信暴露时间与扩展效率，才能成为可交付的多卡方案。</text>
+</svg>

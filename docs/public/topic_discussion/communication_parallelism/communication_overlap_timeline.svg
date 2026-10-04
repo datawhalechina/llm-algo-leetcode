@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="700" viewBox="0 0 1400 700">
+  <defs><style>.title{font:700 30px sans-serif;fill:#172033}.sub{font:18px sans-serif;fill:#526071}.h{font:700 20px sans-serif;fill:#172033}.t{font:16px sans-serif;fill:#334155}.axis{stroke:#64748b;stroke-width:3}</style></defs><rect width="1400" height="700" fill="#fbfaf7"/>
+  <text x="70" y="65" class="title">通信时间线：总通信与暴露通信不是同一个量</text><text x="70" y="98" class="sub">只有未被有效计算覆盖、且位于关键路径上的部分会直接拉长 step。</text>
+  <text x="85" y="190" class="h">未重叠</text><line x1="230" y1="178" x2="1280" y2="178" class="axis"/>
+  <rect x="260" y="140" width="330" height="75" rx="12" fill="#dbeafe" stroke="#2563eb"/><text x="365" y="185" class="t">Backward Compute</text>
+  <rect x="600" y="140" width="340" height="75" rx="12" fill="#fca5a5" stroke="#dc2626"/><text x="695" y="185" class="t">Collective Communication</text>
+  <rect x="950" y="140" width="260" height="75" rx="12" fill="#dcfce7" stroke="#16a34a"/><text x="1018" y="185" class="t">Optimizer</text>
+  <text x="85" y="345" class="h">已重叠</text><line x1="230" y1="333" x2="1280" y2="333" class="axis"/>
+  <rect x="260" y="295" width="650" height="75" rx="12" fill="#dbeafe" stroke="#2563eb"/><text x="485" y="340" class="t">Backward Compute</text>
+  <rect x="500" y="385" width="410" height="65" rx="12" fill="#fde68a" stroke="#d97706"/><text x="610" y="425" class="t">被计算覆盖的通信</text>
+  <rect x="910" y="385" width="165" height="65" rx="12" fill="#fca5a5" stroke="#dc2626"/><text x="930" y="425" class="t">暴露通信</text>
+  <rect x="1085" y="295" width="150" height="75" rx="12" fill="#dcfce7" stroke="#16a34a"/><text x="1110" y="340" class="t">Optimizer</text>
+  <rect x="245" y="520" width="910" height="95" rx="18" fill="#f8fafc" stroke="#64748b"/><text x="295" y="558" class="h">Profiling 决策</text><text x="295" y="592" class="t">payload 太大 → 切分；调用太频繁 → 合并；依赖串行 → 调度 overlap；rank 偏斜 → 先处理负载。</text>
+</svg>

@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="790" viewBox="0 0 1500 790" role="img" aria-labelledby="title desc">
+  <title id="title">通信与并行知识地图</title>
+  <desc id="desc">多卡约束推动分布式切分，切分带来不同通信对象和调度问题，最终用容量、通信时间和扩展效率验证方案。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#52606d"/></marker>
+    <marker id="dash" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 Z" fill="#829ab1"/></marker>
+    <style>
+      .title{font:700 30px sans-serif;fill:#172b4d}.sub{font:16px sans-serif;fill:#486581}.group{font:700 19px sans-serif;fill:#172b4d}.head{font:700 18px sans-serif;fill:#172b4d}.text{font:15px sans-serif;fill:#243b53}.small{font:14px sans-serif;fill:#52606d}.box{stroke-width:2;rx:14}.band{stroke-width:2;rx:20}.flow{stroke:#52606d;stroke-width:2.2;fill:none;marker-end:url(#arrow)}.map{stroke:#829ab1;stroke-width:1.8;stroke-dasharray:7 5;fill:none;marker-end:url(#dash)}
+    </style>
+  </defs>
+  <rect width="1500" height="790" fill="#f7fafc"/>
+  <text x="750" y="42" text-anchor="middle" class="title">通信与并行知识地图：分工如何转化为多卡证据</text>
+  <text x="750" y="72" text-anchor="middle" class="sub">先定位约束，再选择切分与 collective，最后检查通信是否吃掉扩展收益。</text>
+
+  <rect x="24" y="98" width="1452" height="160" fill="#eef6ff" stroke="#8ab4df" class="band"/>
+  <text x="46" y="128" class="group">多卡问题的输入条件</text>
+  <rect x="52" y="154" width="320" height="76" fill="#e8f1fb" stroke="#4c8eda" class="box"/>
+  <text x="212" y="184" text-anchor="middle" class="head">训练或服务 workload</text><text x="212" y="208" text-anchor="middle" class="small">batch、seq_len、并发、模型规模</text>
+  <rect x="405" y="154" width="320" height="76" fill="#e8f7ef" stroke="#45a36b" class="box"/>
+  <text x="565" y="184" text-anchor="middle" class="head">状态与计算压力</text><text x="565" y="208" text-anchor="middle" class="small">参数、梯度、状态、激活、专家</text>
+  <rect x="758" y="154" width="320" height="76" fill="#fff5e6" stroke="#e0a23b" class="box"/>
+  <text x="918" y="184" text-anchor="middle" class="head">集群与链路条件</text><text x="918" y="208" text-anchor="middle" class="small">GPU、拓扑、带宽、延迟、world size</text>
+  <rect x="1111" y="154" width="320" height="76" fill="#f0eefb" stroke="#8069b5" class="box"/>
+  <text x="1271" y="184" text-anchor="middle" class="head">目标与约束</text><text x="1271" y="208" text-anchor="middle" class="small">容量、吞吐、长尾、质量、成本</text>
+
+  <rect x="24" y="290" width="1452" height="292" fill="#fff8eb" stroke="#e0a23b" class="band"/>
+  <text x="46" y="320" class="group">并行机制对象：切分决定通信对象，通信对象决定协同方式</text>
+  <rect x="52" y="354" width="300" height="180" fill="#e8f7ef" stroke="#45a36b" class="box"/>
+  <text x="202" y="385" text-anchor="middle" class="head">状态分片</text><text x="202" y="414" text-anchor="middle" class="text">DDP / ZeRO</text><text x="202" y="442" text-anchor="middle" class="small">参数、梯度、优化器状态</text><text x="202" y="472" text-anchor="middle" class="small">通信：梯度归约、参数同步</text><text x="202" y="504" text-anchor="middle" class="small">目标：降低重复驻留</text>
+  <rect x="402" y="354" width="300" height="180" fill="#fff5e6" stroke="#e0a23b" class="box"/>
+  <text x="552" y="385" text-anchor="middle" class="head">模型与序列切分</text><text x="552" y="414" text-anchor="middle" class="text">PP / TP / CP</text><text x="552" y="442" text-anchor="middle" class="small">层、矩阵、Head、序列状态</text><text x="552" y="472" text-anchor="middle" class="small">通信：P2P、Gather、Reduce</text><text x="552" y="504" text-anchor="middle" class="small">目标：扩展模型与上下文</text>
+  <rect x="752" y="354" width="300" height="180" fill="#fce7f3" stroke="#db2777" class="box"/>
+  <text x="902" y="385" text-anchor="middle" class="head">动态路由</text><text x="902" y="414" text-anchor="middle" class="text">MoE / EP</text><text x="902" y="442" text-anchor="middle" class="small">token、专家容量、负载</text><text x="902" y="472" text-anchor="middle" class="small">通信：All-to-All</text><text x="902" y="504" text-anchor="middle" class="small">目标：稀疏计算规模</text>
+  <rect x="1102" y="354" width="330" height="180" fill="#eef2f5" stroke="#829ab1" class="box"/>
+  <text x="1267" y="385" text-anchor="middle" class="head">通信证据与执行</text><text x="1267" y="414" text-anchor="middle" class="text">payload / frequency / overlap</text><text x="1267" y="442" text-anchor="middle" class="small">消息粒度、同步点、等待</text><text x="1267" y="472" text-anchor="middle" class="small">trace 与关键路径</text><text x="1267" y="504" text-anchor="middle" class="small">目标：减少通信暴露</text>
+  <path d="M212 230 V354" class="flow"/><path d="M565 230 V310 H552 V354" class="flow"/><path d="M918 230 V310 H902 V354" class="flow"/><path d="M1271 230 V354" class="flow"/>
+  <path d="M352 444 H402" class="flow"/><path d="M702 444 H752" class="flow"/><path d="M1052 444 H1102" class="flow"/>
+
+  <rect x="24" y="616" width="1452" height="142" fill="#f2effc" stroke="#a795d0" class="band"/>
+  <text x="46" y="646" class="group">多卡证据：同一 workload 下判断方案是否值得采用</text>
+  <rect x="60" y="678" width="250" height="52" fill="#eef6ff" stroke="#4c8eda" class="box"/><text x="185" y="700" text-anchor="middle" class="head">容量</text><text x="185" y="720" text-anchor="middle" class="small">peak memory、可承载规模</text>
+  <rect x="380" y="678" width="250" height="52" fill="#e8f7ef" stroke="#45a36b" class="box"/><text x="505" y="700" text-anchor="middle" class="head">通信暴露</text><text x="505" y="720" text-anchor="middle" class="small">collective、等待、overlap</text>
+  <rect x="700" y="678" width="250" height="52" fill="#fff5e6" stroke="#e0a23b" class="box"/><text x="825" y="700" text-anchor="middle" class="head">扩展效率</text><text x="825" y="720" text-anchor="middle" class="small">step time、吞吐、scaling</text>
+  <rect x="1020" y="678" width="350" height="52" fill="#f0eefb" stroke="#8069b5" class="box"/><text x="1195" y="700" text-anchor="middle" class="head">系统决策</text><text x="1195" y="720" text-anchor="middle" class="small">baseline / candidate / evidence / decision</text>
+  <path d="M202 534 V650 H185 V678" class="map"/><path d="M552 534 V650 H505 V678" class="map"/><path d="M902 534 V650 H825 V678" class="map"/><path d="M1267 534 V650 H1195 V678" class="map"/>
+</svg>

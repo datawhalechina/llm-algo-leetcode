@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="700" viewBox="0 0 1400 700">
+  <defs><marker id="a" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5 0 9Z" fill="#475569"/></marker><style>.title{font:700 30px sans-serif;fill:#172033}.sub{font:18px sans-serif;fill:#526071}.h{font:700 20px sans-serif;fill:#172033}.t{font:16px sans-serif;fill:#334155}.line{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#a)}</style></defs>
+  <rect width="1400" height="700" fill="#fbfaf7"/><text x="70" y="65" class="title">数据并行：局部计算如何汇成一致更新</text><text x="70" y="98" class="sub">每个 rank 处理不同样本；optimizer step 之前必须完成梯度同步。</text>
+  <g fill="#dbeafe" stroke="#2563eb" stroke-width="2">
+    <rect x="80" y="155" width="240" height="125" rx="17"/><rect x="410" y="155" width="240" height="125" rx="17"/><rect x="750" y="155" width="240" height="125" rx="17"/><rect x="1080" y="155" width="240" height="125" rx="17"/>
+  </g>
+  <g class="h"><text x="155" y="198">Rank 0</text><text x="485" y="198">Rank 1</text><text x="825" y="198">Rank 2</text><text x="1155" y="198">Rank 3</text></g>
+  <g class="t"><text x="117" y="237">batch 0 → local grad</text><text x="447" y="237">batch 1 → local grad</text><text x="787" y="237">batch 2 → local grad</text><text x="1117" y="237">batch 3 → local grad</text></g>
+  <path d="M200 280 V350 H700" class="line"/><path d="M530 280 V330 H700" class="line"/><path d="M870 280 V330 H700" class="line"/><path d="M1200 280 V350 H700" class="line"/>
+  <rect x="500" y="350" width="400" height="95" rx="18" fill="#fff0c2" stroke="#d97706" stroke-width="2"/><text x="585" y="392" class="h">Gradient All-Reduce</text><text x="570" y="421" class="t">payload × frequency × topology</text>
+  <path d="M700 445 V500" class="line"/>
+  <rect x="485" y="500" width="430" height="90" rx="18" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="583" y="540" class="h">一致的 optimizer step</text><text x="548" y="569" class="t">最慢 rank 决定同步完成时间</text>
+  <text x="335" y="650" class="sub">梯度累积改变同步频率；bucket 与 backward overlap 决定通信暴露时间。</text>
+</svg>

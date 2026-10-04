@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <rect width="1280" height="720" fill="#F7F4EC"/>
+  <rect x="36" y="32" width="1208" height="656" rx="28" fill="#FFFDF7" stroke="#1F2937" stroke-width="3"/>
+  <g font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" fill="#172033">
+    <text x="80" y="88" font-size="34" font-weight="700">从多卡实验症状定位并行证据缺口</text>
+    <text x="80" y="124" font-size="18" fill="#526076">先定位切分对象，再检查通信、负载与关键路径。</text>
+    <rect x="470" y="154" width="340" height="68" rx="18" fill="#EAF2FF" stroke="#3973B7" stroke-width="2.5"/>
+    <text x="640" y="196" text-anchor="middle" font-size="23" font-weight="700">观察到多卡实验异常</text>
+    <path d="M640 222 V258 H170 V292 M640 258 H358 V292 M640 258 H546 V292 M640 258 H734 V292 M640 258 H922 V292 M640 258 H1110 V292" fill="none" stroke="#344054" stroke-width="3"/>
+    <path d="M164 282 L170 292 L176 282 Z M352 282 L358 292 L364 282 Z M540 282 L546 292 L552 282 Z M728 282 L734 292 L740 282 Z M916 282 L922 292 L928 282 Z M1104 282 L1110 292 L1116 282 Z" fill="#344054"/>
+    <g text-anchor="middle">
+      <rect x="80" y="292" width="180" height="86" rx="16" fill="#FFF0C7" stroke="#C98718" stroke-width="2"/><text x="170" y="327" font-size="18" font-weight="700">扩展效率低</text><text x="170" y="355" font-size="15">Collective · 拓扑</text>
+      <rect x="268" y="292" width="180" height="86" rx="16" fill="#E8F5FF" stroke="#3783B8" stroke-width="2"/><text x="358" y="327" font-size="18" font-weight="700">显存降但变慢</text><text x="358" y="355" font-size="15">状态生命周期</text>
+      <rect x="456" y="292" width="180" height="86" rx="16" fill="#EEE8FF" stroke="#7457B7" stroke-width="2"/><text x="546" y="327" font-size="18" font-weight="700">Bubble / 同步高</text><text x="546" y="355" font-size="15">PP · TP · CP</text>
+      <rect x="644" y="292" width="180" height="86" rx="16" fill="#FCE8E6" stroke="#B85C54" stroke-width="2"/><text x="734" y="327" font-size="18" font-weight="700">EP 负载偏斜</text><text x="734" y="355" font-size="15">容量 · All-to-All</text>
+      <rect x="832" y="292" width="180" height="86" rx="16" fill="#E7F6E9" stroke="#4B8E55" stroke-width="2"/><text x="922" y="327" font-size="18" font-weight="700">Serving 长尾高</text><text x="922" y="355" font-size="15">队列 · 缓存局部性</text>
+      <rect x="1020" y="292" width="180" height="86" rx="16" fill="#F1F3F5" stroke="#667085" stroke-width="2"/><text x="1110" y="327" font-size="18" font-weight="700">结果不可复现</text><text x="1110" y="355" font-size="15">工作负载 · 环境</text>
+    </g>
+    <path d="M170 378 V418 H640 M358 378 V418 M546 378 V418 M734 378 V418 M922 378 V418 M1110 378 V418 H640 V448" fill="none" stroke="#344054" stroke-width="3"/>
+    <path d="M632 438 L640 450 L648 438 Z" fill="#344054"/>
+    <rect x="405" y="450" width="470" height="64" rx="16" fill="#FFF0C7" stroke="#C98718" stroke-width="2.5"/>
+    <text x="640" y="489" text-anchor="middle" font-size="21" font-weight="700">补充切分、通信、负载与 Trace 证据</text>
+    <path d="M640 514 V544" stroke="#344054" stroke-width="3"/><path d="M632 534 L640 546 L648 534 Z" fill="#344054"/>
+    <rect x="230" y="548" width="360" height="76" rx="18" fill="#EAF2FF" stroke="#3973B7" stroke-width="2.5"/>
+    <text x="410" y="580" text-anchor="middle" font-size="21" font-weight="700">正文 01–06：定位机制</text>
+    <text x="410" y="607" text-anchor="middle" font-size="16">约束 · 同步 · 切分 · 路由 · Overlap</text>
+    <path d="M590 586 H688" stroke="#344054" stroke-width="3"/><path d="M676 579 L690 586 L676 593 Z" fill="#344054"/>
+    <rect x="690" y="548" width="360" height="76" rx="18" fill="#FCE8E6" stroke="#B85C54" stroke-width="2.5"/>
+    <text x="870" y="580" text-anchor="middle" font-size="21" font-weight="700">正文 07：形成多卡决策</text>
+    <text x="870" y="607" text-anchor="middle" font-size="16">采用 · 调优 · 拒绝</text>
+  </g>
+</svg>
