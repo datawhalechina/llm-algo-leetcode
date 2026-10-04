@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="460" viewBox="0 0 1080 460" role="img" aria-labelledby="title desc">
+  <title id="title">QAT 从浮点训练到部署产物的流程</title>
+  <desc id="desc">浮点主权重经过 fake quant 前向和 STE 反向更新，验证后导出量化参数与权重，并进入部署验证。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#475569"/></marker>
+    <style>
+      .box{fill:#fff;stroke:#64748b;stroke-width:2;rx:14}.train{fill:#eff6ff;stroke:#2563eb}.quant{fill:#f5f3ff;stroke:#7c3aed}.deploy{fill:#ecfdf5;stroke:#059669}
+      .t{font:600 20px sans-serif;fill:#0f172a;text-anchor:middle}.s{font:15px sans-serif;fill:#334155;text-anchor:middle}.g{font:600 16px sans-serif;fill:#475569}.line{stroke:#475569;stroke-width:2.2;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1080" height="460" fill="#f8fafc"/>
+  <text x="40" y="42" class="g">训练状态</text>
+  <rect x="60" y="70" width="220" height="92" class="box train"/><text x="170" y="108" class="t">浮点主权重</text><text x="170" y="137" class="s">optimizer 更新对象</text>
+  <rect x="430" y="70" width="220" height="92" class="box quant"/><text x="540" y="108" class="t">Fake Quant 前向</text><text x="540" y="137" class="s">scale · clamp · round</text>
+  <rect x="800" y="70" width="220" height="92" class="box train"/><text x="910" y="108" class="t">任务损失</text><text x="910" y="137" class="s">量化噪声进入训练</text>
+  <path d="M280 116 H430" class="line"/><path d="M650 116 H800" class="line"/>
+  <rect x="430" y="225" width="220" height="92" class="box quant"/><text x="540" y="263" class="t">STE 反向</text><text x="540" y="292" class="s">近似离散操作梯度</text>
+  <path d="M910 162 V271 H650" class="line"/><path d="M430 271 H170 V162" class="line"/>
+  <text x="40" y="374" class="g">部署出口</text>
+  <rect x="210" y="340" width="250" height="88" class="box deploy"/><text x="335" y="377" class="t">冻结 qparams</text><text x="335" y="406" class="s">权重 · scale · zero point</text>
+  <rect x="620" y="340" width="250" height="88" class="box deploy"/><text x="745" y="377" class="t">Backend 复验</text><text x="745" y="406" class="s">质量 · kernel · 性能</text>
+  <path d="M540 317 V330 H335 V340" class="line"/><path d="M460 384 H620" class="line"/>
+</svg>

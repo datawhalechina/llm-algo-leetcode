@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="360" viewBox="0 0 1080 360" role="img" aria-labelledby="title desc">
+  <title id="title">Fake quant 与 STE 的前向反向关系</title>
+  <desc id="desc">前向执行裁剪、缩放、舍入和恢复，反向在可表示区间传递近似梯度，在饱和区抑制梯度。</desc>
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#475569"/></marker><style>.b{fill:#fff;stroke:#64748b;stroke-width:2;rx:12}.q{fill:#f5f3ff;stroke:#7c3aed}.t{font:600 18px sans-serif;fill:#0f172a;text-anchor:middle}.s{font:14px sans-serif;fill:#334155;text-anchor:middle}.l{stroke:#475569;stroke-width:2;fill:none;marker-end:url(#a)}.r{stroke:#dc2626;stroke-width:2;fill:none;marker-end:url(#a);stroke-dasharray:7 5}</style></defs>
+  <text x="35" y="42" class="t" text-anchor="start">前向：模拟部署离散化</text>
+  <rect x="55" y="70" width="150" height="72" class="b"/><text x="130" y="112" class="t">浮点张量</text>
+  <rect x="265" y="70" width="150" height="72" class="b q"/><text x="340" y="100" class="t">Clamp</text><text x="340" y="124" class="s">限制表示范围</text>
+  <rect x="475" y="70" width="150" height="72" class="b q"/><text x="550" y="100" class="t">Round</text><text x="550" y="124" class="s">映射整数码点</text>
+  <rect x="685" y="70" width="150" height="72" class="b q"/><text x="760" y="100" class="t">Dequant</text><text x="760" y="124" class="s">恢复浮点近似</text>
+  <rect x="895" y="70" width="130" height="72" class="b"/><text x="960" y="112" class="t">后续算子</text>
+  <path d="M205 106 H265" class="l"/><path d="M415 106 H475" class="l"/><path d="M625 106 H685" class="l"/><path d="M835 106 H895" class="l"/>
+  <text x="35" y="230" class="t" text-anchor="start">反向：使用近似梯度</text>
+  <rect x="180" y="252" width="270" height="70" class="b"/><text x="315" y="281" class="t">可表示区间</text><text x="315" y="306" class="s">梯度近似直通</text>
+  <rect x="630" y="252" width="270" height="70" class="b"/><text x="765" y="281" class="t">饱和区间</text><text x="765" y="306" class="s">裁剪阻止继续放大</text>
+  <path d="M760 142 V210 H315 V252" class="r"/><path d="M760 142 V252" class="r"/>
+</svg>
