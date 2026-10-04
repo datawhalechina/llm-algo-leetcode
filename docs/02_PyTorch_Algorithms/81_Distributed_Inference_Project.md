@@ -12,55 +12,70 @@
 ---
 ## 本节导读
 
-本节先用单卡逻辑模拟验证分布式 serving 是否值得迁移。你需要固定请求 workload、虚拟集群和路由规则，比较 baseline 与候选方案的 makespan、负载均衡、通信成本和总吞吐。最终输出迁移建议，并明确还需要哪些真实多卡数据才能进入部署验证。
-**层级定位：** 本项目连接 L4 与 L5：L4 关注分布式推理实例、切分和路由执行，L5 关注副本、资源编排和服务迁移治理；当前 Notebook 只完成逻辑验证，不能替代真实多卡通信和生产平台验证。
+本节用同一组请求比较完整副本路由、模型并行实例与 Prefill / Decode 分离三种服务形态。先在 CPU 上拆开请求阶段、队列与 handoff 成本，再把最有价值的候选带入多卡 backend，形成从服务选择到部署证据的连续项目。
 
 **关键词：** `distributed inference`, `routing`, `load balance`, `communication cost`, `migration decision`
 
 ---
 ## 前置阅读
 
-**导语：** 先把基础推理对比、serving 调度、并行 benchmark 和 `2.9` 的分布式主线理顺，再进入这个项目；本节默认你已经知道单机 serving 和并行策略的基本口径，重点转向是否值得迁移到分布式部署。
+**导语：** 先建立单卡推理基线，再理解请求调度、模型内部切分与副本路由。本项目把这些机制放到同一请求 workload 下，判断是否值得迁移到分布式部署。
 - [66. Inference Performance Comparison | 推理性能对比实验](./66_Inference_Performance_Comparison.md)
 - [70. Serving Scheduler Benchmark | 推理服务调度基准](./70_Serving_Scheduler_Benchmark.md)
-- [79. Distributed Parallel Benchmark | 分布式并行基准项目](./79_Distributed_Parallel_Benchmark.md)
+- [49. Parallelism Strategy Selection | 并行策略选择](./49_Parallelism_Strategy_Selection.md)
+- [PAR-REPLICA. Serving Replica Routing | Serving 副本路由](./PAR-REPLICA_Serving_Replica_Routing.md)
 
-## 相关项目入口
-
-**导语：** 完成分布式推理逻辑验证后，用 80 补充 MoE 专家并行对照；如果准备进入真实部署，先用 74 的 profiling 闭环检查迁移收益。
-- [80. MoE Expert Parallel Benchmark | MoE 专家并行基准](./80_MoE_Expert_Parallel_Benchmark.md)
-- [74. Profiling-Driven End-to-End Optimization | profiling 驱动的端到端优化项目](./74_Profiling_Driven_End_to_End_Optimization.md)
 
 ---
-### Step 1: 定义 distributed inference 项目目标
+### Step 1：从请求阶段选择分布式服务形态
 
-- 固定请求集合、虚拟副本数、TP / PP 逻辑度和路由策略。
-- 每个请求只记录 `prompt_tokens` 和 `generate_tokens`。
-- 在单机环境里先把路由、prefill、decode 和通信逻辑说清楚。
-### Step 2: baseline 和迁移口径先要合法
+一条请求先在 Prefill 阶段处理 prompt，再在 Decode 阶段逐 token 生成。最直接的扩展方式是增加完整副本并把请求路由到较空闲副本；当长 prompt 与长 decode 争抢同一组 GPU 时，也可以让 Prefill 和 Decode 位于不同 worker。后一种设计需要把 KV 状态从 Prefill worker 交给 Decode worker，收益取决于阶段计算差异是否大于 handoff、排队和协调成本。
 
-- 分布式推理验证不能脱离基线 workload 讨论。
-- 如果 baseline 的请求集合、容量约束或路由规则本身不稳定，迁移结论就没有解释空间。
-- 至少要先确认 single-replica 时间、route 结果和 makespan 是可复现的。
-### Step 3: 用统一口径比较收益与代价
+| 服务形态 | 分工对象 | 主要收益 | 首先观察的代价 |
+|:---|:---|:---|:---|
+| 完整副本路由 | 整个请求 | 提高并发、降低排队 | 副本负载不均、模型副本容量 |
+| TP / PP 服务实例 | 单个模型执行 | 让大模型跨卡运行 | collective / stage 传输、长尾延迟 |
+| Prefill / Decode 分离 | 请求的两个阶段 | 隔离不同计算特征 | KV handoff bytes、网络等待、状态一致性 |
+### Step 2：定义可比较的请求 workload
 
-- 分布式推理项目必须同时看路由结果、负载均衡、makespan 和通信代价，不能只挑单项吞吐收益下结论。
-- `assignments` 回答请求是否按预期分散到不同副本。
-- `makespan_ms` 和 `throughput_req_per_ms` 回答逻辑收益是否存在。
-- `imbalance_ratio` 和 `comm_cost_ms` 回答收益是不是靠额外通信或严重不均衡换来的。
-### Step 4: 输出迁移结论
+每个请求至少记录 prompt tokens、生成 tokens 和到达顺序。若比较 PD 分离，还要固定 KV 表示的每 token 字节数与 Prefill / Decode worker 的数量；若比较副本路由，则固定副本数、路由策略和并发上限。这样才能判断时间变化来自服务形态，而不是请求长度或输入分布改变。
 
-- 分布式推理最终不是输出“逻辑模拟能不能跑”，而是输出这条迁移路线在当前 workload 下是否值得继续保留、微调或进入真实多卡部署。
-- 最终结论建议统一为 `accept / tune / reject`。
-- 若进入 `tune`，下一轮优先回路由策略、切分度和副本配置，而不是直接上真多卡部署。
-#### 图解：66-70-79 如何收束到 81 分布式推理逻辑验证
+| 字段 | 用途 | 对哪些策略必须一致 |
+|:---|:---|:---|
+| `prompt_tokens` / `generate_tokens` | 决定 Prefill 与 Decode 工作量 | 全部对照 |
+| 到达顺序与并发 | 决定 queue wait 和路由压力 | 副本路由、PD 分离 |
+| `kv_bytes_per_token` | 估算 PD handoff 传输量 | PD 分离 |
+| TP / PP / replicas | 说明服务实例的切分与副本形状 | 分布式 candidate |
+| backend、dtype、模型 revision | 保证运行时与模型产物可比 | 真实 GPU benchmark |
+### Step 3：用阶段指标判断收益来自哪里
 
-```text
-66 inference baseline -> 70 serving scheduler -> 79 distributed parallel benchmark
-                         |
-                         v
-            81 distributed inference validation + migration decision
-```
+副本扩展首先看 queue wait、负载和 makespan；PD 分离还必须单独看 TTFT、TPOT 与 KV handoff。把通信成本合并到总时延会掩盖问题：TTFT 改善但 handoff 过慢，或吞吐提升却导致长尾上升，都是需要继续调优而非直接接受的信号。
+
+| 指标 | 主要回答的问题 | 适用策略 |
+|:---|:---|:---|
+| TTFT / Prefill time | prompt 是否更快进入首 token | 全部，尤其 PD 分离 |
+| TPOT / Decode time | 生成阶段是否被计算或 KV 访存拖慢 | 全部，尤其 Decode worker |
+| queue wait / makespan | 路由和副本是否真的提升并发 | 副本路由、PD 分离 |
+| handoff bytes / handoff time | KV 状态传输是否暴露在关键路径 | PD 分离 |
+| request / token throughput、P95/P99 | 系统是否稳定扩大服务能力 | 真实 GPU benchmark |
+### Step 4：CPU 模拟——比较路由、并行与 PD handoff
+
+题目区把请求时间拆成 Prefill、Decode、TP/PP 通信代理与 PD handoff，再用同一请求集合比较完整副本路由、模型并行实例和 PD 分离。CPU 账本不预测真实 GPU 时间，而是帮助你识别下一轮真实 benchmark 应测哪一组候选。
+
+| 函数 | 机制职责 | 保留的中间证据 |
+|:---|:---|:---|
+| `estimate_request_cost` | 分别估算 Prefill、Decode 与 TP/PP 通信代理 | TTFT / TPOT proxy、communication time |
+| `simulate_distributed_inference` | 按策略分配请求并累积 worker 负载 | assignments、queue proxy、makespan |
+| `recommend_distributed_inference_run` | 同时判断时延、负载、通信与吞吐 | accept / tune / reject 与下一步实验 |
+#### 机制证据如何进入分布式推理项目
+
+| 上游证据 | 带入 81 的内容 |
+| --- | --- |
+| 66 推理 baseline | 固定模型、请求与单实例延迟口径 |
+| 70 Serving 调度 | queue wait、并发和长尾证据 |
+| 49 并行策略选择 | TP / PP 实例形状与通信约束 |
+| PAR-REPLICA 副本路由 | 请求分配、负载和缓存局部性 |
+| 81 项目出口 | 比较副本、模型并行实例与 PD 分离并形成迁移决策 |
 项目页最小产物：
 
 | 模块 | 必须记录 | 用途 |
@@ -77,29 +92,31 @@ from typing import Dict, List
 
 
 ```python
-# 3 个核心 TODO：请求成本估算、分布式模拟、迁移决策
-# 目标：把分布式推理验证整理成 baseline -> candidate -> decision 闭环
+# 3 个核心 TODO：阶段成本账本、分布式路由模拟、迁移决策
+# 目标：用同一 workload 比较副本路由与通信成本；PD handoff 的真实时间在 GPU backend 结果中验证。
 
 def estimate_request_cost(request: Dict[str, int], config: Dict[str, float]) -> Dict[str, float]:
-    """null"""
-    # prompt_tokens = ???；generated_tokens = ???；prefill_ms = ???；decode_ms = ???；
-    # communication_ms = ???；e2e_ms = ???。
+    """估算单请求的 Prefill、Decode 与通信代理成本。"""
+    # TODO 1：阶段成本账本。
+    # 变量提示：prompt_tokens = request['prompt_tokens']；generate_tokens = request['generate_tokens']。
+    # 计算 prefill_ms、decode_ms、TP 通信代理和 PP stage 惩罚，再合成 total_ms。
     raise NotImplementedError("请先完成 TODO 代码！")
 
 def simulate_distributed_inference(
     requests: List[Dict[str, int]], num_replicas: int, config: Dict[str, float]
 ) -> Dict[str, object]:
-    """null"""
-    # replica_loads = ???；makespan_ms = ???；imbalance_ratio = ???；
-    # total_comm_ms = ???；throughput = ???。
+    """在 least-loaded 路由下汇总 worker 负载、队列与通信成本。"""
+    # TODO 2：请求路由与系统账本。
+    # 变量提示：replica_loads = [0.0 for _ in range(num_replicas)]；chosen_replica = min(...)。
+    # 保留 assignments、makespan、queue/communication 成本和吞吐代理。
     raise NotImplementedError("请先完成 TODO 代码！")
 
 def recommend_distributed_inference_run(
     baseline: Dict[str, float], candidate: Dict[str, float], max_imbalance_ratio: float, max_comm_ratio: float
 ) -> Dict[str, object]:
-    """null"""
-    # latency_ok = ???；imbalance_ok = ???；comm_ok = ???；decision = ???；
-    # reason = ???；next_action = ???。
+    """根据时延、负载与通信代价形成下一步实验决策。"""
+    # TODO 3：策略决策。
+    # 变量提示：candidate_makespan、comm_ratio、imbalance_ratio、decision。
     raise NotImplementedError("请先完成 TODO 代码！")
 
 ```
@@ -127,6 +144,12 @@ def test_distributed_inference_project():
     assert round(cost['comm_ms'], 2) == 0.06
     assert round(cost['total_ms'], 2) == 2.62
 
+    pd_config = {**config, 'serving_mode': 'pd_disaggregated', 'kv_bytes_per_token': 16, 'handoff_base_ms': 0.2, 'handoff_bytes_per_ms': 1024}
+    pd_cost = estimate_request_cost(requests[0], pd_config)
+    assert pd_cost['handoff_bytes'] == 2048
+    assert round(pd_cost['handoff_ms'], 2) == 2.2
+    assert round(pd_cost['total_ms'], 2) == 4.82
+
     summary = simulate_distributed_inference(requests, num_replicas=2, config=config)
     assert summary['routing_strategy'] == 'least_loaded'
     assert summary['assignments'] == [0, 1]
@@ -135,6 +158,11 @@ def test_distributed_inference_project():
     assert round(summary['throughput_req_per_ms'], 4) == 0.7634
     assert round(summary['imbalance_ratio'], 4) == 0.6667
     assert round(summary['comm_cost_ms'], 2) == 0.09
+
+    pd_summary = simulate_distributed_inference(requests, num_replicas=2, config=pd_config)
+    assert pd_summary['serving_mode'] == 'pd_disaggregated'
+    assert pd_summary['handoff_total_bytes'] == 3072
+    assert pd_summary['handoff_total_ms'] > 0
 
     decision = recommend_distributed_inference_run(
         {'single_replica_time_ms': 3.93},
@@ -196,11 +224,17 @@ def estimate_request_cost(request: Dict[str, int], config: Dict[str, float]) -> 
         prompt_tokens / 128.0 + generate_tokens / 64.0
     )
     pipeline_ms = max(config['pp_stages'] - 1, 0) * config['pipeline_penalty_ms']
-    total_ms = prefill_ms + decode_ms + comm_ms + pipeline_ms
+    handoff_bytes = prompt_tokens * config.get('kv_bytes_per_token', 0.0)
+    handoff_ms = 0.0
+    if config.get('serving_mode', 'replica') == 'pd_disaggregated':
+        handoff_ms = config.get('handoff_base_ms', 0.0) + handoff_bytes / config.get('handoff_bytes_per_ms', 1.0)
+    total_ms = prefill_ms + decode_ms + comm_ms + pipeline_ms + handoff_ms
     return {
         'prefill_ms': round(prefill_ms, 4),
         'decode_ms': round(decode_ms, 4),
         'comm_ms': round(comm_ms, 4),
+        'handoff_bytes': round(handoff_bytes, 4),
+        'handoff_ms': round(handoff_ms, 4),
         'total_ms': round(total_ms, 4),
     }
 
@@ -212,13 +246,19 @@ def simulate_distributed_inference(
     assignments = []
     single_replica_time_ms = 0.0
     comm_cost_ms = 0.0
+    handoff_total_ms = 0.0
+    handoff_total_bytes = 0.0
+    queue_wait_total_ms = 0.0
 
     for request in requests:
         cost = estimate_request_cost(request, config)
         single_replica_time_ms += cost['total_ms']
         comm_cost_ms += cost['comm_ms']
+        handoff_total_ms += cost['handoff_ms']
+        handoff_total_bytes += cost['handoff_bytes']
         chosen_replica = min(range(num_replicas), key=lambda idx: replica_loads[idx])
         assignments.append(chosen_replica)
+        queue_wait_total_ms += replica_loads[chosen_replica]
         replica_loads[chosen_replica] += cost['total_ms']
 
     makespan_ms = max(replica_loads) if replica_loads else 0.0
@@ -229,12 +269,16 @@ def simulate_distributed_inference(
 
     return {
         'routing_strategy': 'least_loaded',
+        'serving_mode': config.get('serving_mode', 'replica'),
         'assignments': assignments,
         'single_replica_time_ms': round(single_replica_time_ms, 4),
         'makespan_ms': round(makespan_ms, 4),
         'throughput_req_per_ms': round(throughput_req_per_ms, 4),
         'imbalance_ratio': round(imbalance_ratio, 4),
         'comm_cost_ms': round(comm_cost_ms, 4),
+        'handoff_total_ms': round(handoff_total_ms, 4),
+        'handoff_total_bytes': round(handoff_total_bytes, 4),
+        'queue_wait_total_ms': round(queue_wait_total_ms, 4),
     }
 
 
@@ -268,6 +312,130 @@ def recommend_distributed_inference_run(
     }
 ```
 
+### Step 5（可选）：GPU / 多副本推理 benchmark
+
+#### 5.1 环境、输入与固定条件
+
+固定模型、tokenizer、请求集合、生成长度、dtype、GPU 数、backend 和路由策略。G0 使用单副本 baseline；G1 比较多副本路由；G2 比较 PD 分离。不同服务形态分别保存 JSON，不把配置差异隐藏在同一结果中。
+
+| 固定对象 | 本节记录 | 作用 |
+| --- | --- | --- |
+| model contract | model / tokenizer revision、dtype、artifact | 避免模型与编码输入漂移 |
+| request workload | prompt / output tokens、concurrency、warmup、repeats | 保证三种服务形态可比 |
+| distributed layout | replicas、TP/PP、GPU 与 backend | 解释收益来自路由还是模型切分 |
+| output | 每组 JSON、failure、evidence level、decision | 支持独立复测与项目决策 |
+
+```python
+# 5.1：默认关闭。每个服务形态各自保存 JSON，避免把副本与 PD 结果混在一起。
+RUN_GPU_EXPERIMENT = False
+WORLD_SIZE = 2
+REPLICAS = 2
+TP_DEGREE = 1
+PP_STAGES = 1
+# 5.3：选择已安装的服务 backend，并为每个实验组提供启动命令。
+BACKEND_ADAPTER = 'vllm'  # 可改为 'sglang'；命令语法随 adapter 调整。
+MODEL_ID = 'Qwen/Qwen2.5-0.5B-Instruct'
+CONCURRENCY = 1
+PROMPT_TOKENS = 512
+MAX_TOKENS = 64
+KV_BYTES_PER_TOKEN = 16384
+RESULT_DIR = 'benchmarks/results/81_distributed_inference'
+# 为 G0/G1/G2 填入当前 backend 的启动与压测命令；每组必须写入同名 JSON。
+EXPERIMENTS = [
+    {'name': 'g0_single_replica', 'mode': 'replica', 'replicas': 1, 'tp': 1, 'pp': 1, 'command': []},
+    {'name': 'g1_multi_replica', 'mode': 'replica', 'replicas': REPLICAS, 'tp': TP_DEGREE, 'pp': PP_STAGES, 'command': []},
+    {'name': 'g2_pd_disaggregated', 'mode': 'pd_disaggregated', 'replicas': REPLICAS, 'tp': TP_DEGREE, 'pp': PP_STAGES, 'command': []},
+]
+print({'run': RUN_GPU_EXPERIMENT, 'world_size': WORLD_SIZE, 'backend_adapter': BACKEND_ADAPTER, 'experiments': [item['name'] for item in EXPERIMENTS]})
+
+```
+
+#### 5.2 backend 与通信预检
+
+检查 CUDA、可见 GPU、`torchrun` 与所选 adapter；PD 实验还应确认 Prefill / Decode 服务端点可访问。
+
+```python
+# 5.2：默认关闭；开启时检查真实服务 benchmark 的多卡与 adapter 前提。
+GPU_READY = False
+if RUN_GPU_EXPERIMENT:
+    import shutil, torch
+    GPU_READY = torch.cuda.is_available() and torch.cuda.device_count() >= WORLD_SIZE and shutil.which('torchrun') is not None
+    print({'adapter': BACKEND_ADAPTER, 'visible_gpus': torch.cuda.device_count(), 'world_size': WORLD_SIZE, 'ready': GPU_READY})
+else:
+    print({'run': False, 'adapter': BACKEND_ADAPTER})
+
+```
+
+#### 5.3 配置 G0 / G1 / G2
+
+在每组的 `command` 中填入当前 adapter 的启动与压测命令；命令必须在对应 JSON 路径写入结果。
+
+```python
+# 5.3：命令为空时保持默认关闭；填入命令后再开启 RUN_GPU_EXPERIMENT。
+for experiment in EXPERIMENTS:
+    result_path = f"{RESULT_DIR}/{experiment['name']}.json"
+    print({'group': experiment['name'], 'mode': experiment['mode'], 'result_path': result_path, 'command_configured': bool(experiment['command'])})
+
+```
+
+#### 5.4 执行并保存 JSON
+
+按 G0、G1、G2 顺序执行已配置的真实服务实验；通信和 KV handoff 直接从 backend 结果读取。
+
+```python
+# 5.4：按服务形态运行已配置的 backend 命令；默认关闭。
+import subprocess
+from pathlib import Path
+
+if RUN_GPU_EXPERIMENT:
+    Path(RESULT_DIR).mkdir(parents=True, exist_ok=True)
+    for experiment in EXPERIMENTS:
+        if not experiment['command']:
+            raise ValueError(f"请为 {experiment['name']} 填写 backend benchmark command，并写入 {RESULT_DIR}/{experiment['name']}.json")
+        subprocess.run(experiment['command'], check=True)
+        result_path = Path(RESULT_DIR) / f"{experiment['name']}.json"
+        if not result_path.exists():
+            raise FileNotFoundError(f'真实 benchmark 未写入结果文件：{result_path}')
+if not RUN_GPU_EXPERIMENT:
+    print('GPU 实验默认关闭；先完成后端启动与通信预检，再采集端到端结果。')
+
+```
+
+#### 5.5 读取结果与记录证据
+
+读取每组 JSON，并将服务延迟、队列、KV handoff 与成功率放在同一份比较记录中。
+
+```python
+# 5.5：只接受包含服务、队列与 KV handoff 证据的真实 backend 结果。
+import json
+from pathlib import Path
+
+required_metric_fields = {'ttft_ms', 'tpot_ms', 'e2e_ms', 'throughput_tokens_per_s', 'p95_ms', 'p99_ms', 'queue_wait_ms', 'kv_handoff_bytes', 'kv_handoff_ms', 'peak_memory_mb', 'success_rate'}
+for experiment in EXPERIMENTS:
+    result_path = Path(RESULT_DIR) / f"{experiment['name']}.json"
+    if not result_path.exists():
+        print(f'尚无真实 backend 结果：{result_path}')
+        continue
+    result = json.loads(result_path.read_text())
+    required = {'backend', 'workload', 'hardware', 'metrics', 'evidence_level', 'failure', 'decision'}
+    missing = required - set(result)
+    if missing:
+        raise ValueError(f'{result_path} 缺少项目证据字段：{sorted(missing)}')
+    metric_missing = required_metric_fields - set(result['metrics'])
+    if metric_missing:
+        raise ValueError(f'{result_path} 缺少服务指标：{sorted(metric_missing)}')
+    print({'name': experiment['name'], 'metrics': result['metrics'], 'failure': result['failure'], 'decision': result['decision']})
+
+```
+
+#### 5.6 解释结果与形成决策
+
+| 读取项 | 判断与下一步 |
+| --- | --- |
+| 运行状态 | `failure` 非空时先记录 backend、端口、模型或多卡启动信息 |
+| 可比口径 | 核对 model revision、token workload、concurrency、dtype、replicas、TP/PP 与 backend adapter |
+| 核心指标 | 联合查看 TTFT、TPOT、E2E、P95/P99、queue wait、KV handoff、吞吐、显存与成功率 |
+| 项目决策 | 副本、模型并行或 PD 分离的收益与服务目标匹配时 `accept`；路由、并行度或 handoff 仍可调整时 `tune`；失败或长尾/传输代价吞掉收益时 `reject` |
 ### 解析
 
 这页现在按 `estimate -> simulate -> decide` 的最小分布式推理迁移闭环组织，不再只是做单卡逻辑模拟。

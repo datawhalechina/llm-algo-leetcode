@@ -20,6 +20,11 @@ def _args() -> argparse.Namespace:
     parser.add_argument("--project", choices=("29", "46", "47", "79", "80", "81"), required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--backend", default="nccl")
+    parser.add_argument("--payload-elements", type=int, default=1024)
+    parser.add_argument("--dtype", choices=("float32", "bfloat16"), default="float32")
+    parser.add_argument("--scenario", default="default")
+    parser.add_argument("--experts", type=int, default=None)
+    parser.add_argument("--top-k", type=int, default=None)
     return parser.parse_args()
 
 
@@ -46,6 +51,15 @@ def main() -> int:
         "load_status": "not_started",
         "failure": None,
         "evidence_level": "real_multi_gpu_smoke",
+        "workload": {
+            "scenario": args.scenario,
+            "payload_elements_per_rank": args.payload_elements,
+            "dtype": args.dtype,
+            "experts": args.experts,
+            "top_k": args.top_k,
+        },
+        "metrics": {},
+        "decision": "not_started",
     }
 
     try:
@@ -55,11 +69,14 @@ def main() -> int:
             raise RuntimeError("真实多卡 NCCL smoke 需要 CUDA GPU。")
         if args.backend != "nccl":
             raise ValueError("当前 runner 只把 NCCL 作为真实 GPU smoke backend。")
+        if args.payload_elements <= 0:
+            raise ValueError("payload-elements 必须为正整数。")
 
         torch.cuda.set_device(local_rank)
         dist.init_process_group(backend=args.backend, init_method="env://")
         device = torch.device("cuda", local_rank)
-        payload = torch.ones(1024, device=device)
+        dtype = torch.float32 if args.dtype == "float32" else torch.bfloat16
+        payload = torch.ones(args.payload_elements, device=device, dtype=dtype)
         dist.barrier()
         _sync_cuda(torch)
         start = time.perf_counter()
@@ -79,16 +96,29 @@ def main() -> int:
 
         _sync_cuda(torch)
         elapsed_ms = (time.perf_counter() - start) * 1000.0
+        local_elapsed = torch.tensor([elapsed_ms], device=device, dtype=torch.float64)
+        gathered_elapsed = [torch.empty_like(local_elapsed) for _ in range(world_size)]
+        dist.all_gather(gathered_elapsed, local_elapsed)
+        rank_elapsed_ms = [round(item.item(), 4) for item in gathered_elapsed]
         dist.barrier()
         result.update({
             "operation": operation,
             "payload_bytes": payload.numel() * payload.element_size(),
             "elapsed_ms": round(elapsed_ms, 4),
             "load_status": "initialized_and_collective_completed",
+            "metrics": {
+                "operation": operation,
+                "payload_bytes_per_rank": payload.numel() * payload.element_size(),
+                "elapsed_ms": round(elapsed_ms, 4),
+                "rank_elapsed_ms": rank_elapsed_ms,
+                "max_rank_elapsed_ms": max(rank_elapsed_ms),
+            },
+            "decision": "collective_path_available",
         })
     except Exception as exc:  # keep failure evidence instead of hiding environment problems
         result["load_status"] = "failed"
         result["failure"] = f"{type(exc).__name__}: {exc}"
+        result["decision"] = "collective_path_unavailable"
     finally:
         if dist.is_available() and dist.is_initialized():
             dist.destroy_process_group()
