@@ -1,42 +1,44 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1240" height="600" viewBox="0 0 1240 600" role="img" aria-labelledby="title desc">
-  <title id="title">FP8 与 KV Cache 量化的对象和收益不同</title>
-  <desc id="desc">FP8 面向前向计算中的激活或权重表示，KV Cache 量化面向已生成 token 的状态存储。两条路径分别检查计算路径和上下文容量，不能混为同一项证据。</desc>
+  <title id="title">FP8 运行时对象、缩放与执行证据</title>
+  <desc id="desc">从输入激活和权重进入格式与缩放选择，再经过累加与输出数据类型，最终区分 dtype 探针、原生 kernel 和 backend benchmark 三种证据。</desc>
   <defs>
     <style>
-      .title{font:700 28px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324d}.sub{font:15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#526b7d}.group{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#35526b}.h{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324d}.t{font:14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#526b7d}.frame{fill:#fff;stroke:#c7d9e7;stroke-width:1.5}.blue{fill:#e8f3fb;stroke:#3978a8;stroke-width:2}.green{fill:#eaf7ef;stroke:#4c9870;stroke-width:2}.orange{fill:#fff1df;stroke:#c78335;stroke-width:2}.purple{fill:#f1eafa;stroke:#8b6bb1;stroke-width:2}.flow{stroke:#3978a8;stroke-width:3;fill:none;marker-end:url(#arrow)}.fp8{stroke:#4c9870;stroke-width:3;fill:none;marker-end:url(#greenArrow)}.kv{stroke:#8b6bb1;stroke-width:3;fill:none;marker-end:url(#purpleArrow)}
+      .title{font:700 28px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324d}.sub{font:15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#526b7d}.group{font:700 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#35526b}.h{font:700 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324d}.t{font:14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#526b7d}.frame{fill:#fff;stroke:#c7d9e7;stroke-width:1.5}.blue{fill:#e8f3fb;stroke:#3978a8;stroke-width:2}.green{fill:#eaf7ef;stroke:#4c9870;stroke-width:2}.orange{fill:#fff1df;stroke:#c78335;stroke-width:2}.purple{fill:#f1eafa;stroke:#8b6bb1;stroke-width:2}.flow{stroke:#3978a8;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
     </style>
     <marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#3978a8"/></marker>
-    <marker id="greenArrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#4c9870"/></marker>
-    <marker id="purpleArrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#8b6bb1"/></marker>
   </defs>
   <rect width="1240" height="600" rx="24" fill="#f8fbfd"/>
-  <text x="620" y="48" text-anchor="middle" class="title">FP8 / KV Cache：运行时量化面对的对象与收益不同</text>
-  <text x="620" y="76" text-anchor="middle" class="sub">先区分量化发生在计算路径还是状态存储路径，再选择对应的误差与性能证据</text>
+  <text x="620" y="46" text-anchor="middle" class="title">FP8 运行时路径：表示变化不等于原生低精度执行</text>
+  <text x="620" y="74" text-anchor="middle" class="sub">沿对象、格式与执行证据逐层检查，避免只凭 dtype 名称判断性能收益</text>
 
-  <rect x="50" y="135" width="535" height="310" rx="18" class="frame"/>
-  <text x="75" y="166" class="group">FP8 计算路径</text>
-  <rect x="75" y="205" width="205" height="80" rx="15" class="blue"/>
-  <text x="178" y="237" text-anchor="middle" class="h">激活 / 权重表示</text><text x="178" y="262" text-anchor="middle" class="t">前向计算中的张量</text>
-  <rect x="350" y="205" width="205" height="80" rx="15" class="green"/>
-  <text x="453" y="237" text-anchor="middle" class="h">FP8 scale 与计算</text><text x="453" y="262" text-anchor="middle" class="t">动态范围与 kernel 路径</text>
-  <path d="M280 245H350" class="fp8"/>
-  <rect x="160" y="335" width="315" height="62" rx="14" class="green"/>
-  <text x="318" y="362" text-anchor="middle" class="h">观察计算与带宽路径</text><text x="318" y="384" text-anchor="middle" class="t">误差、吞吐与硬件支持</text>
-  <path d="M453 285V315H318V335" class="fp8"/>
+  <rect x="70" y="115" width="1100" height="120" rx="18" class="frame"/>
+  <text x="92" y="140" class="group">运行时对象</text>
+  <rect x="190" y="150" width="230" height="62" rx="14" class="blue"/>
+  <text x="305" y="177" text-anchor="middle" class="h">输入激活</text><text x="305" y="198" text-anchor="middle" class="t">范围随 workload 变化</text>
+  <rect x="505" y="150" width="230" height="62" rx="14" class="blue"/>
+  <text x="620" y="177" text-anchor="middle" class="h">权重</text><text x="620" y="198" text-anchor="middle" class="t">artifact 与 scale 粒度</text>
+  <rect x="820" y="150" width="230" height="62" rx="14" class="blue"/>
+  <text x="935" y="177" text-anchor="middle" class="h">累加与输出</text><text x="935" y="198" text-anchor="middle" class="t">精度、兼容与 cast 次数</text>
 
-  <rect x="655" y="135" width="535" height="310" rx="18" class="frame"/>
-  <text x="680" y="166" class="group">KV Cache 状态路径</text>
-  <rect x="680" y="205" width="205" height="80" rx="15" class="blue"/>
-  <text x="783" y="237" text-anchor="middle" class="h">已生成 K / V</text><text x="783" y="262" text-anchor="middle" class="t">随上下文持续驻留</text>
-  <rect x="955" y="205" width="205" height="80" rx="15" class="purple"/>
-  <text x="1058" y="237" text-anchor="middle" class="h">分组量化与读取</text><text x="1058" y="262" text-anchor="middle" class="t">量化值必须匹配 scale</text>
-  <path d="M885 245H955" class="kv"/>
-  <rect x="765" y="335" width="315" height="62" rx="14" class="purple"/>
-  <text x="923" y="362" text-anchor="middle" class="h">观察容量与上下文质量</text><text x="923" y="384" text-anchor="middle" class="t">bytes、恢复误差与并发</text>
-  <path d="M1058 285V315H923V335" class="kv"/>
+  <rect x="70" y="270" width="1100" height="120" rx="18" class="frame"/>
+  <text x="92" y="295" class="group">格式与缩放</text>
+  <rect x="190" y="305" width="230" height="62" rx="14" class="green"/>
+  <text x="305" y="332" text-anchor="middle" class="h">E4M3</text><text x="305" y="353" text-anchor="middle" class="t">较多尾数位，侧重局部精度</text>
+  <rect x="505" y="305" width="230" height="62" rx="14" class="green"/>
+  <text x="620" y="332" text-anchor="middle" class="h">E5M2</text><text x="620" y="353" text-anchor="middle" class="t">较多指数位，覆盖更大范围</text>
+  <rect x="820" y="305" width="230" height="62" rx="14" class="orange"/>
+  <text x="935" y="332" text-anchor="middle" class="h">Static / Dynamic Scale</text><text x="935" y="353" text-anchor="middle" class="t">代表性与运行时开销取舍</text>
 
-  <rect x="350" y="500" width="540" height="48" rx="15" class="orange"/>
-  <text x="620" y="530" text-anchor="middle" class="h">各自形成 baseline / candidate；不要用一种路径的证据替代另一种</text>
-  <path d="M318 397V470H520V500" class="flow"/>
-  <path d="M923 397V470H720V500" class="flow"/>
+  <path d="M305 212V305" class="flow"/><path d="M620 212V305" class="flow"/><path d="M935 212V305" class="flow"/>
+
+  <rect x="70" y="425" width="1100" height="120" rx="18" class="frame"/>
+  <text x="92" y="450" class="group">执行证据</text>
+  <rect x="190" y="460" width="230" height="62" rx="14" class="purple"/>
+  <text x="305" y="487" text-anchor="middle" class="h">dtype / API 探针</text><text x="305" y="508" text-anchor="middle" class="t">证明表示和转换可用</text>
+  <rect x="505" y="460" width="230" height="62" rx="14" class="purple"/>
+  <text x="620" y="487" text-anchor="middle" class="h">原生 FP8 Kernel</text><text x="620" y="508" text-anchor="middle" class="t">证明设备执行低精度计算</text>
+  <rect x="820" y="460" width="230" height="62" rx="14" class="purple"/>
+  <text x="935" y="487" text-anchor="middle" class="h">Backend Benchmark</text><text x="935" y="508" text-anchor="middle" class="t">证明质量、延迟与吞吐收益</text>
+
+  <path d="M305 367V460" class="flow"/><path d="M620 367V460" class="flow"/><path d="M935 367V460" class="flow"/>
 </svg>
