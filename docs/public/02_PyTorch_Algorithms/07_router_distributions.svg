@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1420 560" role="img" aria-labelledby="title desc">
+  <title id="title">MoE 路由的偏好与实际分配</title>
+  <desc id="desc">对照集中和均匀两种路由分布，说明 P_i 与 f_i 如何共同决定负载均衡辅助损失。</desc>
+  <defs>
+    <style>
+      .t{font:700 28px sans-serif;fill:#0f172a}.s{font:500 16px sans-serif;fill:#475569}.h{font:700 18px sans-serif;fill:#0f172a}.b{font:500 15px sans-serif;fill:#334155}.x{stroke-width:2.5;rx:18}.a{stroke:#64748b;stroke-width:3.5;fill:none;marker-end:url(#m)}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#64748b"/></marker>
+  </defs>
+  <rect width="1420" height="560" fill="#f8fafc"/>
+  <text x="55" y="58" class="t">负载均衡同时看“偏好”与“实际分配”</text>
+  <text x="55" y="88" class="s">集中与均匀是两种可比较的 batch 状态；二者分别产生不同的 P_i、f_i 与辅助损失。</text>
+
+  <rect x="120" y="150" width="380" height="220" class="x" fill="#fff1f2" stroke="#e11d48"/>
+  <text x="150" y="192" class="h">集中路由</text>
+  <text x="150" y="228" class="b">P_i：少数专家概率质量很高</text>
+  <text x="150" y="260" class="b">f_i：少数专家被反复选中</text>
+  <text x="150" y="292" class="b">结果：更早触及 capacity / overflow</text>
+  <rect x="150" y="314" width="285" height="34" class="x" fill="#ffe4e6" stroke="#fb7185"/>
+  <text x="168" y="337" class="b">f · P 较大 → L_balance 较高</text>
+
+  <rect x="920" y="150" width="380" height="220" class="x" fill="#f0fdf4" stroke="#16a34a"/>
+  <text x="950" y="192" class="h">更均匀的路由</text>
+  <text x="950" y="228" class="b">P_i：概率质量更分散</text>
+  <text x="950" y="260" class="b">f_i：实际分配也更均匀</text>
+  <text x="950" y="292" class="b">结果：更多专家可接收 token</text>
+  <rect x="950" y="314" width="285" height="34" class="x" fill="#dcfce7" stroke="#86efac"/>
+  <text x="968" y="337" class="b">f · P 较小 → L_balance 较低</text>
+
+  <rect x="495" y="430" width="430" height="88" class="x" fill="#eff6ff" stroke="#2563eb"/>
+  <text x="710" y="465" text-anchor="middle" class="h">辅助损失与 Router 更新</text>
+  <text x="710" y="492" text-anchor="middle" class="b">主任务损失 + α · E Σ f_i P_i</text>
+  <path d="M310 370V400H610V430" class="a"/>
+  <path d="M1110 370V400H810V430" class="a"/>
+</svg>

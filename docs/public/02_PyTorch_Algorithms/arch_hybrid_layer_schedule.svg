@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="470" viewBox="0 0 1120 470">
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#475569"/></marker></defs>
+  <rect width="1120" height="470" rx="24" fill="#f8fafc"/>
+  <text x="56" y="54" font-size="28" font-family="sans-serif" font-weight="700" fill="#0f172a">混合记忆：按层分配检索与递推职责</text>
+  <g font-family="sans-serif" text-anchor="middle">
+    <rect x="56" y="108" width="160" height="106" rx="16" fill="#dbeafe" stroke="#60a5fa"/><text x="136" y="148" font-size="19" font-weight="700" fill="#1e3a8a">Attention</text><text x="136" y="180" font-size="15" fill="#334155">显式历史读取</text>
+    <rect x="270" y="108" width="160" height="106" rx="16" fill="#dcfce7" stroke="#4ade80"/><text x="350" y="148" font-size="19" font-weight="700" fill="#166534">SSM</text><text x="350" y="180" font-size="15" fill="#334155">递推状态更新</text>
+    <rect x="484" y="108" width="160" height="106" rx="16" fill="#dcfce7" stroke="#4ade80"/><text x="564" y="148" font-size="19" font-weight="700" fill="#166534">SSM</text><text x="564" y="180" font-size="15" fill="#334155">递推状态更新</text>
+    <rect x="698" y="108" width="160" height="106" rx="16" fill="#dbeafe" stroke="#60a5fa"/><text x="778" y="148" font-size="19" font-weight="700" fill="#1e3a8a">Attention</text><text x="778" y="180" font-size="15" fill="#334155">重新读取历史</text>
+    <rect x="912" y="108" width="152" height="106" rx="16" fill="#dcfce7" stroke="#4ade80"/><text x="988" y="148" font-size="19" font-weight="700" fill="#166534">SSM</text><text x="988" y="180" font-size="15" fill="#334155">继续递推</text>
+  </g>
+  <path d="M216 161 H270" stroke="#475569" stroke-width="3" marker-end="url(#a)"/><path d="M430 161 H484" stroke="#475569" stroke-width="3" marker-end="url(#a)"/><path d="M644 161 H698" stroke="#475569" stroke-width="3" marker-end="url(#a)"/><path d="M858 161 H912" stroke="#475569" stroke-width="3" marker-end="url(#a)"/>
+  <rect x="144" y="292" width="832" height="104" rx="18" fill="#ede9fe" stroke="#a78bfa"/>
+  <text x="560" y="330" text-anchor="middle" font-size="20" font-family="sans-serif" font-weight="700" fill="#5b21b6">共享 hidden / residual 接口</text>
+  <text x="560" y="362" text-anchor="middle" font-size="16" font-family="sans-serif" fill="#334155">层类型可以变化，hidden size、dtype 与残差契约必须连续</text>
+  <path d="M136 214 V270 H560 V292" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#a)"/>
+</svg>
