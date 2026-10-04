@@ -1,11 +1,47 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" role="img" aria-labelledby="t d">
-<title id="t">并行策略选择总览</title><desc id="d">根据参数、激活、通信和流水线瓶颈选择数据、张量、流水线或专家并行组合。</desc>
-<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker><style>.h{font:700 26px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.s{font:500 15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.l{font:700 18px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#111827}.b{font:500 14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.box{stroke-width:3;rx:16}.f{stroke:#475569;stroke-width:4;fill:none;marker-end:url(#a)}</style></defs>
-<rect width="1200" height="500" fill="#f8fafc"/><text x="50" y="55" class="h">并行策略：先识别瓶颈，再组合切分</text><text x="50" y="83" class="s">并行不是越多越好，方案必须绑定显存、通信和流水线代价。</text>
-<rect x="55" y="190" width="220" height="110" class="box" fill="#eff6ff" stroke="#3b82f6"/><text x="165" y="232" text-anchor="middle" class="l">瓶颈画像</text><text x="165" y="263" text-anchor="middle" class="b">参数 · 激活 · 通信 · 气泡</text>
-<rect x="345" y="190" width="220" height="110" class="box" fill="#fef3c7" stroke="#d97706"/><text x="455" y="232" text-anchor="middle" class="l">候选切分</text><text x="455" y="263" text-anchor="middle" class="b">DP · TP · PP · EP</text>
-<rect x="635" y="115" width="220" height="100" class="box" fill="#ecfccb" stroke="#65a30d"/><text x="745" y="155" text-anchor="middle" class="l">资源收益</text><text x="745" y="185" text-anchor="middle" class="b">容量 · 计算并行度</text>
-<rect x="635" y="260" width="220" height="100" class="box" fill="#fff1f2" stroke="#e11d48"/><text x="745" y="300" text-anchor="middle" class="l">系统代价</text><text x="745" y="330" text-anchor="middle" class="b">通信 · 同步 · 气泡</text>
-<rect x="930" y="190" width="210" height="110" class="box" fill="#f5f3ff" stroke="#8b5cf6"/><text x="1035" y="232" text-anchor="middle" class="l">组合决策</text><text x="1035" y="263" text-anchor="middle" class="b">候选排序与验证</text>
-<path d="M275 245H345M565 235L635 165M565 265L635 310M855 165L930 225M855 310L930 265" class="f"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620" role="img" aria-labelledby="t d">
+<title id="t">并行策略选型总览</title>
+<desc id="d">训练压力信号与模型和集群约束共同决定 DP加ZeRO、张量并行、流水线并行和专家并行的候选优先级。</desc>
+<defs>
+  <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+  <style>
+    .title{font:700 27px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.sub{font:500 15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.group{font:700 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.head{font:700 18px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.body{font:500 14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.box{stroke-width:2.5;rx:14}.line{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}.soft{stroke:#94a3b8;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+  </style>
+</defs>
+<rect width="1200" height="620" fill="#f8fafc"/>
+<text x="54" y="55" class="title">并行策略：压力信号与约束共同决定候选</text>
+<text x="54" y="83" class="sub">先定位训练 step 的主要压力，再检查模型结构与集群条件，最后进入可复测的并行候选。</text>
+
+<rect x="48" y="120" width="330" height="380" rx="20" fill="#eff6ff" stroke="#93c5fd" stroke-width="2"/>
+<text x="72" y="153" class="group">训练压力信号</text>
+<rect x="78" y="180" width="270" height="72" class="box" fill="#fff" stroke="#3b82f6"/>
+<text x="213" y="211" text-anchor="middle" class="head">状态 / 激活显存</text><text x="213" y="235" text-anchor="middle" class="body">参数、优化器、激活是否装得下</text>
+<rect x="78" y="278" width="270" height="72" class="box" fill="#fff" stroke="#3b82f6"/>
+<text x="213" y="309" text-anchor="middle" class="head">通信暴露 / 流水线气泡</text><text x="213" y="333" text-anchor="middle" class="body">collective 是否阻塞、stage 是否空转</text>
+<rect x="78" y="376" width="270" height="72" class="box" fill="#fff" stroke="#3b82f6"/>
+<text x="213" y="407" text-anchor="middle" class="head">专家负载偏斜</text><text x="213" y="431" text-anchor="middle" class="body">token 是否集中到少数专家</text>
+
+<rect x="438" y="160" width="320" height="300" rx="20" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/>
+<text x="462" y="193" class="group">模型与集群约束</text>
+<rect x="472" y="221" width="252" height="56" class="box" fill="#fff" stroke="#d97706"/>
+<text x="598" y="256" text-anchor="middle" class="head">能否放入单卡</text>
+<rect x="472" y="300" width="252" height="56" class="box" fill="#fff" stroke="#d97706"/>
+<text x="598" y="335" text-anchor="middle" class="head">互联是否足够强</text>
+<rect x="472" y="379" width="252" height="56" class="box" fill="#fff" stroke="#d97706"/>
+<text x="598" y="414" text-anchor="middle" class="head">大线性层 / MoE 是否存在</text>
+
+<rect x="818" y="120" width="334" height="380" rx="20" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="2"/>
+<text x="842" y="153" class="group">并行候选</text>
+<rect x="848" y="180" width="126" height="104" class="box" fill="#fff" stroke="#8b5cf6"/>
+<text x="911" y="218" text-anchor="middle" class="head">DP + ZeRO</text><text x="911" y="245" text-anchor="middle" class="body">分片状态</text>
+<rect x="996" y="180" width="126" height="104" class="box" fill="#fff" stroke="#8b5cf6"/>
+<text x="1059" y="218" text-anchor="middle" class="head">TP</text><text x="1059" y="245" text-anchor="middle" class="body">拆分矩阵</text>
+<rect x="848" y="334" width="126" height="104" class="box" fill="#fff" stroke="#8b5cf6"/>
+<text x="911" y="372" text-anchor="middle" class="head">PP</text><text x="911" y="399" text-anchor="middle" class="body">分段放层</text>
+<rect x="996" y="334" width="126" height="104" class="box" fill="#fff" stroke="#8b5cf6"/>
+<text x="1059" y="372" text-anchor="middle" class="head">EP</text><text x="1059" y="399" text-anchor="middle" class="body">分配专家</text>
+
+<path d="M378 232H438" class="line"/><path d="M378 314H438" class="line"/><path d="M378 412H438" class="line"/>
+<path d="M758 310H790V232H848" class="soft"/><path d="M790 232H996" class="soft"/>
+<path d="M758 310H790V386H848" class="soft"/><path d="M790 386H996" class="soft"/>
+<text x="600" y="545" text-anchor="middle" class="sub">候选不是结论：进入下一步前，需要对容量、step time、通信暴露时间与负载分布做统一 workload 复测。</text>
 </svg>
