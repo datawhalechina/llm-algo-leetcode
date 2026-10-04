@@ -1,0 +1,258 @@
+{
+  "schema_version": "part02-project-registry/v1",
+  "description": "Stable identities, primary ownership, and topic-local order for Part 02 projects 60-86.",
+  "projects": [
+    {
+      "semantic_id": "ARCH-BLOCK-STABILITY",
+      "notebook": "02_PyTorch_Algorithms/60_Decoder_Block_Stability_Benchmark.ipynb",
+      "title": "Decoder Block 稳定性基准",
+      "primary_owner": "llm_architecture_evolution",
+      "project_type": "benchmark",
+      "topic_order": 1,
+      "target_contract": "architecture-evaluation/v1"
+    },
+    {
+      "semantic_id": "ARCH-MODEL-AUDIT",
+      "notebook": "02_PyTorch_Algorithms/61_Model_Architecture_Exploration.ipynb",
+      "title": "模型架构审计",
+      "primary_owner": "llm_architecture_evolution",
+      "project_type": "analysis",
+      "topic_order": 5,
+      "target_contract": "architecture-evaluation/v1"
+    },
+    {
+      "semantic_id": "PT-SFT-DELIVERY",
+      "notebook": "02_PyTorch_Algorithms/62_Instruction_Fine_Tuning_Project.ipynb",
+      "title": "指令微调项目",
+      "primary_owner": "post_training_optimization",
+      "project_type": "project",
+      "topic_order": 2,
+      "target_contract": "fine-tuning-project/v1"
+    },
+    {
+      "semantic_id": "PT-LORA-VARIANTS",
+      "notebook": "02_PyTorch_Algorithms/63_LoRA_Variants_Benchmark.ipynb",
+      "title": "LoRA 变体对比项目",
+      "primary_owner": "post_training_optimization",
+      "project_type": "benchmark",
+      "topic_order": 3,
+      "target_contract": "fine-tuning-project/v1"
+    },
+    {
+      "semantic_id": "PT-SFT-DATA-QUALITY",
+      "notebook": "02_PyTorch_Algorithms/64_SFT_Data_Quality_Project.ipynb",
+      "title": "SFT 数据质量项目",
+      "primary_owner": "post_training_optimization",
+      "project_type": "project",
+      "topic_order": 1,
+      "target_contract": "fine-tuning-project/v1"
+    },
+    {
+      "semantic_id": "PT-QLORA-SELECTION",
+      "notebook": "02_PyTorch_Algorithms/65_QLoRA_Selection_Project.ipynb",
+      "title": "QLoRA 选型项目",
+      "primary_owner": "post_training_optimization",
+      "project_type": "project",
+      "topic_order": 4,
+      "target_contract": "fine-tuning-project/v1"
+    },
+    {
+      "semantic_id": "INF-FLOAT-BASELINE",
+      "notebook": "02_PyTorch_Algorithms/66_Inference_Performance_Comparison.ipynb",
+      "title": "推理性能对比实验",
+      "primary_owner": "inference_optimization",
+      "project_type": "benchmark",
+      "topic_order": 1,
+      "target_contract": "inference-benchmark/v1"
+    },
+    {
+      "semantic_id": "QUANT-INFERENCE-DEPLOY",
+      "notebook": "02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.ipynb",
+      "title": "量化推理与部署",
+      "primary_owner": "quantization_compression",
+      "project_type": "project",
+      "topic_order": 2,
+      "target_contract": "quantization-evidence/v1"
+    },
+    {
+      "semantic_id": "INF-SPECULATIVE-BENCH",
+      "notebook": "02_PyTorch_Algorithms/68_Speculative_Decoding_Benchmark.ipynb",
+      "title": "投机解码基准",
+      "primary_owner": "inference_optimization",
+      "project_type": "benchmark",
+      "topic_order": 2,
+      "target_contract": "inference-benchmark/v1"
+    },
+    {
+      "semantic_id": "INF-PREFIX-CACHE",
+      "notebook": "02_PyTorch_Algorithms/69_Prefix_Caching_Benchmark.ipynb",
+      "title": "前缀缓存基准",
+      "primary_owner": "inference_optimization",
+      "project_type": "benchmark",
+      "topic_order": 3,
+      "target_contract": "inference-benchmark/v1"
+    },
+    {
+      "semantic_id": "INF-SERVING-SCHEDULER",
+      "notebook": "02_PyTorch_Algorithms/70_Serving_Scheduler_Benchmark.ipynb",
+      "title": "推理服务调度基准",
+      "primary_owner": "inference_optimization",
+      "project_type": "benchmark",
+      "topic_order": 4,
+      "target_contract": "inference-benchmark/v1"
+    },
+    {
+      "semantic_id": "ARCH-MLA-KV",
+      "notebook": "02_PyTorch_Algorithms/71_MLA_KV_Cache_Architecture_Benchmark.ipynb",
+      "title": "MLA 与 KV Cache 结构基准",
+      "primary_owner": "llm_architecture_evolution",
+      "project_type": "benchmark",
+      "topic_order": 3,
+      "target_contract": "architecture-evaluation/v1"
+    },
+    {
+      "semantic_id": "INF-SINGLE-GPU-DEPLOY",
+      "notebook": "02_PyTorch_Algorithms/72_Multi_Model_Deployment_Comparison.ipynb",
+      "title": "单卡推理部署与 Backend 对比",
+      "primary_owner": "inference_optimization",
+      "project_type": "project",
+      "topic_order": 5,
+      "target_contract": "inference-benchmark/v1"
+    },
+    {
+      "semantic_id": "PERF-TRAINING-BASELINE",
+      "notebook": "02_PyTorch_Algorithms/73_Training_Performance_Analysis.ipynb",
+      "title": "训练性能分析",
+      "primary_owner": "performance_optimization",
+      "project_type": "benchmark",
+      "topic_order": 1,
+      "target_contract": "training-memory-benchmark/v1"
+    },
+    {
+      "semantic_id": "PERF-PROFILING-CLOSURE",
+      "notebook": "02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.ipynb",
+      "title": "Profiling 驱动的端到端优化",
+      "primary_owner": "performance_optimization",
+      "project_type": "analysis",
+      "topic_order": 4,
+      "target_contract": "profiling-optimization-benchmark/v1"
+    },
+    {
+      "semantic_id": "PERF-MEMORY-BUDGET",
+      "notebook": "02_PyTorch_Algorithms/75_Memory_Budget_Compression_Project.ipynb",
+      "title": "显存预算压缩项目",
+      "primary_owner": "performance_optimization",
+      "project_type": "analysis",
+      "topic_order": 3,
+      "target_contract": "training-memory-benchmark/v1"
+    },
+    {
+      "semantic_id": "PERF-MEMORY-STRATEGY",
+      "notebook": "02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.ipynb",
+      "title": "Activation / Checkpoint / Offload 对比",
+      "primary_owner": "performance_optimization",
+      "project_type": "benchmark",
+      "topic_order": 2,
+      "target_contract": "training-memory-benchmark/v1"
+    },
+    {
+      "semantic_id": "ARCH-LONG-SEQUENCE-MEMORY",
+      "notebook": "02_PyTorch_Algorithms/77_Long_Sequence_Memory_Architecture_Benchmark.ipynb",
+      "title": "长序列记忆架构基准",
+      "primary_owner": "llm_architecture_evolution",
+      "project_type": "benchmark",
+      "topic_order": 4,
+      "target_contract": "architecture-evaluation/v1"
+    },
+    {
+      "semantic_id": "ARCH-ATTENTION-ACCESS",
+      "notebook": "02_PyTorch_Algorithms/78_Attention_Access_Pattern_Benchmark.ipynb",
+      "title": "Attention 访问模式基准",
+      "primary_owner": "llm_architecture_evolution",
+      "project_type": "benchmark",
+      "topic_order": 2,
+      "target_contract": "architecture-evaluation/v1"
+    },
+    {
+      "semantic_id": "PAR-TRAINING-STATE",
+      "notebook": "02_PyTorch_Algorithms/79_Distributed_Parallel_Benchmark.ipynb",
+      "title": "训练状态并行基准",
+      "primary_owner": "communication_parallelism",
+      "project_type": "benchmark",
+      "topic_order": 1,
+      "target_contract": "distributed-benchmark/v1"
+    },
+    {
+      "semantic_id": "PAR-MODEL-INTERNAL",
+      "notebook": "02_PyTorch_Algorithms/PAR-MODEL-INTERNAL_Model_Internal_Parallel_Benchmark.ipynb",
+      "title": "模型内部并行基准",
+      "primary_owner": "communication_parallelism",
+      "project_type": "benchmark",
+      "topic_order": 2,
+      "target_contract": "distributed-benchmark/v1"
+    },
+    {
+      "semantic_id": "PAR-MOE-EXPERT",
+      "notebook": "02_PyTorch_Algorithms/80_MoE_Expert_Parallel_Benchmark.ipynb",
+      "title": "MoE 专家并行基准",
+      "primary_owner": "communication_parallelism",
+      "project_type": "benchmark",
+      "topic_order": 3,
+      "target_contract": "distributed-benchmark/v1"
+    },
+    {
+      "semantic_id": "PAR-DISTRIBUTED-INFERENCE",
+      "notebook": "02_PyTorch_Algorithms/81_Distributed_Inference_Project.ipynb",
+      "title": "分布式推理逻辑验证",
+      "primary_owner": "communication_parallelism",
+      "project_type": "analysis",
+      "topic_order": 4,
+      "target_contract": "distributed-benchmark/v1"
+    },
+    {
+      "semantic_id": "QUANT-ARTIFACT-GATE",
+      "notebook": "02_PyTorch_Algorithms/82_Quantization_Artifact_Evaluation_Project.ipynb",
+      "title": "量化产物评估项目",
+      "primary_owner": "quantization_compression",
+      "project_type": "project",
+      "topic_order": 1,
+      "target_contract": "quantization-evidence/v1"
+    },
+    {
+      "semantic_id": "QUANT-SERVING-PROFILE",
+      "notebook": "02_PyTorch_Algorithms/83_Quantized_Serving_Profile_Benchmark.ipynb",
+      "title": "量化 Serving Profile 基准",
+      "primary_owner": "quantization_compression",
+      "project_type": "benchmark",
+      "topic_order": 3,
+      "target_contract": "quantization-evidence/v1"
+    },
+    {
+      "semantic_id": "PT-DPO-OFFLINE",
+      "notebook": "02_PyTorch_Algorithms/84_DPO_Preference_Project.ipynb",
+      "title": "DPO 偏好优化项目",
+      "primary_owner": "post_training_optimization",
+      "project_type": "project",
+      "topic_order": 5,
+      "target_contract": "model-evaluation/v1"
+    },
+    {
+      "semantic_id": "PT-GRPO-GROUPWISE",
+      "notebook": "02_PyTorch_Algorithms/85_GRPO_Groupwise_Alignment_Project.ipynb",
+      "title": "GRPO 组内对齐项目",
+      "primary_owner": "post_training_optimization",
+      "project_type": "project",
+      "topic_order": 6,
+      "target_contract": "model-evaluation/v1"
+    },
+    {
+      "semantic_id": "PT-DPO-ONLINE",
+      "notebook": "02_PyTorch_Algorithms/86_DPO_Online_Benchmark.ipynb",
+      "title": "DPO 在线基准",
+      "primary_owner": "post_training_optimization",
+      "project_type": "benchmark",
+      "topic_order": 7,
+      "target_contract": "model-evaluation/v1"
+    }
+  ]
+}
