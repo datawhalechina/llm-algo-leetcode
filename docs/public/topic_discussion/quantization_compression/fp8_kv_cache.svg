@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <rect width="1280" height="720" fill="#F7F4EC"/>
+  <rect x="36" y="32" width="1208" height="656" rx="28" fill="#FFFDF7" stroke="#1F2937" stroke-width="3"/>
+  <g font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" fill="#172033">
+    <text x="80" y="88" font-size="34" font-weight="700">运行期量化的三条路径</text>
+    <text x="80" y="124" font-size="18" fill="#526076">对象、收益位置与证据不同，不能只用“低精度”概括。</text>
+    <rect x="450" y="154" width="380" height="72" rx="18" fill="#EAF2FF" stroke="#3973B7" stroke-width="2.5"/>
+    <text x="640" y="184" text-anchor="middle" font-size="22" font-weight="700">先定位运行时瓶颈</text>
+    <text x="640" y="210" text-anchor="middle" font-size="16">激活带宽 · 计算吞吐 · Cache 容量</text>
+    <path d="M640 226 V264 H230 V296 M640 264 V296 M640 264 H1050 V296" fill="none" stroke="#344054" stroke-width="3"/>
+    <path d="M224 286 L230 296 L236 286 Z M634 286 L640 296 L646 286 Z M1044 286 L1050 296 L1056 286 Z" fill="#344054"/>
+
+    <rect x="90" y="296" width="280" height="232" rx="20" fill="#FFF0C7" stroke="#C98718" stroke-width="2.5"/>
+    <text x="230" y="337" text-anchor="middle" font-size="24" font-weight="700">激活量化</text>
+    <text x="114" y="378" font-size="17">对象：层间激活与异常通道</text>
+    <text x="114" y="412" font-size="17">机制：scale migration / W8A8</text>
+    <text x="114" y="446" font-size="17">证据：误差、带宽与 Kernel</text>
+    <rect x="114" y="478" width="232" height="30" rx="10" fill="#FFFDF7"/>
+    <text x="230" y="499" text-anchor="middle" font-size="15">代表方法：SmoothQuant</text>
+
+    <rect x="500" y="296" width="280" height="232" rx="20" fill="#EEE8FF" stroke="#7457B7" stroke-width="2.5"/>
+    <text x="640" y="337" text-anchor="middle" font-size="24" font-weight="700">FP8 执行</text>
+    <text x="524" y="378" font-size="17">对象：权重与激活执行路径</text>
+    <text x="524" y="412" font-size="17">依赖：硬件、Backend、累加精度</text>
+    <text x="524" y="446" font-size="17">证据：真实 FP8 Kernel 命中</text>
+    <rect x="524" y="478" width="232" height="30" rx="10" fill="#FFFDF7"/>
+    <text x="640" y="499" text-anchor="middle" font-size="15">API 可用不等于端到端加速</text>
+
+    <rect x="910" y="296" width="280" height="232" rx="20" fill="#E7F6E9" stroke="#4B8E55" stroke-width="2.5"/>
+    <text x="1050" y="337" text-anchor="middle" font-size="24" font-weight="700">KV Cache 量化</text>
+    <text x="934" y="378" font-size="17">对象：持续追加的 K/V 状态</text>
+    <text x="934" y="412" font-size="17">机制：异轴 scale / residual window</text>
+    <text x="934" y="446" font-size="17">证据：容量、长上下文质量、TPOT</text>
+    <rect x="934" y="478" width="232" height="30" rx="10" fill="#FFFDF7"/>
+    <text x="1050" y="499" text-anchor="middle" font-size="15">服务侧缓存预算路径</text>
+
+    <path d="M230 528 V562 H640 M640 528 V562 M1050 528 V562 H640 V590" fill="none" stroke="#344054" stroke-width="3"/>
+    <path d="M632 580 L640 592 L648 580 Z" fill="#344054"/>
+    <rect x="330" y="592" width="620" height="60" rx="16" fill="#FCE8E6" stroke="#B85C54" stroke-width="2.5"/>
+    <text x="640" y="628" text-anchor="middle" font-size="20" font-weight="700">共同决策：质量门槛 × 容量收益 × 真实执行路径</text>
+  </g>
+</svg>

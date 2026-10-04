@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <rect width="1280" height="720" fill="#F7F4EC"/>
+  <rect x="36" y="32" width="1208" height="656" rx="28" fill="#FFFDF7" stroke="#1F2937" stroke-width="3"/>
+  <g font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" fill="#172033">
+    <text x="80" y="88" font-size="34" font-weight="700">量化对象决定误差路径与收益位置</text>
+    <text x="80" y="124" font-size="18" fill="#526076">先确认“量化什么”，再选择粒度、算法与执行后端。</text>
+    <rect x="490" y="154" width="300" height="76" rx="18" fill="#EAF2FF" stroke="#3973B7" stroke-width="2.5"/>
+    <text x="640" y="187" text-anchor="middle" font-size="22" font-weight="700">模型与工作负载约束</text>
+    <text x="640" y="214" text-anchor="middle" font-size="16">容量 · 带宽 · 精度 · 上下文</text>
+    <path d="M640 230 V270 H190 V302 M640 270 H490 V302 M640 270 H790 V302 M640 270 H1090 V302" fill="none" stroke="#344054" stroke-width="3"/>
+    <path d="M184 292 L190 302 L196 292 Z M484 292 L490 302 L496 292 Z M784 292 L790 302 L796 292 Z M1084 292 L1090 302 L1096 292 Z" fill="#344054"/>
+
+    <g>
+      <rect x="70" y="302" width="240" height="226" rx="20" fill="#FFF0C7" stroke="#C98718" stroke-width="2.5"/>
+      <text x="190" y="342" text-anchor="middle" font-size="24" font-weight="700">权重</text>
+      <text x="92" y="380" font-size="17">收益：模型常驻量、权重带宽</text>
+      <text x="92" y="414" font-size="17">误差：层、通道与矩阵敏感度</text>
+      <rect x="92" y="450" width="196" height="52" rx="12" fill="#FFFDF7"/>
+      <text x="190" y="481" text-anchor="middle" font-size="16">模型能否装入目标设备？</text>
+    </g>
+    <g>
+      <rect x="370" y="302" width="240" height="226" rx="20" fill="#E8F5FF" stroke="#3783B8" stroke-width="2.5"/>
+      <text x="490" y="342" text-anchor="middle" font-size="24" font-weight="700">激活</text>
+      <text x="392" y="380" font-size="17">收益：运行带宽、计算精度路径</text>
+      <text x="392" y="414" font-size="17">误差：异常值与累加稳定性</text>
+      <rect x="392" y="450" width="196" height="52" rx="12" fill="#FFFDF7"/>
+      <text x="490" y="481" text-anchor="middle" font-size="16">是否命中低精度 Kernel？</text>
+    </g>
+    <g>
+      <rect x="670" y="302" width="240" height="226" rx="20" fill="#EEE8FF" stroke="#7457B7" stroke-width="2.5"/>
+      <text x="790" y="342" text-anchor="middle" font-size="24" font-weight="700">训练状态</text>
+      <text x="692" y="380" font-size="17">对象：梯度、优化器与适配器</text>
+      <text x="692" y="414" font-size="17">约束：更新精度与状态生命周期</text>
+      <rect x="692" y="450" width="196" height="52" rx="12" fill="#FFFDF7"/>
+      <text x="790" y="481" text-anchor="middle" font-size="16">能否稳定完成参数更新？</text>
+    </g>
+    <g>
+      <rect x="970" y="302" width="240" height="226" rx="20" fill="#E7F6E9" stroke="#4B8E55" stroke-width="2.5"/>
+      <text x="1090" y="342" text-anchor="middle" font-size="24" font-weight="700">KV Cache</text>
+      <text x="992" y="380" font-size="17">收益：上下文与并发容量</text>
+      <text x="992" y="414" font-size="17">误差：长上下文与 Decode 代价</text>
+      <rect x="992" y="450" width="196" height="52" rx="12" fill="#FFFDF7"/>
+      <text x="1090" y="481" text-anchor="middle" font-size="16">缓存预算是否仍是瓶颈？</text>
+    </g>
+
+    <path d="M190 528 V566 H640 M490 528 V566 M790 528 V566 M1090 528 V566 H640 V596" fill="none" stroke="#344054" stroke-width="3"/>
+    <path d="M632 586 L640 598 L648 586 Z" fill="#344054"/>
+    <rect x="410" y="598" width="460" height="58" rx="16" fill="#FCE8E6" stroke="#B85C54" stroke-width="2.5"/>
+    <text x="640" y="633" text-anchor="middle" font-size="20" font-weight="700">统一验证：质量 · 容量 · 延迟 · 执行路径</text>
+  </g>
+</svg>

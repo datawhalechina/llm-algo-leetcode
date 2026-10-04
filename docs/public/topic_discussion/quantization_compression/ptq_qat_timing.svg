@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <rect width="1280" height="720" fill="#F7F4EC"/>
+  <rect x="36" y="32" width="1208" height="656" rx="28" fill="#FFFDF7" stroke="#1F2937" stroke-width="3"/>
+  <g font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" fill="#172033">
+    <text x="80" y="88" font-size="34" font-weight="700">PTQ 与 QAT：量化误差何时进入流程</text>
+    <text x="80" y="124" font-size="18" fill="#526076">先用 PTQ 建立收益与误差账本；误差不可接受且仍有训练预算时，再进入 QAT。</text>
+
+    <rect x="80" y="164" width="1120" height="206" rx="22" fill="#EAF2FF" stroke="#3973B7" stroke-width="2.5"/>
+    <text x="112" y="205" font-size="25" font-weight="700">PTQ：训练后量化</text>
+    <text x="112" y="235" font-size="16">不修改原训练过程，以校准数据确定量化参数。</text>
+    <rect x="138" y="274" width="230" height="62" rx="14" fill="#FFFDF7" stroke="#3973B7" stroke-width="2"/>
+    <text x="253" y="312" text-anchor="middle" font-size="19">浮点模型</text>
+    <path d="M368 305 H478" stroke="#344054" stroke-width="3"/><path d="M466 298 L480 305 L466 312 Z" fill="#344054"/>
+    <rect x="480" y="274" width="230" height="62" rx="14" fill="#FFF0C7" stroke="#C98718" stroke-width="2"/>
+    <text x="595" y="312" text-anchor="middle" font-size="19">校准与误差评估</text>
+    <path d="M710 305 H820" stroke="#344054" stroke-width="3"/><path d="M808 298 L822 305 L808 312 Z" fill="#344054"/>
+    <rect x="822" y="274" width="230" height="62" rx="14" fill="#E7F6E9" stroke="#4B8E55" stroke-width="2"/>
+    <text x="937" y="312" text-anchor="middle" font-size="19">量化产物与部署验证</text>
+
+    <rect x="80" y="402" width="1120" height="206" rx="22" fill="#EEE8FF" stroke="#7457B7" stroke-width="2.5"/>
+    <text x="112" y="443" font-size="25" font-weight="700">QAT：量化感知训练</text>
+    <text x="112" y="473" font-size="16">训练阶段模拟量化误差，让参数适应目标低精度表示。</text>
+    <rect x="138" y="512" width="230" height="62" rx="14" fill="#FFFDF7" stroke="#7457B7" stroke-width="2"/>
+    <text x="253" y="550" text-anchor="middle" font-size="19">插入伪量化</text>
+    <path d="M368 543 H478" stroke="#344054" stroke-width="3"/><path d="M466 536 L480 543 L466 550 Z" fill="#344054"/>
+    <rect x="480" y="512" width="230" height="62" rx="14" fill="#FCE8E6" stroke="#B85C54" stroke-width="2"/>
+    <text x="595" y="550" text-anchor="middle" font-size="19">训练适配量化误差</text>
+    <path d="M710 543 H820" stroke="#344054" stroke-width="3"/><path d="M808 536 L822 543 L808 550 Z" fill="#344054"/>
+    <rect x="822" y="512" width="230" height="62" rx="14" fill="#E7F6E9" stroke="#4B8E55" stroke-width="2"/>
+    <text x="937" y="550" text-anchor="middle" font-size="19">导出并验证部署路径</text>
+
+    <rect x="370" y="626" width="540" height="40" rx="12" fill="#FFF0C7"/>
+    <text x="640" y="652" text-anchor="middle" font-size="17" font-weight="700">选择依据：PTQ 质量损失 × 训练预算 × 部署收益</text>
+  </g>
+</svg>

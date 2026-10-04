@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <rect width="1280" height="720" fill="#F7F4EC"/>
+  <rect x="36" y="32" width="1208" height="656" rx="28" fill="#FFFDF7" stroke="#1F2937" stroke-width="3"/>
+  <g font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" fill="#172033">
+    <text x="80" y="88" font-size="34" font-weight="700">低比特训练：状态分工与产物交付</text>
+    <text x="80" y="124" font-size="18" fill="#526076">量化底座降低冻结权重常驻量；适配器、梯度、优化器与激活仍有各自的精度和生命周期。</text>
+
+    <rect x="390" y="154" width="500" height="74" rx="18" fill="#EAF2FF" stroke="#3973B7" stroke-width="2.5"/>
+    <text x="640" y="185" text-anchor="middle" font-size="22" font-weight="700">训练输入契约</text>
+    <text x="640" y="212" text-anchor="middle" font-size="16">底座版本 · 量化配置 · 数据切分 · 计算 dtype</text>
+    <path d="M640 228 V268 H230 V300 M640 268 V300 M640 268 H1050 V300" fill="none" stroke="#344054" stroke-width="3"/>
+    <path d="M224 290 L230 300 L236 290 Z M634 290 L640 300 L646 290 Z M1044 290 L1050 300 L1056 290 Z" fill="#344054"/>
+
+    <rect x="90" y="300" width="280" height="184" rx="20" fill="#FFF0C7" stroke="#C98718" stroke-width="2.5"/>
+    <text x="230" y="340" text-anchor="middle" font-size="23" font-weight="700">冻结底座</text>
+    <text x="230" y="377" text-anchor="middle" font-size="17">NF4 / INT4 权重与 scale</text>
+    <text x="230" y="408" text-anchor="middle" font-size="17">常驻低比特，计算时反量化</text>
+    <text x="230" y="450" text-anchor="middle" font-size="16" fill="#72510D">不参与优化器更新</text>
+
+    <rect x="500" y="300" width="280" height="184" rx="20" fill="#EEE8FF" stroke="#7457B7" stroke-width="2.5"/>
+    <text x="640" y="340" text-anchor="middle" font-size="23" font-weight="700">可训练适配器</text>
+    <text x="640" y="377" text-anchor="middle" font-size="17">参数 · 梯度 · 优化器状态</text>
+    <text x="640" y="408" text-anchor="middle" font-size="17">在 optimizer step 更新</text>
+    <text x="640" y="450" text-anchor="middle" font-size="16" fill="#6047A0">决定可学习容量</text>
+
+    <rect x="910" y="300" width="280" height="184" rx="20" fill="#E8F5FF" stroke="#3783B8" stroke-width="2.5"/>
+    <text x="1050" y="340" text-anchor="middle" font-size="23" font-weight="700">运行时状态</text>
+    <text x="1050" y="377" text-anchor="middle" font-size="17">激活 · 临时缓冲 · 累加精度</text>
+    <text x="1050" y="408" text-anchor="middle" font-size="17">受序列长度与 checkpoint 影响</text>
+    <text x="1050" y="450" text-anchor="middle" font-size="16" fill="#22638E">决定峰值显存与步时</text>
+
+    <path d="M230 484 V530 H640 M640 484 V530 M1050 484 V530 H640 V558" fill="none" stroke="#344054" stroke-width="3"/>
+    <path d="M632 548 L640 560 L648 548 Z" fill="#344054"/>
+    <rect x="315" y="560" width="650" height="80" rx="18" fill="#E7F6E9" stroke="#4B8E55" stroke-width="2.5"/>
+    <text x="640" y="593" text-anchor="middle" font-size="22" font-weight="700">训练证据与可交付产物</text>
+    <text x="640" y="622" text-anchor="middle" font-size="17">质量 · 峰值显存 · 步时 · Adapter Manifest · 可选合并/转换</text>
+  </g>
+</svg>

@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <rect width="1280" height="720" fill="#F7F4EC"/>
+  <rect x="36" y="32" width="1208" height="656" rx="28" fill="#FFFDF7" stroke="#1F2937" stroke-width="3"/>
+  <g font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" fill="#172033">
+    <text x="80" y="88" font-size="34" font-weight="700">权重量化：从表示基础到误差控制</text>
+    <text x="80" y="124" font-size="18" fill="#526076">三条路径都压缩权重，但保护精度的依据不同。</text>
+
+    <rect x="430" y="154" width="420" height="74" rx="18" fill="#EAF2FF" stroke="#3973B7" stroke-width="2.5"/>
+    <text x="640" y="185" text-anchor="middle" font-size="22" font-weight="700">浮点权重 + 目标硬件约束</text>
+    <text x="640" y="212" text-anchor="middle" font-size="16">位宽 · 粒度 · 质量门槛 · Backend</text>
+    <path d="M640 228 V268 H220 V300 M640 268 V300 M640 268 H1060 V300" fill="none" stroke="#344054" stroke-width="3"/>
+    <path d="M214 290 L220 300 L226 290 Z M634 290 L640 300 L646 290 Z M1054 290 L1060 300 L1066 290 Z" fill="#344054"/>
+
+    <rect x="80" y="300" width="280" height="224" rx="20" fill="#FFF0C7" stroke="#C98718" stroke-width="2.5"/>
+    <text x="220" y="341" text-anchor="middle" font-size="24" font-weight="700">W8A16 基线</text>
+    <text x="104" y="382" font-size="17">依据：统一 scale 与粒度</text>
+    <text x="104" y="416" font-size="17">优势：路径简单、验证快速</text>
+    <text x="104" y="450" font-size="17">用途：建立容量与质量账本</text>
+    <rect x="104" y="478" width="232" height="30" rx="10" fill="#FFFDF7"/>
+    <text x="220" y="499" text-anchor="middle" font-size="15">先确认 weight-only 收益</text>
+
+    <rect x="500" y="300" width="280" height="224" rx="20" fill="#EEE8FF" stroke="#7457B7" stroke-width="2.5"/>
+    <text x="640" y="341" text-anchor="middle" font-size="24" font-weight="700">GPTQ</text>
+    <text x="524" y="382" font-size="17">依据：校准数据与误差补偿</text>
+    <text x="524" y="416" font-size="17">关注：量化误差如何向后传播</text>
+    <text x="524" y="450" font-size="17">用途：更激进的训练后压缩</text>
+    <rect x="524" y="478" width="232" height="30" rx="10" fill="#FFFDF7"/>
+    <text x="640" y="499" text-anchor="middle" font-size="15">保护整体重构误差</text>
+
+    <rect x="920" y="300" width="280" height="224" rx="20" fill="#E7F6E9" stroke="#4B8E55" stroke-width="2.5"/>
+    <text x="1060" y="341" text-anchor="middle" font-size="24" font-weight="700">AWQ</text>
+    <text x="944" y="382" font-size="17">依据：激活统计识别敏感通道</text>
+    <text x="944" y="416" font-size="17">关注：异常通道与重要权重</text>
+    <text x="944" y="450" font-size="17">用途：压缩同时优先保质量</text>
+    <rect x="944" y="478" width="232" height="30" rx="10" fill="#FFFDF7"/>
+    <text x="1060" y="499" text-anchor="middle" font-size="15">保护激活敏感权重</text>
+
+    <path d="M220 524 V560 H640 M640 524 V560 M1060 524 V560 H640 V590" fill="none" stroke="#344054" stroke-width="3"/>
+    <path d="M632 580 L640 592 L648 580 Z" fill="#344054"/>
+    <rect x="350" y="592" width="580" height="60" rx="16" fill="#FCE8E6" stroke="#B85C54" stroke-width="2.5"/>
+    <text x="640" y="628" text-anchor="middle" font-size="20" font-weight="700">共同出口：量化产物 + 元数据 + 加载与 Kernel 验证</text>
+  </g>
+</svg>

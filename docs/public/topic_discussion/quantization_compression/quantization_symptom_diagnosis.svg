@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <rect width="1280" height="720" fill="#F7F4EC"/>
+  <rect x="36" y="32" width="1208" height="656" rx="28" fill="#FFFDF7" stroke="#1F2937" stroke-width="3"/>
+  <g font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" fill="#172033">
+    <text x="80" y="88" font-size="34" font-weight="700">从实验症状定位量化证据缺口</text>
+    <text x="80" y="124" font-size="18" fill="#526076">先识别问题发生在哪里，再回到对应机制页补证据。</text>
+
+    <rect x="490" y="154" width="300" height="68" rx="18" fill="#EAF2FF" stroke="#3973B7" stroke-width="2.5"/>
+    <text x="640" y="196" text-anchor="middle" font-size="23" font-weight="700">观察到实验异常</text>
+    <path d="M640 222 V254 H170 V286 M640 254 H358 V286 M640 254 H546 V286 M640 254 H734 V286 M640 254 H922 V286 M640 254 H1110 V286" fill="none" stroke="#344054" stroke-width="3"/>
+    <path d="M164 276 L170 286 L176 276 Z M352 276 L358 286 L364 276 Z M540 276 L546 286 L552 276 Z M728 276 L734 286 L740 276 Z M916 276 L922 286 L928 276 Z M1104 276 L1110 286 L1116 276 Z" fill="#344054"/>
+
+    <g font-size="17" font-weight="700" text-anchor="middle">
+      <rect x="80" y="286" width="180" height="84" rx="16" fill="#FFF0C7" stroke="#C98718" stroke-width="2"/>
+      <text x="170" y="321">装不进显存</text><text x="170" y="349" font-size="15" font-weight="400">对象账本 · 加载峰值</text>
+      <rect x="268" y="286" width="180" height="84" rx="16" fill="#FCE8E6" stroke="#B85C54" stroke-width="2"/>
+      <text x="358" y="321">质量下降</text><text x="358" y="349" font-size="15" font-weight="400">校准 · 粒度 · 敏感层</text>
+      <rect x="456" y="286" width="180" height="84" rx="16" fill="#EEE8FF" stroke="#7457B7" stroke-width="2"/>
+      <text x="546" y="321">没有加速</text><text x="546" y="349" font-size="15" font-weight="400">Kernel · 反量化 · Fallback</text>
+      <rect x="644" y="286" width="180" height="84" rx="16" fill="#E7F6E9" stroke="#4B8E55" stroke-width="2"/>
+      <text x="734" y="321">长上下文受限</text><text x="734" y="349" font-size="15" font-weight="400">KV Cache · TPOT</text>
+      <rect x="832" y="286" width="180" height="84" rx="16" fill="#E8F5FF" stroke="#3783B8" stroke-width="2"/>
+      <text x="922" y="321">训练不稳定</text><text x="922" y="349" font-size="15" font-weight="400">计算 dtype · 状态账本</text>
+      <rect x="1020" y="286" width="180" height="84" rx="16" fill="#F1F3F5" stroke="#667085" stroke-width="2"/>
+      <text x="1110" y="321">结果不可比</text><text x="1110" y="349" font-size="15" font-weight="400">模型 · 输入 · 环境契约</text>
+    </g>
+
+    <path d="M170 370 V410 H640 M358 370 V410 M546 370 V410 M734 370 V410 M922 370 V410 M1110 370 V410 H640 V440" fill="none" stroke="#344054" stroke-width="3"/>
+    <path d="M632 430 L640 442 L648 430 Z" fill="#344054"/>
+    <rect x="440" y="442" width="400" height="64" rx="16" fill="#FFF0C7" stroke="#C98718" stroke-width="2.5"/>
+    <text x="640" y="481" text-anchor="middle" font-size="21" font-weight="700">补充质量、容量与执行证据</text>
+    <path d="M640 506 V536" stroke="#344054" stroke-width="3"/><path d="M632 526 L640 538 L648 526 Z" fill="#344054"/>
+    <rect x="240" y="540" width="350" height="76" rx="18" fill="#EAF2FF" stroke="#3973B7" stroke-width="2.5"/>
+    <text x="415" y="572" text-anchor="middle" font-size="21" font-weight="700">正文 01–05：定位机制</text>
+    <text x="415" y="599" text-anchor="middle" font-size="16">对象 · 时机 · 训练 · 权重 · 运行期</text>
+    <path d="M590 578 H688" stroke="#344054" stroke-width="3"/><path d="M676 571 L690 578 L676 585 Z" fill="#344054"/>
+    <rect x="690" y="540" width="350" height="76" rx="18" fill="#FCE8E6" stroke="#B85C54" stroke-width="2.5"/>
+    <text x="865" y="572" text-anchor="middle" font-size="21" font-weight="700">正文 06：形成项目决策</text>
+    <text x="865" y="599" text-anchor="middle" font-size="16">采用 · 调优 · 拒绝</text>
+  </g>
+</svg>

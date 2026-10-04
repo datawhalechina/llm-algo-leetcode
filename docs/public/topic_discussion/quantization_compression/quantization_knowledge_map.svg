@@ -8,14 +8,14 @@
   .card{stroke-width:2;rx:18}.flow{stroke:#486581;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
 </style>
 <rect width="1400" height="760" fill="#fbfcfe"/>
-<text x="700" y="48" text-anchor="middle" class="title">量化知识地图：对象如何连接到误差与部署</text>
-<text x="700" y="78" text-anchor="middle" class="sub">同样的低比特表示，因压缩对象和执行位置不同，会产生不同的收益、风险和验证方式。</text>
+<text x="700" y="48" text-anchor="middle" class="title">量化知识地图：对象如何连接到误差、执行与证据</text>
+<text x="700" y="78" text-anchor="middle" class="sub">同样的低比特表示，在训练与推理中会改变不同状态、执行路径和验证指标。</text>
 
 <rect x="70" y="145" width="280" height="150" class="card" fill="#f3edff" stroke="#9b8ac4"/>
 <text x="210" y="183" text-anchor="middle" class="head">压缩对象</text>
 <text x="210" y="216" text-anchor="middle" class="body">权重</text>
 <text x="210" y="244" text-anchor="middle" class="body">激活 / 计算张量</text>
-<text x="210" y="272" text-anchor="middle" class="body">KV Cache</text>
+<text x="210" y="272" text-anchor="middle" class="body">训练状态 / KV Cache</text>
 
 <rect x="425" y="145" width="280" height="150" class="card" fill="#fff4d6" stroke="#e0b34f"/>
 <text x="565" y="183" text-anchor="middle" class="head">成本变化</text>
@@ -50,10 +50,10 @@
 <text x="700" y="558" text-anchor="middle" class="small">格式可加载不等于路径有效</text>
 
 <rect x="920" y="430" width="300" height="150" class="card" fill="#fce8e6" stroke="#d98b87"/>
-<text x="1070" y="468" text-anchor="middle" class="head">服务证据</text>
-<text x="1070" y="502" text-anchor="middle" class="body">显存 · TTFT · TPOT</text>
-<text x="1070" y="530" text-anchor="middle" class="body">吞吐 · P99 · 并发</text>
-<text x="1070" y="558" text-anchor="middle" class="small">同 workload 下比较 baseline / candidate</text>
+<text x="1070" y="468" text-anchor="middle" class="head">跨 Workload 证据</text>
+<text x="1070" y="502" text-anchor="middle" class="body">训练稳定性 · 训练吞吐</text>
+<text x="1070" y="530" text-anchor="middle" class="body">质量 · 容量 · 延迟 · 吞吐</text>
+<text x="1070" y="558" text-anchor="middle" class="small">固定条件比较 baseline / candidate</text>
 
 <path d="M920 295 V360 H330 V430" class="flow"/>
 <path d="M1232 295 V430" class="flow"/>
@@ -62,6 +62,6 @@
 
 <rect x="460" y="650" width="480" height="62" class="card" fill="#e9f2f9" stroke="#829ab1"/>
 <text x="700" y="677" text-anchor="middle" class="head">工程决策</text>
-<text x="700" y="701" text-anchor="middle" class="small">accept · tune · reject：收益必须同时满足质量与部署约束</text>
+<text x="700" y="701" text-anchor="middle" class="small">accept · tune · reject：结论只适用于已验证的目标 workload</text>
 <path d="M1070 580 V620 H700 V650" class="flow"/>
 </svg>

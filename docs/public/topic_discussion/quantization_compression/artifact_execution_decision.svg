@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <rect width="1280" height="720" fill="#F7F4EC"/>
+  <rect x="36" y="32" width="1208" height="656" rx="28" fill="#FFFDF7" stroke="#1F2937" stroke-width="3"/>
+  <g font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" fill="#172033">
+    <text x="80" y="88" font-size="34" font-weight="700">从量化产物到工作负载决策</text>
+    <text x="80" y="124" font-size="18" fill="#526076">文件变小只是起点；每一道门都要补充可检查证据。</text>
+
+    <rect x="80" y="176" width="190" height="104" rx="18" fill="#FFF0C7" stroke="#C98718" stroke-width="2.5"/>
+    <text x="175" y="216" text-anchor="middle" font-size="22" font-weight="700">量化产物</text>
+    <text x="175" y="250" text-anchor="middle" font-size="16">Manifest · 配置 · 哈希</text>
+    <path d="M270 228 H338" stroke="#344054" stroke-width="3"/><path d="M326 221 L340 228 L326 235 Z" fill="#344054"/>
+    <rect x="340" y="176" width="190" height="104" rx="18" fill="#EAF2FF" stroke="#3973B7" stroke-width="2.5"/>
+    <text x="435" y="216" text-anchor="middle" font-size="22" font-weight="700">加载器</text>
+    <text x="435" y="250" text-anchor="middle" font-size="16">格式与量化元数据可识别</text>
+    <path d="M530 228 H598" stroke="#344054" stroke-width="3"/><path d="M586 221 L600 228 L586 235 Z" fill="#344054"/>
+    <rect x="600" y="176" width="190" height="104" rx="18" fill="#EEE8FF" stroke="#7457B7" stroke-width="2.5"/>
+    <text x="695" y="216" text-anchor="middle" font-size="22" font-weight="700">执行后端</text>
+    <text x="695" y="250" text-anchor="middle" font-size="16">请求可完成且无隐式转换</text>
+    <path d="M790 228 H858" stroke="#344054" stroke-width="3"/><path d="M846 221 L860 228 L846 235 Z" fill="#344054"/>
+    <rect x="860" y="176" width="260" height="104" rx="18" fill="#E7F6E9" stroke="#4B8E55" stroke-width="2.5"/>
+    <text x="990" y="216" text-anchor="middle" font-size="22" font-weight="700">低精度 Kernel 路径</text>
+    <text x="990" y="250" text-anchor="middle" font-size="16">命中目标路径或记录 Fallback</text>
+
+    <path d="M990 280 V338 H640 V370" fill="none" stroke="#344054" stroke-width="3"/>
+    <path d="M632 360 L640 372 L648 360 Z" fill="#344054"/>
+    <rect x="350" y="372" width="580" height="112" rx="20" fill="#E8F5FF" stroke="#3783B8" stroke-width="2.5"/>
+    <text x="640" y="411" text-anchor="middle" font-size="23" font-weight="700">固定目标工作负载</text>
+    <text x="640" y="445" text-anchor="middle" font-size="17">同一模型 · 同一输入 · 同一运行条件</text>
+    <text x="640" y="470" text-anchor="middle" font-size="17">质量 · 峰值容量 · 延迟 · 吞吐 · 失败记录</text>
+
+    <path d="M640 484 V532" stroke="#344054" stroke-width="3"/>
+    <path d="M632 522 L640 534 L648 522 Z" fill="#344054"/>
+    <rect x="230" y="534" width="820" height="112" rx="20" fill="#FCE8E6" stroke="#B85C54" stroke-width="2.5"/>
+    <text x="640" y="570" text-anchor="middle" font-size="23" font-weight="700">项目决策</text>
+    <rect x="310" y="592" width="180" height="36" rx="10" fill="#DDF3DF"/><text x="400" y="617" text-anchor="middle" font-size="18" font-weight="700">采用</text>
+    <rect x="550" y="592" width="180" height="36" rx="10" fill="#FFF0C7"/><text x="640" y="617" text-anchor="middle" font-size="18" font-weight="700">调优</text>
+    <rect x="790" y="592" width="180" height="36" rx="10" fill="#F6D8D5"/><text x="880" y="617" text-anchor="middle" font-size="18" font-weight="700">拒绝</text>
+  </g>
+</svg>

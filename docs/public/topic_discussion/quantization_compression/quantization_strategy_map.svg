@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900">
+<defs>
+  <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#486581"/></marker>
+</defs>
+<style>
+  .title{font:700 30px sans-serif;fill:#17324d}.sub{font:16px sans-serif;fill:#526581}
+  .head{font:700 18px sans-serif;fill:#17324d}.body{font:15px sans-serif;fill:#334e68}.small{font:14px sans-serif;fill:#486581}
+  .card{stroke-width:2;rx:16}.flow{stroke:#486581;stroke-width:2.3;fill:none;marker-end:url(#arrow)}
+  .feedback{stroke:#8a6d3b;stroke-width:2;fill:none;stroke-dasharray:8 6;marker-end:url(#arrow)}
+</style>
+<rect width="1400" height="900" fill="#fbfcfe"/>
+<text x="700" y="48" text-anchor="middle" class="title">量化与压缩机制路线：公共机制连接训练、推理与性能</text>
+<text x="700" y="78" text-anchor="middle" class="sub">先建立表示、校准与误差口径，再验证产物能否进入真实执行路径，最后按目标 workload 作决策。</text>
+
+<rect x="475" y="108" width="450" height="88" class="card" fill="#e6f0ff" stroke="#8fb3d8"/>
+<text x="700" y="142" text-anchor="middle" class="head">对象与数值表示</text>
+<text x="700" y="171" text-anchor="middle" class="body">权重 · 激活 · 训练状态 · KV Cache</text>
+
+<rect x="65" y="270" width="280" height="112" class="card" fill="#fff4d6" stroke="#e0b34f"/>
+<text x="205" y="306" text-anchor="middle" class="head">校准与统计</text>
+<text x="205" y="336" text-anchor="middle" class="body">范围 · 分布 · 异常值</text>
+<text x="205" y="363" text-anchor="middle" class="small">校准集与评测集隔离</text>
+
+<rect x="395" y="270" width="280" height="112" class="card" fill="#f3edff" stroke="#9b8ac4"/>
+<text x="535" y="306" text-anchor="middle" class="head">参数与粒度</text>
+<text x="535" y="336" text-anchor="middle" class="body">scale · zero point</text>
+<text x="535" y="363" text-anchor="middle" class="small">tensor · channel · group</text>
+
+<rect x="725" y="270" width="280" height="112" class="card" fill="#e8f5ee" stroke="#76b893"/>
+<text x="865" y="306" text-anchor="middle" class="head">量化与反量化</text>
+<text x="865" y="336" text-anchor="middle" class="body">clamp · round · encode</text>
+<text x="865" y="363" text-anchor="middle" class="small">累加精度与高精度回退</text>
+
+<rect x="1055" y="270" width="280" height="112" class="card" fill="#fce8e6" stroke="#d98b87"/>
+<text x="1195" y="306" text-anchor="middle" class="head">误差与质量</text>
+<text x="1195" y="336" text-anchor="middle" class="body">局部误差 · 敏感度</text>
+<text x="1195" y="363" text-anchor="middle" class="small">任务质量与稳定性</text>
+
+<path d="M700 196 V232 H205 V270" class="flow"/>
+<path d="M700 232 H535 V270" class="flow"/>
+<path d="M700 232 H865 V270" class="flow"/>
+<path d="M700 232 H1195 V270" class="flow"/>
+<path d="M1195 382 V420 H205 V382" class="feedback"/>
+<text x="700" y="441" text-anchor="middle" class="small">误差超出门槛时，返回校准、粒度或方法重新选择</text>
+
+<rect x="135" y="490" width="300" height="112" class="card" fill="#fffaf0" stroke="#c49a3a"/>
+<text x="285" y="526" text-anchor="middle" class="head">量化 Artifact</text>
+<text x="285" y="556" text-anchor="middle" class="body">权重 · scale · 配置 · manifest</text>
+<text x="285" y="583" text-anchor="middle" class="small">产物完整性与版本可追溯</text>
+
+<rect x="550" y="490" width="300" height="112" class="card" fill="#f2fbf5" stroke="#76b893"/>
+<text x="700" y="526" text-anchor="middle" class="head">Loader 与 Backend</text>
+<text x="700" y="556" text-anchor="middle" class="body">格式识别 · dtype 支持 · fallback</text>
+<text x="700" y="583" text-anchor="middle" class="small">能加载不等于低精度执行</text>
+
+<rect x="965" y="490" width="300" height="112" class="card" fill="#edf3f8" stroke="#829ab1"/>
+<text x="1115" y="526" text-anchor="middle" class="head">Kernel 与执行证据</text>
+<text x="1115" y="556" text-anchor="middle" class="body">低精度 kernel · 累加 · 带宽</text>
+<text x="1115" y="583" text-anchor="middle" class="small">确认关键路径没有浮点回退</text>
+
+<path d="M865 382 V450 H285 V490" class="flow"/>
+<path d="M285 602 V636 H700 V602" class="flow"/>
+<path d="M850 546 H965" class="flow"/>
+
+<rect x="80" y="710" width="360" height="125" class="card" fill="#fff4d6" stroke="#e0b34f"/>
+<text x="260" y="748" text-anchor="middle" class="head">训练出口</text>
+<text x="260" y="779" text-anchor="middle" class="body">收敛 · 稳定性 · 峰值显存</text>
+<text x="260" y="807" text-anchor="middle" class="small">训练吞吐 · adapter / merged model</text>
+
+<rect x="520" y="710" width="360" height="125" class="card" fill="#e8f5ee" stroke="#76b893"/>
+<text x="700" y="748" text-anchor="middle" class="head">推理出口</text>
+<text x="700" y="779" text-anchor="middle" class="body">质量 · 容量 · TTFT / TPOT</text>
+<text x="700" y="807" text-anchor="middle" class="small">吞吐 · 并发 · 尾延迟</text>
+
+<rect x="960" y="710" width="360" height="125" class="card" fill="#e6f0ff" stroke="#8fb3d8"/>
+<text x="1140" y="748" text-anchor="middle" class="head">性能出口</text>
+<text x="1140" y="779" text-anchor="middle" class="body">容量 · 带宽 · 计算关键路径</text>
+<text x="1140" y="807" text-anchor="middle" class="small">收益归因 · 回归 · accept / tune / reject</text>
+
+<path d="M1115 602 V665 H260 V710" class="flow"/>
+<path d="M1115 665 H700 V710" class="flow"/>
+<path d="M1115 602 V710" class="flow"/>
+</svg>

@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="520" viewBox="0 0 1120 520" role="img" aria-labelledby="title desc">
+  <title id="title">量化主线与压缩扩展</title>
+  <desc id="desc">从模型状态出发，量化改变表示，剪枝和结构稀疏改变连接或结构，蒸馏改变学生模型学习目标，最终都进入质量和执行证据验证。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#64748b"/></marker>
+    <style>
+      .t{font-family:Arial,'Noto Sans SC',sans-serif;fill:#0f172a}.h{font-size:22px;font-weight:700}.s{font-size:16px}.n{font-size:17px;font-weight:700}.box{stroke-width:2;rx:14}.line{fill:none;stroke:#64748b;stroke-width:2;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1120" height="520" fill="#f8fafc"/>
+  <text x="560" y="42" text-anchor="middle" class="t h">模型压缩改变什么，决定需要什么证据</text>
+  <rect x="430" y="72" width="260" height="70" class="box" fill="#ffffff" stroke="#475569"/>
+  <text x="560" y="101" text-anchor="middle" class="t n">模型与训练状态</text>
+  <text x="560" y="126" text-anchor="middle" class="t s">参数 · 激活 · 缓存 · 目标函数</text>
+  <path d="M560 142 V180 H170 V202" class="line"/>
+  <path d="M560 180 H430 V202" class="line"/>
+  <path d="M560 180 H690 V202" class="line"/>
+  <path d="M560 180 H950 V202" class="line"/>
+  <rect x="55" y="202" width="230" height="96" class="box" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="170" y="235" text-anchor="middle" class="t n">量化</text>
+  <text x="170" y="262" text-anchor="middle" class="t s">改变数值表示与粒度</text>
+  <text x="170" y="286" text-anchor="middle" class="t s">PTQ / QAT / 低比特训练</text>
+  <rect x="315" y="202" width="230" height="96" class="box" fill="#dcfce7" stroke="#22c55e"/>
+  <text x="430" y="235" text-anchor="middle" class="t n">剪枝</text>
+  <text x="430" y="262" text-anchor="middle" class="t s">改变连接、Head 或层</text>
+  <text x="430" y="286" text-anchor="middle" class="t s">mask · 稀疏度计划 · 恢复训练</text>
+  <rect x="575" y="202" width="230" height="96" class="box" fill="#fef3c7" stroke="#f59e0b"/>
+  <text x="690" y="235" text-anchor="middle" class="t n">结构稀疏</text>
+  <text x="690" y="262" text-anchor="middle" class="t s">改变可执行的计算结构</text>
+  <text x="690" y="286" text-anchor="middle" class="t s">N:M · 块稀疏 · 稀疏 Kernel</text>
+  <rect x="835" y="202" width="230" height="96" class="box" fill="#f3e8ff" stroke="#a855f7"/>
+  <text x="950" y="235" text-anchor="middle" class="t n">蒸馏</text>
+  <text x="950" y="262" text-anchor="middle" class="t s">改变学生模型学习目标</text>
+  <text x="950" y="286" text-anchor="middle" class="t s">教师信号 · 学生状态 · 独立评测</text>
+  <path d="M170 298 V344 H560 V370" class="line"/>
+  <path d="M430 298 V330 H560 V370" class="line"/>
+  <path d="M690 298 V330 H560 V370" class="line"/>
+  <path d="M950 298 V344 H560 V370" class="line"/>
+  <rect x="315" y="370" width="490" height="100" class="box" fill="#ffffff" stroke="#475569"/>
+  <text x="560" y="403" text-anchor="middle" class="t n">共同验证出口</text>
+  <text x="560" y="432" text-anchor="middle" class="t s">质量门槛 · artifact / 结构契约 · Kernel / backend 路径</text>
+  <text x="560" y="458" text-anchor="middle" class="t s">目标 workload 的容量、延迟、吞吐与失败记录</text>
+</svg>
