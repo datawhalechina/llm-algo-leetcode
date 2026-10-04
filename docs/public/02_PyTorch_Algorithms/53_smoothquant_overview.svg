@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="470" viewBox="0 0 1200 470">
+  <defs><marker id="a" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#4b5563"/></marker></defs>
+  <rect width="1200" height="470" rx="20" fill="#f8fafc"/>
+  <text x="54" y="52" font-family="Arial, sans-serif" font-size="27" font-weight="700" fill="#172554">SmoothQuant：把激活异常值的量化难度转移到权重</text>
+  <g font-family="Arial, sans-serif" font-size="18" fill="#1f2937" text-anchor="middle">
+    <rect x="62" y="120" width="220" height="92" rx="14" fill="#dbeafe" stroke="#60a5fa"/>
+    <text x="172" y="158" font-weight="700">校准输入</text><text x="172" y="187">观察每个通道的范围</text>
+    <rect x="370" y="120" width="220" height="92" rx="14" fill="#fee2e2" stroke="#f87171"/>
+    <text x="480" y="158" font-weight="700">激活异常值</text><text x="480" y="187">直接 W8A8 误差偏大</text>
+    <rect x="678" y="120" width="220" height="92" rx="14" fill="#fef3c7" stroke="#f59e0b"/>
+    <text x="788" y="158" font-weight="700">等价平滑变换</text><text x="788" y="187">X / s，W × s</text>
+    <rect x="986" y="120" width="160" height="92" rx="14" fill="#dcfce7" stroke="#4ade80"/>
+    <text x="1066" y="158" font-weight="700">W8A8 路径</text><text x="1066" y="187">量化与执行证据</text>
+  </g>
+  <g stroke="#4b5563" stroke-width="3" fill="none" marker-end="url(#a)">
+    <path d="M282 166 H370"/><path d="M590 166 H678"/><path d="M898 166 H986"/>
+  </g>
+  <rect x="250" y="294" width="700" height="106" rx="16" fill="#fff" stroke="#94a3b8" stroke-width="2"/>
+  <g font-family="Arial, sans-serif" fill="#334155" text-anchor="middle"><text x="600" y="332" font-size="20" font-weight="700">证据要分层</text><text x="430" y="371" font-size="17">等价输出与量化误差</text><text x="600" y="371" font-size="17">真实 GPU / kernel 可执行性</text><text x="770" y="371" font-size="17">固定 workload 的服务收益</text></g>
+  <g stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#a)"><path d="M600 212 V294"/></g>
+</svg>

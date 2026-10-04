@@ -1,5 +1,5 @@
 # 40. GPTQ and AWQ Weight Quantization | GPTQ 与 AWQ 权重量化
-**难度：** Hard | **环境：** CPU-first | **标签：** `量化压缩`, `权重量化`, `GPTQ/AWQ` | **目标人群：** 量化压缩学习者
+**难度：** Hard | **环境：** CPU-first，GPU 可选 | **标签：** `量化压缩`, `GPTQ`, `AWQ`, `artifact` | **目标人群：** 希望理解校准统计如何形成权重量化产物的学习者
 
 > 🚀 **云端运行环境**
 >
@@ -13,75 +13,68 @@
 
 ## 本节导读
 
-第 25 节和第 26 节已经把量化的两条主线铺开：W8A16 说明了 weight-only 量化如何减少权重读取压力，QLoRA 说明了 4-bit 权重如何服务于低成本微调。但部署阶段还会遇到一个更细的问题：同样是把权重压到低比特，哪些权重更敏感，哪些误差可以接受，校准数据又应该如何参与量化决策？
+W8A16 建立了整数码、量化参数和粒度的基础；继续压缩到 4-bit 后，不同通道对层输出的影响差异会变得更重要。GPTQ 使用校准激活近似二阶敏感度，降低量化误差对层输出的影响；AWQ 使用激活统计识别显著通道，通过缩放或保护减少关键权重的损失。
 
-本节用一个极简 `WeightQuantizerSim` 模拟 GPTQ / AWQ 的核心直觉：GPTQ 更关注校准后的重构误差，AWQ 更强调激活感知和敏感通道保护。学完后，你应该能看清“校准 -> 分组 -> 量化 -> 保护 -> 反量化 -> 误差检查”这条权重量化链路。
+本节沿“校准统计 → group-wise 候选 → 层输出误差 → artifact metadata”分析两种方法。它负责说明产物必须保存什么，不代替 loader 兼容性、真实 kernel 和服务 benchmark。
 
-本节还会把三类对象放到同一条链路中比较：GPTQ 关注校准后的误差补偿，AWQ 关注激活感知和敏感通道保护，GGUF 负责量化权重的文件格式与部署封装。真实 artifact、backend 和 kernel 的验证继续连接到 [67. 量化推理与部署](./67_Quantized_Inference_and_Deployment.md)。
-
-**关键词：** `GPTQ`, `AWQ`, `weight quantization`
+**关键词：** `GPTQ`, `AWQ`, `Hessian proxy`, `activation statistics`, `quantized artifact`
 
 ---
 
 ## 前置阅读
 
-**导语：** 进入本节前，先能区分权重、激活和 KV Cache 的量化对象，再观察校准数据如何影响低比特权重的误差。
-- [25. Quantization W8A16 | W8A16 量化](./25_Quantization_W8A16.md)
-- [26. QLoRA and 4bit Quantization | QLoRA 与 4-bit 量化](./26_QLoRA_and_4bit_Quantization.md)
-- [P1: 21. Quantization Theory and INT4/INT8 | 量化理论与 INT4/INT8](../01_Hardware_Math_and_Systems/21_Quantization_Theory_and_INT4_INT8.md)
+**导语：** 先掌握独立校准协议和 group-wise 表示，再比较 GPTQ 与 AWQ 使用校准激活的不同方式。
+
+- [52. Quantization Calibration and Error | 量化校准与误差控制](./52_Quantization_Calibration_and_Error.md)
+- [25. W8A16 Quantization | W8A16 表示基础](./25_Quantization_W8A16.md)
 
 ---
 
-### Step 1: 低比特权重如何进入部署前校准
+### Step 1：校准统计怎样变成权重量化产物
 
-W8A16 已经说明低比特可以减少权重存储，但继续压到 4-bit 后，量化误差会更容易影响敏感通道。先把一轮校准看成一条数据流：输入权重和代表性激活，提取校准统计，按分组确定 scale，再输出低比特权重、保护信息和可检查的重构误差。
+权重量化产物不只是 packed weight。生成候选时需要固定源模型 revision、校准样本、bit width 和 group size；保存时还要记录 scale、zero point 或对称约定、packing layout、目标模块和方法专属统计。缺失这些信息，即使权重文件存在，也无法可靠恢复或交给 loader。
 
-量化结果还要经过保存、读取和执行三个环节：先形成可追溯的 artifact，再由 loader 读取并映射到 backend，最后由 kernel 执行。训练侧也可能量化梯度或优化器状态，但那服务于训练显存和更新稳定性，不属于本节的部署主线。
-
-| 部署环节 | 需要确认什么 | 学习时观察什么 |
-|---|---|---|
-| 校准与量化 | 校准样本、bit、group size、保护策略 | 统计是否稳定、误差是否可解释 |
-| Artifact | 权重、scale、保护信息和版本是否可追溯 | 表示是否完整、配置是否可复查 |
-| Loader / backend | 是否按目标 dtype 和格式读取，是否发生 fallback | 实际加载路径和 dtype |
-| Kernel / 服务 | 是否执行目标低比特路径，端到端是否受益 | 延迟、吞吐、显存和质量 |
-
-![量化对象、处理时机与部署验证](../public/02_PyTorch_Algorithms/40_quantization_landscape_cn.svg)
-
-### Step 2: 校准数据与分组 scale
-
-校准样本不是训练数据，而是用来观察激活分布的代表性输入。模拟器先按输入通道汇总激活强度，再把权重按 `group_size` 划分，每组使用独立 scale。先比较样本量对统计稳定性的影响，再比较量化粒度对误差和元数据成本的影响。
-
-| 变量 / 粒度 | 改变什么 | 主要收益 | 主要代价与观察结果 |
+| 阶段 | 输入 | 产生的状态 | 进入下一阶段的条件 |
 |---|---|---|---|
-| `calibration_samples` | 激活统计的样本量 | 统计更稳定 | 样本少时敏感通道判断可能抖动 |
-| per-tensor | 整个权重张量共享 scale | 元数据少、实现简单 | 局部异常值影响整层 |
-| per-channel | 每个通道独立 scale | 适应通道差异 | scale 数量增加 |
-| group-wise / `group_size` | 固定数量输入通道共享 scale | 在误差与元数据之间折中 | 分组越粗越容易受异常值影响，边界组需要单独处理 |
+| 校准 | 独立 calibration 样本、浮点权重 | 激活 RMS、Hessian 近似或显著通道 | 统计维度与目标层一致 |
+| 分组量化 | bit、group size、方法配置 | qweight、scale、保护/补偿状态 | 尾组完整、误差有限 |
+| 层输出复核 | 同一校准输入与浮点输出 | 权重误差、加权误差、层输出误差 | 通过局部候选门槛 |
+| artifact 生成 | 量化状态与模型身份 | 权重文件、配置与 manifest | metadata 完整后进入 82 |
 
-### Step 3: GPTQ 与 AWQ 的策略差异
+![权重量化统计、产物与验证路径](../public/02_PyTorch_Algorithms/40_quantization_landscape_cn.svg)
 
-两种方法都使用代表性输入帮助决定低比特权重如何处理，但观察对象不同。先比较它们使用的校准信号，再观察量化决策如何影响敏感通道、重构误差和元数据。可以把共同过程具体化为：校准激活 → 统计重要性 → 计算分组 scale → 保护或调整敏感权重 → 反量化 → 比较输出误差。
+### Step 2：GPTQ 如何使用激活统计近似输出敏感度
 
-本节的 GPTQ/AWQ 模拟器把两种方法的核心决策信号放在同一组输入上：GPTQ 观察重构误差，AWQ 观察激活感知的通道重要性。真实工具链还会涉及 Hessian 或近似二阶信息、逐层误差补偿、缩放搜索和权重打包；学习者可以先用模拟结果建立判断，再把这些判断带到真实模型和部署结果中。
+线性层输出为 `Y = XWᵀ`。同样大小的权重误差，如果落在输入经常激活的方向上，会造成更大的输出偏移。GPTQ 使用校准矩阵构造二阶信息；教学实现使用 `mean(X²)` 作为 Hessian 对角近似，对各输入通道的重构误差加权，从而区分普通权重 MSE 与输出敏感度代理。
 
-| 方法 | 校准时主要观察什么 | 典型处理思路 | 本节可观察的结果 |
-|---|---|---|---|
-| GPTQ | 量化前后层输出的重构误差 | 根据校准信息调整量化结果，使层输出尽量接近原始输出 | 重构误差与分组配置的关系 |
-| AWQ | 激活统计中的敏感通道 | 对高影响通道采取保护或重缩放，再量化其余权重 | 敏感通道标记与误差变化 |
-| 共同基础 | 代表性校准输入、分组 scale 和低比特权重 | 先取得统计，再生成可部署的权重表示 | 权重恢复形状、误差和元数据成本 |
-
-![GPTQ 与 AWQ 的校准路径](../public/02_PyTorch_Algorithms/40_gptq_awq_map_cn.svg)
-
-### Step 4: 实现、测试与结果解读
-
-题目区采用“固定骨架 + 机制 TODO”的设计：`WeightQuantizerSim` 已提供输入契约、状态字段、循环结构和错误检查，学习者只补全校准统计、分组数量、敏感通道掩码、scale、反量化和误差计算。每个 TODO 对应一个可验证的机制责任，并保留变量级提示；答案区与题目区使用相同的函数签名和控制流，只补上这些 TODO。
-
-| 实现部分 | 代码需要完成的工作 | 验证重点 |
+| 统计或配置 | 机制意义 | 需要检查 |
 |---|---|---|
-| 校准统计 | 汇总输入通道激活强度 | 能识别用于保护的敏感通道 |
-| 分组量化 | 计算分组数量和 scale，并生成低比特权重 | dtype、scale 形状和边界分组正确 |
-| 反量化与误差 | 恢复权重并计算重构误差 | 输出形状一致，误差可计算且无异常值 |
-| 量化状态契约 | 保留量化配置、scale 和保护信息 | 能区分模拟结果与真实 artifact / backend 证据 |
+| calibration matrix `X` | 代表目标 workload 的层输入 | 样本隔离、shape 与覆盖范围 |
+| `XᵀX / N` 或对角近似 | 描述输入方向的局部敏感度 | 数值稳定性与通道对应关系 |
+| `group_size` | 限制共享 scale 的权重范围 | 误差、元数据与 kernel 支持 |
+| 加权重构误差 | 估计权重误差对层输出的影响 | 仍需独立任务质量复核 |
+
+### Step 3：AWQ 如何使用激活统计保护显著通道
+
+AWQ 关注输入激活幅度较大的通道，因为这些通道对应的权重误差更容易影响输出。教学路径先计算通道 RMS，再在每个 group 内标出显著通道；真实方法通常通过缩放把量化难度从激活与显著权重之间重新分配，而不是简单永久保存一份浮点权重。
+
+| 方法 | 校准信号 | 决策重点 | 产物需要记录 |
+|---|---|---|---|
+| GPTQ | Hessian 或其近似 | 量化误差如何影响层输出 | bit、group size、scale、packing 与方法配置 |
+| AWQ | 激活幅度与显著通道 | 哪些通道需要缩放或保护 | scale、显著性/缩放配置与 packing |
+| 共同部分 | 独立校准输入 | 生成可复现的 group-wise 权重状态 | 模型 revision、目标模块与校准摘要 |
+
+![GPTQ 与 AWQ 的校准信号](../public/02_PyTorch_Algorithms/40_gptq_awq_map_cn.svg)
+
+### Step 4：实现校准统计、显著通道与 artifact contract
+
+题目区实现三个机制：从校准激活得到 RMS 和 Hessian 对角近似；为 AWQ 路径标记显著通道；为每个 group 生成安全 scale。分组循环、恢复、加权误差和 artifact manifest 由骨架提供，使测试能够核对统计、方法差异和产物元数据。
+
+| TODO | 机制责任 | 关键测试 |
+|:---|:---|:---|
+| TODO 1 | `_collect_statistics` 生成 activation RMS 与 Hessian 对角近似 | shape、有限值、通道语义 |
+| TODO 2 | `_awq_protection_mask` 标记 group 内显著通道 | 保护比例、局部下标、GPTQ/AWQ 差异 |
+| TODO 3 | `fit` 生成未保护权重的 group scale | 全零 group、尾组、INT4 范围 |
 
 
 ```python
@@ -94,288 +87,56 @@ import torch.nn.functional as F
 
 ```python
 class WeightQuantizerSim(nn.Module):
-    """教学用 GPTQ / AWQ 权重量化模拟器。
+    """教学化比较 GPTQ 敏感度代理与 AWQ 显著通道策略。"""
 
-    它只保留校准统计、分组 scale、敏感通道保护、反量化和重构误差
-    这些机制骨架，不生成真实 GPTQ / AWQ artifact，也不代表目标
-    backend 已经使用低比特 kernel。"""
-
-    def __init__(self, bits: int = 4, group_size: int = 32, method: str = "gptq", protect_ratio: float = 0.05, eps: float = 1e-8):
+    def __init__(self, bits: int = 4, group_size: int = 32, method: str = "gptq",
+                 protect_ratio: float = 0.05, eps: float = 1e-8):
         super().__init__()
-        if bits < 2:
-            raise ValueError("bits must be >= 2")
-        if group_size <= 0:
-            raise ValueError("group_size must be positive")
-        self.bits = bits
-        self.group_size = group_size
-        self.method = method.lower()
-        self.protect_ratio = protect_ratio
-        self.eps = eps
+        if bits < 2 or group_size <= 0:
+            raise ValueError("bits must be >= 2 and group_size must be positive")
+        if method.lower() not in {"gptq", "awq"}:
+            raise ValueError("method must be gptq or awq")
+        if not 0.0 <= protect_ratio <= 1.0:
+            raise ValueError("protect_ratio must be in [0, 1]")
+        self.bits, self.group_size = bits, group_size
+        self.method, self.protect_ratio, self.eps = method.lower(), protect_ratio, eps
         self.qmax = 2 ** (bits - 1) - 1
-
         self.register_buffer("qweight", torch.empty(0, dtype=torch.int8), persistent=False)
         self.register_buffer("scales", torch.empty(0), persistent=False)
         self.register_buffer("protected_weight", torch.empty(0), persistent=False)
         self.register_buffer("protected_mask", torch.empty(0, dtype=torch.bool), persistent=False)
-        self.register_buffer("importance", torch.empty(0), persistent=False)
+        self.register_buffer("activation_rms", torch.empty(0), persistent=False)
+        self.register_buffer("hessian_diag", torch.empty(0), persistent=False)
         self.weight_shape = None
 
-    def _collect_importance(self, activations: torch.Tensor, in_features: int) -> torch.Tensor:
-        act = activations.detach().float()
-        if act.ndim == 1:
-            importance = act.abs()
-        else:
-            reduce_dims = tuple(range(act.ndim - 1))
-            # ==========================================
-            # TODO 1: 根据校准激活统计输入通道重要性
-            # 提示: 对除最后一维外的维度求 RMS，最后一维对应 in_features
-            # ==========================================
-            # importance = ???
-        if importance.numel() != in_features:
-            raise ValueError(f"Calibration importance dim mismatch: expected {in_features}, got {importance.numel()}")
-        return importance
+    def _collect_statistics(self, activations: torch.Tensor, in_features: int):
+        """返回每个输入通道的 activation RMS 与 Hessian 对角近似。"""
+        flat = activations.detach().float().reshape(-1, activations.shape[-1])
+        if flat.shape[-1] != in_features:
+            raise ValueError("calibration activation dim does not match weight")
+        # TODO 1（校准统计）：mean(X²) 是 Hessian 对角代理，RMS 是其平方根。
+        # hessian_diag = ???
+        # activation_rms = ???
+        return activation_rms, hessian_diag
 
-    def fit(self, weight: torch.Tensor, activations: torch.Tensor | None = None) -> "WeightQuantizerSim":
+    def _awq_protection_mask(self, importance: torch.Tensor) -> torch.Tensor:
+        """在当前 group 内按 activation RMS 标出需要保护的通道。"""
+        mask = torch.zeros_like(importance, dtype=torch.bool)
+        if self.method != "awq" or importance.numel() == 0 or self.protect_ratio == 0:
+            return mask
+        count = min(importance.numel(), max(1, int(round(importance.numel() * self.protect_ratio))))
+        topk = torch.topk(importance, k=count, largest=True).indices
+        # TODO 2（AWQ 显著通道）：把 topk 局部下标写入布尔 mask。
+        # mask[topk] = ???
+        return mask
+
+    def fit(self, weight: torch.Tensor, activations: torch.Tensor) -> "WeightQuantizerSim":
         w = weight.detach().float()
         if w.ndim != 2:
-            raise ValueError("WeightQuantizerSim only supports 2D linear weights.")
-
+            raise ValueError("weight must be a 2D Linear weight")
         out_features, in_features = w.shape
         self.weight_shape = (out_features, in_features)
-        importance = torch.ones(in_features, device=w.device, dtype=w.dtype) if activations is None else self._collect_importance(activations, in_features)
-        self.importance = importance
-
-        # ==========================================
-        # TODO 2: 计算输入维度需要被切成多少个 group
-        # 提示: 使用向上取整，最后一组可以不足 group_size
-        # ==========================================
-        # n_groups = ???
-        qweight = torch.zeros_like(w, dtype=torch.int8)
-        scales = torch.zeros((out_features, n_groups), dtype=w.dtype, device=w.device)
-        protected_weight = torch.zeros_like(w)
-        protected_mask = torch.zeros_like(w, dtype=torch.bool)
-
-        for row in range(out_features):
-            for g in range(n_groups):
-                start = g * self.group_size
-                end = min(start + self.group_size, in_features)
-                wg = w[row, start:end]
-                ig = importance[start:end]
-                if wg.numel() == 0:
-                    continue
-
-                mask = torch.zeros_like(ig, dtype=torch.bool)
-                if self.method == "awq":
-                    k = max(1, int(round(wg.numel() * self.protect_ratio)))
-                    k = min(k, wg.numel())
-                    topk = torch.topk(ig, k=k, largest=True).indices
-                    # ==========================================
-                    # TODO 3: 标记本组中需要保护的敏感通道
-                    # 提示: topk 是通道下标，把这些位置在 mask 中置为 True
-                    # ==========================================
-                    # mask[topk] = ???
-                    protected_mask[row, start:end] = mask
-                    protected_weight[row, start:end] = wg * mask.to(wg.dtype)
-
-                base = wg[~mask]
-                if base.numel() == 0:
-                    base = wg
-                # ==========================================
-                # TODO 4: 为未保护的普通通道计算分组 scale
-                # 提示: 对称量化 scale = absmax / qmax，并用 eps 避免除零
-                # ==========================================
-                # scale = ???
-
-                q_group = torch.zeros_like(wg, dtype=torch.int8)
-                q_group[~mask] = torch.clamp(torch.round(wg[~mask] / scale), -self.qmax, self.qmax).to(torch.int8)
-                qweight[row, start:end] = q_group
-                scales[row, g] = scale
-
-        self.qweight = qweight
-        self.scales = scales
-        self.protected_weight = protected_weight
-        self.protected_mask = protected_mask
-        return self
-
-    def dequantize(self) -> torch.Tensor:
-        if self.weight_shape is None:
-            raise RuntimeError("Call fit() before dequantize().")
-
-        out_features, in_features = self.weight_shape
-        n_groups = self.scales.size(1)
-        weight = torch.zeros((out_features, in_features), dtype=self.scales.dtype, device=self.scales.device)
-
-        for row in range(out_features):
-            for g in range(n_groups):
-                start = g * self.group_size
-                end = min(start + self.group_size, in_features)
-                scale = self.scales[row, g]
-                q_group = self.qweight[row, start:end].to(self.scales.dtype)
-                # ==========================================
-                # TODO 5: 将整数权重反量化回浮点近似值
-                # 提示: 量化时除以 scale，恢复时乘回 scale
-                # ==========================================
-                # dequant = ???
-                protected = self.protected_mask[row, start:end]
-                if protected.any():
-                    dequant = dequant.clone()
-                    dequant[protected] = self.protected_weight[row, start:end][protected]
-                weight[row, start:end] = dequant
-
-        return weight
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        if self.weight_shape is None:
-            raise RuntimeError("Call fit() before forward().")
-        weight = self.dequantize().to(x.dtype)
-        return F.linear(x, weight)
-
-    def mse(self, weight: torch.Tensor) -> torch.Tensor:
-        recon = self.dequantize().to(weight.dtype)
-        # ==========================================
-        # TODO 6: 计算原始权重和恢复权重之间的均方误差
-        # 提示: 先相减、平方，再求平均
-        # ==========================================
-        # error = ???
-        return error
-
-```
-
-
-```python
-def test_calibration_importance_contract():
-    torch.manual_seed(0)
-    sim = WeightQuantizerSim(bits=4, group_size=4, method='awq', protect_ratio=0.25)
-    acts = torch.randn(16, 8)
-    importance = sim._collect_importance(acts, 8)
-    assert importance.shape == (8,)
-    assert torch.isfinite(importance).all()
-
-
-def test_group_partition_contract():
-    weight = torch.randn(4, 10)
-    sim = WeightQuantizerSim(bits=4, group_size=4, method='gptq').fit(weight)
-    assert sim.scales.shape == (4, 3)
-    assert sim.qweight.shape == weight.shape
-    assert sim.dequantize().shape == weight.shape
-
-
-def test_awq_protection_contract():
-    torch.manual_seed(0)
-    weight = torch.randn(4, 8)
-    acts = torch.randn(16, 8)
-    sim = WeightQuantizerSim(bits=4, group_size=4, method='awq', protect_ratio=0.25).fit(weight, acts)
-    assert sim.protected_mask.any()
-    assert sim.protected_weight[sim.protected_mask].numel() > 0
-    restored = sim.dequantize()
-    assert torch.allclose(restored[sim.protected_mask], sim.protected_weight[sim.protected_mask])
-
-
-def test_dequantization_contract():
-    weight = torch.randn(4, 8)
-    sim = WeightQuantizerSim(bits=4, group_size=4, method='gptq').fit(weight)
-    restored = sim.dequantize()
-    assert restored.shape == weight.shape
-    assert torch.isfinite(restored).all()
-    assert float(sim.mse(weight)) >= 0.0
-
-
-def test_gptq_awq_difference_contract():
-    torch.manual_seed(0)
-    weight = torch.randn(4, 8)
-    acts = torch.randn(16, 8)
-    gptq = WeightQuantizerSim(bits=4, group_size=4, method='gptq').fit(weight, acts)
-    awq = WeightQuantizerSim(bits=4, group_size=4, method='awq', protect_ratio=0.25).fit(weight, acts)
-    assert not gptq.protected_mask.any()
-    assert awq.protected_mask.any()
-    assert awq.dequantize().shape == gptq.dequantize().shape
-
-
-def run_gptq_awq_tests():
-    for test in (
-        test_calibration_importance_contract,
-        test_group_partition_contract,
-        test_awq_protection_contract,
-        test_dequantization_contract,
-        test_gptq_awq_difference_contract,
-    ):
-        test()
-    print('✅ GPTQ/AWQ 模拟机制测试通过：校准、分组、保护、反量化与方法差异均已验证。')
-
-
-run_gptq_awq_tests()
-
-```
-
----
-
-🛑 **STOP HERE** 🛑
-<br><br><br><br><br><br><br><br><br><br>
-> 请先尝试自己完成代码并跑通测试。<br>
-> 如果你正在 Colab 中运行，并且遇到困难没有思路，可以向下滚动查看参考答案。
-<br><br><br><br><br><br><br><br><br><br>
-
----
-
-## 参考代码与解析
-
-### 代码
-
-
-```python
-
-class WeightQuantizerSim(nn.Module):
-    """极简版 GPTQ / AWQ 权重量化模拟器。"""
-
-    def __init__(self, bits: int = 4, group_size: int = 32, method: str = "gptq", protect_ratio: float = 0.05, eps: float = 1e-8):
-        super().__init__()
-        if bits < 2:
-            raise ValueError("bits must be >= 2")
-        if group_size <= 0:
-            raise ValueError("group_size must be positive")
-        self.bits = bits
-        self.group_size = group_size
-        self.method = method.lower()
-        self.protect_ratio = protect_ratio
-        self.eps = eps
-        self.qmax = 2 ** (bits - 1) - 1
-
-        self.register_buffer("qweight", torch.empty(0, dtype=torch.int8), persistent=False)
-        self.register_buffer("scales", torch.empty(0), persistent=False)
-        self.register_buffer("protected_weight", torch.empty(0), persistent=False)
-        self.register_buffer("protected_mask", torch.empty(0, dtype=torch.bool), persistent=False)
-        self.register_buffer("importance", torch.empty(0), persistent=False)
-        self.weight_shape = None
-
-    def _collect_importance(self, activations: torch.Tensor, in_features: int) -> torch.Tensor:
-        act = activations.detach().float()
-        if act.ndim == 1:
-            importance = act.abs()
-        else:
-            reduce_dims = tuple(range(act.ndim - 1))
-            # ==========================================
-            # TODO 1: 根据校准激活统计输入通道重要性
-            # 提示: 对除最后一维外的维度求 RMS，最后一维对应 in_features
-            # ==========================================
-            importance = act.pow(2).mean(dim=reduce_dims).sqrt()
-        if importance.numel() != in_features:
-            raise ValueError(f"Calibration importance dim mismatch: expected {in_features}, got {importance.numel()}")
-        return importance
-
-    def fit(self, weight: torch.Tensor, activations: torch.Tensor | None = None) -> "WeightQuantizerSim":
-        w = weight.detach().float()
-        if w.ndim != 2:
-            raise ValueError("WeightQuantizerSim only supports 2D linear weights.")
-
-        out_features, in_features = w.shape
-        self.weight_shape = (out_features, in_features)
-        importance = torch.ones(in_features, device=w.device, dtype=w.dtype) if activations is None else self._collect_importance(activations, in_features)
-        self.importance = importance
-
-        # ==========================================
-        # TODO 2: 计算输入维度需要被切成多少个 group
-        # 提示: 使用向上取整，最后一组可以不足 group_size
-        # ==========================================
+        self.activation_rms, self.hessian_diag = self._collect_statistics(activations, in_features)
         n_groups = (in_features + self.group_size - 1) // self.group_size
         qweight = torch.zeros_like(w, dtype=torch.int8)
         scales = torch.zeros((out_features, n_groups), dtype=w.dtype, device=w.device)
@@ -383,344 +144,538 @@ class WeightQuantizerSim(nn.Module):
         protected_mask = torch.zeros_like(w, dtype=torch.bool)
 
         for row in range(out_features):
-            for g in range(n_groups):
-                start = g * self.group_size
-                end = min(start + self.group_size, in_features)
-                wg = w[row, start:end]
-                ig = importance[start:end]
-                if wg.numel() == 0:
-                    continue
+            for group in range(n_groups):
+                start, end = group * self.group_size, min((group + 1) * self.group_size, in_features)
+                chunk = w[row, start:end]
+                mask = self._awq_protection_mask(self.activation_rms[start:end])
+                protected_mask[row, start:end] = mask
+                protected_weight[row, start:end] = chunk * mask.to(chunk.dtype)
+                quantized_source = chunk[~mask] if (~mask).any() else chunk
+                # TODO 3（group scale）：按未保护权重的 absmax 生成安全 scale。
+                # scale = ???
+                q_chunk = torch.zeros_like(chunk, dtype=torch.int8)
+                q_chunk[~mask] = torch.clamp(torch.round(chunk[~mask] / scale), -self.qmax, self.qmax).to(torch.int8)
+                qweight[row, start:end] = q_chunk
+                scales[row, group] = scale
 
-                mask = torch.zeros_like(ig, dtype=torch.bool)
-                if self.method == "awq":
-                    k = max(1, int(round(wg.numel() * self.protect_ratio)))
-                    k = min(k, wg.numel())
-                    topk = torch.topk(ig, k=k, largest=True).indices
-                    # ==========================================
-                    # TODO 3: 标记本组中需要保护的敏感通道
-                    # 提示: topk 是通道下标，把这些位置在 mask 中置为 True
-                    # ==========================================
-                    mask[topk] = True
-                    protected_mask[row, start:end] = mask
-                    protected_weight[row, start:end] = wg * mask.to(wg.dtype)
-
-                base = wg[~mask]
-                if base.numel() == 0:
-                    base = wg
-                # ==========================================
-                # TODO 4: 为未保护的普通通道计算分组 scale
-                # 提示: 对称量化 scale = absmax / qmax，并用 eps 避免除零
-                # ==========================================
-                scale = (base.abs().max() / self.qmax).clamp_min(self.eps)
-
-                q_group = torch.zeros_like(wg, dtype=torch.int8)
-                q_group[~mask] = torch.clamp(torch.round(wg[~mask] / scale), -self.qmax, self.qmax).to(torch.int8)
-                qweight[row, start:end] = q_group
-                scales[row, g] = scale
-
-        self.qweight = qweight
-        self.scales = scales
-        self.protected_weight = protected_weight
-        self.protected_mask = protected_mask
+        self.qweight, self.scales = qweight, scales
+        self.protected_weight, self.protected_mask = protected_weight, protected_mask
         return self
 
     def dequantize(self) -> torch.Tensor:
+        """按 group 恢复权重，并回填教学化 AWQ 保护位置。"""
         if self.weight_shape is None:
             raise RuntimeError("Call fit() before dequantize().")
-
         out_features, in_features = self.weight_shape
-        n_groups = self.scales.size(1)
-        weight = torch.zeros((out_features, in_features), dtype=self.scales.dtype, device=self.scales.device)
-
+        restored = torch.zeros((out_features, in_features), dtype=self.scales.dtype, device=self.scales.device)
         for row in range(out_features):
-            for g in range(n_groups):
-                start = g * self.group_size
-                end = min(start + self.group_size, in_features)
-                scale = self.scales[row, g]
-                q_group = self.qweight[row, start:end].to(self.scales.dtype)
-                # ==========================================
-                # TODO 5: 将整数权重反量化回浮点近似值
-                # 提示: 量化时除以 scale，恢复时乘回 scale
-                # ==========================================
-                dequant = q_group * scale
-                protected = self.protected_mask[row, start:end]
-                if protected.any():
-                    dequant = dequant.clone()
-                    dequant[protected] = self.protected_weight[row, start:end][protected]
-                weight[row, start:end] = dequant
-
-        return weight
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        if self.weight_shape is None:
-            raise RuntimeError("Call fit() before forward().")
-        weight = self.dequantize().to(x.dtype)
-        return F.linear(x, weight)
+            for group in range(self.scales.shape[1]):
+                start, end = group * self.group_size, min((group + 1) * self.group_size, in_features)
+                chunk = self.qweight[row, start:end].to(self.scales.dtype) * self.scales[row, group]
+                mask = self.protected_mask[row, start:end]
+                chunk[mask] = self.protected_weight[row, start:end][mask]
+                restored[row, start:end] = chunk
+        return restored
 
     def mse(self, weight: torch.Tensor) -> torch.Tensor:
-        recon = self.dequantize().to(weight.dtype)
-        # ==========================================
-        # TODO 6: 计算原始权重和恢复权重之间的均方误差
-        # 提示: 先相减、平方，再求平均
-        # ==========================================
-        error = torch.mean((weight.float() - recon.float()) ** 2)
-        return error
+        return torch.mean((weight.float() - self.dequantize().float()) ** 2)
+
+    def weighted_reconstruction_error(self, weight: torch.Tensor) -> torch.Tensor:
+        """用 Hessian 对角代理加权各输入通道的权重误差。"""
+        error = (weight.float() - self.dequantize().float()).square()
+        return torch.mean(error * self.hessian_diag.reshape(1, -1))
+
+    def artifact_manifest(self) -> dict[str, object]:
+        """返回 loader/backend 后续验证所需的最小量化 metadata。"""
+        if self.weight_shape is None:
+            raise RuntimeError("Call fit() before artifact_manifest().")
+        return {
+            "schema_version": "weight-quant-artifact/v1",
+            "method": self.method,
+            "bits": self.bits,
+            "group_size": self.group_size,
+            "weight_shape": list(self.weight_shape),
+            "scale_shape": list(self.scales.shape),
+            "symmetric": True,
+            "packing_layout": "teaching_int8_container",
+            "calibration_statistics": ["activation_rms", "hessian_diag"],
+            "protected_count": int(self.protected_mask.sum()),
+        }
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return F.linear(x, self.dequantize().to(x.dtype))
+
+```
+
+
+```python
+# 机制测试：校准统计、分组边界、AWQ 显著通道、GPTQ 误差代理与 artifact contract。
+def test_calibration_statistics_contract():
+    """RMS 与 Hessian 对角代理保持通道 shape 和平方关系。"""
+    acts = torch.randn(3, 5, 8)
+    rms, hessian = WeightQuantizerSim()._collect_statistics(acts, 8)
+    assert rms.shape == hessian.shape == (8,)
+    assert torch.allclose(rms.square(), hessian, atol=1e-6)
+
+
+def test_group_partition_and_tail_contract():
+    """不能整除的输入维度仍保留尾组。"""
+    weight, acts = torch.randn(4, 10), torch.randn(16, 10)
+    sim = WeightQuantizerSim(bits=4, group_size=4, method="gptq").fit(weight, acts)
+    assert sim.scales.shape == (4, 3)
+    assert sim.qweight.shape == weight.shape
+
+
+def test_awq_protection_contract():
+    """AWQ 保护高激活通道，GPTQ 不创建保护状态。"""
+    weight = torch.randn(4, 8)
+    acts = torch.ones(16, 8)
+    acts[:, 3] = 20
+    gptq = WeightQuantizerSim(group_size=4, method="gptq").fit(weight, acts)
+    awq = WeightQuantizerSim(group_size=4, method="awq", protect_ratio=0.25).fit(weight, acts)
+    assert not gptq.protected_mask.any()
+    assert awq.protected_mask[:, 3].all()
+
+
+def test_weighted_error_contract():
+    """普通 MSE 与 Hessian 加权误差都可比较且保持有限。"""
+    weight, acts = torch.randn(4, 8), torch.randn(16, 8)
+    sim = WeightQuantizerSim(group_size=4, method="gptq").fit(weight, acts)
+    assert torch.isfinite(sim.mse(weight))
+    assert torch.isfinite(sim.weighted_reconstruction_error(weight))
+
+
+def test_artifact_manifest_contract():
+    """artifact manifest 保留恢复与后续兼容性检查所需 metadata。"""
+    sim = WeightQuantizerSim(bits=4, group_size=4, method="awq", protect_ratio=0.25)
+    sim.fit(torch.randn(4, 8), torch.randn(16, 8))
+    manifest = sim.artifact_manifest()
+    required = {"method", "bits", "group_size", "weight_shape", "scale_shape",
+                "symmetric", "packing_layout", "calibration_statistics"}
+    assert required <= set(manifest)
+    assert manifest["method"] == "awq" and manifest["scale_shape"] == [4, 2]
+
+
+for test in (
+    test_calibration_statistics_contract,
+    test_group_partition_and_tail_contract,
+    test_awq_protection_contract,
+    test_weighted_error_contract,
+    test_artifact_manifest_contract,
+):
+    test()
+print("✅ GPTQ/AWQ 机制测试通过：统计、分组、显著通道、误差代理与 artifact 均已验证。")
+
+```
+
+## 参考代码与解析
+
+### 代码
+
+
+```python
+class WeightQuantizerSim(nn.Module):
+    """教学化比较 GPTQ 敏感度代理与 AWQ 显著通道策略。"""
+
+    def __init__(self, bits: int = 4, group_size: int = 32, method: str = "gptq",
+                 protect_ratio: float = 0.05, eps: float = 1e-8):
+        super().__init__()
+        if bits < 2 or group_size <= 0:
+            raise ValueError("bits must be >= 2 and group_size must be positive")
+        if method.lower() not in {"gptq", "awq"}:
+            raise ValueError("method must be gptq or awq")
+        if not 0.0 <= protect_ratio <= 1.0:
+            raise ValueError("protect_ratio must be in [0, 1]")
+        self.bits, self.group_size = bits, group_size
+        self.method, self.protect_ratio, self.eps = method.lower(), protect_ratio, eps
+        self.qmax = 2 ** (bits - 1) - 1
+        self.register_buffer("qweight", torch.empty(0, dtype=torch.int8), persistent=False)
+        self.register_buffer("scales", torch.empty(0), persistent=False)
+        self.register_buffer("protected_weight", torch.empty(0), persistent=False)
+        self.register_buffer("protected_mask", torch.empty(0, dtype=torch.bool), persistent=False)
+        self.register_buffer("activation_rms", torch.empty(0), persistent=False)
+        self.register_buffer("hessian_diag", torch.empty(0), persistent=False)
+        self.weight_shape = None
+
+    def _collect_statistics(self, activations: torch.Tensor, in_features: int):
+        """返回每个输入通道的 activation RMS 与 Hessian 对角近似。"""
+        flat = activations.detach().float().reshape(-1, activations.shape[-1])
+        if flat.shape[-1] != in_features:
+            raise ValueError("calibration activation dim does not match weight")
+        # TODO 1（校准统计）：mean(X²) 是 Hessian 对角代理，RMS 是其平方根。
+        hessian_diag = flat.square().mean(dim=0)
+        activation_rms = hessian_diag.sqrt()
+        return activation_rms, hessian_diag
+
+    def _awq_protection_mask(self, importance: torch.Tensor) -> torch.Tensor:
+        """在当前 group 内按 activation RMS 标出需要保护的通道。"""
+        mask = torch.zeros_like(importance, dtype=torch.bool)
+        if self.method != "awq" or importance.numel() == 0 or self.protect_ratio == 0:
+            return mask
+        count = min(importance.numel(), max(1, int(round(importance.numel() * self.protect_ratio))))
+        topk = torch.topk(importance, k=count, largest=True).indices
+        # TODO 2（AWQ 显著通道）：把 topk 局部下标写入布尔 mask。
+        mask[topk] = True
+        return mask
+
+    def fit(self, weight: torch.Tensor, activations: torch.Tensor) -> "WeightQuantizerSim":
+        w = weight.detach().float()
+        if w.ndim != 2:
+            raise ValueError("weight must be a 2D Linear weight")
+        out_features, in_features = w.shape
+        self.weight_shape = (out_features, in_features)
+        self.activation_rms, self.hessian_diag = self._collect_statistics(activations, in_features)
+        n_groups = (in_features + self.group_size - 1) // self.group_size
+        qweight = torch.zeros_like(w, dtype=torch.int8)
+        scales = torch.zeros((out_features, n_groups), dtype=w.dtype, device=w.device)
+        protected_weight = torch.zeros_like(w)
+        protected_mask = torch.zeros_like(w, dtype=torch.bool)
+
+        for row in range(out_features):
+            for group in range(n_groups):
+                start, end = group * self.group_size, min((group + 1) * self.group_size, in_features)
+                chunk = w[row, start:end]
+                mask = self._awq_protection_mask(self.activation_rms[start:end])
+                protected_mask[row, start:end] = mask
+                protected_weight[row, start:end] = chunk * mask.to(chunk.dtype)
+                quantized_source = chunk[~mask] if (~mask).any() else chunk
+                # TODO 3（group scale）：按未保护权重的 absmax 生成安全 scale。
+                scale = (quantized_source.abs().max() / self.qmax).clamp_min(self.eps)
+                q_chunk = torch.zeros_like(chunk, dtype=torch.int8)
+                q_chunk[~mask] = torch.clamp(torch.round(chunk[~mask] / scale), -self.qmax, self.qmax).to(torch.int8)
+                qweight[row, start:end] = q_chunk
+                scales[row, group] = scale
+
+        self.qweight, self.scales = qweight, scales
+        self.protected_weight, self.protected_mask = protected_weight, protected_mask
+        return self
+
+    def dequantize(self) -> torch.Tensor:
+        """按 group 恢复权重，并回填教学化 AWQ 保护位置。"""
+        if self.weight_shape is None:
+            raise RuntimeError("Call fit() before dequantize().")
+        out_features, in_features = self.weight_shape
+        restored = torch.zeros((out_features, in_features), dtype=self.scales.dtype, device=self.scales.device)
+        for row in range(out_features):
+            for group in range(self.scales.shape[1]):
+                start, end = group * self.group_size, min((group + 1) * self.group_size, in_features)
+                chunk = self.qweight[row, start:end].to(self.scales.dtype) * self.scales[row, group]
+                mask = self.protected_mask[row, start:end]
+                chunk[mask] = self.protected_weight[row, start:end][mask]
+                restored[row, start:end] = chunk
+        return restored
+
+    def mse(self, weight: torch.Tensor) -> torch.Tensor:
+        return torch.mean((weight.float() - self.dequantize().float()) ** 2)
+
+    def weighted_reconstruction_error(self, weight: torch.Tensor) -> torch.Tensor:
+        """用 Hessian 对角代理加权各输入通道的权重误差。"""
+        error = (weight.float() - self.dequantize().float()).square()
+        return torch.mean(error * self.hessian_diag.reshape(1, -1))
+
+    def artifact_manifest(self) -> dict[str, object]:
+        """返回 loader/backend 后续验证所需的最小量化 metadata。"""
+        if self.weight_shape is None:
+            raise RuntimeError("Call fit() before artifact_manifest().")
+        return {
+            "schema_version": "weight-quant-artifact/v1",
+            "method": self.method,
+            "bits": self.bits,
+            "group_size": self.group_size,
+            "weight_shape": list(self.weight_shape),
+            "scale_shape": list(self.scales.shape),
+            "symmetric": True,
+            "packing_layout": "teaching_int8_container",
+            "calibration_statistics": ["activation_rms", "hessian_diag"],
+            "protected_count": int(self.protected_mask.sum()),
+        }
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return F.linear(x, self.dequantize().to(x.dtype))
 
 ```
 
 ### 解析
 
-**1. TODO 1: 统计通道重要性**
-- **实现方式**：`importance = act.pow(2).mean(dim=reduce_dims).sqrt()`
-- **关键点**：最后一维对应输入通道，其他维度是 batch 或序列维度，需要被聚合掉
-- **技术细节**：这里用 RMS 近似衡量通道激活强度；激活越大的通道，权重误差越容易影响输出
+**TODO 1：校准统计。** `mean(X²)` 是 Hessian 对角的教学代理，RMS 是其平方根。二者共享通道语义，但分别适合解释 GPTQ 的误差敏感度与 AWQ 的显著通道。
 
-**2. TODO 2: 计算分组数量**
-- **实现方式**：`n_groups = (in_features + self.group_size - 1) // self.group_size`
-- **关键点**：分组数要向上取整，因为最后一组可能不足 `group_size`
-- **技术细节**：分组量化让每组拥有独立 scale，比整层共享一个 scale 更能适应局部数值范围
+**TODO 2：AWQ 显著通道。** `topk` 只在当前 group 内排序，保护比例不会跨 group 混用。教学实现用原值回填展示保护效果；真实 AWQ 更常通过缩放迁移量化难度。
 
-**3. TODO 3: 标记 AWQ 敏感通道**
-- **实现方式**：`mask[topk] = True`
-- **关键点**：`topk` 来自本组内 importance 最大的通道，这些位置会被 `protected_mask` 记录
-- **技术细节**：本节用“保留原始浮点权重”模拟 AWQ 的敏感通道保护，真实实现通常会采用更细的 scale 搜索和重缩放策略
+**TODO 3：group scale。** scale 来自当前 group 中未保护权重的局部范围；尾组和全零范围必须保持有效。恢复时只能使用同一行、同一 group 的 scale。
 
-**4. TODO 4: 计算分组 scale**
-- **实现方式**：`scale = (base.abs().max() / self.qmax).clamp_min(self.eps)`
-- **关键点**：对称量化用本组绝对最大值确定动态范围，并用 `eps` 避免全零分组除零
-- **技术细节**：`qmax = 2 ** (bits - 1) - 1`，4-bit 对称量化时有效正向上限是 7
+`artifact_manifest` 保存恢复和兼容性检查所需 metadata，但 `packing_layout=teaching_int8_container` 明确表示它不是可直接部署的 GPTQ/AWQ artifact。真实 loader 与 backend 验证由 82、67 承担。
 
-**5. TODO 5: 反量化恢复权重**
-- **实现方式**：`dequant = q_group * scale`
-- **关键点**：量化时是 `round(w / scale)`，恢复时就乘回同一个 scale
-- **技术细节**：如果当前位置被 `protected_mask` 标记，反量化结果会被原始 `protected_weight` 覆盖
+### Step 5：可选 GPU 实验——用 LLM Compressor 生成 GPTQ / AWQ 产物
 
-**6. TODO 6: 计算重构误差**
-- **实现方式**：`error = torch.mean((weight.float() - recon.float()) ** 2)`
-- **关键点**：MSE 用来衡量量化恢复权重和原始权重之间的平均平方偏差
-- **技术细节**：这个误差只检查权重重构，不等价于最终模型精度；真实评估还要看校准集或下游任务指标
+#### 5.1 环境、校准集与候选 recipe
 
-**GPTQ / AWQ 核心机制**
-- **GPTQ 直觉**：利用校准数据估计量化对层输出的影响，让低比特权重尽量维持原始层行为
-- **AWQ 直觉**：激活越强的通道越敏感，少量通道需要更保守地量化或直接保护
-- **分组量化**：按 group 计算 scale，可以减少极端值对整层量化范围的支配
+实验让 GPTQ 与 AWQ 使用同一浮点 checkpoint、同一校准集和同一 W4A16 表示，再分别生成 compressed-tensors artifact。这样比较的是校准策略，而不是模型、数据或位宽差异。
 
-**工程优化要点**
-- **存储收益**：4-bit 权重量化能显著降低模型权重显存和加载带宽
-- **元数据成本**：分组越细，scale 越多，精度通常更好，但元数据开销也更大
-- **部署实践**：真实 GPTQ / AWQ 还涉及校准集选择、kernel 支持、group size、zero point、packing 格式和端到端精度评估
-
-### Step 5：可选 GPU 实验——测量 GPTQ / AWQ 模拟器
-
-![GPTQ AWQ GPU 机制实验流程](../public/02_PyTorch_Algorithms/40_gptq_awq_gpu_mechanism_flow.svg)
-
-实验从真实模型的 q_proj forward hook 取得校准激活，再在 GPU 上比较 GPTQ / AWQ 教学模拟器的校准耗时、分组和重构误差。它验证的是“真实模型状态上的机制模拟”，不生成真实 GPTQ / AWQ artifact，也不启动 vLLM / SGLang；证据等级记为 gpu_simulation_on_real_model_state。
-
-#### 5.1 环境与校准 workload
-
-先确认 CUDA、模型版本、dtype 和校准文本数量。CALIBRATION_SAMPLES 控制校准文本数量；每次复测都应保留相同输入、bits、group_size、protect_ratio、warmup 和重复次数。
-
-#### 5.2 执行校准并保存 JSON
-
-先运行 dry_run 检查环境，再切换到 real_gpu。代码保存校准耗时、分组配置、runtime、失败状态和重构误差，便于复测。真实 artifact、kernel、吞吐和任务质量转到 67 节。
-
-#### 5.3 读取结果并解释证据
-
-结果只用于判断真实模型状态上的 GPTQ / AWQ 模拟路径；模拟误差只反映校准样本上的局部关系，不代表真实量化后端收益。
-
-#### 5.4 GPU 实验结果记录
-
-成熟库 artifact 还必须经过 backend 加载、kernel、延迟、吞吐和任务质量验证。
-
-| role | baseline / candidate | artifact | method | bits | group_size | calibration samples | runtime | weight MSE | output MSE | failure | evidence level | decision |
-|---|---|---|---|---:|---:|---:|---|---:|---:|---|---|---|
-| reference | baseline | FP16 layer / JSON path | none |  |  |  |  |  |  |  | gpu_simulation_on_real_model_state |  |
-| simulated | candidate | teaching artifact / JSON path | GPTQ or AWQ |  |  |  |  |  |  |  | gpu_simulation_on_real_model_state | accept / tune / reject |
-| mature path | candidate artifact | saved model artifact / backend path | GPTQ or AWQ |  |  |  |  |  |  |  | mature_library_artifact / backend_benchmark_pending | accept / tune / reject |
+| 路径 | LLM Compressor recipe | 本节产物 |
+|---|---|---|
+| GPTQ | `GPTQModifier(W4A16)` | GPTQ 校准后的 W4A16 artifact |
+| AWQ | `AWQModifier` + `QuantizationModifier(W4A16)` | 激活感知缩放后的 W4A16 artifact |
+| 浮点参考 | Transformers BF16 | 固定 greedy 输出基线 |
 
 
 ```python
+# 5.1 只定义模型、校准文本与 artifact 目录；默认不下载模型、不占用 GPU。
+from pathlib import Path
+
+RUN_MODE = "dry_run"  # dry_run / real_gpu
+MODEL_ID = "Qwen/Qwen2.5-0.5B-Instruct"
+CALIBRATION_TEXTS = [
+    "GPTQ uses calibration activations to reduce output reconstruction error.",
+    "AWQ uses activation statistics to protect salient weight channels.",
+    "Group size controls the sharing range of quantization parameters.",
+    "Calibration data and evaluation prompts must remain separate.",
+    "A quantized artifact needs a compatible loader and inference kernel.",
+    "Weight-only quantization keeps runtime activations in floating point.",
+    "Quantization quality must be checked on an independent workload.",
+    "The same model and bit width are required for an algorithm comparison.",
+]
+EVAL_PROMPT = "Compare GPTQ and AWQ in one concise paragraph."
+NUM_CALIBRATION_SAMPLES = len(CALIBRATION_TEXTS)
+MAX_SEQ_LENGTH = 256
+MAX_NEW_TOKENS = 32
+SCHEME = "W4A16"
+SEED = 42
+RUN_LABEL = "default"  # 修改标签可保留多次复测产物，避免覆盖旧结果
+ARTIFACT_ROOT = Path("benchmarks/artifacts/40_gptq_awq") / RUN_LABEL
+OUTPUT_PATH = Path("benchmarks/results/40_llmcompressor_gptq_awq_artifacts.json")
+
+```
+
+
+```python
+# 5.2 使用 LLM Compressor 在同一校准集上分别生成 GPTQ 与 AWQ artifact。
+import importlib.metadata
 import json
 import platform
 import time
-from pathlib import Path
 
-RUN_MODE = 'dry_run'  # cpu / dry_run / real_gpu；dry_run 只做环境检查
-MODEL_ID = 'Qwen/Qwen2.5-0.5B-Instruct'  # real_gpu 使用真实权重和真实层输入
-CALIBRATION_PROMPTS = ['Explain quantization.', 'Why does KV Cache grow?', 'Compare GPTQ and AWQ.']
-SEED = 42
-OUT_FEATURES = 1024
-IN_FEATURES = 1024
-CALIBRATION_SAMPLES = 32
-GROUP_SIZE = 32
-BITS = 4
-PROTECT_RATIO = 0.05
-WARMUP = 2
-ITERS = 10
-OUTPUT_PATH = Path('benchmarks/results/40_gptq_awq_gpu.json')
-ARTIFACT_DIR = Path('benchmarks/results/40_gptq_awq_artifacts')
+import torch
 
-torch.manual_seed(SEED)
-cuda_available = torch.cuda.is_available()
-if RUN_MODE == 'real_gpu' and not cuda_available:
-    raise RuntimeError('RUN_MODE=real_gpu 但 CUDA 不可用，请先完成 GPU 环境预检。')
-device = torch.device('cuda' if RUN_MODE == 'real_gpu' else 'cpu')
-runtime = {'python': platform.python_version(), 'torch': torch.__version__, 'cuda': torch.version.cuda,
-           'cuda_available': cuda_available, 'device': torch.cuda.get_device_name(0) if cuda_available else 'cpu'}
 
-def _sync():
-    """确保 CUDA 异步操作完成后再读取计时或显存。"""
-    if device.type == 'cuda': torch.cuda.synchronize()
+def package_version(name):
+    """读取依赖版本；缺失时返回 None。"""
+    try:
+        return importlib.metadata.version(name)
+    except importlib.metadata.PackageNotFoundError:
+        return None
 
-def _measure(fn):
-    """测量一次校准模拟的平均耗时。"""
-    for _ in range(WARMUP): fn()
-    _sync(); start = time.perf_counter()
-    for _ in range(ITERS): fn()
-    _sync()
-    return round((time.perf_counter() - start) * 1000 / ITERS, 4)
 
-evidence_level = 'environment_preflight' if RUN_MODE == 'dry_run' else 'gpu_simulation_on_real_model_state'
-result = {'stage': evidence_level, 'run_mode': RUN_MODE, 'runtime': runtime, 'json_path': str(OUTPUT_PATH),
-          'workload': {'model_id': MODEL_ID, 'layer_scope': 'q_proj',
-                       'calibration_samples': CALIBRATION_SAMPLES, 'calibration_prompts': CALIBRATION_PROMPTS},
-          'config': {
-    'out_features': OUT_FEATURES, 'in_features': IN_FEATURES, 'calibration_samples': CALIBRATION_SAMPLES,
-    'bits': BITS, 'group_size': GROUP_SIZE, 'protect_ratio': PROTECT_RATIO,
-    'warmup': WARMUP, 'iters': ITERS, 'seed': SEED, 'model_id': MODEL_ID,
-}, 'evidence_level': evidence_level, 'baseline': 'FP16 layer and calibration output',
-   'candidate': ['GPTQ simulation', 'AWQ simulation'], 'artifact_dir': str(ARTIFACT_DIR),
-   'failure': None}
-if RUN_MODE == 'dry_run':
-    result['decision'] = {'decision': 'ready_to_measure', 'reason': '仅完成环境与配置检查，尚未运行 GPU 校准测量。'}
-else:
-    # real_gpu 通过 forward hook 读取真实 q_proj 输入；cpu 模式保留小型确定性张量。
-    if RUN_MODE == 'real_gpu':
+def directory_bytes(path):
+    """统计 artifact 目录中的文件总字节数。"""
+    return sum(item.stat().st_size for item in path.rglob("*") if item.is_file())
+
+
+def token_prefix_agreement(reference, candidate):
+    """计算固定 greedy 输出的公共前缀比例。"""
+    width = max(1, min(len(reference), len(candidate)))
+    matched = 0
+    for left, right in zip(reference, candidate):
+        if left != right:
+            break
+        matched += 1
+    return matched / width
+
+
+result = {
+    "schema_version": "quantization-mechanism-gpu/v2",
+    "chapter": "40",
+    "run_mode": RUN_MODE,
+    "framework": {
+        "python": platform.python_version(),
+        "torch": torch.__version__,
+        "transformers": package_version("transformers"),
+        "llmcompressor": package_version("llmcompressor"),
+        "compressed_tensors": package_version("compressed-tensors"),
+    },
+    "hardware": {
+        "cuda_available": torch.cuda.is_available(),
+        "cuda": torch.version.cuda,
+        "device": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
+    },
+    "workload": {
+        "model_id": MODEL_ID,
+        "calibration_samples": NUM_CALIBRATION_SAMPLES,
+        "max_seq_length": MAX_SEQ_LENGTH,
+        "eval_prompt": EVAL_PROMPT,
+        "max_new_tokens": MAX_NEW_TOKENS,
+        "scheme": SCHEME,
+        "seed": SEED,
+        "run_label": RUN_LABEL,
+    },
+    "baseline": {"name": "bf16"},
+    "candidates": {
+        "gptq": {"recipe": "GPTQModifier(W4A16)"},
+        "awq": {"recipe": "AWQModifier + QuantizationModifier(W4A16)"},
+    },
+    "failure": None,
+    "evidence_level": "environment_preflight",
+    "decision": "ready_to_measure",
+}
+
+if RUN_MODE == "real_gpu":
+    try:
+        if not torch.cuda.is_available():
+            raise RuntimeError("RUN_MODE=real_gpu 但 CUDA 不可用")
+        if ARTIFACT_ROOT.exists():
+            raise FileExistsError(
+                f"artifact 目录已存在：{ARTIFACT_ROOT}；请修改 RUN_LABEL 后复测"
+            )
+
+        from compressed_tensors.offload import dispatch_model
+        from datasets import Dataset
+        from llmcompressor import oneshot
+        from llmcompressor.modifiers.gptq import GPTQModifier
+        from llmcompressor.modifiers.quantization import QuantizationModifier
+        from llmcompressor.modifiers.transform.awq import AWQModifier
         from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        torch.manual_seed(SEED)
         tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, use_fast=True)
-        model = AutoModelForCausalLM.from_pretrained(MODEL_ID, dtype=torch.float16).to(device).eval()
-        if tokenizer.pad_token is None: tokenizer.pad_token = tokenizer.eos_token
-        calibration_texts = [CALIBRATION_PROMPTS[i % len(CALIBRATION_PROMPTS)] for i in range(CALIBRATION_SAMPLES)]
-        batch = tokenizer(calibration_texts, return_tensors='pt', padding=True, truncation=True, max_length=128).to(device)
-        source = model.model.layers[0].self_attn.q_proj
-        captured = {}
-        handle = source.register_forward_hook(lambda _m, inputs, _out: captured.setdefault('activations', inputs[0].detach()))
-        with torch.no_grad(): model(input_ids=batch['input_ids'], attention_mask=batch.get('attention_mask'), use_cache=False)
-        handle.remove()
-        weight = source.weight.detach().float()
-        activations = captured['activations'].reshape(-1, weight.shape[-1]).float()
-        OUT_FEATURES, IN_FEATURES = weight.shape
-        del model, source, batch, captured
-        if device.type == 'cuda': torch.cuda.empty_cache()
-    else:
-        weight = torch.randn(OUT_FEATURES, IN_FEATURES, device=device)
-        activations = torch.randn(CALIBRATION_SAMPLES, IN_FEATURES, device=device)
-    runs = {}
-    calibration_output = activations @ weight.t()
-    for method in ('gptq', 'awq'):
-        if device.type == 'cuda': torch.cuda.reset_peak_memory_stats()
-        sim = WeightQuantizerSim(bits=BITS, group_size=GROUP_SIZE, method=method, protect_ratio=PROTECT_RATIO).to(device)
-        elapsed = _measure(lambda: sim.fit(weight, activations))
-        restored = sim.dequantize()
-        approx_output = activations @ restored.t()
-        artifact_path = ARTIFACT_DIR / f'{method}_simulation.pt'
-        ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
-        torch.save({'method': method, 'bits': BITS, 'group_size': GROUP_SIZE,
-                    'protect_ratio': PROTECT_RATIO, 'qweight': sim.qweight.cpu(),
-                    'scales': sim.scales.cpu(), 'protected_mask': sim.protected_mask.cpu(),
-                    'weight_shape': sim.weight_shape, 'evidence_level': 'teaching_simulation_artifact'},
-                   artifact_path)
-        peak = torch.cuda.max_memory_allocated() / 2**20 if device.type == 'cuda' else None
-        runs[method] = {'latency_ms': elapsed, 'peak_memory_mb': None if peak is None else round(peak, 2),
-                       'weight_reconstruction_mse': round(float(sim.mse(weight)), 8),
-                       'calibration_output_mse': round(float(torch.mean((calibration_output - approx_output) ** 2)), 8),
-                       'calibration_samples': int(activations.shape[0]),
-                       'protected_channels': int(sim.protected_mask.any(dim=0).sum()),
-                       'artifact_path': str(artifact_path),
-                       'evidence_level': 'teaching_simulation_artifact'}
-    result['config'].update({'out_features': OUT_FEATURES, 'in_features': IN_FEATURES,
-                            'actual_activation_shape': list(activations.shape), 'actual_calibration_samples': int(batch['input_ids'].shape[0]) if RUN_MODE == 'real_gpu' else CALIBRATION_SAMPLES,
-                            'state_source': 'real_model_q_proj_hook' if RUN_MODE == 'real_gpu' else 'synthetic_cpu'})
-    result.update({'runs': runs, 'decision': {'decision': 'measure',
-        'reason': '比较真实模型状态上的 GPTQ/AWQ 模拟误差；不代表真实 artifact 或 backend 收益。'}})
+        eval_inputs = tokenizer(EVAL_PROMPT, return_tensors="pt")
+        calibration = Dataset.from_dict({"text": CALIBRATION_TEXTS})
+        calibration = calibration.map(
+            lambda row: tokenizer(
+                row["text"],
+                padding=False,
+                truncation=True,
+                max_length=MAX_SEQ_LENGTH,
+                add_special_tokens=False,
+            ),
+            remove_columns=["text"],
+        )
+
+        def load_model():
+            """每条路径从同一浮点 checkpoint 独立加载。"""
+            return AutoModelForCausalLM.from_pretrained(
+                MODEL_ID,
+                torch_dtype=torch.bfloat16,
+                device_map="auto",
+            ).eval()
+
+        def generate_tokens(model):
+            """执行固定 prompt 的 greedy 生成。"""
+            dispatch_model(model)
+            device = next(model.parameters()).device
+            inputs = {key: value.to(device) for key, value in eval_inputs.items()}
+            with torch.inference_mode():
+                output = model.generate(
+                    **inputs,
+                    max_new_tokens=MAX_NEW_TOKENS,
+                    do_sample=False,
+                    pad_token_id=tokenizer.eos_token_id,
+                )
+            return output[0, inputs["input_ids"].shape[1]:].detach().cpu().tolist()
+
+        baseline_model = load_model()
+        baseline_tokens = generate_tokens(baseline_model)
+        result["baseline"]["generated_tokens"] = len(baseline_tokens)
+        del baseline_model
+        torch.cuda.empty_cache()
+
+        recipes = {
+            "gptq": [GPTQModifier(targets="Linear", scheme=SCHEME, ignore=["lm_head"])],
+            "awq": [
+                AWQModifier(),
+                QuantizationModifier(targets="Linear", scheme=SCHEME, ignore=["lm_head"]),
+            ],
+        }
+        metrics = {}
+        for name, recipe in recipes.items():
+            artifact_dir = ARTIFACT_ROOT / name
+            model = load_model()
+            torch.cuda.reset_peak_memory_stats()
+            started = time.perf_counter()
+            oneshot(
+                model=model,
+                tokenizer=tokenizer,
+                dataset=calibration,
+                recipe=recipe,
+                num_calibration_samples=NUM_CALIBRATION_SAMPLES,
+                max_seq_length=MAX_SEQ_LENGTH,
+                output_dir=str(artifact_dir),
+                clear_sparse_session=True,
+            )
+            calibration_seconds = time.perf_counter() - started
+            candidate_tokens = generate_tokens(model)
+            metrics[name] = {
+                "artifact_path": str(artifact_dir),
+                "artifact_bytes": directory_bytes(artifact_dir),
+                "calibration_seconds": calibration_seconds,
+                "peak_allocated_bytes": int(torch.cuda.max_memory_allocated()),
+                "generated_tokens": len(candidate_tokens),
+                "greedy_prefix_agreement": token_prefix_agreement(
+                    baseline_tokens, candidate_tokens
+                ),
+            }
+            del model
+            torch.cuda.empty_cache()
+
+        result.update({
+            "candidates": metrics,
+            "evidence_level": "matched_llmcompressor_gptq_awq_artifact_experiment",
+            "decision": "accept" if all(
+                item["greedy_prefix_agreement"] >= 0.8 for item in metrics.values()
+            ) else "tune",
+        })
+    except Exception as exc:
+        result.update({
+            "failure": {"type": type(exc).__name__, "message": str(exc)},
+            "evidence_level": "failed_real_gpu_attempt",
+            "decision": "reject_until_environment_fixed",
+        })
+
 OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-OUTPUT_PATH.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')
+OUTPUT_PATH.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
 print(json.dumps(result, ensure_ascii=False, indent=2))
+
 ```
 
-**成熟库探针（可选）**：GPTQ 使用 Transformers 当前推荐的 GPT-QModel 路径；AWQ 使用 AutoAWQ 或加载已有 AWQ artifact。两者依赖和 kernel 兼容性不同，不在默认 CPU 验证中执行。
+#### 5.3 读取 artifact 与校准结果
 
-GPTQ / AWQ 的成熟库探针只记录校准数据、配置、artifact 路径和加载状态；真正的延迟、吞吐和任务质量仍需在固定 backend 中验证。
+读取单元集中检查两类 artifact 的路径、大小、校准成本、输出稳定性和失败状态，不重新运行量化。
+
 
 ```python
-RUN_MATURE_QUANT_PROBE = False  # 默认关闭；量化过程可能耗时且依赖独立 profile
-MATURE_QUANT_METHOD = 'gptq'  # gptq / awq；awq 默认加载已有兼容 artifact
-AWQ_MODEL_ID = ''  # 可选：已有 AWQ 模型目录或 Hub ID；不填写时不会伪造 AWQ 量化
-MATURE_OUTPUT_PATH = Path('benchmarks/results/40_mature_quant_probe.json')
-
-if not RUN_MATURE_QUANT_PROBE:
-    print('mature GPTQ/AWQ probe skipped; use the dedicated quantization profile to enable it.')
+# 5.3 只读取 5.2 保存的 JSON。
+if OUTPUT_PATH.exists():
+    saved = json.loads(OUTPUT_PATH.read_text(encoding="utf-8"))
+    keys = (
+        "framework",
+        "hardware",
+        "workload",
+        "baseline",
+        "candidates",
+        "failure",
+        "evidence_level",
+        "decision",
+    )
+    print({key: saved.get(key) for key in keys})
 else:
-    if not torch.cuda.is_available():
-        raise RuntimeError('RUN_MATURE_QUANT_PROBE=True requires CUDA.')
-    from transformers import AutoTokenizer
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, use_fast=True)
-    if MATURE_QUANT_METHOD == 'gptq':
-        from transformers import AutoModelForCausalLM, GPTQConfig
-        quant_config = GPTQConfig(bits=BITS, dataset=CALIBRATION_PROMPTS, tokenizer=tokenizer)
-        model = AutoModelForCausalLM.from_pretrained(MODEL_ID, device_map='auto',
-                                                     quantization_config=quant_config)
-        artifact_dir = Path('benchmarks/results/40_gptq_awq_artifacts/gptq_model')
-        model.to('cpu')
-        model.save_pretrained(artifact_dir)
-        tokenizer.save_pretrained(artifact_dir)
-        library = 'transformers + gptqmodel'
-    elif MATURE_QUANT_METHOD == 'awq':
-        if not AWQ_MODEL_ID:
-            raise ValueError('AWQ 需要已有 AutoAWQ/llm-awq 兼容 artifact；请先填写 AWQ_MODEL_ID。')
-        from transformers import AutoModelForCausalLM, AwqConfig
-        model = AutoModelForCausalLM.from_pretrained(AWQ_MODEL_ID, device_map='auto',
-                                                     quantization_config=AwqConfig(bits=BITS, group_size=GROUP_SIZE))
-        artifact_dir = Path('benchmarks/results/40_gptq_awq_artifacts/awq_loaded_model')
-        model.to('cpu')
-        model.save_pretrained(artifact_dir)
-        tokenizer.save_pretrained(artifact_dir)
-        library = 'transformers + AutoAWQ-compatible artifact'
-    else:
-        raise ValueError('MATURE_QUANT_METHOD must be gptq or awq.')
-    mature_result = {'json_path': str(MATURE_OUTPUT_PATH),
-                     'workload': {'model_id': MODEL_ID, 'calibration_prompts': CALIBRATION_PROMPTS,
-                                  'bits': BITS, 'group_size': GROUP_SIZE},
-                     'baseline': 'FP16 model or source artifact',
-                     'candidate': f'{MATURE_QUANT_METHOD} saved model artifact',
-                     'method': MATURE_QUANT_METHOD, 'library': library,
-                     'model_id': MODEL_ID, 'calibration_prompts': CALIBRATION_PROMPTS,
-                     'bits': BITS, 'artifact_path': str(artifact_dir),
-                     'evidence_level': 'mature_library_artifact', 'failure': None,
-                     'decision': 'artifact_created_backend_benchmark_pending'}
-    MATURE_OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    MATURE_OUTPUT_PATH.write_text(json.dumps(mature_result, ensure_ascii=False, indent=2), encoding='utf-8')
-    print(json.dumps(mature_result, ensure_ascii=False, indent=2))
+    print(f"等待 GPTQ/AWQ artifact 结果：{OUTPUT_PATH}")
 
 ```
 
-#### 5.4 GPU 实验结果记录
+#### 5.4 解释校准策略与产物证据
 
-模拟器的 weight MSE 和 calibration output MSE 只说明校准样本上的局部误差关系；成熟库 artifact 还必须经过 backend 加载、kernel、延迟、吞吐和任务质量验证。
+两条路径只有在模型、校准集、位宽和评测 prompt 全部一致时才可比较。本节确认算法能够产生可追踪 artifact，并用固定 greedy 输出做最小质量门槛；是否命中高效 kernel、是否提升端到端吞吐，应交给兼容 backend 继续验证。
 
-| role | baseline / candidate | artifact | method | bits | group_size | calibration samples | runtime | weight MSE | output MSE | failure | evidence level | decision |
-|---|---|---|---|---:|---:|---:|---|---:|---:|---|---|---|
-| reference | baseline | FP16 layer / JSON path | none |  |  |  |  |  |  |  | gpu_simulation_on_real_model_state |  |
-| simulated | candidate | `.pt` teaching artifact / JSON path | GPTQ or AWQ |  |  |  |  |  |  |  | gpu_simulation_on_real_model_state | accept / tune / reject |
-| mature path | candidate artifact | saved model artifact / backend path | GPTQ or AWQ |  |  |  |  |  |  |  | mature_library_artifact / backend_benchmark_pending | accept / tune / reject |
+| 观察项 | 读取字段 | 判断问题 |
+|---|---|---|
+| 校准策略 | `recipe`、`calibration_seconds` | GPTQ 与 AWQ 付出了什么校准成本 |
+| 产物契约 | `artifact_path`、`artifact_bytes` | 是否生成可加载、可版本化的压缩产物 |
+| 最小质量门槛 | `greedy_prefix_agreement` | 固定输出是否出现明显退化 |
+| 证据可信度 | `failure`、`evidence_level` | 是否真实执行成熟库 recipe |
+| 下一步 | `decision` | accept / tune / reject_until_environment_fixed |
+
 ## 相关阅读
 
-完成校准、分组、敏感通道保护和误差检查后，可以继续阅读 GPTQ / AWQ 原论文与真实部署项目。
-
-- [GPTQ 原论文：GPTQ: Accurate Post-Training Quantization for Generative Pre-trained Transformers](https://arxiv.org/abs/2210.17323)
-- [AWQ 原论文：Activation-aware Weight Quantization for LLM Compression and Acceleration](https://arxiv.org/abs/2306.00978)
-- [Transformers GPTQ 官方文档（GPT-QModel）](https://huggingface.co/docs/transformers/quantization/gptq)
-- [Transformers AWQ 官方文档](https://huggingface.co/docs/transformers/quantization/awq)
-- [41. FP8 and KV Cache Quantization | FP8 与 KV Cache 量化](./41_FP8_and_KV_Cache_Quantization.md)
-- [67. Quantized Inference and Deployment | 量化推理与部署](./67_Quantized_Inference_and_Deployment.md)
-- [75. Memory Budget Compression Project | 显存预算压缩项目](./75_Memory_Budget_Compression_Project.md)
+- [GPTQ 原论文](https://arxiv.org/abs/2210.17323)
+- [AWQ 原论文](https://arxiv.org/abs/2306.00978)
+- [LLM Compressor：GPTQ W4A16 示例](https://github.com/vllm-project/llm-compressor/tree/main/examples/quantization_w4a16)
+- [LLM Compressor：AWQ 说明与示例](https://github.com/vllm-project/llm-compressor/tree/main/examples/awq)
+- [82. Quantization Artifact Evaluation Project | 量化产物评估](./82_Quantization_Artifact_Evaluation_Project.md)

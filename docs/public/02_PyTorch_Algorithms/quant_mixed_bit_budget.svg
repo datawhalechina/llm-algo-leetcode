@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="380" viewBox="0 0 1080 380" role="img" aria-labelledby="title desc">
+  <title id="title">混合位宽预算下的层级升级</title><desc id="desc">先用最低可行位宽建立基线，再按误差下降与额外字节比率升级敏感层，受保护层直接使用最低允许位宽。</desc>
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#475569"/></marker><style>.b{fill:#fff;stroke:#64748b;stroke-width:2;rx:12}.low{fill:#fef2f2;stroke:#dc2626}.mid{fill:#fff7ed;stroke:#ea580c}.high{fill:#ecfdf5;stroke:#059669}.t{font:600 18px sans-serif;fill:#0f172a;text-anchor:middle}.s{font:14px sans-serif;fill:#334155;text-anchor:middle}.l{stroke:#475569;stroke-width:2;fill:none;marker-end:url(#a)}</style></defs>
+  <rect x="70" y="60" width="230" height="82" class="b low"/><text x="185" y="94" class="t">最低位宽基线</text><text x="185" y="120" class="s">先满足最小容量</text>
+  <rect x="425" y="60" width="230" height="82" class="b mid"/><text x="540" y="94" class="t">候选升级</text><text x="540" y="120" class="s">误差下降 / 额外字节</text>
+  <rect x="780" y="60" width="230" height="82" class="b high"/><text x="895" y="94" class="t">预算内策略</text><text x="895" y="120" class="s">每层一个最终位宽</text>
+  <path d="M300 101 H425" class="l"/><path d="M655 101 H780" class="l"/>
+  <rect x="120" y="235" width="220" height="82" class="b high"/><text x="230" y="269" class="t">保护层</text><text x="230" y="295" class="s">不低于指定精度</text>
+  <rect x="430" y="235" width="220" height="82" class="b"/><text x="540" y="269" class="t">普通层</text><text x="540" y="295" class="s">按收益密度升级</text>
+  <rect x="740" y="235" width="220" height="82" class="b low"/><text x="850" y="269" class="t">不兼容层</text><text x="850" y="295" class="s">回退到 backend 支持位宽</text>
+  <path d="M895 142 V190 H230 V235" class="l"/><path d="M895 142 V190 H540 V235" class="l"/><path d="M895 142 V235 H850" class="l"/>
+</svg>
