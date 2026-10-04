@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="600" viewBox="0 0 1240 600" role="img" aria-labelledby="title desc">
+  <title id="title">量化数据隔离与候选决策协议</title>
+  <desc id="desc">校准数据生成量化候选，验证数据用于调节，独立评测数据执行质量门槛，通过后才进入 artifact 与 backend 验证。</desc>
+  <defs>
+    <style>
+      .title{font:700 28px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324d}.sub{font:15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#526b7d}.group{font:700 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#35526b}.h{font:700 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324d}.t{font:14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#526b7d}.frame{fill:#fff;stroke:#c7d9e7;stroke-width:1.5}.blue{fill:#e8f3fb;stroke:#3978a8;stroke-width:2}.green{fill:#eaf7ef;stroke:#4c9870;stroke-width:2}.orange{fill:#fff1df;stroke:#c78335;stroke-width:2}.purple{fill:#f1eafa;stroke:#8b6bb1;stroke-width:2}.red{fill:#fdecec;stroke:#b95d5d;stroke-width:2}.flow{stroke:#3978a8;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.reject{stroke:#b95d5d;stroke-width:2.5;fill:none;marker-end:url(#redArrow)}
+    </style>
+    <marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#3978a8"/></marker>
+    <marker id="redArrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#b95d5d"/></marker>
+  </defs>
+  <rect width="1240" height="600" rx="24" fill="#f8fbfd"/>
+  <text x="620" y="46" text-anchor="middle" class="title">量化协议：先隔离数据，再比较候选</text>
+  <text x="620" y="74" text-anchor="middle" class="sub">离线误差、任务质量和执行收益依次形成证据，不能由同一批样本替代</text>
+
+  <rect x="55" y="118" width="1130" height="120" rx="18" class="frame"/>
+  <text x="78" y="144" class="group">数据角色</text>
+  <rect x="160" y="155" width="235" height="62" rx="14" class="blue"/>
+  <text x="278" y="182" text-anchor="middle" class="h">Calibration</text><text x="278" y="203" text-anchor="middle" class="t">估计范围、scale 与统计量</text>
+  <rect x="503" y="155" width="235" height="62" rx="14" class="blue"/>
+  <text x="620" y="182" text-anchor="middle" class="h">Validation</text><text x="620" y="203" text-anchor="middle" class="t">调节 clipping 与粒度</text>
+  <rect x="845" y="155" width="235" height="62" rx="14" class="blue"/>
+  <text x="963" y="182" text-anchor="middle" class="h">Evaluation</text><text x="963" y="203" text-anchor="middle" class="t">报告独立任务质量</text>
+
+  <rect x="55" y="275" width="1130" height="120" rx="18" class="frame"/>
+  <text x="78" y="301" class="group">候选证据</text>
+  <rect x="160" y="312" width="235" height="62" rx="14" class="green"/>
+  <text x="278" y="339" text-anchor="middle" class="h">表示与粒度</text><text x="278" y="360" text-anchor="middle" class="t">bit、scale、group size</text>
+  <rect x="503" y="312" width="235" height="62" rx="14" class="orange"/>
+  <text x="620" y="339" text-anchor="middle" class="h">数值误差</text><text x="620" y="360" text-anchor="middle" class="t">MSE、饱和比例、outlier</text>
+  <rect x="845" y="312" width="235" height="62" rx="14" class="purple"/>
+  <text x="963" y="339" text-anchor="middle" class="h">任务质量</text><text x="963" y="360" text-anchor="middle" class="t">独立质量与允许下降</text>
+
+  <path d="M278 217V312" class="flow"/><path d="M620 217V312" class="flow"/><path d="M963 217V312" class="flow"/>
+
+  <rect x="245" y="452" width="290" height="72" rx="15" class="red"/>
+  <text x="390" y="482" text-anchor="middle" class="h">Reject / Tune</text><text x="390" y="505" text-anchor="middle" class="t">泄漏、失败或质量下降超限</text>
+  <rect x="705" y="452" width="290" height="72" rx="15" class="green"/>
+  <text x="850" y="482" text-anchor="middle" class="h">进入 Artifact / Backend 验证</text><text x="850" y="505" text-anchor="middle" class="t">通过质量 gate 后再比较成本</text>
+  <path d="M620 374V415H390V452" class="reject"/>
+  <path d="M963 374V415H850V452" class="flow"/>
+</svg>
