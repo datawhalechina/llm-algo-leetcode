@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="520" viewBox="0 0 1120 520" role="img" aria-labelledby="title desc">
+  <title id="title">From attention access mask to evidence</title>
+  <desc id="desc">Four mask components map to visible keys, long range coverage and attention score count, then to evidence levels.</desc>
+  <style>
+    text{font-family:"Noto Sans","Microsoft YaHei",Arial,sans-serif;fill:#172033}
+    .title{font-size:24px;font-weight:700}.sub{font-size:14px;fill:#536174}.label{font-size:16px;font-weight:700}.body{font-size:13px;fill:#45556d}.tiny{font-size:12px;fill:#536174}
+    .box{stroke:#9ba9bc;stroke-width:1.5;rx:13}.group{fill:#f7f9fc;stroke:#d6deea;stroke-width:1.5;rx:16}.arrow{fill:none;stroke:#62728a;stroke-width:2;marker-end:url(#arrow)}
+  </style>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#62728a"/></marker></defs>
+  <rect width="1120" height="520" fill="#fff"/>
+  <text x="48" y="48" class="title">A mask is both a visibility rule and a cost ledger</text>
+  <text x="48" y="73" class="sub">Read the rule first, then count the allowed query-key pairs, then decide what the evidence can prove.</text>
+  <rect x="52" y="118" width="265" height="285" class="group"/><text x="76" y="148" class="label">Mask rule</text>
+  <rect x="76" y="172" width="217" height="48" class="box" fill="#e8f0ff"/><text x="184" y="202" class="body" text-anchor="middle">causal: no future keys</text>
+  <rect x="76" y="237" width="217" height="48" class="box" fill="#eaf8f1"/><text x="184" y="267" class="body" text-anchor="middle">local: recent W keys</text>
+  <rect x="76" y="302" width="217" height="48" class="box" fill="#fff3d9"/><text x="184" y="332" class="body" text-anchor="middle">anchors / blocks: chosen history</text>
+  <path d="M317 196 H406" class="arrow"/><path d="M317 261 H406" class="arrow"/><path d="M317 326 H406" class="arrow"/>
+  <rect x="408" y="150" width="306" height="220" class="group"/><text x="432" y="180" class="label">Mask-derived measures</text>
+  <rect x="432" y="204" width="258" height="42" class="box" fill="#eef4fa"/><text x="561" y="231" class="body" text-anchor="middle">visible keys per query</text>
+  <rect x="432" y="260" width="258" height="42" class="box" fill="#eef4fa"/><text x="561" y="287" class="body" text-anchor="middle">long-range coverage</text>
+  <rect x="432" y="316" width="258" height="42" class="box" fill="#eef4fa"/><text x="561" y="343" class="body" text-anchor="middle">score count and density</text>
+  <path d="M714 222 H804" class="arrow"/><path d="M714 282 H804" class="arrow"/><path d="M714 342 H804" class="arrow"/>
+  <rect x="806" y="118" width="262" height="285" class="group"/><text x="830" y="148" class="label">Evidence ladder</text>
+  <rect x="830" y="172" width="214" height="48" class="box" fill="#f3ebff"/><text x="937" y="202" class="body" text-anchor="middle">CPU: semantics and reachability</text>
+  <rect x="830" y="237" width="214" height="48" class="box" fill="#f3ebff"/><text x="937" y="267" class="body" text-anchor="middle">GPU: SDPA mask probe</text>
+  <rect x="830" y="302" width="214" height="48" class="box" fill="#f3ebff"/><text x="937" y="332" class="body" text-anchor="middle">backend: quality + deployment cost</text>
+  <text x="560" y="456" class="tiny" text-anchor="middle">A lower score count is an opportunity for optimisation, not proof that a generic dense implementation is faster.</text>
+</svg>

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="590" viewBox="0 0 1120 590" role="img" aria-labelledby="title desc">
+  <title id="title">Attention access pattern overview</title>
+  <desc id="desc">The same causal history branches into global, sliding window, block sparse and selective sparse access patterns, which produce coverage and cost evidence.</desc>
+  <style>
+    text{font-family:"Noto Sans","Microsoft YaHei",Arial,sans-serif;fill:#172033}
+    .title{font-size:24px;font-weight:700}.sub{font-size:14px;fill:#536174}.label{font-size:16px;font-weight:700}.body{font-size:13px;fill:#45556d}.tiny{font-size:12px;fill:#536174}
+    .box{stroke:#9ba9bc;stroke-width:1.5;rx:14}.group{fill:#f7f9fc;stroke:#d6deea;stroke-width:1.5;rx:18}.arrow{fill:none;stroke:#62728a;stroke-width:2;marker-end:url(#arrow)}
+  </style>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#62728a"/></marker></defs>
+  <rect width="1120" height="590" fill="#fff"/>
+  <text x="48" y="48" class="title">One causal history, four access choices</text>
+  <text x="48" y="73" class="sub">Keep the sequence, query positions and causality fixed; change only the visible history.</text>
+  <rect x="420" y="102" width="280" height="64" class="box" fill="#e8f0ff"/>
+  <text x="560" y="130" class="label" text-anchor="middle">Causal token history</text>
+  <text x="560" y="151" class="body" text-anchor="middle">same length · same query · no future keys</text>
+  <path d="M560 166 V198 H170 V230" class="arrow"/><path d="M560 166 V198 H430 V230" class="arrow"/><path d="M560 166 V198 H690 V230" class="arrow"/><path d="M560 166 V198 H950 V230" class="arrow"/>
+  <rect x="42" y="230" width="256" height="155" class="group"/><rect x="318" y="230" width="256" height="155" class="group"/><rect x="594" y="230" width="256" height="155" class="group"/><rect x="870" y="230" width="208" height="155" class="group"/>
+  <rect x="66" y="258" width="208" height="82" class="box" fill="#e8f0ff"/><text x="170" y="287" class="label" text-anchor="middle">Global</text><text x="170" y="310" class="body" text-anchor="middle">all prior keys</text><text x="170" y="329" class="tiny" text-anchor="middle">complete long-range access</text>
+  <rect x="342" y="258" width="208" height="82" class="box" fill="#eaf8f1"/><text x="446" y="287" class="label" text-anchor="middle">Sliding window</text><text x="446" y="310" class="body" text-anchor="middle">recent W keys</text><text x="446" y="329" class="tiny" text-anchor="middle">bounded local budget</text>
+  <rect x="618" y="258" width="208" height="82" class="box" fill="#fff3d9"/><text x="722" y="287" class="label" text-anchor="middle">Block sparse</text><text x="722" y="310" class="body" text-anchor="middle">same block + anchors</text><text x="722" y="329" class="tiny" text-anchor="middle">structured connectivity</text>
+  <rect x="894" y="258" width="160" height="82" class="box" fill="#f3ebff"/><text x="974" y="287" class="label" text-anchor="middle">Selective</text><text x="974" y="310" class="body" text-anchor="middle">window + chosen anchors</text><text x="974" y="329" class="tiny" text-anchor="middle">importance budget</text>
+  <path d="M170 385 V430 H430" class="arrow"/><path d="M446 385 V430" class="arrow"/><path d="M722 385 V430 H690" class="arrow"/><path d="M974 385 V430 H690" class="arrow"/>
+  <rect x="360" y="430" width="400" height="104" class="box" fill="#eef4fa"/>
+  <text x="560" y="460" class="label" text-anchor="middle">Comparable evidence</text>
+  <text x="560" y="486" class="body" text-anchor="middle">visible history · long-range coverage · allowed score count</text>
+  <text x="560" y="510" class="body" text-anchor="middle">CPU mask semantics → GPU probe → sparse-backend benchmark</text>
+  <text x="48" y="568" class="tiny">Colour encodes a candidate family only; it is not a quality ranking.</text>
+</svg>

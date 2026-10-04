@@ -1,0 +1,697 @@
+# 77. Long Sequence Memory Architecture Benchmark | 长序列记忆架构基准
+
+**难度：** Hard | **环境：** CPU-first；GPU 可选 | **标签：** `长上下文`, `Attention`, `SSM`, `架构基准` | **目标人群：** 架构选型与长序列学习者
+
+> 🚀 **云端运行环境**
+>
+> 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
+>
+> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/77_Long_Sequence_Memory_Architecture_Benchmark.ipynb)
+> [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
+
+
+---
+
+## 本节导读
+
+长序列模型的差别不只在“上下文窗口有多大”，还在历史以什么形式保存：显式 KV Attention 保留可检索的 token 状态，递推模型把历史压缩为固定形状状态，混合架构则让不同层承担不同记忆职责。本节从状态大小、历史读取能力、长距离质量与服务成本四个维度比较三类候选，并把结果整理为可复查的架构选型记录。
+
+不同公开模型的数字通常属于观察性证据：模型规模、训练数据、tokenizer 与实现路径都可能不同，不能把差异全部归因于记忆机制。
+
+**关键词：** `KV Cache`, `Recurrent State`, `Hybrid Architecture`, `Long Context`, `Evidence Level`
+## 前置阅读
+
+**导语：** 先区分完整 KV 历史、局部/稀疏访问和递推状态，再用同一组长度与任务条件比较它们的质量和成本。
+
+- [45. Linear Attention and Recurrent State | 线性 Attention 与递推状态](./45_Linear_Attention_and_Recurrent_State.md)
+- [ARCH-HYBRID-MEMORY. Attention / SSM Hybrid | Attention 与 SSM 混合记忆](./ARCH-HYBRID-MEMORY_Attention_SSM_Hybrid.md)
+- [大模型架构 · 线性 Attention、SSM 与混合记忆](../topic_discussion/llm_architecture_evolution/10_linear_attention_ssm_and_hybrid.md)
+- [61. Model Architecture Exploration | 模型架构探索](./61_Model_Architecture_Exploration.md)
+
+### Step 1：把“历史如何保存”变成可比较的候选
+
+三类候选应使用相同长度阶梯、任务、batch、dtype、backend 与硬件。显式 KV Attention 保存每个历史 token 的 K/V；递推模型持续更新固定形状状态；混合架构还要显式记录 `layer_schedule`、Attention 层数和 SSM 层数。先对齐输入与层级安排，才能把状态、质量与成本放在同一张证据表中。
+
+![长序列记忆架构的受控比较](../public/02_PyTorch_Algorithms/77_memory_architecture_benchmark_map.svg)
+### Step 2：状态账本与历史读取是两件事
+
+设 batch 为 `B`、序列长度为 `L`、注意力层数为 `N_a`、递推层数为 `N_r`、KV heads 为 `H_kv`、head dimension 为 `D_h`。显式 KV 的状态量近似随 `2 × B × L × N_a × H_kv × D_h` 增长；递推层的状态由 `B × N_r × state_dim × value_dim` 决定，不随 `L` 线性增长。状态更小只说明保存成本不同；是否还能读取任务需要的远程信息，要由独立质量检查回答。
+
+| 候选 | 保存什么 | 如何读取历史 | 状态随长度变化 |
+| --- | --- | --- | --- |
+| `explicit_kv` | 每 token 的 K/V | Query 可对保存的历史做内容相关检索 | 线性增长 |
+| `recurrent_state` | 固定形状累计状态 | 通过当前状态间接读取已压缩历史 | 近似固定 |
+| `hybrid` | 部分层 K/V + 部分层递推状态 | 全局读取与扫描式状态由层分工共同承担 | 随 Attention 层数线性增长 |
+### Step 3：质量、成本与可比性分别记录
+
+递推状态可能降低状态成本，却在精确远程读取上失败；显式 KV 可能保留更多信息，却提高长输入的 prefill、decode 与显存代价。真实比较应把质量、成本和可比性拆开记录，而不是把它们压成单一分数。
+
+| 证据维度 | 最少记录 | 用途 |
+| --- | --- | --- |
+| 质量 | 任务、训练/评测长度、needle 或长依赖指标、失败样例 | 判断压缩后的历史是否仍支持目标任务 |
+| 成本 | prefill、TPOT、吞吐、模型常驻显存、运行期增量峰值、KV/state memory | 判断长度增长暴露在哪个阶段 |
+| 可比性 | checkpoint、tokenizer、revision、dtype、backend、hardware、对照说明 | 区分同家族近似对照与跨模型观察 |
+| 决策 | evidence level、accept/tune/reject、下一步 | 让质量和成本结论可回查、可复测 |
+### Step 4：代码设计——记忆接口、状态账本与证据门槛
+
+题目区先把三类候选的层数与状态维度写成可检查的结构契约，再分别验证状态增长与一个简化的远程读取行为，最后检查真实结果记录并形成决策。CPU 样例只演示记忆接口的差异，不把简化状态机当作真实 SSM 的任务质量结论。
+
+| TODO | 代码契约与机制责任 | 关键约束 | 测试证据 |
+| --- | --- | --- | --- |
+| TODO 1 | 验证显式 KV、递推或混合候选的层数与维度 | `attention_layers + recurrent_layers = num_layers`；类型与层数匹配 | 三类合法候选与非法层数 |
+| TODO 2 | 建立 KV/state memory 账本 | KV 仅由 Attention 层按 `L` 增长；递推状态不随 `L` 增长 | 长度翻倍、三类候选比较 |
+| TODO 3 | 用简化历史接口比较精确读取与摘要读取 | 显式历史可按位置读取；递推状态只保留摘要；混合保留局部窗口 | 远程 token、近邻 token 与摘要状态 |
+| TODO 4 | 检查真实结果是否具备质量、成本、证据和失败字段 | 不用单个 `score` 代替任务与长度信息 | 完整记录与缺失质量记录 |
+| TODO 5 | 按质量门槛、显存预算和证据等级给出决策 | 观察性证据只能进入扩展评测，不能直接宣称因果收益 | accept、tune、reject 与 evidence gate |
+
+```python
+from typing import Dict, List
+
+```
+
+
+```python
+def validate_memory_architecture(spec: Dict[str, object]) -> Dict[str, object]:
+    """校验 explicit_kv、recurrent_state 或 hybrid 的层数与状态维度契约。"""
+    # TODO 1：结构契约——检查 architecture_type、层数分配与各类状态维度。
+    # architecture_type = ???
+    # issues = ???
+    raise NotImplementedError("请先完成 TODO 1")
+
+
+def estimate_memory_state(spec: Dict[str, object], seq_len: int, batch_size: int = 1) -> Dict[str, object]:
+    """估算固定 workload 下的 KV 与递推状态字节数；结果是结构账本而非峰值显存。"""
+    # TODO 2：状态账本——KV 仅由 attention_layers 随 seq_len 增长；递推状态由 recurrent_layers 与 state/value 维度决定。
+    # kv_bytes = ???
+    # recurrent_state_bytes = ???
+    raise NotImplementedError("请先完成 TODO 2")
+
+
+def simulate_memory_read(spec: Dict[str, object], tokens: List[str], target_index: int, local_window: int = 2) -> Dict[str, object]:
+    """用玩具记忆接口比较精确历史读取、摘要读取与局部窗口保留。"""
+    # TODO 3：历史读取——explicit_kv 返回 target token；recurrent_state 只返回是否见过的摘要；hybrid 只精确保留尾部 local_window。
+    # read_mode = ???
+    # recovered = ???
+    raise NotImplementedError("请先完成 TODO 3")
+
+
+def validate_memory_evidence(record: Dict[str, object]) -> Dict[str, object]:
+    """检查真实模型记录是否同时具备质量、成本、证据等级与失败状态。"""
+    # TODO 4：证据字段——quality 应包含 task、eval_length、metric；cost 应包含 prefill_ms、decode_tpot_ms、peak_memory_mb。
+    # issues = ???
+    raise NotImplementedError("请先完成 TODO 4")
+
+
+def recommend_memory_architecture(
+    candidates: List[Dict[str, object]], *, min_quality: float, max_peak_memory_mb: float
+) -> Dict[str, object]:
+    """按质量、显存和证据等级选择候选；返回 accept/tune/reject。"""
+    # TODO 5：决策门槛——先检查证据，再用 quality.metric 与 cost.peak_memory_mb 筛选候选。
+    # feasible = ???
+    # decision = ???
+    raise NotImplementedError("请先完成 TODO 5")
+```
+
+
+```python
+# 每个测试函数只验证一个机制责任，便于定位失败原因。
+def test_architecture_contract():
+    explicit = {
+        'name': 'kv', 'architecture_type': 'explicit_kv', 'num_layers': 4,
+        'attention_layers': 4, 'recurrent_layers': 0, 'kv_heads': 2,
+        'head_dim': 8, 'state_dim': 0, 'value_dim': 0, 'dtype_bytes': 2,
+    }
+    recurrent = {
+        'name': 'ssm', 'architecture_type': 'recurrent_state', 'num_layers': 4,
+        'attention_layers': 0, 'recurrent_layers': 4, 'kv_heads': 0,
+        'head_dim': 0, 'state_dim': 8, 'value_dim': 8, 'dtype_bytes': 2,
+    }
+    hybrid = {
+        'name': 'hybrid', 'architecture_type': 'hybrid', 'num_layers': 4,
+        'attention_layers': 2, 'recurrent_layers': 2, 'kv_heads': 2,
+        'head_dim': 8, 'state_dim': 8, 'value_dim': 8, 'dtype_bytes': 2,
+    }
+    assert validate_memory_architecture(explicit)['ready']
+    assert validate_memory_architecture(recurrent)['ready']
+    assert validate_memory_architecture(hybrid)['ready']
+    assert not validate_memory_architecture({**hybrid, 'attention_layers': 3})['ready']
+    return explicit, recurrent, hybrid
+
+
+def test_state_growth(explicit, recurrent, hybrid):
+    kv_short, kv_long = estimate_memory_state(explicit, 16), estimate_memory_state(explicit, 32)
+    state_short, state_long = estimate_memory_state(recurrent, 16), estimate_memory_state(recurrent, 32)
+    hybrid_state = estimate_memory_state(hybrid, 32)
+    assert kv_long['total_state_bytes'] == 2 * kv_short['total_state_bytes']
+    assert state_long['total_state_bytes'] == state_short['total_state_bytes']
+    assert state_long['total_state_bytes'] < hybrid_state['total_state_bytes'] < kv_long['total_state_bytes']
+
+
+def test_memory_read_contract(explicit, recurrent, hybrid):
+    tokens = ['A', 'needle', 'C', 'D', 'E']
+    assert simulate_memory_read(explicit, tokens, 1)['recovered'] == 'needle'
+    assert simulate_memory_read(recurrent, tokens, 1)['read_mode'] == 'summary_only'
+    assert simulate_memory_read(hybrid, tokens, 4, local_window=2)['recovered'] == 'E'
+    assert simulate_memory_read(hybrid, tokens, 1, local_window=2)['read_mode'] == 'summary_only'
+
+
+def test_evidence_and_decision():
+    baseline = {
+        'name': 'kv', 'quality': {'task': 'needle', 'eval_length': 4096, 'metric': 0.90},
+        'cost': {'prefill_ms': 12.0, 'decode_tpot_ms': 2.0, 'peak_memory_mb': 1800},
+        'evidence': {'evidence_level': 'same_family_variant', 'failure': None},
+    }
+    candidate = {
+        'name': 'hybrid', 'quality': {'task': 'needle', 'eval_length': 4096, 'metric': 0.88},
+        'cost': {'prefill_ms': 10.0, 'decode_tpot_ms': 1.8, 'peak_memory_mb': 1300},
+        'evidence': {'evidence_level': 'same_family_variant', 'failure': None},
+    }
+    incomplete = {'name': 'missing_quality', 'cost': candidate['cost'], 'evidence': candidate['evidence']}
+    assert validate_memory_evidence(baseline)['ready']
+    assert not validate_memory_evidence(incomplete)['ready']
+    result = recommend_memory_architecture([candidate, incomplete], min_quality=0.85, max_peak_memory_mb=1500)
+    assert result['decision'] == 'accept' and result['recommended_name'] == 'hybrid'
+    observed = {**candidate, 'name': 'observed', 'evidence': {'evidence_level': 'cross_model_observational', 'failure': None}}
+    assert recommend_memory_architecture([observed], min_quality=0.85, max_peak_memory_mb=1500)['decision'] == 'tune'
+
+
+explicit_spec, recurrent_spec, hybrid_spec = test_architecture_contract()
+test_state_growth(explicit_spec, recurrent_spec, hybrid_spec)
+test_memory_read_contract(explicit_spec, recurrent_spec, hybrid_spec)
+test_evidence_and_decision()
+print('✅ 长序列记忆架构项目 CPU 机制测试通过。')
+```
+
+---
+
+## 参考代码与解析
+
+
+```python
+def validate_memory_architecture(spec: Dict[str, object]) -> Dict[str, object]:
+    """校验 explicit_kv、recurrent_state 或 hybrid 的层数与状态维度契约。"""
+    # TODO 1：结构契约。
+    architecture_type = str(spec.get('architecture_type', ''))
+    issues = []
+    if architecture_type not in {'explicit_kv', 'recurrent_state', 'hybrid'}:
+        issues.append('unsupported architecture_type')
+    required = ('num_layers', 'attention_layers', 'recurrent_layers', 'dtype_bytes')
+    issues.extend(f'missing: {key}' for key in required if key not in spec)
+    if not issues:
+        if any(int(spec[key]) < 0 for key in ('attention_layers', 'recurrent_layers')) or int(spec['num_layers']) <= 0:
+            issues.append('layer counts must be non-negative and num_layers positive')
+        if int(spec['attention_layers']) + int(spec['recurrent_layers']) != int(spec['num_layers']):
+            issues.append('attention_layers + recurrent_layers must equal num_layers')
+        if int(spec['dtype_bytes']) <= 0:
+            issues.append('dtype_bytes must be positive')
+        if architecture_type == 'explicit_kv' and int(spec['recurrent_layers']) != 0:
+            issues.append('explicit_kv cannot contain recurrent layers')
+        if architecture_type == 'recurrent_state' and int(spec['attention_layers']) != 0:
+            issues.append('recurrent_state cannot contain attention layers')
+        if int(spec['attention_layers']) and (int(spec.get('kv_heads', 0)) <= 0 or int(spec.get('head_dim', 0)) <= 0):
+            issues.append('attention layers need positive kv_heads and head_dim')
+        if int(spec['recurrent_layers']) and (int(spec.get('state_dim', 0)) <= 0 or int(spec.get('value_dim', 0)) <= 0):
+            issues.append('recurrent layers need positive state_dim and value_dim')
+    return {'ready': not issues, 'issues': issues}
+
+
+def estimate_memory_state(spec: Dict[str, object], seq_len: int, batch_size: int = 1) -> Dict[str, object]:
+    """估算固定 workload 下的 KV 与递推状态字节数；结果是结构账本而非峰值显存。"""
+    # TODO 2：状态账本。
+    validation = validate_memory_architecture(spec)
+    if not validation['ready']:
+        raise ValueError(f"非法候选：{validation['issues']}")
+    if seq_len <= 0 or batch_size <= 0:
+        raise ValueError('seq_len 和 batch_size 必须为正整数')
+    dtype_bytes = int(spec['dtype_bytes'])
+    kv_bytes = (2 * batch_size * seq_len * int(spec['attention_layers']) * int(spec.get('kv_heads', 0)) * int(spec.get('head_dim', 0)) * dtype_bytes)
+    recurrent_state_bytes = (batch_size * int(spec['recurrent_layers']) * int(spec.get('state_dim', 0)) * int(spec.get('value_dim', 0)) * dtype_bytes)
+    return {
+        'kv_bytes': float(kv_bytes),
+        'recurrent_state_bytes': float(recurrent_state_bytes),
+        'total_state_bytes': float(kv_bytes + recurrent_state_bytes),
+        'evidence_level': 'cpu_state_ledger',
+    }
+
+
+def simulate_memory_read(spec: Dict[str, object], tokens: List[str], target_index: int, local_window: int = 2) -> Dict[str, object]:
+    """用玩具记忆接口比较精确历史读取、摘要读取与局部窗口保留。"""
+    # TODO 3：历史读取接口。
+    if not tokens or not 0 <= target_index < len(tokens) or local_window <= 0:
+        raise ValueError('tokens、target_index 与 local_window 不合法')
+    architecture_type = str(spec['architecture_type'])
+    target = tokens[target_index]
+    if architecture_type == 'explicit_kv':
+        return {'read_mode': 'exact_history', 'recovered': target, 'summary': tuple(tokens)}
+    if architecture_type == 'recurrent_state':
+        return {'read_mode': 'summary_only', 'recovered': None, 'summary': {'seen_tokens': len(tokens), 'contains_target': target in tokens}}
+    exact_window = tokens[-local_window:]
+    if target_index >= len(tokens) - local_window:
+        return {'read_mode': 'local_exact', 'recovered': target, 'summary': tuple(exact_window)}
+    return {'read_mode': 'summary_only', 'recovered': None, 'summary': {'local_window': tuple(exact_window), 'contains_target': target in tokens}}
+
+
+def validate_memory_evidence(record: Dict[str, object]) -> Dict[str, object]:
+    """检查真实模型记录是否同时具备质量、成本、证据等级与失败状态。"""
+    # TODO 4：证据字段。
+    issues = []
+    for section in ('quality', 'cost', 'evidence'):
+        if not isinstance(record.get(section), dict):
+            issues.append(f'missing section: {section}')
+    if not issues:
+        quality, cost, evidence = record['quality'], record['cost'], record['evidence']
+        for key in ('task', 'eval_length', 'metric'):
+            if key not in quality:
+                issues.append(f'missing quality.{key}')
+        for key in ('prefill_ms', 'decode_tpot_ms', 'peak_memory_mb'):
+            if key not in cost:
+                issues.append(f'missing cost.{key}')
+        for key in ('evidence_level', 'failure'):
+            if key not in evidence:
+                issues.append(f'missing evidence.{key}')
+    return {'ready': not issues, 'issues': issues}
+
+
+def recommend_memory_architecture(candidates: List[Dict[str, object]], *, min_quality: float, max_peak_memory_mb: float) -> Dict[str, object]:
+    """按质量、显存和证据等级选择候选；返回 accept/tune/reject。"""
+    # TODO 5：决策门槛。
+    checked = [(candidate, validate_memory_evidence(candidate)) for candidate in candidates]
+    valid = [candidate for candidate, check in checked if check['ready']]
+    feasible = [candidate for candidate in valid if float(candidate['quality']['metric']) >= min_quality and float(candidate['cost']['peak_memory_mb']) <= max_peak_memory_mb]
+    if not feasible:
+        return {'decision': 'reject', 'recommended_name': None, 'reason': '没有候选同时满足质量门槛和显存预算', 'next_action': 'collect_or_tune_candidates'}
+    best = min(feasible, key=lambda item: (float(item['cost']['peak_memory_mb']), float(item['cost']['prefill_ms'])))
+    if best['evidence']['evidence_level'] == 'same_family_variant':
+        return {'decision': 'accept', 'recommended_name': best['name'], 'reason': '质量、显存与近似结构对照证据均达标', 'next_action': 'run_length_ladder'}
+    return {'decision': 'tune', 'recommended_name': best['name'], 'reason': '质量和显存达标，但跨模型结果只能作为观察性证据', 'next_action': 'find_matched_variant_or_expand_eval'}
+```
+
+### 答案解析
+
+- **TODO 1：** 结构契约先排除不成立的候选：显式 KV 不能同时声明递推层，纯递推不能声明 Attention 层，混合候选必须说明两类层各占多少。
+- **TODO 2：** KV 状态随 `seq_len` 增长，递推状态只由层数和状态维度决定。这个账本只解释状态趋势，不等于 allocator、activation 或真实峰值显存。
+- **TODO 3：** 玩具接口把“是否精确保留历史”写成可测行为：显式历史可直接读取目标 token；递推状态只表示曾经见过；混合结构只精确保留局部窗口。真实 SSM 的质量仍需任务评测。
+- **TODO 4：** 真实记录必须同时有任务与评测长度、prefill/TPOT/峰值显存、证据等级和失败状态。只写一个 `score` 无法判断长上下文能力。
+- **TODO 5：** 同家族变体在质量和预算达标后可进入长度阶梯；跨模型观察即使数值更好，也只应进入 `tune`，继续寻找可比变体或扩大评测。
+### Step 5：可选 GPU 实验——真实模型长度阶梯对照
+
+GPU 实验默认关闭。它在短、中、长三个长度档记录模型结构、远程读取 smoke、prefill、TPOT、模型常驻显存、运行期增量峰值和可见 KV/state 大小，并保存为独立 JSON。先用 Transformers 固定 tokenizer、输入和模型输出语义；只有候选均受支持时，才进入 vLLM 主基线或 SGLang 同口径对照。跨模型比较仍标记为观察性证据。环境与版本口径见[模型、执行栈与环境资产表](../gpu_environment_assets.md)。
+
+#### 5.1 环境、模型与固定条件
+
+| 条目 | 统一条件 | 记录目的 |
+| --- | --- | --- |
+| 模型候选 | `model_id`、revision、声明的架构类型、比较说明 | 追踪显式 KV / 递推 / 混合候选的来源与可比性 |
+| 长度阶梯 | `seq_lens`、相同 prompt 模板、needle 位置 | 观察长度对质量与成本的影响 |
+| 生成条件 | batch、dtype、`max_new_tokens`、warmup、repeats | 固定服务侧测量口径 |
+| 质量 smoke | 输入中已验证的远程 needle 与失败输出 | 发现明显的长距离读取失败 |
+| 结果位置 | 独立时间戳 JSON | 保留 workload、hardware、metrics、failure、evidence、decision |
+
+```python
+# GPU 配置：默认关闭；至少配置两个模型候选后才运行。
+import json
+import os
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Dict
+
+
+RUN_MEMORY_ARCH_GPU = os.environ.get('RUN_MEMORY_ARCH_GPU', '0') == '1'
+MEMORY_ARCH_GPU_CONFIG = {
+    'models': [
+        {'name': 'baseline', 'model_id': os.environ.get('MEMORY_ARCH_BASELINE_MODEL', ''), 'architecture_type': 'explicit_kv'},
+        {'name': 'candidate', 'model_id': os.environ.get('MEMORY_ARCH_CANDIDATE_MODEL', ''), 'architecture_type': os.environ.get('MEMORY_ARCH_CANDIDATE_TYPE', 'recurrent_state')},
+    ],
+    'comparison_design': os.environ.get('MEMORY_ARCH_COMPARISON_DESIGN', 'cross_model_observational'),
+    'comparison_notes': os.environ.get('MEMORY_ARCH_COMPARISON_NOTES', ''),
+    'revision': os.environ.get('MEMORY_ARCH_REVISION', 'main'),
+    'seq_lens': [256, 512, 1024],
+    'batch_size': 1,
+    'dtype': 'float16',
+    'max_new_tokens': 16,
+    'warmup': 2,
+    'repeats': 3,
+    'needle_phrase': 'MEMORY_ARCH_NEEDLE_77',
+}
+
+
+def resolve_tutorial_root() -> Path:
+    """在真正写入结果时解析本地仓库或标准 Colab 克隆目录。"""
+    configured = os.environ.get('LLM_ALGO_REPO_DIR')
+    candidates = [Path(configured).expanduser()] if configured else []
+    candidates.extend([Path.cwd(), Path('/content/llm-algo-leetcode')])
+    for candidate in candidates:
+        if (candidate / '02_PyTorch_Algorithms').is_dir():
+            return candidate
+    raise RuntimeError('未找到教程根目录；请在仓库根目录运行，或设置 LLM_ALGO_REPO_DIR。')
+
+
+MEMORY_ARCH_RESULTS_DIR = None
+print('Memory architecture GPU benchmark is', 'enabled' if RUN_MEMORY_ARCH_GPU else 'disabled')
+print('Set MEMORY_ARCH_BASELINE_MODEL, MEMORY_ARCH_CANDIDATE_MODEL and RUN_MEMORY_ARCH_GPU=1 to run it.')
+```
+
+#### 5.2 backend、模型与记忆接口预检
+
+预检确认 CUDA、Transformers、模型 ID、架构类型和比较设计。代码会从真实 config 推断已知的递推或混合模型，并在声明与可识别结构冲突时停止；无法识别的模型会保留为声明值，但结果只能作为观察性记录。
+
+```python
+if not RUN_MEMORY_ARCH_GPU:
+    print('GPU benchmark skipped. Enable RUN_MEMORY_ARCH_GPU after configuring model IDs.')
+else:
+    import torch
+    import transformers
+    if not torch.cuda.is_available():
+        raise RuntimeError('RUN_MEMORY_ARCH_GPU=1 requires a CUDA-enabled PyTorch runtime.')
+    missing = [item['name'] for item in MEMORY_ARCH_GPU_CONFIG['models'] if not item['model_id']]
+    if missing:
+        raise ValueError(f'请先设置模型 ID：{missing}')
+    if MEMORY_ARCH_GPU_CONFIG['comparison_design'] not in {'same_family_variant', 'cross_model_observational'}:
+        raise ValueError('comparison_design 必须是 same_family_variant 或 cross_model_observational')
+    if MEMORY_ARCH_GPU_CONFIG['comparison_design'] == 'same_family_variant' and not MEMORY_ARCH_GPU_CONFIG['comparison_notes']:
+        raise ValueError('same_family_variant 需要在 MEMORY_ARCH_COMPARISON_NOTES 说明训练、tokenizer 与版本匹配依据。')
+    valid_types = {'explicit_kv', 'recurrent_state', 'hybrid'}
+    invalid_types = [item['architecture_type'] for item in MEMORY_ARCH_GPU_CONFIG['models'] if item['architecture_type'] not in valid_types]
+    if invalid_types:
+        raise ValueError(f'不支持的 architecture_type：{invalid_types}')
+    print('CUDA:', torch.cuda.get_device_name(0), '| transformers:', transformers.__version__)
+    print('comparison design:', MEMORY_ARCH_GPU_CONFIG['comparison_design'])
+```
+
+#### 5.3 配置长度阶梯与质量探针
+
+每个长度档使用相同 filler、needle、问题与生成长度。构造 prompt 时会先为 needle 和问题预留 token，并断言 needle 仍位于输入中；这样失败才可以被解释为模型的读取失败，而不是截断错误。单个 needle 只用于 smoke，后续应把独立任务集分数补入 JSON。
+
+```python
+if RUN_MEMORY_ARCH_GPU:
+    def build_memory_arch_prompt(tokenizer, target_tokens: int, needle_phrase: str) -> str:
+        """构造含远程 needle 的近似目标长度 prompt，并为结尾问题预留 token。"""
+        suffix = f'\nHidden memory token: {needle_phrase}.\nQuestion: What is the hidden memory token?'
+        suffix_tokens = len(tokenizer(suffix, add_special_tokens=False).input_ids)
+        if suffix_tokens >= target_tokens:
+            raise ValueError('目标长度不足以容纳 needle 和问题；请增大 seq_lens。')
+        filler = 'The archive contains routine records with no special instruction. '
+        chunks = []
+        while len(tokenizer(' '.join(chunks), add_special_tokens=False).input_ids) < target_tokens - suffix_tokens:
+            chunks.append(filler)
+        return ' '.join(chunks) + suffix
+
+    print('length ladder:', MEMORY_ARCH_GPU_CONFIG['seq_lens'], '| repeats:', MEMORY_ARCH_GPU_CONFIG['repeats'])
+```
+
+#### 5.4 执行长度阶梯并保存 JSON
+
+每个模型在每个长度档重复测量 prefill 与单步 decode，记录中位数；显存拆为模型常驻、运行期峰值和相对当前基线的增量峰值。代码优先读取 `past_key_values`、`cache_params`、`cache` 或 `state`；若模型没有暴露可读取状态接口，会写入 failure，不把空值误作可比的 KV/state 证据。
+
+```python
+if RUN_MEMORY_ARCH_GPU:
+    from statistics import median
+    from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
+
+    device = torch.device('cuda')
+    dtype = getattr(torch, MEMORY_ARCH_GPU_CONFIG['dtype'])
+
+    def infer_architecture_type(config) -> str:
+        """从已知 config 名称识别递推或混合模型；其余默认为显式 KV Decoder。"""
+        model_type = str(getattr(config, 'model_type', '')).lower()
+        if any(name in model_type for name in ('zamba', 'jamba')):
+            return 'hybrid'
+        if 'mamba' in model_type or 'ssm' in model_type:
+            return 'recurrent_state'
+        return 'explicit_kv'
+
+    def tensor_bytes(value, seen=None) -> int | None:
+        """递归汇总 cache/state 对象中的 tensor；未知对象返回 None。"""
+        seen = set() if seen is None else seen
+        if id(value) in seen:
+            return 0
+        seen.add(id(value))
+        if isinstance(value, torch.Tensor):
+            return value.numel() * value.element_size()
+        if hasattr(value, 'to_legacy_cache'):
+            return tensor_bytes(value.to_legacy_cache(), seen)
+        if isinstance(value, (tuple, list)):
+            parts = [tensor_bytes(item, seen) for item in value]
+            return None if any(part is None for part in parts) else sum(parts)
+        if isinstance(value, dict):
+            parts = [tensor_bytes(item, seen) for item in value.values()]
+            return None if any(part is None for part in parts) else sum(parts)
+        if hasattr(value, '__dict__'):
+            fields = [item for key, item in vars(value).items() if not key.startswith('_')]
+            parts = [tensor_bytes(item, seen) for item in fields]
+            return None if not parts or any(part is None for part in parts) else sum(parts)
+        return None
+
+    def extract_runtime_state(outputs):
+        """返回模型公开的 cache/state 字段名与字节数；没有公开接口时显式标记缺失。"""
+        for field in ('past_key_values', 'cache_params', 'cache', 'state'):
+            value = getattr(outputs, field, None)
+            if value is not None:
+                return field, tensor_bytes(value)
+        return None, None
+
+    def run_decode_step(model, next_token, state_field, state_value):
+        """按公开 cache/state 参数做单步 decode；接口不支持时抛出可记录的错误。"""
+        kwargs = {'use_cache': True}
+        if state_field is not None:
+            kwargs[state_field] = state_value
+        return model(next_token, **kwargs)
+
+    def measure_memory_model(model_spec: Dict[str, str]) -> Dict[str, object]:
+        """运行一个 checkpoint 的长度阶梯，返回结构、质量 smoke、成本与失败记录。"""
+        model_id = model_spec['model_id']
+        tokenizer = AutoTokenizer.from_pretrained(model_id, revision=MEMORY_ARCH_GPU_CONFIG['revision'])
+        if tokenizer.pad_token_id is None:
+            tokenizer.pad_token = tokenizer.eos_token
+        config = AutoConfig.from_pretrained(model_id, revision=MEMORY_ARCH_GPU_CONFIG['revision'])
+        inferred_type = infer_architecture_type(config)
+        if inferred_type != model_spec['architecture_type']:
+            raise ValueError(f"{model_spec['name']} 的声明类型 {model_spec['architecture_type']} 与 config 推断 {inferred_type} 不一致。")
+        model = AutoModelForCausalLM.from_pretrained(model_id, revision=MEMORY_ARCH_GPU_CONFIG['revision'], torch_dtype=dtype).to(device).eval()
+        torch.cuda.synchronize(device)
+        resident_mb = torch.cuda.memory_allocated(device) / 2**20
+        rows = []
+        for seq_len in MEMORY_ARCH_GPU_CONFIG['seq_lens']:
+            prompt = build_memory_arch_prompt(tokenizer, seq_len, MEMORY_ARCH_GPU_CONFIG['needle_phrase'])
+            encoded = tokenizer(prompt, return_tensors='pt', truncation=True, max_length=seq_len, add_special_tokens=False)
+            input_ids = encoded.input_ids.to(device)
+            needle_ids = tokenizer(MEMORY_ARCH_GPU_CONFIG['needle_phrase'], add_special_tokens=False).input_ids
+            input_list = input_ids[0].tolist()
+            needle_present = any(input_list[idx:idx + len(needle_ids)] == needle_ids for idx in range(len(input_list) - len(needle_ids) + 1))
+            if not needle_present:
+                raise RuntimeError('needle 在截断后不在输入中；请检查 prompt 构造与 seq_len。')
+            prefill_runs, decode_runs = [], []
+            outputs = None
+            state_field, state_size = None, None
+            failure = None
+            with torch.inference_mode():
+                for _ in range(MEMORY_ARCH_GPU_CONFIG['warmup']):
+                    model(input_ids, use_cache=True)
+                for _ in range(MEMORY_ARCH_GPU_CONFIG['repeats']):
+                    torch.cuda.synchronize(device)
+                    before_mb = torch.cuda.memory_allocated(device) / 2**20
+                    torch.cuda.reset_peak_memory_stats(device)
+                    start, end = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
+                    start.record(); outputs = model(input_ids, use_cache=True); end.record(); torch.cuda.synchronize(device)
+                    prefill_runs.append(start.elapsed_time(end))
+                    state_field, state_size = extract_runtime_state(outputs)
+                    next_token = outputs.logits[:, -1:].argmax(dim=-1)
+                    try:
+                        decode_start, decode_end = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
+                        decode_start.record(); run_decode_step(model, next_token, state_field, getattr(outputs, state_field) if state_field else None); decode_end.record(); torch.cuda.synchronize(device)
+                        decode_runs.append(decode_start.elapsed_time(decode_end))
+                    except Exception as exc:
+                        failure = f'decode_interface_error: {type(exc).__name__}: {exc}'
+                        break
+                peak_mb = torch.cuda.max_memory_allocated(device) / 2**20
+                generated = model.generate(input_ids, max_new_tokens=MEMORY_ARCH_GPU_CONFIG['max_new_tokens'], do_sample=False, use_cache=True)
+            completion = tokenizer.decode(generated[0, input_ids.shape[1]:], skip_special_tokens=True)
+            if failure is None and state_field is None:
+                failure = 'state_interface_not_exposed'
+            if failure is None and MEMORY_ARCH_GPU_CONFIG['needle_phrase'] not in completion:
+                failure = 'needle_not_recalled'
+            rows.append({
+                'seq_len': int(input_ids.shape[1]),
+                'quality': {'task': 'single_prompt_needle_smoke', 'eval_length': int(input_ids.shape[1]), 'metric': float(MEMORY_ARCH_GPU_CONFIG['needle_phrase'] in completion), 'failure': failure},
+                'cost': {
+                    'prefill_ms': float(median(prefill_runs)),
+                    'decode_tpot_ms': None if not decode_runs else float(median(decode_runs)),
+                    'model_resident_memory_mb': resident_mb,
+                    'runtime_peak_memory_mb': peak_mb,
+                    'incremental_peak_memory_mb': max(0.0, peak_mb - before_mb),
+                    'peak_memory_mb': peak_mb,
+                    'kv_or_state_memory_mb': None if state_size is None else state_size / 2**20,
+                },
+                'state_interface': state_field,
+            })
+        del model
+        torch.cuda.empty_cache()
+        return {
+            'name': model_spec['name'], 'model': model_id, 'architecture_type': inferred_type,
+            'architecture': {'model_type': getattr(config, 'model_type', None), 'kv_heads': getattr(config, 'num_key_value_heads', None), 'rope_scaling': getattr(config, 'rope_scaling', None), 'max_position_embeddings': getattr(config, 'max_position_embeddings', None)},
+            'rows': rows,
+        }
+
+    model_records = [measure_memory_model(model_spec) for model_spec in MEMORY_ARCH_GPU_CONFIG['models']]
+    MEMORY_ARCH_RESULTS_DIR = resolve_tutorial_root() / 'benchmarks' / 'results' / '77_memory_architecture'
+    MEMORY_ARCH_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    MEMORY_ARCH_RESULT_PATH = MEMORY_ARCH_RESULTS_DIR / f"gpu_memory_arch_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.json"
+    MEMORY_ARCH_RECORD = {
+        'workload': MEMORY_ARCH_GPU_CONFIG,
+        'hardware': {'gpu': torch.cuda.get_device_name(device), 'torch': torch.__version__, 'cuda': torch.version.cuda},
+        'models': model_records,
+        'failure': None,
+        'evidence_level': 'single_gpu_length_ladder_observational',
+        'decision': 'inspect',
+        'note': 'Needle smoke is not an independent long-context benchmark; cross-model results are observational.',
+    }
+    MEMORY_ARCH_RESULT_PATH.write_text(json.dumps(MEMORY_ARCH_RECORD, indent=2, default=str), encoding='utf-8')
+    print(f'Saved memory architecture benchmark: {MEMORY_ARCH_RESULT_PATH}')
+```
+
+#### 5.5 读取结果、检查长度趋势与失败记录
+
+先比较同一 `seq_len` 下的 quality metric 与 failure，再看 prefill、TPOT、模型常驻显存、运行期增量峰值和 KV/state memory 如何随长度变化。没有公开状态接口、needle 不在输入中或 decode 接口不兼容，都应保留为 failure；这些记录说明当前模型或适配器尚不支持此项对照。
+
+```python
+result_path = globals().get('MEMORY_ARCH_RESULT_PATH')
+if result_path is None and MEMORY_ARCH_RESULTS_DIR is not None:
+    candidates = sorted(MEMORY_ARCH_RESULTS_DIR.glob('gpu_memory_arch_*.json'))
+    result_path = candidates[-1] if candidates else None
+if result_path is None:
+    print('No memory architecture result found. Run 5.4 after configuring models.')
+else:
+    record = json.loads(Path(result_path).read_text(encoding='utf-8'))
+    print(f"Result: {result_path} | evidence: {record['evidence_level']}")
+    for model in record['models']:
+        print(f"[{model['name']}] {model['architecture_type']} | {model['model']}")
+        for row in model['rows']:
+            quality, cost = row['quality'], row['cost']
+            print(
+                f"  L={row['seq_len']}: quality={quality['metric']:.0f}, failure={quality['failure']}; "
+                f"prefill={cost['prefill_ms']:.2f}ms, TPOT={cost['decode_tpot_ms']}, "
+                f"resident={cost['model_resident_memory_mb']:.1f}MB, incremental={cost['incremental_peak_memory_mb']:.1f}MB, "
+                f"state={cost['kv_or_state_memory_mb']}, interface={row['state_interface']}"
+            )
+```
+
+#### 5.6 形成决策并进入扩展评测
+
+只有候选在目标长度档保持质量门槛、满足成本预算、没有接口或读取 failure，并且证据设计足够可比时，才进入 `accept`。跨模型观察或单个 needle smoke 即使数值优异，也应先标记为 `tune`，再补独立任务集、更多长度档和可比变体。
+
+```python
+if 'MEMORY_ARCH_RECORD' in globals():
+    all_rows = [row for model in MEMORY_ARCH_RECORD['models'] for row in model['rows']]
+    has_failure = any(row['quality']['failure'] for row in all_rows)
+    decision = 'tune'
+    reason = (
+        '存在 quality 或接口 failure，需要先修复候选并扩大评测'
+        if has_failure
+        else '当前只有长度阶梯与单个 needle smoke，仍需独立长上下文质量集'
+    )
+    MEMORY_ARCH_RECORD['decision'] = decision
+    MEMORY_ARCH_RECORD['decision_reason'] = reason
+    MEMORY_ARCH_RESULT_PATH.write_text(json.dumps(MEMORY_ARCH_RECORD, indent=2, default=str), encoding='utf-8')
+
+    import sys
+    repository_root = resolve_tutorial_root()
+    if str(repository_root) not in sys.path:
+        sys.path.insert(0, str(repository_root))
+    from tools.architecture_result_schema import make_producer_record, save_record
+
+    baseline_model = MEMORY_ARCH_RECORD['models'][0]
+    candidate_models = MEMORY_ARCH_RECORD['models'][1:]
+    comparison_mode = (
+        'controlled'
+        if MEMORY_ARCH_GPU_CONFIG['comparison_design'] == 'same_family_variant'
+        else 'observational'
+    )
+    failure_rows = {
+        model['name']: [
+            {'seq_len': row['seq_len'], 'failure': row['quality']['failure']}
+            for row in model['rows']
+            if row['quality']['failure']
+        ]
+        for model in MEMORY_ARCH_RECORD['models']
+    }
+    failure_rows = {name: rows for name, rows in failure_rows.items() if rows}
+
+    companion = make_producer_record(
+        semantic_id='ARCH-LONG-SEQUENCE-MEMORY',
+        comparison_mode=comparison_mode,
+        source={
+            'notebook': '02_PyTorch_Algorithms/77_Long_Sequence_Memory_Architecture_Benchmark.ipynb',
+            'raw_result_path': str(MEMORY_ARCH_RESULT_PATH),
+        },
+        runtime={
+            'framework': 'transformers',
+            'hardware': MEMORY_ARCH_RECORD['hardware'],
+            'dtype': MEMORY_ARCH_GPU_CONFIG['dtype'],
+            'model_revision': MEMORY_ARCH_GPU_CONFIG['revision'],
+        },
+        workload={
+            key: MEMORY_ARCH_GPU_CONFIG[key]
+            for key in ('seq_lens', 'batch_size', 'max_new_tokens', 'warmup', 'repeats', 'needle_phrase')
+        },
+        baseline={
+            'name': baseline_model['name'],
+            'model': baseline_model['model'],
+            'state_representation': baseline_model['architecture_type'],
+        },
+        candidates=[
+            {
+                'name': model['name'],
+                'model': model['model'],
+                'state_representation': model['architecture_type'],
+            }
+            for model in candidate_models
+        ],
+        quality={
+            model['name']: [row['quality'] for row in model['rows']]
+            for model in MEMORY_ARCH_RECORD['models']
+        },
+        cost={
+            model['name']: [dict(seq_len=row['seq_len'], **row['cost']) for row in model['rows']]
+            for model in MEMORY_ARCH_RECORD['models']
+        },
+        mechanism={
+            'length_ladder': MEMORY_ARCH_GPU_CONFIG['seq_lens'],
+            'comparison_design': MEMORY_ARCH_GPU_CONFIG['comparison_design'],
+            'comparison_notes': MEMORY_ARCH_GPU_CONFIG['comparison_notes'],
+            'models': {
+                model['name']: {
+                    'state_representation': model['architecture_type'],
+                    'architecture': model['architecture'],
+                    'state_interfaces': [row['state_interface'] for row in model['rows']],
+                }
+                for model in MEMORY_ARCH_RECORD['models']
+            },
+        },
+        evidence_level='real_benchmark',
+        failure=failure_rows,
+        decision={
+            'status': decision,
+            'reason': reason,
+            'next_action': 'add an independent long-context quality set and matched architecture variants',
+        },
+    )
+    companion_path = MEMORY_ARCH_RESULT_PATH.with_name(
+        MEMORY_ARCH_RESULT_PATH.stem + '_architecture.json'
+    )
+    if companion_path.exists():
+        print(f'Companion already exists and was not overwritten: {companion_path}')
+    else:
+        save_record(companion_path, companion)
+        print(f'Saved companion: {companion_path}')
+    print(f'Decision: {decision} — {reason}')
+else:
+    print('Run 5.4 before forming a decision.')
+```
+
+## 相关阅读
+
+- [Mamba: Linear-Time Sequence Modeling with Selective State Spaces](https://arxiv.org/abs/2312.00752)
+- [Transformers are SSMs](https://arxiv.org/abs/2405.21060)
+- [45. Linear Attention and Recurrent State](./45_Linear_Attention_and_Recurrent_State.md)
+- [61. Model Architecture Exploration](./61_Model_Architecture_Exploration.md)
+- [大模型架构 · 线性 Attention、SSM 与混合记忆](../topic_discussion/llm_architecture_evolution/10_linear_attention_ssm_and_hybrid.md)

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+  <title id="title">Controlled Decoder Block stability comparison</title>
+  <desc id="desc">Under identical inputs, width, depth, seed and training budget, replace only one of norm position, norm type, or FFN activation.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L8,4.5 L0,9 Z" fill="#475569"/></marker>
+    <style>
+      text{font-family:"Noto Sans CJK SC","Microsoft YaHei",Arial,sans-serif}.title{font-size:24px;font-weight:700;fill:#172554}.label{font-size:16px;font-weight:600;fill:#1e293b}.small{font-size:14px;fill:#475569}.node{fill:#fff;stroke:#94a3b8;stroke-width:2}.group{fill:#eff6ff;stroke:#60a5fa;stroke-width:2}.candidate{fill:#f0fdf4;stroke:#34d399;stroke-width:2}.fixed{fill:#fff7ed;stroke:#fb923c;stroke-width:2}.line{fill:none;stroke:#475569;stroke-width:2.5;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <text x="600" y="38" text-anchor="middle" class="title">Decoder Block: one structural change under fixed conditions</text>
+  <rect x="80" y="70" width="1040" height="64" rx="14" class="fixed"/>
+  <text x="600" y="98" text-anchor="middle" class="label">Fixed conditions</text>
+  <text x="600" y="120" text-anchor="middle" class="small">input · d_model · d_ff · depth · seed · task · training budget</text>
+
+  <rect x="70" y="185" width="1060" height="245" rx="18" class="group"/>
+  <text x="95" y="215" class="label">Shared residual trunk</text>
+  <rect x="105" y="270" width="125" height="64" rx="10" class="node"/><text x="167" y="298" text-anchor="middle" class="label">Hidden state</text><text x="167" y="320" text-anchor="middle" class="small">x</text>
+  <rect x="300" y="270" width="160" height="64" rx="10" class="candidate"/><text x="380" y="298" text-anchor="middle" class="label">Norm</text><text x="380" y="320" text-anchor="middle" class="small">position / RMS / Layer</text>
+  <rect x="530" y="270" width="135" height="64" rx="10" class="node"/><text x="597" y="298" text-anchor="middle" class="label">Attention</text><text x="597" y="320" text-anchor="middle" class="small">子层更新</text>
+  <rect x="735" y="270" width="170" height="64" rx="10" class="candidate"/><text x="820" y="298" text-anchor="middle" class="label">FFN</text><text x="820" y="320" text-anchor="middle" class="small">SwiGLU 或 GELU</text>
+  <rect x="975" y="270" width="125" height="64" rx="10" class="node"/><text x="1037" y="298" text-anchor="middle" class="label">Output</text><text x="1037" y="320" text-anchor="middle" class="small">x′</text>
+  <path d="M230 302 H300" class="line"/><path d="M460 302 H530" class="line"/><path d="M665 302 H735" class="line"/><path d="M905 302 H975" class="line"/>
+  <path d="M230 346 V385 H700 V334" class="line"/><text x="470" y="378" text-anchor="middle" class="small">residual add</text>
+  <path d="M700 346 V405 H970 V334" class="line"/><text x="835" y="399" text-anchor="middle" class="small">residual add</text>
+
+  <rect x="205" y="460" width="790" height="40" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="600" y="486" text-anchor="middle" class="small">Change one green field per run; record stability, quality and cost separately.</text>
+</svg>

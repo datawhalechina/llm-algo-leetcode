@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="620" viewBox="0 0 1120 620" role="img" aria-labelledby="title desc">
+  <title id="title">长序列记忆架构基准：显式 KV、递推状态与混合记忆</title>
+  <desc id="desc">在统一 workload 下，显式 KV、递推状态与混合架构分别说明保存方式和历史读取方式，再共同记录质量、成本与可比性证据。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#496580"/></marker>
+  </defs>
+  <rect width="1120" height="620" rx="22" fill="#f7fafc"/>
+  <g font-family="Arial, 'Noto Sans CJK SC', sans-serif">
+    <text x="560" y="40" text-anchor="middle" font-size="25" font-weight="700" fill="#18324a">长序列记忆架构：在同一 workload 下比较状态、质量与成本</text>
+
+    <rect x="305" y="68" width="510" height="64" rx="14" fill="#eaf2f8" stroke="#8aa9c1" stroke-width="2"/>
+    <text x="560" y="96" text-anchor="middle" font-size="18" font-weight="700" fill="#18324a">固定长度阶梯、prompt、batch、dtype、backend 与硬件</text>
+    <text x="560" y="118" text-anchor="middle" font-size="14" fill="#486275">先声明同家族近似对照，或跨模型观察</text>
+
+    <path d="M560 132 V158 H185 V174" fill="none" stroke="#496580" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <path d="M560 132 V174" fill="none" stroke="#496580" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <path d="M560 132 V158 H935 V174" fill="none" stroke="#496580" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+    <rect x="40" y="182" width="290" height="220" rx="16" fill="#ffffff" stroke="#8aa9c1" stroke-width="2"/>
+    <text x="64" y="209" font-size="17" font-weight="700" fill="#18324a">显式 KV Attention</text>
+    <rect x="70" y="228" width="230" height="52" rx="10" fill="#eaf2f8"/>
+    <text x="185" y="251" text-anchor="middle" font-size="14" font-weight="700" fill="#18324a">保存：每个历史 token 的 K/V</text>
+    <text x="185" y="271" text-anchor="middle" font-size="13" fill="#486275">状态随序列长度线性增长</text>
+    <path d="M185 280 V298" fill="none" stroke="#496580" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="70" y="306" width="230" height="52" rx="10" fill="#ffffff" stroke="#8aa9c1"/>
+    <text x="185" y="329" text-anchor="middle" font-size="14" font-weight="700" fill="#18324a">读取：全局内容相关检索</text>
+    <text x="185" y="349" text-anchor="middle" font-size="13" fill="#486275">可精确访问保存的历史</text>
+
+    <rect x="415" y="182" width="290" height="220" rx="16" fill="#ffffff" stroke="#8aa9c1" stroke-width="2"/>
+    <text x="439" y="209" font-size="17" font-weight="700" fill="#18324a">递推状态 / SSM</text>
+    <rect x="445" y="228" width="230" height="52" rx="10" fill="#e8f5ef"/>
+    <text x="560" y="251" text-anchor="middle" font-size="14" font-weight="700" fill="#1d6042">保存：固定形状累计状态</text>
+    <text x="560" y="271" text-anchor="middle" font-size="13" fill="#486275">状态不随 token 线性增长</text>
+    <path d="M560 280 V298" fill="none" stroke="#496580" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="445" y="306" width="230" height="52" rx="10" fill="#ffffff" stroke="#8aa9c1"/>
+    <text x="560" y="329" text-anchor="middle" font-size="14" font-weight="700" fill="#18324a">读取：由当前状态间接恢复</text>
+    <text x="560" y="349" text-anchor="middle" font-size="13" fill="#486275">需验证远程信息是否保留</text>
+
+    <rect x="790" y="182" width="290" height="220" rx="16" fill="#ffffff" stroke="#8aa9c1" stroke-width="2"/>
+    <text x="814" y="209" font-size="17" font-weight="700" fill="#18324a">混合架构</text>
+    <rect x="820" y="228" width="230" height="52" rx="10" fill="#fff4df"/>
+    <text x="935" y="251" text-anchor="middle" font-size="14" font-weight="700" fill="#8a5914">保存：KV 层与递推层分工</text>
+    <text x="935" y="271" text-anchor="middle" font-size="13" fill="#486275">增长由 Attention 层比例决定</text>
+    <path d="M935 280 V298" fill="none" stroke="#496580" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="820" y="306" width="230" height="52" rx="10" fill="#ffffff" stroke="#8aa9c1"/>
+    <text x="935" y="329" text-anchor="middle" font-size="14" font-weight="700" fill="#18324a">读取：全局检索与扫描协作</text>
+    <text x="935" y="349" text-anchor="middle" font-size="13" fill="#486275">需验证层分工是否值得</text>
+
+    <path d="M185 402 V432 H240 V448" fill="none" stroke="#496580" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <path d="M560 402 V448" fill="none" stroke="#496580" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <path d="M935 402 V432 H880 V448" fill="none" stroke="#496580" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+    <rect x="130" y="456" width="220" height="64" rx="12" fill="#eaf2f8" stroke="#8aa9c1"/>
+    <text x="240" y="483" text-anchor="middle" font-size="15" font-weight="700" fill="#18324a">质量证据</text>
+    <text x="240" y="505" text-anchor="middle" font-size="13" fill="#486275">长距离任务、失败样例</text>
+    <rect x="450" y="456" width="220" height="64" rx="12" fill="#e8f5ef" stroke="#8aa9c1"/>
+    <text x="560" y="483" text-anchor="middle" font-size="15" font-weight="700" fill="#1d6042">成本证据</text>
+    <text x="560" y="505" text-anchor="middle" font-size="13" fill="#486275">prefill、TPOT、显存、状态</text>
+    <rect x="770" y="456" width="220" height="64" rx="12" fill="#fff4df" stroke="#8aa9c1"/>
+    <text x="880" y="483" text-anchor="middle" font-size="15" font-weight="700" fill="#8a5914">可比性证据</text>
+    <text x="880" y="505" text-anchor="middle" font-size="13" fill="#486275">版本、tokenizer、对照设计</text>
+
+    <path d="M240 520 V546 H560 V554" fill="none" stroke="#496580" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <path d="M560 520 V554" fill="none" stroke="#496580" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <path d="M880 520 V546 H560 V554" fill="none" stroke="#496580" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <rect x="340" y="562" width="440" height="42" rx="12" fill="#18324a"/>
+    <text x="560" y="589" text-anchor="middle" font-size="16" font-weight="700" fill="#ffffff">证据充分：accept；证据不足或跨模型观察：tune</text>
+
+    <!-- Explicit arrowheads remain visible above the receiving node borders. -->
+    <g fill="#496580">
+      <path d="M181 166 L189 166 L185 174 Z"/><path d="M556 166 L564 166 L560 174 Z"/><path d="M931 166 L939 166 L935 174 Z"/>
+      <path d="M181 290 L189 290 L185 298 Z"/><path d="M556 290 L564 290 L560 298 Z"/><path d="M931 290 L939 290 L935 298 Z"/>
+      <path d="M236 440 L244 440 L240 448 Z"/><path d="M556 440 L564 440 L560 448 Z"/><path d="M876 440 L884 440 L880 448 Z"/>
+      <path d="M556 546 L564 546 L560 554 Z"/>
+    </g>
+  </g>
+</svg>

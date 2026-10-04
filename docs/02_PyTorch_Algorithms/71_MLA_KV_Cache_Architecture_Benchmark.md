@@ -12,18 +12,18 @@
 
 ## 本节导读
 
-本节作为 Task 3 的架构扩展，研究 DeepSeek 风格的 Multi-head Latent Attention（MLA）如何改变 KV Cache 的表示方式。先用 CPU 根据模型配置计算 MHA、GQA 与 MLA 的缓存账本，再把同一 workload 交给支持 MLA 的 backend 做可选验证。
+本节在推理优化中作为 Task3 的架构扩展，在模型架构演进专题中作为 Task1 的专项项目。学习者先从 `ARCH-MLA` 已验证的 latent state、解耦 RoPE 与状态重建机制出发，再用固定 workload 比较 MHA、GQA 与 MLA 的缓存账本，并把候选交给支持 MLA 的 backend 验证。
 
 MLA 不是 Prefix Cache，也不是 PagedAttention 或普通量化：它改变模型内部保存的 KV 表示。真实模型候选为 `deepseek-ai/DeepSeek-V2-Lite`；如果 backend 或显存无法加载它，CPU 账本仍可完成，但不能把模拟结果写成真实速度或显存结论。
 
-**主责与复用边界：** 71 负责 MLA 结构和 KV Cache 表示；显存优化复用缓存容量账本，74 负责 profiler trace，69 负责前缀复用，70 负责请求调度。本项目不把结构账本直接写成 backend 性能结论。
+项目结果同时记录结构字段、状态字节、backend 支持、失败原因与证据等级。只有真实 backend 成功加载并返回显存和延迟记录时，才进入部署判断。
 ## 前置阅读
 
 **导语：** 先理解 Attention 张量形状和 KV Cache 增长，再观察 MLA 如何改变缓存账本。
 - [04. Attention / MHA / GQA](./04_Attention_MHA_GQA.md)
+- [ARCH-MLA. Multi-head Latent Attention | 多头潜在注意力](./ARCH-MLA_Multihead_Latent_Attention.md)
 - [Part 01: 04. Attention Memory Optimization](../01_Hardware_Math_and_Systems/04_Attention_Memory_Optimization.md)
 - [11. KV Cache and Memory Growth](../01_Hardware_Math_and_Systems/11_KV_Cache_and_Memory_Growth.md)
-- [69. Prefix Caching Benchmark](./69_Prefix_Caching_Benchmark.md)
 - [74. Profiling-Driven End-to-End Optimization](./74_Profiling_Driven_End_to_End_Optimization.md)
 
 ## 相关阅读
@@ -54,7 +54,7 @@ CPU 只计算元素数量和理论字节数，验证公式、比例和边界；�
 
 ### Step 4：连接真实 backend
 
-可选使用 `deepseek-ai/DeepSeek-V2-Lite` 和固定推理 workload；只有 backend 成功加载并提供显存、延迟或 trace 证据，才能形成 GPU 结论。
+可选使用 `deepseek-ai/DeepSeek-V2-Lite` 和固定推理 workload。先用 Transformers 读取 config、固定 tokenizer 与输入语义，再以 vLLM 作为支持条件满足时的 Serving 主基线，SGLang 只做同模型、同输入和同生成条件的 backend 对照；只有 backend 成功加载并提供显存、延迟或 trace 证据，才能形成 GPU 结论。执行栈版本、环境隔离和预检方式统一见[模型、执行栈与环境资产表](../gpu_environment_assets.md)。
 
 ### 实验条件与证据边界
 
@@ -308,3 +308,223 @@ test_mla_kv_cache_template()
 - **TODO 6**：将三种表示整理成带 evidence 的对照表，明确这是 CPU 理论账本。
 
 真实模型建议使用 `deepseek-ai/DeepSeek-V2-Lite`；如果 backend 不支持 MLA，71 仍可完成 CPU 账本，但 74 不能伪造 CUDA trace。
+### Step 5：可选 backend 实验——GQA 与 MLA 的观察性对照
+
+真实 backend 实验固定请求 workload，分别读取一个 GQA 模型和一个 MLA 模型的运行结果。两者模型结构和权重不同，因此只能回答候选系统在当前环境中的质量—成本表现，不能把全部差异归因于 KV 表示。
+
+#### 5.1 环境、模型与结果位置
+
+| 条目 | 固定内容 | 记录目的 |
+| --- | --- | --- |
+| 基线 | GQA 模型与独立 backend endpoint | 提供可运行的系统参照 |
+| 候选 | MLA 模型与独立 backend endpoint | 验证 MLA capability 与运行成本 |
+| workload | prompt、输出长度、并发、warmup、重复次数 | 保证请求口径一致 |
+| 证据 | 原始 backend JSON + architecture companion | 分离运行事实与架构审计字段 |
+
+```python
+# 默认关闭：先分别启动已确认支持对应模型的 OpenAI-compatible backend。
+from datetime import datetime, timezone
+from pathlib import Path
+import json
+
+RUN_MLA_BACKEND_BENCHMARK = False
+MLA_BASELINE_MODEL = 'Qwen/Qwen2.5-0.5B-Instruct'  # GQA 运行参照，不是权重匹配基线
+MLA_CANDIDATE_MODEL = 'deepseek-ai/DeepSeek-V2-Lite'  # MLA 候选
+MLA_BASELINE_BASE_URL = 'http://127.0.0.1:8000'
+MLA_CANDIDATE_BASE_URL = 'http://127.0.0.1:8001'
+MLA_BASELINE_BACKEND = 'vllm'
+MLA_CANDIDATE_BACKEND = 'vllm'
+MLA_DTYPE = 'float16'
+MLA_BASELINE_PEAK_MEMORY_MB = None  # 可从 backend 监控补入
+MLA_CANDIDATE_PEAK_MEMORY_MB = None  # 可从 backend 监控补入
+MLA_EXISTING_BASELINE_RESULT = ''  # 已有 JSON 时可直接填写
+MLA_EXISTING_CANDIDATE_RESULT = ''
+MLA_RESULT_DIR = Path('benchmarks/results/71_mla_kv_architecture')
+
+```
+
+#### 5.2 工具与 endpoint 预检
+
+预检只确认教程工具、模型标识和两个 endpoint 配置完整。模型能否加载、是否命中 MLA kernel 以及显存是否足够，必须由各 backend 的启动日志和运行结果证明。
+
+```python
+import sys
+
+MLA_REPOSITORY_ROOT = next(
+    (path for path in (Path.cwd(), *Path.cwd().parents) if (path / 'tools' / 'benchmark_inference_backend.py').is_file()),
+    None,
+)
+if MLA_REPOSITORY_ROOT is None:
+    raise RuntimeError('未找到 tools/benchmark_inference_backend.py，请从教程仓库中运行本节。')
+if str(MLA_REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(MLA_REPOSITORY_ROOT))
+if not MLA_BASELINE_MODEL or not MLA_CANDIDATE_MODEL:
+    raise ValueError('必须配置 GQA 基线模型与 MLA 候选模型。')
+print({'repository_root': str(MLA_REPOSITORY_ROOT), 'comparison_mode': 'observational'})
+
+```
+
+#### 5.3 固定请求 workload
+
+两个 endpoint 使用相同 prompt、生成长度、并发、warmup 和重复次数。模型 tokenizer 与架构不同会继续作为观察性差异保留，不能通过表面相同的 Token 数掩盖。
+
+```python
+MLA_BACKEND_WORKLOAD = {
+    'prompt': 'Explain why compact KV representations affect long-context inference cost.',
+    'num_prompts': 4,
+    'max_tokens': 64,
+    'temperature': 0.0,
+    'concurrency': 1,
+    'warmup': 2,
+    'repeats': 3,
+}
+print(MLA_BACKEND_WORKLOAD)
+
+```
+
+#### 5.4 执行 backend benchmark
+
+执行单元只调用已启动的 endpoint，不负责安装或启动 vLLM/SGLang。若已有同口径原始 JSON，可保持执行开关关闭并在 5.1 填入路径。
+
+```python
+if RUN_MLA_BACKEND_BENCHMARK:
+    import subprocess
+
+    timestamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+    MLA_RESULT_DIR.mkdir(parents=True, exist_ok=True)
+    run_specs = [
+        ('baseline', MLA_BASELINE_MODEL, MLA_BASELINE_BASE_URL, MLA_BASELINE_BACKEND, MLA_BASELINE_PEAK_MEMORY_MB),
+        ('candidate', MLA_CANDIDATE_MODEL, MLA_CANDIDATE_BASE_URL, MLA_CANDIDATE_BACKEND, MLA_CANDIDATE_PEAK_MEMORY_MB),
+    ]
+    generated_paths = {}
+    for role, model_id, base_url, backend_name, peak_memory_mb in run_specs:
+        output_path = MLA_RESULT_DIR / f'71_{role}_{timestamp}.json'
+        command = [
+            sys.executable, str(MLA_REPOSITORY_ROOT / 'tools' / 'benchmark_inference_backend.py'),
+            '--base-url', base_url, '--model', model_id, '--label', f'mla_{role}',
+            '--project', '71', '--backend', backend_name, '--dtype', MLA_DTYPE,
+            '--prompt', MLA_BACKEND_WORKLOAD['prompt'],
+            '--num-prompts', str(MLA_BACKEND_WORKLOAD['num_prompts']),
+            '--max-tokens', str(MLA_BACKEND_WORKLOAD['max_tokens']),
+            '--temperature', str(MLA_BACKEND_WORKLOAD['temperature']),
+            '--concurrency', str(MLA_BACKEND_WORKLOAD['concurrency']),
+            '--warmup', str(MLA_BACKEND_WORKLOAD['warmup']),
+            '--repeats', str(MLA_BACKEND_WORKLOAD['repeats']),
+            '--output', str(output_path),
+        ]
+        if peak_memory_mb is not None:
+            command.extend(['--peak-memory-mb', str(peak_memory_mb)])
+        subprocess.run(command, cwd=MLA_REPOSITORY_ROOT, check=True)
+        generated_paths[role] = output_path
+    MLA_BASELINE_RESULT_PATH = generated_paths['baseline']
+    MLA_CANDIDATE_RESULT_PATH = generated_paths['candidate']
+else:
+    MLA_BASELINE_RESULT_PATH = Path(MLA_EXISTING_BASELINE_RESULT) if MLA_EXISTING_BASELINE_RESULT else None
+    MLA_CANDIDATE_RESULT_PATH = Path(MLA_EXISTING_CANDIDATE_RESULT) if MLA_EXISTING_CANDIDATE_RESULT else None
+    print('Backend benchmark disabled; configure existing result paths or start both endpoints.')
+
+```
+
+#### 5.5 读取结果并核对可比条件
+
+先核对请求数、输出上限、并发、warmup 和重复次数，再查看 TTFT、TPOT、吞吐与显存。缺少质量集或显存记录时保留缺失状态，不用零值代替。
+
+```python
+MLA_BACKEND_REPORTS = None
+if MLA_BASELINE_RESULT_PATH and MLA_CANDIDATE_RESULT_PATH:
+    MLA_BACKEND_REPORTS = {
+        'baseline': json.loads(Path(MLA_BASELINE_RESULT_PATH).read_text(encoding='utf-8')),
+        'candidate': json.loads(Path(MLA_CANDIDATE_RESULT_PATH).read_text(encoding='utf-8')),
+    }
+    comparable_keys = ('requests', 'max_tokens', 'concurrency', 'warmup', 'repeats')
+    baseline_workload = MLA_BACKEND_REPORTS['baseline']['workload']
+    candidate_workload = MLA_BACKEND_REPORTS['candidate']['workload']
+    mismatches = [key for key in comparable_keys if baseline_workload.get(key) != candidate_workload.get(key)]
+    if mismatches:
+        raise ValueError(f'backend workload 不一致：{mismatches}')
+    for role, report in MLA_BACKEND_REPORTS.items():
+        metrics = report['metrics']
+        normalized = report.get('normalized_result', {})
+        print(role, {
+            'model': report['model'],
+            'ttft_ms': metrics['ttft_ms'],
+            'tpot_ms': metrics['tpot_ms'],
+            'throughput_tokens_per_s': metrics['output_token_throughput_per_s'],
+            'peak_memory_mb': normalized.get('metrics', {}).get('peak_memory_mb'),
+        })
+else:
+    print('No paired backend results. The CPU ledger remains theoretical evidence only.')
+
+```
+
+#### 5.6 保存架构 companion 并形成判断
+
+跨模型对照固定标记为 `observational`。即使 endpoint 成功，也要补齐独立质量集、实际峰值显存与 backend capability 后才能进入架构采用判断。
+
+```python
+if MLA_BACKEND_REPORTS is not None:
+    from tools.architecture_result_schema import make_producer_record, save_record
+
+    baseline_report = MLA_BACKEND_REPORTS['baseline']
+    candidate_report = MLA_BACKEND_REPORTS['candidate']
+    reports_ok = all(report['metrics'].get('successful_requests', 0) > 0 for report in MLA_BACKEND_REPORTS.values())
+    failure = {} if reports_ok else {
+        role: report['metrics'].get('failed_requests') for role, report in MLA_BACKEND_REPORTS.items()
+    }
+
+    def _backend_cost(report):
+        metrics = report['metrics']
+        normalized_metrics = report.get('normalized_result', {}).get('metrics', {})
+        return {
+            'ttft_ms': metrics.get('ttft_ms'),
+            'tpot_ms': metrics.get('tpot_ms'),
+            'throughput_tokens_per_s': metrics.get('output_token_throughput_per_s'),
+            'peak_memory_mb': normalized_metrics.get('peak_memory_mb'),
+        }
+
+    companion = make_producer_record(
+        semantic_id='ARCH-MLA-KV',
+        comparison_mode='observational',
+        source={
+            'notebook': '02_PyTorch_Algorithms/71_MLA_KV_Cache_Architecture_Benchmark.ipynb',
+            'raw_result_paths': {
+                'baseline': str(MLA_BASELINE_RESULT_PATH),
+                'candidate': str(MLA_CANDIDATE_RESULT_PATH),
+            },
+        },
+        runtime={
+            'baseline_backend': MLA_BASELINE_BACKEND,
+            'candidate_backend': MLA_CANDIDATE_BACKEND,
+            'dtype': MLA_DTYPE,
+            'device': 'cuda',
+        },
+        workload=baseline_report['workload'],
+        baseline={'name': 'gqa_reference', 'model': baseline_report['model'], 'representation': 'gqa'},
+        candidates=[{'name': 'mla_candidate', 'model': candidate_report['model'], 'representation': 'mla'}],
+        quality={'status': 'not_recorded', 'reason': 'independent matched quality set is required'},
+        cost={role: _backend_cost(report) for role, report in MLA_BACKEND_REPORTS.items()},
+        mechanism={
+            'baseline_representation': 'gqa',
+            'candidate_representation': 'mla',
+            'backend_capability_observed': reports_ok,
+            'theoretical_ledger_is_measured_memory': False,
+        },
+        evidence_level='real_benchmark' if reports_ok else 'gpu_smoke',
+        status='ok' if reports_ok else 'failed',
+        failure=failure,
+        decision={
+            'status': 'tune' if reports_ok else 'reject',
+            'reason': 'cross-model evidence needs matched quality and memory before adoption' if reports_ok else 'backend run failed',
+            'next_action': 'add matched quality, peak memory, backend version and kernel evidence',
+        },
+    )
+    companion_path = Path(MLA_CANDIDATE_RESULT_PATH).with_name(
+        Path(MLA_CANDIDATE_RESULT_PATH).stem + '_architecture.json'
+    )
+    if companion_path.exists():
+        print(f'Companion already exists and was not overwritten: {companion_path}')
+    else:
+        save_record(companion_path, companion)
+        print(f'Saved companion: {companion_path}')
+
+```
