@@ -67,7 +67,7 @@ x [B, T, D]
 output [B, T, D]
 ```
 
-![RMSNorm 在 Block 里的位置](/02_PyTorch_Algorithms/01_rmsnorm_diagram.svg)
+![RMSNorm 在 Block 里的位置](../public/02_PyTorch_Algorithms/01_rmsnorm_diagram.svg)
 
 放回 LLaMA block 里看，RMSNorm 是 attention / MLP 前的稳定器：
 
