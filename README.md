@@ -65,7 +65,7 @@
 
 | 部分 | 组别 | 内容定位 | 适合对象 | 状态 |
 | ---- | ---- | ---- | ---- | ---- |
-| [`第零部分：前置知识与环境准备（5 组 / 20 节，已完成，持续优化）`](./00_Prerequisites/intro.md) | [`0A Python 基础与数据表示（4 节）`](./00_Prerequisites/0A.md) / [`0B PyTorch 张量与自动求导（4 节）`](./00_Prerequisites/0B.md) / [`0C PyTorch 模型构建（4 节）`](./00_Prerequisites/0C.md) / [`0D 训练与模型直觉（4 节）`](./00_Prerequisites/0D.md) / [`0E 调试与性能（4 节）`](./00_Prerequisites/0E.md) | 把 Python、NumPy、PyTorch、训练循环、调试工具和性能意识搭好。 | 第一次进入教程、需要补齐入门前置的人。 | ✅ 已完成，持续优化 |
+| [`第零部分：前置知识与环境准备（5 组 / 20 节，已完成，持续优化）`](./00_Prerequisites/intro.md) | [`0A Python 基础与数据表示（4 节）`](./00_Prerequisites/0A.md) / [`0B PyTorch 张量与自动求导（4 节）`](./00_Prerequisites/0B.md) / [`0C PyTorch 模型与训练生命周期（4 节）`](./00_Prerequisites/0C.md) / [`0D Transformer Block 与模型组件（4 节）`](./00_Prerequisites/0D.md) / [`0E 运行诊断与实验基础（4 节）`](./00_Prerequisites/0E.md) | 把 Python、NumPy、PyTorch、训练循环、调试工具和性能意识搭好。 | 第一次进入教程、需要补齐入门前置的人。 | ✅ 已完成，持续优化 |
 | [`第一部分：硬件、数学与系统（6 组 / 34 节，已完成，持续优化）`](./01_Hardware_Math_and_Systems/intro.md) | [`1A 数值与规模（4 节）`](./01_Hardware_Math_and_Systems/1A.md) / [`1B 单设备执行、内存与访存（9 节）`](./01_Hardware_Math_and_Systems/1B.md) / [`1C 通信、并行与容错（6 节）`](./01_Hardware_Math_and_Systems/1C.md) / [`1D 执行模型、异步调度与算子映射（7 节）`](./01_Hardware_Math_and_Systems/1D.md) / [`1E 编译与后端（4 节）`](./01_Hardware_Math_and_Systems/1E.md) / [`1F 硬件适配与系统约束（4 节）`](./01_Hardware_Math_and_Systems/1F.md) | 理解硬件、规模、访存、通信、执行与系统约束。 | 想先弄清“为什么要这样写”和“为什么要这样部署”的学习者。 | ✅ 已完成，持续优化 |
 | [`第二部分：PyTorch 算法实战（10 组，已完成，持续优化）`](./02_PyTorch_Algorithms/intro.md) | [`2.1 Decoder 组件与注意力`](./02_PyTorch_Algorithms/2_1.md) / [`2.2 模型架构`](./02_PyTorch_Algorithms/2_2.md) / [`2.3 监督微调与训练控制`](./02_PyTorch_Algorithms/2_3.md) / [`2.4 偏好优化与对齐`](./02_PyTorch_Algorithms/2_4.md) / [`2.5 反向传播与训练内存`](./02_PyTorch_Algorithms/2_5.md) / [`2.6 推理执行基础`](./02_PyTorch_Algorithms/2_6.md) / [`2.7 推理策略与服务调度`](./02_PyTorch_Algorithms/2_7.md) / [`2.8 量化与低比特适配`](./02_PyTorch_Algorithms/2_8.md) / [`2.9 通信与并行`](./02_PyTorch_Algorithms/2_9.md) / [`2.10 项目验证与工程收口`](./02_PyTorch_Algorithms/2_10.md) | 在 PyTorch 层把算法、模型、推理、压缩、并行与项目验证先跑通。 | 希望先用熟悉工具建立实现感的人。 | ✅ 已完成，持续优化 |
 | [`第三部分：Triton 算子开发（5 组 / 15 节，已完成，持续优化）`](./03_Triton_Kernels/intro.md) | [`3.1 基础篇（5 节）`](./03_Triton_Kernels/intro.md) / [`3.2 过渡篇（2 节）`](./03_Triton_Kernels/intro.md) / [`3.3 进阶A：Attention优化（3 节）`](./03_Triton_Kernels/intro.md) / [`3.4 进阶B：推理优化（2 节）`](./03_Triton_Kernels/intro.md) / [`3.5 项目篇（3 节）`](./03_Triton_Kernels/intro.md) | 把前面学到的算子和优化思路落到 GPU kernel。 | 希望从 PyTorch 走向 Triton 的学习者。 | ✅ 已完成，持续优化 |
@@ -192,11 +192,9 @@ CNB 的具体使用方式和适用范围见 [使用指南](./docs/guide.md)。
 
 ## 📖 更多资源
 
-- [使用指南](./docs/guide.md) - 环境与学习方式
-- [贡献指南](./docs/contributing.md) - 如何参与项目开发和测试
-- [维护与发布手册](./docs/maintenance.md) - 部分、链接、测试与发布的维护约定
-- [统一验证入口](./docs/maintenance.md#常用命令) - `verify.py part0_1`、`verify.py part2` 等标准验证命令
-- [自动化测试脚本索引](./docs/maintenance.md#测试脚本索引) - 各类验证脚本入口
+- [使用指南](./docs/guide.md)——选择学习入口、运行环境和实验路径
+- [贡献指南](./docs/contributing.md)——参与内容、代码与测试贡献
+- [维护与发布手册](./docs/maintenance.md)——源码同步、统一验证、迁移与发布
 
 ## 👨‍💻 贡献者名单
 
@@ -252,7 +250,7 @@ You do not need to start from `00` in strict order. `00` is the prerequisite lan
 
 | Part | Groups | Content Positioning | Suitable For | Status |
 | ---- | ---- | ---- | ---- | ---- |
-| [Part 00: Prerequisites and Environment Setup (5 groups / 20 lessons)](./00_Prerequisites/intro.md) | [0A Python Basics and Data Representation (4 lessons)](./00_Prerequisites/0A.md) / [0B PyTorch Tensors and Autograd (4 lessons)](./00_Prerequisites/0B.md) / [0C PyTorch Model Construction (4 lessons)](./00_Prerequisites/0C.md) / [0D Training and Model Intuition (4 lessons)](./00_Prerequisites/0D.md) / [0E Debugging and Performance (4 lessons)](./00_Prerequisites/0E.md) | Prerequisites, engineering basics, and notebook-first practice. | First-time learners who need prerequisite support. | ✅ Complete, continuously refining |
+| [Part 00: Prerequisites and Environment Setup (5 groups / 20 lessons)](./00_Prerequisites/intro.md) | [0A Python Basics and Data Representation (4 lessons)](./00_Prerequisites/0A.md) / [0B PyTorch Tensors and Autograd (4 lessons)](./00_Prerequisites/0B.md) / [0C PyTorch Model and Training Lifecycle (4 lessons)](./00_Prerequisites/0C.md) / [0D Transformer Block and Model Components (4 lessons)](./00_Prerequisites/0D.md) / [0E Runtime Diagnostics and Experiment Foundations (4 lessons)](./00_Prerequisites/0E.md) | Prerequisites, engineering basics, and notebook-first practice. | First-time learners who need prerequisite support. | ✅ Complete, continuously refining |
 | [Part guide: Hardware, Math, and Systems (6 groups / 34 lessons)](./01_Hardware_Math_and_Systems/intro.md) | [1A Numerics and Scale (4 lessons)](./01_Hardware_Math_and_Systems/1A.md) / [1B Single-Device Execution, Memory and Access (9 lessons)](./01_Hardware_Math_and_Systems/1B.md) / [1C Communication, Parallelism and Fault Tolerance (6 lessons)](./01_Hardware_Math_and_Systems/1C.md) / [1D Execution Models, Asynchrony and Operator Mapping (7 lessons)](./01_Hardware_Math_and_Systems/1D.md) / [1E Compilers and Backends (4 lessons)](./01_Hardware_Math_and_Systems/1E.md) / [1F Hardware Adaptation and System Constraints (4 lessons)](./01_Hardware_Math_and_Systems/1F.md) | Hardware, scale, memory access, communication, execution, and system constraints. | Learners who want to understand why things are written and deployed this way. | ✅ Complete, continuously refining |
 | [Part 02: PyTorch Algorithm Practice (10 groups)](./02_PyTorch_Algorithms/intro.md) | [2.1 Decoder Components and Attention](./02_PyTorch_Algorithms/2_1.md) / [2.2 Model Architecture](./02_PyTorch_Algorithms/2_2.md) / [2.3 Supervised Fine-Tuning and Training Control](./02_PyTorch_Algorithms/2_3.md) / [2.4 Preference Optimization and Alignment](./02_PyTorch_Algorithms/2_4.md) / [2.5 Backpropagation and Training Memory](./02_PyTorch_Algorithms/2_5.md) / [2.6 Inference Execution Fundamentals](./02_PyTorch_Algorithms/2_6.md) / [2.7 Inference Strategies and Serving Scheduling](./02_PyTorch_Algorithms/2_7.md) / [2.8 Quantization and Low-Bit Adaptation](./02_PyTorch_Algorithms/2_8.md) / [2.9 Communication and Parallelism](./02_PyTorch_Algorithms/2_9.md) / [2.10 Project Validation and Engineering Closure](./02_PyTorch_Algorithms/2_10.md) | PyTorch-level practice for algorithms, models, inference, compression, parallelism, and project validation. | Learners who want to build implementation intuition with familiar tools. | ✅ Complete, continuously refining |
 | [Part 03: Triton Kernel Development (5 groups / 15 lessons)](./03_Triton_Kernels/intro.md) | [3.1 Foundations (5 lessons)](./03_Triton_Kernels/intro.md) / [3.2 Transition (2 lessons)](./03_Triton_Kernels/intro.md) / [3.3 Advanced A: Attention Optimization (3 lessons)](./03_Triton_Kernels/intro.md) / [3.4 Advanced B: Inference Optimization (2 lessons)](./03_Triton_Kernels/intro.md) / [3.5 Projects (3 lessons)](./03_Triton_Kernels/intro.md) | Triton kernel development. | Learners who want to move from PyTorch to Triton. | ✅ Complete, continuously refining |
@@ -374,10 +372,9 @@ See [docs/guide.md](./docs/guide.md) for the exact environment rules and scope.
 
 ## 📖 More Resources
 
-- [docs/guide.md](./docs/guide.md) - environment and learning modes
-- [docs/contributing.md](./docs/contributing.md) - how to contribute to development and testing
-- [docs/maintenance.md](./docs/maintenance.md) - maintenance rules for parts, links, tests, and releases
-- [Automated Test Script Index](./docs/maintenance.md#测试脚本索引) - entry points for automated verification scripts
+- [Usage Guide](./docs/guide.md) — learning entry points, runtime environments, and experiment paths
+- [Contribution Guide](./docs/contributing.md) — contributing content, code, and tests
+- [Maintenance and Release Manual](./docs/maintenance.md) — source synchronization, verification, migration, and release
 
 ## 👨‍💻 Contributors
 
