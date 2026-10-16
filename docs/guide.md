@@ -1,6 +1,6 @@
 # 使用指南
 
-只回答两件事：先在哪看，Notebook 该在哪跑。
+本指南面向学习者和实验运行者，只说明学习入口、运行环境、项目预检与结果位置。页面编写见[贡献指南](./contributing.md)，仓库同步、验证和发布见[维护手册](./maintenance.md)。
 
 ## 开始前：确认 Python 环境入口
 
@@ -197,24 +197,7 @@ python -m ipykernel install --user \
 - `CPU-first` / `GPU-required` 是执行能力，不是入口名称。
 - `CNB` / `Docker` / 云端 GPU 是统一交付方式。
 
-## 常用命令
-
-```bash
-python verify.py part0_1 --no-build
-python verify.py part2 --no-build
-python verify.py part3 --no-build
-python verify.py part4 --no-build
-python verify.py all --no-build
-```
-
-定点排查时用：
-
-```bash
-python tools/test_chapter0_1_notebooks.py
-python tools/test_notebook_answers.py path/to/your.ipynb --mode both
-```
-
-## Part 02 项目验证
+## Part 02 项目运行
 
 训练、推理和显存项目除了 Notebook 答案区测试，还可能需要真实 GPU、模型下载或本地 backend。
 推理项目 `66–70` 的完整检查顺序、结果文件和 JSON schema 见

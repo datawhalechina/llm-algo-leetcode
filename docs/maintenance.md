@@ -1,484 +1,176 @@
 # 维护与发布手册
 
-只看三件事：怎么同步、怎么验证、脚本各管哪一层。正文模板规则见 [template_guidelines.md](./template_guidelines.md)。
+本手册只回答三个操作问题：修改哪个源文件、怎样生成 `docs/` 镜像、怎样验证改动。页面结构与写作规则见[模板总纲](./template_guidelines.md)，环境和结果字段分别见[环境资产表](./gpu_environment_assets.md)与[Part 02 结果资产](./part02_result_assets.md)。
 
-## 源文件优先
+## 维护信息所有权
 
-- 先改源文件，再同步 `docs/` 镜像，不能直接手改 `docs/` 作为最终提交。
-- 正文类改动统一从源 notebook 或源 markdown 出发，完成后再运行对应同步脚本。
-- 如果镜像页和源文件出现不一致，以源文件为准，后续同步会覆盖镜像。
+| 信息 | 唯一维护入口 | 本手册是否展开 |
+|:---|:---|:---:|
+| 页面类型与共同规则 | [模板总纲](./template_guidelines.md) | 否 |
+| Part 00–01 基础页 | [基础页编写规范](./authoring/foundation_notebooks.md) | 否 |
+| 专题 intro、walkthrough、casebook、Quickstart | [专题页面编写规范](./authoring/topic_pages.md) | 否 |
+| Part 02 机制页 / 项目页 | [机制页规范](./authoring/part02_mechanism_notebooks.md) / [项目页规范](./authoring/part02_project_notebooks.md) | 否 |
+| 图示与 SVG | [图示与 SVG 规范](./authoring/visual_guidelines.md) | 否 |
+| 模型、依赖 Profile、驱动和硬件事实 | [GPU 环境资产表](./gpu_environment_assets.md) | 否 |
+| 结果字段、证据等级和项目资产 | [Part 02 结果资产](./part02_result_assets.md) | 否 |
+| 文档、自动化、视觉和引用资产归属 | [资产总登记](./asset_registry.md) | 否 |
+| 转换、同步、检查、构建和交接 | 本手册 | 是 |
 
-### 迁移占位与文件命名
+规则冲突时，先确定信息属于哪一行，再修改对应唯一维护源。不要在 Notebook、专题页或维护页增加第二份完整规则。
 
-- 已迁移出 Part02 的内容不继续使用目标专题名称作为 Part02 文件名；保留编号入口时，使用 `NN_Reserved_NN.ipynb`，并在正文标题中明确“通用预留”或迁移状态。
-- 旧入口如仍被外部页面引用，可以暂时保留兼容 Notebook，但必须指向新的 `Reserved` 入口；完成全量引用迁移和 docs 构建验证后，才能删除旧入口。
-- 文件名、Notebook 标题、组页资产表、专题正文链接和 docs 镜像名必须在同一轮迁移中核对；不得只改源文件名而留下旧链接。
+## 源文件与派生文件
 
-## 脚本分层
+- 源 Notebook、源 Markdown 和根目录 `README.md` 是正文事实来源。
+- `docs/` 下的正文和导航是派生镜像，不能作为最终修改入口。
+- `docs/public/` 中的正式 SVG、图片等静态资产直接维护，不由 Notebook 转换生成。
+- 镜像与源文件不一致时，以源文件为准；重新同步会覆盖镜像。
+- 兼容页、旧路径和生成链的归属见[文档交付资产表](./documentation_assets.md)。
 
-| 层 | 脚本 | 作用 |
-|---|---|---|
-| `verify` | `verify.py` | 统一验证入口 |
-| `convert` | `tools/convert_notebook.py` | 正文镜像主链路 |
-| `sync` | `tools/sync_docs_index.py`、`tools/sync_docs_navigation.py` | 首页 / 导学页 / 组页同步 |
-| `check` | `tools/check_source_docs_mirror.py`、`tools/check_chapter_links.py` | 镜像和链接检查 |
-| `test` | `tools/test_chapter0_1_notebooks.py`、`tools/test_notebook_answers.py` | Notebook 校验 |
-| `audit` | `tools/audit_chapter0_1_notebooks.py` | Part 0 / Part 1 执行验证 + 结构审计 |
-| `migration` | `tools/md_to_notebook.py` | markdown -> notebook 迁移辅助 |
-
-`tools/convert_chapter0_1.py` 只保留 legacy 兼容。
-
-## Part 0-4 维护分工
-
-- `Part 00` 和 `Part 01` 一起作为前置知识层，重点是基础语言、张量、系统视角和性能边界。
-- `Part 02` 是主干实现层，重点是 PyTorch 里的训练、推理、并行、量化和项目收口。
-- `Part 02` 的项目建设按“核心项目 + 扩展项目 + 延伸方向”组织：`2.9` 是项目收口层，核心项目优先覆盖训练落地、推理选型和训练分析，扩展项目优先覆盖 profiling 闭环、并行基准和量化部署；`36-42` 则作为更细的延伸方向，继续补推理服务、cache、量化家族和通信 profiling。项目页的 TODO 仍保持 notebook-first 的统一结构，但职责从“补算法”转为“组织实验、输出对比和沉淀结论”。
-- `Part 03` 是 Triton / kernel 过渡层，重点是把框架级实现继续下沉到高性能算子。
-- `Part 04` 是 CUDA / 系统优化层，重点是继续向硬件、通信、调度和架构收口。
-- 维护时可以按下面的验证分段理解：
-  - `verify.py part0_1`：检查 `Part 00 / Part 01`
-  - `verify.py part2`：检查 `Part 02`
-  - `verify.py part3`：检查 `Part 03`
-  - `verify.py part4`：检查 `Part 04`
-- 横向专题主要横切 `Part 00 / Part 01 / Part 02`，后续若继续下探性能和实现，可以逐步接到 `Part 03 / Part 04`。
-
-## 依赖 profile 维护规则
-
-- `requirements/base.txt` 只放跨平台通用包，不放 `torch`、GPU 驱动或 vLLM。
-- `requirements/torch-cpu.txt` 与 `requirements/torch-cu128.txt` 是互斥的 PyTorch 平台 profile；默认根依赖 `requirements.txt` 不自动选择 GPU。Conda environment 文件也不直接合并这两个 profile，避免 PyTorch 专用 index 覆盖通用包的下载源。
-- `fine-tuning.txt`、`qlora.txt`、`reinforcement-learning.txt`、`distributed.txt`、`inference-vllm.txt`、`inference-sglang.txt` 和 `profiling.txt` 是能力层 profile，依赖 base，但不负责判断主机是否有 GPU。
-- GPU 环境说明必须同时区分驱动、PyTorch CUDA wheel 和上层能力包；不能把 `nvidia-smi` 的 CUDA 字段写成 PyTorch 的 CUDA 版本。
-- Colab、ModelScope 和云端预装环境优先复用当前 Kernel 的 PyTorch。Notebook 自动化可以补普通 Python 包，但不能静默替换 CUDA PyTorch、驱动、vLLM 或 SGLang。
-- 新增 backend（如 TensorRT-LLM、Unsloth、LLaMA-Factory）前，先建立独立 profile 或官方版本矩阵，并说明与已有 profile 的兼容边界。SGLang 使用 `requirements/inference-sglang.txt`，与 vLLM profile 分开维护。
-- 后训练项目使用 `requirements/reinforcement-learning.txt`；分布式项目使用 `requirements/distributed.txt`，二者都必须与一个明确的 CPU 或 CUDA PyTorch profile 组合，不能把 GPU、RL 和分布式依赖默认塞进 `requirements.txt`。
-
-## 教程信息架构口径
-
-后续写导学页、组导航页、专题页和 `Part 01` 正文导读时，统一使用下面四类概念，不再混写：
-
-- `纵向主线`
-  - 指教程按能力递进展开的默认学习顺序
-  - 固定理解为：`Part 00 -> Part 01 -> Part 02 -> Part 03 -> Part 04`
-  - 作用是回答“整个教程先学什么，后学什么”
-- `学习路线`
-  - 指面向任务目标的跨 Part 阅读路径
-  - 当前固定为四条主路线：`推理优化路线`、`显存优化路线`、`算子优化路线`、`后训练优化路线`
-  - 作用是回答“为了做成什么任务，应该重点串哪些页”
-- `横向专题`
-  - 指跨多个 Part 反复出现的方法轴或技术轴
-  - 当前固定包括：`量化与压缩`、`性能分析`、`通信与并行`
-  - 作用是回答“同一类技术问题分散在不同 Part 时，应该怎么按主题重组来看”
-- `基础支撑专题`
-  - 指被多条学习路线共同依赖的底层知识底座
-  - 当前包括：`大模型架构`、`反向传播与训练机制`、`监督微调与训练工程`、`编译与图优化`
-  - 作用是回答“哪些基础认知会在多条路线里被反复依赖”
-
-补充说明：`基础支撑专题`、`横向专题`和`学习路线`是不同维度。一个专题可以作为某条路线的前置或支撑，但不能因此把它改写成该路线；一个项目也只能保留一个主叙事入口，其他路线通过关联链接复用机制和证据。
-
-边界约束：
-
-- 不把技术领域直接写成 `学习路线`
-- 不把 `基础支撑专题` 混写成 `横向专题`
-- 不把组导航页或专题页写成目录复述
-- `学习路线` 强调目标和顺序，`横向专题` 强调主题和重组，`基础支撑专题` 强调底座和共性依赖
-
-### Task 与专题正文的关系
-
-Task 是学习顺序，专题正文是机制解释和判断框架，两者不要求一一对应。默认采用“一个 Task 对应多个阅读入口”的关系，但每个 Task 只指定一个主要正文入口，其他正文作为支撑阅读；Notebook 负责单个机制实现，项目负责实验验证和决策收口。
-
-### Part02 非项目小节的可选 GPU 实验模板
-
-机制小节的 GPU 实验使用紧凑模板，不复制 73–76 项目节的完整实验流程。适用于量化、Attention、训练机制等“验证一个局部机制”的页面：
+## 标准维护流程
 
 ```text
-Step 5
-├── 5.1 环境与 workload
-├── 5.2 执行实验并保存 JSON
-├── 5.3 读取结果、解释证据与填写结果表
-└── 相关阅读
+确定信息所有权
+→ 修改源文件或正式静态资产
+→ 运行定向检查
+→ 同步 docs 镜像
+→ 运行对应 Part 的统一验证
+→ 检查 diff、链接和实际渲染
+→ 记录已验证项与未执行证据
 ```
 
-- `5.1` 说明模型、输入、dtype、batch、长度、校准数据和依赖；不把环境说明写成 GPU 结论。
-- `5.2` 负责可重复执行和 JSON 保存；默认应能在 CPU 或无 CUDA 环境中完成 dry-run，真实 GPU 路径显式开关。
-- `5.3` 区分环境预检、机制模拟、真实模型状态测量、真实 backend 和端到端项目证据；模拟或 CPU 结果不得写成 kernel、吞吐或部署收益。
-- 结果表只保留与本节主题直接相关的配置、指标、证据等级和复测位置；相关阅读放在页面最后。
-- GPU 实验默认不改变答案区的 CPU 验证路径；新增依赖使用独立能力 profile，不静默替换 PyTorch、驱动或 backend。
+### 1. 修改前
 
-当前已有并完成调整的机制模板是 `19`，用于参照训练侧机制、题目区/测试区/答案区一致性和紧凑 GPU Step 结构。下一批候选小节为 `20、21、22、25、36、46`，分别计划覆盖数值稳定性与工作集、解码策略、KV Cache 分页、W8A16、Decode 调度和 NCCL 通信 Profiling；它们尚未自动成为模板。后续迁移其他机制小节时，先对照 `19` 并逐节审核候选页面属于哪一种证据形态，再决定是否增加 GPU Step 5；不能因为进入候选清单就默认每节都需要 GPU 实验。
+1. 使用 `git status --short` 确认工作区已有改动，避免覆盖他人或此前实验结果。
+2. 从[模板总纲](./template_guidelines.md)确定页面类型，从[资产总登记](./asset_registry.md)确定事实归属。
+3. 涉及重命名、调号或目录迁移时，先搜索源文件、镜像、导航、脚本和结果资产中的全部引用。
 
-推荐结构：
+### 2. 修改与定向检查
 
-```text
-Task
-├── 主要正文入口
-├── 支撑正文（按需阅读）
-├── 机制 Notebook
-└── 项目验证出口
-```
+- Notebook 修改后先检查 JSON、cell ID 和目标代码路径。
+- SVG 修改后先检查 XML、节点边界、箭头和阅读尺寸。
+- 结果 schema 或项目身份变化时，先运行对应 helper/schema 测试，再更新消费者。
+- 真实 GPU、backend 或多卡实验未执行时，保留为待采证据；不能用 CPU smoke 或模拟结果替代。
 
-intro 的 Task 表格使用“主要正文入口”字段，不把所有支撑正文、walkthrough 和 casebook 链接堆在同一行。正文页再说明自身承接的机制 Notebook、项目出口和后续支撑正文；一个正文可以被多个 Task 复用，但应保留一个主服务目标。
+### 3. 同步镜像
 
-## 受众与写作口径
+| 修改对象 | 同步入口 |
+|:---|:---|
+| 根目录 `README.md` | `python tools/sync_docs_index.py` |
+| Part 导读、组页、专题 Markdown | `python tools/sync_docs_navigation.py` |
+| 单个 Notebook 或正文文件 | `python tools/convert_notebook.py --file <source>` |
+| 一个源目录 | `python tools/convert_notebook.py --dir <source-dir>` |
 
-教程主要面向已经具备 Python、NumPy、PyTorch 基础操作和基本模型运行能力，希望理解大模型训练、推理与系统优化，并能完成可复现实验的学习者。默认不要求学习者一开始掌握 CUDA、Triton、vLLM、SGLang 或分布式系统；这些内容应在需要时逐层引入。
+默认优先使用定向参数。全量同步只在导航、生成器或大量源文件同时变化时运行。`tools/convert_chapter0_1.py` 仅保留历史兼容，不进入日常流程。
 
-受众分为三层，但页面写作以主受众为准：
+### 4. 验证与交接
 
-| 受众层 | 基础情况 | 页面应提供的内容 |
-|---|---|---|
-| 主受众 | 会 Python / PyTorch，能运行 Notebook，但不熟悉 LLM Infra | 机制解释、可运行代码、参数含义、指标、实验设计和结论边界 |
-| 次受众 | 有训练或推理经验，希望补齐性能、显存和部署知识 | 代价模型、证据链、backend 约束和项目决策 |
-| 扩展受众 | 熟悉 CUDA、Triton、vLLM 或分布式系统 | kernel、backend、多卡和系统级扩展入口 |
+1. 运行对应 Part 的统一验证入口。
+2. 运行 `git diff --check`，确认没有空白错误。
+3. 检查源文件与 `docs/` 镜像、本地链接和站点构建。
+4. 图片必须查看实际渲染结果；自动检查不能替代连线和阅读尺寸检查。
+5. 交接时记录：修改范围、已执行命令、未执行的 GPU/外部环境证据、存量问题和下一步。
 
-统一写作口吻为“工程教学口吻”：先说明问题，再解释机制，用代码或表格验证，最后说明结果边界和下一步。不要把页面写成零基础宣传，也不要默认读者已经是 CUDA 或 Infra 专家。
+## 同步与验证层级
 
-- `Notebook`：面向动手运行代码的学习者。任务、参数、TODO、docstring 和预期现象必须具体，并说明 CPU 与 GPU 各自能验证什么。
-- `intro`：面向选择学习路径的学习者。说明专题解决的问题、进入条件、Task 顺序和与其他专题的边界，不展开过多公式或 API。
-- `casebook`：面向需要判断方案的学习者。按现象、机制、证据和决策组织，不重复 Notebook 的代码教学。
-- `walkthrough`：面向希望连续理解路线的学习者。解释因果关系和下一步为什么出现，避免口号式和营销式表达。
+日常维护先使用 `verify.py`。底层脚本只用于定向检查、故障定位或 CI 规则开发。
 
-每个机制说明尽量遵循：
+| 范围 | 主入口 | 补充入口 | 说明 |
+|:---|:---|:---|:---|
+| Part 00–01 | `python verify.py part0_1 --no-build` | `python verify.py part0_1_audit` | 讲解型 Notebook：顺序执行代码并审计导读、链接和 cell ID |
+| Part 02 | `python verify.py part2 --no-build` | 对应 helper/schema 测试 | 机制页和项目页：题目、测试、答案、实验契约 |
+| Part 03 | `python verify.py part3 --no-build` | Kernel 专项测试 | Triton 与 Kernel 正确性、编译和性能入口 |
+| Part 04 | `python verify.py part4 --no-build` | 系统专项测试 | CUDA、通信、调度与系统实验入口 |
+| 全仓 | `python verify.py all --no-build` | `cd docs && npm run docs:build` | 合并前或生成链变化后使用 |
 
-```text
-问题现象 → 机制解释 → 代码或表格验证 → 证据边界 → 下一步
-```
-
-以下表达默认不使用：`这一页你会带走……`、`只要记住……`、`非常简单……`、`彻底掌握……`。应改为可检验的描述，例如“本节比较两种策略的作用对象，并说明 CPU 示例和真实 GPU 实验分别能够确认什么”。
-
-量化与压缩专题的默认入口是“模型太大、显存不足或质量需要保持”，性能分析专题的默认入口是“运行变慢、指标异常或优化效果无法证明”。两者都面向同一主受众，但不要求学习者按完整路线顺读；应允许根据问题切入，再通过正文链接补齐前置机制。
-
-## Part 01 导读写法口径
-
-`Part 01` 的 `本节导读` 第二段优先按下面顺序写：
-
-1. 这一节在 `纵向主线` 里属于哪一类基础页。
-2. 它优先服务哪条 `学习路线`。
-3. 学完这里后面更顺地进入哪些具体小节、项目页或判断任务。
-4. 如果这里没学明白，后面通常会卡在哪些实现、判断或项目验证上。
-5. 它同时归属于哪个 `横向专题` 或 `基础支撑专题`。
-
-推荐模板：
-
-```text
-这一节在整个教程的纵向主线里属于 Part01 的基础页，主要为「某条学习路线」提供前置支撑。学完这里，后面可以更顺地进入「A / B / C 小节或项目页」；如果这里没学明白，通常会卡在「哪些判断、哪些实现或哪些项目验证」上。按专题归类，它同时属于「某个横向专题」或「某个基础支撑专题」。
-```
-
-补充约束：
-
-- 优先写具体后续页，不只写“服务训练”或“服务推理”这种泛表述。
-- 如果一页同时服务多条路线，只写主服务路线，再补一句次要关联，不要把三条路线全部堆上去。
-- 如果一页更像底层机制页、很难强挂主路线，可以写“当前主要作为 Part01 基础支撑页”，再补具体后续去向。
-
-## Part 01 图片资产规则
-
-Part 01 的图片主要用于建立基础概念之间的关系，不替代 Notebook 中的公式推导、代码实现或项目实验。图片应帮助学习者先回答“本节研究什么、概念之间如何连接”，再进入 Step 细节。
-
-### 放置位置与数量
-
-- 每个 Part 01 小节最多保留一张主概念图；只有公式关系或机制链明显复杂时，才增加一张公式 / 机制图。
-- 主概念图放在“本节导读”的目标说明之后、Step 1 之前。先说明学习目标，再用图片建立整体视野。
-- Step 中的公式图放在对应机制说明之后、公式或表格之前；图片不放在题目区代替代码提示。
-- 图片下方不重复写长段解释。必要说明集中放在图片前，图片只保留节点、关系和关键词。
-
-### 内容边界
-
-- Part 01 图片优先表达分类、对象、处理阶段、资源关系和判断维度。
-- 不在概念图中放函数名、类名、API、配置开关或实验结果；这些内容留给 Part 02 项目页和 Step 实现部分。
-- Part 01 的主概念图可以连接到后续机制方向，但不要写具体项目编号作为节点。使用“通用权重量化”“校准与敏感性量化”“运行时与状态量化”等概念名称。
-- 同一基础概念服务多条路线时，图片表达共享机制；具体路线差异放在导读文字或后续专题中说明。
-
-### 视觉与文件规范
-
-- 使用中文 SVG，优先采用浅色分组背景、统一节点尺寸和清晰的箭头关系。
-- 同一组节点保持相近的宽高和信息层级：标题表示角色，正文表示机制或对象，小字表示例子或影响。
-- 并列概念使用并列排布，不用单向箭头制造虚假的先后关系；只有存在真实数据流或因果关系时才使用箭头。
-- 分组之间保留留白，连线不能穿过节点文字或边框；连线说明只有在多组连线含义不同时才保留，并且同一等级统一标注。
-- 图片资产统一放在 `docs/public/<Part目录>/`，源 Notebook 使用相对路径引用，例如：
-
-```markdown
-![量化分类与决策关系图](../docs/public/01_Hardware_Math_and_Systems/21_quantization_map_cn.svg)
-```
-
-Part 01 图片负责建立正确的基础模型；Part 02 图片负责解释具体机制并进入实验。不要把 Part 02 的项目流程、GPU 数据表或部署配置提前塞进 Part 01 主概念图。
-
-## 专题名称与目录路径规则
-
-专题名称和目录路径分开维护：名称面向学习者，目录路径面向仓库和脚本。页面标题、README、导航和正文引用必须使用统一的中文名称与英文标准名；已有目录路径先作为稳定 slug 保留，不因改名直接迁移目录。
-
-| 中文标准名 | 英文标准名 | 当前目录 slug |
-|---|---|---|
-| 大模型架构 | Model Architecture | `model_architecture` |
-| 反向传播与训练机制 | Backpropagation and Training Mechanics | `backpropagation_training_mechanism` |
-| 监督微调与训练工程 | Supervised Fine-Tuning and Training Engineering | `fine_tuning_training` |
-| 编译与图优化 | Compiler and Graph Optimization | `compiler_graph_optimization` |
-| 量化与压缩 | Quantization and Compression | `quantization` |
-| 性能分析 | Performance Analysis | `profiling` |
-| 通信与并行 | Communication and Parallelism | `communication_parallel` |
-| 推理优化 | Inference Optimization | `inference_optimization` |
-| 显存优化 | Memory Optimization | `memory_performance_tuning` |
-| 算子优化 | Operator Optimization | `operator_optimization` |
-| 后训练优化 | Post-Training Optimization | `post_training_alignment` |
-
-命名执行规则：
-
-- 中文是页面主名称，英文作为括号副标题；不要在同一页面交替使用多个英文译名。
-- 首次出现使用“中文名称（English Standard Name）”，后续默认使用中文简称。
-- `Profiling` 作为工具或技术术语保留；专题名称统一写作“性能分析（Performance Analysis）”。
-- “后训练与对齐”统一改为“后训练优化（Post-Training Optimization）”；DPO、GRPO 是其中的方法，不作为专题总名。
-- “算子与编译优化”不作为路线名称；路线统一为“算子优化”，编译与图优化作为相邻的系统桥接专题。
-- 官方工具和算法名称保留原文，例如 `vLLM`、`SGLang`、`LoRA`、`GPTQ`、`AWQ`、`FlashAttention`。
-- 新专题目录优先使用英文标准名对应的简短 slug；已有目录不直接重命名。
-
-如果以后确需迁移目录，必须单独建立迁移任务：先统计源文件、镜像、导航和脚本中的引用，完成批量改链和验证后，再执行目录移动；本规则不允许通过手改 `docs/` 镜像绕过源文件迁移。
-
-## 专题类型与主服务目标标签规则
-
-每个横向专题 `intro.md` 的标题下方固定标注两个标签：`专题类型` 和 `主服务目标`。标签用于说明页面在整体知识架构中的职责，不表示 Infra 层级、Practice 级别或学习难度。
-
-专题类型只使用以下三种标准值：
-
-- `主学习路线`：有连续 Task 主线，并承担一组项目或系统能力的主要学习入口。
-- `横切支撑`：跨多条路线复用方法、工具或资源决策，不承担单一路线的完整学习闭环。
-- `基础支撑`：解释机制、模型结构或训练基础，作为多个主路线的前置桥接。
-
-主服务目标使用简短的“对象 + 决策”表达，说明专题主要帮助学习者判断什么；不要写成口号，也不要把所有关联路线堆在标签中。当前标准如下：
-
-| 专题 | 专题类型 | 主服务目标 |
-|---|---|---|
-| 推理优化 | 主学习路线 | 请求性能与 Serving 决策 |
-| 显存优化 | 主学习路线 | 显存预算与资源取舍 |
-| 算子优化 | 主学习路线 | Kernel 性能与端到端收益 |
-| 后训练优化 | 主学习路线 | 偏好对齐与训练交付 |
-| 量化与压缩 | 横切支撑 | 精度、显存与部署取舍 |
-| 性能分析 | 横切支撑 | 瓶颈定位与证据归因 |
-| 通信与并行 | 横切支撑 | 多卡切分与通信取舍 |
-| 大模型架构 | 基础支撑 | 结构理解与资源映射 |
-| 反向传播与训练机制 | 基础支撑 | 计算图与训练状态理解 |
-| 监督微调与训练工程 | 基础支撑 | SFT 训练与工程复现 |
-| 编译与图优化 | 基础支撑 | 图变换与执行计划理解 |
-
-标签应放在标题之后、页面导语或专题定位之前，格式保持一致：
-
-```text
-> 专题类型：主学习路线　主服务目标：显存预算与资源取舍
-```
-
-如果专题职责发生变化，先修改本表和对应 `intro.md`，再同步 README 与 `docs/` 镜像。
-
-## Notebook 与专题的引用规则
-
-引用规范属于维护规则，不在每个 Notebook 或横向专题中重复解释。具体页面只保留实际需要的跳转链接和简短的内容说明。
-
-- 路线、专题、Notebook、项目、Part 导学、资产表和使用指南：首次出现且学习者可能需要继续阅读或运行时，使用可点击链接，并说明跳转目的。
-- 前置阅读：只列当前页面的直接依赖；每个入口说明它补充的机制或技能，不把所有相关内容都列入前置。
-- 相关阅读：列出完成当前页面后的下一步，区分扩展阅读、项目实践和结果验证，不把相关阅读写成硬性前置。
-- 概念、指标和配置字段：默认使用普通文字；只有在对应专门页面且需要继续阅读时才加链接。
-- 同一页面在同一文档中再次出现：可只写节次或简称，避免重复链接。
-- 节次来源统一写为 `Part 01 · 13`、`Part 02 · 73`；不要使用 `P1` 表示 Part，以免和 `Practice-P1` 混淆。
-- 一个项目只保留一个主叙事入口；其他专题只能通过关联链接复用机制、指标或证据，不重复定义项目目标和最终结论。
-- 链接文字应包含节次或资源名称，避免只写“点击这里”；相对路径必须从当前源文件位置计算，并在提交前执行链接检查。
-
-73 节可作为项目页示例：导读说明项目分工，前置阅读链接直接依赖，相关阅读按后续实验顺序链接 76 → 75 → 74；正文重复引用可使用普通节次。该规则同样适用于 60–71、73–76、79–81 等项目节。
-
-### 项目实验的共用配置、指标与证据字段
-
-项目页的 Step 1 只说明实验契约：比较对象、固定条件、变量、主要指标和需要达到的证据级别。完整的实际配置、运行开关、结果文件和 profiler 路径统一放在本节最后的“真实实验与证据”Step；结果表格放在该 Step 的最后，`相关阅读` 放在 Notebook 最后一项。
-
-三类项目共用以下字段，具体项目可以增加策略专属字段，但不要改写公共字段名称：
-
-| 字段组 | 公共字段 | 用途 |
-|:---|:---|:---|
-| 运行条件 | `model`、`model_revision`、`dataset`、`dataset_revision`、`hardware`、`cuda`、`dtype`、`backend` | 说明结果在哪个模型、数据和运行环境下得到 |
-| workload | `batch_size`、`seq_len`、`tokens`、`steps`、`concurrency`、`seed` | 判断 baseline 与 candidate 是否可比较 |
-| 结果指标 | `latency_ms` / `step_time_ms`、`throughput`、`peak_memory_mb`、`oom`、`quality` | 同时记录性能、资源和任务约束 |
-| 证据 | `evidence_level`、`trace_path`、`result_path`、`status`、`failure_reason` | 区分理论、CPU、GPU smoke、固定 benchmark 和 profiler 证据 |
-| 决策 | `decision`、`next_action` | 统一输出 `accept / tune / reject` 和下一步动作 |
-
-三组项目的专属字段如下：73–76 增加 `memory_budget_mb`、`checkpoint`、`offload`、`recompute` 和 profiler trace；61–65 增加 `train_loss`、`val_loss`、任务质量、可训练参数量和 adapter 产物；79–81 增加 `world_size`、`rank`、`parallel_strategy`、`communication_ms`、`communication_ratio`、`scaling_efficiency` 和通信 trace。
-
-统一证据等级建议使用：`theoretical`、`cpu_simulation`、`gpu_smoke`、`real_benchmark`、`profiler_trace`。没有对应 trace、真实模型或固定 workload 时，不得把较低级别证据写成稳定 benchmark。
-
-## 日常流程
-
-1. 先改 source。
-2. 首页改动后跑 `python tools/sync_docs_index.py`。
-3. 导学页 / 组页改动后跑 `python tools/sync_docs_navigation.py`。
-4. 正文改动后跑 `python tools/convert_notebook.py`。
-5. 最后跑 `cd docs && npm run docs:build`。
-
-## 单个项目页的环境预检规则
-
-项目 Notebook 必须允许学习者只运行当前一节，不应默认要求先创建整套训练、推理和服务环境。每个项目页的环境入口按以下顺序工作：定位仓库 → 检查 Python / PyTorch → 检查 CUDA 与显存能力 → 检查本节必需包 → 检查模型或 backend 能力 → 检查结果目录 → 才加载模型或启动服务。
-
-统一使用 `tools.project_runtime` 中的 `bootstrap_project_root` 和 `environment_preflight`。预检输出固定为 JSON 可读的三种状态：
-
-- `ok`：当前配置可以进入实验；
-- `warning`：CPU 或降级路径可以继续，但可选能力不可用；
-- `blocked`：当前请求的真实 GPU / backend 实验不能继续，并给出下一步动作。
-
-预检只检查，不静默重装环境。普通 Python 包可以由当前内核的 `sys.executable` 显式安装；PyTorch、vLLM、SGLang、TensorRT-LLM 等 CUDA 相关组件必须由学习者选择版本并重启运行时，避免把云端 CUDA 环境替换成 CPU wheel。BF16 必须区分“可以分配 BF16 张量”和“确认原生 BF16 加速”；T4 等设备即使 `torch.cuda.is_bf16_supported()` 返回真，也不能据此宣称有硬件加速。
-
-本地或云端可先运行：
-
-```bash
-python tools/environment_preflight.py --gpu --packages transformers --output benchmarks/results/preflight.json
-```
-
-推理 backend 项目再把 `vllm` 或 `sglang` 列为必需包；CPU-first 项目不要求 CUDA。预检通过后才执行模型下载和实验，结果 JSON 必须同时保存 `runtime`、配置、状态和失败原因。Colab / ModelScope 的推荐流程是：打开 GPU → clone 源仓库 → 运行预检 → 按预检提示安装缺少的包 → 重启内核 → 再运行 Notebook；不要从 `docs/` 镜像反向修改代码。
-
-需要额外环境的项目页，在真实实验开关附近放一条短提示，不在每节重复完整安装命令：
-
-```text
-运行提示：先查看《使用指南》的“项目环境预检与安装”部分，再打开本节的真实实验开关。CPU-first 路径不要求 GPU；真实 GPU 或 backend 路径必须先通过预检。
-```
-
-源 Notebook 中链接到 `../docs/guide.md#项目环境预检与安装`；转换后的 `docs/` 页面使用对应的 `../../docs/guide.md#项目环境预检与安装`。项目页的提示只说明入口和运行边界，具体依赖、安装顺序和云端重启规则统一维护在《使用指南》中。
-
-## 图片资产规则
-
-图片资产后续统一按“先分级、再入正文”的原则处理，不再边写正文边临时插图。
-
-- `Part02` 的正文图先看 [part02_visual_assets_audit.md](./part02_visual_assets_audit.md)。
-- `topic_discussion` 的专题图先看 [topic_discussion_visual_assets_audit.md](./topic_discussion_visual_assets_audit.md)。
-
-固定规则：
-
-- 未经过审核的图片，不进入正文主叙事位置。
-- 未审核图如果必须先保留，只能放在 `visual_assets` 页或附录型页面，不直接承担正文主解释职责。
-- 图片审核至少要回答三件事：
-  - 这张图是不是核心教学图、路线收束图，还是结构占位图
-  - 这张图应该说明什么
-  - 这张图不应该说明什么
-- 图片进入正文前，至少完成：
-  - 职责分级
-  - 可读性初审
-  - 是否需要减字 / 中文化 / 重画的判断
-
-## Part02 图解格式收口
-
-`Part02` 当前更大的问题不是某一张图本身，而是正文里长期混用了三种表达：
-
-- 正式 `SVG`
-- notebook 内的 `ASCII / text block`
-- 尚未稳定模板化的 `Mermaid`
-
-后续统一按下面的职责边界执行：
-
-- `SVG`
-  - 这是 `Part02` 正文正式主图的唯一默认格式
-  - 只要一张图承担核心机制解释，就应进入 `SVG` 体系并先审计
-- `ASCII / text block`
-  - 只保留为局部辅助结构
-  - 适合维度流向、短流程、图前骨架提示
-  - 不再承担正文唯一主图职责
-- `Mermaid`
-  - 当前先冻结为“非默认正文主图格式”
-  - 在没有统一模板、职责边界和维护结论前，不继续向 `Part02` 正文扩散
-
-执行顺序固定为：
-
-1. 先清职责边界，不先扩写新图。
-2. 先盘点 `ASCII / text block`，看哪些只是辅助，哪些已经和 `SVG` 重复。
-3. 先复核高价值 `SVG` 的可读性和信息密度。
-4. 页面职责稳定后，再决定是否中文化或重画。
-
-当前结论：
-
-- `Part02` 这轮优先级是“统一图解体系”，不是“先把所有图翻成中文”。
-- 没审过的图，不入正文；没定职责的格式，也不继续扩散进正文。
+Part 00–01 不使用 Part 02 的题目—测试—答案抽取规则；Part 02/03 也不能只用“所有代码 Cell 顺序执行”替代专项验证。
 
 ## 常用命令
 
 ```bash
+# 统一验证
 python verify.py part0_1 --no-build
 python verify.py part0_1_audit
 python verify.py part2 --no-build
 python verify.py part3 --no-build
 python verify.py part4 --no-build
 python verify.py all --no-build
+
+# 定向同步
 python tools/sync_docs_index.py
 python tools/sync_docs_navigation.py
-python tools/convert_notebook.py
+python tools/convert_notebook.py --file <source-file>
+python tools/convert_notebook.py --dir <source-dir>
+
+# 通用检查
+python tools/check_source_docs_mirror.py
+python tools/check_chapter_links.py --scope source
+python tools/check_chapter_links.py --scope docs
+python tools/check_svg_arrows.py <svg...>
+python tools/check_svg_layout.py
+git diff --check
+
+# 站点构建
 cd docs && npm run docs:build
 ```
 
 ## 测试脚本索引
 
-| 层 | 脚本 | 作用 |
-|---|---|---|
-| `verify` | `verify.py` | 统一验证入口 |
-| `convert` | `tools/convert_notebook.py` | 正文镜像主链路 |
-| `sync` | `tools/sync_docs_index.py`、`tools/sync_docs_navigation.py` | 首页 / 导学页 / 组页同步 |
-| `check` | `tools/check_source_docs_mirror.py`、`tools/check_chapter_links.py` | 镜像和链接检查 |
-| `check` | `tools/check_docs_links.py`、`tools/check_math_formula_symbols.py`、`tools/check_part01_code_blocks.py` | docs 链接、公式与代码块检查 |
-| `test` | `tools/test_chapter0_1_notebooks.py`、`tools/test_notebook_answers.py` | Notebook 校验 |
-| `migration` | `tools/md_to_notebook.py` | markdown -> notebook 迁移辅助 |
+| 层 | 稳定入口 | 作用 |
+|:---|:---|:---|
+| 统一验证 | `verify.py` | 按 Part 组织转换、检查和测试 |
+| 转换 | `tools/convert_notebook.py` | 从源 Notebook / Markdown 生成正文镜像 |
+| 导航同步 | `tools/sync_docs_index.py`、`tools/sync_docs_navigation.py` | 同步首页、导读、组页和专题导航 |
+| 镜像与链接 | `tools/check_source_docs_mirror.py`、`tools/check_chapter_links.py`、`tools/check_docs_links.py` | 检查源/镜像与本地链接 |
+| Notebook 格式 | `tools/validate_notebook_format.py` | 检查 JSON、schema、cell ID 与 metadata |
+| Part 00–01 | `tools/test_chapter0_1_notebooks.py`、`tools/audit_chapter0_1_notebooks.py` | 顺序执行代码、结构审计与 warning 归档 |
+| Part 02/03 | `tools/test_notebook_answers.py` | 验证题目区与答案区 |
+| SVG | `tools/check_svg_arrows.py`、`tools/check_svg_layout.py` | 检查箭头结构、画布和页面尺度 |
+| 历史迁移 | `tools/md_to_notebook.py` | Markdown → Notebook 迁移辅助，不进入日常流程 |
 
-## 验证模型对照
+完整稳定工具资产及其消费者见[自动化与验证资产表](./automation_assets.md)。本表不枚举一次性修复脚本。
 
-`Part 0 / Part 1` 和 `Part 2 / Part 3` 的 notebook 结构不同，不能用同一套脚本假设去验证。
+## 环境与实验维护
 
-| 范围 | 主脚本 | 默认验证逻辑 | 适用结构 |
-|---|---|---|---|
-| `Part 0 / Part 1` | `tools/test_chapter0_1_notebooks.py` | 顺序执行每个非空 `code cell`，只要执行过程中不抛异常就算通过 | 讲解型 / 逐代码块验证型 notebook |
-| `Part 0 / Part 1` | `tools/audit_chapter0_1_notebooks.py` | 分开看 `codecell_run` 和 `structure_only`：前者检查代码块执行，后者检查 `本节导读 / 前置阅读 / 相关阅读`、链接数量、`cell id` | 验证收尾、结构审计、warning 归档 |
-| `Part 2 / Part 3` | `tools/test_notebook_answers.py` | 按 `import -> 题目区 -> STOP HERE -> 参考代码与解析` 抽取代码，再分别验证题目区 / 答案区 | 练习型 / 题目区答案区双结构 notebook |
+- `requirements/base.txt` 不放 PyTorch、GPU 驱动或 Serving backend。
+- CPU / CUDA PyTorch、能力 Profile 和 backend 组合按[GPU 环境资产表](./gpu_environment_assets.md)维护。
+- Notebook 可以检查环境，但不能静默替换 PyTorch、驱动、vLLM、SGLang 或其他 CUDA 执行栈。
+- 学习者安装流程和项目预检见[使用指南](./guide.md#项目环境预检与安装)；Notebook 只保留当前页需要修改的配置和短入口。
+- 运行结果必须保存 runtime snapshot、配置、状态和失败原因；已完成标签进入结果 JSON 和专题实验资产表，不回写为源 Notebook 默认配置。
 
-结论上要区分两类“通过”：
+## 模型评测与跨专题质量门槛
 
-- `Part 0 / Part 1` 的“代码通过”主要表示：代码块能顺序运行且不报错。
-- `Part 2 / Part 3` 的“代码通过”主要表示：题目区或答案区在既定抽取规则下能被正确提取并验证。
-- 因此，`Part 0 / Part 1` 不应用 `Part 2` 的题目区 / 答案区脚本强套；如果需要收尾审计，应优先用 `tools/audit_chapter0_1_notebooks.py`。
+本节保留为历史链接入口，不在维护手册重复定义评测字段。凡候选方案会改变模型输出，项目决策必须同时检查质量、失败状态和性能，不能只凭吞吐或显存变化采用方案。
 
-## Part 0 / Part 1 固定口径
+- 公共结果外层、证据等级和字段复用：[Part 02 结果资产](./part02_result_assets.md)
+- 项目页中的质量门槛、决策和交接位置：[Part 02 项目页编写规范](./authoring/part02_project_notebooks.md)
+- 评测数据可信度和领域指标：对应横向专题及其实验资产表
 
-`Part 0 / Part 1` 后续统一按下面这套入口理解，不再临时拼脚本：
+## 迁移、重命名与兼容页
 
-- 主入口：`python verify.py part0_1 --no-build`
-  - 这是 `Part 0 / Part 1` 的标准验证命令
-  - 职责是：镜像转换、source/docs 链接检查、逐 `code cell` 执行验证
-- 补充审计：`python verify.py part0_1_audit`
-  - 这是收尾审计命令，不替代主入口
-  - 职责是把执行验证和结构检查拆开归档
+1. 先建立引用清单，再修改源文件名、H1、导航、专题链接、项目注册表和镜像名。
+2. 旧入口仍被引用时保留明确的兼容或 `Reserved` 页面，并指向新入口。
+3. 迁移完成后运行镜像、链接和站点构建检查，确认无引用后再删除旧入口。
+4. 不通过手改 `docs/` 镜像绕过源文件迁移。
 
-`part0_1_audit` 下的两个 profile 固定解释为：
+稳定路径和兼容页登记见[文档交付资产表](./documentation_assets.md)；项目语义 ID 和产物关系见 `benchmarks/project_registry.json` 与 `benchmarks/project_asset_relations.json`。
 
-- `codecell_run`
-  - 顺序执行 notebook 中每个非空 `code cell`
-  - 目标是确认讲解型 notebook 的代码块在当前环境下能否连续运行且不报错
-  - 适合定位“哪一页 / 哪一个 cell 执行失败”
-- `structure_only`
-  - 不执行代码
-  - 只检查 `本节导读 / 前置阅读 / 相关阅读`、链接数量、`cell id`、基础 notebook 结构
-  - 适合做页头收尾、warning 分类和结构回归检查
+## 故障处理
 
-推荐理解方式：
+| 现象 | 处理 |
+|:---|:---|
+| 源文件与网页不一致 | 重新定向转换，并运行 `check_source_docs_mirror.py` |
+| Notebook 在当前 shell 能运行、Jupyter 不能运行 | 核对 kernelspec、`sys.executable` 和环境 Profile |
+| Notebook JSON 合法但测试失败 | 使用对应 Part 的测试模型，不混用 Part 00–01 与 Part 02 规则 |
+| 链接检查失败 | 从源文件修复相对路径，再同步镜像 |
+| SVG 自动检查通过但页面不可读 | 在实际页面宽度下检查字号、留白、连线端点和箭头 |
+| GPU 或 backend 能力不可用 | 保存 preflight/failure，停止形成目标机制或性能结论 |
+| 全量同步产生大量无关差异 | 停止后续编辑，核对源文件与生成器范围，不覆盖已有工作区改动 |
 
-- 日常验证只跑 `verify.py part0_1`
-- 需要验证收尾、warning 归档、结构追责时，再补跑 `verify.py part0_1_audit`
-- 不再直接用 `Part 2` 的 `tools/test_notebook_answers.py` 套 `Part 0 / Part 1`
+## 提交前最小检查
 
-## 推荐用法
-
-```bash
-python verify.py part0_1 --no-build
-python verify.py part2 --no-build
-python verify.py part3 --no-build
-python verify.py all --no-build
-python tools/check_math_formula_symbols.py
-python tools/check_part01_code_blocks.py
-python tools/audit_chapter0_1_notebooks.py --profile all
-```
-
-无 GPU 时，`verify.py` 会跳过 Part 2 / 3 的 GPU-only 答案验证，但仍保留转换、镜像和链接检查。单独排查时直接用底层脚本。
-`tools/md_to_notebook.py` 仅用于历史迁移，不进入日常主流程。
-
-## 说明
-
-- `Part 0 / Part 1` 用 `tools/test_chapter0_1_notebooks.py`
-- `Part 0 / Part 1` 如需把代码执行和结构/warning 分开看，用 `tools/audit_chapter0_1_notebooks.py`
-- `Part 2 / Part 3` 用 `tools/test_notebook_answers.py`
-- 先改源，再同步 `docs/`
-- 导学页、组页、正文页分开同步
-- `tools/convert_chapter0_1.py` 只保留兼容用途
-- `tools/md_to_notebook.py` 只保留迁移辅助用途
+- 改动发生在正确的唯一维护源。
+- `docs/` 镜像来自同步脚本，没有反向手改。
+- 对应 Part 验证通过，或明确记录未运行原因。
+- 本地链接、SVG 渲染和 `git diff --check` 已检查。
+- GPU、backend、外部数据或多卡证据没有被模拟结果替代。
+- 提交范围不包含无关工作区修改、临时脚本、缓存或本地凭据。
