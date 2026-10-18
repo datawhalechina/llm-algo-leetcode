@@ -1,6 +1,6 @@
 # 19. Activation Checkpointing | 激活检查点
 
-**难度：** Hard | **环境：** CPU-first（机制验证）
+**难度：** Hard | **环境：** [CPU 主线，GPU 可选](#runtime-environment) | **标签：** `显存优化`, `激活值`, `Checkpointing` | **目标人群：** 显存优化学习者
 
 > 🚀 **云端运行环境**
 >
@@ -9,7 +9,6 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/19_Activation_Checkpointing.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-**标签：** `显存优化`, `激活值`, `Checkpointing` | **目标人群：** 显存优化学习者
 
 ---
 
@@ -21,6 +20,15 @@
 
 **关键词：** `activation checkpointing`, `recompute`
 
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 默认使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
+- **框架核对：** 使用 [`TRAIN-CPU`](../topic_discussion/backpropagation_training_mechanism/quickstart.md#train-cpu-quickstart)，完成 Step 4 后运行 [框架一致性核对](#framework-check)。
+- **GPU 实测：** 使用 `TRAIN-CUDA-MECHANISM`，按 [Step 5](#gpu-experiment) 的说明配置并运行。
+
+---
 ## 前置阅读
 
 **导语：** 阅读本节前，先确认你能说清一次训练中前向、loss 与 backward 的关系，以及 activation 为什么会在反向阶段被使用；随后再把“保存 activation”的需要转化为“保存边界、按需重算”的实现问题。
@@ -29,11 +37,11 @@
 - [P0: 12. PyTorch Data Interface and Training Lifecycle | 数据接口与训练生命周期](../00_Prerequisites/12_PyTorch_Minimal_Training_Interface.md)：若训练循环还不熟悉，先回顾前向、loss、backward 与参数更新的顺序。
 ---
 
-### Step 1: Checkpoint 如何改变训练激活的处理路径
+## Step 1：Checkpoint 保存哪些状态、反向重算哪些计算
 
 一次训练步骤先执行前向计算，再执行反向传播。前向会产生 activation，反向需要利用这些中间状态计算梯度；当序列长度、batch 或层数增加时，activation 可能成为显存压力来源。Activation checkpointing（激活检查点，下文简称 checkpoint）是前向阶段的保存策略：它将“保留区段内部 activation”改为“保留边界、在反向时重算区段”，以额外计算换取更少的 activation 驻留。
 
-本节将顺序模型拆成连续的模型 Block：它是可顺序执行的计算单元，例如 [05. LLaMA3 Block Tutorial](../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.md) 中的 Transformer Decoder Layer，而不是 CUDA thread block。以 `h0 → Block 1 → h1 → Block 2 → h2 → Block 3 → h3` 为例，普通路径会保留 `h1`、`h2` 等中间 activation；若将 `Block 1–2` 划为一个 checkpoint segment，前向保留进入区段的 `h0` 等必要边界，反向需要内部 activation 时便从 `h0` 重跑 `Block 1–2`。
+这里的模型 Block 指可顺序执行的计算单元，例如 [05. LLaMA3 Block Tutorial](../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.md) 中的 Transformer Decoder Layer，而不是 CUDA thread block。设连续区段接收边界状态 $h_{in}$，内部依次产生若干中间 activation，最后输出 $h_{out}$；普通路径保留这些中间状态，checkpoint 路径只保留重算所需的边界状态，并在反向阶段重新执行该区段。
 
 | 比较阶段 | 普通保存路径 | Checkpoint 路径 | 主要观察量 |
 | --- | --- | --- | --- |
@@ -43,10 +51,17 @@
 
 ![Checkpoint 训练路径：保存边界、反向重算与一致性验证](../public/02_PyTorch_Algorithms/19_checkpoint_overview.svg)
 
-### Step 2: 为什么重算后仍应得到相同梯度
-进入反向时，checkpoint 会从已保存的区段边界重新执行该段前向。例如上一节的 `Block 1–2` 区段会从 `h0` 重跑，重新得到 `h1`、`h2`，再用于后续梯度计算。要得到等价梯度，重算必须重放与原前向等价的计算上下文。
+## Step 2：为什么重算后仍应得到相同梯度
+进入反向时，checkpoint 会从已保存的区段边界重新执行该段前向，恢复局部反向所需的中间状态。设区段函数为 $f_\theta$，普通路径与重算路径要满足
 
-随机层说明了这条条件为何必要：若 `Block 1–2` 内包含 Dropout，而重算时使用了不同的随机状态，新的 activation 就可能不同，随后得到的梯度也不再能与普通路径对齐。外部副作用同样会破坏这项前提。
+$$
+f_\theta^{save}(h_{in})=f_\theta^{recompute}(h_{in}),\qquad
+\nabla_{h_{in},\theta}L_{save}=\nabla_{h_{in},\theta}L_{recompute}.
+$$
+
+其中 $\theta$ 是区段参数；第一项约束输出，第二项约束输入与参数梯度。要得到这些等价结果，重算必须重放与原前向等价的计算上下文。
+
+随机层说明了这条条件为何必要：若区段内包含 Dropout，而重算时使用了不同的随机状态，新的 activation 就可能不同，随后得到的梯度也不再能与普通路径对齐。外部副作用同样会破坏这项前提。
 
 | 一致性对象 | 重算时必须保持什么 | 未保持时可能出现什么 | 本节如何验证 |
 | --- | --- | --- | --- |
@@ -54,21 +69,23 @@
 | 参数与随机状态 | 使用相同参数；随机层恢复对应随机状态 | Dropout 等随机结果变化，梯度失配 | 比较参数梯度；检查随机状态 |
 | 无外部副作用 | 不读取两次执行之间可能变化的外部状态 | 第二次执行产生不同结果 | 将重算函数保持为可重放的前向计算 |
 
-### Step 3: 检查点边界与粒度如何影响结果
+## Step 3：区段边界与粒度如何影响显存和重算次数
 
-checkpoint 为一段前向计算建立重算边界：前向阶段保留边界输入和必要状态，反向阶段重新执行区段内部的前向，再继续计算梯度。一个或多个连续模型 Block 可以组成 checkpoint segment，`segment_size` 控制每段包含多少个 Block；例如 `num_blocks=5`、`segment_size=2` 时，边界计划为 `[(0, 2), (2, 4), (4, 5)]`，最后一个尾段只含一个 Block。
+checkpoint 粒度决定每个重算区段覆盖多少个连续模型 Block。设模型共有 $L$ 个 Block，每段覆盖 $g$ 个，则区段数约为 $N_{seg}=\lceil L/g\rceil$；尾部不足 $g$ 个 Block 时仍形成一个完整区段。较小的 $g$ 产生更多边界和更短的单次重算，较大的 $g$ 减少边界但扩大每次重算范围。
 
 下面的比较只说明执行组织方式：粒度不会给出固定的显存节省比例。参数、梯度和 optimizer state 仍在训练账本中，实际收益必须在固定模型、输入形状和运行环境下测量。
 
-| `segment_size` 取值 | 5 个模型 Block 时的计划 | 改变的执行方式 | 需要实际测量的结果 |
+| 区段粒度 | 保存边界的变化 | 反向重算范围 | 需要实际测量的结果 |
 | --- | --- | --- | --- |
-| `1` | `[(0, 1), (1, 2), …, (4, 5)]` | 每个 Block 单独成段，接近逐 Block checkpoint | peak memory、重算次数与 step time |
-| `2` | `[(0, 2), (2, 4), (4, 5)]` | 两个连续 Block 为一段，保留尾段 | 与 `1` 的显存—时间交换 |
-| `≥ 5` | `[(0, 5)]` | 全部 Block 成一个区段，单次重算范围更大 | 是否仍满足显存与时间预算 |
+| 每个 Block 单独成段 | 边界较多 | 每次只重算一个 Block | peak memory、重算次数与 step time |
+| 多个连续 Block 成段 | 边界数量下降 | 每次重算一个连续区段 | 与细粒度方案的显存—时间交换 |
+| 整条连续路径作为一段 | 只保留外部边界 | 单次重算范围最大 | 是否仍满足显存与时间预算 |
 
 ![Checkpoint 边界与粒度](../public/02_PyTorch_Algorithms/19_checkpoint_granularity.svg)
 
-### Step 4：实现 checkpoint 路径并验证
+<a id="mechanism-practice"></a>
+
+## Step 4：实现区段重算并核对输出与梯度
 
 现在把前面的重算机制落实为三步：先为单个 Block 建立 checkpoint 路径，再规划连续 Block 的 segment 边界，最后将该边界计划用于分段 checkpoint。题目区只要求补全这三处机制；闭包绑定、普通前向 baseline 和循环骨架已提供。
 
@@ -101,7 +118,7 @@ class SimpleTransformerBlock(nn.Module):
             nn.Linear(dim * 4, dim)
         )
         self.norm = nn.LayerNorm(dim)
-        
+
     def forward(self, x):
         # out 代表反向传播可能需要读取的区段内部 activation。
         out = self.ffn(self.norm(x))
@@ -213,7 +230,7 @@ def run_with_segment_checkpointing(
 
 ```
 
-### 测试
+## 测试
 
 运行下方 CPU 机制测试，检查 segment 边界、checkpoint 路径与普通路径的结果和梯度一致性，以及 backward 是否确实发生重算。GPU 显存与时间测量见 Step 5。
 
@@ -376,7 +393,7 @@ class SimpleTransformerBlock(nn.Module):
             nn.Linear(dim * 4, dim)
         )
         self.norm = nn.LayerNorm(dim)
-        
+
     def forward(self, x):
         out = self.ffn(self.norm(x))
         return x + out
@@ -488,7 +505,73 @@ def run_with_segment_checkpointing(
 
 - 用 `blocks=segment` 绑定当前区段，再对 `segment_forward` 调用 checkpoint。
 - 这样反向重算的是当前连续 Block 区段，而不是循环结束后的最后一个区段。
-### Step 5：可选 GPU 实验——Checkpoint 显存—时间对照
+<a id="framework-check"></a>
+
+## 框架一致性核对（可选）
+
+下面直接核对 PyTorch 非重入 checkpoint 的输出、梯度和重算行为；显存—时间交换仍由 Step 5 测量。
+
+| 核对对象 | 本节实现 | 成熟框架入口 | 通过条件 |
+| --- | --- | --- | --- |
+| 前向输出 | 普通 Block 顺序执行 | `torch.utils.checkpoint.checkpoint` | 相同参数和输入下输出一致 |
+| 输入与参数梯度 | 普通路径反向 | 非重入 checkpoint 反向 | 输入梯度和全部参数梯度一致 |
+| 反向重算 | 普通路径调用次数 | checkpoint 路径调用次数 | checkpoint 路径在反向阶段再次执行区段 |
+
+```python
+from importlib.metadata import version
+
+
+def check_checkpoint_framework_conformance():
+    """核对 PyTorch checkpoint 的输出、梯度与反向重算行为。"""
+    torch.manual_seed(42)
+
+    class CountedBlock(SimpleTransformerBlock):
+        def __init__(self, dim):
+            super().__init__(dim)
+            self.calls = 0
+
+        def forward(self, x):
+            self.calls += 1
+            return super().forward(x)
+
+    direct = CountedBlock(8)
+    recompute = CountedBlock(8)
+    recompute.load_state_dict(direct.state_dict())
+    x_direct = torch.randn(2, 3, 8, requires_grad=True)
+    x_recompute = x_direct.detach().clone().requires_grad_(True)
+    direct_out = run_without_checkpointing(torch.nn.ModuleList([direct]), x_direct)
+    checkpoint_out = run_with_checkpointing(torch.nn.ModuleList([recompute]), x_recompute)
+    direct_out.square().mean().backward()
+    checkpoint_out.square().mean().backward()
+    checks = {
+        'output_match': bool(torch.allclose(direct_out, checkpoint_out, atol=1e-6, rtol=1e-6)),
+        'input_gradient_match': bool(torch.allclose(x_direct.grad, x_recompute.grad, atol=1e-6, rtol=1e-6)),
+        'parameter_gradients_match': all(
+            torch.allclose(left.grad, right.grad, atol=1e-6, rtol=1e-6)
+            for left, right in zip(direct.parameters(), recompute.parameters())
+        ),
+        'backward_recomputed_segment': recompute.calls > direct.calls,
+    }
+    failed = [name for name, passed in checks.items() if not passed]
+    if failed:
+        raise AssertionError(f'框架一致性核对失败：{failed}')
+    return {
+        'status': 'passed',
+        'check_kind': 'framework_conformance',
+        'versions': {'torch': version('torch')},
+        'checks': checks,
+        'direct_calls': direct.calls,
+        'checkpoint_calls': recompute.calls,
+    }
+
+
+framework_check = check_checkpoint_framework_conformance()
+framework_check
+```
+
+<a id="gpu-experiment"></a>
+
+## Step 5：可选 GPU 实验——Checkpoint 显存—时间对照
 
 CPU 题目确认保存、重算和分段边界；GPU 实验进一步比较普通路径与逐 Block checkpoint 的输出、梯度、峰值显存和训练 step 时间。
 
@@ -724,7 +807,7 @@ Checkpoint 将 median step 时间从 139.56 ms 增至 166.42 ms，代价约 19.2
 
 Checkpoint 的核心思想是用重算换取更少 activation 驻留。机制、单策略复测与多策略决策可按下面顺序延伸。
 
-- [P0: 18. Memory Profiling and Optimization | 显存分析与优化](../00_Prerequisites/18_Memory_Profiling_and_Optimization.md)：将参数、梯度、optimizer state 与 activation 放入同一训练显存账本。
+- [P0: 18. Memory Accounting and Runtime Evidence | 显存账本与运行时证据](../00_Prerequisites/18_Memory_Profiling_and_Optimization.md)：将参数、梯度、optimizer state 与 activation 放入同一训练显存账本。
 - [Training Deep Nets with Sublinear Memory Cost 原论文](https://arxiv.org/abs/1604.06174)
 - [PyTorch `torch.utils.checkpoint` 官方文档](https://pytorch.org/docs/stable/checkpoint.html)
 - [42. 激活卸载](../02_PyTorch_Algorithms/42_Activation_Offload.md)：理解将 activation 移出设备的另一条策略。
