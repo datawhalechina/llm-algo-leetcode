@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="620" viewBox="0 0 1400 620" role="img" aria-labelledby="title desc">
+  <title id="title">KTO 当前样本、独立 KL 样本与二元损失</title>
+  <desc id="desc">当前样本形成策略偏移，独立样本形成停止梯度的 KL 基线，二元标签选择正负损失分支，类别权重形成批次目标；同一分支状态还生成类别诊断。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker>
+    <style>
+      .title{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:30px;font-weight:700;fill:#0f172a}.sub{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:16px;font-weight:500;fill:#475569}.label{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:19px;font-weight:700}.body{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:500}.node{stroke-width:2.5;rx:17;ry:17}.edge{stroke:#475569;stroke-width:3.5;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1400" height="620" rx="28" fill="#f8fafc"/>
+  <text x="60" y="54" class="title">KTO：策略偏移、KL 基线与二元标签共同决定损失分支</text>
+  <text x="60" y="83" class="sub">训练目标与诊断读取同一分支状态，但承担不同职责。</text>
+
+  <rect id="policy-score" x="50" y="120" width="235" height="84" class="node" fill="#dbeafe" stroke="#60a5fa"/>
+  <text x="167" y="153" text-anchor="middle" class="label" fill="#172554">当前 Policy 得分</text><text x="167" y="180" text-anchor="middle" class="body" fill="#1e40af">只聚合回答 Token</text>
+  <rect id="reference-score" x="50" y="225" width="235" height="84" class="node" fill="#e2e8f0" stroke="#94a3b8"/>
+  <text x="167" y="258" text-anchor="middle" class="label" fill="#1e293b">当前 Reference 得分</text><text x="167" y="285" text-anchor="middle" class="body" fill="#334155">使用相同回答范围</text>
+  <rect id="policy-shift" x="365" y="165" width="235" height="104" class="node" fill="#fef3c7" stroke="#fbbf24"/>
+  <text x="482" y="205" text-anchor="middle" class="label" fill="#78350f">策略偏移 d</text><text x="482" y="236" text-anchor="middle" class="body" fill="#92400e">Policy − Reference</text>
+  <path d="M285 162 H325 V196 H365" class="edge" data-source="policy-score" data-target="policy-shift"/>
+  <path d="M285 267 H325 V238 H365" class="edge" data-source="reference-score" data-target="policy-shift"/>
+
+  <rect id="kl-sample" x="50" y="410" width="235" height="92" class="node" fill="#ede9fe" stroke="#a78bfa"/>
+  <text x="167" y="446" text-anchor="middle" class="label" fill="#4c1d95">独立 KL 样本</text><text x="167" y="475" text-anchor="middle" class="body" fill="#5b21b6">Policy / Reference 得分</text>
+  <rect id="kl-baseline" x="365" y="404" width="235" height="104" class="node" fill="#ede9fe" stroke="#a78bfa"/>
+  <text x="482" y="444" text-anchor="middle" class="label" fill="#4c1d95">非负 KL 基线 zKL</text><text x="482" y="475" text-anchor="middle" class="body" fill="#5b21b6">均值 · clamp · stop-gradient</text>
+  <path d="M285 456 H365" class="edge" data-source="kl-sample" data-target="kl-baseline"/>
+
+  <rect id="binary-feedback" x="680" y="105" width="220" height="82" class="node" fill="#ecfeff" stroke="#0891b2"/>
+  <text x="790" y="138" text-anchor="middle" class="label" fill="#0c4a6e">二元标签</text><text x="790" y="165" text-anchor="middle" class="body" fill="#075985">desirable / undesirable</text>
+  <rect id="branch-selector" x="680" y="250" width="220" height="108" class="node" fill="#ffffff" stroke="#64748b"/>
+  <text x="790" y="291" text-anchor="middle" class="label" fill="#0f172a">按标签选择分支</text><text x="790" y="322" text-anchor="middle" class="body" fill="#475569">同时读取 d 与 zKL</text>
+  <path d="M600 217 H640 V280 H680" class="edge" data-source="policy-shift" data-target="branch-selector"/>
+  <path d="M600 456 H640 V328 H680" class="edge" data-source="kl-baseline" data-target="branch-selector"/>
+  <path d="M790 187 V250" class="edge" data-source="binary-feedback" data-target="branch-selector"/>
+
+  <rect id="positive-loss" x="980" y="150" width="220" height="90" class="node" fill="#dcfce7" stroke="#4ade80"/>
+  <text x="1090" y="184" text-anchor="middle" class="label" fill="#14532d">desirable 损失</text><text x="1090" y="213" text-anchor="middle" class="body" fill="#166534">1 − σ(β(d − zKL))</text>
+  <rect id="negative-loss" x="980" y="285" width="220" height="90" class="node" fill="#fee2e2" stroke="#f87171"/>
+  <text x="1090" y="319" text-anchor="middle" class="label" fill="#7f1d1d">undesirable 损失</text><text x="1090" y="348" text-anchor="middle" class="body" fill="#991b1b">1 − σ(β(zKL − d))</text>
+  <path d="M900 286 H940 V195 H980" class="edge" data-source="branch-selector" data-target="positive-loss"/>
+  <path d="M900 322 H940 V330 H980" class="edge" data-source="branch-selector" data-target="negative-loss"/>
+
+  <rect id="batch-objective" x="1240" y="215" width="130" height="120" class="node" fill="#fff7ed" stroke="#f59e0b"/>
+  <text x="1305" y="252" text-anchor="middle" class="label" fill="#78350f">加权均值</text><text x="1305" y="282" text-anchor="middle" class="body" fill="#92400e">w+ · ℓ+</text><text x="1305" y="307" text-anchor="middle" class="body" fill="#92400e">w− · ℓ−</text>
+  <path d="M1200 195 H1220 V247 H1240" class="edge" data-source="positive-loss" data-target="batch-objective"/>
+  <path d="M1200 330 H1220 V303 H1240" class="edge" data-source="negative-loss" data-target="batch-objective"/>
+
+  <rect id="diagnostics" x="955" y="440" width="415" height="105" class="node" fill="#e0f2fe" stroke="#38bdf8"/>
+  <text x="1162" y="480" text-anchor="middle" class="label" fill="#0c4a6e">类别数量、奖励均值与奖励差</text><text x="1162" y="512" text-anchor="middle" class="body" fill="#075985">缺失类别返回缺失值，不伪装成 0</text>
+  <path d="M790 358 V492 H955" class="edge" data-source="branch-selector" data-target="diagnostics"/>
+</svg>

@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="620" viewBox="0 0 1400 620" role="img" aria-labelledby="title desc">
+  <title id="title">DPO 成对偏好与 KTO 单条二元反馈</title>
+  <desc id="desc">DPO 将同一提示的优选与非优选回答合成偏好对；KTO 让每条回答独立携带 desirable 或 undesirable 标签。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker>
+    <style>
+      .title{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:30px;font-weight:700;fill:#0f172a}.lane{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:24px;font-weight:700}.label{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:21px;font-weight:700}.body{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:17px;font-weight:500}.node{stroke-width:2.5;rx:18;ry:18}.edge{stroke:#475569;stroke-width:3.5;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1400" height="620" rx="28" fill="#f8fafc"/>
+  <text x="70" y="58" class="title">两种反馈数据形态</text>
+
+  <text x="70" y="116" class="lane" fill="#1d4ed8">DPO：同一提示内成对比较</text>
+  <rect id="dpo-prompt" x="70" y="165" width="230" height="92" class="node" fill="#dbeafe" stroke="#60a5fa"/>
+  <text x="185" y="220" text-anchor="middle" class="label" fill="#172554">提示 x</text>
+  <circle id="dpo-branch" cx="380" cy="211" r="6" fill="#475569"/>
+  <rect id="chosen" x="450" y="135" width="290" height="82" class="node" fill="#dcfce7" stroke="#4ade80"/>
+  <text x="595" y="184" text-anchor="middle" class="label" fill="#14532d">优选回答 chosen</text>
+  <rect id="rejected" x="450" y="235" width="290" height="82" class="node" fill="#fee2e2" stroke="#f87171"/>
+  <text x="595" y="284" text-anchor="middle" class="label" fill="#7f1d1d">非优选回答 rejected</text>
+  <rect id="preference-pair" x="970" y="165" width="340" height="112" class="node" fill="#ede9fe" stroke="#a78bfa"/>
+  <text x="1140" y="209" text-anchor="middle" class="label" fill="#4c1d95">一条成对偏好记录</text>
+  <text x="1140" y="242" text-anchor="middle" class="body" fill="#5b21b6">同时保留两条回答及顺序</text>
+  <path d="M300 211 H374" class="edge" data-source="dpo-prompt" data-target="dpo-branch"/>
+  <path d="M386 211 H410 V176 H450" class="edge" data-source="dpo-branch" data-target="chosen"/>
+  <path d="M386 211 H410 V276 H450" class="edge" data-source="dpo-branch" data-target="rejected"/>
+  <path d="M740 176 H875 V199 H970" class="edge" data-source="chosen" data-target="preference-pair"/>
+  <path d="M740 276 H875 V243 H970" class="edge" data-source="rejected" data-target="preference-pair"/>
+
+  <line x1="70" y1="348" x2="1330" y2="348" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="70" y="405" class="lane" fill="#7c3aed">KTO：每条回答独立携带二元标签</text>
+  <rect id="kto-prompt" x="70" y="445" width="230" height="92" class="node" fill="#dbeafe" stroke="#60a5fa"/>
+  <text x="185" y="500" text-anchor="middle" class="label" fill="#172554">提示 x</text>
+  <rect id="kto-answer" x="500" y="445" width="280" height="92" class="node" fill="#fef3c7" stroke="#fbbf24"/>
+  <text x="640" y="500" text-anchor="middle" class="label" fill="#78350f">单条回答 y</text>
+  <rect id="binary-label" x="1000" y="430" width="310" height="122" class="node" fill="#ede9fe" stroke="#a78bfa"/>
+  <text x="1155" y="477" text-anchor="middle" class="label" fill="#4c1d95">desirable = 1</text>
+  <text x="1155" y="517" text-anchor="middle" class="label" fill="#4c1d95">undesirable = 0</text>
+  <path d="M300 491 H500" class="edge" data-source="kto-prompt" data-target="kto-answer"/>
+  <path d="M780 491 H1000" class="edge" data-source="kto-answer" data-target="binary-label"/>
+</svg>

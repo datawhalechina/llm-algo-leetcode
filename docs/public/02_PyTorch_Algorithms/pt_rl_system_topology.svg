@@ -1,1 +1,55 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker><style>.t{font:700 26px sans-serif;fill:#0f172a}.n{font:700 17px sans-serif;fill:#0f172a}.s{font:14px sans-serif;fill:#475569}</style></defs><rect width="1200" height="500" rx="24" fill="#f8fafc"/><text x="600" y="44" text-anchor="middle" class="t">在线后训练系统：角色、阶段倍率与双向数据流</text><rect x="60" y="135" width="200" height="100" rx="14" fill="#fff" stroke="#60a5fa"/><text x="85" y="173" class="n">轨迹生成器</text><text x="85" y="202" class="s">每个提示生成 G 条轨迹</text><rect x="360" y="80" width="200" height="100" rx="14" fill="#fff" stroke="#4ade80"/><text x="385" y="118" class="n">奖励 / 验证器</text><text x="385" y="147" class="s">每组处理 G 个回答</text><rect x="360" y="270" width="200" height="100" rx="14" fill="#fff" stroke="#4ade80"/><text x="385" y="308" class="n">参考策略服务</text><text x="385" y="337" class="s">逐动作参考对数概率</text><rect x="665" y="135" width="200" height="100" rx="14" fill="#fff" stroke="#f59e0b"/><text x="690" y="173" class="n">学习器</text><text x="690" y="202" class="s">每次聚合 B 个提示组</text><rect x="960" y="135" width="190" height="100" rx="14" fill="#fff" stroke="#a855f7"/><text x="985" y="173" class="n">协调器</text><text x="985" y="202" class="s">版本 · 队列 · 失败</text><path d="M260 165L360 135" stroke="#64748b" stroke-width="3" marker-end="url(#a)"/><path d="M260 215L360 310" stroke="#64748b" stroke-width="3" marker-end="url(#a)"/><path d="M560 130L665 165" stroke="#64748b" stroke-width="3" marker-end="url(#a)"/><path d="M560 320L665 215" stroke="#64748b" stroke-width="3" marker-end="url(#a)"/><path d="M865 185H960" stroke="#64748b" stroke-width="3" marker-end="url(#a)"/><path d="M1055 235V430H160V235" fill="none" stroke="#64748b" stroke-width="3" marker-end="url(#a)"/><text x="600" y="458" text-anchor="middle" class="s">新权重经提交、分发与版本—哈希确认后返回轨迹生成器</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="620" viewBox="0 0 1400 620" role="img" aria-labelledby="title desc">
+  <title id="title">在线后训练系统的逻辑角色与对象流</title>
+  <desc id="desc">提示经轨迹生成器形成带行为概率和策略版本的轨迹包；轨迹包同时送往奖励验证、参考策略和学习器，学习器汇合训练输入后产生新检查点，协调器确认版本与哈希后再分发给生成器。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker>
+    <style>
+      .title{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:30px;font-weight:700;fill:#0f172a}.subtitle{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:16px;font-weight:500;fill:#475569}.label{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:19px;font-weight:700}.body{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:500}.edge-label{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:13px;font-weight:600;fill:#475569}.node{stroke-width:2.5;rx:18;ry:18}.edge{stroke:#475569;stroke-width:3.5;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1400" height="620" rx="28" fill="#f8fafc"/>
+  <text x="55" y="55" class="title">在线后训练系统：逻辑角色交换哪些对象</text>
+  <text x="55" y="84" class="subtitle">这些是逻辑角色，可以共置在同一资源池，也可以拆分部署；物理拓扑由下一步的资源与传输账本决定。</text>
+
+  <rect id="prompt" x="45" y="235" width="145" height="90" class="node" fill="#eff6ff" stroke="#60a5fa"/>
+  <text x="117" y="273" text-anchor="middle" class="label" fill="#172554">提示组</text>
+  <text x="117" y="301" text-anchor="middle" class="body" fill="#1e40af">输入与采样配置</text>
+
+  <rect id="rollout-worker" x="245" y="215" width="230" height="130" class="node" fill="#dbeafe" stroke="#60a5fa"/>
+  <text x="360" y="258" text-anchor="middle" class="label" fill="#172554">轨迹生成器</text>
+  <text x="360" y="290" text-anchor="middle" class="body" fill="#1e40af">当前策略 · KV Cache</text>
+  <text x="360" y="316" text-anchor="middle" class="body" fill="#1e40af">每个提示生成 G 条轨迹</text>
+  <path d="M190 280 H245" class="edge" data-source="prompt" data-target="rollout-worker"/>
+
+  <rect id="trajectory-batch" x="535" y="215" width="250" height="130" class="node" fill="#ffffff" stroke="#64748b"/>
+  <text x="660" y="255" text-anchor="middle" class="label" fill="#1e293b">版本化轨迹包</text>
+  <text x="660" y="286" text-anchor="middle" class="body" fill="#475569">回答 Token · 动作掩码</text>
+  <text x="660" y="312" text-anchor="middle" class="body" fill="#475569">行为概率 · 策略版本</text>
+  <path d="M475 280 H535" class="edge" data-source="rollout-worker" data-target="trajectory-batch"/>
+
+  <rect id="reward-worker" x="850" y="105" width="220" height="100" class="node" fill="#dcfce7" stroke="#4ade80"/>
+  <text x="960" y="145" text-anchor="middle" class="label" fill="#14532d">奖励 / 验证器</text>
+  <text x="960" y="176" text-anchor="middle" class="body" fill="#166534">输出奖励与验证状态</text>
+  <rect id="reference-worker" x="850" y="390" width="220" height="100" class="node" fill="#ede9fe" stroke="#a78bfa"/>
+  <text x="960" y="430" text-anchor="middle" class="label" fill="#4c1d95">参考策略服务</text>
+  <text x="960" y="461" text-anchor="middle" class="body" fill="#5b21b6">输出参考对数概率</text>
+  <path d="M660 215 V155 H850" class="edge" data-source="trajectory-batch" data-target="reward-worker"/>
+  <path d="M660 345 V440 H850" class="edge" data-source="trajectory-batch" data-target="reference-worker"/>
+
+  <rect id="learner" x="1125" y="215" width="230" height="130" class="node" fill="#fef3c7" stroke="#f59e0b"/>
+  <text x="1240" y="255" text-anchor="middle" class="label" fill="#78350f">学习器</text>
+  <text x="1240" y="286" text-anchor="middle" class="body" fill="#92400e">轨迹 + 奖励 + 参考概率</text>
+  <text x="1240" y="312" text-anchor="middle" class="body" fill="#92400e">聚合 B 个提示组后更新</text>
+  <path d="M785 280 H1125" class="edge" data-source="trajectory-batch" data-target="learner"/>
+  <text x="890" y="269" class="edge-label">训练输入</text>
+  <path d="M1070 155 H1100 V250 H1125" class="edge" data-source="reward-worker" data-target="learner"/>
+  <path d="M1070 440 H1100 V310 H1125" class="edge" data-source="reference-worker" data-target="learner"/>
+
+  <rect id="artifact-coordinator" x="1125" y="455" width="230" height="95" class="node" fill="#f5f3ff" stroke="#8b5cf6"/>
+  <text x="1240" y="493" text-anchor="middle" class="label" fill="#4c1d95">产物协调器</text>
+  <text x="1240" y="524" text-anchor="middle" class="body" fill="#5b21b6">提交 · 哈希确认 · 活动版本</text>
+  <path d="M1240 345 V455" class="edge" data-source="learner" data-target="artifact-coordinator"/>
+  <text x="1254" y="405" class="edge-label">checkpoint + 版本</text>
+  <path d="M1125 503 H1090 V570 H360 V345" class="edge" data-source="artifact-coordinator" data-target="rollout-worker"/>
+  <text x="650" y="592" text-anchor="middle" class="edge-label">确认分发后，生成器激活新策略版本</text>
+</svg>

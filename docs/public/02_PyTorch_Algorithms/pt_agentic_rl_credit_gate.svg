@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="560" viewBox="0 0 1280 560" role="img" aria-labelledby="title desc">
+  <title id="title">Agent 轨迹中的动作级奖励归因</title>
+  <desc id="desc">模型动作进入奖励账本并形成即时奖励，环境观察只保留为证据；终局反馈通过折扣回报沿模型动作反向传播。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#475569"/>
+    </marker>
+    <style>
+      .title{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#0f172a}
+      .label{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:19px;font-weight:700;fill:#111827}
+      .small{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:500;fill:#334155}
+      .formula{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:17px;font-weight:700;fill:#0f172a}
+      .box{stroke-width:3;rx:16;ry:16}
+      .flow{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}
+      .credit{stroke:#7c3aed;stroke-width:3;fill:none;marker-end:url(#arrow)}
+      .muted{stroke:#94a3b8;stroke-width:3;fill:none;stroke-dasharray:8 7;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1280" height="560" fill="#f8fafc"/>
+  <text x="50" y="54" class="title">只把环境反馈归因给实际模型动作</text>
+
+  <rect x="50" y="105" width="235" height="105" class="box" fill="#fdf2f8" stroke="#db2777"/>
+  <text x="168" y="143" text-anchor="middle" class="label">模型动作 aₜ</text>
+  <text x="168" y="174" text-anchor="middle" class="small">action_mask = 1</text>
+
+  <rect x="355" y="90" width="285" height="135" class="box" fill="#fff7ed" stroke="#f59e0b"/>
+  <text x="498" y="128" text-anchor="middle" class="label">奖励分量绑定动作</text>
+  <text x="498" y="159" text-anchor="middle" class="small">任务 + 过程</text>
+  <text x="498" y="187" text-anchor="middle" class="small">− 安全 − 成本</text>
+
+  <rect x="710" y="105" width="230" height="105" class="box" fill="#ecfeff" stroke="#0891b2"/>
+  <text x="825" y="143" text-anchor="middle" class="label">即时奖励 rₜ</text>
+  <text x="825" y="174" text-anchor="middle" class="small">每个有效动作一个值</text>
+
+  <rect x="1010" y="90" width="220" height="135" class="box" fill="#f5f3ff" stroke="#7c3aed"/>
+  <text x="1120" y="128" text-anchor="middle" class="label">折扣回报 Gₜ</text>
+  <text x="1120" y="160" text-anchor="middle" class="formula">Gₜ = rₜ + γGₜ₊₁</text>
+  <text x="1120" y="190" text-anchor="middle" class="small">终局反馈传回早期动作</text>
+
+  <path d="M285 158H355" class="flow"/>
+  <path d="M640 158H710" class="flow"/>
+  <path d="M940 158H1010" class="flow"/>
+
+  <rect x="50" y="310" width="235" height="105" class="box" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="168" y="348" text-anchor="middle" class="label">环境观察 oₜ₊₁</text>
+  <text x="168" y="379" text-anchor="middle" class="small">action_mask = 0</text>
+
+  <rect x="355" y="310" width="285" height="105" class="box" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="498" y="348" text-anchor="middle" class="label">保留执行证据</text>
+  <text x="498" y="379" text-anchor="middle" class="small">工具输出 · 错误 · 下一状态</text>
+
+  <rect x="710" y="310" width="520" height="105" class="box" fill="#ffffff" stroke="#64748b"/>
+  <text x="970" y="347" text-anchor="middle" class="label">不直接进入策略回报</text>
+  <text x="970" y="378" text-anchor="middle" class="small">观察参与下一步决策，但不能冒充模型生成位置</text>
+
+  <path d="M285 363H355" class="muted"/>
+  <path d="M640 363H710" class="muted"/>
+
+  <path d="M1120 225V270H825V210" class="credit"/>
+  <text x="972" y="260" text-anchor="middle" class="small">按时间反向累计，只经过动作位置</text>
+
+  <text x="50" y="495" class="small">结果：奖励分量可复算，动作与观察不混写，终局反馈通过 Gₜ 回到先前模型动作。</text>
+</svg>

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="560" viewBox="0 0 1280 560" role="img" aria-labelledby="title desc">
+  <title id="title">Agent 环境中的多步轨迹</title>
+  <desc id="desc">任务与环境快照进入策略，模型动作触发工具或环境，观察返回下一状态，直到成功、失败或截断，并形成可追溯轨迹。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker>
+    <style>
+      .title{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#0f172a}.label{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:20px;font-weight:700;fill:#111827}.small{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:500;fill:#334155}.box{stroke-width:3;rx:16;ry:16}.arrow{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}.return{stroke:#7c3aed;stroke-width:3;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1280" height="560" fill="#f8fafc"/>
+  <text x="50" y="54" class="title">一次 Agent 任务怎样形成可训练轨迹</text>
+  <rect x="50" y="100" width="220" height="100" class="box" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="160" y="137" text-anchor="middle" class="label">任务与环境快照</text><text x="160" y="168" text-anchor="middle" class="small">task_id · env_version</text>
+  <rect x="340" y="100" width="220" height="100" class="box" fill="#f5f3ff" stroke="#7c3aed"/>
+  <text x="450" y="137" text-anchor="middle" class="label">策略状态 sₜ</text><text x="450" y="168" text-anchor="middle" class="small">可见历史与工具结果</text>
+  <rect x="630" y="100" width="220" height="100" class="box" fill="#fdf2f8" stroke="#db2777"/>
+  <text x="740" y="137" text-anchor="middle" class="label">模型动作 aₜ</text><text x="740" y="168" text-anchor="middle" class="small">文本、函数或代码动作</text>
+  <rect x="920" y="100" width="300" height="100" class="box" fill="#ecfeff" stroke="#0891b2"/>
+  <text x="1070" y="137" text-anchor="middle" class="label">工具或环境执行</text><text x="1070" y="168" text-anchor="middle" class="small">观察 oₜ₊₁ · 奖励分量 · 状态</text>
+  <path d="M270 150 H340" class="arrow"/><path d="M560 150 H630" class="arrow"/><path d="M850 150 H920" class="arrow"/>
+  <path d="M1070 200 V255 H450 V200" class="return"/>
+  <text x="760" y="244" text-anchor="middle" class="small">观察进入下一轮状态，不冒充模型动作</text>
+  <rect x="50" y="315" width="1170" height="170" class="box" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="80" y="355" class="label">轨迹记录 τ</text>
+  <rect x="80" y="380" width="245" height="70" class="box" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="202" y="408" text-anchor="middle" class="small">策略、环境与奖励版本</text><text x="202" y="432" text-anchor="middle" class="small">固定来源身份</text>
+  <rect x="370" y="380" width="245" height="70" class="box" fill="#fdf2f8" stroke="#db2777"/>
+  <text x="492" y="408" text-anchor="middle" class="small">动作与观察分开记录</text><text x="492" y="432" text-anchor="middle" class="small">保留动作掩码</text>
+  <rect x="660" y="380" width="245" height="70" class="box" fill="#fff7ed" stroke="#f59e0b"/>
+  <text x="782" y="408" text-anchor="middle" class="small">任务、过程、安全与成本</text><text x="782" y="432" text-anchor="middle" class="small">奖励分量可复算</text>
+  <rect x="950" y="380" width="240" height="70" class="box" fill="#ecfccb" stroke="#65a30d"/>
+  <text x="1070" y="408" text-anchor="middle" class="small">成功 · 失败 · 超时</text><text x="1070" y="432" text-anchor="middle" class="small">终止原因不可混写</text>
+</svg>

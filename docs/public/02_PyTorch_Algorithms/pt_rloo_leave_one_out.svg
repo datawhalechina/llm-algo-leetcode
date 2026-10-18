@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="620" viewBox="0 0 1400 620" role="img" aria-labelledby="title desc">
+  <title id="title">RLOO 在同一提示组内计算留一优势</title>
+  <desc id="desc">同一提示至少有两条可评分回答时，每条回答用其他回答的平均奖励作为基线；不足两条时不形成留一优势。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker>
+    <style>
+      .title{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:30px;font-weight:700;fill:#0f172a}.subtitle{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:17px;font-weight:500;fill:#475569}.label{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:20px;font-weight:700}.body{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:16px;font-weight:500}.node{stroke-width:2.5;rx:18;ry:18}.edge{stroke:#475569;stroke-width:3.5;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1400" height="620" rx="28" fill="#f8fafc"/>
+  <text x="60" y="55" class="title">RLOO：用同组其他回答构造基线</text>
+  <text x="60" y="85" class="subtitle">直接由组内奖励计算优势，不训练 Critic；不可评分回答不进入均值的分子和分母。</text>
+
+  <rect id="prompt" x="50" y="225" width="210" height="100" class="node" fill="#dbeafe" stroke="#60a5fa"/>
+  <text x="155" y="282" text-anchor="middle" class="label" fill="#172554">提示 x</text>
+
+  <rect id="group-check" x="320" y="215" width="230" height="120" class="node" fill="#ffffff" stroke="#64748b"/>
+  <text x="435" y="262" text-anchor="middle" class="label" fill="#1e293b">检查同组回答</text>
+  <text x="435" y="295" text-anchor="middle" class="body" fill="#475569">可评分数量 ≥ 2</text>
+  <path d="M260 275 H320" class="edge" data-source="prompt" data-target="group-check"/>
+
+  <circle id="answer-branch" cx="610" cy="275" r="6" fill="#475569"/>
+  <path d="M550 275 H604" class="edge" data-source="group-check" data-target="answer-branch"/>
+
+  <rect id="answer-1" x="670" y="120" width="300" height="100" class="node" fill="#dcfce7" stroke="#4ade80"/>
+  <text x="820" y="160" text-anchor="middle" class="label" fill="#14532d">回答 y₁，奖励 R₁</text>
+  <text x="820" y="193" text-anchor="middle" class="body" fill="#166534">基线 b₁ = (R₂ + R₃) / 2</text>
+  <rect id="answer-2" x="670" y="245" width="300" height="100" class="node" fill="#fef3c7" stroke="#fbbf24"/>
+  <text x="820" y="285" text-anchor="middle" class="label" fill="#78350f">回答 y₂，奖励 R₂</text>
+  <text x="820" y="318" text-anchor="middle" class="body" fill="#92400e">基线 b₂ = (R₁ + R₃) / 2</text>
+  <rect id="answer-3" x="670" y="370" width="300" height="100" class="node" fill="#fee2e2" stroke="#f87171"/>
+  <text x="820" y="410" text-anchor="middle" class="label" fill="#7f1d1d">回答 y₃，奖励 R₃</text>
+  <text x="820" y="443" text-anchor="middle" class="body" fill="#991b1b">基线 b₃ = (R₁ + R₂) / 2</text>
+  <path d="M616 275 H635 V170 H670" class="edge" data-source="answer-branch" data-target="answer-1"/>
+  <path d="M616 275 H635 V295 H670" class="edge" data-source="answer-branch" data-target="answer-2"/>
+  <path d="M616 275 H635 V420 H670" class="edge" data-source="answer-branch" data-target="answer-3"/>
+
+  <rect id="advantage-1" x="1060" y="125" width="280" height="90" class="node" fill="#ede9fe" stroke="#a78bfa"/>
+  <text x="1200" y="163" text-anchor="middle" class="label" fill="#4c1d95">优势 A₁ = R₁ − b₁</text>
+  <text x="1200" y="191" text-anchor="middle" class="body" fill="#5b21b6">仅比较同组其他回答</text>
+  <rect id="advantage-2" x="1060" y="250" width="280" height="90" class="node" fill="#ede9fe" stroke="#a78bfa"/>
+  <text x="1200" y="288" text-anchor="middle" class="label" fill="#4c1d95">优势 A₂ = R₂ − b₂</text>
+  <text x="1200" y="316" text-anchor="middle" class="body" fill="#5b21b6">仅比较同组其他回答</text>
+  <rect id="advantage-3" x="1060" y="375" width="280" height="90" class="node" fill="#ede9fe" stroke="#a78bfa"/>
+  <text x="1200" y="413" text-anchor="middle" class="label" fill="#4c1d95">优势 A₃ = R₃ − b₃</text>
+  <text x="1200" y="441" text-anchor="middle" class="body" fill="#5b21b6">仅比较同组其他回答</text>
+  <path d="M970 170 H1060" class="edge" data-source="answer-1" data-target="advantage-1"/>
+  <path d="M970 295 H1060" class="edge" data-source="answer-2" data-target="advantage-2"/>
+  <path d="M970 420 H1060" class="edge" data-source="answer-3" data-target="advantage-3"/>
+
+  <rect id="insufficient-group" x="320" y="435" width="300" height="100" class="node" fill="#e2e8f0" stroke="#94a3b8"/>
+  <text x="470" y="475" text-anchor="middle" class="label" fill="#334155">可评分回答不足 2 条</text>
+  <text x="470" y="508" text-anchor="middle" class="body" fill="#475569">不形成留一优势，不进入更新</text>
+  <path d="M435 335 V435" class="edge" data-source="group-check" data-target="insufficient-group"/>
+</svg>
