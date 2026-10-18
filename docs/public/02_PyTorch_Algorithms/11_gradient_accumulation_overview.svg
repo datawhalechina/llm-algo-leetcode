@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1240" height="600" viewBox="0 0 1240 600" role="img" aria-labelledby="title desc">
-  <title id="title">梯度累积机制总览</title>
-  <desc id="desc">一次逻辑更新拆成多个微批次计算，同时改变计算粒度、状态生命周期和更新边界。</desc>
+  <title id="title">梯度累积如何完成一次参数更新</title>
+  <desc id="desc">有效批次被拆成多个微批次，梯度保留到累积结束，再执行一次参数更新。</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
     <style>
@@ -8,11 +8,11 @@
     </style>
   </defs>
   <rect width="1240" height="600" fill="#f8fafc"/>
-  <text x="620" y="44" text-anchor="middle" class="title">梯度累积：一次逻辑更新的三条机制链</text>
-  <text x="620" y="73" text-anchor="middle" class="sub">拆分计算粒度，但不改变有效批次与参数更新的定义</text>
+  <text x="620" y="44" text-anchor="middle" class="title">梯度累积如何完成一次参数更新</text>
+  <text x="620" y="73" text-anchor="middle" class="sub">有效批次拆成多个微批次，梯度保留到累积结束后再写回参数</text>
 
   <rect x="430" y="102" width="380" height="86" fill="#e0f2fe" stroke="#38bdf8" class="panel"/>
-  <text x="620" y="138" text-anchor="middle" class="group">一次逻辑更新</text>
+  <text x="620" y="138" text-anchor="middle" class="group">一次有效参数更新</text>
   <text x="620" y="164" text-anchor="middle" class="body">有效批次 = 微批次大小 × 累积次数</text>
 
   <path d="M620 188V218H205V260" class="flow"/>
@@ -20,32 +20,32 @@
   <path d="M620 188V218H1035V260" class="flow"/>
 
   <rect x="45" y="260" width="320" height="270" fill="#eff6ff" stroke="#60a5fa" class="panel"/>
-  <text x="205" y="296" text-anchor="middle" class="group">计算粒度</text>
+  <text x="205" y="296" text-anchor="middle" class="group">拆分计算</text>
   <rect x="82" y="327" width="246" height="72" class="node"/>
-  <text x="205" y="357" text-anchor="middle" class="head">多个微批次</text>
+  <text x="205" y="357" text-anchor="middle" class="head">每次处理一个微批次</text>
   <text x="205" y="381" text-anchor="middle" class="body">依次完成前向与反向</text>
   <path d="M205 399V432" class="flow"/>
   <rect x="82" y="432" width="246" height="72" class="node"/>
-  <text x="205" y="462" text-anchor="middle" class="head">单次激活值峰值下降</text>
-  <text x="205" y="486" text-anchor="middle" class="body">只保留当前微批次的激活值</text>
+  <text x="205" y="462" text-anchor="middle" class="head">当前激活值用完即释放</text>
+  <text x="205" y="486" text-anchor="middle" class="body">不同时保留完整有效批次</text>
 
   <rect x="460" y="260" width="320" height="270" fill="#fff7ed" stroke="#fb923c" class="panel"/>
-  <text x="620" y="296" text-anchor="middle" class="group">状态生命周期</text>
+  <text x="620" y="296" text-anchor="middle" class="group">保留梯度</text>
   <rect x="497" y="327" width="246" height="72" class="node"/>
-  <text x="620" y="357" text-anchor="middle" class="head">梯度持续累积</text>
-  <text x="620" y="381" text-anchor="middle" class="body">更新前不能提前清空</text>
+  <text x="620" y="357" text-anchor="middle" class="head">梯度跨微批次累积</text>
+  <text x="620" y="381" text-anchor="middle" class="body">达到更新边界前不清空</text>
   <path d="M620 399V432" class="flow"/>
   <rect x="497" y="432" width="246" height="72" class="node"/>
-  <text x="620" y="462" text-anchor="middle" class="head">长期状态仍驻留</text>
-  <text x="620" y="486" text-anchor="middle" class="body">参数、梯度与优化器状态</text>
+  <text x="620" y="462" text-anchor="middle" class="head">参数与优化器状态常驻</text>
+  <text x="620" y="486" text-anchor="middle" class="body">拆分微批次不会消除它们</text>
 
   <rect x="875" y="260" width="320" height="270" fill="#ecfdf5" stroke="#34d399" class="panel"/>
-  <text x="1035" y="296" text-anchor="middle" class="group">更新一致性</text>
+  <text x="1035" y="296" text-anchor="middle" class="group">按有效批次更新</text>
   <rect x="912" y="327" width="246" height="72" class="node"/>
-  <text x="1035" y="357" text-anchor="middle" class="head">按样本占比缩放梯度</text>
-  <text x="1035" y="381" text-anchor="middle" class="body">等长时每份权重为 1 / K</text>
+  <text x="1035" y="357" text-anchor="middle" class="head">按样本占比缩放损失</text>
+  <text x="1035" y="381" text-anchor="middle" class="body">与完整批次使用同一分母</text>
   <path d="M1035 399V432" class="flow"/>
   <rect x="912" y="432" width="246" height="72" class="node"/>
-  <text x="1035" y="462" text-anchor="middle" class="head">累积完成后更新一次</text>
-  <text x="1035" y="486" text-anchor="middle" class="body">维持完整批次的更新语义</text>
+  <text x="1035" y="462" text-anchor="middle" class="head">累积完成后 step 一次</text>
+  <text x="1035" y="486" text-anchor="middle" class="body">不按每个微批次写回参数</text>
 </svg>

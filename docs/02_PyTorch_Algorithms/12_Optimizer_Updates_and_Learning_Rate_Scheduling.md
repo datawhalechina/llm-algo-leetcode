@@ -1,6 +1,6 @@
 # 12. Optimizer Updates and Learning Rate Scheduling | 优化器更新与学习率调度
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `训练控制`, `优化器更新`, `学习率调度` | **目标人群：** 训练与微调学习者
+**难度：** Medium | **环境：** [CPU 主线](#runtime-environment) | **标签：** `训练控制`, `优化器更新`, `学习率调度` | **目标人群：** 训练与微调学习者
 
 > 🚀 **云端运行环境**
 >
@@ -17,6 +17,14 @@
 优化器决定“怎样沿梯度更新参数”，学习率调度决定“每次更新走多大一步”。训练初期的统计量和参数方向尚不稳定；主训练阶段需要保持足够的更新幅度；接近训练终点时，又要逐步降低步幅以便收敛。WSD（Warmup–Stable–Decay）把这三个需求组织成同一条学习率曲线。
 
 本节聚焦有效参数更新的节奏：学习率阶段只随成功的参数更新推进。梯度累积负责把多个微批次合成一次有效更新；监督微调训练循环再把数据、损失、优化器和评估连接起来。
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 默认使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
+- **框架核对：** 使用 [`TRAIN-CPU`](../topic_discussion/backpropagation_training_mechanism/quickstart.md#train-cpu-quickstart)，完成 Step 4 后运行 [框架一致性核对](#framework-check)。
+
+---
 ## 前置阅读
 
 **导语：** 如果已经理解损失如何产生梯度，但不清楚参数何时真正更新，可先回看优化器和最小训练循环；随后再把更新次数与学习率阶段对应起来。
@@ -25,7 +33,7 @@
 - [P0: 12. PyTorch Data Interface and Training Lifecycle | 数据接口与训练生命周期](../00_Prerequisites/12_PyTorch_Minimal_Training_Interface.md)
 
 ---
-### Step 1：参数更新如何形成调度时钟
+## Step 1：参数更新如何形成调度时钟
 
 一次训练更新包含梯度形成、有效性判断、参数写回和下一步学习率准备。调度时钟不按前向或反向次数推进，而按成功的参数变化事件推进；这样梯度累积和跳步都不会让学习率提前消耗。
 
@@ -37,9 +45,20 @@
 | 跳过更新 | 否 | 保持不变 | 避免学习率进度领先于真实参数状态 |
 
 ![学习率调度总览](../public/02_PyTorch_Algorithms/12_scheduler_overview.svg)
-### Step 2：WSD 如何把三种训练需求写成一条曲线
+## Step 2：Warmup、Stable 与 Decay 如何组成 WSD 曲线
 
-WSD 的阶段长度以有效参数更新计数。设基础学习率为 $\eta_{max}$、最小比例为 $r$：Warmup 从 0 线性到 $\eta_{max}$；Stable 保持 $\eta_{max}$；Decay 再平滑下降到 $r\eta_{max}$。这样可以把“何时开始收敛”从起步阶段分离出来。
+WSD 的阶段长度以有效参数更新计数。设基础学习率为 $\eta_{max}$，最小比例为 $r$，Warmup、Stable、Decay 的更新数分别为 $T_w,T_s,T_d$，当前成功更新编号为 $t$。一种端点对齐的离散 WSD 写法是：
+
+$$
+\eta_t=
+\begin{cases}
+\eta_{max}\dfrac{t}{T_w-1}, & 0\le t<T_w,\\
+\eta_{max}, & T_w\le t<T_w+T_s,\\
+r\eta_{max}+(1-r)\eta_{max}\dfrac{1+\cos(\pi u_t)}{2}, & T_w+T_s\le t<T_w+T_s+T_d,
+\end{cases}
+$$
+
+其中 $u_t=\dfrac{t-T_w-T_s}{T_d-1}$ 是 Decay 阶段进度；单步阶段需单独定义端点，避免分母为零。该公式把起步、稳定训练和收敛阶段映射到同一条只由成功更新驱动的曲线。
 
 | 阶段 | 输入 | 学习率行为 | 需要验证的边界 |
 |:---|:---|:---|:---|
@@ -48,9 +67,9 @@ WSD 的阶段长度以有效参数更新计数。设基础学习率为 $\eta_{ma
 | Cosine Decay | 衰减阶段内进度 | 余弦下降至最小比例 | 首步衔接基础学习率，末步达到最小学习率 |
 
 ![WSD 阶段判断](../public/02_PyTorch_Algorithms/12_scheduler_phase_logic.svg)
-### Step 3：为什么只有成功更新才能推进调度
+## Step 3：为什么只有成功更新才能推进调度
 
-一个微批次只贡献一次前向、损失和反向；只有累积完成且梯度通过有效性检查，参数才真正改变。调度器应与成功的参数变化事件绑定，否则梯度累积或混合精度溢出会让学习率曲线比实际参数更新更快走完。混合精度下的缩放、有限值检查和跳步顺序可继续阅读 [TRAIN-MIXED-PRECISION-BACKWARD](./TRAIN-MIXED-PRECISION-BACKWARD_Mixed_Precision_Backward.md)。
+令 $u$ 表示尝试更新次数，$s(u)=\sum_{j=1}^{u}\mathbf 1[\text{第 }j\text{ 次更新成功}]$ 表示成功更新计数。调度器读取的是 $s(u)$，而不是 $u$。一个微批次只贡献一次前向、损失和反向；只有累积完成且梯度通过有效性检查，参数才真正改变。调度器应与成功的参数变化事件绑定，否则梯度累积或混合精度溢出会让学习率曲线比实际参数更新更快走完。混合精度下的缩放、有限值检查和跳步顺序可继续阅读 [TRAIN-MIXED-PRECISION-BACKWARD](./TRAIN-MIXED-PRECISION-BACKWARD_Mixed_Precision_Backward.md)。
 
 | 对象 | 发生频率 | 作用 | 是否推进 WSD 阶段 |
 |:---|:---|:---|:---|
@@ -58,7 +77,9 @@ WSD 的阶段长度以有效参数更新计数。设基础学习率为 $\eta_{ma
 | 有效批次完成 | 若干微批次后 | 形成一次候选更新所需的梯度 | 否 |
 | 成功参数更新 | 梯度有效且允许写回时 | 改变参数，并为下一步准备学习率 | 是 |
 | 溢出或跳步 | 梯度无效时 | 保持参数与学习率阶段不变 | 否 |
-### Step 4：实现 WSD Scheduler 并验证更新语义
+<a id="mechanism-practice"></a>
+
+## Step 4：实现 WSD Scheduler 并验证更新语义
 
 题目区提供 WSD 的配置校验、阶段判断和稳定阶段路径。学习者只计算 Warmup 的线性进度与 Decay 的余弦系数；测试覆盖阶段边界、单步阶段、配置契约，以及调度时钟是否只随有效更新推进。
 
@@ -151,6 +172,7 @@ class WSD_Scheduler(LRScheduler):
         return [self._lr_for_step(base_lr, step) for base_lr in self.base_lrs]
 ```
 
+## 测试
 
 ```python
 # 每个测试函数分别验证 WSD 数值机制、配置边界或调度时钟。
@@ -316,9 +338,79 @@ class WSD_Scheduler(LRScheduler):
 
 - 衰减进度先从全局更新步转换为阶段内比例，再用余弦系数从 1 平滑降到 0。
 - `test_cosine_decay` 检查首尾、单调性和单步直接到最小学习率的约定。
+<a id="framework-check"></a>
+
+## 框架一致性核对（可选）
+
+下面用 PyTorch `LambdaLR` 表达同一条 WSD 曲线，并只在成功参数更新后推进两个调度器。
+
+| 核对对象 | 本节实现 | 成熟框架入口 | 通过条件 |
+| --- | --- | --- | --- |
+| WSD 学习率序列 | `WSD_Scheduler` | PyTorch `LambdaLR` | 相同阶段配置下每个成功更新步的学习率一致 |
+| 调度时钟 | 成功更新计数 | `optimizer.step` 后调用 `scheduler.step` | 跳步保持学习率，时钟只累计成功更新 |
+
+```python
+from importlib.metadata import version
+
+
+def check_scheduler_framework_conformance():
+    """核对 WSD 曲线与 PyTorch LambdaLR，并验证跳步不推进调度时钟。"""
+    warmup, stable, decay, min_ratio = 2, 2, 3, 0.1
+
+    def factor(step):
+        if step < warmup:
+            return 1.0 if warmup == 1 else step / (warmup - 1)
+        stable_end = warmup + stable
+        if step < stable_end:
+            return 1.0
+        if decay == 1:
+            return min_ratio
+        progress = min(step - stable_end, decay - 1) / (decay - 1)
+        return min_ratio + (1.0 - min_ratio) * 0.5 * (1.0 + math.cos(math.pi * progress))
+
+    parameter_a = torch.nn.Parameter(torch.tensor(1.0))
+    parameter_b = torch.nn.Parameter(torch.tensor(1.0))
+    optimizer_a = torch.optim.SGD([parameter_a], lr=1.0)
+    optimizer_b = torch.optim.SGD([parameter_b], lr=1.0)
+    local_scheduler = WSD_Scheduler(optimizer_a, warmup, stable, decay, min_ratio)
+    framework_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer_b, lr_lambda=factor)
+    local_curve = [local_scheduler._lr_for_step(1.0, step) for step in range(7)]
+    framework_curve = [factor(step) for step in range(7)]
+
+    successful_updates = 0
+    lr_during_attempts = []
+    for update_succeeded in (True, False, True):
+        before_attempt = framework_scheduler.get_last_lr()[0]
+        if update_succeeded:
+            optimizer_b.step()
+            framework_scheduler.step()
+            successful_updates += 1
+        lr_during_attempts.append((before_attempt, framework_scheduler.get_last_lr()[0]))
+    checks = {
+        'piecewise_curve_match': all(
+            math.isclose(left, right, rel_tol=1e-12, abs_tol=1e-12)
+            for left, right in zip(local_curve, framework_curve)
+        ),
+        'skipped_update_holds_lr': math.isclose(lr_during_attempts[1][0], lr_during_attempts[1][1], rel_tol=0.0, abs_tol=0.0),
+        'clock_counts_successful_updates': framework_scheduler.last_epoch == successful_updates,
+    }
+    failed = [name for name, passed in checks.items() if not passed]
+    if failed:
+        raise AssertionError(f'框架一致性核对失败：{failed}')
+    return {
+        'status': 'passed',
+        'check_kind': 'framework_conformance',
+        'versions': {'torch': version('torch')},
+        'checks': checks,
+    }
+
+
+framework_check = check_scheduler_framework_conformance()
+framework_check
+```
 
 ## 相关阅读
 
-- [11. Gradient Accumulation | 梯度累积](../02_PyTorch_Algorithms/11_Gradient_Accumulation.md)
+- [11. Gradient Accumulation | 梯度累积](./11_Gradient_Accumulation.md)
 - [PyTorch LRScheduler 文档](https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate)
 - [Hugging Face Transformers Scheduler API](https://huggingface.co/docs/transformers/main_classes/optimizer_schedules)

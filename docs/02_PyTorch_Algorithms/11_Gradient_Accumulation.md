@@ -1,6 +1,6 @@
 # 11. Gradient Accumulation | 梯度累积
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `训练控制`, `梯度累积`, `有效 batch` | **目标人群：** 训练机制学习者
+**难度：** Medium | **环境：** [CPU 主线，GPU 可选](#runtime-environment) | **标签：** `训练控制`, `梯度累积`, `有效 batch` | **目标人群：** 训练机制学习者
 
 > 🚀 **云端运行环境**
 >
@@ -17,6 +17,15 @@
 显存不足时，不一定要缩小一次参数更新看到的数据量。梯度累积把一个逻辑批次拆成多个微批次（micro-batch）：每个微批次完成前向和反向，梯度暂时保留；累积完成后再进行一次参数更新。这样降低的是单次计算的激活值峰值，而不是参数、梯度或优化器状态的长期驻留。
 
 本节说明微批次、有效批次（effective batch）和一次参数更新的关系，并验证累积更新何时能与完整批次对齐。完成后，你将能区分计算批次与更新批次，并为后续学习率调度和端到端训练建立统一的更新口径。
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 默认使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
+- **框架核对：** 使用 [`TRAIN-CPU`](../topic_discussion/backpropagation_training_mechanism/quickstart.md#train-cpu-quickstart)，完成 Step 4 后运行 [框架一致性核对](#framework-check)。
+- **GPU 实测：** 使用 `TRAIN-CUDA-MECHANISM`，按 [Step 5](#gpu-experiment) 的说明配置并运行。
+
+---
 ## 前置阅读
 
 **导语：** 先理解优化器如何读取梯度并写回参数，再看多个微批次如何合成一次有效更新。
@@ -24,7 +33,7 @@
 - [P0: 12. PyTorch Data Interface and Training Lifecycle | 数据接口与训练生命周期](../00_Prerequisites/12_PyTorch_Minimal_Training_Interface.md)
 
 ---
-### Step 1：一次逻辑更新由什么组成
+## Step 1：多个微批次何时形成一次参数更新
 
 一个逻辑批次可以被拆成多个微批次。微批次是单次前向和反向的计算单位；有效批次是一次参数更新累计看到的全部样本；只有本轮所需的微批次都贡献梯度后，才形成一次有效更新。
 
@@ -36,7 +45,7 @@
 | 参数更新 | 梯度写回参数的一次事件 | 每个有效批次恰好一次 |
 
 ![梯度累积总览](../public/02_PyTorch_Algorithms/11_gradient_accumulation_overview.svg)
-### Step 2：梯度累积改变哪一部分显存
+## Step 2：梯度累积改变哪一部分显存
 
 把一个逻辑批次拆开后，每次只为一个微批次建立激活值，因此单次计算的峰值通常下降。参数、梯度和优化器状态仍跨所有微批次驻留；累积梯度也会一直保留到这次有效更新完成。
 
@@ -46,13 +55,15 @@
 | 参数与优化器状态 | 整次训练持续驻留 | 长期显存占用 |
 | 梯度缓冲区 | 多个微批次间持续累积 | 有效更新前不能提前清空 |
 | 输入与监督目标 | 分批进入模型 | 所有字段必须同步切分 |
-### Step 3：怎样保持与完整批次相同的更新语义
+## Step 3：怎样保持与完整批次相同的更新语义
 
 设完整批次被均分为 $K$ 个微批次，并且每个微批次都计算样本平均损失。为了让累计梯度与完整批次的平均梯度对齐，第 $i$ 个微批次的梯度权重应为 $1/K$。若微批次大小不相等，则权重应改为 $n_i/N$，其中 $n_i$ 是当前微批次样本数，$N$ 是有效批次总样本数。
 
 $$
-\nabla L = \frac{1}{K} \sum_{i=1}^{K} \nabla L_i
+\nabla L = \sum_{i=1}^{K} \frac{n_i}{N}\nabla L_i,\qquad N=\sum_{i=1}^{K}n_i.
 $$
+
+当所有微批次等长，即 $n_i=N/K$ 时，上式化为 $\nabla L=\frac{1}{K}\sum_{i=1}^{K}\nabla L_i$。这里 $L_i$ 是第 $i$ 个微批次的样本平均损失，$n_i/N$ 才是它在完整批次平均梯度中的权重。
 
 | 对齐条件 | 做法 | 不满足时的结果 |
 |:---|:---|:---|
@@ -64,7 +75,9 @@ $$
 | 随机与批统计状态 | 两条路径保持可比较的随机状态和批统计语义 | 即使样本相同也可能无法严格等价 |
 
 ![完整批次与梯度累积的更新等价条件](../public/02_PyTorch_Algorithms/11_gradient_accumulation_equivalence.svg)
-### Step 4：实现一次逻辑更新并验证
+<a id="mechanism-practice"></a>
+
+## Step 4：实现累积边界与等价梯度更新
 
 题目区用固定大小的逻辑批次复现一次累积更新。骨架提供模型、损失计算、反向调用、参数更新和日志聚合；学习者只完成同步切片边界、平均损失缩放和有效更新边界。测试分别检查字段对齐、更新等价、边界判断与非法输入。
 
@@ -185,6 +198,7 @@ def is_update_boundary(completed_micro_steps: int, accum_steps: int):
 
 ```
 
+## 测试
 
 ```python
 # 每个测试函数对应 Step 4 的一项机制或输入边界。
@@ -398,7 +412,81 @@ def is_update_boundary(completed_micro_steps: int, accum_steps: int):
 - 已完成次数只有达到累积次数的整数倍时，才构成一次有效更新。
 - `test_update_boundary` 检查连续边界序列，等价测试再确认一次逻辑批次只更新一次。
 
-### Step 5：可选 GPU 实验——有效批次、显存与时间对照
+<a id="framework-check"></a>
+
+## 框架一致性核对（可选）
+
+下面使用 Accelerate 的梯度累积上下文核对更新边界和参数等价性；比较只使用 CPU 上的微型线性层。
+
+| 核对对象 | 本节实现 | 成熟框架入口 | 通过条件 |
+| --- | --- | --- | --- |
+| 有效更新边界 | `is_update_boundary` | `Accelerator.accumulate` 的 `sync_gradients` | 两个微批次只在末次形成有效更新 |
+| 更新后参数 | 完整批次更新 | Accelerate 累积更新 | 相同初始化、样本和学习率下参数一致 |
+
+```python
+from importlib.metadata import version
+
+try:
+    from accelerate import Accelerator
+except ImportError:
+    framework_check = {
+        'status': 'skipped',
+        'reason': '请使用 TRAIN-CPU 环境运行本单元',
+    }
+else:
+    def check_gradient_accumulation_framework_conformance():
+        """核对 Accelerate 的累积边界与完整批次参数更新是否一致。"""
+        torch.manual_seed(42)
+        x = torch.randn(4, 3)
+        y = torch.randn(4, 2)
+        full_model = nn.Linear(3, 2)
+        accum_model = copy.deepcopy(full_model)
+        full_optimizer = torch.optim.SGD(full_model.parameters(), lr=0.1)
+        full_optimizer.zero_grad()
+        nn.functional.mse_loss(full_model(x), y, reduction='mean').backward()
+        full_optimizer.step()
+
+        accelerator = Accelerator(cpu=True, gradient_accumulation_steps=2)
+        accum_optimizer = torch.optim.SGD(accum_model.parameters(), lr=0.1)
+        accum_model, accum_optimizer = accelerator.prepare(accum_model, accum_optimizer)
+        sync_pattern = []
+        for start in (0, 2):
+            with accelerator.accumulate(accum_model):
+                loss = nn.functional.mse_loss(
+                    accum_model(x[start:start + 2]), y[start:start + 2], reduction='mean'
+                )
+                accelerator.backward(loss)
+                sync_pattern.append(bool(accelerator.sync_gradients))
+                accum_optimizer.step()
+                accum_optimizer.zero_grad()
+
+        unwrapped = accelerator.unwrap_model(accum_model)
+        checks = {
+            'sync_boundary_match': sync_pattern == [False, True],
+            'parameter_update_match': all(
+                torch.allclose(left, right, atol=1e-6, rtol=1e-6)
+                for left, right in zip(full_model.parameters(), unwrapped.parameters())
+            ),
+        }
+        failed = [name for name, passed in checks.items() if not passed]
+        if failed:
+            raise AssertionError(f'框架一致性核对失败：{failed}')
+        return {
+            'status': 'passed',
+            'check_kind': 'framework_conformance',
+            'versions': {'torch': version('torch'), 'accelerate': version('accelerate')},
+            'checks': checks,
+            'sync_gradients': sync_pattern,
+        }
+
+    framework_check = check_gradient_accumulation_framework_conformance()
+
+framework_check
+```
+
+<a id="gpu-experiment"></a>
+
+## Step 5：可选 GPU 实验——有效批次、显存与时间对照
 
 CPU 题目确认微批次切分、损失缩放和更新边界；GPU 实验进一步比较同一有效批次下的更新一致性、增量峰值显存和训练 step 时间。
 

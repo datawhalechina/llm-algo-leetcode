@@ -1,6 +1,6 @@
 # 10. Attention Backward and Custom Autograd | Attention 反向传播与自定义 Autograd
 
-**难度：** Medium | **环境：** CPU-first + Optional GPU | **标签：** `训练机制`, `Attention`, `Autograd`, `反向传播` | **目标人群：** 训练机制学习者
+**难度：** Medium | **环境：** [CPU 主线](#runtime-environment) | **标签：** `训练机制`, `Attention`, `Autograd`, `反向传播` | **目标人群：** 训练机制学习者
 
 > 🚀 **云端运行环境**
 >
@@ -21,6 +21,14 @@ Attention 的前向计算把 $Q$、$K$、$V$ 组合成输出；反向传播沿�
 **关键词：** `Autograd`, `backward`, `gradcheck`
 
 ---
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 默认使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
+- **框架核对：** 使用 [`TRAIN-CPU`](../topic_discussion/backpropagation_training_mechanism/quickstart.md#train-cpu-quickstart)，完成 Step 4 后运行 [框架一致性核对](#framework-check)。
+
+---
 ## 前置阅读
 
 **导语：** 先理解 PyTorch 如何记录计算图，并复习 Attention 的 Q/K/V 前向依赖，再进入反向梯度链。
@@ -30,7 +38,7 @@ Attention 的前向计算把 $Q$、$K$、$V$ 组合成输出；反向传播沿�
 
 ---
 
-### Step 1: Attention backward 的整体梯度链
+## Step 1：dO 如何分解为 dV、dP、dS、dQ 与 dK
 
 把 Attention 看成一条依赖链：前向阶段由 $Q、K、V$ 形成 $S$、$P$ 和 $O$；反向阶段从输出梯度 $dO$ 出发，先分成 $dV$ 与 $dP$，再经过 $dS$ 回到 $dQ$ 和 $dK$。其中 $dO$ 是这条反向链的起点。
 
@@ -42,7 +50,7 @@ Attention 的前向计算把 $Q$、$K$、$V$ 组合成输出；反向传播沿�
 > - $O \in \mathbb{R}^{B \times N \times d}$
 
 ![Autograd：前向记录与反向梯度流](../public/02_PyTorch_Algorithms/10_attention_backward_overview.svg)
-### Step 2: Softmax、缩放与分支梯度如何回传
+## Step 2：Softmax、缩放与分支梯度如何回传
 
 先把图中的 $dO$ 理解成损失函数传给 Attention 输出 $O$ 的梯度。因为 $O = P V$，它会分成两条支路：一条直接求 $dV$；另一条先求 $dP$，再穿过 Softmax 得到 $dS$，最后回传到 $Q$ 和 $K$。
 
@@ -69,9 +77,15 @@ $$ dK = dS^T \cdot Q \cdot \frac{1}{\sqrt{d}} $$
 ![Attention backward：梯度沿计算依赖逆向传播](../public/02_PyTorch_Algorithms/10_attention_gradient_chain.svg)
 
 
-### Step 3: saved tensors 与反向显存代价
+## Step 3：saved tensors 与反向显存代价
 
-反向计算需要前向阶段留下部分中间状态。显式 Attention 路径通常要保留 $Q、K、V$ 以及归一化后的 $P$，再用 `numel × element_size` 估算它们的理论容量；其中 $P$ 含有两个序列维度，因此序列变长时，保存容量和 HBM 读写都会受到放大。这个账本用于解释压力来源，不等同于 CUDA 峰值。若反向仍需要归一化结果，就要思考能否不保存完整的 $P$，而是在分块计算中保留足够的统计量。FlashAttention 通过分块计算、online softmax 和片上数据复用，改变了中间状态的保存与搬运方式；实际显存和速度收益仍需结合 GPU、序列长度、dtype 和 workload 测量。
+反向计算需要前向阶段留下部分中间状态。若 $Q、K、V\in\mathbb R^{B\times N\times d}$、$P\in\mathbb R^{B\times N\times N}$，每个元素占 $b$ 字节，则教学版显式路径的保存容量可估为：
+
+$$
+C_{saved}=b\left(3BNd+BN^2\right).
+$$
+
+其中 $B$ 是 batch，$N$ 是序列长度，$d$ 是 head 维度；$BN^2$ 项说明完整概率矩阵会随序列长度二次增长。再用 `numel × element_size` 可在代码中复核这一理论容量。这个账本用于解释压力来源，不等同于 CUDA 峰值。若反向仍需要归一化结果，就要思考能否不保存完整的 $P$，而是在分块计算中保留足够的统计量。FlashAttention 通过分块计算、online softmax 和片上数据复用，改变了中间状态的保存与搬运方式；实际显存和速度收益仍需结合 GPU、序列长度、dtype 和 workload 测量。
 
 | 前向状态或策略 | 反向用途 | 需要关注的代价 | 后续机制 |
 | --- | --- | --- | --- |
@@ -80,7 +94,9 @@ $$ dK = dS^T \cdot Q \cdot \frac{1}{\sqrt{d}} $$
 | 只保存边界或重算 | 在反向阶段恢复中间结果 | 用额外计算换保存空间 | activation checkpointing / online softmax |
 | 理论账本 | 统计各状态的 numel 与 dtype 字节数 | 只能说明保存对象的容量下界 | [43 统一训练内存账本](./43_Unified_Training_Memory_Ledger.md) 将其映射到完整 step 生命周期 |
 
-### Step 4: 实现并验证 Attention backward
+<a id="mechanism-practice"></a>
+
+## Step 4：实现 Attention 局部梯度与自定义 backward
 
 题目区提供缩放点积 Attention 的前向、保存状态和自定义 Autograd 调用骨架。学习者分别完成矩阵乘法的两条梯度分支、Softmax 反向以及缩放点积回传；测试先逐段对照自动求导，再用 `gradcheck` 验证组合后的 backward。
 
@@ -170,19 +186,19 @@ class CustomAttention(torch.autograd.Function):
         # 1. 缩放点积
         d_k = q.size(-1)
         scale = 1.0 / math.sqrt(d_k)
-        
+
         scores = torch.matmul(q, k.transpose(-2, -1)) * scale
-        
+
         # 2. Softmax 获取概率 P
         p = F.softmax(scores, dim=-1)
-        
+
         # 3. 乘上 V 得到输出
         out = torch.matmul(p, v)
-        
+
         # 保存反向传播需要用到的张量
         ctx.save_for_backward(q, k, v, p)
         ctx.scale = scale
-        
+
         return out
 
     @staticmethod
@@ -200,17 +216,17 @@ class CustomAttention(torch.autograd.Function):
         scale = ctx.scale
         if dout.shape != q.shape:
             raise ValueError('dout 必须与 Attention 输出具有相同形状')
-        
+
         dv = value_gradient(p, dout)
         dp = probability_gradient(dout, v)
         ds = softmax_backward(p, dp)
         dq, dk = query_key_gradients(ds, q, k, scale)
-        
+
         return dq, dk, dv
 
 ```
 
-### 测试
+## 测试
 
 运行下方 CPU 机制测试，依次检查 Attention 前向、$dQ/dK/dV$、Softmax 反向的数值梯度，以及输入形状契约。
 
@@ -359,14 +375,14 @@ class CustomAttention(torch.autograd.Function):
             raise TypeError('q、k、v 必须使用相同 dtype')
         d_k = q.size(-1)
         scale = 1.0 / math.sqrt(d_k)
-        
+
         scores = torch.matmul(q, k.transpose(-2, -1)) * scale
         p = F.softmax(scores, dim=-1)
         out = torch.matmul(p, v)
-        
+
         ctx.save_for_backward(q, k, v, p)
         ctx.scale = scale
-        
+
         return out
 
     @staticmethod
@@ -415,6 +431,53 @@ class CustomAttention(torch.autograd.Function):
 - `QK^T` 的两条输入支路都必须带上同一个缩放因子，且分别保持 Q、K 的原始形状。
 - `test_query_key_gradients` 检查两条局部梯度，`test_custom_attention_integration` 再用数值梯度验证完整组合。
 
+<a id="framework-check"></a>
+
+## 框架一致性核对（可选）
+
+下面把教学版自定义 Autograd 与 PyTorch `scaled_dot_product_attention` 放在同一输入和上游梯度下比较。
+
+| 核对对象 | 本节实现 | 成熟框架入口 | 通过条件 |
+| --- | --- | --- | --- |
+| Attention 输出 | `CustomAttention.apply` | `scaled_dot_product_attention` | 无 mask、无 dropout 时输出一致 |
+| Q/K/V 梯度 | 自定义 `backward` | PyTorch Autograd | 同一上游梯度下三组输入梯度均在双精度容差内一致 |
+
+```python
+from importlib.metadata import version
+
+
+def check_attention_framework_conformance():
+    """核对自定义 Attention 的输出和 Q/K/V 梯度是否符合 PyTorch SDPA。"""
+    torch.manual_seed(42)
+    base = [torch.randn(2, 4, 3, dtype=torch.float64) for _ in range(3)]
+    q1, k1, v1 = [tensor.clone().requires_grad_(True) for tensor in base]
+    q2, k2, v2 = [tensor.clone().requires_grad_(True) for tensor in base]
+    local_out = CustomAttention.apply(q1, k1, v1)
+    framework_out = F.scaled_dot_product_attention(q2, k2, v2, dropout_p=0.0)
+    grad_out = torch.randn_like(local_out)
+    local_grads = torch.autograd.grad(local_out, (q1, k1, v1), grad_out)
+    framework_grads = torch.autograd.grad(framework_out, (q2, k2, v2), grad_out)
+    checks = {
+        'output_match': bool(torch.allclose(local_out, framework_out, atol=1e-10, rtol=1e-10)),
+        'query_gradient_match': bool(torch.allclose(local_grads[0], framework_grads[0], atol=1e-9, rtol=1e-9)),
+        'key_gradient_match': bool(torch.allclose(local_grads[1], framework_grads[1], atol=1e-9, rtol=1e-9)),
+        'value_gradient_match': bool(torch.allclose(local_grads[2], framework_grads[2], atol=1e-9, rtol=1e-9)),
+    }
+    failed = [name for name, passed in checks.items() if not passed]
+    if failed:
+        raise AssertionError(f'框架一致性核对失败：{failed}')
+    return {
+        'status': 'passed',
+        'check_kind': 'framework_conformance',
+        'versions': {'torch': version('torch')},
+        'checks': checks,
+    }
+
+
+framework_check = check_attention_framework_conformance()
+framework_check
+```
+
 ---
 
 ## 相关阅读
@@ -425,5 +488,5 @@ class CustomAttention(torch.autograd.Function):
 - [PyTorch 自定义 `autograd.Function` 文档](https://pytorch.org/docs/stable/notes/extending.html)
 - [09. 激活函数与损失反向传播](../02_PyTorch_Algorithms/09_Activation_and_Loss_Backward.md)
 - [20. FlashAttention 模拟](../02_PyTorch_Algorithms/20_FlashAttention_Sim.md)
-  
+
 ---
