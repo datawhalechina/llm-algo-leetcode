@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
   <title id="title">一次训练更新中的依赖、状态与更新边界</title>
   <desc id="desc">批次和参数经过前向传播、损失、反向传播和参数更新，并在验证阶段形成下一轮证据。</desc>
-  <style>.bg{fill:#f8fafc}.line{stroke:#64748b;stroke-width:2.5;fill:none;marker-end:url(#a)}.dash{stroke-dasharray:7 6}.box{fill:#eff6ff;stroke:#60a5fa;stroke-width:2}.state{fill:#fff7ed;stroke:#fb923c;stroke-width:2}.out{fill:#ecfdf5;stroke:#34d399;stroke-width:2}.n{font:700 18px sans-serif;fill:#0f172a}.s{font:14px sans-serif;fill:#475569}.t{font:700 24px sans-serif;fill:#0f172a}</style>
+  <style>.bg{fill:#f8fafc}.line{stroke:#64748b;stroke-width:2.5;fill:none;marker-end:url(#a)}.dash{stroke-dasharray:7 6}.box{fill:#eff6ff;stroke:#60a5fa;stroke-width:2}.state{fill:#fff7ed;stroke:#fb923c;stroke-width:2}.out{fill:#ecfdf5;stroke:#34d399;stroke-width:2}.n{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:18px;font-weight:700;fill:#0f172a}.s{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:14px;fill:#475569}.t{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:24px;font-weight:700;fill:#0f172a}</style>
   <defs><marker id="a" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 3L0 6z" fill="#64748b"/></marker></defs>
   <rect class="bg" width="1200" height="500" rx="20"/><text x="50" y="52" class="t">一次训练更新：依赖决定梯度，边界决定何时提交更新</text>
   <path class="line" d="M250 185H310"/><path class="line" d="M510 185H570"/><path class="line" d="M770 185H830"/><path class="line" d="M1030 185H1090V365H995"/>

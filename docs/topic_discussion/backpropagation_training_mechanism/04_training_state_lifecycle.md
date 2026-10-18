@@ -32,35 +32,39 @@
 
 ### 从生命周期计算阶段峰值
 
-对阶段 $t$，可将理论驻留量写成：
+设第 $i$ 类状态的大小为 $b_i$，$a_i(t)$ 表示它在阶段 $t$ 是否驻留，驻留取 1，否则取 0。阶段驻留量和理论峰值分别为：
 
 $$
-M_t=\sum_i \mathbb{1}[i\text{ 在阶段 }t\text{ 驻留}]\cdot \text{bytes}_i.
+M_t=\sum_i a_i(t)b_i,
+\qquad
+M_{peak}=\max_t M_t.
 $$
 
-理论峰值是 $\max_t M_t$。这项计算需要同时记录对象大小与生命周期，而不能只统计参数量。内存分配器的预留量、碎片、库工作区和系统进程会使 CUDA 实测值偏离理论账本，因此理论账本用于解释来源，GPU 统计用于确认当前工作负载的真实边界。
+这项计算需要同时记录对象大小与生命周期，而不能只统计参数量。内存分配器的预留量、碎片、库工作区和系统进程会使 CUDA 实测值偏离理论账本，因此理论账本用于解释来源，GPU 统计用于确认当前工作负载的真实边界。完整符号约定见[公式索引](./formula_reference.md)。
 
 ### 策略改变的是哪一段生命周期
 
-| 策略 | 主要改变 | 不直接改变 |
+| 策略 | 主要改变 | 仍需承担的成本 |
 |:---|:---|:---|
-| 梯度累积 | 梯度驻留时间与优化器更新频率 | 参数规模 |
-| 激活检查点 | 激活的保存范围和反向重算 | 参数与优化器状态规模 |
-| 卸载 | 状态驻留位置和搬运时间 | 状态的逻辑用途 |
-| ZeRO | 参数、梯度或优化器状态的单 rank 驻留份额 | 全局训练语义 |
-| 混合精度 | 部分状态和计算的字节宽度 | 状态在训练闭环中的职责 |
+| 梯度累积 | 梯度驻留时间与优化器更新频率 | 参数仍完整驻留，累计窗口延长梯度生命周期 |
+| 激活检查点 | 激活的保存范围和反向重算 | 参数与优化器状态仍驻留，并增加重算时间 |
+| 卸载 | 状态驻留位置和搬运时间 | 状态仍需保存，并增加传输与同步等待 |
+| ZeRO | 参数、梯度或优化器状态的单 rank 驻留份额 | 全局状态仍存在，并增加通信与恢复要求 |
+| 混合精度 | 部分状态和计算的字节宽度 | 仍需保持主权重、累加精度与有限值检查 |
 
 ![训练状态生命周期与峰值重叠](../../public/topic_discussion/backpropagation_training_mechanism/training_state_lifecycle.svg)
 
-## 选择条件与验证证据
+## 验证与下一步
 
 完成本页后，应能为固定工作负载输出：状态名称、字节数、产生阶段、消费阶段、释放阶段和峰值贡献。多卡状态分片可继续进入 Part01 · 06 与通信并行专题。
 
-## 学习入口
-
 下一页进入 [05 激活检查点与卸载](./05_checkpointing_and_offload.md)，比较重算和搬运如何改变生命周期。
 
-- [Part00 · 18 显存分析与优化](../../00_Prerequisites/18_Memory_Profiling_and_Optimization.md)
-- [Part01 · 06 显存计算与 ZeRO](../../01_Hardware_Math_and_Systems/06_VRAM_Calculation_and_ZeRO.md)
-- [10 Attention 反向传播与自定义 Autograd](../../02_PyTorch_Algorithms/10_Attention_Backward_and_Custom_Autograd.md)
-- [Part02 · 43 统一训练内存账本](../../02_PyTorch_Algorithms/43_Unified_Training_Memory_Ledger.md)
+## 相关阅读
+
+| 资料 | 用途 |
+|:---|:---|
+| [Part 00 · 18 显存账本与运行时证据](../../00_Prerequisites/18_Memory_Profiling_and_Optimization.md) | 回看对象生命周期、allocator 与峰值账本。 |
+| [Part 01 · 06 显存计算与 ZeRO](../../01_Hardware_Math_and_Systems/06_VRAM_Calculation_and_ZeRO.md) | 将单卡账本扩展到状态切分。 |
+| [Part 02 · 10 Attention 反向传播与自定义 Autograd](../../02_PyTorch_Algorithms/10_Attention_Backward_and_Custom_Autograd.md) | 回看长序列 Attention 的保存状态。 |
+| [Part 02 · 43 统一训练内存账本](../../02_PyTorch_Algorithms/43_Unified_Training_Memory_Ledger.md) | 练习分阶段驻留和峰值对象对照。 |

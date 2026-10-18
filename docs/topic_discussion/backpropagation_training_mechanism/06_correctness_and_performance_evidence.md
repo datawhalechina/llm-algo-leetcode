@@ -56,16 +56,18 @@ FP16、BF16 和 FP32 拥有不同的动态范围和存储代价。FP16 训练可
 
 ![训练候选从正确性到性能决策的证据门槛](../../public/topic_discussion/backpropagation_training_mechanism/training_evidence_gates.svg)
 
-## 选择条件与验证证据
+## 验证与下一步
 
 完成本页后，应能把一个训练候选策略写成可复测记录：先说明它保持了哪些训练语义，再给出质量、容量和时间证据，最后形成受当前工作负载限制的决策。
 
-## 学习入口
-
 完成机制验证后，可进入[性能优化](../performance_optimization/intro.md)继续分析真实瓶颈，也可进入[后训练优化](../post_training_optimization/intro.md)验证训练目标和项目质量。
 
-- [Part00 · 19 调试与异常定位](../../00_Prerequisites/19_Debugging_and_Anomaly_Localization.md)
-- [Part00 · 20 性能证据与实验设计](../../00_Prerequisites/20_Performance_Evidence_and_Experiment_Design.md)
-- [Part02 · 73 训练性能分析](../../02_PyTorch_Algorithms/73_Training_Performance_Analysis.md)
-- [Part02 · 74 性能分析驱动优化](../../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.md)
-- [Part02 · 76 激活、检查点与卸载对比项目](../../02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.md)
+## 相关阅读
+
+| 资料 | 用途 |
+|:---|:---|
+| [Part 00 · 19 调试与异常定位](../../00_Prerequisites/19_Debugging_and_Anomaly_Localization.md) | 定位形状、数值、梯度和设备异常。 |
+| [Part 00 · 20 性能证据与实验设计](../../00_Prerequisites/20_Performance_Evidence_and_Experiment_Design.md) | 固定工作负载、基线和候选对照。 |
+| [Part 02 · 73 训练性能分析](../../02_PyTorch_Algorithms/73_Training_Performance_Analysis.md) | 建立真实训练工作负载的基线。 |
+| [Part 02 · 74 候选准入与交接](../../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.md) | 将机制候选接入时间线、归因与准入检查。 |
+| [Part 02 · 76 激活检查点与卸载对照](../../02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.md) | 比较单项和组合策略的质量、容量与时间。 |

@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
   <title id="title">监督范围、损失归约与有效更新</title>
   <desc id="desc">预训练和监督微调采用不同监督范围，但都要经过统一损失分母、梯度累积、尺度还原和有效更新。</desc>
-  <style>.bg{fill:#f8fafc}.line{stroke:#64748b;stroke-width:2.5;fill:none;marker-end:url(#a)}.box{fill:#eff6ff;stroke:#60a5fa;stroke-width:2}.branch{fill:#fff7ed;stroke:#fb923c;stroke-width:2}.gate{fill:#ecfdf5;stroke:#34d399;stroke-width:2}.n{font:700 18px sans-serif;fill:#0f172a}.s{font:14px sans-serif;fill:#475569}.t{font:700 24px sans-serif;fill:#0f172a}</style>
+  <style>.bg{fill:#f8fafc}.line{stroke:#64748b;stroke-width:2.5;fill:none;marker-end:url(#a)}.box{fill:#eff6ff;stroke:#60a5fa;stroke-width:2}.branch{fill:#fff7ed;stroke:#fb923c;stroke-width:2}.gate{fill:#ecfdf5;stroke:#34d399;stroke-width:2}.n{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:18px;font-weight:700;fill:#0f172a}.s{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:14px;fill:#475569}.t{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:24px;font-weight:700;fill:#0f172a}</style>
   <defs><marker id="a" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 3L0 6z" fill="#64748b"/></marker></defs>
   <rect class="bg" width="1200" height="500" rx="20"/><text x="50" y="52" class="t">监督范围不同，有效更新必须使用同一统计口径</text>
   <path class="line" d="M250 150H340V235H430"/><path class="line" d="M250 335H340V255H430"/>

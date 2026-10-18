@@ -18,15 +18,24 @@
 
 ### 损失分母如何影响梯度尺度
 
-若一个批次内有效 token 数为 $N$，token 平均损失可写为：
+设 $m_{k,i}$ 表示第 $k$ 个微批次中位置 $i$ 是否参与监督，$\ell_{k,i}$ 是该位置的逐 Token 损失，累计窗口的有效 Token 总数为 $N=\sum_{k,i}m_{k,i}$。统一归约后的损失为：
 
 $$
-L=\frac{1}{N}\sum_{i \in \text{valid tokens}}\ell_i.
+L=\frac{1}{N}\sum_{k,i}m_{k,i}\ell_{k,i}.
 $$
 
-固定样本数并不保证固定 $N$。变长序列、不同填充比例或不同响应长度会改变有效 token 数，因此需要明确是按样本、按微批次，还是按整个累计窗口的有效 token 聚合。只有分子与分母口径相同，完整批次和梯度累积才可能形成等价更新。
+固定样本数并不保证固定 $N$。变长序列、不同填充比例或不同响应长度会改变有效 Token 数，因此需要明确是按样本、按微批次，还是按整个累计窗口聚合。完整符号约定见[公式索引](./formula_reference.md)。
 
 ### 多次反向传播如何形成一次更新
+
+对参数 $\theta$ 求导后，累计窗口应形成与同一有效 Token 集合完整批次相同的梯度：
+
+$$
+g=\nabla_\theta L
+=\frac{1}{N}\sum_{k,i}m_{k,i}\nabla_\theta\ell_{k,i}.
+$$
+
+$g$ 是窗口结束时交给优化器的真实梯度；窗口中的每个微批次只贡献分子的一部分，参数在窗口结束前保持不变。
 
 | 层级 | 含义 | 需要保持的关系 |
 |:---|:---|:---|
@@ -40,7 +49,9 @@ $$
 
 ### 更新前的梯度处理顺序
 
-现代训练还可能加入混合精度与梯度裁剪。它们与梯度累积的依赖关系可整理为：
+现代训练还可能加入混合精度与梯度裁剪。设损失缩放因子为 $s$，则 $\widetilde L=sL$、$\widetilde g=sg$，更新前通过 $g=\widetilde g/s$ 还原真实梯度。只有 $g$ 的所有元素均为有限值，参数更新和学习率调度才共同推进；否则本次更新跳过。
+
+它们与梯度累积的依赖关系可整理为：
 
 ```text
 混合精度前向传播
@@ -58,24 +69,23 @@ BF16 通常不依赖 `GradScaler`；FP16 更需要缩放保护。无论使用哪
 
 ![监督范围、损失归约与有效更新](../../docs/public/topic_discussion/backpropagation_training_mechanism/supervision_effective_update.svg)
 
-## 选择条件与验证证据
+## 验证与下一步
 
 完成本页后，应能为一次训练更新写清：监督区间、有效 token 数、损失归约、累计窗口、优化器更新步和调度器更新步。状态在这些阶段如何驻留，将在 [04 训练状态生命周期](./04_training_state_lifecycle.md)中继续展开。
 
-## 学习入口
+下一页进入 [04 训练状态生命周期](./04_training_state_lifecycle.md)，将一次有效更新涉及的状态放回时间线。
 
-- [Part00 · 11 优化器与损失函数](../../00_Prerequisites/11_PyTorch_Optimizers_and_Loss.ipynb)
-- [Part00 · 12 数据接口与训练生命周期](../../00_Prerequisites/12_PyTorch_Minimal_Training_Interface.ipynb)
-- [13 SFT 训练循环](../../02_PyTorch_Algorithms/13_SFT_Training_Loop.ipynb)
-- [12 优化器更新与学习率调度](../../02_PyTorch_Algorithms/12_Optimizer_Updates_and_Learning_Rate_Scheduling.ipynb)
-- [11 梯度累积](../../02_PyTorch_Algorithms/11_Gradient_Accumulation.ipynb)
-- [09 激活与损失反向](../../02_PyTorch_Algorithms/09_Activation_and_Loss_Backward.ipynb)
-- [TRAIN-MIXED-PRECISION-BACKWARD 混合精度反向](../../02_PyTorch_Algorithms/TRAIN-MIXED-PRECISION-BACKWARD_Mixed_Precision_Backward.ipynb)
-
-### 工程资料
+## 相关阅读
 
 | 资料 | 用途 |
 |:---|:---|
+| [Part 00 · 11 优化器与损失函数](../../00_Prerequisites/11_PyTorch_Optimizers_and_Loss.ipynb) | 回看损失归约、优化器和调度器时钟。 |
+| [Part 00 · 12 数据接口与训练生命周期](../../00_Prerequisites/12_PyTorch_Minimal_Training_Interface.ipynb) | 回看标签、批次和最小训练循环。 |
+| [Part 02 · 13 SFT 监督边界与损失](../../02_PyTorch_Algorithms/13_SFT_Training_Loop.ipynb) | 对照 response-only 监督范围与有效 Token 损失。 |
+| [Part 02 · 12 优化器更新与学习率调度](../../02_PyTorch_Algorithms/12_Optimizer_Updates_and_Learning_Rate_Scheduling.ipynb) | 对照优化器和调度器更新次数。 |
+| [Part 02 · 11 梯度累积](../../02_PyTorch_Algorithms/11_Gradient_Accumulation.ipynb) | 对照完整批次与累计窗口。 |
+| [Part 02 · 09 激活与损失反向](../../02_PyTorch_Algorithms/09_Activation_and_Loss_Backward.ipynb) | 回看交叉熵、标签和局部梯度。 |
+| [Part 02 · TRAIN-MIXED-PRECISION-BACKWARD 混合精度反向](../../02_PyTorch_Algorithms/TRAIN-MIXED-PRECISION-BACKWARD_Mixed_Precision_Backward.ipynb) | 对照缩放、有限值检查和跳步语义。 |
 | [CrossEntropyLoss](https://docs.pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html) | 核对 `ignore_index` 与损失归约。 |
 | [Automatic Mixed Precision](https://docs.pytorch.org/docs/stable/amp.html) | 核对 `autocast`、`GradScaler` 与梯度尺度还原。 |
 | [clip_grad_norm_](https://docs.pytorch.org/docs/stable/generated/torch.nn.utils.clip_grad_norm_.html) | 核对梯度裁剪的输入和调用位置。 |
