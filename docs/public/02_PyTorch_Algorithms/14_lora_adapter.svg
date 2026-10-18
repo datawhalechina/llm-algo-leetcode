@@ -9,8 +9,11 @@
     <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto" markerUnits="userSpaceOnUse">
       <path d="M0 0 L10 5 L0 10 Z" fill="#475569"/>
     </marker>
+    <marker id="mergeArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#DB2777"/>
+    </marker>
     <style>
-      .title{font:700 30px "Inter","Noto Sans SC",sans-serif;fill:#0f172a}.sub{font:500 16px "Inter","Noto Sans SC",sans-serif;fill:#475569}.lane{font:700 17px "Inter","Noto Sans SC",sans-serif;fill:#334155}.label{font:700 18px "Inter","Noto Sans SC",sans-serif;fill:#111827}.small{font:500 14px "Inter","Noto Sans SC",sans-serif;fill:#334155}.box{stroke-width:3;rx:16;ry:16}.arrow{stroke:#475569;stroke-width:4;fill:none;marker-end:url(#arrow)}.merge{stroke:#db2777;stroke-width:4;fill:none;marker-end:url(#arrow)}
+      .title{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:30px;font-weight:700;fill:#0f172a}.sub{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:16px;font-weight:500;fill:#475569}.lane{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:17px;font-weight:700;fill:#334155}.label{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:18px;font-weight:700;fill:#111827}.small{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:14px;font-weight:500;fill:#334155}.box{stroke-width:3;rx:16;ry:16}.arrow{stroke:#475569;stroke-width:4;fill:none;marker-end:url(#arrow)}.merge{stroke:#DB2777;stroke-width:4;fill:none;marker-end:url(#mergeArrow)}
     </style>
   </defs>
   <rect width="1600" height="560" fill="url(#bg)"/>
@@ -23,16 +26,16 @@
   <rect x="290" y="135" width="220" height="92" class="box" fill="#eff6ff" stroke="#3b82f6"/>
   <text x="400" y="170" text-anchor="middle" class="label">冻结主分支</text><text x="400" y="198" text-anchor="middle" class="small">W₀x</text>
   <rect x="290" y="270" width="180" height="92" class="box" fill="#ecfccb" stroke="#65a30d"/>
-  <text x="380" y="305" text-anchor="middle" class="label">LoRA A</text><text x="380" y="333" text-anchor="middle" class="small">d → r</text>
+  <text x="380" y="305" text-anchor="middle" class="label">LoRA A</text><text x="380" y="333" text-anchor="middle" class="small">d_in → r</text>
   <rect x="535" y="270" width="180" height="92" class="box" fill="#ecfccb" stroke="#65a30d"/>
-  <text x="625" y="305" text-anchor="middle" class="label">LoRA B</text><text x="625" y="333" text-anchor="middle" class="small">r → d</text>
+  <text x="625" y="305" text-anchor="middle" class="label">LoRA B</text><text x="625" y="333" text-anchor="middle" class="small">r → d_out · 初始 B=0</text>
   <rect x="780" y="270" width="150" height="92" class="box" fill="#f5f3ff" stroke="#8b5cf6"/>
-  <text x="855" y="305" text-anchor="middle" class="label">缩放 s</text><text x="855" y="333" text-anchor="middle" class="small">sBAx</text>
+  <text x="855" y="305" text-anchor="middle" class="label">缩放 s</text><text x="855" y="333" text-anchor="middle" class="small">s = α / r</text>
   <rect x="1010" y="175" width="150" height="82" class="box" fill="#fdf2f8" stroke="#db2777"/>
   <text x="1085" y="208" text-anchor="middle" class="label">求和</text><text x="1085" y="233" text-anchor="middle" class="small">W₀x + sBAx</text>
   <rect x="1240" y="175" width="180" height="82" class="box" fill="#ecfeff" stroke="#0891b2"/>
   <text x="1330" y="208" text-anchor="middle" class="label">训练输出</text><text x="1330" y="233" text-anchor="middle" class="small">保持输出维度</text>
-  <path d="M210 216 H250 V181 H290" class="arrow"/><path d="M210 216 H250 V316 H290" class="arrow"/>
+  <path d="M210 216 H250 V181 H290" class="arrow"/><path d="M210 216 H250 V316 H290" class="arrow"/><circle cx="250" cy="216" r="5" fill="#475569"/>
   <path d="M470 316 H535" class="arrow"/><path d="M715 316 H780" class="arrow"/>
   <path d="M510 181 H970 V205 H1010" class="arrow"/><path d="M930 316 H970 V227 H1010" class="arrow"/>
   <path d="M1160 216 H1240" class="arrow"/>

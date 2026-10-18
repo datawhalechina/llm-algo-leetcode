@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="500" viewBox="0 0 1500 500" role="img" aria-labelledby="title desc">
+  <title id="title">SFT 训练与评估共享损失并隔离状态</title>
+  <desc id="desc">固定批次和监督标签进入同一个 SFT 损失定义。训练路径保留计算图并写回参数；评估路径关闭梯度，只读取当前参数。两条路径的结果按同一有效更新编号记录。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop offset="0%" stop-color="#F8FAFC"/><stop offset="100%" stop-color="#FDF2F8"/></linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+    <style>
+      text{font-family:"Inter","Noto Sans CJK SC",sans-serif}.title{font-size:30px;font-weight:700;fill:#0F172A}.sub{font-size:17px;font-weight:500;fill:#475569}.lane{font-size:15px;font-weight:700;fill:#475569}.label{font-size:19px;font-weight:700;fill:#111827}.small{font-size:15px;font-weight:500;fill:#334155}.box{stroke-width:2.5}.edge{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1500" height="500" rx="24" fill="url(#bg)"/>
+  <text x="60" y="60" class="title">训练与评估共享损失定义，但不能共享状态变化</text>
+  <text x="60" y="92" class="sub">相同输入、标签和有效 Token 归约保证指标可比；是否保留计算图和写回参数决定两条路径的边界。</text>
+
+  <rect id="fixed-batch" x="45" y="190" width="210" height="120" rx="17" class="box" fill="#FFF7ED" stroke="#F59E0B"/>
+  <text x="150" y="230" text-anchor="middle" class="label">固定批次 B</text>
+  <text x="150" y="262" text-anchor="middle" class="small">输入与监督标签</text>
+  <text x="150" y="290" text-anchor="middle" class="small">下一 Token 对齐</text>
+
+  <rect id="shared-loss" x="315" y="190" width="240" height="120" rx="17" class="box" fill="#EFF6FF" stroke="#3B82F6"/>
+  <text x="435" y="230" text-anchor="middle" class="label">共享 SFT 损失</text>
+  <text x="435" y="262" text-anchor="middle" class="small">相同有效 Token 集合</text>
+  <text x="435" y="290" text-anchor="middle" class="small">相同归约规则</text>
+
+  <text x="650" y="140" class="lane">训练路径</text>
+  <rect id="train-path" x="640" y="155" width="260" height="112" rx="17" class="box" fill="#F5F3FF" stroke="#8B5CF6"/>
+  <text x="770" y="195" text-anchor="middle" class="label">保留计算图</text>
+  <text x="770" y="227" text-anchor="middle" class="small">反向传播并累积梯度</text>
+  <text x="770" y="253" text-anchor="middle" class="small">到更新边界才写回</text>
+
+  <text x="650" y="319" class="lane">评估路径</text>
+  <rect id="eval-path" x="640" y="334" width="260" height="112" rx="17" class="box" fill="#ECFEFF" stroke="#0891B2"/>
+  <text x="770" y="374" text-anchor="middle" class="label">关闭梯度</text>
+  <text x="770" y="406" text-anchor="middle" class="small">只读取当前模型状态</text>
+  <text x="770" y="432" text-anchor="middle" class="small">调用后恢复原训练模式</text>
+
+  <rect id="parameter-update" x="980" y="155" width="220" height="112" rx="17" class="box" fill="#ECFDF5" stroke="#10B981"/>
+  <text x="1090" y="195" text-anchor="middle" class="label">参数写回</text>
+  <text x="1090" y="227" text-anchor="middle" class="small">优化器推进一次</text>
+  <text x="1090" y="253" text-anchor="middle" class="small">有效更新编号 u+1</text>
+
+  <rect id="read-only-result" x="980" y="334" width="220" height="112" rx="17" class="box" fill="#FFFFFF" stroke="#0891B2"/>
+  <text x="1090" y="374" text-anchor="middle" class="label">只读评估结果</text>
+  <text x="1090" y="406" text-anchor="middle" class="small">参数与已有梯度不变</text>
+  <text x="1090" y="432" text-anchor="middle" class="small">优化器状态不变</text>
+
+  <rect id="paired-record" x="1270" y="190" width="185" height="120" rx="17" class="box" fill="#FDF2F8" stroke="#DB2777"/>
+  <text x="1362" y="230" text-anchor="middle" class="label">配对记录</text>
+  <text x="1362" y="262" text-anchor="middle" class="small">训练与评估损失</text>
+  <text x="1362" y="290" text-anchor="middle" class="small">同一有效更新编号</text>
+
+  <path id="edge-batch-loss" data-source="fixed-batch" data-target="shared-loss" d="M255 250H315" class="edge"/>
+  <path id="edge-loss-train" data-source="shared-loss" data-target="train-path" d="M555 226H598V211H640" class="edge"/>
+  <path id="edge-loss-eval" data-source="shared-loss" data-target="eval-path" d="M555 274H598V390H640" class="edge"/>
+  <path id="edge-train-update" data-source="train-path" data-target="parameter-update" d="M900 211H980" class="edge"/>
+  <path id="edge-eval-result" data-source="eval-path" data-target="read-only-result" d="M900 390H980" class="edge"/>
+  <path id="edge-update-record" data-source="parameter-update" data-target="paired-record" d="M1200 211H1235V230H1270" class="edge"/>
+  <path id="edge-result-record" data-source="read-only-result" data-target="paired-record" d="M1200 390H1235V290H1270" class="edge"/>
+</svg>

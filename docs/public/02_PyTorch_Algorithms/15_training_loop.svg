@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="500" viewBox="0 0 1500 500" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
   <title id="title">端到端 SFT 的有效更新时间线</title>
-  <desc id="desc">展示一次有效更新中梯度清理、微批次前向、梯度累积、参数更新、配对评估和过程记录的先后关系。</desc>
+  <desc id="desc">展示一次有效更新中梯度归零、多个微批次累积、参数写回、训练时钟推进以及隔离评估与记录的先后关系。</desc>
   <defs>
     <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
       <stop offset="0%" stop-color="#F8FAFC"/>
@@ -13,57 +13,50 @@
       <path d="M0 0L10 5L0 10Z" fill="#0891B2"/>
     </marker>
     <style>
-      .title{font:700 30px "Inter","Noto Sans SC",sans-serif;fill:#0F172A}
-      .sub{font:500 17px "Inter","Noto Sans SC",sans-serif;fill:#475569}
-      .label{font:700 18px "Inter","Noto Sans SC",sans-serif;fill:#111827}
-      .small{font:500 14px "Inter","Noto Sans SC",sans-serif;fill:#334155}
+      .title{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:30px;font-weight:700;fill:#0F172A}
+      .sub{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:17px;font-weight:500;fill:#475569}
+      .label{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:19px;font-weight:700;fill:#111827}
+      .small{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:500;fill:#334155}
       .box{stroke-width:2.5}
       .arrow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
       .loop{stroke:#0891B2;stroke-width:2.5;fill:none;marker-end:url(#loopArrow)}
-      .loopText{font:600 15px "Inter","Noto Sans SC",sans-serif;fill:#0E7490}
+      .loopText{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:600;fill:#0E7490}
     </style>
   </defs>
-  <rect width="1500" height="500" rx="24" fill="url(#bg)"/>
+  <rect width="1500" height="470" rx="24" fill="url(#bg)"/>
   <text x="60" y="60" class="title">一次有效更新如何推进训练状态</text>
   <text x="60" y="92" class="sub">微批次只累积梯度；参数、学习率、评估结果和记录编号都在有效更新边界推进。</text>
 
-  <rect x="45" y="190" width="190" height="112" rx="17" class="box" fill="#FFF7ED" stroke="#F59E0B"/>
-  <text x="140" y="230" text-anchor="middle" class="label">清理梯度</text>
-  <text x="140" y="260" text-anchor="middle" class="small">建立本次更新边界</text>
-  <text x="140" y="284" text-anchor="middle" class="small">不保留上次累积状态</text>
+  <rect x="45" y="180" width="210" height="120" rx="17" class="box" fill="#FFF7ED" stroke="#F59E0B"/>
+  <text x="150" y="224" text-anchor="middle" class="label">更新起点</text>
+  <text x="150" y="257" text-anchor="middle" class="small">梯度状态归零</text>
+  <text x="150" y="283" text-anchor="middle" class="small">建立更新编号 u</text>
 
-  <rect x="285" y="190" width="220" height="112" rx="17" class="box" fill="#EFF6FF" stroke="#3B82F6"/>
-  <text x="395" y="230" text-anchor="middle" class="label">微批次前向与损失</text>
-  <text x="395" y="260" text-anchor="middle" class="small">使用相同监督边界</text>
-  <text x="395" y="284" text-anchor="middle" class="small">计算下一 Token 损失</text>
+  <rect x="315" y="180" width="260" height="120" rx="17" class="box" fill="#EFF6FF" stroke="#3B82F6"/>
+  <text x="445" y="224" text-anchor="middle" class="label">K 个微批次累积</text>
+  <text x="445" y="257" text-anchor="middle" class="small">各自贡献缩放后的梯度</text>
+  <text x="445" y="283" text-anchor="middle" class="small">参数保持不变</text>
 
-  <rect x="555" y="190" width="220" height="112" rx="17" class="box" fill="#ECFEFF" stroke="#0891B2"/>
-  <text x="665" y="230" text-anchor="middle" class="label">缩放反向与累积</text>
-  <text x="665" y="260" text-anchor="middle" class="small">按累积步数缩放损失</text>
-  <text x="665" y="284" text-anchor="middle" class="small">只改变梯度状态</text>
+  <rect x="635" y="180" width="240" height="120" rx="17" class="box" fill="#ECFDF5" stroke="#10B981"/>
+  <text x="755" y="224" text-anchor="middle" class="label">有效更新边界</text>
+  <text x="755" y="257" text-anchor="middle" class="small">累计梯度写回参数</text>
+  <text x="755" y="283" text-anchor="middle" class="small">每个逻辑批次一次</text>
 
-  <rect x="825" y="190" width="220" height="112" rx="17" class="box" fill="#ECFDF5" stroke="#10B981"/>
-  <text x="935" y="230" text-anchor="middle" class="label">参数与学习率推进</text>
-  <text x="935" y="260" text-anchor="middle" class="small">优化器写回一次参数</text>
-  <text x="935" y="284" text-anchor="middle" class="small">调度器同步推进一次</text>
+  <rect x="935" y="180" width="220" height="120" rx="17" class="box" fill="#F5F3FF" stroke="#8B5CF6"/>
+  <text x="1045" y="224" text-anchor="middle" class="label">训练时钟推进</text>
+  <text x="1045" y="257" text-anchor="middle" class="small">学习率状态前进一步</text>
+  <text x="1045" y="283" text-anchor="middle" class="small">更新编号变为 u+1</text>
 
-  <rect x="1095" y="190" width="190" height="112" rx="17" class="box" fill="#F5F3FF" stroke="#8B5CF6"/>
-  <text x="1190" y="230" text-anchor="middle" class="label">无梯度配对评估</text>
-  <text x="1190" y="260" text-anchor="middle" class="small">固定模型状态</text>
-  <text x="1190" y="284" text-anchor="middle" class="small">比较训练与验证损失</text>
+  <rect x="1215" y="180" width="240" height="120" rx="17" class="box" fill="#FDF2F8" stroke="#DB2777"/>
+  <text x="1335" y="224" text-anchor="middle" class="label">隔离评估与记录</text>
+  <text x="1335" y="257" text-anchor="middle" class="small">固定更新后的模型状态</text>
+  <text x="1335" y="283" text-anchor="middle" class="small">写入同编号配对证据</text>
 
-  <rect x="1335" y="190" width="120" height="112" rx="17" class="box" fill="#FDF2F8" stroke="#DB2777"/>
-  <text x="1395" y="230" text-anchor="middle" class="label">写入记录</text>
-  <text x="1395" y="260" text-anchor="middle" class="small">更新编号</text>
-  <text x="1395" y="284" text-anchor="middle" class="small">配对证据</text>
+  <path d="M255 240H315" class="arrow"/>
+  <path d="M575 240H635" class="arrow"/>
+  <path d="M875 240H935" class="arrow"/>
+  <path d="M1155 240H1215" class="arrow"/>
 
-  <path d="M235 246H273" class="arrow"/>
-  <path d="M505 246H543" class="arrow"/>
-  <path d="M775 246H813" class="arrow"/>
-  <path d="M1045 246H1083" class="arrow"/>
-  <path d="M1285 246H1323" class="arrow"/>
-  <text x="794" y="225" text-anchor="middle" class="small">累积完成</text>
-
-  <path d="M665 302V385H395V314" class="loop"/>
-  <text x="530" y="414" text-anchor="middle" class="loopText">未达到累积步数：读取下一个微批次</text>
+  <path d="M445 300V375H365V300" class="loop"/>
+  <text x="510" y="405" text-anchor="middle" class="loopText">k &lt; K：继续读取下一个微批次</text>
 </svg>

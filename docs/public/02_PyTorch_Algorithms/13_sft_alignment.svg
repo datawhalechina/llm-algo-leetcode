@@ -5,6 +5,9 @@
     <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
       <path d="M0 0L9 4.5L0 9Z" fill="#475569"/>
     </marker>
+    <marker id="validArrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0L9 4.5L0 9Z" fill="#16A34A"/>
+    </marker>
     <style>
       text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif}
       .title{font-size:30px;font-weight:700;fill:#0F172A}
@@ -55,8 +58,8 @@
     <text x="1191" y="343" text-anchor="middle" class="body">否</text>
   </g>
 
-  <path d="M684 382V398H316V414" fill="none" stroke="#16A34A" stroke-width="2.3" marker-end="url(#arrow)"/>
-  <path d="M684 398V414" fill="none" stroke="#16A34A" stroke-width="2.3" marker-end="url(#arrow)"/>
+  <path d="M684 382V398H316V414" fill="none" stroke="#16A34A" stroke-width="2.3" marker-end="url(#validArrow)"/>
+  <path d="M684 398V414" fill="none" stroke="#16A34A" stroke-width="2.3" marker-end="url(#validArrow)"/>
 
   <rect x="176" y="414" width="280" height="132" rx="18" fill="#EFF6FF" stroke="#2563EB" stroke-width="2"/>
   <text x="202" y="450" class="heading" fill="#1E3A8A">微批次 A</text>

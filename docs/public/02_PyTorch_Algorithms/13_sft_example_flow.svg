@@ -31,7 +31,7 @@
   <rect x="82" y="374" width="248" height="76" rx="12" fill="#FFFFFF" stroke="#86EFAC" stroke-width="1.8"/>
   <text x="100" y="400" class="small">assistant / response</text>
   <text x="100" y="428" class="body">答案是 4</text>
-  <text x="82" y="493" class="small">样本身份与切分已由第 32 节准入</text>
+  <text x="82" y="493" class="small">样本身份与切分已通过数据准入</text>
 
   <path d="M356 333H406" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)"/>
   <text x="381" y="311" text-anchor="middle" class="small">模板化</text>
