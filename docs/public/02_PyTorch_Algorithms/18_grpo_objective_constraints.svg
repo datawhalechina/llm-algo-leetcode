@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+  <title id="title">GRPO 目标函数的四条约束路径</title>
+  <desc id="desc">组内奖励形成候选优势，当前策略和采样策略形成裁剪比率，当前策略和参考策略形成 KL 约束，回答掩码限定有效 token；四条路径汇合为候选损失，再在候选间等权聚合。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker>
+    <style>
+      .title{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:26px;font-weight:700;fill:#0f172a}.sub{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:500;fill:#475569}.label{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:17px;font-weight:700;fill:#111827}.body{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:14px;font-weight:500;fill:#334155}.edge{stroke:#475569;stroke-width:3.5;fill:none;marker-end:url(#arrow)}.node{stroke-width:2.5;rx:14;ry:14}
+    </style>
+  </defs>
+  <rect width="1500" height="470" fill="#f8fafc"/>
+  <text x="55" y="52" class="title">GRPO：四条证据路径如何汇合为受约束更新</text>
+  <text x="55" y="80" class="sub">优势决定方向，裁剪限制单步变化，参考 KL 限制长期漂移，Response mask 固定聚合范围。</text>
+
+  <rect x="55" y="120" width="245" height="70" class="node" fill="#fff1f2" stroke="#e11d48"/><text x="177" y="149" text-anchor="middle" class="label">同组候选奖励</text><text x="177" y="173" text-anchor="middle" class="body">中心化与尺度归一</text>
+  <rect x="55" y="215" width="245" height="70" class="node" fill="#f5f3ff" stroke="#8b5cf6"/><text x="177" y="244" text-anchor="middle" class="label">当前 / 采样策略</text><text x="177" y="268" text-anchor="middle" class="body">Token 对数概率差</text>
+  <rect x="55" y="310" width="245" height="70" class="node" fill="#eff6ff" stroke="#3b82f6"/><text x="177" y="339" text-anchor="middle" class="label">当前 / 参考策略</text><text x="177" y="363" text-anchor="middle" class="body">Token 对数概率差</text>
+
+  <rect x="390" y="120" width="225" height="70" class="node" fill="#fff1f2" stroke="#e11d48"/><text x="502" y="149" text-anchor="middle" class="label">候选优势 Aᵢ</text><text x="502" y="173" text-anchor="middle" class="body">提高或降低候选概率</text>
+  <rect x="390" y="215" width="225" height="70" class="node" fill="#f5f3ff" stroke="#8b5cf6"/><text x="502" y="244" text-anchor="middle" class="label">比率 ρᵢ,ₜ 与裁剪</text><text x="502" y="268" text-anchor="middle" class="body">限制单步更新幅度</text>
+  <rect x="390" y="310" width="225" height="70" class="node" fill="#eff6ff" stroke="#3b82f6"/><text x="502" y="339" text-anchor="middle" class="label">逐 Token KL</text><text x="502" y="363" text-anchor="middle" class="body">限制参考策略漂移</text>
+
+  <rect x="720" y="120" width="230" height="70" class="node" fill="#ecfeff" stroke="#0891b2"/><text x="835" y="149" text-anchor="middle" class="label">Response mask</text><text x="835" y="173" text-anchor="middle" class="body">排除提示词与 Padding</text>
+  <rect x="720" y="238" width="230" height="96" class="node" fill="#fffbeb" stroke="#f59e0b"/><text x="835" y="274" text-anchor="middle" class="label">逐 Token 受约束目标</text><text x="835" y="302" text-anchor="middle" class="body">− clipped surrogate + β KL</text>
+
+  <rect x="1050" y="238" width="185" height="96" class="node" fill="#ecfccb" stroke="#65a30d"/><text x="1142" y="274" text-anchor="middle" class="label">候选内均值</text><text x="1142" y="302" text-anchor="middle" class="body">仅聚合有效 Token</text>
+  <rect x="1320" y="238" width="135" height="96" class="node" fill="#ede9fe" stroke="#6d28d9"/><text x="1387" y="274" text-anchor="middle" class="label">组损失</text><text x="1387" y="302" text-anchor="middle" class="body">候选等权</text>
+
+  <path d="M300 155 H390" class="edge"/><path d="M300 250 H390" class="edge"/><path d="M300 345 H390" class="edge"/>
+  <path d="M615 155 H665 V260 H720" class="edge"/><path d="M615 250 H720" class="edge"/><path d="M615 345 H665 V312 H720" class="edge"/>
+  <path d="M835 190 V238" class="edge"/><path d="M950 286 H1050" class="edge"/><path d="M1235 286 H1320" class="edge"/>
+</svg>
