@@ -77,7 +77,7 @@ g_u=\sum_{k=1}^{K}\nabla_\theta\frac{\mathcal{L}_{u,k}}{K},\qquad
 \theta_{u+1}=\operatorname{OptimizerStep}(\theta_u,g_u).
 $$
 
-这里的 $u$ 是有效更新编号，$K$ 是参与该次更新的微批次数，$\operatorname{OptimizerStep}$ 表示根据累计梯度完成一次参数写回。等大微批次可以按 $1/K$ 缩放；微批次包含的有效监督 Token 数不同时，各项贡献应按有效 Token 数加权。
+这里的 $u$ 是有效更新编号，$k \in \{1, \ldots, K\}$ 是当前微批次编号，$K$ 是参与该次更新的微批次总数，$g_u$ 是写回前累积完成的梯度，$\theta_u$ 是更新前参数。$\operatorname{OptimizerStep}$ 表示根据 $g_u$ 完成一次参数写回。等大微批次可以按 $1/K$ 缩放；微批次包含的有效监督 Token 数不同时，各项贡献应按有效 Token 数加权。
 
 ![一次有效更新的状态推进时间线](../public/02_PyTorch_Algorithms/15_training_loop.svg)
 

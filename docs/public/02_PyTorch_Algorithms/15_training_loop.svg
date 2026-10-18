@@ -21,11 +21,13 @@
       .arrow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
       .loop{stroke:#0891B2;stroke-width:2.5;fill:none;marker-end:url(#loopArrow)}
       .loopText{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:600;fill:#0E7490}
+      .edgeText{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:700;fill:#475569}
     </style>
   </defs>
   <rect width="1500" height="470" rx="24" fill="url(#bg)"/>
   <text x="60" y="60" class="title">一次有效更新如何推进训练状态</text>
   <text x="60" y="92" class="sub">微批次只累积梯度；参数、学习率、评估结果和记录编号都在有效更新边界推进。</text>
+  <text x="60" y="121" class="sub">k 表示当前微批次编号，K 表示一次有效更新包含的微批次总数。</text>
 
   <rect x="45" y="180" width="210" height="120" rx="17" class="box" fill="#FFF7ED" stroke="#F59E0B"/>
   <text x="150" y="224" text-anchor="middle" class="label">更新起点</text>
@@ -33,7 +35,7 @@
   <text x="150" y="283" text-anchor="middle" class="small">建立更新编号 u</text>
 
   <rect x="315" y="180" width="260" height="120" rx="17" class="box" fill="#EFF6FF" stroke="#3B82F6"/>
-  <text x="445" y="224" text-anchor="middle" class="label">K 个微批次累积</text>
+  <text x="445" y="224" text-anchor="middle" class="label">处理微批次 k / K</text>
   <text x="445" y="257" text-anchor="middle" class="small">各自贡献缩放后的梯度</text>
   <text x="445" y="283" text-anchor="middle" class="small">参数保持不变</text>
 
@@ -56,7 +58,9 @@
   <path d="M575 240H635" class="arrow"/>
   <path d="M875 240H935" class="arrow"/>
   <path d="M1155 240H1215" class="arrow"/>
+  <text x="285" y="220" text-anchor="middle" class="edgeText">k = 1</text>
+  <text x="605" y="220" text-anchor="middle" class="edgeText">k = K</text>
 
-  <path d="M445 300V375H365V300" class="loop"/>
-  <text x="510" y="405" text-anchor="middle" class="loopText">k &lt; K：继续读取下一个微批次</text>
+  <path d="M500 300V370H390V300" class="loop"/>
+  <text x="445" y="344" text-anchor="middle" class="loopText">k &lt; K：k ← k + 1，处理下一微批次</text>
 </svg>
