@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="760" viewBox="0 0 1500 760" role="img" aria-labelledby="title desc">
+  <title id="title">反向传播与训练控制学习路径</title>
+  <desc id="desc">主链从局部反向进入梯度累积、混合精度安全检查、调度和更新动力学；Attention 保存状态向下分出 Checkpoint 与 Offload 两条并列策略，并在统一训练内存账本汇合；持续预训练和监督微调是更新动力学之后的两个应用出口。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0L10 5L0 10Z" fill="#475569"/>
+    </marker>
+    <style>
+      .title{font-family:"Noto Sans CJK SC",sans-serif;font-size:29px;font-weight:700;fill:#0f172a}
+      .sub{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;font-weight:400;fill:#475569}
+      .lane{font-family:"Noto Sans CJK SC",sans-serif;font-size:17px;font-weight:700;fill:#334155}
+      .head{font-family:"Noto Sans CJK SC",sans-serif;font-size:18px;font-weight:700;fill:#172033}
+      .body{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;font-weight:400;fill:#334155}
+      .small{font-family:"Noto Sans CJK SC",sans-serif;font-size:13px;font-weight:500;fill:#475569}
+      .arrow{fill:none;stroke:#475569;stroke-width:2.8;marker-end:url(#arrow)}
+      .branch{fill:none;stroke:#64748b;stroke-width:2.6;marker-end:url(#arrow)}
+      .branch-rail{fill:none;stroke:#64748b;stroke-width:2.6}
+      .exit{fill:none;stroke:#7c3aed;stroke-width:2.6;stroke-dasharray:8 6;marker-end:url(#arrow)}
+      .exit-rail{fill:none;stroke:#7c3aed;stroke-width:2.6;stroke-dasharray:8 6}
+      .node{stroke-width:2;rx:15;ry:15}
+    </style>
+  </defs>
+
+  <rect width="1500" height="760" fill="#f8fafc"/>
+  <rect x="25" y="22" width="1450" height="716" rx="24" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="58" y="67" class="title">一次训练更新：反向信号、有效更新与训练状态</text>
+  <text x="58" y="98" class="sub">主链确定参数何时真正写回；状态分支比较反向所需 activation 的重算、搬运与峰值。</text>
+
+  <text x="58" y="151" class="lane">有效更新主链</text>
+
+  <rect x="45" y="178" width="190" height="142" class="node" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="65" y="214" class="head">09 · 局部反向</text>
+  <text x="65" y="246" class="body">激活门控</text>
+  <text x="65" y="270" class="body">损失归约与 logits 梯度</text>
+  <text x="65" y="300" class="small">输出：局部梯度</text>
+
+  <rect x="275" y="178" width="200" height="142" class="node" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="295" y="214" class="head">10 · Attention 反向</text>
+  <text x="295" y="246" class="body">Q / K / V 梯度链</text>
+  <text x="295" y="270" class="body">前向状态依赖</text>
+  <text x="295" y="300" class="small">输出：梯度 + saved tensors</text>
+
+  <rect x="515" y="178" width="190" height="142" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="535" y="214" class="head">11 · 梯度累积</text>
+  <text x="535" y="246" class="body">micro-batch 求和</text>
+  <text x="535" y="270" class="body">形成逻辑更新边界</text>
+  <text x="535" y="300" class="small">输出：待提交梯度</text>
+
+  <rect x="745" y="178" width="220" height="142" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="765" y="214" class="head">混合精度梯度安全</text>
+  <text x="765" y="246" class="body">unscale 与有限值检查</text>
+  <text x="765" y="270" class="body">决定 step 或 skip</text>
+  <text x="765" y="300" class="small">输出：成功更新信号</text>
+
+  <rect x="1005" y="178" width="190" height="142" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="1025" y="214" class="head">12 · 更新与调度</text>
+  <text x="1025" y="246" class="body">optimizer step</text>
+  <text x="1025" y="270" class="body">成功后推进 scheduler</text>
+  <text x="1025" y="300" class="small">输出：更新时钟</text>
+
+  <rect x="1235" y="178" width="220" height="142" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="1255" y="214" class="head">55 · 更新动力学</text>
+  <text x="1255" y="246" class="body">学习率、有效批次与裁剪</text>
+  <text x="1255" y="270" class="body">共同决定参数位移</text>
+  <text x="1255" y="300" class="small">输出：可解释更新证据</text>
+
+  <path d="M235 249H275" class="arrow"/>
+  <path d="M475 249H515" class="arrow"/>
+  <path d="M705 249H745" class="arrow"/>
+  <path d="M965 249H1005" class="arrow"/>
+  <path d="M1195 249H1235" class="arrow"/>
+
+  <text x="58" y="390" class="lane">Activation 状态分支</text>
+
+  <rect x="260" y="425" width="230" height="108" class="node" fill="#ecfeff" stroke="#0891b2"/>
+  <text x="280" y="462" class="head">反向所需状态</text>
+  <text x="280" y="491" class="body">保存、重算或搬运 activation</text>
+  <text x="280" y="516" class="small">来源：前向 saved tensors</text>
+
+  <rect x="615" y="384" width="235" height="108" class="node" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="635" y="421" class="head">19 · Checkpoint</text>
+  <text x="635" y="450" class="body">减少保存，反向时重算</text>
+  <text x="635" y="475" class="small">代价：额外计算</text>
+
+  <rect x="615" y="542" width="235" height="108" class="node" fill="#fef3c7" stroke="#d97706"/>
+  <text x="635" y="579" class="head">42 · Offload</text>
+  <text x="635" y="608" class="body">降低驻留，使用主机搬运</text>
+  <text x="635" y="633" class="small">代价：传输与等待</text>
+
+  <rect x="980" y="463" width="235" height="122" class="node" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="1000" y="500" class="head">43 · 统一内存账本</text>
+  <text x="1000" y="529" class="body">对齐对象生命周期与峰值</text>
+  <text x="1000" y="554" class="body">比较显存、计算和搬运代价</text>
+  <text x="1000" y="577" class="small">输出：策略资源边界</text>
+
+  <path d="M375 320V425" class="branch"/>
+  <path d="M490 479H560" class="branch-rail"/>
+  <path d="M560 479V438H615" class="branch"/>
+  <path d="M560 479V596H615" class="branch"/>
+  <path d="M850 438H915V596H850" class="branch-rail"/>
+  <path d="M915 524H980" class="branch"/>
+
+  <text x="1250" y="390" class="lane">应用出口</text>
+  <rect x="1260" y="425" width="185" height="92" class="node" fill="#fdf2f8" stroke="#db2777"/>
+  <text x="1280" y="462" class="head">56 · 持续预训练</text>
+  <text x="1280" y="492" class="body">领域续训与能力保留</text>
+  <rect x="1260" y="572" width="185" height="92" class="node" fill="#f5f3ff" stroke="#7c3aed"/>
+  <text x="1280" y="609" class="head">2.4 · 监督微调</text>
+  <text x="1280" y="639" class="body">监督边界与参数适配</text>
+
+  <path d="M1345 320V370H1230V618" class="exit-rail"/>
+  <path d="M1230 471H1260" class="exit"/>
+  <path d="M1230 618H1260" class="exit"/>
+</svg>
