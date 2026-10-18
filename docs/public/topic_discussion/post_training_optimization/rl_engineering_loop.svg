@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="650" viewBox="0 0 1280 650" role="img" aria-labelledby="title desc">
   <title id="title">在线强化学习的执行阶段与状态生命周期</title>
-  <desc id="desc">上层展示轨迹采样、奖励、参数更新和独立评测，下层展示与各阶段对应的策略版本、轨迹身份、队列准入、检查点以及版本激活或回滚。</desc>
+  <desc id="desc">上层展示轨迹采样、奖励、参数更新和候选交付，下层展示与各阶段对应的策略版本、轨迹身份、队列准入、检查点以及版本激活或回滚。</desc>
   <defs>
     <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker>
     <marker id="stateArrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#7C3AED"/></marker>
@@ -28,7 +28,7 @@
   <rect x="764" y="164" width="190" height="104" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
   <text x="786" y="199" class="head">参数更新</text><text x="786" y="227" class="copy">学习器 · 优化器 · 通信</text><text x="786" y="251" class="small">提交候选策略与检查点</text>
   <rect x="996" y="164" width="190" height="104" rx="15" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
-  <text x="1018" y="199" class="head">独立评测</text><text x="1018" y="227" class="copy">质量 · 安全 · 资源</text><text x="1018" y="251" class="small">接受、继续调整或回滚</text>
+  <text x="1018" y="199" class="head">交付独立评测</text><text x="1018" y="227" class="copy">候选版本 · 清单 · 恢复点</text><text x="1018" y="251" class="small">采用决策由下游独立完成</text>
   <path d="M258 216H292" class="flow"/><path d="M490 216H524" class="flow"/><path d="M722 216H756" class="flow"/><path d="M954 216H988" class="flow"/>
 
   <text x="68" y="328" class="lane">状态与恢复</text>

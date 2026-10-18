@@ -1,75 +1,63 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="650" viewBox="0 0 1440 650" role="img" aria-labelledby="title desc">
   <title id="title">数据工程、预训练、后训练与独立评测的关系</title>
-  <desc id="desc">数据工程分别提供预训练语料、监督样本、偏好与任务数据。监督微调建立行为基线后，离线偏好对可用于 DPO 或奖励模型训练，当前策略在线采样形成轨迹；奖励模型或验证器产生奖励，再由 PPO 或 GRPO 更新策略，最终进入独立评测。</desc>
+  <desc id="desc">数据工程提供预训练语料、监督样本与反馈任务；基础模型经监督微调建立行为基线，再按反馈形态进入离线偏好或在线奖励更新，最终由独立评测决定采用、调整或回滚。</desc>
   <defs>
     <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker>
     <marker id="dataArrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L8 4L0 8Z" fill="#0284C7"/></marker>
     <style>
       .title{font-family:"Noto Sans CJK SC",sans-serif;font-size:29px;font-weight:700;fill:#172033}.subtitle{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;fill:#475569}
       .head{font-family:"Noto Sans CJK SC",sans-serif;font-size:17px;font-weight:700;fill:#172033}.copy{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;fill:#334155}.small{font-family:"Noto Sans CJK SC",sans-serif;font-size:13px;fill:#475569}
-      .line{fill:none;stroke:#475569;stroke-width:2.2;marker-end:url(#arrow)}.data{fill:none;stroke:#0284C7;stroke-width:2.1;stroke-dasharray:6 5;marker-end:url(#dataArrow)}
+      .node{stroke-width:2}.line{fill:none;stroke:#475569;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow)}.data{fill:none;stroke:#0284C7;stroke-width:2;stroke-dasharray:6 5;marker-end:url(#dataArrow)}
     </style>
   </defs>
-  <rect width="1440" height="900" fill="#F8FAFC"/>
-  <rect x="28" y="24" width="1384" height="852" rx="28" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
-  <text x="66" y="70" class="title">训练与反馈链：数据怎样变成监督、偏好与在线更新</text>
-  <text x="66" y="100" class="subtitle">RLHF 与 RLVR 描述奖励来源；DPO、PPO 与 GRPO 描述不同的数据消费和参数更新路径。</text>
+  <rect width="1440" height="650" fill="#F8FAFC"/>
+  <rect x="24" y="18" width="1392" height="614" rx="26" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2" data-layout-role="panel"/>
+  <text x="58" y="56" class="title">训练与反馈链：数据怎样变成监督、偏好与在线更新</text>
+  <text x="58" y="80" class="subtitle">RLHF 与 RLVR 描述奖励来源；DPO、PPO 与 GRPO 描述数据消费和参数更新路径。</text>
 
-  <rect x="66" y="126" width="1308" height="88" rx="17" fill="#EFF6FF" stroke="#0284C7" stroke-width="2"/>
-  <text x="88" y="158" class="head">数据工程</text>
-  <rect x="210" y="143" width="260" height="54" rx="12" fill="#FFFFFF" stroke="#7DD3FC"/>
-  <text x="228" y="166" class="copy">预训练语料</text><text x="228" y="188" class="small">通用 / 领域 · 来源与许可</text>
-  <rect x="590" y="143" width="260" height="54" rx="12" fill="#FFFFFF" stroke="#7DD3FC"/>
-  <text x="608" y="166" class="copy">监督样本</text><text x="608" y="188" class="small">指令 / 回答 · 标签与评测隔离</text>
-  <rect x="970" y="143" width="370" height="54" rx="12" fill="#FFFFFF" stroke="#7DD3FC"/>
-  <text x="988" y="166" class="copy">偏好与任务数据</text><text x="988" y="188" class="small">偏好对 · 提示 / 题库 · 人类反馈 / 验证器</text>
+  <rect x="58" y="94" width="1324" height="72" rx="15" fill="#EFF6FF" stroke="#0284C7" stroke-width="2" data-layout-role="panel"/>
+  <text x="78" y="122" class="head">数据工程</text>
+  <rect x="200" y="103" width="250" height="54" rx="11" class="node" fill="#FFFFFF" stroke="#7DD3FC"/>
+  <text x="218" y="126" class="copy">预训练语料</text><text x="218" y="147" class="small">来源、许可与领域覆盖</text>
+  <rect x="580" y="103" width="250" height="54" rx="11" class="node" fill="#FFFFFF" stroke="#7DD3FC"/>
+  <text x="598" y="126" class="copy">监督样本</text><text x="598" y="147" class="small">模板、标签与评测隔离</text>
+  <rect x="960" y="103" width="380" height="54" rx="11" class="node" fill="#FFFFFF" stroke="#7DD3FC"/>
+  <text x="978" y="126" class="copy">偏好与任务数据</text><text x="978" y="147" class="small">偏好对、题库、人类反馈或验证器</text>
 
-  <path d="M340 197V272" class="data"/>
-  <path d="M720 197V272" class="data"/>
-  <path d="M1155 197V266" class="data"/>
+  <rect x="145" y="180" width="230" height="82" rx="14" class="node" fill="#E0F2FE" stroke="#0284C7"/>
+  <text x="165" y="209" class="head">预训练 / 持续预训练</text><text x="165" y="235" class="copy">下一词元预测</text><text x="165" y="255" class="small">形成通用或领域表示</text>
+  <rect x="415" y="180" width="150" height="82" rx="14" class="node" fill="#E0F2FE" stroke="#0284C7"/>
+  <text x="435" y="209" class="head">基础模型</text><text x="435" y="235" class="copy">参数检查点</text><text x="435" y="255" class="small">分词器与配置</text>
+  <rect x="605" y="180" width="240" height="82" rx="14" class="node" fill="#DCFCE7" stroke="#16A34A"/>
+  <text x="625" y="209" class="head">监督微调（SFT）</text><text x="625" y="235" class="copy">有效监督词元与训练产物</text><text x="625" y="255" class="small">建立可比较的行为基线</text>
+  <polygon points="1150,175 1220,221 1150,267 1080,221" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
+  <text x="1114" y="216" class="head">反馈形态</text><text x="1102" y="239" class="small">离线数据或在线采样</text>
+  <path d="M325 157V180" class="data"/><path d="M705 157V180" class="data"/><path d="M1150 157V175" class="data"/>
+  <path d="M375 221H415" class="line"/><path d="M565 221H605" class="line"/><path d="M845 221H1080" class="line"/>
 
-  <rect x="240" y="272" width="200" height="96" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
-  <text x="262" y="306" class="head">预训练 / 持续预训练</text><text x="262" y="334" class="copy">下一词元预测</text><text x="262" y="357" class="small">形成通用或领域表示</text>
-  <rect x="462" y="272" width="120" height="96" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
-  <text x="482" y="306" class="head">基础模型</text><text x="478" y="334" class="copy">参数检查点</text><text x="478" y="357" class="small">分词器与配置</text>
-  <rect x="620" y="272" width="210" height="96" rx="15" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
-  <text x="642" y="306" class="head">监督微调（SFT）</text><text x="642" y="334" class="copy">有效监督词元与训练产物</text><text x="642" y="357" class="small">建立可比较的行为基线</text>
-  <polygon points="1155,266 1237,320 1155,374 1073,320" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
-  <text x="1113" y="314" class="head">反馈形态</text><text x="1103" y="340" class="small">离线数据或在线采样</text>
-  <path d="M440 320H462" class="line"/><path d="M582 320H620" class="line"/><path d="M830 320H1073" class="line"/>
+  <rect x="330" y="285" width="250" height="82" rx="14" class="node" fill="#FFF7ED" stroke="#EA580C"/>
+  <text x="350" y="315" class="head">已有离线偏好对</text><text x="350" y="343" class="small">同一提示的优选 / 非优选回答</text>
+  <rect x="735" y="285" width="250" height="82" rx="14" class="node" fill="#F3E8FF" stroke="#9333EA"/>
+  <text x="755" y="315" class="head">当前策略在线采样</text><text x="755" y="343" class="small">候选组或轨迹及策略版本</text>
+  <rect x="1080" y="285" width="250" height="82" rx="14" class="node" fill="#FEF3C7" stroke="#D97706"/>
+  <text x="1100" y="315" class="head">规则 / 环境验证器</text><text x="1100" y="343" class="small">正确性、终态或过程信号</text>
+  <path d="M1128 254V274H455V285" class="line"/><path d="M1150 267V276H860V285" class="line"/><path d="M1172 254V274H1205V285" class="line"/>
 
-  <rect x="425" y="420" width="250" height="76" rx="14" fill="#FFF7ED" stroke="#EA580C" stroke-width="2"/>
-  <text x="447" y="450" class="head">已有离线偏好对</text><text x="447" y="478" class="small">同一提示的优选 / 非优选回答</text>
-  <rect x="805" y="420" width="250" height="76" rx="14" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
-  <text x="827" y="450" class="head">当前策略在线采样</text><text x="827" y="478" class="small">候选组 / 轨迹 · 策略与采样版本</text>
-  <rect x="1085" y="420" width="250" height="76" rx="14" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
-  <text x="1107" y="450" class="head">规则 / 环境验证器</text><text x="1107" y="478" class="small">正确性 · 终态 · 过程信号</text>
-  <path d="M1140 364V394H550V420" class="line"/>
-  <path d="M1155 374V402H930V420" class="line"/>
-  <path d="M1170 364V394H1210V420" class="line"/>
+  <rect x="80" y="390" width="250" height="82" rx="14" class="node" fill="#FFF7ED" stroke="#EA580C"/>
+  <text x="100" y="420" class="head">DPO 离线更新</text><text x="100" y="447" class="copy">固定参考策略与偏好边际</text><text x="100" y="466" class="small">不要求当前策略在线采样</text>
+  <rect x="390" y="390" width="250" height="82" rx="14" class="node" fill="#FFE4E6" stroke="#E11D48"/>
+  <text x="410" y="420" class="head">奖励模型训练与校准</text><text x="410" y="447" class="copy">偏好标签形成标量分数</text><text x="410" y="466" class="small">留出校准与过度优化检查</text>
+  <rect x="780" y="390" width="270" height="82" rx="14" class="node" fill="#F3E8FF" stroke="#9333EA"/>
+  <text x="800" y="420" class="head">奖励、回报与优势信号</text><text x="800" y="447" class="copy">奖励模型或验证器产生回报</text><text x="800" y="466" class="small">价值基线或组内基线形成优势</text>
+  <path d="M405 367V378H205V390" class="line"/><path d="M505 367V390" class="line"/><path d="M860 367V390" class="line"/><path d="M640 431H780" class="line"/><path d="M1205 367V378H990V390" class="line"/>
 
-  <rect x="145" y="548" width="250" height="86" rx="15" fill="#FFF7ED" stroke="#EA580C" stroke-width="2"/>
-  <text x="167" y="579" class="head">DPO 离线更新</text><text x="167" y="607" class="copy">固定参考策略 · 偏好边际</text><text x="167" y="628" class="small">不依赖当前策略在线采样</text>
-  <rect x="425" y="548" width="250" height="86" rx="15" fill="#FFE4E6" stroke="#E11D48" stroke-width="2"/>
-  <text x="447" y="579" class="head">奖励模型训练与校准</text><text x="447" y="607" class="copy">偏好标签 → 标量分数</text><text x="447" y="628" class="small">留出校准 · 过度优化检查</text>
-  <rect x="805" y="548" width="250" height="86" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
-  <text x="827" y="579" class="head">奖励、回报与优势信号</text><text x="827" y="607" class="copy">奖励模型或验证器 → 回报</text><text x="827" y="628" class="small">价值基线或组内基线 → 优势</text>
-  <path d="M475 496V520H270V548" class="line"/>
-  <path d="M550 496V548" class="line"/>
-  <path d="M930 496V548" class="line"/>
-  <path d="M675 591H805" class="line"/>
-  <path d="M1210 496V520H1000V548" class="line"/>
+  <rect x="650" y="495" width="230" height="82" rx="14" class="node" fill="#F3E8FF" stroke="#9333EA"/>
+  <text x="670" y="525" class="head">PPO 在线更新</text><text x="670" y="552" class="copy">价值基线、裁剪与 KL 约束</text>
+  <rect x="970" y="495" width="230" height="82" rx="14" class="node" fill="#FEF3C7" stroke="#D97706"/>
+  <text x="990" y="525" class="head">GRPO 在线更新</text><text x="990" y="552" class="copy">候选组、组内优势与 KL 约束</text>
+  <path d="M870 472V484H765V495" class="line"/><path d="M960 472V484H1085V495" class="line"/>
 
-  <rect x="665" y="690" width="230" height="82" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
-  <text x="687" y="721" class="head">PPO 在线更新</text><text x="687" y="749" class="copy">价值基线 · 裁剪 · KL 约束</text>
-  <rect x="965" y="690" width="230" height="82" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
-  <text x="987" y="721" class="head">GRPO 在线更新</text><text x="987" y="749" class="copy">候选组 · 组内优势 · KL 约束</text>
-  <path d="M880 634V660H780V690" class="line"/>
-  <path d="M980 634V660H1080V690" class="line"/>
-
-  <rect x="145" y="816" width="1050" height="52" rx="15" fill="#ECFDF5" stroke="#16A34A" stroke-width="2"/>
-  <text x="169" y="848" class="head">独立模型评测：目标能力 · 通用能力 · 安全 · 鲁棒性 · 成本 → 采用、调整或回滚</text>
-  <path d="M270 634V816" class="line"/>
-  <path d="M780 772V816" class="line"/>
-  <path d="M1080 772V816" class="line"/>
+  <rect x="80" y="595" width="1120" height="42" rx="13" class="node" fill="#ECFDF5" stroke="#16A34A"/>
+  <text x="105" y="622" class="head">独立模型评测：目标能力、通用能力、安全、鲁棒性与成本 → 采用、调整或回滚</text>
+  <path d="M205 472V595" class="line"/><path d="M765 577V595" class="line"/><path d="M1085 577V595" class="line"/>
 </svg>

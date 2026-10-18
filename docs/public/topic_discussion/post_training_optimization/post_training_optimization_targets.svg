@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="650" viewBox="0 0 1440 650" role="img" aria-labelledby="title desc">
+  <title id="title">后训练优化对象与最小干预路径</title>
+  <desc id="desc">从稳定失败和非参数基线出发，识别需要改变的模型行为，再选择反馈信号、参数更新范围和独立采用门槛。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0L8 4L0 8Z" fill="#475569"/>
+    </marker>
+    <style>
+      .title{font-family:"Noto Sans CJK SC",sans-serif;font-size:29px;font-weight:700;fill:#172033}.subtitle{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;fill:#475569}
+      .head{font-family:"Noto Sans CJK SC",sans-serif;font-size:18px;font-weight:700;fill:#172033}.copy{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;fill:#334155}.small{font-family:"Noto Sans CJK SC",sans-serif;font-size:13px;fill:#475569}
+      .node{stroke-width:2}.line{fill:none;stroke:#475569;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow)}.hint{font-family:"Noto Sans CJK SC",sans-serif;font-size:13px;font-weight:700;fill:#64748B}
+    </style>
+  </defs>
+  <rect width="1440" height="650" fill="#F8FAFC"/>
+  <rect x="24" y="18" width="1392" height="614" rx="26" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2" data-layout-role="panel"/>
+  <text x="58" y="58" class="title">后训练优化对象与最小干预路径</text>
+  <text x="58" y="84" class="subtitle">先确认失败是否必须修改参数，再根据需要改变的行为选择反馈、更新范围和采用证据。</text>
+
+  <rect x="58" y="218" width="205" height="104" rx="16" class="node" fill="#E0F2FE" stroke="#0284C7"/>
+  <text x="78" y="252" class="head">稳定失败证据</text>
+  <text x="78" y="280" class="copy">固定提示、解码与评测</text>
+  <text x="78" y="304" class="small">确认失败可重复且值得处理</text>
+
+  <polygon points="378,200 462,270 378,340 294,270" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
+  <text x="378" y="258" text-anchor="middle" class="head">非参数方案</text>
+  <text x="378" y="283" text-anchor="middle" class="copy">能否解决？</text>
+
+  <rect x="286" y="104" width="184" height="66" rx="14" class="node" fill="#F1F5F9" stroke="#64748B"/>
+  <text x="378" y="130" text-anchor="middle" class="head">保留非参数方案</text>
+  <text x="378" y="153" text-anchor="middle" class="small">提示词 · RAG · 工具</text>
+
+  <rect x="520" y="158" width="300" height="224" rx="18" class="node" fill="#DCFCE7" stroke="#16A34A"/>
+  <text x="542" y="190" class="head">需要改变的模型行为</text>
+  <rect x="542" y="208" width="256" height="34" rx="9" fill="#FFFFFF" stroke="#86EFAC"/>
+  <text x="557" y="231" class="copy">领域知识与任务能力 → 持续预训练 / SFT</text>
+  <rect x="542" y="250" width="256" height="34" rx="9" fill="#FFFFFF" stroke="#86EFAC"/>
+  <text x="557" y="273" class="copy">指令与输出格式 → SFT</text>
+  <rect x="542" y="292" width="256" height="34" rx="9" fill="#FFFFFF" stroke="#86EFAC"/>
+  <text x="557" y="315" class="copy">偏好与安全边界 → DPO / RLHF</text>
+  <rect x="542" y="334" width="256" height="34" rx="9" fill="#FFFFFF" stroke="#86EFAC"/>
+  <text x="557" y="357" class="copy">可验证推理与工具行为 → RLVR</text>
+
+  <rect x="880" y="158" width="210" height="224" rx="18" class="node" fill="#FFF7ED" stroke="#EA580C"/>
+  <text x="902" y="190" class="head">选择反馈信号</text>
+  <text x="902" y="230" class="copy">监督标签</text>
+  <text x="902" y="264" class="copy">成对偏好</text>
+  <text x="902" y="298" class="copy">奖励模型</text>
+  <text x="902" y="332" class="copy">规则验证器</text>
+  <text x="902" y="360" class="small">离线数据或在线采样</text>
+
+  <rect x="1150" y="158" width="230" height="224" rx="18" class="node" fill="#F3E8FF" stroke="#9333EA"/>
+  <text x="1172" y="190" class="head">选择参数更新范围</text>
+  <text x="1172" y="232" class="copy">全参数更新</text>
+  <text x="1172" y="266" class="copy">LoRA / 其他适配器</text>
+  <text x="1172" y="300" class="copy">QLoRA 低资源路径</text>
+  <text x="1172" y="334" class="small">固定数据、步数与评测比较</text>
+
+  <rect x="520" y="458" width="860" height="116" rx="18" class="node" fill="#FFE4E6" stroke="#E11D48"/>
+  <text x="542" y="492" class="head">候选模型必须通过独立采用门槛</text>
+  <text x="542" y="526" class="copy">目标能力增益　·　通用能力保持　·　安全与鲁棒性　·　训练和采样成本　·　失败切片与回滚条件</text>
+  <text x="542" y="554" class="small">证据齐全后再决定采用、继续调整或拒绝；局部训练损失不能代替独立评测。</text>
+
+  <path d="M263 270H286" class="line"/>
+  <path d="M378 200V178" class="line"/>
+  <text x="394" y="190" class="hint">能</text>
+  <path d="M462 270H512" class="line"/>
+  <text x="478" y="255" class="hint">不能</text>
+  <path d="M820 270H872" class="line"/>
+  <path d="M1090 270H1142" class="line"/>
+  <path d="M1265 382V420H950V450" class="line"/>
+</svg>

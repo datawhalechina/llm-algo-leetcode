@@ -1,13 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="430" viewBox="0 0 1200 430" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="450" viewBox="0 0 1200 450" role="img" aria-labelledby="title desc">
   <title id="title">SFT 训练与产物交付链</title><desc id="desc">固定数据和模型身份后执行训练与独立验证，再保存恢复状态、推理产物和证据报告。</desc>
   <defs><marker id="a" markerWidth="6" markerHeight="6" refX="5.5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#475569"/></marker><style>.t{font:700 25px Arial,sans-serif;fill:#172033}.s{font:15px Arial,sans-serif;fill:#475569}.h{font:700 16px Arial,sans-serif;fill:#172033}.c{font:14px Arial,sans-serif;fill:#334155}.l{fill:none;stroke:#475569;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#a)}</style></defs>
-  <rect width="1200" height="430" fill="#F8FAFC"/><rect x="28" y="24" width="1144" height="382" rx="24" fill="#FFF" stroke="#CBD5E1" stroke-width="2"/>
+  <rect width="1200" height="450" fill="#F8FAFC"/><rect x="28" y="24" width="1144" height="402" rx="24" fill="#FFF" stroke="#CBD5E1" stroke-width="2"/>
   <text x="62" y="68" class="t">SFT 基线只有可恢复、可评测、可交付时才可复用</text><text x="62" y="96" class="s">训练损失只是过程信号；DPO、GRPO 和部署还需要模型、分词器、配置与评测清单。</text>
-  <rect x="58" y="158" width="180" height="110" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/><text x="80" y="192" class="h">固定输入身份</text><text x="80" y="222" class="c">模型 · 分词器 · 模板</text><text x="80" y="248" class="c">数据切分 · 哈希</text>
-  <rect x="292" y="158" width="180" height="110" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/><text x="314" y="192" class="h">执行有效更新</text><text x="314" y="222" class="c">批量 · 学习率 · 优化器</text><text x="314" y="248" class="c">调度器 · 失败与恢复</text>
-  <rect x="526" y="158" width="180" height="110" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/><text x="548" y="192" class="h">独立验证</text><text x="548" y="222" class="c">验证损失 · 任务质量</text><text x="548" y="248" class="c">失败样本 · 资源回归</text>
+  <rect x="58" y="173" width="180" height="80" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/><text x="80" y="196" class="h">固定输入身份</text><text x="80" y="220" class="c">模型 · 分词器 · 模板</text><text x="80" y="242" class="c">数据切分 · 哈希</text>
+  <rect x="292" y="173" width="180" height="80" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/><text x="314" y="196" class="h">执行有效更新</text><text x="314" y="220" class="c">批量 · 学习率 · 优化器</text><text x="314" y="242" class="c">调度器 · 失败与恢复</text>
+  <rect x="526" y="173" width="180" height="80" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/><text x="548" y="196" class="h">独立验证</text><text x="548" y="220" class="c">验证损失 · 任务质量</text><text x="548" y="242" class="c">失败样本 · 资源回归</text>
   <rect x="760" y="112" width="180" height="92" rx="15" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/><text x="782" y="148" class="h">训练恢复产物</text><text x="782" y="176" class="c">checkpoint · RNG · step</text>
   <rect x="760" y="224" width="180" height="92" rx="15" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/><text x="782" y="260" class="h">推理交付产物</text><text x="782" y="288" class="c">adapter / merged model</text>
-  <rect x="988" y="158" width="154" height="110" rx="15" fill="#FFF7ED" stroke="#EA580C" stroke-width="2"/><text x="1008" y="192" class="h">证据清单</text><text x="1008" y="222" class="c">清单 · 哈希</text><text x="1008" y="248" class="c">基线 / 候选 · 决策</text>
+  <rect x="988" y="173" width="154" height="80" rx="15" fill="#FFF7ED" stroke="#EA580C" stroke-width="2"/><text x="1008" y="196" class="h">证据清单</text><text x="1008" y="220" class="c">清单 · 哈希</text><text x="1008" y="242" class="c">基线 / 候选 · 决策</text>
   <path d="M238 213H284" class="l"/><path d="M472 213H518" class="l"/><path d="M706 213H732V158H752" class="l"/><path d="M706 213H732V270H752" class="l"/><path d="M940 158H964V213H980" class="l"/><path d="M940 270H964V213H980" class="l"/>
 </svg>

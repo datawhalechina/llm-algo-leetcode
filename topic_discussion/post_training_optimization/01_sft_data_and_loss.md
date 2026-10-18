@@ -1,6 +1,6 @@
 # 01 · SFT 数据、监督与长上下文契约
 
-SFT 的起点不是“准备一些问答对”，而是让数据、分词、对话模板与损失对同一批监督 Token 达成一致。只有监督契约成立，后续 LoRA 配置、训练曲线和偏好优化才有可比基线。
+SFT 从数据、分词、对话模板与损失对同一批监督 Token 的一致性开始。监督契约成立后，后续 LoRA 配置、训练曲线和偏好优化才有可比基线。
 
 ## 监督对象如何进入损失
 
@@ -40,4 +40,4 @@ SFT 的起点不是“准备一些问答对”，而是让数据、分词、对�
 | 最小训练基线 | 固定监督批次、更新配置与验证集 | 更新前后结果、资源记录与最小基线 |
 | 长上下文扩展 | 窗口适配、受控截断、监督保留与边界隔离 Packing | 长样本覆盖、丢失比例与资源代价 |
 
-先用[数据契约与泄漏审计](../../02_PyTorch_Algorithms/32_Data_Engineering_for_SFT.ipynb)确认样本可以进入训练，再用[SFT 训练循环](../../02_PyTorch_Algorithms/13_SFT_Training_Loop.ipynb)复算监督损失；只有长样本发生截断或跨样本拼接时，才追加[长上下文监督保留检查](../../02_PyTorch_Algorithms/30_Long_Context_Fine_Tuning.ipynb)。监督契约固定后，与[参数更新方案](./02_lora_peft_design.md)一起进入[训练控制](./03_training_control.md)，最终形成[可恢复的 SFT 基线](./04_end_to_end_experiment.md)。更通用的采集、清洗与血缘管理见[数据工程](../data_engineering/intro.md)。
+先用[数据契约与泄漏审计](../../02_PyTorch_Algorithms/32_Data_Engineering_for_SFT.ipynb)确认样本可以进入训练，再用[SFT 监督边界与损失](../../02_PyTorch_Algorithms/13_SFT_Training_Loop.ipynb)复算监督损失；只有长样本发生截断或跨样本拼接时，才追加[长上下文监督保留检查](../../02_PyTorch_Algorithms/30_Long_Context_Fine_Tuning.ipynb)。监督契约固定后，与[参数更新方案](./02_lora_peft_design.md)一起进入[训练控制](./03_training_control.md)，最终形成[可恢复的 SFT 基线](./04_end_to_end_experiment.md)。更通用的采集、清洗与血缘管理见[数据工程](../data_engineering/intro.md)。

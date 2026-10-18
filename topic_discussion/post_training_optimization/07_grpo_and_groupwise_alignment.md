@@ -1,6 +1,6 @@
-# 07 · GRPO、RLVR 与组内奖励
+# 07 · GRPO、RLOO 与组内奖励
 
-GRPO 让同一提示生成多个候选，再用组内相对奖励构造更新信号，从而减少对显式价值模型的依赖。可验证奖励强化学习（RLVR）进一步把数学答案、代码测试或环境终态等可验证信号接入奖励；它提高反馈可检查性，但不意味着规则本身覆盖了全部任务质量。
+GRPO 与 RLOO 都让同一提示生成多条回答，并在组内构造无需 Critic 的优势信号。GRPO 常用包含当前回答的组均值并可按组标准差缩放，RLOO 则明确排除当前奖励后计算留一基线。可验证奖励强化学习（RLVR）可把数学答案、代码测试或环境终态接入这类在线更新；它提高反馈可检查性，但不意味着规则覆盖了全部任务质量。
 
 ## 组采样如何形成更新信号
 
@@ -22,6 +22,7 @@ GRPO 让同一提示生成多个候选，再用组内相对奖励构造更新信
 | --- | --- | --- | --- |
 | PPO | 奖励 + 价值模型估计 | 可形成逐位置优势并限制单次策略更新 | 多模型状态与价值模型成本高 |
 | GRPO | 同一提示下候选的相对奖励 | 可减少价值模型依赖，直接利用组内比较 | 候选不足、组内排序或方差失真 |
+| RLOO | 排除当前回答后的组内奖励均值 | 不训练 Critic，留一基线定义清楚 | 每组回答不足、奖励方差和序列级裁剪失真 |
 | RLVR | 规则、测试或环境终态 | 反馈可验证、失败可定位 | 规则过窄时会产生奖励投机，遗漏真实质量 |
 
 ## 验证器输出何时可以进入组内奖励
@@ -36,4 +37,4 @@ GRPO 让同一提示生成多个候选，再用组内相对奖励构造更新信
 | 高奖励集中于异常短或固定模式 | 存在长度或模板投机 | 加入失败切片并修正规则 |
 | 独立成功率与奖励背离 | 奖励排序不足以支持采用 | 停止扩大训练并回查评分协议 |
 
-候选组、奖励来源和无法判定状态固定后，可进入[GRPO 机制练习](../../02_PyTorch_Algorithms/18_GRPO_Loss_Tutorial.ipynb)，验证组内归一化、零方差保护和受约束更新。重复在线采样时进入[轨迹生命周期](./08_trajectory_lifecycle_and_environment_interaction.md)；候选训练完成后进入[独立评测、能力回归与采用决策](./10_evaluation_and_adoption_decision.md)。进一步阅读：[TRL GRPOTrainer](https://huggingface.co/docs/trl/grpo_trainer)。
+回答组、奖励来源和无法判定状态固定后，可进入[GRPO 机制练习](../../02_PyTorch_Algorithms/18_GRPO_Loss_Tutorial.ipynb)核对组内归一化，或进入[RLOO 机制练习](../../02_PyTorch_Algorithms/PT-RLOO_Leave_One_Out_Policy_Optimization.ipynb)核对留一基线与序列级裁剪。重复在线采样时进入[轨迹生命周期](./08_trajectory_lifecycle_and_environment_interaction.md)；模型训练完成后进入[独立评测、能力回归与采用决策](./10_evaluation_and_adoption_decision.md)。进一步阅读：[TRL GRPOTrainer](https://huggingface.co/docs/trl/grpo_trainer)与[TRL RLOOTrainer](https://huggingface.co/docs/trl/rloo_trainer)。
