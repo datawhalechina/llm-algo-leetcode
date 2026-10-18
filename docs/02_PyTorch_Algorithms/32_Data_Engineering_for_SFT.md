@@ -1,5 +1,5 @@
-# 32. Data Engineering for SFT | SFT 数据准入与长度审计
-**难度：** Medium | **环境：** CPU-only | **标签：** `后训练`, `SFT`, `数据治理` | **目标人群：** 后训练学习者
+# 32. Data Engineering for SFT | SFT 数据契约与泄漏审计
+**难度：** Medium | **环境：** [CPU 主线](#runtime-environment) | **标签：** `后训练`, `SFT`, `数据治理` | **目标人群：** 后训练学习者
 
 > 🚀 **云端运行环境**
 >
@@ -13,66 +13,107 @@
 
 ## 本节导读
 
-SFT 数据进入训练前，需要同时确认监督语义是否完整、训练内容是否泄漏到评测集，以及模板化后的有效监督是否能进入目标窗口。本节从样本契约出发，依次建立内容级去重与去污染、监督 Token 账本和准入决策。
+当后训练准入判断确认问题需要进入 SFT 后，候选示范仍不能直接送入模板与标签构造。来源不可追溯、训练样本重复或训练任务泄漏到独立评测集，都会让后续损失下降失去可信解释。
 
-**关键词：** `data contract`, `deduplication`, `decontamination`, `token budget`
+本节沿着“字段契约 → 双指纹审计 → 准入清单”处理这些风险：任务输入指纹用于检查训练—评测泄漏，完整样本指纹用于检查训练集重复，所有拒绝原因都随样本保留。完成后，你应该能生成可追溯的数据准入结果，并把通过审计的记录交给监督边界与标签构造环节。
+
+**关键词：** `data contract`, `deduplication`, `split isolation`, `decontamination`
+
+---
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 默认使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
+- **框架核对：** 如需检查准入记录能否无损进入 Hugging Face Datasets，使用 [`PT-CPU`](../topic_discussion/post_training_optimization/quickstart.md#pt-cpu-quickstart)；完成 Step 4 后运行[框架一致性核对](#framework-check)。
 
 ---
 ## 前置阅读
 
-**导语：** 进入本节前，先理解 SFT 样本如何形成监督目标，再检查原始指令数据如何进入稳定的数据契约。
-- [13. SFT Training Loop | SFT 训练循环](./13_SFT_Training_Loop.md)
+**导语：** 33 节先确定是否需要 SFT 并生成数据需求单；本节再用结构化样本与稳定身份检查候选示范能否进入训练。
+- [33. Post-Training Admission and Stage Selection | 后训练准入与阶段选择](./33_Fine_Tuning_Readiness.md)
 - [04. Python Config and Data Entry | Python 配置与数据组织](../00_Prerequisites/04_Python_Config_and_Data_Entry.md)
 
 ---
 
-### Step 1：样本身份与监督语义共同构成准入契约
+## Step 1：一条 SFT 样本需要具备哪些来源、切分与监督字段
 
-一条 SFT 样本既要能追溯来源，也要明确模型看到什么、哪些内容提供监督。身份完整但回答为空，或回答存在但来源和切分不可追溯，都不能进入训练池。文本规范化只消除空白等表示噪声，不能改写任务或回答语义。
+一条 SFT 样本既要能够追溯来源，也要明确它属于哪个数据切分、模型接收什么任务条件，以及哪部分内容提供监督。只有身份、切分、任务输入和监督目标都满足契约，样本才能进入后续的数据审计。
 
-| 契约层 | 必须确认的内容 | 失败风险 |
+先规范化身份、切分、指令、上下文和回答字段，以下用 $x$ 表示规范化后的记录。基础契约可以写成布尔合取：
+
+$$
+C(x)=I_{\mathrm{id}}(x)\land I_{\mathrm{source}}(x)\land I_{\mathrm{split}}(x)\land I_{\mathrm{instruction}}(x)\land I_{\mathrm{response}}(x).
+$$
+
+其中，$I_j(x)\in\{0,1\}$ 表示字段 $j$ 是否满足契约，$\land$ 表示所有字段条件必须同时成立。$C(x)$ 只说明单条记录字段完整，不说明它是否与其他训练样本重复或与评测任务重合。贯穿示例沿用 33 节的三步流程任务：候选数据中同时放入一条合格示范、一条内容重复示范和一条与冻结评测任务重合的示范，观察它们如何得到不同准入结果。
+
+| 契约维度 | 接受条件 | 不满足时说明什么 |
 |:---|:---|:---|
-| 样本身份 | 样本标识、来源标识和切分共同支持追溯 | 重复消费或失败样本无法回查 |
-| 输入语义 | 指令与可选上下文共同定义任务条件 | 不同任务被错误合并 |
-| 监督语义 | 回答与输入属于同一任务且回答非空 | 空监督或错误监督 |
-| 模板边界 | 输入区域与回答区域在模板化后仍可区分 | 输入 Token 被误计入监督目标 |
+| 可追溯身份 | 样本标识和来源标识非空 | 无法回查数据来源与失败样本 |
+| 切分角色 | 明确属于训练、验证或测试切分 | 无法判断样本应进入哪个数据集合 |
+| 任务输入 | 指令非空，可选上下文与指令共同定义任务 | 模型没有完整的任务条件 |
+| 监督目标 | 回答非空，并与任务输入保持字段分离 | 无有效监督，或无法正确构造标签范围 |
 
 ![SFT 数据准入链](./../public/02_PyTorch_Algorithms/32_sft_data_admission_flow.svg)
-### Step 2：内容指纹把去重与去污染连接起来
+## Step 2：如何识别训练集重复与评测数据泄漏
 
-身份重复只能发现重复标识，无法发现改过 ID 或空白格式的同一内容。内容指纹应从规范化后的任务条件和回答生成：同一训练池内的重复指纹用于去重，训练指纹与独立评测指纹相交则表示污染。两类风险必须分别记录。
+身份重复只能发现同一样本身份被重复使用，无法发现更换身份后的同一内容。训练集去重需要比较完整样本，训练与评测之间的泄漏检查只比较任务输入；如果泄漏检查混入回答，同一任务换一个回答就可能逃过检查。两类指纹采用相同的文本规范化规则，但比较范围不同。
 
-| 风险 | 比较范围 | 准入动作 |
-|:---|:---|:---|
-| 身份重复 | 同一切分中的样本标识 | 拒绝重复身份并追踪来源 |
-| 内容重复 | 训练池中的内容指纹 | 只保留一份训练内容 |
-| 评测污染 | 训练指纹与独立评测指纹 | 从训练候选中移除并记录 |
-| 契约失败 | 身份或监督语义不完整 | 不生成训练候选 |
+设规范化后的指令、上下文和回答分别为 $i(x)$、$c(x)$、$r(x)$，则两类比较键为
+
+$$
+f_{\mathrm{task}}(x)=\big(i(x),c(x)\big),\qquad
+f_{\mathrm{example}}(x)=\big(i(x),c(x),r(x)\big).
+$$
+
+两类比较键共享规范化规则，但字段组合不同：任务输入指纹刻画“模型要回答什么”，完整样本指纹还包含“希望模型怎样回答”。
+
+| 比较键 | 组成 | 比较范围 | 发现的问题 |
+|:---|:---|:---|:---|
+| 样本身份 | 数据来源声明的稳定标识 | 训练集内部 | 同一身份被重复使用 |
+| 任务输入指纹 | 规范化后的完整任务条件，不包含目标回答 | 训练集与独立评测集 | 训练任务泄漏到评测集 |
+| 完整样本指纹 | 规范化后的任务条件与目标回答 | 训练集内部 | 不同身份指向相同监督样本 |
 
 ![SFT 数据风险矩阵](./../public/02_PyTorch_Algorithms/32_sft_data_risk_matrix.svg)
-### Step 3：监督 Token 账本决定样本能否完整进入窗口
+## Step 3：哪些样本可以准入，拒绝原因如何保留
 
-字符数不能代替 Token 数，总长度也不能说明回答是否仍被完整监督。模板化后需要分别统计提示 Token、回答 Token、窗口内保留的监督 Token和丢失的监督 Token。若窗口只保留提示而截断回答，即使总序列可以执行，也不应视为有效训练样本。
+契约失败、样本身份重复、完整样本重复和训练—评测泄漏可能同时发生，审计不能在发现第一项风险后停止。每条训练样本都应保留来源、两类指纹、准入结果和全部拒绝原因；只有拒绝原因集合为空的样本，才能进入模板、标签、长度与序列拼接处理。
 
-| 账本字段 | 回答的问题 | 准入含义 |
+把所有命中的拒绝原因记为集合 $R(x)$：
+
+$$
+R(x)=R_{\mathrm{contract}}(x)\cup R_{\mathrm{id}}(x)\cup R_{\mathrm{duplicate}}(x)\cup R_{\mathrm{leak}}(x),\qquad
+A(x)=\mathbf{1}[R(x)=\varnothing].
+$$
+
+准入变量 $A(x)$ 由完整原因集合决定，因此同一样本同时命中的风险都必须保留。准入结果不是本节终点：通过的记录需要连同来源与切分信息交给 13 节构造监督标签，被拒绝的记录保留全部原因供数据修复。
+
+| 拒绝原因 | 触发条件 | 修复方向 |
 |:---|:---|:---|
-| 提示 Token | 输入条件占用多少窗口 | 判断回答可用空间 |
-| 监督 Token | 原始回答提供多少学习信号 | 识别空监督与长回答 |
-| 保留监督 Token | 窗口内实际参与损失的回答 Token | 衡量有效监督量 |
-| 丢失监督 Token | 截断损失了多少回答 Token | 决定拒绝、分桶或扩大窗口 |
-### Step 4：实现 SFT 数据准入链
+| 身份字段缺失 | `sample_id`、`source_id` 或 `split` 为空 | 补齐来源字段或移除样本 |
+| 切分值非法 | `split` 不属于 train、validation、test | 改正切分值并重新审计 |
+| 任务或回答缺失 | `instruction` 或 `response` 为空 | 补齐任务与监督目标，或移除样本 |
+| 身份重复 | 训练集中重复出现相同样本标识 | 核对来源和数据版本 |
+| 完整样本重复 | 不同身份具有相同任务输入与回答 | 去重，并保留来源标识完整且通过契约检查的样本 |
+| 评测任务泄漏 | 训练任务输入与独立评测任务重合 | 重新切分或移除污染样本 |
 
-题目区实现三个相互衔接的机制：判定样本契约、识别内容重复与评测污染、计算窗口内的有效监督。文本规范化、模板拼接、内容指纹表示和报告装配由骨架提供，TODO 不要求拼接字符串。
+| 本节输出 | 进入 13 节后的用途 |
+|:---|:---|
+| `instruction`、`input` | 构造模型输入与提示模板 |
+| `response` | 构造需要参与损失计算的监督标签 |
+| `sample_id`、`source_id`、`split` | 保留样本追踪和训练—评测隔离证据 |
+| 准入样本身份集合 | 限定可以进入训练批次的记录 |
+| 拒绝原因 | 修复候选数据，不进入标签构造 |
+<a id="mechanism-practice"></a>
+## Step 4：实现 SFT 数据契约与泄漏审计
+
+代码先以元组实现任务输入与完整样本两类指纹，再分别识别训练集重复和训练—评测泄漏，最后检查准入样本交给 13 节时没有丢失追踪字段。数据规模增大时可以把同一规范化字段组合编码为稳定哈希，但两类指纹的字段边界不能改变。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 |:---|:---|:---|:---|
-| TODO 1：判定监督契约<br>`assess_sft_contract` | 区分身份完整与监督完整 | 两类条件同时满足才准入 | `test_contract_assessment` |
-| TODO 2：审计重复与污染<br>`audit_sft_content` | 比较训练内容指纹与评测指纹 | 重复和污染分别计数，同一样本可同时命中 | `test_content_audit` |
-| TODO 3：计算监督预算<br>`summarize_supervision_budget` | 计算提示、监督、保留和丢失 Token | 计数非负，空监督不能通过 | `test_supervision_budget`、`test_invalid_token_budget` |
-## 测试
-
-运行下方 CPU 机制测试，检查样本契约、内容风险审计和有效监督 Token 账本。
-
+| TODO 1：构造两类指纹<br>`build_sft_fingerprints` | 分离任务输入与完整监督样本的比较键 | 回答变化只能改变完整样本指纹 | 修改回答后，任务输入指纹保持不变，完整样本指纹随之改变 |
+| TODO 2：审计重复与泄漏<br>`audit_sft_dataset` | 分别判断完整样本重复和任务输入泄漏 | 风险独立记录，同一样本可同时命中 | 重复身份、重复样本、评测泄漏和缺失监督被分别记录；只有准入样本进入训练接口并保留追踪字段 |
 
 ```python
 from typing import Dict, List
@@ -82,7 +123,7 @@ from typing import Dict, List
 
 ```python
 def normalize_sft_record(record: Dict[str, object]) -> Dict[str, str]:
-    """清理表示噪声；字符串规范化由题目骨架完成。"""
+    """统一字段类型并移除字符串首尾空白。"""
     return {
         "sample_id": str(record.get("sample_id", "")).strip(),
         "source_id": str(record.get("source_id", "")).strip(),
@@ -93,88 +134,101 @@ def normalize_sft_record(record: Dict[str, object]) -> Dict[str, str]:
     }
 
 
-def assess_sft_contract(record: Dict[str, str]) -> Dict[str, bool]:
-    """分别判定身份完整性和监督完整性。"""
+def assess_sft_contract(record: Dict[str, str]) -> Dict[str, object]:
+    """判定身份与监督契约，并保留可解释的缺失字段。"""
+    required_identity_fields = ("sample_id", "source_id", "split")
+    missing_identity_fields = [name for name in required_identity_fields if not record[name]]
+    split_allowed = record["split"] in {"train", "validation", "test"}
+    supervision_complete = bool(record["instruction"] and record["response"])
+    contract_issues = [f"missing_{name}" for name in missing_identity_fields]
+    if record["split"] and not split_allowed:
+        contract_issues.append("invalid_split")
+    if not record["instruction"]:
+        contract_issues.append("missing_instruction")
+    if not record["response"]:
+        contract_issues.append("missing_response")
+    admitted = not contract_issues
+    return {"missing_identity_fields": missing_identity_fields, "supervision_complete": supervision_complete, "contract_issues": contract_issues, "admitted": admitted}
+
+
+def build_sft_fingerprints(record: Dict[str, str]) -> Dict[str, tuple]:
+    """分别构造任务输入与完整监督样本的比较键。"""
+    instruction = record["instruction"].casefold()
+    input_text = record["input"].casefold()
+    response = record["response"].casefold()
     # ==========================================
-    # TODO 1：身份完整要求样本、来源和合法切分齐全。
-    # identity_complete = ???
-    # supervision_complete = ???  # 指令与回答均非空。
-    # admitted = ???  # 仅两类契约同时满足时为 True。
+    # TODO 1：分离任务输入指纹与完整样本指纹。
+    # task_fingerprint = ???
+    # example_fingerprint = ???
     # ==========================================
-    raise NotImplementedError("TODO 1：判定样本契约")
-    return {"identity_complete": identity_complete, "supervision_complete": supervision_complete, "admitted": admitted}
+    raise NotImplementedError("TODO 1：构造两类指纹")
+    return {"task": task_fingerprint, "example": example_fingerprint}
 
 
-def content_fingerprint(record: Dict[str, str]) -> tuple[str, str, str]:
-    """构造内容比较键；表示细节由骨架提供，不作为 TODO。"""
-    return (record["instruction"].casefold(), record["input"].casefold(), record["response"].casefold())
-
-
-def audit_sft_content(records: List[Dict[str, str]], evaluation_fingerprints: set[tuple[str, str, str]]) -> Dict[str, int]:
-    """分别统计契约失败、训练内容重复和评测污染。"""
-    seen_train = set()
-    rejected_contract_count = 0
-    duplicate_content_count = 0
-    contamination_count = 0
+def audit_sft_dataset(records: List[Dict[str, str]], evaluation_task_fingerprints: set[tuple[str, str]]) -> Dict[str, object]:
+    """输出训练重复、跨切分泄漏和准入原因清单。"""
+    seen_sample_ids = set()
+    seen_training_examples = set()
+    rows = []
+    admitted_sample_ids = []
     for record in records:
+        if record["split"] in {"validation", "test"}:
+            continue
         contract = assess_sft_contract(record)
-        if not contract["admitted"]:
-            rejected_contract_count += 1
-            continue
-        if record["split"] != "train":
-            continue
-        fingerprint = content_fingerprint(record)
+        fingerprints = build_sft_fingerprints(record)
+        is_duplicate_identity = contract["admitted"] and record["sample_id"] in seen_sample_ids
         # ==========================================
-        # TODO 2：同一训练样本可同时命中重复与评测污染。
-        # is_duplicate = ???
-        # is_contaminated = ???
+        # TODO 2：分别判断完整样本重复和任务输入泄漏。
+        # is_duplicate_example = ???
+        # is_evaluation_leak = ???
         # ==========================================
-        raise NotImplementedError("TODO 2：审计内容重复与评测污染")
-        duplicate_content_count += int(is_duplicate)
-        contamination_count += int(is_contaminated)
-        seen_train.add(fingerprint)
-    return {"total_samples": len(records), "rejected_contract_count": rejected_contract_count, "duplicate_content_count": duplicate_content_count, "contamination_count": contamination_count}
+        raise NotImplementedError("TODO 2：审计重复与泄漏")
+        reasons = []
+        reasons.extend(contract["contract_issues"])
+        if is_duplicate_identity:
+            reasons.append("duplicate_identity")
+        if is_duplicate_example:
+            reasons.append("duplicate_example")
+        if is_evaluation_leak:
+            reasons.append("evaluation_task_leak")
+        admitted = not reasons
+        rows.append({"sample_id": record["sample_id"], "source_id": record["source_id"], "task_fingerprint": fingerprints["task"], "example_fingerprint": fingerprints["example"], "decision": "admit" if admitted else "reject", "reasons": reasons})
+        if admitted:
+            admitted_sample_ids.append(record["sample_id"])
+        if contract["admitted"]:
+            seen_sample_ids.add(record["sample_id"])
+            seen_training_examples.add(fingerprints["example"])
+    return {"rows": rows, "admitted_sample_ids": admitted_sample_ids}
 
 
-def build_sft_training_examples(records: List[Dict[str, str]], template_prefix: str) -> List[Dict[str, str]]:
-    """装配提示与回答；字符串拼接由骨架完成，不作为 TODO。"""
+def build_sft_training_examples(records: List[Dict[str, str]], admitted_sample_ids: List[str], template_prefix: str) -> List[Dict[str, str]]:
+    """只把风险审计通过的样本装配为训练示例。"""
+    admitted_ids = set(admitted_sample_ids)
     examples = []
     for record in records:
+        if record["sample_id"] not in admitted_ids:
+            continue
         prompt = template_prefix + record["instruction"]
         if record["input"]:
             prompt += "\n### Input\n" + record["input"]
-        examples.append({"sample_id": record["sample_id"], "prompt": prompt, "response": record["response"]})
+        examples.append({"sample_id": record["sample_id"], "source_id": record["source_id"], "split": record["split"], "prompt": prompt, "response": record["response"]})
     return examples
-
-
-def summarize_supervision_budget(tokenizer, examples: List[Dict[str, str]], max_tokens: int) -> Dict[str, object]:
-    """计算窗口内实际保留和丢失的监督 Token。"""
-    if max_tokens <= 0:
-        raise ValueError("max_tokens 必须为正数")
-    rows = []
-    for example in examples:
-        prompt_ids = tokenizer(example["prompt"], add_special_tokens=True)["input_ids"]
-        response_ids = tokenizer(example["response"], add_special_tokens=False)["input_ids"]
-        # ==========================================
-        # TODO 3：计算提示、监督、保留监督和丢失监督 Token。
-        # prompt_tokens = ???
-        # supervised_tokens = ???
-        # kept_supervised_tokens = ???
-        # lost_supervised_tokens = ???
-        # ==========================================
-        raise NotImplementedError("TODO 3：计算有效监督预算")
-        rows.append({"sample_id": example["sample_id"], "prompt_tokens": prompt_tokens, "supervised_tokens": supervised_tokens, "kept_supervised_tokens": kept_supervised_tokens, "lost_supervised_tokens": lost_supervised_tokens, "admitted": supervised_tokens > 0 and kept_supervised_tokens == supervised_tokens})
-    return {"rows": rows, "admitted_count": sum(row["admitted"] for row in rows), "lost_supervised_tokens": sum(row["lost_supervised_tokens"] for row in rows)}
 ```
+
+## 测试
+
+运行下方 CPU 机制测试，检查样本字段、重复与泄漏风险、最终准入清单，以及交给 13 节的训练记录合同。
 
 
 ```python
 def _sample_sft_records():
-    """返回同时包含内容重复、评测污染与空监督的样例。"""
+    """返回包含身份重复、内容重复、评测污染、空监督与干净样本的样例。"""
     raw = [
-        {"sample_id": "train-1", "source_id": "source-a", "split": "train", "instruction": " 解释 LoRA ", "input": "", "response": " 低秩适配。 "},
-        {"sample_id": "train-2", "source_id": "source-b", "split": "train", "instruction": "解释 LoRA", "input": "", "response": "低秩适配。"},
-        {"sample_id": "train-3", "source_id": "source-c", "split": "train", "instruction": "总结", "input": "训练成本", "response": ""},
+        {"sample_id": "train-1", "source_id": "source-a", "split": "train", "instruction": " 按三步处理退款请求 ", "input": "订单已签收", "response": " 申请、核验、确认。 "},
+        {"sample_id": "train-2", "source_id": "source-b", "split": "train", "instruction": "按三步处理退款请求", "input": "订单已签收", "response": "申请、核验、确认。"},
+        {"sample_id": "train-3", "source_id": "source-c", "split": "train", "instruction": "说明退款进度", "input": "已经提交申请", "response": ""},
+        {"sample_id": "train-1", "source_id": "source-d", "split": "train", "instruction": "解释退款时限", "input": "订单已签收", "response": "核验后告知处理时限。"},
+        {"sample_id": "train-4", "source_id": "source-e", "split": "train", "instruction": "说明修改地址步骤", "input": "订单尚未发货", "response": "核对订单、更新地址、确认结果。"},
     ]
     return [normalize_sft_record(record) for record in raw]
 
@@ -190,49 +244,76 @@ def _assert_raises(error_type, fn) -> None:
 
 def test_contract_assessment():
     """身份与监督必须分别判定，且同时满足才准入。"""
-    valid, duplicate, empty = _sample_sft_records()
-    assert assess_sft_contract(valid) == {"identity_complete": True, "supervision_complete": True, "admitted": True}
-    assert assess_sft_contract(empty) == {"identity_complete": True, "supervision_complete": False, "admitted": False}
+    valid, duplicate, empty = _sample_sft_records()[:3]
+    assert assess_sft_contract(valid) == {"missing_identity_fields": [], "supervision_complete": True, "contract_issues": [], "admitted": True}
+    assert assess_sft_contract(empty) == {"missing_identity_fields": [], "supervision_complete": False, "contract_issues": ["missing_response"], "admitted": False}
     missing_source = {**duplicate, "source_id": ""}
-    assert assess_sft_contract(missing_source)["identity_complete"] is False
+    assert assess_sft_contract(missing_source)["missing_identity_fields"] == ["source_id"]
+    invalid_split = {**duplicate, "split": "holdout"}
+    assert assess_sft_contract(invalid_split)["contract_issues"] == ["invalid_split"]
 
 
-def test_content_audit():
-    """同一内容可同时命中训练重复和评测污染。"""
+def test_fingerprint_semantics():
+    """回答变化只改变完整样本指纹，不改变任务输入指纹。"""
+    first = normalize_sft_record({"instruction": "解释 LoRA", "input": "", "response": "答案 A"})
+    second = normalize_sft_record({"instruction": "解释 LoRA", "input": "", "response": "答案 B"})
+    first_keys = build_sft_fingerprints(first)
+    second_keys = build_sft_fingerprints(second)
+    assert first_keys["task"] == second_keys["task"]
+    assert first_keys["example"] != second_keys["example"]
+
+
+def test_dataset_audit():
+    """完整重复和评测任务泄漏必须独立记录。"""
     records = _sample_sft_records()
-    evaluation_fingerprints = {content_fingerprint(records[0])}
-    report = audit_sft_content(records, evaluation_fingerprints)
-    assert report == {"total_samples": 3, "rejected_contract_count": 1, "duplicate_content_count": 1, "contamination_count": 2}
+    evaluation_tasks = {build_sft_fingerprints(records[0])["task"]}
+    report = audit_sft_dataset(records, evaluation_tasks)
+    assert report["admitted_sample_ids"] == ["train-4"]
+    assert report["rows"][0]["reasons"] == ["evaluation_task_leak"]
+    assert report["rows"][1]["reasons"] == ["duplicate_example", "evaluation_task_leak"]
+    assert report["rows"][2]["reasons"] == ["missing_response"]
+    assert report["rows"][3]["reasons"] == ["duplicate_identity"]
 
 
-class MockTokenizer:
-    """按空格切分，便于验证监督预算口径。"""
-    def __call__(self, text, add_special_tokens=True):
-        ids = list(range(len(text.split()) + int(add_special_tokens)))
-        return {"input_ids": ids}
+def test_admission_handoff():
+    """只有准入清单通过的样本才能进入模板化。"""
+    records = _sample_sft_records()
+    evaluation_tasks = {build_sft_fingerprints(records[0])["task"]}
+    report = audit_sft_dataset(records, evaluation_tasks)
+    examples = build_sft_training_examples(records, report["admitted_sample_ids"], "### Instruction\n")
+    assert [example["sample_id"] for example in examples] == ["train-4"]
 
 
-def test_supervision_budget():
-    """窗口必须优先区分提示占用与实际保留的监督量。"""
-    examples = [{"sample_id": "a", "prompt": "one two three", "response": "four five six"}]
-    report = summarize_supervision_budget(MockTokenizer(), examples, max_tokens=6)
-    assert report["rows"][0] == {"sample_id": "a", "prompt_tokens": 4, "supervised_tokens": 3, "kept_supervised_tokens": 2, "lost_supervised_tokens": 1, "admitted": False}
-    assert report["lost_supervised_tokens"] == 1
+def test_training_interface_contract():
+    """交给 13 节的记录必须同时保留监督内容和审计身份。"""
+    records = _sample_sft_records()
+    evaluation_tasks = {build_sft_fingerprints(records[0])["task"]}
+    report = audit_sft_dataset(records, evaluation_tasks)
+    examples = build_sft_training_examples(records, report["admitted_sample_ids"], "### Instruction\n")
+    assert set(examples[0]) == {"sample_id", "source_id", "split", "prompt", "response"}
+    assert examples[0]["source_id"] == "source-e" and examples[0]["split"] == "train"
+    rejected_ids = {row["sample_id"] for row in report["rows"] if row["decision"] == "reject"}
+    assert not ({example["sample_id"] for example in examples} & rejected_ids)
 
 
-def test_invalid_token_budget():
-    """非正窗口不能生成监督账本。"""
-    _assert_raises(ValueError, lambda: summarize_supervision_budget(MockTokenizer(), [], 0))
+def test_rejected_record_does_not_poison_seen_state():
+    """字段不完整的记录不能让后续合法样本被误判为重复身份。"""
+    records = [
+        normalize_sft_record({"sample_id": "same", "source_id": "", "split": "train", "instruction": "解释 SFT", "response": "坏记录"}),
+        normalize_sft_record({"sample_id": "same", "source_id": "source-ok", "split": "train", "instruction": "解释 SFT", "response": "监督微调"}),
+    ]
+    report = audit_sft_dataset(records, set())
+    assert report["rows"][0]["reasons"] == ["missing_source_id"]
+    assert report["rows"][1]["decision"] == "admit"
 
 
-try:
-    test_contract_assessment()
-    test_content_audit()
-    test_supervision_budget()
-    test_invalid_token_budget()
-    print("✅ SFT 契约、内容审计与有效监督预算测试通过。")
-except (AttributeError, NameError, TypeError, ValueError, AssertionError, IndexError) as error:
-    raise NotImplementedError("请先完成 TODO 代码！") from error
+test_contract_assessment()
+test_fingerprint_semantics()
+test_dataset_audit()
+test_admission_handoff()
+test_training_interface_contract()
+test_rejected_record_does_not_poison_seen_state()
+print("✅ SFT 契约、指纹、泄漏审计与准入清单测试通过。")
 ```
 
 ---
@@ -262,85 +343,165 @@ def normalize_sft_record(record: Dict[str, object]) -> Dict[str, str]:
     }
 
 
-def assess_sft_contract(record: Dict[str, str]) -> Dict[str, bool]:
-    # TODO 1：判定身份契约与监督契约。
-    identity_complete = bool(record["sample_id"] and record["source_id"] and record["split"] in {"train", "validation", "test"})
+def assess_sft_contract(record: Dict[str, str]) -> Dict[str, object]:
+    required_identity_fields = ("sample_id", "source_id", "split")
+    missing_identity_fields = [name for name in required_identity_fields if not record[name]]
+    split_allowed = record["split"] in {"train", "validation", "test"}
     supervision_complete = bool(record["instruction"] and record["response"])
-    admitted = identity_complete and supervision_complete
-    return {"identity_complete": identity_complete, "supervision_complete": supervision_complete, "admitted": admitted}
+    contract_issues = [f"missing_{name}" for name in missing_identity_fields]
+    if record["split"] and not split_allowed:
+        contract_issues.append("invalid_split")
+    if not record["instruction"]:
+        contract_issues.append("missing_instruction")
+    if not record["response"]:
+        contract_issues.append("missing_response")
+    admitted = not contract_issues
+    return {"missing_identity_fields": missing_identity_fields, "supervision_complete": supervision_complete, "contract_issues": contract_issues, "admitted": admitted}
 
 
-def content_fingerprint(record: Dict[str, str]) -> tuple[str, str, str]:
-    return (record["instruction"].casefold(), record["input"].casefold(), record["response"].casefold())
+def build_sft_fingerprints(record: Dict[str, str]) -> Dict[str, tuple]:
+    instruction = record["instruction"].casefold()
+    input_text = record["input"].casefold()
+    response = record["response"].casefold()
+    # TODO 1：构造任务输入指纹与完整样本指纹。
+    task_fingerprint = (instruction, input_text)
+    example_fingerprint = (instruction, input_text, response)
+    return {"task": task_fingerprint, "example": example_fingerprint}
 
 
-def audit_sft_content(records: List[Dict[str, str]], evaluation_fingerprints: set[tuple[str, str, str]]) -> Dict[str, int]:
-    seen_train = set()
-    rejected_contract_count = 0
-    duplicate_content_count = 0
-    contamination_count = 0
+def audit_sft_dataset(records: List[Dict[str, str]], evaluation_task_fingerprints: set[tuple[str, str]]) -> Dict[str, object]:
+    seen_sample_ids = set()
+    seen_training_examples = set()
+    rows = []
+    admitted_sample_ids = []
     for record in records:
+        if record["split"] in {"validation", "test"}:
+            continue
         contract = assess_sft_contract(record)
-        if not contract["admitted"]:
-            rejected_contract_count += 1
-            continue
-        if record["split"] != "train":
-            continue
-        fingerprint = content_fingerprint(record)
-        # TODO 2：独立判断训练内容重复和评测污染。
-        is_duplicate = fingerprint in seen_train
-        is_contaminated = fingerprint in evaluation_fingerprints
-        duplicate_content_count += int(is_duplicate)
-        contamination_count += int(is_contaminated)
-        seen_train.add(fingerprint)
-    return {"total_samples": len(records), "rejected_contract_count": rejected_contract_count, "duplicate_content_count": duplicate_content_count, "contamination_count": contamination_count}
+        fingerprints = build_sft_fingerprints(record)
+        is_duplicate_identity = contract["admitted"] and record["sample_id"] in seen_sample_ids
+        # TODO 2：独立判断完整样本重复和评测任务泄漏。
+        is_duplicate_example = contract["admitted"] and fingerprints["example"] in seen_training_examples
+        is_evaluation_leak = contract["admitted"] and fingerprints["task"] in evaluation_task_fingerprints
+        reasons = []
+        reasons.extend(contract["contract_issues"])
+        if is_duplicate_identity:
+            reasons.append("duplicate_identity")
+        if is_duplicate_example:
+            reasons.append("duplicate_example")
+        if is_evaluation_leak:
+            reasons.append("evaluation_task_leak")
+        admitted = not reasons
+        rows.append({"sample_id": record["sample_id"], "source_id": record["source_id"], "task_fingerprint": fingerprints["task"], "example_fingerprint": fingerprints["example"], "decision": "admit" if admitted else "reject", "reasons": reasons})
+        if admitted:
+            admitted_sample_ids.append(record["sample_id"])
+        if contract["admitted"]:
+            seen_sample_ids.add(record["sample_id"])
+            seen_training_examples.add(fingerprints["example"])
+    return {"rows": rows, "admitted_sample_ids": admitted_sample_ids}
 
 
-def build_sft_training_examples(records: List[Dict[str, str]], template_prefix: str) -> List[Dict[str, str]]:
+def build_sft_training_examples(records: List[Dict[str, str]], admitted_sample_ids: List[str], template_prefix: str) -> List[Dict[str, str]]:
+    admitted_ids = set(admitted_sample_ids)
     examples = []
     for record in records:
+        if record["sample_id"] not in admitted_ids:
+            continue
         prompt = template_prefix + record["instruction"]
         if record["input"]:
             prompt += "\n### Input\n" + record["input"]
-        examples.append({"sample_id": record["sample_id"], "prompt": prompt, "response": record["response"]})
+        examples.append({"sample_id": record["sample_id"], "source_id": record["source_id"], "split": record["split"], "prompt": prompt, "response": record["response"]})
     return examples
-
-
-def summarize_supervision_budget(tokenizer, examples: List[Dict[str, str]], max_tokens: int) -> Dict[str, object]:
-    if max_tokens <= 0:
-        raise ValueError("max_tokens 必须为正数")
-    rows = []
-    for example in examples:
-        prompt_ids = tokenizer(example["prompt"], add_special_tokens=True)["input_ids"]
-        response_ids = tokenizer(example["response"], add_special_tokens=False)["input_ids"]
-        # TODO 3：计算窗口内保留和丢失的监督 Token。
-        prompt_tokens = len(prompt_ids)
-        supervised_tokens = len(response_ids)
-        kept_supervised_tokens = min(supervised_tokens, max(0, max_tokens - prompt_tokens))
-        lost_supervised_tokens = supervised_tokens - kept_supervised_tokens
-        rows.append({"sample_id": example["sample_id"], "prompt_tokens": prompt_tokens, "supervised_tokens": supervised_tokens, "kept_supervised_tokens": kept_supervised_tokens, "lost_supervised_tokens": lost_supervised_tokens, "admitted": supervised_tokens > 0 and kept_supervised_tokens == supervised_tokens})
-    return {"rows": rows, "admitted_count": sum(row["admitted"] for row in rows), "lost_supervised_tokens": sum(row["lost_supervised_tokens"] for row in rows)}
 ```
 
 ### 解析
 
-#### TODO 1：判定样本契约
+#### TODO 1：构造两类指纹
 
-- 答案分别检查样本身份、来源、合法切分，以及非空指令和回答，最后用两类条件的合取形成准入结果。
-- 身份完整与监督完整是独立证据；测试覆盖缺少来源、非法切分和空回答，确保失败原因不会被一个布尔值掩盖。
+- 机制：任务输入指纹只包含指令与上下文，完整样本指纹再加入回答；两者采用相同的表示规范化。
+- 不变量：回答变化不能改变任务输入指纹，但必须改变完整样本指纹。测试用同一问题的两个不同答案验证这一差异。
 
-#### TODO 2：审计内容重复与评测污染
+#### TODO 2：审计重复与泄漏
 
-- 答案对已准入的训练样本计算规范化内容指纹，并分别查询训练已见集合和冻结评测指纹集合。
-- 重复消费与评测污染含义不同、可以同时命中；测试验证两个计数独立累加，并保留契约失败样本的单独计数。
+- 机制：完整样本指纹查询训练已见集合，任务输入指纹查询冻结评测集合；缺失身份字段、非法切分、空任务、空回答、身份重复和内容风险分别记录。
+- 不变量：同一条样本可以同时命中完整重复和评测泄漏；只有 `contract_issues` 与内容风险均为空时才能进入模板化。交给 13 节的训练记录必须继续携带 `sample_id`、`source_id` 与 `split`，被拒绝的样本不得进入训练记录。测试同时检查风险组合、非法切分和训练接口合同。
+<a id="framework-check"></a>
 
-#### TODO 3：计算有效监督预算
+## 框架一致性核对（可选）
 
-- 答案分别统计提示 Token、回答监督 Token、窗口内保留量和丢失量，只有监督非空且完整保留时才准入。
-- 总长度超预算时，关键不是截断是否发生，而是监督目标是否受损；测试覆盖提示占满窗口、回答为空和完整保留三类情况。
+下面把同一组准入记录转换为 Hugging Face `Dataset`，比较字段结构、准入结果、样本血缘和下游监督字段。重复与评测泄漏仍以本节审计结果为准，框架转换不重新作出准入判断。
+
+| 核对项 | 对比内容 | 通过条件 |
+| --- | --- | --- |
+| 字段结构 | 本节训练记录与 `Dataset.features` | 身份、切分、提示和回答字段完整且均为字符串 |
+| 准入结果 | 审计清单与 Dataset 行 | 只有准入样本进入 Dataset |
+| 样本血缘 | `sample_id`、`source_id`、`split` | 转换后字段值保持不变 |
+| 下游读取 | `prompt` 与 `response` | 13 节需要的监督字段非空且可直接读取 |
+
+```python
+from importlib.metadata import version
+
+try:
+    from datasets import Dataset, Features, Value
+except ImportError:
+    framework_check = {
+        "status": "skipped",
+        "reason": "请使用 PT-CPU 环境运行本单元",
+    }
+else:
+    def check_sft_data_interface():
+        """核对准入后的 SFT 记录能否无损进入 Hugging Face Dataset。"""
+        raw_records = [
+            {"sample_id": "train-1", "source_id": "source-a", "split": "train", "instruction": "按三步处理退款请求", "input": "订单已签收", "response": "申请、核验、确认。"},
+            {"sample_id": "train-2", "source_id": "source-b", "split": "train", "instruction": "说明修改地址步骤", "input": "订单尚未发货", "response": "核对订单、更新地址、确认结果。"},
+            {"sample_id": "train-3", "source_id": "source-c", "split": "train", "instruction": "说明退款进度", "input": "已经提交申请", "response": ""},
+        ]
+        records = [normalize_sft_record(record) for record in raw_records]
+        evaluation_tasks = {build_sft_fingerprints(records[0])["task"]}
+        audit = audit_sft_dataset(records, evaluation_tasks)
+        examples = build_sft_training_examples(
+            records, audit["admitted_sample_ids"], "### Instruction\n"
+        )
+        features = Features({
+            "sample_id": Value("string"),
+            "source_id": Value("string"),
+            "split": Value("string"),
+            "prompt": Value("string"),
+            "response": Value("string"),
+        })
+        dataset = Dataset.from_list(examples, features=features)
+        dataset_rows = dataset.to_list()
+        rejected_ids = {
+            row["sample_id"] for row in audit["rows"]
+            if row["decision"] == "reject"
+        }
+        checks = {
+            "schema_preserved": set(dataset.features) == set(features),
+            "admitted_rows_only": [row["sample_id"] for row in dataset_rows] == audit["admitted_sample_ids"],
+            "rejected_rows_excluded": not ({row["sample_id"] for row in dataset_rows} & rejected_ids),
+            "lineage_preserved": all(row["source_id"] and row["split"] == "train" for row in dataset_rows),
+            "supervision_fields_readable": all(row["prompt"] and row["response"] for row in dataset_rows),
+        }
+        failed_checks = [name for name, passed in checks.items() if not passed]
+        if failed_checks:
+            raise AssertionError(f"框架数据接口核对失败：{failed_checks}")
+        return {
+            "status": "passed",
+            "check_kind": "data_interface",
+            "versions": {"datasets": version("datasets")},
+            "checks": checks,
+            "admitted_rows": len(dataset),
+            "rejected_rows": len(rejected_ids),
+        }
+
+    framework_check = check_sft_data_interface()
+
+framework_check
+```
+
 ## 相关阅读
 
-完成字段清洗、数据审计和样本生成后，可以继续阅读 Datasets 工具和微调项目，验证样本如何进入真实训练闭环。
+完成样本身份、重复和训练—评测泄漏审计后，可以继续检查长度处理与真实训练交付。
 
 - [Hugging Face Datasets 官方文档](https://huggingface.co/docs/datasets)
 - [30. Long-Context Fine-Tuning Mechanics | 长上下文微调机制](./30_Long_Context_Fine_Tuning.md)

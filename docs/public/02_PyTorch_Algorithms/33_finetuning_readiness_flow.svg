@@ -3,9 +3,9 @@
   <desc id="desc">先确认失败证据，再判断不修改模型参数的方案能否解决；不能解决时区分表示、行为和反馈缺口，检查各分支前置条件后回到固定失败切片复测。</desc>
   <defs>
     <style>
-      .title{font:700 28px "Noto Sans CJK SC",sans-serif;fill:#0F172A}.sub{font:16px "Noto Sans CJK SC",sans-serif;fill:#475569}
-      .head{font:700 18px "Noto Sans CJK SC",sans-serif}.body{font:14px "Noto Sans CJK SC",sans-serif;fill:#334155}
-      .label{font:700 14px "Noto Sans CJK SC",sans-serif;fill:#475569}.edge{fill:none;stroke:#475569;stroke-width:2.4}
+      .title{font-family:"Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#0F172A}.sub{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;fill:#475569}
+      .head{font-family:"Noto Sans CJK SC",sans-serif;font-size:18px;font-weight:700}.body{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;fill:#334155}
+      .label{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;font-weight:700;fill:#475569}.edge{fill:none;stroke:#475569;stroke-width:2.4}
     </style>
   </defs>
   <rect width="1500" height="580" fill="#F8FAFC"/>
@@ -44,8 +44,9 @@
   <text x="869" y="445" text-anchor="middle" class="head" fill="#9A3412">表示缺口</text>
   <text x="869" y="471" text-anchor="middle" class="body">持续预训练</text>
   <rect x="963" y="416" width="148" height="74" rx="12" fill="#FFEDD5" stroke="#EA580C" stroke-width="2"/>
-  <text x="1037" y="445" text-anchor="middle" class="head" fill="#9A3412">行为缺口</text>
-  <text x="1037" y="471" text-anchor="middle" class="body">监督微调</text>
+  <text x="1037" y="443" text-anchor="middle" class="head" fill="#9A3412">行为缺口</text>
+  <text x="1037" y="467" text-anchor="middle" class="body">SFT 数据需求单</text>
+  <text x="1037" y="487" text-anchor="middle" class="body">进入数据准入审计</text>
   <rect x="1131" y="409" width="159" height="88" rx="12" fill="#FFEDD5" stroke="#EA580C" stroke-width="2"/>
   <text x="1210" y="437" text-anchor="middle" class="head" fill="#9A3412">反馈缺口</text>
   <text x="1210" y="462" text-anchor="middle" class="body">离线偏好优化</text>

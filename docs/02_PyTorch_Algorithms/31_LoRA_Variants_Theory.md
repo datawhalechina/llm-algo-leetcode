@@ -1,5 +1,5 @@
-# 31. LoRA Variants Theory | LoRA 变体缩放与预算
-**难度：** Medium | **环境：** CPU-first | **标签：** `训练微调`, `LoRA`, `低秩适配` | **目标人群：** 训练机制学习者
+# 31. LoRA Variants Theory | LoRA Variant Scaling and Budget
+**难度：** Medium | **环境：** [CPU 主线，GPU 可选](#runtime-environment) | **标签：** `训练微调`, `LoRA`, `低秩适配` | **目标人群：** 训练机制学习者
 
 > 🚀 **云端运行环境**
 >
@@ -13,12 +13,21 @@
 
 ## 本节导读
 
-LoRA 变体改变低秩增量的缩放、参数化或挂载范围。比较这些方案时，需要先固定基座、目标模块、数据与训练预算，再分别检查参数容量、训练稳定性、质量和交付路径。
+LoRA 变体改变低秩增量的缩放、参数化或挂载范围。比较这些方案时，需要固定基座、目标模块、监督输入与更新次数，再记录可训练参数量、loss 与梯度有限性、初始输出差异、合并输出差异和资源占用。真实任务指标的候选排序由后续项目完成。
 
 **关键词：** `rank`, `alpha`, `dropout`, `target modules`
 
 ---
 
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 默认使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
+- **框架核对：** 如需核对 PEFT 的 rsLoRA、DoRA 配置、缩放与可训练参数量，使用 [`PT-CPU`](../topic_discussion/post_training_optimization/quickstart.md#pt-cpu-quickstart)，并运行 [框架一致性核对](#framework-check)。
+- **GPU 实测：** 如需验证真实模型上的变体路径、参数预算与资源差异，阅读 [Step 5](#gpu-experiment)；实验环境与固定工作负载见其中 5.1。
+
+---
 ## 前置阅读
 
 **导语：** 进入本节前，先能说明 LoRA 旁路、缩放与合并如何工作。
@@ -26,51 +35,88 @@ LoRA 变体改变低秩增量的缩放、参数化或挂载范围。比较这些
 
 ---
 
-### Step 1：LoRA 变体先对齐更新路径与参数预算
+## Step 1：LoRA、rsLoRA 与 DoRA 改变了哪些参数化规则
 
-LoRA 将权重增量写成低秩乘积 `ΔW = sBA`，其中 `A ∈ R^{r×d_in}`、`B ∈ R^{d_out×r}`，可训练参数量为 `r(d_in+d_out)`。rsLoRA 改变 rank 增大时的缩放规律，DoRA 则把权重更新拆成方向与幅值；因此比较变体时必须同时固定 rank、alpha、目标模块及其形状。
+LoRA、rsLoRA 与 DoRA 都从低秩增量出发，差别在于增量怎样随 Rank 缩放，以及是否额外建模权重幅值。先写出三者共享的低秩路径，再比较缩放规则和附加参数，可以避免把 Rank、缩放与模型容量混为一谈。对一个输入维度为 $d_{in}$、输出维度为 $d_{out}$ 的线性层，LoRA 把权重增量限制在秩至多为 $r$ 的子空间：
 
-| 变体 | 更新路径 | 缩放或附加状态 |
-|:---|:---|:---|
-| LoRA | `ΔW = (alpha / r)BA` | rank 增大时缩放随 `1/r` 减小 |
-| rsLoRA | `ΔW = (alpha / sqrt(r))BA` | 高 rank 下保留更强的更新尺度 |
-| DoRA | 幅值 `m` × 归一化方向 `W + ΔW` | 除低秩矩阵外，每个输出通道增加一个幅值参数 |
+$$
+\Delta W=sBA,\qquad
+A\in\mathbb R^{r\times d_{in}},\quad
+B\in\mathbb R^{d_{out}\times r},
+$$
+
+其中，$W,\Delta W\in\mathbb R^{d_{out}\times d_{in}}$ 分别是基座权重与适配器增量，$A$、$B$ 是两个低秩矩阵，$r$ 是 Rank，$s$ 是增量缩放系数。由矩阵形状可得到单个目标模块的参数量和两种缩放规则：
+
+$$
+N_{LoRA}=r(d_{in}+d_{out}),\qquad
+s_{LoRA}=\frac{\alpha}{r},\qquad
+s_{rsLoRA}=\frac{\alpha}{\sqrt r}.
+$$
+
+这里，$N_{LoRA}$ 是单个目标模块的可训练参数量，$\alpha$ 是配置中的缩放参数。标准初始化通常让一侧低秩矩阵为零，使适配器挂载后先保持基座输出。DoRA 进一步把幅值与方向分开，并为每个输出通道维护 $m\in\mathbb R^{d_{out}}$：
+
+$$
+W'=m\odot\frac{W+sBA}{\lVert W+sBA\rVert_{2,\,row}},\qquad
+N_{DoRA}=r(d_{in}+d_{out})+d_{out}.
+$$
+
+$\odot$ 表示逐输出通道缩放，$\lVert\cdot\rVert_{2,\,row}$ 表示按输出通道对应的权重行计算二范数；因此 $N_{DoRA}$ 比同一 Rank 的 LoRA 多 $d_{out}$ 个幅值参数。
+
+比较时既要固定 Rank，也要在同一参数上限内反推 Rank，避免把参数量差异误认为变体收益。
+
+| 变体 | 低秩增量或有效权重 | 缩放 | 附加状态 |
+|:---|:---|:---|:---|
+| LoRA | `ΔW = BA` | `alpha / r` | 无 |
+| rsLoRA | `ΔW = BA` | `alpha / sqrt(r)` | 无 |
+| DoRA | `W' = m × (W + (alpha / r)BA) / ‖W + (alpha / r)BA‖₂` | 低秩增量采用 `alpha / r` | 每个输出通道增加一个幅值参数 `m` |
 
 ![LoRA 变体比较机制链](../public/02_PyTorch_Algorithms/31_lora_variants_map.svg)
-### Step 2：Target Modules 决定容量与表达范围
+## Step 2：目标模块如何改变参数量与更新路径
 
-同一个 rank 放在 `q_proj`、`v_proj` 或全部 Attention/MLP 投影上，参数量和表达范围不同。参数预算必须按真实模块形状逐项累计，不能用 rank 代替容量。扩大目标范围时，应先确认新增模块是否对应任务所需的表示变化。
+同一个 Rank 放在 `q_proj`、`v_proj` 或全部 Attention/MLP 投影上，会更新不同的计算路径，也会产生不同的参数量。设目标模块集合为 $T$，多模块参数量是各模块参数量之和：
+
+$$
+N_{LoRA}(T,r)=r\sum_{\ell\in T}(d_{in,\ell}+d_{out,\ell}),\qquad
+N_{DoRA}(T,r)=N_{LoRA}(T,r)+\sum_{\ell\in T}d_{out,\ell}.
+$$
+
+若参数上限为 $B$，用 $\delta_{DoRA}\in\{0,1\}$ 表示是否启用 DoRA，则预算允许的最大 Rank 为
+
+$$
+r_{max}=\left\lfloor\frac{B-\delta_{DoRA}\sum_{\ell\in T}d_{out,\ell}}{\sum_{\ell\in T}(d_{in,\ell}+d_{out,\ell})}\right\rfloor.
+$$
+
+当 $r_{max}<1$ 时，当前预算连 Rank 1 都无法容纳，应拒绝该配置。因此 Rank 相同不代表容量相同，目标模块变化后必须重新计算总参数量。
 
 | 目标范围 | 主要改变 | 参数与训练代价 |
 |:---|:---|:---|
-| `q_proj` / `v_proj` | 注意力查询与取值映射 | 参数最少，表达范围较窄 |
+| `q_proj` / `v_proj` | 注意力查询与取值映射 | 在本表三种范围中参数量最少，只更新查询和值路径 |
 | 全部 Attention 投影 | Q/K/V/O 共同适配 | 参数增加，注意力路径更完整 |
 | Attention + MLP | 同时适配信息交互与通道变换 | 参数和优化状态最多，需要重新核对预算 |
 
 ![LoRA 目标模块范围与参数容量](../public/02_PyTorch_Algorithms/31_lora_target_scope.svg)
-### Step 3：用独立证据判断候选能否准入
+## Step 3：如何在固定 rank 与固定参数预算下比较变体
 
-公平比较先要把候选放到可解释的预算口径中：目标模块范围扩大后，同一参数上限允许的 rank 会下降；DoRA 的幅值状态也会占用固定预算。完成预算对齐后，再分别检查验证质量、训练稳定性和产物可加载性。
+比较分为两组：固定 rank 组观察参数化带来的参数量、更新时间和显存差异；固定参数上限组让 LoRA、rsLoRA 与 DoRA 的可训练参数量不超过同一上限。机制候选还必须通过逐项检查：loss 与梯度均为有限值、基座参数保持冻结、挂载适配器后的初始输出满足一致性阈值、合并前后输出满足余弦相似度、Top-1 一致率和 loss 差阈值。这里不使用短程 loss 排列真实任务质量。
 
-| 准入维度 | 首要证据 | 拒绝条件 |
+| 检查对象 | 读取字段 | 不通过时的动作 |
 |:---|:---|:---|
-| 参数预算 | 相同上限下的可用 rank 与可训练参数量 | 超过训练资源上限 |
-| 质量 | 独立验证集指标 | 低于预先固定的质量门槛 |
-| 稳定性 | loss 波动或稳定性得分 | 出现持续震荡或非有限值 |
-| 产物 | adapter / merged artifact 加载结果 | 无法加载或合并前后语义不一致 |
-### Step 4：实现参数预算、变体规格与 rank 对齐
+| 参数上限 | `trainable_params` 与 `parameter_budget` | 固定预算候选超出上限时调整 rank |
+| 数值路径 | `losses`、`gradient_norms` | 任一数值非有限时停止该候选 |
+| 初始输出 | 余弦相似度、Top-1 一致率、loss 绝对差 | 任一指标越过阈值时检查初始化与配置 |
+| 合并输出 | 合并前后的余弦相似度、Top-1 一致率、loss 绝对差 | 任一指标越过阈值时调整 rank、精度或合并方式 |
+| 真实任务指标 | 冻结评测集上的任务指标 | 留给 63 节项目比较，不由本节短程更新决定 |
+<a id="mechanism-practice"></a>
 
-本题使用目标模块形状与参数上限复现 LoRA 变体的预算对齐。骨架提供字段解析和约束检查；你需要补全单模块参数量、变体缩放，并反推出给定目标范围下允许的最大 rank。测试覆盖 LoRA / rsLoRA / DoRA、非法配置和预算不足路径。
+## Step 4：实现参数预算、变体规格与 rank 对齐
+
+本题使用目标模块形状与参数上限复现固定 rank 和固定参数上限两种比较。你需要补全单模块适配器参数量、变体缩放与总参数量，并反推出参数上限允许的最大 rank。测试覆盖 LoRA / rsLoRA / DoRA、未知模块、非法配置和预算不足路径。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 |:---|:---|:---|:---|
-| TODO 1：计算适配器参数<br>`count_adapter_parameters` | 按模块形状累计 LoRA / DoRA 可训练参数 | 只统计目标模块，DoRA 额外计入幅值状态 | `test_parameter_budget_and_scaling`、`test_invalid_variant_inputs` |
-| TODO 2：统一变体规格<br>`build_lora_variant_spec` | 计算 LoRA / rsLoRA 缩放与参数量 | rank、alpha、变体和目标模块必须有效 | `test_parameter_budget_and_scaling`、`test_invalid_variant_inputs` |
-| TODO 3：反推预算 rank<br>`max_rank_for_budget` | 从目标模块形状与参数上限求最大 rank | DoRA 先扣除幅值参数，结果不得超过预算 | `test_budget_aligned_rank`、`test_insufficient_budget` |
-## 测试
-
-运行下方 CPU 机制测试，检查参数账本、变体缩放和固定预算下的 rank 对齐。
-
+| TODO 1：计算模块适配器参数<br>`count_adapter_parameters` | 按模块形状累计 LoRA / DoRA 可训练参数 | 只统计目标模块，DoRA 额外计入幅值状态 | 参数量符合公式；未知、重复或非法模块被拒绝 |
+| TODO 2：建立变体规格<br>`build_lora_variant_spec` | 计算 LoRA / rsLoRA 缩放与参数量 | rank、alpha、变体和目标模块必须有效 | 三种变体使用正确缩放并生成完整参数账本 |
+| TODO 3：反推预算允许的 rank<br>`max_rank_for_budget` | 从目标模块形状与参数上限求最大 rank | DoRA 先扣除幅值参数，结果不得超过预算 | 最大 rank 不越过预算；无法容纳 rank 1 时拒绝 |
 
 ```python
 import math
@@ -86,19 +132,23 @@ def count_adapter_parameters(
     rank: int,
     use_dora: bool,
 ) -> int:
-    """TODO 1：计算目标模块上的 LoRA / DoRA 可训练参数。"""
+    """计算目标模块上的 LoRA / DoRA 可训练参数。"""
     if rank <= 0:
         raise ValueError("rank 必须为正数")
+    if len(set(target_modules)) != len(target_modules):
+        raise ValueError("目标模块不能重复")
     adapter_params = 0
     for name in target_modules:
         if name not in module_shapes:
             raise KeyError(f"未知目标模块：{name}")
         in_features, out_features = module_shapes[name]
+        if in_features <= 0 or out_features <= 0:
+            raise ValueError("模块输入和输出维度必须为正数")
         # ==========================================
-        # TODO 1：当前模块的适配器参数量；DoRA 还需计入输出通道幅值。
-        # module_params = ???
+        # TODO 1：计算模块适配器参数
         # ==========================================
-        raise NotImplementedError("TODO 1：计算当前模块的适配器参数量")
+        # module_params = ???  # 当前模块的整数参数量；DoRA 还包含每个输出通道的幅值状态。
+        raise NotImplementedError("TODO 1：计算模块适配器参数")
         adapter_params += module_params
     return adapter_params
 
@@ -106,7 +156,7 @@ def count_adapter_parameters(
 def build_lora_variant_spec(
     variant: Dict[str, object], module_shapes: Dict[str, tuple[int, int]]
 ) -> Dict[str, object]:
-    """TODO 2：生成包含缩放与参数量的统一变体规格。"""
+    """生成包含缩放与参数量的统一变体规格。"""
     rank = int(variant["rank"])
     alpha = float(variant["alpha"])
     variant_type = str(variant.get("variant", "lora")).lower()
@@ -116,11 +166,11 @@ def build_lora_variant_spec(
     if rank <= 0 or alpha <= 0 or not target_modules:
         raise ValueError("rank、alpha 必须为正数且 target_modules 不能为空")
     # ==========================================
-    # TODO 2：缩放系数（标量）与总可训练参数量（整数）。
-    # scaling = ???  # LoRA/DoRA: alpha/r；rsLoRA: alpha/sqrt(r)
-    # trainable_params = ???  # 所有目标模块的适配器参数总量
+    # TODO 2：建立变体规格
     # ==========================================
-    raise NotImplementedError("TODO 2：统一 LoRA 变体规格")
+    # scaling = ???  # 正标量；按变体定义保持 rank 缩放语义。
+    # trainable_params = ???  # 所有目标模块的适配器参数总量。
+    raise NotImplementedError("TODO 2：建立变体规格")
     return {**variant, "variant": variant_type, "target_modules": target_modules, "scaling": scaling, "trainable_params": trainable_params}
 
 
@@ -130,24 +180,32 @@ def max_rank_for_budget(
     max_trainable_params: int,
     use_dora: bool,
 ) -> Dict[str, object]:
-    """TODO 3：在固定参数上限内求目标模块可使用的最大 rank。"""
+    """在固定参数上限内求目标模块可使用的最大 rank。"""
     if max_trainable_params <= 0 or not target_modules:
         raise ValueError("参数上限必须为正数且 target_modules 不能为空")
+    if len(set(target_modules)) != len(target_modules):
+        raise ValueError("目标模块不能重复")
     for name in target_modules:
         if name not in module_shapes:
             raise KeyError(f"未知目标模块：{name}")
+        if any(dimension <= 0 for dimension in module_shapes[name]):
+            raise ValueError("模块输入和输出维度必须为正数")
     rank_unit = sum(sum(module_shapes[name]) for name in target_modules)
     fixed_params = sum(module_shapes[name][1] for name in target_modules) if use_dora else 0
     # ==========================================
-    # TODO 3：最大可用 rank（正整数）；先扣除 DoRA 固定幅值参数。
-    # max_rank = ???
+    # TODO 3：反推预算允许的 rank
     # ==========================================
-    raise NotImplementedError("TODO 3：反推参数预算允许的 rank")
+    # max_rank = ???  # 整数；先扣除固定状态，再按每阶增量容量取整。
+    raise NotImplementedError("TODO 3：反推预算允许的 rank")
     if max_rank < 1:
         return {"max_rank": 0, "trainable_params": 0, "decision": "reject"}
     trainable_params = count_adapter_parameters(module_shapes, target_modules, max_rank, use_dora)
     return {"max_rank": max_rank, "trainable_params": trainable_params, "decision": "accept"}
 ```
+
+## 测试
+
+运行下方 CPU 机制测试，检查参数账本、变体缩放和固定预算下的 rank 对齐。
 
 
 ```python
@@ -156,14 +214,14 @@ def test_parameter_budget_and_scaling() -> None:
     shapes = {"q_proj": (16, 16), "v_proj": (16, 8)}
     assert count_adapter_parameters(shapes, ["q_proj", "v_proj"], 4, False) == 224
     assert count_adapter_parameters(shapes, ["q_proj", "v_proj"], 4, True) == 248
-    lora = build_lora_variant_spec({"name": "lora", "rank": 4, "alpha": 8, "target_modules": ["q_proj"], "variant": "lora", "quality_score": 0.8}, shapes)
-    rslora = build_lora_variant_spec({"name": "rslora", "rank": 4, "alpha": 8, "target_modules": ["q_proj"], "variant": "rslora", "quality_score": 0.8}, shapes)
+    lora = build_lora_variant_spec({"name": "lora", "rank": 4, "alpha": 8, "target_modules": ["q_proj"], "variant": "lora"}, shapes)
+    rslora = build_lora_variant_spec({"name": "rslora", "rank": 4, "alpha": 8, "target_modules": ["q_proj"], "variant": "rslora"}, shapes)
     assert lora["scaling"] == 2.0
     assert rslora["scaling"] == 4.0
 
 
 def test_budget_aligned_rank() -> None:
-    """相同参数上限下，DoRA 的固定幅值状态会降低最大可用 rank。"""
+    """DoRA 固定幅值状态会占用预算；预算余量不足时最大 rank 才会下降。"""
     shapes = {"q_proj": (16, 16), "v_proj": (16, 8)}
     lora = max_rank_for_budget(shapes, ["q_proj", "v_proj"], 248, use_dora=False)
     dora = max_rank_for_budget(shapes, ["q_proj", "v_proj"], 248, use_dora=True)
@@ -171,6 +229,8 @@ def test_budget_aligned_rank() -> None:
     assert dora == {"max_rank": 4, "trainable_params": 248, "decision": "accept"}
     tighter_dora = max_rank_for_budget(shapes, ["q_proj", "v_proj"], 224, use_dora=True)
     assert tighter_dora["max_rank"] == 3
+    assert lora["trainable_params"] <= 248 and dora["trainable_params"] <= 248
+    assert tighter_dora["trainable_params"] <= 224
 
 
 def _assert_raises(error_type, fn) -> None:
@@ -187,6 +247,8 @@ def test_invalid_variant_inputs() -> None:
     shapes = {"q_proj": (16, 16)}
     _assert_raises(ValueError, lambda: count_adapter_parameters(shapes, ["q_proj"], 0, False))
     _assert_raises(KeyError, lambda: count_adapter_parameters(shapes, ["k_proj"], 4, False))
+    _assert_raises(ValueError, lambda: count_adapter_parameters(shapes, ["q_proj", "q_proj"], 4, False))
+    _assert_raises(ValueError, lambda: count_adapter_parameters({"q_proj": (16, 0)}, ["q_proj"], 4, False))
     bad = {"name": "bad", "variant": "unknown", "rank": 4, "alpha": 8, "target_modules": ["q_proj"]}
     _assert_raises(ValueError, lambda: build_lora_variant_spec(bad, shapes))
     empty = {"name": "empty", "variant": "lora", "rank": 4, "alpha": 8, "target_modules": []}
@@ -238,12 +300,16 @@ def count_adapter_parameters(
     """计算目标模块上的 LoRA / DoRA 可训练参数。"""
     if rank <= 0:
         raise ValueError("rank 必须为正数")
+    if len(set(target_modules)) != len(target_modules):
+        raise ValueError("目标模块不能重复")
     adapter_params = 0
     for name in target_modules:
         if name not in module_shapes:
-            raise KeyError(f"未知 target module: {name}")
+            raise KeyError(f"未知目标模块：{name}")
         in_features, out_features = module_shapes[name]
-        # TODO 1：计算当前目标模块的适配器参数。
+        if in_features <= 0 or out_features <= 0:
+            raise ValueError("模块输入和输出维度必须为正数")
+        # TODO 1：计算模块适配器参数。
         adapter_params += rank * (in_features + out_features)
         if use_dora:
             adapter_params += out_features
@@ -262,7 +328,7 @@ def build_lora_variant_spec(
         raise ValueError(f"未知 LoRA 变体：{variant_type}")
     if rank <= 0 or alpha <= 0 or not target_modules:
         raise ValueError("rank、alpha 必须为正数且 target_modules 不能为空")
-    # TODO 2：统一变体缩放与参数规格。
+    # TODO 2：建立变体规格。
     scaling = alpha / math.sqrt(rank) if variant_type == "rslora" else alpha / rank
     trainable_params = count_adapter_parameters(
         module_shapes, target_modules, rank, use_dora=variant_type == "dora"
@@ -285,10 +351,14 @@ def max_rank_for_budget(
     """在固定参数上限内求目标模块可使用的最大 rank。"""
     if max_trainable_params <= 0 or not target_modules:
         raise ValueError("参数上限必须为正数且 target_modules 不能为空")
+    if len(set(target_modules)) != len(target_modules):
+        raise ValueError("目标模块不能重复")
     for name in target_modules:
         if name not in module_shapes:
             raise KeyError(f"未知目标模块：{name}")
-    # TODO 3：反推参数预算允许的最大 rank。
+        if any(dimension <= 0 for dimension in module_shapes[name]):
+            raise ValueError("模块输入和输出维度必须为正数")
+    # TODO 3：反推预算允许的 rank。
     rank_unit = sum(sum(module_shapes[name]) for name in target_modules)
     fixed_params = sum(module_shapes[name][1] for name in target_modules) if use_dora else 0
     max_rank = (max_trainable_params - fixed_params) // rank_unit
@@ -300,40 +370,132 @@ def max_rank_for_budget(
 
 ### 解析
 
-#### TODO 1：参数预算
+#### TODO 1：计算模块适配器参数
 
-- 答案按每个目标线性层的输入维度、输出维度和秩计算低秩矩阵参数；DoRA 还加入输出通道幅值状态。
-- 该账本让目标范围和参数化差异进入同一口径；测试分别核对 LoRA、DoRA 与未知模块失败路径。
+- 机制：每个目标线性层贡献 `rank × (d_in + d_out)` 个低秩参数；DoRA 再增加 `d_out` 个幅值参数。
+- 不变量：rank、输入维度和输出维度必须为正，目标模块必须存在且不能重复。
+- 测试证据：`test_parameter_budget_and_scaling` 核对 LoRA 与 DoRA 参数量，`test_invalid_variant_inputs` 覆盖未知、重复和零维模块。
 
-#### TODO 2：统一变体规格
+#### TODO 2：建立变体规格
 
-- 答案将变体名称、目标模块、缩放系数和总可训练参数整理为统一规格，其中 rsLoRA 使用 `alpha / sqrt(rank)`。
-- 统一规格用于公平比较不同参数化；测试对比 LoRA、rsLoRA、DoRA，并验证非法变体和空目标范围被拒绝。
+- 机制：LoRA 与 DoRA 使用 `alpha / rank`，rsLoRA 使用 `alpha / sqrt(rank)`；规格同时记录目标模块和总可训练参数。
+- 不变量：变体只能属于 LoRA、rsLoRA、DoRA，且 rank、alpha 和目标模块列表均有效。
+- 测试证据：`test_parameter_budget_and_scaling` 对比缩放结果，`test_invalid_variant_inputs` 检查非法变体和空目标范围。
 
-#### TODO 3：预算对齐
+#### TODO 3：反推预算允许的 rank
 
-- 答案先扣除 DoRA 的固定幅值状态，再用每增加一阶所需的参数量反推最大可用秩。
-- 固定参数上限后，扩大目标范围或加入固定状态都会压低可用秩；测试同时覆盖预算不足时的 reject。
-### Step 5：可选 GPU 实验——真实模型变体路径与预算对齐
+- 机制：先从参数上限扣除 DoRA 幅值参数，再除以所有目标模块每增加一阶所需的参数量并向下取整。
+- 不变量：返回的 `trainable_params` 不能超过参数上限；如果 rank 1 也无法容纳，则返回 `reject`。DoRA 幅值状态可能降低最大 rank，但预算余量足够时也可能保持不变。
+- 测试证据：`test_budget_aligned_rank` 检查参数上限与两种余量情况，`test_insufficient_budget` 检查 rank 1 无法容纳的路径。
+<a id="framework-check"></a>
 
-CPU 题目确认缩放、参数账本和预算 rank；GPU 实验固定真实模型、目标模块和监督输入，先在相同 rank 下比较 LoRA、rsLoRA、DoRA，再加入参数预算对齐的 DoRA 候选。环境创建见[后训练实验 Quickstart](../topic_discussion/post_training_optimization/quickstart.md#pt-sft-cuda-quickstart)。
+## 框架一致性核对（可选）
+
+下面在随机初始化的微型 Llama 上挂载 PEFT 适配器，比较 LoRA / rsLoRA 缩放、DoRA 幅值参数和可训练参数量。整个核对使用受控配置，不下载模型权重。
+
+| 核对项 | 本节口径 | PEFT 路径 | 通过条件 |
+| --- | --- | --- | --- |
+| LoRA 缩放 | $\alpha/r$ | `LoraConfig(r, lora_alpha)` | 目标投影的缩放值等于理论值 |
+| rsLoRA 缩放 | $\alpha/\sqrt r$ | `use_rslora=True` | 目标投影的缩放值等于理论值 |
+| DoRA 状态 | 每个目标模块增加 $d_{out}$ 个幅值参数 | `use_dora=True` | 幅值参数存在，且可训练参数量符合预算 |
+| 参数量 | 仅统计目标模块的可训练适配器参数 | `requires_grad=True` 参数总量 | LoRA 与 rsLoRA 参数量相同，DoRA 只增加幅值参数 |
+
+```python
+from importlib.metadata import version
+
+try:
+    from peft import LoraConfig, get_peft_model
+    from transformers import LlamaConfig, LlamaForCausalLM
+except ImportError:
+    framework_check = {
+        "status": "skipped",
+        "reason": "请使用 PT-CPU 环境运行本单元",
+    }
+else:
+    def check_peft_lora_variant_conformance():
+        """核对 PEFT 三种适配器的缩放规则与参数预算。"""
+        rank, alpha, hidden_size = 4, 8, 16
+        target_modules = ["q_proj", "v_proj"]
+
+        def build_variant(**kwargs):
+            config = LlamaConfig(
+                vocab_size=32, hidden_size=hidden_size, intermediate_size=32,
+                num_hidden_layers=1, num_attention_heads=2,
+                num_key_value_heads=2, max_position_embeddings=32,
+            )
+            model = LlamaForCausalLM(config)
+            return get_peft_model(model, LoraConfig(
+                r=rank, lora_alpha=alpha,
+                target_modules=target_modules, **kwargs,
+            ))
+
+        lora = build_variant()
+        rslora = build_variant(use_rslora=True)
+        dora = build_variant(use_dora=True)
+
+        def trainable_count(model):
+            return sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad)
+
+        def q_scaling(model):
+            projection = model.base_model.model.model.layers[0].self_attn.q_proj
+            return float(projection.scaling["default"])
+
+        # q_proj 与 v_proj 是两个同形目标模块，预算需要同时计入两组 A/B。
+        expected_lora = 2 * rank * (hidden_size + hidden_size)
+        expected_dora = expected_lora + 2 * hidden_size
+        checks = {
+            "lora_scaling_match": abs(q_scaling(lora) - alpha / rank) < 1e-8,
+            "rslora_scaling_match": abs(q_scaling(rslora) - alpha / rank ** 0.5) < 1e-8,
+            "lora_parameter_count_match": trainable_count(lora) == expected_lora,
+            "rslora_parameter_count_match": trainable_count(rslora) == expected_lora,
+            "dora_parameter_count_match": trainable_count(dora) == expected_dora,
+            "dora_magnitude_present": any(
+                "lora_magnitude_vector" in name
+                for name, parameter in dora.named_parameters() if parameter.requires_grad
+            ),
+        }
+        failed = [name for name, passed in checks.items() if not passed]
+        if failed:
+            raise AssertionError(f"框架一致性核对失败：{failed}")
+        return {
+            "status": "passed",
+            "versions": {"peft": version("peft"), "transformers": version("transformers")},
+            "framework_path": "peft.get_peft_model",
+            "checks": checks,
+            "trainable_parameters": {
+                "lora": trainable_count(lora),
+                "rslora": trainable_count(rslora),
+                "dora": trainable_count(dora),
+            },
+        }
+
+    framework_check = check_peft_lora_variant_conformance()
+
+framework_check
+```
+
+<a id="gpu-experiment"></a>
+
+## Step 5：可选 GPU 实验——真实模型变体路径与预算对齐
+
+CPU 题目确认缩放、参数账本和参数上限允许的 rank；GPU 实验固定真实模型、目标模块和监督输入，先在相同 rank 下比较 LoRA、rsLoRA、DoRA，再加入不超过同一参数上限的 DoRA 候选。每个候选单独记录检查结果、失败项和决策。
 
 | 学习问题 | CPU 已确认 | GPU 要确认与后续使用 |
 |:---|:---|:---|
 | 变体参数化与预算对齐是否进入真实训练路径 | 缩放公式、目标模块参数量、DoRA 幅值状态和最大 rank | PEFT 配置、实际可训练参数、短程梯度与损失、更新时间、峰值显存和 merge 等价性；质量排序交给 63 节项目 |
 
-#### 5.1 环境与固定工作负载
+### 5.1 环境与固定工作负载
 
-本实验复用 `PT-SFT-CUDA`，不新增环境。首次运行先完成专题 Quickstart；已有环境只需通过 Profile 预检，并从同一解释器启动 JupyterLab。
+本实验复用 [`PT-SFT-CUDA`](../gpu_environment_assets.md#pt-sft-cuda)，不新增环境。首次运行先完成[后训练实验 Quickstart](../topic_discussion/post_training_optimization/quickstart.md#pt-sft-cuda-quickstart)；已有环境只需通过 Profile 预检，并从同一解释器启动 JupyterLab。页面、工作负载和结果状态见[后训练优化实验资产表](../topic_discussion/post_training_optimization/experiment_assets.md)。
 
-| 配置层 | 本节固定口径 | 修改规则 |
+| 配置层 | 本节固定条件 | 修改规则 |
 |:---|:---|:---|
-| 运行环境 | `PT-SFT-CUDA`；单张 NVIDIA GPU；参考显存 8 GiB | 预检失败时停止实验 |
+| 运行环境 | `PT-SFT-CUDA`；单张 NVIDIA GPU | 预检失败时停止实验；实测峰值显存见 5.4 |
 | 模型 / 数据来源 | `Qwen/Qwen2.5-0.5B`；两条内置监督样本 | 自动固定模型 commit；不下载数据集 |
 | 固定 rank 矩阵 | LoRA / rsLoRA / DoRA，均使用 rank 8、alpha 16 | 用于隔离缩放与参数化差异 |
 | 固定预算矩阵 | 以 LoRA rank 8 的参数量为上限，反推 DoRA rank | 改变目标模块或参数上限后递增 workload version |
 | 工作负载 | `q_proj + v_proj`；长度 128；5 次更新 | 模型、输入、dtype、学习率和随机种子保持一致 |
-| 测量方法 | 配置缩放、参数 / adapter 字节、有限 loss / 梯度、更新时间、峰值显存、merge 误差 | 不把短程 loss 变化解释为任务质量 |
+| 测量方法 | 配置缩放、参数 / adapter 字节、loss / 梯度有限性、更新时间、峰值显存、合并前后输出差异 | 不把短程 loss 变化解释为任务质量 |
 | 结果资产 | `benchmarks/results/pt_lora_variants/pt-lora-variants_<run_label>.json` | 正式复测使用唯一标签并保留旧结果 |
 
 ```python
@@ -344,14 +506,16 @@ RUN_LABEL = "default"  # 默认值 default；正式复测改为唯一标签，�
 ENVIRONMENT_PROFILE = "PT-SFT-CUDA"  # 默认值 PT-SFT-CUDA；运行前必须通过同名 Profile 预检。
 MODEL_ID = "Qwen/Qwen2.5-0.5B"  # 默认基础模型；更换模型后不得与旧结果直接合并。
 MODEL_REVISION = "main"  # 默认 main；5.2 自动解析并记录实际模型 commit。
-WORKLOAD_ID = "pt-lora-variants"  # 稳定工作负载身份；不随运行标签变化。
-WORKLOAD_VERSION = "v1"  # v1 固定双矩阵、q/v 目标模块和 merge 检查。
+WORKLOAD_ID = "pt-lora-variants"  # 固定工作负载身份；不随运行标签变化。
+WORKLOAD_VERSION = "v3"  # v3 为每个候选记录逐项检查、失败原因与决策。
 MAX_LENGTH = 128  # 默认值 128 token；增大会提高激活占用和更新时间。
 FIXED_RANK = 8  # 默认值 8；固定 rank 矩阵中的共同 rank。
 LORA_ALPHA = 16  # 默认值 16；固定三种变体的 alpha。
 UPDATE_STEPS = 5  # 默认值 5；用于检查短程数值与资源，不代表模型收敛。
 LEARNING_RATE = 1e-3  # 默认值 1e-3；所有候选使用相同短程学习率。
-MAX_MERGE_ABS_DIFF = 0.1  # 默认值 0.1；BF16/FP16 下 merge 前后 logits 的绝对误差门槛。
+MIN_OUTPUT_COSINE = 0.999  # 默认值 0.999；约束初始与合并前后的完整 logits 方向一致性。
+MIN_OUTPUT_TOP1_AGREEMENT = 0.98  # 默认值 0.98；约束逐位置贪心预测一致率。
+MAX_OUTPUT_LOSS_DIFF = 0.02  # 默认值 0.02；约束同一监督批次上的 loss 绝对差。
 SEED = 42  # 默认值 42；固定初始化、输入和候选对照。
 LOCAL_FILES_ONLY = False  # 默认值 False；已缓存相同 commit 且离线运行时改为 True。
 TARGET_MODULES = ["q_proj", "v_proj"]  # 固定 q/v，避免与 14 节的挂载范围实验重复。
@@ -359,9 +523,9 @@ OUTPUT_RELATIVE_PATH = f"benchmarks/results/pt_lora_variants/{WORKLOAD_ID}_{RUN_
 
 ```
 
-#### 5.2 执行双口径变体矩阵并保存 JSON
+### 5.2 执行双口径变体矩阵并保存 JSON
 
-5.2 从同一模型 commit 构造监督输入，先读取真实 q/v 模块形状，再生成三个固定 rank 候选和一个预算对齐的 DoRA 候选。每个候选从相同基座重新加载，依次检查初始等价、短程更新与 merge 等价。
+5.2 从同一模型 commit 构造监督输入，先读取真实 q/v 模块形状，再生成三个固定 rank 候选和一个参数上限对齐的 DoRA 候选。每个候选从相同基座重新加载，依次检查初始输出、短程更新、合并输出和参数上限，并写入 `checks`、`failed_checks` 与候选决策。
 
 ```python
 import gc
@@ -372,7 +536,7 @@ import time
 import torch
 from tools.notebook_runtime import failure_record, package_version, resolve_model_commit, save_json
 from tools.project_runtime import resolve_project_root
-from tools.training_mechanism_runtime import cuda_hardware_snapshot, gradient_l2_norm, median_and_p95
+from tools.training_mechanism_runtime import cuda_hardware_snapshot, gradient_l2_norm, logit_agreement, median_and_p95
 
 REPO_ROOT = resolve_project_root()
 OUTPUT_PATH = REPO_ROOT / OUTPUT_RELATIVE_PATH
@@ -385,7 +549,7 @@ result = {
     "framework": {"python": platform.python_version(), "torch": torch.__version__, "transformers": package_version("transformers"), "peft": package_version("peft")},
     "hardware": {"cuda_available": torch.cuda.is_available(), "cuda": torch.version.cuda},
     "model": {"id": MODEL_ID, "requested_revision": MODEL_REVISION, "resolved_commit": None},
-    "workload": {"id": WORKLOAD_ID, "version": WORKLOAD_VERSION, "max_length": MAX_LENGTH, "fixed_rank": FIXED_RANK, "alpha": LORA_ALPHA, "update_steps": UPDATE_STEPS, "learning_rate": LEARNING_RATE, "target_modules": TARGET_MODULES, "seed": SEED},
+    "workload": {"id": WORKLOAD_ID, "version": WORKLOAD_VERSION, "max_length": MAX_LENGTH, "fixed_rank": FIXED_RANK, "alpha": LORA_ALPHA, "update_steps": UPDATE_STEPS, "learning_rate": LEARNING_RATE, "target_modules": TARGET_MODULES, "output_thresholds": {"min_cosine": MIN_OUTPUT_COSINE, "min_top1_agreement": MIN_OUTPUT_TOP1_AGREEMENT, "max_loss_diff": MAX_OUTPUT_LOSS_DIFF}, "seed": SEED},
     "budget": None, "candidates": [], "failure": None,
     "evidence_level": "dry_run", "decision": "not_measured",
 }
@@ -452,7 +616,8 @@ if RUN_MODE == "real_gpu":
             model.config.use_cache = False
             model.eval()
             with torch.no_grad(), torch.autocast("cuda", dtype=dtype):
-                base_logits = model(input_ids=batch["input_ids"], attention_mask=batch["attention_mask"]).logits
+                base_output = model(**batch)
+                base_logits = base_output.logits
             config = LoraConfig(r=spec["rank"], lora_alpha=LORA_ALPHA, lora_dropout=0.0, target_modules=TARGET_MODULES, bias="none", task_type=TaskType.CAUSAL_LM, use_rslora=spec["variant"] == "rslora", use_dora=spec["variant"] == "dora")
             model = get_peft_model(model, config)
             trainable = [parameter for parameter in model.parameters() if parameter.requires_grad]
@@ -466,9 +631,11 @@ if RUN_MODE == "real_gpu":
                     scaling_values.append(float(scaling["default"]))
             model.eval()
             with torch.no_grad(), torch.autocast("cuda", dtype=dtype):
-                initial_logits = model(input_ids=batch["input_ids"], attention_mask=batch["attention_mask"]).logits
-            initial_max_abs_diff = float((initial_logits - base_logits).abs().max().item())
-            del initial_logits, base_logits
+                initial_output = model(**batch)
+                initial_logits = initial_output.logits
+            initial_agreement = logit_agreement(base_logits, initial_logits)
+            initial_loss_abs_diff = abs(float(base_output.loss.item()) - float(initial_output.loss.item()))
+            del base_output, initial_output, initial_logits, base_logits
 
             optimizer = torch.optim.AdamW(trainable, lr=LEARNING_RATE)
             update_times_ms, losses, gradient_norms = [], [], []
@@ -487,23 +654,33 @@ if RUN_MODE == "real_gpu":
                 losses.append(float(loss.detach().item()))
             model.eval()
             with torch.no_grad(), torch.autocast("cuda", dtype=dtype):
-                premerge_logits = model(input_ids=batch["input_ids"], attention_mask=batch["attention_mask"]).logits
+                premerge_output = model(**batch)
+                premerge_logits = premerge_output.logits
             merged_model = model.merge_and_unload()
             merged_model.eval()
             with torch.no_grad(), torch.autocast("cuda", dtype=dtype):
-                merged_logits = merged_model(input_ids=batch["input_ids"], attention_mask=batch["attention_mask"]).logits
-            merge_max_abs_diff = float((premerge_logits - merged_logits).abs().max().item())
+                merged_output = merged_model(**batch)
+                merged_logits = merged_output.logits
+            merge_agreement = logit_agreement(premerge_logits, merged_logits)
+            merge_loss_abs_diff = abs(float(premerge_output.loss.item()) - float(merged_output.loss.item()))
             median_ms, p95_ms = median_and_p95(update_times_ms)
-            result["candidates"].append({**spec, "actual_scaling": scaling_values[0] if scaling_values else None, "trainable_params": trainable_params, "adapter_bytes": adapter_bytes, "base_frozen": base_frozen, "initial_max_abs_diff": initial_max_abs_diff, "losses": losses, "gradient_norms": gradient_norms, "median_update_ms": median_ms, "p95_update_ms": p95_ms, "peak_allocated_bytes": int(torch.cuda.max_memory_allocated()), "peak_reserved_bytes": int(torch.cuda.max_memory_reserved()), "merge_max_abs_diff": merge_max_abs_diff})
-            del premerge_logits, merged_logits, merged_model, model, optimizer
+            checks = {
+                "finite_loss_and_gradients": all(math.isfinite(value) for value in losses + gradient_norms),
+                "base_parameters_frozen": base_frozen and trainable_params > 0,
+                "initial_output_equivalent": initial_agreement["cosine_similarity"] >= MIN_OUTPUT_COSINE and initial_agreement["top1_agreement"] >= MIN_OUTPUT_TOP1_AGREEMENT and initial_loss_abs_diff <= MAX_OUTPUT_LOSS_DIFF,
+                "merged_output_equivalent": merge_agreement["cosine_similarity"] >= MIN_OUTPUT_COSINE and merge_agreement["top1_agreement"] >= MIN_OUTPUT_TOP1_AGREEMENT and merge_loss_abs_diff <= MAX_OUTPUT_LOSS_DIFF,
+            }
+            if "fixed_budget" in spec["roles"]:
+                checks["within_parameter_budget"] = trainable_params <= parameter_budget
+            failed_checks = [name for name, passed in checks.items() if not passed]
+            candidate_decision = "accept_candidate" if not failed_checks else "tune_candidate"
+            result["candidates"].append({**spec, "actual_scaling": scaling_values[0] if scaling_values else None, "trainable_params": trainable_params, "adapter_bytes": adapter_bytes, "base_frozen": base_frozen, "initial_agreement": initial_agreement, "initial_loss_abs_diff": initial_loss_abs_diff, "losses": losses, "gradient_norms": gradient_norms, "median_update_ms": median_ms, "p95_update_ms": p95_ms, "peak_allocated_bytes": int(torch.cuda.max_memory_allocated()), "peak_reserved_bytes": int(torch.cuda.max_memory_reserved()), "merge_agreement": merge_agreement, "merge_loss_abs_diff": merge_loss_abs_diff, "checks": checks, "failed_checks": failed_checks, "decision": candidate_decision})
+            del premerge_output, merged_output, premerge_logits, merged_logits, merged_model, model, optimizer
             merged_model = model = optimizer = None
 
-        finite_paths = all(all(math.isfinite(value) for value in item["losses"] + item["gradient_norms"]) for item in result["candidates"])
-        merge_paths = all(item["merge_max_abs_diff"] <= MAX_MERGE_ABS_DIFF for item in result["candidates"])
-        parameter_paths = all(item["base_frozen"] and item["trainable_params"] > 0 for item in result["candidates"])
         result["hardware"] = cuda_hardware_snapshot()
         result["evidence_level"] = "local_mechanism_benchmark"
-        result["decision"] = "accept_mechanism" if finite_paths and merge_paths and parameter_paths else "tune"
+        result["decision"] = "accept_mechanism" if all(item["decision"] == "accept_candidate" for item in result["candidates"]) else "tune"
     except Exception as error:
         result["failure"] = failure_record(execution_stage, error)
         result["evidence_level"] = "failed_real_gpu_attempt"
@@ -521,9 +698,9 @@ print(f"结果已保存：{OUTPUT_PATH}")
 
 ```
 
-#### 5.3 读取双口径候选矩阵
+### 5.3 读取双口径候选矩阵
 
-先检查失败阶段和模型 commit，再核对参数预算、实际 rank、PEFT scaling、短程更新资源与 merge 误差。
+先检查失败阶段和模型 commit，再核对参数上限、实际 rank、PEFT scaling、短程更新资源、合并误差以及每个候选的 `checks`、`failed_checks` 和 `decision`。
 
 ```python
 import json
@@ -534,21 +711,21 @@ else:
     record = json.loads(OUTPUT_PATH.read_text(encoding="utf-8"))
     print(json.dumps({key: record.get(key) for key in ("run_label", "model", "budget", "failure", "evidence_level", "decision")}, ensure_ascii=False, indent=2))
     for candidate in record.get("candidates", []):
-        print({key: candidate.get(key) for key in ("name", "roles", "rank", "actual_scaling", "trainable_params", "adapter_bytes", "median_update_ms", "p95_update_ms", "peak_allocated_bytes", "merge_max_abs_diff")})
+        print({key: candidate.get(key) for key in ("name", "roles", "rank", "actual_scaling", "trainable_params", "adapter_bytes", "initial_agreement", "initial_loss_abs_diff", "median_update_ms", "p95_update_ms", "peak_allocated_bytes", "merge_agreement", "merge_loss_abs_diff", "checks", "failed_checks", "decision")})
 
 ```
 
-#### 5.4 解释变体、预算与资源证据
+### 5.4 解释变体、预算与资源证据
 
-先检查 `failure`、模型 commit 和预算口径；确认候选来自同一基座与输入后，再比较固定 rank 与固定预算两组证据。当前仓库尚未登记本节统一实机快照，因此下表保留待验证状态。
+先检查 `failure`、模型 commit 和参数上限；确认候选来自同一基座与输入后，再比较固定 rank 与固定参数上限两组证据。`rtx5070ti_lora_variants_v3` 已记录候选级 `checks`、`failed_checks` 和 `decision`，可以直接定位未通过的机制条件。
 
 | 观察项 | 读取字段 | 当前结果 | 解释与动作 |
 |:---|:---|:---|:---|
-| 运行与口径 | `failure`、model commit、target modules、roles | 待验证 | 任一候选模型、输入或目标模块不一致时先重跑 |
-| 机制与路径 | variant、rank、`actual_scaling`、`base_frozen` | 待验证 | 核对 LoRA / rsLoRA / DoRA 是否命中预期 PEFT 路径 |
-| 正确性或质量 | `losses`、`gradient_norms`、`merge_max_abs_diff` | 待验证 | 只验证有限更新与合并等价，不从短程 loss 外推任务质量 |
-| 资源与性能 | `trainable_params`、`adapter_bytes`、更新时间、峰值显存 | 待验证 | 固定 rank 解释参数化代价；固定预算解释 rank 调整后的资源差异 |
-| 证据与决策 | `evidence_level`、`decision` | 待验证 | 机制通过后进入 63 节真实数据、多随机种子与独立评测 |
+| 运行与比较条件 | `failure`、model commit、target modules、roles | 无失败；四候选复用 q/v 模块、固定输入与模型 commit | 固定 rank 与固定参数上限两组结果可比较 |
+| 机制与路径 | variant、rank、`actual_scaling`、`checks` | LoRA / rsLoRA rank 8；DoRA rank 8 / 7；四组均保持基座冻结且 loss、梯度有限 | 变体、缩放与参数预算路径正确 |
+| 数值与等价性 | `initial_agreement`、`merge_agreement`、`failed_checks` | 前三组通过；`dora_r7` 合并余弦为 0.99839，低于 0.999 | 固定预算 DoRA 未通过 `merged_output_equivalent`，不能直接采用 |
+| 资源与性能 | `trainable_params`、更新时间、峰值显存 | 0.50M–0.57M；中位更新 38.3–50.8 ms；最高峰值分配约 1.97 GiB | DoRA 增加幅值参数与更新时间，本轮显存差异较小 |
+| 证据与决策 | `evidence_level`、候选 `decision`、整体 `decision` | 三组 `accept_candidate`，`dora_r7` 为 `tune_candidate`；整体为 `tune` | 保留前三组机制证据；调整固定预算 DoRA 的 rank、精度或合并阈值后复测 |
 ## 相关阅读
 
 完成变体规格和比较指标后，可以继续阅读 LoRA 原论文、PEFT 实现和项目基准，核对方案是否适合具体训练预算。

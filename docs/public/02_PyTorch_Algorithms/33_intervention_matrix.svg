@@ -1,28 +1,66 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
-  <title id="title">六类训练干预候选的根因与硬门槛</title>
-  <desc id="desc">提示、RAG 与外部工具先排除不需要修改参数的问题；持续预训练、SFT、离线偏好优化和在线强化学习分别要求不同数据、评测、资源和回滚条件。</desc>
-  <defs><style>.t{font:700 28px Arial,sans-serif;fill:#172033}.h{font:700 15px Arial,sans-serif;fill:#172033}.c{font:13px Arial,sans-serif;fill:#334155}.g{stroke:#CBD5E1;stroke-width:1.5}</style></defs>
-  <rect width="1500" height="470" fill="#F8FAFC"/>
-  <rect x="36" y="24" width="1428" height="422" rx="26" fill="#FFF" stroke="#CBD5E1" stroke-width="2" data-layout-role="container"/>
-  <text x="70" y="70" class="t">失败根因决定候选；硬门槛决定候选能否执行</text>
-  <rect x="70" y="96" width="1360" height="44" rx="12" fill="#E2E8F0" data-layout-role="decoration"/>
-  <text x="180" y="124" text-anchor="middle" class="h">候选</text>
-  <text x="500" y="124" text-anchor="middle" class="h">主要失败信号</text>
-  <text x="900" y="124" text-anchor="middle" class="h">进入执行前的硬门槛</text>
-  <text x="1270" y="124" text-anchor="middle" class="h">方法边界</text>
-  <line x1="300" y1="96" x2="300" y2="422" class="g"/>
-  <line x1="700" y1="96" x2="700" y2="422" class="g"/>
-  <line x1="1120" y1="96" x2="1120" y2="422" class="g"/>
-  <g class="g">
-    <line x1="70" y1="140" x2="1430" y2="140"/><line x1="70" y1="187" x2="1430" y2="187"/>
-    <line x1="70" y1="234" x2="1430" y2="234"/><line x1="70" y1="281" x2="1430" y2="281"/>
-    <line x1="70" y1="328" x2="1430" y2="328"/><line x1="70" y1="375" x2="1430" y2="375"/>
-    <line x1="70" y1="422" x2="1430" y2="422"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="580" viewBox="0 0 1500 580" role="img" aria-labelledby="title desc">
+  <title id="title">训练干预候选的根因与硬门槛</title>
+  <desc id="desc">提示模板、检索与外部工具先排除无需修改参数的问题；持续预训练、监督微调、离线偏好优化和在线强化学习分别要求不同的数据、评测、资源与回滚条件。</desc>
+  <defs>
+    <style>
+      .title{font-family:"Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#0F172A}
+      .sub{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;fill:#475569}
+      .head{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;font-weight:700;fill:#172033}
+      .cell{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;fill:#334155}
+      .grid{stroke:#CBD5E1;stroke-width:1.5}
+    </style>
+  </defs>
+  <rect width="1500" height="580" fill="#F8FAFC"/>
+  <rect x="36" y="24" width="1428" height="532" rx="26" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2" data-layout-role="container"/>
+  <text x="70" y="68" class="title">失败根因决定候选，硬门槛决定能否执行</text>
+  <text x="70" y="98" class="sub">先排除无需训练的外部补偿，再为残留的参数内缺口选择最小充分干预。</text>
+
+  <rect x="70" y="120" width="1360" height="46" rx="12" fill="#E2E8F0" data-layout-role="decoration"/>
+  <text x="180" y="149" text-anchor="middle" class="head">候选</text>
+  <text x="500" y="149" text-anchor="middle" class="head">主要失败信号</text>
+  <text x="900" y="149" text-anchor="middle" class="head">进入执行前的硬门槛</text>
+  <text x="1270" y="149" text-anchor="middle" class="head">方法边界</text>
+
+  <line x1="300" y1="120" x2="300" y2="538" class="grid"/>
+  <line x1="700" y1="120" x2="700" y2="538" class="grid"/>
+  <line x1="1120" y1="120" x2="1120" y2="538" class="grid"/>
+  <g class="grid">
+    <line x1="70" y1="166" x2="1430" y2="166"/>
+    <line x1="70" y1="228" x2="1430" y2="228"/>
+    <line x1="70" y1="290" x2="1430" y2="290"/>
+    <line x1="70" y1="352" x2="1430" y2="352"/>
+    <line x1="70" y1="414" x2="1430" y2="414"/>
+    <line x1="70" y1="476" x2="1430" y2="476"/>
+    <line x1="70" y1="538" x2="1430" y2="538"/>
   </g>
-  <text x="180" y="169" text-anchor="middle" class="h">提示模板</text><text x="320" y="169" class="c">指令歧义、格式波动</text><text x="720" y="169" class="c">固定模板与回归提示集</text><text x="1140" y="169" class="c">不改变模型参数</text>
-  <text x="180" y="216" text-anchor="middle" class="h">RAG / 外部工具</text><text x="320" y="216" class="c">知识 / 实时状态 / 计算 / 验证</text><text x="720" y="216" class="c">检索评测或工具正确性与权限</text><text x="1140" y="216" class="c">知识与执行结果留在模型外部</text>
-  <text x="180" y="263" text-anchor="middle" class="h">持续预训练</text><text x="320" y="263" class="c">领域语言或内部表示不足</text><text x="720" y="263" class="c">领域语料、通用回归集、训练预算</text><text x="1140" y="263" class="c">仍使用下一词元目标</text>
-  <text x="180" y="310" text-anchor="middle" class="h">SFT</text><text x="320" y="310" class="c">行为、风格与任务接口缺口</text><text x="720" y="310" class="c">高质量示范、独立评测、训练预算</text><text x="1140" y="310" class="c">建立监督行为基线</text>
-  <text x="180" y="357" text-anchor="middle" class="h">离线偏好优化</text><text x="320" y="357" class="c">可行回答间的偏好与安全选择</text><text x="720" y="357" class="c">SFT 基线、偏好对、独立评测</text><text x="1140" y="357" class="c">不在训练中实时采样</text>
-  <text x="180" y="404" text-anchor="middle" class="h">在线 RL / RLVR</text><text x="320" y="404" class="c">需要探索或结果可客观验证</text><text x="720" y="404" class="c">奖励 / 验证器、轨迹预算、回滚条件</text><text x="1140" y="404" class="c">采样与更新形成闭环</text>
+
+  <text x="180" y="203" text-anchor="middle" class="head">提示模板</text>
+  <text x="320" y="203" class="cell">指令歧义、格式波动</text>
+  <text x="720" y="203" class="cell">固定模板与回归提示集</text>
+  <text x="1140" y="203" class="cell">不改变模型参数</text>
+
+  <text x="180" y="265" text-anchor="middle" class="head">RAG / 外部工具</text>
+  <text x="320" y="265" class="cell">知识、实时状态、计算或验证缺口</text>
+  <text x="720" y="265" class="cell">检索评测或工具正确性与权限</text>
+  <text x="1140" y="265" class="cell">知识与执行结果留在模型外部</text>
+
+  <text x="180" y="327" text-anchor="middle" class="head">持续预训练</text>
+  <text x="320" y="327" class="cell">领域语言或内部表示不足</text>
+  <text x="720" y="327" class="cell">领域语料、通用回归集、训练预算</text>
+  <text x="1140" y="327" class="cell">仍使用下一词元目标</text>
+
+  <text x="180" y="389" text-anchor="middle" class="head">SFT</text>
+  <text x="320" y="389" class="cell">行为、风格与任务接口缺口</text>
+  <text x="720" y="389" class="cell">候选示范、独立评测、训练预算</text>
+  <text x="1140" y="389" class="cell">先形成数据需求与监督基线</text>
+
+  <text x="180" y="451" text-anchor="middle" class="head">离线偏好优化</text>
+  <text x="320" y="451" class="cell">可行回答间的偏好与安全选择</text>
+  <text x="720" y="451" class="cell">SFT 基线、偏好对、独立评测</text>
+  <text x="1140" y="451" class="cell">不在训练中实时采样</text>
+
+  <text x="180" y="513" text-anchor="middle" class="head">在线 RL / RLVR</text>
+  <text x="320" y="513" class="cell">需要探索或结果可客观验证</text>
+  <text x="720" y="513" class="cell">奖励 / 验证器、轨迹预算、回滚条件</text>
+  <text x="1140" y="513" class="cell">采样与更新形成闭环</text>
 </svg>

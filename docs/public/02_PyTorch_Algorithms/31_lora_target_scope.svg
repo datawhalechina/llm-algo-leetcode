@@ -1,6 +1,6 @@
-<svg width="1500" height="370" viewBox="0 0 1500 370" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <title>LoRA 目标模块范围与参数容量</title>
-  <desc>从查询和值投影扩大到全部注意力投影，再扩大到注意力和 MLP；每次扩大都会增加被更新的计算路径和参数量。</desc>
+<svg width="1500" height="370" viewBox="0 0 1500 370" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">LoRA 目标模块范围与参数容量</title>
+  <desc id="desc">从查询和值投影扩大到全部注意力投影，再扩大到注意力和 MLP；每次扩大都会增加被更新的计算路径和参数量。</desc>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
   </defs>
