@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="430" viewBox="0 0 1200 430" role="img" aria-labelledby="title desc">
+  <title id="title">持续预训练的更新前后双评测与采用判断</title>
+  <desc id="desc">基座模型先在冻结的领域评测集和通用保留集上建立基线，同时使用领域训练集完成持续预训练；候选模型在相同评测集和口径下复测，计算领域损失与保留损失变化后形成继续、调整或回退判断。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0 0L12 6L0 12Z" fill="#475569"/>
+    </marker>
+    <style>
+      text{font-family:"Noto Sans CJK SC","Microsoft YaHei",Arial,sans-serif;fill:#172033}
+      .title{font-size:27px;font-weight:700}.sub{font-size:15px;fill:#475569}
+      .head{font-size:17px;font-weight:700}.body{font-size:13px;fill:#334155}
+      .box{stroke-width:2;rx:14}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1200" height="430" rx="24" fill="#f8fafc"/>
+  <text x="50" y="48" class="title">同一评测口径比较持续预训练前后的变化</text>
+  <text x="50" y="76" class="sub">领域训练集只用于更新；冻结的领域评测集和通用保留集同时测量收益与退化。</text>
+
+  <rect x="30" y="198" width="150" height="90" fill="#eff6ff" stroke="#3b82f6" class="box"/>
+  <text x="105" y="234" text-anchor="middle" class="head">基座 checkpoint</text>
+  <text x="105" y="260" text-anchor="middle" class="body">固定初始参数与版本</text>
+
+  <path d="M180 243H200V150H220" class="flow"/>
+  <path d="M180 243H200V335H220" class="flow"/>
+
+  <rect x="220" y="105" width="170" height="90" fill="#ecfccb" stroke="#65a30d" class="box"/>
+  <text x="305" y="139" text-anchor="middle" class="head">更新前双评测</text>
+  <text x="305" y="165" text-anchor="middle" class="body">冻结领域集 + 通用保留集</text>
+
+  <rect x="430" y="105" width="160" height="90" fill="#f0fdf4" stroke="#16a34a" class="box"/>
+  <text x="510" y="137" text-anchor="middle" class="head">基线损失</text>
+  <text x="510" y="160" text-anchor="middle" class="body">领域损失（更新前）</text>
+  <text x="510" y="181" text-anchor="middle" class="body">保留损失（更新前）</text>
+  <path d="M390 150H430" class="flow"/>
+
+  <rect x="220" y="290" width="170" height="90" fill="#fef3c7" stroke="#d97706" class="box"/>
+  <text x="305" y="324" text-anchor="middle" class="head">持续预训练</text>
+  <text x="305" y="350" text-anchor="middle" class="body">领域训练集只参与更新</text>
+
+  <rect x="430" y="290" width="160" height="90" fill="#fff7ed" stroke="#f59e0b" class="box"/>
+  <text x="510" y="324" text-anchor="middle" class="head">候选 checkpoint</text>
+  <text x="510" y="350" text-anchor="middle" class="body">固定训练配置与步数</text>
+  <path d="M390 335H430" class="flow"/>
+
+  <rect x="630" y="290" width="170" height="90" fill="#fff1f2" stroke="#e11d48" class="box"/>
+  <text x="715" y="322" text-anchor="middle" class="head">更新后双评测</text>
+  <text x="715" y="346" text-anchor="middle" class="body">相同评测集与损失口径</text>
+  <text x="715" y="367" text-anchor="middle" class="body">领域损失与保留损失（更新后）</text>
+  <path d="M590 335H630" class="flow"/>
+
+  <rect x="840" y="195" width="160" height="100" fill="#f5f3ff" stroke="#8b5cf6" class="box"/>
+  <text x="920" y="229" text-anchor="middle" class="head">计算损失变化</text>
+  <text x="920" y="254" text-anchor="middle" class="body">领域损失变化</text>
+  <text x="920" y="276" text-anchor="middle" class="body">保留损失变化</text>
+  <path d="M590 150H820V220H840" class="flow"/>
+  <path d="M800 335H820V270H840" class="flow"/>
+
+  <rect x="1030" y="195" width="150" height="100" fill="#eef2ff" stroke="#6366f1" class="box"/>
+  <text x="1105" y="226" text-anchor="middle" class="head">形成判断</text>
+  <text x="1105" y="251" text-anchor="middle" class="body">继续评测</text>
+  <text x="1105" y="272" text-anchor="middle" class="body">调整或回退</text>
+  <path d="M1000 245H1030" class="flow"/>
+</svg>

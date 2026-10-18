@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
+  <title id="title">梯度到参数位移的更新链</title>
+  <desc id="desc">原始梯度经过全局范数裁剪、优化器与学习率变换后形成参数位移，再与有限值和独立评测共同解释。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L12 6L0 12Z" fill="#475569"/></marker>
+    <style>
+      .title{font:700 27px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.sub{font:500 15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.label{font:700 18px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#111827}.small{font:500 14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.line{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}.box{stroke-width:2.5}
+    </style>
+  </defs>
+  <rect width="1200" height="500" rx="24" fill="#f8fafc"/>
+  <text x="52" y="54" class="title">一次更新：从原始梯度到可解释的参数位移</text>
+  <text x="52" y="84" class="sub">梯度范数、裁剪系数和学习率共同决定位移；局部稳定不等于模型能力提升。</text>
+
+  <rect x="55" y="178" width="190" height="104" rx="16" fill="#eff6ff" stroke="#3b82f6" class="box"/>
+  <text x="150" y="216" text-anchor="middle" class="label">原始梯度</text><text x="150" y="246" text-anchor="middle" class="small">g 与 ‖g‖₂</text>
+  <rect x="305" y="178" width="190" height="104" rx="16" fill="#fef3c7" stroke="#d97706" class="box"/>
+  <text x="400" y="216" text-anchor="middle" class="label">全局范数裁剪</text><text x="400" y="246" text-anchor="middle" class="small">g̃ = c g</text>
+  <rect x="555" y="178" width="190" height="104" rx="16" fill="#f5f3ff" stroke="#8b5cf6" class="box"/>
+  <text x="650" y="216" text-anchor="middle" class="label">优化器与学习率</text><text x="650" y="246" text-anchor="middle" class="small">状态变换 · η</text>
+  <rect x="805" y="178" width="190" height="104" rx="16" fill="#ecfccb" stroke="#65a30d" class="box"/>
+  <text x="900" y="216" text-anchor="middle" class="label">参数位移</text><text x="900" y="246" text-anchor="middle" class="small">Δθ 与相对比率 ρ</text>
+  <path d="M245 230H305" class="line"/><path d="M495 230H555" class="line"/><path d="M745 230H805" class="line"/>
+
+  <rect x="805" y="344" width="330" height="88" rx="16" fill="#fff1f2" stroke="#e11d48" class="box"/>
+  <text x="970" y="377" text-anchor="middle" class="label">更新状态记录</text>
+  <text x="970" y="405" text-anchor="middle" class="small">有限值 · 无梯度 · 强裁剪 · 低位移</text>
+  <path d="M900 282V326Q900 344 918 344" class="line"/>
+  <text x="55" y="374" class="small">解释顺序：先检查数值，再看梯度与裁剪，最后看参数是否真正移动。</text>
+  <text x="55" y="406" class="small">能力判断：把可解释候选交给独立验证集和保留集，不从单步记录直接推出质量结论。</text>
+</svg>

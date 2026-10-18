@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="430" viewBox="0 0 1200 430" role="img" aria-labelledby="title desc">
+  <title id="title">持续预训练与监督微调的监督范围</title>
+  <desc id="desc">同一段对话在持续预训练中监督全部非填充 Token，在监督微调中只监督助手回答 Token。</desc>
+  <style>.title{font:700 27px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.sub{font:500 15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.label{font:700 18px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#111827}.small{font:500 14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.token{stroke-width:2}.on{fill:#dcfce7;stroke:#16a34a}.off{fill:#f1f5f9;stroke:#94a3b8}.pad{fill:#fff1f2;stroke:#e11d48}</style>
+  <rect width="1200" height="430" rx="24" fill="#f8fafc"/>
+  <text x="52" y="54" class="title">监督范围由训练目标决定</text>
+  <text x="52" y="84" class="sub">绿色 Token 参与 loss，灰色 Token 只提供上下文，红色 padding 始终屏蔽。</text>
+
+  <text x="55" y="148" class="label">持续预训练</text>
+  <text x="55" y="176" class="small">非 padding Token 全部参与 loss</text>
+  <g transform="translate(310 118)">
+    <rect x="0" y="0" width="115" height="74" rx="12" class="token on"/><text x="57" y="44" text-anchor="middle" class="small">system</text>
+    <rect x="130" y="0" width="115" height="74" rx="12" class="token on"/><text x="187" y="44" text-anchor="middle" class="small">user</text>
+    <rect x="260" y="0" width="115" height="74" rx="12" class="token on"/><text x="317" y="44" text-anchor="middle" class="small">assistant</text>
+    <rect x="390" y="0" width="115" height="74" rx="12" class="token on"/><text x="447" y="44" text-anchor="middle" class="small">domain text</text>
+    <rect x="520" y="0" width="115" height="74" rx="12" class="token pad"/><text x="577" y="44" text-anchor="middle" class="small">padding</text>
+  </g>
+
+  <text x="55" y="318" class="label">监督微调</text>
+  <text x="55" y="346" class="small">prompt 提供上下文，回答区间参与 loss</text>
+  <g transform="translate(310 288)">
+    <rect x="0" y="0" width="115" height="74" rx="12" class="token off"/><text x="57" y="44" text-anchor="middle" class="small">system</text>
+    <rect x="130" y="0" width="115" height="74" rx="12" class="token off"/><text x="187" y="44" text-anchor="middle" class="small">user</text>
+    <rect x="260" y="0" width="115" height="74" rx="12" class="token on"/><text x="317" y="44" text-anchor="middle" class="small">assistant</text>
+    <rect x="390" y="0" width="115" height="74" rx="12" class="token on"/><text x="447" y="44" text-anchor="middle" class="small">answer</text>
+    <rect x="520" y="0" width="115" height="74" rx="12" class="token pad"/><text x="577" y="44" text-anchor="middle" class="small">padding</text>
+  </g>
+</svg>
