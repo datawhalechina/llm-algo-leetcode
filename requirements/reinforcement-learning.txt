@@ -1,2 +1,3 @@
 -r fine-tuning.txt
 trl
+gymnasium
