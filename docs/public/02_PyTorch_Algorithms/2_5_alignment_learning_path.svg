@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc">
+  <title id="title">偏好优化与在线策略学习的选择路径</title>
+  <desc id="desc">先固定监督微调基线、反馈含义和评测规则，再按是否在线生成分流。离线分支按成对偏好或单条二元反馈选择 DPO 或 KTO；在线分支按 Critic、组均值或留一均值选择 PPO、GRPO 或 RLOO。项目出口和在线运行链路在方法选择之后处理。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#f5f3ff"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#475569"/>
+    </marker>
+    <style>
+      .title{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:30px;font-weight:700;fill:#0f172a}
+      .sub{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:16px;font-weight:500;fill:#475569}
+      .section{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:18px;font-weight:700;fill:#334155}
+      .label{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:17px;font-weight:700;fill:#111827}
+      .small{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:14px;font-weight:500;fill:#334155}
+      .note{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:13px;font-weight:700;fill:#6d28d9}
+      .panel{fill:#ffffff;stroke:#cbd5e1;stroke-width:2;rx:20;ry:20}
+      .node{stroke-width:2.5;rx:14;ry:14}
+      .arrow{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}
+      .line{stroke:#475569;stroke-width:3;fill:none}
+    </style>
+  </defs>
+
+  <rect width="1600" height="1000" fill="url(#bg)"/>
+  <text x="55" y="54" class="title">先判断反馈形态，再选择对齐方法</text>
+  <text x="55" y="83" class="sub">方法选择、项目训练和在线系统是三个阶段；不要把所有页面串成一条必经流水线。</text>
+
+  <rect x="300" y="110" width="1000" height="86" class="node" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="800" y="142" text-anchor="middle" class="label">共同起点：SFT checkpoint + 50 偏好数据与评测</text>
+  <text x="800" y="168" text-anchor="middle" class="small">固定数据切分、反馈含义、评测规则和 Reference 身份</text>
+
+  <rect x="555" y="230" width="490" height="72" class="node" fill="#ffffff" stroke="#7c3aed"/>
+  <text x="800" y="258" text-anchor="middle" class="label">训练时是否需要现场生成回答？</text>
+  <text x="800" y="282" text-anchor="middle" class="small">否：离线反馈　　是：在线奖励与策略更新</text>
+  <path d="M800 196 V230" class="arrow"/>
+
+  <rect x="45" y="335" width="715" height="355" class="panel"/>
+  <text x="70" y="369" class="section">离线反馈：按数据形态选择</text>
+  <rect x="230" y="392" width="345" height="64" class="node" fill="#fdf2f8" stroke="#db2777"/>
+  <text x="402" y="418" text-anchor="middle" class="label">反馈是否能稳定配成 chosen / rejected？</text>
+  <text x="402" y="440" text-anchor="middle" class="small">同提示成对，或只有单条接受 / 拒绝标签</text>
+  <path d="M690 302 V350 H402 V392" class="arrow"/>
+
+  <rect x="90" y="505" width="275" height="74" class="node" fill="#fdf2f8" stroke="#db2777"/>
+  <text x="227" y="534" text-anchor="middle" class="label">17 DPO</text>
+  <text x="227" y="558" text-anchor="middle" class="small">成对偏好边际</text>
+  <rect x="440" y="505" width="275" height="74" class="node" fill="#fdf2f8" stroke="#db2777"/>
+  <text x="577" y="534" text-anchor="middle" class="label">PT-KTO</text>
+  <text x="577" y="558" text-anchor="middle" class="small">单条二元反馈 + KL 基线</text>
+  <path d="M402 456 V480 H227 V505" class="arrow"/>
+  <path d="M402 456 V480 H577 V505" class="arrow"/>
+
+  <rect x="90" y="610" width="275" height="54" class="node" fill="#f5f3ff" stroke="#7c3aed"/>
+  <text x="227" y="643" text-anchor="middle" class="label">84 DPO 项目</text>
+  <rect x="440" y="610" width="275" height="54" class="node" fill="#f8fafc" stroke="#94a3b8"/>
+  <text x="577" y="635" text-anchor="middle" class="label">KTO 机制页</text>
+  <text x="577" y="653" text-anchor="middle" class="small">项目暂未建设</text>
+  <path d="M227 579 V610" class="arrow"/>
+  <path d="M577 579 V610" class="arrow"/>
+
+  <rect x="790" y="335" width="765" height="355" class="panel"/>
+  <text x="815" y="369" class="section">在线奖励：按优势基线选择</text>
+  <rect x="1010" y="392" width="335" height="64" class="node" fill="#ecfeff" stroke="#0891b2"/>
+  <text x="1177" y="418" text-anchor="middle" class="label">优势来自哪一种基线？</text>
+  <text x="1177" y="440" text-anchor="middle" class="small">Critic、组均值 / 标准差、留一均值</text>
+  <path d="M910 302 V350 H1177 V392" class="arrow"/>
+
+  <rect x="820" y="505" width="215" height="74" class="node" fill="#fefce8" stroke="#ca8a04"/>
+  <text x="927" y="532" text-anchor="middle" class="label">16 PPO</text>
+  <text x="927" y="556" text-anchor="middle" class="small">Reward Model + Critic</text>
+  <rect x="1067" y="505" width="215" height="74" class="node" fill="#ecfccb" stroke="#65a30d"/>
+  <text x="1174" y="532" text-anchor="middle" class="label">18 GRPO</text>
+  <text x="1174" y="556" text-anchor="middle" class="small">组均值与尺度</text>
+  <rect x="1315" y="505" width="215" height="74" class="node" fill="#ecfccb" stroke="#65a30d"/>
+  <text x="1422" y="532" text-anchor="middle" class="label">PT-RLOO</text>
+  <text x="1422" y="556" text-anchor="middle" class="small">Reference KL + 留一均值</text>
+  <path d="M1177 456 V480 H927 V505" class="arrow"/>
+  <path d="M1177 456 V505" class="arrow"/>
+  <path d="M1177 480 H1422 V505" class="arrow"/>
+
+  <rect x="820" y="610" width="215" height="54" class="node" fill="#f8fafc" stroke="#94a3b8"/>
+  <text x="927" y="635" text-anchor="middle" class="label">PPO 机制页</text>
+  <text x="927" y="653" text-anchor="middle" class="small">项目暂未建设</text>
+  <rect x="1067" y="610" width="215" height="54" class="node" fill="#f5f3ff" stroke="#7c3aed"/>
+  <text x="1174" y="643" text-anchor="middle" class="label">85 GRPO 项目</text>
+  <rect x="1315" y="610" width="215" height="54" class="node" fill="#f8fafc" stroke="#94a3b8"/>
+  <text x="1422" y="635" text-anchor="middle" class="label">RLOO 机制页</text>
+  <text x="1422" y="653" text-anchor="middle" class="small">项目暂未建设</text>
+  <path d="M927 579 V610" class="arrow"/>
+  <path d="M1174 579 V610" class="arrow"/>
+  <path d="M1422 579 V610" class="arrow"/>
+
+  <rect x="45" y="725" width="715" height="220" class="panel"/>
+  <text x="70" y="759" class="section">项目训练之后：验证产物是否可继续使用</text>
+  <rect x="95" y="800" width="250" height="66" class="node" fill="#f5f3ff" stroke="#7c3aed"/>
+  <text x="220" y="827" text-anchor="middle" class="label">84 / 85 训练产物</text>
+  <text x="220" y="849" text-anchor="middle" class="small">模型 · 配置 · 质量报告</text>
+  <rect x="440" y="800" width="270" height="66" class="node" fill="#f5f3ff" stroke="#7c3aed"/>
+  <text x="575" y="827" text-anchor="middle" class="label">86 资格与恢复核对</text>
+  <text x="575" y="849" text-anchor="middle" class="small">版本 · 哈希 · checkpoint · 回滚</text>
+  <path d="M345 833 H440" class="arrow"/>
+  <text x="95" y="909" class="note">KTO、PPO、RLOO 当前只形成机制证据，不假装已有项目训练结果</text>
+
+  <rect x="790" y="725" width="765" height="220" class="panel"/>
+  <text x="815" y="759" class="section">需要持续采样时：补齐在线运行链路</text>
+  <rect x="825" y="800" width="205" height="66" class="node" fill="#ffffff" stroke="#0891b2"/>
+  <text x="927" y="827" text-anchor="middle" class="label">轨迹生命周期</text>
+  <text x="927" y="849" text-anchor="middle" class="small">身份 · 策略版本</text>
+  <rect x="1090" y="800" width="205" height="66" class="node" fill="#ffffff" stroke="#0891b2"/>
+  <text x="1192" y="827" text-anchor="middle" class="label">RL 系统</text>
+  <text x="1192" y="849" text-anchor="middle" class="small">角色 · 传输 · 恢复</text>
+  <rect x="1355" y="800" width="165" height="66" class="node" fill="#ffffff" stroke="#0891b2"/>
+  <text x="1437" y="827" text-anchor="middle" class="label">Agentic RL</text>
+  <text x="1437" y="849" text-anchor="middle" class="small">多步环境扩展</text>
+  <path d="M1030 833 H1090" class="arrow"/>
+  <path d="M1295 833 H1355" class="arrow"/>
+  <text x="825" y="909" class="note">在线运行链路服务于 PPO / GRPO / RLOO，也可承接 Agentic RL</text>
+</svg>
