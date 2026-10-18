@@ -1,6 +1,6 @@
 # TRAIN-MIXED-PRECISION-BACKWARD. Mixed Precision Backward | 混合精度反向传播与梯度安全
 
-**难度：** Hard | **环境：** CPU-first（可选单卡 GPU 复测）
+**难度：** Hard | **环境：** [CPU 主线，GPU 可选](#runtime-environment) | **标签：** `混合精度`, `反向传播`, `梯度安全` | **目标人群：** 训练机制学习者
 
 > 🚀 **云端运行环境**
 >
@@ -9,7 +9,6 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/TRAIN-MIXED-PRECISION-BACKWARD_Mixed_Precision_Backward.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-**标签：** `混合精度`, `反向传播`, `梯度安全` | **目标人群：** 训练机制学习者
 
 ---
 
@@ -18,14 +17,30 @@
 低精度前向只有在梯度能够安全还原并进入一次有效更新时，才构成完整的混合精度训练路径。本节沿着 loss scale、反向传播、unscale、有限值检查、梯度裁剪和 optimizer step，解释 FP16 溢出时为什么必须跳过更新，以及 BF16 与 FP16 的更新职责为何不同。
 
 学习重点是分清低精度计算、梯度缩放、有限值检查和有效更新之间的先后关系，并用数值安全、容量和时间证据判断候选路径。
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 默认使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
+- **框架核对：** 使用 [`TRAIN-CPU`](../topic_discussion/backpropagation_training_mechanism/quickstart.md#train-cpu-quickstart)，完成 Step 4 后运行 [框架一致性核对](#framework-check)。
+- **GPU 实测：** 使用 `TRAIN-CUDA-MECHANISM`，按 [Step 5](#gpu-experiment) 的说明配置并运行。
+
+---
 ## 前置阅读
 
 - [Part 01 · 01：数据格式与混合精度](../01_Hardware_Math_and_Systems/01_Data_Types_and_Precision.md)：理解 FP16、BF16 与 FP32 的动态范围。
 - [Part 02 · 11 梯度累积](./11_Gradient_Accumulation.md)：理解微批次与有效更新边界。
 - [Part 02 · 09 激活与损失反向](./09_Activation_and_Loss_Backward.md)：理解 loss 如何形成参数梯度。
-### Step 1：低精度前向如何安全地进入参数更新
+## Step 1：低精度前向如何安全地进入参数更新
 
-`autocast` 根据算子特征选择低精度或 FP32 路径；损失缩放则放大反向信号，降低 FP16 小梯度下溢的概率。缩放后的梯度不能直接用于裁剪或参数更新，必须先恢复真实尺度并检查所有梯度是否有限。
+`autocast` 根据算子特征选择低精度或 FP32 路径；损失缩放则放大反向信号，降低 FP16 小梯度下溢的概率。设原损失为 $L$、缩放因子为 $s>0$、参数为 $\theta$，则缩放反向先得到
+
+$$
+L'=sL,\qquad g'=\nabla_\theta L'=s\nabla_\theta L,
+\qquad g=\frac{g'}{s}.
+$$
+
+其中 $g'$ 是参数缓冲区中的缩放梯度，$g$ 才是用于有限值检查、裁剪和更新的真实尺度梯度。缩放后的梯度不能直接用于裁剪或参数更新。
 
 | 阶段 | 主要对象 | 必须保持的约束 |
 |:---|:---|:---|
@@ -36,7 +51,7 @@
 | Scale update | 下一轮缩放因子 | 溢出时降低，稳定运行后可逐步提高 |
 
 ![混合精度训练中的梯度安全链](../public/02_PyTorch_Algorithms/train_mixed_precision_flow.svg)
-### Step 2：FP16、BF16 与 FP32 的训练职责不同
+## Step 2：FP16、BF16 与 FP32 分别承担哪些计算和状态
 
 FP16 的指数范围较窄，较小梯度容易下溢、较大中间值容易溢出，因此通常与动态损失缩放配合。BF16 的尾数精度较低，但指数范围接近 FP32，常用路径通常不需要 `GradScaler`；它仍然可能产生 NaN/Inf，所以有限值检查和梯度范数监控依然有意义。优化器主状态是否保留 FP32，则由训练栈和优化器实现决定。
 
@@ -45,9 +60,16 @@ FP16 的指数范围较窄，较小梯度容易下溢、较大中间值容易溢
 | FP16 | Tensor Core 与较低 activation 字节数 | 下溢与溢出 | 动态 loss scaling、有限值检查 |
 | BF16 | 接近 FP32 的指数范围与低精度吞吐 | 尾数精度较低 | 有限值与收敛监控，通常不缩放 |
 | FP32 | 数值范围与精度基线 | 计算和状态代价较高 | 作为敏感算子或主状态基线 |
-### Step 3：梯度累积只在有效更新边界做 unscale 与 step
+## Step 3：在哪个更新边界还原梯度尺度并决定是否写回参数
 
-当一次有效更新由 `K` 个微批次组成时，每个微批次都执行 scaled backward，梯度在参数上持续累积；只有到第 `K` 个微批次结束，才统一 unscale、检查有限值、裁剪并执行 `optimizer.step()` 或 skip。若每个微批次都 unscale 或 step，就会破坏梯度尺度和有效批次语义。
+当一次有效更新由 $K$ 个微批次组成，且第 $i$ 个微批次在完整有效批次中的权重为 $w_i$ 时，缩放梯度先累计为 $g'_{acc}=s\sum_{i=1}^{K}w_i g_i$，到更新边界再统一还原为
+
+$$
+g_{acc}=\frac{g'_{acc}}{s}=\sum_{i=1}^{K}w_i g_i,
+\qquad \sum_{i=1}^{K}w_i=1.
+$$
+
+因此每个微批次都执行 scaled backward，梯度在参数上持续累积；只有到第 $K$ 个微批次结束，才统一 unscale、检查有限值、裁剪并执行 `optimizer.step()` 或 skip。若每个微批次都 unscale 或 step，就会破坏梯度尺度和有效批次语义。
 
 | 操作 | 每个微批次 | 有效更新边界 |
 |:---|:---:|:---:|
@@ -59,7 +81,9 @@ FP16 的指数范围较窄，较小梯度容易下溢、较大中间值容易溢
 | scaler update / zero grad | 否 | 是 |
 
 ![梯度累积中的缩放与更新边界](../public/02_PyTorch_Algorithms/train_mixed_precision_accumulation.svg)
-### Step 4：实现梯度尺度还原、有限值检查与更新计划
+<a id="mechanism-practice"></a>
+
+## Step 4：实现梯度尺度还原、有限值检查与更新计划
 
 题目区不模拟完整 `GradScaler`，而是保留决定更新是否安全的三个机制：恢复真实梯度、计算全局范数、依据有限值和裁剪阈值生成更新计划。测试覆盖正常更新、裁剪和溢出跳过三条路径。
 
@@ -129,9 +153,10 @@ def plan_mixed_precision_update(scaled_gradients, scale, max_norm, backoff_facto
     }
 ```
 
-### 测试
+## 测试
 
 测试分别验证尺度还原与输入不变、跨参数全局范数、有限梯度裁剪，以及 Inf 触发的安全跳过。
+## 测试
 
 ```python
 # 机制测试：unscale、全局范数、裁剪和溢出跳过。
@@ -176,6 +201,7 @@ print("All mixed-precision backward tests passed.")
 
 ---
 
+## 参考代码与解析
 ## 参考代码与解析
 
 ```python
@@ -233,7 +259,68 @@ def plan_mixed_precision_update(scaled_gradients, scale, max_norm, backoff_facto
 
 - 有限值检查必须先于梯度裁剪，因为非有限梯度不能通过乘缩放系数恢复为可靠数值。
 - 实现要求所有有效梯度均为有限值；测试分别验证正常更新与溢出时跳过更新的门控行为。
-### Step 5：可选 GPU 实验——AMP 更新语义与资源证据
+<a id="framework-check"></a>
+
+## 框架一致性核对（可选）
+
+下面使用 PyTorch `GradScaler` 的 CPU 路径核对还原尺度和非有限梯度跳步；真实低精度吞吐与显存仍由 Step 5 测量。
+
+| 核对对象 | 本节实现 | 成熟框架入口 | 通过条件 |
+| --- | --- | --- | --- |
+| 真实尺度梯度 | `unscale_gradients` | `GradScaler.unscale_` | 相同 scale 下还原梯度一致 |
+| 非有限梯度处理 | `plan_mixed_precision_update` | `GradScaler.step` / `update` | 两条路径均跳过参数更新并按相同比例降低 scale |
+
+```python
+from importlib.metadata import version
+
+
+def check_amp_framework_conformance():
+    """核对本地 unscale 与溢出跳步是否符合 PyTorch GradScaler 语义。"""
+    parameter = torch.nn.Parameter(torch.tensor([2.0, -1.0]))
+    optimizer = torch.optim.SGD([parameter], lr=0.1)
+    scaler = torch.amp.GradScaler('cpu', init_scale=8.0, backoff_factor=0.5)
+    loss = parameter.square().sum()
+    scaler.scale(loss).backward()
+    scaled_gradient = parameter.grad.detach().clone()
+    local_gradient = unscale_gradients([scaled_gradient], scaler.get_scale())[0]
+    scaler.unscale_(optimizer)
+    framework_gradient = parameter.grad.detach().clone()
+
+    overflow_parameter = torch.nn.Parameter(torch.tensor([1.0]))
+    overflow_optimizer = torch.optim.SGD([overflow_parameter], lr=0.1)
+    overflow_scaler = torch.amp.GradScaler('cpu', init_scale=8.0, backoff_factor=0.5)
+    overflow_scaler.scale(overflow_parameter.square().sum()).backward()
+    overflow_parameter.grad.fill_(float('inf'))
+    before = overflow_parameter.detach().clone()
+    local_plan = plan_mixed_precision_update(
+        [overflow_parameter.grad.detach().clone()], overflow_scaler.get_scale(), max_norm=1.0
+    )
+    overflow_scaler.step(overflow_optimizer)
+    overflow_scaler.update()
+    checks = {
+        'unscaled_gradient_match': bool(torch.allclose(local_gradient, framework_gradient)),
+        'local_overflow_skips': local_plan['should_step'] is False,
+        'framework_overflow_skips': bool(torch.equal(before, overflow_parameter.detach())),
+        'scale_backoff_match': overflow_scaler.get_scale() == local_plan['next_scale'],
+    }
+    failed = [name for name, passed in checks.items() if not passed]
+    if failed:
+        raise AssertionError(f'框架一致性核对失败：{failed}')
+    return {
+        'status': 'passed',
+        'check_kind': 'framework_conformance',
+        'versions': {'torch': version('torch')},
+        'checks': checks,
+    }
+
+
+framework_check = check_amp_framework_conformance()
+framework_check
+```
+
+<a id="gpu-experiment"></a>
+
+## Step 5：可选 GPU 实验——AMP 更新语义与资源证据
 
 CPU 题目确认梯度还原、全局范数和更新门控的顺序；GPU 实验进一步核对 PyTorch AMP 的真实 dtype 路径、溢出处理、时间和峰值显存。
 

@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
+  <title id="title">微批次按有效目标数合并为一次更新</title>
+  <desc id="desc">三个有效目标数不同的微批次按监督 Token 数加权，形成一个逻辑批次梯度，并只推进一次参数更新和调度时钟。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L12 6L0 12Z" fill="#475569"/></marker>
+    <style>.title{font:700 27px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.sub{font:500 15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.label{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#111827}.small{font:500 14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.line{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}.box{stroke-width:2.5}</style>
+  </defs>
+  <rect width="1200" height="500" rx="24" fill="#f8fafc"/>
+  <text x="52" y="54" class="title">有效批次：按监督量合并，而不是对微批次等权平均</text>
+  <text x="52" y="84" class="sub">每个微批次先产生平均梯度，再按有效 Token 数占比进入同一次逻辑更新。</text>
+
+  <rect x="55" y="132" width="210" height="78" rx="14" fill="#eff6ff" stroke="#3b82f6" class="box"/>
+  <text x="160" y="162" text-anchor="middle" class="label">微批次 1</text><text x="160" y="188" text-anchor="middle" class="small">n₁ = 1，平均梯度 g₁</text>
+  <rect x="55" y="230" width="210" height="78" rx="14" fill="#eff6ff" stroke="#3b82f6" class="box"/>
+  <text x="160" y="260" text-anchor="middle" class="label">微批次 2</text><text x="160" y="286" text-anchor="middle" class="small">n₂ = 3，平均梯度 g₂</text>
+  <rect x="55" y="328" width="210" height="78" rx="14" fill="#eff6ff" stroke="#3b82f6" class="box"/>
+  <text x="160" y="358" text-anchor="middle" class="label">微批次 3</text><text x="160" y="384" text-anchor="middle" class="small">n₃ = 2，平均梯度 g₃</text>
+
+  <rect x="385" y="210" width="270" height="116" rx="16" fill="#fef3c7" stroke="#d97706" class="box"/>
+  <text x="520" y="245" text-anchor="middle" class="label">Token 加权合并</text>
+  <text x="520" y="275" text-anchor="middle" class="small">g_eff = Σᵢ nᵢ / Σⱼnⱼ · gᵢ</text>
+  <text x="520" y="301" text-anchor="middle" class="small">权重和为 1</text>
+  <path d="M265 171H330Q350 171 350 232H385" class="line"/>
+  <path d="M265 269H385" class="line"/>
+  <path d="M265 367H330Q350 367 350 306H385" class="line"/>
+
+  <rect x="760" y="210" width="190" height="116" rx="16" fill="#ecfccb" stroke="#65a30d" class="box"/>
+  <text x="855" y="245" text-anchor="middle" class="label">一次参数更新</text>
+  <text x="855" y="275" text-anchor="middle" class="small">optimizer.step</text>
+  <text x="855" y="301" text-anchor="middle" class="small">成功更新 +1</text>
+  <path d="M655 268H760" class="line"/>
+
+  <rect x="1010" y="210" width="145" height="116" rx="16" fill="#f5f3ff" stroke="#8b5cf6" class="box"/>
+  <text x="1082" y="245" text-anchor="middle" class="label">调度时钟</text>
+  <text x="1082" y="275" text-anchor="middle" class="small">仅推进一次</text>
+  <path d="M950 268H1010" class="line"/>
+</svg>

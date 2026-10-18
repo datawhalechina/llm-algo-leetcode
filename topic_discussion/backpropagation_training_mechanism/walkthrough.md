@@ -1,57 +1,49 @@
-# 反向传播与训练机制深入阅读
+# 反向传播与训练机制问题链
 
-这条阅读路径从一次训练更新出发，逐步回答三个问题：梯度为什么这样传播，训练状态为什么需要驻留，以及候选策略怎样证明既正确又有效。
+一次训练更新不是“调用一次 `backward()`”那么简单，而是一条连续依赖：
 
-## 1. 从训练闭环进入计算图
+`参数与输入 → 前向状态 → 监督损失 → 局部反向与梯度汇合 → 有效更新 → 状态释放与候选判断`
 
-先阅读 [01 训练闭环与计算图](./01_training_loop_and_computation_graph.md)。把输入、参数、前向传播、损失、反向传播和优化器更新放进同一张依赖图，并标出激活、反向保存张量和参数梯度在何处产生。
+## 从损失确认训练闭环
 
-如果参数初始化、Module 状态或训练/验证边界还不清楚，先回看 Part00 · 09 和 Part00 · 12。
+参数必须参与前向计算，损失必须依赖这些参数，反向传播才会把监督信号传到 `.grad`，优化器才能改变下一次前向使用的参数。先画出这条依赖，再检查训练/验证模式和参数是否可训练。
 
-## 2. 从全局依赖进入局部反向
+![一次训练更新中的依赖、状态与更新边界](../../docs/public/topic_discussion/backpropagation_training_mechanism/training_update_loop.svg)
 
-继续阅读 [02 自动求导与 Transformer 反向传播](./02_autograd_and_transformer_backward.md)。先理解叶子张量、`grad_fn`、VJP 和计算图边界，再观察激活、损失、Attention 与残差路径如何形成局部梯度。
+[01 训练闭环与计算图](./01_training_loop_and_computation_graph.md) 将全局依赖拆成可以逐项核对的对象与阶段。
 
-这一阶段要区分四个对象：参数 `.grad`、中间张量梯度、公式所需状态和实现实际保存状态。FlashAttention、融合或重算改变的是保存与执行路径，不改变梯度定义。
+## 从局部反向确认梯度来源
 
-## 3. 把监督口径接到有效更新
+反向传播在每个局部算子处将上游梯度与局部导数结合。分支、残差路径和共享参数会让多条贡献在同一输入或参数处相加；局部反向需要的前向状态则必须保存到相应消费者完成计算。
 
-进入 [03 监督、梯度尺度与有效更新](./03_supervision_gradient_scale_effective_update.md)。先确定哪些 token 参与监督，再核对损失归约和有效 token 分母，最后将多个微批次对齐到一次优化器更新步。
+[02 自动求导与 Transformer 反向传播](./02_autograd_and_transformer_backward.md) 解释 VJP、保存张量和 Transformer 局部梯度之间的关系。
 
-这一步的检查结果应能回答：一个累计窗口覆盖多少有效 token，损失如何归一化，参数更新和学习率调度器分别执行多少次。
+## 让监督尺度对应一次有效更新
 
-## 4. 沿时间线建立状态账本
+标签移位、损失掩码和有效 token 数决定梯度代表什么；微批次、梯度累积、损失缩放和调度器时钟决定这份梯度何时真正写入参数。不同长度的微批次不能只按累计次数除损失，必须与有效 token 分母对齐。
 
-进入 [04 训练状态生命周期](./04_training_state_lifecycle.md)。静态字节数只能说明对象大小，生命周期才能说明哪些对象在同一阶段重叠。按前向传播、反向传播和优化器更新步记录参数、激活、反向保存张量、梯度、优化器状态与工作区。
+![监督范围、损失归约与有效更新](../../docs/public/topic_discussion/backpropagation_training_mechanism/supervision_effective_update.svg)
 
-只有先找到峰值阶段和主导对象，后续策略选择才有依据。
+[03 监督、梯度尺度与有效更新](./03_supervision_gradient_scale_effective_update.md) 将监督边界接到更新时钟。
 
-## 5. 比较重算与搬运
+## 找到峰值时仍然驻留的状态
 
-进入 [05 激活检查点与卸载](./05_checkpointing_and_offload.md)。激活检查点改变激活的保存与重算，卸载改变状态的驻留位置。比较时同时记录正确性条件、释放容量和新增时间。
+静态字节数不能说明运行时峰值。参数、激活、反向保存张量、梯度、优化器状态和工作区只有在同一阶段重叠时才共同形成容量压力。先标出创建、最后消费和释放时刻，再选择策略。
 
-若激活检查点路径包含随机层，还要确认 RNG 状态和外部副作用；若选择卸载，则要核对搬回时点和暴露传输时间。
+[04 训练状态生命周期](./04_training_state_lifecycle.md) 用阶段账本区分对象大小与峰值贡献。
 
-## 6. 建立采用门槛
+## 比较重算与搬运的代价
 
-最后阅读 [06 正确性与性能证据](./06_correctness_and_performance_evidence.md)。候选策略依次通过输入口径、梯度正确性、更新语义、数值稳定和质量门槛后，再比较峰值显存、单步时间与吞吐。
+激活检查点通过少保存、多重算降低长期驻留；卸载通过改变驻留位置换取搬运。两者都需要保持输出和梯度一致，且必须把节省的显存与新增的时间放在同一工作负载下比较。
 
-项目验证按以下顺序展开：
+![激活检查点与卸载的容量—时间交换](../../docs/public/topic_discussion/backpropagation_training_mechanism/checkpointing_offload_comparison.svg)
 
-```text
-Part02 · 73 训练基线
-→ Part02 · 74 性能分析归因
-→ Part02 · 76 策略对照与决策
-```
+[05 激活检查点与卸载](./05_checkpointing_and_offload.md) 给出两条路径的选择条件。
 
-## 最小 PyTorch 接口映射
+## 用正确性证据约束性能判断
 
-| 机制环节 | 最小接口 | 需要核对的关系 |
-|:---|:---|:---|
-| 计算图与反向传播 | `torch.autograd`、`loss.backward()` | 损失是否连接到待训练参数 |
-| 梯度边界 | `detach()`、`no_grad()`、`requires_grad` | 图是否在预期位置切断 |
-| 梯度累积 | `backward()`、`zero_grad()` | 多次反向传播是否对应一次更新 |
-| 参数更新 | `optimizer.step()`、`scheduler.step()` | 更新和调度次数是否一致 |
-| 激活重算 | `torch.utils.checkpoint` | 输出、输入梯度与参数梯度是否保持一致 |
-| 梯度安全 | `GradScaler`、`clip_grad_norm_` | 梯度尺度还原、有限值检查和梯度裁剪的顺序 |
-| 性能证据 | CUDA 内存 API、`torch.profiler` | 峰值、阶段耗时和时间线追踪是否来自同一工作负载 |
+先检查输入与监督、梯度、更新语义、有限值和质量；这些条件成立后，峰值显存、单步时间和吞吐才可以用于判断候选。性能变好不能抵消错误梯度或质量退化。
+
+![训练候选从正确性到性能决策的证据门槛](../../docs/public/topic_discussion/backpropagation_training_mechanism/training_evidence_gates.svg)
+
+[06 正确性、数值稳定与性能证据](./06_correctness_and_performance_evidence.md) 把机制检查转成可复测的候选记录。

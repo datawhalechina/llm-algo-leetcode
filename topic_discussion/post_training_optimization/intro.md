@@ -8,6 +8,16 @@
 
 ![后训练优化对象与最小干预路径](../../docs/public/topic_discussion/post_training_optimization/post_training_optimization_targets.svg)
 
+## 共同训练基础
+
+后训练先定义数据、监督或奖励目标，再复用[反向传播与训练机制](../backpropagation_training_mechanism/intro.md)把目标变成参数更新。两者的接口不是某个 Trainer，而是损失、有效位置、待更新参数和训练状态记录。
+
+| 后训练给出的对象 | 反向传播专题核对的机制 | 返回后训练的记录 |
+|:---|:---|:---|
+| 标签掩码、偏好对、奖励或优势 | 损失分母、上游梯度与梯度汇合 | 可复算的损失与参数梯度 |
+| 全参数、LoRA、Policy 或 Critic 的更新范围 | 累计窗口、有限值、裁剪与有效更新 | 参数位移、更新时钟与跳步状态 |
+| 激活、参考模型、奖励模型和优化器状态 | 状态生命周期、峰值、重算与搬运 | 峰值对象、单步时间与策略代价 |
+
 ## 学习路线
 
 Task 编号用于组织学习顺序，实际训练按数据和反馈条件选择方法。先完成目标诊断、数据检查和 SFT 基线；已有离线反馈时学习 DPO 或 KTO，需要当前策略生成回答时学习 PPO、GRPO 或 RLOO；持续在线训练还要继续检查轨迹版本、权重同步和恢复。所有更新后的模型最后都使用同一套独立评测与回滚条件。需要连续理解因果关系时进入[后训练优化问题链](./walkthrough.md)，已有数据、训练日志或评测报告时使用[后训练优化判断手册](./casebook.md)，术语差异查询[专题术语表](./glossary.md)，跨页核对符号、粒度与损失分母时使用[公式索引与符号约定](./formula_reference.md)。
@@ -38,7 +48,7 @@ Task 编号用于组织学习顺序，实际训练按数据和反馈条件选择
 
 | 需要补齐的能力 | 首选入口 | 在本专题中的作用 |
 |:---|:---|:---|
-| 训练计算图、激活、检查点与卸载 | [反向传播与训练机制](../backpropagation_training_mechanism/intro.md) | 解释训练状态和策略代价 |
+| 计算图、有效更新、训练状态、检查点与卸载 | [反向传播与训练机制](../backpropagation_training_mechanism/intro.md) | 核对梯度、更新时钟、状态峰值和策略代价 |
 | 数据生命周期、清洗质量与后训练接口 | [数据生命周期与契约](../data_engineering/00_data_lifecycle_and_contract.md) / [清洗与质量链](../data_engineering/02_cleaning_quality_chain.md) / [后训练数据接口](../data_engineering/05_post_training_data_interfaces.md) | 为 SFT、偏好和轨迹数据提供来源、去污染、版本与交付证据 |
 | 训练峰值、多模型驻留与轨迹采样吞吐 | [性能优化 Task2](../performance_optimization/03_training_memory_ledger.md) | 建立 SFT、QLoRA、DPO、PPO 和 GRPO 的资源账本 |
 | QLoRA、低比特产物与部署格式 | [量化与压缩](../quantization_compression/intro.md) | 解释低比特训练底座与产物约束 |

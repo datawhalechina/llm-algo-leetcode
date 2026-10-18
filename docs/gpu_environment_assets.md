@@ -40,6 +40,7 @@
 | Profile | 用途 | 操作与证据入口 |
 |:---|:---|:---|
 | <a id="base-cpu"></a>`BASE-CPU` | Part 00–02 普通 CPU 机制练习、题目与测试 | [使用指南](./guide.md) |
+| <a id="train-cpu"></a>`TRAIN-CPU` | 反向传播与训练控制机制页的 PyTorch、Transformers 与 Accelerate 核对 | [训练机制 Quickstart](../topic_discussion/backpropagation_training_mechanism/quickstart.md#train-cpu-quickstart) · [实验资产](../topic_discussion/backpropagation_training_mechanism/experiment_assets.md) |
 | <a id="pt-cpu"></a>`PT-CPU` | 后训练机制页的 Datasets、PEFT、TRL、Accelerate 与 Gymnasium 核对 | [后训练 Quickstart](../topic_discussion/post_training_optimization/quickstart.md#pt-cpu-quickstart) · [实验资产](../topic_discussion/post_training_optimization/experiment_assets.md) |
 | `PERF-DELIVERY` | 汇总性能证据并形成交付判断，不重新执行 GPU 实验 | [性能优化 Quickstart](../topic_discussion/performance_optimization/quickstart.md#perf-delivery-quickstart) · [实验资产](../topic_discussion/performance_optimization/experiment_assets.md) |
 | `INF-SERVICE-DELIVERY` | 汇总推理服务候选、SLO 与交付状态 | [推理优化 Quickstart](../topic_discussion/inference_optimization/quickstart.md#inf-service-delivery) · [实验资产](../topic_discussion/inference_optimization/experiment_assets.md) |

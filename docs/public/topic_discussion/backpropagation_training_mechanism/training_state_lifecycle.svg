@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
   <title id="title">训练状态生命周期与峰值重叠</title>
   <desc id="desc">参数、激活、反向保存张量、梯度、优化器状态和工作区在训练阶段中的驻留区间决定峰值。</desc>
-  <style>.bg{fill:#f8fafc}.axis{stroke:#64748b;stroke-width:2}.tick{stroke:#94a3b8;stroke-width:1.5}.bar1{fill:#dbeafe;stroke:#60a5fa}.bar2{fill:#ffedd5;stroke:#fb923c}.bar3{fill:#d1fae5;stroke:#34d399}.n{font:700 17px sans-serif;fill:#0f172a}.s{font:14px sans-serif;fill:#475569}.t{font:700 24px sans-serif;fill:#0f172a}</style>
+  <style>.bg{fill:#f8fafc}.axis{stroke:#64748b;stroke-width:2}.tick{stroke:#94a3b8;stroke-width:1.5}.bar1{fill:#dbeafe;stroke:#60a5fa}.bar2{fill:#ffedd5;stroke:#fb923c}.bar3{fill:#d1fae5;stroke:#34d399}.n{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:17px;font-weight:700;fill:#0f172a}.s{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:14px;fill:#475569}.t{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:24px;font-weight:700;fill:#0f172a}</style>
   <rect class="bg" width="1200" height="520" rx="20"/><text x="50" y="52" class="t">峰值来自同一阶段仍在驻留的状态重叠</text>
   <line class="axis" x1="260" y1="105" x2="1130" y2="105"/>
   <g class="s"><text x="285" y="88">前向开始</text><text x="475" y="88">前向末尾</text><text x="670" y="88">反向中段</text><text x="860" y="88">反向结束</text><text x="1040" y="88">更新</text></g>

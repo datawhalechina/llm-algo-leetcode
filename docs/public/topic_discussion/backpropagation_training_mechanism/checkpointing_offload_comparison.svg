@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
   <title id="title">激活检查点与卸载的容量时间交换</title>
   <desc id="desc">同一保存状态压力可以通过反向重算或跨设备搬运缓解，两条路径使用不同资源并需要相同正确性门槛。</desc>
-  <style>.bg{fill:#f8fafc}.line{stroke:#64748b;stroke-width:2.5;fill:none;marker-end:url(#a)}.base{fill:#eff6ff;stroke:#60a5fa;stroke-width:2}.ckpt{fill:#fff7ed;stroke:#fb923c;stroke-width:2}.off{fill:#f5f3ff;stroke:#a78bfa;stroke-width:2}.gate{fill:#ecfdf5;stroke:#34d399;stroke-width:2}.n{font:700 18px sans-serif;fill:#0f172a}.s{font:14px sans-serif;fill:#475569}.t{font:700 24px sans-serif;fill:#0f172a}</style>
+  <style>.bg{fill:#f8fafc}.line{stroke:#64748b;stroke-width:2.5;fill:none;marker-end:url(#a)}.base{fill:#eff6ff;stroke:#60a5fa;stroke-width:2}.ckpt{fill:#fff7ed;stroke:#fb923c;stroke-width:2}.off{fill:#f5f3ff;stroke:#a78bfa;stroke-width:2}.gate{fill:#ecfdf5;stroke:#34d399;stroke-width:2}.n{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:18px;font-weight:700;fill:#0f172a}.s{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:14px;fill:#475569}.t{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:24px;font-weight:700;fill:#0f172a}</style>
   <defs><marker id="a" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 3L0 6z" fill="#64748b"/></marker></defs>
   <rect class="bg" width="1200" height="520" rx="20"/><text x="50" y="52" class="t">同一激活压力，两条不同的容量—时间交换路径</text>
   <path class="line" d="M280 250H350V160H430"/><path class="line" d="M280 250H350V350H430"/>

@@ -1,7 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="520" viewBox="0 0 1080 520">
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="520" viewBox="0 0 1080 520" role="img" aria-labelledby="title desc">
+  <title id="title">LoRA 与 QLoRA 的训练状态账本</title>
+  <desc id="desc">比较冻结基座、适配器、梯度优化器状态与激活，说明量化主要缩小冻结基座表示。</desc>
   <defs>
     <style>
-      .title{font:700 25px sans-serif;fill:#172554}.group{font:700 18px sans-serif;fill:#1e3a8a}.label{font:600 17px sans-serif;fill:#0f172a}.small{font:15px sans-serif;fill:#334155}.line{stroke:#64748b;stroke-width:2.5;fill:none}.base{fill:#eff6ff;stroke:#60a5fa;stroke-width:2}.adapter{fill:#f0fdf4;stroke:#4ade80;stroke-width:2}.cost{fill:#fff7ed;stroke:#fb923c;stroke-width:2}.quant{fill:#f5f3ff;stroke:#a78bfa;stroke-width:2}
+      .title{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:25px;font-weight:700;fill:#172554}.group{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:18px;font-weight:700;fill:#1e3a8a}.label{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:17px;font-weight:600;fill:#0f172a}.small{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:15px;fill:#334155}.line{stroke:#64748b;stroke-width:2.5;fill:none}.base{fill:#eff6ff;stroke:#60a5fa;stroke-width:2}.adapter{fill:#f0fdf4;stroke:#4ade80;stroke-width:2}.cost{fill:#fff7ed;stroke:#fb923c;stroke-width:2}.quant{fill:#f5f3ff;stroke:#a78bfa;stroke-width:2}
     </style>
     <marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#64748b"/></marker>
   </defs>

@@ -1,6 +1,6 @@
 # 42. Activation Offload | 激活卸载
 
-**难度：** Hard | **环境：** CPU-first
+**难度：** Hard | **环境：** [CPU 主线，GPU 可选](#runtime-environment) | **标签：** `显存优化`, `激活值`, `Offload` | **目标人群：** 显存优化学习者
 
 > 🚀 **云端运行环境**
 >
@@ -9,7 +9,6 @@
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/42_Activation_Offload.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
-**标签：** `显存优化`, `激活值`, `Offload` | **目标人群：** 显存优化学习者
 
 ---
 
@@ -23,6 +22,15 @@
 
 ---
 
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 默认使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
+- **框架核对：** 使用 [`TRAIN-CPU`](../topic_discussion/backpropagation_training_mechanism/quickstart.md#train-cpu-quickstart)，完成 Step 4 后运行 [框架一致性核对](#framework-check)。
+- **GPU 实测：** 使用 `TRAIN-CUDA-MECHANISM`，按 [Step 5](#gpu-experiment) 的说明配置并运行。
+
+---
 ## 前置阅读
 
 **导语：** 阅读本节前，先确认你能说清 activation 为什么会在反向阶段被使用，以及 checkpoint 如何以重算减少 activation 驻留；本节将在同一训练链路中把代价从额外计算改为设备间搬运。
@@ -32,7 +40,7 @@
 - [Part 01 · 03. GPU 物理架构与内存层级](../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.md)：回顾 GPU 与 host 之间的数据路径和带宽层级。
 
 ---
-### Step 1: Activation Offload 如何改变激活的生命周期
+## Step 1：Activation Offload 如何改变激活的生命周期
 
 Activation offload 处理的是“反向仍需要、当前暂不使用”的 activation：前向后将它从 GPU 移到 CPU 或 host memory，反向到达对应位置时再取回 GPU。activation 在整个训练过程中仍可供反向读取，变化的是它从 GPU 到 host、再回到 GPU 的驻留位置。
 
@@ -46,22 +54,33 @@ Activation offload 处理的是“反向仍需要、当前暂不使用”的 act
 
 ![Activation Offload：用带宽换 GPU 显存](../public/02_PyTorch_Algorithms/42_activation_offload.svg)
 
-### Step 2: 搬运量如何转化为时间代价
+## Step 2：搬运量如何转化为时间代价
 
-Step 2 将一份已给出的 offload 计划翻译为容量账本与传输账本：先用总 activation `A` 和 GPU 预算 `B` 算出最低需要释放的空间，再由块级计划得到实际保留量 `kept_bytes` 与实际搬运量 `offloaded_bytes`。由于 activation 按块搬运，实际搬运量可以大于预算缺口。
+Offload 是否值得，先取决于必须释放多少 GPU 空间，再取决于搬出和搬回这些状态会暴露多少等待。设当前 activation 总驻留量为 $C_{total}$、GPU activation 预算为 $C_{budget}$，最低释放量为
 
-实际搬运量是传输时间的分子：除以带宽得到单程时间，搬出与搬回构成往返时间。容量账本说明 GPU 能释放多少空间，传输账本说明可能增加多少等待；若搬运与其他计算重叠，部分传输时间可以被覆盖。
+$$
+C_{release}=\max(C_{total}-C_{budget},0).
+$$
+
+实际策略通常按 activation 块选择对象，因此实际搬运量 $D$ 可能大于 $C_{release}$。若有效单向带宽为 $W$ 字节每秒、可被计算覆盖的时间为 $T_{overlap}$，理论往返时间和暴露时间为
+
+$$
+T_{round}=\frac{2D}{W},\qquad
+T_{exposed}=\max(T_{round}-T_{overlap},0).
+$$
+
+容量账本用 $C_{release}$ 和 $D$ 判断能否回到预算内，时间账本用 $T_{round}$ 与 $T_{exposed}$ 区分总搬运代价和真正落在关键路径上的等待。真实值还会受到同步、预取时机和链路波动影响。
 
 | 账本量 | 计算关系 | 它说明什么 | 后续用途 |
 | --- | --- | --- | --- |
-| 预算缺口 | `max(A - B, 0)` | 至少需要释放多少 GPU 空间 | 判断是否需要调整 activation 驻留 |
-| 实际搬运量 | `offloaded_bytes = A - kept_bytes` | 当前块级计划实际移走多少 activation | 作为传输时间的分子 |
-| 单程时间 | `offloaded_bytes / bw` | 搬出或搬回一次的理论代价 | 判断预取可利用的计算窗口 |
-| 往返时间 | `2 × 单程时间` | 一次完整 offload 生命周期的传输代价 | 与显存收益共同参与策略判断 |
+| 最低释放量 $C_{release}$ | $\max(C_{total}-C_{budget},0)$ | 至少需要释放多少 GPU 空间 | 判断是否需要改变 activation 驻留 |
+| 实际搬运量 $D$ | 被选中 activation 块的容量之和 | 当前计划实际移走多少状态 | 核对容量可行性并估算传输时间 |
+| 往返时间 $T_{round}$ | $2D/W$ | 不考虑重叠时的搬出与搬回代价 | 与可重叠计算窗口比较 |
+| 暴露时间 $T_{exposed}$ | $\max(T_{round}-T_{overlap},0)$ | 可能进入训练关键路径的等待 | 与显存收益共同参与策略判断 |
 
 ![Activation Offload 的容量与传输代价](../public/02_PyTorch_Algorithms/42_offload_cost_model.svg)
 
-### Step 3: 如何选择驻留对象并做预算决策
+## Step 3：如何选择驻留对象并做预算决策
 
 真实训练中的 offload 调度器会结合状态何时再被反向读取、链路带宽和可用 host 内存，决定何时搬出、何时预取回 GPU，并尽量让搬运与计算重叠。本节先从可搬运且距下一次使用较远的 activation 中选择候选，再检查搬出后是否回到 GPU 预算内；`reuse_delay_layers` 只是近似冷热程度的教学字段。
 
@@ -76,7 +95,9 @@ Step 2 将一份已给出的 offload 计划翻译为容量账本与传输账本�
 
 ![Activation Offload 的搬出与预取时间线](../public/02_PyTorch_Algorithms/42_offload_schedule_timeline.svg)
 
-### Step 4：实现 Offload 预算计划并验证
+<a id="mechanism-practice"></a>
+
+## Step 4：实现 activation 选择与搬运预算
 
 题目区提供激活块、候选排序和 checkpoint 对照骨架。学习者完成实际搬出量、理论往返时间和 offload 策略三个机制；测试分别覆盖容量预算、单位换算、非法带宽以及 `accept / tune / reject`。
 
@@ -283,7 +304,7 @@ def compare_offload_vs_checkpointing(offload_summary: ActivationOffloadSummary, 
 
 ```
 
-### 测试
+## 测试
 
 运行下方 CPU 机制测试，检查 offload 候选选择、预算与传输账本、策略判断和 checkpoint 对照是否一致。
 
@@ -635,7 +656,81 @@ def compare_offload_vs_checkpointing(offload_summary: ActivationOffloadSummary, 
 
 - 两条路线均使用“理论节省字节数 / 理论额外时间”的分数排序。
 - 该分数用于比较当前配置下的容量—时间交换，不单独决定最终采用策略。
-### Step 5：可选 GPU 实验——Activation Offload 显存—时间对照
+<a id="framework-check"></a>
+
+## 框架一致性核对（可选）
+
+下面在同一输入和计算图上比较普通反向与 PyTorch `saved_tensors_hooks` 替换路径，核对保存张量是否经过 pack/unpack，以及替换后输出和梯度是否保持一致。
+
+| 核对对象 | 本节实现 | 成熟框架入口 | 通过条件 |
+| --- | --- | --- | --- |
+| 保存状态入口 | activation 候选与搬运账本 | `torch.autograd.graph.saved_tensors_hooks` | 至少捕获一个反向保存张量，且 pack/unpack 次数一致 |
+| 保存容量 | activation 字节数汇总 | hook 中的 `numel × element_size` | 捕获字节数为正，并与记录逐项求和一致 |
+| 计算语义 | resident 路径输出与梯度 | hook 替换保存张量后的输出与梯度 | 相同输入下输出和输入梯度一致 |
+
+```python
+from importlib.metadata import version
+
+import torch
+
+
+def check_activation_offload_framework_conformance():
+    """核对 saved-tensor hook 的保存入口、字节账本与反向语义。"""
+    torch.manual_seed(42)
+    weight = torch.randn(8, 8)
+    resident_input = torch.randn(4, 8, requires_grad=True)
+    hooked_input = resident_input.detach().clone().requires_grad_(True)
+
+    def workload(value):
+        hidden = torch.tanh(value @ weight)
+        return hidden.square().mean()
+
+    resident_loss = workload(resident_input)
+    resident_loss.backward()
+
+    packed_bytes = []
+    unpacked_bytes = []
+
+    def pack_hook(tensor):
+        byte_count = tensor.numel() * tensor.element_size()
+        packed_bytes.append(byte_count)
+        return tensor.detach().cpu().clone()
+
+    def unpack_hook(payload):
+        unpacked_bytes.append(payload.numel() * payload.element_size())
+        return payload
+
+    with torch.autograd.graph.saved_tensors_hooks(pack_hook, unpack_hook):
+        hooked_loss = workload(hooked_input)
+        hooked_loss.backward()
+
+    checks = {
+        'saved_tensors_observed': len(packed_bytes) > 0,
+        'pack_unpack_count_match': len(packed_bytes) == len(unpacked_bytes),
+        'saved_bytes_match': sorted(packed_bytes) == sorted(unpacked_bytes) and sum(packed_bytes) > 0,
+        'output_match': bool(torch.allclose(resident_loss, hooked_loss, atol=1e-7, rtol=1e-6)),
+        'input_gradient_match': bool(torch.allclose(resident_input.grad, hooked_input.grad, atol=1e-7, rtol=1e-6)),
+    }
+    failed = [name for name, passed in checks.items() if not passed]
+    if failed:
+        raise AssertionError(f'框架一致性核对失败：{failed}')
+    return {
+        'status': 'passed',
+        'check_kind': 'framework_conformance',
+        'versions': {'torch': version('torch')},
+        'checks': checks,
+        'saved_tensor_count': len(packed_bytes),
+        'saved_bytes': sum(packed_bytes),
+    }
+
+
+framework_check = check_activation_offload_framework_conformance()
+framework_check
+```
+
+<a id="gpu-experiment"></a>
+
+## Step 5：可选 GPU 实验——Activation Offload 显存—时间对照
 
 CPU 题目确认容量账本、传输时间和策略门槛；GPU 实验进一步比较 activation 驻留与 saved-tensor hook 搬运路径的梯度、峰值显存、传输量和训练 step 时间。
 

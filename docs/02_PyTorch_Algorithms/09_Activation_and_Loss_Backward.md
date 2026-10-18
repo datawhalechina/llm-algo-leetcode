@@ -1,6 +1,6 @@
 # 09. Activation and Loss Backward | 激活与损失反向传播
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `训练机制`, `激活函数`, `损失函数`, `反向传播` | **目标人群：** 训练机制学习者
+**难度：** Medium | **环境：** [CPU 主线](#runtime-environment) | **标签：** `训练机制`, `激活函数`, `损失函数`, `反向传播` | **目标人群：** 训练机制学习者
 
 > 🚀 **云端运行环境**
 >
@@ -21,6 +21,14 @@
 **关键词：** `activation`, `loss`, `gradients`
 
 ---
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 默认使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
+- **框架核对：** 使用 [`TRAIN-CPU`](../topic_discussion/backpropagation_training_mechanism/quickstart.md#train-cpu-quickstart)，完成 Step 4 后运行 [框架一致性核对](#framework-check)。
+
+---
 ## 前置阅读
 
 **导语：** 先理解 Autograd、训练循环和显存账本，再看激活与损失的反向路径会更容易把公式和工程现象对应起来。
@@ -29,17 +37,13 @@
 - [P0: 12. PyTorch Data Interface and Training Lifecycle | 数据接口与训练生命周期](../00_Prerequisites/12_PyTorch_Minimal_Training_Interface.md)
 
 ---
-### Step 1: 激活与损失如何形成反向训练信号
+## Step 1: 激活与损失如何形成反向训练信号
 
-训练反向可以先看成两段相互衔接的局部过程：目标比较产生训练信号，模型内部的计算关系继续传递这个信号。前者决定信号从哪里开始，后者决定信号怎样回到更早的表示。
-
-一条训练样本经过模型得到输出，目标比较会产生返回模型内部的梯度；这个梯度继续沿计算关系传播，并在局部变换处受到前向状态的影响。理解这条路径时，要把“信号的来源”和“信号的传播”分开观察。
-
-主图把目标比较和局部传播放在同一条链上：先沿前向路径找到损失，再沿反向路径区分损失产生的信号与激活函数对信号的门控。
+一条训练样本先沿前向路径得到模型输出和损失，再由损失产生输出端梯度；梯度沿计算依赖返回较早表示，并在激活函数处受前向状态门控。理解这条链时要区分两个责任：损失决定训练信号从哪里产生，局部算子决定已有信号怎样继续传播。主图用前向与反向两条方向相反的路径标出这两个责任。
 
 ![反向传播：激活门控与损失梯度如何接起来](../public/02_PyTorch_Algorithms/09_activation_loss_backward.svg)
 
-### Step 2: ReLU 如何根据前向状态门控梯度
+## Step 2: ReLU 如何根据前向状态门控梯度
 
 激活函数的局部反向接收上游梯度，再根据前向状态形成局部门控。对 $y=\operatorname{ReLU}(x)$，门控可写成 $g(x)=\mathbf{1}[x>0]$，因此 $\frac{\partial L}{\partial x}=\frac{\partial L}{\partial y}\odot g(x)$。正区间保留上游梯度的符号和大小，负区间阻断信号，零点则采用一致约定。
 
@@ -51,20 +55,33 @@
 | `x < 0` | `0` | 梯度变为 `0` |
 | `x == 0` | 本节约定为 `0` | 梯度变为 `0` |
 
-### Step 3: 交叉熵如何把误差送回 logits
+## Step 3: 交叉熵如何把误差送回 logits
 
-损失函数负责把任务目标转成训练信号。以分类任务中的交叉熵为例，输出分数形成类别概率 $p$，目标类别形成目标分布 $y$，返回输出端的局部梯度由二者之差决定。归约方式决定多个有效位置如何合并；无监督位置既不产生梯度，也不计入平均分母。
+损失函数负责把任务目标转成训练信号。设第 $i$ 个位置的 logits 为 $z_i$，Softmax 概率为 $p_i=\operatorname{softmax}(z_i)$，one-hot 目标为 $y_i$，有效监督位置集合为 $\mathcal V$。使用有效位置平均时，交叉熵及其 logits 梯度为：
+
+$$
+L=-\frac{1}{|\mathcal V|}\sum_{i\in\mathcal V}\sum_c y_{ic}\log p_{ic},
+\qquad
+\frac{\partial L}{\partial z_{ic}}=
+\begin{cases}
+\dfrac{p_{ic}-y_{ic}}{|\mathcal V|}, & i\in\mathcal V,\\
+0, & i\notin\mathcal V.
+\end{cases}
+$$
+
+其中 $c$ 表示类别，$|\mathcal V|$ 是有效监督位置数。公式同时说明了目标差、忽略位置和 `mean` 分母；若使用 `sum`，只需去掉 $|\mathcal V|$ 的缩放。
 
 | 环节 | 计算或配置 | 对反向的影响 |
 | --- | --- | --- |
 | 前向目标比较 | `logits → 类别概率 p → 目标分布 y → loss` | 得到每个有效位置的分类误差 |
 | 反向目标差 | $p-y$ | 梯度直接回到 logits |
-| 平均或求和 | 对样本级误差进行聚合 | 平均会按参与样本数缩放梯度，求和保留各项梯度的累积量 |
-| 无监督或填充位置 | 从有效监督集合中排除 | 对应位置的 loss 与梯度均为零，也不计入平均分母 |
+| 平均或求和 | 对样本级误差进行聚合 | `mean` 按有效位置数缩放，`sum` 保留累积量 |
+| 无监督或填充位置 | 从 $\mathcal V$ 中排除 | loss 与梯度均为零，也不计入平均分母 |
 
 ![交叉熵 backward：loss 如何把信号送回 logits](../public/02_PyTorch_Algorithms/09_loss_gradient_path.svg)
+<a id="mechanism-practice"></a>
 
-### Step 4: 实现并验证两个局部 backward
+## Step 4：实现 ReLU 门控与交叉熵 logits 反向
 
 题目区提供上游梯度、激活输入、logits、标签、忽略标记和归约方式。学习者依次完成 ReLU 门控、有效监督位置上的稳定交叉熵，以及与有效位置数量一致的 loss 和梯度归约；测试覆盖零点约定、忽略位置、归约缩放、较大 logits 和非法输入。
 
@@ -153,7 +170,7 @@ def softmax_ce_loss_and_grad(logits, labels, reduction="mean", ignore_index=-100
 
 ```
 
-### 测试
+## 测试
 
 运行下方 CPU 机制测试，分别检查 ReLU 的梯度门控、交叉熵的 logits 梯度、`mean/sum` 缩放、数值稳定性和输入契约。
 
@@ -317,6 +334,62 @@ def softmax_ce_loss_and_grad(logits, labels, reduction="mean", ignore_index=-100
 
 - `sum` 保留有效位置贡献之和，`mean` 只按有效位置数缩放；忽略位置的整行梯度必须为零。
 - `test_reduction_and_stability` 检查两种归约的比例、极值输入和全忽略失败路径。
+
+<a id="framework-check"></a>
+
+## 框架一致性核对（可选）
+
+下面在同一组输入上比较本节手写结果与 PyTorch 原生算子；该核对不下载模型，也不更新参数。
+
+| 核对对象 | 本节实现 | 成熟框架入口 | 通过条件 |
+| --- | --- | --- | --- |
+| ReLU 输入梯度 | `relu_backward` | PyTorch Autograd | 包含零点在内的输入梯度逐元素一致 |
+| 交叉熵 loss | `softmax_ce_loss_and_grad` 返回的 loss | `torch.nn.functional.cross_entropy` | 忽略位置与有效位置平均口径下数值一致 |
+| 交叉熵 logits 梯度 | `softmax_ce_loss_and_grad` 返回的梯度 | PyTorch Autograd | 有效位置梯度一致，忽略位置均为零 |
+
+```python
+from importlib.metadata import version
+
+
+def check_activation_loss_framework_conformance():
+    """核对手写 ReLU 与交叉熵反向是否符合 PyTorch 原生算子语义。"""
+    torch.manual_seed(42)
+    x = torch.tensor([[-1.5, 0.0, 2.0]], dtype=torch.float64, requires_grad=True)
+    grad_out = torch.tensor([[0.3, -0.7, 1.2]], dtype=torch.float64)
+    torch.relu(x).backward(grad_out)
+    local_relu_grad = relu_backward(grad_out, x.detach())
+
+    logits = torch.tensor(
+        [[2.0, -1.0, 0.5], [0.2, 1.3, -0.4], [4.0, -3.0, 0.0]],
+        dtype=torch.float64,
+        requires_grad=True,
+    )
+    labels = torch.tensor([0, -100, 2])
+    framework_loss = F.cross_entropy(logits, labels, ignore_index=-100, reduction='mean')
+    framework_loss.backward()
+    local_loss, local_grad = softmax_ce_loss_and_grad(
+        logits.detach(), labels, reduction='mean', ignore_index=-100
+    )
+    checks = {
+        'relu_gradient_match': bool(torch.allclose(local_relu_grad, x.grad, atol=1e-12, rtol=1e-12)),
+        'cross_entropy_loss_match': bool(torch.allclose(local_loss, framework_loss.detach(), atol=1e-12, rtol=1e-12)),
+        'cross_entropy_gradient_match': bool(torch.allclose(local_grad, logits.grad, atol=1e-12, rtol=1e-12)),
+        'ignored_position_zero': bool(torch.count_nonzero(local_grad[1]).item() == 0),
+    }
+    failed = [name for name, passed in checks.items() if not passed]
+    if failed:
+        raise AssertionError(f'框架一致性核对失败：{failed}')
+    return {
+        'status': 'passed',
+        'check_kind': 'framework_conformance',
+        'versions': {'torch': version('torch')},
+        'checks': checks,
+    }
+
+
+framework_check = check_activation_loss_framework_conformance()
+framework_check
+```
 
 ## 相关阅读
 

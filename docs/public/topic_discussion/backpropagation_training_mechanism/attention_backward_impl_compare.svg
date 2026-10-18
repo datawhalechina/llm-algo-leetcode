@@ -1,72 +1,61 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="760" viewBox="0 0 1280 760">
-  <rect width="1280" height="760" fill="#f6f2e8"/>
-
-  <text x="60" y="54" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="30" fill="#2b2b2b">直接实现与 FlashAttention 风格反向传播</text>
-  <text x="60" y="84" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="16" fill="#5a5348">比较保存状态、局部重算以及融合减少 I/O 的位置</text>
-
-  <rect x="60" y="120" width="520" height="560" rx="24" fill="#fff8ef" stroke="#8a6f4a" stroke-width="2"/>
-  <text x="90" y="164" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="28" fill="#5c4320">直接反向实现</text>
-  <text x="90" y="194" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="15" fill="#6a5a44">按公式展开，物化较多中间状态</text>
-
-  <rect x="100" y="230" width="200" height="64" rx="14" fill="#e7d6b8" stroke="#8a6f4a" stroke-width="2"/>
-  <text x="132" y="270" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="24" fill="#513b1d">反向保存张量</text>
-  <text x="110" y="322" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="16" fill="#5d564b">Q、K、V</text>
-  <text x="110" y="346" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="16" fill="#5d564b">分数 S = QKᵀ</text>
-  <text x="110" y="370" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="16" fill="#5d564b">概率 P = softmax(S)</text>
-  <text x="110" y="394" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="16" fill="#5d564b">掩码与缩放状态</text>
-
-  <rect x="330" y="230" width="200" height="64" rx="14" fill="#f1e6d2" stroke="#8a6f4a" stroke-width="2"/>
-  <text x="387" y="270" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="24" fill="#513b1d">反向路径</text>
-  <text x="344" y="322" font-family="Arial, sans-serif" font-size="16" fill="#5d564b">dO → dV</text>
-  <text x="344" y="346" font-family="Arial, sans-serif" font-size="16" fill="#5d564b">dP → dS</text>
-  <text x="344" y="370" font-family="Arial, sans-serif" font-size="16" fill="#5d564b">dQ / dK</text>
-  <text x="344" y="394" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="16" fill="#5d564b">通常拆分到多个内核</text>
-
-  <line x1="300" y1="262" x2="330" y2="262" stroke="#8a6f4a" stroke-width="3" marker-end="url(#arrow)"/>
-
-  <rect x="100" y="452" width="430" height="162" rx="18" fill="#fdf2dd" stroke="#8a6f4a" stroke-width="2"/>
-  <text x="126" y="487" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="24" fill="#513b1d">典型 I/O 代价</text>
-  <text x="126" y="521" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="17" fill="#5d564b">1. 物化完整 S / P 或较大中间状态</text>
-  <text x="126" y="548" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="17" fill="#5d564b">2. 将中间状态写入全局内存</text>
-  <text x="126" y="575" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="17" fill="#5d564b">3. 后续内核再次读取</text>
-  <text x="126" y="602" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="17" fill="#5d564b">4. 状态驻留和内存流量较高</text>
-
-  <rect x="700" y="120" width="520" height="560" rx="24" fill="#eef8f2" stroke="#437659" stroke-width="2"/>
-  <text x="730" y="164" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="28" fill="#224933">FlashAttention 风格反向实现</text>
-  <text x="730" y="194" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="15" fill="#4e6558">I/O 感知、分块重算与融合工作划分</text>
-
-  <rect x="740" y="230" width="200" height="64" rx="14" fill="#cfe7d8" stroke="#437659" stroke-width="2"/>
-  <text x="783" y="270" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="24" fill="#224933">反向保存张量</text>
-  <text x="752" y="322" font-family="Arial, sans-serif" font-size="16" fill="#4a5d54">Q, K, V</text>
-  <text x="752" y="346" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="16" fill="#4a5d54">分块 Softmax 统计量</text>
-  <text x="752" y="370" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="16" fill="#4a5d54">最小归一化状态</text>
-  <text x="752" y="394" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="16" fill="#4a5d54">避免完整 S / P 驻留</text>
-
-  <rect x="970" y="230" width="200" height="64" rx="14" fill="#def0e5" stroke="#437659" stroke-width="2"/>
-  <text x="1019" y="270" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="24" fill="#224933">反向路径</text>
-  <text x="984" y="322" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="16" fill="#4a5d54">重算分块分数</text>
-  <text x="984" y="346" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="16" fill="#4a5d54">重建局部 Softmax</text>
-  <text x="984" y="370" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="16" fill="#4a5d54">融合 dP / dS / dQK</text>
-  <text x="984" y="394" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="16" fill="#4a5d54">减少全局写回</text>
-
-  <line x1="940" y1="262" x2="970" y2="262" stroke="#437659" stroke-width="3" marker-end="url(#arrow2)"/>
-
-  <rect x="740" y="452" width="430" height="162" rx="18" fill="#edf8f0" stroke="#437659" stroke-width="2"/>
-  <text x="766" y="487" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="24" fill="#224933">典型 I/O 策略</text>
-  <text x="766" y="521" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="17" fill="#4a5d54">1. 保存较小的归一化与分块状态</text>
-  <text x="766" y="548" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="17" fill="#4a5d54">2. 反向传播需要时重算局部分数</text>
-  <text x="766" y="575" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="17" fill="#4a5d54">3. 写回全局结果前融合更多工作</text>
-  <text x="766" y="602" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="17" fill="#4a5d54">4. 用额外计算换取更低驻留和 I/O</text>
-
-  <rect x="410" y="690" width="460" height="44" rx="14" fill="#e9dfcf" stroke="#7b6a51" stroke-width="1.5"/>
-  <text x="438" y="718" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="18" fill="#4e4439">关键区别：梯度数学相同，保存状态和执行路径不同</text>
-
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="540" viewBox="0 0 1200 540" role="img" aria-labelledby="title desc">
+  <title id="title">直接实现与 FlashAttention 风格反向传播对照</title>
+  <desc id="desc">两种实现使用相同的 Attention 梯度关系，但直接实现保存完整中间状态，FlashAttention 风格实现保存归一化统计量并在反向阶段分块重算。</desc>
+  <style>
+    .bg{fill:#f8fafc}.line{stroke:#64748b;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+    .direct{fill:#fff7ed;stroke:#fb923c;stroke-width:2}.flash{fill:#ecfdf5;stroke:#34d399;stroke-width:2}.shared{fill:#eff6ff;stroke:#60a5fa;stroke-width:2}
+    .title{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:24px;font-weight:700;fill:#0f172a}
+    .name{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:18px;font-weight:700;fill:#0f172a}
+    .text{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:14px;fill:#475569}
+    .tag{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:13px;font-weight:700;fill:#2563eb}
+  </style>
   <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L0,6 L9,3 z" fill="#8a6f4a"/>
-    </marker>
-    <marker id="arrow2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L0,6 L9,3 z" fill="#437659"/>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0L9 3L0 6z" fill="#64748b"/>
     </marker>
   </defs>
+
+  <rect class="bg" width="1200" height="540" rx="20"/>
+  <text x="50" y="52" class="title">Attention 梯度关系相同，保存状态与执行路径不同</text>
+
+  <g>
+    <rect class="shared" x="50" y="105" width="240" height="135" rx="16"/>
+    <text x="75" y="135" class="tag">共同输入</text>
+    <text x="75" y="166" class="name">Q、K、V 与 dO</text>
+    <text x="75" y="196" class="text">mask 与缩放规则一致</text>
+    <text x="75" y="220" class="text">目标都是得到 dQ、dK、dV</text>
+  </g>
+
+  <path class="line" d="M290 172H360"/>
+  <path class="line" d="M290 172H325V383H360"/>
+
+  <g>
+    <rect class="direct" x="360" y="85" width="330" height="175" rx="16"/>
+    <text x="385" y="120" class="name">直接反向实现</text>
+    <text x="385" y="151" class="text">保存：Q、K、V、完整 S / P</text>
+    <text x="385" y="178" class="text">执行：dO → dV / dP → dS → dQ / dK</text>
+    <text x="385" y="205" class="text">内核：多个阶段分别读取和写回中间量</text>
+    <text x="385" y="232" class="text">代价：较高的状态驻留与全局内存流量</text>
+  </g>
+
+  <g>
+    <rect class="flash" x="360" y="295" width="330" height="175" rx="16"/>
+    <text x="385" y="330" class="name">FlashAttention 风格实现</text>
+    <text x="385" y="361" class="text">保存：Q、K、V 与归一化统计量</text>
+    <text x="385" y="388" class="text">执行：分块重算 S / P，再形成局部梯度</text>
+    <text x="385" y="415" class="text">内核：融合局部 dP / dS 与结果写回</text>
+    <text x="385" y="442" class="text">代价：增加计算，降低状态驻留与 I/O</text>
+  </g>
+
+  <path class="line" d="M690 172H770V242H835"/>
+  <path class="line" d="M690 383H770V262H835"/>
+
+  <g>
+    <rect class="shared" x="835" y="170" width="315" height="165" rx="16"/>
+    <text x="860" y="205" class="name">统一核对项</text>
+    <text x="860" y="238" class="text">梯度：dQ、dK、dV 与参考实现一致</text>
+    <text x="860" y="266" class="text">状态：记录保存对象及其生命周期</text>
+    <text x="860" y="294" class="text">性能：比较峰值显存、时间和 I/O</text>
+    <text x="860" y="319" class="text">边界：固定 shape、mask、dtype 与设备</text>
+  </g>
 </svg>

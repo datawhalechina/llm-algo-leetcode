@@ -15,7 +15,13 @@
 
 ### 激活检查点的正确性条件
 
-重算路径必须能够重放原前向传播。比较激活检查点路径与普通路径时，需要同时检查输出、输入梯度和参数梯度。
+设基线与 Checkpoint 路径保存的 activation 驻留量分别为 $M_{saved,base}$ 和 $M_{saved,ckpt}$，两者差值
+
+$$
+\Delta M_{ckpt}=M_{saved,base}-M_{saved,ckpt}
+$$
+
+表示理论节省量。对应的新增时间为 $\Delta T_{ckpt}=T_{ckpt}-T_{base}$，主要来自反向重算和调度开销。重算路径必须能够重放原前向传播；比较两条路径时，需要同时检查输出、输入梯度和参数梯度。
 
 | 条件 | 不满足时的风险 | 验证方式 |
 |:---|:---|:---|
@@ -28,13 +34,19 @@
 
 ### 卸载的容量与传输账本
 
-卸载是否值得采用，需要同时计算释放字节数和往返搬运时间：
+设实际搬出的状态量为 $bytes$，搬出和搬回的有效带宽分别为 $B_{out}$ 与 $B_{in}$。理论往返时间为：
 
 $$
-t_{roundtrip}\approx\frac{bytes}{bandwidth_{out}}+\frac{bytes}{bandwidth_{in}}.
+T_{roundtrip}\approx\frac{bytes}{B_{out}}+\frac{bytes}{B_{in}}.
 $$
 
-若传输能与其他计算重叠，暴露在关键路径上的时间可能小于理论往返时间；若搬回晚于反向传播的消费点，GPU 会等待数据，显存问题就会转化为延迟问题。
+若其中 $T_{overlap}$ 能被其他计算覆盖，真正暴露在关键路径上的时间为：
+
+$$
+T_{exposed}=\max(0,T_{roundtrip}-T_{overlap}).
+$$
+
+搬回必须早于反向传播的消费点，否则 GPU 会等待数据。Checkpoint 与 Offload 的共用符号见[公式索引](./formula_reference.md)。
 
 ### 候选策略比较
 
@@ -47,22 +59,19 @@ $$
 
 ![激活检查点与卸载的容量—时间交换](../../docs/public/topic_discussion/backpropagation_training_mechanism/checkpointing_offload_comparison.svg)
 
-## 选择条件与验证证据
+## 验证与下一步
 
 完成本页后，应能先从生命周期账本选择候选策略，再用正确性、容量和时间三类字段描述预期变化。真实 GPU 对照由 Part02 · 19、42 和 76 提供。
 
-## 学习入口
-
 下一页进入 [06 正确性与性能证据](./06_correctness_and_performance_evidence.md)，为策略比较建立采用门槛。
 
-- [Part02 · 19 激活检查点](../../02_PyTorch_Algorithms/19_Activation_Checkpointing.ipynb)
-- [Part02 · 42 激活卸载](../../02_PyTorch_Algorithms/42_Activation_Offload.ipynb)
-- [Part02 · 76 激活、检查点与卸载对比项目](../../02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.ipynb)
-
-### 相关阅读
+## 相关阅读
 
 | 资料 | 用途 |
 |:---|:---|
+| [Part 02 · 19 激活检查点](../../02_PyTorch_Algorithms/19_Activation_Checkpointing.ipynb) | 检查保存—重算的正确性与峰值代价。 |
+| [Part 02 · 42 激活卸载](../../02_PyTorch_Algorithms/42_Activation_Offload.ipynb) | 检查搬出、搬回和暴露等待。 |
+| [Part 02 · 76 激活检查点与卸载对照](../../02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.ipynb) | 在固定训练工作负载下比较策略。 |
 | [Training Deep Nets with Sublinear Memory Cost](https://arxiv.org/abs/1604.06174) | 理解激活检查点的经典空间—计算交换。 |
 | [ZeRO-Offload](https://arxiv.org/abs/2101.06840) | 理解 CPU 卸载如何进入训练系统。 |
 | [torch.utils.checkpoint](https://docs.pytorch.org/docs/stable/checkpoint) | 核对 PyTorch checkpoint 接口和随机状态说明。 |

@@ -1,6 +1,6 @@
 # 65. QLoRA Selection Project | QLoRA 选型项目
 
-**难度：** Hard | **环境：** CPU-first | **标签：** `量化压缩`, `QLoRA`, `选型` | **目标人群：** 项目决策练习者
+**难度：** Hard | **环境：** CPU + 单卡 GPU | **标签：** `量化压缩`, `QLoRA`, `选型` | **目标人群：** 项目决策练习者
 
 > 🚀 **云端运行环境**
 >
@@ -14,11 +14,11 @@
 
 ## 本节导读
 
-当显存有限、又不能明显牺牲验证质量时，BF16 LoRA 和 NF4 QLoRA 应该怎样选择？本节在同一模型、数据、有效 batch 与评测口径下，对照峰值显存、可行规模、训练速度、验证损失和 adapter 产物，最后给出当前预算下的选型建议。
+当显存有限、又不能明显牺牲验证质量时，NF4 QLoRA 能否替代 BF16 LoRA？本节固定数据准入结果、模型提交、adapter 与有效 batch，只改变冻结底座表示；再用显存、训练速度、独立验证与 adapter 产物判断低比特路径是否值得采用。
 
-CPU 部分先筛选候选方案；可选 GPU 实验再记录真实训练代价和 adapter 产物，供后续实验复测模型来源。模型的 Norm、Attention、FFN 和权重共享配置应随 artifact 一起记录，因为它们会影响可训练参数、显存账本和结果复现；本节仍以低资源微调选型为主，而不是替代架构选型项目。
+CPU 题目区先验证身份、预算与证据是否足以比较；GPU 实验再生成可复测的 QLoRA 选型记录。输出包括固定 workload、两条训练路径的测量、低比特生效状态、adapter 哈希与 `accept / tune / reject` 决策。
 
-**关键词：** `QLoRA`, `budget`, `memory`, `selection`, `project`
+**关键词：** QLoRA、NF4、冻结底座、有效 batch、训练产物
 
 ---
 ## 前置阅读
@@ -30,56 +30,53 @@ CPU 部分先筛选候选方案；可选 GPU 实验再记录真实训练代价�
 - [26. QLoRA and 4bit Quantization | QLoRA 与 4-bit 量化](./26_QLoRA_and_4bit_Quantization.md)
 ---
 
-### Step 1：理解低资源微调的策略组合
+### Step 1：固定任务与预算，明确要比较什么
 
-本节的核心对照是同一 LoRA adapter 在 BF16 冻结底座和 NF4 冻结底座上的训练代价。rank、target modules、数据和评测不变时，显存、可行规模、训练速度和验证质量的变化才可以归因于低比特底座。
+输入是 64 节的数据准入 manifest、固定模型提交和同一 LoRA adapter。问题不是“QLoRA 是否更省显存”这一孤立事实，而是它能否在给定显存上限内保留可接受的验证质量，并生成可定位的 adapter。
 
-| 决策层 | 需要组合的因素 | 要回答的问题 |
+| 输入或约束 | 固定内容 | 产生的判断 |
 |:---|:---|:---|
-| 训练路径 | BF16 LoRA baseline、NF4 QLoRA candidate | adapter 的更新路径是否相同？ |
-| 冻结底座表示 | BF16、NF4、double quant | 表示压缩能释放多少训练显存？ |
-| adapter 配置 | rank、alpha、target modules（固定） | 排除 adapter 容量变化对结论的干扰 |
-| workload | batch、seq_len、steps、数据 split | 当前任务的成本和质量如何测量？ |
-| 选型门槛 | 显存上限、吞吐下限、质量下限 | 哪些候选值得进入复测？ |
+| 数据准入 | 样本 ID、训练/验证切分与 template | 两条路径是否学习同一任务 |
+| 更新语义 | rank、alpha、target modules、学习率与有效 batch | 差异能否归因于冻结底座表示 |
+| 资源预算 | 峰值显存上限、最小可行 micro-batch | 候选能否进入真实训练 |
+| 交付要求 | 独立验证、低比特生效、adapter 与哈希 | 结果能否被后续实验复测 |
 
 ![QLoRA 的预算选型](../public/02_PyTorch_Algorithms/65_qlora_selection_flow.svg)
 
-### Step 2：固定训练任务，逐项比较候选
+### Step 2：保持更新语义，只改变冻结底座表示
 
-先固定模型版本、数据、随机种子、训练步数和评测方式；每轮只改变一种候选策略。这样，显存或质量变化才可以追溯到 LoRA、QLoRA 或 adapter 配置，而不是来自不同 workload。
+BF16 LoRA 与 NF4 QLoRA 使用同一模型提交、相同数据切分、相同随机种子组、相同 LoRA 配置和有效 batch。只有加载底座的表示与量化元数据不同；否则显存或质量差异无法解释。
 
-| 信息类别 | 固定内容 | 每轮可改变的候选策略 | 用途 |
+| 比较对象 | 必须固定 | 唯一变化 | 观察字段 |
 |:---|:---|:---|:---|
-| 模型与数据 | model revision、tokenizer、data split、seed | 不变 | 保证质量结果可比较 |
-| 训练口径 | steps、batch、seq_len、评测指标 | 不变 | 保证成本口径可比较 |
-| 训练路径 | adapter、optimizer、学习率、有效 batch | 不变 | 保证更新语义可比较 |
-| 冻结底座表示 | BF16 LoRA | NF4 + double quant QLoRA | 比较低比特表示与可训练容量 |
-| 选型门槛 | memory cap、min tokens/s、max val loss | 不变 | 判断候选是否可行 |
+| 模型与数据 | revision、tokenizer、数据 manifest、种子组 | 无 | 独立验证损失与样本身份 |
+| 训练路径 | rank、alpha、target modules、学习率、有效 batch | 无 | 可训练参数与更新次数 |
+| 冻结底座 | 相同模型权重 | BF16 / NF4 + double quant | 峰值、保留显存与低比特生效状态 |
+| 容量测量 | seq_len、步数、OOM 处理 | micro-batch 阶梯 | 最大可行 micro-batch |
 
-### Step 3：从资源账本走到真实训练证据
+### Step 3：从资源账本走到可交付训练证据
 
-先用资源账本排除明显无法运行的方案，再比较候选的速度和验证质量；GPU 复测负责确认真实峰值显存、训练时间和 adapter 是否能保存。下表也给出代码中常见参数的含义，避免把 CPU 估算当成 GPU 实测。
+账本只能估计容量；真实训练还必须确认 NF4 是否加载、生效的训练路径、峰值显存、独立验证、失败运行和 adapter 哈希。只有这些证据处于同一 workload，才允许给出低资源选型结论。
 
-| 证据层级 | 记录内容 | 用于判断什么 |
+| 证据 | 最少记录 | 可以作出的判断 |
 |:---|:---|:---|
-| CPU 账本 | 冻结权重、adapter、梯度、optimizer、activation、量化元数据 | 理论资源是否能容纳候选 |
-| 候选门槛 | `memory_cap_mb`、`min_tokens_per_s`、`max_val_loss`、可行 micro-batch | 显存、速度、质量与规模能否同时接受 |
-| GPU smoke | 真实加载、短训练、OOM、基本验证质量 | 训练链路是否可运行 |
-| GPU measured | `peak_memory_mb`、`peak_reserved_mb`、可行 micro-batch、step time、tokens/s、val loss | 当前 workload 的真实代价 |
-| artifact | model revision、adapter config、结果 JSON、保存路径 | 结果能否复测和交接 |
+| CPU 账本 | 冻结底座、adapter、梯度、优化器、激活与量化元数据 | 候选是否值得进入 GPU 对照 |
+| GPU 配对重复 | 峰值、步时、吞吐、独立验证、失败运行 | 固定 workload 下的资源与质量差异 |
+| 容量阶梯 | 每档 micro-batch 的成功或 OOM | 低比特路径是否扩大可行规模 |
+| artifact | 模型提交、LoRA 配置、adapter 哈希、结果 JSON | 候选能否被定位与复测 |
 
 ![训练账本与 QLoRA 证据链](../public/02_PyTorch_Algorithms/65_qlora_memory_ledger.svg)
 
-### Step 4（CPU 代码练习）：评估候选组合并形成选型决策
+### Step 4（CPU 代码练习）：核对比较身份、证据与交付动作
 
-题目区先用账本候选验证“低比特底座是否值得进入真实训练”：先检查显存、速度、质量与可行规模，再比较可行候选，最后给出项目动作。真实 adapter 与结果 JSON 在 Step 5 一起保存。
+题目区不模拟训练速度，也不为候选编造总分。它依次检查两条路径是否属于同一 workload、QLoRA 证据是否达到可比较条件，以及结果应进入交付、调参还是拒绝。
 
 | 类型 | 函数 | 学习者需要完成的内容 | 测试关注点 |
 |:---|:---|:---|:---|
-| 辅助函数 | `validate_qlora_candidate` / `validate_budget_and_quality` | 检查输入契约和预算字段 | 缺失、非法和非有限值 |
-| TODO 1 | `candidate_passes_gates` | 组合显存、吞吐、质量与可行规模门槛 | 门槛同时通过与单项失败 |
-| TODO 2 | `candidate_rank_key` | 定义可行候选的资源—规模—速度—质量排序 | 多候选的稳定排序 |
-| TODO 3 | `choose_qlora_action` | 根据 QLoRA 可行性和最优性选择动作 | `accept / tune / reject` 的策略路径 |
+| 辅助函数 | `validate_qlora_candidate` / `validate_budget_and_quality` | 检查字段、数值与预算 | 缺失、非法和非有限值 |
+| TODO 1 | `same_workload_identity` | 比较模型、数据、adapter 与有效 batch 身份 | 单个字段漂移必须阻断比较 |
+| TODO 2 | `candidate_passes_gates` | 将真实证据、低比特生效、质量和容量合成硬门槛 | 估算或单次 smoke 不能进入交付 |
+| TODO 3 | `choose_qlora_action` | 从两条可比较路径的证据决定交付动作 | `accept / tune / reject` 与失败原因 |
 
 ```python
 from typing import Dict, List
@@ -174,29 +171,38 @@ def _candidate_failure_reasons(candidate: Dict[str, object], budget: Dict[str, f
     return reasons
 
 
+def same_workload_identity(baseline: Dict[str, object], candidate: Dict[str, object]) -> bool:
+    """确认两条训练路径只在冻结底座表示上不同。"""
+    baseline_identity = baseline.get('identity', {})
+    candidate_identity = candidate.get('identity', {})
+    required = ('model_commit', 'data_manifest_hash', 'adapter_signature', 'effective_batch', 'max_length', 'update_steps', 'seed_set')
+    # TODO 1（比较身份）：每个必需字段都存在且完全一致，才允许比较两条训练路径。
+    # 变量提示：baseline_identity、candidate_identity、required。
+    raise NotImplementedError('TODO 1：请验证两条路径的 workload identity')
+
+
 def candidate_passes_gates(candidate: Dict[str, object], budget: Dict[str, float], quality_floor: Dict[str, float]) -> bool:
-    """判断候选是否同时通过显存、可行规模、吞吐和质量门槛。"""
+    """判断候选是否达到进入 GPU 对照的资源与质量门槛。"""
     memory_ok = candidate['memory_mb'] <= budget['memory_cap_mb']
     scale_ok = candidate['max_micro_batch'] >= budget['min_micro_batch']
     throughput_ok = candidate['tokens_per_s'] >= budget['min_tokens_per_s']
     quality_ok = candidate['val_loss'] <= quality_floor['max_val_loss']
-    # TODO 1（低比特训练门槛）：只有资源、规模、速度和质量同时通过，候选才可进入后续比较。
+    # TODO 2（候选准入）：只有资源、规模、速度和质量同时通过，候选才可进入 GPU 对照。
     # 变量提示：memory_ok、scale_ok、throughput_ok、quality_ok。
-    raise NotImplementedError('TODO 1：请判断候选是否通过四项门槛')
+    raise NotImplementedError('TODO 2：请判断候选是否通过四项门槛')
 
 
 def candidate_rank_key(candidate: Dict[str, object]) -> tuple[float, float, float, float]:
     """定义可行候选的比较顺序：更省显存，再更大可行规模、更高吞吐和更低损失。"""
-    # TODO 2（低比特训练排序）：返回用于排序的四元组。
-    # 变量提示：memory_mb 升序；max_micro_batch 降序；tokens_per_s 降序；val_loss 升序。
-    raise NotImplementedError('TODO 2：请定义候选排序规则')
+    return (candidate['memory_mb'], -candidate['max_micro_batch'], -candidate['tokens_per_s'], candidate['val_loss'])
 
 
 def choose_qlora_action(summary: Dict[str, object]) -> str:
-    """根据 QLoRA 的可行性和最优性选择 accept / tune / reject。"""
+    """根据身份、实测证据和 QLoRA 候选状态选择交付动作。"""
     qlora_evaluation = summary.get('qlora_evaluation')
-    # TODO 3（策略决策机制）：无可行候选 -> reject；QLoRA 可行且最优 -> accept；其余 -> tune。
-    # 变量提示：summary['feasible_count']、summary['best_strategy']、qlora_evaluation。
+    # TODO 3（交付决策）：没有可行候选 -> reject；身份不一致或不是配对 GPU 实测 -> tune；
+    # QLoRA 可行、低比特已生效且资源最优 -> accept；其余 -> tune。
+    # 变量提示：summary['feasible_count']、summary['identity_match']、summary['best_strategy']、qlora_evaluation。
     raise NotImplementedError('TODO 3：请完成 QLoRA 策略决策')
 
 
@@ -226,6 +232,8 @@ def summarize_low_resource_candidates(candidates: List[Dict[str, object]], budge
         for evaluation in evaluations if not evaluation['feasible']
     ]
     qlora_evaluation = next((item for item in evaluations if item['strategy'] == 'qlora'), None)
+    baseline = next((item for item in candidates if item['strategy'] == 'lora'), None)
+    qlora_candidate = next((item for item in candidates if item['strategy'] == 'qlora'), None)
     return {
         'candidate_count': len(candidates),
         'feasible_count': len(feasible),
@@ -236,6 +244,9 @@ def summarize_low_resource_candidates(candidates: List[Dict[str, object]], budge
         'rejected': rejected,
         'evaluations': evaluations,
         'qlora_evaluation': qlora_evaluation,
+        'identity_match': bool(baseline and qlora_candidate and same_workload_identity(baseline, qlora_candidate)),
+        'qlora_evidence_level': qlora_candidate.get('evidence') if qlora_candidate else None,
+        'qlora_low_bit_active': bool(qlora_candidate and qlora_candidate.get('low_bit_active')),
     }
 
 
@@ -267,8 +278,8 @@ def _quality_floor():
 
 def _selection_fixtures():
     return [
-        {'name': 'lora_bf16', 'strategy': 'lora', 'quantization': 'bf16', 'evidence': 'estimated', 'memory_mb': 14500.0, 'max_micro_batch': 1, 'tokens_per_s': 20.0, 'val_loss': 1.10},
-        {'name': 'qlora_nf4', 'strategy': 'qlora', 'quantization': 'nf4', 'evidence': 'estimated', 'memory_mb': 9800.0, 'max_micro_batch': 2, 'tokens_per_s': 19.0, 'val_loss': 1.16},
+        {'name': 'lora_bf16', 'strategy': 'lora', 'quantization': 'bf16', 'evidence': 'real_gpu_paired_repeat', 'memory_mb': 14500.0, 'max_micro_batch': 1, 'tokens_per_s': 20.0, 'val_loss': 1.10, 'low_bit_active': False, 'identity': {'model_commit': 'm1', 'data_manifest_hash': 'd1', 'adapter_signature': 'r8-qv', 'effective_batch': 2, 'max_length': 256, 'update_steps': 12, 'seed_set': '42,123,2024'}},
+        {'name': 'qlora_nf4', 'strategy': 'qlora', 'quantization': 'nf4', 'evidence': 'real_gpu_paired_repeat', 'memory_mb': 9800.0, 'max_micro_batch': 2, 'tokens_per_s': 19.0, 'val_loss': 1.16, 'low_bit_active': True, 'identity': {'model_commit': 'm1', 'data_manifest_hash': 'd1', 'adapter_signature': 'r8-qv', 'effective_batch': 2, 'max_length': 256, 'update_steps': 12, 'seed_set': '42,123,2024'}},
     ]
 
 
@@ -289,6 +300,13 @@ def test_candidate_validation_contract():
     invalid = validate_qlora_candidate({'name': 'bad', 'strategy': 'qlora', 'quantization': 'nf4', 'evidence': 'estimated', 'memory_mb': float('nan'), 'max_micro_batch': 1, 'tokens_per_s': 1.0, 'val_loss': 1.0})
     assert 'non_finite:memory_mb' in invalid
     assert validate_budget_and_quality(_budget(), _quality_floor())['is_valid'] is True
+
+
+def test_workload_identity_mechanism():
+    baseline, qlora = _selection_fixtures()
+    assert same_workload_identity(baseline, qlora) is True
+    drifted = {**qlora, 'identity': {**qlora['identity'], 'max_length': 512}}
+    assert same_workload_identity(baseline, drifted) is False
 
 
 def test_gate_mechanism():
@@ -334,6 +352,7 @@ def run_qlora_selection_tests():
     for test in (
         test_memory_ledger_contract,
         test_candidate_validation_contract,
+        test_workload_identity_mechanism,
         test_gate_mechanism,
         test_candidate_ranking_mechanism,
         test_project_decision_mechanism,
@@ -438,31 +457,42 @@ def _candidate_failure_reasons(candidate: Dict[str, object], budget: Dict[str, f
     return reasons
 
 
+def same_workload_identity(baseline: Dict[str, object], candidate: Dict[str, object]) -> bool:
+    """确认两条训练路径只在冻结底座表示上不同。"""
+    baseline_identity = baseline.get('identity', {})
+    candidate_identity = candidate.get('identity', {})
+    required = ('model_commit', 'data_manifest_hash', 'adapter_signature', 'effective_batch', 'max_length', 'update_steps', 'seed_set')
+    # TODO 1（比较身份）：所有身份字段存在且完全一致才允许比较。
+    return all(baseline_identity.get(key) is not None and baseline_identity.get(key) == candidate_identity.get(key) for key in required)
+
+
 def candidate_passes_gates(candidate: Dict[str, object], budget: Dict[str, float], quality_floor: Dict[str, float]) -> bool:
-    """判断候选是否同时通过显存、可行规模、吞吐和质量门槛。"""
+    """判断候选是否达到进入 GPU 对照的资源与质量门槛。"""
     memory_ok = candidate['memory_mb'] <= budget['memory_cap_mb']
     scale_ok = candidate['max_micro_batch'] >= budget['min_micro_batch']
     throughput_ok = candidate['tokens_per_s'] >= budget['min_tokens_per_s']
     quality_ok = candidate['val_loss'] <= quality_floor['max_val_loss']
-    # TODO 1（低比特训练门槛）：资源、规模、速度和质量同时通过，候选才可进入后续比较。
+    # TODO 2（候选准入）：资源、规模、速度和质量同时通过，候选才可进入 GPU 对照。
     return memory_ok and scale_ok and throughput_ok and quality_ok
 
 
 def candidate_rank_key(candidate: Dict[str, object]) -> tuple[float, float, float, float]:
     """定义可行候选的比较顺序：更省显存，再更大可行规模、更高吞吐和更低损失。"""
-    # TODO 2（低比特训练排序）：资源优先，其次是可行规模、速度和质量。
+    # 只对已通过硬门槛的候选使用该稳定排序。
     return (candidate['memory_mb'], -candidate['max_micro_batch'], -candidate['tokens_per_s'], candidate['val_loss'])
 
 
 def choose_qlora_action(summary: Dict[str, object]) -> str:
-    """根据 QLoRA 的可行性和最优性选择 accept / tune / reject。"""
+    """根据身份、实测证据和 QLoRA 候选状态选择交付动作。"""
     qlora_evaluation = summary.get('qlora_evaluation')
-    # TODO 3（策略决策机制）：无可行候选 -> reject；QLoRA 可行且最优 -> accept；其余 -> tune。
+    # TODO 3（交付决策）：估算或单次 smoke 只能保留为 tune，不能写成选型结论。
     if summary['feasible_count'] == 0:
         return 'reject'
-    if qlora_evaluation and qlora_evaluation['feasible'] and summary['best_strategy'] == 'qlora':
-        return 'accept'
-    return 'tune'
+    if not summary.get('identity_match') or not qlora_evaluation or not qlora_evaluation['feasible']:
+        return 'tune'
+    if summary.get('qlora_evidence_level') != 'real_gpu_paired_repeat' or not summary.get('qlora_low_bit_active'):
+        return 'tune'
+    return 'accept' if summary['best_strategy'] == 'qlora' else 'tune'
 
 
 def evaluate_qlora_candidate(candidate: Dict[str, object], budget: Dict[str, float], quality_floor: Dict[str, float]) -> Dict[str, object]:
@@ -491,6 +521,8 @@ def summarize_low_resource_candidates(candidates: List[Dict[str, object]], budge
         for evaluation in evaluations if not evaluation['feasible']
     ]
     qlora_evaluation = next((item for item in evaluations if item['strategy'] == 'qlora'), None)
+    baseline = next((item for item in candidates if item['strategy'] == 'lora'), None)
+    qlora_candidate = next((item for item in candidates if item['strategy'] == 'qlora'), None)
     return {
         'candidate_count': len(candidates),
         'feasible_count': len(feasible),
@@ -501,6 +533,9 @@ def summarize_low_resource_candidates(candidates: List[Dict[str, object]], budge
         'rejected': rejected,
         'evaluations': evaluations,
         'qlora_evaluation': qlora_evaluation,
+        'identity_match': bool(baseline and qlora_candidate and same_workload_identity(baseline, qlora_candidate)),
+        'qlora_evidence_level': qlora_candidate.get('evidence') if qlora_candidate else None,
+        'qlora_low_bit_active': bool(qlora_candidate and qlora_candidate.get('low_bit_active')),
     }
 
 
@@ -519,22 +554,22 @@ def decide_qlora_project(summary: Dict[str, object]) -> Dict[str, object]:
 
 ### 解析
 
-题目区的三处 TODO 分别对应低资源微调选型中的三个机制动作；候选字段检查、失败原因和项目报告由骨架提供。
+题目区的三处 TODO 分别对应项目比较中的身份、准入和交付判断；字段校验、失败原因和报告结构由骨架提供。
 
-**TODO 1：四项训练门槛**
+**TODO 1：比较身份一致性**
 
-- 显存、可行 micro-batch、吞吐和质量必须同时通过，候选才可以参与后续排序。
-- `max_micro_batch` 记录在固定模型与序列长度下可承载的单卡 batch；它和固定 workload 的结果一起说明候选能否扩大训练规模。
+- 两条路径必须使用相同模型提交、数据 manifest、adapter、有效 batch、长度、更新步数与种子组。
+- 任一字段漂移都会改变训练语义或 workload，因此不能把测量差异归因于 NF4。
 
-**TODO 2：候选排序规则**
+**TODO 2：候选准入**
 
-- 只在可行候选之间排序：优先更低显存，其次更大的可行 micro-batch、更高吞吐和更低验证损失。
-- 这是预算受限时的默认顺序；质量要求更严格时，应先收紧质量门槛而不是只改排序。
+- 显存、可行 micro-batch、吞吐和验证质量必须同时通过，候选才值得进入 GPU 配对复测。
+- 这里的通过只代表“可以测”；最终交付仍要求低比特路径生效、配对重复和 artifact 证据。
 
-**TODO 3：QLoRA 策略决策**
+**TODO 3：QLoRA 交付决策**
 
-- 没有可行候选时 `reject`；QLoRA 既可行又最优时 `accept`；其余情况 `tune`。
-- `tune` 对应可检查的下一步：rank、target modules、有效 batch、量化配置或数据质量。
+- 没有可行候选时 `reject`；身份不一致、仅有估算或单次 smoke 时 `tune`；只有 QLoRA 通过配对 GPU 重复、低比特已生效且资源最优时才 `accept`。
+- `tune` 的下一步是补齐身份、容量、重复或量化路径证据，而不是直接扩大结论。
 
 #### CPU 选型报告（可选导出）
 
@@ -551,9 +586,9 @@ except ModuleNotFoundError:
     validate_project_config = lambda config: []
     save_project_report = None
 
-RUN_MODE = 'cpu'  # cpu / dry_run / real_gpu。
+RUN_MODE = 'dry_run'  # dry_run 只检查环境；改为 real_gpu 执行真实 QLoRA 对照。
 PROJECT_ID = '65_qlora_selection'
-PROJECT_RESULT_PATH = 'benchmarks/results/65_qlora_selection.json'
+PROJECT_RESULT_PATH = 'benchmarks/results/65_qlora_selection/qlora_selection_cpu_baseline.json'
 PROJECT_CONFIG = {
     'project': PROJECT_ID, 'model': 'template', 'dtype': 'fp32',
     'batch_size': 1, 'seq_len': 128, 'steps': 1, 'seed': 42,
@@ -588,49 +623,62 @@ if RUN_PROJECT_EXPORT:
     print(f'已保存 CPU 选型报告：{PROJECT_RESULT_PATH}')
 ```
 
-### Step 5（可选）：GPU/QLoRA 实验——验证真实训练代价
+### Step 5：QLoRA 配对 GPU 实验与低资源交付
 
 #### 5.1 环境、模型与固定 workload
 
-固定模型、数据 split、dtype、batch、seq_len、steps、seed 和评测指标；LoRA 与 QLoRA 只改变 adapter / quantization 配置。
+本实验读取 64 节已经准入的数据快照，按同一模型提交、数据切分、适配器、有效 batch、训练步数和随机种子，配对比较 BF16 LoRA 与 NF4 QLoRA。容量阶梯单独回答能否扩大 micro-batch，不能替代固定 workload 的质量比较。
 
 | 实验要素 | LoRA baseline | QLoRA candidate |
 |---|---|---|
-| 模型与数据 | 固定 | 与 baseline 相同 |
-| 训练口径 | batch、seq_len、steps、seed 固定 | 与 baseline 相同 |
-| 变化变量 | LoRA adapter | NF4 / double quant / adapter 配置 |
-| 评测字段 | peak memory、step time、tokens/s、val loss | 与 baseline 相同 |
+| 模型、数据与适配器 | 固定提交与 64 节切分；同一 LoRA 配置 | 与 baseline 相同 |
+| 固定训练条件 | effective batch、seq_len、steps、seeds 固定 | 与 baseline 相同 |
+| 唯一变化变量 | BF16 冻结底座 | NF4 + double quant 冻结底座 |
+| 配对证据 | 峰值显存、步时、监督词元/s、独立评测 loss | 与 baseline 对照 |
 
 ![QLoRA GPU 复测流程](../public/02_PyTorch_Algorithms/65_qlora_gpu_experiment_flow.svg)
 
 ```python
-# 5.1：固定本轮 LoRA / QLoRA 对照的模型、workload 与输出路径。
+# 5.1：固定上游数据快照、配对 workload 与输出路径。
 import json
 import importlib.metadata as metadata
 import platform
-from datetime import datetime
 from pathlib import Path
+from tools.fine_tuning_project_runtime import locate_repo_root
+from tools.project_runtime import save_json_record_once
 
-RUN_GPU_EXPERIMENT = False  # 默认关闭；确认环境后再改为 True。
+PROFILE_ID = 'Q-QLORA'  # bitsandbytes 低比特训练环境。
+RUN_LABEL = 'rtx5070ti_qlora_15b_capacity_v1'  # 1.5B 容量交叉实验；保留 0.5B v3 的 tune 证据。
+RUN_MODE = 'dry_run'  # 默认只检查配置；改为 'real_gpu' 执行新的真实对照。
+RUN_GPU_EXPERIMENT = RUN_MODE == 'real_gpu'
+SEMANTIC_ID = 'PT-QLORA-SELECTION'
+SCHEMA_VERSION = 'qlora-benchmark/v1'
+
 SAVE_ARTIFACTS = True
-MODEL_ID = 'Qwen/Qwen2.5-0.5B-Instruct'
-MAX_LENGTH = 128
-MAX_STEPS = 3
-FIXED_MICRO_BATCH = 1  # baseline 与 candidate 共用的训练 batch。
-MICRO_BATCH_CANDIDATES = (1, 2, 4)  # 可选容量探针从小到大尝试的 batch。
-RUN_SCALE_PROBE = False  # 默认关闭，避免短教程实验重复启动多次训练。
-SEED = 42
+REPO_ROOT = locate_repo_root()
+UPSTREAM_DATA_MANIFEST = REPO_ROOT / 'benchmarks/results/64_sft_data_quality/sft_data_manifest_alpaca_qwen25_15b_v1.json'
+MODEL_ID = 'Qwen/Qwen2.5-1.5B'  # 必须与本轮 64 数据审计的 tokenizer 身份一致。
+MODEL_REVISION = 'main'
+LOCAL_FILES_ONLY = False
+MAX_LENGTH = 256  # 与 64 节数据审计的长度上限一致。
+TRAIN_EXAMPLE_COUNT = 96
+EVALUATION_EXAMPLE_COUNT = 32
+MAX_STEPS = 12
+FIXED_MICRO_BATCH = 1
+MICRO_BATCH_CANDIDATES = (1, 2, 4, 8)
+RUN_CAPACITY_LADDER = True
+CAPACITY_PROBE_STEPS = 2
+SEEDS = (17, 29, 43)
 QUALITY_TOLERANCE = 0.10
-RESULT_PATH = f'benchmarks/results/65_qlora_gpu_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
-ARTIFACT_MANIFEST_PATH = 'benchmarks/results/65_qlora_artifact_manifest.json'
+MAX_STEP_TIME_REGRESSION_RATIO = 0.15  # 固定 workload 上可接受的中位步时回退上限。
+MIN_MEMORY_SAVING_RATIO = 0.10  # 未扩大容量时，至少节省 10% 峰值显存才视为低资源收益。
+RESULTS_DIR = REPO_ROOT / 'benchmarks/results/65_qlora_selection'
+RAW_RESULT_PATH = RESULTS_DIR / f'qlora_selection_raw_{RUN_LABEL}.json'
+RESULT_PATH = RESULTS_DIR / f'qlora_selection_{RUN_LABEL}.json'
+ARTIFACT_MANIFEST_PATH = RESULTS_DIR / f'qlora_artifact_manifest_{RUN_LABEL}.json'
 
-TOY_TEXTS = [
-    'Explain why a smaller batch can reduce memory but change the optimization dynamics.',
-    'Compare LoRA and QLoRA when the quality floor and memory budget are fixed.',
-    'Describe how NF4 changes the frozen base model while the adapter remains trainable.',
-    'Give one reason to inspect validation loss after a low-bit fine-tuning run.',
-]
-print({'model': MODEL_ID, 'max_length': MAX_LENGTH, 'steps': MAX_STEPS, 'fixed_micro_batch': FIXED_MICRO_BATCH, 'scale_probe': RUN_SCALE_PROBE, 'result_json': RESULT_PATH})
+print({'run_mode': RUN_MODE, 'profile': PROFILE_ID, 'run_label': RUN_LABEL, 'upstream_data_manifest': str(UPSTREAM_DATA_MANIFEST), 'model': MODEL_ID, 'max_length': MAX_LENGTH, 'train_examples': TRAIN_EXAMPLE_COUNT, 'evaluation_examples': EVALUATION_EXAMPLE_COUNT, 'steps': MAX_STEPS, 'seeds': SEEDS, 'capacity_ladder': RUN_CAPACITY_LADDER, 'raw_result_json': str(RAW_RESULT_PATH), 'result_json': str(RESULT_PATH), 'artifact_manifest': str(ARTIFACT_MANIFEST_PATH)})
+
 ```
 
 #### 5.2 环境启动检查
@@ -649,7 +697,8 @@ def _package_version(name):
 def _require_gpu_dependencies():
     import torch
     if not torch.cuda.is_available():
-        raise RuntimeError('未检测到 CUDA GPU；请保持 RUN_GPU_EXPERIMENT=False，先完成 CPU 实验。')
+        raise RuntimeError("未检测到 CUDA GPU；请改回 RUN_MODE='dry_run'，并检查 Q-QLORA 环境。")
+    from datasets import load_dataset
     from transformers import AutoModelForCausalLM, AutoTokenizer, Trainer, TrainingArguments
     from peft import LoraConfig, get_peft_model
     return torch, AutoModelForCausalLM, AutoTokenizer, Trainer, TrainingArguments, LoraConfig, get_peft_model
@@ -660,7 +709,7 @@ def _environment_snapshot(torch):
         'gpu': torch.cuda.get_device_name(0), 'torch': torch.__version__,
         'cuda': torch.version.cuda, 'python': platform.python_version(),
         'transformers': _package_version('transformers'), 'peft': _package_version('peft'),
-        'bitsandbytes': _package_version('bitsandbytes'),
+        'bitsandbytes': _package_version('bitsandbytes'), 'datasets': _package_version('datasets'),
     }
 
 
@@ -672,21 +721,62 @@ if RUN_GPU_EXPERIMENT:
         print({'preflight': 'failed', 'error_type': type(error).__name__, 'error': str(error)})
         raise
 else:
-    print('GPU preflight 未启动；保持 RUN_GPU_EXPERIMENT=False。')
+    print('GPU preflight 未启动；保持 RUN_MODE=dry_run。')
 ```
 
 #### 5.3 配置 LoRA/QLoRA 与数据
 
-固定 adapter、数据 split 和有效 batch；只让冻结底座在 BF16 LoRA 与 NF4 QLoRA 之间变化。容量探针会在相同序列长度和训练步数下逐步提高 micro-batch，和固定 workload 的速度、质量结果分开记录。
+先读取 64 节数据准入清单，再按其中的源索引重建训练与评测记录；重算样本 ID 不一致会直接停止。SFT labels 屏蔽提示词，只对 response Token 计算损失。
 
 ```python
-# 5.3：准备数据、LoRA/QLoRA 配置和单组训练函数；本单元不执行训练。
-def _tokenize_examples(tokenizer):
+# 5.3：从 64 节准入清单重建数据，并定义一组可复跑的训练。
+def _record_sample_id(record):
+    from tools.post_training_project_runtime import normalized_text, stable_text_hash
+    return stable_text_hash((normalized_text(record.get('instruction')), normalized_text(record.get('input')), normalized_text(record.get('output'))))
+
+
+def load_admitted_workload():
+    """按 64 节登记的源索引与样本 ID 重建本项目的固定子 workload。"""
+    from datasets import load_dataset
+    manifest = json.loads(UPSTREAM_DATA_MANIFEST.read_text(encoding='utf-8'))
+    if manifest.get('decision') != 'accept':
+        raise RuntimeError('64 节数据准入不是 accept；不能启动 QLoRA 对照。')
+    if manifest['tokenizer']['id'] != MODEL_ID or manifest['workload']['max_length'] != MAX_LENGTH:
+        raise RuntimeError('65 的模型或 max_length 与 64 的数据审计身份不一致。')
+    snapshot = manifest['snapshot']
+    train_indices = snapshot['train_record_indices'][:TRAIN_EXAMPLE_COUNT]
+    evaluation_indices = snapshot['evaluation_record_indices'][:EVALUATION_EXAMPLE_COUNT]
+    if len(train_indices) != TRAIN_EXAMPLE_COUNT or len(evaluation_indices) != EVALUATION_EXAMPLE_COUNT:
+        raise RuntimeError('64 节准入快照不足以构成当前固定 workload。')
+    dataset = load_dataset(
+        manifest['dataset']['id'], split=f"train[:{manifest['workload']['sample_count']}]",
+        revision=manifest['dataset']['resolved_commit'],
+    )
+    train_records = [dict(dataset[index]) for index in train_indices]
+    evaluation_records = [dict(dataset[index]) for index in evaluation_indices]
+    if [_record_sample_id(row) for row in train_records] != snapshot['train_sample_ids'][:TRAIN_EXAMPLE_COUNT]:
+        raise RuntimeError('重建后的训练样本 ID 与 64 节准入快照不一致。')
+    if [_record_sample_id(row) for row in evaluation_records] != snapshot['evaluation_sample_ids'][:EVALUATION_EXAMPLE_COUNT]:
+        raise RuntimeError('重建后的评测样本 ID 与 64 节准入快照不一致。')
+    return manifest, train_records, evaluation_records
+
+
+def _tokenize_examples(tokenizer, records):
     rows = []
-    for text in TOY_TEXTS:
-        item = tokenizer(text, truncation=True, max_length=MAX_LENGTH, add_special_tokens=True)
-        item['labels'] = list(item['input_ids'])
-        rows.append(item)
+    for record in records:
+        prompt = f"### Instruction:\n{record['instruction']}\n"
+        if str(record.get('input', '')).strip():
+            prompt += f"### Input:\n{record['input']}\n"
+        prompt += '### Response:\n'
+        prompt_ids = tokenizer(prompt, add_special_tokens=False)['input_ids']
+        response_ids = tokenizer(str(record['output']), add_special_tokens=False)['input_ids'] + [tokenizer.eos_token_id]
+        input_ids = (prompt_ids + response_ids)[:MAX_LENGTH]
+        response_start = min(len(prompt_ids), len(input_ids))
+        if response_start == len(input_ids):
+            raise ValueError('当前 max_length 截断了全部 response Token。')
+        labels = [-100] * response_start + input_ids[response_start:]
+        padding = MAX_LENGTH - len(input_ids)
+        rows.append({'input_ids': input_ids + [tokenizer.pad_token_id] * padding, 'attention_mask': [1] * len(input_ids) + [0] * padding, 'labels': labels + [-100] * padding})
     return rows
 
 
@@ -697,18 +787,17 @@ class _ListDataset:
 
 
 def _collate(tokenizer, rows):
-    batch = tokenizer.pad(rows, padding=True, return_tensors='pt')
-    batch['labels'] = batch['input_ids'].clone()
-    batch['labels'][batch['attention_mask'] == 0] = -100
-    return batch
+    import torch
+    return {key: torch.tensor([row[key] for row in rows], dtype=torch.long) for key in ('input_ids', 'attention_mask', 'labels')}
 
 
-def run_qlora_variant(label, qlora, torch, AutoModelForCausalLM, AutoTokenizer, Trainer, TrainingArguments, LoraConfig, get_peft_model, micro_batch_size=FIXED_MICRO_BATCH, save_artifact=SAVE_ARTIFACTS):
+def run_qlora_variant(label, qlora, torch, AutoModelForCausalLM, AutoTokenizer, Trainer, TrainingArguments, LoraConfig, get_peft_model, *, model_commit, train_records, evaluation_records, seed, micro_batch_size=FIXED_MICRO_BATCH, update_steps=MAX_STEPS, save_artifact=SAVE_ARTIFACTS):
     import time
     from transformers import BitsAndBytesConfig
     from peft import prepare_model_for_kbit_training
-    torch.manual_seed(SEED)
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
+    from tools.post_training_project_runtime import hash_directory
+    torch.manual_seed(seed); torch.cuda.manual_seed_all(seed)
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, revision=model_commit, local_files_only=LOCAL_FILES_ONLY)
     if tokenizer.pad_token is None: tokenizer.pad_token = tokenizer.eos_token
     compute_dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
     model_kwargs = {'torch_dtype': compute_dtype, 'device_map': 'auto'}
@@ -717,18 +806,21 @@ def run_qlora_variant(label, qlora, torch, AutoModelForCausalLM, AutoTokenizer, 
             load_in_4bit=True, bnb_4bit_quant_type='nf4',
             bnb_4bit_use_double_quant=True, bnb_4bit_compute_dtype=compute_dtype,
         )
-    model = AutoModelForCausalLM.from_pretrained(MODEL_ID, **model_kwargs)
+    model = AutoModelForCausalLM.from_pretrained(MODEL_ID, revision=model_commit, local_files_only=LOCAL_FILES_ONLY, **model_kwargs)
+    low_bit_active = bool(getattr(model, 'is_loaded_in_4bit', False))
+    if qlora and not low_bit_active: raise RuntimeError('QLoRA candidate 未激活 4-bit 冻结底座。')
     if qlora: model = prepare_model_for_kbit_training(model)
     model = get_peft_model(model, LoraConfig(
         r=8, lora_alpha=16, lora_dropout=0.05, bias='none',
         target_modules=['q_proj', 'k_proj', 'v_proj', 'o_proj'], task_type='CAUSAL_LM',
     ))
-    rows = _tokenize_examples(tokenizer)
-    dataset, eval_dataset = _ListDataset(rows[:3]), _ListDataset(rows[3:])
+    train_rows = _tokenize_examples(tokenizer, train_records)
+    evaluation_rows = _tokenize_examples(tokenizer, evaluation_records)
+    dataset, eval_dataset = _ListDataset(train_rows), _ListDataset(evaluation_rows)
     args = TrainingArguments(
         output_dir=f'/tmp/65_{label}', per_device_train_batch_size=micro_batch_size,
-        gradient_accumulation_steps=1, learning_rate=2e-4, max_steps=MAX_STEPS,
-        logging_steps=1, save_strategy='no', report_to='none', seed=SEED,
+        gradient_accumulation_steps=1, learning_rate=2e-4, max_steps=update_steps,
+        logging_steps=1, save_strategy='no', report_to='none', seed=seed,
         remove_unused_columns=False, fp16=compute_dtype == torch.float16,
         bf16=compute_dtype == torch.bfloat16,
     )
@@ -739,55 +831,81 @@ def run_qlora_variant(label, qlora, torch, AutoModelForCausalLM, AutoTokenizer, 
     elapsed = time.perf_counter() - start
     eval_report = trainer.evaluate()
     logs = [item for item in trainer.state.log_history if 'loss' in item]
-    artifact_path = Path(f'benchmarks/results/65_{label}_adapter')
+    artifact_path = RESULTS_DIR / f'{RUN_LABEL}_{label}_seed{seed}_adapter'
     if save_artifact:
-        artifact_path.mkdir(parents=True, exist_ok=True); model.save_pretrained(artifact_path)
+        if artifact_path.exists(): raise FileExistsError(f'产物已存在，请修改 RUN_LABEL：{artifact_path}')
+        model.save_pretrained(artifact_path)
     return {
         'label': label, 'model_id': MODEL_ID, 'quantization': 'nf4' if qlora else 'bf16',
-        'fixed_micro_batch': micro_batch_size,
-        'compute_dtype': str(compute_dtype), 'steps': MAX_STEPS, 'seed': SEED,
-        'step_time_s': round(elapsed / max(MAX_STEPS, 1), 4),
-        'tokens_per_s': round(sum(len(x['input_ids']) for x in rows[:3]) / max(elapsed, 1e-9), 3),
+        'fixed_micro_batch': micro_batch_size, 'train_examples': len(train_rows), 'evaluation_examples': len(evaluation_rows),
+        'compute_dtype': str(compute_dtype), 'steps': update_steps, 'seed': seed,
+        'step_time_s': round(elapsed / max(update_steps, 1), 4),
+        'supervised_tokens_per_s': round(sum(sum(token != -100 for token in row['labels']) for row in train_rows[:update_steps]) / max(elapsed, 1e-9), 3),
         'peak_memory_mb': round(torch.cuda.max_memory_allocated() / 2**20, 3),
         'peak_memory_scope': 'train_and_eval',
         'peak_reserved_mb': round(torch.cuda.max_memory_reserved() / 2**20, 3),
         'last_train_loss': logs[-1].get('loss') if logs else None,
         'val_loss': eval_report.get('eval_loss'),
+        'low_bit_active': low_bit_active,
         'artifact_path': str(artifact_path) if save_artifact else None,
-        'evidence_level': 'gpu_smoke_single_run',
+        'artifact_hash': hash_directory(artifact_path) if save_artifact else None,
+        'evidence_level': 'real_gpu_pair_member',
+    }
+
+
+def summarize_variant(reports):
+    import statistics
+    if len(reports) != len(SEEDS):
+        raise RuntimeError('缺少配对重复，不能汇总为项目级证据。')
+    return {
+        'label': reports[0]['label'], 'seed_reports': reports, 'seeds': [report['seed'] for report in reports],
+        'peak_memory_mb_median': statistics.median(report['peak_memory_mb'] for report in reports),
+        'step_time_s_median': statistics.median(report['step_time_s'] for report in reports),
+        'supervised_tokens_per_s_median': statistics.median(report['supervised_tokens_per_s'] for report in reports),
+        'val_loss_median': statistics.median(report['val_loss'] for report in reports),
+        'all_low_bit_active': all(report['low_bit_active'] for report in reports),
+        'all_artifacts_hashed': all(report['artifact_hash'] for report in reports),
     }
 ```
 
 #### 5.4 执行训练并保存 JSON
 
-先用相同 micro-batch 运行 LoRA baseline 与 QLoRA candidate，再按需启动容量探针。固定 workload 的结果回答显存、速度和质量；容量探针单独记录最大可行 micro-batch 与失败状态。
+每个 seed 依次运行 LoRA baseline 与 QLoRA candidate，保证数据、步数和随机性一一对应。完成三组配对后，再用一个固定 seed 跑容量阶梯；OOM 是容量证据，不会覆盖已完成的质量比较。
 
 ```python
-# 5.4：执行两组短训练并保存原始 JSON；默认关闭。
+# 5.4：按同一上游快照运行 3 个种子的 LoRA / QLoRA 配对重复。
 if RUN_GPU_EXPERIMENT:
+    collisions = [path for path in (RAW_RESULT_PATH, RESULT_PATH, ARTIFACT_MANIFEST_PATH) if path.exists()]
+    if collisions:
+        raise FileExistsError(f'当前 RUN_LABEL 已有结果，请更换标签：{collisions}')
     try:
         deps = _require_gpu_dependencies()
         torch = deps[0]
         environment = _environment_snapshot(torch)
-        reports = [
-            run_qlora_variant('lora_baseline', False, *deps),
-            run_qlora_variant('qlora_candidate', True, *deps),
-        ]
+        upstream_manifest, train_records, evaluation_records = load_admitted_workload()
+        model_commit = upstream_manifest['tokenizer']['resolved_commit']
+        paired_reports = {'lora_baseline': [], 'qlora_candidate': []}
+        for seed in SEEDS:
+            paired_reports['lora_baseline'].append(run_qlora_variant('lora_baseline', False, *deps, model_commit=model_commit, train_records=train_records, evaluation_records=evaluation_records, seed=seed))
+            torch.cuda.empty_cache()
+            paired_reports['qlora_candidate'].append(run_qlora_variant('qlora_candidate', True, *deps, model_commit=model_commit, train_records=train_records, evaluation_records=evaluation_records, seed=seed))
+            torch.cuda.empty_cache()
+        baseline, candidate = summarize_variant(paired_reports['lora_baseline']), summarize_variant(paired_reports['qlora_candidate'])
         config = {
-            'model_id': MODEL_ID, 'max_length': MAX_LENGTH, 'max_steps': MAX_STEPS, 'seed': SEED,
+            'model_id': MODEL_ID, 'requested_model_revision': MODEL_REVISION, 'model_commit': model_commit, 'max_length': MAX_LENGTH, 'max_steps': MAX_STEPS, 'seeds': list(SEEDS),
             'fixed_micro_batch': FIXED_MICRO_BATCH, 'gradient_accumulation_steps': 1, 'effective_batch_size': FIXED_MICRO_BATCH, 'learning_rate': 2e-4,
             'lora_r': 8, 'lora_alpha': 16,
             'target_modules': ['q_proj', 'k_proj', 'v_proj', 'o_proj'],
-            'qlora_format': 'NF4 + double quant',
+            'qlora_format': 'NF4 + double quant', 'data_manifest': str(UPSTREAM_DATA_MANIFEST),
         }
         scale_probe = {'status': 'not_run', 'candidates': list(MICRO_BATCH_CANDIDATES), 'reports': []}
-        if RUN_SCALE_PROBE:
+        if RUN_CAPACITY_LADDER:
             scale_probe['status'] = 'completed'
             for label, use_qlora in [('lora_baseline', False), ('qlora_candidate', True)]:
                 attempts = []
                 for micro_batch in MICRO_BATCH_CANDIDATES:
                     try:
-                        attempts.append(run_qlora_variant(f'{label}_mb{micro_batch}', use_qlora, *deps, micro_batch_size=micro_batch, save_artifact=False))
+                        attempts.append(run_qlora_variant(f'{label}_mb{micro_batch}', use_qlora, *deps, model_commit=model_commit, train_records=train_records, evaluation_records=evaluation_records, seed=SEEDS[0], micro_batch_size=micro_batch, update_steps=CAPACITY_PROBE_STEPS, save_artifact=False))
                     except RuntimeError as error:
                         if 'out of memory' not in str(error).lower():
                             raise
@@ -797,114 +915,175 @@ if RUN_GPU_EXPERIMENT:
                 max_micro_batch = max((item['fixed_micro_batch'] for item in attempts if item.get('status') != 'oom'), default=0)
                 scale_probe['reports'].append({'label': label, 'max_micro_batch': max_micro_batch, 'attempts': attempts})
         payload = {
-            'schema_version': 'qlora-benchmark/v1', 'project': '65', 'json_path': RESULT_PATH,
-            'workload': {'model_id': MODEL_ID, 'max_length': MAX_LENGTH, 'steps': MAX_STEPS, 'seed': SEED,
-                         'train_examples': len(TOY_TEXTS) - 1, 'eval_examples': 1, 'fixed_micro_batch': FIXED_MICRO_BATCH, 'gradient_accumulation_steps': 1},
-            'baseline': reports[0], 'candidate': reports[1], 'environment': environment,
-            'config': config, 'reports': reports, 'scale_probe': scale_probe, 'failure': None,
-            'evidence_level': 'gpu_smoke_single_run', 'decision': 'pending_analysis',
+            'schema_version': SCHEMA_VERSION, 'semantic_id': SEMANTIC_ID, 'project': '65',
+            'run_label': RUN_LABEL, 'run_mode': RUN_MODE, 'environment_profile': PROFILE_ID,
+            'json_path': str(RAW_RESULT_PATH),
+            'workload': {'model_id': MODEL_ID, 'model_commit': model_commit, 'max_length': MAX_LENGTH, 'steps': MAX_STEPS, 'seeds': list(SEEDS),
+                         'train_examples': len(train_records), 'evaluation_examples': len(evaluation_records), 'fixed_micro_batch': FIXED_MICRO_BATCH, 'gradient_accumulation_steps': 1,
+                         'data_manifest_hash': upstream_manifest['sample_ids_hash'], 'train_sample_ids_hash': upstream_manifest['snapshot']['train_sample_ids_hash'], 'evaluation_sample_ids_hash': upstream_manifest['snapshot']['evaluation_sample_ids_hash']},
+            'baseline': baseline, 'candidate': candidate, 'environment': environment,
+            'config': config, 'paired_reports': paired_reports, 'scale_probe': scale_probe, 'failure': None,
+            'evidence_level': 'real_gpu_paired_repeat', 'decision': 'pending_analysis',
         }
-        Path(RESULT_PATH).parent.mkdir(parents=True, exist_ok=True)
-        Path(RESULT_PATH).write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding='utf-8')
-        print({'result_json': RESULT_PATH, 'groups': [item['label'] for item in reports]})
+        save_json_record_once(RAW_RESULT_PATH, payload)
+        print({'raw_result_json': str(RAW_RESULT_PATH), 'groups': list(paired_reports), 'seeds': list(SEEDS)})
     except Exception as exc:
         failure = {
-            'schema_version': 'qlora-benchmark/v1', 'project': '65', 'json_path': RESULT_PATH,
-            'workload': {'model_id': MODEL_ID, 'max_length': MAX_LENGTH, 'steps': MAX_STEPS},
+            'schema_version': SCHEMA_VERSION, 'semantic_id': SEMANTIC_ID, 'project': '65',
+            'run_label': RUN_LABEL, 'run_mode': RUN_MODE, 'environment_profile': PROFILE_ID,
+            'json_path': str(RAW_RESULT_PATH),
+            'workload': {'model_id': MODEL_ID, 'max_length': MAX_LENGTH, 'steps': MAX_STEPS, 'seeds': list(SEEDS)},
             'status': 'failed', 'baseline': None, 'candidate': None,
             'error_type': type(exc).__name__, 'error': str(exc), 'evidence_level': 'gpu_attempt_failed',
         }
-        Path(RESULT_PATH).parent.mkdir(parents=True, exist_ok=True)
-        Path(RESULT_PATH).write_text(json.dumps(failure, ensure_ascii=False, indent=2), encoding='utf-8')
+        if not RAW_RESULT_PATH.exists():
+            save_json_record_once(RAW_RESULT_PATH, failure)
         raise
 else:
-    print('训练未启动；设置 RUN_GPU_EXPERIMENT=True 后再运行。')
+    print('训练未启动；将 RUN_MODE 改为 real_gpu 后再运行。')
+
 ```
 
 #### 5.5 读取结果、artifact manifest 与复测记录
 
-读取训练 JSON 后，先核对固定 workload 与环境，再查看两组的显存、速度、质量、容量探针和失败状态。若 QLoRA adapter 已保存，再写入 artifact manifest，供后续项目确认训练来源。
+读取训练 JSON 后，先核对 64 节数据身份、模型提交和三个配对种子，再查看两组的中位显存、步时、监督词元吞吐、独立评测损失与容量阶梯。三个 QLoRA adapter 都保存并哈希后，才写入来源清单。
 
-| 实验组 | 固定 workload / JSON | 表示与 adapter | 峰值显存 | tokens/s | val loss | 最大可行 micro-batch | 失败 / artifact | evidence | decision |
+| 实验组 | 配对重复 | 表示与 adapter | 峰值显存中位数 | 监督词元/s 中位数 | 独立评测 loss 中位数 | 最大可行 micro-batch | artifact 哈希 | evidence | decision |
 |---|---|---|---:|---:|---:|---:|---|---|---|
-| LoRA baseline | 相同模型、数据、steps、micro-batch | BF16 + LoRA | 待填写 | 待填写 | 待填写 | 待探测 | 待填写 | 待填写 | 待判断 |
-| QLoRA candidate | 同 baseline | NF4 + double quant + LoRA | 待填写 | 待填写 | 待填写 | 待探测 | adapter path / 待填写 | 待填写 | 待判断 |
+| LoRA baseline | 三个相同 seed | BF16 + LoRA | 待填写 | 待填写 | 待填写 | 待探测 | 待填写 | 待填写 | 待判断 |
+| QLoRA candidate | 与 baseline 一一配对 | NF4 + double quant + LoRA | 待填写 | 待填写 | 待填写 | 待探测 | 待填写 | 待填写 | 待判断 |
 
 ```python
-# 5.5：读取训练结果；有 adapter 时写入训练来源 manifest。
+# 5.5：读取配对结果；组装全部 QLoRA adapter 的可追溯来源清单。
+def _build_artifact_manifest(gpu_result):
+    baseline, candidate = gpu_result['baseline'], gpu_result['candidate']
+    return {
+        'schema_version': 'qlora-artifact/v2', 'semantic_id': SEMANTIC_ID, 'project': '65',
+        'run_label': RUN_LABEL, 'run_mode': RUN_MODE, 'environment_profile': PROFILE_ID,
+        'manifest_role': 'training_provenance_only', 'artifact_type': 'adapter_or_merged_model',
+        'base_model_id': MODEL_ID, 'model_revision': gpu_result['workload']['model_commit'], 'tokenizer_path': MODEL_ID,
+        'upstream_data_manifest': str(UPSTREAM_DATA_MANIFEST), 'data_identity': gpu_result['workload'],
+        'baseline_summary': baseline, 'candidate_summary': candidate,
+        'artifacts': [{'seed': report['seed'], 'path': report['artifact_path'], 'sha256': report['artifact_hash']} for report in candidate['seed_reports']], 'artifact_format': 'peft_adapter',
+        'training_config': gpu_result['config'],
+        'quantization_config': {'base_model': 'nf4 + double quant', 'compute_dtype': candidate['seed_reports'][0]['compute_dtype'], 'low_bit_active': candidate['all_low_bit_active']},
+        'adapter_config': {'r': 8, 'lora_alpha': 16, 'target_modules': ['q_proj', 'k_proj', 'v_proj', 'o_proj']},
+        'quality_report': {'baseline_val_loss_median': baseline['val_loss_median'], 'candidate_val_loss_median': candidate['val_loss_median'], 'quality_tolerance': QUALITY_TOLERANCE},
+        'scale_probe': gpu_result.get('scale_probe'),
+        'environment': gpu_result['environment'], 'result_json': str(RESULT_PATH),
+        'status': 'ready' if candidate['all_artifacts_hashed'] and candidate['all_low_bit_active'] else 'pending_artifact_export',
+        'evidence_level': gpu_result['evidence_level'],
+        'next_project': '62_sft_delivery_or_quantization_deployment',
+        'quantization_artifact_note': '此 adapter 不能替代 GPTQ/AWQ/GGUF 量化 artifact。',
+    }
+
+
 saved_gpu_result = None
-result_file = Path(RESULT_PATH)
+result_file = RAW_RESULT_PATH if RAW_RESULT_PATH.exists() else RESULT_PATH
 if result_file.exists():
     saved_gpu_result = json.loads(result_file.read_text(encoding='utf-8'))
+    recorded_label = saved_gpu_result.get('run_label')
+    if recorded_label not in (None, RUN_LABEL):
+        raise ValueError(f'结果标签不匹配：配置={RUN_LABEL}, 文件={recorded_label}')
     if saved_gpu_result.get('failure') or saved_gpu_result.get('status') == 'failed':
         print({'result_json': str(result_file), 'status': 'failed', 'failure': saved_gpu_result.get('error')})
     else:
-        baseline, candidate = saved_gpu_result['baseline'], saved_gpu_result['candidate']
-        manifest = {
-            'schema_version': 'qlora-artifact/v2', 'project': '65',
-            'manifest_role': 'training_provenance_only', 'artifact_type': 'adapter_or_merged_model',
-            'base_model_id': MODEL_ID, 'model_revision': MODEL_ID, 'tokenizer_path': MODEL_ID,
-            'baseline_result': baseline, 'candidate_result': candidate,
-            'artifact_path': candidate.get('artifact_path'), 'artifact_format': 'peft_adapter',
-            'training_config': saved_gpu_result['config'],
-            'quantization_config': {'base_model': 'nf4 + double quant', 'compute_dtype': candidate['compute_dtype']},
-            'adapter_config': {'r': 8, 'lora_alpha': 16, 'target_modules': ['q_proj', 'k_proj', 'v_proj', 'o_proj']},
-            'quality_report': {'baseline_val_loss': baseline['val_loss'], 'candidate_val_loss': candidate['val_loss'], 'quality_tolerance': QUALITY_TOLERANCE},
-            'scale_probe': saved_gpu_result.get('scale_probe'),
-            'environment': saved_gpu_result['environment'], 'result_json': RESULT_PATH,
-            'status': 'ready' if candidate.get('artifact_path') else 'pending_artifact_export',
-            'evidence_level': saved_gpu_result['evidence_level'],
-            'next_project': '66_baseline_then_67_deployment',
-            'quantization_artifact_note': '此 adapter 不能替代 GPTQ/AWQ/GGUF 量化 artifact。',
-        }
-        Path(ARTIFACT_MANIFEST_PATH).parent.mkdir(parents=True, exist_ok=True)
-        Path(ARTIFACT_MANIFEST_PATH).write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding='utf-8')
-        print({'result_json': RESULT_PATH, 'artifact_manifest': ARTIFACT_MANIFEST_PATH, 'artifact_status': manifest['status']})
+        manifest_preview = _build_artifact_manifest(saved_gpu_result)
+        print({'source_result': str(result_file), 'final_result': str(RESULT_PATH), 'artifact_manifest': str(ARTIFACT_MANIFEST_PATH), 'artifact_status': manifest_preview['status']})
 else:
-    print(f'等待 5.4 生成训练结果：{RESULT_PATH}')
+    print(f'等待 5.4 生成训练结果：{RAW_RESULT_PATH}')
+
 ```
 
 #### 5.6 解释结果与形成决策
 
-先检查运行状态和验证质量，再比较峰值显存、吞吐与可行 micro-batch；四项证据共同决定本轮的 `accept / tune / reject`。容量探针未运行时，结果只能说明固定 workload，不能把 batch 容量写成已验证结论。
+先检查三个种子是否一一配对、64 节数据身份是否一致、NF4 是否真正激活，再比较中位显存、步时和独立评测损失。速度优先时，QLoRA 必须控制步时回退；容量受限时，只要它扩大最大 micro-batch 且质量通过，就可以作为低资源训练路径采用。
+
+| 决策项 | `rtx5070ti_qlora_15b_capacity_v1` 实测证据 | 结果 | 使用条件 |
+|:---|:---|:---|:---|
+| 配对与身份 | 三个共享随机种子；64 的 1.5B 数据清单、模型提交和 LoRA 配置一致 | 通过 | 不与 0.5B LoRA 选型混合比较 |
+| 显存与容量 | QLoRA 中位峰值分配显存 4,572.63 MiB，对照为 5,968.06 MiB（低 23.4%）；最大 micro-batch 4 → 8 | 通过 | 目标是扩大可行 batch 时可采用 |
+| 质量与速度 | 验证损失差 +0.0386，处于 0.1 容忍带内；中位步时 +65.2% | 质量通过，速度未通过 | 速度敏感负载继续使用 BF16 LoRA |
+| 项目决策 | NF4 状态、adapter 哈希、容量阶梯和三种子证据完整 | `accept` | 仅作为 1.5B、12 GB、容量受限训练路径 |
+
+**当前登记结果**
+
+| 字段 | 登记内容 |
+| --- | --- |
+| 项目与标签 | 65 节 QLoRA 容量选型；`rtx5070ti_qlora_15b_capacity_v1` |
+| 运行条件 | RTX 5070 Ti Laptop GPU；Qwen2.5-1.5B；BF16 LoRA 与 NF4 QLoRA 三种子配对 |
+| 原始证据 | [选型结果](../../benchmarks/results/65_qlora_selection/qlora_selection_rtx5070ti_qlora_15b_capacity_v1.json) |
+| 正式证据 | 选型结果内保存质量、步时、显存、容量阶梯和 NF4 状态 |
+| 清单与交接 | [产物清单](../../benchmarks/results/65_qlora_selection/qlora_artifact_manifest_rtx5070ti_qlora_15b_capacity_v1.json)；本地 adapters 由清单记录 |
+| 结论 | `accept`：仅用于 1.5B、12 GB、容量受限路径；速度敏感负载保留 BF16 LoRA |
 
 ```python
-# 5.6：根据已保存的两组结果计算差值并更新项目决策。
-def _compare_reports(baseline, candidate):
-    baseline_loss, candidate_loss = baseline.get('val_loss'), candidate.get('val_loss')
+# 5.6：根据配对重复、容量收益、低比特状态和质量门槛生成不可变项目决策。
+def _compare_reports(baseline, candidate, scale_probe):
+    baseline_loss, candidate_loss = baseline.get('val_loss_median'), candidate.get('val_loss_median')
     quality_ok = baseline_loss is not None and candidate_loss is not None and candidate_loss <= baseline_loss + QUALITY_TOLERANCE
-    memory_saved = candidate['peak_memory_mb'] < baseline['peak_memory_mb']
-    throughput_ok = candidate['tokens_per_s'] > 0
-    decision = 'accept' if quality_ok and memory_saved and throughput_ok else 'tune'
+    memory_delta_mb = candidate['peak_memory_mb_median'] - baseline['peak_memory_mb_median']
+    memory_saving_ratio = -memory_delta_mb / baseline['peak_memory_mb_median']
+    memory_saved = memory_delta_mb < 0
+    step_time_regression_ratio = candidate['step_time_s_median'] / baseline['step_time_s_median'] - 1
+    speed_ok = step_time_regression_ratio <= MAX_STEP_TIME_REGRESSION_RATIO
+    capacity = {item['label']: item['max_micro_batch'] for item in scale_probe.get('reports', [])}
+    capacity_benefit = None if scale_probe.get('status') != 'completed' else capacity.get('qlora_candidate', 0) > capacity.get('lora_baseline', 0)
+    resource_benefit = capacity_benefit is True or memory_saving_ratio >= MIN_MEMORY_SAVING_RATIO
+    paired = baseline.get('seeds') == candidate.get('seeds') == list(SEEDS)
+    low_bit_verified = candidate.get('all_low_bit_active') and not baseline.get('all_low_bit_active')
+    artifact_complete = candidate.get('all_artifacts_hashed')
+    evidence_complete = paired and low_bit_verified and artifact_complete
+    fixed_workload_accept = quality_ok and memory_saved and resource_benefit and speed_ok and evidence_complete
+    capacity_limited_accept = quality_ok and memory_saved and capacity_benefit is True and evidence_complete
+    decision = 'accept' if fixed_workload_accept or capacity_limited_accept else 'tune'
     return {
-        'peak_memory_delta_mb': round(candidate['peak_memory_mb'] - baseline['peak_memory_mb'], 3),
-        'step_time_delta_s': round(candidate['step_time_s'] - baseline['step_time_s'], 4),
-        'tokens_per_s_delta': round(candidate['tokens_per_s'] - baseline['tokens_per_s'], 3),
+        'peak_memory_delta_mb': round(memory_delta_mb, 3), 'memory_saving_ratio': round(memory_saving_ratio, 4),
+        'step_time_delta_s': round(candidate['step_time_s_median'] - baseline['step_time_s_median'], 4),
+        'supervised_tokens_per_s_delta': round(candidate['supervised_tokens_per_s_median'] - baseline['supervised_tokens_per_s_median'], 3),
         'val_loss_delta': round(candidate_loss - baseline_loss, 6) if quality_ok else None,
         'quality_tolerance': QUALITY_TOLERANCE, 'quality_ok': quality_ok,
-        'memory_saved': memory_saved, 'throughput_ok': throughput_ok, 'decision': decision,
-        'next_action': 'promote_adapter_for_full_run' if decision == 'accept' else 'tune_rank_data_or_steps',
+        'memory_saved': memory_saved, 'capacity_benefit': capacity_benefit, 'resource_benefit': resource_benefit,
+        'step_time_regression_ratio': round(step_time_regression_ratio, 4), 'speed_ok': speed_ok,
+        'paired': paired, 'low_bit_verified': low_bit_verified, 'artifact_complete': artifact_complete,
+        'fixed_workload_accept': fixed_workload_accept, 'capacity_limited_accept': capacity_limited_accept,
+        'selection_scope': 'both' if fixed_workload_accept and capacity_limited_accept else 'capacity_limited' if capacity_limited_accept else 'none',
+        'decision': decision,
+        'next_action': 'use_qlora_for_capacity_limited_training_and_keep_bf16_lora_for_speed_sensitive_runs' if capacity_limited_accept and not fixed_workload_accept else 'use_qlora_branch_for_low_resource_delivery' if decision == 'accept' else 'increase_model_or_sequence_before_retesting_qlora',
     }
 
 
-if saved_gpu_result is None and Path(RESULT_PATH).exists():
-    saved_gpu_result = json.loads(Path(RESULT_PATH).read_text(encoding='utf-8'))
 if saved_gpu_result is None:
     print('尚无训练 JSON，等待完成 5.4。')
 elif saved_gpu_result.get('failure') or saved_gpu_result.get('status') == 'failed':
     print({'decision': 'tune', 'reason': saved_gpu_result.get('error', '训练失败记录')})
 else:
-    comparison = _compare_reports(saved_gpu_result['baseline'], saved_gpu_result['candidate'])
-    saved_gpu_result['comparison'] = comparison
-    saved_gpu_result['decision'] = comparison['decision']
-    Path(RESULT_PATH).write_text(json.dumps(saved_gpu_result, ensure_ascii=False, indent=2), encoding='utf-8')
-    manifest_path = Path(ARTIFACT_MANIFEST_PATH)
-    if manifest_path.exists():
-        manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
-        manifest['comparison'] = comparison
-        manifest['decision'] = comparison['decision']
-        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding='utf-8')
-    print(json.dumps({'decision': comparison['decision'], 'comparison': comparison}, ensure_ascii=False, indent=2))
+    comparison = _compare_reports(saved_gpu_result['baseline'], saved_gpu_result['candidate'], saved_gpu_result.get('scale_probe', {}))
+    final_result = dict(saved_gpu_result)
+    final_result.update({
+        'schema_version': SCHEMA_VERSION, 'semantic_id': SEMANTIC_ID,
+        'run_label': RUN_LABEL, 'run_mode': RUN_MODE, 'environment_profile': PROFILE_ID,
+        'json_path': str(RESULT_PATH), 'comparison': comparison, 'decision': comparison['decision'],
+    })
+    if RESULT_PATH.exists():
+        recorded_result = json.loads(RESULT_PATH.read_text(encoding='utf-8'))
+        recorded_label = recorded_result.get('run_label')
+        if recorded_label not in (None, RUN_LABEL):
+            raise ValueError(f'最终结果标签不匹配：配置={RUN_LABEL}, 文件={recorded_label}')
+    else:
+        save_json_record_once(RESULT_PATH, final_result)
+
+    artifact_manifest = _build_artifact_manifest(final_result)
+    artifact_manifest.update({'comparison': comparison, 'decision': comparison['decision']})
+    if ARTIFACT_MANIFEST_PATH.exists():
+        recorded_manifest = json.loads(ARTIFACT_MANIFEST_PATH.read_text(encoding='utf-8'))
+        recorded_label = recorded_manifest.get('run_label')
+        if recorded_label not in (None, RUN_LABEL):
+            raise ValueError(f'产物清单标签不匹配：配置={RUN_LABEL}, 文件={recorded_label}')
+    else:
+        save_json_record_once(ARTIFACT_MANIFEST_PATH, artifact_manifest)
+    print(json.dumps({'decision': comparison['decision'], 'comparison': comparison, 'result_json': str(RESULT_PATH), 'artifact_manifest': str(ARTIFACT_MANIFEST_PATH)}, ensure_ascii=False, indent=2))
+
 ```
 
 ## 相关阅读

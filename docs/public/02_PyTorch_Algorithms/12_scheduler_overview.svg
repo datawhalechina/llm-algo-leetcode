@@ -15,16 +15,18 @@
   <rect x="360" y="228" width="220" height="104" fill="#fff7ed" stroke="#fb923c" class="node"/>
   <text x="470" y="269" text-anchor="middle" class="head">检查更新有效性</text><text x="470" y="298" text-anchor="middle" class="body">有限值、边界与更新条件</text>
 
-  <path d="M580 260H665" class="flow"/>
-  <text x="622" y="247" text-anchor="middle" class="label" fill="#047857">通过</text>
+  <path d="M580 280H620V212H665" class="flow"/>
+  <rect x="586" y="178" width="68" height="27" rx="7" fill="#f8fafc"/>
+  <text x="620" y="197" text-anchor="middle" class="label" fill="#047857">通过</text>
   <rect x="665" y="160" width="220" height="104" fill="#ecfdf5" stroke="#34d399" class="node"/>
   <text x="775" y="201" text-anchor="middle" class="head">写回参数</text><text x="775" y="230" text-anchor="middle" class="body">发生一次有效参数变化</text>
   <path d="M885 212H970" class="flow"/>
   <rect x="970" y="160" width="220" height="104" fill="#f5f3ff" stroke="#a78bfa" class="node"/>
   <text x="1080" y="201" text-anchor="middle" class="head">推进调度时钟</text><text x="1080" y="230" text-anchor="middle" class="body">为下一次更新准备学习率</text>
 
-  <path d="M580 300H665" class="flow"/>
-  <text x="622" y="327" text-anchor="middle" class="label" fill="#b91c1c">失败或跳步</text>
+  <path d="M580 280H620V402H665" class="flow"/>
+  <rect x="568" y="369" width="104" height="27" rx="7" fill="#f8fafc"/>
+  <text x="620" y="388" text-anchor="middle" class="label" fill="#b91c1c">失败或跳步</text>
   <rect x="665" y="350" width="220" height="104" fill="#fef2f2" stroke="#f87171" class="node"/>
   <text x="775" y="391" text-anchor="middle" class="head">保持参数不变</text><text x="775" y="420" text-anchor="middle" class="body">本轮不构成有效更新</text>
   <path d="M885 402H970" class="flow"/>

@@ -4,11 +4,11 @@
   <style>
     .bg{fill:#f8fafc}.line{stroke:#64748b;stroke-width:2.5;fill:none;marker-end:url(#a)}
     .box{fill:#fff;stroke:#cbd5e1;stroke-width:2}.blue{fill:#eff6ff;stroke:#60a5fa}.green{fill:#ecfdf5;stroke:#34d399}.orange{fill:#fff7ed;stroke:#fb923c}
-    .n{font:700 18px sans-serif;fill:#0f172a}.s{font:14px sans-serif;fill:#475569}
+    .n{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:18px;font-weight:700;fill:#0f172a}.s{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:14px;fill:#475569}.t{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:24px;font-weight:700;fill:#0f172a}
   </style>
   <defs><marker id="a" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 3L0 6z" fill="#64748b"/></marker></defs>
   <rect class="bg" width="1200" height="470" rx="20"/>
-  <text x="50" y="52" class="n" font-size="24">机制链：监督定义梯度，依赖形成状态，证据约束策略</text>
+  <text x="50" y="52" class="t">机制链：监督定义梯度，依赖形成状态，证据约束策略</text>
 
   <path class="line" d="M270 150H315"/><path class="line" d="M535 150H580"/><path class="line" d="M800 150H845"/>
   <path class="line" d="M425 210V285"/><path class="line" d="M970 210V285"/>

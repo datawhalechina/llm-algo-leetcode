@@ -44,21 +44,18 @@
 
 ![一次训练更新中的依赖、状态与更新边界](../../docs/public/topic_discussion/backpropagation_training_mechanism/training_update_loop.svg)
 
-## 选择条件与验证证据
+## 验证与下一步
 
 完成本页后，应能画出“前向传播 → 损失计算 → 反向传播 → 参数更新”的训练依赖图，并为每个阶段标出参数、激活、反向保存张量和梯度。真实容量和阶段峰值将在 [04 训练状态生命周期](./04_training_state_lifecycle.md)中继续展开。
 
-## 学习入口
-
 下一页进入 [02 自动求导与 Transformer 反向传播](./02_autograd_and_transformer_backward.md)，把全局计算图落实到 VJP、局部反向和 Transformer 路径。
 
-- [Part00 · 07 PyTorch 自动求导与反向传播](../../00_Prerequisites/07_PyTorch_Autograd_and_Backward.ipynb)
-- [Part00 · 09 Module 与参数](../../00_Prerequisites/09_PyTorch_nn_Module_Basics.ipynb)
-- [Part00 · 12 数据接口与训练生命周期](../../00_Prerequisites/12_PyTorch_Minimal_Training_Interface.ipynb)
-
-### 相关阅读
+## 相关阅读
 
 | 资料 | 用途 |
 |:---|:---|
+| [Part 00 · 07 PyTorch 自动求导与反向传播](../../00_Prerequisites/07_PyTorch_Autograd_and_Backward.ipynb) | 核对叶子张量、计算图与梯度累积。 |
+| [Part 00 · 09 模块与参数](../../00_Prerequisites/09_PyTorch_nn_Module_Basics.ipynb) | 回看参数、缓冲区和训练/验证模式。 |
+| [Part 00 · 12 数据接口与训练生命周期](../../00_Prerequisites/12_PyTorch_Minimal_Training_Interface.ipynb) | 回看批次、更新和验证的最小接口。 |
 | [Automatic differentiation in machine learning: a survey](https://arxiv.org/abs/1502.05767) | 将链式法则、计算图与自动微分放在统一框架中理解。 |
 | [torch.autograd](https://docs.pytorch.org/docs/stable/autograd) | 核对 PyTorch 计算图与自动求导接口。 |
