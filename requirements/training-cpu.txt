@@ -1,0 +1,2 @@
+# Additional CPU framework dependency for backpropagation and training-control pages.
+accelerate

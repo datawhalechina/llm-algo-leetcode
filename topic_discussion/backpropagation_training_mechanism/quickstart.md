@@ -2,6 +2,34 @@
 
 本页维护环境创建、重新进入和共性故障处理。页面、工作负载与证据状态见[实验资产表](./experiment_assets.md)，全局 Profile 约束见[模型、执行栈与环境资产表](../../docs/gpu_environment_assets.md)。以下命令均在仓库根目录执行。
 
+<a id="train-cpu-quickstart"></a>
+
+## TRAIN-CPU：CPU 框架核对环境
+
+基础题目与答案测试使用 `BASE-CPU`；需要运行 PyTorch、Transformers 或 Accelerate 一致性核对时使用 `TRAIN-CPU`。该环境不形成 GPU 性能证据。
+
+```bash
+python tools/install_environment_profile.py \
+  --profile TRAIN-CPU \
+  --env-name llm_train_cpu
+
+conda activate llm_train_cpu
+python tools/register_notebook_runtime.py --check
+python -m ipykernel install --user \
+  --name llm_train_cpu \
+  --display-name "Python (llm_train_cpu)"
+python -m jupyter lab
+```
+
+批量核对 2.3 中已接入成熟框架的 10 个页面：
+
+```bash
+python tools/test_framework_conformance.py \
+  --all-part02 \
+  --profile TRAIN-CPU \
+  --require-passed
+```
+
 <a id="train-cuda-mechanism-quickstart"></a>
 
 ## TRAIN-CUDA-MECHANISM：单卡训练机制环境
@@ -32,15 +60,23 @@ python tools/install_environment_profile.py \
   --env-name llm_train_mechanism_cu128
 
 conda activate llm_train_mechanism_cu128
+python tools/register_notebook_runtime.py --check
+python -m ipykernel install --user \\
+  --name llm_train_mechanism_cu128 \\
+  --display-name "Python (llm_train_mechanism_cu128)"
 python -m jupyter lab
 ```
 
-安装器会创建隔离环境、安装依赖、注册仓库运行时、执行 `pip check` 和 Profile 预检，并注册同名 Jupyter Kernel。仅检查安装计划时添加 `--dry-run`；已有环境发生依赖混装时创建新环境，不逐包覆盖。
+安装器会创建隔离环境、安装依赖、注册仓库运行时，并执行 `pip check` 和 Profile 预检。上方的 `ipykernel install` 命令会明确登记同名 Jupyter Kernel。仅检查安装计划时添加 `--dry-run`；已有环境发生依赖混装时创建新环境，不逐包覆盖。
 
 ### 手动创建
 
 ```bash
 conda create -n llm_train_mechanism_cu128 python=3.12 -y
+conda activate llm_train_mechanism_cu128
+
+conda env config vars set PYTHONNOUSERSITE=1 PYTHONPATH=
+conda deactivate
 conda activate llm_train_mechanism_cu128
 
 python -m pip install --upgrade pip

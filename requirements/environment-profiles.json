@@ -128,6 +128,47 @@
         "topic": "topic_discussion/llm_architecture_evolution/quickstart.md#arch-cuda-mechanism-quickstart"
       }
     },
+    "TRAIN-CPU": {
+      "title": "训练机制 CPU 框架核对环境",
+      "purpose": "使用 PyTorch、Transformers 与 Accelerate 核对反向传播、有效更新和训练状态机制",
+      "python": {
+        "minimum": "3.11",
+        "maximum_exclusive": "3.13"
+      },
+      "requirements": [
+        "requirements/torch-cpu.txt",
+        "requirements/training-cpu.txt"
+      ],
+      "constraint_files": [],
+      "required_modules": {
+        "torch": "torch",
+        "jupyterlab": "jupyterlab",
+        "ipykernel": "ipykernel",
+        "transformers": "transformers",
+        "accelerate": "accelerate",
+        "nbformat": "nbformat"
+      },
+      "forbidden_distributions": [
+        "vllm",
+        "sglang",
+        "llmcompressor",
+        "bitsandbytes",
+        "deepspeed"
+      ],
+      "isolation": {
+        "require_clean_sys_path": true,
+        "require_user_site_disabled": true,
+        "require_project_runtime": true
+      },
+      "gpu": {
+        "required": false
+      },
+      "evidence_scope": "cpu_framework_conformance",
+      "documentation": {
+        "global": "docs/gpu_environment_assets.md#train-cpu",
+        "topic": "topic_discussion/backpropagation_training_mechanism/quickstart.md#train-cpu-quickstart"
+      }
+    },
     "TRAIN-CUDA-MECHANISM": {
       "title": "训练机制单卡 GPU 环境",
       "purpose": "运行梯度累积、混合精度反向、激活检查点、激活卸载与训练状态峰值对照",
