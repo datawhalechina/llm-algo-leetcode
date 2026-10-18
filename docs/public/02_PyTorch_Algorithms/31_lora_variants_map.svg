@@ -1,6 +1,6 @@
-<svg width="1500" height="370" viewBox="0 0 1500 370" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <title>LoRA 变体从固定比较条件到候选决策的机制链</title>
-  <desc>依次固定基座和工作负载、计算参数上限、区分 LoRA rsLoRA DoRA 参数化、检查数值与输出等价性，最后形成候选决策。</desc>
+<svg width="1500" height="370" viewBox="0 0 1500 370" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">LoRA 变体从固定比较条件到候选决策的机制链</title>
+  <desc id="desc">依次固定基座和工作负载、计算参数上限、区分 LoRA、rsLoRA 与 DoRA 参数化、检查数值与输出等价性，最后形成候选决策。</desc>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
   </defs>

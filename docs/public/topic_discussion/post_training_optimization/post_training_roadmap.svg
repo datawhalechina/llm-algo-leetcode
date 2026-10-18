@@ -27,15 +27,15 @@
   <rect x="76" y="350" width="260" height="116" rx="16" fill="#FFF7ED" stroke="#EA580C" stroke-width="2"/>
   <text x="98" y="386" class="nodeTitle">偏好数据与离线 DPO</text><text x="98" y="416" class="copy">已有偏好对 + 固定参考策略</text><text x="98" y="442" class="copy">偏好边际 → 离线更新</text>
   <rect x="390" y="350" width="278" height="116" rx="16" fill="#FFE4E6" stroke="#E11D48" stroke-width="2"/>
-  <text x="412" y="386" class="nodeTitle">奖励来源与在线更新</text><text x="412" y="416" class="copy">奖励模型 / 验证器 + 在线采样</text><text x="412" y="442" class="copy">优势 → PPO / GRPO 更新</text>
+  <text x="412" y="386" class="nodeTitle">奖励构造与在线策略候选</text><text x="412" y="416" class="copy">奖励模型 / 验证器 + 在线采样</text><text x="412" y="442" class="copy">优势 → PPO / GRPO 候选</text>
   <rect x="722" y="350" width="278" height="116" rx="16" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
-  <text x="744" y="386" class="nodeTitle">轨迹生命周期与训练系统</text><text x="744" y="416" class="copy">轨迹身份、策略版本与队列</text><text x="744" y="442" class="copy">权重同步、检查点与恢复</text>
+  <text x="744" y="386" class="nodeTitle">轨迹治理与在线训练交付</text><text x="744" y="416" class="copy">轨迹身份、策略版本与队列</text><text x="744" y="442" class="copy">权重同步、检查点与恢复</text>
   <path d="M744 276V310H206V342" class="line"/>
   <path d="M806 276V326H529V342" class="line"/>
   <path d="M668 408H714" class="line"/>
 
   <rect x="76" y="544" width="924" height="82" rx="18" fill="#ECFDF5" stroke="#16A34A" stroke-width="2"/>
-  <text x="100" y="578" class="nodeTitle">独立评测与采用决策</text>
+  <text x="100" y="578" class="nodeTitle">独立评测、能力回归与采用决策</text>
   <text x="100" y="607" class="copy">目标增益 · 能力保持 · 安全 · 鲁棒性 · 成本 · 失败切片 → 采用、调整或回滚</text>
   <path d="M206 466V544" class="line"/>
   <path d="M529 466V544" class="line"/>

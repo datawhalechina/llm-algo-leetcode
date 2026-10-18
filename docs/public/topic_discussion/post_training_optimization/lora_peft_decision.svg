@@ -1,14 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="430" viewBox="0 0 1200 430" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="450" viewBox="0 0 1200 450" role="img" aria-labelledby="title desc">
   <title id="title">参数更新范围与适配器交付</title><desc id="desc">从任务变化和资源预算选择全参、LoRA 或 QLoRA，并将更新范围连接到产物形式和验证证据。</desc>
   <defs><marker id="a" markerWidth="6" markerHeight="6" refX="5.5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#475569"/></marker><style>.t{font:700 25px Arial,sans-serif;fill:#172033}.s{font:15px Arial,sans-serif;fill:#475569}.h{font:700 17px Arial,sans-serif;fill:#172033}.c{font:14px Arial,sans-serif;fill:#334155}.l{fill:none;stroke:#475569;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#a)}</style></defs>
-  <rect width="1200" height="430" fill="#F8FAFC"/><rect x="28" y="24" width="1144" height="382" rx="24" fill="#FFF" stroke="#CBD5E1" stroke-width="2"/>
+  <rect width="1200" height="450" fill="#F8FAFC"/><rect x="28" y="24" width="1144" height="402" rx="24" fill="#FFF" stroke="#CBD5E1" stroke-width="2"/>
   <text x="62" y="68" class="t">参数更新范围决定训练状态和交付形态</text><text x="62" y="96" class="s">先固定任务与预算，再选择更新路径；rank 不是脱离模块和证据单独调大的旋钮。</text>
-  <rect x="62" y="158" width="210" height="110" rx="16" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/><text x="84" y="192" class="h">任务与资源条件</text><text x="84" y="222" class="c">目标模块 · 数据 · 更新预算</text><text x="84" y="248" class="c">显存 · 部署 · 回滚要求</text>
+  <rect x="62" y="173" width="210" height="80" rx="16" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/><text x="84" y="196" class="h">任务与资源条件</text><text x="84" y="220" class="c">目标模块 · 数据 · 更新预算</text><text x="84" y="242" class="c">显存 · 部署 · 回滚要求</text>
   <rect x="338" y="112" width="210" height="72" rx="14" fill="#FEE2E2" stroke="#DC2626" stroke-width="2"/><text x="360" y="144" class="h">全参数微调</text><text x="360" y="168" class="c">更新全部主干权重</text>
   <rect x="338" y="198" width="210" height="72" rx="14" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/><text x="360" y="230" class="h">LoRA / PEFT</text><text x="360" y="254" class="c">冻结基座，训练低秩旁路</text>
   <rect x="338" y="284" width="210" height="72" rx="14" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/><text x="360" y="316" class="h">QLoRA</text><text x="360" y="340" class="c">低比特基座 + 适配器</text>
-  <rect x="624" y="158" width="224" height="110" rx="16" fill="#FFF7ED" stroke="#EA580C" stroke-width="2"/><text x="646" y="192" class="h">训练状态与不变量</text><text x="646" y="222" class="c">目标模块 · 秩 / 缩放 · 冻结范围</text><text x="646" y="248" class="c">梯度路径 · 有效更新 · 恢复状态</text>
-  <rect x="924" y="158" width="214" height="110" rx="16" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/><text x="946" y="192" class="h">交付与验证</text><text x="946" y="222" class="c">适配器 / 合并模型 · 清单 / 哈希</text><text x="946" y="248" class="c">独立质量与资源证据</text>
+  <rect x="624" y="173" width="224" height="80" rx="16" fill="#FFF7ED" stroke="#EA580C" stroke-width="2"/><text x="646" y="196" class="h">训练状态与不变量</text><text x="646" y="220" class="c">目标模块 · 秩 / 缩放 · 冻结范围</text><text x="646" y="242" class="c">梯度路径 · 有效更新 · 恢复状态</text>
+  <rect x="924" y="173" width="214" height="80" rx="16" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/><text x="946" y="196" class="h">交付与验证</text><text x="946" y="220" class="c">适配器 / 合并模型 · 清单 / 哈希</text><text x="946" y="242" class="c">独立质量与资源证据</text>
   <path d="M272 190H304V148H330" class="l"/><path d="M272 213H330" class="l"/><path d="M272 236H304V320H330" class="l"/>
   <path d="M548 148H582V190H616" class="l"/><path d="M548 234H616" class="l"/><path d="M548 320H582V236H616" class="l"/><path d="M848 213H916" class="l"/>
 </svg>

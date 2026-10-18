@@ -10,13 +10,13 @@
       <path d="M0 0L10 5L0 10Z" fill="#475569"/>
     </marker>
     <style>
-      .title{font:700 30px "Inter","Noto Sans SC",sans-serif;fill:#0F172A}
-      .sub{font:500 17px "Inter","Noto Sans SC",sans-serif;fill:#475569}
-      .label{font:700 18px "Inter","Noto Sans SC",sans-serif;fill:#111827}
-      .small{font:500 14px "Inter","Noto Sans SC",sans-serif;fill:#334155}
+      .title{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:30px;font-weight:700;fill:#0F172A}
+      .sub{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:17px;font-weight:500;fill:#475569}
+      .label{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:18px;font-weight:700;fill:#111827}
+      .small{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:14px;font-weight:500;fill:#334155}
       .box{stroke-width:2.5}
       .arrow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
-      .branch{font:700 15px "Inter","Noto Sans SC",sans-serif;fill:#475569}
+      .branch{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:700;fill:#475569}
     </style>
   </defs>
   <rect width="1500" height="600" rx="24" fill="url(#bg)"/>

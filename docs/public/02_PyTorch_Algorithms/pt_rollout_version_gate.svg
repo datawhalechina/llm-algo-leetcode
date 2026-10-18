@@ -1,10 +1,49 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="430" viewBox="0 0 1200 430">
-  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker><style>.t{font:700 26px sans-serif;fill:#0f172a}.n{font:700 17px sans-serif;fill:#0f172a}.s{font:14px sans-serif;fill:#475569}</style></defs>
-  <rect width="1200" height="430" rx="24" fill="#f8fafc"/><text x="600" y="45" text-anchor="middle" class="t">策略更新必须经过版本同步门槛</text>
-  <rect x="55" y="150" width="190" height="92" rx="14" fill="#fff" stroke="#60a5fa"/><text x="80" y="185" class="n">学习器完成更新</text><text x="80" y="214" class="s">产生策略 v4</text>
-  <rect x="305" y="150" width="190" height="92" rx="14" fill="#fff" stroke="#4ade80"/><text x="330" y="185" class="n">提交不可变产物</text><text x="330" y="214" class="s">版本 · 哈希 · 回滚指针</text>
-  <rect x="555" y="150" width="190" height="92" rx="14" fill="#fff" stroke="#f59e0b"/><text x="580" y="185" class="n">工作进程确认</text><text x="580" y="214" class="s">版本与哈希均一致</text>
-  <rect x="805" y="95" width="310" height="92" rx="14" fill="#ecfdf5" stroke="#22c55e"/><text x="830" y="130" class="n">允许生成 v4 轨迹</text><text x="830" y="159" class="s">登记版本与产物哈希</text>
-  <rect x="805" y="245" width="310" height="92" rx="14" fill="#fef2f2" stroke="#ef4444"/><text x="830" y="280" class="n">保持 v3 或隔离进程</text><text x="830" y="309" class="s">不得把失败同步写成 v4</text>
-  <path d="M245 196H305" stroke="#64748b" stroke-width="3" marker-end="url(#a)"/><path d="M495 196H555" stroke="#64748b" stroke-width="3" marker-end="url(#a)"/><path d="M745 178L805 145" stroke="#64748b" stroke-width="3" marker-end="url(#a)"/><path d="M745 214L805 275" stroke="#64748b" stroke-width="3" marker-end="url(#a)"/><text x="765" y="150" class="s">成功</text><text x="760" y="258" class="s">失败</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+  <title id="title">策略版本发布门槛</title>
+  <desc id="desc">待发布策略先通过产物提交门槛，再通过全部必需工作进程的版本与哈希确认，成功后原子切换活动策略，失败时保持当前策略。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#64748b"/>
+    </marker>
+    <style>
+      .title { font-family: "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; font-size: 28px; font-weight: 700; fill: #0f172a; }
+      .node-title { font-family: "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; font-size: 19px; font-weight: 700; fill: #0f172a; }
+      .node-text { font-family: "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; font-size: 15px; font-weight: 400; fill: #475569; }
+      .label { font-family: "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; font-size: 14px; font-weight: 600; fill: #475569; }
+      .flow { fill: none; stroke: #64748b; stroke-width: 3; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect width="1500" height="470" rx="24" fill="#f8fafc"/>
+  <text x="750" y="48" text-anchor="middle" class="title">策略发布必须依次通过两级门槛</text>
+
+  <rect x="40" y="155" width="220" height="150" rx="16" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="150" y="218" text-anchor="middle" class="node-title">待发布策略</text>
+  <text x="150" y="250" text-anchor="middle" class="node-text">学习器完成一次更新</text>
+
+  <rect x="330" y="155" width="250" height="150" rx="16" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/>
+  <text x="455" y="218" text-anchor="middle" class="node-title">产物提交门槛</text>
+  <text x="455" y="250" text-anchor="middle" class="node-text">产物已提交且哈希冻结</text>
+
+  <rect x="650" y="155" width="270" height="150" rx="16" fill="#fffbeb" stroke="#f59e0b" stroke-width="2"/>
+  <text x="785" y="218" text-anchor="middle" class="node-title">进程确认门槛</text>
+  <text x="785" y="250" text-anchor="middle" class="node-text">必需进程确认相同版本与哈希</text>
+
+  <rect x="1040" y="63" width="410" height="150" rx="16" fill="#ecfdf5" stroke="#22c55e" stroke-width="2"/>
+  <text x="1245" y="126" text-anchor="middle" class="node-title">原子切换活动策略</text>
+  <text x="1245" y="158" text-anchor="middle" class="node-text">新版本成为唯一活动指针</text>
+
+  <rect x="1040" y="266" width="410" height="150" rx="16" fill="#fef2f2" stroke="#ef4444" stroke-width="2"/>
+  <text x="1245" y="329" text-anchor="middle" class="node-title">保持当前活动策略</text>
+  <text x="1245" y="361" text-anchor="middle" class="node-text">隔离、补齐确认或重新发布</text>
+
+  <path d="M260 230H330" class="flow"/>
+  <path d="M580 230H650" class="flow"/>
+  <text x="615" y="213" text-anchor="middle" class="label">通过</text>
+  <path d="M920 205L1040 145" class="flow"/>
+  <text x="974" y="156" text-anchor="middle" class="label">全部确认</text>
+  <path d="M920 255L1040 319" class="flow"/>
+  <text x="976" y="306" text-anchor="middle" class="label">缺失或不一致</text>
+  <path d="M455 285V370H1040" class="flow"/>
+  <text x="690" y="356" text-anchor="middle" class="label">未提交或哈希尚未冻结</text>
 </svg>

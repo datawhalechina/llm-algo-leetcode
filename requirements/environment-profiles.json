@@ -266,6 +266,45 @@
         "topic": "topic_discussion/inference_optimization/quickstart.md#inf-service-delivery"
       }
     },
+    "BASE-CPU": {
+      "title": "基础机制练习环境",
+      "purpose": "运行 Part 00–02 的普通 PyTorch CPU 机制练习、题目与测试",
+      "python": {"minimum": "3.11", "maximum_exclusive": "3.13"},
+      "requirements": ["requirements/base.txt", "requirements/dev.txt", "requirements/torch-cpu.txt"],
+      "constraint_files": [],
+      "required_modules": {
+        "torch": "torch", "jupyterlab": "jupyterlab", "ipykernel": "ipykernel",
+        "transformers": "transformers", "numpy": "numpy", "nbformat": "nbformat", "pytest": "pytest"
+      },
+      "forbidden_distributions": ["vllm", "sglang", "llmcompressor", "bitsandbytes", "deepspeed"],
+      "isolation": {"require_clean_sys_path": true, "require_user_site_disabled": true, "require_project_runtime": true},
+      "gpu": {"required": false},
+      "evidence_scope": "cpu_mechanism_validation",
+      "documentation": {
+        "global": "docs/gpu_environment_assets.md#base-cpu",
+        "topic": "docs/gpu_environment_assets.md#base-cpu"
+      }
+    },
+    "PT-CPU": {
+      "title": "后训练 CPU 机制环境",
+      "purpose": "使用 Datasets、PyTorch、Transformers、TRL 与 Gymnasium 核对后训练机制页的数据接口、目标函数和环境合同",
+      "python": {"minimum": "3.11", "maximum_exclusive": "3.13"},
+      "requirements": ["requirements/torch-cpu.txt", "requirements/reinforcement-learning.txt"],
+      "constraint_files": ["requirements/post-training-cpu-constraints.txt"],
+      "required_modules": {
+        "torch": "torch", "jupyterlab": "jupyterlab", "ipykernel": "ipykernel",
+        "transformers": "transformers", "datasets": "datasets", "accelerate": "accelerate",
+        "peft": "peft", "trl": "trl", "gymnasium": "gymnasium"
+      },
+      "forbidden_distributions": ["vllm", "sglang", "llmcompressor", "bitsandbytes", "deepspeed"],
+      "isolation": {"require_clean_sys_path": true, "require_user_site_disabled": true, "require_project_runtime": true},
+      "gpu": {"required": false},
+      "evidence_scope": "cpu_framework_conformance",
+      "documentation": {
+        "global": "docs/gpu_environment_assets.md#pt-cpu",
+        "topic": "topic_discussion/post_training_optimization/quickstart.md#pt-cpu-quickstart"
+      }
+    },
     "PT-SFT-CUDA": {
       "title": "后训练 SFT 与 LoRA 单卡环境",
       "purpose": "运行真实模型 SFT、LoRA 与训练产物交付的单卡受控实验",

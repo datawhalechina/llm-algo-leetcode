@@ -5,10 +5,10 @@
   <rect x="35" y="170" width="155" height="72" class="box" fill="#eff6ff" stroke="#3b82f6"/><text x="112" y="199" text-anchor="middle" class="l">偏好样本</text><text x="112" y="223" text-anchor="middle" class="b">输入 · 优选 · 非优选</text>
   <rect x="235" y="95" width="165" height="64" class="box" fill="#f5f3ff" stroke="#8b5cf6"/><text x="318" y="121" text-anchor="middle" class="l">当前策略评分</text><text x="318" y="143" text-anchor="middle" class="b">可训练</text>
   <rect x="235" y="253" width="165" height="64" class="box" fill="#eef2ff" stroke="#6366f1"/><text x="318" y="279" text-anchor="middle" class="l">参考模型评分</text><text x="318" y="301" text-anchor="middle" class="b">冻结锚点</text>
-  <rect x="450" y="95" width="175" height="64" class="box" fill="#fff1f2" stroke="#e11d48"/><text x="538" y="121" text-anchor="middle" class="l">优选回答偏移</text><text x="538" y="143" text-anchor="middle" class="b">π − πref</text>
-  <rect x="450" y="253" width="175" height="64" class="box" fill="#fff1f2" stroke="#e11d48"/><text x="538" y="279" text-anchor="middle" class="l">非优选回答偏移</text><text x="538" y="301" text-anchor="middle" class="b">π − πref</text>
+  <rect x="450" y="95" width="175" height="64" class="box" fill="#fff1f2" stroke="#e11d48"/><text x="538" y="121" text-anchor="middle" class="l">优选回答偏移</text><text x="538" y="143" text-anchor="middle" class="b">log πθ − log πref</text>
+  <rect x="450" y="253" width="175" height="64" class="box" fill="#fff1f2" stroke="#e11d48"/><text x="538" y="279" text-anchor="middle" class="l">非优选回答偏移</text><text x="538" y="301" text-anchor="middle" class="b">log πθ − log πref</text>
   <rect x="690" y="170" width="175" height="72" class="box" fill="#fff1f2" stroke="#e11d48"/><text x="778" y="199" text-anchor="middle" class="l">偏好边际</text><text x="778" y="223" text-anchor="middle" class="b">β · (Δ优选 − Δ非优选)</text>
-  <rect x="930" y="170" width="190" height="72" class="box" fill="#ede9fe" stroke="#6d28d9"/><text x="1025" y="199" text-anchor="middle" class="l">DPO 损失</text><text x="1025" y="223" text-anchor="middle" class="b">−logsigmoid(边际)</text>
+  <rect x="930" y="170" width="190" height="72" class="box" fill="#ede9fe" stroke="#6d28d9"/><text x="1025" y="199" text-anchor="middle" class="l">DPO 逐样本损失</text><text x="1025" y="223" text-anchor="middle" class="b">softplus(−z)</text>
   <path d="M190 194H210V127H235" class="f"/><path d="M190 218H210V285H235" class="f"/><path d="M400 127H450" class="f"/><path d="M400 285H450" class="f"/><path d="M625 127H655V194H690" class="f"/><path d="M625 285H655V218H690" class="f"/><path d="M865 206H930" class="f"/>
   </g>
 </svg>

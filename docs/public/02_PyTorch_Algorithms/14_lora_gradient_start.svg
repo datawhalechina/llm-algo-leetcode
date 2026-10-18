@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="560" viewBox="0 0 1600 560" role="img" aria-labelledby="title desc">
+  <title id="title">LoRA 零初始化后的梯度启动顺序</title>
+  <desc id="desc">初始化时 A 随机而 B 为零，因此低秩增量为零；第一次反向传播先给 B 非零梯度，首次更新使 B 离开零点，之后 A 和 B 都能获得梯度。基础权重 W0 在所有阶段保持冻结。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop offset="0%" stop-color="#F8FAFC"/><stop offset="100%" stop-color="#ECFEFF"/></linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+    <style>
+      text{font-family:"Inter","Noto Sans CJK SC",sans-serif}.title{font-size:30px;font-weight:700;fill:#0F172A}.sub{font-size:16px;font-weight:500;fill:#475569}.step{font-size:14px;font-weight:700;fill:#475569}.label{font-size:19px;font-weight:700;fill:#111827}.small{font-size:14px;font-weight:500;fill:#334155}.invariant{font-size:16px;font-weight:700;fill:#1E3A8A}.box{stroke-width:3}.edge{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1600" height="560" fill="url(#bg)"/>
+  <text x="60" y="58" class="title">LoRA：B 从零启动，A 在下一阶段获得梯度</text>
+  <text x="60" y="88" class="sub">零初始化保持初始输出不变；它只改变 A/B 的梯度启动顺序，基础权重 W₀ 始终冻结。</text>
+
+  <text x="70" y="263" class="step">初始化</text>
+  <rect id="lora-init" x="60" y="290" width="310" height="96" rx="18" class="box" fill="#EFF6FF" stroke="#3B82F6"/>
+  <text x="215" y="311" text-anchor="middle" class="label">A 随机，B = 0</text>
+  <text x="215" y="333" text-anchor="middle" class="small">ΔW = sBA = 0</text>
+  <text x="215" y="355" text-anchor="middle" class="small">旁路输出为 0</text>
+  <text x="215" y="377" text-anchor="middle" class="small">模型输出仍为 W₀x</text>
+
+  <text x="468" y="263" class="step">第一次反向传播</text>
+  <rect id="first-backward" x="458" y="290" width="310" height="96" rx="18" class="box" fill="#FFF7ED" stroke="#F59E0B"/>
+  <text x="613" y="311" text-anchor="middle" class="label">梯度先进入 B</text>
+  <text x="613" y="333" text-anchor="middle" class="small">∇B L ≠ 0</text>
+  <text x="613" y="355" text-anchor="middle" class="small">∇A L = 0</text>
+  <text x="613" y="377" text-anchor="middle" class="small">因为反传到 A 时乘到 B = 0</text>
+
+  <text x="866" y="263" class="step">第一次优化器更新</text>
+  <rect id="first-update" x="856" y="290" width="310" height="96" rx="18" class="box" fill="#ECFDF5" stroke="#10B981"/>
+  <text x="1011" y="311" text-anchor="middle" class="label">B 离开零点</text>
+  <text x="1011" y="333" text-anchor="middle" class="small">B ← B − η∇B L</text>
+  <text x="1011" y="355" text-anchor="middle" class="small">A 尚未发生有效变化</text>
+  <text x="1011" y="377" text-anchor="middle" class="small">下一次前向已有非零 ΔW</text>
+
+  <text x="1264" y="263" class="step">后续反向传播</text>
+  <rect id="later-backward" x="1254" y="290" width="286" height="96" rx="18" class="box" fill="#F5F3FF" stroke="#8B5CF6"/>
+  <text x="1397" y="311" text-anchor="middle" class="label">A 与 B 共同训练</text>
+  <text x="1397" y="333" text-anchor="middle" class="small">∇A L ≠ 0</text>
+  <text x="1397" y="355" text-anchor="middle" class="small">∇B L ≠ 0</text>
+  <text x="1397" y="377" text-anchor="middle" class="small">低秩增量持续改变输出</text>
+
+  <path id="edge-init-backward" data-source="lora-init" data-target="first-backward" d="M370 338H458" class="edge"/>
+  <path id="edge-backward-update" data-source="first-backward" data-target="first-update" d="M768 338H856" class="edge"/>
+  <path id="edge-update-later" data-source="first-update" data-target="later-backward" d="M1166 338H1254" class="edge"/>
+</svg>

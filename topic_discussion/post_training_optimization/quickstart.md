@@ -1,15 +1,28 @@
 # 后训练优化实验 Quickstart
 
-本页只负责创建、恢复和检查后训练 GPU 环境。实验模型、数据、候选矩阵、结果路径和证据状态见[实验资产表](./experiment_assets.md)，精确依赖和环境隔离规则见[GPU 环境资产表](../../docs/gpu_environment_assets.md)。以下命令均在仓库根目录执行。
+本页只负责创建、恢复和检查后训练实验环境。实验模型、数据、候选矩阵、结果路径和证据状态见[实验资产表](./experiment_assets.md)，Profile 与跨专题隔离关系见[环境资产索引](../../docs/gpu_environment_assets.md)，精确依赖由 Profile 注册表维护。以下命令均在仓库根目录执行。
 
 | Profile | Conda 环境 | 适用页面 | 环境边界 |
 |:---|:---|:---|:---|
+| `PT-CPU` | `llm_pt_cpu` | 13–18、30–33 与 `PT-*` 机制页的框架和接口核对 | 只核对数据、目标函数与环境协议，不形成 GPU 性能结论 |
 | `PT-SFT-CUDA` | `llm_pt_sft_cu128` | SFT、LoRA、长上下文和参数适配实验 | 不混装量化 Serving、vLLM 或分布式训练依赖 |
 | `PT-RL-CUDA` | `llm_pt_rl_cu128` | 奖励模型、DPO、GRPO 和奖励信号实验 | 只提供单卡机制与有限更新环境，不替代多工作进程 RL 系统 |
 | `PT-DELIVERY-CUDA` | `llm_pt_delivery_cu128` | Part 05 冻结评测、候选复测与交付决策 | 只消费已交接候选，不重新承担 SFT、DPO 或 GRPO 训练 |
 | `Q-QLORA` | 由量化专题维护 | QLoRA 与低比特训练分支 | 不向 `PT-SFT-CUDA` 追加 bitsandbytes |
 
 安装器会按 Profile 安装依赖、注册仓库运行时、执行依赖检查与环境预检，并注册同名 Jupyter Kernel。已有环境默认不会被覆盖；查看安装计划使用 `--dry-run`，只有确认旧环境属于同一 Profile 后才使用 `--reuse`。
+
+<a id="pt-cpu-quickstart"></a>
+
+## PT-CPU：机制核对
+
+```bash
+python tools/install_environment_profile.py \
+  --profile PT-CPU \
+  --env-name llm_pt_cpu
+conda activate llm_pt_cpu
+python -m jupyter lab
+```
 
 <a id="pt-sft-cuda-quickstart"></a>
 
@@ -61,6 +74,7 @@ python -m jupyter lab
 
 | Profile | `<ENV_NAME>` | `<DEPENDENCY_ARGS>` |
 |:---|:---|:---|
+| `PT-CPU` | `llm_pt_cpu` | `-r requirements/torch-cpu.txt -r requirements/reinforcement-learning.txt -c requirements/post-training-cpu-constraints.txt` |
 | `PT-SFT-CUDA` | `llm_pt_sft_cu128` | `-r requirements/torch-cu128.txt -r requirements/fine-tuning.txt` |
 | `PT-RL-CUDA` | `llm_pt_rl_cu128` | `-r requirements/torch-cu128.txt -r requirements/fine-tuning.txt -c requirements/post-training-cu128-constraints.txt` |
 | `PT-DELIVERY-CUDA` | `llm_pt_delivery_cu128` | `-r requirements/torch-cu128.txt -r requirements/post-training-delivery.txt -c requirements/post-training-cu128-constraints.txt` |
@@ -99,6 +113,16 @@ python tools/install_environment_profile.py \
 续装 `PT-SFT-CUDA` 时，将 Profile 和环境名替换为 `PT-SFT-CUDA`、`llm_pt_sft_cu128`。`--reuse` 不用于把量化、Serving 或其他 CUDA 栈混装进已有环境；环境身份不明或依赖已经冲突时应新建环境。
 
 ## 后续复测
+
+CPU 机制环境：
+
+```bash
+conda activate llm_pt_cpu
+python tools/register_notebook_runtime.py --check
+python -m pip check
+python tools/environment_preflight.py --profile PT-CPU
+python -m jupyter lab
+```
 
 SFT / LoRA 环境：
 

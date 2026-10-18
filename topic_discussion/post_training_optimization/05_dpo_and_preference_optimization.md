@@ -1,6 +1,6 @@
-# 05 · DPO 与离线偏好优化
+# 05 · DPO、KTO 与离线反馈优化
 
-DPO 处理的是“同一个问题有多个可行回答时，模型应更偏好哪一个”的问题。它直接使用同提示、可复查且与评测集隔离的偏好对，优化当前策略相对参考策略的偏好，不需要每轮都启动奖励模型和轨迹采样；结论取决于偏好标签一致性、参考策略版本和冻结评测结果。
+DPO 处理同一提示下“模型应更偏好哪一个回答”，KTO 则处理无法稳定配对、但每条回答拥有明确正负标签的情况。两者都在固定参考策略下利用离线反馈，不需要每轮启动奖励模型和轨迹采样；结论分别依赖偏好对一致性或二元标签含义，也共同依赖参考策略版本和冻结评测结果。
 
 ## 从偏好对到更新方向
 
@@ -21,6 +21,7 @@ DPO 处理的是“同一个问题有多个可行回答时，模型应更偏好�
 | 反馈条件 | 更合适的路径 | 原因 |
 | --- | --- | --- |
 | 已有高质量、离线、可复查的偏好对 | DPO | 直接利用成对偏好，训练和系统成本较低 |
+| 只有单条点赞、点踩或验收标签，无法稳定配对 | KTO | 直接利用二元反馈，但必须记录正负样本比例和类别权重 |
 | 需要通过新生成的候选继续探索 | PPO / GRPO | 离线 pair 无法覆盖新策略产生的行为 |
 | 任务结果可由测试、规则或环境明确验证 | GRPO / RLVR | 验证器可提供比主观偏好更直接的反馈 |
 | 偏好对来源不稳定、排序理由不清 | 先回到数据工程 | 先修数据、切分和标注一致性，不能用优化器掩盖信号问题 |
@@ -35,4 +36,4 @@ DPO 的损失下降可能只是模型更会区分当前偏好对；它不自动�
 | 输出明显偏离原有可用行为 | 参考策略版本、`beta`、优选回答定义 | 降低偏离强度并复测行为回归 |
 | 需要新轨迹才能判断好坏 | 轨迹采样与验证器 | 转入 PPO、GRPO 或 RLVR 路径 |
 
-偏好对通过同提示、标签一致性和评测隔离检查后，可进入[DPO 机制练习](../../02_PyTorch_Algorithms/17_DPO_Loss_Tutorial.ipynb)，验证策略—参考对数概率差如何形成偏好边际。候选训练完成后直接进入[独立评测、能力回归与采用决策](./10_evaluation_and_adoption_decision.md)；只有持续使用当前策略生成新反馈时，才进入[轨迹生命周期](./08_trajectory_lifecycle_and_environment_interaction.md)。进一步阅读：[DPO 论文](https://arxiv.org/abs/2305.18290)、[TRL DPOTrainer](https://huggingface.co/docs/trl/dpo_trainer)。
+偏好对通过同提示、标签一致性和评测隔离检查后，进入[DPO 机制练习](../../02_PyTorch_Algorithms/17_DPO_Loss_Tutorial.ipynb)；单条二元反馈进入[KTO 机制练习](../../02_PyTorch_Algorithms/PT-KTO_Binary_Feedback_Alignment.ipynb)。两页都核对策略—参考对数概率偏移，但数据单位和目标函数不同。训练完成后进入[独立评测、能力回归与采用决策](./10_evaluation_and_adoption_decision.md)；只有持续使用当前策略生成新反馈时，才进入[轨迹生命周期](./08_trajectory_lifecycle_and_environment_interaction.md)。进一步阅读：[DPO 论文](https://arxiv.org/abs/2305.18290)、[TRL DPOTrainer](https://huggingface.co/docs/trl/dpo_trainer)、[KTO 论文](https://arxiv.org/abs/2402.01306)与[TRL KTOTrainer](https://huggingface.co/docs/trl/kto_trainer)。

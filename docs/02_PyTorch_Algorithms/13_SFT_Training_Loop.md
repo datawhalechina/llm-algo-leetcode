@@ -1,6 +1,6 @@
-# 13. SFT Training Loop | 监督微调训练循环
+# 13. SFT Training Loop | SFT 监督边界与损失
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `训练微调`, `SFT`, `训练循环` | **目标人群：** 训练机制学习者
+**难度：** Medium | **环境：** [CPU 主线](#runtime-environment) | **标签：** `训练微调`, `SFT`, `训练循环` | **目标人群：** 训练机制学习者
 
 > 🚀 **云端运行环境**
 >
@@ -14,24 +14,39 @@
 
 ## 本节导读
 
-把模型结构写出来以后，下一步就是让它按监督数据学习回答。微调（fine-tuning）是继续训练预训练模型以适应下游任务的总称，监督微调（supervised fine-tuning，SFT）使用 prompt-response 标注数据建立输入与回答之间的监督关系。SFT 最容易出错的地方不在优化器，而在监督位置与损失口径：模型输入通常是 `[prompt + response]`，真正应该学习的是 response，而不是让模型复述 prompt。
+把模型结构写出来以后，下一步就是让它按监督数据学习回答。微调（fine-tuning）是继续训练预训练模型以适应下游任务的总称，监督微调（supervised fine-tuning，SFT）使用 prompt-response 标注数据建立输入与回答之间的监督关系。SFT 最容易出错的地方不在优化器，而在确定哪些位置提供监督、预测与标签如何错开一位，以及损失应除以多少个有效 Token：模型输入通常是 `[prompt + response]`，真正应该学习的是 response，而不是让模型复述 prompt。
 
-本节从一条样本进入训练开始，依次确定对话模板、prompt 与 response 的监督边界、下一个 token 的预测对齐，以及变长样本下的损失分母。完成后，你应该能判断哪些位置提供监督、损失如何对齐，以及为什么不同长度样本应按有效监督 token 数聚合。
+本节从一条样本进入损失计算开始，依次确定对话模板、prompt 与 response 的监督边界、下一个 Token 的预测对齐，以及变长样本下的损失分母。完成后，你应该能判断哪些位置提供监督、损失如何对齐，以及为什么不同长度样本应按有效监督 Token 数聚合。参数更新、学习率和评估记录由第 15 节继续完成。
 
 **关键词：** `SFT`, `chat template`, `label masking`, `next-token prediction`, `effective tokens`
 
 ---
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 默认使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
+- **框架核对：** 如需核对成熟框架行为，使用 [`PT-CPU`](../topic_discussion/post_training_optimization/quickstart.md#pt-cpu-quickstart)；该环境已包含基础练习依赖，可在完成 Step 4 后直接运行 [框架一致性核对](#framework-check)。
+
+---
 ## 前置阅读
 
-**导语：** 先理解损失函数和最小训练生命周期，再观察 SFT 如何限定监督位置。
+**导语：** 先确认样本已经通过数据契约与泄漏审计，再结合损失函数和最小训练生命周期观察 SFT 如何限定监督位置。
 
+- [32. SFT Dataset Contract and Leakage Audit | SFT 数据契约与泄漏审计](./32_Data_Engineering_for_SFT.md)
 - [P0: 11. PyTorch Optimizers and Loss | PyTorch 优化器与损失](../00_Prerequisites/11_PyTorch_Optimizers_and_Loss.md)
 - [P0: 12. PyTorch Data Interface and Training Lifecycle | 数据接口与训练生命周期](../00_Prerequisites/12_PyTorch_Minimal_Training_Interface.md)
 
 ---
-### Step 1：一条 SFT 样本如何变成下一个 token 预测
+## Step 1：一条 SFT 样本如何形成下一 Token 预测目标
 
-SFT 用“输入—回答”样本继续训练预训练模型。它与语言模型预训练共享 next-token prediction 和反向传播链路，但两者的数据来源、监督范围与训练目标并不相同。真实对话样本还要先经过模型约定的对话模板：训练序列包含 assistant 回答，推理输入则停在 assistant 起始提示处。模板、分词器和监督边界必须来自同一个模型契约，否则监督位置可能发生偏移。
+SFT 用“输入—回答”样本继续训练预训练模型。它与语言模型预训练共享 next-token prediction 和反向传播链路，但两者的数据来源、监督范围与训练目标并不相同。真实对话样本还要先经过模型约定的对话模板：训练序列包含 assistant 回答，推理输入则停在 assistant 起始提示处。对话模板、分词器配置和监督边界必须属于同一个模型版本，否则监督位置可能发生偏移。
+
+对模板化后的 Token 序列 $x_{1:T}$，因果语言模型把联合概率分解为逐位置条件概率。这里，$T$ 是序列长度，$t$ 是当前预测位置，$\theta$ 表示模型参数。模型在位置 $t$ 的输出用于预测 $x_{t+1}$；SFT 沿用这条概率链，但只选择回答范围内的目标计算损失。
+
+$$
+p_\theta(x_{1:T})=\prod_{t=0}^{T-1}p_\theta(x_{t+1}\mid x_{\le t})
+$$
 
 | 对比项 | 语言模型预训练 | 监督微调（SFT） |
 | --- | --- | --- |
@@ -44,9 +59,15 @@ SFT 用“输入—回答”样本继续训练预训练模型。它与语言模�
 
 ![SFT 训练序列与预测目标](../public/02_PyTorch_Algorithms/13_sft_example_flow.svg)
 
-### Step 2：上下文、回答与填充位置承担什么角色
+## Step 2：上下文、回答与填充位置承担什么角色
 
 模板化序列同时包含上下文、回答、可选结束标记和填充位置。上下文帮助模型理解任务，但通常不作为 SFT 的目标；回答和结束标记提供监督；填充只负责让不同长度样本组成一批数据。assistant 起点必须从模板化序列中确定，不能用固定字符长度猜测。
+
+令 $b$ 表示样本索引，$j$ 表示目标 Token 位置，$\mathbf{1}[\cdot]$ 表示指示函数，$\text{attention}_{b,j}$ 表示注意力掩码。监督掩码 $m_{b,j}$ 表示该位置是否参与监督：回答与可选结束标记取 1，提示和填充位置取 0。目标位置 $j$ 对应模型位置 $j-1$ 的预测；因此标签掩码必须在完成下一 Token 位移后与预测对齐。
+
+$$
+m_{b,j}=\mathbf{1}[j\in\text{response/EOS}]\,\mathbf{1}[\text{attention}_{b,j}=1]
+$$
 
 | 位置 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -54,12 +75,18 @@ SFT 用“输入—回答”样本继续训练预训练模型。它与语言模�
 | 是否提供上下文 | 是 | 是 | 是 | 是 | 是 | 是 | 是 | 是 | 否 |
 | 是否提供监督 | 否 | 否 | 否 | 是 | 是 | 是 | 是 | 是 | 否 |
 
-### Step 3：从监督位置得到有效 token 平均损失
+## Step 3：如何从监督位置得到有效 Token 平均损失
 
-模型在位置 $t$ 根据当前及更早的上下文预测位置 $t+1$。SFT 只从回答和可选结束标记对应的预测中收集损失；上下文与填充位置不贡献监督。一个 batch 的损失应先累加全部有效监督位置，再除以有效监督 token 数，而不是让长短样本或微批次获得不受控制的权重。
+模型在位置 $t$ 根据当前及更早的上下文预测位置 $t+1$。SFT 只从回答和可选结束标记对应的预测中收集损失；上下文与填充位置不贡献监督。一个 batch 的损失应先累加全部有效监督位置，再除以有效监督 Token 数，而不是让长短样本或微批次获得不受控制的权重。
 
 $$
-L_{\text{batch}} = \frac{\sum_{i \in \mathcal{V}} \ell_i}{|\mathcal{V}|}, \qquad \mathcal{V}=\{i \mid i \text{ 是有效回答目标}\}
+\ell_{b,j}=-\log p_\theta(x_{b,j}\mid x_{b,<j}), \qquad L_{\mathrm{SFT}}=\frac{\sum_{b,j}m_{b,j}\ell_{b,j}}{\sum_{b,j}m_{b,j}}
+$$
+
+若一个逻辑批次被拆成多个微批次，第 $k$ 个微批次分别产生损失总和 $S_k$ 和有效目标数 $N_k$，精确聚合仍是总分子除以总分母；直接平均各微批次均值会让短回答和长回答获得错误权重。
+
+$$
+L_{\mathrm{logical\ batch}}=\frac{\sum_k S_k}{\sum_k N_k}, \qquad S_k=\sum_{(b,j)\in k}m_{b,j}\ell_{b,j}, \quad N_k=\sum_{(b,j)\in k}m_{b,j}
 $$
 
 | 预测位置 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
@@ -69,16 +96,18 @@ $$
 
 ![SFT 数据与损失对齐](../public/02_PyTorch_Algorithms/13_sft_alignment.svg)
 
-### Step 4：实现监督边界与 token 加权损失
+<a id="mechanism-practice"></a>
 
-题目区从 chat template 与 tokenizer 已经给出的 prompt/response token 边界开始：先用 `build_sft_data` 构造右侧 padding 的三件套，再由 `compute_sft_loss_terms` 暴露损失总和与有效 token 数，最后由 `compute_sft_loss` 得到 batch 平均损失。这样既能检查监督边界，也能验证变长样本下的损失分母；模板格式本身由 tokenizer 的模型契约负责，不在代码里手写另一套控制 token。
+## Step 4：实现监督边界与 token 加权损失
+
+给定对话模板与分词器确定的提示、回答 Token 边界后，`build_sft_data` 构造输入、有效位置和监督标签，`compute_sft_loss_terms` 计算损失总和与有效 Token 数，`compute_sft_loss` 再得到批次平均损失。模板由分词器生成，代码负责监督边界、下一 Token 对齐和变长样本的损失分母。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 | --- | --- | --- | --- |
-| TODO 1：建立监督边界<br>`build_sft_data` | 构造截断后的监督标签并统计有效监督量 | prompt 为 `-100`，response / EOS 保留；监督量不足时拒绝样本 | `_assert_sft_data_contract`、`_assert_truncation_guard` |
-| TODO 2：同步右侧填充<br>`build_sft_data` | 为输入、有效位置和监督目标追加对应填充值 | 三个序列等长，padding 不参与注意力与监督 | `_assert_sft_data_contract` 的变长与填充用例 |
-| TODO 3：对齐预测与目标<br>`compute_sft_loss_terms` | 将预测位置与后一位置的目标对齐 | 位移后仍保持 batch、序列和词表维度契约 | `_assert_loss_alignment`、`_assert_supervision_scope` |
-| TODO 4：按有效 token 归约<br>`compute_sft_loss` | 用损失总和与有效监督量得到 batch 损失 | 不按样本数或微批次数等权平均 | `_assert_effective_token_reduction` |
+| TODO 1：建立监督边界<br>`build_sft_data` | 构造 $m_{b,j}$ 对应的监督标签并统计有效监督量 | prompt 为 `-100`，response / EOS 保留；监督量不足时拒绝样本 | 检查提示屏蔽、回答与 EOS 保留、有效监督数，以及截断后监督不足时拒绝样本 |
+| TODO 2：同步右侧填充<br>`build_sft_data` | 将 padding 条件写入输入、有效位置和 $m_{b,j}$ 对应的标签 | 三个序列等长，padding 不参与注意力与监督 | 检查三个序列等长、右侧填充值正确，且 padding 同时退出注意力与监督 |
+| TODO 3：对齐预测与目标<br>`compute_sft_loss_terms` | 对齐 $p_\theta(x_{b,j}\mid x_{b,<j})$ 并累加 $\ell_{b,j}$ | 位移后仍保持 batch、序列和词表维度契约 | 检查位移后的张量维度、监督范围与手工交叉熵结果一致 |
+| TODO 4：按有效 Token 归约<br>`compute_sft_loss` | 按 $\sum m\ell / \sum m$ 得到 batch 损失 | 不按样本数或微批次数等权平均 | 检查完整批次与 Token 加权微批次结果一致，并能区分错误的微批次等权平均 |
 
 
 ```python
@@ -88,7 +117,7 @@ import torch.nn as nn
 
 
 ```python
-# 题目设计：先确定监督边界，再显式计算有效 token 的损失总和与分母。
+# 先确定监督边界，再显式计算有效 Token 的损失总和与分母。
 # 四个 TODO 分别覆盖标签、padding、next-token 对齐和 token 加权聚合。
 def build_sft_data(
     prompt_ids: list[int],
@@ -162,7 +191,7 @@ def compute_sft_loss_terms(
     if valid_token_count.item() == 0:
         raise ValueError("当前 batch 没有有效监督 token")
 
-    # 骨架负责逐位置交叉熵；ignore_index 对应的位置贡献为 0。
+    # 逐位置交叉熵保留每个有效目标的损失；ignore_index 对应的位置贡献为 0。
     token_losses = nn.functional.cross_entropy(
         shift_logits.reshape(-1, shift_logits.size(-1)),
         shift_labels.reshape(-1),
@@ -188,7 +217,7 @@ def compute_sft_loss(logits: torch.Tensor, labels: torch.Tensor, attention_mask:
 
 
 ```python
-# 测试设计：分别验证数据契约、监督边界、next-token 对齐与有效 token 分母。
+# 分别验证数据契约、监督边界、下一 Token 对齐与有效 Token 分母。
 # 最后一项使用长短样本对照，检查完整 batch 与按 token 加权的分批结果一致。
 def _build_sft_test_case():
     """构造可重复的 CPU-first SFT 测试样本。"""
@@ -402,32 +431,163 @@ def compute_sft_loss(logits: torch.Tensor, labels: torch.Tensor, attention_mask:
 
 ### 解析
 
-**TODO 1：构造监督标签**
+#### TODO 1：构造监督标签
 
-- prompt 与 padding 写入 `-100`，response 与 EOS 保留 token id。
-- `input_ids` 与 `labels` 使用同一截断范围；截断后没有有效监督 token 时直接拒绝样本。
+- 机制：prompt 与 padding 写入 `-100`，response 与 EOS 保留 Token ID；`valid_supervised` 统计截断后仍不等于 `-100` 的标签数。
+- 不变量：`input_ids` 与 `labels` 使用同一截断范围，且 `valid_supervised >= min_response_tokens`；否则拒绝样本。
+- 测试证据：`_assert_sft_data_contract` 检查标签范围，`_assert_truncation_guard` 检查监督量不足时必须失败。
 
-**TODO 2：同步右侧填充**
+#### TODO 2：同步右侧填充
 
-- `input_ids`、`attention_mask` 与 `labels` 必须保持等长。
-- `attention_mask` 控制模型是否读取 padding，`labels=-100` 控制该位置是否进入 loss。
+- 机制：在真实 Token 右侧分别追加 `pad_id`、`0` 和 `-100`，形成输入、注意力掩码和监督标签。
+- 不变量：三个序列等长；padding 位置同时满足 `attention_mask=0` 和 `labels=-100`。
+- 测试证据：`_assert_sft_data_contract` 用变长样本检查长度、填充值与监督屏蔽。
 
-**TODO 3：对齐 next-token 目标**
+#### TODO 3：对齐 next-token 目标
 
-- `logits[..., :-1, :]` 预测 `labels[..., 1:]`。
-- 骨架随后应用有效位置检查并统计监督 token，测试用手工结果验证对齐范围。
+- 机制：`logits[..., :-1, :]` 与 `labels[..., 1:]` 配对，使位置 $t$ 的预测对应位置 $t+1$ 的目标。
+- 不变量：对齐后 batch、序列与词表维度匹配，且至少存在一个不等于 `-100` 的目标。
+- 测试证据：`_assert_loss_alignment` 检查张量维度，`_assert_supervision_scope` 用手工交叉熵检查监督范围。
 
-**TODO 4：按有效 Token 聚合**
+#### TODO 4：按有效 Token 聚合
 
-- 先累加各微批次的损失总和与有效 Token 数，再统一相除。
-- 测试比较完整 batch 与变长微批次，确认二者得到相同的 token 加权损失和梯度。
+- 机制：先累加各微批次的损失总和与有效 Token 数，再计算 `loss_sum / valid_token_count`。
+- 不变量：变长微批次不能按微批次平均损失等权聚合；完整 batch 与相同样本的 Token 加权结果应一致。
+- 测试证据：`_assert_effective_token_reduction` 同时比较完整 batch、Token 加权微批次与错误的等权平均。
+<a id="framework-check"></a>
+
+## 框架一致性核对（可选）
+
+下面使用 TRL 的批处理器和 Transformers 的微型随机模型核对三类契约。任一检查不通过时，单元会直接报出失败项；该核对不下载模型，也不更新参数。
+
+| 核对项 | 对比内容 | 通过条件 |
+| --- | --- | --- |
+| 输入与填充 | 本节样本与 TRL 批处理结果 | Token 顺序、标签、注意力掩码和填充位置一致 |
+| 监督边界 | prompt、response、EOS 与有效 Token 数 | prompt / padding 被忽略，response / EOS 保留 |
+| 位移与归约 | `compute_sft_loss` 与 Transformers 内置损失 | 两条路径在相同 logits 和 labels 上数值一致 |
+
+```python
+from importlib.metadata import version
+
+try:
+    from transformers import AutoModelForCausalLM, GPT2Config
+    from trl.trainer.sft_trainer import DataCollatorForLanguageModeling
+except ImportError:
+    framework_check = {
+        "status": "skipped",
+        "reason": "请使用 PT-CPU 环境运行本单元",
+    }
+else:
+    def check_sft_framework_conformance():
+        """核对本地 SFT 监督边界与 TRL、Transformers 的批处理和损失语义。"""
+        sample_specs = [
+            {"prompt": [10, 20, 30], "response": [40, 41]},
+            {"prompt": [11], "response": [42, 43]},
+        ]
+        source_samples = [
+            build_sft_data(spec["prompt"], spec["response"], eos_id=2, max_len=10)
+            for spec in sample_specs
+        ]
+        # 先移除本地右侧填充，让 TRL 批处理器独立重建批次布局。
+        framework_examples = []
+        sequence_lengths = []
+        for input_ids, attention_mask, labels in source_samples:
+            sequence_length = int(attention_mask.sum().item())
+            sequence_lengths.append(sequence_length)
+            framework_examples.append({
+                "input_ids": input_ids[:sequence_length].tolist(),
+                "labels": labels[:sequence_length].tolist(),
+            })
+
+        collator = DataCollatorForLanguageModeling(pad_token_id=0)
+        framework_batch = collator(framework_examples)
+        checks = {
+            "input_ids_match": True,
+            "labels_match": True,
+            "attention_mask_match": True,
+            "padding_ignored": True,
+            "prompt_ignored": True,
+            "response_and_eos_supervised": True,
+        }
+        batch_length = framework_batch["input_ids"].shape[1]
+        for row, (spec, example, sequence_length) in enumerate(zip(
+            sample_specs, framework_examples, sequence_lengths
+        )):
+            prompt_length = len(spec["prompt"])
+            checks["input_ids_match"] &= (
+                framework_batch["input_ids"][row, :sequence_length].tolist() == example["input_ids"]
+            )
+            checks["labels_match"] &= (
+                framework_batch["labels"][row, :sequence_length].tolist() == example["labels"]
+            )
+            expected_mask = [1] * sequence_length + [0] * (batch_length - sequence_length)
+            checks["attention_mask_match"] &= (
+                framework_batch["attention_mask"][row].tolist() == expected_mask
+            )
+            checks["padding_ignored"] &= bool(torch.all(
+                framework_batch["labels"][row, sequence_length:] == -100
+            ).item())
+            checks["prompt_ignored"] &= bool(torch.all(
+                framework_batch["labels"][row, :prompt_length] == -100
+            ).item())
+            checks["response_and_eos_supervised"] &= bool(torch.equal(
+                framework_batch["labels"][row, prompt_length:sequence_length],
+                framework_batch["input_ids"][row, prompt_length:sequence_length],
+            ))
+
+        effective_tokens = int((framework_batch["labels"][:, 1:] != -100).sum().item())
+        expected_effective_tokens = sum(
+            sequence_length - len(spec["prompt"])
+            for spec, sequence_length in zip(sample_specs, sequence_lengths)
+        )
+        checks["effective_token_count_match"] = (
+            effective_tokens == expected_effective_tokens
+        )
+
+        # 在同一组 logits 和 labels 上比较损失，隔离下一 Token 位移与归约差异。
+        torch.manual_seed(42)
+        tiny_model = AutoModelForCausalLM.from_config(GPT2Config(
+            vocab_size=64, n_positions=16, n_ctx=16, n_embd=24, n_layer=1, n_head=2,
+            bos_token_id=1, eos_token_id=2, pad_token_id=0,
+        )).eval()
+        with torch.no_grad():
+            framework_output = tiny_model(**framework_batch)
+            reference_loss = compute_sft_loss(
+                framework_output.logits,
+                framework_batch["labels"],
+                framework_batch["attention_mask"],
+            )
+        checks["loss_match"] = bool(torch.isclose(
+            framework_output.loss, reference_loss, atol=1e-6, rtol=1e-6
+        ).item())
+        failed_checks = [name for name, passed in checks.items() if not passed]
+        if failed_checks:
+            raise AssertionError(f"框架一致性核对失败：{failed_checks}")
+
+        framework_loss = float(framework_output.loss.item())
+        local_loss = float(reference_loss.item())
+        return {
+            "status": "passed",
+            "versions": {
+                "transformers": version("transformers"),
+                "trl": version("trl"),
+            },
+            "checks": checks,
+            "batch_shape": list(framework_batch["input_ids"].shape),
+            "effective_tokens": effective_tokens,
+            "local_loss": round(local_loss, 6),
+            "framework_loss": round(framework_loss, 6),
+            "absolute_error": abs(local_loss - framework_loss),
+        }
+
+    framework_check = check_sft_framework_conformance()
+
+framework_check
+```
 
 ## 相关阅读
 
-
-- [14. LoRA Tutorial | LoRA 教程](../02_PyTorch_Algorithms/14_LoRA_Tutorial.md)
-- [15. End-to-End Fine-Tuning Experiment | 端到端微调实验](../02_PyTorch_Algorithms/15_End_to_End_Fine_Tuning_Experiment.md)
-- [P0: 17. PyTorch Profiling Basics | PyTorch 性能剖析基础](../00_Prerequisites/17_PyTorch_Profiling_Basics.md)
-- [P0: 18. Memory Profiling and Optimization | 显存剖析与优化](../00_Prerequisites/18_Memory_Profiling_and_Optimization.md)
+- [后训练优化公式索引与符号约定](../topic_discussion/post_training_optimization/formula_reference.md)
+- [15. SFT Training Lifecycle | SFT 有效更新与训练闭环](../02_PyTorch_Algorithms/15_End_to_End_Fine_Tuning_Experiment.md)
+- [30. Long-Context Fine-Tuning Mechanics | 长上下文微调机制](./30_Long_Context_Fine_Tuning.md)
 - [Hugging Face TRL SFTTrainer](https://huggingface.co/docs/trl/sft_trainer)
-- [PyTorch CrossEntropyLoss](https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html)

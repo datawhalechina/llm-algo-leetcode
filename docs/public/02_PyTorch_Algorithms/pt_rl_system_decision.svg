@@ -1,1 +1,77 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker><style>.t{font:700 26px sans-serif;fill:#0f172a}.n{font:700 17px sans-serif;fill:#0f172a}.s{font:14px sans-serif;fill:#475569}</style></defs><rect width="1200" height="420" rx="24" fill="#f8fafc"/><text x="600" y="45" text-anchor="middle" class="t">后训练系统候选必须连续通过四类门槛</text><rect x="50" y="145" width="210" height="100" rx="14" fill="#eff6ff" stroke="#60a5fa"/><text x="75" y="182" class="n">等价队列容量</text><text x="75" y="211" class="s">先按阶段倍率统一工作单位</text><rect x="340" y="145" width="210" height="100" rx="14" fill="#f0fdf4" stroke="#4ade80"/><text x="365" y="182" class="n">分池显存</text><text x="365" y="211" class="s">各池驻留量 ≤ 对应预算</text><rect x="630" y="145" width="210" height="100" rx="14" fill="#fffbeb" stroke="#f59e0b"/><text x="655" y="182" class="n">关键链路传输</text><text x="655" y="211" class="s">共享互连域聚合，独立链路并行</text><rect x="920" y="145" width="220" height="100" rx="14" fill="#faf5ff" stroke="#a855f7"/><text x="945" y="182" class="n">版本与恢复</text><text x="945" y="211" class="s">提交 · 确认 · 恢复 · 回滚</text><path d="M260 195H340" stroke="#64748b" stroke-width="3" marker-end="url(#a)"/><path d="M550 195H630" stroke="#64748b" stroke-width="3" marker-end="url(#a)"/><path d="M840 195H920" stroke="#64748b" stroke-width="3" marker-end="url(#a)"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="620" viewBox="0 0 1400 620" role="img" aria-labelledby="title desc">
+  <title id="title">候选部署的三类账本与两层判断</title>
+  <desc id="desc">共置、分离或混合部署先形成资源池显存、阶段处理率和跨池传输三类账本；显存、版本与恢复决定是否硬失败，队列余量和互连域占用决定是否需要调优，通过后只能进入真实多进程测量。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker>
+    <style>
+      .title{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:30px;font-weight:700;fill:#0f172a}.subtitle{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:16px;font-weight:500;fill:#475569}.label{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:18px;font-weight:700}.body{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:14px;font-weight:500}.edge-label{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:13px;font-weight:700;fill:#475569}.node{stroke-width:2.5;rx:18;ry:18}.edge{stroke:#475569;stroke-width:3.5;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1400" height="620" rx="28" fill="#f8fafc"/>
+  <text x="50" y="54" class="title">候选部署：先建立三类账本，再执行两层判断</text>
+  <text x="50" y="83" class="subtitle">账本通过只表示部署值得进入真实多进程测量，不表示已经获得吞吐收益。</text>
+
+  <rect id="deployment" x="40" y="235" width="190" height="120" class="node" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="135" y="275" text-anchor="middle" class="label" fill="#172554">候选部署</text>
+  <text x="135" y="307" text-anchor="middle" class="body" fill="#1e40af">共置 / 分离 / 混合</text>
+  <text x="135" y="333" text-anchor="middle" class="body" fill="#1e40af">版本 · 恢复配置</text>
+  <circle id="ledger-branch" cx="275" cy="295" r="6" fill="#475569"/>
+  <path d="M230 295 H269" class="edge" data-source="deployment" data-target="ledger-branch"/>
+
+  <rect id="memory-ledger" x="330" y="105" width="245" height="100" class="node" fill="#fee2e2" stroke="#f87171"/>
+  <text x="452" y="143" text-anchor="middle" class="label" fill="#7f1d1d">资源池显存账本</text>
+  <text x="452" y="174" text-anchor="middle" class="body" fill="#991b1b">模型、优化器、KV Cache 峰值</text>
+  <rect id="rate-ledger" x="330" y="245" width="245" height="100" class="node" fill="#fef3c7" stroke="#fbbf24"/>
+  <text x="452" y="283" text-anchor="middle" class="label" fill="#78350f">阶段处理率账本</text>
+  <text x="452" y="314" text-anchor="middle" class="body" fill="#92400e">等价处理率与队列余量</text>
+  <rect id="transfer-ledger" x="330" y="385" width="245" height="100" class="node" fill="#e0f2fe" stroke="#38bdf8"/>
+  <text x="452" y="423" text-anchor="middle" class="label" fill="#0c4a6e">跨池传输账本</text>
+  <text x="452" y="454" text-anchor="middle" class="body" fill="#075985">载荷与互连域暴露占用</text>
+  <path d="M281 295 H300 V155 H330" class="edge" data-source="ledger-branch" data-target="memory-ledger"/>
+  <path d="M281 295 H330" class="edge" data-source="ledger-branch" data-target="rate-ledger"/>
+  <path d="M281 295 H300 V435 H330" class="edge" data-source="ledger-branch" data-target="transfer-ledger"/>
+
+  <rect id="hard-gate" x="650" y="115" width="230" height="120" class="node" fill="#fff1f2" stroke="#e11d48"/>
+  <text x="765" y="155" text-anchor="middle" class="label" fill="#881337">硬门槛</text>
+  <text x="765" y="186" text-anchor="middle" class="body" fill="#9f1239">显存不超限 · 版本已确认</text>
+  <text x="765" y="211" text-anchor="middle" class="body" fill="#9f1239">检查点与恢复路径可用</text>
+  <path d="M575 155 H650" class="edge" data-source="memory-ledger" data-target="hard-gate"/>
+  <path d="M281 295 H300 V215 H650" class="edge" data-source="ledger-branch" data-target="hard-gate"/>
+  <text x="557" y="204" class="edge-label">版本与恢复</text>
+
+  <rect id="pressure-gate" x="650" y="355" width="230" height="120" class="node" fill="#fffbeb" stroke="#f59e0b"/>
+  <text x="765" y="395" text-anchor="middle" class="label" fill="#78350f">运行压力</text>
+  <text x="765" y="426" text-anchor="middle" class="body" fill="#92400e">所有阶段队列余量 ≥ 0</text>
+  <text x="765" y="451" text-anchor="middle" class="body" fill="#92400e">关键互连域不超过预算</text>
+  <path d="M575 295 H610 V390 H650" class="edge" data-source="rate-ledger" data-target="pressure-gate"/>
+  <path d="M575 435 H650" class="edge" data-source="transfer-ledger" data-target="pressure-gate"/>
+  <path d="M765 235 V355" class="edge" data-source="hard-gate" data-target="pressure-gate"/>
+  <text x="780" y="302" class="edge-label">全部通过</text>
+
+  <rect id="reject" x="965" y="105" width="185" height="90" class="node" fill="#fee2e2" stroke="#ef4444"/>
+  <text x="1057" y="143" text-anchor="middle" class="label" fill="#7f1d1d">reject</text>
+  <text x="1057" y="171" text-anchor="middle" class="body" fill="#991b1b">记录全部硬失败</text>
+  <rect id="tune" x="965" y="285" width="185" height="90" class="node" fill="#fef3c7" stroke="#f59e0b"/>
+  <text x="1057" y="323" text-anchor="middle" class="label" fill="#78350f">tune</text>
+  <text x="1057" y="351" text-anchor="middle" class="body" fill="#92400e">调整瓶颈阶段或互连域</text>
+  <rect id="measure" x="965" y="455" width="185" height="90" class="node" fill="#dcfce7" stroke="#22c55e"/>
+  <text x="1057" y="493" text-anchor="middle" class="label" fill="#14532d">measure</text>
+  <text x="1057" y="521" text-anchor="middle" class="body" fill="#166534">进入真实多进程实验</text>
+  <path d="M880 155 H965" class="edge" data-source="hard-gate" data-target="reject"/>
+  <text x="900" y="144" class="edge-label">任一失败</text>
+  <path d="M880 395 H920 V330 H965" class="edge" data-source="pressure-gate" data-target="tune"/>
+  <text x="892" y="385" class="edge-label">存在压力</text>
+  <path d="M880 445 H920 V500 H965" class="edge" data-source="pressure-gate" data-target="measure"/>
+  <text x="887" y="469" class="edge-label">均在预算内</text>
+
+  <rect id="evaluation-record" x="1210" y="205" width="160" height="220" class="node" fill="#f5f3ff" stroke="#8b5cf6"/>
+  <text x="1290" y="242" text-anchor="middle" class="label" fill="#4c1d95">拓扑评估记录</text>
+  <text x="1290" y="276" text-anchor="middle" class="body" fill="#5b21b6">decision 与全部原因</text>
+  <text x="1290" y="305" text-anchor="middle" class="body" fill="#5b21b6">瓶颈阶段</text>
+  <text x="1290" y="334" text-anchor="middle" class="body" fill="#5b21b6">瓶颈资源池</text>
+  <text x="1290" y="363" text-anchor="middle" class="body" fill="#5b21b6">关键互连域</text>
+  <text x="1290" y="392" text-anchor="middle" class="body" fill="#5b21b6">下一步实验</text>
+  <path d="M1150 150 H1180 V245 H1210" class="edge" data-source="reject" data-target="evaluation-record"/>
+  <path d="M1150 330 H1210" class="edge" data-source="tune" data-target="evaluation-record"/>
+  <path d="M1150 500 H1180 V385 H1210" class="edge" data-source="measure" data-target="evaluation-record"/>
+</svg>

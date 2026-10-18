@@ -1,6 +1,6 @@
 # 16. RLHF PPO Memory | RLHF / PPO 资源与状态
 
-**难度：** Hard | **环境：** CPU-first | **标签：** `后训练对齐`, `RLHF`, `PPO` | **目标人群：** 训练机制学习者
+**难度：** Hard | **环境：** [CPU 机制练习](#runtime-environment) | **标签：** `后训练对齐`, `RLHF`, `PPO` | **目标人群：** 训练机制学习者
 
 > 🚀 **云端运行环境**
 >
@@ -21,6 +21,13 @@
 **关键词：** `PPO`, `reward`, `value`, `advantage`, `KL`, `ratio`, `clip`
 
 ---
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 默认使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
+
+---
 ## 前置阅读
 
 **导语：** 先补齐训练闭环和优化器基础，再看 RLHF / PPO 如何在 SFT 之后继续做偏好对齐会更顺。
@@ -29,28 +36,47 @@
 - [15. End-to-End Fine-Tuning Experiment | 端到端微调实验](../02_PyTorch_Algorithms/15_End_to_End_Fine_Tuning_Experiment.md)
 
 ---
-### Step 1：一次 PPO 采样需要哪些角色与记录
+## Step 1：PPO 一轮采样与更新需要哪些模型角色
 
-PPO 先由策略模型生成回答或动作轨迹，再让多个角色围绕同一批生成结果提供互补信号。行为策略保留采样依据，参考模型提供长期偏移锚点，奖励模型或验证器评价结果，价值模型估计状态价值。只有回答范围参与策略更新，输入提示与填充位置不应改变优化目标。
+PPO 先由策略模型生成回答或动作轨迹，奖励模型或验证器给出任务反馈，价值模型提供回报基线，参考模型限制策略长期偏移，最后只有策略模型接收策略梯度。这里说的是四类模型角色，不是四个奖励模型；具体系统可以分阶段加载、共享基座或卸载部分角色。采样时保存的行为策略对数概率是一份记录，也不是第五个完整模型。PPO 通常保留上述四类角色；GRPO 去掉显式价值模型并用组内基线；DPO 则以离线偏好对和冻结参考模型替代在线采样、奖励模型与价值模型。
 
-| 角色或记录 | 产生什么 | 在本轮更新中的作用 |
-| --- | --- | --- |
-| 策略模型（Actor） | 回答或动作轨迹、当前策略概率 | 生成数据并接收更新 |
-| 行为策略记录 | 采样时的策略概率 | 定义本轮更新相对哪个旧策略变化 |
-| 参考模型（Reference） | 固定参考概率 | 约束策略长期偏离，不接收更新 |
-| 奖励模型或验证器 | 回答质量或任务终态奖励 | 判断结果是否符合目标 |
-| 价值模型（Critic） | 状态价值估计 | 为回报提供比较基线 |
-| 有效回答范围 | 真正由模型生成的部分 | 排除输入提示与填充位置 |
+| 角色或记录 | 产生什么 | 是否更新 | 主要驻留状态 |
+| --- | --- | --- | --- |
+| 策略模型（Actor） | 回答、当前策略对数概率 | 是 | 参数、激活、梯度与优化器状态 |
+| 参考模型（Reference） | 固定参考对数概率 | 否 | 冻结参数与前向临时状态 |
+| 奖励模型或验证器 | 回答质量或任务终态奖励 | 否 | 评分模型状态或验证器执行状态 |
+| 价值模型（Critic） | 状态价值估计 | 通常是 | 参数、激活、梯度与优化器状态 |
+| 行为策略记录 | 采样时的旧策略对数概率 | 否；不是独立模型 | 回答范围内的逐 Token 记录 |
+| 有效回答范围 | 真正由模型生成的部分 | 不适用 | 回答掩码与终止状态 |
 
 ![PPO 训练与资源路径总览](../public/02_PyTorch_Algorithms/16_rlhf_ppo_overview_cn.svg)
 
-### Step 2：奖励如何变成受约束的策略更新
+## Step 2：奖励如何变成受约束的策略更新
 
 任务奖励与参考模型的 KL 代价先形成受约束奖励，回报与价值估计再形成优势。当前策略与采样时的行为策略之比描述本轮更新幅度，裁剪目标限制单次更新过度偏离。裁剪约束短期步幅，参考模型约束长期漂移，两者解决的问题不同。
 
 $$r_t^{\text{train}} = r_t^{\text{task}} - \beta_{KL}(\log \pi_{actor}-\log \pi_{ref}), \qquad A_t \approx R_t - V(s_t)$$
 
-$$\rho_t = \exp(\log \pi_{new}-\log \pi_{old}), \qquad L_t = \min(\rho_t A_t, \operatorname{clip}(\rho_t,1-\epsilon,1+\epsilon)A_t)$$
+$$
+\rho_t = \exp(\log \pi_{new}-\log \pi_{old}), \qquad
+L_t^{clip}=\min\!\left(\rho_t A_t,\operatorname{clip}(\rho_t,1-\epsilon,1+\epsilon)A_t\right).
+$$
+
+Critic 用固定回报目标拟合状态价值：
+
+$$
+\mathcal L_V=\frac{1}{2}\,\mathbb E_t\left[(V_\phi(s_t)-R_t)^2\right].
+$$
+
+把策略、价值、熵与参考策略约束放回同一轮更新，可写成：
+
+$$
+\mathcal L_{PPO}=-\mathbb E_t[L_t^{clip}]
++c_V\mathcal L_V-c_H\mathbb E_t[\mathcal H(\pi_\theta(\cdot\mid s_t))]
++\beta_{KL}\mathbb E_t[D_{KL}(\pi_\theta\Vert\pi_{ref})].
+$$
+
+具体实现可以把 KL 写入奖励，也可以作为独立损失项，但同一次实验必须固定口径，不能重复计入。
 
 | 环节 | 输入 | 输出 | 主要检查 |
 | --- | --- | --- | --- |
@@ -59,7 +85,7 @@ $$\rho_t = \exp(\log \pi_{new}-\log \pi_{old}), \qquad L_t = \min(\rho_t A_t, \o
 | 策略比率 | 当前策略、行为策略 | 相对更新幅度 | 行为策略在本轮保持固定 |
 | 裁剪目标 | 策略比率、优势 | 保守更新目标 | 正负优势都不能放大越界更新 |
 
-### Step 3：哪些状态决定 PPO 的峰值与吞吐
+## Step 3：哪些状态决定 PPO 的峰值与吞吐
 
 PPO 的资源压力取决于哪些模型和轨迹状态同时驻留，而不是简单地把四个模型参数量相加。采样阶段保存回答与行为策略记录；评分阶段读取参考、奖励和价值模型；更新阶段还要保留策略模型的激活、梯度和优化器状态。分阶段加载或卸载可以降低峰值，但会增加模型搬运与等待时间。
 
@@ -72,7 +98,9 @@ PPO 的资源压力取决于哪些模型和轨迹状态同时驻留，而不是�
 
 ![PPO 单步状态生命周期](../public/02_PyTorch_Algorithms/16_ppo_memory_ledger_cn.svg)
 
-### Step 4：实现 PPO Actor Loss 的裁剪机制
+<a id="mechanism-practice"></a>
+
+## Step 4：实现 PPO Actor Loss 的裁剪机制
 
 题目区实现 token 级裁剪目标，并比较 `token_mean` 与 `sequence_mean` 两种聚合口径。前者让每个有效 token 权重相同，后者先对每条 response 求均值，使长短 response 在 batch 中权重相同。函数同时返回近似 KL 与裁剪比例，帮助判断更新是否过激。
 
@@ -97,7 +125,7 @@ def compute_actor_loss(
 ):
     """
     计算 PPO 的 Actor Clip Loss。
-    
+
     Args:
         log_probs_new: 当前 Actor 模型在采样的 Token 上的对数概率, shape [batch_size, seq_len]
         log_probs_old: 采样时(旧) Actor 模型在对应 Token 上的对数概率, shape [batch_size, seq_len]
@@ -105,7 +133,7 @@ def compute_actor_loss(
         response_mask: 有效生成 token 的布尔掩码；None 表示全部有效
         clip_range: 截断范围 epsilon，默认 0.2
         reduction: token_mean 或 sequence_mean
-        
+
     Returns:
         actor_loss: 标量
         metrics: 近似 KL、裁剪比例与有效 token 数
@@ -166,6 +194,7 @@ def compute_actor_loss(
 
 ```
 
+## 测试
 
 ```python
 # 测试目标：分别验证 ratio、clipping、变长回复聚合、诊断值、梯度隔离与输入契约。
@@ -261,7 +290,7 @@ def compute_actor_loss(
 ):
     """
     计算 PPO 的 Actor Clip Loss。
-    
+
     Args:
         log_probs_new: 当前 Actor 模型在采样的 Token 上的对数概率, shape [batch_size, seq_len]
         log_probs_old: 采样时(旧) Actor 模型在对应 Token 上的对数概率, shape [batch_size, seq_len]
@@ -269,7 +298,7 @@ def compute_actor_loss(
         response_mask: 有效生成 token 的布尔掩码；None 表示全部有效
         clip_range: 截断范围 epsilon，默认 0.2
         reduction: token_mean 或 sequence_mean
-        
+
     Returns:
         actor_loss: 标量
         metrics: 近似 KL、裁剪比例与有效 token 数

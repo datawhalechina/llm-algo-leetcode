@@ -1,0 +1,8 @@
+# PT-CPU framework compatibility set for Python 3.12 and the CPU PyTorch wheel.
+# Keep this profile small: it validates mechanism contracts, not GPU performance.
+transformers==5.18.0
+datasets==5.1.0
+accelerate==1.15.0
+peft==0.21.2
+trl==1.16.0
+gymnasium==1.4.0
