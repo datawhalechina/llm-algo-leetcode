@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Sync navigation pages from source parts into docs/.
+"""Sync navigation pages and topic notebooks into docs/.
 
 This script mirrors each Part's intro page and group pages into docs/.
 It does not touch notebook part mirrors, which remain the job of
-tools/convert_notebook.py.
+tools/convert_notebook.py. Cross-Part topic notebooks are also rendered to
+Markdown here so topic pages can link to them from the docs site.
 """
 
 from __future__ import annotations
 
+import json
 import shutil
 from pathlib import Path
 
@@ -104,7 +106,12 @@ def sync_navigation() -> None:
                 path.relative_to(src_dir).as_posix()
                 for path in src_dir.rglob("*.md")
             )
-            source_files = {src_dir / name for name in files}
+            notebook_mirrors = {
+                (dst_dir / path.relative_to(src_dir)).with_suffix(".md")
+                for path in src_dir.rglob("*.ipynb")
+                if ".ipynb_checkpoints" not in path.parts
+            }
+            source_files = {dst_dir / name for name in files} | notebook_mirrors
             for stale in dst_dir.rglob("*.md"):
                 if stale not in source_files:
                     stale.unlink()
@@ -128,6 +135,35 @@ def sync_navigation() -> None:
             dst.parent.mkdir(parents=True, exist_ok=True)
             dst.write_text(mirrored, encoding="utf-8")
             copied += 1
+
+        if part == "topic_discussion":
+            for source in sorted(src_dir.rglob("*.ipynb")):
+                if ".ipynb_checkpoints" in source.parts:
+                    continue
+                relative = source.relative_to(src_dir)
+                destination = (dst_dir / relative).with_suffix(".md")
+                notebook = json.loads(source.read_text(encoding="utf-8"))
+                rendered = []
+                for cell in notebook.get("cells", []):
+                    cell_source = cell.get("source", "")
+                    if isinstance(cell_source, list):
+                        cell_source = "".join(cell_source)
+                    if cell.get("cell_type") == "markdown" and cell_source.strip():
+                        rendered.append(cell_source)
+                    elif cell.get("cell_type") == "code" and cell_source.strip():
+                        rendered.append(f"\n```python\n{cell_source}\n```\n")
+                text = "\n\n".join(rendered)
+                text = text.replace(".ipynb)", ".md)")
+                text = text.replace("../../docs/guide.md", "../../guide.md")
+                text = text.replace("../docs/guide.md", "../guide.md")
+                text = text.replace("../docs/", "../")
+                text = text.replace(
+                    "../../tools/",
+                    "https://github.com/datawhalechina/llm-algo-leetcode/blob/main/tools/",
+                )
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_text(text, encoding="utf-8")
+                copied += 1
     print(f"Synced {copied} navigation files into docs/")
 
 
