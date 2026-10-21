@@ -1,0 +1,230 @@
+{
+  "schema_version": "post-training-mechanism-gpu/v1",
+  "semantic_id": "PT-GRPO-LOSS",
+  "environment_profile": "PT-RL-CUDA",
+  "run_mode": "real_gpu",
+  "run_label": "default3",
+  "framework": {
+    "python": "3.12.15",
+    "torch": "2.11.0+cu128",
+    "transformers": "5.18.0",
+    "peft": "0.21.2"
+  },
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000,
+    "compute_capability": [
+      12,
+      0
+    ],
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8",
+    "bf16_supported": true
+  },
+  "model": {
+    "id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "requested_revision": "main",
+    "resolved_commit": "7ae557604adf67be50417f59c2c2f167def9a775",
+    "resolution_source": "huggingface_hub_api"
+  },
+  "dataset": {
+    "source": "embedded_fixed_candidate_groups_with_verifier",
+    "groups": 2,
+    "sample_hash": "86e7453f7d3b1670bdc37b0c341816f8caaa67b4cc38a01a7ac2cacc097c1f1e"
+  },
+  "workload": {
+    "id": "pt-grpo-real-model-update",
+    "version": "v3",
+    "candidate_sets": [
+      {
+        "name": "minimal_pair",
+        "group_size": 2
+      },
+      {
+        "name": "expanded_group",
+        "group_size": 4
+      }
+    ],
+    "comparison_scope": "candidate_coverage_not_group_size_causality",
+    "max_length": 96,
+    "clip_range": 0.2,
+    "lora_rank": 8,
+    "lora_alpha": 16,
+    "update_steps": 4,
+    "learning_rate": 0.0002,
+    "seed": 42
+  },
+  "verifier": {
+    "id": "integer-answer-v1",
+    "correctness_weight": 1.0,
+    "format_weight": 0.1,
+    "failure_policy": "unjudgeable_receives_zero"
+  },
+  "baseline": {
+    "name": "sampling_policy_before_update"
+  },
+  "candidates": [
+    {
+      "candidate_set": "minimal_pair",
+      "group_size": 2,
+      "verifier_records": [
+        {
+          "verifier_id": "integer-answer-v1",
+          "status": "ok",
+          "parsed_answer": 4,
+          "correctness": 1.0,
+          "format_pass": 1.0,
+          "total_reward": 1.1
+        },
+        {
+          "verifier_id": "integer-answer-v1",
+          "status": "ok",
+          "parsed_answer": 5,
+          "correctness": 0.0,
+          "format_pass": 1.0,
+          "total_reward": 0.1
+        },
+        {
+          "verifier_id": "integer-answer-v1",
+          "status": "ok",
+          "parsed_answer": 9,
+          "correctness": 1.0,
+          "format_pass": 1.0,
+          "total_reward": 1.1
+        },
+        {
+          "verifier_id": "integer-answer-v1",
+          "status": "ok",
+          "parsed_answer": 6,
+          "correctness": 0.0,
+          "format_pass": 1.0,
+          "total_reward": 0.1
+        }
+      ],
+      "correctness_pass_rate": 0.5,
+      "format_pass_rate": 1.0,
+      "unjudgeable_count": 0,
+      "reward_std_mean": 0.5,
+      "nonzero_advantages": 4,
+      "zero_variance_guard_passed": true,
+      "losses": [
+        -0.0,
+        -0.15294408798217773,
+        -0.12000587582588196,
+        -0.10843417048454285
+      ],
+      "policy_separation": 1.4762744903564453,
+      "gradient_norms": [
+        8.764055252075195,
+        12.426990509033203,
+        6.980488300323486,
+        15.113539695739746
+      ],
+      "mean_clip_fraction": 0.4375,
+      "median_update_ms": 47.58237550049671,
+      "p95_update_ms": 50.277151000045706,
+      "peak_allocated_bytes": 2158854656
+    },
+    {
+      "candidate_set": "expanded_group",
+      "group_size": 4,
+      "verifier_records": [
+        {
+          "verifier_id": "integer-answer-v1",
+          "status": "ok",
+          "parsed_answer": 4,
+          "correctness": 1.0,
+          "format_pass": 1.0,
+          "total_reward": 1.1
+        },
+        {
+          "verifier_id": "integer-answer-v1",
+          "status": "ok",
+          "parsed_answer": 5,
+          "correctness": 0.0,
+          "format_pass": 1.0,
+          "total_reward": 0.1
+        },
+        {
+          "verifier_id": "integer-answer-v1",
+          "status": "ok",
+          "parsed_answer": 4,
+          "correctness": 1.0,
+          "format_pass": 0.0,
+          "total_reward": 1.0
+        },
+        {
+          "verifier_id": "integer-answer-v1",
+          "status": "unjudgeable",
+          "parsed_answer": null,
+          "correctness": 0.0,
+          "format_pass": 0.0,
+          "total_reward": 0.0
+        },
+        {
+          "verifier_id": "integer-answer-v1",
+          "status": "ok",
+          "parsed_answer": 9,
+          "correctness": 1.0,
+          "format_pass": 1.0,
+          "total_reward": 1.1
+        },
+        {
+          "verifier_id": "integer-answer-v1",
+          "status": "ok",
+          "parsed_answer": 6,
+          "correctness": 0.0,
+          "format_pass": 1.0,
+          "total_reward": 0.1
+        },
+        {
+          "verifier_id": "integer-answer-v1",
+          "status": "ok",
+          "parsed_answer": 9,
+          "correctness": 1.0,
+          "format_pass": 0.0,
+          "total_reward": 1.0
+        },
+        {
+          "verifier_id": "integer-answer-v1",
+          "status": "ok",
+          "parsed_answer": 10,
+          "correctness": 0.0,
+          "format_pass": 1.0,
+          "total_reward": 0.1
+        }
+      ],
+      "correctness_pass_rate": 0.5,
+      "format_pass_rate": 0.625,
+      "unjudgeable_count": 1,
+      "reward_std_mean": 0.4894038438796997,
+      "nonzero_advantages": 8,
+      "zero_variance_guard_passed": true,
+      "losses": [
+        -0.0,
+        -0.16354185342788696,
+        -0.19077277183532715,
+        -0.1992279291152954
+      ],
+      "policy_separation": 1.7312276363372803,
+      "gradient_norms": [
+        9.203939437866211,
+        3.8038203716278076,
+        10.170822143554688,
+        0.0
+      ],
+      "mean_clip_fraction": 0.59375,
+      "median_update_ms": 76.88056199913262,
+      "p95_update_ms": 77.31072599926847,
+      "peak_allocated_bytes": 3288779264
+    }
+  ],
+  "failure": null,
+  "evidence_level": "real_model_grpo_rlvr_mechanism_benchmark",
+  "decision": "accept_mechanism",
+  "highest_separation_candidate": {
+    "candidate_set": "expanded_group",
+    "group_size": 4,
+    "interpretation": "diagnostic_only_not_configuration_selection"
+  }
+}
