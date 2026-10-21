@@ -5,6 +5,8 @@ from tools.verl_system_mechanism_runtime import (
     build_comparisons,
     build_decisions,
     build_verl_command,
+    isolated_subprocess_env,
+    inspect_runtime,
     parse_console_metric_line,
     summarize_rows,
 )
@@ -41,13 +43,31 @@ def test_command_pins_single_gpu_matrix_controls():
         train_file=Path("/tmp/train.parquet"),
         val_file=Path("/tmp/test.parquet"),
         run_label="test",
-        candidate="sync_release_reject",
+        candidate="async_release_reject",
         total_steps=3,
     )
     assert "trainer.n_gpus_per_node=1" in command
     assert "trainer.total_training_steps=3" in command
+    assert "actor_rollout_ref.rollout.mode=async" in command
     assert "actor_rollout_ref.rollout.free_cache_engine=True" in command
     assert "algorithm.rollout_correction.rollout_rs=token_k1" in command
+    assert "+actor_rollout_ref.model.override_config.attn_implementation=sdpa" in command
+    # Preload the base and avoid layered collection's unsupported NO_SHARD fallback.
+    assert "actor_rollout_ref.rollout.load_format=safetensors" in command
+    assert "actor_rollout_ref.rollout.layered_summon=False" in command
+    assert "transfer_queue.backend.SimpleStorage.num_data_storage_units=1" in command
+
+
+def test_subprocess_environment_keeps_http_proxy_but_drops_socks_fallback(monkeypatch):
+    monkeypatch.setenv("HTTPS_PROXY", "http://127.0.0.1:7890")
+    monkeypatch.setenv("ALL_PROXY", "socks5://127.0.0.1:7891")
+    monkeypatch.setenv("all_proxy", "socks5://127.0.0.1:7891")
+
+    environment = isolated_subprocess_env()
+
+    assert environment["HTTPS_PROXY"] == "http://127.0.0.1:7890"
+    assert "ALL_PROXY" not in environment
+    assert "all_proxy" not in environment
 
 
 def test_decisions_require_scoped_metric_completeness():
@@ -61,16 +81,16 @@ def test_decisions_require_scoped_metric_completeness():
         "perf/throughput": 4.0,
     }
     candidates = {
-        "sync_release_metrics": {
+        "async_release_metrics": {
             "status": "ok",
             "metrics": {"mean": base_mean},
             "gpu_memory": {"peak_used_mb": 1000.0},
         },
-        "sync_release_reject": {
+        "async_release_reject": {
             "status": "ok",
             "metrics": {"mean": {"rollout_corr/rollout_rs_masked_fraction": 0.1}},
         },
-        "sync_retain_metrics": {
+        "async_retain_metrics": {
             "status": "ok",
             "metrics": {"mean": base_mean},
             "gpu_memory": {"peak_used_mb": 1200.0},
@@ -81,3 +101,15 @@ def test_decisions_require_scoped_metric_completeness():
     assert decisions["rl_system"]["decision"] == "accept_mechanism"
     comparisons = build_comparisons(candidates)
     assert comparisons["rl_system"]["peak_used_mb"]["delta"] == 200.0
+
+
+def test_embedded_probe_can_skip_dataset_files_without_weakening_default(monkeypatch, tmp_path):
+    from tools import verl_system_mechanism_runtime as runtime
+
+    monkeypatch.setattr(runtime.shutil, "which", lambda command: None)
+    embedded = inspect_runtime(tmp_path, None, None, require_data_files=False)
+    assert "train_file" not in embedded["required_paths"]
+    assert "val_file" not in embedded["required_paths"]
+    normal = inspect_runtime(tmp_path, None, None)
+    assert "train_file_missing" in normal["reasons"]
+    assert "val_file_missing" in normal["reasons"]

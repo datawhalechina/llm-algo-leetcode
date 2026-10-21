@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import re
 import shutil
 import subprocess
@@ -23,8 +24,23 @@ from typing import Any, Iterable
 
 VERL_TAG = "v0.9.1"
 VERL_COMMIT = "1876b06d0a3e4e71e06230be10af14492ca8a75b"
-UV_EXTRAS = ("vllm", "fsdp")
+UV_EXTRAS = ("vllm",)
 METRIC_PREFIXES = ("rollout_corr/", "timing_s/", "perf/", "actor/perf/")
+
+
+def isolated_subprocess_env() -> dict[str, str]:
+    """Keep unrelated Python paths and an optional SOCKS fallback out of workers."""
+
+    environment = os.environ.copy()
+    environment["PYTHONNOUSERSITE"] = "1"
+    environment["PYTHONPATH"] = ""
+    # The workstation exposes both HTTP(S) and SOCKS proxies.  verl's locked
+    # environment supports the HTTP(S) route, while HTTPX requires the optional
+    # ``socksio`` package as soon as ALL_PROXY points at SOCKS.  Keep the usable
+    # HTTP(S) proxy and remove only the unsupported fallback.
+    environment.pop("ALL_PROXY", None)
+    environment.pop("all_proxy", None)
+    return environment
 
 
 def parse_console_metric_line(line: str) -> dict[str, float | int]:
@@ -100,17 +116,17 @@ def build_verl_command(
     """Build the pinned v0.9.1 one-GPU GRPO command."""
 
     candidate_overrides = {
-        "sync_release_metrics": [
+        "async_release_metrics": [
             "actor_rollout_ref.rollout.free_cache_engine=True",
             "algorithm.rollout_correction.rollout_rs=null",
             "algorithm.rollout_correction.rollout_rs_threshold=null",
         ],
-        "sync_release_reject": [
+        "async_release_reject": [
             "actor_rollout_ref.rollout.free_cache_engine=True",
             "algorithm.rollout_correction.rollout_rs=token_k1",
             "algorithm.rollout_correction.rollout_rs_threshold=0.95_1.05",
         ],
-        "sync_retain_metrics": [
+        "async_retain_metrics": [
             "actor_rollout_ref.rollout.free_cache_engine=False",
             "algorithm.rollout_correction.rollout_rs=null",
             "algorithm.rollout_correction.rollout_rs_threshold=null",
@@ -119,7 +135,7 @@ def build_verl_command(
     if candidate not in candidate_overrides:
         raise ValueError(f"unknown candidate: {candidate}")
 
-    worker_python = "uv -v run --frozen --all-packages --extra vllm --extra fsdp"
+    worker_python = "uv -v run --frozen --all-packages --extra vllm"
     return [
         *_uv_python_command(),
         "-m",
@@ -131,6 +147,7 @@ def build_verl_command(
         "data.max_response_length=128",
         "data.filter_overlong_prompts=True",
         "data.truncation=error",
+        "data.dataloader_num_workers=0",
         "algorithm.adv_estimator=grpo",
         "algorithm.use_kl_in_reward=False",
         "algorithm.rollout_correction.rollout_is=token",
@@ -138,6 +155,8 @@ def build_verl_command(
         "algorithm.rollout_correction.rollout_is_batch_normalize=False",
         "algorithm.rollout_correction.bypass_mode=False",
         f"actor_rollout_ref.model.path={model_path}",
+        "actor_rollout_ref.model.use_remove_padding=False",
+        "+actor_rollout_ref.model.override_config.attn_implementation=sdpa",
         "actor_rollout_ref.model.lora_rank=16",
         "actor_rollout_ref.model.lora_alpha=16",
         "actor_rollout_ref.model.enable_gradient_checkpointing=True",
@@ -149,15 +168,31 @@ def build_verl_command(
         "actor_rollout_ref.actor.fsdp_config.param_offload=True",
         "actor_rollout_ref.actor.fsdp_config.optimizer_offload=True",
         "actor_rollout_ref.rollout.name=vllm",
-        "actor_rollout_ref.rollout.mode=sync",
+        "actor_rollout_ref.rollout.mode=async",
+        # Preload the frozen base so subsequent updates contain only adapters.
+        # FSDP1 on one GPU uses NO_SHARD; layered collection can fall back to
+        # summon_full_params(offload_to_cpu=True), unsupported in that mode.
+        "actor_rollout_ref.rollout.load_format=safetensors",
+        "actor_rollout_ref.rollout.layered_summon=False",
+        "actor_rollout_ref.rollout.checkpoint_engine.update_weights_bucket_megabytes=64",
         "actor_rollout_ref.rollout.tensor_model_parallel_size=1",
         "actor_rollout_ref.rollout.gpu_memory_utilization=0.35",
+        # Four prompts with four responses need at most sixteen live sequences.
+        "actor_rollout_ref.rollout.max_model_len=512",
+        "actor_rollout_ref.rollout.max_num_seqs=16",
+        "actor_rollout_ref.rollout.max_num_batched_tokens=512",
+        "actor_rollout_ref.rollout.enforce_eager=True",
+        "actor_rollout_ref.rollout.agent.num_workers=1",
         "actor_rollout_ref.rollout.n=4",
         "actor_rollout_ref.rollout.calculate_log_probs=True",
         "actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=1",
         "actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=1",
         "actor_rollout_ref.ref.fsdp_config.param_offload=True",
         "critic.enable=False",
+        "reward.num_workers=1",
+        # V1 enables TransferQueue internally; its eight-unit default is for
+        # distributed workloads and launches unnecessary actors on this laptop.
+        "transfer_queue.backend.SimpleStorage.num_data_storage_units=1",
         "trainer.logger=console",
         "trainer.project_name=llm_algo_mechanism",
         f"trainer.experiment_name={run_label}_{candidate}",
@@ -168,15 +203,35 @@ def build_verl_command(
         "trainer.test_freq=-1",
         "trainer.resume_mode=disable",
         f"trainer.total_training_steps={total_steps}",
+        "+ray_kwargs.ray_init.object_store_memory=536870912",
         f"ray_kwargs.ray_init.runtime_env.py_executable={worker_python}",
         *candidate_overrides[candidate],
     ]
 
 
-def inspect_runtime(verl_root: Path, train_file: Path, val_file: Path) -> dict[str, Any]:
+def inspect_runtime(
+    verl_root: Path, train_file: Path | None, val_file: Path | None,
+    *, require_data_files: bool = True,
+) -> dict[str, Any]:
     """Check immutable source identity and local prerequisites without installing."""
 
     reasons: list[str] = []
+    host_memory = {}
+    if Path("/proc/meminfo").is_file():
+        fields = dict(
+            line.split(":", 1) for line in Path("/proc/meminfo").read_text().splitlines()
+        )
+        host_memory = {
+            name: round(int(fields[key].split()[0]) / 1024**2, 3)
+            for name, key in (("total_gib", "MemTotal"), ("available_gib", "MemAvailable"))
+        }
+        # An admission guard for this small single-card experiment, not a
+        # prediction of its peak RSS. Keep Ray's runtime memory monitor enabled.
+        # v7 consumed roughly 18 GiB beyond its starting host usage. Reserve
+        # additional headroom at launch; this remains a guard, not a peak bound.
+        host_memory["minimum_available_gib"] = 20.0
+        if host_memory["available_gib"] < host_memory["minimum_available_gib"]:
+            reasons.append("insufficient_available_host_memory")
     uv = shutil.which("uv")
     if uv is None:
         reasons.append("uv_not_found")
@@ -186,9 +241,12 @@ def inspect_runtime(verl_root: Path, train_file: Path, val_file: Path) -> dict[s
         "pyproject": (verl_root / "pyproject.toml").is_file(),
         "uv_lock": (verl_root / "uv.lock").is_file(),
         "uv_environment": external_python.is_file(),
-        "train_file": train_file.is_file(),
-        "val_file": val_file.is_file(),
     }
+    if require_data_files:
+        required.update({
+            "train_file": train_file is not None and train_file.is_file(),
+            "val_file": val_file is not None and val_file.is_file(),
+        })
     reasons.extend(name + "_missing" for name, ok in required.items() if not ok)
     commit = None
     if (verl_root / ".git").exists():
@@ -214,6 +272,7 @@ def inspect_runtime(verl_root: Path, train_file: Path, val_file: Path) -> dict[s
                 ),
             ],
             cwd=verl_root,
+            env=isolated_subprocess_env(),
             capture_output=True,
             text=True,
         )
@@ -227,6 +286,19 @@ def inspect_runtime(verl_root: Path, train_file: Path, val_file: Path) -> dict[s
                 reasons.append("torch_cuda_unavailable")
         else:
             reasons.append("uv_environment_import_failed")
+        proxy_probe = subprocess.run(
+            [
+                str(external_python),
+                "-c",
+                "import httpx; client = httpx.Client(); client.close()",
+            ],
+            cwd=verl_root,
+            env=isolated_subprocess_env(),
+            capture_output=True,
+            text=True,
+        )
+        if proxy_probe.returncode != 0:
+            reasons.append("httpx_proxy_initialization_failed")
     gpu = subprocess.run(["nvidia-smi", "-L"], capture_output=True, text=True) if shutil.which("nvidia-smi") else None
     if gpu is None or gpu.returncode != 0:
         reasons.append("nvidia_smi_unavailable")
@@ -238,16 +310,27 @@ def inspect_runtime(verl_root: Path, train_file: Path, val_file: Path) -> dict[s
         "resolved_commit": commit,
         "uv": uv,
         "packages": packages,
+        "host_memory": host_memory,
         "gpu_inventory": gpu.stdout.strip() if gpu and gpu.returncode == 0 else None,
         "required_paths": required,
         "reasons": reasons,
     }
 
 
-def _sample_gpu_memory(stop: threading.Event, samples: list[float]) -> None:
-    """Poll whole-device memory so rollout-engine allocations are not omitted."""
+def _sample_gpu_memory(
+    stop: threading.Event, samples: list[float], host_samples: list[dict[str, float]]
+) -> None:
+    """Poll GPU allocations and host headroom across initialization and training."""
 
     while not stop.is_set():
+        if Path("/proc/meminfo").is_file():
+            fields = dict(
+                line.split(":", 1) for line in Path("/proc/meminfo").read_text().splitlines()
+            )
+            host_samples.append({
+                "total_mb": int(fields["MemTotal"].split()[0]) / 1024,
+                "available_mb": int(fields["MemAvailable"].split()[0]) / 1024,
+            })
         completed = subprocess.run(
             ["nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits"],
             capture_output=True,
@@ -268,10 +351,11 @@ def run_candidate(command: list[str], *, cwd: Path, log_path: Path) -> dict[str,
     started = time.monotonic()
     lines: list[str] = []
     gpu_memory_samples: list[float] = []
+    host_memory_samples: list[dict[str, float]] = []
     sampler_stop = threading.Event()
     sampler = threading.Thread(
         target=_sample_gpu_memory,
-        args=(sampler_stop, gpu_memory_samples),
+        args=(sampler_stop, gpu_memory_samples, host_memory_samples),
         daemon=True,
     )
     sampler.start()
@@ -279,6 +363,7 @@ def run_candidate(command: list[str], *, cwd: Path, log_path: Path) -> dict[str,
         process = subprocess.Popen(
             command,
             cwd=cwd,
+            env=isolated_subprocess_env(),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
@@ -299,6 +384,17 @@ def run_candidate(command: list[str], *, cwd: Path, log_path: Path) -> dict[str,
         "duration_s": round(time.monotonic() - started, 3),
         "command": command,
         "log_path": str(log_path),
+        "host_memory": {
+            "minimum_available_mb": min(
+                (sample["available_mb"] for sample in host_memory_samples), default=None
+            ),
+            "peak_used_mb": max(
+                (sample["total_mb"] - sample["available_mb"] for sample in host_memory_samples),
+                default=None,
+            ),
+            "samples": len(host_memory_samples),
+            "scope": "whole_host_memtotal_minus_memavailable",
+        },
         "gpu_memory": {
             "peak_used_mb": max(gpu_memory_samples) if gpu_memory_samples else None,
             "mean_used_mb": mean(gpu_memory_samples) if gpu_memory_samples else None,
@@ -312,9 +408,9 @@ def run_candidate(command: list[str], *, cwd: Path, log_path: Path) -> dict[str,
 def build_decisions(candidates: dict[str, dict[str, Any]]) -> dict[str, Any]:
     """Make evidence-completeness decisions without claiming production scale."""
 
-    baseline = candidates.get("sync_release_metrics", {})
-    rejection = candidates.get("sync_release_reject", {})
-    retained = candidates.get("sync_retain_metrics", {})
+    baseline = candidates.get("async_release_metrics", {})
+    rejection = candidates.get("async_release_reject", {})
+    retained = candidates.get("async_retain_metrics", {})
     baseline_mean = baseline.get("metrics", {}).get("mean", {})
     rejection_mean = rejection.get("metrics", {}).get("mean", {})
     retained_mean = retained.get("metrics", {}).get("mean", {})
@@ -342,7 +438,7 @@ def build_decisions(candidates: dict[str, dict[str, Any]]) -> dict[str, Any]:
         "rollout_lifecycle": {
             "decision": "accept_mechanism" if lifecycle_ok else "tune",
             "reason": "policy_gap_and_rejection_metrics_complete" if lifecycle_ok else "lifecycle_evidence_incomplete",
-            "scope": "single_gpu_synchronous_rollout_admission",
+            "scope": "single_gpu_asynchronous_rollout_admission",
         },
         "rl_system": {
             "decision": "accept_mechanism" if system_ok else "tune",
@@ -371,9 +467,9 @@ def build_comparisons(candidates: dict[str, dict[str, Any]]) -> dict[str, Any]:
             "delta": right - left if left is not None and right is not None else None,
         }
 
-    release = "sync_release_metrics"
-    reject = "sync_release_reject"
-    retain = "sync_retain_metrics"
+    release = "async_release_metrics"
+    reject = "async_release_reject"
+    retain = "async_retain_metrics"
     release_memory, retain_memory = memory(release), memory(retain)
     return {
         "rollout_lifecycle": {
@@ -419,7 +515,7 @@ def main() -> int:
     train_file = (args.train_file or verl_root / "data/gsm8k/train.parquet").expanduser().resolve()
     val_file = (args.val_file or verl_root / "data/gsm8k/test.parquet").expanduser().resolve()
     preflight = inspect_runtime(verl_root, train_file, val_file)
-    candidates = ("sync_release_metrics", "sync_release_reject", "sync_retain_metrics")
+    candidates = ("async_release_metrics", "async_release_reject", "async_retain_metrics")
     commands = {
         name: build_verl_command(
             verl_root=verl_root,
@@ -457,9 +553,17 @@ def main() -> int:
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     results: dict[str, dict[str, Any]] = {}
-    for name in candidates:
+    for index, name in enumerate(candidates):
         log_path = args.output.with_name(f"{args.output.stem}_{name}.log")
         results[name] = run_candidate(commands[name], cwd=verl_root, log_path=log_path)
+        if index == 0 and results[name]["status"] != "ok":
+            for skipped in candidates[index + 1 :]:
+                results[skipped] = {
+                    "status": "skipped",
+                    "reason": "baseline_candidate_failed",
+                    "command": commands[skipped],
+                }
+            break
     record = {
         **plan,
         "evidence_level": "real_backend_single_gpu_mechanism",
