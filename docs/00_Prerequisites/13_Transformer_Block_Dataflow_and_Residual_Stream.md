@@ -12,16 +12,16 @@
 
 ## 本节导读
 
-Transformer Block 在统一隐藏维度上交替执行注意力与 MLP 更新，并通过残差通路把状态传给下一层。组件各自正确，并不代表组合后的数据流和统计位置正确。
+Transformer Block 不断读取并更新同一条 residual stream。Attention 分支负责 token 间的信息聚合，MLP 分支负责逐 token 的通道变换；两个分支都必须在写回主路径前恢复统一 hidden shape。
 
-完成本节后，你应能追踪一个 Block 的两次残差更新，比较归一化位置，并检查多层堆叠是否保持形状与状态推进。
+完成本节后，你应能追踪一个 Block 的两次 residual update，区分主路径状态与分支更新量，并检查多层堆叠是否保持形状和状态推进。
 
-**关键词：** `hidden state`, `residual stream`, `Pre-Norm`, `Block stack`
+**关键词：** `hidden state`, `residual stream`, `branch update`, `Block stack`
 
 ![Transformer Block 数据流与残差通路](../public/00_Prerequisites/13_transformer_block_dataflow.svg)
 
 ## 前置阅读
-**导语：** 模型对象和训练生命周期说明了 Block 如何被调用与更新；本页进一步观察 Block 内部如何保持 hidden state 契约。
+**导语：** 模型对象和训练生命周期说明了 Block 如何被调用与更新；本页进一步观察 Block 内部怎样保持 hidden state 契约。
 - [12. PyTorch Data Interface and Training Lifecycle | PyTorch 数据接口与训练生命周期](./12_PyTorch_Minimal_Training_Interface.md)
 - [0D 组页](./0D.md)
 
@@ -76,81 +76,97 @@ print('✅ residual shape contract 通过')
 
 ```python
 class ResidualBlockSkeleton(nn.Module):
+    """只表示两个 shape-preserving 分支的接口，不替代真实 Attention/MLP。"""
+
     def __init__(self, hidden_size):
         super().__init__()
-        self.attention_update = nn.Linear(hidden_size, hidden_size, bias=False)
-        self.mlp_update = nn.Sequential(
+        self.attention_branch = nn.Linear(hidden_size, hidden_size, bias=False)
+        self.mlp_branch = nn.Sequential(
             nn.Linear(hidden_size, hidden_size * 2, bias=False),
             nn.SiLU(),
             nn.Linear(hidden_size * 2, hidden_size, bias=False),
         )
 
     def forward(self, hidden_states):
-        after_attention = residual_update(hidden_states, self.attention_update(hidden_states))
-        output = residual_update(after_attention, self.mlp_update(after_attention))
-        return {'input': hidden_states, 'after_attention': after_attention, 'output': output}
+        attention_update = self.attention_branch(hidden_states)
+        after_attention = residual_update(hidden_states, attention_update)
+        mlp_update = self.mlp_branch(after_attention)
+        output = residual_update(after_attention, mlp_update)
+        return {
+            'input': hidden_states,
+            'attention_update': attention_update,
+            'after_attention': after_attention,
+            'mlp_update': mlp_update,
+            'output': output,
+        }
 
 
+torch.manual_seed(0)
 block = ResidualBlockSkeleton(hidden_size=8)
 block_states = block(torch.randn(2, 4, 8))
 print({name: tuple(value.shape) for name, value in block_states.items()})
 
 ```
 
-## Q2 验证：两次分支更新是否都写回同一 residual stream？
+## Q2 验证：两次分支更新是否按顺序写回 residual stream？
 
-三个观察点应保持相同 shape，且 Attention 更新和 MLP 更新都应改变主路径状态。
+五个观察量应保持相同 shape；`after_attention` 必须等于输入加 Attention 更新量，最终输出必须等于更新后的主路径加 MLP 更新量。
 
 
 ```python
-assert block_states['input'].shape == block_states['after_attention'].shape == block_states['output'].shape
-assert not torch.equal(block_states['input'], block_states['after_attention'])
-assert not torch.equal(block_states['after_attention'], block_states['output'])
+assert all(value.shape == block_states['input'].shape for value in block_states.values())
+torch.testing.assert_close(
+    block_states['after_attention'],
+    block_states['input'] + block_states['attention_update'],
+)
+torch.testing.assert_close(
+    block_states['output'],
+    block_states['after_attention'] + block_states['mlp_update'],
+)
 print('✅ Attention/MLP 两次 residual update 通过')
 
 ```
 
-## Q3：Pre-Norm 与 Post-Norm 把统计控制放在什么位置？
+## Q3：为什么要区分 residual state 与 branch update？
 
-Pre-Norm 先归一化分支输入，再把分支输出加回原 residual；Post-Norm 先完成分支更新，再归一化相加结果。两者都保持 shape，但 residual 主路径和统计变换的相对位置不同。
+Residual state 是传给下一分支、下一层的主路径状态；branch update 是当前子层产生的增量。两者 shape 相同，但含义不同。把增量单独记录，才能核对每次写回发生在哪里，而不把“保持 shape”误认为“状态没有变化”。
 
 
 ```python
-def pre_norm_step(hidden_states, norm, branch):
-    """Norm -> branch -> residual add。"""
-    return residual_update(hidden_states, branch(norm(hidden_states)))
+def root_mean_square(tensor):
+    return tensor.pow(2).mean().sqrt()
 
 
-def post_norm_step(hidden_states, norm, branch):
-    """Branch -> residual add -> norm。"""
-    return norm(residual_update(hidden_states, branch(hidden_states)))
-
-
-norm = nn.LayerNorm(8)
-branch = nn.Linear(8, 8, bias=False)
-norm_input = torch.randn(2, 4, 8)
-pre_norm_output = pre_norm_step(norm_input, norm, branch)
-post_norm_output = post_norm_step(norm_input, norm, branch)
-print('pre/post shape：', pre_norm_output.shape, post_norm_output.shape)
+state_and_update_rms = {
+    name: float(root_mean_square(block_states[name]))
+    for name in ('input', 'attention_update', 'after_attention', 'mlp_update', 'output')
+}
+for name, value in state_and_update_rms.items():
+    print(f'{name:>18}: RMS={value:.4f}')
 
 ```
 
-## Q3 验证：两种 Norm 放置是否保持 shape 但产生不同状态？
+## Q3 验证：主路径与两个增量能否分别重建？
 
-相同输入和分支下，两条路径都应输出有限值并保持 residual shape；由于归一化位置不同，结果不应完全相同。
+两个更新量都应为有限值，并分别重建 Attention 写回和 MLP 写回后的状态。这里验证的是状态关系，不据此判断深层训练稳定性。
 
 
 ```python
-assert pre_norm_output.shape == post_norm_output.shape == norm_input.shape
-assert torch.isfinite(pre_norm_output).all() and torch.isfinite(post_norm_output).all()
-assert not torch.allclose(pre_norm_output, post_norm_output)
-print('✅ Pre-Norm / Post-Norm 数据流通过')
+for name in ('attention_update', 'mlp_update'):
+    assert torch.isfinite(block_states[name]).all()
+assert not torch.equal(block_states['input'], block_states['after_attention'])
+assert not torch.equal(block_states['after_attention'], block_states['output'])
+torch.testing.assert_close(
+    block_states['output'] - block_states['after_attention'],
+    block_states['mlp_update'],
+)
+print('✅ residual state 与 branch update 已分离验证')
 
 ```
 
 ## Q4：多个 Block 堆叠时，residual stream 怎样逐层演化？
 
-Block stack 在层间传递同一 hidden-state 契约，每层读取上一层输出并产生新的 residual state。记录逐层状态，可以检查 shape 守恒、层数和状态是否真实推进。
+Block stack 在层间传递同一 hidden-state 契约，每层读取上一层输出并产生新的 residual state。记录逐层状态，可以检查 shape、层数和状态是否真实推进；深层数值与梯度是否稳定，需要进入架构和训练实验继续验证。
 
 
 ```python
@@ -192,8 +208,9 @@ print('✅ Block stack 与 residual state 推进通过')
 
 ## 相关阅读
 
-Block 总览之后，可以分别深入非线性、统计路径和 token 信息聚合。
+Block 骨架之后，可以分别深入非线性、统计路径和 token 信息聚合；设计演进和深层稳定性由架构专题继续展开。
 
 - [14. Activation Functions | 激活函数](./14_Activation_Functions.md)
 - [15. Normalization Techniques | 归一化技术](./15_Normalization_Techniques.md)
 - [16. Attention Mechanism Intro | Attention 机制导论](./16_Attention_Mechanism_Intro.md)
+- [大模型架构演进 · Transformer 块与残差主干](../topic_discussion/llm_architecture_evolution/06_block_residual_path.md)

@@ -1,9 +1,36 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="460" viewBox="0 0 1200 460" role="img" aria-labelledby="title desc">
-<title id="title">激活函数的输出、梯度与门控关系</title><desc id="desc">相同输入经过 ReLU、GELU、SiLU 产生不同输出和梯度，SwiGLU 用门控分支调制 value 分支。</desc>
-<defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#64748b"/></marker><style>text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}.t{font-size:27px;font-weight:700}.s{font-size:14px;fill:#475569}.g{font-size:17px;font-weight:700}.h{font-size:16px;font-weight:700}.b{font-size:13px;fill:#475569}.p{stroke:#94a3b8;stroke-width:2;rx:15}.n{fill:#fff;stroke:#cbd5e1;stroke-width:1.5;rx:10}.f{stroke:#64748b;stroke-width:2.3;fill:none;marker-end:url(#a)}</style></defs>
-<rect width="1200" height="460" fill="#f8fafc"/><text x="600" y="40" text-anchor="middle" class="t">激活函数：前向表达与反向梯度共同决定行为</text><text x="600" y="67" text-anchor="middle" class="s">比较激活函数不能只看输出曲线，还要观察负区间、梯度连续性和门控结构</text>
-<rect x="35" y="115" width="205" height="280" fill="#e0f2fe" class="p"/><text x="137" y="147" text-anchor="middle" class="g">输入分布</text><rect x="62" y="190" width="150" height="70" class="n"/><text x="137" y="218" text-anchor="middle" class="h">x</text><text x="137" y="240" text-anchor="middle" class="b">负值 · 零点 · 正值</text>
-<rect x="275" y="115" width="440" height="280" fill="#dcfce7" class="p"/><text x="495" y="147" text-anchor="middle" class="g">逐元素非线性</text><rect x="305" y="178" width="115" height="76" class="n"/><text x="362" y="209" text-anchor="middle" class="h">ReLU</text><text x="362" y="232" text-anchor="middle" class="b">负区间为 0</text><rect x="437" y="178" width="115" height="76" class="n"/><text x="494" y="209" text-anchor="middle" class="h">GELU</text><text x="494" y="232" text-anchor="middle" class="b">平滑加权</text><rect x="569" y="178" width="115" height="76" class="n"/><text x="626" y="209" text-anchor="middle" class="h">SiLU</text><text x="626" y="232" text-anchor="middle" class="b">x · sigmoid(x)</text><rect x="370" y="290" width="250" height="60" class="n"/><text x="495" y="317" text-anchor="middle" class="h">输出与局部梯度</text><text x="495" y="338" text-anchor="middle" class="b">表达范围 · 饱和 · 连续性</text><path d="M362 254V285" class="f"/><path d="M494 254V285" class="f"/><path d="M626 254V285" class="f"/>
-<rect x="750" y="115" width="415" height="280" fill="#fef3c7" class="p"/><text x="957" y="147" text-anchor="middle" class="g">门控 FFN</text><rect x="780" y="178" width="145" height="70" class="n"/><text x="852" y="206" text-anchor="middle" class="h">gate 分支</text><text x="852" y="228" text-anchor="middle" class="b">SiLU(gate)</text><rect x="990" y="178" width="145" height="70" class="n"/><text x="1062" y="206" text-anchor="middle" class="h">value 分支</text><text x="1062" y="228" text-anchor="middle" class="b">保留内容</text><rect x="852" y="292" width="210" height="60" class="n"/><text x="957" y="319" text-anchor="middle" class="h">SwiGLU 输出</text><text x="957" y="340" text-anchor="middle" class="b">门控 × value</text><path d="M852 248V270H922V287" class="f"/><path d="M1062 248V270H992V287" class="f"/>
-<path d="M240 225H270" class="f"/><path d="M715 225H745" class="f"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="540" viewBox="0 0 1240 540" role="img" aria-labelledby="title desc">
+  <title id="title">激活函数与 Transformer MLP 路径</title>
+  <desc id="desc">相同输入经过 ReLU、GELU、SiLU 产生不同输出和梯度；普通 FFN 与门控 FFN 都从 hidden 维扩张到中间维并恢复 hidden shape。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#64748b"/></marker>
+    <style>text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}.title{font-size:27px;font-weight:700}.sub{font-size:14px;fill:#475569}.head{font-size:17px;font-weight:700}.label{font-size:15px;font-weight:700}.note{font-size:13px;fill:#475569}.panel{stroke:#94a3b8;stroke-width:2}.node{fill:#fff;stroke:#cbd5e1;stroke-width:1.5}.line{stroke:#64748b;stroke-width:2.3;fill:none;marker-end:url(#arrow)}</style>
+  </defs>
+  <rect width="1240" height="540" fill="#f8fafc"/>
+  <text x="620" y="40" text-anchor="middle" class="title">激活函数：局部行为怎样进入完整 MLP 分支</text>
+  <text x="620" y="67" text-anchor="middle" class="sub">先比较输出与局部梯度，再检查 Dense FFN 和 Gated FFN 的 H → H_ffn → H 契约</text>
+
+  <rect x="35" y="105" width="440" height="360" rx="16" fill="#e0f2fe" class="panel"/>
+  <text x="255" y="139" text-anchor="middle" class="head">逐元素激活</text>
+  <rect x="72" y="180" width="110" height="72" rx="10" class="node"/><text x="127" y="209" text-anchor="middle" class="label">ReLU</text><text x="127" y="232" text-anchor="middle" class="note">负区间截断</text>
+  <rect x="200" y="180" width="110" height="72" rx="10" class="node"/><text x="255" y="209" text-anchor="middle" class="label">GELU</text><text x="255" y="232" text-anchor="middle" class="note">平滑加权</text>
+  <rect x="328" y="180" width="110" height="72" rx="10" class="node"/><text x="383" y="209" text-anchor="middle" class="label">SiLU</text><text x="383" y="232" text-anchor="middle" class="note">x · sigmoid(x)</text>
+  <rect x="120" y="318" width="270" height="74" rx="10" class="node"/><text x="255" y="347" text-anchor="middle" class="label">输出与局部梯度</text><text x="255" y="372" text-anchor="middle" class="note">零值比例 · 输出尺度 · 梯度尺度</text>
+  <path d="M127 252V290H220V313" class="line"/><path d="M255 252V313" class="line"/><path d="M383 252V290H290V313" class="line"/>
+
+  <rect x="515" y="105" width="690" height="360" rx="16" fill="#dcfce7" class="panel"/>
+  <text x="860" y="139" text-anchor="middle" class="head">Transformer MLP 的两类路径</text>
+  <text x="550" y="192" class="label">Dense FFN</text>
+  <rect x="665" y="164" width="105" height="55" rx="9" class="node"/><text x="717" y="197" text-anchor="middle" class="label">up</text>
+  <rect x="805" y="164" width="105" height="55" rx="9" class="node"/><text x="857" y="197" text-anchor="middle" class="label">GELU</text>
+  <rect x="945" y="164" width="105" height="55" rx="9" class="node"/><text x="997" y="197" text-anchor="middle" class="label">down</text>
+  <text x="585" y="260" class="note">H</text><text x="780" y="260" class="note">H_ffn</text><text x="1060" y="260" class="note">H</text>
+  <path d="M610 192H660" class="line"/><path d="M770 192H800" class="line"/><path d="M910 192H940" class="line"/><path d="M1050 192H1100" class="line"/>
+
+  <text x="550" y="318" class="label">Gated FFN</text>
+  <rect x="665" y="274" width="115" height="55" rx="9" class="node"/><text x="722" y="297" text-anchor="middle" class="label">gate</text><text x="722" y="316" text-anchor="middle" class="note">SiLU</text>
+  <rect x="665" y="350" width="115" height="55" rx="9" class="node"/><text x="722" y="382" text-anchor="middle" class="label">up / value</text>
+  <rect x="835" y="312" width="105" height="55" rx="9" class="node"/><text x="887" y="335" text-anchor="middle" class="label">multiply</text><text x="887" y="354" text-anchor="middle" class="note">H_ffn</text>
+  <rect x="995" y="312" width="105" height="55" rx="9" class="node"/><text x="1047" y="345" text-anchor="middle" class="label">down → H</text>
+  <path d="M610 339H635V301H660" class="line"/><path d="M635 339V377H660" class="line"/><path d="M780 301H805V333H830" class="line"/><path d="M780 377H805V347H830" class="line"/><path d="M940 339H990" class="line"/><path d="M1100 339H1140" class="line"/>
+  <text x="860" y="438" text-anchor="middle" class="note">两条路径内部结构不同，但写回 residual stream 前都恢复为原 hidden shape</text>
 </svg>
