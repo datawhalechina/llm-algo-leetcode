@@ -10,7 +10,11 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-shape 说明逻辑维度，stride 说明访问布局，索引决定取出哪些位置。三者需要一起检查：相同 shape 不代表相同布局，维度变换可能改变连续性，广播要求维度从右侧兼容。本节沿“观察布局→维度变换→mask/广播→查表→综合整理”建立输入契约。
+## 本节导读
+
+形状说明逻辑维度，步幅说明访问布局，索引决定取出哪些位置。相同形状不代表相同布局，维度变换也可能改变连续性和共享存储关系。
+
+完成本节后，你应能联合检查形状、步幅、连续性和索引规则，并判断变形、广播与位置选择是否保持原有数据语义。
 
 **关键词：** `shape`, `stride`, `contiguous`, `gather`
 
@@ -20,12 +24,6 @@ shape 说明逻辑维度，stride 说明访问布局，索引决定取出哪些�
 **导语：** 先掌握 Tensor 的 dtype、device 和复制/共享语义，再进入 layout 与索引。
 - [05. PyTorch Tensor Fundamentals | PyTorch 张量基础操作](./05_PyTorch_Tensor_Fundamentals.md)
 - [0B 组页](./0B.md)
-
-## 相关阅读
-**导语：** 建立 layout 和索引契约后，可以继续观察它们如何进入计算图与 Attention。
-- [PyTorch Tensor Views 官方文档](https://pytorch.org/docs/stable/tensor_view.html)
-- [07. PyTorch Autograd and Backward | PyTorch 自动求导与反向传播](./07_PyTorch_Autograd_and_Backward.md)
-- [16. Attention Mechanism Intro | Attention 机制导论](./16_Attention_Mechanism_Intro.md)
 
 ## Q1：shape、stride、contiguous 与共享存储分别说明什么？
 
@@ -226,3 +224,10 @@ print('✅ 输入整理闭环通过')
 - `transpose()` 只改变维度解释；`reshape()` 必要时复制，`contiguous()` 显式生成连续布局。
 - mask、bias 和索引都需要明确 shape/dtype 契约，且不可见位置应保持填充值语义。
 - 位置选择与 head 拆分应逐步验证内容守恒和最终布局。
+## 相关阅读
+
+建立布局和索引契约后，可以继续观察它们如何进入计算图与注意力机制。
+
+- [PyTorch Tensor Views 官方文档](https://pytorch.org/docs/stable/tensor_view.html)
+- [07. PyTorch Autograd and Backward | PyTorch 自动求导与反向传播](./07_PyTorch_Autograd_and_Backward.md)
+- [16. Attention Mechanism Intro | Attention 机制导论](./16_Attention_Mechanism_Intro.md)

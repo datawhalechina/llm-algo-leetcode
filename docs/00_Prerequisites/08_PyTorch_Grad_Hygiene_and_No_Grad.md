@@ -10,7 +10,11 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-训练代码需要同时管理模块模式、计算图记录、梯度累积和参数是否可训练。它们是四个不同开关：`train/eval` 改变模块行为，梯度模式控制是否建图，`zero_grad` 控制旧梯度，`requires_grad` 控制哪些参数接收梯度。本节分别验证这些边界。
+## 本节导读
+
+训练代码需要同时管理模块行为、计算图记录、历史梯度和参数可训练性。这四类状态彼此独立，混为一谈会造成意外建图、梯度残留或错误冻结。
+
+完成本节后，你应能区分四类控制边界，并判断训练、验证、局部切断和参数冻结时哪些状态应该改变。
 
 **关键词：** `zero_grad`, `no_grad`, `detach`, `requires_grad`
 

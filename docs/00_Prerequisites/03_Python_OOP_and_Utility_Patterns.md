@@ -10,7 +10,11 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-当一组字段拥有共同约束、会随时间更新，或需要统一查询和重置时，对象比零散变量和无状态 helper 更容易维护。这里用 Python 对象维护内部不变量和生命周期；04 再把外部运行配置、路径、manifest 与 artifact 组织成可复现入口。
+## 本节导读
+
+当一组字段共享约束并随调用更新时，零散变量难以保证状态始终一致。对象的价值在于把数据、约束和生命周期放到同一边界内。
+
+完成本节后，你应能判断何时需要有状态对象，并检查初始化、更新、查询和重置是否共同维护内部不变量。
 
 **关键词：** `dataclass`, `state`, `invariant`, `lifecycle`
 
@@ -20,11 +24,6 @@
 **导语：** 先掌握 Python 数据结构和函数契约，再判断哪些状态应该收进对象。
 - [01. Python Essentials for LLM | Python 基础与数据表示](./01_Python_Essentials_for_LLM.md)
 - [0A 组页](./0A.md)
-
-## 相关阅读
-**导语：** 理解对象状态后，继续把配置、路径和运行产物组织成可复现入口。
-- [04. Python Config and Data Entry | Python 配置与数据入口](./04_Python_Config_and_Data_Entry.md)
-- [09. PyTorch nn.Module Basics | PyTorch nn.Module 基础](./09_PyTorch_nn_Module_Basics.md)
 
 ## Q1：什么时候对象内部字段需要共同维护不变量？
 
@@ -170,3 +169,10 @@ assert len(state.history) == 2
 assert format_metric(**state.latest) == 'step=2, loss=0.2500'
 print('✅ helper 与有状态对象边界通过')
 ```
+
+## 相关阅读
+
+理解对象状态后，继续把配置、路径和运行产物组织成可复现入口。
+
+- [04. Python Config and Data Entry | Python 配置与数据入口](./04_Python_Config_and_Data_Entry.md)
+- [09. PyTorch nn.Module Basics | PyTorch nn.Module 基础](./09_PyTorch_nn_Module_Basics.md)
