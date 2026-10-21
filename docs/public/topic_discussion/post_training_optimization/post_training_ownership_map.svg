@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="610" viewBox="0 0 1200 610" role="img" aria-labelledby="title desc">
+  <title id="title">后训练主线的对象与专题所有权</title>
+  <desc id="desc">基座模型、数据与反馈、学习信号、在线系统和候选交付依次连接；每个阶段下方标明主要负责专题以及后训练优化的接口。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#64748b"/>
+    </marker>
+    <style>
+      .title { font: 700 28px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; fill: #0f172a; }
+      .subtitle { font: 400 15px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; fill: #475569; }
+      .node-title { font: 700 18px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; fill: #ffffff; }
+      .node-sub { font: 400 13px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; fill: #e2e8f0; }
+      .owner-title { font: 700 16px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; fill: #0f172a; }
+      .owner-text { font: 400 13px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; fill: #334155; }
+      .support-title { font: 700 15px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; fill: #1e293b; }
+      .support-text { font: 400 12.5px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; fill: #475569; }
+      .flow { stroke: #64748b; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+      .link { stroke: #94a3b8; stroke-width: 2; fill: none; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="610" rx="20" fill="#f8fafc"/>
+  <text x="48" y="44" class="title">后训练主线：对象流转与专题所有权</text>
+  <text x="48" y="72" class="subtitle">后训练拥有学习信号、更新路线与采用判断；上游身份和下游执行证据由对应专题提供。</text>
+
+  <path d="M238 150 H278" class="flow"/>
+  <path d="M468 150 H508" class="flow"/>
+  <path d="M698 150 H738" class="flow"/>
+  <path d="M928 150 H968" class="flow"/>
+
+  <g>
+    <rect x="48" y="105" width="190" height="90" rx="14" fill="#475569"/>
+    <text x="143" y="140" text-anchor="middle" class="node-title">基座模型</text>
+    <text x="143" y="166" text-anchor="middle" class="node-sub">能力与模型身份</text>
+  </g>
+  <g>
+    <rect x="278" y="105" width="190" height="90" rx="14" fill="#0f766e"/>
+    <text x="373" y="140" text-anchor="middle" class="node-title">数据与反馈</text>
+    <text x="373" y="166" text-anchor="middle" class="node-sub">示范、偏好、轨迹</text>
+  </g>
+  <g>
+    <rect x="508" y="105" width="190" height="90" rx="14" fill="#2563eb"/>
+    <text x="603" y="140" text-anchor="middle" class="node-title">学习信号</text>
+    <text x="603" y="166" text-anchor="middle" class="node-sub">损失、奖励、优势</text>
+  </g>
+  <g>
+    <rect x="738" y="105" width="190" height="90" rx="14" fill="#7c3aed"/>
+    <text x="833" y="140" text-anchor="middle" class="node-title">在线系统</text>
+    <text x="833" y="166" text-anchor="middle" class="node-sub">采样、环境、同步</text>
+  </g>
+  <g>
+    <rect x="968" y="105" width="184" height="90" rx="14" fill="#b45309"/>
+    <text x="1060" y="140" text-anchor="middle" class="node-title">候选交付</text>
+    <text x="1060" y="166" text-anchor="middle" class="node-sub">评测、产物、回滚</text>
+  </g>
+
+  <path d="M143 195 V245" class="link"/>
+  <path d="M373 195 V245" class="link"/>
+  <path d="M603 195 V245" class="link"/>
+  <path d="M833 195 V245" class="link"/>
+  <path d="M1060 195 V245" class="link"/>
+
+  <g>
+    <rect x="48" y="245" width="190" height="155" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+    <text x="64" y="275" class="owner-title">主要所有者</text>
+    <text x="64" y="302" class="owner-text">预训练 / 模型架构</text>
+    <text x="64" y="334" class="owner-title">后训练接口</text>
+    <text x="64" y="361" class="owner-text">读取模型、词表、</text>
+    <text x="64" y="382" class="owner-text">上下文与版本身份</text>
+  </g>
+  <g>
+    <rect x="278" y="245" width="190" height="155" rx="14" fill="#ffffff" stroke="#5eead4" stroke-width="2"/>
+    <text x="294" y="275" class="owner-title">主要所有者</text>
+    <text x="294" y="302" class="owner-text">数据工程</text>
+    <text x="294" y="334" class="owner-title">后训练接口</text>
+    <text x="294" y="361" class="owner-text">指定消费 schema，</text>
+    <text x="294" y="382" class="owner-text">读取身份与准入证据</text>
+  </g>
+  <g>
+    <rect x="508" y="245" width="190" height="155" rx="14" fill="#ffffff" stroke="#93c5fd" stroke-width="2"/>
+    <text x="524" y="275" class="owner-title">主要所有者</text>
+    <text x="524" y="302" class="owner-text">后训练优化</text>
+    <text x="524" y="334" class="owner-title">机制支撑</text>
+    <text x="524" y="361" class="owner-text">反向传播核对梯度、</text>
+    <text x="524" y="382" class="owner-text">更新时钟与训练状态</text>
+  </g>
+  <g>
+    <rect x="738" y="245" width="190" height="155" rx="14" fill="#ffffff" stroke="#c4b5fd" stroke-width="2"/>
+    <text x="754" y="275" class="owner-title">共同所有者</text>
+    <text x="754" y="302" class="owner-text">后训练 / Agent 基础设施</text>
+    <text x="754" y="334" class="owner-title">系统支撑</text>
+    <text x="754" y="361" class="owner-text">通信并行负责扩展，</text>
+    <text x="754" y="382" class="owner-text">性能分析负责归因</text>
+  </g>
+  <g>
+    <rect x="968" y="245" width="184" height="155" rx="14" fill="#ffffff" stroke="#fbbf24" stroke-width="2"/>
+    <text x="984" y="275" class="owner-title">共同所有者</text>
+    <text x="984" y="302" class="owner-text">后训练 / 压缩 / 部署</text>
+    <text x="984" y="334" class="owner-title">采用证据</text>
+    <text x="984" y="361" class="owner-text">质量、成本、加载、</text>
+    <text x="984" y="382" class="owner-text">服务与回滚状态</text>
+  </g>
+
+  <g>
+    <rect x="80" y="458" width="310" height="104" rx="14" fill="#eef2ff" stroke="#a5b4fc"/>
+    <text x="100" y="489" class="support-title">量化与压缩</text>
+    <text x="100" y="515" class="support-text">QLoRA 提供低比特训练底座；蒸馏负责</text>
+    <text x="100" y="537" class="support-text">独立学生、模型规模与压缩产物。</text>
+  </g>
+  <g>
+    <rect x="445" y="458" width="310" height="104" rx="14" fill="#ecfeff" stroke="#67e8f9"/>
+    <text x="465" y="489" class="support-title">通信并行与性能分析</text>
+    <text x="465" y="515" class="support-text">解释多模型驻留、工作进程通信、等待、</text>
+    <text x="465" y="537" class="support-text">吞吐和扩展边界，不改写学习目标。</text>
+  </g>
+  <g>
+    <rect x="810" y="458" width="310" height="104" rx="14" fill="#fff7ed" stroke="#fdba74"/>
+    <text x="830" y="489" class="support-title">推理优化与异构部署</text>
+    <text x="830" y="515" class="support-text">验证模型进入后端后的延迟、吞吐、</text>
+    <text x="830" y="537" class="support-text">资源兼容性和真实服务收益。</text>
+  </g>
+</svg>
