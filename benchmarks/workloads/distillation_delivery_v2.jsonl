@@ -1,0 +1,64 @@
+{"record_id":"train-basic-01","split":"train","prompt":"Return only the result of 13 + 29."}
+{"record_id":"train-basic-02","split":"train","prompt":"Return only the result of 12 multiplied by 6."}
+{"record_id":"train-basic-03","split":"train","prompt":"Name the capital city of Japan."}
+{"record_id":"train-basic-04","split":"train","prompt":"State whether 17 is a prime number: yes or no."}
+{"record_id":"train-basic-05","split":"train","prompt":"Give the English word for the number 8."}
+{"record_id":"train-basic-06","split":"train","prompt":"Return only the result of 81 divided by 9."}
+{"record_id":"train-basic-07","split":"train","prompt":"Name the planet known as the Red Planet."}
+{"record_id":"train-basic-08","split":"train","prompt":"State whether water freezes at 0 degrees Celsius: yes or no."}
+{"record_id":"train-serving-01","split":"train","prompt":"Explain the difference between prefill and decode in autoregressive inference."}
+{"record_id":"train-serving-02","split":"train","prompt":"Explain why a KV cache reduces repeated attention computation during decoding."}
+{"record_id":"train-serving-03","split":"train","prompt":"Define time to first token in online model serving."}
+{"record_id":"train-serving-04","split":"train","prompt":"Explain why tail latency matters even when average throughput improves."}
+{"record_id":"train-serving-05","split":"train","prompt":"State one condition under which prefix caching can reduce prefill work."}
+{"record_id":"train-serving-06","split":"train","prompt":"Explain why continuous batching can improve GPU utilization."}
+{"record_id":"train-serving-07","split":"train","prompt":"Name one reason a smaller model can have lower decoding latency."}
+{"record_id":"train-serving-08","split":"train","prompt":"Explain why a serving benchmark must fix prompt and completion lengths."}
+{"record_id":"train-training-01","split":"train","prompt":"Explain what activation checkpointing trades for lower activation memory."}
+{"record_id":"train-training-02","split":"train","prompt":"Explain why gradient accumulation changes optimizer-step frequency."}
+{"record_id":"train-training-03","split":"train","prompt":"State the purpose of loss scaling in mixed-precision training."}
+{"record_id":"train-training-04","split":"train","prompt":"Explain why an evaluation split must remain outside training."}
+{"record_id":"train-training-05","split":"train","prompt":"Describe the role of an optimizer state in training."}
+{"record_id":"train-training-06","split":"train","prompt":"Explain why gradient clipping can stabilize an update."}
+{"record_id":"train-training-07","split":"train","prompt":"State one benefit and one risk of weight quantization."}
+{"record_id":"train-training-08","split":"train","prompt":"Explain why deterministic seeds improve experiment comparability."}
+{"record_id":"train-distill-01","split":"train","prompt":"Explain why the teacher remains frozen in a controlled distillation run."}
+{"record_id":"train-distill-02","split":"train","prompt":"Describe the purpose of an independent student baseline."}
+{"record_id":"train-distill-03","split":"train","prompt":"Contrast fixed-trajectory and on-policy distillation."}
+{"record_id":"train-distill-04","split":"train","prompt":"Explain why teacher and student must use the same evaluation workload."}
+{"record_id":"train-distill-05","split":"train","prompt":"Explain what a model artifact content hash verifies."}
+{"record_id":"train-distill-06","split":"train","prompt":"Explain why a candidate must load successfully before delivery."}
+{"record_id":"train-distill-07","split":"train","prompt":"State why quality gain and teacher retention are separate gates."}
+{"record_id":"train-distill-08","split":"train","prompt":"Explain why a tune decision must not create a deployable handoff."}
+{"record_id":"eval-basic-01","split":"evaluation","category":"basic_accuracy","prompt":"Return only the result of 18 + 27.","validator":"exact","expected_exact":["45"]}
+{"record_id":"eval-basic-02","split":"evaluation","category":"basic_accuracy","prompt":"Return only the result of 11 multiplied by 7.","validator":"exact","expected_exact":["77"]}
+{"record_id":"eval-basic-03","split":"evaluation","category":"basic_accuracy","prompt":"Return only the result of 96 divided by 12.","validator":"exact","expected_exact":["8"]}
+{"record_id":"eval-basic-04","split":"evaluation","category":"basic_accuracy","prompt":"Return only the capital city of Italy.","validator":"exact","expected_exact":["rome"]}
+{"record_id":"eval-basic-05","split":"evaluation","category":"basic_accuracy","prompt":"Return only yes or no: is 19 a prime number?","validator":"exact","expected_exact":["yes"]}
+{"record_id":"eval-basic-06","split":"evaluation","category":"basic_accuracy","prompt":"Return only yes or no: is 21 a prime number?","validator":"exact","expected_exact":["no"]}
+{"record_id":"eval-basic-07","split":"evaluation","category":"basic_accuracy","prompt":"Return only the English word for the number 6.","validator":"exact","expected_exact":["six"]}
+{"record_id":"eval-basic-08","split":"evaluation","category":"basic_accuracy","prompt":"Return only the planet known as the Red Planet.","validator":"exact","expected_exact":["mars"]}
+{"record_id":"eval-serving-01","split":"evaluation","category":"serving_systems","prompt":"In one sentence, name the two phases of autoregressive inference.","validator":"terms","expected_all":["prefill","decode"]}
+{"record_id":"eval-serving-02","split":"evaluation","category":"serving_systems","prompt":"Name the cache that stores attention keys and values during autoregressive generation.","validator":"terms","expected_any":["kv cache","key value cache"]}
+{"record_id":"eval-serving-03","split":"evaluation","category":"serving_systems","prompt":"Name the metric that measures time until the first generated token.","validator":"terms","expected_any":["ttft","time to first token"]}
+{"record_id":"eval-serving-04","split":"evaluation","category":"serving_systems","prompt":"Which latency percentile is usually more useful than the mean for a tail-latency SLO: p50 or p99?","validator":"exact","expected_exact":["p99"]}
+{"record_id":"eval-serving-05","split":"evaluation","category":"serving_systems","prompt":"In one sentence, state what prefix caching avoids recomputing.","validator":"terms","expected_all":["prefix","prefill"]}
+{"record_id":"eval-serving-06","split":"evaluation","category":"serving_systems","prompt":"In one sentence, state why continuous batching can raise throughput.","validator":"terms","expected_any":["utilization","idle","batch"]}
+{"record_id":"eval-serving-07","split":"evaluation","category":"serving_systems","prompt":"Return only yes or no: can higher throughput still be unsuitable when tail latency violates the SLO?","validator":"exact","expected_exact":["yes"]}
+{"record_id":"eval-serving-08","split":"evaluation","category":"serving_systems","prompt":"Name the stage that processes all prompt tokens before autoregressive generation.","validator":"exact","expected_exact":["prefill"]}
+{"record_id":"eval-training-01","split":"evaluation","category":"training_mechanisms","prompt":"In one sentence, state what activation checkpointing trades for lower activation memory.","validator":"terms","expected_any":["recompute","computation"],"forbidden_any":["communication"]}
+{"record_id":"eval-training-02","split":"evaluation","category":"training_mechanisms","prompt":"Name the operation that converts accumulated gradients into parameter changes.","validator":"terms","expected_any":["optimizer step","update"]}
+{"record_id":"eval-training-03","split":"evaluation","category":"training_mechanisms","prompt":"Return only yes or no: should evaluation examples be used for gradient updates?","validator":"exact","expected_exact":["no"]}
+{"record_id":"eval-training-04","split":"evaluation","category":"training_mechanisms","prompt":"Name the mixed-precision technique that prevents small gradients from underflowing.","validator":"terms","expected_any":["loss scaling","gradient scaling"]}
+{"record_id":"eval-training-05","split":"evaluation","category":"training_mechanisms","prompt":"In one sentence, state why gradient clipping is used.","validator":"terms","expected_any":["stability","exploding gradient","large gradient"]}
+{"record_id":"eval-training-06","split":"evaluation","category":"training_mechanisms","prompt":"Name the two common moment buffers stored by AdamW.","validator":"terms","expected_all":["first moment","second moment"]}
+{"record_id":"eval-training-07","split":"evaluation","category":"training_mechanisms","prompt":"Return only yes or no: does gradient accumulation reduce the number of microbatches per optimizer step?","validator":"exact","expected_exact":["no"]}
+{"record_id":"eval-training-08","split":"evaluation","category":"training_mechanisms","prompt":"In one sentence, state one main risk of low-bit weight quantization.","validator":"terms","expected_any":["accuracy","quality","error"]}
+{"record_id":"eval-distill-01","split":"evaluation","category":"distillation_contract","prompt":"Return only yes or no: should the teacher update its parameters in a controlled distillation comparison?","validator":"exact","expected_exact":["no"]}
+{"record_id":"eval-distill-02","split":"evaluation","category":"distillation_contract","prompt":"Name the distribution-matching loss commonly used for logit distillation.","validator":"terms","expected_any":["kl divergence","kullback leibler"]}
+{"record_id":"eval-distill-03","split":"evaluation","category":"distillation_contract","prompt":"In one sentence, state why G1 and G2 must start from the same student snapshot.","validator":"terms","expected_any":["comparability","fair comparison","controlled comparison"]}
+{"record_id":"eval-distill-04","split":"evaluation","category":"distillation_contract","prompt":"Which route samples responses from the current student policy: fixed-trajectory or on-policy?","validator":"exact","expected_exact":["on policy","on-policy"]}
+{"record_id":"eval-distill-05","split":"evaluation","category":"distillation_contract","prompt":"Which hash verifies model weight bytes rather than only file names and sizes?","validator":"terms","expected_all":["content","hash"]}
+{"record_id":"eval-distill-06","split":"evaluation","category":"distillation_contract","prompt":"Return only yes or no: may a student with decision tune be marked deployment-ready?","validator":"exact","expected_exact":["no"]}
+{"record_id":"eval-distill-07","split":"evaluation","category":"distillation_contract","prompt":"In one sentence, distinguish teacher retention from quality gain.","validator":"terms","expected_all":["teacher","baseline"]}
+{"record_id":"eval-distill-08","split":"evaluation","category":"distillation_contract","prompt":"Name the artifact that records model identity, file hashes, and provenance for handoff.","validator":"terms","expected_any":["manifest","artifact manifest"]}
