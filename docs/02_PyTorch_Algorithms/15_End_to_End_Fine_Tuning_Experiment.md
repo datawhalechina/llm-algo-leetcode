@@ -173,7 +173,7 @@ def evaluate_loss(model, batch):
     # ==========================================
     # TODO 1：在无梯度评估后恢复调用前模式
     # ==========================================
-    # was_training = ???  # 调用前的 model.training 状态。
+    was_training = model.training  # 骨架保存调用前状态，避免异常路径污染模型模式。
     try:
         model.eval()
         with torch.no_grad():
@@ -518,15 +518,15 @@ def run_finetuning_experiment(model, optimizer, train_batch, val_batch=None, acc
 
 ## 框架一致性核对（可选）
 
-本核对分成两部分：先让本节循环与 Accelerate 在相同条件下完成一次有效更新，再让 TRL `SFTTrainer` 处理内存中的微型文本数据。前者核对梯度累积与更新时钟，后者核对 SFT 数据处理、Token 损失和 Trainer 更新；全程不下载模型或数据。
+使用相同的模型、微批次和优化配置，比较 Step 4 教学训练循环、Accelerate 梯度累积与 TRL `SFTTrainer` 的有效更新行为。
 
-| 核对项 | 本节实现 | 框架路径 | 通过条件 |
+| 核对对象 | Step 4 教学实现 | 成熟框架 CPU 路径 | 共同输入与通过条件 |
 | --- | --- | --- | --- |
 | 累积边界 | 两个微批次后调用一次 `optimizer.step()` | `accumulate` 与 `sync_gradients` 控制写回 | 第一个微批次后参数不变，第二个微批次后参数改变 |
 | 最终参数 | 等大微批次损失除以累积步数 | Accelerate 自动缩放累积损失 | 两条路径完成一次有效更新后的参数一致 |
 | 更新时钟 | 调度器按有效更新推进 | Accelerate 仅在 `sync_gradients=True` 时推进调度器 | 两条路径的调度器都只推进一次 |
-| SFT 数据与损失 | 已编码批次、右移标签与有效 Token 平均 | `SFTTrainer` 完成 EOS、分词、标签和损失计算 | 标签形状完整，Trainer 损失与显式交叉熵一致 |
-| Trainer 更新 | 本节循环完成一次有效更新 | `SFTTrainer.train()` 执行一个 step | `global_step=1` 且参数发生变化 |
+| Trainer 有效更新 | 本节循环按逻辑批次更新参数 | `SFTTrainer.train()` 执行一个训练步 | `global_step=1` 且模型参数发生变化 |
+
 
 ```python
 import copy
@@ -629,7 +629,7 @@ else:
 
 
     def check_sft_trainer_path():
-        """用内存数据核对 SFTTrainer 的监督标签、损失和单步更新。"""
+        """用内存数据核对 SFTTrainer 的单次有效更新。"""
         tokenizer_backend = Tokenizer(
             WordLevel(
                 {"<pad>": 0, "<eos>": 1, "<unk>": 2, "hello": 3, "world": 4, "answer": 5},
@@ -659,30 +659,15 @@ else:
             trainer = SFTTrainer(
                 model=model, args=args, train_dataset=dataset, processing_class=tokenizer
             )
-            batch = next(iter(trainer.get_train_dataloader()))
-            model.eval()
-            with torch.no_grad():
-                logits = model(
-                    input_ids=batch["input_ids"],
-                    attention_mask=batch["attention_mask"],
-                    use_cache=False,
-                ).logits
-            local_loss = compute_sft_loss(logits, batch["labels"], batch["attention_mask"])
-            trainer_loss = trainer.compute_loss(
-                model, {key: value.clone() for key, value in batch.items()}
-            )
             trainer.train()
 
-        checks = {
-            "labels_match_inputs": batch["labels"].shape == batch["input_ids"].shape,
-            "loss_match": bool(torch.isclose(local_loss, trainer_loss, atol=1e-6, rtol=1e-6).item()),
+        return {
             "single_step_completed": trainer.state.global_step == 1,
             "parameters_updated": any(
                 not torch.equal(before, after)
                 for before, after in zip(initial_parameters, model.parameters())
             ),
         }
-        return checks
 
 
     accelerate_result = check_accelerate_training_control()

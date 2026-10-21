@@ -458,13 +458,13 @@ def compute_sft_loss(logits: torch.Tensor, labels: torch.Tensor, attention_mask:
 
 ## 框架一致性核对（可选）
 
-下面使用 TRL 的批处理器和 Transformers 的微型随机模型核对三类契约。任一检查不通过时，单元会直接报出失败项；该核对不下载模型，也不更新参数。
+使用相同的受控样本，比较 Step 4 教学实现、TRL 批处理器与 Transformers 语言模型损失产生的标签、掩码和有效 Token 归约结果。
 
-| 核对项 | 对比内容 | 通过条件 |
-| --- | --- | --- |
-| 输入与填充 | 本节样本与 TRL 批处理结果 | Token 顺序、标签、注意力掩码和填充位置一致 |
-| 监督边界 | prompt、response、EOS 与有效 Token 数 | prompt / padding 被忽略，response / EOS 保留 |
-| 位移与归约 | `compute_sft_loss` 与 Transformers 内置损失 | 两条路径在相同 logits 和 labels 上数值一致 |
+| 核对对象 | Step 4 教学实现 | 成熟框架 CPU 路径 | 共同输入与通过条件 |
+| --- | --- | --- | --- |
+| 输入与填充 | `build_sft_data` 构造 Token、标签与掩码 | TRL `DataCollatorForLanguageModeling` | 使用相同样本；Token 顺序、标签、注意力掩码和填充位置一致 |
+| 监督边界 | prompt 与 padding 标为 `-100` | TRL completion-only 标签 | 使用相同 prompt、response 与 EOS；忽略位置和有效 Token 数一致 |
+| 位移与归约 | `compute_sft_loss` 执行位移和有效 Token 平均 | Transformers `AutoModelForCausalLM.loss` | 使用相同 logits 与 labels；两条路径的损失在数值容差内一致 |
 
 ```python
 from importlib.metadata import version
