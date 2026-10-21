@@ -84,6 +84,13 @@ def normalize_markdown_links(source_text):
     """将 source 侧 Markdown 中的常见链接改写为 docs 镜像可用的路径。"""
     source_text = re.sub(r'(\]\([^)]+)\.ipynb\)', r'\1.md)', source_text)
     source_text = source_text.replace('../docs/', '../')
+    # docs 镜像整体比 source 多一层 ``docs/``。指向仓库级 benchmarks
+    # 的相对链接需要多回退一级，才能同时保持 source 与镜像可点击。
+    source_text = re.sub(
+        r'(\]\()(\.\./)+(benchmarks/)',
+        lambda match: match.group(1) + '../' + match.group(0)[len(match.group(1)):],
+        source_text,
+    )
     return source_text
 
 def process_markdown_file(md_path, out_path):
