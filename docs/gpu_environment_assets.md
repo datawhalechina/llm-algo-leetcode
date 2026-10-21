@@ -41,7 +41,7 @@
 |:---|:---|:---|
 | <a id="base-cpu"></a>`BASE-CPU` | Part 00–02 普通 CPU 机制练习、题目与测试 | [使用指南](./guide.md) |
 | <a id="train-cpu"></a>`TRAIN-CPU` | 反向传播与训练控制机制页的 PyTorch、Transformers 与 Accelerate 核对 | [训练机制 Quickstart](../topic_discussion/backpropagation_training_mechanism/quickstart.md#train-cpu-quickstart) · [实验资产](../topic_discussion/backpropagation_training_mechanism/experiment_assets.md) |
-| <a id="pt-cpu"></a>`PT-CPU` | 后训练机制页的 Datasets、PEFT、TRL、Accelerate 与 Gymnasium 核对 | [后训练 Quickstart](../topic_discussion/post_training_optimization/quickstart.md#pt-cpu-quickstart) · [实验资产](../topic_discussion/post_training_optimization/experiment_assets.md) |
+| <a id="pt-cpu"></a>`PT-CPU` | 后训练机制页的 Datasets、PEFT、TRL、TorchRL、Accelerate 与 Gymnasium 核对 | [后训练 Quickstart](../topic_discussion/post_training_optimization/quickstart.md#pt-cpu-quickstart) · [实验资产](../topic_discussion/post_training_optimization/experiment_assets.md) |
 | `PERF-DELIVERY` | 汇总性能证据并形成交付判断，不重新执行 GPU 实验 | [性能优化 Quickstart](../topic_discussion/performance_optimization/quickstart.md#perf-delivery-quickstart) · [实验资产](../topic_discussion/performance_optimization/experiment_assets.md) |
 | `INF-SERVICE-DELIVERY` | 汇总推理服务候选、SLO 与交付状态 | [推理优化 Quickstart](../topic_discussion/inference_optimization/quickstart.md#inf-service-delivery) · [实验资产](../topic_discussion/inference_optimization/experiment_assets.md) |
 
@@ -76,7 +76,7 @@
 |:---|:---|:---|
 | CPU 机制环境 | 基础 CPU PyTorch + 对应能力包 | CUDA PyTorch、Serving 后端、量化运行时和多卡框架 |
 | CUDA PyTorch 机制环境 | CUDA PyTorch + 一个目标专题能力 Profile | vLLM、SGLang、TensorRT-LLM 及其他维护独立 PyTorch 栈的后端 |
-| 后训练环境 | SFT/LoRA、偏好/RL、交付控制分别按 Profile 创建 | QLoRA 使用 `Q-QLORA`；多工作进程 rollout 与 Serving 采样另建项目环境 |
+| 后训练环境 | SFT/LoRA、偏好/RL、教师—学生蒸馏和交付控制分别按 Profile 创建 | QLoRA 使用 `Q-QLORA`；多工作进程 rollout 与 Serving 采样另建项目环境 |
 | 量化环境 | `Q-CUDA-MECHANISM` 或 `Q-QLORA` 各自独立 | 不覆盖 Serving 环境；量化产物由匹配的后端另行验证 |
 | 推理后端环境 | 同一 Profile 内固定 backend、PyTorch、CUDA 和模型资产 | 不同 vLLM 版本、SGLang、llama.cpp 与 TensorRT-LLM 不混装 |
 | 多卡训练环境 | CUDA PyTorch + `PAR-CUDA-MECHANISM` | Serving 后端和单卡机制环境不能直接充当多卡证据 |

@@ -387,25 +387,46 @@
     "PT-VERL-CUDA": {
       "title": "后训练 verl 单卡系统机制环境",
       "purpose": "核对轨迹行为偏离、准入过滤、生成—更新阶段耗时和 KV Cache 驻留路径",
-      "python": {"minimum": "3.10", "maximum_exclusive": "3.13"},
+      "python": {
+        "minimum": "3.12",
+        "maximum_exclusive": "3.13"
+      },
       "external_manager": {
         "kind": "uv_lock",
         "repository": "https://github.com/verl-project/verl.git",
         "tag": "v0.9.1",
         "commit": "1876b06d0a3e4e71e06230be10af14492ca8a75b",
-        "extras": ["vllm", "fsdp"]
+        "python": "3.12",
+        "extras": [
+          "vllm"
+        ]
       },
       "requirements": [],
       "constraint_files": [],
       "required_modules": {
-        "torch": "torch", "verl": "verl", "vllm": "vllm", "ray": "ray"
+        "torch": "torch",
+        "verl": "verl",
+        "vllm": "vllm",
+        "ray": "ray"
       },
       "exact_distribution_versions": {
         "vllm": "0.24.0"
       },
+      "allowed_pip_check_issues": [
+        "The package `mistral-common` requires `numpy>=1.25,<2.4 ; python_full_version < '3.13'`, but `2.4.6` is installed"
+      ],
       "forbidden_distributions": [],
-      "isolation": {"require_clean_sys_path": false, "require_user_site_disabled": true, "require_project_runtime": false},
-      "gpu": {"required": true, "minimum_memory_gb": 10, "torch_cuda": "13.0", "minimum_devices": 1},
+      "isolation": {
+        "require_clean_sys_path": true,
+        "require_user_site_disabled": true,
+        "require_project_runtime": false
+      },
+      "gpu": {
+        "required": true,
+        "minimum_memory_gb": 10,
+        "torch_cuda": "13.0",
+        "minimum_devices": 1
+      },
       "evidence_scope": "single_gpu_colocated_rl_system_mechanism",
       "documentation": {
         "global": "docs/gpu_environment_assets.md#pt-verl-cuda",
