@@ -1,0 +1,97 @@
+2026-10-22 04:03:13,887	INFO worker.py:2003 -- Started a local Ray instance. View the dashboard at [1m[32mhttp://127.0.0.1:8265 [39m[22m
+/home/yulinlin/verl-v0.9.1/.venv/lib/python3.12/site-packages/ray/_private/worker.py:2051: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+  warnings.warn(
+[36m(MechanismWorker pid=144160)[0m /home/yulinlin/verl-v0.9.1/verl/workers/engine/__init__.py:32: UserWarning: torchtitan engine is not available: ModuleNotFoundError("No module named 'torchtitan'")
+[36m(MechanismWorker pid=144160)[0m   warnings.warn(f"torchtitan engine is not available: {e!r}", stacklevel=1)
+[36m(MechanismWorker pid=144160)[0m /home/yulinlin/verl-v0.9.1/verl/workers/engine/__init__.py:41: UserWarning: veomni engine is not available: ModuleNotFoundError("No module named 'veomni'")
+[36m(MechanismWorker pid=144160)[0m   warnings.warn(f"veomni engine is not available: {e!r}", stacklevel=1)
+[36m(MechanismWorker pid=144160)[0m /home/yulinlin/verl-v0.9.1/verl/workers/engine/__init__.py:50: UserWarning: automodel engine is not available: ModuleNotFoundError("No module named 'nemo_automodel'")
+[36m(MechanismWorker pid=144160)[0m   warnings.warn(f"automodel engine is not available: {e!r}", stacklevel=1)
+[36m(MechanismWorker pid=144160)[0m /home/yulinlin/verl-v0.9.1/verl/workers/engine/__init__.py:60: UserWarning: mindspeed engine is not available: ModuleNotFoundError("No module named 'megatron'")
+[36m(MechanismWorker pid=144160)[0m   warnings.warn(f"mindspeed engine is not available: {e!r}", stacklevel=1)
+[36m(MechanismWorker pid=144160)[0m /home/yulinlin/verl-v0.9.1/verl/workers/engine/__init__.py:69: UserWarning: megatron engine is not available: ModuleNotFoundError("No module named 'megatron'")
+[36m(MechanismWorker pid=144160)[0m   warnings.warn(f"megatron engine is not available: {e!r}", stacklevel=1)
+[36m(MechanismWorker pid=144160)[0m Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]
+[36m(MechanismWorker pid=144160)[0m Loading weights:   0%|          | 1/290 [00:00<00:47,  6.08it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 1711.02it/s]
+[36m(MechanismWorker pid=144160)[0m /home/yulinlin/verl-v0.9.1/.venv/lib/python3.12/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py:478: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+[36m(MechanismWorker pid=144160)[0m   _init_core_state(
+[36m(MechanismWorker pid=144160)[0m /home/yulinlin/verl-v0.9.1/verl/workers/engine/fsdp/transformer_impl.py:482: FutureWarning: FSDP.state_dict_type() and FSDP.set_state_dict_type() are being deprecated. Please use APIs, get_state_dict() and set_state_dict(), which can support different parallelisms, FSDP1, FSDP2, DDP. API doc: https://pytorch.org/docs/stable/distributed.checkpoint.html#torch.distributed.checkpoint.state_dict.get_state_dict .Tutorial: https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html .
+[36m(MechanismWorker pid=144160)[0m   FSDP.set_state_dict_type(
+[36m(vLLMHttpServer pid=144405)[0m (Worker pid=144676) WARNING:2026-10-22 04:03:36,069:Failed to get device capability: SM 12.x requires CUDA >= 12.9.
+[36m(vLLMHttpServer pid=144405)[0m (Worker pid=144676) WARNING:2026-10-22 04:03:36,070:Failed to get device capability: SM 12.x requires CUDA >= 12.9.
+[36m(vLLMHttpServer pid=144405)[0m (Worker pid=144676) Loading safetensors checkpoint shards:   0% Completed | 0/1 [00:00<?, ?it/s]
+[36m(vLLMHttpServer pid=144405)[0m (Worker pid=144676) Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  8.45it/s]
+[36m(vLLMHttpServer pid=144405)[0m (Worker pid=144676) Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  8.44it/s]
+[36m(vLLMHttpServer pid=144405)[0m (Worker pid=144676) 
+[36m(vLLMHttpServer pid=144405)[0m (Worker pid=144676) 2026-10-22 04:03:41,108 - INFO - autotuner.py:622 - flashinfer.jit: [Autotuner]: Autotuning process starts ...
+[36m(vLLMHttpServer pid=144405)[0m (Worker pid=144676) 2026-10-22 04:03:41,122 - INFO - autotuner.py:641 - flashinfer.jit: [Autotuner]: Autotuning process ends
+[36m(MechanismWorker pid=144160)[0m /home/yulinlin/verl-v0.9.1/verl/plugin/platform/platform_cuda.py:99: FutureWarning: torch.cuda._set_allocator_settings is deprecated. Use torch._C._accelerator_setAllocatorSettings instead.
+[36m(MechanismWorker pid=144160)[0m   torch.cuda.memory._set_allocator_settings(settings)
+[36m(MechanismWorker pid=144160)[0m /home/yulinlin/verl-v0.9.1/.venv/lib/python3.12/site-packages/torch/utils/_contextlib.py:124: UserWarning: When using ``NO_SHARD`` for ``ShardingStrategy``, full_state_dict will be returned.
+[36m(MechanismWorker pid=144160)[0m   return func(*args, **kwargs)
+[36m(MechanismWorker pid=144160)[0m /home/yulinlin/verl-v0.9.1/verl/plugin/platform/platform_cuda.py:99: FutureWarning: torch.cuda._set_allocator_settings is deprecated. Use torch._C._accelerator_setAllocatorSettings instead.
+[36m(MechanismWorker pid=144160)[0m   torch.cuda.memory._set_allocator_settings(settings)
+W1022 04:03:44.998000 141325 .venv/lib/python3.12/site-packages/torch/fx/_symbolic_trace.py:53] is_fx_tracing will return true for both fx.symbolic_trace and torch.export. Please use is_fx_tracing_symbolic_tracing() for specifically fx.symbolic_trace or torch.compiler.is_compiling() for specifically torch.export/compile.
+[36m(MechanismWorker pid=144160)[0m [rank0]:W1022 04:03:45.403000 144160 .venv/lib/python3.12/site-packages/torch/fx/_symbolic_trace.py:53] is_fx_tracing will return true for both fx.symbolic_trace and torch.export. Please use is_fx_tracing_symbolic_tracing() for specifically fx.symbolic_trace or torch.compiler.is_compiling() for specifically torch.export/compile.
+[36m(GlobalRequestLoadBalancer pid=144935)[0m W1022 04:03:46.203000 144935 .venv/lib/python3.12/site-packages/torch/utils/cpp_extension.py:140] No CUDA runtime is found, using CUDA_HOME='/usr/local/cuda'
+[36m(MechanismWorker pid=144160)[0m Skipping monkey patch for Qwen2ForCausalLM as use_fused_kernels is False or fused_kernels_backend is torch
+[36m(MechanismWorker pid=144160)[0m PeftModelForCausalLM contains 495.11M parameters
+[36m(MechanismWorker pid=144160)[0m Before FSDP, memory allocated (GB): 0.00, memory reserved (GB): 0.00, device memory used/total (GB): 1.15/11.47
+[36m(MechanismWorker pid=144160)[0m After FSDP, memory allocated (GB): 1.85, memory reserved (GB): 2.46, device memory used/total (GB): 4.16/11.47
+[36m(MechanismWorker pid=144160)[0m Total steps: 1, num_warmup_steps: 0
+[36m(vLLMHttpServer pid=144405)[0m ['serve',
+[36m(vLLMHttpServer pid=144405)[0m  '/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/model_cache/models--Qwen--Qwen2.5-0.5B-Instruct/snapshots/7ae557604adf67be50417f59c2c2f167def9a775',
+[36m(vLLMHttpServer pid=144405)[0m  '--dtype',
+[36m(vLLMHttpServer pid=144405)[0m  'bfloat16',
+[36m(vLLMHttpServer pid=144405)[0m  '--load_format',
+[36m(vLLMHttpServer pid=144405)[0m  'safetensors',
+[36m(vLLMHttpServer pid=144405)[0m  '--distributed_executor_backend',
+[36m(vLLMHttpServer pid=144405)[0m  'mp',
+[36m(vLLMHttpServer pid=144405)[0m  '--worker_extension_cls',
+[36m(vLLMHttpServer pid=144405)[0m  'verl.workers.rollout.vllm_rollout.utils.vLLMColocateWorkerExtension',
+[36m(vLLMHttpServer pid=144405)[0m  '--max_model_len',
+[36m(vLLMHttpServer pid=144405)[0m  '512',
+[36m(vLLMHttpServer pid=144405)[0m  '--max_num_seqs',
+[36m(vLLMHttpServer pid=144405)[0m  '8',
+[36m(vLLMHttpServer pid=144405)[0m  '--enable_chunked_prefill',
+[36m(vLLMHttpServer pid=144405)[0m  '--max_num_batched_tokens',
+[36m(vLLMHttpServer pid=144405)[0m  '512',
+[36m(vLLMHttpServer pid=144405)[0m  '--no-enable_prefix_caching',
+[36m(vLLMHttpServer pid=144405)[0m  '--enable_sleep_mode',
+[36m(vLLMHttpServer pid=144405)[0m  '--logprobs_mode',
+[36m(vLLMHttpServer pid=144405)[0m  'processed_logprobs',
+[36m(vLLMHttpServer pid=144405)[0m  '--enforce_eager',
+[36m(vLLMHttpServer pid=144405)[0m  '--gpu_memory_utilization',
+[36m(vLLMHttpServer pid=144405)[0m  '0.35',
+[36m(vLLMHttpServer pid=144405)[0m  '--disable_log_stats',
+[36m(vLLMHttpServer pid=144405)[0m  '--tensor_parallel_size',
+[36m(vLLMHttpServer pid=144405)[0m  '1',
+[36m(vLLMHttpServer pid=144405)[0m  '--seed',
+[36m(vLLMHttpServer pid=144405)[0m  '42',
+[36m(vLLMHttpServer pid=144405)[0m  '--override_generation_config',
+[36m(vLLMHttpServer pid=144405)[0m  '{"temperature": 1.0, "top_k": -1, "top_p": 1, "repetition_penalty": 1.0, '
+[36m(vLLMHttpServer pid=144405)[0m  '"max_new_tokens": 512}',
+[36m(vLLMHttpServer pid=144405)[0m  '--hf_overrides',
+[36m(vLLMHttpServer pid=144405)[0m  '{}',
+[36m(vLLMHttpServer pid=144405)[0m  '--scheduling_policy',
+[36m(vLLMHttpServer pid=144405)[0m  'fcfs',
+[36m(vLLMHttpServer pid=144405)[0m  '--compilation_config',
+[36m(vLLMHttpServer pid=144405)[0m  '{"cudagraph_mode": "FULL_AND_PIECEWISE"}',
+[36m(vLLMHttpServer pid=144405)[0m  '--enable_lora',
+[36m(vLLMHttpServer pid=144405)[0m  '--max_loras',
+[36m(vLLMHttpServer pid=144405)[0m  '1',
+[36m(vLLMHttpServer pid=144405)[0m  '--max_lora_rank',
+[36m(vLLMHttpServer pid=144405)[0m  '16']
+[36m(vLLMHttpServer pid=144405)[0m WARNING 10-22 04:03:27 [vllm.py:1062] Enforce eager set, disabling torch.compile and CUDAGraphs. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none
+[36m(vLLMHttpServer pid=144405)[0m WARNING 10-22 04:03:27 [vllm.py:1110] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+[36m(vLLMHttpServer pid=144405)[0m (EngineCore pid=144640) WARNING 10-22 04:03:42 [vllm.py:1062] Enforce eager set, disabling torch.compile and CUDAGraphs. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none
+[36m(vLLMHttpServer pid=144405)[0m (EngineCore pid=144640) WARNING 10-22 04:03:42 [vllm.py:1110] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+[36m(vLLMHttpServer pid=144405)[0m WARNING 10-22 04:03:42 [api_router.py:30] LoRA dynamic loading & unloading is enabled in the API server. This should ONLY be used for local development!
+[36m(vLLMHttpServer pid=144405)[0m WARNING 10-22 04:03:42 [model.py:1477] Default vLLM sampling parameters have been overridden by the model's `generation_config.json`: `{'repetition_penalty': 1.0, 'temperature': 1.0, 'top_k': -1, 'top_p': 1, 'max_tokens': 512}`. If this is not intended, please relaunch vLLM instance with `--generation-config vllm`.
+LLMServerManager: ['192.168.0.117:34105']
+[36m(vLLMHttpServer pid=144405)[0m WARNING 10-22 04:03:44 [input_processor.py:157] vLLM has deprecated support for supporting different tokenizers for different LoRAs. By default, vLLM uses base model's tokenizer. If you are using a LoRA with its own tokenizer, consider specifying `--tokenizer [lora_path]` to use the LoRA tokenizer.
+[36m(vLLMHttpServer pid=144405)[0m WARNING 10-22 04:03:44 [input_processor.py:282] Passing raw prompts to InputProcessor is deprecated and will be removed in v0.18. You should instead pass the outputs of Renderer.render_cmpl() or Renderer.render_chat().
+[36m(vLLMHttpServer pid=144405)[0m (Worker pid=144676) WARNING 10-22 04:03:44 [jit_monitor.py:106] Triton kernel JIT compilation during inference: _compute_slot_mapping_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+[36m(vLLMHttpServer pid=144405)[0m (Worker pid=144676) WARNING 10-22 04:03:44 [utils.py:279] Using default LoRA kernel configs
+[36m(vLLMHttpServer pid=144405)[0m (Worker pid=144676) WARNING 10-22 04:03:44 [jit_monitor.py:106] Triton kernel JIT compilation during inference: _lora_shrink_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+[36m(vLLMHttpServer pid=144405)[0m (Worker pid=144676) WARNING 10-22 04:03:44 [jit_monitor.py:106] Triton kernel JIT compilation during inference: _lora_expand_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
