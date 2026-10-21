@@ -26,7 +26,7 @@
 
 ## 二、从监督目标建立最小 SFT 基线
 
-同一条提示与目标回答经过聊天模板和分词后形成词元序列、注意力掩码和标签。标签掩码决定哪些词元进入监督损失；样本契约、任务输入指纹、样本指纹和数据切分决定样本能否进入训练池。训练后在冻结验证集上比较更新前后的任务结果，并重新加载保存的模型或适配器复测，得到 DPO、KTO、PPO、GRPO 或 RLOO 共用的 SFT 基线。数据与标签关系见[监督数据契约](./01_sft_data_and_loss.md)，保存、恢复和验证关系见[SFT 基线与交付](./04_end_to_end_experiment.md)。
+同一条提示与目标回答经过聊天模板和分词后形成词元序列、注意力掩码和标签。标签掩码决定哪些词元进入监督损失；样本契约、任务输入指纹、样本指纹和数据切分决定样本能否进入训练池。真实示范不足时，先生成带身份的合成候选，经过训练集与批内去重、污染和验证器检查后，再返回最终切分审计。训练后在冻结验证集上比较更新前后的任务结果，并重新加载保存的模型或适配器复测，得到 DPO、KTO、PPO、GRPO 或 RLOO 共用的 SFT 基线。数据与标签关系见[监督数据契约](./01_sft_data_and_loss.md)，合成候选准入见[PT-SYNTHETIC-DATA](../../02_PyTorch_Algorithms/PT-SYNTHETIC-DATA_Instruction_Generation_and_Verifier_Admission.ipynb)，保存、恢复和验证关系见[SFT 基线与交付](./04_end_to_end_experiment.md)。
 
 ![监督样本经过契约、模板和标签边界形成有效监督词元](../../docs/public/topic_discussion/post_training_optimization/sft_data_supervision_pipeline.svg)
 
