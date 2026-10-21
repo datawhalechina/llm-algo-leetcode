@@ -3,7 +3,62 @@
 from __future__ import annotations
 
 import os
+import json
+import re
 from pathlib import Path
+
+
+def snapshot_files_complete(path: Path) -> bool:
+    """Check required local assets, including every indexed weight shard."""
+    def present(name):
+        candidate = Path(name)
+        return (not candidate.is_absolute() and '..' not in candidate.parts
+                and (path / candidate).is_file() and (path / candidate).stat().st_size > 0)
+
+    if not all(present(name) for name in ('config.json', 'tokenizer_config.json')):
+        return False
+    if not (present('tokenizer.json') or present('tokenizer.model') or present('spiece.model')
+            or (present('vocab.json') and present('merges.txt'))):
+        return False
+    for index in ('model.safetensors.index.json', 'pytorch_model.bin.index.json'):
+        if (path / index).exists():
+            try:
+                weights = json.loads((path / index).read_text())['weight_map']
+                return bool(weights) and all(present(name) for name in weights.values())
+            except (ValueError, KeyError, TypeError, AttributeError, OSError):
+                return False
+    return present('model.safetensors') or present('pytorch_model.bin')
+
+
+def resolve_model_snapshot(
+    model_id: str, revision: str, *, cache_dir: str | Path | None = 'auto',
+    allow_download: bool = False,
+) -> tuple[str, str]:
+    """Resolve an exact HF commit on this host; never fall back to newest/main.
+
+    This strict path is additive: older unpinned callers retain their behavior.
+    Cache inspection neither creates directories nor contacts the network.
+    """
+    if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', model_id) or '..' in model_id:
+        raise ValueError('Expected a Hugging Face owner/model ID')
+    if not re.fullmatch(r'[0-9a-f]{40}', revision):
+        raise ValueError('Frozen model revision must be an immutable 40-character commit')
+    roots = model_cache_candidates(cache_dir)
+    for root in roots:
+        snapshot = root / ('models--' + model_id.replace('/', '--')) / 'snapshots' / revision
+        if snapshot_files_complete(snapshot):
+            return str(snapshot.resolve()), 'local_exact_commit'
+    if not allow_download:
+        raise FileNotFoundError(
+            f'MODEL_CACHE_MISSING: {model_id}@{revision} 未完整缓存。预检不下载；'
+            '确认其余环境检查通过后，用 real_gpu 准备该固定模型，或先手动缓存相同 commit。')
+    from huggingface_hub import snapshot_download
+
+    destination = roots[0] if cache_dir and str(cache_dir).lower() != 'auto' else roots[-1]
+    snapshot = Path(snapshot_download(repo_id=model_id, revision=revision, cache_dir=str(destination))).resolve()
+    if snapshot.name != revision or not snapshot_files_complete(snapshot):
+        raise RuntimeError('Downloaded model identity or required assets do not match the frozen commit')
+    return str(snapshot), 'downloaded_exact_commit'
 
 
 def model_cache_candidates(cache_dir: str | Path | None = "auto") -> list[Path]:

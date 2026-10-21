@@ -26,6 +26,7 @@ if str(ROOT) not in sys.path:
 from tools.verl_lifecycle_probe import MODEL_ID, SYSTEM_PROMPT, digest_json, build_arithmetic_tasks
 from tools.verl_mechanism_audit import inspect_api, check_sft_loss_cpu
 from tools.verl_system_mechanism_runtime import inspect_runtime, isolated_subprocess_env, VERL_COMMIT
+from tools.model_runtime import resolve_model_snapshot
 
 SCHEMA = "verl-mechanism-closure/v1"
 SOURCE = ROOT / "benchmarks/results/pt_verl_lifecycle/rtx5070ti_rollout_arithmetic_v1.json"
@@ -222,7 +223,8 @@ def cpu_data_contract(args) -> dict:
     from verl.utils.config import omega_conf_to_dataclass
     from verl.workers.rollout.vllm_rollout.utils import extract_prompt_logprobs
     source, trajectories = load_frozen_source(args.source)
-    snapshot = source['config']['resolved_snapshot']
+    snapshot, resolution = resolve_model_snapshot(source['config']['model_id'], source['config']['model_revision'],
+        cache_dir=ROOT / 'model_cache', allow_download=getattr(args, 'prepare_model', False))
     tokenizer = AutoTokenizer.from_pretrained(snapshot, local_files_only=True)
     for trajectory in trajectories:
         trajectory['prompt_ids'] = encode_prompt(tokenizer, trajectory['messages'])
@@ -285,6 +287,8 @@ def cpu_data_contract(args) -> dict:
     else:
         raise AssertionError('Initial parameter mismatch must stop the paired run')
     return {'cpu_loss':check_sft_loss_cpu(), 'batch_layout':'nested_full_sequence',
+            'model_asset': {'model_id':source['config']['model_id'], 'revision':source['config']['model_revision'],
+                            'resolved_snapshot':snapshot, 'resolution_source':resolution},
             'probe_count':len(trajectories), 'supervised_steps':1,
             'checks':['actual_model_tokenizer_and_eos', 'actor_score_shift', 'verl_rollout_prompt_score_shift',
                       'training_action_mask', 'both_candidates_dataclass_config', 'worker_async_rpc_signature',
@@ -423,7 +427,8 @@ def run_worker(args) -> dict:
     from verl.trainer.constants_ppo import get_ppo_ray_runtime_env
 
     source, trajectories = load_frozen_source(args.source)
-    snapshot = source['config']['resolved_snapshot']
+    snapshot, resolution = resolve_model_snapshot(source['config']['model_id'], source['config']['model_revision'],
+        cache_dir=ROOT / 'model_cache', allow_download=False)
     tokenizer = AutoTokenizer.from_pretrained(snapshot, local_files_only=True)
     for trajectory in trajectories:
         trajectory['prompt_ids'] = encode_prompt(tokenizer, trajectory['messages'])
@@ -516,6 +521,8 @@ def run_worker(args) -> dict:
             'schema_version':SCHEMA, 'run_label':args.run_label, 'candidate':args.candidate, 'status':'measured',
             'verl_commit':VERL_COMMIT, 'source_path':str(args.source),
             'source_sha256':hashlib.sha256(args.source.read_bytes()).hexdigest(),
+            'model_asset':{'model_id':source['config']['model_id'], 'revision':source['config']['model_revision'],
+                           'resolved_snapshot':snapshot, 'resolution_source':resolution},
             'resolved_config':OmegaConf.to_container(config, resolve=True),
             'trajectories':trajectories, 'training_examples':training, 'training_task_sha256':digest_json(TRAIN_TASKS),
             'initialization':initialization, 'update':update, 'initial_sync':initial_sync, 'sync':sync,
@@ -550,6 +557,7 @@ def main():
     parser.add_argument('--source', type=Path, default=SOURCE)
     parser.add_argument('--candidate', choices=['release','retain'], default='release')
     parser.add_argument('--expected-initial-sha256', help='Internal paired-run gate; not a learner setting')
+    parser.add_argument('--prepare-model', action='store_true', help=argparse.SUPPRESS)
     args = parser.parse_args()
     for name in ('verl_root','output','source'):
         setattr(args, name, getattr(args, name).expanduser().resolve())
@@ -577,16 +585,22 @@ def main():
     command = [str(args.verl_root / '.venv/bin/python'), '-m', 'tools.verl_mechanism_closure',
                '--verl-root',str(args.verl_root),'--run-label',args.run_label,'--output',str(args.output),
                '--source',str(args.source)]
-    cpu = subprocess.run(command+['--mode','cpu_check'], cwd=args.verl_root,
+    prepare = ['--prepare-model'] if args.mode == 'run' and preflight['ready'] and api['inspection_passed'] else []
+    cpu = subprocess.run(command+['--mode','cpu_check']+prepare, cwd=args.verl_root,
                          env=environment, capture_output=True, text=True)
     ready = preflight['ready'] and api['inspection_passed'] and cpu.returncode == 0
     preparation = {'schema_version':SCHEMA,'run_label':args.run_label,'preflight':preflight,
                       'interfaces_found':api['inspection_passed'], 'cpu_check_returncode':cpu.returncode,
                       'cpu_check_output':cpu.stdout[-3000:], 'cpu_check_error':cpu.stderr[-3000:] if cpu.returncode else None,
+                      'model_cache_missing':cpu.returncode != 0 and 'MODEL_CACHE_MISSING:' in cpu.stderr,
                       'ready_for_first_gpu_run':ready, 'gpu_validated':False,
                       'source':str(args.source),'probe_count':len(trajectories),'tolerances':TOLERANCES}
     print(json.dumps(preparation, ensure_ascii=False,indent=2),flush=True)
     if not ready:
+        if (args.mode == 'preflight' and preflight['ready'] and api['inspection_passed']
+                and preparation['model_cache_missing']):
+            print('仅缺固定模型缓存：改为 real_gpu 后会先下载相同 commit 并完成 CPU 核对，再启动 GPU。', flush=True)
+            return 4
         return 2
     if args.mode == 'preflight':
         return 0
@@ -615,7 +629,7 @@ def main():
     write_once(args.output, {'schema_version':SCHEMA,'run_label':args.run_label,'candidates':results,
                             'preparation':preparation,
                             'code_sha256':{name:hashlib.sha256((ROOT/'tools'/name).read_bytes()).hexdigest()
-                                           for name in ('verl_mechanism_closure.py','verl_mechanism_worker.py')},
+                                           for name in ('verl_mechanism_closure.py','verl_mechanism_worker.py','model_runtime.py')},
                             'system_decision':paired_decision,
                             'scope':'single_gpu_verl_native_supervised_mechanisms_not_grpo',
                             'steady_state_speedup_proven':False})

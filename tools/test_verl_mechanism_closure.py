@@ -205,17 +205,18 @@ def test_independent_page_readers(tmp_path):
         read_summary(path, 'other')
 
 
+@pytest.mark.parametrize('returncode', [0, 4])
 @pytest.mark.parametrize('filename,ids', [
     ('PT-ROLLOUT-LIFECYCLE_Rollout_and_Policy_Freshness.ipynb', ('b9441446', '73c04def', 'fca9afca')),
     ('PT-RL-SYSTEM_Rollout_Training_and_Reward_System.ipynb', ('77b51cbc', '1606ce15', '2a7939dc')),
 ])
-def test_notebook_preflight_and_saved_read_are_independent(tmp_path, monkeypatch, filename, ids):
+def test_notebook_preflight_and_saved_read_are_independent(tmp_path, monkeypatch, filename, ids, returncode):
     import subprocess
     from tools import project_runtime
     monkeypatch.setattr(project_runtime, 'resolve_project_root', lambda: tmp_path)
     calls = []
     monkeypatch.setattr(subprocess, 'run', lambda command, **kwargs:
-                        (calls.append(command) or SimpleNamespace(returncode=0)))
+                        (calls.append(command) or SimpleNamespace(returncode=returncode)))
     path = Path(__file__).resolve().parents[1] / '02_PyTorch_Algorithms' / filename
     cells = {c['id']: ''.join(c['source']) for c in json.loads(path.read_text())['cells']}
     namespace = {}
@@ -237,3 +238,25 @@ def test_notebook_preflight_and_saved_read_are_independent(tmp_path, monkeypatch
     namespace['RUN_MODE'] = 'real_gpu'
     exec(cells[ids[1]], namespace)  # Shared result reuse must not start another worker.
     assert not calls
+
+
+@pytest.mark.parametrize('mode,environment_ready,expected_download,expected_code', [
+    ('preflight', True, False, 4), ('run', False, False, 2), ('run', True, True, 2),
+])
+def test_model_download_gate_before_gpu(tmp_path, monkeypatch, mode, environment_ready, expected_download, expected_code):
+    import sys
+    from tools import verl_mechanism_closure as closure
+    monkeypatch.setattr(closure, 'load_frozen_source', lambda path: ({}, []))
+    monkeypatch.setattr(closure, 'inspect_api', lambda path: {'inspection_passed': True})
+    monkeypatch.setattr(closure, 'inspect_runtime', lambda *a, **k: {'ready': environment_ready})
+    calls = []
+    def cpu(command, **kwargs):
+        calls.append(command)
+        return SimpleNamespace(returncode=1, stdout='', stderr='MODEL_CACHE_MISSING: fixture')
+    monkeypatch.setattr(closure.subprocess, 'run', cpu)
+    monkeypatch.setattr(sys, 'argv', ['closure', '--mode', mode, '--verl-root', str(tmp_path),
+                                     '--run-label', 'test', '--output', str(tmp_path/'unused.json')])
+    assert closure.main() == expected_code
+    assert len(calls) == 1  # Only the mocked CPU child; no GPU worker.
+    assert ('--prepare-model' in calls[0]) == expected_download
+    assert not (tmp_path/'unused.json').exists()
