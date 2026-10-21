@@ -14,6 +14,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 PART02_ROOT = REPO_ROOT / "02_PyTorch_Algorithms"
 PROJECT_REGISTRY = REPO_ROOT / "benchmarks/project_registry.json"
 TODO_RE = re.compile(r"\bTODO\s*(\d+)\b")
+TEST_FUNCTION_RE = re.compile(r"`?(?:test|_assert)_[A-Za-z0-9_]+`?")
 
 
 def registered_project_paths(registry_path: Path = PROJECT_REGISTRY) -> set[Path]:
@@ -55,7 +56,9 @@ def step4_markdown(notebook: dict) -> str | None:
         text = "".join(cell.get("source", []))
         lines = text.splitlines()
         for index, line in enumerate(lines):
-            if line.startswith("### Step 4"):
+            # New pages use a semantic h2. Keep h3 readable while older
+            # mechanism pages are migrated group by group.
+            if line.startswith(("## Step 4", "### Step 4")):
                 return "\n".join(lines[index:])
     return None
 
@@ -75,33 +78,56 @@ def table_lines(markdown: str) -> list[str]:
     return []
 
 
-def audit(path: Path) -> list[str]:
+def step4_intro(markdown: str) -> str:
+    """Return the prose between the Step 4 heading and its first table."""
+    lines = markdown.splitlines()[1:]
+    intro_lines: list[str] = []
+    for line in lines:
+        if line.startswith("|"):
+            break
+        stripped = line.strip()
+        if stripped and not stripped.startswith("<a id="):
+            intro_lines.append(stripped)
+    return " ".join(intro_lines)
+
+
+def audit(path: Path, *, strict_design: bool = False) -> list[str]:
     """Return teaching-template violations for one notebook."""
     notebook = json.loads(path.read_text(encoding="utf-8"))
     markdown = step4_markdown(notebook)
     if markdown is None:
-        return ["缺少以 `### Step 4` 开头的 Markdown 单元"]
+        return ["缺少以 `## Step 4` 开头的 Markdown 单元"]
 
     table = table_lines(markdown)
     if not table:
         return ["Step 4 缺少机制职责表"]
 
     issues: list[str] = []
+    if strict_design and not step4_intro(markdown):
+        issues.append("Step 4 表格前缺少简短设计说明")
     if table[0] != EXPECTED_HEADER:
         issues.append(f"表头漂移：{table[0]!r}")
 
+    table_todo_numbers: list[str] = []
     for row_number, row in enumerate(table[2:], start=1):
         cells = [cell.strip() for cell in row.strip("|").split("|")]
         if len(cells) != 4:
             issues.append(f"第 {row_number} 行不是四列：{row!r}")
             continue
         first_cell = cells[0]
-        if not re.match(r"^TODO\s+\d+", first_cell) or "`" not in first_cell:
+        todo_match = re.match(r"^TODO\s+(\d+)", first_cell)
+        if not todo_match or "`" not in first_cell:
             issues.append(
                 f"第 {row_number} 行第一列必须同时包含 TODO 编号和反引号函数或方法名：{first_cell!r}"
             )
+        else:
+            table_todo_numbers.append(todo_match.group(1))
         if any(not cell for cell in cells):
             issues.append(f"第 {row_number} 行存在空字段：{row!r}")
+        if strict_design and TEST_FUNCTION_RE.search(cells[3]):
+            issues.append(
+                f"第 {row_number} 行测试证据应描述场景与观察项，不写测试函数名：{cells[3]!r}"
+            )
 
     question_source = "\n".join(
         "".join(cell.get("source", []))
@@ -115,6 +141,14 @@ def audit(path: Path) -> list[str]:
             "职责行数与题目区 TODO 数量不一致："
             f"表格 {len(body_rows)} 行，TODO {len(todo_numbers)} 个"
         )
+    table_todo_set = set(table_todo_numbers)
+    if len(table_todo_numbers) != len(table_todo_set):
+        issues.append("Step 4 表格存在重复 TODO 编号")
+    if todo_numbers and todo_numbers != table_todo_set:
+        issues.append(
+            "表格与题目区 TODO 编号不一致："
+            f"表格 {sorted(table_todo_set)}，题目 {sorted(todo_numbers)}"
+        )
     return issues
 
 
@@ -127,6 +161,11 @@ def main() -> int:
         "--all-part02",
         action="store_true",
         help="自动扫描 Part 02 中未登记为项目且不是保留位的机制 Notebook。",
+    )
+    parser.add_argument(
+        "--strict-design",
+        action="store_true",
+        help="同时检查 Step 4 前导语和测试证据表达；用于已迁移页面的渐进门禁。",
     )
     args = parser.parse_args()
 
@@ -142,7 +181,7 @@ def main() -> int:
 
     failed = False
     for path in notebooks:
-        issues = audit(path)
+        issues = audit(path, strict_design=args.strict_design)
         if not issues:
             print(f"PASS {path}")
             continue

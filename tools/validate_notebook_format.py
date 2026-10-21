@@ -265,6 +265,53 @@ def audit_notebook(path: Path) -> list[Issue]:
                 )
             )
 
+        def tagged_indices(tag: str) -> list[int]:
+            return [
+                index
+                for index, cell in enumerate(cells)
+                if cell.get("cell_type") == "code"
+                and isinstance(cell.get("metadata"), dict)
+                and tag in cell["metadata"].get("tags", [])
+            ]
+
+        test_heading_indices = [
+            index
+            for index, cell in enumerate(cells)
+            if cell.get("cell_type") == "markdown"
+            and any(
+                line.strip() == "## 测试"
+                for line in "".join(cell.get("source", [])).splitlines()
+            )
+        ]
+        imports_indices = tagged_indices("tutorial-imports")
+        question_indices = tagged_indices("tutorial-question")
+        test_indices = tagged_indices("tutorial-test")
+        if all(
+            len(indices) == 1
+            for indices in (
+                imports_indices,
+                question_indices,
+                test_heading_indices,
+                test_indices,
+            )
+        ):
+            ordered_indices = [
+                imports_indices[0],
+                question_indices[0],
+                test_heading_indices[0],
+                test_indices[0],
+            ]
+            if ordered_indices != sorted(ordered_indices):
+                issues.append(
+                    Issue(
+                        relative_path,
+                        "P1",
+                        "mechanism_test_section_order",
+                        "机制练习应按 imports → question → ## 测试 → test 排列",
+                        _cell_numbers(ordered_indices),
+                    )
+                )
+
     return issues
 
 
