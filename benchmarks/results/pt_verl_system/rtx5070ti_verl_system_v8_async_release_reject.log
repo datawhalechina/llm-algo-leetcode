@@ -1,0 +1,1284 @@
+2026-10-22 02:16:41,943	INFO worker.py:2003 -- Started a local Ray instance. View the dashboard at [1m[32mhttp://127.0.0.1:8265 [39m[22m
+/home/yulinlin/verl-v0.9.1/.venv/lib/python3.12/site-packages/ray/_private/worker.py:2051: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+  warnings.warn(
+[33m(raylet)[0m [34mDEBUG[39m uv 0.10.2
+[33m(raylet)[0m [34mDEBUG[39m Acquired shared lock for `/home/yulinlin/.cache/uv`
+[33m(raylet)[0m [34mDEBUG[39m Found project root: `/home/yulinlin/verl-v0.9.1`
+[33m(raylet)[0m [34mDEBUG[39m No workspace root found, using project root
+[33m(raylet)[0m [34mDEBUG[39m Discovered project `verl` at: /home/yulinlin/verl-v0.9.1
+[33m(raylet)[0m [34mDEBUG[39m Acquired exclusive lock for `/home/yulinlin/verl-v0.9.1`
+[33m(raylet)[0m [34mDEBUG[39m No Python version file found in workspace: /home/yulinlin/verl-v0.9.1
+[33m(raylet)[0m [34mDEBUG[39m Using Python request `>=3.10, <3.13` from `requires-python` metadata
+[33m(raylet)[0m [34mDEBUG[39m Checking for Python environment at: `.venv`
+[33m(raylet)[0m [34mDEBUG[39m The project environment's Python version satisfies the request: `Python >=3.10, <3.13`
+[33m(raylet)[0m [34mDEBUG[39m Released lock at `/tmp/uv-3443516324fc4ee1.lock`
+[33m(raylet)[0m [34mDEBUG[39m Acquired exclusive lock for `.venv`
+[33m(raylet)[0m [34mDEBUG[39m Using request connect timeout of 10s and read timeout of 30s
+[33m(raylet)[0m [34mDEBUG[39m Computed cache info: Timestamp(SystemTime { tv_sec: 1792593433, tv_nsec: 5364363 }), None, None, {}, {"src": None}. Most recently modified: pyproject.toml
+[33m(raylet)[0m [34mDEBUG[39m Requirement already installed: verl==0.9.1 (from file:///home/yulinlin/verl-v0.9.1)
+[33m(raylet)[0m [34mDEBUG[39m Requirement already installed: accelerate==1.14.0
+[33m(raylet)[0m [2mAudited [1m250 packages[0m [2min 1ms[0m[0m
+[33m(raylet)[0m [34mDEBUG[39m Using Python 3.12.15 interpreter at: /home/yulinlin/verl-v0.9.1/.venv/bin/python3
+[33m(raylet)[0m [34mDEBUG[39m Running `python /home/yulinlin/verl-v0.9.1/.venv/lib/python3.12/site-packages/ray/_private/workers/default_worker.py --node-ip-address=192.168.0.117 --node-manager-port=35569 --object-store-name=/tmp/ray/session_2026-10-22_02-16-39_797802_110632/sockets/plasma_store --raylet-name=/tmp/ray/session_2026-10-22_02-16-39_797802_110632/sockets/raylet --redis-address=None --metrics-agent-port=0 --logging-rotate-bytes=536870912 --logging-rotate-backup-count=5 --runtime-env-agent-port=0 --gcs-address=192.168.0.117:37567 --session-name=session_2026-10-22_02-16-39_797802_110632 --temp-dir=/tmp/ray --webui=127.0.0.1:8265 --cluster-id=1ec9b8d127254e77c0d4d54c4fd5ec07f2699804d056e0a98d3dbf17 --worker-id=72f3c997a6fefa0c02808f8bf90fb7c09cb7861edf5b38348e8aaaef --worker-launch-time-ms=1792606602361 --node-id=50d17d265feef5e35e8cd8c330af1e63e3052192b9ce6ef624f82f28 --runtime-env-hash=823245638`
+[33m(raylet)[0m [34mDEBUG[39m Spawned child 113419 in process group 104397
+[36m(TaskRunnerV1 pid=113419)[0m WARNING:2026-10-22 02:16:45,836:Platform 'nvidia' (PlatformCUDA) is registered but not available. This may be due to this ray actor being a CPU-only actor.
+[36m(TaskRunnerV1 pid=113419)[0m /home/yulinlin/verl-v0.9.1/verl/workers/engine/__init__.py:32: UserWarning: torchtitan engine is not available: ModuleNotFoundError("No module named 'torchtitan'")
+[36m(TaskRunnerV1 pid=113419)[0m   warnings.warn(f"torchtitan engine is not available: {e!r}", stacklevel=1)
+[36m(TaskRunnerV1 pid=113419)[0m /home/yulinlin/verl-v0.9.1/verl/workers/engine/__init__.py:41: UserWarning: veomni engine is not available: ModuleNotFoundError("No module named 'veomni'")
+[36m(TaskRunnerV1 pid=113419)[0m   warnings.warn(f"veomni engine is not available: {e!r}", stacklevel=1)
+[36m(TaskRunnerV1 pid=113419)[0m /home/yulinlin/verl-v0.9.1/verl/workers/engine/__init__.py:50: UserWarning: automodel engine is not available: ModuleNotFoundError("No module named 'nemo_automodel'")
+[36m(TaskRunnerV1 pid=113419)[0m   warnings.warn(f"automodel engine is not available: {e!r}", stacklevel=1)
+[36m(TaskRunnerV1 pid=113419)[0m /home/yulinlin/verl-v0.9.1/verl/workers/engine/__init__.py:60: UserWarning: mindspeed engine is not available: ModuleNotFoundError("No module named 'megatron'")
+[36m(TaskRunnerV1 pid=113419)[0m   warnings.warn(f"mindspeed engine is not available: {e!r}", stacklevel=1)
+[36m(TaskRunnerV1 pid=113419)[0m /home/yulinlin/verl-v0.9.1/verl/workers/engine/__init__.py:69: UserWarning: megatron engine is not available: ModuleNotFoundError("No module named 'megatron'")
+[36m(TaskRunnerV1 pid=113419)[0m   warnings.warn(f"megatron engine is not available: {e!r}", stacklevel=1)
+[validate_config] All configuration checks passed successfully!
+ray init kwargs: {'num_cpus': None, 'runtime_env': {'env_vars': {'TOKENIZERS_PARALLELISM': 'true', 'NCCL_DEBUG': 'WARN', 'VLLM_LOGGING_LEVEL': 'WARN', 'VLLM_ALLOW_RUNTIME_LORA_UPDATING': 'true', 'VLLM_DISABLE_COMPILE_CACHE': '1', 'HCCL_HOST_SOCKET_PORT_RANGE': 'auto', 'HCCL_NPU_SOCKET_PORT_RANGE': 'auto', 'HSA_NO_SCRATCH_RECLAIM': '1', 'VERL_FULL_DETERMINISM': '0', 'VLLM_BATCH_INVARIANT': '0', 'VERL_RL_INSIGHT_ENABLE': '0'}, 'working_dir': None, 'py_executable': 'uv -v run --frozen --all-packages --extra vllm'}, 'object_store_memory': 536870912}
+[36m(TaskRunnerV1 pid=113419)[0m {'actor_rollout_ref': {'actor': {'_target_': 'verl.workers.config.FSDPActorConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                  'calculate_entropy': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'calculate_sum_pi_squared': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'checkpoint': {'_target_': 'verl.trainer.config.CheckpointConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                 'async_save': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                 'load_contents': ['model',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                   'optimizer',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                   'extra'],
+[36m(TaskRunnerV1 pid=113419)[0m                                                 'save_contents': ['model',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                   'optimizer',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                   'extra'],
+[36m(TaskRunnerV1 pid=113419)[0m                                                 'strict': True},
+[36m(TaskRunnerV1 pid=113419)[0m                                  'clip_ratio': 0.2,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'clip_ratio_c': 3.0,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'clip_ratio_high': 0.2,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'clip_ratio_low': 0.2,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'data_loader_seed': 42,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'entropy_checkpointing': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'entropy_coeff': 0,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'entropy_from_logits_chunk_size': 2048,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'entropy_from_logits_with_chunking': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'freeze_vision_tower': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'fsdp_config': {'_target_': 'verl.workers.config.FSDPEngineConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'dtype': 'bfloat16',
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'entropy_checkpointing': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'entropy_from_logits_chunk_size': 2048,
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'entropy_from_logits_with_chunking': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'forward_only': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'forward_prefetch': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'fsdp_size': -1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'full_determinism': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'model_dtype': 'fp32',
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'offload_policy': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'optimizer_offload': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'pad_to_length': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'pad_to_length_bucket': 1024,
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'param_offload': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'qat': {'_target_': 'verl.workers.config.QATEngineConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                          'activation_observer': 'static_minmax',
+[36m(TaskRunnerV1 pid=113419)[0m                                                          'enable': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                          'group_size': 16,
+[36m(TaskRunnerV1 pid=113419)[0m                                                          'ignore_patterns': ['lm_head',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                              'embed_tokens',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                              're:.*mlp.gate$'],
+[36m(TaskRunnerV1 pid=113419)[0m                                                          'mode': 'w4a16',
+[36m(TaskRunnerV1 pid=113419)[0m                                                          'quantization_config_path': None},
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'reshard_after_forward': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'seed': 42,
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'strategy': 'fsdp',
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'turbo_config': {'distributed': {'expert_fully_shard_parallel_size': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                   'expert_parallel_size': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                   'fsdp_plan': {'fsdp_implementation': 'native',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                                 'num_to_backward_prefetch': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                                 'num_to_forward_prefetch': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                                 'output_dtype': 'bf16',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                                 'param_dtype': 'bf16',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                                 'reduce_dtype': 'fp32'},
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                   'fully_shard_parallel_size': 16,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                   'tensor_parallel_size': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                   'ulysses_parallel_size': 1}},
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'ulysses_sequence_parallel_size': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'use_no_sync_for_gradient_accumulation': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'use_orig_params': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'use_torch_compile': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'wrap_policy': {'min_num_params': 0}},
+[36m(TaskRunnerV1 pid=113419)[0m                                  'grad_clip': 1.0,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'kl_loss_coef': 0.001,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'kl_loss_type': 'low_var_kl',
+[36m(TaskRunnerV1 pid=113419)[0m                                  'loss_agg_mode': 'token-mean',
+[36m(TaskRunnerV1 pid=113419)[0m                                  'loss_scale_factor': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'optim': {'_target_': 'verl.workers.config.FSDPOptimizerConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                            'betas': [0.9, 0.999],
+[36m(TaskRunnerV1 pid=113419)[0m                                            'clip_grad': 1.0,
+[36m(TaskRunnerV1 pid=113419)[0m                                            'lr': 1e-06,
+[36m(TaskRunnerV1 pid=113419)[0m                                            'lr_scheduler_type': 'constant',
+[36m(TaskRunnerV1 pid=113419)[0m                                            'lr_warmup_steps': -1,
+[36m(TaskRunnerV1 pid=113419)[0m                                            'lr_warmup_steps_ratio': 0.0,
+[36m(TaskRunnerV1 pid=113419)[0m                                            'min_lr_ratio': 0.0,
+[36m(TaskRunnerV1 pid=113419)[0m                                            'num_cycles': 0.5,
+[36m(TaskRunnerV1 pid=113419)[0m                                            'optimizer': 'AdamW',
+[36m(TaskRunnerV1 pid=113419)[0m                                            'optimizer_impl': 'torch.optim',
+[36m(TaskRunnerV1 pid=113419)[0m                                            'override_optimizer_config': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                            'total_training_steps': -1,
+[36m(TaskRunnerV1 pid=113419)[0m                                            'warmup_style': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                            'weight_decay': 0.01,
+[36m(TaskRunnerV1 pid=113419)[0m                                            'zero_indexed_step': True},
+[36m(TaskRunnerV1 pid=113419)[0m                                  'pad_to_length': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'policy_loss': {'_target_': 'verl.workers.config.PolicyLossConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'clip_cov_lb': 1.0,
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'clip_cov_ratio': 0.0002,
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'clip_cov_ub': 5.0,
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'dro_beta': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'kl_cov_ratio': 0.0002,
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'loss_mode': 'vanilla',
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'ppo_kl_coef': 0.1},
+[36m(TaskRunnerV1 pid=113419)[0m                                  'ppo_epochs': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'ppo_max_token_len_per_gpu': 16384,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'ppo_micro_batch_size': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'ppo_micro_batch_size_per_gpu': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'ppo_mini_batch_size': 4,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'profiler': {'_target_': 'verl.utils.profiler.ProfilerConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                               'all_ranks': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                               'enable': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                               'finish_hook_all_ranks': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                               'finish_hook_cmd': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                               'finish_hook_ranks': [],
+[36m(TaskRunnerV1 pid=113419)[0m                                               'ranks': [],
+[36m(TaskRunnerV1 pid=113419)[0m                                               'relocate_results': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                               'save_path': 'outputs/profile',
+[36m(TaskRunnerV1 pid=113419)[0m                                               'tool': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                               'tool_config': {'npu': {'_target_': 'verl.utils.profiler.config.NPUToolConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                       'analysis': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                       'contents': [],
+[36m(TaskRunnerV1 pid=113419)[0m                                                                       'discrete': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                       'level': 'level0'},
+[36m(TaskRunnerV1 pid=113419)[0m                                                               'nsys': {'_target_': 'verl.utils.profiler.config.NsightToolConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                        'discrete': False},
+[36m(TaskRunnerV1 pid=113419)[0m                                                               'precision_debugger': {'_target_': 'verl.utils.profiler.config.PrecisionDebuggerToolConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                      'config_path': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                      'stages': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                      'steps': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                      'strict': False},
+[36m(TaskRunnerV1 pid=113419)[0m                                                               'torch': {'_target_': 'verl.utils.profiler.config.TorchProfilerToolConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                         'contents': [],
+[36m(TaskRunnerV1 pid=113419)[0m                                                                         'discrete': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                         'schedule': {'_target_': 'verl.utils.profiler.config.TorchProfilerScheduleConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                      'active': 0,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                      'repeat': 0,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                      'skip_first': 0,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                      'wait': 0,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                      'warmup': 0}},
+[36m(TaskRunnerV1 pid=113419)[0m                                                               'torch_memory': {'_target_': 'verl.utils.profiler.config.TorchMemoryToolConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                'memory_snapshot_num_steps': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                'stack_depth': 32,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                'trace_alloc_max_entries': 100000}}},
+[36m(TaskRunnerV1 pid=113419)[0m                                  'qat': {'activation_observer': 'static_minmax',
+[36m(TaskRunnerV1 pid=113419)[0m                                          'enable': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'group_size': 16,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'ignore_patterns': ['lm_head',
+[36m(TaskRunnerV1 pid=113419)[0m                                                              'embed_tokens',
+[36m(TaskRunnerV1 pid=113419)[0m                                                              're:.*mlp.gate$'],
+[36m(TaskRunnerV1 pid=113419)[0m                                          'mode': 'w4a16',
+[36m(TaskRunnerV1 pid=113419)[0m                                          'quantization_config_path': None},
+[36m(TaskRunnerV1 pid=113419)[0m                                  'rollout_n': 4,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'shuffle': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'strategy': 'fsdp',
+[36m(TaskRunnerV1 pid=113419)[0m                                  'tau_neg': 1.05,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'tau_pos': 1.0,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'ulysses_sequence_parallel_size': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'use_dynamic_bsz': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'use_fused_kernels': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'use_kl_loss': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'use_prefix_grouper': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'use_remove_padding': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'use_torch_compile': True},
+[36m(TaskRunnerV1 pid=113419)[0m                        'hybrid_engine': True,
+[36m(TaskRunnerV1 pid=113419)[0m                        'model': {'_target_': 'verl.workers.config.HFModelConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                  'custom_chat_template': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'enable_activation_offload': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'enable_gradient_checkpointing': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'exclude_modules': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'external_lib': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'fused_kernel_options': {'impl_backend': 'torch'},
+[36m(TaskRunnerV1 pid=113419)[0m                                  'hf_config_path': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'lora': {'a2a_experimental': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                           'adapter_path': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                           'alpha': 32,
+[36m(TaskRunnerV1 pid=113419)[0m                                           'dropout': 0.0,
+[36m(TaskRunnerV1 pid=113419)[0m                                           'dropout_position': 'pre',
+[36m(TaskRunnerV1 pid=113419)[0m                                           'dtype': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                           'exclude_modules': [],
+[36m(TaskRunnerV1 pid=113419)[0m                                           'freeze_language_model': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                           'freeze_vision_model': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                           'freeze_vision_projection': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                           'lora_A_init_method': 'xavier',
+[36m(TaskRunnerV1 pid=113419)[0m                                           'lora_B_init_method': 'zero',
+[36m(TaskRunnerV1 pid=113419)[0m                                           'merge': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                           'rank': 0,
+[36m(TaskRunnerV1 pid=113419)[0m                                           'target_modules': ['linear_qkv',
+[36m(TaskRunnerV1 pid=113419)[0m                                                              'linear_proj',
+[36m(TaskRunnerV1 pid=113419)[0m                                                              'linear_fc1',
+[36m(TaskRunnerV1 pid=113419)[0m                                                              'linear_fc2'],
+[36m(TaskRunnerV1 pid=113419)[0m                                           'type': 'lora'},
+[36m(TaskRunnerV1 pid=113419)[0m                                  'lora_adapter_path': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'lora_alpha': 16,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'lora_rank': 16,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'mtp': {'_target_': 'verl.workers.config.MtpConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                          'detach_encoder': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'enable': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'enable_rollout': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'enable_train': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'method': 'mtp',
+[36m(TaskRunnerV1 pid=113419)[0m                                          'mtp_loss_scaling_factor': 0.1,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'num_speculative_tokens': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'speculative_algorithm': 'EAGLE',
+[36m(TaskRunnerV1 pid=113419)[0m                                          'speculative_eagle_topk': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'speculative_num_draft_tokens': 4,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'speculative_num_steps': 3},
+[36m(TaskRunnerV1 pid=113419)[0m                                  'override_config': {'attn_implementation': 'sdpa'},
+[36m(TaskRunnerV1 pid=113419)[0m                                  'path': 'Qwen/Qwen2.5-0.5B-Instruct',
+[36m(TaskRunnerV1 pid=113419)[0m                                  'target_modules': 'all-linear',
+[36m(TaskRunnerV1 pid=113419)[0m                                  'tiled_mlp': {'enabled': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                'num_shards': 4},
+[36m(TaskRunnerV1 pid=113419)[0m                                  'tokenizer_path': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'trust_remote_code': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'use_fused_kernels': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'use_liger': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'use_remove_padding': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'use_shm': False},
+[36m(TaskRunnerV1 pid=113419)[0m                        'nccl_timeout': 600,
+[36m(TaskRunnerV1 pid=113419)[0m                        'ref': {'_target_': 'verl.workers.config.FSDPActorConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                'entropy_checkpointing': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                'entropy_from_logits_chunk_size': 2048,
+[36m(TaskRunnerV1 pid=113419)[0m                                'entropy_from_logits_with_chunking': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                'fsdp_config': {'_target_': 'verl.workers.config.FSDPEngineConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                'dtype': 'bfloat16',
+[36m(TaskRunnerV1 pid=113419)[0m                                                'entropy_checkpointing': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                'entropy_from_logits_chunk_size': 2048,
+[36m(TaskRunnerV1 pid=113419)[0m                                                'entropy_from_logits_with_chunking': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                'forward_only': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                                'forward_prefetch': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                'fsdp_size': -1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                'full_determinism': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                'model_dtype': 'fp32',
+[36m(TaskRunnerV1 pid=113419)[0m                                                'offload_policy': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                'optimizer_offload': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                'pad_to_length': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                'pad_to_length_bucket': 1024,
+[36m(TaskRunnerV1 pid=113419)[0m                                                'param_offload': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                                'qat': {'_target_': 'verl.workers.config.QATEngineConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                        'activation_observer': 'static_minmax',
+[36m(TaskRunnerV1 pid=113419)[0m                                                        'enable': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                        'group_size': 16,
+[36m(TaskRunnerV1 pid=113419)[0m                                                        'ignore_patterns': ['lm_head',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                            'embed_tokens',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                            're:.*mlp.gate$'],
+[36m(TaskRunnerV1 pid=113419)[0m                                                        'mode': 'w4a16',
+[36m(TaskRunnerV1 pid=113419)[0m                                                        'quantization_config_path': None},
+[36m(TaskRunnerV1 pid=113419)[0m                                                'reshard_after_forward': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                                'seed': 42,
+[36m(TaskRunnerV1 pid=113419)[0m                                                'strategy': 'fsdp',
+[36m(TaskRunnerV1 pid=113419)[0m                                                'turbo_config': {'distributed': {'expert_fully_shard_parallel_size': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                 'expert_parallel_size': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                 'fsdp_plan': {'fsdp_implementation': 'native',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                               'num_to_backward_prefetch': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                               'num_to_forward_prefetch': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                               'output_dtype': 'bf16',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                               'param_dtype': 'bf16',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                               'reduce_dtype': 'fp32'},
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                 'fully_shard_parallel_size': 16,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                 'tensor_parallel_size': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                 'ulysses_parallel_size': 1}},
+[36m(TaskRunnerV1 pid=113419)[0m                                                'ulysses_sequence_parallel_size': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                'use_no_sync_for_gradient_accumulation': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                'use_orig_params': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                'use_torch_compile': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                                'wrap_policy': {'min_num_params': 0}},
+[36m(TaskRunnerV1 pid=113419)[0m                                'log_prob_max_token_len_per_gpu': 16384,
+[36m(TaskRunnerV1 pid=113419)[0m                                'log_prob_micro_batch_size': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                'log_prob_micro_batch_size_per_gpu': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                'log_prob_use_dynamic_bsz': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                'pad_to_length': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                'profiler': {'_target_': 'verl.utils.profiler.ProfilerConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                             'all_ranks': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                             'enable': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                             'finish_hook_all_ranks': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                             'finish_hook_cmd': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                             'finish_hook_ranks': [],
+[36m(TaskRunnerV1 pid=113419)[0m                                             'ranks': [],
+[36m(TaskRunnerV1 pid=113419)[0m                                             'relocate_results': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                             'save_path': 'outputs/profile',
+[36m(TaskRunnerV1 pid=113419)[0m                                             'tool': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                             'tool_config': {'npu': {'_target_': 'verl.utils.profiler.config.NPUToolConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                     'analysis': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                     'contents': [],
+[36m(TaskRunnerV1 pid=113419)[0m                                                                     'discrete': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                     'level': 'level0'},
+[36m(TaskRunnerV1 pid=113419)[0m                                                             'nsys': {'_target_': 'verl.utils.profiler.config.NsightToolConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                      'discrete': False},
+[36m(TaskRunnerV1 pid=113419)[0m                                                             'precision_debugger': {'_target_': 'verl.utils.profiler.config.PrecisionDebuggerToolConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                    'config_path': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                    'stages': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                    'steps': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                    'strict': False},
+[36m(TaskRunnerV1 pid=113419)[0m                                                             'torch': {'_target_': 'verl.utils.profiler.config.TorchProfilerToolConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                       'contents': [],
+[36m(TaskRunnerV1 pid=113419)[0m                                                                       'discrete': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                       'schedule': {'_target_': 'verl.utils.profiler.config.TorchProfilerScheduleConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                    'active': 0,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                    'repeat': 0,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                    'skip_first': 0,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                    'wait': 0,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                    'warmup': 0}},
+[36m(TaskRunnerV1 pid=113419)[0m                                                             'torch_memory': {'_target_': 'verl.utils.profiler.config.TorchMemoryToolConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                              'memory_snapshot_num_steps': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                              'stack_depth': 32,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                              'trace_alloc_max_entries': 100000}}},
+[36m(TaskRunnerV1 pid=113419)[0m                                'rollout_n': 4,
+[36m(TaskRunnerV1 pid=113419)[0m                                'strategy': 'fsdp',
+[36m(TaskRunnerV1 pid=113419)[0m                                'ulysses_sequence_parallel_size': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                'use_torch_compile': True},
+[36m(TaskRunnerV1 pid=113419)[0m                        'rollout': {'_target_': 'verl.workers.config.RolloutConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                    'agent': {'_target_': 'verl.workers.config.AgentLoopConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                              'agent_loop_config_path': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                              'custom_async_server': {'_target_': 'verl.workers.config.CustomAsyncServerConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                      'name': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                      'path': None},
+[36m(TaskRunnerV1 pid=113419)[0m                                              'default_agent_loop': 'single_turn_agent',
+[36m(TaskRunnerV1 pid=113419)[0m                                              'num_workers': 1},
+[36m(TaskRunnerV1 pid=113419)[0m                                    'calculate_log_probs': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'checkpoint_engine': {'_target_': 'verl.workers.config.CheckpointEngineConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                          'backend': 'naive',
+[36m(TaskRunnerV1 pid=113419)[0m                                                          'custom_backend_module': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                          'engine_kwargs': {},
+[36m(TaskRunnerV1 pid=113419)[0m                                                          'update_weights_bucket_megabytes': 64},
+[36m(TaskRunnerV1 pid=113419)[0m                                    'cudagraph_capture_sizes': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'data_parallel_size': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'disable_log_stats': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'disaggregation': {'bootstrap_port': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                       'decode_replicas': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                       'decode_tensor_model_parallel_size': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                       'enabled': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                       'ib_device': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                       'prefill_replicas': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                       'transfer_backend': 'nixl'},
+[36m(TaskRunnerV1 pid=113419)[0m                                    'do_sample': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'dtype': 'bfloat16',
+[36m(TaskRunnerV1 pid=113419)[0m                                    'enable_chunked_prefill': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'enable_prefix_caching': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'enable_rollout_routing_replay': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'enforce_eager': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'engine_kwargs': {'sglang': {},
+[36m(TaskRunnerV1 pid=113419)[0m                                                      'trtllm': {},
+[36m(TaskRunnerV1 pid=113419)[0m                                                      'vllm': {}},
+[36m(TaskRunnerV1 pid=113419)[0m                                    'expert_parallel_size': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'free_cache_engine': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'full_determinism': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'gpu_memory_utilization': 0.35,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'ignore_eos': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'layered_summon': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'load_format': 'safetensors',
+[36m(TaskRunnerV1 pid=113419)[0m                                    'log_prob_max_token_len_per_gpu': 16384,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'log_prob_micro_batch_size': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'log_prob_micro_batch_size_per_gpu': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'log_prob_use_dynamic_bsz': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'logprobs_mode': 'processed_logprobs',
+[36m(TaskRunnerV1 pid=113419)[0m                                    'max_model_len': 512,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'max_num_batched_tokens': 512,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'max_num_seqs': 16,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'mode': 'async',
+[36m(TaskRunnerV1 pid=113419)[0m                                    'moe_load_balance_metrics_interval': 0,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'mtp': {'_target_': 'verl.workers.config.MtpConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                            'detach_encoder': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                            'enable': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                            'enable_rollout': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                            'enable_train': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                            'method': 'mtp',
+[36m(TaskRunnerV1 pid=113419)[0m                                            'mtp_loss_scaling_factor': 0.1,
+[36m(TaskRunnerV1 pid=113419)[0m                                            'num_speculative_tokens': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                            'speculative_algorithm': 'EAGLE',
+[36m(TaskRunnerV1 pid=113419)[0m                                            'speculative_eagle_topk': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                            'speculative_num_draft_tokens': 4,
+[36m(TaskRunnerV1 pid=113419)[0m                                            'speculative_num_steps': 3},
+[36m(TaskRunnerV1 pid=113419)[0m                                    'multi_stage_wake_up': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'multi_turn': {'_target_': 'verl.workers.config.MultiTurnConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'enable': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'format': 'hermes',
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'function_tool_path': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'max_assistant_turns': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'max_parallel_calls': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'max_tool_response_length': 256,
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'max_user_turns': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'num_repeat_rollouts': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'tokenization_sanity_check_mode': 'strict',
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'tool_config_path': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'tool_response_truncate_side': 'middle',
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'use_inference_chat_template': False},
+[36m(TaskRunnerV1 pid=113419)[0m                                    'n': 4,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'n_gpus_per_node': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'name': 'vllm',
+[36m(TaskRunnerV1 pid=113419)[0m                                    'nnodes': 0,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'over_sample_rate': 0,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'pipeline_model_parallel_size': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'profiler': {'_target_': 'verl.utils.profiler.ProfilerConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                 'all_ranks': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                 'enable': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                 'finish_hook_all_ranks': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                 'finish_hook_cmd': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                 'finish_hook_ranks': [],
+[36m(TaskRunnerV1 pid=113419)[0m                                                 'ranks': [],
+[36m(TaskRunnerV1 pid=113419)[0m                                                 'relocate_results': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                 'save_path': 'outputs/profile',
+[36m(TaskRunnerV1 pid=113419)[0m                                                 'tool': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                 'tool_config': {'npu': {'_target_': 'verl.utils.profiler.config.NPUToolConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                         'analysis': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                         'contents': [],
+[36m(TaskRunnerV1 pid=113419)[0m                                                                         'discrete': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                         'level': 'level0',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                         'profile_token_end': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                         'profile_token_start': None},
+[36m(TaskRunnerV1 pid=113419)[0m                                                                 'precision_debugger': {'_target_': 'verl.utils.profiler.config.PrecisionDebuggerToolConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                        'config_path': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                        'stages': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                        'steps': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                        'strict': False},
+[36m(TaskRunnerV1 pid=113419)[0m                                                                 'torch': {'_target_': 'verl.utils.profiler.config.TorchProfilerToolConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                           'contents': [],
+[36m(TaskRunnerV1 pid=113419)[0m                                                                           'discrete': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                           'profile_token_end': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                           'profile_token_start': None}}},
+[36m(TaskRunnerV1 pid=113419)[0m                                    'prometheus': {'_target_': 'verl.workers.config.PrometheusConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'enable': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'file': '/tmp/ray/session_latest/metrics/prometheus/prometheus.yml',
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'port': 9090,
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'served_model_name': 'Qwen/Qwen2.5-0.5B-Instruct'},
+[36m(TaskRunnerV1 pid=113419)[0m                                    'prompt_length': 256,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'qat': {'_target_': 'verl.workers.config.QATEngineConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                            'activation_observer': 'static_minmax',
+[36m(TaskRunnerV1 pid=113419)[0m                                            'enable': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                            'group_size': 16,
+[36m(TaskRunnerV1 pid=113419)[0m                                            'ignore_patterns': ['lm_head',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                'embed_tokens',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                're:.*mlp.gate$'],
+[36m(TaskRunnerV1 pid=113419)[0m                                            'mode': 'w4a16',
+[36m(TaskRunnerV1 pid=113419)[0m                                            'quantization_config_path': None},
+[36m(TaskRunnerV1 pid=113419)[0m                                    'quantization': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'quantization_config_file': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'response_length': 128,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'router_config_path': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'scheduling_policy': 'fcfs',
+[36m(TaskRunnerV1 pid=113419)[0m                                    'seed': 42,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'skip_tokenizer_init': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'temperature': 1.0,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'tensor_model_parallel_size': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'top_k': -1,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'top_p': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                    'trace': {'_target_': 'verl.workers.config.TraceConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                              'backend': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                              'experiment_name': 'rtx5070ti_verl_system_v8_async_release_reject',
+[36m(TaskRunnerV1 pid=113419)[0m                                              'max_samples_per_step_per_worker': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                              'project_name': 'llm_algo_mechanism',
+[36m(TaskRunnerV1 pid=113419)[0m                                              'token2text': False},
+[36m(TaskRunnerV1 pid=113419)[0m                                    'val_kwargs': {'_target_': 'verl.workers.config.SamplingConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'do_sample': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'n': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'temperature': 0,
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'top_k': -1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'top_p': 1.0}}},
+[36m(TaskRunnerV1 pid=113419)[0m  'algorithm': {'_target_': 'verl.trainer.config.AlgoConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                'adv_estimator': 'grpo',
+[36m(TaskRunnerV1 pid=113419)[0m                'filter_groups': {'_target_': 'verl.trainer.config.FilterGroupsConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                  'enable': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'max_inflight_gen_batches': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'max_num_gen_batches': 0,
+[36m(TaskRunnerV1 pid=113419)[0m                                  'metric': 'reward'},
+[36m(TaskRunnerV1 pid=113419)[0m                'gamma': 1.0,
+[36m(TaskRunnerV1 pid=113419)[0m                'kl_ctrl': {'_target_': 'verl.trainer.config.KLControlConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                            'horizon': 10000,
+[36m(TaskRunnerV1 pid=113419)[0m                            'kl_coef': 0.001,
+[36m(TaskRunnerV1 pid=113419)[0m                            'target_kl': 0.1,
+[36m(TaskRunnerV1 pid=113419)[0m                            'type': 'fixed'},
+[36m(TaskRunnerV1 pid=113419)[0m                'kl_penalty': 'kl',
+[36m(TaskRunnerV1 pid=113419)[0m                'lam': 1.0,
+[36m(TaskRunnerV1 pid=113419)[0m                'norm_adv_by_std_in_grpo': True,
+[36m(TaskRunnerV1 pid=113419)[0m                'pf_ppo': {'reweight_method': 'pow', 'weight_pow': 2.0},
+[36m(TaskRunnerV1 pid=113419)[0m                'rollout_correction': {'bypass_mode': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                       'loss_type': 'ppo_clip',
+[36m(TaskRunnerV1 pid=113419)[0m                                       'rollout_is': 'token',
+[36m(TaskRunnerV1 pid=113419)[0m                                       'rollout_is_batch_normalize': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                       'rollout_is_threshold': 2.0,
+[36m(TaskRunnerV1 pid=113419)[0m                                       'rollout_rs': 'token_k1',
+[36m(TaskRunnerV1 pid=113419)[0m                                       'rollout_rs_threshold': '0.95_1.05'},
+[36m(TaskRunnerV1 pid=113419)[0m                'use_kl_in_reward': False,
+[36m(TaskRunnerV1 pid=113419)[0m                'use_pf_ppo': False},
+[36m(TaskRunnerV1 pid=113419)[0m  'critic': {'_target_': 'verl.workers.config.FSDPCriticConfig',
+[36m(TaskRunnerV1 pid=113419)[0m             'checkpoint': {'_target_': 'verl.trainer.config.CheckpointConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                            'async_save': False,
+[36m(TaskRunnerV1 pid=113419)[0m                            'load_contents': ['model', 'optimizer', 'extra'],
+[36m(TaskRunnerV1 pid=113419)[0m                            'save_contents': ['model', 'optimizer', 'extra']},
+[36m(TaskRunnerV1 pid=113419)[0m             'cliprange_value': 0.5,
+[36m(TaskRunnerV1 pid=113419)[0m             'data_loader_seed': 42,
+[36m(TaskRunnerV1 pid=113419)[0m             'enable': False,
+[36m(TaskRunnerV1 pid=113419)[0m             'forward_max_token_len_per_gpu': 32768,
+[36m(TaskRunnerV1 pid=113419)[0m             'forward_micro_batch_size': None,
+[36m(TaskRunnerV1 pid=113419)[0m             'forward_micro_batch_size_per_gpu': None,
+[36m(TaskRunnerV1 pid=113419)[0m             'fsdp': {'_target_': 'verl.workers.config.FSDPEngineConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                      'dtype': 'bfloat16',
+[36m(TaskRunnerV1 pid=113419)[0m                      'entropy_checkpointing': False,
+[36m(TaskRunnerV1 pid=113419)[0m                      'entropy_from_logits_chunk_size': 2048,
+[36m(TaskRunnerV1 pid=113419)[0m                      'entropy_from_logits_with_chunking': False,
+[36m(TaskRunnerV1 pid=113419)[0m                      'forward_only': False,
+[36m(TaskRunnerV1 pid=113419)[0m                      'forward_prefetch': False,
+[36m(TaskRunnerV1 pid=113419)[0m                      'fsdp_size': -1,
+[36m(TaskRunnerV1 pid=113419)[0m                      'full_determinism': False,
+[36m(TaskRunnerV1 pid=113419)[0m                      'model_dtype': 'fp32',
+[36m(TaskRunnerV1 pid=113419)[0m                      'offload_policy': False,
+[36m(TaskRunnerV1 pid=113419)[0m                      'optimizer_offload': False,
+[36m(TaskRunnerV1 pid=113419)[0m                      'pad_to_length': False,
+[36m(TaskRunnerV1 pid=113419)[0m                      'pad_to_length_bucket': 1024,
+[36m(TaskRunnerV1 pid=113419)[0m                      'param_offload': False,
+[36m(TaskRunnerV1 pid=113419)[0m                      'qat': {'_target_': 'verl.workers.config.QATEngineConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                              'activation_observer': 'static_minmax',
+[36m(TaskRunnerV1 pid=113419)[0m                              'enable': False,
+[36m(TaskRunnerV1 pid=113419)[0m                              'group_size': 16,
+[36m(TaskRunnerV1 pid=113419)[0m                              'ignore_patterns': ['lm_head',
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'embed_tokens',
+[36m(TaskRunnerV1 pid=113419)[0m                                                  're:.*mlp.gate$'],
+[36m(TaskRunnerV1 pid=113419)[0m                              'mode': 'w4a16',
+[36m(TaskRunnerV1 pid=113419)[0m                              'quantization_config_path': None},
+[36m(TaskRunnerV1 pid=113419)[0m                      'reshard_after_forward': True,
+[36m(TaskRunnerV1 pid=113419)[0m                      'seed': 42,
+[36m(TaskRunnerV1 pid=113419)[0m                      'strategy': 'fsdp',
+[36m(TaskRunnerV1 pid=113419)[0m                      'turbo_config': {'distributed': {'expert_fully_shard_parallel_size': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                       'expert_parallel_size': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                       'fsdp_plan': {'fsdp_implementation': 'native',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                     'num_to_backward_prefetch': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                     'num_to_forward_prefetch': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                     'output_dtype': 'bf16',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                     'param_dtype': 'bf16',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                     'reduce_dtype': 'fp32'},
+[36m(TaskRunnerV1 pid=113419)[0m                                                       'fully_shard_parallel_size': 16,
+[36m(TaskRunnerV1 pid=113419)[0m                                                       'tensor_parallel_size': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                       'ulysses_parallel_size': 1}},
+[36m(TaskRunnerV1 pid=113419)[0m                      'ulysses_sequence_parallel_size': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                      'use_no_sync_for_gradient_accumulation': False,
+[36m(TaskRunnerV1 pid=113419)[0m                      'use_orig_params': False,
+[36m(TaskRunnerV1 pid=113419)[0m                      'use_torch_compile': True,
+[36m(TaskRunnerV1 pid=113419)[0m                      'wrap_policy': {'min_num_params': 0}},
+[36m(TaskRunnerV1 pid=113419)[0m             'grad_clip': 1.0,
+[36m(TaskRunnerV1 pid=113419)[0m             'loss_agg_mode': 'token-mean',
+[36m(TaskRunnerV1 pid=113419)[0m             'loss_scale_factor': None,
+[36m(TaskRunnerV1 pid=113419)[0m             'model': {'_target_': 'verl.workers.config.HFModelConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                       'custom_chat_template': None,
+[36m(TaskRunnerV1 pid=113419)[0m                       'enable_activation_offload': False,
+[36m(TaskRunnerV1 pid=113419)[0m                       'enable_gradient_checkpointing': True,
+[36m(TaskRunnerV1 pid=113419)[0m                       'exclude_modules': None,
+[36m(TaskRunnerV1 pid=113419)[0m                       'external_lib': None,
+[36m(TaskRunnerV1 pid=113419)[0m                       'fused_kernel_options': {'impl_backend': 'torch'},
+[36m(TaskRunnerV1 pid=113419)[0m                       'hf_config_path': None,
+[36m(TaskRunnerV1 pid=113419)[0m                       'lora': {'a2a_experimental': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                'adapter_path': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                'alpha': 32,
+[36m(TaskRunnerV1 pid=113419)[0m                                'dropout': 0.0,
+[36m(TaskRunnerV1 pid=113419)[0m                                'dropout_position': 'pre',
+[36m(TaskRunnerV1 pid=113419)[0m                                'dtype': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                'exclude_modules': [],
+[36m(TaskRunnerV1 pid=113419)[0m                                'freeze_language_model': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                'freeze_vision_model': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                'freeze_vision_projection': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                'lora_A_init_method': 'xavier',
+[36m(TaskRunnerV1 pid=113419)[0m                                'lora_B_init_method': 'zero',
+[36m(TaskRunnerV1 pid=113419)[0m                                'merge': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                'rank': 0,
+[36m(TaskRunnerV1 pid=113419)[0m                                'target_modules': ['linear_qkv',
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'linear_proj',
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'linear_fc1',
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'linear_fc2'],
+[36m(TaskRunnerV1 pid=113419)[0m                                'type': 'lora'},
+[36m(TaskRunnerV1 pid=113419)[0m                       'lora_adapter_path': None,
+[36m(TaskRunnerV1 pid=113419)[0m                       'lora_alpha': 16,
+[36m(TaskRunnerV1 pid=113419)[0m                       'lora_rank': 0,
+[36m(TaskRunnerV1 pid=113419)[0m                       'mtp': {'_target_': 'verl.workers.config.MtpConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                               'detach_encoder': False,
+[36m(TaskRunnerV1 pid=113419)[0m                               'enable': False,
+[36m(TaskRunnerV1 pid=113419)[0m                               'enable_rollout': False,
+[36m(TaskRunnerV1 pid=113419)[0m                               'enable_train': False,
+[36m(TaskRunnerV1 pid=113419)[0m                               'method': 'mtp',
+[36m(TaskRunnerV1 pid=113419)[0m                               'mtp_loss_scaling_factor': 0.1,
+[36m(TaskRunnerV1 pid=113419)[0m                               'num_speculative_tokens': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                               'speculative_algorithm': 'EAGLE',
+[36m(TaskRunnerV1 pid=113419)[0m                               'speculative_eagle_topk': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                               'speculative_num_draft_tokens': 4,
+[36m(TaskRunnerV1 pid=113419)[0m                               'speculative_num_steps': 3},
+[36m(TaskRunnerV1 pid=113419)[0m                       'override_config': {},
+[36m(TaskRunnerV1 pid=113419)[0m                       'path': '~/models/deepseek-llm-7b-chat',
+[36m(TaskRunnerV1 pid=113419)[0m                       'target_modules': 'all-linear',
+[36m(TaskRunnerV1 pid=113419)[0m                       'tiled_mlp': {'enabled': False, 'num_shards': 4},
+[36m(TaskRunnerV1 pid=113419)[0m                       'tokenizer_path': None,
+[36m(TaskRunnerV1 pid=113419)[0m                       'trust_remote_code': False,
+[36m(TaskRunnerV1 pid=113419)[0m                       'use_fused_kernels': False,
+[36m(TaskRunnerV1 pid=113419)[0m                       'use_liger': False,
+[36m(TaskRunnerV1 pid=113419)[0m                       'use_remove_padding': True,
+[36m(TaskRunnerV1 pid=113419)[0m                       'use_shm': False},
+[36m(TaskRunnerV1 pid=113419)[0m             'optim': {'_target_': 'verl.workers.config.FSDPOptimizerConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                       'betas': [0.9, 0.999],
+[36m(TaskRunnerV1 pid=113419)[0m                       'clip_grad': 1.0,
+[36m(TaskRunnerV1 pid=113419)[0m                       'lr': 1e-05,
+[36m(TaskRunnerV1 pid=113419)[0m                       'lr_scheduler_type': 'constant',
+[36m(TaskRunnerV1 pid=113419)[0m                       'lr_warmup_steps': -1,
+[36m(TaskRunnerV1 pid=113419)[0m                       'lr_warmup_steps_ratio': 0.0,
+[36m(TaskRunnerV1 pid=113419)[0m                       'min_lr_ratio': 0.0,
+[36m(TaskRunnerV1 pid=113419)[0m                       'num_cycles': 0.5,
+[36m(TaskRunnerV1 pid=113419)[0m                       'optimizer': 'AdamW',
+[36m(TaskRunnerV1 pid=113419)[0m                       'optimizer_impl': 'torch.optim',
+[36m(TaskRunnerV1 pid=113419)[0m                       'override_optimizer_config': None,
+[36m(TaskRunnerV1 pid=113419)[0m                       'total_training_steps': -1,
+[36m(TaskRunnerV1 pid=113419)[0m                       'warmup_style': None,
+[36m(TaskRunnerV1 pid=113419)[0m                       'weight_decay': 0.01,
+[36m(TaskRunnerV1 pid=113419)[0m                       'zero_indexed_step': True},
+[36m(TaskRunnerV1 pid=113419)[0m             'ppo_epochs': 1,
+[36m(TaskRunnerV1 pid=113419)[0m             'ppo_max_token_len_per_gpu': 32768,
+[36m(TaskRunnerV1 pid=113419)[0m             'ppo_micro_batch_size': None,
+[36m(TaskRunnerV1 pid=113419)[0m             'ppo_micro_batch_size_per_gpu': None,
+[36m(TaskRunnerV1 pid=113419)[0m             'ppo_mini_batch_size': 4,
+[36m(TaskRunnerV1 pid=113419)[0m             'profiler': {'_target_': 'verl.utils.profiler.ProfilerConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                          'all_ranks': False,
+[36m(TaskRunnerV1 pid=113419)[0m                          'enable': False,
+[36m(TaskRunnerV1 pid=113419)[0m                          'finish_hook_all_ranks': False,
+[36m(TaskRunnerV1 pid=113419)[0m                          'finish_hook_cmd': None,
+[36m(TaskRunnerV1 pid=113419)[0m                          'finish_hook_ranks': [],
+[36m(TaskRunnerV1 pid=113419)[0m                          'ranks': [],
+[36m(TaskRunnerV1 pid=113419)[0m                          'relocate_results': False,
+[36m(TaskRunnerV1 pid=113419)[0m                          'save_path': 'outputs/profile',
+[36m(TaskRunnerV1 pid=113419)[0m                          'tool': None,
+[36m(TaskRunnerV1 pid=113419)[0m                          'tool_config': {'npu': {'_target_': 'verl.utils.profiler.config.NPUToolConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'analysis': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'contents': [],
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'discrete': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                  'level': 'level0'},
+[36m(TaskRunnerV1 pid=113419)[0m                                          'nsys': {'_target_': 'verl.utils.profiler.config.NsightToolConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'discrete': False},
+[36m(TaskRunnerV1 pid=113419)[0m                                          'precision_debugger': {'_target_': 'verl.utils.profiler.config.PrecisionDebuggerToolConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                 'config_path': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                 'stages': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                 'steps': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                 'strict': False},
+[36m(TaskRunnerV1 pid=113419)[0m                                          'torch': {'_target_': 'verl.utils.profiler.config.TorchProfilerToolConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                    'contents': [],
+[36m(TaskRunnerV1 pid=113419)[0m                                                    'discrete': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                    'schedule': {'_target_': 'verl.utils.profiler.config.TorchProfilerScheduleConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                 'active': 0,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                 'repeat': 0,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                 'skip_first': 0,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                 'wait': 0,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                 'warmup': 0}},
+[36m(TaskRunnerV1 pid=113419)[0m                                          'torch_memory': {'_target_': 'verl.utils.profiler.config.TorchMemoryToolConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                           'memory_snapshot_num_steps': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                           'stack_depth': 32,
+[36m(TaskRunnerV1 pid=113419)[0m                                                           'trace_alloc_max_entries': 100000}}},
+[36m(TaskRunnerV1 pid=113419)[0m             'rollout_n': 4,
+[36m(TaskRunnerV1 pid=113419)[0m             'shuffle': False,
+[36m(TaskRunnerV1 pid=113419)[0m             'strategy': 'fsdp',
+[36m(TaskRunnerV1 pid=113419)[0m             'ulysses_sequence_parallel_size': 1,
+[36m(TaskRunnerV1 pid=113419)[0m             'use_dynamic_bsz': False},
+[36m(TaskRunnerV1 pid=113419)[0m  'custom_reward_function': {'name': None, 'path': None},
+[36m(TaskRunnerV1 pid=113419)[0m  'data': {'apply_chat_template_kwargs': {},
+[36m(TaskRunnerV1 pid=113419)[0m           'audio_key': 'audios',
+[36m(TaskRunnerV1 pid=113419)[0m           'custom_cls': {'name': None, 'path': None},
+[36m(TaskRunnerV1 pid=113419)[0m           'dataloader_num_workers': 0,
+[36m(TaskRunnerV1 pid=113419)[0m           'filter_overlong_prompts': True,
+[36m(TaskRunnerV1 pid=113419)[0m           'filter_overlong_prompts_workers': 1,
+[36m(TaskRunnerV1 pid=113419)[0m           'function_tool_path': None,
+[36m(TaskRunnerV1 pid=113419)[0m           'gen_batch_size': None,
+[36m(TaskRunnerV1 pid=113419)[0m           'image_key': 'images',
+[36m(TaskRunnerV1 pid=113419)[0m           'image_patch_size': 14,
+[36m(TaskRunnerV1 pid=113419)[0m           'max_prompt_length': 256,
+[36m(TaskRunnerV1 pid=113419)[0m           'max_response_length': 128,
+[36m(TaskRunnerV1 pid=113419)[0m           'mm_processor_kwargs': {},
+[36m(TaskRunnerV1 pid=113419)[0m           'prompt_key': 'prompt',
+[36m(TaskRunnerV1 pid=113419)[0m           'return_full_prompt': False,
+[36m(TaskRunnerV1 pid=113419)[0m           'return_multi_modal_inputs': True,
+[36m(TaskRunnerV1 pid=113419)[0m           'return_raw_chat': True,
+[36m(TaskRunnerV1 pid=113419)[0m           'return_raw_input_ids': False,
+[36m(TaskRunnerV1 pid=113419)[0m           'reward_fn_key': 'data_source',
+[36m(TaskRunnerV1 pid=113419)[0m           'seed': None,
+[36m(TaskRunnerV1 pid=113419)[0m           'shuffle': True,
+[36m(TaskRunnerV1 pid=113419)[0m           'tokenizer': None,
+[36m(TaskRunnerV1 pid=113419)[0m           'tool_config_path': None,
+[36m(TaskRunnerV1 pid=113419)[0m           'train_batch_size': 4,
+[36m(TaskRunnerV1 pid=113419)[0m           'train_files': '/home/yulinlin/verl-v0.9.1/data/gsm8k/train.parquet',
+[36m(TaskRunnerV1 pid=113419)[0m           'train_max_samples': -1,
+[36m(TaskRunnerV1 pid=113419)[0m           'truncation': 'error',
+[36m(TaskRunnerV1 pid=113419)[0m           'trust_remote_code': False,
+[36m(TaskRunnerV1 pid=113419)[0m           'use_shm': False,
+[36m(TaskRunnerV1 pid=113419)[0m           'val_batch_size': None,
+[36m(TaskRunnerV1 pid=113419)[0m           'val_files': '/home/yulinlin/verl-v0.9.1/data/gsm8k/test.parquet',
+[36m(TaskRunnerV1 pid=113419)[0m           'val_max_samples': -1,
+[36m(TaskRunnerV1 pid=113419)[0m           'validation_shuffle': False,
+[36m(TaskRunnerV1 pid=113419)[0m           'video_key': 'videos'},
+[36m(TaskRunnerV1 pid=113419)[0m  'distillation': {'_target_': 'verl.workers.config.DistillationConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                   'distillation_loss': {'_target_': 'verl.workers.config.DistillationLossConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                         'clip_ratio': 0.2,
+[36m(TaskRunnerV1 pid=113419)[0m                                         'clip_ratio_high': 0.2,
+[36m(TaskRunnerV1 pid=113419)[0m                                         'clip_ratio_low': 0.2,
+[36m(TaskRunnerV1 pid=113419)[0m                                         'distillation_loss_coef': 1.0,
+[36m(TaskRunnerV1 pid=113419)[0m                                         'log_prob_min_clamp': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                         'loss_max_clamp': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                         'loss_mode': 'k3',
+[36m(TaskRunnerV1 pid=113419)[0m                                         'policy_loss_mode': 'vanilla',
+[36m(TaskRunnerV1 pid=113419)[0m                                         'topk': 32,
+[36m(TaskRunnerV1 pid=113419)[0m                                         'use_policy_gradient': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                         'use_task_rewards': True},
+[36m(TaskRunnerV1 pid=113419)[0m                   'enabled': False,
+[36m(TaskRunnerV1 pid=113419)[0m                   'n_gpus_per_node': 8,
+[36m(TaskRunnerV1 pid=113419)[0m                   'nnodes': 0,
+[36m(TaskRunnerV1 pid=113419)[0m                   'teacher_key': 'data_source',
+[36m(TaskRunnerV1 pid=113419)[0m                   'teacher_models': {'teacher_model': {'_target_': 'verl.workers.config.DistillationTeacherModelConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                        'inference': {'_target_': 'verl.workers.config.RolloutConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                      'cudagraph_capture_sizes': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                      'data_parallel_size': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                      'disable_log_stats': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                      'dtype': 'bfloat16',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                      'enable_chunked_prefill': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                      'enable_prefix_caching': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                      'enforce_eager': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                      'engine_kwargs': {},
+[36m(TaskRunnerV1 pid=113419)[0m                                                                      'expert_parallel_size': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                      'free_cache_engine': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                      'gpu_memory_utilization': 0.5,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                      'limit_images': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                      'load_format': 'auto',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                      'max_model_len': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                      'max_num_batched_tokens': 8192,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                      'max_num_seqs': 1024,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                      'name': 'vllm',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                      'prompt_length': 256,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                      'response_length': 128,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                      'skip_tokenizer_init': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                      'temperature': 1.0,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                      'tensor_model_parallel_size': 2},
+[36m(TaskRunnerV1 pid=113419)[0m                                                        'key': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                        'model_path': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                        'num_replicas': 0}}},
+[36m(TaskRunnerV1 pid=113419)[0m  'global_profiler': {'_target_': 'verl.utils.profiler.ProfilerConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                      'finish_hook_all_ranks': False,
+[36m(TaskRunnerV1 pid=113419)[0m                      'finish_hook_cmd': None,
+[36m(TaskRunnerV1 pid=113419)[0m                      'finish_hook_ranks': [],
+[36m(TaskRunnerV1 pid=113419)[0m                      'global_tool_config': {'nsys': {'_target_': 'verl.utils.profiler.config.NsightToolConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                      'controller_nsight_options': {'cuda-graph-trace': 'graph',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                    'cuda-memory-usage': 'true',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                    'trace': 'cuda,nvtx,cublas,ucx'},
+[36m(TaskRunnerV1 pid=113419)[0m                                                      'discrete': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                      'worker_nsight_options': {'capture-range': 'cudaProfilerApi',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                'capture-range-end': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                'cuda-graph-trace': 'graph',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                'cuda-memory-usage': 'true',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                'kill': 'none',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                                'trace': 'cuda,nvtx,cublas,ucx'}},
+[36m(TaskRunnerV1 pid=113419)[0m                                             'precision_debugger': {'_target_': 'verl.utils.profiler.config.PrecisionDebuggerToolConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                                    'config_path': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                    'stages': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                    'steps': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                                    'strict': False},
+[36m(TaskRunnerV1 pid=113419)[0m                                             'torch_memory': {'context': 'all',
+[36m(TaskRunnerV1 pid=113419)[0m                                                              'kw_args': {},
+[36m(TaskRunnerV1 pid=113419)[0m                                                              'memory_snapshot_num_steps': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                              'stack_depth': 32,
+[36m(TaskRunnerV1 pid=113419)[0m                                                              'stacks': 'all',
+[36m(TaskRunnerV1 pid=113419)[0m                                                              'trace_alloc_max_entries': 100000}},
+[36m(TaskRunnerV1 pid=113419)[0m                      'profile_continuous_steps': False,
+[36m(TaskRunnerV1 pid=113419)[0m                      'relocate_results': False,
+[36m(TaskRunnerV1 pid=113419)[0m                      'save_path': 'outputs/profile',
+[36m(TaskRunnerV1 pid=113419)[0m                      'steps': None,
+[36m(TaskRunnerV1 pid=113419)[0m                      'tool': None},
+[36m(TaskRunnerV1 pid=113419)[0m  'model_engine': 'dp',
+[36m(TaskRunnerV1 pid=113419)[0m  'ray_kwargs': {'ray_init': {'num_cpus': None,
+[36m(TaskRunnerV1 pid=113419)[0m                              'object_store_memory': 536870912,
+[36m(TaskRunnerV1 pid=113419)[0m                              'runtime_env': {'py_executable': 'uv -v run '
+[36m(TaskRunnerV1 pid=113419)[0m                                                               '--frozen '
+[36m(TaskRunnerV1 pid=113419)[0m                                                               '--all-packages '
+[36m(TaskRunnerV1 pid=113419)[0m                                                               '--extra vllm'}},
+[36m(TaskRunnerV1 pid=113419)[0m                 'timeline_json_file': None},
+[36m(TaskRunnerV1 pid=113419)[0m  'reward': {'_target_': 'verl.workers.config.RewardConfig',
+[36m(TaskRunnerV1 pid=113419)[0m             'custom_reward_function': {'name': 'compute_score', 'path': None},
+[36m(TaskRunnerV1 pid=113419)[0m             'num_workers': 1,
+[36m(TaskRunnerV1 pid=113419)[0m             'reward_manager': {'_target_': 'verl.workers.config.reward.RewardManagerConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                'module': {'_target_': 'verl.trainer.config.config.ModuleConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                           'name': 'custom_reward_manager',
+[36m(TaskRunnerV1 pid=113419)[0m                                           'path': None},
+[36m(TaskRunnerV1 pid=113419)[0m                                'name': 'naive',
+[36m(TaskRunnerV1 pid=113419)[0m                                'source': 'register'},
+[36m(TaskRunnerV1 pid=113419)[0m             'reward_model': {'_target_': 'verl.workers.config.RewardModelConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                              'enable': False,
+[36m(TaskRunnerV1 pid=113419)[0m                              'enable_resource_pool': False,
+[36m(TaskRunnerV1 pid=113419)[0m                              'model_path': None,
+[36m(TaskRunnerV1 pid=113419)[0m                              'n_gpus_per_node': 8,
+[36m(TaskRunnerV1 pid=113419)[0m                              'nnodes': 0,
+[36m(TaskRunnerV1 pid=113419)[0m                              'rollout': {'_target_': 'verl.workers.config.RolloutConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                          'cudagraph_capture_sizes': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'data_parallel_size': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'disable_log_stats': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'disaggregation': {'bootstrap_port': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                             'decode_replicas': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                             'decode_tensor_model_parallel_size': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                             'enabled': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                             'ib_device': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                                             'prefill_replicas': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                             'transfer_backend': 'nixl'},
+[36m(TaskRunnerV1 pid=113419)[0m                                          'do_sample': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'dtype': 'bfloat16',
+[36m(TaskRunnerV1 pid=113419)[0m                                          'enable_chunked_prefill': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'enable_prefix_caching': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'enforce_eager': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'engine_kwargs': {},
+[36m(TaskRunnerV1 pid=113419)[0m                                          'expert_parallel_size': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'free_cache_engine': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'full_determinism': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'gpu_memory_utilization': 0.5,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'ignore_eos': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'layered_summon': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'limit_images': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'load_format': 'auto',
+[36m(TaskRunnerV1 pid=113419)[0m                                          'max_model_len': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'max_num_batched_tokens': 8192,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'max_num_seqs': 1024,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'mtp': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'multi_stage_wake_up': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'n': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'name': '???',
+[36m(TaskRunnerV1 pid=113419)[0m                                          'pipeline_model_parallel_size': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'prompt_length': 2048,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'quantization': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'quantization_config_file': None,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'response_length': 2048,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'scheduling_policy': 'fcfs',
+[36m(TaskRunnerV1 pid=113419)[0m                                          'seed': 42,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'skip_tokenizer_init': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'temperature': 1.0,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'tensor_model_parallel_size': 2,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'top_k': -1,
+[36m(TaskRunnerV1 pid=113419)[0m                                          'top_p': 1}},
+[36m(TaskRunnerV1 pid=113419)[0m             'sandbox_fusion': {'_target_': 'verl.workers.config.SandboxFusionConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                'max_concurrent': 64,
+[36m(TaskRunnerV1 pid=113419)[0m                                'memory_limit_mb': 1024,
+[36m(TaskRunnerV1 pid=113419)[0m                                'url': None}},
+[36m(TaskRunnerV1 pid=113419)[0m  'reward_model': {'enable': None,
+[36m(TaskRunnerV1 pid=113419)[0m                   'enable_resource_pool': None,
+[36m(TaskRunnerV1 pid=113419)[0m                   'model': {'external_lib': None,
+[36m(TaskRunnerV1 pid=113419)[0m                             'path': None,
+[36m(TaskRunnerV1 pid=113419)[0m                             'trust_remote_code': None},
+[36m(TaskRunnerV1 pid=113419)[0m                   'n_gpus_per_node': None,
+[36m(TaskRunnerV1 pid=113419)[0m                   'nnodes': None,
+[36m(TaskRunnerV1 pid=113419)[0m                   'num_workers': None,
+[36m(TaskRunnerV1 pid=113419)[0m                   'reward_loop_class_name': None,
+[36m(TaskRunnerV1 pid=113419)[0m                   'reward_loop_module_path': None,
+[36m(TaskRunnerV1 pid=113419)[0m                   'reward_loop_source': None,
+[36m(TaskRunnerV1 pid=113419)[0m                   'reward_manager': None,
+[36m(TaskRunnerV1 pid=113419)[0m                   'rollout': {'cudagraph_capture_sizes': None,
+[36m(TaskRunnerV1 pid=113419)[0m                               'data_parallel_size': None,
+[36m(TaskRunnerV1 pid=113419)[0m                               'disable_log_stats': None,
+[36m(TaskRunnerV1 pid=113419)[0m                               'dtype': None,
+[36m(TaskRunnerV1 pid=113419)[0m                               'enable_chunked_prefill': None,
+[36m(TaskRunnerV1 pid=113419)[0m                               'enable_prefix_caching': None,
+[36m(TaskRunnerV1 pid=113419)[0m                               'enforce_eager': None,
+[36m(TaskRunnerV1 pid=113419)[0m                               'engine_kwargs': None,
+[36m(TaskRunnerV1 pid=113419)[0m                               'expert_parallel_size': None,
+[36m(TaskRunnerV1 pid=113419)[0m                               'free_cache_engine': None,
+[36m(TaskRunnerV1 pid=113419)[0m                               'gpu_memory_utilization': None,
+[36m(TaskRunnerV1 pid=113419)[0m                               'limit_images': None,
+[36m(TaskRunnerV1 pid=113419)[0m                               'load_format': None,
+[36m(TaskRunnerV1 pid=113419)[0m                               'max_model_len': None,
+[36m(TaskRunnerV1 pid=113419)[0m                               'max_num_batched_tokens': None,[33m(raylet)[0m [2mAudited [1m250 packages[0m [2min 1ms[0m[0m
+[33m(raylet)[0m [2mAudited [1m250 packages[0m [2min 1ms[0m[0m
+[33m(raylet)[0m [34mDEBUG[39m uv 0.10.2[32m [repeated 2x across cluster] (Ray deduplicates logs by default. Set RAY_DEDUP_LOGS=0 to disable log deduplication, or see https://docs.ray.io/en/master/ray-observability/user-guides/configure-logging.html#log-deduplication for more options.)[0m
+[33m(raylet)[0m [34mDEBUG[39m Acquired shared lock for `/home/yulinlin/.cache/uv`[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m Found project root: `/home/yulinlin/verl-v0.9.1`[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m No workspace root found, using project root[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m Discovered project `verl` at: /home/yulinlin/verl-v0.9.1[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m Acquired exclusive lock for `/home/yulinlin/verl-v0.9.1`[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m No Python version file found in workspace: /home/yulinlin/verl-v0.9.1[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m Using Python request `>=3.10, <3.13` from `requires-python` metadata[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m Checking for Python environment at: `.venv`[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m The project environment's Python version satisfies the request: `Python >=3.10, <3.13`[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m Released lock at `/home/yulinlin/verl-v0.9.1/.venv/.lock`[32m [repeated 5x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m Acquired exclusive lock for `.venv`[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m Using request connect timeout of 10s and read timeout of 30s[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m Computed cache info: Timestamp(SystemTime { tv_sec: 1792593433, tv_nsec: 5364363 }), None, None, {}, {"src": None}. Most recently modified: pyproject.toml[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m Requirement already installed: transferqueue==0.1.9.dev0 (from git+https://github.com/Ascend/TransferQueue.git@434f8c476b4be24bc087e6e95070e64efcc739f9)[32m [repeated 8x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m Requirement already installed: pycparser==3.0[32m [repeated 740x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m Using Python 3.12.15 interpreter at: /home/yulinlin/verl-v0.9.1/.venv/bin/python3[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m Running `python /home/yulinlin/verl-v0.9.1/.venv/lib/python3.12/site-packages/ray/_private/workers/default_worker.py --node-ip-address=192.168.0.117 --node-manager-port=35569 --object-store-name=/tmp/ray/session_2026-10-22_02-16-39_797802_110632/sockets/plasma_store --raylet-name=/tmp/ray/session_2026-10-22_02-16-39_797802_110632/sockets/raylet --redis-address=None --metrics-agent-port=0 --logging-rotate-bytes=536870912 --logging-rotate-backup-count=5 --runtime-env-agent-port=0 --gcs-address=192.168.0.117:37567 --session-name=session_2026-10-22_02-16-39_797802_110632 --temp-dir=/tmp/ray --webui=127.0.0.1:8265 --cluster-id=1ec9b8d127254e77c0d4d54c4fd5ec07f2699804d056e0a98d3dbf17 --worker-id=f936daa5eb4beeb4e37d16bc70b51193b3f11b46cac598146ffc5a19 --worker-launch-time-ms=1792606607458 --node-id=50d17d265feef5e35e8cd8c330af1e63e3052192b9ce6ef624f82f28 --runtime-env-hash=823245638`[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m Spawned child 113643 in process group 104397[32m [repeated 2x across cluster][0m
+[36m(TaskRunnerV1 pid=113419)[0m Setting TOKENIZERS_PARALLELISM=false for forked processes.
+[36m(TaskRunnerV1 pid=113419)[0m WARNING:2026-10-22 02:16:57,205:Setting TOKENIZERS_PARALLELISM=false for forked processes.
+[36m(TaskRunnerV1 pid=113419)[0m 
+Filtering prompts longer than 256 tokens (num_proc=1):   0%|          | 0/7473 [00:00<?, ? examples/s]
+[36m(TaskRunnerV1 pid=113419)[0m 
+Filtering prompts longer than 256 tokens (num_proc=1):  13%|█▎        | 1000/7473 [00:01<00:06, 998.72 examples/s]
+[36m(TaskRunnerV1 pid=113419)[0m 
+Filtering prompts longer than 256 tokens (num_proc=1):  27%|██▋       | 2000/7473 [00:01<00:02, 2030.39 examples/s]
+[36m(TaskRunnerV1 pid=113419)[0m 
+Filtering prompts longer than 256 tokens (num_proc=1):  40%|████      | 3000/7473 [00:01<00:01, 3035.30 examples/s]
+[36m(TaskRunnerV1 pid=113419)[0m 
+Filtering prompts longer than 256 tokens (num_proc=1):  54%|█████▎    | 4000/7473 [00:01<00:00, 3900.25 examples/s]
+[36m(TaskRunnerV1 pid=113419)[0m 
+Filtering prompts longer than 256 tokens (num_proc=1):  67%|██████▋   | 5000/7473 [00:01<00:00, 4693.96 examples/s]
+[36m(TaskRunnerV1 pid=113419)[0m 
+Filtering prompts longer than 256 tokens (num_proc=1):  80%|████████  | 6000/7473 [00:01<00:00, 5355.43 examples/s]
+[36m(TaskRunnerV1 pid=113419)[0m 
+Filtering prompts longer than 256 tokens (num_proc=1):  94%|█████████▎| 7000/7473 [00:01<00:00, 5920.29 examples/s]
+[36m(TaskRunnerV1 pid=113419)[0m 
+Filtering prompts longer than 256 tokens (num_proc=1): 100%|██████████| 7473/7473 [00:01<00:00, 3801.94 examples/s]
+[36m(TaskRunnerV1 pid=113419)[0m Setting TOKENIZERS_PARALLELISM=false for forked processes.
+[36m(TaskRunnerV1 pid=113419)[0m WARNING:2026-10-22 02:17:00,056:Setting TOKENIZERS_PARALLELISM=false for forked processes.
+[36m(TaskRunnerV1 pid=113419)[0m 
+Filtering prompts longer than 256 tokens (num_proc=1):   0%|          | 0/1319 [00:00<?, ? examples/s]
+[36m(TaskRunnerV1 pid=113419)[0m 
+Filtering prompts longer than 256 tokens (num_proc=1):  76%|███████▌  | 1000/1319 [00:01<00:00, 996.55 examples/s]
+[36m(TaskRunnerV1 pid=113419)[0m 
+Filtering prompts longer than 256 tokens (num_proc=1): 100%|██████████| 1319/1319 [00:01<00:00, 1156.29 examples/s]
+[36m(TaskRunnerV1 pid=113419)[0m INFO:2026-10-22 02:17:01,199:train and validate dataloader initialized, train dataset size: 7473, val dataset size: 1319
+[36m(TaskRunnerV1 pid=113419)[0m INFO:2026-10-22 02:17:01,199:Total training steps: 3
+[36m(TaskRunnerV1 pid=113419)[0m INFO:2026-10-22 02:17:01,202:worker group kwargs: {'device_name': 'cuda'}
+[33m(raylet)[0m [34mDEBUG[39m uv 0.10.2
+[33m(raylet)[0m [34mDEBUG[39m Acquired shared lock for `/home/yulinlin/.cache/uv`
+[33m(raylet)[0m [34mDEBUG[39m Found project root: `/home/yulinlin/verl-v0.9.1`
+[33m(raylet)[0m [34mDEBUG[39m No workspace root found, using project root
+[33m(raylet)[0m [34mDEBUG[39m Discovered project `verl` at: /home/yulinlin/verl-v0.9.1
+[33m(raylet)[0m [34mDEBUG[39m Acquired exclusive lock for `/home/yulinlin/verl-v0.9.1`
+[33m(raylet)[0m [34mDEBUG[39m No Python version file found in workspace: /home/yulinlin/verl-v0.9.1
+[33m(raylet)[0m [34mDEBUG[39m Using Python request `>=3.10, <3.13` from `requires-python` metadata
+[33m(raylet)[0m [34mDEBUG[39m Checking for Python environment at: `.venv`
+[33m(raylet)[0m [34mDEBUG[39m The project environment's Python version satisfies the request: `Python >=3.10, <3.13`
+[33m(raylet)[0m [34mDEBUG[39m Released lock at `/tmp/uv-3443516324fc4ee1.lock`
+[33m(raylet)[0m [34mDEBUG[39m Acquired exclusive lock for `.venv`
+[33m(raylet)[0m [34mDEBUG[39m Using request connect timeout of 10s and read timeout of 30s
+[33m(raylet)[0m [34mDEBUG[39m Computed cache info: Timestamp(SystemTime { tv_sec: 1792593433, tv_nsec: 5364363 }), None, None, {}, {"src": None}. Most recently modified: pyproject.toml
+[33m(raylet)[0m [34mDEBUG[39m Requirement already installed: verl==0.9.1 (from file:///home/yulinlin/verl-v0.9.1)
+[33m(raylet)[0m [34mDEBUG[39m Requirement already installed: accelerate==1.14.0
+[33m(raylet)[0m [2mAudited [1m250 packages[0m [2min 1ms[0m[0m
+[33m(raylet)[0m [34mDEBUG[39m Using Python 3.12.15 interpreter at: /home/yulinlin/verl-v0.9.1/.venv/bin/python3
+[33m(raylet)[0m [34mDEBUG[39m Running `python /home/yulinlin/verl-v0.9.1/.venv/lib/python3.12/site-packages/ray/_private/workers/default_worker.py --node-ip-address=192.168.0.117 --node-manager-port=35569 --object-store-name=/tmp/ray/session_2026-10-22_02-16-39_797802_110632/sockets/plasma_store --raylet-name=/tmp/ray/session_2026-10-22_02-16-39_797802_110632/sockets/raylet --redis-address=None --metrics-agent-port=0 --logging-rotate-bytes=536870912 --logging-rotate-backup-count=5 --runtime-env-agent-port=0 --gcs-address=192.168.0.117:37567 --session-name=session_2026-10-22_02-16-39_797802_110632 --temp-dir=/tmp/ray --webui=127.0.0.1:8265 --cluster-id=1ec9b8d127254e77c0d4d54c4fd5ec07f2699804d056e0a98d3dbf17 --worker-id=211ae18021ace1b756bb9606d8708cbc893c34d7ac3db8c507823ced --worker-launch-time-ms=1792606621214 --node-id=50d17d265feef5e35e8cd8c330af1e63e3052192b9ce6ef624f82f28 --runtime-env-hash=823245638`
+[33m(raylet)[0m [34mDEBUG[39m Spawned child 113933 in process group 104397
+[36m(TaskRunnerV1 pid=113419)[0m INFO:2026-10-22 02:17:01,663:create worker group dict_keys(['actor_rollout'])
+[33m(raylet)[0m [2mAudited [1m250 packages[0m [2min 1ms[0m[0m
+[36m(WorkerDict pid=114003)[0m /home/yulinlin/verl-v0.9.1/verl/workers/engine/__init__.py:32: UserWarning: torchtitan engine is not available: ModuleNotFoundError("No module named 'torchtitan'")
+[36m(WorkerDict pid=114003)[0m   warnings.warn(f"torchtitan engine is not available: {e!r}", stacklevel=1)
+[36m(WorkerDict pid=114003)[0m /home/yulinlin/verl-v0.9.1/verl/workers/engine/__init__.py:41: UserWarning: veomni engine is not available: ModuleNotFoundError("No module named 'veomni'")
+[36m(WorkerDict pid=114003)[0m   warnings.warn(f"veomni engine is not available: {e!r}", stacklevel=1)
+[36m(WorkerDict pid=114003)[0m /home/yulinlin/verl-v0.9.1/verl/workers/engine/__init__.py:50: UserWarning: automodel engine is not available: ModuleNotFoundError("No module named 'nemo_automodel'")
+[36m(WorkerDict pid=114003)[0m   warnings.warn(f"automodel engine is not available: {e!r}", stacklevel=1)
+[36m(WorkerDict pid=114003)[0m /home/yulinlin/verl-v0.9.1/verl/workers/engine/__init__.py:60: UserWarning: mindspeed engine is not available: ModuleNotFoundError("No module named 'megatron'")
+[36m(WorkerDict pid=114003)[0m   warnings.warn(f"mindspeed engine is not available: {e!r}", stacklevel=1)
+[36m(WorkerDict pid=114003)[0m /home/yulinlin/verl-v0.9.1/verl/workers/engine/__init__.py:69: UserWarning: megatron engine is not available: ModuleNotFoundError("No module named 'megatron'")
+[36m(WorkerDict pid=114003)[0m   warnings.warn(f"megatron engine is not available: {e!r}", stacklevel=1)
+[33m(raylet)[0m [34mDEBUG[39m uv 0.10.2
+[33m(raylet)[0m [34mDEBUG[39m Acquired shared lock for `/home/yulinlin/.cache/uv`
+[33m(raylet)[0m [34mDEBUG[39m Found project root: `/home/yulinlin/verl-v0.9.1`
+[33m(raylet)[0m [34mDEBUG[39m No workspace root found, using project root
+[33m(raylet)[0m [34mDEBUG[39m Discovered project `verl` at: /home/yulinlin/verl-v0.9.1
+[33m(raylet)[0m [34mDEBUG[39m Acquired exclusive lock for `/home/yulinlin/verl-v0.9.1`
+[33m(raylet)[0m [34mDEBUG[39m No Python version file found in workspace: /home/yulinlin/verl-v0.9.1
+[33m(raylet)[0m [34mDEBUG[39m Using Python request `>=3.10, <3.13` from `requires-python` metadata
+[33m(raylet)[0m [34mDEBUG[39m Checking for Python environment at: `.venv`
+[33m(raylet)[0m [34mDEBUG[39m The project environment's Python version satisfies the request: `Python >=3.10, <3.13`
+[33m(raylet)[0m [34mDEBUG[39m Released lock at `/home/yulinlin/verl-v0.9.1/.venv/.lock`[32m [repeated 3x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m Acquired exclusive lock for `.venv`
+[33m(raylet)[0m [34mDEBUG[39m Using request connect timeout of 10s and read timeout of 30s
+[33m(raylet)[0m [34mDEBUG[39m Computed cache info: Timestamp(SystemTime { tv_sec: 1792593433, tv_nsec: 5364363 }), None, None, {}, {"src": None}. Most recently modified: pyproject.toml
+[33m(raylet)[0m [34mDEBUG[39m Requirement already installed: transferqueue==0.1.9.dev0 (from git+https://github.com/Ascend/TransferQueue.git@434f8c476b4be24bc087e6e95070e64efcc739f9)[32m [repeated 5x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m Requirement already installed: pycparser==3.0[32m [repeated 493x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m Using Python 3.12.15 interpreter at: /home/yulinlin/verl-v0.9.1/.venv/bin/python3
+[33m(raylet)[0m [34mDEBUG[39m Running `python /home/yulinlin/verl-v0.9.1/.venv/lib/python3.12/site-packages/ray/_private/workers/default_worker.py --node-ip-address=192.168.0.117 --node-manager-port=35569 --object-store-name=/tmp/ray/session_2026-10-22_02-16-39_797802_110632/sockets/plasma_store --raylet-name=/tmp/ray/session_2026-10-22_02-16-39_797802_110632/sockets/raylet --redis-address=None --metrics-agent-port=0 --logging-rotate-bytes=536870912 --logging-rotate-backup-count=5 --runtime-env-agent-port=0 --gcs-address=192.168.0.117:37567 --session-name=session_2026-10-22_02-16-39_797802_110632 --temp-dir=/tmp/ray --webui=127.0.0.1:8265 --cluster-id=1ec9b8d127254e77c0d4d54c4fd5ec07f2699804d056e0a98d3dbf17 --worker-id=4a808d2005df8085402ea55a7f55b0655a397fc9476649629491d71a --worker-launch-time-ms=1792606621663 --node-id=50d17d265feef5e35e8cd8c330af1e63e3052192b9ce6ef624f82f28 --runtime-env-hash=-1130526596`
+[33m(raylet)[0m [34mDEBUG[39m Spawned child 114003 in process group 104397
+[36m(WorkerDict pid=114003)[0m 
+Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]
+[36m(WorkerDict pid=114003)[0m 
+Loading weights:   0%|          | 1/290 [00:00<00:44,  6.54it/s]
+Loading weights: 100%|██████████| 290/290 [00:00<00:00, 1694.23it/s]
+
+[36m(TaskRunnerV1 pid=113419)[0m                               'max_num_seqs': None,
+[36m(TaskRunnerV1 pid=113419)[0m                               'name': None,
+[36m(TaskRunnerV1 pid=113419)[0m                               'prompt_length': None,
+[36m(TaskRunnerV1 pid=113419)[0m                               'response_length': None,
+[36m(TaskRunnerV1 pid=113419)[0m                               'skip_tokenizer_init': None,
+[36m(TaskRunnerV1 pid=113419)[0m                               'tensor_model_parallel_size': None}},
+[36m(TaskRunnerV1 pid=113419)[0m  'sandbox_fusion': {'max_concurrent': None,
+[36m(TaskRunnerV1 pid=113419)[0m                     'memory_limit_mb': None,
+[36m(TaskRunnerV1 pid=113419)[0m                     'url': None},
+[36m(TaskRunnerV1 pid=113419)[0m  'skip': {'_target_': 'verl.utils.skip.SkipManagerConfig',
+[36m(TaskRunnerV1 pid=113419)[0m           'async_rollout': {'action': 'cache',
+[36m(TaskRunnerV1 pid=113419)[0m                             'dump_dir': '~/.verl/rollout_dump',
+[36m(TaskRunnerV1 pid=113419)[0m                             'enable': False,
+[36m(TaskRunnerV1 pid=113419)[0m                             'steps': []},
+[36m(TaskRunnerV1 pid=113419)[0m           'rollout': {'action': 'cache',
+[36m(TaskRunnerV1 pid=113419)[0m                       'dump_dir': '~/.verl/rollout_dump',
+[36m(TaskRunnerV1 pid=113419)[0m                       'enable': False,
+[36m(TaskRunnerV1 pid=113419)[0m                       'steps': []},
+[36m(TaskRunnerV1 pid=113419)[0m           'rollout_tq': {'action': 'cache',
+[36m(TaskRunnerV1 pid=113419)[0m                          'dump_dir': '~/.verl/rollout_dump',
+[36m(TaskRunnerV1 pid=113419)[0m                          'enable': False,
+[36m(TaskRunnerV1 pid=113419)[0m                          'steps': []}},
+[36m(TaskRunnerV1 pid=113419)[0m  'trainer': {'balance_batch': True,
+[36m(TaskRunnerV1 pid=113419)[0m              'checkpoint_callback_class': None,
+[36m(TaskRunnerV1 pid=113419)[0m              'critic_warmup': 0,
+[36m(TaskRunnerV1 pid=113419)[0m              'default_hdfs_dir': None,
+[36m(TaskRunnerV1 pid=113419)[0m              'default_local_dir': 'checkpoints/llm_algo_mechanism/rtx5070ti_verl_system_v8_async_release_reject',
+[36m(TaskRunnerV1 pid=113419)[0m              'del_local_ckpt_after_load': False,
+[36m(TaskRunnerV1 pid=113419)[0m              'device': 'cuda',
+[36m(TaskRunnerV1 pid=113419)[0m              'esi_redundant_time': 0,
+[36m(TaskRunnerV1 pid=113419)[0m              'experiment_name': 'rtx5070ti_verl_system_v8_async_release_reject',
+[36m(TaskRunnerV1 pid=113419)[0m              'log_val_generations': 0,
+[36m(TaskRunnerV1 pid=113419)[0m              'logger': 'console',
+[36m(TaskRunnerV1 pid=113419)[0m              'max_actor_ckpt_to_keep': None,
+[36m(TaskRunnerV1 pid=113419)[0m              'max_critic_ckpt_to_keep': None,
+[36m(TaskRunnerV1 pid=113419)[0m              'n_gpus_per_node': 1,
+[36m(TaskRunnerV1 pid=113419)[0m              'nnodes': 1,
+[36m(TaskRunnerV1 pid=113419)[0m              'project_name': 'llm_algo_mechanism',
+[36m(TaskRunnerV1 pid=113419)[0m              'ray_wait_register_center_timeout': 300,
+[36m(TaskRunnerV1 pid=113419)[0m              'resume_from_path': None,
+[36m(TaskRunnerV1 pid=113419)[0m              'resume_mode': 'disable',
+[36m(TaskRunnerV1 pid=113419)[0m              'rollout_data_dir': None,
+[36m(TaskRunnerV1 pid=113419)[0m              'save_freq': -1,
+[36m(TaskRunnerV1 pid=113419)[0m              'test_freq': -1,
+[36m(TaskRunnerV1 pid=113419)[0m              'total_epochs': 30,
+[36m(TaskRunnerV1 pid=113419)[0m              'total_training_steps': 3,
+[36m(TaskRunnerV1 pid=113419)[0m              'use_v1': True,
+[36m(TaskRunnerV1 pid=113419)[0m              'v1': {'colocate_async': {'num_warmup_batches': 1},
+[36m(TaskRunnerV1 pid=113419)[0m                     'sampler': {'custom_sampler': {'name': None, 'path': None},
+[36m(TaskRunnerV1 pid=113419)[0m                                 'max_off_policy_strategy': 'drop',
+[36m(TaskRunnerV1 pid=113419)[0m                                 'max_off_policy_threshold': 8,
+[36m(TaskRunnerV1 pid=113419)[0m                                 'sampler_kwargs': {},
+[36m(TaskRunnerV1 pid=113419)[0m                                 'sync_refill_failed_groups': False},
+[36m(TaskRunnerV1 pid=113419)[0m                     'separate_async': {'hybrid_rollout': {'_target_': 'verl.trainer.config.HybridRolloutSwitchConfig',
+[36m(TaskRunnerV1 pid=113419)[0m                                                           'adaptive_switch_threshold': True,
+[36m(TaskRunnerV1 pid=113419)[0m                                                           'enable_switch': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                           'switch_cost_window_size': 3,
+[36m(TaskRunnerV1 pid=113419)[0m                                                           'switch_threshold_ratio': 0.4,
+[36m(TaskRunnerV1 pid=113419)[0m                                                           'switch_threshold_release_steps': 2,
+[36m(TaskRunnerV1 pid=113419)[0m                                                           'switch_threshold_step_down': 0.03,
+[36m(TaskRunnerV1 pid=113419)[0m                                                           'switch_threshold_step_up': 0.05},
+[36m(TaskRunnerV1 pid=113419)[0m                                        'num_warmup_batches': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                        'parameter_sync_step': 4},
+[36m(TaskRunnerV1 pid=113419)[0m                     'sync': {},
+[36m(TaskRunnerV1 pid=113419)[0m                     'trainer_mode': 'sync'},
+[36m(TaskRunnerV1 pid=113419)[0m              'val_before_train': False,
+[36m(TaskRunnerV1 pid=113419)[0m              'val_only': False,
+[36m(TaskRunnerV1 pid=113419)[0m              'validation_data_dir': None},
+[36m(TaskRunnerV1 pid=113419)[0m  'transfer_queue': {'backend': {'MooncakeStore': {'auto_init': False,
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'device_name': '',
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'global_segment_size': 4294967296,
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'local_buffer_size': 1073741824,
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'local_hostname': 'localhost',
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'master_server_address': 'localhost:50124',
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'metadata_server': 'localhost:50123',
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'protocol': 'tcp'},
+[36m(TaskRunnerV1 pid=113419)[0m                                 'SimpleStorage': {'num_data_storage_units': 1,
+[36m(TaskRunnerV1 pid=113419)[0m                                                   'total_storage_size': 100000},
+[36m(TaskRunnerV1 pid=113419)[0m                                 'storage_backend': 'SimpleStorage'},
+[36m(TaskRunnerV1 pid=113419)[0m                     'enable': True,
+[36m(TaskRunnerV1 pid=113419)[0m                     'metrics': {'enabled': False, 'port': 0}}}
+[36m(TaskRunnerV1 pid=113419)[0m Using dataset class: RLHFDataset
+[36m(TaskRunnerV1 pid=113419)[0m dataset len: 7473
+[36m(TaskRunnerV1 pid=113419)[0m filter dataset len: 7473
+[36m(TaskRunnerV1 pid=113419)[0m Using dataset class: RLHFDataset
+[36m(TaskRunnerV1 pid=113419)[0m dataset len: 1319
+[36m(TaskRunnerV1 pid=113419)[0m filter dataset len: 1319
+[36m(TaskRunnerV1 pid=113419)[0m colocated worker base class <class 'verl.single_controller.base.worker.Worker'>
+[36m(WorkerDict pid=114003)[0m Skipping monkey patch for Qwen2ForCausalLM as use_fused_kernels is False or fused_kernels_backend is torch
+[36m(WorkerDict pid=114003)[0m PeftModelForCausalLM contains 502.83M parameters
+[36m(WorkerDict pid=114003)[0m Before FSDP, memory allocated (GB): 0.00, memory reserved (GB): 0.00, device memory used/total (GB): 0.87/11.47[36m(WorkerDict pid=114003)[0m /home/yulinlin/verl-v0.9.1/.venv/lib/python3.12/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py:478: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+[36m(WorkerDict pid=114003)[0m   _init_core_state(
+[36m(WorkerDict pid=114003)[0m /home/yulinlin/verl-v0.9.1/verl/workers/engine/fsdp/transformer_impl.py:482: FutureWarning: FSDP.state_dict_type() and FSDP.set_state_dict_type() are being deprecated. Please use APIs, get_state_dict() and set_state_dict(), which can support different parallelisms, FSDP1, FSDP2, DDP. API doc: https://pytorch.org/docs/stable/distributed.checkpoint.html#torch.distributed.checkpoint.state_dict.get_state_dict .Tutorial: https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html .
+[36m(WorkerDict pid=114003)[0m   FSDP.set_state_dict_type(
+[36m(TaskRunnerV1 pid=113419)[0m INFO:2026-10-22 02:17:14,909:actor and ref model engine initialized
+[36m(TaskRunnerV1 pid=113419)[0m INFO:2026-10-22 02:17:14,925:reward loop manager initialized
+[33m(raylet)[0m [34mDEBUG[39m uv 0.10.2
+[33m(raylet)[0m [34mDEBUG[39m Acquired shared lock for `/home/yulinlin/.cache/uv`
+[33m(raylet)[0m [34mDEBUG[39m Found project root: `/home/yulinlin/verl-v0.9.1`
+[33m(raylet)[0m [34mDEBUG[39m No workspace root found, using project root
+[33m(raylet)[0m [34mDEBUG[39m Discovered project `verl` at: /home/yulinlin/verl-v0.9.1
+[33m(raylet)[0m [34mDEBUG[39m Acquired exclusive lock for `/home/yulinlin/verl-v0.9.1`
+[33m(raylet)[0m [34mDEBUG[39m No Python version file found in workspace: /home/yulinlin/verl-v0.9.1
+[33m(raylet)[0m [34mDEBUG[39m Using Python request `>=3.10, <3.13` from `requires-python` metadata
+[33m(raylet)[0m [34mDEBUG[39m Checking for Python environment at: `.venv`
+[33m(raylet)[0m [34mDEBUG[39m The project environment's Python version satisfies the request: `Python >=3.10, <3.13`
+[33m(raylet)[0m [34mDEBUG[39m Acquired exclusive lock for `.venv`
+[33m(raylet)[0m [34mDEBUG[39m Using request connect timeout of 10s and read timeout of 30s
+[33m(raylet)[0m [34mDEBUG[39m Computed cache info: Timestamp(SystemTime { tv_sec: 1792593433, tv_nsec: 5364363 }), None, None, {}, {"src": None}. Most recently modified: pyproject.toml
+[33m(raylet)[0m [2mAudited [1m250 packages[0m [2min 1ms[0m[0m
+[33m(raylet)[0m [34mDEBUG[39m Using Python 3.12.15 interpreter at: /home/yulinlin/verl-v0.9.1/.venv/bin/python3
+[33m(raylet)[0m [34mDEBUG[39m Running `python /home/yulinlin/verl-v0.9.1/.venv/lib/python3.12/site-packages/ray/_private/workers/default_worker.py --node-ip-address=192.168.0.117 --node-manager-port=35569 --object-store-name=/tmp/ray/session_2026-10-22_02-16-39_797802_110632/sockets/plasma_store --raylet-name=/tmp/ray/session_2026-10-22_02-16-39_797802_110632/sockets/raylet --redis-address=None --metrics-agent-port=0 --logging-rotate-bytes=536870912 --logging-rotate-backup-count=5 --runtime-env-agent-port=0 --gcs-address=192.168.0.117:37567 --session-name=session_2026-10-22_02-16-39_797802_110632 --temp-dir=/tmp/ray --webui=127.0.0.1:8265 --cluster-id=1ec9b8d127254e77c0d4d54c4fd5ec07f2699804d056e0a98d3dbf17 --worker-id=d5359aebbac96454951b93fc13b81e40c417132a37a5544ddcc06e20 --worker-launch-time-ms=1792606634927 --node-id=50d17d265feef5e35e8cd8c330af1e63e3052192b9ce6ef624f82f28 --runtime-env-hash=823245638`
+[33m(raylet)[0m [34mDEBUG[39m Spawned child 114224 in process group 104397
+[36m(TaskRunnerV1 pid=113419)[0m W1022 02:17:15.440000 113419 .venv/lib/python3.12/site-packages/torch/utils/cpp_extension.py:140] No CUDA runtime is found, using CUDA_HOME='/usr/local/cuda'
+[33m(raylet)[0m [2mAudited [1m250 packages[0m [2min 1ms[0m[0m
+[36m(vLLMHttpServer pid=114295)[0m (Worker pid=114575) WARNING:2026-10-22 02:17:41,708:Failed to get device capability: SM 12.x requires CUDA >= 12.9.
+[36m(vLLMHttpServer pid=114295)[0m (Worker pid=114575) WARNING:2026-10-22 02:17:41,709:Failed to get device capability: SM 12.x requires CUDA >= 12.9.
+[33m(raylet)[0m [34mDEBUG[39m Released lock at `/home/yulinlin/verl-v0.9.1/.venv/.lock`[32m [repeated 4x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m Requirement already installed: transferqueue==0.1.9.dev0 (from git+https://github.com/Ascend/TransferQueue.git@434f8c476b4be24bc087e6e95070e64efcc739f9)[32m [repeated 6x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m Requirement already installed: pycparser==3.0[32m [repeated 494x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m uv 0.10.2
+[33m(raylet)[0m [34mDEBUG[39m Acquired shared lock for `/home/yulinlin/.cache/uv`
+[33m(raylet)[0m [34mDEBUG[39m Found project root: `/home/yulinlin/verl-v0.9.1`
+[33m(raylet)[0m [34mDEBUG[39m No workspace root found, using project root
+[33m(raylet)[0m [34mDEBUG[39m Discovered project `verl` at: /home/yulinlin/verl-v0.9.1
+[33m(raylet)[0m [34mDEBUG[39m Acquired exclusive lock for `/home/yulinlin/verl-v0.9.1`
+[33m(raylet)[0m [34mDEBUG[39m No Python version file found in workspace: /home/yulinlin/verl-v0.9.1
+[33m(raylet)[0m [34mDEBUG[39m Using Python request `>=3.10, <3.13` from `requires-python` metadata
+[33m(raylet)[0m [34mDEBUG[39m Checking for Python environment at: `.venv`
+[33m(raylet)[0m [34mDEBUG[39m The project environment's Python version satisfies the request: `Python >=3.10, <3.13`
+[33m(raylet)[0m [34mDEBUG[39m Acquired exclusive lock for `.venv`
+[33m(raylet)[0m [34mDEBUG[39m Using request connect timeout of 10s and read timeout of 30s
+[33m(raylet)[0m [34mDEBUG[39m Computed cache info: Timestamp(SystemTime { tv_sec: 1792593433, tv_nsec: 5364363 }), None, None, {}, {"src": None}. Most recently modified: pyproject.toml
+[33m(raylet)[0m [34mDEBUG[39m Using Python 3.12.15 interpreter at: /home/yulinlin/verl-v0.9.1/.venv/bin/python3
+[33m(raylet)[0m [34mDEBUG[39m Running `python /home/yulinlin/verl-v0.9.1/.venv/lib/python3.12/site-packages/ray/_private/workers/default_worker.py --node-ip-address=192.168.0.117 --node-manager-port=35569 --object-store-name=/tmp/ray/session_2026-10-22_02-16-39_797802_110632/sockets/plasma_store --raylet-name=/tmp/ray/session_2026-10-22_02-16-39_797802_110632/sockets/raylet --redis-address=None --metrics-agent-port=0 --logging-rotate-bytes=536870912 --logging-rotate-backup-count=5 --runtime-env-agent-port=0 --gcs-address=192.168.0.117:37567 --session-name=session_2026-10-22_02-16-39_797802_110632 --temp-dir=/tmp/ray --webui=127.0.0.1:8265 --cluster-id=1ec9b8d127254e77c0d4d54c4fd5ec07f2699804d056e0a98d3dbf17 --worker-id=6d4fd410f332a77847c1591e4d2865335c91e4af12f3477e41a81170 --worker-launch-time-ms=1792606636076 --node-id=50d17d265feef5e35e8cd8c330af1e63e3052192b9ce6ef624f82f28 --runtime-env-hash=-1151144431`
+[33m(raylet)[0m [34mDEBUG[39m Spawned child 114295 in process group 104397
+[36m(vLLMHttpServer pid=114295)[0m (Worker pid=114575) 
+Loading safetensors checkpoint shards:   0% Completed | 0/1 [00:00<?, ?it/s]
+[36m(vLLMHttpServer pid=114295)[0m (Worker pid=114575) 
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  7.83it/s]
+[36m(vLLMHttpServer pid=114295)[0m (Worker pid=114575) 
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  7.82it/s]
+[36m(vLLMHttpServer pid=114295)[0m (Worker pid=114575) 
+[36m(vLLMHttpServer pid=114295)[0m (Worker pid=114575) 2026-10-22 02:17:45,311 - INFO - autotuner.py:622 - flashinfer.jit: [Autotuner]: Autotuning process starts ...
+[36m(vLLMHttpServer pid=114295)[0m (Worker pid=114575) 2026-10-22 02:17:45,324 - INFO - autotuner.py:641 - flashinfer.jit: [Autotuner]: Autotuning process ends
+[36m(TaskRunnerV1 pid=113419)[0m INFO:2026-10-22 02:17:57,702:checkpoint engine manager initialized
+[33m(raylet)[0m [34mDEBUG[39m uv 0.10.2
+[33m(raylet)[0m [34mDEBUG[39m Acquired shared lock for `/home/yulinlin/.cache/uv`
+[33m(raylet)[0m [34mDEBUG[39m Found project root: `/home/yulinlin/verl-v0.9.1`
+[33m(raylet)[0m [34mDEBUG[39m No workspace root found, using project root
+[33m(raylet)[0m [34mDEBUG[39m Discovered project `verl` at: /home/yulinlin/verl-v0.9.1
+[33m(raylet)[0m [34mDEBUG[39m Acquired exclusive lock for `/home/yulinlin/verl-v0.9.1`
+[33m(raylet)[0m [34mDEBUG[39m No Python version file found in workspace: /home/yulinlin/verl-v0.9.1
+[33m(raylet)[0m [34mDEBUG[39m Using Python request `>=3.10, <3.13` from `requires-python` metadata
+[33m(raylet)[0m [34mDEBUG[39m Checking for Python environment at: `.venv`
+[33m(raylet)[0m [34mDEBUG[39m The project environment's Python version satisfies the request: `Python >=3.10, <3.13`
+[33m(raylet)[0m [34mDEBUG[39m Released lock at `/tmp/uv-3443516324fc4ee1.lock`
+[33m(raylet)[0m [34mDEBUG[39m Acquired exclusive lock for `.venv`
+[33m(raylet)[0m [34mDEBUG[39m Using request connect timeout of 10s and read timeout of 30s
+[33m(raylet)[0m [34mDEBUG[39m Computed cache info: Timestamp(SystemTime { tv_sec: 1792593433, tv_nsec: 5364363 }), None, None, {}, {"src": None}. Most recently modified: pyproject.toml
+[33m(raylet)[0m [34mDEBUG[39m Requirement already installed: verl==0.9.1 (from file:///home/yulinlin/verl-v0.9.1)
+[33m(raylet)[0m [34mDEBUG[39m Requirement already installed: accelerate==1.14.0
+[33m(raylet)[0m [2mAudited [1m250 packages[0m [2min 1ms[0m[0m
+[33m(raylet)[0m [34mDEBUG[39m Using Python 3.12.15 interpreter at: /home/yulinlin/verl-v0.9.1/.venv/bin/python3
+[33m(raylet)[0m [34mDEBUG[39m Running `python /home/yulinlin/verl-v0.9.1/.venv/lib/python3.12/site-packages/ray/_private/workers/default_worker.py --node-ip-address=192.168.0.117 --node-manager-port=35569 --object-store-name=/tmp/ray/session_2026-10-22_02-16-39_797802_110632/sockets/plasma_store --raylet-name=/tmp/ray/session_2026-10-22_02-16-39_797802_110632/sockets/raylet --redis-address=None --metrics-agent-port=0 --logging-rotate-bytes=536870912 --logging-rotate-backup-count=5 --runtime-env-agent-port=0 --gcs-address=192.168.0.117:37567 --session-name=session_2026-10-22_02-16-39_797802_110632 --temp-dir=/tmp/ray --webui=127.0.0.1:8265 --cluster-id=1ec9b8d127254e77c0d4d54c4fd5ec07f2699804d056e0a98d3dbf17 --worker-id=03eab7a984f958738ade0cd78ea5f13ae8b546ed344ded74279c6df3 --worker-launch-time-ms=1792606677704 --node-id=50d17d265feef5e35e8cd8c330af1e63e3052192b9ce6ef624f82f28 --runtime-env-hash=823245638`
+[33m(raylet)[0m [34mDEBUG[39m Spawned child 114879 in process group 104397
+[36m(TaskRunnerV1 pid=113419)[0m INFO:2026-10-22 02:17:58,065:all initialize finished, ready to fit
+[36m(WorkerDict pid=114003)[0m /home/yulinlin/verl-v0.9.1/verl/plugin/platform/platform_cuda.py:99: FutureWarning: torch.cuda._set_allocator_settings is deprecated. Use torch._C._accelerator_setAllocatorSettings instead.
+[36m(WorkerDict pid=114003)[0m   torch.cuda.memory._set_allocator_settings(settings)
+[36m(WorkerDict pid=114003)[0m /home/yulinlin/verl-v0.9.1/.venv/lib/python3.12/site-packages/torch/utils/_contextlib.py:124: UserWarning: When using ``NO_SHARD`` for ``ShardingStrategy``, full_state_dict will be returned.
+[36m(WorkerDict pid=114003)[0m   return func(*args, **kwargs)
+[36m(WorkerDict pid=114003)[0m /home/yulinlin/verl-v0.9.1/verl/plugin/platform/platform_cuda.py:99: FutureWarning: torch.cuda._set_allocator_settings is deprecated. Use torch._C._accelerator_setAllocatorSettings instead.
+[36m(WorkerDict pid=114003)[0m   torch.cuda.memory._set_allocator_settings(settings)
+[36m(TaskRunnerV1 pid=113419)[0m 
+Training Progress:   0%|          | 0/3 [00:00<?, ?it/s]
+[33m(raylet)[0m [2mAudited [1m250 packages[0m [2min 1ms[0m[0m
+[36m(GlobalRequestLoadBalancer pid=114879)[0m W1022 02:18:01.198000 114879 .venv/lib/python3.12/site-packages/torch/utils/cpp_extension.py:140] No CUDA runtime is found, using CUDA_HOME='/usr/local/cuda'
+[36m(pid=114969)[0m WARNING:2026-10-22 02:18:03,256:Platform 'nvidia' (PlatformCUDA) is registered but not available. This may be due to this ray actor being a CPU-only actor.
+[36m(pid=114969)[0m /home/yulinlin/verl-v0.9.1/verl/workers/engine/__init__.py:32: UserWarning: torchtitan engine is not available: ModuleNotFoundError("No module named 'torchtitan'")
+[36m(pid=114969)[0m   warnings.warn(f"torchtitan engine is not available: {e!r}", stacklevel=1)
+[36m(pid=114969)[0m /home/yulinlin/verl-v0.9.1/verl/workers/engine/__init__.py:41: UserWarning: veomni engine is not available: ModuleNotFoundError("No module named 'veomni'")
+[36m(pid=114969)[0m   warnings.warn(f"veomni engine is not available: {e!r}", stacklevel=1)
+[36m(pid=114969)[0m /home/yulinlin/verl-v0.9.1/verl/workers/engine/__init__.py:50: UserWarning: automodel engine is not available: ModuleNotFoundError("No module named 'nemo_automodel'")
+[36m(pid=114969)[0m   warnings.warn(f"automodel engine is not available: {e!r}", stacklevel=1)
+[36m(pid=114969)[0m /home/yulinlin/verl-v0.9.1/verl/workers/engine/__init__.py:60: UserWarning: mindspeed engine is not available: ModuleNotFoundError("No module named 'megatron'")
+[36m(pid=114969)[0m   warnings.warn(f"mindspeed engine is not available: {e!r}", stacklevel=1)
+[36m(pid=114969)[0m /home/yulinlin/verl-v0.9.1/verl/workers/engine/__init__.py:69: UserWarning: megatron engine is not available: ModuleNotFoundError("No module named 'megatron'")
+[36m(pid=114969)[0m   warnings.warn(f"megatron engine is not available: {e!r}", stacklevel=1)
+[33m(raylet)[0m [34mDEBUG[39m uv 0.10.2
+[33m(raylet)[0m [34mDEBUG[39m Acquired shared lock for `/home/yulinlin/.cache/uv`
+[33m(raylet)[0m [34mDEBUG[39m Found project root: `/home/yulinlin/verl-v0.9.1`
+[33m(raylet)[0m [34mDEBUG[39m No workspace root found, using project root
+[33m(raylet)[0m [34mDEBUG[39m Discovered project `verl` at: /home/yulinlin/verl-v0.9.1
+[33m(raylet)[0m [34mDEBUG[39m Acquired exclusive lock for `/home/yulinlin/verl-v0.9.1`
+[33m(raylet)[0m [34mDEBUG[39m No Python version file found in workspace: /home/yulinlin/verl-v0.9.1
+[33m(raylet)[0m [34mDEBUG[39m Using Python request `>=3.10, <3.13` from `requires-python` metadata
+[33m(raylet)[0m [34mDEBUG[39m Checking for Python environment at: `.venv`
+[33m(raylet)[0m [34mDEBUG[39m The project environment's Python version satisfies the request: `Python >=3.10, <3.13`
+[33m(raylet)[0m [34mDEBUG[39m Released lock at `/home/yulinlin/verl-v0.9.1/.venv/.lock`[32m [repeated 3x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m Acquired exclusive lock for `.venv`
+[33m(raylet)[0m [34mDEBUG[39m Using request connect timeout of 10s and read timeout of 30s
+[33m(raylet)[0m [34mDEBUG[39m Computed cache info: Timestamp(SystemTime { tv_sec: 1792593433, tv_nsec: 5364363 }), None, None, {}, {"src": None}. Most recently modified: pyproject.toml
+[33m(raylet)[0m [34mDEBUG[39m Requirement already installed: transferqueue==0.1.9.dev0 (from git+https://github.com/Ascend/TransferQueue.git@434f8c476b4be24bc087e6e95070e64efcc739f9)[32m [repeated 5x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m Requirement already installed: pycparser==3.0[32m [repeated 493x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m Using Python 3.12.15 interpreter at: /home/yulinlin/verl-v0.9.1/.venv/bin/python3
+[33m(raylet)[0m [34mDEBUG[39m Running `python /home/yulinlin/verl-v0.9.1/.venv/lib/python3.12/site-packages/ray/_private/workers/default_worker.py --node-ip-address=192.168.0.117 --node-manager-port=35569 --object-store-name=/tmp/ray/session_2026-10-22_02-16-39_797802_110632/sockets/plasma_store --raylet-name=/tmp/ray/session_2026-10-22_02-16-39_797802_110632/sockets/raylet --redis-address=None --metrics-agent-port=0 --logging-rotate-bytes=536870912 --logging-rotate-backup-count=5 --runtime-env-agent-port=0 --gcs-address=192.168.0.117:37567 --session-name=session_2026-10-22_02-16-39_797802_110632 --temp-dir=/tmp/ray --webui=127.0.0.1:8265 --cluster-id=1ec9b8d127254e77c0d4d54c4fd5ec07f2699804d056e0a98d3dbf17 --worker-id=7a739cd65eeb57771db743af0a218f843fb6024c9077a13cafb2bd45 --worker-launch-time-ms=1792606679857 --node-id=50d17d265feef5e35e8cd8c330af1e63e3052192b9ce6ef624f82f28 --runtime-env-hash=823245638`
+[33m(raylet)[0m [34mDEBUG[39m Spawned child 114969 in process group 104397
+[36m(AgentLoopWorkerTQ pid=114969)[0m Using blocking ray.get inside async actor. This blocks the event loop. Please use `await` on object ref with asyncio.gather if you want to yield execution to the event loop instead.
+[36m(AgentLoopWorkerTQ pid=114969)[0m W1022 02:18:10.374000 114969 .venv/lib/python3.12/site-packages/torch/utils/cpp_extension.py:140] No CUDA runtime is found, using CUDA_HOME='/usr/local/cuda'
+[36m(RewardLoopWorker pid=114224)[0m WARNING:2026-10-22 02:18:15,714:Platform 'nvidia' (PlatformCUDA) is registered but not available. This may be due to this ray actor being a CPU-only actor.
+[36m(WorkerDict pid=114003)[0m Using blocking ray.get inside async actor. This blocks the event loop. Please use `await` on object ref with asyncio.gather if you want to yield execution to the event loop instead.
+[36m(WorkerDict pid=114003)[0m [rank0]:W1022 02:18:16.439000 114003 .venv/lib/python3.12/site-packages/torch/fx/_symbolic_trace.py:53] is_fx_tracing will return true for both fx.symbolic_trace and torch.export. Please use is_fx_tracing_symbolic_tracing() for specifically fx.symbolic_trace or torch.compiler.is_compiling() for specifically torch.export/compile.
+
+[36m(WorkerDict pid=114003)[0m After FSDP, memory allocated (GB): 1.87, memory reserved (GB): 2.48, device memory used/total (GB): 3.91/11.47
+[36m(WorkerDict pid=114003)[0m Total steps: 3, num_warmup_steps: 0
+[36m(vLLMHttpServer pid=114295)[0m ['serve',
+[36m(vLLMHttpServer pid=114295)[0m  'Qwen/Qwen2.5-0.5B-Instruct',
+[36m(vLLMHttpServer pid=114295)[0m  '--dtype',
+[36m(vLLMHttpServer pid=114295)[0m  'bfloat16',
+[36m(vLLMHttpServer pid=114295)[0m  '--load_format',
+[36m(vLLMHttpServer pid=114295)[0m  'safetensors',
+[36m(vLLMHttpServer pid=114295)[0m  '--distributed_executor_backend',
+[36m(vLLMHttpServer pid=114295)[0m  'mp',
+[36m(vLLMHttpServer pid=114295)[0m  '--worker_extension_cls',
+[36m(vLLMHttpServer pid=114295)[0m  'verl.workers.rollout.vllm_rollout.utils.vLLMColocateWorkerExtension',
+[36m(vLLMHttpServer pid=114295)[0m  '--max_model_len',
+[36m(vLLMHttpServer pid=114295)[0m  '512',
+[36m(vLLMHttpServer pid=114295)[0m  '--max_num_seqs',
+[36m(vLLMHttpServer pid=114295)[0m  '16',
+[36m(vLLMHttpServer pid=114295)[0m  '--enable_chunked_prefill',
+[36m(vLLMHttpServer pid=114295)[0m  '--max_num_batched_tokens',
+[36m(vLLMHttpServer pid=114295)[0m  '512',
+[36m(vLLMHttpServer pid=114295)[0m  '--enable_prefix_caching',
+[36m(vLLMHttpServer pid=114295)[0m  '--enable_sleep_mode',
+[36m(vLLMHttpServer pid=114295)[0m  '--logprobs_mode',
+[36m(vLLMHttpServer pid=114295)[0m  'processed_logprobs',
+[36m(vLLMHttpServer pid=114295)[0m  '--enforce_eager',
+[36m(vLLMHttpServer pid=114295)[0m  '--gpu_memory_utilization',
+[36m(vLLMHttpServer pid=114295)[0m  '0.35',
+[36m(vLLMHttpServer pid=114295)[0m  '--disable_log_stats',
+[36m(vLLMHttpServer pid=114295)[0m  '--tensor_parallel_size',
+[36m(vLLMHttpServer pid=114295)[0m  '1',
+[36m(vLLMHttpServer pid=114295)[0m  '--seed',
+[36m(vLLMHttpServer pid=114295)[0m  '42',
+[36m(vLLMHttpServer pid=114295)[0m  '--override_generation_config',
+[36m(vLLMHttpServer pid=114295)[0m  '{"temperature": 1.0, "top_k": -1, "top_p": 1, "repetition_penalty": 1.0, '
+[36m(vLLMHttpServer pid=114295)[0m  '"max_new_tokens": 128}',
+[36m(vLLMHttpServer pid=114295)[0m  '--hf_overrides',
+[36m(vLLMHttpServer pid=114295)[0m  '{}',
+[36m(vLLMHttpServer pid=114295)[0m  '--scheduling_policy',
+[36m(vLLMHttpServer pid=114295)[0m  'fcfs',
+[36m(vLLMHttpServer pid=114295)[0m  '--compilation_config',
+[36m(vLLMHttpServer pid=114295)[0m  '{"cudagraph_mode": "FULL_AND_PIECEWISE"}',
+[36m(vLLMHttpServer pid=114295)[0m  '--enable_lora',
+[36m(vLLMHttpServer pid=114295)[0m  '--max_loras',
+[36m(vLLMHttpServer pid=114295)[0m  '1',
+[36m(vLLMHttpServer pid=114295)[0m  '--max_lora_rank',
+[36m(vLLMHttpServer pid=114295)[0m  '16']
+[36m(vLLMHttpServer pid=114295)[0m WARNING 10-22 02:17:29 [vllm.py:1062] Enforce eager set, disabling torch.compile and CUDAGraphs. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none
+[36m(vLLMHttpServer pid=114295)[0m WARNING 10-22 02:17:29 [vllm.py:1110] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+[36m(vLLMHttpServer pid=114295)[0m WARNING 10-22 02:17:33 [system_utils.py:157] We must use the `spawn` multiprocessing start method. Overriding VLLM_WORKER_MULTIPROC_METHOD to 'spawn'. See https://docs.vllm.ai/en/latest/usage/troubleshooting.html#python-multiprocessing for more information. Reasons: In a Ray actor and can only be spawned; CUDA is initialized
+[36m(vLLMHttpServer pid=114295)[0m (EngineCore pid=114542) WARNING 10-22 02:17:49 [vllm.py:1062] Enforce eager set, disabling torch.compile and CUDAGraphs. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none
+[36m(vLLMHttpServer pid=114295)[0m (EngineCore pid=114542) WARNING 10-22 02:17:49 [vllm.py:1110] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+[36m(vLLMHttpServer pid=114295)[0m WARNING 10-22 02:17:49 [api_router.py:30] LoRA dynamic loading & unloading is enabled in the API server. This should ONLY be used for local development!
+[36m(vLLMHttpServer pid=114295)[0m WARNING 10-22 02:17:50 [model.py:1477] Default vLLM sampling parameters have been overridden by the model's `generation_config.json`: `{'repetition_penalty': 1.0, 'temperature': 1.0, 'top_k': -1, 'top_p': 1, 'max_tokens': 128}`. If this is not intended, please relaunch vLLM instance with `--generation-config vllm`.
+[36m(TaskRunnerV1 pid=113419)[0m LLMServerManager: ['192.168.0.117:36719']
+[36m(AgentLoopWorkerTQ pid=114969)[0m Using dataset class: RLHFDataset
+[36m(vLLMHttpServer pid=114295)[0m WARNING 10-22 02:18:10 [input_processor.py:157] vLLM has deprecated support for supporting different tokenizers for different LoRAs. By default, vLLM uses base model's tokenizer. If you are using a LoRA with its own tokenizer, consider specifying `--tokenizer [lora_path]` to use the LoRA tokenizer.
+[36m(vLLMHttpServer pid=114295)[0m WARNING 10-22 02:18:10 [input_processor.py:282] Passing raw prompts to InputProcessor is deprecated and will be removed in v0.18. You should instead pass the outputs of Renderer.render_cmpl() or Renderer.render_chat().
+[36m(vLLMHttpServer pid=114295)[0m (Worker pid=114575) WARNING 10-22 02:18:10 [jit_monitor.py:106] Triton kernel JIT compilation during inference: _compute_slot_mapping_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+[36m(vLLMHttpServer pid=114295)[0m (Worker pid=114575) WARNING 10-22 02:18:10 [utils.py:279] Using default LoRA kernel configs
+[36m(vLLMHttpServer pid=114295)[0m (Worker pid=114575) WARNING 10-22 02:18:11 [jit_monitor.py:106] Triton kernel JIT compilation during inference: _lora_shrink_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+[36m(vLLMHttpServer pid=114295)[0m (Worker pid=114575) WARNING 10-22 02:18:11 [jit_monitor.py:106] Triton kernel JIT compilation during inference: _lora_expand_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+[36m(TaskRunnerV1 pid=113419)[0m step:1 - global_seqlen/min:3736.0 - global_seqlen/max:3736.0 - global_seqlen/minmax_diff:0.0 - global_seqlen/balanced_min:3736.0 - global_seqlen/balanced_max:3736.0 - global_seqlen/mean:3736.0 - actor/entropy:0.4103005826473236 - training/rollout_probs_diff_valid:1.0 - training/rollout_probs_diff_max:0.07573455572128296 - training/rollout_probs_diff_mean:0.005130144767463207 - training/rollout_probs_diff_std:0.01005276758223772 - training/rollout_actor_probs_pearson_corr:0.9992201328277588 - rollout_corr/rollout_is_mean:1.0009480714797974 - rollout_corr/rollout_is_ratio_fraction_high:0.0 - rollout_corr/rollout_is_ratio_fraction_low:0.0 - rollout_corr/rollout_is_max:1.247545838356018 - rollout_corr/rollout_is_min:0.771001398563385 - rollout_corr/rollout_is_std:0.03244958817958832 - rollout_corr/rollout_is_eff_sample_size:0.9989500352786718 - rollout_corr/rollout_is_seq_mean:1.0009480714797974 - rollout_corr/rollout_is_seq_std:0.003733364399522543 - rollout_corr/rollout_is_seq_max:1.0093591213226318 - rollout_corr/rollout_is_seq_min:0.9952768683433533 - rollout_corr/rollout_is_seq_max_deviation:0.009359121322631836 - rollout_corr/rollout_is_seq_fraction_high:0.0 - rollout_corr/rollout_is_seq_fraction_low:0.0 - rollout_corr/rollout_rs_token_k1_mean:-0.00042412697803229094 - rollout_corr/rollout_rs_token_k1_max:0.26006507873535156 - rollout_corr/rollout_rs_token_k1_min:-0.22117829322814941 - rollout_corr/rollout_rs_token_k1_fraction_high:0.0439453125 - rollout_corr/rollout_rs_token_k1_fraction_low:0.0458984375 - rollout_corr/rollout_rs_token_k1_std:0.018607333302497864 - rollout_corr/rollout_rs_token_k1_seq_mean:-0.0004241268616169691 - rollout_corr/rollout_rs_token_k1_seq_std:0.0037701092660427094 - rollout_corr/rollout_rs_token_k1_seq_max:0.00574537692591548 - rollout_corr/rollout_rs_token_k1_seq_min:-0.008689182810485363 - rollout_corr/rollout_rs_token_k1_seq_max_deviation:0.008689182810485363 - rollout_corr/rollout_rs_token_k1_seq_fraction_high:0.0 - rollout_corr/rollout_rs_token_k1_seq_fraction_low:0.0 - rollout_corr/rollout_rs_token_k1_masked_fraction:0.08984375 - rollout_corr/rollout_rs_token_k1_seq_masked_fraction:1.0 - rollout_corr/rollout_rs_masked_fraction:0.08984375 - rollout_corr/rollout_rs_seq_masked_fraction:1.0 - rollout_corr/training_ppl:1.5265870094299316 - rollout_corr/training_log_ppl:0.4110116958618164 - rollout_corr/kl:-0.00042412697803229094 - rollout_corr/k3_kl:0.0005239726742729545 - rollout_corr/rollout_ppl:1.526770830154419 - rollout_corr/rollout_log_ppl:0.4114358425140381 - rollout_corr/log_ppl_diff:-0.0004241345450282097 - rollout_corr/log_ppl_abs_diff:0.0028973305597901344 - rollout_corr/log_ppl_diff_max:0.005745351314544678 - rollout_corr/log_ppl_diff_min:-0.008689165115356445 - rollout_corr/ppl_ratio:0.9995825886726379 - rollout_corr/chi2_token:0.0029500722885131836 - rollout_corr/chi2_seq:0.788564920425415 - actor/pg_clipfrac:0.0 - actor/ppo_kl:0.0 - actor/pg_clipfrac_lower:0.0 - actor/pg_loss:0.0 - actor/kl_loss:0.0 - actor/kl_coef:0.001 - actor/loss:0.0 - actor/grad_norm:0.0 - actor/lr:1e-06 - actor/perf/max_memory_allocated_gb:4.000645160675049 - actor/perf/max_memory_reserved_gb:4.087890625 - actor/perf/cpu_memory_used_gb:23.973953247070312 - perf/mfu/actor:0.0 - training/global_step:1 - training/epoch:0 - critic/score/mean:0.0 - critic/score/max:0.0 - critic/score/min:0.0 - critic/rewards/mean:0.0 - critic/rewards/max:0.0 - critic/rewards/min:0.0 - critic/advantages/mean:0.0 - critic/advantages/max:0.0 - critic/advantages/min:0.0 - critic/returns/mean:0.0 - critic/returns/max:0.0 - critic/returns/min:0.0 - response_length/mean:128.0 - response_length/max:128.0 - response_length/min:128.0 - response_length/clip_ratio:1.0 - response_length_non_aborted/mean:128.0 - response_length_non_aborted/max:128.0 - response_length_non_aborted/min:128.0 - response_length_non_aborted/clip_ratio:1.0 - response/aborted_ratio:0.0 - prompt_length/mean:105.5 - prompt_length/max:124.0 - prompt_length/min:93.0 - prompt_length/clip_ratio:0.25 - num_turns/min:np.int32(2) - num_turns/max:np.int32(2) - num_turns/mean:np.float64(2.0) - timing_s/gen:6.109082931001467 - timing_s/old_log_prob:1.739983283001493 - timing_s/ref:0.7825562520010862 - timing_s/adv:0.01356648200089694 - timing_s/update_actor:5.150744091999513 - timing_s/update_weights:1.5926566790003562 - timing_s/step:25.354865854998934 - timing_per_token_ms/gen:2.98295064990306 - timing_per_token_ms/adv:0.0036312853321458618 - timing_per_token_ms/ref:0.20946366488251772 - timing_per_token_ms/update_actor:1.3786788254816684 - perf/total_num_tokens:3736 - perf/time_per_step:25.354865854998934 - perf/throughput:147.34844275515718 - training/num_turns/mean:np.float64(2.0) - training/num_turns/max:np.int64(2) - training/num_turns/min:np.int64(2) - training/off_policy/trajectory_spans/mean:np.float64(1.0) - training/off_policy/trajectory_spans/max:np.int64(1) - training/off_policy/trajectory_spans/min:np.int64(1) - training/off_policy/trajectory_staleness/mean:np.float64(0.0) - training/off_policy/trajectory_staleness/max:np.int64(0) - training/off_policy/trajectory_staleness/min:np.int64(0) - training/off_policy/trajectory_staleness_worst/mean:np.float64(0.0) - training/off_policy/trajectory_staleness_worst/max:np.int64(0) - training/off_policy/trajectory_staleness_worst/min:np.int64(0)[36m(TaskRunnerV1 pid=113419)[0m 
+Training Progress:  33%|███▎      | 1/3 [00:25<00:50, 25.37s/it]
+[36m(TaskRunnerV1 pid=113419)[0m 
+Training Progress:  67%|██████▋   | 2/3 [00:36<00:16, 16.92s/it]
+
+[36m(TaskRunnerV1 pid=113419)[0m step:2 - global_seqlen/min:3716.0 - global_seqlen/max:3716.0 - global_seqlen/minmax_diff:0.0 - global_seqlen/balanced_min:3716.0 - global_seqlen/balanced_max:3716.0 - global_seqlen/mean:3716.0 - actor/entropy:0.37711936235427856 - training/rollout_probs_diff_valid:1.0 - training/rollout_probs_diff_max:0.06215229630470276 - training/rollout_probs_diff_mean:0.004773030988872051 - training/rollout_probs_diff_std:0.009338084608316422 - training/rollout_actor_probs_pearson_corr:0.9992596507072449 - rollout_corr/rollout_is_mean:1.00049889087677 - rollout_corr/rollout_is_ratio_fraction_high:0.0 - rollout_corr/rollout_is_ratio_fraction_low:0.0 - rollout_corr/rollout_is_max:1.4515916109085083 - rollout_corr/rollout_is_min:0.8050651550292969 - rollout_corr/rollout_is_std:0.03269844129681587 - rollout_corr/rollout_is_eff_sample_size:0.9989330244184983 - rollout_corr/rollout_is_seq_mean:1.0004990100860596 - rollout_corr/rollout_is_seq_std:0.0031146504916250706 - rollout_corr/rollout_is_seq_max:1.006341576576233 - rollout_corr/rollout_is_seq_min:0.9952680468559265 - rollout_corr/rollout_is_seq_max_deviation:0.00634157657623291 - rollout_corr/rollout_is_seq_fraction_high:0.0 - rollout_corr/rollout_is_seq_fraction_low:0.0 - rollout_corr/rollout_rs_token_k1_mean:2.094751107506454e-05 - rollout_corr/rollout_rs_token_k1_max:0.21683204174041748 - rollout_corr/rollout_rs_token_k1_min:-0.37266063690185547 - rollout_corr/rollout_rs_token_k1_fraction_high:0.04736328125 - rollout_corr/rollout_rs_token_k1_fraction_low:0.04052734375 - rollout_corr/rollout_rs_token_k1_std:0.01798163913190365 - rollout_corr/rollout_rs_token_k1_seq_mean:2.0947307348251343e-05 - rollout_corr/rollout_rs_token_k1_seq_std:0.0031175825279206038 - rollout_corr/rollout_rs_token_k1_seq_max:0.0050787548534572124 - rollout_corr/rollout_rs_token_k1_seq_min:-0.00562887592241168 - rollout_corr/rollout_rs_token_k1_seq_max_deviation:0.00562887592241168 - rollout_corr/rollout_rs_token_k1_seq_fraction_high:0.0 - rollout_corr/rollout_rs_token_k1_seq_fraction_low:0.0 - rollout_corr/rollout_rs_token_k1_masked_fraction:0.087890625 - rollout_corr/rollout_rs_token_k1_seq_masked_fraction:1.0 - rollout_corr/rollout_rs_masked_fraction:0.087890625 - rollout_corr/rollout_rs_seq_masked_fraction:1.0 - rollout_corr/training_ppl:1.440809726715088 - rollout_corr/training_log_ppl:0.35682785511016846 - rollout_corr/kl:2.094751107506454e-05 - rollout_corr/k3_kl:0.0005198244471102953 - rollout_corr/rollout_ppl:1.4408960342407227 - rollout_corr/rollout_log_ppl:0.3568069040775299 - rollout_corr/log_ppl_diff:2.0947307348251343e-05 - rollout_corr/log_ppl_abs_diff:0.002444479614496231 - rollout_corr/log_ppl_diff_max:0.005078732967376709 - rollout_corr/log_ppl_diff_min:-0.005628913640975952 - rollout_corr/ppl_ratio:1.0000255107879639 - rollout_corr/chi2_token:0.0020672082901000977 - rollout_corr/chi2_seq:0.32210874557495117 - actor/pg_clipfrac:0.0 - actor/ppo_kl:0.0 - actor/pg_clipfrac_lower:0.0 - actor/pg_loss:0.0 - actor/kl_loss:0.0 - actor/kl_coef:0.001 - actor/loss:0.0 - actor/grad_norm:0.0 - actor/lr:1e-06 - actor/perf/max_memory_allocated_gb:4.018467903137207 - actor/perf/max_memory_reserved_gb:4.14453125 - actor/perf/cpu_memory_used_gb:24.142616271972656 - perf/mfu/actor:0.0 - training/global_step:2 - training/epoch:0 - critic/score/mean:0.0 - critic/score/max:0.0 - critic/score/min:0.0 - critic/rewards/mean:0.0 - critic/rewards/max:0.0 - critic/rewards/min:0.0 - critic/advantages/mean:0.0 - critic/advantages/max:0.0 - critic/advantages/min:0.0 - critic/returns/mean:0.0 - critic/returns/max:0.0 - critic/returns/min:0.0 - response_length/mean:128.0 - response_length/max:128.0 - response_length/min:128.0 - response_length/clip_ratio:1.0 - response_length_non_aborted/mean:128.0 - response_length_non_aborted/max:128.0 - response_length_non_aborted/min:128.0 - response_length_non_aborted/clip_ratio:1.0 - response/aborted_ratio:0.0 - prompt_length/mean:104.25 - prompt_length/max:131.0 - prompt_length/min:87.0 - prompt_length/clip_ratio:0.25 - num_turns/min:np.int32(2) - num_turns/max:np.int32(2) - num_turns/mean:np.float64(2.0) - timing_s/gen:2.104649504999543 - timing_s/old_log_prob:1.5027585009993345 - timing_s/ref:0.7970157540003129 - timing_s/adv:0.014348395001434255 - timing_s/update_actor:4.996043235998513 - timing_s/update_weights:1.5726131960000203 - timing_s/step:10.995066688003135 - timing_per_token_ms/gen:1.027660891113058 - timing_per_token_ms/adv:0.0038612473093203054 - timing_per_token_ms/ref:0.2144821727664997 - timing_per_token_ms/update_actor:1.3444680398273718 - perf/total_num_tokens:3716 - perf/time_per_step:10.995066688003135 - perf/throughput:337.96975547720666 - training/num_turns/mean:np.float64(2.0) - training/num_turns/max:np.int64(2) - training/num_turns/min:np.int64(2) - training/off_policy/trajectory_spans/mean:np.float64(1.0) - training/off_policy/trajectory_spans/max:np.int64(1) - training/off_policy/trajectory_spans/min:np.int64(1) - training/off_policy/trajectory_staleness/mean:np.float64(0.0) - training/off_policy/trajectory_staleness/max:np.int64(0) - training/off_policy/trajectory_staleness/min:np.int64(0) - training/off_policy/trajectory_staleness_worst/mean:np.float64(0.0) - training/off_policy/trajectory_staleness_worst/max:np.int64(0) - training/off_policy/trajectory_staleness_worst/min:np.int64(0)
+[36m(TaskRunnerV1 pid=113419)[0m 
+Training Progress: 100%|██████████| 3/3 [00:47<00:00, 14.23s/it]
+Training Progress: 100%|██████████| 3/3 [00:47<00:00, 15.80s/it]
+[33m(raylet)[0m [34mDEBUG[39m Command exited with code: 1
+[33m(raylet)[0m [34mDEBUG[39m Released lock at `/home/yulinlin/.cache/uv/.lock`
+[33m(raylet)[0m [34mDEBUG[39m Command exited with code: 1[32m [repeated 6x across cluster][0m
+[33m(raylet)[0m [34mDEBUG[39m Released lock at `/home/yulinlin/.cache/uv/.lock`[32m [repeated 6x across cluster][0m
+[36m(TaskRunnerV1 pid=113419)[0m step:3 - global_seqlen/min:3940.0 - global_seqlen/max:3940.0 - global_seqlen/minmax_diff:0.0 - global_seqlen/balanced_min:3940.0 - global_seqlen/balanced_max:3940.0 - global_seqlen/mean:3940.0 - actor/entropy:0.37902459502220154 - training/rollout_probs_diff_valid:1.0 - training/rollout_probs_diff_max:0.09213447570800781 - training/rollout_probs_diff_mean:0.004323013126850128 - training/rollout_probs_diff_std:0.008903199806809425 - training/rollout_actor_probs_pearson_corr:0.9993683695793152 - rollout_corr/rollout_is_mean:1.000214695930481 - rollout_corr/rollout_is_ratio_fraction_high:0.0 - rollout_corr/rollout_is_ratio_fraction_low:0.0 - rollout_corr/rollout_is_max:1.221901297569275 - rollout_corr/rollout_is_min:0.6847038269042969 - rollout_corr/rollout_is_std:0.03161786124110222 - rollout_corr/rollout_is_eff_sample_size:0.9990016661920919 - rollout_corr/rollout_is_seq_mean:1.0002148151397705 - rollout_corr/rollout_is_seq_std:0.0031126579269766808 - rollout_corr/rollout_is_seq_max:1.005700707435608 - rollout_corr/rollout_is_seq_min:0.992661714553833 - rollout_corr/rollout_is_seq_max_deviation:0.007338285446166992 - rollout_corr/rollout_is_seq_fraction_high:0.0 - rollout_corr/rollout_is_seq_fraction_low:0.0 - rollout_corr/rollout_rs_token_k1_mean:0.00029657850973308086 - rollout_corr/rollout_rs_token_k1_max:0.3787689208984375 - rollout_corr/rollout_rs_token_k1_min:-0.20040810108184814 - rollout_corr/rollout_rs_token_k1_fraction_high:0.0390625 - rollout_corr/rollout_rs_token_k1_fraction_low:0.04248046875 - rollout_corr/rollout_rs_token_k1_std:0.017583705484867096 - rollout_corr/rollout_rs_token_k1_seq_mean:0.00029657850973308086 - rollout_corr/rollout_rs_token_k1_seq_std:0.0032838403712958097 - rollout_corr/rollout_rs_token_k1_seq_max:0.008403738960623741 - rollout_corr/rollout_rs_token_k1_seq_min:-0.0053145322017371655 - rollout_corr/rollout_rs_token_k1_seq_max_deviation:0.008403738960623741 - rollout_corr/rollout_rs_token_k1_seq_fraction_high:0.0 - rollout_corr/rollout_rs_token_k1_seq_fraction_low:0.0 - rollout_corr/rollout_rs_token_k1_masked_fraction:0.08154296875 - rollout_corr/rollout_rs_token_k1_seq_masked_fraction:1.0 - rollout_corr/rollout_rs_masked_fraction:0.08154296875 - rollout_corr/rollout_rs_seq_masked_fraction:1.0 - rollout_corr/training_ppl:1.4486035108566284 - rollout_corr/training_log_ppl:0.36172133684158325 - rollout_corr/kl:0.00029657850973308086 - rollout_corr/k3_kl:0.0005112886428833008 - rollout_corr/rollout_ppl:1.4478789567947388 - rollout_corr/rollout_log_ppl:0.3614247739315033 - rollout_corr/log_ppl_diff:0.000296570360660553 - rollout_corr/log_ppl_abs_diff:0.0023522209376096725 - rollout_corr/log_ppl_diff_max:0.0084037184715271 - rollout_corr/log_ppl_diff_min:-0.005314499139785767 - rollout_corr/ppl_ratio:1.000301718711853 - rollout_corr/chi2_token:0.0014290809631347656 - rollout_corr/chi2_seq:0.22632122039794922 - actor/pg_clipfrac:0.0 - actor/ppo_kl:0.0 - actor/pg_clipfrac_lower:0.0 - actor/pg_loss:0.0 - actor/kl_loss:0.0 - actor/kl_coef:0.001 - actor/loss:0.0 - actor/grad_norm:0.0 - actor/lr:1e-06 - actor/perf/max_memory_allocated_gb:4.018467903137207 - actor/perf/max_memory_reserved_gb:4.1640625 - actor/perf/cpu_memory_used_gb:24.224483489990234 - perf/mfu/actor:0.0 - training/global_step:3 - training/epoch:0 - critic/score/mean:0.0 - critic/score/max:0.0 - critic/score/min:0.0 - critic/rewards/mean:0.0 - critic/rewards/max:0.0 - critic/rewards/min:0.0 - critic/advantages/mean:0.0 - critic/advantages/max:0.0 - critic/advantages/min:0.0 - critic/returns/mean:0.0 - critic/returns/max:0.0 - critic/returns/min:0.0 - response_length/mean:128.0 - response_length/max:128.0 - response_length/min:128.0 - response_length/clip_ratio:1.0 - response_length_non_aborted/mean:128.0 - response_length_non_aborted/max:128.0 - response_length_non_aborted/min:128.0 - response_length_non_aborted/clip_ratio:1.0 - response/aborted_ratio:0.0 - prompt_length/mean:118.25 - prompt_length/max:136.0 - prompt_length/min:103.0 - prompt_length/clip_ratio:0.25 - num_turns/min:np.int32(2) - num_turns/max:np.int32(2) - num_turns/mean:np.float64(2.0) - timing_s/gen:2.1052577269983885 - timing_s/old_log_prob:1.5112998789991252 - timing_s/ref:0.8071676369982015 - timing_s/adv:0.01242942499811761 - timing_s/update_actor:4.9890803119997145 - timing_s/update_weights:1.5779567710014817 - timing_s/step:11.011436436001532 - timing_per_token_ms/gen:1.027957874510932 - timing_per_token_ms/adv:0.0031546763954613225 - timing_per_token_ms/ref:0.20486488248685317 - timing_per_token_ms/update_actor:1.2662640385786077 - perf/total_num_tokens:3940 - perf/time_per_step:11.011436436001532 - perf/throughput:357.80981190776333 - training/num_turns/mean:np.float64(2.0) - training/num_turns/max:np.int64(2) - training/num_turns/min:np.int64(2) - training/off_policy/trajectory_spans/mean:np.float64(1.0) - training/off_policy/trajectory_spans/max:np.int64(1) - training/off_policy/trajectory_spans/min:np.int64(1) - training/off_policy/trajectory_staleness/mean:np.float64(0.0) - training/off_policy/trajectory_staleness/max:np.int64(0) - training/off_policy/trajectory_staleness/min:np.int64(0) - training/off_policy/trajectory_staleness_worst/mean:np.float64(0.0) - training/off_policy/trajectory_staleness_worst/max:np.int64(0) - training/off_policy/trajectory_staleness_worst/min:np.int64(0)
+[36m(TaskRunnerV1 pid=113419)[0m 'Final validation metrics: None'

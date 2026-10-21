@@ -26,6 +26,7 @@
 ## 运行环境
 
 - **基础练习：** 默认使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
+- **框架核对：** 使用 [`PT-CPU`](../topic_discussion/post_training_optimization/quickstart.md#pt-cpu-quickstart)，运行 [框架一致性核对](#framework-check)。
 
 ---
 ## 前置阅读
@@ -193,6 +194,8 @@ def test_pair_admission_reasons():
     assert classify_preference_pair(_pair('risk', risk=True), 10, 2) == 'risk'
     assert classify_preference_pair(_pair('stale', version=7), 10, 2) == 'stale'
     assert classify_preference_pair(_pair('future', version=11), 10, 2) == 'future'
+    assert classify_preference_pair(_pair('whitespace', chosen=' Same ', rejected='same'), 10, 2) == 'invalid_pair'
+    assert classify_preference_pair(_pair('missing-version') | {'policy_version': None}, 10, 2) == 'missing_identity'
 
 
 def test_preference_window_identity_and_capacity():
@@ -210,6 +213,10 @@ def test_preference_window_identity_and_capacity():
     assert report["window_id"] == replay["window_id"]
     assert report["rejection_counts"] == {'consumed': 1, 'duplicate': 1, 'risk': 1, 'stale': 1}
     assert report["eligible_sources"] == ['prod', 'shadow']
+    conflicting = [_pair('same-id', chosen='first'), _pair('same-id', chosen='changed')]
+    conflict_report = build_preference_window(conflicting, 10, 2, max_pairs=2)
+    assert conflict_report["pair_ids"] == ['same-id']
+    assert conflict_report["rejection_counts"] == {'identity_conflict': 1}
 
 
 def test_adopt_defer_rollback_and_halt():
@@ -227,6 +234,14 @@ def test_adopt_defer_rollback_and_halt():
     assert recommend_online_dpo(baseline, blocking_failure, 0.05, rollback_ready=True)["reason"] == "blocking_evaluation_failure"
     assert recommend_online_dpo(baseline, unsafe, 0.05, rollback_ready=True)["decision"] == "rollback"
     assert recommend_online_dpo(baseline, unsafe, 0.05, rollback_ready=False)["decision"] == "halt"
+    boundary = {**adopt, "win_rate": 0.57, "repeat_pass_rate": 0.77, "safety_score": 0.93, "update_cost": 1.5}
+    assert recommend_online_dpo(baseline, boundary, 0.05, rollback_ready=True)["decision"] == "adopt"
+    try:
+        recommend_online_dpo(baseline, {**adopt, "win_rate": float("nan")}, 0.05, rollback_ready=True)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("非有限评测指标必须被拒绝")
 
 
 try:
@@ -262,16 +277,28 @@ def classify_preference_pair(
 ) -> str:
     """返回 eligible 或一个首要拒绝原因。"""
     # TODO 1：判断偏好对准入。
-    pair_id = str(pair.get('pair_id', ''))
-    if not pair_id or not pair.get('prompt_id') or not pair.get('chosen') or not pair.get('rejected'):
+    if not isinstance(current_policy_version, int) or current_policy_version < 0:
+        raise ValueError('current_policy_version 必须为非负整数')
+    if not isinstance(max_policy_lag, int) or max_policy_lag < 0:
+        raise ValueError('max_policy_lag 必须为非负整数')
+    pair_id = str(pair.get('pair_id', '')).strip()
+    if not pair_id or not pair.get('prompt_id') or not pair.get('chosen') or not pair.get('rejected') or 'policy_version' not in pair:
         return 'missing_identity'
-    if pair['chosen'] == pair['rejected']:
+    try:
+        generated_version = int(pair['policy_version'])
+    except (TypeError, ValueError):
+        return 'missing_identity'
+    if generated_version < 0:
+        return 'missing_identity'
+    normalized_chosen = ' '.join(str(pair['chosen']).casefold().split())
+    normalized_rejected = ' '.join(str(pair['rejected']).casefold().split())
+    if normalized_chosen == normalized_rejected:
         return 'invalid_pair'
     if pair.get('split') != 'train':
         return 'evaluation_leakage'
     if bool(pair.get('risk', False)):
         return 'risk'
-    policy_lag = current_policy_version - int(pair.get('policy_version', -1))
+    policy_lag = current_policy_version - generated_version
     if policy_lag < 0:
         return 'future'
     if policy_lag > max_policy_lag:
@@ -291,17 +318,21 @@ def build_preference_window(
     if max_pairs <= 0:
         raise ValueError('max_pairs 必须为正')
     consumed_ids = set(previously_consumed_ids or set())
-    seen_ids, accepted_pairs = set(), []
+    seen_identities, accepted_pairs = {}, []
     rejection_counts = {}
     for pair in feedback_stream:
-        pair_id = str(pair.get('pair_id', ''))
+        pair_id = str(pair.get('pair_id', '')).strip()
+        identity_payload = (
+            str(pair.get('prompt_id', '')), str(pair.get('chosen', '')), str(pair.get('rejected', '')),
+            str(pair.get('policy_version', '')), str(pair.get('split', '')), str(pair.get('source', '')),
+        )
         if pair_id in consumed_ids:
             reason = 'consumed'
-        elif pair_id in seen_ids:
-            reason = 'duplicate'
+        elif pair_id in seen_identities:
+            reason = 'duplicate' if seen_identities[pair_id] == identity_payload else 'identity_conflict'
         else:
             reason = classify_preference_pair(pair, current_policy_version, max_policy_lag)
-        seen_ids.add(pair_id)
+        seen_identities.setdefault(pair_id, identity_payload)
         if reason == 'eligible':
             accepted_pairs.append(pair)
         else:
@@ -328,8 +359,22 @@ def recommend_online_dpo(
 ) -> dict[str, object]:
     """根据更新收益、退化门槛与恢复准备形成决策。"""
     # TODO 3：选择采用、延迟或回滚。
-    if baseline_run['update_cost'] <= 0:
-        raise ValueError('baseline update_cost 必须为正')
+    import math
+
+    metric_names = ('win_rate', 'repeat_pass_rate', 'safety_score')
+    required = set(metric_names) | {'update_cost'}
+    if not required.issubset(baseline_run) or not required.issubset(candidate_run):
+        raise ValueError('基线和候选缺少必需评测字段')
+    rates = [float(run[name]) for run in (baseline_run, candidate_run) for name in metric_names]
+    thresholds = [float(min_win_rate_gain), float(max_repeat_pass_rate_drop),
+                  float(max_safety_drop), float(max_cost_increase_ratio)]
+    costs = [float(baseline_run['update_cost']), float(candidate_run['update_cost'])]
+    if any(not math.isfinite(value) for value in rates + thresholds + costs):
+        raise ValueError('评测指标、成本和门槛必须为有限数')
+    if any(not 0.0 <= value <= 1.0 for value in rates):
+        raise ValueError('胜率、重复通过率和安全分数必须位于 [0, 1]')
+    if any(value < 0 for value in thresholds) or any(value <= 0 for value in costs):
+        raise ValueError('门槛必须非负且更新成本必须为正')
     comparison = {
         'win_rate_gain': round(candidate_run['win_rate'] - baseline_run['win_rate'], 6),
         'repeat_pass_rate_delta': round(candidate_run['repeat_pass_rate'] - baseline_run['repeat_pass_rate'], 6),
@@ -374,6 +419,72 @@ def recommend_online_dpo(
 
 - 机制：先检查安全指标降幅、一票否决测试失败数和重复评测通过率降幅，再检查成本增幅与非平局胜率增幅。
 - 不变量：安全指标或重复评测通过率降幅超限、出现一票否决测试失败时，不能用非平局胜率增幅抵消；没有可用检查点时停止自动更新；成本超限或胜率增幅不足时保留当前基线并补充证据。
+<a id="framework-check"></a>
+
+## 框架一致性核对（可选）
+
+下面把 Step 4 准入后的在线偏好窗口转换为 TRL DPO 使用的公开数据字段，并实例化 CPU `DPOConfig`。该核对只证明窗口输出满足训练入口的数据与配置契约；反馈时延、候选采用和回滚仍由本节状态机判断。
+
+| 核对对象 | Step 4 教学实现 | 成熟框架 CPU 路径 | 共同输入与通过条件 |
+|:---|:---|:---|:---|
+| 窗口样本身份 | `build_preference_window` 产生稳定 `pair_ids` | `Dataset.from_list` | 使用同一批反馈；Dataset 行身份与窗口顺序一致 |
+| 偏好字段 | 入选记录中的 prompt、chosen、rejected | TRL DPO 标准字段 | 三个字段完整，且 chosen 与 rejected 不同 |
+| 训练配置 | 当前窗口进入一次受控更新 | `DPOConfig` | CPU 模式、$\beta$ 和最大长度保持给定值 |
+
+```python
+from importlib.metadata import version
+
+try:
+    from datasets import Dataset, Features, Value
+    from trl import DPOConfig
+except ImportError:
+    framework_check = {
+        "status": "skipped",
+        "reason": "请使用 PT-CPU 环境运行本单元",
+    }
+else:
+    def check_online_dpo_data_contract():
+        """核对在线窗口能否形成稳定的 TRL DPO 数据与配置入口。"""
+        feedback_stream = [
+            {"pair_id": "pair-b", "prompt_id": "prompt-b", "prompt": "Explain DPO", "chosen": "Compare paired responses.", "rejected": "Ignore preferences.", "split": "train", "policy_version": 4, "source": "judge-a"},
+            {"pair_id": "pair-a", "prompt_id": "prompt-a", "prompt": "Explain PPO", "chosen": "Use clipped ratios.", "rejected": "Reuse stale rewards.", "split": "train", "policy_version": 5, "source": "judge-b"},
+            {"pair_id": "pair-old", "prompt_id": "prompt-old", "prompt": "Old task", "chosen": "Fresh answer.", "rejected": "Stale answer.", "split": "train", "policy_version": 1, "source": "judge-c"},
+        ]
+        window = build_preference_window(feedback_stream, current_policy_version=5, max_policy_lag=1, max_pairs=2)
+        selected = {str(row["pair_id"]): row for row in feedback_stream}
+        dpo_rows = [
+            {"pair_id": pair_id, "prompt": selected[pair_id]["prompt"], "chosen": selected[pair_id]["chosen"], "rejected": selected[pair_id]["rejected"]}
+            for pair_id in window["pair_ids"]
+        ]
+        features = Features({name: Value("string") for name in ("pair_id", "prompt", "chosen", "rejected")})
+        dataset = Dataset.from_list(dpo_rows, features=features)
+        config = DPOConfig(
+            output_dir="/tmp/online-dpo-interface", beta=0.2, max_length=256,
+            use_cpu=True, dataloader_pin_memory=False, report_to="none",
+        )
+        checks = {
+            "window_identity_preserved": dataset["pair_id"] == window["pair_ids"] == ["pair-a", "pair-b"],
+            "dpo_fields_complete": set(dataset.features) == set(features) and all(row["prompt"] and row["chosen"] and row["rejected"] for row in dataset),
+            "preference_direction_valid": all(row["chosen"] != row["rejected"] for row in dataset),
+            "dpo_config_preserved": config.use_cpu and config.beta == 0.2 and config.max_length == 256,
+        }
+        failed_checks = [name for name, passed in checks.items() if not passed]
+        if failed_checks:
+            raise AssertionError(f"Online DPO 框架核对失败：{failed_checks}")
+        return {
+            "status": "passed",
+            "check_kind": "data_interface",
+            "versions": {"datasets": version("datasets"), "trl": version("trl")},
+            "checks": checks,
+            "window_id": window["window_id"],
+            "pair_count": len(dataset),
+        }
+
+    framework_check = check_online_dpo_data_contract()
+
+framework_check
+```
+
 ## 相关阅读
 
 - [Part 02 · PT-RL-SYSTEM 采样、训练与奖励系统](./PT-RL-SYSTEM_Rollout_Training_and_Reward_System.md)

@@ -254,6 +254,8 @@ def test_success_and_failure_trajectories():
     assert failure['transitions'][-1]['termination_reason'] == 'failure'
     invalid = build_agent_trajectory('task-3', 'env-v1', 3, ['delete-system'], max_steps=3)
     assert invalid['transitions'][-1]['termination_reason'] == 'invalid_action'
+    alternative = build_agent_trajectory('task-1', 'env-v1', 3, ['submit:4'], max_steps=3)
+    assert success['trajectory_id'] != alternative['trajectory_id']
 
 
 def test_timeout_and_action_exhaustion():
@@ -300,6 +302,17 @@ def test_stage_decision():
     assert recommend_agentic_stage(0.9, 0.08, True, 0.0)['decision'] == 'agentic_rl_candidate'
     assert recommend_agentic_stage(0.9, 0.08, False, 0.0)['decision'] == 'blocked'
     assert recommend_agentic_stage(0.9, 0.08, True, 0.01)['reason'] == 'safety_regression'
+    invalid_calls = [
+        lambda: recommend_agentic_stage(float('nan'), 0.08, True, 0.0),
+        lambda: recommend_agentic_stage(0.9, 0.08, 1, 0.0),
+        lambda: build_agent_trajectory('task-x', 'env-v1', -1, ['lookup']),
+    ]
+    for call in invalid_calls:
+        try:
+            call()
+        except ValueError:
+            continue
+        raise AssertionError('非法轨迹身份或阶段指标必须被拒绝')
 
 
 try:
@@ -330,6 +343,10 @@ except (AttributeError, KeyError, NameError, TypeError, ValueError, AssertionErr
 
 
 ```python
+import hashlib
+import math
+
+
 REWARD_KEYS = {'task', 'process', 'safety', 'cost'}
 
 
@@ -367,10 +384,12 @@ def environment_step(state, action, max_steps):
 
 def build_agent_trajectory(task_id, environment_version, policy_version, actions, max_steps=4):
     """把一组模型动作装配成带版本和终止原因的轨迹。"""
-    if not task_id or not environment_version or not isinstance(policy_version, int):
-        raise ValueError('任务、环境和策略身份必须完整')
-    if not actions:
-        raise ValueError('至少需要一个模型动作')
+    if not task_id or not environment_version or not isinstance(policy_version, int) or isinstance(policy_version, bool) or policy_version < 0:
+        raise ValueError('任务、环境和策略身份必须完整且策略版本非负')
+    if not actions or any(not isinstance(action, str) or not action for action in actions):
+        raise ValueError('至少需要一个非空模型动作')
+    if not isinstance(max_steps, int) or isinstance(max_steps, bool) or max_steps <= 0:
+        raise ValueError('max_steps 必须为正整数')
     state = {'step_index': 0, 'known_value': None, 'done': False}
     transitions = []
     for action in actions:
@@ -385,7 +404,8 @@ def build_agent_trajectory(task_id, environment_version, policy_version, actions
         transitions[-1]['truncated'] = True
         transitions[-1]['termination_reason'] = 'action_exhausted'
         transitions[-1]['state_after']['done'] = True
-    return {'trajectory_id': f'{task_id}:{environment_version}:{policy_version}', 'task_id': task_id,
+    action_digest = hashlib.sha256("\x1f".join(actions).encode('utf-8')).hexdigest()[:12]
+    return {'trajectory_id': f'{task_id}:{environment_version}:{policy_version}:{action_digest}', 'task_id': task_id,
             'environment_version': environment_version, 'policy_version': policy_version,
             'reward_status': 'completed', 'lifecycle_state': 'rewarded', 'consumed_by': None,
             'transitions': transitions}
@@ -393,8 +413,9 @@ def build_agent_trajectory(task_id, environment_version, policy_version, actions
 
 def compute_action_returns(trajectory, gamma=1.0):
     """组合奖励分量并从后向前计算动作级回报。"""
-    if not 0.0 <= gamma <= 1.0:
-        raise ValueError('gamma 必须位于 [0, 1]')
+    gamma = float(gamma)
+    if not math.isfinite(gamma) or not 0.0 <= gamma <= 1.0:
+        raise ValueError('gamma 必须是位于 [0, 1] 的有限数')
     transitions = trajectory.get('transitions', [])
     if not transitions:
         raise ValueError('轨迹不能为空')
@@ -403,6 +424,9 @@ def compute_action_returns(trajectory, gamma=1.0):
         components = transition.get('reward_components', {})
         if set(components) != REWARD_KEYS or transition.get('action_mask') != 1:
             raise ValueError('奖励分量或动作掩码不完整')
+        values = [float(components[key]) for key in sorted(REWARD_KEYS)]
+        if any(not math.isfinite(value) for value in values):
+            raise ValueError('奖励分量必须为有限数')
         rewards.append(float(components['task']) + float(components['process']) - float(components['safety']) - float(components['cost']))
     running, rows = 0.0, []
     for index in range(len(rewards) - 1, -1, -1):
@@ -414,8 +438,9 @@ def compute_action_returns(trajectory, gamma=1.0):
 
 def assess_agentic_update(trajectory, expected_environment_version, current_policy_version, max_policy_lag=0):
     """检查轨迹版本、奖励、消费状态与终止证据。"""
-    if max_policy_lag < 0:
-        raise ValueError('最大策略滞后不能为负')
+    versions = (trajectory.get('policy_version'), current_policy_version, max_policy_lag)
+    if any(not isinstance(value, int) or isinstance(value, bool) or value < 0 for value in versions):
+        raise ValueError('策略版本与最大滞后必须是非负整数')
     if trajectory.get('environment_version') != expected_environment_version:
         return {'eligible': False, 'reason': 'environment_version_mismatch'}
     lag = current_policy_version - trajectory.get('policy_version', current_policy_version + 1)
@@ -430,6 +455,8 @@ def assess_agentic_update(trajectory, expected_environment_version, current_poli
     transitions = trajectory.get('transitions', [])
     if not transitions or not (transitions[-1].get('terminated') or transitions[-1].get('truncated')):
         return {'eligible': False, 'reason': 'missing_terminal_evidence', 'policy_lag': lag}
+    if any(item.get('terminated') or item.get('truncated') for item in transitions[:-1]):
+        return {'eligible': False, 'reason': 'transition_after_terminal', 'policy_lag': lag}
     if any(item.get('action_mask') != 1 or set(item.get('reward_components', {})) != REWARD_KEYS for item in transitions):
         return {'eligible': False, 'reason': 'invalid_action_evidence', 'policy_lag': lag}
     return {'eligible': True, 'reason': 'ok', 'policy_lag': lag}
@@ -437,8 +464,14 @@ def assess_agentic_update(trajectory, expected_environment_version, current_poli
 
 def recommend_agentic_stage(sft_tool_contract_pass_rate, novel_success_gain, reward_replayable, safety_regression, min_sft_readiness=0.8, min_exploration_gain=0.05, max_safety_regression=0.0):
     """根据监督基线、探索增益和硬门槛选择训练阶段。"""
-    if not 0.0 <= sft_tool_contract_pass_rate <= 1.0:
-        raise ValueError('SFT 工具契约通过率必须位于 [0, 1]')
+    values = [float(sft_tool_contract_pass_rate), float(novel_success_gain), float(safety_regression),
+              float(min_sft_readiness), float(min_exploration_gain), float(max_safety_regression)]
+    if any(not math.isfinite(value) for value in values):
+        raise ValueError('阶段准入指标与门槛必须为有限数')
+    if not 0.0 <= sft_tool_contract_pass_rate <= 1.0 or not 0.0 <= min_sft_readiness <= 1.0:
+        raise ValueError('SFT 工具契约通过率及门槛必须位于 [0, 1]')
+    if min_exploration_gain < 0 or not isinstance(reward_replayable, bool):
+        raise ValueError('探索增益门槛必须非负，reward_replayable 必须是布尔值')
     # TODO 4：选择训练阶段。
     gates = [
         (not reward_replayable, 'blocked', 'reward_not_replayable'),

@@ -7,6 +7,9 @@ __pycache__/
 .DS_Store
 **/.DS_Store
 
+# Local model artifacts produced by the distilled-student delivery project.
+benchmarks/results/88_distillation_delivery/student_*/
+
 # Local scratch area, process notes, and one-off utilities.
 scripts/
 ROADMAP.md

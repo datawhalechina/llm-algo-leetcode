@@ -1,0 +1,3906 @@
+{
+  "schema_version": "distilled-student-delivery/v4",
+  "semantic_id": "DISTILL-STUDENT-DELIVERY",
+  "record_type": "hybrid_reference_anchor",
+  "run_label": "rtx5070ti_distill_gsm8k_hybrid_terminal_v9",
+  "baseline_run_label": "rtx5070ti_distill_gsm8k_prompt_v3",
+  "config_hash": "ce1b87fd275d1e273c5faa16ecfc1184b19a927d55b4b2f34862614130a01aab",
+  "recipe_hash": "4cf1093cc5dfc96357f55edb856c308b6d5f1231bc08a7bbed5607fb2e747cae",
+  "recipe": {
+    "anchor": {
+      "max_steps": 64,
+      "learning_rate": 5e-05,
+      "hard_label_weight": 0.5
+    },
+    "online": {
+      "max_steps": 32,
+      "learning_rate": 5e-05,
+      "beta": 0.1
+    },
+    "optimizer_name": "adamw",
+    "max_grad_norm": 1.0,
+    "adapter_config": {
+      "rank": 16,
+      "alpha": 32,
+      "dropout": 0.05,
+      "target_modules": [
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj",
+        "gate_proj",
+        "up_proj",
+        "down_proj"
+      ]
+    }
+  },
+  "source_g0": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/88_distillation_delivery/g0_rtx5070ti_distill_gsm8k_prompt_v3.json",
+  "evidence": {
+    "name": "g1_fixed_trajectory",
+    "status": "ok",
+    "training": {
+      "method": "fixed_trajectory_lora_blended_kd",
+      "trajectory_mode": "fixed",
+      "optimizer": "adamw",
+      "train_steps": 64,
+      "dose_steps": [
+        64
+      ],
+      "selected_step": 64,
+      "dose_selection": {
+        "status": "diagnostic_only",
+        "selected_step": 64,
+        "selected_admissible": false,
+        "baseline_quality_score": 0.5625,
+        "baseline_completion_nll": 0.677417,
+        "selection_order": [
+          "semantic_admissibility",
+          "regressed_category_count",
+          "quality_score",
+          "completion_nll",
+          "smaller_step"
+        ],
+        "dose_summaries": [
+          {
+            "step": 64,
+            "quality_score": 0.4375,
+            "quality_gain": -0.125,
+            "completion_nll": 0.494161,
+            "completion_nll_gain": 0.18325600000000003,
+            "regressed_categories": [
+              "reasoning_q1",
+              "reasoning_q4"
+            ],
+            "regressed_category_count": 2,
+            "admissible": false
+          }
+        ]
+      },
+      "development_results": [
+        {
+          "step": 64,
+          "development": {
+            "status": "ok",
+            "quality_score": 0.4375,
+            "passed_count": 14,
+            "evaluation_count": 32,
+            "category_scores": {
+              "reasoning_q1": {
+                "passed_count": 5,
+                "evaluation_count": 8,
+                "quality_score": 0.625
+              },
+              "reasoning_q2": {
+                "passed_count": 4,
+                "evaluation_count": 8,
+                "quality_score": 0.5
+              },
+              "reasoning_q3": {
+                "passed_count": 3,
+                "evaluation_count": 8,
+                "quality_score": 0.375
+              },
+              "reasoning_q4": {
+                "passed_count": 2,
+                "evaluation_count": 8,
+                "quality_score": 0.25
+              }
+            },
+            "latency_protocol": {
+              "warmup_prompts": 0,
+              "repeats": 1,
+              "sample_count": 32,
+              "max_completion_length": 256
+            },
+            "mean_latency_ms": 1632.96,
+            "p50_latency_ms": 1554.054,
+            "p95_latency_ms": 2835.221,
+            "generated_tokens": {
+              "sample_count": 32,
+              "mean_per_request": 139.25,
+              "total": 4456,
+              "saturated_evaluation_count": 2,
+              "saturation_ratio": 0.0625
+            },
+            "format_compliance": {
+              "required_count": 32,
+              "compliant_count": 15,
+              "compliance_ratio": 0.46875
+            },
+            "output_token_throughput_per_s": 85.275,
+            "mean_ms_per_output_token": 11.727,
+            "rows": [
+              {
+                "record_id": "gsm8k-development-01695",
+                "category": "reasoning_q1",
+                "validator": "final_number",
+                "output": "In her first year, Tara's dad attended 90% of the games she played, which is \\(0.9 \\times 20 = 18\\) games.\nIn her second year, Tara's dad attended 4 fewer games than he did in the previous year, so he attended \\(18 - 4 = 14\\) games.\n#### 14",
+                "expected_exact": [
+                  "14"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": true,
+                "format_required": true,
+                "format_compliant": true,
+                "matched": [
+                  "14"
+                ],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 79,
+                "generated_token_samples": [
+                  79
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  1027.933
+                ],
+                "latency_ms": 1027.933
+              },
+              {
+                "record_id": "gsm8k-development-05438",
+                "category": "reasoning_q2",
+                "validator": "final_number",
+                "output": "First find the total number of petals on the lilies: \\(8 \\text{ lilies} \\times 6 \\text{ petals per lily} = 48 \\text{ petals}\\). Then find the total number of petals on the tulips: \\(5 \\text{ tulips} \\times 3 \\text{ petals per tulip} = 15 \\text{ petals}\\). Add these two totals to find the total number of petals in Elena's garden: \\(48 + 15 = 63\\).\n\n#### 63\n\nThe final answer is 63.",
+                "expected_exact": [
+                  "63"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": true,
+                "format_required": true,
+                "format_compliant": false,
+                "matched": [
+                  "63"
+                ],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 127,
+                "generated_token_samples": [
+                  127
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  1528.232
+                ],
+                "latency_ms": 1528.232
+              },
+              {
+                "record_id": "gsm8k-development-02858",
+                "category": "reasoning_q4",
+                "validator": "final_number",
+                "output": "First find how many men there were: 15 men / 3 = <<15/3=5>>5 men.\nThen subtract that from the total to find how many men and women there were: 60 - 15 = <<60-15=45>>45 men and women.\nThen add the number of men and women to find the total number of adults: 45 + 5 = <<45+5=50>>50 adults.\nThen subtract the number of men and women who left to find the number of adults who stayed: 50 - 5 = <<50-5=45>>45 adults.\n\n#### 45",
+                "expected_exact": [
+                  "50"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": false,
+                "format_required": true,
+                "format_compliant": true,
+                "matched": [],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 147,
+                "generated_token_samples": [
+                  147
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  1739.827
+                ],
+                "latency_ms": 1739.827
+              },
+              {
+                "record_id": "gsm8k-development-03128",
+                "category": "reasoning_q2",
+                "validator": "final_number",
+                "output": "First find the total number of students in the vans: 6 vans * 10 students/van = <<6*10=60>>60 students.\nThen find the total number of students in the minibusses: 4 minibusses * 24 students/minibus = <<4*24=96>>96 students.\nThen add the two numbers to find the total number of students: 60 + 96 = <<60+96=156>>156 students.\n\n#### 156",
+                "expected_exact": [
+                  "156"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": true,
+                "format_required": true,
+                "format_compliant": true,
+                "matched": [
+                  "156"
+                ],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 115,
+                "generated_token_samples": [
+                  115
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  1348.575
+                ],
+                "latency_ms": 1348.575
+              },
+              {
+                "record_id": "gsm8k-development-03354",
+                "category": "reasoning_q1",
+                "validator": "final_number",
+                "output": "The total cost of the car is 18000€.\nMr. Lalande has already paid 3000€.\nSo, he still needs to pay 18000 - 3000 = <<18000-3000=15000>>15000€.\nHe wants to pay this amount over 6 months.\nTherefore, he needs to pay 15000 / 6 = <<15000/6=2500>>2500€ per month.\n\n#### 2500\n\nFinal answer: 2500.",
+                "expected_exact": [
+                  "2500"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": true,
+                "format_required": true,
+                "format_compliant": false,
+                "matched": [
+                  "2500"
+                ],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 141,
+                "generated_token_samples": [
+                  141
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  1676.391
+                ],
+                "latency_ms": 1676.391
+              },
+              {
+                "record_id": "gsm8k-development-06517",
+                "category": "reasoning_q1",
+                "validator": "final_number",
+                "output": "Helen lives \\( \\frac{3}{4} \\times 4500 = 3375 \\) steps away from the school.\nTo find out how many steps Mabel needs to walk to visit Helen, we subtract Helen’s distance from the school's distance: \\( 4500 - 3375 = 1125 \\).\nTherefore, Mabel will need to walk a total of 1125 steps to visit Helen.\n\n#### 1125",
+                "expected_exact": [
+                  "7875"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": false,
+                "format_required": true,
+                "format_compliant": true,
+                "matched": [],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 106,
+                "generated_token_samples": [
+                  106
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  1275.91
+                ],
+                "latency_ms": 1275.91
+              },
+              {
+                "record_id": "gsm8k-development-00269",
+                "category": "reasoning_q2",
+                "validator": "final_number",
+                "output": "On Sunday, John earned half of what he earned on Saturday, which is 18/2 = <<18/2=9>>9 dollars.\nSo far, he has earned 18 + 9 = <<18+9=27>>27 dollars.\nHe still needs 60 - 27 = <<60-27=33>>33 dollars to buy his new pogo stick.\n#### 33",
+                "expected_exact": [
+                  "13"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": false,
+                "format_required": true,
+                "format_compliant": true,
+                "matched": [],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 95,
+                "generated_token_samples": [
+                  95
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  1125.966
+                ],
+                "latency_ms": 1125.966
+              },
+              {
+                "record_id": "gsm8k-development-04837",
+                "category": "reasoning_q2",
+                "validator": "final_number",
+                "output": "The cost of each pair of ballet slippers is \\( \\frac{1}{3} \\times \\$60 = \\$20 \\). Therefore, the total cost for five pairs of ballet slippers is \\( 5 \\times \\$20 = \\$100 \\).\n\nAdding the cost of the high heels to this amount gives the total cost: \\( \\$60 + \\$100 = \\$160 \\).\n\nSo, Fern pays a total of \\$160.\n\n#### 160",
+                "expected_exact": [
+                  "260"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": false,
+                "format_required": true,
+                "format_compliant": true,
+                "matched": [],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 106,
+                "generated_token_samples": [
+                  106
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  1215.058
+                ],
+                "latency_ms": 1215.058
+              },
+              {
+                "record_id": "gsm8k-development-05331",
+                "category": "reasoning_q1",
+                "validator": "final_number",
+                "output": "The pen costs 9 + 2 = <<9+2=11>>11 dollars.\nSo the total cost is 11 + 2 = <<11+2=13>>13 dollars.\n#### 13",
+                "expected_exact": [
+                  "13"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": true,
+                "format_required": true,
+                "format_compliant": true,
+                "matched": [
+                  "13"
+                ],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 51,
+                "generated_token_samples": [
+                  51
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  595.757
+                ],
+                "latency_ms": 595.757
+              },
+              {
+                "record_id": "gsm8k-development-05475",
+                "category": "reasoning_q4",
+                "validator": "final_number",
+                "output": "Devin's initial height is 65 inches. For each additional inch he grows, his height increases by 10%. So for a growth of 3 inches, his new height will be:\n\\[ 65 + (3 \\times 10\\%) = 65 + 3 = 68 \\text{ inches} \\]\n\nNow we calculate the probability based on his new height:\n\\[ \\text{Probability} = 10\\% \\times 68 = 0.10 \\times 68 = 6.8 \\]\n\nSince probabilities cannot exceed 100%, this means Devin has a 68% chance of making the basketball team.\n\n### Final Answer: 68%\n#### number: 68%",
+                "expected_exact": [
+                  "30"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": false,
+                "format_required": true,
+                "format_compliant": false,
+                "matched": [],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 160,
+                "generated_token_samples": [
+                  160
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  1841.847
+                ],
+                "latency_ms": 1841.847
+              },
+              {
+                "record_id": "gsm8k-development-02701",
+                "category": "reasoning_q3",
+                "validator": "final_number",
+                "output": "Tommy bought 3 crates * 20 kg/crate = <<3*20>>60 kg of tomatoes.\nHe sold 60 kg - 3 kg rotten = <<60-3>>57 kg of tomatoes.\nSo his total revenue is 57 kg * $6/kg = $<<57*6>>342.\nHis profit is 342 kg - 60 kg = <<342-60>>282 kg.\nTherefore, his profit is $282.\n\n#### 282",
+                "expected_exact": [
+                  "12"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": false,
+                "format_required": true,
+                "format_compliant": true,
+                "matched": [],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 118,
+                "generated_token_samples": [
+                  118
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  1368.312
+                ],
+                "latency_ms": 1368.312
+              },
+              {
+                "record_id": "gsm8k-development-04542",
+                "category": "reasoning_q1",
+                "validator": "final_number",
+                "output": "The second tank has \\(2 \\times 20 = <<2*20=40>>40\\) fish.\nSo far, James has \\(20 + 40 = <<20+40=60>>60\\) fish.\n\nEach of the last two tanks has twice as many fish as the first one, so each of these tanks has \\(20 \\times 2 = <<20*2=40>>40\\) fish.\n\nTherefore, the third tank has \\(40 + 40 = <<40+40=80>>80\\) fish.\n\nIn total, James has \\(60 + 80 = <<60+80=140>>140\\) fish.\n\n#### 140",
+                "expected_exact": [
+                  "100"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": false,
+                "format_required": true,
+                "format_compliant": true,
+                "matched": [],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 163,
+                "generated_token_samples": [
+                  163
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  1923.887
+                ],
+                "latency_ms": 1923.887
+              },
+              {
+                "record_id": "gsm8k-development-04185",
+                "category": "reasoning_q2",
+                "validator": "final_number",
+                "output": "First find how many candy necklaces Emily gave away: 9 packs * 8 candy necklaces per pack = <<9*8=72>>72 candy necklaces.\nThen subtract that from the total number of candy necklaces to find how many she still had: 72 candy necklaces - 40 candy necklaces = <<72-40=32>>32 candy necklaces.\nThen divide the number of remaining candy necklaces by the number of candy necklaces per pack to find how many packs she opened: 32 candy necklaces / 8 candy necklaces per pack = <<32/8=4>>4 packs.\n\n#### 4",
+                "expected_exact": [
+                  "4"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": true,
+                "format_required": true,
+                "format_compliant": true,
+                "matched": [
+                  "4"
+                ],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 142,
+                "generated_token_samples": [
+                  142
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  1627.943
+                ],
+                "latency_ms": 1627.943
+              },
+              {
+                "record_id": "gsm8k-development-02930",
+                "category": "reasoning_q3",
+                "validator": "final_number",
+                "output": "The total cost for the first group is \\(10 \\times (12 + 6) = 10 \\times 18 = \\$180\\). The total cost for the second group is \\(5 \\times 12 = \\$60\\).\n\nSo, the aqua park earns \\(180 + 60 = \\$240\\).\n\n#### 240",
+                "expected_exact": [
+                  "240"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": true,
+                "format_required": true,
+                "format_compliant": true,
+                "matched": [
+                  "240"
+                ],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 85,
+                "generated_token_samples": [
+                  85
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  1006.58
+                ],
+                "latency_ms": 1006.58
+              },
+              {
+                "record_id": "gsm8k-development-02566",
+                "category": "reasoning_q1",
+                "validator": "final_number",
+                "output": "Madeline's brother has half as much money as Madeline, so he has \\( \\frac{1}{2} \\times 48 = 24 \\) dollars.\nTogether, they have \\( 48 + 24 = 72 \\) dollars.\n\n#### 72\n\nThe final answer is 72.",
+                "expected_exact": [
+                  "72"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": true,
+                "format_required": true,
+                "format_compliant": false,
+                "matched": [
+                  "72"
+                ],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 71,
+                "generated_token_samples": [
+                  71
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  824.946
+                ],
+                "latency_ms": 824.946
+              },
+              {
+                "record_id": "gsm8k-development-06939",
+                "category": "reasoning_q3",
+                "validator": "final_number",
+                "output": "First find the total number of episodes in the first 9 seasons: 9 seasons * 22 episodes/season = <<9*22>>198 episodes.\nThen add the extra 4 episodes from the last season: 198 episodes + 4 episodes = <<198+4>>202 episodes.\nFinally, divide the total number of episodes by the length of each episode to find the total time needed: 202 episodes / 0.5 hour/episode = <<202/0.5>>404 hours.\n\n#### 404\n\nThe final answer: \\boxed{404}",
+                "expected_exact": [
+                  "112"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": false,
+                "format_required": true,
+                "format_compliant": false,
+                "matched": [],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 137,
+                "generated_token_samples": [
+                  137
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  1579.876
+                ],
+                "latency_ms": 1579.876
+              },
+              {
+                "record_id": "gsm8k-development-02494",
+                "category": "reasoning_q4",
+                "validator": "final_number",
+                "output": "On day one, Sydney collected \\(4 \\times 8 = 32\\) rocks.\nConner collected \\(723 + 123 = 846\\) rocks.\nAfter the first day, Sydney has \\(837 + 32 = 869\\) rocks.\nConner has \\(723 + 846 = 1569\\) rocks.\nTo tie, Conner needs \\(869 - 1569 = -690\\), which is not possible since he cannot have negative rocks.\n\nTherefore, Conner must collect \\(869 - 1569 = -700\\) rocks on day three to ensure he at least ties Sydney.\n\n#### -700\n\nFinal answer: Conner has to collect \\(-700\\) rocks on day three to make sure he at least ties Sydney.",
+                "expected_exact": [
+                  "27"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": false,
+                "format_required": true,
+                "format_compliant": false,
+                "matched": [],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 185,
+                "generated_token_samples": [
+                  185
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  2168.69
+                ],
+                "latency_ms": 2168.69
+              },
+              {
+                "record_id": "gsm8k-development-03786",
+                "category": "reasoning_q1",
+                "validator": "final_number",
+                "output": "First find how many inches of hair Patricia has left: 14 inches - 23 inches = <<14-23= -9>>-9 inches.\nThen subtract the length of hair she wants to keep from the total length of hair she has left: -9 inches - 12 inches = <<-9-12=-21>>-21 inches.\n\nThe negative sign indicates that Patricia's hair is shorter than what she wants it to be. The final numeric answer is -21 inches.",
+                "expected_exact": [
+                  "21"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": false,
+                "format_required": true,
+                "format_compliant": false,
+                "matched": [],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 108,
+                "generated_token_samples": [
+                  108
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  1307.302
+                ],
+                "latency_ms": 1307.302
+              },
+              {
+                "record_id": "gsm8k-development-05434",
+                "category": "reasoning_q4",
+                "validator": "final_number",
+                "output": "Let's denote the number of apples Kylie picked as \\( K \\). According to the problem, Kayla picked 10 more than 4 times the amount of apples that Kylie picked. Therefore, we can express this relationship mathematically as:\n\\[ K = 4K + 10 \\]\n\nTo find out how many apples Kylie picked, we need to solve for \\( K \\):\n\\[ K - 4K = 10 \\]\n\\[ -3K = 10 \\]\n\\[ K = \\frac{10}{-3} \\]\n\\[ K = -\\frac{10}{3} \\approx -3.33 \\]\n\nSince the number of apples must be a whole number (you can't have a fraction of an apple), let's recheck our interpretation. The correct equation should reflect the fact that the difference between what Kayla and Kylie picked is exactly 10 apples. So, if we assume the problem meant to say they picked the same number of apples but in reverse order, we would have:\n\\[ K = 4K - 10 \\]\n\\[ K - 4K = -10 \\]\n\\[ -3K = -10 \\]\n\\[ K = \\frac{-1",
+                "expected_exact": [
+                  "274"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": false,
+                "format_required": true,
+                "format_compliant": false,
+                "matched": [],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 256,
+                "generated_token_samples": [
+                  256
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  3015.207
+                ],
+                "latency_ms": 3015.207
+              },
+              {
+                "record_id": "gsm8k-development-06581",
+                "category": "reasoning_q2",
+                "validator": "final_number",
+                "output": "First find how much Andy spends on ingredients: $12 spent on ingredients + $1 spent on packaging = $13 spent on ingredients.\nThen subtract the cost of ingredients from the selling price to find how much Andy makes per cake: $15 - $13 = $2 per cake.\n\n#### 2\n\nAndy makes $2 per cake.",
+                "expected_exact": [
+                  "8"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": false,
+                "format_required": true,
+                "format_compliant": false,
+                "matched": [],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 73,
+                "generated_token_samples": [
+                  73
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  866.334
+                ],
+                "latency_ms": 866.334
+              },
+              {
+                "record_id": "gsm8k-development-02511",
+                "category": "reasoning_q2",
+                "validator": "final_number",
+                "output": "The total sentence for the arson charges is \\(6 \\text{ years} \\times 3 = 18 \\text{ years}\\) (since there are three arson sentences). The explosives sentence is twice as long as the total arson sentence, so it is \\(18 \\text{ years} \\times 2 = 36 \\text{ years}\\).\n\nAdding these together gives the total sentence: \\(18 \\text{ years} + 36 \\text{ years} = 54 \\text{ years}\\).\n\nSince the police officer arrested James on two counts of arson, one count of manufacturing explosives, and one count of domestic terrorism, the total time spent in jail would be \\(54 \\text{ years} - 2 \\text{ counts} = 52 \\text{ years}\\).\n\n#### 52\n\nTherefore, the answer is 52 years.",
+                "expected_exact": [
+                  "56"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": false,
+                "format_required": true,
+                "format_compliant": false,
+                "matched": [],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 185,
+                "generated_token_samples": [
+                  185
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  2127.966
+                ],
+                "latency_ms": 2127.966
+              },
+              {
+                "record_id": "gsm8k-development-05099",
+                "category": "reasoning_q4",
+                "validator": "final_number",
+                "output": "Let's denote the number of dogs as \\( d \\). According to the problem, the number of cats is 20 more than the number of dogs, so we can express this relationship mathematically as:\n\\[ c = d + 20 \\]\nwhere \\( c \\) represents the number of cats.\n\nThe total number of animals (dogs plus cats) is given as 60. Therefore, we can set up the following equation:\n\\[ d + c = 60 \\]\n\nSubstituting the expression for \\( c \\) from the first equation into the second equation gives us:\n\\[ d + (d + 20) = 60 \\]\nSimplifying this equation:\n\\[ 2d + 20 = 60 \\]\nSubtracting 20 from both sides:\n\\[ 2d = 40 \\]\nDividing both sides by 2:\n\\[ d = 20 \\]\n\nNow that we know there are 20 dogs, we can find the number of cats using the equation \\( c = d + 20 \\):\n\\[ c = 20 + 20 = 40 \\]\n\nSo, the number of cats taken in is:\n\\[\n\\boxed{",
+                "expected_exact": [
+                  "40"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": true,
+                "format_required": true,
+                "format_compliant": false,
+                "matched": [
+                  "40"
+                ],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 256,
+                "generated_token_samples": [
+                  256
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  2961.769
+                ],
+                "latency_ms": 2961.769
+              },
+              {
+                "record_id": "gsm8k-development-05006",
+                "category": "reasoning_q1",
+                "validator": "final_number",
+                "output": "He paid $20 - $11 = $9 for his candy.\nEach pack costs $9 / 3 = $3.\n\n#### 3",
+                "expected_exact": [
+                  "3"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": true,
+                "format_required": true,
+                "format_compliant": true,
+                "matched": [
+                  "3"
+                ],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 32,
+                "generated_token_samples": [
+                  32
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  373.261
+                ],
+                "latency_ms": 373.261
+              },
+              {
+                "record_id": "gsm8k-development-06279",
+                "category": "reasoning_q4",
+                "validator": "final_number",
+                "output": "First find how many total birdhouses Michael made: 2 + 2 + 3 = <<2+2+3=7>>7 birdhouses.\nThen multiply that by the price per birdhouse to find his total sales: 7 * 22 = $<<7*22=154>>154.\n\n#### 154\n\nThe final answer is 154.",
+                "expected_exact": [
+                  "97"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": false,
+                "format_required": true,
+                "format_compliant": false,
+                "matched": [],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 85,
+                "generated_token_samples": [
+                  85
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  981.92
+                ],
+                "latency_ms": 981.92
+              },
+              {
+                "record_id": "gsm8k-development-00815",
+                "category": "reasoning_q3",
+                "validator": "final_number",
+                "output": "First, we need to determine how many bracelets Kelly gave to Bingley. Since Kelly has 16 bracelets and she gives Bingley a fourth of them, we calculate:\n\n\\[\n\\frac{1}{4} \\times 16 = 4\n\\]\n\nSo, Kelly gives Bingley 4 bracelets.\n\nNext, we add these 4 bracelets to the 5 bracelets Bingley already has:\n\n\\[\n5 + 4 = 9\n\\]\n\nNow, Bingley gives away one-third of his remaining bracelets to his little sister. We first find out what one-third of 9 is:\n\n\\[\n\\frac{1}{3} \\times 9 = 3\n\\]\n\nSo, Bingley gives away 3 bracelets to his little sister. To find out how many bracelets he has left, we subtract the 3 bracelets given away from the 9 bracelets he had before giving any away:\n\n\\[\n9 - 3 = 6\n\\]\n\nTherefore, the number of bracelets Bingley has remaining is:\n\n\\[\n\\boxed{6}\n\\]",
+                "expected_exact": [
+                  "6"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": true,
+                "format_required": true,
+                "format_compliant": false,
+                "matched": [
+                  "6"
+                ],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 228,
+                "generated_token_samples": [
+                  228
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  2633.006
+                ],
+                "latency_ms": 2633.006
+              },
+              {
+                "record_id": "gsm8k-development-05292",
+                "category": "reasoning_q2",
+                "validator": "final_number",
+                "output": "Rachelle threw 180 pennies.\nGretchen threw half as many pennies as Rachelle, so she threw \\( \\frac{1}{2} \\times 180 = 90 \\) pennies.\nRocky threw one-third as many pennies as Gretchen, so he threw \\( \\frac{1}{3} \\times 90 = 30 \\) pennies.\nThe total number of pennies thrown into the fountain is \\( 180 + 90 + 30 = \\boxed{300} \\).",
+                "expected_exact": [
+                  "300"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": true,
+                "format_required": true,
+                "format_compliant": false,
+                "matched": [
+                  "300"
+                ],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 123,
+                "generated_token_samples": [
+                  123
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  1411.68
+                ],
+                "latency_ms": 1411.68
+              },
+              {
+                "record_id": "gsm8k-development-01920",
+                "category": "reasoning_q3",
+                "validator": "final_number",
+                "output": "First, we start by calculating how many slices Blanch ate during her meals:\n- Breakfast: 4 slices\n- Lunch: 2 slices\n- Snack: 2 slices\n\nAdding these together gives us the total number of slices eaten:\n\\[ 4 + 2 + 2 = 8 \\text{ slices} \\]\n\nNext, we subtract the total number of slices eaten from the initial amount to find out how many slices are left:\n\\[ 15 - 8 = 7 \\text{ slices} \\]\n\nTherefore, the number of slices of pizza left is \\( \\boxed{7} \\).",
+                "expected_exact": [
+                  "2"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": false,
+                "format_required": true,
+                "format_compliant": false,
+                "matched": [],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 127,
+                "generated_token_samples": [
+                  127
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  1455.988
+                ],
+                "latency_ms": 1455.988
+              },
+              {
+                "record_id": "gsm8k-development-06393",
+                "category": "reasoning_q3",
+                "validator": "final_number",
+                "output": "First, we need to calculate the total number of items that need to be washed: \\(18 + 12 + 17 + 13 = 60\\). Since each cycle can wash up to 15 items, the number of cycles required is \\(\\lceil \\frac{60}{15} \\rceil = 4\\) cycles (since 4 cycles would use up all 60 items).\n\nEach cycle takes 45 minutes, so the total time required is \\(4 \\times 45 = 180\\) minutes.\n\nSince there are 60 minutes in an hour, the total time required in hours is \\(\\frac{180}{60} = 3\\) hours.\n\nTherefore, the washing machine will take 3 hours to wash all the clothes. The final numeric answer is:\n\n\\[\n\\boxed{3}\n\\]",
+                "expected_exact": [
+                  "3"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": true,
+                "format_required": true,
+                "format_compliant": false,
+                "matched": [
+                  "3"
+                ],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 187,
+                "generated_token_samples": [
+                  187
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  2176.011
+                ],
+                "latency_ms": 2176.011
+              },
+              {
+                "record_id": "gsm8k-development-02648",
+                "category": "reasoning_q3",
+                "validator": "final_number",
+                "output": "First find the sum of the parts of the ratio: 4 + 3 + 7 = <<4+3+7=14>>14.\nThen divide the total age by the sum to find each person's age: 126 / 14 = <<126/14=9>>9.\nHalima is 4 years old, so her age is 4 - 9 = <<4-9=-5>>-5.\nBeckham is 3 years old, so his age is 3 - 9 = <<3-9=-6>>-6.\nThe age difference between Halima and Beckham is |-6 - (-5)| = <<-6-(-5)=1>>1.\n#### 1",
+                "expected_exact": [
+                  "9"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": false,
+                "format_required": true,
+                "format_compliant": true,
+                "matched": [],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 157,
+                "generated_token_samples": [
+                  157
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  1807.628
+                ],
+                "latency_ms": 1807.628
+              },
+              {
+                "record_id": "gsm8k-development-05473",
+                "category": "reasoning_q4",
+                "validator": "final_number",
+                "output": "In her first month, Jill makes $10/day * 30 days = $<<10*30=300>>300.\nIn her second month, she makes $10/day * 2 * 30 days = $<<10*2*30=600>>600.\nIn her third month, she makes $10/day * 2 * (30/2) days = $<<10*2*(30/2)=300>>300.\n\nSo in total, she made $300 + $600 + $300 = $<<300+600+300=1200>>1200.\n\n#### 1200",
+                "expected_exact": [
+                  "1200"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": true,
+                "format_required": true,
+                "format_compliant": true,
+                "matched": [
+                  "1200"
+                ],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 166,
+                "generated_token_samples": [
+                  166
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  1926.647
+                ],
+                "latency_ms": 1926.647
+              },
+              {
+                "record_id": "gsm8k-development-00140",
+                "category": "reasoning_q4",
+                "validator": "final_number",
+                "output": "First find how many kids from Riverside High were denied: 120 kids * 20% = <<120*0.2=24>>24 kids.\nThen subtract that number from the total to find how many kids from Riverside High got in: 120 kids - 24 kids = <<120-24=96>>96 kids.\nNext find how many kids from West Side High were denied: 90 kids * 70% = <<90*0.7=63>>63 kids.\nThen subtract that number from the total to find how many kids from West Side High got in: 90 kids - 63 kids = <<90-63=27>>27 kids.\nFinally, divide the number of kids who got in by the percentage they were allowed to get in to find how many kids got in: 96 kids / .25 = <<96/0.25=384>>384 kids.\n\n#### 384",
+                "expected_exact": [
+                  "148"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": false,
+                "format_required": true,
+                "format_compliant": true,
+                "matched": [],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 222,
+                "generated_token_samples": [
+                  222
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  2731.681
+                ],
+                "latency_ms": 2731.681
+              },
+              {
+                "record_id": "gsm8k-development-00784",
+                "category": "reasoning_q3",
+                "validator": "final_number",
+                "output": "Jessica’s pumpkin weighs half the weight of Brad’s, so it weighs \\( \\frac{54}{2} = 27 \\) pounds.\nBetty’s pumpkin weighs four times the amount of Jessica’s, so it weighs \\( 27 \\times 4 = 108 \\) pounds.\nThe heaviest pumpkin weighs 108 pounds, and the lightest pumpkin weighs 27 pounds.\nTherefore, the difference between the heaviest and lightest pumpkin is \\( 108 - 27 = \\boxed{81} \\) pounds.\n\n#### 81\n\nThis problem involves calculating weights based on given ratios and proportions. The key steps are:\n1. Determine Jessica's pumpkin weight by dividing Brad's weight by 2.\n2. Calculate Betty's pumpkin weight by multiplying Jessica's pumpkin weight by 4.\n3. Find the difference between the heaviest and lightest pumpkin by subtracting Jessica's pumpkin weight from Betty's pumpkin weight.\n\nBy following these steps, we can accurately determine the difference between the heaviest and lightest pumpkin in pounds.",
+                "expected_exact": [
+                  "81"
+                ],
+                "expected_any": [],
+                "expected_all": [],
+                "expected_groups": [],
+                "forbidden_any": [],
+                "passed": false,
+                "format_required": true,
+                "format_compliant": false,
+                "matched": [],
+                "matched_groups": [],
+                "forbidden_matched": [],
+                "generated_tokens": 223,
+                "generated_token_samples": [
+                  223
+                ],
+                "deterministic_output": true,
+                "latency_samples_ms": [
+                  2602.606
+                ],
+                "latency_ms": 2602.606
+              }
+            ],
+            "reference_completion": {
+              "status": "ok",
+              "reduction": "token_weighted_mean",
+              "record_count": 32,
+              "token_count": 3698,
+              "mean_nll": 0.494161,
+              "perplexity": 1.639122,
+              "rows": [
+                {
+                  "record_id": "gsm8k-development-01695",
+                  "token_count": 68,
+                  "mean_nll": 0.352342
+                },
+                {
+                  "record_id": "gsm8k-development-05438",
+                  "token_count": 79,
+                  "mean_nll": 0.210294
+                },
+                {
+                  "record_id": "gsm8k-development-02858",
+                  "token_count": 161,
+                  "mean_nll": 0.463548
+                },
+                {
+                  "record_id": "gsm8k-development-03128",
+                  "token_count": 96,
+                  "mean_nll": 0.248159
+                },
+                {
+                  "record_id": "gsm8k-development-03354",
+                  "token_count": 107,
+                  "mean_nll": 0.854079
+                },
+                {
+                  "record_id": "gsm8k-development-06517",
+                  "token_count": 92,
+                  "mean_nll": 0.318759
+                },
+                {
+                  "record_id": "gsm8k-development-00269",
+                  "token_count": 95,
+                  "mean_nll": 0.544682
+                },
+                {
+                  "record_id": "gsm8k-development-04837",
+                  "token_count": 121,
+                  "mean_nll": 0.287072
+                },
+                {
+                  "record_id": "gsm8k-development-05331",
+                  "token_count": 57,
+                  "mean_nll": 0.810088
+                },
+                {
+                  "record_id": "gsm8k-development-05475",
+                  "token_count": 157,
+                  "mean_nll": 0.630196
+                },
+                {
+                  "record_id": "gsm8k-development-02701",
+                  "token_count": 110,
+                  "mean_nll": 0.851219
+                },
+                {
+                  "record_id": "gsm8k-development-04542",
+                  "token_count": 64,
+                  "mean_nll": 0.458867
+                },
+                {
+                  "record_id": "gsm8k-development-04185",
+                  "token_count": 106,
+                  "mean_nll": 0.532965
+                },
+                {
+                  "record_id": "gsm8k-development-02930",
+                  "token_count": 124,
+                  "mean_nll": 0.341848
+                },
+                {
+                  "record_id": "gsm8k-development-02566",
+                  "token_count": 55,
+                  "mean_nll": 0.176193
+                },
+                {
+                  "record_id": "gsm8k-development-06939",
+                  "token_count": 118,
+                  "mean_nll": 0.462489
+                },
+                {
+                  "record_id": "gsm8k-development-02494",
+                  "token_count": 182,
+                  "mean_nll": 0.703559
+                },
+                {
+                  "record_id": "gsm8k-development-03786",
+                  "token_count": 73,
+                  "mean_nll": 0.67438
+                },
+                {
+                  "record_id": "gsm8k-development-05434",
+                  "token_count": 78,
+                  "mean_nll": 0.487382
+                },
+                {
+                  "record_id": "gsm8k-development-06581",
+                  "token_count": 99,
+                  "mean_nll": 0.553728
+                },
+                {
+                  "record_id": "gsm8k-development-02511",
+                  "token_count": 103,
+                  "mean_nll": 0.349467
+                },
+                {
+                  "record_id": "gsm8k-development-05099",
+                  "token_count": 143,
+                  "mean_nll": 0.810426
+                },
+                {
+                  "record_id": "gsm8k-development-05006",
+                  "token_count": 44,
+                  "mean_nll": 0.831051
+                },
+                {
+                  "record_id": "gsm8k-development-06279",
+                  "token_count": 185,
+                  "mean_nll": 0.321757
+                },
+                {
+                  "record_id": "gsm8k-development-00815",
+                  "token_count": 95,
+                  "mean_nll": 0.266183
+                },
+                {
+                  "record_id": "gsm8k-development-05292",
+                  "token_count": 125,
+                  "mean_nll": 0.257651
+                },
+                {
+                  "record_id": "gsm8k-development-01920",
+                  "token_count": 102,
+                  "mean_nll": 0.404185
+                },
+                {
+                  "record_id": "gsm8k-development-06393",
+                  "token_count": 150,
+                  "mean_nll": 0.508204
+                },
+                {
+                  "record_id": "gsm8k-development-02648",
+                  "token_count": 139,
+                  "mean_nll": 0.545765
+                },
+                {
+                  "record_id": "gsm8k-development-05473",
+                  "token_count": 200,
+                  "mean_nll": 0.662487
+                },
+                {
+                  "record_id": "gsm8k-development-00140",
+                  "token_count": 238,
+                  "mean_nll": 0.319394
+                },
+                {
+                  "record_id": "gsm8k-development-00784",
+                  "token_count": 132,
+                  "mean_nll": 0.549288
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "temperature": 1.0,
+      "beta": 0.0,
+      "max_grad_norm": 1.0,
+      "warmup_ratio": 0.0,
+      "warmup_steps": 0,
+      "weight_decay": 0.0,
+      "hard_label_weight": 0.5,
+      "adapter": {
+        "type": "lora",
+        "rank": 16,
+        "alpha": 32,
+        "dropout": 0.05,
+        "target_modules": [
+          "q_proj",
+          "k_proj",
+          "v_proj",
+          "o_proj",
+          "gate_proj",
+          "up_proj",
+          "down_proj"
+        ],
+        "trainable_parameters": 8798208,
+        "total_parameters": 502830976
+      },
+      "loss_history": [
+        {
+          "step": 1,
+          "loss": 0.2632218599319458,
+          "distillation_loss": 0.1299593597650528,
+          "hard_label_loss": 0.396484375,
+          "grad_norm": 2.5707931518554688,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 2,
+          "loss": 0.5059225559234619,
+          "distillation_loss": 0.3751263916492462,
+          "hard_label_loss": 0.63671875,
+          "grad_norm": 4.580661296844482,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 3,
+          "loss": 0.5276516079902649,
+          "distillation_loss": 0.3443657159805298,
+          "hard_label_loss": 0.7109375,
+          "grad_norm": 4.285862922668457,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 4,
+          "loss": 0.3418876528739929,
+          "distillation_loss": 0.14471283555030823,
+          "hard_label_loss": 0.5390625,
+          "grad_norm": 2.137082576751709,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 5,
+          "loss": 0.22590889036655426,
+          "distillation_loss": 0.13736465573310852,
+          "hard_label_loss": 0.314453125,
+          "grad_norm": 2.1015830039978027,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 6,
+          "loss": 0.373466819524765,
+          "distillation_loss": 0.20396490395069122,
+          "hard_label_loss": 0.54296875,
+          "grad_norm": 1.8340295553207397,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 7,
+          "loss": 0.3931109309196472,
+          "distillation_loss": 0.12997186183929443,
+          "hard_label_loss": 0.65625,
+          "grad_norm": 1.3529415130615234,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 8,
+          "loss": 0.3245243430137634,
+          "distillation_loss": 0.22717368602752686,
+          "hard_label_loss": 0.421875,
+          "grad_norm": 2.494966983795166,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 9,
+          "loss": 0.6335353255271912,
+          "distillation_loss": 0.2944144010543823,
+          "hard_label_loss": 0.97265625,
+          "grad_norm": 5.668627738952637,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 10,
+          "loss": 0.38737472891807556,
+          "distillation_loss": 0.15756194293498993,
+          "hard_label_loss": 0.6171875,
+          "grad_norm": 3.546828269958496,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 11,
+          "loss": 0.5590546727180481,
+          "distillation_loss": 0.3407655954360962,
+          "hard_label_loss": 0.77734375,
+          "grad_norm": 4.330392837524414,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 12,
+          "loss": 0.24311098456382751,
+          "distillation_loss": 0.15223759412765503,
+          "hard_label_loss": 0.333984375,
+          "grad_norm": 1.244187355041504,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 13,
+          "loss": 0.17850682139396667,
+          "distillation_loss": 0.14119333028793335,
+          "hard_label_loss": 0.2158203125,
+          "grad_norm": 1.9593397378921509,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 14,
+          "loss": 0.21360011398792267,
+          "distillation_loss": 0.11274709552526474,
+          "hard_label_loss": 0.314453125,
+          "grad_norm": 2.4628350734710693,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 15,
+          "loss": 0.3159337639808655,
+          "distillation_loss": 0.19046126306056976,
+          "hard_label_loss": 0.44140625,
+          "grad_norm": 2.2868876457214355,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 16,
+          "loss": 0.40404561161994934,
+          "distillation_loss": 0.17918498814105988,
+          "hard_label_loss": 0.62890625,
+          "grad_norm": 2.087001323699951,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 17,
+          "loss": 0.26023250818252563,
+          "distillation_loss": 0.10444940626621246,
+          "hard_label_loss": 0.416015625,
+          "grad_norm": 1.7296462059020996,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 18,
+          "loss": 0.32210591435432434,
+          "distillation_loss": 0.22624307870864868,
+          "hard_label_loss": 0.41796875,
+          "grad_norm": 2.170576572418213,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 19,
+          "loss": 0.3994472920894623,
+          "distillation_loss": 0.16998833417892456,
+          "hard_label_loss": 0.62890625,
+          "grad_norm": 3.158318281173706,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 20,
+          "loss": 0.35173630714416504,
+          "distillation_loss": 0.14097261428833008,
+          "hard_label_loss": 0.5625,
+          "grad_norm": 1.8989018201828003,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 21,
+          "loss": 0.36059439182281494,
+          "distillation_loss": 0.18212628364562988,
+          "hard_label_loss": 0.5390625,
+          "grad_norm": 2.2684106826782227,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 22,
+          "loss": 0.19938866794109344,
+          "distillation_loss": 0.10385546833276749,
+          "hard_label_loss": 0.294921875,
+          "grad_norm": 1.6293973922729492,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 23,
+          "loss": 0.2531662881374359,
+          "distillation_loss": 0.09422319382429123,
+          "hard_label_loss": 0.412109375,
+          "grad_norm": 2.1937448978424072,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 24,
+          "loss": 0.361853688955307,
+          "distillation_loss": 0.1573011428117752,
+          "hard_label_loss": 0.56640625,
+          "grad_norm": 3.2396912574768066,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 25,
+          "loss": 0.3278290927410126,
+          "distillation_loss": 0.18690818548202515,
+          "hard_label_loss": 0.46875,
+          "grad_norm": 2.425328254699707,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 26,
+          "loss": 0.3508524000644684,
+          "distillation_loss": 0.20951731503009796,
+          "hard_label_loss": 0.4921875,
+          "grad_norm": 6.923734188079834,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 27,
+          "loss": 0.27992764115333557,
+          "distillation_loss": 0.13993340730667114,
+          "hard_label_loss": 0.419921875,
+          "grad_norm": 2.0415005683898926,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 28,
+          "loss": 0.4055003821849823,
+          "distillation_loss": 0.1703757494688034,
+          "hard_label_loss": 0.640625,
+          "grad_norm": 1.5825673341751099,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 29,
+          "loss": 0.2688703238964081,
+          "distillation_loss": 0.13735002279281616,
+          "hard_label_loss": 0.400390625,
+          "grad_norm": 1.5673867464065552,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 30,
+          "loss": 0.3128054141998291,
+          "distillation_loss": 0.180298313498497,
+          "hard_label_loss": 0.4453125,
+          "grad_norm": 1.7084782123565674,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 31,
+          "loss": 0.4398283064365387,
+          "distillation_loss": 0.1921565979719162,
+          "hard_label_loss": 0.6875,
+          "grad_norm": 2.312631368637085,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 32,
+          "loss": 0.26011717319488525,
+          "distillation_loss": 0.1276562362909317,
+          "hard_label_loss": 0.392578125,
+          "grad_norm": 2.048055648803711,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 33,
+          "loss": 0.39247560501098633,
+          "distillation_loss": 0.14041994512081146,
+          "hard_label_loss": 0.64453125,
+          "grad_norm": 1.8670510053634644,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 34,
+          "loss": 0.1872009038925171,
+          "distillation_loss": 0.11658930778503418,
+          "hard_label_loss": 0.2578125,
+          "grad_norm": 1.2942183017730713,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 35,
+          "loss": 0.3517971634864807,
+          "distillation_loss": 0.16453181207180023,
+          "hard_label_loss": 0.5390625,
+          "grad_norm": 1.8371028900146484,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 36,
+          "loss": 0.3856484293937683,
+          "distillation_loss": 0.2732499837875366,
+          "hard_label_loss": 0.498046875,
+          "grad_norm": 4.888931751251221,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 37,
+          "loss": 0.30382776260375977,
+          "distillation_loss": 0.16234299540519714,
+          "hard_label_loss": 0.4453125,
+          "grad_norm": 1.5360146760940552,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 38,
+          "loss": 0.3956538736820221,
+          "distillation_loss": 0.18583901226520538,
+          "hard_label_loss": 0.60546875,
+          "grad_norm": 2.070295810699463,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 39,
+          "loss": 0.4748646318912506,
+          "distillation_loss": 0.3169167637825012,
+          "hard_label_loss": 0.6328125,
+          "grad_norm": 2.6204965114593506,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 40,
+          "loss": 0.4722001552581787,
+          "distillation_loss": 0.24908781051635742,
+          "hard_label_loss": 0.6953125,
+          "grad_norm": 2.4413843154907227,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 41,
+          "loss": 0.22023668885231018,
+          "distillation_loss": 0.14750461280345917,
+          "hard_label_loss": 0.29296875,
+          "grad_norm": 2.6589245796203613,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 42,
+          "loss": 0.2907834053039551,
+          "distillation_loss": 0.20070745050907135,
+          "hard_label_loss": 0.380859375,
+          "grad_norm": 2.0181894302368164,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 43,
+          "loss": 0.47676122188568115,
+          "distillation_loss": 0.1996162086725235,
+          "hard_label_loss": 0.75390625,
+          "grad_norm": 2.027648687362671,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 44,
+          "loss": 0.5256028175354004,
+          "distillation_loss": 0.3051118850708008,
+          "hard_label_loss": 0.74609375,
+          "grad_norm": 3.096426010131836,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 45,
+          "loss": 0.4070146083831787,
+          "distillation_loss": 0.1694979965686798,
+          "hard_label_loss": 0.64453125,
+          "grad_norm": 2.017871141433716,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 46,
+          "loss": 0.33041688799858093,
+          "distillation_loss": 0.14911502599716187,
+          "hard_label_loss": 0.51171875,
+          "grad_norm": 2.1176583766937256,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 47,
+          "loss": 0.9722486734390259,
+          "distillation_loss": 0.40543484687805176,
+          "hard_label_loss": 1.5390625,
+          "grad_norm": 8.770477294921875,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 48,
+          "loss": 0.48558980226516724,
+          "distillation_loss": 0.3071170747280121,
+          "hard_label_loss": 0.6640625,
+          "grad_norm": 4.717935085296631,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 49,
+          "loss": 0.2209198921918869,
+          "distillation_loss": 0.1176210343837738,
+          "hard_label_loss": 0.32421875,
+          "grad_norm": 2.1731247901916504,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 50,
+          "loss": 0.5882123708724976,
+          "distillation_loss": 0.22329971194267273,
+          "hard_label_loss": 0.953125,
+          "grad_norm": 3.7867431640625,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 51,
+          "loss": 0.35098350048065186,
+          "distillation_loss": 0.1238420158624649,
+          "hard_label_loss": 0.578125,
+          "grad_norm": 1.89446222782135,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 52,
+          "loss": 0.26967737078666687,
+          "distillation_loss": 0.11747974902391434,
+          "hard_label_loss": 0.421875,
+          "grad_norm": 1.697320818901062,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 53,
+          "loss": 0.37899482250213623,
+          "distillation_loss": 0.16423964500427246,
+          "hard_label_loss": 0.59375,
+          "grad_norm": 1.8370296955108643,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 54,
+          "loss": 0.19481870532035828,
+          "distillation_loss": 0.08299678564071655,
+          "hard_label_loss": 0.306640625,
+          "grad_norm": 1.121299147605896,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 55,
+          "loss": 0.24317529797554016,
+          "distillation_loss": 0.12306933104991913,
+          "hard_label_loss": 0.36328125,
+          "grad_norm": 1.9281799793243408,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 56,
+          "loss": 0.4163585603237152,
+          "distillation_loss": 0.18818587064743042,
+          "hard_label_loss": 0.64453125,
+          "grad_norm": 1.7417584657669067,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 57,
+          "loss": 0.21812888979911804,
+          "distillation_loss": 0.14328902959823608,
+          "hard_label_loss": 0.29296875,
+          "grad_norm": 2.4483604431152344,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 58,
+          "loss": 0.3311827778816223,
+          "distillation_loss": 0.13111557066440582,
+          "hard_label_loss": 0.53125,
+          "grad_norm": 1.7578834295272827,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 59,
+          "loss": 0.23116791248321533,
+          "distillation_loss": 0.14397644996643066,
+          "hard_label_loss": 0.318359375,
+          "grad_norm": 1.6158509254455566,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 60,
+          "loss": 0.5684476494789124,
+          "distillation_loss": 0.2111140787601471,
+          "hard_label_loss": 0.92578125,
+          "grad_norm": 2.017348051071167,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 61,
+          "loss": 0.17603041231632233,
+          "distillation_loss": 0.12549832463264465,
+          "hard_label_loss": 0.2265625,
+          "grad_norm": 2.8817126750946045,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 62,
+          "loss": 0.3024178147315979,
+          "distillation_loss": 0.1380387842655182,
+          "hard_label_loss": 0.466796875,
+          "grad_norm": 1.4597924947738647,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 63,
+          "loss": 0.2797672748565674,
+          "distillation_loss": 0.16305018961429596,
+          "hard_label_loss": 0.396484375,
+          "grad_norm": 1.495457410812378,
+          "learning_rate": 5e-05
+        },
+        {
+          "step": 64,
+          "loss": 0.5548260807991028,
+          "distillation_loss": 0.30887091159820557,
+          "hard_label_loss": 0.80078125,
+          "grad_norm": 4.008784770965576,
+          "learning_rate": 5e-05
+        }
+      ],
+      "selected_step_loss": 0.5548260807991028,
+      "last_executed_loss": 0.5548260807991028,
+      "training_time_s": 62.932,
+      "peak_allocated_bytes": 5249185792,
+      "peak_reserved_bytes": 7421820928,
+      "trajectory_count": 512,
+      "trajectory_source_counts": {
+        "reference_answer": 500,
+        "reference_answer_compacted": 12
+      },
+      "reference_overflow_record_ids": [
+        "gsm8k-train-00237",
+        "gsm8k-train-00276",
+        "gsm8k-train-01202",
+        "gsm8k-train-01927",
+        "gsm8k-train-02188",
+        "gsm8k-train-02871",
+        "gsm8k-train-03750",
+        "gsm8k-train-04274",
+        "gsm8k-train-06669",
+        "gsm8k-train-06724",
+        "gsm8k-train-07131",
+        "gsm8k-train-07219"
+      ],
+      "trajectory_hash": "1d29693337c1e925920d545330f314ff4a5501e015c59e9c8f293ce1b80bad4e"
+    },
+    "artifact": {
+      "path": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/88_distillation_delivery/student_hybrid_anchor_rtx5070ti_distill_gsm8k_hybrid_terminal_v9",
+      "snapshot": "student_hybrid_anchor_rtx5070ti_distill_gsm8k_hybrid_terminal_v9",
+      "weight_bytes": 988097824,
+      "weight_files": [
+        {
+          "name": "model.safetensors",
+          "size_bytes": 988097824,
+          "sha256": "ac499f4aea074ce21c15c2f403cbf828f9c596012cfc66d0f6a195fcd668f068"
+        }
+      ],
+      "inventory_sha256": "a8fe76e90e941828de5960be570f0940bd9f57c1dd9110660fbd5490b48391f1",
+      "weights_content_sha256": "d908d7f9809702911fd0c699aebaa1c6d5b8a8b42fb740bd86b061c0490d6228"
+    },
+    "artifact_verified": true,
+    "load_status": "loaded",
+    "evaluation": {
+      "status": "ok",
+      "quality_score": 0.234375,
+      "passed_count": 15,
+      "evaluation_count": 64,
+      "category_scores": {
+        "reasoning_q1": {
+          "passed_count": 8,
+          "evaluation_count": 16,
+          "quality_score": 0.5
+        },
+        "reasoning_q2": {
+          "passed_count": 3,
+          "evaluation_count": 16,
+          "quality_score": 0.1875
+        },
+        "reasoning_q3": {
+          "passed_count": 3,
+          "evaluation_count": 16,
+          "quality_score": 0.1875
+        },
+        "reasoning_q4": {
+          "passed_count": 1,
+          "evaluation_count": 16,
+          "quality_score": 0.0625
+        }
+      },
+      "latency_protocol": {
+        "warmup_prompts": 2,
+        "repeats": 2,
+        "sample_count": 128,
+        "max_completion_length": 256
+      },
+      "mean_latency_ms": 1066.334,
+      "p50_latency_ms": 992.693,
+      "p95_latency_ms": 1790.829,
+      "generated_tokens": {
+        "sample_count": 128,
+        "mean_per_request": 152.078,
+        "total": 19466,
+        "saturated_evaluation_count": 7,
+        "saturation_ratio": 0.109375
+      },
+      "format_compliance": {
+        "required_count": 64,
+        "compliant_count": 27,
+        "compliance_ratio": 0.421875
+      },
+      "output_token_throughput_per_s": 142.618,
+      "mean_ms_per_output_token": 7.012,
+      "rows": [
+        {
+          "record_id": "gsm8k-evaluation-00560",
+          "category": "reasoning_q2",
+          "validator": "final_number",
+          "output": "The first three cages contain a total of \\(3 \\times 10 = 30\\) hamsters.\nThe last three cages contain a total of \\(3 \\times 5 = 15\\) guinea pigs.\nTherefore, the pet shop has a total of \\(30 + 15 = 45\\) rodents.\n\n#### 45",
+          "expected_exact": [
+            "45"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": true,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [
+            "45"
+          ],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 74,
+          "generated_token_samples": [
+            74,
+            74
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            479.106,
+            565.329
+          ],
+          "latency_ms": 522.218
+        },
+        {
+          "record_id": "gsm8k-evaluation-00869",
+          "category": "reasoning_q1",
+          "validator": "final_number",
+          "output": "The total cost of the phones is \\(5 \\times \\$700 = \\$3500\\). The seller gave the seller a total of $4000. Therefore, the change the seller should receive is \\( \\$4000 - \\$3500 = \\$500\\).\n\n#### 500\n\nFinal answer: **\\$500**",
+          "expected_exact": [
+            "500"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": true,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [
+            "500"
+          ],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 81,
+          "generated_token_samples": [
+            81,
+            81
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            541.901,
+            594.212
+          ],
+          "latency_ms": 568.056
+        },
+        {
+          "record_id": "gsm8k-evaluation-00307",
+          "category": "reasoning_q2",
+          "validator": "final_number",
+          "output": "Joey loses 8 pounds in 4 weeks.\nSandy needs 4 weeks to lose the same amount of weight as Joey.\nTherefore, Sandy needs \\( \\frac{4}{4} = 1 \\) week to lose the same amount of weight.\n\nThe final answer is 1.",
+          "expected_exact": [
+            "16"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 61,
+          "generated_token_samples": [
+            61,
+            61
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            416.6,
+            458.002
+          ],
+          "latency_ms": 437.301
+        },
+        {
+          "record_id": "gsm8k-evaluation-00684",
+          "category": "reasoning_q1",
+          "validator": "final_number",
+          "output": "The total time taken by John and Jack to reach the library and fire station is \\(6 + 13 = <<6+13=29>>29\\) minutes.\nThey have 30 minutes in total for their journey, so they have \\(\\boxed{29}\\) more minutes left to get to school without being late.",
+          "expected_exact": [
+            "11"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 72,
+          "generated_token_samples": [
+            72,
+            72
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            490.971,
+            527.869
+          ],
+          "latency_ms": 509.42
+        },
+        {
+          "record_id": "gsm8k-evaluation-01316",
+          "category": "reasoning_q3",
+          "validator": "final_number",
+          "output": "First, we need to calculate the discount on the radiator. It was originally priced at $400, and it was given at 80% off. To find out how much the discount is, we multiply the original price by 80%, which can be written as \\(400 \\times 0.8\\).\n\n\\[400 \\times 0.8 = 320\\]\n\nSo, the radiator is now priced at $320.\n\nNext, we add the cost of getting the radiator from the junk shop to its current price to find the total amount Mark paid:\n\n\\[400 + 320 = 720\\]\n\nFinally, we calculate the cost of hiring the mechanic. The mechanic charges $50 per hour, and it took him 3 hours. So, we multiply the hourly rate by the number of hours:\n\n\\[50 \\times 3 = 150\\]\n\nAdding this to the total cost of the radiator gives us the final amount Mark paid:\n\n\\[720 + 150 = 870\\]\n\nTherefore, the total amount Mark paid is **$870**.",
+          "expected_exact": [
+            "230"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 245,
+          "generated_token_samples": [
+            245,
+            245
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1731.7,
+            1715.036
+          ],
+          "latency_ms": 1723.368
+        },
+        {
+          "record_id": "gsm8k-evaluation-00939",
+          "category": "reasoning_q2",
+          "validator": "final_number",
+          "output": "First find how many letters Craig's brother spelled: \\(20 \\text{ words} \\times 15 \\text{ letters per word} = 300 \\text{ letters}\\). Then add the extra letters to get the total number of letters: \\(300 \\text{ letters} + 50 \\text{ letters} = 350 \\text{ letters}\\).\n\nThe answer is 350.",
+          "expected_exact": [
+            "650"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 92,
+          "generated_token_samples": [
+            92,
+            92
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            650.268,
+            656.322
+          ],
+          "latency_ms": 653.295
+        },
+        {
+          "record_id": "gsm8k-evaluation-01198",
+          "category": "reasoning_q4",
+          "validator": "final_number",
+          "output": "On the first day, Mr. Julius planted 2 * 20 = <<2*20=40>>40 Lodgepole Pines.\nHe planted a total of 40 + 20 = <<40+20=60>>60 White Oak trees.\nOn the second day, he planted 10 more White Oak trees, for a total of 60 + 10 = <<60+10=70>>70 White Oak trees.\nHe also planted 1/4 * 40 = <<1/4*40=10>>10 more Lodgepole Pines.\nSo, he planted a total of 40 + 10 = <<40+10=50>>50 Lodgepole Pines.\nIn total, Mr. Julius planted 70 + 50 = <<70+50=120>>120 trees.\n#### 120",
+          "expected_exact": [
+            "140"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 204,
+          "generated_token_samples": [
+            204,
+            204
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1410.801,
+            1430.681
+          ],
+          "latency_ms": 1420.741
+        },
+        {
+          "record_id": "gsm8k-evaluation-00584",
+          "category": "reasoning_q4",
+          "validator": "final_number",
+          "output": "First find the total cost of one box: $100.00 - 10\\% \\text{ off} = \\$80.00$ per box.\nThen multiply that by the number of boxes Pete needs to buy: $80.00 \\times 2 = \\$160.00$.\nFinally, divide the total cost by the number of pairs of contacts Pete wants to buy: $\\frac{\\$160.00}{2} = \\$80.00$.\n\n#### 80",
+          "expected_exact": [
+            "2"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 116,
+          "generated_token_samples": [
+            116,
+            116
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            799.397,
+            811.843
+          ],
+          "latency_ms": 805.62
+        },
+        {
+          "record_id": "gsm8k-evaluation-00907",
+          "category": "reasoning_q1",
+          "validator": "final_number",
+          "output": "Joseph initially had \\(2 \\times 9 = 18\\) books.\nAfter losing 2 books, he now has \\(18 - 2 = 16\\) books.\n\nSo, Joseph currently has 16 books. The final answer is 16.",
+          "expected_exact": [
+            "16"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": true,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [
+            "16"
+          ],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 57,
+          "generated_token_samples": [
+            57,
+            57
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            398.823,
+            394.806
+          ],
+          "latency_ms": 396.814
+        },
+        {
+          "record_id": "gsm8k-evaluation-01226",
+          "category": "reasoning_q4",
+          "validator": "final_number",
+          "output": "The cost for a manicure is $35 + $40 = $75.\nWith a discount of 20%, the price of the manicure is reduced by 20/100 * $75 = $15.\nSo the total cost for the manicure is $75 - $15 = $60.\n\nThe cost for a pedicure is $40 + $3 = $43.\nAdding the cost of the nails, the total cost for the pedicure is $43 + $3 = $46.\n\nTherefore, the total cost for both the manicure and pedicure is $60 + $46 = $106.\n\n#### 106",
+          "expected_exact": [
+            "90"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 153,
+          "generated_token_samples": [
+            153,
+            153
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1075.935,
+            1081.341
+          ],
+          "latency_ms": 1078.638
+        },
+        {
+          "record_id": "gsm8k-evaluation-01286",
+          "category": "reasoning_q2",
+          "validator": "final_number",
+          "output": "The total value of the quarters is \\(4 \\times 25 = 100\\) cents.\nThe total value of the nickels is \\(5 \\times 5 = 25\\) cents.\nThe total value of the dimes is \\(10 \\times 10 = 100\\) cents.\nAdding these values together gives us \\(100 + 25 + 100 = 225\\) cents.\n\n#### 225\n\nTherefore, the answer is 225.",
+          "expected_exact": [
+            "105"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 111,
+          "generated_token_samples": [
+            111,
+            111
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            780.624,
+            781.487
+          ],
+          "latency_ms": 781.055
+        },
+        {
+          "record_id": "gsm8k-evaluation-00318",
+          "category": "reasoning_q2",
+          "validator": "final_number",
+          "output": "Let's denote the number of boys in the classroom as \\( B \\). According to the problem, \\( B = 30 \\).\n\nThe number of girls is given by the ratio of the number of girls to the number of boys:\n\\[ G = \\frac{1}{3}B = \\frac{1}{3} \\times 30 = 10 \\]\n\nThe number of non-gendered children is given by the ratio of the number of non-gendered children to the number of boys:\n\\[ N = \\frac{1}{10}B = \\frac{1}{10} \\times 30 = 3 \\]\n\nNow we can find the total number of children in the classroom by adding the number of boys, girls, and non-gendered children together:\n\\[ \\text{Total Children} = B + G + N = 30 + 10 + 3 = 43 \\]\n\nSo, the total number of children in the classroom is 43.\n\n#### 43",
+          "expected_exact": [
+            "123"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 216,
+          "generated_token_samples": [
+            216,
+            216
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1494.821,
+            1502.559
+          ],
+          "latency_ms": 1498.69
+        },
+        {
+          "record_id": "gsm8k-evaluation-00622",
+          "category": "reasoning_q4",
+          "validator": "final_number",
+          "output": "First, we need to determine how much gum Jim consumes in total during the school day. He chews 1 piece of gum every 2 hours, so in one hour, he eats \\( \\frac{1}{2} \\) piece of gum. Over an 8-hour school day, he eats:\n\n\\[ 8 \\text{ hours} \\times \\frac{1}{2} = 4 \\text{ pieces of gum} \\]\n\nNext, we add the gum he chews while going home and after dinner. He chews 1 piece each time he goes home or after dinner, which totals:\n\n\\[ 1 + 1 = 2 \\text{ pieces of gum} \\]\n\nAdding these together, the total amount of gum Jim consumes is:\n\n\\[ 4 \\text{ pieces} + 2 \\text{ pieces} = 6 \\text{ pieces of gum} \\]\n\nInitially, Jim had 20 pieces of gum. After eating 6 pieces, the number of pieces he has left is:\n\n\\[ 20 - 6 = 14 \\text{ pieces of gum} \\]\n\nHe gives half of the remaining gum to his sister. Half of 14 pieces is:\n\n\\[ \\frac{14",
+          "expected_exact": [
+            "7"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 256,
+          "generated_token_samples": [
+            256,
+            256
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1787.776,
+            1785.358
+          ],
+          "latency_ms": 1786.567
+        },
+        {
+          "record_id": "gsm8k-evaluation-01005",
+          "category": "reasoning_q3",
+          "validator": "final_number",
+          "output": "First find the number of female porcupines: 50 porcupines * 3/5 = <<50*(3/5)=30>>30 females.\nThen multiply that by the number of babies each female gives birth to per month to find the total number of baby porcupines: 30 females * 4 babies/mother = <<30*4=120>>120 baby porcupines.\nFinally add the number of newborns to the original population to find the total number of porcupines: 50 porcupines + 120 baby porcupines = <<50+120=170>>170 porcupines.\n\n#### 170",
+          "expected_exact": [
+            "1490"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 154,
+          "generated_token_samples": [
+            154,
+            154
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1080.358,
+            1067.509
+          ],
+          "latency_ms": 1073.933
+        },
+        {
+          "record_id": "gsm8k-evaluation-00745",
+          "category": "reasoning_q3",
+          "validator": "final_number",
+          "output": "First, we need to calculate the total cost of the magic cards Mark bought. Each pack costs $1800, so 3 packs cost:\n\\[ 3 \\times 1800 = 5400 \\]\n\nNext, we add up all the individual costs:\n\\[ 5400 + 4000 + 1000 = 10400 \\]\n\nNow, we know that Mark got a total of 1 card worth $4000, another card worth $1000, and 30 additional cards worth $50 each. The total value of these cards is:\n\\[ 4000 + 1000 + (30 \\times 50) = 4000 + 1000 + 1500 = 6500 \\]\n\nThe total cost of the cards is $10400, and the total value of the cards is $6500. Therefore, the profit Mark made is:\n\\[ 10400 - 6500 = 3900 \\]\n\nSo, the profit Mark made is $\\boxed{3900}$.",
+          "expected_exact": [
+            "1100"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 256,
+          "generated_token_samples": [
+            256,
+            256
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1786.279,
+            1792.032
+          ],
+          "latency_ms": 1789.156
+        },
+        {
+          "record_id": "gsm8k-evaluation-00442",
+          "category": "reasoning_q4",
+          "validator": "final_number",
+          "output": "First, we need to determine how much the house's temperature increases when the oven is on for 3 hours.\nThe oven is on for 3 hours, so the temperature increase per hour is 5 degrees.\nTherefore, the total temperature increase from the oven being on for 3 hours is \\(3 \\times 5 = 15\\) degrees.\n\nNext, we need to calculate how much the house cools down when the window is opened for 30 minutes.\nSince the window is opened for 30 minutes, the house cools down \\(30 / 10 = 3\\) times.\nEach time the window is opened, the house cools down 2 degrees.\nSo, the total cooling down due to the window opening is \\(3 \\times 2 = 6\\) degrees.\n\nFinally, we add the temperature increase and the cooling down to find the final temperature of the house.\nThe final temperature is \\(15 + 6 = 21\\) degrees.\n\n#### 21\n\nThe house's final temperature is 21 degrees.",
+          "expected_exact": [
+            "49"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 219,
+          "generated_token_samples": [
+            219,
+            219
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1526.662,
+            1532.273
+          ],
+          "latency_ms": 1529.467
+        },
+        {
+          "record_id": "gsm8k-evaluation-00186",
+          "category": "reasoning_q4",
+          "validator": "final_number",
+          "output": "The total amount of straw distributed to all the animals is 160 pieces. This includes the 10 cages of hamsters, which each get 5 pieces of straw, totaling \\(10 \\times 5 = 50\\) pieces. Additionally, there are 20 pieces of straw distributed to the rabbits.\n\nSo, the total amount of straw distributed to all the animals is \\(50 + 20 = 70\\) pieces. Since there are 10 cages of hamsters and each gets 5 pieces, the total amount of straw distributed to the hamsters is \\(10 \\times 5 = 50\\) pieces. Therefore, the remaining amount of straw distributed to the rats is \\(70 - 50 = 20\\) pieces.\n\nSince there are 3 cages for the rats and each cage has 6 pieces of straw, the number of rats in each cage is \\(20 \\div 3\\). However, since we can't have a fraction of a rat per cage, we need to find out if this division results in an integer value. Let's calculate:\n\n\\[20 \\div 3 = 6 \\text{ R } 2\\]\n\nThis means that 6 rats",
+          "expected_exact": [
+            "5"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 256,
+          "generated_token_samples": [
+            256,
+            256
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1789.316,
+            1795.016
+          ],
+          "latency_ms": 1792.166
+        },
+        {
+          "record_id": "gsm8k-evaluation-00661",
+          "category": "reasoning_q4",
+          "validator": "final_number",
+          "output": "The more expensive brand costs 20% more than the normal brand, which is \\(5 \\times (1 + 0.2) = \\$6\\). So Roger bought 7 pounds of this brand because \\(7 \\times 6 = \\$42\\).\n\nHe used 1 pound of coffee per day for a week, so he spent \\(1 \\times 7 = \\$7\\) on coffee.\n\nHe also bought a donut for $2.\n\nSo in total, everything cost \\(42 + 7 + 2 = \\$51\\).\n\n#### 51\n\nTherefore, the answer is 51.",
+          "expected_exact": [
+            "44"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 131,
+          "generated_token_samples": [
+            131,
+            131
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            923.863,
+            917.35
+          ],
+          "latency_ms": 920.607
+        },
+        {
+          "record_id": "gsm8k-evaluation-00098",
+          "category": "reasoning_q1",
+          "validator": "final_number",
+          "output": "The total number of cars is 30.\nIn the first 15 minutes, 5 cars drive through the traffic jam.\nSo, the number of cars that drove through the traffic jam in the first 15 minutes is 30 - 5 = <<30-5=25>>25.\n\n#### 25",
+          "expected_exact": [
+            "5"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 71,
+          "generated_token_samples": [
+            71,
+            71
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            502.722,
+            497.164
+          ],
+          "latency_ms": 499.943
+        },
+        {
+          "record_id": "gsm8k-evaluation-01162",
+          "category": "reasoning_q1",
+          "validator": "final_number",
+          "output": "Haley's age is 26 years.\nHalf of Haley's age is \\( \\frac{26}{2} = 13 \\) years.\nGeb is 10 less than half the age of Haley, so Geb's age is \\( 13 - 10 = 3 \\) years.\n\n#### 3",
+          "expected_exact": [
+            "3"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": true,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [
+            "3"
+          ],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 71,
+          "generated_token_samples": [
+            71,
+            71
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            492.41,
+            494.048
+          ],
+          "latency_ms": 493.229
+        },
+        {
+          "record_id": "gsm8k-evaluation-00463",
+          "category": "reasoning_q1",
+          "validator": "final_number",
+          "output": "The tip amount is calculated by multiplying the cost of the pizza by 1/5: \\( \\$15 \\times \\frac{1}{5} = \\$3 \\). Therefore, the total amount Ashley should give the delivery man as a tip is \\( \\$3 \\).\n\n#### 3",
+          "expected_exact": [
+            "18"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 60,
+          "generated_token_samples": [
+            60,
+            60
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            417.006,
+            414.98
+          ],
+          "latency_ms": 415.993
+        },
+        {
+          "record_id": "gsm8k-evaluation-00094",
+          "category": "reasoning_q3",
+          "validator": "final_number",
+          "output": "The number of cats is 2 * 60 = <<2*60=120>>120.\nThe number of dogs is 60.\nThe number of rabbits is 120 - 120 + 120 = <<120-120+120=120>>120.\n\nTherefore, the total number of pets in the neighborhood is 60 + 120 + 120 = <<60+120+120=300>>300.\n\n#### 300",
+          "expected_exact": [
+            "348"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 127,
+          "generated_token_samples": [
+            127,
+            127
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            887.948,
+            888.667
+          ],
+          "latency_ms": 888.308
+        },
+        {
+          "record_id": "gsm8k-evaluation-00634",
+          "category": "reasoning_q1",
+          "validator": "final_number",
+          "output": "Naomi caught 17 fish.\nDarren caught 6 less than Naomi, so Darren caught \\(17 - 6 = 11\\) fish.\nTommy caught 3 more fish than Darren, so Tommy caught \\(11 + 3 = \\boxed{14}\\) fish.",
+          "expected_exact": [
+            "14"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": true,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [
+            "14"
+          ],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 63,
+          "generated_token_samples": [
+            63,
+            63
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            438.228,
+            434.82
+          ],
+          "latency_ms": 436.524
+        },
+        {
+          "record_id": "gsm8k-evaluation-00349",
+          "category": "reasoning_q2",
+          "validator": "final_number",
+          "output": "Madeline spends $25 x 4 = $<<25*4=100>>100 on food each month.\nShe spends $20 x 4 = $<<20*4=80>>80 on treats each month.\nShe spends $100 x 12 = $<<100*12=1200>>1200 on medicine each month.\n\nIn total, she spends $100 + $80 + $1200 = $<<100+80+1200=1380>>1380 on her dog each month.\n\nSince there are 12 months in a year, she spends $1380 x 12 = $<<1380*12=16560>>16560 on her dog each year.\n\nTherefore, the answer is 16560.",
+          "expected_exact": [
+            "2640"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 201,
+          "generated_token_samples": [
+            201,
+            201
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1411.289,
+            1417.726
+          ],
+          "latency_ms": 1414.508
+        },
+        {
+          "record_id": "gsm8k-evaluation-00514",
+          "category": "reasoning_q1",
+          "validator": "final_number",
+          "output": "Let \\( L \\) represent the cost of the lot in dollars.\nAccording to the problem, the house costs three times as much as the lot:\n\\[ H = 3L \\]\nThe total cost of both the house and the lot is given as $120,000:\n\\[ H + L = 120,000 \\]\n\nSubstitute the expression for \\( H \\) into the equation:\n\\[ 3L + L = 120,000 \\]\n\nCombine like terms:\n\\[ 4L = 120,000 \\]\n\nDivide both sides by 4 to solve for \\( L \\):\n\\[ L = \\frac{120,000}{4} \\]\n\\[ L = 30,000 \\]\n\nNow that we know the value of \\( L \\), we can find the cost of the house:\n\\[ H = 3L \\]\n\\[ H = 3 \\times 30,000 \\]\n\\[ H = 90,000 \\]\n\nTherefore, the house cost $90,000.",
+          "expected_exact": [
+            "90000"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": true,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [
+            "90000"
+          ],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 238,
+          "generated_token_samples": [
+            238,
+            238
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1668.416,
+            1668.313
+          ],
+          "latency_ms": 1668.365
+        },
+        {
+          "record_id": "gsm8k-evaluation-00241",
+          "category": "reasoning_q1",
+          "validator": "final_number",
+          "output": "Dolly reads 2 books.\nPandora reads 1 book.\nTogether, they read \\(2 + 1 = \\boxed{3}\\) books.",
+          "expected_exact": [
+            "6"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 34,
+          "generated_token_samples": [
+            34,
+            34
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            238.126,
+            237.298
+          ],
+          "latency_ms": 237.712
+        },
+        {
+          "record_id": "gsm8k-evaluation-00721",
+          "category": "reasoning_q4",
+          "validator": "final_number",
+          "output": "First, let's calculate how many taps Helga makes when she is not raising her arms:\n- Her right foot taps at 300 taps per minute.\n- Her left foot taps at 250 taps per minute.\n\nSo, together they make \\(300 + 250 = 550\\) taps per minute.\n\nNext, we need to determine how many minutes she dances without raising her arms:\n- She dances for 5 minutes in total.\n- Out of these, 2 minutes are spent raising her arms.\n\nTherefore, the time spent dancing without raising her arms is \\(5 - 2 = 3\\) minutes.\n\nNow, let's find out how many taps she makes in this time:\n- At 550 taps per minute, in 3 minutes she makes \\(550 \\times 3 = 1650\\) taps.\n\nFinally, we add up the taps from both feet:\n- The right foot taps 550 times.\n- The left foot taps 1650 times.\n\nThus, the combined total number of times she taps both of her feet is \\(550 + 1650 = 2200\\).\n\n#### 2200",
+          "expected_exact": [
+            "2450"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 255,
+          "generated_token_samples": [
+            255,
+            255
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1785.194,
+            1780.598
+          ],
+          "latency_ms": 1782.896
+        },
+        {
+          "record_id": "gsm8k-evaluation-00655",
+          "category": "reasoning_q1",
+          "validator": "final_number",
+          "output": "She has written \\( \\frac{1}{3} \\times 15 = 5 \\) pages.\nSo, she still needs to write \\( 15 - 5 = 10 \\) pages.\n\n#### 10\n\nThe final answer is 10.",
+          "expected_exact": [
+            "10"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": true,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [
+            "10"
+          ],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 59,
+          "generated_token_samples": [
+            59,
+            59
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            410.219,
+            413.214
+          ],
+          "latency_ms": 411.716
+        },
+        {
+          "record_id": "gsm8k-evaluation-00108",
+          "category": "reasoning_q2",
+          "validator": "final_number",
+          "output": "Let's denote the number of cookies Henry baked last year as \\( x \\). According to the problem, this amount was doubled this year, so the number of cookies he baked this year is \\( 2x \\).\n\nWhen he finished baking, he realized he had dropped 5 cookies, so the actual number of cookies he had left was \\( 2x - 5 \\).\n\nWe know that after dropping 5 cookies, he had a total of 110 cookies. Therefore, we can set up the following equation:\n\n\\[ 2x - 5 = 110 \\]\n\nTo find \\( x \\), we solve the equation step by step.\n\nFirst, add 5 to both sides of the equation:\n\\[ 2x - 5 + 5 = 110 + 5 \\]\n\\[ 2x = 115 \\]\n\nNext, divide both sides by 2:\n\\[ \\frac{2x}{2} = \\frac{115}{2} \\]\n\\[ x = 57.5 \\]\n\nSince the number of cookies must be an integer, let's recheck our steps. The correct calculation should be:\n\\[ 2x - 5 = 110 \\]\n\\[",
+          "expected_exact": [
+            "50"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 256,
+          "generated_token_samples": [
+            256,
+            256
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1797.049,
+            1791.644
+          ],
+          "latency_ms": 1794.346
+        },
+        {
+          "record_id": "gsm8k-evaluation-01166",
+          "category": "reasoning_q4",
+          "validator": "final_number",
+          "output": "The 5-year-old tree produces \\(5 \\times 50 = 250\\) fruits.\nThe 6-year-old tree produces \\(3 \\times 250 = 750\\) fruits.\nThe 7-year-old tree produces \\(7 \\times 250 - 200 = 1400\\) fruits.\nThe 8-year-old tree produces \\(200 - 20 = 180\\) fruits.\n\nIn total, the 8-year-old tree produces \\(180 + 1400 + 250 + 750 + 1400 = 5330\\) fruits in its first nine years.\n\nDuring the ninth year, the tree doesn’t produce any fruit, so we subtract this from the total: \\(5330 - 9 = 5321\\).\n\nTherefore, the total number of fruits produced by the tree over its ten years is \\(5321 + 5330 = 10651\\).\n\n#### 10651\n\nFinal answer: 10651.",
+          "expected_exact": [
+            "2350"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 239,
+          "generated_token_samples": [
+            239,
+            239
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1673.718,
+            1673.526
+          ],
+          "latency_ms": 1673.622
+        },
+        {
+          "record_id": "gsm8k-evaluation-01118",
+          "category": "reasoning_q4",
+          "validator": "final_number",
+          "output": "First, let's find out how many fish Tate has initially:\n- Male guppies: 4 + 2 = <<4+2=6>>6\n- Female guppies: 7 + 0 = <<7+0=7>>7\n- Male goldfishes: 3 + 2 = <<3+2=5>>5\n- Female goldfishes: 5 + 3 = <<5+3=8>>8\n\nNow, let's calculate how many fish Tate has after buying some:\n- New males: 7 - 2 = <<7-2=5>>5\n- New females: 7 - 1 = <<7-1=6>>6\n- New goldfishes: 5 - 2 = <<5-2=3>>3\n\nFinally, we can find out how many more female fishes than male fishes Tate has:\n- Difference: 6 - 5 = <<6-5=1>>1\n\nSo, Tate has 1 more female fish than male fish in his pond. The final answer is 1.",
+          "expected_exact": [
+            "5"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 227,
+          "generated_token_samples": [
+            227,
+            227
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1594.24,
+            1590.699
+          ],
+          "latency_ms": 1592.469
+        },
+        {
+          "record_id": "gsm8k-evaluation-00835",
+          "category": "reasoning_q3",
+          "validator": "final_number",
+          "output": "First, we need to determine the speed of one kangaroo. Since it takes 18 hours for three kangaroos to travel the same distance as four turtles, we can set up an equation:\n\n\\[ \\text{Speed of one kangaroo} = \\frac{\\text{Total time}}{\\text{Number of kangaroos}} \\]\n\nGiven that it takes 18 hours for 3 kangaroos, we have:\n\n\\[ \\text{Speed of one kangaroo} = \\frac{18 \\text{ hours}}{3} = 6 \\text{ hours per kangaroo} \\]\n\nNow, since each turtle is traveling at half the speed of a kangaroo, the speed of one turtle is:\n\n\\[ \\text{Speed of one turtle} = \\frac{6 \\text{ hours per kangaroo}}{2} = 3 \\text{ hours per turtle} \\]\n\nTo find out how long it would take four turtles to travel the same distance as three kangaroos, we use the formula:\n\n\\[ \\text{Time for four turtles} = \\frac{\\text{Number of turtles}}{\\text{Speed of one turtle}} \\]\n\nSubstituting the values we know:\n\n\\[ \\text{Time for four",
+          "expected_exact": [
+            "48"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 256,
+          "generated_token_samples": [
+            256,
+            256
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1786.433,
+            1787.477
+          ],
+          "latency_ms": 1786.955
+        },
+        {
+          "record_id": "gsm8k-evaluation-00396",
+          "category": "reasoning_q3",
+          "validator": "final_number",
+          "output": "First, we need to calculate how many slices Jenny gave to Bill and Mark.\nBill received \\( \\frac{1}{3} \\) of the pizza, which is \\( \\frac{1}{3} \\times 12 = 4 \\) slices.\nMark received \\( \\frac{1}{4} \\) of the pizza, which is \\( \\frac{1}{4} \\times 12 = 3 \\) slices.\n\nNext, we add the slices given to Bill and Mark:\n\\( 4 + 3 = 7 \\) slices in total.\n\nNow, we subtract the slices Jenny ate from the total:\n\\( 7 - 2 = 5 \\) slices remaining.\n\nSo, there are 5 slices left on the pizza.",
+          "expected_exact": [
+            "3"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 158,
+          "generated_token_samples": [
+            158,
+            158
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1109.961,
+            1101.905
+          ],
+          "latency_ms": 1105.933
+        },
+        {
+          "record_id": "gsm8k-evaluation-00938",
+          "category": "reasoning_q4",
+          "validator": "final_number",
+          "output": "First, let's calculate John's total earnings for the week:\n\\[ \\text{Total Earnings} = 50 \\text{ dollars/hour} \\times 6 \\text{ hours} = 300 \\text{ dollars} \\]\n\nNext, we subtract his expenses from his earnings to find out how much money he has left:\n\\[ \\text{Money Left} = 300 \\text{ dollars} - 50 \\text{ dollars} = 250 \\text{ dollars} \\]\n\nNow, we need to determine how many 25 dollar pens John can buy with the remaining money:\n\\[ \\text{Number of Pens} = \\frac{\\text{Money Left}}{\\text{Price per Pen}} = \\frac{250 \\text{ dollars}}{25 \\text{ dollars/pen}} = 10 \\text{ pens} \\]\n\nSo, John can buy 10 pens after buying 5 pencils that cost 10 dollars each. The final answer is \\( \\boxed{10} \\).",
+          "expected_exact": [
+            "4"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 224,
+          "generated_token_samples": [
+            224,
+            224
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1567.157,
+            1569.231
+          ],
+          "latency_ms": 1568.194
+        },
+        {
+          "record_id": "gsm8k-evaluation-00355",
+          "category": "reasoning_q2",
+          "validator": "final_number",
+          "output": "The second tree has a height of \\(6 + 5 = 11\\) feet.\nThe total height of the two trees combined is \\(6 + 11 = 17\\) feet.\nTherefore, the height of the tallest tree is \\(2 \\times 17 = 34\\) feet.\n\n#### 34",
+          "expected_exact": [
+            "34"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": true,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [
+            "34"
+          ],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 69,
+          "generated_token_samples": [
+            69,
+            69
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            483.337,
+            486.739
+          ],
+          "latency_ms": 485.038
+        },
+        {
+          "record_id": "gsm8k-evaluation-00865",
+          "category": "reasoning_q3",
+          "validator": "final_number",
+          "output": "The number of green cars is 2 less than the number of red cars, so there are \\(12 - 2 = 10\\) green cars.\nThe number of blue cars is 3 times the number of green cars, so there are \\(10 \\times 3 = <<10*3=30>>30\\) blue cars.\nThe total number of red, green, and blue cars is \\(12 + 10 + 30 = <<12+10+30=52>>52\\).\nSince the rink has a total of 75 cars, the number of yellow cars is \\(75 - 52 = <<75-52=23>>23\\).\n\n#### 23",
+          "expected_exact": [
+            "23"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": true,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [
+            "23"
+          ],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 161,
+          "generated_token_samples": [
+            161,
+            161
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1130.835,
+            1127.894
+          ],
+          "latency_ms": 1129.364
+        },
+        {
+          "record_id": "gsm8k-evaluation-00813",
+          "category": "reasoning_q2",
+          "validator": "final_number",
+          "output": "First, we need to determine how many marshmallows are left in the bag after John and DeSean made their s'mores. Initially, there were 35 marshmallows, and John made 9 s'mores, so he used \\(9 \\times 1 = 9\\) marshmallows. DeSean also made 9 s'mores, using \\(9 \\times 1 = 9\\) marshmallows. Therefore, the total number of marshmallows used is \\(9 + 9 = 18\\). Subtracting this from the initial amount leaves \\(35 - 18 = 17\\) marshmallows remaining.\n\nNext, we need to find out how many marshmallows each person can eat. Since there are two people (John and DeSean), we divide the remaining marshmallows by 2: \\(17 \\div 2 = 8.5\\).\n\nSince they cannot split a marshmallow into halves, we take the integer part of the division result, which is 8. This means each person can eat 8 marshmallows.\n\nThus, the number of marshmallows each person has left is:\n- John: 8 marshmallows\n- DeSean: 8 marsh",
+          "expected_exact": [
+            "7"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 256,
+          "generated_token_samples": [
+            256,
+            256
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1788.949,
+            1796.895
+          ],
+          "latency_ms": 1792.922
+        },
+        {
+          "record_id": "gsm8k-evaluation-00310",
+          "category": "reasoning_q3",
+          "validator": "final_number",
+          "output": "First, let's calculate the total amount Theo spent on the business suits:\n\\[ \\text{Total cost of suits} = 6 \\times \\$100 = \\$600 \\]\n\nNext, we'll find out the cost of the flight ticket:\n\\[ \\text{Cost of flight ticket} = 5 \\times (\\$100 + \\$50) = 5 \\times \\$150 = \\$750 \\]\n\nNow, let's add up all the expenses:\n\\[ \\text{Total expenses} = \\$600 (suits) + \\$750 (flight ticket) = \\$1350 \\]\n\nFinally, we subtract the total expenses from the initial budget to find out how much money Theo has left for gifts:\n\\[ \\text{Money left for gifts} = \\$6000 - \\$1350 = \\$4650 \\]\n\nHe wants to save $2000 for this trip, so the remaining amount he needs to spend on gifts is:\n\\[ \\text{Amount needed for gifts} = \\$4650 - \\$2000 = \\$2650 \\]\n\nTherefore, Theo needs to spend $2650 on buying gifts",
+          "expected_exact": [
+            "2050"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 256,
+          "generated_token_samples": [
+            256,
+            256
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1796.551,
+            1798.176
+          ],
+          "latency_ms": 1797.364
+        },
+        {
+          "record_id": "gsm8k-evaluation-00559",
+          "category": "reasoning_q3",
+          "validator": "final_number",
+          "output": "Juan's current coffee consumption is \\( \\frac{1}{2} \\times 4 = 2 \\) cups per day.\nHis reduced coffee consumption is \\( 4 - 2 = 2 \\) cups per day.\n\nThe reduction in Juan's coffee consumption is \\( 4 - 2 = 2 \\) cups per day.\n\n#### 2",
+          "expected_exact": [
+            "16"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 74,
+          "generated_token_samples": [
+            74,
+            74
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            518.308,
+            522.193
+          ],
+          "latency_ms": 520.25
+        },
+        {
+          "record_id": "gsm8k-evaluation-01073",
+          "category": "reasoning_q3",
+          "validator": "final_number",
+          "output": "The total number of bananas Mr. Robles bought is 315.\nOne monkey eats 10 bananas each day, so the first monkey eats \\(10 \\times 7 = 70\\) bananas in a week.\nThe second monkey eats 4 more bananas than the first monkey, so the second monkey eats \\(10 + 4 = 14\\) bananas each day.\nTherefore, the third monkey eats \\(315 - (70 + 14) = 211\\) bananas each day.\n\n#### 211\n\nFinal answer: 211.",
+          "expected_exact": [
+            "21"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 125,
+          "generated_token_samples": [
+            125,
+            125
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            876.058,
+            880.509
+          ],
+          "latency_ms": 878.284
+        },
+        {
+          "record_id": "gsm8k-evaluation-00508",
+          "category": "reasoning_q2",
+          "validator": "final_number",
+          "output": "First find how many cows the zoo has: 20 cows * 2 = <<20*2=40>>40 cows.\nThen divide that by two to find how many sheep the zoo has: 40 cows / 2 = <<40/2=20>>20 sheep.\nNow add the number of cows and sheep together: 30 cows + 20 sheep = <<30+20=50>>50 animals.\n\n#### 50\n\nThis problem involves basic multiplication and division operations. It requires understanding the relationships between different types of animals on both farms and zoos. By breaking down the information provided and using simple arithmetic calculations, we can determine the total number of animals on each farm and zoo. This type of problem is a good example of applying mathematical concepts in real-world scenarios.",
+          "expected_exact": [
+            "120"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 174,
+          "generated_token_samples": [
+            174,
+            174
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1228.643,
+            1218.496
+          ],
+          "latency_ms": 1223.57
+        },
+        {
+          "record_id": "gsm8k-evaluation-00469",
+          "category": "reasoning_q1",
+          "validator": "final_number",
+          "output": "First find the total number of cupcakes that can be decorated by all the jars: 6 jars * 8 cupcakes/jar = <<6*8=48>>48 cupcakes.\nThen divide the total number of cupcakes by the number of cupcakes per pan to find the number of pans needed: 48 cupcakes / 12 cupcakes/pan = <<48/12=4>>4 pans.\n\n#### 4\n\nThe final answer is 4.",
+          "expected_exact": [
+            "4"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": true,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [
+            "4"
+          ],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 96,
+          "generated_token_samples": [
+            96,
+            96
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            680.35,
+            686.319
+          ],
+          "latency_ms": 683.334
+        },
+        {
+          "record_id": "gsm8k-evaluation-00043",
+          "category": "reasoning_q3",
+          "validator": "final_number",
+          "output": "First find the total number of calories in one serving: 250 calories.\nThen multiply that by the number of servings to find the total number of calories in the bag: 250 calories/serving * 5 servings = <<250*5=1250>>1250 calories.\nThen subtract the calories you've already eaten from the total calories to find how many more calories you need to consume: 2000 calories - 1800 calories = <<2000-1800=200>>200 calories.\nThen divide the remaining calories needed by the number of calories per serving to find how many servings you'll need to eat: 200 calories / 1250 calories/serving = <<200/1250=0.16>>0.16 servings.\nFinally, convert the number of servings into grams by multiplying by the weight of one serving: 0.16 servings * 300g/serving = <<0.16*300=48>>48 grams.\n\n#### 48",
+          "expected_exact": [
+            "48"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": true,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [
+            "48"
+          ],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 238,
+          "generated_token_samples": [
+            238,
+            238
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1687.842,
+            1667.536
+          ],
+          "latency_ms": 1677.689
+        },
+        {
+          "record_id": "gsm8k-evaluation-00795",
+          "category": "reasoning_q2",
+          "validator": "final_number",
+          "output": "The discount on the jeans is 25%, so the discount amount is \\(40 \\times 0.25 = 10\\). Therefore, the total cost after the discount is \\(40 - 10 = 30\\).\n\nIf Mike pays with a $50.00 bill, the change he receives is \\(50 - 30 = 20\\).\n\nSo, Mike has $20.00 left over.\n\n#### 20\n\n#### number: 20",
+          "expected_exact": [
+            "20"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": true,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [
+            "20"
+          ],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 109,
+          "generated_token_samples": [
+            109,
+            109
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            765.49,
+            775.551
+          ],
+          "latency_ms": 770.52
+        },
+        {
+          "record_id": "gsm8k-evaluation-00017",
+          "category": "reasoning_q3",
+          "validator": "final_number",
+          "output": "First find Jill's weekly pay for teaching: $20/hour * 35 hours/week = $<<20*35=700>>700.\nThen add that amount to her hourly rate to find her total pay from teaching: $700 + $0 = $<<700+0=700>>700.\nNext find Jill's weekly pay for coaching: $30/hour * 15 hours/week = $<<30*15=450>>450.\nThen add that amount to her hourly rate to find her total pay from coaching: $450 + $0 = $<<450+0=450>>450.\nFinally, add those two amounts together to find her total annual salary: $700 + $450 = $<<700+450=1150>>1150.\n\n#### 1150",
+          "expected_exact": [
+            "57500"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 207,
+          "generated_token_samples": [
+            207,
+            207
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1453.317,
+            1478.802
+          ],
+          "latency_ms": 1466.059
+        },
+        {
+          "record_id": "gsm8k-evaluation-00026",
+          "category": "reasoning_q1",
+          "validator": "final_number",
+          "output": "First find the total cost of the shorts: 3 pairs * $16.50 = $<<3*16.5=<<3*16.5=>>49.50.\nThen find the total cost of the pants: 3 pairs * $22.50 = $<<3*22.5=<<3*22.5=>>71.50.\nThen add the cost of the shorts, pants, and shoes to find the total cost: $49.50 + $71.50 + $42 = $<<49.5+71.5+42=<<49.5+71.5+42=<<162=>>162.\n\n#### 162",
+          "expected_exact": [
+            "243"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 169,
+          "generated_token_samples": [
+            169,
+            169
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1187.956,
+            1184.36
+          ],
+          "latency_ms": 1186.158
+        },
+        {
+          "record_id": "gsm8k-evaluation-00443",
+          "category": "reasoning_q4",
+          "validator": "final_number",
+          "output": "First find the total time Jon took to complete his triathlon: 40 + 60 + 50 = <<40+60+50=150>>150 minutes.\nThen subtract Jon's time from the total time to find James' time: 150 - 150 * .9 = <<150-150*0.9=30>>30 minutes.\nFinally, divide the time James took by the speed he ran to find the time he took to run: 30 / (1/5) = <<30/(1/5)=150>>150 minutes.\n\n#### 150",
+          "expected_exact": [
+            "59"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 146,
+          "generated_token_samples": [
+            146,
+            146
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1028.226,
+            1026.286
+          ],
+          "latency_ms": 1027.256
+        },
+        {
+          "record_id": "gsm8k-evaluation-00260",
+          "category": "reasoning_q2",
+          "validator": "final_number",
+          "output": "First find how many cookies Carla needs for both days: 12 cookies/day * 36 cookies = <<12*36=432>>432 cookies.\nThen divide that total by the number of cookies per cup of flour to find how much flour she needs: 432 cookies / 12 cookies/cup = <<432/12=36>>36 cups.\n\n#### 36",
+          "expected_exact": [
+            "11"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 92,
+          "generated_token_samples": [
+            92,
+            92
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            647.278,
+            646.927
+          ],
+          "latency_ms": 647.103
+        },
+        {
+          "record_id": "gsm8k-evaluation-00456",
+          "category": "reasoning_q3",
+          "validator": "final_number",
+          "output": "First find how many more green cards there are: 60/100 * 15 = <<60/100*15=9>>9 green cards.\nThen add that to the number of red cards to find the total number of red and green cards: 15 + 9 = <<15+9=24>>24 cards.\nThen add the number of yellow cards to find the total number of cards: 24 + 24 = <<24+24=48>>48 cards.\n\n#### 48",
+          "expected_exact": [
+            "78"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 121,
+          "generated_token_samples": [
+            121,
+            121
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            846.229,
+            848.089
+          ],
+          "latency_ms": 847.159
+        },
+        {
+          "record_id": "gsm8k-evaluation-00380",
+          "category": "reasoning_q2",
+          "validator": "final_number",
+          "output": "The monthly payment is calculated by dividing the total amount borrowed by the number of months: \\( \\frac{3650}{5} = 730 \\). Therefore, Karan has to pay $730 per month.\n\n#### 730",
+          "expected_exact": [
+            "803"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 55,
+          "generated_token_samples": [
+            55,
+            55
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            385.253,
+            385.731
+          ],
+          "latency_ms": 385.492
+        },
+        {
+          "record_id": "gsm8k-evaluation-01008",
+          "category": "reasoning_q3",
+          "validator": "final_number",
+          "output": "First find how far Matteo drove: \\(55 \\text{ mph} \\times 4 \\text{ h} = 220 \\text{ miles}\\). Then find how far Shandy drove: \\(45 \\text{ mph} \\times 10 \\text{ h} = 450 \\text{ miles}\\). Finally, subtract the distance Matteo drove from the distance Shandy drove to find the difference: \\(450 \\text{ miles} - 220 \\text{ miles} = 230 \\text{ miles}\\).\n\n#### 230\n\nThe final answer is 230 miles.",
+          "expected_exact": [
+            "230"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": true,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [
+            "230"
+          ],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 139,
+          "generated_token_samples": [
+            139,
+            139
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            981.665,
+            974.181
+          ],
+          "latency_ms": 977.923
+        },
+        {
+          "record_id": "gsm8k-evaluation-01293",
+          "category": "reasoning_q1",
+          "validator": "final_number",
+          "output": "The company produces 5000 bars of chocolate each day.\nIn a week, they produce \\(5000 \\times 7 = <<5000*7=35000>>35000\\) bars.\nThey sell all the produced bars for $2 per bar, so they will receive \\(35000 \\times 2 = \\$<<35000*2=70000>>70000\\).\nTherefore, the company will receive $70000 for selling produced chocolate bars during two weeks.\n\n#### 70000\n\nFinal answer: **$70000**",
+          "expected_exact": [
+            "140000"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 143,
+          "generated_token_samples": [
+            143,
+            143
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1003.72,
+            1004.723
+          ],
+          "latency_ms": 1004.222
+        },
+        {
+          "record_id": "gsm8k-evaluation-00348",
+          "category": "reasoning_q2",
+          "validator": "final_number",
+          "output": "First, let's calculate how much money the factory is making per tractor when they were making tractors:\n$100 per tractor/day * 10 days = $<<100*10=1000>>1000\n\nNow, let's calculate how much money the factory is making per silo when they were making silos:\n$220 per silo/day * 5 silos/day = $<<220*5=1100>>1100\n\nTo find out what percentage more they are making per day now compared to before, we need to divide the difference in their daily earnings by the amount they were earning before, and then multiply by 100 to get the percentage:\n\n($1100 - $1000) / $1000 = $1000 / $1000 = 1\n\nThe difference in their daily earnings is $1000 - $1000 = $0.\n\nSo, the factory is making $0 more per day now than they did before.\n\n#### 0%",
+          "expected_exact": [
+            "10"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 233,
+          "generated_token_samples": [
+            233,
+            233
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1627.585,
+            1629.603
+          ],
+          "latency_ms": 1628.594
+        },
+        {
+          "record_id": "gsm8k-evaluation-00992",
+          "category": "reasoning_q4",
+          "validator": "final_number",
+          "output": "Buford writes:\n- Electric bills: 12 months/year * $10/month = $120/year\n- Gas bills: 12 months/year * $50/month = $600/year\n- Church checks: 4 months/year * $30/month = $120/year\n- Pest and lawn service checks: 3 times/quarter * $75/month = $225/year\n\nTotal yearly checks: $120 + $600 + $120 + $225 = $1165\n\n#### 1165",
+          "expected_exact": [
+            "52"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 127,
+          "generated_token_samples": [
+            127,
+            127
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            896.316,
+            891.242
+          ],
+          "latency_ms": 893.779
+        },
+        {
+          "record_id": "gsm8k-evaluation-00673",
+          "category": "reasoning_q4",
+          "validator": "final_number",
+          "output": "Let's denote the number of books Sally has as \\( S \\). According to the problem, Janey has 3 more than twice the number of books that Sally has. This can be expressed mathematically as:\n\\[ J = 2S + 3 \\]\nwhere \\( J \\) is the number of books Janey has.\n\nWe know from the problem statement that Janey has 21 books. So we substitute 21 for \\( J \\):\n\\[ 21 = 2S + 3 \\]\n\nTo find out how many books Sally has (\\( S \\)), we need to solve this equation for \\( S \\). First, subtract 3 from both sides of the equation:\n\\[ 21 - 3 = 2S \\]\n\\[ 18 = 2S \\]\n\nNext, divide both sides by 2:\n\\[ S = \\frac{18}{2} \\]\n\\[ S = 9 \\]\n\nSo, Sally has 9 books. The final answer is:\n\\[\n\\boxed{9}\n\\]",
+          "expected_exact": [
+            "9"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": true,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [
+            "9"
+          ],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 219,
+          "generated_token_samples": [
+            219,
+            219
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1524.719,
+            1529.423
+          ],
+          "latency_ms": 1527.071
+        },
+        {
+          "record_id": "gsm8k-evaluation-01134",
+          "category": "reasoning_q2",
+          "validator": "final_number",
+          "output": "First find the total amount Jane saves in one week: $4 savings/week * 8 weeks = $<<4*8=32>>32.\nThen divide the total amount she wants to save by the weekly savings to find how many weeks it will take: $60 / $32 per week = <<60/32=1.875>>1.875 weeks.\n\nSince Jane can't save half a week, we round up to the next whole number: 2 weeks.\n\nTherefore, it will take Jane 2 weeks to save a total of $60.",
+          "expected_exact": [
+            "7"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 126,
+          "generated_token_samples": [
+            126,
+            126
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            878.816,
+            882.934
+          ],
+          "latency_ms": 880.875
+        },
+        {
+          "record_id": "gsm8k-evaluation-00371",
+          "category": "reasoning_q3",
+          "validator": "final_number",
+          "output": "On Friday, the store sold 14 pairs of tennis shoes.\nThe next day, they sold double that number, which is \\(2 \\times 14 = 28\\) pairs.\nOn the last day, they sold half the amount from the previous day, which is \\(1/2 \\times 28 = 14\\) pairs.\nHowever, six people returned their pairs because they didn't fit, so we need to subtract those six pairs from the total sales.\nSo, the total number of pairs sold by the end of the sale is \\(14 + 28 - 6 = 36\\).\n#### 36",
+          "expected_exact": [
+            "50"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 135,
+          "generated_token_samples": [
+            135,
+            135
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            954.984,
+            949.564
+          ],
+          "latency_ms": 952.274
+        },
+        {
+          "record_id": "gsm8k-evaluation-00831",
+          "category": "reasoning_q4",
+          "validator": "final_number",
+          "output": "The total cost of the initial installation is $129.00.\nFor the additional items, Angela needs to pay $15.00 per item for 6 mirrors + 2 chandeliers + 20 pictures = 38 items.\nSo the cost for these additional items is 38 * $15.00 = $570.00.\nTherefore, the total cost for the installation is $129.00 + $570.00 = $709.00.\n\n#### 709",
+          "expected_exact": [
+            "324"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 120,
+          "generated_token_samples": [
+            120,
+            120
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            842.179,
+            846.531
+          ],
+          "latency_ms": 844.355
+        },
+        {
+          "record_id": "gsm8k-evaluation-00342",
+          "category": "reasoning_q1",
+          "validator": "final_number",
+          "output": "First, we need to determine how many new baby outfits Laurel received from her friend. Since her friend gave her 24 new outfits, and she received twice this amount, we calculate:\n\n\\[ 2 \\times 24 = 48 \\text{ new outfits} \\]\n\nNext, we add the 15 outfits her mother gave her to find the total number of baby outfits she has now:\n\n\\[ 48 + 15 = 63 \\text{ baby outfits} \\]\n\nSo, Laurel has a total of 63 baby outfits for her baby.\n\n#### 63",
+          "expected_exact": [
+            "87"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 124,
+          "generated_token_samples": [
+            124,
+            124
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            867.057,
+            865.092
+          ],
+          "latency_ms": 866.074
+        },
+        {
+          "record_id": "gsm8k-evaluation-01135",
+          "category": "reasoning_q2",
+          "validator": "final_number",
+          "output": "First find the total number of blue birds in the first two trees: \\(7 \\text{ birds/tree} \\times 2 \\text{ trees} = 14 \\text{ birds}\\). Then add the number of birds in the third tree to this total: \\(14 \\text{ birds} + 3 \\text{ birds} = 17 \\text{ birds}\\).\n\nThe total number of blue birds is \\(17\\). The final answer is \\(17\\).",
+          "expected_exact": [
+            "32"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 103,
+          "generated_token_samples": [
+            103,
+            103
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            718.409,
+            717.648
+          ],
+          "latency_ms": 718.029
+        },
+        {
+          "record_id": "gsm8k-evaluation-00888",
+          "category": "reasoning_q1",
+          "validator": "final_number",
+          "output": "First, we need to find out how many cookies Lani had left after she ate some. This can be calculated by subtracting the number of cookies she ate from the total number of cookies she baked: \\(55 - 5 = 50\\).\n\nNext, we divide the remaining number of cookies equally among the five jars:\n\\[ \\frac{50}{5} = 10 \\]\n\nSo, there are 10 cookies in each jar.\n\n#### 10",
+          "expected_exact": [
+            "10"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": true,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [
+            "10"
+          ],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 100,
+          "generated_token_samples": [
+            100,
+            100
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            698.529,
+            698.952
+          ],
+          "latency_ms": 698.741
+        },
+        {
+          "record_id": "gsm8k-evaluation-00693",
+          "category": "reasoning_q4",
+          "validator": "final_number",
+          "output": "The comforter has 14 red squares.\nIt has 4 more blue squares than red squares, so there are 14 + 4 = <<14+4=18>>18 blue squares.\nIt has 6 more green squares than blue squares, so there are 18 + 6 = <<18+6=24>>24 green squares.\nAnd it has 12 fewer white squares than green squares, so there are 24 - 12 = <<24-12=12>>12 white squares.\n\nIn total, the comforter has 14 (red) + 18 (blue) + 24 (green) + 12 (white) = <<14+18+24+12=70>>70 square feet.\n\n#### 70",
+          "expected_exact": [
+            "68"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": true,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 180,
+          "generated_token_samples": [
+            180,
+            180
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1260.59,
+            1269.469
+          ],
+          "latency_ms": 1265.029
+        },
+        {
+          "record_id": "gsm8k-evaluation-00203",
+          "category": "reasoning_q3",
+          "validator": "final_number",
+          "output": "First, we need to determine how many slices of cheese Carl used for his sandwiches. Since he ate 2 slices per sandwich and there were 7 days in a week, he ate \\(2 \\times 7 = 14\\) slices of cheese for his sandwiches.\n\nNext, we know that he ate 1 more slice per omelet than per sandwich. So if he ate 2 slices per sandwich, he ate \\(2 + 1 = 3\\) slices per omelet. For 3 days, he ate \\(3 \\times 3 = 9\\) slices of cheese for his omelets.\n\nAdding up all the slices of cheese, we have:\n- Sandwiches: 14 slices\n- Omelets: 9 slices\n\nSo, the total number of slices of cheese Carl used is \\(14 + 9 = 23\\).\n\nTherefore, the final answer is 23 slices of cheese.",
+          "expected_exact": [
+            "31"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 194,
+          "generated_token_samples": [
+            194,
+            194
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1369.283,
+            1356.277
+          ],
+          "latency_ms": 1362.78
+        },
+        {
+          "record_id": "gsm8k-evaluation-00991",
+          "category": "reasoning_q1",
+          "validator": "final_number",
+          "output": "First find how many years have passed since Bill's dad saw the comet: 75 years - 30 years = <<75-30=45>>45 years.\nThen divide that number by two to find how many years ago Bill saw the comet for the first time: 45 years / 2 = <<45/2=22.5>>22.5 years.\nNow subtract that number from Bill's age when he saw the comet for the first time: 30 years - 22.5 years = <<30-22.5=7.5>>7.5 years.\n\n#### 7.5\n\nThe final answer is 7.5.",
+          "expected_exact": [
+            "15"
+          ],
+          "expected_any": [],
+          "expected_all": [],
+          "expected_groups": [],
+          "forbidden_any": [],
+          "passed": false,
+          "format_required": true,
+          "format_compliant": false,
+          "matched": [],
+          "matched_groups": [],
+          "forbidden_matched": [],
+          "generated_tokens": 149,
+          "generated_token_samples": [
+            149,
+            149
+          ],
+          "deterministic_output": true,
+          "latency_samples_ms": [
+            1051.474,
+            1048.956
+          ],
+          "latency_ms": 1050.215
+        }
+      ],
+      "load_time_s": 0.247,
+      "peak_allocated_bytes": 1289184768,
+      "peak_reserved_bytes": 1396703232
+    }
+  },
+  "diagnostics": {
+    "schema_version": "distillation-diagnostics/v1",
+    "record_count": 64,
+    "quality_transition": {
+      "improved_count": 4,
+      "regressed_count": 8,
+      "unchanged_count": 52,
+      "improved_record_ids": [
+        "gsm8k-evaluation-00043",
+        "gsm8k-evaluation-00795",
+        "gsm8k-evaluation-00865",
+        "gsm8k-evaluation-00888"
+      ],
+      "regressed_record_ids": [
+        "gsm8k-evaluation-00026",
+        "gsm8k-evaluation-00108",
+        "gsm8k-evaluation-00342",
+        "gsm8k-evaluation-00396",
+        "gsm8k-evaluation-00661",
+        "gsm8k-evaluation-00939",
+        "gsm8k-evaluation-01135",
+        "gsm8k-evaluation-01198"
+      ],
+      "category_quality_deltas": {
+        "reasoning_q1": -0.0625,
+        "reasoning_q2": -0.125,
+        "reasoning_q3": 0.0625,
+        "reasoning_q4": -0.125
+      }
+    },
+    "format_transition": {
+      "improved_count": 27,
+      "regressed_count": 3,
+      "improved_record_ids": [
+        "gsm8k-evaluation-00017",
+        "gsm8k-evaluation-00026",
+        "gsm8k-evaluation-00043",
+        "gsm8k-evaluation-00094",
+        "gsm8k-evaluation-00098",
+        "gsm8k-evaluation-00260",
+        "gsm8k-evaluation-00318",
+        "gsm8k-evaluation-00342",
+        "gsm8k-evaluation-00355",
+        "gsm8k-evaluation-00371",
+        "gsm8k-evaluation-00380",
+        "gsm8k-evaluation-00443",
+        "gsm8k-evaluation-00456",
+        "gsm8k-evaluation-00463",
+        "gsm8k-evaluation-00559",
+        "gsm8k-evaluation-00560",
+        "gsm8k-evaluation-00584",
+        "gsm8k-evaluation-00693",
+        "gsm8k-evaluation-00721",
+        "gsm8k-evaluation-00831",
+        "gsm8k-evaluation-00865",
+        "gsm8k-evaluation-00888",
+        "gsm8k-evaluation-00992",
+        "gsm8k-evaluation-01005",
+        "gsm8k-evaluation-01162",
+        "gsm8k-evaluation-01198",
+        "gsm8k-evaluation-01226"
+      ],
+      "regressed_record_ids": [
+        "gsm8k-evaluation-00108",
+        "gsm8k-evaluation-01008",
+        "gsm8k-evaluation-01286"
+      ]
+    },
+    "metric_deltas": {
+      "quality_score": -0.0625,
+      "format_compliance_ratio": 0.375,
+      "saturation_ratio": -0.140625,
+      "mean_generated_tokens": 4.5,
+      "mean_latency_ms": 56.135,
+      "mean_ms_per_output_token": 0.167
+    },
+    "proxy_alignment": {
+      "reference_nll_improved": true,
+      "development_quality_improved": false,
+      "validation_quality_improved": false,
+      "proxy_task_mismatch": true
+    },
+    "training_observability": {
+      "metric_history_available": false,
+      "trajectory_summary_available": false,
+      "adapter_update_available": false
+    }
+  }
+}

@@ -259,6 +259,20 @@ def test_signal_input_contracts():
         pass
     else:
         raise AssertionError("invalid terminal_index must raise IndexError")
+    invalid_calls = [
+        lambda: build_token_rewards(float("nan"), torch.ones(2), torch.ones(2), 0.1),
+        lambda: build_token_rewards(1.0, torch.tensor([float("nan"), 0.0]), torch.ones(2), 0.1),
+        lambda: build_token_rewards(1.0, torch.ones(2), torch.ones(2), 0.1, action_mask=torch.tensor([1, 1])),
+        lambda: compute_advantages(torch.ones(2), torch.zeros(2), normalize=True, eps=0.0),
+        lambda: group_relative_advantages(torch.tensor([0.0, float("inf")]), eps=1e-8),
+    ]
+    for call in invalid_calls:
+        try:
+            call()
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("非有限信号、非布尔掩码或非法 eps 必须被拒绝")
 
 
 test_token_reward_placement()
@@ -280,17 +294,26 @@ print("All reward-signal tests passed.")
 ## 参考代码与解析
 
 ```python
+import math
+
+
 def build_token_rewards(task_reward, actor_log_probs, reference_log_probs, beta_kl, terminal_index=-1, action_mask=None):
     """在有效动作上组合采样对数概率比约束与终局任务反馈。"""
     if actor_log_probs.ndim != 1 or actor_log_probs.shape != reference_log_probs.shape:
         raise ValueError("actor/reference log probabilities must be same-shape 1D tensors")
-    if beta_kl < 0:
-        raise ValueError("beta_kl must be non-negative")
+    if not torch.isfinite(actor_log_probs).all() or not torch.isfinite(reference_log_probs).all():
+        raise ValueError("actor/reference 对数概率必须为有限数")
+    task_reward_tensor = torch.as_tensor(task_reward, dtype=actor_log_probs.dtype, device=actor_log_probs.device)
+    if task_reward_tensor.numel() != 1 or not torch.isfinite(task_reward_tensor):
+        raise ValueError("task_reward 必须是有限标量")
+    beta_kl = float(beta_kl)
+    if not math.isfinite(beta_kl) or beta_kl < 0:
+        raise ValueError("beta_kl 必须是非负有限数")
     if action_mask is None:
         action_mask = torch.ones_like(actor_log_probs, dtype=torch.bool)
-    if action_mask.shape != actor_log_probs.shape:
-        raise ValueError("action_mask 必须与对数概率同形")
-    action_mask = action_mask.to(dtype=torch.bool, device=actor_log_probs.device)
+    if action_mask.shape != actor_log_probs.shape or action_mask.dtype != torch.bool:
+        raise ValueError("action_mask 必须是与对数概率同形的布尔张量")
+    action_mask = action_mask.to(device=actor_log_probs.device)
     if not -actor_log_probs.numel() <= terminal_index < actor_log_probs.numel():
         raise IndexError("terminal_index 超出 Token 序列范围")
     if not bool(action_mask[terminal_index]):
@@ -300,7 +323,7 @@ def build_token_rewards(task_reward, actor_log_probs, reference_log_probs, beta_
         action_mask, -beta_kl * sampled_log_ratio, torch.zeros_like(sampled_log_ratio)
     )
     token_rewards = token_rewards.clone()
-    token_rewards[terminal_index] += task_reward
+    token_rewards[terminal_index] += task_reward_tensor
     return token_rewards
 
 
@@ -308,8 +331,9 @@ def discounted_returns(token_rewards, gamma=1.0):
     """从序列末端向前计算折扣累计奖励。"""
     if token_rewards.ndim != 1:
         raise ValueError("token_rewards must be a 1D tensor")
-    if not 0.0 <= gamma <= 1.0:
-        raise ValueError("gamma must be in [0, 1]")
+    gamma = float(gamma)
+    if not torch.isfinite(token_rewards).all() or not math.isfinite(gamma) or not 0.0 <= gamma <= 1.0:
+        raise ValueError("token_rewards 必须有限且 gamma 必须位于 [0, 1]")
     returns = torch.empty_like(token_rewards)
     running_return = torch.zeros((), dtype=token_rewards.dtype, device=token_rewards.device)
     for index in range(token_rewards.numel() - 1, -1, -1):
@@ -322,6 +346,11 @@ def compute_advantages(returns, values, normalize=False, eps=1e-8):
     """计算 return 相对 value 的优势，并可选做标准化。"""
     if returns.shape != values.shape:
         raise ValueError("returns and values must have the same shape")
+    eps = float(eps)
+    if not torch.isfinite(returns).all() or not torch.isfinite(values).all():
+        raise ValueError("returns 与 values 必须为有限数")
+    if not math.isfinite(eps) or eps <= 0:
+        raise ValueError("eps 必须是正有限数")
     advantages = returns - values
     if normalize:
         std = advantages.std(unbiased=False)
@@ -336,6 +365,9 @@ def group_relative_advantages(group_rewards, eps=1e-8, correction=0):
     """按指定标准差修正量计算同提示候选组的回答级相对优势。"""
     if group_rewards.ndim != 1 or group_rewards.numel() == 0:
         raise ValueError("group_rewards 必须是非空一维张量")
+    eps = float(eps)
+    if not torch.isfinite(group_rewards).all() or not math.isfinite(eps) or eps <= 0:
+        raise ValueError("组奖励必须有限且 eps 必须为正有限数")
     if correction not in (0, 1) or group_rewards.numel() <= correction:
         raise ValueError("标准差修正量必须为 0 或 1，且小于候选数量")
     centered = group_rewards - group_rewards.mean()

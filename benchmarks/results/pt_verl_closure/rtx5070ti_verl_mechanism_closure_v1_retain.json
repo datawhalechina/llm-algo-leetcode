@@ -1,0 +1,2816 @@
+{
+  "schema_version": "verl-mechanism-closure/v1",
+  "run_label": "rtx5070ti_verl_mechanism_closure_v1",
+  "candidate": "retain",
+  "status": "measured",
+  "verl_commit": "1876b06d0a3e4e71e06230be10af14492ca8a75b",
+  "source_path": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/pt_verl_lifecycle/rtx5070ti_rollout_arithmetic_v1.json",
+  "source_sha256": "664788fd2edd02402eb1dcbd145aaf87ad8e019535bd1e10e4b5bf29f977c817",
+  "resolved_config": {
+    "model_engine": "dp",
+    "actor_rollout_ref": {
+      "actor": {
+        "optim": {
+          "_target_": "verl.workers.config.FSDPOptimizerConfig",
+          "optimizer": "AdamW",
+          "optimizer_impl": "torch.optim",
+          "lr": 0.001,
+          "lr_warmup_steps_ratio": 0.0,
+          "total_training_steps": 1,
+          "weight_decay": 0.0,
+          "lr_warmup_steps": -1,
+          "betas": [
+            0.9,
+            0.999
+          ],
+          "clip_grad": 1.0,
+          "min_lr_ratio": 0.0,
+          "num_cycles": 0.5,
+          "lr_scheduler_type": "constant",
+          "zero_indexed_step": true,
+          "warmup_style": null,
+          "override_optimizer_config": null
+        },
+        "fsdp_config": {
+          "_target_": "verl.workers.config.FSDPEngineConfig",
+          "wrap_policy": {
+            "min_num_params": 0
+          },
+          "param_offload": true,
+          "optimizer_offload": true,
+          "offload_policy": false,
+          "reshard_after_forward": true,
+          "fsdp_size": -1,
+          "forward_prefetch": false,
+          "model_dtype": "fp32",
+          "use_orig_params": false,
+          "seed": 42,
+          "full_determinism": false,
+          "ulysses_sequence_parallel_size": 1,
+          "entropy_from_logits_with_chunking": false,
+          "entropy_from_logits_chunk_size": 2048,
+          "use_torch_compile": true,
+          "entropy_checkpointing": false,
+          "use_no_sync_for_gradient_accumulation": false,
+          "pad_to_length": false,
+          "pad_to_length_bucket": 1024,
+          "forward_only": false,
+          "strategy": "fsdp",
+          "dtype": "bfloat16",
+          "qat": {
+            "_target_": "verl.workers.config.QATEngineConfig",
+            "enable": false,
+            "mode": "w4a16",
+            "group_size": 16,
+            "ignore_patterns": [
+              "lm_head",
+              "embed_tokens",
+              "re:.*mlp.gate$"
+            ],
+            "activation_observer": "static_minmax",
+            "quantization_config_path": null
+          },
+          "turbo_config": {
+            "distributed": {
+              "fully_shard_parallel_size": 16,
+              "tensor_parallel_size": 1,
+              "expert_parallel_size": 1,
+              "expert_fully_shard_parallel_size": 1,
+              "ulysses_parallel_size": 1,
+              "fsdp_plan": {
+                "param_dtype": "bf16",
+                "reduce_dtype": "fp32",
+                "output_dtype": "bf16",
+                "fsdp_implementation": "native",
+                "num_to_forward_prefetch": 1,
+                "num_to_backward_prefetch": 1
+              }
+            }
+          }
+        },
+        "_target_": "verl.workers.config.FSDPActorConfig",
+        "rollout_n": 1,
+        "strategy": "fsdp",
+        "ppo_mini_batch_size": 4,
+        "ppo_micro_batch_size": null,
+        "ppo_micro_batch_size_per_gpu": 1,
+        "use_dynamic_bsz": false,
+        "ppo_max_token_len_per_gpu": 16384,
+        "clip_ratio": 0.2,
+        "clip_ratio_low": 0.2,
+        "clip_ratio_high": 0.2,
+        "tau_pos": 1.0,
+        "tau_neg": 1.05,
+        "freeze_vision_tower": false,
+        "policy_loss": {
+          "_target_": "verl.workers.config.PolicyLossConfig",
+          "loss_mode": "vanilla",
+          "clip_cov_ratio": 0.0002,
+          "clip_cov_lb": 1.0,
+          "clip_cov_ub": 5.0,
+          "kl_cov_ratio": 0.0002,
+          "ppo_kl_coef": 0.1,
+          "dro_beta": null
+        },
+        "clip_ratio_c": 3.0,
+        "loss_agg_mode": "token-mean",
+        "loss_scale_factor": null,
+        "entropy_coeff": 0,
+        "calculate_entropy": false,
+        "calculate_sum_pi_squared": false,
+        "use_kl_loss": false,
+        "use_prefix_grouper": false,
+        "use_torch_compile": true,
+        "kl_loss_coef": 0.001,
+        "kl_loss_type": "low_var_kl",
+        "ppo_epochs": 1,
+        "shuffle": false,
+        "data_loader_seed": 42,
+        "checkpoint": {
+          "_target_": "verl.trainer.config.CheckpointConfig",
+          "save_contents": [
+            "model",
+            "optimizer",
+            "extra"
+          ],
+          "load_contents": [
+            "model",
+            "optimizer",
+            "extra"
+          ],
+          "async_save": false,
+          "strict": true
+        },
+        "use_fused_kernels": false,
+        "profiler": {
+          "_target_": "verl.utils.profiler.ProfilerConfig",
+          "tool": null,
+          "enable": false,
+          "all_ranks": false,
+          "ranks": [],
+          "save_path": "outputs/profile",
+          "relocate_results": false,
+          "finish_hook_cmd": null,
+          "finish_hook_all_ranks": false,
+          "finish_hook_ranks": [],
+          "tool_config": {
+            "nsys": {
+              "_target_": "verl.utils.profiler.config.NsightToolConfig",
+              "discrete": false
+            },
+            "npu": {
+              "_target_": "verl.utils.profiler.config.NPUToolConfig",
+              "contents": [],
+              "level": "level0",
+              "analysis": true,
+              "discrete": false
+            },
+            "torch": {
+              "_target_": "verl.utils.profiler.config.TorchProfilerToolConfig",
+              "contents": [],
+              "discrete": false,
+              "schedule": {
+                "_target_": "verl.utils.profiler.config.TorchProfilerScheduleConfig",
+                "skip_first": 0,
+                "wait": 0,
+                "warmup": 0,
+                "active": 0,
+                "repeat": 0
+              }
+            },
+            "torch_memory": {
+              "_target_": "verl.utils.profiler.config.TorchMemoryToolConfig",
+              "trace_alloc_max_entries": 100000,
+              "stack_depth": 32,
+              "memory_snapshot_num_steps": 1
+            },
+            "precision_debugger": {
+              "_target_": "verl.utils.profiler.config.PrecisionDebuggerToolConfig",
+              "config_path": null,
+              "steps": null,
+              "stages": null,
+              "strict": false
+            }
+          }
+        },
+        "qat": {
+          "enable": false,
+          "mode": "w4a16",
+          "group_size": 16,
+          "ignore_patterns": [
+            "lm_head",
+            "embed_tokens",
+            "re:.*mlp.gate$"
+          ],
+          "activation_observer": "static_minmax",
+          "quantization_config_path": null
+        },
+        "grad_clip": 1.0,
+        "ulysses_sequence_parallel_size": 1,
+        "entropy_from_logits_with_chunking": false,
+        "entropy_from_logits_chunk_size": 2048,
+        "entropy_checkpointing": false,
+        "pad_to_length": false,
+        "use_remove_padding": false
+      },
+      "ref": {
+        "rollout_n": 1,
+        "strategy": "fsdp",
+        "use_torch_compile": true,
+        "log_prob_micro_batch_size": null,
+        "log_prob_micro_batch_size_per_gpu": null,
+        "log_prob_use_dynamic_bsz": false,
+        "log_prob_max_token_len_per_gpu": 16384,
+        "profiler": {
+          "_target_": "verl.utils.profiler.ProfilerConfig",
+          "tool": null,
+          "enable": false,
+          "all_ranks": false,
+          "ranks": [],
+          "save_path": "outputs/profile",
+          "relocate_results": false,
+          "finish_hook_cmd": null,
+          "finish_hook_all_ranks": false,
+          "finish_hook_ranks": [],
+          "tool_config": {
+            "nsys": {
+              "_target_": "verl.utils.profiler.config.NsightToolConfig",
+              "discrete": false
+            },
+            "npu": {
+              "_target_": "verl.utils.profiler.config.NPUToolConfig",
+              "contents": [],
+              "level": "level0",
+              "analysis": true,
+              "discrete": false
+            },
+            "torch": {
+              "_target_": "verl.utils.profiler.config.TorchProfilerToolConfig",
+              "contents": [],
+              "discrete": false,
+              "schedule": {
+                "_target_": "verl.utils.profiler.config.TorchProfilerScheduleConfig",
+                "skip_first": 0,
+                "wait": 0,
+                "warmup": 0,
+                "active": 0,
+                "repeat": 0
+              }
+            },
+            "torch_memory": {
+              "_target_": "verl.utils.profiler.config.TorchMemoryToolConfig",
+              "trace_alloc_max_entries": 100000,
+              "stack_depth": 32,
+              "memory_snapshot_num_steps": 1
+            },
+            "precision_debugger": {
+              "_target_": "verl.utils.profiler.config.PrecisionDebuggerToolConfig",
+              "config_path": null,
+              "steps": null,
+              "stages": null,
+              "strict": false
+            }
+          }
+        },
+        "fsdp_config": {
+          "_target_": "verl.workers.config.FSDPEngineConfig",
+          "wrap_policy": {
+            "min_num_params": 0
+          },
+          "param_offload": false,
+          "optimizer_offload": false,
+          "offload_policy": false,
+          "reshard_after_forward": true,
+          "fsdp_size": -1,
+          "forward_prefetch": false,
+          "model_dtype": "fp32",
+          "use_orig_params": false,
+          "seed": 42,
+          "full_determinism": false,
+          "ulysses_sequence_parallel_size": 1,
+          "entropy_from_logits_with_chunking": false,
+          "entropy_from_logits_chunk_size": 2048,
+          "use_torch_compile": true,
+          "entropy_checkpointing": false,
+          "use_no_sync_for_gradient_accumulation": false,
+          "pad_to_length": false,
+          "pad_to_length_bucket": 1024,
+          "forward_only": true,
+          "strategy": "fsdp",
+          "dtype": "bfloat16",
+          "qat": {
+            "_target_": "verl.workers.config.QATEngineConfig",
+            "enable": false,
+            "mode": "w4a16",
+            "group_size": 16,
+            "ignore_patterns": [
+              "lm_head",
+              "embed_tokens",
+              "re:.*mlp.gate$"
+            ],
+            "activation_observer": "static_minmax",
+            "quantization_config_path": null
+          },
+          "turbo_config": {
+            "distributed": {
+              "fully_shard_parallel_size": 16,
+              "tensor_parallel_size": 1,
+              "expert_parallel_size": 1,
+              "expert_fully_shard_parallel_size": 1,
+              "ulysses_parallel_size": 1,
+              "fsdp_plan": {
+                "param_dtype": "bf16",
+                "reduce_dtype": "fp32",
+                "output_dtype": "bf16",
+                "fsdp_implementation": "native",
+                "num_to_forward_prefetch": 1,
+                "num_to_backward_prefetch": 1
+              }
+            }
+          }
+        },
+        "_target_": "verl.workers.config.FSDPActorConfig",
+        "ulysses_sequence_parallel_size": 1,
+        "entropy_from_logits_with_chunking": false,
+        "entropy_from_logits_chunk_size": 2048,
+        "entropy_checkpointing": false,
+        "pad_to_length": false
+      },
+      "rollout": {
+        "_target_": "verl.workers.config.RolloutConfig",
+        "name": "vllm",
+        "mode": "async",
+        "nnodes": 0,
+        "n_gpus_per_node": 1,
+        "temperature": 1.0,
+        "top_k": -1,
+        "top_p": 1,
+        "full_determinism": false,
+        "seed": 42,
+        "prompt_length": 512,
+        "response_length": 512,
+        "dtype": "bfloat16",
+        "gpu_memory_utilization": 0.35,
+        "ignore_eos": false,
+        "enforce_eager": true,
+        "cudagraph_capture_sizes": null,
+        "free_cache_engine": false,
+        "tensor_model_parallel_size": 1,
+        "data_parallel_size": 1,
+        "expert_parallel_size": 1,
+        "pipeline_model_parallel_size": 1,
+        "max_num_batched_tokens": 512,
+        "max_model_len": 512,
+        "max_num_seqs": 8,
+        "enable_chunked_prefill": true,
+        "enable_prefix_caching": false,
+        "logprobs_mode": "processed_logprobs",
+        "scheduling_policy": "fcfs",
+        "load_format": "safetensors",
+        "layered_summon": false,
+        "log_prob_micro_batch_size": null,
+        "log_prob_micro_batch_size_per_gpu": 1,
+        "log_prob_use_dynamic_bsz": false,
+        "log_prob_max_token_len_per_gpu": 16384,
+        "disable_log_stats": true,
+        "do_sample": true,
+        "n": 1,
+        "over_sample_rate": 0,
+        "multi_stage_wake_up": false,
+        "engine_kwargs": {
+          "vllm": {},
+          "sglang": {},
+          "trtllm": {}
+        },
+        "val_kwargs": {
+          "_target_": "verl.workers.config.SamplingConfig",
+          "top_k": -1,
+          "top_p": 1.0,
+          "temperature": 0,
+          "n": 1,
+          "do_sample": false
+        },
+        "router_config_path": null,
+        "multi_turn": {
+          "_target_": "verl.workers.config.MultiTurnConfig",
+          "enable": false,
+          "max_assistant_turns": null,
+          "tool_config_path": null,
+          "function_tool_path": null,
+          "max_user_turns": null,
+          "max_parallel_calls": 1,
+          "max_tool_response_length": 256,
+          "tool_response_truncate_side": "middle",
+          "use_inference_chat_template": false,
+          "tokenization_sanity_check_mode": "strict",
+          "format": "hermes",
+          "num_repeat_rollouts": null
+        },
+        "calculate_log_probs": true,
+        "agent": {
+          "_target_": "verl.workers.config.AgentLoopConfig",
+          "num_workers": 8,
+          "default_agent_loop": "single_turn_agent",
+          "agent_loop_config_path": null,
+          "custom_async_server": {
+            "_target_": "verl.workers.config.CustomAsyncServerConfig",
+            "path": null,
+            "name": null
+          }
+        },
+        "checkpoint_engine": {
+          "_target_": "verl.workers.config.CheckpointEngineConfig",
+          "backend": "naive",
+          "update_weights_bucket_megabytes": 64,
+          "engine_kwargs": {},
+          "custom_backend_module": null
+        },
+        "trace": {
+          "_target_": "verl.workers.config.TraceConfig",
+          "project_name": "verl_examples",
+          "experiment_name": "gsm8k",
+          "backend": null,
+          "token2text": false,
+          "max_samples_per_step_per_worker": null
+        },
+        "skip_tokenizer_init": true,
+        "enable_rollout_routing_replay": false,
+        "moe_load_balance_metrics_interval": 0,
+        "profiler": {
+          "_target_": "verl.utils.profiler.ProfilerConfig",
+          "tool": null,
+          "enable": false,
+          "all_ranks": false,
+          "ranks": [],
+          "save_path": "outputs/profile",
+          "relocate_results": false,
+          "finish_hook_cmd": null,
+          "finish_hook_all_ranks": false,
+          "finish_hook_ranks": [],
+          "tool_config": {
+            "npu": {
+              "_target_": "verl.utils.profiler.config.NPUToolConfig",
+              "contents": [],
+              "level": "level0",
+              "analysis": true,
+              "discrete": false,
+              "profile_token_start": null,
+              "profile_token_end": null
+            },
+            "torch": {
+              "_target_": "verl.utils.profiler.config.TorchProfilerToolConfig",
+              "contents": [],
+              "discrete": false,
+              "profile_token_start": null,
+              "profile_token_end": null
+            },
+            "precision_debugger": {
+              "_target_": "verl.utils.profiler.config.PrecisionDebuggerToolConfig",
+              "config_path": null,
+              "steps": null,
+              "stages": null,
+              "strict": false
+            }
+          }
+        },
+        "prometheus": {
+          "_target_": "verl.workers.config.PrometheusConfig",
+          "enable": false,
+          "port": 9090,
+          "file": "/tmp/ray/session_latest/metrics/prometheus/prometheus.yml",
+          "served_model_name": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/model_cache/models--Qwen--Qwen2.5-0.5B-Instruct/snapshots/7ae557604adf67be50417f59c2c2f167def9a775"
+        },
+        "quantization": null,
+        "quantization_config_file": null,
+        "mtp": {
+          "_target_": "verl.workers.config.MtpConfig",
+          "enable": false,
+          "enable_train": false,
+          "enable_rollout": false,
+          "detach_encoder": false,
+          "mtp_loss_scaling_factor": 0.1,
+          "speculative_algorithm": "EAGLE",
+          "speculative_num_steps": 3,
+          "speculative_eagle_topk": 1,
+          "speculative_num_draft_tokens": 4,
+          "method": "mtp",
+          "num_speculative_tokens": 1
+        },
+        "qat": {
+          "_target_": "verl.workers.config.QATEngineConfig",
+          "enable": false,
+          "mode": "w4a16",
+          "group_size": 16,
+          "ignore_patterns": [
+            "lm_head",
+            "embed_tokens",
+            "re:.*mlp.gate$"
+          ],
+          "activation_observer": "static_minmax",
+          "quantization_config_path": null
+        },
+        "disaggregation": {
+          "enabled": false,
+          "prefill_replicas": 1,
+          "decode_replicas": 1,
+          "decode_tensor_model_parallel_size": null,
+          "transfer_backend": "nixl",
+          "bootstrap_port": null,
+          "ib_device": null
+        }
+      },
+      "model": {
+        "_target_": "verl.workers.config.HFModelConfig",
+        "path": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/model_cache/models--Qwen--Qwen2.5-0.5B-Instruct/snapshots/7ae557604adf67be50417f59c2c2f167def9a775",
+        "hf_config_path": null,
+        "tokenizer_path": null,
+        "use_shm": false,
+        "trust_remote_code": false,
+        "custom_chat_template": null,
+        "external_lib": null,
+        "override_config": {
+          "attn_implementation": "sdpa"
+        },
+        "enable_gradient_checkpointing": true,
+        "enable_activation_offload": false,
+        "use_remove_padding": false,
+        "lora_rank": 16,
+        "lora_alpha": 16,
+        "target_modules": [
+          "q_proj",
+          "v_proj"
+        ],
+        "exclude_modules": null,
+        "lora_adapter_path": null,
+        "use_liger": false,
+        "use_fused_kernels": false,
+        "fused_kernel_options": {
+          "impl_backend": "torch"
+        },
+        "tiled_mlp": {
+          "enabled": false,
+          "num_shards": 4
+        },
+        "mtp": {
+          "_target_": "verl.workers.config.MtpConfig",
+          "enable": false,
+          "enable_train": false,
+          "enable_rollout": false,
+          "detach_encoder": false,
+          "mtp_loss_scaling_factor": 0.1,
+          "speculative_algorithm": "EAGLE",
+          "speculative_num_steps": 3,
+          "speculative_eagle_topk": 1,
+          "speculative_num_draft_tokens": 4,
+          "method": "mtp",
+          "num_speculative_tokens": 1
+        },
+        "lora": {
+          "type": "lora",
+          "merge": false,
+          "rank": 0,
+          "alpha": 32,
+          "dropout": 0.0,
+          "target_modules": [
+            "linear_qkv",
+            "linear_proj",
+            "linear_fc1",
+            "linear_fc2"
+          ],
+          "exclude_modules": [],
+          "dropout_position": "pre",
+          "lora_A_init_method": "xavier",
+          "lora_B_init_method": "zero",
+          "a2a_experimental": false,
+          "dtype": null,
+          "adapter_path": null,
+          "freeze_vision_model": true,
+          "freeze_vision_projection": true,
+          "freeze_language_model": true
+        }
+      },
+      "hybrid_engine": true,
+      "nccl_timeout": 600
+    },
+    "data": {
+      "tokenizer": null,
+      "use_shm": false,
+      "train_files": "~/data/rlhf/gsm8k/train.parquet",
+      "val_files": "~/data/rlhf/gsm8k/test.parquet",
+      "train_max_samples": -1,
+      "val_max_samples": -1,
+      "prompt_key": "prompt",
+      "reward_fn_key": "data_source",
+      "max_prompt_length": 512,
+      "max_response_length": 512,
+      "train_batch_size": 1024,
+      "gen_batch_size": null,
+      "val_batch_size": null,
+      "tool_config_path": null,
+      "function_tool_path": null,
+      "return_raw_input_ids": false,
+      "return_raw_chat": true,
+      "return_full_prompt": false,
+      "shuffle": true,
+      "seed": null,
+      "dataloader_num_workers": 8,
+      "image_patch_size": 14,
+      "validation_shuffle": false,
+      "filter_overlong_prompts": false,
+      "filter_overlong_prompts_workers": 1,
+      "truncation": "error",
+      "image_key": "images",
+      "video_key": "videos",
+      "audio_key": "audios",
+      "trust_remote_code": false,
+      "custom_cls": {
+        "path": null,
+        "name": null
+      },
+      "return_multi_modal_inputs": true,
+      "apply_chat_template_kwargs": {},
+      "mm_processor_kwargs": {}
+    },
+    "critic": {
+      "optim": {
+        "_target_": "verl.workers.config.FSDPOptimizerConfig",
+        "optimizer": "AdamW",
+        "optimizer_impl": "torch.optim",
+        "lr": 1e-05,
+        "lr_warmup_steps_ratio": 0.0,
+        "total_training_steps": -1,
+        "weight_decay": 0.01,
+        "lr_warmup_steps": -1,
+        "betas": [
+          0.9,
+          0.999
+        ],
+        "clip_grad": 1.0,
+        "min_lr_ratio": 0.0,
+        "num_cycles": 0.5,
+        "lr_scheduler_type": "constant",
+        "zero_indexed_step": true,
+        "warmup_style": null,
+        "override_optimizer_config": null
+      },
+      "fsdp": {
+        "_target_": "verl.workers.config.FSDPEngineConfig",
+        "wrap_policy": {
+          "min_num_params": 0
+        },
+        "param_offload": false,
+        "optimizer_offload": false,
+        "offload_policy": false,
+        "reshard_after_forward": true,
+        "fsdp_size": -1,
+        "forward_prefetch": false,
+        "model_dtype": "fp32",
+        "use_orig_params": false,
+        "seed": 42,
+        "full_determinism": false,
+        "ulysses_sequence_parallel_size": 1,
+        "entropy_from_logits_with_chunking": false,
+        "entropy_from_logits_chunk_size": 2048,
+        "use_torch_compile": true,
+        "entropy_checkpointing": false,
+        "use_no_sync_for_gradient_accumulation": false,
+        "pad_to_length": false,
+        "pad_to_length_bucket": 1024,
+        "forward_only": false,
+        "strategy": "fsdp",
+        "dtype": "bfloat16",
+        "qat": {
+          "_target_": "verl.workers.config.QATEngineConfig",
+          "enable": false,
+          "mode": "w4a16",
+          "group_size": 16,
+          "ignore_patterns": [
+            "lm_head",
+            "embed_tokens",
+            "re:.*mlp.gate$"
+          ],
+          "activation_observer": "static_minmax",
+          "quantization_config_path": null
+        },
+        "turbo_config": {
+          "distributed": {
+            "fully_shard_parallel_size": 16,
+            "tensor_parallel_size": 1,
+            "expert_parallel_size": 1,
+            "expert_fully_shard_parallel_size": 1,
+            "ulysses_parallel_size": 1,
+            "fsdp_plan": {
+              "param_dtype": "bf16",
+              "reduce_dtype": "fp32",
+              "output_dtype": "bf16",
+              "fsdp_implementation": "native",
+              "num_to_forward_prefetch": 1,
+              "num_to_backward_prefetch": 1
+            }
+          }
+        }
+      },
+      "_target_": "verl.workers.config.FSDPCriticConfig",
+      "rollout_n": 1,
+      "strategy": "fsdp",
+      "enable": false,
+      "ppo_mini_batch_size": 4,
+      "ppo_micro_batch_size": null,
+      "ppo_micro_batch_size_per_gpu": null,
+      "use_dynamic_bsz": false,
+      "ppo_max_token_len_per_gpu": 32768,
+      "forward_max_token_len_per_gpu": 32768,
+      "ppo_epochs": 1,
+      "shuffle": false,
+      "data_loader_seed": 42,
+      "cliprange_value": 0.5,
+      "loss_agg_mode": "token-mean",
+      "loss_scale_factor": null,
+      "checkpoint": {
+        "_target_": "verl.trainer.config.CheckpointConfig",
+        "save_contents": [
+          "model",
+          "optimizer",
+          "extra"
+        ],
+        "load_contents": [
+          "model",
+          "optimizer",
+          "extra"
+        ],
+        "async_save": false
+      },
+      "profiler": {
+        "_target_": "verl.utils.profiler.ProfilerConfig",
+        "tool": null,
+        "enable": false,
+        "all_ranks": false,
+        "ranks": [],
+        "save_path": "outputs/profile",
+        "relocate_results": false,
+        "finish_hook_cmd": null,
+        "finish_hook_all_ranks": false,
+        "finish_hook_ranks": [],
+        "tool_config": {
+          "nsys": {
+            "_target_": "verl.utils.profiler.config.NsightToolConfig",
+            "discrete": false
+          },
+          "npu": {
+            "_target_": "verl.utils.profiler.config.NPUToolConfig",
+            "contents": [],
+            "level": "level0",
+            "analysis": true,
+            "discrete": false
+          },
+          "torch": {
+            "_target_": "verl.utils.profiler.config.TorchProfilerToolConfig",
+            "contents": [],
+            "discrete": false,
+            "schedule": {
+              "_target_": "verl.utils.profiler.config.TorchProfilerScheduleConfig",
+              "skip_first": 0,
+              "wait": 0,
+              "warmup": 0,
+              "active": 0,
+              "repeat": 0
+            }
+          },
+          "torch_memory": {
+            "_target_": "verl.utils.profiler.config.TorchMemoryToolConfig",
+            "trace_alloc_max_entries": 100000,
+            "stack_depth": 32,
+            "memory_snapshot_num_steps": 1
+          },
+          "precision_debugger": {
+            "_target_": "verl.utils.profiler.config.PrecisionDebuggerToolConfig",
+            "config_path": null,
+            "steps": null,
+            "stages": null,
+            "strict": false
+          }
+        }
+      },
+      "forward_micro_batch_size": null,
+      "forward_micro_batch_size_per_gpu": null,
+      "ulysses_sequence_parallel_size": 1,
+      "grad_clip": 1.0,
+      "model": {
+        "_target_": "verl.workers.config.HFModelConfig",
+        "path": "~/models/deepseek-llm-7b-chat",
+        "hf_config_path": null,
+        "tokenizer_path": null,
+        "use_shm": false,
+        "trust_remote_code": false,
+        "custom_chat_template": null,
+        "external_lib": null,
+        "override_config": {},
+        "enable_gradient_checkpointing": true,
+        "enable_activation_offload": false,
+        "use_remove_padding": true,
+        "lora_rank": 0,
+        "lora_alpha": 16,
+        "target_modules": "all-linear",
+        "exclude_modules": null,
+        "lora_adapter_path": null,
+        "use_liger": false,
+        "use_fused_kernels": false,
+        "fused_kernel_options": {
+          "impl_backend": "torch"
+        },
+        "tiled_mlp": {
+          "enabled": false,
+          "num_shards": 4
+        },
+        "mtp": {
+          "_target_": "verl.workers.config.MtpConfig",
+          "enable": false,
+          "enable_train": false,
+          "enable_rollout": false,
+          "detach_encoder": false,
+          "mtp_loss_scaling_factor": 0.1,
+          "speculative_algorithm": "EAGLE",
+          "speculative_num_steps": 3,
+          "speculative_eagle_topk": 1,
+          "speculative_num_draft_tokens": 4,
+          "method": "mtp",
+          "num_speculative_tokens": 1
+        },
+        "lora": {
+          "type": "lora",
+          "merge": false,
+          "rank": 0,
+          "alpha": 32,
+          "dropout": 0.0,
+          "target_modules": [
+            "linear_qkv",
+            "linear_proj",
+            "linear_fc1",
+            "linear_fc2"
+          ],
+          "exclude_modules": [],
+          "dropout_position": "pre",
+          "lora_A_init_method": "xavier",
+          "lora_B_init_method": "zero",
+          "a2a_experimental": false,
+          "dtype": null,
+          "adapter_path": null,
+          "freeze_vision_model": true,
+          "freeze_vision_projection": true,
+          "freeze_language_model": true
+        }
+      }
+    },
+    "custom_reward_function": {
+      "path": null,
+      "name": null
+    },
+    "reward_model": {
+      "num_workers": null,
+      "reward_manager": null,
+      "enable": null,
+      "enable_resource_pool": null,
+      "n_gpus_per_node": null,
+      "nnodes": null,
+      "reward_loop_source": null,
+      "reward_loop_module_path": null,
+      "reward_loop_class_name": null,
+      "model": {
+        "path": null,
+        "external_lib": null,
+        "trust_remote_code": null
+      },
+      "rollout": {
+        "name": null,
+        "dtype": null,
+        "gpu_memory_utilization": null,
+        "enforce_eager": null,
+        "cudagraph_capture_sizes": null,
+        "free_cache_engine": null,
+        "data_parallel_size": null,
+        "expert_parallel_size": null,
+        "tensor_model_parallel_size": null,
+        "max_num_batched_tokens": null,
+        "max_model_len": null,
+        "max_num_seqs": null,
+        "load_format": null,
+        "engine_kwargs": null,
+        "limit_images": null,
+        "enable_chunked_prefill": null,
+        "enable_prefix_caching": null,
+        "disable_log_stats": null,
+        "skip_tokenizer_init": null,
+        "prompt_length": null,
+        "response_length": null
+      }
+    },
+    "sandbox_fusion": {
+      "url": null,
+      "max_concurrent": null,
+      "memory_limit_mb": null
+    },
+    "reward": {
+      "_target_": "verl.workers.config.RewardConfig",
+      "num_workers": 8,
+      "custom_reward_function": {
+        "path": null,
+        "name": "compute_score"
+      },
+      "reward_manager": {
+        "_target_": "verl.workers.config.reward.RewardManagerConfig",
+        "source": "register",
+        "name": "naive",
+        "module": {
+          "_target_": "verl.trainer.config.config.ModuleConfig",
+          "path": null,
+          "name": "custom_reward_manager"
+        }
+      },
+      "reward_model": {
+        "_target_": "verl.workers.config.RewardModelConfig",
+        "enable": false,
+        "enable_resource_pool": false,
+        "n_gpus_per_node": 8,
+        "nnodes": 0,
+        "model_path": null,
+        "rollout": {
+          "_target_": "verl.workers.config.RolloutConfig",
+          "name": "???",
+          "dtype": "bfloat16",
+          "gpu_memory_utilization": 0.5,
+          "enforce_eager": true,
+          "cudagraph_capture_sizes": null,
+          "free_cache_engine": true,
+          "data_parallel_size": 1,
+          "expert_parallel_size": 1,
+          "tensor_model_parallel_size": 2,
+          "pipeline_model_parallel_size": 1,
+          "max_num_batched_tokens": 8192,
+          "max_model_len": null,
+          "max_num_seqs": 1024,
+          "load_format": "auto",
+          "layered_summon": false,
+          "scheduling_policy": "fcfs",
+          "full_determinism": false,
+          "seed": 42,
+          "multi_stage_wake_up": false,
+          "engine_kwargs": {},
+          "limit_images": null,
+          "enable_chunked_prefill": true,
+          "enable_prefix_caching": true,
+          "disable_log_stats": true,
+          "skip_tokenizer_init": false,
+          "ignore_eos": false,
+          "temperature": 1.0,
+          "top_k": -1,
+          "top_p": 1,
+          "do_sample": true,
+          "n": 1,
+          "prompt_length": 2048,
+          "response_length": 2048,
+          "quantization": null,
+          "quantization_config_file": null,
+          "mtp": null,
+          "disaggregation": {
+            "enabled": false,
+            "prefill_replicas": 1,
+            "decode_replicas": 1,
+            "decode_tensor_model_parallel_size": null,
+            "transfer_backend": "nixl",
+            "bootstrap_port": null,
+            "ib_device": null
+          }
+        }
+      },
+      "sandbox_fusion": {
+        "_target_": "verl.workers.config.SandboxFusionConfig",
+        "url": null,
+        "max_concurrent": 64,
+        "memory_limit_mb": 1024
+      }
+    },
+    "algorithm": {
+      "rollout_correction": {
+        "rollout_is": null,
+        "rollout_is_threshold": 2.0,
+        "rollout_rs": null,
+        "rollout_rs_threshold": null,
+        "bypass_mode": false,
+        "loss_type": "ppo_clip",
+        "rollout_is_batch_normalize": false
+      },
+      "_target_": "verl.trainer.config.AlgoConfig",
+      "gamma": 1.0,
+      "lam": 1.0,
+      "adv_estimator": "gae",
+      "norm_adv_by_std_in_grpo": true,
+      "filter_groups": {
+        "_target_": "verl.trainer.config.FilterGroupsConfig",
+        "enable": false,
+        "metric": "reward",
+        "max_num_gen_batches": 0,
+        "max_inflight_gen_batches": 1
+      },
+      "use_kl_in_reward": false,
+      "kl_penalty": "kl",
+      "kl_ctrl": {
+        "_target_": "verl.trainer.config.KLControlConfig",
+        "type": "fixed",
+        "kl_coef": 0.001,
+        "horizon": 10000,
+        "target_kl": 0.1
+      },
+      "use_pf_ppo": false,
+      "pf_ppo": {
+        "reweight_method": "pow",
+        "weight_pow": 2.0
+      }
+    },
+    "distillation": {
+      "_target_": "verl.workers.config.DistillationConfig",
+      "enabled": false,
+      "distillation_loss": {
+        "_target_": "verl.workers.config.DistillationLossConfig",
+        "loss_mode": "k3",
+        "topk": 32,
+        "use_task_rewards": true,
+        "distillation_loss_coef": 1.0,
+        "loss_max_clamp": null,
+        "log_prob_min_clamp": null,
+        "use_policy_gradient": false,
+        "policy_loss_mode": "vanilla",
+        "clip_ratio": 0.2,
+        "clip_ratio_low": 0.2,
+        "clip_ratio_high": 0.2
+      },
+      "n_gpus_per_node": 8,
+      "nnodes": 0,
+      "teacher_models": {
+        "teacher_model": {
+          "_target_": "verl.workers.config.DistillationTeacherModelConfig",
+          "key": null,
+          "model_path": null,
+          "num_replicas": 0,
+          "inference": {
+            "_target_": "verl.workers.config.RolloutConfig",
+            "name": "vllm",
+            "dtype": "bfloat16",
+            "gpu_memory_utilization": 0.5,
+            "enforce_eager": true,
+            "cudagraph_capture_sizes": null,
+            "free_cache_engine": true,
+            "data_parallel_size": 1,
+            "expert_parallel_size": 1,
+            "tensor_model_parallel_size": 2,
+            "max_num_batched_tokens": 8192,
+            "max_model_len": null,
+            "max_num_seqs": 1024,
+            "load_format": "auto",
+            "engine_kwargs": {},
+            "limit_images": null,
+            "enable_chunked_prefill": true,
+            "enable_prefix_caching": true,
+            "disable_log_stats": true,
+            "skip_tokenizer_init": true,
+            "prompt_length": 512,
+            "response_length": 512,
+            "temperature": 1.0
+          }
+        }
+      },
+      "teacher_key": "data_source"
+    },
+    "transfer_queue": {
+      "enable": false,
+      "metrics": {
+        "enabled": false,
+        "port": 0
+      },
+      "backend": {
+        "storage_backend": "SimpleStorage",
+        "SimpleStorage": {
+          "total_storage_size": 100000,
+          "num_data_storage_units": 8
+        },
+        "MooncakeStore": {
+          "auto_init": false,
+          "metadata_server": "localhost:50123",
+          "master_server_address": "localhost:50124",
+          "local_hostname": "localhost",
+          "protocol": "tcp",
+          "global_segment_size": 4294967296,
+          "local_buffer_size": 1073741824,
+          "device_name": ""
+        }
+      }
+    },
+    "trainer": {
+      "balance_batch": true,
+      "total_epochs": 30,
+      "total_training_steps": 1,
+      "project_name": "verl_examples",
+      "experiment_name": "gsm8k",
+      "logger": [
+        "console",
+        "wandb"
+      ],
+      "log_val_generations": 0,
+      "rollout_data_dir": null,
+      "validation_data_dir": null,
+      "nnodes": 1,
+      "n_gpus_per_node": 1,
+      "save_freq": -1,
+      "esi_redundant_time": 0,
+      "resume_mode": "auto",
+      "resume_from_path": null,
+      "checkpoint_callback_class": null,
+      "val_before_train": true,
+      "val_only": false,
+      "test_freq": -1,
+      "critic_warmup": 0,
+      "default_hdfs_dir": null,
+      "del_local_ckpt_after_load": false,
+      "default_local_dir": "checkpoints/verl_examples/gsm8k",
+      "max_actor_ckpt_to_keep": null,
+      "max_critic_ckpt_to_keep": null,
+      "ray_wait_register_center_timeout": 300,
+      "device": "cuda",
+      "use_v1": true,
+      "v1": {
+        "trainer_mode": "sync",
+        "sync": {},
+        "colocate_async": {
+          "num_warmup_batches": 1
+        },
+        "separate_async": {
+          "num_warmup_batches": 1,
+          "parameter_sync_step": 4,
+          "hybrid_rollout": {
+            "_target_": "verl.trainer.config.HybridRolloutSwitchConfig",
+            "enable_switch": false,
+            "switch_threshold_ratio": 0.4,
+            "adaptive_switch_threshold": true,
+            "switch_threshold_step_up": 0.05,
+            "switch_threshold_step_down": 0.03,
+            "switch_threshold_release_steps": 2,
+            "switch_cost_window_size": 3
+          }
+        },
+        "sampler": {
+          "max_off_policy_threshold": 8,
+          "max_off_policy_strategy": "drop",
+          "sync_refill_failed_groups": false,
+          "custom_sampler": {
+            "path": null,
+            "name": null
+          },
+          "sampler_kwargs": {}
+        }
+      }
+    },
+    "global_profiler": {
+      "_target_": "verl.utils.profiler.ProfilerConfig",
+      "tool": null,
+      "steps": null,
+      "profile_continuous_steps": false,
+      "save_path": "outputs/profile",
+      "relocate_results": false,
+      "finish_hook_cmd": null,
+      "finish_hook_all_ranks": false,
+      "finish_hook_ranks": [],
+      "global_tool_config": {
+        "nsys": {
+          "_target_": "verl.utils.profiler.config.NsightToolConfig",
+          "discrete": false,
+          "controller_nsight_options": {
+            "trace": "cuda,nvtx,cublas,ucx",
+            "cuda-memory-usage": "true",
+            "cuda-graph-trace": "graph"
+          },
+          "worker_nsight_options": {
+            "trace": "cuda,nvtx,cublas,ucx",
+            "cuda-memory-usage": "true",
+            "cuda-graph-trace": "graph",
+            "capture-range": "cudaProfilerApi",
+            "capture-range-end": null,
+            "kill": "none"
+          }
+        },
+        "torch_memory": {
+          "trace_alloc_max_entries": 100000,
+          "stack_depth": 32,
+          "memory_snapshot_num_steps": 1,
+          "context": "all",
+          "stacks": "all",
+          "kw_args": {}
+        },
+        "precision_debugger": {
+          "_target_": "verl.utils.profiler.config.PrecisionDebuggerToolConfig",
+          "config_path": null,
+          "steps": null,
+          "stages": null,
+          "strict": false
+        }
+      }
+    },
+    "skip": {
+      "_target_": "verl.utils.skip.SkipManagerConfig",
+      "rollout": {
+        "enable": false,
+        "dump_dir": "~/.verl/rollout_dump",
+        "steps": [],
+        "action": "cache"
+      },
+      "rollout_tq": {
+        "enable": false,
+        "dump_dir": "~/.verl/rollout_dump",
+        "steps": [],
+        "action": "cache"
+      },
+      "async_rollout": {
+        "enable": false,
+        "dump_dir": "~/.verl/rollout_dump",
+        "steps": [],
+        "action": "cache"
+      }
+    },
+    "ray_kwargs": {
+      "ray_init": {
+        "num_cpus": null,
+        "runtime_env": {
+          "py_executable": null
+        }
+      },
+      "timeline_json_file": null
+    }
+  },
+  "trajectories": [
+    {
+      "sample_id": "arithmetic/v1/0",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Calculate the expression. Reply with only the integer result. Do not include an explanation, units, or an answer marker."
+        },
+        {
+          "role": "user",
+          "content": "7 + 5 = ?"
+        }
+      ],
+      "response_ids": [
+        16,
+        17,
+        151645
+      ],
+      "action_mask": [
+        1,
+        1,
+        1
+      ],
+      "response_text": "12",
+      "behavior_log_probs": [
+        -4.410734163684538e-06,
+        0.0,
+        -7.60526381782256e-05
+      ],
+      "source_response_index": 0,
+      "behavior_policy_id": "c4a3d17e5ef795613cd5867efc3c771dfa3c34741f72d7a2016ea4b952aa04d2",
+      "prompt_ids": [
+        151644,
+        8948,
+        198,
+        47866,
+        279,
+        7493,
+        13,
+        17841,
+        448,
+        1172,
+        279,
+        7546,
+        1102,
+        13,
+        3155,
+        537,
+        2924,
+        458,
+        16148,
+        11,
+        8153,
+        11,
+        476,
+        458,
+        4226,
+        11134,
+        13,
+        151645,
+        198,
+        151644,
+        872,
+        198,
+        22,
+        488,
+        220,
+        20,
+        284,
+        937,
+        151645,
+        198,
+        151644,
+        77091,
+        198
+      ],
+      "trajectory_sha256": "91214e0e40d1bf85fe2ee0e4694a2ee92aa14f7d62445cb2975088adae6a1d18"
+    },
+    {
+      "sample_id": "arithmetic/v1/1",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Calculate the expression. Reply with only the integer result. Do not include an explanation, units, or an answer marker."
+        },
+        {
+          "role": "user",
+          "content": "23 - 8 = ?"
+        }
+      ],
+      "response_ids": [
+        16,
+        20,
+        151645
+      ],
+      "action_mask": [
+        1,
+        1,
+        1
+      ],
+      "response_text": "15",
+      "behavior_log_probs": [
+        -0.0005021026590839028,
+        -0.0002903516869992018,
+        -0.00010978573118336499
+      ],
+      "source_response_index": 0,
+      "behavior_policy_id": "c4a3d17e5ef795613cd5867efc3c771dfa3c34741f72d7a2016ea4b952aa04d2",
+      "prompt_ids": [
+        151644,
+        8948,
+        198,
+        47866,
+        279,
+        7493,
+        13,
+        17841,
+        448,
+        1172,
+        279,
+        7546,
+        1102,
+        13,
+        3155,
+        537,
+        2924,
+        458,
+        16148,
+        11,
+        8153,
+        11,
+        476,
+        458,
+        4226,
+        11134,
+        13,
+        151645,
+        198,
+        151644,
+        872,
+        198,
+        17,
+        18,
+        481,
+        220,
+        23,
+        284,
+        937,
+        151645,
+        198,
+        151644,
+        77091,
+        198
+      ],
+      "trajectory_sha256": "098bb8208ca7f8c8e353e28a942a5ad267f071631ba2a733f04570e56ebbced1"
+    },
+    {
+      "sample_id": "arithmetic/v1/2",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Calculate the expression. Reply with only the integer result. Do not include an explanation, units, or an answer marker."
+        },
+        {
+          "role": "user",
+          "content": "6 * 7 = ?"
+        }
+      ],
+      "response_ids": [
+        19,
+        17,
+        151645
+      ],
+      "action_mask": [
+        1,
+        1,
+        1
+      ],
+      "response_text": "42",
+      "behavior_log_probs": [
+        -3.3378546504536644e-06,
+        -1.1920928244535389e-07,
+        -0.00026556302327662706
+      ],
+      "source_response_index": 0,
+      "behavior_policy_id": "c4a3d17e5ef795613cd5867efc3c771dfa3c34741f72d7a2016ea4b952aa04d2",
+      "prompt_ids": [
+        151644,
+        8948,
+        198,
+        47866,
+        279,
+        7493,
+        13,
+        17841,
+        448,
+        1172,
+        279,
+        7546,
+        1102,
+        13,
+        3155,
+        537,
+        2924,
+        458,
+        16148,
+        11,
+        8153,
+        11,
+        476,
+        458,
+        4226,
+        11134,
+        13,
+        151645,
+        198,
+        151644,
+        872,
+        198,
+        21,
+        353,
+        220,
+        22,
+        284,
+        937,
+        151645,
+        198,
+        151644,
+        77091,
+        198
+      ],
+      "trajectory_sha256": "9ce823af7ab5fa424f5868a4ed21d7da2e9c4fcac68678bf44f19937cc9086db"
+    },
+    {
+      "sample_id": "arithmetic/v1/3",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Calculate the expression. Reply with only the integer result. Do not include an explanation, units, or an answer marker."
+        },
+        {
+          "role": "user",
+          "content": "48 / 6 = ?"
+        }
+      ],
+      "response_ids": [
+        23,
+        151645
+      ],
+      "action_mask": [
+        1,
+        1
+      ],
+      "response_text": "8",
+      "behavior_log_probs": [
+        -0.0001941730733960867,
+        -0.00043084874050691724
+      ],
+      "source_response_index": 0,
+      "behavior_policy_id": "c4a3d17e5ef795613cd5867efc3c771dfa3c34741f72d7a2016ea4b952aa04d2",
+      "prompt_ids": [
+        151644,
+        8948,
+        198,
+        47866,
+        279,
+        7493,
+        13,
+        17841,
+        448,
+        1172,
+        279,
+        7546,
+        1102,
+        13,
+        3155,
+        537,
+        2924,
+        458,
+        16148,
+        11,
+        8153,
+        11,
+        476,
+        458,
+        4226,
+        11134,
+        13,
+        151645,
+        198,
+        151644,
+        872,
+        198,
+        19,
+        23,
+        608,
+        220,
+        21,
+        284,
+        937,
+        151645,
+        198,
+        151644,
+        77091,
+        198
+      ],
+      "trajectory_sha256": "2653c65e751418fa8e53473bd2886cf1d08943fd7ab4a2df094fc7e5f8d7b264"
+    },
+    {
+      "sample_id": "arithmetic/v1/4",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Calculate the expression. Reply with only the integer result. Do not include an explanation, units, or an answer marker."
+        },
+        {
+          "role": "user",
+          "content": "37 + 58 = ?"
+        }
+      ],
+      "response_ids": [
+        24,
+        20,
+        151645
+      ],
+      "action_mask": [
+        1,
+        1,
+        1
+      ],
+      "response_text": "95",
+      "behavior_log_probs": [
+        -0.0001262346631847322,
+        -2.253030106658116e-05,
+        -0.00013422065239865333
+      ],
+      "source_response_index": 0,
+      "behavior_policy_id": "c4a3d17e5ef795613cd5867efc3c771dfa3c34741f72d7a2016ea4b952aa04d2",
+      "prompt_ids": [
+        151644,
+        8948,
+        198,
+        47866,
+        279,
+        7493,
+        13,
+        17841,
+        448,
+        1172,
+        279,
+        7546,
+        1102,
+        13,
+        3155,
+        537,
+        2924,
+        458,
+        16148,
+        11,
+        8153,
+        11,
+        476,
+        458,
+        4226,
+        11134,
+        13,
+        151645,
+        198,
+        151644,
+        872,
+        198,
+        18,
+        22,
+        488,
+        220,
+        20,
+        23,
+        284,
+        937,
+        151645,
+        198,
+        151644,
+        77091,
+        198
+      ],
+      "trajectory_sha256": "a216076fafe98bcaa0de4d29024d43f3129b558362e5de4740ae41b77d6e3062"
+    },
+    {
+      "sample_id": "arithmetic/v1/5",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Calculate the expression. Reply with only the integer result. Do not include an explanation, units, or an answer marker."
+        },
+        {
+          "role": "user",
+          "content": "81 - 47 = ?"
+        }
+      ],
+      "response_ids": [
+        17,
+        19,
+        151645
+      ],
+      "action_mask": [
+        1,
+        1,
+        1
+      ],
+      "response_text": "24",
+      "behavior_log_probs": [
+        -0.01291247084736824,
+        -2.7418097943154862e-06,
+        -0.00015805903240107
+      ],
+      "source_response_index": 0,
+      "behavior_policy_id": "c4a3d17e5ef795613cd5867efc3c771dfa3c34741f72d7a2016ea4b952aa04d2",
+      "prompt_ids": [
+        151644,
+        8948,
+        198,
+        47866,
+        279,
+        7493,
+        13,
+        17841,
+        448,
+        1172,
+        279,
+        7546,
+        1102,
+        13,
+        3155,
+        537,
+        2924,
+        458,
+        16148,
+        11,
+        8153,
+        11,
+        476,
+        458,
+        4226,
+        11134,
+        13,
+        151645,
+        198,
+        151644,
+        872,
+        198,
+        23,
+        16,
+        481,
+        220,
+        19,
+        22,
+        284,
+        937,
+        151645,
+        198,
+        151644,
+        77091,
+        198
+      ],
+      "trajectory_sha256": "025d8155a4a638f7d7bdcb4793baafc46f610209e236885df2c19c578f195d9d"
+    },
+    {
+      "sample_id": "arithmetic/v1/6",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Calculate the expression. Reply with only the integer result. Do not include an explanation, units, or an answer marker."
+        },
+        {
+          "role": "user",
+          "content": "17 * 6 = ?"
+        }
+      ],
+      "response_ids": [
+        16,
+        15,
+        17,
+        151645
+      ],
+      "action_mask": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "response_text": "102",
+      "behavior_log_probs": [
+        -0.00028046013903804123,
+        -0.003540202509611845,
+        -1.1920928244535389e-07,
+        -7.080780778778717e-05
+      ],
+      "source_response_index": 0,
+      "behavior_policy_id": "c4a3d17e5ef795613cd5867efc3c771dfa3c34741f72d7a2016ea4b952aa04d2",
+      "prompt_ids": [
+        151644,
+        8948,
+        198,
+        47866,
+        279,
+        7493,
+        13,
+        17841,
+        448,
+        1172,
+        279,
+        7546,
+        1102,
+        13,
+        3155,
+        537,
+        2924,
+        458,
+        16148,
+        11,
+        8153,
+        11,
+        476,
+        458,
+        4226,
+        11134,
+        13,
+        151645,
+        198,
+        151644,
+        872,
+        198,
+        16,
+        22,
+        353,
+        220,
+        21,
+        284,
+        937,
+        151645,
+        198,
+        151644,
+        77091,
+        198
+      ],
+      "trajectory_sha256": "136d3fdda83581b16367224a4fe829cdd113f3931c6ca4f647cd0661cc1d549d"
+    },
+    {
+      "sample_id": "arithmetic/v1/7",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Calculate the expression. Reply with only the integer result. Do not include an explanation, units, or an answer marker."
+        },
+        {
+          "role": "user",
+          "content": "144 / 12 = ?"
+        }
+      ],
+      "response_ids": [
+        16,
+        17,
+        151645
+      ],
+      "action_mask": [
+        1,
+        1,
+        1
+      ],
+      "response_text": "12",
+      "behavior_log_probs": [
+        -1.3112935448589269e-05,
+        -0.002189621329307556,
+        -0.0013517538318410516
+      ],
+      "source_response_index": 0,
+      "behavior_policy_id": "c4a3d17e5ef795613cd5867efc3c771dfa3c34741f72d7a2016ea4b952aa04d2",
+      "prompt_ids": [
+        151644,
+        8948,
+        198,
+        47866,
+        279,
+        7493,
+        13,
+        17841,
+        448,
+        1172,
+        279,
+        7546,
+        1102,
+        13,
+        3155,
+        537,
+        2924,
+        458,
+        16148,
+        11,
+        8153,
+        11,
+        476,
+        458,
+        4226,
+        11134,
+        13,
+        151645,
+        198,
+        151644,
+        872,
+        198,
+        16,
+        19,
+        19,
+        608,
+        220,
+        16,
+        17,
+        284,
+        937,
+        151645,
+        198,
+        151644,
+        77091,
+        198
+      ],
+      "trajectory_sha256": "e8348352a5732d6eaafad86efc71512cac73d57e87ea845dc1da48ecf0fa8538"
+    }
+  ],
+  "training_examples": [
+    {
+      "prompt_ids": [
+        151644,
+        8948,
+        198,
+        47866,
+        279,
+        7493,
+        13,
+        17841,
+        448,
+        1172,
+        279,
+        7546,
+        1102,
+        13,
+        3155,
+        537,
+        2924,
+        458,
+        16148,
+        11,
+        8153,
+        11,
+        476,
+        458,
+        4226,
+        11134,
+        13,
+        151645,
+        198,
+        151644,
+        872,
+        198,
+        16,
+        16,
+        488,
+        220,
+        24,
+        284,
+        937,
+        151645,
+        198,
+        151644,
+        77091,
+        198
+      ],
+      "response_ids": [
+        17,
+        15,
+        151645
+      ]
+    },
+    {
+      "prompt_ids": [
+        151644,
+        8948,
+        198,
+        47866,
+        279,
+        7493,
+        13,
+        17841,
+        448,
+        1172,
+        279,
+        7546,
+        1102,
+        13,
+        3155,
+        537,
+        2924,
+        458,
+        16148,
+        11,
+        8153,
+        11,
+        476,
+        458,
+        4226,
+        11134,
+        13,
+        151645,
+        198,
+        151644,
+        872,
+        198,
+        18,
+        17,
+        481,
+        220,
+        16,
+        19,
+        284,
+        937,
+        151645,
+        198,
+        151644,
+        77091,
+        198
+      ],
+      "response_ids": [
+        16,
+        23,
+        151645
+      ]
+    },
+    {
+      "prompt_ids": [
+        151644,
+        8948,
+        198,
+        47866,
+        279,
+        7493,
+        13,
+        17841,
+        448,
+        1172,
+        279,
+        7546,
+        1102,
+        13,
+        3155,
+        537,
+        2924,
+        458,
+        16148,
+        11,
+        8153,
+        11,
+        476,
+        458,
+        4226,
+        11134,
+        13,
+        151645,
+        198,
+        151644,
+        872,
+        198,
+        24,
+        353,
+        220,
+        23,
+        284,
+        937,
+        151645,
+        198,
+        151644,
+        77091,
+        198
+      ],
+      "response_ids": [
+        22,
+        17,
+        151645
+      ]
+    },
+    {
+      "prompt_ids": [
+        151644,
+        8948,
+        198,
+        47866,
+        279,
+        7493,
+        13,
+        17841,
+        448,
+        1172,
+        279,
+        7546,
+        1102,
+        13,
+        3155,
+        537,
+        2924,
+        458,
+        16148,
+        11,
+        8153,
+        11,
+        476,
+        458,
+        4226,
+        11134,
+        13,
+        151645,
+        198,
+        151644,
+        872,
+        198,
+        24,
+        21,
+        608,
+        220,
+        23,
+        284,
+        937,
+        151645,
+        198,
+        151644,
+        77091,
+        198
+      ],
+      "response_ids": [
+        16,
+        17,
+        151645
+      ]
+    }
+  ],
+  "training_task_sha256": "cab1a145d7ed672bc8e212ca20d36a26a169a89b5ce9d71d7c11d377550112d4",
+  "update": {
+    "optimizer_steps": 1,
+    "loss_kind": "verl_builtin_sft_loss",
+    "training_examples": 4,
+    "supervised_tokens": 12,
+    "loss": 0.0005341711803339422,
+    "grad_norm": 0.032781556248664856,
+    "before_sha256": "baf6729b8753786a32bba459e4656d38000529d4a5bc4051dd286acdf4f3196d",
+    "after_sha256": "4f845712c92349392d87559da49e313e714b578aece4b7bbe7602a65dd93710c",
+    "delta_l2": 0.6152702828577025,
+    "changed_tensors": 48,
+    "parameter_tensors": 96,
+    "parameter_numel": 1081344,
+    "same_names_shapes_dtype": true
+  },
+  "initial_sync": {
+    "rpc_completed": true,
+    "version": 0,
+    "sender_adapter_sha256": "baf6729b8753786a32bba459e4656d38000529d4a5bc4051dd286acdf4f3196d"
+  },
+  "sync": {
+    "rpc_completed": true,
+    "version": 1,
+    "sender_adapter_sha256": "4f845712c92349392d87559da49e313e714b578aece4b7bbe7602a65dd93710c"
+  },
+  "scores": {
+    "behavior": [
+      [
+        -4.410734163684538e-06,
+        0.0,
+        -7.60526381782256e-05
+      ],
+      [
+        -0.0005021026590839028,
+        -0.0002903516869992018,
+        -0.00010978573118336499
+      ],
+      [
+        -3.3378546504536644e-06,
+        -1.1920928244535389e-07,
+        -0.00026556302327662706
+      ],
+      [
+        -0.0001941730733960867,
+        -0.00043084874050691724
+      ],
+      [
+        -0.0001262346631847322,
+        -2.253030106658116e-05,
+        -0.00013422065239865333
+      ],
+      [
+        -0.01291247084736824,
+        -2.7418097943154862e-06,
+        -0.00015805903240107
+      ],
+      [
+        -0.00028046013903804123,
+        -0.003540202509611845,
+        -1.1920928244535389e-07,
+        -7.080780778778717e-05
+      ],
+      [
+        -1.3112935448589269e-05,
+        -0.002189621329307556,
+        -0.0013517538318410516
+      ]
+    ],
+    "actor_before": [
+      [
+        -4.291525328881107e-06,
+        0.0,
+        -8.11782301752828e-05
+      ],
+      [
+        -0.0005557184922508895,
+        -0.0002015625941567123,
+        -0.0001382732152706012
+      ],
+      [
+        -3.4570634852570947e-06,
+        0.0,
+        -0.0002273062855238095
+      ],
+      [
+        -0.00017987063620239496,
+        -0.0004880429187323898
+      ],
+      [
+        -0.00012838016846217215,
+        -2.3245540432981215e-05,
+        -0.00011145447206217796
+      ],
+      [
+        -0.044551603496074677,
+        -4.887569048150908e-06,
+        -0.00015090756642166525
+      ],
+      [
+        -0.0003137096355203539,
+        -0.0035927053540945053,
+        -1.1920928244535389e-07,
+        -6.687417771900073e-05
+      ],
+      [
+        -9.536697689327411e-06,
+        -0.0016607552533969283,
+        -0.0012697261990979314
+      ]
+    ],
+    "actor_after": [
+      [
+        -1.1920928244535389e-07,
+        0.0,
+        -4.2437604861333966e-05
+      ],
+      [
+        -3.981510963058099e-05,
+        -4.768370445162873e-07,
+        -5.030505417380482e-05
+      ],
+      [
+        -1.9073468138230965e-06,
+        0.0,
+        -5.1973900554003194e-05
+      ],
+      [
+        -8.260862523457035e-05,
+        -8.95221673999913e-05
+      ],
+      [
+        -9.059865078597795e-06,
+        -3.933898824470816e-06,
+        -6.961580220377073e-05
+      ],
+      [
+        -11.188175201416016,
+        -0.003214670345187187,
+        -7.211902266135439e-05
+      ],
+      [
+        -5.5549986427649856e-05,
+        -0.004378731828182936,
+        0.0,
+        -5.900685573578812e-05
+      ],
+      [
+        -1.0728830375228426e-06,
+        -0.0007614573696628213,
+        -0.0002330270071979612
+      ]
+    ],
+    "rollout_before": [
+      [
+        -4.410734163684538e-06,
+        0.0,
+        -7.438383181579411e-05
+      ],
+      [
+        -0.00045718232286162674,
+        -0.000291662581730634,
+        -0.00013457823661156
+      ],
+      [
+        -3.6954811548639555e-06,
+        -1.1920928244535389e-07,
+        -0.00021801002731081098
+      ],
+      [
+        -0.00021753329201601446,
+        -0.0004530118894763291
+      ],
+      [
+        -0.0001565095444675535,
+        -2.0503786799963564e-05,
+        -0.00013505500101018697
+      ],
+      [
+        -0.019162297248840332,
+        -4.0531076592742465e-06,
+        -0.00014911970356479287
+      ],
+      [
+        -0.00032109825406223536,
+        -0.0034096459858119488,
+        -1.1920928244535389e-07,
+        -7.056941103655845e-05
+      ],
+      [
+        -1.2159273865108844e-05,
+        -0.0018816161900758743,
+        -0.0016146968118846416
+      ]
+    ],
+    "rollout_after": [
+      [
+        -1.1920928244535389e-07,
+        0.0,
+        -4.7205765440594405e-05
+      ],
+      [
+        -3.564294092939235e-05,
+        -4.768370445162873e-07,
+        -4.303362584323622e-05
+      ],
+      [
+        -2.0265558760002023e-06,
+        0.0,
+        -5.006664650863968e-05
+      ],
+      [
+        -8.761498611420393e-05,
+        -7.021180499577895e-05
+      ],
+      [
+        -1.1444026313256472e-05,
+        -3.933898824470816e-06,
+        -5.8887653722194955e-05
+      ],
+      [
+        -10.750922203063965,
+        -0.0016131495358422399,
+        -7.045020902296528e-05
+      ],
+      [
+        -5.721882189391181e-05,
+        -0.004960254766047001,
+        0.0,
+        -5.519237674889155e-05
+      ],
+      [
+        -1.0728830375228426e-06,
+        -0.0005984899471513927,
+        -0.00019536493346095085
+      ]
+    ]
+  },
+  "rollout_versions_before": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "rollout_versions_after": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  "generation_before": [
+    {
+      "sample_id": "arithmetic/v1/0",
+      "token_ids": [
+        16,
+        17,
+        151645
+      ],
+      "log_probs": [
+        -4.410734163684538e-06,
+        0.0,
+        -7.402622577501461e-05
+      ],
+      "stop_reason": "completed",
+      "version": 0
+    },
+    {
+      "sample_id": "arithmetic/v1/1",
+      "token_ids": [
+        16,
+        20,
+        151645
+      ],
+      "log_probs": [
+        -0.00045718232286162674,
+        -0.00032431588624604046,
+        -0.00013433984713628888
+      ],
+      "stop_reason": "completed",
+      "version": 0
+    },
+    {
+      "sample_id": "arithmetic/v1/2",
+      "token_ids": [
+        19,
+        17,
+        151645
+      ],
+      "log_probs": [
+        -3.6954811548639555e-06,
+        -1.1920928244535389e-07,
+        -0.00019333878299221396
+      ],
+      "stop_reason": "completed",
+      "version": 0
+    },
+    {
+      "sample_id": "arithmetic/v1/3",
+      "token_ids": [
+        23,
+        151645
+      ],
+      "log_probs": [
+        -0.00021753329201601446,
+        -0.0004292996891308576
+      ],
+      "stop_reason": "completed",
+      "version": 0
+    },
+    {
+      "sample_id": "arithmetic/v1/4",
+      "token_ids": [
+        24,
+        20,
+        151645
+      ],
+      "log_probs": [
+        -0.0001565095444675535,
+        -2.539125671319198e-05,
+        -0.00013398226292338222
+      ],
+      "stop_reason": "completed",
+      "version": 0
+    },
+    {
+      "sample_id": "arithmetic/v1/5",
+      "token_ids": [
+        17,
+        19,
+        151645
+      ],
+      "log_probs": [
+        -0.019162297248840332,
+        -3.6954811548639555e-06,
+        -0.00014161060971673578
+      ],
+      "stop_reason": "completed",
+      "version": 0
+    },
+    {
+      "sample_id": "arithmetic/v1/6",
+      "token_ids": [
+        16,
+        15,
+        17,
+        151645
+      ],
+      "log_probs": [
+        -0.00032109825406223536,
+        -0.003417724510654807,
+        -1.1920928244535389e-07,
+        -7.450303382938728e-05
+      ],
+      "stop_reason": "completed",
+      "version": 0
+    },
+    {
+      "sample_id": "arithmetic/v1/7",
+      "token_ids": [
+        16,
+        17,
+        151645
+      ],
+      "log_probs": [
+        -1.2159273865108844e-05,
+        -0.0021589321549981833,
+        -0.0014497257070615888
+      ],
+      "stop_reason": "completed",
+      "version": 0
+    }
+  ],
+  "generation_after": [
+    {
+      "sample_id": "arithmetic/v1/0",
+      "token_ids": [
+        16,
+        17,
+        151645
+      ],
+      "log_probs": [
+        -1.1920928244535389e-07,
+        0.0,
+        -4.327203714638017e-05
+      ],
+      "stop_reason": "completed",
+      "version": 1
+    },
+    {
+      "sample_id": "arithmetic/v1/1",
+      "token_ids": [
+        16,
+        20,
+        151645
+      ],
+      "log_probs": [
+        -3.564294092939235e-05,
+        -4.768370445162873e-07,
+        -4.8636207793606445e-05
+      ],
+      "stop_reason": "completed",
+      "version": 1
+    },
+    {
+      "sample_id": "arithmetic/v1/2",
+      "token_ids": [
+        19,
+        17,
+        151645
+      ],
+      "log_probs": [
+        -2.0265558760002023e-06,
+        0.0,
+        -4.994744449504651e-05
+      ],
+      "stop_reason": "completed",
+      "version": 1
+    },
+    {
+      "sample_id": "arithmetic/v1/3",
+      "token_ids": [
+        23,
+        151645
+      ],
+      "log_probs": [
+        -8.296622399939224e-05,
+        -7.259582343976945e-05
+      ],
+      "stop_reason": "completed",
+      "version": 1
+    },
+    {
+      "sample_id": "arithmetic/v1/4",
+      "token_ids": [
+        24,
+        20,
+        151645
+      ],
+      "log_probs": [
+        -1.1444026313256472e-05,
+        -3.933898824470816e-06,
+        -5.9126061387360096e-05
+      ],
+      "stop_reason": "completed",
+      "version": 1
+    },
+    {
+      "sample_id": "arithmetic/v1/5",
+      "token_ids": [
+        18,
+        19,
+        151645
+      ],
+      "log_probs": [
+        -0.0009223736124113202,
+        0.0,
+        -5.924526340095326e-05
+      ],
+      "stop_reason": "completed",
+      "version": 1
+    },
+    {
+      "sample_id": "arithmetic/v1/6",
+      "token_ids": [
+        16,
+        15,
+        17,
+        151645
+      ],
+      "log_probs": [
+        -5.721882189391181e-05,
+        -0.004396297503262758,
+        0.0,
+        -5.5549986427649856e-05
+      ],
+      "stop_reason": "completed",
+      "version": 1
+    },
+    {
+      "sample_id": "arithmetic/v1/7",
+      "token_ids": [
+        16,
+        17,
+        151645
+      ],
+      "log_probs": [
+        -1.0728830375228426e-06,
+        -0.0006780709372833371,
+        -0.00018892886873800308
+      ],
+      "stop_reason": "completed",
+      "version": 1
+    }
+  ],
+  "worker_events": [
+    {
+      "name": "verl_weight_sync",
+      "edge": "begin",
+      "monotonic_ns": 27769800718694,
+      "pid": 147964,
+      "actor_allocated_mb": 1889.3955078125,
+      "actor_reserved_mb": 1918.0,
+      "version": 0
+    },
+    {
+      "name": "rollout_weight_transfer",
+      "edge": "begin",
+      "monotonic_ns": 27770117001428,
+      "pid": 147964,
+      "actor_allocated_mb": 1889.3955078125,
+      "actor_reserved_mb": 1922.0
+    },
+    {
+      "name": "rollout_weight_transfer",
+      "edge": "end",
+      "monotonic_ns": 27770456567828,
+      "pid": 147964,
+      "actor_allocated_mb": 1889.3955078125,
+      "actor_reserved_mb": 1922.0
+    },
+    {
+      "name": "verl_weight_sync",
+      "edge": "end",
+      "monotonic_ns": 27770457662767,
+      "pid": 147964,
+      "actor_allocated_mb": 1889.3955078125,
+      "actor_reserved_mb": 1922.0,
+      "version": 0
+    },
+    {
+      "name": "actor_score",
+      "edge": "begin",
+      "monotonic_ns": 27771526827825,
+      "pid": 147964,
+      "actor_allocated_mb": 1888.71142578125,
+      "actor_reserved_mb": 1910.0
+    },
+    {
+      "name": "actor_score",
+      "edge": "end",
+      "monotonic_ns": 27772292814794,
+      "pid": 147964,
+      "actor_allocated_mb": 9.1259765625,
+      "actor_reserved_mb": 26.0
+    },
+    {
+      "name": "supervised_update",
+      "edge": "begin",
+      "monotonic_ns": 27772605987929,
+      "pid": 147964,
+      "actor_allocated_mb": 1897.83642578125,
+      "actor_reserved_mb": 1906.0
+    },
+    {
+      "name": "supervised_update",
+      "edge": "end",
+      "monotonic_ns": 27773488842335,
+      "pid": 147964,
+      "actor_allocated_mb": 18.25146484375,
+      "actor_reserved_mb": 54.0
+    },
+    {
+      "name": "actor_score",
+      "edge": "begin",
+      "monotonic_ns": 27773798430361,
+      "pid": 147964,
+      "actor_allocated_mb": 1906.9619140625,
+      "actor_reserved_mb": 1928.0
+    },
+    {
+      "name": "actor_score",
+      "edge": "end",
+      "monotonic_ns": 27774323668081,
+      "pid": 147964,
+      "actor_allocated_mb": 18.25146484375,
+      "actor_reserved_mb": 46.0
+    },
+    {
+      "name": "verl_weight_sync",
+      "edge": "begin",
+      "monotonic_ns": 27774325251849,
+      "pid": 147964,
+      "actor_allocated_mb": 18.25146484375,
+      "actor_reserved_mb": 46.0,
+      "version": 1
+    },
+    {
+      "name": "rollout_weight_transfer",
+      "edge": "begin",
+      "monotonic_ns": 27774633972402,
+      "pid": 147964,
+      "actor_allocated_mb": 1907.64599609375,
+      "actor_reserved_mb": 1960.0
+    },
+    {
+      "name": "rollout_weight_transfer",
+      "edge": "end",
+      "monotonic_ns": 27774652534848,
+      "pid": 147964,
+      "actor_allocated_mb": 1907.64599609375,
+      "actor_reserved_mb": 1960.0
+    },
+    {
+      "name": "verl_weight_sync",
+      "edge": "end",
+      "monotonic_ns": 27774653444548,
+      "pid": 147964,
+      "actor_allocated_mb": 1907.64599609375,
+      "actor_reserved_mb": 1960.0,
+      "version": 1
+    }
+  ],
+  "resource_path": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/pt_verl_closure/rtx5070ti_verl_mechanism_closure_v1_retain.resources.json",
+  "limitations": [
+    "监督更新用于机制，不证明 GRPO 或质量提升",
+    "接收侧身份以实际 RPC、版本与概率差分核对；没有直接导出接收侧权重哈希",
+    "单卡不验证原子激活、并发消费、网络队列或分布式恢复"
+  ],
+  "decision": {
+    "passed": false,
+    "checks": {
+      "parameters_changed": true,
+      "same_version_probabilities": false,
+      "frozen_scores_changed": true,
+      "synchronized_change_visible": true,
+      "sync_rpc_and_version": true,
+      "real_generation_records": true
+    },
+    "comparisons": {
+      "source_vs_actor_before": {
+        "tokens": 24,
+        "mean_abs": 0.0013610142374410235,
+        "max_abs": 0.031639132648706436
+      },
+      "same_version_before": {
+        "tokens": 24,
+        "mean_abs": 0.001103774578704216,
+        "max_abs": 0.025389306247234344
+      },
+      "same_version_after": {
+        "tokens": 24,
+        "mean_abs": 0.018320812124054935,
+        "max_abs": 0.4372529983520508
+      },
+      "actor_change": {
+        "tokens": 24,
+        "mean_abs": 0.46465040868773144,
+        "max_abs": 11.143623597919941
+      },
+      "rollout_change": {
+        "tokens": 24,
+        "mean_abs": 0.4474894663622419,
+        "max_abs": 10.731759905815125
+      },
+      "delta_alignment": {
+        "rmse": 0.08407218175253356,
+        "actor_delta_rms": 2.2746827645150365,
+        "relative_rmse": 0.03695995901672811
+      }
+    },
+    "admission": [
+      {
+        "sample_id": "arithmetic/v1/0",
+        "version_lag": 1,
+        "mean_abs_log_prob_gap": 1.263551939937694e-05,
+        "admitted": true
+      },
+      {
+        "sample_id": "arithmetic/v1/1",
+        "version_lag": 1,
+        "mean_abs_log_prob_gap": 0.00027054769213918917,
+        "admitted": true
+      },
+      {
+        "sample_id": "arithmetic/v1/2",
+        "version_lag": 1,
+        "mean_abs_log_prob_gap": 7.171294661389993e-05,
+        "admitted": true
+      },
+      {
+        "sample_id": "arithmetic/v1/3",
+        "version_lag": 1,
+        "mean_abs_log_prob_gap": 0.00022644551063422114,
+        "admitted": true
+      },
+      {
+        "sample_id": "arithmetic/v1/4",
+        "version_lag": 1,
+        "mean_abs_log_prob_gap": 6.679201684770912e-05,
+        "admitted": true
+      },
+      {
+        "sample_id": "arithmetic/v1/5",
+        "version_lag": 1,
+        "mean_abs_log_prob_gap": 3.72618686637126,
+        "admitted": false
+      },
+      {
+        "sample_id": "arithmetic/v1/6",
+        "version_lag": 1,
+        "mean_abs_log_prob_gap": 0.0002688399081289816,
+        "admitted": true
+      },
+      {
+        "sample_id": "arithmetic/v1/7",
+        "version_lag": 1,
+        "mean_abs_log_prob_gap": 0.0008529769455662972,
+        "admitted": true
+      }
+    ],
+    "tolerances": {
+      "same_version_max_abs": 0.15,
+      "same_version_mean_abs": 0.03,
+      "change_floor": 1e-05,
+      "delta_relative_rmse": 0.5,
+      "admission_mean_abs": 0.2
+    },
+    "scope": "single_rank_verl_supervised_update_and_probability_sync_not_grpo_or_atomic_activation"
+  }
+}

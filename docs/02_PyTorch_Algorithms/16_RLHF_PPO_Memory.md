@@ -26,6 +26,7 @@
 ## 运行环境
 
 - **基础练习：** 默认使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
+- **框架核对：** 使用 [`PT-CPU`](../topic_discussion/post_training_optimization/quickstart.md#pt-cpu-quickstart)，运行 [框架一致性核对](#framework-check)。
 
 ---
 ## 前置阅读
@@ -102,7 +103,7 @@ PPO 的资源压力取决于哪些模型和轨迹状态同时驻留，而不是�
 
 ## Step 4：实现 PPO Actor Loss 的裁剪机制
 
-题目区实现 token 级裁剪目标，并比较 `token_mean` 与 `sequence_mean` 两种聚合口径。前者让每个有效 token 权重相同，后者先对每条 response 求均值，使长短 response 在 batch 中权重相同。函数同时返回近似 KL 与裁剪比例，帮助判断更新是否过激。
+题目区使用新旧策略对数概率、优势和回答掩码复现 PPO 裁剪目标。骨架提供输入校验和指标结构；学习者补全策略比率、双侧裁剪、Token / 序列两种归约，以及近似 KL 与裁剪比例。测试覆盖正负优势、上下裁剪边界、变长回答、梯度路径和非法掩码。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 | --- | --- | --- | --- |
@@ -154,6 +155,7 @@ def compute_actor_loss(
     # ==========================================
     # TODO 1：冻结旧策略记录，从当前与旧策略的对数概率差构造 token 级 ratio。
     # ratio = ???
+    raise NotImplementedError("请完成 TODO 1–4：概率比率、裁剪目标、回复聚合与诊断指标。")
     # ==========================================
 
     # ==========================================
@@ -243,12 +245,21 @@ def _assert_ppo_gradient(new, old, advantage, mask):
     assert old.grad is None and advantage.grad is None, "旧策略与 advantage 不应接收梯度"
 
 def _assert_ppo_input_contract():
-    """验证不一致的 token 形状会被拒绝。"""
-    try:
-        compute_actor_loss(torch.zeros(1, 2), torch.zeros(1, 1), torch.zeros(1, 2))
-    except ValueError:
-        return
-    raise AssertionError("形状不一致时应主动报错")
+    """验证形状、有限性和布尔掩码契约。"""
+    invalid_calls = [
+        lambda: compute_actor_loss(torch.zeros(1, 2), torch.zeros(1, 1), torch.zeros(1, 2)),
+        lambda: compute_actor_loss(torch.empty(0, 2), torch.empty(0, 2), torch.empty(0, 2)),
+        lambda: compute_actor_loss(torch.tensor([[float("nan")]]), torch.zeros(1, 1), torch.ones(1, 1)),
+        lambda: compute_actor_loss(torch.zeros(1, 1), torch.zeros(1, 1), torch.ones(1, 1), torch.ones(1, 1)),
+        lambda: compute_actor_loss(torch.zeros(1, 1), torch.zeros(1, 1), torch.ones(1, 1), clip_range=float("inf")),
+    ]
+    for call in invalid_calls:
+        try:
+            call()
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("非法 PPO 输入必须被拒绝")
 
 def test_ppo_actor_loss():
     """汇总验证 PPO Actor Loss 的六项机制责任。"""
@@ -285,6 +296,9 @@ test_ppo_actor_loss()
 ### 代码
 
 ```python
+import math
+
+
 def compute_actor_loss(
     log_probs_new, log_probs_old, advantages, response_mask=None, clip_range=0.2, reduction="token_mean"
 ):
@@ -305,14 +319,17 @@ def compute_actor_loss(
     """
     if log_probs_new.shape != log_probs_old.shape or log_probs_new.shape != advantages.shape:
         raise ValueError("log_probs_new / log_probs_old / advantages 的形状必须一致")
-    if log_probs_new.ndim != 2:
-        raise ValueError("log_probs 必须是 [batch, sequence] 二维张量")
-    if clip_range < 0:
-        raise ValueError("clip_range 必须非负")
+    if log_probs_new.ndim != 2 or log_probs_new.numel() == 0:
+        raise ValueError("log_probs 必须是非空的 [batch, sequence] 二维张量")
+    if not torch.isfinite(log_probs_new).all() or not torch.isfinite(log_probs_old).all() or not torch.isfinite(advantages).all():
+        raise ValueError("策略对数概率与优势必须为有限数")
+    clip_range = float(clip_range)
+    if not math.isfinite(clip_range) or clip_range < 0:
+        raise ValueError("clip_range 必须是非负有限数")
     if response_mask is None:
         response_mask = torch.ones_like(log_probs_new, dtype=torch.bool)
-    if response_mask.shape != log_probs_new.shape or not torch.all(response_mask.bool().any(dim=-1)):
-        raise ValueError("response_mask 必须同形且至少包含一个有效位置")
+    if response_mask.shape != log_probs_new.shape or response_mask.dtype != torch.bool or not torch.all(response_mask.any(dim=-1)):
+        raise ValueError("response_mask 必须是同形布尔张量，且每条回复至少包含一个有效位置")
     if reduction not in {"token_mean", "sequence_mean"}:
         raise ValueError("reduction 必须是 token_mean 或 sequence_mean")
 
@@ -376,10 +393,91 @@ def compute_actor_loss(
 
 - 用 `(ratio - 1) - log_ratio` 的有效位置均值估计 KL，用越过 `clip_range` 的位置比例计算裁剪率。
 - 诊断从分离后的张量生成，测试同时核对有效 token 数与零偏移结果。
+<a id="framework-check"></a>
+
+## 框架一致性核对（可选）
+
+下面把同一组有效 Token 的策略对数概率与优势交给 TorchRL `ClipPPOLoss`，核对 PPO 裁剪目标和裁剪比例。为隔离目标函数，框架侧注入受控策略比率；该核对不启动 rollout、Reward Model 或 Critic 训练。
+
+| 核对对象 | Step 4 教学实现 | 成熟框架 CPU 路径 | 共同输入与通过条件 |
+|:---|:---|:---|:---|
+| 策略比率 | `exp(log_probs_new - log_probs_old)` | `ClipPPOLoss` 的 importance ratio | 使用相同有效 Token 和旧/新策略对数概率 |
+| 裁剪目标 | 原始目标与裁剪目标逐点取较小值 | `ClipPPOLoss.forward` | 相同优势与 $\epsilon$ 下，标量 Actor loss 一致 |
+| 裁剪比例 | 超出 $[1-\epsilon,1+\epsilon]$ 的有效 Token 比例 | `clip_fraction` | 两条路径的裁剪比例一致 |
+
+```python
+from importlib.metadata import version
+
+try:
+    from tensordict import TensorDict
+    from tensordict.nn import TensorDictModule
+    from torchrl.objectives import ClipPPOLoss
+except ImportError:
+    framework_check = {
+        "status": "skipped",
+        "reason": "请使用包含 TorchRL 的 PT-CPU 环境运行本单元",
+    }
+else:
+    def check_ppo_clip_objective():
+        """核对 Step 4 与 TorchRL 的 PPO 裁剪目标和裁剪比例。"""
+        log_probs_old = torch.tensor([[-1.0, -1.2, -0.8], [-0.7, -1.1, -1.4]])
+        log_probs_new = torch.tensor([[-1.0, -0.9, -1.2], [-0.6, -1.5, -1.4]])
+        advantages = torch.tensor([[1.0, -0.5, 0.8], [-1.0, 0.4, 0.3]])
+        response_mask = torch.tensor([[True, True, False], [True, True, True]])
+        clip_range = 0.2
+        local_loss, local_metrics = compute_actor_loss(
+            log_probs_new, log_probs_old, advantages, response_mask, clip_range, "token_mean"
+        )
+        valid_log_weight = (log_probs_new - log_probs_old)[response_mask].reshape(-1, 1)
+        valid_advantage = advantages[response_mask].reshape(-1, 1)
+        dummy_actor = TensorDictModule(
+            torch.nn.Identity(), in_keys=["observation"], out_keys=["parameter"]
+        )
+
+        class ControlledClipPPOLoss(ClipPPOLoss):
+            """让 TorchRL forward 使用受控 log-ratio，隔离裁剪目标。"""
+            def __init__(self, log_weight):
+                super().__init__(
+                    actor_network=dummy_actor, critic_network=None,
+                    clip_epsilon=clip_range, entropy_bonus=False, critic_coeff=None,
+                    reduction="mean", functional=False,
+                )
+                self.controlled_log_weight = log_weight
+
+            def _log_weight(self, tensordict, adv_shape):
+                zeros = torch.zeros_like(self.controlled_log_weight)
+                return self.controlled_log_weight, None, zeros, None
+
+        framework_output = ControlledClipPPOLoss(valid_log_weight)(
+            TensorDict({"advantage": valid_advantage}, batch_size=[valid_advantage.shape[0]])
+        )
+        framework_loss = framework_output["loss_objective"]
+        framework_clip_fraction = framework_output["clip_fraction"]
+        checks = {
+            "valid_token_contract": valid_advantage.shape[0] == local_metrics["valid_tokens"],
+            "objective_matches": bool(torch.isclose(local_loss, framework_loss, atol=1e-6, rtol=1e-6).item()),
+            "clip_fraction_matches": abs(local_metrics["clip_fraction"] - float(framework_clip_fraction)) < 1e-6,
+        }
+        failed_checks = [name for name, passed in checks.items() if not passed]
+        if failed_checks:
+            raise AssertionError(f"PPO 裁剪目标框架核对失败：{failed_checks}")
+        return {
+            "status": "passed",
+            "check_kind": "framework_conformance",
+            "versions": {"torchrl": version("torchrl"), "tensordict": version("tensordict")},
+            "checks": checks,
+            "local_loss": float(local_loss),
+            "framework_loss": float(framework_loss),
+        }
+
+    framework_check = check_ppo_clip_objective()
+
+framework_check
+```
 
 ## 相关阅读
 
 - [17. DPO Loss Tutorial | 直接偏好优化损失教程](../02_PyTorch_Algorithms/17_DPO_Loss_Tutorial.md)
 - [18. GRPO Loss Tutorial | 群体相对策略优化损失教程](../02_PyTorch_Algorithms/18_GRPO_Loss_Tutorial.md)
 - [PPO 原论文](https://arxiv.org/abs/1707.06347)
-- [TRL PPOTrainer 文档](https://huggingface.co/docs/trl/ppo_trainer)
+- [TorchRL `ClipPPOLoss`](https://docs.pytorch.org/rl/stable/reference/generated/torchrl.objectives.ClipPPOLoss.html)

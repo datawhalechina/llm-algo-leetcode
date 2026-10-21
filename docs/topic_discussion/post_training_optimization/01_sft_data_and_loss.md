@@ -25,7 +25,7 @@ SFT 从数据、分词、对话模板与损失对同一批监督 Token 的一致
 | 去污染 | 与验证集、测试集和公开评测集的重叠 | 隔离规则与命中记录 |
 | 质量筛选 | 答案正确性、格式、难度、多样性与安全风险 | 抽样复核与质量阈值 |
 | 配比与采样 | 通用 / 领域、长 / 短、简单 / 困难样本比例 | 配方、采样权重与消融计划 |
-| 合成数据 | 任务可完成性、轨迹或答案验证、多样性 | 生成模型、验证器与失败样本 |
+| 合成数据 | 任务可完成性、训练集与批内去重、污染、答案验证和多样性 | 生成身份、验证结果、拒绝原因与候选数据版本 |
 
 ![SFT 数据如何变成监督契约](../../public/topic_discussion/post_training_optimization/sft_data_supervision_pipeline.svg)
 
@@ -40,4 +40,4 @@ SFT 从数据、分词、对话模板与损失对同一批监督 Token 的一致
 | 最小训练基线 | 固定监督批次、更新配置与验证集 | 更新前后结果、资源记录与最小基线 |
 | 长上下文扩展 | 窗口适配、受控截断、监督保留与边界隔离 Packing | 长样本覆盖、丢失比例与资源代价 |
 
-先用[数据契约与泄漏审计](../../02_PyTorch_Algorithms/32_Data_Engineering_for_SFT.md)确认样本可以进入训练，再用[SFT 监督边界与损失](../../02_PyTorch_Algorithms/13_SFT_Training_Loop.md)复算监督损失；只有长样本发生截断或跨样本拼接时，才追加[长上下文监督保留检查](../../02_PyTorch_Algorithms/30_Long_Context_Fine_Tuning.md)。监督契约固定后，与[参数更新方案](./02_lora_peft_design.md)一起进入[训练控制](./03_training_control.md)，最终形成[可恢复的 SFT 基线](./04_end_to_end_experiment.md)。更通用的采集、清洗与血缘管理见[数据工程](../data_engineering/intro.md)。
+先用[数据契约与泄漏审计](../../02_PyTorch_Algorithms/32_Data_Engineering_for_SFT.md)确认样本可以进入训练；真实示范不足时，通过[合成指令生成与验证准入](../../02_PyTorch_Algorithms/PT-SYNTHETIC-DATA_Instruction_Generation_and_Verifier_Admission.md)生成候选，再返回 32 完成最终切分审计。随后用[SFT 监督边界与损失](../../02_PyTorch_Algorithms/13_SFT_Training_Loop.md)复算监督损失；只有长样本发生截断或跨样本拼接时，才追加[长上下文监督保留检查](../../02_PyTorch_Algorithms/30_Long_Context_Fine_Tuning.md)。监督契约固定后，与[参数更新方案](./02_lora_peft_design.md)一起进入[训练控制](./03_training_control.md)，最终形成[可恢复的 SFT 基线](./04_end_to_end_experiment.md)。更通用的采集、清洗与血缘管理见[数据工程](../data_engineering/intro.md)。

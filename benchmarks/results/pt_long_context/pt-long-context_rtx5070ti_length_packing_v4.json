@@ -1,0 +1,240 @@
+{
+  "schema_version": "post-training-mechanism-gpu/v1",
+  "semantic_id": "PT-LONG-CONTEXT",
+  "environment_profile": "PT-SFT-CUDA",
+  "run_mode": "real_gpu",
+  "run_label": "rtx5070ti_length_packing_v4",
+  "framework": {
+    "python": "3.12.15",
+    "torch": "2.11.0+cu128",
+    "transformers": "5.19.0"
+  },
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000,
+    "compute_capability": [
+      12,
+      0
+    ],
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8",
+    "bf16_supported": true
+  },
+  "model": {
+    "id": "Qwen/Qwen2.5-0.5B",
+    "requested_revision": "main",
+    "resolved_commit": "060db6499f32faf8b98477b0a26969ef7d8b9987",
+    "resolution_source": "huggingface_hub_api"
+  },
+  "workload": {
+    "id": "pt-long-context",
+    "version": "v4",
+    "sequence_lengths": [
+      128,
+      256,
+      512
+    ],
+    "packing_sample_lengths": [
+      48,
+      96,
+      32,
+      64
+    ],
+    "batch_size": 1,
+    "warmup_steps": 2,
+    "repeat_steps": 10,
+    "memory_trend_tolerance": 0.005,
+    "attention_backend": "sdpa",
+    "seed": 42,
+    "parameter_dtype": "bfloat16"
+  },
+  "measurements": [
+    {
+      "sequence_length": 128,
+      "tokens_per_step": 128,
+      "median_step_ms": 29.162819497287273,
+      "p95_step_ms": 29.512763998354785,
+      "median_ms_per_token": 0.22783452732255682,
+      "losses": [
+        0.8377517461776733,
+        0.8377517461776733,
+        0.8377517461776733,
+        0.8377517461776733,
+        0.8377517461776733,
+        0.8377517461776733,
+        0.8377517461776733,
+        0.8377517461776733,
+        0.8377517461776733,
+        0.8377517461776733
+      ],
+      "gradient_norms": [
+        75.31199645996094,
+        75.31199645996094,
+        75.31199645996094,
+        75.31199645996094,
+        75.31199645996094,
+        75.31199645996094,
+        75.31199645996094,
+        75.31199645996094,
+        75.31199645996094,
+        75.31199645996094
+      ],
+      "peak_allocated_bytes": 3103056384,
+      "peak_reserved_bytes": 3791650816
+    },
+    {
+      "sequence_length": 256,
+      "tokens_per_step": 256,
+      "median_step_ms": 47.058541007572785,
+      "p95_step_ms": 88.00304199394304,
+      "median_ms_per_token": 0.1838224258108312,
+      "losses": [
+        0.42802944779396057,
+        0.42802944779396057,
+        0.42802944779396057,
+        0.42802944779396057,
+        0.42802944779396057,
+        0.42802944779396057,
+        0.42802944779396057,
+        0.42802944779396057,
+        0.42802944779396057,
+        0.42802944779396057
+      ],
+      "gradient_norms": [
+        40.54810333251953,
+        40.54810333251953,
+        40.54810333251953,
+        40.54810333251953,
+        40.54810333251953,
+        40.54810333251953,
+        40.54810333251953,
+        40.54810333251953,
+        40.54810333251953,
+        40.54810333251953
+      ],
+      "peak_allocated_bytes": 3106926080,
+      "peak_reserved_bytes": 4410310656
+    },
+    {
+      "sequence_length": 512,
+      "tokens_per_step": 512,
+      "median_step_ms": 79.51640000101179,
+      "p95_step_ms": 119.30764499993529,
+      "median_ms_per_token": 0.15530546875197615,
+      "losses": [
+        0.21582338213920593,
+        0.21582338213920593,
+        0.21582338213920593,
+        0.21582338213920593,
+        0.21582338213920593,
+        0.21582338213920593,
+        0.21582338213920593,
+        0.21582338213920593,
+        0.21582338213920593,
+        0.21582338213920593
+      ],
+      "gradient_norms": [
+        20.51799964904785,
+        20.51604652404785,
+        20.51563835144043,
+        20.516910552978516,
+        20.51534080505371,
+        20.518779754638672,
+        20.518047332763672,
+        20.519914627075195,
+        20.519014358520508,
+        20.521194458007812
+      ],
+      "peak_allocated_bytes": 3106473472,
+      "peak_reserved_bytes": 4433379328
+    }
+  ],
+  "packing_comparison": [
+    {
+      "candidate": "padding",
+      "processed_tokens": 384,
+      "effective_supervised_tokens": 236,
+      "padding_tokens": 144,
+      "padding_ratio": 0.375,
+      "median_step_ms": 63.378295504662674,
+      "p95_step_ms": 73.93351799692027,
+      "effective_tokens_per_second": 3723.6722464812538,
+      "losses": [
+        1.5203638076782227,
+        1.5203638076782227,
+        1.5203638076782227,
+        1.5203638076782227,
+        1.5203638076782227,
+        1.5203638076782227,
+        1.5203638076782227,
+        1.5203638076782227,
+        1.5203638076782227,
+        1.5203638076782227
+      ],
+      "gradient_norms": [
+        79.79768371582031,
+        79.79768371582031,
+        79.79768371582031,
+        79.79768371582031,
+        79.79768371582031,
+        79.79768371582031,
+        79.79768371582031,
+        79.79768371582031,
+        79.79768371582031,
+        79.79768371582031
+      ],
+      "peak_allocated_bytes": 3114475008,
+      "peak_reserved_bytes": 4433379328
+    },
+    {
+      "candidate": "boundary_isolated_packing",
+      "processed_tokens": 240,
+      "effective_supervised_tokens": 236,
+      "padding_tokens": 0,
+      "padding_ratio": 0.0,
+      "median_step_ms": 48.81455850409111,
+      "p95_step_ms": 58.64802199357655,
+      "effective_tokens_per_second": 4834.623260604129,
+      "losses": [
+        1.5204929113388062,
+        1.5204929113388062,
+        1.5204929113388062,
+        1.5204929113388062,
+        1.5204929113388062,
+        1.5204929113388062,
+        1.5204929113388062,
+        1.5204929113388062,
+        1.5204929113388062,
+        1.5204929113388062
+      ],
+      "gradient_norms": [
+        87.92408752441406,
+        87.92408752441406,
+        87.92408752441406,
+        87.92408752441406,
+        87.92408752441406,
+        87.92408752441406,
+        87.92408752441406,
+        87.92408752441406,
+        87.92408752441406,
+        87.92408752441406
+      ],
+      "peak_allocated_bytes": 3116678656,
+      "peak_reserved_bytes": 4435476480
+    }
+  ],
+  "failure": null,
+  "evidence_level": "real_model_length_and_packing_mechanism_benchmark",
+  "decision": "accept_mechanism",
+  "packing_checks": {
+    "same_effective_supervised_tokens": true,
+    "segment_start_labels_masked": true,
+    "position_ids_reset": true,
+    "cross_sample_attention_blocked": true
+  },
+  "length_checks": {
+    "finite_losses_and_gradients": true,
+    "memory_non_decreasing_with_tolerance": true,
+    "memory_trend_tolerance": 0.005
+  }
+}

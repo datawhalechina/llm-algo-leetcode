@@ -1,0 +1,1918 @@
+{
+  "schema_version": "verl-lifecycle-probe/v1",
+  "run_label": "rtx5070ti_rollout_lifecycle_v9_4",
+  "stage": "reward_probe",
+  "status": "ok",
+  "config": {
+    "verl_tag": "v0.9.1",
+    "verl_commit": "1876b06d0a3e4e71e06230be10af14492ca8a75b",
+    "torch": "2.11.0+cu130",
+    "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "resolved_snapshot": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/model_cache/models--Qwen--Qwen2.5-0.5B-Instruct/snapshots/7ae557604adf67be50417f59c2c2f167def9a775",
+    "model_revision": "7ae557604adf67be50417f59c2c2f167def9a775",
+    "train_file": "/home/yulinlin/verl-v0.9.1/data/gsm8k/train.parquet",
+    "train_file_sha256": "89cd3cb8d28e5274e7f0bf71ff541ea5654ac9e30589ac4b5d19c3f783a3858c",
+    "pool_size": 8,
+    "group_size": 4,
+    "max_response_tokens": 128,
+    "seed": 42,
+    "prompt_revision": "short_calculation_v2",
+    "decode_revision": "integer_regex_v1",
+    "structured_outputs": {
+      "backend": "xgrammar",
+      "regex": "#### -?(0|[1-9][0-9]*)"
+    },
+    "sampling_distribution": "grammar_constrained",
+    "behavior_log_probs_semantics": "processed_sampling_distribution_not_raw_model",
+    "temperature": 1.0,
+    "top_p": 1.0,
+    "top_k": -1,
+    "reward_function": "verl.utils.reward_score.gsm8k.compute_score",
+    "reward_method": "strict",
+    "vllm": "0.24.0",
+    "worker_start_method": "spawn",
+    "logprobs_mode": "processed_logprobs"
+  },
+  "behavior_policy_id": "353ced429df9bba7d52ad1dae2c7d4816344b84f6add6d0ede6cc0fc87565ffc",
+  "groups": [
+    {
+      "sample_id": "gsm8k/train/2348",
+      "question": "What is fifteen more than a quarter of 48?",
+      "ground_truth": "27",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Solve the problem with a short calculation in one or two lines. On the last line write exactly: #### <number>. If the answer is a whole number, write it as an integer."
+        },
+        {
+          "role": "user",
+          "content": "What is fifteen more than a quarter of 48?"
+        }
+      ],
+      "prompt_sha256": "43e8636ce1ddad73aef4438c377658d25c717de66b2ce9c157f813606b5f3f70",
+      "data_source": "openai/gsm8k",
+      "responses": [
+        {
+          "text": "#### 15",
+          "token_ids": [
+            820,
+            220,
+            16,
+            20,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.037900250405073166,
+            -1.7881377516459906e-06,
+            -0.43890848755836487,
+            -1.5875279903411865,
+            -0.003513831179589033
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "15",
+          "reward": 0.0
+        },
+        {
+          "text": "#### 7",
+          "token_ids": [
+            820,
+            220,
+            22,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.037900250405073166,
+            -1.7881377516459906e-06,
+            -3.063908576965332,
+            -0.5842357277870178
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "7",
+          "reward": 0.0
+        },
+        {
+          "text": "#### 9",
+          "token_ids": [
+            820,
+            220,
+            24,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.037900250405073166,
+            -1.7881377516459906e-06,
+            -1.5639084577560425,
+            -0.12287907302379608
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "9",
+          "reward": 0.0
+        },
+        {
+          "text": "#### 14",
+          "token_ids": [
+            820,
+            220,
+            16,
+            19,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.037900250405073166,
+            -1.7881377516459906e-06,
+            -0.43890848755836487,
+            -2.8375279903411865,
+            -0.024312792345881462
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "14",
+          "reward": 0.0
+        }
+      ]
+    },
+    {
+      "sample_id": "gsm8k/train/6469",
+      "question": "Twice Angie's age, plus 4, is 20. How old is Angie?",
+      "ground_truth": "8",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Solve the problem with a short calculation in one or two lines. On the last line write exactly: #### <number>. If the answer is a whole number, write it as an integer."
+        },
+        {
+          "role": "user",
+          "content": "Twice Angie's age, plus 4, is 20. How old is Angie?"
+        }
+      ],
+      "prompt_sha256": "d9f45387784b1c181f502b8faeb794ba43cfaa14d3005632cf233423e590ae36",
+      "data_source": "openai/gsm8k",
+      "responses": [
+        {
+          "text": "#### 10",
+          "token_ids": [
+            820,
+            220,
+            16,
+            15,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.031155943870544434,
+            -1.5735502529423684e-05,
+            -0.5869287252426147,
+            -0.05823241546750069,
+            -0.00020311199477873743
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "10",
+          "reward": 0.0
+        },
+        {
+          "text": "#### 7",
+          "token_ids": [
+            820,
+            220,
+            22,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.0310708936303854,
+            -1.4781842764932662e-05,
+            -2.2119457721710205,
+            -3.85038583772257e-05
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "7",
+          "reward": 0.0
+        },
+        {
+          "text": "#### 10",
+          "token_ids": [
+            820,
+            220,
+            16,
+            15,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.0310708936303854,
+            -1.4781842764932662e-05,
+            -0.5869457721710205,
+            -0.07361353933811188,
+            -0.00018702188390307128
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "10",
+          "reward": 0.0
+        },
+        {
+          "text": "#### 10",
+          "token_ids": [
+            820,
+            220,
+            16,
+            15,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.031155943870544434,
+            -1.5735502529423684e-05,
+            -0.5869287252426147,
+            -0.05823241546750069,
+            -0.00020311199477873743
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "10",
+          "reward": 0.0
+        }
+      ]
+    },
+    {
+      "sample_id": "gsm8k/train/4674",
+      "question": "Steve is 5'6\".  He grows 6 inches.  How tall is he in inches?",
+      "ground_truth": "72",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Solve the problem with a short calculation in one or two lines. On the last line write exactly: #### <number>. If the answer is a whole number, write it as an integer."
+        },
+        {
+          "role": "user",
+          "content": "Steve is 5'6\".  He grows 6 inches.  How tall is he in inches?"
+        }
+      ],
+      "prompt_sha256": "1ce5e19ff4b50bad3d2798d8d00bb2e1fe0639e6e4ebfb2cae868f6fd080a3a6",
+      "data_source": "openai/gsm8k",
+      "responses": [
+        {
+          "text": "#### 62",
+          "token_ids": [
+            820,
+            220,
+            21,
+            17,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.019826216623187065,
+            -2.861018856492592e-06,
+            -0.5266969799995422,
+            -1.9136825799942017,
+            -0.0002944036095868796
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "62",
+          "reward": 0.0
+        },
+        {
+          "text": "#### 66",
+          "token_ids": [
+            820,
+            220,
+            21,
+            21,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.019826216623187065,
+            -2.861018856492592e-06,
+            -0.5266969799995422,
+            -1.2886825799942017,
+            -0.00024577934527769685
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "66",
+          "reward": 0.0
+        },
+        {
+          "text": "#### 62",
+          "token_ids": [
+            820,
+            220,
+            21,
+            17,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.019826216623187065,
+            -2.861018856492592e-06,
+            -0.5266969799995422,
+            -1.9136825799942017,
+            -0.0002944036095868796
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "62",
+          "reward": 0.0
+        },
+        {
+          "text": "#### 66",
+          "token_ids": [
+            820,
+            220,
+            21,
+            21,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.019826216623187065,
+            -2.861018856492592e-06,
+            -0.5266969799995422,
+            -1.2886825799942017,
+            -0.00024577934527769685
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "66",
+          "reward": 0.0
+        }
+      ]
+    },
+    {
+      "sample_id": "gsm8k/train/5645",
+      "question": "If 12 bags of oranges weigh 24 pounds, how much do 8 bags weigh?",
+      "ground_truth": "16",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Solve the problem with a short calculation in one or two lines. On the last line write exactly: #### <number>. If the answer is a whole number, write it as an integer."
+        },
+        {
+          "role": "user",
+          "content": "If 12 bags of oranges weigh 24 pounds, how much do 8 bags weigh?"
+        }
+      ],
+      "prompt_sha256": "55275b2cf4212d499abbde9893d6135b9582e47caa6cac6b2405472eb6c1c3f6",
+      "data_source": "openai/gsm8k",
+      "responses": [
+        {
+          "text": "#### 24",
+          "token_ids": [
+            820,
+            220,
+            17,
+            19,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.04026321321725845,
+            -9.536738616588991e-07,
+            -0.48651087284088135,
+            -0.0003430254873819649,
+            -0.0004135706985834986
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "24",
+          "reward": 0.0
+        },
+        {
+          "text": "#### 24",
+          "token_ids": [
+            820,
+            220,
+            17,
+            19,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.04026321321725845,
+            -9.536738616588991e-07,
+            -0.48651087284088135,
+            -0.0003430254873819649,
+            -0.0004135706985834986
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "24",
+          "reward": 0.0
+        },
+        {
+          "text": "#### 24",
+          "token_ids": [
+            820,
+            220,
+            17,
+            19,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.04026321321725845,
+            -9.536738616588991e-07,
+            -0.48651087284088135,
+            -0.0003430254873819649,
+            -0.0004135706985834986
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "24",
+          "reward": 0.0
+        },
+        {
+          "text": "#### 24",
+          "token_ids": [
+            820,
+            220,
+            17,
+            19,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.04026321321725845,
+            -9.536738616588991e-07,
+            -0.48651087284088135,
+            -0.0003430254873819649,
+            -0.0004135706985834986
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "24",
+          "reward": 0.0
+        }
+      ]
+    },
+    {
+      "sample_id": "gsm8k/train/7291",
+      "question": "A roll of 25 m wire weighs 5 kg. How much does a 75 m roll weigh?",
+      "ground_truth": "15",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Solve the problem with a short calculation in one or two lines. On the last line write exactly: #### <number>. If the answer is a whole number, write it as an integer."
+        },
+        {
+          "role": "user",
+          "content": "A roll of 25 m wire weighs 5 kg. How much does a 75 m roll weigh?"
+        }
+      ],
+      "prompt_sha256": "4773b624f4c6280dd89e4bd8e6ab8a4a544d9d6d5a4810c5a24194c7d6bc8d3f",
+      "data_source": "openai/gsm8k",
+      "responses": [
+        {
+          "text": "#### 75",
+          "token_ids": [
+            820,
+            220,
+            22,
+            20,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.04378010705113411,
+            -9.536738616588991e-07,
+            -0.7626914978027344,
+            -0.00022015532886143774,
+            -0.8982299566268921
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "75",
+          "reward": 0.0
+        },
+        {
+          "text": "#### 7500",
+          "token_ids": [
+            820,
+            220,
+            22,
+            20,
+            15,
+            15,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.04378010705113411,
+            -9.536738616588991e-07,
+            -0.7626914978027344,
+            -0.00022015532886143774,
+            -0.5232299566268921,
+            -0.0620676688849926,
+            -2.6955559253692627
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "7500",
+          "reward": 0.0
+        },
+        {
+          "text": "#### 6250000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "token_ids": [
+            820,
+            220,
+            21,
+            17,
+            20,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.04378010705113411,
+            -9.536738616588991e-07,
+            -2.3876914978027344,
+            -0.26835769414901733,
+            -0.0001787979417713359,
+            -1.137028694152832,
+            -0.18029357492923737,
+            -0.03445737063884735,
+            -0.12186183780431747,
+            -0.11428935080766678,
+            -0.014073885045945644,
+            -0.1087997779250145,
+            -0.03522653505206108,
+            -0.018670298159122467,
+            -0.0161137655377388,
+            -0.0669526606798172,
+            -0.01696549728512764,
+            -0.0859684869647026,
+            -0.004308940377086401,
+            -0.006968243978917599,
+            -0.008129247464239597,
+            -0.12206792086362839,
+            -0.020811405032873154,
+            -0.04781928285956383,
+            -0.02625841274857521,
+            -0.016672678291797638,
+            -0.0067856828682124615,
+            -0.0040668887086212635,
+            -0.004211367107927799,
+            -0.0032393860165029764,
+            -0.006459428928792477,
+            -0.006676272489130497,
+            -0.04091499373316765,
+            -0.014181548729538918,
+            -0.028332481160759926,
+            -0.006445097737014294,
+            -0.007569441106170416,
+            -0.001836043898947537,
+            -0.003256971715018153,
+            -0.0021189635153859854,
+            -0.011217622086405754,
+            -0.022524002939462662,
+            -0.16250549256801605,
+            -0.04945451766252518,
+            -0.06293802708387375,
+            -0.03437570855021477,
+            -0.018931066617369652,
+            -0.008981660939753056,
+            -0.012334377504885197,
+            -0.005908997263759375,
+            -0.008250677026808262,
+            -0.021135227754712105,
+            -0.04346182569861412,
+            -0.07954072952270508,
+            -0.03842199966311455,
+            -0.018543457612395287,
+            -0.0101016229018569,
+            -0.010262341238558292,
+            -0.004990976769477129,
+            -0.01043931394815445,
+            -0.010167825035750866,
+            -0.034005217254161835,
+            -0.02994236908853054,
+            -0.043222103267908096,
+            -0.03830039128661156,
+            -0.018506478518247604,
+            -0.007970196194946766,
+            -0.004950528033077717,
+            -0.0020389023702591658,
+            -0.004830595105886459,
+            -0.011225401423871517,
+            -0.0264829620718956,
+            -0.04316547513008118,
+            -0.03819586709141731,
+            -0.029940517619252205,
+            -0.012724164873361588,
+            -0.010048989206552505,
+            -0.00624194648116827,
+            -0.004111647140234709,
+            -0.005710359662771225,
+            -0.014497421681880951,
+            -0.04319927096366882,
+            -0.07906027138233185,
+            -0.04870928078889847,
+            -0.029894009232521057,
+            -0.016283607110381126,
+            -0.012899879366159439,
+            -0.0062678903341293335,
+            -0.0063386112451553345,
+            -0.012831268832087517,
+            -0.04330144822597504,
+            -0.08919136226177216,
+            -0.0791650116443634,
+            -0.04331080615520477,
+            -0.026752380654215813,
+            -0.016541246324777603,
+            -0.009124367497861385,
+            -0.00722569040954113,
+            -0.01485958881676197,
+            -0.034663159400224686,
+            -0.07979380339384079,
+            -0.14357370138168335,
+            -1.9110568761825562
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "6250000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "reward": 0.0
+        },
+        {
+          "text": "#### 625",
+          "token_ids": [
+            820,
+            220,
+            21,
+            17,
+            20,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.04378010705113411,
+            -9.536738616588991e-07,
+            -2.4647417068481445,
+            -0.24016016721725464,
+            -0.00017963226127903908,
+            -0.5233191251754761
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "625",
+          "reward": 0.0
+        }
+      ]
+    },
+    {
+      "sample_id": "gsm8k/train/7368",
+      "question": "Fifteen more than a quarter of a number is 27. What is the number?",
+      "ground_truth": "48",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Solve the problem with a short calculation in one or two lines. On the last line write exactly: #### <number>. If the answer is a whole number, write it as an integer."
+        },
+        {
+          "role": "user",
+          "content": "Fifteen more than a quarter of a number is 27. What is the number?"
+        }
+      ],
+      "prompt_sha256": "ccc3bfcedb5cde281702b9666d39ae3fcf980ac08e22ced7118554d7bded668b",
+      "data_source": "openai/gsm8k",
+      "responses": [
+        {
+          "text": "#### 25",
+          "token_ids": [
+            820,
+            220,
+            17,
+            20,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.07614471763372421,
+            -0.00010227633902104571,
+            -1.8615119457244873,
+            -2.256743907928467,
+            -0.2411419004201889
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "25",
+          "reward": 0.0
+        },
+        {
+          "text": "#### 36",
+          "token_ids": [
+            820,
+            220,
+            18,
+            21,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.07614471763372421,
+            -0.00010227633902104571,
+            -3.2365119457244873,
+            -1.504491925239563,
+            -0.015270582400262356
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "36",
+          "reward": 0.0
+        },
+        {
+          "text": "#### 125",
+          "token_ids": [
+            820,
+            220,
+            16,
+            17,
+            20,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.08615125715732574,
+            -0.00013982271775603294,
+            -0.5611196160316467,
+            -1.4252363443374634,
+            -3.338945150375366,
+            -0.0869552344083786
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "125",
+          "reward": 0.0
+        },
+        {
+          "text": "#### 16",
+          "token_ids": [
+            820,
+            220,
+            16,
+            21,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.08615125715732574,
+            -0.00013982271775603294,
+            -0.5611196160316467,
+            -2.550236225128174,
+            -0.5733126401901245
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "16",
+          "reward": 0.0
+        }
+      ]
+    },
+    {
+      "sample_id": "gsm8k/train/1646",
+      "question": "198 passengers fit into 9 buses. How many passengers fit in 5 buses?",
+      "ground_truth": "110",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Solve the problem with a short calculation in one or two lines. On the last line write exactly: #### <number>. If the answer is a whole number, write it as an integer."
+        },
+        {
+          "role": "user",
+          "content": "198 passengers fit into 9 buses. How many passengers fit in 5 buses?"
+        }
+      ],
+      "prompt_sha256": "039eaebaf12afa802ad55ecf0f5243db37d403836e3d53e0c68137b3b172467e",
+      "data_source": "openai/gsm8k",
+      "responses": [
+        {
+          "text": "#### 95",
+          "token_ids": [
+            820,
+            220,
+            24,
+            20,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.028132222592830658,
+            -5.125986263010418e-06,
+            -0.08453369140625,
+            -0.05262130871415138,
+            -0.12043317407369614
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "95",
+          "reward": 0.0
+        },
+        {
+          "text": "#### 950",
+          "token_ids": [
+            820,
+            220,
+            24,
+            20,
+            15,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.028132222592830658,
+            -5.125986263010418e-06,
+            -0.08453369140625,
+            -0.05262130871415138,
+            -2.3079330921173096,
+            -0.03470749035477638
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "950",
+          "reward": 0.0
+        },
+        {
+          "text": "#### 95",
+          "token_ids": [
+            820,
+            220,
+            24,
+            20,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.028132222592830658,
+            -5.125986263010418e-06,
+            -0.08453369140625,
+            -0.05262130871415138,
+            -0.12043317407369614
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "95",
+          "reward": 0.0
+        },
+        {
+          "text": "#### 95",
+          "token_ids": [
+            820,
+            220,
+            24,
+            20,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.028132222592830658,
+            -5.125986263010418e-06,
+            -0.08453369140625,
+            -0.05262130871415138,
+            -0.12043317407369614
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "95",
+          "reward": 0.0
+        }
+      ]
+    },
+    {
+      "sample_id": "gsm8k/train/5955",
+      "question": "John takes a pill every 6 hours.  How many pills does he take a week?",
+      "ground_truth": "28",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Solve the problem with a short calculation in one or two lines. On the last line write exactly: #### <number>. If the answer is a whole number, write it as an integer."
+        },
+        {
+          "role": "user",
+          "content": "John takes a pill every 6 hours.  How many pills does he take a week?"
+        }
+      ],
+      "prompt_sha256": "2d956a4027b63c2daad4c1fed377d351317eb8a9de8835776a2e92669769bc9c",
+      "data_source": "openai/gsm8k",
+      "responses": [
+        {
+          "text": "#### 72",
+          "token_ids": [
+            820,
+            220,
+            22,
+            17,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.04165004938840866,
+            -5.722029527532868e-06,
+            -0.2106839418411255,
+            -0.711100697517395,
+            -0.12901723384857178
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "72",
+          "reward": 0.0
+        },
+        {
+          "text": "#### 760",
+          "token_ids": [
+            820,
+            220,
+            22,
+            21,
+            15,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.04165004938840866,
+            -5.722029527532868e-06,
+            -0.2106839418411255,
+            -2.6486005783081055,
+            -3.322150468826294,
+            -0.14470134675502777
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "760",
+          "reward": 0.0
+        },
+        {
+          "text": "#### 72",
+          "token_ids": [
+            820,
+            220,
+            22,
+            17,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.04165004938840866,
+            -5.722029527532868e-06,
+            -0.2106839418411255,
+            -0.711100697517395,
+            -0.12901723384857178
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "72",
+          "reward": 0.0
+        },
+        {
+          "text": "#### 440",
+          "token_ids": [
+            820,
+            220,
+            19,
+            19,
+            15,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.04165004938840866,
+            -5.722029527532868e-06,
+            -2.335683822631836,
+            -1.846008062362671,
+            -1.565577745437622,
+            -0.13036778569221497
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "440",
+          "reward": 0.0
+        }
+      ]
+    }
+  ],
+  "gate": {
+    "passed": false,
+    "eligible_group_ids": [],
+    "groups_observed": 8,
+    "responses_observed": 32,
+    "answer_parse_ratio": 1.0,
+    "length_limit_ratio": 0.0,
+    "next_stage_allowed": false,
+    "reason": "no_complete_mixed_reward_group"
+  },
+  "diagnostics": {
+    "schema_version": "rollout-reward-diagnostics/v1",
+    "summary": {
+      "counts": {
+        "responses": 32,
+        "strict_parsed": 32,
+        "positive_reward": 0,
+        "length_limited": 0,
+        "numeric_parsed": 32,
+        "numeric_correct": 0,
+        "numeric_wrong": 32,
+        "numeric_unknown": 0,
+        "missing_strict_format": 0
+      },
+      "primary_error_counts": {
+        "numeric_wrong": 32
+      },
+      "positive_reward_ratio": 0.0,
+      "numeric_correct_ratio": 0.0,
+      "mixed_reward_group_count": 0,
+      "eligible_group_ratio": 0.0,
+      "response_tokens": {
+        "min": 4,
+        "median": 5.0,
+        "max": 103
+      }
+    },
+    "groups": [
+      {
+        "sample_id": "gsm8k/train/2348",
+        "rewards": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reward_mean": 0.0,
+        "reward_std": 0.0,
+        "positive_reward_count": 0,
+        "numeric_correct_count": 0,
+        "unique_reply_count": 4,
+        "eligible": false,
+        "responses": [
+          {
+            "response_index": 0,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "15",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          },
+          {
+            "response_index": 1,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "7",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          },
+          {
+            "response_index": 2,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "9",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          },
+          {
+            "response_index": 3,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "14",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          }
+        ]
+      },
+      {
+        "sample_id": "gsm8k/train/6469",
+        "rewards": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reward_mean": 0.0,
+        "reward_std": 0.0,
+        "positive_reward_count": 0,
+        "numeric_correct_count": 0,
+        "unique_reply_count": 2,
+        "eligible": false,
+        "responses": [
+          {
+            "response_index": 0,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "10",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          },
+          {
+            "response_index": 1,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "7",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          },
+          {
+            "response_index": 2,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "10",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          },
+          {
+            "response_index": 3,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "10",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          }
+        ]
+      },
+      {
+        "sample_id": "gsm8k/train/4674",
+        "rewards": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reward_mean": 0.0,
+        "reward_std": 0.0,
+        "positive_reward_count": 0,
+        "numeric_correct_count": 0,
+        "unique_reply_count": 2,
+        "eligible": false,
+        "responses": [
+          {
+            "response_index": 0,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "62",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          },
+          {
+            "response_index": 1,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "66",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          },
+          {
+            "response_index": 2,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "62",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          },
+          {
+            "response_index": 3,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "66",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          }
+        ]
+      },
+      {
+        "sample_id": "gsm8k/train/5645",
+        "rewards": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reward_mean": 0.0,
+        "reward_std": 0.0,
+        "positive_reward_count": 0,
+        "numeric_correct_count": 0,
+        "unique_reply_count": 1,
+        "eligible": false,
+        "responses": [
+          {
+            "response_index": 0,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "24",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          },
+          {
+            "response_index": 1,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "24",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          },
+          {
+            "response_index": 2,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "24",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          },
+          {
+            "response_index": 3,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "24",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          }
+        ]
+      },
+      {
+        "sample_id": "gsm8k/train/7291",
+        "rewards": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reward_mean": 0.0,
+        "reward_std": 0.0,
+        "positive_reward_count": 0,
+        "numeric_correct_count": 0,
+        "unique_reply_count": 4,
+        "eligible": false,
+        "responses": [
+          {
+            "response_index": 0,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "75",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          },
+          {
+            "response_index": 1,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "7500",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          },
+          {
+            "response_index": 2,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "6250000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          },
+          {
+            "response_index": 3,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "625",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          }
+        ]
+      },
+      {
+        "sample_id": "gsm8k/train/7368",
+        "rewards": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reward_mean": 0.0,
+        "reward_std": 0.0,
+        "positive_reward_count": 0,
+        "numeric_correct_count": 0,
+        "unique_reply_count": 4,
+        "eligible": false,
+        "responses": [
+          {
+            "response_index": 0,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "25",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          },
+          {
+            "response_index": 1,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "36",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          },
+          {
+            "response_index": 2,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "125",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          },
+          {
+            "response_index": 3,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "16",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          }
+        ]
+      },
+      {
+        "sample_id": "gsm8k/train/1646",
+        "rewards": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reward_mean": 0.0,
+        "reward_std": 0.0,
+        "positive_reward_count": 0,
+        "numeric_correct_count": 0,
+        "unique_reply_count": 2,
+        "eligible": false,
+        "responses": [
+          {
+            "response_index": 0,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "95",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          },
+          {
+            "response_index": 1,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "950",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          },
+          {
+            "response_index": 2,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "95",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          },
+          {
+            "response_index": 3,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "95",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          }
+        ]
+      },
+      {
+        "sample_id": "gsm8k/train/5955",
+        "rewards": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reward_mean": 0.0,
+        "reward_std": 0.0,
+        "positive_reward_count": 0,
+        "numeric_correct_count": 0,
+        "unique_reply_count": 3,
+        "eligible": false,
+        "responses": [
+          {
+            "response_index": 0,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "72",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          },
+          {
+            "response_index": 1,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "760",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          },
+          {
+            "response_index": 2,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "72",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          },
+          {
+            "response_index": 3,
+            "strict_parsed": true,
+            "numeric_source": "strict_answer",
+            "numeric_answer": "440",
+            "numeric_correct": false,
+            "original_reward": 0.0,
+            "primary_error": "numeric_wrong"
+          }
+        ]
+      }
+    ],
+    "scope": "只诊断格式和数值等价，不修改严格奖励或下一阶段准入条件"
+  },
+  "screening": {
+    "schema_version": "rollout-screening-decision/v1",
+    "group_count": 8,
+    "group_states": {
+      "incomplete_or_invalid": 0,
+      "all_wrong": 8,
+      "all_correct": 0,
+      "mixed_reward": 0
+    },
+    "response_count": 32,
+    "canonical_integer_answer_count": 32,
+    "canonical_integer_answer_ratio": 1.0,
+    "group_blocker_counts": {},
+    "complete_group_response_count": 32,
+    "complete_group_positive_reward_ratio": 0.0,
+    "trace_checks": {
+      "valid_responses": 32
+    },
+    "observed_token_count": 262,
+    "valid_trace_token_count": 262,
+    "mixed_group_count": 0,
+    "usable_mixed_group_count": 0,
+    "usable_response_count": 0,
+    "sampling_distribution": "grammar_constrained",
+    "direct_training_reuse_allowed": false,
+    "recommended_action": "review_question_difficulty_before_more_training",
+    "groups": [
+      {
+        "sample_id": "gsm8k/train/2348",
+        "state": "all_wrong",
+        "blockers": [],
+        "trace_valid": true,
+        "centered_reward_nonzero_count": 0
+      },
+      {
+        "sample_id": "gsm8k/train/6469",
+        "state": "all_wrong",
+        "blockers": [],
+        "trace_valid": true,
+        "centered_reward_nonzero_count": 0
+      },
+      {
+        "sample_id": "gsm8k/train/4674",
+        "state": "all_wrong",
+        "blockers": [],
+        "trace_valid": true,
+        "centered_reward_nonzero_count": 0
+      },
+      {
+        "sample_id": "gsm8k/train/5645",
+        "state": "all_wrong",
+        "blockers": [],
+        "trace_valid": true,
+        "centered_reward_nonzero_count": 0
+      },
+      {
+        "sample_id": "gsm8k/train/7291",
+        "state": "all_wrong",
+        "blockers": [],
+        "trace_valid": true,
+        "centered_reward_nonzero_count": 0
+      },
+      {
+        "sample_id": "gsm8k/train/7368",
+        "state": "all_wrong",
+        "blockers": [],
+        "trace_valid": true,
+        "centered_reward_nonzero_count": 0
+      },
+      {
+        "sample_id": "gsm8k/train/1646",
+        "state": "all_wrong",
+        "blockers": [],
+        "trace_valid": true,
+        "centered_reward_nonzero_count": 0
+      },
+      {
+        "sample_id": "gsm8k/train/5955",
+        "state": "all_wrong",
+        "blockers": [],
+        "trace_valid": true,
+        "centered_reward_nonzero_count": 0
+      }
+    ],
+    "scope": "筛查不是训练；受约束概率不能与未使用相同约束的学习器概率直接求 PPO 比率"
+  },
+  "limitations": [
+    "短题筛查用于寻找可解释的更新输入，不估计 GSM8K 准确率",
+    "当前仅运行冻结基座采样，未执行 LoRA 更新、策略准入或 worker 激活验证",
+    "后续训练必须重新检查实际生成组的奖励差异；筛查通过不保证下一批优势非零",
+    "本轮使用格式约束，行为概率来自受约束采样，不直接复用为普通 PPO 训练轨迹"
+  ]
+}

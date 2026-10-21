@@ -97,7 +97,7 @@ $\operatorname{route}$ 对应本节的阶段分流规则，$G(z^*)$ 只检查被
 <a id="mechanism-practice"></a>
 ## Step 4：实现后训练阶段准入
 
-代码依次检查失败证据、计算不修改参数的方案复测后仍未解决的切片，并根据缺口类型、SFT 基线与反馈条件选择训练分支。选择 SFT 时，结果同时给出交给 32 节的数据需求单。
+题目区使用失败切片、无参数方案复测和训练前置资产复现阶段判断。骨架提供输入校验和结果结构；学习者补全失败切片筛选、复测后残留计算与训练分支选择。测试覆盖字段缺失、评测污染、无新增失败、不同训练入口和前置资产不足。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 |:---|:---|:---|:---|
@@ -244,11 +244,59 @@ def test_training_stage_blockers():
     assert pretraining == {"decision": "blocked", "reason": "stage_requirements_not_ready", "missing": ["domain_corpus_version"]}
 
 
+def test_invalid_evidence_and_candidate_domains():
+    """非法计数、重复候选和非有限指标不能进入阶段决策。"""
+    invalid_counts = {"goal_metric": "accuracy", "target_threshold": 0.9, "minimum_repeats": 3,
+                      "minimum_failure_rate": 0.6, "failure_runs": {"format": {"attempts": 0, "failures": 0}},
+                      "evaluation_ids_isolated": True, "baseline_slices": ["format"]}
+    for evidence in [invalid_counts, invalid_counts | {"failure_runs": {"format": {"attempts": 2, "failures": 3}}}]:
+        try:
+            assess_problem_evidence(evidence)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("非法失败计数必须被拒绝")
+    duplicate = [
+        {"failure_slice": "format", "metric_value": 0.91, "introduced_failures": []},
+        {"failure_slice": "format", "metric_value": 0.92, "introduced_failures": []},
+    ]
+    for rows in [duplicate, [{"failure_slice": "format", "metric_value": float("nan"), "introduced_failures": []}]]:
+        try:
+            assess_parameter_update_need(["format"], rows, 0.9)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("冲突或非有限候选结果必须被拒绝")
+
+
+def test_remaining_training_stage_outcomes():
+    """在线 RL、停在 SFT、无需更新和证据阻塞都应有独立结果。"""
+    evidence = {"ready": True, "repeatable_failure_slices": ["behavior"], "missing_fields": [], "failed_checks": [], "uncovered_failure_slices": []}
+    parameter = {"parameter_update_required": True, "residual_parameter_slices": ["behavior"]}
+    online = select_next_training_stage(evidence, parameter, {
+        "sft_baseline_ready": True, "sft_baseline_manifest": "sft.json", "feedback_mode": "learned_reward",
+        "reward_model_version": "rm-v1", "exploration_required": True, "rollout_budget": 128,
+        "rollback_checkpoint": "checkpoint-100",
+    })
+    assert online["decision"] == "online_rl"
+    stopped = select_next_training_stage(evidence, parameter, {"sft_baseline_ready": True, "feedback_mode": "none"})
+    assert stopped == {"decision": "stop_at_sft", "reason": "no_new_feedback_signal", "missing": []}
+    no_update = select_next_training_stage(evidence, {"parameter_update_required": False}, {})
+    assert no_update["decision"] == "no_parameter_update"
+    blocked = select_next_training_stage(
+        {"ready": False, "missing_fields": ["target_threshold"], "failed_checks": [], "uncovered_failure_slices": []},
+        parameter, {},
+    )
+    assert blocked == {"decision": "blocked", "reason": "missing_problem_evidence", "missing": ["target_threshold"]}
+
+
 test_problem_evidence_gate()
 test_parameter_update_gate()
 test_training_stage_branches()
 test_sft_data_request_contract()
 test_training_stage_blockers()
+test_invalid_evidence_and_candidate_domains()
+test_remaining_training_stage_outcomes()
 print("✅ 后训练证据、参数更新与阶段准入测试通过。")
 ```
 
@@ -277,17 +325,39 @@ def assess_problem_evidence(evidence: Dict[str, object]) -> Dict[str, object]:
     # TODO 1：按重复次数和失败率计算可重复失败，再检查基线覆盖。
     minimum_repeats = int(evidence.get("minimum_repeats", 0))
     minimum_failure_rate = float(evidence.get("minimum_failure_rate", 0.0))
-    repeatable_failure_slices = sorted(name for name, run in evidence.get("failure_runs", {}).items() if int(run["attempts"]) >= minimum_repeats and int(run["failures"]) / int(run["attempts"]) >= minimum_failure_rate)
+    if minimum_repeats <= 0:
+        raise ValueError("minimum_repeats 必须为正整数")
+    if not 0.0 <= minimum_failure_rate <= 1.0:
+        raise ValueError("minimum_failure_rate 必须位于 [0, 1]")
+    failure_runs = evidence.get("failure_runs", {})
+    for name, run in failure_runs.items():
+        attempts, failures = int(run["attempts"]), int(run["failures"])
+        if attempts <= 0 or failures < 0 or failures > attempts:
+            raise ValueError(f"失败切片 {name} 的计数无效")
+    repeatable_failure_slices = sorted(
+        name for name, run in failure_runs.items()
+        if int(run["attempts"]) >= minimum_repeats
+        and int(run["failures"]) / int(run["attempts"]) >= minimum_failure_rate
+    )
     uncovered_failure_slices = sorted(set(repeatable_failure_slices) - baseline_slices)
     ready = bool(repeatable_failure_slices) and not missing_fields and not failed_checks and not uncovered_failure_slices
     return {"ready": ready, "repeatable_failure_slices": repeatable_failure_slices, "missing_fields": missing_fields, "failed_checks": failed_checks, "uncovered_failure_slices": uncovered_failure_slices}
 
 
 def assess_parameter_update_need(failure_slices: List[str], candidate_results: List[Dict[str, object]], target_threshold: float) -> Dict[str, object]:
+    import math
+
     repeatable_failures = set(failure_slices)
-    unknown_slices = sorted({item["failure_slice"] for item in candidate_results} - repeatable_failures)
+    result_slices = [item["failure_slice"] for item in candidate_results]
+    unknown_slices = sorted(set(result_slices) - repeatable_failures)
     if unknown_slices:
         raise ValueError(f"候选结果包含未登记切片：{unknown_slices}")
+    if len(result_slices) != len(set(result_slices)):
+        raise ValueError("同一失败切片只能提供一条候选结果")
+    if not math.isfinite(float(target_threshold)):
+        raise ValueError("target_threshold 必须为有限数")
+    if any(not math.isfinite(float(item["metric_value"])) for item in candidate_results):
+        raise ValueError("候选指标必须为有限数")
     # TODO 2：只有指标达到门槛且未引入新失败的候选才能解决切片。
     resolved_slices = sorted({item["failure_slice"] for item in candidate_results if float(item["metric_value"]) >= target_threshold and not item.get("introduced_failures", [])})
     residual_parameter_slices = sorted(repeatable_failures - set(resolved_slices))
@@ -356,14 +426,14 @@ def select_next_training_stage(evidence_report: Dict[str, object], parameter_rep
 
 ## 框架一致性核对（可选）
 
-下面用相同的阶段证据生成 SFT、离线偏好与验证器强化学习决策，检查输出字段与 TRL 配置入口是否同时可用。训练方式仍由输入证据决定，框架入口只验证配置能否继续传递。
+使用相同的阶段输入，核对 Step 4 路由结果能否形成完整的数据请求，并探测对应的 TRL 配置入口。
 
-| 核对项 | 本节输出 | 通过条件 |
-| --- | --- | --- |
-| SFT 数据请求 | `data_request` | 候选数据版本、残留失败、必需字段和下一节完整 |
-| 阶段阻塞 | `decision=blocked` | 返回具体缺失字段，不生成可执行训练入口 |
-| 偏好与验证器分支 | 阶段决策 | SFT 基线和对应反馈资产齐全后才通过 |
-| 框架入口 | TRL 配置类 | `SFTConfig`、`DPOConfig`、`GRPOConfig` 在固定版本中可用 |
+| 核对对象 | Step 4 教学实现 | 成熟框架 CPU 路径 | 共同输入与通过条件 |
+| --- | --- | --- | --- |
+| SFT 路由 | `select_next_training_stage` 生成 `data_request` | `trl.SFTConfig` 接口探测 | 使用相同阶段输入；候选数据版本、残留失败、必需字段和下一节完整 |
+| 离线偏好路由 | 输出离线偏好阶段决策 | `trl.DPOConfig` 接口探测 | 使用相同阶段输入；SFT 基线与偏好对资产齐全后通过 |
+| 验证器强化学习路由 | 输出 RLVR 阶段决策 | `trl.GRPOConfig` 接口探测 | 使用相同阶段输入；SFT 基线、验证器与轨迹预算齐全后通过 |
+| 阻塞结果 | 输出 `decision=blocked` 与缺失字段 | 配置创建前的输入检查 | 使用相同不完整输入；返回具体缺失字段，不生成训练入口 |
 
 ```python
 from importlib.metadata import version

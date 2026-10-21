@@ -1,6 +1,6 @@
 # PT-ROLLOUT-LIFECYCLE. Rollout and Policy Freshness | 轨迹与策略新鲜度
 
-**难度：** Hard | **环境：** [CPU 机制练习](#runtime-environment) | **标签：** `后训练`, `轨迹生命周期`, `策略新鲜度`
+**难度：** Hard | **环境：** [CPU 机制练习](#runtime-environment) · [verl 单卡实验](#gpu-experiment) | **标签：** `后训练`, `轨迹生命周期`, `策略新鲜度`
 
 > 🚀 **云端运行环境**
 >
@@ -26,6 +26,8 @@
 ## 运行环境
 
 - **基础练习：** 默认使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
+
+- **GPU 实测：** 使用 [`PT-VERL-CUDA`](../topic_discussion/post_training_optimization/quickstart.md#pt-verl-cuda-quickstart)，从 [Step 5](#gpu-experiment) 运行单卡同步系统实验。
 
 ---
 ## 前置阅读
@@ -219,6 +221,12 @@ def test_policy_compatibility():
     assert drifted['reason'] == 'policy_drift'
     empty = assess_policy_compatibility(old, current, [False, False, False], 3, 3, 1, 0.05)
     assert empty['reason'] == 'empty_action_mask'
+    try:
+        assess_policy_compatibility([float('nan'), -0.2], current[:2], [True, True], 3, 3, 1, 0.05)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError('有效动作位置的非有限对数概率必须被拒绝')
 
 
 def test_compare_and_reserve():
@@ -231,6 +239,13 @@ def test_compare_and_reserve():
     assert ledger['r-1']['reserved_by'] == 'update-a'
     retry = compare_and_reserve(ledger, 'r-1', 7, 'update-a')
     assert retry['reserved'] is True and retry['reason'] == 'idempotent_retry'
+    assert compare_and_reserve(ledger, 'missing', 0, 'update-x')['reason'] == 'missing_rollout'
+    try:
+        compare_and_reserve(ledger, 'r-1', 8, '')
+    except ValueError:
+        pass
+    else:
+        raise AssertionError('空 update_id 必须被拒绝')
     ledger['done'] = {'lifecycle_state': 'consumed', 'revision': 2, 'reserved_by': None}
     assert compare_and_reserve(ledger, 'done', 2, 'update-c')['reason'] == 'not_rewarded'
 
@@ -253,6 +268,10 @@ def test_version_activation():
     assert mismatch['reason'] == 'worker_mismatch' and mismatch['active_pointer'] == active
     uncommitted = activate_policy_version(active, artifact | {'committed': False}, workers, required)
     assert uncommitted['reason'] == 'artifact_not_committed' and uncommitted['active_pointer'] == active
+    old_artifact = {'version': 2, 'artifact_hash': 'policy-2', 'committed': True}
+    old_workers = {worker: {'version': 2, 'artifact_hash': 'policy-2'} for worker in required}
+    non_monotonic = activate_policy_version(active, old_artifact, old_workers, required)
+    assert non_monotonic['reason'] == 'non_monotonic_version' and non_monotonic['active_pointer'] == active
     assert active == {'version': 3, 'artifact_hash': 'policy-3'}
 
 
@@ -285,15 +304,24 @@ def transition_lifecycle(state, event):
     return LIFECYCLE_TRANSITIONS[transition]
 
 def assess_policy_compatibility(old_log_probs, current_log_probs, action_mask, behavior_version, current_version, max_lag, max_mean_abs_log_ratio):
-    if max_lag < 0 or max_mean_abs_log_ratio < 0:
-        raise ValueError('兼容性阈值必须非负')
+    import math
+
+    if any(not isinstance(version, int) or isinstance(version, bool) or version < 0 for version in (behavior_version, current_version)):
+        raise ValueError('策略版本必须为非负整数')
+    if max_lag < 0 or not math.isfinite(float(max_mean_abs_log_ratio)) or max_mean_abs_log_ratio < 0:
+        raise ValueError('兼容性阈值必须为非负有限数')
     if not (len(old_log_probs) == len(current_log_probs) == len(action_mask)):
         raise ValueError('行为概率、当前概率与动作掩码必须同形')
+    if any(not isinstance(active, bool) for active in action_mask):
+        raise ValueError('动作掩码必须由布尔值组成')
     active_indices = [index for index, active in enumerate(action_mask) if active]
     if not active_indices:
         return {'accepted': False, 'reason': 'empty_action_mask', 'freshness': None, 'mean_abs_log_ratio': None}
     lag = current_version - behavior_version
     freshness = 'future' if lag < 0 else ('fresh' if lag == 0 else ('tolerated' if lag <= max_lag else 'stale'))
+    active_values = [float(values[i]) for values in (old_log_probs, current_log_probs) for i in active_indices]
+    if any(not math.isfinite(value) for value in active_values):
+        raise ValueError('有效动作位置的对数概率必须为有限数')
     mean_abs_log_ratio = sum(abs(float(current_log_probs[i]) - float(old_log_probs[i])) for i in active_indices) / len(active_indices)
     if freshness in {'future', 'stale'}:
         return {'accepted': False, 'reason': f'{freshness}_policy', 'freshness': freshness, 'mean_abs_log_ratio': mean_abs_log_ratio}
@@ -325,15 +353,25 @@ def compare_and_reserve(ledger, rollout_id, expected_revision, update_id):
 def activate_policy_version(active_pointer, artifact, worker_states, required_workers):
     artifact_version = artifact['version']
     artifact_hash = artifact['artifact_hash']
+    active_version = active_pointer['version']
+    if any(not isinstance(version, int) or isinstance(version, bool) or version < 0 for version in (artifact_version, active_version)):
+        raise ValueError('策略版本必须为非负整数')
+    if not artifact_hash:
+        raise ValueError('artifact_hash 不能为空')
+    if len(required_workers) != len(set(required_workers)):
+        raise ValueError('required_workers 不能重复')
     missing_workers = sorted(worker for worker in required_workers if worker not in worker_states)
     mismatched_workers = sorted(
         worker for worker in required_workers if worker in worker_states
         and (worker_states[worker].get('version') != artifact_version
              or worker_states[worker].get('artifact_hash') != artifact_hash)
     )
-    activated = bool(artifact.get('committed', False)) and not missing_workers and not mismatched_workers
+    monotonic_version = artifact_version > active_version
+    activated = bool(artifact.get('committed', False)) and monotonic_version and not missing_workers and not mismatched_workers
     if not artifact.get('committed', False):
         reason = 'artifact_not_committed'
+    elif not monotonic_version:
+        reason = 'non_monotonic_version'
     elif missing_workers:
         reason = 'missing_worker_ack'
     elif mismatched_workers:
@@ -372,6 +410,119 @@ def activate_policy_version(active_pointer, artifact, worker_states, required_wo
 - **机制：** 新策略产物先完成提交，再由所有必需工作进程确认相同版本与不可变哈希，最后原子切换活动指针。
 - **不变量：** 未提交产物、缺失确认或版本—哈希不一致时都保持原活动策略。
 - **测试证据：** 测试覆盖成功激活、未提交产物、缺失确认、错误哈希和旧指针保持。
+
+<a id="gpu-experiment"></a>
+
+## Step 5：观察真实轨迹的行为偏离与策略同步
+
+CPU 练习检查轨迹状态、版本判断、竞争预留和激活条件；verl 单卡实验观察真实动作概率、参数变化和权重同步。受控监督更新用于产生一个可追溯的新策略版本，是否提高奖励或触发拒绝不作为本节通过条件。
+
+| 学习问题 | CPU 已确认 | GPU 需要的真实证据 |
+|:---|:---|:---|
+| 同一轨迹怎样绑定策略 | 身份、版本差和动作范围检查 | 固定提示、回复 Token、动作掩码与行为策略身份，先核对同版本概率 |
+| 策略变化后怎样判断旧轨迹 | 平均绝对对数概率差与准入阈值 | 在 verl 内确认实际参数变化，重评完全相同的轨迹；不以非零 GRPO 优势替代参数证据 |
+| 怎样确认新策略可用 | 预留、重试、版本与哈希确认条件 | 核对真实同步完成及生成侧概率；单卡结果不验证多工作进程原子激活 |
+
+### 5.1 环境与固定工作负载
+
+使用已有的 [`PT-VERL-CUDA`](../topic_discussion/post_training_optimization/quickstart.md#pt-verl-cuda-quickstart)。先保持 `dry_run` 运行 5.1–5.2；预检通过后改为 `real_gpu`，再运行 5.1–5.3。两页共用标签，第二页读取同一份结果。本轮仅补初始参数一致的配对确认，不增加模型、数据或训练步数。 若仅提示缺少模型缓存，其他环境检查已通过，可改为 `real_gpu` 自动准备固定版本；CPU 核对通过后才开始训练。
+
+| 配置 | 固定内容与操作 |
+|:---|:---|
+| 学习者配置 | 仅设置运行模式、唯一标签和已有 verl 目录；结果路径由标签推导 |
+| 模型与更新 | Qwen2.5-0.5B-Instruct，LoRA rank 16，q/v 投影；verl 内置监督损失，仅一次优化器更新，不运行 GRPO/PPO 损失 |
+| 固定轨迹 | 读取已有 `rtx5070ti_rollout_arithmetic_v1` 中每题第一条回复，共 8 条，选择不看奖励，保留 EOS 和全部动作 Token |
+| 更新输入 | 另用 4 条固定算术监督样本；不使用这 8 条轨迹进行训练 |
+| 初始参数 | 创建模型前固定种子 42；保留组训练前必须与释放组的初始 LoRA 哈希一致 |
+| 运行与停止 | 不自动重试、追加训练或放宽阈值；已有文件不覆盖，未通过项如实保存供结果登记 |
+
+
+```python
+from pathlib import Path
+from tools.project_runtime import resolve_project_root
+
+RUN_MODE = "real_gpu"  # dry_run 仅预检；通过后改为 real_gpu。
+RUN_LABEL = "rtx5070ti_verl_mechanism_closure_v2"  # 两页共用；新实验换标签，已有结果只读。
+VERL_ROOT = Path.home() / "verl-v0.9.1"  # 已安装的 PT-VERL-CUDA，不创建新环境。
+
+PROJECT_ROOT = resolve_project_root()
+RESULT_PATH = PROJECT_ROOT / "benchmarks/results/pt_verl_closure" / f"{RUN_LABEL}.json"
+if RUN_MODE not in {"dry_run", "real_gpu"}:
+    raise ValueError(f"未知运行模式：{RUN_MODE}")
+print({"run_mode": RUN_MODE, "run_label": RUN_LABEL, "result_path": str(RESULT_PATH)})
+
+```
+
+### 5.2 执行一次更新与同轨迹重评
+
+预检核对 verl 提交、包版本、主机内存和模型资产，并在 CPU 上检查真实分词器、损失、评分位置及初始化复现。实际运行由 verl actor 更新 LoRA，再通过其权重同步路径加载到生成引擎；两组顺序执行。保留组的初始哈希不一致时直接停止，不把相同配置误当成相同参数。
+
+| 候选 | 固定输入与变化 | 保存的证据 |
+|:---|:---|:---|
+| 释放组 | 固定轨迹与监督输入；开启引擎释放/恢复 | 初始化种子与参数指纹、差值范数、loss、梯度、更新前后同 Token 概率、同步后版本与新生成记录 |
+| 保留组 | 初始参数哈希匹配后，仅关闭引擎释放/恢复 | 相同证据及阶段资源；释放组未通过则跳过，初始参数不同则不训练 |
+| 两组共同检查 | 同版本概率误差与变化量误差沿用原定容差 | 逐项通过/未通过、旧轨迹准入判断；不要求答案更正确或必须拒绝旧轨迹 |
+
+
+```python
+import json
+import subprocess
+import sys
+from tools.verl_mechanism_closure import SCHEMA
+
+if RESULT_PATH.is_file():
+    saved = json.loads(RESULT_PATH.read_text(encoding="utf-8"))
+    if saved.get("schema_version") != SCHEMA or saved.get("run_label") != RUN_LABEL:
+        raise RuntimeError("已有文件的格式或运行标签不匹配，请检查结果路径。")
+    print(f"读取已有共同结果，不重复运行：{RESULT_PATH}；继续 5.3。")
+else:
+    command = [sys.executable, "-m", "tools.verl_mechanism_closure",
+               "--mode", "preflight" if RUN_MODE == "dry_run" else "run",
+               "--verl-root", str(VERL_ROOT), "--run-label", RUN_LABEL,
+               "--output", str(RESULT_PATH)]
+    completed = subprocess.run(command, cwd=PROJECT_ROOT, check=False)
+    if completed.returncode not in ({0, 4} if RUN_MODE == "dry_run" else {0}):
+        print(f"结果目录：{RESULT_PATH.parent}；同标签 *_release.log / *_retain.log 保留错误详情。")
+        raise RuntimeError("预检或实际执行未完成，请先查看上方具体检查与候选日志，不要直接重复运行。")
+    if completed.returncode == 4:
+        print("环境检查通过，仅缺模型缓存；改为 real_gpu 后会先准备固定 commit，CPU 核对通过才启动 GPU。")
+    elif RUN_MODE == "dry_run":
+        print("预检通过后，将 5.1 的 RUN_MODE 改为 real_gpu，再运行 5.1 → 5.2 → 5.3。")
+
+```
+
+### 5.3 读取轨迹与同步结果
+
+可在重启内核后运行 5.1、5.3 读取结果，不重复训练。输出保留每项检查、参数变化、概率比较与逐轨迹准入；技术失败和检查未通过分别记录。接收侧通过真实同步返回、版本及概率变化核对，没有直接导出接收侧权重哈希。
+
+
+```python
+import json
+from tools.verl_mechanism_closure import read_summary
+
+if RESULT_PATH.is_file():
+    saved = json.loads(RESULT_PATH.read_text(encoding="utf-8"))
+    if saved.get("run_label") != RUN_LABEL:
+        raise RuntimeError("结果标签与 5.1 不一致。")
+    print(json.dumps(read_summary(RESULT_PATH, "lifecycle"), ensure_ascii=False, indent=2))
+else:
+    print("当前标签尚无 GPU 结果。dry_run 不生成实验结论；实际运行完成后再执行 5.3。")
+
+```
+
+### 5.4 解释轨迹生命周期证据
+
+[受控更新 v2](../../benchmarks/results/pt_verl_closure/rtx5070ti_verl_mechanism_closure_v2.json) 的释放与保留组均完成一次监督更新，参数变化、冻结轨迹重评、版本及生成侧同步全部通过。两组初始参数与更新后参数的哈希分别一致，更新后同版本逐 Token 对数概率最大误差均为 0.06250，低于原定上限 0.15；本机单卡的受控更新与同步验证完成。
+
+8 条旧轨迹在两组中均为 7 条准入、1 条拒绝，说明相同版本差不意味着相同行为偏离。下一步保留当前证据用于学习和复现，无需追加训练。[v1](../../benchmarks/results/pt_verl_closure/rtx5070ti_verl_mechanism_closure_v1.json) 保留初始参数不一致与概率误差超限的记录；本轮通过不将该历史结果改记为通过，也不构成 GRPO 收益或多工作进程原子激活的证明。
+
+| 观察项 | 读取字段 | 当前结果 | 解释与动作 |
+|:---|:---|:---|:---|
+| 配对参数 | `initialization.adapter_sha256`、`update.after_sha256` | 两组初始哈希均为 `06380c94…`，更新后均为 `369392e9…` | 初始参数与一次更新结果一致，可比较释放/保留两条路径 |
+| 实际更新 | `update.grad_norm`、`delta_l2`、`changed_tensors` | 梯度范数 0.03428，参数差值范数 0.61536，48 个张量改变 | 4 条独立监督样本、12 个监督 Token、一次真实更新，不再是零梯度流程 |
+| 生成侧同步 | `decision.comparisons.same_version_after`、`sync_rpc_and_version` | 两组最大误差 0.06250、平均误差 0.002653，版本从 0 更新到 1 | 均满足原定最大误差 0.15、平均误差 0.03，不放宽阈值 |
+| 旧轨迹准入 | `decision.admission` | 两组均 7 条准入、1 条拒绝；拒绝项平均偏离 3.60039 | 按同一轨迹的概率偏离与阈值 0.2 判断，不只比较版本号 |
+| 真实生成 | `generation_before`、`generation_after` | `81−47` 从 `24` 变为 `34` | 对应实际生成记录确认新策略可用，不据单题变化报告整体质量提升 |
 
 ## 相关阅读
 

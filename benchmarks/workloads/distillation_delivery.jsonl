@@ -1,0 +1,20 @@
+{"record_id":"train-01","split":"train","prompt":"Explain in two concise sentences why a KV cache reduces autoregressive decoding work."}
+{"record_id":"train-02","split":"train","prompt":"Describe the difference between prefill and decode in an LLM serving system."}
+{"record_id":"train-03","split":"train","prompt":"Give two reasons why a smaller language model can have lower inference latency."}
+{"record_id":"train-04","split":"train","prompt":"Explain why training and evaluation prompts must be separated in a model experiment."}
+{"record_id":"train-05","split":"train","prompt":"State one benefit and one risk of quantizing model weights."}
+{"record_id":"train-06","split":"train","prompt":"Explain what gradient checkpointing trades to reduce training memory."}
+{"record_id":"train-07","split":"train","prompt":"Why is a frozen teacher important in a controlled distillation comparison?"}
+{"record_id":"train-08","split":"train","prompt":"Explain the purpose of an independent student baseline in a distillation project."}
+{"record_id":"train-09","split":"train","prompt":"What does time to first token measure in online language-model serving?"}
+{"record_id":"train-10","split":"train","prompt":"Why can higher throughput be unsuitable if tail latency becomes worse?"}
+{"record_id":"train-11","split":"train","prompt":"Explain why model artifact loadability must be checked before deployment."}
+{"record_id":"train-12","split":"train","prompt":"Describe one difference between fixed-trajectory and on-policy distillation."}
+{"record_id":"eval-01","split":"evaluation","prompt":"Return only the result of 17 + 25.","expected_any":["42"]}
+{"record_id":"eval-02","split":"evaluation","prompt":"Return only the capital city of France.","expected_any":["paris"]}
+{"record_id":"eval-03","split":"evaluation","prompt":"In one sentence, name the two phases of autoregressive inference.","expected_all":["prefill","decode"]}
+{"record_id":"eval-04","split":"evaluation","prompt":"In one sentence, state what gradient checkpointing exchanges for lower activation memory.","expected_any":["compute","computation","recompute"]}
+{"record_id":"eval-05","split":"evaluation","prompt":"Name the latency metric that measures time until the first generated token.","expected_any":["ttft","time to first token"]}
+{"record_id":"eval-06","split":"evaluation","prompt":"State whether a teacher model should be updated during a controlled distillation run: yes or no.","expected_any":["no"]}
+{"record_id":"eval-07","split":"evaluation","prompt":"Name the cache that stores attention keys and values during autoregressive generation.","expected_any":["kv cache","key value cache","key-value cache"]}
+{"record_id":"eval-08","split":"evaluation","prompt":"Return only the result of 9 multiplied by 8.","expected_any":["72"]}

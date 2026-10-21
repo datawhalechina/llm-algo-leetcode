@@ -491,14 +491,14 @@ def evaluate_length_curriculum_stage(
 
 ## 框架一致性核对（可选）
 
-下面使用 TRL 的 `bfd` Packing 和 padding-free 批处理器核对数据路径，不下载模型，也不执行训练。本核对只确认 Token、标签和边界元数据与本节手工契约一致；跨样本 Attention 是否在真实执行中隔离，仍由 Step 5 验证。
+使用相同的样本和窗口上限，比较 Step 4 教学实现与 TRL `bfd` Packing、padding-free 批处理器产生的 Token、标签和边界元数据。CPU 核对不替代真实训练内核的跨样本 Attention 隔离验证。
 
-| 核对项 | 对比内容 | 通过条件 |
-| --- | --- | --- |
-| Packing 容量 | 原始样本与 TRL `bfd` 结果 | 每个 Packed Row 不超过窗口，每个输入样本恰好出现一次 |
-| Token 与标签 | Packing 前后序列片段 | Token 顺序和标签逐样本保持不变 |
-| 样本边界 | `seq_lengths`、`position_ids` 与本节手工结果 | 长度和等于 Packed Row 长度，每条样本的位置从 0 开始，样本起点标签被屏蔽 |
-| 内核元数据 | `cu_seq_lens`、`seq_idx` 与批处理字段 | 累计边界和样本编号与 `seq_lengths` 一致，且不生成普通 Attention Mask |
+| 核对对象 | Step 4 教学实现 | 成熟框架 CPU 路径 | 共同输入与通过条件 |
+| --- | --- | --- | --- |
+| Packing 容量 | `build_boundary_isolated_packing` 分配样本 | TRL `pack_dataset(strategy="bfd")` | 使用相同样本和窗口上限；每行不超长，每个样本恰好出现一次 |
+| Token 与标签 | 按样本拼接 Token 与标签 | TRL `pack_dataset` 输出 | 使用相同样本；逐样本 Token 顺序和标签保持不变 |
+| 样本边界 | 生成 `seq_lengths` 与 `position_ids` | TRL padding-free 批处理器 | 使用相同 Packed Row；长度和、位置重置与起点标签屏蔽一致 |
+| 内核元数据 | 生成 `cu_seq_lens` 与 `seq_idx` | TRL padding-free 批处理字段 | 使用相同 `seq_lengths`；累计边界和样本编号一致，不生成普通 Attention Mask |
 
 ```python
 from collections import Counter

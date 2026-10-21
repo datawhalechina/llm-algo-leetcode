@@ -1,0 +1,85 @@
+{
+  "schema_version": "post-training-mechanism-gpu/v1",
+  "semantic_id": "PT-SFT-TRAINING",
+  "environment_profile": "PT-SFT-CUDA",
+  "run_mode": "real_gpu",
+  "run_label": "rtx5070ti_sft_v1",
+  "framework": {
+    "python": "3.12.15",
+    "torch": "2.11.0+cu128",
+    "transformers": "5.19.0",
+    "datasets": "5.1.0"
+  },
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000,
+    "compute_capability": [
+      12,
+      0
+    ],
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8",
+    "bf16_supported": true
+  },
+  "model": {
+    "id": "Qwen/Qwen2.5-0.5B",
+    "requested_revision": "main",
+    "resolved_commit": "060db6499f32faf8b98477b0a26969ef7d8b9987",
+    "resolution_source": "huggingface_hub_api"
+  },
+  "dataset": {
+    "id": "tatsu-lab/alpaca",
+    "requested_revision": "main",
+    "resolved_commit": "dce01c9b08f87459cf36a430d809084718273017",
+    "train_ids_hash": "3b7c8ed13a11cf01f65721c0ddca19d8dc9b48e9afb40a90a1aae83cf9d5e2f9",
+    "evaluation_ids_hash": "d25aea2f963c69b49126953d411b67222a19c6c2bdf627572a1bbf307e5199f1",
+    "resolution_source": "huggingface_hub_api",
+    "selection_seed": 42
+  },
+  "workload": {
+    "id": "pt-sft-training",
+    "version": "v1",
+    "total_samples": 32,
+    "train_samples": 24,
+    "evaluation_samples": 8,
+    "max_length": 256,
+    "batch_size": 1,
+    "updates": 8,
+    "learning_rate": 2e-05,
+    "seed": 42
+  },
+  "baseline": {
+    "name": "initial_model",
+    "train_token_weighted_loss": 1.5518254257403443,
+    "evaluation_token_weighted_loss": 1.6544290293655504
+  },
+  "candidate": {
+    "name": "full_parameter_sft_after_updates",
+    "train_token_weighted_loss": 1.3401152193836325,
+    "evaluation_token_weighted_loss": 1.6342758366525003,
+    "update_losses": [
+      1.6813037395477295,
+      1.7007228136062622,
+      1.8364125490188599,
+      1.5817457437515259,
+      0.3918856978416443,
+      0.7066650390625,
+      0.557727038860321,
+      1.4130432605743408
+    ]
+  },
+  "mechanism_metrics": {
+    "train_supervised_tokens": 1445,
+    "evaluation_supervised_tokens": 351,
+    "truncated_samples": 1,
+    "median_update_ms": 98.47826349141542,
+    "p95_update_ms": 173.03036799421534,
+    "peak_allocated_bytes": 5006659072,
+    "peak_reserved_bytes": 5624561664,
+    "train_loss_decreased": true,
+    "evaluation_loss_finite": true
+  },
+  "failure": null,
+  "evidence_level": "real_model_training_mechanism_benchmark",
+  "decision": "accept_mechanism"
+}

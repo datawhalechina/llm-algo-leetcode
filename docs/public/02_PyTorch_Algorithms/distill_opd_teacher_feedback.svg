@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+  <title id="title">学生轨迹上的教师反馈、掩码与学生更新</title>
+  <desc id="desc">学生轨迹同时送入冻结教师和可训练学生，二者分布经过广义JSD，再由完成区掩码选择有效位置并仅更新学生。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#475569"/></marker>
+    <style>
+      .title{font:700 28px 'Noto Sans SC','Microsoft YaHei',sans-serif;fill:#0f172a}
+      .label{font:700 19px 'Noto Sans SC','Microsoft YaHei',sans-serif;fill:#0f172a}
+      .body{font:400 16px 'Noto Sans SC','Microsoft YaHei',sans-serif;fill:#334155}
+      .small{font:600 14px 'Noto Sans SC','Microsoft YaHei',sans-serif;fill:#475569}
+      .line{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}
+      .dash{stroke:#7c3aed;stroke-width:3;stroke-dasharray:8 7;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1200" height="520" rx="24" fill="#f8fafc"/>
+  <text x="60" y="58" class="title">教师提供分布反馈，掩码决定哪些位置产生学生梯度</text>
+
+  <rect x="55" y="212" width="210" height="125" rx="18" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="160" y="262" text-anchor="middle" class="label">学生轨迹</text>
+  <text x="160" y="294" text-anchor="middle" class="body">固定或 πS 采样</text>
+
+  <path d="M265 275 H330 V160 H385" class="line"/>
+  <path d="M265 275 H330 V385 H385" class="line"/>
+
+  <rect x="385" y="95" width="250" height="125" rx="18" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+  <text x="510" y="147" text-anchor="middle" class="label">冻结教师 pT</text>
+  <text x="510" y="179" text-anchor="middle" class="body">无梯度 · 可见教师上下文</text>
+
+  <rect x="385" y="320" width="250" height="125" rx="18" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="510" y="372" text-anchor="middle" class="label">可训练学生 pS</text>
+  <text x="510" y="404" text-anchor="middle" class="body">当前策略 · 接收梯度</text>
+
+  <path d="M635 160 H715 V242 H775" class="line"/>
+  <path d="M635 385 H715 V308 H775" class="line"/>
+
+  <rect x="775" y="212" width="210" height="125" rx="18" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="880" y="262" text-anchor="middle" class="label">广义 JSD</text>
+  <text x="880" y="294" text-anchor="middle" class="body">β 控制分布比较</text>
+
+  <rect x="775" y="390" width="210" height="90" rx="18" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+  <text x="880" y="426" text-anchor="middle" class="label">完成区掩码 M</text>
+  <text x="880" y="455" text-anchor="middle" class="small">排除提示 / Padding / 工具返回</text>
+  <path d="M880 390 V335" class="dash"/>
+
+  <path d="M985 275 H1030" class="line"/>
+  <rect x="1030" y="212" width="130" height="125" rx="18" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+  <text x="1095" y="260" text-anchor="middle" class="label">有效均值</text>
+  <text x="1095" y="291" text-anchor="middle" class="body">仅更新学生</text>
+</svg>

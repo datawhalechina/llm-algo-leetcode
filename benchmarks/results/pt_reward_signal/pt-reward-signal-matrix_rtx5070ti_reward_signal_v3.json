@@ -1,0 +1,120 @@
+{
+  "schema_version": "post-training-mechanism-gpu/v1",
+  "semantic_id": "PT-REWARD-SIGNAL",
+  "environment_profile": "PT-RL-CUDA",
+  "run_mode": "real_gpu",
+  "run_label": "rtx5070ti_reward_signal_v3",
+  "framework": {
+    "python": "3.12.15",
+    "torch": "2.11.0+cu128",
+    "transformers": "5.18.0",
+    "peft": "0.21.2"
+  },
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000,
+    "compute_capability": [
+      12,
+      0
+    ],
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8",
+    "bf16_supported": true
+  },
+  "model": {
+    "id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "requested_revision": "main",
+    "resolved_commit": "7ae557604adf67be50417f59c2c2f167def9a775",
+    "resolution_source": "huggingface_hub_api"
+  },
+  "dataset": {
+    "source": "embedded_fixed_trajectories",
+    "samples": 3,
+    "sample_hash": "9f3325b874c847982c59b8ccc76696c4aa38ee52c08635cfc2f73cb86dad321b"
+  },
+  "workload": {
+    "id": "pt-reward-signal-matrix",
+    "version": "v1",
+    "beta_kl_candidates": [
+      0.0,
+      0.05,
+      0.2
+    ],
+    "gamma_candidates": [
+      0.9,
+      1.0
+    ],
+    "max_length": 128,
+    "lora_rank": 4,
+    "lora_alpha": 8,
+    "prepare_steps": 2,
+    "learning_rate": 0.0001,
+    "seed": 42
+  },
+  "baseline": {
+    "name": "frozen_reference"
+  },
+  "actor_preparation": {
+    "losses": [
+      6.515200614929199,
+      6.482916831970215
+    ],
+    "times_ms": [
+      76.59235000028275,
+      41.94600699702278
+    ],
+    "mean_absolute_logp_shift": 0.09021960198879242
+  },
+  "candidates": [
+    {
+      "beta_kl": 0.0,
+      "gamma": 0.9,
+      "mean_start_return": 0.28288016219933826,
+      "mean_terminal_return": 0.8333333333333334,
+      "mean_normalized_advantage_std": 0.9999999205271403
+    },
+    {
+      "beta_kl": 0.0,
+      "gamma": 1.0,
+      "mean_start_return": 0.8333333333333334,
+      "mean_terminal_return": 0.8333333333333334,
+      "mean_normalized_advantage_std": 5.960464477539063e-08
+    },
+    {
+      "beta_kl": 0.05,
+      "gamma": 0.9,
+      "mean_start_return": 0.2514660954475403,
+      "mean_terminal_return": 0.8266836603482565,
+      "mean_normalized_advantage_std": 0.9999999403953552
+    },
+    {
+      "beta_kl": 0.05,
+      "gamma": 1.0,
+      "mean_start_return": 0.7897571921348572,
+      "mean_terminal_return": 0.8266836603482565,
+      "mean_normalized_advantage_std": 0.9999989867210388
+    },
+    {
+      "beta_kl": 0.2,
+      "gamma": 0.9,
+      "mean_start_return": 0.15722393244504929,
+      "mean_terminal_return": 0.806734581788381,
+      "mean_normalized_advantage_std": 0.9999999205271403
+    },
+    {
+      "beta_kl": 0.2,
+      "gamma": 1.0,
+      "mean_start_return": 0.6590288281440735,
+      "mean_terminal_return": 0.806734581788381,
+      "mean_normalized_advantage_std": 0.9999997615814209
+    }
+  ],
+  "failure": null,
+  "evidence_level": "real_model_reward_signal_benchmark",
+  "decision": "accept_mechanism",
+  "mechanism_checks": {
+    "candidate_matrix_complete": true,
+    "terminal_reward_placement_passed": true,
+    "peak_allocated_bytes": 2161090048
+  }
+}

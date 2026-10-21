@@ -1,0 +1,191 @@
+{
+  "schema_version": "post-training-mechanism-gpu/v1",
+  "semantic_id": "PT-LORA-TARGETS",
+  "environment_profile": "PT-SFT-CUDA",
+  "run_mode": "real_gpu",
+  "run_label": "rtx5070ti_lora_targets_v3",
+  "framework": {
+    "python": "3.12.15",
+    "torch": "2.11.0+cu128",
+    "transformers": "5.19.0",
+    "peft": "0.21.2"
+  },
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000,
+    "compute_capability": [
+      12,
+      0
+    ],
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8",
+    "bf16_supported": true
+  },
+  "model": {
+    "id": "Qwen/Qwen2.5-0.5B",
+    "requested_revision": "main",
+    "resolved_commit": "060db6499f32faf8b98477b0a26969ef7d8b9987",
+    "resolution_source": "huggingface_hub_api"
+  },
+  "workload": {
+    "id": "pt-lora-targets",
+    "version": "v3",
+    "max_length": 128,
+    "rank": 8,
+    "alpha": 16,
+    "update_steps": 3,
+    "learning_rate": 0.001,
+    "target_module_sets": {
+      "attention_qv": [
+        "q_proj",
+        "v_proj"
+      ],
+      "attention_all": [
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj"
+      ],
+      "attention_mlp": [
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj",
+        "gate_proj",
+        "up_proj",
+        "down_proj"
+      ]
+    },
+    "merge_thresholds": {
+      "min_cosine": 0.999,
+      "min_top1_agreement": 0.98,
+      "max_loss_diff": 0.02
+    },
+    "seed": 42
+  },
+  "baseline": "attention_qv",
+  "candidates": [
+    {
+      "name": "attention_qv",
+      "target_modules": [
+        "q_proj",
+        "v_proj"
+      ],
+      "matched_module_count": 48,
+      "trainable_params": 540672,
+      "trainable_ratio": 0.0010932087254827108,
+      "base_frozen": true,
+      "initial_max_abs_diff": 0.0,
+      "losses": [
+        4.529930114746094,
+        3.5649025440216064,
+        2.788973331451416
+      ],
+      "gradient_norms": [
+        8.375445365905762,
+        5.626821994781494,
+        4.348417282104492
+      ],
+      "median_update_ms": 35.22694099228829,
+      "p95_update_ms": 86.10839500033762,
+      "training_peak_allocated_bytes": 1792890880,
+      "training_peak_reserved_bytes": 1992294400,
+      "training_check_passed": true,
+      "merge_agreement": {
+        "max_abs_diff": 0.84375,
+        "mean_abs_diff": 0.05370093137025833,
+        "cosine_similarity": 0.9997480511665344,
+        "top1_agreement": 0.98828125
+      },
+      "merge_loss_abs_diff": 0.0227813720703125,
+      "merge_peak_allocated_bytes": 2112150016,
+      "merge_peak_reserved_bytes": 2464153600,
+      "merge_check_passed": false
+    },
+    {
+      "name": "attention_all",
+      "target_modules": [
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj"
+      ],
+      "matched_module_count": 96,
+      "trainable_params": 1081344,
+      "trainable_ratio": 0.0021840298504761666,
+      "base_frozen": true,
+      "initial_max_abs_diff": 0.0,
+      "losses": [
+        4.529930114746094,
+        2.948435068130493,
+        1.868099570274353
+      ],
+      "gradient_norms": [
+        9.384474754333496,
+        4.735685348510742,
+        4.2169013023376465
+      ],
+      "median_update_ms": 39.169315990875475,
+      "p95_update_ms": 43.460493005113676,
+      "training_peak_allocated_bytes": 1822400512,
+      "training_peak_reserved_bytes": 2021654528,
+      "training_check_passed": true,
+      "merge_agreement": {
+        "max_abs_diff": 1.09375,
+        "mean_abs_diff": 0.05538202449679375,
+        "cosine_similarity": 0.9997190833091736,
+        "top1_agreement": 0.99609375
+      },
+      "merge_loss_abs_diff": 0.0017037391662597656,
+      "merge_peak_allocated_bytes": 2120538624,
+      "merge_peak_reserved_bytes": 2493513728,
+      "merge_check_passed": true
+    },
+    {
+      "name": "attention_mlp",
+      "target_modules": [
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj",
+        "gate_proj",
+        "up_proj",
+        "down_proj"
+      ],
+      "matched_module_count": 168,
+      "trainable_params": 4399104,
+      "trainable_ratio": 0.008825888244963597,
+      "base_frozen": true,
+      "initial_max_abs_diff": 0.0,
+      "losses": [
+        4.529930114746094,
+        1.9089170694351196,
+        0.46851977705955505
+      ],
+      "gradient_norms": [
+        12.31887435913086,
+        6.199708461761475,
+        3.5077178478240967
+      ],
+      "median_update_ms": 58.65502399683464,
+      "p95_update_ms": 68.26784400618635,
+      "training_peak_allocated_bytes": 1951981568,
+      "training_peak_reserved_bytes": 2116026368,
+      "training_check_passed": true,
+      "merge_agreement": {
+        "max_abs_diff": 0.875,
+        "mean_abs_diff": 0.05646246671676636,
+        "cosine_similarity": 0.9997332096099854,
+        "top1_agreement": 0.99609375
+      },
+      "merge_loss_abs_diff": 0.0005361847579479218,
+      "merge_peak_allocated_bytes": 2173622784,
+      "merge_peak_reserved_bytes": 2587885568,
+      "merge_check_passed": true
+    }
+  ],
+  "failure": null,
+  "evidence_level": "real_model_lora_mechanism_benchmark",
+  "decision": "accept_mechanism",
+  "merge_decision": "tune"
+}

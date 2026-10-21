@@ -1,0 +1,128 @@
+{
+  "schema_version": "post-training-mechanism-gpu/v1",
+  "semantic_id": "PT-DPO-LOSS",
+  "environment_profile": "PT-RL-CUDA",
+  "run_mode": "real_gpu",
+  "run_label": "rtx5070ti_dpo_v1",
+  "framework": {
+    "python": "3.12.15",
+    "torch": "2.11.0+cu128",
+    "transformers": "5.18.0",
+    "peft": "0.21.2"
+  },
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000,
+    "compute_capability": [
+      12,
+      0
+    ],
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8",
+    "bf16_supported": true
+  },
+  "model": {
+    "id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "requested_revision": "main",
+    "resolved_commit": "7ae557604adf67be50417f59c2c2f167def9a775",
+    "resolution_source": "huggingface_hub_api"
+  },
+  "dataset": {
+    "source": "embedded_fixed_preference_pairs",
+    "pairs": 4,
+    "sample_hash": "8cba4f2c45592aeac369ccd54c88088b7df8687931430b4866005a6c74190625"
+  },
+  "workload": {
+    "id": "pt-dpo-real-model-update",
+    "version": "v1",
+    "beta_candidates": [
+      0.05,
+      0.1,
+      0.3
+    ],
+    "max_length": 128,
+    "lora_rank": 8,
+    "lora_alpha": 16,
+    "update_steps": 4,
+    "learning_rate": 0.0002,
+    "seed": 42
+  },
+  "baseline": {
+    "name": "frozen_reference",
+    "initial_preference_margin": 0.0
+  },
+  "candidates": [
+    {
+      "beta": 0.05,
+      "losses": [
+        0.6931471824645996,
+        0.6532673835754395,
+        0.6036677360534668,
+        0.5634445548057556
+      ],
+      "mean_chosen_shift": 5.158451080322266,
+      "mean_rejected_shift": -2.9570541381835938,
+      "mean_preference_margin": 8.11550521850586,
+      "preference_accuracy": 1.0,
+      "gradient_norms": [
+        2.15482759475708,
+        1.7151046991348267,
+        1.4218136072158813,
+        1.252016544342041
+      ],
+      "median_update_ms": 117.72296800336335,
+      "p95_update_ms": 162.32732599019073,
+      "peak_allocated_bytes": 3425998336
+    },
+    {
+      "beta": 0.1,
+      "losses": [
+        0.6931471824645996,
+        0.6164122819900513,
+        0.5304399132728577,
+        0.45331546664237976
+      ],
+      "mean_chosen_shift": 5.002864837646484,
+      "mean_rejected_shift": -3.0284767150878906,
+      "mean_preference_margin": 8.031341552734375,
+      "preference_accuracy": 1.0,
+      "gradient_norms": [
+        4.30965518951416,
+        3.1650450229644775,
+        2.473148822784424,
+        2.081857442855835
+      ],
+      "median_update_ms": 119.44395700265886,
+      "p95_update_ms": 123.2744649896631,
+      "peak_allocated_bytes": 3423150080
+    },
+    {
+      "beta": 0.3,
+      "losses": [
+        0.6931471824645996,
+        0.5053294897079468,
+        0.34394174814224243,
+        0.20147749781608582
+      ],
+      "mean_chosen_shift": 5.011049270629883,
+      "mean_rejected_shift": -2.5624570846557617,
+      "mean_preference_margin": 7.5735063552856445,
+      "preference_accuracy": 1.0,
+      "gradient_norms": [
+        12.911626815795898,
+        7.5832438468933105,
+        4.939373970031738,
+        3.1193912029266357
+      ],
+      "median_update_ms": 122.64957799925469,
+      "p95_update_ms": 128.85286399978213,
+      "peak_allocated_bytes": 3423150080
+    }
+  ],
+  "failure": null,
+  "evidence_level": "real_model_dpo_mechanism_benchmark",
+  "decision": "accept_mechanism",
+  "selected_candidate": {
+    "beta": 0.05
+  }
+}

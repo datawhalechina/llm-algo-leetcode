@@ -1,0 +1,762 @@
+{
+  "clock": "single_host_monotonic_ns",
+  "interval_s": 0.25,
+  "scope": "whole_gpu_and_whole_host_including_other_apps",
+  "events": [
+    {
+      "name": "initialization",
+      "begin_ns": 27741724312940,
+      "end_ns": 27769797907357,
+      "duration_s": 28.073594417,
+      "sample_count": 105,
+      "sampled_gpu_peak_mb": 8043.0
+    },
+    {
+      "name": "sleep_before_initial_sync",
+      "begin_ns": 27769797913569,
+      "end_ns": 27769799626290,
+      "duration_s": 0.001712721,
+      "sample_count": 0,
+      "sampled_gpu_peak_mb": null
+    },
+    {
+      "name": "initial_sync",
+      "begin_ns": 27769799631169,
+      "end_ns": 27770638335309,
+      "duration_s": 0.83870414,
+      "sample_count": 3,
+      "sampled_gpu_peak_mb": 9545.0
+    },
+    {
+      "name": "generation_before",
+      "begin_ns": 27770638344987,
+      "end_ns": 27771363336424,
+      "duration_s": 0.724991437,
+      "sample_count": 3,
+      "sampled_gpu_peak_mb": 8035.0
+    },
+    {
+      "name": "rollout_score_before",
+      "begin_ns": 27771363344580,
+      "end_ns": 27771514556458,
+      "duration_s": 0.151211878,
+      "sample_count": 0,
+      "sampled_gpu_peak_mb": null
+    },
+    {
+      "name": "sleep_before_actor",
+      "begin_ns": 27771514569973,
+      "end_ns": 27771516810767,
+      "duration_s": 0.002240794,
+      "sample_count": 0,
+      "sampled_gpu_peak_mb": null
+    },
+    {
+      "name": "actor_score_before",
+      "begin_ns": 27771516831426,
+      "end_ns": 27772294610441,
+      "duration_s": 0.777779015,
+      "sample_count": 3,
+      "sampled_gpu_peak_mb": 10285.0
+    },
+    {
+      "name": "supervised_update",
+      "begin_ns": 27772294628986,
+      "end_ns": 27773674119968,
+      "duration_s": 1.379490982,
+      "sample_count": 5,
+      "sampled_gpu_peak_mb": 10351.0
+    },
+    {
+      "name": "actor_score_after",
+      "begin_ns": 27773674129936,
+      "end_ns": 27774324584715,
+      "duration_s": 0.650454779,
+      "sample_count": 3,
+      "sampled_gpu_peak_mb": 10315.0
+    },
+    {
+      "name": "weight_sync",
+      "begin_ns": 27774324592449,
+      "end_ns": 27774830024481,
+      "duration_s": 0.505432032,
+      "sample_count": 2,
+      "sampled_gpu_peak_mb": 9987.0
+    },
+    {
+      "name": "rollout_score_after",
+      "begin_ns": 27774830032917,
+      "end_ns": 27775025146752,
+      "duration_s": 0.195113835,
+      "sample_count": 1,
+      "sampled_gpu_peak_mb": 8158.0
+    },
+    {
+      "name": "generation_after",
+      "begin_ns": 27775025152403,
+      "end_ns": 27775397810974,
+      "duration_s": 0.372658571,
+      "sample_count": 1,
+      "sampled_gpu_peak_mb": 8158.0
+    }
+  ],
+  "samples": [
+    {
+      "monotonic_ns": 27741740243074,
+      "gpu_used_mb": 1008.0,
+      "host_used_mb": 9218.078125
+    },
+    {
+      "monotonic_ns": 27742007839162,
+      "gpu_used_mb": 1008.0,
+      "host_used_mb": 9409.6328125
+    },
+    {
+      "monotonic_ns": 27742273237515,
+      "gpu_used_mb": 1008.0,
+      "host_used_mb": 9513.3359375
+    },
+    {
+      "monotonic_ns": 27742538471088,
+      "gpu_used_mb": 1008.0,
+      "host_used_mb": 9904.234375
+    },
+    {
+      "monotonic_ns": 27742801817938,
+      "gpu_used_mb": 1008.0,
+      "host_used_mb": 10154.33203125
+    },
+    {
+      "monotonic_ns": 27743065980012,
+      "gpu_used_mb": 1008.0,
+      "host_used_mb": 10312.6171875
+    },
+    {
+      "monotonic_ns": 27743330972808,
+      "gpu_used_mb": 1008.0,
+      "host_used_mb": 10352.26953125
+    },
+    {
+      "monotonic_ns": 27743597013864,
+      "gpu_used_mb": 1008.0,
+      "host_used_mb": 10353.24609375
+    },
+    {
+      "monotonic_ns": 27743865091669,
+      "gpu_used_mb": 1008.0,
+      "host_used_mb": 10351.45703125
+    },
+    {
+      "monotonic_ns": 27744334766700,
+      "gpu_used_mb": 1008.0,
+      "host_used_mb": 11797.58984375
+    },
+    {
+      "monotonic_ns": 27744599201050,
+      "gpu_used_mb": 1008.0,
+      "host_used_mb": 11832.0625
+    },
+    {
+      "monotonic_ns": 27744864472682,
+      "gpu_used_mb": 1008.0,
+      "host_used_mb": 11897.4921875
+    },
+    {
+      "monotonic_ns": 27745127961230,
+      "gpu_used_mb": 1008.0,
+      "host_used_mb": 12026.55078125
+    },
+    {
+      "monotonic_ns": 27745393119599,
+      "gpu_used_mb": 1008.0,
+      "host_used_mb": 12149.27734375
+    },
+    {
+      "monotonic_ns": 27745658388463,
+      "gpu_used_mb": 1008.0,
+      "host_used_mb": 12135.171875
+    },
+    {
+      "monotonic_ns": 27745923566835,
+      "gpu_used_mb": 1008.0,
+      "host_used_mb": 12140.69140625
+    },
+    {
+      "monotonic_ns": 27746188250085,
+      "gpu_used_mb": 1008.0,
+      "host_used_mb": 12184.59375
+    },
+    {
+      "monotonic_ns": 27746452748739,
+      "gpu_used_mb": 1008.0,
+      "host_used_mb": 12201.296875
+    },
+    {
+      "monotonic_ns": 27746720442860,
+      "gpu_used_mb": 1008.0,
+      "host_used_mb": 12211.51953125
+    },
+    {
+      "monotonic_ns": 27746985973961,
+      "gpu_used_mb": 1008.0,
+      "host_used_mb": 12234.86328125
+    },
+    {
+      "monotonic_ns": 27747252254752,
+      "gpu_used_mb": 1008.0,
+      "host_used_mb": 12258.29296875
+    },
+    {
+      "monotonic_ns": 27747519409707,
+      "gpu_used_mb": 1008.0,
+      "host_used_mb": 12291.0546875
+    },
+    {
+      "monotonic_ns": 27747784897564,
+      "gpu_used_mb": 1008.0,
+      "host_used_mb": 12332.32421875
+    },
+    {
+      "monotonic_ns": 27748049926546,
+      "gpu_used_mb": 1008.0,
+      "host_used_mb": 12361.40234375
+    },
+    {
+      "monotonic_ns": 27748313684858,
+      "gpu_used_mb": 1008.0,
+      "host_used_mb": 12520.296875
+    },
+    {
+      "monotonic_ns": 27748580016801,
+      "gpu_used_mb": 1037.0,
+      "host_used_mb": 12525.69140625
+    },
+    {
+      "monotonic_ns": 27748848176006,
+      "gpu_used_mb": 1167.0,
+      "host_used_mb": 13089.26171875
+    },
+    {
+      "monotonic_ns": 27749112830640,
+      "gpu_used_mb": 1277.0,
+      "host_used_mb": 14740.19140625
+    },
+    {
+      "monotonic_ns": 27749383443541,
+      "gpu_used_mb": 3729.0,
+      "host_used_mb": 13591.09375
+    },
+    {
+      "monotonic_ns": 27749653490225,
+      "gpu_used_mb": 4251.0,
+      "host_used_mb": 14533.88671875
+    },
+    {
+      "monotonic_ns": 27749918199487,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 15675.0859375
+    },
+    {
+      "monotonic_ns": 27750181654350,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 15676.0234375
+    },
+    {
+      "monotonic_ns": 27750445498966,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 15718.96484375
+    },
+    {
+      "monotonic_ns": 27750708824884,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 15735.89453125
+    },
+    {
+      "monotonic_ns": 27751010810132,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 15741.5078125
+    },
+    {
+      "monotonic_ns": 27751273872052,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 15745.31640625
+    },
+    {
+      "monotonic_ns": 27751538863160,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 15769.79296875
+    },
+    {
+      "monotonic_ns": 27751813304448,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 15785.13671875
+    },
+    {
+      "monotonic_ns": 27752276556497,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 15809.1796875
+    },
+    {
+      "monotonic_ns": 27752541609006,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 15827.8125
+    },
+    {
+      "monotonic_ns": 27752805726133,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 16022.46484375
+    },
+    {
+      "monotonic_ns": 27753069406156,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 16097.390625
+    },
+    {
+      "monotonic_ns": 27753334090308,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 16146.46484375
+    },
+    {
+      "monotonic_ns": 27753598984945,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 16180.0703125
+    },
+    {
+      "monotonic_ns": 27753862458536,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 16219.10546875
+    },
+    {
+      "monotonic_ns": 27754126129398,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 16230.8515625
+    },
+    {
+      "monotonic_ns": 27754390222514,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 16241.23828125
+    },
+    {
+      "monotonic_ns": 27754654675435,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 16277.15234375
+    },
+    {
+      "monotonic_ns": 27754919059525,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 16296.34765625
+    },
+    {
+      "monotonic_ns": 27755182918877,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 16326.359375
+    },
+    {
+      "monotonic_ns": 27755447135551,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 16334.88671875
+    },
+    {
+      "monotonic_ns": 27755710696720,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 16375.20703125
+    },
+    {
+      "monotonic_ns": 27755973824602,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 16395.96875
+    },
+    {
+      "monotonic_ns": 27756236158532,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 16401.40234375
+    },
+    {
+      "monotonic_ns": 27756500074135,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 16453.171875
+    },
+    {
+      "monotonic_ns": 27756765316722,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 16559.58984375
+    },
+    {
+      "monotonic_ns": 27757029442396,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 16628.73046875
+    },
+    {
+      "monotonic_ns": 27757293737790,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 16706.359375
+    },
+    {
+      "monotonic_ns": 27757558211720,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 16794.32421875
+    },
+    {
+      "monotonic_ns": 27757823105234,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 16843.1640625
+    },
+    {
+      "monotonic_ns": 27758087737147,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 16920.5703125
+    },
+    {
+      "monotonic_ns": 27758352376543,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 17107.53515625
+    },
+    {
+      "monotonic_ns": 27758616886626,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 17194.55859375
+    },
+    {
+      "monotonic_ns": 27758882401886,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 17238.8203125
+    },
+    {
+      "monotonic_ns": 27759147416834,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 17283.9296875
+    },
+    {
+      "monotonic_ns": 27759412186351,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 17311.2265625
+    },
+    {
+      "monotonic_ns": 27759676142226,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 17348.8359375
+    },
+    {
+      "monotonic_ns": 27759940554918,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 17373.0625
+    },
+    {
+      "monotonic_ns": 27760205329901,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 17384.9609375
+    },
+    {
+      "monotonic_ns": 27760469105735,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 17394.96875
+    },
+    {
+      "monotonic_ns": 27760733213220,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 17424.34765625
+    },
+    {
+      "monotonic_ns": 27760997141136,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 17440.5546875
+    },
+    {
+      "monotonic_ns": 27761261547632,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 17488.44921875
+    },
+    {
+      "monotonic_ns": 27761526312722,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 17700.19921875
+    },
+    {
+      "monotonic_ns": 27761790216859,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 17739.265625
+    },
+    {
+      "monotonic_ns": 27762054307347,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 17800.65625
+    },
+    {
+      "monotonic_ns": 27762318541905,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 17827.50390625
+    },
+    {
+      "monotonic_ns": 27762583007017,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 17858.91796875
+    },
+    {
+      "monotonic_ns": 27762847286055,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 17875.46484375
+    },
+    {
+      "monotonic_ns": 27763112036549,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 17894.6171875
+    },
+    {
+      "monotonic_ns": 27763379654075,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 17902.4765625
+    },
+    {
+      "monotonic_ns": 27763643878869,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 17926.421875
+    },
+    {
+      "monotonic_ns": 27763908957326,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 17964.01953125
+    },
+    {
+      "monotonic_ns": 27764171585515,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 17972.48828125
+    },
+    {
+      "monotonic_ns": 27764435429129,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 18030.43359375
+    },
+    {
+      "monotonic_ns": 27764697718359,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 18052.8984375
+    },
+    {
+      "monotonic_ns": 27764960851313,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 18066.8359375
+    },
+    {
+      "monotonic_ns": 27765223380130,
+      "gpu_used_mb": 3657.0,
+      "host_used_mb": 18091.2578125
+    },
+    {
+      "monotonic_ns": 27765497867448,
+      "gpu_used_mb": 3673.0,
+      "host_used_mb": 18135.3984375
+    },
+    {
+      "monotonic_ns": 27765761798249,
+      "gpu_used_mb": 3913.0,
+      "host_used_mb": 18215.2578125
+    },
+    {
+      "monotonic_ns": 27766025773663,
+      "gpu_used_mb": 4215.0,
+      "host_used_mb": 18392.51953125
+    },
+    {
+      "monotonic_ns": 27766289644160,
+      "gpu_used_mb": 4929.0,
+      "host_used_mb": 18413.26953125
+    },
+    {
+      "monotonic_ns": 27766553322435,
+      "gpu_used_mb": 4929.0,
+      "host_used_mb": 18412.8828125
+    },
+    {
+      "monotonic_ns": 27766815763110,
+      "gpu_used_mb": 4929.0,
+      "host_used_mb": 18390.35546875
+    },
+    {
+      "monotonic_ns": 27767079883312,
+      "gpu_used_mb": 4929.0,
+      "host_used_mb": 18395.98046875
+    },
+    {
+      "monotonic_ns": 27767343603382,
+      "gpu_used_mb": 4985.0,
+      "host_used_mb": 18740.0703125
+    },
+    {
+      "monotonic_ns": 27767608268488,
+      "gpu_used_mb": 4987.0,
+      "host_used_mb": 18775.66015625
+    },
+    {
+      "monotonic_ns": 27767872711934,
+      "gpu_used_mb": 4987.0,
+      "host_used_mb": 18774.17578125
+    },
+    {
+      "monotonic_ns": 27768137373450,
+      "gpu_used_mb": 8009.0,
+      "host_used_mb": 18790.68359375
+    },
+    {
+      "monotonic_ns": 27768402428877,
+      "gpu_used_mb": 8043.0,
+      "host_used_mb": 18939.34375
+    },
+    {
+      "monotonic_ns": 27768666382751,
+      "gpu_used_mb": 8043.0,
+      "host_used_mb": 19006.98828125
+    },
+    {
+      "monotonic_ns": 27768929888038,
+      "gpu_used_mb": 8043.0,
+      "host_used_mb": 19083.91796875
+    },
+    {
+      "monotonic_ns": 27769192948710,
+      "gpu_used_mb": 8043.0,
+      "host_used_mb": 19098.3515625
+    },
+    {
+      "monotonic_ns": 27769458103670,
+      "gpu_used_mb": 8043.0,
+      "host_used_mb": 19158.30859375
+    },
+    {
+      "monotonic_ns": 27769721919449,
+      "gpu_used_mb": 8043.0,
+      "host_used_mb": 19162.15234375
+    },
+    {
+      "monotonic_ns": 27769987615873,
+      "gpu_used_mb": 8047.0,
+      "host_used_mb": 19172.84375
+    },
+    {
+      "monotonic_ns": 27770252102472,
+      "gpu_used_mb": 8047.0,
+      "host_used_mb": 19366.203125
+    },
+    {
+      "monotonic_ns": 27770517094892,
+      "gpu_used_mb": 9545.0,
+      "host_used_mb": 19477.54296875
+    },
+    {
+      "monotonic_ns": 27770780946643,
+      "gpu_used_mb": 8035.0,
+      "host_used_mb": 19678.28515625
+    },
+    {
+      "monotonic_ns": 27771045365821,
+      "gpu_used_mb": 8035.0,
+      "host_used_mb": 19824.7890625
+    },
+    {
+      "monotonic_ns": 27771309682326,
+      "gpu_used_mb": 8035.0,
+      "host_used_mb": 19853.6171875
+    },
+    {
+      "monotonic_ns": 27771574433639,
+      "gpu_used_mb": 9411.0,
+      "host_used_mb": 19872.640625
+    },
+    {
+      "monotonic_ns": 27771840028844,
+      "gpu_used_mb": 10283.0,
+      "host_used_mb": 20405.30859375
+    },
+    {
+      "monotonic_ns": 27772106891332,
+      "gpu_used_mb": 10285.0,
+      "host_used_mb": 20632.4296875
+    },
+    {
+      "monotonic_ns": 27772372067500,
+      "gpu_used_mb": 7977.0,
+      "host_used_mb": 20688.78125
+    },
+    {
+      "monotonic_ns": 27772635869071,
+      "gpu_used_mb": 9079.0,
+      "host_used_mb": 20731.73046875
+    },
+    {
+      "monotonic_ns": 27772902612281,
+      "gpu_used_mb": 10349.0,
+      "host_used_mb": 20799.10546875
+    },
+    {
+      "monotonic_ns": 27773168020270,
+      "gpu_used_mb": 10351.0,
+      "host_used_mb": 20823.33984375
+    },
+    {
+      "monotonic_ns": 27773434116132,
+      "gpu_used_mb": 10351.0,
+      "host_used_mb": 21030.3828125
+    },
+    {
+      "monotonic_ns": 27773699865331,
+      "gpu_used_mb": 8129.0,
+      "host_used_mb": 21074.65234375
+    },
+    {
+      "monotonic_ns": 27773963550456,
+      "gpu_used_mb": 10315.0,
+      "host_used_mb": 21080.421875
+    },
+    {
+      "monotonic_ns": 27774229524366,
+      "gpu_used_mb": 10315.0,
+      "host_used_mb": 21120.21875
+    },
+    {
+      "monotonic_ns": 27774494230200,
+      "gpu_used_mb": 8957.0,
+      "host_used_mb": 21123.79296875
+    },
+    {
+      "monotonic_ns": 27774759294155,
+      "gpu_used_mb": 9987.0,
+      "host_used_mb": 21129.0234375
+    },
+    {
+      "monotonic_ns": 27775023015685,
+      "gpu_used_mb": 8158.0,
+      "host_used_mb": 21138.828125
+    },
+    {
+      "monotonic_ns": 27775286696197,
+      "gpu_used_mb": 8158.0,
+      "host_used_mb": 21138.6015625
+    },
+    {
+      "monotonic_ns": 27775556013289,
+      "gpu_used_mb": 8158.0,
+      "host_used_mb": 13850.0078125
+    },
+    {
+      "monotonic_ns": 27775821302663,
+      "gpu_used_mb": 1033.0,
+      "host_used_mb": 10108.171875
+    },
+    {
+      "monotonic_ns": 27776087730537,
+      "gpu_used_mb": 1033.0,
+      "host_used_mb": 10107.828125
+    },
+    {
+      "monotonic_ns": 27776353667649,
+      "gpu_used_mb": 1033.0,
+      "host_used_mb": 10107.78125
+    },
+    {
+      "monotonic_ns": 27776618998971,
+      "gpu_used_mb": 1033.0,
+      "host_used_mb": 9979.1640625
+    }
+  ],
+  "errors": [],
+  "limitation": "短阶段可能漏采峰值；边界事件不是持续采样峰值，未测到记为 null"
+}
