@@ -4,7 +4,7 @@
 
 ## 1. 选择环境
 
-| Profile | Conda 环境 | 使用场景 | 运行条件 |
+| Profile | 环境 | 使用场景 | 运行条件 |
 |:---|:---|:---|:---|
 | `PT-CPU` | `llm_pt_cpu` | 13–18、30–33 与 `PT-*` 页的框架一致性核对 | CPU |
 | `PT-SFT-CUDA` | `llm_pt_sft_cu128` | SFT、LoRA、长上下文与参数适配 | 单张 CUDA GPU，至少 8 GiB |
@@ -14,7 +14,7 @@
 | `PT-DELIVERY-CUDA` | `llm_pt_delivery_cu128` | Part 05 冻结评测与交付决策 | 单张 CUDA GPU，至少 8 GiB |
 | [`Q-QLORA`](../quantization_compression/quickstart.md#q-qlora-quickstart) | 由量化专题维护 | QLoRA 与低比特训练 | 使用独立量化环境 |
 
-六个 `PT-*` Profile 彼此隔离。`PT-VERL-CUDA` 使用 verl 自带的 uv 锁文件；其余 Profile 使用仓库的 Conda 安装器。
+六个 `PT-*` Profile 彼此隔离。安装器根据 Profile 选择 Conda 或上游 uv 锁环境。
 
 ## 2. 首次创建
 
@@ -26,7 +26,7 @@ export PIP_DEFAULT_TIMEOUT=120
 export PIP_RETRIES=8
 ```
 
-安装器会依次创建环境、安装登记依赖、注册仓库运行时、执行 `pip check` 和 Profile 预检，并注册同名 Jupyter Kernel。查看计划时在命令末尾添加 `--dry-run`；已有环境默认不会被修改。
+安装器会创建并预检登记环境。Conda Profile 同时注册 Jupyter Kernel；`PT-VERL-CUDA` 由 Notebook 通过独立进程调用。查看计划时在命令末尾添加 `--dry-run`；已有环境默认不会被修改。
 
 <a id="pt-cpu-quickstart"></a>
 
@@ -62,19 +62,23 @@ python tools/install_environment_profile.py \
 
 ### PT-VERL-CUDA
 
-verl 的 Torch、vLLM 与 Ray 版本由上游锁文件共同约束，不写入 `PT-RL-CUDA`。首次准备时执行：
+verl 的 Torch、vLLM 与 Ray 版本由上游锁文件共同约束，不写入 `PT-RL-CUDA`：
 
 ```bash
-git clone --branch v0.9.1 --depth 1 \
-  https://github.com/verl-project/verl.git ~/verl-v0.9.1
+python tools/install_environment_profile.py \
+  --profile PT-VERL-CUDA \
+  --target ~/verl-v0.9.1
+```
+
+当前受控更新实验复用仓库已登记的算术轨迹，无需下载 GSM8K。模型按轨迹中的 ID 与固定 commit 自动查找本机缓存；`dry_run` 不下载，仅缺缓存时按提示改为 `real_gpu` 准备同版本快照，CPU 核对通过后才训练。仅复现早期 GSM8K 筛查时准备数据：
+
+```bash
 cd ~/verl-v0.9.1
-git rev-parse HEAD
-uv sync --frozen --all-packages --extra vllm --extra fsdp
-uv run --frozen --all-packages --extra vllm --extra fsdp \
+uv run --frozen --all-packages --extra vllm \
   python3 examples/data_preprocess/gsm8k.py --local_save_dir data/gsm8k
 ```
 
-`git rev-parse HEAD` 应输出 `1876b06d0a3e4e71e06230be10af14492ca8a75b`。该环境由 Notebook 通过独立进程调用，无需注册为 Jupyter Kernel。
+安装器会核对固定 commit、依赖和 GPU；该环境无需注册为 Jupyter Kernel。上游锁文件的已登记 NumPy 元数据例外会单独提示，不代表 `pip check` 无冲突，也不会放行其他依赖问题。
 
 <a id="pt-distill-cuda-quickstart"></a>
 
@@ -96,7 +100,7 @@ python tools/install_environment_profile.py \
   --env-name llm_pt_delivery_cu128
 ```
 
-安装完成后激活刚创建的环境并启动 JupyterLab：
+Conda Profile 安装完成后，激活刚创建的环境并启动 JupyterLab：
 
 ```bash
 ENV_NAME=llm_pt_cpu  # 改为刚创建的环境名
@@ -123,6 +127,8 @@ python tools/install_environment_profile.py \
 ```
 
 `--reuse` 只用于已经确认属于同一 Profile 的环境。环境身份不明或 `pip check` 已有冲突时，改用新的环境名重新创建。
+
+`PT-VERL-CUDA` 续装仍使用目录参数：`python tools/install_environment_profile.py --profile PT-VERL-CUDA --target ~/verl-v0.9.1 --reuse`。安装完成后无需重新同步依赖；需要进入该环境时运行 `source ~/verl-v0.9.1/.venv/bin/activate`。
 
 环境已经安装完成时无需重新运行安装器：
 
