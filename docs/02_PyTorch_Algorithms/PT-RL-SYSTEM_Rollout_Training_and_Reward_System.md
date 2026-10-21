@@ -1,6 +1,6 @@
 # PT-RL-SYSTEM. Rollout Training and Reward System | 采样、训练与奖励系统
 
-**难度：** Hard | **环境：** [CPU 机制练习](#runtime-environment) | **标签：** `后训练`, `强化学习系统`, `资源调度`
+**难度：** Hard | **环境：** [CPU 机制练习](#runtime-environment) · [verl 单卡实验](#gpu-experiment) | **标签：** `后训练`, `强化学习系统`, `资源调度`
 
 > 🚀 **云端运行环境**
 >
@@ -24,6 +24,8 @@
 ## 运行环境
 
 - **基础练习：** 默认使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
+
+- **GPU 实测：** 使用 [`PT-VERL-CUDA`](../topic_discussion/post_training_optimization/quickstart.md#pt-verl-cuda-quickstart)，从 [Step 5](#gpu-experiment) 运行单卡同步系统实验。
 
 ---
 ## 前置阅读
@@ -148,6 +150,11 @@ def test_capacity():
         raise AssertionError('阶段集合不一致时应失败')
     except ValueError:
         pass
+    try:
+        pipeline_capacity({'rollout': float('nan')}, 20, {'rollout': 1})
+        raise AssertionError('非有限阶段速率应失败')
+    except ValueError:
+        pass
 
 def test_transfer():
     """同池边排除、共享域累加，独立域只参与最大值比较。"""
@@ -169,6 +176,14 @@ def test_transfer():
         raise AssertionError('非法重叠比例应失败')
     except ValueError:
         pass
+    inconsistent_fabric = [edges[1], dict(edges[2], bandwidth_bytes_per_s=4000)]
+    try:
+        transfer_ledger(inconsistent_fabric, placement)
+        raise AssertionError('同一互连域使用不同带宽口径时应失败')
+    except ValueError:
+        pass
+    tied = transfer_ledger([edges[1], dict(edges[3], overlap_fraction=0.0)], placement)
+    assert tied['critical_fabrics'] == ['pcie-1', 'pcie-2']
 
 def test_gate():
     """拒绝优先于调优，同一级别的触发原因全部保留。"""
@@ -186,6 +201,11 @@ def test_gate():
     rejected = evaluate_topology(stable, {'A': 50}, {'A': 40}, high_transfer, False, False)
     assert rejected['decision'] == 'reject'
     assert rejected['reasons'] == ['memory_limit', 'version_sync', 'recovery_not_ready']
+    try:
+        evaluate_topology(stable, {'A': float('nan')}, {'A': 40}, low_transfer, True, True)
+        raise AssertionError('非有限显存账本应失败')
+    except ValueError:
+        pass
 
 test_capacity(); test_transfer(); test_gate()
 print('✅ 后训练系统机制测试通过')
@@ -202,22 +222,29 @@ print('✅ 后训练系统机制测试通过')
 
 ```python
 def pipeline_capacity(stage_rates, arrival_rate, items_per_work_unit):
-    if not stage_rates or any(rate <= 0 for rate in stage_rates.values()):
-        raise ValueError('stage rate 必须为正')
-    if arrival_rate < 0:
-        raise ValueError('arrival_rate 不能为负')
-    if set(stage_rates) != set(items_per_work_unit) or any(value <= 0 for value in items_per_work_unit.values()):
-        raise ValueError('每个阶段都必须提供正的工作单位倍率')
-    effective_rates = {name: float(rate) / items_per_work_unit[name] for name, rate in stage_rates.items()}
+    import math
+
+    rates = [float(rate) for rate in stage_rates.values()]
+    multipliers = [float(value) for value in items_per_work_unit.values()]
+    arrival_rate = float(arrival_rate)
+    if not stage_rates or any(not math.isfinite(rate) or rate <= 0 for rate in rates):
+        raise ValueError('stage rate 必须为正有限数')
+    if not math.isfinite(arrival_rate) or arrival_rate < 0:
+        raise ValueError('arrival_rate 必须是非负有限数')
+    if set(stage_rates) != set(items_per_work_unit) or any(not math.isfinite(value) or value <= 0 for value in multipliers):
+        raise ValueError('每个阶段都必须提供正有限工作单位倍率')
+    effective_rates = {name: float(rate) / float(items_per_work_unit[name]) for name, rate in stage_rates.items()}
     capacity = min(effective_rates.values())
-    bottlenecks = sorted(name for name, rate in effective_rates.items() if rate == capacity)
+    bottlenecks = sorted(name for name, rate in effective_rates.items() if math.isclose(rate, capacity, rel_tol=1e-9, abs_tol=1e-12))
     queue_margins = {name: rate - arrival_rate for name, rate in effective_rates.items()}
     unstable_stages = sorted(name for name, margin in queue_margins.items() if margin < 0)
     return {'capacity': capacity, 'effective_rates': effective_rates, 'bottlenecks': bottlenecks, 'queue_margins': queue_margins,
             'unstable_stages': unstable_stages, 'queue_stable': not unstable_stages}
 
 def transfer_ledger(edges, placement):
-    rows, total_bytes, fabric_exposed = [], 0.0, {}
+    import math
+
+    rows, total_bytes, fabric_exposed, fabric_bandwidths = [], 0.0, {}, {}
     for edge in edges:
         source, target = edge['source'], edge['target']
         if source not in placement or target not in placement:
@@ -225,19 +252,25 @@ def transfer_ledger(edges, placement):
         cross_pool = placement[source] != placement[target]
         overlap = float(edge.get('overlap_fraction', 0.0))
         bandwidth = float(edge['bandwidth_bytes_per_s'])
-        if not 0.0 <= overlap <= 1.0 or bandwidth <= 0:
-            raise ValueError('重叠比例须属于 0–1，带宽必须为正')
+        if not math.isfinite(overlap) or not math.isfinite(bandwidth) or not 0.0 <= overlap <= 1.0 or bandwidth <= 0:
+            raise ValueError('重叠比例须属于 0–1，带宽必须为正有限数')
         bytes_per_item = float(edge['bytes_per_item'])
         items_per_work_unit = float(edge['items_per_work_unit'])
         work_units_per_second = float(edge['work_units_per_second'])
-        if bytes_per_item < 0 or items_per_work_unit <= 0 or work_units_per_second < 0:
-            raise ValueError('对象字节数和到达率不能为负，工作单位倍率必须为正')
+        values = (bytes_per_item, items_per_work_unit, work_units_per_second)
+        if any(not math.isfinite(value) for value in values) or bytes_per_item < 0 or items_per_work_unit <= 0 or work_units_per_second < 0:
+            raise ValueError('对象字节数和到达率必须有限且非负，工作单位倍率必须为正')
         traffic = bytes_per_item * items_per_work_unit * work_units_per_second if cross_pool else 0.0
         transfer = traffic / bandwidth
         exposed = transfer * (1.0 - overlap)
         total_bytes += traffic
         if cross_pool:
-            fabric_id = edge['fabric_id']
+            fabric_id = str(edge.get('fabric_id', '')).strip()
+            if not fabric_id:
+                raise ValueError('跨池边必须登记 fabric_id')
+            previous_bandwidth = fabric_bandwidths.setdefault(fabric_id, bandwidth)
+            if not math.isclose(previous_bandwidth, bandwidth, rel_tol=1e-9, abs_tol=1e-12):
+                raise ValueError('同一 fabric_id 必须使用同一有效带宽口径')
             fabric_exposed[fabric_id] = fabric_exposed.get(fabric_id, 0.0) + exposed
         rows.append(edge | {'cross_pool': cross_pool, 'traffic_bytes_per_s': traffic,
                             'transfer_seconds_per_s': transfer, 'exposed_seconds_per_s': exposed})
@@ -247,8 +280,15 @@ def transfer_ledger(edges, placement):
             'critical_exposed_seconds_per_s': critical_exposed, 'critical_fabrics': critical_fabrics, 'rows': rows}
 
 def evaluate_topology(capacity_report, memory_by_pool, memory_limits, transfer_report, version_sync_ok, recovery_ok, max_exposed_s_per_s=0.1):
-    if max_exposed_s_per_s < 0:
-        raise ValueError('传输暴露预算不能为负')
+    import math
+
+    max_exposed_s_per_s = float(max_exposed_s_per_s)
+    memory_values = [float(value) for value in memory_by_pool.values()] + [float(value) for value in memory_limits.values()]
+    transfer_values = [float(value) for value in transfer_report.get('fabric_exposed_seconds_per_s', {}).values()]
+    if not math.isfinite(max_exposed_s_per_s) or max_exposed_s_per_s < 0:
+        raise ValueError('传输暴露预算必须是非负有限数')
+    if any(not math.isfinite(value) or value < 0 for value in memory_values + transfer_values):
+        raise ValueError('显存与传输账本必须是非负有限数')
     over_limit_pools = sorted(pool for pool, used in memory_by_pool.items()
                               if pool not in memory_limits or used > memory_limits[pool])
     hard_failures = []
@@ -295,6 +335,118 @@ def evaluate_topology(capacity_report, memory_by_pool, memory_limits, transfer_r
 - **机制：** 汇总分池显存、版本确认和恢复能力的硬失败，再记录队列与互连域的调优压力。
 - **不变量：** `reject` 优先于 `tune`；同一级别的多个触发原因必须全部保留。
 - **测试证据：** 测试覆盖接受、队列与链路同时调优，以及显存、同步、恢复同时失败。
+
+<a id="gpu-experiment"></a>
+
+## Step 5：比较共置阶段耗时与引擎状态驻留
+
+CPU 练习换算各角色工作量并检查容量、资源池和链路；verl 单卡实验记录实际阶段事件及状态驻留。释放/保留对照保持输入和更新方式相同，关注生成引擎休眠、权重恢复、KV 恢复与学习器之间的资源交接。
+
+| 学习问题 | CPU 已确认 | GPU 需要的真实证据 |
+|:---|:---|:---|
+| 各阶段实际花多少时间 | 按阶段倍率统一工作单位 | 生成、概率计算、更新、同步及状态切换事件；初始化单独记录 |
+| 哪些状态竞争同一资源池 | 驻留账本与显存预算检查 | 把事件与资源采样对应，区分引擎释放/保留；整卡峰值差不是 KV 大小 |
+| 哪些结果可用于后续拓扑实验 | 跨池载荷、链路占用与队列余量 | 单卡阶段与状态证据；跨池带宽和队列稳定性需另行多工作进程测量 |
+
+### 5.1 环境与固定工作负载
+
+使用已有的 [`PT-VERL-CUDA`](../topic_discussion/post_training_optimization/quickstart.md#pt-verl-cuda-quickstart)。与轨迹生命周期页共用 v2 标签；该页完成运行后，本页只需运行 5.1、5.3 读取结果。尚未运行时，先 `dry_run` 预检，再改为 `real_gpu` 运行 5.1–5.3。本轮只确认初始参数一致的配对，不新增训练或性能搜索。 若仅提示缺少模型缓存，其他环境检查已通过，可改为 `real_gpu` 自动准备固定版本；CPU 核对通过后才开始训练。
+
+| 配置 | 固定内容与操作 |
+|:---|:---|
+| 学习者配置 | 仅设置模式、共同标签和已有 verl 目录，结果路径自动推导 |
+| 模型与更新 | Qwen2.5-0.5B-Instruct、LoRA rank 16；verl 内置监督损失，一次更新，与轨迹页相同 |
+| 配对变量 | 仅改变 `free_cache_engine`；保留组训练前必须匹配释放组的初始 LoRA 哈希，其余配置与阈值不变 |
+| 采集范围 | 事件使用单机单调时钟；每 0.25 秒尝试采样整卡与整机占用，短阶段漏采峰值记为 null |
+| 结果目标 | 检查真实生成、评分、更新、同步与状态恢复，不以节省显存或提高吞吐作为通过前提 |
+
+
+```python
+from pathlib import Path
+from tools.project_runtime import resolve_project_root
+
+RUN_MODE = "dry_run"  # dry_run 仅预检；通过后改为 real_gpu。
+RUN_LABEL = "rtx5070ti_verl_mechanism_closure_v2"  # 两页共用；新实验换标签，已有结果只读。
+VERL_ROOT = Path.home() / "verl-v0.9.1"  # 已安装的 PT-VERL-CUDA，不创建新环境。
+
+PROJECT_ROOT = resolve_project_root()
+RESULT_PATH = PROJECT_ROOT / "benchmarks/results/pt_verl_closure" / f"{RUN_LABEL}.json"
+if RUN_MODE not in {"dry_run", "real_gpu"}:
+    raise ValueError(f"未知运行模式：{RUN_MODE}")
+print({"run_mode": RUN_MODE, "run_label": RUN_LABEL, "result_path": str(RESULT_PATH)})
+
+```
+
+### 5.2 执行释放与保留对照
+
+两组各自初始化 verl actor 和生成引擎，完成一次受控更新及同步。记录实际恢复调用与状态标签，并把控制端阶段事件和资源采样按单调时钟对应；边界时刻的 actor 显存与持续采样的整卡峰值分开保存。
+
+| 对照 | 固定或改变 | 必须保留的证据 |
+|:---|:---|:---|
+| 引擎释放 | 开启释放/恢复 | 休眠阶段、权重传输和恢复调用、阶段时间及资源记录 |
+| 引擎保留 | 仅关闭释放/恢复 | 相同输入和更新方式的阶段与资源记录 |
+| 配对核对 | 除该开关外配置相同，冻结轨迹来源相同 | 配置与来源一致性、逐项判断；不把整卡峰值差直接解释为 KV 大小 |
+
+
+```python
+import json
+import subprocess
+import sys
+from tools.verl_mechanism_closure import SCHEMA
+
+if RESULT_PATH.is_file():
+    saved = json.loads(RESULT_PATH.read_text(encoding="utf-8"))
+    if saved.get("schema_version") != SCHEMA or saved.get("run_label") != RUN_LABEL:
+        raise RuntimeError("已有文件的格式或运行标签不匹配，请检查结果路径。")
+    print(f"读取已有共同结果，不重复运行：{RESULT_PATH}；继续 5.3。")
+else:
+    command = [sys.executable, "-m", "tools.verl_mechanism_closure",
+               "--mode", "preflight" if RUN_MODE == "dry_run" else "run",
+               "--verl-root", str(VERL_ROOT), "--run-label", RUN_LABEL,
+               "--output", str(RESULT_PATH)]
+    completed = subprocess.run(command, cwd=PROJECT_ROOT, check=False)
+    if completed.returncode not in ({0, 4} if RUN_MODE == "dry_run" else {0}):
+        print(f"结果目录：{RESULT_PATH.parent}；同标签 *_release.log / *_retain.log 保留错误详情。")
+        raise RuntimeError("预检或实际执行未完成，请先查看上方具体检查与候选日志，不要直接重复运行。")
+    if completed.returncode == 4:
+        print("环境检查通过，仅缺模型缓存；改为 real_gpu 后会先准备固定 commit，CPU 核对通过才启动 GPU。")
+    elif RUN_MODE == "dry_run":
+        print("预检通过后，将 5.1 的 RUN_MODE 改为 real_gpu，再运行 5.1 → 5.2 → 5.3。")
+
+```
+
+### 5.3 读取阶段与状态结果
+
+从共同结果读取本页判断：两组是否完成更新和同步、是否保留实际阶段与恢复事件，以及采样覆盖情况。逐阶段峰值为 null 表示该阶段没有可用样本，不记为零；本轮不报告稳态加速比。
+
+
+```python
+import json
+from tools.verl_mechanism_closure import read_summary
+
+if RESULT_PATH.is_file():
+    saved = json.loads(RESULT_PATH.read_text(encoding="utf-8"))
+    if saved.get("run_label") != RUN_LABEL:
+        raise RuntimeError("结果标签与 5.1 不一致。")
+    print(json.dumps(read_summary(RESULT_PATH, "system"), ensure_ascii=False, indent=2))
+else:
+    print("当前标签尚无 GPU 结果。dry_run 不生成实验结论；实际运行完成后再执行 5.3。")
+
+```
+
+### 5.4 解释阶段与引擎状态证据
+
+[受控更新 v2](../../benchmarks/results/pt_verl_closure/rtx5070ti_verl_mechanism_closure_v2.json) 的两组初始参数及更新后参数哈希分别一致，更新与同步、阶段事件、恢复调用、配置配对及资源采样检查全部通过。本机单卡的阶段与引擎状态验证完成；监督更新阶段整卡采样峰值为释放组 6392 MiB、保留组 10489 MiB。
+
+释放组整段峰值为 10086 MiB，出现在初次同步阶段，不能用整段峰值代替更新阶段占用。短阶段未采到资源时继续保留 null；整卡与整机采样包含其他应用，单次配对不证明稳态加速，显存差也不等于纯 KV Cache 大小。当前实验可收尾，[v1](../../benchmarks/results/pt_verl_closure/rtx5070ti_verl_mechanism_closure_v1.json) 作为未通过严格配对的历史记录保留，无需追加性能搜索。
+
+| 观察项 | 读取字段 | 当前结果 | 解释与动作 |
+|:---|:---|:---|:---|
+| 配对与同步 | `system_decision.checks` | 初始参数、配置、轨迹来源及两组更新同步均通过 | 仅改变引擎释放/保留配置，保留本轮单卡机制结论 |
+| 状态切换 | `worker_events`、资源侧文件 `events` | 释放组记录 weights/KV 恢复；保留组不调用恢复，符合配置 | 将真实恢复调用与休眠阶段、权重传输对应，不以配置名字代替执行证据 |
+| 更新阶段资源 | `system_decision.measurements.*.phases` | 释放 6392 MiB、1.367 s；保留 10489 MiB、1.345 s | 两组更新期间分别有 5/6 个采样点；保留观测值，不据一次运行宣布加速 |
+| 整段资源 | `sampled_gpu_peak_mb` | 释放 10086 MiB，保留 10489 MiB | 释放组峰值来自初次同步，与更新阶段峰值分开解释 |
+| 短阶段覆盖 | `phases.*.sample_count`、`sampled_gpu_peak_mb` | 释放组更新前后 rollout 评分阶段均无资源采样点 | 峰值记为 null；阶段事件仍保留，不当作零显存 |
 
 ## 相关阅读
 
