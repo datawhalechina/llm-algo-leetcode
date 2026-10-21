@@ -13,7 +13,6 @@
     "missing_explicit_size:docs/public/02_PyTorch_Algorithms/48_mitigation_decision.svg",
     "missing_explicit_size:docs/public/02_PyTorch_Algorithms/49_parallel_strategy_overview.svg",
     "missing_explicit_size:docs/public/02_PyTorch_Algorithms/49_strategy_tradeoff.svg",
-    "page_scale_spread:02_PyTorch_Algorithms/14_LoRA_Tutorial.ipynb",
     "page_scale_spread:02_PyTorch_Algorithms/10_Attention_Backward_and_Custom_Autograd.ipynb",
     "page_scale_spread:02_PyTorch_Algorithms/19_Activation_Checkpointing.ipynb",
     "page_scale_spread:02_PyTorch_Algorithms/20_FlashAttention_Sim.ipynb",
