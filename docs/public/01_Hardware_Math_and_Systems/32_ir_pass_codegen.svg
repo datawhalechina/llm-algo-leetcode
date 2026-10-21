@@ -1,10 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="title desc">
-<title id="title">多层 IR、Pass 与代码生成</title><desc id="desc">高层图经过多层中间表示和合法化优化，再进行调度搜索与目标代码生成。</desc>
-<defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker><style>text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}.t{font-size:28px;font-weight:700}.s{font-size:15px;fill:#475569}.h{font-size:18px;font-weight:700}.b{font-size:14px;fill:#334155}.p{stroke-width:2}.f{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a)}</style></defs>
-<rect width="1280" height="520" rx="24" fill="#f8fafc"/><text x="640" y="45" text-anchor="middle" class="t">编译栈：每层 IR 解决一类约束</text><text x="640" y="73" text-anchor="middle" class="s">分层 Lowering 保留必要信息，Pass Pipeline 决定哪些优化能够合法落地</text>
-<rect x="45" y="135" width="260" height="240" rx="18" fill="#eff6ff" stroke="#60a5fa" class="p"/><text x="70" y="172" class="h">高层图与算子</text><text x="70" y="220" class="b">模型语义与形状</text><text x="70" y="255" class="b">算子组合与副作用</text><text x="70" y="290" class="b">设备无关表达</text>
-<rect x="355" y="135" width="260" height="240" rx="18" fill="#f0fdf4" stroke="#4ade80" class="p"/><text x="380" y="172" class="h">多层 IR 与 Pass</text><text x="380" y="220" class="b">合法化 · 融合 · 向量化</text><text x="380" y="255" class="b">循环、内存与线程映射</text><text x="380" y="290" class="b">逐层检查不变量</text>
-<rect x="665" y="135" width="260" height="240" rx="18" fill="#fffbeb" stroke="#f59e0b" class="p"/><text x="690" y="172" class="h">调度与自动搜索</text><text x="690" y="220" class="b">Tile · Layout · 并行度</text><text x="690" y="255" class="b">候选配置与代价模型</text><text x="690" y="290" class="b">固定工作负载比较</text>
-<rect x="975" y="135" width="260" height="240" rx="18" fill="#faf5ff" stroke="#a855f7" class="p"/><text x="1000" y="172" class="h">目标代码与运行时</text><text x="1000" y="220" class="b">CPU / GPU / 专用后端</text><text x="1000" y="255" class="b">加载、执行与回退</text><text x="1000" y="290" class="b">正确性和性能证据</text>
-<path d="M305 255H355" class="f"/><path d="M615 255H665" class="f"/><path d="M925 255H975" class="f"/>
+<title id="title">矩阵乘怎样从符号形状变成目标执行计划？</title><desc id="desc">示例将矩阵乘的M、N、K绑定为128、256、64，检查目标声明支持FP16矩阵乘，再检查整除分块和资源预算，生成Python目标计划。下层条件分别约束对应阶段，任一条件不满足即停止。</desc>
+<defs><marker id="a" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#52677f"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:16px}.small{font-size:14px;fill:#475569}.edge{stroke:#52677f;stroke-width:3;fill:none;marker-end:url(#a)}</style></defs>
+<rect width="1280" height="520" rx="24" fill="#f8fafc"/>
+<text x="640" y="45" text-anchor="middle" class="title">矩阵乘怎样从符号形状变成目标执行计划？</text>
+<text x="640" y="76" text-anchor="middle" class="sub">本例使用 Python 计划和给定目标能力；不调用 TVM / MLIR，也不生成可执行计算内核</text>
+<rect x="40" y="150" width="240" height="90" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="160" y="181" text-anchor="middle" class="head">绑定符号形状</text><text x="160" y="208" text-anchor="middle" class="body">M=128，N=256，K=64</text>
+<rect x="360" y="150" width="240" height="90" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="480" y="181" text-anchor="middle" class="head">核对目标支持</text><text x="480" y="208" text-anchor="middle" class="body">矩阵乘与 FP16</text>
+<rect x="680" y="150" width="240" height="90" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="800" y="181" text-anchor="middle" class="head">选择分块</text><text x="800" y="208" text-anchor="middle" class="body">例如 (8, 128, 64)</text>
+<rect x="1000" y="150" width="240" height="90" rx="14" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text x="1120" y="181" text-anchor="middle" class="head">生成目标计划</text><text x="1120" y="208" text-anchor="middle" class="body">安排循环、内存与线程</text>
+<rect x="40" y="350" width="240" height="80" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="160" y="381" text-anchor="middle" class="head">维度已提供</text><text x="160" y="408" text-anchor="middle" class="body">符号绑定为正整数</text>
+<rect x="360" y="350" width="240" height="80" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="480" y="381" text-anchor="middle" class="head">目标能力声明</text><text x="480" y="408" text-anchor="middle" class="body">支持算子与精度</text>
+<rect x="680" y="350" width="240" height="80" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="800" y="381" text-anchor="middle" class="head">边界与资源预算</text><text x="800" y="408" text-anchor="middle" class="body">满足本例整除分块规则</text>
+<rect x="1000" y="350" width="240" height="80" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="1120" y="381" text-anchor="middle" class="head">前置阶段已完成</text><text x="1120" y="408" text-anchor="middle" class="body">执行链达到指定终点</text>
+<path d="M280 195H360" class="edge"/>
+<path d="M600 195H680" class="edge"/>
+<path d="M920 195H1000" class="edge"/>
+<path d="M160 350V240" class="edge" stroke-dasharray="7 5"/>
+<path d="M480 350V240" class="edge" stroke-dasharray="7 5"/>
+<path d="M800 350V240" class="edge" stroke-dasharray="7 5"/>
+<path d="M1120 350V240" class="edge" stroke-dasharray="7 5"/>
+<text x="640" y="290" text-anchor="middle" class="small">虚线：下层条件约束对应阶段</text>
 </svg>

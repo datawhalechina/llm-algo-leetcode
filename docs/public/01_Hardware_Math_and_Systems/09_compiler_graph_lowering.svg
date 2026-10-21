@@ -1,10 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="title desc">
-<title id="title">计算图到后端执行路径</title><desc id="desc">模型计算图经过中间表示、合法化和优化，再按后端约束生成执行路径。</desc>
-<defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker><style>text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}.t{font-size:28px;font-weight:700}.s{font-size:15px;fill:#475569}.h{font-size:18px;font-weight:700}.b{font-size:14px;fill:#334155}.p{stroke-width:2}.f{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a)}</style></defs>
-<rect width="1280" height="520" rx="24" fill="#f8fafc"/><text x="640" y="45" text-anchor="middle" class="t">AI 编译：图语义逐层变成后端执行路径</text><text x="640" y="73" text-anchor="middle" class="s">优化 Pass 只有在语义合法、布局匹配并被目标后端接收时才会落地</text>
-<rect x="45" y="135" width="260" height="240" rx="18" fill="#eff6ff" stroke="#60a5fa" class="p"/><text x="70" y="172" class="h">1. 模型计算图</text><text x="70" y="220" class="b">算子 · 张量 · 数据依赖</text><text x="70" y="255" class="b">动态形状与副作用</text><text x="70" y="290" class="b">原始语义边界</text>
-<rect x="355" y="135" width="260" height="240" rx="18" fill="#f0fdf4" stroke="#4ade80" class="p"/><text x="380" y="172" class="h">2. 中间表示</text><text x="380" y="220" class="b">形状专门化</text><text x="380" y="255" class="b">算子合法化 · 布局传播</text><text x="380" y="290" class="b">多层抽象保留信息</text>
-<rect x="665" y="135" width="260" height="240" rx="18" fill="#fffbeb" stroke="#f59e0b" class="p"/><text x="690" y="172" class="h">3. 优化与调度</text><text x="690" y="220" class="b">融合 · 向量化 · Tile</text><text x="690" y="255" class="b">内存规划 · 调度搜索</text><text x="690" y="290" class="b">收益受硬约束限制</text>
-<rect x="975" y="135" width="260" height="240" rx="18" fill="#faf5ff" stroke="#a855f7" class="p"/><text x="1000" y="172" class="h">4. 后端执行</text><text x="1000" y="220" class="b">计算内核与调用图</text><text x="1000" y="255" class="b">支持、回退或重新编译</text><text x="1000" y="290" class="b">结果与性能证据</text>
-<path d="M305 255H355" class="f"/><path d="M615 255H665" class="f"/><path d="M925 255H975" class="f"/>
+<title id="title">同一张计算图，为什么会形成不同的执行路径？</title><desc id="desc">固定矩阵乘、加偏置和激活的计算语义。一方面比较图变换减少的调用与中间读写，另一方面检查目标支持的算子、数据类型、形状与工作区；两类条件共同决定可继续验证的执行路径。</desc>
+<defs><marker id="a" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#52677f"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:16px}.small{font-size:14px;fill:#475569}.edge{stroke:#52677f;stroke-width:3;fill:none;marker-end:url(#a)}</style></defs>
+<rect width="1280" height="520" rx="24" fill="#f8fafc"/>
+<text x="640" y="45" text-anchor="middle" class="title">同一张计算图，为什么会形成不同的执行路径？</text>
+<text x="640" y="76" text-anchor="middle" class="sub">先保留计算语义，再检查改写与目标条件；声明满足后仍需加载、数值对照和计时</text>
+<rect x="350" y="110" width="580" height="80" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="640" y="141" text-anchor="middle" class="head">固定计算：矩阵乘 → 加偏置 → 激活</text><text x="640" y="168" text-anchor="middle" class="body">输入、输出与数值要求保持一致</text>
+<rect x="200" y="280" width="350" height="80" rx="14" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text x="375" y="311" text-anchor="middle" class="head">检查图变换改变了什么</text><text x="375" y="338" text-anchor="middle" class="body">启动次数、中间读写与布局代价</text>
+<rect x="730" y="280" width="350" height="80" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="905" y="311" text-anchor="middle" class="head">检查目标能否执行</text><text x="905" y="338" text-anchor="middle" class="body">算子、精度、形状与工作区</text>
+<rect x="450" y="430" width="380" height="70" rx="14" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text x="640" y="461" text-anchor="middle" class="head">保留可行的执行路径</text><text x="640" y="488" text-anchor="middle" class="body">原始或融合调用 → 实际验证</text>
+<path d="M500 190V235H375V280" class="edge"/>
+<path d="M780 190V235H905V280" class="edge"/>
+<path d="M375 360V465H450" class="edge"/>
+<path d="M905 360V465H830" class="edge"/>
 </svg>
