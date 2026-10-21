@@ -1,30 +1,37 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="560" viewBox="0 0 1280 560" role="img" aria-labelledby="title desc">
-  <title id="title">0C PyTorch 模型与训练闭环</title>
-  <desc id="desc">nn.Module 的构造与初始化分别进入状态恢复和参数更新，两条支路在数据接口、验证与模型评价中汇合。</desc>
+  <title id="title">0C PyTorch 模型与训练生命周期</title>
+  <desc id="desc">模块对象分别进入完整状态恢复与有效参数更新两条支路，随后在通用 batch 契约、训练、验证和评价中汇合。</desc>
   <defs>
-    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#52627a"/></marker>
-    <style>.title{font:700 28px sans-serif;fill:#172033}.group{fill:#f7f9fc;stroke:#a8b3c7;stroke-width:2}.node{fill:#fff;stroke:#8fa0ba;stroke-width:2}.base{fill:#e9e7fb}.state{fill:#e4f1fb}.update{fill:#e8f7ed}.close{fill:#fff2cf}.text{font:600 18px sans-serif;fill:#172033}.sub{font:15px sans-serif;fill:#475569}.line{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow)}</style>
+    <marker id="arrow0c" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" refX="11" refY="5.5" orient="auto"><path d="M0 0L11 5.5L0 11Z" fill="#52627a"/></marker>
+    <style>
+      text{font-family:'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.label{font-size:18px;font-weight:700}.note{font-size:15px;fill:#475569}.group{fill:#f7f9fc;stroke:#a8b3c7;stroke-width:2}.node{fill:#fff;stroke:#8fa0ba;stroke-width:2}.line{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow0c)}
+    </style>
   </defs>
   <rect width="1280" height="560" fill="#fbfcfe"/>
-  <text x="640" y="48" text-anchor="middle" class="title">0C · 从模型对象到训练闭环</text>
-  <rect x="470" y="82" width="340" height="92" rx="14" class="node base"/>
-  <text x="640" y="119" text-anchor="middle" class="text">09 · nn.Module 与运行状态</text>
-  <text x="640" y="148" text-anchor="middle" class="sub">注册 · 初始化 · train/eval · freeze</text>
-  <rect x="130" y="245" width="400" height="150" rx="16" class="group"/>
-  <text x="158" y="278" class="text">状态支路</text>
-  <rect x="175" y="300" width="310" height="68" rx="11" class="node state"/>
-  <text x="330" y="328" text-anchor="middle" class="text">10 · Artifact 与 Checkpoint</text>
-  <text x="330" y="352" text-anchor="middle" class="sub">迁移 · 最佳状态 · 恢复进度</text>
-  <rect x="750" y="245" width="400" height="150" rx="16" class="group"/>
-  <text x="778" y="278" class="text">更新支路</text>
-  <rect x="795" y="300" width="310" height="68" rx="11" class="node update"/>
-  <text x="950" y="328" text-anchor="middle" class="text">11 · Loss 与参数更新</text>
-  <text x="950" y="352" text-anchor="middle" class="sub">optimizer · accumulation · scheduler</text>
-  <rect x="430" y="442" width="420" height="86" rx="14" class="node close"/>
-  <text x="640" y="477" text-anchor="middle" class="text">12 · 数据接口与训练生命周期</text>
-  <text x="640" y="504" text-anchor="middle" class="sub">batch → update → validation → metrics</text>
-  <path d="M560 174V212H330V300" class="line"/>
-  <path d="M720 174V212H950V300" class="line"/>
-  <path d="M330 368V414H560V442" class="line"/>
-  <path d="M950 368V414H720V442" class="line"/>
+  <text x="640" y="48" text-anchor="middle" class="title">0C · 从模型对象到训练生命周期</text>
+
+  <rect x="450" y="82" width="380" height="94" rx="14" fill="#e9e7fb" class="node"/>
+  <text x="640" y="119" text-anchor="middle" class="label">09 · nn.Module 与运行状态</text>
+  <text x="640" y="148" text-anchor="middle" class="note">注册 · 保存 · 梯度 · 优化器参数筛选</text>
+
+  <rect x="95" y="238" width="450" height="160" rx="16" class="group" data-layout-role="panel"/>
+  <text x="123" y="272" class="label">状态支路</text>
+  <rect x="145" y="298" width="350" height="72" rx="11" fill="#e4f1fb" class="node"/>
+  <text x="320" y="327" text-anchor="middle" class="label">10 · 模型产物与训练 Checkpoint</text>
+  <text x="320" y="352" text-anchor="middle" class="note">完整状态 · 恢复对象 · 下一步轨迹一致</text>
+
+  <rect x="735" y="238" width="450" height="160" rx="16" class="group" data-layout-role="panel"/>
+  <text x="763" y="272" class="label">更新支路</text>
+  <rect x="785" y="298" width="350" height="72" rx="11" fill="#e8f7ed" class="node"/>
+  <text x="960" y="327" text-anchor="middle" class="label">11 · Loss、优化器与更新时钟</text>
+  <text x="960" y="352" text-anchor="middle" class="note">micro-step · 更新尝试 · 有效更新 · scheduler</text>
+
+  <rect x="400" y="452" width="480" height="82" rx="14" fill="#fff2cf" class="node"/>
+  <text x="640" y="484" text-anchor="middle" class="label">12 · 数据接口与训练生命周期</text>
+  <text x="640" y="510" text-anchor="middle" class="note">通用 batch 契约 → 训练 → 验证 → 指标聚合</text>
+
+  <path d="M550 176V208H320V298" class="line"/>
+  <path d="M730 176V208H960V298" class="line"/>
+  <path d="M320 370V420H540V452" class="line"/>
+  <path d="M960 370V420H740V452" class="line"/>
 </svg>

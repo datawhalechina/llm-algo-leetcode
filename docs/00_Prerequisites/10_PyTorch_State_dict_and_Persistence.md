@@ -10,7 +10,11 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-模型持久化需要同时处理状态内容、序列化介质、结构兼容性和训练进度。本页从 `state_dict` 的 key/value 契约出发，依次验证独立快照、结构迁移、模型 artifact，以及绑定验证状态的可续训 checkpoint。
+## 本节导读
+
+模型持久化需要同时处理状态内容、独立快照、结构兼容性和训练进度。只保存模型权重，无法完整恢复优化轨迹和验证状态。
+
+完成本节后，你应能区分模型产物与训练检查点，判断状态是否可迁移、可恢复，并识别恢复训练所缺少的对象。
 
 **关键词：** `state_dict`, `artifact`, `training checkpoint`, `resume`
 
@@ -21,11 +25,6 @@
 - [09. PyTorch nn.Module Basics | PyTorch nn.Module 基础](./09_PyTorch_nn_Module_Basics.md)
 - [0C 组页](./0C.md)
 
-## 相关阅读
-**导语：** 状态能够可靠恢复后，再学习 optimizer 更新，并在数据接口页把它们接成完整训练生命周期。
-- [11. PyTorch Optimizers and Loss | PyTorch 优化器与损失函数](./11_PyTorch_Optimizers_and_Loss.md)
-- [12. PyTorch Data Interface and Training Lifecycle | PyTorch 数据接口与训练生命周期](./12_PyTorch_Minimal_Training_Interface.md)
-
 ## Q1：`state_dict` 解决什么问题？
 
 模型不只包含可训练参数，还可能包含 running statistics、mask 或缩放量等 buffer。`state_dict` 用稳定 key 将这些 Tensor 汇总为模型状态，但不会保存 Python 类定义和普通属性。
@@ -33,6 +32,7 @@
 
 ```python
 import copy
+import random
 import torch
 import torch.nn as nn
 
@@ -203,7 +203,16 @@ print('✅ 模型产物与加载报告通过')
 
 ## Q5：怎样让最佳指标、早停与可续训 checkpoint 使用同一训练状态？
 
-验证指标改善时，需要更新 best metric、保存对应模型状态并清零未改善计数；连续未改善时，早停计数才推进。用于恢复训练的 checkpoint 还应包含 optimizer、scheduler、随机数状态、epoch 和 global step。
+验证指标改善时，需要更新最佳指标、保存对应模型状态并清零未改善计数；连续未改善时，早停计数才推进。用于恢复训练的 checkpoint 必须把计算状态、更新状态和训练进度保存到同一个时间点。
+
+| 状态类别 | 本例保存的内容 | 缺失后的直接影响 |
+|:---|:---|:---|
+| 模型状态 | parameter 与 buffer | 恢复后的前向结果不同 |
+| 优化器状态 | AdamW 的步数与矩估计 | 参数更新轨迹重新开始 |
+| 调度器状态 | 当前学习率阶段 | 学习率推进位置错误 |
+| 随机状态 | Python、PyTorch CPU；已初始化 CUDA 时也保存 CUDA | 随机输入、采样或随机算子无法复现 |
+| 训练进度 | epoch、micro-step、optimizer-step | 数据位置和更新次数无法对齐 |
+| 验证状态 | 最佳指标、未改善轮数与最佳模型 | 模型选择和早停判断丢失 |
 
 
 ```python
@@ -220,16 +229,36 @@ def update_validation_state(val_loss, state, model):
     return updated
 
 
-def build_training_checkpoint(model, optimizer, scheduler, epoch, global_step, validation_state):
+def capture_rng_state():
+    """保存本进程实际使用的 Python 与 PyTorch 随机状态。"""
+    return {
+        'python': random.getstate(),
+        'torch_cpu': torch.get_rng_state().clone(),
+        'torch_cuda': (
+            [state.clone() for state in torch.cuda.get_rng_state_all()]
+            if torch.cuda.is_available() and torch.cuda.is_initialized()
+            else None
+        ),
+    }
+
+
+def restore_rng_state(rng_state):
+    random.setstate(rng_state['python'])
+    torch.set_rng_state(rng_state['torch_cpu'])
+    if rng_state['torch_cuda'] is not None:
+        torch.cuda.set_rng_state_all(rng_state['torch_cuda'])
+
+
+def build_training_checkpoint(model, optimizer, scheduler, progress, validation_state):
     """保存继续训练所需的模型、更新器、进度与随机数状态。"""
     return {
+        'format_version': 1,
         'model': copy.deepcopy(model.state_dict()),
         'optimizer': copy.deepcopy(optimizer.state_dict()),
         'scheduler': copy.deepcopy(scheduler.state_dict()),
-        'epoch': int(epoch),
-        'global_step': int(global_step),
+        'progress': {key: int(value) for key, value in progress.items()},
         'validation_state': copy.deepcopy(validation_state),
-        'torch_rng_state': torch.get_rng_state().clone(),
+        'rng_state': capture_rng_state(),
     }
 
 
@@ -238,14 +267,28 @@ def restore_training_checkpoint(checkpoint, model, optimizer, scheduler):
     model.load_state_dict(checkpoint['model'])
     optimizer.load_state_dict(checkpoint['optimizer'])
     scheduler.load_state_dict(checkpoint['scheduler'])
-    torch.set_rng_state(checkpoint['torch_rng_state'])
+    restore_rng_state(checkpoint['rng_state'])
     return {
-        'epoch': checkpoint['epoch'],
-        'global_step': checkpoint['global_step'],
+        'progress': copy.deepcopy(checkpoint['progress']),
         'validation_state': copy.deepcopy(checkpoint['validation_state']),
     }
 
 
+def run_random_training_step(model, optimizer, scheduler):
+    """用 Python 与 PyTorch RNG 构造一步可复现的续跑检查。"""
+    random_scale = random.uniform(0.5, 1.5)
+    inputs = torch.randn(3, 2) * random_scale
+    target = inputs.sum(dim=1, keepdim=True)
+    optimizer.zero_grad(set_to_none=True)
+    loss = torch.nn.functional.mse_loss(model(inputs), target)
+    loss.backward()
+    optimizer.step()
+    scheduler.step()
+    return float(loss.detach()), inputs.clone()
+
+
+random.seed(17)
+torch.manual_seed(17)
 training_model = TinyNet()
 training_optimizer = torch.optim.AdamW(training_model.parameters(), lr=1e-2)
 training_scheduler = torch.optim.lr_scheduler.StepLR(training_optimizer, step_size=1, gamma=0.5)
@@ -260,34 +303,68 @@ validation_state = {
 validation_state = update_validation_state(0.4, validation_state, training_model)
 training_checkpoint = build_training_checkpoint(
     training_model, training_optimizer, training_scheduler,
-    epoch=3, global_step=12, validation_state=validation_state,
+    progress={'epoch': 3, 'micro_step': 12, 'optimizer_step': 6},
+    validation_state=validation_state,
 )
+checkpoint_weight_before_continuation = training_checkpoint['model']['linear.weight'].clone()
+reference_loss, reference_inputs = run_random_training_step(
+    training_model, training_optimizer, training_scheduler
+)
+reference_model_state = copy.deepcopy(training_model.state_dict())
+reference_optimizer_state = copy.deepcopy(training_optimizer.state_dict())
 print('checkpoint fields：', sorted(training_checkpoint))
 
 ```
 
 ## Q5 验证：最佳状态和训练进度能否一起恢复？
 
-恢复后的模型输出、optimizer/scheduler 状态、训练进度和验证状态都应与保存时一致；checkpoint 也必须保持为独立快照。
+字段相等只能证明对象被读回。更强的检查是：恢复随机状态后再执行一步，随机输入、损失和更新后参数都应与未中断路径一致；checkpoint 本身也必须保持为独立快照。
 
 
 ```python
-saved_weight = training_checkpoint['model']['linear.weight'].clone()
-with torch.no_grad():
-    training_model.linear.weight.add_(1.0)
+saved_weight = checkpoint_weight_before_continuation
 assert torch.equal(training_checkpoint['model']['linear.weight'], saved_weight)
+assert not torch.equal(training_model.linear.weight, saved_weight)
+random.random()
+torch.rand(4)
 
 restored_training_model = TinyNet()
 restored_optimizer = torch.optim.AdamW(restored_training_model.parameters(), lr=1e-2)
 restored_scheduler = torch.optim.lr_scheduler.StepLR(restored_optimizer, step_size=1, gamma=0.5)
-progress = restore_training_checkpoint(
+restored_state = restore_training_checkpoint(
     training_checkpoint, restored_training_model, restored_optimizer, restored_scheduler
 )
 assert torch.equal(restored_training_model.state_dict()['linear.weight'], saved_weight)
-assert progress['epoch'] == 3 and progress['global_step'] == 12
-assert progress['validation_state']['best_val_loss'] == 0.4
-assert progress['validation_state']['best_model_state'] is not None
-assert restored_scheduler.state_dict()['last_epoch'] == training_scheduler.state_dict()['last_epoch']
+assert restored_state['progress'] == {'epoch': 3, 'micro_step': 12, 'optimizer_step': 6}
+assert restored_state['validation_state']['best_val_loss'] == 0.4
+assert restored_state['validation_state']['best_model_state'] is not None
+restored_loss, restored_inputs = run_random_training_step(
+    restored_training_model, restored_optimizer, restored_scheduler
+)
+assert torch.equal(restored_inputs, reference_inputs)
+assert restored_loss == reference_loss
+for key, value in reference_model_state.items():
+    assert torch.equal(restored_training_model.state_dict()[key], value)
+for parameter_id, state_values in reference_optimizer_state['state'].items():
+    for state_name, state_value in state_values.items():
+        restored_value = restored_optimizer.state_dict()['state'][parameter_id][state_name]
+        assert torch.equal(restored_value, state_value) if torch.is_tensor(state_value) else restored_value == state_value
+assert restored_scheduler.state_dict() == training_scheduler.state_dict()
+first_bad = update_validation_state(0.5, validation_state, training_model)
+second_bad = update_validation_state(0.6, first_bad, training_model)
+assert first_bad['bad_epochs'] == 1 and not first_bad['should_stop']
+assert second_bad['bad_epochs'] == 2 and second_bad['should_stop']
+assert validation_state['bad_epochs'] == 0
+improved = update_validation_state(0.3, second_bad, training_model)
+assert improved['bad_epochs'] == 0 and not improved['should_stop']
+assert improved['best_val_loss'] == 0.3
 print('✅ 最佳状态、早停字段与可续训 checkpoint 通过')
 
 ```
+
+## 相关阅读
+
+状态能够可靠恢复后，再学习优化器更新，并在数据接口页把它们接成完整训练生命周期。
+
+- [11. PyTorch Optimizers and Loss | PyTorch 优化器与损失函数](./11_PyTorch_Optimizers_and_Loss.md)
+- [12. PyTorch Data Interface and Training Lifecycle | PyTorch 数据接口与训练生命周期](./12_PyTorch_Minimal_Training_Interface.md)

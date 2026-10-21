@@ -1,9 +1,40 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="460" viewBox="0 0 1200 460" role="img" aria-labelledby="title desc">
-<title id="title">nn.Module 的对象、初始化、注册与运行关系</title><desc id="desc">输入通过模块调用进入前向计算，模块树初始化并注册参数，同时管理缓冲区和普通属性，决定优化、迁移和保存行为。</desc>
-<defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#64748b"/></marker><style>text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}.t{font-size:27px;font-weight:700}.s{font-size:14px;fill:#475569}.g{font-size:17px;font-weight:700}.h{font-size:16px;font-weight:700}.b{font-size:13px;fill:#475569}.p{stroke:#94a3b8;stroke-width:2;rx:15}.n{fill:#fff;stroke:#cbd5e1;stroke-width:1.5;rx:10}.f{stroke:#64748b;stroke-width:2.3;fill:none;marker-end:url(#a)}</style></defs>
-<rect width="1200" height="460" fill="#f8fafc"/><text x="600" y="40" text-anchor="middle" class="t">nn.Module：计算对象、初始化与状态注册</text><text x="600" y="67" text-anchor="middle" class="s">参数先获得与层规模匹配的初始尺度，再由注册类型决定优化、迁移和保存行为</text>
-<rect x="35" y="105" width="250" height="290" fill="#e0f2fe" class="p"/><text x="160" y="137" text-anchor="middle" class="g">调用与组合</text><rect x="65" y="175" width="190" height="60" class="n"/><text x="160" y="201" text-anchor="middle" class="h">model(x)</text><text x="160" y="221" text-anchor="middle" class="b">触发 forward</text><rect x="65" y="275" width="190" height="60" class="n"/><text x="160" y="301" text-anchor="middle" class="h">子模块树</text><text x="160" y="321" text-anchor="middle" class="b">递归组合计算</text><path d="M160 235V270" class="f"/>
-<rect x="350" y="105" width="500" height="290" fill="#dcfce7" class="p"/><text x="600" y="137" text-anchor="middle" class="g">初始化与模块注册表</text><rect x="380" y="185" width="130" height="92" class="n"/><text x="445" y="216" text-anchor="middle" class="h">Parameter</text><text x="445" y="239" text-anchor="middle" class="b">初始化后参与训练</text><text x="445" y="258" text-anchor="middle" class="b">进入 parameters</text><rect x="535" y="185" width="130" height="92" class="n"/><text x="600" y="216" text-anchor="middle" class="h">Buffer</text><text x="600" y="239" text-anchor="middle" class="b">非训练状态</text><text x="600" y="258" text-anchor="middle" class="b">随模块迁移</text><rect x="690" y="185" width="130" height="92" class="n"/><text x="755" y="216" text-anchor="middle" class="h">普通属性</text><text x="755" y="239" text-anchor="middle" class="b">Python 配置</text><text x="755" y="258" text-anchor="middle" class="b">默认不进状态</text>
-<rect x="915" y="105" width="250" height="290" fill="#fef3c7" class="p"/><text x="1040" y="137" text-anchor="middle" class="g">注册结果</text><rect x="945" y="163" width="190" height="54" class="n"/><text x="1040" y="195" text-anchor="middle" class="h">optimizer 更新</text><rect x="945" y="235" width="190" height="54" class="n"/><text x="1040" y="267" text-anchor="middle" class="h">device 迁移</text><rect x="945" y="307" width="190" height="54" class="n"/><text x="1040" y="339" text-anchor="middle" class="h">state_dict 保存</text>
-<path d="M255 305H315V231H375" class="f"/><path d="M510 216H875V190H940" class="f"/><path d="M665 231H875V262H940" class="f"/><path d="M510 258V320H875V334H940" class="f"/><path d="M665 258V300H895V334H940" class="f"/>
+  <title id="title">nn.Module 中三类对象的注册与使用路径</title>
+  <desc id="desc">参数、缓冲区和普通属性从模块对象进入不同路径；参数是否计算梯度以及是否交给优化器还需要分别判断。</desc>
+  <defs>
+    <marker id="arrow09" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker>
+    <style>
+      text{font-family:'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#172033}.title{font-size:27px;font-weight:700}.subtitle{font-size:14px;fill:#475569}.heading{font-size:17px;font-weight:700}.label{font-size:15px;font-weight:700}.note{font-size:13px;fill:#475569}.panel{stroke:#94a3b8;stroke-width:2}.node{fill:#fff;stroke:#a8b3c7;stroke-width:1.7}.line{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow09)}
+    </style>
+  </defs>
+  <rect width="1200" height="460" fill="#f8fafc"/>
+  <text x="600" y="40" text-anchor="middle" class="title">nn.Module：注册状态不等于可训练状态</text>
+  <text x="600" y="67" text-anchor="middle" class="subtitle">先判断对象怎样注册，再分别判断是否保存、计算梯度和交给优化器</text>
+
+  <rect x="38" y="110" width="250" height="305" rx="16" fill="#e0f2fe" class="panel" data-layout-role="panel"/>
+  <text x="163" y="142" text-anchor="middle" class="heading">模块对象</text>
+  <rect x="68" y="174" width="190" height="58" rx="10" class="node"/><text x="163" y="199" text-anchor="middle" class="label">Parameter</text><text x="163" y="219" text-anchor="middle" class="note">权重与偏置</text>
+  <rect x="68" y="254" width="190" height="58" rx="10" class="node"/><text x="163" y="279" text-anchor="middle" class="label">Buffer</text><text x="163" y="299" text-anchor="middle" class="note">统计量、mask、缩放值</text>
+  <rect x="68" y="334" width="190" height="58" rx="10" class="node"/><text x="163" y="359" text-anchor="middle" class="label">普通属性</text><text x="163" y="379" text-anchor="middle" class="note">配置与临时标记</text>
+
+  <rect x="360" y="110" width="300" height="305" rx="16" fill="#dcfce7" class="panel" data-layout-role="panel"/>
+  <text x="510" y="142" text-anchor="middle" class="heading">注册后的基础行为</text>
+  <rect x="405" y="174" width="210" height="58" rx="10" class="node"/><text x="510" y="199" text-anchor="middle" class="label">模型参数表</text><text x="510" y="219" text-anchor="middle" class="note">named_parameters()</text>
+  <rect x="405" y="254" width="210" height="58" rx="10" class="node"/><text x="510" y="279" text-anchor="middle" class="label">模型状态</text><text x="510" y="299" text-anchor="middle" class="note">state_dict() 与 device 迁移</text>
+  <rect x="405" y="334" width="210" height="58" rx="10" class="node"/><text x="510" y="359" text-anchor="middle" class="label">Python 对象状态</text><text x="510" y="379" text-anchor="middle" class="note">默认不进入 state_dict()</text>
+
+  <rect x="735" y="110" width="427" height="305" rx="16" fill="#fef3c7" class="panel" data-layout-role="panel"/>
+  <text x="948" y="142" text-anchor="middle" class="heading">Parameter 还要经过两个独立判断</text>
+  <rect x="775" y="185" width="150" height="72" rx="10" class="node"/><text x="850" y="211" text-anchor="middle" class="label">requires_grad</text><text x="850" y="235" text-anchor="middle" class="note">是否生成 .grad</text>
+  <rect x="972" y="185" width="150" height="72" rx="10" class="node"/><text x="1047" y="211" text-anchor="middle" class="label">参数筛选</text><text x="1047" y="235" text-anchor="middle" class="note">是否进入 param_groups</text>
+  <rect x="775" y="315" width="150" height="64" rx="10" fill="#fff" class="node"/><text x="850" y="342" text-anchor="middle" class="label">梯度状态</text><text x="850" y="364" text-anchor="middle" class="note">有梯度或 None</text>
+  <rect x="972" y="315" width="150" height="64" rx="10" fill="#fff" class="node"/><text x="1047" y="342" text-anchor="middle" class="label">更新状态</text><text x="1047" y="364" text-anchor="middle" class="note">被优化器持有或排除</text>
+
+  <path d="M258 203H400" class="line"/>
+  <path d="M258 283H400" class="line"/>
+  <path d="M258 363H400" class="line"/>
+  <path d="M615 203H770" class="line"/>
+  <path d="M585 174V160H1047V180" class="line"/>
+  <path d="M850 257V310" class="line"/>
+  <path d="M1047 257V310" class="line"/>
 </svg>

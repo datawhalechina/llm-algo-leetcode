@@ -1,10 +1,41 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="460" viewBox="0 0 1200 460" role="img" aria-labelledby="title desc">
-<title id="title">从单样本到模型输入的 batch 契约</title><desc id="desc">Dataset 提供单样本，tokenizer 和 collate 处理变长字段，形成统一 batch，供训练验证和推理复用。</desc>
-<defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#64748b"/></marker><style>text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}.t{font-size:27px;font-weight:700}.s{font-size:14px;fill:#475569}.g{font-size:17px;font-weight:700}.h{font-size:15px;font-weight:700}.b{font-size:13px;fill:#475569}.p{stroke:#94a3b8;stroke-width:2;rx:15}.n{fill:#fff;stroke:#cbd5e1;stroke-width:1.5;rx:10}.f{stroke:#64748b;stroke-width:2.3;fill:none;marker-end:url(#a)}</style></defs>
-<rect width="1200" height="460" fill="#f8fafc"/><text x="600" y="40" text-anchor="middle" class="t">最小训练接口：单样本怎样成为统一 batch</text><text x="600" y="67" text-anchor="middle" class="s">字段名、首维、shape、dtype 和 mask 必须在进入模型前形成可验证契约</text>
-<rect x="30" y="115" width="210" height="280" fill="#e0f2fe" class="p"/><text x="135" y="147" text-anchor="middle" class="g">数据来源</text><rect x="58" y="185" width="154" height="70" class="n"/><text x="135" y="213" text-anchor="middle" class="h">Dataset sample</text><text x="135" y="235" text-anchor="middle" class="b">文本、标签、元数据</text>
-<rect x="270" y="115" width="265" height="280" fill="#dcfce7" class="p"/><text x="402" y="147" text-anchor="middle" class="g">序列与批处理</text><rect x="300" y="173" width="205" height="64" class="n"/><text x="402" y="200" text-anchor="middle" class="h">tokenizer</text><text x="402" y="221" text-anchor="middle" class="b">变长 token 序列</text><rect x="300" y="270" width="205" height="64" class="n"/><text x="402" y="297" text-anchor="middle" class="h">collate / padding</text><text x="402" y="318" text-anchor="middle" class="b">对齐长度与字段</text><path d="M402 237V265" class="f"/>
-<rect x="565" y="115" width="300" height="280" fill="#fef3c7" class="p"/><text x="715" y="147" text-anchor="middle" class="g">Batch 契约</text><rect x="595" y="173" width="240" height="64" class="n"/><text x="715" y="200" text-anchor="middle" class="h">input_ids / attention_mask</text><text x="715" y="221" text-anchor="middle" class="b">相同 batch 与序列坐标</text><rect x="595" y="270" width="240" height="64" class="n"/><text x="715" y="297" text-anchor="middle" class="h">labels / dtype / device</text><text x="715" y="318" text-anchor="middle" class="b">监督位置与输入兼容</text>
-<rect x="895" y="115" width="275" height="280" fill="#fce7f3" class="p"/><text x="1032" y="147" text-anchor="middle" class="g">共享消费者</text><rect x="925" y="164" width="215" height="54" class="n"/><text x="1032" y="197" text-anchor="middle" class="h">train · 更新参数</text><rect x="925" y="238" width="215" height="54" class="n"/><text x="1032" y="271" text-anchor="middle" class="h">validation · 计算指标</text><rect x="925" y="312" width="215" height="54" class="n"/><text x="1032" y="345" text-anchor="middle" class="h">inference · 生成输出</text>
-<path d="M240 255H265" class="f"/><path d="M535 255H560" class="f"/><path d="M865 255H890" class="f"/>
+  <title id="title">从单样本到训练和验证的通用 batch 契约</title>
+  <desc id="desc">变长样本经过组批和填充形成统一字段；attention mask 控制有效输入位置，labels 控制监督位置，训练与验证按样本或有效 token 汇总。</desc>
+  <defs>
+    <marker id="arrow12" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker>
+    <style>
+      text{font-family:'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#172033}.title{font-size:27px;font-weight:700}.subtitle{font-size:14px;fill:#475569}.heading{font-size:17px;font-weight:700}.label{font-size:15px;font-weight:700}.note{font-size:13px;fill:#475569}.panel{stroke:#94a3b8;stroke-width:2}.node{fill:#fff;stroke:#a8b3c7;stroke-width:1.7}.line{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow12)}
+    </style>
+  </defs>
+  <rect width="1200" height="460" fill="#f8fafc"/>
+  <text x="600" y="40" text-anchor="middle" class="title">Batch 契约：有效输入位置与监督位置分别控制</text>
+  <text x="600" y="67" text-anchor="middle" class="subtitle">字段共享 batch 与序列坐标，但 attention_mask 和 labels 回答不同问题</text>
+
+  <rect x="35" y="115" width="205" height="275" rx="16" fill="#e0f2fe" class="panel" data-layout-role="panel"/>
+  <text x="137" y="147" text-anchor="middle" class="heading">单样本</text>
+  <rect x="65" y="178" width="145" height="64" rx="10" class="node"/><text x="137" y="205" text-anchor="middle" class="label">Dataset</text><text x="137" y="226" text-anchor="middle" class="note">字段与单样本 shape</text>
+
+  <rect x="285" y="115" width="235" height="275" rx="16" fill="#dcfce7" class="panel" data-layout-role="panel"/>
+  <text x="402" y="147" text-anchor="middle" class="heading">序列与组批</text>
+  <rect x="320" y="178" width="165" height="64" rx="10" class="node"/><text x="402" y="205" text-anchor="middle" class="label">tokenizer</text><text x="402" y="226" text-anchor="middle" class="note">变长 token 序列</text>
+  <rect x="320" y="278" width="165" height="64" rx="10" class="node"/><text x="402" y="305" text-anchor="middle" class="label">collate / padding</text><text x="402" y="326" text-anchor="middle" class="note">统一 shape 与 dtype</text>
+  <path d="M402 242V278" class="line"/>
+
+  <rect x="565" y="115" width="325" height="275" rx="16" fill="#fef3c7" class="panel" data-layout-role="panel"/>
+  <text x="727" y="147" text-anchor="middle" class="heading">统一 batch 坐标</text>
+  <rect x="600" y="175" width="255" height="175" rx="10" class="node"/>
+  <text x="727" y="204" text-anchor="middle" class="label">Batch contract</text>
+  <text x="625" y="239" class="label">input_ids</text><text x="625" y="260" class="note">模型接收的 token 编号</text>
+  <text x="625" y="289" class="label">attention_mask</text><text x="625" y="310" class="note">有效输入 / padding</text>
+  <text x="625" y="339" class="label">labels != -100</text><text x="760" y="339" class="note">监督位置</text>
+
+  <rect x="935" y="115" width="230" height="275" rx="16" fill="#fce7f3" class="panel" data-layout-role="panel"/>
+  <text x="1050" y="147" text-anchor="middle" class="heading">共享消费者</text>
+  <rect x="970" y="193" width="160" height="64" rx="10" class="node"/><text x="1050" y="220" text-anchor="middle" class="label">训练</text><text x="1050" y="241" text-anchor="middle" class="note">反向与参数更新</text>
+  <rect x="970" y="268" width="160" height="64" rx="10" class="node"/><text x="1050" y="295" text-anchor="middle" class="label">验证与评价</text><text x="1050" y="316" text-anchor="middle" class="note">按样本或有效 token 汇总</text>
+
+  <path d="M210 210H320" class="line"/>
+  <path d="M485 310H560V262H600" class="line"/>
+  <path d="M855 225H970" class="line"/>
+  <path d="M855 300H970" class="line"/>
 </svg>

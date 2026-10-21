@@ -10,7 +10,11 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-训练生命周期从原始样本开始，依次经过 tokenizer、batch 组装、输入契约、forward、loss、backward、参数更新、验证与指标评价。本页先整理 `Dataset`、`DataLoader` 和 `collate_fn` 的分工，再用同一 batch 契约连接训练态、验证态和模型评价。
+## 本节导读
+
+训练生命周期从原始样本开始，经过分词、批次组装、模型计算、损失、反向传播和参数更新，最后进入独立验证与指标评价。任一接口不一致都会使错误沿后续阶段传播。
+
+完成本节后，你应能追踪单样本如何成为模型输入，检查训练与验证边界，并确认评价指标按完整样本集合汇总。
 
 **关键词：** `Dataset`, `DataLoader`, `batch contract`, `train/validate`, `evaluation metrics`
 
@@ -20,11 +24,6 @@
 **导语：** 先回顾优化器与损失函数如何消费模型输出，再从本页建立训练循环的数据入口。
 - [11. PyTorch Optimizers and Loss | PyTorch 优化器与损失函数](./11_PyTorch_Optimizers_and_Loss.md)
 - [0C 组页](./0C.md)
-
-## 相关阅读
-**导语：** 完成数据到训练的闭环后，可以继续观察模型内部的 Block 数据流，或进入训练性能实验。
-- [13. Transformer Block Dataflow and Residual Stream | Transformer Block 数据流与残差通路](./13_Transformer_Block_Dataflow_and_Residual_Stream.md)
-- [73. Training Performance Analysis | 训练性能分析](../02_PyTorch_Algorithms/73_Training_Performance_Analysis.md)
 
 ## Q1：Dataset 和 DataLoader 分别解决什么问题？
 
@@ -38,12 +37,15 @@ from torch.utils.data import Dataset, DataLoader
 
 
 class ToyDataset(Dataset):
+    def __init__(self, sample_ids=(0, 1, 2, 3)):
+        self.sample_ids = tuple(sample_ids)
+
     def __len__(self):
-        # 固定样本数，方便在 notebook 里稳定观察 batch 行为。
-        return 4
+        return len(self.sample_ids)
 
     def __getitem__(self, idx):
-        # 单样本直接返回字典，后面 collate / SFT 对齐时可以按字段处理。
+        idx = self.sample_ids[idx]
+        # 样本编号决定输入和标签，训练与验证使用不同编号。
         return {
             'input_ids': torch.tensor([idx], dtype=torch.long),
             'attention_mask': torch.tensor([1], dtype=torch.long),
@@ -172,9 +174,15 @@ print('✅ tokenizer 输出与 padding 契约通过')
 
 ```
 
-## Q4：SFT 的 prompt、response、padding 与 labels 怎样对齐？
+## Q4：有效输入位置与监督位置为什么需要分别表示？
 
-SFT batch 不只是简单的 `(x, y)`。prompt 与 padding 位置通常用 `-100` 排除在损失之外，response token 才保留为监督标签；三者必须与 `attention_mask` 使用同一序列坐标。
+`attention_mask` 说明哪些位置属于有效输入，`labels != -100` 说明哪些位置参与损失。一个有效输入位置可以提供上下文但不直接贡献监督，因此两种 mask 不能互相替代。
+
+| 字段或条件 | 控制对象 | 典型取值 |
+|:---|:---|:---|
+| `attention_mask` | 位置是否属于有效输入 | 有效位置为 1，padding 为 0 |
+| `labels` | 每个位置的目标值 | 目标编号或 `-100` |
+| `labels != -100` | 位置是否贡献监督损失 | 由任务的数据契约决定 |
 
 
 ```python
@@ -192,50 +200,57 @@ def pad_to_max_len(tensors, pad_value):
     return torch.stack(padded, dim=0)
 
 
-def build_sft_sample(prompt_ids, response_ids):
-    # prompt 位置用 -100 忽略，response 位置保留给 loss。
-    input_ids = torch.tensor(prompt_ids + response_ids, dtype=torch.long)
+def build_sequence_sample(token_ids, supervised_positions):
+    """用布尔位置表构造通用序列输入与监督标签。"""
+    if len(token_ids) != len(supervised_positions):
+        raise ValueError('token_ids and supervised_positions must have the same length')
+    input_ids = torch.tensor(token_ids, dtype=torch.long)
     attention_mask = torch.ones_like(input_ids)
-    labels = torch.tensor([-100] * len(prompt_ids) + response_ids, dtype=torch.long)
+    labels = torch.tensor([
+        token_id if is_supervised else -100
+        for token_id, is_supervised in zip(token_ids, supervised_positions)
+    ], dtype=torch.long)
     return {
         'input_ids': input_ids,
         'attention_mask': attention_mask,
         'labels': labels,
     }
 
-sft_samples = [
-    build_sft_sample([101, 11, 12, 102], [7, 8]),
-    build_sft_sample([101, 21, 102], [9, 10]),
+sequence_samples = [
+    build_sequence_sample([11, 12, 13, 14, 15], [False, True, True, False, True]),
+    build_sequence_sample([21, 22, 23], [True, False, True]),
 ]
 
 # padding 只是把变长样本对齐到同一 batch 形状。
-sft_batch = {
-    'input_ids': pad_to_max_len([item['input_ids'] for item in sft_samples], pad_value=0),
-    'attention_mask': pad_to_max_len([item['attention_mask'] for item in sft_samples], pad_value=0),
-    'labels': pad_to_max_len([item['labels'] for item in sft_samples], pad_value=-100),
+sequence_batch = {
+    'input_ids': pad_to_max_len([item['input_ids'] for item in sequence_samples], pad_value=0),
+    'attention_mask': pad_to_max_len([item['attention_mask'] for item in sequence_samples], pad_value=0),
+    'labels': pad_to_max_len([item['labels'] for item in sequence_samples], pad_value=-100),
 }
 
-print('input_ids shape:', tuple(sft_batch['input_ids'].shape))
-print('attention_mask row1:', sft_batch['attention_mask'][1].tolist())
-print('labels row0:', sft_batch['labels'][0].tolist())
-print('labels row1:', sft_batch['labels'][1].tolist())
+print('input_ids shape:', tuple(sequence_batch['input_ids'].shape))
+print('attention_mask row1:', sequence_batch['attention_mask'][1].tolist())
+print('labels row0:', sequence_batch['labels'][0].tolist())
+print('labels row1:', sequence_batch['labels'][1].tolist())
 
 ```
 
-## Q4 验证：Prompt、response 与 padding 是否各自落在正确位置？
+## Q4 验证：有效位置、监督位置与 padding 是否使用同一坐标？
 
-Prompt 和 padding 不参与 SFT loss，response token 保留监督标签；三类位置必须与 `input_ids` 和 `attention_mask` 对齐。
+三个字段必须具有相同 shape；未监督但有效的位置保留 `attention_mask=1` 和 `labels=-100`，padding 则同时使用 `attention_mask=0` 与 `labels=-100`。
 
 
 ```python
-assert tuple(sft_batch['input_ids'].shape) == (2, 6)
-assert sft_batch['input_ids'].shape == sft_batch['attention_mask'].shape == sft_batch['labels'].shape
-assert sft_batch['input_ids'][0].tolist() == [101, 11, 12, 102, 7, 8]
-assert sft_batch['labels'][0].tolist() == [-100, -100, -100, -100, 7, 8]
-assert sft_batch['input_ids'][1].tolist() == [101, 21, 102, 9, 10, 0]
-assert sft_batch['attention_mask'][1].tolist() == [1, 1, 1, 1, 1, 0]
-assert sft_batch['labels'][1].tolist() == [-100, -100, -100, 9, 10, -100]
-print('✅ SFT label 对齐通过')
+assert tuple(sequence_batch['input_ids'].shape) == (2, 5)
+assert sequence_batch['input_ids'].shape == sequence_batch['attention_mask'].shape == sequence_batch['labels'].shape
+assert sequence_batch['input_ids'][0].tolist() == [11, 12, 13, 14, 15]
+assert sequence_batch['labels'][0].tolist() == [-100, 12, 13, -100, 15]
+assert sequence_batch['input_ids'][1].tolist() == [21, 22, 23, 0, 0]
+assert sequence_batch['attention_mask'][1].tolist() == [1, 1, 1, 0, 0]
+assert sequence_batch['labels'][1].tolist() == [21, -100, 23, -100, -100]
+assert sequence_batch['attention_mask'][0, 0].item() == 1
+assert sequence_batch['labels'][0, 0].item() == -100
+print('✅ 输入位置、监督位置与 padding 对齐通过')
 
 ```
 
@@ -330,7 +345,8 @@ def run_epoch(model, loader, optimizer=None):
     """使用同一 batch 契约执行训练或验证 epoch。"""
     is_training = optimizer is not None
     model.train(is_training)
-    losses = []
+    loss_sum = 0.0
+    sample_count = 0
     for batch in loader:
         report = validate_batch_contract(batch, ('input_ids', 'attention_mask', 'labels'), batch['input_ids'].shape[0])
         if not report['valid']:
@@ -338,22 +354,30 @@ def run_epoch(model, loader, optimizer=None):
         model_inputs, labels = adapt_batch_for_model(batch, torch.device('cpu'))
         with torch.set_grad_enabled(is_training):
             predictions = model(**model_inputs)
-            loss = torch.nn.functional.mse_loss(predictions, labels.to(torch.float32))
+            batch_loss_sum = torch.nn.functional.mse_loss(
+                predictions, labels.to(torch.float32), reduction='sum'
+            )
+            loss = batch_loss_sum / labels.numel()
         if is_training:
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
             optimizer.step()
-        losses.append(float(loss.detach()))
-    return sum(losses) / len(losses)
+        loss_sum += float(batch_loss_sum.detach())
+        sample_count += labels.numel()
+    if sample_count == 0:
+        raise ValueError('训练或验证数据不能为空')
+    return loss_sum / sample_count
 
 
-lifecycle_loader = DataLoader(ToyDataset(), batch_size=2, shuffle=False, collate_fn=collate_pair)
+lifecycle_loader = DataLoader(ToyDataset(), batch_size=3, shuffle=False, collate_fn=collate_pair)
 lifecycle_model = TrainableRegressor()
 lifecycle_optimizer = torch.optim.SGD(lifecycle_model.parameters(), lr=0.05)
 before_training = {name: value.detach().clone() for name, value in lifecycle_model.named_parameters()}
 train_loss = run_epoch(lifecycle_model, lifecycle_loader, lifecycle_optimizer)
 after_training = {name: value.detach().clone() for name, value in lifecycle_model.named_parameters()}
-validation_loss = run_epoch(lifecycle_model, lifecycle_loader)
+validation_dataset = ToyDataset(sample_ids=(4, 5, 6, 7))
+validation_loader = DataLoader(validation_dataset, batch_size=3, shuffle=False, collate_fn=collate_pair)
+validation_loss = run_epoch(lifecycle_model, validation_loader)
 print({'train_loss': train_loss, 'validation_loss': validation_loss})
 
 ```
@@ -366,11 +390,13 @@ print({'train_loss': train_loss, 'validation_loss': validation_loss})
 ```python
 assert any(not torch.equal(before_training[name], after_training[name]) for name in before_training)
 before_validation = {name: value.detach().clone() for name, value in lifecycle_model.named_parameters()}
-repeat_validation_loss = run_epoch(lifecycle_model, lifecycle_loader)
+repeat_validation_loss = run_epoch(lifecycle_model, validation_loader)
 after_validation = {name: value.detach().clone() for name, value in lifecycle_model.named_parameters()}
 assert all(torch.equal(before_validation[name], after_validation[name]) for name in before_validation)
 assert torch.isfinite(torch.tensor([train_loss, validation_loss, repeat_validation_loss])).all()
+assert abs(validation_loss - repeat_validation_loss) < 1e-8
 assert lifecycle_model.training is False
+assert set(lifecycle_loader.dataset.sample_ids).isdisjoint(validation_dataset.sample_ids)
 print('✅ 数据、更新与验证生命周期通过')
 
 ```
@@ -419,7 +445,7 @@ def evaluate_regressor(model, loader):
 
 
 evaluation_loader = DataLoader(
-    ToyDataset(), batch_size=3, shuffle=False, collate_fn=collate_pair
+    validation_dataset, batch_size=3, shuffle=False, collate_fn=collate_pair
 )
 before_evaluation = {
     name: value.detach().clone() for name, value in lifecycle_model.named_parameters()
@@ -438,14 +464,29 @@ print('evaluation metrics：', evaluation_metrics)
 
 
 ```python
-assert evaluation_metrics['sample_count'] == len(ToyDataset())
+assert evaluation_metrics['sample_count'] == len(validation_dataset)
+# 一个 batch 三条样本，另一个一条；直接按全部预测重算，核对聚合分母。
+all_validation = collate_pair([validation_dataset[i] for i in range(len(validation_dataset))])
+all_inputs, all_labels = adapt_batch_for_model(all_validation, torch.device('cpu'))
+with torch.no_grad():
+    expected_mse = (lifecycle_model(**all_inputs) - all_labels.float()).square().mean().item()
+assert abs(evaluation_metrics['mse'] - expected_mse) < 1e-6
 assert torch.isfinite(torch.tensor([
     evaluation_metrics['mae'], evaluation_metrics['mse'], evaluation_metrics['rmse']
 ])).all()
 assert abs(evaluation_metrics['rmse'] ** 2 - evaluation_metrics['mse']) < 1e-6
+assert abs(evaluation_metrics['mse'] - validation_loss) < 1e-6
 assert evaluation_metrics['mae'] <= evaluation_metrics['rmse'] + 1e-6
 assert all(torch.equal(before_evaluation[name], after_evaluation[name]) for name in before_evaluation)
 assert lifecycle_model.training is False
 print('✅ 模型评价指标与参数不变性通过')
 
 ```
+
+## 相关阅读
+
+完成通用数据到训练的闭环后，可以继续观察模型内部的 Block 数据流；需要构造提示—回答监督标签时，再进入 SFT 训练循环。
+
+- [13. Transformer Block Dataflow and Residual Stream | Transformer Block 数据流与残差通路](./13_Transformer_Block_Dataflow_and_Residual_Stream.md)
+- [13. SFT Training Loop | SFT 训练循环](../02_PyTorch_Algorithms/13_SFT_Training_Loop.md)
+- [73. Training Performance Analysis | 训练性能分析](../02_PyTorch_Algorithms/73_Training_Performance_Analysis.md)
