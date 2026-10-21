@@ -1,0 +1,1098 @@
+{
+  "schema_version": "verl-lifecycle-probe/v1",
+  "run_label": "rtx5070ti_rollout_lifecycle_v9_2",
+  "stage": "reward_probe",
+  "status": "ok",
+  "config": {
+    "verl_tag": "v0.9.1",
+    "verl_commit": "1876b06d0a3e4e71e06230be10af14492ca8a75b",
+    "torch": "2.11.0+cu130",
+    "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "resolved_snapshot": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/model_cache/models--Qwen--Qwen2.5-0.5B-Instruct/snapshots/7ae557604adf67be50417f59c2c2f167def9a775",
+    "model_revision": "7ae557604adf67be50417f59c2c2f167def9a775",
+    "train_file": "/home/yulinlin/verl-v0.9.1/data/gsm8k/train.parquet",
+    "train_file_sha256": "89cd3cb8d28e5274e7f0bf71ff541ea5654ac9e30589ac4b5d19c3f783a3858c",
+    "pool_size": 8,
+    "group_size": 4,
+    "max_response_tokens": 128,
+    "seed": 42,
+    "reward_function": "verl.utils.reward_score.gsm8k.compute_score",
+    "reward_method": "strict",
+    "vllm": "0.24.0",
+    "worker_start_method": "spawn",
+    "logprobs_mode": "processed_logprobs"
+  },
+  "behavior_policy_id": "8ce72b99406be83ff5d075ef2690e448b12cc6fb6b89f239dd133e9114cb25cd",
+  "groups": [
+    {
+      "sample_id": "gsm8k/train/2348",
+      "question": "What is fifteen more than a quarter of 48?",
+      "ground_truth": "27",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Return only the final numeric answer as #### <number>. Do not explain."
+        },
+        {
+          "role": "user",
+          "content": "What is fifteen more than a quarter of 48?"
+        }
+      ],
+      "prompt_sha256": "f66a164109a713f7babc38c3dab3ef022e36a94caeeacf561528e44101c45803",
+      "data_source": "openai/gsm8k",
+      "responses": [
+        {
+          "text": "73",
+          "token_ids": [
+            22,
+            18,
+            151645
+          ],
+          "behavior_log_probs": [
+            -3.154550552368164,
+            -4.8477067947387695,
+            -0.8988521695137024
+          ],
+          "action_mask": [
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        },
+        {
+          "text": "5.",
+          "token_ids": [
+            20,
+            13,
+            151645
+          ],
+          "behavior_log_probs": [
+            -3.7059106826782227,
+            -1.099007487297058,
+            -1.7113980054855347
+          ],
+          "action_mask": [
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        },
+        {
+          "text": "7.0",
+          "token_ids": [
+            22,
+            13,
+            15,
+            151645
+          ],
+          "behavior_log_probs": [
+            -3.0809106826782227,
+            -0.6592174768447876,
+            -1.0979728698730469,
+            -0.014176025055348873
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        },
+        {
+          "text": "90.0",
+          "token_ids": [
+            24,
+            15,
+            13,
+            15,
+            151645
+          ],
+          "behavior_log_probs": [
+            -1.8309106826782227,
+            -3.404611110687256,
+            -0.5799870491027832,
+            -0.042149618268013,
+            -0.03071432001888752
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        }
+      ]
+    },
+    {
+      "sample_id": "gsm8k/train/6469",
+      "question": "Twice Angie's age, plus 4, is 20. How old is Angie?",
+      "ground_truth": "8",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Return only the final numeric answer as #### <number>. Do not explain."
+        },
+        {
+          "role": "user",
+          "content": "Twice Angie's age, plus 4, is 20. How old is Angie?"
+        }
+      ],
+      "prompt_sha256": "a4b97106dfee497dbf9290a339206487cc0757bd1ab4633271f5d06ba11d20c1",
+      "data_source": "openai/gsm8k",
+      "responses": [
+        {
+          "text": "7",
+          "token_ids": [
+            22,
+            151645
+          ],
+          "behavior_log_probs": [
+            -2.918431282043457,
+            -0.10285094380378723
+          ],
+          "action_mask": [
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        },
+        {
+          "text": "5.",
+          "token_ids": [
+            20,
+            13,
+            151645
+          ],
+          "behavior_log_probs": [
+            -2.418431282043457,
+            -2.4802050590515137,
+            -1.4836126565933228
+          ],
+          "action_mask": [
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        },
+        {
+          "text": "7",
+          "token_ids": [
+            22,
+            151645
+          ],
+          "behavior_log_probs": [
+            -2.918431282043457,
+            -0.10285094380378723
+          ],
+          "action_mask": [
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        },
+        {
+          "text": "9",
+          "token_ids": [
+            24,
+            151645
+          ],
+          "behavior_log_probs": [
+            -3.793431282043457,
+            -0.09064213931560516
+          ],
+          "action_mask": [
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        }
+      ]
+    },
+    {
+      "sample_id": "gsm8k/train/4674",
+      "question": "Steve is 5'6\".  He grows 6 inches.  How tall is he in inches?",
+      "ground_truth": "72",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Return only the final numeric answer as #### <number>. Do not explain."
+        },
+        {
+          "role": "user",
+          "content": "Steve is 5'6\".  He grows 6 inches.  How tall is he in inches?"
+        }
+      ],
+      "prompt_sha256": "0a384cd8ab07b8335496fb796217d1b971eab5f7162b5305fcbf75ea3b1dc98f",
+      "data_source": "openai/gsm8k",
+      "responses": [
+        {
+          "text": "134",
+          "token_ids": [
+            16,
+            18,
+            19,
+            151645
+          ],
+          "behavior_log_probs": [
+            -1.1856263875961304,
+            -3.1674790382385254,
+            -1.4360395669937134,
+            -0.048437878489494324
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        },
+        {
+          "text": "52",
+          "token_ids": [
+            20,
+            17,
+            151645
+          ],
+          "behavior_log_probs": [
+            -2.43562650680542,
+            -1.5615956783294678,
+            -0.3419172465801239
+          ],
+          "action_mask": [
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        },
+        {
+          "text": "72",
+          "token_ids": [
+            22,
+            17,
+            151645
+          ],
+          "behavior_log_probs": [
+            -4.43562650680542,
+            -0.34134331345558167,
+            -0.11758200079202652
+          ],
+          "action_mask": [
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        },
+        {
+          "text": "96 Hispanic",
+          "token_ids": [
+            24,
+            21,
+            40885,
+            151645
+          ],
+          "behavior_log_probs": [
+            -3.93562650680542,
+            -0.7488693594932556,
+            -12.664694786071777,
+            -0.29356303811073303
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        }
+      ]
+    },
+    {
+      "sample_id": "gsm8k/train/5645",
+      "question": "If 12 bags of oranges weigh 24 pounds, how much do 8 bags weigh?",
+      "ground_truth": "16",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Return only the final numeric answer as #### <number>. Do not explain."
+        },
+        {
+          "role": "user",
+          "content": "If 12 bags of oranges weigh 24 pounds, how much do 8 bags weigh?"
+        }
+      ],
+      "prompt_sha256": "25510c4f87c0f6984cd4428425106c66a2dd8e4772e4caa5f06ea913498af4fc",
+      "data_source": "openai/gsm8k",
+      "responses": [
+        {
+          "text": "12 x 2 = 24\n8 x 1 = 8\n24 / 8 = 3",
+          "token_ids": [
+            16,
+            17,
+            856,
+            220,
+            17,
+            284,
+            220,
+            17,
+            19,
+            198,
+            23,
+            856,
+            220,
+            16,
+            284,
+            220,
+            23,
+            198,
+            17,
+            19,
+            608,
+            220,
+            23,
+            284,
+            220,
+            18,
+            151645
+          ],
+          "behavior_log_probs": [
+            -2.2012460231781006,
+            -0.17933541536331177,
+            -0.8065366744995117,
+            -0.010089585557579994,
+            -0.4323635697364807,
+            -0.2386520653963089,
+            -0.022649407386779785,
+            -0.0038671724032610655,
+            -0.0003369478799868375,
+            -0.6280285120010376,
+            -0.9589214324951172,
+            -0.021033447235822678,
+            -0.010682777501642704,
+            -2.246403694152832,
+            -0.23260317742824554,
+            -0.007794087287038565,
+            -0.0016534955939278007,
+            -1.4625498056411743,
+            -0.8845215439796448,
+            -0.00237980205565691,
+            -0.555542528629303,
+            -0.000559173640795052,
+            -0.01598401926457882,
+            -0.0006295844214037061,
+            -0.010570725426077843,
+            -0.00041654970846138895,
+            -0.054178934544324875
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        },
+        {
+          "text": "8 bags weigh #### 16.0#### pounds.",
+          "token_ids": [
+            23,
+            17899,
+            17529,
+            26274,
+            220,
+            16,
+            21,
+            13,
+            15,
+            820,
+            16302,
+            13,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.7012460231781006,
+            -0.4855822026729584,
+            -0.3453899919986725,
+            -4.407846927642822,
+            -0.01286492682993412,
+            -0.5558011531829834,
+            -0.4841841161251068,
+            -1.6445854902267456,
+            -0.29464060068130493,
+            -0.47755712270736694,
+            -0.2279546856880188,
+            -0.0017527469899505377,
+            -0.000316212244797498
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "16.0",
+          "reward": 0.0
+        },
+        {
+          "text": "8 pounds.",
+          "token_ids": [
+            23,
+            16302,
+            13,
+            151645
+          ],
+          "behavior_log_probs": [
+            -0.7012460231781006,
+            -2.048082113265991,
+            -0.12906333804130554,
+            -0.000325388420606032
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        },
+        {
+          "text": "#### 24.0",
+          "token_ids": [
+            820,
+            220,
+            17,
+            19,
+            13,
+            15,
+            151645
+          ],
+          "behavior_log_probs": [
+            -2.0762460231781006,
+            -0.05501353368163109,
+            -1.0068514347076416,
+            -0.10186845809221268,
+            -0.07237836718559265,
+            -0.08321717381477356,
+            -0.12512169778347015
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "24.0",
+          "reward": 0.0
+        }
+      ]
+    },
+    {
+      "sample_id": "gsm8k/train/7291",
+      "question": "A roll of 25 m wire weighs 5 kg. How much does a 75 m roll weigh?",
+      "ground_truth": "15",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Return only the final numeric answer as #### <number>. Do not explain."
+        },
+        {
+          "role": "user",
+          "content": "A roll of 25 m wire weighs 5 kg. How much does a 75 m roll weigh?"
+        }
+      ],
+      "prompt_sha256": "57d22424ca61f00c3354c54cd5dea23c4124c3df4c6e909a9ae8606bcadc3dfb",
+      "data_source": "openai/gsm8k",
+      "responses": [
+        {
+          "text": "75",
+          "token_ids": [
+            22,
+            20,
+            151645
+          ],
+          "behavior_log_probs": [
+            -1.0607092380523682,
+            -0.08550216257572174,
+            -0.44010376930236816
+          ],
+          "action_mask": [
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        },
+        {
+          "text": "5.25 kg",
+          "token_ids": [
+            20,
+            13,
+            17,
+            20,
+            20972,
+            151645
+          ],
+          "behavior_log_probs": [
+            -1.1857092380523682,
+            -1.0859441757202148,
+            -1.4221618175506592,
+            -0.009538669139146805,
+            -0.49534302949905396,
+            -0.8262660503387451
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        },
+        {
+          "text": "75",
+          "token_ids": [
+            22,
+            20,
+            151645
+          ],
+          "behavior_log_probs": [
+            -1.0607092380523682,
+            -0.08550216257572174,
+            -0.44010376930236816
+          ],
+          "action_mask": [
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        },
+        {
+          "text": "75 m.",
+          "token_ids": [
+            22,
+            20,
+            296,
+            13,
+            151645
+          ],
+          "behavior_log_probs": [
+            -1.0607092380523682,
+            -0.08550216257572174,
+            -4.190103530883789,
+            -0.40808048844337463,
+            -0.00040892345714382827
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        }
+      ]
+    },
+    {
+      "sample_id": "gsm8k/train/7368",
+      "question": "Fifteen more than a quarter of a number is 27. What is the number?",
+      "ground_truth": "48",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Return only the final numeric answer as #### <number>. Do not explain."
+        },
+        {
+          "role": "user",
+          "content": "Fifteen more than a quarter of a number is 27. What is the number?"
+        }
+      ],
+      "prompt_sha256": "ccbe87f27be59bf13239636d8fc2901510f60215f1b432a8001ee4aeab39617e",
+      "data_source": "openai/gsm8k",
+      "responses": [
+        {
+          "text": "73",
+          "token_ids": [
+            22,
+            18,
+            151645
+          ],
+          "behavior_log_probs": [
+            -3.153090476989746,
+            -4.284125328063965,
+            -0.3144422471523285
+          ],
+          "action_mask": [
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        },
+        {
+          "text": "54",
+          "token_ids": [
+            20,
+            19,
+            151645
+          ],
+          "behavior_log_probs": [
+            -3.028090476989746,
+            -0.7330590486526489,
+            -0.22590549290180206
+          ],
+          "action_mask": [
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        },
+        {
+          "text": "7",
+          "token_ids": [
+            22,
+            151645
+          ],
+          "behavior_log_probs": [
+            -3.153090476989746,
+            -0.7216250896453857
+          ],
+          "action_mask": [
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        },
+        {
+          "text": "90",
+          "token_ids": [
+            24,
+            15,
+            151645
+          ],
+          "behavior_log_probs": [
+            -3.778090476989746,
+            -2.9023611545562744,
+            -0.20451250672340393
+          ],
+          "action_mask": [
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        }
+      ]
+    },
+    {
+      "sample_id": "gsm8k/train/1646",
+      "question": "198 passengers fit into 9 buses. How many passengers fit in 5 buses?",
+      "ground_truth": "110",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Return only the final numeric answer as #### <number>. Do not explain."
+        },
+        {
+          "role": "user",
+          "content": "198 passengers fit into 9 buses. How many passengers fit in 5 buses?"
+        }
+      ],
+      "prompt_sha256": "ee54c52d80954a54ec661be13c7d06112b1e5473d65bac30eb7351e8a8573b2b",
+      "data_source": "openai/gsm8k",
+      "responses": [
+        {
+          "text": "78",
+          "token_ids": [
+            22,
+            23,
+            151645
+          ],
+          "behavior_log_probs": [
+            -3.206369161605835,
+            -2.1894912719726562,
+            -1.3867640495300293
+          ],
+          "action_mask": [
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        },
+        {
+          "text": "5. ### #### 490.",
+          "token_ids": [
+            20,
+            13,
+            16600,
+            26274,
+            220,
+            19,
+            24,
+            15,
+            13,
+            151645
+          ],
+          "behavior_log_probs": [
+            -2.081369161605835,
+            -3.6032156944274902,
+            -4.5419921875,
+            -1.7838389873504639,
+            -0.25389957427978516,
+            -1.2427301406860352,
+            -0.21224983036518097,
+            -0.023594563826918602,
+            -0.31731733679771423,
+            -0.0764056071639061
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "490.",
+          "reward": 0.0
+        },
+        {
+          "text": "74",
+          "token_ids": [
+            22,
+            19,
+            151645
+          ],
+          "behavior_log_probs": [
+            -3.206369161605835,
+            -0.9394911527633667,
+            -1.7263423204421997
+          ],
+          "action_mask": [
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        },
+        {
+          "text": "9 x 198 = 1782\n5 x 1782 = 8910",
+          "token_ids": [
+            24,
+            856,
+            220,
+            16,
+            24,
+            23,
+            284,
+            220,
+            16,
+            22,
+            23,
+            17,
+            198,
+            20,
+            856,
+            220,
+            16,
+            22,
+            23,
+            17,
+            284,
+            220,
+            23,
+            24,
+            16,
+            15,
+            151645
+          ],
+          "behavior_log_probs": [
+            -3.206369161605835,
+            -0.6640361547470093,
+            -0.0005611990345641971,
+            -0.12398089468479156,
+            -0.0014944825088605285,
+            -0.00027211778797209263,
+            -0.01180013082921505,
+            -0.011670294217765331,
+            -0.0005079409456811845,
+            -0.5844738483428955,
+            -0.0027035849634557962,
+            -6.69933797325939e-05,
+            -0.7073430418968201,
+            -2.269718885421753,
+            -0.0011205353075638413,
+            -0.0012438902631402016,
+            -5.4834770708112046e-05,
+            -0.001777022727765143,
+            -8.4638240878121e-06,
+            -4.5536911784438416e-05,
+            -0.0020174880046397448,
+            -0.0107704047113657,
+            -0.021459529176354408,
+            -0.0142736891284585,
+            -0.0006490031373687088,
+            -3.182837463100441e-05,
+            -0.007730803452432156
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        }
+      ]
+    },
+    {
+      "sample_id": "gsm8k/train/5955",
+      "question": "John takes a pill every 6 hours.  How many pills does he take a week?",
+      "ground_truth": "28",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Return only the final numeric answer as #### <number>. Do not explain."
+        },
+        {
+          "role": "user",
+          "content": "John takes a pill every 6 hours.  How many pills does he take a week?"
+        }
+      ],
+      "prompt_sha256": "4a515bafbb2d9e3b2bd521d63da6794073dac03856a8f3626b7dee31b6f9bc66",
+      "data_source": "openai/gsm8k",
+      "responses": [
+        {
+          "text": "7",
+          "token_ids": [
+            22,
+            151645
+          ],
+          "behavior_log_probs": [
+            -3.3909718990325928,
+            -0.07093281298875809
+          ],
+          "action_mask": [
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        },
+        {
+          "text": "5.2",
+          "token_ids": [
+            20,
+            13,
+            17,
+            151645
+          ],
+          "behavior_log_probs": [
+            -2.8909718990325928,
+            -1.5486276149749756,
+            -0.475696861743927,
+            -0.28800445795059204
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        },
+        {
+          "text": "7",
+          "token_ids": [
+            22,
+            151645
+          ],
+          "behavior_log_probs": [
+            -3.3909718990325928,
+            -0.0660669356584549
+          ],
+          "action_mask": [
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": null,
+          "reward": 0.0
+        },
+        {
+          "text": "#### 44",
+          "token_ids": [
+            820,
+            220,
+            19,
+            19,
+            151645
+          ],
+          "behavior_log_probs": [
+            -1.6409718990325928,
+            -0.019903114065527916,
+            -2.021637439727783,
+            -2.2114484310150146,
+            -1.280155062675476
+          ],
+          "action_mask": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "finish_reason": "stop",
+          "parsed_answer": "44",
+          "reward": 0.0
+        }
+      ]
+    }
+  ],
+  "gate": {
+    "passed": false,
+    "eligible_group_ids": [],
+    "groups_observed": 8,
+    "responses_observed": 32,
+    "answer_parse_ratio": 0.125,
+    "length_limit_ratio": 0.0,
+    "next_stage_allowed": false,
+    "reason": "no_complete_mixed_reward_group"
+  },
+  "limitations": [
+    "短题筛查用于寻找可解释的更新输入，不估计 GSM8K 准确率",
+    "当前仅运行冻结基座采样，未执行 LoRA 更新、策略准入或 worker 激活验证",
+    "后续训练必须重新检查实际生成组的奖励差异；筛查通过不保证下一批优势非零"
+  ]
+}
