@@ -85,7 +85,7 @@ Step 4 的 `kto_loss` 保留方括号内的逐样本加权损失，训练循环�
 
 ## Step 4：实现 KTO 的二元反馈损失
 
-题目区依次实现回答得分、独立 KL 基线、二元目标和批次诊断。每个 TODO 对应一段可单独核对的机制，避免把掩码、参考策略、标签方向和归约方式揉进一个函数。
+题目区使用 Token 对数概率、回答掩码、参考策略分数和二元标签复现 KTO 目标。骨架提供输入校验与批次报告；学习者补全回答得分、独立 KL 基线、正负样本目标和批次诊断。测试覆盖变长回答、非有限 padding、负基线截断、单一类别和非法标签。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 |:---|:---|:---|:---|
@@ -244,11 +244,19 @@ def test_kto_input_checks():
         pass
     else:
         raise AssertionError("非二元标签必须被拒绝")
-    try:
-        kto_loss(values, values, torch.tensor([1, 0]), beta=0.0)
-    except ValueError:
-        return
-    raise AssertionError("非正 beta 必须被拒绝")
+    invalid_calls = [
+        lambda: kto_loss(values, values, torch.tensor([1, 0]), beta=0.0),
+        lambda: kto_loss(values, values, torch.tensor([1, 0]), kl_baseline=torch.tensor([0.0, 0.1])),
+        lambda: kto_loss(torch.tensor([float("nan"), 0.0]), values, torch.tensor([1, 0])),
+        lambda: estimate_kl_baseline(torch.tensor([float("inf")]), torch.zeros(1)),
+        lambda: aggregate_response_logps(torch.zeros(1, 2), torch.ones(1, 2)),
+    ]
+    for call in invalid_calls:
+        try:
+            call()
+        except ValueError:
+            continue
+        raise AssertionError("非法 KTO 数值、基线或掩码必须被拒绝")
 
 
 def run_kto_tests():
@@ -277,13 +285,23 @@ run_kto_tests()
 ### 代码
 
 ```python
+import math
+
+
+import math
+
+
 def aggregate_response_logps(token_logps, response_mask):
     """按回答掩码聚合每条回答的 Token 对数概率。"""
     if token_logps.ndim != 2 or token_logps.shape != response_mask.shape:
         raise ValueError("token_logps 与 response_mask 必须是同形二维张量")
-    mask = response_mask.bool()
+    if response_mask.dtype != torch.bool:
+        raise ValueError("response_mask 必须是布尔张量")
+    mask = response_mask
     if torch.any(mask.sum(dim=-1) == 0):
         raise ValueError("每条回答至少需要一个有效 Token")
+    if not torch.isfinite(token_logps[mask]).all():
+        raise ValueError("有效回答位置的 token_logps 必须为有限数")
     return token_logps.masked_fill(~mask, 0.0).sum(dim=-1)
 
 
@@ -293,20 +311,27 @@ def estimate_kl_baseline(policy_kl_logps, reference_kl_logps):
         raise ValueError("KL 样本的策略与参考得分必须是同形一维张量")
     if policy_kl_logps.numel() == 0:
         raise ValueError("KL 样本不能为空")
+    if not torch.isfinite(policy_kl_logps).all() or not torch.isfinite(reference_kl_logps).all():
+        raise ValueError("KL 样本必须为有限数")
     return (policy_kl_logps - reference_kl_logps).mean().clamp_min(0.0).detach()
 
 
 def kto_loss(policy_logps, reference_logps, desirable, kl_baseline=0.0, beta=0.1, desirable_weight=1.0, undesirable_weight=1.0):
     """返回逐样本 KTO 损失与隐式奖励。"""
-    if policy_logps.shape != reference_logps.shape or policy_logps.shape != desirable.shape:
-        raise ValueError("策略、参考与标签形状必须一致")
-    if beta <= 0 or desirable_weight <= 0 or undesirable_weight <= 0:
-        raise ValueError("beta 与类别权重必须为正")
+    if policy_logps.ndim != 1 or policy_logps.numel() == 0 or policy_logps.shape != reference_logps.shape or policy_logps.shape != desirable.shape:
+        raise ValueError("策略、参考与标签必须是同形非空一维张量")
+    parameters = [float(beta), float(desirable_weight), float(undesirable_weight)]
+    if any(not math.isfinite(value) or value <= 0 for value in parameters):
+        raise ValueError("beta 与类别权重必须为正有限数")
+    if not torch.isfinite(policy_logps).all() or not torch.isfinite(reference_logps).all():
+        raise ValueError("策略与参考回答得分必须为有限数")
     if not torch.all((desirable == 0) | (desirable == 1)):
         raise ValueError("desirable 只能包含 0 或 1")
     labels = desirable.bool()
     log_ratios = policy_logps - reference_logps.detach()
     baseline = torch.as_tensor(kl_baseline, dtype=log_ratios.dtype, device=log_ratios.device).detach()
+    if baseline.numel() != 1 or not torch.isfinite(baseline):
+        raise ValueError("kl_baseline 必须是有限标量")
     implicit_rewards = beta * log_ratios
     losses = torch.where(
         labels,
@@ -320,6 +345,8 @@ def summarize_kto_batch(implicit_rewards, desirable):
     """汇总 KTO 批次的标签数量、类别奖励均值与奖励差。"""
     if implicit_rewards.ndim != 1 or implicit_rewards.shape != desirable.shape:
         raise ValueError("implicit_rewards 与 desirable 必须是同形一维张量")
+    if not torch.isfinite(implicit_rewards).all():
+        raise ValueError("implicit_rewards 必须为有限数")
     if not torch.all((desirable == 0) | (desirable == 1)):
         raise ValueError("desirable 只能包含 0 或 1")
     labels = desirable.bool()

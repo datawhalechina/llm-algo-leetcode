@@ -113,7 +113,7 @@ $$
 
 ## Step 4：实现组内优势、裁剪目标与参考策略约束
 
-题目区接收二维 Token 对数概率、Response mask，以及候选级 Reward 和 `group_ids`。学习者先计算组内 Advantage，再构造策略比率、裁剪目标、可选 Reference KL 和候选等权聚合。旧策略、参考策略与 Reward 都只提供固定训练目标。
+题目区使用二维 Token 对数概率、回答掩码、候选奖励和组标识复现 GRPO 目标。骨架提供固定旧策略、参考策略和奖励；学习者补全组内优势、策略比率、裁剪目标、可选参考策略 KL 和候选等权聚合。测试覆盖多组、单元素组、近零方差、变长回答和梯度隔离。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 | --- | --- | --- | --- |
@@ -145,6 +145,7 @@ def compute_group_advantages(rewards, group_ids, eps=1e-6):
         # scale = ???
         # advantages[group_mask] = ???
         # ==========================================
+        raise NotImplementedError("TODO 1：计算组内相对优势")
     return advantages
 
 
@@ -262,6 +263,15 @@ def test_grpo_input_contract():
         lambda: compute_grpo_loss(new, old, rewards, group_ids, mask, eps=0.0),
         lambda: compute_grpo_loss(new, old, rewards, group_ids, mask, log_probs_ref=ref[:-1]),
         lambda: compute_grpo_loss(new, old, rewards, group_ids, mask, beta=-0.1),
+        lambda: compute_grpo_loss(new, old, rewards, group_ids, mask.float()),
+        lambda: compute_grpo_loss(new, old, torch.tensor([float("nan"), 2.0, 0.5, 1.5, 3.0]), group_ids, mask),
+        lambda: compute_grpo_loss(new, old, rewards, group_ids, mask, clip_range=float("inf")),
+        lambda: compute_grpo_loss(new, old, rewards, group_ids, mask.float()),
+        lambda: compute_grpo_loss(new, old, torch.tensor([float("nan"), 2.0, 0.5, 1.5, 3.0]), group_ids, mask),
+        lambda: compute_grpo_loss(new, old, rewards, group_ids, mask, clip_range=float("inf")),
+        lambda: compute_grpo_loss(new, old, rewards, group_ids, mask.float()),
+        lambda: compute_grpo_loss(new, old, torch.tensor([float("nan"), 2.0, 0.5, 1.5, 3.0]), group_ids, mask),
+        lambda: compute_grpo_loss(new, old, rewards, group_ids, mask, clip_range=float("inf")),
     )
     for invalid_call in invalid_calls:
         try:
@@ -297,12 +307,22 @@ run_grpo_tests()
 ### 代码
 
 ```python
+import math
+
+
+import math
+
+
+import math
+
+
 def compute_group_advantages(rewards, group_ids, eps=1e-6):
     """在每个 prompt 组内标准化候选 reward。"""
-    if rewards.ndim != 1 or rewards.shape != group_ids.shape:
-        raise ValueError("rewards 与 group_ids 必须是同形一维张量")
-    if eps <= 0:
-        raise ValueError("eps 必须为正")
+    if rewards.ndim != 1 or rewards.numel() == 0 or rewards.shape != group_ids.shape:
+        raise ValueError("rewards 与 group_ids 必须是同形非空一维张量")
+    eps = float(eps)
+    if not torch.isfinite(rewards).all() or not math.isfinite(eps) or eps <= 0:
+        raise ValueError("rewards 必须有限且 eps 必须为正有限数")
     advantages = torch.zeros_like(rewards)
     for group_id in group_ids.unique(sorted=True):
         group_mask = group_ids == group_id
@@ -316,18 +336,23 @@ def compute_group_advantages(rewards, group_ids, eps=1e-6):
 
 def compute_grpo_loss(log_probs_new, log_probs_old, rewards, group_ids, response_mask=None, clip_range=0.2, eps=1e-6, log_probs_ref=None, beta=0.0):
     """计算简化 GRPO loss：组内相对优势与 PPO 风格裁剪。"""
-    if log_probs_new.ndim != 2 or log_probs_new.shape != log_probs_old.shape:
-        raise ValueError("新旧策略 log_probs 必须是同形二维张量")
-    if rewards.shape[0] != log_probs_new.shape[0]:
+    if log_probs_new.ndim != 2 or log_probs_new.numel() == 0 or log_probs_new.shape != log_probs_old.shape:
+        raise ValueError("新旧策略 log_probs 必须是同形非空二维张量")
+    if rewards.shape[0] != log_probs_new.shape[0] or group_ids.shape != rewards.shape:
         raise ValueError("rewards / group_ids 必须与候选维一致")
-    if clip_range < 0 or beta < 0:
-        raise ValueError("clip_range 与 beta 必须非负")
+    clip_range, beta = float(clip_range), float(beta)
+    if any(not math.isfinite(value) or value < 0 for value in (clip_range, beta)):
+        raise ValueError("clip_range 与 beta 必须是非负有限数")
+    if not torch.isfinite(log_probs_new).all() or not torch.isfinite(log_probs_old).all():
+        raise ValueError("新旧策略 log_probs 必须为有限数")
     if log_probs_ref is not None and log_probs_ref.shape != log_probs_new.shape:
         raise ValueError("参考策略 log_probs 必须与当前策略同形")
     if response_mask is None:
         response_mask = torch.ones_like(log_probs_new, dtype=torch.bool)
-    if response_mask.shape != log_probs_new.shape or not torch.all(response_mask.bool().any(dim=-1)):
-        raise ValueError("response_mask 必须同形且至少包含一个有效位置")
+    if response_mask.shape != log_probs_new.shape or response_mask.dtype != torch.bool or not torch.all(response_mask.any(dim=-1)):
+        raise ValueError("response_mask 必须是同形布尔张量，且每条候选至少包含一个有效位置")
+    if log_probs_ref is not None and not torch.isfinite(log_probs_ref).all():
+        raise ValueError("参考策略 log_probs 必须为有限数")
 
     advantages = compute_group_advantages(rewards, group_ids, eps=eps)
 

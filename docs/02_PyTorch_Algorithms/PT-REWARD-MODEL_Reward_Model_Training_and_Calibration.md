@@ -107,9 +107,9 @@ $$
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 |:---|:---|:---|:---|
-| TODO 1：计算成对奖励目标<br>`pairwise_reward_objective` | 从优选与非优选分数得到分数差、损失和排序准确率 | 两组分数同形；正边际降低损失 | `test_pairwise_reward_objective`、`test_reward_input_contract` |
-| TODO 2：选择留出校准温度<br>`select_reward_temperature` | 用留出偏好标签选择 Brier 误差最低的温度 | 温度为正；并列时选择更小温度 | `test_temperature_calibration`、`test_invalid_temperature_candidates` |
-| TODO 3：审计奖励过度优化<br>`audit_reward_overoptimization` | 联合检查绝对质量、相对基线退化和排序背离 | 基线身份唯一；奖励最高不代表质量合格 | `test_overoptimization_gate`、`test_rank_disagreement_gate`、`test_aligned_reward_candidate` |
+| TODO 1：计算成对奖励目标<br>`pairwise_reward_objective` | 从优选与非优选分数得到分数差、损失和排序准确率 | 两组分数同形；正边际降低损失 | 检查正负边际、排序准确率、逐对损失，以及空 Batch、错形和非有限分数 |
+| TODO 2：选择留出校准温度<br>`select_reward_temperature` | 用留出偏好标签选择 Brier 误差最低的温度 | 温度为正；并列时选择更小温度 | 检查已知最优温度、平分时的稳定选择和非法温度候选 |
+| TODO 3：审计奖励过度优化<br>`audit_reward_overoptimization` | 联合检查绝对质量、相对基线退化和排序背离 | 基线身份唯一；奖励最高不代表质量合格 | 检查质量绝对门槛、相对退化、排序背离，以及满足全部条件的候选 |
 
 ```python
 import torch
@@ -208,6 +208,9 @@ def test_pairwise_reward_objective():
     assert report["accuracy"] == 1.0
     assert torch.all(report["margins"] > 0)
     assert 0.0 < report["loss"] < 1.0
+    shifted = pairwise_reward_objective([12.0, 11.2], [10.5, 9.8])
+    assert torch.allclose(report["margins"], shifted["margins"])
+    assert abs(report["loss"] - shifted["loss"]) < 1e-6
 
 
 def test_reward_input_contract():
@@ -232,7 +235,7 @@ def test_temperature_calibration():
 
 def test_invalid_temperature_candidates():
     """空候选或非正温度不能进入校准比较。"""
-    for candidates in ([], [0.0, 1.0], [-1.0]):
+    for candidates in ([], [0.0, 1.0], [-1.0], [float("inf")]):
         try:
             select_reward_temperature([0.2], [1.0], candidates)
         except ValueError:
@@ -279,6 +282,24 @@ def test_aligned_reward_candidate():
     assert report["decision"] == "accept"
 
 
+def test_nonfinite_reward_evidence():
+    """非有限奖励、非法标签和非有限隐藏质量不能形成准入结论。"""
+    invalid_calls = [
+        lambda: pairwise_reward_objective([float("nan")], [0.0]),
+        lambda: select_reward_temperature([0.2], [0.5], [1.0]),
+        lambda: audit_reward_overoptimization(
+            ["baseline", "candidate"], [0.1, 0.9], [0.8, float("inf")], "baseline", 0.7, 0.1, 0.5,
+        ),
+    ]
+    for call in invalid_calls:
+        try:
+            call()
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("非法奖励模型证据必须被拒绝")
+
+
 for test_fn in (
     test_pairwise_reward_objective,
     test_reward_input_contract,
@@ -287,6 +308,7 @@ for test_fn in (
     test_overoptimization_gate,
     test_rank_disagreement_gate,
     test_aligned_reward_candidate,
+    test_nonfinite_reward_evidence,
 ):
     test_fn()
 print("All reward model mechanism tests passed.")
@@ -305,12 +327,17 @@ print("All reward model mechanism tests passed.")
 ### 代码
 
 ```python
+import math
+
+
 def pairwise_reward_objective(chosen_scores, rejected_scores):
     """计算同提示偏好对的 Bradley–Terry 目标。"""
     chosen_scores = torch.as_tensor(chosen_scores, dtype=torch.float32)
     rejected_scores = torch.as_tensor(rejected_scores, dtype=torch.float32)
-    if chosen_scores.shape != rejected_scores.shape or chosen_scores.numel() == 0:
-        raise ValueError("chosen_scores 与 rejected_scores 必须同形且非空")
+    if chosen_scores.ndim != 1 or chosen_scores.shape != rejected_scores.shape or chosen_scores.numel() == 0:
+        raise ValueError("chosen_scores 与 rejected_scores 必须是同形非空一维张量")
+    if not torch.isfinite(chosen_scores).all() or not torch.isfinite(rejected_scores).all():
+        raise ValueError("奖励分数必须为有限数")
 
     # TODO 1：计算成对奖励目标
     score_margin = chosen_scores - rejected_scores
@@ -328,10 +355,14 @@ def select_reward_temperature(margins, labels, candidate_temperatures):
     margins = torch.as_tensor(margins, dtype=torch.float32)
     labels = torch.as_tensor(labels, dtype=torch.float32)
     temperatures = [float(value) for value in candidate_temperatures]
-    if margins.shape != labels.shape or margins.numel() == 0:
-        raise ValueError("margins 与 labels 必须同形且非空")
-    if not temperatures or any(value <= 0 for value in temperatures):
-        raise ValueError("候选温度必须为正")
+    if margins.ndim != 1 or margins.shape != labels.shape or margins.numel() == 0:
+        raise ValueError("margins 与 labels 必须是同形非空一维张量")
+    if not torch.isfinite(margins).all() or not torch.isfinite(labels).all():
+        raise ValueError("边际与标签必须为有限数")
+    if not torch.all((labels == 0) | (labels == 1)):
+        raise ValueError("偏好标签必须为 0 或 1")
+    if not temperatures or any(not math.isfinite(value) or value <= 0 for value in temperatures):
+        raise ValueError("候选温度必须为正有限数")
 
     records = []
     for temperature in temperatures:
@@ -353,10 +384,15 @@ def audit_reward_overoptimization(
         raise ValueError("候选身份、奖励和质量必须等长且非空")
     if len(set(candidate_ids)) != len(candidate_ids) or baseline_id not in candidate_ids:
         raise ValueError("候选身份必须唯一且包含 baseline_id")
+    thresholds = [float(min_quality), float(max_quality_drop), float(max_rank_disagreement)]
+    if any(not math.isfinite(value) for value in thresholds):
+        raise ValueError("奖励模型门槛必须为有限数")
     if max_quality_drop < 0 or not 0.0 <= max_rank_disagreement <= 1.0:
         raise ValueError("退化阈值必须非负，排序背离阈值必须位于 0–1")
     rewards = torch.as_tensor(reward_scores, dtype=torch.float32)
     qualities = torch.as_tensor(quality_scores, dtype=torch.float32)
+    if rewards.ndim != 1 or qualities.ndim != 1 or not torch.isfinite(rewards).all() or not torch.isfinite(qualities).all():
+        raise ValueError("奖励与隐藏质量必须是一维有限分数")
 
     # TODO 3：审计奖励过度优化
     selected_index = int(torch.argmax(rewards).item())

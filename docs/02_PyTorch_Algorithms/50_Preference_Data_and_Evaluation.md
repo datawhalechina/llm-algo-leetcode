@@ -26,6 +26,7 @@ DPO 和 Online DPO 直接使用同一任务下的优选 / 非优选回答对；P
 ## 运行环境
 
 - **基础练习：** 默认使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
+- **框架核对：** 使用 [`PT-CPU`](../topic_discussion/post_training_optimization/quickstart.md#pt-cpu-quickstart)，运行 [框架一致性核对](#framework-check)。
 
 ---
 ## 前置阅读
@@ -98,7 +99,7 @@ $$
 
 ## Step 4：实现偏好数据审计、成对统计与候选门禁
 
-代码依次审计空字段、重复身份与切分污染，汇总评测覆盖率、明确判决率和非平局胜率，检查重复判分与顺序交换稳定性，最后先检查数据与安全，再检查样本规模、覆盖率、明确判决数、胜率和一致性。
+题目区使用固定偏好对与评测记录复现数据准入和离线评测。骨架提供记录结构与决策顺序；学习者补全数据审计、指标汇总、判分一致性和评测门禁。测试覆盖空字段、重复与污染、平局与部分完成、顺序翻转，以及通过、复核和拒绝三类结果。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 |:---|:---|:---|:---|
@@ -261,10 +262,33 @@ def test_preference_evidence_gate() -> None:
     }
 
 
+def test_invalid_preference_evidence_domains() -> None:
+    """空身份、非有限分数和不一致计数必须被拒绝。"""
+    invalid_scores = [
+        [{"pair_id": "", "candidate_score": 1.0, "baseline_score": 0.0}],
+        [{"pair_id": "p1", "candidate_score": float("nan"), "baseline_score": 0.0}],
+    ]
+    for rows in invalid_scores:
+        try:
+            compute_pairwise_outcomes(rows)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("无效 pair 身份或分数必须被拒绝")
+    invalid_outcomes = {"evaluated_pairs": 2, "decided_pairs": 3, "evaluation_coverage": 1.0, "decided_win_rate": 0.5}
+    try:
+        classify_preference_evidence(invalid_outcomes, True, True, 0.9)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("不一致评测计数必须被拒绝")
+
+
 test_preference_data_audit()
 test_pairwise_outcome_protocol()
 test_judge_consistency()
 test_preference_evidence_gate()
+test_invalid_preference_evidence_domains()
 print("✅ 偏好数据隔离、成对统计与候选决策测试通过。")
 ```
 
@@ -311,8 +335,12 @@ def audit_preference_dataset(samples: list[PreferenceSample]) -> dict[str, int]:
     eval_prompts = {normalize_task_input(sample.prompt) for sample in samples if sample.split in {"validation", "eval", "test"}}
     return {
         "total": len(samples),
-        "empty_count": sum(not sample.prompt or not sample.chosen or not sample.rejected for sample in samples),
-        "invalid_pair_count": sum(bool(sample.chosen) and sample.chosen == sample.rejected for sample in samples),
+        "empty_count": sum(not sample.prompt.strip() or not sample.chosen.strip() or not sample.rejected.strip() for sample in samples),
+        "invalid_pair_count": sum(
+            bool(sample.chosen.strip())
+            and normalize_task_input(sample.chosen) == normalize_task_input(sample.rejected)
+            for sample in samples
+        ),
         "missing_source_count": sum(not sample.source_id for sample in samples),
         "missing_reason_count": sum(not sample.preference_reason for sample in samples),
         "invalid_split_count": sum(sample.split not in allowed_splits for sample in samples),
@@ -328,9 +356,19 @@ def compute_pairwise_outcomes(
     if not pair_scores:
         raise ValueError("pair_scores 不能为空")
     # TODO 2：汇总成对结果。
-    pair_ids = [str(row['pair_id']) for row in pair_scores]
-    if len(pair_ids) != len(set(pair_ids)):
-        raise ValueError("pair_id 必须唯一")
+    import math
+
+    required_fields = {"pair_id", "candidate_score", "baseline_score"}
+    if any(not required_fields.issubset(row) for row in pair_scores):
+        raise ValueError("每条评测必须包含 pair_id 与双方分数")
+    pair_ids = [str(row['pair_id']).strip() for row in pair_scores]
+    if any(not pair_id for pair_id in pair_ids) or len(pair_ids) != len(set(pair_ids)):
+        raise ValueError("pair_id 必须非空且唯一")
+    if any(
+        not math.isfinite(float(row[name]))
+        for row in pair_scores for name in ("candidate_score", "baseline_score")
+    ):
+        raise ValueError("评测分数必须为有限数")
     evaluated_pairs = len(pair_scores)
     expected_pairs = evaluated_pairs if expected_pair_count is None else expected_pair_count
     if expected_pairs < evaluated_pairs or expected_pairs <= 0:
@@ -380,6 +418,23 @@ def classify_preference_evidence(
 ) -> dict[str, object]:
     """先检查数据与安全，再返回样本和质量条件的全部失败原因。"""
     # TODO 4：判定候选状态。
+    import math
+
+    required_outcomes = {"evaluated_pairs", "decided_pairs", "evaluation_coverage", "decided_win_rate"}
+    if not required_outcomes.issubset(outcomes):
+        raise ValueError("outcomes 缺少候选门禁字段")
+    evaluated_pairs = int(outcomes["evaluated_pairs"])
+    decided_pairs = int(outcomes["decided_pairs"])
+    coverage = float(outcomes["evaluation_coverage"])
+    win_rate = float(outcomes["decided_win_rate"])
+    rates = [coverage, win_rate, float(judge_consistency), float(min_win_rate),
+             float(min_evaluation_coverage), float(min_consistency)]
+    if any(not math.isfinite(value) or not 0.0 <= value <= 1.0 for value in rates):
+        raise ValueError("覆盖率、胜率、一致性及其门槛必须位于 [0, 1]")
+    if evaluated_pairs < 0 or decided_pairs < 0 or decided_pairs > evaluated_pairs:
+        raise ValueError("评测计数必须非负，且明确判决数不能超过已评测数")
+    if min_evaluated_pairs < 0 or min_decided_pairs < 0:
+        raise ValueError("样本数门槛必须非负")
     rejection_reasons = []
     if not data_pass:
         rejection_reasons.append("data_gate_failed")
@@ -423,6 +478,68 @@ def classify_preference_evidence(
 
 - 机制：数据检查或安全检查失败时拒绝候选；两项检查通过后，再判断样本数、覆盖率、明确判决数、胜率和一致性。
 - 不变量：数据检查失败或任一安全指标低于阈值时返回 `reject`；其余条件不足时返回 `review`；全部通过时才返回 `qualified`。
+<a id="framework-check"></a>
+
+## 框架一致性核对（可选）
+
+下面把同一批偏好记录交给 Hugging Face `Dataset`，核对字段结构、样本身份、切分筛选和规范化任务输入的跨切分重复。候选胜率与安全门禁仍由 Step 4 负责，Dataset 只复核数据接口和切分结果。
+
+| 核对对象 | Step 4 教学实现 | 成熟框架 CPU 路径 | 共同输入与通过条件 |
+|:---|:---|:---|:---|
+| 字段与身份 | `PreferenceSample` 与 `audit_preference_dataset` | `Dataset.from_list` / `Dataset.features` | 使用同一批记录；字段完整且行顺序、`sample_id` 保持不变 |
+| 切分筛选 | 按 `split` 区分训练与评测记录 | `Dataset.filter` | 训练与评测样本 ID 分别一致 |
+| 污染计数 | `normalize_task_input` 后比较任务输入集合 | `Dataset.map` 后比较两个切分 | 使用相同规范化函数；跨切分重复数量一致 |
+
+```python
+from dataclasses import asdict
+from importlib.metadata import version
+
+try:
+    from datasets import Dataset, Features, Value
+except ImportError:
+    framework_check = {
+        "status": "skipped",
+        "reason": "请使用 PT-CPU 环境运行本单元",
+    }
+else:
+    def check_preference_dataset_interface():
+        """核对偏好记录在 Dataset 中的字段、身份、切分与污染计数。"""
+        samples = [
+            PreferenceSample("train-1", "train", " Explain PPO " , "Use clipping.", "Ignore ratios.", "src-a", "correctness"),
+            PreferenceSample("train-2", "train", "Explain DPO", "Compare a pair.", "Use one answer.", "src-b", "correctness"),
+            PreferenceSample("eval-1", "eval", "explain   ppo", "Check held-out behavior.", "Reuse training text.", "src-c", "isolation"),
+        ]
+        local_audit = audit_preference_dataset(samples)
+        fields = {name: Value("string") for name in asdict(samples[0])}
+        dataset = Dataset.from_list([asdict(sample) for sample in samples], features=Features(fields))
+        normalized = dataset.map(lambda row: {"normalized_prompt": normalize_task_input(row["prompt"])})
+        train_rows = normalized.filter(lambda row: row["split"] == "train")
+        eval_rows = normalized.filter(lambda row: row["split"] in {"validation", "eval", "test"})
+        train_prompts = set(train_rows["normalized_prompt"])
+        eval_prompts = set(eval_rows["normalized_prompt"])
+        checks = {
+            "schema_preserved": set(dataset.features) == set(fields),
+            "identity_preserved": dataset["sample_id"] == [sample.sample_id for sample in samples],
+            "split_filter_matches": train_rows["sample_id"] == ["train-1", "train-2"] and eval_rows["sample_id"] == ["eval-1"],
+            "contamination_count_matches": len(train_prompts & eval_prompts) == local_audit["contamination_count"] == 1,
+        }
+        failed_checks = [name for name, passed in checks.items() if not passed]
+        if failed_checks:
+            raise AssertionError(f"偏好数据框架核对失败：{failed_checks}")
+        return {
+            "status": "passed",
+            "check_kind": "data_interface",
+            "versions": {"datasets": version("datasets")},
+            "checks": checks,
+            "row_count": len(dataset),
+            "contamination_count": local_audit["contamination_count"],
+        }
+
+    framework_check = check_preference_dataset_interface()
+
+framework_check
+```
+
 ## 相关阅读
 
 - [Part 02 · 17 DPO 损失](./17_DPO_Loss_Tutorial.md)

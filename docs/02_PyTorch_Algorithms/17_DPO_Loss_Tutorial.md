@@ -101,9 +101,9 @@ $$\mathcal{L}_{\mathrm{batch}}=\frac{1}{B}\sum_{i=1}^{B}\ell_{\mathrm{DPO}}^{(i)
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 | --- | --- | --- | --- |
-| TODO 1：聚合回答得分<br>`aggregate_response_logps` | 只聚合 response mask 内的 Token 对数概率 | 每条回复至少一个有效 Token；sum / mean 口径显式固定；屏蔽位置不传播非有限值 | `test_response_logp_aggregation`、`test_response_logp_input_contract` |
-| TODO 2：计算相对参考策略偏移<br>`dpo_loss` | 计算 chosen / rejected 相对 Reference 的偏移 | 四组回复得分形状一致，Reference 固定且不接收梯度 | `test_dpo_implicit_rewards`、`test_dpo_gradient_path` |
-| TODO 3：构造稳定偏好目标<br>`dpo_loss` | 构造 preference logit 与逐样本稳定损失 | `beta` 为正，chosen / rejected 方向不能颠倒，batch 归约由调用方完成 | `test_dpo_preference_direction_and_stability`、`test_dpo_batch_reduction` |
+| TODO 1：聚合回答得分<br>`aggregate_response_logps` | 只聚合 response mask 内的 Token 对数概率 | 每条回复至少一个有效 Token；sum / mean 口径显式固定；屏蔽位置不传播非有限值 | 检查 sum / mean 聚合、屏蔽位置、零有效 Token 和输入形状 |
+| TODO 2：计算相对参考策略偏移<br>`dpo_loss` | 计算 chosen / rejected 相对 Reference 的偏移 | 四组回复得分形状一致，Reference 固定且不接收梯度 | 检查 chosen / rejected 的隐式奖励，并确认梯度只进入 Policy |
+| TODO 3：构造稳定偏好目标<br>`dpo_loss` | 构造 preference logit 与逐样本稳定损失 | `beta` 为正，chosen / rejected 方向不能颠倒，batch 归约由调用方完成 | 检查偏好方向、极端边际下的有限值、逐样本形状和 Batch 均值 |
 
 
 ```python
@@ -255,11 +255,19 @@ def test_dpo_input_contract():
         pass
     else:
         raise AssertionError("不一致的 log-prob 形状应被拒绝")
-    try:
-        dpo_loss(*values, beta=0.0)
-    except ValueError:
-        return
-    raise AssertionError("非正 beta 应被拒绝")
+    invalid_calls = [
+        lambda: dpo_loss(*values, beta=0.0),
+        lambda: dpo_loss(*values, beta=float("nan")),
+        lambda: dpo_loss(torch.tensor([float("nan")]), *(torch.zeros(1) for _ in range(3))),
+        lambda: aggregate_response_logps(torch.zeros(1, 2), torch.ones(1, 2)),
+        lambda: aggregate_response_logps(torch.tensor([[float("nan"), 0.0]]), torch.tensor([[True, False]])),
+    ]
+    for call in invalid_calls:
+        try:
+            call()
+        except ValueError:
+            continue
+        raise AssertionError("非法 DPO 数值或掩码必须被拒绝")
 
 def run_dpo_tests():
     """运行 DPO 题目区的全部具名机制测试。"""
@@ -281,14 +289,27 @@ run_dpo_tests()
 ### 代码
 
 ```python
+import math
+
+
+import math
+
+
+import math
+
+
 def aggregate_response_logps(token_logps, response_mask, normalize=False):
     """按 response mask 聚合每条回复的 token log probability。"""
     if token_logps.shape != response_mask.shape or token_logps.ndim != 2:
         raise ValueError("token_logps 与 response_mask 必须是同形二维张量")
-    mask = response_mask.bool()
+    if response_mask.dtype != torch.bool:
+        raise ValueError("response_mask 必须是布尔张量")
+    mask = response_mask
     counts = mask.sum(dim=-1)
     if torch.any(counts == 0):
         raise ValueError("每条回复至少需要一个有效 token")
+    if not torch.isfinite(token_logps[mask]).all():
+        raise ValueError("有效回复位置的 token_logps 必须为有限数")
     # TODO 1：prompt / padding 不进入回复得分；normalize 控制 sum 或 mean 口径。
     response_logps = token_logps.masked_fill(~mask, 0.0).sum(dim=-1)
     if normalize:
@@ -308,10 +329,16 @@ def dpo_loss(
     四组 log probability 必须使用同一 tokenization 和回复范围；Reference 固定为
     SFT 基线，用于度量 Policy 的偏好偏移。
     """
+    tensors = (policy_chosen_logps, policy_rejected_logps, reference_chosen_logps, reference_rejected_logps)
     if not (policy_chosen_logps.shape == policy_rejected_logps.shape == reference_chosen_logps.shape == reference_rejected_logps.shape):
         raise ValueError("policy / reference 的 chosen-rejected logps 形状必须一致")
-    if beta <= 0:
-        raise ValueError("beta 必须是正数")
+    if policy_chosen_logps.ndim != 1 or policy_chosen_logps.numel() == 0:
+        raise ValueError("DPO 回答得分必须是非空一维张量")
+    if any(not torch.isfinite(tensor).all() for tensor in tensors):
+        raise ValueError("DPO 回答得分必须为有限数")
+    beta = float(beta)
+    if not math.isfinite(beta) or beta <= 0:
+        raise ValueError("beta 必须是正有限数")
 
     # TODO 2：分别计算 chosen / rejected 的 Policy—Reference 偏移。
     chosen_log_ratio = policy_chosen_logps - reference_chosen_logps.detach()
