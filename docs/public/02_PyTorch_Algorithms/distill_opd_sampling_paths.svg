@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+  <title id="title">离线轨迹与学生在策略轨迹组成蒸馏批次</title>
+  <desc id="desc">固定数据和当前学生策略形成两条轨迹来源，按 lambda 混合后进入冻结教师反馈和学生更新。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#475569"/></marker>
+    <style>
+      .title{font:700 28px 'Noto Sans SC','Microsoft YaHei',sans-serif;fill:#0f172a}
+      .label{font:700 20px 'Noto Sans SC','Microsoft YaHei',sans-serif;fill:#0f172a}
+      .body{font:400 16px 'Noto Sans SC','Microsoft YaHei',sans-serif;fill:#334155}
+      .small{font:600 15px 'Noto Sans SC','Microsoft YaHei',sans-serif;fill:#475569}
+      .line{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1200" height="520" rx="24" fill="#f8fafc"/>
+  <text x="60" y="58" class="title">轨迹来源决定蒸馏训练覆盖哪些前缀</text>
+
+  <rect x="70" y="115" width="260" height="130" rx="18" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="200" y="158" text-anchor="middle" class="label">固定轨迹</text>
+  <text x="200" y="190" text-anchor="middle" class="body">数据集 / 预生成回答</text>
+  <text x="200" y="220" text-anchor="middle" class="small">比例 1 − λ</text>
+
+  <rect x="70" y="300" width="260" height="130" rx="18" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="200" y="343" text-anchor="middle" class="label">在策略轨迹</text>
+  <text x="200" y="375" text-anchor="middle" class="body">当前学生 πS 采样</text>
+  <text x="200" y="405" text-anchor="middle" class="small">比例 λ</text>
+
+  <path d="M330 180 H425 V250 H480" class="line"/>
+  <path d="M330 365 H425 V295 H480" class="line"/>
+
+  <rect x="480" y="205" width="250" height="130" rx="18" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="605" y="250" text-anchor="middle" class="label">轨迹混合 μλ</text>
+  <text x="605" y="282" text-anchor="middle" class="body">保留来源与策略版本</text>
+  <text x="605" y="312" text-anchor="middle" class="small">λ 决定在哪些前缀训练</text>
+
+  <path d="M730 270 H825" class="line"/>
+
+  <rect x="825" y="205" width="300" height="130" rx="18" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+  <text x="975" y="248" text-anchor="middle" class="label">冻结教师反馈</text>
+  <text x="975" y="280" text-anchor="middle" class="body">同一前缀上的逐 Token 分布</text>
+  <text x="975" y="310" text-anchor="middle" class="small">只更新学生参数</text>
+</svg>
