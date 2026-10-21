@@ -328,14 +328,14 @@
     },
     "PT-CPU": {
       "title": "后训练 CPU 机制环境",
-      "purpose": "使用 Datasets、PyTorch、Transformers、TRL 与 Gymnasium 核对后训练机制页的数据接口、目标函数和环境合同",
+      "purpose": "使用 Datasets、PyTorch、Transformers、TRL、TorchRL 与 Gymnasium 核对后训练机制页的数据接口、目标函数和环境合同",
       "python": {"minimum": "3.11", "maximum_exclusive": "3.13"},
       "requirements": ["requirements/torch-cpu.txt", "requirements/reinforcement-learning.txt"],
       "constraint_files": ["requirements/post-training-cpu-constraints.txt"],
       "required_modules": {
         "torch": "torch", "jupyterlab": "jupyterlab", "ipykernel": "ipykernel",
         "transformers": "transformers", "datasets": "datasets", "accelerate": "accelerate",
-        "peft": "peft", "trl": "trl", "gymnasium": "gymnasium"
+        "peft": "peft", "trl": "trl", "torchrl": "torchrl", "gymnasium": "gymnasium"
       },
       "forbidden_distributions": ["vllm", "sglang", "llmcompressor", "bitsandbytes", "deepspeed"],
       "isolation": {"require_clean_sys_path": true, "require_user_site_disabled": true, "require_project_runtime": true},
@@ -382,6 +382,54 @@
       "documentation": {
         "global": "docs/gpu_environment_assets.md#pt-rl-cuda",
         "topic": "topic_discussion/post_training_optimization/quickstart.md#pt-rl-cuda-quickstart"
+      }
+    },
+    "PT-VERL-CUDA": {
+      "title": "后训练 verl 单卡系统机制环境",
+      "purpose": "核对轨迹行为偏离、准入过滤、生成—更新阶段耗时和 KV Cache 驻留路径",
+      "python": {"minimum": "3.10", "maximum_exclusive": "3.13"},
+      "external_manager": {
+        "kind": "uv_lock",
+        "repository": "https://github.com/verl-project/verl.git",
+        "tag": "v0.9.1",
+        "commit": "1876b06d0a3e4e71e06230be10af14492ca8a75b",
+        "extras": ["vllm", "fsdp"]
+      },
+      "requirements": [],
+      "constraint_files": [],
+      "required_modules": {
+        "torch": "torch", "verl": "verl", "vllm": "vllm", "ray": "ray"
+      },
+      "exact_distribution_versions": {
+        "vllm": "0.24.0"
+      },
+      "forbidden_distributions": [],
+      "isolation": {"require_clean_sys_path": false, "require_user_site_disabled": true, "require_project_runtime": false},
+      "gpu": {"required": true, "minimum_memory_gb": 10, "torch_cuda": "13.0", "minimum_devices": 1},
+      "evidence_scope": "single_gpu_colocated_rl_system_mechanism",
+      "documentation": {
+        "global": "docs/gpu_environment_assets.md#pt-verl-cuda",
+        "topic": "topic_discussion/post_training_optimization/quickstart.md#pt-verl-cuda-quickstart"
+      }
+    },
+    "PT-DISTILL-CUDA": {
+      "title": "教师—学生蒸馏单卡环境",
+      "purpose": "运行学生基线、固定轨迹 KD 与 TRL on-policy distillation 的单卡配对实验",
+      "python": {"minimum": "3.11", "maximum_exclusive": "3.13"},
+      "requirements": ["requirements/torch-cu128.txt", "requirements/distillation.txt"],
+      "constraint_files": ["requirements/distillation-cu128-constraints.txt"],
+      "required_modules": {
+        "torch": "torch", "jupyterlab": "jupyterlab", "ipykernel": "ipykernel",
+        "transformers": "transformers", "datasets": "datasets", "accelerate": "accelerate",
+        "peft": "peft", "trl": "trl"
+      },
+      "forbidden_distributions": ["vllm", "sglang", "llmcompressor", "bitsandbytes", "deepspeed"],
+      "isolation": {"require_clean_sys_path": true, "require_user_site_disabled": true, "require_project_runtime": true},
+      "gpu": {"required": true, "minimum_memory_gb": 10, "torch_cuda": "12.8", "minimum_devices": 1},
+      "evidence_scope": "distillation_project_benchmark",
+      "documentation": {
+        "global": "docs/gpu_environment_assets.md#pt-distill-cuda",
+        "topic": "topic_discussion/post_training_optimization/quickstart.md#pt-distill-cuda-quickstart"
       }
     },
     "PT-DELIVERY-CUDA": {

@@ -58,6 +58,8 @@
 | <a id="q-qlora"></a>`Q-QLORA` | 单卡；BF16 LoRA 与 NF4 QLoRA 配对训练 | [量化 Quickstart](../topic_discussion/quantization_compression/quickstart.md#q-qlora-quickstart) · [实验资产](../topic_discussion/quantization_compression/experiment_assets.md) |
 | <a id="pt-sft-cuda"></a>`PT-SFT-CUDA` | 单卡；SFT、LoRA 更新、验证与训练产物 | [后训练 Quickstart](../topic_discussion/post_training_optimization/quickstart.md#pt-sft-cuda-quickstart) · [实验资产](../topic_discussion/post_training_optimization/experiment_assets.md) |
 | <a id="pt-rl-cuda"></a>`PT-RL-CUDA` | 单卡；奖励模型、奖励信号、DPO 与 GRPO 机制实验 | [后训练 Quickstart](../topic_discussion/post_training_optimization/quickstart.md#pt-rl-cuda-quickstart) · [实验资产](../topic_discussion/post_training_optimization/experiment_assets.md) |
+| <a id="pt-verl-cuda"></a>`PT-VERL-CUDA` | 单卡；verl 轨迹准入、阶段耗时与缓存驻留机制实验 | [后训练 Quickstart](../topic_discussion/post_training_optimization/quickstart.md#pt-verl-cuda-quickstart) · [实验资产](../topic_discussion/post_training_optimization/experiment_assets.md) |
+| <a id="pt-distill-cuda"></a>`PT-DISTILL-CUDA` | 单卡；学生基线、固定轨迹 KD 与 TRL on-policy distillation | [后训练 Quickstart](../topic_discussion/post_training_optimization/quickstart.md#pt-distill-cuda-quickstart) · [实验资产](../topic_discussion/post_training_optimization/experiment_assets.md) |
 | `PT-DELIVERY-CUDA` | 单卡；后训练候选冻结复测与综合交付 | [后训练 Quickstart](../topic_discussion/post_training_optimization/quickstart.md#pt-delivery-cuda-quickstart) · [实验资产](../topic_discussion/post_training_optimization/experiment_assets.md) |
 
 ### 独立推理后端环境

@@ -59,6 +59,15 @@ def main() -> int:
 
     root = bootstrap_project_root()
     profile = load_environment_profile(root, args.profile)
+    external_manager = profile.get("external_manager")
+    if external_manager:
+        documentation = profile.get("documentation", {}).get("topic", "专题 Quickstart")
+        print(
+            f"Profile {args.profile!r} 由 {external_manager.get('kind', 'external')} 管理，"
+            f"不能写入 Conda 通用环境；请按 {documentation} 使用上游锁文件创建隔离环境",
+            file=sys.stderr,
+        )
+        return 2
     conda = shutil.which("conda")
     if conda is None:
         raise RuntimeError("未找到 conda；请先安装 Miniconda/Anaconda，或手动执行专题 Quickstart")
