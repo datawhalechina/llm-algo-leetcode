@@ -4,12 +4,14 @@
 
 用法:
     python tools/test_notebook_answers.py 00_PyTorch_Warmup.ipynb
+    python tools/test_notebook_answers.py 02_PyTorch_Algorithms/13_SFT_Training_Loop.ipynb --mode both --strict-question-failure
     python tools/test_notebook_answers.py --all  # 测试所有notebook
 """
 
 import sys
 import argparse
 import nbformat
+import re
 from pathlib import Path
 import subprocess
 import tempfile
@@ -38,6 +40,15 @@ GPU_TUTORIAL_TAGS = (
     'tutorial-gpu-results',
 )
 SKIP_ANSWER_TEST_TAG = 'skip_answer_test'
+QUESTION_FAILURE_EXCEPTIONS = re.compile(
+    r'^(NameError|UnboundLocalError|SyntaxError|IndentationError|TabError):',
+    re.MULTILINE,
+)
+
+
+def strict_question_failure_issues(stderr):
+    """Return secondary failures that invalidate an expected TODO stop."""
+    return sorted(set(QUESTION_FAILURE_EXCEPTIONS.findall(stderr)))
 
 
 def tagged_code_cells(notebook, tag):
@@ -234,7 +245,12 @@ def extract_imports(notebook_path):
     return ""
 
 
-def test_notebook_answers(notebook_path, test_mode='answer'):
+def test_notebook_answers(
+    notebook_path,
+    test_mode='answer',
+    *,
+    strict_question_failure=False,
+):
     """测试notebook的答案代码
 
     Args:
@@ -310,10 +326,21 @@ def test_notebook_answers(notebook_path, test_mode='answer'):
         success = result.returncode == 0
 
         if success:
+            if test_mode == 'question' and strict_question_failure:
+                print("\n❌ 严格题目区门禁要求保留明确 TODO，当前题目区已直接通过")
+                return 'fail'
             print(f"\n✅ {notebook_path} {mode_name}测试通过")
             return 'pass'
 
         if test_mode == 'question' and 'NotImplementedError' in result.stderr:
+            if strict_question_failure:
+                failure_issues = strict_question_failure_issues(result.stderr)
+                if failure_issues:
+                    print(
+                        "\n❌ 题目区虽然触发了 TODO，但异常链还包含次生错误："
+                        + ', '.join(failure_issues)
+                    )
+                    return 'fail'
             print(f"\n❌ {notebook_path} {mode_name}按预期失败（未完成题目）")
             return 'expected_fail'
 
@@ -339,6 +366,11 @@ def main():
                         help='测试模式: answer=答案区, question=题目区, both=两者都测试')
     parser.add_argument('--check-tags', action='store_true',
                         help='仅校验 tutorial tags 结构，不执行代码')
+    parser.add_argument(
+        '--strict-question-failure',
+        action='store_true',
+        help='题目区必须以明确 TODO 失败，拒绝 NameError、语法错误等次生异常',
+    )
 
     args = parser.parse_args()
 
@@ -360,11 +392,19 @@ def main():
                 results[nb_path.name] = 'pass' if validate_notebook_tags(nb_path) else 'fail'
             elif args.mode == 'both':
                 # 测试题目区和答案区
-                q_success = test_notebook_answers(nb_path, 'question')
+                q_success = test_notebook_answers(
+                    nb_path,
+                    'question',
+                    strict_question_failure=args.strict_question_failure,
+                )
                 a_success = test_notebook_answers(nb_path, 'answer')
                 results[nb_path.name] = {'question': q_success, 'answer': a_success}
             else:
-                success = test_notebook_answers(nb_path, args.mode)
+                success = test_notebook_answers(
+                    nb_path,
+                    args.mode,
+                    strict_question_failure=args.strict_question_failure,
+                )
                 results[nb_path.name] = success
 
         if args.check_tags:
@@ -428,7 +468,11 @@ def main():
             return 0 if validate_notebook_tags(args.notebook) else 1
         # 测试单个notebook
         if args.mode == 'both':
-            q_success = test_notebook_answers(args.notebook, 'question')
+            q_success = test_notebook_answers(
+                args.notebook,
+                'question',
+                strict_question_failure=args.strict_question_failure,
+            )
             a_success = test_notebook_answers(args.notebook, 'answer')
             print(f"\n{'='*60}")
             print("测试结果")
@@ -449,7 +493,11 @@ def main():
             print(f"答案区: {a_label}")
             return 0 if q_success != 'fail' and a_success != 'fail' else 1
         else:
-            success = test_notebook_answers(args.notebook, args.mode)
+            success = test_notebook_answers(
+                args.notebook,
+                args.mode,
+                strict_question_failure=args.strict_question_failure,
+            )
             return 0 if success != 'fail' else 1
 
     else:
