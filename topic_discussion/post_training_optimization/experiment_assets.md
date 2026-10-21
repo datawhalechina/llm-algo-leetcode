@@ -11,6 +11,7 @@
 | `Q-QLORA` | 26、65 | NF4 QLoRA、适配器与低资源训练证据 |
 | `PT-RL-CUDA` | 17、18、PT-REWARD-MODEL、PT-REWARD-SIGNAL；84、85 的单卡阶段 | DPO、GRPO、奖励模型与奖励信号均已完成 RTX 5070 Ti 实测 |
 | `PT-VERL-CUDA` | PT-ROLLOUT-LIFECYCLE、PT-RL-SYSTEM | `rtx5070ti_verl_mechanism_closure_v2` 两组更新、同轨迹重评、同步与阶段资源检查全部通过，本机单卡机制验证完成 |
+| `PT-DISTILL-CUDA` | DISTILL-OPD；88 的教师—学生配对阶段 | 学生基线、固定轨迹 KD、on-policy distillation、学生产物与部署比较 |
 | 后续多工作进程环境（暂未验证） | 在线系统扩展 | 轨迹队列、网络通信、跨节点策略同步和多工作进程恢复；不由 `PT-VERL-CUDA` 单卡证据替代 |
 
 ## 单卡 GPU 验证顺序
@@ -36,7 +37,7 @@
 
 ## 项目页验证顺序
 
-项目页按 `64 → 63 / 65 → 62 → 84 / 85 → 86` 运行。斜线表示并列候选分支，各页通过一个直接上游资产进入；该资产使用 manifest 保存更早阶段的血缘，Notebook 之间通过持久化资产衔接。
+后训练交付主链按 `64 → 63 / 65 → 62 → 84 / 85 → 86` 运行。蒸馏项目 88 是独立压缩分支，从冻结教师、学生起点和 DISTILL-OPD 机制进入，不消费 62、84 或 85 的候选产物。
 
 | 顺序 | 项目与职责 | CPU 题目应挖空的项目判断 | 真实环境实验 | 直接输入 | 输出资产 |
 |:---|:---|:---|:---|:---|:---|
@@ -44,9 +45,10 @@
 | 2 | Part 02 · 63 LoRA 变体选型 | 单变量可比性、质量/显存硬门槛、可行候选选择 | `lora_variant_selection_v2` 已完成 3 个秩 × 3 个共享种子的配对矩阵；rank 4 在质量等价带内资源最低，结论 `accept` | 64 的准入 manifest | LoRA 选型 manifest、完整候选矩阵与 rank 4 适配器 |
 | 2B | Part 02 · 65 QLoRA 低资源分支 | NF4 低比特底座下的质量、显存与容量约束 | 0.5B `rtx5070ti_qlora_selection_v3`：省 6.1% 峰值显存但无容量收益且步时回退 42.8%，结论 `tune`；1.5B `rtx5070ti_qlora_15b_capacity_v1`：3 个共享 seed 下峰值低 23.4%，最大 batch `4 → 8`，质量通过，结论 `accept`，适用范围为容量受限训练 | 64 的准入 manifest | QLoRA adapter 哈希、配对 JSON 与低资源分支 manifest |
 | 3 | Part 02 · 62 SFT 训练交付 | 上游身份匹配、产物完整性、恢复/加载门禁与交付状态 | `sft_delivery_v2_1` 是旧契约证据；新交付契约待以 `rtx5070ti_sft_delivery_v3` 复测 | 63 的 LoRA 选型 manifest | checkpoint、SFT adapter、评测报告与交付 manifest |
-| 4A | Part 02 · 84 离线 DPO | 偏好数据准入、独立评测门禁、质量—资源采用判断 | `dpo_offline_len768_v4` 已完成；任务输入截断率 27.5% 超过 25% 门槛，结论 `reject`，失败项为 `prompt_coverage` | 62 的交付 manifest | DPO adapter、评测报告与候选 manifest |
-| 4B | Part 02 · 85 在线奖励优化 | rollout/验证器覆盖门禁、有效更新吞吐、质量—资源采用判断 | `grpo_rlvr_len256_v6` 已完成；平均奖励 +0.0104、`pass@group` 持平，长度预算未通过，结论 `tune` | 62 的交付 manifest | GRPO adapter、轨迹摘要、配对评测报告与候选 manifest |
-| 5 | Part 02 · 86 生命周期与恢复 | 策略新鲜度、artifact/回滚哈希、失败恢复与交接状态 | `post_training_lifecycle_v3` 是重构前采用记录；重构后需用新标签生成 `lifecycle_handoff`，当前 DPO 为 `reject`、GRPO 为 `tune`，没有可交接候选 | 84、85 候选 manifest 与 62 回滚 manifest | 生命周期证据与 Part 05 交接清单；不承担最终采用决策 |
+| 4A | Part 02 · 84 离线 DPO | 偏好数据准入、独立评测门禁、质量—资源采用判断 | `dpo_offline_len1024_v5` 已完成；任务输入截断率降至 5%，回复截断率为 0，质量与资源检查全部通过，结论 `accept` | 62 的交付 manifest | DPO adapter、评测报告与候选 manifest |
+| 4B | Part 02 · 85 在线奖励优化 | rollout/验证器覆盖门禁、有效更新吞吐、质量—资源采用判断 | `grpo_rlvr_len384_v7` 已完成；平均奖励 +0.0521、`pass@group` +0.0833，有效组比例 0.75，结论 `accept` | 62 的交付 manifest | GRPO adapter、轨迹摘要、配对评测报告与候选 manifest |
+| 5 | Part 02 · 86 生命周期与恢复 | 策略新鲜度、artifact/回滚哈希、失败恢复与交接状态 | `post_training_lifecycle_v6` 已完成；DPO v5 与 GRPO / RLVR v7 的候选、产物哈希、回滚基线和新鲜度检查通过，交接状态 `ready` | 84、85 候选 manifest 与 62 回滚 manifest | 生命周期证据与 Part 05 交接清单；允许进入冻结评测，不表示已完成最终采用 |
+| D1 | Part 02 · 88 蒸馏学生交付 | 教师—学生身份、G0/G1/G2 可比性、质量保持与部署收益 | `rtx5070ti_distill_gsm8k_hybrid_terminal_v9` 已收口：学生基线 19/64，混合候选 22/64；质量增益、格式和延迟未同时过门，结论 `tune`，不打开 final holdout | 冻结教师、共同学生起点、固定 workload | 基线、路线、候选与终止决策证据；无部署 handoff |
 
 ### 单卡 12 GB 默认工作负载
 
@@ -54,8 +56,9 @@
 |:---|:---|:---|:---|
 | 63 | `Qwen/Qwen2.5-0.5B`；LoRA rank `4 / 8 / 16`，固定 target modules、alpha 规则与 dropout | 固定训练/验证切分，短训练筛选；候选确定后再用 3 个 seed 复测，不在首次运行同时扩大长度和样本数 | 每候选 val loss、任务指标、峰值显存、step time、吞吐、失败与固定条件 |
 | 62 | 63 选出的唯一 LoRA 配置 | 一次正式短程训练，加一次保存—恢复—继续更新和重新加载评测 | 模型与数据 revision、上游 manifest ID、checkpoint/adapter 哈希、恢复位置、固定评测与失败记录 |
-| 84 | 62 的 SFT adapter；固定 `beta=0.1` | 24 组训练偏好对、16 组独立评测偏好对、最大长度 768、12 次更新 | v4 峰值分配约 5.48 GiB；质量门槛通过，但任务输入截断率 27.5%，结论 `reject` |
-| 85 | 62 的 SFT adapter；每个问题生成 8 条轨迹 | GSM8K 训练题 24 道、独立评测题 12 道、最多生成 256 词元；更新前策略/候选使用相同评测种子 | v6 有效组 16/24，峰值分配约 6.49 GiB、保留约 10.10 GiB；长度预算未通过，结论 `tune` |
+| 84 | 62 的 SFT adapter；固定 `beta=0.1` | 24 组训练偏好对、16 组独立评测偏好对、最大长度 1024、12 次更新 | v5 偏好准确率保持 0.5625，平均边际增加 0.0022；任务输入截断率 5%，峰值分配约 6.49 GiB，结论 `accept` |
+| 85 | 62 的 SFT adapter；每个问题生成 8 条轨迹 | GSM8K 训练题 24 道、独立评测题 12 道、最多生成 384 词元；更新前策略/候选使用相同评测种子 | v7 有效组 18/24，平均奖励 +0.0521，`pass@group` +0.0833；峰值分配约 7.00 GiB、保留约 9.50 GiB，结论 `accept` |
+| 88 | Qwen2.5-1.5B 或同词表 DeepSeek 蒸馏教师；Qwen2.5-0.5B 共同学生起点 | GSM8K 512 条训练、32 条开发、64 条验证；终止实验采用 64 步参考答案锚定和 32 步在线蒸馏 | `hybrid_rtx5070ti_distill_gsm8k_hybrid_terminal_v9.json`：质量 19/64 → 22/64，格式合规率 0.5312，平均延迟 1337.6 ms；没有合格候选，不生成 handoff。DeepSeek 离线轨迹检查保留为路线拒绝证据 |
 
 64 与 86 可以在上述隔离环境中运行真实输入检查，但其结论不依赖 CUDA。64 的结果是训练前数据准入，86 的结果是生命周期与恢复准入；两者都不得用“GPU 可用”提升证据等级。
 
@@ -91,6 +94,7 @@
 | 偏好对 → DPO | 17、50 | 84 的训练—评测—决策记录 |
 | 偏好对 / 验证结果 → 奖励 → 价值 / 优势 → PPO 或 GRPO | 奖励模型页与奖励信号页为共同基础，16 与 18 为并列算法分支 | 85 的组采样、奖励与更新闭环 |
 | 策略新鲜度 → RL 系统或在线偏好 | 轨迹生命周期页为共同基础，RL 系统页与 51 为并列系统分支 | 85/86 的版本、编排、回滚与在线成本证据 |
+| 教师分布 → 固定轨迹 / 学生轨迹 → 独立学生 | DISTILL-OPD 核对 KL 方向、轨迹来源与冻结教师 | 88 比较 G0/G1/G2，并检查学生产物、质量保持和部署收益 |
 
 ## PT-RL-CUDA 机制工作负载
 
