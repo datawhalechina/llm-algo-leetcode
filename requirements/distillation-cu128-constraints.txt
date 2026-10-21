@@ -1,0 +1,7 @@
+# PT-DISTILL-CUDA compatibility set for Python 3.12 and torch 2.11.0+cu128.
+# Keep the project isolated from serving and quantization runtimes.
+transformers==5.18.0
+datasets==5.1.0
+accelerate==1.15.0
+peft==0.21.2
+trl==1.16.0

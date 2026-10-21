@@ -1,0 +1,186 @@
+{
+  "schema_version": "distilled-student-delivery/v4",
+  "semantic_id": "DISTILL-STUDENT-DELIVERY",
+  "record_type": "g1_repeated_confirmation",
+  "run_label": "rtx5070ti_distill_gsm8k_prompt_v3",
+  "config_hash": "8de017614e792f2ce003a59e57c9c7f9fcb0986d45281f6786ed8d824ee2aa17",
+  "source_preflight": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/88_distillation_delivery/preflight_rtx5070ti_distill_gsm8k_prompt_v3.json",
+  "source_g0": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/88_distillation_delivery/g0_rtx5070ti_distill_gsm8k_prompt_v3.json",
+  "workload": {
+    "record_count": 224,
+    "train_count": 128,
+    "development_count": 32,
+    "evaluation_count": 64,
+    "development_category_counts": {
+      "reasoning_q1": 8,
+      "reasoning_q2": 8,
+      "reasoning_q3": 8,
+      "reasoning_q4": 8
+    },
+    "evaluation_category_counts": {
+      "reasoning_q1": 16,
+      "reasoning_q2": 16,
+      "reasoning_q3": 16,
+      "reasoning_q4": 16
+    },
+    "record_ids_hash": "ad632d0536e0e3f20a591c1b628d8e4dcf8ffad13aea757c79f5187b2485a3bc",
+    "prompt_ids_hash": "bc2541e086674d8ed96686a17aa982e2c6ab00915451213ee48e241b8c119a51",
+    "train_prompt_ids_hash": "bebee5c223b8af135157463d516cb7bd0027b881e7a51ec0b1ee370cdb6733c8",
+    "train_reference_count": 128,
+    "train_reference_answers_hash": "3fb620b2c34777f234cbd36c23fa2c36d00890d925b1c910e44f8cbf603c8edf",
+    "development_prompt_ids_hash": "7362125cb4c97755ad1f56d738e98d254d1c54b1a819bb439415b972092fec09",
+    "evaluation_prompt_ids_hash": "053c14501797f6a6aed161d1b92d438b9bbc294dfa9dea2c5007c20cbce3cbed",
+    "file_sha256": "94ab10f5adae7693e11cae65047e49f2b19706fc8c6363e1b0226cfb045dea23",
+    "scoring_contract_sha256": "2bd564bdad96697bcb3aaab64bd24b85e154f36a16d56968801ed13b3ee4a8b2",
+    "selected_train_count": 128,
+    "development_source_ids_hash": "5a7344b4dafb54bb24ea65e7d7a8874d93114220c9050ff6398e41ac93974163",
+    "development_scoring_contract_sha256": "3ce1efd1b95e4c6650f7f57c91b00dcbcc898dc1851c5237f3195f345bcb99dc",
+    "development_reference_answers_hash": "f985b426748613f2b49db043c6ff01839004884e25da8f03d2e002aee74d2b3b",
+    "selected_train_prompt_ids_hash": "bebee5c223b8af135157463d516cb7bd0027b881e7a51ec0b1ee370cdb6733c8",
+    "role": "hyperparameter_validation",
+    "historical_name": "evaluation"
+  },
+  "final_holdout_identity": {
+    "role": "single_use_final_holdout",
+    "record_count": 64,
+    "category_counts": {
+      "reasoning_q1": 16,
+      "reasoning_q2": 16,
+      "reasoning_q3": 16,
+      "reasoning_q4": 16
+    },
+    "record_ids_hash": "7338ccabe96fe5b29c56d4ff8180f2274b046ce5d5eb594c1e0f3d62cd7f7154",
+    "prompt_ids_hash": "4b3d82b36d3b132710d040f67ac429af2f92c944ca7126dfe8c12bec6eb528ed",
+    "file_sha256": "4abd3a2ee711fabd74ca3ecf04e8ce39a9fbb456db44b03236edd084f161a449",
+    "scoring_contract_sha256": "1a23368f9f87c1302818f720c1aca87aca6373a83311785b5a5714a0f4d7fa61"
+  },
+  "matrix_plan_hash": "0786f663dc35d60d3bbb6ae00e660e37f664f77bcd75a6d5f173677b94f8815f",
+  "student_start_snapshot": "7ae557604adf67be50417f59c2c2f167def9a775",
+  "config": {
+    "experiment_revision": "v8_3_gsm8k_prompt_canary",
+    "teacher_model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "student_model": "Qwen/Qwen2.5-0.5B-Instruct",
+    "dtype": "bfloat16",
+    "batch_size": 1,
+    "max_prompt_length": 256,
+    "max_completion_length": 256,
+    "max_steps": 128,
+    "dose_steps": [
+      128
+    ],
+    "learning_rate": 1e-05,
+    "temperature": 1.0,
+    "beta": 0.0,
+    "optimizer": "sgd",
+    "g1_max_grad_norm": null,
+    "g2_max_grad_norm": 1.0,
+    "warmup_ratio": 0.0,
+    "weight_decay": 0.0,
+    "hard_label_weight": 0.0,
+    "gradient_checkpointing": true,
+    "use_vllm": false,
+    "seed": 42,
+    "confirmation_seeds": [
+      42,
+      43
+    ],
+    "latency_warmup_prompts": 2,
+    "latency_repeats": 2,
+    "prompt_candidate_id": "concise_control",
+    "system_prompt": "Use concise arithmetic with at most six short reasoning lines. End with '#### number' and write nothing after it."
+  },
+  "evidence": {
+    "schema_version": "distillation-confirmation-summary/v1",
+    "status": "not_confirmed",
+    "confirmed": false,
+    "required_qualified_runs": 2,
+    "qualified_run_count": 0,
+    "run_count": 2,
+    "baseline": {
+      "quality_score": 0.296875,
+      "saturation_ratio": 0.25,
+      "mean_latency_ms": 1010.199
+    },
+    "gates": {
+      "min_quality_gain": 0.05,
+      "max_regressed_categories": 0,
+      "max_saturation_increase": 0.05,
+      "min_format_compliance": 0.8,
+      "max_baseline_latency_ratio": 1.1
+    },
+    "mean_quality_score": 0.359375,
+    "quality_score_range": 0.0,
+    "selected_seed": null,
+    "selected_artifact": null,
+    "runs": [
+      {
+        "seed": 42,
+        "quality_score": 0.359375,
+        "quality_gain": 0.0625,
+        "regressed_categories": [],
+        "saturation_ratio": 0.328125,
+        "saturation_increase": 0.078125,
+        "format_compliance_ratio": 0.15625,
+        "baseline_latency_ratio": 1.2100615819259375,
+        "artifact_verified": true,
+        "artifact": {
+          "path": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/88_distillation_delivery/student_g1_confirm_rtx5070ti_distill_gsm8k_prompt_v3_seed_42",
+          "snapshot": "student_g1_confirm_rtx5070ti_distill_gsm8k_prompt_v3_seed_42",
+          "weight_bytes": 988097824,
+          "weight_files": [
+            {
+              "name": "model.safetensors",
+              "size_bytes": 988097824,
+              "sha256": "f85e5a9fc44ef84c1bd10e497f3a68b62f1d2f29ce558a24aae00d0a914e5bb4"
+            }
+          ],
+          "inventory_sha256": "c6ff5e1a7be9900d9f13427741aa38bf5f744991f7bed2792e61a17eb626fb86",
+          "weights_content_sha256": "94a82a431eb9b8f4977388ed3e41ab3ddf6641ff87d5ab61f5e29f01c1336912"
+        },
+        "checks": {
+          "artifact_verified": true,
+          "quality_gain": true,
+          "category_regression": true,
+          "saturation": false,
+          "format_compliance": false,
+          "latency": false
+        },
+        "qualified": false
+      },
+      {
+        "seed": 43,
+        "quality_score": 0.359375,
+        "quality_gain": 0.0625,
+        "regressed_categories": [],
+        "saturation_ratio": 0.296875,
+        "saturation_increase": 0.046875,
+        "format_compliance_ratio": 0.140625,
+        "baseline_latency_ratio": 1.2012247091909616,
+        "artifact_verified": true,
+        "artifact": {
+          "path": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/88_distillation_delivery/student_g1_confirm_rtx5070ti_distill_gsm8k_prompt_v3_seed_43",
+          "snapshot": "student_g1_confirm_rtx5070ti_distill_gsm8k_prompt_v3_seed_43",
+          "weight_bytes": 988097824,
+          "weight_files": [
+            {
+              "name": "model.safetensors",
+              "size_bytes": 988097824,
+              "sha256": "e2f4a9a53a5ace84c444f559b47a2c34932f3272cdd3283a458bd6a4efa2cbf6"
+            }
+          ],
+          "inventory_sha256": "67ccd34da9dc1a9cbfc154eeffe38955ada89f9847e611a01f69e1c559e5cce6",
+          "weights_content_sha256": "193929e6651ab8f374453c2a2c45e885949226dc58d734791c19747d45b7a8d3"
+        },
+        "checks": {
+          "artifact_verified": true,
+          "quality_gain": true,
+          "category_regression": true,
+          "saturation": true,
+          "format_compliance": false,
+          "latency": false
+        },
+        "qualified": false
+      }
+    ]
+  }
+}

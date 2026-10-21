@@ -1,0 +1,362 @@
+{
+  "schema_version": "distilled-student-delivery/v4",
+  "semantic_id": "DISTILL-STUDENT-DELIVERY",
+  "record_type": "preflight",
+  "run_label": "rtx5070ti_distill_gsm8k_prompt_v3",
+  "config_hash": "8de017614e792f2ce003a59e57c9c7f9fcb0986d45281f6786ed8d824ee2aa17",
+  "config": {
+    "experiment_revision": "v8_3_gsm8k_prompt_canary",
+    "teacher_model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "student_model": "Qwen/Qwen2.5-0.5B-Instruct",
+    "dtype": "bfloat16",
+    "batch_size": 1,
+    "max_prompt_length": 256,
+    "max_completion_length": 256,
+    "max_steps": 128,
+    "dose_steps": [
+      128
+    ],
+    "learning_rate": 1e-05,
+    "temperature": 1.0,
+    "beta": 0.0,
+    "optimizer": "sgd",
+    "g1_max_grad_norm": null,
+    "g2_max_grad_norm": 1.0,
+    "warmup_ratio": 0.0,
+    "weight_decay": 0.0,
+    "hard_label_weight": 0.0,
+    "gradient_checkpointing": true,
+    "use_vllm": false,
+    "seed": 42,
+    "confirmation_seeds": [
+      42,
+      43
+    ],
+    "latency_warmup_prompts": 2,
+    "latency_repeats": 2,
+    "prompt_candidate_id": "concise_control",
+    "system_prompt": "Use concise arithmetic with at most six short reasoning lines. End with '#### number' and write nothing after it."
+  },
+  "g0_admission_gates": {
+    "min_teacher_quality": 0.6,
+    "min_teacher_category_quality": 0.1875,
+    "max_teacher_saturation_ratio": 0.15,
+    "min_teacher_student_gap": 0.05
+  },
+  "environment": {
+    "environment_profile": "PT-DISTILL-CUDA",
+    "status": "ok",
+    "ready": true,
+    "runtime": {
+      "python": "3.12.15 (main, Oct 13 2026, 16:52:04) [GCC 15.3.0]",
+      "platform": "Linux-6.5.0-41-generic-x86_64-with-glibc2.35",
+      "torch": "2.11.0+cu128",
+      "torch_cuda": "12.8",
+      "cuda_available": true,
+      "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+      "device_capability": [
+        12,
+        0
+      ]
+    },
+    "gpu_memory_gb": 11.48,
+    "gpu_device_count": 1,
+    "native_bf16_supported": true,
+    "packages": {
+      "required": {
+        "torch": true,
+        "jupyterlab": true,
+        "ipykernel": true,
+        "transformers": true,
+        "datasets": true,
+        "accelerate": true,
+        "peft": true,
+        "trl": true
+      },
+      "optional": {}
+    },
+    "required_packages_missing": [],
+    "distribution_versions": {
+      "accelerate": "1.15.0",
+      "bitsandbytes": null,
+      "datasets": "5.1.0",
+      "deepspeed": null,
+      "llmcompressor": null,
+      "peft": "0.21.2",
+      "sglang": null,
+      "transformers": "5.18.0",
+      "trl": "1.16.0",
+      "vllm": null
+    },
+    "version_mismatches": {},
+    "exact_version_mismatches": {},
+    "forbidden_distributions_present": [],
+    "python_path_isolation": {
+      "sys_prefix": "/data/anaconda3/envs/llm_pt_distill_cu128",
+      "user_site_enabled": false,
+      "foreign_python_paths": [],
+      "external_site_paths": []
+    },
+    "reasons": [],
+    "next_actions": [],
+    "result_path": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/88_distillation_delivery/preflight_rtx5070ti_distill_gsm8k_prompt_v3.json"
+  },
+  "api": {
+    "trl_version": "1.16.0",
+    "ready": true,
+    "missing_parameters": [],
+    "config_parameters_hash": "a5c901ad92979df80d9bbcbf845607f5d37af57b03308de273f2cbf5ab9bb1a0",
+    "trainer_parameters_hash": "49b1495bda1ca2e5667656c4d4b845c40dbaab7db61ea961c5aaa08231edb82f"
+  },
+  "workload": {
+    "record_count": 224,
+    "train_count": 128,
+    "development_count": 32,
+    "evaluation_count": 64,
+    "development_category_counts": {
+      "reasoning_q1": 8,
+      "reasoning_q2": 8,
+      "reasoning_q3": 8,
+      "reasoning_q4": 8
+    },
+    "evaluation_category_counts": {
+      "reasoning_q1": 16,
+      "reasoning_q2": 16,
+      "reasoning_q3": 16,
+      "reasoning_q4": 16
+    },
+    "record_ids_hash": "ad632d0536e0e3f20a591c1b628d8e4dcf8ffad13aea757c79f5187b2485a3bc",
+    "prompt_ids_hash": "bc2541e086674d8ed96686a17aa982e2c6ab00915451213ee48e241b8c119a51",
+    "train_prompt_ids_hash": "bebee5c223b8af135157463d516cb7bd0027b881e7a51ec0b1ee370cdb6733c8",
+    "train_reference_count": 128,
+    "train_reference_answers_hash": "3fb620b2c34777f234cbd36c23fa2c36d00890d925b1c910e44f8cbf603c8edf",
+    "development_prompt_ids_hash": "7362125cb4c97755ad1f56d738e98d254d1c54b1a819bb439415b972092fec09",
+    "evaluation_prompt_ids_hash": "053c14501797f6a6aed161d1b92d438b9bbc294dfa9dea2c5007c20cbce3cbed",
+    "file_sha256": "94ab10f5adae7693e11cae65047e49f2b19706fc8c6363e1b0226cfb045dea23",
+    "scoring_contract_sha256": "2bd564bdad96697bcb3aaab64bd24b85e154f36a16d56968801ed13b3ee4a8b2",
+    "selected_train_count": 128,
+    "development_source_ids_hash": "5a7344b4dafb54bb24ea65e7d7a8874d93114220c9050ff6398e41ac93974163",
+    "development_scoring_contract_sha256": "3ce1efd1b95e4c6650f7f57c91b00dcbcc898dc1851c5237f3195f345bcb99dc",
+    "development_reference_answers_hash": "f985b426748613f2b49db043c6ff01839004884e25da8f03d2e002aee74d2b3b",
+    "selected_train_prompt_ids_hash": "bebee5c223b8af135157463d516cb7bd0027b881e7a51ec0b1ee370cdb6733c8",
+    "role": "hyperparameter_validation",
+    "historical_name": "evaluation"
+  },
+  "final_holdout_identity": {
+    "role": "single_use_final_holdout",
+    "record_count": 64,
+    "category_counts": {
+      "reasoning_q1": 16,
+      "reasoning_q2": 16,
+      "reasoning_q3": 16,
+      "reasoning_q4": 16
+    },
+    "record_ids_hash": "7338ccabe96fe5b29c56d4ff8180f2274b046ce5d5eb594c1e0f3d62cd7f7154",
+    "prompt_ids_hash": "4b3d82b36d3b132710d040f67ac429af2f92c944ca7126dfe8c12bec6eb528ed",
+    "file_sha256": "4abd3a2ee711fabd74ca3ecf04e8ce39a9fbb456db44b03236edd084f161a449",
+    "scoring_contract_sha256": "1a23368f9f87c1302818f720c1aca87aca6373a83311785b5a5714a0f4d7fa61"
+  },
+  "matrix_plan": {
+    "schema_version": "distillation-matrix/v1",
+    "run_label": "rtx5070ti_distill_gsm8k_prompt_v3",
+    "selection_policy": {
+      "screening_steps": 128,
+      "finalist_steps": 384,
+      "finalists_per_family": 2,
+      "development_role": "checkpoint_dose_selection",
+      "validation_role": "hyperparameter_selection",
+      "final_holdout_role": "single_use_acceptance_only"
+    },
+    "validation_identity": {
+      "record_count": 224,
+      "train_count": 128,
+      "development_count": 32,
+      "evaluation_count": 64,
+      "development_category_counts": {
+        "reasoning_q1": 8,
+        "reasoning_q2": 8,
+        "reasoning_q3": 8,
+        "reasoning_q4": 8
+      },
+      "evaluation_category_counts": {
+        "reasoning_q1": 16,
+        "reasoning_q2": 16,
+        "reasoning_q3": 16,
+        "reasoning_q4": 16
+      },
+      "record_ids_hash": "ad632d0536e0e3f20a591c1b628d8e4dcf8ffad13aea757c79f5187b2485a3bc",
+      "prompt_ids_hash": "bc2541e086674d8ed96686a17aa982e2c6ab00915451213ee48e241b8c119a51",
+      "train_prompt_ids_hash": "bebee5c223b8af135157463d516cb7bd0027b881e7a51ec0b1ee370cdb6733c8",
+      "train_reference_count": 128,
+      "train_reference_answers_hash": "3fb620b2c34777f234cbd36c23fa2c36d00890d925b1c910e44f8cbf603c8edf",
+      "development_prompt_ids_hash": "7362125cb4c97755ad1f56d738e98d254d1c54b1a819bb439415b972092fec09",
+      "evaluation_prompt_ids_hash": "053c14501797f6a6aed161d1b92d438b9bbc294dfa9dea2c5007c20cbce3cbed",
+      "file_sha256": "94ab10f5adae7693e11cae65047e49f2b19706fc8c6363e1b0226cfb045dea23",
+      "scoring_contract_sha256": "2bd564bdad96697bcb3aaab64bd24b85e154f36a16d56968801ed13b3ee4a8b2",
+      "selected_train_count": 128,
+      "development_source_ids_hash": "5a7344b4dafb54bb24ea65e7d7a8874d93114220c9050ff6398e41ac93974163",
+      "development_scoring_contract_sha256": "3ce1efd1b95e4c6650f7f57c91b00dcbcc898dc1851c5237f3195f345bcb99dc",
+      "development_reference_answers_hash": "f985b426748613f2b49db043c6ff01839004884e25da8f03d2e002aee74d2b3b",
+      "selected_train_prompt_ids_hash": "bebee5c223b8af135157463d516cb7bd0027b881e7a51ec0b1ee370cdb6733c8",
+      "role": "hyperparameter_validation",
+      "historical_name": "evaluation"
+    },
+    "final_holdout_identity": {
+      "role": "single_use_final_holdout",
+      "record_count": 64,
+      "category_counts": {
+        "reasoning_q1": 16,
+        "reasoning_q2": 16,
+        "reasoning_q3": 16,
+        "reasoning_q4": 16
+      },
+      "record_ids_hash": "7338ccabe96fe5b29c56d4ff8180f2274b046ce5d5eb594c1e0f3d62cd7f7154",
+      "prompt_ids_hash": "4b3d82b36d3b132710d040f67ac429af2f92c944ca7126dfe8c12bec6eb528ed",
+      "file_sha256": "4abd3a2ee711fabd74ca3ecf04e8ce39a9fbb456db44b03236edd084f161a449",
+      "scoring_contract_sha256": "1a23368f9f87c1302818f720c1aca87aca6373a83311785b5a5714a0f4d7fa61"
+    },
+    "families": {
+      "g1_fixed_trajectory": [
+        {
+          "candidate_id": "g1_clip_off_hard_0",
+          "max_grad_norm": null,
+          "hard_label_weight": 0.0
+        },
+        {
+          "candidate_id": "g1_clip_1_hard_0",
+          "max_grad_norm": 1.0,
+          "hard_label_weight": 0.0
+        },
+        {
+          "candidate_id": "g1_clip_off_hard_01",
+          "max_grad_norm": null,
+          "hard_label_weight": 0.1
+        },
+        {
+          "candidate_id": "g1_clip_1_hard_01",
+          "max_grad_norm": 1.0,
+          "hard_label_weight": 0.1
+        }
+      ],
+      "g2_on_policy": [
+        {
+          "candidate_id": "g2_lr_3e-06_beta_0",
+          "learning_rate": 3e-06,
+          "beta": 0.0
+        },
+        {
+          "candidate_id": "g2_lr_3e-06_beta_0.05",
+          "learning_rate": 3e-06,
+          "beta": 0.05
+        },
+        {
+          "candidate_id": "g2_lr_3e-06_beta_0.1",
+          "learning_rate": 3e-06,
+          "beta": 0.1
+        },
+        {
+          "candidate_id": "g2_lr_1e-05_beta_0",
+          "learning_rate": 1e-05,
+          "beta": 0.0
+        },
+        {
+          "candidate_id": "g2_lr_1e-05_beta_0.05",
+          "learning_rate": 1e-05,
+          "beta": 0.05
+        },
+        {
+          "candidate_id": "g2_lr_1e-05_beta_0.1",
+          "learning_rate": 1e-05,
+          "beta": 0.1
+        },
+        {
+          "candidate_id": "g2_lr_3e-05_beta_0",
+          "learning_rate": 3e-05,
+          "beta": 0.0
+        },
+        {
+          "candidate_id": "g2_lr_3e-05_beta_0.05",
+          "learning_rate": 3e-05,
+          "beta": 0.05
+        },
+        {
+          "candidate_id": "g2_lr_3e-05_beta_0.1",
+          "learning_rate": 3e-05,
+          "beta": 0.1
+        }
+      ]
+    },
+    "plan_hash": "0786f663dc35d60d3bbb6ae00e660e37f664f77bcd75a6d5f173677b94f8815f"
+  },
+  "assets": {
+    "teacher": {
+      "model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+      "path": "/data/huggingface/hub/models--Qwen--Qwen2.5-1.5B-Instruct/snapshots/989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+      "snapshot": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+      "weight_bytes": 3087467144,
+      "weight_files": [
+        {
+          "name": "model.safetensors",
+          "size_bytes": 3087467144
+        }
+      ],
+      "inventory_sha256": "4b6318247f174ce47e8b2b4861e74f013d921cf532a7d22d2f7f91e3d51e551e"
+    },
+    "student": {
+      "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+      "path": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/model_cache/models--Qwen--Qwen2.5-0.5B-Instruct/snapshots/7ae557604adf67be50417f59c2c2f167def9a775",
+      "snapshot": "7ae557604adf67be50417f59c2c2f167def9a775",
+      "weight_bytes": 988097824,
+      "weight_files": [
+        {
+          "name": "model.safetensors",
+          "size_bytes": 988097824
+        }
+      ],
+      "inventory_sha256": "5c8b3e819ec849d6f563d73d24f1855d5146d01b1e5e422e9298dc1456be7625"
+    }
+  },
+  "memory_admission": {
+    "g0": {
+      "stage": "g0",
+      "free_bytes": 11549016064,
+      "total_bytes": 12328960000,
+      "estimated_peak_bytes": 5550569182,
+      "minimum_free_margin_bytes": 805306368,
+      "required_free_bytes": 6355875550,
+      "admitted": true,
+      "reason": null
+    },
+    "g1": {
+      "stage": "g1",
+      "free_bytes": 11549016064,
+      "total_bytes": 12328960000,
+      "estimated_peak_bytes": 9719191516,
+      "minimum_free_margin_bytes": 805306368,
+      "required_free_bytes": 10524497884,
+      "admitted": true,
+      "reason": null
+    },
+    "g2": {
+      "stage": "g2",
+      "free_bytes": 11549016064,
+      "total_bytes": 12328960000,
+      "estimated_peak_bytes": 9719191516,
+      "minimum_free_margin_bytes": 805306368,
+      "required_free_bytes": 10524497884,
+      "admitted": true,
+      "reason": null
+    }
+  },
+  "stage_readiness": {
+    "g0": true,
+    "g1": true,
+    "g2": true
+  },
+  "source_prompt_check": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/88_distillation_delivery/prompt_check_rtx5070ti_distill_gsm8k_prompt_v3.json",
+  "prompt_selection": {
+    "source_status": "no_eligible_candidate",
+    "effective_status": "retain_control",
+    "selected_candidate_id": "concise_control"
+  }
+}

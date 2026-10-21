@@ -1,0 +1,129 @@
+{
+  "schema_version": "distilled-student-registration/v3",
+  "semantic_id": "DISTILL-STUDENT-DELIVERY",
+  "record_type": "terminal_result_registration",
+  "run_label": "rtx5070ti_distill_gsm8k_hybrid_terminal_v9",
+  "status": "tune",
+  "evidence_level": "real_backend_benchmark",
+  "deployment_ready": false,
+  "final_holdout_opened": false,
+  "handoff": null,
+  "terminal_policy": "close_section_after_this_run_regardless_of_selection",
+  "environment": {
+    "profile": "PT-DISTILL-CUDA",
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "torch": "2.11.0+cu128",
+    "torch_cuda": "12.8",
+    "gpu_memory_gb": 11.48
+  },
+  "models": {
+    "teacher": {
+      "model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+      "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306"
+    },
+    "student": {
+      "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+      "revision": "7ae557604adf67be50417f59c2c2f167def9a775"
+    }
+  },
+  "workload": {
+    "path": "benchmarks/workloads/distillation_delivery_gsm8k_train512_v1.jsonl",
+    "train_records": 512,
+    "development_records": 32,
+    "validation_records": 64,
+    "final_holdout_records": 64,
+    "final_holdout_role": "single_use_unopened"
+  },
+  "recipe": {
+    "anchor": {
+      "max_steps": 64,
+      "learning_rate": 0.00005,
+      "hard_label_weight": 0.5
+    },
+    "online": {
+      "max_steps": 32,
+      "learning_rate": 0.00005,
+      "beta": 0.1
+    },
+    "optimizer": "adamw",
+    "adapter_rank": 16,
+    "adapter_alpha": 32
+  },
+  "metrics": {
+    "baseline_quality_score": 0.296875,
+    "baseline_passed_count": 19,
+    "candidate_quality_score": 0.34375,
+    "candidate_passed_count": 22,
+    "quality_gain": 0.046875,
+    "regressed_category_count": 0,
+    "baseline_saturation_ratio": 0.25,
+    "candidate_saturation_ratio": 0.140625,
+    "candidate_format_compliance_ratio": 0.53125,
+    "baseline_mean_latency_ms": 1010.199,
+    "candidate_mean_latency_ms": 1337.56,
+    "training_time_s": 156.116,
+    "peak_reserved_bytes": 5586812928
+  },
+  "checks": {
+    "development_admissible": true,
+    "quality_gain": false,
+    "category_stability": true,
+    "format_compliance": false,
+    "saturation": true,
+    "latency": false
+  },
+  "decision": {
+    "decision": "tune",
+    "selection_status": "no_eligible_candidates",
+    "reason": "混合候选改善了验证质量并降低截断率，但质量增益、格式合规率和延迟没有同时达到交付门槛。",
+    "next_action": "关闭本节实验，不打开 final holdout，不生成部署 handoff。"
+  },
+  "teacher_route": {
+    "offline_trace_ready": false,
+    "online_full_logit_compatible": true,
+    "decision": "reject_offline_trace_for_current_candidate"
+  },
+  "artifact_retention": {
+    "student_snapshots": "local_intermediate_not_for_submission",
+    "accepted_artifact": null,
+    "environment_rebuild_profile": "PT-DISTILL-CUDA"
+  },
+  "evidence": {
+    "prompt_check": {
+      "path": "benchmarks/results/88_distillation_delivery/prompt_check_rtx5070ti_distill_gsm8k_prompt_v3.json",
+      "sha256": "5bc03ff4b738c40fb27d0906e2bcbcf41574479b29d96a5609d3163ff33342f1"
+    },
+    "preflight": {
+      "path": "benchmarks/results/88_distillation_delivery/preflight_rtx5070ti_distill_gsm8k_prompt_v3.json",
+      "sha256": "9d20e1d23bf9d807317b4ccc5d2b18c8a2844266f92accd2f0f26794f7b831f4"
+    },
+    "g0": {
+      "path": "benchmarks/results/88_distillation_delivery/g0_rtx5070ti_distill_gsm8k_prompt_v3.json",
+      "sha256": "b57c03acfa5a056159371dbbccf11d8bd462969e3cdf48236b2425433349f23d"
+    },
+    "g1_confirmation": {
+      "path": "benchmarks/results/88_distillation_delivery/g1_confirm_rtx5070ti_distill_gsm8k_prompt_v3.json",
+      "sha256": "64c8bcae6d02982d244426db5d2a1bc6da49ec217f65eebb68bf1235f3d2a749"
+    },
+    "g2_online": {
+      "path": "benchmarks/results/88_distillation_delivery/g2_rtx5070ti_distill_gsm8k_lora_on_policy_v8.json",
+      "sha256": "28bf00eee7b2dfa22956c90815a8dc835deb5614e25bf266c33de135c544809a"
+    },
+    "hybrid_anchor": {
+      "path": "benchmarks/results/88_distillation_delivery/hybrid_anchor_rtx5070ti_distill_gsm8k_hybrid_terminal_v9.json",
+      "sha256": "8c5848df3e6ec68505566702c394db4d18145ec7eec267d4e56664ce8f85ffba"
+    },
+    "hybrid_final": {
+      "path": "benchmarks/results/88_distillation_delivery/hybrid_rtx5070ti_distill_gsm8k_hybrid_terminal_v9.json",
+      "sha256": "d6573ef89a1013fee65545d37aaac8d33713b80bc8cd45b1bdb6abba6a05a7dd"
+    },
+    "teacher_check": {
+      "path": "benchmarks/results/88_distillation_delivery/teacher_check_rtx5070ti_distill_teacher_deepseek_v1.json",
+      "sha256": "a3474308ef7fce1510981aa9f12f488ae2d4fdbff29d86000cd68013295b8f54"
+    },
+    "trace_check": {
+      "path": "benchmarks/results/88_distillation_delivery/trace_check_rtx5070ti_distill_deepseek_trace_v2.json",
+      "sha256": "e3193ec3d7a8df14b4894c31c6cb75b2914fa248ffefdeb9dde5e71850046045"
+    }
+  }
+}

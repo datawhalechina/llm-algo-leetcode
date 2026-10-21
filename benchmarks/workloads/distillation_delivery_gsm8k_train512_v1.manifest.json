@@ -1,0 +1,85 @@
+{
+  "schema_version": "distillation-workload-manifest/v1",
+  "builder_version": "gsm8k-stratified-v2",
+  "seed": 88,
+  "source": {
+    "dataset": "openai/gsm8k",
+    "config": "main",
+    "revision": "740312add88f781978c0658806c59bc2815b9866",
+    "files": {
+      "train": {
+        "cache_relative_path": "openai___gsm8k/main/0.0.0/740312add88f781978c0658806c59bc2815b9866/gsm8k-train.arrow",
+        "sha256": "6146bca074f4c6c5e07de7e96cc968adab3833dbdafeda21830f27558eea3d9b"
+      },
+      "test": {
+        "cache_relative_path": "openai___gsm8k/main/0.0.0/740312add88f781978c0658806c59bc2815b9866/gsm8k-test.arrow",
+        "sha256": "45965b000311d1550e5619b60b5bf31cf76edebfd8b8eddc62a876fbf8c9be95"
+      }
+    }
+  },
+  "outputs": {
+    "workload": {
+      "path": "benchmarks/workloads/distillation_delivery_gsm8k_train512_v1.jsonl",
+      "sha256": "ccff3863547113c0dd0e1f09aed694a01ab9d24ff890a228745e0b635c6f26bc"
+    },
+    "final": {
+      "path": "benchmarks/workloads/distillation_delivery_gsm8k_final_v1.jsonl",
+      "sha256": "4abd3a2ee711fabd74ca3ecf04e8ce39a9fbb456db44b03236edd084f161a449"
+    }
+  },
+  "stratification": {
+    "method": "rank quartiles by max(calculation markers, rationale lines), then rationale length",
+    "categories": [
+      "reasoning_q1",
+      "reasoning_q2",
+      "reasoning_q3",
+      "reasoning_q4"
+    ],
+    "allocations_per_category": {
+      "train": 128,
+      "development": 8,
+      "evaluation": 16,
+      "final": 16
+    },
+    "development_offset_per_category": 32
+  },
+  "quality": {
+    "split_counts": {
+      "development": 32,
+      "evaluation": 64,
+      "final": 64,
+      "train": 512
+    },
+    "category_counts": {
+      "train": {
+        "reasoning_q1": 128,
+        "reasoning_q2": 128,
+        "reasoning_q3": 128,
+        "reasoning_q4": 128
+      },
+      "development": {
+        "reasoning_q1": 8,
+        "reasoning_q2": 8,
+        "reasoning_q3": 8,
+        "reasoning_q4": 8
+      },
+      "evaluation": {
+        "reasoning_q1": 16,
+        "reasoning_q2": 16,
+        "reasoning_q3": 16,
+        "reasoning_q4": 16
+      },
+      "final": {
+        "reasoning_q1": 16,
+        "reasoning_q2": 16,
+        "reasoning_q3": 16,
+        "reasoning_q4": 16
+      }
+    },
+    "unique_record_ids": 672,
+    "unique_prompts": 672,
+    "unique_source_rows": 672,
+    "cross_split_prompt_overlap": 0,
+    "cross_split_source_overlap": 0
+  }
+}
