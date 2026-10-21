@@ -7,15 +7,15 @@
 
 ## Part 资产总览
 
-本章分为 5 个学习组，按“Python / NumPy 与工程入口 → Tensor / Autograd → 模型构建 → 训练与模型直觉 → 调试与性能”的顺序推进，尽量让后续进入 Part 2 时不会在函数契约、张量变换、数据喂入和训练闭环上卡住。
+本章分为 5 个学习组，按“Python / NumPy 与工程入口 → Tensor / Autograd → 模型与训练生命周期 → Transformer Block 与模型组件 → 调试与性能”的顺序推进，逐步连接函数契约、张量变换、训练状态、数据入口和模型组件。
 
 | 学习组 | 核心职责 | 逻辑编号 | 组内目标 |
 |:---|:---|:---|:---|
 | [0A](./0A.md) | Python、NumPy 与工程入口 | `01 ~ 04` | 4 节 |
 | [0B](./0B.md) | PyTorch 张量与自动求导 | `05 ~ 08` | 4 节 |
-| [0C](./0C.md) | PyTorch 模型与训练闭环 | `09 ~ 12` | 4 节 |
+| [0C](./0C.md) | PyTorch 模型与训练生命周期 | `09 ~ 12` | 4 节 |
 | [0D](./0D.md) | Transformer Block 与模型组件 | `13 ~ 16` | 4 节 |
-| [0E](./0E.md) | 调试与性能 | `17 ~ 20` | 4 节 |
+| [0E](./0E.md) | 运行诊断与实验基础 | `17 ~ 20` | 4 节 |
 
 ## 学习路径
 
@@ -31,7 +31,7 @@ Part 0 建议按组推进，逐步补齐表达、数据入口、PyTorch、训练
 
 - [0A](./0A.md)、[0B](./0B.md)：服务 Part 2 / Part 3 的函数、数据入口与张量前置，重点帮你读懂 shape、layout、索引、配置 / I/O、计算图和梯度边界。
 - [0C](./0C.md)、[0D](./0D.md)：服务 Part 2 的训练与模型前置，重点帮你接上 `nn.Module`、checkpoint、optimizer、训练闭环、residual stream 和基础组件机制。
-- [0E](./0E.md)：服务 Part 2-4 的调试与性能前置，重点帮你建立排错和资源判断习惯。
+- [0E](./0E.md)：服务 Part 2-4 的运行诊断前置，先检查结果有效性，再采集时间与容量证据并设计最小对照实验。
 
 ### Part 1 对照
 
@@ -41,9 +41,10 @@ Part 0 和 Part 1 是两层互补的前置：Part 0 先把代码写法、数据�
 - [P1: 1B](../01_Hardware_Math_and_Systems/1B.md)：`0B` / `0D` / `0E` 的性能对照，补 GPU 架构、访存和 profiling 直觉。
 - [P1: 1C](../01_Hardware_Math_and_Systems/1C.md)：`0C` / `0D` / `0E` 的训练对照，补多卡通信、VRAM 计算和 checkpoint 代价。
 - [P1: 1D](../01_Hardware_Math_and_Systems/1D.md)：`0B` / `0D` / `0E` 的执行对照，补 CUDA / Triton、调度和算子编程视角。
-- [P1: 1E](../01_Hardware_Math_and_Systems/1E.md)：`0C` / `0E` 的选型对照，补编译优化、硬件判断和 TCO 视角。
+- [P1: 1E](../01_Hardware_Math_and_Systems/1E.md)：`0B` / `0E` 的编译对照，补图变换、算子融合与动态形状。
+- [P1: 1F](../01_Hardware_Math_and_Systems/1F.md)：`0C` / `0E` 的设备适配对照，补运行条件、多任务隔离与成本计算。
 
 ## 环境说明
 
-- 默认按 `CPU-first` 设计
-- 少数页面会标注 `GPU optional` 或 `GPU required`
+- **默认环境：** 使用 [`BASE-CPU`](../docs/guide.md#base-cpu) 运行题目与测试。
+- **扩展实验：** 页面标注为 `GPU optional` 或 `GPU required` 时，再按对应专题 Quickstart 准备环境。

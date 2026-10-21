@@ -10,8 +10,11 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-当程序报错或训练结果异常时，最先看到的现象不一定是最接近原因的位置。一个 loss 变成 NaN，可能早在 activation 或 gradient 阶段就已经出现问题；一个 grad 为 None，也可能来自计算图断开、梯度追踪关闭或参数未注册。本节从异常现象开始，依次检查张量契约、数值状态和梯度链路，练习把问题缩小到可复现的最小位置。
+## 本节导读
 
+程序报错或训练结果异常时，最先看到的现象不一定最接近原因。更重要的是：正确性没有通过前，耗时和内存结果都不能继续解释为性能证据。非有限损失可能起源于更早的激活或梯度，缺失梯度也可能来自不同的计算图与注册状态。
+
+完成本节后，你应能按张量契约、数值状态和梯度链路缩小范围，定位第一个失败点，形成可重放的最小复现，并输出当前运行能否进入性能分析的有效性结论。
 
 **关键词：** `shape`, `dtype`, `device`, `NaN`
 
@@ -22,9 +25,9 @@
 **导语：** 先从 0E 组页判断当前现象属于结构、数值还是梯度问题，再进入对应检查路径。
 - [0E 组页](./0E.md)
 
-## Q1：异常先归到哪几类，才能开始排查？
+## Q1：怎样先判断一次运行是否值得继续分析？
 
-先按现象选择第一项检查：维度不匹配检查结构契约，CPU / CUDA 混用检查设备，loss 变成 NaN 检查首个非有限值，grad 为 None 检查梯度链路。若所有检查均通过，应返回空列表并继续收集证据。
+先按现象选择第一项检查：维度不匹配检查结构契约，CPU / CUDA 混用检查设备，loss 变成 NaN 检查首个非有限值，grad 为 None 检查梯度链路。存在任一异常时，当前运行标记为 `invalid`，先定位和复现，不继续解释性能；所有检查通过后，才标记为 `valid` 并进入时间或内存证据采集。
 
 
 | 异常类别 | 典型表现 | 第一项检查 |
@@ -53,23 +56,49 @@ def classify_issue(shape_ok, dtype_ok, device_ok, has_nonfinite, grad_ok):
     return issues
 
 
+def build_validity_summary(issues, first_failure=None, reproducible=False):
+    """把正确性检查收口为后续实验可读取的有效性结论。"""
+    issue_list = list(issues)
+    if any(not isinstance(issue, str) or not issue.strip() for issue in issue_list):
+        raise ValueError('异常类别必须是非空字符串')
+    run_valid = len(issue_list) == 0
+    if run_valid and first_failure is not None:
+        raise ValueError('正常运行不能同时声明首个失败点')
+    return {
+        'evidence_type': 'correctness',
+        'status': 'valid' if run_valid else 'invalid',
+        'run_valid': run_valid,
+        'issues': issue_list,
+        'first_failure': first_failure,
+        'reproducible': bool(reproducible),
+        'next_action': 'collect_performance_evidence' if run_valid else 'localize_and_reproduce',
+    }
+
+
 sample = classify_issue(shape_ok=False, dtype_ok=True, device_ok=False, has_nonfinite=True, grad_ok=False)
 primary = sample[0] if sample else 'ok'
+sample_validity = build_validity_summary(sample)
+healthy_validity = build_validity_summary([])
 print('issues:', sample)
 print('primary:', primary)
+print('validity:', sample_validity)
 # 输出示例: issues -> ['shape', 'device', 'numerical', 'gradient']; primary -> shape
 
 ```
 
-## Q1 验证：异常分类是否保持固定检查顺序？
+## Q1 验证：异常分类和运行有效性门槛是否一致？
 
-同时覆盖多种异常与完全正常两条路径。
+同时覆盖多种异常与完全正常两条路径；只有正常路径能够继续采集性能证据。
 
 ```python
 assert sample == ['shape', 'device', 'numerical', 'gradient']
 assert primary == 'shape'
 assert classify_issue(True, True, True, False, True) == []
-print('✅ 异常分类与正常输入路径通过')
+assert sample_validity['status'] == 'invalid'
+assert sample_validity['next_action'] == 'localize_and_reproduce'
+assert healthy_validity['run_valid']
+assert healthy_validity['next_action'] == 'collect_performance_evidence'
+print('✅ 异常分类与运行有效性门槛通过')
 ```
 
 ## Q2：什么时候先看 shape、dtype、device 和 layout？
@@ -121,35 +150,45 @@ print('✅ 张量契约的首个失败字段定位通过')
 
 ## Q3：什么时候先查 NaN / Inf，如何找到第一个异常来源？
 
-如果 loss 最后变成 NaN，真正的问题可能更早出现在 activation 或梯度中。沿着 loss → activation → gradient 的计算顺序检查，并记录第一个 NaN / Inf 的阶段和对象；第一个异常位置通常比最后看到的 NaN 更接近原因，也能直接指向下一项验证。
+如果 loss 最后变成 NaN，真正的问题可能更早出现在 activation 或梯度中。按输入 → 前向激活 → 损失 → 反向梯度的实际执行顺序检查，并记录第一个 NaN / Inf 的阶段和对象；第一个异常位置通常比最后看到的 NaN 更接近原因，也能直接指向下一项验证。
 
 
 ```python
-def first_nonfinite_step(records):
-    """返回第一个 NaN、正无穷或负无穷所在的阶段和位置。"""
+def first_nonfinite_tensor(records):
+    """按执行顺序返回第一处包含 NaN/Inf 的 Tensor。"""
     if not isinstance(records, list):
         raise TypeError('records 必须是按执行顺序排列的列表')
     for idx, (source, value) in enumerate(records):
-        if value != value or value == float("inf") or value == float("-inf"):
-            return {'index': idx, 'source': source, 'value': value}
+        if not isinstance(value, torch.Tensor):
+            raise TypeError('每条记录的值必须是 Tensor')
+        finite = torch.isfinite(value)
+        if not finite.all():
+            return {
+                'index': idx,
+                'source': source,
+                'nonfinite_count': int((~finite).sum().item()),
+            }
     return None
 
 
-trace = [('loss', 1.0), ('activation', 0.9), ('gradient', 0.7), ('gradient', float("nan")), ('gradient', 0.2)]
-failure = first_nonfinite_step(trace)
+trace = [
+    ('embedding', torch.tensor([0.2, 0.8])),
+    ('attention', torch.tensor([1.0, 2.0])),
+    ('mlp', torch.tensor([0.5, float('nan')])),
+    ('loss', torch.tensor(float('nan'))),
+]
+failure = first_nonfinite_tensor(trace)
 print('trace:', trace)
-print('first_nonfinite_step:', failure)
+print('first_nonfinite_tensor:', failure)
 print('source:', failure['source'] if failure else 'ok')
-# 输出示例：first_nonfinite_step -> 3, source -> gradient
 
 ```
 
 ## Q3 验证：第一处非有限值与正常路径是否都能识别？
 
 ```python
-assert failure['index'] == 3 and failure['source'] == 'gradient'
-assert failure['value'] != failure['value']
-assert first_nonfinite_step([('loss', 1.0), ('activation', 0.5)]) is None
+assert failure == {'index': 2, 'source': 'mlp', 'nonfinite_count': 1}
+assert first_nonfinite_tensor([('loss', torch.tensor(1.0))]) is None
 print('✅ 第一处非有限值定位通过')
 ```
 
@@ -162,29 +201,18 @@ print('✅ 第一处非有限值定位通过')
 import warnings
 import torch.nn as nn
 
-def diagnose_none_grad(case):
-    """把梯度为空的现象映射回可能的计算图原因。"""
-    mapping = {
-        'detach': 'tensor disconnected from graph',
-        'no_grad': 'gradient tracking disabled',
-        'leaf': 'leaf tensor not requiring grad',
-        'unregistered': 'parameter not registered in module',
-    }
-    if case not in mapping:
-        raise ValueError(f'未知的梯度异常类型: {case}')
-    return mapping[case]
-
-
-cases = ['detach', 'no_grad', 'leaf', 'unregistered']
-for case in cases:
-    print(case + ':', diagnose_none_grad(case))
-
 leaf = torch.tensor([1.0], requires_grad=True)
 detached = leaf.detach()
 with torch.no_grad():
     no_grad_value = leaf * 2
 non_leaf = leaf * 3
 non_leaf.sum().backward()
+with warnings.catch_warnings():
+    warnings.simplefilter('ignore', UserWarning)
+    non_leaf_grad_without_retain = non_leaf.grad
+
+zero_grad_leaf = torch.tensor([2.0], requires_grad=True)
+(zero_grad_leaf * 0).sum().backward()
 
 class BrokenModule(nn.Module):
     def __init__(self):
@@ -192,112 +220,159 @@ class BrokenModule(nn.Module):
         self.raw_weight = torch.randn(2, 2, requires_grad=True)
 
 broken = BrokenModule()
-# 输出示例: detach/no_grad/leaf/unregistered 对应各自的原因
-print('next_check:', '先复现对应 case，再检查计算图或模块注册')
+gradient_cases = {
+    'detached_requires_grad': detached.requires_grad,
+    'no_grad_requires_grad': no_grad_value.requires_grad,
+    'non_leaf_grad': non_leaf_grad_without_retain,
+    'zero_grad': zero_grad_leaf.grad.clone(),
+    'registered_parameters': dict(broken.named_parameters()),
+}
+print('gradient cases:', gradient_cases)
 
 ```
 
-## Q4 验证：四类梯度为空的机制能否被复现？
+## Q4 验证：`grad=None`、`grad=0` 与未注册参数能否被区分？
 
 ```python
-assert detached.grad_fn is None
-assert not no_grad_value.requires_grad
-with warnings.catch_warnings():
-    warnings.simplefilter('ignore', UserWarning)
-    non_leaf_grad = non_leaf.grad
-assert non_leaf_grad is None
-assert not any(name == 'raw_weight' for name, _ in broken.named_parameters())
-print('✅ detach、no_grad、非叶子 Tensor 和未注册参数机制通过')
+assert not gradient_cases['detached_requires_grad']
+assert not gradient_cases['no_grad_requires_grad']
+assert gradient_cases['non_leaf_grad'] is None
+assert torch.equal(gradient_cases['zero_grad'], torch.zeros_like(zero_grad_leaf))
+assert 'raw_weight' not in gradient_cases['registered_parameters']
+print('✅ grad=None、grad=0、非叶子 Tensor 和未注册参数机制通过')
 ```
 
-## Q5：多个异常同时出现时，排查顺序怎么定才最省事？
+## Q5：如何用模块 hook 找到模型内部第一处异常？
 
-完成现象分类后，再按排查成本安排检查顺序：shape / dtype / device → NaN / Inf → gradient。先排除输入契约问题，再进入数值和梯度链路，可以更快缩小需要修改的模型或训练逻辑。
+输入契约正常但最终损失仍为非有限值时，需要把检查点放进模型内部。前向 hook 可以记录各模块输出是否有限，帮助找到第一处失败模块；如果前向结果有限而反向失败，再使用 `torch.autograd.detect_anomaly()` 或梯度 hook 检查反向路径。hook 应在定位后移除，避免重复注册。
 
 
 ```python
-def debug_priority(shape_ok, dtype_ok, device_ok, has_nonfinite, grad_ok):
-    """按结构、数值、梯度的顺序返回首个待检查项和排查原因。"""
-    checks = [
-        ('shape', shape_ok),
-        ('dtype', dtype_ok),
-        ('device', device_ok),
-        ('numerical', not has_nonfinite),
-        ('gradient', grad_ok),
-    ]
-    for rank, (name, ok) in enumerate(checks, start=1):
-        if not ok:
-            reasons = {
-                'shape': '先检查输入和算子的维度契约',
-                'dtype': '再检查输入与参数的数据类型',
-                'device': '确认张量和模型位于同一设备',
-                'numerical': '定位第一个 NaN 或 Inf',
-                'gradient': '最后检查计算图和参数注册',
-            }
-            return {'primary': name, 'rank': rank, 'checked': [k for k, _ in checks[:rank]], 'reason': reasons[name]}
-    return {'primary': 'ok', 'rank': None, 'checked': [k for k, _ in checks], 'reason': '当前没有发现异常'}
+class InjectNaN(nn.Module):
+    def forward(self, x):
+        return x / 0
 
 
-report = debug_priority(False, True, False, True, False)
-print('report:', report)
-# 输出示例: primary -> shape, rank -> 1, checked -> ['shape']
+probe_model = nn.Sequential(
+    nn.Linear(2, 2),
+    nn.ReLU(),
+    InjectNaN(),
+    nn.Linear(2, 1),
+)
+events = []
+handles = []
+
+def record_finiteness(name):
+    def hook(_module, _inputs, output):
+        events.append({'module': name, 'finite': bool(torch.isfinite(output).all())})
+    return hook
+
+for name, module in probe_model.named_children():
+    handles.append(module.register_forward_hook(record_finiteness(name)))
+
+_ = probe_model(torch.ones(1, 2))
+for handle in handles:
+    handle.remove()
+first_bad_module = next(event['module'] for event in events if not event['finite'])
+print('events:', events)
+print('first bad module:', first_bad_module)
 
 ```
 
-## Q5 验证：优先级函数能否先处理结构问题？
+## Q5 验证：hook 是否定位第一处非有限模块并被移除？
 
 ```python
-assert report['primary'] == 'shape'
-assert report['checked'] == ['shape']
-assert debug_priority(True, True, True, False, True)['primary'] == 'ok'
-print('✅ 结构、数值与梯度检查顺序通过')
+assert first_bad_module == '2'
+assert events[0]['finite'] and events[1]['finite']
+assert not events[2]['finite'] and not events[3]['finite']
+assert all(not module._forward_hooks for module in probe_model.children())
+print('✅ 前向 hook 定位与清理通过')
 ```
 
-## Q6：如何定位 loss、activation、gradient 中最先失败的阶段？
+## Q6：怎样把首个失败点收缩成可重放的最小复现？
 
-Q3 找到的是记录中的第一个非有限值，Q6 要进一步回答它出现在训练流程的哪个阶段，并给出下一步动作。依次检查 loss、activation、gradient；如果失败点落在 gradient，再回到 Q4 区分是 detach、no_grad、非叶子 Tensor 还是参数注册导致的计算图断开。
+定位到失败模块后，保留触发失败所需的最少信息：随机种子、输入值与 shape、dtype、操作名称、框架版本和首个失败位置。最小复现不携带完整训练流水线；它应该能够在一个独立函数中重新触发同一失败，便于确认修复前后是否一致。最后把异常类别、首个失败点和复现状态写入有效性结论，交给 20 节决定是停止实验还是继续采集性能证据。
+
+| 复现字段 | 为什么保留 |
+|:---|:---|
+| seed 与输入 | 固定触发条件 |
+| shape / dtype | 固定张量契约 |
+| operation | 保留最小失败操作 |
+| first failure | 对照修复前后的定位结果 |
+| framework version | 解释运行时差异 |
 
 
 ```python
-def locate_failure_zone(records):
-    """定位第一个失败阶段，并给出下一项排查动作。"""
-    next_checks = {
-        'loss': 'inspect_loss_inputs_and_numeric_range',
-        'activation': 'inspect_forward_activation',
-        'gradient': 'return_to_Q4_gradient_chain',
+def build_minimal_repro(seed=7):
+    """构造并记录一个可独立重放的非有限值案例。"""
+    torch.manual_seed(seed)
+    inputs = torch.tensor([-1.0, 4.0], dtype=torch.float32)
+    outputs = torch.sqrt(inputs)
+    return {
+        'seed': seed,
+        'input_values': inputs.tolist(),
+        'shape': tuple(inputs.shape),
+        'dtype': str(inputs.dtype),
+        'operation': 'torch.sqrt',
+        'first_failure': 'output',
+        'nonfinite_count': int((~torch.isfinite(outputs)).sum().item()),
+        'torch_version': torch.__version__,
     }
-    for idx, record in enumerate(records, start=1):
-        if not record['finite']:
-            zone = record['stage']
-            return {'zone': zone, 'step': idx, 'next_check': next_checks[zone]}
-    return {'zone': 'ok', 'step': None, 'next_check': 'continue_monitoring'}
 
+def replay_minimal_repro(record):
+    """仅重放本例声明的 sqrt/FP32 操作，并核对输入形状。"""
+    required = {'input_values', 'shape', 'dtype', 'operation'}
+    if not required <= set(record):
+        raise KeyError('复现记录缺少输入、形状、类型或操作')
+    if record['operation'] != 'torch.sqrt' or record['dtype'] != 'torch.float32':
+        raise ValueError('本例只支持 torch.sqrt 和 torch.float32')
+    inputs = torch.tensor(record['input_values'], dtype=torch.float32)
+    if tuple(inputs.shape) != tuple(record['shape']):
+        raise ValueError('记录形状与输入值不一致')
+    outputs = torch.sqrt(inputs)
+    return int((~torch.isfinite(outputs)).sum().item())
 
-cases = [
-    [{'stage': 'loss', 'finite': False}, {'stage': 'activation', 'finite': True}, {'stage': 'gradient', 'finite': True}],
-    [{'stage': 'loss', 'finite': True}, {'stage': 'activation', 'finite': False}, {'stage': 'gradient', 'finite': False}],
-    [{'stage': 'loss', 'finite': True}, {'stage': 'activation', 'finite': True}, {'stage': 'gradient', 'finite': False}],
-]
-results = [locate_failure_zone(records) for records in cases]
-for records, result in zip(cases, results):
-    print('records:', records, '->', result)
-# 输出示例：zone、step 和 next_check 一起返回
+repro = build_minimal_repro()
+replayed_nonfinite_count = replay_minimal_repro(repro)
+validity_report = build_validity_summary(
+    ['numerical'],
+    first_failure=repro['first_failure'],
+    reproducible=replayed_nonfinite_count == repro['nonfinite_count'],
+)
+print('minimal repro:', repro)
+print('validity report:', validity_report)
 
 ```
 
-## Q6 验证：不同失败阶段能否映射到下一项检查？
+## Q6 验证：最小复现是否能够重新触发同一失败？
 
 ```python
-assert [result['zone'] for result in results] == ['loss', 'activation', 'gradient']
-assert results[2]['next_check'] == 'return_to_Q4_gradient_chain'
-assert locate_failure_zone([{'stage': 'loss', 'finite': True}])['zone'] == 'ok'
-print('✅ 失败阶段与下一项检查映射通过')
+assert repro['operation'] == 'torch.sqrt'
+assert repro['shape'] == (2,) and repro['dtype'] == 'torch.float32'
+assert repro['nonfinite_count'] == 1
+assert replayed_nonfinite_count == repro['nonfinite_count']
+assert validity_report['status'] == 'invalid'
+assert validity_report['first_failure'] == 'output'
+assert validity_report['reproducible']
+assert validity_report['next_action'] == 'localize_and_reproduce'
+for change in ({'operation': 'torch.log'}, {'dtype': 'torch.float64'}, {'shape': (3,)}):
+    try:
+        replay_minimal_repro({**repro, **change})
+    except ValueError:
+        pass
+    else:
+        raise AssertionError('操作、类型或形状不一致时必须停止重放')
+try:
+    build_validity_summary([], first_failure='loss')
+except ValueError:
+    pass
+else:
+    raise AssertionError('正常运行不能带有失败点')
+print('✅ 最小复现、输入一致性与有效性结论通过')
 ```
 
 ## 相关阅读
-**导语：** 完成本节后，可以继续学习 Autograd 的梯度语义，并把异常定位结果带入显存策略和真实项目验证。
-- [PyTorch Autograd 官方文档](https://docs.pytorch.org/docs/stable/notes/autograd.html)
+**导语：** 完成本节后，可以回补 Autograd 语义，并把可复现的正确性证据带入性能实验。
+- [Part 00 · 07 Autograd 与反向传播](./07_PyTorch_Autograd_and_Backward.md)
 - [PyTorch 异常检测官方文档](https://docs.pytorch.org/docs/stable/autograd.html#debugging-and-anomaly-detection)
-- [18. Memory Profiling and Optimization | 显存分析与优化](./18_Memory_Profiling_and_Optimization.md)
-- [20. Performance Evidence and Experiment Design | 性能证据汇总与实验设计](./20_Performance_Evidence_and_Experiment_Design.md)
-- [76. Activation / Checkpoint / Offload Benchmark | 激活检查点与卸载对比](../02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.md)
+- [Part 00 · 20 性能证据与实验设计](./20_Performance_Evidence_and_Experiment_Design.md)

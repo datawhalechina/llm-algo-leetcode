@@ -1,49 +1,45 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="560" viewBox="0 0 1280 560" role="img" aria-labelledby="title desc">
-  <title id="title">0E 调试与性能分析的三条证据流</title>
-  <desc id="desc">运行现象分为时间、容量和正确性三条并列证据流，最终汇合成带重复测量、失败记录和回归阈值的配对实验。</desc>
+  <title id="title">0E 从运行有效性到实验判断的诊断流程</title>
+  <desc id="desc">19 先判断运行是否有效；无效时定位并复现，有效时进入 17 时间证据和 18 容量证据，最后由 20 形成单变量实验和判断。</desc>
   <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
+    <marker id="arrow0e" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker>
     <style>
-      text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#475569}.group{font-size:18px;font-weight:700}.head{font-size:16px;font-weight:700}.body{font-size:13px;fill:#475569}.panel{stroke:#94a3b8;stroke-width:2;rx:16}.node{fill:#fff;stroke:#cbd5e1;stroke-width:1.5;rx:10}.line{stroke:#64748b;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+      text{font-family:'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#475569}.head{font-size:17px;font-weight:700}.body{font-size:13px;fill:#475569}.branch{font-size:13px;font-weight:700}.panel{stroke-width:2}.line{stroke:#52627a;stroke-width:2.8;fill:none;marker-end:url(#arrow0e)}
     </style>
   </defs>
   <rect width="1280" height="560" fill="#f8fafc"/>
-  <text x="640" y="42" text-anchor="middle" class="title">0E 调试与性能：三类证据怎样形成下一项实验</text>
-  <text x="640" y="70" text-anchor="middle" class="sub">先按现象选择时间、容量或正确性证据，再用固定工作负载汇合判断</text>
+  <text x="640" y="42" text-anchor="middle" class="title">0E · 从有效运行到可复查实验</text>
+  <text x="640" y="70" text-anchor="middle" class="sub">正确性是门槛；时间和容量是并列证据；实验判断是收口</text>
 
-  <rect x="465" y="95" width="350" height="72" fill="#ede9fe" class="panel"/>
-  <text x="640" y="124" text-anchor="middle" class="head">运行现象</text>
-  <text x="640" y="147" text-anchor="middle" class="body">变慢 · 容量不足 · 报错或结果异常</text>
+  <rect x="430" y="95" width="420" height="82" rx="15" fill="#ede9fe" stroke="#8b5cf6" class="panel"/>
+  <text x="640" y="126" text-anchor="middle" class="head">19 · 运行有效性检查</text>
+  <text x="640" y="151" text-anchor="middle" class="body">张量契约 · 数值有限性 · 梯度链路 · 首个失败点</text>
 
-  <rect x="55" y="225" width="350" height="195" fill="#e0f2fe" class="panel"/>
-  <text x="80" y="255" class="group">17 · 时间证据</text>
-  <rect x="85" y="282" width="290" height="55" class="node"/>
-  <text x="230" y="316" text-anchor="middle" class="head">延迟 · 吞吐 · 阶段热点</text>
-  <rect x="85" y="350" width="290" height="43" class="node"/>
-  <text x="230" y="377" text-anchor="middle" class="body">性能剖析汇总 · 阶段标签 · 追踪记录</text>
+  <rect x="40" y="240" width="300" height="130" rx="15" fill="#fee2e2" stroke="#fb7185" class="panel"/>
+  <text x="190" y="277" text-anchor="middle" class="head">无效运行：停止性能解释</text>
+  <text x="190" y="307" text-anchor="middle" class="body">定位异常 · 固定触发条件</text>
+  <text x="190" y="332" text-anchor="middle" class="body">构造最小复现后重新检查</text>
 
-  <rect x="465" y="225" width="350" height="195" fill="#dcfce7" class="panel"/>
-  <text x="490" y="255" class="group">18 · 容量证据</text>
-  <rect x="495" y="282" width="290" height="55" class="node"/>
-  <text x="640" y="316" text-anchor="middle" class="head">常驻状态 · 保存的激活 · 临时缓冲</text>
-  <rect x="495" y="350" width="290" height="43" class="node"/>
-  <text x="640" y="377" text-anchor="middle" class="body">生命周期账本 · 候选峰值 · 运行时对账</text>
+  <rect x="390" y="240" width="400" height="130" rx="15" fill="#e0f2fe" stroke="#38bdf8" class="panel"/>
+  <text x="590" y="277" text-anchor="middle" class="head">17 · 时间证据</text>
+  <text x="590" y="307" text-anchor="middle" class="body">重复样本 · 中位数与 P95 · 阶段热点</text>
+  <text x="590" y="332" text-anchor="middle" class="body">Profiler 汇总 · trace · 解释边界</text>
 
-  <rect x="875" y="225" width="350" height="195" fill="#fef3c7" class="panel"/>
-  <text x="900" y="255" class="group">19 · 正确性证据</text>
-  <rect x="905" y="282" width="290" height="55" class="node"/>
-  <text x="1050" y="316" text-anchor="middle" class="head">张量契约 · 有限性 · 梯度链路</text>
-  <rect x="905" y="350" width="290" height="43" class="node"/>
-  <text x="1050" y="377" text-anchor="middle" class="body">首个失败点 · 钩子记录 · 最小复现</text>
+  <rect x="840" y="240" width="400" height="130" rx="15" fill="#dcfce7" stroke="#4ade80" class="panel"/>
+  <text x="1040" y="277" text-anchor="middle" class="head">18 · 容量证据</text>
+  <text x="1040" y="307" text-anchor="middle" class="body">对象生命周期 · 候选峰值 · 主要对象</text>
+  <text x="1040" y="332" text-anchor="middle" class="body">allocated / reserved / capacity 对账</text>
 
-  <path d="M565 167V198H230V225" class="line"/>
-  <path d="M640 167V225" class="line"/>
-  <path d="M715 167V198H1050V225" class="line"/>
+  <path d="M530 177V207H190V240" class="line"/>
+  <text x="310" y="200" class="branch" fill="#be123c">invalid</text>
+  <path d="M640 177V240" class="line"/>
+  <text x="650" y="211" class="branch" fill="#166534">valid</text>
+  <path d="M750 177V207H1040V240" class="line"/>
+  <text x="890" y="200" class="branch" fill="#166534">valid</text>
 
-  <rect x="410" y="475" width="460" height="62" fill="#fce7f3" class="panel"/>
-  <text x="640" y="502" text-anchor="middle" class="head">20 · 配对实验与回归判断</text>
-  <text x="640" y="523" text-anchor="middle" class="body">固定条件 · 单一变化 · 失败运行 · 波动门槛</text>
-  <path d="M230 420V449H515V475" class="line"/>
-  <path d="M640 420V475" class="line"/>
-  <path d="M1050 420V449H765V475" class="line"/>
+  <rect x="420" y="445" width="440" height="82" rx="15" fill="#fef3c7" stroke="#f59e0b" class="panel"/>
+  <text x="640" y="476" text-anchor="middle" class="head">20 · 证据汇总与单变量实验</text>
+  <text x="640" y="501" text-anchor="middle" class="body">可证伪假设 · 基线与候选 · accept / reject / rerun</text>
+  <path d="M590 370V405H540V445" class="line"/>
+  <path d="M1040 370V405H740V445" class="line"/>
 </svg>

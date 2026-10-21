@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1400" height="560" viewBox="0 0 1400 560" role="img" aria-labelledby="title desc">
   <title id="title">训练内存对象的生命周期与运行时对账</title>
-  <desc id="desc">沿加载、前向、反向和更新阶段记录存活对象，先形成候选峰值，再与 allocated peak、reserved peak 和设备容量对照。</desc>
+  <desc id="desc">沿加载、前向、反向和更新阶段记录存活对象，按同一阶段对照估算与分配器快照；区间峰值需另记时刻，不能直接相减解释缓存。</desc>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
     <style>
@@ -9,7 +9,7 @@
   </defs>
   <rect width="1400" height="560" fill="#f8fafc"/>
   <text x="55" y="48" class="title">训练内存：先看对象何时重叠，再解释峰值</text>
-  <text x="55" y="77" class="sub">稳态训练步中，对象大小只有放回生命周期，才能形成候选峰值；真实结论来自运行时字段对账</text>
+  <text x="55" y="77" class="sub">先按生命周期估算，再对照同一阶段的快照；真实实验还需记录区间峰值和整卡占用</text>
 
   <rect x="55" y="130" width="270" height="150" fill="#e0f2fe" stroke="#38bdf8" class="phase"/>
   <text x="190" y="165" text-anchor="middle" class="head">1. 加载后</text>
@@ -38,16 +38,16 @@
   <text x="285" y="430" text-anchor="middle" class="body">按阶段汇总当时仍存活的已知对象</text>
 
   <rect x="550" y="365" width="300" height="105" class="evidence"/>
-  <text x="700" y="400" text-anchor="middle" class="head">allocated peak</text>
-  <text x="700" y="430" text-anchor="middle" class="body">实际活跃张量达到过的峰值</text>
+  <text x="700" y="400" text-anchor="middle" class="head">同一时刻 allocated</text>
+  <text x="700" y="430" text-anchor="middle" class="body">分配器记录的活跃张量占用</text>
 
   <rect x="965" y="365" width="300" height="105" class="evidence"/>
-  <text x="1115" y="400" text-anchor="middle" class="head">reserved peak / capacity</text>
-  <text x="1115" y="430" text-anchor="middle" class="body">分配器保留差值与设备容量余量</text>
+  <text x="1115" y="400" text-anchor="middle" class="head">reserved / 容量预算</text>
+  <text x="1115" y="430" text-anchor="middle" class="body">区分进程预算余量与整卡空闲量</text>
 
   <path d="M860 280V325H285V365" class="line"/>
   <text x="575" y="316" text-anchor="middle" class="body">按阶段汇总仍存活的已知对象</text>
   <path d="M435 417H540" class="line"/><path d="M850 417H955" class="line"/>
   <text x="487" y="398" text-anchor="middle" class="body">查遗漏对象</text>
-  <text x="902" y="398" text-anchor="middle" class="body">查缓存与碎片</text>
+  <text x="902" y="398" text-anchor="middle" class="body">查保留空间</text>
 </svg>
