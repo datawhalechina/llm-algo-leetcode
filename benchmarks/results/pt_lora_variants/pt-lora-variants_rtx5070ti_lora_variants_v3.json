@@ -1,0 +1,276 @@
+{
+  "schema_version": "post-training-mechanism-gpu/v1",
+  "semantic_id": "PT-LORA-VARIANTS",
+  "environment_profile": "PT-SFT-CUDA",
+  "run_mode": "real_gpu",
+  "run_label": "rtx5070ti_lora_variants_v3",
+  "framework": {
+    "python": "3.12.15",
+    "torch": "2.11.0+cu128",
+    "transformers": "5.19.0",
+    "peft": "0.21.2"
+  },
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000,
+    "compute_capability": [
+      12,
+      0
+    ],
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8",
+    "bf16_supported": true
+  },
+  "model": {
+    "id": "Qwen/Qwen2.5-0.5B",
+    "requested_revision": "main",
+    "resolved_commit": "060db6499f32faf8b98477b0a26969ef7d8b9987",
+    "resolution_source": "huggingface_hub_api"
+  },
+  "workload": {
+    "id": "pt-lora-variants",
+    "version": "v3",
+    "max_length": 128,
+    "fixed_rank": 8,
+    "alpha": 16,
+    "update_steps": 5,
+    "learning_rate": 0.001,
+    "target_modules": [
+      "q_proj",
+      "v_proj"
+    ],
+    "output_thresholds": {
+      "min_cosine": 0.999,
+      "min_top1_agreement": 0.98,
+      "max_loss_diff": 0.02
+    },
+    "seed": 42
+  },
+  "budget": {
+    "matched_module_count": 48,
+    "rank_unit_params": 67584,
+    "dora_fixed_params": 24576,
+    "parameter_budget": 540672,
+    "budget_aligned_dora_rank": 7
+  },
+  "candidates": [
+    {
+      "name": "lora_r8",
+      "variant": "lora",
+      "rank": 8,
+      "roles": [
+        "fixed_rank",
+        "fixed_budget"
+      ],
+      "actual_scaling": 2.0,
+      "trainable_params": 540672,
+      "adapter_bytes": 2162688,
+      "base_frozen": true,
+      "initial_agreement": {
+        "max_abs_diff": 0.0,
+        "mean_abs_diff": 0.0,
+        "cosine_similarity": 1.0,
+        "top1_agreement": 1.0
+      },
+      "initial_loss_abs_diff": 0.0,
+      "losses": [
+        4.4217119216918945,
+        3.4706363677978516,
+        2.671473503112793,
+        2.0079123973846436,
+        1.402066946029663
+      ],
+      "gradient_norms": [
+        9.4675874710083,
+        5.994064807891846,
+        5.269326686859131,
+        5.181399345397949,
+        5.2015299797058105
+      ],
+      "median_update_ms": 38.762930998927914,
+      "p95_update_ms": 71.14130600530189,
+      "peak_allocated_bytes": 2112150016,
+      "peak_reserved_bytes": 2382364672,
+      "merge_agreement": {
+        "max_abs_diff": 1.1875,
+        "mean_abs_diff": 0.060800667852163315,
+        "cosine_similarity": 0.9996790289878845,
+        "top1_agreement": 1.0
+      },
+      "merge_loss_abs_diff": 0.008084118366241455,
+      "checks": {
+        "finite_loss_and_gradients": true,
+        "base_parameters_frozen": true,
+        "initial_output_equivalent": true,
+        "merged_output_equivalent": true,
+        "within_parameter_budget": true
+      },
+      "failed_checks": [],
+      "decision": "accept_candidate"
+    },
+    {
+      "name": "rslora_r8",
+      "variant": "rslora",
+      "rank": 8,
+      "roles": [
+        "fixed_rank",
+        "fixed_budget"
+      ],
+      "actual_scaling": 5.65685424949238,
+      "trainable_params": 540672,
+      "adapter_bytes": 2162688,
+      "base_frozen": true,
+      "initial_agreement": {
+        "max_abs_diff": 0.0,
+        "mean_abs_diff": 0.0,
+        "cosine_similarity": 1.0,
+        "top1_agreement": 1.0
+      },
+      "initial_loss_abs_diff": 0.0,
+      "losses": [
+        4.4217119216918945,
+        2.723064422607422,
+        1.6666278839111328,
+        0.9003769755363464,
+        0.3185713291168213
+      ],
+      "gradient_norms": [
+        26.779155731201172,
+        13.247973442077637,
+        8.654458999633789,
+        8.017584800720215,
+        9.740839958190918
+      ],
+      "median_update_ms": 38.27525000087917,
+      "p95_update_ms": 40.89776299952064,
+      "peak_allocated_bytes": 2110740992,
+      "peak_reserved_bytes": 2487222272,
+      "merge_agreement": {
+        "max_abs_diff": 2.0,
+        "mean_abs_diff": 0.07372987270355225,
+        "cosine_similarity": 0.9994524717330933,
+        "top1_agreement": 1.0
+      },
+      "merge_loss_abs_diff": 0.004256937652826309,
+      "checks": {
+        "finite_loss_and_gradients": true,
+        "base_parameters_frozen": true,
+        "initial_output_equivalent": true,
+        "merged_output_equivalent": true,
+        "within_parameter_budget": true
+      },
+      "failed_checks": [],
+      "decision": "accept_candidate"
+    },
+    {
+      "name": "dora_r8",
+      "variant": "dora",
+      "rank": 8,
+      "roles": [
+        "fixed_rank"
+      ],
+      "actual_scaling": 2.0,
+      "trainable_params": 565248,
+      "adapter_bytes": 2260992,
+      "base_frozen": true,
+      "initial_agreement": {
+        "max_abs_diff": 1.40625,
+        "mean_abs_diff": 0.049942828714847565,
+        "cosine_similarity": 0.9997681975364685,
+        "top1_agreement": 1.0
+      },
+      "initial_loss_abs_diff": 0.018843650817871094,
+      "losses": [
+        4.402868270874023,
+        3.3690109252929688,
+        2.6088624000549316,
+        1.954108476638794,
+        1.343666911125183
+      ],
+      "gradient_norms": [
+        9.883872032165527,
+        5.889980792999268,
+        5.549046993255615,
+        5.112189769744873,
+        5.015237331390381
+      ],
+      "median_update_ms": 50.760001002345234,
+      "p95_update_ms": 56.46114000410307,
+      "peak_allocated_bytes": 2111429120,
+      "peak_reserved_bytes": 2512388096,
+      "merge_agreement": {
+        "max_abs_diff": 1.296875,
+        "mean_abs_diff": 0.05896137282252312,
+        "cosine_similarity": 0.9996966123580933,
+        "top1_agreement": 0.99609375
+      },
+      "merge_loss_abs_diff": 0.0025311708450317383,
+      "checks": {
+        "finite_loss_and_gradients": true,
+        "base_parameters_frozen": true,
+        "initial_output_equivalent": true,
+        "merged_output_equivalent": true
+      },
+      "failed_checks": [],
+      "decision": "accept_candidate"
+    },
+    {
+      "name": "dora_r7",
+      "variant": "dora",
+      "rank": 7,
+      "roles": [
+        "fixed_budget"
+      ],
+      "actual_scaling": 2.2857142857142856,
+      "trainable_params": 497664,
+      "adapter_bytes": 1990656,
+      "base_frozen": true,
+      "initial_agreement": {
+        "max_abs_diff": 1.40625,
+        "mean_abs_diff": 0.049942828714847565,
+        "cosine_similarity": 0.9997681975364685,
+        "top1_agreement": 1.0
+      },
+      "initial_loss_abs_diff": 0.018843650817871094,
+      "losses": [
+        4.402868270874023,
+        3.415733814239502,
+        2.676752805709839,
+        2.006530284881592,
+        1.4171372652053833
+      ],
+      "gradient_norms": [
+        9.889749526977539,
+        5.952075004577637,
+        5.537116527557373,
+        5.013937473297119,
+        4.997412204742432
+      ],
+      "median_update_ms": 44.072938995668665,
+      "p95_update_ms": 49.30576200422365,
+      "peak_allocated_bytes": 2110347776,
+      "peak_reserved_bytes": 2508193792,
+      "merge_agreement": {
+        "max_abs_diff": 5.07421875,
+        "mean_abs_diff": 0.09700881689786911,
+        "cosine_similarity": 0.9983901381492615,
+        "top1_agreement": 0.98828125
+      },
+      "merge_loss_abs_diff": 0.003970503807067871,
+      "checks": {
+        "finite_loss_and_gradients": true,
+        "base_parameters_frozen": true,
+        "initial_output_equivalent": true,
+        "merged_output_equivalent": false,
+        "within_parameter_budget": true
+      },
+      "failed_checks": [
+        "merged_output_equivalent"
+      ],
+      "decision": "tune_candidate"
+    }
+  ],
+  "failure": null,
+  "evidence_level": "local_mechanism_benchmark",
+  "decision": "tune"
+}
