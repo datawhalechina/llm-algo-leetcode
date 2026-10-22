@@ -23,13 +23,13 @@
     <text x="1035" y="162" class="head">输出对象</text><text x="1035" y="193" class="body">Token · 日志 · 检查点</text><text x="1035" y="216" class="body">按生成或保存节奏回写</text>
   </g>
 
-  <rect x="80" y="385" width="430" height="112" rx="16" fill="#fee2e2" stroke="#dc2626" stroke-width="2.5"/>
-  <text x="295" y="422" text-anchor="middle" class="head">冷启动路径</text><text x="295" y="453" text-anchor="middle" class="body">发现 → 读取 → 反序列化 → 放置</text><text x="295" y="477" text-anchor="middle" class="body">模型产物决定首次可用时间</text>
-  <rect x="690" y="385" width="430" height="112" rx="16" fill="#e0f2fe" stroke="#0284c7" stroke-width="2.5"/>
-  <text x="905" y="422" text-anchor="middle" class="head">稳态路径</text><text x="905" y="453" text-anchor="middle" class="body">读取 → 状态搬运 → 计算 → 回写</text><text x="905" y="477" text-anchor="middle" class="body">频率、重叠与背压决定长期吞吐</text>
+  <rect x="45" y="385" width="240" height="112" rx="16" fill="#fee2e2" stroke="#dc2626" stroke-width="2.5" data-layout-role="panel"/>
+  <text x="165" y="422" text-anchor="middle" class="head">加载路径</text><text x="165" y="453" text-anchor="middle" class="body">读取 → 解析 → 设备放置</text><text x="165" y="477" text-anchor="middle" class="body">影响首次可用与版本切换</text>
+  <rect x="335" y="385" width="820" height="112" rx="16" fill="#e0f2fe" stroke="#0284c7" stroke-width="2.5" data-layout-role="panel"/>
+  <text x="745" y="422" text-anchor="middle" class="head">持续执行路径中的不同操作</text><text x="745" y="453" text-anchor="middle" class="body">输入供给、状态迁移、输出回写分别按各自频率发生</text><text x="745" y="477" text-anchor="middle" class="body">是否延长完成时间，取决于消费依赖、并发资源与队列背压</text>
 
-  <path d="M165 229L295 385" class="edge"/><text x="200" y="300" class="relation">加载</text>
-  <path d="M455 229L775 385" class="edge"/><text x="555" y="300" class="relation">供给</text>
-  <path d="M745 229L905 385" class="edge"/><text x="790" y="300" class="relation">迁移</text>
+  <path d="M165 229V385" class="edge"/><text x="180" y="300" class="relation">加载</text>
+  <path d="M455 229V385" class="edge"/><text x="470" y="300" class="relation">供给</text>
+  <path d="M745 229V385" class="edge"/><text x="760" y="300" class="relation">迁移</text>
   <path d="M1035 229L1035 385" class="edge"/><text x="1048" y="310" class="relation">回写</text>
 </svg>

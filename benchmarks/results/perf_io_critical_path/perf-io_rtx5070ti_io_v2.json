@@ -1,0 +1,119 @@
+{
+  "schema_version": "performance-io-mechanism/v2",
+  "profile_id": "PERF-CUDA-MECHANISM",
+  "semantic_id": "PERF-IO",
+  "run_label": "rtx5070ti_io_v2",
+  "framework": {
+    "python": "3.12.15",
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8"
+  },
+  "hardware": {
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000
+  },
+  "storage": {
+    "runtime_dir": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/perf_io_critical_path/runtime_rtx5070ti_io_v2",
+    "cache_scope": "local_warm_cache"
+  },
+  "workload": {
+    "tensor_mib": 64,
+    "pipeline_batches": 8,
+    "hidden_size": 1024,
+    "minimum_speedup": 1.05,
+    "warmup": 5,
+    "repeats": 20,
+    "seed": 42,
+    "version": "v2",
+    "rows_per_batch": 2048
+  },
+  "metrics": {
+    "phase_service_times": {
+      "artifact_save": {
+        "median_ms": 39.74613699938345,
+        "p95_ms": 42.71943499770714
+      },
+      "artifact_load_warm_cache": {
+        "median_ms": 14.400872501937556,
+        "p95_ms": 15.786253999976907
+      },
+      "pageable_h2d": {
+        "median_ms": 6.443871974945068,
+        "p95_ms": 6.607168197631836
+      },
+      "pinned_non_blocking_h2d": {
+        "median_ms": 4.677216053009033,
+        "p95_ms": 4.696191787719727
+      },
+      "output_d2h_and_save": {
+        "median_ms": 49.075416500272695,
+        "p95_ms": 55.8658709996962
+      }
+    },
+    "pipeline_critical_path": {
+      "serial_copy_then_compute": {
+        "median_ms": 7.065631866455078,
+        "p95_ms": 7.148543834686279
+      },
+      "double_buffer_overlap": {
+        "median_ms": 4.964864015579224,
+        "p95_ms": 5.0728960037231445
+      },
+      "median_speedup": 1.4231269666770057,
+      "median_exposed_reduction_ms": 2.1007678508758545,
+      "p95_reduction_ms": 2.0756478309631348,
+      "serial_samples_ms": [
+        7.065631866455078,
+        7.090176105499268,
+        7.070720195770264,
+        7.0655999183654785,
+        7.063551902770996,
+        7.088128089904785,
+        7.054368019104004,
+        7.148543834686279,
+        7.065631866455078,
+        7.09222412109375,
+        7.101439952850342,
+        7.3779520988464355,
+        7.110655784606934,
+        7.04307222366333,
+        7.04307222366333,
+        7.064576148986816,
+        7.056384086608887,
+        7.064576148986816,
+        7.053311824798584,
+        7.135231971740723
+      ],
+      "overlap_samples_ms": [
+        4.968480110168457,
+        4.958208084106445,
+        4.97049617767334,
+        4.97049617767334,
+        4.959231853485107,
+        4.956160068511963,
+        4.958208084106445,
+        5.0728960037231445,
+        5.134335994720459,
+        4.9683518409729,
+        4.976672172546387,
+        4.96127986907959,
+        4.964352130889893,
+        4.960288047790527,
+        4.965375900268555,
+        4.96230411529541,
+        4.96560001373291,
+        4.96127986907959,
+        4.96233606338501,
+        4.967423915863037
+      ]
+    }
+  },
+  "correctness": {
+    "artifact_roundtrip_passed": true,
+    "pipeline_checksum_relative_diff": 0.0,
+    "pipeline_passed": true
+  },
+  "failure": null,
+  "evidence_level": "local_mechanism_benchmark",
+  "decision": "accept_overlap_for_local_pipeline"
+}

@@ -1,0 +1,53 @@
+{
+  "schema_version": "performance-mechanism-gpu/v1",
+  "profile_id": "PERF-CUDA-MECHANISM",
+  "semantic_id": "PERF-IO",
+  "run_label": "rtx5070ti_io_v1",
+  "framework": {
+    "python": "3.12.15",
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8"
+  },
+  "hardware": {
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000
+  },
+  "storage": {
+    "runtime_dir": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/perf_io_critical_path/runtime_rtx5070ti_io_v1",
+    "cache_scope": "local_warm_cache"
+  },
+  "workload": {
+    "tensor_mib": 64,
+    "warmup": 5,
+    "repeats": 20,
+    "seed": 42
+  },
+  "metrics": {
+    "artifact_save": {
+      "median_ms": 36.22505050043401,
+      "p95_ms": 39.47008199975244
+    },
+    "artifact_load_warm_cache": {
+      "median_ms": 14.248031000533956,
+      "p95_ms": 15.435323999554384
+    },
+    "pageable_h2d": {
+      "median_ms": 6.501408100128174,
+      "p95_ms": 6.6493120193481445
+    },
+    "pinned_non_blocking_h2d": {
+      "median_ms": 4.6768479347229,
+      "p95_ms": 4.7090559005737305
+    },
+    "output_d2h_and_save": {
+      "median_ms": 48.32761849866074,
+      "p95_ms": 51.5967270002875
+    }
+  },
+  "correctness": {
+    "passed": true
+  },
+  "failure": null,
+  "evidence_level": "local_mechanism_benchmark",
+  "decision": "accept_pinned_h2d"
+}
