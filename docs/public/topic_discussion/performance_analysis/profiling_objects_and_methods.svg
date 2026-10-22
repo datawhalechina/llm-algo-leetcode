@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="680" viewBox="0 0 1280 680" role="img" aria-labelledby="title desc">
+  <title id="title">性能分析对象、方法与观察结果</title>
+  <desc id="desc">按问题选择五类分析对象：训练步骤或模型计算使用阶段计时与算子追踪；显存对象使用统计与驻留分析；服务请求使用请求追踪；多卡迭代使用通信追踪与进程对齐；基线与候选使用配对区间。每行是独立分析分支，不表示行间先后依赖。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 4.5L0 9Z" fill="#475569"/></marker>
+    <style>
+      text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:29px;font-weight:700}.sub{font-size:15px;fill:#526581}.head{font-size:18px;font-weight:700}.body{font-size:14px;fill:#475569}.column{font-size:17px;font-weight:700;fill:#526581}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1280" height="680" fill="#F8FAFC" data-layout-role="decoration"/>
+  <text x="640" y="46" text-anchor="middle" class="title">先看分析对象，再选观察方法</text>
+  <text x="640" y="74" text-anchor="middle" class="sub">固定输入、运行条件与测量窗口；以下各行按当前问题选择</text>
+  <text x="225" y="124" text-anchor="middle" class="column">看什么对象</text>
+  <text x="640" y="124" text-anchor="middle" class="column">用什么方法</text>
+  <text x="1055" y="124" text-anchor="middle" class="column">得到什么观察</text>
+  <rect id="row-0-node-0" x="50" y="150" width="350" height="80" rx="14" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/>
+  <text x="225" y="182" text-anchor="middle" class="head">一次训练步或模型计算</text>
+  <text x="225" y="208" text-anchor="middle" class="body">输入、前向、反向、更新</text>
+  <rect id="row-0-node-1" x="465" y="150" width="350" height="80" rx="14" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+  <text x="640" y="182" text-anchor="middle" class="head">阶段计时与算子追踪</text>
+  <text x="640" y="208" text-anchor="middle" class="body">执行轨迹、计算量与搬运字节</text>
+  <rect id="row-0-node-2" x="880" y="150" width="350" height="80" rx="14" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2"/>
+  <text x="1055" y="182" text-anchor="middle" class="head">关键路径与资源假设</text>
+  <text x="1055" y="208" text-anchor="middle" class="body">计算、搬运或同步在哪里耗时</text>
+  <path d="M400 190H465" data-source="row-0-node-0" data-target="row-0-node-1" class="flow"/>
+  <path d="M815 190H880" data-source="row-0-node-1" data-target="row-0-node-2" class="flow"/>
+  <rect id="row-1-node-0" x="50" y="245" width="350" height="80" rx="14" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/>
+  <text x="225" y="277" text-anchor="middle" class="head">显存中的张量与状态</text>
+  <text x="225" y="303" text-anchor="middle" class="body">参数、激活、KV、临时工作区</text>
+  <rect id="row-1-node-1" x="465" y="245" width="350" height="80" rx="14" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+  <text x="640" y="277" text-anchor="middle" class="head">显存统计与驻留分析</text>
+  <text x="640" y="303" text-anchor="middle" class="body">分配、保留、创建和释放</text>
+  <rect id="row-1-node-2" x="880" y="245" width="350" height="80" rx="14" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2"/>
+  <text x="1055" y="277" text-anchor="middle" class="head">哪些对象共同形成峰值</text>
+  <text x="1055" y="303" text-anchor="middle" class="body">峰值时刻的并存对象与容量限制</text>
+  <path d="M400 285H465" data-source="row-1-node-0" data-target="row-1-node-1" class="flow"/>
+  <path d="M815 285H880" data-source="row-1-node-1" data-target="row-1-node-2" class="flow"/>
+  <rect id="row-2-node-0" x="50" y="340" width="350" height="80" rx="14" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/>
+  <text x="225" y="372" text-anchor="middle" class="head">一组服务请求</text>
+  <text x="225" y="398" text-anchor="middle" class="body">到达、排队、预填充、解码</text>
+  <rect id="row-2-node-1" x="465" y="340" width="350" height="80" rx="14" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+  <text x="640" y="372" text-anchor="middle" class="head">请求追踪与分布统计</text>
+  <text x="640" y="398" text-anchor="middle" class="body">长度、并发、缓存和阶段时间</text>
+  <rect id="row-2-node-2" x="880" y="340" width="350" height="80" rx="14" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2"/>
+  <text x="1055" y="372" text-anchor="middle" class="head">队列还是执行拖慢请求</text>
+  <text x="1055" y="398" text-anchor="middle" class="body">TTFT、TPOT、尾延迟与失败</text>
+  <path d="M400 380H465" data-source="row-2-node-0" data-target="row-2-node-1" class="flow"/>
+  <path d="M815 380H880" data-source="row-2-node-1" data-target="row-2-node-2" class="flow"/>
+  <rect id="row-3-node-0" x="50" y="435" width="350" height="80" rx="14" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/>
+  <text x="225" y="467" text-anchor="middle" class="head">多卡的一轮执行</text>
+  <text x="225" y="493" text-anchor="middle" class="body">各进程的计算、传输和同步</text>
+  <rect id="row-3-node-1" x="465" y="435" width="350" height="80" rx="14" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+  <text x="640" y="467" text-anchor="middle" class="head">通信追踪与进程对齐</text>
+  <text x="640" y="493" text-anchor="middle" class="body">就绪时刻、消费依赖与拓扑</text>
+  <rect id="row-3-node-2" x="880" y="435" width="350" height="80" rx="14" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2"/>
+  <text x="1055" y="467" text-anchor="middle" class="head">谁在等待哪个进程或传输</text>
+  <text x="1055" y="493" text-anchor="middle" class="body">最慢进程、暴露通信与负载差异</text>
+  <path d="M400 475H465" data-source="row-3-node-0" data-target="row-3-node-1" class="flow"/>
+  <path d="M815 475H880" data-source="row-3-node-1" data-target="row-3-node-2" class="flow"/>
+  <rect id="row-4-node-0" x="50" y="530" width="350" height="80" rx="14" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/>
+  <text x="225" y="562" text-anchor="middle" class="head">基线与候选的运行</text>
+  <text x="225" y="588" text-anchor="middle" class="body">相同输入、环境与测量范围</text>
+  <rect id="row-4-node-1" x="465" y="530" width="350" height="80" rx="14" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+  <text x="640" y="562" text-anchor="middle" class="head">交替配对与区间估计</text>
+  <text x="640" y="588" text-anchor="middle" class="body">运行顺序、样本和预设阈值</text>
+  <rect id="row-4-node-2" x="880" y="530" width="350" height="80" rx="14" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2"/>
+  <text x="1055" y="562" text-anchor="middle" class="head">变化是否超过允许范围</text>
+  <text x="1055" y="588" text-anchor="middle" class="body">回归结果、质量与失败率</text>
+  <path d="M400 570H465" data-source="row-4-node-0" data-target="row-4-node-1" class="flow"/>
+  <path d="M815 570H880" data-source="row-4-node-1" data-target="row-4-node-2" class="flow"/>
+</svg>

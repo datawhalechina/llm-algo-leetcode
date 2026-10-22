@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="680" viewBox="0 0 1280 680" role="img" aria-labelledby="title desc">
   <title id="title">性能分析学习路线</title>
-  <desc id="desc">有效运行与可重复基线依次建立；时间线和对象驻留从同一基线并行收集证据，在瓶颈归因处汇合，再进入回归验证和诊断交接。</desc>
+  <desc id="desc">有效运行与可重复基线依次建立；按需采集时间线或驻留记录，归因后可直接交接首次诊断。已有候选或版本对照时，虚线分支进入配对回归，再更新诊断。</desc>
   <defs>
     <marker id="arrow" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 4.5L0 9Z" fill="#475569"/></marker>
     <style>
@@ -16,8 +16,9 @@
   <path d="M695 294V320H965V340" data-source="node-2" data-target="node-4" class="flow"/>
   <path d="M315 432V480H240V520" data-source="node-3" data-target="node-5" class="flow"/>
   <path d="M965 432V480H360V520" data-source="node-4" data-target="node-5" class="flow"/>
-  <path d="M450 564H480" data-source="node-5" data-target="node-6" class="flow"/>
+  <path d="M450 564H480" data-source="node-5" data-target="node-6" class="flow" stroke-dasharray="6 5"/>
   <path d="M790 564H820" data-source="node-6" data-target="node-7" class="flow"/>
+  <path d="M270 608V640H1005V608" data-source="node-5" data-target="node-7" class="flow"/>
 
   <rect id="node-1" x="465" y="90" width="350" height="82" rx="16" fill="#DBEAFE" stroke="#2563EB" class="node"/>
   <text x="640" y="122" text-anchor="middle" class="head">Task0 · 运行有效性与目标指标</text>
@@ -39,10 +40,12 @@
   <rect id="node-5" x="90" y="520" width="360" height="88" rx="16" fill="#EDE9FE" stroke="#7C3AED" class="node"/>
   <text x="270" y="554" text-anchor="middle" class="head">Task4 · 资源上界与瓶颈归因</text>
   <text x="270" y="581" text-anchor="middle" class="body">时间 / 驻留证据 → 主约束 → 判别实验</text>
+  <text x="635" y="505" text-anchor="middle" class="hint">虚线分支：已有候选或版本对照</text>
   <rect id="node-6" x="480" y="520" width="310" height="88" rx="16" fill="#FCE7F3" stroke="#DB2777" class="node"/>
   <text x="635" y="554" text-anchor="middle" class="head">Task5 · 配对回归验证</text>
   <text x="635" y="581" text-anchor="middle" class="body">差异 · 波动 · 守护条件 · 失败</text>
   <rect id="node-7" x="820" y="520" width="370" height="88" rx="16" fill="#EDE9FE" stroke="#7C3AED" class="node"/>
   <text x="1005" y="554" text-anchor="middle" class="head">Task6 · 诊断证据与行动交接</text>
   <text x="1005" y="581" text-anchor="middle" class="body">候选类别 · 反例与未知项 · 复测条件</text>
+  <text x="635" y="665" text-anchor="middle" class="hint">首次诊断：整理归因，进入性能优化选择候选</text>
 </svg>
