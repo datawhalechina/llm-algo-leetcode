@@ -1,0 +1,193 @@
+{
+  "schema_version": "performance-optimization-handoff/v1",
+  "semantic_id": "PERF-PROFILING-CLOSURE",
+  "run_label": "rtx5070ti_profiling_dual_scope_v7",
+  "workload": {
+    "family": "training",
+    "workload_id": "pressure-b1-s768",
+    "model": "Qwen/Qwen2.5-0.5B-Instruct",
+    "input": {
+      "batch_size": 1,
+      "seq_len": 768
+    },
+    "hardware": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "runtime": {
+      "torch": "2.8.0+cu128",
+      "cuda": "12.8",
+      "dtype": "float32"
+    },
+    "seed": 42
+  },
+  "baseline": {
+    "result_path": "benchmarks/results/73_real_gpu_training_rtx5070ti_training_baseline_v1.json"
+  },
+  "candidate_records": [
+    {
+      "name": "checkpoint",
+      "decision": "tune",
+      "hard_failures": [],
+      "missing_evidence": [],
+      "failed_gates": [
+        "memory_saving"
+      ],
+      "metrics": {
+        "memory_saving_mb": 16.43,
+        "throughput_ratio": 0.847209,
+        "loss_delta": 0.0,
+        "profile_step_time_ratio": 1.200065
+      },
+      "bottleneck_assessment": {
+        "status": "supported",
+        "reason": "checkpoint_recomputation_increases_work_with_negligible_allocated_memory_saving",
+        "bottleneck_before": "matmul_dominated_training_step",
+        "bottleneck_after": "checkpoint_recomputation_overhead",
+        "evidence_path": "benchmarks/results/74_real_gpu_profile_rtx5070ti_profiling_closure_v4.json",
+        "observations": {
+          "profile_step_time_ratio": 1.200065,
+          "profile_allocated_memory_saving_mb": 6.25,
+          "checkpoint_event_visible": true,
+          "phase_memory_collected": true
+        },
+        "phase_memory": {
+          "status": "collected",
+          "evidence_path": "benchmarks/results/74_phase_memory_rtx5070ti_profiling_closure_v5.json",
+          "baseline_global_peak_phase": "optimizer",
+          "checkpoint_global_peak_phase": "optimizer",
+          "allocated_memory_saving_mb": {
+            "forward": 2011.8,
+            "backward": 491.84,
+            "optimizer": 14.43
+          }
+        }
+      }
+    },
+    {
+      "name": "offload",
+      "decision": "reject",
+      "hard_failures": [
+        "budget_rejected"
+      ],
+      "missing_evidence": [],
+      "failed_gates": [
+        "memory_saving",
+        "throughput"
+      ],
+      "metrics": {
+        "memory_saving_mb": 24.25,
+        "throughput_ratio": 0.170293,
+        "loss_delta": 0.0,
+        "profile_step_time_ratio": null
+      },
+      "bottleneck_assessment": {
+        "status": "not_profiled",
+        "reason": "rejected_by_budget_throughput_gate"
+      }
+    },
+    {
+      "name": "hybrid",
+      "decision": "reject",
+      "hard_failures": [
+        "budget_rejected"
+      ],
+      "missing_evidence": [],
+      "failed_gates": [
+        "memory_saving",
+        "throughput"
+      ],
+      "metrics": {
+        "memory_saving_mb": 22.62,
+        "throughput_ratio": 0.28193,
+        "loss_delta": 0.0,
+        "profile_step_time_ratio": null
+      },
+      "bottleneck_assessment": {
+        "status": "not_profiled",
+        "reason": "rejected_by_budget_throughput_gate"
+      }
+    }
+  ],
+  "qualified_candidates": [],
+  "profiling_report": "benchmarks/results/74_profiling_optimization_rtx5070ti_profiling_dual_scope_v7.json",
+  "rollback": {
+    "ready": true,
+    "target": "training_baseline"
+  },
+  "decision": "tune",
+  "source_artifacts": {
+    "baseline": {
+      "path": "benchmarks/results/73_real_gpu_training_rtx5070ti_training_baseline_v1.json",
+      "sha256": "e43020e6daf3e4fe242184728a624cfecbe2ddb55b1dfdbc552eee2c0831ec70"
+    },
+    "strategy": {
+      "path": "benchmarks/results/76_real_gpu_memory_rtx5070ti_activation_memory_v1.json",
+      "sha256": "2df4eb5375e1ad31b9bfa7c2d0194ace555b590b18cec7b90504212db8bb3832"
+    },
+    "budget": {
+      "path": "benchmarks/results/75_memory_budget_decision_rtx5070ti_memory_budget_v1.json",
+      "sha256": "edb3c2e70635df6bfff3bca5d231f3ad031219a98b823669e96053bc3d5bc574"
+    },
+    "activation_memory_scope": {
+      "path": "benchmarks/results/76_real_gpu_memory_boundary_rtx5070ti_activation_memory_v1.json",
+      "sha256": "69faf3c885c76c13d7ee5dc7e9e40a6e700e79cf0e8f987beccc972eeb21f204"
+    },
+    "phase_memory": {
+      "path": "benchmarks/results/74_phase_memory_rtx5070ti_profiling_closure_v5.json",
+      "sha256": "bd186fbfbb16bbe46e319e290155a7209519d74aef3f513f0027ddd5d890d956"
+    },
+    "profile_trace": {
+      "path": "benchmarks/results/74_real_gpu_profile_rtx5070ti_profiling_closure_v4.json",
+      "sha256": "896777105ac553cd03468315a664027e0482f014330bd2228225862dd604305f"
+    },
+    "closure": {
+      "path": "benchmarks/results/74_profiling_optimization_rtx5070ti_profiling_dual_scope_v7.json",
+      "sha256": "ff48a5f8c3f2de2cb9db4b64f87ba46ab3abf91bc352cf6718dd58c7a0391ff9"
+    }
+  },
+  "decision_scopes": {
+    "full_training_adoption": {
+      "scope": "full_training_adoption",
+      "decision": "tune",
+      "reason": "global_peak_memory_saving_below_threshold",
+      "next_action": "retain_phase_evidence_and_do_not_adopt_at_fixed_workload",
+      "optimizer": "AdamW",
+      "seq_len": 768
+    },
+    "activation_memory_mechanism": {
+      "scope": "activation_memory_isolation",
+      "decision": "accept_for_activation_memory_scope",
+      "reason": "checkpoint_passed_activation_memory_and_throughput_gates",
+      "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+      "optimizer": "SGD",
+      "optimizer_momentum": 0.0,
+      "comparison_seq_len": 1280,
+      "metrics": {
+        "memory_saving_mb": 2820.34,
+        "throughput_ratio": 0.831477,
+        "loss_delta": 0.0,
+        "baseline_peak_memory_mb": 7663.69,
+        "checkpoint_peak_memory_mb": 4843.35
+      },
+      "gates": {
+        "minimum_memory_saving_mb": 512.0,
+        "minimum_throughput_ratio": 0.7,
+        "maximum_loss_delta": 0.01
+      },
+      "evidence": {
+        "path": "benchmarks/results/76_real_gpu_memory_boundary_rtx5070ti_activation_memory_v1.json",
+        "sha256": "69faf3c885c76c13d7ee5dc7e9e40a6e700e79cf0e8f987beccc972eeb21f204"
+      },
+      "evidence_status": "blocked",
+      "tested_seq_lens": [
+        768,
+        1024,
+        1280
+      ],
+      "promotable_to_full_training": false,
+      "limitations": [
+        "optimizer_state_is_intentionally_removed_with_zero_momentum_sgd",
+        "result_does_not_establish_adamw_full_training_adoption",
+        "length_ladder_stopped_at_the_safety_boundary"
+      ]
+    }
+  }
+}

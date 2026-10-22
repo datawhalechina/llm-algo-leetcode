@@ -25,178 +25,93 @@
 **导语：** 先了解 profiling 的基本观察方法，再结合训练测量、显存预算和策略比较结果，进入本节的端到端证据分析。
 - [P1: 13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
 - [73. Training Performance Analysis | 训练性能分析](./73_Training_Performance_Analysis.md)
-- [75. Memory Budget Compression Project | 显存预算压缩项目](./75_Memory_Budget_Compression_Project.md)
+- [76. Activation Checkpoint Offload Benchmark | 显存策略与预算敏感性](./76_Activation_Checkpoint_Offload_Benchmark.md)
 - [76. Activation Checkpoint Offload Benchmark | Activation / Checkpoint / Offload 对比项目](./76_Activation_Checkpoint_Offload_Benchmark.md)
 
 ---
-### Step 1：接收已选候选并固定回归范围
-本项目不重新搜索优化方向，而是接收已经通过候选实验和预算筛选的方案。基线、候选、原瓶颈假设和主要负载共同构成输入；回归验收同时覆盖目标收益、质量与资源护栏，并加入至少一个相邻负载检查结论是否只在单点成立。
+### Step 1：按实验范围整理已有证据
+本项目把完整训练比较、激活显存隔离和 profiler 归因分开处理。先核对每份证据对应的模型、负载、优化器和运行条件，再判断它能支持哪一类结论：完整训练结果用于策略采用判断，激活显存结果只说明已测长度范围内的容量与吞吐变化，trace 用于解释阶段和算子代价。
 
-| 输入资产 | 验收操作 | 证据与交付物 |
+| 证据范围 | 核对内容 | 可支持的结论 |
 |:---|:---|:---|
-| 已固定的基线与候选 | 核对模型、数据、后端和唯一变化 | 可配对的运行契约 |
-| 原瓶颈假设与候选理由 | 在相同阶段重新采集指标和 trace | 假设被支持、被否定或证据不足 |
-| 主要负载与相邻负载 | 重复运行并检查质量、性能和资源护栏 | 配对样本与回归清单 |
-| 回滚条件 | 汇总硬失败、回归与新瓶颈 | `accept`、`tune` 或 `reject` 的验收记录 |
+| 完整训练 | 固定 AdamW、`seq_len=768` 的 G0 配对测量 | 当前完整训练配置的策略门槛与采用结论 |
+| 激活显存隔离 | 无动量 SGD 长度阶梯及显存安全准入 | 已测长度范围内的激活容量与吞吐变化；不代表完整训练收益或 OOM 边界 |
+| Profiler 归因 | baseline/checkpoint 配对 trace 与阶段数据 | 解释热点、重算及阶段代价；不单独决定候选采用 |
 
-![74 profiling 端到端闭环](../public/02_PyTorch_Algorithms/74_end_to_end_profile_loop.svg)
+![74 性能证据范围与交接关系](../public/02_PyTorch_Algorithms/74_end_to_end_profile_loop.svg)
 
-### Step 2：复测原瓶颈并检查代价转移
+### Step 2：区分采用证据与归因证据
 
-候选如果减少了原阶段耗时，还要确认收益是否被搬运、同步、重算、缓存维护或其他阶段抵消。总指标回答端到端是否改善，阶段 trace 回答原瓶颈是否减轻以及新瓶颈出现在哪里；两类证据必须来自同一运行契约。
+完整训练的重复测量用于判断 checkpoint、offload 等策略是否达到显存、吞吐和质量门槛；配对 trace 与阶段测量用于解释时间或显存变化来自哪里。两类数据配置并不完全相同，不能拼成同一组候选的端到端收益，也不能把 trace 归因当成独立的采用证据。
 
-| 证据层 | 要比较的内容 | 失败信号 |
+| 证据类型 | 观察内容 | 使用边界 |
 |:---|:---|:---|
-| 端到端 | 延迟、吞吐、峰值容量和质量 | 目标指标无收益或护栏回归 |
-| 原瓶颈阶段 | 阶段总时间、调用次数和关键活动 | 阶段占比未下降或实际路径未生效 |
-| 代价阶段 | 重算、搬运、同步、缓存维护与通信 | 新增成本抵消原收益 |
-| 相邻负载 | 不同批次、序列长度或请求并发 | 候选只在单一负载点有效 |
+| 完整训练重复测量 | 单步耗时、吞吐、峰值显存、验证损失与失败状态 | 用于 G0 的策略比较；仅对固定训练配置成立 |
+| 配对 trace | 阶段耗时、调用活动与重算路径 | 用于解释时间变化；不能替代无 profiler 的性能测量 |
+| 阶段显存与长度阶梯 | 不同训练阶段峰值和已运行长度 | 用于激活显存范围分析；优化器状态与完整训练结论需分开 |
+| 安全准入记录 | 更长序列运行前的可用显存余量 | 安全停止不等于 OOM，未测长度不作外推 |
 
 
-### Step 3：形成准入、调优或回退结论
+### Step 3：按证据范围形成结论
 
-验收先处理运行失败、身份错配和关键缺证，再检查质量与资源护栏，最后判断端到端收益和瓶颈变化。候选通过时只表示它可以进入 Part 05 组合复测，不代表已经完成系统级交付。
+先按各自固定条件判断完整训练和激活显存专项，再用 trace 解释结果。完整训练的结论不能由隔离专项提升得到；激活显存专项即使在已测长度内通过，也不能说明更长序列可运行或已经找到 OOM 边界。
 
 | 状态 | 触发条件 | 后续动作 |
 |:---|:---|:---|
-| `reject` | 运行失败、配对失效、质量或安全护栏失败 | 回退基线并修复候选 |
-| `tune` | 关键证据缺失、收益不稳定或代价转移仍可修复 | 补测或调整候选后重新验收 |
-| `accept` | 主要负载收益达标，相邻负载无硬回归，原瓶颈减轻且资源可接受 | 固化候选和回归阈值 |
+| 完整训练 | G0 的 AdamW 固定配置；checkpoint 显存节省低于最低收益门槛 | 顶层结论为 `tune`，继续测试压力负载或卸载范围 |
+| 激活显存专项 | G1 在 `seq_len=1280` 时 checkpoint 满足容量收益和吞吐门槛 | 仅在已测专项范围内记为通过；更长长度未运行，未得到 OOM 边界 |
+| Profiler 归因 | trace 与阶段测量解释变化来源 | 作为解释证据，不独立产生 `accept` |
 
-![74 对照实验与决策流程](../public/02_PyTorch_Algorithms/74_experiment_decision_flow.svg)
+![74 激活显存专项的结论边界](../public/02_PyTorch_Algorithms/74_experiment_decision_flow.svg)
 
-### Step 4：实现回归验收与采用决策
+### Step 4：隔离证据范围并生成项目结论
 
-计时、指标差值和理论 Roofline 作为给定工具。请完成 3 个项目级任务：核验基线与候选是否可以配对，汇总主要负载与相邻负载的回归证据，再结合原瓶颈变化和新代价决定采用、调优或回退。
+下面给出一份精简的收口报告。请核对证据范围与配置是否匹配，分别保留各范围的结论，再根据完整训练范围形成项目总决策。
 
 | 任务与目的 | 已知条件 | 完成标准 | 测试验证 |
 |:---|:---|:---|:---|
-| TODO 1：核验回归对 | 已选候选、固定基线和唯一变化项 | 身份错配、缺少主要负载或重复负载时停止验收 | 正常与错配输入均有断言 |
-| TODO 2：构造验收证据 | 主要与相邻负载的端到端指标、阶段 trace 和质量护栏 | 输出收益、回归、原瓶颈变化与新瓶颈 | 单点收益和相邻负载回归可区分 |
-| TODO 3：形成采用状态 | 验收证据与最低收益、最大回归阈值 | 区分 `accept`、`tune`、`reject` 并给出回滚动作 | 硬失败优先于性能收益 |
+| TODO 1：检查范围配置 | 必需范围及其优化器、长度等配置 | 报告缺范围或字段不匹配时返回具体问题 | 覆盖正确配置、错配配置和缺失范围 |
+| TODO 2：汇总范围结论 | 各范围的 decision、evidence status 与 limitations | 三类字段均保留，且不改写专项状态 | 验证 `blocked`、专项结论和限制均未丢失 |
+| TODO 3：生成项目总决策 | 完整训练范围结论与各范围摘要 | 从完整训练结论取总决策；缺少该范围时拒绝生成 | 顶层字段与完整训练结论冲突时仍以范围结论为准 |
 
 
 ```python
-import math
-import time
+from copy import deepcopy
 
 ```
 
 
 ```python
-import time
+REPORT = {
+    'decision': 'tune',
+    'decision_scopes': {
+        'full_training_adoption': {'decision': 'tune', 'evidence_status': 'measured', 'optimizer': 'AdamW', 'seq_len': 768},
+        'activation_memory_mechanism': {'decision': 'accept_for_activation_memory_scope', 'evidence_status': 'blocked', 'optimizer': 'SGD', 'momentum': 0, 'seq_len': 1280, 'limitations': ['不含优化器状态', '安全停止；未测得 OOM 边界']},
+        'profiler_attribution': {'decision': 'explain_only', 'evidence_status': 'measured', 'limitations': ['不单独决定候选采用']},
+    },
+}
+EXPECTED_SCOPE_CONFIG = {
+    'full_training_adoption': {'optimizer': 'AdamW', 'seq_len': 768},
+    'activation_memory_mechanism': {'optimizer': 'SGD', 'momentum': 0, 'seq_len': 1280},
+}
 
-def estimate_roofline(flops, memory_bytes, peak_flops, bandwidth):
-    """用给定的理论参数估算 Roofline 上限；不读取 GPU 硬件计数器。"""
-    values = {
-        'flops': flops, 'memory_bytes': memory_bytes,
-        'peak_flops': peak_flops, 'bandwidth': bandwidth,
-    }
-    if any(value <= 0 for value in values.values()):
-        raise ValueError('flops/memory_bytes/peak_flops/bandwidth 必须为正数')
-    arithmetic_intensity = flops / memory_bytes
-    compute_roof = peak_flops
-    bandwidth_roof = bandwidth * arithmetic_intensity
-    attainable_roof = min(compute_roof, bandwidth_roof)
-    bound = 'compute' if compute_roof <= bandwidth_roof else 'memory'
-    return {
-        'arithmetic_intensity': arithmetic_intensity,
-        'compute_roof': compute_roof,
-        'bandwidth_roof': bandwidth_roof,
-        'attainable_roof': attainable_roof,
-        'bound': bound,
-        'evidence_level': 'theoretical_formula_only',
-    }
-
-def benchmark_fn(fn, warmup=3, iters=10):
-    """测量 CPU 函数的平均耗时；GPU trace 在 Step 5 独立采集。"""
-    if warmup < 0 or iters <= 0:
-        raise ValueError('warmup must be >= 0 and iters must be > 0')
-    for _ in range(warmup):
-        fn()
-
-    start = time.perf_counter()
-    for _ in range(iters):
-        fn()
-    total = time.perf_counter() - start
-    avg_time_ms = total / iters * 1000
-    return avg_time_ms
-
-def summarize_optimization_result(base_metrics, tuned_metrics):
-    """统一计算 baseline - tuned 的时间、显存和吞吐差异。"""
-    time_delta = base_metrics['step_time_ms'] - tuned_metrics['step_time_ms']
-    memory_delta = base_metrics['peak_mem_mb'] - tuned_metrics['peak_mem_mb']
-    throughput_delta = tuned_metrics['throughput'] - base_metrics['throughput']
-
-    summary = {
-        'step_time_delta_ms': round(time_delta, 2),
-        'peak_mem_delta_mb': round(memory_delta, 2),
-        'throughput_delta': round(throughput_delta, 2),
-        'time_improved': time_delta > 0,
-        'memory_improved': memory_delta > 0,
-        'throughput_improved': throughput_delta > 0,
-    }
-    return summary
-
-
-def format_optimization_report(summary, bottleneck, next_action):
-    """输出指标变化、瓶颈证据边界和下一步动作。"""
-    header = "| 指标 | 变化 | 判断 |"
-    sep = "| --- | --- | --- |"
-    rows = [
-        f"| step time | {summary['step_time_delta_ms']} ms | {'改善' if summary['time_improved'] else '未改善'} |",
-        f"| peak memory | {summary['peak_mem_delta_mb']} MB | {'改善' if summary['memory_improved'] else '未改善'} |",
-        f"| throughput | {summary['throughput_delta']} | {'改善' if summary['throughput_improved'] else '未改善'} |",
-    ]
-    conclusion = f"瓶颈判断：{bottleneck}。下一步：{next_action}。"
-    return "\n".join([header, sep] + rows + [conclusion])
-
-
-def recommend_optimization_decision(summary, min_time_delta_ms=10.0, min_memory_delta_mb=512.0, min_throughput_delta=5.0):
-    """使用显式阈值输出 accept / tune / reject，不把 CPU 结果写成 GPU 结论。"""
-    strong_time_gain = summary['step_time_delta_ms'] >= min_time_delta_ms
-    strong_memory_gain = summary['peak_mem_delta_mb'] >= min_memory_delta_mb
-    strong_throughput_gain = summary['throughput_delta'] >= min_throughput_delta
-    positive_resource_gain = summary['memory_improved'] or summary['throughput_improved']
-    if strong_time_gain and (strong_memory_gain or strong_throughput_gain):
-        decision = 'accept'
-        reason = '时间达到阈值，且显存或吞吐至少一项达到阈值，当前优化值得保留。'
-    elif strong_time_gain and positive_resource_gain:
-        decision = 'tune'
-        reason = '时间改善成立，但资源或吞吐收益还不够稳，建议继续微调。'
-    else:
-        decision = 'reject'
-        reason = '当前优化没有形成稳定的端到端收益，建议回退或重新定位瓶颈。'
-    return {'decision': decision, 'reason': reason}
-
-def validate_regression_contract(contract, workload_records):
-    """确认已选候选、固定基线和回归负载可以配对。"""
-    # ==========================================
-    # TODO 1：核验回归对。
-    # 检查 baseline_id、candidate_id、changed_variable、主要负载数量和 workload_id 唯一性。
-    # issues = ???
-    # 返回 is_valid、issues、primary_workload。
-    # ==========================================
+def validate_evidence_scopes(report, expected_config):
+    """核对范围配置，防止把不同实验条件的结果拼在一起。"""
+    # TODO 1：逐个检查 expected_config 中的范围及字段；
+    # 缺少范围或值不一致时，将“范围名:字段名”加入 issues。
+    # 返回 {'valid': bool, 'issues': list}。
     raise NotImplementedError('请先完成 TODO 代码！')
 
-def build_regression_evidence(workload_records, original_bottleneck):
-    """汇总主要与相邻负载的收益、护栏和瓶颈变化。"""
-    # ==========================================
-    # TODO 2：构造验收证据。
-    # 对每个负载计算时间、显存、吞吐和质量差异，并比较原瓶颈阶段在候选中的变化。
-    # rows = ???
-    # hard_failures = ???
-    # 返回 primary、adjacent、original_bottleneck_reduced 和 candidate_bottleneck。
-    # ==========================================
+def summarize_scope_decisions(report):
+    """提取各范围结论、证据状态与限制，不提升专项结论。"""
+    # TODO 2：为每个范围建立摘要，只保留 decision、evidence_status、limitations；
+    # limitations 必须复制为新列表，避免改摘要时修改输入报告。
     raise NotImplementedError('请先完成 TODO 代码！')
 
-def decide_regression_adoption(evidence, gates):
-    """根据端到端收益、相邻负载和瓶颈转移输出采用状态。"""
-    # ==========================================
-    # TODO 3：形成采用状态。
-    # 硬失败或质量越界直接 reject；主要收益不足、相邻负载回归或瓶颈未减轻时 tune；其余 accept。
-    # 返回 decision、reason、rollback 和 next_action。
-    # ==========================================
+def build_project_decision(report, scope_summary):
+    """以完整训练结论为项目总决策，并附带其他范围摘要。"""
+    # TODO 3：从 scope_summary['full_training_adoption']['decision'] 读取总决策；
+    # 缺少完整训练范围时抛出 ValueError，并在结果中附上全部范围摘要。
     raise NotImplementedError('请先完成 TODO 代码！')
 
 ```
@@ -205,100 +120,48 @@ def decide_regression_adoption(evidence, gates):
 
 
 ```python
-def test_optimization_project_template():
+def test_evidence_scope_exercise():
     try:
-        counter = {'n': 0}
-
-        def fn():
-            counter['n'] += 1
-
-        result = benchmark_fn(fn, warmup=0, iters=2)
-        assert counter['n'] == 2, "benchmark 应该运行 iters 次"
-        assert result >= 0.0, "平均耗时应该非负"
-        roofline = estimate_roofline(flops=2_000.0, memory_bytes=1_000.0, peak_flops=10.0, bandwidth=1.0)
-        assert roofline['arithmetic_intensity'] == 2.0
-        assert roofline['bound'] == 'memory'
-        assert roofline['evidence_level'] == 'theoretical_formula_only'
-        for invalid in ({'warmup': -1, 'iters': 2}, {'warmup': 0, 'iters': 0}):
-            try:
-                benchmark_fn(fn, **invalid)
-            except ValueError:
-                pass
-            else:
-                raise AssertionError('非法 warmup / iters 应明确拒绝')
-
-        baseline = {'step_time_ms': 120.0, 'peak_mem_mb': 8192.0, 'throughput': 80.0}
-        tuned = {'step_time_ms': 96.0, 'peak_mem_mb': 7168.0, 'throughput': 100.0}
-        summary = summarize_optimization_result(baseline, tuned)
-
-        assert summary['step_time_delta_ms'] == 24.0
-        assert summary['peak_mem_delta_mb'] == 1024.0
-        assert summary['throughput_delta'] == 20.0
-        assert summary['time_improved'] is True
-        assert summary['memory_improved'] is True
-        assert summary['throughput_improved'] is True
-
-        report = format_optimization_report(summary, 'backward kernel 占比过高', '保留混合精度并继续检查 optimizer')
-        assert '| 指标 | 变化 | 判断 |' in report
-        assert 'backward kernel 占比过高' in report
-        assert '保留混合精度并继续检查 optimizer' in report
-
-        decision = recommend_optimization_decision(summary, min_time_delta_ms=10.0, min_memory_delta_mb=512.0, min_throughput_delta=5.0)
-        assert decision['decision'] == 'accept'
-
-        memory_summary = {'step_time_delta_ms': 12.0, 'peak_mem_delta_mb': 768.0, 'throughput_delta': 0.0, 'time_improved': True, 'memory_improved': True, 'throughput_improved': False}
-        memory_decision = recommend_optimization_decision(memory_summary, min_time_delta_ms=10.0, min_memory_delta_mb=512.0, min_throughput_delta=5.0)
-        assert memory_decision['decision'] == 'accept'
-
-        mixed_summary = {'step_time_delta_ms': 12.0, 'peak_mem_delta_mb': 128.0, 'throughput_delta': 2.0, 'time_improved': True, 'memory_improved': True, 'throughput_improved': True}
-        mixed_decision = recommend_optimization_decision(mixed_summary, min_time_delta_ms=10.0, min_memory_delta_mb=512.0, min_throughput_delta=5.0)
-        assert mixed_decision['decision'] == 'tune'
-
-        weak_summary = {'step_time_delta_ms': -3.0, 'peak_mem_delta_mb': 64.0, 'throughput_delta': 1.0, 'time_improved': False, 'memory_improved': True, 'throughput_improved': True}
-        weak_decision = recommend_optimization_decision(weak_summary, min_time_delta_ms=10.0, min_memory_delta_mb=512.0, min_throughput_delta=5.0)
-        assert weak_decision['decision'] == 'reject'
-
-        contract = {'baseline_id': 'train-base-v1', 'candidate_id': 'checkpoint-v2', 'changed_variable': 'activation_strategy'}
-        workloads = [
-            {
-                'workload_id': 'b2-s1024', 'role': 'primary', 'status': 'ok',
-                'baseline': {'step_time_ms': 120.0, 'peak_mem_mb': 11000.0, 'throughput': 16.0, 'quality': 1.00},
-                'candidate': {'step_time_ms': 105.0, 'peak_mem_mb': 8200.0, 'throughput': 15.0, 'quality': 1.01},
-                'baseline_stages_ms': {'forward': 30.0, 'backward': 65.0, 'update': 25.0},
-                'candidate_stages_ms': {'forward': 34.0, 'backward': 45.0, 'update': 26.0},
-            },
-            {
-                'workload_id': 'b1-s512', 'role': 'adjacent', 'status': 'ok',
-                'baseline': {'step_time_ms': 70.0, 'peak_mem_mb': 7000.0, 'throughput': 18.0, 'quality': 0.98},
-                'candidate': {'step_time_ms': 68.0, 'peak_mem_mb': 5600.0, 'throughput': 17.8, 'quality': 0.99},
-                'baseline_stages_ms': {'forward': 20.0, 'backward': 35.0, 'update': 15.0},
-                'candidate_stages_ms': {'forward': 22.0, 'backward': 31.0, 'update': 15.0},
-            },
-        ]
-        contract_check = validate_regression_contract(contract, workloads)
-        assert contract_check['is_valid'] is True and contract_check['primary_workload'] == 'b2-s1024'
-        duplicate = validate_regression_contract(contract, workloads + [dict(workloads[1])])
-        assert duplicate['is_valid'] is False
-        evidence = build_regression_evidence(workloads, 'backward')
-        assert evidence['original_bottleneck_reduced'] is True
-        gates = {'min_primary_time_gain_ms': 10.0, 'max_adjacent_slowdown_ms': 3.0, 'max_quality_delta': 0.02}
-        adoption = decide_regression_adoption(evidence, gates)
-        assert adoption['decision'] == 'accept' and adoption['rollback'] is False
-        regressed = [dict(workloads[0]), {**workloads[1], 'candidate': {**workloads[1]['candidate'], 'step_time_ms': 76.0}}]
-        assert decide_regression_adoption(build_regression_evidence(regressed, 'backward'), gates)['decision'] == 'tune'
-        failed = [{**workloads[0], 'status': 'failed'}]
-        assert decide_regression_adoption(build_regression_evidence(failed, 'backward'), gates)['decision'] == 'reject'
-
-        print("✅ profiling 驱动的端到端优化项目模板代码通过基础校验。")
+        valid = validate_evidence_scopes(REPORT, EXPECTED_SCOPE_CONFIG)
+        assert valid['valid'] is True and valid['issues'] == []
+        mixed = deepcopy(REPORT)
+        mixed['decision_scopes']['activation_memory_mechanism']['optimizer'] = 'AdamW'
+        assert validate_evidence_scopes(mixed, EXPECTED_SCOPE_CONFIG)['valid'] is False
+        missing = deepcopy(REPORT)
+        del missing['decision_scopes']['activation_memory_mechanism']
+        missing_check = validate_evidence_scopes(missing, EXPECTED_SCOPE_CONFIG)
+        assert missing_check['valid'] is False and 'activation_memory_mechanism:missing' in missing_check['issues']
+        wrong_length = deepcopy(REPORT)
+        wrong_length['decision_scopes']['activation_memory_mechanism']['seq_len'] = 1536
+        assert validate_evidence_scopes(wrong_length, EXPECTED_SCOPE_CONFIG)['valid'] is False
+        scopes = summarize_scope_decisions(REPORT)
+        assert scopes['activation_memory_mechanism']['decision'] == 'accept_for_activation_memory_scope'
+        assert scopes['activation_memory_mechanism']['evidence_status'] == 'blocked'
+        assert '未测得 OOM 边界' in scopes['activation_memory_mechanism']['limitations'][1]
+        scopes['activation_memory_mechanism']['limitations'].append('测试用本地修改')
+        assert '测试用本地修改' not in REPORT['decision_scopes']['activation_memory_mechanism']['limitations']
+        scopes = summarize_scope_decisions(REPORT)
+        result = build_project_decision(REPORT, scopes)
+        assert result['decision'] == 'tune'
+        assert result['scopes'] == scopes
+        contradictory = deepcopy(REPORT)
+        contradictory['decision'] = 'accept'
+        assert build_project_decision(contradictory, scopes)['decision'] == 'tune'
+        missing_full_training = {key: value for key, value in scopes.items() if key != 'full_training_adoption'}
+        try:
+            build_project_decision(REPORT, missing_full_training)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('缺少完整训练范围时必须拒绝生成总决策')
+        print('✅ 证据范围隔离与总决策测试通过。')
     except NotImplementedError:
-        print("请先完成 TODO 代码！")
+        print('请先完成 TODO 代码！')
         raise
-    except AssertionError as e:
-        print(f"❌ 测试失败: {e}")
-        raise NotImplementedError("请先完成 TODO 代码！") from e
+    except AssertionError as exc:
+        raise NotImplementedError('请先完成 TODO 代码！') from exc
 
-
-test_optimization_project_template()
+test_evidence_scope_exercise()
 
 ```
 
@@ -317,186 +180,70 @@ test_optimization_project_template()
 
 
 ```python
-import time
+REPORT = {
+    'decision': 'tune',
+    'decision_scopes': {
+        'full_training_adoption': {'decision': 'tune', 'evidence_status': 'measured', 'optimizer': 'AdamW', 'seq_len': 768},
+        'activation_memory_mechanism': {'decision': 'accept_for_activation_memory_scope', 'evidence_status': 'blocked', 'optimizer': 'SGD', 'momentum': 0, 'seq_len': 1280, 'limitations': ['不含优化器状态', '安全停止；未测得 OOM 边界']},
+        'profiler_attribution': {'decision': 'explain_only', 'evidence_status': 'measured', 'limitations': ['不单独决定候选采用']},
+    },
+}
+EXPECTED_SCOPE_CONFIG = {
+    'full_training_adoption': {'optimizer': 'AdamW', 'seq_len': 768},
+    'activation_memory_mechanism': {'optimizer': 'SGD', 'momentum': 0, 'seq_len': 1280},
+}
 
+def validate_evidence_scopes(report, expected_config):
+    issues = []
+    scopes = report.get('decision_scopes', {})
+    for scope_name, expected in expected_config.items():
+        actual = scopes.get(scope_name)
+        if not isinstance(actual, dict):
+            issues.append(f'{scope_name}:missing')
+            continue
+        for key, expected_value in expected.items():
+            if actual.get(key) != expected_value:
+                issues.append(f'{scope_name}:{key}_mismatch')
+    return {'valid': not issues, 'issues': issues}
 
-def estimate_roofline(flops, memory_bytes, peak_flops, bandwidth):
-    """Estimate a theoretical Roofline bound; this does not collect hardware counters."""
-    values = {
-        'flops': flops, 'memory_bytes': memory_bytes,
-        'peak_flops': peak_flops, 'bandwidth': bandwidth,
-    }
-    if any(value <= 0 for value in values.values()):
-        raise ValueError('flops/memory_bytes/peak_flops/bandwidth must be positive')
-    arithmetic_intensity = flops / memory_bytes
-    compute_roof = peak_flops
-    bandwidth_roof = bandwidth * arithmetic_intensity
-    attainable_roof = min(compute_roof, bandwidth_roof)
-    bound = 'compute' if compute_roof <= bandwidth_roof else 'memory'
-    return {
-        'arithmetic_intensity': arithmetic_intensity,
-        'compute_roof': compute_roof,
-        'bandwidth_roof': bandwidth_roof,
-        'attainable_roof': attainable_roof,
-        'bound': bound,
-        'evidence_level': 'theoretical_formula_only',
-    }
-
-def benchmark_fn(fn, warmup=3, iters=10):
-    if warmup < 0 or iters <= 0:
-        raise ValueError('warmup must be >= 0 and iters must be > 0')
-    # ==========================================
-    # TODO 1: 先做 warmup，再测量平均耗时
-    # 提示: 用 time.perf_counter() 记录起止时间
-    # 返回单位统一为 ms，方便和项目报告对齐
-    # ==========================================
-    for _ in range(warmup):
-        fn()
-
-    start = time.perf_counter()
-    for _ in range(iters):
-        fn()
-    total = time.perf_counter() - start
-    avg_time_ms = total / iters * 1000
-    return avg_time_ms
-
-
-def summarize_optimization_result(base_metrics, tuned_metrics):
-    # ==========================================
-    # TODO 2: 汇总 baseline / tuned 的核心指标差异
-    # 提示: 正数表示 tuned 相比 baseline 有改善
-    # step time / memory 越低越好，throughput 越高越好
-    # ==========================================
-    time_delta = base_metrics['step_time_ms'] - tuned_metrics['step_time_ms']
-    memory_delta = base_metrics['peak_mem_mb'] - tuned_metrics['peak_mem_mb']
-    throughput_delta = tuned_metrics['throughput'] - base_metrics['throughput']
-
-    summary = {
-        'step_time_delta_ms': round(time_delta, 2),
-        'peak_mem_delta_mb': round(memory_delta, 2),
-        'throughput_delta': round(throughput_delta, 2),
-        'time_improved': time_delta > 0,
-        'memory_improved': memory_delta > 0,
-        'throughput_improved': throughput_delta > 0,
-    }
+def summarize_scope_decisions(report):
+    summary = {}
+    for scope_name, scope in report.get('decision_scopes', {}).items():
+        summary[scope_name] = {
+            'decision': scope.get('decision'),
+            'evidence_status': scope.get('evidence_status'),
+            'limitations': list(scope.get('limitations', [])),
+        }
     return summary
 
-
-def format_optimization_report(summary, bottleneck, next_action):
-    header = "| 指标 | 变化 | 判断 |"
-    sep = "| --- | --- | --- |"
-    rows = [
-        f"| step time | {summary['step_time_delta_ms']} ms | {'改善' if summary['time_improved'] else '未改善'} |",
-        f"| peak memory | {summary['peak_mem_delta_mb']} MB | {'改善' if summary['memory_improved'] else '未改善'} |",
-        f"| throughput | {summary['throughput_delta']} | {'改善' if summary['throughput_improved'] else '未改善'} |",
-    ]
-    conclusion = f"瓶颈判断：{bottleneck}。下一步：{next_action}。"
-    return "\n".join([header, sep] + rows + [conclusion])
-
-
-def recommend_optimization_decision(summary, min_time_delta_ms=10.0, min_memory_delta_mb=512.0, min_throughput_delta=5.0):
-    # TODO 3 对应变量 strong_time_gain：对照 min_time_delta_ms。
-    strong_time_gain = summary['step_time_delta_ms'] >= min_time_delta_ms
-    strong_memory_gain = summary['peak_mem_delta_mb'] >= min_memory_delta_mb
-    strong_throughput_gain = summary['throughput_delta'] >= min_throughput_delta
-    positive_memory_gain = summary['peak_mem_delta_mb'] > 0
-    positive_throughput_gain = summary['throughput_delta'] > 0
-    # TODO 3 对应变量 positive_resource_gain：显存或吞吐任一出现正向变化。
-    positive_resource_gain = positive_memory_gain or positive_throughput_gain
-    if strong_time_gain and (strong_memory_gain or strong_throughput_gain):
-        decision = 'accept'
-        reason = '时间达到阈值，且显存或吞吐至少一项达到阈值，当前优化值得保留。'
-    elif strong_time_gain and positive_resource_gain:
-        decision = 'tune'
-        reason = '时间改善成立，但资源或吞吐收益还不够稳，建议继续微调。'
-    else:
-        decision = 'reject'
-        reason = '当前优化没有形成稳定的端到端收益，建议回退或重新定位瓶颈。'
-    return {'decision': decision, 'reason': reason}
-
-def validate_regression_contract(contract, workload_records):
-    issues = []
-    for key in ('baseline_id', 'candidate_id', 'changed_variable'):
-        if not isinstance(contract.get(key), str) or not contract.get(key):
-            issues.append(f'{key}_missing')
-    primary = [item for item in workload_records if item.get('role') == 'primary']
-    if len(primary) != 1:
-        issues.append('primary_workload_count_invalid')
-    workload_ids = [item.get('workload_id') for item in workload_records]
-    if len(workload_ids) != len(set(workload_ids)):
-        issues.append('duplicate_workload_id')
-    return {'is_valid': not issues, 'issues': issues, 'primary_workload': primary[0]['workload_id'] if len(primary) == 1 else None}
-
-def build_regression_evidence(workload_records, original_bottleneck):
-    rows = []
-    hard_failures = []
-    for record in workload_records:
-        if record.get('status') != 'ok':
-            hard_failures.append(record.get('workload_id'))
-            continue
-        baseline = record['baseline']
-        candidate = record['candidate']
-        candidate_stages = record['candidate_stages_ms']
-        row = {
-            'workload_id': record['workload_id'], 'role': record['role'],
-            'time_gain_ms': baseline['step_time_ms'] - candidate['step_time_ms'],
-            'memory_gain_mb': baseline['peak_mem_mb'] - candidate['peak_mem_mb'],
-            'throughput_gain': candidate['throughput'] - baseline['throughput'],
-            'quality_delta': candidate['quality'] - baseline['quality'],
-            'original_bottleneck_delta_ms': record['baseline_stages_ms'][original_bottleneck] - candidate_stages[original_bottleneck],
-            'candidate_bottleneck': max(candidate_stages, key=candidate_stages.get),
-        }
-        rows.append(row)
-    primary = next((row for row in rows if row['role'] == 'primary'), None)
-    adjacent = [row for row in rows if row['role'] == 'adjacent']
-    return {
-        'primary': primary, 'adjacent': adjacent, 'hard_failures': hard_failures,
-        'original_bottleneck': original_bottleneck,
-        'original_bottleneck_reduced': primary is not None and primary['original_bottleneck_delta_ms'] > 0,
-        'candidate_bottleneck': primary['candidate_bottleneck'] if primary else None,
-    }
-
-def decide_regression_adoption(evidence, gates):
-    if evidence.get('hard_failures') or evidence.get('primary') is None:
-        return {'decision': 'reject', 'reason': 'hard_failure_or_primary_missing', 'rollback': True, 'next_action': 'restore_baseline'}
-    rows = [evidence['primary']] + evidence.get('adjacent', [])
-    if any(row['quality_delta'] > gates['max_quality_delta'] for row in rows):
-        return {'decision': 'reject', 'reason': 'quality_guardrail_failed', 'rollback': True, 'next_action': 'restore_baseline'}
-    primary_gain_ok = evidence['primary']['time_gain_ms'] >= gates['min_primary_time_gain_ms']
-    adjacent_ok = all(row['time_gain_ms'] >= -gates['max_adjacent_slowdown_ms'] for row in evidence.get('adjacent', []))
-    if not primary_gain_ok or not adjacent_ok or not evidence.get('original_bottleneck_reduced', False):
-        return {'decision': 'tune', 'reason': 'benefit_or_bottleneck_evidence_incomplete', 'rollback': False, 'next_action': 'adjust_and_rerun_regression'}
-    return {'decision': 'accept', 'reason': 'benefit_and_guardrails_passed', 'rollback': False, 'next_action': 'freeze_candidate_and_thresholds'}
+def build_project_decision(report, scope_summary):
+    full_training = scope_summary.get('full_training_adoption')
+    if not isinstance(full_training, dict) or not full_training.get('decision'):
+        raise ValueError('完整训练范围缺失，不能生成项目总决策')
+    return {'decision': full_training['decision'], 'scopes': scope_summary}
 
 ```
 
 ### 解析
 
-本节接收已经通过候选实验和预算筛选的方案，只负责回归验收。计时、差值计算和理论 Roofline 是给定工具；学习者负责回归配对、瓶颈转移和采用判断。
+题目用缩小后的报告字段练习三项判断：配置是否仍属于声明的证据范围、专项结论是否保留原有状态和限制、项目总决策是否仍由完整训练范围控制。示例数据仅用于 CPU 逻辑测试，不是新增测量结果。
 
-**1. 机制：核验回归对**
+**1. 核对证据范围**
 
-- 基线、候选和唯一变化项必须明确；主要负载只能有一个，负载身份不能重复。
-- 不变量：身份错配的运行不能进入回归验收。
-- 测试证据：测试覆盖合法回归集合与重复负载。
+- 完整训练与激活显存专项采用不同优化器和序列长度，配置不匹配时不能沿用该范围的结论。
+- 测试覆盖合法报告和跨范围配置错配。
 
-**2. 机制：构造多负载验收证据**
+**2. 分别保留范围结论**
 
-- 主要负载决定目标收益，相邻负载检查候选是否只在单点有效；阶段耗时同时验证原瓶颈是否减轻以及新瓶颈落在哪里。
-- 不变量：端到端变快不能掩盖质量越界或相邻负载明显回归。
-- 测试证据：测试验证反向阶段缩短，并构造相邻负载变慢的反例。
+- 激活显存专项通过只说明已测范围内的结果；`blocked` 状态和未测 OOM 边界仍需保留。Profiler 归因只解释变化来源。
+- 测试确认专项结论不会覆盖完整训练结论，限制字段也不会丢失。
 
-**3. 机制：形成采用、调优或回退状态**
+**3. 形成项目总决策**
 
-- 运行失败或质量越界时回退；主要收益不足、相邻负载回归或原瓶颈未减轻时继续调优；全部通过才采用。
-- 不变量：硬失败和质量护栏优先于任何性能收益。
-- 测试证据：测试覆盖采用、调优和回退三种状态。
+- 本项目的总决策依据完整训练范围；专项结果作为范围内结论附带，不把 `accept_for_activation_memory_scope` 改写成全局 `accept`。
+- 测试确认示例总决策仍为 `tune`，且各证据状态原样输出。
 
-**项目化原则**
-
-- **一次只改一个变量**：否则收益不可归因。
-- **主要与相邻负载一起复测**：避免只保留单点最优结果。
-- **保留回滚条件**：采用记录必须能指出何时恢复基线。
+Profiler 的热点信息用于解释，完整训练数据用于采用判断，两类证据不可互换。
 
 ### Step 5（项目实验）：核对性能证据并生成交接结果
 
@@ -508,6 +255,8 @@ def decide_regression_adoption(evidence, gates):
 | 激活显存 | 0.5B、FP32、无动量 SGD、长度阶梯 | `accept_for_activation_memory_scope / tune` |
 
 #### 5.1 本次运行配置
+
+运行环境：`PERF-CUDA-MECHANISM`，单卡显存至少 8 GiB；环境创建与验证见[性能分析 Quickstart](../topic_discussion/performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart)。
 
 只需填写 `RUN_LABEL` 和 `RUN_STAGE`。模型、工作负载、门槛、上游路径及证据哈希从 5.2 的固定清单读取。
 
@@ -660,11 +409,11 @@ else:
 
 #### 5.3 输入合同与证据路径
 
-从固定清单读取 73、75、76 的结果以及跟踪、阶段显存文件，核对模型、精度、批大小、随机种子和硬件。优化器与序列长度的差异作为两组实验的身份信息保留。
+从固定清单读取 73、76 的训练结果、预算摘要以及跟踪和阶段显存文件，核对模型、精度、批大小、随机种子和硬件。优化器与序列长度的差异作为两组实验的身份信息保留。
 
 | 证据 | 用途 |
 | --- | --- |
-| 73/75/76 | 完整训练的基线、候选和预算门槛 |
+| 73/76 | 完整训练基线、策略候选与预算筛选；固定历史清单中的旧预算结果继续用于复现 |
 | 配对跟踪 | 定位算子耗时与重算开销 |
 | 阶段显存 | 比较前向、反向和优化器阶段峰值 |
 | 76 长度阶梯 | 判断激活显存范围内的收益 |
@@ -701,12 +450,11 @@ evidence_manifest = json.loads(evidence_manifest_path.read_text(encoding='utf-8'
 expected_semantic_ids = {
     'baseline': 'PERF-TRAINING-BASELINE',
     'strategy': 'PERF-MEMORY-STRATEGY',
-    'budget': 'PERF-MEMORY-BUDGET',
 }
 actual_semantic_ids = {name: report.get('semantic_id') for name, report in {
-    'baseline': baseline_source, 'strategy': strategy_source, 'budget': budget_source,
+    'baseline': baseline_source, 'strategy': strategy_source,
 }.items()}
-if actual_semantic_ids != expected_semantic_ids:
+if actual_semantic_ids != expected_semantic_ids or budget_source.get('semantic_id') not in {'PERF-MEMORY-BUDGET', 'PERF-MEMORY-STRATEGY'}:
     raise ValueError(f'上游语义身份不匹配：{actual_semantic_ids}')
 if evidence_manifest.get('schema_version') != EVIDENCE_MANIFEST_SCHEMA_VERSION or evidence_manifest.get('semantic_id') != SEMANTIC_ID:
     raise ValueError('证据清单的 schema 或 semantic_id 不匹配')
@@ -1483,12 +1231,23 @@ if close_report_path.is_file():
 #### 5.6 形成决策与交接结果
 
 `close` 在 5.5 核对通过后生成专项报告和交接文件。相同标签和相同证据可重复运行；同一路径已有不同内容时停止。
+登记回执核对标签、决策、报告与交接文件，并逐项检查来源文件存在且 SHA256 匹配。
 
 | 输出字段 | 适用范围 |
 | --- | --- |
 | `decision`、`full_training_adoption` | AdamW、`seq_len=768` 的完整训练配置 |
 | `activation_memory_mechanism` | 无动量 SGD 的长度阶梯 |
 
+**当前登记结果**
+
+| 字段 | 登记内容 |
+| --- | --- |
+| 项目与标签 | 74 节 profiling 收口；`rtx5070ti_profiling_dual_scope_v7` |
+| 运行条件 | RTX 5070 Ti Laptop GPU；完整训练范围与 Activation 专项范围分开判断 |
+| 原始证据 | [Profiler 摘要](../../benchmarks/results/74_real_gpu_profile_rtx5070ti_profiling_closure_v4.json)、[Activation 专项](../../benchmarks/results/74_phase_memory_rtx5070ti_profiling_closure_v5.json) |
+| 正式证据 | [收口报告](../../benchmarks/results/74_profiling_optimization_rtx5070ti_profiling_dual_scope_v7.json) |
+| 清单与交接 | [性能交接](../../benchmarks/results/74_profile/performance_handoff_rtx5070ti_profiling_dual_scope_v7.json) |
+| 结论 | 顶层 `tune`；`seq_len=1280` 的 activation 对照通过，但更长长度因安全准入未执行、未测出 OOM 边界；不可提升为完整训练采用结论 |
 
 ```python
 # 只根据 5.5 已读取并校验的证据形成决策；本单元不加载模型。
@@ -1535,6 +1294,26 @@ if RUN_STAGE == 'close':
         save_json_record_once(HANDOFF_PATH, performance_handoff)
         handoff_status = 'written'
 
+    artifact_checks = {}
+    for name, artifact in performance_handoff.get('source_artifacts', {}).items():
+        artifact_path = PROJECT_ROOT / artifact['path']
+        artifact_checks[name] = (
+            artifact_path.is_file()
+            and hashlib.sha256(artifact_path.read_bytes()).hexdigest() == artifact['sha256']
+        )
+    registration_receipt = {
+        'run_label_matches': project_report.get('run_label') == RUN_LABEL and performance_handoff.get('run_label') == RUN_LABEL,
+        'report_schema_matches': project_report.get('schema_version') == 'profiling-optimization-benchmark/v1',
+        'handoff_schema_matches': performance_handoff.get('schema_version') == 'performance-optimization-handoff/v1',
+        'decision_recorded': isinstance(project_report.get('decision', {}).get('decision'), str),
+        'report_and_handoff_exist': OUTPUT_PATH.is_file() and HANDOFF_PATH.is_file(),
+        'source_artifacts_match': bool(artifact_checks) and all(artifact_checks.values()),
+        'source_artifact_checks': artifact_checks,
+    }
+    if not (registration_receipt['run_label_matches'] and registration_receipt['report_schema_matches']
+            and registration_receipt['handoff_schema_matches'] and registration_receipt['decision_recorded']
+            and registration_receipt['report_and_handoff_exist'] and registration_receipt['source_artifacts_match']):
+        raise RuntimeError(f'性能交接登记核对失败：{registration_receipt}')
     print(json.dumps({
         'status': 'already_complete' if report_status == handoff_status == 'already_complete' else 'completed',
         'report_status': report_status,
@@ -1543,6 +1322,7 @@ if RUN_STAGE == 'close':
         'decision_scopes': project_report['decision_scopes'],
         'result_path': str(OUTPUT_PATH.relative_to(PROJECT_ROOT)),
         'handoff_path': str(HANDOFF_PATH.relative_to(PROJECT_ROOT)),
+        'registration_receipt': registration_receipt,
     }, ensure_ascii=False, indent=2))
 else:
     print(f'跳过决策与交接：当前 RUN_STAGE={RUN_STAGE!r}；只有 close 会写入最终资产。')

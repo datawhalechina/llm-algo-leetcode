@@ -1,51 +1,54 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="460" viewBox="0 0 1200 460" role="img" aria-labelledby="title desc">
-  <title id="title">用对照实验检验瓶颈假设</title>
-  <desc id="desc">提出假设，固定实验条件，只改变一个变量，重复测量并判断证据是否支持假设。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="650" viewBox="0 0 1500 650" role="img" aria-labelledby="title desc">
+  <title id="title">74节完整训练结论与激活显存专项结论</title>
+  <desc id="desc">AdamW完整训练比较得到顶层tune；无动量SGD激活显存测试中checkpoint在已测长度范围达到门槛，但安全停止使长度边界仍未确认。</desc>
   <defs>
-    <marker id="arrow" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="10" markerHeight="10" orient="auto" markerUnits="userSpaceOnUse">
-      <path d="M1 1L11 6L1 11Z" fill="#475569"/>
-    </marker>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1L11 6L1 11Z" fill="#475569"/></marker>
     <style>
       text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#1f2937}
-      .title{font-size:28px;font-weight:700}.subtitle{font-size:16px;font-weight:500;fill:#475569}
-      .label{font-size:17px;font-weight:700}.small{font-size:14px;fill:#334155}
-      .panel{fill:#f8fafc;stroke:#cbd5e1;stroke-width:2;rx:20}.node{stroke-width:2;rx:14}
-      .flow{fill:none;stroke:#475569;stroke-width:2.5;marker-end:url(#arrow)}
+      .title{font-size:27px;font-weight:700}.sub{font-size:15px;fill:#475569}.lane{font-size:18px;font-weight:700}.head{font-size:16px;font-weight:700}.body{font-size:14px;fill:#334155}
+      .box{stroke-width:2;rx:13}.flow{fill:none;stroke:#475569;stroke-width:2.3;marker-end:url(#arrow)}
     </style>
   </defs>
+  <rect width="1500" height="650" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="750" y="43" text-anchor="middle" class="title">完整训练与激活显存专项，分别得出结论</text>
+  <text x="750" y="72" text-anchor="middle" class="sub">两条路径的优化器、负载和结论范围不同；专项结果不覆盖完整训练判断</text>
 
-  <rect width="1200" height="460" rx="20" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
-  <text x="600" y="48" text-anchor="middle" class="title">用对照实验检验瓶颈假设</text>
-  <text x="600" y="80" text-anchor="middle" class="subtitle">每次只改变一个变量，再用重复测量判断原来的解释是否成立</text>
-  <rect x="35" y="115" width="1130" height="270" class="panel"/>
+  <rect x="25" y="117" width="1450" height="185" rx="16" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="55" y="150" class="lane" fill="#0369a1">完整训练 · G0</text>
+  <rect x="55" y="174" width="250" height="88" class="box" fill="#ffffff" stroke="#60a5fa"/>
+  <text x="180" y="208" text-anchor="middle" class="head">固定训练配置</text>
+  <text x="180" y="237" text-anchor="middle" class="body">AdamW · 长度 768</text>
+  <rect x="370" y="174" width="280" height="88" class="box" fill="#ffffff" stroke="#60a5fa"/>
+  <text x="510" y="208" text-anchor="middle" class="head">checkpoint 对照 baseline</text>
+  <text x="510" y="237" text-anchor="middle" class="body">重复测量显存与吞吐</text>
+  <rect x="715" y="174" width="280" height="88" class="box" fill="#ffffff" stroke="#60a5fa"/>
+  <text x="855" y="208" text-anchor="middle" class="head">显存节省 16.43 MB</text>
+  <text x="855" y="237" text-anchor="middle" class="body">低于 512 MB 收益门槛</text>
+  <rect x="1060" y="174" width="350" height="88" class="box" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="1235" y="208" text-anchor="middle" class="head">完整训练顶层结论：tune</text>
+  <text x="1235" y="237" text-anchor="middle" class="body">当前配置暂不采用</text>
+  <path d="M305 218H362" class="flow"/><path d="M650 218H707" class="flow"/><path d="M995 218H1052" class="flow"/>
 
-  <rect x="55" y="190" width="165" height="110" class="node" fill="#dbeafe" stroke="#3b82f6"/>
-  <text x="137" y="226" text-anchor="middle" class="label">提出假设</text>
-  <text x="137" y="255" text-anchor="middle" class="small">指出一个主要约束</text>
+  <rect x="25" y="328" width="1450" height="275" rx="16" fill="#fffbeb" stroke="#fde68a" stroke-width="1.5"/>
+  <text x="55" y="362" class="lane" fill="#a16207">激活显存专项 · G1</text>
+  <rect x="55" y="388" width="230" height="92" class="box" fill="#ffffff" stroke="#f59e0b"/>
+  <text x="170" y="423" text-anchor="middle" class="head">隔离激活占用</text>
+  <text x="170" y="452" text-anchor="middle" class="body">无动量 SGD</text>
+  <rect x="335" y="388" width="230" height="92" class="box" fill="#ffffff" stroke="#f59e0b"/>
+  <text x="450" y="423" text-anchor="middle" class="head">逐步增加序列长度</text>
+  <text x="450" y="452" text-anchor="middle" class="body">768 → 1024 → 1280</text>
+  <rect x="615" y="388" width="250" height="92" class="box" fill="#ffffff" stroke="#f59e0b"/>
+  <text x="740" y="423" text-anchor="middle" class="head">checkpoint 在 1280</text>
+  <text x="740" y="452" text-anchor="middle" class="body">节省 2820 MB · 吞吐比 0.831</text>
+  <rect x="915" y="388" width="230" height="92" class="box" fill="#ffffff" stroke="#f59e0b"/>
+  <text x="1030" y="423" text-anchor="middle" class="head">专项门槛达到</text>
+  <text x="1030" y="452" text-anchor="middle" class="body">仅针对已测范围</text>
+  <rect x="1195" y="388" width="235" height="92" class="box" fill="#fee2e2" stroke="#ef4444"/>
+  <text x="1312" y="423" text-anchor="middle" class="head">安全余量触发停止</text>
+  <text x="1312" y="452" text-anchor="middle" class="body">未测到 OOM 边界</text>
+  <path d="M285 434H327" class="flow"/><path d="M565 434H607" class="flow"/><path d="M865 434H907" class="flow"/><path d="M1145 434H1187" class="flow"/>
 
-  <rect x="245" y="190" width="165" height="110" class="node" fill="#e0f2fe" stroke="#0284c7"/>
-  <text x="327" y="226" text-anchor="middle" class="label">固定条件</text>
-  <text x="327" y="255" text-anchor="middle" class="small">模型、硬件、workload</text>
-
-  <rect x="435" y="190" width="165" height="110" class="node" fill="#fef3c7" stroke="#d97706"/>
-  <text x="517" y="226" text-anchor="middle" class="label">只改一个变量</text>
-  <text x="517" y="255" text-anchor="middle" class="small">baseline 对 tuned</text>
-
-  <rect x="625" y="190" width="165" height="110" class="node" fill="#fef9c3" stroke="#ca8a04"/>
-  <text x="707" y="226" text-anchor="middle" class="label">重复测量</text>
-  <text x="707" y="255" text-anchor="middle" class="small">降低偶然波动影响</text>
-
-  <rect x="815" y="190" width="165" height="110" class="node" fill="#dcfce7" stroke="#16a34a"/>
-  <text x="897" y="226" text-anchor="middle" class="label">比较指标</text>
-  <text x="897" y="255" text-anchor="middle" class="small">时间、吞吐、显存、质量</text>
-
-  <rect x="1005" y="190" width="140" height="110" class="node" fill="#f3e8ff" stroke="#9333ea"/>
-  <text x="1075" y="226" text-anchor="middle" class="label">证据判断</text>
-  <text x="1075" y="255" text-anchor="middle" class="small">支持 / 不支持</text>
-
-  <path d="M220 245 H238" class="flow"/>
-  <path d="M410 245 H428" class="flow"/>
-  <path d="M600 245 H618" class="flow"/>
-  <path d="M790 245 H808" class="flow"/>
-  <path d="M980 245 H998" class="flow"/>
+  <rect x="615" y="515" width="815" height="58" class="box" fill="#ecfdf5" stroke="#34d399"/>
+  <text x="1022" y="550" text-anchor="middle" class="head">边界未确认；专项结果不提升完整训练结论，也不外推到更长长度</text>
+  <path d="M1312 480V507" class="flow"/>
 </svg>
