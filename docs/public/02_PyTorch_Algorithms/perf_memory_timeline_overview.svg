@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
   <title id="title">从分配事件到显存峰值归因</title>
-  <desc id="desc">验证分配与释放事件，重建活动对象集合和驻留区间，形成活动字节时间序列，再定位峰值对象并进行生命周期配对实验。</desc>
+  <desc id="desc">验证分配与释放事件，重建对象引用、独立存储和驻留区间，形成活动字节时间序列，再定位峰值对象并进行生命周期配对实验。</desc>
   <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="#334155"/></marker>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L9 4.5 L0 9 Z" fill="#334155"/></marker>
     <style>
       .title{font-family:"Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#0f172a}.subtitle{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;fill:#475569}
       .node-title{font-family:"Noto Sans CJK SC",sans-serif;font-size:17px;font-weight:700;fill:#172033}.node-text{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;fill:#475569}
@@ -11,33 +11,33 @@
   </defs>
   <rect width="1200" height="620" rx="24" fill="#f8fafc"/>
   <text x="600" y="48" text-anchor="middle" class="title">从分配事件到显存峰值归因</text>
-  <text x="600" y="78" text-anchor="middle" class="subtitle">峰值由同一时刻仍然存活的对象共同形成，必须保留对象身份与生命周期</text>
+  <text x="600" y="78" text-anchor="middle" class="subtitle">先记录对象引用，再按独立存储去重，最后定位同一状态中的峰值</text>
 
   <g>
     <rect x="25" y="180" width="165" height="84" rx="14" fill="#dbeafe" stroke="#2563eb" stroke-width="2.5"/>
-    <text x="108" y="220" text-anchor="middle" class="node-title">分配 / 释放事件</text><text x="108" y="252" text-anchor="middle" class="node-text">时间 · 对象 · 字节</text>
+    <text x="108" y="220" text-anchor="middle" class="node-title">分配 / 释放事件</text><text x="108" y="252" text-anchor="middle" class="node-text">时间 · 引用 · 存储</text>
     <rect x="220" y="180" width="165" height="84" rx="14" fill="#e0f2fe" stroke="#0284c7" stroke-width="2.5"/>
-    <text x="303" y="220" text-anchor="middle" class="node-title">身份校验</text><text x="303" y="252" text-anchor="middle" class="node-text">拒绝重复与非法释放</text>
+    <text x="303" y="220" text-anchor="middle" class="node-title">引用状态校验</text><text x="303" y="252" text-anchor="middle" class="node-text">拒绝重复与非法释放</text>
     <rect x="415" y="180" width="165" height="84" rx="14" fill="#dcfce7" stroke="#16a34a" stroke-width="2.5"/>
-    <text x="498" y="220" text-anchor="middle" class="node-title">活动对象集合</text><text x="498" y="252" text-anchor="middle" class="node-text">事件后更新驻留状态</text>
+    <text x="498" y="220" text-anchor="middle" class="node-title">对象与存储集合</text><text x="498" y="252" text-anchor="middle" class="node-text">共享存储只计一次</text>
     <rect x="610" y="180" width="165" height="84" rx="14" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/>
     <text x="693" y="220" text-anchor="middle" class="node-title">活动字节时间线</text><text x="693" y="252" text-anchor="middle" class="node-text">总量与类别随时间变化</text>
     <rect x="805" y="180" width="165" height="84" rx="14" fill="#ffedd5" stroke="#ea580c" stroke-width="2.5"/>
     <text x="888" y="220" text-anchor="middle" class="node-title">峰值对象集合</text><text x="888" y="252" text-anchor="middle" class="node-text">定位同时存活的对象</text>
     <rect x="1000" y="180" width="175" height="84" rx="14" fill="#fee2e2" stroke="#dc2626" stroke-width="2.5"/>
-    <text x="1088" y="220" text-anchor="middle" class="node-title">生命周期对照</text><text x="1088" y="252" text-anchor="middle" class="node-text">只改变释放或重算</text>
+    <text x="1088" y="220" text-anchor="middle" class="node-title">生命周期对照</text><text x="1088" y="252" text-anchor="middle" class="node-text">比较释放与重算</text>
     <path d="M190 233 H220" class="edge"/><path d="M385 233 H415" class="edge"/><path d="M580 233 H610" class="edge"/><path d="M775 233 H805" class="edge"/><path d="M970 233 H1000" class="edge"/>
   </g>
 
   <g>
-    <rect x="195" y="390" width="216" height="86" rx="13" fill="#ffffff" stroke="#0284c7" stroke-width="2.5"/>
-    <text x="303" y="425" text-anchor="middle" class="node-title">事件不变量</text><text x="303" y="454" text-anchor="middle" class="node-text">一次分配对应一次释放</text>
+    <rect x="208" y="390" width="190" height="86" rx="13" fill="#ffffff" stroke="#0284c7" stroke-width="2.5"/>
+    <text x="303" y="425" text-anchor="middle" class="node-title">事件不变量</text><text x="303" y="454" text-anchor="middle" class="node-text">引用先创建后释放</text>
     <path d="M303 264 V390" class="edge"/>
-    <rect x="585" y="390" width="216" height="86" rx="13" fill="#ffffff" stroke="#16a34a" stroke-width="2.5"/>
-    <text x="693" y="425" text-anchor="middle" class="node-title">容量不变量</text><text x="693" y="454" text-anchor="middle" class="node-text">活动字节等于驻留对象之和</text>
+    <rect x="598" y="390" width="190" height="86" rx="13" fill="#ffffff" stroke="#16a34a" stroke-width="2.5"/>
+    <text x="693" y="425" text-anchor="middle" class="node-title">容量不变量</text><text x="693" y="454" text-anchor="middle" class="node-text">累加独立存储容量</text>
     <path d="M693 264 V390" class="edge"/>
-    <rect x="980" y="390" width="216" height="86" rx="13" fill="#ffffff" stroke="#dc2626" stroke-width="2.5"/>
-    <text x="1088" y="425" text-anchor="middle" class="node-title">归因证据</text><text x="1088" y="454" text-anchor="middle" class="node-text">对象改变后峰值随之移动</text>
+    <rect x="993" y="390" width="190" height="86" rx="13" fill="#ffffff" stroke="#dc2626" stroke-width="2.5"/>
+    <text x="1088" y="425" text-anchor="middle" class="node-title">归因证据</text><text x="1088" y="454" text-anchor="middle" class="node-text">复测新峰值与重算代价</text>
     <path d="M1088 264 V390" class="edge"/>
   </g>
 </svg>
