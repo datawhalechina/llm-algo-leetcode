@@ -14,9 +14,9 @@
 
 ## 本节导读
 
-多卡训练扩不动，很多时候不是算子不够快，而是同步点太重。梯度要不要聚合、聚合走哪条链路、等待会不会把 step time 重新拉长，这些问题一旦没想清楚，GPU 数量上去之后也可能只是在放大通信成本。
+多卡训练扩展不理想时，问题可能来自集合通信和同步等待，而不只是单卡算子速度。增加 GPU 数量也会增加需要协调的数据和参与者。
 
-本节把多卡通信放回一个可解释的训练步：先区分局部结果与全局一致结果，再沿着 Ring 追踪 chunk 的所有权和两阶段传播，最后用通信轮数、每 rank 字节数与 alpha-beta 模型估算理论代价。真实 NCCL 算法选择和多卡性能证据由 Part 02 · 47 承接。
+本节建立“局部结果 → All-Reduce → 环形传播 → 延迟与带宽成本”的关系。完成后，你应能解释 Reduce-Scatter 与 All-Gather 如何组成环形 All-Reduce，并估算每个进程的通信量和理论时间。
 
 
 **关键词：** `NCCL`, `AllReduce`, `DP`
@@ -33,15 +33,11 @@
 ---
 ## Q1：NCCL 在分布式训练里到底解决什么问题？
 
-<details>
-<summary>点击展开查看解析</summary>
 
-NCCL 解决的是多 GPU 之间高效通信的问题。
+NCCL 为 NVIDIA GPU 提供集合通信和点到点通信实现。它执行 All-Reduce、All-Gather、Reduce-Scatter 等原语，但不负责选择 DP、TP 或 PP，也不替代上层调度器。
 
-在分布式训练里，单卡算完还不够，参数、梯度和状态都要在多卡之间同步。如果通信效率太低，GPU 就会在等待数据时空转，扩展效果会很差。
+在数据并行训练中，各 rank 先得到局部梯度，再调用集合通信形成一致结果。若 collective 没有被计算覆盖，未覆盖部分会直接进入训练步关键路径。
 
-NCCL 的作用，就是给这些通信原语提供高效实现，让多卡之间的同步尽量接近硬件能力上限。它本质上不是“额外功能”，而是分布式训练能否真正扩展的基础设施。
-</details>
 ### Q1小验证：同步等待如何进入训练步
 
 计算时间与 collective 时间不能按 GPU 数量线性相乘；先扣除真正被计算覆盖的通信时间，再得到训练步关键路径。
@@ -53,24 +49,27 @@ def training_step_time(compute_ms, collective_ms, overlap_ms=0.0):
         raise ValueError('时间必须非负')
     hidden_ms = min(overlap_ms, collective_ms, compute_ms)
     exposed_ms = collective_ms - hidden_ms
-    return {'step_ms': compute_ms + exposed_ms, 'exposed_collective_ms': exposed_ms}
+    return {
+        'step_ms': compute_ms + exposed_ms,
+        'hidden_collective_ms': hidden_ms,
+        'exposed_collective_ms': exposed_ms,
+    }
 
-for overlap in [0.0, 1.5, 3.0]:
-    print('overlap=', overlap, '->', training_step_time(10.0, 3.0, overlap))
+reports = [training_step_time(10.0, 3.0, overlap) for overlap in [0.0, 1.5, 3.0]]
+assert reports[0]['exposed_collective_ms'] == 3.0
+assert reports[-1]['exposed_collective_ms'] == 0.0
+for report in reports:
+    print(report)
 
 ```
 
 ## Q2：AllReduce 为什么是最核心的通信原语之一？
 
-<details>
-<summary>点击展开查看解析</summary>
 
-AllReduce 的核心是“每张卡都有一份数据，最后大家要得到同一个聚合结果”。
+All-Reduce 接收每个 rank 的同形状局部张量，执行归约，并把相同的完整结果返回给所有 rank。其不变量是：输出形状与局部输入相同，各 rank 输出一致。
 
-这在数据并行训练里特别常见，因为每张卡都会计算局部梯度，最后需要把梯度做求和或平均，再同步回所有设备。这个过程如果效率低，就会拖慢整条训练链。
+数据并行常用它聚合局部梯度。求和与平均只差一个缩放步骤，但该缩放必须与损失归约和优化器语义一致。
 
-AllReduce 之所以重要，是因为它几乎代表了“多卡协同”的基础动作。很多通信优化、拓扑设计和同步策略，本质上都在围绕它展开。
-</details>
 ### Q2小验证：AllReduce 的输出不变量是什么
 
 先把“局部结果 -> 全局一致”这件事想清楚。
@@ -93,15 +92,11 @@ assert all(row == global_gradients[0] for row in global_gradients)
 
 ## Q3：为什么通信带宽和拓扑会直接影响训练扩展效果？
 
-<details>
-<summary>点击展开查看解析</summary>
 
 通信不是只有“能不能通”的问题，更重要的是“通得快不快”。
 
-如果带宽低、拓扑绕路多、同步链路长，那么多卡之间的通信时间就会迅速放大，最后训练速度可能并不会随着 GPU 数量线性提升。
+Ring All-Reduce 包含 `2 × (world_size - 1)` 轮通信。固定 payload 下，每个 rank 的理论通信量趋近 payload 的两倍；启动时延随轮数增长，传输项则受有效链路带宽约束。
 
-所以判断并行方案时，不能只看算力堆了多少卡，还要看通信是否会成为主瓶颈。拓扑、带宽、同步原语和调度策略共同决定了最终的扩展效率。
-</details>
 ### Q3小验证：Ring 的理论通信量与 alpha-beta 成本
 
 对固定全量 payload，计算每个 rank 在两阶段中搬运的字节数，并把每轮启动延迟与传输成本分开。
@@ -125,14 +120,18 @@ def ring_cost(payload_bytes, world_size, alpha_ms, bandwidth_gbps):
     }
 
 payload_bytes = 256 * 1024 * 1024
-for name, bandwidth in {'NVLink-like': 900.0, 'PCIe-like': 64.0}.items():
-    print(name, ring_cost(payload_bytes, world_size=8, alpha_ms=0.01, bandwidth_gbps=bandwidth))
+nvlink_like = ring_cost(payload_bytes, world_size=8, alpha_ms=0.01, bandwidth_gbps=900.0)
+pcie_like = ring_cost(payload_bytes, world_size=8, alpha_ms=0.01, bandwidth_gbps=64.0)
+assert nvlink_like['rounds'] == 14
+assert nvlink_like['bytes_per_rank'] == 2 * 7 * payload_bytes // 8
+assert pcie_like['transfer_ms'] > nvlink_like['transfer_ms']
+print('高速链路：', nvlink_like)
+print('低速链路：', pcie_like)
 
 ```
 
 ## Q4：Ring AllReduce 为什么常被用来解释 AllReduce 的实现思路？
 
-<details><summary>点击展开查看解析</summary>
 
 Ring AllReduce 的关键点，不是“名字里有 ring”，而是它把一次全量聚合拆成了两个更可控的阶段：
 
@@ -141,8 +140,8 @@ Ring AllReduce 的关键点，不是“名字里有 ring”，而是它把一次
 
 这样做的好处是：每张卡在每一轮只发送和接收一小块数据，通信负载更均匀，不需要某一张卡一次性承担全部传输压力。
 
-所以 NCCL 之所以重要，不只是因为它“能做 AllReduce”，而是因为它能把这些通信原语落成对拓扑更友好的实现。对于训练来说，真正的瓶颈常常不是有没有通信，而是通信是否能被拆成适合硬件链路的节奏。
-</details>
+这个模拟器只验证算法状态变化。真实 NCCL 会根据拓扑、消息规模和配置选择具体算法，实际性能需要在多卡环境中测量。
+
 ### Q4小验证：逐轮追踪 chunk 所有权与归约状态
 
 输入矩阵的第一个维度表示 rank，第二个维度表示 chunk。Reduce-Scatter 每轮只移动一个 partial chunk，All-Gather 再传播已经完成归约的 chunk。

@@ -14,9 +14,9 @@
 
 ## 本节导读
 
-大模型训练从单卡扩展到多卡后，性能取决于两件事：每张卡如何切分数据、张量或网络层，以及切分后需要交换多少数据。先从 DP、TP、PP 的切分对象入手，再追踪 All-Reduce、All-Gather、Reduce-Scatter 和点到点传输，最后把链路带宽与同步等待放回吞吐判断。
+大模型从单卡扩展到多卡后，每种切分都会引入数据交换。数据并行（DP）、张量并行（TP）和流水线并行（PP）切分的对象不同，因此通信负载和同步位置也不同。
 
-本节沿着“并行方式 → 数据交换 → 拓扑带宽 → 计算与通信重叠”推进。完成后，你应能为一种并行方案指出主要通信原语，做出通信量级的初步估算，并解释链路带宽和同步等待如何影响并行收益。
+本节建立“切分对象 → 集合通信接口 → 拓扑路径 → 并行组放置”的分类关系。完成后，你应能指出一种切分可能需要的通信原语，估算链路传输下界，并检查高频通信是否被放在合适的拓扑域内；All-Reduce 的算法过程在第 20 节展开，并行候选筛选由第 26 节完成。
 
 **关键词：** `DP`, `TP`, `PP`
 
@@ -32,7 +32,6 @@
 ---
 ## Q1：DP、TP、PP 分别如何切分数据、张量和层？
 
-<details><summary>点击展开查看解析</summary>
 
 先分别看清数据并行（DP）、张量并行（TP）和流水线并行（PP）各自切分什么，再说明它们组合后为什么称为 3D 并行，最后追踪切分产生的数据交换。
 
@@ -47,7 +46,7 @@
 | DP | 不同数据批次 | 梯度或参数更新结果 | 常见 All-Reduce |
 | TP | 层内张量或激活 | 局部激活、局部结果 | 可能使用 All-Gather、Reduce-Scatter 或 All-Reduce |
 | PP | 不同层或阶段 | 相邻阶段的激活 | 点到点传输，并伴随流水线等待 |
-</details>
+
 ### Q1小验证：对照并行维度的切分对象与通信关注点
 
 逐项检查每种并行方式切分什么、需要交换什么，以及对应的通信方式。
@@ -87,7 +86,6 @@ print('3D parallelism = DP × TP × PP')
 
 ## Q2：All-Reduce、All-Gather、Reduce-Scatter 分别有什么区别？
 
-<details><summary>点击展开查看解析</summary>
 
 这三种集合通信原语的区别，先从每张卡的输入、输出和数据变化看起。下面的形状只是数据流示意；实际耗时还会受到消息大小、world size、拓扑、collective 算法和通信库实现影响。代码只模拟这些输入 / 输出形状，不执行真实 NCCL 通信。
 
@@ -96,7 +94,7 @@ print('3D parallelism = DP × TP × PP')
 | All-Reduce | 局部张量 | 相同形状的归约结果 | 归约后复制到每卡 | DP 梯度同步 |
 | All-Gather | 局部分片 | 拼接后的完整张量 | 收集各卡分片 | TP 激活或参数收集 |
 | Reduce-Scatter | 较大的局部输入 | 归约后的局部结果 | 先归约，再切分 | 分片梯度或参数同步 |
-</details>
+
 ### Q2小验证：通信原语如何改变每张卡看到的数据
 
 先观察“聚合”“收集”“切分再发回”三种数据流。
@@ -132,7 +130,6 @@ else:
 
 ## Q3：通信拓扑如何改变通信代价？
 
-<details><summary>点击展开查看解析</summary>
 
 先区分通信发生在哪里，再比较相同消息大小经过不同链路的理想传输时间。下表中的带宽统一按 Gb/s 表示，只是教学示例，不代表所有 GPU、主板、驱动或网络配置；真实实验应以 `nvidia-smi topo -m`、NCCL 测试或厂商规格为准。
 
@@ -141,94 +138,84 @@ else:
 | GPU 机内 | NVLink / NVSwitch | 900 级 | 带宽高、延迟较低 | 高频 TP 或集合通信 |
 | GPU 到 CPU | PCIe | 64 级 | 带宽较低、路径更长 | 参数搬运、低频同步 |
 | 跨节点 | 网络互连 | 以实际集群为准 | 受网络和拓扑影响大 | 低频或可重叠通信 |
-</details>
+
 ### Q3小验证：相同消息经过不同链路需要多久
 
 在相同消息大小下，比较不同链路的理想传输时间。
 
 ```python
-def bandwidth_ratio(intra_gbps=900, inter_gbps=64):
-    """返回同一单位下的链路带宽比；数值只是拓扑教学假设。"""
-    if intra_gbps <= 0 or inter_gbps <= 0:
-        raise ValueError('intra_gbps 和 inter_gbps 必须为正数')
-    return intra_gbps / inter_gbps
-
-print(f'ratio ≈ {bandwidth_ratio():.1f}x')
-```
-
-## Q4：如何根据通信代价选择并行策略？
-
-<details><summary>点击展开查看解析</summary>
-
-用下面的条件表把并行方式、带宽、同步频率和计算重叠连接起来。表中的“初步策略”只表示通信账本给出的方向，不替代真实系统测量。
-
-| 观察条件 | 可能的风险 | 初步策略 |
-| --- | --- | --- |
-| DP 需要跨低带宽链路同步梯度 | 梯度通信拖慢每轮更新 | 减少同步频率，或提高通信与计算重叠 |
-| TP 需要跨低带宽链路频繁同步 | 集合通信成为瓶颈 | 缩小 TP 范围，优先放在高速互连内 |
-| PP 跨阶段传输激活较多 | 阶段间等待、pipeline bubble | 调整 stage 边界或 micro-batch |
-| 通信时间接近计算时间 | 扩展收益下降 | 尝试通信与计算重叠 |
-| 只有理想带宽估算 | 无法确认真实部署收益 | 把同一 workload 带入后续系统实验 |
-</details>
-### Q4小验证：比较并行策略的通信占比
-
-```python
-def comm_time_ms(size_mb, bandwidth_gbps, sync_rounds=1):
-    """估算重复同步的理想单向传输时间；只作为带宽下界。"""
-    if size_mb < 0:
-        raise ValueError('size_mb must be non-negative')
-    if bandwidth_gbps <= 0 or sync_rounds <= 0:
-        raise ValueError('bandwidth_gbps 和 sync_rounds 必须为正数')
-    # MB -> Mb，除以 Gb/s，再换算为毫秒；忽略协议、同步和重叠开销。
-    return size_mb * 8 / bandwidth_gbps * sync_rounds
-
-payload_mb = 256
-sync_rounds = 4
-nvlink_gbps = 900
-pcie_gbps = 64
-nvlink_time = comm_time_ms(payload_mb, nvlink_gbps, sync_rounds)
-pcie_time = comm_time_ms(payload_mb, pcie_gbps, sync_rounds)
-ratio = pcie_time / nvlink_time
-
-print(f'{payload_mb} MB × {sync_rounds} sync rounds over NVLink: {nvlink_time:.2f} ms')
-print(f'{payload_mb} MB × {sync_rounds} sync rounds over PCIe: {pcie_time:.2f} ms')
-print(f'PCIe / NVLink time ratio: {ratio:.1f}x')
-
-def parallel_strategy_report(strategy, payload_mb, bandwidth_gbps, sync_rounds, compute_ms):
-    """用理想通信时间比较 DP、TP、PP 的通信占比；不模拟真实 collective。"""
-    if strategy not in {'DP', 'TP', 'PP'}:
-        raise ValueError('strategy 必须是 DP、TP 或 PP')
-    if compute_ms <= 0:
-        raise ValueError('compute_ms 必须为正数')
-    communication_ms = comm_time_ms(payload_mb, bandwidth_gbps, sync_rounds)
-    ratio = communication_ms / compute_ms
-    if strategy == 'DP':
-        action = '检查梯度同步频率与重叠'
-    elif strategy == 'TP':
-        action = '优先放在高速互连内'
-    else:
-        action = '检查 stage 边界与 micro-batch'
+def path_transfer_lower_bound(payload_mib, links):
+    """按路径最窄链路估算单向传输下界，不包含协议与拥塞开销。"""
+    if payload_mib < 0 or not links:
+        raise ValueError('payload_mib 不得为负，links 不得为空')
+    if any(link['bandwidth_gib_s'] <= 0 for link in links):
+        raise ValueError('链路带宽必须大于 0 GiB/s')
+    bottleneck = min(links, key=lambda link: link['bandwidth_gib_s'])
+    lower_bound_ms = payload_mib / 1024 / bottleneck['bandwidth_gib_s'] * 1000
     return {
-        'strategy': strategy,
-        'communication_ms': round(communication_ms, 3),
-        'communication_compute_ratio': round(ratio, 3),
-        'next_action': action,
+        'bottleneck_link': bottleneck['name'],
+        'bottleneck_gib_s': bottleneck['bandwidth_gib_s'],
+        'lower_bound_ms': round(lower_bound_ms, 3),
     }
 
-reports = [
-    parallel_strategy_report('DP', 256, 64, 4, 20),
-    parallel_strategy_report('TP', 256, 900, 8, 20),
-    parallel_strategy_report('PP', 64, 64, 2, 20),
+intra_node = path_transfer_lower_bound(256, [{'name': 'NVLink', 'bandwidth_gib_s': 100}])
+cross_node = path_transfer_lower_bound(256, [
+    {'name': 'GPU-NIC', 'bandwidth_gib_s': 50},
+    {'name': 'network', 'bandwidth_gib_s': 12.5},
+])
+assert cross_node['lower_bound_ms'] > intra_node['lower_bound_ms']
+print('机内路径：', intra_node)
+print('跨节点路径：', cross_node)
+```
+
+## Q4：如何把并行组放到合适的拓扑域？
+
+
+并行组放置先看通信频率和可用拓扑域。TP、EP 等高频通信通常优先限制在机内；DP 或 PP 可以跨节点，但仍需在后续实验中测量实际集合通信或阶段传输。
+
+| 观察条件 | 可能的风险 | 放置检查 |
+| --- | --- | --- |
+| DP 需要跨低带宽链路同步梯度 | 梯度通信拖慢每轮更新 | 登记跨节点带宽和梯度载荷 |
+| TP 需要跨低带宽链路频繁同步 | 集合通信成为瓶颈 | 缩小 TP 范围，优先放在高速互连内 |
+| PP 跨阶段传输激活较多 | 阶段间等待、pipeline bubble | 登记 stage 边界和跨域载荷 |
+| EP 跨节点交换 token | All-to-All 与负载不均叠加 | 优先检查专家组是否可限制在机内 |
+| 只有理想带宽估算 | 无法确认真实部署收益 | 把同一 workload 带入后续系统实验 |
+
+### Q4小验证：检查并行组与拓扑域是否匹配
+
+```python
+DOMAIN_ORDER = {'cross_node': 1, 'intra_node': 2}
+
+def check_group_placement(groups):
+    """比较并行组要求的拓扑域与实际放置域。"""
+    reports = []
+    for group in groups:
+        accepted = DOMAIN_ORDER[group['actual_domain']] >= DOMAIN_ORDER[group['required_domain']]
+        reports.append({
+            'name': group['name'],
+            'required_domain': group['required_domain'],
+            'actual_domain': group['actual_domain'],
+            'accepted': accepted,
+        })
+    return reports
+
+groups = [
+    {'name': 'TP group', 'required_domain': 'intra_node', 'actual_domain': 'intra_node'},
+    {'name': 'EP group', 'required_domain': 'intra_node', 'actual_domain': 'cross_node'},
+    {'name': 'DP group', 'required_domain': 'cross_node', 'actual_domain': 'cross_node'},
 ]
-print('并行策略通信占比：', reports)
-assert {row['strategy'] for row in reports} == {'DP', 'TP', 'PP'}
+reports = check_group_placement(groups)
+assert next(row for row in reports if row['name'] == 'TP group')['accepted']
+assert not next(row for row in reports if row['name'] == 'EP group')['accepted']
+for report in reports:
+    print(report)
 
 ```
 
 ---
 ## 相关阅读
 本节可以继续接到 NCCL 原语、并行策略选择和通信调度。
-- [NCCL Documentation](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/)：查看 AllReduce、AllGather、ReduceScatter 和拓扑选择。
 - [20. NCCL and AllReduce Basics | NCCL 与 AllReduce 基础](./20_NCCL_and_AllReduce_Basics.md)
 - [26. Parallel Strategy Decision Framework | 并行策略决策框架](./26_Parallel_Strategy_Decision_Framework.md)
+- [27. Communication Scheduling Optimization | 通信调度优化](./27_Communication_Scheduling_Optimization.md)
 ---

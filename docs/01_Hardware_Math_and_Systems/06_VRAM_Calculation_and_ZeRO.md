@@ -14,9 +14,9 @@
 
 ## 本节导读
 
-训练显存由多类状态共同组成：参数、梯度和优化器状态（optimizer state）负责保存训练状态，激活值（activation）、通信缓冲和工作区（workspace）则随训练过程产生峰值。先把前三类状态拆开计算，再比较 DDP 的完整复制与 ZeRO 的分片方式。
+训练显存由参数、梯度、优化器状态、激活值、通信缓冲区和临时工作区共同组成。不同状态的复制方式与生命周期不同，因此峰值不能只按参数量估算。
 
-本节沿着“训练状态 → 单卡账本 → ZeRO 分摊 → 预算判断”推进：先计算每参数字节数和总量，再反推给定容量可以容纳的参数规模，最后把激活、通信缓冲和工作区纳入预算。这样得到的账本可以支持训练策略初筛，并为后续实验提供需要核对的变量。
+本节建立“训练状态 → 单卡账本 → DDP 复制 → ZeRO 分片 → 容量预算”的关系。完成后，你应能估算各类状态的理论占用，并判断多卡分片后仍需实测哪些峰值对象。
 
 **关键词：** `VRAM`, `ZeRO`, `AdamW`
 
@@ -35,8 +35,6 @@
 ---
 ## Q1：DDP 下每张卡保存哪些训练状态？
 
-<details>
-<summary>点击展开查看解析</summary>
 
 在 DDP 下，每张卡都保存完整模型、完整梯度和完整优化器状态。下面用 BF16 + Adam、7B 参数作为示例，把每参数字节数和理论占用放在同一张账本表中；Adam 的状态字节数取教学估算值，若实现另存 FP32 master weights、使用不同 optimizer 或改变参数 / 梯度 dtype，必须重新计算。
 
@@ -49,7 +47,7 @@
 
 这张表只覆盖参数、梯度和 optimizer state，不包含 activation、通信缓冲、临时 workspace、显存碎片或框架的 reserved memory。代码验证还应检查：改变 dtype / optimizer 后账本会变化，且三类状态仍被分别记录。
 
-</details>
+
 ### Q1小验证：拆分 DDP 单卡训练状态账本
 
 ```python
@@ -112,8 +110,6 @@ test_calculate_ddp_memory()
 
 ## Q2：ZeRO 如何分摊训练状态？
 
-<details>
-<summary>点击展开查看解析</summary>
 
 ZeRO 的核心思想是把训练状态分摊到多张 GPU 上。先看每个 stage 切分哪些状态，再用 `calculate_zero_memory()` 计算理想单卡占用；这里假设状态可以均匀切分，表格不包含 activation、通信 buffer、workspace、切分粒度和 allocator reserve。
 
@@ -126,7 +122,7 @@ ZeRO 的核心思想是把训练状态分摊到多张 GPU 上。先看每个 sta
 
 选择 stage 时，先问清楚要分摊的是 optimizer state、gradient 还是 parameter；这三个对象的分片范围不同，通信与实现复杂度也不同。
 
-</details>
+
 ### Q2小验证：ZeRO 显存计算
 
 ```python
@@ -236,18 +232,16 @@ def test_max_trainable_params():
 test_max_trainable_params()
 ```
 
-## Q3：如何把 ZeRO 账本转成策略决策表，并区分理论峰值？
+## Q3：如何把 ZeRO 账本转成容量候选表，并区分理论峰值？
 
 **问题：** 如果你手上只有 8 张标称 80GB 的 GPU，并且用一个 20% 的教学预留系数近似 activation 和通信开销，如何把 DDP、ZeRO-1、ZeRO-2、ZeRO-3 放到同一张决策表中？
 
-请把四种策略放在同一个表里比较最大可训练模型规模，并补充通信代价和工程复杂度的定性判断；可以调用前面的账本函数完成规模反推。
+请把四种状态布局放在同一个表里比较最大可训练模型规模，并登记通信代价和实现复杂度的定性风险；可以调用前面的账本函数完成规模反推。这里生成的是容量候选证据，完整并行策略筛选在第 26 节完成。
 
-<details>
-<summary>点击展开查看解析</summary>
 
 把 DDP、ZeRO-1、ZeRO-2、ZeRO-3 放在同一个表里，同时比较单卡训练状态、相对节省、可容纳参数规模，以及通信代价和工程复杂度。这里的“低 / 中 / 高”只是第一轮筛选标签：ZeRO stage 越高，通常需要更多状态分片、重建和同步。表格中的显存和模型规模都是理论账本结果，不等于真实训练可运行上限；最终应把同一模型、dtype、optimizer、batch、seq_len 和 checkpoint 配置带入 73–76 的 GPU 实验，检查 peak allocated、reserved、step time 和 OOM。
 
-</details>
+
 
 ```python
 gpu_memory = 80

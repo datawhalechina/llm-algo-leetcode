@@ -14,11 +14,11 @@
 
 ## 本节导读
 
-本节建立可恢复训练状态的概念，理解 checkpoint 保存内容、保存成本和故障恢复之间的关系。
+长时间训练可能因进程、设备或节点故障中断。检查点（checkpoint）必须保存足够状态，使训练恢复后继续沿一致的更新轨迹运行。
 
-你将从“训练能否从中断处继续”这个问题出发，依次核对需要保存的状态、保存频率与成本、恢复后的校验，以及多卡环境中的交付方式。
+本节建立“可恢复状态 → 保存频率 → 写入成本 → 恢复校验”的关系。完成后，你应能列出恢复所需状态，并比较故障损失、存储开销和恢复时间之间的取舍。
 
-**关键词：** `checkpoint`, `recovery`, `fault tolerance`
+**关键词：** 检查点、恢复、容错
 
 ![本节概念关系](../public/01_Hardware_Math_and_Systems/28_checkpoint_recovery_map.svg)
 ## 前置阅读
@@ -30,10 +30,8 @@
 - [27. Communication Scheduling Optimization | 通信调度优化](./27_Communication_Scheduling_Optimization.md)
 ## Q1：Checkpoint 保存的到底是什么？
 
-<details>
-<summary>点击展开查看解析</summary>
 
-Checkpoint 保存的不是“模型文件”这么简单，而是一次训练能否继续的完整状态。
+检查点保存的不是单个模型文件，而是恢复训练所需的一组状态及其清单。
 
 通常至少包括：
 - 模型权重
@@ -42,164 +40,169 @@ Checkpoint 保存的不是“模型文件”这么简单，而是一次训练能
 - 随机数种子
 - 训练进度
 
-```mermaid
-flowchart LR
-    A[模型权重] --> D[可恢复状态]
-    B[优化器状态] --> D
-    C[调度器 / RNG / step] --> D
-    D --> E[resume from same training point]
-```
+每项状态都应在 manifest 中登记角色、大小和标识。只有完整清单提交后，检查点才可被恢复端读取；只保存权重只能用于加载模型，不能保证恢复同一训练轨迹。
 
-如果只保存权重，恢复往往不够完整，也不一定能得到和中断前一致的训练轨迹。
-</details>
 ### Q1小验证
-- 用一个最小状态对象看看 checkpoint 为什么至少要保存权重、优化器、调度器、RNG 和进度。
+构造检查点 manifest，验证缺少必需状态时不能标记为可恢复。
 
 
 ```python
-def checkpoint_state(model_mb, optimizer_mb, scheduler_mb, rng_mb, progress_mb):
-    total = model_mb + optimizer_mb + scheduler_mb + rng_mb + progress_mb
-    complete = all(v >= 0 for v in [model_mb, optimizer_mb, scheduler_mb, rng_mb, progress_mb]) and model_mb > 0
+REQUIRED_ROLES = {'model', 'optimizer', 'scheduler', 'rng', 'progress'}
+
+def inspect_checkpoint_manifest(entries, committed):
+    """检查训练恢复所需角色、文件大小和提交状态。"""
+    roles = {entry['role'] for entry in entries}
+    missing = sorted(REQUIRED_ROLES - roles)
+    invalid_files = sorted(entry['path'] for entry in entries if entry['size_mib'] <= 0)
+    total_mib = sum(entry['size_mib'] for entry in entries)
     return {
-        'total_mb': total,
-        'complete': complete,
-        'has_optimizer_state': optimizer_mb > 0,
-        'has_training_progress': progress_mb > 0,
+        'total_mib': round(total_mib, 2),
+        'missing_roles': missing,
+        'invalid_files': invalid_files,
+        'committed': committed,
+        'recoverable': committed and not missing and not invalid_files,
     }
 
-cases = [
-    (2400, 1200, 12, 1, 4),
-    (2400, 0, 12, 1, 4),
-    (1200, 600, 6, 1, 0),
+complete_entries = [
+    {'role': 'model', 'path': 'model.bin', 'size_mib': 2400},
+    {'role': 'optimizer', 'path': 'optimizer.bin', 'size_mib': 4800},
+    {'role': 'scheduler', 'path': 'scheduler.json', 'size_mib': 0.01},
+    {'role': 'rng', 'path': 'rng.bin', 'size_mib': 0.01},
+    {'role': 'progress', 'path': 'trainer.json', 'size_mib': 0.01},
 ]
-for case in cases:
-    print(case, '->', checkpoint_state(*case))
-print('checkpoint needs the full training state, not only model weights')
+complete = inspect_checkpoint_manifest(complete_entries, committed=True)
+weights_only = inspect_checkpoint_manifest(complete_entries[:1], committed=True)
+assert complete['recoverable']
+assert not weights_only['recoverable'] and 'optimizer' in weights_only['missing_roles']
+print('完整检查点：', complete)
+print('仅有权重：', weights_only)
 
 ```
 
 ## Q2：失败概率和恢复时间如何影响有效训练时间？
 
-<details>
-<summary>点击展开查看解析</summary>
 
-因为长训练的真正问题不是“会不会出故障”，而是“出故障后的代价能不能接受”。
+长训练需要同时估计故障次数、平均回滚量和重新加载时间。若故障在两个检查点之间近似均匀发生，平均回滚计算量约为保存间隔的一半。
 
 - 任务越长，出故障概率越高
 - 重新从头跑的损失可能非常大
 - checkpoint 的目标，是把故障后的恢复成本压低
 
-所以容错本质上是在控制总风险，而不是追求零故障。
-</details>
+该估算不是故障预测器，而是用于比较检查点间隔的统一成本口径。
+
 ### Q2小验证
-- 用一个粗略故障模型看看故障概率和恢复代价如何影响容错预算。
+估算给定保存间隔下的预期回滚与恢复开销。
 
 
 ```python
-def failure_budget(hours, fault_rate_per_hour, restart_hours):
-    expected_faults = hours * fault_rate_per_hour
-    expected_recovery = expected_faults * restart_hours
+def expected_failure_overhead(run_hours, fault_rate_per_hour, interval_minutes, reload_minutes):
+    """按均匀故障假设估算回滚计算与重新加载时间。"""
+    if min(run_hours, fault_rate_per_hour, interval_minutes, reload_minutes) < 0 or interval_minutes == 0:
+        raise ValueError('时间和故障率不得为负，检查点间隔必须大于 0')
+    expected_faults = run_hours * fault_rate_per_hour
+    rollback_minutes = expected_faults * interval_minutes / 2
+    reload_total_minutes = expected_faults * reload_minutes
     return {
-        'expected_faults': round(expected_faults, 2),
-        'expected_recovery_hours': round(expected_recovery, 2),
-        'risk_level': 'high' if expected_faults >= 1 else 'manageable',
+        'expected_faults': round(expected_faults, 3),
+        'expected_rollback_minutes': round(rollback_minutes, 2),
+        'expected_reload_minutes': round(reload_total_minutes, 2),
+        'expected_failure_overhead_minutes': round(rollback_minutes + reload_total_minutes, 2),
     }
 
-cases = [(72, 0.02, 1.5), (72, 0.1, 1.5), (240, 0.03, 3.0)]
-for case in cases:
-    print(case, '->', failure_budget(*case))
-print('the longer the run, the more checkpointing becomes a risk budget problem')
+hourly = expected_failure_overhead(72, 0.02, 60, 8)
+half_hourly = expected_failure_overhead(72, 0.02, 30, 8)
+assert half_hourly['expected_rollback_minutes'] < hourly['expected_rollback_minutes']
+print('每 60 分钟保存：', hourly)
+print('每 30 分钟保存：', half_hourly)
 
 ```
 
 ## Q3：保存和恢复为什么也有成本？
 
-<details>
-<summary>点击展开查看解析</summary>
 
-Checkpoint 不是免费动作，它会把训练拆成“计算”和“保存 / 恢复”两部分。
+检查点写入会暂停或竞争训练资源。缩短间隔会减少故障后的平均回滚量，却增加写入次数；延长间隔则相反。
 
 如果保存太频繁，会拖慢训练；如果保存太少，一旦故障，回滚代价又会变大。分布式场景里，保存和恢复还会涉及并行 IO、一致性和调度窗口。
 
-```mermaid
-flowchart LR
-    A[训练计算] --> B{是否到 checkpoint?}
-    B -->|是| C[保存状态]
-    C --> D[继续训练]
-    B -->|否| D
-    C --> E[恢复时重新装载]
-```
+分布式场景还要记录写入是否异步、各 rank 分片是否一致，以及 manifest 何时原子提交。这里先比较同步写入时的理论开销。
 
-所以保存策略本身也要调度，不能只写一个“定时保存”的函数就结束。
-</details>
 ### Q3小验证
-- 用保存间隔、保存成本、故障成本算一下 checkpoint 策略的总开销。
+扫描多个保存间隔，观察写入成本和故障回滚成本如何变化。
 
 
 ```python
-def checkpoint_tradeoff(train_minutes, interval_minutes, save_minutes, fail_minutes):
-    checkpoints = max(train_minutes // interval_minutes, 1)
-    save_cost = checkpoints * save_minutes
-    expected_fail_cost = (train_minutes / 720.0) * fail_minutes
-    total = train_minutes + save_cost + expected_fail_cost
+import math
+
+def checkpoint_interval_cost(run_minutes, interval_minutes, save_minutes, fault_rate_per_hour, reload_minutes):
+    """比较同步保存、预期回滚和重新加载三类开销。"""
+    if interval_minutes <= 0 or min(run_minutes, save_minutes, fault_rate_per_hour, reload_minutes) < 0:
+        raise ValueError('检查点间隔必须大于 0，其余输入不得为负')
+    save_count = math.floor(run_minutes / interval_minutes)
+    save_overhead = save_count * save_minutes
+    expected_faults = run_minutes / 60 * fault_rate_per_hour
+    failure_overhead = expected_faults * (interval_minutes / 2 + reload_minutes)
     return {
-        'checkpoints': checkpoints,
-        'save_cost_minutes': round(save_cost, 2),
-        'expected_fail_cost_minutes': round(expected_fail_cost, 2),
-        'total_minutes': round(total, 2),
+        'interval_minutes': interval_minutes,
+        'save_count': save_count,
+        'save_overhead_minutes': round(save_overhead, 2),
+        'failure_overhead_minutes': round(failure_overhead, 2),
+        'total_overhead_minutes': round(save_overhead + failure_overhead, 2),
     }
 
-cases = [(720, 60, 1.5, 40), (720, 30, 1.5, 40), (1440, 120, 2.0, 60)]
-for case in cases:
-    print(case, '->', checkpoint_tradeoff(*case))
-print('checkpointing is a balance between save overhead and failure recovery cost')
+intervals = [15, 30, 60, 120]
+reports = [checkpoint_interval_cost(1440, interval, 2, 0.02, 8) for interval in intervals]
+best = min(reports, key=lambda report: report['total_overhead_minutes'])
+assert best in reports
+for report in reports:
+    print(report)
+print('当前假设下开销最小的间隔：', best['interval_minutes'], '分钟')
 
 ```
 
 ## Q4：如何判断一个 checkpoint 方案真的可恢复？
 
-<details>
-<summary>点击展开查看解析</summary>
 
-- **“只要保存权重就够了”**  
-  不够。完整恢复通常需要更多状态。
+分布式检查点只有在以下条件同时满足时才可恢复：必需状态齐全，所有 rank 分片属于同一个 checkpoint ID，分片数量与 manifest 一致，且 manifest 已完成提交。
 
-- **“checkpoint 越频繁越好”**  
-  不对。频率太高会明显拖慢训练。
+当恢复时的 world size 发生变化，还需要框架明确支持 reshard；不能仅凭文件存在就假定可以加载。
 
-- **“恢复是训练结束后的额外工作”**  
-  不对。恢复设计从一开始就要和训练流程一起考虑。
-
-- **“容错只影响失败那一刻”**  
-  不对。它影响的是整个训练周期的风险预算。
-</details>
 ### Q4小验证
-- 用几个错误类型快速判断 checkpoint 方案最容易在哪类设计上出问题。
+验证分布式分片、检查点标识和提交状态是否一致。
 
 
 ```python
-def checkpoint_mistake(kind):
-    mapping = {
-        'weights_only': 'state_incomplete',
-        'too_frequent': 'training_overhead',
-        'too_sparse': 'recovery_expensive',
-        'no_budget_model': 'risk_not_budgeted',
-    }
-    return mapping.get(kind, 'unknown')
+def validate_sharded_checkpoint(manifest, shards):
+    """检查分片数量、检查点标识、rank 覆盖和原子提交状态。"""
+    issues = []
+    expected_ranks = set(range(manifest['world_size']))
+    actual_ranks = {shard['rank'] for shard in shards}
+    if actual_ranks != expected_ranks:
+        issues.append(f'rank coverage mismatch: expected {sorted(expected_ranks)}, got {sorted(actual_ranks)}')
+    if any(shard['checkpoint_id'] != manifest['checkpoint_id'] for shard in shards):
+        issues.append('checkpoint IDs are inconsistent')
+    if any(shard['size_mib'] <= 0 for shard in shards):
+        issues.append('one or more shards are empty')
+    if not manifest['committed']:
+        issues.append('manifest is not committed')
+    return {'recoverable': not issues, 'issues': issues}
 
-for kind in ['weights_only', 'too_frequent', 'too_sparse', 'no_budget_model']:
-    print(kind, '->', checkpoint_mistake(kind))
-print('the most common mistakes come from incomplete state, wrong cadence, and missing risk budget')
+manifest = {'checkpoint_id': 'step-1200', 'world_size': 4, 'committed': True}
+complete_shards = [
+    {'rank': rank, 'checkpoint_id': 'step-1200', 'size_mib': 900} for rank in range(4)
+]
+missing_shard = complete_shards[:-1]
+assert validate_sharded_checkpoint(manifest, complete_shards)['recoverable']
+assert not validate_sharded_checkpoint(manifest, missing_shard)['recoverable']
+print('完整分片：', validate_sharded_checkpoint(manifest, complete_shards))
+print('缺少分片：', validate_sharded_checkpoint(manifest, missing_shard))
 
 ```
 
 ## 相关阅读
 
-**导语：** 如果还想把容错和工程实现连起来，可以接着看训练恢复、项目交付和训练工程附录，把保存、恢复和 artifact 放在一起理解，也把“保存了什么”与“能不能从同一训练点恢复”分清楚。
+**导语：** 继续把状态保存、恢复校验和训练产物交付放进同一条恢复链。
 
-- [29. CUDA Stream Advanced Scheduling | CUDA Stream 高级调度](./29_CUDA_Stream_Advanced_Scheduling.md)
 - [04 SFT 实验、Artifact 与交付](../topic_discussion/post_training_optimization/04_end_to_end_experiment.md)
 - [62. Instruction Fine Tuning Project | 指令微调项目](../02_PyTorch_Algorithms/62_Instruction_Fine_Tuning_Project.md)
 - [PyTorch Distributed Checkpoint | PyTorch 分布式检查点文档](https://pytorch.org/docs/stable/distributed.checkpoint.html)
-- [DeepSpeed Model Checkpointing | DeepSpeed 模型检查点文档](https://www.deepspeed.ai/tutorials/model-checkpointing/)
 ---
