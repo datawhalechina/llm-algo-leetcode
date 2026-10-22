@@ -1,14 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="title desc">
-<title id="title">0A：数据与函数 → 数组维度 → 对象状态 → 运行文件</title><desc id="desc">01检查数据结构与函数输入；02检查广播、变形和Einsum；03管理对象跨调用的累计与重置；04管理一次运行的配置和文件。箭头是推荐阅读顺序，不是程序执行数据流。</desc>
-<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.subtitle{font-size:15px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:15px;fill:#475569}.edge{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow)}</style></defs>
-<rect width="1280" height="520" fill="#f8fafc"/>
-<text x="640" y="45" text-anchor="middle" class="title">0A：数据与函数 → 数组维度 → 对象状态 → 运行文件</text>
-<text x="640" y="76" text-anchor="middle" class="subtitle">箭头表示推荐阅读顺序；对象中的累计状态与外部运行文件分别检查</text>
-<rect x="40" y="205" width="240" height="110" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="160" y="237" text-anchor="middle" class="head">01 数据与函数</text><text x="160" y="264" text-anchor="middle" class="body">序列、字段与输入校验</text><text x="160" y="291" text-anchor="middle" class="body">逐条读取样本</text>
-<rect x="360" y="205" width="240" height="110" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="480" y="237" text-anchor="middle" class="head">02 数组与维度</text><text x="480" y="264" text-anchor="middle" class="body">广播、变形与收缩</text><text x="480" y="291" text-anchor="middle" class="body">核对元素位置</text>
-<rect x="680" y="205" width="240" height="110" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="800" y="237" text-anchor="middle" class="head">03 对象与状态</text><text x="800" y="264" text-anchor="middle" class="body">累计、查询与重置</text><text x="800" y="291" text-anchor="middle" class="body">检查跨调用变化</text>
-<rect x="1000" y="205" width="240" height="110" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="1120" y="237" text-anchor="middle" class="head">04 配置与文件</text><text x="1120" y="264" text-anchor="middle" class="body">配置覆盖与资源定位</text><text x="1120" y="291" text-anchor="middle" class="body">记录输入、缓存和输出</text>
-<path d="M280 260H360" class="edge"/>
-<path d="M600 260H680" class="edge"/>
-<path d="M920 260H1000" class="edge"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="560" viewBox="0 0 1280 560" role="img" aria-labelledby="title desc">
+<title id="title">0A：先表达数据，再组织状态与运行文件</title><desc id="desc">两条阅读线：01容器与函数校验、02数组与维度运算；03对象状态及累计重置、04运行配置及文件定位。实线展开同节检查，虚线表示跨节推荐阅读。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.note{font-size:15px;fill:#475569}.head{font-size:18px;font-weight:700}.edge{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow)}.reading{stroke-dasharray:7 5}.node{stroke-width:2}</style></defs>
+<rect width="1280" height="560" fill="#f8fafc"/>
+<text class="title" x="640" y="45" text-anchor="middle">0A：先表达数据，再组织状态与运行文件</text>
+<text class="note" x="640" y="76" text-anchor="middle">实线：同节展开；虚线：跨节推荐阅读。两行按问题分别进入。</text>
+<text class="note" x="320" y="133" text-anchor="middle">01 Python 数据与函数</text>
+<text class="note" x="960" y="133" text-anchor="middle">02 NumPy 与维度运算</text>
+<rect class="node" x="40" y="160" width="250" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa"/><text class="head" x="165" y="192" text-anchor="middle">数据容器</text><text class="note" x="165" y="218" text-anchor="middle">序列、固定维度与命名字段</text>
+<rect class="node" x="350" y="160" width="250" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa"/><text class="head" x="475" y="192" text-anchor="middle">函数输入校验</text><text class="note" x="475" y="218" text-anchor="middle">检查字段、类型与边界</text>
+<rect class="node" x="680" y="160" width="250" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa"/><text class="head" x="805" y="192" text-anchor="middle">数组形状</text><text class="note" x="805" y="218" text-anchor="middle">轴、元素位置与形状</text>
+<rect class="node" x="990" y="160" width="250" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa"/><text class="head" x="1115" y="192" text-anchor="middle">维度运算</text><text class="note" x="1115" y="218" text-anchor="middle">广播、变形与维度收缩</text>
+<path class="edge" d="M290 200H350"/>
+<path class="edge reading" d="M600 200H680"/>
+<path class="edge" d="M930 200H990"/>
+<text class="note" x="320" y="333" text-anchor="middle">03 对象与状态</text>
+<text class="note" x="960" y="333" text-anchor="middle">04 配置与运行文件</text>
+<rect class="node" x="40" y="360" width="250" height="80" rx="12" fill="#f0fdf4" stroke="#4ade80"/><text class="head" x="165" y="392" text-anchor="middle">对象状态</text><text class="note" x="165" y="418" text-anchor="middle">保存跨调用的数据</text>
+<rect class="node" x="350" y="360" width="250" height="80" rx="12" fill="#f0fdf4" stroke="#4ade80"/><text class="head" x="475" y="392" text-anchor="middle">累计与重置</text><text class="note" x="475" y="418" text-anchor="middle">更新指标并开始新一轮</text>
+<rect class="node" x="680" y="360" width="250" height="80" rx="12" fill="#fffbeb" stroke="#fbbf24"/><text class="head" x="805" y="392" text-anchor="middle">运行配置</text><text class="note" x="805" y="418" text-anchor="middle">默认值、覆盖与校验</text>
+<rect class="node" x="990" y="360" width="250" height="80" rx="12" fill="#fffbeb" stroke="#fbbf24"/><text class="head" x="1115" y="392" text-anchor="middle">文件定位</text><text class="note" x="1115" y="418" text-anchor="middle">区分输入、缓存与输出</text>
+<path class="edge" d="M290 400H350"/>
+<path class="edge reading" d="M600 400H680"/>
+<path class="edge" d="M930 400H990"/>
 </svg>
