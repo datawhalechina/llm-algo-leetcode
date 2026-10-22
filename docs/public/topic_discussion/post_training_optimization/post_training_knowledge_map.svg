@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="740" viewBox="0 0 1280 740" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="878" viewBox="0 0 1280 878" role="img" aria-labelledby="title desc">
   <title id="title">后训练优化知识地图</title>
-  <desc id="desc">监督样本、偏好对、反馈数据和在线轨迹分别形成监督损失、偏好边际、奖励模型和优势信号；每条机制链连接到与其对应的独立证据。</desc>
+  <desc id="desc">监督样本、偏好或二元反馈、奖励模型数据和在线轨迹分别对应学习信号、训练状态与独立检查。新增末行展示教师反馈和学生轨迹、蒸馏目标、独立学生产物及质量与成本比较；各行不是串行训练顺序。</desc>
   <defs>
     <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L8 4L0 8Z" fill="#64748B"/></marker>
     <style>
@@ -9,8 +9,8 @@
       .copy{font-family:"Noto Sans CJK SC",sans-serif;font-size:13px;fill:#334155}.line{fill:none;stroke:#64748B;stroke-width:2.1;marker-end:url(#arrow)}
     </style>
   </defs>
-  <rect width="1280" height="740" fill="#F8FAFC"/>
-  <rect x="36" y="28" width="1208" height="684" rx="28" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+  <rect width="1280" height="878" fill="#F8FAFC"/>
+  <rect x="36" y="28" width="1208" height="822" rx="28" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
   <text x="76" y="76" class="title">后训练知识地图：数据对象、学习信号、状态与证据</text>
   <text x="76" y="106" class="subtitle">先识别训练消费的对象，再区分学习信号和运行状态；局部损失不能替代独立评测。</text>
 
@@ -22,15 +22,15 @@
   <text x="352" y="204" class="label">标签与 SFT 损失</text><text x="352" y="232" class="copy">回复边界 · 有效监督词元</text><text x="352" y="256" class="copy">微批次 · 有效更新</text>
   <rect x="608" y="172" width="242" height="108" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
   <text x="628" y="204" class="label">检查点 / 适配器</text><text x="628" y="232" class="copy">优化器 · 调度器 · 随机状态</text><text x="628" y="256" class="copy">恢复点与产物清单</text>
-  <path d="M280 226H324" class="line"/><path d="M556 226H600" class="line"/>
+  <path d="M280 226H332" class="line"/><path d="M556 226H608" class="line"/>
 
   <rect x="76" y="310" width="204" height="108" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
-  <text x="96" y="342" class="label">成对偏好</text><text x="96" y="370" class="copy">同一提示的优选回答</text><text x="96" y="394" class="copy">与非优选回答 · 数据隔离</text>
+  <text x="96" y="342" class="label">偏好对或二元反馈</text><text x="96" y="370" class="copy">成对排序或单条正负标签</text><text x="96" y="394" class="copy">固定标签含义与数据隔离</text>
   <rect x="332" y="310" width="224" height="108" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
-  <text x="352" y="342" class="label">DPO 偏好边际</text><text x="352" y="370" class="copy">当前策略 − 参考策略</text><text x="352" y="394" class="copy">温度系数 · 离线偏好损失</text>
+  <text x="352" y="342" class="label">DPO / KTO 目标</text><text x="352" y="370" class="copy">成对边际或二元反馈目标</text><text x="352" y="394" class="copy">固定参考策略与各自归约规则</text>
   <rect x="608" y="310" width="242" height="108" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
   <text x="628" y="342" class="label">当前策略 / 参考策略</text><text x="628" y="370" class="copy">固定参考策略版本</text><text x="628" y="394" class="copy">候选策略与更新记录</text>
-  <path d="M280 364H324" class="line"/><path d="M556 364H600" class="line"/>
+  <path d="M280 364H332" class="line"/><path d="M556 364H608" class="line"/>
 
   <rect x="76" y="448" width="204" height="108" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
   <text x="96" y="480" class="label">偏好与反馈数据</text><text x="96" y="508" class="copy">人类标签 · 评分准则</text><text x="96" y="532" class="copy">训练 / 校准 / 测试隔离</text>
@@ -38,15 +38,15 @@
   <text x="352" y="480" class="label">奖励模型与校准</text><text x="352" y="508" class="copy">偏好标签 → 标量奖励</text><text x="352" y="532" class="copy">排序准确率 · 校准 · 漂移</text>
   <rect x="608" y="448" width="242" height="108" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
   <text x="628" y="480" class="label">奖励版本与适用域</text><text x="628" y="508" class="copy">模型 / 规则版本 · 阈值</text><text x="628" y="532" class="copy">过度优化与隐藏审计集</text>
-  <path d="M280 502H324" class="line"/><path d="M556 502H600" class="line"/>
+  <path d="M280 502H332" class="line"/><path d="M556 502H608" class="line"/>
 
   <rect x="76" y="586" width="204" height="108" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
   <text x="96" y="618" class="label">候选组与在线轨迹</text><text x="96" y="646" class="copy">策略版本 · 采样配置</text><text x="96" y="670" class="copy">模型动作 · 环境终态</text>
   <rect x="332" y="586" width="224" height="108" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
-  <text x="352" y="618" class="label">回报、价值与优势</text><text x="352" y="646" class="copy">奖励模型 / 验证器 → 回报</text><text x="352" y="670" class="copy">价值基线 / 组内基线 → 优势</text>
+  <text x="352" y="618" class="label">回报、价值与优势</text><text x="352" y="646" class="copy">PPO / GRPO / RLOO</text><text x="352" y="670" class="copy">价值、组均值或留一基线</text>
   <rect x="608" y="586" width="242" height="108" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
   <text x="628" y="618" class="label">采样器 / 学习器状态</text><text x="628" y="646" class="copy">队列 · 策略新鲜度 · 同步</text><text x="628" y="670" class="copy">检查点 · 失败恢复 · 回滚点</text>
-  <path d="M280 640H324" class="line"/><path d="M556 640H600" class="line"/>
+  <path d="M280 640H332" class="line"/><path d="M556 640H608" class="line"/>
 
   <rect x="906" y="172" width="294" height="108" rx="15" fill="#ECFDF5" stroke="#16A34A" stroke-width="2"/>
   <text x="928" y="204" class="label">监督与交付证据</text><text x="928" y="232" class="copy">目标质量 · 通用能力保持</text><text x="928" y="256" class="copy">评测隔离 · 恢复验证 · 训练成本</text>
@@ -56,5 +56,17 @@
   <text x="928" y="480" class="label">奖励模型验证</text><text x="928" y="508" class="copy">留出排序 · 校准误差</text><text x="928" y="532" class="copy">奖励投机 · 独立质量</text>
   <rect x="906" y="586" width="294" height="108" rx="15" fill="#ECFDF5" stroke="#16A34A" stroke-width="2"/>
   <text x="928" y="618" class="label">在线系统证据</text><text x="928" y="646" class="copy">质量 · 显存 · 时间 · 成本</text><text x="928" y="670" class="copy">策略版本 · 恢复与回滚记录</text>
-  <path d="M850 226H898" class="line"/><path d="M850 364H898" class="line"/><path d="M850 502H898" class="line"/><path d="M850 640H898" class="line"/>
+  <path d="M850 226H906" class="line"/><path d="M850 364H906" class="line"/><path d="M850 502H906" class="line"/><path d="M850 640H906" class="line"/>
+
+  <rect id="teacher-input" x="76" y="724" width="204" height="108" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
+  <text x="96" y="756" class="label">教师与学生轨迹</text><text x="96" y="784" class="copy">固定轨迹或在策略轨迹</text><text x="96" y="808" class="copy">冻结教师 · 共同学生起点</text>
+  <rect id="distillation-target" x="332" y="724" width="224" height="108" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
+  <text x="352" y="756" class="label">蒸馏分布目标</text><text x="352" y="784" class="copy">KL 方向 · 温度 · 有效位置</text><text x="352" y="808" class="copy">记录轨迹混合与训练剂量</text>
+  <rect id="student-artifact" x="608" y="724" width="242" height="108" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
+  <text x="628" y="756" class="label">独立学生与产物</text><text x="628" y="784" class="copy">学生权重、分词器与配置</text><text x="628" y="808" class="copy">各路线分别保存结果</text>
+  <rect id="student-evaluation" x="906" y="724" width="294" height="108" rx="15" fill="#ECFDF5" stroke="#16A34A" stroke-width="2"/>
+  <text x="928" y="756" class="label">质量保持与成本</text><text x="928" y="784" class="copy">相对学生基线的任务增益</text><text x="928" y="808" class="copy">相对教师的保持与部署成本</text>
+  <path data-source="teacher-input" data-target="distillation-target" d="M280 778H332" class="line"/>
+  <path data-source="distillation-target" data-target="student-artifact" d="M556 778H608" class="line"/>
+  <path data-source="student-artifact" data-target="student-evaluation" d="M850 778H906" class="line"/>
 </svg>
