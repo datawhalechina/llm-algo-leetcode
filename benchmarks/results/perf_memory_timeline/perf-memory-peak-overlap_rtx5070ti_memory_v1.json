@@ -1,0 +1,292 @@
+{
+  "schema_version": "performance-memory-timeline-mechanism/v2",
+  "profile_id": "PERF-CUDA-MECHANISM",
+  "semantic_id": "PERF-MEMORY-TIMELINE",
+  "run_label": "rtx5070ti_memory_v1",
+  "framework": {
+    "python": "3.12.15",
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8"
+  },
+  "hardware": {
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000
+  },
+  "workload": {
+    "id": "perf-memory-peak-overlap",
+    "version": "v2",
+    "rows": 8192,
+    "hidden_size": 2048,
+    "warmup_steps": 5,
+    "repeat_steps": 20
+  },
+  "baseline": {
+    "name": "overlap_activation_workspace",
+    "latency_median_ms": 0.7985279858112335,
+    "peak_allocated_bytes": 201328640,
+    "peak_reserved_bytes": 203423744
+  },
+  "candidate": {
+    "name": "release_then_recompute",
+    "latency_median_ms": 1.4859359860420227,
+    "peak_allocated_bytes": 134219776,
+    "peak_reserved_bytes": 203423744
+  },
+  "comparison": {
+    "allocated_reduction_ratio": 0.3333299425258125,
+    "reserved_reduction_ratio": 0.0,
+    "latency_ratio": 1.8608439684583424
+  },
+  "quality": {
+    "checksum_close": true
+  },
+  "samples": {
+    "baseline": [
+      {
+        "latency_ms": 0.8628159761428833,
+        "peak_allocated_bytes": 201328640,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 0.803551971912384,
+        "peak_allocated_bytes": 201328640,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 0.7986559867858887,
+        "peak_allocated_bytes": 201328640,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 0.79721599817276,
+        "peak_allocated_bytes": 201328640,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 0.7988799810409546,
+        "peak_allocated_bytes": 201328640,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 0.8026559948921204,
+        "peak_allocated_bytes": 201328640,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 0.8020480275154114,
+        "peak_allocated_bytes": 201328640,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 0.8171200156211853,
+        "peak_allocated_bytes": 201328640,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 0.9144960045814514,
+        "peak_allocated_bytes": 201328640,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 0.7983999848365784,
+        "peak_allocated_bytes": 201328640,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 0.7962239980697632,
+        "peak_allocated_bytes": 201328640,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 0.7932479977607727,
+        "peak_allocated_bytes": 201328640,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 0.7972800135612488,
+        "peak_allocated_bytes": 201328640,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 0.7934719920158386,
+        "peak_allocated_bytes": 201328640,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 0.7945600152015686,
+        "peak_allocated_bytes": 201328640,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 0.7969599962234497,
+        "peak_allocated_bytes": 201328640,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 0.7975040078163147,
+        "peak_allocated_bytes": 201328640,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 0.7971839904785156,
+        "peak_allocated_bytes": 201328640,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 0.799456000328064,
+        "peak_allocated_bytes": 201328640,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 0.9463040232658386,
+        "peak_allocated_bytes": 201328640,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      }
+    ],
+    "candidate": [
+      {
+        "latency_ms": 1.4876480102539062,
+        "peak_allocated_bytes": 134219776,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 1.4868799448013306,
+        "peak_allocated_bytes": 134219776,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 1.488576054573059,
+        "peak_allocated_bytes": 134219776,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 1.4905600547790527,
+        "peak_allocated_bytes": 134219776,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 1.4778560400009155,
+        "peak_allocated_bytes": 134219776,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 1.4833279848098755,
+        "peak_allocated_bytes": 134219776,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 1.4928959608078003,
+        "peak_allocated_bytes": 134219776,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 1.4849920272827148,
+        "peak_allocated_bytes": 134219776,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 1.4754559993743896,
+        "peak_allocated_bytes": 134219776,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 1.6435519456863403,
+        "peak_allocated_bytes": 134219776,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 1.4920639991760254,
+        "peak_allocated_bytes": 134219776,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 1.48198401927948,
+        "peak_allocated_bytes": 134219776,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 1.4884480237960815,
+        "peak_allocated_bytes": 134219776,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 1.4928319454193115,
+        "peak_allocated_bytes": 134219776,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 1.4837759733200073,
+        "peak_allocated_bytes": 134219776,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 1.4798400402069092,
+        "peak_allocated_bytes": 134219776,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 1.48089599609375,
+        "peak_allocated_bytes": 134219776,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 1.483232021331787,
+        "peak_allocated_bytes": 134219776,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 1.4913920164108276,
+        "peak_allocated_bytes": 134219776,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      },
+      {
+        "latency_ms": 1.4720640182495117,
+        "peak_allocated_bytes": 134219776,
+        "peak_reserved_bytes": 203423744,
+        "checksum": 67140552.0
+      }
+    ]
+  },
+  "failure": null,
+  "evidence_level": "local_mechanism_benchmark",
+  "decision": "accept_for_peak_reduction"
+}
