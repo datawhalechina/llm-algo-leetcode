@@ -14,8 +14,8 @@
 
 ## 本节导读
 
-Attention 的显存压力来自三类对象：长期保存的 KV 表示、计算过程中产生的临时工作集，以及服务运行时的缓存组织。它们分别对应减少 KV 头数或压缩表示、避免物化大规模中间结果、按页分配与回收缓存。
-本节先计算 MHA 的 KV 成本，再比较 MQA、GQA 与 MLA 如何改变表示规模，最后用 PagedAttention 区分“存得更少”和“放得更紧凑”。后续章节分别展开 KV 容量账本、FlashAttention 工作集和真实缓存管理机制。
+注意力机制的显存压力来自长期保存的键值缓存（KV Cache）、计算期间的临时工作集，以及服务运行时的缓存组织。减少状态量、减少临时读写和改善物理放置解决的是不同问题。
+本节先做问题分类：头部共享或表示压缩改变长期状态量，FlashAttention 改变临时工作集与读写，PagedAttention 改变缓存的物理组织。完成后，你应能区分 MHA、MQA、GQA、MLA、FlashAttention 与 PagedAttention 分别改变哪一类成本；长期 KV Cache 容量账本在第 11 节展开，临时工作集模型在第 14 节展开。
 
 **关键词：** `MHA`, `MQA`, `GQA`
 
@@ -30,12 +30,10 @@ Attention 的显存压力来自三类对象：长期保存的 KV 表示、计算
 - [Part 01 · 01 数据类型与精度](./01_Data_Types_and_Precision.md)
 - [Part 01 · 03 GPU 架构与显存](./03_GPU_Architecture_and_Memory.md)
 - [Part 00 · 16 Attention Mechanism Intro | 注意力机制导论](../00_Prerequisites/16_Attention_Mechanism_Intro.md)
-  
+
 ---
 ## Q1：自回归生成中，标准多头注意力（MHA）的 KV Cache 如何形成显存与带宽压力？
 
-<details>
-<summary>点击展开查看解析</summary>
 
 标准多头注意力（MHA）为每一层、每个历史 token 保存 K 和 V。理论字节数可以写成：
 
@@ -55,7 +53,7 @@ KV Cache bytes = 2 × batch × layers × seq_len × kv_heads × head_dim × dtyp
 | `kv_heads` | K/V 头数 | 近似线性增长，GQA / MQA 会改变它 |
 | `head_dim` | 单个头的维度 | 近似线性增长 |
 | `dtype_bytes` | 每个元素的字节数 | 近似线性增长，FP16 / BF16 通常为 2 |
-</details>
+
 ### Q1小验证：观察 KV Cache 随序列长度的变化
 
 把上下文长度翻倍，再看缓存大小是不是也近似翻倍。
@@ -83,8 +81,6 @@ print('seq_len doubled -> theoretical KV Cache ratio:', doubled / base)
 
 ## Q2：MQA (Multi-Query Attention) 和 GQA (Grouped-Query Attention) 是如何通过架构改进缓解 KV Cache 压力的？
 
-<details>
-<summary>点击展开查看解析</summary>
 
 为了减少需要搬运的数据量，研究人员改变了 Attention 的投影结构：
 
@@ -104,7 +100,7 @@ print('seq_len doubled -> theoretical KV Cache ratio:', doubled / base)
 | MHA | H | H | 1 | 每个 Query 头对应独立 K/V 头 | KV Cache 最大 |
 | GQA | H | G | G/H | 多个 Query 头共享一组 K/V 头 | 需要匹配的模型结构或 checkpoint |
 | MQA | H | 1 | 1/H | 所有 Query 头共享一组 K/V 头 | 表达能力和任务质量可能受影响 |
-</details>
+
 ### Q2小验证：头数变化为什么会直接影响缓存
 
 固定上下文长度，只改变 KV 头数，看看缓存怎么缩。
@@ -128,8 +124,6 @@ print('head-sharing ratios are theoretical cache ratios; speed and quality requi
 
 ## Q3：为什么 MLA 能通过 latent 表示压缩 KV Cache？
 
-<details>
-<summary>点击展开查看解析</summary>
 
 MLA（Multi-Head Latent Attention）是以 DeepSeek-V2/V3 为代表的一类 latent attention 设计，目标是在保留有效注意力信息的同时压缩 KV Cache 表示。具体缓存格式、RoPE 处理和收益取决于模型实现。
 
@@ -139,7 +133,7 @@ MLA（Multi-Head Latent Attention）是以 DeepSeek-V2/V3 为代表的一类 lat
 3. **RoPE 解耦**：位置信息与内容信息采用不同路径处理，具体缓存项取决于实现。
 
 MLA 是用额外的表示变换和恢复计算换取更小的缓存，不应直接推导出固定的速度或质量收益。这里的比例模型不使用具体 DeepSeek checkpoint 的 latent 维度，结果只能说明“压缩—恢复计算”的关系，不能预测某个真实模型的显存。是否值得，要结合 latent 维度、RoPE 处理、backend 和固定 workload 验证。
-</details>
+
 ### Q3小验证：压缩比例与额外计算的权衡
 
 改变 latent 表示的压缩比例，比较缓存单位数和重构代理量；结果只表达机制数量级，不等同于真实模型的显存、延迟或质量收益。
@@ -173,8 +167,6 @@ print('reconstruction_units_proxy 只是额外恢复路径的教学代理，不�
 
 ## Q4：PagedAttention 如何用分页管理减少 KV Cache 的空间浪费？
 
-<details>
-<summary>点击展开查看解析</summary>
 
 除了修改模型架构，系统层面的缓存管理同样重要。早期推理实现常为每个请求预留连续空间，但生成长度不可预知，长短请求混合时容易造成预留浪费和空间组织困难。
 
@@ -192,7 +184,7 @@ PagedAttention 改变的是缓存的分配和寻址方式，不是 KV 表示本�
 | --- | --- | --- |
 | PagedAttention | 请求内部的 block 分配、寻址与回收 | 空间利用率、碎片、可容纳请求数 |
 | Prefix Cache / RadixAttention | 请求之间的共享前缀复用 | 命中率、复用 token 数、prefill 节省 |
-</details>
+
 ### Q4小验证：分页后的显存利用率
 
 比较连续预留与按 block 向上取整后的槽位；结果只观察空间利用率，不等同于 vLLM 的真实 block allocator 或服务吞吐。
