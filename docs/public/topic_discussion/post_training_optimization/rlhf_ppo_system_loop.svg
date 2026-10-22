@@ -1,58 +1,65 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="700" viewBox="0 0 1280 700" role="img" aria-labelledby="title desc">
-  <title id="title">PPO 与 RLHF 的模型角色、数据流和更新循环</title>
-  <desc id="desc">提示进入当前策略形成带版本轨迹，奖励模型或验证器与价值模型形成奖励和优势，旧策略与参考策略约束 PPO 更新，独立评测决定版本推进或回滚。</desc>
-  <defs>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker>
-    <marker id="gradArrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#9333EA"/></marker>
-    <style>
-      .title{font:700 29px Arial,sans-serif;fill:#172033}.subtitle{font:16px Arial,sans-serif;fill:#475569}
-      .lane{font:700 14px Arial,sans-serif;fill:#64748B;letter-spacing:1px}.head{font:700 16px Arial,sans-serif;fill:#172033}
-      .copy{font:14px Arial,sans-serif;fill:#334155}.small{font:13px Arial,sans-serif;fill:#475569}
-      .data{fill:none;stroke:#475569;stroke-width:2.3;marker-end:url(#arrow)}
-      .constraint{fill:none;stroke:#D97706;stroke-width:2.2;stroke-dasharray:7 5;marker-end:url(#arrow)}
-      .grad{fill:none;stroke:#9333EA;stroke-width:2.4;marker-end:url(#gradArrow)}
-    </style>
-  </defs>
-  <rect width="1280" height="700" fill="#F8FAFC"/>
-  <rect x="36" y="28" width="1208" height="644" rx="28" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
-  <text x="76" y="76" class="title">PPO / RLHF 全景：轨迹怎样变成受约束的策略更新</text>
-  <text x="76" y="106" class="subtitle">实线表示数据流，橙色虚线表示冻结约束，紫色线表示梯度更新；每条轨迹携带行为策略版本。</text>
-
-  <text x="76" y="150" class="lane">采样与轨迹</text>
-  <path d="M248 220H286" class="data"/><path d="M486 220H524" class="data"/>
-  <rect x="76" y="172" width="172" height="96" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
-  <text x="98" y="206" class="head">提示批次</text><text x="98" y="234" class="copy">提示 · 采样配置</text><text x="98" y="256" class="small">数据版本与样本身份</text>
-  <rect x="286" y="172" width="200" height="96" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
-  <text x="308" y="206" class="head">当前策略（Actor）</text><text x="308" y="234" class="copy">生成回复与动作</text><text x="308" y="256" class="small">记录策略版本</text>
-  <rect x="524" y="172" width="200" height="96" rx="15" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
-  <text x="546" y="206" class="head">版本化轨迹</text><text x="546" y="234" class="copy">词元 · 动作 · 终态</text><text x="546" y="256" class="small">旧策略对数概率</text>
-
-  <text x="76" y="326" class="lane">反馈、基线与优势</text>
-  <path d="M574 268V300H184V340" class="data"/><path d="M624 268V316H414V340" class="data"/><path d="M674 268V332H644V340" class="data"/>
-  <rect x="76" y="348" width="216" height="106" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
-  <text x="98" y="382" class="head">奖励模型 / 验证器</text><text x="98" y="410" class="copy">偏好分数或规则奖励</text><text x="98" y="434" class="small">冻结或独立执行</text>
-  <rect x="322" y="348" width="184" height="106" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
-  <text x="344" y="382" class="head">价值模型（Critic）</text><text x="344" y="410" class="copy">状态价值估计</text><text x="344" y="434" class="small">产生价值基线</text>
-  <rect x="536" y="348" width="216" height="106" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
-  <text x="558" y="382" class="head">回报与优势</text><text x="558" y="410" class="copy">奖励 → 回报</text><text x="558" y="434" class="small">回报 − 价值 → 优势</text>
-  <path d="M184 454V480H644V462" class="data"/><path d="M506 425H528" class="data"/>
-
-  <text x="806" y="150" class="lane">受约束更新与出口</text>
-  <path d="M752 401H790" class="data"/><path d="M988 401H1026" class="grad"/>
-  <rect x="790" y="348" width="198" height="106" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
-  <text x="812" y="382" class="head">PPO 目标</text><text x="812" y="410" class="copy">策略比率 · 裁剪 · KL</text><text x="812" y="434" class="small">策略损失 + 价值损失</text>
-  <rect x="1026" y="348" width="178" height="106" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
-  <text x="1048" y="382" class="head">优化器更新</text><text x="1048" y="410" class="copy">策略 / 价值模型</text><text x="1048" y="434" class="small">新策略候选版本</text>
-
-  <rect x="790" y="172" width="198" height="96" rx="15" fill="#FFF7ED" stroke="#EA580C" stroke-width="2"/>
-  <text x="812" y="206" class="head">旧策略快照</text><text x="812" y="234" class="copy">采样时的对数概率</text><text x="812" y="256" class="small">更新期间冻结</text>
-  <rect x="1026" y="172" width="178" height="96" rx="15" fill="#FFF7ED" stroke="#EA580C" stroke-width="2"/>
-  <text x="1048" y="206" class="head">参考策略</text><text x="1048" y="234" class="copy">KL 漂移锚点</text><text x="1048" y="256" class="small">更新期间冻结</text>
-  <path d="M889 268V340" class="constraint"/><path d="M1115 268V302H960V340" class="constraint"/>
-
-  <rect x="180" y="514" width="924" height="104" rx="17" fill="#F8FAFC" stroke="#CBD5E1"/>
-  <text x="204" y="550" class="head">独立评测与版本推进</text>
-  <text x="204" y="580" class="copy">固定基线与候选解码条件 → 质量 / 安全 / 鲁棒性 / 成本 → 接受新版本、继续调整或回滚</text>
-  <path d="M1115 454V486H1078V506" class="data"/><path d="M180 566H50V130H386V164" class="data"/>
-  <text x="624" y="642" class="small">通过评测的新策略进入下一轮采样；失败时恢复已验证版本。</text>
+<title id="title">PPO：轨迹、奖励与价值怎样形成受约束更新</title>
+<desc id="desc">灰线：数据；橙色虚线：冻结参考约束；紫线：更新对象；蓝色虚线：下一轮采样。</desc>
+<defs>
+<marker id="flow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<marker id="feedback" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#0284C7"/></marker>
+<marker id="constraint" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#D97706"/></marker>
+<marker id="failure" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#DC2626"/></marker>
+<marker id="gradient" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#9333EA"/></marker>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#334155}.title{font-size:27px;font-weight:700;fill:#172033}.sub{font-size:15px;fill:#475569}.head{font-size:17px;font-weight:700;fill:#172033}.body{font-size:15px}.label{font-size:14px;fill:#475569}</style>
+</defs>
+<rect width="1280" height="700" fill="#F8FAFC" data-layout-role="decoration"/>
+<rect x="28" y="24" width="1224" height="652" rx="24" fill="white" stroke="#CBD5E1" data-layout-role="panel"/>
+<text x="60" y="69" class="title">PPO：轨迹、奖励与价值怎样形成受约束更新</text>
+<text x="60" y="101" class="sub">灰线：数据；橙色虚线：冻结参考约束；紫线：更新对象；蓝色虚线：下一轮采样。</text>
+<rect id="policy" x="60" y="150" width="230" height="100" rx="14" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
+<text x="80" y="182" class="head">当前策略</text>
+<text x="80" y="210" class="body">固定本轮行为策略版本</text>
+<text x="80" y="235" class="body">生成回答或动作</text>
+<rect id="trace" x="350" y="150" width="230" height="100" rx="14" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
+<text x="370" y="182" class="head">采样轨迹</text>
+<text x="370" y="210" class="body">回复、动作与终止状态</text>
+<text x="370" y="235" class="body">保留采样时的对数概率</text>
+<rect id="reward" x="640" y="150" width="230" height="100" rx="14" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
+<text x="660" y="182" class="head">奖励模型或验证器</text>
+<text x="660" y="210" class="body">对当前轨迹评分</text>
+<text x="660" y="235" class="body">登记奖励与失败状态</text>
+<rect id="adv" x="930" y="150" width="290" height="100" rx="14" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
+<text x="950" y="182" class="head">回报与优势</text>
+<text x="950" y="210" class="body">奖励形成回报</text>
+<text x="950" y="235" class="body">价值基线参与优势估计</text>
+<rect id="critic" x="930" y="345" width="290" height="100" rx="14" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
+<text x="950" y="377" class="head">价值模型</text>
+<text x="950" y="405" class="body">对轨迹状态估计价值</text>
+<text x="950" y="430" class="body">价值损失训练该模型</text>
+<rect id="reference" x="640" y="345" width="230" height="100" rx="14" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
+<text x="660" y="377" class="head">冻结参考策略</text>
+<text x="660" y="405" class="body">约束相对参考策略的漂移</text>
+<text x="660" y="430" class="body">提供 KL 项</text>
+<rect id="objective" x="350" y="345" width="230" height="100" rx="14" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
+<text x="370" y="377" class="head">受约束 PPO 目标</text>
+<text x="370" y="405" class="body">新旧策略比率与裁剪</text>
+<text x="370" y="430" class="body">策略损失、价值损失</text>
+<rect id="updated" x="60" y="345" width="230" height="100" rx="14" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
+<text x="80" y="377" class="head">参数更新</text>
+<text x="80" y="405" class="body">更新策略与价值模型</text>
+<text x="80" y="430" class="body">形成新策略版本</text>
+<rect id="eval" x="60" y="535" width="230" height="100" rx="14" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
+<text x="80" y="567" class="head">独立评测与回滚</text>
+<text x="80" y="595" class="body">按计划检查任务与安全</text>
+<text x="80" y="620" class="body">决定采用、调整或恢复</text>
+<path data-source="policy" data-target="trace" d="M290 200H350" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
+<path data-source="trace" data-target="reward" d="M580 200H640" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
+<path data-source="reward" data-target="adv" d="M870 200H930" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
+<path data-source="trace" data-target="objective" d="M465 250V345" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
+<path data-source="critic" data-target="adv" d="M1140 345V250" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
+<path data-source="adv" data-target="objective" d="M1000 250V310H550V345" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
+<path data-source="updated" data-target="eval" d="M175 445V535" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
+<path data-source="reference" data-target="objective" d="M640 395H580" fill="none" stroke="#D97706" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#constraint)" stroke-dasharray="7 5"/>
+<path data-source="objective" data-target="updated" d="M350 395H290" fill="none" stroke="#9333EA" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#gradient)"/>
+<path data-source="updated" data-target="critic" d="M245 445V490H1075V445" fill="none" stroke="#9333EA" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#gradient)"/>
+<text x="645" y="480" class="label">价值模型参数</text>
+<path data-source="updated" data-target="policy" d="M175 345V250" fill="none" stroke="#0284C7" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#feedback)" stroke-dasharray="7 5"/>
+<text x="190" y="300" class="label">下一轮</text>
 </svg>

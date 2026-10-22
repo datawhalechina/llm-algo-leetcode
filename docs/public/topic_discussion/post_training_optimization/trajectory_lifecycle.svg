@@ -1,38 +1,57 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="620" viewBox="0 0 1280 620" role="img" aria-labelledby="title desc">
-  <title id="title">轨迹形成、登记与消费准入</title>
-  <desc id="desc">任务和环境进入当前策略，模型动作获得环境观察与奖励终态，随后形成版本化轨迹，并按策略版本、奖励状态和消费状态决定接纳、等待或丢弃重放。</desc>
-  <defs>
-    <marker id="arrow" markerWidth="7" markerHeight="7" refX="6.5" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#475569"/></marker>
-    <style>
-      .title{font:700 27px Arial,sans-serif;fill:#172033}.sub{font:15px Arial,sans-serif;fill:#475569}.head{font:700 16px Arial,sans-serif;fill:#172033}.body{font:14px Arial,sans-serif;fill:#334155}.small{font:13px Arial,sans-serif;fill:#475569}.line{fill:none;stroke:#475569;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow)}.dash{fill:none;stroke:#0284C7;stroke-width:2.3;stroke-dasharray:7 6;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow)}
-    </style>
-  </defs>
-  <rect width="1280" height="620" fill="#F8FAFC"/>
-  <rect x="28" y="24" width="1224" height="572" rx="24" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
-  <text x="62" y="70" class="title">轨迹生命周期：从策略与环境交互到训练准入</text>
-  <text x="62" y="99" class="sub">动作、观察和奖励分别登记；策略版本、奖励状态与消费状态共同决定轨迹能否进入当前更新。</text>
-
-  <rect x="58" y="154" width="190" height="96" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
-  <text x="80" y="188" class="head">任务与环境身份</text><text x="80" y="216" class="body">提示 · 工具 · 环境版本</text><text x="80" y="238" class="small">固定初始状态</text>
-  <rect x="294" y="154" width="190" height="96" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
-  <text x="316" y="188" class="head">当前策略</text><text x="316" y="216" class="body">生成回复或动作</text><text x="316" y="238" class="small">记录行为策略版本</text>
-  <rect x="530" y="154" width="190" height="96" rx="15" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
-  <text x="552" y="188" class="head">模型动作</text><text x="552" y="216" class="body">词元 · 函数调用 · 代码</text><text x="552" y="238" class="small">动作掩码与对数概率</text>
-  <rect x="766" y="154" width="190" height="96" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
-  <text x="788" y="188" class="head">环境观察</text><text x="788" y="216" class="body">工具结果 · 下一状态</text><text x="788" y="238" class="small">不作为模型动作求梯度</text>
-  <rect x="1002" y="154" width="216" height="96" rx="15" fill="#FFF7ED" stroke="#EA580C" stroke-width="2"/>
-  <text x="1024" y="188" class="head">奖励与终止状态</text><text x="1024" y="216" class="body">成功 · 失败 · 超时</text><text x="1024" y="238" class="small">保留无法判定状态</text>
-
-  <path d="M248 202H286" class="line"/><path d="M484 202H522" class="line"/><path d="M720 202H758" class="line"/><path d="M956 202H994" class="line"/>
-  <path d="M861 250V278H389V250" class="dash"/>
-
-  <rect x="172" y="344" width="282" height="112" rx="16" fill="#E0E7FF" stroke="#4F46E5" stroke-width="2"/>
-  <text x="194" y="378" class="head">版本化轨迹记录</text><text x="194" y="406" class="body">任务 / 提示 ID · 策略 / 环境版本</text><text x="194" y="432" class="body">动作与观察 · 奖励分量 · 失败原因</text>
-  <rect x="516" y="344" width="282" height="112" rx="16" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
-  <text x="538" y="378" class="head">新鲜度与消费检查</text><text x="538" y="406" class="body">版本差是否在门槛内</text><text x="538" y="432" class="body">奖励是否完成 · 是否重复消费</text>
-  <rect x="860" y="344" width="282" height="112" rx="16" fill="#F8FAFC" stroke="#64748B" stroke-width="2"/>
-  <text x="882" y="378" class="head">准入结果</text><text x="882" y="406" class="body">接纳当前批次 · 等待奖励</text><text x="882" y="432" class="body">丢弃过期轨迹 · 修复后重放</text>
-
-  <path d="M625 250V298H270V336" class="line"/><path d="M1110 250V316H390V336" class="line"/>
-  <path d="M454 400H508" class="line"/><path d="M798 400H852" class="line"/>
+<title id="title">轨迹生命周期：交互、预留与成功提交</title>
+<desc id="desc">蓝色虚线表示未终止时继续交互；训练轨迹先预留，更新提交成功后才标记已消费。</desc>
+<defs>
+<marker id="flow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<marker id="feedback" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#0284C7"/></marker>
+<marker id="constraint" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#D97706"/></marker>
+<marker id="failure" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#DC2626"/></marker>
+<marker id="gradient" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#9333EA"/></marker>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#334155}.title{font-size:27px;font-weight:700;fill:#172033}.sub{font-size:15px;fill:#475569}.head{font-size:17px;font-weight:700;fill:#172033}.body{font-size:15px}.label{font-size:14px;fill:#475569}</style>
+</defs>
+<rect width="1280" height="620" fill="#F8FAFC" data-layout-role="decoration"/>
+<rect x="28" y="24" width="1224" height="572" rx="24" fill="white" stroke="#CBD5E1" data-layout-role="panel"/>
+<text x="60" y="69" class="title">轨迹生命周期：交互、预留与成功提交</text>
+<text x="60" y="101" class="sub">蓝色虚线表示未终止时继续交互；训练轨迹先预留，更新提交成功后才标记已消费。</text>
+<rect id="policy" x="60" y="150" width="230" height="100" rx="14" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
+<text x="80" y="182" class="head">策略与任务版本</text>
+<text x="80" y="210" class="body">固定环境初态与策略</text>
+<text x="80" y="235" class="body">生成模型动作</text>
+<rect id="action" x="350" y="150" width="230" height="100" rx="14" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
+<text x="370" y="182" class="head">模型动作</text>
+<text x="370" y="210" class="body">回复、工具调用或代码</text>
+<text x="370" y="235" class="body">记录动作掩码和对数概率</text>
+<rect id="observation" x="640" y="150" width="230" height="100" rx="14" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
+<text x="660" y="182" class="head">环境观察</text>
+<text x="660" y="210" class="body">工具结果与下一状态</text>
+<text x="660" y="235" class="body">与模型动作分别保存</text>
+<rect id="terminal" x="930" y="150" width="290" height="100" rx="14" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
+<text x="950" y="182" class="head">奖励与终止状态</text>
+<text x="950" y="210" class="body">完成、失败或超时</text>
+<text x="950" y="235" class="body">无法判定时保留原因</text>
+<rect id="trace" x="930" y="370" width="290" height="110" rx="14" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
+<text x="950" y="402" class="head">版本化轨迹</text>
+<text x="950" y="430" class="body">策略、奖励和环境版本</text>
+<text x="950" y="455" class="body">保存动作、观察和终态</text>
+<rect id="admit" x="640" y="370" width="230" height="110" rx="14" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
+<text x="660" y="402" class="head">检查与预留</text>
+<text x="660" y="430" class="body">新鲜度、奖励完成、去重</text>
+<text x="660" y="455" class="body">绑定本次更新批次</text>
+<rect id="update" x="350" y="370" width="230" height="110" rx="14" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+<text x="370" y="402" class="head">训练与提交</text>
+<text x="370" y="430" class="body">成功后标记轨迹已消费</text>
+<text x="370" y="455" class="body">失败时释放预留</text>
+<rect id="recover" x="60" y="370" width="230" height="110" rx="14" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
+<text x="80" y="402" class="head">恢复或下一批次</text>
+<text x="80" y="430" class="body">保留失败与提交记录</text>
+<text x="80" y="455" class="body">按声明的复用规则取样</text>
+<path data-source="policy" data-target="action" d="M290 200H350" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
+<path data-source="action" data-target="observation" d="M580 200H640" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
+<path data-source="observation" data-target="terminal" d="M870 200H930" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
+<path data-source="terminal" data-target="trace" d="M1075 250V370" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
+<path data-source="trace" data-target="admit" d="M930 425H870" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
+<path data-source="admit" data-target="update" d="M640 425H580" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
+<path data-source="update" data-target="recover" d="M350 425H290" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
+<path data-source="observation" data-target="policy" d="M755 250V305H175V250" fill="none" stroke="#0284C7" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#feedback)" stroke-dasharray="7 5"/>
+<text x="370" y="294" class="label">未终止：继续交互</text>
 </svg>
