@@ -1,64 +1,32 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="560" viewBox="0 0 1280 560" role="img" aria-labelledby="title desc">
-  <title id="title">CUDA Stream、依赖与重叠时间线</title>
-  <desc id="desc">从任务依赖、流队列和事件同步出发，形成可重叠时间线，并用总时间与暴露等待验证收益。</desc>
-  <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
-    <style>
-      text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:14px;fill:#334155}.small{font-size:13px;fill:#475569}.panel{stroke-width:2}.flow{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#arrow)}.task{stroke:#94a3b8;stroke-width:1.5}
-    </style>
-  </defs>
-  <rect width="1280" height="560" rx="24" fill="#f8fafc"/>
-  <text x="640" y="44" text-anchor="middle" class="title">CUDA Stream：先满足依赖，再暴露可重叠区间</text>
-  <text x="640" y="72" text-anchor="middle" class="sub">异步提交不等于并行执行；事件、数据驻留和硬件资源共同决定真实时间线</text>
-
-  <rect x="40" y="120" width="260" height="310" rx="18" fill="#eff6ff" stroke="#60a5fa" class="panel"/>
-  <text x="65" y="155" class="head">1. 写出真实依赖</text>
-  <rect x="70" y="190" width="200" height="46" rx="9" fill="#ffffff" class="task"/>
-  <text x="170" y="219" text-anchor="middle" class="body">主机到设备拷贝</text>
-  <path d="M170 236V260" class="flow"/>
-  <rect x="70" y="261" width="200" height="46" rx="9" fill="#ffffff" class="task"/>
-  <text x="170" y="290" text-anchor="middle" class="body">计算内核</text>
-  <path d="M170 307V331" class="flow"/>
-  <rect x="70" y="332" width="200" height="46" rx="9" fill="#ffffff" class="task"/>
-  <text x="170" y="361" text-anchor="middle" class="body">设备到主机拷贝</text>
-  <text x="65" y="405" class="small">只为真实数据依赖建立先后关系</text>
-
-  <rect x="350" y="120" width="260" height="310" rx="18" fill="#f0fdf4" stroke="#4ade80" class="panel"/>
-  <text x="375" y="155" class="head">2. 放入流队列</text>
-  <text x="375" y="194" class="body">Stream A</text>
-  <rect x="455" y="174" width="55" height="32" rx="6" fill="#bfdbfe" class="task"/>
-  <rect x="515" y="174" width="65" height="32" rx="6" fill="#86efac" class="task"/>
-  <text x="375" y="254" class="body">Stream B</text>
-  <rect x="455" y="234" width="55" height="32" rx="6" fill="#bfdbfe" class="task"/>
-  <rect x="515" y="234" width="65" height="32" rx="6" fill="#fde68a" class="task"/>
-  <text x="375" y="310" class="body">事件同步</text>
-  <path d="M482 207V234" stroke="#a855f7" stroke-width="3" stroke-dasharray="6 5"/>
-  <text x="375" y="352" class="small">同一流内保持顺序</text>
-  <text x="375" y="378" class="small">跨流只同步必要生产者与消费者</text>
-
-  <rect x="660" y="120" width="260" height="310" rx="18" fill="#fffbeb" stroke="#f59e0b" class="panel"/>
-  <text x="685" y="155" class="head">3. 观察设备时间线</text>
-  <text x="685" y="194" class="body">拷贝引擎</text>
-  <rect x="760" y="174" width="105" height="32" rx="6" fill="#bfdbfe" class="task"/>
-  <text x="685" y="254" class="body">计算引擎</text>
-  <rect x="805" y="234" width="85" height="32" rx="6" fill="#86efac" class="task"/>
-  <rect x="720" y="294" width="145" height="36" rx="8" fill="#ede9fe" class="task"/>
-  <text x="792" y="318" text-anchor="middle" class="body">重叠区间</text>
-  <text x="685" y="367" class="small">队列并行只是候选</text>
-  <text x="685" y="393" class="small">资源冲突仍可能让任务串行</text>
-
-  <rect x="970" y="120" width="270" height="310" rx="18" fill="#faf5ff" stroke="#a855f7" class="panel"/>
-  <text x="995" y="155" class="head">4. 用证据判断</text>
-  <text x="995" y="197" class="body">总墙钟时间是否下降？</text>
-  <text x="995" y="232" class="body">暴露同步是否减少？</text>
-  <text x="995" y="267" class="body">结果与单流基线是否一致？</text>
-  <rect x="1000" y="310" width="210" height="58" rx="10" fill="#ffffff" class="task"/>
-  <text x="1105" y="335" text-anchor="middle" class="body">收益成立：保留候选</text>
-  <text x="1105" y="357" text-anchor="middle" class="small">否则回查依赖与同步点</text>
-  <text x="995" y="405" class="small">不能用“已异步提交”代替时间线</text>
-
-  <path d="M300 275H350" class="flow"/>
-  <path d="M610 275H660" class="flow"/>
-  <path d="M920 275H970" class="flow"/>
-  <text x="640" y="500" text-anchor="middle" class="sub">依赖正确性是前提；重叠收益必须由同一工作负载下的时间线和墙钟时间共同确认</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="title desc">
+<title id="title">Stream 与依赖：依赖输入要等待，独立工作可重叠</title><desc id="desc">同一批A先搬入10毫秒再计算20毫秒，末尾同步4毫秒，总计34毫秒。对照中A输入已就绪，搬运B10毫秒与计算A20毫秒相互独立，末尾同步4毫秒，理想总长24毫秒。统一时间轴，所有结果是构造估算，资源独立且忽略其他开销。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:18px;font-weight:700}.body{font-size:15px;fill:#475569}.edge{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow)}.dep{stroke-dasharray:6 5}.axis{stroke:#94a3b8;stroke-width:1.5}.tick{font-size:14px;fill:#475569}</style></defs>
+<rect width="1280" height="520" fill="#f8fafc"/>
+<text class="title" x="640" y="45" text-anchor="middle">Stream 与依赖：依赖输入要等待，独立工作可重叠</text>
+<text class="body" x="640" y="76" text-anchor="middle">构造估算：搬入 10 ms、计算 20 ms、末尾同步 4 ms；跨批重叠还要求队列与资源允许并发。</text>
+<text class="head" x="40" y="122" text-anchor="start">同批：A 的计算依赖 A 的输入</text>
+<text class="body" x="190" y="169" text-anchor="middle">顺序执行</text>
+<rect x="300" y="145" width="250" height="36" rx="5" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text class="body" x="425" y="169" text-anchor="middle">搬入 A</text>
+<rect x="550" y="145" width="500" height="36" rx="5" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text class="body" x="800" y="169" text-anchor="middle">计算 A</text>
+<rect x="1050" y="145" width="100" height="36" rx="5" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text class="body" x="1100" y="169" text-anchor="middle">同步 4</text>
+<text class="body" x="640" y="222" text-anchor="middle">A 输入就绪于 10 ms；完成于 34 ms</text>
+<text class="head" x="40" y="279" text-anchor="start">跨批：A 输入已就绪，搬入 B 与计算 A 独立</text>
+<text class="body" x="190" y="329" text-anchor="middle">搬运资源</text>
+<rect x="300" y="305" width="250" height="36" rx="5" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text class="body" x="425" y="329" text-anchor="middle">搬入 B</text>
+<text class="body" x="190" y="391" text-anchor="middle">计算资源</text>
+<rect x="300" y="367" width="500" height="36" rx="5" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text class="body" x="550" y="391" text-anchor="middle">计算 A</text>
+<text class="body" x="190" y="453" text-anchor="middle">末尾同步</text>
+<rect x="800" y="429" width="100" height="36" rx="5" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text class="body" x="850" y="453" text-anchor="middle">4 ms</text>
+<path class="edge dep" d="M800 403V429"/>
+<text class="body" x="1030" y="330" text-anchor="middle">固定页内存、独立数据与并发资源</text>
+<text class="body" x="1030" y="393" text-anchor="middle">计算 A 不等待 B</text>
+<text class="body" x="1030" y="453" text-anchor="middle">理想完成于 24 ms</text>
+<path class="axis" d="M300 482H1150"/>
+<path class="axis" d="M300 478V488"/><text class="tick" x="300" y="510" text-anchor="middle">0</text>
+<path class="axis" d="M550 478V488"/><text class="tick" x="550" y="510" text-anchor="middle">10</text>
+<path class="axis" d="M800 478V488"/><text class="tick" x="800" y="510" text-anchor="middle">20</text>
+<path class="axis" d="M900 478V488"/><text class="tick" x="900" y="510" text-anchor="middle">24</text>
+<path class="axis" d="M1050 478V488"/><text class="tick" x="1050" y="510" text-anchor="middle">30</text>
+<path class="axis" d="M1150 478V488"/><text class="tick" x="1150" y="510" text-anchor="middle">34</text>
+<text class="body" x="1210" y="485" text-anchor="middle">时间 / ms</text>
 </svg>

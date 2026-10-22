@@ -1,20 +1,41 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="650" viewBox="0 0 1280 650" role="img" aria-labelledby="title desc">
-  <title id="title">1D 执行模型、异步调度与算子映射</title>
-  <desc id="desc">从任务放置和执行单元出发，经过 CUDA 与 Triton 映射，再连接到异步调度、片上数据复用和执行证据。</desc>
-  <defs><marker id="a1d" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#64748b"/></marker><style>
-    text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#475569}.group{font-size:19px;font-weight:700}.head{font-size:17px;font-weight:700}.body{font-size:14px}.small{font-size:12px;fill:#475569}.panel{stroke:#94a3b8;stroke-width:2;rx:16}.item{stroke:#cbd5e1;stroke-width:1.5;rx:10}.flow{stroke:#64748b;stroke-width:2.5;fill:none;marker-end:url(#a1d)}.branch{stroke:#94a3b8;stroke-width:2.2;fill:none;marker-end:url(#a1d)}
-  </style></defs>
-  <rect width="1280" height="650" fill="#f8fafc"/>
-  <text x="640" y="42" text-anchor="middle" class="title">1D 执行模型、异步调度与算子映射：程序如何落到硬件</text>
-  <text x="640" y="70" text-anchor="middle" class="sub">任务放置决定执行单元，编程模型决定映射方式，运行时决定等待能否被隐藏</text>
-
-  <rect x="40" y="225" width="205" height="190" fill="#e0f2fe" class="panel"/><text x="142" y="262" text-anchor="middle" class="group">任务放置</text><text x="142" y="310" text-anchor="middle" class="head">CPU / GPU</text><text x="142" y="337" text-anchor="middle" class="body">任务与数据的位置</text><text x="142" y="364" text-anchor="middle" class="small">选择执行单元</text>
-  <rect x="315" y="120" width="250" height="170" fill="#dcfce7" class="panel"/><text x="440" y="157" text-anchor="middle" class="group">编程映射</text><rect x="345" y="195" width="190" height="62" fill="#fff" class="item"/><text x="440" y="222" text-anchor="middle" class="head">CUDA</text><text x="440" y="244" text-anchor="middle" class="small">线程与内存显式控制</text>
-  <rect x="315" y="360" width="250" height="170" fill="#dcfce7" class="panel"/><text x="440" y="397" text-anchor="middle" class="group">编程映射</text><rect x="345" y="435" width="190" height="62" fill="#fff" class="item"/><text x="440" y="462" text-anchor="middle" class="head">Triton</text><text x="440" y="484" text-anchor="middle" class="small">block / tile 表达计算</text>
-  <rect x="640" y="225" width="235" height="190" fill="#fef3c7" class="panel"/><text x="757" y="262" text-anchor="middle" class="group">运行时调度</text><text x="757" y="310" text-anchor="middle" class="head">Stream</text><text x="757" y="337" text-anchor="middle" class="body">异步与任务重叠</text><text x="757" y="364" text-anchor="middle" class="body">依赖、等待与同步</text>
-  <rect x="950" y="120" width="250" height="170" fill="#fce7f3" class="panel"/><text x="1075" y="157" text-anchor="middle" class="group">数据复用</text><rect x="980" y="195" width="190" height="62" fill="#fff" class="item"/><text x="1075" y="222" text-anchor="middle" class="head">共享内存</text><text x="1075" y="244" text-anchor="middle" class="small">减少数据往返</text>
-  <rect x="950" y="360" width="250" height="170" fill="#ede9fe" class="panel"/><text x="1075" y="397" text-anchor="middle" class="group">执行证据</text><rect x="980" y="435" width="190" height="62" fill="#fff" class="item"/><text x="1075" y="462" text-anchor="middle" class="head">时间线与 trace</text><text x="1075" y="484" text-anchor="middle" class="small">kernel · stream · profiler</text>
-
-  <path d="M245 320H285V226H315" class="flow"/><path d="M245 320H285V466H315" class="flow"/><path d="M565 226H610V320H640" class="flow"/><path d="M565 466H610V320H640" class="flow"/><path d="M875 320H915V226H950" class="flow"/><path d="M875 320H915V466H950" class="flow"/>
-  <text x="285" y="300" text-anchor="middle" class="small">选择执行路径</text><text x="610" y="300" text-anchor="middle" class="small">进入运行时</text><text x="915" y="300" text-anchor="middle" class="small">形成优化证据</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="560" viewBox="0 0 1280 560" role="img" aria-labelledby="title desc">
+<title id="title">1D：执行映射与异步调度两条阅读支线</title>
+<desc id="desc">执行映射从08编程模型分别进入CUDA的15执行层级、16块内协作，或Triton的18程序块映射。异步调度从07阶段放置依次进入17Stream基础与29高级调度。七节各自独立成节点，所有箭头连接具体小节并表示推荐阅读。</desc>
+<defs>
+<marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker>
+<style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:18px;font-weight:700}.note{font-size:15px;fill:#475569}.edge{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow)}</style>
+</defs>
+<rect width="1280" height="560" fill="#f8fafc"/>
+<text class="title" x="640" y="45" text-anchor="middle">1D：执行映射与异步调度两条阅读支线</text>
+<text class="note" x="640" y="76" text-anchor="middle">箭头表示推荐阅读；执行映射按 CUDA 或 Triton 选择路径，异步调度单独展开。</text>
+<text class="head" x="200" y="145" text-anchor="middle">执行映射：工作怎样组织</text>
+<rect x="50" y="210" width="300" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+<text class="head" x="200" y="242" text-anchor="middle">08 编程模型</text>
+<text class="note" x="200" y="268" text-anchor="middle">框架、CUDA 与 Triton 的控制范围</text>
+<rect x="490" y="130" width="300" height="80" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/>
+<text class="head" x="640" y="162" text-anchor="middle">15 CUDA 执行层级</text>
+<text class="note" x="640" y="188" text-anchor="middle">任务怎样覆盖线程与线程块</text>
+<rect x="930" y="130" width="300" height="80" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/>
+<text class="head" x="1080" y="162" text-anchor="middle">16 块内协作与复用</text>
+<text class="note" x="1080" y="188" text-anchor="middle">共享内存、同步与资源限制</text>
+<rect x="490" y="290" width="300" height="80" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/>
+<text class="head" x="640" y="322" text-anchor="middle">18 Triton 程序块映射</text>
+<text class="note" x="640" y="348" text-anchor="middle">Program、分块与边界掩码</text>
+<path class="edge" d="M350 230H420V170H490"/>
+<path class="edge" d="M350 270H450V330H490"/>
+<path class="edge" d="M790 170H930"/>
+<text class="note" x="418" y="155" text-anchor="middle">CUDA</text>
+<text class="note" x="407" y="317" text-anchor="middle">Triton</text>
+<text class="head" x="200" y="420" text-anchor="middle">异步调度：工作何时执行</text>
+<rect x="50" y="450" width="300" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+<text class="head" x="200" y="482" text-anchor="middle">07 阶段放置</text>
+<text class="note" x="200" y="508" text-anchor="middle">主机计算、设备计算与搬运</text>
+<rect x="490" y="450" width="300" height="80" rx="12" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/>
+<text class="head" x="640" y="482" text-anchor="middle">17 Stream 基础</text>
+<text class="note" x="640" y="508" text-anchor="middle">提交顺序、依赖与可重叠区间</text>
+<rect x="930" y="450" width="300" height="80" rx="12" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/>
+<text class="head" x="1080" y="482" text-anchor="middle">29 高级调度</text>
+<text class="note" x="1080" y="508" text-anchor="middle">Event、优先级与 Graph 回放</text>
+<path class="edge" d="M350 490H490"/>
+<path class="edge" d="M790 490H930"/>
 </svg>

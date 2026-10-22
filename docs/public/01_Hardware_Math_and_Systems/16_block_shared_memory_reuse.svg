@@ -1,10 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="title desc">
-<title id="title">Block 内共享内存复用链</title><desc id="desc">线程把数据协同搬入共享内存，在同步后重复消费，并检查容量、冲突和占用率代价。</desc>
-<defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker><style>text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}.t{font-size:28px;font-weight:700}.s{font-size:15px;fill:#475569}.h{font-size:18px;font-weight:700}.b{font-size:14px;fill:#334155}.p{stroke-width:2}.f{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a)}</style></defs>
-<rect width="1280" height="520" rx="24" fill="#f8fafc"/><text x="640" y="45" text-anchor="middle" class="t">共享内存：用块内协作换取数据复用</text><text x="640" y="73" text-anchor="middle" class="s">减少全局内存访问的同时，会引入同步、Bank 冲突和驻留资源代价</text>
-<rect x="45" y="135" width="260" height="240" rx="18" fill="#eff6ff" stroke="#60a5fa" class="p"/><text x="70" y="172" class="h">1. 全局内存数据</text><text x="70" y="220" class="b">多个线程需要同一 Tile</text><text x="70" y="255" class="b">重复读取成本高</text><text x="70" y="290" class="b">先确认复用次数</text>
-<rect x="355" y="135" width="260" height="240" rx="18" fill="#f0fdf4" stroke="#4ade80" class="p"/><text x="380" y="172" class="h">2. 协同搬入</text><text x="380" y="220" class="b">线程分担加载</text><text x="380" y="255" class="b">处理边界与布局</text><text x="380" y="290" class="b">同步后再消费</text>
-<rect x="665" y="135" width="260" height="240" rx="18" fill="#fffbeb" stroke="#f59e0b" class="p"/><text x="690" y="172" class="h">3. 块内重复消费</text><text x="690" y="220" class="b">Warp 共享 Tile</text><text x="690" y="255" class="b">减少设备内存往返</text><text x="690" y="290" class="b">保持访问连续</text>
-<rect x="975" y="135" width="260" height="240" rx="18" fill="#faf5ff" stroke="#a855f7" class="p"/><text x="1000" y="172" class="h">4. 检查代价</text><text x="1000" y="220" class="b">共享内存容量</text><text x="1000" y="255" class="b">同步与 Bank 冲突</text><text x="1000" y="290" class="b">Occupancy 是否下降</text>
-<path d="M305 255H355" class="f"/><path d="M615 255H665" class="f"/><path d="M925 255H975" class="f"/>
+<title id="title">共享内存复用：把读取减少量与执行前提分开</title><desc id="desc">单个Block使用32KiB数据4次。每次完整重读时逻辑全局读取128KiB；一次搬入共享内存后逻辑全局读取32KiB。后者需满足给定64KiB容量预算和写后读同步。使用一次时两方案均读32KiB，没有逻辑读取减少。数字不是实测HBM流量或加速比。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:18px;font-weight:700}.body{font-size:15px;fill:#475569}.edge{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow)}.dep{stroke-dasharray:6 5}.axis{stroke:#94a3b8;stroke-width:1.5}.tick{font-size:14px;fill:#475569}</style></defs>
+<rect width="1280" height="520" fill="#f8fafc"/>
+<text class="title" x="640" y="45" text-anchor="middle">共享内存复用：把读取减少量与执行前提分开</text>
+<text class="body" x="640" y="76" text-anchor="middle">构造模型：单个 Block 使用 32 KiB 数据四次；只比较逻辑全局读取，不计缓存命中。</text>
+<rect x="40" y="220" width="260" height="90" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text class="head" x="170" y="250" text-anchor="middle">固定数据与使用次数</text><text class="body" x="170" y="276" text-anchor="middle">32 KiB，重复使用四次</text>
+<rect x="420" y="130" width="340" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text class="head" x="590" y="160" text-anchor="middle">每次从全局内存重读</text><text class="body" x="590" y="186" text-anchor="middle">四次完整读取</text>
+<rect x="900" y="130" width="340" height="80" rx="12" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text class="head" x="1070" y="160" text-anchor="middle">逻辑读取 128 KiB</text><text class="body" x="1070" y="186" text-anchor="middle">32 KiB × 4</text>
+<rect x="420" y="310" width="340" height="80" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text class="head" x="590" y="340" text-anchor="middle">先搬入共享内存一次</text><text class="body" x="590" y="366" text-anchor="middle">写入完成并同步后重复使用</text>
+<rect x="900" y="310" width="340" height="80" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text class="head" x="1070" y="340" text-anchor="middle">逻辑读取 32 KiB</text><text class="body" x="1070" y="366" text-anchor="middle">仅搬入一次；减少 96 KiB</text>
+<path class="edge" d="M300 240H350V170H420"/>
+<path class="edge" d="M300 285H375V350H420"/>
+<path class="edge" d="M760 170H900"/>
+<path class="edge" d="M760 350H900"/>
+<rect x="420" y="440" width="340" height="65" rx="12" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text class="head" x="590" y="470" text-anchor="middle">容量与同步前提</text><text class="body" x="590" y="496" text-anchor="middle">32 KiB ≤ 64 KiB；假设同步成立</text>
+<path class="edge dep" d="M590 440V390"/>
+<text class="body" x="1070" y="464" text-anchor="middle">只使用一次时：两方案均读取 32 KiB</text>
+<text class="body" x="1070" y="496" text-anchor="middle">减少读取不等于已经获得加速</text>
 </svg>

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="title desc">
+<title id="title">协作加载示例：写入共享内存后，由多个线程读取</title><desc id="desc">同一个Block中的线程协作将数据从全局内存加载到共享内存，完成所需的块内同步后，由线程A和线程B读取各自需要的数据到寄存器。图中是显式共享内存复用示例，不是所有访存的必经路径。</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:15px;fill:#475569}.edge{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow)}</style></defs>
+<rect width="1280" height="520" fill="#f8fafc"/>
+<text x="640" y="45" text-anchor="middle" class="title">协作加载示例：写入共享内存后，由多个线程读取</text>
+<text x="640" y="76" text-anchor="middle" class="sub">本例展示显式共享内存复用；减少的是逻辑全局读取，实际 HBM 流量还受缓存影响</text>
+<rect x="340" y="110" width="900" height="370" rx="18" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="2" data-layout-role="panel"/>
+<text x="790" y="139" text-anchor="middle" class="head">同一个 Block 中的协作与消费</text>
+<rect x="40" y="245" width="230" height="90" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="155" y="277" text-anchor="middle" class="head">全局内存</text><text x="155" y="304" text-anchor="middle" class="body">输入数据块</text>
+<rect x="380" y="245" width="230" height="90" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="495" y="277" text-anchor="middle" class="head">共享内存</text><text x="495" y="304" text-anchor="middle" class="body">协作写入后保留数据</text>
+<rect x="690" y="245" width="230" height="90" rx="14" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text x="805" y="277" text-anchor="middle" class="head">完成所需同步</text><text x="805" y="304" text-anchor="middle" class="body">保证写后读可见</text>
+<rect x="1000" y="170" width="220" height="90" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="1110" y="202" text-anchor="middle" class="head">线程 A 寄存器</text><text x="1110" y="229" text-anchor="middle" class="body">读取所需元素</text>
+<rect x="1000" y="370" width="220" height="90" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="1110" y="402" text-anchor="middle" class="head">线程 B 寄存器</text><text x="1110" y="429" text-anchor="middle" class="body">复用共享数据</text>
+<path d="M270 290H380" class="edge"/>
+<path d="M610 290H690" class="edge"/>
+<path d="M920 270H950V215H1000" class="edge"/>
+<path d="M920 310H975V415H1000" class="edge"/>
+</svg>

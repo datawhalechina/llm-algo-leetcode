@@ -1,10 +1,34 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="title desc">
-<title id="title">Stream、Event 与 CUDA Graph 的调度关系</title><desc id="desc">重复流水线先建立跨流依赖，再用事件表达顺序，并在路径稳定时考虑 CUDA Graph。</desc>
-<defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker><style>text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}.t{font-size:28px;font-weight:700}.s{font-size:15px;fill:#475569}.h{font-size:18px;font-weight:700}.b{font-size:14px;fill:#334155}.p{stroke-width:2}.f{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a)}</style></defs>
-<rect width="1280" height="520" rx="24" fill="#f8fafc"/><text x="640" y="45" text-anchor="middle" class="t">高级调度：依赖图稳定后再减少提交开销</text><text x="640" y="73" text-anchor="middle" class="s">多 Stream、Event、优先级和 CUDA Graph 分别解决不同层次的问题</text>
-<rect x="45" y="135" width="260" height="240" rx="18" fill="#eff6ff" stroke="#60a5fa" class="p"/><text x="70" y="172" class="h">工作流阶段</text><text x="70" y="220" class="b">搬运 → 计算 → 收尾</text><text x="70" y="255" class="b">持续时间与重复频率</text><text x="70" y="290" class="b">先确认真实依赖</text>
-<rect x="355" y="135" width="260" height="240" rx="18" fill="#f0fdf4" stroke="#4ade80" class="p"/><text x="380" y="172" class="h">Stream 与 Event</text><text x="380" y="220" class="b">不同队列承载可并行阶段</text><text x="380" y="255" class="b">Event 表达跨流依赖</text><text x="380" y="290" class="b">优先级不改变依赖</text>
-<rect x="665" y="135" width="260" height="240" rx="18" fill="#fffbeb" stroke="#f59e0b" class="p"/><text x="690" y="172" class="h">CUDA Graph 候选</text><text x="690" y="220" class="b">路径和形状稳定</text><text x="690" y="255" class="b">重复提交次数高</text><text x="690" y="290" class="b">分支变化少</text>
-<rect x="975" y="135" width="260" height="240" rx="18" fill="#faf5ff" stroke="#a855f7" class="p"/><text x="1000" y="172" class="h">时间线验证</text><text x="1000" y="220" class="b">提交与同步开销</text><text x="1000" y="255" class="b">重叠区间和关键路径</text><text x="1000" y="290" class="b">端到端时间与回退</text>
-<path d="M305 255H355" class="f"/><path d="M615 255H665" class="f"/><path d="M925 255H975" class="f"/>
+<title id="title">两批流水线：Event 保留依赖，Graph 改变提交方式</title><desc id="desc">每批输入搬运12微秒，计算40微秒，输出回传10微秒。假设三个阶段具有独立资源且忽略开销，两批输入顺序为0到12、12到24；计算为12到52、52到92；回传为52到62、92到102。同批跨流生产消费依赖由虚线表示。Graph回放保留这些依赖。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:18px;font-weight:700}.body{font-size:15px;fill:#475569}.edge{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow)}.dep{stroke-dasharray:6 5}.axis{stroke:#94a3b8;stroke-width:1.5}.tick{font-size:14px;fill:#475569}</style></defs>
+<rect width="1280" height="520" fill="#f8fafc"/>
+<text class="title" x="640" y="45" text-anchor="middle">两批流水线：Event 保留依赖，Graph 改变提交方式</text>
+<text class="body" x="640" y="76" text-anchor="middle">构造估算：独立搬入、计算与回传资源；虚线为跨流依赖。Graph 回放保留同一依赖图。</text>
+<text class="body" x="640" y="118" text-anchor="middle">同一流内按顺序执行；优先级只影响就绪任务的调度偏好</text>
+<text class="body" x="185" y="204" text-anchor="middle">输入搬运队列</text>
+<text class="body" x="185" y="304" text-anchor="middle">计算队列</text>
+<text class="body" x="185" y="404" text-anchor="middle">输出回传队列</text>
+<rect x="280" y="175" width="860" height="65" rx="8" fill="#eff6ff" data-layout-role="panel"/>
+<rect x="280" y="275" width="860" height="65" rx="8" fill="#f0fdf4" data-layout-role="panel"/>
+<rect x="280" y="375" width="860" height="65" rx="8" fill="#fffbeb" data-layout-role="panel"/>
+<rect x="300" y="185" width="96" height="45" rx="5" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text class="body" x="348" y="209" text-anchor="middle">搬入 A</text>
+<rect x="396" y="185" width="96" height="45" rx="5" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text class="body" x="444" y="209" text-anchor="middle">搬入 B</text>
+<rect x="396" y="285" width="320" height="45" rx="5" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text class="body" x="556" y="309" text-anchor="middle">计算 A</text>
+<rect x="716" y="285" width="320" height="45" rx="5" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text class="body" x="876" y="309" text-anchor="middle">计算 B</text>
+<rect x="716" y="385" width="80" height="45" rx="5" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text class="body" x="756" y="409" text-anchor="middle">回传 A</text>
+<rect x="1036" y="385" width="80" height="45" rx="5" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text class="body" x="1076" y="409" text-anchor="middle">回传 B</text>
+<path class="edge dep" d="M396 230V285"/>
+<path class="edge dep" d="M492 230V255H716V285"/>
+<path class="edge dep" d="M716 330V385"/>
+<path class="edge dep" d="M1036 330V385"/>
+<path class="axis" d="M300 465H1116"/>
+<path class="axis" d="M300 461V471"/><text class="tick" x="300" y="492" text-anchor="middle">0</text>
+<path class="axis" d="M396 461V471"/><text class="tick" x="396" y="492" text-anchor="middle">12</text>
+<path class="axis" d="M492 461V471"/><text class="tick" x="492" y="492" text-anchor="middle">24</text>
+<path class="axis" d="M716 461V471"/><text class="tick" x="716" y="492" text-anchor="middle">52</text>
+<path class="axis" d="M796 461V471"/><text class="tick" x="796" y="492" text-anchor="middle">62</text>
+<path class="axis" d="M1036 461V471"/><text class="tick" x="1036" y="492" text-anchor="middle">92</text>
+<path class="axis" d="M1116 461V471"/><text class="tick" x="1116" y="492" text-anchor="middle">102</text>
+<text class="body" x="1210" y="469" text-anchor="middle">时间 / μs</text>
+<text class="body" x="640" y="517" text-anchor="middle">两批串行合计 124 μs；此理想流水线 102 μs。主机提交与同步开销另计。</text>
 </svg>

@@ -17,58 +17,52 @@
 
 从 PyTorch 写法走到 CUDA / Triton，并不是为了“更底层”本身，而是因为框架级算子组合并不总能贴住硬件执行粒度。只要中间张量太多、launch 太碎，或者数据布局和 tile 组织没法显式控制，性能上限就会很快被访存和调度开销卡住。
 
-这一页在整个教程的纵向主线里属于 `Part 01` 通向 `Part 03 / Part 04` 的桥接页，优先服务 `推理优化路线` 里的算子下沉判断，也给后续系统优化页建立编程模型前置。学完这里，后面再看 `18 / 19 / 32` 以及 `Part 03` 的 Triton kernel 实战时，你会更容易判断瓶颈到底停留在框架级组合、算子级组织，还是已经值得下沉到 CUDA / Triton；如果这里没学明白，后面很容易把“自定义 kernel”误当成默认更高级的选择，而说不清它到底补的是哪一层控制权。按专题归类，这一页主要属于 `编译与图优化专题` 的基础入口，同时支撑后续 kernel 实现主线。
+本节比较框架、CUDA 与 Triton 对执行粒度、数据搬运和并行组织的控制范围，为后续算子优化与内核实现建立编程模型入口。学习重点是判断现有抽象缺少哪一层控制权，而不是默认下沉到自定义内核；CUDA 执行层级在第 15–16 节展开，Triton Program 映射在第 18 节展开。
 
 **关键词：** `grid`, `block`, `kernel`
 
+![从张量表达式到 CUDA 与 Triton 映射](../public/01_Hardware_Math_and_Systems/08_programming_model_mapping.svg)
+
 ---
 ## 前置阅读
-**导语：** 这一页先把从 PyTorch 到 CUDA / Triton 的编程模型演进接上，再看为什么自定义算子会更接近硬件。
+**导语：** 先掌握张量表达和 GPU 资源模型，再比较框架、CUDA 与 Triton 分别暴露哪些控制能力。
+- [03. GPU Architecture and Memory | GPU 物理架构与内存层级](./03_GPU_Architecture_and_Memory.md)
 - [Group 1D: Execution Models, Asynchrony and Operator Mapping | 1D: 执行模型、异步调度与算子映射](./1D.md)
-- [15. CUDA Execution Model | CUDA 执行模型](./15_CUDA_Execution_Model.md)
-- [16. Warp Block SharedMemory Basics | Warp、Block 与 Shared Memory 基础](./16_Warp_Block_SharedMemory_Basics.md)
-## 相关阅读
-**导语：** 如果想继续把编程模型和 kernel 组织方式补完整，可以接着看这些页。
-- [Part 03: Triton Kernel Development | 第三部分：Triton 算子开发](../03_Triton_Kernels/intro.md)
-- [01. Triton 入门与 Hello World：向量加法 (Vector Addition)](../03_Triton_Kernels/01_Triton_Vector_Addition.md)
-- [04. Triton 矩阵乘法 (GEMM) 与自动调优 (Autotune)](../03_Triton_Kernels/04_Triton_GEMM_Tutorial.md)
----
 ## Q1：为什么我们需要用 CUDA 或 Triton 编写自定义算子？
 
-<details><summary>点击展开查看解析</summary>
 
 PyTorch 原生操作方便，但它默认把很多执行细节交给框架和后端。
 
 当一个计算链里出现大量小算子、重复的 HBM 往返、或者对布局和 tile 有强约束时，原生写法往往会留下更多中间张量和 launch 开销。自定义 CUDA 或 Triton 的价值，不是“更底层”本身，而是把算子组织方式重新对齐到硬件执行粒度。
 
 所以这类问题的关键，不是“要不要手写 kernel”，而是“哪些数据流和执行流必须由我们显式控制”。
-</details>
+
 ### Q1小验证：为什么原生操作可能慢
 
 先想是不是中间张量太多。
 
 ```python
-def memory_traffic(num_ops, fused=False):
-    # 自定义算子的价值，不在于把名字写得更底层，而在于减少中间张量落地。
-    input_reads = num_ops
-    output_writes = 1
-    intermediate_writes = max(num_ops - 1, 0) if not fused else max(num_ops - 2, 0)
-    return input_reads + output_writes + intermediate_writes
+def memory_traffic(num_ops, tensor_bytes, fused=False):
+    """估算逐算子链与完全融合链的外部读写字节量。"""
+    if num_ops <= 0 or tensor_bytes <= 0:
+        raise ValueError('num_ops and tensor_bytes must be positive')
+    reads = num_ops if not fused else 1
+    writes = num_ops if not fused else 1
+    return {'reads': reads, 'writes': writes, 'traffic_bytes': (reads + writes) * tensor_bytes}
 
 cases = [
-    ('separate_ops', memory_traffic(3, fused=False)),
-    ('fused_ops', memory_traffic(3, fused=True)),
-    ('longer_chain', memory_traffic(5, fused=False)),
+    ('separate_ops', memory_traffic(3, 8_000_000, fused=False)),
+    ('fused_ops', memory_traffic(3, 8_000_000, fused=True)),
+    ('longer_chain', memory_traffic(5, 8_000_000, fused=False)),
 ]
 for name, traffic in cases:
-    print(name, '-> traffic units:', traffic)
-print('fusion wins when it removes intermediate writes, not when it only shortens code')
+    print(name, '->', traffic)
+assert cases[1][1]['traffic_bytes'] < cases[0][1]['traffic_bytes']
 
 ```
 
 ## Q2：CUDA 的线程层级结构与 GPU 硬件执行单元如何对应？
 
-<details><summary>点击展开查看解析</summary>
 
 CUDA 的层级不是语法装饰，而是把“任务怎么切”映射到“硬件怎么调度”。
 
@@ -78,14 +72,16 @@ CUDA 的层级不是语法装饰，而是把“任务怎么切”映射到“硬
 - thread 是最细的计算粒度。
 
 理解这层映射后，就能看出为什么同样的代码，线程数、block 数和 warp 利用率不同，性能会差很多。
-</details>
+
 ### Q2小验证：层级怎么对应
 
 把执行层级记清楚，后面读 kernel 会更顺。
 
 ```python
 def block_launch_stats(num_threads, warp_size=32):
-    # grid/block/warp/thread 的对应关系，最终会落到 warp 数和空转 lane 上。
+    """计算 Warp 数、空闲 lane 和线程槽利用率。"""
+    if num_threads <= 0 or warp_size <= 0:
+        raise ValueError('num_threads and warp_size must be positive')
     warps = (num_threads + warp_size - 1) // warp_size
     active_lanes = num_threads
     wasted_lanes = warps * warp_size - num_threads
@@ -94,68 +90,93 @@ def block_launch_stats(num_threads, warp_size=32):
 
 for threads in [48, 64, 96, 128]:
     print(threads, 'threads ->', block_launch_stats(threads))
-print('线程层级的关键不是层级名，而是 warp 是否被填满')
+assert block_launch_stats(48)['wasted_lanes'] == 16
+try:
+    block_launch_stats(0)
+except ValueError:
+    pass
+else:
+    raise AssertionError('空 Block 必须报错')
 
 ```
 
 ## Q3：跨线程共享和同步机制如何限制和优化性能？
 
-<details><summary>点击展开查看解析</summary>
 
 跨线程共享真正解决的是“同一份数据能不能在片上被复用”。
 
 如果数据只被读一次，shared memory 和同步的开销可能不值；如果同一份数据会被 block 内多个线程反复使用，先放到 shared memory 再同步，通常能换回更多 HBM 访问的节省。
 
 所以这里不是“共享越多越好”，而是“复用收益是否足以覆盖同步代价”。
-</details>
+
 ### Q3小验证：共享为什么会和同步绑定
 
 复用越多，协作就越重要。
 
 ```python
-def shared_tradeoff(reuse_times, sync_points, hbm_cost=10, smem_cost=2, sync_cost=3):
-    # 共享只有在复用收益大于同步代价时才值得。
-    saved_hbm = max(reuse_times - 1, 0) * (hbm_cost - smem_cost)
-    penalty = sync_points * sync_cost
-    return {'net_gain': saved_hbm - penalty, 'worth_it': saved_hbm > penalty}
+def shared_tradeoff(reuse_times, sync_points, tile_bytes, bandwidth_bytes_per_us, sync_cost_us):
+    """把减少的 HBM 字节换算成时间，并与同步时间比较。"""
+    if reuse_times <= 0 or sync_points < 0 or tile_bytes <= 0 or bandwidth_bytes_per_us <= 0 or sync_cost_us < 0:
+        raise ValueError('invalid reuse or timing inputs')
+    saved_hbm_bytes = max(reuse_times - 1, 0) * tile_bytes
+    saved_hbm_us = saved_hbm_bytes / bandwidth_bytes_per_us
+    synchronization_us = sync_points * sync_cost_us
+    return {'saved_hbm_bytes': saved_hbm_bytes, 'saved_hbm_us': saved_hbm_us, 'synchronization_us': synchronization_us, 'net_saved_us': saved_hbm_us - synchronization_us, 'worth_it': saved_hbm_us > synchronization_us}
 
-for case in [(1, 0), (2, 1), (4, 1), (4, 3)]:
-    print(case, '->', shared_tradeoff(*case))
-print('shared memory is good only when reuse amortizes synchronization')
+for reuse_times, sync_points in [(1, 0), (2, 1), (4, 1), (4, 3)]:
+    print((reuse_times, sync_points), '->', shared_tradeoff(reuse_times, sync_points, 64_000, 16_000, 2.0))
+assert shared_tradeoff(1, 0, 64_000, 16_000, 2.0)['worth_it'] is False
+assert shared_tradeoff(4, 1, 64_000, 16_000, 2.0)['worth_it'] is True
 
 ```
 
 ## Q4：Triton 为什么能降低算子开发门槛？
 
-<details><summary>点击展开查看解析</summary>
 
 Triton 的抽象重点，不是“帮你自动变快”，而是把 tile、block 和布局这些样板性细节收起来，让你先把张量切分方式写清楚。
 
 和 CUDA 相比，它并不是取消底层约束，而是把底层约束收束成更少的显式概念：布局、mask、tile 和 program 关系。
 
 所以 Triton 的门槛更低，是因为它减少了模板代码；但它的性能边界，仍然取决于你对执行粒度和数据布局的理解。
-</details>
+
 ### Q4小验证：Triton 抽象了什么
 
 先看块组织，再看算子细节。
 
 ```python
-def triton_benefit(tile, layout_contiguous=True, boilerplate_lines=80):
-    # Triton 的门槛低，靠的是把 tile / layout / launch 的样板代码抽掉。
+def triton_candidate(num_elements, block_size, layout_contiguous, dtype_supported, max_padding_ratio=0.25):
+    """检查布局、dtype 和边界填充是否满足教学候选门槛。"""
+    if num_elements <= 0 or block_size <= 0 or not 0 <= max_padding_ratio < 1:
+        raise ValueError('invalid shape or padding threshold')
+    programs = (num_elements + block_size - 1) // block_size
+    padding_ratio = (programs * block_size - num_elements) / (programs * block_size)
+    reasons = []
     if not layout_contiguous:
-        return {'boilerplate_saved': 0, 'ready': False}
-    saved = max(boilerplate_lines - tile // 2, 0)
-    return {'boilerplate_saved': saved, 'ready': True}
+        reasons.append('non_contiguous_layout')
+    if not dtype_supported:
+        reasons.append('unsupported_dtype')
+    if padding_ratio > max_padding_ratio:
+        reasons.append('padding_ratio')
+    return {'ready': not reasons, 'programs': programs, 'padding_ratio': padding_ratio, 'reasons': reasons}
 
-for case in [(64, True, 80), (128, True, 80), (128, False, 80)]:
-    print(case, '->', triton_benefit(*case))
-print('Triton abstracts launch and tiling details, but still depends on layout discipline')
+ready = triton_candidate(1000, 128, True, True)
+blocked = triton_candidate(1000, 128, False, True)
+assert ready['ready'] is True
+assert blocked['reasons'] == ['non_contiguous_layout']
+print(ready)
+print(blocked)
 
 ```
 
-## ⚠️ 常见误区
+## 编程模型与执行路径
 
 - 自定义算子不是为了炫技，而是为了更好地控制执行路径。
 - CUDA 和 Triton 是不同范式，但目标都在靠近硬件。
 - 共享和同步是一起看的，不能只谈一个。
 - 编程模型的核心是映射，不是语法本身。
+## 相关阅读
+**导语：** 如果想继续把编程模型和 kernel 组织方式补完整，可以接着看这些页。
+- [Part 03: Triton Kernel Development | 第三部分：Triton 算子开发](../03_Triton_Kernels/intro.md)
+- [01. Triton 入门与 Hello World：向量加法 (Vector Addition)](../03_Triton_Kernels/01_Triton_Vector_Addition.md)
+- [04. Triton 矩阵乘法 (GEMM) 与自动调优 (Autotune)](../03_Triton_Kernels/04_Triton_GEMM_Tutorial.md)
+---

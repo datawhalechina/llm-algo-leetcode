@@ -1,6 +1,6 @@
 # 29. CUDA Stream Advanced Scheduling | CUDA Stream 高级调度
 
-**难度：** Hard | **环境：** GPU optional | **标签：** `算子编程`, `CUDA Stream`, `异步调度` | **目标人群：** 编译与系统入门者
+**难度：** Hard | **环境：** CPU-first | **标签：** `算子编程`, `CUDA Stream`, `异步调度` | **目标人群：** 编译与系统入门者
 
 > 🚀 **云端运行环境**
 >
@@ -14,63 +14,38 @@
 
 ## 本节导读
 
-基础 stream 概念回答的是“能不能并起来”，而高级调度回答的是“怎么并才不乱”。只要事件依赖、优先级和任务回放没有排好，多 stream 不但不能提升吞吐，反而会把等待链变得更难分析。
+数据搬入后才能计算，计算结束后才能回传；不同批次之间又可能存在独立工作。把这些依赖与同一队列中的提交顺序放到一起，才能判断多队列调度留下了多少重叠空间。
 
-本节沿着“依赖关系 → event 同步 → stream 优先级 → graph 回放”组织执行时间线。完成后，你应能区分可并行工作与必须等待的依赖，并判断通信或搬运中有多少时间真正暴露在关键路径上。
+本节先计算依赖约束下的起止时间，再比较单批次依赖链与多批次流水线，区分队列优先级和 Graph 回放各自改变的对象。计算器在 CPU 上运行，结果依赖于阶段耗时和资源可并行的假设；真实执行可继续进入性能分析专题核对时间线。
 
 **关键词：** `stream`, `event`, `graph`
+
+![Stream、Event 与 CUDA Graph 的调度关系](../public/01_Hardware_Math_and_Systems/29_stream_event_graph_pipeline.svg)
 
 ---
 ## 前置阅读
 
-**导语：** 先把 CPU/GPU 异构调度、CUDA stream 基础和 block 组织接上，再看这一页的高级调度，会更容易把“怎么排任务”讲清楚。
+**导语：** 先掌握阶段放置和 Stream 基础，再用 Event、优先级与 Graph 组织更复杂的依赖。
 
 - [07. CPU and GPU Heterogeneous Scheduling | CPU 与 GPU 异构调度](./07_CPU_GPU_Heterogeneous_Scheduling.md)
 - [17. CUDA Stream and Asynchrony | CUDA Stream 与异步执行](./17_CUDA_Stream_and_Asynchrony.md)
-- [18. Triton Block Model | Triton Block 模型](./18_Triton_Block_Model.md)
 
-## 相关阅读
+## Q1：怎样把任务依赖转换成可调度的 Stream 时间线？
 
-**导语：** 将 stream 与 event 的依赖判断继续接到真实 collective 和通信重叠实验。
+同一 Stream 中的任务按给定列表顺序执行；跨 Stream 的任务还必须等待显式前驱。对每个任务，取所有前驱的最晚结束时间作为最早开始时间，再加自身耗时得到结束时间。反复推进已满足前驱的任务，就能得到一条满足依赖的时间线。
 
-- [Part 02 · 47 NCCL 通信剖析](../02_PyTorch_Algorithms/47_Communication_Profiling_with_NCCL.md)
-- [Part 02 · 48 通信热点与缓解](../02_PyTorch_Algorithms/48_Communication_Hotspots_and_Mitigation.md)
-- [CUDA C Programming Guide](https://docs.nvidia.com/cuda/cuda-c-programming-guide/)
----
-## Q1：CUDA Stream 为什么能做并行调度？
+下面假设不同 Stream 有独立执行资源、任务耗时固定、没有提交开销或资源争用。因而结果是理想调度估算，而非实测 CUDA 时间。若忽略跨队列依赖，只取各队列累计耗时的最大值，会把仍需等待的工作误算成可重叠工作。
 
-<details>
-<summary>点击展开查看解析</summary>
+### Q1小验证：计算带依赖的起止时间
 
-CUDA Stream 可以看成一条命令队列：
-- 同一条 Stream 内部的操作顺序执行
-- 不同 Stream 之间在硬件允许时可以并行
-
-这允许我们把任务拆成：
-- 数据搬运
-- 计算
-- 后处理
-
-只要这些阶段之间依赖关系允许，就可以把它们放到不同 Stream 里，从而提高设备利用率。
-
-一个数量级直觉表可以帮助你判断“为什么要调度”：
-
-| 操作 | 典型耗时 | 说明 |
-| --- | --- | --- |
-| 空 kernel launch | `5-10 μs` | CPU 下发指令的开销 |
-| 小算子计算 | `1-2 μs` | GPU 实际计算很短 |
-| 单 kernel 总耗时 | `6-12 μs` | launch 往往占主导 |
-| CUDA Graph 回放 | `<1 μs` | 几乎不再重复 launch |
-
-所以，Stream / Graph 的价值并不是“让 GPU 变魔法一样更强”，而是尽量少浪费在调度和启动上。
-</details>
-
-### Q1小验证：Stream 流水线与重叠收益
+保持任务耗时不变，比较不同 Stream 中独立任务与串行依赖链的完成时间。
 
 
 ```python
+import math
 from dataclasses import dataclass
 from typing import List, Dict, Tuple
+
 
 @dataclass
 class TaskStage:
@@ -79,62 +54,99 @@ class TaskStage:
     stream: str
     depends_on: Tuple[str, ...] = ()
 
+
+def schedule_stages(stages: List[TaskStage]) -> Dict[str, dict]:
+    """计算理想时间线；同队列顺序与跨队列前驱必须同时满足。"""
+    by_name = {}
+    predecessors = {}
+    previous_on_stream = {}
+    for stage in stages:
+        if not isinstance(stage.name, str) or not stage.name.strip():
+            raise ValueError('任务名称必须是非空字符串')
+        if stage.name in by_name:
+            raise ValueError('任务名称不能重复')
+        if not isinstance(stage.stream, str) or not stage.stream.strip():
+            raise ValueError('队列名称必须是非空字符串')
+        if not math.isfinite(stage.duration_us) or stage.duration_us < 0:
+            raise ValueError('阶段耗时必须是有限非负数')
+        if not isinstance(stage.depends_on, (tuple, list)) or any(
+            not isinstance(name, str) or not name.strip()
+            for name in stage.depends_on
+        ):
+            raise ValueError('前驱必须由任务名称组成')
+        by_name[stage.name] = stage
+        dependencies = set(stage.depends_on)
+        if stage.stream in previous_on_stream:
+            dependencies.add(previous_on_stream[stage.stream])
+        predecessors[stage.name] = dependencies
+        previous_on_stream[stage.stream] = stage.name
+    if any(dep not in by_name for deps in predecessors.values() for dep in deps):
+        raise ValueError('存在未知前驱')
+
+    timeline = {}
+    while len(timeline) < len(stages):
+        progressed = False
+        for name, stage in by_name.items():
+            if name in timeline or not predecessors[name].issubset(timeline):
+                continue
+            start = max(
+                (timeline[dep]['end_us'] for dep in predecessors[name]), default=0.0
+            )
+            timeline[name] = {
+                'start_us': start, 'end_us': start + stage.duration_us,
+                'stream': stage.stream,
+            }
+            progressed = True
+        if not progressed:
+            raise ValueError('显式依赖与同队列顺序形成了环')
+    return timeline
+
+
 def sequential_time_us(stages: List[TaskStage]) -> float:
-    """假设所有阶段串行执行的总时间。"""
+    """计算合法任务集合全部串行执行时的总耗时。"""
+    schedule_stages(stages)
     return sum(stage.duration_us for stage in stages)
 
+
 def pipelined_time_us(stages: List[TaskStage]) -> float:
-    """非常粗略地估算流水线调度后的总时间。"""
-    stream_totals: Dict[str, float] = {}
-    for stage in stages:
-        stream_totals.setdefault(stage.stream, 0.0)
-        stream_totals[stage.stream] += stage.duration_us
-    return max(stream_totals.values()) if stream_totals else 0.0
+    """取满足全部依赖的最晚完成时间，不忽略跨队列等待。"""
+    timeline = schedule_stages(stages)
+    return max((event['end_us'] for event in timeline.values()), default=0.0)
+
 
 def overlap_ratio(sequential_us: float, pipelined_us: float) -> float:
-    if sequential_us == 0:
-        return 0.0
-    return 1 - pipelined_us / sequential_us
+    """理想隐藏时间占串行总时间的比例，不表示设备利用率。"""
+    if not all(math.isfinite(value) for value in (sequential_us, pipelined_us)):
+        raise ValueError('时间必须为有限数')
+    if not 0 <= pipelined_us <= sequential_us:
+        raise ValueError('理想流水线时间必须位于零与串行时间之间')
+    return 1 - pipelined_us / sequential_us if sequential_us else 0.0
 
 ```
 
-## Q2：CUDA Event 为什么重要？
+## Q2：跨 Stream 的等待怎样进入完成时间？
 
-<details>
-<summary>点击展开查看解析</summary>
+生产者完成工作后记录 Event，消费者等待该事件，再使用结果。依赖边只约束真正相关的任务；同一队列内的顺序则隐含存在。单批次的搬入、计算、回传如果首尾相依，拆成多个 Stream 后仍然需要串行完成。
 
-Event 的作用是跨 Stream 做同步点。
+下面保留四个阶段的依赖链。最后的主机后处理也作为独立逻辑队列建模；它不是 CUDA Stream 上的设备操作。对比各阶段起止时间，检查是否出现“生产者尚未结束，消费者已开始”的错误。
 
-你可以把它理解成：
-- 某个 Stream 先完成一段工作
-- 记录一个 Event
-- 另一个 Stream 在等待这个 Event 后继续执行
-
-这比“全局阻塞”更精细，因为它只同步真正有依赖关系的部分。
-
-所以在复杂流水线里，Event 往往是把异步调度真正串起来的关键。
-
-Event 的开销通常很小，但它不是“零成本”；工程上常见的用法是只在真正有依赖关系的地方插入 Event，避免把同步点铺得太密。
-</details>
-
-### Q2小验证：Event 依赖关系
+### Q2小验证：依赖链不能被队列拆分缩短
 
 
 ```python
 def build_dependency_edges(stages: List[TaskStage]) -> List[Tuple[str, str]]:
-    edges = []
-    for stage in stages:
-        for dep in stage.depends_on:
-            edges.append((dep, stage.name))
-    return edges
+    """返回显式依赖边；同队列顺序由时间线计算器另行加入。"""
+    schedule_stages(stages)
+    return [(dep, stage.name) for stage in stages for dep in stage.depends_on]
+
 
 def has_cross_stream_dependency(stages: List[TaskStage]) -> bool:
-    name_to_stage = {s.name: s for s in stages}
-    for stage in stages:
-        for dep in stage.depends_on:
-            if name_to_stage[dep].stream != stage.stream:
-                return True
-    return False
+    schedule_stages(stages)
+    name_to_stage = {stage.name: stage for stage in stages}
+    return any(
+        name_to_stage[dep].stream != stage.stream
+        for stage in stages for dep in stage.depends_on
+    )
 
 ```
 
@@ -145,55 +157,36 @@ def test_event_dependencies():
         TaskStage('H2D', 12, 'copy'),
         TaskStage('Kernel', 40, 'compute', depends_on=('H2D',)),
         TaskStage('D2H', 10, 'copy', depends_on=('Kernel',)),
-        TaskStage('Post', 8, 'post', depends_on=('D2H',)),
+        TaskStage('Post', 8, 'host', depends_on=('D2H',)),
     ]
+    assert build_dependency_edges(stages) == [
+        ('H2D', 'Kernel'), ('Kernel', 'D2H'), ('D2H', 'Post')
+    ]
+    assert has_cross_stream_dependency(stages)
+    timeline = schedule_stages(stages)
+    assert timeline['Kernel']['start_us'] == 12
+    assert timeline['D2H']['start_us'] == 52
+    assert timeline['Post']['end_us'] == 70
+    assert pipelined_time_us(stages) == sequential_time_us(stages) == 70
+    print('依赖链时间线：', timeline)
 
-    edges = build_dependency_edges(stages)
-    assert ('H2D', 'Kernel') in edges
-    assert ('Kernel', 'D2H') in edges
-    assert ('D2H', 'Post') in edges
-    assert has_cross_stream_dependency(stages) is True
-    print('✅ Event 依赖测试通过')
 
 test_event_dependencies()
 
 ```
 
-## Q3：CUDA Graph 和 Stream 调度是什么关系？
+## Q3：Graph 回放改变了依赖，还是提交成本？
 
-<details>
-<summary>点击展开查看解析</summary>
+CUDA Graph 复用一段已捕获的执行结构，主要针对重复提交开销；原有数据依赖仍然成立。上一问的依赖链即使被捕获，也不能让消费者在生产者完成前执行。
 
-CUDA Graph 更像是把一整段稳定的执行路径捕获下来，再在后续回放。
+先选择形状和执行路径稳定、重复运行的子图，再检查捕获支持、内存地址与资源生命周期等条件。下面只筛选最简单的固定子图候选；返回真还不代表捕获成功，也不表示已有加速。变长服务可以按形状分桶或只捕获稳定子图，不能仅凭“变长”就判定整个服务无法使用 Graph。
 
-它的价值在于：
-- 降低频繁 kernel launch 的开销
-- 减少 Python 或调度层的干预
-- 在推理场景中稳定化执行路径
-
-但它也有局限：
-- 输入 shape 如果经常变化，捕获和回放就不稳定
-- 依赖关系复杂时，图捕获也更难管理
-
-所以 Graph 常和 Stream 一起出现，但它解决的是“固定流程回放”，不是替代所有异步调度。
-
-什么时候值得用 Graph？
-- 固定 batch size + 固定 seq length 的离线批处理推理
-- 多次重复执行相同的计算模式，例如固定层数的 Transformer
-
-什么时候不太划算？
-- 变长请求很频繁的在线推理
-- 动态 shape 经常变化、每次路径都不同的任务
-
-可以把它记成一句话：Graph 适合“路径稳定”，不适合“形状经常跳”。
-</details>
-
-### Q3小验证：Graph 适用性判断
+### Q3小验证：筛选固定子图回放候选
 
 
 ```python
 def graph_suitability(is_fixed_shape: bool, is_repeated_path: bool, has_many_branches: bool) -> bool:
-    """非常简化的 CUDA Graph 适用性判断。"""
+    """筛选简单固定子图候选，不验证实际捕获支持或性能。"""
     return is_fixed_shape and is_repeated_path and not has_many_branches
 
 assert graph_suitability(True, True, False) is True
@@ -213,74 +206,70 @@ cases = [
 ]
 
 for name, fixed_shape, repeated_path, many_branches in cases:
-    print(f'{name:<18s}:', '适合 Graph' if graph_suitability(fixed_shape, repeated_path, many_branches) else '不太适合 Graph')
+    print(f'{name:<18s}:', '可继续检查捕获条件' if graph_suitability(fixed_shape, repeated_path, many_branches) else '需先整理稳定子图')
 
 ```
 
-## Q4：Stream 优先级和典型流水线怎么理解？
+## Q4：多批次流水线怎样产生重叠空间？
 
-<details>
-<summary>点击展开查看解析</summary>
+单批次存在搬入、计算和回传的依赖，但下一批输入搬运可能与当前批计算独立。下面固定两批相同任务，假设输入搬运、计算、输出回传各有独立资源，检查批次之间的重叠窗口。实际设备若共享拷贝资源，或这些阶段争用带宽，完成时间会比这个模型更长。
 
-CUDA 支持高 / 低优先级 Stream。高优先级 Stream 中的 kernel 会更容易被优先调度，适合放高优请求或更敏感的控制流。
+Stream 优先级影响就绪工作的调度偏好，不取消依赖，也不是对已运行工作立即抢占的保证。因此，计算器不按优先级生成固定收益；先从依赖时间线得到理想节省，再单独加入假设的暴露调度开销。
 
-一个常见的三段流水线思路是：
-
-```text
-Stream A: H2D
-Stream B: Kernel
-Stream C: D2H + 后处理
-```
-
-更实用的做法不是把所有任务都丢进同一条 Stream，而是把职责拆开：
-- 一个 Stream 负责输入搬运
-- 一个 Stream 负责核心计算
-- 一个 Stream 负责输出回传和收尾
-
-再用 Event 连接依赖关系，这样更容易让搬运和计算重叠。
-</details>
-
-### Q4小验证：优先级与流水线
+### Q4小验证：比较单批依赖链与两批流水线
 
 
 ```python
-def should_split_stream(copy_us: float, compute_us: float, post_us: float) -> bool:
-    # 只有当搬运 / 计算 / 收尾三段都有可分离职责时，拆 Stream 才更有意义。
-    total = copy_us + compute_us + post_us
-    if total <= 0:
-        return False
-    copy_ratio = copy_us / total
-    compute_ratio = compute_us / total
-    return copy_ratio >= 0.1 and compute_ratio >= 0.3
-
-
-def recommended_pipeline(copy_us: float, compute_us: float, post_us: float) -> Dict[str, str]:
-    if not should_split_stream(copy_us, compute_us, post_us):
-        return {'decision': 'single_stream', 'reason': '重叠收益有限'}
+def pipeline_comparison(stages: List[TaskStage], exposed_overhead_us=0.0) -> dict:
+    """分别记录理想重叠与给定暴露开销，不按阶段比例推荐拆队列。"""
+    if not math.isfinite(exposed_overhead_us) or exposed_overhead_us < 0:
+        raise ValueError('暴露开销必须是有限非负数')
+    serial = sequential_time_us(stages)
+    ideal = pipelined_time_us(stages)
     return {
-        'decision': 'split_streams',
-        'reason': '搬运 / 计算 / 收尾职责可分离，适合用 Event 串依赖',
+        'serial_us': serial,
+        'ideal_pipeline_us': ideal,
+        'ideal_saved_us': serial - ideal,
+        'exposed_overhead_us': exposed_overhead_us,
+        'estimated_elapsed_us': ideal + exposed_overhead_us,
+        'net_saved_us': serial - ideal - exposed_overhead_us,
     }
 
-print(recommended_pipeline(12, 40, 10))
-print(recommended_pipeline(2, 60, 1))
+
+stages = []
+for batch in range(2):
+    stages.extend([
+        TaskStage(f'in{batch}', 12, 'copy_in'),
+        TaskStage(f'compute{batch}', 40, 'compute', (f'in{batch}',)),
+        TaskStage(f'out{batch}', 10, 'copy_out', (f'compute{batch}',)),
+    ])
+report = pipeline_comparison(stages, exposed_overhead_us=3)
+assert report['serial_us'] == 124
+assert report['ideal_pipeline_us'] == 102
+assert report['net_saved_us'] == 19
+assert pipeline_comparison(stages, exposed_overhead_us=25)['net_saved_us'] == -3
+print('两批流水线：', schedule_stages(stages))
+print('时间比较：', report)
 
 ```
 
-## Q5：高级调度最常见的误区是什么？
+## Q5：哪些条件会消除理想重叠收益？
 
-<details>
-<summary>点击展开查看解析</summary>
+验证时先检查依赖是否允许重叠，再检查执行资源是否独立，最后比较实际端到端时间；这样可以把“必须等待”与“本可重叠但未发生”区分开。
 
-- **“Stream 越多越好”**  
-  不对。太多 Stream 会增加调度复杂度。
+| 条件 | 对模型结果的影响 | 实际执行时要核对 |
+|:---|:---|:---|
+| 消费者等待生产者 | 跨队列任务仍串行 | Event 与输入可用时刻 |
+| 同队列提交顺序 | 后续任务不能越过前项 | 队头等待是否阻塞独立工作 |
+| 多队列共用执行资源 | 理想并行时间偏乐观 | 拷贝引擎、计算资源与带宽争用 |
+| 提交或同步开销暴露 | 抵消部分甚至全部隐藏时间 | 主机提交与设备完成时间 |
+| Graph 捕获条件不满足 | 需要调整捕获子图或执行路径 | 形状、地址与操作支持 |
 
-- **“异步一定更快”**  
-  不对。只有当传输和计算能够重叠时，异步才更有意义。
+## 相关阅读
 
-- **“Event 就是锁”**  
-  不准确。Event 是同步点，不是全局锁。
+**导语：** 将 stream 与 event 的依赖判断继续接到真实 collective 和通信重叠实验。
 
-- **“CUDA Graph 适合所有推理”**  
-  不对。动态 shape 很多时，Graph 的收益会下降。
-</details>
+- [Part 02 · 47 NCCL 通信剖析](../02_PyTorch_Algorithms/47_Communication_Profiling_with_NCCL.md)
+- [Part 02 · 48 通信热点与缓解](../02_PyTorch_Algorithms/48_Communication_Hotspots_and_Mitigation.md)
+- [CUDA C Programming Guide](https://docs.nvidia.com/cuda/cuda-c-programming-guide/)
+---

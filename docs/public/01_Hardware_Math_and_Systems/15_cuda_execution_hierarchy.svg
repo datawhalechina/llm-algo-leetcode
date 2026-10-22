@@ -1,10 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="title desc">
-<title id="title">CUDA 执行层级与资源映射</title><desc id="desc">计算任务从 Grid 切分为 Block、Warp 与 Thread，并映射到不同内存与同步范围。</desc>
-<defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker><style>text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}.t{font-size:28px;font-weight:700}.s{font-size:15px;fill:#475569}.h{font-size:18px;font-weight:700}.b{font-size:14px;fill:#334155}.p{stroke-width:2}.f{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a)}</style></defs>
-<rect width="1280" height="520" rx="24" fill="#f8fafc"/><text x="640" y="45" text-anchor="middle" class="t">CUDA 执行模型：工作切分与资源范围同步收窄</text><text x="640" y="73" text-anchor="middle" class="s">每一级决定可见数据、协作范围和可能产生的空转</text>
-<rect x="45" y="135" width="260" height="240" rx="18" fill="#eff6ff" stroke="#60a5fa" class="p"/><text x="70" y="172" class="h">Grid</text><text x="70" y="220" class="b">覆盖完整问题空间</text><text x="70" y="255" class="b">由多个 Block 组成</text><text x="70" y="290" class="b">访问设备全局内存</text>
-<rect x="355" y="135" width="260" height="240" rx="18" fill="#f0fdf4" stroke="#4ade80" class="p"/><text x="380" y="172" class="h">Block</text><text x="380" y="220" class="b">线程协作与同步边界</text><text x="380" y="255" class="b">共享内存复用</text><text x="380" y="290" class="b">受资源预算限制驻留数</text>
-<rect x="665" y="135" width="260" height="240" rx="18" fill="#fffbeb" stroke="#f59e0b" class="p"/><text x="690" y="172" class="h">Warp</text><text x="690" y="220" class="b">硬件调度的线程组</text><text x="690" y="255" class="b">分支可能造成 Lane 空转</text><text x="690" y="290" class="b">连续访问影响合并访存</text>
-<rect x="975" y="135" width="260" height="240" rx="18" fill="#faf5ff" stroke="#a855f7" class="p"/><text x="1000" y="172" class="h">Thread</text><text x="1000" y="220" class="b">处理局部元素</text><text x="1000" y="255" class="b">寄存器保存局部状态</text><text x="1000" y="290" class="b">边界条件决定有效 Lane</text>
-<path d="M305 255H355" class="f"/><path d="M615 255H665" class="f"/><path d="M925 255H975" class="f"/>
+<title id="title">CUDA 执行层级：Grid 包含 Block，Block 中的线程按 Warp 分组</title><desc id="desc">实线表示包含或分组关系，不是数据流；下层节点分别展开对应层级的任务与资源。全局内存不是Grid专属，各线程可按地址访问。</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:15px;fill:#475569}.edge{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow)}</style></defs>
+<rect width="1280" height="520" fill="#f8fafc"/>
+<text x="640" y="45" text-anchor="middle" class="title">CUDA 执行层级：Grid 包含 Block，Block 中的线程按 Warp 分组</text>
+<text x="640" y="76" text-anchor="middle" class="sub">实线：包含或分组；虚线：对应层级的观察对象；全局内存并非 Grid 独有</text>
+<rect x="40" y="150" width="240" height="90" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="160" y="182" text-anchor="middle" class="head">Grid</text><text x="160" y="209" text-anchor="middle" class="body">一次内核启动的全部线程块</text>
+<rect x="360" y="150" width="240" height="90" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="480" y="182" text-anchor="middle" class="head">Block</text><text x="480" y="209" text-anchor="middle" class="body">同一块内的协作线程</text>
+<rect x="680" y="150" width="240" height="90" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="800" y="182" text-anchor="middle" class="head">Warp</text><text x="800" y="209" text-anchor="middle" class="body">同一块内的线程执行分组</text>
+<rect x="1000" y="150" width="240" height="90" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="1120" y="182" text-anchor="middle" class="head">Thread</text><text x="1120" y="209" text-anchor="middle" class="body">执行局部计算的线程</text>
+<rect x="40" y="350" width="240" height="90" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="160" y="382" text-anchor="middle" class="head">覆盖整个输入</text><text x="160" y="409" text-anchor="middle" class="body">由元素数与块大小确定块数</text>
+<rect x="360" y="350" width="240" height="90" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="480" y="382" text-anchor="middle" class="head">块内协作</text><text x="480" y="409" text-anchor="middle" class="body">共享内存与同步条件</text>
+<rect x="680" y="350" width="240" height="90" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="800" y="382" text-anchor="middle" class="head">活跃 Lane</text><text x="800" y="409" text-anchor="middle" class="body">32 个 Lane 按条件参与执行</text>
+<rect x="1000" y="350" width="240" height="90" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="1120" y="382" text-anchor="middle" class="head">线程局部状态</text><text x="1120" y="409" text-anchor="middle" class="body">寄存器与局部计算</text>
+<path d="M280 195H360" class="edge"/>
+<path d="M600 195H680" class="edge"/>
+<path d="M920 195H1000" class="edge"/>
+<path d="M160 240V350" class="edge" stroke-dasharray="7 5"/>
+<path d="M480 240V350" class="edge" stroke-dasharray="7 5"/>
+<path d="M800 240V350" class="edge" stroke-dasharray="7 5"/>
+<path d="M1120 240V350" class="edge" stroke-dasharray="7 5"/>
 </svg>
