@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="650" viewBox="0 0 1280 650" role="img" aria-labelledby="title desc">
   <title id="title">1A 数值与规模</title>
   <desc id="desc">从 dtype、参数量和 FLOPs 建立资源账本，再分别分析量化与 MoE 改变的资源成本，最后进入固定 workload 验证。</desc>
-  <defs><marker id="a1a" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#64748b"/></marker><style>
-    text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#475569}.group{font-size:20px;font-weight:700}.head{font-size:17px;font-weight:700}.body{font-size:14px}.small{font-size:12px;fill:#475569}.panel{stroke:#94a3b8;stroke-width:2;rx:16}.item{stroke:#cbd5e1;stroke-width:1.5;rx:10}.flow{stroke:#64748b;stroke-width:2.5;fill:none;marker-end:url(#a1a)}
+  <defs><marker id="a1a" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 4.5L0 9Z" fill="#64748b"/></marker><style>
+    text{font-family:'Noto Sans CJK SC','Microsoft YaHei',Arial,sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#475569}.group{font-size:20px;font-weight:700}.head{font-size:17px;font-weight:700}.body{font-size:14px}.small{font-size:12px;fill:#475569}.panel{stroke:#94a3b8;stroke-width:2;rx:16}.item{stroke:#cbd5e1;stroke-width:1.5;rx:10}.flow{stroke:#64748b;stroke-width:2.5;fill:none;marker-end:url(#a1a)}
   </style></defs>
   <rect width="1280" height="650" fill="#f8fafc"/>
   <text x="640" y="42" text-anchor="middle" class="title">1A 数值与规模：从账本到资源判断</text>
@@ -15,10 +15,10 @@
   <rect x="395" y="210" width="280" height="180" fill="#dcfce7" class="panel"/><text x="535" y="250" text-anchor="middle" class="group">资源账本</text>
   <text x="535" y="292" text-anchor="middle" class="body">参数、梯度、优化器状态</text><text x="535" y="320" text-anchor="middle" class="body">计算量、带宽与通信量</text><text x="535" y="348" text-anchor="middle" class="small">把模型配置转成可检查的资源假设</text>
 
-  <rect x="760" y="115" width="250" height="155" fill="#fef3c7" class="panel"/><text x="885" y="153" text-anchor="middle" class="group">量化分支</text><text x="885" y="194" text-anchor="middle" class="body">权重 · 激活 · KV Cache</text><text x="885" y="220" text-anchor="middle" class="body">对象 · 时机 · 格式</text><text x="885" y="246" text-anchor="middle" class="small">改变存储、计算或运行时成本</text>
-  <rect x="760" y="345" width="250" height="155" fill="#fce7f3" class="panel"/><text x="885" y="383" text-anchor="middle" class="group">MoE 分支</text><text x="885" y="424" text-anchor="middle" class="body">总参数 · 活跃计算</text><text x="885" y="450" text-anchor="middle" class="body">Router · 负载均衡</text><text x="885" y="476" text-anchor="middle" class="small">改变计算与通信分布</text>
+  <rect x="760" y="115" width="250" height="155" fill="#fef3c7" class="panel"/><text x="885" y="153" text-anchor="middle" class="group">量化分支</text><text x="885" y="194" text-anchor="middle" class="body">范围 · scale · 粒度</text><text x="885" y="220" text-anchor="middle" class="body">误差 · 元数据</text><text x="885" y="246" text-anchor="middle" class="small">改变表示与理论存储成本</text>
+  <rect x="760" y="345" width="250" height="155" fill="#fce7f3" class="panel"/><text x="885" y="383" text-anchor="middle" class="group">MoE 分支</text><text x="885" y="424" text-anchor="middle" class="body">总参数 · 活跃参数</text><text x="885" y="450" text-anchor="middle" class="body">活跃 FLOPs · 通信量</text><text x="885" y="476" text-anchor="middle" class="small">改变计算与通信分布</text>
 
-  <rect x="1060" y="225" width="175" height="190" fill="#ede9fe" class="panel"/><text x="1147" y="265" text-anchor="middle" class="group">工程验证</text><text x="1147" y="310" text-anchor="middle" class="body">显存</text><text x="1147" y="337" text-anchor="middle" class="body">吞吐 / 延迟</text><text x="1147" y="364" text-anchor="middle" class="body">通信与质量</text><text x="1147" y="394" text-anchor="middle" class="small">固定 workload</text>
+  <rect x="1060" y="225" width="175" height="190" fill="#ede9fe" class="panel"/><text x="1147" y="265" text-anchor="middle" class="group">专题验证</text><text x="1147" y="310" text-anchor="middle" class="body">显存</text><text x="1147" y="337" text-anchor="middle" class="body">吞吐 / 延迟</text><text x="1147" y="364" text-anchor="middle" class="body">通信与质量</text><text x="1147" y="394" text-anchor="middle" class="small">固定 workload</text>
 
   <path d="M315 300H395" class="flow"/>
   <path d="M675 300H715V192H760" class="flow"/><path d="M675 300H715V422H760" class="flow"/>

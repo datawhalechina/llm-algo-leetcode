@@ -14,10 +14,10 @@
 
 ## 本节导读
 
-模型名称里的 7B、14B 或 70B 只是规模标签；要判断它能否装入显存、一次请求或一次训练要做多少计算，还需要把层数、隐藏维度、词表、FFN 结构和 token 数拆开。参数量描述模型有多大，FLOPs 描述给定 workload 要做多少计算，两者不能混为一谈。
-本节沿着“模型结构 → 工作量与 FLOPs → 利用率与瓶颈”展开：先从配置推导参数量，再估算不同 workload 的计算量，最后用 MFU 和时间占比理解理论 FLOPs 与实际吞吐的差距。完成后，你应能把一个模型配置转换成可检查的参数与计算预算，并知道训练方式变化时哪些量需要重新计算。
+模型名称里的 7B、14B 或 70B 只是规模标签。要判断模型能否装入显存以及一次训练或推理需要多少计算，还要结合层数、隐藏维度、词表、前馈网络结构和 Token 数。
+本节建立“模型结构 → 参数量 → 工作负载计算量 → 模型 FLOPs 利用率（MFU）”的估算链。完成后，你应能把模型配置转换成参数与计算预算，并区分理论计算量与实测吞吐。
 
-**关键词：** `parameters`, `FLOPs`, `MFU`
+**关键词：** 参数量、`FLOPs`、`MFU`
 
 ![本节概念关系](../public/01_Hardware_Math_and_Systems/02_params_flops_chain.svg)
 
@@ -27,12 +27,10 @@
 
 - [01. Data Types and Precision | 大模型的数据格式与混合精度](./01_Data_Types_and_Precision.md)
 - [Group 0B: PyTorch Tensors and Autograd | 0B: PyTorch 张量与自动求导](../00_Prerequisites/0B.md)
-  
+
 ---
 ## Q1：假设隐藏层维度为 $d$，词表大小为 $V$。请推导一个 Decoder 的总参数量，并比较标准 FFN 与 SwiGLU。
 
-<details>
-<summary>点击展开查看解析</summary>
 
 我们把 Transformer 拆解为三大部分（忽略极小的 bias 和 LayerNorm 的权重，它们对百亿参数的占比不到千分之一）：
 
@@ -63,10 +61,11 @@
 *Block 参数 = $32 \times 12 \times 4096^2 \approx 6.4 \text{ Billion}$*
 *Embedding = $2 \times 32000 \times 4096 \approx 0.26 \text{ Billion}$*
 *总计约 6.7B，也就是所谓的 7B 模型！*
-</details>
+
 ### Q1小验证：参数量计算
 
-实现一个函数，显式选择 `dense FFN` 或 `SwiGLU`，按照 `Embedding + Attention + FFN + LayerNorm + LM Head` 的方式估算 Transformer 参数量。
+运行参考函数，显式选择标准 FFN 或 SwiGLU，比较词嵌入是否共享时的参数量。断言失败会直接报错，便于定位公式或实现偏差。
+
 
 ```python
 def calculate_transformer_params(vocab_size, hidden_dim, num_layers, intermediate_size=None, tie_embeddings=False, ffn_type='swiglu'):
@@ -99,30 +98,26 @@ def calculate_transformer_params(vocab_size, hidden_dim, num_layers, intermediat
 
 ```python
 def test_calculate_transformer_params():
-    try:
-        result = calculate_transformer_params(1000, 64, 2, 256, tie_embeddings=True)
-        assert result == 195328, f"错误：期望 195328，实际 {result}"
+    result = calculate_transformer_params(1000, 64, 2, 256, tie_embeddings=True)
+    assert result == 195328, f"错误：期望 195328，实际 {result}"
 
-        result = calculate_transformer_params(1000, 64, 2, 256, tie_embeddings=False)
-        assert result == 259328, f"错误：期望 259328，实际 {result}"
-        dense = calculate_transformer_params(1000, 64, 2, 256, tie_embeddings=True, ffn_type='dense')
-        assert dense == 162560, f"标准 FFN 参数量不符合预期，实际 {dense}"
+    result = calculate_transformer_params(1000, 64, 2, 256, tie_embeddings=False)
+    assert result == 259328, f"错误：期望 259328，实际 {result}"
+    dense = calculate_transformer_params(1000, 64, 2, 256, tie_embeddings=True, ffn_type='dense')
+    assert dense == 162560, f"标准 FFN 参数量不符合预期，实际 {dense}"
 
-        result = calculate_transformer_params(32000, 4096, 32, 11008, tie_embeddings=False)
-        assert result > 6000000000, f"错误：LLaMA 级别模型参数量应大于 6B，实际 {result}"
+    result = calculate_transformer_params(32000, 4096, 32, 11008, tie_embeddings=False)
+    assert result > 6000000000, f"错误：LLaMA 级别模型参数量应大于 6B，实际 {result}"
 
-        print("✅ 参数量函数测试通过！")
-    except AssertionError as e:
-        print(f"❌ 测试失败: {e}")
-    except Exception as e:
-        print(f"❌ 运行错误: {e}")
+    print("✅ 参数量函数测试通过！")
 
 test_calculate_transformer_params()
 ```
 
-### Q1扩展验证：估算 LLaMA-7B 的参数量
+### Q1扩展验证：估算 7B 级配置的参数量
 
-使用上面的函数估算一个 7B 级模型的大致参数规模，并观察各模块的占比。
+修改词表、隐藏维度、层数或前馈中间维度，观察总参数量；比较时只改变一项。
+
 
 ```python
 vocab_size = 32000
@@ -137,8 +132,6 @@ print("提示：不同实现会因为是否共享词嵌入、是否计入偏置�
 
 ## Q2：已知参数量和 token 数，一次前向需要多少 FLOPs？
 
-<details>
-<summary>点击展开查看解析</summary>
 
 这一问只计算一次前向的 FLOPs；训练阶段为什么需要更多计算，放到下一问拆解。这里的公式是 dense Transformer 的数量级估算，不把前向 FLOPs 当成完整训练成本。
 
@@ -155,7 +148,7 @@ $$ C_{forward} \approx 2 \times P \times T $$
 - $T$ 是处理的 Token 数量（Tokens）
 
 *(注：这里忽略了 Attention 矩阵乘积、归一化、激活函数、padding 和其他算子；占比会随序列长度、模型结构和 batch 改变，不能固定写成 99%。)*
-</details>
+
 ### Q2小验证：根据参数量和 token 数计算前向 FLOPs
 
 先用 `2 × 参数量 × token 数` 估算一次前向。训练 FLOPs 的拆分放到下一问，避免把公式结论提前当作机制解释。
@@ -176,15 +169,10 @@ def calculate_forward_flops(num_params_b, num_tokens, flops_per_param_token=2):
 
 ```python
 def test_calculate_flops():
-    try:
-        result = calculate_forward_flops(7, 1_000_000_000_000)
-        assert result == 14_000_000_000_000_000_000_000, f"错误：期望 1.4e22，实际 {result}"
+    result = calculate_forward_flops(7, 1_000_000_000_000)
+    assert result == 14_000_000_000_000_000_000_000, f"错误：期望 1.4e22，实际 {result}"
 
-        print("✅ FLOPs 函数测试通过！")
-    except AssertionError as e:
-        print(f"❌ 测试失败: {e}")
-    except Exception as e:
-        print(f"❌ 运行错误: {e}")
+    print("✅ FLOPs 函数测试通过！")
 
 test_calculate_flops()
 ```
@@ -208,8 +196,6 @@ for tokens, flops in compare_forward_token_scales(7, [1_000, 8_000, 32_000]).ite
 
 ## Q3：完整训练为什么比一次前向需要更多 FLOPs？
 
-<details>
-<summary>点击展开查看解析</summary>
 
 训练不仅包含前向传播计算损失，还包含反向传播计算梯度。
 
@@ -236,7 +222,7 @@ LoRA 和 QLoRA 的收益不能只从 FLOPs 公式判断；激活、量化反量�
 需要的总理论算力 $C = 6 \times (7 \times 10^9) \times (1 \times 10^{12}) = 4.2 \times 10^{22}$ FLOPs。
 
 如果按每张 A100 的 312 TFLOPs 理论峰值、35% 的有效效率和 1000 张卡估算，有效集群算力约为 $1000 \times 312 \times 0.35$ TFLOPs，训练时间约为 4.5 天。这个结果随效率假设变化，只用于建立数量级直觉。
-</details>
+
 ### Q3小验证：拆分训练 FLOPs 并估算场景时间
 
 先把前向、激活梯度和权重梯度拆开，再把总 FLOPs 接到不同 GPU 规模的训练时间估算。
@@ -291,8 +277,6 @@ for name, gpu_tflops, num_gpus, eff in scenarios:
 
 ## Q4：训练大模型时，什么是算力利用率 (MFU, Model FLOPs Utilization)？
 
-<details>
-<summary>点击展开查看解析</summary>
 
 通过前面的 Q3 我们算出了**理论所需算力**。但在实际工程中，硬件不会把所有时间都花在矩阵乘法上。这就引入了 MFU；它是观察模型计算利用率的一个重要指标，但不能单独代表训练工程质量。
 
@@ -303,8 +287,8 @@ for name, gpu_tflops, num_gpus, eff in scenarios:
 **为什么 MFU 很难达到 100%？**
 因为在真正的训练集群中，存在 **Memory-bound (显存墙)** 和 **Communication (通信瓶颈)**。GPU 很多时间在等待数据从内存搬运过来，或者在等其他机器的 All-Reduce 数据传过来，并没有在做有效的乘加运算。
 
-目前顶级的工业界预训练集群，MFU 通常在 **40% 到 60%** 之间。如果你微调时的 MFU 只有 10%，说明你的代码里存在严重的通信或 IO 阻塞（比如没开梯度累加，或者数据读取成了瓶颈）。
-</details>
+MFU 没有脱离模型、精度、硬件、并行方式和统计口径的通用合格线。较低的 MFU 只能说明需要继续检查，不能单独证明通信或 I/O 是主瓶颈；应把它与时间线、访存、通信和输入流水线记录一起交给性能分析。
+
 ### Q4小验证：计算时间占比与瓶颈分解
 
 把计算、显存等待和通信等待拆开，观察时间线上哪些部分在拖慢执行。下面同时给出 MFU 的公式估算和时间线占比：前者使用模型 FLOPs、实际耗时与硬件峰值，后者只描述时间线上计算与等待的比例，两者不能互相替代。
@@ -354,5 +338,5 @@ print('A high compute-time fraction does not by itself prove high MFU')
 - [06. VRAM Calculation and ZeRO | 显存计算与 ZeRO 优化](./06_VRAM_Calculation_and_ZeRO.md)
 - [22. MoE Parameter and Compute | MoE 模型参数量计算](./22_MoE_Parameter_and_Compute.md)
 
-  
+
 ---
