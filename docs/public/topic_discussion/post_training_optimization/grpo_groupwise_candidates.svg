@@ -2,11 +2,11 @@
   <title id="title">GRPO 组内比较与 RLVR 可验证奖励</title>
   <desc id="desc">同一提示生成候选组，奖励模型、标准答案、测试或环境终态提供反馈，无法判定状态单独记录；有效奖励经组内归一化形成优势，进入受约束更新与独立评测。</desc>
   <defs>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker>
-    <marker id="feedbackArrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#0284C7"/></marker>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+    <marker id="feedbackArrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#0284C7"/></marker>
     <style>
-      .title{font:700 26px Arial,sans-serif;fill:#172033}.sub{font:15px Arial,sans-serif;fill:#475569}
-      .head{font:700 17px Arial,sans-serif;fill:#172033}.body{font:14px Arial,sans-serif;fill:#334155}.small{font:13px Arial,sans-serif;fill:#475569}
+      .title{font-family:"Noto Sans CJK SC",sans-serif;font-size:26px;font-weight:700;fill:#172033}.sub{font-family:"Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:400;fill:#475569}
+      .head{font-family:"Noto Sans CJK SC",sans-serif;font-size:17px;font-weight:700;fill:#172033}.body{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;font-weight:400;fill:#334155}.small{font-family:"Noto Sans CJK SC",sans-serif;font-size:13px;font-weight:400;fill:#475569}
       .line{fill:none;stroke:#475569;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow)}
       .feedback{fill:none;stroke:#0284C7;stroke-width:2.4;stroke-dasharray:7 6;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#feedbackArrow)}
     </style>
@@ -16,56 +16,52 @@
   <text x="62" y="70" class="title">GRPO 与 RLVR：从候选组到可验证的相对优势</text>
   <text x="62" y="99" class="sub">GRPO 规定组内比较方式；RLVR 提供可复查的奖励来源；超时和无法判定不能静默记为零分。</text>
 
-  <rect x="52" y="176" width="154" height="118" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
+  <rect id="node-2" x="52" y="176" width="154" height="118" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
   <text x="74" y="211" class="head">当前策略</text>
   <text x="74" y="240" class="body">对同一提示采样</text>
   <text x="74" y="266" class="body">固定策略版本</text>
 
-  <rect x="246" y="151" width="176" height="168" rx="15" fill="#F8FAFC" stroke="#64748B" stroke-width="2"/>
+  <rect id="node-3" x="246" y="151" width="176" height="168" rx="15" fill="#F8FAFC" stroke="#64748B" stroke-width="2"/>
   <text x="268" y="184" class="head">候选组</text>
-  <rect x="266" y="201" width="136" height="30" rx="7" fill="#DCFCE7" stroke="#16A34A" stroke-width="1.6"/>
+  <rect id="node-4" x="266" y="201" width="136" height="30" rx="7" fill="#DCFCE7" stroke="#16A34A" stroke-width="1.6"/>
   <text x="282" y="222" class="small">候选 A</text>
-  <rect x="266" y="241" width="136" height="30" rx="7" fill="#FEF3C7" stroke="#D97706" stroke-width="1.6"/>
+  <rect id="node-5" x="266" y="241" width="136" height="30" rx="7" fill="#FEF3C7" stroke="#D97706" stroke-width="1.6"/>
   <text x="282" y="262" class="small">候选 B</text>
-  <rect x="266" y="281" width="136" height="30" rx="7" fill="#FEE2E2" stroke="#DC2626" stroke-width="1.6"/>
+  <rect id="node-6" x="266" y="281" width="136" height="30" rx="7" fill="#FEE2E2" stroke="#DC2626" stroke-width="1.6"/>
   <text x="282" y="302" class="small">候选 C …</text>
 
-  <rect x="462" y="140" width="230" height="190" rx="15" fill="#FFF7ED" stroke="#EA580C" stroke-width="2"/>
+  <rect id="node-7" x="462" y="140" width="230" height="190" rx="15" fill="#FFF7ED" stroke="#EA580C" stroke-width="2"/>
   <text x="484" y="173" class="head">奖励来源</text>
-  <text x="484" y="205" class="body">人类偏好：奖励模型</text>
-  <text x="484" y="234" class="body">数学任务：标准答案</text>
-  <text x="484" y="263" class="body">代码任务：测试结果</text>
-  <text x="484" y="292" class="body">交互任务：环境终态</text>
-  <text x="484" y="316" class="small">规则版本与失败原因随结果保存</text>
+  <text x="484" y="205" class="body">偏好反馈或可验证规则</text>
+  <text x="484" y="234" class="body">数学答案、测试或终态</text>
+  <text x="484" y="316" class="small">保存规则版本与失败原因</text>
 
-  <rect x="732" y="151" width="184" height="168" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
+  <rect id="node-8" x="732" y="151" width="184" height="168" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
   <text x="754" y="184" class="head">奖励结果</text>
   <text x="754" y="216" class="body">有效：rA、rB、rC</text>
-  <text x="754" y="245" class="body">超时：单独记录</text>
-  <text x="754" y="274" class="body">无法判定：不冒充 0</text>
+  <text x="754" y="245" class="body">超时或未知：保留原因</text>
   <text x="754" y="300" class="small">先检查覆盖率与同分率</text>
 
-  <rect x="956" y="151" width="260" height="168" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
+  <rect id="node-9" x="956" y="151" width="260" height="168" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
   <text x="978" y="184" class="head">组内归一化</text>
   <text x="978" y="216" class="body">有效候选计算均值与方差</text>
-  <text x="978" y="245" class="body">高于组内基线 → 正优势</text>
-  <text x="978" y="274" class="body">低于组内基线 → 负优势</text>
-  <text x="978" y="300" class="small">零方差组不产生更新信号</text>
+  <text x="978" y="245" class="body">相对组均值确定正负优势</text>
+  <text x="978" y="274" class="small">同分组的奖励优势为零</text>
 
-  <rect x="790" y="408" width="166" height="104" rx="15" fill="#E0E7FF" stroke="#4F46E5" stroke-width="2"/>
+  <rect id="node-10" x="790" y="408" width="166" height="104" rx="15" fill="#E0E7FF" stroke="#4F46E5" stroke-width="2"/>
   <text x="812" y="442" class="head">受约束更新</text>
   <text x="812" y="471" class="body">策略比率与裁剪</text>
   <text x="812" y="496" class="body">KL 与版本记录</text>
-  <rect x="996" y="408" width="220" height="104" rx="15" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+  <rect id="node-11" x="996" y="408" width="220" height="104" rx="15" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
   <text x="1018" y="442" class="head">独立评测</text>
   <text x="1018" y="471" class="body">任务质量 · 安全</text>
   <text x="1018" y="496" class="body">失败切片 · 奖励漏洞</text>
 
-  <path d="M206 235H238" class="line"/>
-  <path d="M422 235H454" class="line"/>
-  <path d="M692 235H724" class="line"/>
-  <path d="M916 235H948" class="line"/>
-  <path d="M1086 319V370H873V400" class="line"/>
-  <path d="M956 460H988" class="line"/>
-  <path d="M790 460H129V294" class="feedback"/>
+  <path d="M206 235H246" data-source="node-2" data-target="node-3" class="line"/>
+  <path d="M422 235H462" data-source="node-3" data-target="node-7" class="line"/>
+  <path d="M692 235H732" data-source="node-7" data-target="node-8" class="line"/>
+  <path d="M916 235H956" data-source="node-8" data-target="node-9" class="line"/>
+  <path d="M1086 319V370H873V408" data-source="node-9" data-target="node-10" class="line"/>
+  <path d="M956 460H996" data-source="node-10" data-target="node-11" class="line"/>
+  <path d="M790 460H129V294" data-source="node-10" data-target="node-2" class="feedback"/>
 </svg>

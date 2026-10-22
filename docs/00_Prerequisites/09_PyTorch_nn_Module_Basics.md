@@ -10,7 +10,11 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-`nn.Module` 把参数、缓冲区、子模块、前向计算和运行模式组织成一个可递归组合的对象。本页从模块调用进入，依次检查参数初始化、注册状态、`train/eval` 和参数冻结，让学习者能够判断参数如何获得初始值，以及哪些对象会参与计算、更新、迁移或保存。
+## 本节导读
+
+模型模块把参数、缓冲区、子模块、前向计算和运行模式组织成可递归组合的对象。初始化与注册方式决定状态能否参与更新、迁移和保存。
+
+完成本节后，你应能区分参数、缓冲区和普通属性，检查初始化尺度，并判断冻结状态与模型注册状态是否一致。
 
 **关键词：** `nn.Module`, `initialization`, `Parameter`, `train/eval`, `requires_grad`
 
@@ -20,10 +24,6 @@
 **导语：** Tensor 与梯度进入模型对象后，参数注册决定优化器能够更新哪些状态。
 - [08. PyTorch Grad Hygiene and No-Grad | PyTorch 梯度习惯与无梯度模式](./08_PyTorch_Grad_Hygiene_and_No_Grad.md)
 - [0C 组页](./0C.md)
-
-## 相关阅读
-**导语：** 模块对象建立后，下一页继续处理状态的序列化、恢复和结构迁移。
-- [10. PyTorch State, Checkpoint, and Recovery | PyTorch 状态、Checkpoint 与恢复](./10_PyTorch_State_dict_and_Persistence.md)
 
 ## Q1：如何把层和子模块组织成可调用的 `nn.Module`？
 
@@ -158,12 +158,12 @@ print('✅ 参数初始化尺度与可复现性通过')
 
 ## Q3：`Parameter`、`buffer` 和普通属性分别会进入哪里？
 
-阅读一个模块时，先用“是否训练、是否保存、是否随模块迁移”三件事判断对象的归属。下面的表格给出本节需要掌握的最小区别。
+阅读一个模块时，先用“是否训练、是否保存、是否随模块迁移”三件事判断对象的归属。参数只有交给优化器且具有梯度时才会更新；缓冲区默认保存，但可用 `persistent=False` 排除。
 
 | 对象 | 会被优化器更新 | 进入 `state_dict()` | 随模块迁移 device | 常见用途 |
 |:---|:---:|:---:|:---:|:---|
-| `Parameter` | 是 | 是 | 是 | 权重、偏置 |
-| `buffer` | 否 | 是 | 是 | mask、统计量、固定缩放值 |
+| `Parameter` | 已交给优化器且有梯度时 | 是 | 是 | 权重、偏置 |
+| `buffer` | 否 | 默认保存 | 是 | mask、统计量、固定缩放值 |
 | 普通属性 | 否 | 否 | 否 | 配置、名称、临时标记 |
 
 
@@ -199,6 +199,9 @@ keys = list(m.state_dict().keys())
 assert 'weight' in keys
 assert 'scale' in keys
 assert 'name' not in keys
+m.register_buffer('temporary_mask', torch.ones(1), persistent=False)
+assert 'temporary_mask' in dict(m.named_buffers())
+assert 'temporary_mask' not in m.state_dict()
 print('✅ state_dict 结构通过')
 
 ```
@@ -247,7 +250,14 @@ print('✅ train/eval 与梯度模式检查通过')
 
 ## Q5：冻结参数后，注册状态与可训练状态有什么不同？
 
-`requires_grad=False` 只关闭梯度与更新，不会把参数移出模块，也不会让它消失在 `state_dict()` 中。构造优化器时应显式筛选可训练参数，避免把“已注册”和“应更新”混为一谈。
+`requires_grad=False` 只关闭该参数的梯度计算，不会把参数移出模块，也不会让它消失在 `state_dict()` 中。构造优化器时应显式筛选可训练参数，避免把“已注册”和“应更新”混为一谈。
+
+| 检查维度 | 判断入口 | 冻结参数的结果 |
+|:---|:---|:---|
+| 是否注册 | `named_parameters()` | 仍然存在 |
+| 是否保存 | `state_dict()` | 仍然保存 |
+| 是否计算梯度 | `requires_grad` 与 `.grad` | 关闭，反向后 `.grad` 为 `None` |
+| 是否交给优化器 | `optimizer.param_groups` | 取决于构造优化器时是否筛选 |
 
 
 ```python
@@ -275,7 +285,7 @@ print('parameter roles：', roles)
 
 ## Q5 验证：冻结参数是否仍被保存但不产生梯度？
 
-冻结后的 `fc1` 仍应出现在 `state_dict()` 中；反向传播后它没有梯度，优化器也只持有 `fc2` 的可训练参数。
+冻结后的 `fc1` 仍应出现在参数注册表和 `state_dict()` 中；反向传播后它没有梯度，本例的优化器也只持有 `fc2` 的可训练参数。
 
 
 ```python
@@ -285,6 +295,7 @@ loss.backward()
 
 assert roles['frozen'] == ['fc1.weight', 'fc1.bias']
 assert roles['trainable'] == ['fc2.weight', 'fc2.bias']
+assert {'fc1.weight', 'fc1.bias'} <= dict(model.named_parameters()).keys()
 assert {'fc1.weight', 'fc1.bias'} <= set(model.state_dict())
 assert all(parameter.grad is None for parameter in model.fc1.parameters())
 assert all(parameter.grad is not None for parameter in model.fc2.parameters())
@@ -292,3 +303,9 @@ assert sum(len(group['params']) for group in optimizer.param_groups) == 2
 print('✅ 冻结与可训练参数语义通过')
 
 ```
+
+## 相关阅读
+
+模块对象建立后，下一页继续处理状态的序列化、恢复和结构迁移。
+
+- [10. PyTorch State, Checkpoint, and Recovery | PyTorch 状态、Checkpoint 与恢复](./10_PyTorch_State_dict_and_Persistence.md)

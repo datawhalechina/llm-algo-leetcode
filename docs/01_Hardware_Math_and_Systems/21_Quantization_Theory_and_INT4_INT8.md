@@ -14,11 +14,11 @@
 
 ## 本节导读
 
-量化的目标是在可接受的质量损失下，减少权重、激活或缓存的资源成本。本节将从量化对象、处理时机和交付形式出发，判断它具体改变了哪部分系统成本。
+量化通过有限离散值表示权重、激活值或缓存，目标是在质量门槛内降低存储、搬运或计算成本。不同对象和粒度会产生不同的量化误差与元数据代价。
 
-沿着“理论容量 → scale 与量化粒度 → 处理时机与交付形式 → 质量与部署判断”的顺序，分析量化对象、介入时机和观察指标之间的关系。
+本节建立“表示范围 → 缩放因子（scale）与粒度 → 误差 → 执行条件”的基础关系，为量化与压缩专题中的校准、训练和推理分支提供数值入口。
 
-**关键词：** `INT8`, `INT4`, `scale`
+**关键词：** `INT8`、`INT4`、缩放因子
 
 ![量化对象与介入时机](../public/02_PyTorch_Algorithms/21_quantization_object_timing.svg)
 ## 前置阅读
@@ -31,8 +31,6 @@
 
 ## Q1：为什么量化能显著减少显存和带宽压力？
 
-<details>
-<summary>点击展开查看解析</summary>
 
 如果把权重从 FP16 压到 INT8，单个参数的存储从 2 Bytes 变成 1 Byte，理论上权重显存约减半；如果压到 INT4，则理论上进一步降到 0.5 Byte，权重体积还会继续下降。
 
@@ -56,7 +54,7 @@
 - INT8 / INT4 是否真的加速，还取决于硬件是否原生支持低比特矩阵运算；如果硬件没有对应 Tensor Core / MMA 支持，量化有时只会省显存，不一定省时间
 
 所以量化的收益通常是“显存更小 + 带宽更低 + 吞吐更高”，而不是单纯的“位宽缩小了多少，速度就提升多少”。
-</details>
+
 ### Q1小验证：实现模型权重显存计算函数
 
 实现一个函数，计算给定参数量和数据格式的模型权重显存占用。
@@ -109,8 +107,6 @@ for dtype in dtypes:
 
 ## Q2：对称量化、非对称量化、per-tensor、per-channel 有什么区别？
 
-<details>
-<summary>点击展开查看解析</summary>
 
 最常见的量化写法可以写成：
 
@@ -140,7 +136,7 @@ q = round(x / scale) + zero_point
 - 这也是为什么很多方案会做权重-激活协同处理，或者引入 SmoothQuant 这类预处理思路
 
 这也是为什么真正落地时，量化不是“把 dtype 改小”这么简单，而是要同时决定 scale、zero point、分组粒度和累加精度。
-</details>
+
 ### Q2小验证：实现最小的 per-tensor 对称量化
 
 本题只实现一个最小分支：整个张量共用一组 scale，且 zero-point 固定为 0。非对称量化和 per-channel 量化先通过概念理解，不要求在本题完整实现。`num_bits=4` 时只模拟 4-bit 的数值范围，返回的 PyTorch Tensor 仍是 `torch.int8`，不代表真实 packed INT4 存储。
@@ -279,8 +275,6 @@ assert select_quantization_path('GGUF')['backend'] == 'llama.cpp 等'
 
 ## Q4：量化什么时候要考虑 QAT？
 
-<details>
-<summary>点击展开查看解析</summary>
 
 QAT（Quantization-Aware Training）不是第一选择，但它在以下场景里很有价值：
 
@@ -293,7 +287,7 @@ QAT（Quantization-Aware Training）不是第一选择，但它在以下场景�
 - 如果目标是“把低比特精度尽量拉回来”，再考虑 QAT
 
 QAT 的代价是训练流程更复杂、成本更高，但它能把量化误差直接纳入训练过程，是 PTQ 之外的重要补救路线。下面的判断只用于组织实验，不是自动证明 QAT 一定优于 PTQ；最终仍要比较固定验证集上的质量和训练成本。
-</details>
+
 ### Q4小验证：什么时候该考虑 QAT？
 
 把量化误差和训练预算放在一起，判断是否需要从 PTQ 转向 QAT。
@@ -330,27 +324,25 @@ print('QAT is worth considering when PTQ drop is too large and retraining budget
 
 ```
 
-## Q5：量化最常见的误区是什么？
+## Q5：为什么理论压缩不能直接证明低比特方案可用？
 
-<details>
-<summary>点击展开查看解析</summary>
 
-常见误区有四个：
+位宽账本只能给出理论存储下界。要把低比特表示交给后续专题验证，还需要同时记录四类条件：
 
-- **“INT4 一定比 INT8 好”**  
+- **“INT4 一定比 INT8 好”**
   不对。比特更低并不自动更优，误差和硬件支持都可能让 INT4 更难用。
 
-- **“量化只是改一下 dtype”**  
+- **“量化只是改一下 dtype”**
   不对。真正的量化会涉及校准、分组、反量化、累加精度和 kernel 支持。
 
-- **“量化一定不影响效果”**  
+- **“量化一定不影响效果”**
   不对。不同层、不同通道、不同模型对低比特的容忍度差别很大。
 
-- **“量化只影响权重”**  
+- **“量化只影响权重”**
   也不完整。推理时真正卡住性能的常常还包括激活、缓存和带宽。
 
-量化配置的判断条件是：在误差可接受的前提下，显存和带宽压力是否下降。下面的风险函数只是教学用检查表，不是硬件性能或模型质量的预测器。
-</details>
+因此，本节只整理量化候选的数值与执行风险；质量、真实显存、执行路径和吞吐必须在量化与压缩专题的固定工作负载中验证。下面的风险函数只是教学用检查表，不是硬件性能或模型质量的预测器。
+
 ### Q5小验证：量化配置里最常见的问题
 
 看看哪些配置更容易踩坑，而不是把量化简单理解成“降 dtype”。
@@ -395,18 +387,9 @@ print('quantization fails when bitwidth, calibration, and hardware support are a
 ---
 ## 相关阅读
 
-**导语：** 学完本节后，可以沿权重量化、KV Cache 量化和部署验证继续学习。
+**导语：** 学完本节后，可以沿权重表示、运行时低精度和部署验证继续学习。
 
 - [25. Quantization W8A16 | W8A16 量化](../02_PyTorch_Algorithms/25_Quantization_W8A16.md)
 - [41. FP8 Runtime Low-Precision Paths | FP8 运行时低精度路径](../02_PyTorch_Algorithms/41_FP8_Runtime_Low_Precision_Paths.md)
 - [67. Quantized Inference and Deployment | 量化推理与部署](../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.md)
-
-**经典论文：**
-- [GPTQ: Accurate Post-Training Quantization for Generative Pre-trained Transformers](https://arxiv.org/abs/2210.17323)
-- [AWQ: Activation-aware Weight Quantization for LLM Compression and Acceleration](https://arxiv.org/abs/2306.00978)
-- [SmoothQuant: Accurate and Efficient Post-Training Quantization for Large Language Models](https://arxiv.org/abs/2211.10438)
-
-**开源实现：**
-- [llama.cpp](https://github.com/ggml-org/llama.cpp)：GGUF 文件与本地推理 backend。
-- [vLLM Quantization](https://docs.vllm.ai/en/latest/features/quantization_compression/)：量化模型在推理 backend 中的加载与执行入口。
 ---

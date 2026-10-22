@@ -14,130 +14,168 @@
 
 ## 本节导读
 
-模型从高层图走到真正可执行的后端代码，中间并不是简单翻译，而是一整条图变换、算子改写、布局调整和执行计划选择的链路。很多性能差距，并不是来自公式本身，而是来自这条链路有没有把计算改写成更适合目标硬件的形式。
+同一段“矩阵乘 → 加偏置 → 激活”，可以逐个调用算子，也可以交给编译器改写。两种方式计算相同的结果，却可能使用不同的中间张量、启动次数和后端路径。
 
-这一页在整个教程的纵向主线里属于 `Part 01` 的编译与执行基础页，优先服务后续 `编译与图优化` 这条基础支撑线，也给 `推理优化路线` 补一层 backend 视角。学完这里，后面再看 `19 / 30 / 32` 以及 `Part 03 / Part 04` 的 kernel 与系统优化页时，你会更容易把“模型能跑”与“模型能高效跑”区分开来；如果这里没学明白，后面通常会把 fusion、lowering、layout 和 backend 约束都当成部署黑盒，难以解释为什么同一模型在不同执行栈上表现差这么多。按专题归类，这一页主要属于 `编译与图优化专题`，并和 `推理优化专题` 共享一部分执行链路视角。
+本节从这条计算链出发，比较图变换改变的读写与启动，再检查目标后端是否支持所需算子、精度和工作区。完成后，你应能区分“变换满足条件”和“实际执行更快”；融合细节进入算子融合页，真实执行与计时进入算子优化专题。
 
-**关键词：** `AI Compiler`, `Graph Optimization`, `fusion`
+**关键词：** AI 编译器、计算图、中间张量、后端路径
+
+![计算图到后端执行路径](../public/01_Hardware_Math_and_Systems/09_compiler_graph_lowering.svg)
 
 ---
 ## 前置阅读
-**导语：** 这一页先把图优化、fusion 和 lowering 的关系接上，再理解编译器为什么会成为推理和部署链路里的关键一环。
-- [Group 1D: Execution Models, Asynchrony and Operator Mapping | 1D: 执行模型、异步调度与算子映射](./1D.md)
-- [Group 1E: Compilers and Backends | 1E: 编译与后端](./1E.md)
-- [04. Attention MHA GQA | 多头注意力](../02_PyTorch_Algorithms/04_Attention_MHA_GQA.md)
+
+先从 [1D：执行模型、异步调度与算子映射](./1D.md)理解程序如何映射到设备执行单元。本节不要求预先掌握具体编译框架。
+## Q1：图变换能减少哪些启动与中间张量读写？
+
+把四个串行算子拆成四组执行时，组间结果需要写出并由下一组读取；合并为更少的组，有机会减少这些边界和启动次数。若变换还需要调整布局，就会增加额外读写，应与减少量分别计算。
+
+下面假设算子构成单链、各边界张量等大、每组对应一次启动。字节量是逻辑读写估算，启动耗时来自给定假设；它们不能直接相加，也不能代替端到端计时。
+
+### Q1 机制计算器：分别记录启动开销与逻辑读写
+
+固定算子链与张量大小，只改变分组，再加入布局转换字节数作对照。
+
+
+```python
+import math
+
+
+def graph_cost(num_ops, fused_groups, intermediate_elements, bytes_per_element, layout_bytes=0, launch_overhead_us=5.0):
+    """估算 kernel launch 与中间张量读写，不把不同单位相加成任意分数。"""
+    if (type(num_ops) is not int or type(fused_groups) is not int
+            or num_ops <= 0 or not 1 <= fused_groups <= num_ops):
+        raise ValueError('fused_groups must be in [1, num_ops]')
+    if (type(intermediate_elements) is not int or intermediate_elements < 0
+            or type(bytes_per_element) is not int or bytes_per_element <= 0
+            or type(layout_bytes) is not int or layout_bytes < 0
+            or not math.isfinite(launch_overhead_us) or launch_overhead_us < 0):
+        raise ValueError('元素数和布局字节数须为非负整数，元素字节数须为正整数，开销须为有限非负数')
+    materialized_boundaries = fused_groups - 1
+    intermediate_bytes = materialized_boundaries * intermediate_elements * bytes_per_element * 2
+    return {
+        'launches': fused_groups,
+        'launch_overhead_us': fused_groups * launch_overhead_us,
+        'materialized_boundaries': materialized_boundaries,
+        'intermediate_traffic_bytes': intermediate_bytes,
+        'layout_traffic_bytes': layout_bytes,
+        'total_extra_traffic_bytes': intermediate_bytes + layout_bytes,
+    }
+
+naive = graph_cost(4, 4, 1_000_000, 2)
+fused = graph_cost(4, 1, 1_000_000, 2, layout_bytes=1_000_000)
+assert fused['launches'] < naive['launches']
+assert fused['total_extra_traffic_bytes'] < naive['total_extra_traffic_bytes']
+print('naive:', naive)
+print('fused:', fused)
+
+```
+
+## Q2：融合条件满足后，为什么还要单独记录代价？
+
+共享中间结果提供了融合机会，但还要检查语义、副作用和资源预算。这里用“无副作用”作为简化示例的保守前提，并不表示所有带副作用的操作都无法合法融合。
+
+满足这些前提后，再计算避免的中间读写减去新增布局读写。有净读写减少并不保证更快；没有净读写减少也不意味着不可执行，启动次数、计算和资源占用仍会影响耗时。布尔输入表示已给定的检查结果，函数本身不证明语义等价。
+
+### Q2 对照验证：分开记录前提和读写减少量
+
+
+```python
+def fusion_candidate(shared_bytes, layout_rewrite_bytes, no_side_effect,
+                     register_bytes, register_budget_bytes):
+    """记录示例前提与逻辑读写差额，不把成本增加当作执行失败。"""
+    if any(type(value) is not int or value < 0
+           for value in (shared_bytes, layout_rewrite_bytes, register_bytes)):
+        raise ValueError('字节数必须是非负整数')
+    if type(register_budget_bytes) is not int or register_budget_bytes <= 0:
+        raise ValueError('寄存器预算必须是正整数字节数')
+    if type(no_side_effect) is not bool:
+        raise ValueError('副作用检查结果必须是布尔值')
+    reasons = []
+    if not no_side_effect:
+        reasons.append('side_effect_requires_analysis')
+    if register_bytes > register_budget_bytes:
+        reasons.append('register_budget')
+    net = shared_bytes - layout_rewrite_bytes
+    return {
+        'stated_conditions_met': not reasons,
+        'net_logical_traffic_saved_bytes': net,
+        'has_net_traffic_saving': net > 0,
+        'reasons': reasons,
+    }
+
+
+ideal = fusion_candidate(8_000_000, 0, True, 48_000, 64_000)
+layout_cost = fusion_candidate(8_000_000, 10_000_000, True, 48_000, 64_000)
+side_effect = fusion_candidate(8_000_000, 0, False, 48_000, 64_000)
+assert ideal['stated_conditions_met'] and ideal['has_net_traffic_saving']
+assert layout_cost['stated_conditions_met']
+assert layout_cost['net_logical_traffic_saved_bytes'] == -2_000_000
+assert not side_effect['stated_conditions_met']
+print(ideal)
+print(layout_cost)
+print(side_effect)
+
+```
+
+## Q3：同一张图为什么会匹配不同后端路径？
+
+目标后端支持的算子、数据类型、形状与工作区不同，同一张图因而可能需要不同的变换或回退路径。先核对声明的能力与预算，再比较可行候选的时间；实际部署还需检查设备、版本和执行结果。
+
+下面使用虚构的后端能力和延迟输入练习筛选，不探测本机后端，也不表示 CPU 或 GPU 的真实速度。工作区统一使用 MiB；未满足形状或内存要求的候选，即使假设延迟更低也不能入选。
+
+### Q3 约束筛选：先检查给定条件，再比较假设延迟
+
+
+```python
+def choose_backend(requirements, candidates):
+    """使用算子、dtype、动态形状和显存硬约束筛选后端。"""
+    if (not math.isfinite(requirements['workspace_limit_mib'])
+            or requirements['workspace_limit_mib'] < 0
+            or type(requirements['dynamic_shape']) is not bool):
+        raise ValueError('工作区预算与动态形状条件不合法')
+    for candidate in candidates.values():
+        if (not math.isfinite(candidate['workspace_mib'])
+                or candidate['workspace_mib'] < 0
+                or not math.isfinite(candidate['estimated_latency_ms'])
+                or candidate['estimated_latency_ms'] <= 0
+                or type(candidate['dynamic_shape']) is not bool):
+            raise ValueError('候选工作区、假设延迟与动态形状条件不合法')
+    eligible = []
+    rejected = {}
+    for name, candidate in candidates.items():
+        reasons = []
+        if not requirements['ops'].issubset(candidate['ops']):
+            reasons.append('missing_ops')
+        if requirements['dtype'] not in candidate['dtypes']:
+            reasons.append('unsupported_dtype')
+        if requirements['dynamic_shape'] and not candidate['dynamic_shape']:
+            reasons.append('dynamic_shape')
+        if candidate['workspace_mib'] > requirements['workspace_limit_mib']:
+            reasons.append('workspace')
+        if reasons:
+            rejected[name] = reasons
+        else:
+            eligible.append(name)
+    selected = min(eligible, key=lambda name: candidates[name]['estimated_latency_ms']) if eligible else None
+    return {'selected': selected, 'eligible': eligible, 'rejected': rejected}
+
+requirements = {'ops': {'matmul', 'softmax'}, 'dtype': 'bf16', 'dynamic_shape': True, 'workspace_limit_mib': 512}
+candidates = {
+    'host_example': {'ops': {'matmul', 'softmax'}, 'dtypes': {'fp32', 'bf16'}, 'dynamic_shape': True, 'workspace_mib': 64, 'estimated_latency_ms': 20.0},
+    'accelerator_example': {'ops': {'matmul', 'softmax'}, 'dtypes': {'fp16', 'bf16'}, 'dynamic_shape': True, 'workspace_mib': 256, 'estimated_latency_ms': 3.0},
+    'static_only': {'ops': {'matmul', 'softmax'}, 'dtypes': {'bf16'}, 'dynamic_shape': False, 'workspace_mib': 128, 'estimated_latency_ms': 1.5},
+}
+decision = choose_backend(requirements, candidates)
+assert decision['selected'] == 'accelerator_example'
+assert decision['rejected']['static_only'] == ['dynamic_shape']
+print(decision)
+
+```
+
 ## 相关阅读
 **导语：** 如果想继续把图优化和执行后端的关系补完整，可以接着看这些页。
 - [04. Triton 矩阵乘法 (GEMM) 与自动调优 (Autotune)](../03_Triton_Kernels/04_Triton_GEMM_Tutorial.md)
 - [05. Triton 性能调优与基准测试 (Autotune & Profiling)](../03_Triton_Kernels/05_Triton_Autotune_and_Profiling.md)
 - [18. CUDA Graph and JIT Compile | CUDA Graph 与 JIT 编译](../04_CUDA_and_System_Optimization/18_CUDA_Graph_and_JIT_Compile.md)
 ---
-## Q1：AI 编译器到底在压缩什么成本向量？
-
-<details><summary>点击展开查看解析</summary>
-
-AI 编译器优化的对象不是 Python 语法，而是计算图在 lowering 过程中形成的成本向量。
-
-它关心的不是“这段代码长什么样”，而是这张图在落到具体 backend 前会产生多少 launch、多少中间张量、多少布局重写、多少同步点。
-
-所以编译器不是把代码“翻译一下”，而是在同一张图上做代价最小化的执行路径重写。
-</details>
-### Q1小验证：图优化先改什么
-
-先问自己是算子形状、执行顺序，还是中间张量在拖慢系统。
-
-```python
-def graph_cost(num_ops, fused_groups, layout_transforms=0):
-    # 编译器优化的核心，是减少中间张量和 kernel launch，而不是简单重命名算子。
-    launches = fused_groups
-    intermediates = max(num_ops - fused_groups, 0)
-    return {'launches': launches, 'intermediates': intermediates, 'cost': launches + intermediates + layout_transforms}
-
-plans = [
-    ('naive', graph_cost(4, 4, 0)),
-    ('part_fused', graph_cost(4, 2, 1)),
-    ('more_fused', graph_cost(4, 1, 1)),
-]
-for name, stats in plans:
-    print(name, '->', stats)
-print('graph optimization pays off by cutting launches and intermediates together')
-
-```
-
-## Q2：为什么算子融合必须同时看复用、布局和副作用？
-
-<details><summary>点击展开查看解析</summary>
-
-图优化和算子融合之所以经常绑在一起，是因为它们都在处理同一条数据路径：能不能让中间结果不落地、能不能把连续计算收进同一个执行单元、能不能在不破坏语义的前提下复用布局。
-
-当两个算子共享中间张量时，编译器才有融合空间；但是否真能 fuse，还要再看副作用、register pressure 和 layout 是否兼容。
-
-所以融合不是“把两个名字拼起来”，而是同时满足复用、正确性和局部资源约束。
-</details>
-### Q2小验证：为什么融合能省掉一次搬运
-
-如果两个算子共享同一批中间结果，就要优先考虑是否能在图层合并。
-
-```python
-def fusion_score(shared_tensor=True, no_side_effect=True, layout_match=True):
-    # 融合不是‘能不能拼起来’，而是收益、正确性和布局是否同时成立。
-    score = 0
-    score += 2 if shared_tensor else 0
-    score += 2 if layout_match else -1
-    score += 2 if no_side_effect else -3
-    return score
-
-cases = [
-    ('ideal', True, True, True),
-    ('layout_bad', True, True, False),
-    ('side_effect', True, False, True),
-]
-for name, shared, clean, layout in cases:
-    print(name, '-> fusion score', fusion_score(shared, clean, layout))
-print('fusion is a three-way condition: reuse, correctness, layout')
-
-```
-
-## Q3：为什么同一张图在不同 backend 上会得到不同的最优解？
-
-<details><summary>点击展开查看解析</summary>
-
-同一张图在不同 backend 上会得到不同的最优解，不是因为图的语义变了，而是因为目标硬件允许的布局、调度和 kernel 形态不同。
-
-编译器在 lowering 的时候，不只是把算子往下放，还要同时满足静态形状、内存布局、算子可用性和性能上限这些约束；一旦某个约束不满足，图优化策略就会变。
-
-所以图优化的最后一步，其实是把“图上的理想解”压回“backend 上可执行的约束解”。
-</details>
-### Q3小验证：同一张图为什么会跑出不同速度
-
-先想 backend 和硬件支持差异，再看图本身。
-
-```python
-def backend_choice(constraints):
-    # 后端选择不是按名字排序，而是按约束是否匹配。
-    score = {
-        'CPU': constraints['portability'] + constraints['debuggability'] + constraints['small_batch'],
-        'CUDA': constraints['performance'] + constraints['ecosystem'] + constraints['static_shape'],
-        'Triton': constraints['performance'] + constraints['flexibility'] + constraints['static_shape'],
-    }
-    backend = max(score, key=score.get)
-    return backend, score
-
-cases = {
-    'research': {'performance': 2, 'flexibility': 2, 'ecosystem': 1, 'portability': 0, 'debuggability': 1, 'small_batch': 0, 'static_shape': 1},
-    'production': {'performance': 2, 'flexibility': 1, 'ecosystem': 2, 'portability': 1, 'debuggability': 1, 'small_batch': 0, 'static_shape': 2},
-    'debug_first': {'performance': 0, 'flexibility': 1, 'ecosystem': 0, 'portability': 2, 'debuggability': 2, 'small_batch': 2, 'static_shape': 0},
-}
-for name, constraints in cases.items():
-    backend, score = backend_choice(constraints)
-    print(name, '->', backend, score)
-print('backend choice is a constraint-matching problem, not a prestige ranking')
-
-```
-
-## ⚠️ 常见误区
-
-- AI 编译器不是“把 Python 变成 C++”这么简单。
-- 图优化的关键不只是算子名，而是执行路径和数据流。
-- 融合不是为了让名字更高级，而是减少中间结果和搬运。
-- backend 差异会直接影响优化结果。

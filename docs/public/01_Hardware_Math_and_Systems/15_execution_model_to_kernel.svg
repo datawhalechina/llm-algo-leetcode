@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="title desc">
+<title id="title">同一任务，怎样分别形成 Triton 或 CUDA 的实现方案？</title><desc id="desc">固定元素范围、尾部处理和协作需求后，可以分别组织Triton的数据块计划或CUDA的线程块计划。两个方案各自检查边界、同步和资源预算，再进入编译和正确性验证；不把二者画成先后执行的阶段。</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:15px;fill:#475569}.edge{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow)}</style></defs>
+<rect width="1280" height="520" fill="#f8fafc"/>
+<text x="640" y="45" text-anchor="middle" class="title">同一任务，怎样分别形成 Triton 或 CUDA 的实现方案？</text>
+<text x="640" y="76" text-anchor="middle" class="sub">两条分支表示可选实现方案；资源预算满足后，仍需编译与实际执行验证</text>
+<rect x="40" y="220" width="240" height="100" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="160" y="252" text-anchor="middle" class="head">固定任务要求</text><text x="160" y="279" text-anchor="middle" class="body">元素范围、尾部与协作</text>
+<rect x="400" y="130" width="330" height="100" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="565" y="162" text-anchor="middle" class="head">Triton：Program 与 Tile</text><text x="565" y="189" text-anchor="middle" class="body">组织数据块、掩码和加载</text>
+<rect x="400" y="350" width="330" height="100" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="565" y="382" text-anchor="middle" class="head">CUDA：Block 与 Warp</text><text x="565" y="409" text-anchor="middle" class="body">组织线程、访存和同步</text>
+<rect x="900" y="220" width="340" height="100" rx="14" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text x="1070" y="252" text-anchor="middle" class="head">分别核对实现条件</text><text x="1070" y="279" text-anchor="middle" class="body">边界、同步与资源预算</text><text x="1070" y="306" text-anchor="middle" class="body">再编译、检查输出与计时</text>
+<path d="M280 245H330V180H400" class="edge"/>
+<path d="M280 295H350V400H400" class="edge"/>
+<path d="M730 180H810V245H900" class="edge"/>
+<path d="M730 400H830V295H900" class="edge"/>
+</svg>

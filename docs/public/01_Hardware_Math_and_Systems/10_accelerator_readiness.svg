@@ -1,10 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="title desc">
-<title id="title">加速器候选的可用性判断</title><desc id="desc">从设备规格进入软件栈、模型迁移和工作负载验证，避免只按峰值算力选择设备。</desc>
-<defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker><style>text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}.t{font-size:28px;font-weight:700}.s{font-size:15px;fill:#475569}.h{font-size:18px;font-weight:700}.b{font-size:14px;fill:#334155}.p{stroke-width:2}.f{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a)}</style></defs>
-<rect width="1280" height="520" rx="24" fill="#f8fafc"/><text x="640" y="45" text-anchor="middle" class="t">加速器选型：峰值规格只是第一道输入</text><text x="640" y="73" text-anchor="middle" class="s">候选必须同时通过设备能力、软件栈、迁移成本和目标工作负载验证</text>
-<rect x="45" y="135" width="260" height="240" rx="18" fill="#eff6ff" stroke="#60a5fa" class="p"/><text x="70" y="172" class="h">设备能力</text><text x="70" y="220" class="b">容量 · 带宽 · 精度</text><text x="70" y="255" class="b">计算单元 · 互连</text><text x="70" y="290" class="b">功耗与可获得性</text>
-<rect x="355" y="135" width="260" height="240" rx="18" fill="#f0fdf4" stroke="#4ade80" class="p"/><text x="380" y="172" class="h">软件栈</text><text x="380" y="220" class="b">驱动 · 编译器 · 运行时</text><text x="380" y="255" class="b">算子与框架覆盖</text><text x="380" y="290" class="b">调试与可观测性</text>
-<rect x="665" y="135" width="260" height="240" rx="18" fill="#fffbeb" stroke="#f59e0b" class="p"/><text x="690" y="172" class="h">迁移条件</text><text x="690" y="220" class="b">模型产物与数据格式</text><text x="690" y="255" class="b">功能缺口与回退路径</text><text x="690" y="290" class="b">测试、运维与人员成本</text>
-<rect x="975" y="135" width="260" height="240" rx="18" fill="#faf5ff" stroke="#a855f7" class="p"/><text x="1000" y="172" class="h">工作负载证据</text><text x="1000" y="220" class="b">能加载、能执行、结果正确</text><text x="1000" y="255" class="b">容量、延迟、吞吐</text><text x="1000" y="290" class="b">成本与回滚条件</text>
-<path d="M305 255H355" class="f"/><path d="M615 255H665" class="f"/><path d="M925 255H975" class="f"/>
+<title id="title">换一种加速器，先检查同一任务能否运行</title><desc id="desc">假设任务需要四十 GB 峰值工作集、BF16 矩阵乘和指定运行时。三个构造设备分别因容量不足、精度支持不足被排除，或通过声明检查后进入加载和正确性测试。三行是并列候选，不是先后阶段。</desc>
+<defs><marker id="a" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#475569}.head{font-size:19px;font-weight:700}.body{font-size:16px}.small{font-size:14px;fill:#475569}.edge{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a)}</style></defs>
+<rect width="1280" height="520" rx="24" fill="#f8fafc"/>
+<text x="640" y="45" text-anchor="middle" class="title">换一种加速器，先检查同一任务能否运行</text>
+<text x="640" y="76" text-anchor="middle" class="sub">示例预算与设备能力均为构造输入；通过声明检查后，仍需实际加载与执行</text>
+<text x="495" y="120" text-anchor="middle" class="small">并列设备候选</text>
+<text x="995" y="120" text-anchor="middle" class="small">当前检查结果与下一步</text>
+<rect x="40" y="225" width="220" height="120" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="150" y="256" text-anchor="middle" class="head">固定任务需求</text><text x="150" y="283" text-anchor="middle" class="body">峰值工作集 40 GB</text><text x="150" y="310" text-anchor="middle" class="body">BF16 矩阵乘</text>
+<text x="150" y="332" text-anchor="middle" class="small">指定运行时与关键算子</text>
+<rect x="330" y="150" width="330" height="80" rx="14" fill="#fff" stroke="#94a3b8" stroke-width="2"/><text x="495" y="181" text-anchor="middle" class="head">设备 A：容量 32 GB</text><text x="495" y="208" text-anchor="middle" class="body">精度、算子和运行时已声明支持</text>
+<rect x="330" y="255" width="330" height="80" rx="14" fill="#fff" stroke="#94a3b8" stroke-width="2"/><text x="495" y="286" text-anchor="middle" class="head">设备 B：容量 48 GB</text><text x="495" y="313" text-anchor="middle" class="body">运行时可用，但缺少 BF16 支持</text>
+<rect x="330" y="360" width="330" height="80" rx="14" fill="#fff" stroke="#94a3b8" stroke-width="2"/><text x="495" y="391" text-anchor="middle" class="head">设备 C：容量 48 GB</text><text x="495" y="418" text-anchor="middle" class="body">精度、算子和运行时已声明支持</text>
+<rect x="750" y="150" width="490" height="80" rx="14" fill="#fef2f2" stroke="#f87171" stroke-width="2"/><text x="995" y="181" text-anchor="middle" class="head">容量不足</text><text x="995" y="208" text-anchor="middle" class="body">当前任务无法按原配置放入设备</text>
+<rect x="750" y="255" width="490" height="80" rx="14" fill="#fef2f2" stroke="#f87171" stroke-width="2"/><text x="995" y="286" text-anchor="middle" class="head">执行条件不匹配</text><text x="995" y="313" text-anchor="middle" class="body">更换精度或路径后，需要重新检查任务条件</text>
+<rect x="750" y="360" width="490" height="80" rx="14" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text x="995" y="391" text-anchor="middle" class="head">进入加载与正确性测试</text><text x="995" y="418" text-anchor="middle" class="body">再检查迁移代价，并在固定请求下测性能</text>
+<path d="M260 245H290V190H330" class="edge"/>
+<path d="M260 295H330" class="edge"/>
+<path d="M260 325H305V400H330" class="edge"/>
+<path d="M660 190H750" class="edge"/>
+<path d="M660 295H750" class="edge"/>
+<path d="M660 400H750" class="edge"/>
 </svg>

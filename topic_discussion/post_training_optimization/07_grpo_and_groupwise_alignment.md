@@ -1,10 +1,10 @@
 # 07 · GRPO、RLOO 与组内奖励
 
-GRPO 与 RLOO 都让同一提示生成多条回答，并在组内构造无需 Critic 的优势信号。GRPO 常用包含当前回答的组均值并可按组标准差缩放，RLOO 则明确排除当前奖励后计算留一基线。可验证奖励强化学习（RLVR）可把数学答案、代码测试或环境终态接入这类在线更新；它提高反馈可检查性，但不意味着规则覆盖了全部任务质量。
+同一问题生成多条回答后，怎样利用奖励差异更新策略？GRPO 用组内奖励均值并可按标准差缩放，RLOO 则排除当前回答后计算留一基线；二者都可省去独立价值模型。先比较它们怎样构造优势，再检查验证器能否提供有效反馈。
 
 ## 组采样如何形成更新信号
 
-同一提示的多个候选是 GRPO 的比较单位；如果候选几乎相同，组内差异不足，归一化后的信号会变弱或不稳定。若排序错误，模型会稳定学到错误方向，因此奖励上升必须与独立任务结果分开记录。
+同一提示的回答组是比较单位。奖励全部相同时，中心化后的奖励优势为零；参考约束等其他目标仍可能产生梯度。奖励排序错误则会推动错误行为，因此分别记录奖励变化和独立任务结果。
 
 | 步骤 | 发生什么 | 需要检查什么 |
 | --- | --- | --- |
@@ -18,11 +18,13 @@ GRPO 与 RLOO 都让同一提示生成多条回答，并在组内构造无需 Cr
 
 ## GRPO、RLVR 与 PPO 的关系
 
+PPO、GRPO 与 RLOO 是更新方法；可验证奖励强化学习（RLVR）说明反馈来自规则、测试或可检查的环境结果，可以与不同更新方法组合。可验证只代表规则可执行，仍需检查其覆盖范围和漏洞。
+
 | 路径 | 更新信号来源 | 主要优势 | 主要风险 |
 | --- | --- | --- | --- |
 | PPO | 奖励 + 价值模型估计 | 可形成逐位置优势并限制单次策略更新 | 多模型状态与价值模型成本高 |
 | GRPO | 同一提示下候选的相对奖励 | 可减少价值模型依赖，直接利用组内比较 | 候选不足、组内排序或方差失真 |
-| RLOO | 排除当前回答后的组内奖励均值 | 不训练 Critic，留一基线定义清楚 | 每组回答不足、奖励方差和序列级裁剪失真 |
+| RLOO | 排除当前回答后的组内奖励均值 | 不训练独立价值模型，留一基线定义清楚 | 每组回答不足、奖励方差和序列级裁剪失真 |
 | RLVR | 规则、测试或环境终态 | 反馈可验证、失败可定位 | 规则过窄时会产生奖励投机，遗漏真实质量 |
 
 ## 验证器输出何时可以进入组内奖励
@@ -37,4 +39,6 @@ GRPO 与 RLOO 都让同一提示生成多条回答，并在组内构造无需 Cr
 | 高奖励集中于异常短或固定模式 | 存在长度或模板投机 | 加入失败切片并修正规则 |
 | 独立成功率与奖励背离 | 奖励排序不足以支持采用 | 停止扩大训练并回查评分协议 |
 
-回答组、奖励来源和无法判定状态固定后，可进入[GRPO 机制练习](../../02_PyTorch_Algorithms/18_GRPO_Loss_Tutorial.ipynb)核对组内归一化，或进入[RLOO 机制练习](../../02_PyTorch_Algorithms/PT-RLOO_Leave_One_Out_Policy_Optimization.ipynb)核对留一基线与序列级裁剪。重复在线采样时进入[轨迹生命周期](./08_trajectory_lifecycle_and_environment_interaction.md)；模型训练完成后进入[独立评测、能力回归与采用决策](./10_evaluation_and_adoption_decision.md)。进一步阅读：[TRL GRPOTrainer](https://huggingface.co/docs/trl/grpo_trainer)与[TRL RLOOTrainer](https://huggingface.co/docs/trl/rloo_trainer)。
+## 核对组内计算后检查轨迹
+
+用[GRPO 机制练习](../../02_PyTorch_Algorithms/18_GRPO_Loss_Tutorial.ipynb)核对组内归一化，用[RLOO 机制练习](../../02_PyTorch_Algorithms/PT-RLOO_Leave_One_Out_Policy_Optimization.ipynb)核对留一基线与序列裁剪。重复采样时进入[轨迹检查](./08_trajectory_lifecycle_and_environment_interaction.md)，训练后进入[独立评测](./10_evaluation_and_adoption_decision.md)。框架配置见[TRL GRPOTrainer](https://huggingface.co/docs/trl/grpo_trainer)与[RLOOTrainer](https://huggingface.co/docs/trl/rloo_trainer)。

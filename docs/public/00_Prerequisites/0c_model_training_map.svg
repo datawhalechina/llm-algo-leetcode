@@ -1,30 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="560" viewBox="0 0 1280 560" role="img" aria-labelledby="title desc">
-  <title id="title">0C PyTorch 模型与训练闭环</title>
-  <desc id="desc">nn.Module 的构造与初始化分别进入状态恢复和参数更新，两条支路在数据接口、验证与模型评价中汇合。</desc>
-  <defs>
-    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#52627a"/></marker>
-    <style>.title{font:700 28px sans-serif;fill:#172033}.group{fill:#f7f9fc;stroke:#a8b3c7;stroke-width:2}.node{fill:#fff;stroke:#8fa0ba;stroke-width:2}.base{fill:#e9e7fb}.state{fill:#e4f1fb}.update{fill:#e8f7ed}.close{fill:#fff2cf}.text{font:600 18px sans-serif;fill:#172033}.sub{font:15px sans-serif;fill:#475569}.line{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow)}</style>
-  </defs>
-  <rect width="1280" height="560" fill="#fbfcfe"/>
-  <text x="640" y="48" text-anchor="middle" class="title">0C · 从模型对象到训练闭环</text>
-  <rect x="470" y="82" width="340" height="92" rx="14" class="node base"/>
-  <text x="640" y="119" text-anchor="middle" class="text">09 · nn.Module 与运行状态</text>
-  <text x="640" y="148" text-anchor="middle" class="sub">注册 · 初始化 · train/eval · freeze</text>
-  <rect x="130" y="245" width="400" height="150" rx="16" class="group"/>
-  <text x="158" y="278" class="text">状态支路</text>
-  <rect x="175" y="300" width="310" height="68" rx="11" class="node state"/>
-  <text x="330" y="328" text-anchor="middle" class="text">10 · Artifact 与 Checkpoint</text>
-  <text x="330" y="352" text-anchor="middle" class="sub">迁移 · 最佳状态 · 恢复进度</text>
-  <rect x="750" y="245" width="400" height="150" rx="16" class="group"/>
-  <text x="778" y="278" class="text">更新支路</text>
-  <rect x="795" y="300" width="310" height="68" rx="11" class="node update"/>
-  <text x="950" y="328" text-anchor="middle" class="text">11 · Loss 与参数更新</text>
-  <text x="950" y="352" text-anchor="middle" class="sub">optimizer · accumulation · scheduler</text>
-  <rect x="430" y="442" width="420" height="86" rx="14" class="node close"/>
-  <text x="640" y="477" text-anchor="middle" class="text">12 · 数据接口与训练生命周期</text>
-  <text x="640" y="504" text-anchor="middle" class="sub">batch → update → validation → metrics</text>
-  <path d="M560 174V212H330V300" class="line"/>
-  <path d="M720 174V212H950V300" class="line"/>
-  <path d="M330 368V414H560V442" class="line"/>
-  <path d="M950 368V414H720V442" class="line"/>
+<title id="title">0C：从模型模块进入保存恢复与参数更新</title><desc id="desc">09模型模块引出10保存与恢复和11梯度与更新两条阅读分支，各自展开一项检查，再进入12完整训练接口。箭头表示组内阅读与展开，不表示每个批次必须先恢复再更新。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.note{font-size:15px;fill:#475569}.head{font-size:18px;font-weight:700}.edge{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow)}.reading{stroke-dasharray:7 5}.node{stroke-width:2}</style></defs>
+<rect width="1280" height="560" fill="#f8fafc"/>
+<text class="title" x="640" y="45" text-anchor="middle">0C：从模型模块进入保存恢复与参数更新</text>
+<text class="note" x="640" y="76" text-anchor="middle">箭头表示阅读与展开；保存恢复和参数更新两条分支，最终用于完整训练练习。</text>
+<rect class="node" x="250" y="100" width="780" height="80" rx="12" fill="#faf5ff" stroke="#a78bfa"/><text class="head" x="640" y="132" text-anchor="middle">09 模型模块</text><text class="note" x="640" y="158" text-anchor="middle">注册参数、缓冲区与运行状态</text>
+<rect class="node" x="100" y="235" width="420" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa"/><text class="head" x="310" y="267" text-anchor="middle">10 保存状态</text><text class="note" x="310" y="293" text-anchor="middle">区分模型权重与训练检查点</text>
+<rect class="node" x="100" y="345" width="420" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa"/><text class="head" x="310" y="377" text-anchor="middle">恢复后检查</text><text class="note" x="310" y="403" text-anchor="middle">继续同一步，比较参数变化</text>
+<rect class="node" x="760" y="235" width="420" height="80" rx="12" fill="#f0fdf4" stroke="#4ade80"/><text class="head" x="970" y="267" text-anchor="middle">11 参数更新</text><text class="note" x="970" y="293" text-anchor="middle">由损失和梯度推动更新</text>
+<rect class="node" x="760" y="345" width="420" height="80" rx="12" fill="#f0fdf4" stroke="#4ade80"/><text class="head" x="970" y="377" text-anchor="middle">更新与学习率</text><text class="note" x="970" y="403" text-anchor="middle">区分跳过更新和有效更新</text>
+<rect class="node" x="250" y="465" width="780" height="80" rx="12" fill="#fffbeb" stroke="#fbbf24"/><text class="head" x="640" y="497" text-anchor="middle">12 数据接口与完整训练</text><text class="note" x="640" y="523" text-anchor="middle">批次输入、训练、验证与评价</text>
+<path class="edge" d="M310 180V235"/>
+<path class="edge" d="M970 180V235"/>
+<path class="edge" d="M310 315V345"/>
+<path class="edge" d="M970 315V345"/>
+<path class="edge" d="M310 425V465"/>
+<path class="edge" d="M970 425V465"/>
 </svg>

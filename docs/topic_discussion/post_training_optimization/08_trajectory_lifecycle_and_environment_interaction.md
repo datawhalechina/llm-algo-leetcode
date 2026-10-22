@@ -1,10 +1,10 @@
 # 08 · 轨迹生命周期与环境交互
 
-在线后训练消费带有任务、策略和环境身份的轨迹。模型动作、环境观察、奖励状态和消费状态彼此对应后，学习器才能判断这条轨迹来自哪个策略、是否仍适合当前更新，以及失败后应丢弃还是重放。
-
-一条轨迹只有携带生成它的策略版本、环境状态、奖励状态和消费记录，才能判断它是否仍可进入当前训练批次。[轨迹与策略新鲜度](../../02_PyTorch_Algorithms/PT-ROLLOUT-LIFECYCLE_Rollout_and_Policy_Freshness.md)进一步演示版本差、新鲜度与重复消费检查。
+采样结束后，一条轨迹能否进入当前训练批次？需要同时检查生成它的策略版本、模型动作、环境观察、奖励和消费记录；更新失败后，还要根据已提交状态决定释放预留、丢弃还是重放。
 
 ## 一条轨迹需要记录什么
+
+轨迹记录将“由谁生成”“在什么环境发生”和“是否已用于更新”分开保存。工具观察可以成为后续上下文，但只有属于训练目标的模型动作位置进入策略损失。
 
 | 组成部分 | 需要记录的内容 | 对训练的作用 |
 |:---|:---|:---|
@@ -20,7 +20,7 @@
 
 离线 DPO 在更新时直接读取已有偏好对，不要求当前策略重新生成回答；偏好回答仍应保留来源模型、数据版本和评审协议。PPO、GRPO 或在线反馈循环使用当前或近期策略生成的新轨迹，因此还必须比较行为策略版本与学习器当前版本，并检查轨迹是否已经被消费。
 
-“旧轨迹”不等于必然无效。准入条件取决于算法允许的偏离范围：版本差超过实验门槛、环境已变化、奖励尚未完成或轨迹已被消费时，轨迹不能进入当前批次；满足版本、状态和去重条件时，才登记接纳批次。
+按算法允许的偏离范围检查版本差和同轨迹行为偏离，再检查奖励是否完成、环境是否匹配。接纳后先绑定更新批次，成功提交参数更新后再登记消费；失败时按恢复规则释放或隔离预留。PPO 在一轮更新内重复使用小批次属于已声明训练计划，重复消费检查针对计划之外的重复提交。
 
 ## Agent 环境怎样扩展轨迹
 
@@ -28,6 +28,4 @@ Agentic RL 把策略作用对象扩展到多步环境交互，并复用已有策
 
 SFT 可以模仿经过验证的成功轨迹，DPO 可以比较同一初始状态下的两条轨迹，PPO 可以用价值基线估计多步优势，GRPO 可以比较同一任务生成的多条候选轨迹。无论采用哪种更新方式，模型动作、环境观察和奖励来源都必须分开保存。
 
-[Agentic RL 环境轨迹与奖励归因](../../02_PyTorch_Algorithms/PT-AGENTIC-RL_Environment_Trajectory_and_Credit_Assignment.md)使用受控工具环境检查状态转移、终止原因、奖励分量和进入在线探索的门槛；策略更新继续采用 PPO、GRPO 或 DPO 的对应目标。
-
-[Agent 工作负载与执行链](../agent/00_agent_workload_and_trace.md)定义任务级交互，[Agent 轨迹数据与验证](../agent/01_agent_trajectory_data.md)定义回放证据，[Agent 沙盒与执行环境](../agent/02_agent_sandbox_environment.md)定义工具权限与环境隔离。轨迹通过准入后，进入[09 在线训练交付与执行系统](./09_rl_execution_system_and_efficiency.md)的采样、奖励和训练系统。
+用[轨迹与策略新鲜度练习](../../02_PyTorch_Algorithms/PT-ROLLOUT-LIFECYCLE_Rollout_and_Policy_Freshness.md)核对版本、预留与提交；多轮交互使用[Agentic RL 练习](../../02_PyTorch_Algorithms/PT-AGENTIC-RL_Environment_Trajectory_and_Credit_Assignment.md)检查动作、终止与奖励归因。需要解释工具执行异常时，回查[Agent 工作负载](../agent/00_agent_workload_and_trace.md)、[轨迹回放](../agent/01_agent_trajectory_data.md)和[沙盒权限](../agent/02_agent_sandbox_environment.md)。轨迹通过检查后进入[在线执行系统](./09_rl_execution_system_and_efficiency.md)。

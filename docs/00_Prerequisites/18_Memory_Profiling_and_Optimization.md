@@ -1,6 +1,6 @@
-# 18. Memory Profiling and Optimization | 显存分析与优化
+# 18. Memory Profiling and Optimization | 显存账本与运行时证据
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `PyTorch`, `显存`, `训练优化` | **目标人群：** Part 2-4 前置补课者
+**难度：** Medium | **环境：** CPU-first | **标签：** `PyTorch`, `显存账本`, `运行时证据` | **目标人群：** Part 2-4 前置补课者
 
 > 🚀 **云端运行环境**
 >
@@ -10,36 +10,33 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-训练时，模型参数只是显存占用的一部分。反向传播还需要保存梯度、优化器状态、activation 和临时缓冲，因此“模型能够加载”不等于“一步训练能够完成”。你将先建立理论账本，找出主导对象，再比较 batch、梯度累积、混合精度和 checkpoint 等策略，并把账本映射到实际运行的 `allocated`、`reserved` 和 `peak`。
+## 本节导读
 
-**关键词：** `memory`, `checkpoint`, `accumulation`
+训练内存不仅包含模型参数，还包含梯度、优化器状态、保存的激活和临时缓冲。这些对象在不同阶段创建、重叠和释放，因此模型能够加载不等于一步训练能够完成。
 
-![训练显存对象与策略图](../public/00_Prerequisites/18_memory_object_strategy_map.svg)
+完成本节后，你应能按对象生命周期估算候选峰值，解释批次、低精度和重计算改变了哪些账本项，并用运行时记录识别理论账本的遗漏。修改一个账本假设后，观察峰值对象和待测代价怎样变化。
+
+**关键词：** `memory ledger`, `lifetime`, `allocated`, `reserved`
+
+![训练显存对象、生命周期与运行时对账](../public/00_Prerequisites/18_memory_object_strategy_map.svg)
 
 ## 前置阅读
-**导语：** 先从 0E 组页判断当前问题是否属于容量证据，再把参数、梯度、activation 和临时张量放进同一账本。
+**导语：** 先从 0E 组页了解诊断顺序，并用 19 节确认运行有效，再把参数、梯度、激活和临时张量放进同一生命周期账本。
 - [0E 组页](./0E.md)
+- [Part 00 · 19 调试与异常定位](./19_Debugging_and_Anomaly_Localization.md)
 
-## Q1：显存账本先分哪几层？
+## Q1：训练内存账本为什么必须记录对象和生命周期？
 
-模型参数能够放进 GPU，并不代表训练一定不会 OOM（显存不足）：反向传播还会产生梯度、优化器状态和需要暂存的 activation（前向过程中为了反向计算而保留的中间结果）。先按对象的生命周期把常驻状态与动态状态分开，才能知道峰值来自模型本身，还是来自某一次训练步骤；这里的账本用于定位主要项，不等同于 CUDA allocator 的完整峰值。
+模型参数能够放进 GPU，并不代表训练一定不会发生显存不足（OOM）：前向阶段会保存反向计算所需的激活，反向阶段会产生梯度，优化器状态通常在第一次更新前后完成初始化，算子还可能申请临时缓冲。本例估算第一次更新之后的稳定训练阶段：假设每步开始清空梯度，并用一项代表性保存张量和假定临时缓冲演示重叠。它不是当前小模型的完整激活测量。
 
 
 | 显存对象 | 生命周期 | 是否随 batch 变化 | 主要影响因素 |
 |:---|:---|:---:|:---|
 | 参数 | 模型加载后持续存在 | 否 | 参数量、dtype |
-| 梯度 | backward 后产生，更新前保留 | 通常否 | 可训练参数量、梯度 dtype |
-| 优化器状态 | 优化器初始化后持续存在 | 否 | 优化器类型、状态精度 |
-| Activation | forward 产生，backward 前保留 | 是 | batch、序列长度、层数 |
+| 梯度 | backward 中逐步产生，清零方式决定是否保留 | 通常否 | 可训练参数量、梯度 dtype |
+| 优化器状态 | 通常在第一次更新时创建，此后持续存在 | 否 | 优化器类型、状态精度 |
+| 保存的激活 | forward 产生，backward 使用后逐步释放 | 是 | batch、序列长度、层数 |
 | 临时缓冲 | 算子执行期间短暂存在 | 是 | 算子实现、workspace、layout |
-
-真实 GPU 观测时，还要区分三个运行时字段：allocated 是当前仍被张量使用的显存，reserved 是分配器已经向设备申请并保留的显存，peak 是测量区间内达到过的峰值。它们不能直接替代理论账本，但能帮助解释“账本看似放得下、运行时仍然 OOM”的情况。
-
-| 观测字段 | 直接回答的问题 | 适合用来判断 |
-|:---|:---|:---|
-| allocated | 当前活跃张量用了多少？ | 常驻对象和当前 batch 的实际占用 |
-| reserved | 分配器向设备保留了多少？ | 缓存、碎片或分配器行为 |
-| peak | 本次测量最高到过多少？ | 是否接近容量上限 |
 
 
 ```python
@@ -47,8 +44,8 @@ import torch
 import torch.nn as nn
 
 
-def pretty_mb(nbytes):
-    return f"{nbytes / 1024**2:.2f} MB"
+def pretty_mib(nbytes):
+    return f"{nbytes / 1024**2:.2f} MiB"
 
 
 class TinyLedgerNet(nn.Module):
@@ -71,98 +68,108 @@ grad_bytes = param_count * 4
 adam_state_bytes = param_count * 8
 
 batch_size, seq_len, hidden_size = 16, 64, 512
-activation_bytes = batch_size * seq_len * hidden_size * 4
+saved_activation_bytes = batch_size * seq_len * hidden_size * 4
+temporary_bytes = saved_activation_bytes // 2
 
 components = {
-    'parameters_mb': param_bytes / 1024**2,
-    'gradients_mb': grad_bytes / 1024**2,
-    'optimizer_state_mb': adam_state_bytes / 1024**2,
-    'activation_mb': activation_bytes / 1024**2,
+    'parameters_mib': param_bytes / 1024**2,
+    'gradients_mib': grad_bytes / 1024**2,
+    'optimizer_state_mib': adam_state_bytes / 1024**2,
+    'saved_activations_mib': saved_activation_bytes / 1024**2,
+    'temporary_mib': temporary_bytes / 1024**2,
 }
-ledger = dict(components)
-ledger['static_state_mb'] = ledger['parameters_mb'] + ledger['gradients_mb'] + ledger['optimizer_state_mb']
-ledger['one_step_estimate_mb'] = ledger['static_state_mb'] + ledger['activation_mb']
-ledger['dominant'] = max(components, key=components.get)
-print('ledger:', {name: round(value, 2) if isinstance(value, float) else value for name, value in ledger.items()})
+phase_members = {
+    'after_load': ('parameters_mib',),
+    'forward_peak': ('parameters_mib', 'optimizer_state_mib', 'saved_activations_mib', 'temporary_mib'),
+    'backward_peak': ('parameters_mib', 'gradients_mib', 'optimizer_state_mib', 'saved_activations_mib', 'temporary_mib'),
+    'after_update': ('parameters_mib', 'gradients_mib', 'optimizer_state_mib'),
+}
+phase_totals = {
+    phase: sum(components[name] for name in names)
+    for phase, names in phase_members.items()
+}
+ledger = {
+    'status': 'estimated',
+    'assumptions': 'steady_state; one representative activation; assumed workspace',
+    'objects_mib': components,
+    'phase_members': phase_members,
+    'phase_totals_mib': phase_totals,
+    'overlap_upper_bound_mib': max(phase_totals.values()),
+}
+print('objects:', {name: round(value, 2) for name, value in components.items()})
+print('phase totals:', {name: round(value, 2) for name, value in phase_totals.items()})
 
 ```
 
-## Q1 验证：训练状态与单步工作集是否分别可核对？
+## Q1 验证：对象是否只计入可能出现的阶段？
 
-账本各项应非负，单步估算应等于常驻状态与 activation 之和，主导对象必须来自已记录组件。
+加载后只应存在参数；反向峰值候选应同时包含梯度、优化器状态、保存的激活和临时缓冲。
 
 
 ```python
-assert ledger['one_step_estimate_mb'] == ledger['static_state_mb'] + ledger['activation_mb']
-assert ledger['dominant'] in components
+assert phase_members['after_load'] == ('parameters_mib',)
+assert {'gradients_mib', 'saved_activations_mib', 'temporary_mib'} <= set(phase_members['backward_peak'])
+assert ledger['overlap_upper_bound_mib'] == phase_totals['backward_peak']
 assert all(value >= 0 for value in components.values())
-print('✅ 训练状态与单步工作集账本通过')
+print('✅ 对象生命周期与候选峰值阶段通过')
 
 ```
 
-## Q2：常驻显存和动态显存，谁更像当前瓶颈？
+## Q2：为什么对象大小不能直接相加成真实峰值？
 
-同样是 OOM，模型一加载就失败、反向传播时失败，以及运行多步后持续增长，原因可能完全不同。先比较账本中的对象大小，再把主导对象和现象对应起来，才能决定优先调整模型状态、单步 batch，还是 activation 保存策略。
+真实峰值取决于对象是否同时存活。加载阶段主要保留参数；前向峰值加入保存的激活和临时缓冲；反向阶段还可能同时存在梯度。理论账本可以给出候选峰值阶段和对象贡献，但 allocator、算子 workspace 和释放时机仍可能让实测结果偏离理论值。
 
-| 主导对象 | 主要表现 | 优先考虑 |
+| 阶段 | 新进入或仍存活的主要对象 | 账本能说明什么 |
 |:---|:---|:---|
-| 参数 / 梯度 | 模型状态本身占用较高 | 减小模型、调整 dtype、减少可训练参数 |
-| 优化器状态 | Adam 等状态占比高 | 更换优化器、使用分片或参数策略 |
-| Activation | batch 或序列长度增加时峰值明显 | 缩小 micro-batch、使用 checkpoint |
-| 临时缓冲 | 某个算子运行时突然抬高 | 检查 workspace、layout 和算子实现 |
+| 加载后 | 参数 | 模型状态的最低驻留要求 |
+| 前向峰值候选 | 参数、优化器状态、保存的激活、临时缓冲 | batch 与序列长度带来的动态压力 |
+| 反向峰值候选 | 前向对象、梯度 | 多类状态可能重叠的理论上界 |
+| 更新后 | 参数、梯度、优化器状态 | 更新阶段结束前的长期状态 |
 
 
 ```python
-def dominant_memory_term(param_mb, grad_mb, optim_mb, activation_mb, temporary_mb=0):
-    """比较显存对象大小，并返回主导对象、占比和下一项检查。"""
-    if min(param_mb, grad_mb, optim_mb, activation_mb, temporary_mb) < 0:
-        raise ValueError('各类显存估算不能为负数')
-    items = {
-        'parameters': param_mb,
-        'gradients': grad_mb,
-        'optimizer_state': optim_mb,
-        'activations': activation_mb,
-        'temporary': temporary_mb,
-    }
-    total = sum(items.values())
-    dominant = max(items, key=items.get)
+def summarize_candidate_peak(objects_mib, phases):
+    """按生命周期计算候选峰值阶段和该阶段的对象贡献。"""
+    if any(value < 0 for value in objects_mib.values()):
+        raise ValueError('对象大小不能为负数')
+    totals = {phase: sum(objects_mib[name] for name in names) for phase, names in phases.items()}
+    peak_phase = max(totals, key=totals.get)
+    contributions = {name: objects_mib[name] for name in phases[peak_phase]}
     return {
-        'dominant': dominant,
-        'dominant_share_pct': round(items[dominant] / total * 100, 1) if total else 0.0,
-        'items': items,
+        'peak_phase': peak_phase,
+        'candidate_peak_mib': totals[peak_phase],
+        'phase_totals_mib': totals,
+        'contributions_mib': contributions,
     }
 
 
-dominant_report = dominant_memory_term(
-    param_mb=1200, grad_mb=1200, optim_mb=4800, activation_mb=1800, temporary_mb=200
-)
-print('dominant report:', dominant_report)
-# 输出示例：optimizer_state 占比最高，应先检查优化器状态，而不是先缩 batch
+peak_report = summarize_candidate_peak(components, phase_members)
+print('candidate peak:', peak_report)
 
 ```
 
-## Q2 验证：主导对象、占比和总量是否一致？
+## Q2 验证：候选峰值是否由生命周期重叠决定？
 
-给定 optimizer state 最大的账本，结果应识别对应对象，并让各项之和与输入总量一致。
+候选峰值必须来自某个明确阶段，并且阶段总量等于该阶段存活对象之和。
 
 
 ```python
-assert dominant_report['dominant'] == 'optimizer_state'
-assert 0 < dominant_report['dominant_share_pct'] <= 100
-assert sum(dominant_report['items'].values()) == 9200
-print('✅ 主导内存对象识别通过')
+assert peak_report['peak_phase'] == 'backward_peak'
+assert peak_report['candidate_peak_mib'] == sum(peak_report['contributions_mib'].values())
+assert peak_report['phase_totals_mib']['after_load'] < peak_report['candidate_peak_mib']
+print('✅ 生命周期重叠与候选峰值计算通过')
 
 ```
 
-## Q3：什么时候该缩 batch，什么时候该做梯度累积？
+## Q3：micro-batch 与梯度累积分别改变哪些账本量？
 
-先区分两个 batch：`micro-batch` 是一次真正送入模型的样本数，`effective batch` 是累积若干次梯度后才更新一次参数的总样本数。缩小 micro-batch 会降低单次 activation 峰值；梯度累积可以近似保住 effective batch，但会增加前向 / 反向次数，不会减少参数、梯度或 optimizer state 的长期占用。
+先区分两个 batch：`micro-batch` 是一次真正送入模型的样本数，`effective batch` 是累积若干次梯度后才更新一次参数的总样本数。缩小 micro-batch 会降低单次 activation 峰值；梯度累积可以近似保住 effective batch，但会增加前向 / 反向次数，不会减少参数、梯度或 optimizer state 的长期占用。这里仅记录账本变化和待测代价，不据此选择策略。
 
-| 策略 | 主要减少什么 | 主要代价 |
+| 变化 | 影响的账本项 | 仍需测量的代价 |
 |:---|:---|:---|
 | 缩小 micro-batch | 单次 activation 峰值 | 单次处理量变小 |
 | 增加 gradient accumulation | 在较小 micro-batch 下保持 effective batch | 前向 / 反向次数增加 |
-| 两者配合 | 在容量限制下维持目标更新规模 | 吞吐和训练时间需要重新测量 |
+| 两者配合 | 在较小 activation 峰值下维持目标更新规模 | 吞吐和训练时间需要重新测量 |
 
 
 ```python
@@ -173,8 +180,8 @@ configs = [
 
 seq_len, hidden_size, dtype_bytes = 64, 512, 2
 
-def mb(nbytes):
-    """把字节数转换为便于阅读的 MB。"""
+def mib(nbytes):
+    """把字节数转换为便于阅读的 MiB。"""
     return nbytes / 1024**2
 
 for cfg in configs:
@@ -182,7 +189,7 @@ for cfg in configs:
     activation_bytes = cfg["micro_batch"] * seq_len * hidden_size * dtype_bytes
     forward_backward_rounds = cfg["accum_steps"]
     cfg['effective_batch'] = effective_batch
-    cfg['activation_peak_mb'] = mb(activation_bytes)
+    cfg['activation_peak_mib'] = mib(activation_bytes)
     cfg['forward_backward_rounds'] = forward_backward_rounds
     print(cfg)
 
@@ -195,63 +202,61 @@ for cfg in configs:
 
 ```python
 assert configs[0]['effective_batch'] == configs[1]['effective_batch']
-assert configs[1]['activation_peak_mb'] < configs[0]['activation_peak_mb']
+assert configs[1]['activation_peak_mib'] < configs[0]['activation_peak_mib']
 assert configs[1]['forward_backward_rounds'] > configs[0]['forward_backward_rounds']
 print('✅ effective batch、activation 峰值和累计轮数关系通过')
 
 ```
 
-## Q4：混合精度和梯度检查点分别省什么？
+## Q4：低精度和梯度检查点分别改变哪些对象属性？
 
-如果账本显示 activation 占比高，可以考虑减少每个元素的字节数，或减少 backward 前需要保存的中间结果。混合精度主要改变存储精度和字节数；梯度检查点则少保存 activation、在反向阶段重新计算部分 forward。两者可以叠加，但前者要检查数值稳定性，后者要承担额外计算。
+如果账本显示保存的激活占比较高，可以观察减少每个元素字节数或降低中间结果保存比例后，账本怎样变化。低精度主要改变元素字节数；梯度检查点改变保存比例，并在反向阶段重算部分前向。下面显式给出“保存比例”和“额外重算比例”，只比较方向，不把它们当成任意模型的固定收益或选择结论。
 
 
 ```python
-import math
-
-layers = 12
 batch_size, seq_len, hidden_size = 8, 32, 512
 
-def activation_mb(dtype_bytes, checkpoint_factor=1):
-    """估算保存的激活，并返回一个重算次数代理值。"""
-    if dtype_bytes <= 0 or checkpoint_factor < 1:
-        raise ValueError('dtype_bytes 必须大于 0，checkpoint_factor 至少为 1')
-    saved_layers = math.ceil(layers / checkpoint_factor)
-    memory = saved_layers * batch_size * seq_len * hidden_size * dtype_bytes / 1024**2
-    recompute_proxy = max(0, checkpoint_factor - 1)
-    return memory, recompute_proxy
+def activation_tradeoff(dtype_bytes, saved_fraction, extra_forward_fraction):
+    """在给定保存比例假设下比较激活字节数与重算代价。"""
+    if dtype_bytes <= 0 or not 0 < saved_fraction <= 1:
+        raise ValueError('dtype_bytes 必须为正，saved_fraction 必须位于 (0, 1]')
+    if not 0 <= extra_forward_fraction <= 1:
+        raise ValueError('extra_forward_fraction 必须位于 [0, 1]')
+    full_bytes = batch_size * seq_len * hidden_size * dtype_bytes
+    return {
+        'saved_activation_mib': full_bytes * saved_fraction / 1024**2,
+        'extra_forward_fraction': extra_forward_fraction,
+    }
 
 rows = [
-    ("fp32 / no checkpoint", activation_mb(4, 1)),
-    ("bf16 / no checkpoint", activation_mb(2, 1)),
-    ("fp32 / checkpoint every 2 blocks", activation_mb(4, 2)),
-    ("bf16 / checkpoint every 2 blocks", activation_mb(2, 2)),
+    ('fp32 / no checkpoint', activation_tradeoff(4, 1.0, 0.0)),
+    ('bf16 / no checkpoint', activation_tradeoff(2, 1.0, 0.0)),
+    ('fp32 / save 50%', activation_tradeoff(4, 0.5, 0.5)),
+    ('bf16 / save 50%', activation_tradeoff(2, 0.5, 0.5)),
 ]
 
-for name, (memory, recompute_proxy) in rows:
-    print(f"{name:<32} {memory:>6.2f} MB | recompute proxy: {recompute_proxy}")
-
-print("checkpointing mainly reduces saved activations; bf16 mainly cuts dtype bytes")
+for name, result in rows:
+    print(name, '->', result)
 
 ```
 
 ## Q4 验证：dtype 与 checkpoint 是否分别改变字节数和重算代价？
 
-低精度应减少单元素字节数，checkpoint 应减少保存层数并提高重算代理，两者可以叠加。
+低精度应减少同一保存比例下的字节数；减少保存比例应降低保存的激活，同时增加额外前向计算。
 
 
 ```python
-assert rows[1][1][0] < rows[0][1][0]
-assert rows[2][1][0] < rows[0][1][0]
-assert rows[3][1][0] < rows[1][1][0]
-assert rows[2][1][1] > rows[0][1][1]
-print('✅ dtype 字节数与 checkpoint 重算代理关系通过')
+assert rows[1][1]['saved_activation_mib'] < rows[0][1]['saved_activation_mib']
+assert rows[2][1]['saved_activation_mib'] < rows[0][1]['saved_activation_mib']
+assert rows[3][1]['saved_activation_mib'] < rows[1][1]['saved_activation_mib']
+assert rows[2][1]['extra_forward_fraction'] > rows[0][1]['extra_forward_fraction']
+print('✅ 元素字节数、保存比例与重算代价关系通过')
 
 ```
 
-## Q5：显存泄漏怎么排查？
+## Q5：为什么内存会随训练轮次持续增长？
 
-如果显存不是在某一步突然升高，而是每轮训练后都继续增长，先检查是否把带计算图的 Tensor 或 loss 持续放进列表。例如，loss.item() 只保存数字，detach() 保留 Tensor 但切断当前计算图，no_grad() 则关闭一段代码的梯度追踪；三者解决的不是同一个问题。
+如果占用不是在某一步突然升高，而是每轮训练后都继续增长，先检查是否把带计算图的 Tensor 或损失持续放进列表。这是 Python 引用延长了计算图生命周期，不应笼统归为 allocator 泄漏。`loss.item()` 只保存数字，`detach()` 保留 Tensor 但切断当前计算图，`no_grad()` 则关闭一段代码的梯度追踪；三者解决的不是同一个问题。
 
 
 ```python
@@ -304,62 +309,108 @@ print('✅ 计算图持有、标量保存、no_grad 和 detach 区分通过')
 
 ```
 
-## Q6：如何根据主导对象选择显存策略？
+## Q6：如何把理论账本与分配器记录对照？
 
-先判断常驻状态还是 activation 主导，再选择策略：常驻状态超出容量时，优先检查 dtype、模型规模或 optimizer state；activation 主导时，才比较 micro-batch 和 checkpoint；effective batch 不足时，再用 gradient accumulation 补回更新规模。最后用固定 workload 测量吞吐、重算和质量代价。
+先使用同一工作负载和同一单位，再区分同一时刻的占用与整个测量区间的峰值。同一时刻的 reserved 与 allocated 之差可以帮助观察分配器保留空间，但不能单独证明碎片化；分别记录的两个峰值未必发生在同一时刻，不能将其差值当成某个瞬间的缓存量。下面根据前面的账本构造一组示例数值，练习对账规则，不调用 CUDA 分配器。
+
+| 对照量 | 计算或读取方式 | 下一项检查 |
+|:---|:---|:---|
+| 账本差值 | 同一阶段 allocated − 估算值，保留正负号 | 核对状态、保存张量、临时缓冲和估算假设 |
+| 同时刻保留差值 | reserved − allocated | 检查缓存与分配历史，不能据此认定碎片化 |
+| 设备剩余空间 | 总容量 − 当前整卡占用 | 真实实验还需包含其他进程和非分配器占用 |
+| 进程预算余量 | 给定容量预算 − reserved | 判断本例预算是否紧张，不等同于真实设备空闲量 |
+| 区间峰值 | 分别读取 allocated 和 reserved 的最大值 | 保留测量范围与峰值时刻，不直接相减归因 |
 
 
 ```python
-def estimate_step_budget(param_mb, grad_mb, optim_mb, activation_mb, can_fit=None, memory_cap_mb=None, effective_batch=None, target_effective_batch=None):
-    """根据主导显存对象和容量上限给出教学用策略建议。
-
-    这是理论决策器，不测量真实 GPU 峰值；返回结果需要用固定 workload 复核。
-    """
-    if min(param_mb, grad_mb, optim_mb, activation_mb) < 0:
-        raise ValueError('显存估算不能为负数')
-    total_mb = param_mb + grad_mb + optim_mb + activation_mb
-    static_mb = param_mb + grad_mb + optim_mb
-    if can_fit is None:
-        if memory_cap_mb is None:
-            raise ValueError('can_fit 和 memory_cap_mb 至少提供一个')
-        can_fit = total_mb <= memory_cap_mb
-    if not can_fit and memory_cap_mb is not None and static_mb > memory_cap_mb:
-        return {'strategy': 'inspect_static_state', 'total_mb': total_mb, 'reason': '常驻状态已超过容量', 'metrics': ['static_state_mb', 'peak_memory_mb']}
-    if not can_fit:
-        return {'strategy': 'reduce_batch_or_checkpoint', 'total_mb': total_mb, 'reason': '单步工作集超过容量', 'metrics': ['peak_memory_mb', 'throughput']}
-    if effective_batch is not None and target_effective_batch is not None and effective_batch < target_effective_batch:
-        return {'strategy': 'gradient_accumulation', 'total_mb': total_mb, 'reason': '需要恢复目标 effective batch', 'metrics': ['throughput', 'step_time_ms']}
-    if activation_mb >= optim_mb:
-        return {'strategy': 'checkpoint', 'total_mb': total_mb, 'reason': 'activation 是主要动态开销', 'metrics': ['peak_memory_mb', 'recompute_time_ms']}
-    return {'strategy': 'keep_batch_and_profile', 'total_mb': total_mb, 'reason': '当前账本没有显示单一主导策略', 'metrics': ['throughput', 'peak_memory_mb']}
+import math
 
 
-decision = estimate_step_budget(
-    param_mb=1200, grad_mb=1200, optim_mb=4800, activation_mb=1800, memory_cap_mb=8000
+def reconcile_memory_record(theoretical_peak_mib, allocated_mib, reserved_mib, capacity_mib):
+    """对同一阶段的构造快照进行对账，同时保留多项待查信号。"""
+    values = (theoretical_peak_mib, allocated_mib, reserved_mib, capacity_mib)
+    if any(not math.isfinite(value) or value < 0 for value in values) or capacity_mib <= 0:
+        raise ValueError('内存数值必须有限、非负，容量预算必须为正')
+    if not allocated_mib <= reserved_mib <= capacity_mib:
+        raise ValueError('本例要求 allocated <= reserved <= 容量预算')
+    estimate_difference_mib = allocated_mib - theoretical_peak_mib
+    allocator_gap_mib = reserved_mib - allocated_mib
+    budget_margin_mib = capacity_mib - reserved_mib
+    signals = []
+    if estimate_difference_mib > theoretical_peak_mib * 0.10:
+        signals.append('inspect_estimate_difference')
+    if allocator_gap_mib > capacity_mib * 0.10:
+        signals.append('inspect_allocator_retained_space')
+    if budget_margin_mib < capacity_mib * 0.10:
+        signals.append('capacity_pressure')
+    return {
+        'estimate_difference_mib': estimate_difference_mib,
+        'allocator_gap_mib': allocator_gap_mib,
+        'budget_margin_mib': budget_margin_mib,
+        'signals': signals,
+        'alert_fraction': 0.10,
+    }
+
+
+# 只在前述同一账本上构造差值，三项告警可以同时出现。
+theoretical_peak_mib = peak_report['candidate_peak_mib']
+allocated_mib = theoretical_peak_mib + 3
+reserved_mib = allocated_mib + 7
+capacity_mib = reserved_mib + 1
+runtime_record = reconcile_memory_record(
+    theoretical_peak_mib, allocated_mib, reserved_mib, capacity_mib
 )
-print('decision:', decision)
-# 输出示例：先识别常驻状态或单步工作集，再决定具体实验变量
+dominant_object = max(peak_report['contributions_mib'], key=peak_report['contributions_mib'].get)
+memory_evidence = {
+    'evidence_type': 'memory', 'status': 'constructed_example',
+    'source': 'same_ledger_with_assumed_runtime_snapshot',
+    'unit': 'MiB',
+    'candidate_peak_phase': peak_report['peak_phase'],
+    'candidate_peak_mib': theoretical_peak_mib,
+    'dominant_object': dominant_object,
+    'dominant_objects_mib': peak_report['contributions_mib'],
+    'allocated_mib': allocated_mib, 'reserved_mib': reserved_mib,
+    'capacity_mib': capacity_mib,
+    'runtime_reconciliation': runtime_record,
+    'interpretation_limit': 'constructed_snapshot_not_gpu_measurement',
+}
+print('constructed snapshot:', runtime_record)
+print('memory evidence:', memory_evidence)
 
 ```
 
-## Q6 验证：策略建议是否来自容量和主导对象？
+## Q6 验证：对账能否同时保留多项信号？
 
-当单步工作集超过容量但常驻状态仍可容纳时，应优先比较 batch 或 checkpoint，并保留峰值显存与吞吐作为复测指标。
+检查账本差值、分配器保留空间和预算压力能否同时出现；低于估算值时保留负差值，不能把未知差异全部归为碎片或泄漏。
 
 
 ```python
-assert decision['strategy'] == 'reduce_batch_or_checkpoint'
-assert decision['total_mb'] == 9000
-assert {'peak_memory_mb', 'throughput'} <= set(decision['metrics'])
-print('✅ 内存主导对象到策略建议的映射通过')
+assert runtime_record['estimate_difference_mib'] == 3
+assert runtime_record['allocator_gap_mib'] == 7
+assert runtime_record['budget_margin_mib'] == 1
+assert set(runtime_record['signals']) == {
+    'inspect_estimate_difference', 'inspect_allocator_retained_space', 'capacity_pressure'
+}
+below_estimate = reconcile_memory_record(20, 18, 19, 30)
+assert below_estimate['estimate_difference_mib'] == -2
+assert memory_evidence['status'] == 'constructed_example'
+assert memory_evidence['unit'] == 'MiB'
+assert memory_evidence['candidate_peak_phase'] == 'backward_peak'
+assert memory_evidence['dominant_object'] in memory_evidence['dominant_objects_mib']
+assert memory_evidence['interpretation_limit'] == 'constructed_snapshot_not_gpu_measurement'
+for invalid in ((20, 22, 21, 30), (20, 22, 31, 30), (20, float('nan'), 25, 30)):
+    try:
+        reconcile_memory_record(*invalid)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError('无效快照不能参与对账')
+print('✅ 构造快照、MiB 单位、多项告警与无效输入检查通过')
 
 ```
 
 ## 相关阅读
-**导语：** 完成本节后，可以继续学习 PyTorch 的显存分配语义，并把理论账本与训练侧策略比较连接起来。
+**导语：** 完成本节后，可以查阅真实分配器字段，再把容量证据带入 20 节的配对实验；具体训练策略由相应机制和优化专题选择。
 - [PyTorch CUDA 显存管理文档](https://docs.pytorch.org/docs/stable/notes/cuda.html)
-- [PyTorch memory_snapshot 官方说明](https://docs.pytorch.org/docs/stable/torch_cuda_memory.html)
-- [17. PyTorch Profiling Basics | PyTorch 性能分析基础](./17_PyTorch_Profiling_Basics.md)
-- [19. Debugging and Anomaly Localization | 调试与异常定位](./19_Debugging_and_Anomaly_Localization.md)
-- [20. Performance Evidence and Experiment Design | 性能证据汇总与实验设计](./20_Performance_Evidence_and_Experiment_Design.md)
-- [76. Activation / Checkpoint / Offload Benchmark | 激活检查点与卸载对比](../02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.md)
+- [Part 00 · 20 性能证据与实验设计](./20_Performance_Evidence_and_Experiment_Design.md)
+- [Part 02 · 76 激活检查点与卸载对比](../02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.md)

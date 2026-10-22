@@ -14,9 +14,9 @@
 
 ## 本节导读
 
-本节先解释标准 Attention 为什么会物化接近 $N \times N$ 的中间结果，再看 FlashAttention 如何用 tiling 和 online softmax 把计算拆成局部工作集，最后比较序列长度、tile size 和数据搬运对显存与吞吐判断的影响。
+标准注意力可能物化接近 $N \times N$ 的中间结果，序列变长后，临时工作集和显存读写会迅速增长。FlashAttention 通过分块和在线 Softmax 避免完整保存这些中间结果。
 
-学习重点是 Attention 计算过程中的临时 score / softmax 工作集，以及它们如何在 HBM 与 SRAM 之间移动；长期保存的 KV Cache 表示和增长规律，分别在 Attention 显存优化与 KV Cache 章节中继续展开。
+本节建立“分块大小 → 片上工作集 → 显存读写 → 容量与时间”的关系。完成后，你应能估算分块带来的 I/O 变化，并把临时工作集与长期 KV Cache 区分开。
 
 
 **关键词：** `FlashAttention`, `tiling`, `SRAM`
@@ -34,8 +34,6 @@
 ---
 ## Q1：为什么标准 Attention 会在长序列下迅速变成显存瓶颈？
 
-<details>
-<summary>点击展开查看解析</summary>
 
 标准 Attention 的问题，不是“算不动”，而是中间结果太大。
 
@@ -46,7 +44,7 @@
 - 数据搬运会比计算本身更容易成为瓶颈。
 
 所以 FlashAttention 要解决的，不是“让矩阵更小”，而是“不要让大矩阵长期落到 HBM 上”。
-</details>
+
 ### Q1小验证：计算序列长度对应的中间矩阵规模
 
 根据序列长度计算 score 矩阵的元素数和字节数，再判断它写入 HBM 后的容量与搬运代价。
@@ -67,8 +65,6 @@ for n in [1024, 2048, 4096]:
 
 ## Q2：FlashAttention 为什么要用 tiling 和 online softmax？
 
-<details>
-<summary>点击展开查看解析</summary>
 
 FlashAttention 的变化可以拆成两个动作：用 tiling 控制一次处理的工作集，用 online softmax 在分块过程中完成归约。表格中的大小和工作集都是理论模型，不代表完整 kernel 的 shared memory、寄存器或 CUDA workspace；下面把标准 Attention 与分块工作集放在同一口径下。
 
@@ -79,7 +75,7 @@ FlashAttention 的变化可以拆成两个动作：用 tiling 控制一次处理
 | 中间结果 | 可能长期写回 HBM | 尽量留在片上工作集 |
 | 主要参数 | 序列长度决定矩阵规模 | tile size、head dim、dtype |
 | 结论类型 | 理论物化规模 | 理论工作集，不是 kernel 实测 |
-</details>
+
 ### Q2小验证：分块之后为什么更稳
 
 把一个大矩阵拆成多个小块，再区分一维 tile 数、二维 score tile 数和单个 score tile 的理论大小。这里的数值是工作集模型，不是完整 kernel 的 shared memory 或寄存器占用。
@@ -136,8 +132,6 @@ else:
 
 ## Q3：如何根据工作集、tile size 和数据搬运判断 FlashAttention 的收益？
 
-<details>
-<summary>点击展开查看解析</summary>
 
 HBM 容量大但访问代价高，SRAM 容量小但离计算更近。tile size 需要在单块工作集和分块次数之间取舍：tile 越小，片上占用越低但调度次数越多；tile 越大，分块次数减少但片上存储压力上升。
 
@@ -148,7 +142,7 @@ HBM 容量大但访问代价高，SRAM 容量小但离计算更近。tile size �
 | 大 | 较大 | 较少 | 调度次数少，但片上存储压力更高 |
 
 FlashAttention 的 IO-aware 价值在于减少大规模中间结果的 HBM 往返；具体收益仍取决于序列长度、dtype、硬件和 kernel 实现，不能只凭理论工作集推出端到端加速。
-</details>
+
 ### Q3小验证：物化矩阵与分块工作集的对照
 
 改变序列长度和 tile 大小，比较物化 score 矩阵与分块工作集的数量级，再判断数据搬运是否可能成为主要代价。

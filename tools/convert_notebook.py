@@ -84,14 +84,20 @@ def normalize_markdown_links(source_text):
     """将 source 侧 Markdown 中的常见链接改写为 docs 镜像可用的路径。"""
     source_text = re.sub(r'(\]\([^)]+)\.ipynb\)', r'\1.md)', source_text)
     source_text = source_text.replace('../docs/', '../')
-    # docs 镜像整体比 source 多一层 ``docs/``。指向仓库级 benchmarks
+    # docs 镜像整体比 source 多一层 ``docs/``。指向仓库级 benchmarks / tools
     # 的相对链接需要多回退一级，才能同时保持 source 与镜像可点击。
     source_text = re.sub(
-        r'(\]\()(\.\./)+(benchmarks/)',
+        r'(\]\()(\.\./)+((?:benchmarks|tools)/)',
         lambda match: match.group(1) + '../' + match.group(0)[len(match.group(1)):],
         source_text,
     )
     return source_text
+
+def normalize_generated_markdown(source_text):
+    """清理镜像文件中的行尾空白，并保留一个文件末尾换行。"""
+    lines = [line.rstrip() for line in source_text.splitlines()]
+    return '\n'.join(lines).rstrip() + '\n'
+
 
 def process_markdown_file(md_path, out_path):
     """处理纯 Markdown 文件，主要是合并双语标题"""

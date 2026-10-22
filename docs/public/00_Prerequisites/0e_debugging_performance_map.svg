@@ -1,49 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="560" viewBox="0 0 1280 560" role="img" aria-labelledby="title desc">
-  <title id="title">0E 调试与性能分析的三条证据流</title>
-  <desc id="desc">运行现象分为时间、容量和正确性三条并列证据流，最终汇合成带重复测量、失败记录和回归阈值的配对实验。</desc>
-  <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
-    <style>
-      text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#475569}.group{font-size:18px;font-weight:700}.head{font-size:16px;font-weight:700}.body{font-size:13px;fill:#475569}.panel{stroke:#94a3b8;stroke-width:2;rx:16}.node{fill:#fff;stroke:#cbd5e1;stroke-width:1.5;rx:10}.line{stroke:#64748b;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
-    </style>
-  </defs>
-  <rect width="1280" height="560" fill="#f8fafc"/>
-  <text x="640" y="42" text-anchor="middle" class="title">0E 调试与性能：三类证据怎样形成下一项实验</text>
-  <text x="640" y="70" text-anchor="middle" class="sub">先按现象选择时间、容量或正确性证据，再用固定工作负载汇合判断</text>
-
-  <rect x="465" y="95" width="350" height="72" fill="#ede9fe" class="panel"/>
-  <text x="640" y="124" text-anchor="middle" class="head">运行现象</text>
-  <text x="640" y="147" text-anchor="middle" class="body">变慢 · 容量不足 · 报错或结果异常</text>
-
-  <rect x="55" y="225" width="350" height="195" fill="#e0f2fe" class="panel"/>
-  <text x="80" y="255" class="group">17 · 时间证据</text>
-  <rect x="85" y="282" width="290" height="55" class="node"/>
-  <text x="230" y="316" text-anchor="middle" class="head">延迟 · 吞吐 · 阶段热点</text>
-  <rect x="85" y="350" width="290" height="43" class="node"/>
-  <text x="230" y="377" text-anchor="middle" class="body">性能剖析汇总 · 阶段标签 · 追踪记录</text>
-
-  <rect x="465" y="225" width="350" height="195" fill="#dcfce7" class="panel"/>
-  <text x="490" y="255" class="group">18 · 容量证据</text>
-  <rect x="495" y="282" width="290" height="55" class="node"/>
-  <text x="640" y="316" text-anchor="middle" class="head">常驻状态 · 保存的激活 · 临时缓冲</text>
-  <rect x="495" y="350" width="290" height="43" class="node"/>
-  <text x="640" y="377" text-anchor="middle" class="body">生命周期账本 · 候选峰值 · 运行时对账</text>
-
-  <rect x="875" y="225" width="350" height="195" fill="#fef3c7" class="panel"/>
-  <text x="900" y="255" class="group">19 · 正确性证据</text>
-  <rect x="905" y="282" width="290" height="55" class="node"/>
-  <text x="1050" y="316" text-anchor="middle" class="head">张量契约 · 有限性 · 梯度链路</text>
-  <rect x="905" y="350" width="290" height="43" class="node"/>
-  <text x="1050" y="377" text-anchor="middle" class="body">首个失败点 · 钩子记录 · 最小复现</text>
-
-  <path d="M565 167V198H230V225" class="line"/>
-  <path d="M640 167V225" class="line"/>
-  <path d="M715 167V198H1050V225" class="line"/>
-
-  <rect x="410" y="475" width="460" height="62" fill="#fce7f3" class="panel"/>
-  <text x="640" y="502" text-anchor="middle" class="head">20 · 配对实验与回归判断</text>
-  <text x="640" y="523" text-anchor="middle" class="body">固定条件 · 单一变化 · 失败运行 · 波动门槛</text>
-  <path d="M230 420V449H515V475" class="line"/>
-  <path d="M640 420V475" class="line"/>
-  <path d="M1050 420V449H765V475" class="line"/>
+<title id="title">0E：运行有效后，按耗时或容量问题选择检查</title><desc id="desc">19检查运行有效性，无效时定位复现并返回检查；有效时按耗时或容量问题选择17或18，再进入20实验比较。17实际采集CPU记录，18估算容量并使用构造快照，20练习比较示例记录。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.note{font-size:15px;fill:#475569}.head{font-size:18px;font-weight:700}.edge{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow)}.reading{stroke-dasharray:7 5}.node{stroke-width:2}</style></defs>
+<rect width="1280" height="560" fill="#f8fafc"/>
+<text class="title" x="640" y="45" text-anchor="middle">0E：运行有效后，按耗时或容量问题选择检查</text>
+<text class="note" x="640" y="76" text-anchor="middle">17 实际采集 CPU 记录；18 估算容量并使用构造快照；20 练习比较示例记录。</text>
+<rect class="node" x="430" y="110" width="420" height="80" rx="12" fill="#faf5ff" stroke="#a78bfa"/><text class="head" x="640" y="142" text-anchor="middle">19 检查运行有效性</text><text class="note" x="640" y="168" text-anchor="middle">输出、有限值与梯度</text>
+<rect class="node" x="40" y="280" width="260" height="80" rx="12" fill="#fef2f2" stroke="#f87171"/><text class="head" x="170" y="312" text-anchor="middle">定位并最小复现</text><text class="note" x="170" y="338" text-anchor="middle">固定条件，修复首个失败点</text>
+<rect class="node" x="420" y="280" width="320" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa"/><text class="head" x="580" y="312" text-anchor="middle">17 耗时检查</text><text class="note" x="580" y="338" text-anchor="middle">CPU 计时、轨迹与阶段事件</text>
+<rect class="node" x="880" y="280" width="360" height="80" rx="12" fill="#fffbeb" stroke="#fbbf24"/><text class="head" x="1060" y="312" text-anchor="middle">18 容量检查</text><text class="note" x="1060" y="338" text-anchor="middle">对象容量估算与构造快照</text>
+<rect class="node" x="430" y="450" width="420" height="80" rx="12" fill="#f0fdf4" stroke="#4ade80"/><text class="head" x="640" y="482" text-anchor="middle">20 固定条件比较</text><text class="note" x="640" y="508" text-anchor="middle">检查质量、失败率与尾延迟</text>
+<path class="edge" d="M490 190V230H170V280"/>
+<text class="note" x="300" y="218" text-anchor="middle">运行无效</text>
+<path class="edge" d="M580 190V280"/>
+<text class="note" x="660" y="247" text-anchor="middle">有效：耗时问题</text>
+<path class="edge" d="M760 190V230H1060V280"/>
+<text class="note" x="974" y="218" text-anchor="middle">有效：容量问题</text>
+<path class="edge reading" d="M40 320H20V150H430"/>
+<text class="note" x="234" y="137" text-anchor="middle">修复后重新检查</text>
+<path class="edge" d="M580 360V450"/>
+<path class="edge" d="M1060 360V410H750V450"/>
 </svg>

@@ -2,10 +2,10 @@
   <title id="title">DPO 成对偏好边际</title>
   <desc id="desc">同一提示下的优选与非优选回答分别由当前策略和冻结参考策略评分，两种回答的相对偏移形成偏好边际，经 DPO 损失更新后再做独立评测。</desc>
   <defs>
-    <marker id="arrow" markerWidth="6" markerHeight="6" refX="5.5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#475569"/></marker>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
     <style>
-      .title{font:700 26px Arial,sans-serif;fill:#172033}.sub{font:15px Arial,sans-serif;fill:#475569}
-      .head{font:700 17px Arial,sans-serif;fill:#172033}.body{font:14px Arial,sans-serif;fill:#334155}.mono{font:14px Consolas,monospace;fill:#334155}
+      .title{font-family:"Noto Sans CJK SC",sans-serif;font-size:26px;font-weight:700;fill:#172033}.sub{font-family:"Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:400;fill:#475569}
+      .head{font-family:"Noto Sans CJK SC",sans-serif;font-size:17px;font-weight:700;fill:#172033}.body{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;font-weight:400;fill:#334155}.mono{font-family:"Noto Sans CJK SC",monospace;font-size:14px;font-weight:400;fill:#334155}
       .line{fill:none;stroke:#475569;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow)}
       .guide{fill:none;stroke:#94A3B8;stroke-width:2;stroke-dasharray:6 5}
     </style>
@@ -15,54 +15,54 @@
   <text x="62" y="70" class="title">DPO：比较两条回答相对参考策略的偏移</text>
   <text x="62" y="99" class="sub">同一提示固定比较条件；当前策略与参考策略共同决定边际，独立评测决定是否采用更新。</text>
 
-  <rect x="58" y="176" width="170" height="118" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
+  <rect id="node-2" x="58" y="176" width="170" height="118" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
   <text x="80" y="211" class="head">同一提示</text>
   <text x="80" y="240" class="body">相同模板与上下文</text>
   <text x="80" y="266" class="body">固定数据切分</text>
 
-  <rect x="278" y="151" width="210" height="168" rx="15" fill="#F8FAFC" stroke="#64748B" stroke-width="2"/>
+  <rect id="node-3" x="278" y="151" width="210" height="168" rx="15" fill="#F8FAFC" stroke="#64748B" stroke-width="2"/>
   <text x="300" y="184" class="head">成对回复</text>
-  <rect x="298" y="201" width="170" height="43" rx="9" fill="#DCFCE7" stroke="#16A34A" stroke-width="1.8"/>
-  <text x="315" y="228" class="body">优选回答 chosen</text>
-  <rect x="298" y="258" width="170" height="43" rx="9" fill="#FEE2E2" stroke="#DC2626" stroke-width="1.8"/>
-  <text x="315" y="285" class="body">非优选回答 rejected</text>
+  <rect id="node-4" x="298" y="201" width="170" height="43" rx="9" fill="#DCFCE7" stroke="#16A34A" stroke-width="1.8"/>
+  <text x="315" y="228" class="body">优选回答</text>
+  <rect id="node-5" x="298" y="258" width="170" height="43" rx="9" fill="#FEE2E2" stroke="#DC2626" stroke-width="1.8"/>
+  <text x="315" y="285" class="body">非优选回答</text>
 
-  <rect x="538" y="133" width="218" height="102" rx="14" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
+  <rect id="node-6" x="538" y="133" width="218" height="102" rx="14" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
   <text x="560" y="166" class="head">当前策略评分</text>
   <text x="560" y="195" class="mono">log pθ(chosen)</text>
   <text x="560" y="218" class="mono">log pθ(rejected)</text>
-  <rect x="538" y="259" width="218" height="102" rx="14" fill="#FFF7ED" stroke="#EA580C" stroke-width="2"/>
+  <rect id="node-7" x="538" y="259" width="218" height="102" rx="14" fill="#FFF7ED" stroke="#EA580C" stroke-width="2"/>
   <text x="560" y="292" class="head">冻结参考策略评分</text>
   <text x="560" y="321" class="mono">log pref(chosen)</text>
   <text x="560" y="344" class="mono">log pref(rejected)</text>
 
-  <rect x="806" y="151" width="226" height="168" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
+  <rect id="node-8" x="806" y="151" width="226" height="168" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
   <text x="828" y="184" class="head">偏好边际</text>
-  <text x="828" y="216" class="body">优选偏移 Δchosen</text>
-  <text x="828" y="243" class="body">非优选偏移 Δrejected</text>
+  <text x="828" y="216" class="body">Δ = log pθ − log pref</text>
+  <text x="828" y="243" class="body">分别计算两条回答的 Δ</text>
   <line x1="828" y1="258" x2="1008" y2="258" class="guide"/>
-  <text x="828" y="287" class="mono">m = Δchosen − Δrejected</text>
+  <text x="828" y="287" class="mono">m = Δ优选 − Δ非优选</text>
 
-  <rect x="1082" y="176" width="140" height="118" rx="15" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2"/>
+  <rect id="node-9" x="1082" y="176" width="140" height="118" rx="15" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2"/>
   <text x="1104" y="211" class="head">DPO 损失</text>
   <text x="1104" y="240" class="body">β 缩放边际</text>
   <text x="1104" y="266" class="body">惩罚排序错误</text>
 
-  <rect x="806" y="408" width="226" height="104" rx="15" fill="#E0E7FF" stroke="#4F46E5" stroke-width="2"/>
+  <rect id="node-10" x="806" y="408" width="226" height="104" rx="15" fill="#E0E7FF" stroke="#4F46E5" stroke-width="2"/>
   <text x="828" y="442" class="head">更新当前策略</text>
   <text x="828" y="471" class="body">参考策略保持冻结</text>
   <text x="828" y="496" class="body">记录版本与训练失败</text>
-  <rect x="1082" y="408" width="140" height="104" rx="15" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+  <rect id="node-11" x="1082" y="408" width="140" height="104" rx="15" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
   <text x="1104" y="442" class="head">独立评测</text>
   <text x="1104" y="471" class="body">任务质量</text>
   <text x="1104" y="496" class="body">安全与回归</text>
 
-  <path d="M228 235H270" class="line"/>
-  <path d="M488 235H510V184H530" class="line"/>
-  <path d="M488 235H510V310H530" class="line"/>
-  <path d="M756 184H780V235H798" class="line"/>
-  <path d="M756 310H780V235H798" class="line"/>
-  <path d="M1032 235H1074" class="line"/>
-  <path d="M1152 294V370H919V400" class="line"/>
-  <path d="M1032 460H1074" class="line"/>
+  <path d="M228 235H278" data-source="node-2" data-target="node-3" class="line"/>
+  <path d="M488 200H510V184H538" data-source="node-3" data-target="node-6" class="line"/>
+  <path d="M488 275H510V310H538" data-source="node-3" data-target="node-7" class="line"/>
+  <path d="M756 184H780V200H806" data-source="node-6" data-target="node-8" class="line"/>
+  <path d="M756 310H780V275H806" data-source="node-7" data-target="node-8" class="line"/>
+  <path d="M1032 235H1082" data-source="node-8" data-target="node-9" class="line"/>
+  <path d="M1152 294V370H919V408" data-source="node-9" data-target="node-10" class="line"/>
+  <path d="M1032 460H1082" data-source="node-10" data-target="node-11" class="line"/>
 </svg>

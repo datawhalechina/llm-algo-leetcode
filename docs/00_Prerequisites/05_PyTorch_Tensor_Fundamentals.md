@@ -10,7 +10,11 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-Tensor 在数组之上增加了 dtype、device、梯度和存储语义。本节先读取基本属性，再区分 `torch.tensor`、`from_numpy`、`as_tensor` 与 `clone` 的复制/共享关系，接着显式转换 dtype/device，最后检查数值 Tensor 和索引 Tensor 的输入契约；06 将沿存储布局继续解释 shape 变换与 stride。
+## 本节导读
+
+张量在数组之上增加了数据类型、设备、梯度和存储语义。形状相同的张量，仍可能因为数据类型、设备或共享关系不同而产生不同结果。
+
+完成本节后，你应能读取张量的基本契约，区分复制与共享存储，并判断数值张量和索引张量是否满足输入要求。
 
 **关键词：** `tensor`, `dtype`, `device`, `storage sharing`
 
@@ -20,12 +24,6 @@ Tensor 在数组之上增加了 dtype、device、梯度和存储语义。本节�
 **导语：** 先掌握 NumPy 的 shape 和广播，再观察 Tensor 新增的 dtype、device 与存储语义。
 - [02. NumPy and Einsum | NumPy 与 Einsum](./02_NumPy_and_Einsum.md)
 - [0B 组页](./0B.md)
-
-## 相关阅读
-**导语：** 掌握 Tensor 入口后，继续学习 layout、索引和反向传播。
-- [PyTorch Tensor 官方文档](https://pytorch.org/docs/stable/tensors.html)
-- [06. PyTorch Tensor Layout and Indexing | PyTorch 张量布局与索引](./06_PyTorch_Tensor_Layout_and_Indexing.md)
-- [07. PyTorch Autograd and Backward | PyTorch 自动求导与反向传播](./07_PyTorch_Autograd_and_Backward.md)
 
 ## Q1：如何读取 Tensor 的 shape、dtype 与 device？
 
@@ -207,3 +205,10 @@ print('✅ dtype、device 与索引契约通过')
 - `torch.tensor`、`from_numpy`、`as_tensor` 与 `clone` 的复制/共享语义不同。
 - `.to()` 在条件不变时可以复用原 Tensor，类型或设备变化会形成新表示。
 - 索引 Tensor 应使用整数 dtype，并与被索引对象位于兼容设备。
+## 相关阅读
+
+掌握张量入口后，继续学习布局、索引和反向传播。
+
+- [PyTorch Tensor 官方文档](https://pytorch.org/docs/stable/tensors.html)
+- [06. PyTorch Tensor Layout and Indexing | PyTorch 张量布局与索引](./06_PyTorch_Tensor_Layout_and_Indexing.md)
+- [07. PyTorch Autograd and Backward | PyTorch 自动求导与反向传播](./07_PyTorch_Autograd_and_Backward.md)

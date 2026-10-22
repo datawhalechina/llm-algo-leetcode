@@ -1,44 +1,38 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="560" viewBox="0 0 1280 560" role="img" aria-labelledby="title desc">
-  <title id="title">Transformer Block 数据流与残差通路</title>
-  <desc id="desc">Hidden state 经过 Attention 更新和 MLP 更新，两次写回 residual stream，并进入下一 Block。</desc>
-  <defs>
-    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
-      <path d="M0,0 L9,4.5 L0,9 Z" fill="#52627a"/>
-    </marker>
-    <style>
-      .title{font:700 28px sans-serif;fill:#172033}.group{fill:#f7f9fc;stroke:#a8b3c7;stroke-width:2}.node{fill:#fff;stroke:#8fa0ba;stroke-width:2}.attn{fill:#e5f1fb}.mlp{fill:#e8f7ed}.norm{fill:#fff2cf}.text{font:600 18px sans-serif;fill:#172033}.sub{font:15px sans-serif;fill:#475569}.line{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow)}
-    </style>
-  </defs>
-  <rect width="1280" height="560" fill="#fbfcfe"/>
-  <text x="640" y="48" text-anchor="middle" class="title">Transformer Block：两次更新同一条 residual stream</text>
-  <rect x="50" y="100" width="180" height="82" rx="12" class="node"/>
-  <text x="140" y="134" text-anchor="middle" class="text">Hidden states</text>
-  <text x="140" y="160" text-anchor="middle" class="sub">[B, S, H]</text>
-  <rect x="285" y="80" width="300" height="200" rx="16" class="group"/>
-  <text x="310" y="112" class="text">Attention 子层</text>
-  <rect x="320" y="135" width="230" height="55" rx="10" class="norm"/>
-  <text x="435" y="169" text-anchor="middle" class="text">Norm → Attention</text>
-  <rect x="320" y="210" width="230" height="48" rx="10" class="attn"/>
-  <text x="435" y="240" text-anchor="middle" class="text">Residual add</text>
-  <rect x="650" y="80" width="300" height="200" rx="16" class="group"/>
-  <text x="675" y="112" class="text">MLP 子层</text>
-  <rect x="685" y="135" width="230" height="55" rx="10" class="norm"/>
-  <text x="800" y="169" text-anchor="middle" class="text">Norm → Gated MLP</text>
-  <rect x="685" y="210" width="230" height="48" rx="10" class="mlp"/>
-  <text x="800" y="240" text-anchor="middle" class="text">Residual add</text>
-  <rect x="1015" y="100" width="210" height="82" rx="12" class="node"/>
-  <text x="1120" y="134" text-anchor="middle" class="text">Next hidden states</text>
-  <text x="1120" y="160" text-anchor="middle" class="sub">shape 保持 [B, S, H]</text>
-  <path d="M230 141 H320" class="line"/>
-  <path d="M550 234 H685" class="line"/>
-  <path d="M915 234 H980 V141 H1015" class="line"/>
-  <rect x="285" y="340" width="665" height="140" rx="16" class="group"/>
-  <text x="315" y="375" class="text">后续三条机制支路</text>
-  <rect x="320" y="398" width="180" height="55" rx="10" class="mlp"/>
-  <text x="410" y="432" text-anchor="middle" class="text">14 激活与门控</text>
-  <rect x="527" y="398" width="180" height="55" rx="10" class="norm"/>
-  <text x="617" y="432" text-anchor="middle" class="text">15 Norm 与 residual</text>
-  <rect x="734" y="398" width="180" height="55" rx="10" class="attn"/>
-  <text x="824" y="432" text-anchor="middle" class="text">16 Attention</text>
-  <path d="M617 280 V398" class="line"/>
+<title id="title">Transformer Block 的两次残差更新</title>
+<desc id="desc">输入隐状态一方面沿主路径进入第一次相加，一方面经 Attention 分支产生更新量。第一次相加后的状态同样分为主路径和 MLP 分支，再通过第二次相加形成输出。图中展示分支接口，具体归一化与注意力计算在组件页面展开。</desc>
+<defs>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker>
+<style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.text{font-size:18px;font-weight:600}.sub{font-size:15px;fill:#475569}.node{stroke-width:2}.line{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow)}</style>
+</defs>
+<rect width="1280" height="560" fill="#fbfcfe"/>
+<text x="640" y="48" text-anchor="middle" class="title">Transformer Block：分支产生增量，主路径保留当前状态</text>
+<text x="640" y="79" text-anchor="middle" class="sub">每次相加均要求分支更新与当前状态同为 [B, S, H]；分支读取相加前的状态</text>
+<rect x="70" y="150" width="250" height="80" rx="12" fill="#e5f1fb" stroke="#60a5fa" class="node"/>
+<text x="195" y="182" text-anchor="middle" class="text">Attention 分支</text>
+<text x="195" y="210" text-anchor="middle" class="sub">产生词元间的信息聚合增量</text>
+<rect x="560" y="150" width="250" height="80" rx="12" fill="#e8f7ed" stroke="#4ade80" class="node"/>
+<text x="685" y="182" text-anchor="middle" class="text">MLP 分支</text>
+<text x="685" y="210" text-anchor="middle" class="sub">逐词元产生通道变换增量</text>
+<rect x="70" y="340" width="200" height="80" rx="12" fill="#eeeafd" stroke="#a78bfa" class="node"/>
+<text x="170" y="372" text-anchor="middle" class="text">输入隐状态</text>
+<text x="170" y="400" text-anchor="middle" class="sub">[B, S, H]</text>
+<rect x="370" y="340" width="160" height="80" rx="12" fill="#fff2cf" stroke="#fbbf24" class="node"/>
+<text x="450" y="372" text-anchor="middle" class="text">第一次相加</text>
+<text x="450" y="400" text-anchor="middle" class="sub">输入 + 聚合增量</text>
+<rect x="760" y="340" width="160" height="80" rx="12" fill="#fff2cf" stroke="#fbbf24" class="node"/>
+<text x="840" y="372" text-anchor="middle" class="text">第二次相加</text>
+<text x="840" y="400" text-anchor="middle" class="sub">当前状态 + MLP 增量</text>
+<rect x="1060" y="340" width="180" height="80" rx="12" fill="#eeeafd" stroke="#a78bfa" class="node"/>
+<text x="1150" y="372" text-anchor="middle" class="text">输出隐状态</text>
+<text x="1150" y="400" text-anchor="middle" class="sub">进入下一 Block</text>
+<path d="M170 340V230" class="line"/>
+<path d="M320 190H450V340" class="line"/>
+<path d="M270 380H370" class="line"/>
+<path d="M480 340V190H560" class="line"/>
+<path d="M810 190H840V340" class="line"/>
+<path d="M530 380H760" class="line"/>
+<path d="M920 380H1060" class="line"/>
+<text x="320" y="458" text-anchor="middle" class="sub">保留原始输入</text>
+<text x="645" y="458" text-anchor="middle" class="sub">保留第一次更新后的状态</text>
 </svg>

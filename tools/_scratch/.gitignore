@@ -1,0 +1,4 @@
+# Keep only this directory's instructions and ignore rules in version control.
+*
+!.gitignore
+!README.md

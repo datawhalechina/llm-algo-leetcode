@@ -1,59 +1,26 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="570" viewBox="0 0 1280 570">
-<defs>
-  <marker id="arrow02" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
-  <style>
-    text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}
-    .title{font-size:28px;font-weight:700}.subtitle{font-size:15px;fill:#475569}
-    .group{font-size:19px;font-weight:700}.head{font-size:18px;font-weight:700}.body{font-size:15px}.small{font-size:13px;fill:#475569}
-    .panel{stroke:#94a3b8;stroke-width:2;rx:16}.item{fill:#fff;stroke:#cbd5e1;stroke-width:1.5;rx:10}
-    .flow{stroke:#64748b;stroke-width:2.5;fill:none;marker-end:url(#arrow02)}
-  </style>
-</defs>
-<rect width="1280" height="570" fill="#f8fafc"/>
-<text x="640" y="42" text-anchor="middle" class="title">参数量与 FLOPs：从模型结构到实际利用率</text>
-<text x="640" y="69" text-anchor="middle" class="subtitle">先得到参数量，再计算前向与训练工作量，最后解释理论值和实测值的差距</text>
-
-<rect x="35" y="125" width="270" height="300" fill="#e0f2fe" class="panel"/>
-<text x="170" y="163" text-anchor="middle" class="group">模型结构</text>
-<rect x="62" y="190" width="216" height="76" class="item"/>
-<text x="170" y="220" text-anchor="middle" class="head">层数与隐藏维度</text>
-<text x="170" y="244" text-anchor="middle" class="small">Attention · FFN · LayerNorm</text>
-<rect x="62" y="285" width="216" height="76" class="item"/>
-<text x="170" y="315" text-anchor="middle" class="head">词表与权重共享</text>
-<text x="170" y="339" text-anchor="middle" class="small">结构参数汇总为参数量 P</text>
-<text x="170" y="397" text-anchor="middle" class="body">Q1：模型有多少参数？</text>
-
-<rect x="345" y="125" width="270" height="300" fill="#dcfce7" class="panel"/>
-<text x="480" y="163" text-anchor="middle" class="group">前向计算量</text>
-<rect x="372" y="190" width="216" height="76" class="item"/>
-<text x="480" y="220" text-anchor="middle" class="head">参数量 P</text>
-<text x="480" y="244" text-anchor="middle" class="small">模型规模的计算输入</text>
-<rect x="372" y="285" width="216" height="76" class="item"/>
-<text x="480" y="315" text-anchor="middle" class="head">token 数 T</text>
-<text x="480" y="339" text-anchor="middle" class="small">一次 workload 的工作量</text>
-<text x="480" y="397" text-anchor="middle" class="body">Q2：前向约为 2PT</text>
-
-<rect x="655" y="125" width="270" height="300" fill="#fef3c7" class="panel"/>
-<text x="790" y="163" text-anchor="middle" class="group">训练计算量</text>
-<rect x="682" y="190" width="216" height="76" class="item"/>
-<text x="790" y="220" text-anchor="middle" class="head">Forward</text>
-<text x="790" y="244" text-anchor="middle" class="small">计算损失并保存中间状态</text>
-<rect x="682" y="285" width="216" height="76" class="item"/>
-<text x="790" y="315" text-anchor="middle" class="head">Backward + Update</text>
-<text x="790" y="339" text-anchor="middle" class="small">梯度、参数更新与训练开销</text>
-<text x="790" y="397" text-anchor="middle" class="body">Q3：训练约为 6PT</text>
-
-<rect x="965" y="125" width="270" height="300" fill="#fce7f3" class="panel"/>
-<text x="1100" y="163" text-anchor="middle" class="group">利用率与瓶颈</text>
-<rect x="992" y="190" width="216" height="76" class="item"/>
-<text x="1100" y="220" text-anchor="middle" class="head">MFU 与实际耗时</text>
-<text x="1100" y="244" text-anchor="middle" class="small">理论 FLOPs / 时间 / 峰值算力</text>
-<rect x="992" y="285" width="216" height="76" class="item"/>
-<text x="1100" y="315" text-anchor="middle" class="head">带宽与通信等待</text>
-<text x="1100" y="339" text-anchor="middle" class="small">解释吞吐为何低于理论值</text>
-<text x="1100" y="397" text-anchor="middle" class="body">Q4：差距来自哪里？</text>
-
-<path d="M305 275H337" class="flow"/>
-<path d="M615 275H647" class="flow"/>
-<path d="M925 275H957" class="flow"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="title desc">
+<title id="title">参数量与 FLOPs：从模型配置到训练 MFU</title><desc id="desc">模型配置得到参数量P，与本次Token数T共同得到dense模型前向约2PT。全参数训练中前向、激活梯度和权重梯度各约2PT，模型训练计算量约6PT，不含优化器更新与额外重计算。MFU由该模型训练FLOPs除以实测耗时t与同精度所有参与设备的总峰值F_peak的乘积得到，不能据此直接归因瓶颈。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:18px;font-weight:700}.note{font-size:15px;fill:#475569}.edge{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow)}.analysis{stroke-dasharray:6 5}</style></defs>
+<rect width="1280" height="520" fill="#f8fafc"/>
+<text class="title" x="640" y="45" text-anchor="middle">参数量与 FLOPs：从模型配置到训练 MFU</text>
+<text class="note" x="640" y="76" text-anchor="middle">按稠密模型全参数训练作数量级近似；模型计算量与实测耗时、硬件峰值分别记录。</text>
+<rect x="40" y="120" width="260" height="90" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text class="head" x="170" y="148" text-anchor="middle">模型配置</text><text class="note" x="170" y="174" text-anchor="middle">层数、隐藏维度、词表</text><text class="note" x="170" y="197" text-anchor="middle">前馈结构与权重共享</text>
+<rect x="380" y="120" width="220" height="90" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text class="head" x="490" y="148" text-anchor="middle">参数量 P</text><text class="note" x="490" y="174" text-anchor="middle">由各权重形状求和</text>
+<rect x="380" y="300" width="220" height="90" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text class="head" x="490" y="328" text-anchor="middle">本次 Token 数 T</text><text class="note" x="490" y="354" text-anchor="middle">与统计窗口一致的总量</text>
+<rect x="690" y="120" width="250" height="90" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text class="head" x="815" y="148" text-anchor="middle">前向 FLOPs ≈ 2PT</text><text class="note" x="815" y="174" text-anchor="middle">权重乘加的数量级估算</text>
+<rect x="690" y="300" width="250" height="90" rx="12" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text class="head" x="815" y="328" text-anchor="middle">训练 FLOPs ≈ 6PT</text><text class="note" x="815" y="354" text-anchor="middle">2PT + 2PT + 2PT</text>
+<rect x="1020" y="120" width="220" height="100" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text class="head" x="1130" y="148" text-anchor="middle">测量与硬件口径</text><text class="note" x="1130" y="174" text-anchor="middle">t：实测耗时（s）</text><text class="note" x="1130" y="197" text-anchor="middle">F_peak：总峰值 FLOP/s</text>
+<rect x="1020" y="300" width="220" height="90" rx="12" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text class="head" x="1130" y="328" text-anchor="middle">训练 MFU</text><text class="note" x="1130" y="354" text-anchor="middle">C_train / (t × F_peak)</text>
+<path class="edge" d="M300 165H380"/>
+<path class="edge" d="M600 165H690"/>
+<path class="edge" d="M600 345H640V190H690"/>
+<path class="edge" d="M815 210V300"/>
+<text class="note" x="916" y="248" text-anchor="middle">激活梯度 ≈ 2PT</text>
+<text class="note" x="916" y="276" text-anchor="middle">权重梯度 ≈ 2PT</text>
+<path class="edge" d="M940 345H1020"/>
+<path class="edge" d="M1130 220V300"/>
+<text class="note" x="815" y="432" text-anchor="middle">C_train：模型训练计算量（FLOPs）</text>
+<text class="note" x="815" y="460" text-anchor="middle">优化器更新、额外重计算等另计</text>
+<text class="note" x="1130" y="432" text-anchor="middle">峰值采用匹配的精度</text>
+<text class="note" x="1130" y="460" text-anchor="middle">并汇总全部参与设备</text>
 </svg>

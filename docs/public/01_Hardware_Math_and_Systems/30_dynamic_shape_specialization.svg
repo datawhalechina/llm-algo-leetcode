@@ -1,10 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="title desc">
-<title id="title">动态形状、分桶与执行路径</title><desc id="desc">变化输入经过形状分桶和填充进入专门化路径，并在复用收益与填充浪费之间取舍。</desc>
-<defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker><style>text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}.t{font-size:28px;font-weight:700}.s{font-size:15px;fill:#475569}.h{font-size:18px;font-weight:700}.b{font-size:14px;fill:#334155}.p{stroke-width:2}.f{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a)}</style></defs>
-<rect width="1280" height="520" rx="24" fill="#f8fafc"/><text x="640" y="45" text-anchor="middle" class="t">动态形状：用有限路径覆盖变化输入</text><text x="640" y="73" text-anchor="middle" class="s">分桶提高编译与计算内核复用，但填充和路径切换会带来额外成本</text>
-<rect x="45" y="135" width="260" height="240" rx="18" fill="#eff6ff" stroke="#60a5fa" class="p"/><text x="70" y="172" class="h">输入形状分布</text><text x="70" y="220" class="b">序列长度与批次变化</text><text x="70" y="255" class="b">高频形状与长尾</text><text x="70" y="290" class="b">先记录真实分布</text>
-<rect x="355" y="135" width="260" height="240" rx="18" fill="#f0fdf4" stroke="#4ade80" class="p"/><text x="380" y="172" class="h">分桶与填充</text><text x="380" y="220" class="b">相近形状进入同一桶</text><text x="380" y="255" class="b">桶内统一执行形状</text><text x="380" y="290" class="b">产生填充 Token</text>
-<rect x="665" y="135" width="260" height="240" rx="18" fill="#fffbeb" stroke="#f59e0b" class="p"/><text x="690" y="172" class="h">专门化路径</text><text x="690" y="220" class="b">命中已有编译结果</text><text x="690" y="255" class="b">未命中时编译或回退</text><text x="690" y="290" class="b">路径数影响缓存</text>
-<rect x="975" y="135" width="260" height="240" rx="18" fill="#faf5ff" stroke="#a855f7" class="p"/><text x="1000" y="172" class="h">权衡证据</text><text x="1000" y="220" class="b">编译命中率</text><text x="1000" y="255" class="b">填充比例与有效吞吐</text><text x="1000" y="290" class="b">延迟分布与抖动</text>
-<path d="M305 255H355" class="f"/><path d="M615 255H665" class="f"/><path d="M925 255H975" class="f"/>
+<title id="title">固定同一批输入，分桶也可能增加填充</title><desc id="desc">两个输入长度分别为65和66，总有效长度131。直接补到本批最大长度66，共132个位置，填充1个。若固定桶边界为128，共256个位置，填充125个。两种方式处理同一批输入，图中未改变组批顺序或等待时间。</desc>
+<defs><marker id="a" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#52677f"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:16px}.small{font-size:14px;fill:#475569}.edge{stroke:#52677f;stroke-width:3;fill:none;marker-end:url(#a)}</style></defs>
+<rect width="1280" height="520" rx="24" fill="#f8fafc"/>
+<text x="640" y="45" text-anchor="middle" class="title">固定同一批输入，分桶也可能增加填充</text>
+<text x="640" y="76" text-anchor="middle" class="sub">固定两个输入与批次，比较填充位置数；缓存复用和真实延迟需要另外记录</text>
+<rect x="40" y="220" width="220" height="100" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="150" y="251" text-anchor="middle" class="head">原始长度</text><text x="150" y="278" text-anchor="middle" class="body">65、66</text>
+<rect x="400" y="140" width="350" height="80" rx="14" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text x="575" y="171" text-anchor="middle" class="head">补到本批最大长度</text><text x="575" y="198" text-anchor="middle" class="body">两条输入都补到 66</text>
+<rect x="400" y="340" width="350" height="80" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="575" y="371" text-anchor="middle" class="head">固定桶边界</text><text x="575" y="398" text-anchor="middle" class="body">两条输入都补到 128</text>
+<rect x="900" y="140" width="340" height="80" rx="14" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text x="1070" y="171" text-anchor="middle" class="head">填充 1 个位置</text><text x="1070" y="198" text-anchor="middle" class="body">2 × 66 − (65 + 66) = 1</text>
+<rect x="900" y="340" width="340" height="80" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="1070" y="371" text-anchor="middle" class="head">填充 125 个位置</text><text x="1070" y="398" text-anchor="middle" class="body">2 × 128 − (65 + 66) = 125</text>
+<path d="M260 245H320V180H400" class="edge"/>
+<path d="M260 295H350V380H400" class="edge"/>
+<path d="M750 180H900" class="edge"/>
+<path d="M750 380H900" class="edge"/>
 </svg>

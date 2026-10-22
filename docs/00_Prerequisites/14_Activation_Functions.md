@@ -10,24 +10,21 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-激活函数同时改变前向输出和反向梯度。ReLU 引入明确截断区，GELU 与 SiLU 使用平滑门控；现代 LLM 的 MLP 还会把 SiLU 放进 SwiGLU 等门控结构。本页从输出、梯度和门控三条线建立可计算的比较。
+## 本节导读
 
-在 Transformer Block 中，激活通常位于 MLP 分支；它决定哪些特征继续传播，也影响 backward 保存的中间状态。
+激活函数改变前向输出和局部梯度，并使多层线性变换不再退化为单个线性映射。在 Transformer MLP 中，激活可以位于单条投影路径，也可以参与 gate/value 两条分支的逐元素调制。
 
-**关键词：** `ReLU`, `GELU`, `SiLU`, `SwiGLU`, `gradient`
+完成本节后，你应能比较 ReLU、GELU、SiLU 的输出和局部梯度，并追踪普通 FFN 与门控 FFN 的 `H → H_ffn → H` shape 路径。
+
+**关键词：** `ReLU`, `GELU`, `SiLU`, `SwiGLU`, `FFN`
 
 ![激活函数的输出、梯度与门控关系](../public/00_Prerequisites/14_activation_gradient_map.svg)
 
 ## 前置阅读
-**导语：** Tensor 运算给出前向值，Autograd 给出局部梯度；两者共同决定激活函数的行为。
-- [05. PyTorch Tensor Fundamentals | PyTorch 张量基础](./05_PyTorch_Tensor_Fundamentals.md)
+**导语：** Tensor 运算给出前向值，Autograd 给出局部梯度；13 节则给出 MLP 分支写回 residual stream 的位置。
 - [07. PyTorch Autograd and Backward | PyTorch 自动求导与反向传播](./07_PyTorch_Autograd_and_Backward.md)
+- [13. Transformer Block Dataflow and Residual Stream | Transformer Block 数据流与残差通路](./13_Transformer_Block_Dataflow_and_Residual_Stream.md)
 - [0D 组页](./0D.md)
-
-## 相关阅读
-**导语：** 继续观察归一化如何控制 MLP 输入尺度，以及激活如何进入完整 Transformer Block。
-- [15. Normalization Techniques | 归一化技术](./15_Normalization_Techniques.md)
-- [Part 02 · 05 LLaMA3 Block](../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.md)
 
 ## Q1：激活函数在模型里解决什么问题？
 
@@ -37,11 +34,12 @@
 ```python
 import math
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
 
 def relu(x):
-    return torch.clamp(x, min=0)
+    return torch.where(x > 0, x, torch.zeros_like(x))
 
 
 def gelu_exact(x):
@@ -84,7 +82,7 @@ print('✅ 基本激活函数通过')
 
 ## Q2：输出形状相似时，梯度行为有什么不同？
 
-激活函数不仅改变输出，也改变局部导数。ReLU 在负半轴的梯度为零；GELU 与 SiLU 在零点附近保留平滑变化。比较同一输入上的输出和梯度，比只记公式更能解释训练行为。
+激活函数不仅改变输出，也改变局部导数。ReLU 在负半轴的梯度为零，在零点不可导；本例采用 PyTorch ReLU 的零点梯度约定，取值为 0。GELU 与 SiLU 在零点附近保留平滑变化。比较同一输入上的输出和梯度，比只记公式更能解释训练行为。
 
 
 ```python
@@ -112,6 +110,9 @@ for name, function in {'relu': relu, 'gelu': gelu_exact, 'silu': silu}.items():
 relu_values, relu_gradients = value_and_gradient(relu, points)
 gelu_values, gelu_gradients = value_and_gradient(gelu_exact, points)
 silu_values, silu_gradients = value_and_gradient(silu, points)
+_, reference_relu_gradients = value_and_gradient(F.relu, points)
+assert torch.equal(relu_gradients, reference_relu_gradients)
+assert relu_gradients[2].item() == 0.0
 assert torch.equal(relu_gradients[:2], torch.zeros(2))
 assert torch.isfinite(gelu_values).all() and torch.isfinite(gelu_gradients).all()
 assert torch.isfinite(silu_values).all() and torch.isfinite(silu_gradients).all()
@@ -120,9 +121,9 @@ print('✅ 激活输出与梯度通过')
 
 ```
 
-## Q3：SwiGLU 如何把激活函数变成门控分支？
+## Q3：激活函数怎样进入普通 FFN 与门控 FFN？
 
-门控 MLP 不只是把激活接在线性层后面，而是让一条分支生成门值，再逐元素调制另一条内容分支。SwiGLU 使用 SiLU 处理 gate，因此输入通常需要产生两组同形状张量。
+普通 FFN 先把 hidden 维扩张到 `H_ffn`，执行激活后再投影回 `H`。门控 FFN 同时生成 gate 与 value，两条分支必须拥有相同 shape；SwiGLU 用 `SiLU(gate) × value` 调制内容，再由 down projection 恢复 residual stream 的 hidden shape。
 
 
 ```python
@@ -133,21 +134,48 @@ def swiglu(gate, value):
     return silu(gate) * value
 
 
-gate = torch.tensor([[-2.0, 0.0, 2.0]])
-value = torch.tensor([[3.0, 3.0, 3.0]])
-print('gate：', silu(gate))
-print('SwiGLU 输出：', swiglu(gate, value))
+class DenseFFN(nn.Module):
+    def __init__(self, hidden_size, intermediate_size):
+        super().__init__()
+        self.up = nn.Linear(hidden_size, intermediate_size, bias=False)
+        self.down = nn.Linear(intermediate_size, hidden_size, bias=False)
+
+    def forward(self, hidden_states):
+        return self.down(F.gelu(self.up(hidden_states)))
+
+
+class GatedFFN(nn.Module):
+    def __init__(self, hidden_size, intermediate_size):
+        super().__init__()
+        self.gate = nn.Linear(hidden_size, intermediate_size, bias=False)
+        self.up = nn.Linear(hidden_size, intermediate_size, bias=False)
+        self.down = nn.Linear(intermediate_size, hidden_size, bias=False)
+
+    def forward(self, hidden_states):
+        return self.down(swiglu(self.gate(hidden_states), self.up(hidden_states)))
+
+
+torch.manual_seed(0)
+ffn_input = torch.randn(2, 4, 8)
+dense_ffn = DenseFFN(hidden_size=8, intermediate_size=16)
+gated_ffn = GatedFFN(hidden_size=8, intermediate_size=16)
+print('input / dense / gated：', ffn_input.shape, dense_ffn(ffn_input).shape, gated_ffn(ffn_input).shape)
 
 ```
 
-## Q3 验证：门控分支是否按元素调制内容？
+## Q3 验证：两类 FFN 是否都恢复 residual stream 的 hidden shape？
 
-零 gate 应关闭对应位置，正负 gate 则产生不同缩放；shape 不一致必须立即报错。
+内部中间维可以扩张，但写回 Block 前必须恢复输入 shape；门控分支的 gate 与 value 不同形时应立即失败。
 
 
 ```python
-expected = F.silu(gate) * value
-assert torch.allclose(swiglu(gate, value), expected)
+dense_output = dense_ffn(ffn_input)
+gated_output = gated_ffn(ffn_input)
+assert dense_output.shape == gated_output.shape == ffn_input.shape
+
+gate = torch.tensor([[-2.0, 0.0, 2.0]])
+value = torch.tensor([[3.0, 3.0, 3.0]])
+torch.testing.assert_close(swiglu(gate, value), F.silu(gate) * value)
 assert swiglu(gate, value)[0, 1].item() == 0.0
 try:
     swiglu(torch.ones(2, 3), torch.ones(2, 4))
@@ -155,13 +183,13 @@ except ValueError:
     pass
 else:
     raise AssertionError('shape mismatch should fail')
-print('✅ SwiGLU 门控契约通过')
+print('✅ Dense FFN / Gated FFN shape contract 通过')
 
 ```
 
-## Q4：怎样用同一组统计比较激活行为？
+## Q4：怎样用同一组统计比较激活函数的局部行为？
 
-比较激活时需要同时记录输出尺度、零值比例和梯度尺度。单看均值会漏掉 ReLU 的稀疏性，也无法看出平滑激活是否保留了负半轴梯度。
+局部比较可以同时记录输出尺度、零值比例和梯度尺度。单看均值会漏掉 ReLU 的硬截断，也无法看出平滑激活是否保留负半轴梯度；这些统计用于描述机制，不直接替代模型训练和质量对照。
 
 
 ```python
@@ -188,7 +216,7 @@ for name, profile in profiles.items():
 
 ```
 
-## Q4 验证：统计字段是否能区分截断与平滑门控？
+## Q4 验证：统计字段能否区分截断与平滑激活？
 
 ReLU 应出现明显零值比例；GELU 与 SiLU 在该输入上不应产生同样的硬截断。所有统计必须保持有限。
 
@@ -202,3 +230,12 @@ for profile in profiles.values():
 print('✅ 激活统计对照通过')
 
 ```
+
+## 相关阅读
+
+继续观察归一化如何控制分支输入尺度，以及激活和门控怎样进入真实 Transformer Block。
+
+- [15. Normalization Techniques | 归一化技术](./15_Normalization_Techniques.md)
+- [Part 02 · 02 SwiGLU](../02_PyTorch_Algorithms/02_SwiGLU_Activation.md)
+- [Part 02 · 05 LLaMA3 Block](../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.md)
+- [大模型架构演进 · MLP / FFN 演进](../topic_discussion/llm_architecture_evolution/07_mlp_ffn_evolution.md)

@@ -10,7 +10,11 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-前向传播把张量与算子连接成计算图，反向传播再读取这些依赖，把上游梯度逐步传回叶子参数。本节依次观察标量反向传播、张量的梯度属性、非标量输出的向量—雅可比积（VJP）、反向保存状态、自定义 `Function`，以及分支、残差和共享参数如何汇合梯度。
+## 本节导读
+
+前向传播把张量与算子连接成计算依赖，反向传播沿这些依赖把上游梯度传回参数。非标量输出、分支、残差和共享参数会改变梯度的传递与汇合方式。
+
+完成本节后，你应能解释向量—雅可比积、反向保存状态和梯度累积，并判断一条梯度路径为何存在、汇合或中断。
 
 **关键词：** `requires_grad`, `backward()`, `VJP`, `saved_tensors`
 

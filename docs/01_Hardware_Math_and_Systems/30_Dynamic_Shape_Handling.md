@@ -14,20 +14,128 @@
 
 ## 本节导读
 
-输入长度一旦不固定，问题就不再只是 padding 多一点少一点，而是 batching、缓存组织、kernel 选择和执行路径都会一起变复杂。静态 shape 下顺手成立的很多假设，到了动态输入场景里都可能失效。
+计算内容没有改变，输入批次或序列长度变化，也可能让原来的执行路径无法复用。把输入补到固定形状能够减少形状种类，却会引入无效计算；桶边界过宽时，填充甚至比直接补到本批最大长度更多。
 
-这一页在整个教程的纵向主线里属于 `Part 01` 的服务约束基础页，优先服务 `推理优化路线` 的请求编排与执行稳定性判断，也给后续 `编译与图优化专题` 补一层动态输入前置。学完这里，后面再看 `34 / 37 / 66` 以及服务侧调度相关的页时，你会更容易判断一个动态输入问题是在影响算子选择、缓存管理，还是整条服务执行链；如果这里没学明白，后面很容易把吞吐抖动简单归因到 batch 不稳定，却忽略 dynamic shape 已经同时改变了编译假设、缓存组织和调度路径。按专题归类，这一页主要属于 `推理优化专题`，并和 `编译与图优化专题` 共享一部分系统约束视角。
+本节用形状和长度序列比较缓存键、填充数量与路径切换。完成后，你应能判断哪些变化需要进一步检查编译缓存和执行记录；组批与服务延迟进入推理优化，具体计算内核的适配进入算子优化。
 
-**关键词：** `dynamic shape`, `batching`, `padding`
+**关键词：** 动态形状、形状缓存、分桶、填充
+
+![动态形状、分桶与执行路径](../public/01_Hardware_Math_and_Systems/30_dynamic_shape_specialization.svg)
 
 ---
 ## 前置阅读
 
-**导语：** 这一页先把动态 batching、缓存复用和执行路径的关系接上，再看输入长度变化为什么会让系统更难稳定优化。
+**导语：** 先理解图优化依赖哪些形状假设，再检查输入变化怎样影响路径复用。
 
-- [07. CPU and GPU Heterogeneous Scheduling | CPU 与 GPU 异构调度](./07_CPU_GPU_Heterogeneous_Scheduling.md)
-- [08. Programming Models and CUDA/Triton | 编程模型演进](./08_Programming_Models_CUDA_Triton.md)
-- [29. CUDA Stream Advanced Scheduling | CUDA Stream 高级调度](./29_CUDA_Stream_Advanced_Scheduling.md)
+- [09. AI Compilers and Graph Optimization | AI 编译器与计算图优化](./09_AI_Compilers_and_Graph_Optimization.md)
+
+## Q1：形状变化怎样影响按形状复用？
+
+先考虑最简单的缓存模型：键只由完整形状组成，每种形状首次出现时不命中，之后出现时命中，而且缓存不会淘汰。输入的不同形状越多，这个模型的命中比例可能越低。
+
+实际编译器还可能使用符号形状、范围约束与其他守卫条件，多个形状可以复用同一份产物；相同形状也可能因数据类型、布局或其他条件改变而走不同路径。下面只统计形状序列，不能据此得出真实编译次数。
+
+### Q1 机制计算器：统计精确形状键的重复比例
+
+
+```python
+def shape_reuse_report(shapes):
+    """模拟仅以形状为键且不淘汰的冷缓存，不调用编译器。"""
+    if not shapes or any(
+        not isinstance(shape, (tuple, list)) or not shape
+        or any(type(dim) is not int or dim <= 0 for dim in shape)
+        for shape in shapes
+    ):
+        raise ValueError('形状必须是非空的正整数维度序列')
+    normalized = [tuple(shape) for shape in shapes]
+    keys = len(set(normalized))
+    hits = len(normalized) - keys
+    return {
+        'requests': len(normalized),
+        'distinct_shape_keys': keys,
+        'assumed_exact_shape_hits': hits,
+        'exact_shape_hit_ratio': hits / len(normalized),
+    }
+
+
+fixed = shape_reuse_report([(8, 512)] * 4)
+dynamic = shape_reuse_report([(8, 128), (8, 512), (8, 128), (8, 2048)])
+assert fixed['exact_shape_hit_ratio'] == 0.75
+assert dynamic['exact_shape_hit_ratio'] == 0.25
+print('固定形状：', fixed)
+print('变化形状：', dynamic)
+
+```
+
+## Q2：分桶能减少哪些填充，什么时候反而增加？
+
+填充把不同长度的输入变成规则张量；分桶把相近长度放在一起，按指定边界补齐。桶边界接近输入时可能减少无效 Token，但边界过宽时，也可能比直接补到本批最大长度更浪费。
+
+下面固定请求集合，只计算补齐的 Token；它不模拟请求到达、等待组批或批量上限，也不把填充比例当作吞吐收益。
+
+### Q2 对照验证：同时检查分桶有利与不利的输入
+
+
+```python
+def padding_overhead(lengths, bucket_boundaries=None):
+    """计算单一大 Batch 或按长度边界分桶后的填充 Token 数。"""
+    if not lengths or any(type(length) is not int or length <= 0 for length in lengths):
+        raise ValueError('lengths must be positive and non-empty')
+    if bucket_boundaries is None:
+        targets = [max(lengths)] * len(lengths)
+    else:
+        if any(type(boundary) is not int or boundary <= 0
+               for boundary in bucket_boundaries):
+            raise ValueError('桶边界必须是正整数')
+        boundaries = sorted(set(bucket_boundaries))
+        if not boundaries or boundaries[-1] < max(lengths) or any(boundary <= 0 for boundary in boundaries):
+            raise ValueError('bucket boundaries must cover every length')
+        targets = [next(boundary for boundary in boundaries if length <= boundary) for length in lengths]
+    wasted_tokens = sum(target - length for target, length in zip(targets, lengths))
+    return {'useful_tokens': sum(lengths), 'wasted_tokens': wasted_tokens, 'total_tokens': sum(targets), 'padding_ratio': wasted_tokens / sum(targets)}
+
+lengths = [64, 128, 256, 520, 800]
+single_batch = padding_overhead(lengths)
+bucketed = padding_overhead(lengths, [128, 256, 512, 1024])
+assert bucketed['wasted_tokens'] < single_batch['wasted_tokens']
+assert padding_overhead([65, 66], [128])['wasted_tokens'] > padding_overhead([65, 66])['wasted_tokens']
+print('single batch:', single_batch)
+print('bucketed:', bucketed)
+
+```
+
+## Q3：路径切换次数能否解释延迟波动？
+
+给定长度阈值后，可以统计请求进入哪些分支，以及相邻请求切换分支的次数。频繁切换提示需要检查编译产物、缓存和调度路径，但切换本身不等于发生重编译，也不证明延迟升高。
+
+下面只统计按给定阈值划分的路径。要解释真实波动，还要为同一请求关联执行路径、缓存事件与计时样本。
+
+### Q3 机制计算器：统计给定阈值下的分支变化
+
+
+```python
+def path_stability(lengths, boundaries=(256, 1024)):
+    """统计运行时路径种类和相邻请求的路径切换次数。"""
+    if not lengths or any(type(length) is not int or length <= 0 for length in lengths):
+        raise ValueError('lengths must be positive and non-empty')
+    if (len(boundaries) != 2
+            or any(type(value) is not int for value in boundaries)
+            or not 0 < boundaries[0] < boundaries[1]):
+        raise ValueError('boundaries must be two increasing positive values')
+    def route(length):
+        return 'short' if length < boundaries[0] else 'long' if length < boundaries[1] else 'very_long'
+    paths = [route(length) for length in lengths]
+    transitions = sum(left != right for left, right in zip(paths, paths[1:]))
+    return {'paths': paths, 'unique_paths': len(set(paths)), 'path_transitions': transitions, 'stable': transitions == 0}
+
+stable = path_stability([128, 128, 128])
+mixed = path_stability([128, 512, 128, 2048])
+assert stable['stable'] is True
+assert mixed['unique_paths'] == 3 and mixed['path_transitions'] == 3
+print('stable:', stable)
+print('mixed:', mixed)
+
+```
 
 ## 相关阅读
 
@@ -37,95 +145,3 @@
 - [15. CUDA Custom Kernel Intro | CUDA 自定义算子入门](../04_CUDA_and_System_Optimization/15_CUDA_Custom_Kernel_Intro.md)
 - [18. CUDA Graph and JIT Compile | CUDA Graph 与 JIT 编译](../04_CUDA_and_System_Optimization/18_CUDA_Graph_and_JIT_Compile.md)
 ---
-## Q1：动态 shape 为什么会让复用变差？
-
-<details><summary>点击展开查看解析</summary>
-
-固定 shape 时，batch 形状、缓存布局、kernel 形态和 graph 回放都更容易复用。
-
-一旦输入长度不固定，这些复用都会变差：不同请求要重新分桶，padding 会引入无效计算，graph / kernel 复用率下降，执行路径也更容易分叉。
-
-所以动态 shape 的难点，不是长度变化本身，而是它让原本能重复利用的优化结果变得不稳定。
-</details>
-### Q1小验证：固定假设为什么会失效
-
-先记住固定 shape 下哪些结果能复用，再看动态输入会打断哪些复用。
-
-```python
-def reuse_gap(shape_fixed=True, cached_batches=4, dynamic_lengths=1):
-    # 复用是否成立，不是看一句 fixed / dynamic，而是看缓存和 kernel 能复用多少次。
-    if not shape_fixed:
-        return {'reuse_ratio': round(cached_batches / (cached_batches + dynamic_lengths), 2), 'stable': False}
-    return {'reuse_ratio': 1.0, 'stable': True}
-
-for case in [(True, 4, 1), (False, 4, 1), (False, 2, 4)]:
-    print(case, '->', reuse_gap(*case))
-print('dynamic shape hurts when cached shapes stop being reusable')
-
-```
-
-## Q2：padding 和 bucketing 分别在减少什么浪费？
-
-<details><summary>点击展开查看解析</summary>
-
-- **padding** 减少的是形状不一致带来的拼 batch 难题，它用填充把不同长度的输入拼成更规则的张量；
-- **bucketing** 减少的是无效 padding，它把相近长度的请求放到同一桶里，让浪费更少。
-
-两者的目标都不是“消灭长度差异”，而是在吞吐、显存浪费和 kernel 稳定性之间找折中。
-
-如果没有这层处理，动态 batching 很容易同时损失计算效率和资源利用率。
-</details>
-### Q2小验证：什么时候更适合 bucketing
-
-长度分布越分散，bucketing 对减少 padding 浪费越有价值。
-
-```python
-def padding_overhead(lengths, bucket_size=None):
-    # padding 的代价在于把短序列补到同一长度时浪费了多少 token。
-    if bucket_size is None:
-        max_len = max(lengths)
-        wasted = sum(max_len - l for l in lengths)
-    else:
-        wasted = sum((bucket_size - (l % bucket_size)) % bucket_size for l in lengths)
-    return wasted
-
-batches = [[64, 128, 256], [240, 248, 256], [512, 520, 800]]
-for lengths in batches:
-    print(lengths, '-> waste no bucket:', padding_overhead(lengths), 'bucket128:', padding_overhead(lengths, 128))
-print('bucketing helps when the no-bucket waste is much larger than the bucket padding')
-
-```
-
-## Q3：动态 shape 为什么会让性能更容易抖动？
-
-<details><summary>点击展开查看解析</summary>
-
-动态 shape 会同时影响两层决策：
-
-1. **执行路径**：不同长度可能触发不同 kernel、不同 graph 或不同调度分支。
-2. **缓存策略**：原本在固定形状下可复用的编译结果、块大小、缓存布局和调度参数，在动态场景里可能要按形状重新选择。
-
-所以动态 shape 的本质，是把“编译期可确定的执行链”变成“依赖 runtime 形状判断的执行链”，性能也就更容易抖动。
-</details>
-### Q3小验证：为什么性能会抖动
-
-长度变化导致路径和缓存都跟着变时，性能就更容易抖。
-
-```python
-def path_stability(lengths):
-    # 形状一变就换路径，说明 runtime 选择带来的抖动会更大。
-    unique_paths = len(set('short' if l < 256 else 'long' if l < 1024 else 'very_long' for l in lengths))
-    return {'unique_paths': unique_paths, 'stable': unique_paths == 1}
-
-for lengths in [[128, 128, 128], [128, 512, 128], [128, 512, 2048]]:
-    print(lengths, '->', path_stability(lengths))
-print('more path variety means more performance jitter')
-
-```
-
-## ⚠️ 常见误区
-
-- 动态 shape 不是“只是输入长度不同”。
-- padding 能解决对齐，但不等于没有浪费。
-- bucketing 不是万能，只是减少浪费的办法之一。
-- 动态输入场景里，执行路径和缓存复用都可能变差。

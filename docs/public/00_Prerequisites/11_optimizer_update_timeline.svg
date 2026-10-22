@@ -1,9 +1,29 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="460" viewBox="0 0 1200 460" role="img" aria-labelledby="title desc">
-<title id="title">梯度累积、优化器更新与学习率调度时序</title><desc id="desc">多个 micro-batch 产生并累积梯度，达到更新边界后优化器读取状态更新参数，学习率调度器随 optimizer step 前进。</desc>
-<defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#64748b"/></marker><style>text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}.t{font-size:27px;font-weight:700}.s{font-size:14px;fill:#475569}.g{font-size:17px;font-weight:700}.h{font-size:15px;font-weight:700}.b{font-size:13px;fill:#475569}.p{stroke:#94a3b8;stroke-width:2;rx:15}.n{fill:#fff;stroke:#cbd5e1;stroke-width:1.5;rx:10}.f{stroke:#64748b;stroke-width:2.3;fill:none;marker-end:url(#a)}</style></defs>
-<rect width="1200" height="460" fill="#f8fafc"/><text x="600" y="40" text-anchor="middle" class="t">训练更新时序：梯度何时累积，状态何时前进</text><text x="600" y="67" text-anchor="middle" class="s">micro-batch 不等于 optimizer step；scheduler 也应跟随参数更新而不是每批数据前进</text>
-<rect x="35" y="115" width="500" height="275" fill="#e0f2fe" class="p"/><text x="285" y="147" text-anchor="middle" class="g">梯度形成与累积</text><rect x="65" y="190" width="125" height="70" class="n"/><text x="127" y="218" text-anchor="middle" class="h">micro-batch A</text><text x="127" y="240" text-anchor="middle" class="b">loss / backward</text><rect x="220" y="190" width="125" height="70" class="n"/><text x="282" y="218" text-anchor="middle" class="h">micro-batch B</text><text x="282" y="240" text-anchor="middle" class="b">loss / backward</text><rect x="375" y="190" width="125" height="70" class="n"/><text x="437" y="218" text-anchor="middle" class="h">grad buffer</text><text x="437" y="240" text-anchor="middle" class="b">累积后统一使用</text><path d="M190 225H215" class="f"/><path d="M345 225H370" class="f"/>
-<rect x="575" y="115" width="270" height="275" fill="#dcfce7" class="p"/><text x="710" y="147" text-anchor="middle" class="g">参数与优化器状态</text><rect x="605" y="178" width="210" height="70" class="n"/><text x="710" y="206" text-anchor="middle" class="h">SGD / AdamW step</text><text x="710" y="228" text-anchor="middle" class="b">读取 grad 更新参数</text><rect x="605" y="278" width="210" height="70" class="n"/><text x="710" y="306" text-anchor="middle" class="h">momentum / m / v</text><text x="710" y="328" text-anchor="middle" class="b">跨 step 保留状态</text><path d="M710 248V273" class="f"/>
-<rect x="885" y="115" width="280" height="275" fill="#fef3c7" class="p"/><text x="1025" y="147" text-anchor="middle" class="g">更新边界</text><rect x="915" y="178" width="220" height="64" class="n"/><text x="1025" y="205" text-anchor="middle" class="h">zero_grad</text><text x="1025" y="226" text-anchor="middle" class="b">为下一轮清理梯度</text><rect x="915" y="272" width="220" height="64" class="n"/><text x="1025" y="299" text-anchor="middle" class="h">scheduler.step</text><text x="1025" y="320" text-anchor="middle" class="b">跟随 optimizer step</text>
-<path d="M500 225H600" class="f"/><path d="M815 213H910" class="f"/><path d="M815 228H865V304H910" class="f"/>
+  <title id="title">micro-step、更新尝试、optimizer-step 与 scheduler-step 时序</title>
+  <desc id="desc">两个累计窗口分别形成更新尝试；第一次成功并推进优化器与调度器，第二次跳过并保持参数和学习率时钟不变。</desc>
+  <defs>
+    <marker id="arrow11" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker>
+    <style>
+      text{font-family:'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#172033}.title{font-size:27px;font-weight:700}.subtitle{font-size:14px;fill:#475569}.heading{font-size:17px;font-weight:700}.label{font-size:15px;font-weight:700}.note{font-size:13px;fill:#475569}.panel{stroke:#94a3b8;stroke-width:2}.node{fill:#fff;stroke:#a8b3c7;stroke-width:1.7}.success{fill:#dcfce7;stroke:#65a30d}.skip{fill:#fee2e2;stroke:#dc2626}.line{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow11)}
+    </style>
+  </defs>
+  <rect width="1200" height="460" fill="#f8fafc"/>
+  <text x="600" y="40" text-anchor="middle" class="title">训练更新时钟：到达边界不等于参数已经更新</text>
+  <text x="600" y="67" text-anchor="middle" class="subtitle">scheduler 只跟随成功的 optimizer-step；跳过更新时参数和学习率时钟都不推进</text>
+
+  <rect x="35" y="105" width="1130" height="135" rx="16" fill="#e0f2fe" class="panel" data-layout-role="panel"/>
+  <text x="62" y="136" class="heading">累计窗口 1</text>
+  <rect x="175" y="137" width="145" height="68" rx="10" class="node"/><text x="247" y="164" text-anchor="middle" class="label">micro-step 1</text><text x="247" y="186" text-anchor="middle" class="note">loss / backward</text>
+  <rect x="375" y="137" width="145" height="68" rx="10" class="node"/><text x="447" y="164" text-anchor="middle" class="label">micro-step 2</text><text x="447" y="186" text-anchor="middle" class="note">loss / backward</text>
+  <rect x="575" y="137" width="175" height="68" rx="10" class="node"/><text x="662" y="164" text-anchor="middle" class="label">更新尝试 1</text><text x="662" y="186" text-anchor="middle" class="note">到达累计边界</text>
+  <rect x="805" y="127" width="300" height="88" rx="10" class="success"/><text x="955" y="157" text-anchor="middle" class="label">更新成功</text><text x="955" y="181" text-anchor="middle" class="note">optimizer-step +1</text><text x="955" y="202" text-anchor="middle" class="note">scheduler-step +1</text>
+  <path d="M320 171H370" class="line"/><path d="M520 171H570" class="line"/><path d="M750 171H800" class="line"/>
+
+  <rect x="35" y="270" width="1130" height="135" rx="16" fill="#fef3c7" class="panel" data-layout-role="panel"/>
+  <text x="62" y="301" class="heading">累计窗口 2</text>
+  <rect x="175" y="302" width="145" height="68" rx="10" class="node"/><text x="247" y="329" text-anchor="middle" class="label">micro-step 3</text><text x="247" y="351" text-anchor="middle" class="note">loss / backward</text>
+  <rect x="375" y="302" width="145" height="68" rx="10" class="node"/><text x="447" y="329" text-anchor="middle" class="label">micro-step 4</text><text x="447" y="351" text-anchor="middle" class="note">loss / backward</text>
+  <rect x="575" y="302" width="175" height="68" rx="10" class="node"/><text x="662" y="329" text-anchor="middle" class="label">更新尝试 2</text><text x="662" y="351" text-anchor="middle" class="note">到达累计边界</text>
+  <rect x="805" y="292" width="300" height="88" rx="10" class="skip"/><text x="955" y="322" text-anchor="middle" class="label">更新跳过</text><text x="955" y="346" text-anchor="middle" class="note">optimizer-step 不变</text><text x="955" y="367" text-anchor="middle" class="note">scheduler-step 不变</text>
+  <path d="M320 336H370" class="line"/><path d="M520 336H570" class="line"/><path d="M750 336H800" class="line"/>
 </svg>

@@ -1,10 +1,156 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="title desc">
-<title id="title">Triton Program、Tile 与 Mask 的映射</title><desc id="desc">张量问题经过 program grid 切分为 tile，并用布局与 mask 完成连续访问和边界保护。</desc>
-<defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker><style>text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}.t{font-size:28px;font-weight:700}.s{font-size:15px;fill:#475569}.h{font-size:18px;font-weight:700}.b{font-size:14px;fill:#334155}.p{stroke-width:2}.f{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a)}</style></defs>
-<rect width="1280" height="520" rx="24" fill="#f8fafc"/><text x="640" y="45" text-anchor="middle" class="t">Triton Block 模型：先切 Tile，再定义映射</text><text x="640" y="73" text-anchor="middle" class="s">Program ID 选择工作块，Layout 决定数据映射，Mask 保护尾块边界</text>
-<rect x="45" y="135" width="260" height="240" rx="18" fill="#eff6ff" stroke="#60a5fa" class="p"/><text x="70" y="172" class="h">张量问题</text><text x="70" y="220" class="b">整体形状与计算轴</text><text x="70" y="255" class="b">数据类型和输出契约</text><text x="70" y="290" class="b">连续维度在哪里？</text>
-<rect x="355" y="135" width="260" height="240" rx="18" fill="#f0fdf4" stroke="#4ade80" class="p"/><text x="380" y="172" class="h">Program Grid</text><text x="380" y="220" class="b">Program ID 选择 Tile</text><text x="380" y="255" class="b">多个 Program 覆盖全局</text><text x="380" y="290" class="b">数量由问题规模决定</text>
-<rect x="665" y="135" width="260" height="240" rx="18" fill="#fffbeb" stroke="#f59e0b" class="p"/><text x="690" y="172" class="h">Tile 与 Layout</text><text x="690" y="220" class="b">块内向量化计算</text><text x="690" y="255" class="b">连续访问与数据复用</text><text x="690" y="290" class="b">资源预算限制 Tile</text>
-<rect x="975" y="135" width="260" height="240" rx="18" fill="#faf5ff" stroke="#a855f7" class="p"/><text x="1000" y="172" class="h">Mask 与验证</text><text x="1000" y="220" class="b">尾块不越界</text><text x="1000" y="255" class="b">输出与参考一致</text><text x="1000" y="290" class="b">访问与时间再实测</text>
-<path d="M305 255H355" class="f"/><path d="M615 255H665" class="f"/><path d="M925 255H975" class="f"/>
+<title id="title">Program 与尾块掩码：100 个元素，按 32 个槽分块</title><desc id="desc">最小覆盖网格为4个Program，覆盖128个逻辑槽。前三块各32个元素有效，尾块只有96至99共4个有效位置，100至127共28个位置在加载和存储时屏蔽。绿色表示有效槽，红色表示屏蔽槽。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:18px;font-weight:700}.body{font-size:15px;fill:#475569}.edge{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow)}.dep{stroke-dasharray:6 5}.axis{stroke:#94a3b8;stroke-width:1.5}.tick{font-size:14px;fill:#475569}</style></defs>
+<rect width="1280" height="520" fill="#f8fafc"/>
+<text class="title" x="640" y="45" text-anchor="middle">Program 与尾块掩码：100 个元素，按 32 个槽分块</text>
+<text class="body" x="640" y="76" text-anchor="middle">绿色：有效数据位置；红色：加载和存储时屏蔽。这里的元素槽不等于 CUDA 线程。</text>
+<text class="body" x="640" y="113" text-anchor="middle">i = Program ID × 32 + j，j = 0…31；有效条件：i ＜ 100</text>
+<rect x="40" y="155" width="260" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text class="head" x="170" y="185" text-anchor="middle">Program ID = 0</text><text class="body" x="170" y="211" text-anchor="middle">覆盖逻辑位置 0…31</text>
+<path class="edge" d="M170 235V300"/>
+<rect x="40" y="300" width="260" height="80" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text class="head" x="170" y="330" text-anchor="middle">有效偏移</text><text class="body" x="170" y="356" text-anchor="middle">0…31 全部有效</text>
+<path class="edge" d="M170 380V420"/>
+<rect x="50" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="57.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="65" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="72.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="80" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="87.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="95" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="102.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="110" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="117.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="125" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="132.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="140" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="147.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="155" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="162.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="170" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="177.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="185" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="192.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="200" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="207.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="215" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="222.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="230" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="237.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="245" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="252.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="260" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="267.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="275" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="282.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<text class="body" x="170" y="481" text-anchor="middle">32 个有效槽</text>
+<rect x="350" y="155" width="260" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text class="head" x="480" y="185" text-anchor="middle">Program ID = 1</text><text class="body" x="480" y="211" text-anchor="middle">覆盖逻辑位置 32…63</text>
+<path class="edge" d="M480 235V300"/>
+<rect x="350" y="300" width="260" height="80" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text class="head" x="480" y="330" text-anchor="middle">有效偏移</text><text class="body" x="480" y="356" text-anchor="middle">32…63 全部有效</text>
+<path class="edge" d="M480 380V420"/>
+<rect x="360" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="367.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="375" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="382.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="390" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="397.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="405" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="412.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="420" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="427.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="435" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="442.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="450" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="457.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="465" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="472.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="480" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="487.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="495" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="502.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="510" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="517.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="525" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="532.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="540" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="547.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="555" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="562.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="570" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="577.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="585" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="592.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<text class="body" x="480" y="481" text-anchor="middle">32 个有效槽</text>
+<rect x="660" y="155" width="260" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text class="head" x="790" y="185" text-anchor="middle">Program ID = 2</text><text class="body" x="790" y="211" text-anchor="middle">覆盖逻辑位置 64…95</text>
+<path class="edge" d="M790 235V300"/>
+<rect x="660" y="300" width="260" height="80" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text class="head" x="790" y="330" text-anchor="middle">有效偏移</text><text class="body" x="790" y="356" text-anchor="middle">64…95 全部有效</text>
+<path class="edge" d="M790 380V420"/>
+<rect x="670" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="677.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="685" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="692.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="700" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="707.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="715" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="722.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="730" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="737.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="745" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="752.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="760" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="767.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="775" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="782.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="790" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="797.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="805" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="812.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="820" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="827.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="835" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="842.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="850" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="857.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="865" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="872.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="880" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="887.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="895" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="902.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<text class="body" x="790" y="481" text-anchor="middle">32 个有效槽</text>
+<rect x="970" y="155" width="260" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text class="head" x="1100" y="185" text-anchor="middle">Program ID = 3</text><text class="body" x="1100" y="211" text-anchor="middle">覆盖逻辑位置 96…127</text>
+<path class="edge" d="M1100 235V300"/>
+<rect x="970" y="300" width="260" height="80" rx="12" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text class="head" x="1100" y="330" text-anchor="middle">尾块偏移</text><text class="body" x="1100" y="356" text-anchor="middle">96…99 有效；100…127 越界</text>
+<path class="edge" d="M1100 380V420"/>
+<rect x="980" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="987.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="995" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1002.5" y="420" width="7.5" height="30" fill="#86efac" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1010" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1017.5" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1025" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1032.5" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1040" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1047.5" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1055" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1062.5" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1070" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1077.5" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1085" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1092.5" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1100" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1107.5" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1115" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1122.5" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1130" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1137.5" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1145" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1152.5" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1160" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1167.5" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1175" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1182.5" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1190" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1197.5" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1205" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<rect x="1212.5" y="420" width="7.5" height="30" fill="#fecaca" stroke="#f8fafc" stroke-width="0.7" data-layout-role="glyph-group"/>
+<text class="body" x="1100" y="481" text-anchor="middle">4 个有效槽；28 个屏蔽槽</text>
 </svg>

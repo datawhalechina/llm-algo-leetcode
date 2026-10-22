@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1440" height="650" viewBox="0 0 1440 650" role="img" aria-labelledby="title desc">
   <title id="title">后训练优化对象与最小干预路径</title>
-  <desc id="desc">从稳定失败和非参数基线出发，识别需要改变的模型行为，再选择反馈信号、参数更新范围和独立采用门槛。</desc>
+  <desc id="desc">从稳定失败和非参数基线出发，识别需要改变的模型行为，再选择监督、偏好或二元反馈、奖励和教师反馈以及参数更新范围。独立评测区分能力增益目标与质量保持下的压缩收益，并检查安全、资源与回滚条件。</desc>
   <defs>
     <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse">
       <path d="M0 0L8 4L0 8Z" fill="#475569"/>
@@ -32,20 +32,20 @@
   <rect x="520" y="158" width="300" height="224" rx="18" class="node" fill="#DCFCE7" stroke="#16A34A"/>
   <text x="542" y="190" class="head">需要改变的模型行为</text>
   <rect x="542" y="208" width="256" height="34" rx="9" fill="#FFFFFF" stroke="#86EFAC"/>
-  <text x="557" y="231" class="copy">领域知识与任务能力 → 持续预训练 / SFT</text>
+  <text x="557" y="231" class="copy">领域知识 → 持续预训练 / SFT</text>
   <rect x="542" y="250" width="256" height="34" rx="9" fill="#FFFFFF" stroke="#86EFAC"/>
   <text x="557" y="273" class="copy">指令与输出格式 → SFT</text>
   <rect x="542" y="292" width="256" height="34" rx="9" fill="#FFFFFF" stroke="#86EFAC"/>
-  <text x="557" y="315" class="copy">偏好与安全边界 → DPO / RLHF</text>
+  <text x="557" y="315" class="copy">偏好与安全 → 离线偏好或在线奖励</text>
   <rect x="542" y="334" width="256" height="34" rx="9" fill="#FFFFFF" stroke="#86EFAC"/>
   <text x="557" y="357" class="copy">可验证推理与工具行为 → RLVR</text>
 
   <rect x="880" y="158" width="210" height="224" rx="18" class="node" fill="#FFF7ED" stroke="#EA580C"/>
   <text x="902" y="190" class="head">选择反馈信号</text>
   <text x="902" y="230" class="copy">监督标签</text>
-  <text x="902" y="264" class="copy">成对偏好</text>
-  <text x="902" y="298" class="copy">奖励模型</text>
-  <text x="902" y="332" class="copy">规则验证器</text>
+  <text x="902" y="264" class="copy">成对偏好 / 二元反馈</text>
+  <text x="902" y="298" class="copy">奖励模型 / 验证器</text>
+  <text x="902" y="332" class="copy">教师反馈</text>
   <text x="902" y="360" class="small">离线数据或在线采样</text>
 
   <rect x="1150" y="158" width="230" height="224" rx="18" class="node" fill="#F3E8FF" stroke="#9333EA"/>
@@ -57,15 +57,15 @@
 
   <rect x="520" y="458" width="860" height="116" rx="18" class="node" fill="#FFE4E6" stroke="#E11D48"/>
   <text x="542" y="492" class="head">候选模型必须通过独立采用门槛</text>
-  <text x="542" y="526" class="copy">目标能力增益　·　通用能力保持　·　安全与鲁棒性　·　训练和采样成本　·　失败切片与回滚条件</text>
-  <text x="542" y="554" class="small">证据齐全后再决定采用、继续调整或拒绝；局部训练损失不能代替独立评测。</text>
+  <text x="542" y="526" class="copy">目标能力增益或质量保持下的压缩收益　·　安全与鲁棒性　·　资源成本　·　失败切片与回滚条件</text>
+  <text x="542" y="554" class="small">实验前固定能力保持要求、质量容差与资源目标，再据独立评测决定采用、调整或拒绝。</text>
 
-  <path d="M263 270H286" class="line"/>
-  <path d="M378 200V178" class="line"/>
+  <path d="M263 270H294" class="line"/>
+  <path d="M378 200V170" class="line"/>
   <text x="394" y="190" class="hint">能</text>
-  <path d="M462 270H512" class="line"/>
+  <path d="M462 270H520" class="line"/>
   <text x="478" y="255" class="hint">不能</text>
-  <path d="M820 270H872" class="line"/>
-  <path d="M1090 270H1142" class="line"/>
-  <path d="M1265 382V420H950V450" class="line"/>
+  <path d="M820 270H880" class="line"/>
+  <path d="M1090 270H1150" class="line"/>
+  <path d="M1265 382V420H950V458" class="line"/>
 </svg>

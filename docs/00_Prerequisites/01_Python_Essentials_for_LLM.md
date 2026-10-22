@@ -10,7 +10,11 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-后续教程会反复使用序列、命名字段和小型函数传递 token、shape、配置与指标。这里先选择合适的数据结构，再用清楚的函数契约完成计算，并通过显式校验尽早暴露缺失字段和非法输入；03、04 将这些表达扩展到对象状态和运行文件。
+## 本节导读
+
+后续教程会反复使用有序数据、固定维度和命名字段传递 token、形状、配置与指标。数据结构选错后，字段含义、可变性和输入边界会变得含糊。
+
+完成本节后，你应能按顺序、可变性和字段访问方式选择数据结构，并用输入输出契约尽早识别缺失字段与非法输入。
 
 **关键词：** `list`, `tuple`, `dict`, `function contract`
 
@@ -19,12 +23,6 @@
 ## 前置阅读
 **导语：** 本页是 Part 00 的代码入口；具备基础 Python 经验时，可以直接从问题和验证代码开始。
 - [0A 组页](./0A.md)
-
-## 相关阅读
-**导语：** 掌握数据结构和函数契约后，继续学习数组维度、对象状态与实验配置。
-- [02. NumPy and Einsum | NumPy 与 Einsum](./02_NumPy_and_Einsum.md)
-- [03. Python OOP and Utility Patterns | Python 面向对象与工具模式](./03_Python_OOP_and_Utility_Patterns.md)
-- [04. Python Config and Data Entry | Python 配置与数据入口](./04_Python_Config_and_Data_Entry.md)
 
 ## Q1：list、tuple 和 dict 分别适合表达什么？
 
@@ -194,3 +192,11 @@ else:
     raise AssertionError('非法样本应在被消费时触发带位置的 ValueError')
 print('✅ 惰性样本处理通过')
 ```
+
+## 相关阅读
+
+掌握数据结构和函数契约后，继续学习数组维度、对象状态与实验配置。
+
+- [02. NumPy and Einsum | NumPy 与 Einsum](./02_NumPy_and_Einsum.md)
+- [03. Python OOP and Utility Patterns | Python 面向对象与工具模式](./03_Python_OOP_and_Utility_Patterns.md)
+- [04. Python Config and Data Entry | Python 配置与数据入口](./04_Python_Config_and_Data_Entry.md)

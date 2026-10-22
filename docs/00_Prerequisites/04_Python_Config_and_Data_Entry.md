@@ -10,7 +10,11 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-对象内部状态由 03 管理；本页转向对象外部的一次运行：配置说明如何运行，路径与资源管理输入输出位置，artifact 路径约定产物，manifest 将稳定条件绑定到 `run_id`。这四层共同为后续数据 batch、checkpoint 和项目结果提供可复查入口。
+## 本节导读
+
+一次运行除了对象内部状态，还包含配置、输入来源、资源路径和输出产物。缺少统一记录时，相同代码也可能因为外部条件不同而无法复现。
+
+完成本节后，你应能区分内部状态与外部运行条件，并用配置、路径、产物清单和运行身份追踪一次实验。
 
 **关键词：** `config`, `path`, `artifact`, `run_id`
 
@@ -20,12 +24,6 @@
 **导语：** 先理解函数契约和对象状态，再把它们落到配置、文件和运行产物。
 - [03. Python OOP and Utility Patterns | Python 面向对象与工具模式](./03_Python_OOP_and_Utility_Patterns.md)
 - [0A 组页](./0A.md)
-
-## 相关阅读
-**导语：** 建立配置与运行身份后，可以继续进入 Tensor 输入、checkpoint 和 batch 契约。
-- [05. PyTorch Tensor Fundamentals | PyTorch 张量基础操作](./05_PyTorch_Tensor_Fundamentals.md)
-- [10. PyTorch State, Checkpoint, and Recovery | PyTorch 状态、Checkpoint 与恢复](./10_PyTorch_State_dict_and_Persistence.md)
-- [12. PyTorch Data Interface and Training Lifecycle | PyTorch 数据接口与训练生命周期](./12_PyTorch_Minimal_Training_Interface.md)
 
 ## Q1：配置覆盖后为什么还要检查 schema？
 
@@ -202,3 +200,10 @@ print('✅ 最小运行清单通过')
 - 路径和 `with` 分别负责文件定位与资源生命周期。
 - 稳定路径区分输入、缓存、日志和 artifact。
 - manifest 用配置、seed、输入来源和 `run_id` 标识一次可复查运行。
+## 相关阅读
+
+建立配置与运行身份后，可以继续进入张量输入、检查点和批次契约。
+
+- [05. PyTorch Tensor Fundamentals | PyTorch 张量基础操作](./05_PyTorch_Tensor_Fundamentals.md)
+- [10. PyTorch State, Checkpoint, and Recovery | PyTorch 状态、Checkpoint 与恢复](./10_PyTorch_State_dict_and_Persistence.md)
+- [12. PyTorch Data Interface and Training Lifecycle | PyTorch 数据接口与训练生命周期](./12_PyTorch_Minimal_Training_Interface.md)

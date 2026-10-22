@@ -1,49 +1,36 @@
-# 第零部分：前置知识与环境准备
+# 第零部分：Python、PyTorch 与实验基础
 
 ## Part 概览
 
-第零部分覆盖 Python、NumPy、PyTorch、数据入口、训练循环、调试和性能意识，是 Part 2-4 的共同前置。完成这些页面后，学习者应能阅读代码与 shape、跟踪训练状态，并根据时间、容量和正确性证据排查问题。当前 Part 0 采用 notebook-first 统一管理，逻辑编号为 `01 ~ 20`，并按 `0A ~ 0E` 五组组织。
+模型代码中的形状错误、梯度中断、状态遗漏和计时偏差，往往来自基础接口没有对齐。Part 00 从数据与函数开始，逐步学习张量、模型对象、训练更新和模型组件，并用小规模 CPU 示例检查结果。
 
+## 学习路线
 
-## Part 资产总览
+初学者按 0A → 0B → 0C → 0D 阅读；熟悉 Python 和 NumPy 时可从 0B 开始。运行出错、需要测量时间或准备比较改动时，随时进入 0E，无需等其余组全部读完。图中实线表示主学习顺序，虚线表示按问题进入诊断与测量。
 
-本章分为 5 个学习组，按“Python / NumPy 与工程入口 → Tensor / Autograd → 模型构建 → 训练与模型直觉 → 调试与性能”的顺序推进，尽量让后续进入 Part 2 时不会在函数契约、张量变换、数据喂入和训练闭环上卡住。
+![Part 00 学习路线与诊断入口](../docs/public/00_Prerequisites/part00_learning_route.svg)
 
-| 学习组 | 核心职责 | 逻辑编号 | 组内目标 |
-|:---|:---|:---|:---|
-| [0A](./0A.md) | Python、NumPy 与工程入口 | `01 ~ 04` | 4 节 |
-| [0B](./0B.md) | PyTorch 张量与自动求导 | `05 ~ 08` | 4 节 |
-| [0C](./0C.md) | PyTorch 模型与训练闭环 | `09 ~ 12` | 4 节 |
-| [0D](./0D.md) | Transformer Block 与模型组件 | `13 ~ 16` | 4 节 |
-| [0E](./0E.md) | 调试与性能 | `17 ~ 20` | 4 节 |
+## 五组入口
 
-## 学习路径
+| 学习组 | 遇到的问题 | 完成后能检查什么 |
+|:---|:---|:---|
+| [0A Python、NumPy 与工程入口](./0A.md) | 数据如何组织，数组维度如何表达，配置与文件怎样管理？ | 函数输入、形状变换、对象状态和运行路径 |
+| [0B PyTorch 张量与自动求导](./0B.md) | 张量是否共享存储，维度怎样变化，梯度从哪里来？ | 张量布局、索引结果、反向梯度与梯度模式 |
+| [0C 模型与训练生命周期](./0C.md) | 哪些状态被注册、保存和更新，训练与验证怎样连接？ | 模型状态、恢复续跑、参数更新与评价指标 |
+| [0D Transformer Block 与模型组件](./0D.md) | Attention、激活和归一化怎样更新同一条隐状态？ | 分支增量、组件输出、局部梯度与多头形状 |
+| [0E 运行诊断与实验基础](./0E.md) | 运行是否有效，时间和容量怎样测量与比较？ | 首个失败点、计时样本、容量估算和实验条件 |
 
-Part 0 建议按组推进，逐步补齐表达、数据入口、PyTorch、训练直觉、调试和性能意识这些基础能力。若你的目标是尽快进入 Part 2，优先把 `0B / 0C / 0D` 串起来，再回看 `0A` 和 `0E` 的补充内容。
+## 后续衔接
 
-### 推荐顺序
+根据已经掌握的代码对象选择后续入口：Part 01 解释资源与执行条件，机制页和专题进一步展开具体方法。
 
-- 快速入门：先看 [0A](./0A.md) → [0B](./0B.md)
-- 面向 Part 2：先看 [0B](./0B.md) → [0C](./0C.md) → [0D](./0D.md)，再补 [0A](./0A.md) 和 [0E](./0E.md)。
-- 系统学习：按 [0A](./0A.md) → [0B](./0B.md) → [0C](./0C.md) → [0D](./0D.md) → [0E](./0E.md) 顺序推进
-
-### 面向后续部分
-
-- [0A](./0A.md)、[0B](./0B.md)：服务 Part 2 / Part 3 的函数、数据入口与张量前置，重点帮你读懂 shape、layout、索引、配置 / I/O、计算图和梯度边界。
-- [0C](./0C.md)、[0D](./0D.md)：服务 Part 2 的训练与模型前置，重点帮你接上 `nn.Module`、checkpoint、optimizer、训练闭环、residual stream 和基础组件机制。
-- [0E](./0E.md)：服务 Part 2-4 的调试与性能前置，重点帮你建立排错和资源判断习惯。
-
-### Part 1 对照
-
-Part 0 和 Part 1 是两层互补的前置：Part 0 先把代码写法、数据入口和训练入口补齐，Part 1 再把数量级、硬件和系统判断讲深。对于 Part 2 的学习来说，Part 1 不是必须先读完，但它能把“为什么这样写代码”背后的资源与系统原因补全。
-
-- [P1: 1A](../01_Hardware_Math_and_Systems/1A.md)：`0A` / `0B` 的数量级对照，补数据类型、精度、参数量和 FLOPs 的判断。
-- [P1: 1B](../01_Hardware_Math_and_Systems/1B.md)：`0B` / `0D` / `0E` 的性能对照，补 GPU 架构、访存和 profiling 直觉。
-- [P1: 1C](../01_Hardware_Math_and_Systems/1C.md)：`0C` / `0D` / `0E` 的训练对照，补多卡通信、VRAM 计算和 checkpoint 代价。
-- [P1: 1D](../01_Hardware_Math_and_Systems/1D.md)：`0B` / `0D` / `0E` 的执行对照，补 CUDA / Triton、调度和算子编程视角。
-- [P1: 1E](../01_Hardware_Math_and_Systems/1E.md)：`0C` / `0E` 的选型对照，补编译优化、硬件判断和 TCO 视角。
+| 接下来要解决的问题 | 优先入口 |
+|:---|:---|
+| 理解梯度、损失归约和有效参数更新 | [反向传播与训练机制](../topic_discussion/backpropagation_training_mechanism/intro.md) |
+| 理解模型组件怎样组合与演进 | [Part 02 模型组件](../02_PyTorch_Algorithms/2_1.md)、[大模型架构演进](../topic_discussion/llm_architecture_evolution/intro.md) |
+| 从时间、容量现象定位性能问题 | [性能分析](../topic_discussion/performance_analysis/intro.md) |
+| 估算规模、访存和通信，或开始编写计算内核 | [Part 01 硬件、数学与系统](../01_Hardware_Math_and_Systems/intro.md) |
 
 ## 环境说明
 
-- 默认按 `CPU-first` 设计
-- 少数页面会标注 `GPU optional` 或 `GPU required`
+使用 [`BASE-CPU`](../docs/guide.md#base-cpu) 运行本部分的参考代码与验证。后续 GPU、编译工具链或多卡实验，按目标页面的环境说明准备。

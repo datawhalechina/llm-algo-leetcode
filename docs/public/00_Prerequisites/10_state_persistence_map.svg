@@ -1,11 +1,30 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="460" viewBox="0 0 1200 460" role="img" aria-labelledby="title desc">
-<title id="title">模型状态的保存、迁移与恢复</title><desc id="desc">从运行中的模块提取命名状态，序列化为产物，再按严格或非严格策略恢复到新模型。</desc>
-<defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#64748b"/></marker><style>text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}.t{font-size:27px;font-weight:700}.s{font-size:14px;fill:#475569}.g{font-size:17px;font-weight:700}.h{font-size:16px;font-weight:700}.b{font-size:13px;fill:#475569}.p{stroke:#94a3b8;stroke-width:2;rx:15}.n{fill:#fff;stroke:#cbd5e1;stroke-width:1.5;rx:10}.f{stroke:#64748b;stroke-width:2.3;fill:none;marker-end:url(#a)}</style></defs>
-<rect width="1200" height="460" fill="#f8fafc"/><text x="600" y="40" text-anchor="middle" class="t">模型状态：从运行对象到可恢复产物</text><text x="600" y="67" text-anchor="middle" class="s">保存的是命名 Tensor 状态；加载时还要核对结构、版本和迁移报告</text>
-<rect x="35" y="120" width="205" height="245" fill="#e0f2fe" class="p"/><text x="137" y="151" text-anchor="middle" class="g">运行模型</text><rect x="62" y="188" width="150" height="72" class="n"/><text x="137" y="216" text-anchor="middle" class="h">Module tree</text><text x="137" y="239" text-anchor="middle" class="b">参数与 buffer</text>
-<rect x="275" y="120" width="205" height="245" fill="#dcfce7" class="p"/><text x="377" y="151" text-anchor="middle" class="g">命名状态</text><rect x="302" y="188" width="150" height="72" class="n"/><text x="377" y="216" text-anchor="middle" class="h">state_dict</text><text x="377" y="239" text-anchor="middle" class="b">key → Tensor</text>
-<rect x="515" y="120" width="205" height="245" fill="#fef3c7" class="p"/><text x="617" y="151" text-anchor="middle" class="g">模型产物</text><rect x="542" y="177" width="150" height="94" class="n"/><text x="617" y="207" text-anchor="middle" class="h">serialized bytes</text><text x="617" y="230" text-anchor="middle" class="b">schema / version</text><text x="617" y="250" text-anchor="middle" class="b">来源与配置</text>
-<rect x="755" y="120" width="205" height="245" fill="#fce7f3" class="p"/><text x="857" y="151" text-anchor="middle" class="g">加载策略</text><rect x="782" y="170" width="150" height="62" class="n"/><text x="857" y="197" text-anchor="middle" class="h">strict=True</text><text x="857" y="217" text-anchor="middle" class="b">结构完全一致</text><rect x="782" y="252" width="150" height="62" class="n"/><text x="857" y="279" text-anchor="middle" class="h">strict=False</text><text x="857" y="299" text-anchor="middle" class="b">报告缺失/多余 key</text>
-<rect x="995" y="120" width="170" height="245" fill="#ede9fe" class="p"/><text x="1080" y="151" text-anchor="middle" class="g">恢复结果</text><rect x="1018" y="188" width="124" height="72" class="n"/><text x="1080" y="216" text-anchor="middle" class="h">新模型</text><text x="1080" y="239" text-anchor="middle" class="b">状态可核验</text>
-<path d="M240 242H270" class="f"/><path d="M480 242H510" class="f"/><path d="M720 242H750" class="f"/><path d="M960 242H990" class="f"/>
+  <title id="title">模型产物与训练 checkpoint 的两条恢复路径</title>
+  <desc id="desc">模型产物保存模型配置与模型状态并检查结构兼容；训练 checkpoint 额外保存更新、随机、进度和验证状态，并通过恢复后继续一步验证轨迹。</desc>
+  <defs>
+    <marker id="arrow10" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker>
+    <style>
+      text{font-family:'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#172033}.title{font-size:27px;font-weight:700}.subtitle{font-size:14px;fill:#475569}.heading{font-size:17px;font-weight:700}.label{font-size:15px;font-weight:700}.note{font-size:13px;fill:#475569}.panel{stroke:#94a3b8;stroke-width:2}.node{fill:#fff;stroke:#a8b3c7;stroke-width:1.7}.line{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow10)}
+    </style>
+  </defs>
+  <rect width="1200" height="460" fill="#f8fafc"/>
+  <text x="600" y="40" text-anchor="middle" class="title">持久化：发布模型与恢复训练需要不同状态</text>
+  <text x="600" y="67" text-anchor="middle" class="subtitle">模型产物回答“怎样重建模型”，训练 checkpoint 还要回答“怎样从同一时间点继续”</text>
+
+  <rect x="35" y="105" width="1130" height="130" rx="16" fill="#e0f2fe" class="panel" data-layout-role="panel"/>
+  <text x="62" y="137" class="heading">模型产物</text>
+  <rect x="180" y="135" width="225" height="70" rx="10" class="node"/><text x="292" y="163" text-anchor="middle" class="label">模型配置 + model state</text><text x="292" y="185" text-anchor="middle" class="note">格式版本、构造参数、parameter / buffer</text>
+  <rect x="505" y="135" width="225" height="70" rx="10" class="node"/><text x="617" y="163" text-anchor="middle" class="label">结构兼容检查</text><text x="617" y="185" text-anchor="middle" class="note">strict 或 missing / unexpected keys</text>
+  <rect x="830" y="135" width="225" height="70" rx="10" class="node"/><text x="942" y="163" text-anchor="middle" class="label">新模型实例</text><text x="942" y="185" text-anchor="middle" class="note">状态与前向结果可核验</text>
+  <path d="M405 170H500" class="line"/><path d="M730 170H825" class="line"/>
+
+  <rect x="35" y="260" width="1130" height="165" rx="16" fill="#dcfce7" class="panel" data-layout-role="panel"/>
+  <text x="62" y="292" class="heading">训练 checkpoint</text>
+  <rect x="180" y="290" width="260" height="105" rx="10" class="node"/>
+  <text x="310" y="317" text-anchor="middle" class="label">同一保存时刻的完整状态</text>
+  <text x="310" y="341" text-anchor="middle" class="note">模型 · 优化器 · 调度器</text>
+  <text x="310" y="363" text-anchor="middle" class="note">随机状态 · 训练进度 · 验证状态</text>
+  <rect x="515" y="290" width="220" height="105" rx="10" class="node"/><text x="625" y="323" text-anchor="middle" class="label">恢复全部对象</text><text x="625" y="349" text-anchor="middle" class="note">epoch / micro-step</text><text x="625" y="371" text-anchor="middle" class="note">optimizer-step 对齐</text>
+  <rect x="810" y="290" width="245" height="105" rx="10" class="node"/><text x="932" y="323" text-anchor="middle" class="label">继续执行一步</text><text x="932" y="349" text-anchor="middle" class="note">随机输入、损失与参数</text><text x="932" y="371" text-anchor="middle" class="note">和未中断路径一致</text>
+  <path d="M440 342H510" class="line"/><path d="M735 342H805" class="line"/>
 </svg>

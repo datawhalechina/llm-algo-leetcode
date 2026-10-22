@@ -1,33 +1,53 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1400" height="500" viewBox="0 0 1400 500" role="img" aria-labelledby="title desc">
-  <title id="title">性能证据汇总与单变量实验</title>
-  <desc id="desc">从时间、容量和正确性证据形成可证伪假设，在固定条件下配对比较基线与候选，并结合波动、质量与失败运行作出判断。</desc>
+  <title id="title">从运行有效性到单变量实验判断</title>
+  <desc id="desc">先检查运行有效性，再接收时间和容量证据，形成可证伪假设，在固定条件下配对比较基线与候选，最后结合波动、质量与失败运行作出判断。</desc>
   <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
-    <style>text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#526581}.head{font-size:18px;font-weight:700}.body{font-size:14px;fill:#334155}.small{font-size:13px;fill:#475569}.node{stroke-width:2;rx:17}.line{stroke:#475569;stroke-width:2.8;fill:none;marker-end:url(#arrow)}</style>
+    <marker id="arrow20" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+    <style>
+      text{font-family:'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#526581}.head{font-size:18px;font-weight:700}.body{font-size:14px;fill:#334155}.small{font-size:13px;fill:#475569}.node{stroke-width:2}.line{stroke:#475569;stroke-width:2.8;fill:none;marker-end:url(#arrow20)}
+    </style>
   </defs>
   <rect width="1400" height="500" fill="#f8fafc"/>
-  <text x="700" y="46" text-anchor="middle" class="title">性能证据：从观察到可复查判断</text>
-  <text x="700" y="74" text-anchor="middle" class="sub">固定条件、单一变化、重复采样；收益必须超过波动并通过质量门槛</text>
+  <text x="700" y="46" text-anchor="middle" class="title">性能证据：从有效运行到可复查判断</text>
+  <text x="700" y="74" text-anchor="middle" class="sub">先过正确性门槛，再接收既有证据；候选收益必须超过波动并通过质量门槛</text>
 
-  <rect x="40" y="125" width="230" height="285" fill="#eff6ff" stroke="#60a5fa" class="node"/>
-  <text x="65" y="164" class="head">汇总证据</text>
-  <text x="65" y="208" class="body">时间：热点与阶段占比</text><text x="65" y="240" class="body">容量：主导对象与峰值</text><text x="65" y="272" class="body">正确性：契约与有限值</text><text x="65" y="330" class="small">正确性失败时停止解释性能</text>
+  <rect x="40" y="125" width="230" height="285" rx="17" fill="#fee2e2" stroke="#fb7185" class="node"/>
+  <text x="65" y="164" class="head">1. 有效性门槛</text>
+  <text x="65" y="208" class="body">run_valid</text>
+  <text x="65" y="240" class="body">issues · first failure</text>
+  <text x="65" y="272" class="body">最小复现状态</text>
+  <text x="65" y="330" class="small">invalid：停止性能解释</text>
 
-  <rect x="315" y="125" width="230" height="285" fill="#fef3c7" stroke="#f59e0b" class="node"/>
-  <text x="340" y="164" class="head">形成可证伪假设</text>
-  <text x="340" y="208" class="body">选择一个主导信号</text><text x="340" y="240" class="body">写出预期变化方向</text><text x="340" y="272" class="body">登记失败时如何改判</text><text x="340" y="330" class="small">证据不足时继续采集</text>
+  <rect x="315" y="125" width="230" height="285" rx="17" fill="#eff6ff" stroke="#60a5fa" class="node"/>
+  <text x="340" y="164" class="head">2. 接收既有证据</text>
+  <text x="340" y="208" class="body">17：时间与阶段热点</text>
+  <text x="340" y="240" class="body">18：峰值与主要对象</text>
+  <text x="340" y="272" class="body">保留 workload 与范围</text>
+  <text x="340" y="330" class="small">不重新运行 profiler 或账本</text>
 
-  <rect x="590" y="125" width="230" height="285" fill="#f0fdf4" stroke="#4ade80" class="node"/>
-  <text x="615" y="164" class="head">单变量配对实验</text>
-  <text x="615" y="208" class="body">固定模型、输入与设备</text><text x="615" y="240" class="body">基线 ↔ 候选</text><text x="615" y="272" class="body">只改变一个机制变量</text><text x="615" y="330" class="small">同时记录成功与失败运行</text>
+  <rect x="590" y="125" width="230" height="285" rx="17" fill="#fef3c7" stroke="#f59e0b" class="node"/>
+  <text x="615" y="164" class="head">3. 可证伪假设</text>
+  <text x="615" y="208" class="body">选择一个主导信号</text>
+  <text x="615" y="240" class="body">写出预期变化方向</text>
+  <text x="615" y="272" class="body">声明证伪条件</text>
+  <text x="615" y="330" class="small">证据不足：继续采集</text>
 
-  <rect x="865" y="125" width="230" height="285" fill="#f5f3ff" stroke="#a78bfa" class="node"/>
-  <text x="890" y="164" class="head">汇总重复样本</text>
-  <text x="890" y="208" class="body">中位数与 P95</text><text x="890" y="240" class="body">基线自身波动</text><text x="890" y="272" class="body">质量与资源代价</text><text x="890" y="330" class="small">失败样本不填零、不丢弃</text>
+  <rect x="865" y="125" width="230" height="285" rx="17" fill="#f0fdf4" stroke="#4ade80" class="node"/>
+  <text x="890" y="164" class="head">4. 单变量实验</text>
+  <text x="890" y="208" class="body">固定模型、输入与设备</text>
+  <text x="890" y="240" class="body">基线 ↔ 候选</text>
+  <text x="890" y="272" class="body">重复样本与失败运行</text>
+  <text x="890" y="330" class="small">只改变一个候选变量</text>
 
-  <rect x="1140" y="125" width="230" height="285" fill="#fce7f3" stroke="#f472b6" class="node"/>
-  <text x="1165" y="164" class="head">回归判断</text>
-  <text x="1165" y="208" class="body">差异超过噪声</text><text x="1165" y="240" class="body">质量通过门槛</text><text x="1165" y="272" class="body">有效样本足够</text><text x="1165" y="330" class="small">接受 · 拒绝 · 重新测量</text>
+  <rect x="1140" y="125" width="230" height="285" rx="17" fill="#fce7f3" stroke="#f472b6" class="node"/>
+  <text x="1165" y="164" class="head">5. 实验判断</text>
+  <text x="1165" y="208" class="body">差异超过基线波动</text>
+  <text x="1165" y="240" class="body">质量与 P95 不回退</text>
+  <text x="1165" y="272" class="body">失败率与样本数达标</text>
+  <text x="1165" y="330" class="small">accept · reject · rerun</text>
 
-  <path d="M270 267H305" class="line"/><path d="M545 267H580" class="line"/><path d="M820 267H855" class="line"/><path d="M1095 267H1130" class="line"/>
+  <path d="M270 267H315" class="line"/>
+  <path d="M545 267H590" class="line"/>
+  <path d="M820 267H865" class="line"/>
+  <path d="M1095 267H1140" class="line"/>
 </svg>

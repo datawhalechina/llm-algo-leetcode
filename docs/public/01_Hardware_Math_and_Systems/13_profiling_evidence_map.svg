@@ -35,9 +35,9 @@
   <text x="820" y="155" class="head">3. 形成瓶颈假设</text>
   <text x="820" y="190" class="body">机器平衡点 ↔ 算术强度</text>
   <text x="820" y="220" class="body">计算内核 ↔ 搬运 ↔ 同步 ↔ 启动</text>
-  <text x="820" y="250" class="body">选择最大暴露时间来源</text>
+  <text x="820" y="250" class="body">对照上界效率与最大暴露项</text>
   <text x="820" y="292" class="small">输出：计算、访存、搬运或调度假设</text>
-  <text x="820" y="322" class="small">归因仍是待验证结论</text>
+  <text x="820" y="322" class="small">远离上界时继续检查执行限制</text>
 
   <rect x="1170" y="120" width="285" height="245" rx="18" fill="#faf5ff" stroke="#a855f7" class="panel"/>
   <text x="1195" y="155" class="head">4. 设计判别实验</text>

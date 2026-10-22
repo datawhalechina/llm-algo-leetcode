@@ -2,12 +2,12 @@
   <title id="title">在线强化学习的执行阶段与状态生命周期</title>
   <desc id="desc">上层展示轨迹采样、奖励、参数更新和候选交付，下层展示与各阶段对应的策略版本、轨迹身份、队列准入、检查点以及版本激活或回滚。</desc>
   <defs>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker>
-    <marker id="stateArrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#7C3AED"/></marker>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+    <marker id="stateArrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#7C3AED"/></marker>
     <style>
-      .title{font:700 28px Arial,sans-serif;fill:#172033}.subtitle{font:15px Arial,sans-serif;fill:#475569}
-      .lane{font:700 14px Arial,sans-serif;fill:#64748B;letter-spacing:1px}.head{font:700 16px Arial,sans-serif;fill:#172033}
-      .copy{font:14px Arial,sans-serif;fill:#334155}.small{font:13px Arial,sans-serif;fill:#475569}
+      .title{font-family:"Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#172033}.subtitle{font-family:"Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:400;fill:#475569}
+      .lane{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;font-weight:700;fill:#64748B;letter-spacing:1px}.head{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;font-weight:700;fill:#172033}
+      .copy{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;font-weight:400;fill:#334155}.small{font-family:"Noto Sans CJK SC",sans-serif;font-size:13px;font-weight:400;fill:#475569}
       .flow{fill:none;stroke:#475569;stroke-width:2.4;marker-end:url(#arrow)}
       .state{fill:none;stroke:#7C3AED;stroke-width:2.2;marker-end:url(#stateArrow)}
       .bind{fill:none;stroke:#94A3B8;stroke-width:2;stroke-dasharray:6 5;marker-end:url(#arrow)}
@@ -15,39 +15,39 @@
   </defs>
   <rect width="1280" height="650" fill="#F8FAFC"/>
   <rect x="32" y="24" width="1216" height="600" rx="26" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
-  <text x="68" y="70" class="title">在线强化学习：执行阶段必须与状态生命周期一起推进</text>
+  <text x="68" y="70" class="title">在线训练：采样、更新与权重同步</text>
   <text x="68" y="99" class="subtitle">吞吐只描述执行速度；轨迹身份、队列状态、策略版本和恢复点决定结果能否用于下一次更新。</text>
 
   <text x="68" y="144" class="lane">执行阶段</text>
-  <rect x="68" y="164" width="190" height="104" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
+  <rect id="node-2" x="68" y="164" width="190" height="104" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
   <text x="90" y="199" class="head">当前策略与提示</text><text x="90" y="227" class="copy">策略版本 · 采样配置</text><text x="90" y="251" class="small">固定任务与候选数量</text>
-  <rect x="300" y="164" width="190" height="104" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
-  <text x="322" y="199" class="head">轨迹采样</text><text x="322" y="227" class="copy">采样工作进程 · KV Cache</text><text x="322" y="251" class="small">生成长度 · 等待 · 失败</text>
-  <rect x="532" y="164" width="190" height="104" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
+  <rect id="node-3" x="300" y="164" width="190" height="104" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
+  <text x="322" y="199" class="head">轨迹采样</text><text x="322" y="227" class="copy">采样工作进程 · KV 缓存</text><text x="322" y="251" class="small">生成长度 · 等待 · 失败</text>
+  <rect id="node-4" x="532" y="164" width="190" height="104" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
   <text x="554" y="199" class="head">奖励与验证</text><text x="554" y="227" class="copy">模型评分 · 规则 · 终态</text><text x="554" y="251" class="small">超时与不可判定分开记录</text>
-  <rect x="764" y="164" width="190" height="104" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
+  <rect id="node-5" x="764" y="164" width="190" height="104" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
   <text x="786" y="199" class="head">参数更新</text><text x="786" y="227" class="copy">学习器 · 优化器 · 通信</text><text x="786" y="251" class="small">提交候选策略与检查点</text>
-  <rect x="996" y="164" width="190" height="104" rx="15" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+  <rect id="node-6" x="996" y="164" width="190" height="104" rx="15" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
   <text x="1018" y="199" class="head">交付独立评测</text><text x="1018" y="227" class="copy">候选版本 · 清单 · 恢复点</text><text x="1018" y="251" class="small">采用决策由下游独立完成</text>
-  <path d="M258 216H292" class="flow"/><path d="M490 216H524" class="flow"/><path d="M722 216H756" class="flow"/><path d="M954 216H988" class="flow"/>
+  <path d="M258 216H300" data-source="node-2" data-target="node-3" class="flow"/><path d="M490 216H532" data-source="node-3" data-target="node-4" class="flow"/><path d="M722 216H764" data-source="node-4" data-target="node-5" class="flow"/><path d="M954 216H996" data-source="node-5" data-target="node-6" class="flow"/>
 
   <text x="68" y="328" class="lane">状态与恢复</text>
-  <rect x="68" y="350" width="190" height="118" rx="15" fill="#F8FAFC" stroke="#64748B" stroke-width="2"/>
+  <rect id="node-7" x="68" y="350" width="190" height="118" rx="15" fill="#F8FAFC" stroke="#64748B" stroke-width="2"/>
   <text x="90" y="384" class="head">策略版本</text><text x="90" y="412" class="copy">模型 · 分词器 · 哈希</text><text x="90" y="438" class="small">工作进程确认后才可激活</text>
-  <rect x="300" y="350" width="190" height="118" rx="15" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2"/>
+  <rect id="node-8" x="300" y="350" width="190" height="118" rx="15" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2"/>
   <text x="322" y="384" class="head">轨迹身份</text><text x="322" y="412" class="copy">提示 · 动作 · 行为策略</text><text x="322" y="438" class="small">奖励版本与采样配置</text>
-  <rect x="532" y="350" width="190" height="118" rx="15" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2"/>
-  <text x="554" y="384" class="head">队列准入与预留</text><text x="554" y="412" class="copy">新鲜度 · 偏离 · 去重</text><text x="554" y="438" class="small">绑定 update_id，失败时释放</text>
-  <rect x="764" y="350" width="190" height="118" rx="15" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2"/>
-  <text x="786" y="384" class="head">更新与恢复状态</text><text x="786" y="412" class="copy">step · RNG · 数据游标</text><text x="786" y="438" class="small">提交后才标记轨迹已消费</text>
-  <rect x="996" y="326" width="190" height="68" rx="14" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+  <rect id="node-9" x="532" y="350" width="190" height="118" rx="15" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2"/>
+  <text x="554" y="384" class="head">队列准入与预留</text><text x="554" y="412" class="copy">新鲜度 · 偏离 · 去重</text><text x="554" y="438" class="small">绑定更新批次，失败时释放</text>
+  <rect id="node-10" x="764" y="350" width="190" height="118" rx="15" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2"/>
+  <text x="786" y="384" class="head">更新与恢复状态</text><text x="786" y="412" class="copy">更新步、随机状态与游标</text><text x="786" y="438" class="small">提交后才标记轨迹已消费</text>
+  <rect id="node-11" x="996" y="326" width="190" height="68" rx="14" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
   <text x="1018" y="359" class="head">激活新策略</text><text x="1018" y="383" class="small">广播版本并确认哈希</text>
-  <rect x="996" y="424" width="190" height="68" rx="14" fill="#FEE2E2" stroke="#DC2626" stroke-width="2"/>
+  <rect id="node-12" x="996" y="424" width="190" height="68" rx="14" fill="#FEE2E2" stroke="#DC2626" stroke-width="2"/>
   <text x="1018" y="457" class="head">回滚或隔离</text><text x="1018" y="481" class="small">恢复检查点并保留失败证据</text>
 
-  <path d="M258 409H292" class="state"/><path d="M490 409H524" class="state"/><path d="M722 409H756" class="state"/>
-  <path d="M954 387H988" class="state"/><path d="M954 431H976V458H988" class="state"/>
-  <path d="M163 268V342" class="bind"/><path d="M395 268V342" class="bind"/><path d="M627 268V342" class="bind"/><path d="M859 268V342" class="bind"/>
-  <path d="M1091 268V318" class="bind"/>
-  <path d="M1186 360H1214V520H163V468" class="state"/>
+  <path d="M258 409H300" data-source="node-7" data-target="node-8" class="state"/><path d="M490 409H532" data-source="node-8" data-target="node-9" class="state"/><path d="M722 409H764" data-source="node-9" data-target="node-10" class="state"/>
+  <path d="M954 380H976V360H996" data-source="node-10" data-target="node-11" class="state"/><path d="M954 431H976V458H996" data-source="node-10" data-target="node-12" class="state"/>
+  <path d="M163 268V350" data-source="node-2" data-target="node-7" class="bind"/><path d="M395 268V350" data-source="node-3" data-target="node-8" class="bind"/><path d="M627 268V350" data-source="node-4" data-target="node-9" class="bind"/><path d="M859 268V350" data-source="node-5" data-target="node-10" class="bind"/>
+  <path d="M900 268V300H1091V326" data-source="node-5" data-target="node-11" class="bind"/>
+  <path d="M1186 360H1214V520H163V468" data-source="node-11" data-target="node-7" class="state"/>
 </svg>

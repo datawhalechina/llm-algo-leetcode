@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1400" height="600" viewBox="0 0 1400 600" role="img" aria-labelledby="title desc">
-  <title id="title">从异常现象到可重放的最小复现</title>
-  <desc id="desc">异常先分到张量契约、数值传播和梯度链路，定位第一失败点后共同汇合为固定输入、环境和失败位置的最小复现。</desc>
+  <title id="title">从异常现象到运行有效性结论</title>
+  <desc id="desc">异常先分到张量契约、数值传播和梯度链路，定位第一失败点并形成最小复现，最后输出是否允许继续解释性能的有效性结论。</desc>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
     <style>
@@ -8,8 +8,8 @@
     </style>
   </defs>
   <rect width="1400" height="600" fill="#f8fafc"/>
-  <text x="55" y="48" class="title">异常定位：找到第一失败点，再构造最小复现</text>
-  <text x="55" y="77" class="sub">结构、数值和梯度路径使用不同检查工具，但最终都要固定触发条件并重放同一失败</text>
+  <text x="55" y="48" class="title">运行有效性：先定位第一失败点，再决定是否继续分析</text>
+  <text x="55" y="77" class="sub">结构、数值和梯度路径使用不同检查工具；任一检查失败时停止性能解释并保留复现条件</text>
 
   <rect x="525" y="105" width="350" height="75" fill="#fee2e2" stroke="#fb7185" class="panel"/>
   <text x="700" y="136" text-anchor="middle" class="head">异常现象</text>
@@ -40,10 +40,11 @@
   <path d="M700 180V235" class="line"/>
   <path d="M775 180V205H1155V235" class="line"/>
 
-  <rect x="420" y="495" width="560" height="75" fill="#e0f2fe" stroke="#38bdf8" class="panel"/>
-  <text x="700" y="526" text-anchor="middle" class="head">可重放的最小复现</text>
-  <text x="700" y="552" text-anchor="middle" class="body">随机种子 · 输入值与契约 · 最小操作 · 首个失败点 · 框架版本</text>
-  <path d="M245 440V470H565V495" class="line"/>
-  <path d="M700 440V495" class="line"/>
-  <path d="M1155 440V470H835V495" class="line"/>
+  <rect x="420" y="485" width="560" height="95" fill="#e0f2fe" stroke="#38bdf8" class="panel"/>
+  <text x="700" y="516" text-anchor="middle" class="head">最小复现与有效性结论</text>
+  <text x="700" y="541" text-anchor="middle" class="body">随机种子 · 输入与契约 · 最小操作 · 首个失败点 · 框架版本</text>
+  <text x="700" y="564" text-anchor="middle" class="body">valid → 采集性能证据　　invalid → 停止解释并继续定位</text>
+  <path d="M245 440V465H565V485" class="line"/>
+  <path d="M700 440V485" class="line"/>
+  <path d="M1155 440V465H835V485" class="line"/>
 </svg>

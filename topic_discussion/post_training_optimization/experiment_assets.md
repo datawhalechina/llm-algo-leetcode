@@ -1,117 +1,105 @@
 # 后训练优化实验资产表
 
-本表登记后训练机制页和项目页使用的环境、工作负载、产物与证据等级。环境创建见[实验 Quickstart](./quickstart.md)，项目公共结果字段见[Part 02 结果资产与证据契约](../../docs/part02_result_assets.md)。
+本表登记后训练机制与项目的环境、固定输入、结果和交接状态。安装与续装见[实验 Quickstart](./quickstart.md)，公共结果字段见[结果资产规范](../../docs/part02_result_assets.md)。正式记录、历史记录及未完成项分开说明，原始 JSON 和日志保持不变。
 
-## 环境角色
+## 环境与实验入口
 
-| 环境 ID | 适用入口 | 可形成的证据 |
+模型缓存可以共享，各 Profile 的 Python 依赖分别隔离。最低硬件条件和环境预检以 Quickstart 及 Profile 为准；预检通过不代表实验通过。
+
+| 环境与安装入口 | 适用入口 | 验证范围 |
 |:---|:---|:---|
-| `PT-CPU` | 13–18、30–33、50–51 与相关 `PT-*` 机制页的 Step 1–4 | 数据接口、标签、损失、适配器、偏好、奖励、策略新鲜度与阶段输入 / 输出字段 |
-| `PT-SFT-CUDA` | 14、15、30、31；62–64 | 真实 LoRA/SFT 更新、长上下文训练代价、LoRA 变体路径、验证集与训练产物 |
-| `Q-QLORA` | 26、65 | NF4 QLoRA、适配器与低资源训练证据 |
-| `PT-RL-CUDA` | 17、18、PT-REWARD-MODEL、PT-REWARD-SIGNAL；84、85 的单卡阶段 | DPO、GRPO、奖励模型与奖励信号均已完成 RTX 5070 Ti 实测 |
-| `PT-VERL-CUDA` | PT-ROLLOUT-LIFECYCLE、PT-RL-SYSTEM | `rtx5070ti_verl_mechanism_closure_v2` 两组更新、同轨迹重评、同步与阶段资源检查全部通过，本机单卡机制验证完成 |
-| `PT-DISTILL-CUDA` | DISTILL-OPD；88 的教师—学生配对阶段 | 学生基线、固定轨迹 KD、on-policy distillation、学生产物与部署比较 |
+| [PT-CPU](./quickstart.md#pt-cpu-quickstart) | 13–18、30–33、50–51、相关 `PT-*` 与 DISTILL-OPD 的 Step 4 和框架核对 | 数据接口、标签、损失、适配器、偏好、奖励、策略新鲜度与阶段输入 / 输出字段 |
+| [PT-SFT-CUDA](./quickstart.md#pt-sft-cuda-quickstart) | 14、15、30、31；62–64 | 真实 LoRA/SFT 更新、长上下文训练代价、LoRA 变体路径、验证集与训练产物 |
+| [Q-QLORA](../quantization_compression/quickstart.md#q-qlora-quickstart) | 26、65 | NF4 QLoRA、适配器与低资源训练证据 |
+| [PT-RL-CUDA](./quickstart.md#pt-rl-cuda-quickstart) | 17、18、PT-REWARD-MODEL、PT-REWARD-SIGNAL；84、85 的单卡阶段 | 偏好、组内奖励、奖励头与信号构造的单卡对照 |
+| [PT-VERL-CUDA](./quickstart.md#pt-verl-cuda-quickstart) | PT-ROLLOUT-LIFECYCLE、PT-RL-SYSTEM | 一次受控更新、固定轨迹重评、权重同步与阶段资源观察 |
+| [PT-DISTILL-CUDA](./quickstart.md#pt-distill-cuda-quickstart) | DISTILL-OPD；88 的教师—学生配对阶段 | 学生基线、固定轨迹与学生在策略蒸馏、学生产物与部署比较 |
 | 后续多工作进程环境（暂未验证） | 在线系统扩展 | 轨迹队列、网络通信、跨节点策略同步和多工作进程恢复；不由 `PT-VERL-CUDA` 单卡证据替代 |
 
-## 单卡 GPU 验证顺序
+## 机制实验
 
-两个 Profile 分开创建和验证，不在同一环境追加依赖。每页先使用默认工作负载生成独立 JSON；前一页失败时保留失败记录并修复，不跳过后汇总为专题结论。
+先检查数据与监督，再按参数适配、离线偏好或在线奖励分支选择实验。学习型奖励需要奖励模型及信号检查，规则奖励按需跳过奖励模型；框架核对与单卡实测分别登记，系统两页只执行一份共享 GPU 结果。
 
-下表按依赖关系给出专题资产的推荐验证顺序。离线偏好路径运行 DPO；使用规则验证器的 GRPO / RLVR 路径运行奖励信号与 GRPO，并按需加入奖励模型；使用学习型奖励的 PPO / GRPO 路径先验证奖励模型与奖励信号。专题全量验收依次复测四项机制实验。
-
-验证前只做四项准备：分别创建 `PT-SFT-CUDA` 与 `PT-RL-CUDA`；从对应环境启动 JupyterLab；为每次真实运行设置唯一 `RUN_LABEL`；保持页面 5.1 的默认模型、样本和候选矩阵。模型缓存可以共享，Python 包环境不能混用。两个 Profile 均以 8 GiB 作为环境准入线；`PT-RL-CUDA` 的默认矩阵按 12 GB 级单卡准备。准入线不是实测峰值承诺，显存不足时记录失败，不同时缩小多个工作负载变量。
-
-| 顺序 | Profile / 页面 | 本步验证什么 | 进入下一步的条件 |
-|:---|:---|:---|:---|
-| 0 | `PT-SFT-CUDA` 安装与预检 | PyTorch、CUDA、Transformers、PEFT、Datasets 与仓库运行时 | `pip check` 无冲突，Profile 返回 `status=ok` |
-| 1 | Part 02 · 14 LoRA | 真实模块命中、冻结范围、低秩梯度与合并等价 | 三组目标模块均命中，基座冻结，合并误差过门槛 |
-| 2 | Part 02 · 31 LoRA 变体 | 固定秩与固定参数上限下的 LoRA、rsLoRA、DoRA 路径 | v3 已记录逐项检查、失败原因与候选决策；固定预算 DoRA 仍需调参 |
-| 3 | Part 02 · 15 SFT 有效更新与训练闭环 | 数据提交版本、有效更新、训练/验证隔离与资源记录 | 固定切分可复现，更新前后损失和资源记录完整 |
-| 4 | Part 02 · 30 长上下文微调 | 长度阶梯，以及固定样本的 padding / 边界隔离 Packing 对照 | 三档长度使用相同模型和测量方法；Packing 的监督 Token、标签边界、位置编号和跨样本 Attention 检查均通过 |
-| 5 | `PT-RL-CUDA` 安装与预检 | 偏好与奖励实验所需的单卡隔离环境 | `pip check` 无冲突，Profile 返回 `status=ok` |
-| 6 | Part 02 · PT-REWARD-MODEL | 冻结真实模型表示上的奖励头更新、留出校准和错标负对照 | 正确标签路径降低成对损失并保持隐藏集排序；两个候选身份与资源记录完整 |
-| 7 | Part 02 · PT-REWARD-SIGNAL | 策略偏移、终止奖励、采样对数概率比约束与回报折扣矩阵 | 行为策略偏移非零，终止奖励位置和候选矩阵完整 |
-| 8 | Part 02 · 17 DPO | 固定参考策略、成对偏好边际和 LoRA 有限更新 | 三档 β 使用同一偏好对，偏好方向与梯度隔离成立 |
-| 9 | Part 02 · 18 GRPO | 验证器奖励、组内优势、候选等权与策略分离 | 最小候选组与扩展候选组都形成正确更新方向；两档只比较候选覆盖，不用于选择组规模 |
-
-## 项目页验证顺序
-
-后训练交付主链按 `64 → 63 / 65 → 62 → 84 / 85 → 86` 运行。蒸馏项目 88 是独立压缩分支，从冻结教师、学生起点和 DISTILL-OPD 机制进入，不消费 62、84 或 85 的候选产物。
-
-| 顺序 | 项目与职责 | CPU 题目应挖空的项目判断 | 真实环境实验 | 直接输入 | 输出资产 |
-|:---|:---|:---|:---|:---|:---|
-| 1 | Part 02 · 64 SFT 数据准入 | blocker 合取门禁、切分泄漏门禁、`accept / tune / reject` 状态转换 | `alpaca_qwen25_v2` 已完成：511 条有效记录、截断率 1.17%、跨切分重合为 0，结论 `accept`；CPU 输入检查 | 原始数据版本与评测切分 | 数据准入 manifest、样本 ID 与切分哈希 |
-| 2 | Part 02 · 63 LoRA 变体选型 | 单变量可比性、质量/显存硬门槛、可行候选选择 | `lora_variant_selection_v2` 已完成 3 个秩 × 3 个共享种子的配对矩阵；rank 4 在质量等价带内资源最低，结论 `accept` | 64 的准入 manifest | LoRA 选型 manifest、完整候选矩阵与 rank 4 适配器 |
-| 2B | Part 02 · 65 QLoRA 低资源分支 | NF4 低比特底座下的质量、显存与容量约束 | 0.5B `rtx5070ti_qlora_selection_v3`：省 6.1% 峰值显存但无容量收益且步时回退 42.8%，结论 `tune`；1.5B `rtx5070ti_qlora_15b_capacity_v1`：3 个共享 seed 下峰值低 23.4%，最大 batch `4 → 8`，质量通过，结论 `accept`，适用范围为容量受限训练 | 64 的准入 manifest | QLoRA adapter 哈希、配对 JSON 与低资源分支 manifest |
-| 3 | Part 02 · 62 SFT 训练交付 | 上游身份匹配、产物完整性、恢复/加载门禁与交付状态 | `sft_delivery_v2_1` 是旧契约证据；新交付契约待以 `rtx5070ti_sft_delivery_v3` 复测 | 63 的 LoRA 选型 manifest | checkpoint、SFT adapter、评测报告与交付 manifest |
-| 4A | Part 02 · 84 离线 DPO | 偏好数据准入、独立评测门禁、质量—资源采用判断 | `dpo_offline_len1024_v5` 已完成；任务输入截断率降至 5%，回复截断率为 0，质量与资源检查全部通过，结论 `accept` | 62 的交付 manifest | DPO adapter、评测报告与候选 manifest |
-| 4B | Part 02 · 85 在线奖励优化 | rollout/验证器覆盖门禁、有效更新吞吐、质量—资源采用判断 | `grpo_rlvr_len384_v7` 已完成；平均奖励 +0.0521、`pass@group` +0.0833，有效组比例 0.75，结论 `accept` | 62 的交付 manifest | GRPO adapter、轨迹摘要、配对评测报告与候选 manifest |
-| 5 | Part 02 · 86 生命周期与恢复 | 策略新鲜度、artifact/回滚哈希、失败恢复与交接状态 | `post_training_lifecycle_v6` 已完成；DPO v5 与 GRPO / RLVR v7 的候选、产物哈希、回滚基线和新鲜度检查通过，交接状态 `ready` | 84、85 候选 manifest 与 62 回滚 manifest | 生命周期证据与 Part 05 交接清单；允许进入冻结评测，不表示已完成最终采用 |
-| D1 | Part 02 · 88 蒸馏学生交付 | 教师—学生身份、G0/G1/G2 可比性、质量保持与部署收益 | `rtx5070ti_distill_gsm8k_hybrid_terminal_v9` 已收口：学生基线 19/64，混合候选 22/64；质量增益、格式和延迟未同时过门，结论 `tune`，不打开 final holdout | 冻结教师、共同学生起点、固定 workload | 基线、路线、候选与终止决策证据；无部署 handoff |
-
-### 单卡 12 GB 默认工作负载
-
-| 项目 | 默认模型与候选 | 初次验证规模 | 必须保留的项目证据 |
-|:---|:---|:---|:---|
-| 63 | `Qwen/Qwen2.5-0.5B`；LoRA rank `4 / 8 / 16`，固定 target modules、alpha 规则与 dropout | 固定训练/验证切分，短训练筛选；候选确定后再用 3 个 seed 复测，不在首次运行同时扩大长度和样本数 | 每候选 val loss、任务指标、峰值显存、step time、吞吐、失败与固定条件 |
-| 62 | 63 选出的唯一 LoRA 配置 | 一次正式短程训练，加一次保存—恢复—继续更新和重新加载评测 | 模型与数据 revision、上游 manifest ID、checkpoint/adapter 哈希、恢复位置、固定评测与失败记录 |
-| 84 | 62 的 SFT adapter；固定 `beta=0.1` | 24 组训练偏好对、16 组独立评测偏好对、最大长度 1024、12 次更新 | v5 偏好准确率保持 0.5625，平均边际增加 0.0022；任务输入截断率 5%，峰值分配约 6.49 GiB，结论 `accept` |
-| 85 | 62 的 SFT adapter；每个问题生成 8 条轨迹 | GSM8K 训练题 24 道、独立评测题 12 道、最多生成 384 词元；更新前策略/候选使用相同评测种子 | v7 有效组 18/24，平均奖励 +0.0521，`pass@group` +0.0833；峰值分配约 7.00 GiB、保留约 9.50 GiB，结论 `accept` |
-| 88 | Qwen2.5-1.5B 或同词表 DeepSeek 蒸馏教师；Qwen2.5-0.5B 共同学生起点 | GSM8K 512 条训练、32 条开发、64 条验证；终止实验采用 64 步参考答案锚定和 32 步在线蒸馏 | `hybrid_rtx5070ti_distill_gsm8k_hybrid_terminal_v9.json`：质量 19/64 → 22/64，格式合规率 0.5312，平均延迟 1337.6 ms；没有合格候选，不生成 handoff。DeepSeek 离线轨迹检查保留为路线拒绝证据 |
-
-64 与 86 可以在上述隔离环境中运行真实输入检查，但其结论不依赖 CUDA。64 的结果是训练前数据准入，86 的结果是生命周期与恢复准入；两者都不得用“GPU 可用”提升证据等级。
-
-## 机制页职责与学习级别
-
-机制页按共同检查、基础训练顺序和按需扩展组织：先固定数据、损失和评测规则，再运行对应算法；只有出现长上下文、低显存、在线轨迹或多进程问题时，才进入相应扩展页。
-
-| 页面 | 职责 | 学习级别 | GPU 状态 |
-|:---|:---|:---|:---|
-| [Part 02 · 33 后训练准入与阶段选择](../../02_PyTorch_Algorithms/33_Fine_Tuning_Readiness.ipynb) | 用稳定失败、非参数基线、SFT 基线状态和反馈形态选择后训练阶段 | 共同入口 | CPU |
-| [Part 02 · 32 SFT 数据契约与泄漏审计](../../02_PyTorch_Algorithms/32_Data_Engineering_for_SFT.ipynb) | 检查必需字段、任务输入重复、完整样本冲突和跨切分泄漏 | SFT 主路径 | CPU |
-| [Part 02 · 13 SFT 监督边界与损失](../../02_PyTorch_Algorithms/13_SFT_Training_Loop.ipynb) | 把 chat template、labels 与有效监督 Token 接入 loss | SFT 主路径 | CPU；真实训练在 Part 02 · 15 中执行 |
-| [Part 02 · 14 LoRA](../../02_PyTorch_Algorithms/14_LoRA_Tutorial.ipynb) | 建立目标模块、秩、缩放与适配器生命周期 | SFT 主路径 | `rtx5070ti_lora_targets_v3` 已完成；训练机制通过，最高峰值分配约 2.02 GiB；`attention_qv` 的 BF16 合并保持 `tune` |
-| [Part 02 · 15 SFT 有效更新与训练闭环](../../02_PyTorch_Algorithms/15_End_to_End_Fine_Tuning_Experiment.ipynb) | 验证有效更新、评估隔离与训练状态记录 | SFT 主路径 | `rtx5070ti_sft_v1` 已通过；峰值分配约 4.66 GiB，`accept_mechanism` |
-| [Part 02 · 26 QLoRA](../../02_PyTorch_Algorithms/26_QLoRA_and_4bit_Quantization.ipynb) | 解释 NF4、冻结基座与低资源适配器更新 | 低资源分支 | 复用 `Q-QLORA` |
-| [Part 02 · 30 长上下文微调](../../02_PyTorch_Algorithms/30_Long_Context_Fine_Tuning.ipynb) | 比较窗口适配、受控截断、监督保留、边界隔离 Packing 和显存预算 | Task1 长上下文扩展 | `rtx5070ti_length_packing_v4` 已通过；最高峰值分配约 2.90 GiB，`accept_mechanism` |
-| [Part 02 · 31 LoRA 变体](../../02_PyTorch_Algorithms/31_LoRA_Variants_Theory.ipynb) | 比较 rsLoRA、DoRA、秩与固定参数上限 | 参数适配分支 | `rtx5070ti_lora_variants_v3` 已完成，最高峰值分配约 1.97 GiB；前三组通过，固定预算 `dora_r7` 因合并输出等价性未达阈值而保持 `tune` |
-| [Part 02 · 50 偏好数据与评测](../../02_PyTorch_Algorithms/50_Preference_Data_and_Evaluation.ipynb) | 固定偏好对、数据隔离和独立评测协议 | 偏好共同基础 | CPU |
-| [Part 02 · 17 DPO](../../02_PyTorch_Algorithms/17_DPO_Loss_Tutorial.ipynb) | 解释参考策略、`beta` 与成对偏好更新 | 离线偏好分支 | `rtx5070ti_dpo_v1` 已通过；最高峰值分配约 3.19 GiB，`accept_mechanism` |
-| [Part 02 · PT-REWARD-MODEL 奖励模型训练、校准与过度优化](../../02_PyTorch_Algorithms/PT-REWARD-MODEL_Reward_Model_Training_and_Calibration.ipynb) | 解释成对奖励目标、留出校准和代理奖励过度优化 | 奖励优化共同基础 | `rtx5070ti_reward_model_v1` 已通过；正确标签候选隐藏排序准确率 1.0，错标负对照为 0.5；峰值分配约 0.95 GiB，`accept_mechanism` |
-| [Part 02 · PT-REWARD-SIGNAL 奖励、价值与优势信号](../../02_PyTorch_Algorithms/PT-REWARD-SIGNAL_Reward_Model_Value_and_Advantage.ipynb) | 统一奖励、回报、价值与优势的关系 | 奖励优化共同基础 | `rtx5070ti_reward_signal_v3` 已通过；峰值分配约 2.01 GiB，`accept_mechanism` |
-| [Part 02 · 16 PPO](../../02_PyTorch_Algorithms/16_RLHF_PPO_Memory.ipynb) | 解释策略、参考策略、奖励模型、价值模型与资源状态 | PPO 分支 | 系统级验证 |
-| [Part 02 · 18 GRPO 与可验证奖励](../../02_PyTorch_Algorithms/18_GRPO_Loss_Tutorial.ipynb) | 解释候选组、验证器奖励、组内基线与受约束更新 | GRPO / RLVR 分支 | v3 `default3` 已通过；最高峰值分配约 3.06 GiB，`accept_mechanism`；扩展候选组暴露较高裁剪率，不用于自动选择组规模 |
-| [Part 02 · PT-ROLLOUT-LIFECYCLE 轨迹与策略新鲜度](../../02_PyTorch_Algorithms/PT-ROLLOUT-LIFECYCLE_Rollout_and_Policy_Freshness.ipynb) | 管理轨迹身份、策略版本、新鲜度与准入 | 在线系统共同基础 | 受控更新 v2 两组全部通过；初始与更新后哈希分别一致，同版本最大概率误差 0.06250，旧轨迹均 7 条准入、1 条拒绝 |
-| [Part 02 · PT-RL-SYSTEM 采样、训练与奖励系统](../../02_PyTorch_Algorithms/PT-RL-SYSTEM_Rollout_Training_and_Reward_System.ipynb) / [Part 02 · 51 在线 DPO](../../02_PyTorch_Algorithms/51_Online_DPO.ipynb) | 分别承担多阶段系统编排与在线偏好反馈 | 两条系统分支 | 系统页受控更新 v2 配对、阶段、恢复与资源检查通过；更新阶段整卡峰值为释放 6392 / 保留 10489 MiB，不构成在线 DPO 或稳态加速的验证 |
-
-## 机制与项目接口
-
-| 机制链 | 机制页产出 | 项目页补充 |
-|:---|:---|:---|
-| SFT 数据 → 标签 → 损失；长样本再进入窗口与 Packing | 32、13、15；长上下文扩展为 30 | 后续项目通过结果资产消费机制证据 |
-| LoRA / QLoRA → 适配器 | 14、26、31 | 31 输出固定秩 / 固定预算机制证据；63/65 比较质量与资源，并保存通过检查的适配器 |
-| 偏好对 → DPO | 17、50 | 84 的训练—评测—决策记录 |
-| 偏好对 / 验证结果 → 奖励 → 价值 / 优势 → PPO 或 GRPO | 奖励模型页与奖励信号页为共同基础，16 与 18 为并列算法分支 | 85 的组采样、奖励与更新闭环 |
-| 策略新鲜度 → RL 系统或在线偏好 | 轨迹生命周期页为共同基础，RL 系统页与 51 为并列系统分支 | 85/86 的版本、编排、回滚与在线成本证据 |
-| 教师分布 → 固定轨迹 / 学生轨迹 → 独立学生 | DISTILL-OPD 核对 KL 方向、轨迹来源与冻结教师 | 88 比较 G0/G1/G2，并检查学生产物、质量保持和部署收益 |
-
-## PT-RL-CUDA 机制工作负载
-
-四项机制实验共享模型系列和单卡环境。奖励模型页训练冻结主干上的标量奖励头，奖励信号页比较固定轨迹上的信号构造；17、18 共享 LoRA 有限更新路径，但各自保留候选变量。固定小样本用于隔离机制差异，不能替代完整奖励模型训练、独立偏好评测或在线系统验证。
-
-| 页面 / 工作负载 | 固定条件 | 受控候选 | 结果路径 | 当前状态 |
+| 前置 / 分支 | 机制页与实验 | Profile 与固定输入 | 比较变量或检查对象 | 正式结果与范围 |
 |:---|:---|:---|:---|:---|
-| Part 02 · PT-REWARD-MODEL / `pt-reward-model-head-calibration` | Qwen2.5-0.5B-Instruct、6 组训练偏好对、4 组校准对、4 组隐藏质量对、冻结主干与相同奖励头初始化 | 正确偏好标签 / 固定 50% 错标负对照 | `benchmarks/results/pt_reward_model/` | `rtx5070ti_reward_model_v1` 已通过；正确标签候选校准/隐藏准确率均为 1.0，错标候选分别为 0.25/0.5，清楚暴露代理目标与隐藏质量背离 |
-| Part 02 · 17 / `pt-dpo-real-model-update` | Qwen2.5-0.5B-Instruct、4 组偏好对、LoRA、4 次更新 | `beta = 0.05 / 0.10 / 0.30` | `benchmarks/results/pt_dpo/` | `rtx5070ti_dpo_v1` 已通过；三档偏好准确率均为 1.0 |
-| Part 02 · 18 / `pt-grpo-real-model-update` | Qwen2.5-0.5B-Instruct、2 个固定提示、`integer-answer-v1` 验证器、LoRA、4 次更新 | `minimal_pair` / `expanded_group` 候选覆盖条件 | `benchmarks/results/pt_grpo/` | v3 `default3` 已通过；两档均形成正确策略分离，扩展组用于暴露格式、不可判定与裁剪饱和风险 |
-| Part 02 · PT-REWARD-SIGNAL / `pt-reward-signal-matrix` | Qwen2.5-0.5B-Instruct、固定提示与回复、固定奖励 | 采样对数概率比约束强度、终止奖励放置与回报构造 | `benchmarks/results/pt_reward_signal/` | `rtx5070ti_reward_signal_v3` 已通过；6 组候选完整，终局奖励位置检查通过 |
+| 共同入口 | [Part 02 · 33 后训练准入与阶段选择](../../02_PyTorch_Algorithms/33_Fine_Tuning_Readiness.ipynb) | `PT-CPU`；题目、答案测试与框架核对 | 用稳定失败、非参数基线、SFT 基线状态和反馈形态选择后训练阶段 | CPU |
+| SFT 主路径 | [Part 02 · 32 SFT 数据契约与泄漏审计](../../02_PyTorch_Algorithms/32_Data_Engineering_for_SFT.ipynb) | `PT-CPU`；题目、答案测试与框架核对 | 检查必需字段、任务输入重复、完整样本冲突和跨切分泄漏 | CPU |
+| 数据扩展 | [Part 02 · PT-SYNTHETIC-DATA 合成指令生成与验证准入](../../02_PyTorch_Algorithms/PT-SYNTHETIC-DATA_Instruction_Generation_and_Verifier_Admission.ipynb) | `PT-CPU`；题目、答案测试与框架核对 | 检查生成身份、去重、污染与验证器准入 | CPU 练习与 Datasets 核对；GPU 结果未在此登记 |
+| SFT 主路径 | [Part 02 · 13 SFT 监督边界与损失](../../02_PyTorch_Algorithms/13_SFT_Training_Loop.ipynb) | `PT-CPU`；题目、答案测试与框架核对 | 把 聊天模板、标签与有效监督词元进入损失 | CPU；真实训练在 Part 02 · 15 中执行 |
+| SFT 主路径 | [Part 02 · 14 LoRA](../../02_PyTorch_Algorithms/14_LoRA_Tutorial.ipynb)<br>`pt-lora-targets` | `PT-SFT-CUDA`；Qwen2.5-0.5B；三组目标模块 | 目标模块、冻结、合并 | [结果 JSON](../../benchmarks/results/pt_lora_targets/pt-lora-targets_rtx5070ti_lora_targets_v3.json)；`rtx5070ti_lora_targets_v3` 已完成；训练机制通过，最高峰值分配约 2.02 GiB；`attention_qv` 的 BF16 合并保持 `tune` |
+| SFT 主路径 | [Part 02 · 15 SFT 有效更新与训练闭环](../../02_PyTorch_Algorithms/15_End_to_End_Fine_Tuning_Experiment.ipynb)<br>`pt-sft-training` | `PT-SFT-CUDA`；固定训练 / 验证切分 | 有效更新与评测隔离 | [结果 JSON](../../benchmarks/results/pt_sft_training/pt-sft-training_rtx5070ti_sft_v1.json)；`rtx5070ti_sft_v1` 已通过；峰值分配约 4.66 GiB，`accept_mechanism` |
+| 低资源分支 | [Part 02 · 26 QLoRA](../../02_PyTorch_Algorithms/26_QLoRA_and_4bit_Quantization.ipynb) | `Q-QLORA`；冻结 NF4 基座与适配器 | 解释 NF4、冻结基座与低资源适配器更新 | 项目比较见下方 QLoRA 分支 |
+| Task1 长上下文扩展 | [Part 02 · 30 长上下文微调](../../02_PyTorch_Algorithms/30_Long_Context_Fine_Tuning.ipynb)<br>`pt-long-context` | `PT-SFT-CUDA`；三档长度与同一组样本 | 填充 / 边界隔离 Packing | [结果 JSON](../../benchmarks/results/pt_long_context/pt-long-context_rtx5070ti_length_packing_v4.json)；`rtx5070ti_length_packing_v4` 已通过；最高峰值分配约 2.90 GiB，`accept_mechanism` |
+| 参数适配分支 | [Part 02 · 31 LoRA 变体](../../02_PyTorch_Algorithms/31_LoRA_Variants_Theory.ipynb)<br>`pt-lora-variants` | `PT-SFT-CUDA`；固定秩与固定参数预算 | LoRA / rsLoRA / DoRA | [结果 JSON](../../benchmarks/results/pt_lora_variants/pt-lora-variants_rtx5070ti_lora_variants_v3.json)；`rtx5070ti_lora_variants_v3` 已完成，最高峰值分配约 1.97 GiB；前三组通过，固定预算 `dora_r7` 因合并输出等价性未达阈值而保持 `tune` |
+| 偏好共同基础 | [Part 02 · 50 偏好数据与评测](../../02_PyTorch_Algorithms/50_Preference_Data_and_Evaluation.ipynb) | `PT-CPU`；题目、答案测试与框架核对 | 固定偏好对、数据隔离和独立评测协议 | CPU |
+| 离线偏好分支 | [Part 02 · 17 DPO](../../02_PyTorch_Algorithms/17_DPO_Loss_Tutorial.ipynb)<br>`pt-dpo-real-model-update` | `PT-RL-CUDA`；Qwen2.5-0.5B；4 组偏好对、4 次更新 | β 为 0.05 / 0.10 / 0.30 | [结果 JSON](../../benchmarks/results/pt_dpo/pt-dpo-real-model-update_rtx5070ti_dpo_v1.json)；`rtx5070ti_dpo_v1` 已通过；最高峰值分配约 3.19 GiB，`accept_mechanism` |
+| 离线反馈分支 | [Part 02 · PT-KTO 二元反馈对齐](../../02_PyTorch_Algorithms/PT-KTO_Binary_Feedback_Alignment.ipynb) | `PT-CPU`；题目、答案测试与框架核对 | 二元标签、独立 KL 样本与类别加权 | CPU 练习与 TRL 核对；未登记独立 GPU 结果 |
+| 在线奖励分支 | [Part 02 · PT-RLOO 留一基线策略优化](../../02_PyTorch_Algorithms/PT-RLOO_Leave_One_Out_Policy_Optimization.ipynb) | `PT-CPU`；题目、答案测试与框架核对 | 可评分组、留一优势与序列裁剪 | CPU 练习与 TRL 核对；未登记独立 GPU 结果 |
+| 奖励优化共同基础 | [Part 02 · PT-REWARD-MODEL 奖励模型训练、校准与过度优化](../../02_PyTorch_Algorithms/PT-REWARD-MODEL_Reward_Model_Training_and_Calibration.ipynb)<br>`pt-reward-model-head-calibration` | `PT-RL-CUDA`；Qwen2.5-0.5B；6 组训练、4 组校准、4 组隐藏偏好对 | 正确标签 / 50% 错标负对照 | [结果 JSON](../../benchmarks/results/pt_reward_model/pt-reward-model-head-calibration_rtx5070ti_reward_model_v1.json)；`rtx5070ti_reward_model_v1` 已通过；正确标签候选隐藏排序准确率 1.0，错标负对照为 0.5；峰值分配约 0.95 GiB，`accept_mechanism` |
+| 奖励优化共同基础 | [Part 02 · PT-REWARD-SIGNAL 奖励、价值与优势信号](../../02_PyTorch_Algorithms/PT-REWARD-SIGNAL_Reward_Model_Value_and_Advantage.ipynb)<br>`pt-reward-signal-matrix` | `PT-RL-CUDA`；固定提示、回复与奖励 | 约束强度、终止奖励和回报；6 组候选 | [结果 JSON](../../benchmarks/results/pt_reward_signal/pt-reward-signal-matrix_rtx5070ti_reward_signal_v3.json)；`rtx5070ti_reward_signal_v3` 已通过；峰值分配约 2.01 GiB，`accept_mechanism` |
+| PPO 分支 | [Part 02 · 16 PPO](../../02_PyTorch_Algorithms/16_RLHF_PPO_Memory.ipynb) | `PT-CPU`；题目、答案测试与框架核对 | 解释策略、参考策略、奖励模型、价值模型与资源状态 | CPU 练习与 TRL 核对；尚无本页完整 PPO GPU 更新结果登记 |
+| GRPO / RLVR 分支 | [Part 02 · 18 GRPO 与可验证奖励](../../02_PyTorch_Algorithms/18_GRPO_Loss_Tutorial.ipynb)<br>`pt-grpo-real-model-update_default3` | `PT-RL-CUDA`；Qwen2.5-0.5B；2 个提示、4 次更新 | 最小 / 扩展候选覆盖；integer-answer-v1 | [结果 JSON](../../benchmarks/results/pt_grpo/pt-grpo-real-model-update_default3.json)；v3 `default3` 已通过；最高峰值分配约 3.06 GiB，`accept_mechanism`；扩展候选组暴露较高裁剪率，不用于自动选择组规模 |
+| 在线系统共同基础 | [Part 02 · PT-ROLLOUT-LIFECYCLE 轨迹与策略新鲜度](../../02_PyTorch_Algorithms/PT-ROLLOUT-LIFECYCLE_Rollout_and_Policy_Freshness.ipynb) | `PT-VERL-CUDA`；共同算术轨迹与一次监督更新 | 管理轨迹身份、策略版本、新鲜度与准入 | 读取[共享系统记录](#verl-共享系统记录) |
+| 在线系统 | [Part 02 · PT-RL-SYSTEM 采样、训练与奖励系统](../../02_PyTorch_Algorithms/PT-RL-SYSTEM_Rollout_Training_and_Reward_System.ipynb) | `PT-VERL-CUDA`；共同算术轨迹与一次监督更新 | 阶段处理率、共享链路、状态释放与恢复 | 读取[共享系统记录](#verl-共享系统记录) |
+| 在线偏好分支 | [Part 02 · 51 在线 DPO](../../02_PyTorch_Algorithms/51_Online_DPO.ipynb) | `PT-CPU`；题目、答案测试与框架核对 | 在线偏好反馈、候选采用与回滚 | CPU 练习与框架核对；verl 系统实验不替代在线 DPO 验证 |
+| 多轮工具扩展 | [Part 02 · PT-AGENTIC-RL 环境轨迹与奖励归因](../../02_PyTorch_Algorithms/PT-AGENTIC-RL_Environment_Trajectory_and_Credit_Assignment.ipynb) | `PT-CPU`；题目、答案测试与框架核对 | 环境动作、观察、终止和奖励归因 | CPU 练习与环境接口核对；未登记完整 Agent 策略更新 GPU 结果 |
+| 蒸馏分支 | [Part 02 · DISTILL-OPD 在策略蒸馏与 GKD](../../02_PyTorch_Algorithms/DISTILL-OPD_On_Policy_Distillation_and_GKD.ipynb) | `PT-CPU`；固定轨迹与学生轨迹、冻结教师 | 固定轨迹、学生轨迹、教师分布与梯度隔离 | CPU 练习与框架核对；GPU 训练由下方蒸馏项目登记 |
 
-## PT-VERL-CUDA 单卡系统运行记录
+<a id="verl-共享系统记录"></a>
+
+### verl 共享系统记录
+
+[受控更新 v2](../../benchmarks/results/pt_verl_closure/rtx5070ti_verl_mechanism_closure_v2.json) 是轨迹页和系统页共同使用的单卡机制结果。两组使用相同初始参数与冻结轨迹，分别测试引擎释放和保留；verl 策略工作进程 以监督损失执行一次 LoRA 更新，再重评旧轨迹并同步权重。该记录验证参数变化、轨迹准入与阶段状态，不代表 GRPO 质量收益、多进程原子激活或稳态加速。历史流程探测、奖励筛查和 v1 配对缺陷保留在本页末尾的折叠记录中。
+
+| 检查对象 | v2 直接观察 | 解释范围 |
+|:---|:---|:---|
+| 参数与策略身份 | 两组初始哈希和更新后哈希分别一致；各有 48 个参数张量改变 | 相同起点的一次有效监督更新 |
+| 概率与准入 | 更新后同版本最大对数概率误差 0.06250；两组旧轨迹均 7 条准入、1 条拒绝 | 固定轨迹、固定阈值下的重评与同步 |
+| 更新阶段资源 | 整卡采样峰值：释放 6392、保留 10489 MiB；耗时 1.367、1.345 s | 单次阶段观测，不作为性能排序 |
+| 整段资源 | 释放 10086、保留 10489 MiB；短阶段未采到的峰值为缺失 | 包含初始化和其他应用，差值不等于 KV Cache 大小 |
+
+## 项目实验
+
+监督和偏好 / 奖励项目按表中前置衔接；蒸馏从冻结教师与独立学生起点进入。64 与 86 的直接输入核对不依赖 CUDA；88 的终止判断与 Part 05 的 86 交接链分开登记。
+
+| 顺序 | 项目入口 | 固定输入与前置 | 验证对象 | 正式结果与状态 | 输出与交接 |
+|:---|:---|:---|:---|:---|:---|
+| 1 | [Part 02 · 64 SFT 数据准入](../../02_PyTorch_Algorithms/64_SFT_Data_Quality_Project.ipynb) | 原始数据版本、冻结评测切分 | 阻断项合并判断、跨切分泄漏检查、`accept / tune / reject` 状态转换 | [alpaca_qwen25_v2](../../benchmarks/results/64_sft_data_quality/sft_data_admission_alpaca_qwen25_v2.json) 已完成：511 条有效记录、截断率 1.17%、跨切分重合为 0，结论 `accept`；CPU 输入检查 | 数据准入 清单、样本 ID 与切分哈希 |
+| 2 | [Part 02 · 63 LoRA 变体选型](../../02_PyTorch_Algorithms/63_LoRA_Variants_Benchmark.ipynb) | 64 准入清单；Qwen2.5-0.5B；秩 4 / 8 / 16、3 个共享种子 | 单变量可比性、质量/显存硬门槛、可行候选选择 | [lora_variant_selection_v2](../../benchmarks/results/63_lora_variants/lora_variant_sweep_lora_variant_selection_v2.json) 已完成 3 个秩 × 3 个共享种子的配对矩阵；rank 4 在质量等价带内资源最低，结论 `accept` | LoRA 选型 清单、完整候选矩阵与 rank 4 适配器 |
+| 2B | [Part 02 · 65 QLoRA 低资源分支](../../02_PyTorch_Algorithms/65_QLoRA_Selection_Project.ipynb) | 64 准入清单；0.5B 与 1.5B 容量实验分别记录 | NF4 低比特底座下的质量、显存与容量约束 | 0.5B [rtx5070ti_qlora_selection_v3](../../benchmarks/results/65_qlora_selection/qlora_selection_rtx5070ti_qlora_selection_v3.json)：省 6.1% 峰值显存但无容量收益且步时回退 42.8%，结论 `tune`；1.5B [rtx5070ti_qlora_15b_capacity_v1](../../benchmarks/results/65_qlora_selection/qlora_selection_rtx5070ti_qlora_15b_capacity_v1.json)：3 个共享 seed 下峰值低 23.4%，最大 batch `4 → 8`，质量通过，结论 `accept`，适用范围为容量受限训练 | QLoRA 适配器 哈希、配对 JSON 与低资源分支 清单 |
+| 3 | [Part 02 · 62 SFT 训练交付](../../02_PyTorch_Algorithms/62_Instruction_Fine_Tuning_Project.ipynb) | 63 选定配置；正式短训、保存后恢复及重载评测 | 上游身份匹配、产物完整性、恢复/加载检查与交付状态 | [sft_delivery_v2_1](../../benchmarks/results/62_sft_delivery/sft_delivery_evidence_sft_delivery_v2_1.json) 是旧契约证据；新交付契约待以 `rtx5070ti_sft_delivery_v3` 复测 | 检查点、SFT 适配器、评测报告与交付 清单 |
+| 4A | [Part 02 · 84 离线 DPO](../../02_PyTorch_Algorithms/84_DPO_Preference_Project.ipynb) | 62 的 SFT 适配器；24 组训练 / 16 组评测偏好对，长度 1024，12 次更新，β=0.1 | 偏好数据准入、独立评测检查、质量—资源采用判断 | [dpo_offline_len1024_v5](../../benchmarks/results/84_dpo_preference/dpo_evidence_dpo_offline_len1024_v5.json) 已完成；任务输入截断率降至 5%，回复截断率为 0，质量与资源检查全部通过，结论 `accept` | DPO 适配器、评测报告与候选 清单 |
+| 4B | [Part 02 · 85 在线奖励优化](../../02_PyTorch_Algorithms/85_GRPO_Groupwise_Alignment_Project.ipynb) | 62 的 SFT 适配器；GSM8K 训练 24 题 / 评测 12 题，每题 8 条轨迹，最多 384 词元 | 采样 / 验证器覆盖检查、有效更新吞吐、质量—资源采用判断 | [grpo_rlvr_len384_v7](../../benchmarks/results/85_grpo_alignment/grpo_evidence_grpo_rlvr_len384_v7.json) 已完成；平均奖励 +0.0521、`pass@group` +0.0833，有效组比例 0.75，结论 `accept` | GRPO 适配器、轨迹摘要、配对评测报告与候选 清单 |
+| 5 | [Part 02 · 86 生命周期与恢复](../../02_PyTorch_Algorithms/86_DPO_Online_Benchmark.ipynb) | 84 / 85 候选与 62 回滚清单；CPU 生命周期与恢复检查 | 策略新鲜度、产物 / 回滚哈希、失败恢复与交接状态 | [post_training_lifecycle_v6](../../benchmarks/results/86_post_training_lifecycle/lifecycle_handoff_post_training_lifecycle_v6.json) 已完成；DPO v5 与 GRPO / RLVR v7 的候选、产物哈希、回滚基线和新鲜度检查通过，交接状态 `ready` | 生命周期证据与 Part 05 交接清单；允许进入冻结评测，不表示已完成最终采用 |
+| D1 | [Part 02 · 88 蒸馏学生交付](../../02_PyTorch_Algorithms/88_Distilled_Student_Delivery_Project.ipynb) | 冻结教师与共同 Qwen2.5-0.5B 学生；GSM8K 512 条训练、32 条开发、64 条验证；终止方案为 64 步锚定加 32 步在线蒸馏 | 教师—学生身份、G0/G1/G2 可比性、质量保持与部署收益 | [rtx5070ti_distill_gsm8k_hybrid_terminal_v9](../../benchmarks/results/88_distillation_delivery/distillation_terminal_report_rtx5070ti_distill_gsm8k_hybrid_terminal_v9.json) 已结束：学生基线 19/64，混合候选 22/64；质量增益、格式和延迟未同时过门，结论 `tune`，不打开 最终留出集 | 基线、路线、候选与终止决策证据；无部署 交接文件 |
+
+## 结果版本与复现
+
+读取结果时使用上表链接和对应标签；独立复现使用新的唯一标签，先按 Notebook 的安全预检阶段检查，再执行真实阶段。改变模型、输入或训练剂量时保留旧记录并重新说明比较范围。当前标签表示所选正式记录，不表示历史上所有方案都通过。
+
+共享系统实验由轨迹页执行，系统页读取同一份结果。原生接口检查使用[只读工具](../../tools/verl_mechanism_audit.py)，一次监督更新及同步使用[共同入口](../../tools/verl_mechanism_closure.py)与[工作进程实现](../../tools/verl_mechanism_worker.py)；释放组失败时停止，不自动追加训练。资源漏采记为缺失。历史 GSM8K 路径的数据准备与筛查入口留在下方历史记录，不属于当前算术任务复现前置。
+
+| 复现对象 | 必须保存 | 继续或停止条件 |
+|:---|:---|:---|
+| CPU 练习与框架核对 | 页面身份、环境、逐项断言和跳过原因 | 导入成功不替代数值或状态断言 |
+| 单卡机制 / 项目 | 模型与数据版本、固定输入、运行标签、比较条件、原始指标和失败记录 | 检查实际更新、质量与资源门槛，失败保留原结果 |
+| verl 共享实验 | 初始参数、冻结轨迹、动作掩码、概率、一次更新、同步、事件与资源采样 | 同版本位置与概率不符时停止；第二页不重复训练 |
+| 学生蒸馏 | 教师版本、共同学生起点、轨迹来源、训练剂量、独立评测及终止决定 | 无合格候选时不打开最终留出集、不生成部署交接 |
+
+<details>
+<summary>历史实验记录：verl 流程探测、奖励筛查与早期配对</summary>
+
+仅复现下列早期 GSM8K 筛查时，在已经通过环境检查的 verl 锁环境中准备数据；当前固定算术任务不执行这一步：
+
+```bash
+cd ~/verl-v0.9.1
+uv run --frozen --all-packages --extra vllm \
+  python3 examples/data_preprocess/gsm8k.py --local_save_dir data/gsm8k
+```
 
 `rtx5070ti_verl_system_v8` 使用 verl v0.9.1、Qwen2.5-0.5B-Instruct、GSM8K、每批 4 个问题与每题 4 条回复，回复上限 128 Token。生成接口使用 `async`，训练器按同步的生成—更新顺序执行。两页共享一份 [结果 JSON](../../benchmarks/results/pt_verl_system/rtx5070ti_verl_system_v8.json)；下表峰值分别为整卡和整机采样占用，包含初始化和其他应用。
 
-v8 登记为“单卡流程、过滤路径与资源观测通过”。原始 JSON 的两个 `accept_mechanism` 按指标完整性生成；日志中全部 step 的奖励、优势、loss 与梯度范数均为 0，该轮没有验证有效策略更新。各 step 回复达到上限的比例为 93.75%–100%，释放组首步生成耗时 32.14 s、第三步 2.11 s；因此不登记质量收益或缓存加速结论。早期 v1–v7 失败记录留在本地追溯配置和内存问题；最终参数更新与同步证据见下方受控更新 v2，采用监督损失而非 GRPO 损失。
+v8 登记为“单卡流程、过滤路径与资源观测通过”。原始 JSON 的两个 `accept_mechanism` 按指标完整性生成；日志中全部 step 的奖励、优势、loss 与梯度范数均为 0，该轮没有验证有效策略更新。各 step 回复达到上限的比例为 93.75%–100%，释放组首步生成耗时 32.14 s、第三步 2.11 s；因此不登记质量收益或缓存加速结论。早期 v1–v7 失败记录留在本地追溯配置和内存问题；最终参数更新与同步证据见本页正式受控更新记录，采用监督损失而非 GRPO 损失。
 
 | 候选与原始日志 | 完成步数 | 整卡峰值显存（MiB） | 主机峰值内存（GiB） | 直接观察 |
 |:---|:---|---:|---:|:---|
@@ -119,7 +107,7 @@ v8 登记为“单卡流程、过滤路径与资源观测通过”。原始 JSON
 | [释放缓存＋拒绝过滤](../../benchmarks/results/pt_verl_system/rtx5070ti_verl_system_v8_async_release_reject.log) | 3/3，返回码 0 | 7878 | 24.25 | 平均屏蔽 8.64% 回复 Token；未验证有效更新收益 |
 | [保留缓存](../../benchmarks/results/pt_verl_system/rtx5070ti_verl_system_v8_async_retain_metrics.log) | 3/3，返回码 0 | 10137 | 22.38 | 比释放组整卡采样峰值高 2249 MiB；差值不能直接视作 KV Cache 大小 |
 
-### 两页的实验定位
+**两页的实验定位**
 
 轨迹与策略新鲜度关注“哪条轨迹能交给哪个策略更新”；采样、训练与奖励系统关注“各阶段如何交接并竞争资源”。两页使用同一单卡环境，分别解释身份与概率、阶段与驻留，不比较算法质量或承担多节点部署验收。
 
@@ -128,7 +116,7 @@ v8 登记为“单卡流程、过滤路径与资源观测通过”。原始 JSON
 | PT-ROLLOUT-LIFECYCLE | 状态迁移、版本与行为偏离、竞争预留、激活失败处理 | 同版本概率核对、真实参数变化、同一冻结轨迹前后重评、同步后的身份与概率 | 并发原子消费、多工作进程原子激活、真实异步陈旧队列 |
 | PT-RL-SYSTEM | 阶段倍率、统一容量、共享链路与拓扑判断 | 实际阶段事件、引擎释放/保留对照、与事件关联的显存与主机内存 | 分池吞吐、跨节点带宽、队列稳定性与容错恢复 |
 
-### 历史奖励筛查
+**历史奖励筛查**
 
 筛查入口保留在 `tools/verl_lifecycle_probe.py`，结果写入 `benchmarks/results/pt_verl_lifecycle/`。历史 GSM8K 筛查使用现有 `PT-VERL-CUDA` 环境、vLLM 和 verl 官方严格验证器，当前入口已切换为固定合成算术任务与普通采样。候选组只有在四条回答都正常终止、可解析且奖励非恒定时才准入，防止用截断或解析失败制造奖励差异。原始回复、Token、行为对数概率、模型快照、任务与提示哈希均保存到 JSON。
 
@@ -144,39 +132,10 @@ v8 登记为“单卡流程、过滤路径与资源观测通过”。原始 JSON
 
 [`rtx5070ti_rollout_arithmetic_v1`](../../benchmarks/results/pt_verl_lifecycle/rtx5070ti_rollout_arithmetic_v1.json) 的 8 道单步题目在采样前固定：加、减、乘、整除各 2 题，每题自然采样 4 次，仍使用 Qwen2.5-0.5B-Instruct、温度 1、种子 42 和 128 Token 上限。题目来自仓库固定算术生成器，不再依赖 GSM8K Parquet 或下载数据；正确标签由整数运算产生，不放入提示。关闭语法约束，不设置强制答案前缀或停止字符串，按整条整数回复比较数值；格式失败不用于制造奖励差异。记录任务版本、题目池哈希与实际回复，不估计公开数据集准确率，也不与旧 GSM8K 分数比较。本轮已完成：解析、正常终止、轨迹对齐均为 32/32，正确 28/32；7 组全对，1 组全错，每组四次回答均相同，完整混合奖励组为 0。错误题 `81 - 47` 四次均回答 `24`。该结果验证普通采样与轨迹记录，不构成 GRPO 有效更新。
 
-### 受控更新的结果与复现顺序
+**受控更新的结果与复现顺序**
 
 [受控更新 v1](../../benchmarks/results/pt_verl_closure/rtx5070ti_verl_mechanism_closure_v1.json) 两组均完成一次更新，梯度非零且各有 48 个参数张量改变。释放组全部检查通过；保留组更新后同版本概率最大误差 0.43725 超过上限 0.15，其余生命周期检查通过。两组旧轨迹均为 7 条准入、1 条拒绝，对 `81−47` 的新生成均由 `24` 变为 `34`；这仅是策略变化的具体观测，不是质量提升评测。
 
 两组阶段与资源记录完整，但初始 LoRA 哈希不同，不能将差异归因于释放/保留开关。更新阶段整卡采样峰值为 6262/10351 MiB，整段峰值为 9562/10351 MiB（释放/保留），两者分开解释。v1 结果原样保留，其结论为“阶段观测完成，严格配对验证未通过”。
 
-最终确认 [v2](../../benchmarks/results/pt_verl_closure/rtx5070ti_verl_mechanism_closure_v2.json) 已完成，两页均通过本机单卡机制验证。创建模型前固定种子 42，初始 LoRA 哈希均为 `06380c94…`，一步更新后均为 `369392e9…`；梯度范数 0.03428，参数差值范数 0.61536，两组均有 48 个参数张量改变。更新后同版本对数概率最大误差均为 0.06250、平均误差 0.002653，满足原定上限 0.15/0.03；两组旧轨迹均为 7 条准入、1 条拒绝。样本、一步监督更新、全部阈值和资源设置未变，不再追加实验。
-
-v2 系统配对、阶段、恢复与资源检查全部通过。更新阶段整卡峰值为释放 6392 / 保留 10489 MiB，阶段时间为 1.367 / 1.345 s；整段峰值为 10086 / 10489 MiB，释放组峰值来自初次同步。短阶段未采到的峰值继续记为 null。完整记录保留在两组候选 JSON、同名 `.resources.json` 与 `.log` 中；这组单次观测不作为稳态加速、纯 KV 大小或分布式原子激活的证据。
-
-不再把 GRPO 混合奖励组作为两页的共同前置条件。轨迹页使用 verl 内置监督损失完成一次有界 actor 更新；训练样本与固定轨迹探针分开，不把奖励筛查改记为 GRPO 通过。参数变化、同轨迹重评和同步走实际 verl worker 路径，独立 PEFT 更新与 vLLM 加载不能替代这份证据。
-
-锁定提交中的 11 个接口已由[只读工具](../../tools/verl_mechanism_audit.py)核对；该工具的 `gpu_recipe_ready=false` 仅表示源码检查不验证 GPU 执行。[共同运行入口](../../tools/verl_mechanism_closure.py)与[verl worker](../../tools/verl_mechanism_worker.py)的 v2 GPU 路径已验证。读取已有结果时设置 v2 标签，只执行 5.1、5.3；独立复现时使用新的唯一标签，先 `dry_run` 预检，再改为 `real_gpu`，结果写入 `benchmarks/results/pt_verl_closure/`，第二页直接读取，不重复训练。
-
-释放组的参数变化与同步检查未通过时，保留组自动跳过。逐项判断、候选日志及资源采样分别保留；已有文件不覆盖，不自动重试或追加训练。两组均完成后，轨迹页读取固定 Token 的变化与准入判断，系统页读取配置配对、阶段事件、恢复状态标签与资源覆盖；单卡结果不作为分布式原子激活或稳态加速的证据。
-
-`free_cache_engine` 通过引擎休眠与恢复管理状态，LoRA 路径还涉及权重恢复和 KV 恢复。资源对照称为“引擎释放/保留”，记录休眠调用完成的阶段时间、恢复调用顺序和状态标签；保留模式不调用恢复时按配置检查，整卡显存差不能直接解释成 KV Cache 大小。
-
-| 顺序 | 页面与固定输入 | 实际执行及必须保存 | 通过条件与停止规则 |
-|:---|:---|:---|:---|
-| 0：接口与数据核对 | 两页，当前 verl 提交与已有算术记录 | 记录接口源码身份；核对监督损失、掩码移位、TensorDict 批次与评分位置；单卡直接调用 worker，不经 TransferQueue | CPU 检查与 GPU 执行分开；不能只凭接口名字宣布 GPU 已验证 |
-| 1：同版本基线 | 轨迹页，按预先固定规则读取每题第一条完整轨迹，不按奖励挑选 | 固定提示、回复 Token、动作掩码和轨迹哈希；用同一策略核对行为侧与学习器侧概率 | 逐位置对齐且有限，满足预先声明的数值容差；失败时先查位置、采样分布或实现误差 |
-| 2：一次受控更新 | 轨迹页，固定的独立监督样本，LoRA rank 16 | verl actor 使用监督损失，仅一次优化器步进；保存同名同 dtype 参数指纹、差值范数、监督 Token 数、loss 和梯度 | loss、梯度有限，梯度与实际参数差值非零；不要求非零 GRPO 优势或质量提升，不自动追加步数 |
-| 3：旧轨迹重评与同步 | 轨迹页，继续使用第 1 项完全相同的冻结轨迹 | 保存更新前后逐 Token 概率、版本与产物身份；按正文公式计算平均绝对对数概率差，再走 verl 权重同步并核对生成侧 | 同轨迹身份不变、策略身份可追溯；同步后概率满足预设容差。未超过准入阈值时如实登记，不强求触发拒绝 |
-| 4：阶段与状态对照 | 系统页，复用上述受控更新方式；释放与保留仅改变状态管理配置 | 分别记录生成、概率计算、更新、同步、休眠、权重恢复和 KV 恢复事件；用单调时钟关联显存与主机采样 | 两组有完整事件、配置和资源记录；漏采峰值记为未知。基本机制验证不要求宣布加速，若比较性能则另做统一预热与配对复测 |
-
-## 公共结果字段
-
-| 字段组 | 必须记录 |
-|:---|:---|
-| 身份 | `semantic_id`、`workload_id`、`run_label`、baseline/candidate |
-| 模型与数据 | model/tokenizer revision、chat template、dataset revision、split 与样本 hash |
-| 训练 | dtype、有效 batch、学习率、更新次数、随机种子与策略版本 |
-| 质量与安全 | loss、任务指标、win-rate/judge 一致性、安全与回滚门槛 |
-| 资源与产物 | 峰值显存、训练步 / 轨迹采样时间、产物 / 适配器路径与哈希 |
-| 结论 | `failure`、`evidence_level`、decision 与下一步 |
+</details>

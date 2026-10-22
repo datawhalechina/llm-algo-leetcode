@@ -14,9 +14,10 @@
 
 ## 本节导读
 
-MoE 通过多个专家扩大模型容量，但每个 token 只激活部分专家。学习本节后，你应该能解释总参数、活跃计算、Router 负载和跨设备通信之间的关系，并据此判断 MoE 的系统代价。按“总参数与活跃计算 → Router 与负载均衡 → 专家并行通信 → 方案判断”的顺序完成后面的机制解释和小验证。
+混合专家模型（MoE）通过增加专家扩大总参数量，但每个 Token 只激活其中一部分。总参数量、活跃计算量和专家负载因此不再同步增长。
+本节建立“路由选择 → 专家激活 → 容量与负载 → 通信代价”的关系。完成后，你应能解释稀疏激活为何可以控制计算量，以及负载不均如何削弱这种收益。
 
-**关键词：** `experts`, `router`, `load balancing`
+**关键词：** 专家、路由器、负载均衡
 
 ![本节概念关系](../public/01_Hardware_Math_and_Systems/22_moe_cost_map.svg)
 ---
@@ -30,8 +31,6 @@ MoE 通过多个专家扩大模型容量，但每个 token 只激活部分专家
 ---
 ## Q1：MoE 和普通 dense Transformer 的参数量差别在哪里？
 
-<details>
-<summary>点击展开查看解析</summary>
 
 普通 dense Transformer 的每层参数主要来自：
 - Attention
@@ -71,7 +70,7 @@ flowchart TD
     R --> E2[Expert 2]
     R --> EN[Expert N]
 ```
-</details>
+
 ### Q1小验证：计算专家参数量与活跃 FFN FLOPs
 
 写出参数量公式，再对比 dense 和 MoE 的总参数、活跃参数与专家 FFN FLOPs。
@@ -157,8 +156,6 @@ print('MoE 单层粗略参数量:', to_billion(moe_layer_params(4096, 16384, 8))
 
 ## Q2：Router / Gate 为什么重要？
 
-<details>
-<summary>点击展开查看解析</summary>
 
 Router / Gate 先根据每个 token 的分数选择 top-k 专家，再决定每个专家会不会过载，以及路由结果会不会引入额外通信和同步开销。
 
@@ -189,7 +186,7 @@ flowchart LR
     E3 --> Cap
     Cap --> Balance[Load balancing / overflow]
 ```
-</details>
+
 ### Q2小验证：观察 Router / Gate 的容量和负载均衡
 
 先估算每个专家的容量，再看 token 分布不均时会发生什么。
@@ -263,8 +260,6 @@ for k, v in stats.items():
 
 ## Q3：为什么 MoE 的工程代价不只在计算，还在通信？
 
-<details>
-<summary>点击展开查看解析</summary>
 
 MoE 的额外代价主要来自专家并行（Expert Parallelism）下的 token 调度和 All-to-All 通信。
 
@@ -288,7 +283,7 @@ flowchart LR
     Devices --> Gather[Gather / All-to-All]
     Gather --> Output[Output tokens]
 ```
-</details>
+
 ### Q3小验证：粗估专家并行通信量
 
 先把 top-k 视为每个 token 的路由副本数，估算每层的 dispatch / gather 数据量，再看它为什么会成为 MoE 的工程代价。这个结果是容量级估算，不是 NCCL All-to-All 实测。
@@ -365,59 +360,55 @@ test_traffic_estimation()
 
 ```
 
-## Q4：MoE 什么时候适合，什么时候不适合？
+## Q4：MoE 账本还缺哪些采用证据？
 
-<details>
-<summary>点击展开查看解析</summary>
 
-MoE 适合的场景通常有两个特征：
+参数与计算账本可以识别 MoE 容量候选，但不能直接决定采用 MoE。形成候选通常需要两个前提：
 
 - 你想扩大模型容量，但不希望每次推理都把计算量一起放大
 - 你能接受更复杂的路由、调度和通信实现
 
-不太适合的场景通常是：
+下面这些情况说明证据仍不完整：
 - 你更在意实现简单、稳定和可预测
 - 你的系统带宽 / 通信条件并不理想
 - 你很难接受路由不均衡带来的训练波动
 
-可以先用下面的条件表形成初步判断，再用固定 workload 和多卡 benchmark 验证：
+可以先用下面的条件表记录账本信号和缺失证据，再进入架构、通信与性能专题验证：
 
-| 条件 | 初步倾向 |
+| 账本或系统信号 | 仍需验证 |
 | --- | --- |
-| 总参数需求高、通信条件好、路由分布稳定 | 考虑 MoE |
-| 需要单卡稳定推理、实现简单和延迟可预测 | 倾向 Dense |
-| 通信带宽不足或专家负载明显不均 | 先优化 Router / 并行策略 |
-| 只观察到容量收益，尚未测量真实吞吐和尾延迟 | 暂不下最终结论 |
+| 总参数需求高，活跃参数明显低于总参数 | 质量、实际吞吐和显存驻留 |
+| 专家需要跨设备放置 | All-to-All 通信量、暴露时间和扩展效率 |
+| 专家负载不均或发生容量溢出 | Router 分布、overflow 和尾部等待 |
+| 服务要求实现简单、延迟可预测 | 调度复杂度、尾延迟和回退方案 |
 
-这张表是决策入口，不是通用评分公式；最终选择仍需要记录质量、吞吐、通信时间和尾延迟。
-</details>
-### Q4小验证：MoE 什么时候更值得用？
+这张表只把理论账本转换成待测清单；最终选择仍需要记录质量、吞吐、通信时间和尾延迟。
 
-把容量需求、通信条件、负载均衡和工程简洁度放到一起，形成可解释的初步判断。
+### Q4小验证：从账本生成待测清单
+
+把容量需求、通信条件、负载均衡和工程简洁度转换成后续需要补齐的证据。
 
 
 ```python
-def moe_decision(capacity_need, communication_ready, load_balance_ok, simplicity_priority):
-    """根据可解释条件给出 MoE 的初步决策，不生成伪精确评分。"""
+def moe_follow_up_evidence(capacity_need, communication_ready, load_balance_ok, simplicity_priority):
+    """把 MoE 账本信号转换成后续待测证据，不直接给出采用决策。"""
     flags = [capacity_need, communication_ready, load_balance_ok, simplicity_priority]
     if not all(isinstance(value, bool) for value in flags):
         raise TypeError('四个条件必须是 bool')
+    required = ['quality', 'throughput', 'tail_latency']
+    if capacity_need:
+        required.append('capacity_gain')
+    if not communication_ready:
+        required.extend(['all_to_all_time', 'scaling_efficiency'])
+    if not load_balance_ok:
+        required.extend(['expert_load_distribution', 'overflow_rate'])
     if simplicity_priority:
-        recommendation = 'dense'
-        reason = '优先保证实现简单和延迟可预测'
-    elif not communication_ready:
-        recommendation = 'tune'
-        reason = '先确认通信条件，再评估专家并行'
-    elif not load_balance_ok:
-        recommendation = 'tune'
-        reason = '先优化 Router 或容量策略'
-    elif capacity_need:
-        recommendation = 'moe'
-        reason = '容量需求和系统条件都支持 MoE'
-    else:
-        recommendation = 'context-dependent'
-        reason = '需要用固定 workload 比较质量、吞吐和尾延迟'
-    return {'recommendation': recommendation, 'reason': reason}
+        required.extend(['scheduling_complexity', 'fallback_path'])
+    return {
+        'ledger_signal': 'capacity_candidate' if capacity_need else 'no_capacity_pressure',
+        'required_measurements': sorted(set(required)),
+        'evidence_level': 'theoretical_ledger',
+    }
 
 cases = [
     (True, True, True, False),
@@ -425,11 +416,11 @@ cases = [
     (False, True, True, True),
 ]
 for case in cases:
-    print(case, '->', moe_decision(*case))
-assert moe_decision(True, True, True, False)['recommendation'] == 'moe'
-assert moe_decision(True, False, True, False)['recommendation'] == 'tune'
-assert moe_decision(False, True, True, True)['recommendation'] == 'dense'
-print('✅ MoE 条件决策测试通过')
+    print(case, '->', moe_follow_up_evidence(*case))
+assert 'capacity_gain' in moe_follow_up_evidence(True, True, True, False)['required_measurements']
+assert 'all_to_all_time' in moe_follow_up_evidence(True, False, True, False)['required_measurements']
+assert 'fallback_path' in moe_follow_up_evidence(False, True, True, True)['required_measurements']
+print('✅ MoE 待测证据清单检查通过')
 
 ```
 

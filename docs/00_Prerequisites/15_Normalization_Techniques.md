@@ -1,6 +1,6 @@
 # 15. Normalization Techniques | 归一化技术
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `PyTorch`, `归一化`, `稳定性` | **目标人群：** 准备理解深层网络统计路径的学习者
+**难度：** Medium | **环境：** CPU-first | **标签：** `PyTorch`, `归一化`, `统计轴` | **目标人群：** 准备理解 Transformer 统计路径的学习者
 
 > 🚀 **云端运行环境**
 >
@@ -10,26 +10,25 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-归一化通过控制特征尺度改善深层网络的数值稳定性，但不同方法使用的统计维度并不相同。本页先比较 BatchNorm 与 LayerNorm 的统计来源和训练/推理行为，再比较现代 Transformer 常见的 LayerNorm 与 RMSNorm，观察“减均值”和“按均方根缩放”分别改变什么。
+## 本节导读
+
+归一化需要同时回答三个问题：统计量沿哪些维度计算，公式是否执行中心化，以及 Norm 位于 residual 分支的什么位置。BatchNorm、LayerNorm 与 RMSNorm 在这些方面并不等价。
+
+完成本节后，你应能判断统计量来自哪个维度，区分训练态和推理态的状态依赖，比较 LayerNorm 与 RMSNorm，并解释 Pre-Norm 与 Post-Norm 的数据流差异。
 
 **关键词：** `BatchNorm`, `LayerNorm`, `RMSNorm`, `Pre-Norm`, `running stats`
 
 ![归一化的统计来源、公式与残差位置](../public/00_Prerequisites/15_normalization_paths_map.svg)
 
 ## 前置阅读
-**导语：** 先理解激活函数如何改变数值分布，再观察归一化如何控制进入后续层的尺度。
+**导语：** 13 节给出 Norm 在 Block 中的位置，14 节展示非线性如何改变分支数值；本页集中处理 Norm 的统计和放置规则。
+- [13. Transformer Block Dataflow and Residual Stream | Transformer Block 数据流与残差通路](./13_Transformer_Block_Dataflow_and_Residual_Stream.md)
 - [14. Activation Functions | 激活函数](./14_Activation_Functions.md)
 - [0D 组页](./0D.md)
 
-## 相关阅读
-**导语：** 建立统计轴与 residual 位置的直觉后，可以继续观察 RMSNorm 和 Attention 在 Transformer Block 中如何组合。
-- [16. Attention Mechanism Intro | Attention 机制导论](./16_Attention_Mechanism_Intro.md)
-- [Part 02 · 01 RMSNorm](../02_PyTorch_Algorithms/01_RMSNorm_Tutorial.md)
-- [Part 02 · 05 LLaMA3 Block](../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.md)
+## Q1：BatchNorm 和 LayerNorm 使用的统计轴有什么不同？
 
-## Q1：BatchNorm 和 LayerNorm 分别解决什么问题？
-
-BatchNorm 使用同一特征在 batch 中的统计量，LayerNorm 使用单个样本 hidden 维度上的统计量。统计轴不同，会改变它们对 batch 大小、序列位置和训练/推理模式的依赖。
+BatchNorm 使用同一特征在 batch 中的统计量，LayerNorm 使用单个样本最后一维的统计量。统计轴不同，会改变它们对 batch 大小、序列位置和训练/推理模式的依赖；Transformer 通常需要不依赖其他样本的逐 token 归一化。
 
 
 ```python
@@ -235,3 +234,12 @@ assert not torch.allclose(pre_output, post_output)
 print('✅ Pre-Norm / Post-Norm 放置差异通过')
 
 ```
+
+## 相关阅读
+
+建立统计轴、公式和 residual 位置的直觉后，可以继续观察 RMSNorm 与 Attention 怎样进入真实 Transformer Block。
+
+- [16. Attention Mechanism Intro | Attention 机制导论](./16_Attention_Mechanism_Intro.md)
+- [Part 02 · 01 RMSNorm](../02_PyTorch_Algorithms/01_RMSNorm_Tutorial.md)
+- [Part 02 · 05 LLaMA3 Block](../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.md)
+- [大模型架构演进 · 归一化演进](../topic_discussion/llm_architecture_evolution/03_norm_evolution.md)

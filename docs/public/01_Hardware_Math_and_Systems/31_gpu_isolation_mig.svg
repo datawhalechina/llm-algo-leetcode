@@ -1,10 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="title desc">
-<title id="title">GPU 共享、MIG 切分与服务证据</title><desc id="desc">物理 GPU 通过时间共享或 MIG 形成资源边界，再按工作负载需求验证隔离、利用率与尾延迟。</desc>
-<defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker><style>text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}.t{font-size:28px;font-weight:700}.s{font-size:15px;fill:#475569}.h{font-size:18px;font-weight:700}.b{font-size:14px;fill:#334155}.p{stroke-width:2}.f{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a)}</style></defs>
-<rect width="1280" height="520" rx="24" fill="#f8fafc"/><text x="640" y="45" text-anchor="middle" class="t">GPU 隔离：稳定边界与共享效率的取舍</text><text x="640" y="73" text-anchor="middle" class="s">MIG、时间共享和独占设备提供不同的容量、故障与性能隔离</text>
-<rect x="45" y="135" width="260" height="240" rx="18" fill="#eff6ff" stroke="#60a5fa" class="p"/><text x="70" y="172" class="h">物理 GPU 资源</text><text x="70" y="220" class="b">计算单元 · 显存 · 带宽</text><text x="70" y="255" class="b">复制引擎与缓存</text><text x="70" y="290" class="b">故障与调度边界</text>
-<rect x="355" y="135" width="260" height="240" rx="18" fill="#f0fdf4" stroke="#4ade80" class="p"/><text x="380" y="172" class="h">隔离方式</text><text x="380" y="220" class="b">独占：边界最清晰</text><text x="380" y="255" class="b">MIG：硬件资源切片</text><text x="380" y="290" class="b">时间共享：提高弹性</text>
-<rect x="665" y="135" width="260" height="240" rx="18" fill="#fffbeb" stroke="#f59e0b" class="p"/><text x="690" y="172" class="h">工作负载放置</text><text x="690" y="220" class="b">容量是否容纳峰值</text><text x="690" y="255" class="b">并发与突发需求</text><text x="690" y="290" class="b">邻居争用是否可接受</text>
-<rect x="975" y="135" width="260" height="240" rx="18" fill="#faf5ff" stroke="#a855f7" class="p"/><text x="1000" y="172" class="h">服务证据</text><text x="1000" y="220" class="b">利用率与吞吐</text><text x="1000" y="255" class="b">P95 / P99 延迟</text><text x="1000" y="290" class="b">隔离失败与恢复</text>
-<path d="M305 255H355" class="f"/><path d="M615 255H665" class="f"/><path d="M925 255H975" class="f"/>
+<title id="title">分区能限制争用，也可能留下无法借用的空闲容量</title><desc id="desc">同样两个任务需要八 GB 和二 GB。共享十二 GB 时总容量足够但仍有资源争用；理想等分为两个六 GB 分区时，A 无法放入而 B 留有四 GB 空闲。本图不是实际 MIG 配置或性能结果。</desc>
+<defs><marker id="a" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#475569}.head{font-size:19px;font-weight:700}.body{font-size:16px}.small{font-size:14px;fill:#475569}.edge{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a)}</style></defs>
+<rect width="1280" height="520" rx="24" fill="#f8fafc"/>
+<text x="640" y="45" text-anchor="middle" class="title">分区能限制争用，也可能留下无法借用的空闲容量</text>
+<text x="640" y="76" text-anchor="middle" class="sub">理想容量示例，单位为 GB；任意等分不代表真实 MIG 配置，也不预设隔离后的性能收益</text>
+<rect x="40" y="110" width="580" height="365" rx="14" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" data-layout-role="panel"/>
+<rect x="660" y="110" width="580" height="365" rx="14" fill="#faf5ff" stroke="#e9d5ff" stroke-width="2" data-layout-role="panel"/>
+<text x="330" y="144" text-anchor="middle" class="head">共享同一资源池</text>
+<text x="950" y="144" text-anchor="middle" class="head">固定划分两个资源区</text>
+<rect x="70" y="170" width="240" height="75" rx="14" fill="#fff" stroke="#60a5fa" stroke-width="2"/><text x="190" y="201" text-anchor="middle" class="head">任务 A</text><text x="190" y="228" text-anchor="middle" class="body">峰值需求 8 GB</text>
+<rect x="350" y="170" width="240" height="75" rx="14" fill="#fff" stroke="#60a5fa" stroke-width="2"/><text x="470" y="201" text-anchor="middle" class="head">任务 B</text><text x="470" y="228" text-anchor="middle" class="body">峰值需求 2 GB</text>
+<rect x="690" y="170" width="240" height="75" rx="14" fill="#fff" stroke="#a78bfa" stroke-width="2"/><text x="810" y="201" text-anchor="middle" class="head">任务 A</text><text x="810" y="228" text-anchor="middle" class="body">峰值需求 8 GB</text>
+<rect x="970" y="170" width="240" height="75" rx="14" fill="#fff" stroke="#a78bfa" stroke-width="2"/><text x="1090" y="201" text-anchor="middle" class="head">任务 B</text><text x="1090" y="228" text-anchor="middle" class="body">峰值需求 2 GB</text>
+<rect x="70" y="300" width="520" height="95" rx="14" fill="#fff" stroke="#60a5fa" stroke-width="2"/><text x="330" y="331" text-anchor="middle" class="head">共享容量 12 GB ≥ 总需求 10 GB</text><text x="330" y="358" text-anchor="middle" class="body">容量可容纳；计算、带宽与调度仍可能争用</text>
+<rect x="690" y="300" width="240" height="95" rx="14" fill="#fef2f2" stroke="#f87171" stroke-width="2"/><text x="810" y="331" text-anchor="middle" class="head">分区 A：6 GB</text><text x="810" y="358" text-anchor="middle" class="body">需求超限，无法放入</text>
+<rect x="970" y="300" width="240" height="95" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="1090" y="331" text-anchor="middle" class="head">分区 B：6 GB</text><text x="1090" y="358" text-anchor="middle" class="body">留有 4 GB，不能借给 A</text>
+<path d="M190 245V300" class="edge"/>
+<path d="M470 245V300" class="edge"/>
+<path d="M810 245V300" class="edge"/>
+<path d="M1090 245V300" class="edge"/>
+<text x="330" y="438" text-anchor="middle" class="small">实测：吞吐、P99，以及并发任务带来的波动</text>
+<text x="950" y="438" text-anchor="middle" class="small">实测：容量拒绝、闲置资源，以及各任务的 P99</text>
 </svg>

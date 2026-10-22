@@ -1,12 +1,12 @@
 # 后训练优化实验 Quickstart
 
-本页用于选择、创建、恢复和检查后训练实验环境。模型、数据、工作负载和结果状态见[实验资产表](./experiment_assets.md)；Profile 的版本约束和隔离关系见[环境资产索引](../../docs/gpu_environment_assets.md)。以下命令均在仓库根目录执行。
+本页用于选择、创建、恢复和检查后训练实验环境。模型、数据、工作负载和结果状态见[实验资产表](./experiment_assets.md)；Profile 的版本约束和隔离关系见[环境资产索引](../../gpu_environment_assets.md)。以下命令均在仓库根目录执行。
 
 ## 1. 选择环境
 
 | Profile | 环境 | 使用场景 | 运行条件 |
 |:---|:---|:---|:---|
-| `PT-CPU` | `llm_pt_cpu` | 13–18、30–33 与 `PT-*` 页的框架一致性核对 | CPU |
+| `PT-CPU` | `llm_pt_cpu` | 13–18、30–33、50–51、相关 `PT-*` 与 DISTILL-OPD 的框架一致性核对 | CPU |
 | `PT-SFT-CUDA` | `llm_pt_sft_cu128` | SFT、LoRA、长上下文与参数适配 | 单张 CUDA GPU，至少 8 GiB |
 | `PT-RL-CUDA` | `llm_pt_rl_cu128` | 奖励模型、DPO、GRPO 与奖励信号 | 单张 CUDA GPU，至少 8 GiB |
 | `PT-VERL-CUDA` | 上游 uv 锁环境 | 轨迹生命周期与生成—更新系统机制 | 单张 CUDA GPU，至少 10 GiB；驱动支持 CUDA 13.0 |
@@ -18,7 +18,7 @@
 
 ## 2. 首次创建
 
-先在当前终端指定下载源和容错参数。PyTorch 的 CPU 或 CUDA wheel 来源仍由对应 requirements 文件固定；这里的设置主要用于其余 PyPI 依赖，可避开本机已有镜像的限速或 `.whl.metadata` 404。
+选择环境后，复制对应的一条安装器命令即可。若 pip 当前使用的镜像限速或返回 `.whl.metadata` 404，可先在本终端设置下列下载参数；切换来源不保证网络速度。PyTorch wheel 来源仍由 requirements 固定，`PT-VERL-CUDA` 的 uv 锁环境遵循上游锁文件，不由这些 pip 变量切换来源。
 
 ```bash
 export PIP_INDEX_URL=https://pypi.org/simple
@@ -32,6 +32,8 @@ export PIP_RETRIES=8
 
 ### PT-CPU
 
+创建用于后训练 CPU 机制练习与框架一致性核对的 Conda 环境：
+
 ```bash
 python tools/install_environment_profile.py \
   --profile PT-CPU \
@@ -41,6 +43,8 @@ python tools/install_environment_profile.py \
 <a id="pt-sft-cuda-quickstart"></a>
 
 ### PT-SFT-CUDA
+
+创建用于单卡 SFT、LoRA 和长上下文实验的 Conda 环境：
 
 ```bash
 python tools/install_environment_profile.py \
@@ -52,6 +56,8 @@ python tools/install_environment_profile.py \
 
 ### PT-RL-CUDA
 
+创建用于单卡奖励模型、奖励信号、DPO 和 GRPO 实验的 Conda 环境：
+
 ```bash
 python tools/install_environment_profile.py \
   --profile PT-RL-CUDA \
@@ -62,7 +68,9 @@ python tools/install_environment_profile.py \
 
 ### PT-VERL-CUDA
 
-verl 的 Torch、vLLM 与 Ray 版本由上游锁文件共同约束，不写入 `PT-RL-CUDA`：
+`PT-VERL-CUDA` 使用独立的 uv 锁环境，Torch、vLLM 与 Ray 由上游锁文件共同约束。安装器核对固定提交、依赖和 GPU；Notebook 通过独立子进程调用它，无需注册 Jupyter Kernel。已登记的 NumPy 元数据例外会单独提示，依赖检查仍须报告该例外及其他冲突。
+
+该环境的受控更新使用仓库登记的固定算术轨迹；模型缓存、输入准备与历史 GSM8K 筛查见[实验资产表](./experiment_assets.md#结果版本与复现)。使用下面的命令创建环境：
 
 ```bash
 python tools/install_environment_profile.py \
@@ -70,19 +78,11 @@ python tools/install_environment_profile.py \
   --target ~/verl-v0.9.1
 ```
 
-当前受控更新实验复用仓库已登记的算术轨迹，无需下载 GSM8K。模型按轨迹中的 ID 与固定 commit 自动查找本机缓存；`dry_run` 不下载，仅缺缓存时按提示改为 `real_gpu` 准备同版本快照，CPU 核对通过后才训练。仅复现早期 GSM8K 筛查时准备数据：
-
-```bash
-cd ~/verl-v0.9.1
-uv run --frozen --all-packages --extra vllm \
-  python3 examples/data_preprocess/gsm8k.py --local_save_dir data/gsm8k
-```
-
-安装器会核对固定 commit、依赖和 GPU；该环境无需注册为 Jupyter Kernel。上游锁文件的已登记 NumPy 元数据例外会单独提示，不代表 `pip check` 无冲突，也不会放行其他依赖问题。
-
 <a id="pt-distill-cuda-quickstart"></a>
 
 ### PT-DISTILL-CUDA
+
+创建用于固定轨迹与学生在策略蒸馏实验的 Conda 环境：
 
 ```bash
 python tools/install_environment_profile.py \
@@ -94,18 +94,12 @@ python tools/install_environment_profile.py \
 
 ### PT-DELIVERY-CUDA
 
+创建用于 Part 05 后训练候选冻结评测与交付判断的 Conda 环境：
+
 ```bash
 python tools/install_environment_profile.py \
   --profile PT-DELIVERY-CUDA \
   --env-name llm_pt_delivery_cu128
-```
-
-Conda Profile 安装完成后，激活刚创建的环境并启动 JupyterLab：
-
-```bash
-ENV_NAME=llm_pt_cpu  # 改为刚创建的环境名
-conda activate "$ENV_NAME"
-python -m jupyter lab
 ```
 
 ## 3. 中断续装与重新进入
@@ -143,7 +137,10 @@ python tools/environment_preflight.py --profile "$PROFILE_ID"
 python -m jupyter lab
 ```
 
-## 4. 手动创建
+## 4. 手动创建（可选）
+
+<details>
+<summary>安装器不可用时，按同一 Profile 手动创建</summary>
 
 安装器不可用时，从下表选择依赖参数，并保持与 Profile 相同的安装顺序。
 
@@ -180,9 +177,11 @@ python -m ipykernel install --user \
 
 设置环境隔离变量后出现覆盖 `PYTHONPATH` 的提示属于预期行为。安装结束后重新激活环境，再执行检查和 Kernel 注册。
 
-## 5. 验证与故障处理
+</details>
 
-环境可用需要同时满足以下条件：
+## 5. 验证与常见问题
+
+Conda 环境可用需要同时满足以下条件；`PT-VERL-CUDA` 则由安装器核对上游提交、锁依赖及 GPU，并由 Notebook 使用独立子进程调用，无需同名 Kernel。已登记的锁文件元数据例外必须明确报告，不能称作依赖检查无冲突。
 
 - `python -m pip check` 没有依赖冲突；
 - Profile 预检返回 `status=ok`；

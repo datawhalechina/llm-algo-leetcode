@@ -10,7 +10,11 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-NumPy 是观察 shape、索引和广播关系的轻量练习场。本页先用数组切片和 feature bias 理解广播，再验证 reshape、transpose 与 head 拆分是否保持元素和 shape 契约，最后用 `einsum` 显式表达矩阵维度与收缩关系；这些维度操作会在后续 Attention 与归一化页面中继续使用。
+## 本节导读
+
+多维数组的结果不仅取决于数值，还取决于维度、索引、广播和收缩关系。形状看似兼容时，也可能出现元素顺序改变或错误广播。
+
+完成本节后，你应能追踪数组变形前后的元素与维度，判断广播是否合法，并用显式维度关系核对矩阵运算。
 
 **关键词：** `ndarray`, `broadcast`, `einsum`, `shape contract`
 
@@ -20,11 +24,6 @@ NumPy 是观察 shape、索引和广播关系的轻量练习场。本页先用�
 **导语：** 先具备 Python 序列、字典和函数契约，再进入多维数组表达。
 - [01. Python Essentials for LLM | Python 基础与数据表示](./01_Python_Essentials_for_LLM.md)
 - [0A 组页](./0A.md)
-
-## 相关阅读
-**导语：** 掌握数组维度后，继续学习对象封装，或进入 PyTorch Tensor 的 layout 与 device。
-- [03. Python OOP and Utility Patterns | Python 面向对象与工具模式](./03_Python_OOP_and_Utility_Patterns.md)
-- [05. PyTorch Tensor Fundamentals | PyTorch 张量基础操作](./05_PyTorch_Tensor_Fundamentals.md)
 
 ## Q1：索引和广播怎样改变数组的内容与 shape？
 
@@ -152,3 +151,10 @@ expected = np.array([[[1, 3], [2, 4]]])
 assert np.array_equal(batched_pair_scores(query, key), expected)
 print('✅ Einsum 维度关系通过')
 ```
+
+## 相关阅读
+
+掌握数组维度后，继续学习对象封装，或进入 PyTorch 张量的布局与设备语义。
+
+- [03. Python OOP and Utility Patterns | Python 面向对象与工具模式](./03_Python_OOP_and_Utility_Patterns.md)
+- [05. PyTorch Tensor Fundamentals | PyTorch 张量基础操作](./05_PyTorch_Tensor_Fundamentals.md)

@@ -10,9 +10,11 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-损失函数把任务目标压缩成可求导标量，优化器再把梯度、学习率和内部状态组合成参数更新。本页依次检查 loss 契约、SGD 更新、AdamW 状态，以及 micro-batch、optimizer step 与 scheduler step 的时间关系。
+## 本节导读
 
-参数、梯度和 optimizer state 共同构成训练状态；不同优化器保存的状态不同，因此恢复训练时不能只保存模型参数。
+损失函数把任务目标转换为可求导标量，优化器再把梯度、学习率和内部状态组合成参数更新。不同更新规则会保存不同状态并产生不同参数轨迹。
+
+完成本节后，你应能手算一次基本更新，解释优化器状态的作用，并判断梯度累计、参数更新和学习率推进是否位于正确时刻。
 
 **关键词：** `loss`, `SGD`, `AdamW`, `optimizer step`, `scheduler`
 
@@ -23,10 +25,6 @@
 - [09. PyTorch nn.Module Basics | PyTorch nn.Module 基础](./09_PyTorch_nn_Module_Basics.md)
 - [08. PyTorch Grad Hygiene and No-Grad | PyTorch 梯度控制](./08_PyTorch_Grad_Hygiene_and_No_Grad.md)
 - [0C 组页](./0C.md)
-
-## 相关阅读
-**导语：** 掌握更新规则后，继续检查 batch 如何形成，以及更新规则如何进入完整训练循环。
-- [12. PyTorch Data Interface and Training Lifecycle | PyTorch 数据接口与训练生命周期](./12_PyTorch_Minimal_Training_Interface.md)
 
 ## Q1：loss 和 optimizer 分别解决什么问题？
 
@@ -157,31 +155,49 @@ print('✅ AdamW optimizer state 通过')
 
 ## Q4：micro-batch、optimizer step 与 scheduler step 如何对齐？
 
-梯度可以跨多个 micro-batch 累积，但 optimizer 与 scheduler 只在累计边界推进。最后一个窗口不足 `accumulation_steps` 时，loss 还必须按实际窗口大小缩放，否则该次更新的梯度会偏小。
+梯度可以跨多个 micro-batch 累积，但到达累计边界只表示发起一次更新尝试。只有参数更新成功时，optimizer-step 和 scheduler-step 才同时推进。本例各 micro-batch 样本数相同，最后一个窗口不足累计步数时，按实际窗口大小缩放损失；样本数不同时应按样本数加权。代码用给定布尔序列演示更新成功或跳过，并不检测真实混合精度溢出。
+
+| 时钟 | 何时推进 | 代表什么 |
+|:---|:---|:---|
+| micro-step | 每消费一个 micro-batch | 数据与反向传播进度 |
+| update attempt | 到达累计窗口边界 | 尝试应用当前累计梯度 |
+| optimizer-step | 执行一次未跳过的优化器更新 | 有效更新次数；零梯度时参数也可能不变 |
+| scheduler-step | optimizer-step 成功之后 | 学习率计划与有效更新对齐 |
 
 
 ```python
-def run_accumulated_updates(model, batches, optimizer, scheduler, accumulation_steps):
+def run_accumulated_updates(
+    model, batches, optimizer, scheduler, accumulation_steps, update_success_pattern
+):
     """按累计边界执行 optimizer 与 scheduler，并返回可核对的时间线。"""
     if accumulation_steps <= 0:
         raise ValueError('accumulation_steps must be positive')
     optimizer.zero_grad(set_to_none=True)
     timeline = []
     optimizer_steps = 0
+    update_attempts = 0
     total_micro_steps = len(batches)
     for micro_step, (x, target) in enumerate(batches, start=1):
         window_start = ((micro_step - 1) // accumulation_steps) * accumulation_steps
         window_size = min(accumulation_steps, total_micro_steps - window_start)
         loss = mse_loss(model(x), target) / window_size
         loss.backward()
-        should_update = micro_step % accumulation_steps == 0 or micro_step == len(batches)
-        if should_update:
-            optimizer.step()
-            scheduler.step()
+        reaches_boundary = micro_step % accumulation_steps == 0 or micro_step == len(batches)
+        update_succeeded = None
+        if reaches_boundary:
+            if update_attempts >= len(update_success_pattern):
+                raise ValueError('update_success_pattern is shorter than update attempts')
+            update_succeeded = bool(update_success_pattern[update_attempts])
+            update_attempts += 1
+            if update_succeeded:
+                optimizer.step()
+                scheduler.step()
+                optimizer_steps += 1
             optimizer.zero_grad(set_to_none=True)
-            optimizer_steps += 1
         timeline.append({
             'micro_step': micro_step,
+            'update_attempt': reaches_boundary,
+            'update_succeeded': update_succeeded,
             'optimizer_step': optimizer_steps,
             'learning_rate': optimizer.param_groups[0]['lr'],
             'window_size': window_size,
@@ -193,23 +209,28 @@ model = nn.Linear(1, 1)
 optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.5)
 batches = [(torch.tensor([[float(i)]]), torch.tensor([[2.0 * i + 1.0]])) for i in range(1, 6)]
-timeline = run_accumulated_updates(model, batches, optimizer, scheduler, accumulation_steps=2)
+timeline = run_accumulated_updates(
+    model, batches, optimizer, scheduler, accumulation_steps=2,
+    update_success_pattern=[True, False, True],
+)
 print(timeline)
 
 ```
 
 ## Q4 验证：scheduler 是否只在参数更新后推进？
 
-五个 micro-batch、每两个累计一次，应产生三个 optimizer step；最后一个窗口只有一个 micro-batch，因此其 loss 不再额外除以 2。
+五个 micro-batch、每两个累计一次，会形成三次更新尝试；第二次尝试被跳过，因此只产生两次 optimizer-step 和两次 scheduler-step。最后一个窗口只有一个 micro-batch，其 loss 不再额外除以 2。
 
 
 ```python
-assert [item['optimizer_step'] for item in timeline] == [0, 1, 1, 2, 3]
+assert [item['update_attempt'] for item in timeline] == [False, True, False, True, True]
+assert [item['update_succeeded'] for item in timeline] == [None, True, None, False, True]
+assert [item['optimizer_step'] for item in timeline] == [0, 1, 1, 1, 2]
 assert [item['window_size'] for item in timeline] == [2, 2, 2, 2, 1]
 assert timeline[0]['learning_rate'] == 0.1
 assert timeline[1]['learning_rate'] == 0.05
-assert timeline[3]['learning_rate'] == 0.025
-assert timeline[4]['learning_rate'] == 0.0125
+assert timeline[3]['learning_rate'] == 0.05
+assert timeline[4]['learning_rate'] == 0.025
 assert all(parameter.grad is None for parameter in model.parameters())
 print('✅ micro-batch / optimizer / scheduler 对齐通过')
 
@@ -250,3 +271,9 @@ assert torch.allclose(bias.detach(), torch.tensor([1.0]))
 print('✅ parameter groups 与 weight decay 规则通过')
 
 ```
+
+## 相关阅读
+
+掌握更新规则后，继续检查批次如何形成，以及更新规则如何进入完整训练循环。
+
+- [12. PyTorch Data Interface and Training Lifecycle | PyTorch 数据接口与训练生命周期](./12_PyTorch_Minimal_Training_Interface.md)

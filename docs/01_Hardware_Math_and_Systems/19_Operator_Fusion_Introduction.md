@@ -14,63 +14,58 @@
 
 ## 本节导读
 
-算子融合真正关心的，不是把几个名字并成一个名字，而是减少中间张量落地、减少 HBM 往返，以及把原本被拆碎的执行路径重新贴回硬件粒度。很多性能损失，并不是单个算子慢，而是算子之间来回搬数据太多。
+矩阵乘之后再加偏置、执行激活时，分开的计算内核可能反复写出并读取中间结果。融合把其中一些步骤放在同一计算内核中，让中间值直接被下一步消费，同时也可能增加寄存器需求和布局转换。
 
-这一页在整个教程的纵向主线里属于 `Part 01` 从执行模型走向图优化的桥接页，优先服务后续 `编译与图优化专题`，也给 `推理优化路线` 补一层数据流视角。学完这里，后面再看 `30 / 32` 以及 `Part 03 / Part 04` 的 kernel 与 backend 优化页时，你会更容易判断“该不该融合、为什么融合会快”；如果这里没学明白，后面很容易把 fusion 只当成编译器关键词，而说不清中间张量写回、调试成本和形状复杂度为什么会一起决定融合值不值得做。按专题归类，这一页同时属于 `编译与图优化专题`，并和 `推理优化专题` 共享执行链路视角。
+本节比较融合前后的中间读写与启动次数，再检查语义、形状和片上资源条件。完成后，你应能算出省掉了哪些读写，并指出还需测量的代价；真实融合计算内核的实现与计时进入算子优化专题。
 
-**关键词：** `fusion`, `memory traffic`, `intermediate tensor`
+**关键词：** 算子融合、中间张量、内存流量、布局转换
+
+![算子融合前后的数据路径与验证门槛](../public/01_Hardware_Math_and_Systems/19_operator_fusion_data_path.svg)
 
 ---
 ## 前置阅读
 
-**导语：** 先把执行模型和 block 级编程对齐，再看算子融合为什么能减少中间结果开销会更顺。
+**导语：** 先理解图级优化对象，再检查融合怎样改变中间张量和片上资源。
 
-- [Group 1D: Execution Models, Asynchrony and Operator Mapping | 1D: 执行模型、异步调度与算子映射](./1D.md)
-- [Group 1E: Compilers and Backends | 1E: 编译与后端](./1E.md)
+- [09. AI Compilers and Graph Optimization | AI 编译器与计算图优化](./09_AI_Compilers_and_Graph_Optimization.md)
 - [18. Triton Block Model | Triton Block 模型](./18_Triton_Block_Model.md)
 
-## 相关阅读
+## Q1：中间张量怎样增加逻辑读写？
 
-**导语：** 把算子融合继续接到性能调优、归约和 attention kernel，会更直观地看到中间张量是怎么被省掉的。
+串行算子链的每个组间边界都可能写出中间张量，再由下一组读取。在边界张量等大、每组对应一个核函数的假设下，可以用边界数量计算读写字节和启动次数。融合省去的是内部边界，不包含模型输入和最终输出；逻辑读写减少也不等于实际 HBM 流量或耗时按相同比例下降。
 
-- [05. Triton 性能调优与基准测试 (Autotune & Profiling)](../03_Triton_Kernels/05_Triton_Autotune_and_Profiling.md)
-- [06. Triton 进阶：跨线程归约与数值稳定 (Safe Softmax)](../03_Triton_Kernels/06_Triton_Fused_Softmax.md)
-- [08. Triton Flash Attention | 真正的 Flash Attention 前向算子](../03_Triton_Kernels/08_Triton_Flash_Attention.md)
----
-## Q1：为什么算子之间的中间结果会这么贵？
+### Q1 机制计算器：比较分组边界的读写字节
 
-<details>
-<summary>点击展开查看解析</summary>
-
-中间结果贵，不只是因为它存在，而是因为它往往要被写回内存、再被下一步算子读回来。
-
-如果一个计算图拆成很多小算子，每个算子都产生临时张量，那么这些张量就会频繁地在计算单元和内存之间往返。这样一来，真正耗时的可能不是计算，而是 memory traffic。
-
-所以算子融合的第一层价值，是减少中间张量的落地次数。少一次写回、少一次读取，通常就意味着更少的带宽压力和更高的吞吐。
-</details>
-### Q1小验证：中间张量为什么拖慢系统
-
-先记住“写回 + 再读回”这件事本身就很贵。
 
 ```python
-def memory_traffic(num_ops, tensor_mb):
-    # 每个算子都会把临时结果写回并再次读入。
-    writes = max(num_ops - 1, 0)
-    reads = max(num_ops - 1, 0)
-    return (writes + reads) * tensor_mb
+def fusion_traffic(num_ops, tensor_bytes, fused_groups):
+    """估算算子组边界造成的中间张量写回和重读字节数。"""
+    if (type(num_ops) is not int or type(fused_groups) is not int
+            or num_ops < 1 or not 1 <= fused_groups <= num_ops):
+        raise ValueError('需要满足 1 <= fused_groups <= num_ops')
+    if type(tensor_bytes) is not int or tensor_bytes <= 0:
+        raise ValueError('tensor_bytes 必须大于 0')
+    materialized_boundaries = fused_groups - 1
+    intermediate_bytes = 2 * materialized_boundaries * tensor_bytes
+    return {
+        'launches': fused_groups,
+        'materialized_boundaries': materialized_boundaries,
+        'intermediate_bytes': intermediate_bytes,
+    }
 
-unfused = memory_traffic(4, 64)
-fused = memory_traffic(1, 64)
-print('unfused traffic MB:', unfused)
-print('fused traffic MB:', fused)
-print('reduction factor:', unfused // max(fused, 1))
+tensor_bytes = 64 * 1024**2
+unfused = fusion_traffic(num_ops=4, tensor_bytes=tensor_bytes, fused_groups=4)
+partially_fused = fusion_traffic(num_ops=4, tensor_bytes=tensor_bytes, fused_groups=2)
+fully_fused = fusion_traffic(num_ops=4, tensor_bytes=tensor_bytes, fused_groups=1)
+print({'unfused': unfused, 'partial': partially_fused, 'full': fully_fused})
+
+assert unfused['intermediate_bytes'] == 6 * tensor_bytes
+assert fully_fused['intermediate_bytes'] == 0
 
 ```
 
 ## Q2：算子融合为什么能改善数据局部性？
 
-<details>
-<summary>点击展开查看解析</summary>
 
 融合把原本分开的多个步骤合成一条更连续的执行链。
 
@@ -80,63 +75,87 @@ print('reduction factor:', unfused // max(fused, 1))
 - 数据搬运和计算之间的间隔更短。
 
 数据局部性提升后，硬件就更容易把已有数据重复利用起来，而不是每一步都重新去 HBM 找一遍。这就是为什么融合不只是“少几个函数”，而是直接改变了数据流路径。
-</details>
-### Q2小验证：局部性为什么和融合有关
 
-把“连续使用同一批数据”这件事记牢，就能理解融合的核心收益。
+### Q2 机制计算器：检查片上预算和逻辑复用量
+
+假设数据块可在整个消费阶段驻留片上，计算重复读取减少量。容量检查不包含其他临时值、分配粒度与同步；这只是局部预算，不是实际融合成功的证明。
+
 
 ```python
-def locality_score(reuse_steps, live_range):
-    # 同一批数据被连续复用得越久、在片上停留越久，局部性越好。
-    return reuse_steps * live_range
+def onchip_reuse(tile_bytes, reuse_count, onchip_budget_bytes):
+    """比较给定局部预算，并估算完整驻留假设下减少的逻辑读取量。"""
+    if any(type(value) is not int or value <= 0
+           for value in (tile_bytes, reuse_count, onchip_budget_bytes)):
+        raise ValueError('tile、复用次数和片上预算必须为正数')
+    fits = tile_bytes <= onchip_budget_bytes
+    avoided_read_bytes = tile_bytes * (reuse_count - 1) if fits else 0
+    return {
+        'fits_onchip': fits,
+        'avoided_read_bytes': avoided_read_bytes,
+        'budget_utilization': tile_bytes / onchip_budget_bytes,
+    }
 
 plans = {
-    'separate': locality_score(1, 1),
-    'partially_fused': locality_score(2, 2),
-    'fully_fused': locality_score(3, 3),
+    'small_tile': onchip_reuse(32 * 1024, 3, 96 * 1024),
+    'large_tile': onchip_reuse(128 * 1024, 3, 96 * 1024),
 }
-for name, score in plans.items():
-    print(name, '->', score)
-print('best:', max(plans, key=plans.get))
+for name, result in plans.items():
+    print(name, '->', result)
+
+assert plans['small_tile']['avoided_read_bytes'] == 64 * 1024
+assert plans['large_tile']['avoided_read_bytes'] == 0
 
 ```
 
-## Q3：为什么融合和编译器、kernel 实现会绑定在一起？
+## Q3：哪些条件要先核对，哪些代价需要实测？
 
-<details>
-<summary>点击展开查看解析</summary>
+融合前先核对语义、形状、片上资源与后端支持，再分别记录布局转换、编译和执行成本。额外布局转换可能抵消一部分收益，但不是不可执行的充分理由。
 
-融合不是简单地把两个函数手动拼起来，而是需要在编译和实现层上重新安排计算顺序、临时变量和内存访问。
+下面的布尔值表示给定的核对结果，并不替代数值对照、编译或运行。只要前提满足，就保留布局字节数供后续比较；不因它大于零直接排除候选。
 
-编译器能帮助决定哪些操作可以合并，kernel 实现则决定合并后如何在硬件上真正落地。比如：
-- 哪些中间值可以直接在寄存器或 shared memory 中使用；
-- 哪些步骤可以不必回到 HBM；
-- 哪些访存模式可以一起优化。
+### Q3 对照验证：布局转换有代价，但不自动阻止融合
 
-所以融合是一个“编译决策 + kernel 实现”的组合问题。理解这一点后，后面看 Triton、CUDA 或 AI compiler 里的 fusion 逻辑就不会把它当成纯术语。
-</details>
-### Q3小验证：融合到底要改什么
-
-先想内存路径，再想代码结构。
 
 ```python
-def fusion_decision(compiler_can_fuse, kernel_can_hold, needs_reorder):
-    # 三个条件都满足时，融合才更可能真正落地。
-    return compiler_can_fuse and kernel_can_hold and needs_reorder
+def fusion_decision(semantics_match, shape_supported, onchip_fit,
+                    backend_lowered, reorder_bytes=0):
+    """分开记录给定检查结果与布局成本，不执行编译或数值验证。"""
+    checks = {
+        'semantics_match': semantics_match,
+        'shape_supported': shape_supported,
+        'onchip_fit': onchip_fit,
+        'backend_lowered': backend_lowered,
+    }
+    if any(type(value) is not bool for value in checks.values()):
+        raise ValueError('检查结果必须是布尔值')
+    if type(reorder_bytes) is not int or reorder_bytes < 0:
+        raise ValueError('布局转换字节数必须是非负整数')
+    failures = [name for name, passed in checks.items() if not passed]
+    return {
+        'stated_conditions_met': not failures,
+        'failures': failures,
+        'extra_reorder_bytes': reorder_bytes,
+    }
 
-cases = [
-    ('easy', True, True, True),
-    ('compiler_only', True, False, True),
-    ('kernel_limit', True, True, False),
-]
-for name, c, k, r in cases:
-    print(name, '->', 'fuse' if fusion_decision(c, k, r) else 'defer')
+
+cases = {
+    'ready': (True, True, True, True, 0),
+    'shape_miss': (True, False, True, True, 0),
+    'reorder_cost': (True, True, True, True, 8 * 1024**2),
+}
+for name, config in cases.items():
+    print(name, '->', fusion_decision(*config))
+assert fusion_decision(*cases['ready'])['stated_conditions_met']
+assert fusion_decision(*cases['reorder_cost'])['stated_conditions_met']
+assert fusion_decision(*cases['shape_miss'])['failures'] == ['shape_supported']
 
 ```
 
-## ⚠️ 常见误区
+## 相关阅读
 
-- 算子融合不是让代码变长，而是让中间结果少落地。
-- 融合的目标不是“看上去更高级”，而是减少 memory traffic。
-- 编译器和 kernel 都会参与融合，不能只看一侧。
-- 先看数据流，再看代码名，通常更容易判断是否真的值得融合。
+**导语：** 把算子融合继续接到性能调优、归约和 attention kernel，会更直观地看到中间张量是怎么被省掉的。
+
+- [05. Triton 性能调优与基准测试 (Autotune & Profiling)](../03_Triton_Kernels/05_Triton_Autotune_and_Profiling.md)
+- [06. Triton 进阶：跨线程归约与数值稳定 (Safe Softmax)](../03_Triton_Kernels/06_Triton_Fused_Softmax.md)
+- [08. Triton Flash Attention | 真正的 Flash Attention 前向算子](../03_Triton_Kernels/08_Triton_Flash_Attention.md)
+---

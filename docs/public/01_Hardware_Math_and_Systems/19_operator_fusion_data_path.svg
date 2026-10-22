@@ -1,47 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="560" viewBox="0 0 1280 560" role="img" aria-labelledby="title desc">
-  <title id="title">算子融合前后的数据路径与验证门槛</title>
-  <desc id="desc">相同输入经过未融合或融合路径，比较中间张量落地、内存流量和启动次数，并在正确性与后端支持满足时决定是否采用融合。</desc>
-  <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
-    <style>
-      text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:14px;fill:#334155}.small{font-size:13px;fill:#475569}.panel{stroke-width:2}.node{stroke:#94a3b8;stroke-width:1.5}.flow{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#arrow)}
-    </style>
-  </defs>
-  <rect width="1280" height="560" rx="24" fill="#f8fafc"/>
-  <text x="640" y="44" text-anchor="middle" class="title">算子融合：减少落地并不自动等于端到端加速</text>
-  <text x="640" y="72" text-anchor="middle" class="sub">先比较数据路径，再检查数值、形状、后端与回退条件</text>
-
-  <rect x="500" y="98" width="280" height="58" rx="12" fill="#ede9fe" stroke="#a855f7" class="panel"/>
-  <text x="640" y="133" text-anchor="middle" class="head">相同输入与计算语义</text>
-
-  <rect x="55" y="215" width="500" height="235" rx="18" fill="#fff7ed" stroke="#fb923c" class="panel"/>
-  <text x="80" y="250" class="head">未融合路径</text>
-  <rect x="85" y="282" width="105" height="48" rx="9" fill="#ffffff" class="node"/>
-  <text x="137" y="312" text-anchor="middle" class="body">算子 A</text>
-  <path d="M190 306H240" class="flow"/>
-  <rect x="240" y="282" width="130" height="48" rx="9" fill="#ffedd5" class="node"/>
-  <text x="305" y="304" text-anchor="middle" class="body">中间张量</text>
-  <text x="305" y="322" text-anchor="middle" class="small">写回并重新读取</text>
-  <path d="M370 306H420" class="flow"/>
-  <rect x="420" y="282" width="105" height="48" rx="9" fill="#ffffff" class="node"/>
-  <text x="472" y="312" text-anchor="middle" class="body">算子 B</text>
-  <text x="85" y="372" class="body">代价：两次启动、额外设备内存流量</text>
-  <text x="85" y="405" class="small">优点：边界清晰，便于复用、调试和独立调度</text>
-
-  <rect x="725" y="215" width="500" height="235" rx="18" fill="#ecfdf5" stroke="#34d399" class="panel"/>
-  <text x="750" y="250" class="head">融合路径</text>
-  <rect x="785" y="282" width="380" height="48" rx="9" fill="#ffffff" class="node"/>
-  <text x="975" y="304" text-anchor="middle" class="body">算子 A → 片上中间值 → 算子 B</text>
-  <text x="975" y="322" text-anchor="middle" class="small">一次计算内核内继续消费</text>
-  <text x="755" y="372" class="body">候选收益：减少启动与中间张量往返</text>
-  <text x="755" y="405" class="small">新增约束：寄存器压力、形状适配和后端支持</text>
-
-  <path d="M570 156V185H305V215" class="flow"/>
-  <path d="M710 156V185H975V215" class="flow"/>
-
-  <rect x="405" y="482" width="470" height="58" rx="12" fill="#eff6ff" stroke="#60a5fa" class="panel"/>
-  <text x="640" y="506" text-anchor="middle" class="head">采用门槛</text>
-  <text x="640" y="529" text-anchor="middle" class="small">输出与梯度一致 · 目标形状命中 · 后端实际采用 · 端到端时间下降 · 可回退</text>
-  <path d="M305 450V466H535V482" class="flow"/>
-  <path d="M975 450V466H745V482" class="flow"/>
+<title id="title">偏置与激活融合后，中间值在哪里继续被消费？</title><desc id="desc">固定矩阵乘结果 T，比较加偏置与激活两步。未融合路径写出并重读中间张量，融合路径在一个内核中继续消费中间值。图中片上复用是理想可行路径，真实布局和资源压力需另行检查。</desc>
+<defs><marker id="a" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#52677f"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:16px}.small{font-size:14px;fill:#475569}.edge{stroke:#52677f;stroke-width:3;fill:none;marker-end:url(#a)}</style></defs>
+<rect width="1280" height="560" rx="24" fill="#f8fafc"/>
+<text x="640" y="45" text-anchor="middle" class="title">偏置与激活融合后，中间值在哪里继续被消费？</text>
+<text x="640" y="76" text-anchor="middle" class="sub">固定矩阵乘结果 T，比较偏置与激活两步；同一输出要求下，核对读写、启动与资源代价</text>
+<text x="640" y="130" text-anchor="middle" class="head">未融合：两次内核启动，内部边界写出后重新读取</text>
+<rect x="40" y="165" width="210" height="80" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="145" y="196" text-anchor="middle" class="head">加偏置</text><text x="145" y="223" text-anchor="middle" class="body">U = T + b</text>
+<rect x="320" y="165" width="270" height="80" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="455" y="196" text-anchor="middle" class="head">中间张量 U</text><text x="455" y="223" text-anchor="middle" class="body">写回设备内存，再读取</text>
+<rect x="660" y="165" width="240" height="80" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="780" y="196" text-anchor="middle" class="head">激活</text><text x="780" y="223" text-anchor="middle" class="body">Y = activation(U)</text>
+<rect x="1040" y="165" width="200" height="80" rx="14" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text x="1140" y="196" text-anchor="middle" class="head">输出 Y</text><text x="1140" y="223" text-anchor="middle" class="body">写回结果</text>
+<rect x="20" y="305" width="930" height="200" rx="14" fill="#f0fdf4" stroke="#86efac" stroke-width="2" data-layout-role="panel"/>
+<text x="485" y="337" text-anchor="middle" class="head">融合：一次内核启动，内部值继续在片上消费</text>
+<rect x="40" y="370" width="210" height="80" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="145" y="401" text-anchor="middle" class="head">加偏置</text><text x="145" y="428" text-anchor="middle" class="body">U = T + b</text>
+<rect x="320" y="370" width="270" height="80" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="455" y="401" text-anchor="middle" class="head">片上中间值 U</text><text x="455" y="428" text-anchor="middle" class="body">寄存器或其他片上存储</text>
+<rect x="660" y="370" width="240" height="80" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="780" y="401" text-anchor="middle" class="head">激活</text><text x="780" y="428" text-anchor="middle" class="body">Y = activation(U)</text>
+<rect x="1040" y="370" width="200" height="80" rx="14" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text x="1140" y="401" text-anchor="middle" class="head">输出 Y</text><text x="1140" y="428" text-anchor="middle" class="body">写回结果</text>
+<path d="M250 205H320" class="edge"/>
+<path d="M590 205H660" class="edge"/>
+<path d="M900 205H1040" class="edge"/>
+<path d="M250 410H320" class="edge"/>
+<path d="M590 410H660" class="edge"/>
+<path d="M900 410H1040" class="edge"/>
 </svg>

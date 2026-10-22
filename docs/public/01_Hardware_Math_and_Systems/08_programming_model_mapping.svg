@@ -1,10 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="title desc">
-<title id="title">从张量表达式到 CUDA 与 Triton 映射</title><desc id="desc">同一张量计算沿框架表达、CUDA 线程映射或 Triton program 映射进入设备执行。</desc>
-<defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker><style>text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}.t{font-size:28px;font-weight:700}.s{font-size:15px;fill:#475569}.h{font-size:18px;font-weight:700}.b{font-size:14px;fill:#334155}.p{stroke-width:2}.f{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a)}</style></defs>
-<rect width="1280" height="520" rx="24" fill="#f8fafc"/><text x="640" y="45" text-anchor="middle" class="t">编程模型：选择可控制的映射层级</text><text x="640" y="73" text-anchor="middle" class="s">抽象层级不同，显式控制的粒度、样板代码和调优责任也不同</text>
-<rect x="55" y="135" width="260" height="240" rx="18" fill="#eff6ff" stroke="#60a5fa" class="p"/><text x="80" y="172" class="h">张量计算</text><text x="80" y="220" class="b">输入 / 输出契约</text><text x="80" y="255" class="b">形状 · 数据类型 · 归约轴</text><text x="80" y="290" class="b">正确性参考</text>
-<rect x="380" y="105" width="320" height="125" rx="18" fill="#fff7ed" stroke="#fb923c" class="p"/><text x="405" y="142" class="h">CUDA 线程映射</text><text x="405" y="180" class="b">Grid → Block → Warp → Thread</text><text x="405" y="205" class="s">显式控制同步、内存和启动</text>
-<rect x="380" y="280" width="320" height="125" rx="18" fill="#f0fdf4" stroke="#4ade80" class="p"/><text x="405" y="317" class="h">Triton Program 映射</text><text x="405" y="355" class="b">Program → Tile → Layout → Mask</text><text x="405" y="380" class="s">以块级张量操作表达映射</text>
-<rect x="765" y="135" width="450" height="240" rx="18" fill="#faf5ff" stroke="#a855f7" class="p"/><text x="790" y="172" class="h">共同验证</text><text x="790" y="220" class="b">输出是否与参考实现一致？</text><text x="790" y="255" class="b">访问是否连续、边界是否安全？</text><text x="790" y="290" class="b">真实计算内核是否减少流量或时间？</text>
-<path d="M315 220H380" class="f"/><path d="M315 290H380" class="f"/><path d="M700 167H735V220H765" class="f"/><path d="M700 342H735V290H765" class="f"/>
+<title id="title">同一计算，分别由框架、CUDA 或 Triton 表达</title><desc id="desc">同一张量任务分别进入框架算子组合、CUDA线程映射或Triton程序块映射，三条替代路径独立连向输出核对。框架路径保留，CUDA和Triton不是串行编译步骤。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:18px;font-weight:700}.body{font-size:15px;fill:#475569}.edge{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow)}.dep{stroke-dasharray:6 5}.axis{stroke:#94a3b8;stroke-width:1.5}.tick{font-size:14px;fill:#475569}</style></defs>
+<rect width="1280" height="520" fill="#f8fafc"/>
+<text class="title" x="640" y="45" text-anchor="middle">同一计算，分别由框架、CUDA 或 Triton 表达</text>
+<text class="body" x="640" y="76" text-anchor="middle">三条可选实现路径：控制范围不同，输入和输出要求相同；输出一致后再比较资源与时间。</text>
+<rect x="40" y="220" width="240" height="100" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text class="head" x="160" y="250" text-anchor="middle">固定张量任务</text><text class="body" x="160" y="276" text-anchor="middle">形状、数据类型与运算</text>
+<rect x="420" y="110" width="350" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text class="head" x="595" y="140" text-anchor="middle">框架算子组合</text><text class="body" x="595" y="166" text-anchor="middle">执行映射交给框架与后端</text>
+<rect x="420" y="240" width="350" height="80" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text class="head" x="595" y="270" text-anchor="middle">CUDA 线程映射</text><text class="body" x="595" y="296" text-anchor="middle">显式组织线程、访存与同步</text>
+<rect x="420" y="370" width="350" height="80" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text class="head" x="595" y="400" text-anchor="middle">Triton 程序块映射</text><text class="body" x="595" y="426" text-anchor="middle">组织分块、布局与边界掩码</text>
+<rect x="960" y="220" width="280" height="100" rx="12" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text class="head" x="1100" y="250" text-anchor="middle">核对输出</text><text class="body" x="1100" y="276" text-anchor="middle">数值、形状与边界位置</text>
+<path class="edge" d="M280 240H330V150H420"/>
+<path class="edge" d="M280 280H420"/>
+<path class="edge" d="M280 300H350V410H420"/>
+<path class="edge" d="M770 150H850V240H960"/>
+<path class="edge" d="M770 280H960"/>
+<path class="edge" d="M770 410H880V300H960"/>
 </svg>

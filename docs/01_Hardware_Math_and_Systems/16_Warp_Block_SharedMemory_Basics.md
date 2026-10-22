@@ -1,6 +1,6 @@
 # 16. Warp Block SharedMemory Basics | Warp、Block 与 Shared Memory 基础
 
-**难度：** Medium | **环境：** GPU optional | **标签：** `算子编程`, `CUDA`, `Shared Memory` | **目标人群：** 编译与系统入门者
+**难度：** Medium | **环境：** CPU-first | **标签：** `算子编程`, `CUDA`, `Shared Memory` | **目标人群：** 编译与系统入门者
 
 > 🚀 **云端运行环境**
 >
@@ -14,11 +14,13 @@
 
 ## 本节导读
 
-shared memory 之所以重要，不是因为它“更快”这句口号本身，而是因为很多 kernel 的性能上限都取决于线程怎样被组织、数据怎样在 block 内复用，以及片上缓存有没有真的减少 HBM 往返。warp、block 和 shared memory 其实是在共同决定 tile 能不能落地。
+同一数据被 Block 内多个线程重复使用时，反复访问 HBM 会产生不必要的外部流量。共享内存把这份数据保留在 Block 内，但同时受到容量和同步正确性的约束。
 
-这一页在整个教程的纵向主线里属于 `Part 01` 的片上执行与复用基础页，优先服务后续的 kernel 实现主线，也给 `推理优化路线` 补一层片上访存视角。学完这里，后面再看 `17 / 18 / 19` 以及 `Part 03` 的 tile 化实现时，你会更容易判断一个 kernel 是在浪费线程协作、浪费 shared memory，还是根本没有形成有效复用；如果这里没学明白，后面常见的问题是能看懂代码里的 block 和 shared memory 用法，却解释不清它们为什么真的减少了 HBM 往返。按专题归类，这一页主要属于 `编译与图优化专题` 的执行基础，也和 `推理优化专题` 共享一部分访存优化视角。
+本节计算单块内的线程槽覆盖比例与复用前后的逻辑读取字节量，再分别检查容量、同步和复用收益。它主要支撑算子优化路线，也为 Triton Tile、融合和片上归约提供访存基础。
 
 **关键词：** `CUDA`, `Warp`, `Shared Memory`
+
+![Block 内共享内存复用链](../public/01_Hardware_Math_and_Systems/16_block_shared_memory_reuse.svg)
 
 ---
 ## 前置阅读
@@ -29,18 +31,8 @@ shared memory 之所以重要，不是因为它“更快”这句口号本身，
 - [Group 1D: Execution Models, Asynchrony and Operator Mapping | 1D: 执行模型、异步调度与算子映射](./1D.md)
 - [15. CUDA Execution Model | CUDA 执行模型](./15_CUDA_Execution_Model.md)
 
-## 相关阅读
-
-**导语：** 把 warp / block / shared memory 直接接到 Triton kernel 和归约实现上，更容易看清 tile 是怎么真正落地的。
-
-- [02. Triton 算子开发：融合门控激活函数 (Fused SwiGLU)](../03_Triton_Kernels/02_Triton_Fused_SwiGLU.md)
-- [03. Triton 算子开发实战：Fused RMSNorm](../03_Triton_Kernels/03_Triton_Fused_RMSNorm.md)
-- [06. Triton 进阶：跨线程归约与数值稳定 (Safe Softmax)](../03_Triton_Kernels/06_Triton_Fused_Softmax.md)
----
 ## Q1：warp、block 和 thread 分别负责什么？
 
-<details>
-<summary>点击展开查看解析</summary>
 
 这三个概念处在不同层级：
 
@@ -59,110 +51,118 @@ flowchart TD
     W --- C[SIMT]
     B --- R[Block-level cooperation]
 ```
-</details>
-### Q1小验证：先分清层级
 
-把执行层和组织层区分开，再看 kernel 代码就不会混。
+### Q1 覆盖率计算：单个 Block 的线程怎样装入 Warp
+
+这里的线程数属于同一个 Block。不同 Block 的尾部线程不会合并到一个 Warp；线程槽覆盖比例也不是设备占用率。
+
 
 ```python
 def execution_coverage(num_threads, warp_size=32):
-    # 一个 block 里会包含多少个 warp，决定了并行执行的覆盖面。
+    """计算单个 Block 的 Warp 数、尾 Warp 线程数与槽覆盖比例。"""
+    if any(type(value) is not int or value <= 0 for value in (num_threads, warp_size)):
+        raise ValueError('单块线程数与 Warp 大小必须是正整数')
     warps = (num_threads + warp_size - 1) // warp_size
-    return {'threads': num_threads, 'warps': warps, 'last_warp_utilization': num_threads % warp_size or warp_size}
+    thread_slots = warps * warp_size
+    last_warp_active_threads = num_threads - (warps - 1) * warp_size
+    return {
+        'threads': num_threads,
+        'warps': warps,
+        'last_warp_active_threads': last_warp_active_threads,
+        'thread_slot_utilization': num_threads / thread_slots,
+    }
 
-for threads in [32, 64, 96]:
+for threads in [32, 48, 65]:
     print(execution_coverage(threads))
+assert execution_coverage(48)['last_warp_active_threads'] == 16
 
 ```
 
-## Q2：为什么 shared memory 能显著改善块内复用？
+## Q2：共享内存怎样改变重复读取？
 
-<details>
-<summary>点击展开查看解析</summary>
+同一 Block 多次使用一份数据时，可以把它从全局内存搬入共享内存，让线程重复读取片上副本。这样减少的是重复的全局读取请求；实际 HBM 字节量还取决于原方案的缓存命中情况。搬入、同步和片上容量则是新增成本，需要分别记录。
 
-shared memory 位于 HBM 和寄存器之间，速度比 HBM 快得多，且适合 block 内线程共享。
+下面比较每次完整重读与每块只搬入一次的逻辑字节量，不把该比例当作加速比。
 
-它的价值在于：
-- 避免同一批数据反复从 HBM 读取；
-- 让 block 内多个线程复用同一份中间结果；
-- 把中间状态保留在离计算更近的层级。
+### Q2 对照验证：计算整块复用的逻辑读取减少量
 
-所以 shared memory 不是“更大的缓存”，而是“更适合 block 协作的局部高速缓冲”。很多 kernel 优化的收益，本质上都来自把数据搬到这里后减少了 HBM 访问。
+暂不计缓存命中，假设各 Block 独立搬入并完整使用数据块。只改变使用次数，观察逻辑全局读取量；这里不测量真实 HBM 流量。
 
-```mermaid
-flowchart LR
-    H[HBM] --> S[Shared Memory]
-    S --> R[Registers]
-    B[Block 内线程] --> S
-    B -. fewer reads .-> H
-```
-</details>
-### Q2小验证：复用为什么重要
-
-同一份中间数据如果会被多次用到，就更适合放在 shared memory。
 
 ```python
-def shared_reuse_gain(reuse_count, hbm_cost=10, smem_cost=2):
-    # 复用越多，把同一份数据留在 shared memory 的收益越大。
-    return hbm_cost + max(reuse_count - 1, 0) * smem_cost
+def shared_reuse_gain(tile_bytes, reuse_count, blocks):
+    """返回整块读取模型的逻辑字节量及减少比例，不测量 HBM。"""
+    if any(type(value) is not int or value <= 0 for value in (tile_bytes, reuse_count, blocks)):
+        raise ValueError('数据块字节数、使用次数与块数必须是正整数')
+    baseline_global_read_bytes = tile_bytes * reuse_count * blocks
+    shared_global_read_bytes = tile_bytes * blocks
+    return {
+        'baseline_global_read_bytes': baseline_global_read_bytes,
+        'shared_global_read_bytes': shared_global_read_bytes,
+        'saved_global_read_bytes': baseline_global_read_bytes - shared_global_read_bytes,
+        'global_read_reduction_fraction': 1 - shared_global_read_bytes / baseline_global_read_bytes,
+    }
 
 for reuse_count in [1, 2, 4]:
-    print('reuse', reuse_count, '-> cost', shared_reuse_gain(reuse_count))
-print('shared memory pays off when reuse_count > 1')
+    print('reuse', reuse_count, '->', shared_reuse_gain(8192, reuse_count, 8))
+assert shared_reuse_gain(8192, 1, 8)['saved_global_read_bytes'] == 0
 
 ```
 
-## Q3：为什么后面学 Triton 时，shared memory 总会反复出现？
+## Q3：容量和同步检查通过后，是否就有复用收益？
 
-<details>
-<summary>点击展开查看解析</summary>
+共享内存方案首先需要容纳数据块，并让消费者在数据写入后再读取。两项检查通过，只说明本例的容量与同步前提满足；如果数据只使用一次，方案仍可正确执行，但没有减少逻辑全局读取。实际核函数的同步正确性需要检查控制流和访问关系，不能由一个布尔输入代替验证。
 
-Triton 的很多优化都围绕 block 级数据组织展开，而 block 级组织离不开 shared memory。
+### Q3 对照验证：分别检查执行前提与复用量
 
-当你在 Triton 里做 tile、mask、fusion 或 block-wise reduction 时，本质上都是在决定：
-- 哪些数据先放到片上；
-- 哪些数据在 block 内共享；
-- 哪些中间结果不必回到 HBM。
+固定块数和预算，分别构造容量超限、同步条件不满足与没有重复使用的情况。
 
-所以 shared memory 不是一个单独知识点，而是后续块级编程的核心基础。先把这层讲通，后面的 Triton kernel 就不会像一堆抽象参数。
-
-```mermaid
-flowchart TD
-    A[Block-level data organization] --> B[tile]
-    A --> C[shared memory]
-    A --> D[mask / boundary handling]
-    B --> E[Triton kernel]
-    C --> E
-    D --> E
-```
-</details>
-### Q3小验证：看到 block 级优化时先想什么
-
-先问自己：这里是不是在减少 HBM 访问、增加 block 内复用。
 
 ```python
-def optimization_score(tiling, fusion, block_reduction):
-    # 片上优化通常不是单点优化，而是多个手段叠加。
-    score = 0
-    score += 2 if tiling else 0
-    score += 2 if fusion else 0
-    score += 1 if block_reduction else 0
-    return score
+def shared_memory_candidate(tile_bytes, reuse_count, blocks,
+                            shared_limit_bytes, synchronization_valid):
+    """检查给定容量和同步前提；同步输入是已知假设，而非验证结果。"""
+    traffic = shared_reuse_gain(tile_bytes, reuse_count, blocks)
+    if type(shared_limit_bytes) is not int or shared_limit_bytes <= 0:
+        raise ValueError('共享内存预算必须是正整数字节数')
+    if type(synchronization_valid) is not bool:
+        raise ValueError('同步前提必须是布尔值')
+    reasons = []
+    if tile_bytes > shared_limit_bytes:
+        reasons.append('shared_capacity')
+    if not synchronization_valid:
+        reasons.append('synchronization')
+    return {
+        'capacity_and_sync_conditions_met': not reasons,
+        'reasons': reasons,
+        'has_logical_read_reduction': traffic['saved_global_read_bytes'] > 0,
+        **traffic,
+    }
 
-plans = [
-    ('naive', False, False, False),
-    ('tiled', True, False, False),
-    ('fused', True, True, True),
-]
-for name, tiling, fusion, reduction in plans:
-    print(name, '->', optimization_score(tiling, fusion, reduction))
-print('higher score means less HBM traffic')
+
+good = shared_memory_candidate(32 * 1024, 4, 8, 64 * 1024, True)
+too_large = shared_memory_candidate(96 * 1024, 4, 8, 64 * 1024, True)
+no_reuse = shared_memory_candidate(32 * 1024, 1, 8, 64 * 1024, True)
+assert good['capacity_and_sync_conditions_met']
+assert not too_large['capacity_and_sync_conditions_met']
+assert no_reuse['capacity_and_sync_conditions_met']
+assert not no_reuse['has_logical_read_reduction']
+assert shared_memory_candidate(1024, 4, 8, 65536, False)['reasons'] == ['synchronization']
+print(good)
+print(too_large)
+print(no_reuse)
 
 ```
 
-## ⚠️ 常见误区
+## 继续核对片上复用
 
-- warp 不是 block，warp 是执行粒度，block 是组织粒度。
-- shared memory 不是越大越好，关键在于 block 内复用是否足够。
-- 看到 shared memory 不一定就是“更复杂”，很多时候只是把数据放到了更合适的位置。
-- 先懂层级关系，再看 kernel 代码，理解会稳很多。
+先判断线程协作与同步是否正确，再检查共享内存容量和逻辑读取减少量。继续扩大分块时，还要结合寄存器、驻留块数与编译结果验证；这些资源关系可在 [SRAM 优化技术](./24_SRAM_Optimization_Techniques.md)继续计算。
+
+## 相关阅读
+
+**导语：** 把 warp / block / shared memory 直接接到 Triton kernel 和归约实现上，更容易看清 tile 是怎么真正落地的。
+
+- [02. Triton 算子开发：融合门控激活函数 (Fused SwiGLU)](../03_Triton_Kernels/02_Triton_Fused_SwiGLU.md)
+- [03. Triton 算子开发实战：Fused RMSNorm](../03_Triton_Kernels/03_Triton_Fused_RMSNorm.md)
+- [06. Triton 进阶：跨线程归约与数值稳定 (Safe Softmax)](../03_Triton_Kernels/06_Triton_Fused_Softmax.md)
+---

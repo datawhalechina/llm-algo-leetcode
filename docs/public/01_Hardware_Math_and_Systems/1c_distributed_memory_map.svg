@@ -1,35 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="650" viewBox="0 0 1280 650" role="img" aria-labelledby="title desc">
-  <title id="title">1C 通信、并行与容错</title>
-  <desc id="desc">状态切分决定每张卡保留什么，拓扑和集合通信决定交换代价，最后比较显存收益与同步等待。</desc>
-  <defs><marker id="a1c" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#64748b"/></marker><style>
-    text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#475569}.group{font-size:19px;font-weight:700}.head{font-size:17px;font-weight:700}.body{font-size:14px}.small{font-size:12px;fill:#475569}.panel{stroke:#94a3b8;stroke-width:2;rx:16}.item{stroke:#cbd5e1;stroke-width:1.5;rx:10}.flow{stroke:#64748b;stroke-width:2.5;fill:none;marker-end:url(#a1c)}.net{stroke:#38bdf8;stroke-width:3;fill:none}
-  </style></defs>
-  <rect width="1280" height="650" fill="#f8fafc"/>
-  <text x="640" y="42" text-anchor="middle" class="title">1C 通信、并行与容错：切分之后如何协作</text>
-  <text x="640" y="70" text-anchor="middle" class="sub">先决定状态如何分布，再观察设备如何交换，最后比较显存收益与通信代价</text>
-
-  <rect x="40" y="150" width="270" height="350" fill="#e0f2fe" class="panel"/><text x="175" y="187" text-anchor="middle" class="group">状态切分</text>
-  <rect x="70" y="225" width="210" height="72" fill="#fff" class="item"/><text x="175" y="255" text-anchor="middle" class="head">DP / TP / PP</text><text x="175" y="278" text-anchor="middle" class="body">数据 · 张量 · 层</text>
-  <rect x="70" y="325" width="210" height="72" fill="#fff" class="item"/><text x="175" y="355" text-anchor="middle" class="head">状态保留</text><text x="175" y="378" text-anchor="middle" class="body">参数 · 梯度 · 优化器</text>
-  <text x="175" y="450" text-anchor="middle" class="small">状态分布决定单卡容量</text>
-
-  <rect x="370" y="120" width="390" height="410" fill="#dcfce7" class="panel"/><text x="565" y="157" text-anchor="middle" class="group">拓扑与通信</text>
-  <rect x="430" y="205" width="125" height="72" fill="#fff" class="item"/><text x="492" y="235" text-anchor="middle" class="head">GPU 0</text><text x="492" y="258" text-anchor="middle" class="small">局部状态</text>
-  <rect x="575" y="205" width="125" height="72" fill="#fff" class="item"/><text x="637" y="235" text-anchor="middle" class="head">GPU 1</text><text x="637" y="258" text-anchor="middle" class="small">局部状态</text>
-  <rect x="430" y="345" width="125" height="72" fill="#fff" class="item"/><text x="492" y="375" text-anchor="middle" class="head">GPU 2</text><text x="492" y="398" text-anchor="middle" class="small">局部状态</text>
-  <rect x="575" y="345" width="125" height="72" fill="#fff" class="item"/><text x="637" y="375" text-anchor="middle" class="head">GPU 3</text><text x="637" y="398" text-anchor="middle" class="small">局部状态</text>
-  <path d="M555 241H575M492 277V345M637 277V345M555 381H575" class="net"/>
-  <text x="565" y="480" text-anchor="middle" class="small">PCIe / NVLink / 网络决定交换代价</text>
-
-  <rect x="820" y="150" width="200" height="350" fill="#fef3c7" class="panel"/><text x="920" y="187" text-anchor="middle" class="group">集合通信</text>
-  <rect x="845" y="225" width="150" height="72" fill="#fff" class="item"/><text x="920" y="255" text-anchor="middle" class="head">AllReduce</text><text x="920" y="278" text-anchor="middle" class="small">聚合梯度</text>
-  <rect x="845" y="325" width="150" height="72" fill="#fff" class="item"/><text x="920" y="355" text-anchor="middle" class="head">AllGather</text><text x="920" y="378" text-anchor="middle" class="small">重建状态</text>
-
-  <rect x="1080" y="150" width="160" height="350" fill="#fce7f3" class="panel"/><text x="1160" y="187" text-anchor="middle" class="group">系统判断</text>
-  <text x="1160" y="245" text-anchor="middle" class="head">显存收益</text><text x="1160" y="270" text-anchor="middle" class="small">状态分摊</text>
-  <text x="1160" y="335" text-anchor="middle" class="head">通信等待</text><text x="1160" y="360" text-anchor="middle" class="small">同步与带宽</text>
-  <text x="1160" y="430" text-anchor="middle" class="head">多卡指标</text><text x="1160" y="455" text-anchor="middle" class="small">显存 · step time</text>
-
-  <path d="M310 300H360" class="flow"/><path d="M760 300H810" class="flow"/><path d="M1020 300H1070" class="flow"/>
-  <text x="335" y="282" text-anchor="middle" class="small">分布</text><text x="785" y="282" text-anchor="middle" class="small">交换</text><text x="1045" y="282" text-anchor="middle" class="small">比较</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="560" viewBox="0 0 1280 560" role="img" aria-labelledby="title desc">
+<title id="title">1C：通信与容量分别检查，再进入调度和恢复</title>
+<desc id="desc">05切分对象与拓扑先引入20集合通信。20通信量及06状态容量分别作为26筛选输入；26再通向27通信调度与28保存恢复两条阅读分支。每条分支使用独立端点与线身。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:18px;font-weight:700}.note{font-size:15px;fill:#475569}.edge{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow)}.detail{stroke-dasharray:7 5}</style></defs>
+<rect width="1280" height="560" fill="#f8fafc"/>
+<text class="title" x="640" y="45" text-anchor="middle">1C：通信与容量分别检查，再进入调度和恢复</text>
+<text class="note" x="640" y="76" text-anchor="middle">实线：推荐阅读；虚线：提供筛选条件。通信调度与保存恢复按问题分别进入。</text>
+<rect x="80" y="115" width="300" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text class="head" x="230" y="147" text-anchor="middle">05 切分对象与拓扑</text><text class="note" x="230" y="173" text-anchor="middle">交换什么数据，经过哪些链路</text>
+<rect x="80" y="285" width="300" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text class="head" x="230" y="317" text-anchor="middle">20 集合通信</text><text class="note" x="230" y="343" text-anchor="middle">通信量与理论传输时间</text>
+<rect x="900" y="285" width="300" height="80" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text class="head" x="1050" y="317" text-anchor="middle">06 状态复制与分片</text><text class="note" x="1050" y="343" text-anchor="middle">参数、梯度与优化器状态</text>
+<rect x="490" y="285" width="300" height="80" rx="12" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text class="head" x="640" y="317" text-anchor="middle">26 筛选并行方案</text><text class="note" x="640" y="343" text-anchor="middle">容量、互连与模型结构</text>
+<rect x="80" y="450" width="300" height="80" rx="12" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text class="head" x="230" y="482" text-anchor="middle">27 通信调度</text><text class="note" x="230" y="508" text-anchor="middle">就绪时间、重叠与暴露等待</text>
+<rect x="900" y="450" width="300" height="80" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text class="head" x="1050" y="482" text-anchor="middle">28 保存与恢复</text><text class="note" x="1050" y="508" text-anchor="middle">保存间隔与恢复后的正确性</text>
+<path class="edge" d="M230 195V285"/>
+<path class="edge detail" d="M380 325H490"/>
+<text class="note" x="435" y="308" text-anchor="middle">通信条件</text>
+<path class="edge detail" d="M900 325H790"/>
+<text class="note" x="845" y="308" text-anchor="middle">容量条件</text>
+<path class="edge" d="M550 365V410H230V450"/>
+<text class="note" x="350" y="398" text-anchor="middle">分析通信等待</text>
+<path class="edge" d="M730 365V410H1050V450"/>
+<text class="note" x="950" y="398" text-anchor="middle">检查中断恢复</text>
 </svg>

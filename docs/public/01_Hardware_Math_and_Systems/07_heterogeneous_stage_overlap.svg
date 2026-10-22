@@ -1,10 +1,33 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="title desc">
-<title id="title">CPU 与 GPU 的阶段放置和重叠</title><desc id="desc">把控制、搬运和张量计算分配到主机与设备，并检查依赖允许的重叠和暴露等待。</desc>
-<defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker><style>text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}.t{font-size:28px;font-weight:700}.s{font-size:15px;fill:#475569}.h{font-size:18px;font-weight:700}.b{font-size:14px;fill:#334155}.p{stroke-width:2}.f{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a)}</style></defs>
-<rect width="1280" height="520" rx="24" fill="#f8fafc"/><text x="640" y="45" text-anchor="middle" class="t">异构调度：先放置阶段，再检查重叠</text><text x="640" y="73" text-anchor="middle" class="s">主机负责控制密集阶段，设备负责张量计算；搬运和同步决定收益能否暴露</text>
-<rect x="45" y="130" width="260" height="250" rx="18" fill="#eff6ff" stroke="#60a5fa" class="p"/><text x="70" y="168" class="h">1. 拆分阶段</text><text x="70" y="215" class="b">解析 · 组批 · 路由</text><text x="70" y="250" class="b">数据搬运</text><text x="70" y="285" class="b">前向计算 · 后处理</text>
-<rect x="355" y="130" width="260" height="250" rx="18" fill="#f0fdf4" stroke="#4ade80" class="p"/><text x="380" y="168" class="h">2. 匹配执行单元</text><text x="380" y="215" class="b">CPU：控制流与队列</text><text x="380" y="250" class="b">GPU：规则张量计算</text><text x="380" y="285" class="b">内存：驻留与搬运条件</text>
-<rect x="665" y="130" width="260" height="250" rx="18" fill="#fffbeb" stroke="#f59e0b" class="p"/><text x="690" y="168" class="h">3. 标出依赖</text><text x="690" y="215" class="b">生产者 → 消费者</text><text x="690" y="250" class="b">可并行阶段 → 重叠候选</text><text x="690" y="285" class="b">同步点 → 暴露等待</text>
-<rect x="975" y="130" width="260" height="250" rx="18" fill="#faf5ff" stroke="#a855f7" class="p"/><text x="1000" y="168" class="h">4. 验证时间线</text><text x="1000" y="215" class="b">总时间与阶段时间</text><text x="1000" y="250" class="b">搬运是否被隐藏</text><text x="1000" y="285" class="b">结果与单路径基线一致</text>
-<path d="M305 255H355" class="f"/><path d="M615 255H665" class="f"/><path d="M925 255H975" class="f"/><text x="640" y="445" text-anchor="middle" class="s">异构并行成立的条件：职责可分、依赖正确、搬运可隐藏、端到端时间下降</text>
+<title id="title">阶段放置与依赖：计算更快，还要看搬运和等待</title><desc id="desc">上方展示主机准备、输入搬运、设备计算与结果回传的依赖。下方仅对输入搬运8毫秒和计算20毫秒比较串行28毫秒与依赖前缀5毫秒后的理想重叠25毫秒。剩余3毫秒搬运与计算独立，忽略资源争用与提交开销。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:18px;font-weight:700}.body{font-size:15px;fill:#475569}.edge{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow)}.dep{stroke-dasharray:6 5}.axis{stroke:#94a3b8;stroke-width:1.5}.tick{font-size:14px;fill:#475569}</style></defs>
+<rect width="1280" height="520" fill="#f8fafc"/>
+<text class="title" x="640" y="45" text-anchor="middle">阶段放置与依赖：计算更快，还要看搬运和等待</text>
+<text class="body" x="640" y="76" text-anchor="middle">下方为构造时间：搬入 8 ms、计算 20 ms；等待前缀 5 ms 后，剩余搬运与计算独立。</text>
+<rect x="40" y="110" width="240" height="75" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text class="head" x="160" y="140" text-anchor="middle">CPU 准备</text><text class="body" x="160" y="166" text-anchor="middle">解析、组批与输入准备</text>
+<rect x="360" y="110" width="240" height="75" rx="12" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text class="head" x="480" y="140" text-anchor="middle">输入搬入 GPU</text><text class="body" x="480" y="166" text-anchor="middle">输入数据到达设备</text>
+<rect x="680" y="110" width="240" height="75" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text class="head" x="800" y="140" text-anchor="middle">GPU 计算</text><text class="body" x="800" y="166" text-anchor="middle">消费已就绪的数据</text>
+<rect x="1000" y="110" width="240" height="75" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text class="head" x="1120" y="140" text-anchor="middle">结果回到主机</text><text class="body" x="1120" y="166" text-anchor="middle">后处理与下一阶段</text>
+<path class="edge" d="M280 147.5H360"/>
+<path class="edge" d="M600 147.5H680"/>
+<path class="edge" d="M920 147.5H1000"/>
+<text class="head" x="40" y="235" text-anchor="start">仅比较搬入与计算</text>
+<text class="body" x="190" y="282" text-anchor="middle">串行：28 ms</text>
+<rect x="300" y="258" width="240" height="36" rx="5" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text class="body" x="420" y="282" text-anchor="middle">搬入 8 ms</text>
+<rect x="540" y="258" width="600" height="36" rx="5" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text class="body" x="840" y="282" text-anchor="middle">计算 20 ms</text>
+<rect x="450" y="330" width="90" height="110" fill="#ede9fe" opacity="0.65" data-layout-role="decoration"/>
+<text class="body" x="190" y="362" text-anchor="middle">理想重叠：搬入</text>
+<rect x="300" y="338" width="240" height="36" rx="5" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text class="body" x="420" y="362" text-anchor="middle">8 ms</text>
+<text class="body" x="190" y="426" text-anchor="middle">理想重叠：计算</text>
+<rect x="450" y="402" width="600" height="36" rx="5" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text class="body" x="750" y="426" text-anchor="middle">20 ms；结束于 25 ms</text>
+<path class="edge dep" d="M450 374V402"/>
+<text class="body" x="740" y="362" text-anchor="middle">紫色区间：隐藏剩余搬运 3 ms</text>
+<path class="axis" d="M300 474H1140"/>
+<path class="axis" d="M300 470V480"/><text class="tick" x="300" y="502" text-anchor="middle">0</text>
+<path class="axis" d="M450 470V480"/><text class="tick" x="450" y="502" text-anchor="middle">5</text>
+<path class="axis" d="M540 470V480"/><text class="tick" x="540" y="502" text-anchor="middle">8</text>
+<path class="axis" d="M900 470V480"/><text class="tick" x="900" y="502" text-anchor="middle">20</text>
+<path class="axis" d="M1050 470V480"/><text class="tick" x="1050" y="502" text-anchor="middle">25</text>
+<path class="axis" d="M1140 470V480"/><text class="tick" x="1140" y="502" text-anchor="middle">28</text>
+<text class="body" x="1200" y="477" text-anchor="middle">时间 / ms</text>
 </svg>

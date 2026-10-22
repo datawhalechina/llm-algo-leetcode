@@ -14,11 +14,11 @@
 
 ## 本节导读
 
-本节从通信量、带宽、延迟和同步点出发，理解消息组织与计算重叠如何影响 step time。
+通信总时长不一定全部暴露在训练步关键路径上。消息大小、启动次数、依赖关系和可重叠计算共同决定通信是否真正拉长单步时间。
 
-你将把一次通信拆成数据量、带宽、启动延迟和同步次数，再观察消息组织、Collective 选择与计算重叠如何改变训练步的关键路径。
+本节建立“通信负载 → 启动与带宽成本 → 调度次序 → 暴露时间”的关系。完成后，你应能比较分桶、集合通信选择和计算重叠对关键路径的影响。
 
-**关键词：** `overlap`, `all-reduce`, `all-to-all`
+**关键词：** 计算—通信重叠、`All-Reduce`、`All-to-All`
 
 ![本节概念关系](../public/01_Hardware_Math_and_Systems/27_communication_schedule_map.svg)
 
@@ -33,174 +33,217 @@
 
 ## Q1：通信成本如何由数据量、带宽、延迟和同步共同决定？
 
-<details>
-<summary>点击展开查看解析</summary>
+一次通信的理想时间可拆成固定启动成本和载荷传输成本。对同样的总字节数，拆成更多消息不会降低理想传输量，却会重复支付启动延迟。
 
-通信是否挡住计算，先由**位置**决定，再由**带宽**决定。
-估算时先拆开数据量、链路带宽、单次启动延迟和同步次数：数据量决定传输下限，带宽决定传输时间，延迟和同步决定小消息或高频通信的额外成本。
-
-如果通信点放在关键路径上，它就会直接暴露成停顿；如果通信能落在计算间隙里，同样的带宽条件下，体感就会完全不同。
-
-所以这一页真正关心的不是“通信有没有”，而是：
-- 通信点是不是太密
-- 每个通信点是不是都落在关键路径上
-- 计算间隙能不能把通信藏住
-
-换句话说，调度决定了通信是否成为瓶颈的可见部分，带宽只是决定它有多重。
-</details>
+| 数量 | 单位 | 对通信时间的影响 |
+| --- | --- | --- |
+| 有效载荷 | MiB | 在带宽固定时线性增长 |
+| 可持续带宽 | GiB/s | 决定载荷传输下限 |
+| 单次启动延迟 | μs | 小消息或高频通信更敏感 |
+| 启动次数 | 次 | 决定固定成本被支付多少次 |
 
 ### Q1小验证
 
 拆开数据量、带宽、延迟和同步次数的影响。
 
 ```python
-def schedule_cost(comm_points, compute_blocks, overlap_ratio):
-    # 调度成本 = 暴露出来的通信点 + 计算块切得太碎带来的额外压力 - overlap 带来的缓冲。
-    exposed_points = comm_points * (1 - overlap_ratio)
-    fragmentation = max(0, compute_blocks - comm_points)
-    pressure = exposed_points * 3 + fragmentation * 0.5
-    relief = overlap_ratio * 4
+def communication_time_ms(payload_mib, bandwidth_gib_s, latency_us, launches=1):
+    """用 alpha-beta 模型估算一个通信阶段的理想时间。"""
+    if payload_mib < 0 or bandwidth_gib_s <= 0 or latency_us < 0 or launches <= 0:
+        raise ValueError('有效载荷、带宽、延迟或启动次数非法')
+    transfer_ms = payload_mib / 1024 / bandwidth_gib_s * 1000
+    launch_ms = launches * latency_us / 1000
     return {
-        'exposed_points': round(exposed_points, 2),
-        'fragmentation': fragmentation,
-        'schedule_pressure': round(pressure - relief, 2),
+        'payload_mib': payload_mib,
+        'launches': launches,
+        'transfer_ms': round(transfer_ms, 4),
+        'launch_ms': round(launch_ms, 4),
+        'communication_ms': round(transfer_ms + launch_ms, 4),
     }
 
-for case in [(4, 8, 0.2), (2, 8, 0.6), (6, 4, 0.1)]:
-    print(case, '->', schedule_cost(*case))
-print('the lower the exposed communication points, the easier the schedule')
+for launches in (1, 8, 64):
+    print(communication_time_ms(256, bandwidth_gib_s=50, latency_us=8, launches=launches))
+
+assert communication_time_ms(0, 50, 8, 4)['communication_ms'] == 0.032
+assert communication_time_ms(256, 50, 8, 8)['transfer_ms'] == 5.0
 
 ```
 
 ## Q2：为什么把小通信合并成大通信通常更稳？
 
-<details>
-<summary>点击展开查看解析</summary>
+在反向传播中，梯度只有在对应层完成后才能进入通信。较小的分桶能更早启动 All-Reduce，但会增加启动次数；较大的分桶减少启动成本，却可能等待更多梯度就绪。
 
-“小通信合并成大通信”真正省下来的，不只是字节数，而是**启动次数、同步次数和调度碎片**。
-
-可以把这件事拆成三层：
-- **launch 开销**：每次发起通信都要付固定代价
-- **带宽利用**：更大的消息通常更容易吃满链路
-- **流水线粒度**：合并太大又会挤压 overlap 空间
-
-所以合并的目标不是“越大越好”，而是“把碎片变少，同时不把流水线切得太粗”。
-
-这也是为什么通信优化经常不是先谈算法，而是先谈消息怎么排、在哪里合、合到什么粒度。
-</details>
+| 分桶变化 | 可能收益 | 可能代价 | 应观察的量 |
+| --- | --- | --- | --- |
+| 减小分桶 | 通信更早开始 | 启动次数增加 | 首个分桶启动时间、启动数 |
+| 增大分桶 | 固定启动成本降低 | 等待就绪的时间增加 | 通信完成时间、暴露通信 |
+| 就绪顺序改变 | 与反向计算形成更长重叠窗口 | 可能破坏原有依赖 | 分桶就绪时间与关键路径 |
 
 ### Q2小验证
 
 比较合并消息后的启动开销与 overlap 空间。
 
 ```python
-def merge_tradeoff(num_small, merged_size_mb, bw_gbps, launch_cost=1.5):
-    # 合并消息的收益 = 少发起几次 + 更稳定的带宽利用；代价 = 粒度变粗。
-    launches_saved = max(num_small - 1, 0)
-    launch_gain = launches_saved * launch_cost
-    transfer_cost = merged_size_mb * 8 / bw_gbps
-    granularity_penalty = max(merged_size_mb / 128 - 1, 0)
+def schedule_gradient_buckets(layers, bucket_cap_mib, bandwidth_gib_s=50, latency_us=8):
+    """根据梯度就绪时间和分桶容量构建通信时间线。"""
+    if bucket_cap_mib <= 0 or not layers:
+        raise ValueError('分桶容量必须为正，且层列表不能为空')
+    buckets, pending, pending_mib = [], [], 0.0
+    for layer in sorted(layers, key=lambda item: item['ready_ms']):
+        pending.append(layer)
+        pending_mib += layer['size_mib']
+        if pending_mib >= bucket_cap_mib:
+            buckets.append((pending, pending_mib))
+            pending, pending_mib = [], 0.0
+    if pending:
+        buckets.append((pending, pending_mib))
+
+    timeline, communication_available_ms = [], 0.0
+    for bucket_id, (members, size_mib) in enumerate(buckets):
+        ready_ms = max(member['ready_ms'] for member in members)
+        start_ms = max(ready_ms, communication_available_ms)
+        duration_ms = communication_time_ms(size_mib, bandwidth_gib_s, latency_us)['communication_ms']
+        end_ms = start_ms + duration_ms
+        timeline.append({
+            'bucket_id': bucket_id,
+            'layers': [member['name'] for member in members],
+            'size_mib': round(size_mib, 2),
+            'ready_ms': round(ready_ms, 4),
+            'start_ms': round(start_ms, 4),
+            'end_ms': round(end_ms, 4),
+        })
+        communication_available_ms = end_ms
+
+    backward_end_ms = max(layer['ready_ms'] for layer in layers)
     return {
-        'launch_gain': round(launch_gain, 2),
-        'transfer_cost': round(transfer_cost, 2),
-        'granularity_penalty': round(granularity_penalty, 2),
-        'merge_score': round(launch_gain - transfer_cost - granularity_penalty, 2),
+        'bucket_count': len(timeline),
+        'backward_end_ms': backward_end_ms,
+        'communication_end_ms': round(communication_available_ms, 4),
+        'exposed_after_backward_ms': round(max(communication_available_ms - backward_end_ms, 0.0), 4),
+        'timeline': timeline,
     }
 
-for case in [(8, 64, 900), (8, 256, 900), (16, 128, 64)]:
-    print(case, '->', merge_tradeoff(*case))
-print('merge helps only when fewer launches are worth more than the larger chunk cost')
+layers = [
+    {'name': 'L4', 'ready_ms': 2.0, 'size_mib': 32},
+    {'name': 'L3', 'ready_ms': 5.0, 'size_mib': 32},
+    {'name': 'L2', 'ready_ms': 9.0, 'size_mib': 32},
+    {'name': 'L1', 'ready_ms': 14.0, 'size_mib': 32},
+]
+for bucket_cap_mib in (32, 64, 128):
+    print(bucket_cap_mib, schedule_gradient_buckets(layers, bucket_cap_mib))
+
+assert schedule_gradient_buckets(layers, 32)['bucket_count'] == 4
+assert schedule_gradient_buckets(layers, 128)['bucket_count'] == 1
 
 ```
 
 ## Q3：为什么 All-Reduce / All-to-All 的优化目标不同？
 
-<details>
-<summary>点击展开查看解析</summary>
+All-Reduce 对每个 rank 的同尺寸张量做规约并广播，环形实现中每个 rank 的逻辑传输量约为 `2(P-1)/P` 倍载荷。All-to-All 则把不同数量的状态发往不同 rank；总载荷相近时，最忙 rank 的接收量仍可能决定完成时间。
 
-这两类通信的瓶颈不一样：
-
-- **All-Reduce** 的核心是把同步代价压进计算之外，重点看是否能和反向传播重叠
-- **All-to-All** 的核心是把路由和分发稳定下来，重点看 token 是否会形成局部拥塞
-
-因此，优化目标也不同：
-- All-Reduce 更关心**同步压力**和关键路径暴露
-- All-to-All 更关心**路由压力**和设备间负载均衡
-
-如果把两者都当成“只是搬数据”，就会错过真正的优化点。
-</details>
+| 集合通信 | 主要负载 | 主要不均衡来源 | 调度时优先观察 |
+| --- | --- | --- | --- |
+| All-Reduce | 梯度或分片张量 | rank 变慢、分桶就绪时间不一致 | 分桶就绪、启动次数、暴露通信 |
+| All-to-All | token、专家输入或序列分片 | 路由或序列分布倾斜 | 最大 rank 载荷、长尾与空闲 rank |
 
 ### Q3小验证
 
 区分 All-Reduce 的同步压力和 All-to-All 的路由压力。
 
 ```python
-def comm_goal(kind, sync_pressure, routing_pressure):
-    # 不同通信模式的优化目标不同：一个偏同步，一个偏路由。
-    if kind == 'allreduce':
-        score = sync_pressure * 2 - routing_pressure
-        bottleneck = 'sync'
-    elif kind == 'alltoall':
-        score = routing_pressure * 2 - sync_pressure
-        bottleneck = 'routing'
-    else:
-        score = 0
-        bottleneck = 'unknown'
-    return {'bottleneck': bottleneck, 'score': score}
+def ring_allreduce_payload_mib(tensor_mib, world_size):
+    """返回环形 All-Reduce 中每个 rank 的逻辑传输量。"""
+    if tensor_mib < 0 or world_size < 2:
+        raise ValueError('张量容量必须非负，world_size 至少为 2')
+    return tensor_mib * 2 * (world_size - 1) / world_size
 
-for case in [('allreduce', 3, 1), ('alltoall', 1, 3), ('allreduce', 1, 3)]:
-    print(case, '->', comm_goal(*case))
-print('allreduce and all-to-all should be optimized against different bottlenecks')
+def alltoall_route_ledger(token_matrix, bytes_per_token):
+    """计算 All-to-All 路由矩阵的跨 rank 载荷和接收不均衡。"""
+    world_size = len(token_matrix)
+    if world_size < 2 or any(len(row) != world_size for row in token_matrix):
+        raise ValueError('token_matrix 必须是至少包含两个 rank 的方阵')
+    if bytes_per_token <= 0 or any(token < 0 for row in token_matrix for token in row):
+        raise ValueError('token 数或每 token 字节数非法')
+    received_tokens = [sum(token_matrix[src][dst] for src in range(world_size)) for dst in range(world_size)]
+    remote_tokens = sum(
+        token_matrix[src][dst]
+        for src in range(world_size) for dst in range(world_size) if src != dst
+    )
+    mean_received = sum(received_tokens) / world_size
+    return {
+        'remote_payload_mib': round(remote_tokens * bytes_per_token / 2**20, 4),
+        'received_tokens': received_tokens,
+        'max_to_mean_receive_ratio': round(max(received_tokens) / mean_received, 4),
+    }
+
+balanced = [[16, 16, 16, 16] for _ in range(4)]
+skewed = [[4, 4, 52, 4] for _ in range(4)]
+print('Ring All-Reduce per-rank MiB:', ring_allreduce_payload_mib(256, 4))
+print('Balanced All-to-All:', alltoall_route_ledger(balanced, bytes_per_token=4096))
+print('Skewed All-to-All:', alltoall_route_ledger(skewed, bytes_per_token=4096))
+
+assert ring_allreduce_payload_mib(256, 4) == 384
+assert alltoall_route_ledger(skewed, 4096)['max_to_mean_receive_ratio'] > 3
 
 ```
 
 ## Q4：怎样把通信排进计算间隙？
 
-<details>
-<summary>点击展开查看解析</summary>
+通信隐藏只能来自与它没有未解决数据依赖的计算区间。多个计算区间可能相互重叠，因此要先求它们在通信区间内的并集，再计算已隐藏和暴露时间，不能直接累加重叠窗口。
 
-通信真正能藏进去，靠的不是“把链路弄快一点”，而是把它安排到计算间隙里。
-
-常见手段有三类：
-- **移动同步点**：把通信放到更自然的边界，而不是硬塞进关键路径
-- **拆分大消息**：让部分通信更早或更晚发生，减少单次暴露
-- **利用并发执行**：让独立的 kernel / stream / 传输彼此错开
-
-```mermaid
-flowchart LR
-    A[Compute A] --> B[Gap]
-    B --> C[Compute B]
-    A -. communication .-> B
-    B -. communication .-> C
-    subgraph keypath[Critical Path]
-    A --> B --> C
-    end
-```
-
-所以，真正有效的优化往往不是“单次通信更快”，而是“通信尽量不出现在关键路径上”。
-</details>
+| 时间量 | 含义 | 与关键路径的关系 |
+| --- | --- | --- |
+| 通信总时间 | 集合通信在设备上的活动区间 | 不一定全部延长 step |
+| 已隐藏通信 | 被独立计算区间覆盖的通信 | 不再单独增加关键路径 |
+| 暴露通信 | 通信区间中未被覆盖的部分 | 是调度优化要减少的直接对象 |
+| 重叠比例 | 已隐藏时间 / 通信总时间 | 要与 step 时间一起解读 |
 
 ### Q4小验证
 
 观察通信进入计算间隙后，关键路径成本如何变化。
 
 ```python
-def overlap_window(compute_ms, comm_ms, gap_ms):
-    # 只有当通信能塞进计算间隙时，overlap 才真正成立。
-    hidden = min(comm_ms, gap_ms)
-    exposed = max(comm_ms - gap_ms, 0)
-    overlap_ratio = hidden / comm_ms if comm_ms else 0
-    critical_path = compute_ms + exposed
+def communication_exposure(comm_interval, independent_compute_intervals):
+    """裁剪并合并计算区间，返回已隐藏与暴露通信时间。"""
+    comm_start, comm_end = comm_interval
+    if comm_end < comm_start:
+        raise ValueError('通信区间非法')
+    clipped = []
+    for start, end in independent_compute_intervals:
+        if end < start:
+            raise ValueError('计算区间非法')
+        left, right = max(start, comm_start), min(end, comm_end)
+        if left < right:
+            clipped.append((left, right))
+
+    merged = []
+    for start, end in sorted(clipped):
+        if not merged or start > merged[-1][1]:
+            merged.append([start, end])
+        else:
+            merged[-1][1] = max(merged[-1][1], end)
+
+    communication_ms = comm_end - comm_start
+    hidden_ms = sum(end - start for start, end in merged)
+    exposed_ms = communication_ms - hidden_ms
     return {
-        'hidden_comm_ms': round(hidden, 2),
-        'exposed_comm_ms': round(exposed, 2),
-        'overlap_ratio': round(overlap_ratio, 2),
-        'critical_path_ms': round(critical_path, 2),
+        'communication_ms': round(communication_ms, 4),
+        'hidden_ms': round(hidden_ms, 4),
+        'exposed_ms': round(exposed_ms, 4),
+        'overlap_ratio': round(hidden_ms / communication_ms, 4) if communication_ms else 1.0,
+        'merged_overlap_intervals': [tuple(interval) for interval in merged],
     }
 
-for case in [(40, 12, 2), (40, 12, 8), (10, 16, 4)]:
-    print(case, '->', overlap_window(*case))
-print('effective overlap depends on whether the gap can hide the communication')
+cases = [
+    ((0, 12), []),
+    ((0, 12), [(1, 4), (3, 8)]),
+    ((0, 12), [(-2, 5), (5, 20)]),
+]
+for case in cases:
+    print(case, '->', communication_exposure(*case))
+
+assert communication_exposure((0, 12), [(1, 4), (3, 8)])['hidden_ms'] == 7
+assert communication_exposure((0, 12), [(-2, 20)])['exposed_ms'] == 0
 
 ```
 

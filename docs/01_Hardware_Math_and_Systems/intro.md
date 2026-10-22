@@ -2,81 +2,46 @@
 
 ## Part Overview | Part 概览
 
-本部分覆盖 34 个讨论题（01–34），把第零部分的 PyTorch 与训练基础连接到后续算法、算子和系统实践。`01–10` 建立基础坐标，`11–20` 深入常见执行机制，`21–34` 扩展到量化、稀疏、并行、编译和异构约束。
+Part 01 把模型规模、设备资源和执行约束连接起来。学习者从数据类型、参数量和计算量出发，逐步理解单设备访存、多设备通信、程序执行、编译后端和设备运行时怎样共同限制训练与推理；完成后能够把一个模型或工作负载转成资源假设，并知道下一步应验证什么。
 
-Part 1 按 6 个专题组织：`1A`、`1B`、`1C`、`1D`、`1E`、`1F` 分别承担数值规模、单设备访存、通信并行、执行编程、编译后端和硬件适配这六条主线。具体每组怎么读、怎么接后续 Part，由各组导航页分别说明。
+## Learning Path | 学习路线
 
-```mermaid
-flowchart TB
-    P1[Part 1]
+先以 1A 和 1B 建立数量级、硬件层次和单设备工作集，再按实际问题选择通信并行、执行映射、编译后端或设备适配分支。
 
-    subgraph C[内容分层]
-        L1[01-10 基础主线]
-        L2[11-20 延展主线]
-        L3[21-34 扩展主线]
-    end
+![Part 01 学习路线](../public/01_Hardware_Math_and_Systems/part01_learning_route.svg)
 
-    subgraph T[专题分组]
-        G1[1A 数值与规模]
-        G2[1B 单设备访存]
-        G3[1C 通信与并行]
-        G4[1D 执行与编程]
-        G5[1E 编译与后端]
-        G6[1F 硬件适配]
-    end
+| 学习方式 | 推荐入口 | 能完成的判断 |
+|:---|:---|:---|
+| 建立共同基础 | [1A 数值与规模](./1A.md) → [1B 单设备执行、内存与访存](./1B.md) | 参数、状态、计算量和工作集是否落在可用资源内 |
+| 训练或多卡问题 | [1C 通信、并行与容错](./1C.md) | 应切分什么、交换什么，以及恢复代价是否可接受 |
+| 算子或执行路径问题 | [1D 执行模型、异步调度与算子映射](./1D.md) → [1E 编译与后端](./1E.md) | 程序如何映射到设备，后端是否能生成目标执行路径 |
+| 部署与设备选型问题 | [1F 硬件适配与系统约束](./1F.md) | 模型产物、运行时和成本是否允许进入目标设备 |
 
-    P1 --> C
-    P1 --> T
-```
+## Group Overview | 六组学习入口
 
-## Part Asset Overview | Part 资产总览
-
-六个组分别回答数量级、单设备执行、通信并行、执行映射、编译后端和硬件适配问题。少数桥接页会被多个专题引用，但其权威解释仍保留在所属组。
-
-| 学习组 | 核心职责 | 当前内容映射 | 每组多少节 |
+| 学习组 | 要回答的问题 | 核心入口 | 交给后续专题的输入 |
 |:---|:---|:---|:---|
-| [1A](./1A.md) | 建立数量级与资源账本 | [01](./01_Data_Types_and_Precision.md)、[02](./02_LLM_Params_and_FLOPs.md)、[21](./21_Quantization_Theory_and_INT4_INT8.md)、[22](./22_MoE_Parameter_and_Compute.md) | 4 |
-| [1B](./1B.md) | 识别单设备瓶颈与访存路径 | [03](./03_GPU_Architecture_and_Memory.md)、[04](./04_Attention_Memory_Optimization.md)、[11](./11_KV_Cache_and_Memory_Growth.md)、[12](./12_TensorCore_and_Mixed_Precision.md)、[13](./13_Profiling_and_Bottleneck_Analysis.md)、[14](./14_FlashAttention_Memory_Model.md)、[23](./23_TensorCore_Deep_Dive.md)、[24](./24_SRAM_Optimization_Techniques.md)、[25](./25_Sparse_Computation_and_Sparse_Attention.md) | 9 |
-| [1C](./1C.md) | 刻画通信、并行与容错边界 | [05](./05_Communication_Topologies.md)、[06](./06_VRAM_Calculation_and_ZeRO.md)、[20](./20_NCCL_and_AllReduce_Basics.md)、[26](./26_Parallel_Strategy_Decision_Framework.md)、[27](./27_Communication_Scheduling_Optimization.md)、[28](./28_Fault_Tolerance_and_Checkpointing.md) | 6 |
-| [1D](./1D.md) | 掌握执行模型、异步调度与算子映射 | [07](./07_CPU_GPU_Heterogeneous_Scheduling.md)、[08](./08_Programming_Models_CUDA_Triton.md)、[15](./15_CUDA_Execution_Model.md)、[16](./16_Warp_Block_SharedMemory_Basics.md)、[17](./17_CUDA_Stream_and_Asynchrony.md)、[18](./18_Triton_Block_Model.md)、[29](./29_CUDA_Stream_Advanced_Scheduling.md) | 7 |
-| [1E](./1E.md) | 建立编译、后端与动态执行判断 | [09](./09_AI_Compilers_and_Graph_Optimization.md)、[19](./19_Operator_Fusion_Introduction.md)、[30](./30_Dynamic_Shape_Handling.md)、[32](./32_TVM_MLIR_Deep_Practice.md) | 4 |
-| [1F](./1F.md) | 判断硬件适配、资源隔离与系统约束 | [10](./10_Domestic_AI_Chips_Overview.md)、[31](./31_GPU_Virtualization_and_MIG.md)、[33](./33_TCO_and_Cost_Model.md)、[34](./34_Heterogeneous_Accelerators_and_Runtime_Constraints.md) | 4 |
+| [1A 数值与规模](./1A.md) | 模型、训练状态和稀疏结构分别需要多少存储与计算？ | [01 数据类型与精度](./01_Data_Types_and_Precision.md) → [02 参数量与 FLOPs](./02_LLM_Params_and_FLOPs.md) | 量化、模型架构与性能候选的资源账本 |
+| [1B 单设备执行、内存与访存](./1B.md) | 工作集、KV 状态、矩阵计算和访存约束怎样形成单卡瓶颈？ | [03 GPU 架构与显存](./03_GPU_Architecture_and_Memory.md) | 推理、性能分析与算子优化的容量和关键路径假设 |
+| [1C 通信、并行与容错](./1C.md) | 状态怎样切分，通信何时暴露，系统中断后怎样恢复？ | [05 通信拓扑](./05_Communication_Topologies.md) → [06 显存计算与 ZeRO](./06_VRAM_Calculation_and_ZeRO.md) | 通信并行的策略、载荷和恢复条件 |
+| [1D 执行模型、异步调度与算子映射](./1D.md) | 任务如何落到主机、设备、线程、Warp、Block 或 Program？ | [07 CPU/GPU 异构调度](./07_CPU_GPU_Heterogeneous_Scheduling.md) → [08 CUDA/Triton 编程模型](./08_Programming_Models_CUDA_Triton.md) | 算子实现与性能优化的执行依赖 |
+| [1E 编译与后端](./1E.md) | 图、形状和融合怎样变成后端可执行的路径？ | [09 图优化与编译器](./09_AI_Compilers_and_Graph_Optimization.md) | 算子优化和部署中的后端约束 |
+| [1F 硬件适配与系统约束](./1F.md) | 设备、运行时、隔离和成本能否共同满足交付条件？ | [10 芯片与软件栈](./10_Domestic_AI_Chips_Overview.md) → [34 异构加速器与运行时](./34_Heterogeneous_Accelerators_and_Runtime_Constraints.md) | 部署与异构系统的准入条件 |
 
-## Learning Path | 学习路径
+## Topic Connections | 跨专题入口
 
-Part 1 不只是知识目录，也是 Part 2 到 Part 5 的共同前置。阅读上可以按三层理解：`01-10` 是基础主线，`11-20` 是延展主线，`21-34` 是扩展主线。
+Part 01 先给出理论账本、资源上界和执行条件。基础支撑专题把这些对象组织成分析方法，主线与横向专题再据此选择机制并验证真实收益。
 
-```mermaid
-flowchart LR
-    A[01-10 基础主线] --> B[11-20 延展主线]
-    B --> C[21-34 扩展主线]
-```
-
-### Recommended Order | 推荐顺序
-
-- 快速入门：先看 [1A](./1A.md) → [1B](./1B.md)
-- 系统学习：按 [1A](./1A.md) → [1B](./1B.md) → [1C](./1C.md) → [1D](./1D.md) → [1E](./1E.md) → [1F](./1F.md) 顺序推进
-
-### Next Steps | 后续衔接
-
-- 先看 [1A](./1A.md)、[1B](./1B.md)，把精度、参数量、单设备架构和访存直觉先立起来，主要服务性能、推理、量化与算子专题。
-- 先看 [1C](./1C.md)、[1D](./1D.md)，把通信、并行、调度、block / warp / shared memory 和 Triton block model 理顺，主要服务通信并行、性能与算子专题。
-- 先看 [1E](./1E.md)、[1F](./1F.md)，理解编译后端、硬件适配、runtime 约束和成本，并按需进入算子优化或部署与异构专题。
-
-## Topic Mapping | 专题映射与职责边界
-
-Part 01 提供公式、资源账本、硬件约束和可行性判断；真实框架运行、GPU benchmark、artifact 与项目决策进入 Part 02–05。
-
-| 组 | 主要支撑专题 | 在 Part 01 中完成什么 | 后续不在本组重复什么 |
-|:---|:---|:---|:---|
-| 1A 数值与规模 | 架构、量化、性能 | dtype、参数、FLOPs、稀疏参数账本 | 真实低精度 kernel 与质量收益 |
-| 1B 单设备访存 | 推理、性能分析、算子 | 存储层次、KV 增长、Attention 工作集与瓶颈假设 | Serving 调度与端到端吞吐 |
-| 1C 通信与并行 | 通信并行、性能 | 拓扑、collective、状态切分、通信量与容错 | 多卡扩展效率和项目 adapter |
-| 1D 执行与编程 | 算子、性能、推理 | CUDA/Triton 映射、stream、异步与 overlap 直觉 | 生产 kernel 的调参与回归 |
-| 1E 编译与后端 | 算子、部署 | 图、IR、融合、动态 shape 与 lowering 关系 | 具体 backend 的版本矩阵和性能结论 |
-| 1F 硬件适配 | 部署异构、性能 | 设备能力、runtime、隔离、成本和可行性 gate | 目标设备上的真实加载与服务证据 |
+| 从 Part 01 带走的对象 | 首先进入 | 后续使用 |
+|:---|:---|:---|
+| 数据类型、训练状态字节和训练计算量 | [反向传播与训练机制](../topic_discussion/backpropagation_training_mechanism/intro.md) | [后训练优化](../topic_discussion/post_training_optimization/intro.md) |
+| 参数量、活跃计算、KV 状态和稀疏结构账本 | [大模型架构演进](../topic_discussion/llm_architecture_evolution/intro.md) | [推理优化](../topic_discussion/inference_optimization/intro.md)、[通信与并行](../topic_discussion/communication_parallelism/intro.md) |
+| 计算、带宽、容量和关键路径假设 | [性能分析](../topic_discussion/performance_analysis/intro.md) | [性能优化](../topic_discussion/performance_optimization/intro.md) |
+| 量化表示、累加精度和低精度执行条件 | [量化与压缩](../topic_discussion/quantization_compression/intro.md) | [推理优化](../topic_discussion/inference_optimization/intro.md)、[部署与异构系统](../topic_discussion/deployment_heterogeneous/intro.md) |
+| 执行层级、矩阵路径、片上复用和图变换条件 | [算子优化](../topic_discussion/operator_optimization/intro.md) | [性能优化](../topic_discussion/performance_optimization/intro.md) |
+| 设备能力、后端支持、隔离和成本约束 | [部署与异构系统](../topic_discussion/deployment_heterogeneous/intro.md) | 目标设备上的加载、服务与回归验证 |
 
 ## Environment Notes | 环境说明
 
-- 默认按 `CPU-first` 学习公式、账本和机制判断。
-- 需要 GPU、编译工具链或多卡环境的内容，以对应小节和专题 Quickstart 为准。
+- **默认环境：** 使用 [`BASE-CPU`](../guide.md#base-cpu) 运行资源账本与机制练习。
+- **扩展实验：** 需要 GPU、编译工具链或多卡运行时的内容，按对应专题 Quickstart 准备环境。
