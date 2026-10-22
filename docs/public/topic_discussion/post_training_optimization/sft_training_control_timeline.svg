@@ -1,19 +1,56 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="600" viewBox="0 0 1280 600" role="img" aria-labelledby="title desc">
-  <title id="title">微批次、有效更新和恢复状态的对齐</title>
-  <desc id="desc">多个微批次累积梯度后形成一次优化器更新，随后推进学习率、日志和保存状态；下层记录更新身份、数值验证和恢复所需状态。</desc>
-  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker><style>.t{font:700 28px Arial,sans-serif;fill:#172033}.s{font:15px Arial,sans-serif;fill:#475569}.h{font:700 16px Arial,sans-serif;fill:#172033}.c{font:14px Arial,sans-serif;fill:#334155}.small{font:13px Arial,sans-serif;fill:#475569}.flow{fill:none;stroke:#475569;stroke-width:2.4;marker-end:url(#a)}.bind{fill:none;stroke:#94A3B8;stroke-width:2;stroke-dasharray:6 5;marker-end:url(#a)}</style></defs>
-  <rect width="1280" height="600" fill="#F8FAFC"/><rect x="32" y="24" width="1216" height="550" rx="26" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
-  <text x="68" y="70" class="t">训练控制：微批次不能直接等同于参数更新</text><text x="68" y="99" class="s">梯度累积改变更新节奏；学习率、验证、保存与恢复必须绑定优化器步，而不是单个微批次。</text>
-
-  <rect x="70" y="152" width="220" height="104" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/><text x="92" y="187" class="h">微批次 1</text><text x="92" y="215" class="c">前向 → 损失 → 反向</text><text x="92" y="239" class="small">累积梯度，不更新参数</text>
-  <rect x="348" y="152" width="220" height="104" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/><text x="370" y="187" class="h">微批次 2…N</text><text x="370" y="215" class="c">继续累积梯度</text><text x="370" y="239" class="small">记录本窗口样本和损失</text>
-  <rect x="626" y="152" width="220" height="104" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/><text x="648" y="187" class="h">有效更新</text><text x="648" y="215" class="c">反缩放 · 裁剪 · 参数更新</text><text x="648" y="239" class="small">成功后清理梯度</text>
-  <rect x="904" y="152" width="300" height="104" rx="15" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/><text x="926" y="187" class="h">状态推进</text><text x="926" y="215" class="c">学习率 · 验证 · 日志 · 保存</text><text x="926" y="239" class="small">均引用同一优化器步</text>
-  <path d="M290 204H340" class="flow"/><path d="M568 204H618" class="flow"/><path d="M846 204H896" class="flow"/>
-
-  <rect x="178" y="362" width="270" height="116" rx="16" fill="#F8FAFC" stroke="#64748B" stroke-width="2"/><text x="200" y="396" class="h">更新身份</text><text x="200" y="424" class="c">有效批量 · 累积窗口</text><text x="200" y="450" class="small">微批次编号与优化器步分开</text>
-  <rect x="505" y="362" width="270" height="116" rx="16" fill="#FFF7ED" stroke="#EA580C" stroke-width="2"/><text x="527" y="396" class="h">更新与验证结果</text><text x="527" y="424" class="c">梯度有限 · 是否跳步</text><text x="527" y="450" class="small">训练损失与冻结验证结果</text>
-  <rect x="832" y="362" width="270" height="116" rx="16" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/><text x="854" y="396" class="h">可恢复状态</text><text x="854" y="424" class="c">优化器 · 调度器 · RNG</text><text x="854" y="450" class="small">全局步、数据游标与检查点</text>
-  <path d="M458 256V316H313V354" class="bind"/><path d="M736 256V330H640V354" class="bind"/><path d="M1054 256V344H967V354" class="bind"/>
-  <path d="M448 420H497" class="flow"/><path d="M775 420H824" class="flow"/>
+<title id="title">训练控制：微批次、有效更新与跳步</title>
+<desc id="desc">成功更新才推进有效更新计数与学习率；日志同时记录成功、跳步及检查点状态。</desc>
+<defs>
+<marker id="flow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<marker id="feedback" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#0284C7"/></marker>
+<marker id="constraint" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#D97706"/></marker>
+<marker id="failure" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#DC2626"/></marker>
+<marker id="gradient" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#9333EA"/></marker>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#334155}.title{font-size:27px;font-weight:700;fill:#172033}.sub{font-size:15px;fill:#475569}.head{font-size:17px;font-weight:700;fill:#172033}.body{font-size:15px}.label{font-size:14px;fill:#475569}</style>
+</defs>
+<rect width="1280" height="600" fill="#F8FAFC" data-layout-role="decoration"/>
+<rect x="28" y="24" width="1224" height="552" rx="24" fill="white" stroke="#CBD5E1" data-layout-role="panel"/>
+<text x="60" y="69" class="title">训练控制：微批次、有效更新与跳步</text>
+<text x="60" y="101" class="sub">成功更新才推进有效更新计数与学习率；日志同时记录成功、跳步及检查点状态。</text>
+<rect id="micro" x="60" y="155" width="230" height="110" rx="14" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
+<text x="80" y="187" class="head">微批次计算</text>
+<text x="80" y="215" class="body">前向、损失与反向</text>
+<text x="80" y="240" class="body">累积本窗口有效监督数</text>
+<rect id="window" x="350" y="155" width="230" height="110" rx="14" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
+<text x="370" y="187" class="head">累积窗口结束</text>
+<text x="370" y="215" class="body">按约定分母归约梯度</text>
+<text x="370" y="240" class="body">混合精度时先反缩放</text>
+<rect id="finite" x="640" y="155" width="230" height="110" rx="14" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
+<text x="660" y="187" class="head">梯度有限值检查</text>
+<text x="660" y="215" class="body">有限：按约定裁剪</text>
+<text x="660" y="240" class="body">异常：跳过参数更新</text>
+<rect id="update" x="930" y="155" width="290" height="110" rx="14" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+<text x="950" y="187" class="head">成功更新</text>
+<text x="950" y="215" class="body">更新参数与优化器状态</text>
+<text x="950" y="240" class="body">推进有效更新计数和学习率</text>
+<rect id="skip" x="640" y="365" width="230" height="110" rx="14" fill="#FEE2E2" stroke="#DC2626" stroke-width="2"/>
+<text x="660" y="397" class="head">异常跳步</text>
+<text x="660" y="425" class="body">参数与有效更新计数不变</text>
+<text x="660" y="450" class="body">按机制调整损失缩放</text>
+<rect id="record" x="930" y="365" width="290" height="110" rx="14" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
+<text x="950" y="397" class="head">日志与可恢复状态</text>
+<text x="950" y="425" class="body">按计划验证与保存检查点</text>
+<text x="950" y="450" class="body">记录成功、跳步及数据游标</text>
+<rect id="next" x="350" y="365" width="230" height="110" rx="14" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
+<text x="370" y="397" class="head">下一累积窗口</text>
+<text x="370" y="425" class="body">按策略清理梯度</text>
+<text x="370" y="450" class="body">继续读取数据</text>
+<path data-source="micro" data-target="window" d="M290 210H350" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
+<path data-source="window" data-target="finite" d="M580 210H640" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
+<path data-source="update" data-target="record" d="M1075 265V365" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
+<path data-source="finite" data-target="update" d="M870 210H930" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
+<text x="883" y="195" class="label">有限</text>
+<path data-source="finite" data-target="skip" d="M755 265V365" fill="none" stroke="#DC2626" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#failure)"/>
+<text x="770" y="320" class="label">异常</text>
+<path data-source="skip" data-target="record" d="M870 420H930" fill="none" stroke="#DC2626" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#failure)"/>
+<path data-source="record" data-target="next" d="M1075 475V525H465V475" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
+<text x="710" y="516" class="label">窗口结束</text>
+<path data-source="next" data-target="micro" d="M350 420H175V265" fill="none" stroke="#0284C7" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#feedback)" stroke-dasharray="7 5"/>
+<text x="210" y="405" class="label">继续</text>
 </svg>

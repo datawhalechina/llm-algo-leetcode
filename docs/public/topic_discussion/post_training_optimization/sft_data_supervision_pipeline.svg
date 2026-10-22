@@ -1,20 +1,55 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="620" viewBox="0 0 1280 620" role="img" aria-labelledby="title desc">
-  <title id="title">SFT 数据进入监督损失前的处理与准入</title>
-  <desc id="desc">数据从来源、质量处理、对话格式和监督契约进入独立验证，并通过数据身份、监督覆盖和准入结果记录可训练、待修复或拒绝状态。</desc>
-  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker><style>.t{font:700 28px Arial,sans-serif;fill:#172033}.s{font:15px Arial,sans-serif;fill:#475569}.h{font:700 16px Arial,sans-serif;fill:#172033}.c{font:14px Arial,sans-serif;fill:#334155}.small{font:13px Arial,sans-serif;fill:#475569}.flow{fill:none;stroke:#475569;stroke-width:2.4;marker-end:url(#a)}.bind{fill:none;stroke:#94A3B8;stroke-width:2;stroke-dasharray:6 5;marker-end:url(#a)}</style></defs>
-  <rect width="1280" height="620" fill="#F8FAFC"/><rect x="32" y="24" width="1216" height="570" rx="26" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
-  <text x="68" y="70" class="t">SFT 数据：先确定监督对象，再允许样本进入训练</text><text x="68" y="99" class="s">数据来源、模板和标签共同决定模型学习哪些 Token；训练损失不能替代泄漏与监督覆盖检查。</text>
-
-  <rect x="58" y="148" width="204" height="112" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/><text x="80" y="182" class="h">数据来源</text><text x="80" y="210" class="c">人工 · 开源 · 合成</text><text x="80" y="236" class="small">许可、任务与来源版本</text>
-  <rect x="298" y="148" width="204" height="112" rx="15" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/><text x="320" y="182" class="h">质量处理</text><text x="320" y="210" class="c">清洗 · 去重 · 去污染</text><text x="320" y="236" class="small">筛选规则与配比</text>
-  <rect x="538" y="148" width="204" height="112" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/><text x="560" y="182" class="h">对话格式</text><text x="560" y="210" class="c">聊天模板 · 分词器</text><text x="560" y="236" class="small">截断与特殊 Token</text>
-  <rect x="778" y="148" width="204" height="112" rx="15" fill="#FEE2E2" stroke="#DC2626" stroke-width="2"/><text x="800" y="182" class="h">监督契约</text><text x="800" y="210" class="c">输入、可见位置与标签</text><text x="800" y="236" class="small">忽略提示和填充位置</text>
-  <rect x="1018" y="148" width="204" height="112" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/><text x="1040" y="182" class="h">独立验证</text><text x="1040" y="210" class="c">切分 · 行为 · 失败样本</text><text x="1040" y="236" class="small">不参与当前候选训练</text>
-  <path d="M262 204H290" class="flow"/><path d="M502 204H530" class="flow"/><path d="M742 204H770" class="flow"/><path d="M982 204H1010" class="flow"/>
-
-  <rect x="120" y="372" width="280" height="118" rx="16" fill="#F8FAFC" stroke="#64748B" stroke-width="2"/><text x="142" y="406" class="h">数据身份与隔离</text><text x="142" y="434" class="c">任务输入指纹 · 样本指纹</text><text x="142" y="460" class="small">来源、切分和去重组可以追溯</text>
-  <rect x="500" y="372" width="280" height="118" rx="16" fill="#FFF7ED" stroke="#EA580C" stroke-width="2"/><text x="522" y="406" class="h">监督覆盖检查</text><text x="522" y="434" class="c">回复 Token 保留 · 标签对齐</text><text x="522" y="460" class="small">截断后仍有有效监督位置</text>
-  <rect x="880" y="372" width="280" height="118" rx="16" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/><text x="902" y="406" class="h">数据准入结果</text><text x="902" y="434" class="c">进入训练 · 修复后复查 · 拒绝</text><text x="902" y="460" class="small">保存数据版本、规则和失败原因</text>
-  <path d="M400 260V316H260V364" class="bind"/><path d="M880 260V330H640V364" class="bind"/><path d="M1120 260V344H1020V364" class="bind"/>
-  <path d="M400 431H492" class="flow"/><path d="M780 431H872" class="flow"/>
+<title id="title">SFT 数据：从样本检查到有效监督</title>
+<desc id="desc">先隔离训练与评测样本，再构造标签；只有保留有效回复位置的样本才能进入训练。</desc>
+<defs>
+<marker id="flow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<marker id="feedback" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#0284C7"/></marker>
+<marker id="constraint" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#D97706"/></marker>
+<marker id="failure" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#DC2626"/></marker>
+<marker id="gradient" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#9333EA"/></marker>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#334155}.title{font-size:27px;font-weight:700;fill:#172033}.sub{font-size:15px;fill:#475569}.head{font-size:17px;font-weight:700;fill:#172033}.body{font-size:15px}.label{font-size:14px;fill:#475569}</style>
+</defs>
+<rect width="1280" height="620" fill="#F8FAFC" data-layout-role="decoration"/>
+<rect x="28" y="24" width="1224" height="572" rx="24" fill="white" stroke="#CBD5E1" data-layout-role="panel"/>
+<text x="60" y="69" class="title">SFT 数据：从样本检查到有效监督</text>
+<text x="60" y="101" class="sub">先隔离训练与评测样本，再构造标签；只有保留有效回复位置的样本才能进入训练。</text>
+<rect id="source" x="60" y="150" width="240" height="100" rx="14" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
+<text x="80" y="182" class="head">数据来源</text>
+<text x="80" y="210" class="body">人工、开源或合成</text>
+<text x="80" y="235" class="body">记录来源与许可</text>
+<rect id="quality" x="360" y="150" width="240" height="100" rx="14" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
+<text x="380" y="182" class="head">清洗与去重</text>
+<text x="380" y="210" class="body">检查任务输入和完整样本</text>
+<text x="380" y="235" class="body">固定筛选规则</text>
+<rect id="split" x="660" y="150" width="240" height="100" rx="14" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
+<text x="680" y="182" class="head">切分与污染检查</text>
+<text x="680" y="210" class="body">隔离训练、验证与评测集</text>
+<text x="680" y="235" class="body">同源样本按组切分</text>
+<rect id="format" x="960" y="150" width="260" height="100" rx="14" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
+<text x="980" y="182" class="head">对话模板与分词</text>
+<text x="980" y="210" class="body">固定角色和特殊词元</text>
+<text x="980" y="235" class="body">执行长度与截断规则</text>
+<rect id="labels" x="960" y="360" width="260" height="110" rx="14" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
+<text x="980" y="392" class="head">标签与注意力范围</text>
+<text x="980" y="420" class="body">回复位置参与监督</text>
+<text x="980" y="445" class="body">提示和填充不计入损失</text>
+<rect id="coverage" x="660" y="360" width="240" height="110" rx="14" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
+<text x="680" y="392" class="head">监督覆盖检查</text>
+<text x="680" y="420" class="body">标签与预测位置对齐</text>
+<text x="680" y="445" class="body">截断后仍有有效监督</text>
+<rect id="admission" x="360" y="360" width="240" height="110" rx="14" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+<text x="380" y="392" class="head">数据准入</text>
+<text x="380" y="420" class="body">通过后进入训练</text>
+<text x="380" y="445" class="body">失败样本修复或拒绝</text>
+<rect id="record" x="60" y="360" width="240" height="110" rx="14" fill="#F1F5F9" stroke="#64748B" stroke-width="2"/>
+<text x="80" y="392" class="head">可追溯数据版本</text>
+<text x="80" y="420" class="body">样本来源、指纹与切分</text>
+<text x="80" y="445" class="body">保存规则和失败原因</text>
+<path data-source="source" data-target="quality" d="M300 200H360" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
+<path data-source="quality" data-target="split" d="M600 200H660" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
+<path data-source="split" data-target="format" d="M900 200H960" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
+<path data-source="format" data-target="labels" d="M1090 250V360" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
+<path data-source="labels" data-target="coverage" d="M960 415H900" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
+<path data-source="coverage" data-target="admission" d="M660 415H600" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
+<path data-source="admission" data-target="record" d="M360 415H300" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
 </svg>
