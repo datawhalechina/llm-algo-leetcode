@@ -16,7 +16,6 @@
 
 ![从性能现象到可测问题](../../docs/public/topic_discussion/performance_analysis/profiling_evidence_overview.svg)
 
-[Part 00 · 19 异常定位](../../00_Prerequisites/19_Debugging_and_Anomaly_Localization.ipynb)负责确认运行有效，[Part 00 · 20 性能证据与实验设计](../../00_Prerequisites/20_Performance_Evidence_and_Experiment_Design.ipynb)负责固定指标、工作负载和结果字段。
 
 ## 证据如何升级
 
@@ -26,7 +25,7 @@
 |:---|:---|:---|
 | 单次计时或截图 | 有值得检查的现象 | 固定工作负载，建立基线 |
 | 执行轨迹与阶段变化一致 | 某阶段可能在拖慢关键路径 | 检查输入、形状、同步或状态变化 |
-| 同口径对照可重复 | 候选改动影响了目标指标 | 复核质量、波动与其他指标 |
+| 固定条件下的对照可重复 | 候选改动影响了目标指标 | 复核质量、波动与其他指标 |
 
 指标、执行轨迹、性能剖析、归因和回归承担不同证据职责，不能用单个热点或单次计时代替完整判断。
 
@@ -40,6 +39,6 @@
 
 ## 进入可重复基线
 
-基础取证可从 [Part 00 · 0E 调试与性能](../../00_Prerequisites/0E.md) 与 [Part 01 · 13 性能分析](../../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.ipynb) 开始；随后用[正文 02 可重复基线](./02_reproducible_baseline.md)固定工作负载、环境和测量过程。
+运行有效性可从[Part 00 · 19 异常定位](../../00_Prerequisites/19_Debugging_and_Anomaly_Localization.ipynb)检查，再用[Part 00 · 20 性能证据与实验设计](../../00_Prerequisites/20_Performance_Evidence_and_Experiment_Design.ipynb)固定指标和结果字段。[Part 01 · 13 性能分析](../../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.ipynb)提供资源归因基础；随后进入[可重复基线](./02_reproducible_baseline.md)保存运行条件。
 
 相关阅读：[PyTorch Profiler](https://docs.pytorch.org/docs/stable/profiler.html)。

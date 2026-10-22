@@ -1,45 +1,62 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="680" viewBox="0 0 1280 680" role="img" aria-labelledby="title desc">
   <title id="title">性能分析知识地图</title>
-  <desc id="desc">将观察对象、证据形式、资源约束和验证输出分为四层，说明性能分析如何从现象形成可复查诊断。</desc>
+  <desc id="desc">阶段、工作负载和质量门槛定义比较对象；可重复基线分出时间、驻留和资源上界证据，在可证伪归因处汇合，最后形成配对回归判断和诊断交接。</desc>
   <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 4.5L0 9Z" fill="#475569"/></marker>
     <style>
-      text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:29px;font-weight:700}.sub{font-size:15px;fill:#526581}.layer{font-size:18px;font-weight:700}.chip{font-size:14px;font-weight:600}.panel{stroke-width:2;rx:18}.item{stroke-width:1.6;rx:11}.line{stroke:#475569;stroke-width:2.8;fill:none;marker-end:url(#arrow)}
+      text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:29px;font-weight:700}.sub{font-size:15px;fill:#526581}.head{font-size:18px;font-weight:700}.body{font-size:14px;fill:#475569}.node{stroke-width:2}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.label{font-size:13px;font-weight:600;fill:#64748b}
     </style>
   </defs>
-  <rect width="1280" height="640" fill="#f8fafc"/>
+  <rect id="node-0" width="1280" height="680" fill="#F8FAFC"/>
   <text x="640" y="46" text-anchor="middle" class="title">性能分析知识地图</text>
-  <text x="640" y="74" text-anchor="middle" class="sub">同一现象需要经过观察、取证、归因和验证，才能形成可行动结论</text>
+  <text x="640" y="74" text-anchor="middle" class="sub">一份可复查诊断必须连起比较对象、观测证据、资源解释与复测判断</text>
 
-  <rect x="45" y="120" width="255" height="430" fill="#eff6ff" stroke="#60a5fa" class="panel"/>
-  <text x="172" y="158" text-anchor="middle" class="layer">观察对象</text>
-  <rect x="75" y="195" width="195" height="64" fill="#fff" stroke="#93c5fd" class="item"/><text x="172" y="234" text-anchor="middle" class="chip">阶段时间与等待</text>
-  <rect x="75" y="285" width="195" height="64" fill="#fff" stroke="#93c5fd" class="item"/><text x="172" y="324" text-anchor="middle" class="chip">对象驻留与峰值</text>
-  <rect x="75" y="375" width="195" height="64" fill="#fff" stroke="#93c5fd" class="item"/><text x="172" y="414" text-anchor="middle" class="chip">通信、I/O 与排队</text>
-  <rect x="75" y="465" width="195" height="54" fill="#dbeafe" stroke="#60a5fa" class="item"/><text x="172" y="499" text-anchor="middle" class="chip">目标指标与质量门槛</text>
+  <path d="M230 192L490 230" data-source="node-1" data-target="node-4" class="flow"/>
+  <path d="M530 192V230" data-source="node-2" data-target="node-4" class="flow"/>
+  <path d="M830 192L790 230" data-source="node-3" data-target="node-4" class="flow"/>
+  <path d="M510 312L210 360" data-source="node-4" data-target="node-5" class="flow"/>
+  <path d="M640 312V360" data-source="node-4" data-target="node-6" class="flow"/>
+  <path d="M770 312L1070 360" data-source="node-4" data-target="node-7" class="flow"/>
+  <path d="M210 430V465H510V500" data-source="node-5" data-target="node-8" class="flow"/>
+  <path d="M560 430V500" data-source="node-6" data-target="node-8" class="flow"/>
+  <path d="M1070 430V465H650V500" data-source="node-7" data-target="node-8" class="flow"/>
+  <path d="M690 537H730" data-source="node-8" data-target="node-9" class="flow"/>
+  <path d="M970 537H1000" data-source="node-9" data-target="node-10" class="flow"/>
 
-  <rect x="360" y="120" width="255" height="430" fill="#f0fdf4" stroke="#4ade80" class="panel"/>
-  <text x="487" y="158" text-anchor="middle" class="layer">证据形式</text>
-  <rect x="390" y="195" width="195" height="64" fill="#fff" stroke="#86efac" class="item"/><text x="487" y="234" text-anchor="middle" class="chip">带单位指标与原始样本</text>
-  <rect x="390" y="285" width="195" height="64" fill="#fff" stroke="#86efac" class="item"/><text x="487" y="324" text-anchor="middle" class="chip">执行轨迹与事件依赖</text>
-  <rect x="390" y="375" width="195" height="64" fill="#fff" stroke="#86efac" class="item"/><text x="487" y="414" text-anchor="middle" class="chip">性能剖析与显存快照</text>
-  <rect x="390" y="465" width="195" height="54" fill="#dcfce7" stroke="#4ade80" class="item"/><text x="487" y="499" text-anchor="middle" class="chip">环境与工作负载身份</text>
+  <rect id="node-1" x="80" y="112" width="300" height="80" rx="16" fill="#DBEAFE" stroke="#2563EB" class="node"/>
+  <text x="230" y="145" text-anchor="middle" class="head">阶段与目标指标</text>
+  <text x="230" y="170" text-anchor="middle" class="body">训练步、TTFT、TPOT、峰值或扩展效率</text>
+  <rect id="node-2" x="380" y="112" width="300" height="80" rx="16" fill="#DBEAFE" stroke="#2563EB" class="node"/>
+  <text x="530" y="145" text-anchor="middle" class="head">工作负载与运行身份</text>
+  <text x="530" y="170" text-anchor="middle" class="body">模型、输入、环境、后端、精度与种子</text>
+  <rect id="node-3" x="680" y="112" width="300" height="80" rx="16" fill="#DBEAFE" stroke="#2563EB" class="node"/>
+  <text x="830" y="145" text-anchor="middle" class="head">质量与有效性门槛</text>
+  <text x="830" y="170" text-anchor="middle" class="body">正确性、质量、失败率、OOM 与 SLO</text>
 
-  <rect x="675" y="120" width="255" height="430" fill="#fff7ed" stroke="#fb923c" class="panel"/>
-  <text x="802" y="158" text-anchor="middle" class="layer">资源约束</text>
-  <rect x="705" y="195" width="195" height="64" fill="#fff" stroke="#fdba74" class="item"/><text x="802" y="223" text-anchor="middle" class="chip">计算与启动</text><text x="802" y="245" text-anchor="middle" class="chip">算术强度与执行效率</text>
-  <rect x="705" y="285" width="195" height="64" fill="#fff" stroke="#fdba74" class="item"/><text x="802" y="313" text-anchor="middle" class="chip">带宽与容量</text><text x="802" y="335" text-anchor="middle" class="chip">搬运字节与峰值驻留</text>
-  <rect x="705" y="375" width="195" height="64" fill="#fff" stroke="#fdba74" class="item"/><text x="802" y="403" text-anchor="middle" class="chip">通信与 I/O</text><text x="802" y="425" text-anchor="middle" class="chip">暴露时间与依赖窗口</text>
-  <rect x="705" y="465" width="195" height="54" fill="#ffedd5" stroke="#fb923c" class="item"/><text x="802" y="499" text-anchor="middle" class="chip">排队、同步与负载不均</text>
+  <rect id="node-4" x="420" y="230" width="440" height="82" rx="16" fill="#DCFCE7" stroke="#16A34A" class="node"/>
+  <text x="640" y="263" text-anchor="middle" class="head">可重复基线</text>
+  <text x="640" y="289" text-anchor="middle" class="body">预热、重复、原始样本、同步方式与失败记录</text>
 
-  <rect x="990" y="120" width="245" height="430" fill="#faf5ff" stroke="#a78bfa" class="panel"/>
-  <text x="1112" y="158" text-anchor="middle" class="layer">验证输出</text>
-  <rect x="1015" y="195" width="195" height="64" fill="#fff" stroke="#c4b5fd" class="item"/><text x="1112" y="223" text-anchor="middle" class="chip">可重复基线</text><text x="1112" y="245" text-anchor="middle" class="chip">固定条件与波动范围</text>
-  <rect x="1015" y="285" width="195" height="64" fill="#fff" stroke="#c4b5fd" class="item"/><text x="1112" y="313" text-anchor="middle" class="chip">可证伪归因</text><text x="1112" y="335" text-anchor="middle" class="chip">主约束、反例与未知项</text>
-  <rect x="1015" y="375" width="195" height="64" fill="#fff" stroke="#c4b5fd" class="item"/><text x="1112" y="403" text-anchor="middle" class="chip">配对回归判断</text><text x="1112" y="425" text-anchor="middle" class="chip">差异、阈值与守护条件</text>
-  <rect x="1015" y="465" width="195" height="54" fill="#ede9fe" stroke="#a78bfa" class="item"/><text x="1112" y="499" text-anchor="middle" class="chip">补测或交接优化</text>
+  <text x="210" y="344" text-anchor="middle" class="label">时间证据</text>
+  <text x="700" y="344" text-anchor="middle" class="label">驻留证据</text>
+  <text x="1070" y="344" text-anchor="middle" class="label">资源解释</text>
+  <rect id="node-5" x="80" y="360" width="260" height="70" rx="14" fill="#E0F2FE" stroke="#0284C7" class="node"/>
+  <text x="210" y="390" text-anchor="middle" class="head">事件与关键路径</text>
+  <text x="210" y="414" text-anchor="middle" class="body">计算、搬运、I/O、同步与等待</text>
+  <rect id="node-6" x="510" y="360" width="260" height="70" rx="14" fill="#FEF3C7" stroke="#D97706" class="node"/>
+  <text x="640" y="390" text-anchor="middle" class="head">对象驻留与峰值</text>
+  <text x="640" y="414" text-anchor="middle" class="body">状态、缓冲区、生命周期与复用</text>
+  <rect id="node-7" x="940" y="360" width="260" height="70" rx="14" fill="#FEF3C7" stroke="#D97706" class="node"/>
+  <text x="1070" y="390" text-anchor="middle" class="head">经验参考与载荷</text>
+  <text x="1070" y="414" text-anchor="middle" class="body">FLOPs、字节、容量、通信与队列</text>
 
-  <path d="M300 335H350" class="line"/>
-  <path d="M615 335H665" class="line"/>
-  <path d="M930 335H980" class="line"/>
+  <rect id="node-8" x="430" y="500" width="260" height="74" rx="16" fill="#EDE9FE" stroke="#7C3AED" class="node"/>
+  <text x="560" y="531" text-anchor="middle" class="head">可证伪归因</text>
+  <text x="560" y="557" text-anchor="middle" class="body">主约束、判别实验、反例与未知项</text>
+  <rect id="node-9" x="730" y="500" width="240" height="74" rx="16" fill="#FCE7F3" stroke="#DB2777" class="node"/>
+  <text x="850" y="531" text-anchor="middle" class="head">配对回归判断</text>
+  <text x="850" y="557" text-anchor="middle" class="body">差异、阈值、守护条件与失败</text>
+  <rect id="node-10" x="1000" y="500" width="240" height="74" rx="16" fill="#EDE9FE" stroke="#7C3AED" class="node"/>
+  <text x="1120" y="531" text-anchor="middle" class="head">诊断交接</text>
+  <text x="1120" y="557" text-anchor="middle" class="body">候选类别、复测条件与未知项</text>
 </svg>

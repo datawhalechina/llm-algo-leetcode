@@ -1,46 +1,48 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="680" viewBox="0 0 1280 680" role="img" aria-labelledby="title desc">
   <title id="title">性能分析学习路线</title>
-  <desc id="desc">从有效运行和可重复基线出发，分别收集关键路径与对象驻留证据，汇合到瓶颈归因，再完成回归验证和诊断交接。</desc>
+  <desc id="desc">有效运行与可重复基线依次建立；时间线和对象驻留从同一基线并行收集证据，在瓶颈归因处汇合，再进入回归验证和诊断交接。</desc>
   <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 4.5L0 9Z" fill="#475569"/></marker>
     <style>
-      text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:29px;font-weight:700}.sub{font-size:15px;fill:#526581}.head{font-size:18px;font-weight:700}.body{font-size:14px;fill:#475569}.node{stroke-width:2;rx:16}.line{stroke:#475569;stroke-width:2.8;fill:none;marker-end:url(#arrow)}.merge{stroke:#475569;stroke-width:2.8;fill:none}
+      text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:29px;font-weight:700}.sub{font-size:15px;fill:#526581}.head{font-size:18px;font-weight:700}.body{font-size:14px;fill:#475569}.node{stroke-width:2}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.hint{font-size:13px;font-weight:600;fill:#64748b}
     </style>
   </defs>
-  <rect width="1280" height="680" fill="#f8fafc"/>
+  <rect id="node-0" width="1280" height="680" fill="#F8FAFC"/>
   <text x="640" y="46" text-anchor="middle" class="title">性能分析学习路线</text>
-  <text x="640" y="74" text-anchor="middle" class="sub">先保证测量有效，再从时间与状态两条证据路径定位主约束</text>
+  <text x="640" y="74" text-anchor="middle" class="sub">先固定比较条件，再从时间和驻留两条证据路径解释主约束</text>
 
-  <rect x="465" y="105" width="350" height="82" fill="#dbeafe" stroke="#60a5fa" class="node"/>
-  <text x="640" y="137" text-anchor="middle" class="head">有效运行与指标契约</text>
-  <text x="640" y="163" text-anchor="middle" class="body">阶段 · 指标 · 工作负载 · 质量门槛</text>
+  <path d="M640 172V202" data-source="node-1" data-target="node-2" class="flow"/>
+  <path d="M585 294V320H315V340" data-source="node-2" data-target="node-3" class="flow"/>
+  <path d="M695 294V320H965V340" data-source="node-2" data-target="node-4" class="flow"/>
+  <path d="M315 432V480H240V520" data-source="node-3" data-target="node-5" class="flow"/>
+  <path d="M965 432V480H360V520" data-source="node-4" data-target="node-5" class="flow"/>
+  <path d="M450 564H480" data-source="node-5" data-target="node-6" class="flow"/>
+  <path d="M790 564H820" data-source="node-6" data-target="node-7" class="flow"/>
 
-  <rect x="465" y="225" width="350" height="82" fill="#dcfce7" stroke="#4ade80" class="node"/>
-  <text x="640" y="257" text-anchor="middle" class="head">可重复基线</text>
-  <text x="640" y="283" text-anchor="middle" class="body">环境 · 预热 · 重复 · 原始样本</text>
-  <path d="M640 187V215" class="line"/>
+  <rect id="node-1" x="465" y="90" width="350" height="82" rx="16" fill="#DBEAFE" stroke="#2563EB" class="node"/>
+  <text x="640" y="122" text-anchor="middle" class="head">Task0 · 运行有效性与目标指标</text>
+  <text x="640" y="148" text-anchor="middle" class="body">阶段 · 目标指标 · 工作负载 · 质量门槛</text>
 
-  <rect x="170" y="360" width="350" height="92" fill="#fef3c7" stroke="#f59e0b" class="node"/>
-  <text x="345" y="394" text-anchor="middle" class="head">时间线与关键路径</text>
-  <text x="345" y="421" text-anchor="middle" class="body">计算 · 启动 · 搬运 · 同步 · 等待</text>
-  <rect x="760" y="360" width="350" height="92" fill="#ede9fe" stroke="#a78bfa" class="node"/>
-  <text x="935" y="394" text-anchor="middle" class="head">对象驻留与内存剖析</text>
-  <text x="935" y="421" text-anchor="middle" class="body">创建 · 驻留 · 峰值重叠 · 释放 · 复用</text>
-  <path d="M585 307V330H345V350" class="line"/>
-  <path d="M695 307V330H935V350" class="line"/>
+  <rect id="node-2" x="465" y="202" width="350" height="92" rx="16" fill="#DCFCE7" stroke="#16A34A" class="node"/>
+  <text x="640" y="237" text-anchor="middle" class="head">Task1 · 可重复基线</text>
+  <text x="640" y="264" text-anchor="middle" class="body">运行身份 · 预热与重复 · 原始样本 · 失败原因</text>
 
-  <rect x="120" y="535" width="300" height="88" fill="#fee2e2" stroke="#fb7185" class="node"/>
-  <text x="270" y="568" text-anchor="middle" class="head">资源上界与瓶颈归因</text>
-  <text x="270" y="595" text-anchor="middle" class="body">主约束 · 判别实验 · 反例</text>
-  <rect x="490" y="535" width="300" height="88" fill="#fce7f3" stroke="#f472b6" class="node"/>
-  <text x="640" y="568" text-anchor="middle" class="head">配对回归验证</text>
-  <text x="640" y="595" text-anchor="middle" class="body">差异 · 波动 · 守护条件 · 失败</text>
-  <rect x="860" y="535" width="300" height="88" fill="#e0f2fe" stroke="#38bdf8" class="node"/>
-  <text x="1010" y="568" text-anchor="middle" class="head">诊断记录与行动交接</text>
-  <text x="1010" y="595" text-anchor="middle" class="body">证据等级 · 未知项 · 复查条件</text>
-  <path d="M345 452V490H640" class="merge"/>
-  <path d="M935 452V490H640" class="merge"/>
-  <path d="M640 490H270V525" class="line"/>
-  <path d="M420 579H480" class="line"/>
-  <path d="M790 579H850" class="line"/>
+  <text x="315" y="310" text-anchor="middle" class="hint">按需观察：时间</text>
+  <text x="965" y="310" text-anchor="middle" class="hint">按需观察：状态</text>
+  <rect id="node-3" x="140" y="340" width="350" height="92" rx="16" fill="#E0F2FE" stroke="#0284C7" class="node"/>
+  <text x="315" y="375" text-anchor="middle" class="head">Task2 · 时间线、输入与关键路径</text>
+  <text x="315" y="402" text-anchor="middle" class="body">计算 · 搬运 · I/O · 同步 · 排队等待</text>
+  <rect id="node-4" x="790" y="340" width="350" height="92" rx="16" fill="#FEF3C7" stroke="#D97706" class="node"/>
+  <text x="965" y="375" text-anchor="middle" class="head">Task3 · 对象驻留与内存剖析</text>
+  <text x="965" y="402" text-anchor="middle" class="body">创建 · 峰值重叠 · 释放 · 复用</text>
+
+  <rect id="node-5" x="90" y="520" width="360" height="88" rx="16" fill="#EDE9FE" stroke="#7C3AED" class="node"/>
+  <text x="270" y="554" text-anchor="middle" class="head">Task4 · 资源上界与瓶颈归因</text>
+  <text x="270" y="581" text-anchor="middle" class="body">时间 / 驻留证据 → 主约束 → 判别实验</text>
+  <rect id="node-6" x="480" y="520" width="310" height="88" rx="16" fill="#FCE7F3" stroke="#DB2777" class="node"/>
+  <text x="635" y="554" text-anchor="middle" class="head">Task5 · 配对回归验证</text>
+  <text x="635" y="581" text-anchor="middle" class="body">差异 · 波动 · 守护条件 · 失败</text>
+  <rect id="node-7" x="820" y="520" width="370" height="88" rx="16" fill="#EDE9FE" stroke="#7C3AED" class="node"/>
+  <text x="1005" y="554" text-anchor="middle" class="head">Task6 · 诊断证据与行动交接</text>
+  <text x="1005" y="581" text-anchor="middle" class="body">候选类别 · 反例与未知项 · 复测条件</text>
 </svg>

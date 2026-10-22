@@ -1,23 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="620" viewBox="0 0 1280 620" role="img" aria-labelledby="title desc">
   <title id="title">诊断记录与行动交接</title>
   <desc id="desc">将问题身份、证据引用、主约束、反例和守护条件整理为诊断记录，再根据证据充分程度选择补测、交接优化或回退。</desc>
-  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker><style>text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#526581}.head{font-size:18px;font-weight:700}.body{font-size:14px;fill:#475569}.node{stroke-width:2;rx:16}.line{stroke:#475569;stroke-width:2.8;fill:none;marker-end:url(#arrow)}</style></defs>
-  <rect width="1280" height="620" fill="#f8fafc"/>
+  <defs><marker id="arrow" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 4.5L0 9Z" fill="#475569"/></marker><style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#526581}.head{font-size:18px;font-weight:700}.body{font-size:14px;fill:#475569}.node{stroke-width:2;rx:16}.line{stroke:#475569;stroke-width:2.8;fill:none;marker-end:url(#arrow)}</style></defs>
+  <rect id="node-0" width="1280" height="620" fill="#f8fafc"/>
   <text x="640" y="46" text-anchor="middle" class="title">诊断交接：说明知道什么、还不知道什么</text>
   <text x="640" y="74" text-anchor="middle" class="sub">性能分析交付可复查的诊断记录，不以截图、热点名称或工具输出代替结论</text>
 
-  <rect x="60" y="120" width="250" height="92" fill="#dbeafe" stroke="#60a5fa" class="node"/><text x="185" y="154" text-anchor="middle" class="head">问题身份</text><text x="185" y="183" text-anchor="middle" class="body">阶段 · 指标 · 工作负载</text>
-  <rect x="60" y="245" width="250" height="92" fill="#dcfce7" stroke="#4ade80" class="node"/><text x="185" y="279" text-anchor="middle" class="head">证据引用</text><text x="185" y="308" text-anchor="middle" class="body">基线 · 轨迹 · 驻留 · 回归</text>
-  <rect x="60" y="370" width="250" height="92" fill="#fef3c7" stroke="#f59e0b" class="node"/><text x="185" y="404" text-anchor="middle" class="head">守护条件</text><text x="185" y="433" text-anchor="middle" class="body">质量 · 失败率 · 容量 · SLO</text>
+  <rect id="node-1" x="60" y="120" width="250" height="92" fill="#dbeafe" stroke="#60a5fa" class="node"/><text x="185" y="154" text-anchor="middle" class="head">问题身份</text><text x="185" y="183" text-anchor="middle" class="body">阶段 · 指标 · 工作负载</text>
+  <rect id="node-2" x="60" y="245" width="250" height="92" fill="#dcfce7" stroke="#4ade80" class="node"/><text x="185" y="279" text-anchor="middle" class="head">证据引用</text><text x="185" y="308" text-anchor="middle" class="body">基线 · 轨迹 · 驻留 · 回归</text>
+  <rect id="node-3" x="60" y="370" width="250" height="92" fill="#fef3c7" stroke="#f59e0b" class="node"/><text x="185" y="404" text-anchor="middle" class="head">守护条件</text><text x="185" y="433" text-anchor="middle" class="body">质量 · 失败率 · 容量 · SLO</text>
 
-  <rect x="420" y="155" width="400" height="270" fill="#f8fafc" stroke="#64748b" class="node"/>
+  <rect id="node-4" x="420" y="155" width="400" height="270" fill="#f8fafc" stroke="#64748b" class="node"/>
   <text x="620" y="195" text-anchor="middle" class="head">诊断记录</text>
-  <rect x="465" y="225" width="310" height="58" fill="#fff" stroke="#cbd5e1" class="node"/><text x="620" y="261" text-anchor="middle" class="body">当前主约束与判别实验</text>
-  <rect x="465" y="305" width="310" height="58" fill="#fff" stroke="#cbd5e1" class="node"/><text x="620" y="341" text-anchor="middle" class="body">反例、未知项与证据等级</text>
-  <path d="M310 166H380V240H410" class="line"/><path d="M310 291H410" class="line"/><path d="M310 416H380V370H410" class="line"/>
+  <rect id="node-5" x="465" y="225" width="310" height="58" fill="#fff" stroke="#cbd5e1" class="node"/><text x="620" y="261" text-anchor="middle" class="body">当前主约束与判别实验</text>
+  <rect id="node-6" x="465" y="305" width="310" height="58" fill="#fff" stroke="#cbd5e1" class="node"/><text x="620" y="341" text-anchor="middle" class="body">反例、未知项与证据等级</text>
+  <path d="M310 166H380V240H420" data-source="node-1" data-target="node-4" class="line"/><path d="M310 291H420" data-source="node-2" data-target="node-4" class="line"/><path d="M310 416H380V370H420" data-source="node-3" data-target="node-4" class="line"/>
 
-  <rect x="930" y="105" width="280" height="96" fill="#eff6ff" stroke="#60a5fa" class="node"/><text x="1070" y="141" text-anchor="middle" class="head">继续补测</text><text x="1070" y="171" text-anchor="middle" class="body">身份不全、证据冲突或归因过宽</text>
-  <rect x="930" y="260" width="280" height="96" fill="#f0fdf4" stroke="#4ade80" class="node"/><text x="1070" y="296" text-anchor="middle" class="head">交接性能优化</text><text x="1070" y="326" text-anchor="middle" class="body">主约束明确，候选边界可证伪</text>
-  <rect x="930" y="415" width="280" height="96" fill="#fef2f2" stroke="#fb7185" class="node"/><text x="1070" y="451" text-anchor="middle" class="head">回退已有改动</text><text x="1070" y="481" text-anchor="middle" class="body">无稳定收益或守护条件失败</text>
-  <path d="M820 230H875V153H920" class="line"/><path d="M820 290H920" class="line"/><path d="M820 350H875V463H920" class="line"/>
+  <rect id="node-7" x="930" y="105" width="280" height="96" fill="#eff6ff" stroke="#60a5fa" class="node"/><text x="1070" y="141" text-anchor="middle" class="head">继续补测</text><text x="1070" y="171" text-anchor="middle" class="body">身份不全、证据冲突或归因过宽</text>
+  <rect id="node-8" x="930" y="260" width="280" height="96" fill="#f0fdf4" stroke="#4ade80" class="node"/><text x="1070" y="296" text-anchor="middle" class="head">交接性能优化</text><text x="1070" y="326" text-anchor="middle" class="body">主约束明确，候选边界可证伪</text>
+  <rect id="node-9" x="930" y="415" width="280" height="96" fill="#fef2f2" stroke="#fb7185" class="node"/><text x="1070" y="451" text-anchor="middle" class="head">回退已有改动</text><text x="1070" y="481" text-anchor="middle" class="body">无稳定收益或守护条件失败</text>
+  <path d="M820 230H875V153H930" data-source="node-4" data-target="node-7" class="line"/><path d="M820 290H930" data-source="node-4" data-target="node-8" class="line"/><path d="M820 350H875V463H930" data-source="node-4" data-target="node-9" class="line"/>
 </svg>

@@ -1,21 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="620" viewBox="0 0 1280 620" role="img" aria-labelledby="title desc">
   <title id="title">通信总时间、重叠窗口与暴露时间</title>
   <desc id="desc">对比通信被计算覆盖和通信进入关键路径两种时间线，说明只有未被隐藏的通信时间才直接延长完成时间。</desc>
-  <defs><style>text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#526581}.head{font-size:18px;font-weight:700}.lane{font-size:15px;font-weight:700}.label{font-size:13px;font-weight:600}.note{font-size:14px;fill:#475569}.axis{stroke:#64748b;stroke-width:2}.dash{stroke:#94a3b8;stroke-width:1.8;stroke-dasharray:7 6}</style></defs>
-  <rect width="1280" height="620" fill="#f8fafc"/>
+  <defs><style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#526581}.head{font-size:18px;font-weight:700}.lane{font-size:15px;font-weight:700}.label{font-size:13px;font-weight:600}.note{font-size:14px;fill:#475569}.axis{stroke:#64748b;stroke-width:2}.dash{stroke:#94a3b8;stroke-width:1.8;stroke-dasharray:7 6}</style></defs>
+  <rect id="node-0" width="1280" height="620" fill="#f8fafc"/>
   <text x="640" y="46" text-anchor="middle" class="title">通信归因：总时间不等于暴露时间</text>
-  <text x="640" y="74" text-anchor="middle" class="sub">把计算、集合通信和同步放到同一时间轴，才能判断通信是否进入关键路径</text>
+  <text x="640" y="74" text-anchor="middle" class="sub">两行采用相同时间比例；独立计算 B 与通信同时就绪，下一消费点必须等待两者完成</text>
 
-  <rect x="70" y="115" width="1140" height="185" rx="18" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/>
+  <rect id="node-1" x="70" y="115" width="1140" height="185" rx="18" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/>
   <text x="105" y="150" class="head">重叠充分</text>
-  <text x="105" y="205" class="lane">计算流</text><rect x="245" y="177" width="300" height="48" rx="9" fill="#bfdbfe" stroke="#60a5fa" stroke-width="2"/><text x="395" y="207" text-anchor="middle" class="label">反向计算 A</text><rect x="570" y="177" width="355" height="48" rx="9" fill="#bfdbfe" stroke="#60a5fa" stroke-width="2"/><text x="747" y="207" text-anchor="middle" class="label">反向计算 B</text>
-  <text x="105" y="265" class="lane">通信流</text><rect x="430" y="237" width="300" height="48" rx="9" fill="#ddd6fe" stroke="#a78bfa" stroke-width="2"/><text x="580" y="267" text-anchor="middle" class="label">梯度集合通信</text>
-  <rect x="930" y="177" width="225" height="108" rx="13" fill="#dcfce7" stroke="#22c55e" stroke-width="2"/><text x="1042" y="218" text-anchor="middle" class="head">暴露时间较短</text><text x="1042" y="250" text-anchor="middle" class="note">大部分通信被计算覆盖</text>
+  <text x="105" y="205" class="lane">计算流</text><rect id="node-2" x="245" y="177" width="300" height="48" rx="9" fill="#bfdbfe" stroke="#60a5fa" stroke-width="2"/><text x="395" y="207" text-anchor="middle" class="label">反向计算 A</text><rect id="node-3" x="545" y="177" width="380" height="48" rx="9" fill="#bfdbfe" stroke="#60a5fa" stroke-width="2"/><text x="735" y="207" text-anchor="middle" class="label">独立计算 B</text>
+  <text x="105" y="265" class="lane">通信流</text><rect id="node-4" x="545" y="237" width="300" height="48" rx="9" fill="#ddd6fe" stroke="#a78bfa" stroke-width="2"/><text x="695" y="267" text-anchor="middle" class="label">梯度集合通信</text>
+  <rect id="node-5" x="930" y="177" width="225" height="108" rx="13" fill="#dcfce7" stroke="#22c55e" stroke-width="2"/><text x="1042" y="218" text-anchor="middle" class="head">无需额外等待</text><text x="1042" y="250" text-anchor="middle" class="note">通信在计算结束前完成</text>
 
-  <rect x="70" y="345" width="1140" height="185" rx="18" fill="#fef2f2" stroke="#fb7185" stroke-width="2"/>
+  <rect id="node-6" x="70" y="345" width="1140" height="185" rx="18" fill="#fef2f2" stroke="#fb7185" stroke-width="2"/>
   <text x="105" y="380" class="head">重叠不足</text>
-  <text x="105" y="435" class="lane">计算流</text><rect x="245" y="407" width="300" height="48" rx="9" fill="#bfdbfe" stroke="#60a5fa" stroke-width="2"/><text x="395" y="437" text-anchor="middle" class="label">反向计算 A</text><rect x="845" y="407" width="210" height="48" rx="9" fill="#bfdbfe" stroke="#60a5fa" stroke-width="2"/><text x="950" y="437" text-anchor="middle" class="label">反向计算 B</text>
-  <text x="105" y="495" class="lane">通信流</text><rect x="560" y="467" width="280" height="48" rx="9" fill="#fbcfe8" stroke="#f472b6" stroke-width="2"/><text x="700" y="497" text-anchor="middle" class="label">集合通信与同步等待</text>
-  <rect x="1065" y="407" width="90" height="108" rx="13" fill="#fee2e2" stroke="#ef4444" stroke-width="2"/><text x="1110" y="449" text-anchor="middle" class="lane">暴露</text><text x="1110" y="477" text-anchor="middle" class="lane">等待</text>
-  <line x1="70" y1="560" x2="1210" y2="560" class="axis"/><text x="70" y="585" class="note">本轮开始</text><text x="1138" y="585" class="note">本轮完成</text>
+  <text x="105" y="435" class="lane">计算流</text><rect id="node-7" x="245" y="407" width="300" height="48" rx="9" fill="#bfdbfe" stroke="#60a5fa" stroke-width="2"/><text x="395" y="437" text-anchor="middle" class="label">反向计算 A</text><rect id="node-8" x="545" y="407" width="380" height="48" rx="9" fill="#bfdbfe" stroke="#60a5fa" stroke-width="2"/><text x="735" y="437" text-anchor="middle" class="label">独立计算 B</text>
+  <rect id="node-9" x="925" y="407" width="130" height="48" rx="9" fill="#fee2e2" stroke="#ef4444" stroke-width="2"/><text x="990" y="437" text-anchor="middle" class="label">暴露等待</text>
+  <text x="105" y="495" class="lane">通信流</text><rect id="node-10" x="545" y="467" width="510" height="48" rx="9" fill="#fbcfe8" stroke="#f472b6" stroke-width="2"/><text x="800" y="497" text-anchor="middle" class="label">梯度集合通信</text>
+  <rect id="node-11" x="1065" y="407" width="90" height="108" rx="13" fill="#fee2e2" stroke="#ef4444" stroke-width="2"/><text x="1110" y="449" text-anchor="middle" class="lane">消费点</text><text x="1110" y="477" text-anchor="middle" class="label">等待结束</text>
+  <line x1="245" y1="560" x2="1155" y2="560" class="axis"/>
+  <line x1="925" y1="177" x2="925" y2="285" class="dash"/>
+  <line x1="925" y1="407" x2="925" y2="515" class="dash"/>
+  <line x1="1055" y1="407" x2="1055" y2="515" class="dash"/>
+  <text x="245" y="585" class="note">本轮开始</text><text x="925" y="585" text-anchor="middle" class="note">无等待消费点</text><text x="1055" y="585" text-anchor="middle" class="note">等待后消费点</text>
 </svg>

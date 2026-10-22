@@ -1,29 +1,41 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="620" viewBox="0 0 1280 620" role="img" aria-labelledby="title desc">
   <title id="title">时间线、事件依赖与关键路径</title>
-  <desc id="desc">在主机和设备两条泳道中区分输入准备、搬运、计算内核、同步与暴露等待，并用依赖关系识别关键路径。</desc>
-  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker><style>text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#526581}.lane{font-size:17px;font-weight:700}.label{font-size:14px;font-weight:600}.note{font-size:14px;fill:#475569}.line{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.guide{stroke:#94a3b8;stroke-width:1.8;stroke-dasharray:7 6}</style></defs>
-  <rect width="1280" height="620" fill="#f8fafc"/>
-  <text x="640" y="46" text-anchor="middle" class="title">时间线：区分总时间与真正暴露的等待</text>
-  <text x="640" y="74" text-anchor="middle" class="sub">条块长度描述持续时间，依赖箭头决定哪些事件实际延长完成时间</text>
+  <desc id="desc">主机和设备时间线显示输入、搬运、计算、同步与输出；读图时先记录阶段总时间，再检查事件依赖，最后确认真正延长完成时间的关键路径。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 4.5L0 9Z" fill="#475569"/></marker>
+    <style>
+      text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#526581}.lane{font-size:17px;font-weight:700}.label{font-size:14px;font-weight:600}.note{font-size:14px;fill:#475569}.card{font-size:18px;font-weight:700}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.guide{stroke:#94A3B8;stroke-width:1.8;stroke-dasharray:7 6}
+    </style>
+  </defs>
+  <rect id="node-0" width="1280" height="620" fill="#F8FAFC"/>
+  <text x="640" y="46" text-anchor="middle" class="title">时间线：区分阶段总时间与真正暴露的等待</text>
+  <text x="640" y="74" text-anchor="middle" class="sub">条块长度表示持续时间；依赖关系决定哪些事件会进入本轮完成时间</text>
 
-  <text x="70" y="154" class="lane">主机</text><line x1="145" y1="148" x2="1190" y2="148" class="guide"/>
-  <rect x="170" y="120" width="190" height="56" rx="10" fill="#dbeafe" stroke="#60a5fa" stroke-width="2"/><text x="265" y="154" text-anchor="middle" class="label">读取与整理输入</text>
-  <rect x="390" y="120" width="150" height="56" rx="10" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/><text x="465" y="154" text-anchor="middle" class="label">主机到设备搬运</text>
-  <rect x="570" y="120" width="125" height="56" rx="10" fill="#ede9fe" stroke="#a78bfa" stroke-width="2"/><text x="632" y="154" text-anchor="middle" class="label">发起计算</text>
-  <rect x="725" y="120" width="205" height="56" rx="10" fill="#fee2e2" stroke="#fb7185" stroke-width="2"/><text x="827" y="154" text-anchor="middle" class="label">同步等待</text>
-  <rect x="960" y="120" width="170" height="56" rx="10" fill="#dcfce7" stroke="#4ade80" stroke-width="2"/><text x="1045" y="154" text-anchor="middle" class="label">消费结果</text>
+  <text x="70" y="154" class="lane">主机</text><line x1="145" y1="148" x2="1250" y2="148" class="guide"/>
+  <rect id="node-1" x="170" y="120" width="190" height="56" rx="10" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/><text x="265" y="154" text-anchor="middle" class="label">读取与整理输入</text>
+  <rect id="node-2" x="390" y="120" width="150" height="56" rx="10" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/><text x="465" y="154" text-anchor="middle" class="label">主机到设备搬运</text>
+  <rect id="node-3" x="570" y="120" width="125" height="56" rx="10" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2"/><text x="632" y="154" text-anchor="middle" class="label">提交内核 A</text>
+  <rect id="node-4" x="725" y="120" width="205" height="56" rx="10" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2"/><text x="827" y="154" text-anchor="middle" class="label">准备并提交 B</text>
+  <rect id="node-5" x="930" y="120" width="200" height="56" rx="10" fill="#FFF1F2" stroke="#E11D48" stroke-width="2"/><text x="1030" y="154" text-anchor="middle" class="label">等待 B 完成</text>
+  <rect id="node-6" x="1130" y="120" width="110" height="56" rx="10" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/><text x="1185" y="154" text-anchor="middle" class="label">消费结果</text>
 
-  <text x="70" y="300" class="lane">设备</text><line x1="145" y1="294" x2="1190" y2="294" class="guide"/>
-  <rect x="390" y="266" width="150" height="56" rx="10" fill="#bae6fd" stroke="#38bdf8" stroke-width="2"/><text x="465" y="300" text-anchor="middle" class="label">数据搬入</text>
-  <rect x="570" y="266" width="205" height="56" rx="10" fill="#bbf7d0" stroke="#22c55e" stroke-width="2"/><text x="672" y="300" text-anchor="middle" class="label">计算内核 A</text>
-  <rect x="795" y="266" width="135" height="56" rx="10" fill="#e9d5ff" stroke="#a855f7" stroke-width="2"/><text x="862" y="300" text-anchor="middle" class="label">依赖空洞</text>
-  <rect x="950" y="266" width="180" height="56" rx="10" fill="#bbf7d0" stroke="#22c55e" stroke-width="2"/><text x="1040" y="300" text-anchor="middle" class="label">计算内核 B</text>
-  <path d="M465 176V256" class="line"/><path d="M632 176V256" class="line"/><path d="M775 294H785" class="line"/><path d="M930 294H940" class="line"/><path d="M1040 322V350H1045V186" class="line"/>
+  <text x="70" y="300" class="lane">设备</text><line x1="145" y1="294" x2="1250" y2="294" class="guide"/>
+  <rect id="node-7" x="390" y="266" width="150" height="56" rx="10" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/><text x="465" y="300" text-anchor="middle" class="label">数据搬入</text>
+  <rect id="node-8" x="695" y="266" width="205" height="56" rx="10" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/><text x="797" y="300" text-anchor="middle" class="label">计算内核 A</text>
+  <rect id="node-9" x="900" y="266" width="50" height="56" rx="10" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2"/><text x="925" y="300" text-anchor="middle" class="label">等待</text>
+  <rect id="node-10" x="950" y="266" width="180" height="56" rx="10" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/><text x="1040" y="300" text-anchor="middle" class="label">计算内核 B</text>
+  <line x1="465" y1="176" x2="465" y2="266" class="guide"/>
+  <path d="M695 176V266" data-source="node-3" data-target="node-8" class="flow"/>
+  <path d="M930 176L950 266" data-source="node-4" data-target="node-10" class="flow"/>
+  <path d="M900 322V350H950V322" data-source="node-8" data-target="node-10" class="flow"/>
+  <path d="M1130 266V176" data-source="node-10" data-target="node-6" class="flow"/>
 
-  <rect x="145" y="410" width="300" height="120" rx="16" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
-  <text x="295" y="446" text-anchor="middle" class="lane">阶段时间</text><text x="295" y="476" text-anchor="middle" class="note">每类事件累计花了多久</text><text x="295" y="502" text-anchor="middle" class="note">用于发现值得展开的区间</text>
-  <rect x="490" y="410" width="300" height="120" rx="16" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
-  <text x="640" y="446" text-anchor="middle" class="lane">事件依赖</text><text x="640" y="476" text-anchor="middle" class="note">谁必须等待谁完成</text><text x="640" y="502" text-anchor="middle" class="note">用于排除可被隐藏的时间</text>
-  <rect x="835" y="410" width="300" height="120" rx="16" fill="#fef2f2" stroke="#fb7185" stroke-width="2"/>
-  <text x="985" y="446" text-anchor="middle" class="lane">关键路径</text><text x="985" y="476" text-anchor="middle" class="note">决定本轮完成时间的依赖链</text><text x="985" y="502" text-anchor="middle" class="note">同步等待与空洞是否真正暴露</text>
+  <text x="640" y="382" text-anchor="middle" class="note">时间向右，主机与设备共用横轴；B 提交前设备等待，B 完成后主机才能消费结果。</text>
+  <path d="M430 475H480" data-source="node-11" data-target="node-12" class="flow"/><path d="M800 475H850" data-source="node-12" data-target="node-13" class="flow"/>
+  <rect id="node-11" x="110" y="420" width="320" height="110" rx="16" fill="#EFF6FF" stroke="#2563EB" stroke-width="2"/>
+  <text x="270" y="457" text-anchor="middle" class="card">阶段总时间</text><text x="270" y="486" text-anchor="middle" class="note">每类事件累计花了多久</text><text x="270" y="510" text-anchor="middle" class="note">用于找出值得展开的区间</text>
+  <rect id="node-12" x="480" y="420" width="320" height="110" rx="16" fill="#FFF7ED" stroke="#D97706" stroke-width="2"/>
+  <text x="640" y="457" text-anchor="middle" class="card">事件依赖</text><text x="640" y="486" text-anchor="middle" class="note">谁必须等待谁完成</text><text x="640" y="510" text-anchor="middle" class="note">排除可被其他工作隐藏的时间</text>
+  <rect id="node-13" x="850" y="420" width="320" height="110" rx="16" fill="#FFF1F2" stroke="#E11D48" stroke-width="2"/>
+  <text x="1010" y="457" text-anchor="middle" class="card">关键路径</text><text x="1010" y="486" text-anchor="middle" class="note">决定本轮完成时间的依赖链</text><text x="1010" y="510" text-anchor="middle" class="note">暴露等待才是后续归因对象</text>
 </svg>

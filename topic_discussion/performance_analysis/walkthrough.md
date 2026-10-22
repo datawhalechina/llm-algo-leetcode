@@ -1,50 +1,47 @@
 # 性能分析问题链 | Profiling Walkthrough
 
-性能分析把一次“变慢”推进为可复查的行动：
+从一次可重复的训练变慢或请求延迟升高开始，跟踪同一组输入、运行条件和测量范围：先确认运行有效，再采集基线、时间线与驻留记录，用判别对照缩小原因，最后决定补测、尝试候选或回退。
 
-`现象与质量门槛 → baseline → 时间 / 状态 / 通信证据 → 候选对照 → 回归 → 行动`
+`明确现象与要求 → 固定比较条件 → 定位时间与驻留 → 检查资源约束 → 配对复测 → 记录诊断与行动`
 
-它服务训练、推理和分布式项目。策略本身由性能优化、推理优化或通信与并行专题说明；这里关注如何确认问题发生的位置、代价与证据强度。
+## 先把“变慢”写成可测问题
 
-## 一、把现象写成问题
+请求变慢需要说明输入长度、并发、后端以及观察的是 TTFT、TPOT 还是端到端延迟；训练步变慢则需要说明计时是否包含数据读取、同步与参数更新。先排除错误输出或数值异常，并写下质量与失败率要求，再用[测量问题页](./01_why_profiling_matters.md)整理待验证假设。
 
-先固定 workload，并写出目标指标、质量门槛和待验证假设。例如“TTFT 上升”还要说明 prompt 长度、并发、模型和 backend；“step 变慢”还要说明是否包含数据读取、同步和 optimizer step。
+![性能现象怎样成为可测问题](../../docs/public/topic_discussion/performance_analysis/profiling_evidence_overview.svg)
 
-对应 [01 测量问题与证据链](./01_why_profiling_matters.md)。
+## 固定后续观察共用的基线
 
-## 二、建立可重复 baseline
+同一段代码的时间会受预热、输入形状、缓存和系统负载影响。[可重复基线](./02_reproducible_baseline.md)保存运行条件、逐次样本和失败原因。精度或后端是研究变量时明确登记，其余条件对齐；初始化、编译和预热是否计入也需要事先说明。
 
-记录环境、warmup、重复次数与统计方式。没有 baseline，就无法判断后续 trace 的变化来自代码、输入还是偶然波动。
+![可重复基线的冻结与继承](../../docs/public/topic_discussion/performance_analysis/reproducible_baseline_contract.svg)
 
-先用 [02 可重复 Baseline](./02_reproducible_baseline.md) 固定运行条件，再进入 [03 时间线、I/O 与关键路径](./03_time_breakdown_and_trace_reading.md)。
+## 沿时间线找出谁在等待谁
 
-## 三、沿关键路径收集证据
+计算、内核启动、输入搬运和主机准备可能同时发生。[时间线与关键路径](./03_time_breakdown_and_trace_reading.md)先区分事件持续时间之和、活动覆盖时间和端到端完成时间，再按依赖检查哪个等待真正延长了完成时间。
 
-时间线回答计算、launch、输入搬运和等待；memory timeline 回答峰值与驻留对象；通信 trace 回答 collective、同步和 overlap。三类证据可以相互解释，但不能互相替代。
+![时间、输入搬运与关键路径](../../docs/public/topic_discussion/performance_analysis/time_breakdown_trace.svg)
 
-对应 [03 时间线与关键路径](./03_time_breakdown_and_trace_reading.md)、[04 对象驻留](./04_memory_timeline_and_residency.md) 与 [05 瓶颈归因](./05_bottleneck_attribution.md)。
+## 把显存峰值放回对象驻留区间
 
-## 四、以对照和回归验证候选
+时间线上的峰值需要由同一时刻仍驻留的对象解释。[显存驻留](./04_memory_timeline_and_residency.md)分别检查活跃分配、分配器保留、临时工作区和长期状态，并将理论账本与对应范围的实测值比较；两项独立最大值之差不能代替同时刻的分配器保留差值。
 
-只改变一个候选变量，并同时记录目标指标、质量、波动与失败。局部热点下降但端到端结果没有改善，仍不能视为有效优化。
+![显存时间线与对象驻留](../../docs/public/topic_discussion/performance_analysis/memory_timeline_diagnosis.svg)
 
-对应 [06 基准设计与回归验证](./06_benchmark_design_and_regression_validation.md)。
+## 用资源参考和判别实验检查原因
 
-## 五、形成带条件的行动
+事件热点与显存峰值给出观察位置，[瓶颈归因](./05_bottleneck_attribution.md)再结合计算量、搬运字节和经验参考，选择可以被下一组对照推翻的解释。多卡等待还需确认通信已经就绪、可与哪些计算重叠，以及下一消费点是否真的等待通信完成。
 
-证据不足时继续检查；归因明确时再修改候选；对照稳定后验证；若产生回归则回退。最终记录应说明适用 workload 与复查条件。
+![通信等待与计算重叠](../../docs/public/topic_discussion/performance_analysis/communication_overlap_map.svg)
 
-对应 [07 从归因到行动](./07_diagnosis_and_action_decision.md)。
+## 用配对样本区分回归与收益
 
-## 图解阅读顺序
+[配对回归](./06_benchmark_design_and_regression_validation.md)同时保留目标指标、质量、尾延迟和失败运行。未超过允许退化范围与达到最低改善是两个判断；局部变快却未缩短端到端时间时，继续检查未改变的关键路径或新的主约束。公式与分母可查[公式索引](./formula_reference.md)。
 
-| 图解 | 用来回答的问题 |
-|:---|:---|
-| ![知识地图](../../docs/public/topic_discussion/performance_analysis/profiling_evidence_chain.svg) | 观察对象、证据形式、资源约束与验证输出如何对应？ |
-| ![时间线](../../docs/public/topic_discussion/performance_analysis/time_breakdown_trace.svg) | 哪个时间段进入关键路径？ |
-| ![显存时间线](../../docs/public/topic_discussion/performance_analysis/memory_timeline_diagnosis.svg) | 峰值与驻留发生在何处？ |
-| ![通信重叠](../../docs/public/topic_discussion/performance_analysis/communication_overlap_map.svg) | 通信是否暴露在关键路径上？ |
-| ![基准验证](../../docs/public/topic_discussion/performance_analysis/benchmark_validation_board.svg) | 如何保证 before / after 可比较？ |
-| ![行动面板](../../docs/public/topic_discussion/performance_analysis/action_decision_board.svg) | 证据足以支持哪一步？ |
+![配对基准、回归阈值与质量守护](../../docs/public/topic_discussion/performance_analysis/benchmark_validation_board.svg)
 
-已有结果时，可回到[性能分析判断手册](./casebook.md)按症状和证据选择下一步。
+## 把诊断变成下一次具体行动
+
+证据不足时补测字段，归因明确时选择一个候选，局部对照通过后进入组合复测；质量或资源条件失败时记录原因并回退。[诊断记录](./07_diagnosis_and_action_decision.md)和[判断手册](./casebook.md)帮助写清适用输入、证据位置、未解释现象以及下一步复测条件。
+
+![从诊断到行动的判断路径](../../docs/public/topic_discussion/performance_analysis/action_decision_board.svg)
