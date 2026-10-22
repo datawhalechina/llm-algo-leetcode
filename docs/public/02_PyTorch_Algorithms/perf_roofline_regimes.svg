@@ -10,24 +10,24 @@
   </defs>
   <rect width="1200" height="620" rx="24" fill="#f8fafc"/>
   <text x="600" y="48" text-anchor="middle" class="title">算术强度决定理论资源区间</text>
-  <text x="600" y="78" text-anchor="middle" class="subtitle">候选位置回答“上界是什么”，距离屋顶线的差距回答“执行效率还有多少空间”</text>
+  <text x="600" y="78" text-anchor="middle" class="subtitle">双对数示意，无数值刻度：横轴定位资源区间，纵向差距仍需结合执行过程分析</text>
   <path d="M155 500H1090" class="axis"/><path d="M155 500V118" class="axis"/>
-  <text x="1090" y="535" text-anchor="end" class="label">算术强度（FLOPs / Byte）</text>
-  <text x="50" y="310" text-anchor="middle" class="label" transform="rotate(-90 50 310)">可达计算吞吐</text>
+  <text x="1090" y="550" text-anchor="end" class="label">算术强度（FLOPs / Byte，对数）</text>
+  <text x="50" y="310" text-anchor="middle" class="label" transform="rotate(-90 50 310)">计算吞吐（FLOPs/s，对数）</text>
 
   <path d="M185 470L650 180H1040" class="roof"/>
   <line x1="650" y1="180" x2="650" y2="500" class="guide"/>
   <rect x="245" y="142" width="245" height="86" rx="12" fill="#eff6ff" stroke="#93c5fd"/>
   <text x="368" y="178" text-anchor="middle" class="label">带宽约束区间</text><text x="368" y="202" text-anchor="middle" class="small">减少搬运或提高数据复用</text>
-  <rect x="780" y="96" width="245" height="86" rx="12" fill="#f0fdf4" stroke="#86efac"/>
+  <rect x="780" y="96" width="245" height="72" rx="12" fill="#f0fdf4" stroke="#86efac"/>
   <text x="903" y="132" text-anchor="middle" class="label">计算约束区间</text><text x="903" y="156" text-anchor="middle" class="small">减少运算或提高计算效率</text>
   <text x="665" y="524" class="small">机器平衡点</text>
 
-  <circle cx="370" cy="355" r="11" fill="#dc2626"/><path d="M381 363L430 390" stroke="#dc2626" stroke-width="2"/>
+  <circle cx="370" cy="375" r="11" fill="#dc2626"/><path d="M381 375L430 390" stroke="#dc2626" stroke-width="2"/>
   <rect x="430" y="363" width="205" height="86" rx="10" fill="#fff7ed" stroke="#fdba74"/>
   <text x="533" y="400" text-anchor="middle" class="label">候选 A</text><text x="533" y="423" text-anchor="middle" class="small">低强度，接近带宽屋顶</text>
 
   <circle cx="830" cy="285" r="11" fill="#7c3aed"/><path d="M841 280L910 250" stroke="#7c3aed" stroke-width="2"/>
   <rect x="910" y="202" width="220" height="86" rx="10" fill="#faf5ff" stroke="#c4b5fd"/>
-  <text x="1020" y="239" text-anchor="middle" class="label">候选 B</text><text x="1020" y="262" text-anchor="middle" class="small">高强度，但仍低于计算屋顶</text>
+  <text x="1020" y="239" text-anchor="middle" class="label">候选 B</text><text x="1020" y="262" text-anchor="middle" class="small">高强度，低于计算屋顶</text>
 </svg>
