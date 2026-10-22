@@ -1,25 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="620" viewBox="0 0 1280 620" role="img" aria-labelledby="title desc">
-  <title id="title">可重复基线的冻结与继承</title>
-  <desc id="desc">依次冻结环境、工作负载和测量协议，形成带守护条件的基线分布，供执行轨迹、对象驻留和回归验证继承。</desc>
+  <title id="title">固定比较条件、保存基线并用于后续分析</title>
+  <desc id="desc">环境、工作负载、测量方法及质量要求共同定义一次比较。保存固定条件和逐次结果后，可分别进行事件追踪、驻留分析；已有候选时进行回归检查。</desc>
   <defs><marker id="arrow" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 4.5L0 9Z" fill="#475569"/></marker><style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#526581}.head{font-size:18px;font-weight:700}.body{font-size:14px;fill:#475569}.node{stroke-width:2;rx:16}.line{stroke:#475569;stroke-width:2.8;fill:none;marker-end:url(#arrow)}</style></defs>
   <rect id="node-0" width="1280" height="620" fill="#f8fafc"/>
-  <text x="640" y="46" text-anchor="middle" class="title">可重复基线：冻结条件，再扩展证据</text>
+  <text x="640" y="46" text-anchor="middle" class="title">可重复基线：固定条件，保存每轮结果</text>
   <text x="640" y="74" text-anchor="middle" class="sub">声明唯一实验变量，其余条件对齐；环境或测量协议意外变化时重新采集比较组</text>
 
   <rect id="node-1" x="55" y="130" width="230" height="92" fill="#dbeafe" stroke="#60a5fa" class="node"/><text x="170" y="165" text-anchor="middle" class="head">环境快照</text><text x="170" y="194" text-anchor="middle" class="body">硬件 · 驱动 · 框架 · 后端</text>
-  <rect id="node-2" x="350" y="130" width="230" height="92" fill="#dcfce7" stroke="#4ade80" class="node"/><text x="465" y="165" text-anchor="middle" class="head">工作负载身份</text><text x="465" y="194" text-anchor="middle" class="body">模型 · 输入 · 批量 · 种子</text>
-  <rect id="node-3" x="645" y="130" width="230" height="92" fill="#fef3c7" stroke="#f59e0b" class="node"/><text x="760" y="165" text-anchor="middle" class="head">测量协议</text><text x="760" y="194" text-anchor="middle" class="body">预热 · 重复 · 同步 · 统计</text>
+  <rect id="node-2" x="350" y="130" width="230" height="92" fill="#dcfce7" stroke="#4ade80" class="node"/><text x="465" y="165" text-anchor="middle" class="head">工作负载配置</text><text x="465" y="194" text-anchor="middle" class="body">模型 · 输入 · 批量 · 种子</text>
+  <rect id="node-3" x="645" y="130" width="230" height="92" fill="#fef3c7" stroke="#f59e0b" class="node"/><text x="760" y="165" text-anchor="middle" class="head">测量方法</text><text x="760" y="194" text-anchor="middle" class="body">预热 · 重复 · 同步 · 统计</text>
   <rect id="node-4" x="940" y="130" width="285" height="92" fill="#fee2e2" stroke="#fb7185" class="node"/><text x="1082" y="165" text-anchor="middle" class="head">结果样本与守护条件</text><text x="1082" y="194" text-anchor="middle" class="body">原始样本 · 失败 · 质量 · 服务目标</text>
 
   <rect id="node-5" x="450" y="305" width="380" height="100" fill="#ede9fe" stroke="#a78bfa" class="node"/>
-  <text x="640" y="344" text-anchor="middle" class="head">稳定的基线身份</text><text x="640" y="374" text-anchor="middle" class="body">条件字段 + 每轮结果 + 聚合统计 + 失败分母</text>
+  <text x="640" y="344" text-anchor="middle" class="head">基线条件与逐次结果</text><text x="640" y="374" text-anchor="middle" class="body">固定配置 · 原始样本 · 汇总统计 · 失败数与总数</text>
   <path d="M170 222V260H490V305" data-source="node-1" data-target="node-5" class="line"/>
   <path d="M465 222V245H570V305" data-source="node-2" data-target="node-5" class="line"/>
   <path d="M760 222V245H650V305" data-source="node-3" data-target="node-5" class="line"/>
   <path d="M1082 222V260H730V305" data-source="node-4" data-target="node-5" class="line"/>
 
-  <rect id="node-6" x="105" y="480" width="280" height="86" fill="#e0f2fe" stroke="#38bdf8" class="node"/><text x="245" y="514" text-anchor="middle" class="head">执行轨迹继承</text><text x="245" y="541" text-anchor="middle" class="body">阶段、事件依赖与关键路径</text>
-  <rect id="node-7" x="500" y="480" width="280" height="86" fill="#e0f2fe" stroke="#38bdf8" class="node"/><text x="640" y="514" text-anchor="middle" class="head">对象驻留继承</text><text x="640" y="541" text-anchor="middle" class="body">创建、峰值重叠与释放</text>
-  <rect id="node-8" x="895" y="480" width="280" height="86" fill="#e0f2fe" stroke="#38bdf8" class="node"/><text x="1035" y="514" text-anchor="middle" class="head">回归验证继承</text><text x="1035" y="541" text-anchor="middle" class="body">配对身份、阈值与守护条件</text>
+  <rect id="node-6" x="105" y="480" width="280" height="86" fill="#e0f2fe" stroke="#38bdf8" class="node"/><text x="245" y="514" text-anchor="middle" class="head">执行轨迹分析</text><text x="245" y="541" text-anchor="middle" class="body">阶段、事件依赖与关键路径</text>
+  <rect id="node-7" x="500" y="480" width="280" height="86" fill="#e0f2fe" stroke="#38bdf8" class="node"/><text x="640" y="514" text-anchor="middle" class="head">对象驻留分析</text><text x="640" y="541" text-anchor="middle" class="body">创建、峰值重叠与释放</text>
+  <rect id="node-8" x="895" y="480" width="280" height="86" fill="#e0f2fe" stroke="#38bdf8" class="node"/><text x="1035" y="514" text-anchor="middle" class="head">已有对照的回归检查</text><text x="1035" y="541" text-anchor="middle" class="body">配对样本、阈值与质量要求</text>
   <path d="M555 405V445H245V480" data-source="node-5" data-target="node-6" class="line"/><path d="M640 405V480" data-source="node-5" data-target="node-7" class="line"/><path d="M725 405V445H1035V480" data-source="node-5" data-target="node-8" class="line"/>
 </svg>

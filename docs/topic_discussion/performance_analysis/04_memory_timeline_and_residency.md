@@ -1,21 +1,19 @@
 # 04 显存时间线与驻留状态
 
-显存峰值不只决定“是否会 OOM”；对象驻留过久、频繁分配或分配器保留也可能拉长关键路径。这里先读取状态证据，再决定进入哪一种资源策略。
+显存不足时，先找出峰值时仍占用空间的对象；分配频繁或回收延迟时，再检查这些行为是否让计算等待。本节将对象的大小、创建与释放时刻放回同一条时间线，解释峰值怎样形成。
 
 ## 先定位峰值与生命周期
 
-把峰值放回运行阶段，区分活跃张量、分配器保留、临时工作区与长生命周期状态。分析分配器保留空间时，应比较同一时刻的 `allocated` 与 `reserved`；分别记录的两项区间最大值可能发生在不同时刻，其差不能代表峰值时的保留空间。理论估算、构造示例与实际采集数据分别标明来源。
+把峰值放回运行阶段，区分长期状态与临时工作区。`allocated` 表示张量已分配的显存，`reserved` 表示分配器持有的显存；分析未被活跃分配使用的空间时，比较二者同一时刻的数值。两项区间最大值可能发生在不同时刻，其差不能代表峰值时的保留空间。图中 32、16、8、8 MiB 是说明驻留求和的示意大小，不是本机实测；横向长度表示时间，而非容量。
 
 | 观察 | 可以提出的假设 | 仍需补充的证据 |
 |:---|:---|:---|
 | `allocated` 峰值抬高 | 活跃对象容量增加 | 对象类型、形状与生命周期 |
-| 同一时刻 `reserved` 明显高于 `allocated` | 分配器持有较多未被活跃张量使用的空间 | 显存快照（snapshot）、分配频率与复用情况 |
+| 同一时刻 `reserved` 明显高于 `allocated` | 分配器持有较多未被活跃张量使用的空间 | 显存快照、分配频率与复用情况 |
 | 激活跨反向传播驻留 | 训练状态压力上升 | 计算图与激活检查点对照 |
 | 缓存随并发增长 | 请求状态容量受限 | 上下文、并发与淘汰策略 |
 
 ![显存时间线与驻留诊断](../../public/topic_discussion/performance_analysis/memory_timeline_diagnosis.svg)
-
-[Part 02 · PERF-MEMORY-TIMELINE 显存驻留与峰值重叠](../../02_PyTorch_Algorithms/PERF-MEMORY-TIMELINE_Memory_Residency_and_Peak_Overlap.md)把分配与释放事件重建为活动对象集合，并用真实 GPU 对照检查生命周期变化是否降低峰值。
 
 ## 用驻留区间解释峰值
 
@@ -38,4 +36,4 @@ $t$ 是观察窗口内的时间，$M(t)$ 和 $M_{\mathrm{peak}}$ 的单位均为
 
 ## 进入容量策略复测
 
-可用 [Part 00 · 18 显存分析](../../00_Prerequisites/18_Memory_Profiling_and_Optimization.md)练习生命周期估算与构造快照对账，再用 PERF-MEMORY-TIMELINE 采集真实 GPU 数据。训练状态压力进入[性能优化 · 训练输入与状态](../performance_optimization/03_training_memory_ledger.md)，请求状态容量进入[性能优化 · 推理状态容量](../performance_optimization/04_inference_memory_and_kv_cache.md)。两条路径都要同时比较峰值、时间与质量代价。
+用[Part 00 · 18 显存分析](../../00_Prerequisites/18_Memory_Profiling_and_Optimization.md)练习生命周期估算与构造快照对账；[Part 02 · PERF-MEMORY-TIMELINE](../../02_PyTorch_Algorithms/PERF-MEMORY-TIMELINE_Memory_Residency_and_Peak_Overlap.md)的 CPU 练习从分配与释放事件计算活动对象，GPU 对照则测量生命周期改动后的峰值、耗时和校验和。确认峰值对象后，训练状态进入[性能优化 · 训练输入与状态](../performance_optimization/03_training_memory_ledger.md)，请求状态进入[性能优化 · 推理状态容量](../performance_optimization/04_inference_memory_and_kv_cache.md)，继续比较容量收益与时间、质量代价。

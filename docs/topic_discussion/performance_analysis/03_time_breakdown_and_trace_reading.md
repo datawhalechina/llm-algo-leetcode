@@ -4,28 +4,26 @@
 
 ## 建立可比较的时间基线
 
-先固定模型、输入、精度、预热、重复次数与同步方式，再选择与问题匹配的指标。[Part 00 · 17 性能分析基础](../../00_Prerequisites/17_PyTorch_Profiling_Basics.md)分别采集前向计时和训练阶段事件；两者的模型模式、梯度开关与测量范围不同，不能用前向总时间作为训练阶段占比的分母。阶段占比还需注明采用互不重叠的阶段总和，还是同次运行的端到端时间。
+沿用基线的固定条件，先确定本次计时包含哪些阶段，再选择指标。训练阶段占比使用同次、同范围的计时：单独测得的前向总时间不能作为整步训练的分母；采用互不重叠的阶段总和或端到端时间时，也需分别注明。
 
 | 场景 | 优先指标 | 应拆开的阶段 |
 |:---|:---|:---|
-| 训练 | `step_time_ms`、样本数/秒 | 数据读取、H2D、前向传播、反向传播、优化器更新 |
+| 训练 | 训练步耗时（`step_time_ms`）、样本数/秒 | 数据读取、主机到设备搬运（H2D）、前向传播、反向传播、优化器更新 |
 | 单请求推理 | `TTFT`、`TPOT`、端到端延迟 | 输入处理、预填充、解码、流式输出 |
 | 批处理 / 服务 | 吞吐、P50 / P99、排队等待 | 排队、组批、执行、网络与输出 |
 
-## 读执行轨迹时区分三类事件
+## 从执行轨迹定位耗时与等待
 
-框架算子、设备计算内核与主机侧事件位于不同层。算子热点不自动等于计算内核瓶颈；空白区间也要结合同步、输入搬运或上游依赖解释。
+先把框架算子对应到设备计算内核，再结合主机提交、同步和输入事件检查等待。算子累计时间长，可能来自调用频繁，也可能来自某个内核耗时；设备空白区间则需向前追查尚未满足的依赖。
 
 | 观察对象 | 可能含义 | 需要再核对的证据 |
 |:---|:---|:---|
 | 算子调用次数高 | 图被切得过碎或 Python 调度频繁 | 计算内核数量、启动间隙 |
 | 计算内核时长高 | 计算或访存可能成为热点 | 形状、利用率、访存指标 |
-| H2D / 数据读取拉长 | 输入管线进入关键路径 | DataLoader、预取、存储与批次形状 |
+| H2D 或数据读取拉长 | 输入管线可能延长完成时间 | 数据加载器、预取、存储与批次形状 |
 | CPU/GPU 空洞 | 同步、等待或依赖阻塞 | CUDA 流、队列与上游事件 |
 
 ![时间、输入搬运与关键路径](../../public/topic_discussion/performance_analysis/time_breakdown_trace.svg)
-
-机制练习从 [Part 02 · PERF-TRACE Trace 依赖与关键路径](../../02_PyTorch_Algorithms/PERF-TRACE_Trace_Dependencies_and_Critical_Path.md)进入：先把事件、资源和前驱规范化，再区分事件总耗时、关键路径与暴露等待。若等待发生在训练输入侧，再用 [PERF-INPUT](../../02_PyTorch_Algorithms/PERF-INPUT_Training_Input_Pipeline_Performance.md) 比较数据准备、预取与主机—设备搬运；若等待发生在模型产物、状态传输或输出写回，再用 [PERF-IO](../../02_PyTorch_Algorithms/PERF-IO_Artifact_State_and_Output_IO_Critical_Path.md) 检查 I/O 服务时间和可重叠窗口。
 
 ## 同一时间窗口怎样汇总
 
@@ -47,22 +45,20 @@ $$
 T_{\mathrm{dep}}=\max_{p\in\mathcal P}\sum_{i\in p}d_i,\qquad T_{\mathrm{obs}}\ge T_{\mathrm{dep}}.
 $$
 
-$p$ 表示一条路径，$T_{\mathrm{obs}}$ 是同一测量窗口内的实际耗时。等待、启动延迟或资源串行约束未被记录时，这个下界会偏松；只有完整表达相关约束和持续时间时，才能用最长路径重建完成时间。图中的示例让主机先准备并提交内核 B，再等待 B 完成后消费结果。
+$p$ 表示一条路径，$T_{\mathrm{obs}}$ 是同一测量窗口内的实际耗时。等待、启动延迟或资源串行约束未被记录时，这个下界会偏松；只有完整表达相关约束和持续时间时，才能用最长路径重建完成时间。图中 A 等待输入与主机提交，B 同时依赖 A 的结果和自身的主机提交；本例中 A 先完成，设备继续等待 B 提交，主机在 B 完成后消费结果。
 
 ## 按分析目标选择工具层
 
-工具选择服从要回答的问题，而不是越底层越好。先用轻量计时确认现象，再用框架追踪定位阶段；只有证据落到跨线程等待、单个计算内核或多进程通信时，才升级到系统或硬件级工具。
+先用轻量计时确认现象，再用框架追踪定位阶段。需要解释跨线程等待、单个计算内核效率或多进程通信时，再选择对应工具，并保留同一工作负载和采集范围。
 
 | 分析目标 | 首选工具与证据 | 升级条件 | 升级后的工具 |
 |:---|:---|:---|:---|
-| 确认总时间、阶段时间或峰值是否变化 | `perf_counter`、CUDA Event、显存 API 的重复样本 | 聚合指标无法解释时间去了哪里 | PyTorch Profiler |
+| 确认总时间、阶段时间或峰值是否变化 | `perf_counter`、CUDA 事件计时、显存 API 的重复样本 | 聚合指标无法解释时间去了哪里 | PyTorch Profiler |
 | 定位算子、输入搬运和 CPU/GPU 空洞 | PyTorch Profiler 的事件、形状和执行轨迹 | 需要解释跨线程、CUDA 流、同步或系统 I/O | Nsight Systems |
 | 解释单个计算内核效率 | 框架追踪确认该计算内核位于关键路径 | 需要访存吞吐、占用率和指令级证据 | Nsight Compute |
 | 解释显存峰值 | PyTorch 显存统计、显存快照和对象驻留时间线 | 无法确认对象身份、分配栈或峰值重叠 | 显存快照与调用栈联合分析 |
 | 解释多卡扩展损失 | 每进程阶段时间、载荷和集合通信记录 | 需要区分最慢进程、拓扑、负载不均与暴露通信 | NCCL 执行轨迹、HTA 或 Nsight Systems |
 | 解释推理服务尾延迟 | TTFT、TPOT、队列和请求执行轨迹 | 需要关联缓存、批次、调度与后端执行 | 服务后端的请求追踪与系统时间线 |
-
-每次升级都应保留上一层证据：系统追踪不能替代固定工作负载，计算内核报告也不能证明该内核位于端到端关键路径。TrainLens、`vllm-htop` 一类实时工具适合快速发现异常时段，但正式归因仍需导出可复查的执行轨迹、性能剖析报告或配对样本。
 
 ## 保留可复查的工具产物
 
@@ -79,8 +75,13 @@ $p$ 表示一条路径，$T_{\mathrm{obs}}$ 是同一测量窗口内的实际耗
 | 服务追踪 | 请求级执行轨迹 | 到达时间、输入/输出长度、缓存、批次与调度状态 |
 
 
-## 进入对象与资源归因
+## 按等待来源选择对照
 
-本页使用可重复基线。[Part 01 · 07 CPU/GPU 异构调度](../../01_Hardware_Math_and_Systems/07_CPU_GPU_Heterogeneous_Scheduling.md)、[Part 01 · 15 CUDA 执行模型](../../01_Hardware_Math_and_Systems/15_CUDA_Execution_Model.md)和[Part 01 · 17 CUDA 流](../../01_Hardware_Math_and_Systems/17_CUDA_Stream_and_Asynchrony.md)分别提供搬运、启动、同步与异步执行基础。时间线解释等待，[正文 04 显存时间线](./04_memory_timeline_and_residency.md)解释峰值；按问题选择需要的观察，涉及容量与等待相互影响时联合分析，再进入[正文 05 瓶颈归因](./05_bottleneck_attribution.md)。
+事件、资源及前后依赖的记录方法见[Part 02 · PERF-TRACE 执行轨迹与关键路径](../../02_PyTorch_Algorithms/PERF-TRACE_Trace_Dependencies_and_Critical_Path.md)。需要回查搬运、启动或同步原理时，分别参考[Part 01 · 07 异构调度](../../01_Hardware_Math_and_Systems/07_CPU_GPU_Heterogeneous_Scheduling.md)、[Part 01 · 15 CUDA 执行模型](../../01_Hardware_Math_and_Systems/15_CUDA_Execution_Model.md)和[Part 01 · 17 CUDA 流](../../01_Hardware_Math_and_Systems/17_CUDA_Stream_and_Asynchrony.md)。按下表选择继续验证的位置。
 
-相关阅读：[PyTorch Profiler schedule](https://docs.pytorch.org/docs/stable/profiler.html#torch.profiler.schedule)。
+| 当前观察 | 下一项对照或分析 |
+|:---|:---|
+| 设备等待下一批输入 | [Part 02 · PERF-INPUT](../../02_PyTorch_Algorithms/PERF-INPUT_Training_Input_Pipeline_Performance.md)比较数据准备、预取和搬运 |
+| 产物读取、状态传输或输出写回拉长完成时间 | [Part 02 · PERF-IO](../../02_PyTorch_Algorithms/PERF-IO_Artifact_State_and_Output_IO_Critical_Path.md)检查分阶段耗时与可重叠窗口 |
+| 容量与等待相互影响 | 结合[04 显存时间线](./04_memory_timeline_and_residency.md)记录峰值，再用[05 瓶颈归因](./05_bottleneck_attribution.md)检查原因 |
+| 计算或同步已成为主要嫌疑 | 用[05 瓶颈归因](./05_bottleneck_attribution.md)选择资源或依赖对照 |

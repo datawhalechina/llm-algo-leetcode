@@ -1,23 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="620" viewBox="0 0 1280 620" role="img" aria-labelledby="title desc">
   <title id="title">对象驻留与峰值重叠</title>
-  <desc id="desc">将参数、激活、临时工作区和缓存放到同一时间线上，识别峰值区间内同时驻留的对象及其释放时刻。</desc>
+  <desc id="desc">示意数据而非 GPU 实测：参数与长期状态占 32 MiB、激活占 16 MiB、工作区和缓冲各占 8 MiB；独立存储且每行大小固定，四者同时驻留的区间峰值为 64 MiB。条块等高，长度表示时间，不表示容量。</desc>
   <defs><style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#526581}.lane{font-size:16px;font-weight:700}.label{font-size:14px;font-weight:600}.note{font-size:14px;fill:#475569}.axis{stroke:#64748b;stroke-width:2}.dash{stroke:#ef4444;stroke-width:2;stroke-dasharray:7 6}</style></defs>
   <rect id="node-0" width="1280" height="620" fill="#f8fafc"/>
   <text x="640" y="46" text-anchor="middle" class="title">对象驻留：峰值来自哪些状态同时存在</text>
-  <text x="640" y="74" text-anchor="middle" class="sub">峰值可以持续一个区间；分析重点是该区间内的活动对象、分配来源和释放时刻</text>
+  <text x="640" y="74" text-anchor="middle" class="sub">示意数据，非本机实测：条块长度表示驻留时间，对象大小由 MiB 标注</text>
 
   <rect id="node-1" x="170" y="105" width="800" height="390" rx="18" fill="#fff" stroke="#cbd5e1" stroke-width="2"/>
   <rect id="node-2" x="650" y="105" width="80" height="390" fill="#fee2e2" opacity="0.55" data-layout-role="decoration"/>
   <line x1="650" y1="105" x2="650" y2="495" class="dash"/><line x1="730" y1="105" x2="730" y2="495" class="dash"/>
-  <text x="690" y="132" text-anchor="middle" class="label" fill="#b91c1c">峰值重叠区间</text>
+  <text x="690" y="132" text-anchor="middle" class="label" fill="#b91c1c">峰值 64 MiB</text>
 
-  <text x="55" y="188" class="lane">参数与长期状态</text><rect id="node-3" x="205" y="155" width="720" height="55" rx="10" fill="#dbeafe" stroke="#60a5fa" stroke-width="2"/><text x="565" y="189" text-anchor="middle" class="label">全程驻留</text>
-  <text x="55" y="268" class="lane">激活</text><rect id="node-4" x="320" y="235" width="410" height="55" rx="10" fill="#dcfce7" stroke="#4ade80" stroke-width="2"/><text x="525" y="269" text-anchor="middle" class="label">前向创建，反向消费后释放</text>
-  <text x="55" y="348" class="lane">临时工作区</text><rect id="node-5" x="550" y="315" width="270" height="55" rx="10" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/><text x="685" y="349" text-anchor="middle" class="label">算子执行期间驻留</text>
-  <text x="55" y="428" class="lane">缓存或通信缓冲</text><rect id="node-6" x="650" y="395" width="240" height="55" rx="10" fill="#ede9fe" stroke="#a78bfa" stroke-width="2"/><text x="770" y="429" text-anchor="middle" class="label">跨阶段保留或复用</text>
+  <text x="55" y="188" class="lane">参数与长期状态</text><rect id="node-3" x="205" y="155" width="720" height="55" rx="10" fill="#dbeafe" stroke="#60a5fa" stroke-width="2"/><text x="565" y="189" text-anchor="middle" class="label">32 MiB · 全程驻留</text>
+  <text x="55" y="268" class="lane">激活</text><rect id="node-4" x="320" y="235" width="410" height="55" rx="10" fill="#dcfce7" stroke="#4ade80" stroke-width="2"/><text x="525" y="269" text-anchor="middle" class="label">16 MiB · 前向创建，反向消费后释放</text>
+  <text x="55" y="348" class="lane">临时工作区</text><rect id="node-5" x="550" y="315" width="270" height="55" rx="10" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/><text x="685" y="349" text-anchor="middle" class="label">8 MiB · 算子执行期间</text>
+  <text x="55" y="428" class="lane">缓存或通信缓冲</text><rect id="node-6" x="650" y="395" width="240" height="55" rx="10" fill="#ede9fe" stroke="#a78bfa" stroke-width="2"/><text x="770" y="429" text-anchor="middle" class="label">8 MiB · 跨阶段保留</text>
   <line x1="205" y1="470" x2="925" y2="470" class="axis"/><text x="205" y="492" class="note">开始</text><text x="895" y="492" class="note">结束</text>
+  <text x="570" y="533" text-anchor="middle" class="note">四项独立存储同时驻留：32 + 16 + 8 + 8 = 64 MiB；分配器保留量另行检查。</text>
 
-  <rect id="node-7" x="1010" y="130" width="220" height="92" rx="15" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="1120" y="164" text-anchor="middle" class="lane">对象身份</text><text x="1120" y="193" text-anchor="middle" class="note">类型 · 形状 · 字节数</text>
+  <text x="1120" y="110" text-anchor="middle" class="note">驻留分析核对项</text>
+  <rect id="node-7" x="1010" y="130" width="220" height="92" rx="15" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="1120" y="164" text-anchor="middle" class="lane">对象类型与大小</text><text x="1120" y="193" text-anchor="middle" class="note">类型 · 形状 · 字节数</text>
   <rect id="node-8" x="1010" y="260" width="220" height="92" rx="15" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/><text x="1120" y="294" text-anchor="middle" class="lane">生命周期</text><text x="1120" y="323" text-anchor="middle" class="note">创建 · 最后使用 · 释放</text>
   <rect id="node-9" x="1010" y="390" width="220" height="92" rx="15" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text x="1120" y="424" text-anchor="middle" class="lane">分配器证据</text><text x="1120" y="453" text-anchor="middle" class="note">已分配 · 已保留 · 快照</text>
 </svg>

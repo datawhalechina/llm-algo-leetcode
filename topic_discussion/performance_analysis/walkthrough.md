@@ -14,7 +14,7 @@
 
 同一段代码的时间会受预热、输入形状、缓存和系统负载影响。[可重复基线](./02_reproducible_baseline.md)保存运行条件、逐次样本和失败原因。精度或后端是研究变量时明确登记，其余条件对齐；初始化、编译和预热是否计入也需要事先说明。
 
-![可重复基线的冻结与继承](../../docs/public/topic_discussion/performance_analysis/reproducible_baseline_contract.svg)
+![固定比较条件、保存基线并用于后续分析](../../docs/public/topic_discussion/performance_analysis/reproducible_baseline_contract.svg)
 
 ## 沿时间线找出谁在等待谁
 

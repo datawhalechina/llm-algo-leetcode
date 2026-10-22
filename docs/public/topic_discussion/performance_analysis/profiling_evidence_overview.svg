@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="620" viewBox="0 0 1280 620" role="img" aria-labelledby="title desc">
   <title id="title">从性能现象到可测问题</title>
-  <desc id="desc">先检查性能现象对应的运行是否有效；随后用阶段、指标、工作负载和质量门槛定义比较对象，最后把观察写成可证伪假设并通过判别实验形成归因。</desc>
+  <desc id="desc">先检查运行是否有效并保留失败记录，再固定阶段、指标、输入和质量要求。记录观察、提出可能原因，并用对照实验检查原因。</desc>
   <defs>
     <marker id="arrow" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 4.5L0 9Z" fill="#475569"/></marker>
     <style>
@@ -9,7 +9,7 @@
   </defs>
   <rect id="node-0" width="1280" height="620" fill="#F8FAFC"/>
   <text x="640" y="46" text-anchor="middle" class="title">从性能现象到可测问题</text>
-  <text x="640" y="74" text-anchor="middle" class="sub">先确认结果可信，再固定比较对象；观察只能提出假设，判别实验才支持归因</text>
+  <text x="640" y="74" text-anchor="middle" class="sub">固定测量条件，记录发生了什么，再改变一个相关因素检查原因</text>
 
   <path d="M250 286H280" data-source="node-1" data-target="node-2" class="flow"/>
   <path d="M460 286H490" data-source="node-2" data-target="node-4" class="flow"/>
@@ -27,11 +27,11 @@
   <text x="370" y="274" text-anchor="middle" class="head">有效性检查</text>
   <text x="370" y="303" text-anchor="middle" class="body">输出 · 数值 · 失败状态</text>
   <rect id="node-3" x="280" y="438" width="180" height="74" rx="16" fill="#FFF1F2" stroke="#E11D48" class="node"/>
-  <text x="370" y="468" text-anchor="middle" class="head">先修复运行</text>
-  <text x="370" y="492" text-anchor="middle" class="body">输出、数值或失败状态</text>
+  <text x="370" y="468" text-anchor="middle" class="head">保留失败并检查</text>
+  <text x="370" y="492" text-anchor="middle" class="body">错误输出、异常数值或超时</text>
 
   <rect id="node-4" x="490" y="125" width="360" height="330" rx="18" class="group"/>
-  <text x="670" y="158" text-anchor="middle" class="label">定义同一份可测比较对象</text>
+  <text x="670" y="158" text-anchor="middle" class="label">固定阶段、指标与输入条件</text>
   <rect id="node-5" x="520" y="180" width="140" height="72" rx="12" fill="#FFFFFF" stroke="#2563EB" class="node"/>
   <text x="590" y="209" text-anchor="middle" class="head">发生阶段</text><text x="590" y="232" text-anchor="middle" class="body">数据 / 计算 / 服务</text>
   <rect id="node-6" x="680" y="180" width="140" height="72" rx="12" fill="#FFFFFF" stroke="#2563EB" class="node"/>
@@ -42,9 +42,9 @@
   <text x="750" y="344" text-anchor="middle" class="head">质量门槛</text><text x="750" y="367" text-anchor="middle" class="body">质量 / 失败 / SLO</text>
 
   <rect id="node-9" x="890" y="120" width="310" height="88" rx="16" fill="#E0F2FE" stroke="#0284C7" class="node"/>
-  <text x="1045" y="154" text-anchor="middle" class="head">观察</text><text x="1045" y="181" text-anchor="middle" class="body">记录发生了什么、发生在哪里</text>
+  <text x="1045" y="154" text-anchor="middle" class="head">记录观察</text><text x="1045" y="181" text-anchor="middle" class="body">哪段时间变长，哪些对象并存</text>
   <rect id="node-10" x="890" y="256" width="310" height="86" rx="16" fill="#EDE9FE" stroke="#7C3AED" class="node"/>
-  <text x="1045" y="289" text-anchor="middle" class="head">可证伪假设</text><text x="1045" y="316" text-anchor="middle" class="body">声明预期变化与可能的反例</text>
+  <text x="1045" y="289" text-anchor="middle" class="head">提出可能原因</text><text x="1045" y="316" text-anchor="middle" class="body">改变哪个因素，预期看到什么</text>
   <rect id="node-11" x="890" y="390" width="310" height="88" rx="16" fill="#DCFCE7" stroke="#16A34A" class="node"/>
-  <text x="1045" y="424" text-anchor="middle" class="head">归因</text><text x="1045" y="451" text-anchor="middle" class="body">由判别实验支持主约束</text>
+  <text x="1045" y="424" text-anchor="middle" class="head">用对照检查原因</text><text x="1045" y="451" text-anchor="middle" class="body">比较事件与目标指标是否按预期变化</text>
 </svg>
