@@ -14,8 +14,8 @@
 
 ## 本节导读
 
-模型里的参数、梯度、激活和缓存，首先都要以某种数据格式存储和计算。相同的张量换成 FP32、BF16、FP16 或 INT8 后，存储字节数、数值范围、误差风险和硬件执行路径都会变化。
-本节沿着“数据表示 → 状态账本 → dtype 判断”展开：先计算不同格式的理论字节数，再区分参数、梯度、激活和缓存的驻留需求，最后判断位宽变化可能带来的容量与数值影响。完成后，你应能把 dtype 选择接到一个可检查的显存账本上，而不是只按位宽判断性能。
+模型里的参数、梯度、激活值和缓存都要以特定数据类型（dtype）存储和计算。相同张量采用 FP32、BF16、FP16 或 INT8 时，存储字节数、数值范围、误差风险和可用硬件路径都会变化。
+本节建立“数值表示 → 状态字节数 → 精度选择”的关系。完成后，你应能计算模型状态的理论容量，并结合数值范围判断一种精度是否值得进入真实硬件验证。
 
 **关键词：** `FP16`, `BF16`, `INT8`
 
@@ -30,8 +30,6 @@
 ---
 ## Q1：基础认知——常见的数据格式分别占用多大内存空间？
 
-<details>
-<summary>点击展开查看解析</summary>
 
 在计算机底层，1 Byte（字节）= 8 bits（位）。下面先计算理论存储下界；真实模型还可能包含 scale、zero-point、packing、padding 和 runtime workspace。
 
@@ -43,24 +41,36 @@
 
 **实战估算：**
 做权重下界估算时，可以把参数量乘以每参数字节数。比如一个 7B（70亿）参数的模型，如果采用 FP16/BF16 加载，纯权重占用约为：$7 \times 10^9 \times 2 \text{ Bytes} \approx 14 \text{ GB}$。这不是完整的推理或训练峰值显存。
-</details>
-### Q1小验证：基础显存计算
 
-实现一个函数，计算给定参数量和数据格式的模型显存占用。
+### Q1 机制计算器：从位宽换算理论权重容量
+
+先预测 7B 模型在不同格式下的容量，再运行计算器。随后只修改 `MODEL_PARAMS_B` 或 `MODEL_DTYPE`，检查容量是否按参数量和位宽线性变化。
 
 
 ```python
+DTYPE_BITS = {
+    'fp32': 32,
+    'fp16': 16,
+    'bf16': 16,
+    'int8': 8,
+    'int4': 4,
+}
+BITS_PER_BYTE = 8
+PARAMS_PER_BILLION = 1_000_000_000
+BYTES_PER_DECIMAL_GB = 1_000_000_000
+
+
 def calculate_model_memory(num_params_b, dtype):
     """
     计算模型参数的显存占用
-    
+
     Args:
         num_params_b: 参数量（单位：B，即十亿）
         dtype: 数据类型，可选 'fp32', 'fp16', 'bf16', 'int8', 'int4'
-    
+
     Returns:
         memory_gb: 理论权重占用（十进制 GB，不包含量化元数据和运行时缓冲）
-    
+
     示例:
         >>> calculate_model_memory(7, 'fp16')
         14.0
@@ -70,76 +80,55 @@ def calculate_model_memory(num_params_b, dtype):
     if num_params_b < 0:
         raise ValueError("num_params_b must be non-negative")
 
-    # 每种数据类型占用的理论字节数
-    bytes_per_param = {
-        'fp32': 4,
-        'fp16': 2,
-        'bf16': 2,
-        'int8': 1,
-        'int4': 0.5
-    }
-    
     try:
-        bytes_per_element = bytes_per_param[dtype]
+        bits_per_element = DTYPE_BITS[dtype]
     except KeyError as exc:
         raise ValueError(f'unsupported dtype: {dtype}') from exc
-    memory_gb = num_params_b * bytes_per_element
+    num_params = num_params_b * PARAMS_PER_BILLION
+    total_bits = num_params * bits_per_element
+    total_bytes = total_bits / BITS_PER_BYTE
+    memory_gb = total_bytes / BYTES_PER_DECIMAL_GB
     return memory_gb
 ```
 
 
 ```python
-# 测试函数
 def test_calculate_model_memory():
+    """验证位宽比例、参数规模比例与非法输入。"""
+    assert calculate_model_memory(7, 'fp16') == 14
+    assert calculate_model_memory(7, 'int8') == 7
+    assert calculate_model_memory(13, 'fp16') == 26
+    assert calculate_model_memory(70, 'int4') == 35
+    assert calculate_model_memory(14, 'fp16') == 2 * calculate_model_memory(7, 'fp16')
     try:
-        # 测试用例 1: LLaMA-7B FP16
-        result = calculate_model_memory(7, 'fp16')
-        assert result == 14, f"错误：LLaMA-7B FP16 应该是 14 GB，实际 {result} GB"
-        
-        # 测试用例 2: LLaMA-7B INT8
-        result = calculate_model_memory(7, 'int8')
-        assert result == 7, f"错误：LLaMA-7B INT8 应该是 7 GB，实际 {result} GB"
-        
-        # 测试用例 3: LLaMA-13B FP16
-        result = calculate_model_memory(13, 'fp16')
-        assert result == 26, f"错误：LLaMA-13B FP16 应该是 26 GB，实际 {result} GB"
-        
-        # 测试用例 4: LLaMA-70B INT4
-        result = calculate_model_memory(70, 'int4')
-        assert result == 35, f"错误：LLaMA-70B INT4 应该是 35 GB，实际 {result} GB"
-        
-        print("✅ 所有测试通过！")
-        
-    except AssertionError as e:
-        print(f"❌ 测试失败: {e}")
-    except Exception as e:
-        print(f"❌ 运行错误: {e}")
+        calculate_model_memory(7, 'unknown')
+    except ValueError:
+        pass
+    else:
+        raise AssertionError('未知 dtype 必须报错')
 
 test_calculate_model_memory()
 ```
 
-### Q1扩展验证：对比不同数据格式
+### Q1 对照验证：固定模型规模，只改变数据格式
 
-使用上面的函数，对比 LLaMA-7B 在不同数据格式下的显存占用。
+下面是本节的显式可修改输入。保持模型规模不变时，容量差异只来自每元素位宽；这仍是理论权重下界。
 
 
 ```python
-# 对比 LLaMA-7B 在不同格式下的显存占用
-model_name = "LLaMA-7B"
-num_params = 7
-dtypes = ['fp32', 'fp16', 'bf16', 'int8', 'int4']
+MODEL_NAME = '7B 教学模型'  # 可修改：只用于输出标签。
+MODEL_PARAMS_B = 7          # 可修改：模型参数量，单位 B。
+DTYPE_CANDIDATES = ['fp32', 'fp16', 'bf16', 'int8', 'int4']  # 可修改：候选格式。
 
-print(f"{model_name} 显存占用对比：")
+print(f"{MODEL_NAME} 的理论权重容量：")
 print("-" * 40)
-for dtype in dtypes:
-    memory = calculate_model_memory(num_params, dtype)
+for dtype in DTYPE_CANDIDATES:
+    memory = calculate_model_memory(MODEL_PARAMS_B, dtype)
     print(f"{dtype.upper():<8} {memory:>6.1f} GB")
 ```
 
 ## Q2：同样是 16-bit，FP16 和 BF16 的位分布如何影响范围与精度？
 
-<details>
-<summary>点击展开查看解析</summary>
 
 这涉及浮点数在底层的位分布设计：一个浮点数由 **符号位 (Sign)** + **指数位 (Exponent)** + **尾数位/精度位 (Mantissa/Fraction)** 组成。
 核心法则是：**指数位决定了数值的范围大小，尾数位决定了数值的精确度。**
@@ -153,234 +142,123 @@ for dtype in dtypes:
    - 因为拥有 8 位指数，BF16 的指数范围与 FP32 相同（最大有限值约为 $3.4 \times 10^{38}$），在许多训练 workload 中比 FP16 更不容易因范围不足而溢出；这不等于不会出现 Inf/NaN。代价是尾数位从 10 降到了 7，舍入精度相对较低。
 
 位分布先解释数值范围与精度；训练状态账本、优化器状态和 Master Weights 放到后面的 Q4 与显存账本小节中。
-</details>
 
-### Q2小验证：FP16 与 BF16 的位字段和理论字节数
+### Q2 对照验证：真实转换后的范围与舍入误差
 
-FP16 和 BF16 都使用 2 bytes/parameter，因此相同参数量下理论存储量相同；差别来自指数位、尾数位和对应的计算路径。
-
-
-```python
-def describe_float_dtype(dtype):
-    """返回 FP16 / BF16 的位字段；用于解释范围与精度，不执行真实浮点运算。"""
-    layouts = {
-        'fp16': {'sign_bits': 1, 'exponent_bits': 5, 'mantissa_bits': 10, 'bytes': 2},
-        'bf16': {'sign_bits': 1, 'exponent_bits': 8, 'mantissa_bits': 7, 'bytes': 2},
-    }
-    try:
-        return layouts[dtype].copy()
-    except KeyError as exc:
-        raise ValueError(f'unsupported float dtype: {dtype}') from exc
-
-
-def calculate_training_memory(num_params_b, model_dtype='fp16', optimizer='adam'):
-    """
-    计算训练状态显存的理论近似，不代表完整的 peak memory。
-
-    当前教学账本按参数和梯度各占 model dtype 字节数，Adam 状态按
-    12 bytes/parameter、SGD 状态按 4 bytes/parameter 估算；具体实现
-    是否包含 master weights 等细节会改变这个常数。
-    
-    Args:
-        num_params_b: 参数量（单位：B）
-        model_dtype: 模型数据类型（'fp16' 或 'bf16'）
-        optimizer: 优化器类型（'adam' 或 'sgd'）
-    
-    Returns:
-        total_memory_gb: 训练状态近似占用（十进制 GB）
-    
-    示例:
-        >>> calculate_training_memory(7, 'fp16', 'adam')
-        112.0
-    """
-    if num_params_b < 0:
-        raise ValueError("num_params_b must be non-negative")
-    if optimizer not in {'adam', 'sgd'}:
-        raise ValueError("optimizer must be 'adam' or 'sgd'")
-
-    try:
-        model_bytes = {'fp32': 4, 'fp16': 2, 'bf16': 2}[model_dtype]
-    except KeyError as exc:
-        raise ValueError(f'unsupported model_dtype: {model_dtype}') from exc
-    gradient_bytes = model_bytes
-    optimizer_bytes = 12 if optimizer == 'adam' else 4
-    total_memory_gb = num_params_b * (model_bytes + gradient_bytes + optimizer_bytes)
-    return total_memory_gb
-```
+使用同一组 FP32 数值分别转换为 FP16 和 BF16，观察最大有限值、机器精度、有限值数量和转换误差。唯一变化变量是目标 dtype。
 
 
 ```python
-# 测试函数
-def test_calculate_training_memory():
-    try:
-        assert describe_float_dtype('fp16')['exponent_bits'] == 5
-        assert describe_float_dtype('bf16')['exponent_bits'] == 8
-        # 训练状态账本由 Q4 继续验证；这里先确认位字段关系。
-        print("✅ 所有测试通过！")
-        
-    except AssertionError as e:
-        print(f"❌ 测试失败: {e}")
-    except Exception as e:
-        print(f"❌ 运行错误: {e}")
+import torch
 
-test_calculate_training_memory()
-```
+TORCH_FLOAT_DTYPES = {
+    'fp32': torch.float32,
+    'fp16': torch.float16,
+    'bf16': torch.bfloat16,
+}
 
 
-```python
-# 分析 LLaMA-7B 训练时的显存分布
-num_params = 7
-
-model_params = num_params * 2  # FP16 模型参数
-gradients = num_params * 2     # FP16 梯度
-optimizer_states = num_params * 12  # FP32 优化器状态
-total = model_params + gradients + optimizer_states
-
-print(f"LLaMA-7B 混合精度训练显存分布：")
-print("-" * 50)
-print(f"模型参数 (FP16):      {model_params:>6.1f} GB ({model_params/total*100:>5.1f}%)")
-print(f"梯度 (FP16):          {gradients:>6.1f} GB ({gradients/total*100:>5.1f}%)")
-print(f"优化器状态 (FP32):    {optimizer_states:>6.1f} GB ({optimizer_states/total*100:>5.1f}%)")
-print("-" * 50)
-print(f"总计:                 {total:>6.1f} GB")
-print("\n结论：优化器状态占据了大部分显存！")
-```
-
-## Q3：训练中为什么常把 BF16 与 FP16 放在一起评估？不同位宽又改变了什么？
-
-<details>
-<summary>点击展开查看解析</summary>
-
-选择 BF16 还是 FP16，通常要同时看数值范围、硬件支持、吞吐和 loss-scaling 配置。
-
-**1. FP16 的核心挑战：动态范围受限，上溢风险高**
-
-FP16 的动态范围（最大值约 65504）远窄于 FP32（约 $3.4 \times 10^{38}$）。在大模型训练中：
-
-- **上溢风险**：Attention 的 logits、未归一化激活或梯度在某些 workload 中可能超过 65504，产生 `Inf/NaN`，因此 FP16 训练通常需要更仔细地监控数值。
-  
-- **下溢问题（次要）**：反向传播中的小梯度（如 $10^{-7}$ 量级）可能因精度不足被截断，影响参数更新。
-
-**Loss Scaling 的权宜之计**：
-
-FP16 训练中常见的配套措施是 **Loss Scaling（损失缩放）**：
-- **原理**：在反向传播前放大损失值（如乘以 1024），将小梯度放大到 FP16 可表示范围，计算完成后再缩小回来，从而缓解下溢。
-- **局限**：只能解决梯度的下溢，无法解决前向传播中的上溢；且缩放因子需要动态调整（检测溢出后减小，长期无溢出时增大），增加了工程复杂度。
-- **历史成功**：早期的 BERT、GPT-2 等模型在 V100（仅支持 FP16 Tensor Core）上通过精心调优仍实现了稳定训练。
-
-**2. BF16 的三大优势：稳定、简单、硬件支持**
-
-- **更大的动态范围**：BF16 继承了 FP32 的 8 位指数，最大值约为 $3.4 \times 10^{38}$；在许多训练 workload 中，它比 FP16 更不容易因为范围不足而上溢，但仍需进行数值监控。
-  
-- **配置相对简单**：许多 BF16 训练配置不需要 FP16 那样的动态 loss scaling，但是否稳定仍取决于模型、算子和训练设置。
-  
-- **硬件支持**：A100（Ampere）及更新架构提供 BF16 Tensor Core 路径；实际吞吐仍取决于 GPU、算子和框架实现。
-
-**3. 精度 vs 范围：为什么神经网络更需要范围？**
-
-虽然 BF16 的尾数位从 10 位降到 7 位（损失约 3 位精度），但：
-
-- **神经网络对精度损失鲁棒**：训练是长期累积的统计过程，单步的微小舍入误差会被后续更新”平滑”掉。
-- **上溢是灾难性的**：一旦出现 `NaN`，会立即传播到整个模型，导致训练不可恢复地崩溃。
-
-因此，BF16 常被作为大模型训练的候选格式；最终仍应结合 loss、吞吐和硬件实测选择。
-
-**4. 数值对比与应用场景**
-
-| 格式 | 指数位 | 尾数位 | 最大值 | 训练稳定性 | 主要应用 |
-|------|--------|--------|--------|-----------|---------|
-| FP32 | 8 | 23 | $10^{38}$ | 最稳定 | 基准/调试 |
-| FP16 | 5 | 10 | $6.5 \times 10^4$ | 常需关注 Loss Scaling | 训练或推理均可，取决于 workload |
-| BF16 | 8 | 7 | $10^{38}$ | 极稳定 | **大模型训练** ✅ |
-
-**补充说明**：FP16 仍常用于训练和推理；在推理场景中是否优先选择 FP16，要结合模型、硬件、框架和质量测试判断，不能仅凭位宽推断输出质量。
-
-**总结**：BF16 的优势主要来自较大的指数范围和较广的硬件支持，但它不是脱离 workload 的固定答案。下面的存储对比只观察位宽带来的理论容量变化，不能代替数值稳定性测试。
-</details>
-
-### Q3小验证：不同数据格式的理论存储差异
-
-
-```python
-def compare_dtype_storage(num_params_b, from_dtype, to_dtype):
-    """
-    比较 FP32、FP16、BF16 的理论存储差异；不包含量化元数据或运行时工作区。
-    
-    Args:
-        num_params_b: 参数量（单位：B）
-        from_dtype: 原始浮点数据类型
-        to_dtype: 目标浮点数据类型
-    
-    Returns:
-        savings_gb: 节省的显存（单位：GB）
-        savings_percent: 节省的百分比
-    
-    示例:
-        >>> compare_dtype_storage(7, 'fp32', 'bf16')
-        (14.0, 50.0)
-    """
-    if from_dtype not in {'fp32', 'fp16', 'bf16'} or to_dtype not in {'fp32', 'fp16', 'bf16'}:
-        raise ValueError('本题只比较 fp32、fp16、bf16；量化格式放到后续专题')
-    original_memory = calculate_model_memory(num_params_b, from_dtype)
-    quantized_memory = calculate_model_memory(num_params_b, to_dtype)
-    savings_gb = original_memory - quantized_memory
-    savings_percent = savings_gb / original_memory * 100
-    return savings_gb, savings_percent
-
-def compare_master_weight_cost(num_params_b, model_dtype='fp16', optimizer='adam'):
-    """比较是否额外保留 FP32 Master Weights；不等同于完整训练峰值。"""
-    if num_params_b <= 0:
-        raise ValueError('num_params_b must be positive')
-    if optimizer not in {'adam', 'adamw', 'none'}:
-        raise ValueError('optimizer must be adam, adamw or none')
-    base = calculate_training_memory(num_params_b, model_dtype, optimizer)
-    master_weights_gb = num_params_b * 4
+def cast_error_report(values, dtype_name):
+    """将同一 FP32 输入转换到目标 dtype，并报告范围与舍入误差。"""
+    if dtype_name not in TORCH_FLOAT_DTYPES:
+        raise ValueError(f'unsupported float dtype: {dtype_name}')
+    source = torch.tensor(values, dtype=torch.float32)
+    target_dtype = TORCH_FLOAT_DTYPES[dtype_name]
+    converted = source.to(target_dtype)
+    restored = converted.to(torch.float32)
+    info = torch.finfo(target_dtype)
+    finite_mask = torch.isfinite(converted)
     return {
-        'without_master_weights_gb': base,
-        'master_weights_gb': master_weights_gb,
-        'with_master_weights_gb': base + master_weights_gb,
-        'delta_gb': master_weights_gb,
+        'dtype': dtype_name,
+        'max_finite': info.max,
+        'eps_near_one': info.eps,
+        'finite_count': int(finite_mask.sum().item()),
+        'total_count': source.numel(),
+        'max_abs_error': float((restored[finite_mask] - source[finite_mask]).abs().max().item()),
+        'restored': restored.tolist(),
     }
+```
 
-def estimate_float_range(values, dtype):
-    """按理论最大有限值检查候选数；不替代真实 dtype 转换或训练测试。"""
-    max_finite = {'fp16': 65504.0, 'bf16': 3.38953139e38}[dtype]
-    return {'dtype': dtype, 'max_finite': max_finite, 'overflow_count': sum(abs(v) > max_finite for v in values)}
+
+```python
+def test_cast_error_report():
+    """验证同为 16-bit 时，FP16 与 BF16 的范围—精度取舍。"""
+    values = [1.0, 1.001, 60_000.0, 70_000.0]
+    fp16 = cast_error_report(values, 'fp16')
+    bf16 = cast_error_report(values, 'bf16')
+    assert fp16['finite_count'] == 3
+    assert bf16['finite_count'] == 4
+    assert fp16['eps_near_one'] < bf16['eps_near_one']
+    try:
+        cast_error_report(values, 'int8')
+    except ValueError:
+        pass
+    else:
+        raise AssertionError('非浮点 dtype 必须报错')
+
+test_cast_error_report()
+```
+
+
+```python
+PROBE_VALUES = [1.0, 1.001, 60_000.0, 70_000.0]  # 可修改：同时包含精度和范围压力。
+for dtype_name in ['fp16', 'bf16']:
+    report = cast_error_report(PROBE_VALUES, dtype_name)
+    print(dtype_name, '->', report)
+```
+
+## Q3：损失缩放能解决 FP16 的哪些问题？
+
+FP16 的范围较窄：过大的前向值可能变成 `Inf`，过小的梯度可能在转换时变成零。损失缩放先放大梯度，在低精度转换后再缩小，主要缓解小梯度下溢；它不能修复前向阶段已经发生的上溢。
+
+BF16 的指数范围更大，通常较少依赖损失缩放，但尾数更短，舍入误差可能高于 FP16。两者都需要用固定输入检查有限值、零值比例和误差，不能只根据格式名称判断稳定性。
+
+| 观察项 | FP16 | BF16 |
+|:---|:---|:---|
+| 范围风险 | 上溢与小梯度下溢 | 范围接近 FP32 |
+| 分辨率 | 尾数较长 | 尾数较短 |
+| 常见训练控制 | 动态损失缩放 | 通常不需要损失缩放，但仍需有限值检查 |
+
+### Q3 对照验证：固定梯度，只改变 dtype 与缩放因子
+
+
+```python
+def gradient_survival_report(gradients, dtype_name, loss_scale=1.0):
+    """模拟缩放、低精度转换与反缩放，统计仍可参与更新的梯度。"""
+    if loss_scale <= 0:
+        raise ValueError('loss_scale must be positive')
+    if dtype_name not in {'fp16', 'bf16'}:
+        raise ValueError('dtype_name must be fp16 or bf16')
+    source = torch.tensor(gradients, dtype=torch.float32)
+    target_dtype = TORCH_FLOAT_DTYPES[dtype_name]
+    low_precision = (source * loss_scale).to(target_dtype)
+    restored = low_precision.to(torch.float32) / loss_scale
+    return {
+        'dtype': dtype_name,
+        'loss_scale': loss_scale,
+        'nonzero_count': int((restored != 0).sum().item()),
+        'finite_count': int(torch.isfinite(restored).sum().item()),
+        'restored': restored.tolist(),
+    }
 
 ```
 
 
 ```python
-# 测试函数
-def test_compare_dtype_storage():
-    try:
-        # 只比较浮点格式；INT8 / INT4 量化放到后续专题。
-        savings_gb, savings_percent = compare_dtype_storage(7, 'fp32', 'bf16')
-        assert savings_gb == 14, f"错误：应该节省 14 GB，实际 {savings_gb} GB"
-        assert savings_percent == 50, f"错误：应该节省 50%，实际 {savings_percent}%"
-        savings_gb, savings_percent = compare_dtype_storage(7, 'fp16', 'bf16')
-        assert savings_gb == 0 and savings_percent == 0, 'FP16 与 BF16 都是 2 bytes/parameter'
-        try:
-            compare_dtype_storage(7, 'fp16', 'int8')
-        except ValueError:
-            print('✅ 量化格式边界校验通过')
-        else:
-            raise AssertionError('INT8 不应在本题中作为混合精度格式处理')
+TINY_GRADIENTS = [1e-4, 1e-6, 1e-8, 1e-10]  # 可修改：观察更小梯度何时消失。
+fp16_unscaled = gradient_survival_report(TINY_GRADIENTS, 'fp16', loss_scale=1.0)
+fp16_scaled = gradient_survival_report(TINY_GRADIENTS, 'fp16', loss_scale=1024.0)
+bf16_unscaled = gradient_survival_report(TINY_GRADIENTS, 'bf16', loss_scale=1.0)
 
-        print("✅ 所有测试通过！")
-        
-    except AssertionError as e:
-        print(f"❌ 测试失败: {e}")
-    except Exception as e:
-        print(f"❌ 运行错误: {e}")
-
-test_compare_dtype_storage()
+assert fp16_scaled['nonzero_count'] >= fp16_unscaled['nonzero_count']
+assert bf16_unscaled['finite_count'] == len(TINY_GRADIENTS)
+print('FP16 without scaling:', fp16_unscaled)
+print('FP16 with scaling:   ', fp16_scaled)
+print('BF16 without scaling:', bf16_unscaled)
 ```
 
 ## Q4：为什么混合精度训练仍可能保留 FP32 Master Weights？
 
-<details>
-<summary>点击展开查看解析</summary>
 
 在一种常见的混合精度训练配置中，前向和反向的部分计算使用 16-bit，但参数更新可能继续使用 FP32 状态。是否保留 Master Weights，取决于 optimizer、框架和 AMP 实现。
 
@@ -392,79 +270,76 @@ $$ W_{new} = W_{old} - \text{Learning\_Rate} \times \text{Gradient} $$
 
 因此，一些全参数混合精度训练实现会保留一份 **FP32 Master Weights**：梯度在高精度副本上参与更新，再把结果转换到前向计算使用的 dtype。它是训练状态账本的一部分，不应与静态模型权重占用混为一谈。
 下面的容量估算只用于观察 Master Weights 的理论增量和静态权重容量；它不模拟 activation、通信 buffer、allocator peak 或真实 OOM 边界。
-</details>
-### Q4小验证：Master Weights 增量与静态权重容量
 
-先观察 Master Weights 对训练状态账本的增量，再用一个明确的运行时预留比例估算静态权重容量。
+### Q4 机制计算器：逐项建立训练状态账本
+
+把参数、梯度、Adam 一阶矩、Adam 二阶矩和可选 Master Weights 分开计算。显式组件可以避免把 `12 bytes/parameter` 与 Master Weights 再次相加。
 
 
 ```python
-def max_model_size(gpu_memory_gb, dtype, overhead_ratio=0.2):
-    """
-    估算扣除运行时预留后，静态权重可以占用的参数容量。
-    
-    Args:
-        gpu_memory_gb: GPU 显存容量（单位：GB）
-        dtype: 数据类型
-        overhead_ratio: 为 activation、临时张量和其他运行时状态预留的教学比例；不代表真实峰值
-    
-    Returns:
-        max_params_b: 静态权重容量对应的参数量（单位：B）
-    
-    示例:
-        >>> max_model_size(80, 'fp16', 0.2)
-        32.0
-    """
-    if gpu_memory_gb <= 0:
-        raise ValueError('gpu_memory_gb must be positive')
-    if not 0 <= overhead_ratio < 1:
-        raise ValueError('overhead_ratio must be in [0, 1)')
-    bytes_per_param = {
-        'fp32': 4,
-        'fp16': 2,
-        'bf16': 2,
-        'int8': 1,
-        'int4': 0.5,
-    }
-    try:
-        bytes_per_element = bytes_per_param[dtype]
-    except KeyError as exc:
-        raise ValueError(f'unsupported dtype: {dtype}') from exc
-    available_memory = gpu_memory_gb * (1 - overhead_ratio)
-    max_params_b = available_memory / bytes_per_element
-    return max_params_b
+def training_state_ledger(
+    num_params_b,
+    parameter_dtype='fp16',
+    gradient_dtype='fp16',
+    moment_dtype='fp32',
+    keep_master_weights=True,
+):
+    """返回静态训练状态账本；不包含激活、临时缓冲和分配器预留。"""
+    if num_params_b <= 0:
+        raise ValueError('num_params_b must be positive')
+    for dtype_name in (parameter_dtype, gradient_dtype, moment_dtype):
+        if dtype_name not in DTYPE_BITS:
+            raise ValueError(f'unsupported dtype: {dtype_name}')
 
-master = compare_master_weight_cost(7, 'fp16', 'adam')
-print('7B FP16 + Adam 的 Master Weights 增量:', master['delta_gb'], 'GB')
-assert master['delta_gb'] == 28
+    def component_gb(dtype_name, copies=1):
+        return calculate_model_memory(num_params_b, dtype_name) * copies
+
+    components = {
+        'parameters_gb': component_gb(parameter_dtype),
+        'gradients_gb': component_gb(gradient_dtype),
+        'adam_first_moment_gb': component_gb(moment_dtype),
+        'adam_second_moment_gb': component_gb(moment_dtype),
+        'master_weights_gb': component_gb('fp32') if keep_master_weights else 0.0,
+    }
+    return {
+        'components': components,
+        'total_gb': sum(components.values()),
+        'scope': 'static_training_states_only',
+    }
+
+
+def test_training_state_ledger():
+    """验证每个训练状态只计数一次，并检查 Master Weights 增量。"""
+    with_master = training_state_ledger(7, keep_master_weights=True)
+    without_master = training_state_ledger(7, keep_master_weights=False)
+    assert with_master['components']['parameters_gb'] == 14
+    assert with_master['components']['adam_first_moment_gb'] == 28
+    assert with_master['components']['adam_second_moment_gb'] == 28
+    assert with_master['components']['master_weights_gb'] == 28
+    assert with_master['total_gb'] - without_master['total_gb'] == 28
+
+test_training_state_ledger()
 ```
 
 
 ```python
-# 对比不同显存容量下的静态权重容量；不等同于实际可运行的最大模型
-gpus = [
-    ('RTX 3090', 24),
-    ('RTX 4090', 24),
-    ('A100 40GB', 40),
-    ('A100 80GB', 80),
-    ('H100 80GB', 80),
-]
-
-print("不同显存容量下的静态权重容量估算（FP16 / INT8，预留 20% 运行时空间）：")
-print("-" * 60)
-print(f"{'GPU':<15} {'显存':<10} {'最大模型 (FP16)':<20} {'最大模型 (INT8)'}")
-print("-" * 60)
-
-for gpu_name, memory in gpus:
-    max_fp16 = max_model_size(memory, 'fp16', 0.2)
-    max_int8 = max_model_size(memory, 'int8', 0.2)
-    print(f"{gpu_name:<15} {memory:>4} GB     {max_fp16:>6.1f}B              {max_int8:>6.1f}B")
+TRAINING_PARAMS_B = 7               # 可修改：参数量，单位 B。
+KEEP_MASTER_WEIGHTS = True          # 可修改：是否额外保留 FP32 参数副本。
+ledger = training_state_ledger(
+    TRAINING_PARAMS_B,
+    parameter_dtype='fp16',
+    gradient_dtype='fp16',
+    moment_dtype='fp32',
+    keep_master_weights=KEEP_MASTER_WEIGHTS,
+)
+for name, size_gb in ledger['components'].items():
+    print(f'{name:<28} {size_gb:>6.1f} GB')
+print('-' * 40)
+print(f"{'total_gb':<28} {ledger['total_gb']:>6.1f} GB")
 ```
 
 ## Q5：A100 为什么同时引入 BF16 Tensor Core 和 TF32 路径？
 
-<details>
-<summary>点击展开查看解析</summary>
 
 A100 的关键变化不是简单增加一种存储 dtype，而是同时提供了两条不同的计算路径：BF16 可以作为 16-bit Tensor Core 输入，TF32 则让 FP32 输入有机会进入 Tensor Core 矩阵乘法。先区分“张量如何存储”和“矩阵乘法如何执行”，再讨论吞吐、数值误差和配置。
 
@@ -476,7 +351,7 @@ A100 的关键变化不是简单增加一种存储 dtype，而是同时提供了
 - TF32 不是需要单独保存的 19-bit 模型 dtype；输入和输出仍可按 FP32 存储，矩阵乘法内部使用较低有效精度的 Tensor Core 路径。
 - `torch.backends.cuda.matmul.allow_tf32` 等配置会影响部分 FP32 矩阵乘法是否采用 TF32；实际行为还取决于 PyTorch、CUDA、算子和硬件。不能把配置开关直接当成实测吞吐结论。
 - 因此，Q5 的核心判断是：FP32 / TF32 主要改变计算路径，BF16 / FP16 同时改变存储宽度和计算路径；真实 Tensor Core 使用情况需要固定 workload 和 profiler 验证。
-</details>
+
 ### Q5小验证：A100 的计算路径候选
 
 比较 FP32、TF32、BF16 和 FP16 的存储表示与计算路径候选；结果只表示理论路径，真实 Tensor Core 使用情况需要 GPU profiler 验证。
@@ -486,14 +361,14 @@ A100 的关键变化不是简单增加一种存储 dtype，而是同时提供了
 def a100_precision_path(requested_dtype, allow_tf32=True):
     """返回 A100 的理论路径候选；不估算 speedup，也不证明真实 Tensor Core 执行。"""
     table = {
-        'fp32': {'storage_dtype': 'fp32', 'compute_path': 'tf32' if allow_tf32 else 'fp32', 'tensor_core_candidate': allow_tf32},
-        'tf32': {'storage_dtype': 'fp32', 'compute_path': 'tf32', 'tensor_core_candidate': True},
-        'bf16': {'storage_dtype': 'bf16', 'compute_path': 'bf16_tensor_core', 'tensor_core_candidate': True},
-        'fp16': {'storage_dtype': 'fp16', 'compute_path': 'fp16_tensor_core', 'tensor_core_candidate': True},
+        'fp32': {'storage_dtype': 'fp32', 'compute_path': 'tf32' if allow_tf32 else 'fp32', 'accumulation_dtype': 'fp32', 'tensor_core_candidate': allow_tf32},
+        'tf32': {'storage_dtype': 'fp32', 'compute_path': 'tf32', 'accumulation_dtype': 'fp32', 'tensor_core_candidate': True},
+        'bf16': {'storage_dtype': 'bf16', 'compute_path': 'bf16_tensor_core', 'accumulation_dtype': 'fp32', 'tensor_core_candidate': True},
+        'fp16': {'storage_dtype': 'fp16', 'compute_path': 'fp16_tensor_core', 'accumulation_dtype': 'fp32', 'tensor_core_candidate': True},
     }
     if requested_dtype not in table:
         raise ValueError(f'unsupported dtype: {requested_dtype}')
-    return {**table[requested_dtype], 'requires_gpu_validation': True, 'evidence_level': 'theoretical_path_mapping'}
+    return {**table[requested_dtype], 'requires_gpu_validation': True}
 
 for dtype in ['fp32', 'tf32', 'bf16', 'fp16']:
     print(dtype, '->', a100_precision_path(dtype))
@@ -511,8 +386,6 @@ else:
 
 ## Q6：H100 的 FP8 Tensor Core 为什么通常同时使用 E4M3 和 E5M2？
 
-<details>
-<summary>点击展开查看解析</summary>
 
 随着模型规模和吞吐要求增加，FP8 提供了比 16-bit 更低的存储和计算成本；H100 的 Tensor Core 为 FP8 提供了原生矩阵计算路径。这里要把“格式选择”和“硬件支持”分开理解：格式决定数值范围与精度，硬件和框架决定它是否真正进入 FP8 计算路径。
 
@@ -528,15 +401,27 @@ else:
 常见的 `HYBRID` recipe 会让前向使用 E4M3、反向使用 E5M2：前向激活更看重精度，反向梯度更看重动态范围。但这不是所有模型的固定规则，具体选择还受张量分布、缩放因子和框架 recipe 影响。FP8 通常需要根据 `amax` 历史计算 scaling factor，才能把高精度张量映射到有限的 FP8 范围。
 
 下面的代码只验证格式策略和缩放需求，不执行 FP8 量化，也不能证明 H100 已经使用 FP8 Tensor Core；真实硬件路径需要 Transformer Engine、CUDA profiler 或固定 workload benchmark。
-</details>
+
 ### Q6小验证：FP8 格式策略与缩放需求
 
 比较 `HYBRID`、`E4M3` 和 `E5M2` 三种策略，记录前向 / 反向格式以及是否需要 scaling factor。
 
 
 ```python
-def fp8_variant_policy(recipe='hybrid'):
-    """返回 FP8 格式策略；只验证规则，不执行 FP8 量化或 GPU kernel。"""
+FP8_MAX_FINITE = {'E4M3': 448.0, 'E5M2': 57_344.0}
+
+
+def fp8_scale_from_amax(amax, fp8_format):
+    """根据观测绝对最大值计算映射到 FP8 范围的理论缩放因子。"""
+    if amax <= 0:
+        raise ValueError('amax must be positive')
+    if fp8_format not in FP8_MAX_FINITE:
+        raise ValueError(f'unsupported FP8 format: {fp8_format}')
+    return FP8_MAX_FINITE[fp8_format] / amax
+
+
+def fp8_variant_policy(recipe='hybrid', forward_amax=1.0, backward_amax=1.0):
+    """返回前向/反向格式及由各自 amax 得到的理论缩放因子。"""
     recipes = {
         'hybrid': {
             'forward': {'format': 'E4M3', 'exp_bits': 4, 'mantissa_bits': 3, 'focus': 'precision'},
@@ -553,19 +438,25 @@ def fp8_variant_policy(recipe='hybrid'):
     }
     if recipe not in recipes:
         raise ValueError(f'未知 FP8 recipe: {recipe}')
+    stages = recipes[recipe]
     return {
         'recipe': recipe,
-        'stages': recipes[recipe],
+        'stages': stages,
+        'forward_scale': fp8_scale_from_amax(forward_amax, stages['forward']['format']),
+        'backward_scale': fp8_scale_from_amax(backward_amax, stages['backward']['format']),
         'scaling_required': True,
         'scaling_source': 'amax history',
         'requires_gpu_validation': True,
     }
 
+FORWARD_AMAX = 12.0   # 可修改：前向激活的绝对最大值。
+BACKWARD_AMAX = 800.0 # 可修改：反向梯度的绝对最大值。
 for recipe in ['hybrid', 'e4m3', 'e5m2']:
-    print(recipe, '->', fp8_variant_policy(recipe))
+    print(recipe, '->', fp8_variant_policy(recipe, FORWARD_AMAX, BACKWARD_AMAX))
 assert fp8_variant_policy('hybrid')['stages']['forward']['format'] == 'E4M3'
 assert fp8_variant_policy('hybrid')['stages']['backward']['format'] == 'E5M2'
 assert fp8_variant_policy('hybrid')['scaling_required'] is True
+assert fp8_variant_policy('hybrid', 2.0, 2.0)['forward_scale'] == 224.0
 try:
     fp8_variant_policy('unknown')
 except ValueError:
@@ -578,11 +469,7 @@ else:
 ---
 
 ## 相关阅读
-本节可以继续接到参数规模、显存预算和量化训练；如果要理解 dtype 为什么会影响硬件路径，再看 AMP 文档和混合精度论文。
+本节可以继续进入混合精度执行和训练显存预算；需要核对框架行为时查阅 PyTorch AMP 文档。
 - [PyTorch Automatic Mixed Precision](https://pytorch.org/docs/stable/amp.html)：查看 autocast 与 GradScaler 如何参与混合精度执行。
-- [Mixed Precision Training](https://arxiv.org/abs/1710.03740)：理解混合精度训练中的数值稳定性与损失缩放。
-- [Transformer Engine FP8 Primer](https://docs.nvidia.com/deeplearning/transformer-engine/user-guide/examples/fp8_primer.html)：查看 FP8 的 E4M3 / E5M2、HYBRID recipe 与 scaling。
-- [Transformer Engine FP8 Format API](https://docs.nvidia.com/deeplearning/transformer-engine/user-guide/api/common.html)：确认 FP8 格式和前向 / 反向路径的定义。
-- [02. LLM Params and FLOPs | 大模型参数量与算力推导](./02_LLM_Params_and_FLOPs.md)
 - [06. VRAM Calculation and ZeRO | 显存计算与 ZeRO 优化](./06_VRAM_Calculation_and_ZeRO.md)
 - [12. TensorCore and Mixed Precision | Tensor Core 与混合精度](./12_TensorCore_and_Mixed_Precision.md)

@@ -14,9 +14,10 @@
 
 ## 本节导读
 
-本节从矩阵乘加出发，解释 Tensor Core 如何把 dtype、tile、布局和寄存器资源组织成可分析的矩阵计算路径。学习完成后，你应能根据输入形状和数据类型判断一次 MMA 计算需要哪些条件，并区分理论执行路径与真实吞吐。
+Tensor Core 只有在数据类型、矩阵形状、内存布局和寄存器资源满足条件时，才能执行矩阵乘加（MMA）路径。理论峰值不能替代对实际输入与资源约束的检查。
+本节建立“矩阵分块 → 数据布局 → MMA 执行 → 资源限制”的关系。完成后，你应能判断输入是否具备 Tensor Core 候选条件，并区分理论路径与真实吞吐。
 
-**关键词：** `MMA`, `tile`, `throughput`
+**关键词：** `MMA`、矩阵分块、吞吐
 
 ![本节概念关系](../public/01_Hardware_Math_and_Systems/23_tensorcore_execution_map.svg)
 
@@ -32,7 +33,6 @@
 ---
 ## Q1：Tensor Core 本质上是什么？
 
-<details><summary>点击展开查看解析</summary>
 
 Tensor Core 不是普通 CUDA Core 的更快版本，而是一条专门面向矩阵乘加（MMA）的硬件路径。
 
@@ -50,7 +50,7 @@ flowchart LR
 ```
 
 所以 Tensor Core 更像是矩阵计算的专用引擎：它不是把同样的工作做得更快一点，而是把工作重新组织成更适合硬件吞吐的形状。
-</details>
+
 ### Q1小验证：比较矩阵乘加与标量 FMA
 
 对照两种计算粒度，说明 tile 化矩阵乘加为何更适合 Tensor Core。
@@ -64,7 +64,6 @@ print(mma_flops(16, 16, 16) / 1e3, 'KFLOPs for one 16x16x16 MMA')
 
 ## Q2：哪些 dtype 和累加方式具备进入 Tensor Core 的候选条件？
 
-<details><summary>点击展开查看解析</summary>
 
 混合精度之所以有效，是因为“输入 / 累加 / 输出”这三段不必使用同一种位宽。
 
@@ -84,7 +83,7 @@ flowchart LR
 ```
 
 所以混合精度不是单纯“降精度”，而是在精度和吞吐之间拆分职责：把最贵的搬运和最需要吞吐的部分放到更合适的位宽和硬件路径上。
-</details>
+
 ### Q2小验证：检查 dtype、累加类型与候选路径
 
 对照输入和累加类型，区分理论存储量与进入候选路径的条件。
@@ -126,7 +125,6 @@ else:
 
 ## Q3：为什么满足候选条件后，Tensor Core 利用率仍不能跑满？
 
-<details><summary>点击展开查看解析</summary>
 
 Tensor Core 的利用率受三个层面约束：
 - **tile 是否对齐**：shape 不合适时，硬件难以把工作完整打包；
@@ -143,7 +141,7 @@ flowchart TD
 ```
 
 因此，Tensor Core 利用率不是“用了就有”，而是要看输入尺寸、布局、同步方式和临时变量是否都允许它进入高吞吐路径。
-</details>
+
 ### Q3小验证：对齐和打包为什么重要
 
 适合的 shape 更容易进入高吞吐路径。
@@ -175,12 +173,11 @@ assert not tensorcore_utilization_factors(128, 128, 128, occupancy=0.3)['path_ca
 
 ## Q4：如何用 profiler 或 benchmark 证明一次计算真的用上了 Tensor Core？
 
-<details><summary>点击展开查看解析</summary>
 
 Q2 和 Q3 给出的只是进入高吞吐路径的候选条件，不能替代实测证据。验证一次计算是否真的使用 Tensor Core，需要在固定 model、dtype、shape、warmup 和重复次数下观察 kernel 名称、CUDA 时间线和吞吐变化。
 
 PyTorch 的 `matmul` 或 `linear` 通常会进入 cuBLAS 等 GEMM kernel，最终是否使用 Tensor Core，不能只看 Python 代码或 dtype。下面的代码先汇总 shape、dtype、layout 和复用条件；GPU 验证时还要观察 kernel 名称、Tensor Core / HMMA 指令计数、tensor pipe 利用率、achieved occupancy、memory throughput 和 baseline 吞吐。
-</details>
+
 ### Q4小验证：候选条件如何交给 GPU 证据验证
 
 先检查候选条件，再记录 profiler 或 benchmark 所需的固定条件；候选通过不等于已经获得真实加速。
@@ -228,11 +225,9 @@ print('候选路径成立不等于真实 Tensor Core 加速，仍需 GPU 证据'
 ---
 ## 相关阅读
 
-**导语：** 如果想继续把 TensorCore 和更高层的 kernel / 编译优化串起来，可以接着看这些页。
+**导语：** 继续把 Tensor Core 的矩阵路径连接到 CUDA 编程和 Attention 实现。
 
 - [NVIDIA CUDA C Programming Guide](https://docs.nvidia.com/cuda/cuda-c-programming-guide/)：查阅线程层级、内存访问和执行模型。
 - [CUTLASS](https://github.com/NVIDIA/cutlass)：观察 GEMM、tile 和 Tensor Core kernel 的工程实现。
-- [08. Programming Models and CUDA/Triton | 编程模型演进](./08_Programming_Models_CUDA_Triton.md)
 - [14. FlashAttention Memory Model | FlashAttention 显存模型](./14_FlashAttention_Memory_Model.md)
-- [25. Sparse Computation and Sparse Attention | 稀疏计算与稀疏注意力](./25_Sparse_Computation_and_Sparse_Attention.md)
 ---
