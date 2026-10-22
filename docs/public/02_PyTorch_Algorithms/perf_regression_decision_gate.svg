@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
   <title id="title">性能回归的顺序决策门</title>
-  <desc id="desc">先检查正确性和质量，再检查有效配对数，最后比较配对区间与预先固定的回归阈值，分别输出接受、继续调优或拒绝。</desc>
+  <desc id="desc">先检查正确性和执行失败，再检查缺失和成功配对数，最后比较中位比例区间与允许变慢边界。通过仅表示回归检查通过，不等于加速。</desc>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#334155"/></marker>
     <marker id="bad-arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#dc2626"/></marker>
@@ -15,27 +15,28 @@
   <text x="600" y="78" text-anchor="middle" class="subtitle">阈值在查看候选结果前固定；质量失败不能被速度收益抵消</text>
 
   <rect x="55" y="145" width="230" height="104" rx="16" fill="#dbeafe" stroke="#2563eb" stroke-width="2.5"/>
-  <text x="170" y="182" text-anchor="middle" class="head">质量与正确性通过？</text><text x="170" y="213" text-anchor="middle" class="body">输出 · 精度 · 失败门槛</text>
+  <text x="170" y="182" text-anchor="middle" class="head">质量通过且无执行失败？</text><text x="170" y="213" text-anchor="middle" class="body">输出检查 · 失败记录</text>
   <rect x="370" y="145" width="230" height="104" rx="16" fill="#e0f2fe" stroke="#0284c7" stroke-width="2.5"/>
-  <text x="485" y="182" text-anchor="middle" class="head">有效配对足够？</text><text x="485" y="213" text-anchor="middle" class="body">pair_count ≥ minimum</text>
+  <text x="485" y="182" text-anchor="middle" class="head">配对完整且数量足够？</text><text x="485" y="213" text-anchor="middle" class="body">无缺失 · 达到最少成功数</text>
   <rect x="685" y="145" width="230" height="104" rx="16" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/>
-  <text x="800" y="182" text-anchor="middle" class="head">区间相对阈值的位置？</text><text x="800" y="213" text-anchor="middle" class="body">CI 与 1 + threshold 比较</text>
+  <text x="800" y="182" text-anchor="middle" class="head">区间相对边界的位置？</text><text x="800" y="213" text-anchor="middle" class="body">中位比例区间 [L, U]</text>
   <rect x="990" y="145" width="170" height="104" rx="16" fill="#dcfce7" stroke="#16a34a" stroke-width="2.5"/>
-  <text x="1075" y="182" text-anchor="middle" class="head">接受</text><text x="1075" y="213" text-anchor="middle" class="body">未确认回归</text>
+  <text x="1075" y="182" text-anchor="middle" class="head">通过回归检查</text><text x="1075" y="213" text-anchor="middle" class="body">不表示加速</text>
   <path d="M285 197H370" class="edge"/><path d="M600 197H685" class="edge"/><path d="M915 197H990" class="edge"/>
-  <text x="327" y="185" text-anchor="middle" class="branch">是</text><text x="642" y="185" text-anchor="middle" class="branch">是</text><text x="953" y="185" text-anchor="middle" class="branch">通过</text>
+  <text x="327" y="185" text-anchor="middle" class="branch">是</text><text x="642" y="185" text-anchor="middle" class="branch">是</text><text x="953" y="185" text-anchor="middle" class="branch">U ≤ τ</text>
 
   <rect x="85" y="390" width="170" height="90" rx="15" fill="#fee2e2" stroke="#dc2626" stroke-width="2.5"/>
-  <text x="170" y="425" text-anchor="middle" class="head">拒绝</text><text x="170" y="453" text-anchor="middle" class="body">守护条件失败</text>
+  <text x="170" y="425" text-anchor="middle" class="head">拒绝</text><text x="170" y="453" text-anchor="middle" class="body">质量或执行失败</text>
   <rect x="400" y="390" width="170" height="90" rx="15" fill="#ffedd5" stroke="#ea580c" stroke-width="2.5"/>
-  <text x="485" y="425" text-anchor="middle" class="head">继续调优</text><text x="485" y="453" text-anchor="middle" class="body">样本不足</text>
+  <text x="485" y="425" text-anchor="middle" class="head">补齐复测</text><text x="485" y="453" text-anchor="middle" class="body">缺失或数量不足</text>
   <rect x="715" y="390" width="170" height="90" rx="15" fill="#ffedd5" stroke="#ea580c" stroke-width="2.5"/>
   <text x="800" y="425" text-anchor="middle" class="head">继续调优</text><text x="800" y="453" text-anchor="middle" class="body">区间跨界</text>
   <rect x="970" y="390" width="210" height="90" rx="15" fill="#fee2e2" stroke="#dc2626" stroke-width="2.5"/>
   <text x="1075" y="425" text-anchor="middle" class="head">拒绝</text><text x="1075" y="453" text-anchor="middle" class="body">确认性能回归</text>
 
   <path d="M170 249V390" class="bad"/><path d="M485 249V390" class="edge"/>
-  <path d="M770 249V330H800V390" class="edge"/><path d="M830 249V315H1075V390" class="bad"/>
+  <path d="M800 249V390" class="edge"/><path d="M860 249V315H1075V390" class="bad"/>
   <text x="184" y="330" class="branch" fill="#991b1b">否</text><text x="499" y="330" class="branch">否</text>
-  <text x="722" y="315" class="branch">跨界</text><text x="980" y="302" class="branch" fill="#991b1b">高于阈值</text>
+  <text x="750" y="315" class="branch">跨界</text><text x="980" y="302" class="branch" fill="#991b1b">L &gt; τ</text>
+  <text x="600" y="560" text-anchor="middle" class="body">τ = 1 + 事先允许的相对变慢量；[L, U] 为中位比例的 90% 自助区间</text>
 </svg>
