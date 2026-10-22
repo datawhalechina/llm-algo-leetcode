@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="560" viewBox="0 0 1280 560" role="img" aria-labelledby="title desc">
+<title id="title">Part 01：共同基础与按问题选择的学习支线</title>
+<desc id="desc">先从1A数值与规模进入1B单设备执行、内存与访存。之后按问题选择1C通信、并行与容错，或1D执行模型与异步调度再到1E编译与后端，或1F硬件适配与系统约束。实线表示推荐顺序，虚线表示按问题选择入口。三条条件分支独立连接1B。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker>
+<style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:18px;font-weight:700}.note{font-size:15px;fill:#475569}.edge{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow)}.optional{stroke-dasharray:7 5}</style></defs>
+<rect width="1280" height="560" fill="#f8fafc"/>
+<text class="title" x="640" y="45" text-anchor="middle">Part 01：先建立共同基础，再按问题选择支线</text>
+<text class="note" x="640" y="76" text-anchor="middle">实线：基础或支线内的推荐顺序；虚线：按问题选择入口。</text>
+<rect x="60" y="110" width="340" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text class="head" x="230" y="142" text-anchor="middle">1A 数值与规模</text><text class="note" x="230" y="168" text-anchor="middle">数据类型、参数量与计算量</text>
+<rect x="470" y="110" width="340" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text class="head" x="640" y="142" text-anchor="middle">1B 单设备执行、内存与访存</text><text class="note" x="640" y="168" text-anchor="middle">计算资源、内存层级与工作集</text>
+<path class="edge" d="M400 150H470"/>
+<rect x="60" y="320" width="340" height="80" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text class="head" x="230" y="352" text-anchor="middle">1C 通信、并行与容错</text><text class="note" x="230" y="378" text-anchor="middle">状态切分、数据交换与中断恢复</text>
+<rect x="470" y="320" width="340" height="80" rx="12" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text class="head" x="640" y="352" text-anchor="middle">1D 执行模型与异步调度</text><text class="note" x="640" y="378" text-anchor="middle">线程、程序块映射与任务依赖</text>
+<rect x="880" y="320" width="340" height="80" rx="12" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text class="head" x="1050" y="352" text-anchor="middle">1F 硬件适配与系统约束</text><text class="note" x="1050" y="378" text-anchor="middle">设备、运行时、资源隔离与成本</text>
+<path class="edge optional" d="M520 190V230H230V320"/>
+<path class="edge optional" d="M640 190V320"/>
+<path class="edge optional" d="M760 190V250H1050V320"/>
+<text class="note" x="370" y="217" text-anchor="middle">训练与多卡问题</text>
+<text class="note" x="740" y="299" text-anchor="middle">算子与执行问题</text>
+<text class="note" x="1050" y="237" text-anchor="middle">部署与设备问题</text>
+<rect x="470" y="465" width="340" height="80" rx="12" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text class="head" x="640" y="497" text-anchor="middle">1E 编译与后端</text><text class="note" x="640" y="523" text-anchor="middle">图变换、形状与后端执行路径</text>
+<path class="edge" d="M640 400V465"/>
+</svg>
