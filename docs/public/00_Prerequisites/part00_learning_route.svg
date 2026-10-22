@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="title desc">
+<title id="title">Part 00：从数据与张量，到训练和模型组件</title><desc id="desc">上层实线依次连接0A数据与函数、0B张量与梯度、0C模型与训练、0D模型组件，表示主学习顺序。下层独立表示任意当前练习在运行出错或需要测量比较时，按需进入0E诊断与实验，再返回当前练习。无需读完上层全部组后才进入0E。</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.subtitle{font-size:15px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:15px;fill:#475569}.edge{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow)}</style></defs>
+<rect width="1280" height="520" fill="#f8fafc"/>
+<text x="640" y="45" text-anchor="middle" class="title">Part 00：从数据与张量，到训练和模型组件</text>
+<text x="640" y="76" text-anchor="middle" class="subtitle">实线：主学习顺序；虚线：任意当前练习中，按问题进入 0E</text>
+<rect x="40" y="145" width="240" height="90" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="160" y="177" text-anchor="middle" class="head">0A 数据与函数</text><text x="160" y="204" text-anchor="middle" class="body">检查输入、数组与运行文件</text>
+<rect x="360" y="145" width="240" height="90" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="480" y="177" text-anchor="middle" class="head">0B 张量与梯度</text><text x="480" y="204" text-anchor="middle" class="body">追踪布局、存储与反向</text>
+<rect x="680" y="145" width="240" height="90" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="800" y="177" text-anchor="middle" class="head">0C 模型与训练</text><text x="800" y="204" text-anchor="middle" class="body">检查保存、更新与评价</text>
+<rect x="1000" y="145" width="240" height="90" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="1120" y="177" text-anchor="middle" class="head">0D 模型组件</text><text x="1120" y="204" text-anchor="middle" class="body">观察分支、归一化与聚合</text>
+<path d="M280 190H360" class="edge"/>
+<path d="M600 190H680" class="edge"/>
+<path d="M920 190H1000" class="edge"/>
+<rect x="60" y="355" width="300" height="90" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="210" y="387" text-anchor="middle" class="head">当前练习遇到问题</text><text x="210" y="414" text-anchor="middle" class="body">报错，或需要测量、比较</text>
+<rect x="490" y="355" width="300" height="90" rx="14" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text x="640" y="387" text-anchor="middle" class="head">0E 诊断与实验</text><text x="640" y="414" text-anchor="middle" class="body">有效性、时间、容量与比较</text>
+<rect x="920" y="355" width="300" height="90" rx="14" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text x="1070" y="387" text-anchor="middle" class="head">返回当前练习</text><text x="1070" y="414" text-anchor="middle" class="body">复查结果与比较条件</text>
+<path d="M360 400H490" class="edge" stroke-dasharray="7 5"/>
+<path d="M790 400H920" class="edge" stroke-dasharray="7 5"/>
+</svg>

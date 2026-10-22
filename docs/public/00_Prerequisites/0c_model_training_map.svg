@@ -12,23 +12,23 @@
 
   <rect x="450" y="82" width="380" height="94" rx="14" fill="#e9e7fb" class="node"/>
   <text x="640" y="119" text-anchor="middle" class="label">09 · nn.Module 与运行状态</text>
-  <text x="640" y="148" text-anchor="middle" class="note">注册 · 保存 · 梯度 · 优化器参数筛选</text>
+  <text x="640" y="148" text-anchor="middle" class="note">注册字段 · 运行模式 · 参数冻结</text>
 
   <rect x="95" y="238" width="450" height="160" rx="16" class="group" data-layout-role="panel"/>
   <text x="123" y="272" class="label">状态支路</text>
   <rect x="145" y="298" width="350" height="72" rx="11" fill="#e4f1fb" class="node"/>
-  <text x="320" y="327" text-anchor="middle" class="label">10 · 模型产物与训练 Checkpoint</text>
-  <text x="320" y="352" text-anchor="middle" class="note">完整状态 · 恢复对象 · 下一步轨迹一致</text>
+  <text x="320" y="327" text-anchor="middle" class="label">10 · 模型产物与训练检查点</text>
+  <text x="320" y="352" text-anchor="middle" class="note">独立快照 · 状态恢复 · 下一步更新一致</text>
 
   <rect x="735" y="238" width="450" height="160" rx="16" class="group" data-layout-role="panel"/>
   <text x="763" y="272" class="label">更新支路</text>
   <rect x="785" y="298" width="350" height="72" rx="11" fill="#e8f7ed" class="node"/>
-  <text x="960" y="327" text-anchor="middle" class="label">11 · Loss、优化器与更新时钟</text>
-  <text x="960" y="352" text-anchor="middle" class="note">micro-step · 更新尝试 · 有效更新 · scheduler</text>
+  <text x="960" y="327" text-anchor="middle" class="label">11 · 损失、优化器与更新时钟</text>
+  <text x="960" y="352" text-anchor="middle" class="note">微步 · 更新尝试 · 有效更新 · 学习率推进</text>
 
   <rect x="400" y="452" width="480" height="82" rx="14" fill="#fff2cf" class="node"/>
   <text x="640" y="484" text-anchor="middle" class="label">12 · 数据接口与训练生命周期</text>
-  <text x="640" y="510" text-anchor="middle" class="note">通用 batch 契约 → 训练 → 验证 → 指标聚合</text>
+  <text x="640" y="510" text-anchor="middle" class="note">批次输入 → 训练 → 独立验证 → 指标汇总</text>
 
   <path d="M550 176V208H320V298" class="line"/>
   <path d="M730 176V208H960V298" class="line"/>

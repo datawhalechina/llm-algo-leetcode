@@ -1,67 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="620" viewBox="0 0 1280 620" role="img" aria-labelledby="title desc">
-  <title id="title">0D Transformer Block 数据流与组件基础</title>
-  <desc id="desc">Hidden state 在 Transformer Block 中依次经过 Norm、Attention、Residual add、Norm、MLP 和 Residual add；页码标明各组件的主要学习入口。</desc>
-  <defs>
-    <marker id="arrow" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 4.5L0 9Z" fill="#52627a"/></marker>
-    <style>
-      text{font-family:'Noto Sans CJK SC',sans-serif}.title{font-size:28px;font-weight:700;fill:#172033}.subtitle{font-size:15px;fill:#475569}.frame{fill:#f7f9fc;stroke:#a8b3c7;stroke-width:2}.node{fill:#fff;stroke:#8fa0ba;stroke-width:2}.residual{fill:#eeeafd}.norm{fill:#fff2cf}.attn{fill:#e4f1fb}.mlp{fill:#e8f7ed}.text{font-size:17px;font-weight:600;fill:#172033}.small{font-size:14px;fill:#475569}.line{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow)}.guide{fill:none;stroke:#94a3b8;stroke-width:2;stroke-dasharray:6 6;marker-end:url(#arrow)}
-    </style>
-  </defs>
-  <rect width="1280" height="620" fill="#fbfcfe"/>
-  <text x="640" y="45" text-anchor="middle" class="title">0D · Transformer Block 数据流与组件基础</text>
-  <text x="640" y="72" text-anchor="middle" class="subtitle">13 提供 residual 骨架；14–16 分别展开 MLP、Norm 与 Attention</text>
-
-  <rect x="25" y="157" width="140" height="78" rx="13" class="node residual"/>
-  <text x="95" y="188" text-anchor="middle" class="text">Hidden state</text>
-  <text x="95" y="214" text-anchor="middle" class="small">[B, S, H]</text>
-
-  <rect x="195" y="105" width="875" height="250" rx="18" class="frame"/>
-  <text x="220" y="137" class="text">13 · 一个 Block 对同一条 residual stream 执行两次增量更新</text>
-
-  <rect x="225" y="167" width="105" height="62" rx="11" class="node norm"/>
-  <text x="277" y="193" text-anchor="middle" class="text">Norm</text>
-  <text x="277" y="214" text-anchor="middle" class="small">15</text>
-  <rect x="360" y="167" width="130" height="62" rx="11" class="node attn"/>
-  <text x="425" y="193" text-anchor="middle" class="text">Attention</text>
-  <text x="425" y="214" text-anchor="middle" class="small">16 · token mixing</text>
-  <rect x="520" y="167" width="110" height="62" rx="11" class="node residual"/>
-  <text x="575" y="193" text-anchor="middle" class="text">Residual add</text>
-  <text x="575" y="214" text-anchor="middle" class="small">13</text>
-  <rect x="660" y="167" width="105" height="62" rx="11" class="node norm"/>
-  <text x="712" y="193" text-anchor="middle" class="text">Norm</text>
-  <text x="712" y="214" text-anchor="middle" class="small">15</text>
-  <rect x="795" y="167" width="100" height="62" rx="11" class="node mlp"/>
-  <text x="845" y="193" text-anchor="middle" class="text">MLP</text>
-  <text x="845" y="214" text-anchor="middle" class="small">14</text>
-  <rect x="925" y="167" width="110" height="62" rx="11" class="node residual"/>
-  <text x="980" y="193" text-anchor="middle" class="text">Residual add</text>
-  <text x="980" y="214" text-anchor="middle" class="small">13</text>
-
-  <path d="M165 196H225" class="line"/><path d="M330 198H360" class="line"/><path d="M490 198H520" class="line"/><path d="M630 198H660" class="line"/><path d="M765 198H795" class="line"/><path d="M895 198H925" class="line"/>
-  <path d="M95 235V310H550V229" class="guide"/>
-  <text x="325" y="337" text-anchor="middle" class="small">保留原始输入</text>
-  <path d="M600 229V285H980V229" class="guide"/>
-  <text x="805" y="312" text-anchor="middle" class="small">保留第一次更新后的状态</text>
-
-  <rect x="1100" y="157" width="145" height="78" rx="13" class="node residual"/>
-  <text x="1172" y="188" text-anchor="middle" class="text">Next state</text>
-  <text x="1172" y="214" text-anchor="middle" class="small">[B, S, H]</text>
-  <path d="M1035 198H1100" class="line"/>
-
-  <rect x="95" y="425" width="250" height="115" rx="15" class="node residual"/>
-  <text x="220" y="456" text-anchor="middle" class="text">13 · Block / Residual</text>
-  <text x="220" y="483" text-anchor="middle" class="small">主路径 · 两次更新</text>
-  <text x="220" y="507" text-anchor="middle" class="small">层间 hidden contract</text>
-  <rect x="390" y="425" width="250" height="115" rx="15" class="node mlp"/>
-  <text x="515" y="456" text-anchor="middle" class="text">14 · MLP / Activation</text>
-  <text x="515" y="483" text-anchor="middle" class="small">H → H_ffn → H</text>
-  <text x="515" y="507" text-anchor="middle" class="small">非线性 · 门控</text>
-  <rect x="685" y="425" width="250" height="115" rx="15" class="node norm"/>
-  <text x="810" y="456" text-anchor="middle" class="text">15 · Normalization</text>
-  <text x="810" y="483" text-anchor="middle" class="small">统计轴 · 公式</text>
-  <text x="810" y="507" text-anchor="middle" class="small">Pre/Post-Norm</text>
-  <rect x="980" y="425" width="205" height="115" rx="15" class="node attn"/>
-  <text x="1082" y="456" text-anchor="middle" class="text">16 · Attention</text>
-  <text x="1082" y="483" text-anchor="middle" class="small">QKV · mask · heads</text>
-  <text x="1082" y="507" text-anchor="middle" class="small">匹配与聚合</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="560" viewBox="0 0 1280 560" role="img" aria-labelledby="title desc">
+<title id="title">0D：先看完整 Block，再按问题展开三个组件</title><desc id="desc">13建立Block主路径与两次残差更新总览，然后按问题进入14激活与门控、15归一化、16Attention。三条边表示组件阅读分支，不表示模型前向计算顺序。</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.subtitle{font-size:15px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:15px;fill:#475569}.edge{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow)}</style></defs>
+<rect width="1280" height="560" fill="#f8fafc"/>
+<text x="640" y="45" text-anchor="middle" class="title">0D：先看完整 Block，再按问题展开三个组件</text>
+<text x="640" y="76" text-anchor="middle" class="subtitle">箭头表示阅读关系；Block 内部的计算顺序与残差连接见总览页</text>
+<rect x="460" y="115" width="360" height="100" rx="14" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text x="640" y="147" text-anchor="middle" class="head">13 Block 与残差通路</text><text x="640" y="174" text-anchor="middle" class="body">主路径状态与两次分支增量</text>
+<rect x="70" y="350" width="340" height="100" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="240" y="382" text-anchor="middle" class="head">14 激活与门控</text><text x="240" y="409" text-anchor="middle" class="body">MLP 的非线性与通道变换</text>
+<rect x="470" y="350" width="340" height="100" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="640" y="382" text-anchor="middle" class="head">15 归一化</text><text x="640" y="409" text-anchor="middle" class="body">统计轴、数值尺度与放置位置</text>
+<rect x="870" y="350" width="340" height="100" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="1040" y="382" text-anchor="middle" class="head">16 Attention</text><text x="1040" y="409" text-anchor="middle" class="body">匹配、可见性与信息聚合</text>
+<path d="M520 215V285H240V350" class="edge"/>
+<path d="M640 215V350" class="edge"/>
+<path d="M760 215V285H1040V350" class="edge"/>
 </svg>

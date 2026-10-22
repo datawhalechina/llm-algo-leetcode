@@ -1,45 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="560" viewBox="0 0 1280 560" role="img" aria-labelledby="title desc">
-  <title id="title">0E 从运行有效性到实验判断的诊断流程</title>
-  <desc id="desc">19 先判断运行是否有效；无效时定位并复现，有效时进入 17 时间证据和 18 容量证据，最后由 20 形成单变量实验和判断。</desc>
-  <defs>
-    <marker id="arrow0e" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker>
-    <style>
-      text{font-family:'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#475569}.head{font-size:17px;font-weight:700}.body{font-size:13px;fill:#475569}.branch{font-size:13px;font-weight:700}.panel{stroke-width:2}.line{stroke:#52627a;stroke-width:2.8;fill:none;marker-end:url(#arrow0e)}
-    </style>
-  </defs>
-  <rect width="1280" height="560" fill="#f8fafc"/>
-  <text x="640" y="42" text-anchor="middle" class="title">0E · 从有效运行到可复查实验</text>
-  <text x="640" y="70" text-anchor="middle" class="sub">正确性是门槛；时间和容量是并列证据；实验判断是收口</text>
-
-  <rect x="430" y="95" width="420" height="82" rx="15" fill="#ede9fe" stroke="#8b5cf6" class="panel"/>
-  <text x="640" y="126" text-anchor="middle" class="head">19 · 运行有效性检查</text>
-  <text x="640" y="151" text-anchor="middle" class="body">张量契约 · 数值有限性 · 梯度链路 · 首个失败点</text>
-
-  <rect x="40" y="240" width="300" height="130" rx="15" fill="#fee2e2" stroke="#fb7185" class="panel"/>
-  <text x="190" y="277" text-anchor="middle" class="head">无效运行：停止性能解释</text>
-  <text x="190" y="307" text-anchor="middle" class="body">定位异常 · 固定触发条件</text>
-  <text x="190" y="332" text-anchor="middle" class="body">构造最小复现后重新检查</text>
-
-  <rect x="390" y="240" width="400" height="130" rx="15" fill="#e0f2fe" stroke="#38bdf8" class="panel"/>
-  <text x="590" y="277" text-anchor="middle" class="head">17 · 时间证据</text>
-  <text x="590" y="307" text-anchor="middle" class="body">重复样本 · 中位数与 P95 · 阶段热点</text>
-  <text x="590" y="332" text-anchor="middle" class="body">Profiler 汇总 · trace · 解释边界</text>
-
-  <rect x="840" y="240" width="400" height="130" rx="15" fill="#dcfce7" stroke="#4ade80" class="panel"/>
-  <text x="1040" y="277" text-anchor="middle" class="head">18 · 容量证据</text>
-  <text x="1040" y="307" text-anchor="middle" class="body">对象生命周期 · 候选峰值 · 主要对象</text>
-  <text x="1040" y="332" text-anchor="middle" class="body">allocated / reserved / capacity 对账</text>
-
-  <path d="M530 177V207H190V240" class="line"/>
-  <text x="310" y="200" class="branch" fill="#be123c">invalid</text>
-  <path d="M640 177V240" class="line"/>
-  <text x="650" y="211" class="branch" fill="#166534">valid</text>
-  <path d="M750 177V207H1040V240" class="line"/>
-  <text x="890" y="200" class="branch" fill="#166534">valid</text>
-
-  <rect x="420" y="445" width="440" height="82" rx="15" fill="#fef3c7" stroke="#f59e0b" class="panel"/>
-  <text x="640" y="476" text-anchor="middle" class="head">20 · 证据汇总与单变量实验</text>
-  <text x="640" y="501" text-anchor="middle" class="body">可证伪假设 · 基线与候选 · accept / reject / rerun</text>
-  <path d="M590 370V405H540V445" class="line"/>
-  <path d="M1040 370V405H740V445" class="line"/>
+<title id="title">0E：先确认运行有效，再选择时间或容量分支</title><desc id="desc">19首先检查运行有效性。无效时定位错误并构造最小复现；有效后17实际采集CPU时间与阶段事件，18估算容量并使用构造的分配器快照；20使用示例记录练习固定条件下的实验比较。两类记录不代表同一次GPU采样。</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#52627a"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.subtitle{font-size:15px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:15px;fill:#475569}.edge{fill:none;stroke:#52627a;stroke-width:3;marker-end:url(#arrow)}</style></defs>
+<rect width="1280" height="560" fill="#f8fafc"/>
+<text x="640" y="45" text-anchor="middle" class="title">0E：先确认运行有效，再选择时间或容量分支</text>
+<text x="640" y="76" text-anchor="middle" class="subtitle">实际采集、理论估算和构造记录分别保留来源</text>
+<rect x="430" y="100" width="420" height="85" rx="14" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text x="640" y="132" text-anchor="middle" class="head">19 运行有效性检查</text><text x="640" y="159" text-anchor="middle" class="body">输出、有限值、梯度与首个失败点</text>
+<rect x="40" y="250" width="300" height="110" rx="14" fill="#fef2f2" stroke="#f87171" stroke-width="2"/><text x="190" y="282" text-anchor="middle" class="head">无效：定位并复现</text><text x="190" y="309" text-anchor="middle" class="body">固定触发条件</text><text x="190" y="336" text-anchor="middle" class="body">修复后重新检查</text>
+<rect x="390" y="250" width="400" height="110" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="590" y="282" text-anchor="middle" class="head">17 时间记录：实际采集</text><text x="590" y="309" text-anchor="middle" class="body">CPU 前向计时与执行轨迹</text><text x="590" y="336" text-anchor="middle" class="body">另行采集训练阶段事件</text>
+<rect x="840" y="250" width="400" height="110" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="1040" y="282" text-anchor="middle" class="head">18 容量记录：估算与构造</text><text x="1040" y="309" text-anchor="middle" class="body">对象生命周期容量估算</text><text x="1040" y="336" text-anchor="middle" class="body">构造分配器快照与对账</text>
+<rect x="420" y="450" width="440" height="80" rx="14" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text x="640" y="482" text-anchor="middle" class="head">20 固定条件下的实验比较</text><text x="640" y="509" text-anchor="middle" class="body">用示例记录检查质量、失败与尾延迟</text>
+<path d="M530 185V215H190V250" class="edge"/>
+<path d="M640 185V250" class="edge"/>
+<path d="M750 185V215H1040V250" class="edge"/>
+<path d="M590 360V410H540V450" class="edge"/>
+<path d="M1040 360V410H740V450" class="edge"/>
+<text x="315" y="205" text-anchor="middle" class="head">无效</text>
+<text x="675" y="221" text-anchor="middle" class="head">有效</text>
+<text x="895" y="205" text-anchor="middle" class="head">有效</text>
 </svg>
