@@ -1,0 +1,302 @@
+{
+  "schema_version": "optimizer-path-benchmark/v1",
+  "torch": "2.11.0+cu128",
+  "torch_cuda": "12.8",
+  "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+  "learning_rate": 0.0001,
+  "weight_decay": 0.01,
+  "seed": 42,
+  "warmup": 5,
+  "iterations": 30,
+  "repeats": 3,
+  "scheduler": null,
+  "optimizer": "AdamW",
+  "paths": {
+    "many_small": {
+      "single_tensor": {
+        "status": "ok",
+        "tensor_count": 256,
+        "total_elements": 16777216,
+        "optimizer_step_ms_median": 7.508352041244507,
+        "optimizer_step_ms_range": 0.025216102600097656,
+        "peak_allocated_mb_median": 256.75,
+        "peak_reserved_mb_median": 258.0,
+        "runs": [
+          {
+            "optimizer_step_ms": 7.5267040729522705,
+            "peak_allocated_mb": 256.75,
+            "peak_reserved_mb": 258.0,
+            "repeat": 1
+          },
+          {
+            "optimizer_step_ms": 7.501487970352173,
+            "peak_allocated_mb": 256.75,
+            "peak_reserved_mb": 258.0,
+            "repeat": 2
+          },
+          {
+            "optimizer_step_ms": 7.508352041244507,
+            "peak_allocated_mb": 256.75,
+            "peak_reserved_mb": 258.0,
+            "repeat": 3
+          }
+        ]
+      },
+      "foreach": {
+        "status": "ok",
+        "tensor_count": 256,
+        "total_elements": 16777216,
+        "optimizer_step_ms_median": 3.1094080209732056,
+        "optimizer_step_ms_range": 0.05590391159057617,
+        "peak_allocated_mb_median": 320.0,
+        "peak_reserved_mb_median": 320.0,
+        "runs": [
+          {
+            "optimizer_step_ms": 3.120751976966858,
+            "peak_allocated_mb": 320.0,
+            "peak_reserved_mb": 320.0,
+            "repeat": 1
+          },
+          {
+            "optimizer_step_ms": 3.0648480653762817,
+            "peak_allocated_mb": 320.0,
+            "peak_reserved_mb": 320.0,
+            "repeat": 2
+          },
+          {
+            "optimizer_step_ms": 3.1094080209732056,
+            "peak_allocated_mb": 320.0,
+            "peak_reserved_mb": 320.0,
+            "repeat": 3
+          }
+        ]
+      },
+      "fused": {
+        "status": "ok",
+        "tensor_count": 256,
+        "total_elements": 16777216,
+        "optimizer_step_ms_median": 1.312287986278534,
+        "optimizer_step_ms_range": 0.06492799520492554,
+        "peak_allocated_mb_median": 256.125,
+        "peak_reserved_mb_median": 258.0,
+        "runs": [
+          {
+            "optimizer_step_ms": 1.2473919987678528,
+            "peak_allocated_mb": 256.125,
+            "peak_reserved_mb": 258.0,
+            "repeat": 1
+          },
+          {
+            "optimizer_step_ms": 1.3123199939727783,
+            "peak_allocated_mb": 256.125,
+            "peak_reserved_mb": 258.0,
+            "repeat": 2
+          },
+          {
+            "optimizer_step_ms": 1.312287986278534,
+            "peak_allocated_mb": 256.125,
+            "peak_reserved_mb": 258.0,
+            "repeat": 3
+          }
+        ]
+      }
+    },
+    "few_large": {
+      "single_tensor": {
+        "status": "ok",
+        "tensor_count": 4,
+        "total_elements": 16777216,
+        "optimizer_step_ms_median": 2.2690080404281616,
+        "optimizer_step_ms_range": 0.36297595500946045,
+        "peak_allocated_mb_median": 304.0,
+        "peak_reserved_mb_median": 304.0,
+        "runs": [
+          {
+            "optimizer_step_ms": 2.2690080404281616,
+            "peak_allocated_mb": 304.0,
+            "peak_reserved_mb": 308.0,
+            "repeat": 1
+          },
+          {
+            "optimizer_step_ms": 2.6301440000534058,
+            "peak_allocated_mb": 304.0,
+            "peak_reserved_mb": 304.0,
+            "repeat": 2
+          },
+          {
+            "optimizer_step_ms": 2.2671680450439453,
+            "peak_allocated_mb": 304.0,
+            "peak_reserved_mb": 304.0,
+            "repeat": 3
+          }
+        ]
+      },
+      "foreach": {
+        "status": "ok",
+        "tensor_count": 4,
+        "total_elements": 16777216,
+        "optimizer_step_ms_median": 3.9037280082702637,
+        "optimizer_step_ms_range": 0.41417598724365234,
+        "peak_allocated_mb_median": 320.0,
+        "peak_reserved_mb_median": 320.0,
+        "runs": [
+          {
+            "optimizer_step_ms": 3.9037280082702637,
+            "peak_allocated_mb": 320.0,
+            "peak_reserved_mb": 320.0,
+            "repeat": 1
+          },
+          {
+            "optimizer_step_ms": 3.5666239261627197,
+            "peak_allocated_mb": 320.0,
+            "peak_reserved_mb": 320.0,
+            "repeat": 2
+          },
+          {
+            "optimizer_step_ms": 3.980799913406372,
+            "peak_allocated_mb": 320.0,
+            "peak_reserved_mb": 320.0,
+            "repeat": 3
+          }
+        ]
+      },
+      "fused": {
+        "status": "ok",
+        "tensor_count": 4,
+        "total_elements": 16777216,
+        "optimizer_step_ms_median": 1.2470399737358093,
+        "optimizer_step_ms_range": 0.0029760003089904785,
+        "peak_allocated_mb_median": 256.001953125,
+        "peak_reserved_mb_median": 258.0,
+        "runs": [
+          {
+            "optimizer_step_ms": 1.2457759976387024,
+            "peak_allocated_mb": 256.001953125,
+            "peak_reserved_mb": 258.0,
+            "repeat": 1
+          },
+          {
+            "optimizer_step_ms": 1.2470399737358093,
+            "peak_allocated_mb": 256.001953125,
+            "peak_reserved_mb": 258.0,
+            "repeat": 2
+          },
+          {
+            "optimizer_step_ms": 1.2487519979476929,
+            "peak_allocated_mb": 256.001953125,
+            "peak_reserved_mb": 258.0,
+            "repeat": 3
+          }
+        ]
+      }
+    }
+  },
+  "training_step": {
+    "single_tensor": {
+      "status": "ok",
+      "training_step_ms_median": 0.5284000039100647,
+      "training_step_ms_range": 0.03467199206352234,
+      "final_loss_median": 0.2659691274166107,
+      "peak_allocated_mb_median": 57.41796875,
+      "peak_reserved_mb_median": 78.0,
+      "max_parameter_error_vs_single_tensor": 0.0,
+      "runs": [
+        {
+          "training_step_ms": 0.5626719892024994,
+          "final_loss": 0.2659691274166107,
+          "peak_allocated_mb": 57.41796875,
+          "peak_reserved_mb": 74.0,
+          "max_parameter_error_vs_single_tensor": 0.0
+        },
+        {
+          "training_step_ms": 0.527999997138977,
+          "final_loss": 0.2659691274166107,
+          "peak_allocated_mb": 57.41796875,
+          "peak_reserved_mb": 78.0,
+          "max_parameter_error_vs_single_tensor": 0.0
+        },
+        {
+          "training_step_ms": 0.5284000039100647,
+          "final_loss": 0.2659691274166107,
+          "peak_allocated_mb": 57.41796875,
+          "peak_reserved_mb": 78.0,
+          "max_parameter_error_vs_single_tensor": 0.0
+        }
+      ]
+    },
+    "foreach": {
+      "status": "ok",
+      "training_step_ms_median": 0.43783999979496,
+      "training_step_ms_range": 0.001408010721206665,
+      "final_loss_median": 0.26596909761428833,
+      "peak_allocated_mb_median": 57.423828125,
+      "peak_reserved_mb_median": 78.0,
+      "max_parameter_error_vs_single_tensor": 5.494803190231323e-08,
+      "runs": [
+        {
+          "training_step_ms": 0.4375999867916107,
+          "final_loss": 0.26596909761428833,
+          "peak_allocated_mb": 57.423828125,
+          "peak_reserved_mb": 78.0,
+          "max_parameter_error_vs_single_tensor": 5.494803190231323e-08
+        },
+        {
+          "training_step_ms": 0.43783999979496,
+          "final_loss": 0.26596909761428833,
+          "peak_allocated_mb": 57.423828125,
+          "peak_reserved_mb": 78.0,
+          "max_parameter_error_vs_single_tensor": 5.494803190231323e-08
+        },
+        {
+          "training_step_ms": 0.4390079975128174,
+          "final_loss": 0.26596909761428833,
+          "peak_allocated_mb": 57.423828125,
+          "peak_reserved_mb": 78.0,
+          "max_parameter_error_vs_single_tensor": 5.494803190231323e-08
+        }
+      ]
+    },
+    "fused": {
+      "status": "ok",
+      "training_step_ms_median": 0.31248000264167786,
+      "training_step_ms_range": 0.0005119889974594116,
+      "final_loss_median": 0.2659688889980316,
+      "peak_allocated_mb_median": 49.47998046875,
+      "peak_reserved_mb_median": 58.0,
+      "max_parameter_error_vs_single_tensor": 1.7881393432617188e-07,
+      "runs": [
+        {
+          "training_step_ms": 0.3120800107717514,
+          "final_loss": 0.2659688889980316,
+          "peak_allocated_mb": 49.47998046875,
+          "peak_reserved_mb": 58.0,
+          "max_parameter_error_vs_single_tensor": 1.7881393432617188e-07
+        },
+        {
+          "training_step_ms": 0.3125919997692108,
+          "final_loss": 0.2659688889980316,
+          "peak_allocated_mb": 49.47998046875,
+          "peak_reserved_mb": 58.0,
+          "max_parameter_error_vs_single_tensor": 1.7881393432617188e-07
+        },
+        {
+          "training_step_ms": 0.31248000264167786,
+          "final_loss": 0.2659688889980316,
+          "peak_allocated_mb": 49.47998046875,
+          "peak_reserved_mb": 58.0,
+          "max_parameter_error_vs_single_tensor": 1.7881393432617188e-07
+        }
+      ]
+    }
+  },
+  "measurement_order": "candidate order rotates across repeats",
+  "evidence_scope": "single_gpu_torch_adamw_execution_path",
+  "run_label": "rtx5070ti_adamw_path_v1",
+  "project": "75",
+  "semantic_id": "PERF-OPTIMIZER-PATH",
+  "thresholds": {
+    "minimum_training_speedup": 1.05,
+    "maximum_peak_memory_increase_mb": 256.0,
+    "maximum_parameter_error": 0.0001
+  }
+}

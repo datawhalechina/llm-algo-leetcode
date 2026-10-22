@@ -1,0 +1,43 @@
+{
+  "schema_version": "optimizer-path-decision/v1",
+  "project": "75",
+  "semantic_id": "PERF-OPTIMIZER-PATH",
+  "run_label": "rtx5070ti_adamw_path_v1",
+  "raw_evidence_path": "benchmarks/results/75_optimizer_path/optimizer_path_rtx5070ti_adamw_path_v1.json",
+  "raw_schema": "optimizer-path-benchmark/v1",
+  "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+  "torch": "2.11.0+cu128",
+  "torch_cuda": "12.8",
+  "decision": {
+    "decision": "accept",
+    "reason": "end_to_end_gain_and_guardrails_passed",
+    "selected": "fused",
+    "candidates": [
+      {
+        "name": "foreach",
+        "eligible": true,
+        "training_speedup": 1.2068,
+        "optimizer_step_speedup": 1.3941,
+        "peak_memory_increase_mb": 0.006,
+        "max_parameter_error": 5.494803190231323e-08,
+        "reason": "meets_gates"
+      },
+      {
+        "name": "fused",
+        "eligible": true,
+        "training_speedup": 1.691,
+        "optimizer_step_speedup": 3.8203,
+        "peak_memory_increase_mb": -7.938,
+        "max_parameter_error": 1.7881393432617188e-07,
+        "reason": "meets_gates"
+      }
+    ],
+    "thresholds": {
+      "minimum_training_speedup": 1.05,
+      "maximum_peak_memory_increase_mb": 256.0,
+      "maximum_parameter_error": 0.0001
+    }
+  },
+  "evidence_scope": "single_gpu_synthetic_mlp_adamw_path_benchmark",
+  "next_action": "只将结论用于本次 PyTorch、GPU 与 workload；若需迁移到完整模型，另做目标训练验证。"
+}
