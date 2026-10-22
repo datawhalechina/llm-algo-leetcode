@@ -9,7 +9,10 @@ tools/convert_notebook.py.
 from __future__ import annotations
 
 import shutil
+import argparse
 from pathlib import Path
+
+from convert_notebook import normalize_generated_markdown, normalize_markdown_links
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -94,6 +97,26 @@ NAV_FILES = {
 }
 
 
+def sync_topic(topic: str) -> None:
+    """Mirror one source topic without rebuilding or cleaning other directories."""
+    if not topic or topic in {".", ".."} or Path(topic).name != topic or "\\" in topic:
+        raise ValueError("--topic must be a single topic directory name")
+    source_dir = ROOT / "topic_discussion" / topic
+    if not source_dir.is_dir() or source_dir.is_symlink():
+        raise ValueError(f"Source topic directory not found or is a symlink: {source_dir}")
+    sources = sorted(source_dir.rglob("*.md"))
+    if not sources:
+        raise ValueError(f"No Markdown source files found: {source_dir}")
+    for source in sources:
+        target = DOCS / source.relative_to(ROOT)
+        mirrored = normalize_generated_markdown(
+            normalize_markdown_links(source.read_text(encoding="utf-8"))
+        )
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(mirrored, encoding="utf-8")
+    print(f"Synced {len(sources)} Markdown files for topic={topic}; no other directories cleaned")
+
+
 def sync_navigation() -> None:
     copied = 0
     for part, files in NAV_FILES.items():
@@ -133,7 +156,16 @@ def sync_navigation() -> None:
 
 
 def main() -> int:
-    sync_navigation()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--topic", help="Sync only one topic_discussion subdirectory, without cleanup.")
+    args = parser.parse_args()
+    if args.topic:
+        try:
+            sync_topic(args.topic)
+        except ValueError as exc:
+            parser.error(str(exc))
+    else:
+        sync_navigation()
     return 0
 
 
