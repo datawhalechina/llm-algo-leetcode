@@ -1,10 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="title desc">
-<title id="title">总拥有成本决策链</title><desc id="desc">把设备采购、运行、迁移、利用率和扩容风险转换成同口径的有效成本与决策。</desc>
-<defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker><style>text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}.t{font-size:28px;font-weight:700}.s{font-size:15px;fill:#475569}.h{font-size:18px;font-weight:700}.b{font-size:14px;fill:#334155}.p{stroke-width:2}.f{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a)}</style></defs>
-<rect width="1280" height="520" rx="24" fill="#f8fafc"/><text x="640" y="45" text-anchor="middle" class="t">TCO：把价格转换成目标工作负载的有效成本</text><text x="640" y="73" text-anchor="middle" class="s">同一时间窗口内核对采购、运行、迁移、闲置和扩容风险</text>
-<rect x="45" y="135" width="260" height="240" rx="18" fill="#eff6ff" stroke="#60a5fa" class="p"/><text x="70" y="172" class="h">固定成本</text><text x="70" y="220" class="b">设备与基础设施</text><text x="70" y="255" class="b">软件许可与折旧</text><text x="70" y="290" class="b">统一核算时间窗口</text>
-<rect x="355" y="135" width="260" height="240" rx="18" fill="#f0fdf4" stroke="#4ade80" class="p"/><text x="380" y="172" class="h">运行与迁移成本</text><text x="380" y="220" class="b">电力 · 运维 · 网络</text><text x="380" y="255" class="b">适配 · 测试 · 回滚</text><text x="380" y="290" class="b">故障和停机风险</text>
-<rect x="665" y="135" width="260" height="240" rx="18" fill="#fffbeb" stroke="#f59e0b" class="p"/><text x="690" y="172" class="h">交付工作量</text><text x="690" y="220" class="b">有效 Token / 请求 / Step</text><text x="690" y="255" class="b">利用率与闲置比例</text><text x="690" y="290" class="b">容量和扩容节奏</text>
-<rect x="975" y="135" width="260" height="240" rx="18" fill="#faf5ff" stroke="#a855f7" class="p"/><text x="1000" y="172" class="h">成本决策</text><text x="1000" y="220" class="b">单位有效工作成本</text><text x="1000" y="255" class="b">盈亏平衡点</text><text x="1000" y="290" class="b">风险、退出与复测条件</text>
-<path d="M305 255H355" class="f"/><path d="M615 255H665" class="f"/><path d="M925 255H975" class="f"/>
+<title id="title">便宜的设备，为什么可能有更高的单位请求成本？</title><desc id="desc">同一持有期内分别计算总成本与成功请求数，再求每百万成功请求成本。分母使用日历秒数、可用率、可用时间内的繁忙比例、繁忙时请求率和成功率。采购支出与折旧分摊二选一。</desc>
+<defs><marker id="a" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#475569}.head{font-size:19px;font-weight:700}.body{font-size:16px}.small{font-size:14px;fill:#475569}.edge{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a)}</style></defs>
+<rect width="1280" height="520" rx="24" fill="#f8fafc"/>
+<text x="640" y="45" text-anchor="middle" class="title">便宜的设备，为什么可能有更高的单位请求成本？</text>
+<text x="640" y="76" text-anchor="middle" class="sub">固定持有期、请求集合与成功标准；金额使用同一货币单位</text>
+<rect x="40" y="110" width="500" height="100" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="290" y="141" text-anchor="middle" class="head">采购 + 能耗 + 运维 + 迁移</text><text x="290" y="168" text-anchor="middle" class="body">能耗分别计算繁忙与空闲时段</text>
+<text x="290" y="194" text-anchor="middle" class="small">采购现金支出与折旧分摊二选一，不重复相加</text>
+<rect x="740" y="110" width="500" height="100" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="990" y="141" text-anchor="middle" class="head">日历秒数 × 可用率 × 利用率</text><text x="990" y="168" text-anchor="middle" class="body">得到持有期内的繁忙秒数</text>
+<text x="990" y="194" text-anchor="middle" class="small">利用率指可服务时间内的繁忙比例</text>
+<rect x="40" y="270" width="500" height="80" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="290" y="301" text-anchor="middle" class="head">持有期总成本</text><text x="290" y="328" text-anchor="middle" class="body">迁移包含适配、验证和条件回滚损失</text>
+<rect x="740" y="270" width="500" height="80" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="990" y="301" text-anchor="middle" class="head">繁忙秒数 × 繁忙时请求率 × 成功率</text><text x="990" y="328" text-anchor="middle" class="body">得到成功请求数；零成功时单位成本未定义</text>
+<rect x="410" y="410" width="460" height="80" rx="14" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text x="640" y="441" text-anchor="middle" class="head">每百万成功请求成本</text><text x="640" y="468" text-anchor="middle" class="body">总成本 ÷ 成功请求数 × 1,000,000</text>
+<path d="M290 210V270" class="edge"/>
+<path d="M990 210V270" class="edge"/>
+<path d="M290 350V450H410" class="edge"/>
+<path d="M990 350V450H870" class="edge"/>
 </svg>

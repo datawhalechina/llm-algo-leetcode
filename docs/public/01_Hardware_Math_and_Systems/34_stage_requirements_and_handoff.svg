@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="title desc">
+<title id="title">预处理与生成使用各自的设备需求</title>
+<desc id="desc">文本请求在主机完成分词与输入整理，经格式、传输和同步交接后进入目标加速器执行预填充与解码，再形成输出。主机阶段按临时输入和处理缓冲预算，加速器阶段按权重、缓存和工作区预算。0.5 GB 和 40 GB 均为正文中的假设需求，不是设备测量值；箭头不表示时间比例。</desc>
+<defs>
+<marker id="data-arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#315b7d"/></marker>
+<marker id="requirement-arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#ae742e"/></marker>
+<style>
+text{font-family:'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#172033}
+.title{font-size:27px;font-weight:700}.subtitle{font-size:15px;fill:#475569}
+.heading{font-size:19px;font-weight:700}.body{font-size:16px}.small{font-size:14px;fill:#475569}
+.node{stroke-width:2}.edge{fill:none;stroke-width:3;stroke-linejoin:round}
+.panel{stroke:#cbd5e1;stroke-width:1.5}
+</style>
+</defs>
+<rect width="1280" height="520" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="640" y="43" text-anchor="middle" class="title">预处理与生成，分别检查设备需求</text>
+<text x="640" y="75" text-anchor="middle" class="subtitle">实线表示数据传递，虚线表示阶段需求；数值为示例预算，不表示实际配置或时间比例</text>
+
+<rect x="235" y="108" width="290" height="332" rx="16" fill="#eff6ff" class="panel" data-layout-role="panel"/>
+<text x="380" y="147" text-anchor="middle" class="heading">主机 CPU</text>
+<rect x="755" y="108" width="310" height="332" rx="16" fill="#f0fdf4" class="panel" data-layout-role="panel"/>
+<text x="910" y="147" text-anchor="middle" class="heading">目标加速器</text>
+
+<rect id="request" x="35" y="195" width="160" height="85" rx="12" fill="#fff" stroke="#60a5fa" class="node"/>
+<text x="115" y="230" text-anchor="middle" class="heading">文本请求</text>
+<text x="115" y="258" text-anchor="middle" class="small">原始输入</text>
+
+<rect id="prepare" x="265" y="195" width="230" height="85" rx="12" fill="#fff" stroke="#60a5fa" class="node"/>
+<text x="380" y="230" text-anchor="middle" class="heading">文本预处理</text>
+<text x="380" y="258" text-anchor="middle" class="body">分词与输入整理</text>
+
+<rect id="handoff" x="565" y="195" width="150" height="85" rx="12" fill="#fff7ed" stroke="#fb923c" class="node"/>
+<text x="640" y="223" text-anchor="middle" class="heading">阶段交接</text>
+<text x="640" y="247" text-anchor="middle" class="small">Token ID / 张量</text>
+<text x="640" y="268" text-anchor="middle" class="small">传输 · 格式 · 同步</text>
+
+<rect id="generate" x="795" y="195" width="230" height="85" rx="12" fill="#fff" stroke="#4ade80" class="node"/>
+<text x="910" y="230" text-anchor="middle" class="heading">模型生成</text>
+<text x="910" y="258" text-anchor="middle" class="body">Prefill / Decode</text>
+
+<rect id="output" x="1095" y="195" width="150" height="85" rx="12" fill="#faf5ff" stroke="#a855f7" class="node"/>
+<text x="1170" y="230" text-anchor="middle" class="heading">生成结果</text>
+<text x="1170" y="258" text-anchor="middle" class="small">输出 Token</text>
+
+<rect id="prepare-needs" x="265" y="330" width="230" height="70" rx="12" fill="#fff7ed" stroke="#d8a453" class="node"/>
+<text x="380" y="358" text-anchor="middle" class="body">临时输入与处理缓冲</text>
+<text x="380" y="384" text-anchor="middle" class="small">预算 0.5 GB / Python</text>
+
+<rect id="generate-needs" x="795" y="330" width="230" height="70" rx="12" fill="#fff7ed" stroke="#d8a453" class="node"/>
+<text x="910" y="358" text-anchor="middle" class="body">权重 · 缓存 · 工作区</text>
+<text x="910" y="384" text-anchor="middle" class="small">预算 40 GB / BF16 / vLLM</text>
+
+<path data-source="request" data-target="prepare" d="M195 237.5H265" class="edge" stroke="#315b7d" marker-end="url(#data-arrow)"/>
+<path data-source="prepare" data-target="handoff" d="M495 237.5H565" class="edge" stroke="#315b7d" marker-end="url(#data-arrow)"/>
+<path data-source="handoff" data-target="generate" d="M715 237.5H795" class="edge" stroke="#315b7d" marker-end="url(#data-arrow)"/>
+<path data-source="generate" data-target="output" d="M1025 237.5H1095" class="edge" stroke="#315b7d" marker-end="url(#data-arrow)"/>
+<path data-source="prepare-needs" data-target="prepare" d="M380 330V280" class="edge" stroke="#ae742e" stroke-dasharray="7 5" marker-end="url(#requirement-arrow)"/>
+<path data-source="generate-needs" data-target="generate" d="M910 330V280" class="edge" stroke="#ae742e" stroke-dasharray="7 5" marker-end="url(#requirement-arrow)"/>
+</svg>

@@ -14,111 +14,151 @@
 
 ## 本节导读
 
-算力采购和部署决策，真正难的地方从来不是找到最低报价，而是把采购、能耗、运维、迁移、停机和替换风险放进同一张长期账本里看。只比较单卡价格，很容易把后续运行成本和系统切换代价完全漏掉。
+两台设备都能运行同一个模型时，采购价更低的一台，未必能以更低成本完成请求。空闲耗电、适配工时、停机与较低的成功处理量，都可能改变最终比较结果。
 
-这一页在整个教程的纵向主线里属于 `Part 01` 的系统决策收口页，不是某条主学习路线的核心机制页，但会给后续硬件选型、部署和长期维护补一层总账判断。学完这里，后面再看 `67` 以及 `Part 04` 的系统优化页时，你会更容易把成本判断和硬件选型、编译适配、长期维护放回同一条决策链；如果这里没学明白，后面很容易只按采购价格或单次 benchmark 做决策，而忽略能耗、运维、迁移和停机风险这些会持续累积的长期成本。按专题归类，这一页更接近全教程的系统背景收口，也和 `编译与图优化专题`、`推理优化路线` 共享一部分部署判断视角。
+本节在同一持有期内分别计算采购、繁忙与空闲能耗、运维和迁移成本，再除以成功请求数量。完成后，你应能解释利用率与成功率如何改变单位成本，并区分全额采购支出和折旧分摊；部署与性能比较还需使用对应工作负载的实际数据。
 
-**关键词：** `TCO`, `cost`, `power`
+**关键词：** 总拥有成本（TCO）、单位成本、能耗
+
+![总拥有成本决策链](../public/01_Hardware_Math_and_Systems/33_tco_decision_chain.svg)
 
 ---
 ## 前置阅读
 
-**导语：** 这一页先把编译、选型和成本判断放到同一条判断链里，再看 TCO 为什么不能只看单卡报价。
+**导语：** 先保留通过可执行性检查的候选，再比较持有期内的完整成本。
 
-- [09. AI Compilers and Graph Optimization | AI 编译器与计算图优化](./09_AI_Compilers_and_Graph_Optimization.md)
 - [10. AI Chips Overview and Alternatives | 算力现状与替代方案](./10_Domestic_AI_Chips_Overview.md)
-- [32. TVM / MLIR Deep Practice | TVM / MLIR 深度实践](./32_TVM_MLIR_Deep_Practice.md)
+- [34. Heterogeneous Accelerators and Runtime Constraints | 异构加速器与运行时约束](./34_Heterogeneous_Accelerators_and_Runtime_Constraints.md)
 
-## 相关阅读
-
-**导语：** 如果想继续把成本、动态 shape 和虚拟化带来的长期影响串起来，可以接着看这些页。
-
-- [29. CUDA Stream Advanced Scheduling | CUDA Stream 高级调度](./29_CUDA_Stream_Advanced_Scheduling.md)
-- [30. Dynamic Shape Handling | 动态 Shape 处理](./30_Dynamic_Shape_Handling.md)
-- [31. GPU Virtualization and MIG | GPU 虚拟化与 MIG](./31_GPU_Virtualization_and_MIG.md)
----
 ## Q1：TCO 为什么比单卡报价更重要？
 
-<details><summary>点击展开查看解析</summary>
 
 TCO 看的是总拥有成本，不只是买卡的钱。
 
 它会把采购、能耗、运维、迁移、停机风险和替换成本都放进来。对于长期运行的系统来说，单卡便宜不一定代表整体便宜，因为后续的电费、维护和迁移可能更贵。
 
 所以真正要比较的是一段时间内谁更能稳定地把业务跑起来。
-</details>
-### Q1小验证：为什么长期成本更关键
 
-看总账，而不是只看首付。
+### Q1 成本计算：分别计算繁忙与空闲能耗
+
+统一货币单位，以每月 30 天、设备整段持有期通电为假设。利用率表示繁忙时间比例；空闲时仍按空闲功率计电费。示例价格、功率与利用率均为构造输入，不是设备报价或实测结果。
+
 
 ```python
-def tco(purchase, power_per_month, ops_per_month, migration, months=12):
-    return purchase + (power_per_month + ops_per_month) * months + migration
+import math
 
-gpu_a = tco(120, 3, 2, 10, months=24)
-gpu_b = tco(90, 5, 4, 22, months=24)
-print('A:', gpu_a)
-print('B:', gpu_b)
-print('cheaper:', 'A' if gpu_a < gpu_b else 'B')
+
+def tco_ledger(purchase_cost, power_kw, electricity_per_kwh,
+               ops_cost_per_month, migration_cost, months, utilization,
+               idle_power_kw=0.0):
+    """按全额采购现金支出与繁忙/空闲能耗建立简化持有期成本。"""
+    values = (purchase_cost, power_kw, electricity_per_kwh, ops_cost_per_month,
+              migration_cost, months, utilization, idle_power_kw)
+    if any(not math.isfinite(value) or value < 0 for value in values):
+        raise ValueError('成本与资源输入必须是有限非负数')
+    if months <= 0 or utilization > 1 or idle_power_kw > power_kw:
+        raise ValueError('月份须为正，利用率不得超过一，空闲功率不得高于繁忙功率')
+    powered_hours = months * 30 * 24
+    busy_hours = powered_hours * utilization
+    idle_hours = powered_hours - busy_hours
+    energy_kwh = power_kw * busy_hours + idle_power_kw * idle_hours
+    components = {
+        'purchase_cost': purchase_cost,
+        'energy_cost': energy_kwh * electricity_per_kwh,
+        'operations_cost': ops_cost_per_month * months,
+        'migration_cost': migration_cost,
+    }
+    return {
+        'components': components, 'total_cost': sum(components.values()),
+        'powered_hours': powered_hours, 'busy_hours': busy_hours,
+        'idle_hours': idle_hours, 'energy_kwh': energy_kwh,
+    }
+
+
+gpu_a = tco_ledger(30000, 0.7, 0.8, 200, 2000, 24, 0.7, idle_power_kw=0.1)
+gpu_b = tco_ledger(22000, 0.9, 0.8, 350, 8000, 24, 0.7, idle_power_kw=0.15)
+assert gpu_a['total_cost'] == sum(gpu_a['components'].values())
+assert tco_ledger(0, 1, 1, 0, 0, 1, 0, idle_power_kw=0.1)['energy_kwh'] == 72
+print('A 构造成本：', gpu_a)
+print('B 构造成本：', gpu_b)
+
 ```
 
 ## Q2：为什么迁移成本和风险要算进模型里？
 
-<details><summary>点击展开查看解析</summary>
 
 硬件切换不只是换设备，还会带来软件适配、调试、重构和性能回归风险。
 
 如果迁移需要重新适配编译器、kernel、通信库或部署流程，那这些工作本身就是成本的一部分。
 
 所以 TCO 不是财务问题和技术问题的二选一，而是把两者放进同一个判断框架。
-</details>
-### Q2小验证：迁移为什么会贵
 
-适配成本本身就是成本。
+### Q2 风险计算：工时成本与条件回滚损失
+
+工程与验证工时按同一费率计费；停机时长在本例中仅指发生回滚时的额外停机，因此乘以回滚概率。计划内停机或其他损失需另列，不能也乘以该概率而漏算。
+
 
 ```python
-def migration_cost(adapt, test, rollback):
-    return adapt + test + rollback
+def migration_cost(engineering_hours, hourly_rate, validation_hours, downtime_hours, downtime_cost_per_hour, rollback_probability):
+    """计算迁移工程成本和按回滚概率加权的停机风险成本。"""
+    if any(not math.isfinite(value) or value < 0 for value in
+           (engineering_hours, hourly_rate, validation_hours, downtime_hours,
+            downtime_cost_per_hour)):
+        raise ValueError('migration inputs must be non-negative')
+    if not math.isfinite(rollback_probability) or not 0 <= rollback_probability <= 1:
+        raise ValueError('rollback_probability must be in [0, 1]')
+    labor_cost = (engineering_hours + validation_hours) * hourly_rate
+    expected_rollback_cost = downtime_hours * downtime_cost_per_hour * rollback_probability
+    return {'labor_cost': labor_cost, 'expected_rollback_cost': expected_rollback_cost, 'total_cost': labor_cost + expected_rollback_cost}
 
-print(migration_cost(5, 3, 2))
+low_risk = migration_cost(120, 100, 40, 2, 5_000, 0.05)
+high_risk = migration_cost(120, 100, 40, 2, 5_000, 0.5)
+assert high_risk['total_cost'] > low_risk['total_cost']
+print('low risk:', low_risk)
+print('high risk:', high_risk)
 ```
 
-## Q3：怎样用成本模型做更合理的选型？
+## Q3：每百万成功请求的分母怎样计算？
 
-<details><summary>点击展开查看解析</summary>
+先固定成本持有期，再估算期间完成的成功请求数。下面的请求率是服务可用且繁忙时的处理速率，可用率表示可服务时间占比，利用率表示可服务时间内的繁忙比例，成功率表示尝试中完成质量与功能要求的比例；四项相乘得到成功请求总量。
 
-做选型时，最好把成本、风险和收益放到同一个表里。
+如果输入请求率已经按完整日历时间平均，就不能再乘一次可用率与利用率。成功请求数为零时，单位成本未定义，不能报告为零。
 
-常见比较维度包括：
-- 初始采购成本；
-- 运行时电力和运维成本；
-- 软件栈成熟度；
-- 迁移和维护风险；
-- 未来扩展的稳定性。
+### Q3 单位成本：分开记录可用率、利用率和成功率
 
-这样得到的不是“最低价”，而是“最适合当前约束的方案”。
-</details>
-### Q3小验证：选型判断先看什么
-
-先看长期约束，再看短期价格。
 
 ```python
-def score_option(total_cost, risk, growth):
-    # 分数越低越好：成本、风险和增长不确定性一起看。
-    return total_cost + risk * 20 + growth * 10
+def cost_per_million_successful_requests(total_cost, requests_per_second,
+                                          availability, months,
+                                          utilization=1.0, success_rate=1.0):
+    """请求率按可用且繁忙时间计；分母另计可用率、利用率与成功率。"""
+    values = (total_cost, requests_per_second, availability, months,
+              utilization, success_rate)
+    if any(not math.isfinite(value) or value < 0 for value in values):
+        raise ValueError('输入必须是有限非负数')
+    if months <= 0 or any(value > 1 for value in
+                          (availability, utilization, success_rate)):
+        raise ValueError('月份须为正，各比例须位于 [0, 1]')
+    successful_requests = (requests_per_second * availability * utilization
+                           * success_rate * months * 30 * 24 * 3600)
+    if successful_requests <= 0:
+        raise ValueError('没有成功请求，单位成本未定义')
+    return total_cost / successful_requests * 1_000_000
+
 
 options = {
-    'stable_gpu': score_option(60, 0.2, 0.3),
-    'cheap_alt': score_option(45, 0.6, 0.7),
+    'stable_example': cost_per_million_successful_requests(
+        gpu_a['total_cost'], 20, 0.99, 24, utilization=0.7, success_rate=0.98),
+    'alternative_example': cost_per_million_successful_requests(
+        gpu_b['total_cost'], 18, 0.96, 24, utilization=0.7, success_rate=0.95),
 }
-for name, score in options.items():
-    print(name, score)
-print('choose:', min(options, key=options.get))
+assert all(value > 0 for value in options.values())
+print('每百万成功请求的构造成本：', options)
+
 ```
 
 ## Q4：为什么扩容节奏和折旧周期也会改变 TCO 结论？
 
-<details><summary>点击展开查看解析</summary>
 
 TCO 不只是“买得起还是用得起”，还取决于你要在多长时间内把这套系统跑满。
 
@@ -131,26 +171,42 @@ TCO 不只是“买得起还是用得起”，还取决于你要在多长时间�
 - 扩容与折旧节奏。
 
 把这些变量放在一起看，才更接近真实的技术选型决策。
-</details>
-### Q4小验证：扩容和折旧为什么要一起看
+
+### Q4 利用率对照：区分折旧分摊与采购现金支出
+
+本例按折旧期分摊采购成本，再除以使用小时；运维与迁移成本输入为同一观察期的合计。它与 Q1 的全额采购现金支出是不同口径，不能把两项采购成本相加；示例同样假设每月 30 天。
+
 
 ```python
-def effective_cost(purchase, ops, migration, idle, depreciation):
-    return purchase + ops + migration + idle + depreciation
+def effective_cost_per_used_hour(purchase_cost, operations_cost, migration_cost, horizon_months, depreciation_months, utilization):
+    """按折旧期分摊采购成本，并以实际使用小时归一化。"""
+    if any(not math.isfinite(value) or value < 0
+           for value in (purchase_cost, operations_cost, migration_cost)):
+        raise ValueError('costs must be non-negative')
+    if (any(not math.isfinite(value) for value in
+            (horizon_months, depreciation_months, utilization))
+            or horizon_months <= 0 or depreciation_months <= 0
+            or not 0 < utilization <= 1):
+        raise ValueError('invalid horizon, depreciation or utilization')
+    allocated_purchase = purchase_cost * min(horizon_months / depreciation_months, 1.0)
+    used_hours = horizon_months * 30 * 24 * utilization
+    total_allocated_cost = allocated_purchase + operations_cost + migration_cost
+    return {'allocated_purchase': allocated_purchase, 'used_hours': used_hours, 'cost_per_used_hour': total_allocated_cost / used_hours}
 
 scenarios = {
-    'fast_expand': effective_cost(100, 20, 8, 20, 10),
-    'slow_expand': effective_cost(100, 20, 8, 5, 28),
+    'high_utilization': effective_cost_per_used_hour(30_000, 5_000, 2_000, 24, 36, 0.8),
+    'low_utilization': effective_cost_per_used_hour(30_000, 5_000, 2_000, 24, 36, 0.3),
 }
-for name, cost in scenarios.items():
-    print(name, cost)
-print('more cost effective:', min(scenarios, key=scenarios.get))
+assert scenarios['high_utilization']['cost_per_used_hour'] < scenarios['low_utilization']['cost_per_used_hour']
+print(scenarios)
 
 ```
 
-## ⚠️ 常见误区
+## 相关阅读
 
-- 只看采购价会漏掉长期成本。
-- 迁移和运维不是附带项，它们会真实影响 TCO。
-- 选型不是找最便宜，而是找最适合约束的方案。
-- 成本模型应同时覆盖技术和业务风险。
+**导语：** 把成本结果交给部署与性能专题，与真实工作负载证据一起判断。
+
+- [31. GPU Virtualization and MIG | GPU 虚拟化与 MIG](./31_GPU_Virtualization_and_MIG.md)
+- [性能优化专题](../topic_discussion/performance_optimization/intro.md)
+- [部署与异构系统专题](../topic_discussion/deployment_heterogeneous/intro.md)
+---
