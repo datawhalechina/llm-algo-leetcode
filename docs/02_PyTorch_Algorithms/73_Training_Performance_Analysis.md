@@ -50,10 +50,10 @@
 | 训练阶段 | 这一步发生什么 | 是否计入一次完整 step | 主要观察 |
 |:---|:---|:---:|:---|
 | 输入准备 | 准备 batch，并把数据放到计算设备 | 是 | 输入准备和搬运时间 |
-| `zero_grad` | 清理上一轮留下的梯度 | 是 | 清理梯度的成本 |
-| forward / loss | 根据输入计算输出和 loss | 是 | activation 和前向时间 |
-| backward | 根据 loss 计算参数梯度 | 是 | 梯度、重算和反向时间 |
-| `optimizer.step` | 用梯度更新参数，并维护优化器状态 | 是 | 参数更新和 optimizer state |
+| 梯度清理 | 清除上一轮遗留的梯度 | 是 | 梯度状态维护的成本 |
+| 前向与损失计算 | 根据 batch 计算模型输出和损失 | 是 | 激活值规模与前向耗时 |
+| 梯度计算 | 根据损失求出各参数的梯度 | 是 | 梯度、重算和反向耗时 |
+| 参数更新 | 使用梯度更新参数及训练状态 | 是 | 更新耗时与优化器状态 |
 
 
 ![73 training step 测量边界](../public/02_PyTorch_Algorithms/73_training_step_boundary.svg)
@@ -469,26 +469,30 @@ def classify_training_bottleneck(evidence, capacity_alert_ratio=0.90, hotspot_sh
 
 ### 解析
 
-**1. 机制：核验训练基线契约**
-- 固定工作负载身份、成功状态和足够的重复样本，是进行瓶颈归因的前提。
-- 不变量：失败运行、缺失阶段字段或样本不足时，不输出瓶颈结论。
-- 测试证据：测试同时覆盖完整报告和缺少工作负载身份的报告。
+基线是否稳定、时间热点和容量压力是否有对应证据，决定瓶颈假设能否进入下一项单变量实验。
 
-**2. 机制：把重复测量与对象账本合成证据**
-- step time 的中位数和变异系数描述基线稳定性；阶段中位数定位时间热点；峰值容量比例和对象账本解释容量压力。
-- 不变量：CPU 计时中的 `peak_mem_mb=0.0` 只是接口占位，不能替代 Step 5 的 GPU 峰值。
-- 测试证据：测试验证反向传播成为主导阶段，同时容量比例超过预警阈值。
+**TODO 1：核验基线契约**
+固定工作负载身份、成功状态和重复样本数量；身份缺失、运行失败或样本不足时停止归因。测试用完整报告与身份缺失报告验证准入条件。
 
-**3. 机制：提出可证伪的瓶颈假设**
-- 证据不稳定时先复测；容量接近上限时进入 76 比较检查点与卸载；否则根据主导阶段选择对应的单变量实验。
-- 不变量：73 只确定下一项实验，不在基线阶段宣告某个优化策略有效。
-- 测试证据：测试覆盖容量压力与测量不稳定两条分支。
+**TODO 2：构造基线证据**
+用重复样本的中位数和变异系数判断计时稳定性，以阶段耗时定位时间热点，并结合峰值容量和对象账本判断容量压力。测试分别覆盖时间热点与容量预警。
+
+**TODO 3：提出瓶颈假设**
+证据不稳定时先补测；容量接近上限时比较检查点或卸载策略；否则围绕主导阶段设计单变量实验。测试验证容量压力与测量不稳定时会给出不同的下一步动作。
 
 ### Step 5（项目实验）：测量训练基线
 
 在相同模型、输入和训练步骤下，各重复三次 FP32 与 BF16，比较单步耗时、吞吐和峰值显存。运行顺序是 `prepare → measure → close`。
 
+| 核对内容 | CPU 练习 | GPU 测量与结果 |
+|:---|:---|:---|
+| 报告可用性 | 检查任务身份、重复样本和失败输入 | 5.5 检查模型与工作负载、重复次数和有限数值 |
+| 训练与资源 | 小网络完成反向传播和参数更新，统计训练状态字节 | 固定模型测量 FP32 与自动混合精度的整步耗时、吞吐和峰值显存 |
+| 后续实验 | 用给定阶段耗时提出可验证假设 | 形成 76 的比较基线；实际阶段耗时由 74 的剖析实验补充 |
+
 #### 5.1 本次运行配置
+
+运行环境：`PERF-CUDA-MECHANISM`，单卡显存至少 8 GiB；环境创建与验证见[性能分析 Quickstart](../topic_discussion/performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart)。
 
 只需填写本次标签和运行阶段。首次打开保持 `prepare`；新测量使用同一唯一标签依次运行 `measure`、`close`。
 
@@ -802,15 +806,54 @@ evidence_review = {
     'baseline': report.get('baseline'), 'candidate': report.get('tuned', report.get('candidate')),
     'summary': report.get('summary'), 'evidence_level': report.get('evidence_level'),
 }
-expected_repeats = report.get('config', {}).get('repeats', 0)
-repeat_ok = (
-    len((report.get('baseline') or {}).get('runs', [])) >= expected_repeats
-    and len((report.get('tuned') or {}).get('runs', [])) >= expected_repeats
-) if is_paired else len((report.get('candidate') or {}).get('runs', [])) >= expected_repeats
+def validate_measured_training_report(report):
+    """核对整步测量的身份、样本与数值，不推断阶段热点或质量等价。"""
+    import math
+    issues = []
+    config = report.get('config') or {}
+    repeats = config.get('repeats')
+    if type(repeats) is not int or repeats < 3:
+        issues.append('repeats_must_be_at_least_three')
+    expected = {
+        'model_id': MODEL_ID, 'workload': WORKLOAD,
+        'batch_size': BATCH_SIZE, 'seq_len': SEQ_LEN,
+        'warmup': WARMUP, 'iters': ITERS, 'seed': SEED,
+        'optimizer': 'AdamW', 'dtype': 'float32',
+    }
+    for key, value in expected.items():
+        if config.get(key) != value:
+            issues.append(f'config_mismatch:{key}')
+    mode = config.get('mode')
+    if mode not in {'paired', 'bf16_probe'}:
+        issues.append('unknown_measurement_mode')
+    positive = ('step_time_ms', 'samples_per_s', 'peak_mem_mb', 'peak_reserved_mb')
+    for name in (('baseline', 'tuned') if mode == 'paired' else ('candidate',)):
+        group = report.get(name)
+        if not isinstance(group, dict):
+            issues.append(f'{name}:missing')
+            continue
+        runs = group.get('runs')
+        if not isinstance(runs, list) or type(repeats) is not int or len(runs) != repeats:
+            issues.append(f'{name}:repeat_count_mismatch')
+        for index, row in enumerate([group] + (runs if isinstance(runs, list) else [])):
+            if not isinstance(row, dict):
+                issues.append(f'{name}:{index}:invalid_row')
+                continue
+            if row.get('status', 'ok') != 'ok':
+                issues.append(f'{name}:{index}:failed')
+            for key in (*positive, 'loss'):
+                value = row.get(key)
+                if (type(value) not in (int, float) or not math.isfinite(value)
+                        or (key in positive and value <= 0)):
+                    issues.append(f'{name}:{index}:invalid_{key}')
+    return issues
+
+measurement_issues = validate_measured_training_report(report)
+evidence_review['issues'] = measurement_issues
 evidence_review['ready_for_decision'] = (
     evidence_review['schema_version'] == SCHEMA_VERSION
     and evidence_review['semantic_id'] == SEMANTIC_ID
-    and repeat_ok
+    and not measurement_issues
     and report.get('run_label') == ('rtx5070ti_training_baseline_v1' if RUN_STAGE == 'prepare' else RUN_LABEL)
 )
 print(evidence_review)
@@ -819,6 +862,8 @@ print(evidence_review)
 
 #### 5.6 形成训练基线结论
 
+`close` 保存决策记录，并核对标签、schema、结论、来源文件和 SHA256。
+
 | 结果 | 条件 | 下一步 |
 | --- | --- | --- |
 | `accept` | 单步耗时和显存收益均达到门槛 | 将结果交给 76 |
@@ -826,6 +871,16 @@ print(evidence_review)
 | `reject` | 两项均未改善 | 保留 FP32 基线 |
 | `measure` | 缺少完整 FP32/BF16 对照 | 补齐测量 |
 
+**当前登记结果**
+
+| 字段 | 登记内容 |
+| --- | --- |
+| 项目与标签 | 73 节训练性能基线；`rtx5070ti_training_baseline_v1` |
+| 运行条件 | RTX 5070 Ti Laptop GPU；固定完整训练 workload |
+| 原始证据 | 正式结果内保存重复测量、运行时和显存记录 |
+| 正式证据 | [训练基线](../../benchmarks/results/73_real_gpu_training_rtx5070ti_training_baseline_v1.json) |
+| 清单与交接 | 无独立 handoff；74、75、76 节按同一 workload 身份引用 |
+| 结论 | `tune`：真实单卡基线已形成，可继续比较显存与 profiling 候选 |
 
 ```python
 if RUN_STAGE == 'close':
@@ -853,6 +908,30 @@ if RUN_STAGE == 'close':
     else:
         save_json_record_once(decision_output_path, decision_asset)
         print({'status': 'completed', 'path': str(decision_output_path), 'decision': training_decision})
+    registered_decision = json.loads(decision_output_path.read_text(encoding='utf-8'))
+    registered_evidence_path = PROJECT_ROOT / registered_decision['source_evidence']['path']
+    registration_receipt = {
+        'run_label_matches': registered_decision.get('run_label') == RUN_LABEL,
+        'schema_matches': registered_decision.get('schema_version') == 'training-baseline-decision/v1',
+        'decision_recorded': isinstance(registered_decision.get('decision', {}).get('decision'), str),
+        'registered_files_exist': decision_output_path.is_file() and registered_evidence_path.is_file(),
+        'source_hash_matches': hashlib.sha256(registered_evidence_path.read_bytes()).hexdigest() == registered_decision['source_evidence']['sha256'],
+    }
+    if not all(registration_receipt.values()):
+        raise RuntimeError(f'训练基线登记核对失败：{registration_receipt}')
+    print({'registration_receipt': registration_receipt, 'decision_path': str(decision_output_path.relative_to(PROJECT_ROOT))})
+    registered_decision = json.loads(decision_output_path.read_text(encoding='utf-8'))
+    registered_evidence_path = PROJECT_ROOT / registered_decision['source_evidence']['path']
+    registration_receipt = {
+        'run_label_matches': registered_decision.get('run_label') == RUN_LABEL,
+        'schema_matches': registered_decision.get('schema_version') == 'training-baseline-decision/v1',
+        'decision_recorded': isinstance(registered_decision.get('decision', {}).get('decision'), str),
+        'registered_files_exist': decision_output_path.is_file() and registered_evidence_path.is_file(),
+        'source_hash_matches': hashlib.sha256(registered_evidence_path.read_bytes()).hexdigest() == registered_decision['source_evidence']['sha256'],
+    }
+    if not all(registration_receipt.values()):
+        raise RuntimeError(f'训练基线登记核对失败：{registration_receipt}')
+    print({'registration_receipt': registration_receipt, 'decision_path': str(decision_output_path.relative_to(PROJECT_ROOT))})
 else:
     print(f'跳过决策写入：当前 RUN_STAGE={RUN_STAGE!r}。')
 
@@ -865,5 +944,4 @@ else:
 - [PyTorch CUDA 内存管理](https://pytorch.org/docs/stable/notes/cuda.html#cuda-memory-management)
 - [PyTorch Automatic Mixed Precision](https://pytorch.org/docs/stable/amp.html)
 - [76 Activation / Checkpoint / Offload 对比项目](./76_Activation_Checkpoint_Offload_Benchmark.md)
-- [75 显存预算压缩项目](./75_Memory_Budget_Compression_Project.md)
 - [74 Profiling 驱动的端到端优化](./74_Profiling_Driven_End_to_End_Optimization.md)
