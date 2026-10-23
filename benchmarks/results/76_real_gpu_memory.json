@@ -1,5 +1,46 @@
 {
   "task": "task3_training_memory_optimization",
+  "g0_reused": true,
+  "environment_preflight": {
+    "environment_profile": null,
+    "status": "ok",
+    "ready": true,
+    "runtime": {
+      "python": "3.12.15 (main, Oct  6 2026, 23:50:18) [GCC 15.3.0]",
+      "platform": "Linux-6.8.0-138-generic-x86_64-with-glibc2.35",
+      "torch": "2.8.0+cu128",
+      "torch_cuda": "12.8",
+      "cuda_available": true,
+      "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+      "device_capability": [
+        12,
+        0
+      ]
+    },
+    "gpu_memory_gb": 11.48,
+    "gpu_device_count": 1,
+    "native_bf16_supported": true,
+    "packages": {
+      "required": {
+        "transformers": true
+      },
+      "optional": {}
+    },
+    "required_packages_missing": [],
+    "distribution_versions": {},
+    "version_mismatches": {},
+    "exact_version_mismatches": {},
+    "forbidden_distributions_present": [],
+    "python_path_isolation": {
+      "sys_prefix": "/data/anaconda3/envs/llm_vllm_cu128",
+      "user_site_enabled": false,
+      "foreign_python_paths": [],
+      "external_site_paths": []
+    },
+    "reasons": [],
+    "next_actions": [],
+    "result_path": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/76_real_gpu_memory.json"
+  },
   "stage": "activation_checkpoint_offload_benchmark",
   "source_baseline": "benchmarks/results/73_real_gpu_training.json",
   "baseline_validation": {
@@ -22,6 +63,8 @@
     "batch_size": 1,
     "seq_len": 768,
     "dtype": "float32",
+    "amp_dtype": null,
+    "mode": "fp32",
     "optimizer": "AdamW",
     "warmup": 2,
     "iters": 5,
@@ -31,58 +74,240 @@
       "offload",
       "hybrid"
     ],
-    "torch": "2.11.0+cu128",
+    "torch": "2.8.0+cu128",
     "torch_cuda": "12.8",
     "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
     "seed": 42
   },
   "budget": {
     "memory_cap_mb": 11200.0,
-    "min_samples_per_s": 1.0
+    "min_samples_per_s": 1.0,
+    "min_memory_saving_mb": 512.0,
+    "min_throughput_ratio": 0.7
   },
   "quality_floor": {
-    "max_val_loss": 12.603633
+    "max_val_loss": 12.54396
   },
   "candidates": [
     {
       "name": "baseline",
+      "seq_len": 768,
       "status": "ok",
-      "step_time_ms": 497.839,
-      "samples_per_s": 2.009,
-      "loss": 11.477463,
-      "eval_loss": 12.356503,
-      "peak_memory_mb": 9782.74,
-      "peak_reserved_mb": 10750.0
+      "step_time_ms": 473.096,
+      "samples_per_s": 2.114,
+      "loss": 11.512,
+      "eval_loss": 12.298,
+      "peak_memory_mb": 9470.08,
+      "peak_reserved_mb": 9856.0,
+      "runs": [
+        {
+          "name": "baseline",
+          "seq_len": 768,
+          "status": "ok",
+          "step_time_ms": 480.687,
+          "samples_per_s": 2.08,
+          "loss": 11.512486,
+          "eval_loss": 12.297889,
+          "peak_memory_mb": 9470.08,
+          "peak_reserved_mb": 9856.0
+        },
+        {
+          "name": "baseline",
+          "seq_len": 768,
+          "status": "ok",
+          "step_time_ms": 466.474,
+          "samples_per_s": 2.144,
+          "loss": 11.512486,
+          "eval_loss": 12.297889,
+          "peak_memory_mb": 9470.08,
+          "peak_reserved_mb": 9856.0
+        },
+        {
+          "name": "baseline",
+          "seq_len": 768,
+          "status": "ok",
+          "step_time_ms": 472.127,
+          "samples_per_s": 2.118,
+          "loss": 11.512486,
+          "eval_loss": 12.297889,
+          "peak_memory_mb": 9470.08,
+          "peak_reserved_mb": 9856.0
+        }
+      ],
+      "successful_runs": 3,
+      "oom_runs": 0,
+      "stability": {
+        "step_time_range_ms": 14.213,
+        "throughput_range_samples_per_s": 0.064,
+        "peak_memory_range_mb": 0.0,
+        "successful_runs": 3,
+        "oom_runs": 0
+      }
     },
     {
       "name": "checkpoint",
+      "seq_len": 768,
       "status": "ok",
-      "step_time_ms": 567.74,
-      "samples_per_s": 1.761,
-      "loss": 11.477463,
-      "eval_loss": 12.356503,
-      "peak_memory_mb": 9450.76,
-      "peak_reserved_mb": 10896.0
+      "step_time_ms": 558.405,
+      "samples_per_s": 1.791,
+      "loss": 11.512,
+      "eval_loss": 12.298,
+      "peak_memory_mb": 9453.65,
+      "peak_reserved_mb": 9950.0,
+      "runs": [
+        {
+          "name": "checkpoint",
+          "seq_len": 768,
+          "status": "ok",
+          "step_time_ms": 571.695,
+          "samples_per_s": 1.749,
+          "loss": 11.512486,
+          "eval_loss": 12.297889,
+          "peak_memory_mb": 9453.65,
+          "peak_reserved_mb": 9950.0
+        },
+        {
+          "name": "checkpoint",
+          "seq_len": 768,
+          "status": "ok",
+          "step_time_ms": 551.754,
+          "samples_per_s": 1.812,
+          "loss": 11.512486,
+          "eval_loss": 12.297889,
+          "peak_memory_mb": 9453.65,
+          "peak_reserved_mb": 9950.0
+        },
+        {
+          "name": "checkpoint",
+          "seq_len": 768,
+          "status": "ok",
+          "step_time_ms": 551.767,
+          "samples_per_s": 1.812,
+          "loss": 11.512486,
+          "eval_loss": 12.297889,
+          "peak_memory_mb": 9453.65,
+          "peak_reserved_mb": 9950.0
+        }
+      ],
+      "successful_runs": 3,
+      "oom_runs": 0,
+      "stability": {
+        "step_time_range_ms": 19.941,
+        "throughput_range_samples_per_s": 0.063,
+        "peak_memory_range_mb": 0.0,
+        "successful_runs": 3,
+        "oom_runs": 0
+      }
     },
     {
       "name": "offload",
+      "seq_len": 768,
       "status": "ok",
-      "step_time_ms": 1877.559,
-      "samples_per_s": 0.533,
-      "loss": 11.477463,
-      "eval_loss": 12.356503,
-      "peak_memory_mb": 9448.33,
-      "peak_reserved_mb": 10404.0
+      "step_time_ms": 3262.047,
+      "samples_per_s": 0.36,
+      "loss": 11.512,
+      "eval_loss": 12.298,
+      "peak_memory_mb": 9445.83,
+      "peak_reserved_mb": 9842.0,
+      "runs": [
+        {
+          "name": "offload",
+          "seq_len": 768,
+          "status": "ok",
+          "step_time_ms": 3017.549,
+          "samples_per_s": 0.331,
+          "loss": 11.512486,
+          "eval_loss": 12.297889,
+          "peak_memory_mb": 9445.83,
+          "peak_reserved_mb": 9842.0
+        },
+        {
+          "name": "offload",
+          "seq_len": 768,
+          "status": "ok",
+          "step_time_ms": 1825.613,
+          "samples_per_s": 0.548,
+          "loss": 11.512486,
+          "eval_loss": 12.297889,
+          "peak_memory_mb": 9445.83,
+          "peak_reserved_mb": 9842.0
+        },
+        {
+          "name": "offload",
+          "seq_len": 768,
+          "status": "ok",
+          "step_time_ms": 4942.979,
+          "samples_per_s": 0.202,
+          "loss": 11.512486,
+          "eval_loss": 12.297889,
+          "peak_memory_mb": 9445.83,
+          "peak_reserved_mb": 9842.0
+        }
+      ],
+      "successful_runs": 3,
+      "oom_runs": 0,
+      "stability": {
+        "step_time_range_ms": 3117.366,
+        "throughput_range_samples_per_s": 0.346,
+        "peak_memory_range_mb": 0.0,
+        "successful_runs": 3,
+        "oom_runs": 0
+      }
     },
     {
       "name": "hybrid",
+      "seq_len": 768,
       "status": "ok",
-      "step_time_ms": 783.478,
-      "samples_per_s": 1.276,
-      "loss": 11.477463,
-      "eval_loss": 12.356503,
-      "peak_memory_mb": 9454.64,
-      "peak_reserved_mb": 10444.0
+      "step_time_ms": 1678.307,
+      "samples_per_s": 0.596,
+      "loss": 11.512,
+      "eval_loss": 12.298,
+      "peak_memory_mb": 9447.46,
+      "peak_reserved_mb": 9824.0,
+      "runs": [
+        {
+          "name": "hybrid",
+          "seq_len": 768,
+          "status": "ok",
+          "step_time_ms": 1665.605,
+          "samples_per_s": 0.6,
+          "loss": 11.512486,
+          "eval_loss": 12.297889,
+          "peak_memory_mb": 9447.46,
+          "peak_reserved_mb": 9824.0
+        },
+        {
+          "name": "hybrid",
+          "seq_len": 768,
+          "status": "ok",
+          "step_time_ms": 1628.036,
+          "samples_per_s": 0.614,
+          "loss": 11.512486,
+          "eval_loss": 12.297889,
+          "peak_memory_mb": 9447.46,
+          "peak_reserved_mb": 9824.0
+        },
+        {
+          "name": "hybrid",
+          "seq_len": 768,
+          "status": "ok",
+          "step_time_ms": 1741.28,
+          "samples_per_s": 0.574,
+          "loss": 11.512486,
+          "eval_loss": 12.297889,
+          "peak_memory_mb": 9447.46,
+          "peak_reserved_mb": 9824.0
+        }
+      ],
+      "successful_runs": 3,
+      "oom_runs": 0,
+      "stability": {
+        "step_time_range_ms": 113.244,
+        "throughput_range_samples_per_s": 0.04,
+        "peak_memory_range_mb": 0.0,
+        "successful_runs": 3,
+        "oom_runs": 0
+      }
     }
   ],
   "summary": {
@@ -90,22 +315,127 @@
     "measured_count": 4,
     "oom_count": 0,
     "invalid_count": 0,
-    "feasible_count": 3,
+    "feasible_count": 2,
     "best_candidate": "checkpoint",
     "quality_failed_count": 0,
     "feasible_names": [
       "checkpoint",
-      "hybrid",
       "baseline"
     ],
-    "baseline_peak_memory_mb": 9782.74,
-    "best_peak_memory_mb": 9450.76,
-    "memory_saving_mb": 331.97999999999956,
-    "throughput_ratio": 0.8765555002488801
+    "baseline_peak_memory_mb": 9470.08,
+    "baseline_available": true,
+    "best_peak_memory_mb": 9453.65,
+    "memory_saving_mb": 16.43000000000029,
+    "throughput_ratio": 0.8472090823084201,
+    "min_memory_saving_mb": 512.0,
+    "min_throughput_ratio": 0.7
   },
   "decision": {
     "decision": "tune",
     "reason": "memory_saving_below_meaningful_threshold",
     "next_action": "test_pressure_or_offload_scope"
+  },
+  "repeat_summary": {
+    "baseline": {
+      "status": "ok",
+      "successful_runs": 3,
+      "oom_runs": 0,
+      "stability": {
+        "step_time_range_ms": 14.213,
+        "throughput_range_samples_per_s": 0.064,
+        "peak_memory_range_mb": 0.0,
+        "successful_runs": 3,
+        "oom_runs": 0
+      }
+    },
+    "checkpoint": {
+      "status": "ok",
+      "successful_runs": 3,
+      "oom_runs": 0,
+      "stability": {
+        "step_time_range_ms": 19.941,
+        "throughput_range_samples_per_s": 0.063,
+        "peak_memory_range_mb": 0.0,
+        "successful_runs": 3,
+        "oom_runs": 0
+      }
+    },
+    "offload": {
+      "status": "ok",
+      "successful_runs": 3,
+      "oom_runs": 0,
+      "stability": {
+        "step_time_range_ms": 3117.366,
+        "throughput_range_samples_per_s": 0.346,
+        "peak_memory_range_mb": 0.0,
+        "successful_runs": 3,
+        "oom_runs": 0
+      }
+    },
+    "hybrid": {
+      "status": "ok",
+      "successful_runs": 3,
+      "oom_runs": 0,
+      "stability": {
+        "step_time_range_ms": 113.244,
+        "throughput_range_samples_per_s": 0.04,
+        "peak_memory_range_mb": 0.0,
+        "successful_runs": 3,
+        "oom_runs": 0
+      }
+    }
+  },
+  "experiment": {
+    "model": "Qwen/Qwen2.5-0.5B-Instruct",
+    "backend": "torch",
+    "dtype": "float32",
+    "optimizer": "AdamW",
+    "batch_size": 1,
+    "seq_len": 768,
+    "warmup": 2,
+    "iters": 5,
+    "seed": 42,
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "torch": "2.8.0+cu128",
+    "cuda": "12.8",
+    "workload": "pressure"
+  },
+  "standard_metrics": {
+    "baseline": {
+      "step_time_ms": 473.096,
+      "throughput_samples_per_s": 2.114,
+      "peak_memory_mb": 9470.08,
+      "peak_reserved_mb": 9856.0,
+      "loss": 11.512,
+      "eval_loss": 12.298,
+      "status": "ok"
+    },
+    "checkpoint": {
+      "step_time_ms": 558.405,
+      "throughput_samples_per_s": 1.791,
+      "peak_memory_mb": 9453.65,
+      "peak_reserved_mb": 9950.0,
+      "loss": 11.512,
+      "eval_loss": 12.298,
+      "status": "ok"
+    },
+    "offload": {
+      "step_time_ms": 3262.047,
+      "throughput_samples_per_s": 0.36,
+      "peak_memory_mb": 9445.83,
+      "peak_reserved_mb": 9842.0,
+      "loss": 11.512,
+      "eval_loss": 12.298,
+      "status": "ok"
+    },
+    "hybrid": {
+      "step_time_ms": 1678.307,
+      "throughput_samples_per_s": 0.596,
+      "peak_memory_mb": 9447.46,
+      "peak_reserved_mb": 9824.0,
+      "loss": 11.512,
+      "eval_loss": 12.298,
+      "status": "ok"
+    }
   }
 }
