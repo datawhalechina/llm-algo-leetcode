@@ -1,0 +1,536 @@
+{
+  "schema_version": "quantization-mechanism-gpu/v5",
+  "chapter": "41",
+  "run_mode": "real_gpu",
+  "run_label": "default13",
+  "environment_profile": "Q-CUDA-MECHANISM",
+  "framework": {
+    "python": "3.12.14",
+    "torch": "2.11.0+cu128",
+    "transformers": "5.17.0",
+    "torchao": "0.18.0"
+  },
+  "network": {
+    "all_proxy_configured": true,
+    "proxy_scheme": "socks5",
+    "socks_support_available": true
+  },
+  "hardware": {
+    "cuda_available": true,
+    "cuda": "12.8",
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000,
+    "compute_capability": [
+      12,
+      0
+    ],
+    "bf16_supported": true
+  },
+  "workload": {
+    "id": "quant-fp8-runtime",
+    "version": "v3",
+    "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "requested_model_revision": "main",
+    "resolved_model_commit": "7ae557604adf67be50417f59c2c2f167def9a775",
+    "revision_resolution_source": "huggingface_hub_api",
+    "prompts": [
+      "Explain why FP8 scaling affects numerical range.",
+      "Compare weight-only and dynamic activation quantization."
+    ],
+    "token_counts": [
+      1,
+      32,
+      256
+    ],
+    "fp8_candidates": [
+      "weight_only",
+      "dynamic_per_tensor",
+      "dynamic_per_row"
+    ],
+    "warmup_steps": 5,
+    "repeat_steps": 20,
+    "seed": 42,
+    "run_label": "default13"
+  },
+  "baseline": {
+    "name": "bf16",
+    "storage_manifest": {
+      "physical_storage_bytes": 988065792,
+      "component_count": 292,
+      "bytes_by_dtype": {
+        "torch.bfloat16": 988065536,
+        "torch.float32": 256
+      }
+    },
+    "memory_scope": "same_process_peak_allocated"
+  },
+  "candidates": {
+    "weight_only": {
+      "config_class": "Float8WeightOnlyConfig",
+      "status": "completed",
+      "failure": null,
+      "probe_weight_type": "Float8Tensor",
+      "storage_manifest": {
+        "physical_storage_bytes": 768198144,
+        "component_count": 462,
+        "bytes_by_dtype": {
+          "torch.bfloat16": 272412416,
+          "torch.float32": 1824512,
+          "torch.float8_e4m3fn": 493961216
+        }
+      },
+      "fp8_storage_observed": true,
+      "native_fp8_kernel_observed": false,
+      "kernel_events": [],
+      "requires_native_fp8_kernel": false,
+      "path_confirmed": true,
+      "row_failures": []
+    },
+    "dynamic_per_tensor": {
+      "config_class": "Float8DynamicActivationFloat8WeightConfig",
+      "status": "completed",
+      "failure": null,
+      "probe_weight_type": "Float8Tensor",
+      "storage_manifest": {
+        "physical_storage_bytes": 766374564,
+        "component_count": 462,
+        "bytes_by_dtype": {
+          "torch.bfloat16": 272412416,
+          "torch.float32": 932,
+          "torch.float8_e4m3fn": 493961216
+        }
+      },
+      "fp8_storage_observed": true,
+      "native_fp8_kernel_observed": true,
+      "kernel_events": [
+        "_RoundToFloat8",
+        "aten::_scaled_mm",
+        "torchao::choose_scale_float8",
+        "void at::native::vectorized_elementwise_kernel<4, at::native::float8_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda(float)#1}, std::array<char*, 2ul> >(int, at::native::float8_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda(float)#1}, std::array<char*, 2ul>)"
+      ],
+      "requires_native_fp8_kernel": true,
+      "path_confirmed": true,
+      "row_failures": []
+    },
+    "dynamic_per_row": {
+      "config_class": "Float8DynamicActivationFloat8WeightConfig",
+      "status": "completed",
+      "failure": null,
+      "probe_weight_type": "Float8Tensor",
+      "storage_manifest": {
+        "physical_storage_bytes": 768198144,
+        "component_count": 462,
+        "bytes_by_dtype": {
+          "torch.bfloat16": 272412416,
+          "torch.float32": 1824512,
+          "torch.float8_e4m3fn": 493961216
+        }
+      },
+      "fp8_storage_observed": true,
+      "native_fp8_kernel_observed": true,
+      "kernel_events": [
+        "_RoundToFloat8",
+        "aten::_scaled_mm",
+        "torchao::choose_scale_float8",
+        "void at::native::vectorized_elementwise_kernel<4, at::native::float8_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda(float)#1}, std::array<char*, 2ul> >(int, at::native::float8_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda(float)#1}, std::array<char*, 2ul>)"
+      ],
+      "requires_native_fp8_kernel": true,
+      "path_confirmed": true,
+      "row_failures": []
+    }
+  },
+  "measurement_matrix": [
+    {
+      "candidate": "weight_only",
+      "prompt_index": 0,
+      "token_count": 1,
+      "status": "completed",
+      "logit_cosine": 0.9815568327903748,
+      "numerical_consistency_passed": false,
+      "baseline": {
+        "latency_median_ms": 5.776111841201782,
+        "latency_p95_ms": 5.8093887090682985,
+        "peak_allocated_bytes": 1006513152
+      },
+      "candidate_metrics": {
+        "latency_median_ms": 29.00441551208496,
+        "latency_p95_ms": 35.87518024444581,
+        "peak_allocated_bytes": 2141806080
+      },
+      "latency_median_ratio": 5.0214428510875715,
+      "latency_p95_ratio": 6.175379552145585,
+      "meaningful_speedup": false
+    },
+    {
+      "candidate": "weight_only",
+      "prompt_index": 0,
+      "token_count": 32,
+      "status": "completed",
+      "logit_cosine": 0.9952346086502075,
+      "numerical_consistency_passed": true,
+      "baseline": {
+        "latency_median_ms": 5.731616020202637,
+        "latency_p95_ms": 5.764321374893188,
+        "peak_allocated_bytes": 1025408000
+      },
+      "candidate_metrics": {
+        "latency_median_ms": 26.10358428955078,
+        "latency_p95_ms": 28.46315574645996,
+        "peak_allocated_bytes": 2151281152
+      },
+      "latency_median_ratio": 4.554314908315842,
+      "latency_p95_ratio": 4.937815554565151,
+      "meaningful_speedup": false
+    },
+    {
+      "candidate": "weight_only",
+      "prompt_index": 0,
+      "token_count": 256,
+      "status": "completed",
+      "logit_cosine": 1.0,
+      "numerical_consistency_passed": true,
+      "baseline": {
+        "latency_median_ms": 11.405904293060303,
+        "latency_p95_ms": 11.490713214874269,
+        "peak_allocated_bytes": 1161944064
+      },
+      "candidate_metrics": {
+        "latency_median_ms": 33.223873138427734,
+        "latency_p95_ms": 33.695887947082525,
+        "peak_allocated_bytes": 2219749888
+      },
+      "latency_median_ratio": 2.9128662037469613,
+      "latency_p95_ratio": 2.9324452988231005,
+      "meaningful_speedup": false
+    },
+    {
+      "candidate": "weight_only",
+      "prompt_index": 1,
+      "token_count": 1,
+      "status": "completed",
+      "logit_cosine": 0.9770545959472656,
+      "numerical_consistency_passed": false,
+      "baseline": {
+        "latency_median_ms": 5.8264000415802,
+        "latency_p95_ms": 6.541585445404053,
+        "peak_allocated_bytes": 1006513152
+      },
+      "candidate_metrics": {
+        "latency_median_ms": 23.70296001434326,
+        "latency_p95_ms": 27.2897891998291,
+        "peak_allocated_bytes": 2141806080
+      },
+      "latency_median_ratio": 4.068199891045362,
+      "latency_p95_ratio": 4.171739317263248,
+      "meaningful_speedup": false
+    },
+    {
+      "candidate": "weight_only",
+      "prompt_index": 1,
+      "token_count": 32,
+      "status": "completed",
+      "logit_cosine": 0.9948875904083252,
+      "numerical_consistency_passed": true,
+      "baseline": {
+        "latency_median_ms": 6.953664064407349,
+        "latency_p95_ms": 7.049068832397461,
+        "peak_allocated_bytes": 1025408000
+      },
+      "candidate_metrics": {
+        "latency_median_ms": 26.654640197753906,
+        "latency_p95_ms": 51.05096836090088,
+        "peak_allocated_bytes": 2151281152
+      },
+      "latency_median_ratio": 3.8331791629375536,
+      "latency_p95_ratio": 7.242228665192069,
+      "meaningful_speedup": false
+    },
+    {
+      "candidate": "weight_only",
+      "prompt_index": 1,
+      "token_count": 256,
+      "status": "completed",
+      "logit_cosine": 1.0,
+      "numerical_consistency_passed": true,
+      "baseline": {
+        "latency_median_ms": 12.40884780883789,
+        "latency_p95_ms": 13.717264127731324,
+        "peak_allocated_bytes": 1161944064
+      },
+      "candidate_metrics": {
+        "latency_median_ms": 34.90483283996582,
+        "latency_p95_ms": 41.670157241821286,
+        "peak_allocated_bytes": 2219749888
+      },
+      "latency_median_ratio": 2.812898778169052,
+      "latency_p95_ratio": 3.0377892306950165,
+      "meaningful_speedup": false
+    },
+    {
+      "candidate": "dynamic_per_tensor",
+      "prompt_index": 0,
+      "token_count": 1,
+      "status": "completed",
+      "logit_cosine": 0.9015184640884399,
+      "numerical_consistency_passed": false,
+      "baseline": {
+        "latency_median_ms": 5.776111841201782,
+        "latency_p95_ms": 5.8093887090682985,
+        "peak_allocated_bytes": 1006513152
+      },
+      "candidate_metrics": {
+        "latency_median_ms": 30.89907169342041,
+        "latency_p95_ms": 32.72756404876709,
+        "peak_allocated_bytes": 777225216
+      },
+      "latency_median_ratio": 5.349458691747133,
+      "latency_p95_ratio": 5.63356416444991,
+      "meaningful_speedup": false
+    },
+    {
+      "candidate": "dynamic_per_tensor",
+      "prompt_index": 0,
+      "token_count": 32,
+      "status": "completed",
+      "logit_cosine": 0.9835555553436279,
+      "numerical_consistency_passed": false,
+      "baseline": {
+        "latency_median_ms": 5.731616020202637,
+        "latency_p95_ms": 5.764321374893188,
+        "peak_allocated_bytes": 1025408000
+      },
+      "candidate_metrics": {
+        "latency_median_ms": 29.61526393890381,
+        "latency_p95_ms": 32.568495178222655,
+        "peak_allocated_bytes": 796147712
+      },
+      "latency_median_ratio": 5.167000691343728,
+      "latency_p95_ratio": 5.650013776136162,
+      "meaningful_speedup": false
+    },
+    {
+      "candidate": "dynamic_per_tensor",
+      "prompt_index": 0,
+      "token_count": 256,
+      "status": "completed",
+      "logit_cosine": 0.9969200491905212,
+      "numerical_consistency_passed": true,
+      "baseline": {
+        "latency_median_ms": 11.405904293060303,
+        "latency_p95_ms": 11.490713214874269,
+        "peak_allocated_bytes": 1161944064
+      },
+      "candidate_metrics": {
+        "latency_median_ms": 29.349984169006348,
+        "latency_p95_ms": 29.48465347290039,
+        "peak_allocated_bytes": 932884480
+      },
+      "latency_median_ratio": 2.573227287805998,
+      "latency_p95_ratio": 2.5659550387815515,
+      "meaningful_speedup": false
+    },
+    {
+      "candidate": "dynamic_per_tensor",
+      "prompt_index": 1,
+      "token_count": 1,
+      "status": "completed",
+      "logit_cosine": 0.9354288578033447,
+      "numerical_consistency_passed": false,
+      "baseline": {
+        "latency_median_ms": 5.8264000415802,
+        "latency_p95_ms": 6.541585445404053,
+        "peak_allocated_bytes": 1006513152
+      },
+      "candidate_metrics": {
+        "latency_median_ms": 27.790688514709473,
+        "latency_p95_ms": 28.334956073760985,
+        "peak_allocated_bytes": 777225216
+      },
+      "latency_median_ratio": 4.769787229915688,
+      "latency_p95_ratio": 4.331512033320361,
+      "meaningful_speedup": false
+    },
+    {
+      "candidate": "dynamic_per_tensor",
+      "prompt_index": 1,
+      "token_count": 32,
+      "status": "completed",
+      "logit_cosine": 0.9873469471931458,
+      "numerical_consistency_passed": false,
+      "baseline": {
+        "latency_median_ms": 6.953664064407349,
+        "latency_p95_ms": 7.049068832397461,
+        "peak_allocated_bytes": 1025408000
+      },
+      "candidate_metrics": {
+        "latency_median_ms": 28.811824798583984,
+        "latency_p95_ms": 30.391008853912357,
+        "peak_allocated_bytes": 796147712
+      },
+      "latency_median_ratio": 4.143401885929268,
+      "latency_p95_ratio": 4.31135084314052,
+      "meaningful_speedup": false
+    },
+    {
+      "candidate": "dynamic_per_tensor",
+      "prompt_index": 1,
+      "token_count": 256,
+      "status": "completed",
+      "logit_cosine": 0.9964260458946228,
+      "numerical_consistency_passed": true,
+      "baseline": {
+        "latency_median_ms": 12.40884780883789,
+        "latency_p95_ms": 13.717264127731324,
+        "peak_allocated_bytes": 1161944064
+      },
+      "candidate_metrics": {
+        "latency_median_ms": 29.581984519958496,
+        "latency_p95_ms": 30.577767753601073,
+        "peak_allocated_bytes": 932884480
+      },
+      "latency_median_ratio": 2.3839428910466185,
+      "latency_p95_ratio": 2.2291447819965744,
+      "meaningful_speedup": false
+    },
+    {
+      "candidate": "dynamic_per_row",
+      "prompt_index": 0,
+      "token_count": 1,
+      "status": "completed",
+      "logit_cosine": 0.9330048561096191,
+      "numerical_consistency_passed": false,
+      "baseline": {
+        "latency_median_ms": 5.776111841201782,
+        "latency_p95_ms": 5.8093887090682985,
+        "peak_allocated_bytes": 1006513152
+      },
+      "candidate_metrics": {
+        "latency_median_ms": 28.949711799621582,
+        "latency_p95_ms": 33.87451934814453,
+        "peak_allocated_bytes": 778963968
+      },
+      "latency_median_ratio": 5.011972170123057,
+      "latency_p95_ratio": 5.830995487574678,
+      "meaningful_speedup": false
+    },
+    {
+      "candidate": "dynamic_per_row",
+      "prompt_index": 0,
+      "token_count": 32,
+      "status": "completed",
+      "logit_cosine": 0.989349365234375,
+      "numerical_consistency_passed": false,
+      "baseline": {
+        "latency_median_ms": 5.731616020202637,
+        "latency_p95_ms": 5.764321374893188,
+        "peak_allocated_bytes": 1025408000
+      },
+      "candidate_metrics": {
+        "latency_median_ms": 29.04326343536377,
+        "latency_p95_ms": 30.40420150756836,
+        "peak_allocated_bytes": 797886464
+      },
+      "latency_median_ratio": 5.067203269198932,
+      "latency_p95_ratio": 5.274550034631222,
+      "meaningful_speedup": false
+    },
+    {
+      "candidate": "dynamic_per_row",
+      "prompt_index": 0,
+      "token_count": 256,
+      "status": "completed",
+      "logit_cosine": 0.9983859062194824,
+      "numerical_consistency_passed": true,
+      "baseline": {
+        "latency_median_ms": 11.405904293060303,
+        "latency_p95_ms": 11.490713214874269,
+        "peak_allocated_bytes": 1161944064
+      },
+      "candidate_metrics": {
+        "latency_median_ms": 29.952159881591797,
+        "latency_p95_ms": 34.629553985595706,
+        "peak_allocated_bytes": 934622720
+      },
+      "latency_median_ratio": 2.62602237507951,
+      "latency_p95_ratio": 3.013699266357908,
+      "meaningful_speedup": false
+    },
+    {
+      "candidate": "dynamic_per_row",
+      "prompt_index": 1,
+      "token_count": 1,
+      "status": "completed",
+      "logit_cosine": 0.9746414422988892,
+      "numerical_consistency_passed": false,
+      "baseline": {
+        "latency_median_ms": 5.8264000415802,
+        "latency_p95_ms": 6.541585445404053,
+        "peak_allocated_bytes": 1006513152
+      },
+      "candidate_metrics": {
+        "latency_median_ms": 28.53489589691162,
+        "latency_p95_ms": 30.402749443054198,
+        "peak_allocated_bytes": 778963968
+      },
+      "latency_median_ratio": 4.8975174538775,
+      "latency_p95_ratio": 4.647611759686542,
+      "meaningful_speedup": false
+    },
+    {
+      "candidate": "dynamic_per_row",
+      "prompt_index": 1,
+      "token_count": 32,
+      "status": "completed",
+      "logit_cosine": 0.9911255836486816,
+      "numerical_consistency_passed": true,
+      "baseline": {
+        "latency_median_ms": 6.953664064407349,
+        "latency_p95_ms": 7.049068832397461,
+        "peak_allocated_bytes": 1025408000
+      },
+      "candidate_metrics": {
+        "latency_median_ms": 28.99019145965576,
+        "latency_p95_ms": 33.538839721679686,
+        "peak_allocated_bytes": 797886464
+      },
+      "latency_median_ratio": 4.1690526305467355,
+      "latency_p95_ratio": 4.757910657296388,
+      "meaningful_speedup": false
+    },
+    {
+      "candidate": "dynamic_per_row",
+      "prompt_index": 1,
+      "token_count": 256,
+      "status": "completed",
+      "logit_cosine": 0.9982471466064453,
+      "numerical_consistency_passed": true,
+      "baseline": {
+        "latency_median_ms": 12.40884780883789,
+        "latency_p95_ms": 13.717264127731324,
+        "peak_allocated_bytes": 1161944064
+      },
+      "candidate_metrics": {
+        "latency_median_ms": 28.621760368347168,
+        "latency_p95_ms": 30.583249473571776,
+        "peak_allocated_bytes": 934622720
+      },
+      "latency_median_ratio": 2.306560674228113,
+      "latency_p95_ratio": 2.2295444039561474,
+      "meaningful_speedup": false
+    }
+  ],
+  "mechanism_metrics": {
+    "candidate_matrix_complete": true,
+    "numerical_consistency_passed": false,
+    "path_evidence_complete": true,
+    "meaningfully_faster_cases": 0,
+    "total_measured_cases": 18,
+    "expected_cases": 18,
+    "failed_cases": 0,
+    "memory_comparison_valid": false,
+    "memory_note": "峰值来自同一进程的 allocated memory，只作局部诊断。"
+  },
+  "failure": null,
+  "evidence_level": "local_mechanism_benchmark_with_path_evidence",
+  "decision": "tune_or_fallback"
+}

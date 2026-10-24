@@ -1,0 +1,436 @@
+{
+  "schema_version": "quantization-mechanism-gpu/v7",
+  "chapter": "54",
+  "run_mode": "real_gpu",
+  "run_label": "default18",
+  "environment_profile": "Q-CUDA-MECHANISM",
+  "framework": {
+    "python": "3.12.14",
+    "torch": "2.11.0+cu128",
+    "transformers": "5.17.0",
+    "hqq": "0.2.8.post1"
+  },
+  "hardware": {
+    "cuda_available": true,
+    "cuda": "12.8",
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000,
+    "compute_capability": [
+      12,
+      0
+    ]
+  },
+  "workload": {
+    "workload_id": "quant-kv-runtime",
+    "workload_version": "v5",
+    "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "model_revision": "main",
+    "resolved_model_commit": "7ae557604adf67be50417f59c2c2f167def9a775",
+    "revision_resolution_source": "local_cache_ref",
+    "cache_dir": null,
+    "context_lengths": [
+      512,
+      2048,
+      4096
+    ],
+    "context_matrix_new_tokens": 64,
+    "fixed_residual_length": 128,
+    "window_context_length": 512,
+    "window_matrix_new_tokens": 128,
+    "model_dtype": "bfloat16",
+    "residual_lengths": [
+      16,
+      32,
+      64
+    ],
+    "warmup_steps": 1,
+    "repeat_steps": 3,
+    "quality_tokens": 16,
+    "top_k": 5,
+    "max_mean_nll_delta": 0.5,
+    "min_topk_overlap": 0.6,
+    "max_latency_ratio": 2.0,
+    "seed": 42,
+    "run_label": "default18",
+    "prompt_sha256": "9be0238e0fca20d810ce4ec53489b68f9a24a6954ac5ea4a9328bcd7dda32644"
+  },
+  "baseline": {
+    "name": "dynamic_cache",
+    "capacity_by_context": {
+      "512": {
+        "performance": {
+          "median_latency_ms": 460.3566790028708,
+          "min_latency_ms": 442.8907499968773,
+          "generated_tokens": 64,
+          "generation_ms_per_token": 7.193073109419856,
+          "base_allocated_bytes": 1006095360,
+          "base_reserved_bytes": 1061158912,
+          "peak_allocated_bytes": 1031144960,
+          "peak_reserved_bytes": 1096810496,
+          "incremental_peak_allocated_bytes": 25049600,
+          "incremental_peak_reserved_bytes": 35651584
+        },
+        "quality": {
+          "mean_nll": 0.005520916977729939,
+          "evaluated_tokens": 16
+        }
+      },
+      "2048": {
+        "performance": {
+          "median_latency_ms": 495.8359250013018,
+          "min_latency_ms": 494.21729700407013,
+          "generated_tokens": 64,
+          "generation_ms_per_token": 7.747436328145341,
+          "base_allocated_bytes": 1006119936,
+          "base_reserved_bytes": 1061158912,
+          "peak_allocated_bytes": 1109456384,
+          "peak_reserved_bytes": 1184890880,
+          "incremental_peak_allocated_bytes": 103336448,
+          "incremental_peak_reserved_bytes": 123731968
+        },
+        "quality": {
+          "mean_nll": 0.001390138555507292,
+          "evaluated_tokens": 16
+        }
+      },
+      "4096": {
+        "performance": {
+          "median_latency_ms": 565.1869740104303,
+          "min_latency_ms": 560.5306540091988,
+          "generated_tokens": 64,
+          "generation_ms_per_token": 8.831046468912973,
+          "base_allocated_bytes": 1006152704,
+          "base_reserved_bytes": 1061158912,
+          "peak_allocated_bytes": 1206531584,
+          "peak_reserved_bytes": 1287651328,
+          "incremental_peak_allocated_bytes": 200378880,
+          "incremental_peak_reserved_bytes": 226492416
+        },
+        "quality": {
+          "mean_nll": 0.0015278859391401056,
+          "evaluated_tokens": 16
+        }
+      }
+    },
+    "residual_window": {
+      "median_latency_ms": 882.7753859950462,
+      "min_latency_ms": 881.2930999993114,
+      "generated_tokens": 128,
+      "generation_ms_per_token": 6.896682703086299,
+      "base_allocated_bytes": 1006095360,
+      "base_reserved_bytes": 1061158912,
+      "peak_allocated_bytes": 1031145472,
+      "peak_reserved_bytes": 1096810496,
+      "incremental_peak_allocated_bytes": 25050112,
+      "incremental_peak_reserved_bytes": 35651584
+    }
+  },
+  "candidate_family": {
+    "name": "quantized_cache",
+    "backend": "hqq",
+    "nbits": 4,
+    "q_group_size": 64,
+    "residual_lengths": [
+      16,
+      32,
+      64
+    ]
+  },
+  "measurement_matrix": [
+    {
+      "matrix_role": "context_capacity",
+      "context_length": 512,
+      "max_new_tokens": 64,
+      "residual_length": 128,
+      "nbits": 4,
+      "q_group_size": 64,
+      "axis_key": 1,
+      "axis_value": 1,
+      "baseline": {
+        "median_latency_ms": 460.3566790028708,
+        "min_latency_ms": 442.8907499968773,
+        "generated_tokens": 64,
+        "generation_ms_per_token": 7.193073109419856,
+        "base_allocated_bytes": 1006095360,
+        "base_reserved_bytes": 1061158912,
+        "peak_allocated_bytes": 1031144960,
+        "peak_reserved_bytes": 1096810496,
+        "incremental_peak_allocated_bytes": 25049600,
+        "incremental_peak_reserved_bytes": 35651584
+      },
+      "candidate": {
+        "median_latency_ms": 577.5845439929981,
+        "min_latency_ms": 542.502976997639,
+        "generated_tokens": 64,
+        "generation_ms_per_token": 9.024758499890595,
+        "base_allocated_bytes": 1006095872,
+        "base_reserved_bytes": 1061158912,
+        "peak_allocated_bytes": 1026623488,
+        "peak_reserved_bytes": 1092616192,
+        "incremental_peak_allocated_bytes": 20527616,
+        "incremental_peak_reserved_bytes": 31457280
+      },
+      "baseline_quality": {
+        "mean_nll": 0.005520916977729939,
+        "evaluated_tokens": 16
+      },
+      "candidate_quality": {
+        "mean_nll": 0.47261531549156643,
+        "evaluated_tokens": 16
+      },
+      "fixed_continuation_nll_delta": 0.4670943985138365,
+      "fixed_continuation_nll_ratio": 85.60449602810253,
+      "mean_topk_overlap": 0.6125,
+      "incremental_peak_saved_bytes": 4521984,
+      "incremental_peak_reduction_ratio": 0.18052120592743992,
+      "latency_ratio_candidate_over_baseline": 1.2546457352243525,
+      "greedy_output_exact_match": false,
+      "token_agreement_rate": 0.125,
+      "first_divergence_index": 8
+    },
+    {
+      "matrix_role": "context_capacity",
+      "context_length": 2048,
+      "max_new_tokens": 64,
+      "residual_length": 128,
+      "nbits": 4,
+      "q_group_size": 64,
+      "axis_key": 1,
+      "axis_value": 1,
+      "baseline": {
+        "median_latency_ms": 495.8359250013018,
+        "min_latency_ms": 494.21729700407013,
+        "generated_tokens": 64,
+        "generation_ms_per_token": 7.747436328145341,
+        "base_allocated_bytes": 1006119936,
+        "base_reserved_bytes": 1061158912,
+        "peak_allocated_bytes": 1109456384,
+        "peak_reserved_bytes": 1184890880,
+        "incremental_peak_allocated_bytes": 103336448,
+        "incremental_peak_reserved_bytes": 123731968
+      },
+      "candidate": {
+        "median_latency_ms": 637.2914979874622,
+        "min_latency_ms": 631.1308900039876,
+        "generated_tokens": 64,
+        "generation_ms_per_token": 9.957679656054097,
+        "base_allocated_bytes": 1006120448,
+        "base_reserved_bytes": 1061158912,
+        "peak_allocated_bytes": 1091368960,
+        "peak_reserved_bytes": 1161822208,
+        "incremental_peak_allocated_bytes": 85248512,
+        "incremental_peak_reserved_bytes": 100663296
+      },
+      "baseline_quality": {
+        "mean_nll": 0.001390138555507292,
+        "evaluated_tokens": 16
+      },
+      "candidate_quality": {
+        "mean_nll": 0.3767412486331523,
+        "evaluated_tokens": 16
+      },
+      "fixed_continuation_nll_delta": 0.375351110077645,
+      "fixed_continuation_nll_ratio": 271.0098551979742,
+      "mean_topk_overlap": 0.7,
+      "incremental_peak_saved_bytes": 18087936,
+      "incremental_peak_reduction_ratio": 0.1750392659132236,
+      "latency_ratio_candidate_over_baseline": 1.2852870593952808,
+      "greedy_output_exact_match": false,
+      "token_agreement_rate": 0.171875,
+      "first_divergence_index": 2
+    },
+    {
+      "matrix_role": "context_capacity",
+      "context_length": 4096,
+      "max_new_tokens": 64,
+      "residual_length": 128,
+      "nbits": 4,
+      "q_group_size": 64,
+      "axis_key": 1,
+      "axis_value": 1,
+      "baseline": {
+        "median_latency_ms": 565.1869740104303,
+        "min_latency_ms": 560.5306540091988,
+        "generated_tokens": 64,
+        "generation_ms_per_token": 8.831046468912973,
+        "base_allocated_bytes": 1006152704,
+        "base_reserved_bytes": 1061158912,
+        "peak_allocated_bytes": 1206531584,
+        "peak_reserved_bytes": 1287651328,
+        "incremental_peak_allocated_bytes": 200378880,
+        "incremental_peak_reserved_bytes": 226492416
+      },
+      "candidate": {
+        "median_latency_ms": 758.4969610034022,
+        "min_latency_ms": 756.2308350024978,
+        "generated_tokens": 64,
+        "generation_ms_per_token": 11.85151501567816,
+        "base_allocated_bytes": 1006153216,
+        "base_reserved_bytes": 1061158912,
+        "peak_allocated_bytes": 1170356224,
+        "peak_reserved_bytes": 1268776960,
+        "incremental_peak_allocated_bytes": 164203008,
+        "incremental_peak_reserved_bytes": 207618048
+      },
+      "baseline_quality": {
+        "mean_nll": 0.0015278859391401056,
+        "evaluated_tokens": 16
+      },
+      "candidate_quality": {
+        "mean_nll": 0.974574088355439,
+        "evaluated_tokens": 16
+      },
+      "fixed_continuation_nll_delta": 0.9730462024162989,
+      "fixed_continuation_nll_ratio": 637.8578815274192,
+      "mean_topk_overlap": 0.55,
+      "incremental_peak_saved_bytes": 36175872,
+      "incremental_peak_reduction_ratio": 0.18053735004407645,
+      "latency_ratio_candidate_over_baseline": 1.342028383317632,
+      "greedy_output_exact_match": false,
+      "token_agreement_rate": 0.203125,
+      "first_divergence_index": 4
+    },
+    {
+      "matrix_role": "residual_window",
+      "context_length": 512,
+      "max_new_tokens": 128,
+      "residual_length": 16,
+      "expected_decode_window_flushes": 8,
+      "nbits": 4,
+      "q_group_size": 64,
+      "axis_key": 1,
+      "axis_value": 1,
+      "baseline": {
+        "median_latency_ms": 882.7753859950462,
+        "min_latency_ms": 881.2930999993114,
+        "generated_tokens": 128,
+        "generation_ms_per_token": 6.896682703086299,
+        "base_allocated_bytes": 1006095360,
+        "base_reserved_bytes": 1061158912,
+        "peak_allocated_bytes": 1031145472,
+        "peak_reserved_bytes": 1096810496,
+        "incremental_peak_allocated_bytes": 25050112,
+        "incremental_peak_reserved_bytes": 35651584
+      },
+      "candidate": {
+        "median_latency_ms": 1415.8057349995943,
+        "min_latency_ms": 1412.787983994349,
+        "generated_tokens": 128,
+        "generation_ms_per_token": 11.06098230468433,
+        "base_allocated_bytes": 1006095360,
+        "base_reserved_bytes": 1061158912,
+        "peak_allocated_bytes": 1026623488,
+        "peak_reserved_bytes": 1092616192,
+        "incremental_peak_allocated_bytes": 20528128,
+        "incremental_peak_reserved_bytes": 31457280
+      },
+      "incremental_peak_saved_bytes": 4521984,
+      "incremental_peak_reduction_ratio": 0.18051751624902912,
+      "latency_ratio_candidate_over_baseline": 1.6038119746663837,
+      "greedy_output_exact_match": false,
+      "token_agreement_rate": 0.125,
+      "first_divergence_index": 8
+    },
+    {
+      "matrix_role": "residual_window",
+      "context_length": 512,
+      "max_new_tokens": 128,
+      "residual_length": 32,
+      "expected_decode_window_flushes": 4,
+      "nbits": 4,
+      "q_group_size": 64,
+      "axis_key": 1,
+      "axis_value": 1,
+      "baseline": {
+        "median_latency_ms": 882.7753859950462,
+        "min_latency_ms": 881.2930999993114,
+        "generated_tokens": 128,
+        "generation_ms_per_token": 6.896682703086299,
+        "base_allocated_bytes": 1006095360,
+        "base_reserved_bytes": 1061158912,
+        "peak_allocated_bytes": 1031145472,
+        "peak_reserved_bytes": 1096810496,
+        "incremental_peak_allocated_bytes": 25050112,
+        "incremental_peak_reserved_bytes": 35651584
+      },
+      "candidate": {
+        "median_latency_ms": 1243.8174150011037,
+        "min_latency_ms": 1202.7227130020037,
+        "generated_tokens": 128,
+        "generation_ms_per_token": 9.717323554696122,
+        "base_allocated_bytes": 1006095360,
+        "base_reserved_bytes": 1061158912,
+        "peak_allocated_bytes": 1026623488,
+        "peak_reserved_bytes": 1092616192,
+        "incremental_peak_allocated_bytes": 20528128,
+        "incremental_peak_reserved_bytes": 31457280
+      },
+      "incremental_peak_saved_bytes": 4521984,
+      "incremental_peak_reduction_ratio": 0.18051751624902912,
+      "latency_ratio_candidate_over_baseline": 1.408985156058807,
+      "greedy_output_exact_match": false,
+      "token_agreement_rate": 0.0625,
+      "first_divergence_index": 8
+    },
+    {
+      "matrix_role": "residual_window",
+      "context_length": 512,
+      "max_new_tokens": 128,
+      "residual_length": 64,
+      "expected_decode_window_flushes": 2,
+      "nbits": 4,
+      "q_group_size": 64,
+      "axis_key": 1,
+      "axis_value": 1,
+      "baseline": {
+        "median_latency_ms": 882.7753859950462,
+        "min_latency_ms": 881.2930999993114,
+        "generated_tokens": 128,
+        "generation_ms_per_token": 6.896682703086299,
+        "base_allocated_bytes": 1006095360,
+        "base_reserved_bytes": 1061158912,
+        "peak_allocated_bytes": 1031145472,
+        "peak_reserved_bytes": 1096810496,
+        "incremental_peak_allocated_bytes": 25050112,
+        "incremental_peak_reserved_bytes": 35651584
+      },
+      "candidate": {
+        "median_latency_ms": 1105.1404909958364,
+        "min_latency_ms": 1104.5737259992165,
+        "generated_tokens": 128,
+        "generation_ms_per_token": 8.633910085904972,
+        "base_allocated_bytes": 1006095360,
+        "base_reserved_bytes": 1061158912,
+        "peak_allocated_bytes": 1026623488,
+        "peak_reserved_bytes": 1092616192,
+        "incremental_peak_allocated_bytes": 20528128,
+        "incremental_peak_reserved_bytes": 31457280
+      },
+      "incremental_peak_saved_bytes": 4521984,
+      "incremental_peak_reduction_ratio": 0.18051751624902912,
+      "latency_ratio_candidate_over_baseline": 1.2518931865665295,
+      "greedy_output_exact_match": false,
+      "token_agreement_rate": 0.0625,
+      "first_divergence_index": 8
+    }
+  ],
+  "mechanism_metrics": {
+    "memory_reduction_onset_context": 512,
+    "eligible_crossover_context": 512,
+    "backend_axis": 1,
+    "eligible_candidate_count": 2,
+    "selected_candidate": {
+      "context_length": 2048,
+      "residual_length": 128,
+      "incremental_peak_saved_bytes": 18087936,
+      "incremental_peak_reduction_ratio": 0.1750392659132236,
+      "latency_ratio_candidate_over_baseline": 1.2852870593952808,
+      "fixed_continuation_nll_delta": 0.375351110077645,
+      "fixed_continuation_nll_ratio": 271.0098551979742,
+      "mean_topk_overlap": 0.7
+    }
+  },
+  "failure": null,
+  "evidence_level": "matched_transformers_quantized_cache_context_window_matrix",
+  "decision": "accept_local_cache_candidate"
+}

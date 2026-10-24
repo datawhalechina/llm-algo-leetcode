@@ -1,0 +1,796 @@
+{
+  "schema_version": "quantization-mechanism-gpu/v5",
+  "chapter": "53",
+  "environment_profile": "Q-CUDA-MECHANISM",
+  "run_mode": "real_gpu",
+  "run_label": "default111",
+  "framework": {
+    "python": "3.12.14",
+    "torch": "2.11.0+cu128",
+    "transformers": "5.17.0",
+    "llmcompressor": "0.14.0",
+    "compressed_tensors": "0.19.0",
+    "datasets": "5.0.1"
+  },
+  "network": {
+    "all_proxy_configured": true,
+    "proxy_scheme": "socks5",
+    "socks_support_available": true
+  },
+  "hardware": {
+    "cuda_available": true,
+    "cuda": "12.8",
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000,
+    "compute_capability": [
+      12,
+      0
+    ],
+    "bf16_supported": true
+  },
+  "dataset": {
+    "source": "huggingface",
+    "dataset_id": "Salesforce/wikitext",
+    "config": "wikitext-2-raw-v1",
+    "revision": "f776294184f13b8ff2337b3841cf9269a6216d1e",
+    "calibration_split": "train",
+    "evaluation_split": "validation",
+    "calibration_samples": 64,
+    "evaluation_samples": 64,
+    "generation_samples": 8,
+    "range_audit_samples": 8,
+    "selection_seed": 42,
+    "calibration_ids_hash": "520877b3c3a34d8a782f51761e5f029e13acae01f590f47ee327d5401679e198",
+    "evaluation_ids_hash": "70d78bb1102023439a95093bf4921135670a8f3d5f1222969fe7858fae08ea30",
+    "filter": "non_empty_text",
+    "evaluation_shuffle": false
+  },
+  "workload": {
+    "id": "quant-smoothquant-w8a8",
+    "version": "v4",
+    "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "requested_model_revision": "main",
+    "resolved_model_commit": "7ae557604adf67be50417f59c2c2f167def9a775",
+    "loader_revision": "7ae557604adf67be50417f59c2c2f167def9a775",
+    "revision_resolution_source": "huggingface_hub_api",
+    "revision_is_pinned": true,
+    "max_seq_length": 256,
+    "max_new_tokens": 32,
+    "smoothquant_alpha_candidates": [
+      0.5,
+      0.7,
+      0.8,
+      0.9
+    ],
+    "max_nll_ratio_vs_bf16": 1.1,
+    "max_nll_ratio_vs_w8a8": 0.995,
+    "range_audit_modules": [
+      "model.layers.0.self_attn.q_proj",
+      "model.layers.0.mlp.gate_proj",
+      "model.layers.0.mlp.down_proj"
+    ],
+    "seed": 42,
+    "run_label": "default111"
+  },
+  "baseline": {
+    "name": "bf16",
+    "memory_isolation": "shared_process",
+    "allocated_before_bytes": 0,
+    "peak_allocated_bytes": 1385842688,
+    "peak_incremental_bytes": 1385842688,
+    "allocated_after_cleanup_bytes": 9568256,
+    "token_weighted_nll": 3.39392034654966,
+    "perplexity": 29.782481351940092,
+    "evaluated_tokens": 6290,
+    "input_range_audit": {
+      "model.layers.0.self_attn.q_proj": {
+        "channels": 896,
+        "absmax": 3.671875,
+        "channel_absmax_median": 0.1494140625,
+        "channel_absmax_p99": 1.1257810592651367
+      },
+      "model.layers.0.mlp.gate_proj": {
+        "channels": 896,
+        "absmax": 11.625,
+        "channel_absmax_median": 1.8125,
+        "channel_absmax_p99": 3.4749984741210938
+      },
+      "model.layers.0.mlp.down_proj": {
+        "channels": 4864,
+        "absmax": 7.375,
+        "channel_absmax_median": 0.625,
+        "channel_absmax_p99": 4.667816162109375
+      }
+    }
+  },
+  "candidates": {
+    "w8a8": {
+      "calibration_seconds": 9.703815015993314,
+      "memory_isolation": "shared_process",
+      "allocated_before_bytes": 9568256,
+      "peak_allocated_bytes": 1390513152,
+      "peak_incremental_bytes": 1380944896,
+      "artifact_path": "02_PyTorch_Algorithms/benchmarks/artifacts/53_smoothquant/default111/w8a8",
+      "artifact_manifest": {
+        "file_count": 7,
+        "total_bytes": 642326426,
+        "files": [
+          {
+            "path": "chat_template.jinja",
+            "bytes": 2507
+          },
+          {
+            "path": "config.json",
+            "bytes": 1961
+          },
+          {
+            "path": "generation_config.json",
+            "bytes": 242
+          },
+          {
+            "path": "model.safetensors",
+            "bytes": 630898728
+          },
+          {
+            "path": "recipe.yaml",
+            "bytes": 304
+          },
+          {
+            "path": "tokenizer.json",
+            "bytes": 11421990
+          },
+          {
+            "path": "tokenizer_config.json",
+            "bytes": 694
+          }
+        ],
+        "quantization_config": {
+          "config_groups": {
+            "group_0": {
+              "format": "int-quantized",
+              "input_activations": {
+                "actorder": null,
+                "block_structure": null,
+                "dynamic": true,
+                "group_size": null,
+                "num_bits": 8,
+                "observer": null,
+                "observer_kwargs": {},
+                "scale_dtype": null,
+                "strategy": "token",
+                "symmetric": true,
+                "type": "int",
+                "zp_dtype": null
+              },
+              "output_activations": null,
+              "targets": [
+                "Linear"
+              ],
+              "weights": {
+                "actorder": "static",
+                "block_structure": null,
+                "dynamic": false,
+                "group_size": null,
+                "num_bits": 8,
+                "observer": "memoryless_minmax",
+                "observer_kwargs": {},
+                "scale_dtype": null,
+                "strategy": "channel",
+                "symmetric": true,
+                "type": "int",
+                "zp_dtype": null
+              }
+            }
+          },
+          "format": "int-quantized",
+          "global_compression_ratio": null,
+          "ignore": [
+            "lm_head"
+          ],
+          "kv_cache_scheme": null,
+          "quant_method": "compressed-tensors",
+          "quantization_status": "compressed",
+          "sparsity_config": {},
+          "transform_config": {},
+          "version": "0.19.0"
+        },
+        "has_config": true,
+        "has_weight_file": true
+      },
+      "token_weighted_nll": 3.4347719850525,
+      "perplexity": 31.02433774623402,
+      "evaluated_tokens": 6290,
+      "nll_ratio_vs_bf16": 1.0120367110396007,
+      "mean_greedy_prefix_agreement": 0.0234375,
+      "input_range_audit": {
+        "model.layers.0.self_attn.q_proj": {
+          "channels": 896,
+          "absmax": 3.671875,
+          "channel_absmax_median": 0.1494140625,
+          "channel_absmax_p99": 1.1257810592651367
+        },
+        "model.layers.0.mlp.gate_proj": {
+          "channels": 896,
+          "absmax": 11.625,
+          "channel_absmax_median": 1.8125,
+          "channel_absmax_p99": 3.492185592651367
+        },
+        "model.layers.0.mlp.down_proj": {
+          "channels": 4864,
+          "absmax": 7.34375,
+          "channel_absmax_median": 0.625,
+          "channel_absmax_p99": 4.65625
+        }
+      },
+      "input_range_ratio_vs_bf16": {
+        "model.layers.0.self_attn.q_proj": {
+          "absmax_ratio_vs_bf16": 1.0,
+          "p99_ratio_vs_bf16": 1.0
+        },
+        "model.layers.0.mlp.gate_proj": {
+          "absmax_ratio_vs_bf16": 1.0,
+          "p99_ratio_vs_bf16": 1.0049459355617762
+        },
+        "model.layers.0.mlp.down_proj": {
+          "absmax_ratio_vs_bf16": 0.9957627118644068,
+          "p99_ratio_vs_bf16": 0.9975221470367102
+        }
+      },
+      "allocated_after_cleanup_bytes": 1002336256,
+      "nll_ratio_vs_w8a8": 1.0
+    },
+    "smoothquant_alpha_0.5": {
+      "calibration_seconds": 10.897121132002212,
+      "memory_isolation": "shared_process",
+      "allocated_before_bytes": 1002336256,
+      "peak_allocated_bytes": 2384001024,
+      "peak_incremental_bytes": 1381664768,
+      "artifact_path": "02_PyTorch_Algorithms/benchmarks/artifacts/53_smoothquant/default111/smoothquant_alpha_0.5",
+      "artifact_manifest": {
+        "file_count": 7,
+        "total_bytes": 642326799,
+        "files": [
+          {
+            "path": "chat_template.jinja",
+            "bytes": 2507
+          },
+          {
+            "path": "config.json",
+            "bytes": 1961
+          },
+          {
+            "path": "generation_config.json",
+            "bytes": 242
+          },
+          {
+            "path": "model.safetensors",
+            "bytes": 630898728
+          },
+          {
+            "path": "recipe.yaml",
+            "bytes": 677
+          },
+          {
+            "path": "tokenizer.json",
+            "bytes": 11421990
+          },
+          {
+            "path": "tokenizer_config.json",
+            "bytes": 694
+          }
+        ],
+        "quantization_config": {
+          "config_groups": {
+            "group_0": {
+              "format": "int-quantized",
+              "input_activations": {
+                "actorder": null,
+                "block_structure": null,
+                "dynamic": true,
+                "group_size": null,
+                "num_bits": 8,
+                "observer": null,
+                "observer_kwargs": {},
+                "scale_dtype": null,
+                "strategy": "token",
+                "symmetric": true,
+                "type": "int",
+                "zp_dtype": null
+              },
+              "output_activations": null,
+              "targets": [
+                "Linear"
+              ],
+              "weights": {
+                "actorder": "static",
+                "block_structure": null,
+                "dynamic": false,
+                "group_size": null,
+                "num_bits": 8,
+                "observer": "memoryless_minmax",
+                "observer_kwargs": {},
+                "scale_dtype": null,
+                "strategy": "channel",
+                "symmetric": true,
+                "type": "int",
+                "zp_dtype": null
+              }
+            }
+          },
+          "format": "int-quantized",
+          "global_compression_ratio": null,
+          "ignore": [
+            "lm_head"
+          ],
+          "kv_cache_scheme": null,
+          "quant_method": "compressed-tensors",
+          "quantization_status": "compressed",
+          "sparsity_config": {},
+          "transform_config": {},
+          "version": "0.19.0"
+        },
+        "has_config": true,
+        "has_weight_file": true
+      },
+      "token_weighted_nll": 3.401523018186536,
+      "perplexity": 30.009770686491272,
+      "evaluated_tokens": 6290,
+      "nll_ratio_vs_bf16": 1.0022400854647648,
+      "mean_greedy_prefix_agreement": 0.12890625,
+      "input_range_audit": {
+        "model.layers.0.self_attn.q_proj": {
+          "channels": 896,
+          "absmax": 2.171875,
+          "channel_absmax_median": 0.24609375,
+          "channel_absmax_p99": 1.0007810592651367
+        },
+        "model.layers.0.mlp.gate_proj": {
+          "channels": 896,
+          "absmax": 2.21875,
+          "channel_absmax_median": 0.42578125,
+          "channel_absmax_p99": 0.9103515148162842
+        },
+        "model.layers.0.mlp.down_proj": {
+          "channels": 4864,
+          "absmax": 7.375,
+          "channel_absmax_median": 0.625,
+          "channel_absmax_p99": 4.667816162109375
+        }
+      },
+      "input_range_ratio_vs_bf16": {
+        "model.layers.0.self_attn.q_proj": {
+          "absmax_ratio_vs_bf16": 0.5914893617021276,
+          "p99_ratio_vs_bf16": 0.8889659770243471
+        },
+        "model.layers.0.mlp.gate_proj": {
+          "absmax_ratio_vs_bf16": 0.19086021505376344,
+          "p99_ratio_vs_bf16": 0.2619717739722268
+        },
+        "model.layers.0.mlp.down_proj": {
+          "absmax_ratio_vs_bf16": 1.0,
+          "p99_ratio_vs_bf16": 1.0
+        }
+      },
+      "allocated_after_cleanup_bytes": 1995824128,
+      "nll_ratio_vs_w8a8": 0.9903198910988393
+    },
+    "smoothquant_alpha_0.7": {
+      "calibration_seconds": 10.627342242005398,
+      "memory_isolation": "shared_process",
+      "allocated_before_bytes": 1995824128,
+      "peak_allocated_bytes": 3380911616,
+      "peak_incremental_bytes": 1385087488,
+      "artifact_path": "02_PyTorch_Algorithms/benchmarks/artifacts/53_smoothquant/default111/smoothquant_alpha_0.7",
+      "artifact_manifest": {
+        "file_count": 7,
+        "total_bytes": 642326799,
+        "files": [
+          {
+            "path": "chat_template.jinja",
+            "bytes": 2507
+          },
+          {
+            "path": "config.json",
+            "bytes": 1961
+          },
+          {
+            "path": "generation_config.json",
+            "bytes": 242
+          },
+          {
+            "path": "model.safetensors",
+            "bytes": 630898728
+          },
+          {
+            "path": "recipe.yaml",
+            "bytes": 677
+          },
+          {
+            "path": "tokenizer.json",
+            "bytes": 11421990
+          },
+          {
+            "path": "tokenizer_config.json",
+            "bytes": 694
+          }
+        ],
+        "quantization_config": {
+          "config_groups": {
+            "group_0": {
+              "format": "int-quantized",
+              "input_activations": {
+                "actorder": null,
+                "block_structure": null,
+                "dynamic": true,
+                "group_size": null,
+                "num_bits": 8,
+                "observer": null,
+                "observer_kwargs": {},
+                "scale_dtype": null,
+                "strategy": "token",
+                "symmetric": true,
+                "type": "int",
+                "zp_dtype": null
+              },
+              "output_activations": null,
+              "targets": [
+                "Linear"
+              ],
+              "weights": {
+                "actorder": "static",
+                "block_structure": null,
+                "dynamic": false,
+                "group_size": null,
+                "num_bits": 8,
+                "observer": "memoryless_minmax",
+                "observer_kwargs": {},
+                "scale_dtype": null,
+                "strategy": "channel",
+                "symmetric": true,
+                "type": "int",
+                "zp_dtype": null
+              }
+            }
+          },
+          "format": "int-quantized",
+          "global_compression_ratio": null,
+          "ignore": [
+            "lm_head"
+          ],
+          "kv_cache_scheme": null,
+          "quant_method": "compressed-tensors",
+          "quantization_status": "compressed",
+          "sparsity_config": {},
+          "transform_config": {},
+          "version": "0.19.0"
+        },
+        "has_config": true,
+        "has_weight_file": true
+      },
+      "token_weighted_nll": 3.4134953776300425,
+      "perplexity": 30.371217818059556,
+      "evaluated_tokens": 6290,
+      "nll_ratio_vs_bf16": 1.0057676754554015,
+      "mean_greedy_prefix_agreement": 0.26953125,
+      "input_range_audit": {
+        "model.layers.0.self_attn.q_proj": {
+          "channels": 896,
+          "absmax": 1.2734375,
+          "channel_absmax_median": 0.314453125,
+          "channel_absmax_p99": 0.7742185592651367
+        },
+        "model.layers.0.mlp.gate_proj": {
+          "channels": 896,
+          "absmax": 1.5625,
+          "channel_absmax_median": 0.4375,
+          "channel_absmax_p99": 0.7503905296325684
+        },
+        "model.layers.0.mlp.down_proj": {
+          "channels": 4864,
+          "absmax": 7.375,
+          "channel_absmax_median": 0.625,
+          "channel_absmax_p99": 4.667816162109375
+        }
+      },
+      "input_range_ratio_vs_bf16": {
+        "model.layers.0.self_attn.q_proj": {
+          "absmax_ratio_vs_bf16": 0.3468085106382979,
+          "p99_ratio_vs_bf16": 0.6877168103809763
+        },
+        "model.layers.0.mlp.gate_proj": {
+          "absmax_ratio_vs_bf16": 0.13440860215053763,
+          "p99_ratio_vs_bf16": 0.21593981557714473
+        },
+        "model.layers.0.mlp.down_proj": {
+          "absmax_ratio_vs_bf16": 1.0,
+          "p99_ratio_vs_bf16": 1.0
+        }
+      },
+      "allocated_after_cleanup_bytes": 2992949248,
+      "nll_ratio_vs_w8a8": 0.9938055255152163
+    },
+    "smoothquant_alpha_0.8": {
+      "calibration_seconds": 10.628057261012145,
+      "memory_isolation": "shared_process",
+      "allocated_before_bytes": 2992949248,
+      "peak_allocated_bytes": 4372877312,
+      "peak_incremental_bytes": 1379928064,
+      "artifact_path": "02_PyTorch_Algorithms/benchmarks/artifacts/53_smoothquant/default111/smoothquant_alpha_0.8",
+      "artifact_manifest": {
+        "file_count": 7,
+        "total_bytes": 642326799,
+        "files": [
+          {
+            "path": "chat_template.jinja",
+            "bytes": 2507
+          },
+          {
+            "path": "config.json",
+            "bytes": 1961
+          },
+          {
+            "path": "generation_config.json",
+            "bytes": 242
+          },
+          {
+            "path": "model.safetensors",
+            "bytes": 630898728
+          },
+          {
+            "path": "recipe.yaml",
+            "bytes": 677
+          },
+          {
+            "path": "tokenizer.json",
+            "bytes": 11421990
+          },
+          {
+            "path": "tokenizer_config.json",
+            "bytes": 694
+          }
+        ],
+        "quantization_config": {
+          "config_groups": {
+            "group_0": {
+              "format": "int-quantized",
+              "input_activations": {
+                "actorder": null,
+                "block_structure": null,
+                "dynamic": true,
+                "group_size": null,
+                "num_bits": 8,
+                "observer": null,
+                "observer_kwargs": {},
+                "scale_dtype": null,
+                "strategy": "token",
+                "symmetric": true,
+                "type": "int",
+                "zp_dtype": null
+              },
+              "output_activations": null,
+              "targets": [
+                "Linear"
+              ],
+              "weights": {
+                "actorder": "static",
+                "block_structure": null,
+                "dynamic": false,
+                "group_size": null,
+                "num_bits": 8,
+                "observer": "memoryless_minmax",
+                "observer_kwargs": {},
+                "scale_dtype": null,
+                "strategy": "channel",
+                "symmetric": true,
+                "type": "int",
+                "zp_dtype": null
+              }
+            }
+          },
+          "format": "int-quantized",
+          "global_compression_ratio": null,
+          "ignore": [
+            "lm_head"
+          ],
+          "kv_cache_scheme": null,
+          "quant_method": "compressed-tensors",
+          "quantization_status": "compressed",
+          "sparsity_config": {},
+          "transform_config": {},
+          "version": "0.19.0"
+        },
+        "has_config": true,
+        "has_weight_file": true
+      },
+      "token_weighted_nll": 3.4174508663353365,
+      "perplexity": 30.4915887330598,
+      "evaluated_tokens": 6290,
+      "nll_ratio_vs_bf16": 1.0069331384897109,
+      "mean_greedy_prefix_agreement": 0.19140625,
+      "input_range_audit": {
+        "model.layers.0.self_attn.q_proj": {
+          "channels": 896,
+          "absmax": 1.0546875,
+          "channel_absmax_median": 0.359375,
+          "channel_absmax_p99": 0.6917967796325684
+        },
+        "model.layers.0.mlp.gate_proj": {
+          "channels": 896,
+          "absmax": 1.296875,
+          "channel_absmax_median": 0.44140625,
+          "channel_absmax_p99": 0.66796875
+        },
+        "model.layers.0.mlp.down_proj": {
+          "channels": 4864,
+          "absmax": 7.375,
+          "channel_absmax_median": 0.625,
+          "channel_absmax_p99": 4.699066162109375
+        }
+      },
+      "input_range_ratio_vs_bf16": {
+        "model.layers.0.self_attn.q_proj": {
+          "absmax_ratio_vs_bf16": 0.2872340425531915,
+          "p99_ratio_vs_bf16": 0.614503836193642
+        },
+        "model.layers.0.mlp.gate_proj": {
+          "absmax_ratio_vs_bf16": 0.11155913978494623,
+          "p99_ratio_vs_bf16": 0.1922213074263132
+        },
+        "model.layers.0.mlp.down_proj": {
+          "absmax_ratio_vs_bf16": 1.0,
+          "p99_ratio_vs_bf16": 1.0066947795103134
+        }
+      },
+      "allocated_after_cleanup_bytes": 3984700416,
+      "nll_ratio_vs_w8a8": 0.9949571270545637
+    },
+    "smoothquant_alpha_0.9": {
+      "calibration_seconds": 10.748077356998692,
+      "memory_isolation": "shared_process",
+      "allocated_before_bytes": 3984700416,
+      "peak_allocated_bytes": 5367872512,
+      "peak_incremental_bytes": 1383172096,
+      "artifact_path": "02_PyTorch_Algorithms/benchmarks/artifacts/53_smoothquant/default111/smoothquant_alpha_0.9",
+      "artifact_manifest": {
+        "file_count": 7,
+        "total_bytes": 642326799,
+        "files": [
+          {
+            "path": "chat_template.jinja",
+            "bytes": 2507
+          },
+          {
+            "path": "config.json",
+            "bytes": 1961
+          },
+          {
+            "path": "generation_config.json",
+            "bytes": 242
+          },
+          {
+            "path": "model.safetensors",
+            "bytes": 630898728
+          },
+          {
+            "path": "recipe.yaml",
+            "bytes": 677
+          },
+          {
+            "path": "tokenizer.json",
+            "bytes": 11421990
+          },
+          {
+            "path": "tokenizer_config.json",
+            "bytes": 694
+          }
+        ],
+        "quantization_config": {
+          "config_groups": {
+            "group_0": {
+              "format": "int-quantized",
+              "input_activations": {
+                "actorder": null,
+                "block_structure": null,
+                "dynamic": true,
+                "group_size": null,
+                "num_bits": 8,
+                "observer": null,
+                "observer_kwargs": {},
+                "scale_dtype": null,
+                "strategy": "token",
+                "symmetric": true,
+                "type": "int",
+                "zp_dtype": null
+              },
+              "output_activations": null,
+              "targets": [
+                "Linear"
+              ],
+              "weights": {
+                "actorder": "static",
+                "block_structure": null,
+                "dynamic": false,
+                "group_size": null,
+                "num_bits": 8,
+                "observer": "memoryless_minmax",
+                "observer_kwargs": {},
+                "scale_dtype": null,
+                "strategy": "channel",
+                "symmetric": true,
+                "type": "int",
+                "zp_dtype": null
+              }
+            }
+          },
+          "format": "int-quantized",
+          "global_compression_ratio": null,
+          "ignore": [
+            "lm_head"
+          ],
+          "kv_cache_scheme": null,
+          "quant_method": "compressed-tensors",
+          "quantization_status": "compressed",
+          "sparsity_config": {},
+          "transform_config": {},
+          "version": "0.19.0"
+        },
+        "has_config": true,
+        "has_weight_file": true
+      },
+      "token_weighted_nll": 3.413314185574627,
+      "perplexity": 30.365715293199578,
+      "evaluated_tokens": 6290,
+      "nll_ratio_vs_bf16": 1.0057142882108836,
+      "mean_greedy_prefix_agreement": 0.30859375,
+      "input_range_audit": {
+        "model.layers.0.self_attn.q_proj": {
+          "channels": 896,
+          "absmax": 0.9375,
+          "channel_absmax_median": 0.408203125,
+          "channel_absmax_p99": 0.6373045444488525
+        },
+        "model.layers.0.mlp.gate_proj": {
+          "channels": 896,
+          "absmax": 1.09375,
+          "channel_absmax_median": 0.4453125,
+          "channel_absmax_p99": 0.6408202648162842
+        },
+        "model.layers.0.mlp.down_proj": {
+          "channels": 4864,
+          "absmax": 7.375,
+          "channel_absmax_median": 0.625,
+          "channel_absmax_p99": 4.636566162109375
+        }
+      },
+      "input_range_ratio_vs_bf16": {
+        "model.layers.0.self_attn.q_proj": {
+          "absmax_ratio_vs_bf16": 0.2553191489361702,
+          "p99_ratio_vs_bf16": 0.5660998994465749
+        },
+        "model.layers.0.mlp.gate_proj": {
+          "absmax_ratio_vs_bf16": 0.09408602150537634,
+          "p99_ratio_vs_bf16": 0.1844087902738899
+        },
+        "model.layers.0.mlp.down_proj": {
+          "absmax_ratio_vs_bf16": 1.0,
+          "p99_ratio_vs_bf16": 0.9933052204896865
+        }
+      },
+      "allocated_after_cleanup_bytes": 4979695616,
+      "nll_ratio_vs_w8a8": 0.9937527732346562
+    }
+  },
+  "mechanism_metrics": {
+    "selected_smoothquant_candidate": "smoothquant_alpha_0.5",
+    "selected_nll_ratio_vs_bf16": 1.0022400854647648,
+    "selected_nll_ratio_vs_unsmoothed_w8a8": 0.9903198910988393,
+    "smoothquant_quality_check_passed": true,
+    "unsmoothed_w8a8_quality_check_passed": true,
+    "smoothquant_improvement_check_passed": true,
+    "artifact_manifests_complete": true,
+    "candidate_matrix_complete": true
+  },
+  "failure": null,
+  "evidence_level": "artifact_generation",
+  "decision": "accept_smoothquant_candidate"
+}
