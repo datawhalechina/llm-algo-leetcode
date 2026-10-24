@@ -1,0 +1,355 @@
+{
+  "schema_version": "quantization-mechanism-gpu/v5",
+  "chapter": "40",
+  "environment_profile": "Q-CUDA-MECHANISM",
+  "run_mode": "real_gpu",
+  "run_label": "default11",
+  "framework": {
+    "python": "3.12.14",
+    "torch": "2.11.0+cu128",
+    "transformers": "5.17.0",
+    "llmcompressor": "0.14.0",
+    "compressed_tensors": "0.19.0",
+    "datasets": "5.0.1"
+  },
+  "network": {
+    "all_proxy_configured": true,
+    "proxy_scheme": "socks5",
+    "socks_support_available": true
+  },
+  "hardware": {
+    "cuda_available": true,
+    "cuda": "12.8",
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000,
+    "compute_capability": [
+      12,
+      0
+    ],
+    "bf16_supported": true
+  },
+  "dataset": {
+    "source": "huggingface",
+    "dataset_id": "Salesforce/wikitext",
+    "config": "wikitext-2-raw-v1",
+    "revision": "f776294184f13b8ff2337b3841cf9269a6216d1e",
+    "calibration_split": "train",
+    "evaluation_split": "validation",
+    "calibration_samples": 64,
+    "evaluation_samples": 64,
+    "generation_samples": 8,
+    "selection_seed": 42,
+    "calibration_ids_hash": "520877b3c3a34d8a782f51761e5f029e13acae01f590f47ee327d5401679e198",
+    "evaluation_ids_hash": "70d78bb1102023439a95093bf4921135670a8f3d5f1222969fe7858fae08ea30",
+    "filter": "non_empty_text",
+    "evaluation_shuffle": false
+  },
+  "workload": {
+    "id": "quant-weight-ptq",
+    "version": "v4",
+    "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "requested_model_revision": "main",
+    "resolved_model_commit": "7ae557604adf67be50417f59c2c2f167def9a775",
+    "loader_revision": "7ae557604adf67be50417f59c2c2f167def9a775",
+    "revision_resolution_source": "huggingface_hub_api",
+    "revision_is_pinned": true,
+    "max_seq_length": 256,
+    "max_new_tokens": 32,
+    "scheme": "W4A16",
+    "max_nll_ratio_vs_bf16": 1.1,
+    "seed": 42,
+    "run_label": "default11"
+  },
+  "baseline": {
+    "name": "bf16",
+    "memory_isolation": "shared_process",
+    "memory_comparison_valid": false,
+    "allocated_before_bytes": 0,
+    "peak_allocated_bytes": 1385842688,
+    "peak_incremental_bytes": 1385842688,
+    "allocated_after_cleanup_bytes": 9568256,
+    "token_weighted_nll": 3.39392034654966,
+    "perplexity": 29.782481351940092,
+    "evaluated_tokens": 6290
+  },
+  "candidates": {
+    "rtn": {
+      "calibration_seconds": 2.673757440003101,
+      "memory_isolation": "shared_process",
+      "memory_comparison_valid": false,
+      "allocated_before_bytes": 9568256,
+      "peak_allocated_bytes": 1398901760,
+      "peak_incremental_bytes": 1389333504,
+      "artifact_path": "benchmarks/artifacts/40_gptq_awq/default11/rtn",
+      "artifact_manifest": {
+        "file_count": 7,
+        "total_bytes": 468416138,
+        "files": [
+          {
+            "path": "chat_template.jinja",
+            "bytes": 2507
+          },
+          {
+            "path": "config.json",
+            "bytes": 1600
+          },
+          {
+            "path": "generation_config.json",
+            "bytes": 242
+          },
+          {
+            "path": "model.safetensors",
+            "bytes": 456988896
+          },
+          {
+            "path": "recipe.yaml",
+            "bytes": 209
+          },
+          {
+            "path": "tokenizer.json",
+            "bytes": 11421990
+          },
+          {
+            "path": "tokenizer_config.json",
+            "bytes": 694
+          }
+        ],
+        "quantization_config": {
+          "config_groups": {
+            "group_0": {
+              "format": "pack-quantized",
+              "input_activations": null,
+              "output_activations": null,
+              "targets": [
+                "Linear"
+              ],
+              "weights": {
+                "actorder": null,
+                "block_structure": null,
+                "dynamic": false,
+                "group_size": 128,
+                "num_bits": 4,
+                "observer": "memoryless_minmax",
+                "observer_kwargs": {},
+                "scale_dtype": null,
+                "strategy": "group",
+                "symmetric": true,
+                "type": "int",
+                "zp_dtype": null
+              }
+            }
+          },
+          "format": "pack-quantized",
+          "global_compression_ratio": null,
+          "ignore": [
+            "lm_head"
+          ],
+          "kv_cache_scheme": null,
+          "quant_method": "compressed-tensors",
+          "quantization_status": "compressed",
+          "sparsity_config": {},
+          "transform_config": {},
+          "version": "0.19.0"
+        },
+        "has_config": true,
+        "has_weight_file": true
+      },
+      "token_weighted_nll": 3.7140898396745206,
+      "perplexity": 41.021234188548775,
+      "evaluated_tokens": 6290,
+      "nll_ratio_vs_bf16": 1.0943361836556809,
+      "mean_greedy_prefix_agreement": 0.0390625,
+      "allocated_after_cleanup_bytes": 9569280
+    },
+    "gptq": {
+      "calibration_seconds": 9.214727968996158,
+      "memory_isolation": "shared_process",
+      "memory_comparison_valid": false,
+      "allocated_before_bytes": 9569280,
+      "peak_allocated_bytes": 1404880384,
+      "peak_incremental_bytes": 1395311104,
+      "artifact_path": "benchmarks/artifacts/40_gptq_awq/default11/gptq",
+      "artifact_manifest": {
+        "file_count": 7,
+        "total_bytes": 468416238,
+        "files": [
+          {
+            "path": "chat_template.jinja",
+            "bytes": 2507
+          },
+          {
+            "path": "config.json",
+            "bytes": 1604
+          },
+          {
+            "path": "generation_config.json",
+            "bytes": 242
+          },
+          {
+            "path": "model.safetensors",
+            "bytes": 456988896
+          },
+          {
+            "path": "recipe.yaml",
+            "bytes": 305
+          },
+          {
+            "path": "tokenizer.json",
+            "bytes": 11421990
+          },
+          {
+            "path": "tokenizer_config.json",
+            "bytes": 694
+          }
+        ],
+        "quantization_config": {
+          "config_groups": {
+            "group_0": {
+              "format": "pack-quantized",
+              "input_activations": null,
+              "output_activations": null,
+              "targets": [
+                "Linear"
+              ],
+              "weights": {
+                "actorder": "static",
+                "block_structure": null,
+                "dynamic": false,
+                "group_size": 128,
+                "num_bits": 4,
+                "observer": "memoryless_minmax",
+                "observer_kwargs": {},
+                "scale_dtype": null,
+                "strategy": "group",
+                "symmetric": true,
+                "type": "int",
+                "zp_dtype": null
+              }
+            }
+          },
+          "format": "pack-quantized",
+          "global_compression_ratio": null,
+          "ignore": [
+            "lm_head"
+          ],
+          "kv_cache_scheme": null,
+          "quant_method": "compressed-tensors",
+          "quantization_status": "compressed",
+          "sparsity_config": {},
+          "transform_config": {},
+          "version": "0.19.0"
+        },
+        "has_config": true,
+        "has_weight_file": true
+      },
+      "token_weighted_nll": 3.5269215430667558,
+      "perplexity": 34.01907997892988,
+      "evaluated_tokens": 6290,
+      "nll_ratio_vs_bf16": 1.0391880724756277,
+      "mean_greedy_prefix_agreement": 0.06640625,
+      "allocated_after_cleanup_bytes": 1016918016
+    },
+    "awq": {
+      "calibration_seconds": 22.119980981995468,
+      "memory_isolation": "shared_process",
+      "memory_comparison_valid": false,
+      "allocated_before_bytes": 1016918016,
+      "peak_allocated_bytes": 2406380544,
+      "peak_incremental_bytes": 1389462528,
+      "artifact_path": "benchmarks/artifacts/40_gptq_awq/default11/awq",
+      "artifact_manifest": {
+        "file_count": 7,
+        "total_bytes": 468416785,
+        "files": [
+          {
+            "path": "chat_template.jinja",
+            "bytes": 2507
+          },
+          {
+            "path": "config.json",
+            "bytes": 1600
+          },
+          {
+            "path": "generation_config.json",
+            "bytes": 242
+          },
+          {
+            "path": "model.safetensors",
+            "bytes": 456988896
+          },
+          {
+            "path": "recipe.yaml",
+            "bytes": 856
+          },
+          {
+            "path": "tokenizer.json",
+            "bytes": 11421990
+          },
+          {
+            "path": "tokenizer_config.json",
+            "bytes": 694
+          }
+        ],
+        "quantization_config": {
+          "config_groups": {
+            "group_0": {
+              "format": "pack-quantized",
+              "input_activations": null,
+              "output_activations": null,
+              "targets": [
+                "Linear"
+              ],
+              "weights": {
+                "actorder": null,
+                "block_structure": null,
+                "dynamic": false,
+                "group_size": 128,
+                "num_bits": 4,
+                "observer": "memoryless_minmax",
+                "observer_kwargs": {},
+                "scale_dtype": null,
+                "strategy": "group",
+                "symmetric": true,
+                "type": "int",
+                "zp_dtype": null
+              }
+            }
+          },
+          "format": "pack-quantized",
+          "global_compression_ratio": null,
+          "ignore": [
+            "lm_head"
+          ],
+          "kv_cache_scheme": null,
+          "quant_method": "compressed-tensors",
+          "quantization_status": "compressed",
+          "sparsity_config": {},
+          "transform_config": {},
+          "version": "0.19.0"
+        },
+        "has_config": true,
+        "has_weight_file": true
+      },
+      "token_weighted_nll": 3.592956427132951,
+      "perplexity": 36.341357839120505,
+      "evaluated_tokens": 6290,
+      "nll_ratio_vs_bf16": 1.058644888583091,
+      "mean_greedy_prefix_agreement": 0.015625,
+      "allocated_after_cleanup_bytes": 2018204672
+    }
+  },
+  "mechanism_metrics": {
+    "selected_candidate": "gptq",
+    "selected_nll_ratio_vs_bf16": 1.0391880724756277,
+    "quality_candidates": [
+      "awq",
+      "gptq",
+      "rtn"
+    ],
+    "artifact_manifests_complete": true,
+    "candidate_matrix_complete": true
+  },
+  "failure": null,
+  "evidence_level": "artifact_generation",
+  "decision": "accept_weight_ptq_candidate"
+}
