@@ -1,6 +1,26 @@
 # 量化与压缩实验 Quickstart
 
-本页只回答“如何创建或重新进入可运行环境”。模型、数据、候选矩阵、结果路径和证据状态见[实验资产表](./experiment_assets.md)；精确 Profile 定义、跨专题隔离规则和真实硬件快照见[GPU 环境资产表](../../docs/gpu_environment_assets.md)。以下命令均在仓库根目录执行。
+本页只回答“如何创建或重新进入可运行环境”。模型、数据、候选矩阵、结果路径、实际环境和硬件快照见[实验资产表](./experiment_assets.md)及结果 JSON；精确 Profile 定义在注册表中维护，跨专题隔离关系见[环境资产索引](../../docs/gpu_environment_assets.md)。以下命令均在仓库根目录执行。
+
+<a id="q-cpu-quickstart"></a>
+
+## Q-CPU：量化 CPU 框架核对环境
+
+该环境运行机制页中标记为“框架一致性核对”的 CPU 单元，只比较配置映射、状态转换和小模块数值语义，不形成 GPU Kernel、显存或性能结论。
+
+```bash
+python tools/install_environment_profile.py \
+  --profile Q-CPU \
+  --env-name llm_quant_cpu
+
+conda activate llm_quant_cpu
+python tools/test_framework_conformance.py \
+  --all-part02 \
+  --profile Q-CPU \
+  --require-passed
+```
+
+后续运行 Notebook 时选择 `Python (llm_quant_cpu)`。QAT 等只依赖 PyTorch 官方参考算子的核对仍使用 `BASE-CPU`，不要求切换到本环境。
 
 <a id="q-cuda-mechanism-quickstart"></a>
 
@@ -94,7 +114,7 @@ python -m jupyter lab
 
 ## INF-VLLM-011-CU128：量化 Serving 环境
 
-67、82、83 使用这一 Profile 完成产物加载、真实请求和 Serving profile。vLLM 自行提供匹配的 PyTorch、xFormers 与 compressed-tensors；不要先安装 `torch-cu128.txt`，也不要向该环境追加 LLM Compressor、torchao、HQQ 或 SGLang。
+67、82、83 使用这一 Profile 完成产物加载、真实请求和 Serving profile。82 使用 40 已生成的本地候选包；新环境需先在 `Q-CUDA-MECHANISM` 中运行 40，再在 82 填入该次运行标签。vLLM 自行提供匹配的 PyTorch、xFormers 与 compressed-tensors；不要先安装 `torch-cu128.txt`，也不要向该环境追加 LLM Compressor、torchao、HQQ 或 SGLang。
 
 ### 一键创建（推荐）
 
@@ -125,7 +145,7 @@ python -m ipykernel install --user \
 python -m jupyter lab
 ```
 
-首次验证先运行 82。只有 loader 结果为 `loaded`、往返输出非空且候选包哈希通过，才将稳定引用交给 67；不要因为产物能被 Transformers 读取，就直接认定 vLLM 兼容。
+首次验证先确保 40 已生成并接受候选包，再运行 82。只有 loader 结果为 `loaded`、往返输出非空且候选包哈希通过，才将稳定引用交给 67；不要因为产物能被 Transformers 读取，就直接认定 vLLM 兼容。
 
 ## 常见异常入口
 

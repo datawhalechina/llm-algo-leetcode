@@ -61,7 +61,7 @@ vLLM 是 GPTQ/AWQ 服务执行的主验证后端；SGLang 只作同口径对照�
 | 稳定项目 ID | 输入 → 输出 | 当前承载与主责 |
 |:---|:---|:---|
 | `PT-QLORA-SELECTION` | 固定数据、rank、steps 与预算 → 训练 JSON、适配器清单 | 65；后训练主归属，量化训练交叉入口 |
-| `QUANT-ARTIFACT-GATE` | `quantization-artifact-candidate/v1` 候选包 → 通过血缘、文件哈希、带方向质量记录和真实加载器检查的产物 | 82；量化产物准入，只要求一个候选包路径 |
+| `QUANT-ARTIFACT-GATE` | 40 的已接受结果与获选产物 → 通过血缘、文件哈希、质量记录和真实加载器检查的产物 | 82；通过 `UPSTREAM_RUN_LABEL` 自动定位候选包，无需复制路径 |
 | `QUANT-INFERENCE-DEPLOY` | 浮点基线与合格产物 → 同模型后端部署结果 | 67；vLLM 主验证，GGUF 走独立路径 |
 | `QUANT-SERVING-PROFILE` | 同一产物与请求清单 → 延迟优先、均衡、吞吐优先结果 | 83；服务配置与决策收口 |
 
@@ -71,13 +71,14 @@ vLLM 是 GPTQ/AWQ 服务执行的主验证后端；SGLang 只作同口径对照�
 
 | 顺序 | 项目与输入 | 本阶段验证 | 通过后输出 |
 |:---|:---|:---|:---|
-| 0 | `INF-VLLM-011-CU128` 与候选生成环境 | Profile 预检、固定模型 revision、可写结果目录和候选包 schema | 可复测环境与候选包 |
-| 1 | `QUANT-ARTIFACT-GATE` / 82，输入一个候选包 | 文件角色与哈希、数据隔离、质量方向、目标 loader 的真实加载 | 合格产物 companion 与稳定引用 |
-| 2 | `QUANT-INFERENCE-DEPLOY` / 67，输入 82 的稳定引用 | 同硬件、同 backend、同模型 revision 和同 workload 下的浮点—量化配对执行 | 部署 companion 与稳定引用 |
-| 3 | `QUANT-SERVING-PROFILE` / 83，输入 67 的稳定引用 | 延迟优先、均衡、吞吐优先三类 profile 的重复测量与分方向 SLO | Profile 结果、决策和交接引用 |
-| 4 | 全链资产复核 | schema、血缘、失败记录、结果路径和唯一运行标签 | 可进入 Part 05 的项目证据 |
+| 0 | 40 / `Q-CUDA-MECHANISM`，唯一 `RUN_LABEL` | 运行 RTN / GPTQ / AWQ 矩阵；确认决策接受且获选目录含 `candidate_bundle.json` | 40 结果 JSON 与本地产物目录 |
+| 1 | `INF-VLLM-011-CU128` | 检查 Serving 环境、模型缓存和结果目录；候选权重须可从本地路径读取 | 可执行加载器预检的环境 |
+| 2 | `QUANT-ARTIFACT-GATE` / 82，填写 40 的 `UPSTREAM_RUN_LABEL` | 自动定位获选候选；核对文件角色、哈希、数据隔离、质量方向和 vLLM 加载 | 合格产物 companion 与稳定引用 |
+| 3 | `QUANT-INFERENCE-DEPLOY` / 67，输入 82 的稳定引用 | 同硬件、同 backend、同模型 revision 和同 workload 下的浮点—量化配对执行 | 部署 companion 与稳定引用 |
+| 4 | `QUANT-SERVING-PROFILE` / 83，输入 67 的稳定引用 | 延迟优先、均衡、吞吐优先三类 profile 的重复测量与分方向 SLO | Profile 结果、决策和交接引用 |
+| 5 | 全链资产复核 | schema、血缘、失败记录、结果路径和唯一运行标签 | 可进入 Part 05 的项目证据 |
 
-当前工作区已登记 40 的 GPTQ 候选产物，但 82、67、83 的项目结果 JSON 尚未找到；这三步仍需按顺序完成，不能把机制实验的局部结论当作量化服务链的验收结果。
+40 必须先生成并接受候选包，82 才能进行加载准入；82、67、83 的项目结果需在对应环境按顺序完成。新环境复现时，先运行 40，再把该次运行标签填入 82 的 `UPSTREAM_RUN_LABEL`。机制实验的局部结论不能代替量化服务链验收。
 
 82 的 `accept` 只表示产物可以进入部署验证；67 的 `accept` 表示固定工作负载下量化候选能够正确执行并达到本页门槛；83 的 `accept` 表示至少一个服务 profile 满足对应 SLO。驱动、backend、候选产物或固定 workload 发生变化时，从受影响的最早阶段开始复测，不覆盖历史结果。
 
