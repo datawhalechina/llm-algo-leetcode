@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="800" viewBox="0 0 1600 800" role="img" aria-labelledby="title desc">
+  <title id="title">教程实验金字塔：从基础验证到系统交付</title>
+  <desc id="desc">实验范围从基础验证逐步扩展到端到端项目。Part 00/01 使用 CPU；Part 02 机制页和项目页结合 CPU 验证与适用的 GPU 实验；Part 03/04 验证算子与系统行为；Part 05 进行 GPU 端到端验证。层级不表示强制顺序。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f7fafc"/><stop offset="1" stop-color="#edf4fa"/></linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#486581"/></marker>
+    <style>
+      .cn{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif}
+      .title{font-size:32px;font-weight:750;fill:#17324d}.subtitle{font-size:16px;fill:#486581}
+      .tier{font-size:17px;font-weight:750;fill:#17324d}.body{font-size:15px;fill:#334e68}
+      .small{font-size:13px;fill:#486581}.tag{font-size:14px;font-weight:650;fill:#17324d}
+      .level{stroke:#829ab1;stroke-width:1.5}.rise{stroke:#486581;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1600" height="800" fill="url(#bg)"/>
+  <text x="800" y="52" text-anchor="middle" class="cn title">实验金字塔：从基础验证到系统交付</text>
+  <text x="800" y="82" text-anchor="middle" class="cn subtitle">实验范围与系统整合程度逐层扩大；CPU 核对与 GPU 实测回答不同问题，不是强制顺序</text>
+
+  <path d="M86 624V160" class="rise"/>
+  <text x="55" y="395" text-anchor="middle" class="cn small" transform="rotate(-90 55 395)">实验覆盖范围与系统整合程度增加</text>
+
+  <polygon points="600,125 1000,125 1080,221 520,221" fill="#fce8e6" class="level"/>
+  <text x="800" y="160" text-anchor="middle" class="cn tier">Part 05 · 综合项目</text>
+  <text x="800" y="190" text-anchor="middle" class="cn body">GPU 端到端验证</text>
+
+  <polygon points="520,221 1080,221 1160,317 440,317" fill="#fff1e6" class="level"/>
+  <text x="800" y="258" text-anchor="middle" class="cn tier">Part 03 / 04 · 算子与系统实验</text>
+  <text x="800" y="289" text-anchor="middle" class="cn body">GPU 正确性与性能验证</text>
+
+  <polygon points="440,317 1160,317 1240,413 360,413" fill="#e8f1ff" class="level"/>
+  <text x="800" y="354" text-anchor="middle" class="cn tier">Part 02 · 项目小节</text>
+  <text x="800" y="386" text-anchor="middle" class="cn body">CPU 流程验证 · 按需 GPU 实验</text>
+
+  <polygon points="360,413 1240,413 1320,509 280,509" fill="#eeeaff" class="level"/>
+  <text x="800" y="438" text-anchor="middle" class="cn tier">Part 02 · 机制小节</text>
+  <text x="800" y="472" text-anchor="middle" class="cn body">CPU 机制测试 · 适用时补框架核对或 GPU 实测</text>
+
+  <polygon points="280,509 1320,509 1400,605 200,605" fill="#e5f5f1" class="level"/>
+  <text x="800" y="547" text-anchor="middle" class="cn tier">Part 00 / 01 · 基础实验与检查</text>
+  <text x="800" y="582" text-anchor="middle" class="cn body">CPU 基础验证：张量、数值与系统行为</text>
+</svg>
