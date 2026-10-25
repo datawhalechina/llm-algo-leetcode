@@ -1,0 +1,65 @@
+schema_version: inference-service-delivery-config/v2
+semantic_id: INF-INTEGRATED-DELIVERY
+environment_profile: INF-VLLM-011-CU128
+inputs:
+  # 可选上游来源由 Notebook 第 1 层填写；不作为运行前提或本项目实测数据。
+  deployment_handoff: null
+
+workload:
+  protocol_version: inference-service-frozen-workload-v2
+  # 以下仓库相对路径和负载规模属于固定实验协议；Notebook 会从项目根目录解析。
+  path: benchmarks/workloads/part05_inference_service_shared_prefix.jsonl
+  num_prompts: 20 # 五条共享前缀请求循环四轮
+  max_tokens: 16
+  concurrency: 4
+  warmup: 2
+  repeats: 3
+
+# 候选定义、模型缓存路径和结果路径属于固定协议；只在 Notebook 第 1 层选择当前测量候选。
+candidates:
+  baseline:
+    role: baseline
+    model: Qwen/Qwen3-0.6B
+    model_revision: c1899de289a04d12100db370d81485cdf75e47ca
+    cache_dir: model_cache
+    served_model_name: part05-qwen3-0.6b
+    backend: vllm
+    dtype: bfloat16
+    cache_policy: disabled
+    max_model_len: 2048
+    max_num_seqs: 4
+    scheduling_policy: fcfs
+    gpu_memory_utilization: 0.55
+    enforce_eager: true
+    result_path: benchmarks/results/part05_inference_service/baseline_{run_label}.json
+  candidate:
+    role: candidate
+    model: Qwen/Qwen3-0.6B
+    model_revision: c1899de289a04d12100db370d81485cdf75e47ca
+    cache_dir: model_cache
+    served_model_name: part05-qwen3-0.6b
+    backend: vllm
+    dtype: bfloat16
+    cache_policy: enabled
+    max_model_len: 2048
+    max_num_seqs: 8
+    scheduling_policy: fcfs
+    gpu_memory_utilization: 0.55
+    enforce_eager: true
+    result_path: benchmarks/results/part05_inference_service/candidate_{run_label}.json
+
+gates:
+  minimum_success_rate: 1.0
+  minimum_answer_accuracy: 1.0
+  minimum_complete_correct_rate: 1.0
+  minimum_response_completion_rate: 1.0
+  maximum_answer_accuracy_regression: 0.0
+  maximum_ttft_p95_ms: 500.0
+  maximum_tpot_p95_ms: 100.0
+  maximum_ttft_regression_ratio: 0.10
+  maximum_tpot_regression_ratio: 0.05
+  minimum_output_throughput_tps: 1.0
+  maximum_peak_memory_gib: 11.0
+
+outputs:
+  directory: benchmarks/results/part05_inference_service
