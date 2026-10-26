@@ -7,6 +7,33 @@ __pycache__/
 .DS_Store
 **/.DS_Store
 
+# Downloaded model caches. Recreate these from the model IDs in experiment configs.
+/model_cache/
+**/model_cache/
+
+# Generated model weights and checkpoints. Keep compact result JSON and metadata.
+/benchmarks/artifacts/**/*.safetensors
+/benchmarks/artifacts/**/*.pt
+/benchmarks/artifacts/**/*.pth
+/benchmarks/artifacts/**/*.bin
+/benchmarks/artifacts/**/tokenizer.json
+/02_PyTorch_Algorithms/benchmarks/artifacts/**/*.safetensors
+/02_PyTorch_Algorithms/benchmarks/artifacts/**/*.pt
+/02_PyTorch_Algorithms/benchmarks/artifacts/**/*.pth
+/02_PyTorch_Algorithms/benchmarks/artifacts/**/*.bin
+/02_PyTorch_Algorithms/benchmarks/artifacts/**/tokenizer.json
+/benchmarks/results/**/*.safetensors
+/benchmarks/results/**/*.pt
+/benchmarks/results/**/*.pth
+/benchmarks/results/**/*.bin
+/benchmarks/results/**/tokenizer.json
+
+# Large raw profiler traces; retain derived summary and decision records.
+/benchmarks/results/**/*.pt.trace.json
+
+# Local-only conversation history and session handoff notes.
+/.local/
+
 # Local model artifacts produced by the distilled-student delivery project.
 benchmarks/results/88_distillation_delivery/student_*/
 
