@@ -3,6 +3,7 @@
   Runnable notebooks for LLM algorithms and systems.<br>
   面向大模型算法与系统的可运行 Notebook 教程。
 </p>
+<p align="center">曾用名：大模型算法实战教程</p>
 
 <p align="center">
   <strong>主学习路线 / Core Routes</strong><br>
@@ -53,24 +54,24 @@
 
 [topic_discussion](./topic_discussion/intro.md) 用于组织跨 Part 的专题路线。页面顶部提供常用专题入口，下面的资产总览和专题总览分别说明主线结构与专题覆盖范围。
 
-![llm-algo-leetcode 教程主图：Part 00–05、五条主学习路线与支撑专题](./public/decorative/tutorial_roadmap_hero_v4.svg)
+![llm-algo-leetcode 教程主图：Part 00–05、跨 Part 主路线与按需回补专题](./public/decorative/tutorial_roadmap_hero_v5.svg)
 
 
 <details>
 <summary>📚 查看完整资产总览</summary>
 
-![教程资产关系：从知识到可复核结论](./public/readme/tutorial_assets_map.svg)
+![实验金字塔：从基础验证到系统交付](./public/readme/experiment_evidence_pyramid.svg)
 
 这套教程不要求从 `00` 开始按顺序硬读。`00` 主要是前置补齐区，如果你已有基础，可以直接从最相关的部分开始；下面这张表会直接告诉你：每一部分学什么、包含哪些组、适合谁、当前进度如何。
 
 | 部分 | 组别 | 内容定位 | 适合对象 | 状态 |
 | ---- | ---- | ---- | ---- | ---- |
-| [`第零部分：前置知识与环境准备（5 组 / 20 节，已完成，持续优化）`](./00_Prerequisites/intro.md) | [`0A Python 基础与数据表示（4 节）`](./00_Prerequisites/0A.md) / [`0B PyTorch 张量与自动求导（4 节）`](./00_Prerequisites/0B.md) / [`0C PyTorch 模型与训练生命周期（4 节）`](./00_Prerequisites/0C.md) / [`0D Transformer Block 与模型组件（4 节）`](./00_Prerequisites/0D.md) / [`0E 运行诊断与实验基础（4 节）`](./00_Prerequisites/0E.md) | 把 Python、NumPy、PyTorch、训练循环、调试工具和性能意识搭好。 | 第一次进入教程、需要补齐入门前置的人。 | ✅ 已完成，持续优化 |
+| [`第零部分：Python、PyTorch 与实验基础（5 组 / 20 节，已完成，持续优化）`](./00_Prerequisites/intro.md) | [`0A Python 基础与数据表示（4 节）`](./00_Prerequisites/0A.md) / [`0B PyTorch 张量与自动求导（4 节）`](./00_Prerequisites/0B.md) / [`0C PyTorch 模型与训练生命周期（4 节）`](./00_Prerequisites/0C.md) / [`0D Transformer Block 与模型组件（4 节）`](./00_Prerequisites/0D.md) / [`0E 运行诊断与实验基础（4 节）`](./00_Prerequisites/0E.md) | 把 Python、NumPy、PyTorch、训练循环、调试工具和性能意识搭好。 | 第一次进入教程、需要补齐入门前置的人。 | ✅ 已完成，持续优化 |
 | [`第一部分：硬件、数学与系统（6 组 / 34 节，已完成，持续优化）`](./01_Hardware_Math_and_Systems/intro.md) | [`1A 数值与规模（4 节）`](./01_Hardware_Math_and_Systems/1A.md) / [`1B 单设备执行、内存与访存（9 节）`](./01_Hardware_Math_and_Systems/1B.md) / [`1C 通信、并行与容错（6 节）`](./01_Hardware_Math_and_Systems/1C.md) / [`1D 执行模型、异步调度与算子映射（7 节）`](./01_Hardware_Math_and_Systems/1D.md) / [`1E 编译与后端（4 节）`](./01_Hardware_Math_and_Systems/1E.md) / [`1F 硬件适配与系统约束（4 节）`](./01_Hardware_Math_and_Systems/1F.md) | 理解硬件、规模、访存、通信、执行与系统约束。 | 想先弄清“为什么要这样写”和“为什么要这样部署”的学习者。 | ✅ 已完成，持续优化 |
-| [`第二部分：PyTorch 算法实战（10 组，已完成，持续优化）`](./02_PyTorch_Algorithms/intro.md) | [`2.1 Decoder 组件与注意力`](./02_PyTorch_Algorithms/2_1.md) / [`2.2 模型架构`](./02_PyTorch_Algorithms/2_2.md) / [`2.3 监督微调与训练控制`](./02_PyTorch_Algorithms/2_3.md) / [`2.4 偏好优化与对齐`](./02_PyTorch_Algorithms/2_4.md) / [`2.5 反向传播与训练内存`](./02_PyTorch_Algorithms/2_5.md) / [`2.6 推理执行基础`](./02_PyTorch_Algorithms/2_6.md) / [`2.7 推理策略与服务调度`](./02_PyTorch_Algorithms/2_7.md) / [`2.8 量化与低比特适配`](./02_PyTorch_Algorithms/2_8.md) / [`2.9 通信与并行`](./02_PyTorch_Algorithms/2_9.md) / [`2.10 项目验证与工程收口`](./02_PyTorch_Algorithms/2_10.md) | 在 PyTorch 层把算法、模型、推理、压缩、并行与项目验证先跑通。 | 希望先用熟悉工具建立实现感的人。 | ✅ 已完成，持续优化 |
+| [`第二部分：PyTorch 算法实战（10 组，已完成，持续优化）`](./02_PyTorch_Algorithms/intro.md) | [`2.1 Decoder 组件与注意力`](./02_PyTorch_Algorithms/2_1.md) / [`2.2 模型架构`](./02_PyTorch_Algorithms/2_2.md) / [`2.3 反向传播与训练机制`](./02_PyTorch_Algorithms/2_3.md) / [`2.4 监督微调与参数适配`](./02_PyTorch_Algorithms/2_4.md) / [`2.5 偏好优化与对齐`](./02_PyTorch_Algorithms/2_5.md) / [`2.6 推理执行基础`](./02_PyTorch_Algorithms/2_6.md) / [`2.7 推理策略与服务调度`](./02_PyTorch_Algorithms/2_7.md) / [`2.8 量化与低比特适配`](./02_PyTorch_Algorithms/2_8.md) / [`2.9 通信与并行`](./02_PyTorch_Algorithms/2_9.md) / [`2.10 项目验证与工程收口`](./02_PyTorch_Algorithms/2_10.md) | 在 PyTorch 层把算法、模型、推理、压缩、并行与项目验证先跑通。 | 希望先用熟悉工具建立实现感的人。 | ✅ 已完成，持续优化 |
 | [`第三部分：Triton 算子开发（5 组 / 15 节，已完成，持续优化）`](./03_Triton_Kernels/intro.md) | [`3.1 基础篇（5 节）`](./03_Triton_Kernels/intro.md) / [`3.2 过渡篇（2 节）`](./03_Triton_Kernels/intro.md) / [`3.3 进阶A：Attention优化（3 节）`](./03_Triton_Kernels/intro.md) / [`3.4 进阶B：推理优化（2 节）`](./03_Triton_Kernels/intro.md) / [`3.5 项目篇（3 节）`](./03_Triton_Kernels/intro.md) | 把前面学到的算子和优化思路落到 GPU kernel。 | 希望从 PyTorch 走向 Triton 的学习者。 | ✅ 已完成，持续优化 |
 | [`第四部分：CUDA C++ 与系统优化（4 组 / 16 节，建设中）`](./04_CUDA_and_System_Optimization/intro.md) | [`4.1 CUDA 编程基础（4 节）`](./04_CUDA_and_System_Optimization/intro.md) / [`4.2 系统级性能优化（4 节）`](./04_CUDA_and_System_Optimization/intro.md) / [`4.3 分布式训练工程（4 节）`](./04_CUDA_and_System_Optimization/intro.md) / [`4.4 架构视野（4 节）`](./04_CUDA_and_System_Optimization/intro.md) | 进一步下探到 CUDA、系统调优和工程化架构。 | 准备做底层性能优化和工程落地的人。 | 🛠 建设中 |
-| [`第五部分：综合项目与架构决策`](./05_Integrated_Projects_and_Decisions/intro.md) | 综合项目、架构选型与成本决策 | 汇总多条主线的机制、实验和工程约束。 | 已完成主线学习、准备进行系统收口的人。 | 🛠 建设中 |
+| [`第五部分：综合项目与决策收口`](./05_Integrated_Projects_and_Decisions/intro.md) | 综合项目、架构选型与成本决策 | 汇总多条主线的机制、实验和工程约束。 | 已完成主线学习、准备进行系统收口的人。 | 🛠 建设中 |
 
 </details>
 
@@ -98,6 +99,7 @@
 <details>
 <summary>🆕 查看更新时间线</summary>
 
+- **2026-10-26**：重整中英文首页导航与 Part 命名，更新教程路线图并以“能力、服务、效率”呈现三条主生命线；用实验金字塔概括从基础验证到端到端项目的证据范围，精简环境入口并同步文档站点首页。
 - **2026-09-30**：统一五条主学习路线及基础、横向、领域专题的中英文名称与入口；将显存优化内容正式承接到性能优化，将 SFT / LoRA 与图级编译分别并入后训练优化和算子优化；更新 Part 05 收口定位、专题资产与首页结构图。
 - **2026-09-11**：完成当时主路线与横向专题的阶段性梳理，补充 Task0–6 学习入口与项目分工；统一项目节的类型、环境和证据边界，并完成源文件到 `docs/` 的镜像同步与 VitePress 构建验证。Part 02 的 60–76 项目进入持续优化和 GPU 数据采集准备阶段。
 - **2026-08-22**：完成 README 首页导航、项目简介与项目特点重写；收口横向专题的五层 Infra 结构与跨专题边界；完成 66、73、75、76 等真实 backend / GPU 项目的结果保存、环境说明和基础验证，并同步文档入口与链接检查。
@@ -121,74 +123,23 @@
 
 | 想完成的任务 | 默认运行入口 | 开始前查看 |
 |:---|:---|:---|
-| 阅读或运行 CPU 机制练习 | 基础环境 + CPU PyTorch | [使用指南](./guide.md) |
+| 阅读或运行 CPU 机制练习 | `BASE-CPU` | [使用指南](./guide.md#base-cpu) |
 | 运行单卡训练、量化或 GPU 实验 | CUDA PyTorch + 对应能力 profile | [模型、执行栈与环境资产](./gpu_environment_assets.md) |
 | 运行 Serving 或多卡项目 | 独立 backend / distributed 环境，并先执行预检 | [使用指南](./guide.md)与[模型、执行栈与环境资产](./gpu_environment_assets.md) |
 
-<details>
-<summary>查看在线、本地与 CNB 的具体使用方式</summary>
-
-### 方式 1：在线阅读
-
-访问在线站点：
-
-[https://datawhalechina.github.io/llm-algo-leetcode/](https://datawhalechina.github.io/llm-algo-leetcode/)
-
-学习步骤：优先选择 `Part 02` 或对应专题，再从 **📖 完整导学** 进入对应 `intro.md`，最后进入目标 group；遇到知识缺口时回补 `Part 00` / `Part 01`。
-
-适合：
-- 先看目录再决定从哪一部分切入
-- 先读部分导学，按目标跳转到对应 group
-- Part 00 / 01 / 02 的大多数基础练习可以直接用 Colab CPU 跑
-- 真实推理、训练和显存实验需要 Colab GPU 或本地 NVIDIA GPU
-- Part 03 / 04 需要 Colab GPU runtime
-
-### 方式 2：本地学习
+在线阅读请访问 [教程站点](https://datawhalechina.github.io/llm-algo-leetcode/)。本地运行 CPU 练习可使用：
 
 ```bash
 git clone https://github.com/datawhalechina/llm-algo-leetcode.git
 cd llm-algo-leetcode
-conda env create -f environment.yml
-conda activate llm_algo
-python -m pip install -r requirements/torch-cpu.txt
+python tools/install_environment_profile.py \
+  --profile BASE-CPU \
+  --env-name llm_algo_cpu
+conda activate llm_algo_cpu
 jupyter lab
 ```
 
-学习步骤：在仓库中优先进入 `Part 02` 或对应专题目录，先阅读 `intro.md`，再打开目标 Notebook；遇到知识缺口时回补 `Part 00` / `Part 01`。
-
-适合：
-- 想在本地完整跑 Part 00 / 01 / 02 的 Notebook
-- 想自己控制 Python / PyTorch / CUDA 版本
-- 想做更稳定的离线调试
-- Part 03 / 04 需要本地 NVIDIA GPU
-
-如果要运行真实训练、显存或推理项目，请改用 CUDA 环境：
-
-```bash
-conda env create -f environment-gpu.yml
-conda activate llm_algo_gpu
-python -m pip install -r requirements/torch-cu128.txt
-jupyter lab
-```
-
-已有 CUDA PyTorch 的云端或 Colab 环境不需要执行上述安装；先运行项目环境预检，确认当前 Kernel 的 PyTorch、CUDA 和 GPU 可用。
-
-### 方式 3：CNB 统一环境
-
-如果你希望和仓库当前推荐环境保持一致，可以使用 CNB 统一环境入口。
-
-适合：
-- 团队协作
-- 统一实验镜像
-- 需要减少本地环境差异
-- Part 00 / 01 / 02 可以用 CNB CPU
-- Part 03 / 04 需要 CNB GPU 会话
-
-CNB 的具体使用方式和适用范围见 [使用指南](./guide.md)。
-
-学习步骤：进入 CNB 会话后，优先从 `Part 02` 或对应专题的 `intro.md` 开始，再按导学进入目标 Notebook；基础不足时回补 `Part 00` / `Part 01`。
-
-</details>
+CUDA、Serving、多卡、CNB 和云端平台不在 README 复制安装矩阵；请从[使用指南](./guide.md)选择路径，再进入对应专题 Quickstart。精确版本与已验证硬件见[模型、执行栈与环境资产](./gpu_environment_assets.md)。
 
 ## 📖 更多资源
 
@@ -241,7 +192,7 @@ This tutorial offers two ways to read: follow the `Part 00 -> Part 04` progressi
 
 [topic_discussion](./topic_discussion/intro.md) organizes cross-Part topic paths. The top of the page provides common topic entries; the asset and topic overviews below describe the main structure and topic coverage.
 
-![llm-algo-leetcode tutorial map: Parts 00–05, five main routes, and supporting topics](./public/decorative/tutorial_roadmap_hero_v4.svg)
+![llm-algo-leetcode tutorial map: Parts 00–05, cross-Part routes, and supporting topics](./public/decorative/tutorial_roadmap_hero_v5.svg)
 
 <details>
 <summary>📚 View the complete asset overview</summary>
@@ -252,7 +203,7 @@ You do not need to start from `00` in strict order. `00` is the prerequisite lan
 | ---- | ---- | ---- | ---- | ---- |
 | [Part 00: Prerequisites and Environment Setup (5 groups / 20 lessons)](./00_Prerequisites/intro.md) | [0A Python Basics and Data Representation (4 lessons)](./00_Prerequisites/0A.md) / [0B PyTorch Tensors and Autograd (4 lessons)](./00_Prerequisites/0B.md) / [0C PyTorch Model and Training Lifecycle (4 lessons)](./00_Prerequisites/0C.md) / [0D Transformer Block and Model Components (4 lessons)](./00_Prerequisites/0D.md) / [0E Runtime Diagnostics and Experiment Foundations (4 lessons)](./00_Prerequisites/0E.md) | Prerequisites, engineering basics, and notebook-first practice. | First-time learners who need prerequisite support. | ✅ Complete, continuously refining |
 | [Part guide: Hardware, Math, and Systems (6 groups / 34 lessons)](./01_Hardware_Math_and_Systems/intro.md) | [1A Numerics and Scale (4 lessons)](./01_Hardware_Math_and_Systems/1A.md) / [1B Single-Device Execution, Memory and Access (9 lessons)](./01_Hardware_Math_and_Systems/1B.md) / [1C Communication, Parallelism and Fault Tolerance (6 lessons)](./01_Hardware_Math_and_Systems/1C.md) / [1D Execution Models, Asynchrony and Operator Mapping (7 lessons)](./01_Hardware_Math_and_Systems/1D.md) / [1E Compilers and Backends (4 lessons)](./01_Hardware_Math_and_Systems/1E.md) / [1F Hardware Adaptation and System Constraints (4 lessons)](./01_Hardware_Math_and_Systems/1F.md) | Hardware, scale, memory access, communication, execution, and system constraints. | Learners who want to understand why things are written and deployed this way. | ✅ Complete, continuously refining |
-| [Part 02: PyTorch Algorithm Practice (10 groups)](./02_PyTorch_Algorithms/intro.md) | [2.1 Decoder Components and Attention](./02_PyTorch_Algorithms/2_1.md) / [2.2 Model Architecture](./02_PyTorch_Algorithms/2_2.md) / [2.3 Supervised Fine-Tuning and Training Control](./02_PyTorch_Algorithms/2_3.md) / [2.4 Preference Optimization and Alignment](./02_PyTorch_Algorithms/2_4.md) / [2.5 Backpropagation and Training Memory](./02_PyTorch_Algorithms/2_5.md) / [2.6 Inference Execution Fundamentals](./02_PyTorch_Algorithms/2_6.md) / [2.7 Inference Strategies and Serving Scheduling](./02_PyTorch_Algorithms/2_7.md) / [2.8 Quantization and Low-Bit Adaptation](./02_PyTorch_Algorithms/2_8.md) / [2.9 Communication and Parallelism](./02_PyTorch_Algorithms/2_9.md) / [2.10 Project Validation and Engineering Closure](./02_PyTorch_Algorithms/2_10.md) | PyTorch-level practice for algorithms, models, inference, compression, parallelism, and project validation. | Learners who want to build implementation intuition with familiar tools. | ✅ Complete, continuously refining |
+| [Part 02: PyTorch Algorithm Practice (10 groups)](./02_PyTorch_Algorithms/intro.md) | [2.1 Decoder Components and Attention](./02_PyTorch_Algorithms/2_1.md) / [2.2 Model Architecture](./02_PyTorch_Algorithms/2_2.md) / [2.3 Backpropagation and Training Mechanics](./02_PyTorch_Algorithms/2_3.md) / [2.4 Supervised Fine-Tuning and Parameter Adaptation](./02_PyTorch_Algorithms/2_4.md) / [2.5 Preference Optimization and Alignment](./02_PyTorch_Algorithms/2_5.md) / [2.6 Inference Execution Fundamentals](./02_PyTorch_Algorithms/2_6.md) / [2.7 Inference Strategies and Serving Scheduling](./02_PyTorch_Algorithms/2_7.md) / [2.8 Quantization and Low-Bit Adaptation](./02_PyTorch_Algorithms/2_8.md) / [2.9 Communication and Parallelism](./02_PyTorch_Algorithms/2_9.md) / [2.10 Project Validation and Engineering Closure](./02_PyTorch_Algorithms/2_10.md) | PyTorch-level practice for algorithms, models, inference, compression, parallelism, and project validation. | Learners who want to build implementation intuition with familiar tools. | ✅ Complete, continuously refining |
 | [Part 03: Triton Kernel Development (5 groups / 15 lessons)](./03_Triton_Kernels/intro.md) | [3.1 Foundations (5 lessons)](./03_Triton_Kernels/intro.md) / [3.2 Transition (2 lessons)](./03_Triton_Kernels/intro.md) / [3.3 Advanced A: Attention Optimization (3 lessons)](./03_Triton_Kernels/intro.md) / [3.4 Advanced B: Inference Optimization (2 lessons)](./03_Triton_Kernels/intro.md) / [3.5 Projects (3 lessons)](./03_Triton_Kernels/intro.md) | Triton kernel development. | Learners who want to move from PyTorch to Triton. | ✅ Complete, continuously refining |
 | [Part 04: CUDA C++ and System Optimization (4 groups / 16 lessons)](./04_CUDA_and_System_Optimization/intro.md) | [4.1 CUDA Programming Basics (4 lessons)](./04_CUDA_and_System_Optimization/intro.md) / [4.2 System-Level Performance Optimization (4 lessons)](./04_CUDA_and_System_Optimization/intro.md) / [4.3 Distributed Training Engineering (4 lessons)](./04_CUDA_and_System_Optimization/intro.md) / [4.4 Architecture Perspective (4 lessons)](./04_CUDA_and_System_Optimization/intro.md) | CUDA C++ and system optimization. | Learners preparing for low-level performance optimization and engineering deployment. | 🛠 In progress |
 | [Part 05: Integrated Projects and Architecture Decisions](./05_Integrated_Projects_and_Decisions/intro.md) | Integrated projects, architecture selection, and cost decisions | Consolidates mechanisms, experiments, and engineering constraints across the main routes. | Learners ready to close the loop with system-level decisions. | 🛠 In progress |
@@ -283,6 +234,7 @@ You do not need to start from `00` in strict order. `00` is the prerequisite lan
 <details>
 <summary>🆕 View update timeline</summary>
 
+- **2026-10-26**: Refined the bilingual homepage navigation and Part names; updated the tutorial map with the three cross-cutting lifelines—capability, service, and efficiency; replaced the asset map with an experiment pyramid spanning foundational checks to end-to-end projects; and simplified environment entry points while syncing the docs homepage.
 - **2026-09-30**: Unified the Chinese and English names and entry points for the five main routes plus foundation, cross-cutting, and domain topics; moved the former memory-optimization route into Performance Optimization, merged SFT / LoRA and graph compilation into Post-Training Optimization and Operator Optimization, and refreshed Part 05 positioning, topic assets, and the homepage structure map.
 - **2026-09-11**: Consolidated the main routes and cross-cutting topics available at that stage; added Task 0–6 entry points and project roles; unified project types, environments, and evidence boundaries; and completed source-to-`docs/` mirroring plus VitePress build validation. Part 02 projects 60–76 then entered continued refinement and GPU-data preparation.
 - **2026-08-22**: Revised the README navigation, project introduction, and project features; finalized the five-layer Infra structure and cross-topic boundaries; completed result saving, environment notes, and baseline validation for real backend / GPU projects including 66, 73, 75, and 76, together with documentation and link checks.
@@ -306,69 +258,23 @@ We recommend starting with [`Part 02`](./02_PyTorch_Algorithms/intro.md) to buil
 
 | Goal | Default runtime entry | Read first |
 |:---|:---|:---|
-| Read or run CPU mechanism exercises | Base environment + CPU PyTorch | [Usage guide](./guide.md) |
+| Read or run CPU mechanism exercises | `BASE-CPU` | [Usage guide](./guide.md#base-cpu) |
 | Run single-GPU training, quantization, or GPU experiments | CUDA PyTorch + the required capability profile | [Model, execution stack, and environment assets](./gpu_environment_assets.md) |
 | Run Serving or multi-GPU projects | An isolated backend / distributed environment with preflight checks | [Usage guide](./guide.md) and [runtime assets](./gpu_environment_assets.md) |
 
-<details>
-<summary>View online, local, and CNB options</summary>
-
-### Option 1: Read Online
-
-Visit the online platform:
-
-[https://datawhalechina.github.io/llm-algo-leetcode/](https://datawhalechina.github.io/llm-algo-leetcode/)
-
-Suitable for:
-- Skimming the table of contents first and then jumping to the part you need
-- Reading the part guides first
-- Part 00 / 01 / 02 can run on Colab CPU for most basic exercises
-- Real inference, training, and memory experiments, as well as Part 03 / 04, need a Colab GPU runtime
-
-### Option 2: Local Development
+Read online at the [tutorial site](https://datawhalechina.github.io/llm-algo-leetcode/). To run CPU exercises locally:
 
 ```bash
 git clone https://github.com/datawhalechina/llm-algo-leetcode.git
 cd llm-algo-leetcode
-conda env create -f environment.yml
-conda activate llm_algo
-python -m pip install -r requirements/torch-cpu.txt
+python tools/install_environment_profile.py \
+  --profile BASE-CPU \
+  --env-name llm_algo_cpu
+conda activate llm_algo_cpu
 jupyter lab
 ```
 
-Suitable for:
-- Running Part 00 / 01 / 02 locally on CPU
-- Controlling your own Python / PyTorch / CUDA versions
-- More stable offline debugging
-- Part 03 / 04 require a local NVIDIA GPU
-
-For real training, memory, or inference projects, use the CUDA environment instead:
-
-```bash
-conda env create -f environment-gpu.yml
-conda activate llm_algo_gpu
-python -m pip install -r requirements/torch-cu128.txt
-jupyter lab
-```
-
-Cloud runtimes or Colab sessions that already provide CUDA PyTorch do not need this installation. Run the project preflight first and reuse the current Kernel when its PyTorch, CUDA, and GPU checks pass.
-
-For environment details and platform differences, see [docs/guide.md](./guide.md).
-
-### Option 3: CNB Unified Delivery
-
-If you want the same runtime style used by the repository, use the CNB unified environment.
-
-Suitable for:
-- Team collaboration
-- Consistent experiment images
-- Lower local environment drift
-- Part 00 / 01 / 02 can use CNB CPU
-- Part 03 / 04 need a CNB GPU session
-
-See [docs/guide.md](./guide.md) for the exact environment rules and scope.
-
-</details>
+CUDA, Serving, multi-GPU, CNB, and cloud setup are kept out of the README. Choose the path in the [usage guide](./guide.md), then follow the relevant topic Quickstart. Exact versions and verified hardware snapshots live in the [environment assets](./gpu_environment_assets.md).
 
 ## 📖 More Resources
 
