@@ -113,7 +113,7 @@
 - **2026-04-18 ~ 2026-04-19**：集中重构第二部分 / 第三部分内容，优化 Notebook、答案区与算子实现说明。
 - **2026-04-02**：完成教程核心 Notebook、文档与测试脚本的初始搭建。
 
-> 路径兼容说明：第三部分已从 `03_CUDA_and_Triton_Kernels` 更名为 `03_Triton_Kernels`，CUDA / 系统优化内容拆分到第四部分。旧网页路径会保留迁移入口，建议新链接统一使用 `03_Triton_Kernels`。
+> 路径说明：第三部分现用目录为 `03_Triton_Kernels`；CUDA / 系统优化内容已拆分到第四部分。引用时请使用当前目录路径。
 
 </details>
 
@@ -248,7 +248,7 @@ You do not need to start from `00` in strict order. `00` is the prerequisite lan
 - **2026-04-18 ~ 2026-04-19**: Refactored Part 2 / 3 content, polishing notebooks, answer sections, and operator implementation notes.
 - **2026-04-02**: Completed the initial tutorial notebooks, docs, and test scripts.
 
-> Path compatibility note: Part 03 has been renamed from `03_CUDA_and_Triton_Kernels` to `03_Triton_Kernels`, and CUDA / system optimization content has moved to Part 04. Old web paths keep migration pages, but new links should use `03_Triton_Kernels`.
+> Path note: Part 03 now uses `03_Triton_Kernels`; CUDA / system optimization content has moved to Part 04. Use the current directory paths when linking to these pages.
 
 </details>
 

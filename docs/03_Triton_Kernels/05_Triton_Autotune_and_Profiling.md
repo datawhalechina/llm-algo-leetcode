@@ -92,14 +92,14 @@ def vector_add_autotune_kernel(
     block_start = pid * BLOCK_SIZE
     offsets = block_start + tl.arange(0, BLOCK_SIZE)
     mask = offsets < n_elements
-    
+
     # ==========================================
     # TODO 2: 从 x_ptr 和 y_ptr 中加载对应的数据到 SRAM
     # ==========================================
     # x = ???
     # y = ???
     pass
-    
+
     # ==========================================
     # TODO 3: 在 SRAM 中进行向量加法
     # ==========================================
@@ -109,7 +109,7 @@ def vector_add_autotune_kernel(
 def add_triton(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     n_elements = x.numel()
     out = torch.empty_like(x)
-    
+
     # ==========================================
     # TODO 4: 动态计算 grid
     # ==========================================
@@ -129,7 +129,7 @@ def test_autotune_correctness():
     if not torch.cuda.is_available():
         print("⏭️  忽略测试：无 GPU")
         return
-    
+
     print()
     print("--- 测试开始 ---")
     try:
@@ -227,7 +227,7 @@ def vector_add_autotune_kernel(
     block_start = pid * BLOCK_SIZE
     offsets = block_start + tl.arange(0, BLOCK_SIZE)
     mask = offsets < n_elements
-    
+
     x = tl.load(x_ptr + offsets, mask=mask)
     y = tl.load(y_ptr + offsets, mask=mask)
     out = x + y
@@ -236,12 +236,12 @@ def vector_add_autotune_kernel(
 def add_triton(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     n_elements = x.numel()
     out = torch.empty_like(x)
-    
+
     # ==========================================
     # TODO 2: 动态计算 grid
     # ==========================================
     grid = lambda meta: (triton.cdiv(n_elements, meta['BLOCK_SIZE']),)
-    
+
     vector_add_autotune_kernel[grid](
         x, y, out, n_elements
     )

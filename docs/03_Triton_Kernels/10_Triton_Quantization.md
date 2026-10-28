@@ -143,31 +143,31 @@ def w8a16_gemm_kernel(
     # 1. 确定当前处理的输出块 (Block_M, Block_N)
     pid_m = tl.program_id(0)
     pid_n = tl.program_id(1)
-    
+
     # 获取输出块对应的 M 维度和 N 维度的指针偏移
     offs_m = pid_m * BLOCK_M + tl.arange(0, BLOCK_M)
     offs_n = pid_n * BLOCK_N + tl.arange(0, BLOCK_N)
-    
+
     # 提前计算指向 scale 数组的偏移 (因为 scale 长度为 N)
     scale_ptrs = scales_ptr + offs_n
-    
+
     # 初始化累加器
     acc = tl.zeros((BLOCK_M, BLOCK_N), dtype=tl.float32)
-    
+
     # 2. 沿着 K 维度进行循环归约
     for k in range(0, tl.cdiv(K, BLOCK_K)):
         offs_k = k * BLOCK_K + tl.arange(0, BLOCK_K)
-        
+
         # 计算 X 和 W 的数据指针
         # X: (BLOCK_M, BLOCK_K)
         x_ptrs = x_ptr + (offs_m[:, None] * stride_xm + offs_k[None, :] * stride_xk)
         # W: (BLOCK_K, BLOCK_N)
         w_ptrs = w_int8_ptr + (offs_k[:, None] * stride_wk + offs_n[None, :] * stride_wn)
-        
+
         # 加载数据
         x = tl.load(x_ptrs)
         w_int8 = tl.load(w_ptrs)
-        
+
         # ==========================================
         # TODO 1: 在 SRAM 中进行动态反量化
         # 提示: 将 w_int8 转换为浮点类型，加载 scales，使用广播机制相乘
@@ -175,14 +175,14 @@ def w8a16_gemm_kernel(
         # w_fp16 = ???
         # scales = ???
         # w_fp16 = ???
-        
+
         # ==========================================
         # TODO 2: 执行点积并累加
         # 提示: 使用 tl.dot 计算矩阵乘法并累加到 acc
         # ==========================================
         # acc += ???
         pass
-        
+
 def _question_placeholder_10():
     raise NotImplementedError("请完成 TODO 1-2")
 
@@ -191,15 +191,15 @@ _question_placeholder_10()
 def triton_w8a16_gemm(x: torch.Tensor, w_int8: torch.Tensor, scales: torch.Tensor):
     M, K = x.shape
     _, N = w_int8.shape
-    
+
     y = torch.empty((M, N), device=x.device, dtype=torch.float16)
-    
+
     BLOCK_M = 16
     BLOCK_N = 64
     BLOCK_K = 64
-    
+
     grid = (triton.cdiv(M, BLOCK_M), triton.cdiv(N, BLOCK_N))
-    
+
     w8a16_gemm_kernel[grid](
         x, w_int8, scales, y,
         M, N, K,
@@ -219,54 +219,54 @@ def test_w8a16_gemm():
     if not torch.cuda.is_available():
         print("⏭️ 忽略测试：无 GPU。")
         return
-        
+
     try:
         torch.manual_seed(42)
         M, N, K = 32, 256, 128
-        
+
         # 构造输入
         x = torch.randn(M, K, device='cuda', dtype=torch.float16)
-        
+
         # 模拟 INT8 权重 (数值范围 -128 到 127)
         w_int8 = torch.randint(-128, 127, (K, N), device='cuda', dtype=torch.int8)
-        
+
         # 模拟 FP16 缩放比例 (每列一个 scale)
         scales = torch.randn(N, device='cuda', dtype=torch.float16) * 0.01
-        
+
         # 1. PyTorch 原生参考计算 (需要显式反量化，占用大量额外显存)
         w_fp16_ref = w_int8.to(torch.float16) * scales.unsqueeze(0)
         y_ref = x @ w_fp16_ref
-        
+
         # 2. Triton 融合计算
         y_tri = triton_w8a16_gemm(x, w_int8, scales)
-        
+
         # 3. 验证结果
         diff = torch.max(torch.abs(y_ref - y_tri))
         print(f"最大误差: {diff.item():.6e}")
         assert diff < 1e-3, "Triton W8A16 量化 GEMM 结果不正确！"
-        
+
         print("✅ W8A16 即时反量化 GEMM 验证通过。")
-        
-    
+
+
         print("\n--- 性能观察（基于当前环境）---")
         # 典型的 LLM Linear 层尺寸
         M, N, K = 4096, 4096, 4096
-        
+
         x_l = torch.randn(M, K, device='cuda', dtype=torch.float16)
         w_int8_l = torch.randint(-128, 127, (K, N), device='cuda', dtype=torch.int8)
         scales_l = torch.randn(N, device='cuda', dtype=torch.float16) * 0.01
-        
+
         # 为了公平对比，PyTorch 需要预先反量化权重
         w_fp16_l = w_int8_l.to(torch.float16) * scales_l.unsqueeze(0)
-        
+
         quantiles = [0.5, 0.2, 0.8]
-        
+
         # PyTorch 执行纯 FP16 的 GEMM
         ms_pt, _, _ = triton.testing.do_bench(lambda: x_l @ w_fp16_l, quantiles=quantiles)
-        
+
         # Triton 执行即时反量化并乘加的 GEMM
         ms_tr, _, _ = triton.testing.do_bench(lambda: triton_w8a16_gemm(x_l, w_int8_l, scales_l), quantiles=quantiles)
-        
+
         print(f"PyTorch FP16xFP16 GEMM Time:     {ms_pt:.4f} ms")
         print(f"Triton W8A16 On-the-fly GEMM:    {ms_tr:.4f} ms")
         print(f"当前环境观测比 (PyTorch / Triton): {ms_pt / ms_tr:.2f}x")
@@ -309,39 +309,39 @@ def w8a16_gemm_kernel(
     # 1. 确定当前处理的输出块 (Block_M, Block_N)
     pid_m = tl.program_id(0)
     pid_n = tl.program_id(1)
-    
+
     # 获取输出块对应的 M 维度和 N 维度的指针偏移
     offs_m = pid_m * BLOCK_M + tl.arange(0, BLOCK_M)
     offs_n = pid_n * BLOCK_N + tl.arange(0, BLOCK_N)
-    
+
     # 提前计算指向 scale 数组的偏移 (因为 scale 长度为 N)
     scale_ptrs = scales_ptr + offs_n
-    
+
     # 初始化累加器
     acc = tl.zeros((BLOCK_M, BLOCK_N), dtype=tl.float32)
-    
+
     # 2. 沿着 K 维度进行循环归约
     for k in range(0, tl.cdiv(K, BLOCK_K)):
         offs_k = k * BLOCK_K + tl.arange(0, BLOCK_K)
-        
+
         # 计算 X 和 W 的数据指针
         # X: (BLOCK_M, BLOCK_K)
         x_ptrs = x_ptr + (offs_m[:, None] * stride_xm + offs_k[None, :] * stride_xk)
         # W: (BLOCK_K, BLOCK_N)
         w_ptrs = w_int8_ptr + (offs_k[:, None] * stride_wk + offs_n[None, :] * stride_wn)
-        
+
         # 加载数据
         x = tl.load(x_ptrs)
         w_int8 = tl.load(w_ptrs)
-        
+
         # TODO 1: 在 SRAM 中进行动态反量化
         w_fp16 = w_int8.to(x.dtype)
         scales = tl.load(scale_ptrs)
         w_fp16 = w_fp16 * scales[None, :]
-        
+
         # TODO 2: 执行点积并累加
         acc += tl.dot(x, w_fp16)
-        
+
     # 3. 写回显存 (转换为 FP16)
     y_ptrs = y_ptr + (offs_m[:, None] * stride_ym + offs_n[None, :] * stride_yn)
     tl.store(y_ptrs, acc.to(tl.float16))
@@ -349,15 +349,15 @@ def w8a16_gemm_kernel(
 def triton_w8a16_gemm(x: torch.Tensor, w_int8: torch.Tensor, scales: torch.Tensor):
     M, K = x.shape
     _, N = w_int8.shape
-    
+
     y = torch.empty((M, N), device=x.device, dtype=torch.float16)
-    
+
     BLOCK_M = 16
     BLOCK_N = 64
     BLOCK_K = 64
-    
+
     grid = (triton.cdiv(M, BLOCK_M), triton.cdiv(N, BLOCK_N))
-    
+
     w8a16_gemm_kernel[grid](
         x, w_int8, scales, y,
         M, N, K,

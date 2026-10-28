@@ -85,20 +85,20 @@ def fused_swiglu_kernel(
     # 1. 确定当前 program 处理的块 (Block) ID 和起始偏移
     pid = tl.program_id(axis=0)
     block_start = pid * BLOCK_SIZE
-    
+
     # 2. 生成当前块处理的连续索引
     offsets = block_start + tl.arange(0, BLOCK_SIZE)
-    
+
     # 3. 创建掩码，防止越界访问 (通常 n_elements 可能不是 BLOCK_SIZE 的整数倍)
     mask = offsets < n_elements
-    
+
     # ==========================================
     # TODO 1: 从 x_ptr 和 y_ptr 中加载对应的数据到 SRAM
     # ==========================================
     # x = ???
     # y = ???
     pass
-    
+
     # ==========================================
     # TODO 2: 在 SRAM 中进行核心算术运算
     # ==========================================
@@ -106,7 +106,7 @@ def fused_swiglu_kernel(
     # swish_x = ???
     # out = ???
     pass
-    
+
     # ==========================================
     # TODO 3: 将最终结果存回 out_ptr
     # ==========================================
@@ -118,21 +118,21 @@ def triton_fused_swiglu(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     assert x.is_cuda and y.is_cuda, "输入张量必须在 GPU 上"
     assert x.is_contiguous() and y.is_contiguous(), "输入张量必须在内存中连续"
     assert x.shape == y.shape, "X 和 Y 的形状必须一致"
-    
+
     # 展开为一维
     n_elements = x.numel()
-    
+
     # 分配输出内存 (必须预先分配并保证在 GPU 上且连续)
     out = torch.empty_like(x)
-    
+
     # 设置网格维度 (Grid) 和块大小 (Block Size)
     # 这里先用经验值 1024；后续可以用 @triton.autotune 自动搜索
     # 对于简单的逐元素操作，通常 BLOCK_SIZE 设为 1024 或更大的 2 的幂次方
     BLOCK_SIZE = 1024
-    
+
     # 计算需要启动的线程块数量，向上取整：ceil(N / BLOCK_SIZE)
     grid = lambda meta: (triton.cdiv(n_elements, meta['BLOCK_SIZE']),)
-    
+
     # 启动内核
     fused_swiglu_kernel[grid](
         x, y, out,
@@ -153,34 +153,34 @@ def test_fused_swiglu():
     if not torch.cuda.is_available():
         print("⏭️ 忽略测试：此环境没有 NVIDIA GPU，无法运行 Triton 内核。")
         return
-        
+
     try:
         torch.manual_seed(42)
         # 测试数据大小不规整的情况，验证边界掩码 (Mask) 是否正确
-        n = 1024 * 3 + 123 
-        
+        n = 1024 * 3 + 123
+
         # 为了更贴近实际，使用半精度浮点数
         x = torch.randn(n, device='cuda', dtype=torch.float16)
         y = torch.randn(n, device='cuda', dtype=torch.float16)
-        
+
         # 1. PyTorch 官方基准计算
         # 注意: SiLU 就是 beta=1 时的 Swish 函数；fp16/fp32/fp16 的往返会带来微小误差，所以这里使用 rtol=5e-3
         out_ref = F.silu(x) * y
-        
+
         # 2. Triton 算子计算
         out_triton = triton_fused_swiglu(x, y)
-        
+
         # 3. 验证结果
         diff = torch.max(torch.abs(out_ref - out_triton))
         print(f"最大误差: {diff.item():.6e}")
         assert diff < 5e-3, "Triton 算子计算结果不正确！"
-        
+
         print("✅ Triton 融合算子测试通过！")
         print(" 算子融合 (Operator Fusion) 可大幅降低 GPU 访存开销。")
-        
+
         # 边界测试
         print("\n---  边界情况测试 ---")
-        
+
         # 测试1: 单元素
         x1 = torch.tensor([1.0], device='cuda', dtype=torch.float16)
         y1 = torch.tensor([2.0], device='cuda', dtype=torch.float16)
@@ -188,7 +188,7 @@ def test_fused_swiglu():
         ref1 = F.silu(x1) * y1
         assert torch.allclose(out1, ref1, rtol=5e-3), "单元素测试失败"
         print("✅ 单元素向量测试通过")
-        
+
         # 测试2: 小向量（小于BLOCK_SIZE）
         x2 = torch.randn(100, device='cuda', dtype=torch.float16)
         y2 = torch.randn(100, device='cuda', dtype=torch.float16)
@@ -196,7 +196,7 @@ def test_fused_swiglu():
         ref2 = F.silu(x2) * y2
         assert torch.allclose(out2, ref2, rtol=5e-3), "小向量测试失败"
         print("✅ 小向量测试通过")
-        
+
         # 测试3: 恰好对齐BLOCK_SIZE
         x3 = torch.randn(1024, device='cuda', dtype=torch.float16)
         y3 = torch.randn(1024, device='cuda', dtype=torch.float16)
@@ -204,7 +204,7 @@ def test_fused_swiglu():
         ref3 = F.silu(x3) * y3
         assert torch.allclose(out3, ref3, rtol=5e-3), "对齐测试失败"
         print("✅ BLOCK_SIZE对齐测试通过")
-    
+
         print("\n--- 性能基准测试 (Benchmark) ---")
         quantiles = [0.5, 0.2, 0.8]
         ms_pt, min_ms_pt, max_ms_pt = triton.testing.do_bench(lambda: F.silu(x) * y, quantiles=quantiles)
@@ -252,18 +252,18 @@ def fused_swiglu_kernel(
     block_start = pid * BLOCK_SIZE
     offsets = block_start + tl.arange(0, BLOCK_SIZE)
     mask = offsets < n_elements
-    
+
     # TODO 1: 从 x_ptr 和 y_ptr 加载数据到 SRAM
     x = tl.load(x_ptr + offsets, mask=mask)
     y = tl.load(y_ptr + offsets, mask=mask)
-    
+
     # TODO 2: 在 SRAM 中进行核心算术运算
     # 注意: tl.sigmoid 只支持 fp32/fp64，需要先转换
     x_fp32 = x.to(tl.float32)
     sig_x = tl.sigmoid(x_fp32)
     swish_x = x * sig_x.to(x.dtype)
     out = swish_x * y
-    
+
     # TODO 3: 存储结果到 HBM
     tl.store(out_ptr + offsets, out, mask=mask)
 
@@ -272,19 +272,19 @@ def triton_fused_swiglu(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     assert x.is_cuda and y.is_cuda, "输入张量必须在 GPU 上"
     assert x.is_contiguous() and y.is_contiguous(), "输入张量必须在内存中连续"
     assert x.shape == y.shape, "X 和 Y 的形状必须一致"
-    
+
     # 展开为一维
     n_elements = x.numel()
-    
+
     # 分配输出内存
     out = torch.empty_like(x)
-    
+
     # 设置块大小
     BLOCK_SIZE = 1024
-    
+
     # 计算需要启动的线程块数量
     grid = lambda meta: (triton.cdiv(n_elements, meta['BLOCK_SIZE']),)
-    
+
     # 启动内核
     fused_swiglu_kernel[grid](
         x, y, out,

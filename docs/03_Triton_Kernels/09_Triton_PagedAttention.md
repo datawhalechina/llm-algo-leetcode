@@ -109,22 +109,22 @@ def paged_attention_decoding_kernel(
     # 1. 获取当前处理的 Batch 和 Head 索引
     batch_idx = tl.program_id(0)
     head_idx = tl.program_id(1)
-    
+
     # 2. 获取当前序列的上下文长度
     context_len = tl.load(context_lens_ptr + batch_idx)
     num_logical_blocks = tl.cdiv(context_len, BLOCK_SIZE)
-    
+
     # 3. 加载 Query (解码阶段 Q 只有一个 Token)
     # tl.num_programs(1) 表示 Y 轴 head 方向的 Program 总数，
     # 用于在扁平化后的 Q 张量中定位到当前 batch/head 对应的片段。
     q_offset = batch_idx * tl.num_programs(1) * HEAD_DIM + head_idx * HEAD_DIM + tl.arange(0, HEAD_DIM)
     q = tl.load(q_ptr + q_offset)
-    
+
     # 初始化 Online Softmax 状态和输出累加器
     m_i = -float('inf')
     l_i = 0.0
     acc = tl.zeros([HEAD_DIM], dtype=tl.float32)
-    
+
     # 4. 循环遍历当前序列的所有逻辑块
     for logical_block_idx in range(num_logical_blocks):
         # ==========================================
@@ -133,13 +133,13 @@ def paged_attention_decoding_kernel(
         # ==========================================
         # bt_offset = ???
         # physical_block_idx = ???
-        
+
         # 计算当前逻辑块内每个 Token 的全局实际索引，用于构造 Mask
         start_token_idx = logical_block_idx * BLOCK_SIZE
         token_offsets = tl.arange(0, BLOCK_SIZE)
         physical_token_idx = start_token_idx + token_offsets
         mask = physical_token_idx < context_len
-        
+
         # ==========================================
         # TODO 2: 计算 K 和 V 在物理池中的偏移量，并加载到 SRAM
         # 提示: 使用 physical_block_idx 和各维度的 stride 计算偏移量
@@ -148,14 +148,14 @@ def paged_attention_decoding_kernel(
         # k_offset = ???
         # k = ???
         # v = ???
-        
+
         # ==========================================
         # TODO 3: 计算注意力分数 qk，并屏蔽 (Mask) 无效 Token
         # 提示: 计算 Q 和 K 的点积，乘以缩放因子，使用 mask 屏蔽无效位置
         # ==========================================
         # qk = ???
-        
-    
+
+
         # ==========================================
         # TODO 4: Online Softmax 归约
         # ==========================================
@@ -164,16 +164,16 @@ def paged_attention_decoding_kernel(
         # alpha = ???
         # p = ???
         # l_new = ???
-        
+
         # ==========================================
         # TODO 5: 累加 V
         # ==========================================
         # acc = ???
-        
+
         # m_i = ???
         # l_i = ???
         pass
-        
+
 def _question_placeholder_09():
     raise NotImplementedError("请完成 TODO 1-3")
 
@@ -183,9 +183,9 @@ def triton_paged_attention_decode(q, k_cache, v_cache, block_tables, context_len
     batch_size, num_heads, head_dim = q.shape
     out = torch.empty_like(q)
     sm_scale = 1.0 / math.sqrt(head_dim)
-    
+
     grid = (batch_size, num_heads)
-    
+
     paged_attention_decoding_kernel[grid](
         out, q, k_cache, v_cache, block_tables, context_lens, sm_scale,
         k_cache.stride(0), k_cache.stride(1), k_cache.stride(2), k_cache.stride(3),
@@ -203,30 +203,30 @@ def test_paged_attention():
     if not torch.cuda.is_available():
         print("⏭️ 忽略测试：无 GPU。")
         return
-        
+
     try:
         torch.manual_seed(42)
         batch_size, num_heads, head_dim = 2, 4, 64
         block_size = 16
         num_blocks = 20 # 物理内存池大小
         max_blocks_per_seq = 5
-        
+
         # 构造输入
         q = torch.randn(batch_size, num_heads, head_dim, device='cuda', dtype=torch.float16)
         k_cache = torch.randn(num_blocks, block_size, num_heads, head_dim, device='cuda', dtype=torch.float16)
         v_cache = torch.randn(num_blocks, block_size, num_heads, head_dim, device='cuda', dtype=torch.float16)
-        
+
         # 模拟分配的上下文长度和 Block Tables
         context_lens = torch.tensor([10, 25], device='cuda', dtype=torch.int32)
         block_tables = torch.tensor([
             [5, 0, 0, 0, 0],    # 序列0：用了 1 个物理块 (块 5)
             [12, 3, 0, 0, 0]    # 序列1：用了 2 个物理块 (块 12, 3)
         ], device='cuda', dtype=torch.int32)
-        
+
         # 1. 构建 PyTorch 参考实现 (利用高级索引还原连续 KV Tensor)
         out_ref = torch.zeros_like(q)
         sm_scale = 1.0 / math.sqrt(head_dim)
-        
+
         for b in range(batch_size):
             seq_len = context_lens[b].item()
             num_logical = math.ceil(seq_len / block_size)
@@ -237,44 +237,44 @@ def test_paged_attention():
                 phys_idx = block_tables[b, i].item()
                 k_seq.append(k_cache[phys_idx])
                 v_seq.append(v_cache[phys_idx])
-                
+
             # [seq_len, num_heads, head_dim]
             k_cont = torch.cat(k_seq, dim=0)[:seq_len]
             v_cont = torch.cat(v_seq, dim=0)[:seq_len]
-            
+
             # 对每个 Head 做 Attention
             for h in range(num_heads):
                 q_h = q[b, h].unsqueeze(0) # [1, head_dim]
                 k_h = k_cont[:, h, :] # [seq_len, head_dim]
                 v_h = v_cont[:, h, :]
-                
+
                 attn = torch.softmax((q_h @ k_h.T) * sm_scale, dim=-1)
                 out_ref[b, h] = (attn @ v_h).squeeze(0)
-                
+
         # 2. Triton PagedAttention
         out_tri = triton_paged_attention_decode(q, k_cache, v_cache, block_tables, context_lens, block_size)
-        
+
         # 3. 对比验证
         diff = torch.max(torch.abs(out_ref - out_tri))
         print(f"最大误差: {diff.item():.6e}")
         assert diff < 2e-3, "Triton PagedAttention 计算结果不正确！"
-        
+
         print("✅ PagedAttention 间接寻址与 Online Softmax 验证通过。")
-        
-    
+
+
         print("\n--- 性能基准测试 (Benchmark) ---")
         # 放大测试规模模拟真实的 Decoding 并发
         batch_size, num_heads, head_dim = 32, 32, 128
         block_size = 16
         num_blocks = 2048 # 物理内存池大小 (足够大)
-        
+
         q_l = torch.randn(batch_size, num_heads, head_dim, device='cuda', dtype=torch.float16)
         k_cache_l = torch.randn(num_blocks, block_size, num_heads, head_dim, device='cuda', dtype=torch.float16)
         v_cache_l = torch.randn(num_blocks, block_size, num_heads, head_dim, device='cuda', dtype=torch.float16)
-        
+
         # 假设每个请求的 context 长度随机在 100 到 1000 之间
         context_lens_l = torch.randint(100, 1000, (batch_size,), device='cuda', dtype=torch.int32)
-        
+
         # 构造 block_tables (简单模拟连续分配，真实环境是碎片化的)
         max_logical_blocks = math.ceil(1000 / block_size)
         block_tables_l = torch.zeros((batch_size, max_logical_blocks), device='cuda', dtype=torch.int32)
@@ -284,7 +284,7 @@ def test_paged_attention():
             for i in range(num_l):
                 block_tables_l[b, i] = alloc_idx
                 alloc_idx += 1
-                
+
         # 由于在 Python 里写循环还原 Paged KV 太慢了，我们只测 Triton
         # vLLM 的核心优势就在于 C++/Triton 级别的 Paged 间接寻址
         quantiles = [0.5, 0.2, 0.8]
@@ -329,57 +329,57 @@ def paged_attention_decoding_kernel(
     # 1. 获取当前处理的 Batch 和 Head 索引
     batch_idx = tl.program_id(0)
     head_idx = tl.program_id(1)
-    
+
     # 2. 获取当前序列的上下文长度
     context_len = tl.load(context_lens_ptr + batch_idx)
     num_logical_blocks = tl.cdiv(context_len, BLOCK_SIZE)
-    
+
     # 3. 加载 Query (解码阶段 Q 只有一个 Token)
     # tl.num_programs(1) 表示 Y 轴 head 方向的 Program 总数，
     # 用于在扁平化后的 Q 张量中定位到当前 batch/head 对应的片段。
     q_offset = batch_idx * tl.num_programs(1) * HEAD_DIM + head_idx * HEAD_DIM + tl.arange(0, HEAD_DIM)
     q = tl.load(q_ptr + q_offset)
-    
+
     # 初始化 Online Softmax 状态和输出累加器
     m_i = -float('inf')
     l_i = 0.0
     acc = tl.zeros([HEAD_DIM], dtype=tl.float32)
-    
+
     # 4. 循环遍历当前序列的所有逻辑块
     for logical_block_idx in range(num_logical_blocks):
         # TODO 1: 查表获取物理块索引
         bt_offset = batch_idx * stride_bt_batch + logical_block_idx * stride_bt_block
         physical_block_idx = tl.load(block_tables_ptr + bt_offset)
-        
+
         # 计算当前逻辑块内每个 Token 的全局实际索引，用于构造 Mask
         start_token_idx = logical_block_idx * BLOCK_SIZE
         token_offsets = tl.arange(0, BLOCK_SIZE)
         physical_token_idx = start_token_idx + token_offsets
         mask = physical_token_idx < context_len
-        
+
         # TODO 2: 计算 K 和 V 在物理池中的偏移量，并加载到 SRAM
         k_offset = physical_block_idx * stride_k_block + token_offsets[:, None] * stride_k_seq + head_idx * stride_k_head + tl.arange(0, HEAD_DIM)[None, :]
-        
+
         k = tl.load(k_cache_ptr + k_offset, mask=mask[:, None], other=0.0)
         v = tl.load(v_cache_ptr + k_offset, mask=mask[:, None], other=0.0)
-        
+
         # TODO 3: 计算注意力分数 qk，并屏蔽 (Mask) 无效 Token
         qk = tl.sum(q[None, :] * k, axis=1) * sm_scale
         qk = tl.where(mask, qk, -float('inf'))
-        
+
         # TODO 4:Online Softmax 归约
         m_block = tl.max(qk, axis=0)
         m_new = tl.maximum(m_i, m_block)
         alpha = tl.exp(m_i - m_new)
         p = tl.exp(qk - m_new)
         l_new = l_i * alpha + tl.sum(p, axis=0)
-        
+
         # TODO 5:累加 V
         acc = acc * alpha + tl.sum(p[:, None] * v, axis=0)
-        
+
         m_i = m_new
         l_i = l_new
-        
+
     # 5. 最终归一化并写回
     acc = acc / l_i
     tl.store(out_ptr + q_offset, acc.to(out_ptr.dtype.element_ty))
@@ -388,9 +388,9 @@ def triton_paged_attention_decode(q, k_cache, v_cache, block_tables, context_len
     batch_size, num_heads, head_dim = q.shape
     out = torch.empty_like(q)
     sm_scale = 1.0 / math.sqrt(head_dim)
-    
+
     grid = (batch_size, num_heads)
-    
+
     paged_attention_decoding_kernel[grid](
         out, q, k_cache, v_cache, block_tables, context_lens, sm_scale,
         k_cache.stride(0), k_cache.stride(1), k_cache.stride(2), k_cache.stride(3),

@@ -90,30 +90,30 @@ def _rmsnorm_fwd_fused(
 ):
     # 1. 确定当前 Program 处理的是哪一行
     row_idx = tl.program_id(0)
-    
+
     # 2. 定位到当前行的起始地址
     row_start_ptr = X_ptr + row_idx * stride_x_row
     y_row_start_ptr = Y_ptr + row_idx * stride_y_row
-    
+
     # 3. 生成列偏移量 [0, 1, ..., BLOCK_SIZE-1]
     col_offsets = tl.arange(0, BLOCK_SIZE)
-    
+
     # 因为 N 可能不是 2 的幂，所以需要 mask 来防止越界访问
     mask = col_offsets < N
-    
+
     # ==========================================
     # TODO 1: 从显存加载当前行的数据 x，和权重 w 到 SRAM
     # ==========================================
     # x = ???
     # w = ???
-    
+
     # ==========================================
     # TODO 2: 在 SRAM 中计算平方和与均方根 (RMS)
     # ==========================================
     # x_sq = ???
     # ...
     # rsqrt = ???
-    
+
     # ==========================================
     # TODO 3: 归一化并乘以权重，最后写回显存
     # ==========================================
@@ -125,16 +125,16 @@ def triton_rmsnorm(x: torch.Tensor, weight: torch.Tensor, eps: float = 1e-6):
     # 确保输入是连续的
     x = x.contiguous()
     y = torch.empty_like(x)
-    
+
     # 展平前 N-1 维，将矩阵视为 [M, N]
     M = x.numel() // x.shape[-1]
     N = x.shape[-1]
-    
+
     # 寻找大于 N 的最小的 2 的幂作为 BLOCK_SIZE
     MAX_FUSED_SIZE = 65536
     BLOCK_SIZE = triton.next_power_of_2(N)
     assert BLOCK_SIZE <= MAX_FUSED_SIZE, "特征维度过大，请使用分块计算版本！"
-    
+
     # 启动 Triton Kernel
     grid = (M,)  # 分配 M 个线程块，每个处理一行
     _rmsnorm_fwd_fused[grid](
@@ -164,20 +164,20 @@ def test_triton_rmsnorm():
         x = torch.randn(M, N, device='cuda', dtype=torch.float16)
         weight = torch.ones(N, device='cuda', dtype=torch.float16)
         eps = 1e-6
-        
+
         # PyTorch Native
         x_f32 = x.float()
         variance = x_f32.pow(2).mean(-1, keepdim=True)
         x_norm = x_f32 * torch.rsqrt(variance + eps)
         out_torch = (weight.float() * x_norm).half()
-        
+
         # Triton
         out_triton = triton_rmsnorm(x, weight, eps)
-        
+
         # 检查容差
         assert torch.allclose(out_torch, out_triton, atol=1e-3, rtol=1e-3), "Triton 算子输出与 PyTorch 不一致！"
         print("✅ 数值正确！")
-        
+
         # 2. 性能基准测试 (Performance Benchmark)
         print("\n2. 性能基准测试 (Performance Benchmark)...")
         @triton.testing.perf_report(
@@ -198,7 +198,7 @@ def test_triton_rmsnorm():
             weight = torch.ones(N, device='cuda', dtype=torch.float16)
             eps = 1e-6
             quantiles = [0.5, 0.2, 0.8]
-            
+
             if provider == 'pytorch':
                 def y_fwd():
                     variance = x.float().pow(2).mean(-1, keepdim=True)
@@ -206,14 +206,14 @@ def test_triton_rmsnorm():
                 ms, min_ms, max_ms = triton.testing.do_bench(y_fwd, quantiles=quantiles)
             if provider == 'triton':
                 ms, min_ms, max_ms = triton.testing.do_bench(lambda: triton_rmsnorm(x, weight, eps), quantiles=quantiles)
-            
+
             gbps = lambda ms: 3 * x.numel() * x.element_size() / ms * 1e-6 # x 读 + weight 读 + y 写
             return gbps(ms), gbps(max_ms), gbps(min_ms)
-        
+
         print("正在运行 Benchmark，请稍候...")
         benchmark.run(print_data=True, show_plots=False)
         print("\n✅ 所有测试通过！Triton算子实现正确且性能优于PyTorch原生实现。")
-        
+
     except NotImplementedError:
         print("请先完成 TODO 部分的代码！")
     except AssertionError as e:
@@ -256,16 +256,16 @@ def _rmsnorm_fwd_fused(
     row_idx = tl.program_id(0)
     x_row_start_ptr = X_ptr + row_idx * stride_x_row
     y_row_start_ptr = Y_ptr + row_idx * stride_y_row
-    
+
     col_offsets = tl.arange(0, BLOCK_SIZE)
     mask = col_offsets < N
-    
+
     # ==========================================
     # TODO 1: 从显存加载数据到 SRAM
     # ==========================================
     x = tl.load(x_row_start_ptr + col_offsets, mask=mask, other=0.0)
     w = tl.load(W_ptr + col_offsets, mask=mask, other=0.0)
-    
+
     # ==========================================
     # TODO 2: 计算均方根倒数 (rsqrt)
     # 关键：转为 float32 累加防止溢出
@@ -274,7 +274,7 @@ def _rmsnorm_fwd_fused(
     x_sq = x_f32 * x_f32
     sum_sq = tl.sum(x_sq, axis=0)
     rsqrt = tl.math.rsqrt((sum_sq / N) + eps)
-    
+
     # ==========================================
     # TODO 3: 归一化并乘权重，转回原类型后写入显存
     # ==========================================
@@ -286,16 +286,16 @@ def triton_rmsnorm(x: torch.Tensor, weight: torch.Tensor, eps: float = 1e-6):
     # 确保输入是连续的
     x = x.contiguous()
     y = torch.empty_like(x)
-    
+
     # 展平前 N-1 维，将矩阵视为 [M, N]
     M = x.numel() // x.shape[-1]
     N = x.shape[-1]
-    
+
     # 寻找大于 N 的最小的 2 的幂作为 BLOCK_SIZE
     MAX_FUSED_SIZE = 65536
     BLOCK_SIZE = triton.next_power_of_2(N)
     assert BLOCK_SIZE <= MAX_FUSED_SIZE, "特征维度过大，请使用分块计算版本！"
-    
+
     # 启动 Triton Kernel
     grid = (M,)  # 分配 M 个线程块，每个处理一行
     _rmsnorm_fwd_fused[grid](

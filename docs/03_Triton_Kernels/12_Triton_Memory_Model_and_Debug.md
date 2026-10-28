@@ -84,16 +84,16 @@ import os
 @triton.jit
 def bug_stride_kernel(x_ptr, y_ptr, stride_x_row, stride_y_row, N, BLOCK_SIZE: tl.constexpr):
     row_idx = tl.program_id(0)
-    
+
     # ✅ TODO 1: 修复行起始指针的计算
     row_start = x_ptr + row_idx * stride_x_row
-    
+
     offsets = tl.arange(0, BLOCK_SIZE)
     mask = offsets < N
-    
+
     x = tl.load(row_start + offsets, mask=mask)
     y = x + 1.0
-    
+
     # ✅ TODO 2: 修复输出的写入指针
     out_start = y_ptr + row_idx * stride_y_row
     tl.store(out_start + offsets, y, mask=mask)
@@ -108,15 +108,15 @@ def bug_mask_kernel(x_ptr, y_ptr, out_ptr, N, BLOCK_SIZE: tl.constexpr):
     pid = tl.program_id(0)
     offsets = pid * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)
     mask = offsets < N
-    
+
     # ✅ TODO 3: 修复 Load，确保越界部分用 0.0 填充
     x = tl.load(x_ptr + offsets, mask=mask, other=0.0)
     y = tl.load(y_ptr + offsets, mask=mask, other=0.0)
-    
+
     # 演示调试: 可以在这里取消注释以观察数据
     # if pid == 0:
     #     tl.device_print("Loaded X:", x)
-    
+
     # 这里我们只存局部 sum 回去 (为了演示)
     local_sum = tl.sum(x * y)
     tl.store(out_ptr + pid, local_sum)
@@ -124,7 +124,7 @@ def bug_mask_kernel(x_ptr, y_ptr, out_ptr, N, BLOCK_SIZE: tl.constexpr):
 def run_debug_simulations():
     print("--- 开始 Bug 修复验证 ---")
     torch.manual_seed(42)
-    
+
     # 验证 Bug 1
     M, N = 4, 128
     x_2d = torch.randn(M, N, device='cuda')
@@ -132,7 +132,7 @@ def run_debug_simulations():
     bug_stride_kernel[(M,)](x_2d, y_2d, x_2d.stride(0), y_2d.stride(0), N, BLOCK_SIZE=128)
     assert torch.allclose(y_2d, x_2d + 1.0), "Bug 1 (Stride) 未修复: 二维矩阵读取错位！"
     print("✅ Bug 1 修复成功：正确理解了物理内存一维平铺与 Stride 步长的关系。")
-    
+
     # 验证 Bug 2
     N_unaligned = 100 # 不被 64 整除，越界 28 个元素
     x_1d = torch.ones(N_unaligned, device='cuda')
@@ -165,7 +165,7 @@ try:
     # 请在运行 Python 脚本前加上环境变量：
     # os.environ['TRITON_INTERPRET'] = '1'
     # 这会极大方便你看到出错的具体行数和变量状态。
-    
+
     if torch.cuda.is_available():
         run_debug_simulations()
         print("\n✅ 理解了 Stride、Mask 和 TRITON_INTERPRET 调试技巧，有助于定位和修复 Triton 算子中的内存错误。")
@@ -201,16 +201,16 @@ import os
 @triton.jit
 def bug_stride_kernel(x_ptr, y_ptr, stride_x_row, stride_y_row, N, BLOCK_SIZE: tl.constexpr):
     row_idx = tl.program_id(0)
-    
+
     # ✅ TODO 1: 修复行起始指针的计算
     row_start = x_ptr + row_idx * stride_x_row
-    
+
     offsets = tl.arange(0, BLOCK_SIZE)
     mask = offsets < N
-    
+
     x = tl.load(row_start + offsets, mask=mask)
     y = x + 1.0
-    
+
     # ✅ TODO 2: 修复输出的写入指针
     out_start = y_ptr + row_idx * stride_y_row
     tl.store(out_start + offsets, y, mask=mask)
@@ -225,15 +225,15 @@ def bug_mask_kernel(x_ptr, y_ptr, out_ptr, N, BLOCK_SIZE: tl.constexpr):
     pid = tl.program_id(0)
     offsets = pid * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)
     mask = offsets < N
-    
+
     # ✅ TODO 3: 修复 Load，确保越界部分用 0.0 填充
     x = tl.load(x_ptr + offsets, mask=mask, other=0.0)
     y = tl.load(y_ptr + offsets, mask=mask, other=0.0)
-    
+
     # 演示调试: 可以在这里取消注释以观察数据
     # if pid == 0:
     #     tl.device_print("Loaded X:", x)
-    
+
     # 这里我们只存局部 sum 回去 (为了演示)
     local_sum = tl.sum(x * y)
     tl.store(out_ptr + pid, local_sum)
@@ -241,7 +241,7 @@ def bug_mask_kernel(x_ptr, y_ptr, out_ptr, N, BLOCK_SIZE: tl.constexpr):
 def run_debug_simulations():
     print("--- 开始 Bug 修复验证 ---")
     torch.manual_seed(42)
-    
+
     # 验证 Bug 1
     M, N = 4, 128
     x_2d = torch.randn(M, N, device='cuda')
@@ -249,7 +249,7 @@ def run_debug_simulations():
     bug_stride_kernel[(M,)](x_2d, y_2d, x_2d.stride(0), y_2d.stride(0), N, BLOCK_SIZE=128)
     assert torch.allclose(y_2d, x_2d + 1.0), "Bug 1 (Stride) 未修复: 二维矩阵读取错位！"
     print("✅ Bug 1 修复成功：正确理解了物理内存一维平铺与 Stride 步长的关系。")
-    
+
     # 验证 Bug 2
     N_unaligned = 100 # 不被 64 整除，越界 28 个元素
     x_1d = torch.ones(N_unaligned, device='cuda')

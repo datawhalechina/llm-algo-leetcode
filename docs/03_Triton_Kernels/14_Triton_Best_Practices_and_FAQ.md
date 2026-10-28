@@ -30,7 +30,7 @@
 ```python
 row_idx = tl.program_id(0)
 # 错误：二维张量在物理内存中是一维展开的。只加上行号意味着你读取的是第 0 行的前几个元素，而不是第 i 行。
-row_start_ptr = ptr + row_idx 
+row_start_ptr = ptr + row_idx
 ```
 **正确解法：**
 必须传入每一维度的步长（通过 `tensor.stride(0)` 获取）。
@@ -44,7 +44,7 @@ row_start_ptr = ptr + row_idx * stride_row
 ```python
 offsets = pid * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)
 # 错误：当 pid 为最后一个块且 N 不被 BLOCK_SIZE 整除时，offsets 的末尾会超出 N。
-x = tl.load(ptr + offsets) 
+x = tl.load(ptr + offsets)
 ```
 **正确解法：**
 必须使用掩码 `mask` 保护所有的 `load` 和 `store`。

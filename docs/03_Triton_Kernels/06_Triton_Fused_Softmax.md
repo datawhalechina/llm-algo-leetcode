@@ -76,45 +76,45 @@ def fused_softmax_kernel(
 ):
     # 1. 获取当前 program 处理的是哪一行
     row_idx = tl.program_id(0)
-    
+
     # 2. 定位到当前行的起始指针
     row_start_ptr = input_ptr + row_idx * input_row_stride
-    
+
     # 3. 构造这一行的连续索引和掩码 (防越界)
     col_offsets = tl.arange(0, BLOCK_SIZE)
     input_ptrs = row_start_ptr + col_offsets
     mask = col_offsets < n_cols
-    
+
     # 4. 加载一整行到 SRAM 中
     row = tl.load(input_ptrs, mask=mask, other=-float('inf'))
-    
+
     # ==========================================
     # TODO 1: 寻找当前行的最大值 (安全 Softmax 第一步)
     # ==========================================
     # row_max = ???
     pass
-    
+
     # 减去最大值，避免 exp() 溢出
     # safe_row = ???
-    
+
     # ==========================================
     # TODO 2: 计算指数 (Numerator)
     # ==========================================
     # numerator = ???
     pass
-    
+
     # ==========================================
     # TODO 3: 求和 (Denominator)
     # ==========================================
     # denominator = ???
     pass
-    
+
     # ==========================================
     # TODO 4: 计算最终输出
     # ==========================================
     # softmax_output = ???
     pass
-    
+
     # 定位输出指针，写回
     output_row_start_ptr = output_ptr + row_idx * output_row_stride
     output_ptrs = output_row_start_ptr + col_offsets
@@ -124,15 +124,15 @@ def triton_softmax(x: torch.Tensor) -> torch.Tensor:
     M, N = x.shape
     y = torch.empty_like(x)
     BLOCK_SIZE = triton.next_power_of_2(N)
-    
+
     num_warps = 4
     if BLOCK_SIZE >= 2048:
         num_warps = 8
     if BLOCK_SIZE >= 4096:
         num_warps = 16
-        
+
     grid = (M,)
-    
+
     fused_softmax_kernel[grid](
         y, x,
         x.stride(0), y.stride(0),
@@ -155,14 +155,14 @@ def test_fused_softmax():
         assert "triton_softmax" in globals(), "缺少 triton_softmax"
         print("✅ Triton Fused Softmax 结构检查通过")
         return True
-        
+
     try:
         torch.manual_seed(42)
         test_cases = [
             (8192, 1000),
             (7, 257),
         ]
-        
+
         for M, N in test_cases:
             x = torch.randn(M, N, device='cuda')
             y_ref = torch.softmax(x, dim=1)
@@ -170,9 +170,9 @@ def test_fused_softmax():
             diff = torch.max(torch.abs(y_ref - y_tri))
             print(f"[{M}x{N}] 最大误差: {diff.item():.6e}")
             assert diff < 1e-5, f"Triton Softmax 计算结果不准确！(M={M}, N={N})"
-        
+
         print("✅ 跨线程归约的数值稳定 Softmax 算子实现成功！")
-        
+
         print()
         print("--- 性能基准测试 (Benchmark) ---")
         quantiles = [0.5, 0.2, 0.8]
@@ -217,41 +217,41 @@ def fused_softmax_kernel(
 ):
     # 1. 获取当前 program 处理的是哪一行
     row_idx = tl.program_id(0)
-    
+
     # 2. 定位到当前行的起始指针
     row_start_ptr = input_ptr + row_idx * input_row_stride
-    
+
     # 3. 构造这一行的连续索引和掩码 (防越界)
     col_offsets = tl.arange(0, BLOCK_SIZE)
     input_ptrs = row_start_ptr + col_offsets
     mask = col_offsets < n_cols
-    
+
     # 4. 加载一整行到 SRAM 中
     row = tl.load(input_ptrs, mask=mask, other=-float('inf'))
-    
+
     # ==========================================
     # TODO 1: 寻找当前行的最大值 (安全 Softmax 第一步)
     # ==========================================
     row_max = tl.max(row, axis=0)
-    
+
     # 减去最大值，避免 exp() 溢出
     safe_row = row - row_max
-    
+
     # ==========================================
     # TODO 2: 计算指数 (Numerator)
     # ==========================================
     numerator = tl.exp(safe_row)
-    
+
     # ==========================================
     # TODO 3: 求和 (Denominator)
     # ==========================================
     denominator = tl.sum(numerator, axis=0)
-    
+
     # ==========================================
     # TODO 4: 计算最终输出
     # ==========================================
     softmax_output = numerator / denominator
-    
+
     # 定位输出指针，写回
     output_row_start_ptr = output_ptr + row_idx * output_row_stride
     output_ptrs = output_row_start_ptr + col_offsets
@@ -261,15 +261,15 @@ def triton_softmax(x: torch.Tensor) -> torch.Tensor:
     M, N = x.shape
     y = torch.empty_like(x)
     BLOCK_SIZE = triton.next_power_of_2(N)
-    
+
     num_warps = 4
     if BLOCK_SIZE >= 2048:
         num_warps = 8
     if BLOCK_SIZE >= 4096:
         num_warps = 16
-        
+
     grid = (M,)
-    
+
     fused_softmax_kernel[grid](
         y, x,
         x.stride(0), y.stride(0),

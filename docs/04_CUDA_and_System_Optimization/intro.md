@@ -36,6 +36,6 @@ Part 4 可以按多条入口理解：Kernel 优先入口先把 CUDA 编程与执
 
 ## Environment Notes | 环境说明
 
-- 整体定位：GPU-required
-- 完整体验需要 NVIDIA GPU，推荐 Linux + CUDA
-- 少数页面可能支持阅读或局部执行，但不构成第四部分的标准运行路径
+- **标准环境：** Part 04 为 `GPU-required`，使用 NVIDIA GPU 与 CUDA。
+- **准备入口：** 4.1–4.2 使用[算子优化](../topic_discussion/operator_optimization/quickstart.md)或[性能优化 Quickstart](../topic_discussion/performance_optimization/quickstart.md)；4.3 使用[通信与并行 Quickstart](../topic_discussion/communication_parallelism/quickstart.md)；4.4 按[部署与异构 Quickstart](../topic_discussion/deployment_heterogeneous/quickstart.md)选择环境。
+- 少数页面可以阅读或局部执行，但不构成 Part 04 的标准运行路径。

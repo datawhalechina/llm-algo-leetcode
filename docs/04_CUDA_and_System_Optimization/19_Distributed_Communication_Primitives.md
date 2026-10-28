@@ -219,11 +219,11 @@ if __name__ == '__main__':
 
 **1. TODO 1: All-Reduce求和操作**
 - **实现方式**: `dist.all_reduce(tensor_to_reduce, op=dist.ReduceOp.SUM)`
-- **关键点**: 
+- **关键点**:
   - 原位修改张量，所有进程得到相同的归约结果
   - 支持多种归约操作（SUM, PRODUCT, MIN, MAX等）
   - rank 0上的 [1.0, 2.0] + rank 1上的 [3.0, 4.0] = [4.0, 6.0]
-- **技术细节**: 
+- **技术细节**:
   - 底层使用 Ring-AllReduce 算法；完整推导与 N=4 例子已单独整理到 [09.1 Ring-AllReduce Deep Dive](./09_1_Ring_AllReduce_Deep_Dive.md)
   - 通信开销与 GPU 数量无关，可扩展性强
   - DDP（分布式数据并行）中用于梯度同步：每个 GPU 计算不同 batch 的梯度，通过 All-Reduce 求平均

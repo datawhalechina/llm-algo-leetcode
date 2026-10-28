@@ -62,7 +62,7 @@ import time
 def overlap_transfer_and_compute(cpu_tensors, compute_stream, transfer_stream, compute_func):
     """
     使用双缓冲和双流实现传输与计算的重叠。
-    
+
     参数:
     - cpu_tensors: 一个列表，包含多个位于 CPU Pinned Memory 的张量
     - compute_stream: 负责执行计算的 CUDA 流
@@ -78,27 +78,27 @@ def overlap_transfer_and_compute(cpu_tensors, compute_stream, transfer_stream, c
     gpu_buffer_0 = torch.empty_like(cpu_tensors[0], device="cuda")
     gpu_buffer_1 = torch.empty_like(cpu_tensors[0], device="cuda")
     buffers = [gpu_buffer_0, gpu_buffer_1]
-    
+
     # ==========================================
     # TODO 2: 在 transfer_stream 上异步传输第一批数据到 buffer_0
     # ==========================================
     with torch.cuda.stream(transfer_stream):
         buffers[0].copy_(cpu_tensors[0], non_blocking=True)
-    
+
     # ==========================================
     # TODO 3: 在循环中处理当前 batch，先准备当前 buffer
     # ==========================================
     for i in range(len(cpu_tensors)):
         current_buffer = buffers[i % 2]
         next_buffer = buffers[(i + 1) % 2]
-    
+
         # ==========================================
         # TODO 4: 在 compute_stream 上执行当前 batch 的计算
         # ==========================================
         compute_stream.wait_stream(transfer_stream)
         with torch.cuda.stream(compute_stream):
             compute_func(current_buffer)
-            
+
         # ==========================================
         # TODO 5: 安全地传输下一批数据
         # ==========================================
@@ -116,12 +116,12 @@ def test_overlap():
         print("⏭️ 忽略测试：无 GPU。")
         return
 
-    # ==========================================                                                                                                                                          
-    # 检测是否实现了双缓冲和流重叠                                                                                                                                                        
-    # ==========================================                                                                                                                                          
-    import inspect                                                                                                                                                                        
-    source = inspect.getsource(overlap_transfer_and_compute)                                                                                                                              
-                                                                                                                                                                                            
+    # ==========================================
+    # 检测是否实现了双缓冲和流重叠
+    # ==========================================
+    import inspect
+    source = inspect.getsource(overlap_transfer_and_compute)
+
     # 检查必需的实现特征（用 AST 而不是字符串注释，避免误报/漏报）
     import ast
     tree = ast.parse(source)
@@ -157,22 +157,22 @@ def test_overlap():
     assert stream_calls >= 2, 'TODO 2/5: 必须使用 with torch.cuda.stream 切换流'
     assert copy_has_non_blocking, 'TODO 2/5: 必须使用 non_blocking=True 异步拷贝'
 
-    
+
     # 构造数据，使传输和计算耗时相当，以展示双缓冲的优势
     # 注意：参数已针对当前GPU环境优化，在不同硬件上可能需要调整
     dim = 4096  # 使用较小的矩阵以平衡传输和计算时间
     num_batches = 10
-    
+
     # 1. 分配锁页内存 (Pinned Memory)
     print("分配锁页内存...")
     cpu_tensors = [torch.randn(dim, dim).pin_memory() for _ in range(num_batches)]
-    
+
     # 模拟一个耗时的计算 (单次矩阵乘法)
     weight = torch.randn(dim, dim, device='cuda')
     def compute_func(x):
         x = x @ weight  # 使用较轻的计算以展示传输重叠的效果
         return x
-        
+
     # ==========================================
     # 纯串行执行 (Baseline)
     # ==========================================
@@ -184,22 +184,22 @@ def test_overlap():
         compute_func(gpu_tensor)
     torch.cuda.synchronize()
     serial_time = time.time() - start_time
-    
+
     # ==========================================
     # 异步流重叠执行 (Overlap)
     # ==========================================
     compute_stream = torch.cuda.Stream()
     transfer_stream = torch.cuda.Stream()
-    
+
     torch.cuda.synchronize()
     start_time = time.time()
     overlap_transfer_and_compute(cpu_tensors, compute_stream, transfer_stream, compute_func)
     overlap_time = time.time() - start_time
-    
+
     print(f"串行耗时: {serial_time:.4f} 秒")
     print(f"重叠耗时: {overlap_time:.4f} 秒")
     print(f"性能提升: {(serial_time / overlap_time - 1) * 100:.1f}%")
-    
+
     # 验证双缓冲是否带来性能提升
     # 注意：在某些GPU环境下，流调度开销可能超过双缓冲收益，导致性能略有下降
     # 这是正常现象，不影响代码逻辑的正确性
@@ -235,32 +235,32 @@ def overlap_transfer_and_compute(cpu_tensors, compute_stream, transfer_stream, c
     num_batches = len(cpu_tensors)
     if num_batches == 0:
         return
-        
+
     gpu_buffer_0 = torch.empty_like(cpu_tensors[0], device="cuda")
     gpu_buffer_1 = torch.empty_like(cpu_tensors[0], device="cuda")
     buffers = [gpu_buffer_0, gpu_buffer_1]
-    
+
     with torch.cuda.stream(transfer_stream):
         buffers[0].copy_(cpu_tensors[0], non_blocking=True)
-        
+
     for i in range(num_batches):
         current_buffer = buffers[i % 2]
         next_buffer = buffers[(i + 1) % 2]
-        
+
         # TODO 1: 确保在计算流上计算当前 buffer 时，当前 buffer 已经传完了
         compute_stream.wait_stream(transfer_stream)
-        
+
         # TODO 2: 发起计算 (在 compute_stream 上)
         with torch.cuda.stream(compute_stream):
             compute_func(current_buffer)
-            
+
         # TODO 3: 准备下一个 buffer 的传输
         if i + 1 < num_batches:
             # 确保用来装下一批数据的 next_buffer 上一次的计算结果已经被消费掉，否则会被覆盖！
             transfer_stream.wait_stream(compute_stream)
             with torch.cuda.stream(transfer_stream):
                 next_buffer.copy_(cpu_tensors[i+1], non_blocking=True)
-                
+
     torch.cuda.synchronize()
 ```
 

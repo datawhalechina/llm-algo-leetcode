@@ -87,7 +87,7 @@ def build_deepspeed_config():
                 "weight_decay": 0.1
             }
         },
-        
+
         # 设置混合精度训练 (FP16 或 BF16 都可以极大地降低显存占用)
         "fp16": {
             "enabled": True,
@@ -97,7 +97,7 @@ def build_deepspeed_config():
             "hysteresis": 2,
             "min_loss_scale": 1
         },
-        
+
         # ==========================================
         # TODO 1: 选择 ZeRO-2 作为训练基线
         # 场景: 模型前向里可能已经嵌入了自定义 CUDA/Triton 层，但我们仍要先把训练系统跑稳
@@ -112,7 +112,7 @@ def build_deepspeed_config():
         # TODO 3: 在显存紧张时启用优化器 CPU Offload
         # 场景: 当自定义算子已经把算力吃满、但显存先爆掉时，用 CPU 内存兜底
         # ==========================================
-        
+
         "zero_optimization": {
             # "stage": ???,
             # "overlap_comm": ???,
@@ -122,15 +122,15 @@ def build_deepspeed_config():
             #     "pin_memory": ???
             # }
         },
-        
+
         # 设置单卡 Batch Size 和梯度累加步数
         "train_batch_size": 32,
         "train_micro_batch_size_per_gpu": 4,
         "gradient_accumulation_steps": 8,
     }
-    
+
     raise NotImplementedError("请实现 TODO 1、2、3")
-    
+
     return ds_config
 ```
 
@@ -139,25 +139,25 @@ def build_deepspeed_config():
 # 测试并验证配置
 def test_deepspeed_config():
     config = build_deepspeed_config()
-    
+
     # 将字典转换为美观的 JSON 字符串进行打印
     config_json = json.dumps(config, indent=4)
     print("生成的 DeepSpeed 配置如下：\n")
     print(config_json)
-    
+
     # 验证核心参数的正确性
     try:
         z_opt = config.get("zero_optimization", {})
         assert z_opt.get("stage") == 2, "没有正确配置 ZeRO-2 (stage=2)"
         assert z_opt.get("overlap_comm") is True, "没有开启 overlap_comm"
-        
+
         offload = z_opt.get("offload_optimizer", {})
         assert offload.get("device") == "cpu", "没有将设备配置为 cpu"
         assert offload.get("pin_memory") is True, "由于需要高频传输，务必开启 pin_memory"
-        
+
         print("\n✅ DeepSpeed ZeRO-2 + CPU Offload 配置验证通过。")
         print("工程实践：ZeRO-2适合7B-13B模型，CPU Offload可突破显存限制。")
-        
+
     except AssertionError as e:
         print(f"\n❌ 测试失败: {e}")
 
@@ -195,7 +195,7 @@ def build_deepspeed_config():
                 "weight_decay": 0.1
             }
         },
-        
+
         # 设置混合精度训练 (FP16 或 BF16 都可以极大地降低显存占用)
         "fp16": {
             "enabled": True,
@@ -205,29 +205,29 @@ def build_deepspeed_config():
             "hysteresis": 2,
             "min_loss_scale": 1
         },
-        
+
         "zero_optimization": {
             # TODO 1: 配置 ZeRO 优化阶段
             "stage": 2,
-            
+
             # TODO 2: 开启通信计算重叠
             "overlap_comm": True,
-            
+
             "contiguous_gradients": True,
-            
+
             # TODO 3: 配置优化器 CPU Offload
             "offload_optimizer": {
                 "device": "cpu",
                 "pin_memory": True
             }
         },
-        
+
         # 设置单卡 Batch Size 和梯度累加步数
         "train_batch_size": 32,
         "train_micro_batch_size_per_gpu": 4,
         "gradient_accumulation_steps": 8,
     }
-    
+
     return ds_config
 
 ```
@@ -236,39 +236,39 @@ def build_deepspeed_config():
 
 **1. TODO 1: 配置ZeRO优化阶段**
 - **实现方式**: `"stage": 2`
-- **关键点**: 
+- **关键点**:
   - Stage 1: 只切分优化器状态
   - Stage 2: 切分优化器状态+梯度（推荐）
   - Stage 3: 切分优化器+梯度+参数
-- **技术细节**: 
+- **技术细节**:
   - ZeRO-2适合7B-13B模型
   - 显存节省约50-70%
   - 通信开销适中，每步只需一次Reduce-Scatter
 
 **2. TODO 2: 开启通信计算重叠**
 - **实现方式**: `"overlap_comm": True`
-- **关键点**: 
+- **关键点**:
   - 在计算时异步传输梯度
   - 隐藏通信延迟
   - 提升训练吞吐量10-30%
-- **技术细节**: 
+- **技术细节**:
   - 使用CUDA Stream实现
   - 类似第15节的双缓冲技术
   - 要求计算时间 > 通信时间才有效
 
 **3. TODO 3: 配置优化器CPU Offload**
-- **实现方式**: 
+- **实现方式**:
   ```python
   "offload_optimizer": {
       "device": "cpu",
       "pin_memory": True
   }
   ```
-- **关键点**: 
+- **关键点**:
   - 将优化器状态放到CPU内存
   - 突破GPU显存限制
   - pin_memory加速CPU-GPU传输
-- **技术细节**: 
+- **技术细节**:
   - 显存节省：优化器状态占模型参数的2倍（Adam）
   - 性能代价：训练速度降低20-50%
   - 适用场景：显存不足但内存充足
@@ -353,7 +353,7 @@ def build_deepspeed_config():
 - ZeRO-3 通信开销大（每层都需要 All-Gather 参数）
 - CPU Offload 适合“显存不够，内存来凑”的场景
 
-**工程启示**: 
+**工程启示**:
 - 优先尝试 ZeRO-2，只有在 OOM 时才考虑 ZeRO-3 或 Offload
 - 多机训练时，网络带宽是关键瓶颈
 - 使用 `NCCL_DEBUG=INFO` 分析通信瓶颈
@@ -372,16 +372,16 @@ CPU Offload可以突破显存限制，但会带来性能损失。
 **答案**:
 
 **性能损失来源**:
-1. **PCIe传输延迟**: 
+1. **PCIe传输延迟**:
    - 梯度从GPU传到CPU（每步一次）
    - 更新后的参数从CPU传回GPU（每步一次）
    - PCIe带宽约16GB/s，远低于GPU显存带宽（900GB/s）
-   
-2. **CPU计算慢**: 
+
+2. **CPU计算慢**:
    - Adam优化器在CPU上计算
    - CPU无Tensor Core，计算慢10-100倍
-   
-3. **同步开销**: 
+
+3. **同步开销**:
    - 需要等待CPU计算完成
    - 无法完全隐藏延迟
 
