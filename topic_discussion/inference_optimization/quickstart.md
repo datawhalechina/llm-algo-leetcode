@@ -1,6 +1,6 @@
 # 推理优化实验 Quickstart
 
-本页只说明环境创建和进入方式。页面、工作负载、结果路径和证据状态见[实验资产表](./experiment_assets.md)；跨专题隔离规则和硬件快照见[GPU 环境资产表](../../docs/gpu_environment_assets.md)。以下命令均在仓库根目录执行。
+本页只说明环境创建和进入方式。页面、工作负载、结果路径、实际版本和硬件快照见[实验资产表](./experiment_assets.md)及结果 JSON；跨专题 Profile 与隔离关系见[环境资产索引](../../docs/gpu_environment_assets.md)。以下命令均在仓库根目录执行。
 
 <a id="inf-cuda-mechanism-quickstart"></a>
 
@@ -30,27 +30,6 @@ python -m jupyter lab
 ```
 
 预检只确认环境、CUDA、依赖和仓库运行时可用，不代表某个候选一定更快。具体运行顺序、固定工作负载和证据状态见[实验资产表](./experiment_assets.md#单卡机制验证顺序)。
-
-<a id="inf-service-delivery"></a>
-
-## INF-SERVICE-DELIVERY：推理服务交付控制环境
-
-Part 05 推理服务交付项目使用轻量控制环境发送固定请求、读取 Part 02 交接证据并生成最终决策。vLLM、SGLang 与量化加载器仍运行在各自隔离环境中，不安装到这个控制环境。
-
-```bash
-PIP_INDEX_URL=https://pypi.org/simple \
-python tools/install_environment_profile.py \
-  --profile INF-SERVICE-DELIVERY \
-  --env-name llm_inf_delivery
-
-conda activate llm_inf_delivery
-python tools/register_notebook_runtime.py --check
-python -m pip check
-python tools/environment_preflight.py --profile INF-SERVICE-DELIVERY
-python -m jupyter lab
-```
-
-运行时保留两个终端：服务终端使用候选对应的 backend Profile；控制终端使用本环境。单卡上切换候选前先停止旧服务，保持 YAML 中的请求集、生成参数、并发、预热和重复次数不变。
 
 <a id="inf-vllm-spec025-quickstart"></a>
 
@@ -139,7 +118,7 @@ python tools/install_environment_profile.py \
 
 SGLang 对照使用独立环境，不能与 vLLM 共享同一个 Python 环境。尚未登记稳定 Profile 的后端只作为可选候选，不进入默认复测链。
 
-连续批处理实验必须关闭前缀缓存，避免后运行的一组因缓存命中获得额外收益。环境预检通过后，在独立终端启动固定服务：
+Part 05 推理服务项目也使用这个 Profile。服务和 Notebook 分别在两个终端运行，但都激活 `llm_vllm_cu128`；同一时刻只运行一个候选服务，不另建控制环境。连续批处理实验必须关闭前缀缓存，避免后运行的一组因缓存命中获得额外收益。环境预检通过后，在独立终端启动固定服务：
 
 ```bash
 conda activate llm_vllm_cu128

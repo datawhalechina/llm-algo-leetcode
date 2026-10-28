@@ -1,0 +1,13 @@
+# Q-CPU compatibility set for Python 3.12 and CPU-only PyTorch.
+# This profile checks framework semantics; it does not provide GPU kernels.
+torch==2.11.0
+torchao==0.18.0
+llmcompressor==0.14.0
+compressed-tensors==0.19.0
+hqq==0.2.8.post1
+transformers==5.17.0
+datasets==5.0.1
+accelerate==1.15.0
+auto-round==0.15.1
+numpy==2.5.3
+

@@ -1,6 +1,49 @@
 {
   "schema_version": "tutorial-environment-profiles/v1",
   "profiles": {
+    "Q-CPU": {
+      "title": "量化 CPU 框架核对环境",
+      "purpose": "使用 TorchAO、LLM Compressor、compressed-tensors 与 HQQ 核对量化配置、状态转换和小模块数值语义",
+      "python": {
+        "minimum": "3.11",
+        "maximum_exclusive": "3.13"
+      },
+      "requirements": [
+        "requirements/quantization-cpu.txt"
+      ],
+      "constraint_files": [
+        "requirements/quantization-cpu-constraints.txt"
+      ],
+      "required_modules": {
+        "torch": "torch",
+        "jupyterlab": "jupyterlab",
+        "ipykernel": "ipykernel",
+        "transformers": "transformers",
+        "torchao": "torchao",
+        "llmcompressor": "llmcompressor",
+        "compressed_tensors": "compressed-tensors",
+        "hqq": "hqq"
+      },
+      "forbidden_distributions": [
+        "vllm",
+        "sglang",
+        "bitsandbytes",
+        "deepspeed"
+      ],
+      "isolation": {
+        "require_clean_sys_path": true,
+        "require_user_site_disabled": true,
+        "require_project_runtime": true
+      },
+      "gpu": {
+        "required": false
+      },
+      "evidence_scope": "cpu_framework_conformance",
+      "documentation": {
+        "global": "docs/gpu_environment_assets.md#q-cpu",
+        "topic": "topic_discussion/quantization_compression/quickstart.md#q-cpu-quickstart"
+      }
+    },
     "Q-CUDA-MECHANISM": {
       "title": "量化机制单卡 GPU 环境",
       "purpose": "运行量化机制页的真实层、校准、低精度执行和局部质量对照",
@@ -20,8 +63,8 @@
         "jupyterlab": "jupyterlab",
         "ipykernel": "ipykernel",
         "transformers": "transformers",
-      "torchao": "torchao",
-      "llmcompressor": "llmcompressor",
+        "torchao": "torchao",
+        "llmcompressor": "llmcompressor",
         "compressed_tensors": "compressed-tensors",
         "hqq": "hqq"
       },
@@ -44,6 +87,44 @@
       "documentation": {
         "global": "docs/gpu_environment_assets.md#q-cuda-mechanism",
         "topic": "topic_discussion/quantization_compression/quickstart.md#q-cuda-mechanism-quickstart"
+      }
+    },
+    "PAR-CPU": {
+      "title": "通信与并行 CPU 框架核对环境",
+      "purpose": "使用 PyTorch Distributed、Gloo、DTensor 与 Pipeline API 核对多进程通信和切分机制",
+      "python": {
+        "minimum": "3.11",
+        "maximum_exclusive": "3.13"
+      },
+      "requirements": [
+        "requirements/torch-cpu.txt"
+      ],
+      "constraint_files": [],
+      "required_modules": {
+        "torch": "torch",
+        "jupyterlab": "jupyterlab",
+        "ipykernel": "ipykernel",
+        "nbformat": "nbformat"
+      },
+      "forbidden_distributions": [
+        "vllm",
+        "sglang",
+        "llmcompressor",
+        "bitsandbytes",
+        "deepspeed"
+      ],
+      "isolation": {
+        "require_clean_sys_path": true,
+        "require_user_site_disabled": true,
+        "require_project_runtime": true
+      },
+      "gpu": {
+        "required": false
+      },
+      "evidence_scope": "cpu_multiprocess_framework_conformance",
+      "documentation": {
+        "global": "docs/gpu_environment_assets.md#par-cpu",
+        "topic": "topic_discussion/communication_parallelism/quickstart.md#par-cpu-quickstart"
       }
     },
     "PAR-CUDA-MECHANISM": {
@@ -213,7 +294,7 @@
     },
     "PERF-CUDA-MECHANISM": {
       "title": "性能机制单卡 GPU 环境",
-      "purpose": "运行 Trace、配对回归、输入流水线、主机—设备搬运与 I/O 关键路径的单卡实验",
+      "purpose": "运行性能机制单卡实验与 Part 05·03 综合项目；包含本项目配置核对所需的 PyYAML",
       "python": {
         "minimum": "3.11",
         "maximum_exclusive": "3.13"
@@ -227,7 +308,8 @@
         "torch": "torch",
         "jupyterlab": "jupyterlab",
         "ipykernel": "ipykernel",
-        "tensorboard": "tensorboard"
+        "tensorboard": "tensorboard",
+        "yaml": "PyYAML"
       },
       "forbidden_distributions": [
         "vllm",
@@ -254,7 +336,7 @@
     },
     "PERF-DELIVERY": {
       "title": "性能优化交付控制环境",
-      "purpose": "读取 Part 02 性能交接包，检查候选组合、回归门槛与瓶颈转移并形成交付决策",
+      "purpose": "核对独立性能项目的配对测量、候选组合、回归门槛与回滚证据并形成交付决策",
       "python": {"minimum": "3.11", "maximum_exclusive": "3.13"},
       "requirements": ["requirements/performance-delivery.txt"],
       "constraint_files": [],
@@ -287,24 +369,6 @@
       "documentation": {
         "global": "docs/gpu_environment_assets.md#inf-cuda-mechanism",
         "topic": "topic_discussion/inference_optimization/quickstart.md#inf-cuda-mechanism-quickstart"
-      }
-    },
-    "INF-SERVICE-DELIVERY": {
-      "title": "推理服务交付控制环境",
-      "purpose": "读取 Part 02 单卡部署交接清单，向隔离后端发送冻结请求并形成服务交付决策",
-      "python": {"minimum": "3.11", "maximum_exclusive": "3.13"},
-      "requirements": ["requirements/inference-service-delivery.txt"],
-      "constraint_files": [],
-      "required_modules": {
-        "jupyterlab": "jupyterlab", "ipykernel": "ipykernel", "yaml": "PyYAML", "psutil": "psutil"
-      },
-      "forbidden_distributions": ["vllm", "sglang", "llmcompressor", "deepspeed", "torchao"],
-      "isolation": {"require_clean_sys_path": true, "require_user_site_disabled": true, "require_project_runtime": true},
-      "gpu": {"required": false},
-      "evidence_scope": "integrated_system_evidence",
-      "documentation": {
-        "global": "topic_discussion/inference_optimization/quickstart.md#inf-service-delivery",
-        "topic": "topic_discussion/inference_optimization/quickstart.md#inf-service-delivery"
       }
     },
     "BASE-CPU": {
@@ -387,27 +451,19 @@
     "PT-VERL-CUDA": {
       "title": "后训练 verl 单卡系统机制环境",
       "purpose": "核对轨迹行为偏离、准入过滤、生成—更新阶段耗时和 KV Cache 驻留路径",
-      "python": {
-        "minimum": "3.12",
-        "maximum_exclusive": "3.13"
-      },
+      "python": {"minimum": "3.12", "maximum_exclusive": "3.13"},
       "external_manager": {
         "kind": "uv_lock",
         "repository": "https://github.com/verl-project/verl.git",
         "tag": "v0.9.1",
         "commit": "1876b06d0a3e4e71e06230be10af14492ca8a75b",
         "python": "3.12",
-        "extras": [
-          "vllm"
-        ]
+        "extras": ["vllm"]
       },
       "requirements": [],
       "constraint_files": [],
       "required_modules": {
-        "torch": "torch",
-        "verl": "verl",
-        "vllm": "vllm",
-        "ray": "ray"
+        "torch": "torch", "verl": "verl", "vllm": "vllm", "ray": "ray"
       },
       "exact_distribution_versions": {
         "vllm": "0.24.0"
@@ -416,17 +472,8 @@
         "The package `mistral-common` requires `numpy>=1.25,<2.4 ; python_full_version < '3.13'`, but `2.4.6` is installed"
       ],
       "forbidden_distributions": [],
-      "isolation": {
-        "require_clean_sys_path": true,
-        "require_user_site_disabled": true,
-        "require_project_runtime": false
-      },
-      "gpu": {
-        "required": true,
-        "minimum_memory_gb": 10,
-        "torch_cuda": "13.0",
-        "minimum_devices": 1
-      },
+      "isolation": {"require_clean_sys_path": true, "require_user_site_disabled": true, "require_project_runtime": false},
+      "gpu": {"required": true, "minimum_memory_gb": 10, "torch_cuda": "13.0", "minimum_devices": 1},
       "evidence_scope": "single_gpu_colocated_rl_system_mechanism",
       "documentation": {
         "global": "docs/gpu_environment_assets.md#pt-verl-cuda",
@@ -616,7 +663,7 @@
     },
     "INF-VLLM-011-CU128": {
       "title": "vLLM 0.11 CUDA 12.8 服务环境",
-      "purpose": "复现教程已登记的 vLLM 0.11 单卡服务基线",
+      "purpose": "运行 Part 02 推理项目和 Part 05 服务交付；同一环境启动后端、发送请求并核对结果",
       "python": {
         "minimum": "3.11",
         "maximum_exclusive": "3.13"
@@ -634,6 +681,7 @@
         "transformers": "transformers",
         "vllm": "vllm",
         "xformers": "xformers",
+        "yaml": "PyYAML",
         "compressed_tensors": "compressed-tensors"
       },
       "forbidden_distributions": [

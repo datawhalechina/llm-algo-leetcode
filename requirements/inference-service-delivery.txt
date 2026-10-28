@@ -1,9 +1,0 @@
-# Part 05 inference service controller.
-# Backend engines stay in their dedicated environments; this environment only
-# sends fixed requests, reads evidence and writes the delivery decision.
---index-url https://pypi.org/simple
-
-jupyterlab
-ipykernel
-PyYAML
-psutil

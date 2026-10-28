@@ -1,6 +1,27 @@
 # 通信与并行实验 Quickstart
 
-本页用于创建、恢复和预检真实多卡机制环境。页面、workload、结果路径和证据状态见[实验资产表](./experiment_assets.md)；精确 Profile 定义、隔离规则和硬件快照见[GPU 环境资产表](../../docs/gpu_environment_assets.md)。以下命令均在仓库根目录执行。
+本页用于创建、恢复和预检 CPU 多进程核对环境与真实多卡机制环境。页面、workload、结果路径、实际环境和硬件快照见[实验资产表](./experiment_assets.md)及结果 JSON；精确 Profile 定义在注册表中维护，隔离关系见[环境资产索引](../../docs/gpu_environment_assets.md)。以下命令均在仓库根目录执行。
+
+<a id="par-cpu-quickstart"></a>
+
+## PAR-CPU：两进程框架核对环境
+
+基础题目与答案测试可以使用 `BASE-CPU`；需要核对 Gloo collective、DTensor、上下文切分或 Pipeline API 时使用 `PAR-CPU`。框架核对默认在本机启动两个短生命周期 CPU 进程，不形成 NCCL、GPU 带宽或扩展效率证据。
+
+```bash
+python tools/install_environment_profile.py \
+  --profile PAR-CPU \
+  --env-name llm_parallel_cpu
+
+conda activate llm_parallel_cpu
+python tools/environment_preflight.py --profile PAR-CPU
+python tools/test_framework_conformance.py \
+  --all-part02 \
+  --profile PAR-CPU \
+  --require-passed
+```
+
+已有同 Profile 环境可在安装命令末尾添加 `--reuse`。Notebook 中的框架核对会自行建立本地 Gloo rendezvous 并在结束后销毁进程组；若上一次运行被强制中断，重启 Kernel 后再运行该单元。
 
 <a id="par-cuda-mechanism-quickstart"></a>
 

@@ -26,7 +26,7 @@ python tools/test_framework_conformance.py \
 
 ## Q-CUDA-MECHANISM：量化机制环境
 
-25、40、41、53、54、Mixed-bit 和 QAT 使用这一独立环境。它不安装 vLLM 或 SGLang，也不与 Serving 环境混用。
+25、40、41、53、54、Mixed-bit、QAT，以及 Part 05·04 的量化产物生成阶段使用这一独立环境。它不安装 vLLM 或 SGLang，也不与 Serving 环境混用。
 
 ### 一键创建（推荐）
 

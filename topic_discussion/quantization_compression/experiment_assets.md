@@ -9,7 +9,7 @@
 | 环境 ID | 角色与直接入口 | 证据边界 |
 |:---|:---|:---|
 | `Q-CPU` | TorchAO、LLM Compressor、compressed-tensors 与 HQQ 的小规模框架核对 | 只形成 CPU 框架语义证据，不作为 Kernel、显存或性能证据 |
-| `Q-CUDA-MECHANISM` | 25、40、41、53、54、Mixed-bit、QAT | 单卡真实模型机制、产物生成或局部执行证据；不等于 Serving 证据 |
+| `Q-CUDA-MECHANISM` | 25、40、41、53、54、Mixed-bit、QAT、Part 05·04 量化阶段 | 单卡真实模型机制、产物生成或局部执行证据；不等于 Serving 证据 |
 | `Q-QLORA` | 26、65 | BF16 LoRA / NF4 QLoRA 配对训练和适配器交付 |
 | `INF-VLLM-011-CU128`（专题角色：`Q-VLLM`） | 67、82、83 的主服务后端 | 量化产物加载、实际请求和服务性能证据；使用 vLLM 0.11 / PyTorch 2.8 / CUDA 12.8 锁定组合 |
 | `Q-SGLANG` | 67、83 的可选同口径对照 | 必须固定同一模型、产物、硬件和请求清单 |
@@ -36,7 +36,7 @@
 | `QUANT-W8A16-LAYER` / 25 | `Q-CUDA-MECHANISM`；0.5B 的 `q_proj` / `gate_proj` / `down_proj`；1 / 32 / 256 Token | FP16 Linear → torchao INT8 仅权重量化 | `benchmarks/results/25_torchao_w8a16_layer_microbenchmark_default1.json`；容量和质量通过，只有 `q_proj`、32 Token 达到明显加速 |
 | `QUANT-QLORA-MECHANISM` / 26 | `Q-QLORA`；0.5B 与 1.5B；固定训练 / 验证 / 测试划分 | BF16 LoRA → NF4 QLoRA | 结果：`benchmarks/results/26_lora_qlora_mechanism_matrix_default2.json`；适配器：`benchmarks/artifacts/26_qlora/default2/`；1.5B 显存收益伴随质量和单步时间代价 |
 | `QUANT-WEIGHT-PTQ` / 40 | `Q-CUDA-MECHANISM`；0.5B；互斥校准 / 评测数据 | BF16 → RTN / GPTQ / AWQ W4A16 | 结果：`benchmarks/results/40_llmcompressor_gptq_awq_default11.json`；产物：`benchmarks/artifacts/40_gptq_awq/default11/`；GPTQ 入选下游检查，尚无 Serving 性能结论 |
-| `QUANT-SMOOTHQUANT` / 53 | `Q-CUDA-MECHANISM`；0.5B；互斥校准 / 评测数据 | BF16 / 普通 W8A8 → `alpha=0.5/0.7/0.8/0.9` | 结果：`benchmarks/results/53_llmcompressor_smoothquant_default111.json`；产物：`02_PyTorch_Algorithms/benchmarks/artifacts/53_smoothquant/default111/`；`alpha=0.5` 入选，真实 W8A8 Kernel 仍待验证 |
+| `QUANT-SMOOTHQUANT` / 53 | `Q-CUDA-MECHANISM`；0.5B；互斥校准 / 评测数据 | BF16 / 普通 W8A8 → `alpha=0.5/0.7/0.8/0.9` | 结果：`benchmarks/results/53_llmcompressor_smoothquant_default111.json`；产物：`benchmarks/artifacts/53_smoothquant/default111/`；`alpha=0.5` 入选，真实 W8A8 Kernel 仍待验证 |
 | `QUANT-FP8-RUNTIME` / 41 | `Q-CUDA-MECHANISM`；0.5B；提示 × Token 长度矩阵 | BF16 → FP8 仅权重 / dynamic 逐张量 / dynamic PerRow | `benchmarks/results/41_torchao_fp8_runtime_default13.json`；路径完整，但门槛未全部通过，决策为 `tune_or_fallback` |
 | `QUANT-KV-RUNTIME` / 54 | `Q-CUDA-MECHANISM`；0.5B；上下文 × 高精度残留窗口 | Transformers `DynamicCache` → HQQ `QuantizedCache` | `benchmarks/results/54_transformers_quantized_cache_matrix_default18.json`；长上下文出现容量收益，但有延迟和质量代价 |
 | `QUANT-MIXED-BIT-ALLOCATION` / Mixed-bit | `Q-CUDA-MECHANISM`；0.5B；全层 Block 敏感度与独立评测 | 统一 INT8 / INT4 → 12.5% / 25% / 50% 高敏感 Block 保护 | `benchmarks/results/quant_mixed_bit_mechanism_default3.json`；接受 3/24 最小容量候选，6/24 为稳健候选；无加速结论 |
@@ -64,6 +64,7 @@ vLLM 是 GPTQ/AWQ 服务执行的主验证后端；SGLang 只作同口径对照�
 | `QUANT-ARTIFACT-GATE` | 40 的已接受结果与获选产物 → 通过血缘、文件哈希、质量记录和真实加载器检查的产物 | 82；通过 `UPSTREAM_RUN_LABEL` 自动定位候选包，无需复制路径 |
 | `QUANT-INFERENCE-DEPLOY` | 浮点基线与合格产物 → 同模型后端部署结果 | 67；vLLM 主验证，GGUF 走独立路径 |
 | `QUANT-SERVING-PROFILE` | 同一产物与请求清单 → 延迟优先、均衡、吞吐优先结果 | 83；服务配置与决策收口 |
+| `QUANT-INTEGRATED-DELIVERY` | 固定模型与数据 → GPTQ 产物、留出集质量及 vLLM 服务配对 | Part 05·04；独立生成量化产物并形成跨环境交付结论，不替代 40、82、67、83 的专项证据 |
 
 ### 项目验证顺序
 

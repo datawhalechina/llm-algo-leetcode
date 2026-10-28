@@ -10,7 +10,7 @@ CPU 练习用于复算事件依赖、驻留量和回归规则；实际设备时�
 |:---|:---|:---|
 | Part 00 / 01 与机制页 CPU 练习 | [BASE-CPU 安装与启动](../../docs/guide.md#base-cpu) | 按各页运行环境说明选择依赖 |
 | PERF-TRACE、PERF-MEMORY-TIMELINE、PERF-ROOFLINE、PERF-REGRESSION | `PERF-CUDA-MECHANISM`，环境名 `llm_perf_cu128` | 单张 GPU 至少 8 GiB 显存，CUDA PyTorch 与 Profile 预检通过 |
-| PERF-INPUT、PERF-IO 等性能优化交叉实验 | 复用同一 `PERF-CUDA-MECHANISM` 环境 | 按各页固定输入和阶段范围运行 |
+| PERF-INPUT、PERF-IO 等性能优化交叉实验及 Part 05·03、05 | 复用同一 `PERF-CUDA-MECHANISM` 环境 | 按项目页固定输入和阶段范围运行；项目结果独立登记 |
 | 多卡通信或推理服务测量 | [通信与并行](../communication_parallelism/quickstart.md) / [推理优化](../inference_optimization/quickstart.md) | 使用目标后端与设备条件 |
 
 ## 2. 首次创建

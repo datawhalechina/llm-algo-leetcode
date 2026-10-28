@@ -1,0 +1,14 @@
+# Dedicated Q-CPU framework-conformance profile.
+--index-url https://download.pytorch.org/whl/cpu
+--extra-index-url https://pypi.org/simple
+
+-r base.txt
+
+torch
+torchao
+llmcompressor
+compressed-tensors
+hqq
+datasets
+accelerate
+

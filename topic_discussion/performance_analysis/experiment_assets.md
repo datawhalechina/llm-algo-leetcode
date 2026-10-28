@@ -9,7 +9,7 @@
 | 环境或工具层 | 直接入口 | 可以形成的记录 |
 |:---|:---|:---|
 | CPU 基础练习 | [Part 00 · 0E](../../00_Prerequisites/0E.md)、Part 01 资源与执行基础、机制页 Step 4 | 指标定义、事件依赖、驻留账本、资源参考与回归规则 |
-| `PERF-CUDA-MECHANISM` | [创建与检查](./quickstart.md#perf-cuda-mechanism-quickstart) | 单卡执行轨迹、对象驻留、经验资源参考、局部时间和配对分布；四个本专题实验共用此 Profile |
+| `PERF-CUDA-MECHANISM` | [创建与检查](./quickstart.md#perf-cuda-mechanism-quickstart) | 单卡执行轨迹、对象驻留、经验资源参考、局部时间和配对分布；本专题实验及 Part 05·03、05 共用此 Profile |
 | Nsight Systems / Compute | 目标机器上的外部采集 | 系统时间线、计算内核资源指标和暴露等待，保留采集命令与原始报告 |
 | 多卡通信环境 | [Part 02 · 47](../../02_PyTorch_Algorithms/47_Communication_Profiling_with_NCCL.ipynb)与[通信实验资产](../communication_parallelism/experiment_assets.md) | 集合通信、最慢进程和扩展效率 |
 | 服务环境 | [推理实验资产](../inference_optimization/experiment_assets.md) | 请求队列、缓存、TTFT、TPOT 和吞吐 |
