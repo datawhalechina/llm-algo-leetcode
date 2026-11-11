@@ -43,11 +43,11 @@
   <text x="1060" y="528" text-anchor="middle" class="small">继续扫描</text>
   <rect x="1135" y="450" width="110" height="92" class="node" fill="#ffffff" stroke="#fb7185"/>
   <text x="1190" y="480" text-anchor="middle" class="label">首次拒绝</text>
-  <text x="1190" y="507" text-anchor="middle" class="small">residual</text>
+  <text x="1190" y="507" text-anchor="middle" class="small">拒绝修正</text>
   <text x="1190" y="528" text-anchor="middle" class="small">修正 token</text>
   <rect x="1265" y="450" width="110" height="92" class="node" fill="#ffffff" stroke="#22d3ee"/>
   <text x="1320" y="480" text-anchor="middle" class="label">全部接受</text>
-  <text x="1320" y="507" text-anchor="middle" class="small">bonus</text>
+  <text x="1320" y="507" text-anchor="middle" class="small">目标追加</text>
   <text x="1320" y="528" text-anchor="middle" class="small">token</text>
   <path d="M1190 404V425M1060 425H1320" class="branch"/>
   <path d="M1060 425V450" class="flow"/>

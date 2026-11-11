@@ -11,25 +11,25 @@
   <text x="58" y="58" class="title">逐位置验证：接受、修正与 bonus</text>
   <text x="58" y="89" class="sub">每个候选只沿一条结果路径前进；首次拒绝会结束本轮，全部通过才进入 bonus 分支。</text>
 
-  <rect x="80" y="170" width="270" height="105" class="node" fill="#eff6ff" stroke="#60a5fa"/>
+  <rect x="80" y="170" width="270" height="88" class="node" fill="#eff6ff" stroke="#60a5fa"/>
   <text x="215" y="211" text-anchor="middle" class="label">当前候选 token</text>
   <text x="215" y="243" text-anchor="middle" class="small">读取目标概率 p 与草稿概率 q</text>
-  <rect x="450" y="170" width="300" height="105" class="node" fill="#ede9fe" stroke="#8b5cf6"/>
+  <rect x="450" y="170" width="300" height="88" class="node" fill="#ede9fe" stroke="#8b5cf6"/>
   <text x="600" y="211" text-anchor="middle" class="label">接受概率</text>
   <text x="600" y="243" text-anchor="middle" class="small">α = min(1，p(x) / q(x))</text>
-  <rect x="850" y="170" width="300" height="105" class="node" fill="#fef3c7" stroke="#d97706"/>
+  <rect x="850" y="170" width="300" height="88" class="node" fill="#fef3c7" stroke="#d97706"/>
   <text x="1000" y="211" text-anchor="middle" class="label">当前 token 通过？</text>
   <text x="1000" y="243" text-anchor="middle" class="small">继续检查，或结束本轮</text>
   <path d="M350 222H450" class="flow"/>
   <path d="M750 222H850" class="flow"/>
 
-  <rect x="55" y="430" width="300" height="105" class="node" fill="#dcfce7" stroke="#16a34a"/>
+  <rect x="55" y="430" width="300" height="88" class="node" fill="#dcfce7" stroke="#16a34a"/>
   <text x="205" y="471" text-anchor="middle" class="label">接受并继续</text>
   <text x="205" y="503" text-anchor="middle" class="small">仍有候选位置，继续扫描</text>
-  <rect x="570" y="430" width="320" height="105" class="node" fill="#fff1f2" stroke="#e11d48"/>
+  <rect x="570" y="430" width="320" height="88" class="node" fill="#fff1f2" stroke="#e11d48"/>
   <text x="730" y="471" text-anchor="middle" class="label">首次拒绝</text>
   <text x="730" y="503" text-anchor="middle" class="small">从 residual 分布采样修正 token</text>
-  <rect x="1085" y="430" width="300" height="105" class="node" fill="#ecfeff" stroke="#0891b2"/>
+  <rect x="1085" y="430" width="300" height="88" class="node" fill="#ecfeff" stroke="#0891b2"/>
   <text x="1235" y="471" text-anchor="middle" class="label">全部接受</text>
   <text x="1235" y="503" text-anchor="middle" class="small">从最后一行采样 bonus token</text>
 
