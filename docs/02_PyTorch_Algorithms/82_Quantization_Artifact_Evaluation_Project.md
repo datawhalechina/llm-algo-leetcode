@@ -1,6 +1,6 @@
 # 82. Quantization Artifact Evaluation Project | 量化产物评估项目
 
-**难度：** Hard | **环境：** CPU 可完成门禁逻辑；单张 NVIDIA GPU 完成真实 vLLM 加载 | **标签：** `量化产物`, `加载门禁`, `部署准入` | **目标人群：** 项目决策练习者
+**难度：** Hard | **环境：** [CPU 练习，NVIDIA GPU 实验](#runtime-environment) | **标签：** `量化产物`、`加载门禁`、`部署准入` | **目标人群：** 理解量化产物与质量指标的读者
 
 > 🚀 **云端运行环境**
 >
@@ -16,19 +16,29 @@
 
 量化权重、配置和分词器文件能够保存下来，并不表示它们已经成为可部署产物。文件可能不完整，校准与评测数据可能重叠，质量记录可能方向错误，目标执行后端也可能无法加载该格式。
 
-本项目把这些风险整理成一条产物准入链：先核对候选包的身份、文件和独立评测证据，再用真实加载结果补齐执行证据。通过的候选交给 67 做浮点—量化配对部署；本节不比较服务压力，也不作跨策略采用判断。
+本项目把这些风险整理成一条产物准入链：先核对候选包的身份、文件和独立评测证据，再用真实加载结果补齐执行证据。通过的候选交给 67 做浮点—量化配对部署；真实加载通过后，再比较部署代价和服务负载收益。
 
 **关键词：** `候选包`、`产物清单`、`独立评测`、`加载门禁`、`证据等级`
 
 ---
 
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **CPU 练习：** 使用 [`BASE-CPU`](../guide.md#base-cpu)，核对候选声明、质量方向与准入状态。
+- **真实加载：** 使用 [`INF-VLLM-011-CU128`](../topic_discussion/quantization_compression/quickstart.md#q-vllm-quickstart)，需要单张兼容的 NVIDIA GPU；输入来自40节生成的本地候选包。
+- **结果与交接：** [Step 5](#gpu-experiment)按 prepare、measure、close 执行；默认 prepare 不启动模型或后端。
+
 ## 前置阅读
+
+先了解量化候选怎样生成，再检查它是否具备进入部署对照的证据。
 
 - [40 GPTQ / AWQ 权重量化](40_GPTQ_and_AWQ_Weight_Quantization.md)：生成本项目读取的标准量化候选包，并记录模型、数据、质量和文件身份。
 
-### Step 1：量化候选包如何描述一个可审计产物
+## Step 1：量化候选包如何描述一个可审计产物
 
-量化候选包把基座模型、量化方式、数据来源、独立质量结果和实际文件绑定到同一个稳定身份。审计从这份候选包开始，而不是从目录名或某个权重文件推断产物内容。
+量化候选包把基座模型、量化方式、数据来源、候选评测结果和实际文件绑定到同一个稳定身份。审计从这份候选包开始，而不是从目录名或某个权重文件推断产物内容。
 
 | 候选包区域 | 必须保留的信息 | 门禁要排除的问题 |
 | --- | --- | --- |
@@ -40,30 +50,33 @@
 
 ![量化候选包到部署证据的项目链](../public/02_PyTorch_Algorithms/82_quant_artifact_evidence_flow.svg)
 
-### Step 2：静态契约、独立质量与真实加载分别证明什么
+## Step 2：静态契约、候选质量与真实加载分别证明什么
 
-产物准入需要三类相互独立的证据。静态契约确认候选包与文件可追溯；独立质量确认量化后的能力仍在阈值内；真实加载确认目标执行后端能够读取同一份产物并完成最小往返生成。任一证据缺失，都不能由另外两类代替。
+产物准入需要三类证据。静态契约确认候选包与文件可追溯；质量记录确认候选在所声明评测和门槛下的表现；真实加载确认目标后端能够读取同一份产物并完成最小往返生成。数据划分名称与样本摘要用于追溯抽样：摘要不同仅说明记录不同，不能证明集合无交集；这里复核登记的同一数据快照和不同划分，跨划分重复内容还需另查。
+
+上游40节的验证集已用于选择候选，因此本项目复核的是候选选择证据，不是新的独立测试集质量。质量值必须有限，并按指标方向重算比率；非空生成只说明往返调用成功，不能替代任务质量或量化内核取证。
 
 | 证据层 | 输入 | 通过条件 | 失败含义 |
 | --- | --- | --- | --- |
 | 静态契约 | 身份、量化配置、文件清单与哈希 | 必填身份完整，文件存在且哈希一致 | 产物不可复核或已经损坏 |
-| 数据与质量 | 校准/评测身份、指标方向、基线与候选值 | 两组数据隔离，质量门槛通过 | 质量结论存在泄漏或退化超限 |
+| 数据与质量 | 校准/评测身份、指标方向、基线与候选值 | 登记快照与划分可追溯，数值有限且重算门槛通过 | 质量结论存在泄漏或退化超限 |
 | 真实加载 | 执行后端版本、加载状态、往返生成与显存 | 加载成功、生成非空、无运行失败 | 格式或运行环境与目标执行后端不兼容 |
 
-![量化产物的三层独立证据](../public/02_PyTorch_Algorithms/82_quant_artifact_evidence_layers.svg)
+![量化产物的三层准入证据](../public/02_PyTorch_Algorithms/82_quant_artifact_evidence_layers.svg)
 
-### Step 3：门禁状态如何决定候选的下一步
+## Step 3：门禁状态如何决定候选的下一步
 
-门禁按顺序消费三层证据。静态契约或独立质量失败时直接拒绝候选；尚未执行真实加载时保持待验证；加载成功但超过可选显存预算时继续调整；三层证据全部通过后，候选只获得进入部署基准实验的资格。
+门禁按顺序消费三层证据。静态契约或候选质量失败时直接拒绝候选；尚未执行真实加载时保持待验证；已启用预算却缺少有效测量时继续等待证据，记录超出预算时再调整；三层证据全部通过后，候选只获得进入部署基准实验的资格。
 
 | 当前状态 | 项目判断 | 下一步动作 |
 | --- | --- | --- |
 | 契约、哈希或质量证据失败 | `reject` | 修复产物或重新量化、评测 |
 | CPU 门禁通过，尚无真实加载记录 | `pending` | 在登记环境中执行 loader adapter |
-| 加载成功，但超过项目显存预算 | `tune` | 调整产物、加载参数或预算后复测 |
+| 已启用预算但缺少有效显存记录 | `pending` | 补充符合预算计量范围的记录 |
+| 加载成功，但有效记录超过预算 | `tune` | 调整产物、加载参数或预算后复测 |
 | 契约、质量、加载与预算全部通过 | `accept` | 进入同工作负载的浮点—量化部署对照 |
 
-### Step 4：实现候选契约、证据隔离与准入决策
+## Step 4：实现候选契约、证据隔离与准入决策
 
 本题使用一份简化候选包和一份 loader 结果复现项目门禁。骨架负责字段读取、原子检查和问题列表；你需要组合候选契约、独立证据、真实加载与显存预算，形成阶段化准入状态。
 
@@ -76,132 +89,59 @@
 
 ```python
 from typing import Any, Dict
+from tools.quantization_project_runtime import (
+    candidate_contract_facts, candidate_evidence_facts, artifact_loader_facts,
+)
 
 ```
 
 
 ```python
-def _positive_int(value: Any) -> bool:
-    """给定实现：判断配置值能否解释为正整数。"""
-    try:
-        return int(value) > 0
-    except (TypeError, ValueError):
-        return False
-
-
-# TODO 1：判断候选包是否具备稳定身份、量化配置和完整文件角色。
 def validate_candidate_contract(candidate: Dict[str, Any]) -> Dict[str, Any]:
-    """检查候选包静态契约，不访问文件系统或启动 backend。"""
-    model = candidate.get("model", {})
-    quantization = candidate.get("quantization", {})
-    files = candidate.get("files", {})
-
-    identity_ready = all((
-        candidate.get("schema_version") == "quantization-artifact-candidate/v1",
-        candidate.get("artifact_id"), model.get("id"), model.get("revision"),
-    ))
-    quantization_ready = all((
-        quantization.get("method"), quantization.get("format"),
-        _positive_int(quantization.get("bits")), _positive_int(quantization.get("group_size")),
-    ))
-    inventory = files.get("inventory", [])
-    files_ready = bool(
-        files.get("weights") and files.get("config") and files.get("tokenizer")
-        and inventory and all(item.get("path") and item.get("sha256") for item in inventory)
-    )
-    # contract_ready = ???  # 身份、量化配置和文件清单必须全部通过，不能互相替代。
-    if "contract_ready" not in locals():
-        raise NotImplementedError("TODO 1：请完成候选契约的合取规则")
-    issues = []
-    if not identity_ready:
-        issues.append("identity")
-    if not quantization_ready:
-        issues.append("quantization")
-    if not files_ready:
-        issues.append("files")
-    return {
-        "ready": contract_ready,
-        "identity_ready": identity_ready,
-        "quantization_ready": quantization_ready,
-        "files_ready": files_ready,
-        "issues": issues,
-    }
+    """TODO 1：组合身份、量化配置和文件角色门槛；不访问真实文件。"""
+    facts = candidate_contract_facts(candidate)
+    identity_ready, quantization_ready, files_ready = (facts[key] for key in ('identity_ready', 'quantization_ready', 'files_ready'))
+    # TODO 1：组合静态门槛。
+    # contract_ready = ???  # 三类声明都满足，不能互相替代。
+    raise NotImplementedError('请完成 TODO 1：contract_ready')
+    return {'ready': contract_ready, **facts}
 
 
-# TODO 2：判断校准与评测是否隔离，并核对带方向的质量证据。
 def evaluate_candidate_evidence(candidate: Dict[str, Any]) -> Dict[str, Any]:
-    """检查数据隔离与质量结论，不重新计算量化指标。"""
-    calibration = candidate.get("calibration", {})
-    evaluation = candidate.get("evaluation", {})
-
-    split_isolated = bool(
-        calibration.get("split") and evaluation.get("split")
-        and calibration["split"] != evaluation["split"]
-    )
-    sample_ids_isolated = bool(
-        calibration.get("sample_ids_hash") and evaluation.get("sample_ids_hash")
-        and calibration["sample_ids_hash"] != evaluation["sample_ids_hash"]
-    )
-    direction = evaluation.get("direction")
-    baseline_value = evaluation.get("baseline_value")
-    candidate_value = evaluation.get("candidate_value")
-    values_ready = all(
-        isinstance(value, (int, float)) and value > 0
-        for value in (baseline_value, candidate_value)
-    )
-    observed_ratio = candidate_value / baseline_value if values_ready else None
-    quality_limit = (
-        evaluation.get("max_degradation_ratio")
-        if direction == "lower_is_better"
-        else evaluation.get("min_retention_ratio")
-    )
-    # TODO 2：按指标方向复核质量门槛，再组合独立证据门禁。
-    # quality_ready = ???  # lower 指标不超过上限；higher 指标不低于下限；声明状态也必须通过。
-    # evidence_ready = ???  # 数据划分、样本身份和质量门槛必须全部通过。
-    if not all(name in locals() for name in ("quality_ready", "evidence_ready")):
-        raise NotImplementedError("TODO 2：请完成方向化质量检查与独立证据门禁")
-    issues = []
-    if not split_isolated:
-        issues.append("split_overlap")
-    if not sample_ids_isolated:
-        issues.append("sample_overlap")
-    if not quality_ready:
-        issues.append("quality")
-    return {
-        "ready": evidence_ready,
-        "split_isolated": split_isolated,
-        "sample_ids_isolated": sample_ids_isolated,
-        "quality_ready": quality_ready,
-        "issues": issues,
-    }
+    """TODO 2：按指标方向重算质量，并核对登记的数据划分。"""
+    facts = candidate_evidence_facts(candidate)
+    split_isolated = facts['split_isolated']
+    sample_hashes_distinct = facts['sample_hashes_distinct']
+    direction, ratio, limit = facts['direction'], facts['observed_ratio'], facts['quality_limit']
+    # TODO 2：质量数值先通过有限性和一致性检查，再按指标方向比较。
+    # quality_ready = ???   # 声明通过、数值有效，且比率满足所声明方向的门槛。
+    # evidence_ready = ???  # 登记划分、样本摘要与质量判断同时成立。
+    raise NotImplementedError('请完成 TODO 2：quality_ready、evidence_ready')
+    issues = [name for name, ready in (('split_overlap', split_isolated), ('sample_identity_missing_or_equal', sample_hashes_distinct), ('quality', quality_ready)) if not ready]
+    return {'ready': evidence_ready, **facts, 'quality_ready': quality_ready, 'issues': issues}
 
 
-# TODO 3：根据 CPU 门禁、真实加载和显存预算形成项目判断。
-def decide_artifact_adoption(
-    contract_check: Dict[str, Any],
-    evidence_check: Dict[str, Any],
-    loader_result: Dict[str, Any] | None,
-    *,
-    max_memory_mb: float = 0.0,
-) -> Dict[str, str]:
-    """决定候选应拒绝、待验证、继续调整，还是进入部署基准实验。"""
-    if not contract_check.get("ready") or not evidence_check.get("ready"):
-        issues = [*contract_check.get("issues", []), *evidence_check.get("issues", [])]
-        return {"decision": "reject", "reason": "; ".join(issues)}
+def decide_artifact_adoption(contract_check: Dict[str, Any], evidence_check: Dict[str, Any], loader_result: Dict[str, Any] | None, *, max_memory_mb: float = 0.0) -> Dict[str, str]:
+    """TODO 3：组合真实加载和预算，缺测与超预算形成不同状态。"""
+    if contract_check.get('ready') is not True or evidence_check.get('ready') is not True:
+        issues = [*contract_check.get('issues', []), *evidence_check.get('issues', [])]
+        return {'decision': 'reject', 'reason': '; '.join(issues) or '静态或质量门禁未通过'}
     if loader_result is None:
-        return {"decision": "pending", "reason": "CPU 门禁已通过，尚未执行真实 loader"}
-
-    roundtrip = loader_result.get("roundtrip_quality", {})
-    peak_memory_mb = loader_result.get("peak_memory_mb")
-    # loader_ready = ???  # backend 已加载、没有失败，且所有固定提示都生成非空结果。
-    # memory_ready = ???  # 预算为 0 时只记录；否则峰值显存必须存在且不超过预算。
-    if not all(name in locals() for name in ("loader_ready", "memory_ready")):
-        raise NotImplementedError("TODO 3：请完成加载与显存预算判断")
+        return {'decision': 'pending', 'reason': 'CPU 门禁已通过，尚未执行真实加载'}
+    facts = artifact_loader_facts(loader_result, max_memory_mb)
+    # TODO 3：组合加载与资源判断，缺测分支由骨架保留为 pending。
+    # loader_ready = ???  # 加载完成，且全部固定提示都返回非空生成。
+    # memory_ready = ???  # 预算合法，且未启用上限或有效记录没有超预算。
+    raise NotImplementedError('请完成 TODO 3：loader_ready、memory_ready')
     if not loader_ready:
-        return {"decision": "reject", "reason": "真实 loader 未完成加载与往返生成"}
+        return {'decision': 'reject', 'reason': '真实加载与往返生成未完成'}
+    if not facts['budget_valid'] or (not facts['memory_missing'] and not facts['memory_valid']):
+        return {'decision': 'reject', 'reason': '显存预算或测量数值无效'}
+    if max_memory_mb > 0 and facts['memory_missing']:
+        return {'decision': 'pending', 'reason': '已启用预算但尚无有效显存证据'}
     if not memory_ready:
-        return {"decision": "tune", "reason": "加载成功，但峰值显存超过项目预算"}
-    return {"decision": "accept", "reason": "候选可进入浮点—量化部署基准实验"}
+        return {'decision': 'tune', 'reason': '加载成功，但显存记录超过预算'}
+    return {'decision': 'accept', 'reason': '候选可进入浮点—量化部署基准实验'}
 
 ```
 
@@ -214,8 +154,9 @@ def _candidate_fixture() -> Dict[str, Any]:
         "artifact_id": "toy-gptq-v1",
         "model": {"id": "toy/base", "revision": "abc123"},
         "quantization": {"method": "gptq", "format": "pack-quantized", "bits": 4, "group_size": 128},
-        "calibration": {"split": "train", "sample_ids_hash": "cal-hash"},
+        "calibration": {"dataset": "toy/data", "revision": "data-v1", "split": "train", "sample_ids_hash": "cal-hash"},
         "evaluation": {
+            "dataset": "toy/data", "revision": "data-v1",
             "split": "validation",
             "sample_ids_hash": "eval-hash",
             "direction": "lower_is_better",
@@ -224,7 +165,7 @@ def _candidate_fixture() -> Dict[str, Any]:
             "max_degradation_ratio": 1.10,
             "passed": True,
         },
-        "files": {"weights": ["model.safetensors"], "config": "config.json", "tokenizer": ["tokenizer.json"], "inventory": [{"path": "model.safetensors", "sha256": "hash"}]},
+        "files": {"weights": ["model.safetensors"], "config": "config.json", "tokenizer": ["tokenizer.json"], "inventory": [{"path": name, "sha256": "a" * 64} for name in ("model.safetensors", "config.json", "tokenizer.json")]},
     }
 
 
@@ -278,9 +219,41 @@ def test_adoption_decision() -> None:
     assert decide_artifact_adoption(ready, ready, loader, max_memory_mb=0)["decision"] == "accept"
 
 
+def test_invalid_numbers_roles_and_evidence_scope() -> None:
+    """缺少角色清单、非整数配置与非有限质量不能进入真实加载。"""
+    candidate = _candidate_fixture()
+    for bad_bits in (True, 4.5, '4'):
+        assert not validate_candidate_contract({**candidate, 'quantization': {**candidate['quantization'], 'bits': bad_bits}})['ready']
+    missing = {**candidate, 'files': {**candidate['files'], 'inventory': candidate['files']['inventory'][:1]}}
+    assert not validate_candidate_contract(missing)['ready']
+    for value in (float('nan'), float('inf'), True):
+        evidence = {**candidate, 'evaluation': {**candidate['evaluation'], 'direction': 'higher_is_better', 'candidate_value': value, 'min_retention_ratio': .95}}
+        assert not evaluate_candidate_evidence(evidence)['ready']
+    zero = {**candidate, 'evaluation': {**candidate['evaluation'], 'candidate_value': 0.0}}
+    assert evaluate_candidate_evidence(zero)['ready']
+    stale_ratio = {**candidate, 'evaluation': {**candidate['evaluation'], 'ratio_vs_baseline': .5}}
+    assert not evaluate_candidate_evidence(stale_ratio)['ready']
+    checked = evaluate_candidate_evidence(candidate)
+    assert checked['sample_hashes_distinct'] and checked['sample_disjointness_proven'] is False
+    foreign = {**candidate, 'evaluation': {**candidate['evaluation'], 'revision': 'other'}}
+    assert not evaluate_candidate_evidence(foreign)['ready']
+
+
+def test_missing_memory_and_invalid_roundtrip() -> None:
+    """缺测不伪装超预算，布尔计数和非有限预算不能通过。"""
+    ready = {'ready': True, 'issues': []}
+    loader = {'load_status': 'loaded', 'roundtrip_quality': {'prompt_count': 2, 'non_empty_generations': 2}, 'peak_memory_mb': None, 'failure': None}
+    assert decide_artifact_adoption(ready, ready, loader, max_memory_mb=1000)['decision'] == 'pending'
+    assert decide_artifact_adoption(ready, ready, loader, max_memory_mb=float('nan'))['decision'] == 'reject'
+    invalid = {**loader, 'roundtrip_quality': {'prompt_count': True, 'non_empty_generations': True}}
+    assert decide_artifact_adoption(ready, ready, invalid)['decision'] == 'reject'
+
+
 test_candidate_contract()
 test_candidate_evidence()
 test_adoption_decision()
+test_invalid_numbers_roles_and_evidence_scope()
+test_missing_memory_and_invalid_roundtrip()
 print("测试通过：候选契约、数据与质量证据、真实加载决策相互一致。")
 
 ```
@@ -301,462 +274,230 @@ print("测试通过：候选契约、数据与质量证据、真实加载决策�
 
 
 ```python
-from typing import Any, Dict
-
-
-def _positive_int(value: Any) -> bool:
-    """给定实现：判断配置值能否解释为正整数。"""
-    try:
-        return int(value) > 0
-    except (TypeError, ValueError):
-        return False
-
-
 def validate_candidate_contract(candidate: Dict[str, Any]) -> Dict[str, Any]:
-    """TODO 1：检查候选包的稳定身份、量化配置和文件角色。"""
-    model = candidate.get("model", {})
-    quantization = candidate.get("quantization", {})
-    files = candidate.get("files", {})
-
-    identity_ready = all((
-        candidate.get("schema_version") == "quantization-artifact-candidate/v1",
-        candidate.get("artifact_id"),
-        model.get("id"),
-        model.get("revision"),
-    ))
-    quantization_ready = all((
-        quantization.get("method"),
-        quantization.get("format"),
-        _positive_int(quantization.get("bits")),
-        _positive_int(quantization.get("group_size")),
-    ))
-    inventory = files.get("inventory", [])
-    files_ready = all((
-        files.get("weights"),
-        files.get("config"),
-        files.get("tokenizer"),
-        inventory,
-        all(item.get("path") and item.get("sha256") for item in inventory),
-    ))
+    """TODO 1：组合身份、量化配置和文件角色门槛；不访问真实文件。"""
+    facts = candidate_contract_facts(candidate)
+    identity_ready, quantization_ready, files_ready = (facts[key] for key in ('identity_ready', 'quantization_ready', 'files_ready'))
     contract_ready = identity_ready and quantization_ready and files_ready
-    issues = []
-    if not identity_ready:
-        issues.append("identity")
-    if not quantization_ready:
-        issues.append("quantization")
-    if not files_ready:
-        issues.append("files")
-    return {
-        "ready": contract_ready,
-        "identity_ready": identity_ready,
-        "quantization_ready": quantization_ready,
-        "files_ready": files_ready,
-        "issues": issues,
-    }
+    return {'ready': contract_ready, **facts}
 
 
 def evaluate_candidate_evidence(candidate: Dict[str, Any]) -> Dict[str, Any]:
-    """TODO 2：检查校准/评测隔离和带方向的质量结论。"""
-    calibration = candidate.get("calibration", {})
-    evaluation = candidate.get("evaluation", {})
-
-    split_isolated = bool(
-        calibration.get("split")
-        and evaluation.get("split")
-        and calibration["split"] != evaluation["split"]
-    )
-    sample_ids_isolated = bool(
-        calibration.get("sample_ids_hash")
-        and evaluation.get("sample_ids_hash")
-        and calibration["sample_ids_hash"] != evaluation["sample_ids_hash"]
-    )
-    direction = evaluation.get("direction")
-    baseline_value = evaluation.get("baseline_value")
-    candidate_value = evaluation.get("candidate_value")
-    values_ready = all(
-        isinstance(value, (int, float)) and value > 0
-        for value in (baseline_value, candidate_value)
-    )
-    observed_ratio = candidate_value / baseline_value if values_ready else None
-    quality_limit = (
-        evaluation.get("max_degradation_ratio")
-        if direction == "lower_is_better"
-        else evaluation.get("min_retention_ratio")
-    )
-    # TODO 2：按指标方向复核质量门槛，再组合独立证据门禁。
-    quality_ready = bool(
-        evaluation.get("passed") is True
-        and isinstance(quality_limit, (int, float))
-        and observed_ratio is not None
-        and (
-            (direction == "lower_is_better" and observed_ratio <= quality_limit)
-            or (direction == "higher_is_better" and observed_ratio >= quality_limit)
-        )
-    )
-    evidence_ready = split_isolated and sample_ids_isolated and quality_ready
-    issues = []
-    if not split_isolated:
-        issues.append("split_overlap")
-    if not sample_ids_isolated:
-        issues.append("sample_overlap")
-    if not quality_ready:
-        issues.append("quality")
-    return {
-        "ready": evidence_ready,
-        "split_isolated": split_isolated,
-        "sample_ids_isolated": sample_ids_isolated,
-        "quality_ready": quality_ready,
-        "issues": issues,
-    }
-
-
-def decide_artifact_adoption(
-    contract_check: Dict[str, Any],
-    evidence_check: Dict[str, Any],
-    loader_result: Dict[str, Any] | None,
-    *,
-    max_memory_mb: float = 0.0,
-) -> Dict[str, str]:
-    """TODO 3：把 CPU 门禁与真实加载证据组合成项目判断。"""
-    if not contract_check.get("ready") or not evidence_check.get("ready"):
-        issues = [*contract_check.get("issues", []), *evidence_check.get("issues", [])]
-        return {"decision": "reject", "reason": "; ".join(issues)}
-    if loader_result is None:
-        return {"decision": "pending", "reason": "CPU 门禁已通过，尚未执行真实 loader"}
-
-    roundtrip = loader_result.get("roundtrip_quality", {})
-    loader_ready = all((
-        loader_result.get("load_status") == "loaded",
-        not loader_result.get("failure"),
-        roundtrip.get("prompt_count", 0) > 0,
-        roundtrip.get("non_empty_generations") == roundtrip.get("prompt_count"),
+    """TODO 2：按指标方向重算质量，并核对登记的数据划分。"""
+    facts = candidate_evidence_facts(candidate)
+    split_isolated = facts['split_isolated']
+    sample_hashes_distinct = facts['sample_hashes_distinct']
+    direction, ratio, limit = facts['direction'], facts['observed_ratio'], facts['quality_limit']
+    quality_ready = bool(facts['quality_inputs_ready'] and (
+        (direction == 'lower_is_better' and ratio <= limit)
+        or (direction == 'higher_is_better' and ratio >= limit)
     ))
-    peak_memory_mb = loader_result.get("peak_memory_mb")
-    memory_ready = max_memory_mb <= 0 or (
-        peak_memory_mb is not None and float(peak_memory_mb) <= max_memory_mb
-    )
+    evidence_ready = split_isolated and sample_hashes_distinct and quality_ready
+    issues = [name for name, ready in (('split_overlap', split_isolated), ('sample_identity_missing_or_equal', sample_hashes_distinct), ('quality', quality_ready)) if not ready]
+    return {'ready': evidence_ready, **facts, 'quality_ready': quality_ready, 'issues': issues}
+
+
+def decide_artifact_adoption(contract_check: Dict[str, Any], evidence_check: Dict[str, Any], loader_result: Dict[str, Any] | None, *, max_memory_mb: float = 0.0) -> Dict[str, str]:
+    """TODO 3：组合真实加载和预算，缺测与超预算形成不同状态。"""
+    if contract_check.get('ready') is not True or evidence_check.get('ready') is not True:
+        issues = [*contract_check.get('issues', []), *evidence_check.get('issues', [])]
+        return {'decision': 'reject', 'reason': '; '.join(issues) or '静态或质量门禁未通过'}
+    if loader_result is None:
+        return {'decision': 'pending', 'reason': 'CPU 门禁已通过，尚未执行真实加载'}
+    facts = artifact_loader_facts(loader_result, max_memory_mb)
+    loader_ready = facts['load_complete'] and facts['roundtrip_complete']
+    memory_ready = facts['budget_valid'] and (max_memory_mb == 0 or facts['memory_within_budget'])
     if not loader_ready:
-        return {"decision": "reject", "reason": "真实 loader 未完成加载与往返生成"}
+        return {'decision': 'reject', 'reason': '真实加载与往返生成未完成'}
+    if not facts['budget_valid'] or (not facts['memory_missing'] and not facts['memory_valid']):
+        return {'decision': 'reject', 'reason': '显存预算或测量数值无效'}
+    if max_memory_mb > 0 and facts['memory_missing']:
+        return {'decision': 'pending', 'reason': '已启用预算但尚无有效显存证据'}
     if not memory_ready:
-        return {"decision": "tune", "reason": "加载成功，但峰值显存超过项目预算"}
-    return {"decision": "accept", "reason": "候选可进入浮点—量化部署基准实验"}
+        return {'decision': 'tune', 'reason': '加载成功，但显存记录超过预算'}
+    return {'decision': 'accept', 'reason': '候选可进入浮点—量化部署基准实验'}
 
 ```
 
 ### 解析
 
-本题依次完成候选契约准入、数据与质量证据隔离，以及真实加载后的项目决策。答案保留题目区的接口和控制流，只补全对应门禁判断。
+本题依次完成候选契约准入、数据与质量证据隔离，以及真实加载后的项目决策。声明检查与磁盘文件校验分别执行，不能把清单存在当成内容哈希已经核对。
 
-**TODO 1：判断候选契约是否完整**
+#### TODO 1：判断候选契约是否完整
 
 - 骨架已给出身份、量化配置和文件完整性三个原子状态；实现只需使用合取关系形成候选总门禁。
 - `test_candidate_contract` 分别破坏分词器角色和文件哈希，验证任一静态证据缺失都会阻止准入。
 
-**TODO 2：隔离校准数据与独立评测证据**
+#### TODO 2：隔离校准数据与独立评测证据
 
-- 数据划分隔离、样本身份隔离和质量通过缺一不可；TODO 只组合门禁，不要求重新拼装问题列表。
+- 登记快照、不同划分与样本摘要可追溯，质量值有限且按方向通过；TODO 只组合门禁，不要求重新拼装问题列表。
 - `test_candidate_evidence` 用数据重叠与质量失败验证两类问题不会被总状态掩盖。
 
-**TODO 3：用真实加载结果升级 CPU 门禁**
+#### TODO 3：用真实加载结果升级 CPU 门禁
 
-- CPU 检查通过但没有 loader 记录时只能得到 `pending`；加载失败应拒绝，加载成功但超预算应继续调整。
+- CPU 检查通过但没有 loader 记录时只能得到 `pending`；加载失败应拒绝，已启用预算却缺测应保持 pending，有效记录超预算才是 tune。
 - 答案同时检查加载状态、非空往返生成、失败记录和可选显存预算；`test_adoption_decision` 覆盖四条项目状态路径。
 
-### Step 5（项目实验）：验证量化产物
+<a id="gpu-experiment"></a>
 
-读取 40 生成的 GPTQ 候选包，依次核对文件、离线质量和 vLLM 加载结果。通过后生成供 67 使用的稳定引用。
+## Step 5：验证量化产物并生成部署准入记录
 
-#### 5.1 本次运行配置
+使用40节获选候选的同一份文件和质量记录，先检查内容身份，再执行vLLM最小往返生成。`prepare`只读预检，`measure`保存加载与原始准入证据，`close`重读证据并生成报告、登记回执；只有接受的报告才交给部署对照。
 
-填写本次检查标签、阶段和 40 节运行标签，按 `prepare → measure → close` 运行。本节从 40 的结果记录自动定位获选候选包，无需复制路径。
+| CPU 练习 | 真实环境补充 | 项目输出 |
+|---|---|---|
+| 组合候选声明、质量方向与准入状态 | 磁盘内容哈希、固定vLLM调用与非空生成 | 原始加载记录、准入报告、登记回执；接受时生成稳定引用 |
+
+### 5.1 本次运行配置
+
+真实加载使用 [`INF-VLLM-011-CU128`](../topic_discussion/quantization_compression/quickstart.md#q-vllm-quickstart)。准备40节的获选候选及对应结果，再填写唯一上游标签，按 `prepare → measure → close` 分阶段顺序运行本节；`close`无需重新启动GPU或后端。
 
 
 ```python
-RUN_LABEL = 'replace_with_unique_label'
-RUN_STAGE = 'prepare'  # prepare / measure / close
-UPSTREAM_RUN_LABEL = 'default11'  # 40 节已完成 real_gpu 的 RUN_LABEL；复测时填写对应标签。
+RUN_LABEL = 'replace_with_unique_label'  # 本次82节标签；measure/close前填写，已有不同内容时不得覆盖。
+RUN_STAGE = 'prepare'  # prepare只读；measure执行或恢复采集；close校验并补齐报告与交接。
+UPSTREAM_RUN_LABEL = 'replace_with_upstream_label'  # 40节已完成real_gpu并接受候选的RUN_LABEL；只配置这一份直接来源。
 
 ```
 
-#### 5.2 固定候选包与环境预检
+### 5.2 固定合同、来源与环境预检
 
-检查环境配置、候选包、文件哈希和目标路径。`prepare` 不启动 vLLM、不写结果。
+从公共运行合同解析路径和固定加载参数，检查40节的获选身份、数据与质量声明、候选包和实际文件哈希。来源缺失或JSON损坏时输出具体原因。只有新`measure`才执行环境GPU预检；`prepare`和`close`不初始化设备。
 
 
 ```python
-if RUN_STAGE not in {'prepare', 'measure', 'close'}:
-    raise ValueError(f'未知 RUN_STAGE: {RUN_STAGE}')
-if RUN_STAGE != 'prepare' and RUN_LABEL == 'replace_with_unique_label':
-    raise ValueError('measure / close 需要唯一 RUN_LABEL。')
-
-SEMANTIC_ID = "QUANT-ARTIFACT-GATE"
-RESULT_SCHEMA = "quantization-evidence/v1"
-ENVIRONMENT_PROFILE = "INF-VLLM-011-CU128"  # 固定 Profile；必须先通过同名环境预检。
-LOADER_MAX_MODEL_LEN = 512  # vLLM 最大上下文长度；单位为 Token。
-LOADER_MAX_TOKENS = 16  # 每条固定提示的最大生成长度；单位为 Token。
-GPU_MEMORY_UTILIZATION = 0.75  # vLLM 可用显存比例；12 GiB GPU 默认保留 25% 余量。
-MAX_MEMORY_MB = 0.0  # 默认值 0：只记录峰值显存；大于 0 时启用预算门禁。
-
+import importlib
 import json
 import subprocess
 import sys
-from pathlib import Path
 
 from tools.project_runtime import resolve_project_root
-from tools.quantization_runtime import validate_candidate_bundle
-from tools.quantization_project_runtime import (
-    decide_artifact_adoption, evaluate_candidate_evidence, validate_candidate_contract,
-)
+import tools.quantization_project_runtime as quantization_project
 
-REPO_ROOT = resolve_project_root()
-SOURCE_RESULT_PATH = REPO_ROOT / f"benchmarks/results/40_llmcompressor_gptq_awq_{UPSTREAM_RUN_LABEL}.json"
-RESULT_DIR = REPO_ROOT / "benchmarks/results/82_quantization_artifact_evaluation"
-LOADER_RESULT_PATH = RESULT_DIR / f"loader_{RUN_LABEL}.json"
-source_result = None
-source_result_issue = None
-candidate_bundle_path = None
-if not SOURCE_RESULT_PATH.is_file():
-    source_result_issue = f"找不到 40 节结果：{SOURCE_RESULT_PATH}；请先完成 40 节 real_gpu。"
-else:
+# 集中刷新公共模块；后续从模块对象取函数，避免热Kernel继续使用旧绑定。
+quantization_project = importlib.reload(quantization_project)
+plan = quantization_project.artifact_gate_plan(
+    resolve_project_root(), RUN_LABEL, UPSTREAM_RUN_LABEL, RUN_STAGE,
+)
+prepared = quantization_project.prepare_artifact_gate(plan)
+profile_report = {'status': 'not_requested', 'ready': None}
+gpu_preflight_executed = False
+preflight_issues = list(prepared['issues'])
+if RUN_STAGE == 'measure' and prepared['ready'] and not plan['loader_path'].exists():
+    gpu_preflight_executed = True
     try:
-        source_result = json.loads(SOURCE_RESULT_PATH.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        source_result_issue = f"无法读取 40 节结果：{exc}"
-if source_result is not None:
-    if source_result.get("run_label") != UPSTREAM_RUN_LABEL:
-        source_result_issue = "40 节结果中的 RUN_LABEL 与 UPSTREAM_RUN_LABEL 不一致。"
-    elif source_result.get("decision") != "accept_weight_ptq_candidate":
-        source_result_issue = "40 节尚未选出可交付候选；先处理该节的决策结果。"
-    else:
-        selected_name = source_result.get("mechanism_metrics", {}).get("selected_candidate")
-        if selected_name not in source_result.get("candidates", {}):
-            source_result_issue = "40 节结果没有有效的获选候选名称。"
-        else:
-            candidate_bundle_path = (
-                REPO_ROOT / "benchmarks/artifacts/40_gptq_awq" / UPSTREAM_RUN_LABEL
-                / selected_name / "candidate_bundle.json"
-            )
-
-profile_process = subprocess.run(
-    [sys.executable, str(REPO_ROOT / "tools/environment_preflight.py"), "--profile", ENVIRONMENT_PROFILE],
-    cwd=REPO_ROOT,
-    capture_output=True,
-    text=True,
-)
-try:
-    profile_report = json.loads(profile_process.stdout)
-except json.JSONDecodeError:
-    profile_report = {"ready": False, "reasons": [profile_process.stderr.strip() or "环境预检没有返回 JSON"]}
-
-candidate_bundle = (
-    json.loads(candidate_bundle_path.read_text(encoding="utf-8"))
-    if candidate_bundle_path is not None and candidate_bundle_path.is_file()
-    else None
-)
-bundle_validation = (
-    validate_candidate_bundle(candidate_bundle, project_root=REPO_ROOT)
-    if candidate_bundle is not None
-    else {"ready": False, "issues": [source_result_issue or "找不到 candidate_bundle.json；检查 40 节产物目录。"], "artifact_path": None}
-)
-
-preflight_issues = []
-if RUN_STAGE not in {'prepare', 'measure', 'close'}:
-    preflight_issues.append("RUN_STAGE 必须是 prepare、measure 或 close")
-if not profile_report.get("ready"):
-    preflight_issues.extend(profile_report.get("reasons", ["环境 Profile 未通过"]))
-if source_result_issue:
-    preflight_issues.append(source_result_issue)
-if not bundle_validation.get("ready"):
-    preflight_issues.extend(bundle_validation.get("issues", []))
-
-expected_outputs = [
-    LOADER_RESULT_PATH,
-    RESULT_DIR / f"82_artifact_gate_{RUN_LABEL}.json",
-    RESULT_DIR / f"82_artifact_gate_{RUN_LABEL}_companion.json",
-    RESULT_DIR / f"82_artifact_gate_{RUN_LABEL}_reference.json",
-]
-if RUN_STAGE == 'measure':
-    collisions = [str(path) for path in expected_outputs if path.exists()]
-    if collisions:
-        preflight_issues.append(f"RUN_LABEL 已存在结果: {collisions}")
-
-preflight = {
-    "ready": not preflight_issues,
-    "issues": preflight_issues,
-    "profile": ENVIRONMENT_PROFILE,
-    "artifact_id": (candidate_bundle or {}).get("artifact_id"),
-    "artifact_path": bundle_validation.get("artifact_path"),
-}
+        process = subprocess.run(
+            [sys.executable, str(plan['root'] / 'tools/environment_preflight.py'),
+             '--profile', plan['contract']['environment_profile']],
+            cwd=plan['root'], capture_output=True, text=True, timeout=60,
+        )
+        profile_report = json.loads(process.stdout)
+        if not isinstance(profile_report, dict):
+            raise ValueError('环境预检输出必须是JSON对象')
+        if process.returncode != 0 or profile_report.get('ready') is not True:
+            preflight_issues.extend(profile_report.get('reasons') or ['环境Profile未通过'])
+    except (OSError, ValueError, subprocess.TimeoutExpired) as error:
+        preflight_issues.append(f'环境预检失败：{error}')
+preflight = {'ready': not preflight_issues, 'issues': preflight_issues,
+             'profile': plan['contract']['environment_profile'],
+             'gpu_preflight_executed': gpu_preflight_executed,
+             'inputs': prepared['snapshot']}
 print(json.dumps(preflight, ensure_ascii=False, indent=2))
 
 ```
 
-#### 5.3 候选合同与离线质量门禁
+### 5.3 候选与质量门槛
 
-将候选包映射为产物身份、校准/评测隔离和质量方向；真实加载前保持 `pending`。
+复核登记的数据快照、不同划分与样本摘要，再按指标方向重算质量。40节验证集已参与候选选择，这里不把它当作新的独立任务测试；真实加载前的判断保持`pending`。
 
 
 ```python
-if candidate_bundle is None:
-    candidate_contract = {"ready": False, "issues": ["candidate_bundle_not_configured"]}
-    candidate_evidence = {"ready": False, "issues": ["candidate_bundle_not_configured"]}
-    cpu_decision = {
-        "decision": "pending",
-        "reason": "先完成 40 节 real_gpu，并在 5.1 填写对应的 UPSTREAM_RUN_LABEL。",
-    }
+if prepared['ready']:
+    candidate_contract = quantization_project.validate_candidate_contract(prepared['bundle'])
+    candidate_evidence = quantization_project.evaluate_candidate_evidence(prepared['bundle'])
+    cpu_decision = quantization_project.decide_artifact_adoption(candidate_contract, candidate_evidence, None)
 else:
-    candidate_contract = validate_candidate_contract(candidate_bundle)
-    candidate_evidence = evaluate_candidate_evidence(candidate_bundle)
-    cpu_decision = decide_artifact_adoption(
-        candidate_contract,
-        candidate_evidence,
-        None,
-        max_memory_mb=MAX_MEMORY_MB,
-    )
-
-print({
-    "contract": candidate_contract,
-    "evidence": candidate_evidence,
-    "cpu_decision": cpu_decision,
-})
+    candidate_contract = {'ready': False, 'issues': prepared['issues']}
+    candidate_evidence = {'ready': False, 'issues': prepared['issues']}
+    cpu_decision = {'decision': 'pending', 'reason': '先按5.2的问题修复来源'}
+print({'contract': candidate_contract, 'evidence': candidate_evidence, 'decision': cpu_decision})
 
 ```
 
-#### 5.4 执行真实加载
+### 5.4 执行或恢复加载采集
 
-`measure` 启动 vLLM，验证非空往返生成并保存加载记录、证据记录和稳定引用；其他阶段跳过后端。
+`measure`执行固定vLLM调用，只保存加载记录和原始准入证据。已有同身份加载记录时复用，不再次启动后端；若在生成原始准入记录前中断，可用相同配置继续。兼容字段`peak_memory_mb`是设备空闲显存差，不是过程峰值，当前合同不启用峰值预算。
 
 
 ```python
-from tools.project_adapters import CommandExecutionAdapter
-from tools.project_asset_relations import make_asset_reference
-from tools.quantization_result_schema import artifact_gate_record, save_record
-from tools.project_runtime import save_json_record_once
-
-loader_result = None
-raw_path = RESULT_DIR / f"82_artifact_gate_{RUN_LABEL}.json"
-artifact_gate_path = RESULT_DIR / f"82_artifact_gate_{RUN_LABEL}_companion.json"
-asset_reference_path = RESULT_DIR / f"82_artifact_gate_{RUN_LABEL}_reference.json"
-
 if RUN_STAGE == 'measure':
-    if preflight_issues:
-        raise RuntimeError("预检未通过：" + "; ".join(preflight_issues))
-    adapter = CommandExecutionAdapter(
-        name="vllm-artifact-loader",
-        command=(
-            sys.executable,
-            str(REPO_ROOT / "tools/validate_quantized_artifact.py"),
-            "--artifact", str(bundle_validation["artifact_path"]),
-            "--output", str(LOADER_RESULT_PATH),
-            "--max-model-len", str(LOADER_MAX_MODEL_LEN),
-            "--max-tokens", str(LOADER_MAX_TOKENS),
-            "--gpu-memory-utilization", str(GPU_MEMORY_UTILIZATION),
-        ),
-        output_path=LOADER_RESULT_PATH,
-    )
-    adapter_check = adapter.preflight({})
-    if not adapter_check.get("ready"):
-        raise RuntimeError(adapter_check.get("reason", "loader adapter 不可用"))
-    loader_result = dict(adapter.run({}))
-
-    project_decision = decide_artifact_adoption(
-        candidate_contract,
-        candidate_evidence,
-        loader_result,
-        max_memory_mb=MAX_MEMORY_MB,
-    )
-    quality_record = {
-        **candidate_bundle["evaluation"],
-        "eval_split": candidate_bundle["evaluation"]["split"],
-        "peak_memory_mb": loader_result.get("peak_memory_mb"),
-        "roundtrip_quality": loader_result.get("roundtrip_quality"),
-    }
-    compatibility = {
-        "backend": "vllm",
-        "version": loader_result.get("backend_version"),
-        "loader_status": loader_result.get("load_status"),
-        "kernel": loader_result.get("kernel"),
-        "fallback": loader_result.get("fallback"),
-        "failure": loader_result.get("failure"),
-    }
-    gate = {
-        "ready": project_decision["decision"] == "accept",
-        "issues": [] if project_decision["decision"] == "accept" else [project_decision["reason"]],
-        "evidence_level": "real_project_benchmark",
-    }
-    raw_payload = {
-        "schema_version": RESULT_SCHEMA, "semantic_id": SEMANTIC_ID, "run_label": RUN_LABEL,
-        "config": {"run_label": RUN_LABEL, "environment_profile": ENVIRONMENT_PROFILE, "backend": "vllm"},
-        "manifest": candidate_bundle,
-        "quality": quality_record,
-        "compatibility": compatibility,
-        "hardware": loader_result.get("hardware", {}),
-        "gate": gate,
-    }
-    RESULT_DIR.mkdir(parents=True, exist_ok=True)
-    save_json_record_once(raw_path, raw_payload)
-    save_record(artifact_gate_path, artifact_gate_record(raw_payload))
-    asset_reference = make_asset_reference("quantization.artifact_gate", artifact_gate_path)
-    save_json_record_once(asset_reference_path, asset_reference)
-
-print({
-    "loader_result": str(LOADER_RESULT_PATH) if loader_result else None,
-    "companion": str(artifact_gate_path) if artifact_gate_path.is_file() else None,
-    "reference": str(asset_reference_path) if asset_reference_path.is_file() else None,
-})
-
+    if not preflight['ready']:
+        raise RuntimeError('预检未通过：' + '; '.join(preflight['issues']))
+    if plan['loader_path'].exists():
+        loader_result = json.loads(plan['loader_path'].read_text(encoding='utf-8'))
+    else:
+        invocation = quantization_project.artifact_loader_invocation(plan, prepared)
+        command = [
+            sys.executable, str(plan['root'] / 'tools/validate_quantized_artifact.py'),
+            '--artifact', prepared['snapshot']['artifact_path'], '--output', str(plan['loader_path']),
+            '--invocation-json', json.dumps(invocation, ensure_ascii=False),
+            '--max-model-len', str(plan['contract']['max_model_len']),
+            '--max-tokens', str(plan['contract']['max_tokens']),
+            '--gpu-memory-utilization', str(plan['contract']['gpu_memory_utilization']),
+        ]
+        completed = subprocess.run(command, cwd=plan['root'], capture_output=True, text=True)
+        if plan['loader_path'].is_file():
+            loader_result = json.loads(plan['loader_path'].read_text(encoding='utf-8'))
+        else:
+            loader_result = {
+                'schema_version': 'quantization-artifact-loader/v2', 'backend': 'vllm',
+                'invocation': invocation, 'status': 'failed', 'load_status': 'failed',
+                'failure': {'stage': 'loader_process', 'returncode': completed.returncode,
+                            'reason': completed.stderr[-2000:] or '后端未生成完整加载记录'},
+            }
+    measurement = quantization_project.save_artifact_gate_measurement(plan, prepared, loader_result)
+    print(measurement)
+else:
+    print({'status': 'skipped', 'stage': RUN_STAGE, 'reason': '本阶段不执行真实加载'})
 
 ```
 
-#### 5.5 核对加载证据
+### 5.5 只读核对已保存证据
 
-读取当前标签的证据记录，核对产物身份、质量方向、后端、峰值显存和失败状态。
+按当前标签重新定位记录，核对上游与候选包SHA256、实际文件、固定调用、加载记录、质量判断和准入结论；已有报告、交接与回执也须一致。读取不重建候选、不改写文件；缺少测量时显示待采集，身份冲突则停止。
 
 
 ```python
-from tools.project_contracts import load_record
-
-gate_record = load_record(artifact_gate_path) if artifact_gate_path and artifact_gate_path.is_file() else None
-evidence_summary = None
-if gate_record is not None:
-    evidence_summary = {
-        "artifact_id": gate_record["artifact"]["artifact_id"],
-        "model_revision": gate_record["artifact"]["model_revision"],
-        "quality_metric": gate_record["quality"]["metric_name"],
-        "quality_direction": gate_record["quality"]["direction"],
-        "quality_passed": gate_record["quality"]["passed"],
-        "backend": gate_record["backend"],
-        "peak_memory_mb": gate_record["metrics"]["peak_memory_mb"],
-        "failure": gate_record["failure"],
-        "evidence_level": gate_record["evidence_level"],
-    }
-print(evidence_summary or {"status": "pending", "next_action": "set RUN_STAGE='measure' and run Step 5"})
+if prepared['ready']:
+    checked = quantization_project.read_artifact_gate(plan)
+else:
+    checked = {'status': 'blocked', 'decision': {'decision': 'pending'}, 'issues': prepared['issues']}
+print({'status': checked['status'], 'decision': checked['decision'],
+       'evidence': checked.get('summary'), 'issues': checked.get('issues', []),
+       'next_action': checked.get('next_action')})
 
 ```
 
-#### 5.6 形成产物准入结论
+### 5.6 形成结论、登记与交接
 
-`close` 读取已保存的证据记录；只有契约、质量和真实加载都通过时才允许交给 67。
+`close`重新校验磁盘证据，再生成准入报告和登记回执；`accept`才生成供67消费的稳定引用。同标签内容一致时只读复用，中断后补齐缺失资产；已有内容不一致时停止，不覆盖历史记录。
+
+| 已核对的证据 | 决策 | 下一动作 |
+|---|---|---|
+| 尚无完整测量 | pending | 执行measure；若已有加载记录则复用恢复 |
+| 契约、质量或真实加载未通过 | reject | 保留失败报告与回执，修复后使用新标签 |
+| 加载完成但有效资源记录超过门槛 | tune | 检查资源条件；当前合同未启用峰值预算 |
+| 契约、质量与真实加载全部通过 | accept | 生成稳定引用，进入浮点／量化部署对照 |
+
+**当前登记结果**：尚无本项目真实加载结果；本轮仅完成文档、CPU与临时目录中的运行流程测试，不登记GPU标签或采用结论。正式状态见[实验资产表](../topic_discussion/quantization_compression/experiment_assets.md#项目验证顺序)。
 
 
 ```python
 if RUN_STAGE == 'close':
-    if gate_record is None:
-        adoption = {
-            "decision": "pending",
-            "reason": "尚无真实 loader companion",
-            "next_action": "run_real_backend",
-        }
-    else:
-        decision = gate_record.get("decision", {}).get("decision", "reject")
-        adoption = {
-            "decision": decision,
-            "reason": gate_record.get("decision", {}).get("reason"),
-            "next_action": "consume_reference_in_deployment_benchmark" if decision == "accept" else "repair_and_rerun",
-        }
-    print(adoption)
+    registration = quantization_project.close_artifact_gate(plan)
+    print(registration)
 else:
-    print(f'跳过收口：RUN_STAGE={RUN_STAGE}')
+    print({'status': 'skipped', 'stage': RUN_STAGE, 'reason': '只有close生成最终报告、交接和登记回执'})
 
 ```
 

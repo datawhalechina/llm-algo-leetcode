@@ -62,7 +62,12 @@ def artifact_gate_record(payload: Mapping[str, Any]) -> dict[str, Any]:
     evidence = _mapping(manifest.get("evidence"))
     loader_failure = compatibility.get("failure")
     gate_issues = gate.get("issues", [])
-    decision = "accept" if gate.get("ready") else "reject"
+    explicit_decision = _mapping(payload.get("decision"))
+    decision = explicit_decision.get("decision", "accept" if gate.get("ready") else "reject")
+    if decision not in {"accept", "tune", "reject", "pending"}:
+        raise ValueError("artifact gate decision is invalid")
+    if decision == "accept" and not gate.get("ready"):
+        raise ValueError("accepted artifact gate must be ready")
     return {
         "schema_version": SCHEMA_VERSION,
         "semantic_id": STAGE_PRODUCERS["artifact_gate"],
@@ -91,10 +96,10 @@ def artifact_gate_record(payload: Mapping[str, Any]) -> dict[str, Any]:
         "hardware": _mapping(payload.get("hardware")),
         "backend": {"name": compatibility.get("backend"), "version": compatibility.get("version")},
         "metrics": {"peak_memory_mb": quality.get("peak_memory_mb")},
-        "status": "ready" if gate.get("ready") else "failed",
+        "status": "ready" if decision == "accept" else decision,
         "evidence_level": gate.get("evidence_level", evidence.get("evidence_level", "not_recorded")),
         "failure": _failure(loader_failure or ("; ".join(gate_issues) if gate_issues else None)),
-        "decision": {"decision": decision, "reason": "artifact gate passed" if gate.get("ready") else "; ".join(gate_issues)},
+        "decision": {"decision": decision, "reason": explicit_decision.get("reason") or ("artifact gate passed" if decision == "accept" else "; ".join(gate_issues))},
         "raw_payload": dict(payload),
     }
 
@@ -179,7 +184,7 @@ def quantized_deployment_record(payload: Mapping[str, Any]) -> dict[str, Any]:
             "name": source.get("backend") or config.get("backend"),
             "version": source.get("backend_version") or config.get("backend_version"),
             "kernel": source.get("kernel") or config.get("kernel"),
-            "fallback": source.get("fallback") or config.get("fallback"),
+            "fallback": source["fallback"] if "fallback" in source else config.get("fallback"),
         },
         "hardware": _mapping(source.get("hardware")),
         "workload": _mapping(source.get("workload")) or config,
@@ -268,9 +273,15 @@ def validate_profile_inputs(gate: Mapping[str, Any], deployment: Mapping[str, An
 
 
 def save_record(path: str | Path, record: Mapping[str, Any]) -> Path:
-    """Persist a normalized companion record without replacing raw evidence."""
+    """Persist a normalized companion record without replacing prior evidence."""
 
     output = Path(path)
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(dict(record), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    try:
+        with output.open("x", encoding="utf-8") as handle:
+            handle.write(json.dumps(dict(record), ensure_ascii=False, indent=2) + "\n")
+    except FileExistsError as error:
+        raise FileExistsError(
+            f"quantization companion already exists; choose a new RUN_LABEL: {output}"
+        ) from error
     return output

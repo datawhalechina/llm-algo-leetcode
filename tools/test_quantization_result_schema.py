@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
 from tools.project_asset_relations import validate_asset_payload
 from tools.quantization_result_schema import (
     artifact_gate_record,
     quantized_deployment_record,
+    save_record,
     serving_profile_record,
 )
 
@@ -23,6 +27,13 @@ def main() -> None:
     )
     assert gate["semantic_id"] == "QUANT-ARTIFACT-GATE"
     assert validate_asset_payload("quantization.artifact_gate", gate) == []
+    for state in ("tune", "pending", "reject"):
+        recorded = artifact_gate_record({
+            **gate["raw_payload"],
+            "gate": {"ready": False, "issues": ["budget_or_evidence"]},
+            "decision": {"decision": state, "reason": "original decision"},
+        })
+        assert recorded["decision"] == {"decision": state, "reason": "original decision"}
 
     deployment = quantized_deployment_record(
         {
@@ -60,6 +71,16 @@ def main() -> None:
     )
     assert profile["semantic_id"] == "QUANT-SERVING-PROFILE"
     assert profile["lineage"]["deployment_reference"] == "67_ref.json"
+
+    with TemporaryDirectory() as directory:
+        output = Path(directory) / "profile.json"
+        save_record(output, profile)
+        try:
+            save_record(output, profile)
+        except FileExistsError:
+            pass
+        else:
+            raise AssertionError("save_record must not overwrite an existing run")
     print("quantization result schema: ok")
 
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 import tempfile
 from pathlib import Path
 
@@ -51,6 +52,28 @@ def main() -> None:
         assert validate_candidate_bundle(loaded, project_root=root)["ready"]
         assert loaded["evaluation"]["direction"] == "lower_is_better"
         assert loaded["evaluation"]["passed"] is True
+        bad = deepcopy(loaded)
+        bad["files"]["inventory"] = bad["files"]["inventory"][:1]
+        assert not validate_candidate_bundle(bad, project_root=root)["ready"]
+        for value in (float("nan"), float("inf"), True):
+            bad = deepcopy(loaded)
+            bad["evaluation"].update(direction="higher_is_better", candidate_value=value, min_retention_ratio=.95)
+            assert not validate_candidate_bundle(bad, project_root=root)["ready"]
+        bad = deepcopy(loaded)
+        bad["evaluation"]["candidate_value"] = 20.0
+        assert not validate_candidate_bundle(bad, project_root=root)["ready"]
+        bad = deepcopy(loaded)
+        bad["files"]["inventory"][0]["path"] = "../result.json"
+        assert not validate_candidate_bundle(bad, project_root=root)["ready"]
+        bad = deepcopy(loaded)
+        bad["files"]["inventory"] = None
+        assert not validate_candidate_bundle(bad, project_root=root)["ready"]
+        (artifact / "outside.json").symlink_to(result_path)
+        bad = deepcopy(loaded)
+        bad["files"]["inventory"].append({"path": "outside.json", "bytes": 2, "sha256": "a" * 64})
+        assert not validate_candidate_bundle(bad, project_root=root)["ready"]
+        (artifact / "model.safetensors").write_bytes(b"changed")
+        assert not validate_candidate_bundle(loaded, project_root=root)["ready"]
     print("quantization candidate bundle: ok")
 
 

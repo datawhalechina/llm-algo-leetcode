@@ -150,6 +150,13 @@ def validate_candidate_bundle(
     """Validate identity, quality direction, data isolation and file hashes."""
 
     issues: list[str] = []
+    if not isinstance(bundle, dict):
+        return {"ready": False, "issues": ["candidate bundle must be a mapping"], "artifact_path": None}
+    from tools.quantization_project_runtime import validate_candidate_contract, evaluate_candidate_evidence
+
+    for label, check in (("contract", validate_candidate_contract(bundle)),
+                         ("evidence", evaluate_candidate_evidence(bundle))):
+        issues.extend(f"{label}: {issue}" for issue in check["issues"])
     if bundle.get("schema_version") != CANDIDATE_BUNDLE_SCHEMA_VERSION:
         issues.append(f"schema_version must be {CANDIDATE_BUNDLE_SCHEMA_VERSION}")
     for section, fields in {
@@ -159,7 +166,7 @@ def validate_candidate_bundle(
         "evaluation": (
             "dataset", "revision", "split", "sample_ids_hash", "metric_name",
             "direction", "baseline_value", "candidate_value", "ratio_vs_baseline",
-            "max_degradation_ratio", "passed",
+            "passed",
         ),
         "files": ("weights", "config", "tokenizer", "inventory"),
         "evidence": ("evidence_level", "producer_semantic_id", "source_result_path"),
@@ -172,6 +179,8 @@ def validate_candidate_bundle(
             if field not in values or values[field] in (None, "", []):
                 issues.append(f"missing {section}.{field}")
 
+    if any(not isinstance(bundle.get(key), dict) for key in ("model", "quantization", "calibration", "evaluation", "files", "evidence")):
+        return {"ready": False, "issues": issues, "artifact_path": None}
     calibration = bundle.get("calibration") or {}
     evaluation = bundle.get("evaluation") or {}
     if calibration.get("dataset") != evaluation.get("dataset") or calibration.get("revision") != evaluation.get("revision"):
@@ -184,20 +193,37 @@ def validate_candidate_bundle(
         issues.append("evaluation.direction is invalid")
     if evaluation.get("passed") is not True:
         issues.append("candidate quality gate did not pass")
+    if bundle["evidence"].get("failure"):
+        issues.append("source candidate records a failure")
 
     root = Path(project_root).resolve()
-    artifact = Path(str(bundle.get("artifact_path", "")))
+    artifact_name = bundle.get("artifact_path")
+    if not isinstance(artifact_name, str) or not artifact_name.strip():
+        issues.append("artifact_path must name a directory")
+        return {"ready": False, "issues": issues, "artifact_path": None}
+    artifact = Path(artifact_name)
     if not artifact.is_absolute():
         artifact = root / artifact
     if not artifact.is_dir():
         issues.append(f"artifact directory not found: {artifact}")
     else:
-        for item in (bundle.get("files") or {}).get("inventory", []):
-            file_path = artifact / str(item.get("path", ""))
+        inventory = bundle["files"].get("inventory")
+        for item in inventory if isinstance(inventory, list) else []:
+            if not isinstance(item, dict) or not isinstance(item.get("path"), str):
+                issues.append("invalid inventory entry")
+                continue
+            file_path = (artifact / item["path"]).resolve()
+            try:
+                file_path.relative_to(artifact.resolve())
+            except ValueError:
+                issues.append("inventory path escapes artifact directory")
+                continue
             if not file_path.is_file():
                 issues.append(f"artifact file missing: {file_path}")
                 continue
-            if file_path.stat().st_size != item.get("bytes"):
+            if type(item.get("bytes")) is not int or item["bytes"] < 0:
+                issues.append(f"artifact byte count is invalid: {file_path}")
+            elif file_path.stat().st_size != item.get("bytes"):
                 issues.append(f"artifact size mismatch: {file_path}")
             elif _sha256_file(file_path) != item.get("sha256"):
                 issues.append(f"artifact hash mismatch: {file_path}")
