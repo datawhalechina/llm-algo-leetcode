@@ -1,5 +1,5 @@
 # 24. Prefix Cache Matching and Reuse | Prefix Cache 匹配与复用
-**难度：** Hard | **环境：** CPU-first | **标签：** `推理优化`, `KV Cache`, `Prefix Cache` | **目标人群：** 推理优化学习者
+**难度：** Hard | **环境：** [CPU 主线](#runtime-environment) | **标签：** `推理优化`, `KV Cache`, `Prefix Cache` | **目标人群：** 理解注意力与 KV 缓存的学习者
 
 > 🚀 **云端运行环境**
 >
@@ -13,73 +13,79 @@
 
 ## 本节导读
 
-许多请求会共享 system prompt、工具说明或多轮历史的开头。若每次都重新 Prefill，这段相同输入对应的 KV Cache 会被重复计算；Prefix Cache 的任务是识别这段连续共享前缀，并让后续请求直接复用已有状态。
+许多请求会共享系统提示词、工具说明或多轮历史的开头。若每次都重新执行预填充，这段相同输入对应的 KV Cache 会被重复计算；前缀缓存的任务是识别连续共享前缀，并让后续请求直接复用已有状态。
 
-本节沿着“登记 → 最长匹配 → 复用账本 → 写回新状态”理解前缀缓存。未命中的 suffix 仍需要 Prefill；它如何被切分并与 Decode 协调，放到 [38 Prefill/Decode 调度](./38_Prefill_Decode_Scheduling.md) 继续讨论。
+本节沿着“登记 → 最长匹配 → 复用账本 → 写回新状态”理解前缀缓存。从中区分匹配到的词元范围、实际可跳过的计算，以及仍被缓存占用的容量。
 
-**关键词：** `prefix cache`, `longest-prefix match`, `cache reuse`
+**关键词：** `前缀缓存`, `最长前缀匹配`, `缓存复用`
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 使用 [BASE-CPU](../guide.md#base-cpu)，运行本页题目与测试。
+
 ## 前置阅读
 
-**导语：** 进入本节前，先能说明 KV Cache 怎样保存已处理 token 的状态；再观察多个请求为何只能复用从开头连续相同的那段输入。
+先理解 KV Cache 如何保存已处理词元的状态，再观察多个请求为何只能复用从开头连续相同的输入。
 
-- [P1: 11. KV Cache and Memory Growth | KV Cache 与显存增长](../01_Hardware_Math_and_Systems/11_KV_Cache_and_Memory_Growth.md)
-- [22. vLLM PagedAttention | vLLM 分页注意力](./22_vLLM_PagedAttention.md)
-### Step 1: 共享前缀为什么值得复用
+- [Part 01 · 11. KV Cache and Memory Growth | KV Cache 与显存增长](../01_Hardware_Math_and_Systems/11_KV_Cache_and_Memory_Growth.md)
+- [Part 02 · 22. vLLM PagedAttention | vLLM 分页注意力](./22_vLLM_PagedAttention.md)
+## Step 1：共享前缀为什么值得复用
 
-请求经过 Prefill 后形成 KV Cache。若多个请求从开头开始拥有连续相同的 token，这一段状态可以登记到 Prefix Cache；后续请求命中后不必再次计算。第一个不一致 token 之后的内容是本次仍需处理的 suffix。
+预填充（Prefill）处理输入词元并形成键值缓存（KV Cache）。在模型权重、适配器、位置编号、缓存表示相同且权限允许共享时，若多个请求从开头开始拥有连续相同的词元，这一段状态可以登记到前缀缓存；后续请求命中后不必再次计算。第一个不一致词元之后的内容是本次仍需处理的后缀。
 
 | 概念 | 它在请求路径中的含义 | 本次请求如何处理 |
 |---|---|---|
-| 请求 prompt | 可能包含重复的 system prompt、工具说明或历史上下文 | 与已登记路径比较 |
-| 共享前缀 | 从 prompt 开头连续相同的 token 区间 | 复用对应 KV Cache 状态 |
-| 未命中 suffix | 从第一个不一致 token 开始的剩余内容 | 继续 Prefill 并产生新状态 |
-| 新状态 | 本次 suffix 对应的新增 KV Cache | 写回 Prefix Cache 或进入 Decode |
+| 请求输入 | 可能包含重复的系统提示词、工具说明或历史上下文 | 与已登记路径比较 |
+| 共享前缀 | 从请求开头连续相同的词元区间 | 复用对应 KV Cache 状态 |
+| 未命中后缀 | 从第一个不一致词元开始的剩余内容 | 继续预填充并产生新状态 |
+| 新状态 | 本次后缀对应的新增 KV Cache | 写回前缀缓存或进入解码 |
 
-![前缀缓存与分块预填充机制总览](../public/02_PyTorch_Algorithms/24_prefix_chunk_overview.svg)
+![前缀身份、对象匹配与后缀计算](../public/02_PyTorch_Algorithms/24_prefix_chunk_overview.svg)
 
-### Step 2: 最长前缀匹配如何确定复用范围
+## Step 2：最长前缀匹配如何确定复用范围
 
-新请求从 prompt 开头逐 token 与缓存路径比较。连续命中的部分可以复用；从第一个不一致 token 开始直到请求末尾的部分称为 suffix。中间位置偶然相同的 token 不构成命中，因为它之前的状态并不一致。
+最长公共前缀描述两个序列从开头相同的范围；实际可复用长度还取决于哪些缓存对象已经登记并驻留。若仅登记 `[1,2,3]`，请求 `[1,2,9]` 虽有两个公共词元，本页按完整对象登记的模型仍返回零；另行登记 `[1,2]` 后才可以命中两个。中间子串相同不构成前缀命中。
 
 $$
 \text{prompt} = \text{reusable\_prefix} + \text{suffix}
 $$
 
-图中只强调匹配机制：连续命中的 `reusable_prefix` 可以跳过重复 Prefill，首个不一致位置之后的 `suffix` 仍需计算。
+上式表示输入序列的拼接，而非数值相加。匹配确定候选范围后，还需确认对应 K/V 的计算条件、驻留与访问权限；真实后端的可复用粒度可能不同。
 
-| 字段 | 含义 | 后续用途 |
+| 机制量 | 含义 | 后续用途 |
 |---|---|---|
-| `hit_len` | 从 prompt 开头连续命中的 token 数 | 确定可复用状态范围 |
-| `reusable_prefix` | 已缓存且命中的前缀 | 跳过这段 Prefill |
-| `suffix` | 首个不一致 token 之后的剩余部分 | 产生本次新增状态 |
-| 无命中 | `hit_len = 0` | 整个 prompt 仍需 Prefill |
+| 命中长度 | 从请求开头连续命中的词元数 | 确定可复用状态范围 |
+| 可复用前缀 | 已缓存且命中的前缀 | 跳过这段预填充 |
+| 未命中后缀 | 首个不一致词元之后的剩余部分 | 产生本次新增状态 |
+| 无命中 | 命中长度为零 | 整个输入仍需预填充 |
 
 
-![最长前缀命中与请求拆分计划](../public/02_PyTorch_Algorithms/24_prefix_hit_plan.svg)
+![完整对象登记与命中粒度](../public/02_PyTorch_Algorithms/24_prefix_hit_plan.svg)
 
-### Step 3: 用复用账本判断本次新增工作
+## Step 3：用复用账本判断本次新增工作
 
-命中不会让请求“没有计算”，而是把本次工作从完整 prompt 缩为 suffix。记录命中 token、未命中 token 和复用比例，才能判断本次请求减少了多少重复 Prefill；suffix 的分块与调度由 [38](./38_Prefill_Decode_Scheduling.md) 继续展开。
+命中不会让请求“没有计算”，而是把本次工作从完整输入缩为未命中后缀。记录命中词元、未命中词元和复用比例，才能估算减少的输入工作。完全命中也不自动意味着零首词元成本：若还缺少生成下一词元所需的分数，执行器仍有工作；实际跳过量要读取后端计数。
 
-| 账本字段 | 含义 | 还应与哪些证据一起查看 |
+| 账本量 | 含义 | 还应与哪些证据一起查看 |
 |---|---|---|
-| `hit_tokens` | 本次可复用的前缀 token 数 | backend 的 KV 占用和 TTFT |
-| `uncached_tokens` | 仍需执行 Prefill 的 suffix 长度 | Prefill 耗时和吞吐 |
-| `reuse_ratio` | `hit_tokens / prompt_tokens` | 匹配 workload 下的命中率分布 |
-| 新增状态 | suffix 计算后写入的 KV Cache | 淘汰、迁移与生命周期记录 |
+| 命中词元数 | 本次可复用的前缀长度 | 后端的 KV 占用和 TTFT |
+| 未缓存词元数 | 仍需执行预填充的后缀长度 | 预填充耗时和吞吐 |
+| 复用比例 | 命中词元数除以输入词元数 | 匹配工作负载下的命中率分布 |
+| 新增状态 | 后缀计算后写入的 KV Cache | 驱逐、迁移与生命周期记录 |
 
 
-### Step 4: 实现匹配、拆分与复用账本
+## Step 4：实现匹配、拆分与复用账本
 
-本节用最小 `PrefixCacheManager` 把前面的概念链落实为五个连续动作：规范输入、登记前缀、计算最长命中、生成请求拆分与复用账本。
+本题的 `PrefixCacheManager` 用整数词元序列和完整登记对象演示匹配，不存储真实 K/V。你将完成输入检查、去重登记、最长有效命中、拆分与账本；测试区分“存在公共词元”与“已有可复用对象”。
 
-| TODO / 实现对象 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
+| TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 |---|---|---|---|
-| TODO 1 / `_normalize` | 统一 token 容器并校验整数输入 | 保持顺序；非法 token 不能进入缓存索引 | 输入契约 |
-| TODO 2 / `add_prefix` | 登记非空且不重复的共享前缀 | 重复登记不增加索引条目 | 登记与去重 |
-| TODO 3 / `match_prefix` | 从 prompt 开头选择最长连续命中 | 中间子串不能算命中 | 最长命中与零命中 |
-| TODO 4 / `split_prompt` | 按 `hit_len` 拆出 reusable prefix 和 suffix | 两段拼接后必须还原原 prompt | 前缀/后缀契约 |
-| TODO 5 / `cache_stats` | 统计命中、未命中和复用比例 | 空 prompt 返回 `0.0`，token 数守恒 | 账本与空输入 |
+| TODO 1：规范词元输入<br>`_normalize` | 统一词元容器并校验整数输入 | 保持顺序；非法词元不能进入缓存索引 | 输入契约 |
+| TODO 2：登记共享前缀<br>`add_prefix` | 登记非空且不重复的共享前缀 | 重复登记不增加索引条目 | 登记与去重 |
+| TODO 3：计算最长命中<br>`match_prefix` | 从请求开头选择最长连续命中 | 中间子串不能算命中 | 最长命中与零命中 |
+| TODO 4：拆分请求输入<br>`split_prompt` | 按命中长度拆出可复用前缀和未命中后缀 | 两段拼接后必须还原原输入 | 前缀/后缀契约 |
+| TODO 5：生成复用账本<br>`cache_stats` | 统计命中、未命中和复用比例 | 空输入返回 `0.0`，词元数守恒 | 账本与空输入 |
 
 
 
@@ -91,70 +97,77 @@ from typing import List, Sequence, Tuple
 
 ```python
 class PrefixCacheManager:
-    """登记共享前缀，并计算一次请求可复用与仍需 Prefill 的 token 账本。
-
-    `cached_prefixes` 是逻辑索引；本题不实现真实 KV Tensor、物理 block 或淘汰策略。
-    """
+    """登记完整前缀对象，计算逻辑复用范围；不存储真实 K/V。"""
 
     def __init__(self):
         self.cached_prefixes: List[Tuple[int, ...]] = []
 
     def _normalize(self, tokens: Sequence[int]) -> List[int]:
+        """转换词元容器，并拒绝非整数元素。"""
         # ==========================================
-        # TODO 1：统一 token 表示，便于做前缀匹配
-        # 提示：将输入转换为 list，并确认每个 token 都是整数。
-        # normalized = ???  # 转成 list，并保持 token 顺序
+        # TODO 1：保持顺序并统一词元容器。
         # ==========================================
+        # normalized = ???  # 按原顺序排列的词元列表。
+        raise NotImplementedError("请完成 TODO 1：normalized")
+        if any(not isinstance(token, int) for token in normalized):
+            raise TypeError('tokens 必须是整数序列')
         return normalized
 
     def add_prefix(self, prefix_tokens: Sequence[int]) -> None:
+        """登记完整前缀对象，空对象失败，重复对象去重。"""
         # ==========================================
-        # TODO 2：登记一个可复用的共享前缀
-        # 提示：空前缀应拒绝；重复前缀不应重复登记。
-        # prefix = ???  # 规范化后的非空 token 前缀
+        # TODO 2：规范并登记完整前缀对象。
         # ==========================================
+        # prefix = ???  # 规范化后的词元元组，保持输入顺序。
+        raise NotImplementedError("请完成 TODO 2：prefix")
+        if not prefix:
+            raise ValueError('prefix_tokens 不能为空')
         if prefix not in self.cached_prefixes:
             self.cached_prefixes.append(prefix)
 
     def match_prefix(self, prompt_tokens: Sequence[int]) -> int:
-        # ==========================================
-        # TODO 3：返回 prompt 能命中的最长缓存前缀长度
-        # 提示：只允许从 prompt 开头连续命中，不能把中间子串当作命中。
-        # is_match = ???  # cached_prefix 是否等于 prompt 的开头片段
-        # ==========================================
+        """返回与请求开头一致的最长完整登记对象长度。"""
         prompt = self._normalize(prompt_tokens)
         best_len = 0
         for cached_prefix in self.cached_prefixes:
             if len(cached_prefix) > len(prompt):
                 continue
+            # ==========================================
+            # TODO 3：判断完整对象是否匹配请求开头。
+            # ==========================================
+            # is_match = ???  # 当前完整对象与等长请求开头一致时为 True。
+            raise NotImplementedError("请完成 TODO 3：is_match")
             if is_match:
                 best_len = max(best_len, len(cached_prefix))
         return best_len
 
     def split_prompt(self, prompt_tokens: Sequence[int]) -> Tuple[List[int], List[int], int]:
-        # ==========================================
-        # TODO 4: 拆出可复用前缀和待处理 suffix
-        # 提示：hit_len 之前是 reusable_prefix，之后是 suffix。
-        # reusable_prefix = ???  # prompt[:hit_len]
-        # suffix = ???  # prompt[hit_len:]
-        # ==========================================
+        """按命中长度拆分请求，保证两段拼接还原原输入。"""
         prompt = self._normalize(prompt_tokens)
         hit_len = self.match_prefix(prompt)
+        # ==========================================
+        # TODO 4：拆出复用前缀和待处理后缀。
+        # ==========================================
+        # reusable_prefix = ???  # 命中范围覆盖的请求开头。
+        # suffix = ???  # 命中边界之后的全部剩余词元。
+        raise NotImplementedError("请完成 TODO 4：reusable_prefix、suffix")
         return reusable_prefix, suffix, hit_len
 
     def cache_stats(self, prompt_tokens: Sequence[int]) -> dict:
-        """返回 token 级复用账本；不代表真实 KV 显存收益或吞吐。"""
+        """返回逻辑复用账本，不将词元计数解释为实测性能。"""
+        prompt = self._normalize(prompt_tokens)
         # ==========================================
-        # TODO 5：统计命中、未命中与复用比例
-        # 提示：空 prompt 的 reuse_ratio 定义为 0.0，避免除零。
-        # hit_tokens = ???  # 命中的连续前缀 token 数
-        # uncached_tokens = ???  # 仍需 Prefill 的 token 数
-        # reuse_ratio = ???  # 空 prompt 时返回 0.0
+        # TODO 5：统计命中、未命中和词元复用比例。
         # ==========================================
+        # hit_tokens = ???  # 完整对象提供的最长命中词元数。
+        # uncached_tokens = ???  # 仍需处理的输入词元数。
+        # reuse_ratio = ???  # 命中数占输入数的比例；空输入为 0.0。
+        raise NotImplementedError("请完成 TODO 5：词元复用账本")
         return {'hit_tokens': hit_tokens, 'uncached_tokens': uncached_tokens, 'reuse_ratio': reuse_ratio}
+
 ```
 
-### 测试
+## 测试
 
 
 ```python
@@ -190,6 +203,9 @@ def test_longest_prefix_match():
     assert manager.match_prefix([1, 2, 3, 9]) == 3
     assert manager.match_prefix([1, 2, 9, 8]) == 3
     assert manager.match_prefix([1, 2, 0]) == 0
+    manager.add_prefix([1, 2])
+    assert manager.match_prefix([1, 2, 0]) == 2
+    assert manager.match_prefix([0, 1, 2, 3]) == 0
 
 def test_prefix_suffix_split_and_stats():
     """验证 prefix/suffix 拆分和 token 级复用账本。"""
@@ -209,8 +225,16 @@ def test_prefix_cache_manager():
 test_prefix_cache_manager()
 ```
 
+---
 
-### 参考答案
+🛑 **STOP HERE**
+
+先完成题目并运行测试，再展开参考代码。
+
+<br><br><br><br><br><br><br><br><br><br>
+## 参考代码与解析
+
+### 代码
 
 
 ```python
@@ -224,6 +248,7 @@ class PrefixCacheManager:
         self.cached_prefixes: List[Tuple[int, ...]] = []
 
     def _normalize(self, tokens: Sequence[int]) -> List[int]:
+        """按原顺序转换词元容器，并拒绝非整数元素。"""
         # TODO 1: 统一 token 表示，便于做前缀匹配
         normalized = list(tokens)
         if any(not isinstance(token, int) for token in normalized):
@@ -231,6 +256,7 @@ class PrefixCacheManager:
         return normalized
 
     def add_prefix(self, prefix_tokens: Sequence[int]) -> None:
+        """登记非空完整前缀对象，相同对象只保留一次。"""
         # TODO 2: 登记一个可复用的共享前缀
         prefix = tuple(self._normalize(prefix_tokens))
         if not prefix:
@@ -239,6 +265,7 @@ class PrefixCacheManager:
             self.cached_prefixes.append(prefix)
 
     def match_prefix(self, prompt_tokens: Sequence[int]) -> int:
+        """选择与请求开头一致的最长完整登记对象。"""
         # TODO 3: 返回 prompt 能命中的最长缓存前缀长度
         prompt = self._normalize(prompt_tokens)
         best_len = 0
@@ -251,6 +278,7 @@ class PrefixCacheManager:
         return best_len
 
     def split_prompt(self, prompt_tokens: Sequence[int]) -> Tuple[List[int], List[int], int]:
+        """按命中边界拆分请求，保持词元顺序与数量守恒。"""
         # TODO 4: 拆出可复用前缀和待处理 suffix
         prompt = self._normalize(prompt_tokens)
         hit_len = self.match_prefix(prompt)
@@ -270,48 +298,36 @@ class PrefixCacheManager:
 
 ### 解析
 
-本题依次实现 token 输入规范、共享前缀登记、最长命中、请求拆分和复用账本。答案代码保留与题目区相同的函数和控制流，只补全每处机制决策。
+#### TODO 1：统一 token 表示
 
-**TODO 1：统一 token 表示**
+- 把输入转换为保持顺序的整数 token 序列。非法 token 不能进入缓存索引，转换前后的 token 顺序不变。
+- 输入契约测试覆盖合法序列、非法元素和空输入。
 
-- 将输入转换为保持顺序的 `list[int]`，并在进入缓存索引前拒绝非整数 token。
+#### TODO 2：登记共享前缀
 
-**TODO 2：登记共享前缀**
+- 把非空前缀登记为可复用候选。相同前缀只登记一次，空前缀不进入索引。
+- 登记与去重测试检查索引条目数。
 
-- 先复用 `_normalize` 的输入契约，再拒绝空前缀，并用 tuple 保存稳定索引。
-- 重复前缀不增加缓存索引条目。
+#### TODO 3：返回最长连续命中长度
 
-**TODO 3：返回最长连续命中长度**
+- 只接受完整登记对象与请求开头一致的情况，在这些对象中选最长者。中间偶然相同的 token 不能构成前缀命中。
+- 测试用未登记的公共前缀与显式登记的短前缀作对照，检查复用粒度。
 
-- 只比较 prompt 的开头片段，并在候选前缀中返回长度最大的连续命中。
-- 中间偶然相同的 token 不构成命中。
+#### TODO 4：拆分请求
 
-**TODO 4：拆分请求**
+- 按命中长度拆出可复用前缀和未命中后缀。两段重新拼接后必须还原原 prompt。
+- 完整命中、部分命中和零命中测试检查拆分结果。
 
-- 用 `hit_len` 切出 `reusable_prefix` 和 `suffix`，两段拼接后必须还原原 prompt。
-- 零命中时 suffix 等于完整 prompt。
+#### TODO 5：生成复用账本
 
-**TODO 5：生成复用账本**
-
-- `hit_tokens` 等于最长命中长度，`uncached_tokens` 是剩余 suffix 长度。
-- 非空 prompt 的 `reuse_ratio` 为命中比例，空 prompt 返回 `0.0`。
-- 这些是 token 级证据，不等于真实 KV 显存节省或 TTFT 提升；物理 KV block 和 suffix 调度分别由 PagedAttention 与 [38](./38_Prefill_Decode_Scheduling.md) 承接。
-### 真实 backend benchmark 入口
-
-本节的 CPU 题目已经验证最长前缀命中与复用账本。Prefix Cache 是否改善 TTFT、吞吐和 KV 占用，需要在相同 workload 下比较关闭与开启缓存的真实 backend；请在 [69. Prefix Caching Benchmark](./69_Prefix_Caching_Benchmark.md) 中完成该实验并记录 `hit_rate`、TTFT、TPOT、throughput、peak memory、evidence level 与 decision。
-
-
-
-
-
+- 统计命中 token、未缓存 token 和复用比例。命中与未缓存 token 数之和等于 prompt 长度，空 prompt 的复用比例为零。
+- 账本与空输入测试检查 token 数守恒。
 ## 相关阅读
 
-**论文与官方实现**
-
-完成前缀登记、最长命中和复用账本后，可以继续阅读物理 KV block 管理、Radix 树复用与真实 benchmark。
+接着把完整前缀对象组织成压缩树，并用真实服务核对命中与首词元延迟。
 
 - [SGLang 原论文：Efficient Execution of Structured Language Model Programs](https://arxiv.org/abs/2312.07104)
 - [vLLM Automatic Prefix Caching 文档](https://docs.vllm.ai/en/latest/features/automatic_prefix_caching.html)
 - [34. SGLang RadixAttention | SGLang 基数注意力](./34_SGLang_RadixAttention.md)
-- [38. Prefill/Decode 调度](./38_Prefill_Decode_Scheduling.md)
+- [缓存生命周期与容量控制](./37_KV_Cache_Lifecycle_and_Capacity_Control.md)：引用保护与安全回收。
 - [69. Prefix Caching Benchmark | 前缀缓存基准](./69_Prefix_Caching_Benchmark.md)

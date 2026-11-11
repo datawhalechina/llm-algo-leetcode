@@ -1,25 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="537" viewBox="0 0 1240 640" role="img" aria-labelledby="title desc">
-  <title id="title">最长前缀命中与请求拆分计划</title>
-  <desc id="desc">请求从开头逐 token 比较缓存路径，得到最长命中前缀；命中部分复用，首个不一致 token 之后形成 suffix，继续进入 Prefill。</desc>
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8fafc"/><stop offset="1" stop-color="#eef6fb"/></linearGradient>
-    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52606d"/></marker>
-    <marker id="green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#5b9b70"/></marker>
-    <marker id="gold" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#b58a3b"/></marker>
-    <style>text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#172b4d}.title{font-size:29px;font-weight:700}.sub{font-size:15px;fill:#52606d}.group{font-size:17px;font-weight:700;fill:#52606d}.label{font-size:18px;font-weight:700}.small{font-size:14px;fill:#344563}.panel{stroke-width:2;rx:24;ry:24}.n{stroke-width:2.5;rx:18;ry:18}.flow{stroke:#52606d;stroke-width:3;fill:none;marker-end:url(#arrow)}.reuse{stroke:#5b9b70;stroke-width:3;fill:none;marker-end:url(#green)}.compute{stroke:#b58a3b;stroke-width:3;fill:none;marker-end:url(#gold)}</style>
-  </defs>
-  <rect width="1240" height="640" fill="url(#bg)"/>
-  <text x="54" y="54" class="title">最长前缀匹配：从 token 路径到复用范围</text>
-  <text x="54" y="84" class="sub">只比较请求开头的连续路径；首个不一致 token 将 prompt 拆成可复用前缀和待处理 suffix。</text>
-  <rect x="50" y="112" width="1140" height="205" class="panel" fill="#f1f6fb" stroke="#c5d7e8"/>
-  <text x="74" y="296" class="group">从请求开头逐 token 比较</text>
-  <rect x="100" y="180" width="270" height="90" class="n" fill="#e7f0ff" stroke="#7b9bc7"/><text x="235" y="215" text-anchor="middle" class="label">请求 prompt</text><text x="235" y="243" text-anchor="middle" class="small">[S, y, s, u, r, ...]</text>
-  <rect x="485" y="180" width="270" height="90" class="n" fill="#e8f4ec" stroke="#79a889"/><text x="620" y="215" text-anchor="middle" class="label">缓存路径</text><text x="620" y="243" text-anchor="middle" class="small">[S, y, s, t, ...]</text>
-  <rect x="870" y="180" width="250" height="90" class="n" fill="#fffaf0" stroke="#c79a46"/><text x="995" y="215" text-anchor="middle" class="label">首个不一致位置</text><text x="995" y="243" text-anchor="middle" class="small">从这里停止命中</text>
-  <rect x="50" y="355" width="1140" height="220" class="panel" fill="#f5faf6" stroke="#c5ddca"/>
-  <text x="74" y="554" class="group">拆分结果：复用前缀与待处理 suffix</text>
-  <rect x="125" y="430" width="300" height="82" class="n" fill="#e8f4ec" stroke="#79a889"/><text x="275" y="463" text-anchor="middle" class="label">reusable_prefix</text><text x="275" y="490" text-anchor="middle" class="small">hit_len 之前 · 跳过重复 Prefill</text>
-  <rect x="470" y="430" width="300" height="82" class="n" fill="#fff5df" stroke="#c79a46"/><text x="620" y="463" text-anchor="middle" class="label">suffix</text><text x="620" y="490" text-anchor="middle" class="small">首个不一致位置之后 · 仍需 Prefill</text>
-  <rect x="815" y="430" width="270" height="82" class="n" fill="#ffffff" stroke="#91a3b5"/><text x="950" y="463" text-anchor="middle" class="label">复用账本</text><text x="950" y="490" text-anchor="middle" class="small">hit_len · uncached_tokens</text>
-  <path d="M370 225H485" class="flow"/><path d="M755 225H870" class="flow"/><path d="M995 270V390H275V430" class="reuse"/><path d="M995 270V390H620V430" class="compute"/><path d="M770 471H815" class="flow"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+<title id="title">公共词元相同，不等于已有可复用的完整对象</title><desc id="desc">对照只登记长对象和另行登记短对象两种情况，同一请求的有效命中长度不同。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52657a"/></marker><style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#17324d}.title{font-size:26px;font-weight:700}.label{font-size:18px;font-weight:700}.small{font-size:15px;fill:#365269}.box{stroke-width:2;rx:15}.edge{fill:none;stroke:#52657a;stroke-width:2.4;marker-end:url(#arrow)}</style></defs><rect width="1200" height="520" fill="#f8fafc"/>
+<text x="600" y="44" text-anchor="middle" class="title">公共词元相同，不等于已有可复用的完整对象</text>
+<rect x="40" y="130" width="320" height="115" class="box" fill="#eaf3fb" stroke="#5684aa"/><text x="200" y="162" text-anchor="middle" class="label">只登记 [1,2,3]</text><text x="200" y="191" text-anchor="middle" class="small">新请求 [1,2,9]</text>
+<rect x="440" y="130" width="300" height="115" class="box" fill="#fff6e8" stroke="#c9852f"/><text x="590" y="162" text-anchor="middle" class="label">公共长度为 2</text><text x="590" y="191" text-anchor="middle" class="small">但没有完整的 [1,2] 对象</text>
+<rect x="820" y="130" width="330" height="115" class="box" fill="#fff0ea" stroke="#c56f43"/><text x="985" y="162" text-anchor="middle" class="label">可复用长度为 0</text><text x="985" y="191" text-anchor="middle" class="small">仍需处理全部输入</text>
+<rect x="40" y="320" width="320" height="115" class="box" fill="#eaf3fb" stroke="#5684aa"/><text x="200" y="352" text-anchor="middle" class="label">再登记 [1,2]</text><text x="200" y="381" text-anchor="middle" class="small">新请求仍是 [1,2,9]</text>
+<rect x="440" y="320" width="300" height="115" class="box" fill="#eaf7ef" stroke="#4e8a68"/><text x="590" y="352" text-anchor="middle" class="label">完整对象匹配开头</text><text x="590" y="381" text-anchor="middle" class="small">复用前缀 [1,2]</text>
+<rect x="820" y="320" width="330" height="115" class="box" fill="#eaf7ef" stroke="#4e8a68"/><text x="985" y="352" text-anchor="middle" class="label">命中长度为 2</text><text x="985" y="381" text-anchor="middle" class="small">未命中后缀 [9]</text>
+<path d="M360 187H440" class="edge"/>
+<path d="M740 187H820" class="edge"/>
+<path d="M360 377H440" class="edge"/>
+<path d="M740 377H820" class="edge"/>
+<text x="600" y="490" text-anchor="middle" class="small">本页按完整对象登记；真实后端可按块或其他有效边界管理对象</text>
 </svg>

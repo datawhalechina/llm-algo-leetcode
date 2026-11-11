@@ -1,5 +1,5 @@
 # 34. SGLang RadixAttention | SGLang 基数注意力
-**难度：** Hard | **环境：** CPU-first | **标签：** `推理优化`, `KV Cache`, `RadixAttention` | **目标人群：** 推理优化学习者
+**难度：** Hard | **环境：** [CPU 主线](#runtime-environment) | **标签：** `推理优化`, `KV Cache`, `RadixAttention` | **目标人群：** 理解注意力与 KV 缓存的学习者
 
 > 🚀 **云端运行环境**
 >
@@ -13,71 +13,80 @@
 
 ## 本节导读
 
-真实推理服务里，请求往往不是彼此独立的：多轮对话会反复带上历史上下文，Agent 和工具调用也会共享很长的 system prompt。问题在于，如果每个请求都重新计算这些公共前缀，KV Cache 会被重复占用，首 token 延迟也会被拖高。
+真实推理服务里，请求往往不是彼此独立的：多轮对话会反复带上历史上下文，智能体和工具调用也会共享很长的系统提示词。如果每个请求都重新计算这些公共前缀，KV Cache 会被重复占用，首词元延迟也会升高。
 
-RadixAttention 把已经处理过的 prompt 组织成可检索的前缀树。新请求到来时，系统先寻找最长公共前缀：命中的部分复用已有状态，未命中的后缀再进入 Prefill。重点是看清共享路径、命中长度与新增计算量之间的关系。
+基数树（Radix Tree）把连续无分叉的词元路径压缩成一条边。RadixAttention 用这样的索引组织可复用的前缀状态；树结构负责查找，缓存管理还需保证状态驻留与安全引用。新请求到来时，系统先寻找当前可复用的最长前缀：命中的部分复用已有状态，未命中的后缀再进入预填充。
 
-**关键词：** `RadixAttention`, `prefix tree`, `multi-turn`
+**关键词：** `RadixAttention`, `前缀树`, `多轮请求`
 
 ---
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 使用 [BASE-CPU](../guide.md#base-cpu)，运行本页题目与测试。
+
 ## 前置阅读
 
-**导语：** 先理解 KV Cache 的存储、最长前缀命中和 suffix，再观察 RadixAttention 如何把大量共享前缀组织成可检索路径。
-- [P1: 11. KV Cache and Memory Growth | KV Cache 与显存增长](../01_Hardware_Math_and_Systems/11_KV_Cache_and_Memory_Growth.md)
-- [22. vLLM PagedAttention | vLLM 分页注意力](./22_vLLM_PagedAttention.md)
-- [24. Prefix Cache Matching and Reuse | Prefix Cache 匹配与复用](./24_Prefix_Cache_Matching_and_Reuse.md)
-- [21. Decoding Strategies | 解码策略（可选背景）](./21_Decoding_Strategies.md)
+先理解 KV Cache 的存储与最长前缀命中，再观察 RadixAttention 如何把大量共享前缀组织成可检索路径。
+- [Part 02 · 22. vLLM PagedAttention | vLLM 分页注意力](./22_vLLM_PagedAttention.md)
+- [Part 02 · 24. Prefix Cache Matching and Reuse | Prefix Cache 匹配与复用](./24_Prefix_Cache_Matching_and_Reuse.md)
 
 ---
 
-### Step 1: RadixAttention 如何组织公共前缀复用
+## Step 1：RadixAttention 如何组织公共前缀复用
 
-重复出现的 System Prompt 或历史上下文会让请求反复执行相同的 prefill。RadixAttention 的输入是已登记的 token 前缀和新请求 prompt，处理方式是沿 Radix Tree 查找最长公共前缀；输出是可复用的命中范围和需要继续计算的未命中后缀。
-先通过表格区分公共前缀、树路径、命中范围和未命中后缀，再观察主图中的查找与复用过程。
+重复出现的系统提示词或历史上下文会让请求反复执行相同的预填充。RadixAttention 接收已登记的词元前缀和新请求，沿基数树查找最长路径，结合已登记缓存边界返回可复用范围和需要继续计算的未命中后缀。
 
 | 概念 | 它记录什么 | 对请求执行的作用 |
 |---|---|---|
-| 公共前缀 | 多个请求开头相同的 token 序列 | 作为可复用的候选缓存范围 |
-| Radix Tree | 按 token 路径组织共享边，并支持最长前缀匹配 | 快速找到当前请求可以复用的范围 |
-| 未命中后缀 | 从首个不一致 token 开始的剩余序列 | 继续执行 prefill，并登记为新分支 |
-| PagedAttention 对照 | 按物理 Block 管理 KV Cache；RadixAttention 按 token 前缀组织共享路径 | 前者解决分页分配，后者强调前缀查找与复用 |
+| 公共前缀 | 多个请求开头相同的词元序列 | 作为可复用的候选缓存范围 |
+| 基数树 | 按词元路径组织共享边，并支持最长前缀匹配 | 快速找到当前请求可以复用的范围 |
+| 未命中后缀 | 从首个不一致词元开始的剩余序列 | 继续执行预填充，并登记为新分支 |
+| PagedAttention 对照 | 按物理块管理 KV Cache；RadixAttention 按词元前缀组织共享路径 | 两者是不同机制层次，并非互斥的引擎能力；分页系统也可支持前缀索引 |
 
 ![RadixAttention 前缀树图](../public/02_PyTorch_Algorithms/34_radix_attention_tree.svg)
 
-### Step 2: Radix Tree 的插入、分裂与匹配
+## Step 2：基数树的插入、分裂与匹配
 
-用两条有公共前缀的请求观察路径如何插入、分裂和匹配：先沿共享边查找最长公共前缀，再把未命中的 token 留给后续 prefill。表格把每个操作与树的变化对应起来，帮助你从请求路径理解数据结构。
+压缩边保存一段连续词元，而不是一个字符。插入 `[1,2,3]` 和 `[1,2,4]` 时，原边拆成共享段 `[1,2]` 与后续分支；旧路径的结束标记和缓存引用必须随对应后缀保留。若再登记 `[1,2]`，共享节点本身也成为一个完整缓存对象的结束位置。
 
 | 操作 | 输入 | 树的变化 | 要观察的结果 |
 |---|---|---|---|
-| 插入 | 新 token 路径 | 新建边，或在首个不一致位置分裂已有边 | 公共前缀只保留一条共享路径 |
-| 匹配 | 新请求 prompt | 沿边逐段比较 token | 返回最长命中长度 `hit_len` |
-| 拆分 | `hit_len` 与 prompt | 切出命中前缀和未命中 suffix | suffix 进入后续 prefill |
+| 插入 | 新词元路径 | 新建边，或在首个不一致位置分裂已有边 | 公共前缀只保留一条共享路径 |
+| 匹配 | 新请求输入 | 沿边逐段比较词元 | 返回最长命中长度 |
+| 拆分 | 命中长度与请求输入 | 切出命中前缀和未命中后缀 | 未命中后缀进入后续预填充 |
 
 
-### Step 3: 命中范围如何进入执行计划
+## Step 3：公共路径与可复用对象边界如何对应
 
-树匹配返回 token 范围，执行器还要把它转换成“复用多少、重新计算多少”的执行计划。先用公式说明命中长度，再用表格把命中前缀、未命中后缀和缓存句柄对应到下一步动作。最长公共前缀为：
-$$H = \max_j \operatorname{lcp}(prompt\_tokens, cached\_path_j)$$
-| 字段 | 含义 | 下一步 |
-|---|---|---|
-| `hit_len` | 从 prompt 开始连续命中的 token 数 | 读取对应前缀缓存 |
-| `hit_prefix` | 可复用的 token 前缀 | 跳过重复 prefill |
-| `miss_suffix` | 命中位置之后的 token | 执行剩余 prefill，并登记新路径 |
-| `terminal` / `kv_cache_ptr` | 标记完整缓存路径，并关联缓存句柄 | 决定命中结果是否有可复用的缓存对象 |
+最长公共前缀长度（LCP）只描述词元是否相同，不能单独证明对应状态已经保存。本页索引将完整登记路径的结束节点标为终止节点；设这些对象组成集合 $C$，请求词元序列为 $P$，可返回的命中长度为：
 
-![Radix Tree 命中到执行计划](../public/02_PyTorch_Algorithms/34_radix_match_flow.svg)
+$$
+H=\max\left(\{0\}\cup\{|c|:c\in C,\ c=P[:|c|]\}\right).
+$$
 
+其中 $|c|$ 是对象词元数，$P[:|c|]$ 表示请求开头相同长度的片段。例如只有 `[1,2,3]` 和 `[1,2,4]` 两个对象时，`[1,2,9]` 经过共享边却不能命中完整对象；登记 `[1,2]` 后才命中两个。真实缓存可以按别的有效边界拆分对象，但都要确认相应状态可读；K/V 指针不是本页索引练习的实际张量。
 
-### Step 4: 实现并验证前缀缓存索引
+| 观察对象 | 意义 | 后续动作 |
+| --- | --- | --- |
+| 公共路径 | 从开头相同的词元段 | 继续检索，不能直接当驻留证明 |
+| 完整对象边界 | 已登记状态在该节点结束 | 更新当前最长有效命中 |
+| 命中前缀 | 有可复用对象覆盖的请求开头 | 执行器确认驻留与引用后读取 |
+| 未命中后缀 | 命中边界之后的剩余输入 | 继续预填充，完成后登记新对象 |
 
-本题用压缩边节点和 token 序列复现 Radix Tree；节点结构、子边查找和遍历骨架已经提供，学习者补全边分裂、逐 token 公共前缀判断、完整路径命中和 prompt 拆分。测试覆盖共享边、反向插入、不完整路径、零命中与空输入。
-| 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
+![索引命中与真实状态检查共同决定复用](../public/02_PyTorch_Algorithms/34_radix_match_flow.svg)
+
+## Step 4：实现并验证前缀缓存索引
+
+本题用压缩边和完整路径终止标记复现逻辑索引，缓存指针保留为接口占位。你需要完成边分裂、最长公共前缀判断、完整路径命中和请求拆分，并通过测试检查共享路径与输入词元是否保持一致。
+
+| TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 |---|---|---|---|
-| `insert` | TODO 1：把部分重叠边拆成共享前缀和旧后缀 | 保留旧边的子节点、终止状态和缓存指针 | 共享边与边分裂测试 |
-| `_lcp_len` | TODO 2：判断当前位置 token 是否继续匹配 | 首个不一致位置立即停止 | LCP 边界测试 |
-| `match_prefix` | TODO 3：只在完整缓存路径结束处更新命中长度 | 不完整边和非终止节点不能复用 | 最长命中与未命中测试 |
-| `split_prompt` | TODO 4：按命中长度拆分前缀与后缀 | 空 prompt 和零命中安全回退 | 前缀/后缀契约测试 |
+| TODO 1：分裂部分重叠边<br>`insert` | 把部分重叠边拆成共享前缀和旧后缀 | 保留旧边的子节点、终止状态和缓存引用 | 共享边与边分裂测试 |
+| TODO 2：计算最长公共前缀<br>`_lcp_len` | 判断当前位置词元是否继续匹配 | 首个不一致位置立即停止 | 最长公共前缀边界测试 |
+| TODO 3：记录完整路径命中<br>`match_prefix` | 只在完整缓存路径结束处更新命中长度 | 不完整边和非终止节点不能复用 | 最长命中与未命中测试 |
+| TODO 4：拆分请求输入<br>`split_prompt` | 按命中长度拆分前缀与后缀 | 空输入和零命中安全回退 | 前缀/后缀契约测试 |
 
 
 
@@ -104,7 +113,7 @@ class SimpleRadixCache:
     def _find_child(self, node, token):
         """返回首 token 匹配的子边；同一节点下不应出现重复首 token。"""
         return next((child for child in node.children if child.key_tokens and child.key_tokens[0] == token), None)
-        
+
     def insert(self, tokens):
         """插入路径；遇到部分重叠边时分裂旧边。"""
         tokens = list(tokens)
@@ -138,7 +147,8 @@ class SimpleRadixCache:
             else:
                 shared.children.append(TreeNode(tokens[offset + common:], terminal=True))
             return
-        
+        node.terminal = True
+
     def _lcp_len(self, cached_tokens, prompt_tokens):
         """计算两段 token 序列的最长公共前缀长度。"""
         match_len = 0
@@ -150,11 +160,11 @@ class SimpleRadixCache:
                 break
             match_len += 1
         return match_len
-        
+
     def match_prefix(self, prompt_tokens):
         """
         在现有树中，为新的 prompt_tokens 寻找最长的匹配前缀。
-        如果前 N 个 token 完全一致，说明这 N 个 token 的 KV Cache 可以直接复用！
+        只返回已登记完整对象的终止位置；本函数不检查真实 K/V 驻留。
         """
         best_match_len = 0
         node = self.root
@@ -183,6 +193,8 @@ class SimpleRadixCache:
         raise NotImplementedError('TODO 4：请拆分命中前缀与未命中后缀')
         return hit_prefix, miss_suffix, hit_len
 ```
+
+## 测试
 
 
 ```python
@@ -215,6 +227,22 @@ def test_insert_and_split():
     reverse_cache.insert([4, 5])
     assert reverse_cache.match_prefix([4, 5, 8]) == 2
 
+def test_register_existing_internal_prefix():
+    """显式登记共享内部路径后，它才成为可复用对象。"""
+    cache = SimpleRadixCache()
+    cache.insert([1, 2, 3])
+    marker = object()
+    cache.root.children[0].kv_cache_ptr = marker
+    cache.insert([1, 2, 4])
+    shared = cache.root.children[0]
+    old_suffix = next(child for child in shared.children if child.key_tokens == [3])
+    assert old_suffix.kv_cache_ptr is marker
+    assert cache.match_prefix([1, 2, 9]) == 0
+    cache.insert([1, 2])
+    assert cache.match_prefix([1, 2, 9]) == 2
+    assert cache.match_prefix([1, 2, 3]) == 3
+
+
 def test_match_prefix_contract():
     """验证完整 terminal 路径才能计入命中长度。"""
     cache = _build_radix_cache()
@@ -246,6 +274,7 @@ def test_radix_attention():
     try:
         test_lcp_contract()
         test_insert_and_split()
+        test_register_existing_internal_prefix()
         test_match_prefix_contract()
         test_split_prompt_contract()
         test_empty_prompt_and_path()
@@ -262,8 +291,16 @@ test_radix_attention()
 
 ```
 
+---
 
-### 参考答案
+🛑 **STOP HERE**
+
+先完成题目并运行测试，再展开参考代码。
+
+<br><br><br><br><br><br><br><br><br><br>
+## 参考代码与解析
+
+### 代码
 
 ```python
 class TreeNode:
@@ -278,7 +315,7 @@ class SimpleRadixCache:
     """用压缩 Radix Tree 模拟公共 token 前缀的登记与匹配。"""
     def __init__(self):
         self.root = TreeNode([])
-        
+
     def _find_child(self, node, token):
         """返回首 token 匹配的子边；同一节点下不应出现重复首 token。"""
         return next((child for child in node.children if child.key_tokens and child.key_tokens[0] == token), None)
@@ -313,8 +350,10 @@ class SimpleRadixCache:
             else:
                 shared.children.append(TreeNode(tokens[offset + common:], terminal=True))
             return
-        
+        node.terminal = True
+
     def _lcp_len(self, cached_tokens, prompt_tokens):
+        """逐位置比较词元，返回首个分歧之前的公共长度。"""
         match_len = 0
         for cached_token, prompt_token in zip(cached_tokens, prompt_tokens):
             # TODO 2（公共前缀）：判断当前位置是否仍然匹配。
@@ -323,7 +362,7 @@ class SimpleRadixCache:
                 break
             match_len += 1
         return match_len
-        
+
     def match_prefix(self, prompt_tokens):
         """
         在现有树中，为新的 prompt_tokens 寻找最长的匹配前缀。
@@ -355,90 +394,32 @@ class SimpleRadixCache:
 
 ### 解析
 
-题目保留查找和遍历骨架，解析只对应会改变树结构或命中结果的四项机制。
+#### TODO 1：分裂部分重叠边
 
-**TODO 1：分裂部分重叠边**
-共享前缀成为父边，旧后缀继承原节点的子节点、终止状态和缓存指针，新后缀成为同级分支。分裂测试检查旧路径与新路径都能继续命中。
+- 把公共前缀提升为共享父边，再将旧后缀和新后缀放到两个分支。旧边的子节点、终止状态和缓存引用必须随旧后缀保留。
+- 共享边、反向插入和边分裂测试检查两条路径都能继续命中。
 
-**TODO 2：计算最长公共前缀**
-逐 token 比较时，首个不一致位置就是公共前缀终点；`zip` 同时处理任一序列先结束的边界。LCP 测试覆盖不一致与长度不同两种情况。
+#### TODO 2：计算最长公共前缀
 
-**TODO 3：记录完整路径命中**
-完整走过压缩边只说明路径匹配；只有终止节点代表已登记的完整缓存对象，因此才能更新可复用长度。
+- 逐 token 比较两条路径，在首个不一致位置停止。返回长度不能超过任一输入序列，完全一致时等于较短序列长度。
+- LCP 测试覆盖首 token 不同、中途分叉和长度不同。
 
-**TODO 4：拆分命中前缀与未命中后缀**
-`hit_len` 同时确定两个切片边界。测试检查完整命中、部分命中、零命中和空 prompt，确保两部分重新拼接后仍等于原输入。
+#### TODO 3：记录完整路径命中
 
-### 真实 SGLang backend benchmark 入口
+- 只有完整走过已登记路径并到达终止节点，才更新可复用长度。不完整边和非终止节点不能被当作可复用缓存对象。
+- 完整命中、部分路径和未命中测试检查命中边界。
 
-本节的 CPU 题目已经验证压缩边、边分裂和完整路径命中。要评估 RadixAttention 的服务收益，应在相同 workload 下使用真实 backend 比较缓存关闭与开启的命中率、TTFT、TPOT、throughput、peak memory、evidence level 与 decision；统一在 [69. Prefix Caching Benchmark](./69_Prefix_Caching_Benchmark.md) 中完成。
+#### TODO 4：拆分命中前缀与未命中后缀
 
+- 按命中长度切分可复用前缀和仍需计算的后缀。两段重新拼接后必须等于原始 prompt。
+- 完整命中、部分命中、零命中和空 prompt 测试检查拆分结果。
 
-<!-- 已迁移至 69 的历史 GPU tensor 探针，不在教程页面展示。
-    """把 Radix Tree 的 token 命中结果转换为 GPU 输入边界。"""
-    import json
-    import torch
-    prompts = prompts or RADIX_GPU_PROMPTS
-    cache = SimpleRadixCache()
-    cache.insert(prompts['cached_prefix'])
-    hit_prefix, miss_suffix, hit_len = cache.split_prompt(prompts['request'])
-    plan = {
-        'chapter': '24',
-        'workload': {'cached_prefix_tokens': len(prompts['cached_prefix']), 'request_tokens': len(prompts['request'])},
-        'hit_len': hit_len,
-        'hit_tokens': len(hit_prefix),
-        'suffix_tokens': len(miss_suffix),
-        'evidence_level': 'synthetic_gpu_input_boundary',
-    }
-    if run_mode == 'dry_run':
-        print(json.dumps({'mode': run_mode, 'plan': plan}, ensure_ascii=False, indent=2))
-        return plan
-    if run_mode != 'real_gpu':
-        raise ValueError("RUN_MODE 只能是 dry_run 或 real_gpu")
-    if not torch.cuda.is_available():
-        result = {**plan, 'mode': run_mode, 'status': 'skipped', 'failure_reason': 'CUDA 不可用', 'evidence_level': 'unavailable'}
-        print(json.dumps(result, ensure_ascii=False, indent=2))
-        return result
-    device = torch.device('cuda')
-    hit_tensor = torch.tensor(hit_prefix, dtype=torch.long, device=device)
-    suffix_tensor = torch.tensor(miss_suffix, dtype=torch.long, device=device)
-    torch.cuda.synchronize(device)
-    result = {**plan, 'mode': run_mode, 'status': 'completed', 'device': torch.cuda.get_device_name(0), 'hit_tensor_shape': list(hit_tensor.shape), 'suffix_tensor_shape': list(suffix_tensor.shape), 'hit_bytes': hit_tensor.numel() * hit_tensor.element_size(), 'suffix_bytes': suffix_tensor.numel() * suffix_tensor.element_size(), 'failure_reason': None}
-    from pathlib import Path
-    output_path = Path(GPU_RESULT_PATH)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')
-    result['result_path'] = str(output_path)
-    print(json.dumps(result, ensure_ascii=False, indent=2))
-    return result
-
-run_radix_gpu_boundary_probe(RUN_MODE, RADIX_GPU_PROMPTS)
--->
-
-<!-- 已迁移至 69 的历史 JSON 读取单元，不在教程页面展示。
-import json
-from pathlib import Path
-result_path = Path(GPU_RESULT_PATH)
-if result_path.exists():
-    result = json.loads(result_path.read_text(encoding='utf-8'))
-    required = {'chapter', 'mode', 'hit_len', 'evidence_level'}
-    missing = required - set(result)
-    if missing:
-        raise ValueError(f'结果 JSON 缺少字段：{sorted(missing)}')
-    print(result)
-else:
-    print(f'尚无 GPU boundary probe 结果：{result_path}')
--->
 ## 相关阅读
 
-**论文与官方实现**
-
-RadixAttention 可以继续从 SGLang 实现、前缀缓存和调度策略三个方向阅读。
+继续核对索引之外的引用保护，再把命中范围与真实服务延迟对应起来。
 
 - [SGLang 原论文：Efficient Execution of Structured Language Model Programs](https://arxiv.org/abs/2312.07104)
 - [SGLang 官方仓库](https://github.com/sgl-project/sglang)
 - [SGLang 官方文档](https://docs.sglang.ai/)
-- [22. vLLM PagedAttention | vLLM 分页注意力](./22_vLLM_PagedAttention.md)
-- [24. Prefix Cache Matching and Reuse | Prefix Cache 匹配与复用](./24_Prefix_Cache_Matching_and_Reuse.md)
 - [37. KV Cache Lifecycle and Capacity Control | KV Cache 生命周期与容量控制](./37_KV_Cache_Lifecycle_and_Capacity_Control.md)
 - [69. Prefix Caching Benchmark | 前缀缓存基准项目](./69_Prefix_Caching_Benchmark.md)
