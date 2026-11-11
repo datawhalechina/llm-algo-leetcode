@@ -3,19 +3,19 @@
   <rect x="44" y="36" width="1192" height="840" rx="28" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
 
   <text x="88" y="86" fill="#0F172A" font-size="30" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">Decode 调度：请求如何被选择和推进</text>
-  <text x="88" y="120" fill="#475569" font-size="18" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">请求级调度（四层中的第一层）：请求携带状态进入队列，调度器反复选择并推进。</text>
+  <text x="88" y="120" fill="#475569" font-size="18" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">先比较请求顺序，再检查容量；每个调度步只推进一个请求。</text>
 
   <rect x="88" y="176" width="236" height="76" rx="16" fill="#F1F5F9" stroke="#64748B" stroke-width="2"/>
-  <text x="142" y="207" fill="#334155" font-size="20" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">解码规则</text>
-  <text x="142" y="233" fill="#475569" font-size="16" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">采样 · 贪心</text>
+  <text x="142" y="207" fill="#334155" font-size="20" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">处理阶段</text>
+  <text x="142" y="233" fill="#475569" font-size="16" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">预填充 · 解码</text>
 
   <rect x="386" y="176" width="236" height="76" rx="16" fill="#F1F5F9" stroke="#64748B" stroke-width="2"/>
-  <text x="432" y="207" fill="#334155" font-size="20" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">生成步幅</text>
-  <text x="432" y="233" fill="#475569" font-size="16" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">单 Token · 多 Token</text>
+  <text x="432" y="207" fill="#334155" font-size="20" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">等待与期限</text>
+  <text x="432" y="233" fill="#475569" font-size="16" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">累计等待 · 截止步</text>
 
   <rect x="684" y="176" width="236" height="76" rx="16" fill="#F1F5F9" stroke="#64748B" stroke-width="2"/>
-  <text x="728" y="207" fill="#334155" font-size="20" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">草稿验证</text>
-  <text x="728" y="233" fill="#475569" font-size="16" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">候选 token：接受或拒绝</text>
+  <text x="728" y="207" fill="#334155" font-size="20" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">准入条件</text>
+  <text x="728" y="233" fill="#475569" font-size="16" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">KV 容量 · 能否暂停</text>
 
   <path d="M206 252V300M504 252V300H206M802 252V300H206M206 300V338" stroke="#64748B" stroke-width="2.5" stroke-dasharray="8 7"/>
   <path d="M198 324L206 338L214 324" fill="#64748B"/>
@@ -36,9 +36,9 @@
   <rect x="500" y="458" width="296" height="32" rx="8" fill="#FFFFFF"/>
   <text x="516" y="480" fill="#78350F" font-size="16" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">① 读取：过滤未完成请求</text>
   <rect x="500" y="498" width="296" height="32" rx="8" fill="#FFFFFF"/>
-  <text x="516" y="520" fill="#78350F" font-size="16" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">② 比较：阶段 · 缓存 · 优先级 · 长度</text>
+  <text x="516" y="520" fill="#78350F" font-size="16" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">② 比较：期限 · 阶段 · 业务等级</text>
   <rect x="500" y="538" width="296" height="32" rx="8" fill="#FFFFFF"/>
-  <text x="516" y="560" fill="#78350F" font-size="16" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">③ 选择：排序最前者，每步重选</text>
+  <text x="516" y="560" fill="#78350F" font-size="16" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">③ 准入：容量足够才推进</text>
 
   <rect x="898" y="370" width="254" height="230" rx="20" fill="#FCE7F3" stroke="#DB2777" stroke-width="2"/>
   <text x="930" y="414" fill="#9D174D" font-size="25" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">结果</text>

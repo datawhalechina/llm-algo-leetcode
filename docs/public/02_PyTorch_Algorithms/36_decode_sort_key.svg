@@ -3,7 +3,7 @@
   <rect x="42" y="34" width="1196" height="572" rx="26" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
 
   <text x="82" y="88" fill="#0F172A" font-size="30" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">排序键如何决定下一次调度</text>
-  <text x="82" y="122" fill="#475569" font-size="18" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">排序键从左到右比较；前面的字段相同时，才继续比较后面的字段。</text>
+  <text x="82" y="122" fill="#475569" font-size="18" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">固定／老化策略从左到右比较；期限策略在阶段之前先比较完成余量。</text>
 
   <rect x="82" y="154" width="1116" height="70" rx="16" fill="#EEF2FF" stroke="#6366F1" stroke-width="2"/>
   <text x="350" y="199" fill="#3730A3" font-size="25" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">排序键 = (阶段, 缓存, 优先级, 总长度, 编号)</text>
@@ -19,18 +19,18 @@
   <text x="344" y="362" fill="#92400E" font-size="17" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">未命中 = 1</text>
 
   <rect x="546" y="258" width="202" height="138" rx="16" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
-  <text x="584" y="296" fill="#166534" font-size="20" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">业务优先级</text>
-  <text x="576" y="332" fill="#166534" font-size="17" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">高优先级更靠前</text>
-  <text x="576" y="362" fill="#166534" font-size="17" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">转换后数值更小</text>
+  <text x="584" y="296" fill="#166534" font-size="20" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">有效优先级</text>
+  <text x="576" y="332" fill="#166534" font-size="17" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">原等级＋老化增量</text>
+  <text x="576" y="362" fill="#166534" font-size="17" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">取负后越小越靠前</text>
 
   <rect x="778" y="258" width="202" height="138" rx="16" fill="#FCE7F3" stroke="#DB2777" stroke-width="2"/>
   <text x="834" y="296" fill="#9D174D" font-size="20" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">总长度</text>
-  <text x="812" y="332" fill="#9D174D" font-size="17" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">`total_len`</text>
+  <text x="812" y="332" fill="#9D174D" font-size="17" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">输入＋已生成</text>
   <text x="812" y="362" fill="#9D174D" font-size="17" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">用于稳定排序</text>
 
   <rect x="1010" y="258" width="188" height="138" rx="16" fill="#F1F5F9" stroke="#64748B" stroke-width="2"/>
   <text x="1056" y="296" fill="#334155" font-size="20" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">请求编号</text>
-  <text x="1044" y="332" fill="#334155" font-size="17" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">`request_id`</text>
+  <text x="1044" y="332" fill="#334155" font-size="17" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">同长度时比较</text>
   <text x="1044" y="362" fill="#334155" font-size="17" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">保证结果稳定</text>
 
   <path d="M284 327H314M516 327H546M748 327H778M980 327H1010" stroke="#64748B" stroke-width="2.5"/>

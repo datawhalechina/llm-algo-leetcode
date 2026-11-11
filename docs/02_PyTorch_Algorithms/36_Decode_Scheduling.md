@@ -1,5 +1,5 @@
 # 36. Decode Scheduling | 解码调度
-**难度：** Hard | **环境：** CPU-first | **标签：** `推理优化`, `解码`, `Scheduling` | **目标人群：** 推理优化学习者
+**难度：** Hard | **环境：** [CPU 主线](#runtime-environment) | **标签：** `推理优化`, `解码`, `Scheduling` | **目标人群：** 理解请求与 KV 缓存的读者
 
 > 🚀 **云端运行环境**
 >
@@ -13,71 +13,78 @@
 
 ## 本节导读
 
-前面几节已经看过投机解码和多 Token 生成。现在把视角从单个请求扩展到一组同时生成的请求：有的刚完成输入处理，有的正在逐 Token 生成，有的即将结束。调度器需要根据这些状态决定下一步推进谁。
+两个正在生成的请求还没结束，又来了一个长输入请求。调度器既要决定谁先推进，也要检查剩余 KV 缓存能否容纳新请求；优先照顾其中一个请求，通常意味着其他请求多等一轮。
 
-本节关注请求级选择：候选请求采用不同排序规则时，服务顺序、等待时间和生成进度会如何变化；当高优先级或临近 deadline 的请求无法准入时，还要判断能否安全抢占并在之后恢复。每轮批次成员如何动态加入和退出，继续由 Continuous Batching 机制处理。
+先把“处理到哪个阶段”和“是否已经获得容量”分开，再比较固定优先级、等待老化和截止期限三种选择规则。等待老化（aging）会随累计等待提高有效优先级；抢占（preemption）则暂停已准入请求，把容量让给更紧急的请求。沿着事件序列，可以解释服务顺序怎样变化，以及暂停后需要保留哪些进度。
 
 **关键词：** `decode scheduling`, `admission`, `aging`, `fairness`, `preemption`
 
 ---
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 使用 [`BASE-CPU`](../guide.md#base-cpu)，运行请求状态与调度测试。
+- **真实服务对照：** [Serving 调度基准](./70_Serving_Scheduler_Benchmark.md)提供独立后端实验与环境入口。
 
 ## 前置阅读
 
-**导语：** 进入本节前，先能区分请求的 prefill、decode 和完成状态，再观察调度器如何依据状态选择下一步请求。
+进入本节前，先能区分请求的 prefill、decode 和完成状态，再观察调度器如何依据状态选择下一步请求。
+
 - [21. Decoding Strategies | 解码策略](./21_Decoding_Strategies.md)
 
 ---
 
-### Step 1: 多请求为什么需要解码调度
+## Step 1：多个请求怎样竞争执行机会
 
-把多个请求放进同一个等待队列后，它们会竞争下一轮 Decode 的执行机会。本节用请求阶段、缓存命中和业务优先级确定谁先获得执行机会；这些选择会改变生成进度、响应延迟和完成顺序。
+多个请求同时等待时，阶段、缓存命中和业务优先级会影响下一步选谁。固定优先级使用业务给定的等级；等待老化把累计等待步数折算成等级增量；截止期限策略先比较预计完成后还剩多少调度步。一次选择改变一个请求的进度，也增加其他请求的等待。
 
-固定优先级策略直接使用业务优先级；aging 把等待步数折算成优先级增量，避免低优先级请求长期饥饿；deadline 策略进一步比较剩余步数与完成预算。调度前还要检查 KV block 是否足够：容量不足时只能排队，或抢占可安全暂停且优先级更低的已准入请求。
+排序靠前仍不一定能够执行：准入是为请求预留 KV 容量，容量不足时需要继续等待，或暂停一个能够让出足够容量的请求。这里把时间简化成调度步：输入处理占一步，之后每步生成一个 token；步数不能直接换算成真实毫秒延迟。
 
-| 字段或观察对象 | 在本节中的角色 | 对当前选择的影响 |
+| 观察对象 | 在选择中的作用 | 需要保留的信息 |
 | --- | --- | --- |
-| 活动请求集合 | 收集尚未完成、可继续推进的请求 | 形成可重排的候选集合 |
-| 阶段、缓存命中、业务优先级 | 排序键的主要决策字段 | 决定谁先获得一个执行步 |
-| 总长度、请求编号 | 稳定 tie-breaker | 只在前面字段相同时决定顺序 |
-| `wait_steps` | 等待与潜在饥饿的观测字段 | 固定策略只记录；aging 策略将其折算为优先级增量 |
-| `required_blocks` / 可用 KV block | 请求的容量需求与系统容量状态 | 决定请求当前能否准入；不负责 block 的物理分配 |
-| `deadline_step` / `preemptible` | 截止步与能否安全暂停 | 决定紧急程度，以及容量不足时是否允许抢占 |
-| 完成进度与事件序列 | 调度后的结果记录 | 用于解释完成顺序、等待与公平性 |
+| 阶段与缓存命中 | 区分输入处理与逐 token 生成，以及可复用的输入状态 | 当前阶段与命中标记 |
+| 业务等级与累计等待 | 决定同类请求中的优先次序 | 原始等级与累计等待步数 |
+| 容量与可暂停性 | 判断能否准入或让出容量 | 块需求、准入状态、能否暂停 |
+| 完成期限与生成进度 | 比较紧急程度并判断是否完成 | 截止步、已生成长度与生成上限 |
 
 ![Decode 调度概念图：请求状态进入调度器并循环推进](../public/02_PyTorch_Algorithms/36_decode_scheduling_board.svg)
 
-### Step 2: 请求状态与生命周期机制
+## Step 2：处理阶段与准入状态怎样变化
 
-调度前先把请求看成会变化的状态对象。正常路径是 waiting → admitted → prefill → decode → finished；容量压力下，已准入请求还可能进入 preempted，释放其 KV 预算，之后重新准入并从保存的阶段继续。
+处理阶段回答“还在读输入，还是已经逐 token 生成”；准入状态回答“正在等待、已获得容量、被暂停，还是已经完成”。两者是不同维度：等待中的新请求已经标记为预填充阶段，被抢占的请求也仍保留原来的处理阶段。
 
-| 机制环节 | 状态或动作 | 机制含义 |
-|---|---|---|
-| 状态对象 | 输入、阶段、生成进度、生成上限和缓存信息 | 说明请求当前处于什么阶段，还需要生成多少内容 |
-| 状态转移 | waiting → admitted → prefill → decode | 请求获得容量后完成输入处理并逐步生成 |
-| 抢占与恢复 | admitted → preempted → admitted | 保存阶段和生成进度，释放后重新申请容量 |
-| 活动集合 | 尚未完成的请求 | 只保留仍需要推进的请求，已完成请求退出队列 |
-| 单步推进 | 选中一个请求前进一轮 | 每一轮只推进当前选中的请求，其他请求继续等待 |
-| 完成条件 | 达到生成上限 | 请求完成并从活动集合中退出 |
+暂停时释放的是容量账本中的预留块数，恢复时重新申请相同容量，生成进度保持不变。真实后端还必须恢复 KV 内容，或重新计算被丢弃的部分；这些传输和重计算耗时需要由服务轨迹测量，不能从容量账本推导。
 
-### Step 3: 调度策略与排序优先级
+| 事件 | 准入状态变化 | 处理阶段与容量变化 |
+| --- | --- | --- |
+| 新请求入队 | 进入等待状态 | 从预填充阶段开始，尚未占用容量 |
+| 首次获准执行 | 等待 → 运行 | 预留容量，完成输入处理后进入解码 |
+| 逐步生成 | 保持运行 | 每次选中增加一个生成 token |
+| 被抢占后恢复 | 运行 → 暂停 → 运行 | 先归还、再申请容量，阶段与生成进度不重置 |
+| 达到生成上限 | 运行 → 完成 | 归还容量，不再参与选择 |
 
-有了请求生命周期，还需要一条可重复的选择规则来比较活动请求。本节固定排序键为“阶段 → 缓存命中 → 业务优先级 → 总长度 → 请求编号”：字段越靠前，越先决定结果；排序键越小的请求越早获得推进机会。业务优先级采用负号转换，因此数值越大的请求越靠前。
+## Step 3：排序规则怎样改变请求顺序
 
-三条策略共享阶段、缓存命中和稳定 tie-breaker：固定策略使用业务优先级，aging 使用 `priority + wait_steps // aging_interval`，deadline 策略优先选择完成余量更小的请求。若最紧急请求容量不足，调度器只能抢占 `preemptible=True` 且优先级更低的已准入请求；抢占必须保留原阶段和生成进度，恢复后不能重新开始。
+固定策略和老化策略先比较阶段，再比较缓存命中，最后才比较有效业务优先级、当前总长度与请求编号。有效优先级越大越早执行；这与真实后端可能采用的“小数值更优先”约定不同，读取配置时需要先确认方向。截止期限策略在这些字段之前，优先比较“截止步减去当前时钟和预计剩余步数”。
+
+老化只能改变同一阶段、同一命中类别内的优先级，不能保证所有请求最终都能获选。例如，持续到达的预填充请求仍可能压住解码请求。容量不足时，这个模拟器只尝试暂停一个可抢占、有效优先级更低且能让出足够块数的请求，不合并多个受害者的容量。
 
 ![Decode 调度排序键：从左到右比较字段](../public/02_PyTorch_Algorithms/36_decode_sort_key.svg)
 
-### Step 4: 实现请求状态与调度循环
+<a id="mechanism-practice"></a>
 
-请补全下方 `DecodeSchedulerSim`，跑通“入队 → 固定/aging/deadline 排序 → 容量准入或抢占 → 单步推进 → 恢复或释放容量”这条链路。物理 block 管理由缓存机制负责，本题只模拟调度器消费和归还容量状态。
+## Step 4：实现请求状态与调度循环
 
-| TODO / 实现对象 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
-|---|---|---|---|
-| TODO 1 / `enqueue` | 构造请求状态并加入队列 | 记录容量、deadline 和可抢占性 | 输入状态契约 |
-| TODO 2 / `_schedule_key` | 比较 fixed、aging 与 deadline | deadline 只在显式策略下改变顺序；tie-breaker 稳定 | 公平性与紧急度对照 |
-| TODO 3 / `_ensure_capacity` | 执行准入或选择抢占对象 | 只能抢占可暂停且优先级更低的请求；状态与进度必须保留 | 容量与抢占不变量 |
-| TODO 4 / `step` | 推进并记录恢复、完成和 deadline | 恢复不重置进度，完成释放容量，未选请求累计等待 | 状态、容量、SLO 与事件观测 |
-| `run` / 事件记录 | 使用已有循环推进并保存事件 | `max_steps` 只作循环保护 | 事件数量与异常输入 |
+补全请求登记、排序、容量准入和单步推进。抢占与恢复保持处理阶段和生成进度，未选中的请求累计等待，完成请求归还容量。
+
+| TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
+| --- | --- | --- | --- |
+| TODO 1 / `enqueue` | 构造请求状态并加入队列 | 初始阶段、容量需求与截止步合法 | 输入状态与重复编号 |
+| TODO 2 / `_schedule_key` | 比较固定、老化与期限策略 | 先后字段明确，平局次序稳定 | 优先级方向与老化作用范围 |
+| TODO 3 / `_ensure_capacity` | 执行准入或选择一个抢占对象 | 受害者可暂停、等级较低且容量足够 | 容量守恒与不可抢占保护 |
+| TODO 4 / `step` | 推进、暂停、恢复与完成 | 恢复不重置进度，完成归还容量 | 事件、等待累计与期限记录 |
+
 
 ```python
 from dataclasses import dataclass
@@ -146,6 +153,7 @@ class DecodeSchedulerSim:
         # 提示：保留优先级、容量、deadline 与 preemptible；状态从 waiting 开始。
         # request：待加入队列的 RequestState，保存请求的最小调度状态
         # ==========================================
+        raise NotImplementedError("请完成 TODO 1：request")
         # request = ???
         self.queue.append(request)
 
@@ -159,6 +167,7 @@ class DecodeSchedulerSim:
     def _schedule_key(self, req: RequestState) -> tuple[int, int, int, int, int, int]:
         """返回 deadline、阶段、缓存、有效优先级与稳定字段组成的排序键。"""
         # TODO 2（排序策略）：deadline 模式使用完成余量；其他模式不启用 deadline 排序。
+        raise NotImplementedError("请完成 TODO 2：deadline_slack")
         # deadline_slack = ???
         phase_rank = 0 if req.phase == 'prefill' else 1
         cache_rank = 0 if req.cache_hit else 1
@@ -180,6 +189,7 @@ class DecodeSchedulerSim:
         # TODO 4: 按排序键选择请求，并通过 _ensure_capacity 完成准入、抢占或恢复。
         # chosen：本轮实际获得一个调度步的 RequestState
         # ==========================================
+        raise NotImplementedError("请完成 TODO 4：chosen 与 preempted_request_id")
         # chosen = ???
         # preempted_request_id = ???
 
@@ -232,6 +242,10 @@ class DecodeSchedulerSim:
         return self.timeline
 
 ```
+
+## 测试
+
+分别核对状态、排序、容量和恢复进度。
 
 
 ```python
@@ -363,11 +377,23 @@ def test_input_guards_and_step_limit():
         raise AssertionError('负数 max_steps 应被拒绝')
 
 
+def test_aging_respects_phase_precedence():
+    """验证老化不会越过阶段排序，且较大业务等级更优先。"""
+    sim = DecodeSchedulerSim(policy='aging', aging_interval=1)
+    sim.enqueue(1, 4, priority=0)
+    sim.enqueue(2, 4, priority=10)
+    assert sim._schedule_key(sim.queue[1]) < sim._schedule_key(sim.queue[0])
+    sim.queue[1].phase = 'decode'
+    sim.queue[1].wait_steps = 1000
+    assert sim._schedule_key(sim.queue[0]) < sim._schedule_key(sim.queue[1])
+
+
 def test_decode_scheduler():
     test_enqueue_contract()
     test_schedule_key_decision_order()
     test_wait_steps_is_observation_not_priority()
     test_aging_changes_effective_priority()
+    test_aging_respects_phase_precedence()
     test_capacity_admission_and_release()
     test_preemption_and_resume_preserve_progress()
     test_non_preemptible_and_deadline_policy()
@@ -379,6 +405,11 @@ def test_decode_scheduler():
 test_decode_scheduler()
 ```
 
+---
+
+🛑 **STOP HERE**
+
+请先完成题目并运行测试，再查看参考代码与解析。
 
 ## 参考代码与解析
 
@@ -570,32 +601,26 @@ class DecodeSchedulerSim:
 
 ### 解析
 
-本题依次实现请求状态登记、固定/aging/deadline 排序、容量准入、安全抢占和恢复。答案代码保留与题目区相同的状态流，只补全每处机制决策。
+#### TODO 1：构造请求状态
 
-**TODO 1：构造请求状态**
+- 保存输入长度、生成上限、业务等级、容量需求与期限；初始状态是等待准入、尚未生成、处于预填充阶段。
+- 重复编号和非法输入测试阻止同一请求被重复登记，或用负容量进入账本。
 
-- 使用 `RequestState` 保存输入长度、生成上限、阶段、优先级、KV block、deadline 和可抢占性。
-- 新请求默认处于 `prefill`，`generated_len` 从 0 开始，再加入调度队列。
+#### TODO 2：计算排序键
 
-**TODO 2：计算排序键**
+- 期限策略先计算预计完成余量；其余策略保持阶段和命中类别在前，仅老化策略把累计等待加入有效优先级。
+- 排序测试分别改变等级、等待和阶段，确认较大等级优先，但老化不能跨越阶段优先次序。
 
-- 固定策略直接使用业务优先级，aging 按等待步数提高有效优先级，deadline 策略先比较预计完成余量。
-- 非 deadline 策略保持既有阶段、cache 命中和业务优先级顺序；长度和请求编号只负责稳定打破平局。
+#### TODO 3：执行容量准入与抢占
 
-**TODO 3：执行容量准入与安全抢占**
+- 请求尚未准入时先检查可用容量；不足则选择一个可暂停、等级更低且能释放足够块数的受害者。
+- 归还与预留容量后，保留受害者的阶段和生成长度；恢复测试检查这些进度没有被重置。
 
-- 空闲容量足够时直接准入；否则只能选择 `preemptible=True`、优先级更低且释放后足够容纳 challenger 的 victim。
-- 抢占只改变 admitted/status 和容量账本，不重置 victim 的 phase、generated_len 或 deadline。
+#### TODO 4：选择并推进请求
 
-**TODO 4：选择并推进请求**
+- 按排序键尝试准入，选中的请求前进一步，其他请求累计等待；达到生成上限后释放容量。
+- 事件测试核对完成、抢占、恢复和期限记录；期限基于抽象调度步，而非真实服务延迟。
 
-- 按排序键依次尝试准入；成功时推进请求，恢复被抢占请求时从保存阶段继续，完成时释放容量。
-- 未被选中的请求增加 `wait_steps`；事件同时记录抢占对象和预计 deadline 是否已经无法满足。
-
-**测试如何定位问题**
-
-- 输入契约测试检查非法长度、deadline、block 需求和重复 `request_id`；策略测试分别检查 fixed、aging 与 deadline。
-- 容量测试检查 admission/release；抢占测试检查不可抢占保护与恢复；deadline 测试检查紧急排序和违约记录。
 ### 真实 GPU 验证出口
 
 本节 Step 4 比较 FCFS、业务优先级、aging、SLO 与容量准入的请求选择结果。随机矩阵微基准不能反映队列等待、饥饿、抢占或尾延迟，因此不作为 GPU 证据。
