@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">固定专家选择，改变词元的执行排列</title><desc id="desc">词元与固定Top-K选择分成多次分配，按专家重排后批量计算，再按原位置与权重合并；全程保持相同专家参数与路由。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;font-weight:400;fill:#17324d}.title{font-size:28px;font-weight:700}.h{font-size:21px;font-weight:700}.s{font-size:18px}.note{font-size:17px;fill:#475569}.box{stroke:#829ab1;stroke-width:2;rx:14}.line{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#a)}.dash{fill:none;stroke:#475569;stroke-width:3;stroke-dasharray:7 6;marker-end:url(#a)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/><text x="40" y="48" class="title">固定专家选择，改变词元的执行排列</text>
+<text x="40" y="90" class="note">每个词元选择两路时，输入需要参与两次专家计算；恢复原序时合并这两路贡献。</text><rect x="40" y="180" width="240" height="110" fill="#dbeafe" class="box"/><text x="160" y="215" text-anchor="middle" class="h">词元输入</text><text x="160" y="250" text-anchor="middle" class="s">原词元位置与特征</text>
+<rect x="335" y="180" width="240" height="110" fill="#dbeafe" class="box"/><text x="455" y="215" text-anchor="middle" class="h">固定专家选择</text><text x="455" y="250" text-anchor="middle" class="s">每路专家编号与权重</text>
+<path d="M280 235H335" class="line"/>
+<rect x="630" y="180" width="240" height="110" fill="#fef3c7" class="box"/><text x="750" y="215" text-anchor="middle" class="h">按专家分组</text><text x="750" y="250" text-anchor="middle" class="s">保留原位置与对应权重</text>
+<path d="M575 235H630" class="line"/>
+<rect x="925" y="180" width="240" height="110" fill="#dbeafe" class="box"/><text x="1045" y="215" text-anchor="middle" class="h">专家批量计算</text><text x="1045" y="250" text-anchor="middle" class="s">同专家共享参数</text>
+<path d="M870 235H925" class="line"/>
+<rect x="1220" y="180" width="240" height="110" fill="#dcfce7" class="box"/><text x="1340" y="215" text-anchor="middle" class="h">加权恢复原序</text><text x="1340" y="250" text-anchor="middle" class="s">多路贡献累加</text>
+<path d="M1165 235H1220" class="line"/>
+</svg>
