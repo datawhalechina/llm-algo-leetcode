@@ -1,5 +1,5 @@
 # 41. FP8 Runtime Low Precision Paths | FP8 运行时低精度路径
-**难度：** Hard | **环境：** CPU-first，GPU 可选 | **标签：** `量化压缩`, `FP8`, `运行时` | **目标人群：** 希望理解 FP8 执行条件与证据层级的学习者
+**难度：** Hard | **环境：** [CPU 主线，GPU 可选](#runtime-environment) | **标签：** `量化压缩`, `FP8`, `运行时` | **目标人群：** 理解量化与矩阵乘法的读者
 
 > 🚀 **云端运行环境**
 >
@@ -21,6 +21,14 @@
 
 ---
 
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
+- **GPU 实测：** 使用 `Q-CUDA-MECHANISM`；实验环境、运行配置与固定工作负载见 [Step 5](#gpu-experiment)。
+
+---
 ## 前置阅读
 
 先建立量化表示与反量化的基础，再比较运行时 FP8 与整数权重量化在对象和执行位置上的差异。
@@ -30,7 +38,7 @@
 
 ---
 
-### Step 1：FP8 运行时路径改变哪些对象
+## Step 1：FP8 运行时路径改变哪些对象
 
 一次低精度矩阵乘至少涉及输入激活、权重、累加和输出四个位置。仅把权重保存为 FP8，并不等于激活也以 FP8 进入计算，更不等于硬件执行了原生 FP8 计算内核。判断运行时路径时，需要把表示格式与实际执行分开记录。
 
@@ -44,9 +52,19 @@
 
 ![FP8 运行时对象与执行路径](../public/02_PyTorch_Algorithms/41_fp8_kv_quant_flow_cn.svg)
 
-### Step 2：格式与缩放如何共同决定可表示范围
+## Step 2：格式与缩放如何共同决定可表示范围
 
-E4M3 用更多尾数位换取局部精度，E5M2 用更多指数位覆盖更大的动态范围。格式规定可表示范围，缩放因子决定当前张量如何映射到该范围：静态缩放复用校准统计，动态缩放使用当前张量范围，延迟缩放则用历史绝对最大值更新下一次执行的缩放因子。
+E4M3 与 E5M2 分别使用 4／5 位指数和 3／2 位尾数。这里的 E4M3 对应最大有限值 448 的 E4M3FN，E5M2 的最大有限值为 57344；不同 FP8 变体不能仅凭名称互换。E4M3 用更多尾数位换取局部精度，E5M2 用更多指数位覆盖更大的动态范围。格式规定可表示范围，缩放因子决定当前张量如何映射到该范围：静态缩放复用校准统计，动态缩放使用当前张量范围，延迟缩放则用历史绝对最大值更新下一次执行的缩放因子。
+
+令 $f_{\max}$ 为所选 FP8 格式的最大有限值，$a=\max_i|x_i|$ 为当前或历史绝对最大值。把张量映射到格式范围可写为
+
+$$
+s=\max\left(\frac{a}{f_{\max}},\varepsilon\right),\qquad
+x_{\mathrm{fp8}}=\operatorname{cast}_{\mathrm{fp8}}(x/s),\qquad
+\hat x=s\,\operatorname{cast}_{\mathrm{high}}(x_{\mathrm{fp8}}).
+$$
+
+$s$ 是恢复尺度：编码前除以它，恢复时乘以它；有些框架保存其倒数，读取字段时应先核对约定。$\varepsilon>0$ 防止全零张量产生零尺度。小于最小正规数的值进入次正规区间，步长不再随指数继续减小，更小的值会舍入到零。静态、动态和延迟缩放的差别在于 $a$ 来自固定校准集、当前张量还是历史窗口。
 
 | 维度 | 选择 | 收益 | 风险与证据 |
 |---|---|---|---|
@@ -55,7 +73,7 @@ E4M3 用更多尾数位换取局部精度，E5M2 用更多指数位覆盖更大�
 | 动态缩放 | 当前张量绝对最大值 | 适应当前分布 | 统计与融合开销 |
 | 延迟缩放 | 历史绝对最大值窗口 | 减少同步并平滑波动 | 缩放陈旧、窗口与更新频率 |
 
-### Step 3：从数据类型声明到原生计算内核需要经过哪些检查
+## Step 3：从数据类型声明到原生计算内核需要经过哪些检查
 
 框架能够创建 FP8 数据类型，只能证明表示和接口可用。运行时应依次核对设备能力、执行后端与算子支持、形状和布局约束、计算内核事件以及配对性能指标；任一条件不满足，都应记录实际回退路径。
 
@@ -68,18 +86,21 @@ E4M3 用更多尾数位换取局部精度，E5M2 用更多指数位覆盖更大�
 
 ![FP8 原生执行与回退判定](../public/02_PyTorch_Algorithms/41_fp8_execution_gate.svg)
 
-### Step 4：实现并验证 FP8 缩放与运行时路径判断
+<a id="mechanism-practice"></a>
+
+## Step 4：实现并验证 FP8 缩放与运行时路径判断
 
 题目区用教学化 FP8 网格验证三个机制：根据张量范围生成动态缩放因子，按格式尾数位近似舍入，再根据设备与执行后端条件判断证据路径。测试不要求本机具备 FP8 GPU，重点是验证数值映射和运行时准入逻辑。
 
-| TODO | 实现对象 | 机制责任 | 关键测试 |
+| TODO / 函数 | 待实现机制 | 必须满足的约束 | 测试证据 |
 |:---|:---|:---|:---|
-| TODO 1 | `compute_dynamic_scale` | 将当前张量范围映射到格式可表示范围 | 全零输入、有限正缩放因子 |
-| TODO 2 | `simulate_roundtrip` | 按尾数位近似 FP8 网格并恢复浮点值 | 形状、有限值、格式误差差异 |
-| TODO 3 | `select_runtime_path` | 区分原生计算内核、数据类型预检和 CPU 模拟 | 三类条件组合 |
+| TODO 1：计算动态缩放因子<br>`FP8RuntimeSim.compute_dynamic_scale` | 将当前张量范围映射到所选 FP8 格式的有限范围 | 使用恢复尺度 s；全零输入仍得到有限正值 | 全零输入与动态范围 |
+| TODO 2：执行 FP8 网格往返<br>`FP8RuntimeSim.simulate_roundtrip` | 按尾数位构造局部量化步长并恢复浮点近似 | 保留输入形状和有限值，格式差异可观察 | 形状、有限值与 E4M3/E5M2 误差 |
+| TODO 3：判定运行时证据路径<br>`FP8RuntimeSim.select_runtime_path` | 根据设备、数据类型和内核条件判定证据路径 | 只有 CUDA 且命中原生内核才能声称 FP8 计算路径 | 原生内核、数据类型预检与 CPU 模拟组合 |
 
 
 ```python
+from math import isfinite
 import torch
 import torch.nn as nn
 
@@ -92,57 +113,69 @@ import torch.nn as nn
 class FP8RuntimeSim(nn.Module):
     """教学化模拟 FP8 缩放，并区分表示可用与原生计算内核可用。
 
-    `format_name` 支持 `e4m3` 与 `e5m2`。本类不冒充真实 FP8 kernel；
-    它用于观察 scale、尾数精度和运行时 gate 如何共同影响证据等级。
+    `format_name` 支持 `e4m3` 与 `e5m2`。模拟有限数的饱和舍入与恢复尺度，矩阵计算路径由外部观测输入。
     """
 
     FORMAT_SPECS = {
-        "e4m3": {"max_value": 448.0, "mantissa_bits": 3},
-        "e5m2": {"max_value": 57344.0, "mantissa_bits": 2},
+        "e4m3": {"max_value": 448.0, "mantissa_bits": 3, "min_normal_exponent": -6},
+        "e5m2": {"max_value": 57344.0, "mantissa_bits": 2, "min_normal_exponent": -14},
     }
 
     def __init__(self, format_name: str = "e4m3", eps: float = 1e-8):
         super().__init__()
         if format_name not in self.FORMAT_SPECS:
             raise ValueError(f"unsupported FP8 format: {format_name}")
+        if not isfinite(eps) or eps <= 0:
+            raise ValueError('eps must be finite and positive.')
         self.format_name = format_name
         self.eps = eps
 
     def compute_dynamic_scale(self, x: torch.Tensor) -> torch.Tensor:
-        """让当前绝对最大值映射到所选格式的最大有限值。"""
+        """计算恢复尺度 s=max(absmax/fp8_max, eps)，编码除以 s，恢复乘以 s。"""
+        if x.numel() == 0 or not x.is_floating_point() or not bool(torch.isfinite(x.float()).all()):
+            raise ValueError('input must be nonempty floating point and finite in FP32.')
         fp8_max = self.FORMAT_SPECS[self.format_name]["max_value"]
         # TODO 1（动态缩放）：计算安全的 absmax，并得到有限正缩放因子。
-        # absmax = ???
-        # scale = ???
+        # absmax = ???  # 当前张量的绝对最大值。
+        # scale = ???   # 恢复尺度，必须与正文公式一致。
+        raise NotImplementedError("请完成 TODO 1：absmax、scale")
         return scale
 
     def simulate_roundtrip(self, x: torch.Tensor):
         """在缩放后空间按尾数位构造教学化 FP8 舍入网格。"""
+        scale = self.compute_dynamic_scale(x)
         x = x.detach().float()
         spec = self.FORMAT_SPECS[self.format_name]
-        scale = self.compute_dynamic_scale(x)
-        scaled = torch.clamp(x * scale, -spec["max_value"], spec["max_value"])
-        magnitude = scaled.abs().clamp_min(self.eps)
+        scaled = torch.clamp(x / scale, -spec["max_value"], spec["max_value"])
+        magnitude = scaled.abs().clamp_min(2.0 ** spec["min_normal_exponent"])
         exponent = torch.floor(torch.log2(magnitude))
-        # TODO 2（格式舍入）：由 exponent 和 mantissa_bits 得到局部步长，再恢复浮点近似值。
-        # step = ???
-        # rounded_scaled = ???
-        # restored = ???
+        # TODO 2（格式舍入）：指数在最小正规数处封底，由尾数位确定步长；舍入后饱和并乘恢复尺度。
+        # step = ???            # 正规数局部步长；次正规区间使用固定最小步长。
+        # rounded_scaled = ???  # 舍入后裁剪到有限范围。
+        # restored = ???        # 乘恢复尺度。
+        raise NotImplementedError("请完成 TODO 2：step、rounded_scaled、restored")
         return restored, scale
 
     @staticmethod
     def select_runtime_path(device_type: str, dtype_available: bool, native_kernel: bool) -> str:
-        """根据环境能力返回 native_kernel、dtype_preflight 或 cpu_simulation。"""
+        """解释外部传入的能力与执行观测；本函数不运行或探测计算内核。"""
+        if type(dtype_available) is not bool or type(native_kernel) is not bool:
+            raise ValueError('capability and observation flags must be boolean.')
+        if native_kernel and (device_type != 'cuda' or not dtype_available):
+            raise ValueError('native observation requires CUDA and the target dtype.')
         # TODO 3（运行时准入检查）：只有 CUDA 且执行后端命中原生计算内核才能形成计算内核证据。
-        # path = ???
+        # path = ???  # 根据设备、dtype 可用性和实际内核观测选择状态。
+        raise NotImplementedError("请完成 TODO 3：path")
         return path
 
     def summarize(self, x: torch.Tensor, *, device_type: str = "cpu", dtype_available: bool = False,
                   native_kernel: bool = False):
+        """汇总数值误差与外部路径观测，不把模拟结果当作 GPU 证据。"""
         restored, scale = self.simulate_roundtrip(x)
         return {
             "format": self.format_name,
             "scale": float(scale),
+            "scale_convention": "divide_before_cast_multiply_after_cast",
             "mse": float(torch.mean((x.float() - restored) ** 2)),
             "runtime_path": self.select_runtime_path(device_type, dtype_available, native_kernel),
         }
@@ -157,6 +190,7 @@ def test_dynamic_scale_contract():
     sim = FP8RuntimeSim("e4m3")
     assert float(sim.compute_dynamic_scale(torch.tensor([-2.0, 0.0, 1.0]))) > 0
     assert torch.isfinite(sim.compute_dynamic_scale(torch.zeros(4)))
+    torch.testing.assert_close(sim.compute_dynamic_scale(torch.tensor([-2.0, 0.0, 1.0])), torch.tensor(2.0 / 448))
 
 
 def test_roundtrip_contract():
@@ -184,10 +218,40 @@ def test_runtime_path_contract():
     assert select("cpu", False, False) == "cpu_simulation"
 
 
+def test_subnormal_grid_and_format_limits():
+    """次正规数使用固定最小步长，舍入不超出最大有限值。"""
+    for name, maximum, min_exponent, bits in [('e4m3', 448., -6, 3), ('e5m2', 57344., -14, 2)]:
+        smallest = 2.0 ** (min_exponent - bits)
+        x = torch.tensor([maximum, -maximum, 0., smallest / 4, smallest, 1.5 * smallest])
+        restored, scale = FP8RuntimeSim(name).simulate_roundtrip(x)
+        assert float(scale) == 1.0 and restored[3] == 0
+        assert restored[4] == smallest and restored[5] == 2 * smallest
+        assert float(restored.abs().max()) <= maximum
+
+
+def test_invalid_values_and_inconsistent_observations():
+    """非法数值和相互矛盾的观测不能产生通过状态。"""
+    sim = FP8RuntimeSim()
+    calls = [lambda: FP8RuntimeSim(eps=0), lambda: FP8RuntimeSim(eps=float('nan')),
+             lambda: sim.simulate_roundtrip(torch.tensor([])),
+             lambda: sim.simulate_roundtrip(torch.tensor([float('inf')])),
+             lambda: sim.simulate_roundtrip(torch.tensor([1], dtype=torch.int64)),
+             lambda: sim.select_runtime_path('cuda', False, True),
+             lambda: sim.select_runtime_path('cpu', True, True)]
+    for call in calls:
+        try:
+            call()
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('invalid input or inconsistent observation should fail')
+
+
 def run_fp8_runtime_tests():
-    """汇总四组 FP8 运行时机制测试。"""
+    """汇总六组 FP8 运行时机制测试。"""
     for test in (test_dynamic_scale_contract, test_roundtrip_contract,
-                 test_format_precision_tradeoff, test_runtime_path_contract):
+                 test_format_precision_tradeoff, test_runtime_path_contract,
+                 test_subnormal_grid_and_format_limits, test_invalid_values_and_inconsistent_observations):
         test()
     print("✅ FP8 运行时机制测试通过：scale、格式舍入、误差和路径 gate 均已验证。")
 
@@ -216,49 +280,56 @@ run_fp8_runtime_tests()
 class FP8RuntimeSim(nn.Module):
     """教学化模拟 FP8 缩放，并区分表示可用与原生计算内核可用。
 
-    `format_name` 支持 `e4m3` 与 `e5m2`。本类不冒充真实 FP8 kernel；
-    它用于观察 scale、尾数精度和运行时 gate 如何共同影响证据等级。
+    `format_name` 支持 `e4m3` 与 `e5m2`。模拟有限数的饱和舍入与恢复尺度，矩阵计算路径由外部观测输入。
     """
 
     FORMAT_SPECS = {
-        "e4m3": {"max_value": 448.0, "mantissa_bits": 3},
-        "e5m2": {"max_value": 57344.0, "mantissa_bits": 2},
+        "e4m3": {"max_value": 448.0, "mantissa_bits": 3, "min_normal_exponent": -6},
+        "e5m2": {"max_value": 57344.0, "mantissa_bits": 2, "min_normal_exponent": -14},
     }
 
     def __init__(self, format_name: str = "e4m3", eps: float = 1e-8):
         super().__init__()
         if format_name not in self.FORMAT_SPECS:
             raise ValueError(f"unsupported FP8 format: {format_name}")
+        if not isfinite(eps) or eps <= 0:
+            raise ValueError('eps must be finite and positive.')
         self.format_name = format_name
         self.eps = eps
 
     def compute_dynamic_scale(self, x: torch.Tensor) -> torch.Tensor:
-        """让当前绝对最大值映射到所选格式的最大有限值。"""
+        """计算恢复尺度 s=max(absmax/fp8_max, eps)，编码除以 s，恢复乘以 s。"""
+        if x.numel() == 0 or not x.is_floating_point() or not bool(torch.isfinite(x.float()).all()):
+            raise ValueError('input must be nonempty floating point and finite in FP32.')
         fp8_max = self.FORMAT_SPECS[self.format_name]["max_value"]
         # TODO 1（动态缩放）：计算安全的 absmax，并得到有限正缩放因子。
-        absmax = x.detach().float().abs().max().clamp_min(self.eps)
-        scale = fp8_max / absmax
+        absmax = x.detach().float().abs().max()
+        scale = (absmax / fp8_max).clamp_min(self.eps)
         return scale
 
     def simulate_roundtrip(self, x: torch.Tensor):
         """在缩放后空间按尾数位构造教学化 FP8 舍入网格。"""
+        scale = self.compute_dynamic_scale(x)
         x = x.detach().float()
         spec = self.FORMAT_SPECS[self.format_name]
-        scale = self.compute_dynamic_scale(x)
-        scaled = torch.clamp(x * scale, -spec["max_value"], spec["max_value"])
-        magnitude = scaled.abs().clamp_min(self.eps)
+        scaled = torch.clamp(x / scale, -spec["max_value"], spec["max_value"])
+        magnitude = scaled.abs().clamp_min(2.0 ** spec["min_normal_exponent"])
         exponent = torch.floor(torch.log2(magnitude))
-        # TODO 2（格式舍入）：由 exponent 和 mantissa_bits 得到局部步长，再恢复浮点近似值。
+        # TODO 2（格式舍入）：指数在最小正规数处封底，由尾数位确定步长；舍入后饱和并乘恢复尺度。
         step = torch.pow(2.0, exponent - spec["mantissa_bits"])
-        rounded_scaled = torch.round(scaled / step) * step
-        restored = rounded_scaled / scale
+        rounded_scaled = (torch.round(scaled / step) * step).clamp(-spec["max_value"], spec["max_value"])
+        restored = rounded_scaled * scale
         return restored, scale
 
     @staticmethod
     def select_runtime_path(device_type: str, dtype_available: bool, native_kernel: bool) -> str:
-        """根据环境能力返回 native_kernel、dtype_preflight 或 cpu_simulation。"""
+        """解释外部传入的能力与执行观测；本函数不运行或探测计算内核。"""
+        if type(dtype_available) is not bool or type(native_kernel) is not bool:
+            raise ValueError('capability and observation flags must be boolean.')
+        if native_kernel and (device_type != 'cuda' or not dtype_available):
+            raise ValueError('native observation requires CUDA and the target dtype.')
         # TODO 3（运行时准入检查）：只有 CUDA 且执行后端命中原生计算内核才能形成计算内核证据。
-        if device_type == "cuda" and native_kernel:
+        if device_type == "cuda" and dtype_available and native_kernel:
             path = "native_fp8_kernel"
         elif dtype_available:
             path = "dtype_preflight"
@@ -268,10 +339,12 @@ class FP8RuntimeSim(nn.Module):
 
     def summarize(self, x: torch.Tensor, *, device_type: str = "cpu", dtype_available: bool = False,
                   native_kernel: bool = False):
+        """汇总数值误差与外部路径观测，不把模拟结果当作 GPU 证据。"""
         restored, scale = self.simulate_roundtrip(x)
         return {
             "format": self.format_name,
             "scale": float(scale),
+            "scale_convention": "divide_before_cast_multiply_after_cast",
             "mse": float(torch.mean((x.float() - restored) ** 2)),
             "runtime_path": self.select_runtime_path(device_type, dtype_available, native_kernel),
         }
@@ -280,21 +353,32 @@ class FP8RuntimeSim(nn.Module):
 
 ### 解析
 
-**TODO 1：动态缩放。** 当前张量的绝对最大值决定缩放因子；全零输入通过 `eps` 保持有限正值。缩放因子只建立表示映射，不能证明硬件执行路径。
+#### TODO 1：计算动态缩放因子
 
-**TODO 2：格式舍入。** exponent 决定当前数值所在区间，mantissa bits 决定该区间的局部步长。E4M3 与 E5M2 的误差差异来自动态范围和尾数精度的取舍。
+- 当前张量的绝对最大值决定缩放因子；全零输入仍必须得到有限正值。
+- 恢复尺度取 absmax/fp8_max 并设正下限，编码除以它，恢复乘以它；动态范围测试直接核对公式，避免与编码倍数混淆。
 
-**TODO 3：运行时准入检查。** `native_fp8_kernel` 才能作为计算内核证据；`dtype_preflight` 只证明框架表示或转换可用，`cpu_simulation` 只验证机制。
+#### TODO 2：执行 FP8 网格往返
 
-### Step 5：可选 GPU 实验——用 torchao 验证 FP8 存储与计算路径
+- 指数位决定数值区间，尾数位决定该区间内的局部舍入步长。
+- 次正规区间使用固定最小步长，舍入后再裁剪有限范围；小值舍入到零、边界与格式测试约束网格。
 
-CPU 题目确认 FP8 格式、动态缩放和运行时准入关系；GPU 实验把同一 BF16 模型转换为三类 torchao FP8 候选，分别核对物理存储、计算路径、局部数值一致性和 Token 负载下的执行时间。这样可以区分“FP8 表示已形成”“原生计算已发生”和“当前工作负载获得加速”三个结论。
+#### TODO 3：判定运行时证据路径
+
+- 只有 CUDA 设备、目标数据类型与原生 FP8 内核同时满足时，才能声称进入 FP8 计算路径。
+- 三项条件来自外部能力检查与实际执行观测；拒绝 dtype 不可用却声称原生执行等矛盾输入。CPU 分支判断本身不产生 GPU 证据。
+
+<a id="gpu-experiment"></a>
+
+## Step 5：可选 GPU 实验——用 torchao 验证 FP8 存储与计算路径
+
+CPU 题目确认 FP8 格式、动态缩放和外部观测的判断关系；GPU 实验把同一 BF16 模型转换为三类 torchao FP8 候选，分别记录物理存储、接口事件、局部数值一致性和 Token 负载下的执行时间。接口事件用于定位计算调用；确认原生 FP8 还需关联 CUDA 子内核与实际类型，性能收益则由配对计时判断。
 
 | 学习问题 | CPU 已确认 | GPU 要确认 |
 |---|---|---|
 | FP8 数据类型、计算路径与性能收益是否一致 | E4M3/E5M2 的范围取舍、缩放误差与运行时准入条件 | FP8 权重是否真实缩小、动态候选是否命中 FP8 计算事件、局部数值是否稳定、哪些 Token 负载获得执行收益 |
 
-#### 5.1 环境、模型与固定工作负载
+### 5.1 环境、模型与固定工作负载
 
 本实验使用 `Q-CUDA-MECHANISM`。首次运行请先完成[量化机制 GPU 环境 Quickstart](../topic_discussion/quantization_compression/quickstart.md#q-cuda-mechanism-quickstart)，已有环境只需激活、执行 Profile 预检并从同一解释器启动 JupyterLab。预检发现代理依赖或环境污染时，再按 Quickstart 中的故障处理入口修复。
 
@@ -305,13 +389,13 @@ CPU 题目确认 FP8 格式、动态缩放和运行时准入关系；GPU 实验�
 | 输入矩阵 | 2 个固定提示词 × Token 数 1、32、256 | 改变提示词、Token 矩阵或候选集合后递增工作负载版本 |
 | 配对变量 | BF16 → FP8 仅权重 / 动态逐张量 / 动态逐行 | 四条路径共用模型 commit、分词结果、预热和重复次数 |
 | 测量方法 | 张量子类物理存储、性能剖析器事件、logits 余弦相似度、CUDA Event median/P95 | 存储、路径、数值和性能分别判断，不用单个指标替代其他证据 |
-| 结果资产 | `benchmarks/results/41_torchao_fp8_runtime_<run_label>.json` | 正式复测使用唯一运行标签；旧协议结果不得混入新协议 |
+| 结果资产 | `benchmarks/results/41_torchao_fp8_runtime_<run_label>.json` | 正式复测使用唯一运行标签；只比较相同工作负载版本和测量方法的结果 |
 
 该实验不下载独立数据集，只下载固定模型并从两段文本构造精确 Token 长度输入。`dry_run` 用于核对配置，`real_gpu` 执行真实候选矩阵；运行开关不会安装依赖或自动修改环境。
 
 
 ```python
-# 5.1 只定义学习者入口、模型来源与固定实验协议；安装与缓存规则由环境 Profile 维护。
+# 此单元设置运行模式、结果标签、模型与固定工作负载；运行前需通过 Q-CUDA-MECHANISM 预检。
 # 学习者入口：普通复测通常只修改这两项。
 RUN_MODE = "dry_run"  # 默认值 dry_run：只登记计划；改为 real_gpu 才执行真实 FP8 候选矩阵。
 RUN_LABEL = "default"  # 默认值 default；正式复测改为唯一标签，避免覆盖旧结果。
@@ -340,11 +424,11 @@ STABLE_P95_RATIO = 1.00  # 候选 P95 不高于基线，避免只改善中位数
 SEED = 42  # 固定输入扩展与候选执行随机状态。
 
 # 结果资产：5.1 只声明仓库相对路径，5.2 负责定位仓库和创建目录。
-OUTPUT_RELATIVE_PATH = f"02_PyTorch_Algorithms/benchmarks/results/41_torchao_fp8_runtime_{RUN_LABEL}.json"  # 本轮 FP8 配对矩阵 JSON。
+OUTPUT_RELATIVE_PATH = f"benchmarks/results/41_torchao_fp8_runtime_{RUN_LABEL}.json"  # 本轮 FP8 配对矩阵 JSON。
 
 ```
 
-#### 5.2 环境预检与 FP8 配对执行
+### 5.2 环境预检与 FP8 配对执行
 
 执行单元先解析模型 commit，再检查依赖、代理传输、CUDA 与计算能力。每个候选都从相同 BF16 快照独立构造；失败只记录在对应候选，不抹去其他候选的有效结果。性能剖析器采集代表输入，用于区分“FP8 权重已保存”和“FP8 计算内核已执行”。
 
@@ -407,7 +491,7 @@ def benchmark_forward(model, inputs):
 
 
 def profile_fp8_events(model, inputs):
-    """采集一轮前向中的 FP8 或 scaled-mm 事件名，形成计算路径证据。"""
+    """采集名称匹配的事件；接口事件不单独证明 CUDA 子内核及实际类型。"""
     from torch.profiler import ProfilerActivity, profile
 
     with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA]) as prof:
@@ -700,7 +784,7 @@ print(json.dumps(result, ensure_ascii=False, indent=2))
 
 ```
 
-#### 5.3 读取配对实验结果
+### 5.3 读取配对实验结果
 
 读取时先检查运行失败与矩阵完整性，再按“物理存储 → 路径证据 → 局部数值一致性 → median/P95 延迟”的顺序判断。`logit_cosine` 只比较固定输入上的局部数值，不是任务质量；延迟比小于 1 才表示候选更快，同时通过 median 与 P95 阈值后才记为加速候选。
 
@@ -755,20 +839,20 @@ else:
 
 ```
 
-#### 5.4 解释存储、路径、数值与执行代价
+### 5.4 解释存储、路径、数值与执行代价
 
 先检查 `failure`、矩阵完整性和路径证据，再解释物理存储、局部数值一致性与执行时间。FP8 仅权重候选只要求形成真实 FP8 存储；动态候选还必须观察到 FP8 计算事件。即使路径成立，也只有 median 与 P95 同时通过阈值，才能记录为当前工作负载的加速候选。
 
-本地 RTX 5070 Ti 对 Qwen2.5-0.5B 的 `default13` 复测中，三类候选均完成 18 个矩阵点；动态逐张量与动态逐行路径都观察到 `aten::_scaled_mm`。BF16 模型物理存储约 942.29 MiB，三类 FP8 候选约 730.87–732.61 MiB，降低约 22%。模型没有整体减半，是因为部分参数仍保留 BF16，且 FP8 表示还需要缩放因子；逐行缩放的 FP32 元数据约 1.74 MiB，而逐张量缩放不足 0.001 MiB。
+本地 RTX 5070 Ti 对 Qwen2.5-0.5B 的 `default13` 复测中，三类候选均完成 18 个矩阵点；动态逐张量与动态逐行路径都观察到 `aten::_scaled_mm` 算子事件。该事件支持调用了缩放矩阵乘接口；当前报告没有关联其 CUDA 子内核及实际输入／累加类型，不能单凭事件名确认所有层都使用原生 FP8。BF16 模型物理存储约 942.29 MiB，三类 FP8 候选约 730.87–732.61 MiB，降低约 22%。模型没有整体减半，是因为部分参数仍保留 BF16，且 FP8 表示还需要缩放因子；逐行缩放的 FP32 元数据约 1.74 MiB，而逐张量缩放不足 0.001 MiB。
 
 当前三类候选在所有 Token 负载上都没有形成加速，中位延迟约为 BF16 的 2.32–5.33 倍。小模型、batch=1 与 Eager 执行下，动态缩放、张量包装、类型转换和算子调度成本超过了 FP8 矩阵乘收益。Token=256 时三类候选均通过局部数值一致性阈值，短输入更敏感；该现象只能用于定位数值差异，不能替代独立评测集上的任务质量。
 
-因此，`tune_or_fallback` 应解释为：接受 FP8 存储与原生计算路径证据，但不接受它作为当前小模型、单请求工作负载的性能候选。后续若要验证加速，应扩大矩阵或批量、启用编译与融合路径，或者在明确支持 FP8 的部署后端中重新测量。
+因此，`tune_or_fallback` 应解释为：接受 FP8 存储与缩放矩阵乘接口调用证据，局部数值门槛未全部通过，也不接受它作为当前小模型、单请求工作负载的性能候选。后续若要验证加速，应扩大矩阵或批量、启用编译与融合路径，或者在明确支持 FP8 的部署后端中重新测量。
 
 | 观察项 | 读取字段 | 本节判断 | 不能外推 |
 |---|---|---|---|
 | 物理表示 | `storage_manifest`、`bytes_by_dtype` | FP8 权重和缩放元数据是否真实形成、总存储是否下降 | 完整量化 artifact 大小 |
-| 执行路径 | `kernel_events`、`path_confirmed` | 当前候选是否观察到预期 FP8 计算路径 | 其他形状、编译器和部署后端 |
+| 执行路径 | `kernel_events`、`path_confirmed` | 当前候选是否观察到预期接口事件；原生内核需关联 CUDA 子事件与类型 | 其他形状、编译器和部署后端 |
 | 数值一致性 | `logit_cosine`、`numerical_consistency_passed` | 固定输入上的局部输出偏差 | 独立数据集上的任务质量 |
 | 执行性能 | median/P95 延迟比、`meaningful_speedup` | 当前 Token 矩阵是否形成稳定加速候选 | Serving 吞吐、TTFT、TPOT 与 P99 |
 | 运行峰值 | `peak_allocated_bytes`、`memory_comparison_valid` | 同进程局部诊断 | 独立进程容量与最大并发 |
