@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="svg-title svg-desc">
 <title id="svg-title">投机解码机制选型证据链</title><desc id="svg-desc">从 proposer 家族出发，依次通过能力与资产门禁、同目标配对实验和候选决策，最后把可比较结果交给部署项目。</desc>
 <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#52657a"/></marker><style>.t{font-weight:700;font-size:26px;font-family:sans-serif;fill:#18324b}.h{font-weight:600;font-size:18px;font-family:sans-serif;fill:#18324b}.b{font-size:15px;font-family:sans-serif;fill:#334e68}.l{fill:none;stroke:#52657a;stroke-width:3;marker-end:url(#arrow)}.f{fill:none;stroke:#7657a5;stroke-width:2.5;stroke-dasharray:8 6;marker-end:url(#arrow)}.a{fill:#e8f1fb;stroke:#3f78a8;stroke-width:2}.g{fill:#e8f6f1;stroke:#3f8b72;stroke-width:2}.o{fill:#fff3df;stroke:#b7791f;stroke-width:2}.p{fill:#f1edfb;stroke:#7657a5;stroke-width:2}.r{fill:#fbeceb;stroke:#b85c57;stroke-width:2}</style></defs>
-<rect width="1500" height="470" fill="#f8fafc"/><text x="750" y="42" text-anchor="middle" class="t">从 proposer 家族到可交接的部署候选</text>
+<rect width="1500" height="470" fill="#f8fafc"/><text x="750" y="42" text-anchor="middle" class="t">从候选来源到通过比较的部署方案</text>
 <rect x="45" y="120" width="220" height="105" rx="14" class="a"/><text x="155" y="157" text-anchor="middle" class="h">候选家族</text><text x="155" y="188" text-anchor="middle" class="b">N-gram / MTP / EAGLE</text>
-<rect x="315" y="120" width="220" height="105" rx="14" class="g"/><text x="425" y="157" text-anchor="middle" class="h">能力与资产门禁</text><text x="425" y="188" text-anchor="middle" class="b">backend、权重与容量</text>
+<rect x="315" y="120" width="220" height="105" rx="14" class="g"/><text x="425" y="157" text-anchor="middle" class="h">能力与资产检查</text><text x="425" y="188" text-anchor="middle" class="b">后端、权重与容量</text>
 <rect x="585" y="120" width="220" height="105" rx="14" class="o"/><text x="695" y="157" text-anchor="middle" class="h">同目标配对实验</text><text x="695" y="188" text-anchor="middle" class="b">G0 对照可运行候选</text>
 <rect x="855" y="120" width="220" height="105" rx="14" class="g"/><text x="965" y="157" text-anchor="middle" class="h">候选级决策</text><text x="965" y="188" text-anchor="middle" class="b">质量、净收益与资源</text>
-<rect x="1125" y="120" width="220" height="105" rx="14" class="r"/><text x="1235" y="157" text-anchor="middle" class="h">交接到 72</text><text x="1235" y="188" text-anchor="middle" class="b">仅传递可比较证据</text>
-<path d="M265 173H315M535 173H585M805 173H855M1075 173H1125" class="l"/>
-<rect x="585" y="315" width="490" height="90" rx="14" class="p"/><text x="830" y="350" text-anchor="middle" class="h">三层状态分离</text><text x="830" y="380" text-anchor="middle" class="b">run status、evidence status、decision</text>
-<path d="M695 225V315M965 225V315M1235 225V270H1075V345" class="l"/><path d="M1235 225V270H1390V400H155V225" class="f"/>
+<rect x="1125" y="120" width="220" height="105" rx="14" class="r"/><text x="1235" y="157" text-anchor="middle" class="h">进入部署组合</text><text x="1235" y="188" text-anchor="middle" class="b">仅传递已采用场景的证据</text>
+<path d="M265 173H315" class="l"/><path d="M535 173H585" class="l"/><path d="M805 173H855" class="l"/><path d="M1075 173H1125" class="l"/>
+<rect x="585" y="315" width="490" height="90" rx="14" class="p"/><text x="830" y="350" text-anchor="middle" class="h">分别判断运行、比较与采用</text><text x="830" y="380" text-anchor="middle" class="b">运行是否完成、证据是否可比、候选是否采用</text>
+<path d="M695 225V315" class="l"/><path d="M965 225V315" class="l"/><path d="M1235 225V270H1075V345" class="l"/><path d="M1235 225V270H1390V400H155V225" class="f"/>
 </svg>

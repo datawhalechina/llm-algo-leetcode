@@ -1,5 +1,6 @@
 # 68. Speculative Decoding Benchmark | 投机解码机制选型基准
-**难度：** Hard | **环境：** CPU-first + optional GPU | **标签：** `推理优化`, `Speculative Decoding`, `机制选型` | **目标人群：** 推理部署与性能工程学习者
+
+**难度：** Hard | **环境：** [CPU 主线，GPU 可选](#runtime-environment) | **标签：** `推理优化`、`投机解码`、`机制选型` | **目标人群：** 理解投机验证、需要比较后端方案的学习者
 
 > 🚀 **云端运行环境**
 >
@@ -9,77 +10,84 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
----
-
 ## 本节导读
 
-本节不重新推导投机采样，也不训练推测器，而是在固定 target、工作负载、硬件和测量协议下完成部署侧机制选型：先判断 N-gram、原生 MTP、EAGLE、DFlash、DSpark 是否具备后端能力和匹配资产，再对可运行候选建立 target-only 配对证据。输出交给 72 节参与最终部署组合，不替代服务 SLO 决策。
+同一套投机策略，可能在重复文本上减少生成时间，却在普通问答上得不偿失；有些方法还依赖特定模型结构或配对草稿权重。选型先要确认候选能运行，再回答它是否比同一目标模型单独生成更快、输出是否符合要求。
 
-**职责边界：** 23 节负责接受/拒绝机制，35 节负责原生 MTP，61 节负责模型结构审计，66 节提供共享基准口径，68 节负责候选准入与专项对照，72 节负责最终部署决策。
+本项目固定目标模型、提示集、生成参数和硬件，把候选能力、真实执行、质量与性能分开检查。最终得到可采用的候选或明确的失败原因，供部署组合继续比较。
 
-**关键词：** `proposer family`, `capability gate`, `paired benchmark`, `acceptance telemetry`, `handoff`
+**关键词：** 候选家族、资产兼容、配对基准、接受统计、采用决策
 
----
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 使用 [BASE-CPU](../guide.md#base-cpu)，验证候选准入、配对与决策。
+- **GPU 实验：** 使用[投机候选选型环境](../topic_discussion/inference_optimization/quickstart.md#inf-vllm-spec025-quickstart)；历史复现与新候选所用 Profile 见 5.1。
 
 ## 前置阅读
 
-- [23. Speculative Decoding | 投机解码](./23_Speculative_Decoding.md)：接受概率、拒绝修正和连续接受前缀。
-- [35. Native Multi-Token Prediction | 原生多 Token 预测](./35_Multi_Token_Decoding.md)：模型内生的多步候选。
-- [61. Model Architecture Exploration | 模型架构审计](./61_Model_Architecture_Exploration.md)：识别 checkpoint 的原生结构与附加资产。
-- [66. Inference Performance Comparison | 推理性能对比](./66_Inference_Performance_Comparison.md)：统一 workload、延迟和吞吐口径。
-- [72. Single-GPU Deployment and Backend Comparison | 单卡部署与 Backend 对比](./72_Multi_Model_Deployment_Comparison.md)：接收本节通过门禁的候选。
+先理解连续接受与拒绝修正，再熟悉如何固定请求和测量口径。
 
-### Step 1：把 proposer 家族变成可审计候选
+- [投机解码](./23_Speculative_Decoding.md)：接受概率、拒绝修正和追加词元。
+- [推理性能对比](./66_Inference_Performance_Comparison.md)：同一请求集合下的延迟、吞吐与输出核对。
 
-所有策略都遵循“候选生成 → target 验证 → 接受连续前缀”的外层协议，但候选来源、资产形态和块内依赖不同。MTP 既是模型训练/架构能力，也可在部署时充当 proposer；其余四项更直接描述候选生成路径。
+## Step 1：从候选来源到同目标配对比较
 
-| 家族 | 候选来源 | 额外资产 | 生成结构 | 本节主要检查 |
-|:---|:---|:---|:---|:---|
-| N-gram | prompt 或历史输出中的重复片段 | 无 | 检索式块候选 | 重复型 workload 是否形成净收益 |
-| Native MTP | target 内部 MTP 模块 | 原生 checkpoint | 模型内多步预测 | target 是否真的带 MTP 结构 |
-| EAGLE | target 隐藏特征 | 与 target 匹配的 EAGLE/EAGLE-3 权重 | 特征级自回归 | proposer 与 target 身份是否严格匹配 |
-| DFlash | target 特征与块扩散推测器 | 匹配的 DFlash 权重 | 块并行 | backend 是否支持并行 drafter 与相应资产 |
-| DSpark | 并行骨干、轻量顺序模块与置信度头 | 匹配的 DSpark 权重 | 半自回归 | 块内依赖与自适应验证是否真实启用 |
+候选生成器（proposer）提出可能的后续词元，目标模型（target）负责验证，执行后端（backend）决定哪些实现可以运行。不同家族的差异首先是候选从哪里来：检索已有片段、使用模型内置预测层，或加载与目标模型配对的草稿权重。它们共用“提出 → 验证 → 提交”的外层流程，但验证协议仍要与具体候选结构匹配。
 
-候选身份至少包含 target snapshot、proposer family、proposer snapshot、backend method、候选预算和 workload。只写“speculative=True”不足以形成可复核实验。
+比较时记录目标和草稿权重的固定版本（snapshot）、候选长度与输入集合（workload）。例如对重复文本与普通问答分别配对，才能知道检索式候选的收益来自哪类输入；同一个开关名称不能代替这些身份与条件。G0 表示仅目标模型基线，G1–G5 依次对应下表五类候选。
 
-![投机解码机制选型：从候选家族到部署交接](../public/02_PyTorch_Algorithms/68_speculative_benchmark_flow.svg)
+| 家族 | 候选来源 | 需要的模型资产 | 主要检查 |
+| --- | --- | --- | --- |
+| N-gram | 提示或历史输出中的重复片段 | 不需额外草稿权重 | 重复输入能否覆盖检索与验证成本 |
+| 原生多词元预测（MTP） | 目标模型内部的预测层 | 包含对应结构的权重文件 | 模型确有预测层且后端支持执行 |
+| EAGLE | 目标模型隐藏表示与特征草稿器 | 与目标版本匹配的 EAGLE 权重 | 特征接口、词表与权重身份是否匹配 |
+| DFlash | 块扩散草稿器 | 匹配的草稿权重 | 块候选能否通过后端验证 |
+| DSpark | 并行主干与轻量顺序、置信度模块 | 匹配的草稿权重 | 块内依赖与候选长度控制是否启用 |
 
-### Step 2：先做能力与资产门禁，再启动 GPU
+![投机候选经准入、配对比较与决策后进入部署组合](../public/02_PyTorch_Algorithms/68_speculative_benchmark_flow.svg)
 
-准入顺序固定为：backend 接口 → family method → target 原生结构或 proposer 资产 → tokenizer/模型兼容 → 显存容量 → 真实启动。`unsupported`、`asset_missing`、`incompatible`、`capacity_blocked` 和 `failed` 是不同事实，不能统一写成 `tune`。
+## Step 2：能力与资产检查决定哪些候选能够启动
 
-| 运行状态 | 含义 | 是否进入性能比较 |
-|:---|:---|:---:|
-| `runnable` | 静态门禁通过，可以启动 | 是 |
-| `unsupported` | 当前 backend/version 没有该路径 | 否 |
-| `asset_missing` | 缺少原生结构或匹配 proposer | 否 |
-| `incompatible` | target、tokenizer 或 proposer 身份不匹配 | 否 |
-| `capacity_blocked` | 预计显存超过设备预算 | 否 |
-| `failed` | 已尝试启动或请求，但真实执行失败 | 否 |
+通用投机接口存在，不等于后端支持每个候选家族。还要核对模型结构或草稿资产、分词器兼容和显存条件。静态检查通过只允许尝试启动；启动后仍需用请求与原生统计确认候选路径没有静默回退。下图同时收集首词元延迟（TTFT）、每输出词元时间估计（TPOT）、吞吐和显存；基线与候选都要检查路径、输出和资源。
 
-### Step 3：分离运行状态、证据状态与采用决策
+| 运行状态 | 判定依据 | 下一步 |
+| --- | --- | --- |
+| 可尝试启动（runnable） | 当前静态条件通过 | 启动服务并检查实际路径 |
+| 未启用（skipped） | 当前计划关闭候选 | 保留关闭原因，不作性能比较 |
+| 不支持（unsupported） | 当前后端或版本缺少所需方法 | 选择支持的实现后重新检查 |
+| 缺资产（asset_missing） | 缺目标原生结构或匹配草稿权重 | 准备资产再检查 |
+| 不兼容（incompatible） | 模型、词表或接口无法配对 | 更换匹配组合 |
+| 容量受阻（capacity_blocked） | 已知容量估算超过设备预算 | 缩小配置或更换设备 |
+| 执行失败（failed） | 启动或真实请求报错 | 检查日志，不填性能结果 |
 
-`run_status` 回答“有没有运行”，`evidence_status` 回答“能不能归因和比较”，`decision` 才回答“是否采用”。高接受率只是诊断信号：drafter 很慢时，高接受率仍可能没有净收益；反之，极便宜的 proposer 可能在中等接受率下形成加速。
+![可运行候选顺序启动，再采集路径、输出、性能与资源证据](../public/02_PyTorch_Algorithms/68_speculative_gpu_flow.svg)
 
-| 证据 | 来源 | 决策作用 |
-|:---|:---|:---|
-| target/proposer resolved snapshot | 模型解析与启动配置 | 防止资产错配 |
-| execution path | backend 配置、日志或指标 | 防止静默回退 |
-| proposed / accepted tokens | backend 原生遥测 | 解释候选质量，不从时延反推 |
-| TTFT / TPOT / E2E P95 | 同 workload 配对结果 | 判断交互速度和尾延迟 |
-| output/request throughput | 同 workload 配对结果 | 判断净收益 |
-| peak memory | 设备采样 | 判断单卡容量 |
-| deterministic parity | `temperature=0` 的逐请求输出 | 性能结论的质量门禁 |
+## Step 3：把运行结果转成采用、补测或拒绝
 
-### Step 4：实现候选分类、准入、证据与决策
+运行成功、证据可比较和候选值得采用，是三个不同判断。同目标、同请求、同采样配置的两条路径先检查输出与真实投机活动，再比较首词元延迟、端到端延迟（E2E）、输出吞吐和峰值显存。历史 TPOT 字段以首词元至请求结束的时长除以输出词元间隔数，包含流式收尾，不能当作相邻内容到达间隔。P95 是样本中第 95 百分位；接受率来自后端原生统计，只用于解释成本，不能单独证明加速。
 
-| TODO | 输入 | 输出 | 关键约束 |
-|:---|:---|:---|:---|
-| TODO 1：分类 proposer | family 名称 | 资产类型、依赖结构、遥测要求 | MTP 不得误当普通外置 draft model |
-| TODO 2：候选准入 | backend methods、资产、容量 | 明确运行状态与原因 | 静态准入不等于真实执行成功 |
-| TODO 3：建立配对证据 | G0 与 candidate | 可比性、缺证、加速和质量变化 | target/workload/sampling 必须一致 |
-| TODO 4：形成决策 | 证据与门槛 | `accept/tune/reject/not_evaluated` | 接受率只用于解释，不作单独采用门槛 |
+确定性生成按请求核对输出；随机生成则另需分布与任务质量证据，不能要求不同执行路径在相同种子下逐词元一致。若候选只能配另一目标模型，要为该目标另建基线，只解释各组内部的比值，而不混排原始延迟。
+
+| 证据与条件 | 决策 | 当前候选如何处理 |
+| --- | --- | --- |
+| 未运行、缺完整配对或固定条件不同 | 不评估（not_evaluated） | 保留原因，补齐配对后再判断 |
+| 配对已运行，但关键指标或投机路径证据不完整 | 补测（tune） | 不晋升采用，补采缺少的证据 |
+| 比较条件齐备，但输出质量不通过 | 拒绝（reject） | 保存失败证据，定位差异后另行复测 |
+| 质量通过，但吞吐、尾延迟或容量门槛未全部满足 | 调整（tune） | 调整候选、预算或负载后复测 |
+| 同场景的质量、路径、性能与容量均通过 | 采用（accept） | 仅把该场景的候选和证据交给部署比较 |
+
+## Step 4：实现候选准入、配对与采用判断
+
+题目提供候选家族表、模拟运行记录和采用门槛。你将完成家族分类、静态准入、配对证据与采用决策；测试用不支持、质量失败、指标缺失和门槛边界区分各条路径。这些记录用于 CPU 规则验证，不是真实后端测量。
+
+| 任务与目的 | 已知条件 | 完成标准 | 测试验证 |
+| --- | --- | --- | --- |
+| TODO 1 · 分类候选家族 | 家族名与资产依赖表 | 识别别名并拒绝未知家族，不修改原表 | MTP 的内置资产与未知家族 |
+| TODO 2 · 决定是否可启动 | 后端支持、资产、兼容与容量事实 | 按顺序返回首个阻断原因 | 单项失败、关闭候选与多项同时失败 |
+| TODO 3 · 核对同目标配对 | 基线、候选、固定条件与指标 | 先区分未完成、不可比和缺证，再计算比值 | 目标不同、路径回退、缺指标与有效配对 |
+| TODO 4 · 形成采用决策 | 配对证据与各项门槛 | 质量优先，吞吐取下限，延迟和容量取上限 | 质量拒绝、缺证补测、阈值等号与单项未过 |
 
 
 ```python
@@ -130,6 +138,9 @@ def decide_speculative_candidate(
 
 ```
 
+## 测试
+
+分别检查候选类别、首个准入失败、固定条件匹配，以及质量和性能门槛的方向。
 
 ```python
 def _candidate(**updates):
@@ -155,6 +166,7 @@ def _run(role, **updates):
 
 
 def test_family_classification():
+    """家族名称映射到正确资产种类，未知家族明确失败。"""
     assert classify_speculative_strategy('N-Gram')['asset_kind'] == 'none'
     assert classify_speculative_strategy('MTP')['asset_kind'] == 'target_native'
     assert classify_speculative_strategy('DSpark')['dependency'] == 'semi_autoregressive'
@@ -167,14 +179,18 @@ def test_family_classification():
 
 
 def test_admission_states():
+    """单项失败与多项失败都保留既定检查顺序。"""
     assert admit_speculative_candidate(_candidate())['run_status'] == 'runnable'
     assert admit_speculative_candidate(_candidate(backend_supported=False))['run_status'] == 'unsupported'
     assert admit_speculative_candidate(_candidate(asset_ready=False))['run_status'] == 'asset_missing'
     assert admit_speculative_candidate(_candidate(compatible=False))['run_status'] == 'incompatible'
     assert admit_speculative_candidate(_candidate(estimated_memory_gb=12.0))['run_status'] == 'capacity_blocked'
+    assert admit_speculative_candidate(_candidate(enabled=False))['run_status'] == 'skipped'
+    assert admit_speculative_candidate(_candidate(backend_supported=False, asset_ready=False))['run_status'] == 'unsupported'
 
 
 def test_pair_evidence_and_decision():
+    """有效配对的收益不得覆盖质量失败或缺少完整运行。"""
     baseline = _run('baseline')
     candidate = _run(
         'candidate', throughput_tokens_per_s=125.0, ttft_p95_ms=52.0,
@@ -196,10 +212,38 @@ def test_pair_evidence_and_decision():
     assert decide_speculative_candidate(unsupported, thresholds)['decision'] == 'not_evaluated'
 
 
+def test_pair_boundaries_and_missing_evidence():
+    """固定条件、实际路径与关键指标分别约束配对。"""
+    baseline, candidate = _run('baseline'), _run('candidate')
+    for key in ('target_snapshot', 'workload_key', 'sampling_key'):
+        evidence = build_speculative_pair_evidence(baseline, {**candidate, key: 'different'})
+        assert evidence['evidence_status'] == 'incomparable'
+    for update in ({'execution_path': 'target_only'}, {'mechanism_active': False}, {'ttft_p95_ms': None}):
+        evidence = build_speculative_pair_evidence(baseline, {**candidate, **update})
+        assert evidence['evidence_status'] == 'incomplete'
+
+
+def test_adoption_threshold_directions():
+    """精确门槛可通过，任何单项越界均不能接受。"""
+    thresholds = {'min_throughput_speedup': 1.1, 'max_ttft_regression_ratio': 1.1,
+                  'max_e2e_p95_regression_ratio': 1.05, 'max_peak_memory_mb': 10500.0}
+    evidence = {'evidence_status': 'comparable', 'quality_ok': True, 'mechanism_active': True,
+                'throughput_speedup': 1.1, 'ttft_ratio': 1.1, 'e2e_p95_ratio': 1.05,
+                'candidate_peak_memory_mb': 10500.0}
+    assert decide_speculative_candidate(evidence, thresholds)['decision'] == 'accept'
+    for key, value in (('throughput_speedup', 1.09), ('ttft_ratio', 1.11),
+                       ('e2e_p95_ratio', 1.06), ('candidate_peak_memory_mb', 10501.0)):
+        assert decide_speculative_candidate({**evidence, key: value}, thresholds)['decision'] == 'tune'
+    assert decide_speculative_candidate({'evidence_status': 'incomplete'}, thresholds)['decision'] == 'tune'
+
+
 def test_speculative_selection_template():
+    """运行候选准入、比较和决策的 CPU 契约测试。"""
     test_family_classification()
     test_admission_states()
     test_pair_evidence_and_decision()
+    test_pair_boundaries_and_missing_evidence()
+    test_adoption_threshold_directions()
     print('测试通过：proposer 分类、准入状态、配对证据和采用决策均符合契约。')
 
 
@@ -211,7 +255,16 @@ except NotImplementedError:
 
 ```
 
+---
+
+🛑 **STOP HERE**
+
+先完成题目并运行测试，再展开参考代码。
+
+<br><br><br><br><br><br><br><br><br><br>
 ## 参考代码与解析
+
+### 代码
 
 
 ```python
@@ -313,23 +366,27 @@ def decide_speculative_candidate(
 
 ### 解析
 
-#### TODO 1：分类 proposer
+#### TODO 1：区分候选家族的资产要求
 
-分类返回资产和依赖契约，而不是只返回显示名称。`eagle3` 归入 EAGLE 家族；MTP 明确标记为 target-native。
+- MTP 依赖目标模型内置结构，EAGLE 等依赖匹配权重；规范化名称后返回家族资料的副本。
+- 家族测试分别核对检索式、内置式与带块内依赖的候选，并拒绝未知名称，避免将不同资产要求混为一类。
 
-#### TODO 2：候选准入
+#### TODO 2：保留首个阻断原因
 
-准入状态描述静态事实。`runnable` 只表示允许尝试启动，不能替代真实执行证据；`unsupported` 也不是性能上的 `reject`。
+- 先检查是否启用，再按后端、资产、兼容和容量顺序判断；静态可启动状态不是性能决策。
+- 测试逐项破坏条件，再同时破坏后端与资产，检查优先返回后端不支持，而不是丢失失败原因。
 
-#### TODO 3：建立配对证据
+#### TODO 3：在同一比较条件下计算比值
 
-只有 target snapshot、workload 和 sampling 一致，且 candidate 路径确实为 speculative，端到端比值才可解释。机制遥测缺失时可以评价端到端结果，但不能解释接受或拒绝原因。
+- 目标版本、请求集合和采样配置必须一致，且两条路径已完成、候选确有投机活动；比值才有对应的比较对象。
+- 配对测试分别改变固定条件、移除指标和模拟路径回退；成功配对才计算吞吐加速比与延迟比。
 
-#### TODO 4：形成决策
+#### TODO 4：联合判断质量与资源性能
 
-质量优先于性能；采用依赖吞吐、尾延迟和容量的共同结果。接受率不进入硬门槛，只用于后续调整候选长度、工作负载和 proposer。
+- 吞吐加速比需要达到下限，延迟比和峰值显存不能超过上限；质量失败不能由更好的性能抵消。
+- 测试覆盖精确阈值、单项门槛未过、质量失败和缺证，确认接受率不参与采用条件。
 
-### Step 5（可选）：GPU 与 backend 实验——多 proposer 准入与配对
+## Step 5（可选）：GPU 与 backend 实验——多 proposer 准入与配对
 
 | CPU 已验证 | 真实环境补充 | 本页输出 |
 |:---|:---|:---|
@@ -337,19 +394,19 @@ def decide_speculative_candidate(
 
 实验分为两条轨道：同一 target 下可以直接比较绝对指标；若某个 proposer 只能配合另一 target，则必须另建 target-only 基线，只比较组内 speedup，不能横向比较原始延迟。
 
-#### 5.1 环境、候选与固定工作负载
+### 5.1 环境、候选与固定工作负载
 
-实验时只需要修改运行开关和标签；模型缓存、能力探针、工作负载、候选门禁和结果路径均自动解析。当前稳定基线环境保留 `INF-VLLM-011-CU128 / vLLM 0.11.0`；完整机制选型使用独立的 `INF-VLLM-SPEC025 / vLLM 0.25.1+cu129`。`INF-VLLM-MTP / vLLM 0.31.0+cu129` 只作为第 35 节原生 MTP 或后续复测环境，不是本页硬依赖。CUDA 12.9 Profile 要求至少 R575.57，当前 R570 主机先保留能力门禁结果，驱动升级作为独立维护任务。每份结果必须记录精确版本，不能只记录“latest”。
+历史基线使用 [INF-VLLM-011-CU128](../topic_discussion/inference_optimization/quickstart.md#inf-vllm-quickstart)，新候选选型使用独立的 [INF-VLLM-SPEC025](../topic_discussion/inference_optimization/quickstart.md#inf-vllm-spec025-quickstart)。环境安装和驱动要求由 Quickstart 维护，当前证据见[实验资产表](../topic_discussion/inference_optimization/experiment_assets.md)。每份结果保留实际运行版本，不能把新环境信息补写进历史记录。
 
-默认只运行安全且不需要额外权重的 G1 N-gram。G2–G5 保留为显式候选：缺资产或后端能力时生成状态记录，不启动服务。
-
-![GPU speculative selection：能力门禁、顺序执行与证据交接](../public/02_PyTorch_Algorithms/68_speculative_gpu_flow.svg)
+默认关闭真实执行；复测需使用唯一标签。候选计划包含不需额外权重的 N-gram，以及依赖模型结构或草稿资产的扩展；缺资产或能力时保留状态而不启动服务。
 
 
 ```python
 # 5.1：实验时只修改下面两个用户输入；其余字段是冻结的比较契约。
-RUN_REAL_EXPERIMENT = True  # False 只做预检；True 才允许 5.4 启动真实服务。
-RUN_LABEL = 'rtx5070ti_speculative_ngram_smoke_v3'  # 同一轮所有 G0–G5 必须共用标签。
+RUN_REAL_EXPERIMENT = False  # False 只做预检；True 才允许 5.4 启动真实服务。
+RUN_LABEL = 'replace_with_unique_label'  # 正式复测使用新标签；不要复用 v3、v4 或 v5。
+SEMANTIC_ID = 'INF-SPECULATIVE-BENCH'
+RESULT_SCHEMA = 'inference-benchmark/v1'
 
 # 环境身份：保留当前复现环境；升级实验使用仓库已登记 Profile，不原地覆盖。
 VLLM_ENV = 'llm_vllm_cu128'
@@ -358,7 +415,7 @@ UPGRADE_ENV = 'llm_vllm_spec025_cu129'
 UPGRADE_PROFILE_ID = 'INF-VLLM-SPEC025'
 UPGRADE_VLLM_VERSION = '0.25.1+cu129'
 OPTIONAL_RETEST_PROFILE_ID = 'INF-VLLM-MTP'  # vLLM 0.31，仅用于后续复测。
-UPGRADE_MIN_DRIVER = '575.57'  # 当前 R570 主机不满足；先升级驱动，再创建该环境。
+UPGRADE_MIN_DRIVER = '575.57'  # CUDA 12.9 Profile 的驱动下限；创建环境前仍需完成预检。
 HARDWARE_PROFILE = 'H0_12GB_5070Ti_Laptop'
 BACKEND = 'vllm'
 
@@ -411,7 +468,7 @@ MANIFEST_PATH = f'{RESULT_DIR}/68_manifest_{RUN_LABEL}.json'
 
 ```
 
-#### 5.2 环境与输入预检
+### 5.2 环境与输入预检
 
 只读检查仓库、Kernel、CUDA、vLLM、workload 和缓存目录；不下载模型、不启动服务。这里同时显示当前实验环境和建议升级环境，实际结果以当前 Kernel 及解析到的 vLLM 可执行文件为准。
 
@@ -508,9 +565,9 @@ if audit_errors:
 
 ```
 
-#### 5.3 候选能力、资产与容量门禁
+### 5.3 候选能力、资产与容量检查
 
-本单元读取本地缓存和 checkpoint 配置，不启动服务。`--speculative-config` 只证明存在通用接口；还必须检查当前版本声明的方法和具体资产。DFlash/DSpark 使用模型自动识别路径时，还需满足最低版本与匹配 checkpoint。
+本单元按本地缓存、模型配置和后端方法声明初筛候选，不启动服务。通用投机接口、资产目录存在或版本达到下限，都不能单独确认权重配对与真实执行；还需核对目标结构、匹配版本及启动记录。容量估算未提供时，静态检查也不能证明显存足够。
 
 
 ```python
@@ -592,9 +649,9 @@ print(json.dumps({
 
 ```
 
-#### 5.4 顺序执行 G0–G5 并保存 JSON
+### 5.4 顺序执行候选并保存原始证据
 
-只有 `runnable` 候选会启动。每个服务都按“启动 → ready → warmup → 正式测量 → 保存 → 停止 → 释放显存”执行；清理函数接收启动器返回的日志句柄，避免将 `TextIOWrapper` 错当路径。未运行候选也生成状态 JSON，因此 manifest 始终包含 G0–G5。
+对静态可启动的候选依次完成启动、就绪、预热、测量、保存与停止，避免多个服务同时占用显存。关闭、受阻和执行失败的候选也保留状态记录；目标基线没有完成时，不形成候选性能结论。
 
 
 ```python
@@ -603,6 +660,8 @@ import urllib.request
 
 # vLLM 0.11 以固定周期把 EngineCore 统计刷新到 Prometheus；缩短周期，避免短测得到假零值。
 os.environ.setdefault('VLLM_LOG_STATS_INTERVAL', '0.5')
+
+from tools.project_runtime import save_json_record_once
 
 from tools.inference_project_runtime import (
     run_backend_benchmark,
@@ -617,8 +676,7 @@ def _group_path(group_name, suffix='summary'):
 
 
 def _write_json(path, payload):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    save_json_record_once(path, payload)
 
 
 def _scenario_key(workload_name, concurrency):
@@ -669,11 +727,12 @@ def _measure_server(base_url, group_name, role, selected_dtype):
     for workload_name, workload in WORKLOADS.items():
         for concurrency in CONCURRENCY_LEVELS:
             key = _scenario_key(workload_name, concurrency)
+            backend_path = result_dir / f'68_{group_name}_{key}_backend_raw_{RUN_LABEL}.json'
             raw_path = result_dir / f'68_{group_name}_{key}_raw_{RUN_LABEL}.json'
             counters_before = _read_speculative_counters(base_url)
             report = run_backend_benchmark(
                 project='68', base_url=base_url, model=TARGET_MODEL_ID,
-                label=group_name, output=raw_path, workload=workload,
+                label=group_name, output=backend_path, workload=workload,
                 num_prompts=NUM_PROMPTS, max_tokens=MAX_TOKENS,
                 concurrency=concurrency, warmup=WARMUP, repeats=REPEATS,
                 temperature=TEMPERATURE, timeout_s=REQUEST_TIMEOUT_S,
@@ -718,6 +777,7 @@ for group_name, strategy in STRATEGIES.items():
     summary_path = _group_path(group_name)
     base_record = {
         'schema_version': 'speculative-selection/v1', 'project': '68',
+        'semantic_id': SEMANTIC_ID, 'benchmark_schema': RESULT_SCHEMA,
         'run_label': RUN_LABEL, 'group': group_name, 'strategy': strategy,
         'admission': gate, 'environment': preflight,
         'run_status': gate['run_status'], 'evidence_status': 'not_evaluated',
@@ -727,7 +787,8 @@ for group_name, strategy in STRATEGIES.items():
         if not RUN_REAL_EXPERIMENT and gate['run_status'] == 'runnable':
             base_record['run_status'] = 'skipped'
             base_record['admission'] = {**gate, 'reason': 'RUN_REAL_EXPERIMENT=False'}
-        _write_json(summary_path, base_record)
+        if RUN_REAL_EXPERIMENT:
+            _write_json(summary_path, base_record)
         group_reports[group_name] = base_record
         continue
 
@@ -778,6 +839,7 @@ for group_name, strategy in STRATEGIES.items():
 
 manifest = {
     'schema_version': 'speculative-selection-manifest/v1', 'project': '68',
+    'semantic_id': SEMANTIC_ID, 'benchmark_schema': RESULT_SCHEMA,
     'run_label': RUN_LABEL, 'config': {
         'target_model': TARGET_MODEL_ID, 'workloads': WORKLOADS,
         'concurrency_levels': CONCURRENCY_LEVELS, 'num_prompts': NUM_PROMPTS,
@@ -790,12 +852,13 @@ manifest = {
         for name, report in group_reports.items()
     ],
 }
-_write_json(repo_root / MANIFEST_PATH, manifest)
-print(json.dumps({'manifest': MANIFEST_PATH, 'groups': manifest['groups']}, ensure_ascii=False, indent=2))
+if RUN_REAL_EXPERIMENT:
+    _write_json(repo_root / MANIFEST_PATH, manifest)
+print(json.dumps({'manifest': MANIFEST_PATH if RUN_REAL_EXPERIMENT else None, 'groups': manifest['groups']}, ensure_ascii=False, indent=2))
 
 ```
 
-#### 5.5 读取结果并核对证据
+### 5.5 读取结果并核对证据
 
 本单元只展示有界摘要，不打印 raw requests。`temperature=0` 时按请求输出多重集合核对一致性；接受统计只读取 backend 原生字段，缺失时保持为空，不能从 TPOT 或 speedup 反推。
 
@@ -859,10 +922,22 @@ for row in summary_rows:
 
 ```
 
-#### 5.6 形成候选决策与 72 节交接
+### 5.6 形成候选决策与 72 节交接
 
 逐场景形成配对证据，再汇总为候选结论。候选必须在至少一个声明场景完成可比实验；通用与重复 workload 结果分开保留，避免用 N-gram 的专用优势外推到所有请求。
 
+**当前登记结果**
+
+| 字段 | 登记内容 |
+| --- | --- |
+| 项目与标签 | 68 节 N-gram 候选；`rtx5070ti_speculative_ngram_smoke_v3` |
+| 运行条件 | RTX 5070 Ti Laptop GPU；Qwen2.5-1.5B-Instruct；target-only 与 N-gram 配对 |
+| 原始证据 | [G0 日志](../../benchmarks/results/68_g0_target_only_backend_rtx5070ti_speculative_ngram_smoke_v3.log)、[G1 日志](../../benchmarks/results/68_g1_ngram_backend_rtx5070ti_speculative_ngram_smoke_v3.log) |
+| 正式证据 | [证据记录](../../benchmarks/results/68_evidence_record_rtx5070ti_speculative_ngram_smoke_v3.json) |
+| 清单与交接 | [结果清单](../../benchmarks/results/68_manifest_rtx5070ti_speculative_ngram_smoke_v3.json)；质量门槛未通过，未生成 72 节交接 |
+| 结论 | `reject`：N-gram 有性能信号，但输出一致性未通过；其他 proposer 家族尚无同等级实测证据 |
+
+**后续尝试（非性能结论）**：`rtx5070ti_speculative_project_v5` 的 G0 基线成功，G1 speculative 后端未能就绪并超时；该尝试没有候选性能数据，不替代 v3 的正式结论。见 [v5 清单](../../benchmarks/results/68_manifest_rtx5070ti_speculative_project_v5.json)、[G0](../../benchmarks/results/68_g0_target_baseline_vllm_rtx5070ti_speculative_project_v5.json) 与 [G1 失败记录](../../benchmarks/results/68_g1_speculative_vllm_rtx5070ti_speculative_project_v5.json)。
 
 ```python
 thresholds = {
@@ -931,22 +1006,31 @@ for group_name in STRATEGIES:
 handoff = {
     'schema_version': 'speculative-selection-handoff/v1', 'project': '68',
     'run_label': RUN_LABEL, 'target_model': TARGET_MODEL_ID,
-    'decisions': decisions,
+    'decisions': {
+        group: {scenario: item for scenario, item in scenarios.items()
+                if item['decision']['decision'] == 'accept'}
+        for group, scenarios in decisions.items()
+        if any(item['decision']['decision'] == 'accept' for item in scenarios.values())
+    },
     'next_project': '72',
-    'rule': '只交接 completed + comparable 的 candidate；跨 target 只能比较组内 speedup。',
+    'rule': '仅交接已完成、可比较且 decision=accept 的具体场景；跨 target 只比较组内 speedup。',
 }
 handoff_path = result_dir / f'68_handoff_to_72_{RUN_LABEL}.json'
-_write_json(handoff_path, handoff)
-print(json.dumps({'handoff_path': str(handoff_path.relative_to(repo_root)), 'decisions': decisions}, ensure_ascii=False, indent=2))
+handoff_written = RUN_REAL_EXPERIMENT and bool(handoff['decisions'])
+if handoff_written:
+    _write_json(handoff_path, handoff)
+print(json.dumps({'handoff_path': str(handoff_path.relative_to(repo_root)) if handoff_written else None,
+                  'decisions': decisions,
+                  'handoff_status': 'saved' if handoff_written else 'not_written'}, ensure_ascii=False, indent=2))
 
 ```
 
 ## 相关阅读
 
-- [EAGLE: Speculative Sampling Requires Rethinking Feature Uncertainty](https://arxiv.org/abs/2401.15077)
-- [Better & Faster Large Language Models via Multi-token Prediction](https://arxiv.org/abs/2404.19737)
-- [DFlash: Block Diffusion for Flash Speculative Decoding](https://arxiv.org/abs/2602.06036)
-- [DSpark: Confidence-Scheduled Speculative Decoding with Semi-Autoregressive Generation](https://arxiv.org/abs/2607.05147)
-- [vLLM Speculative Decoding](https://docs.vllm.ai/en/latest/features/speculative_decoding/)
-- [69. Prefix Caching Benchmark | 前缀缓存基准](./69_Prefix_Caching_Benchmark.md)
-- [72. Single-GPU Deployment and Backend Comparison | 单卡部署与 Backend 对比](./72_Multi_Model_Deployment_Comparison.md)
+继续追溯候选的模型结构，或把通过的局部方案放进部署约束中比较。
+
+- [原生多词元预测](./35_Multi_Token_Decoding.md)：模型内置候选与验证。
+- [动态候选与验证预算](./INF-PROPOSAL_Dynamic_Proposal_and_Verification_Budget.md)：接受情况、候选长度与额外成本。
+- [模型架构审计](./61_Model_Architecture_Exploration.md)：检查权重包含的原生结构。
+- [单卡部署与后端对比](./72_Multi_Model_Deployment_Comparison.md)：把候选放入容量、质量和性能约束。
+- [投机采样论文](https://arxiv.org/abs/2211.17192)：接受与拒绝修正的推导。
