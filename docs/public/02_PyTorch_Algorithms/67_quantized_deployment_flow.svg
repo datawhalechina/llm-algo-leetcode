@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1240" height="600" viewBox="0 0 1240 600" role="img" aria-labelledby="title desc">
   <title id="title">量化推理部署的统一对照与决策</title>
-  <desc id="desc">先固定模型、workload 和运行环境，在 CPU 账本确认量化表示与质量门槛，再比较浮点 baseline、量化 candidate 和可选 backend，最后依据性能、质量和证据形成部署判断。</desc>
+  <desc id="desc">先固定模型、workload 和运行环境，在 CPU 项目模型中检查配对契约、指标账本与状态机，再比较浮点 baseline 和量化 candidate，最后依据质量、执行路径和资源证据形成部署判断。</desc>
   <defs>
     <style>
       .title{font:700 28px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324d}.sub{font:15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#526b7d}.group{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#35526b}.h{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324d}.t{font:14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#526b7d}.frame{fill:#fff;stroke:#c7d9e7;stroke-width:1.5}.blue{fill:#e8f3fb;stroke:#3978a8;stroke-width:2}.purple{fill:#f1eafa;stroke:#8b6bb1;stroke-width:2}.green{fill:#eaf7ef;stroke:#4c9870;stroke-width:2}.orange{fill:#fff1df;stroke:#c78335;stroke-width:2}.flow{stroke:#3978a8;stroke-width:3;fill:none;marker-end:url(#arrow)}.optional{stroke:#8b6bb1;stroke-width:2.5;stroke-dasharray:8 6;fill:none;marker-end:url(#purpleArrow)}
@@ -14,12 +14,12 @@
 
   <rect x="370" y="110" width="500" height="68" rx="18" class="blue"/>
   <text x="620" y="139" text-anchor="middle" class="h">统一比较条件</text>
-  <text x="620" y="162" text-anchor="middle" class="t">模型 · workload · backend · dtype · 生成长度</text>
+  <text x="620" y="162" text-anchor="middle" class="t">模型与分词器版本 · workload · backend · hardware · 缓存策略</text>
 
   <rect x="45" y="245" width="250" height="128" rx="18" class="frame"/>
-  <text x="68" y="276" class="group">CPU 机制账本</text>
+  <text x="68" y="276" class="group">CPU 项目模型</text>
   <rect x="68" y="300" width="204" height="48" rx="12" class="blue"/>
-  <text x="170" y="331" text-anchor="middle" class="h">量化表示与误差门槛</text>
+  <text x="170" y="331" text-anchor="middle" class="h">配对契约 · 指标账本 · 状态机</text>
 
   <rect x="345" y="245" width="250" height="128" rx="18" class="frame"/>
   <text x="368" y="276" class="group">浮点 baseline</text>
@@ -32,14 +32,14 @@
   <text x="770" y="331" text-anchor="middle" class="h">同一 workload 下的对照</text>
 
   <rect x="945" y="245" width="250" height="128" rx="18" class="frame"/>
-  <text x="968" y="276" class="group">可选 backend 扩展</text>
-  <rect x="968" y="300" width="204" height="48" rx="12" class="purple"/>
-  <text x="1070" y="331" text-anchor="middle" class="h">artifact、格式与执行证据</text>
+  <text x="968" y="276" class="group">执行路径证据</text>
+  <rect x="968" y="300" width="204" height="48" rx="12" class="blue"/>
+  <text x="1070" y="331" text-anchor="middle" class="h">启动参数 · backend 日志 · fallback</text>
 
   <path d="M620 178V205H170V245" class="flow"/>
   <path d="M620 178V205H470V245" class="flow"/>
   <path d="M620 178V205H770V245" class="flow"/>
-  <path d="M620 178V205H1070V245" class="optional"/>
+  <path d="M620 178V205H1070V245" class="flow"/>
 
   <rect x="260" y="455" width="720" height="86" rx="18" class="green"/>
   <text x="620" y="487" text-anchor="middle" class="h">统一结果表与部署判断</text>
@@ -48,5 +48,5 @@
   <path d="M170 373V415H440V455" class="flow"/>
   <path d="M470 373V455" class="flow"/>
   <path d="M770 373V455" class="flow"/>
-  <path d="M1070 373V415H800V455" class="optional"/>
+  <path d="M1070 373V415H800V455" class="flow"/>
 </svg>

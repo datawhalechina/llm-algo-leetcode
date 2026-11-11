@@ -1,10 +1,49 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="470" viewBox="0 0 1120 470" role="img" aria-labelledby="title desc">
-  <title id="title">Serving profile metrics and constraints</title><desc id="desc">Latency, balanced and throughput profiles each use a different primary metric while sharing resource and failure guardrails.</desc>
-  <style>text{font-family:"Noto Sans","Microsoft YaHei",Arial,sans-serif;fill:#172033}.title{font-size:24px;font-weight:700}.sub{font-size:14px;fill:#536174}.label{font-size:16px;font-weight:700}.body{font-size:13px;fill:#45556d}.tiny{font-size:12px;fill:#536174}.box{stroke:#9ba9bc;stroke-width:1.5;rx:13}.line{fill:none;stroke:#62728a;stroke-width:2}</style>
-  <rect width="1120" height="470" fill="#fff"/><text x="48" y="48" class="title">Primary metric changes with the request objective</text><text x="48" y="73" class="sub">The same guardrails prevent a gain in one metric from hiding an unacceptable service cost.</text>
-  <rect x="72" y="132" width="260" height="152" class="box" fill="#eaf8f1"/><text x="202" y="164" class="label" text-anchor="middle">Latency profile</text><text x="202" y="191" class="body" text-anchor="middle">Primary: TTFT P50 / P95</text><text x="202" y="214" class="body" text-anchor="middle">Guard: TPOT · failures</text><text x="202" y="239" class="tiny" text-anchor="middle">concurrency 1, short request</text>
-  <rect x="430" y="132" width="260" height="152" class="box" fill="#fff3d9"/><text x="560" y="164" class="label" text-anchor="middle">Balanced profile</text><text x="560" y="191" class="body" text-anchor="middle">Primary: TTFT + TPOT</text><text x="560" y="214" class="body" text-anchor="middle">Guard: P95 · memory · queue</text><text x="560" y="239" class="tiny" text-anchor="middle">moderate concurrency, mixed request</text>
-  <rect x="788" y="132" width="260" height="152" class="box" fill="#f3ebff"/><text x="918" y="164" class="label" text-anchor="middle">Throughput profile</text><text x="918" y="191" class="body" text-anchor="middle">Primary: output tokens / second</text><text x="918" y="214" class="body" text-anchor="middle">Guard: P95 · queue · OOM</text><text x="918" y="239" class="tiny" text-anchor="middle">high concurrency or long generation</text>
-  <path d="M202 284 V340 H462" class="line"/><path d="M452 335 L462 340 L452 345 Z" fill="#62728a"/><path d="M560 284 V332" class="line"/><path d="M555 332 L560 342 L565 332 Z" fill="#62728a"/><path d="M918 284 V340 H658" class="line"/><path d="M658 335 L648 340 L658 345 Z" fill="#62728a"/>
-  <rect x="430" y="342" width="260" height="72" class="box" fill="#e8f0ff"/><text x="560" y="371" class="label" text-anchor="middle">Shared evidence fields</text><text x="560" y="395" class="body" text-anchor="middle">artifact lineage · backend · peak memory · queue · failure</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="600" viewBox="0 0 1240 600" role="img" aria-labelledby="title desc">
+  <title id="title">三类服务 Profile 的固定条件、主指标与约束</title>
+  <desc id="desc">三个 Profile 共享产物、后端、硬件和请求来源，只改变请求压力；每类先通过约束指标，再按照自己的主指标选择。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#475569"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-15%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+  <rect width="1240" height="600" rx="28" fill="#f8fafc"/>
+  <text x="620" y="46" text-anchor="middle" font-family="Arial, sans-serif" font-size="26" font-weight="700" fill="#0f172a">服务目标决定主指标，统一约束保证结果可比较</text>
+  <text x="620" y="76" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" fill="#475569">先固定部署身份和测量方法，再在每个 Profile 内执行方向化 SLO</text>
+
+  <rect x="190" y="105" width="860" height="78" rx="16" fill="#e0f2fe" stroke="#0284c7" stroke-width="2" filter="url(#shadow)"/>
+  <text x="620" y="137" text-anchor="middle" font-family="Arial, sans-serif" font-size="19" font-weight="700" fill="#075985">共同固定条件</text>
+  <text x="620" y="164" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#0c4a6e">artifact · model/tokenizer revision · backend · hardware · 请求来源 · 测量方法</text>
+
+  <rect x="55" y="244" width="270" height="132" rx="16" fill="#ecfeff" stroke="#0891b2" stroke-width="2" filter="url(#shadow)"/>
+  <text x="190" y="278" text-anchor="middle" font-family="Arial, sans-serif" font-size="19" font-weight="700" fill="#155e75">延迟优先 Profile</text>
+  <text x="190" y="309" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#164e63">主指标：TTFT P95 ↓</text>
+  <text x="190" y="336" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#164e63">约束：失败率 = 0</text>
+  <text x="190" y="360" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#475569">低并发 · 短生成</text>
+
+  <rect x="485" y="244" width="270" height="132" rx="16" fill="#f0fdf4" stroke="#16a34a" stroke-width="2" filter="url(#shadow)"/>
+  <text x="620" y="278" text-anchor="middle" font-family="Arial, sans-serif" font-size="19" font-weight="700" fill="#166534">均衡 Profile</text>
+  <text x="620" y="309" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#14532d">主指标：TPOT P95 ↓</text>
+  <text x="620" y="336" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#14532d">约束：吞吐下限 · 失败率</text>
+  <text x="620" y="360" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#475569">中并发 · 中等生成</text>
+
+  <rect x="915" y="244" width="270" height="132" rx="16" fill="#fff7ed" stroke="#ea580c" stroke-width="2" filter="url(#shadow)"/>
+  <text x="1050" y="278" text-anchor="middle" font-family="Arial, sans-serif" font-size="19" font-weight="700" fill="#9a3412">吞吐优先 Profile</text>
+  <text x="1050" y="309" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#7c2d12">主指标：输出 Token/s ↑</text>
+  <text x="1050" y="336" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#7c2d12">约束：吞吐下限 · 失败率</text>
+  <text x="1050" y="360" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#475569">高并发 · 较长生成</text>
+
+  <rect x="250" y="440" width="740" height="105" rx="18" fill="#f3e8ff" stroke="#9333ea" stroke-width="2" filter="url(#shadow)"/>
+  <text x="620" y="475" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#6b21a8">先过全部约束，再按主指标方向选择</text>
+  <text x="620" y="506" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#581c87">缺测 → pending · 均未达标 → tune · 三类测齐且有达标场景 → accept</text>
+  <text x="620" y="531" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#64748b">不同 Profile 不能放进同一排序</text>
+
+  <path d="M620 183 V218 H190 V244" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <path d="M620 183 V244" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <path d="M620 218 H1050 V244" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <path d="M190 376 V420 H620" fill="none" stroke="#475569" stroke-width="2.5"/>
+  <path d="M1050 376 V420 H620" fill="none" stroke="#475569" stroke-width="2.5"/>
+  <path d="M620 376 V440" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)"/>
 </svg>

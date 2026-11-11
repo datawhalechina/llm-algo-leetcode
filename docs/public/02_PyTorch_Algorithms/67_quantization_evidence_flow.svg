@@ -1,52 +1,55 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
-  <title id="title">量化部署证据链</title>
-  <desc id="desc">从统一实验口径出发，分别采集性能、容量、质量和执行路径证据，再进行 baseline 与 candidate 比较并形成部署判断。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="600" viewBox="0 0 1240 600" role="img" aria-labelledby="title desc">
+  <title id="title">量化部署证据如何形成决策</title>
+  <desc id="desc">浮点基线与量化候选的配对结果分别进入质量、执行路径和资源性能检查，随后按指标方向形成统一账本，并输出待验证、拒绝、调整或接受四种部署状态。</desc>
   <defs>
-    <marker id="a67e" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
     <style>
-      .t{font:700 28px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}
-      .s{font:500 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}
-      .h{font:700 19px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#111827}
-      .b{font:500 14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}
-      .box{stroke-width:2.5;rx:16}.line{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a67e)}
+      .title{font:700 28px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324d}.sub{font:15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#526b7d}.h{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324d}.t{font:14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#526b7d}.frame{fill:#fff;stroke:#c7d9e7;stroke-width:1.5}.blue{fill:#e8f3fb;stroke:#3978a8;stroke-width:2}.purple{fill:#f1eafa;stroke:#8b6bb1;stroke-width:2}.green{fill:#eaf7ef;stroke:#4c9870;stroke-width:2}.orange{fill:#fff1df;stroke:#c78335;stroke-width:2}.red{fill:#fce8e6;stroke:#c65f58;stroke-width:2}.gray{fill:#f1f5f8;stroke:#718597;stroke-width:2}.flow{stroke:#3978a8;stroke-width:3;fill:none;marker-end:url(#arrow)}
     </style>
+    <marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#3978a8"/></marker>
   </defs>
-  <rect width="1200" height="520" fill="#f8fafc"/>
-  <text x="48" y="48" class="t">量化部署：从统一口径到可复核证据</text>
-  <text x="48" y="77" class="s">同一模型、workload 和 backend 下，四类证据共同支撑部署判断。</text>
+  <rect width="1240" height="600" rx="24" fill="#f8fbfd"/>
+  <text x="620" y="48" text-anchor="middle" class="title">量化部署证据：从配对结果到阶段化决策</text>
+  <text x="620" y="76" text-anchor="middle" class="sub">三类证据分别回答质量、执行真实性和资源收益，不能用单一指标替代</text>
 
-  <rect x="440" y="115" width="320" height="90" class="box" fill="#fef3c7" stroke="#d97706"/>
-  <text x="535" y="153" class="h">统一实验口径</text>
-  <text x="492" y="184" class="b">模型 · workload · backend 固定</text>
+  <rect x="390" y="104" width="460" height="64" rx="16" class="blue"/>
+  <text x="620" y="131" text-anchor="middle" class="h">固定条件下的 G0 / G1 配对结果</text>
+  <text x="620" y="153" text-anchor="middle" class="t">浮点基线 · 量化候选 · 相同模型、请求、后端与硬件</text>
 
-  <rect x="35" y="265" width="245" height="95" class="box" fill="#dbeafe" stroke="#2563eb"/>
-  <text x="128" y="303" class="h">性能</text>
-  <text x="88" y="333" class="b">TTFT · TPOT · 吞吐 · E2E</text>
-  <rect x="315" y="265" width="245" height="95" class="box" fill="#e0e7ff" stroke="#4f46e5"/>
-  <text x="408" y="303" class="h">容量</text>
-  <text x="390" y="333" class="b">peak VRAM · load status</text>
-  <rect x="595" y="265" width="245" height="95" class="box" fill="#dcfce7" stroke="#16a34a"/>
-  <text x="688" y="303" class="h">质量</text>
-  <text x="650" y="333" class="b">error · task metric · budget</text>
-  <rect x="875" y="265" width="290" height="95" class="box" fill="#fce7f3" stroke="#db2777"/>
-  <text x="967" y="303" class="h">执行证据</text>
-  <text x="910" y="333" class="b">artifact · format · kernel · JSON</text>
+  <rect x="70" y="226" width="300" height="88" rx="16" class="green"/>
+  <text x="220" y="259" text-anchor="middle" class="h">候选评测质量</text>
+  <text x="220" y="285" text-anchor="middle" class="t">任务指标 · 退化比例 · 质量预算</text>
+  <rect x="470" y="226" width="300" height="88" rx="16" class="purple"/>
+  <text x="620" y="259" text-anchor="middle" class="h">真实执行路径</text>
+  <text x="620" y="285" text-anchor="middle" class="t">核实量化执行 · 回退状态 · 不以参数替代</text>
+  <rect x="870" y="226" width="300" height="88" rx="16" class="orange"/>
+  <text x="1020" y="259" text-anchor="middle" class="h">资源与性能证据</text>
+  <text x="1020" y="285" text-anchor="middle" class="t">TPOT · 输出吞吐 · 峰值显存</text>
 
-  <path d="M535 205 C475 225 260 225 157 265" class="line"/>
-  <path d="M575 205 C545 225 480 230 437 265" class="line"/>
-  <path d="M625 205 C655 225 720 230 717 265" class="line"/>
-  <path d="M665 205 C745 225 920 225 1020 265" class="line"/>
+  <path d="M560 168C500 190 320 196 220 226" class="flow"/>
+  <path d="M620 168V226" class="flow"/>
+  <path d="M680 168C740 190 920 196 1020 226" class="flow"/>
 
-  <rect x="370" y="415" width="270" height="70" class="box" fill="#f0fdf4" stroke="#16a34a"/>
-  <text x="430" y="443" class="h">统一比较</text>
-  <text x="416" y="469" class="b">baseline / candidate · evidence level</text>
-  <rect x="700" y="415" width="250" height="70" class="box" fill="#eef2ff" stroke="#4f46e5"/>
-  <text x="765" y="443" class="h">部署判断</text>
-  <text x="752" y="469" class="b">accept · tune · reject</text>
+  <rect x="330" y="370" width="580" height="72" rx="17" class="frame"/>
+  <text x="620" y="399" text-anchor="middle" class="h">方向化比较账本</text>
+  <text x="620" y="424" text-anchor="middle" class="t">质量与 TPOT 看上限 · 吞吐看下限 · 显存看相对降幅 · 缺失值保留为空</text>
+  <path d="M220 314C280 342 430 342 480 370" class="flow"/>
+  <path d="M620 314V370" class="flow"/>
+  <path d="M1020 314C960 342 810 342 760 370" class="flow"/>
 
-  <path d="M157 360 C215 390 380 385 440 415" class="line"/>
-  <path d="M437 360 C450 385 475 395 490 415" class="line"/>
-  <path d="M717 360 C680 390 570 390 540 415" class="line"/>
-  <path d="M1020 360 C925 390 650 390 590 415" class="line"/>
-  <path d="M640 450H700" class="line"/>
+  <rect x="55" y="505" width="245" height="58" rx="14" class="gray"/>
+  <text x="177" y="529" text-anchor="middle" class="h">pending</text>
+  <text x="177" y="550" text-anchor="middle" class="t">真实执行证据待补</text>
+  <rect x="350" y="505" width="245" height="58" rx="14" class="red"/>
+  <text x="472" y="529" text-anchor="middle" class="h">reject</text>
+  <text x="472" y="550" text-anchor="middle" class="t">契约或质量不通过</text>
+  <rect x="645" y="505" width="245" height="58" rx="14" class="orange"/>
+  <text x="767" y="529" text-anchor="middle" class="h">tune</text>
+  <text x="767" y="550" text-anchor="middle" class="t">资源门槛尚未达到</text>
+  <rect x="940" y="505" width="245" height="58" rx="14" class="green"/>
+  <text x="1062" y="529" text-anchor="middle" class="h">accept</text>
+  <text x="1062" y="550" text-anchor="middle" class="t">质量、路径与收益成立</text>
+  <path d="M500 442C430 466 270 474 177 505" class="flow"/>
+  <path d="M575 442C550 466 500 478 472 505" class="flow"/>
+  <path d="M665 442C690 466 740 478 767 505" class="flow"/>
+  <path d="M740 442C810 466 970 474 1062 505" class="flow"/>
 </svg>
