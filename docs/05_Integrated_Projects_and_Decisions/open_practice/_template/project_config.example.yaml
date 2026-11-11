@@ -1,0 +1,19 @@
+schema_version: open-practice-project/v1
+semantic_id: X00-REPLACE-ME
+run_label: replace_with_unique_label
+
+project:
+  question: replace_with_testable_question
+  owner_topic: replace_with_topic
+  environment_profile: replace_with_profile
+
+workload:
+  source: replace_with_versioned_dataset_or_generator
+  seed: 42
+
+gates:
+  quality: replace_with_executable_gate
+  resource_budget: replace_with_budget
+
+outputs:
+  directory: benchmarks/results/open_practice

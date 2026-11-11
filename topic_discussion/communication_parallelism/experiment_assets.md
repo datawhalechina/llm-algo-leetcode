@@ -1,12 +1,12 @@
 # 通信与并行实验资产表
 
-本表登记通信实验使用的 Profile、比较对象、结果路径和证据状态。环境创建命令见[实验 Quickstart](./quickstart.md)，精确依赖和硬件快照见[GPU 环境资产表](../../docs/gpu_environment_assets.md)。
+本表登记通信实验使用的 Profile、比较对象、结果路径和证据状态。环境创建命令见[实验 Quickstart](./quickstart.md)，Profile 与隔离关系见[环境资产索引](../../docs/gpu_environment_assets.md)，实际依赖和硬件写入结果 JSON。
 
 ## 环境角色
 
 | 环境 ID | 直接入口 | 可形成的证据 |
 |:---|:---|:---|
-| `PAR-CPU` | Part 01 的 Q 式机制计算器、Part 02 的 Step 1–4 | 切分、状态、路由、账本、恢复与决策机制 |
+| `PAR-CPU` | Part 02 的 Step 4 与框架一致性核对 | 两进程 Gloo collective、DTensor 布局、上下文切分和可用的 Pipeline API 语义 |
 | `PAR-CUDA-MECHANISM` | 27–29、46–48、PAR-CONTEXT、PAR-REPLICA | 单机多卡 collective、rank 布局、payload、局部计算与暴露通信 |
 | `PAR-TRAIN-CLUSTER-RAY`（规划） | 79、PAR-MODEL-INTERNAL、80 的跨节点项目 | Ray Train 管理 worker、资源预留、失败恢复和任务编排；底层张量通信仍由 PyTorch Distributed / NCCL 完成 |
 | `PAR-SERVING-RAY`（规划） | 81 的集群 Serving 路径 | Ray Serve 管理副本、placement group、跨节点 worker 和弹性伸缩；模型执行与缓存指标仍由 vLLM / SGLang 产生 |

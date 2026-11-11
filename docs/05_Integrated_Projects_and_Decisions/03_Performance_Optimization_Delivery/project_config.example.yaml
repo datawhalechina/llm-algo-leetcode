@@ -1,0 +1,20 @@
+schema_version: performance-optimization-delivery-config/v2
+semantic_id: PERF-INTEGRATED-DELIVERY
+environment_profile: PERF-CUDA-MECHANISM
+
+# 固定门槛；工作负载、测量路径和 RUN_LABEL 由 Notebook 自动生成。
+context_sources: []
+gates:
+  primary_metric: step_time_ms
+  primary_direction: lower
+  minimum_primary_improvement_ratio: 0.05
+  maximum_guardrail_regression_ratio:
+    peak_memory_mb: 0.01
+    loss: 0.02
+  minimum_samples: 3
+  require_composition: true
+  require_reprofile: true
+  require_rollback_ready: true
+
+outputs:
+  directory: benchmarks/results/part05_performance_delivery

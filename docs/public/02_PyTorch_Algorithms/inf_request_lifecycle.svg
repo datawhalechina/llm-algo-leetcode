@@ -1,67 +1,46 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
-  <title id="title">推理请求生命周期与异常终止出口</title>
-  <desc id="desc">请求依次经过到达、排队、输入准备、预填充、解码和完成；取消、超时与失败作为异常终止示例放在对应阶段正下方。</desc>
+  <title id="title">请求状态、输出事件与统一终止出口</title>
+  <desc id="desc">到达事件使请求进入排队，准入、输入就绪和首个词元依次推进状态。后续词元不改变解码状态。所有未终止状态都可以进入取消、超时或失败出口，异常类型不与阶段固定配对。</desc>
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto" markerUnits="userSpaceOnUse">
-      <path d="M0 0L10 5L0 10Z" fill="#475569"/>
-    </marker>
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
     <style>
-      .title{font:700 26px sans-serif;fill:#0f172a}.group{font:700 15px sans-serif;fill:#334155}
-      .node{font:700 16px sans-serif;fill:#0f172a}.sub{font:13px sans-serif;fill:#475569}
-      .event{font:12px monospace;fill:#475569}.line{fill:none;stroke:#475569;stroke-width:2.5;marker-end:url(#arrow)}
-      .dash{fill:none;stroke:#94a3b8;stroke-width:2;stroke-dasharray:7 6;marker-end:url(#arrow)}
+      text{font-family:Arial,'Noto Sans CJK SC',sans-serif;fill:#0f172a}
+      .title{font-size:26px;font-weight:700}.head{font-size:17px;font-weight:700}
+      .sub{font-size:14px;fill:#475569}.event{font-size:14px;fill:#334155}
+      .line{fill:none;stroke:#475569;stroke-width:2.4;marker-end:url(#arrow)}
+      .branch{fill:none;stroke:#b45309;stroke-width:2;stroke-dasharray:6 5}
     </style>
   </defs>
   <rect width="1200" height="520" rx="24" fill="#f8fafc"/>
-  <text x="600" y="42" text-anchor="middle" class="title">事件推进请求状态，终止事件保留发生阶段</text>
-
-  <rect x="28" y="76" width="384" height="224" rx="20" fill="#eff6ff" stroke="#93c5fd"/>
-  <rect x="430" y="76" width="742" height="224" rx="20" fill="#f0fdf4" stroke="#86efac"/>
-  <text x="50" y="105" class="group">请求队列与准入</text>
-  <text x="452" y="105" class="group">输入准备与模型执行</text>
-
+  <text x="600" y="43" text-anchor="middle" class="title">请求在事件发生时切换状态</text>
+  <rect x="82" y="82" width="218" height="210" rx="20" fill="#eff6ff" stroke="#93c5fd"/>
+  <rect x="316" y="82" width="860" height="210" rx="20" fill="#f0fdf4" stroke="#86efac"/>
+  <text x="108" y="111" class="head">排队与准入</text>
+  <text x="340" y="111" class="head">输入准备与模型执行（示例顺序）</text>
   <g fill="#fff" stroke-width="2">
-    <rect x="48" y="146" width="142" height="82" rx="14" stroke="#60a5fa"/>
-    <rect x="244" y="146" width="142" height="82" rx="14" stroke="#60a5fa"/>
-    <rect x="452" y="146" width="154" height="82" rx="14" stroke="#4ade80"/>
-    <rect x="660" y="146" width="154" height="82" rx="14" stroke="#f59e0b"/>
-    <rect x="868" y="146" width="176" height="82" rx="14" stroke="#a855f7"/>
-    <rect x="1072" y="146" width="78" height="82" rx="14" stroke="#64748b"/>
+    <rect x="100" y="170" width="160" height="82" rx="14" stroke="#60a5fa"/>
+    <rect x="330" y="170" width="160" height="82" rx="14" stroke="#4ade80"/>
+    <rect x="560" y="170" width="160" height="82" rx="14" stroke="#f59e0b"/>
+    <rect x="790" y="170" width="160" height="82" rx="14" stroke="#a855f7"/>
+    <rect x="1030" y="170" width="120" height="82" rx="14" stroke="#64748b"/>
   </g>
-
-  <text x="119" y="179" text-anchor="middle" class="node">请求到达</text>
-  <text x="119" y="204" text-anchor="middle" class="sub">记录身份与到达时间</text>
-  <text x="315" y="179" text-anchor="middle" class="node">排队等待</text>
-  <text x="315" y="204" text-anchor="middle" class="sub">等待调度器准入</text>
-  <text x="529" y="179" text-anchor="middle" class="node">输入准备</text>
-  <text x="529" y="204" text-anchor="middle" class="sub">分词与输入搬运</text>
-  <text x="737" y="179" text-anchor="middle" class="node">预填充</text>
-  <text x="737" y="204" text-anchor="middle" class="sub">建立首轮 KV 状态</text>
-  <text x="956" y="179" text-anchor="middle" class="node">解码迭代</text>
-  <text x="956" y="204" text-anchor="middle" class="sub">逐词元推进与流式输出</text>
-  <text x="1111" y="179" text-anchor="middle" class="node">完成</text>
-  <text x="1111" y="204" text-anchor="middle" class="sub">正常终止</text>
-
-  <path d="M190 187H244" class="line"/><text x="217" y="173" text-anchor="middle" class="event">入队</text>
-  <path d="M386 187H452" class="line"/><text x="419" y="173" text-anchor="middle" class="event">准入</text>
-  <path d="M606 187H660" class="line"/><text x="633" y="173" text-anchor="middle" class="event">输入就绪</text>
-  <path d="M814 187H868" class="line"/><text x="841" y="173" text-anchor="middle" class="event">首个词元</text>
-  <path d="M1044 187H1072" class="line"/><text x="1058" y="173" text-anchor="middle" class="event">完成</text>
-  <path d="M918 232V267H994V232" class="line"/>
-  <text x="956" y="286" text-anchor="middle" class="event">后续词元</text>
-
-  <rect x="52" y="346" width="1096" height="142" rx="18" fill="#fff7ed" stroke="#fdba74"/>
-  <text x="78" y="376" class="group">异常终止示例</text>
-  <g fill="#fff" stroke="#fb923c" stroke-width="2">
-    <rect x="220" y="390" width="190" height="54" rx="12"/>
-    <rect x="642" y="390" width="190" height="54" rx="12"/>
-    <rect x="861" y="390" width="190" height="54" rx="12"/>
+  <g text-anchor="middle">
+    <text x="180" y="203" class="head">排队等待</text><text x="180" y="230" class="sub">等待调度器准入</text>
+    <text x="410" y="203" class="head">输入准备</text><text x="410" y="230" class="sub">分词与输入搬运</text>
+    <text x="640" y="203" class="head">预填充</text><text x="640" y="230" class="sub">建立首轮 KV 状态</text>
+    <text x="870" y="203" class="head">解码迭代</text><text x="870" y="230" class="sub">继续生成与输出</text>
+    <text x="1090" y="203" class="head">已完成</text><text x="1090" y="230" class="sub">正常终止</text>
   </g>
-  <text x="315" y="423" text-anchor="middle" class="node">取消</text>
-  <text x="737" y="423" text-anchor="middle" class="node">超时</text>
-  <text x="956" y="423" text-anchor="middle" class="node">失败</text>
-  <path d="M315 228V390" class="dash"/>
-  <path d="M737 228V390" class="dash"/>
-  <path d="M956 228V390" class="dash"/>
-  <text x="600" y="474" text-anchor="middle" class="sub">任一已到达且未终止阶段均可能进入异常终止状态</text>
+  <path d="M24 211H100" class="line"/><text x="54" y="195" text-anchor="middle" class="event">到达</text>
+  <path d="M260 211H330" class="line"/><text x="295" y="196" text-anchor="middle" class="event">准入</text>
+  <path d="M490 211H560" class="line"/><text x="525" y="196" text-anchor="middle" class="event">输入就绪</text>
+  <path d="M720 211H790" class="line"/><text x="755" y="196" text-anchor="middle" class="event">首个词元</text>
+  <path d="M950 211H1030" class="line"/><text x="990" y="196" text-anchor="middle" class="event">完成</text>
+  <path d="M830 170V142H910V170" class="line"/><text x="870" y="132" text-anchor="middle" class="event">后续词元：状态不变</text>
+  <path d="M180 252V340H870V252M410 252V340M640 252V340" class="branch"/>
+  <path d="M600 340V392" class="line"/>
+  <rect x="340" y="392" width="520" height="92" rx="16" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="600" y="424" text-anchor="middle" class="head">取消 ／ 超时 ／ 失败</text>
+  <text x="600" y="453" text-anchor="middle" class="sub">记录终止类型与发生阶段，不再接受后续事件</text>
+  <text x="650" y="371" class="event">任一未终止状态均可异常终止</text>
 </svg>

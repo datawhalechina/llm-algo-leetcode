@@ -1,0 +1,106 @@
+{
+  "schema_version": "profiling-trace-evidence/v1",
+  "semantic_id": "PERF-PROFILING-CLOSURE",
+  "run_mode": "real_gpu",
+  "run_label": "rtx5070ti_profiling_closure_v4",
+  "task": "profiling_driven_optimization",
+  "stage": "real_profiler_trace",
+  "config": {
+    "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "batch_size": 1,
+    "seq_len": 768,
+    "dtype": "float32",
+    "strategies": [
+      "baseline",
+      "checkpoint"
+    ],
+    "warmup": 2,
+    "iters": 5
+  },
+  "sources": {
+    "baseline": "benchmarks/results/73_real_gpu_training_rtx5070ti_training_baseline_v1.json",
+    "strategy": "benchmarks/results/76_real_gpu_memory_rtx5070ti_activation_memory_v1.json"
+  },
+  "trace_root": "benchmarks/results/74_profile/trace_rtx5070ti_profiling_closure_v4",
+  "candidates": [
+    {
+      "name": "baseline",
+      "status": "ok",
+      "step_time_ms": 619.409,
+      "samples_per_s": 1.614,
+      "loss": 11.477463,
+      "peak_memory_mb": 9472.23,
+      "peak_reserved_mb": 10892.0,
+      "allocator_slack_mb": 1419.77,
+      "trace_dir": "benchmarks/results/74_profile/trace_rtx5070ti_profiling_closure_v4/baseline",
+      "top_operators": "-------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  \n                                                   Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg       CPU Mem  Self CPU Mem      CUDA Mem  Self CUDA Mem    # of Calls  \n-------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  \n                                          ProfilerStep*         0.10%       3.008ms        63.77%        1.835s     458.738ms       0.000us         0.00%        6.042s        1.510s           0 B           0 B       9.10 MB      -2.00 KB             4  \n                                        phase.optimizer         0.01%     173.152us         1.62%      46.561ms      11.640ms       0.000us         0.00%        5.534s        1.383s           0 B           0 B           0 B           0 B             4  \n                              Optimizer.step#AdamW.step         0.22%       6.352ms         1.61%      46.388ms      11.597ms       0.000us         0.00%        5.534s        1.383s           0 B         -16 B           0 B      -7.38 GB             4  \n                                    Command Buffer Full        34.55%     994.105ms        34.55%     994.105ms     316.392us        5.121s       286.08%        5.121s       1.630ms           0 B           0 B           0 B           0 B          3142  \n                                       cudaLaunchKernel        24.92%     717.018ms        26.61%     765.599ms      62.857us       0.000us         0.00%        5.117s     420.143us           0 B           0 B           0 B           0 B         12180  \n                                aten::_foreach_addcdiv_         0.02%     520.278us         0.39%      11.221ms       2.805ms      83.111ms         4.64%        1.745s     436.333ms           0 B           0 B           0 B           0 B             4  \n                                aten::_foreach_addcmul_         0.02%     517.083us         0.15%       4.431ms       1.108ms      61.482ms         3.43%        1.260s     314.995ms           0 B           0 B           0 B           0 B             4  \n                                               aten::mm         0.34%       9.651ms         5.97%     171.786ms      98.727us     957.961ms        53.51%     962.584ms     553.209us           0 B           0 B      15.12 GB      15.12 GB          1740  \n                                    aten::_foreach_add_         0.03%     969.829us         0.26%       7.441ms     930.108us      43.140ms         2.41%     949.232ms     118.654ms           0 B           0 B           0 B           0 B             8  \n                                    aten::_foreach_sqrt         0.03%     728.773us         0.15%       4.332ms       1.083ms      41.659ms         2.33%     874.832ms     218.708ms           0 B           0 B       7.38 GB           0 B             4  \n-------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  \nSelf CPU time total: 2.877s\nSelf CUDA time total: 1.790s\n"
+    },
+    {
+      "name": "checkpoint",
+      "status": "ok",
+      "step_time_ms": 743.331,
+      "samples_per_s": 1.345,
+      "loss": 11.477464,
+      "peak_memory_mb": 9465.98,
+      "peak_reserved_mb": 10494.0,
+      "allocator_slack_mb": 1028.02,
+      "trace_dir": "benchmarks/results/74_profile/trace_rtx5070ti_profiling_closure_v4/checkpoint",
+      "top_operators": "-------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  \n                                                   Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg       CPU Mem  Self CPU Mem      CUDA Mem  Self CUDA Mem    # of Calls  \n-------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  \n                                          ProfilerStep*         0.05%       1.812ms        60.80%        2.276s     569.046ms       0.000us         0.00%        6.811s        1.703s     118.88 KB    -356.62 KB       8.53 MB      -2.07 MB             4  \n                                        phase.optimizer         0.00%     182.091us         1.68%      62.827ms      15.707ms       0.000us         0.00%        6.345s        1.586s           0 B           0 B           0 B           0 B             4  \n                              Optimizer.step#AdamW.step         0.24%       8.818ms         1.67%      62.645ms      15.661ms       0.000us         0.00%        6.345s        1.586s           0 B         -16 B           0 B      -7.39 GB             4  \n                                       cudaLaunchKernel        29.09%        1.089s        30.24%        1.132s      70.259us       0.000us         0.00%        5.920s     367.307us           0 B           0 B           0 B           0 B         16116  \n                                    Command Buffer Full        35.18%        1.317s        35.18%        1.317s     347.079us        5.920s       267.65%        5.920s       1.560ms           0 B           0 B           0 B           0 B          3795  \n                                aten::_foreach_addcdiv_         0.01%     545.715us         0.21%       7.901ms       1.975ms      82.777ms         3.74%        1.424s     356.088ms           0 B           0 B           0 B           0 B             4  \n                                   aten::_foreach_lerp_         0.01%     191.556us         0.19%       7.085ms       1.771ms      65.487ms         2.96%        1.287s     321.739ms           0 B           0 B           0 B           0 B             4  \n                                               aten::mm         0.38%      14.387ms         3.34%     124.989ms      58.846us        1.262s        57.06%        1.262s     594.197us           0 B           0 B      18.32 GB      18.32 GB          2124  \n                                aten::_foreach_addcmul_         0.01%     533.290us         0.06%       2.068ms     516.890us      62.763ms         2.84%        1.223s     305.820ms           0 B           0 B           0 B           0 B             4  \nautograd::engine::evaluate_function: CheckpointFunct...         0.01%     380.397us        39.07%        1.463s      15.236ms       0.000us         0.00%        1.089s      11.343ms           0 B           0 B       5.10 GB    -508.75 MB            96  \n-------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  \nSelf CPU time total: 3.744s\nSelf CUDA time total: 2.212s\n"
+    }
+  ],
+  "profile": {
+    "tool": "torch.profiler",
+    "activities": [
+      "CPU",
+      "CUDA"
+    ],
+    "status": "collected",
+    "measurement_role": "bottleneck_attribution_only",
+    "timing_for_adoption": false,
+    "active_steps": 4,
+    "repeat": 1,
+    "trace_files_by_strategy": {
+      "baseline": [
+        "benchmarks/results/74_profile/trace_rtx5070ti_profiling_closure_v4/baseline/5070ti_32241.1791996685510923819.pt.trace.json"
+      ],
+      "checkpoint": [
+        "benchmarks/results/74_profile/trace_rtx5070ti_profiling_closure_v4/checkpoint/5070ti_32241.1791996697051215978.pt.trace.json"
+      ]
+    }
+  },
+  "experiment": {
+    "model": "Qwen/Qwen2.5-0.5B-Instruct",
+    "backend": "torch.profiler",
+    "dtype": "float32",
+    "optimizer": "AdamW",
+    "batch_size": 1,
+    "seq_len": 768,
+    "warmup": 2,
+    "iters": 5,
+    "seed": 42,
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "torch": "2.8.0+cu128",
+    "cuda": "12.8",
+    "workload": null
+  },
+  "standard_metrics": {
+    "baseline": {
+      "step_time_ms": 619.409,
+      "throughput_samples_per_s": 1.614,
+      "peak_memory_mb": 9472.23,
+      "peak_reserved_mb": 10892.0,
+      "loss": 11.477463,
+      "eval_loss": null,
+      "status": "ok"
+    },
+    "checkpoint": {
+      "step_time_ms": 743.331,
+      "throughput_samples_per_s": 1.345,
+      "peak_memory_mb": 9465.98,
+      "peak_reserved_mb": 10494.0,
+      "loss": 11.477464,
+      "eval_loss": null,
+      "status": "ok"
+    }
+  }
+}

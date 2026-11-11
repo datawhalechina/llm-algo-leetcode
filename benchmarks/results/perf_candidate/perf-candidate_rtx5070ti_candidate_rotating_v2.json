@@ -1,0 +1,383 @@
+{
+  "schema_version": "performance-candidate-mechanism/v1",
+  "profile_id": "PERF-CUDA-MECHANISM",
+  "semantic_id": "PERF-CANDIDATE",
+  "run_label": "rtx5070ti_candidate_rotating_v2",
+  "framework": {
+    "python": "3.12.15",
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8"
+  },
+  "hardware": {
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000
+  },
+  "workload": {
+    "id": "perf-decoder-mlp-candidate-matrix",
+    "version": "v2",
+    "hidden_size": 2048,
+    "intermediate_size": 5504,
+    "token_counts": [
+      32,
+      256
+    ],
+    "pipeline_batches": 8,
+    "warmup_steps": 12,
+    "repeat_steps": 24,
+    "minimum_speedup": 1.03,
+    "minimum_cosine": 0.999,
+    "maximum_p95_ratio": 1.05,
+    "seed": 42
+  },
+  "matrix": {
+    "protocol": {
+      "measurement_order": "rotating_order_within_each_round",
+      "paired_rounds": 24
+    },
+    "variants": {
+      "baseline_fp32_serial": {
+        "dtype": "float32",
+        "overlap": false,
+        "loads": [
+          {
+            "token_count": 32,
+            "first_cuda_ms": 4.561920166015625,
+            "first_wall_ms": 4.9210969991690945,
+            "latency": {
+              "median_ms": 5.143440008163452,
+              "p95_ms": 5.474271774291992,
+              "samples_ms": [
+                5.120927810668945,
+                5.1599040031433105,
+                5.1146240234375,
+                5.146048069000244,
+                5.1545281410217285,
+                5.118239879608154,
+                5.135231971740723,
+                5.1902079582214355,
+                5.14083194732666,
+                5.117792129516602,
+                5.117343902587891,
+                5.149184226989746,
+                5.133632183074951,
+                5.108799934387207,
+                5.095712184906006,
+                5.100287914276123,
+                5.099103927612305,
+                5.148543834686279,
+                5.1609601974487305,
+                5.287775993347168,
+                5.77126407623291,
+                5.7487359046936035,
+                5.474271774291992,
+                5.448703765869141
+              ]
+            },
+            "service_times": {
+              "h2d_median_ms": 0.021680000238120556,
+              "compute_median_ms": 0.5532799959182739
+            },
+            "model_bytes": 135266304,
+            "buffer_bytes": 524288,
+            "matrix_peak_allocated_bytes": 378668032,
+            "cosine_vs_fp32": 1.0,
+            "checksum": 84.82379150390625
+          },
+          {
+            "token_count": 256,
+            "first_cuda_ms": 15.83296012878418,
+            "first_wall_ms": 15.934480001305928,
+            "latency": {
+              "median_ms": 17.269855499267578,
+              "p95_ms": 22.536191940307617,
+              "samples_ms": [
+                17.38617515563965,
+                16.178176879882812,
+                16.816160202026367,
+                16.616416931152344,
+                16.071680068969727,
+                16.37436866760254,
+                16.496959686279297,
+                16.0164794921875,
+                16.63212776184082,
+                16.430368423461914,
+                15.83347225189209,
+                17.153535842895508,
+                17.03424072265625,
+                18.150400161743164,
+                21.527551651000977,
+                22.536191940307617,
+                24.179712295532227,
+                25.1279354095459,
+                22.005983352661133,
+                20.143680572509766,
+                19.753887176513672,
+                18.777503967285156,
+                17.739744186401367,
+                17.59539222717285
+              ]
+            },
+            "service_times": {
+              "h2d_median_ms": 0.18147199600934982,
+              "compute_median_ms": 1.7022239565849304
+            },
+            "model_bytes": 135266304,
+            "buffer_bytes": 4194304,
+            "matrix_peak_allocated_bytes": 547489792,
+            "cosine_vs_fp32": 1.0,
+            "checksum": 71.40459442138672
+          }
+        ]
+      },
+      "bf16_serial": {
+        "dtype": "bfloat16",
+        "overlap": false,
+        "loads": [
+          {
+            "token_count": 32,
+            "first_cuda_ms": 2.3552000522613525,
+            "first_wall_ms": 2.5167730018438306,
+            "latency": {
+              "median_ms": 1.940351963043213,
+              "p95_ms": 2.6757121086120605,
+              "samples_ms": [
+                1.9348160028457642,
+                1.953984022140503,
+                1.9037760496139526,
+                1.9159040451049805,
+                1.9432640075683594,
+                1.903167963027954,
+                1.9613759517669678,
+                1.913375973701477,
+                1.941823959350586,
+                1.9486720561981201,
+                1.9290879964828491,
+                1.919327974319458,
+                1.916640043258667,
+                1.9052159786224365,
+                1.9388799667358398,
+                1.928447961807251,
+                1.9798719882965088,
+                1.95523202419281,
+                1.9547200202941895,
+                1.9216639995574951,
+                2.683903932571411,
+                2.6757121086120605,
+                2.683903932571411,
+                2.565119981765747
+              ]
+            },
+            "service_times": {
+              "h2d_median_ms": 0.013151999562978745,
+              "compute_median_ms": 0.1947840005159378
+            },
+            "model_bytes": 67633152,
+            "buffer_bytes": 262144,
+            "matrix_peak_allocated_bytes": 378668032,
+            "cosine_vs_fp32": 0.9999672770500183,
+            "checksum": 85.1512451171875
+          },
+          {
+            "token_count": 256,
+            "first_cuda_ms": 5.298175811767578,
+            "first_wall_ms": 5.374760999984574,
+            "latency": {
+              "median_ms": 6.005759954452515,
+              "p95_ms": 7.437312126159668,
+              "samples_ms": [
+                5.921792030334473,
+                5.989376068115234,
+                5.843967914581299,
+                5.723135948181152,
+                5.693439960479736,
+                5.609119892120361,
+                5.416800022125244,
+                5.338367938995361,
+                5.524320125579834,
+                5.359551906585693,
+                5.295104026794434,
+                6.022143840789795,
+                5.9310078620910645,
+                6.065184116363525,
+                7.667712211608887,
+                7.020544052124023,
+                7.437312126159668,
+                7.633152008056641,
+                7.12883186340332,
+                7.118720054626465,
+                6.521599769592285,
+                6.055871963500977,
+                6.274464130401611,
+                6.115327835083008
+              ]
+            },
+            "service_times": {
+              "h2d_median_ms": 0.07827199995517731,
+              "compute_median_ms": 0.5398559868335724
+            },
+            "model_bytes": 67633152,
+            "buffer_bytes": 2097152,
+            "matrix_peak_allocated_bytes": 547489792,
+            "cosine_vs_fp32": 1.0,
+            "checksum": 71.0771484375
+          }
+        ]
+      },
+      "fp32_overlap": {
+        "dtype": "float32",
+        "overlap": true,
+        "loads": [
+          {
+            "token_count": 32,
+            "first_cuda_ms": 3.8092479705810547,
+            "first_wall_ms": 3.959327001211932,
+            "latency": {
+              "median_ms": 5.0283520221710205,
+              "p95_ms": 5.347328186035156,
+              "samples_ms": [
+                5.047296047210693,
+                5.040128231048584,
+                5.025792121887207,
+                5.0083842277526855,
+                5.004288196563721,
+                5.002240180969238,
+                4.980735778808594,
+                5.035007953643799,
+                5.009407997131348,
+                5.015552043914795,
+                5.002240180969238,
+                5.219488143920898,
+                5.044223785400391,
+                4.992000102996826,
+                4.947968006134033,
+                4.957183837890625,
+                5.030911922454834,
+                4.980735778808594,
+                5.071872234344482,
+                5.0978240966796875,
+                5.4036478996276855,
+                5.347328186035156,
+                5.359615802764893,
+                5.1671037673950195
+              ]
+            },
+            "service_times": {
+              "h2d_median_ms": 0.02127999998629093,
+              "compute_median_ms": 0.574400007724762
+            },
+            "model_bytes": 135266304,
+            "buffer_bytes": 524288,
+            "matrix_peak_allocated_bytes": 378668032,
+            "cosine_vs_fp32": 1.0,
+            "checksum": 84.82379150390625
+          },
+          {
+            "token_count": 256,
+            "first_cuda_ms": 14.765055656433105,
+            "first_wall_ms": 14.841816999251023,
+            "latency": {
+              "median_ms": 16.688143730163574,
+              "p95_ms": 20.24323272705078,
+              "samples_ms": [
+                16.39574432373047,
+                16.00204849243164,
+                16.02560043334961,
+                15.760383605957031,
+                16.087039947509766,
+                15.030303955078125,
+                15.262687683105469,
+                14.855487823486328,
+                15.449088096618652,
+                14.942208290100098,
+                14.755488395690918,
+                16.705568313598633,
+                17.098751068115234,
+                17.523712158203125,
+                19.33830451965332,
+                19.884031295776367,
+                22.73075294494629,
+                23.08710479736328,
+                20.24323272705078,
+                20.02390480041504,
+                19.077119827270508,
+                16.89084815979004,
+                16.670719146728516,
+                17.623071670532227
+              ]
+            },
+            "service_times": {
+              "h2d_median_ms": 0.1533920019865036,
+              "compute_median_ms": 1.6611520051956177
+            },
+            "model_bytes": 135266304,
+            "buffer_bytes": 4194304,
+            "matrix_peak_allocated_bytes": 547489792,
+            "cosine_vs_fp32": 1.0,
+            "checksum": 71.40459442138672
+          }
+        ]
+      }
+    }
+  },
+  "comparisons": [
+    {
+      "candidate": "bf16_serial",
+      "token_count": 32,
+      "speedup": 2.6507768209725073,
+      "p95_ratio": 0.4887795525932068,
+      "model_bytes_reduction": 0.5,
+      "active_bytes_reduction": 0.5,
+      "matrix_peak_allocated_bytes": 378668032,
+      "cosine_vs_fp32": 0.9999672770500183,
+      "direction_passed": true,
+      "quality_passed": true,
+      "tail_passed": true,
+      "decision": "accept_for_load"
+    },
+    {
+      "candidate": "bf16_serial",
+      "token_count": 256,
+      "speedup": 2.875548744911817,
+      "p95_ratio": 0.3300163641603307,
+      "model_bytes_reduction": 0.5,
+      "active_bytes_reduction": 0.5,
+      "matrix_peak_allocated_bytes": 547489792,
+      "cosine_vs_fp32": 1.0,
+      "direction_passed": true,
+      "quality_passed": true,
+      "tail_passed": true,
+      "decision": "accept_for_load"
+    },
+    {
+      "candidate": "fp32_overlap",
+      "token_count": 32,
+      "speedup": 1.0228878140362858,
+      "p95_ratio": 0.9768108721139892,
+      "model_bytes_reduction": 0.0,
+      "active_bytes_reduction": 0.0,
+      "matrix_peak_allocated_bytes": 378668032,
+      "cosine_vs_fp32": 1.0,
+      "direction_passed": true,
+      "quality_passed": true,
+      "tail_passed": true,
+      "decision": "tune"
+    },
+    {
+      "candidate": "fp32_overlap",
+      "token_count": 256,
+      "speedup": 1.0348577875712186,
+      "p95_ratio": 0.8982543626123581,
+      "model_bytes_reduction": 0.0,
+      "active_bytes_reduction": 0.0,
+      "matrix_peak_allocated_bytes": 547489792,
+      "cosine_vs_fp32": 1.0,
+      "direction_passed": true,
+      "quality_passed": true,
+      "tail_passed": true,
+      "decision": "accept_for_load"
+    }
+  ],
+  "failure": null,
+  "evidence_level": "local_mechanism_benchmark",
+  "decision": "review_per_load"
+}

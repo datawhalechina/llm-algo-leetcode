@@ -1,53 +1,20 @@
-<svg width="1280" height="700" viewBox="0 0 1280 700" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="1280" height="700" fill="#F7F9FC"/>
-  <rect x="44" y="34" width="1192" height="632" rx="28" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
-  <text x="82" y="78" fill="#0F172A" font-size="28" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">KV Cache 调度的概念关系</text>
-  <text x="82" y="110" fill="#475569" font-size="17" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">Cache 资源级调度（四层中的第二层）：根据状态变化安排保留与驱逐。</text>
-
-  <rect x="92" y="156" width="260" height="92" rx="18" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
-  <text x="168" y="194" fill="#075985" font-size="22" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">分页管理</text>
-  <text x="128" y="224" fill="#075985" font-size="15" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">提供 block 和容量单位</text>
-
-  <rect x="410" y="156" width="260" height="92" rx="18" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2"/>
-  <text x="486" y="194" fill="#5B21B6" font-size="22" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">前缀复用</text>
-  <text x="446" y="224" fill="#5B21B6" font-size="15" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">提供命中和复用线索</text>
-
-  <rect x="728" y="156" width="260" height="92" rx="18" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
-  <text x="804" y="194" fill="#166534" font-size="22" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">请求推进</text>
-  <text x="764" y="224" fill="#166534" font-size="15" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">提供访问时机和生命周期</text>
-
-  <rect x="410" y="300" width="460" height="102" rx="20" fill="#FFF7ED" stroke="#EA580C" stroke-width="2"/>
-  <text x="572" y="340" fill="#9A3412" font-size="23" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">缓存状态</text>
-  <text x="482" y="372" fill="#9A3412" font-size="16" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">前缀 · block · 容量 · 命中次数 · 最近访问</text>
-
-  <path d="M222 248V270H520V300M540 248V300M858 248V270H760V300" stroke="#64748B" stroke-width="2.5" stroke-dasharray="7 6"/>
-  <path d="M512 288L520 300L528 288M532 288L540 300L548 288M752 288L760 300L768 288" fill="#64748B"/>
-
-  <rect x="92" y="478" width="230" height="92" rx="18" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/>
-  <text x="146" y="516" fill="#1E3A8A" font-size="21" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">访问更新</text>
-  <text x="126" y="546" fill="#1E3A8A" font-size="15" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">命中、复用或新增</text>
-
-  <rect x="366" y="478" width="230" height="92" rx="18" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
-  <text x="416" y="516" fill="#92400E" font-size="21" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">价值评估</text>
-  <text x="394" y="546" fill="#92400E" font-size="15" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">复用奖励、时间与容量成本</text>
-
-  <rect x="640" y="478" width="230" height="92" rx="18" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
-  <text x="682" y="516" fill="#166534" font-size="21" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">优先级队列</text>
-  <text x="676" y="546" fill="#166534" font-size="15" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">低价值记录优先处理</text>
-
-  <rect x="914" y="478" width="230" height="92" rx="18" fill="#FCE7F3" stroke="#DB2777" stroke-width="2"/>
-  <text x="966" y="516" fill="#9D174D" font-size="21" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-weight="700">容量决策</text>
-  <text x="950" y="546" fill="#9D174D" font-size="15" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">保留、驱逐或降级</text>
-
-  <path d="M640 402V438H207V478M322 524H366M596 524H640M870 524H914" stroke="#475569" stroke-width="3"/>
-  <path d="M199 466L207 478L215 466M354 516L366 524L354 532M628 516L640 524L628 532M902 516L914 524L902 532" fill="#475569"/>
-
-  <path d="M1029 570V612H207V570" stroke="#64748B" stroke-width="2.5" stroke-dasharray="8 7"/>
-  <path d="M199 582L207 570L215 582" fill="#64748B"/>
-  <text x="480" y="604" fill="#475569" font-size="16" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">再次访问后更新状态，进入下一轮调度</text>
-
-  <line x1="92" y1="638" x2="166" y2="638" stroke="#475569" stroke-width="3"/>
-  <text x="180" y="644" fill="#475569" font-size="15" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">实线：状态与决策流程</text>
-  <line x1="570" y1="638" x2="644" y2="638" stroke="#64748B" stroke-width="2.5" stroke-dasharray="7 6"/>
-  <text x="658" y="644" fill="#475569" font-size="15" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif">虚线：前置机制输入与反馈</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="570" viewBox="0 0 1200 570" role="img" aria-labelledby="title desc">
+<title id="title">共享引用与物理占用：请求结束不一定立即释放块</title><desc id="desc">两条请求共享同一前缀，引用随请求结束减少；无活动引用的状态可以继续驻留，也可以安全回收。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52657a"/></marker><style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#17324d}.title{font-size:26px;font-weight:700}.label{font-size:18px;font-weight:700}.small{font-size:15px;fill:#365269}.box{stroke-width:2;rx:15}.edge{fill:none;stroke:#52657a;stroke-width:2.4;marker-end:url(#arrow)}</style></defs><rect width="1200" height="570" fill="#f8fafc"/>
+<text x="600" y="44" text-anchor="middle" class="title">共享引用与物理占用：请求结束不一定立即释放块</text>
+<rect x="35" y="130" width="235" height="110" class="box" fill="#eaf3fb" stroke="#5684aa"/><text x="152.5" y="162" text-anchor="middle" class="label">请求 A 取得状态</text><text x="152.5" y="191" text-anchor="middle" class="small">引用 1；占用两块</text>
+<rect x="335" y="130" width="235" height="110" class="box" fill="#f2edfb" stroke="#8066b3"/><text x="452.5" y="162" text-anchor="middle" class="label">请求 B 复用</text><text x="452.5" y="191" text-anchor="middle" class="small">引用 2；仍占两块</text>
+<rect x="635" y="130" width="235" height="110" class="box" fill="#fff6e8" stroke="#c9852f"/><text x="752.5" y="162" text-anchor="middle" class="label">请求 A 结束</text><text x="752.5" y="191" text-anchor="middle" class="small">引用降至 1；不能回收</text>
+<rect x="935" y="130" width="235" height="110" class="box" fill="#fff6e8" stroke="#c9852f"/><text x="1052.5" y="162" text-anchor="middle" class="label">请求 B 结束</text><text x="1052.5" y="191" text-anchor="middle" class="small">引用降至 0</text>
+<rect x="35" y="365" width="280" height="115" class="box" fill="#eaf3fb" stroke="#5684aa"/><text x="175" y="397" text-anchor="middle" class="label">A 独占时可以追加</text><text x="175" y="426" text-anchor="middle" class="small">尾块内写入不新增块</text><text x="175" y="450" text-anchor="middle" class="small">跨边界才申请新块</text>
+<rect x="470" y="365" width="300" height="115" class="box" fill="#f2edfb" stroke="#8066b3"/><text x="620" y="397" text-anchor="middle" class="label">保留为可复用缓存</text><text x="620" y="426" text-anchor="middle" class="small">仍占物理块；可作为驱逐候选</text>
+<rect x="910" y="365" width="260" height="115" class="box" fill="#eaf7ef" stroke="#4e8a68"/><text x="1040" y="397" text-anchor="middle" class="label">安全回收后进入空闲池</text><text x="1040" y="426" text-anchor="middle" class="small">容量重新可分配</text>
+<path d="M270 185H335" class="edge"/>
+<path d="M570 185H635" class="edge"/>
+<path d="M870 185H935" class="edge"/>
+<path d="M150 240V365" class="edge"/>
+<path d="M1052 240V300H620V365" class="edge"/>
+<path d="M1052 300V365" class="edge"/>
+<path d="M770 422H910" class="edge"/>
+<text x="830" y="408" text-anchor="middle" class="small">安全驱逐</text><text x="600" y="535" text-anchor="middle" class="small">多人共享的前缀不能原地追加；真实回收还必须等待在途读写结束</text>
 </svg>

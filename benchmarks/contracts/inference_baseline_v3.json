@@ -1,0 +1,27 @@
+{
+  "schema_version": "inference-baseline-contract/v1",
+  "contract_id": "inference-baseline",
+  "contract_version": "v3",
+  "semantic_id": "INF-FLOAT-BASELINE",
+  "baseline_schema": "inference-baseline/v3",
+  "parameters": {
+    "profile_id": "INF-VLLM-011-CU128",
+    "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "model_source": "huggingface",
+    "dtype": "bfloat16",
+    "max_model_len": 2048,
+    "gpu_memory_utilization": 0.8,
+    "enforce_eager": true,
+    "enable_prefix_caching": false,
+    "scheduling_policy": "fcfs",
+    "workload_path": "benchmarks/workloads/fixed.jsonl",
+    "workload_sha256": "d23292145c8aebd48c0a99a32b9eb8444f6f2474c05b517a4393933c3a56a324",
+    "num_prompts": 30,
+    "max_tokens": 64,
+    "concurrency": 1,
+    "warmup": 5,
+    "repeats": 3,
+    "temperature": 0.0,
+    "timing_protocol": "client-stream-baseline/v3"
+  }
+}

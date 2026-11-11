@@ -1,5 +1,5 @@
 # 25. Quantization W8A16 | W8A16 量化
-**难度：** Medium | **环境：** CPU-first | **标签：** `量化压缩`, `W8A16`, `granularity` | **目标人群：** 需要理解量化表示与反量化执行位置的学习者
+**难度：** Medium | **环境：** [CPU 主线，GPU 可选](#runtime-environment) | **标签：** `量化压缩`, `W8A16`, `granularity` | **目标人群：** 理解线性层与数值精度的读者
 
 > 🚀 **云端运行环境**
 >
@@ -13,39 +13,64 @@
 
 ## 本节导读
 
-量化权重不是把浮点数直接改成整数数据类型：系统还必须保存缩放因子（scale）、必要时保存零点（zero point），并明确这些参数由整个张量、每个输出通道还是每个分组共享。不同粒度会同时改变恢复误差、元数据和计算内核读取方式。
+同一组权重改成 INT8 后，为什么不能直接代入原来的矩阵乘法？量化不是只改变数据类型：系统还必须保存缩放因子（scale）、必要时保存零点（zero point），并明确这些参数由整个张量、每个输出通道还是每个分组共享。不同粒度会同时改变恢复误差、元数据和计算内核读取方式。
 
-本节以 W8A16 线性层为例，先建立对称与非对称量化表示，再比较逐张量（per-tensor）、逐通道（per-channel）和逐组（per-group）粒度，最后判断低比特存储怎样转化为计算收益。W8A16 描述权重和激活的表示，不自动等于纯整数执行。
+本节以 W8A16 线性层为例，先建立对称与非对称量化表示，再比较逐张量（per-tensor）、逐通道（per-channel）和逐组（per-group）粒度，最后判断低比特存储怎样转化为计算收益。其中 W8 表示权重以 8 位保存，A16 表示激活采用 16 位格式；这个名称描述表示约定，不自动等于纯整数执行。
 
 **关键词：** `W8A16`, `scale`, `zero point`, `granularity`, `dequantization`
 
 ---
 
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习与框架核对：** 使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4](#mechanism-practice) 后继续完成 [框架一致性核对](#framework-check)。
+- **GPU 实测：** 使用 `Q-CUDA-MECHANISM`；实验环境、运行配置与固定工作负载见 [Step 5](#gpu-experiment)。
+
+---
 ## 前置阅读
 
-**导语：** 先理解浮点数据类型与整数映射，再观察权重表示、粒度和执行路径如何改变成本。
+先理解浮点数据类型与整数映射，再观察权重表示、粒度和执行路径如何改变成本。
 
 - [Part 01 · 01 Data Types and Precision | 数据类型与精度](../01_Hardware_Math_and_Systems/01_Data_Types_and_Precision.md)
 - [Part 01 · 21 Quantization Theory | 量化理论与 INT4/INT8](../01_Hardware_Math_and_Systems/21_Quantization_Theory_and_INT4_INT8.md)
 
 ---
 
-### Step 1：整数码、缩放因子与零点如何表示权重
+## Step 1：整数码、缩放因子与零点如何表示权重
 
-量化状态至少包含整数码和缩放因子；非对称量化还需要零点表示实数零落在哪个整数码点。对称量化令零点为 0，适合分布大致围绕零的权重；非对称量化利用完整整数区间，更适合明显偏移的分布，但会增加参数与核函数处理条件。
+量化状态至少包含整数码和缩放因子；非对称量化还需要零点表示实数零落在哪个整数码点。令 $x_i$ 为浮点值，$q_i$ 为整数码，$s>0$ 为缩放因子，$z$ 为零点，$[q_{\min},q_{\max}]$ 为整数码范围。对称量化常取 $z=0$：
 
-| 表示 | 映射方式 | 优点 | 代价与适用条件 |
-|---|---|---|---|
-| 对称量化 | `q = round(x / scale)`，`zero_point = 0` | 公式和计算内核更简单 | 偏移分布可能浪费码点 |
-| 非对称量化 | `q = round(x / scale + zero_point)` | 更充分覆盖 `[min, max]` | 需要保存并处理零点 |
-| 反量化 | `x_hat = (q - zero_point) × scale` | 恢复近似浮点权重 | 舍入与截断误差不可逆 |
-| W8A16 | 权重 8-bit，激活 16-bit | 降低权重存储与读取成本 | 不保证矩阵乘采用纯整数计算内核 |
+$$
+s=\frac{\max_i|x_i|}{q_{\max}},\qquad
+q_i=\operatorname{clip}\left(\operatorname{round}\frac{x_i}{s},q_{\min},q_{\max}\right),\qquad
+\hat{x}_i=sq_i.
+$$
+
+非对称量化使用包含实数零的范围：$x_{\min}=\min(0,\min_i x_i)$、$x_{\max}=\max(0,\max_i x_i)$，再计算 $s$ 与 $z$。若只使用全正或全负数据自身的端点，零点裁剪后可能使端部数值饱和；全零输入则用正下限保护缩放因子。恢复近似值 $\hat{x}_i$ 的关系为：
+
+$$
+s=\frac{x_{\max}-x_{\min}}{q_{\max}-q_{\min}},\quad
+z=\operatorname{clip}\left(\operatorname{round}\left(q_{\min}-\frac{x_{\min}}s\right),q_{\min},q_{\max}\right),
+$$
+
+$$
+q_i=\operatorname{clip}\left(\operatorname{round}\frac{x_i}{s}+z,q_{\min},q_{\max}\right),\qquad
+\hat{x}_i=s(q_i-z).
+$$
+
+| 表示 | 适用条件 | 优点 | 代价 |
+|:---|:---|:---|:---|
+| 对称量化 | 分布大致围绕零 | 映射和计算内核更简单 | 偏移分布可能浪费码点 |
+| 非对称量化 | 分布存在明显偏移 | 更充分覆盖观测范围 | 需要保存并处理零点 |
+| W8A16 | 权重 8-bit、激活 16-bit | 降低权重存储与读取成本 | 不保证矩阵乘采用纯整数内核 |
 
 ![W8A16 量化流程图](../public/02_PyTorch_Algorithms/25_quantization_pipeline_cn.svg)
 
-### Step 2：量化粒度如何改变误差与元数据
+## Step 2：量化粒度如何改变误差与元数据
 
-粒度决定多少个权重共享一组量化参数。共享范围越大，缩放因子数量越少，但异常值更容易压缩其他数值的有效码点；范围越小，局部误差通常更低，却会增加缩放因子、零点和核函数索引成本。比较粒度时，量化值、缩放因子、零点和尾组都必须进入字节账本，并同时观察容量代价与误差传播。
+粒度决定多少个权重共享一组量化参数。共享范围越大，缩放因子数量越少，但异常值更容易压缩其他数值的有效码点；范围越小，局部误差通常更低，却会增加缩放因子、零点和核函数索引成本。比较粒度时，量化值、缩放因子、零点和尾组都必须进入字节账本。本题区分理论最少元数据与实际保存的张量：对称表示数学上不需要零点，但教学状态仍存有零点张量，实际字节不能漏算；恢复出的临时浮点权重也不属于持久状态。
 
 | 粒度 | 参数共享范围 | 缩放因子数量 | 典型取舍 |
 |---|---|---:|---|
@@ -53,7 +78,7 @@
 | 逐通道 | 每个输出通道 | `out_features` | Linear 常用，误差与实现复杂度较平衡 |
 | 逐组 | 每个输出通道内固定长度 group | `out_features × ceil(in_features / group_size)` | 局部误差更低，元数据与计算内核约束更多 |
 
-### Step 3：反量化发生在哪里，为什么会影响真实性能
+## Step 3：反量化发生在哪里，为什么会影响真实性能
 
 仅权重量化（weight-only quantization）描述的是“权重以低比特保存”，不是“整个线性层使用整数算术”。反量化可以发生在算子调用前，也可以与矩阵乘融合；不同位置决定中间权重是否落地，以及低比特表示能否转化为真实的访存和延迟收益。
 
@@ -65,20 +90,22 @@
 
 ![W8A16 反量化与计算路径](../public/02_PyTorch_Algorithms/25_dequantization_paths_cn.svg)
 
-### Step 4：实现量化参数、粒度状态与 W8A16 前向
+<a id="mechanism-practice"></a>
+
+## Step 4：实现量化参数、粒度状态与 W8A16 前向
 
 题目区用二维权重和一个教学 Linear 复现 W8A16 的表示链。骨架已经提供粒度循环、状态保存、通用反量化和粒度对照汇总；你需要分别补全对称与非对称量化参数、尾组数量，以及显式反量化前向。完成后，`compare_granularity_tradeoffs` 会把三个粒度转换成同口径的误差与字节账本。
 
-| 任务与目的 | 已知条件 | 完成标准 | 测试验证 |
+| TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 |:---|:---|:---|:---|
-| TODO 1：计算对称量化参数 | `qmin=-127`、`qmax=127`、浮点 Tensor | absmax 映射到正缩放因子，`zero_point=0` | 正负范围、全零 Tensor |
-| TODO 2：计算非对称量化参数 | `qmin=-128`、`qmax=127`、浮点 Tensor | `[min,max]` 覆盖整数区间，零点被裁剪 | 偏移范围、常量 Tensor |
-| TODO 3：计算逐组状态数量 | `in_features` 与正 `effective_group_size` | 向上取整，尾组不丢失 | 三种粒度、不可整除尾组 |
-| TODO 4：执行 W8A16 教学前向 | 已保存 INT8 权重与逐通道量化参数 | 按输入数据类型恢复权重，输出与显式参考一致 | FP32/FP16 数据类型、形状、数值结果 |
-| 已提供：汇总粒度取舍 | 同一二维权重、输入和分组大小 | 输出 qparam、总状态字节与权重/输出误差 | 字段完整性、容量顺序与误差趋势 |
+| TODO 1：计算对称量化参数<br>`calculate_qparams` | 用绝对最大值生成对称缩放因子和零点 | 缩放因子有限且为正，`zero_point=0` | 正负范围与全零张量 |
+| TODO 2：计算非对称量化参数<br>`calculate_qparams` | 用最小值和最大值生成非对称缩放因子和零点 | 先把实数零纳入范围，再计算正缩放与合法零点 | 全正／全负、常量与混合范围 |
+| TODO 3：划分量化尾组<br>`quantize_weight` | 计算最后一维的分组数 | 向上取整，不丢弃不足一组的尾部 | 三种粒度的状态形状与尾组恢复 |
+| TODO 4：恢复权重并执行前向<br>`W8A16Linear.forward` | 恢复与输入同数据类型的权重并执行线性前向 | 不修改持久化 INT8 状态，偏置与输入类型一致 | FP32/FP16 形状、数据类型与显式参考结果 |
 
 
 ```python
+from math import isfinite
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -92,6 +119,8 @@ def calculate_qparams(
     """返回缩放因子、零点、qmin 和 qmax。"""
     if values.numel() == 0 or not values.is_floating_point():
         raise ValueError("values must be a non-empty floating tensor")
+    if not isfinite(eps) or eps <= 0 or not bool(torch.isfinite(values).all()):
+        raise ValueError('eps 必须为有限正数，量化输入必须有限')
     qmin, qmax = (-127, 127) if symmetric else (-128, 127)
     if symmetric:
         # TODO 1（对称量化参数）：用 absmax 覆盖正负范围，并保持零点为零。
@@ -102,14 +131,15 @@ def calculate_qparams(
         raise NotImplementedError("TODO 1: calculate symmetric qparams")
     # TODO 2（非对称量化参数）：用 min/max 覆盖整数区间，并把零点裁剪到合法码值。
     # 注意：常量 Tensor 不能产生零缩放因子。
-    # minimum = ???     # 浮点权重最小值。
-    # maximum = ???     # 浮点权重最大值。
+    # minimum = ???     # 把 0 纳入范围后的最小值。
+    # maximum = ???     # 把 0 纳入范围后的最大值。
     # scale = ???       # 覆盖完整整数区间的正缩放因子。
     # zero_point = ???  # 裁剪到 [qmin, qmax] 的整数零点。
     raise NotImplementedError("TODO 2: calculate asymmetric qparams")
 
 
 def _quantize_chunk(chunk: torch.Tensor, *, symmetric: bool):
+    """按局部范围生成整数码和恢复所需参数。"""
     scale, zero_point, qmin, qmax = calculate_qparams(chunk, symmetric=symmetric)
     quantized = torch.clamp(torch.round(chunk / scale + zero_point), qmin, qmax).to(torch.int8)
     return quantized, scale, zero_point
@@ -120,7 +150,7 @@ def quantize_weight(
     group_size: int | None = None, symmetric: bool = True,
 ) -> dict[str, torch.Tensor | str | int]:
     """沿最后一维建立逐张量、逐通道或逐组权重量化状态。"""
-    if weight.ndim != 2 or not weight.is_floating_point():
+    if weight.ndim != 2 or weight.numel() == 0 or not weight.is_floating_point() or not bool(torch.isfinite(weight).all()):
         raise ValueError("weight must be a 2D floating tensor")
     if granularity not in {"per_tensor", "per_channel", "per_group"}:
         raise ValueError("unsupported granularity")
@@ -137,7 +167,7 @@ def quantize_weight(
         }
 
     effective_group_size = in_features if granularity == "per_channel" else group_size
-    if effective_group_size is None or effective_group_size <= 0:
+    if type(effective_group_size) is not int or effective_group_size <= 0:
         raise ValueError("per_group quantization requires a positive group_size")
     # TODO 3（粒度划分）：计算最后一维需要的 group 数；不足一组的尾部也要占一个 group。
     # n_groups = ???  # 沿 in_features 向上取整后的分组数。
@@ -205,6 +235,7 @@ def compare_granularity_tradeoffs(
         qparam_bytes = scale.numel() * scale.element_size()
         if not symmetric:
             qparam_bytes += zero_point.numel() * zero_point.element_size()
+        stored_qparam_bytes = scale.numel() * scale.element_size() + zero_point.numel() * zero_point.element_size()
         delta = candidate_output.float() - reference_output.float()
         rows.append({
             "granularity": granularity,
@@ -212,7 +243,9 @@ def compare_granularity_tradeoffs(
             "qparam_count": int(qparam_count),
             "qparam_bytes": int(qparam_bytes),
             "quantized_weight_bytes": int(quantized.numel() * quantized.element_size()),
-            "total_state_bytes": int(quantized.numel() * quantized.element_size() + qparam_bytes),
+            "minimum_state_bytes": int(quantized.numel() * quantized.element_size() + qparam_bytes),
+            "stored_qparam_bytes": int(stored_qparam_bytes),
+            "total_state_bytes": int(quantized.numel() * quantized.element_size() + stored_qparam_bytes),
             "weight_mse": float((restored.float() - weight.float()).square().mean()),
             "output_mse": float(delta.square().mean()),
             "output_cosine": float(F.cosine_similarity(
@@ -245,6 +278,8 @@ class W8A16Linear(nn.Module):
             self.zero_point.copy_(state["zero_point"])
             if linear_layer.bias is not None:
                 self.bias.copy_(linear_layer.bias)
+            else:
+                self.bias.zero_()
         return self
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -260,7 +295,7 @@ class W8A16Linear(nn.Module):
 
 ```
 
-### 测试
+## 测试
 
 测试分别验证量化参数、粒度状态、尾组以及 W8A16 前向契约；每个机制 TODO 都有独立测试入口。
 
@@ -337,6 +372,46 @@ def test_fp16_activation_contract():
     assert output.dtype == torch.float16 and output.shape == (2, 4)
 
 
+def test_asymmetric_range_and_constant_reconstruction():
+    """范围包含零，单侧分布和常量不能在零点裁剪后饱和。"""
+    for values in (torch.tensor([[1.0, 3.0]]), torch.tensor([[-3.0, -1.0]]),
+                   torch.ones(1, 4), -torch.ones(1, 4), torch.zeros(1, 4)):
+        state = quantize_weight(values, granularity='per_tensor', symmetric=False)
+        restored = dequantize_weight(state, torch.float32)
+        assert torch.allclose(restored, values, atol=float(state['scale'].item()) / 2 + 1e-6, rtol=0)
+
+
+def test_actual_state_bytes_and_bias_reset():
+    """实际状态包含已分配零点，重复转换不能残留上一层偏置。"""
+    weight = torch.arange(8, dtype=torch.float32).reshape(2, 4)
+    rows = compare_granularity_tradeoffs(weight, torch.ones(1, 4), group_sizes=(2,))
+    for row in rows:
+        assert row['total_state_bytes'] == row['quantized_weight_bytes'] + row['stored_qparam_bytes']
+        assert row['stored_qparam_bytes'] == 2 * row['qparam_bytes']
+        assert row['total_state_bytes'] > row['minimum_state_bytes']
+    source = nn.Linear(4, 2)
+    with torch.no_grad():
+        source.bias.fill_(3)
+    layer = W8A16Linear(4, 2).from_float(source)
+    layer.from_float(nn.Linear(4, 2, bias=False))
+    assert torch.count_nonzero(layer.bias) == 0
+
+
+def test_invalid_quantization_inputs():
+    """非有限输入、无效缩放下限和非整数分组必须明确失败。"""
+    calls = [lambda: calculate_qparams(torch.tensor([float('nan')]), symmetric=False),
+             lambda: calculate_qparams(torch.ones(2), symmetric=True, eps=0),
+             lambda: quantize_weight(torch.empty(0, 3)),
+             lambda: quantize_weight(torch.ones(2, 3), granularity='per_group', group_size=1.5)]
+    for call in calls:
+        try:
+            call()
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('应拒绝非法量化输入')
+
+
 for test in (
     test_symmetric_qparams_contract,
     test_asymmetric_qparams_contract,
@@ -345,6 +420,9 @@ for test in (
     test_granularity_tradeoff_matrix,
     test_w8a16_linear_contract,
     test_fp16_activation_contract,
+    test_asymmetric_range_and_constant_reconstruction,
+    test_actual_state_bytes_and_bias_reset,
+    test_invalid_quantization_inputs,
 ):
     test()
 print("✅ W8A16 机制测试通过：qparams、粒度、尾组与反量化前向均已验证。")
@@ -371,6 +449,8 @@ def calculate_qparams(
     """返回缩放因子、零点、qmin 和 qmax。"""
     if values.numel() == 0 or not values.is_floating_point():
         raise ValueError("values must be a non-empty floating tensor")
+    if not isfinite(eps) or eps <= 0 or not bool(torch.isfinite(values).all()):
+        raise ValueError('eps 必须为有限正数，量化输入必须有限')
     qmin, qmax = (-127, 127) if symmetric else (-128, 127)
     # TODO 1（对称量化参数）：用 absmax 覆盖正负范围，并保持零点为零。
     # 注意：全零 Tensor 也必须得到正缩放因子，且统计过程不保留计算图。
@@ -384,18 +464,20 @@ def calculate_qparams(
         return scale, zero_point, qmin, qmax
     # TODO 2（非对称量化参数）：用 min/max 覆盖整数区间，并把零点裁剪到合法码值。
     # 注意：常量 Tensor 不能产生零缩放因子。
-    # minimum = ???     # 浮点权重最小值。
-    # maximum = ???     # 浮点权重最大值。
+    # minimum = ???     # 把 0 纳入范围后的最小值。
+    # maximum = ???     # 把 0 纳入范围后的最大值。
     # scale = ???       # 覆盖完整整数区间的正缩放因子。
     # zero_point = ???  # 裁剪到 [qmin, qmax] 的整数零点。
-    minimum = values.detach().float().min()
-    maximum = values.detach().float().max()
+    zero = values.new_zeros((), dtype=torch.float32)
+    minimum = torch.minimum(values.detach().float().min(), zero)
+    maximum = torch.maximum(values.detach().float().max(), zero)
     scale = ((maximum - minimum) / (qmax - qmin)).clamp_min(eps)
     zero_point = torch.clamp(torch.round(qmin - minimum / scale), qmin, qmax)
     return scale, zero_point, qmin, qmax
 
 
 def _quantize_chunk(chunk: torch.Tensor, *, symmetric: bool):
+    """按局部范围生成整数码和恢复所需参数。"""
     scale, zero_point, qmin, qmax = calculate_qparams(chunk, symmetric=symmetric)
     quantized = torch.clamp(torch.round(chunk / scale + zero_point), qmin, qmax).to(torch.int8)
     return quantized, scale, zero_point
@@ -406,7 +488,7 @@ def quantize_weight(
     group_size: int | None = None, symmetric: bool = True,
 ) -> dict[str, torch.Tensor | str | int]:
     """沿最后一维建立逐张量、逐通道或逐组权重量化状态。"""
-    if weight.ndim != 2 or not weight.is_floating_point():
+    if weight.ndim != 2 or weight.numel() == 0 or not weight.is_floating_point() or not bool(torch.isfinite(weight).all()):
         raise ValueError("weight must be a 2D floating tensor")
     if granularity not in {"per_tensor", "per_channel", "per_group"}:
         raise ValueError("unsupported granularity")
@@ -423,7 +505,7 @@ def quantize_weight(
         }
 
     effective_group_size = in_features if granularity == "per_channel" else group_size
-    if effective_group_size is None or effective_group_size <= 0:
+    if type(effective_group_size) is not int or effective_group_size <= 0:
         raise ValueError("per_group quantization requires a positive group_size")
     # TODO 3（粒度划分）：计算最后一维需要的 group 数；不足一组的尾部也要占一个 group。
     # n_groups = ???  # 沿 in_features 向上取整后的分组数。
@@ -491,6 +573,7 @@ def compare_granularity_tradeoffs(
         qparam_bytes = scale.numel() * scale.element_size()
         if not symmetric:
             qparam_bytes += zero_point.numel() * zero_point.element_size()
+        stored_qparam_bytes = scale.numel() * scale.element_size() + zero_point.numel() * zero_point.element_size()
         delta = candidate_output.float() - reference_output.float()
         rows.append({
             "granularity": granularity,
@@ -498,7 +581,9 @@ def compare_granularity_tradeoffs(
             "qparam_count": int(qparam_count),
             "qparam_bytes": int(qparam_bytes),
             "quantized_weight_bytes": int(quantized.numel() * quantized.element_size()),
-            "total_state_bytes": int(quantized.numel() * quantized.element_size() + qparam_bytes),
+            "minimum_state_bytes": int(quantized.numel() * quantized.element_size() + qparam_bytes),
+            "stored_qparam_bytes": int(stored_qparam_bytes),
+            "total_state_bytes": int(quantized.numel() * quantized.element_size() + stored_qparam_bytes),
             "weight_mse": float((restored.float() - weight.float()).square().mean()),
             "output_mse": float(delta.square().mean()),
             "output_cosine": float(F.cosine_similarity(
@@ -531,6 +616,8 @@ class W8A16Linear(nn.Module):
             self.zero_point.copy_(state["zero_point"])
             if linear_layer.bias is not None:
                 self.bias.copy_(linear_layer.bias)
+            else:
+                self.bias.zero_()
         return self
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -550,17 +637,109 @@ class W8A16Linear(nn.Module):
 
 ### 解析
 
-**TODO 1：对称量化参数。** 对称量化使用绝对最大值覆盖正负范围并固定 `zero_point=0`；全零范围使用 `eps` 保持缩放因子为正。
+#### TODO 1：计算对称量化参数
 
-**TODO 2：非对称量化参数。** 非对称量化用 `[min,max]` 映射完整整数区间，并把零点裁剪到 `[qmin,qmax]`；常量范围同样需要正缩放因子。
+- 对称表示用绝对最大值覆盖正负范围，并固定 `zero_point=0`；全零范围仍必须产生正缩放因子。
+- 答案用 `eps` 限制范围下界；正负输入和全零输入测试分别证明映射关系和零范围边界成立。
 
-**TODO 3：粒度划分。** 逐通道等价于每个输出通道一个 group；逐组对最后一维向上取整，确保尾组不丢失。缩放因子和零点的数量必须进入状态账本。
+#### TODO 2：计算非对称量化参数
 
-**TODO 4：反量化前向。** 教学实现先按输入数据类型恢复浮点权重再调用 `F.linear`，因此只验证 W8A16 表示与误差，不构成 INT8 计算内核证据。成熟执行后端可以融合读取、反量化和矩阵乘。
+- 先扩展观测范围以包含实数零，再计算缩放与合法零点；全正、全负和常量输入也应保留端点。
+- 答案先计算正缩放因子，再舍入并裁剪零点；单侧分布和正负常量的恢复误差测试阻止端点饱和。
 
-**粒度对照。** `compare_granularity_tradeoffs` 固定权重和输入，分别报告最小必要量化参数、总状态字节、权重 MSE 与输出误差。更细粒度通常降低局部误差，但增加的量化参数是否值得，仍需结合权重形状和后端支持判断。
+#### TODO 3：划分量化尾组
 
-### Step 5：可选 GPU 实验——用 torchao 比较 FP16 与 W8A16
+- 分组数必须对最后一维向上取整，否则不足一组的权重会丢失量化状态。
+- 答案用向上取整生成分组数；三种粒度和不可整除尾组测试核对状态形状、恢复形状，以及理论最少字节与实际张量字节的差异。
+
+#### TODO 4：恢复权重并执行前向
+
+- 教学前向必须使恢复权重与偏置匹配输入数据类型，同时保持持久化 INT8 状态不变。
+- 答案显式反量化后执行线性运算；FP32、FP16 与显式参考测试证明形状、类型和数值结果一致。
+
+<a id="framework-check"></a>
+
+## 框架一致性核对（可选）
+
+使用 PyTorch 的 `MinMaxObserver` 与逐张量伪量化算子核对参数和恢复结果。两侧使用相同码值范围与缩放下限，分别覆盖对称混合分布，以及非对称全正、全负、常量与全零输入；这里核对数值映射，不测低比特计算内核。
+
+| 核对对象 | Step 4 教学实现 | 成熟框架 CPU 路径 | 共同输入与通过条件 |
+| --- | --- | --- | --- |
+| 缩放与零点 | `calculate_qparams` | `MinMaxObserver` | 相同码值范围、缩放下限与输入；参数一致 |
+| 量化后恢复 | `quantize_weight` 与 `dequantize_weight` | PyTorch 逐张量伪量化 | 相同输入；逐元素误差在容差内 |
+| 持久状态 | 整数码、缩放与零点张量 | 对应 Observer 参数 | 码值范围合法，状态形状与粒度一致 |
+
+
+```python
+from torch.ao.quantization.observer import MinMaxObserver
+
+
+def check_w8a16_framework_conformance():
+    """核对本节对称量化映射与 PyTorch Observer、伪量化语义。"""
+    values = torch.tensor([-3.0, -0.7, 0.0, 0.9, 2.4], dtype=torch.float32)
+    local_scale, local_zero_point, qmin, qmax = calculate_qparams(values, symmetric=True)
+
+    observer = MinMaxObserver(
+        dtype=torch.qint8,
+        qscheme=torch.per_tensor_symmetric,
+        quant_min=-127,
+        quant_max=127,
+    )
+    observer(values)
+    framework_scale, framework_zero_point = observer.calculate_qparams()
+
+    state = quantize_weight(values.reshape(1, -1), granularity="per_tensor", symmetric=True)
+    local_restored = dequantize_weight(state, torch.float32).reshape(-1)
+    framework_restored = torch.fake_quantize_per_tensor_affine(
+        values, float(framework_scale.item()), int(framework_zero_point.item()), -127, 127
+    )
+    checks = {
+        "scale_match": bool(torch.isclose(local_scale, framework_scale[0], atol=1e-7, rtol=1e-6)),
+        "zero_point_match": int(local_zero_point.item()) == int(framework_zero_point.item()) == 0,
+        "reconstruction_match": bool(torch.allclose(local_restored, framework_restored, atol=1e-7, rtol=1e-6)),
+        "int8_state": state["quantized"].dtype == torch.int8,
+        "code_range_valid": int(state["quantized"].min()) >= qmin and int(state["quantized"].max()) <= qmax,
+        "qparam_shape_valid": tuple(state["scale"].shape) == (1, 1),
+    }
+    for name, sample in {
+        'positive': torch.tensor([1.0, 3.0]),
+        'negative': torch.tensor([-3.0, -1.0]),
+        'positive_constant': torch.ones(4),
+        'negative_constant': -torch.ones(4),
+        'zero': torch.zeros(4),
+    }.items():
+        eps = 1e-8
+        local_s, local_z, low, high = calculate_qparams(sample, symmetric=False, eps=eps)
+        affine = MinMaxObserver(dtype=torch.qint8, qscheme=torch.per_tensor_affine,
+                                quant_min=low, quant_max=high, eps=eps)
+        affine(sample)
+        framework_s, framework_z = affine.calculate_qparams()
+        local_state = quantize_weight(sample.reshape(1, -1), granularity='per_tensor', symmetric=False)
+        actual = dequantize_weight(local_state, torch.float32).reshape(-1)
+        expected = torch.fake_quantize_per_tensor_affine(sample, float(framework_s.item()),
+                                                        int(framework_z.item()), low, high)
+        checks[f'{name}_scale'] = bool(torch.isclose(local_s, framework_s[0], atol=1e-7, rtol=1e-6))
+        checks[f'{name}_zero_point'] = int(local_z.item()) == int(framework_z.item())
+        checks[f'{name}_restored'] = bool(torch.allclose(actual, expected, atol=1e-7, rtol=1e-6))
+    failed = [name for name, passed in checks.items() if not passed]
+    if failed:
+        raise AssertionError(f"框架一致性核对失败：{failed}")
+    return {
+        "status": "passed",
+        "versions": {"torch": torch.__version__},
+        "checks": checks,
+        "scale": float(local_scale.item()),
+        "max_abs_error": float((local_restored - values).abs().max()),
+    }
+
+
+framework_check = check_w8a16_framework_conformance()
+framework_check
+```
+
+<a id="gpu-experiment"></a>
+
+## Step 5：可选 GPU 实验——用 torchao 比较 FP16 与 W8A16
 
 CPU 题目确认整数码、缩放因子、量化粒度和反量化误差；GPU 实验把同一模型层转换为 torchao INT8 仅权重表示，分别测量物理状态、输出偏差和不同 Token 负载下的执行时间。这样可以区分“权重更小”“结果仍可信”和“当前负载更快”三个结论。
 
@@ -568,7 +747,7 @@ CPU 题目确认整数码、缩放因子、量化粒度和反量化误差；GPU 
 |---|---|---|
 | W8A16 的表示与执行收益是否一致 | 量化参数、粒度状态和显式反量化 | 真实量化状态是否缩小、输出是否保持一致、哪些层与 Token 负载获得执行收益 |
 
-#### 5.1 环境、真实层角色与 Token 负载矩阵
+### 5.1 环境、真实层角色与 Token 负载矩阵
 
 本实验使用 `Q-CUDA-MECHANISM`。首次运行请先完成[量化机制 GPU 环境 Quickstart](../topic_discussion/quantization_compression/quickstart.md#q-cuda-mechanism-quickstart)，已有环境只需激活、执行 Profile 预检并从同一解释器启动 JupyterLab。预检确认存在 ROS、系统 Python 或用户目录污染时，再查看[环境隔离故障处理](../gpu_environment_assets.md#environment-isolation-troubleshooting)；正常环境不需要修改 `PYTHONPATH`。
 
@@ -584,7 +763,7 @@ CPU 题目确认整数码、缩放因子、量化粒度和反量化误差；GPU 
 
 
 ```python
-# 5.1 只定义学习者入口、模型来源与固定实验协议；安装和缓存规则由环境 Profile 维护。
+# 此单元设置运行模式、结果标签、模型与固定工作负载；运行前需通过 Q-CUDA-MECHANISM 预检。
 # 学习者入口：普通复测通常只修改这两项。
 RUN_MODE = "dry_run"  # 默认值 dry_run：只登记计划；改为 real_gpu 才执行真实 GPU 矩阵。
 RUN_LABEL = "default"  # 默认值 default；正式复测改为唯一标签，避免覆盖同名结果。
@@ -609,11 +788,11 @@ STABLE_P95_RATIO = 0.95  # 候选 P95 至少降低 5%，排除只改善中位数
 SEED = 42  # 固定随机激活；改变后必须另存运行记录。
 
 # 派生输出：路径只由 RUN_LABEL 决定，不需要单独修改。
-OUTPUT_RELATIVE_PATH = f"02_PyTorch_Algorithms/benchmarks/results/25_torchao_w8a16_layer_microbenchmark_{RUN_LABEL}.json"  # 仓库相对结果路径；由 5.2 锚定到仓库根目录。
+OUTPUT_RELATIVE_PATH = f"benchmarks/results/25_torchao_w8a16_layer_microbenchmark_{RUN_LABEL}.json"  # 仓库相对结果路径；由 5.2 锚定到仓库根目录。
 
 ```
 
-#### 5.2 执行层角色 × Token 负载配对实验
+### 5.2 执行层角色 × Token 负载配对实验
 
 执行单元从同一模型检查点复制 FP16 层和 INT8 仅权重候选，对每个层角色与 Token 负载复用相同输入。物理状态通过 TorchAO 张量子类的内部张量统计，执行时间通过 CUDA Event 分块测量，最终将容量、误差、延迟和失败状态写入同一份 JSON。
 
@@ -892,9 +1071,9 @@ print(json.dumps(result, ensure_ascii=False, indent=2))
 
 ```
 
-#### 5.3 读取配对实验结果
+### 5.3 读取配对实验结果
 
-读取单元汇总每个层角色与 Token 负载的物理状态缩减、输出余弦相似度和候选/基线延迟比。原始延迟比小于 1 只表示本次统计领先；只有中位延迟比不高于 0.90 且 P95 延迟比不高于 0.95，才记为加速候选。候选仍需跨运行复测后才能形成稳定性能结论；旧版结果必须按新版协议重跑。
+读取单元汇总每个层角色与 Token 负载的物理状态缩减、输出余弦相似度和候选/基线延迟比。原始延迟比小于 1 只表示本次统计领先；只有中位延迟比不高于 0.90 且 P95 延迟比不高于 0.95，才记为加速候选。稳定性能结论至少需要两个独立运行标签的同口径结果；工作负载版本、模型提交或测量方法不同的记录不得合并比较。
 
 
 ```python
@@ -937,7 +1116,7 @@ else:
 
 ```
 
-#### 5.4 解释容量、误差与执行代价
+### 5.4 解释容量、误差与执行代价
 
 先检查 `failure` 与 `evidence_level`，再按“物理状态 → 数值质量 → 执行时间”的顺序判断。容量通过展开量化张量内部的整数数据与缩放因子统计；速度只在当前层形状、Token 负载和 GPU 上成立。仅权重量化可以节省容量，但不保证每个负载都更快。
 
@@ -956,6 +1135,8 @@ else:
 | 证据与决策 | `summary`、`failure`、`evidence_level`、`decision` | 结论是容量可用、存在加速候选，还是需要调整配置 |
 
 ## 相关阅读
+
+理解表示与实际存储后，继续比较校准方法怎样改变候选，并确认目标后端支持的执行路径。
 
 - [Transformers：torchao quantization](https://huggingface.co/docs/transformers/main/quantization/torchao)
 - [torchao：Quantization API](https://docs.pytorch.org/ao/stable/api_reference/api_ref_quantization.html)

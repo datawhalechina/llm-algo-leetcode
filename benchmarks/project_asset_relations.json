@@ -1,0 +1,230 @@
+{
+  "schema_version": "project-asset-relations/v1",
+  "relations": [
+    {
+      "asset_id": "architecture.block_stability",
+      "producer": "ARCH-BLOCK-STABILITY",
+      "consumers": ["ARCH-MODEL-AUDIT"],
+      "relation": "consumes",
+      "contract": "architecture-evaluation/v1",
+      "required_keys": ["semantic_id", "source", "workload", "quality", "cost", "decision"],
+      "required": false
+    },
+    {
+      "asset_id": "architecture.attention_access",
+      "producer": "ARCH-ATTENTION-ACCESS",
+      "consumers": ["ARCH-MODEL-AUDIT"],
+      "relation": "consumes",
+      "contract": "architecture-evaluation/v1",
+      "required_keys": ["semantic_id", "source", "workload", "quality", "cost", "decision"],
+      "required": false
+    },
+    {
+      "asset_id": "architecture.mla_state_cost",
+      "producer": "ARCH-MLA-KV",
+      "consumers": ["ARCH-MODEL-AUDIT", "ARCH-LONG-SEQUENCE-MEMORY"],
+      "relation": "extends",
+      "contract": "architecture-evaluation/v1",
+      "required_keys": ["semantic_id", "source", "workload", "quality", "cost", "decision"],
+      "required": false
+    },
+    {
+      "asset_id": "architecture.long_sequence_memory",
+      "producer": "ARCH-LONG-SEQUENCE-MEMORY",
+      "consumers": ["ARCH-MODEL-AUDIT"],
+      "relation": "consumes",
+      "contract": "architecture-evaluation/v1",
+      "required_keys": ["semantic_id", "source", "workload", "quality", "cost", "decision"],
+      "required": false
+    },
+    {
+      "asset_id": "training.sft_data_quality",
+      "producer": "PT-SFT-DATA-QUALITY",
+      "consumers": ["PT-LORA-VARIANTS", "PT-QLORA-SELECTION"],
+      "relation": "validates",
+      "contract": "fine-tuning-project/v1",
+      "required_keys": ["schema_version", "quality", "decision"],
+      "required": true
+    },
+    {
+      "asset_id": "training.lora_selection",
+      "producer": "PT-LORA-VARIANTS",
+      "consumers": ["PT-SFT-DELIVERY"],
+      "relation": "consumes",
+      "contract": "fine-tuning-project/v1",
+      "required_keys": ["schema_version", "candidates", "quality", "resources", "decision"],
+      "required": false
+    },
+    {
+      "asset_id": "training.qlora_selection",
+      "producer": "PT-QLORA-SELECTION",
+      "consumers": ["PT-SFT-DELIVERY"],
+      "relation": "consumes",
+      "contract": "fine-tuning-project/v1",
+      "required_keys": ["schema_version", "candidates", "quality", "resources", "decision"],
+      "required": false
+    },
+    {
+      "asset_id": "training.sft_checkpoint",
+      "producer": "PT-SFT-DELIVERY",
+      "consumers": ["PT-DPO-OFFLINE", "PT-GRPO-GROUPWISE"],
+      "relation": "consumes",
+      "contract": "fine-tuning-project/v1",
+      "required_keys": ["schema_version", "artifacts", "quality", "decision"],
+      "required": false
+    },
+    {
+      "asset_id": "alignment.preference_evidence",
+      "producer": "PT-DPO-OFFLINE",
+      "consumers": ["PT-POST-TRAINING-LIFECYCLE"],
+      "relation": "compares_against",
+      "contract": "model-evaluation/v1",
+      "required_keys": ["schema_version", "quality", "decision"],
+      "required": false
+    },
+    {
+      "asset_id": "alignment.group_reward_evidence",
+      "producer": "PT-GRPO-GROUPWISE",
+      "consumers": ["PT-POST-TRAINING-LIFECYCLE"],
+      "relation": "compares_against",
+      "contract": "model-evaluation/v1",
+      "required_keys": ["schema_version", "quality", "decision"],
+      "required": false
+    },
+    {
+      "asset_id": "inference.floating_baseline",
+      "producer": "INF-FLOAT-BASELINE",
+      "consumers": ["QUANT-INFERENCE-DEPLOY", "INF-SINGLE-GPU-DEPLOY"],
+      "relation": "compares_against",
+      "contract": "quantization-evidence/v1",
+      "required_keys": ["schema_version", "semantic_id", "stage", "artifact.model_revision", "workload", "metrics", "decision"],
+      "required": false
+    },
+    {
+      "asset_id": "inference.scheduler_evidence",
+      "producer": "INF-SERVING-SCHEDULER",
+      "consumers": ["INF-SINGLE-GPU-DEPLOY", "PAR-DISTRIBUTED-INFERENCE"],
+      "relation": "extends",
+      "contract": "inference-benchmark/v1",
+      "required_keys": ["schema_version", "workload", "metrics", "decision"],
+      "required": false
+    },
+    {
+      "asset_id": "inference.speculative_evidence",
+      "producer": "INF-SPECULATIVE-BENCH",
+      "consumers": ["INF-SINGLE-GPU-DEPLOY"],
+      "relation": "consumes",
+      "contract": "inference-benchmark/v1",
+      "required_keys": ["schema_version", "workload", "metrics", "decision"],
+      "required": false
+    },
+    {
+      "asset_id": "inference.prefix_cache_evidence",
+      "producer": "INF-PREFIX-CACHE",
+      "consumers": ["INF-SINGLE-GPU-DEPLOY"],
+      "relation": "consumes",
+      "contract": "inference-benchmark/v1",
+      "required_keys": ["schema_version", "workload", "metrics", "decision"],
+      "required": false
+    },
+    {
+      "asset_id": "performance.training_baseline",
+      "producer": "PERF-TRAINING-BASELINE",
+      "consumers": ["PERF-MEMORY-STRATEGY", "PERF-PROFILING-CLOSURE"],
+      "relation": "compares_against",
+      "contract": "training-performance-project/v1",
+      "required_keys": ["schema_version", "semantic_id", "config", "baseline", "tuned", "summary", "evidence_level"],
+      "required": false
+    },
+    {
+      "asset_id": "performance.memory_strategy",
+      "producer": "PERF-MEMORY-STRATEGY",
+      "consumers": ["PERF-PROFILING-CLOSURE"],
+      "relation": "compares_against",
+      "contract": "training-performance-project/v1",
+      "required_keys": ["schema_version", "semantic_id", "config", "candidates", "summary", "evidence_level"],
+      "required": false
+    },
+    {
+      "asset_id": "performance.budget_decision",
+      "producer": "PERF-MEMORY-STRATEGY",
+      "consumers": ["PERF-PROFILING-CLOSURE"],
+      "relation": "consumes",
+      "contract": "memory-strategy-decision/v1",
+      "required_keys": ["schema_version", "semantic_id", "decision", "budget_sensitivity"],
+      "required": false
+    },
+    {
+      "asset_id": "performance.optimization_handoff",
+      "producer": "PERF-PROFILING-CLOSURE",
+      "consumers": ["PERF-INTEGRATED-DELIVERY"],
+      "relation": "qualifies",
+      "contract": "performance-optimization-handoff/v1",
+      "required_keys": ["schema_version", "semantic_id", "run_label", "workload", "baseline", "qualified_candidates", "rollback", "decision"],
+      "required": true
+    },
+    {
+      "asset_id": "distributed.training_state",
+      "producer": "PAR-TRAINING-STATE",
+      "consumers": ["PAR-DISTRIBUTED-INFERENCE"],
+      "relation": "compares_against",
+      "contract": "distributed-benchmark/v1",
+      "required_keys": ["schema_version", "semantic_id", "workload", "hardware", "metrics", "decision"],
+      "required": false
+    },
+    {
+      "asset_id": "distributed.model_internal",
+      "producer": "PAR-MODEL-INTERNAL",
+      "consumers": ["PAR-DISTRIBUTED-INFERENCE"],
+      "relation": "consumes",
+      "contract": "distributed-benchmark/v1",
+      "required_keys": ["schema_version", "semantic_id", "workload", "hardware", "metrics", "decision"],
+      "required": false
+    },
+    {
+      "asset_id": "distributed.moe_dispatch",
+      "producer": "PAR-MOE-EXPERT",
+      "consumers": ["PAR-DISTRIBUTED-INFERENCE"],
+      "relation": "consumes",
+      "contract": "distributed-benchmark/v1",
+      "required_keys": ["schema_version", "semantic_id", "workload", "hardware", "metrics", "decision"],
+      "required": false
+    },
+    {
+      "asset_id": "quantization.artifact_gate",
+      "producer": "QUANT-ARTIFACT-GATE",
+      "consumers": ["QUANT-INFERENCE-DEPLOY"],
+      "relation": "validates",
+      "contract": "quantization-evidence/v1",
+      "required_keys": ["schema_version", "semantic_id", "stage", "artifact.artifact_id", "artifact.model_revision", "status", "decision"],
+      "required": true
+    },
+    {
+      "asset_id": "quantization.deployment_candidate",
+      "producer": "QUANT-INFERENCE-DEPLOY",
+      "consumers": ["QUANT-SERVING-PROFILE"],
+      "relation": "consumes",
+      "contract": "quantization-evidence/v1",
+      "required_keys": ["schema_version", "semantic_id", "stage", "artifact.artifact_id", "artifact.model_revision", "workload", "metrics", "decision"],
+      "required": true
+    },
+    {
+      "asset_id": "quantization.serving_profile",
+      "producer": "QUANT-SERVING-PROFILE",
+      "consumers": ["INF-SINGLE-GPU-DEPLOY"],
+      "relation": "consumes",
+      "contract": "quantization-evidence/v1",
+      "required_keys": ["schema_version", "semantic_id", "stage", "workload", "metrics", "decision"],
+      "required": false
+    },
+    {
+      "asset_id": "deployment.single_gpu_handoff",
+      "producer": "INF-SINGLE-GPU-DEPLOY",
+      "consumers": ["INF-INTEGRATED-DELIVERY"],
+      "relation": "qualifies",
+      "contract": "inference-deployment-handoff/v1",
+      "required_keys": ["schema_version", "semantic_id", "run_label", "workload", "candidate_records", "decision", "rollback"],
+      "required": true
+    }
+  ]
+}

@@ -1,0 +1,244 @@
+{
+  "schema_version": "quantization-mechanism-gpu/v5",
+  "chapter": "QUANT-QAT",
+  "run_mode": "real_gpu",
+  "run_label": "default2",
+  "environment_profile": "Q-CUDA-MECHANISM",
+  "framework": {
+    "python": "3.12.14",
+    "torch": "2.11.0+cu128",
+    "transformers": "5.17.0",
+    "datasets": "5.0.1",
+    "torchao": "0.18.0",
+    "mslk": "1.1.1+cu128"
+  },
+  "hardware": {
+    "cuda_available": true,
+    "cuda": "12.8",
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000,
+    "compute_capability": [
+      12,
+      0
+    ]
+  },
+  "dataset": {
+    "source": "huggingface",
+    "dataset_id": "Salesforce/wikitext",
+    "config": "wikitext-2-raw-v1",
+    "revision": "f776294184f13b8ff2337b3841cf9269a6216d1e",
+    "train_split": "train",
+    "validation_split": "validation",
+    "test_split": "test",
+    "train_samples": 128,
+    "validation_samples": 64,
+    "test_samples": 64,
+    "selection_seed": 42,
+    "max_length": 128,
+    "train_ids_hash": "e80d2ff5f76942b2b39d0440c6e8c958413b7703ba5cf11b6b927c056c52dcf5",
+    "validation_ids_hash": "70d78bb1102023439a95093bf4921135670a8f3d5f1222969fe7858fae08ea30",
+    "test_ids_hash": "fe26ebefbaa7b745de59ceacbf1dbc8dd98a0df28f59453550b33ccc56260b94",
+    "filter": "non_empty_text"
+  },
+  "workload": {
+    "id": "quant-qat-closed-loop",
+    "version": "v3",
+    "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "model_revision": "main",
+    "resolved_model_commit": "7ae557604adf67be50417f59c2c2f167def9a775",
+    "revision_resolution_source": "huggingface_hub_api",
+    "target_block_index": 12,
+    "group_size": 64,
+    "reference_weight_dtype": "int4",
+    "reference_packing_format": "unpacked_to_int8",
+    "qat_step_budgets": [
+      5,
+      20,
+      50
+    ],
+    "learning_rate": 1e-05
+  },
+  "baseline": {
+    "name": "bf16",
+    "validation": {
+      "mean_nll": 3.568933528482658,
+      "perplexity": 35.47873590706388,
+      "evaluated_tokens": 4660,
+      "elapsed_s": 0.49298282399831805,
+      "peak_allocated_bytes": 2226677760
+    },
+    "test": {
+      "mean_nll": 3.379009834740739,
+      "perplexity": 29.34170358929645,
+      "evaluated_tokens": 4090,
+      "elapsed_s": 0.5640863500011619,
+      "peak_allocated_bytes": 2225727488
+    }
+  },
+  "ptq": {
+    "name": "int4_ptq",
+    "validation": {
+      "mean_nll": 3.573926713794086,
+      "perplexity": 35.656330823245106,
+      "evaluated_tokens": 4660,
+      "elapsed_s": 0.5173262810130836,
+      "peak_allocated_bytes": 2242290176
+    },
+    "test": {
+      "mean_nll": 3.387613413094891,
+      "perplexity": 29.595236315603927,
+      "evaluated_tokens": 4090,
+      "elapsed_s": 0.5945135319925612,
+      "peak_allocated_bytes": 2241339904
+    },
+    "path_evidence": {
+      "target_block_type": "Qwen2DecoderLayer",
+      "linear_types": [
+        "Linear",
+        "Qwen2Attention",
+        "Qwen2DecoderLayer",
+        "Qwen2MLP",
+        "Qwen2RMSNorm",
+        "SiLUActivation"
+      ],
+      "reference_weight_type": "IntxUnpackedToInt8Tensor",
+      "kernel_evidence": false
+    }
+  },
+  "qat_candidates": [
+    {
+      "name": "qat_5_steps",
+      "optimizer_steps": 5,
+      "first_train_loss": 8.8079252243042,
+      "last_train_loss": 2.5380196571350098,
+      "training_seconds": 0.14654848800273612,
+      "median_step_ms": 29.309697600547224,
+      "training_peak_allocated_bytes": 3406385152,
+      "validation": {
+        "mean_nll": 3.569863956936439,
+        "perplexity": 35.51176169413947,
+        "evaluated_tokens": 4660,
+        "elapsed_s": 0.5152040210086852,
+        "peak_allocated_bytes": 3365080064
+      },
+      "path_evidence": {
+        "prepare_and_convert": true,
+        "target_block_type": "Qwen2DecoderLayer",
+        "linear_types": [
+          "Linear",
+          "Qwen2Attention",
+          "Qwen2DecoderLayer",
+          "Qwen2MLP",
+          "Qwen2RMSNorm",
+          "SiLUActivation"
+        ],
+        "reference_weight_type": "IntxUnpackedToInt8Tensor",
+        "kernel_evidence": false
+      }
+    },
+    {
+      "name": "qat_20_steps",
+      "optimizer_steps": 20,
+      "first_train_loss": 8.8079252243042,
+      "last_train_loss": 3.1028544902801514,
+      "training_seconds": 0.36969169399526436,
+      "median_step_ms": 18.484584699763218,
+      "training_peak_allocated_bytes": 3487210496,
+      "validation": {
+        "mean_nll": 3.568311121381915,
+        "perplexity": 35.456660560548805,
+        "evaluated_tokens": 4660,
+        "elapsed_s": 0.597185538004851,
+        "peak_allocated_bytes": 3392380928
+      },
+      "path_evidence": {
+        "prepare_and_convert": true,
+        "target_block_type": "Qwen2DecoderLayer",
+        "linear_types": [
+          "Linear",
+          "Qwen2Attention",
+          "Qwen2DecoderLayer",
+          "Qwen2MLP",
+          "Qwen2RMSNorm",
+          "SiLUActivation"
+        ],
+        "reference_weight_type": "IntxUnpackedToInt8Tensor",
+        "kernel_evidence": false
+      }
+    },
+    {
+      "name": "qat_50_steps",
+      "optimizer_steps": 50,
+      "first_train_loss": 8.8079252243042,
+      "last_train_loss": 7.846916198730469,
+      "training_seconds": 0.8726708379981574,
+      "median_step_ms": 17.453416759963147,
+      "training_peak_allocated_bytes": 3487784960,
+      "validation": {
+        "mean_nll": 3.5667077061444394,
+        "perplexity": 35.39985436486633,
+        "evaluated_tokens": 4660,
+        "elapsed_s": 0.5556839260098059,
+        "peak_allocated_bytes": 3353317376
+      },
+      "path_evidence": {
+        "prepare_and_convert": true,
+        "target_block_type": "Qwen2DecoderLayer",
+        "linear_types": [
+          "Linear",
+          "Qwen2Attention",
+          "Qwen2DecoderLayer",
+          "Qwen2MLP",
+          "Qwen2RMSNorm",
+          "SiLUActivation"
+        ],
+        "reference_weight_type": "IntxUnpackedToInt8Tensor",
+        "kernel_evidence": false
+      },
+      "test": {
+        "mean_nll": 3.378714388186308,
+        "perplexity": 29.333035964542837,
+        "evaluated_tokens": 4090,
+        "elapsed_s": 0.5426120750053087,
+        "peak_allocated_bytes": 4319494144
+      },
+      "recovery_ratio_vs_ptq": 1.034339962079681,
+      "test_nll_ratio_vs_bf16": 0.9999125641626154
+    }
+  ],
+  "selected_candidate": "qat_50_steps",
+  "artifact_manifest": {
+    "path": "benchmarks/artifacts/quant_qat/default2/block_12_50_steps.pt",
+    "bytes": 15624533,
+    "base_model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "base_model_commit": "7ae557604adf67be50417f59c2c2f167def9a775",
+    "target_block_index": 12,
+    "optimizer_steps": 50,
+    "group_size": 64,
+    "reference_packing_format": "unpacked_to_int8",
+    "storage_compression_evidence": false,
+    "kernel_evidence": false,
+    "scope": "tutorial_reference_block_state_not_deployable_model_artifact"
+  },
+  "backend_preflight": {
+    "status": "ok",
+    "representation": "unpacked_to_int8",
+    "weight_type": "IntxUnpackedToInt8Tensor",
+    "output_shape": [
+      4,
+      256
+    ],
+    "kernel_evidence": false
+  },
+  "failure": null,
+  "evidence_level": "matched_reference_ptq_qat_quality_matrix",
+  "decision": "accept_qat_candidate",
+  "selected_test": {
+    "mean_nll": 3.378714388186308,
+    "perplexity": 29.333035964542837,
+    "evaluated_tokens": 4090,
+    "elapsed_s": 0.5426120750053087,
+    "peak_allocated_bytes": 4319494144
+  },
+  "recovery_ratio_vs_ptq": 1.034339962079681
+}

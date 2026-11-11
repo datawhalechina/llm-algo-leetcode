@@ -7,14 +7,45 @@ __pycache__/
 .DS_Store
 **/.DS_Store
 
+# Downloaded model caches. Recreate these from the model IDs in experiment configs.
+/model_cache/
+**/model_cache/
+
+# Generated model weights and checkpoints. Keep compact result JSON and metadata.
+/benchmarks/artifacts/**/*.safetensors
+/benchmarks/artifacts/**/*.pt
+/benchmarks/artifacts/**/*.pth
+/benchmarks/artifacts/**/*.bin
+/benchmarks/artifacts/**/tokenizer.json
+
+# Generated SmoothQuant candidate models are local-only; result manifests stay tracked.
+/benchmarks/artifacts/53_smoothquant/
+
+# Non-selected GPTQ comparison candidates are local model outputs.
+/benchmarks/artifacts/40_gptq_awq/default11/awq/
+/benchmarks/artifacts/40_gptq_awq/default11/rtn/
+/benchmarks/results/**/*.safetensors
+/benchmarks/results/**/*.pt
+/benchmarks/results/**/*.pth
+/benchmarks/results/**/*.bin
+/benchmarks/results/**/tokenizer.json
+
+# Locally generated training artifacts; keep experiment summaries and manifests.
+/benchmarks/results/**/adapter/
+/benchmarks/results/**/matched_adapter/
+/benchmarks/results/**/adapter_*/
+/benchmarks/results/**/adapters_*/
+/benchmarks/results/**/checkpoint_*/
+/benchmarks/results/**/*_adapter/
+
+# Temporary backend server logs; benchmark result records remain visible.
+/benchmarks/results/**/*.server.log
+
+# Large raw profiler traces; retain derived summary and decision records.
+/benchmarks/results/**/*.pt.trace.json
+
+# Local-only notes, archives, and recovery materials.
+/.local/
+
 # Local model artifacts produced by the distilled-student delivery project.
 benchmarks/results/88_distillation_delivery/student_*/
-
-# Local scratch area, process notes, and one-off utilities.
-scripts/
-ROADMAP.md
-format_skill.py
-plan_ci_learning.md
-log/
-trace.json
-image.png

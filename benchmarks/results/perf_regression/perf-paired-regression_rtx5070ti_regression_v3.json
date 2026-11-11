@@ -1,0 +1,568 @@
+{
+  "schema_version": "performance-regression-mechanism/v4",
+  "profile_id": "PERF-CUDA-MECHANISM",
+  "semantic_id": "PERF-REGRESSION",
+  "run_label": "rtx5070ti_regression_v3",
+  "framework": {
+    "python": "3.12.15",
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8"
+  },
+  "hardware": {
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000
+  },
+  "workload": {
+    "id": "perf-paired-regression",
+    "version": "v4",
+    "token_counts": [
+      1,
+      32,
+      256
+    ],
+    "hidden_size": 2048,
+    "warmup_steps": 10,
+    "paired_trials": 30,
+    "minimum_pairs": 20,
+    "bootstrap_samples": 2000,
+    "seed": 42
+  },
+  "metrics": {
+    "load_matrix": [
+      {
+        "token_count": 1,
+        "first_execution": {
+          "eager_ms": 7.265647996973712,
+          "compile_ms": 404.43631900052424,
+          "compile_to_eager_ratio": 55.664177396012036
+        },
+        "quality": {
+          "outputs_allclose": true
+        },
+        "summary": {
+          "pair_count": 30,
+          "median_ratio": 1.0891858098880371,
+          "slower_fraction": 1.0,
+          "ci_low": 1.0817045932858318,
+          "ci_high": 1.0999144064454527
+        },
+        "paired_runs": [
+          {
+            "trial_id": 0,
+            "baseline_ms": 0.1204800009727478,
+            "candidate_ms": 0.13884800672531128
+          },
+          {
+            "trial_id": 1,
+            "baseline_ms": 0.1265600025653839,
+            "candidate_ms": 0.13808000087738037
+          },
+          {
+            "trial_id": 2,
+            "baseline_ms": 0.12521600723266602,
+            "candidate_ms": 0.13097600638866425
+          },
+          {
+            "trial_id": 3,
+            "baseline_ms": 0.11798399686813354,
+            "candidate_ms": 0.13036799430847168
+          },
+          {
+            "trial_id": 4,
+            "baseline_ms": 0.1191679984331131,
+            "candidate_ms": 0.13020800054073334
+          },
+          {
+            "trial_id": 5,
+            "baseline_ms": 0.11952000111341476,
+            "candidate_ms": 0.13651199638843536
+          },
+          {
+            "trial_id": 6,
+            "baseline_ms": 0.11852800101041794,
+            "candidate_ms": 0.12918399274349213
+          },
+          {
+            "trial_id": 7,
+            "baseline_ms": 0.11990399658679962,
+            "candidate_ms": 0.12835200130939484
+          },
+          {
+            "trial_id": 8,
+            "baseline_ms": 0.11657600104808807,
+            "candidate_ms": 0.1279360055923462
+          },
+          {
+            "trial_id": 9,
+            "baseline_ms": 0.11801599711179733,
+            "candidate_ms": 0.12675200402736664
+          },
+          {
+            "trial_id": 10,
+            "baseline_ms": 0.11587200313806534,
+            "candidate_ms": 0.13619199395179749
+          },
+          {
+            "trial_id": 11,
+            "baseline_ms": 0.11971200257539749,
+            "candidate_ms": 0.1292160004377365
+          },
+          {
+            "trial_id": 12,
+            "baseline_ms": 0.11564800143241882,
+            "candidate_ms": 0.1279039978981018
+          },
+          {
+            "trial_id": 13,
+            "baseline_ms": 0.11667200177907944,
+            "candidate_ms": 0.1318719983100891
+          },
+          {
+            "trial_id": 14,
+            "baseline_ms": 0.11785600334405899,
+            "candidate_ms": 0.13180799782276154
+          },
+          {
+            "trial_id": 15,
+            "baseline_ms": 0.12188799679279327,
+            "candidate_ms": 0.13580800592899323
+          },
+          {
+            "trial_id": 16,
+            "baseline_ms": 0.11868800222873688,
+            "candidate_ms": 0.12809599936008453
+          },
+          {
+            "trial_id": 17,
+            "baseline_ms": 0.11894399672746658,
+            "candidate_ms": 0.12854400277137756
+          },
+          {
+            "trial_id": 18,
+            "baseline_ms": 0.11955200135707855,
+            "candidate_ms": 0.12998400628566742
+          },
+          {
+            "trial_id": 19,
+            "baseline_ms": 0.11788800358772278,
+            "candidate_ms": 0.12751999497413635
+          },
+          {
+            "trial_id": 20,
+            "baseline_ms": 0.11548800021409988,
+            "candidate_ms": 0.12716799974441528
+          },
+          {
+            "trial_id": 21,
+            "baseline_ms": 0.11884800344705582,
+            "candidate_ms": 0.12668800354003906
+          },
+          {
+            "trial_id": 22,
+            "baseline_ms": 0.11868800222873688,
+            "candidate_ms": 0.12825599312782288
+          },
+          {
+            "trial_id": 23,
+            "baseline_ms": 0.11689600348472595,
+            "candidate_ms": 0.12886400520801544
+          },
+          {
+            "trial_id": 24,
+            "baseline_ms": 0.11897599697113037,
+            "candidate_ms": 0.1292479932308197
+          },
+          {
+            "trial_id": 25,
+            "baseline_ms": 0.11878400295972824,
+            "candidate_ms": 0.12857599556446075
+          },
+          {
+            "trial_id": 26,
+            "baseline_ms": 0.11884800344705582,
+            "candidate_ms": 0.1281919926404953
+          },
+          {
+            "trial_id": 27,
+            "baseline_ms": 0.11846400052309036,
+            "candidate_ms": 0.13276800513267517
+          },
+          {
+            "trial_id": 28,
+            "baseline_ms": 0.11683200299739838,
+            "candidate_ms": 0.12716799974441528
+          },
+          {
+            "trial_id": 29,
+            "baseline_ms": 0.11843200027942657,
+            "candidate_ms": 0.12700800597667694
+          }
+        ],
+        "failure": null,
+        "decision": {
+          "decision": "reject",
+          "reason": "latency_regression",
+          "regression_boundary": 1.05
+        }
+      },
+      {
+        "token_count": 32,
+        "first_execution": {
+          "eager_ms": 0.4621150001185015,
+          "compile_ms": 29.000528000324266,
+          "compile_to_eager_ratio": 62.75608450902389
+        },
+        "quality": {
+          "outputs_allclose": true
+        },
+        "summary": {
+          "pair_count": 30,
+          "median_ratio": 1.0549536720007846,
+          "slower_fraction": 0.9,
+          "ci_low": 1.0497506275896675,
+          "ci_high": 1.0625799475698918
+        },
+        "paired_runs": [
+          {
+            "trial_id": 0,
+            "baseline_ms": 0.226623997092247,
+            "candidate_ms": 0.24172799289226532
+          },
+          {
+            "trial_id": 1,
+            "baseline_ms": 0.2280000001192093,
+            "candidate_ms": 0.2399040013551712
+          },
+          {
+            "trial_id": 2,
+            "baseline_ms": 0.22668799757957458,
+            "candidate_ms": 0.23865599930286407
+          },
+          {
+            "trial_id": 3,
+            "baseline_ms": 0.26947200298309326,
+            "candidate_ms": 0.23632000386714935
+          },
+          {
+            "trial_id": 4,
+            "baseline_ms": 0.23929600417613983,
+            "candidate_ms": 0.2863039970397949
+          },
+          {
+            "trial_id": 5,
+            "baseline_ms": 0.2264000028371811,
+            "candidate_ms": 0.2479040026664734
+          },
+          {
+            "trial_id": 6,
+            "baseline_ms": 0.22668799757957458,
+            "candidate_ms": 0.2425599992275238
+          },
+          {
+            "trial_id": 7,
+            "baseline_ms": 0.2250239998102188,
+            "candidate_ms": 0.23785600066184998
+          },
+          {
+            "trial_id": 8,
+            "baseline_ms": 0.225055992603302,
+            "candidate_ms": 0.24211199581623077
+          },
+          {
+            "trial_id": 9,
+            "baseline_ms": 0.22723199427127838,
+            "candidate_ms": 0.23347200453281403
+          },
+          {
+            "trial_id": 10,
+            "baseline_ms": 0.2272000014781952,
+            "candidate_ms": 0.23708799481391907
+          },
+          {
+            "trial_id": 11,
+            "baseline_ms": 0.22809599339962006,
+            "candidate_ms": 0.23974399268627167
+          },
+          {
+            "trial_id": 12,
+            "baseline_ms": 0.22499200701713562,
+            "candidate_ms": 0.23907199501991272
+          },
+          {
+            "trial_id": 13,
+            "baseline_ms": 0.2637760043144226,
+            "candidate_ms": 0.23503999412059784
+          },
+          {
+            "trial_id": 14,
+            "baseline_ms": 0.22912000119686127,
+            "candidate_ms": 0.2712000012397766
+          },
+          {
+            "trial_id": 15,
+            "baseline_ms": 0.2284799963235855,
+            "candidate_ms": 0.2460159957408905
+          },
+          {
+            "trial_id": 16,
+            "baseline_ms": 0.2287680059671402,
+            "candidate_ms": 0.2425280064344406
+          },
+          {
+            "trial_id": 17,
+            "baseline_ms": 0.22761599719524384,
+            "candidate_ms": 0.2372480034828186
+          },
+          {
+            "trial_id": 18,
+            "baseline_ms": 0.22752000391483307,
+            "candidate_ms": 0.23996800184249878
+          },
+          {
+            "trial_id": 19,
+            "baseline_ms": 0.22703999280929565,
+            "candidate_ms": 0.23577600717544556
+          },
+          {
+            "trial_id": 20,
+            "baseline_ms": 0.22729599475860596,
+            "candidate_ms": 0.24502399563789368
+          },
+          {
+            "trial_id": 21,
+            "baseline_ms": 0.22726400196552277,
+            "candidate_ms": 0.23980799317359924
+          },
+          {
+            "trial_id": 22,
+            "baseline_ms": 0.22595199942588806,
+            "candidate_ms": 0.23689599335193634
+          },
+          {
+            "trial_id": 23,
+            "baseline_ms": 0.2274560034275055,
+            "candidate_ms": 0.24268800020217896
+          },
+          {
+            "trial_id": 24,
+            "baseline_ms": 0.22912000119686127,
+            "candidate_ms": 0.23811200261116028
+          },
+          {
+            "trial_id": 25,
+            "baseline_ms": 0.23788799345493317,
+            "candidate_ms": 0.2414720058441162
+          },
+          {
+            "trial_id": 26,
+            "baseline_ms": 0.23446400463581085,
+            "candidate_ms": 0.2457599937915802
+          },
+          {
+            "trial_id": 27,
+            "baseline_ms": 0.22780799865722656,
+            "candidate_ms": 0.2409919947385788
+          },
+          {
+            "trial_id": 28,
+            "baseline_ms": 0.22886399924755096,
+            "candidate_ms": 0.25011199712753296
+          },
+          {
+            "trial_id": 29,
+            "baseline_ms": 0.24220800399780273,
+            "candidate_ms": 0.23788799345493317
+          }
+        ],
+        "failure": null,
+        "decision": {
+          "decision": "tune",
+          "reason": "interval_crosses_threshold",
+          "regression_boundary": 1.05
+        }
+      },
+      {
+        "token_count": 256,
+        "first_execution": {
+          "eager_ms": 1.1112499996670522,
+          "compile_ms": 245.6671340005414,
+          "compile_to_eager_ratio": 221.07278656841135
+        },
+        "quality": {
+          "outputs_allclose": true
+        },
+        "summary": {
+          "pair_count": 30,
+          "median_ratio": 1.016795742149203,
+          "slower_fraction": 0.9666666666666667,
+          "ci_low": 1.0139397589285373,
+          "ci_high": 1.0196017234284298
+        },
+        "paired_runs": [
+          {
+            "trial_id": 0,
+            "baseline_ms": 0.7390080094337463,
+            "candidate_ms": 0.7539200186729431
+          },
+          {
+            "trial_id": 1,
+            "baseline_ms": 0.7836480140686035,
+            "candidate_ms": 0.7802559733390808
+          },
+          {
+            "trial_id": 2,
+            "baseline_ms": 0.7822080254554749,
+            "candidate_ms": 0.8008319735527039
+          },
+          {
+            "trial_id": 3,
+            "baseline_ms": 0.7803840041160583,
+            "candidate_ms": 0.7969599962234497
+          },
+          {
+            "trial_id": 4,
+            "baseline_ms": 0.7811840176582336,
+            "candidate_ms": 0.7955840229988098
+          },
+          {
+            "trial_id": 5,
+            "baseline_ms": 0.7884479761123657,
+            "candidate_ms": 0.8092479705810547
+          },
+          {
+            "trial_id": 6,
+            "baseline_ms": 0.7784640192985535,
+            "candidate_ms": 0.7980480194091797
+          },
+          {
+            "trial_id": 7,
+            "baseline_ms": 0.7831360101699829,
+            "candidate_ms": 0.7926719784736633
+          },
+          {
+            "trial_id": 8,
+            "baseline_ms": 0.7767999768257141,
+            "candidate_ms": 0.7944959998130798
+          },
+          {
+            "trial_id": 9,
+            "baseline_ms": 0.782368004322052,
+            "candidate_ms": 0.7960960268974304
+          },
+          {
+            "trial_id": 10,
+            "baseline_ms": 0.7761279940605164,
+            "candidate_ms": 0.7960960268974304
+          },
+          {
+            "trial_id": 11,
+            "baseline_ms": 0.7780799865722656,
+            "candidate_ms": 0.7951679825782776
+          },
+          {
+            "trial_id": 12,
+            "baseline_ms": 0.9155840277671814,
+            "candidate_ms": 0.9416000247001648
+          },
+          {
+            "trial_id": 13,
+            "baseline_ms": 0.9287359714508057,
+            "candidate_ms": 0.9382399916648865
+          },
+          {
+            "trial_id": 14,
+            "baseline_ms": 0.924992024898529,
+            "candidate_ms": 0.940064013004303
+          },
+          {
+            "trial_id": 15,
+            "baseline_ms": 0.9277120232582092,
+            "candidate_ms": 0.9404159784317017
+          },
+          {
+            "trial_id": 16,
+            "baseline_ms": 0.926367998123169,
+            "candidate_ms": 0.9430080056190491
+          },
+          {
+            "trial_id": 17,
+            "baseline_ms": 0.9287359714508057,
+            "candidate_ms": 0.9382719993591309
+          },
+          {
+            "trial_id": 18,
+            "baseline_ms": 0.9239680171012878,
+            "candidate_ms": 0.9392639994621277
+          },
+          {
+            "trial_id": 19,
+            "baseline_ms": 0.9257599711418152,
+            "candidate_ms": 0.9395840167999268
+          },
+          {
+            "trial_id": 20,
+            "baseline_ms": 0.9360319972038269,
+            "candidate_ms": 0.9366080164909363
+          },
+          {
+            "trial_id": 21,
+            "baseline_ms": 0.9279999732971191,
+            "candidate_ms": 0.9367679953575134
+          },
+          {
+            "trial_id": 22,
+            "baseline_ms": 0.9264640212059021,
+            "candidate_ms": 0.9462080001831055
+          },
+          {
+            "trial_id": 23,
+            "baseline_ms": 0.9313279986381531,
+            "candidate_ms": 0.9452160000801086
+          },
+          {
+            "trial_id": 24,
+            "baseline_ms": 0.9278720021247864,
+            "candidate_ms": 0.9436799883842468
+          },
+          {
+            "trial_id": 25,
+            "baseline_ms": 0.9370880126953125,
+            "candidate_ms": 0.9590719938278198
+          },
+          {
+            "trial_id": 26,
+            "baseline_ms": 0.9343039989471436,
+            "candidate_ms": 0.9473279714584351
+          },
+          {
+            "trial_id": 27,
+            "baseline_ms": 0.936191976070404,
+            "candidate_ms": 0.9454079866409302
+          },
+          {
+            "trial_id": 28,
+            "baseline_ms": 0.937279999256134,
+            "candidate_ms": 0.9479359984397888
+          },
+          {
+            "trial_id": 29,
+            "baseline_ms": 0.9356480240821838,
+            "candidate_ms": 0.9454079866409302
+          }
+        ],
+        "failure": null,
+        "decision": {
+          "decision": "accept",
+          "reason": "no_confirmed_regression",
+          "regression_boundary": 1.05
+        }
+      }
+    ]
+  },
+  "failure": null,
+  "evidence_level": "local_mechanism_benchmark",
+  "decision": {
+    "decision": "reject",
+    "reason": "one_or_more_loads_rejected"
+  }
+}

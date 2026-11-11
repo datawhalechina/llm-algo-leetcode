@@ -1,39 +1,54 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="760" viewBox="0 0 1400 760">
-<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#52606d"/></marker></defs>
-<rect width="1400" height="760" fill="#f7fafc"/>
-<style>
-.title{font:700 29px sans-serif;fill:#172b4d}.sub{font:15px sans-serif;fill:#52606d}.group{font:700 19px sans-serif;fill:#172b4d}.head{font:700 19px sans-serif;fill:#172b4d}.text{font:16px sans-serif;fill:#243b53}.small{font:14px sans-serif;fill:#52606d}.box{stroke-width:2;rx:14}.flow{stroke:#52606d;stroke-width:2.4;fill:none;marker-end:url(#arrow)}.bus{stroke:#829ab1;stroke-width:2;fill:none}
-</style>
-<text x="700" y="42" text-anchor="middle" class="title">量化推理：从浮点基线到部署决策</text>
-<text x="700" y="70" text-anchor="middle" class="sub">先确定量化改变的对象和时机，再检查运行时是否真正获得收益。</text>
-
-<rect x="390" y="102" width="620" height="105" fill="#eef6ff" stroke="#8ab4df" class="box"/>
-<text x="700" y="140" text-anchor="middle" class="group">量化部署问题</text>
-<text x="700" y="173" text-anchor="middle" class="text">相对于 FP16 / BF16 基线，降低哪一类成本？代价转移到哪里？</text>
-
-<rect x="560" y="238" width="280" height="42" fill="#ffffff" stroke="#829ab1" class="box"/>
-<text x="700" y="264" text-anchor="middle" class="small">量化对象与处理时机</text>
-<path d="M700 207 V238" class="flow"/>
-
-<rect x="45" y="310" width="390" height="130" fill="#e8f1fb" stroke="#4c8eda" class="box"/>
-<text x="240" y="347" text-anchor="middle" class="head">权重：部署前</text><text x="240" y="382" text-anchor="middle" class="text">GPTQ · AWQ · GGUF</text><text x="240" y="414" text-anchor="middle" class="small">改变装载大小与权重带宽</text>
-<rect x="505" y="310" width="390" height="130" fill="#e8f7ef" stroke="#45a36b" class="box"/>
-<text x="700" y="347" text-anchor="middle" class="head">激活：运行时</text><text x="700" y="382" text-anchor="middle" class="text">FP8 / 低精度计算</text><text x="700" y="414" text-anchor="middle" class="small">依赖硬件与计算内核执行路径</text>
-<rect x="965" y="310" width="390" height="130" fill="#fff5e6" stroke="#e0a23b" class="box"/>
-<text x="1160" y="347" text-anchor="middle" class="head">KV Cache：请求期间</text><text x="1160" y="382" text-anchor="middle" class="text">FP8 Cache / 专用量化</text><text x="1160" y="414" text-anchor="middle" class="small">改变长上下文和并发容量</text>
-<path d="M700 280 V292" class="flow"/><path d="M240 292 H1160" class="bus"/><path d="M240 292 V310" class="flow"/><path d="M700 292 V310" class="flow"/><path d="M1160 292 V310" class="flow"/>
-
-<rect x="90" y="482" width="300" height="52" fill="#ffffff" stroke="#829ab1" class="box"/>
-<text x="240" y="514" text-anchor="middle" class="head">进入统一验证链</text>
-<path d="M240 440 V482" class="flow"/><path d="M700 440 V458" class="bus"/><path d="M1160 440 V458" class="bus"/><path d="M240 458 H1160" class="bus"/>
-
-<rect x="90" y="590" width="300" height="86" fill="#ffffff" stroke="#829ab1" class="box"/>
-<text x="240" y="622" text-anchor="middle" class="head">Loader</text><text x="240" y="650" text-anchor="middle" class="small">识别模型、版本和文件格式</text>
-<rect x="430" y="590" width="300" height="86" fill="#ffffff" stroke="#829ab1" class="box"/>
-<text x="580" y="622" text-anchor="middle" class="head">Backend / Kernel</text><text x="580" y="650" text-anchor="middle" class="small">确认目标低比特执行路径</text>
-<rect x="770" y="590" width="300" height="86" fill="#ffffff" stroke="#829ab1" class="box"/>
-<text x="920" y="622" text-anchor="middle" class="head">结果指标</text><text x="920" y="650" text-anchor="middle" class="small">显存、速度、吞吐、质量</text>
-<rect x="1110" y="590" width="240" height="86" fill="#e8f7ef" stroke="#45a36b" class="box"/>
-<text x="1230" y="622" text-anchor="middle" class="head">决策</text><text x="1230" y="650" text-anchor="middle" class="small">accept / tune / reject</text>
-<path d="M240 534 V590" class="flow"/><path d="M390 633 H430" class="flow"/><path d="M730 633 H770" class="flow"/><path d="M1070 633 H1110" class="flow"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="760" viewBox="0 0 1400 760" role="img" aria-labelledby="title desc">
+  <title id="title">三类低精度对象经过各自检查后进入共同复测</title>
+  <desc id="desc">相同模型和请求协议下，权重分支核对产物与加载，激活与计算分支核对缩放和实际内核，KV状态分支核对追加、元数据与读取。三条分支分别通过后，比较任务质量、资源与请求性能。运行配置和KV状态不强制经过量化权重文件加载链。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" viewBox="0 0 10 10" refX="10" refY="5" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52606d"/></marker>
+    <style>
+      text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172b4d}
+      .title{font-size:29px;font-weight:700}.head{font-size:21px;font-weight:700}
+      .text{font-size:18px}.small{font-size:16px;fill:#475569}
+      .box{stroke-width:2;rx:14}.flow{stroke:#52606d;stroke-width:2.8;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1400" height="760" fill="#f7fafc"/>
+  <text x="700" y="43" text-anchor="middle" class="title">先区分低精度对象，再检查实际执行</text>
+  <rect x="390" y="98" width="620" height="82" fill="#eef6ff" stroke="#8ab4df" class="box"/>
+  <text x="700" y="132" text-anchor="middle" class="head">同模型、同任务与请求协议的浮点基线</text>
+  <text x="700" y="160" text-anchor="middle" class="text">根据权重、计算张量或历史状态的成本选择分支</text>
+  <rect x="560" y="215" width="280" height="45" fill="#fff" stroke="#829ab1" class="box"/>
+  <text x="700" y="244" text-anchor="middle" class="text">本次改变哪一类表示？</text>
+  <path d="M700 180V215" class="flow"/>
+  <path d="M600 260V285H240V315" class="flow"/>
+  <path d="M700 260V315" class="flow"/>
+  <path d="M800 260V285H1160V315" class="flow"/>
+  <rect x="45" y="315" width="390" height="100" fill="#e8f1fb" stroke="#4c8eda" class="box"/>
+  <text x="240" y="352" text-anchor="middle" class="head">权重表示</text>
+  <text x="240" y="385" text-anchor="middle" class="text">参数驻留与读取成本</text>
+  <rect x="505" y="315" width="390" height="100" fill="#e8f7ef" stroke="#45a36b" class="box"/>
+  <text x="700" y="352" text-anchor="middle" class="head">激活与计算格式</text>
+  <text x="700" y="385" text-anchor="middle" class="text">W8A8 / FP8 等执行路径</text>
+  <rect x="965" y="315" width="390" height="100" fill="#fff5e6" stroke="#e0a23b" class="box"/>
+  <text x="1160" y="352" text-anchor="middle" class="head">KV 状态表示</text>
+  <text x="1160" y="385" text-anchor="middle" class="text">上下文与并发的缓存成本</text>
+  <path d="M240 415V470" class="flow"/>
+  <path d="M700 415V470" class="flow"/>
+  <path d="M1160 415V470" class="flow"/>
+  <rect x="45" y="470" width="390" height="105" fill="#fff" stroke="#4c8eda" class="box"/>
+  <text x="240" y="504" text-anchor="middle" class="head">产物、加载器与线性层</text>
+  <text x="240" y="533" text-anchor="middle" class="small">模型版本、文件格式、缩放信息</text>
+  <text x="240" y="557" text-anchor="middle" class="small">实际内核、反量化或浮点回退</text>
+  <rect x="505" y="470" width="390" height="105" fill="#fff" stroke="#45a36b" class="box"/>
+  <text x="700" y="504" text-anchor="middle" class="head">缩放、累加与实际内核</text>
+  <text x="700" y="533" text-anchor="middle" class="small">校准或运行统计、输入与累加精度</text>
+  <text x="700" y="557" text-anchor="middle" class="small">转换开销、硬件支持与回退</text>
+  <rect x="965" y="470" width="390" height="105" fill="#fff" stroke="#e0a23b" class="box"/>
+  <text x="1160" y="504" text-anchor="middle" class="head">追加、恢复与缓存读取</text>
+  <text x="1160" y="533" text-anchor="middle" class="small">状态主体、元数据与高精度窗口</text>
+  <text x="1160" y="557" text-anchor="middle" class="small">每步更新成本与注意力执行路径</text>
+  <path d="M240 575V610H500V640" class="flow"/>
+  <path d="M700 575V640" class="flow"/>
+  <path d="M1160 575V610H900V640" class="flow"/>
+  <rect x="390" y="640" width="620" height="85" fill="#ede9fe" stroke="#a78bfa" class="box"/>
+  <text x="700" y="674" text-anchor="middle" class="head">同任务质量与请求性能配对复测</text>
+  <text x="700" y="704" text-anchor="middle" class="text">正确性、长度与停止、延迟、吞吐、资源及失败</text>
 </svg>

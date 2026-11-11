@@ -1,0 +1,47 @@
+schema_version: minimind-post-training-config/v1
+semantic_id: PT-INTEGRATED-DELIVERY
+environment_profile: PT-SFT-CUDA
+run_label: replace_with_unique_label
+
+source:
+  repository: https://github.com/jingyaogong/minimind.git
+  revision: a3c7b01cc004d5de86aea961f20bf1e638e7c09e
+  path: ~/minimind-part05
+
+model:
+  repository: jingyaogong/minimind-3-pytorch
+  revision: 02c78dfcb0b2fc55a5da421cbe3f50ed78d9aa4b
+  weight: pretrain_768.pth
+  weight_prefix: pretrain
+  hidden_size: 768
+  num_hidden_layers: 8
+  use_moe: false
+
+workload:
+  seed: 42
+  max_seq_len: 256
+  sft_examples: 48
+  dpo_pairs: 24
+  evaluation_examples: 32
+  batch_size: 1
+  gradient_accumulation_steps: 4
+  sft_epochs: 1
+  dpo_epochs: 1
+  # 全参数 SFT 与原生 LoRA 使用相同学习率，保持对照变量一致。
+  sft_learning_rate: 0.00001
+
+evaluation:
+  protocol_version: minimind-small-task-eval-v1
+  require_train_eval_disjoint: true
+  maximum_sft_loss_regression_vs_base: 0.05
+  maximum_lora_loss_regression_vs_full_sft: 0.05
+  minimum_dpo_preference_win_rate: 0.50
+
+gates:
+  maximum_peak_memory_gib: 10.0
+  minimum_free_memory_gib_before_load: 2.0
+  require_model_artifact_hash: true
+  require_fixed_source_revision: true
+
+outputs:
+  directory: benchmarks/results/part05_post_training_delivery

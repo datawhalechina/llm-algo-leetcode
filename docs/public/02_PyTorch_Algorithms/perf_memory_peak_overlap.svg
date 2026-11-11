@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
   <title id="title">对象生命周期如何形成显存峰值</title>
-  <desc id="desc">模型状态、输入批次、激活和临时工作区在时间线上重叠，活动字节曲线在四类对象同时驻留时达到峰值。</desc>
+  <desc id="desc">构造示例：模型状态40 MiB、输入20 MiB、激活30 MiB、工作区10 MiB各占独立存储。横轴为共同的相对时间，四类存储同时驻留时总量为100 MiB，释放后按对应容量阶梯下降。</desc>
   <defs>
     <style>
       .title{font-family:"Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#0f172a}.subtitle{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;fill:#475569}
@@ -10,34 +10,41 @@
   </defs>
   <rect width="1200" height="620" rx="24" fill="#f8fafc"/>
   <text x="600" y="45" text-anchor="middle" class="title">对象生命周期如何形成显存峰值</text>
-  <text x="600" y="74" text-anchor="middle" class="subtitle">最高平台对应峰值驻留区间；区间内任一代表时刻具有相同的活跃对象集合</text>
+  <text x="600" y="74" text-anchor="middle" class="subtitle">构造示例，非 GPU 实测：四类对象各占独立存储，驻留区间与下方曲线共用时间轴</text>
+  <rect x="690" y="94" width="170" height="471" rx="8" fill="#fee2e2" opacity="0.40" data-layout-role="panel"/>
 
   <text x="60" y="132" class="label">模型状态</text>
   <rect x="240" y="100" width="810" height="68" rx="10" fill="#bfdbfe" stroke="#2563eb" stroke-width="2"/>
-  <text x="250" y="92" class="text">加载</text><text x="1050" y="92" text-anchor="end" class="text">卸载</text>
+  <text x="600" y="140" text-anchor="middle" class="label">40 MiB</text>
 
   <text x="60" y="207" class="label">输入批次</text>
   <rect x="330" y="180" width="530" height="68" rx="10" fill="#bbf7d0" stroke="#16a34a" stroke-width="2"/>
-  <text x="340" y="167" class="text">取批</text><text x="860" y="167" text-anchor="end" class="text">释放输入</text>
+  <text x="595" y="220" text-anchor="middle" class="label">20 MiB</text>
 
   <text x="60" y="282" class="label">激活</text>
   <rect x="460" y="260" width="470" height="68" rx="10" fill="#fde68a" stroke="#d97706" stroke-width="2"/>
-  <text x="470" y="242" class="text">前向创建</text><text x="930" y="242" text-anchor="end" class="text">反向释放</text>
+  <text x="645" y="300" text-anchor="middle" class="label">30 MiB</text>
 
   <text x="60" y="357" class="label">临时工作区</text>
   <rect x="690" y="340" width="220" height="68" rx="10" fill="#fecaca" stroke="#dc2626" stroke-width="2"/>
-  <text x="700" y="317" class="text">计算内核申请</text><text x="910" y="317" text-anchor="end" class="text">计算结束</text>
+  <text x="800" y="380" text-anchor="middle" class="label">10 MiB</text>
 
-  <line x1="220" y1="400" x2="1100" y2="400" class="axis"/>
-  <text x="1100" y="423" text-anchor="end" class="text">时间 →</text>
-  <rect x="690" y="88" width="170" height="477" rx="8" fill="#fee2e2" opacity="0.34" data-layout-role="panel"/>
-  <text x="775" y="98" text-anchor="middle" class="text" fill="#991b1b">峰值驻留区间</text>
-  <line x1="760" y1="108" x2="760" y2="565" class="peak"/>
-  <text x="772" y="126" class="text" fill="#991b1b">代表时刻 t*</text>
+  <text x="940" y="295" class="text">左端创建引用</text>
+  <text x="940" y="319" class="text">右端释放引用</text>
 
-  <text x="60" y="488" class="label">活动字节</text>
+  <text x="60" y="473" class="label">活动存储量</text>
+  <text x="60" y="498" class="text">单位：MiB</text>
+  <line x1="220" y1="425" x2="220" y2="565" class="axis"/>
+  <text x="206" y="440" text-anchor="end" class="text">100</text>
+  <text x="206" y="518" text-anchor="end" class="text">40</text>
+  <text x="206" y="570" text-anchor="end" class="text">0</text>
   <line x1="220" y1="565" x2="1100" y2="565" class="axis"/>
-  <path d="M220 565 H240 V535 H330 V505 H460 V475 H690 V435 H860 V465 H910 V505 H930 V535 H1050 V565 H1100" fill="none" stroke="#7c3aed" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M220 565 H240 V513 H330 V487 H460 V448 H690 V435 H860 V461 H910 V474 H930 V513 H1050 V565 H1100" fill="none" stroke="#7c3aed" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="760" y1="409" x2="760" y2="565" class="peak"/>
   <circle cx="760" cy="435" r="7" fill="#dc2626"/>
-  <text x="775" y="455" class="text" fill="#991b1b">四类对象同时驻留</text>
+  <text x="775" y="535" class="text">代表时刻 t*</text>
+  <text x="775" y="556" class="text">100 MiB，四类存储共存</text>
+  <text x="690" y="594" text-anchor="middle" class="text">峰值区间起点</text>
+  <text x="860" y="594" text-anchor="middle" class="text">峰值区间终点</text>
+  <text x="1100" y="594" text-anchor="end" class="text">相对时间 →</text>
 </svg>

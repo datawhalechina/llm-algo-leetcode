@@ -1,34 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="650" viewBox="0 0 1400 650">
-<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#52606d"/></marker></defs>
-<rect width="1400" height="650" fill="#f7fafc"/>
-<style>
-.title{font:700 29px sans-serif;fill:#172b4d}.sub{font:15px sans-serif;fill:#52606d}.group{font:700 19px sans-serif;fill:#172b4d}.head{font:700 18px sans-serif;fill:#172b4d}.text{font:16px sans-serif;fill:#243b53}.small{font:14px sans-serif;fill:#52606d}.box{stroke-width:2;rx:14}.flow{stroke:#52606d;stroke-width:2.4;fill:none;marker-end:url(#arrow)}.link{stroke:#829ab1;stroke-width:2;stroke-dasharray:7 5;fill:none;marker-end:url(#arrow)}
-</style>
-<text x="700" y="42" text-anchor="middle" class="title">KV Cache：保存、分配、复用与容量治理</text>
-<text x="700" y="70" text-anchor="middle" class="sub">先把 KV Cache 看成请求级状态，再按状态生命周期拆开四个管理问题。</text>
-
-<rect x="445" y="102" width="510" height="102" fill="#e8f7ef" stroke="#45a36b" class="box"/>
-<text x="700" y="139" text-anchor="middle" class="group">KV Cache 请求状态</text>
-<text x="700" y="171" text-anchor="middle" class="text">Decode 保存历史 K / V；状态随长度、层数和并发增长</text>
-
-<rect x="24" y="250" width="315" height="135" fill="#e8f1fb" stroke="#4c8eda" class="box"/>
-<text x="181" y="288" text-anchor="middle" class="head">保存什么</text><text x="181" y="323" text-anchor="middle" class="text">请求级 K / V 状态</text><text x="181" y="355" text-anchor="middle" class="small">增长曲线 · 读取代价 · 峰值显存</text>
-<rect x="369" y="250" width="315" height="135" fill="#eef6ff" stroke="#8ab4df" class="box"/>
-<text x="526" y="288" text-anchor="middle" class="head">如何分配</text><text x="526" y="323" text-anchor="middle" class="text">PagedAttention / Block Table</text><text x="526" y="355" text-anchor="middle" class="small">碎片 · 尾块利用率 · 并发容量</text>
-<rect x="714" y="250" width="315" height="135" fill="#e8f7ef" stroke="#45a36b" class="box"/>
-<text x="871" y="288" text-anchor="middle" class="head">如何复用</text><text x="871" y="323" text-anchor="middle" class="text">Prefix Cache / Radix Cache</text><text x="871" y="355" text-anchor="middle" class="small">命中长度 · reused tokens · TTFT</text>
-<rect x="1059" y="250" width="315" height="135" fill="#f0eefb" stroke="#8069b5" class="box"/>
-<text x="1216" y="288" text-anchor="middle" class="head">如何治理</text><text x="1216" y="323" text-anchor="middle" class="text">驱逐 · 压缩 · KV Cache 量化</text><text x="1216" y="355" text-anchor="middle" class="small">预算 · OOM · 速度与质量</text>
-
-<path d="M700 204 V224 H181 V250" class="flow"/><path d="M700 224 H526 V250" class="flow"/><path d="M700 224 H871 V250" class="flow"/><path d="M700 224 H1216 V250" class="flow"/>
-
-<rect x="24" y="455" width="315" height="108" fill="#ffffff" stroke="#4c8eda" class="box"/>
-<text x="181" y="493" text-anchor="middle" class="head">观察：容量</text><text x="181" y="526" text-anchor="middle" class="small">上下文长度 · batch · 峰值显存</text>
-<rect x="369" y="455" width="315" height="108" fill="#ffffff" stroke="#8ab4df" class="box"/>
-<text x="526" y="493" text-anchor="middle" class="head">观察：空间</text><text x="526" y="526" text-anchor="middle" class="small">Block 利用率 · 碎片 · 并发</text>
-<rect x="714" y="455" width="315" height="108" fill="#ffffff" stroke="#45a36b" class="box"/>
-<text x="871" y="493" text-anchor="middle" class="head">观察：复用</text><text x="871" y="526" text-anchor="middle" class="small">命中率 · 重复 Prefill · TTFT</text>
-<rect x="1059" y="455" width="315" height="108" fill="#ffffff" stroke="#8069b5" class="box"/>
-<text x="1216" y="493" text-anchor="middle" class="head">观察：边界</text><text x="1216" y="526" text-anchor="middle" class="small">OOM · TPOT · 质量回归</text>
-<path d="M181 385 V455" class="link"/><path d="M526 385 V455" class="link"/><path d="M871 385 V455" class="link"/><path d="M1216 385 V455" class="link"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="740" viewBox="0 0 1500 740" role="img" aria-labelledby="title desc">
+<title id="title">共享 KV 的生命周期：引用、保留与安全释放</title><desc id="desc">A和B共享前缀，活动引用从1增至2，再随A和B结束降至0。安全释放还要求在途读写完成，此后可保留为前缀缓存或驱逐释放。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52606d"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d;font-size:19px}.title{font-size:28px;font-weight:700}.head{font-size:21px;font-weight:700}.note{font-size:17px;fill:#475569}.box{stroke:#829ab1;stroke-width:2;rx:14}.flow{fill:none;stroke:#52606d;stroke-width:2.5;marker-end:url(#a)}</style>
+<rect width="1500" height="740" fill="#f7fafc"/>
+<text x="40" y="46" class="title">共享 KV 的生命周期：引用、保留与安全释放</text>
+<text x="40" y="84" class="note">每块容纳四个词元，P0、P1 保存共同的八词元前缀；图中引用数只计活动请求。</text><rect x="40" y="140" width="290" height="140" fill="#dbeafe" class="box"/><text x="185" y="178" text-anchor="middle" class="head">A 建立前缀</text><text x="185" y="215" text-anchor="middle">P0、P1：各 1 个引用</text><text x="185" y="245" text-anchor="middle">A 持续生成并追加私有块</text><rect x="390" y="140" width="290" height="140" fill="#ecfdf5" class="box"/><text x="535" y="178" text-anchor="middle" class="head">B 复用相同前缀</text><text x="535" y="215" text-anchor="middle">P0、P1：各 2 个引用</text><text x="535" y="245" text-anchor="middle">B 的后缀另行分配</text><rect x="740" y="140" width="290" height="140" fill="#fef3c7" class="box"/><text x="885" y="178" text-anchor="middle" class="head">A 结束</text><text x="885" y="215" text-anchor="middle">P0、P1：各 1 个引用</text><text x="885" y="245" text-anchor="middle">B 仍在使用，不能释放</text><rect x="1090" y="140" width="350" height="140" fill="#ede9fe" class="box"/><text x="1265" y="178" text-anchor="middle" class="head">B 结束</text><text x="1265" y="215" text-anchor="middle">P0、P1：活动引用归零</text><text x="1265" y="245" text-anchor="middle">先确认没有在途读写</text><path d="M330 210H390" class="flow"/><path d="M680 210H740" class="flow"/><path d="M1030 210H1090" class="flow"/><rect x="40" y="350" width="520" height="130" fill="#ffffff" class="box"/><text x="300" y="388" text-anchor="middle" class="head">私有块与共享块分别判断</text><text x="300" y="425" text-anchor="middle">A 的私有 P2 不被 B 引用</text><text x="300" y="455" text-anchor="middle">A 结束后也需满足安全条件才可释放</text><rect x="1090" y="350" width="350" height="110" fill="#ede9fe" class="box"/><text x="1265" y="388" text-anchor="middle" class="head">安全条件已满足</text><text x="1265" y="425" text-anchor="middle">引用归零、在途读写结束</text><path d="M1265 280V350" class="flow"/><rect x="620" y="540" width="390" height="110" fill="#ecfdf5" class="box"/><text x="815" y="578" text-anchor="middle" class="head">继续保留作前缀缓存</text><text x="815" y="615" text-anchor="middle">后续兼容请求可再次引用</text><rect x="1070" y="540" width="370" height="110" fill="#fef3c7" class="box"/><text x="1255" y="578" text-anchor="middle" class="head">驱逐并归还空闲池</text><text x="1255" y="615" text-anchor="middle">同步更新索引与分配状态</text><path d="M1265 460V500H815V540" class="flow"/><path d="M1265 500V540" class="flow"/><text x="40" y="700" class="note">保留或驱逐由缓存策略与容量需求决定；请求结束、引用归零、实际释放是不同事件。</text>
 </svg>

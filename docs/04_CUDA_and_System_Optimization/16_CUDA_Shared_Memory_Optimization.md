@@ -73,17 +73,17 @@ __global__ void shared_gemm_kernel(const float* A, const float* B, float* C, int
     // 1. 确定当前线程负责计算 C 矩阵中的哪个元素的行号和列号
     int row = blockIdx.y * TILE_SIZE + threadIdx.y;
     int col = blockIdx.x * TILE_SIZE + threadIdx.x;
-    
+
     // 2. 声明位于超高速 SRAM 中的共享内存数组
     // 这些数组是被同一个 Block 中的 256 个线程 (16x16) 共享的！
     __shared__ float s_A[TILE_SIZE][TILE_SIZE];
     __shared__ float s_B[TILE_SIZE][TILE_SIZE];
-    
+
     float sum = 0.0f;
-    
+
     // 3. 在 K 维度上切块 (Tiling) 进行循环
     int num_tiles = N / TILE_SIZE;
-    
+
     for (int t = 0; t < num_tiles; ++t) {
         // ==========================================
         // TODO 1: 协作搬运数据 (从 HBM 读到 Shared Memory)
@@ -91,13 +91,13 @@ __global__ void shared_gemm_kernel(const float* A, const float* B, float* C, int
         // ==========================================
         // s_A[threadIdx.y][threadIdx.x] = ???;
         // s_B[threadIdx.y][threadIdx.x] = ???;
-        
+
         // ==========================================
         // TODO 2: 线程同步 (防脏读)
         // 提示: 使用 __syncthreads() 确保所有线程都完成数据搬运
         // ==========================================
         // ???
-        
+
         // ==========================================
         // TODO 3: SRAM 内部极速矩阵点积累加
         // 提示: 遍历TILE_SIZE，累加 s_A[threadIdx.y][k] * s_B[k][threadIdx.x]
@@ -105,14 +105,14 @@ __global__ void shared_gemm_kernel(const float* A, const float* B, float* C, int
         // for (int k = 0; k < TILE_SIZE; ++k) {
         //     sum += ???;
         // }
-        
+
         // ==========================================
         // TODO 4: 再次同步 (防覆盖)
         // 提示: 使用 __syncthreads() 确保所有线程都完成计算
         // ==========================================
         // ???
     }
-    
+
     // 4. 将累加结果写回全局显存 (HBM)
     if (row < N && col < N) {
         C[row * N + col] = sum;
@@ -122,20 +122,20 @@ __global__ void shared_gemm_kernel(const float* A, const float* B, float* C, int
 torch::Tensor shared_gemm_cuda(torch::Tensor A, torch::Tensor B) {
     int N = A.size(0); // 为了教学简化，假设是 NxN 矩阵
     auto C = torch::empty_like(A);
-    
+
     // 线程块大小：16x16 = 256 threads
     dim3 threads(TILE_SIZE, TILE_SIZE);
-    
+
     // Grid 大小
     dim3 blocks((N + TILE_SIZE - 1) / TILE_SIZE, (N + TILE_SIZE - 1) / TILE_SIZE);
-    
+
     shared_gemm_kernel<<<blocks, threads>>>(
-        A.data_ptr<float>(), 
-        B.data_ptr<float>(), 
-        C.data_ptr<float>(), 
+        A.data_ptr<float>(),
+        B.data_ptr<float>(),
+        C.data_ptr<float>(),
         N
     );
-    
+
     return C;
 }
 '''
@@ -168,32 +168,32 @@ def test_shared_gemm():
     # 检查TODO是否完成
     if '// s_A[threadIdx.y][threadIdx.x] = ???;' in cuda_shared_gemm_source or '// ???' in cuda_shared_gemm_source:
         raise NotImplementedError("请先完成 TODO 1-4")
-    
+
     if not torch.cuda.is_available():
         print("⏭️ 无 GPU，完成结构检查；运行级验证需要 GPU。")
         assert "shared_gemm_extension" in globals() or "cuda_shared_gemm_source" in globals(), "缺少 Shared GEMM 实现"
         print("✅ Shared Memory GEMM 结构检查通过")
         return True
-    
+
     if 'shared_gemm_extension' not in globals():
         raise RuntimeError("CUDA 扩展编译失败，请检查 nvcc 是否安装")
-    
+
     torch.manual_seed(42)
     # N 必须是 16 的倍数以契合此简单 Kernel 的假设
-    N = 1024 
-    
+    N = 1024
+
     A = torch.randn(N, N, device='cuda', dtype=torch.float32)
     B = torch.randn(N, N, device='cuda', dtype=torch.float32)
-    
+
     # 1. PyTorch 原生计算
     C_ref = A @ B
-    
+
     # 2. 我们手写的高级 Shared Memory CUDA 计算
     C_cu = shared_gemm_extension.shared_gemm_cuda(A, B)
-    
+
     diff = torch.max(torch.abs(C_ref - C_cu))
     assert diff < 1e-2, "Shared Memory GEMM 计算结果错误！"
-    
+
     print("✅ Shared Memory GEMM 验证通过。")
     print("工程实践：两次__syncthreads()分别防止脏读和数据覆盖，是Shared Memory编程的关键。")
 
@@ -226,30 +226,30 @@ cuda_shared_gemm_source = '''
 __global__ void shared_gemm_kernel(const float* A, const float* B, float* C, int N) {
     int row = blockIdx.y * TILE_SIZE + threadIdx.y;
     int col = blockIdx.x * TILE_SIZE + threadIdx.x;
-    
+
     __shared__ float s_A[TILE_SIZE][TILE_SIZE];
     __shared__ float s_B[TILE_SIZE][TILE_SIZE];
-    
+
     float sum = 0.0f;
     int num_tiles = N / TILE_SIZE;
-    
+
     for (int t = 0; t < num_tiles; ++t) {
         // TODO 1: 协作搬运数据 (从 HBM 读到 Shared Memory)
         s_A[threadIdx.y][threadIdx.x] = A[row * N + t * TILE_SIZE + threadIdx.x];
         s_B[threadIdx.y][threadIdx.x] = B[(t * TILE_SIZE + threadIdx.y) * N + col];
-        
+
         // TODO 2: 第一次同步 (防脏读)
         __syncthreads();
-        
+
         // TODO 3: SRAM 内部极速矩阵点积累加
         for (int k = 0; k < TILE_SIZE; ++k) {
             sum += s_A[threadIdx.y][k] * s_B[k][threadIdx.x];
         }
-        
+
         // TODO 4: 第二次同步 (防覆盖)
         __syncthreads();
     }
-    
+
     if (row < N && col < N) {
         C[row * N + col] = sum;
     }
@@ -258,17 +258,17 @@ __global__ void shared_gemm_kernel(const float* A, const float* B, float* C, int
 torch::Tensor shared_gemm_cuda(torch::Tensor A, torch::Tensor B) {
     int N = A.size(0);
     auto C = torch::empty_like(A);
-    
+
     dim3 threads(TILE_SIZE, TILE_SIZE);
     dim3 blocks((N + TILE_SIZE - 1) / TILE_SIZE, (N + TILE_SIZE - 1) / TILE_SIZE);
-    
+
     shared_gemm_kernel<<<blocks, threads>>>(
-        A.data_ptr<float>(), 
-        B.data_ptr<float>(), 
-        C.data_ptr<float>(), 
+        A.data_ptr<float>(),
+        B.data_ptr<float>(),
+        C.data_ptr<float>(),
         N
     );
-    
+
     cudaDeviceSynchronize();
     return C;
 }
@@ -278,55 +278,55 @@ torch::Tensor shared_gemm_cuda(torch::Tensor A, torch::Tensor B) {
 ### 解析
 
 **1. TODO 1: 协作搬运数据**
-- **实现方式**: 
+- **实现方式**:
   ```cpp
   s_A[threadIdx.y][threadIdx.x] = A[row * N + t * TILE_SIZE + threadIdx.x];
   s_B[threadIdx.y][threadIdx.x] = B[(t * TILE_SIZE + threadIdx.y) * N + col];
   ```
-- **关键点**: 
+- **关键点**:
   - 每个线程负责搬运一个元素到Shared Memory
   - 256个线程协作，瞬间填满16×16的Tile
   - A的行固定为row，列在每次循环中平移
   - B的列固定为col，行在每次循环中平移
-- **技术细节**: 
+- **技术细节**:
   - Shared Memory位于SM芯片内部，比HBM快100倍
   - 协作搬运是Tiling优化的核心
   - 每个线程只搬运1个元素，负载均衡
 
 **2. TODO 2: 第一次同步（防脏读）**
 - **实现方式**: `__syncthreads();`
-- **关键点**: 
+- **关键点**:
   - 确保所有线程都完成数据搬运
   - 防止快线程读到慢线程未写入的脏数据
   - Block内的全局同步屏障
-- **技术细节**: 
+- **技术细节**:
   - Read-after-Write Hazard（RAW）
   - 如果不同步，快线程可能读到未初始化的s_A/s_B
   - __syncthreads()是Block级同步，不能跨Block
 
 **3. TODO 3: SRAM内部极速矩阵点积累加**
-- **实现方式**: 
+- **实现方式**:
   ```cpp
   for (int k = 0; k < TILE_SIZE; ++k) {
       sum += s_A[threadIdx.y][k] * s_B[k][threadIdx.x];
   }
   ```
-- **关键点**: 
+- **关键点**:
   - 在Shared Memory中进行点积计算
   - 避免重复访问HBM
   - 每个线程计算C矩阵的一个元素
-- **技术细节**: 
+- **技术细节**:
   - Shared Memory访问延迟约10周期
   - HBM访问延迟约400-800周期
   - 性能提升来自数据复用
 
 **4. TODO 4: 第二次同步（防覆盖）**
 - **实现方式**: `__syncthreads();`
-- **关键点**: 
+- **关键点**:
   - 确保所有线程都完成计算
   - 防止快线程提前进入下一轮循环覆盖s_A/s_B
   - 保护慢线程正在使用的数据
-- **技术细节**: 
+- **技术细节**:
   - Write-after-Read Hazard（WAR）
   - 如果不同步，快线程会覆盖慢线程正在读的数据
   - 导致计算结果错误
@@ -402,22 +402,22 @@ def test_shared_gemm():
         assert "shared_gemm_extension" in globals() or "cuda_shared_gemm_source" in globals(), "缺少 Shared GEMM 实现"
         print("✅ Shared Memory GEMM 结构检查通过")
         return True
-    
+
     if shared_gemm_extension is None:
         raise RuntimeError("CUDA 扩展编译失败，请检查 nvcc 是否安装")
-    
+
     torch.manual_seed(42)
     N = 1024
-    
+
     A = torch.randn(N, N, device='cuda', dtype=torch.float32)
     B = torch.randn(N, N, device='cuda', dtype=torch.float32)
-    
+
     C_ref = A @ B
     C_cu = shared_gemm_extension.shared_gemm_cuda(A, B)
-    
+
     diff = torch.max(torch.abs(C_ref - C_cu))
     assert diff < 1e-2, f"Shared Memory GEMM 计算结果错误！差异: {diff}"
-    
+
     print("✅ Shared Memory GEMM 验证通过。")
     print("工程实践：两次__syncthreads()分别防止脏读和数据覆盖，是Shared Memory编程的关键。")
 
@@ -457,7 +457,7 @@ test_shared_gemm()
 
 **解决**: 第二次__syncthreads()确保所有线程都完成读取，才允许任何线程开始覆盖。
 
-**工程启示**: 
+**工程启示**:
 - Shared Memory编程必须仔细分析读写依赖
 - 缺少同步会导致难以调试的数据竞争
 - 过多同步会降低性能，需要精确控制

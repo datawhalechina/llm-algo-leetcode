@@ -1,0 +1,41 @@
+schema_version: quantization-delivery-config/v1
+semantic_id: QUANT-INTEGRATED-DELIVERY
+quantization_environment: Q-CUDA-MECHANISM
+serving_environment: INF-VLLM-011-CU128
+stages: [contract_check, prepare, quantize, serve, close]
+
+model:
+  id: Qwen/Qwen2.5-0.5B-Instruct
+  revision: 7ae557604adf67be50417f59c2c2f167def9a775
+
+quantization:
+  method: GPTQ
+  format: W4A16
+  bits: 4
+  group_size: 128
+  dataset: Salesforce/wikitext
+  dataset_config: wikitext-2-raw-v1
+  dataset_revision: f776294184f13b8ff2337b3841cf9269a6216d1e
+  calibration_split: train
+  calibration_samples: 64
+  evaluation_split: validation
+  evaluation_samples: 64
+  max_sequence_length: 256
+  maximum_nll_ratio_vs_bf16: 1.10
+
+serving:
+  workload: benchmarks/workloads/part05_quantization_delivery.jsonl
+  num_prompts: 20
+  max_tokens: 32
+  concurrency: 1
+  warmup: 1
+  repeats: 3
+  maximum_ttft_p95_ms: 500.0
+  maximum_tpot_p95_ms: 100.0
+  minimum_output_throughput_tps: 1.0
+  maximum_peak_memory_gib: 11.0
+  minimum_answer_accuracy: 0.8
+  maximum_answer_accuracy_regression: 0.1
+
+outputs:
+  directory: benchmarks/results/part05_quantization_delivery

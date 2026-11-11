@@ -1,50 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="760" viewBox="0 0 1400 760">
-<defs>
-<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#52606d"/></marker>
-</defs>
-<rect width="1400" height="760" fill="#f7fafc"/>
-<style>
-.title{font:700 29px sans-serif;fill:#172b4d}.head{font:700 20px sans-serif;fill:#172b4d}.text{font:16px sans-serif;fill:#243b53}.small{font:14px sans-serif;fill:#52606d}.box{stroke-width:2;rx:14}.flow{stroke:#52606d;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.link{stroke:#829ab1;stroke-width:2.5;stroke-dasharray:8 6;fill:none;marker-end:url(#arrow)}
-</style>
-
-<text x="700" y="44" text-anchor="middle" class="title">Prefill：从共同基线到瓶颈定位</text>
-<text x="700" y="72" text-anchor="middle" class="small">先固定标准 Prefill，再判断问题来自访存、处理粒度，还是重复计算。</text>
-
-<rect x="210" y="105" width="280" height="78" fill="#e8f1fb" stroke="#4c8eda" class="box"/>
-<text x="350" y="139" text-anchor="middle" class="head">长 Prompt</text><text x="350" y="165" text-anchor="middle" class="small">输入 token 数增加</text>
-<path d="M490 144 H560" class="flow"/>
-<rect x="560" y="105" width="280" height="78" fill="#fff5e6" stroke="#e0a23b" class="box"/>
-<text x="700" y="139" text-anchor="middle" class="head">标准 Prefill 基线</text><text x="700" y="165" text-anchor="middle" class="small">完整 Attention，一次处理输入</text>
-<path d="M840 144 H910" class="flow"/>
-<rect x="910" y="105" width="280" height="78" fill="#f0eefb" stroke="#8069b5" class="box"/>
-<text x="1050" y="139" text-anchor="middle" class="head">TTFT 上升</text><text x="1050" y="165" text-anchor="middle" class="small">首 token 等待变长</text>
-
-<text x="700" y="230" text-anchor="middle" class="head">Prefill 的三类压力</text>
-<path d="M700 183 V205 H260 V242" class="link"/><path d="M700 205 V242" class="link"/><path d="M700 205 H1140 V242" class="link"/>
-<rect x="70" y="250" width="380" height="78" fill="#e8f7ef" stroke="#45a36b" class="box"/>
-<text x="260" y="284" text-anchor="middle" class="head">Attention 访存</text><text x="260" y="310" text-anchor="middle" class="small">中间结果写回 HBM 成本高</text>
-<rect x="510" y="250" width="380" height="78" fill="#fff5e6" stroke="#e0a23b" class="box"/>
-<text x="700" y="284" text-anchor="middle" class="head">单次处理规模</text><text x="700" y="310" text-anchor="middle" class="small">一次长 Prefill 占用计算与调度</text>
-<rect x="950" y="250" width="380" height="78" fill="#e8f1fb" stroke="#4c8eda" class="box"/>
-<text x="1140" y="284" text-anchor="middle" class="head">重复前缀计算</text><text x="1140" y="310" text-anchor="middle" class="small">多个请求重复处理相同输入</text>
-
-<path d="M260 328 V392" class="link"/><path d="M700 328 V392" class="link"/><path d="M1140 328 V392" class="link"/>
-<rect x="55" y="400" width="410" height="105" fill="#ffffff" stroke="#45a36b" class="box"/>
-<text x="260" y="438" text-anchor="middle" class="head">FlashAttention</text>
-<text x="260" y="475" text-anchor="middle" class="text">分块计算 + online softmax</text>
-<rect x="495" y="400" width="410" height="105" fill="#ffffff" stroke="#e0a23b" class="box"/>
-<text x="700" y="438" text-anchor="middle" class="head">Chunked Prefill</text>
-<text x="700" y="475" text-anchor="middle" class="text">把长 Prompt 拆成多个块</text>
-<rect x="935" y="400" width="410" height="105" fill="#ffffff" stroke="#4c8eda" class="box"/>
-<text x="1140" y="438" text-anchor="middle" class="head">Prefix Cache</text>
-<text x="1140" y="475" text-anchor="middle" class="text">缓存并复用相同前缀</text>
-
-<text x="700" y="545" text-anchor="middle" class="head">对应观察</text>
-<rect x="55" y="565" width="410" height="88" fill="#e8f7ef" stroke="#45a36b" class="box"/>
-<text x="260" y="600" text-anchor="middle" class="text">减少 HBM 写回</text><text x="260" y="628" text-anchor="middle" class="small">Attention 时间 · TTFT · 峰值显存</text>
-<rect x="495" y="565" width="410" height="88" fill="#fff5e6" stroke="#e0a23b" class="box"/>
-<text x="700" y="600" text-anchor="middle" class="text">让其他请求获得调度机会</text><text x="700" y="628" text-anchor="middle" class="small">TTFT · P99 · Decode 抖动</text>
-<rect x="935" y="565" width="410" height="88" fill="#e8f1fb" stroke="#4c8eda" class="box"/>
-<text x="1140" y="600" text-anchor="middle" class="text">减少重复 Prefill</text><text x="1140" y="628" text-anchor="middle" class="small">命中率 · TTFT · 前缀相似度</text>
-<path d="M260 505 V557" class="link"/><path d="M700 505 V557" class="link"/><path d="M1140 505 V557" class="link"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="560" viewBox="0 0 1500 560" role="img" aria-labelledby="title desc">
+<title id="title">一次模型前向：层内数据流与三类执行成本</title><desc id="desc">示例层先经过归一化、注意力和残差，再经过归一化、前馈和第二次残差。下方区分注意力读写、投影前馈形状和提交成本。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52606d"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d;font-size:19px}.title{font-size:28px;font-weight:700}.head{font-size:21px;font-weight:700}.note{font-size:17px;fill:#475569}.box{stroke:#829ab1;stroke-width:2;rx:14}.flow{fill:none;stroke:#52606d;stroke-width:2.5;marker-end:url(#a)}</style>
+<rect width="1500" height="560" fill="#f7fafc"/>
+<text x="40" y="46" class="title">一次模型前向：层内数据流与三类执行成本</text>
+<text x="40" y="84" class="note">以 LLaMA 类层为例，归一化位于各子层之前；注意力与前馈分别更新位置和通道信息。</text><rect x="40" y="130" width="210" height="120" fill="#dbeafe" class="box"/><text x="145" y="168" text-anchor="middle" class="head">层输入</text><text x="145" y="205" text-anchor="middle">T 个位置 × D 维</text><rect x="300" y="130" width="250" height="120" fill="#dbeafe" class="box"/><text x="425" y="168" text-anchor="middle" class="head">归一化 → 注意力</text><text x="425" y="205" text-anchor="middle">投影与历史读取</text><rect x="600" y="130" width="230" height="120" fill="#ecfdf5" class="box"/><text x="715" y="168" text-anchor="middle" class="head">第一次残差更新</text><text x="715" y="205" text-anchor="middle">原状态 + 注意力输出</text><rect x="880" y="130" width="300" height="120" fill="#dbeafe" class="box"/><text x="1030" y="168" text-anchor="middle" class="head">归一化 → 前馈 FFN</text><text x="1030" y="205" text-anchor="middle">门控、上投影与下投影</text><rect x="1230" y="130" width="230" height="120" fill="#ecfdf5" class="box"/><text x="1345" y="168" text-anchor="middle" class="head">第二次残差更新</text><text x="1345" y="205" text-anchor="middle">得到本层输出</text><path d="M145 130V110H715V130" class="flow"/><path d="M715 250V275H1345V250" class="flow"/><path d="M250 190H300" class="flow"/><path d="M550 190H600" class="flow"/><path d="M830 190H880" class="flow"/><path d="M1180 190H1230" class="flow"/><text x="40" y="302" class="note">两次残差更新均加回各自子层输入。下面分别检查读写、矩阵形状与提交成本，再比较完整前向。</text><rect x="40" y="340" width="440" height="170" fill="#ecfdf5" class="box"/><text x="260" y="378" text-anchor="middle" class="head">注意力读写</text><text x="260" y="415" text-anchor="middle">逐块更新归一化统计</text><text x="260" y="445" text-anchor="middle">减少分数矩阵写回显存</text><rect x="530" y="340" width="440" height="170" fill="#dbeafe" class="box"/><text x="750" y="378" text-anchor="middle" class="head">投影与前馈形状</text><text x="750" y="415" text-anchor="middle">预填充多行 / 普通解码少行</text><text x="750" y="445" text-anchor="middle">权重复用、门控中间量与专家分组</text><rect x="1020" y="340" width="440" height="170" fill="#ede9fe" class="box"/><text x="1240" y="378" text-anchor="middle" class="head">计算之间的提交</text><text x="1240" y="415" text-anchor="middle">编译融合：减少调用与中间读写</text><text x="1240" y="445" text-anchor="middle">Graph 重放：减少重复提交</text>
 </svg>

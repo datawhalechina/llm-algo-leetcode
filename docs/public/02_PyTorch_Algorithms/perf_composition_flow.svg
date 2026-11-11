@@ -1,17 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
   <title id="title">策略组合、复测与瓶颈转移</title>
-  <desc id="desc">通过单项准入的候选先检查依赖、冲突和执行顺序，再在同一基线下组合复测、重新归因并决定保留或回退。</desc>
+  <desc id="desc">以 CPU 预取和异步 H2D 为例：分别测量两个单项和组合，在相同工作负载下比较并保留合格回退。</desc>
   <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#334155"/></marker><style>.title{font-family:"Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#0f172a}.subtitle{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;fill:#475569}.head{font-family:"Noto Sans CJK SC",sans-serif;font-size:18px;font-weight:700;fill:#172033}.body{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;fill:#475569}.edge{fill:none;stroke:#334155;stroke-width:4;marker-end:url(#arrow)}</style></defs>
   <rect width="1200" height="620" rx="24" fill="#f8fafc"/>
-  <text x="600" y="48" text-anchor="middle" class="title">单项收益不能直接相加</text><text x="600" y="78" text-anchor="middle" class="subtitle">组合会共享资源、改变执行顺序，并把主约束转移到新的阶段</text>
+  <text x="600" y="48" text-anchor="middle" class="title">CPU 预取与异步 H2D：单项和组合都要测</text><text x="600" y="78" text-anchor="middle" class="subtitle">示例路径：检查执行条件 → 同负载复测 → 选择合格方案</text>
   <g text-anchor="middle">
-    <rect x="55" y="145" width="220" height="104" rx="16" fill="#dbeafe" stroke="#2563eb" stroke-width="2.5"/><text x="165" y="183" class="head">单项准入结果</text><text x="165" y="214" class="body">候选 A · 候选 B</text><text x="165" y="237" class="body">共享同一比较基线</text>
-    <rect x="345" y="145" width="220" height="104" rx="16" fill="#e0f2fe" stroke="#0284c7" stroke-width="2.5"/><text x="455" y="183" class="head">依赖与冲突</text><text x="455" y="214" class="body">顺序 · 格式 · 资源</text><text x="455" y="237" class="body">失败组合提前排除</text>
-    <rect x="635" y="145" width="220" height="104" rx="16" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/><text x="745" y="183" class="head">组合执行</text><text x="745" y="214" class="body">固定顺序与配置</text><text x="745" y="237" class="body">保留单项与回退路径</text>
-    <rect x="925" y="145" width="220" height="104" rx="16" fill="#dcfce7" stroke="#16a34a" stroke-width="2.5"/><text x="1035" y="183" class="head">同口径复测</text><text x="1035" y="214" class="body">基线 · 单项 · 组合</text><text x="1035" y="237" class="body">记录失败和守护条件</text>
+    <rect x="55" y="145" width="220" height="104" rx="16" fill="#dbeafe" stroke="#2563eb" stroke-width="2.5"/><text x="165" y="183" class="head">单项先分别测</text><text x="165" y="214" class="body">CPU 预取 · 异步 H2D</text><text x="165" y="237" class="body">只保留质量达标项</text>
+    <rect x="345" y="145" width="220" height="104" rx="16" fill="#e0f2fe" stroke="#0284c7" stroke-width="2.5"/><text x="455" y="183" class="head">组合条件</text><text x="455" y="214" class="body">缓冲区 · 异步提交</text><text x="455" y="237" class="body">是否争带宽也要测</text>
+    <rect x="635" y="145" width="220" height="104" rx="16" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/><text x="745" y="183" class="head">同时启用两项</text><text x="745" y="214" class="body">记录运行设置</text><text x="745" y="237" class="body">单项结果仍可用</text>
+    <rect x="925" y="145" width="220" height="104" rx="16" fill="#dcfce7" stroke="#16a34a" stroke-width="2.5"/><text x="1035" y="183" class="head">相同输入下复测</text><text x="1035" y="214" class="body">基线 / A / B / A+B</text><text x="1035" y="237" class="body">记录时间与质量</text>
   </g>
   <path d="M275 197H345" class="edge"/><path d="M565 197H635" class="edge"/><path d="M855 197H925" class="edge"/>
-  <rect x="700" y="390" width="300" height="104" rx="16" fill="#ffedd5" stroke="#ea580c" stroke-width="2.5"/><text x="850" y="428" text-anchor="middle" class="head">重新归因</text><text x="850" y="459" text-anchor="middle" class="body">检查边际收益与新主约束</text><text x="850" y="482" text-anchor="middle" class="body">不能沿用组合前的瓶颈标签</text>
-  <rect x="260" y="390" width="300" height="104" rx="16" fill="#f3e8ff" stroke="#9333ea" stroke-width="2.5"/><text x="410" y="428" text-anchor="middle" class="head">保留或回退</text><text x="410" y="459" text-anchor="middle" class="body">保留组合 · 仅保留单项</text><text x="410" y="482" text-anchor="middle" class="body">或恢复基线</text>
-  <path d="M1035 249V330H850V390" class="edge"/><path d="M700 442H560" class="edge"/>
+  <rect x="925" y="390" width="220" height="104" rx="16" fill="#ffedd5" stroke="#ea580c" stroke-width="2.5"/><text x="1035" y="428" text-anchor="middle" class="head">比较新增收益</text><text x="1035" y="459" text-anchor="middle" class="body">检查整步时间变化</text><text x="1035" y="482" text-anchor="middle" class="body">查看等待和资源争用</text>
+  <rect x="635" y="390" width="220" height="104" rx="16" fill="#f3e8ff" stroke="#9333ea" stroke-width="2.5"/><text x="745" y="428" text-anchor="middle" class="head">保留或回退</text><text x="745" y="459" text-anchor="middle" class="body">选择合格方案</text><text x="745" y="482" text-anchor="middle" class="body">否则回到基线</text>
+  <path d="M1035 249V390" class="edge"/><path d="M925 442H855" class="edge"/>
 </svg>

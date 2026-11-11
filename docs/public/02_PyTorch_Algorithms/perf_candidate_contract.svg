@@ -1,22 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
-  <title id="title">从已确认约束到可证伪候选契约</title>
-  <desc id="desc">资源约束先映射到作用对象和预期减少量，再记录新增代价、守护条件和证伪条件，形成进入真实测量的候选契约。</desc>
+  <title id="title">权重量化：显存收益、运行代价与质量检查</title>
+  <desc id="desc">构造示例：权重低比特化减少权重驻留，但会增加反量化计算并带来量化误差。按对象、单位分别比较，决定是否进入实际测量。</desc>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#334155"/></marker>
     <style>.title{font-family:"Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#0f172a}.subtitle{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;fill:#475569}.head{font-family:"Noto Sans CJK SC",sans-serif;font-size:18px;font-weight:700;fill:#172033}.body{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;fill:#475569}.edge{fill:none;stroke:#334155;stroke-width:4;marker-end:url(#arrow)}</style>
   </defs>
   <rect width="1200" height="620" rx="24" fill="#f8fafc"/>
-  <text x="600" y="48" text-anchor="middle" class="title">候选必须对应一个已确认约束</text>
-  <text x="600" y="78" text-anchor="middle" class="subtitle">分别记录减少量和新增代价，不把不同单位压成任意加权分数</text>
+  <text x="600" y="48" text-anchor="middle" class="title">权重量化先看权重字节，再看时间和误差</text>
+  <text x="600" y="78" text-anchor="middle" class="subtitle">构造示例；字节、毫秒和质量损失分别核对</text>
   <g text-anchor="middle">
-    <rect x="45" y="150" width="205" height="108" rx="16" fill="#dbeafe" stroke="#2563eb" stroke-width="2.5"/><text x="148" y="188" class="head">已确认约束</text><text x="148" y="219" class="body">计算 · 带宽 · 容量</text><text x="148" y="243" class="body">附带证据与工作负载</text>
-    <rect x="285" y="150" width="205" height="108" rx="16" fill="#e0f2fe" stroke="#0284c7" stroke-width="2.5"/><text x="388" y="188" class="head">候选作用对象</text><text x="388" y="219" class="body">运算 · 字节 · 驻留状态</text><text x="388" y="243" class="body">明确改变哪个对象</text>
-    <rect x="525" y="150" width="205" height="108" rx="16" fill="#dcfce7" stroke="#16a34a" stroke-width="2.5"/><text x="628" y="188" class="head">预期减少量</text><text x="628" y="219" class="body">FLOPs · Byte · 峰值</text><text x="628" y="243" class="body">使用原始单位记录</text>
-    <rect x="765" y="150" width="205" height="108" rx="16" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/><text x="868" y="188" class="head">新增代价</text><text x="868" y="219" class="body">计算 · 通信 · 转换</text><text x="868" y="243" class="body">容量与质量风险</text>
-    <rect x="1005" y="150" width="150" height="108" rx="16" fill="#f3e8ff" stroke="#9333ea" stroke-width="2.5"/><text x="1080" y="188" class="head">候选契约</text><text x="1080" y="219" class="body">进入测量</text><text x="1080" y="243" class="body">或提前拒绝</text>
+    <rect x="45" y="150" width="205" height="108" rx="16" fill="#dbeafe" stroke="#2563eb" stroke-width="2.5"/><text x="148" y="188" class="head">权重驻留偏高</text><text x="148" y="219" class="body">先记录整步峰值</text><text x="148" y="243" class="body">确定比较基线</text>
+    <rect x="285" y="150" width="205" height="108" rx="16" fill="#e0f2fe" stroke="#0284c7" stroke-width="2.5"/><text x="388" y="188" class="head">权重低比特化</text><text x="388" y="219" class="body">权重表示变小</text><text x="388" y="243" class="body">记录量化格式</text>
+    <rect x="525" y="150" width="205" height="108" rx="16" fill="#dcfce7" stroke="#16a34a" stroke-width="2.5"/><text x="628" y="188" class="head">权重存储字节</text><text x="628" y="219" class="body">估算后再实测</text><text x="628" y="243" class="body">同一模型与输入</text>
+    <rect x="765" y="150" width="205" height="108" rx="16" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/><text x="868" y="188" class="head">反量化计算</text><text x="868" y="219" class="body">临时缓冲与误差</text><text x="868" y="243" class="body">一起记录</text>
+    <rect x="1005" y="150" width="150" height="108" rx="16" fill="#f3e8ff" stroke="#9333ea" stroke-width="2.5"/><text x="1080" y="188" class="head">筛选结果</text><text x="1080" y="219" class="body">实测 / 调整 / 拒绝</text><text x="1080" y="243" class="body">需结合实测</text>
   </g>
   <path d="M250 204H285" class="edge"/><path d="M490 204H525" class="edge"/><path d="M730 204H765" class="edge"/><path d="M970 204H1005" class="edge"/>
-  <rect x="285" y="390" width="300" height="104" rx="16" fill="#fee2e2" stroke="#dc2626" stroke-width="2.5"/><text x="435" y="428" text-anchor="middle" class="head">硬性守护条件</text><text x="435" y="459" text-anchor="middle" class="body">正确性 · 质量 · 容量 · 兼容性</text><text x="435" y="482" text-anchor="middle" class="body">任一失败即拒绝进入采用结论</text>
-  <rect x="650" y="390" width="300" height="104" rx="16" fill="#ffedd5" stroke="#ea580c" stroke-width="2.5"/><text x="800" y="428" text-anchor="middle" class="head">证伪条件</text><text x="800" y="459" text-anchor="middle" class="body">目标量未下降 · 路径未命中</text><text x="800" y="482" text-anchor="middle" class="body">新增代价超过预算</text>
-  <path d="M435 390V315H1040V258" class="edge"/><path d="M800 390V345H1120V258" class="edge"/>
+  <rect x="765" y="390" width="205" height="104" rx="16" fill="#ffedd5" stroke="#ea580c" stroke-width="2.5"/><text x="868" y="428" text-anchor="middle" class="head">整步时间预算</text><text x="868" y="459" text-anchor="middle" class="body">毫秒与字节分开</text><text x="868" y="482" text-anchor="middle" class="body">检查实际峰值</text>
+  <rect x="1005" y="390" width="150" height="104" rx="16" fill="#fee2e2" stroke="#dc2626" stroke-width="2.5"/><text x="1080" y="428" text-anchor="middle" class="head">验证损失门槛</text><text x="1080" y="459" text-anchor="middle" class="body">预先设定允许变化</text><text x="1080" y="482" text-anchor="middle" class="body">超过就不采用</text>
+  <path d="M868 390V258" class="edge"/><path d="M1080 390V258" class="edge"/>
 </svg>

@@ -1,5 +1,6 @@
-# 21. Decoding Strategies | 解码策略
-**难度：** Medium | **环境：** CPU-first | **标签：** `推理优化`, `解码`, `Sampling` | **目标人群：** 推理优化学习者
+# 21. Decoding Strategies | Decoding Strategies｜解码策略
+
+**难度：** Medium | **环境：** [CPU 主线](#runtime-environment) | **标签：** `推理优化`, `解码`, `采样` | **目标人群：** 理解概率与张量运算的学习者
 
 > 🚀 **云端运行环境**
 >
@@ -9,71 +10,71 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
----
-
 ## 本节导读
 
-模型生成下一个 token 时，会先为整张词表打分，再从候选中选择一个结果。永远选择最高分比较稳定，但可能缺少变化；完全随机又难以控制。解码策略要解决的，就是如何根据分数分布和选择规则，在确定性与多样性之间作出可解释的取舍。
+模型在每个生成位置给出词表中各词元的未归一化分数（logits）。解码策略决定如何改变分布、限制候选集合，并从中选择下一个词元（token），从而在确定性与多样性之间取舍。
 
-学习时先用 greedy 建立确定性基线，再观察 temperature 如何改变分布形状、top-k / top-p 如何改变候选集合，最后把候选数量、熵和随机性放在一起比较。这样可以从“分数如何变”逐步理解“候选如何选”和“结果为何不同”。
+本节先建立贪心解码基线，再比较温度、Top-K 和 Top-p 对分布与候选集合的影响。
 
-**关键词：** `top-k`, `top-p`, `temperature`
+<a id="runtime-environment"></a>
 
----
+## 运行环境
+
+- **基础练习：** 使用 [BASE-CPU](../guide.md#base-cpu)，运行本页的 CPU 题目与测试。
 
 ## 前置阅读
 
-**导语：** 先回顾注意力模块如何产生当前位置的表示，以及模型如何将表示映射为词表 logits；然后观察不同解码规则怎样改变候选集合和采样结果。
+先回顾注意力模块如何产生当前位置的表示，以及模型如何将表示映射为词表 logits；然后观察不同解码规则怎样改变候选集合和采样结果。
 - [04. Attention MHA GQA | 注意力机制：MHA、MQA、GQA](./04_Attention_MHA_GQA.md)
-- [可选前置：05. LLaMA3 Block Tutorial | LLaMA3 Block 实现](./05_LLaMA3_Block_Tutorial.md)
 
 ---
 
-### Step 1: 从词表分数到下一个 token
-模型在每个生成位置输出一组词表 logits。解码的输入是这组分数和选择配置，处理过程可以改变分布形状、缩小候选范围，最后输出一个下一个 token：`greedy` 取最高分，sampling 从重整化后的概率中抽样。
+## Step 1：从词表分数到下一个 Token
 
-| 输入或路径 | 主要处理 | 输出与观察重点 |
-|---|---|---|
-| 原始 logits | 为每个 token 提供分数 | 候选排序与分布形状 |
-| greedy | 直接选择最高分 token | 结果确定，便于作为基线 |
-| sampling | 根据重整化概率抽样 | 结果具有多样性和随机性 |
-| Top-K / Top-p | 在 sampling 前缩小候选集合 | 候选空间和概率质量发生变化 |
+贪心解码始终选择最高分 Token，结果确定；采样解码则从归一化概率中抽取结果。温度和候选截断位于选择之前，它们在本轮处理分数，不直接改写模型权重或已有 KV 缓存；选出的词元会进入下一轮上下文，因此会影响后续状态。正温度 $T$ 把分数 $z$ 变为 $z/T$，再经 Softmax 得到概率。
+
+| 路径 | 主要处理 | 输出与观察重点 |
+| --- | --- | --- |
+| 原始词表分数 | 描述各 Token 的相对偏好 | 排序与分布形状 |
+| 贪心解码 | 选择最高分 Token | 结果确定，可作为基线 |
+| 采样解码 | 按归一化概率抽样 | 结果具有随机性 |
+| Top-K / Top-p | 在采样前缩小候选集合 | 候选数量或累计概率质量变化 |
 
 ![解码策略流程](../public/02_PyTorch_Algorithms/21_decoding_pipeline.svg)
 
-### Step 2: 候选处理顺序如何改变分布
-把最后一个位置的 logits 依次处理，再进入确定性选择或概率采样。本节采用 Temperature → Top-K → Top-p → Softmax → 选择的顺序：前两步改变分数或候选范围，Softmax 之后才得到用于 sampling 的概率。temperature 很小时仍可能采样到其他 token，不能把它当作 greedy。
+## Step 2：候选处理顺序如何改变分布
 
-| 阶段 | 输入 | 输出 / 作用 | 观察重点 |
-|---|---|---|---|
-| Temperature | 原始 logits、温度 $T$ | 缩放后的 logits | 排序不变，分布尖锐程度改变 |
-| Top-K | 缩放后的 logits、$K$ | 只保留前 K 个候选 | 固定数量；相同分数可能保留超过 K 个 |
-| Top-p | 候选 logits、$p$ | 保留累计概率达到阈值的最小集合 | 必须保留首次达到阈值的边界 token |
-| 选择 | 重整化后的概率或 logits | 一个下一个 token | greedy 取最大值，sampling 按概率选择 |
+本节采用“温度缩放 → Top-K → Top-p → 概率归一化 → 选择”的顺序。温度改变分布尖锐程度但保持排序；Top-K 固定排名范围；Top-p 根据累计概率质量决定候选边界。温度很低仍不等同于贪心解码，因为采样路径仍可能选择非最高分 Token。
 
-### Step 3: Top-p 如何确定边界并重整化概率
+| 阶段 | 输入 | 输出或作用 | 观察重点 |
+| --- | --- | --- | --- |
+| 温度缩放 | 原始词表分数、温度 $T$ | 缩放后的分数 | 排序不变，尖锐程度改变 |
+| Top-K | 缩放后的分数、$K$ | 排名前 K 的候选 | 同分边界可能保留更多候选 |
+| Top-p | 候选分布、$p$ | 覆盖累计概率阈值的最小集合 | 必须保留首次达到阈值的边界 Token |
+| 选择 | 最终候选分布 | 一个下一个 Token | 贪心取最大值，采样按概率抽取 |
 
-Top-p 的关键是保留累计概率首次达到或超过阈值的边界 token。假设排序后的概率为 `[0.5, 0.3, 0.1, 0.05, 0.05]`，当 $p=0.85$ 时，累计概率在第三个 token 首次超过阈值，因此前三个 token 进入候选集合。
+## Step 3：Top-p 如何确定候选边界
 
-过滤后，候选之外的 logits 设为 `-inf`，再对保留的 logits 做一次 Softmax；这样采样概率会在新的候选集合内重新归一化。
+Top-p 先按概率从高到低累计，保留累计质量首次达到或超过阈值的边界 Token。若排序后的概率为 `[0.5, 0.3, 0.1, 0.05, 0.05]`，当 $p=0.85$ 时，前三个 Token 构成最小候选集合。若累计概率恰好等于阈值，也应在该位置停止扩展，而不是再多保留一个词元。候选集合确定后，其内部概率重新归一化。
 
-| 处理步骤 | 作用 | 示例或检查点 |
-|---|---|---|
-| 排序与累加 | 按概率从高到低计算 `cumsum` | `[0.5, 0.3, 0.1, 0.05, 0.05]` → `[0.5, 0.8, 0.9, 0.95, 1.0]` |
-| 保留边界 | 保留累计概率首次达到或超过 $p$ 的 token | $p=0.85$ 时保留前三个 token，边界 token 不能被误删 |
-| 屏蔽候选 | 将边界之后的 logits 设为 `-inf` | 被屏蔽 token 不再参与选择 |
-| 重整化 | 对保留 logits 再执行 Softmax | 候选概率重新归一化为 1 |
+| 处理阶段 | 机制作用 | 示例检查点 |
+| --- | --- | --- |
+| 概率排序 | 建立从高到低的累计顺序 | 原词表位置暂不参与边界判断 |
+| 累计概率 | 找到首次达到阈值的位置 | $0.5, 0.8, 0.9$ 在第三项越过 $0.85$ |
+| 保留边界 | 把首次达到阈值的 Token 纳入集合 | 不能误删第三个 Token |
+| 重新归一化 | 在保留集合内恢复总概率为 1 | 被排除 Token 不再参与采样 |
 
 ![Top-p 边界保留示意](../public/02_PyTorch_Algorithms/21_top_p_boundary.svg)
-### Step 4: 实现候选过滤并验证解码流程
 
-题目区提供 token 选择和逐步生成骨架。学习者完成温度缩放、Top-K 阈值过滤和 Top-p 边界恢复三个机制；测试分别覆盖非法温度、同分候选、累计概率边界、确定性选择、可复现采样与 batch 输入。
+## Step 4：实现候选过滤并验证解码流程
 
-| 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
-|---|---|---|---|
-| `apply_temperature` | 校验温度并缩放 logits | 保持排序、shape、dtype 与 device | 正常缩放与非法温度 |
-| `apply_top_k` | 按第 K 大值过滤候选 | 同分候选一起保留，其余位置为 `-inf` | 普通候选、ties 与 batch |
-| `apply_top_p` | 保留累计概率边界并恢复词表顺序 | 首次达到阈值的 token 不能被删除 | 边界集合、非法阈值与 batch |
+本题给定词表分数，补全温度缩放和两类候选过滤；选择与逐词元追加循环由骨架提供。循环按固定新增长度结束，不包含 EOS（终止词元）处理；完整请求还需记录停止原因。测试核对边界候选、批量维度、非法参数与固定种子的选择结果。
+
+| TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
+| --- | --- | --- | --- |
+| TODO 1 · `apply_temperature` | 校验温度并缩放词表分数 | 保持排序、形状、数据类型与设备 | 正常缩放、排序不变与非法温度 |
+| TODO 2 · `apply_top_k` | 按第 K 大值过滤候选 | 同分候选一起保留，其余位置被屏蔽 | 普通候选、同分边界与批量输入 |
+| TODO 3 · `apply_top_p` | 保留累计概率边界并恢复词表顺序 | 首次达到阈值的 Token 不能被删除 | 边界集合、非法阈值与批量输入 |
 
 
 ```python
@@ -84,106 +85,73 @@ import torch.nn.functional as F
 
 ```python
 def apply_temperature(logits: torch.Tensor, temperature: float) -> torch.Tensor:
-    """在 Softmax 前缩放 logits。
+    """在概率归一化前缩放词表分数。"""
+    # ==========================================
+    # TODO 1：校验温度并缩放词表分数。
+    # ==========================================
+    # temperature_is_valid = ???  # temperature 是有限正数时为 True。
+    # scaled_logits = ???  # 保持形状、数据类型、设备和排序的缩放结果。
+    raise NotImplementedError("TODO 1：请校验温度并缩放")
+    if not temperature_is_valid:
+        raise ValueError("temperature 必须是有限正数")
+    return scaled_logits
 
-    参数：
-        logits: 最后一维为词表维度的分数张量，支持单样本或 batch。
-        temperature: 有限正数；越小通常使分布更尖锐。
-    """
-    # ==========================================
-    # TODO 1: 检查 temperature 并完成缩放
-    # 要求：temperature 必须是有限正数；输出保持 logits 的 shape、dtype 和 device，
-    #       只改变分数尺度，不改变 token 的排序关系。
-    # ==========================================
-    # if temperature <= 0 or not torch.isfinite(torch.tensor(temperature)):
-    #     raise ValueError('temperature 必须是有限正数')
-    # temp = ???  # 有限正数的 temperature
-    raise NotImplementedError("TODO 1：请校验并使用 temperature")
-    return logits / temp
 
 def apply_top_k(logits: torch.Tensor, top_k: int) -> torch.Tensor:
-    """按第 K 大值筛选 logits，保留 ties 是本实现的明确语义。
-
-    `top_k=0` 或不小于词表大小时保持输入不变。
-    """
+    """按第 K 大值筛选词表分数，同分边界一起保留。"""
     if top_k is None:
         return logits
     if not isinstance(top_k, int) or isinstance(top_k, bool) or top_k < 0:
-        raise ValueError('top_k 必须为非负整数')
+        raise ValueError("top_k 必须为非负整数")
     if top_k == 0 or top_k >= logits.size(-1):
         return logits
-        
     # ==========================================
-    # TODO 2: Top-K 截断
-    # 先找到第 K 大值作为阈值，再保留所有不小于阈值的位置；ties 可能使保留数超过 K。
-    # 输出仍为 [..., vocab]，被过滤位置改为 -inf。
+    # TODO 2：按第 K 大值形成候选掩码。
     # ==========================================
-    # filter_value = ???  # 被过滤位置使用的 -inf
-    # kth_values = ???  # 第 K 大阈值，形状保留最后一维
-    # logits = ???  # 小于阈值的位置置为 filter_value
-    return logits
+    # kth_values = ???  # 每个样本的第 K 大阈值，保留最后一维。
+    # filtered_logits = ???  # 小于阈值的位置设为负无穷。
+    raise NotImplementedError("TODO 2：请实现 Top-K 过滤")
+    return filtered_logits
+
 
 def apply_top_p(logits: torch.Tensor, top_p: float) -> torch.Tensor:
-    """按累计概率保留最小候选集合，并恢复原始词表顺序。
-
-    边界 token 会被保留；因此这里的 top-p 是“首次达到阈值”的语义。
-    """
+    """保留累计概率首次达到阈值的最小候选集合。"""
     if top_p is None or top_p == 1.0:
         return logits
     if not 0.0 < top_p < 1.0:
-        raise ValueError('top_p 必须满足 0 < top_p <= 1')
-        
-    # 1. 首先需要将 logits 从大到小排序
-    # 注意我们需要记住原始的索引 (indices)，因为截断完了还要把它复原回原来的位置！
+        raise ValueError("top_p 必须满足 0 < top_p <= 1")
     sorted_logits, sorted_indices = torch.sort(logits, descending=True)
-    
-    # 2. 对排序后的 logits 做 Softmax，再计算累加概率
     cumulative_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
-    
-    sorted_indices_to_remove = cumulative_probs > top_p
-
+    remove_mask = cumulative_probs >= top_p
     # ==========================================
-    # TODO 3: 保留边界 token，并恢复原词表顺序
-    # 变量：previous_mask 是右移前的掩码副本；restored_logits 是最终输出。
-    # 提示：将掩码右移一位，首位设为 False；屏蔽后再用 sorted_indices 恢复顺序。
+    # TODO 3：保留边界 Token，并恢复原词表顺序。
     # ==========================================
-    # previous_mask = ???
-    # restored_logits = ???
-    sorted_indices_to_remove[..., 1:] = previous_mask
-    sorted_indices_to_remove[..., 0] = False
-    sorted_logits[sorted_indices_to_remove] = float('-inf')
+    # shifted_mask = ???  # remove_mask 右移一位后的边界保留掩码。
+    # restored_logits = ???  # 屏蔽候选后恢复到原词表顺序的结果。
+    raise NotImplementedError("TODO 3：请实现 Top-p 边界过滤")
+    remove_mask[..., 1:] = shifted_mask
+    remove_mask[..., 0] = False
+    sorted_logits[remove_mask] = float("-inf")
     return restored_logits
 
-def decode_next_token(logits: torch.Tensor, temperature=0.7, top_k=50, top_p=0.9, do_sample=True, generator=None):
-    """完成一次候选过滤和 token 选择，支持 greedy 与可复现 sampling。
 
-    输入可以是 `[vocab]` 或 `[batch, vocab]`；内部统一为二维，输出统一为 `[batch, 1]`。
-    """
+def decode_next_token(logits, temperature=0.7, top_k=50, top_p=0.9, do_sample=True, generator=None):
+    """应用候选策略并选择一个 Token。"""
     if logits.dim() == 1:
         logits = logits.unsqueeze(0)
     elif logits.dim() != 2:
-        raise ValueError('logits 必须是 [vocab] 或 [batch, vocab]')
-    # 1. 调温
+        raise ValueError("logits 必须是 [vocab] 或 [batch, vocab]")
     logits = apply_temperature(logits, temperature)
-    
-    # 2. Top-K 截断 (通常先 K 后 p)
     logits = apply_top_k(logits, top_k)
-    
-    # 3. Top-p 截断
     logits = apply_top_p(logits, top_p)
-    
-    # 4. 概率重归一化
-    probs = F.softmax(logits, dim=-1)
-    
-    # 5. greedy 直接取最大值；sampling 才使用 multinomial
+    probabilities = F.softmax(logits, dim=-1)
     if not do_sample:
         return torch.argmax(logits, dim=-1, keepdim=True)
-    next_token = torch.multinomial(probs, num_samples=1, generator=generator)
-    
-    return next_token
+    return torch.multinomial(probabilities, num_samples=1, generator=generator)
+
 
 def autoregressive_decode(prompt_ids, logits_fn, max_new_tokens, **decode_kwargs):
-    """用 logits_fn 演示逐 token 解码；不代表真实模型性能。"""
+    """逐 Token 调用词表分数函数并追加结果。"""
     tokens = prompt_ids.clone()
     for _ in range(max_new_tokens):
         step_logits = logits_fn(tokens)
@@ -195,14 +163,19 @@ def autoregressive_decode(prompt_ids, logits_fn, max_new_tokens, **decode_kwargs
 
 ```
 
+## 测试
+
+测试分别验证温度、Top-K、Top-p、选择路径和批量输入契约。
+
 
 ```python
-# 测试设计：分别验证温度、Top-K、Top-p、选择循环与输入契约。
-
 def _fixture_logits():
+    """返回包含明确排序关系的固定词表分数。"""
     return torch.tensor([[0.1, 2.3, 0.4, 1.2, -0.5, 4.0, 3.1, 0.0, 1.1, -1.0]])
 
+
 def test_temperature_contract():
+    """验证温度缩放保持排序、形状和数据类型，并拒绝非法温度。"""
     logits = _fixture_logits()
     scaled = apply_temperature(logits, 0.5)
     assert torch.allclose(scaled[0, 5] - scaled[0, 6], (logits[0, 5] - logits[0, 6]) * 2)
@@ -211,10 +184,13 @@ def test_temperature_contract():
     try:
         apply_temperature(logits, 0.0)
     except ValueError:
-        return
-    raise AssertionError('非法 temperature 未被拒绝')
+        pass
+    else:
+        raise AssertionError("非法 temperature 应失败")
+
 
 def test_top_k_filtering():
+    """验证 Top-K 阈值、同分边界和张量属性。"""
     logits = _fixture_logits().to(dtype=torch.float64)
     filtered = apply_top_k(logits, 3)
     assert torch.isfinite(filtered).sum().item() == 3
@@ -222,47 +198,55 @@ def test_top_k_filtering():
     tied = torch.tensor([[2.0, 2.0, 2.0, 1.0]])
     assert torch.isfinite(apply_top_k(tied, 2)).sum().item() == 3
 
+
 def test_top_p_boundary():
+    """验证 Top-p 保留首次越过阈值的边界 Token。"""
     logits = _fixture_logits().to(dtype=torch.float64)
     filtered = apply_top_p(logits, 0.8)
     assert torch.isfinite(filtered).sum().item() == 3
     assert torch.equal(filtered[0, [5, 6, 1]], logits[0, [5, 6, 1]])
-    assert filtered.shape == logits.shape and filtered.dtype == logits.dtype and filtered.device == logits.device
+    exact_logits = torch.log(torch.tensor([[0.5, 0.25, 0.125, 0.125]], dtype=torch.float64))
+    exact_filtered = apply_top_p(exact_logits, 0.75)
+    assert torch.equal(torch.isfinite(exact_filtered), torch.tensor([[True, True, False, False]]))
     for invalid_p in (0.0, 1.1):
         try:
             apply_top_p(logits, invalid_p)
         except ValueError:
             continue
-        raise AssertionError('非法 top_p 未被拒绝')
+        raise AssertionError("非法 top_p 应失败")
+
 
 def test_selection_and_autoregressive_loop():
+    """验证贪心选择、可复现采样和逐 Token 状态推进。"""
     logits = _fixture_logits()
     assert decode_next_token(logits, 1.0, 0, 1.0, do_sample=False).item() == 5
     g1, g2 = torch.Generator().manual_seed(7), torch.Generator().manual_seed(7)
     assert torch.equal(decode_next_token(logits, generator=g1), decode_next_token(logits, generator=g2))
     prompt = torch.tensor([[1, 2]])
+
     def fake_logits(tokens):
         result = torch.zeros(tokens.size(0), tokens.size(1), 10)
         result[..., 3] = 2.0
         return result
+
     generated = autoregressive_decode(prompt, fake_logits, 3, temperature=1.0, top_k=0, top_p=1.0, do_sample=False)
     assert generated.shape == (1, 5) and torch.equal(generated[0, -3:], torch.tensor([3, 3, 3]))
 
+
 def test_batch_and_input_contract():
+    """验证批量输入沿词表维处理，并保持批量维。"""
     logits = _fixture_logits().repeat(2, 1)
     assert apply_top_k(logits, 3).shape == logits.shape
     assert apply_top_p(logits, 0.8).shape == logits.shape
     assert decode_next_token(logits[0], 1.0, 0, 1.0, do_sample=False).shape == (1, 1)
 
-def run_decoding_tests():
-    test_temperature_contract()
-    test_top_k_filtering()
-    test_top_p_boundary()
-    test_selection_and_autoregressive_loop()
-    test_batch_and_input_contract()
-    print('✅ 解码机制测试通过：温度、候选过滤、选择循环与输入契约均符合预期。')
 
-run_decoding_tests()
+test_temperature_contract()
+test_top_k_filtering()
+test_top_p_boundary()
+test_selection_and_autoregressive_loop()
+test_batch_and_input_contract()
+print("✅ 解码策略测试通过")
 
 ```
 
@@ -271,110 +255,82 @@ run_decoding_tests()
 🛑 **STOP HERE** 🛑
 <br><br><br><br><br><br><br><br><br><br>
 > 请先尝试自己完成代码并跑通测试。<br>
-> 如果你正在 Colab 中运行，并且遇到困难没有思路，可以向下滚动查看参考答案。
+> 如果遇到困难，再向下查看参考代码与解析。
 <br><br><br><br><br><br><br><br><br><br>
 
 ---
+
 ## 参考代码与解析
 
 ### 代码
 
-```python
-def apply_temperature(logits: torch.Tensor, temperature: float) -> torch.Tensor:
-    """在 Softmax 前缩放 logits；temperature 必须是有限正数。"""
-    # TODO 1: 校验 temperature，不要用静默截断替代非法参数处理
-    # 要求：必须是有限正数；输出保持 logits 的 shape、dtype 和 device，只改变分数尺度。
-    if not torch.isfinite(torch.tensor(temperature)) or temperature <= 0:
-        raise ValueError('temperature 必须是有限正数')
-    temp = temperature
-    return logits / temp
 
+```python
+# ==========================================
+# TODO 1：校验温度并缩放词表分数。
+# ==========================================
+def apply_temperature(logits: torch.Tensor, temperature: float) -> torch.Tensor:
+    """在概率归一化前缩放词表分数。"""
+    temperature_is_valid = torch.isfinite(torch.tensor(temperature)).item() and temperature > 0
+    if not temperature_is_valid:
+        raise ValueError("temperature 必须是有限正数")
+    scaled_logits = logits / temperature
+    return scaled_logits
+
+
+# ==========================================
+# TODO 2：按第 K 大值形成候选掩码。
+# ==========================================
 def apply_top_k(logits: torch.Tensor, top_k: int) -> torch.Tensor:
-    """
-    Top-K 截断；按第 K 大值筛选，分数相同时可能保留多个 token。
-    """
+    """按第 K 大值筛选词表分数，同分边界一起保留。"""
     if top_k is None:
         return logits
     if not isinstance(top_k, int) or isinstance(top_k, bool) or top_k < 0:
-        raise ValueError('top_k 必须为非负整数')
+        raise ValueError("top_k 必须为非负整数")
     if top_k == 0 or top_k >= logits.size(-1):
         return logits
-        
-    # TODO 2: 实现 Top-K 截断
-    # 先找到第 K 大值作为阈值，再保留所有不小于阈值的位置；ties 可能使保留数超过 K。
-    filter_value = float('-inf')
-    
-    # 找到第 K 大的值
-    kth_values, _ = torch.topk(logits, top_k, dim=-1, largest=True, sorted=True)
-    kth_values = kth_values[..., -1:] # 取最后一个（第 K 大的值）
-    
-    # 将小于第 K 大值的位置设为 -inf
-    logits = torch.where(logits < kth_values, torch.full_like(logits, filter_value), logits)
-    return logits
+    kth_values = torch.topk(logits, top_k, dim=-1).values[..., -1:]
+    filtered_logits = torch.where(logits < kth_values, torch.full_like(logits, float("-inf")), logits)
+    return filtered_logits
 
+
+# ==========================================
+# TODO 3：保留边界 Token，并恢复原词表顺序。
+# ==========================================
 def apply_top_p(logits: torch.Tensor, top_p: float) -> torch.Tensor:
-    """
-    Top-p 截断，保留累计概率首次达到阈值的最小候选集合。
-    """
+    """保留累计概率首次达到阈值的最小候选集合。"""
     if top_p is None or top_p == 1.0:
         return logits
     if not 0.0 < top_p < 1.0:
-        raise ValueError('top_p 必须满足 0 < top_p <= 1')
-        
-    # 1. 首先需要将 logits 从大到小排序
+        raise ValueError("top_p 必须满足 0 < top_p <= 1")
     sorted_logits, sorted_indices = torch.sort(logits, descending=True)
-    
-    # 2. 对排序后的概率计算累加和
     cumulative_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
-    
-    # TODO 3: 保留边界 token，并恢复原词表顺序
-    # previous_mask 保存右移前的掩码；restored_logits 是恢复后的最终输出。
-    sorted_indices_to_remove = cumulative_probs > top_p
-    
-    previous_mask = sorted_indices_to_remove[..., :-1].clone()
-    sorted_indices_to_remove[..., 1:] = previous_mask
-    sorted_indices_to_remove[..., 0] = False
-    
-    # 将需要剔除的 sorted_logits 设为极小值
-    sorted_logits[sorted_indices_to_remove] = float('-inf')
-    
-    # 将排序后的 logits 恢复到原始顺序
-    restored_logits = torch.zeros_like(logits).scatter_(
-        dim=-1, index=sorted_indices, src=sorted_logits
-    )
-    
+    remove_mask = cumulative_probs >= top_p
+    shifted_mask = remove_mask[..., :-1].clone()
+    remove_mask[..., 1:] = shifted_mask
+    remove_mask[..., 0] = False
+    sorted_logits[remove_mask] = float("-inf")
+    restored_logits = torch.zeros_like(logits).scatter_(-1, sorted_indices, sorted_logits)
     return restored_logits
 
-def decode_next_token(logits: torch.Tensor, temperature=0.7, top_k=50, top_p=0.9, do_sample=True, generator=None):
-    """应用策略并选择一个 token；do_sample=False 时使用 greedy。
 
-    输入可以是 `[vocab]` 或 `[batch, vocab]`；内部统一为二维，输出统一为 `[batch, 1]`。
-    """
+def decode_next_token(logits, temperature=0.7, top_k=50, top_p=0.9, do_sample=True, generator=None):
+    """应用候选策略并选择一个 Token。"""
     if logits.dim() == 1:
         logits = logits.unsqueeze(0)
     elif logits.dim() != 2:
-        raise ValueError('logits 必须是 [vocab] 或 [batch, vocab]')
-    # 1. 调温
+        raise ValueError("logits 必须是 [vocab] 或 [batch, vocab]")
     logits = apply_temperature(logits, temperature)
-    
-    # 2. Top-K 截断 (通常先 K 后 p)
     logits = apply_top_k(logits, top_k)
-    
-    # 3. Top-p 截断
     logits = apply_top_p(logits, top_p)
-    
-    # 4. 概率重归一化
-    probs = F.softmax(logits, dim=-1)
-    
-    # 5. greedy 与 sampling 是两条不同路径
+    probabilities = F.softmax(logits, dim=-1)
     if not do_sample:
         return torch.argmax(logits, dim=-1, keepdim=True)
-    next_token = torch.multinomial(probs, num_samples=1, generator=generator)
-    
-    return next_token
+    return torch.multinomial(probabilities, num_samples=1, generator=generator)
+
 
 def autoregressive_decode(prompt_ids, logits_fn, max_new_tokens, **decode_kwargs):
-    """用一个 logits_fn 演示逐 token 解码；不代表真实模型性能。"""
+    """逐 Token 调用词表分数函数并追加结果。"""
     tokens = prompt_ids.clone()
     for _ in range(max_new_tokens):
         step_logits = logits_fn(tokens)
@@ -383,31 +339,33 @@ def autoregressive_decode(prompt_ids, logits_fn, max_new_tokens, **decode_kwargs
         next_token = decode_next_token(step_logits, **decode_kwargs)
         tokens = torch.cat([tokens, next_token], dim=-1)
     return tokens
+
 ```
 
 ### 解析
 
-**1. TODO 1：Temperature 温度调节**
-- 先确认 `temperature` 为有限正数，再执行 `logits / temperature`。温度改变分布尖锐程度，不改变 logits 排序；greedy 则由 `do_sample=False` 选择。
+#### TODO 1：温度缩放
 
-**2. TODO 2：Top-K 截断**
-- 用第 K 大 logits 作为阈值，保留不低于阈值的位置并将其余位置设为 `-inf`。同分 token 会一起保留，因此候选数可能超过 K。
+- 温度对全部词表分数使用同一缩放比例，改变归一化后的尖锐程度。温度必须是有限正数；缩放保持形状、数据类型、设备和 Token 排序。
+- 测试核对分数差的缩放比例、排序不变和非法温度错误。
 
-**3. TODO 3：Top-p 核采样**
-- 在排序空间计算累计概率，右移屏蔽掩码以保留首次达到阈值的边界 token，再用 `scatter_` 恢复原词表顺序。函数返回过滤后的 logits；采样前的 Softmax 会在保留集合内重新归一化。
+#### TODO 2：Top-K 候选过滤
 
-**把机制接入真实生成**
-- 本实现采用 Temperature → Top-K → Top-p；换序会改变候选集合。
-- `-float('inf')` 屏蔽候选，同时保持张量形状；最终 Softmax 会在保留集合内重新归一化。
-- 接入模型时，可用相同配置比较 greedy 与 sampling 的输出差异；23、35 和 36 再分别处理候选验证、批量推进与解码调度。
+- 用第 K 大分数作为候选边界，保留所有不低于边界的位置。同分 Token 一起保留，因此候选数可能超过 K；输出张量属性保持不变。
+- 测试覆盖普通候选、同分边界、批量输入和张量属性。
+
+#### TODO 3：Top-p 候选过滤
+
+- 在概率排序空间找到累计质量边界，保留边界 Token 后恢复原词表顺序。首次达到阈值的 Token 必须保留；候选之外的位置不再参与最终采样。
+- 测试核对保留集合、原词表位置、批量输入和非法阈值。
+
 ## 相关阅读
 
-完成本节的候选过滤和采样实现后，可以沿着“采样方法 → 真实生成接口 → 解码服务策略”继续阅读。
+继续观察一次选择如何扩展为请求生成，以及投机验证怎样保持采样语义。
 
-- [The Curious Case of Neural Text Degeneration：Nucleus Sampling 原论文](https://arxiv.org/abs/1904.09751)
-- [Attention Is All You Need 原论文](https://arxiv.org/abs/1706.03762)
+- [Nucleus Sampling 原论文](https://arxiv.org/abs/1904.09751)
 - [Transformers 文本生成策略文档](https://huggingface.co/docs/transformers/main/en/main_classes/text_generation)
 - [vLLM SamplingParams 文档](https://docs.vllm.ai/en/latest/api/vllm/sampling_params.html)
 - [Part 02 · 23 投机解码](./23_Speculative_Decoding.md)
-- [Part 02 · 35 多 Token 解码](./35_Multi_Token_Decoding.md)
+- [Part 02 · 35 原生多 Token 预测](./35_Multi_Token_Decoding.md)
 - [Part 02 · 36 解码调度](./36_Decode_Scheduling.md)

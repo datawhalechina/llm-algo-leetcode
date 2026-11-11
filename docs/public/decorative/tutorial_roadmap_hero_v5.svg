@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="820" viewBox="0 0 1600 820" role="img" aria-labelledby="title desc">
+  <title id="title">大模型算法与系统教程学习地图</title>
+  <desc id="desc">Part 00 到 Part 05 表示学习阶段；五条主路线跨越多个 Part；能力形成、服务运行和效率提升是贯穿全教程的工程生命线，相关专题可交叉支撑多条生命线。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#071426"/><stop offset="1" stop-color="#102847"/></linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#16345a"/><stop offset="1" stop-color="#102947"/></linearGradient>
+    <filter id="shadow" x="-15%" y="-15%" width="130%" height="140%"><feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#020617" flood-opacity="0.28"/></filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#7dd3fc"/></marker>
+    <style>
+      .cn{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif}.en{font-family:Inter,Arial,sans-serif}
+      .title{font-size:34px;font-weight:750;fill:#f8fafc}.subtitle{font-size:16px;fill:#bae6fd}
+      .section{font-size:16px;font-weight:700;fill:#7dd3fc;letter-spacing:.5px}.partNo{font-size:12px;font-weight:700;fill:#93c5fd}
+      .partName{font-size:16px;font-weight:700;fill:#f8fafc}.partDesc{font-size:11px;fill:#cbd5e1}
+      .routeName{font-size:20px;font-weight:750;fill:#f8fafc}.routeEn{font-size:10px;font-weight:600;fill:#94a3b8}
+      .routeDesc{font-size:13px;fill:#cbd5e1}.groupName{font-size:18px;font-weight:750;fill:#f8fafc}
+      .item{font-size:14px;fill:#dbeafe}.note{font-size:14px;font-weight:600;fill:#e0f2fe}
+    </style>
+  </defs>
+  <rect width="1600" height="960" fill="url(#bg)"/>
+  <circle cx="1510" cy="50" r="210" fill="#2563eb" opacity=".07"/>
+  <circle cx="80" cy="900" r="210" fill="#14b8a6" opacity=".05"/>
+
+  <text x="55" y="58" class="cn title">llm-algo-leetcode · 大模型算法与系统教程</text>
+  <text x="55" y="88" class="cn subtitle">Part 分层与主路线组织内容；三条工程生命线贯穿各 Part，相关专题交叉支撑</text>
+
+  <text x="55" y="128" class="cn section">学习阶段 · PARTS</text>
+  <g filter="url(#shadow)">
+    <g transform="translate(50 148)"><rect width="230" height="112" rx="15" fill="#102b4b" stroke="#3b82f6" stroke-width="1.5"/><text x="16" y="27" class="en partNo">PART 00</text><text x="16" y="55" class="cn partName">前置知识与环境</text><text x="16" y="82" class="cn partDesc">Python · PyTorch · 调试</text></g>
+    <g transform="translate(304 148)"><rect width="230" height="112" rx="15" fill="#102b4b" stroke="#38bdf8" stroke-width="1.5"/><text x="16" y="27" class="en partNo">PART 01</text><text x="16" y="55" class="cn partName">硬件、数学与系统</text><text x="16" y="82" class="cn partDesc">数值 · 访存 · 通信 · 执行</text></g>
+    <g transform="translate(558 148)"><rect width="230" height="112" rx="15" fill="#1f2855" stroke="#a78bfa" stroke-width="2"/><text x="16" y="27" class="en partNo">PART 02</text><text x="16" y="55" class="cn partName">PyTorch 机制与项目</text><text x="16" y="82" class="cn partDesc">机制实现 · 实验 · 项目证据</text></g>
+    <g transform="translate(812 148)"><rect width="230" height="112" rx="15" fill="#2f281a" stroke="#fbbf24" stroke-width="1.5"/><text x="16" y="27" class="en partNo">PART 03</text><text x="16" y="55" class="cn partName">Triton 算子开发</text><text x="16" y="82" class="cn partDesc">Kernel · 融合 · Autotune</text></g>
+    <g transform="translate(1066 148)"><rect width="230" height="112" rx="15" fill="#34221d" stroke="#fb923c" stroke-width="1.5"/><text x="16" y="27" class="en partNo">PART 04</text><text x="16" y="55" class="cn partName">CUDA 与系统优化</text><text x="16" y="82" class="cn partDesc">CUDA · 并发 · 通信</text></g>
+    <g transform="translate(1320 148)"><rect width="230" height="112" rx="15" fill="#332044" stroke="#e879f9" stroke-width="2"/><text x="16" y="27" class="en partNo">PART 05</text><text x="16" y="55" class="cn partName">综合项目与决策收口</text><text x="16" y="82" class="cn partDesc">项目交付 · 方案比较 · 判断</text></g>
+  </g>
+  <g fill="none" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"><path d="M280 204H300"/><path d="M534 204H554"/><path d="M788 204H808"/><path d="M1042 204H1062"/><path d="M1296 204H1316"/></g>
+
+  <text x="55" y="316" class="cn section">主学习路线 · 对象层次递进，不是前置顺序</text>
+  <g filter="url(#shadow)">
+    <g transform="translate(50 338)"><rect width="286" height="142" rx="17" fill="url(#card)" stroke="#f472b6" stroke-width="2"/><rect width="7" height="142" rx="3" fill="#ec4899"/><text x="22" y="40" class="cn routeName">大模型架构演进</text><text x="22" y="65" class="en routeEn">LLM ARCHITECTURE</text><text x="22" y="105" class="cn routeDesc">Block · Attention · MoE · 混合架构</text></g>
+    <g transform="translate(365 338)"><rect width="286" height="142" rx="17" fill="url(#card)" stroke="#c084fc" stroke-width="2"/><rect width="7" height="142" rx="3" fill="#a855f7"/><text x="22" y="40" class="cn routeName">后训练优化</text><text x="22" y="65" class="en routeEn">POST-TRAINING</text><text x="22" y="105" class="cn routeDesc">SFT · 偏好优化 · RL · 评测</text></g>
+    <g transform="translate(680 338)"><rect width="286" height="142" rx="17" fill="url(#card)" stroke="#60a5fa" stroke-width="2"/><rect width="7" height="142" rx="3" fill="#3b82f6"/><text x="22" y="40" class="cn routeName">推理优化</text><text x="22" y="65" class="en routeEn">INFERENCE</text><text x="22" y="105" class="cn routeDesc">请求 · KV Cache · 调度 · Serving</text></g>
+    <g transform="translate(995 338)"><rect width="286" height="142" rx="17" fill="url(#card)" stroke="#34d399" stroke-width="2"/><rect width="7" height="142" rx="3" fill="#10b981"/><text x="22" y="40" class="cn routeName">性能优化</text><text x="22" y="65" class="en routeEn">PERFORMANCE</text><text x="22" y="105" class="cn routeDesc">测量 · 归因 · 策略 · 端到端</text></g>
+    <g transform="translate(1310 338)"><rect width="240" height="142" rx="17" fill="url(#card)" stroke="#fbbf24" stroke-width="2"/><rect width="7" height="142" rx="3" fill="#f59e0b"/><text x="22" y="40" class="cn routeName">算子优化</text><text x="22" y="65" class="en routeEn">OPERATORS</text><text x="22" y="105" class="cn routeDesc">融合 · Kernel · 访存</text></g>
+  </g>
+  <g fill="none" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)">
+    <path d="M338 409H360"/><path d="M653 409H675"/><path d="M968 409H990"/><path d="M1283 409H1305"/>
+  </g>
+
+  <rect x="50" y="510" width="1500" height="58" rx="16" fill="#12304b" stroke="#38bdf8" stroke-opacity=".65"/>
+  <text x="800" y="546" text-anchor="middle" class="cn note">数据工程、量化、通信并行等专题会交叉支撑多条生命线，不是互斥分类</text>
+
+  <text x="55" y="616" class="cn section">三条主生命线 · 贯穿各 Part 与专题</text>
+  <g filter="url(#shadow)">
+    <g transform="translate(50 638)"><rect width="470" height="142" rx="16" fill="#0d243e" stroke="#38bdf8" stroke-opacity=".8"/><text x="22" y="40" class="cn groupName">能力生命线</text><text x="22" y="82" class="cn item">数据工程 · 架构 · 训练与后训练</text><text x="22" y="112" class="cn item">从数据与模型到能力形成和更新</text></g>
+    <g transform="translate(565 638)"><rect width="470" height="142" rx="16" fill="#0d243e" stroke="#34d399" stroke-opacity=".8"/><text x="22" y="40" class="cn groupName">服务生命线</text><text x="22" y="82" class="cn item">推理 · 部署与异构 · Agent 基础设施</text><text x="22" y="112" class="cn item">让模型能力进入实际系统</text></g>
+    <g transform="translate(1080 638)"><rect width="470" height="142" rx="16" fill="#0d243e" stroke="#f472b6" stroke-opacity=".8"/><text x="22" y="40" class="cn groupName">效率生命线</text><text x="22" y="82" class="cn item">性能分析 · 量化 · 通信并行 · 算子</text><text x="22" y="112" class="cn item">贯穿能力形成、训练与服务运行</text></g>
+  </g>
+</svg>

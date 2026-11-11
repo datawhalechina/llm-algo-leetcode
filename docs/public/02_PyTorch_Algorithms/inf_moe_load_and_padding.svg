@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">负载偏斜与块宽填充：分别观察，不用一个指标代替另一个</title><desc id="desc">四个专家的三个构造例子比较分配数、假设行块宽为4时的填充，以及最大负载与平均负载之比。逻辑账本不代表实际GPU延迟。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;font-weight:400;fill:#17324d}.title{font-size:28px;font-weight:700}.h{font-size:21px;font-weight:700}.s{font-size:18px}.note{font-size:17px;fill:#475569}.box{stroke:#829ab1;stroke-width:2;rx:14}.line{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#a)}.dash{fill:none;stroke:#475569;stroke-width:3;stroke-dasharray:7 6;marker-end:url(#a)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/><text x="40" y="48" class="title">负载偏斜与块宽填充：分别观察，不用一个指标代替另一个</text>
+<text x="40" y="88" class="note">四个专家；假设行块宽为 4。这里统计逻辑分配，未测量任何 GPU 内核或服务延迟。</text><rect x="40" y="120" width="410" height="90" fill="#dbeafe" class="box"/><text x="245" y="155" text-anchor="middle" class="h">均衡：4、4、4、4</text><text x="245" y="190" text-anchor="middle" class="s">16 次有效分配</text>
+<rect x="545" y="120" width="410" height="90" fill="#fef3c7" class="box"/><text x="750" y="155" text-anchor="middle" class="h">填充：4、4、4、4</text><text x="750" y="190" text-anchor="middle" class="s">没有额外行</text>
+<rect x="1050" y="120" width="410" height="90" fill="#dcfce7" class="box"/><text x="1255" y="155" text-anchor="middle" class="h">偏斜比 = 1</text><text x="1255" y="190" text-anchor="middle" class="s">有效行比例 = 100%</text>
+<path d="M450 165H545" class="line"/>
+<path d="M955 165H1050" class="line"/>
+<rect x="40" y="230" width="410" height="90" fill="#dbeafe" class="box"/><text x="245" y="265" text-anchor="middle" class="h">热点：8、8、0、0</text><text x="245" y="300" text-anchor="middle" class="s">仍为 16 次有效分配</text>
+<rect x="545" y="230" width="410" height="90" fill="#fef3c7" class="box"/><text x="750" y="265" text-anchor="middle" class="h">填充：8、8、0、0</text><text x="750" y="300" text-anchor="middle" class="s">空专家不分配块</text>
+<rect x="1050" y="230" width="410" height="90" fill="#dcfce7" class="box"/><text x="1255" y="265" text-anchor="middle" class="h">偏斜比 = 2</text><text x="1255" y="300" text-anchor="middle" class="s">有效行比例仍为 100%</text>
+<path d="M450 275H545" class="line"/>
+<path d="M955 275H1050" class="line"/>
+<rect x="40" y="340" width="410" height="90" fill="#dbeafe" class="box"/><text x="245" y="375" text-anchor="middle" class="h">尾块：3、2、1、0</text><text x="245" y="410" text-anchor="middle" class="s">6 次有效分配</text>
+<rect x="545" y="340" width="410" height="90" fill="#fef3c7" class="box"/><text x="750" y="375" text-anchor="middle" class="h">填充：4、4、4、0</text><text x="750" y="410" text-anchor="middle" class="s">共 12 行，增加 6 行</text>
+<rect x="1050" y="340" width="410" height="90" fill="#dcfce7" class="box"/><text x="1255" y="375" text-anchor="middle" class="h">偏斜比 = 2</text><text x="1255" y="410" text-anchor="middle" class="s">有效行比例 = 50%</text>
+<path d="M450 385H545" class="line"/>
+<path d="M955 385H1050" class="line"/>
+</svg>

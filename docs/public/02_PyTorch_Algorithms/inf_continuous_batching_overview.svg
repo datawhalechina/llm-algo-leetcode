@@ -4,9 +4,9 @@
   <text x="560" y="70" text-anchor="middle" font-size="15" fill="#526079">完成请求退出，新请求补位；每轮前向的成员可以不同</text>
   <g font-family="sans-serif" font-size="15" text-anchor="middle">
     <rect x="55" y="125" width="185" height="74" rx="14" fill="#dceafe" stroke="#4f7fc9" stroke-width="2"/><text x="148" y="155" fill="#172033">读取活跃请求</text><text x="148" y="179" fill="#526079">状态与剩余 token</text>
-    <rect x="285" y="125" width="185" height="74" rx="14" fill="#e3f4ea" stroke="#4a9a6b" stroke-width="2"/><text x="378" y="155" fill="#172033">移除已完成请求</text><text x="378" y="179" fill="#526079">释放 slot / KV 引用</text>
-    <rect x="515" y="125" width="185" height="74" rx="14" fill="#fff1d8" stroke="#c98b2f" stroke-width="2"/><text x="608" y="155" fill="#172033">准入等待请求</text><text x="608" y="179" fill="#526079">slot + KV capacity</text>
-    <rect x="745" y="125" width="185" height="74" rx="14" fill="#e8e1fb" stroke="#7658bb" stroke-width="2"/><text x="838" y="155" fill="#172033">执行一轮前向</text><text x="838" y="179" fill="#526079">每请求生成一个 token</text>
+    <rect x="285" y="125" width="185" height="74" rx="14" fill="#e3f4ea" stroke="#4a9a6b" stroke-width="2"/><text x="378" y="155" fill="#172033">移除终止请求</text><text x="378" y="179" fill="#526079">释放 slot / KV 引用</text>
+    <rect x="515" y="125" width="185" height="74" rx="14" fill="#fff1d8" stroke="#c98b2f" stroke-width="2"/><text x="608" y="155" fill="#172033">准入等待请求</text><text x="608" y="179" fill="#526079">槽位＋KV＋词元预算</text>
+    <rect x="745" y="125" width="185" height="74" rx="14" fill="#e8e1fb" stroke="#7658bb" stroke-width="2"/><text x="838" y="155" fill="#172033">执行一轮前向</text><text x="838" y="179" fill="#526079">输入分块／解码一步</text>
     <rect x="390" y="285" width="340" height="70" rx="14" fill="#fde5e3" stroke="#c65d55" stroke-width="2"/><text x="560" y="314" fill="#172033">更新请求状态与 KV 容量</text><text x="560" y="338" fill="#526079">进入下一 iteration boundary</text>
   </g>
   <g stroke="#66758d" stroke-width="2.4" fill="none" marker-end="url(#arrow)"><path d="M240 162H278"/><path d="M470 162H508"/><path d="M700 162H738"/><path d="M838 199V248H690V278"/><path d="M390 320H148V207"/></g>

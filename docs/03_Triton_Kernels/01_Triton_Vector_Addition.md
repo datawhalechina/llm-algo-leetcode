@@ -79,26 +79,26 @@ def add_kernel(
 ):
     # 1. 获取当前 Block 的 ID
     pid = tl.program_id(axis=0)
-    
+
     # ==========================================
     # TODO 1: 计算当前 Block 需要处理的内存偏移量 (offsets)
     # 提示: 使用 pid 和 BLOCK_SIZE 计算块的起始位置
     # ==========================================
     # block_start = ???
     # offsets = ???
-    
+
     # ==========================================
     # TODO 2: 计算边界保护 Mask
     # 提示: 只有当 offsets 小于 n_elements 时，才是合法的访问
     # ==========================================
     # mask = ???
-    
+
     # ==========================================
     # TODO 3: 从 HBM (显存) 中将 x 和 y 加载到 SRAM (片上内存) 中
     # ==========================================
     # x = ???
     # y = ???
-    
+
     # ==========================================
     # TODO 4: 在 SRAM 中进行向量加法，并将结果写回 HBM 的 z_ptr
     # ==========================================
@@ -111,17 +111,17 @@ def triton_add(x: torch.Tensor, y: torch.Tensor):
     source = inspect.getsource(add_kernel.fn)
     if 'pass' in source and '# block_start = ???' in source:
         raise NotImplementedError("请完成 add_kernel 中的 TODO 1-4")
-    
+
     assert x.is_cuda and y.is_cuda and x.shape == y.shape
     n_elements = x.numel()
     z = torch.empty_like(x)
-    
+
     # 定义 BLOCK_SIZE，通常为 2 的幂次方，如 1024
     BLOCK_SIZE = 1024
     # 计算需要启动多少个 Block (向上取整)
     # meta 是 Triton 运行时传入的当前配置字典；这里返回的是一个 1 维 grid 的元组。
     grid = lambda meta: (triton.cdiv(n_elements, meta['BLOCK_SIZE']),)
-    
+
     # 启动 Kernel
     add_kernel[grid](x, y, z, n_elements, BLOCK_SIZE=BLOCK_SIZE)
     return z
@@ -135,46 +135,46 @@ def test_vector_add():
     if not torch.cuda.is_available():
         print("⏭️ 忽略测试：无 GPU。本节编译和运行 Triton/CUDA 算子必须依赖 NVIDIA GPU。")
         return
-        
+
     try:
         torch.manual_seed(0)
         size = 98432  # 故意不用 2 的幂次方，测试 mask 是否生效
         x = torch.rand(size, device='cuda')
         y = torch.rand(size, device='cuda')
-        
+
         # PyTorch Native
         z_torch = x + y
-        
-        # Triton 
+
+        # Triton
         z_triton = triton_add(x, y)
-        
+
         assert torch.allclose(z_torch, z_triton), "Triton 算子输出不正确！"
         print("✅ Vector Addition (Hello World) 算子测试通过！Mask 边界处理正确！")
-        
+
         # 边界测试
         print("\n---  边界情况测试 ---")
-        
+
         # 测试1: 单元素向量
         x1 = torch.tensor([1.0], device='cuda')
         y1 = torch.tensor([2.0], device='cuda')
         z1 = triton_add(x1, y1)
         assert torch.allclose(z1, torch.tensor([3.0], device='cuda')), "单元素测试失败"
         print("✅ 单元素向量测试通过")
-        
+
         # 测试2: 小向量（小于BLOCK_SIZE）
         x2 = torch.rand(100, device='cuda')
         y2 = torch.rand(100, device='cuda')
         z2 = triton_add(x2, y2)
         assert torch.allclose(x2 + y2, z2), "小向量测试失败"
         print("✅ 小向量测试通过")
-        
+
         # 测试3: 恰好对齐BLOCK_SIZE
         x3 = torch.rand(1024, device='cuda')
         y3 = torch.rand(1024, device='cuda')
         z3 = triton_add(x3, y3)
         assert torch.allclose(x3 + y3, z3), "对齐测试失败"
         print("✅ BLOCK_SIZE对齐测试通过")
-    
+
         print("\n---  性能基准测试 (Benchmark) ---")
         quantiles = [0.5, 0.2, 0.8]
         ms_pt, min_ms_pt, max_ms_pt = triton.testing.do_bench(lambda: x + y, quantiles=quantiles)
@@ -213,18 +213,18 @@ import triton.language as tl
 @triton.jit
 def add_kernel(x_ptr, y_ptr, z_ptr, n_elements, BLOCK_SIZE: tl.constexpr):
     pid = tl.program_id(axis=0)
-    
+
     # TODO 1: 计算内存偏移量
     block_start = pid * BLOCK_SIZE
     offsets = block_start + tl.arange(0, BLOCK_SIZE)
-    
+
     # TODO 2: 边界保护 Mask
     mask = offsets < n_elements
-    
+
     # TODO 3: 加载数据到 SRAM
     x = tl.load(x_ptr + offsets, mask=mask)
     y = tl.load(y_ptr + offsets, mask=mask)
-    
+
     # TODO 4: 计算并存回 HBM
     z = x + y
     tl.store(z_ptr + offsets, z, mask=mask)
@@ -233,12 +233,12 @@ def triton_add(x: torch.Tensor, y: torch.Tensor):
     assert x.is_cuda and y.is_cuda and x.shape == y.shape
     n_elements = x.numel()
     z = torch.empty_like(x)
-    
+
     # 定义 BLOCK_SIZE，通常为 2 的幂次方，如 1024
     BLOCK_SIZE = 1024
     # 计算需要启动多少个 Block (向上取整)
     grid = lambda meta: (triton.cdiv(n_elements, meta['BLOCK_SIZE']),)
-    
+
     # 启动 Kernel
     add_kernel[grid](x, y, z, n_elements, BLOCK_SIZE=BLOCK_SIZE)
     return z

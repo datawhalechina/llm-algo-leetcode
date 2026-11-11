@@ -1,49 +1,50 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="690" viewBox="0 0 1400 690">
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="690" viewBox="0 0 1400 690" role="img" aria-labelledby="title desc">
+<title id="title">KV 物理分页与前缀索引可以组合</title><desc id="desc">KV 物理分页与前缀索引可以组合；对象与适用条件见图前正文，图示不代表实测结果。</desc>
 <defs>
-<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#52606d"/></marker>
+<marker markerUnits="userSpaceOnUse" id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#52606d"/></marker>
 </defs>
 <rect width="1400" height="690" fill="#f7fafc"/>
 <style>
-.title{font:700 28px sans-serif;fill:#172b4d}.group{font:700 19px sans-serif;fill:#172b4d}.head{font:700 21px sans-serif;fill:#172b4d}.text{font:16px sans-serif;fill:#243b53}.small{font:14px sans-serif;fill:#52606d}.box{stroke-width:2;rx:14}.flow{stroke:#52606d;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.dash{stroke:#829ab1;stroke-width:2.2;stroke-dasharray:8 6;fill:none;marker-end:url(#arrow)}
+.title{font-family:"Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#172b4d}.group{font-family:"Noto Sans CJK SC",sans-serif;font-size:19px;font-weight:700;fill:#172b4d}.head{font-family:"Noto Sans CJK SC",sans-serif;font-size:21px;font-weight:700;fill:#172b4d}.text{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;font-weight:400;fill:#243b53}.small{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;font-weight:400;fill:#52606d}.box{stroke-width:2;rx:14}.flow{stroke:#52606d;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.dash{stroke:#829ab1;stroke-width:2.2;stroke-dasharray:8 6;fill:none;marker-end:url(#arrow)}
 </style>
 
 <text x="700" y="42" text-anchor="middle" class="title">KV Cache：分页管理与前缀复用</text>
-<text x="700" y="70" text-anchor="middle" class="small">两种机制都服务于 KV Cache，但改变的是不同环节。</text>
+<text x="700" y="70" text-anchor="middle" class="small">物理分页与前缀索引可在同一系统组合，不按后端名称互斥划分。</text>
 
 <rect x="55" y="100" width="610" height="485" fill="#eef6ff" stroke="#8ab4df" class="box"/>
 <rect x="735" y="100" width="610" height="485" fill="#f1f8f3" stroke="#8bc39c" class="box"/>
-<text x="90" y="135" class="group">物理分配：vLLM / PagedAttention</text>
-<text x="770" y="135" class="group">前缀复用：SGLang / RadixAttention</text>
+<text x="90" y="135" class="group">物理分页：逻辑位置到物理块</text>
+<text x="770" y="135" class="group">前缀索引：查找可共享状态</text>
 
 <rect x="105" y="170" width="510" height="78" fill="#ffffff" stroke="#4c8eda" class="box"/>
 <text x="360" y="204" text-anchor="middle" class="head">请求的 KV Cache</text>
 <text x="360" y="230" text-anchor="middle" class="small">长度持续增长，物理空间难以一次预留</text>
 <path d="M360 248 V285" class="flow"/>
 <rect x="105" y="285" width="510" height="92" fill="#ffffff" stroke="#4c8eda" class="box"/>
-<text x="360" y="320" text-anchor="middle" class="head">逻辑 Block → 物理 Block</text>
-<text x="360" y="348" text-anchor="middle" class="text">Block Table 按需分配、释放和复用</text>
+<text x="360" y="320" text-anchor="middle" class="head">逻辑块 → 物理块</text>
+<text x="360" y="348" text-anchor="middle" class="text">块表记录寻址，资源池管理分配与回收</text>
 <path d="M360 377 V414" class="flow"/>
 <rect x="105" y="414" width="510" height="112" fill="#ffffff" stroke="#4c8eda" class="box"/>
 <text x="360" y="450" text-anchor="middle" class="head">主要观察</text>
 <text x="360" y="480" text-anchor="middle" class="small">碎片、尾块利用率、峰值显存</text>
-<text x="360" y="505" text-anchor="middle" class="small">并发容量与 Block 复用</text>
+<text x="360" y="505" text-anchor="middle" class="small">并发容量与物理块复用</text>
 
 <rect x="785" y="170" width="510" height="78" fill="#ffffff" stroke="#45a36b" class="box"/>
 <text x="1040" y="204" text-anchor="middle" class="head">重复的请求前缀</text>
 <text x="1040" y="230" text-anchor="middle" class="small">系统提示、工具说明或多轮历史</text>
 <path d="M1040 248 V285" class="flow"/>
 <rect x="785" y="285" width="510" height="92" fill="#ffffff" stroke="#45a36b" class="box"/>
-<text x="1040" y="320" text-anchor="middle" class="head">Radix Tree 最长前缀匹配</text>
+<text x="1040" y="320" text-anchor="middle" class="head">压缩前缀树的最长匹配</text>
 <text x="1040" y="348" text-anchor="middle" class="text">命中路径登记共享状态，未命中部分进入 Prefill</text>
 <path d="M1040 377 V414" class="flow"/>
 <rect x="785" y="414" width="510" height="112" fill="#ffffff" stroke="#45a36b" class="box"/>
 <text x="1040" y="450" text-anchor="middle" class="head">主要观察</text>
-<text x="1040" y="480" text-anchor="middle" class="small">命中长度、reused tokens、TTFT</text>
-<text x="1040" y="505" text-anchor="middle" class="small">真实 KV 复用还需 backend 证据</text>
+<text x="1040" y="480" text-anchor="middle" class="small">命中长度、实际复用词元与 TTFT</text>
+<text x="1040" y="505" text-anchor="middle" class="small">确认设备实际复用相同身份的状态</text>
 
-<path d="M665 330 H735" class="dash"/>
+<line x1="615" y1="330" x2="785" y2="330" stroke="#829ab1" stroke-width="2.2" stroke-dasharray="8 6"/>
 <text x="700" y="315" text-anchor="middle" class="small">可组合</text>
 <text x="700" y="355" text-anchor="middle" class="small">分配方式 ≠ 复用方式</text>
 
-<text x="700" y="635" text-anchor="middle" class="text">CPU 模拟验证数据结构；真实显存、延迟和吞吐需要匹配 backend 与固定 workload。</text>
+
 </svg>

@@ -1,5 +1,5 @@
 # 70. Serving Scheduler Benchmark | 推理服务调度基准
-**难度：** Hard | **环境：** CPU-first | **标签：** `推理优化`, `推理服务`, `调度`, `基准对比` | **目标人群：** 项目决策练习者
+**难度：** Hard | **环境：** [CPU 主线，GPU 可选](#runtime-environment) | **标签：** `推理优化`, `推理服务`, `调度`, `基准对比` | **目标人群：** 理解请求调度与服务指标的读者
 
 > 🚀 **云端运行环境**
 >
@@ -12,23 +12,32 @@
 ---
 ## 本节导读
 
-本节从一组可复现的请求流和资源配置开始，先建立 serving baseline，再分别观察负载变化与调度策略对请求等待和服务能力的影响。
-学习过程中，你会把“整体吞吐变高”与“部分请求等待更久”放在同一张结果表里，最后根据延迟、服务能力和公平性判断方案适合什么负载。完成后的调度候选记录交给 72；本节不负责模型产物和跨策略部署选择。
+短请求和长请求排在同一队列里时，先来先服务可能让短请求久等；提高业务优先级又可能把等待转移给其他请求。比较调度策略，需要同时看到谁先开始、谁先完成，以及整组请求的吞吐是否变化。
+
+从固定请求流出发，先用 CPU 队列模型解释排序与等待，再用同一后端配对比较先到先服务和业务优先级策略。把高优先级请求的收益与低优先级请求的长尾放在一起，才能判断这次排序变化是否值得采用。
 
 **关键词：** `serving scheduler`, `TTFT`, `TPOT`, `throughput`, `fairness`, `utilization`
 
 ---
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 使用 [`BASE-CPU`](../guide.md#base-cpu)，运行队列模拟与候选判断。
+- **GPU 实测：** 使用 Step 5 声明的独立 vLLM 环境；模型、请求流与配置见 5.1。
+
 ## 前置阅读
 
-**导语：** 开始前先了解 decode 调度、KV Cache 调度、PD 分离和前缀缓存如何改变请求的等待与执行顺序。阅读时关注请求状态、资源分配和服务指标之间的联系，随后把这些机制放入统一的 serving workload 中观察。
+先了解请求排序、缓存容量与预填充／解码配额，区分“选择谁”“能否准入”和“一轮执行多少工作”。
+
 - [36. Decode Scheduling | 解码调度](./36_Decode_Scheduling.md)
 - [37. KV Cache Lifecycle and Capacity Control | KV Cache 生命周期与容量控制](./37_KV_Cache_Lifecycle_and_Capacity_Control.md)
 - [38. Prefill/Decode Scheduling | Prefill/Decode 调度](./38_Prefill_Decode_Scheduling.md)
 
 ---
-### Step 1：把请求流、准入策略与执行后端分开记录
+## Step 1：把请求流、准入策略与执行后端分开记录
 
-一个 Serving 调度器持续处理同一条状态链：请求到达后进入 pending，被选入 batch 后进入 active，完成后进入 completed。请求选择策略决定谁先获得执行资格；后端的连续批处理、抢占、块管理和执行内核决定这一批怎样运行。项目候选必须同时记录固定请求流、调度参数和后端能力，不能把 CPU 单 worker 的排序结果直接写成真实 Serving 收益。
+一个 Serving 调度器持续处理同一条状态链：请求到达后进入 pending，被选入 batch 后进入 active，完成后进入 completed。请求选择策略决定谁先获得执行资格；后端的连续批处理、抢占、块管理和执行内核决定这一批怎样运行。CPU 模型以整批结束作为释放边界：最慢请求决定批次窗口，批内请求在窗口结束时一起退出；真实后端的连续批处理则可在轮次边界补位。优先级策略在这里与后端实验都采用数值越小越优先的约定。
 
 | 状态或动作 | 发生了什么 | 会影响什么 |
 |:---|:---|:---|
@@ -40,9 +49,9 @@
 
 ![Serving 实例级调度：请求到达、排队、Batch 组织与策略决策](../public/02_PyTorch_Algorithms/70_serving_scheduler_scope.svg)
 
-### Step 2：验证准入不变量与后端执行证据
+## Step 2：验证准入不变量与后端执行证据
 
-CPU 模型固定请求流与服务成本，用于检查未到达请求不能提前执行、请求只能完成一次、批次不超过容量等不变量。真实 backend 对照固定模型、请求流、并发、生成参数和硬件，只改变调度策略或一项容量参数，并保存逐请求到达、准入、首词元和完成时间。只有后端实际启用相应策略时，指标变化才能归因于调度候选。
+CPU 模型固定请求流与服务成本，检查请求到达后才执行、每个请求只完成一次、批次不超过容量。真实后端对照固定模型、请求流、并发、生成参数和硬件，只改变已声明的调度策略；配置记录与首 token 顺序共同用于判断策略是否生效。客户端记录了提交、首 token 与完成时间，并未直接测到服务器内部的准入时刻，因此不能把 TTFT 当作纯排队等待。
 
 | 对照对象 | 固定条件 | 唯一变化 | 必须保持的不变量 |
 |:---|:---|:---|:---|
@@ -52,29 +61,31 @@ CPU 模型固定请求流与服务成本，用于检查未到达请求不能提�
 | 到达模式对照 | 同一服务成本与策略 | arrival_ms | 只有已到达请求可参与当前轮 |
 
 
-### Step 3：用等待、吞吐与公平性解释策略取舍
+## Step 3：分清排队等待与首 token 延迟
 
-先读取逐请求与批次轨迹，确认策略确实改变了谁在何时进入服务窗口；再汇总请求级和服务级指标。请求丢失、重复完成、后端策略未启用或 SLO 硬门槛失守时 `reject`；轨迹、质量或资源证据缺失时 `tune`。吞吐提高并不自动代表更好的交互体验，TTFT P95、长尾等待、公平性与完成率必须共同进入 `accept` 判断。
+请求到达、获准执行、收到首 token 和完成，是四个不同事件。排队等待止于获准执行；首 token 延迟（TTFT）还包含首 token 产生和传回的时间。CPU 模型只有整批服务窗口，没有首 token 事件，因此其等待值不能当作真实 TTFT；后端实验使用客户端实测 TTFT 与后续 token 平均耗时（TPOT）。
 
-| 指标 | 单位 | 解释时要结合什么 |
+吞吐变高仍可能让一部分请求等得更久。采用候选时，先确认同一请求流确实由不同策略执行，再检查完成情况、延迟门槛与吞吐。下表中的公平性只是根据等待差距构造的教学分数，不等于通用公平性定义；资源记录齐全也不代表已经满足显存上限。
+
+| 指标 | 单位 | 定义与比较条件 |
 |:---|:---|:---|
-| queue_wait_ms / ttft_ms | ms | 请求到达至被 batch 接纳的等待；CPU 模型用它近似首 token 前的排队时间 |
-| makespan_ms | ms | 整组请求结束时间，结合 batch trace 判断批处理是否缩短总时间 |
-| throughput_tps | token/s | 总输出 token 除以 makespan，不能脱离等待时间单独判断 |
-| utilization | 0–1 | worker 的忙碌占比；高利用率若伴随高等待并非直接收益 |
-| fairness | 0–1 | 请求等待差距的教学代理；与完成顺序一起判断是否牺牲部分请求 |
-| completed_count | 请求数 | 必须等于输入请求数，且每个 request_id 只能完成一次 |
-
+| `queue_wait_ms` | ms | CPU 中从到达到获准执行的等待；旧字段 `ttft_ms` 仅保留为同值兼容别名 |
+| `makespan_ms` | ms | 首个请求到达至最后一个请求完成的观察窗口，不是绝对完成时刻 |
+| `throughput_tps` | token/s | 总输出 token 数除以观察窗口，结合请求等待共同判断 |
+| `utilization` | 0–1 | 模拟 worker 忙碌时间占窗口的比例，不是 GPU SM 利用率 |
+| `fairness` | 0–1 | 等待极差除以不小于 1 ms 的平均等待，再用 1 减去该比值并截断到非负；仅用于本题 |
+| `completed_count` | 请求数 | 与输入请求数相等，并逐项核对完成编号是否重复或丢失 |
 
 ![调度候选：从请求证据到采用状态](../public/02_PyTorch_Algorithms/70_serving_metrics_decision.svg)
-### Step 4：实现 CPU 调度机制与决策
 
-题目区先用队列推进模型解释状态变化，重点判断请求流是否可比、真实后端轨迹是否完整，以及调度候选能否同时满足延迟、完成率和公平性门槛。
+## Step 4：实现 CPU 调度机制与决策
+
+题目区先用队列推进模型解释状态变化，重点判断请求流是否可比、请求完成清单是否完整，以及调度候选能否同时满足延迟、完成率和公平性门槛。
 
 | 任务与目的 | 已知条件 | 完成标准 | 测试验证 |
 |:---|:---|:---|:---|
 | TODO 1：核对调度对照契约 | 请求流、模型、后端和唯一调度变化 | 固定条件一致且仅策略发生变化 | 请求集错配、多变量变化和后端差异 |
-| TODO 2：建立轨迹证据 | 请求级轨迹、批次轨迹和运行状态 | 每个请求到达后执行且只完成一次，关键指标齐全 | 重复完成、丢失请求和轨迹缺口 |
+| TODO 2：建立轨迹证据 | 请求与完成编号、运行状态和服务指标 | 两侧请求清单一致，每个请求只完成一次，关键指标齐全 | 重复完成、丢失请求和轨迹缺口 |
 | TODO 3：形成采用状态 | TTFT、TPOT、吞吐、完成率、公平性与资源记录 | 用户体验和服务能力同时达标才采用 | `accept`、`tune`、`reject` |
 
 
@@ -111,7 +122,7 @@ def simulate_serving_scheduler(requests: List[Dict[str, float]], policy: str = '
 
     请求到达后才可被选择；每轮至多选择 ``batch_size`` 个请求。批内最慢请求决定
     服务窗口，``batch_speedup`` 表示教学模型中的批处理收益；``queue_wait_ms`` 是
-    首 token 前排队时间的代理，``batch_trace`` 记录每个 active 窗口。
+    到达到获准执行的排队等待，``batch_trace`` 记录每个 active 窗口。
     """
     if policy not in {'fifo', 'shortest', 'priority'}:
         raise ValueError('policy 只能是 fifo、shortest 或 priority')
@@ -122,13 +133,18 @@ def simulate_serving_scheduler(requests: List[Dict[str, float]], policy: str = '
     if not requests:
         return {'request_count': 0, 'completed_count': 0, 'makespan_ms': 0.0, 'throughput_tps': 0.0, 'utilization': 0.0, 'fairness': 1.0, 'requests': []}
     pending = []
+    seen_ids = set()
     for index, item in enumerate(requests):
+        request_id = item.get('request_id', f'request-{index}')
+        if not isinstance(request_id, str) or not request_id or request_id in seen_ids:
+            raise ValueError('request_id 必须是唯一的非空字符串')
+        seen_ids.add(request_id)
         arrival = float(item.get('arrival_ms', 0.0))
         service = float(item.get('service_ms', 0.0))
         tokens = int(item.get('output_tokens', 0))
         if arrival < 0 or service <= 0 or tokens < 0:
             raise ValueError('arrival_ms >= 0，service_ms > 0，output_tokens >= 0')
-        pending.append({**item, '_index': index, 'arrival_ms': arrival, 'service_ms': service, 'output_tokens': tokens})
+        pending.append({**item, 'request_id': request_id, '_index': index, 'arrival_ms': arrival, 'service_ms': service, 'output_tokens': tokens})
     pending.sort(key=lambda item: (item['arrival_ms'], item['_index']))
     queue, completed, batch_trace, cursor = [], [], [], 0
     now = busy = 0.0
@@ -145,13 +161,17 @@ def simulate_serving_scheduler(requests: List[Dict[str, float]], policy: str = '
         for item in batch:
             completed.append({
                 'request_id': item.get('request_id', f"request-{item['_index']}"),
+                'arrival_ms': item['arrival_ms'],
+                'admitted_ms': start,
+                'finished_ms': now,
                 'queue_wait_ms': round(start - item['arrival_ms'], 4),
+                # 兼容旧示例的别名，不是首 token 实测值。
                 'ttft_ms': round(start - item['arrival_ms'], 4),
                 'e2e_ms': round(now - item['arrival_ms'], 4),
                 'output_tokens': item['output_tokens'],
             })
     makespan = now - min(item['arrival_ms'] for item in pending)
-    waits = [item['ttft_ms'] for item in completed]
+    waits = [item['queue_wait_ms'] for item in completed]
     mean_wait = sum(waits) / len(waits) if waits else 0.0
     spread = (max(waits) - min(waits)) if waits else 0.0
     fairness = max(0.0, 1.0 - spread / max(mean_wait, 1.0))
@@ -203,10 +223,12 @@ def compare_scheduler_to_baseline(baseline: Dict[str, float], candidate: Dict[st
 def validate_scheduler_contract(baseline, candidate):
     """核对请求流、模型、后端和测量过程是否一致。"""
     fixed_fields = ('model_id', 'revision', 'backend', 'request_stream_id', 'measurement_key')
-    mismatches = [field for field in fixed_fields if baseline.get(field) != candidate.get(field)]
+    mismatches = [field for field in fixed_fields
+                  if baseline.get(field) in (None, '') or candidate.get(field) in (None, '')
+                  or baseline.get(field) != candidate.get(field)]
     # TODO 1：固定条件一致且调度策略确实变化，才允许解释策略收益。
     # fixed_ok：固定字段没有差异。
-    # changed_once：baseline 与 candidate 的 scheduler_policy 不同。
+    # changed_once：两侧策略非空且不同。
     raise NotImplementedError('TODO 1：请核对调度对照契约')
 
 
@@ -217,8 +239,8 @@ def build_scheduler_trace_evidence(baseline, candidate):
     completed_ids = list(candidate.get('completed_ids', []))
     required_metrics = ('ttft_p95_ms', 'tpot_p95_ms', 'throughput_tps', 'completion_rate', 'fairness', 'peak_memory_gb')
     missing = [field for field in required_metrics if candidate.get(field) is None]
-    # TODO 2：契约或运行失败为硬失败；请求重复/丢失和指标缺失为缺证。
-    # trace_complete：完成集合等于请求集合，且每个请求只完成一次。
+    # TODO 2：契约错配、重复或已知丢失为硬失败；未采集轨迹和指标为缺证。
+    # trace_complete：已采集非空请求与完成清单；分别检查两侧完成唯一性及同请求流。
     raise NotImplementedError('TODO 2：请建立调度轨迹证据')
 
 
@@ -226,7 +248,7 @@ def decide_scheduler_candidate(evidence, max_ttft_p95_ms, max_tpot_p95_ms, min_t
     """按失败、缺证、用户体验和服务能力形成采用状态。"""
     # TODO 3：硬失败 reject；缺证或部分门槛未过 tune；全部通过 accept。
     # latency_ok：TTFT 与 TPOT 的 P95 均不越界。
-    # service_ok：吞吐增益、完成率和公平性均达标。
+    # service_ok：吞吐增益、完成率和公平性均达标；先处理硬失败与缺证，再比较数值。
     raise NotImplementedError('TODO 3：请形成调度候选状态')
 
 
@@ -254,6 +276,10 @@ def recommend_serving_scheduler_run(
         return {'decision': 'tune', 'reason': '吞吐和利用率已有改善，但公平性或延迟边界还不够稳', 'next_action': 'refine_queue_rules_or_worker_split'}
     return {'decision': 'reject', 'reason': 'candidate 没有形成可信的 serving 调度收益', 'next_action': 'fallback_to_scheduler_audit'}
 ```
+
+## 测试
+
+先核对 CPU 状态与时间关系，再检查配对条件、完成清单和决策。
 
 
 ```python
@@ -304,6 +330,18 @@ def test_serving_simulation_contract():
     assert simulation['utilization'] == 1.0
     assert simulation['avg_queue_wait_ms'] == round((0.0 + 10.0 + 11.0) / 3, 4)
     assert simulation['requests'][0]['queue_wait_ms'] == 0.0
+    for row in simulation['requests']:
+        assert row['arrival_ms'] <= row['admitted_ms'] <= row['finished_ms']
+        assert row['queue_wait_ms'] == round(row['admitted_ms'] - row['arrival_ms'], 4)
+    shifted = [{**row, 'arrival_ms': row['arrival_ms'] + 100} for row in REQUESTS]
+    assert simulate_serving_scheduler(shifted)['makespan_ms'] == simulation['makespan_ms']
+    _assert_value_error(lambda: simulate_serving_scheduler([REQUESTS[0], REQUESTS[0]]), '重复请求编号应拒绝')
+    for row in simulation['requests']:
+        assert row['arrival_ms'] <= row['admitted_ms'] <= row['finished_ms']
+        assert row['queue_wait_ms'] == round(row['admitted_ms'] - row['arrival_ms'], 4)
+    shifted = [{**row, 'arrival_ms': row['arrival_ms'] + 100} for row in REQUESTS]
+    assert simulate_serving_scheduler(shifted)['makespan_ms'] == simulation['makespan_ms']
+    _assert_value_error(lambda: simulate_serving_scheduler([REQUESTS[0], REQUESTS[0]]), '重复请求编号应拒绝')
     assert simulation['requests'][1]['ttft_ms'] == 10.0
     assert [trace['request_ids'] for trace in simulation['batch_trace']] == [['r1'], ['r2'], ['r3']]
     assert 0.0 <= simulation['fairness'] <= 1.0
@@ -418,7 +456,16 @@ def test_scheduler_project_contract_and_trace():
     assert evidence['hard_failures'] == [] and evidence['missing_evidence'] == []
     assert decide_scheduler_candidate(evidence, 200.0, 40.0, 20.0, 1.0, 0.8)['decision'] == 'accept'
     broken = build_scheduler_trace_evidence(baseline, {**candidate, 'completed_ids': ['r1', 'r1', 'r3']})
-    assert decide_scheduler_candidate(broken, 200.0, 40.0, 20.0, 1.0, 0.8)['decision'] == 'tune'
+    assert decide_scheduler_candidate(broken, 200.0, 40.0, 20.0, 1.0, 0.8)['decision'] == 'reject'
+    missing = build_scheduler_trace_evidence(baseline, {**candidate, 'ttft_p95_ms': None, 'throughput_tps': None})
+    assert decide_scheduler_candidate(missing, 200.0, 40.0, 20.0, 1.0, 0.8)['decision'] == 'tune'
+    empty = build_scheduler_trace_evidence(baseline, {**candidate, 'request_ids': [], 'completed_ids': []})
+    assert decide_scheduler_candidate(empty, 200.0, 40.0, 20.0, 1.0, 0.8)['decision'] != 'accept'
+    no_model = dict(candidate)
+    no_model.pop('model_id')
+    no_model_baseline = dict(baseline)
+    no_model_baseline.pop('model_id')
+    assert not validate_scheduler_contract(no_model_baseline, no_model)['contract_ok']
 
 
 def test_serving_scheduler_benchmark_template():
@@ -434,6 +481,12 @@ def test_serving_scheduler_benchmark_template():
 
 test_serving_scheduler_benchmark_template()
 ```
+
+---
+
+🛑 **STOP HERE**
+
+请先完成题目并运行测试，再查看参考代码与解析。
 
 ## 参考代码与解析
 
@@ -466,7 +519,7 @@ def simulate_serving_scheduler(requests: List[Dict[str, float]], policy: str = '
 
     请求到达后才可被选择；每轮至多选择 ``batch_size`` 个请求。批内最慢请求决定
     服务窗口，``batch_speedup`` 表示教学模型中的批处理收益；``queue_wait_ms`` 是
-    首 token 前排队时间的代理，``batch_trace`` 记录每个 active 窗口。
+    到达到获准执行的排队等待，``batch_trace`` 记录每个 active 窗口。
     """
     if policy not in {'fifo', 'shortest', 'priority'}:
         raise ValueError('policy 只能是 fifo、shortest 或 priority')
@@ -477,13 +530,18 @@ def simulate_serving_scheduler(requests: List[Dict[str, float]], policy: str = '
     if not requests:
         return {'request_count': 0, 'completed_count': 0, 'makespan_ms': 0.0, 'throughput_tps': 0.0, 'utilization': 0.0, 'fairness': 1.0, 'requests': []}
     pending = []
+    seen_ids = set()
     for index, item in enumerate(requests):
+        request_id = item.get('request_id', f'request-{index}')
+        if not isinstance(request_id, str) or not request_id or request_id in seen_ids:
+            raise ValueError('request_id 必须是唯一的非空字符串')
+        seen_ids.add(request_id)
         arrival = float(item.get('arrival_ms', 0.0))
         service = float(item.get('service_ms', 0.0))
         tokens = int(item.get('output_tokens', 0))
         if arrival < 0 or service <= 0 or tokens < 0:
             raise ValueError('arrival_ms >= 0，service_ms > 0，output_tokens >= 0')
-        pending.append({**item, '_index': index, 'arrival_ms': arrival, 'service_ms': service, 'output_tokens': tokens})
+        pending.append({**item, 'request_id': request_id, '_index': index, 'arrival_ms': arrival, 'service_ms': service, 'output_tokens': tokens})
     pending.sort(key=lambda item: (item['arrival_ms'], item['_index']))
     queue, completed, batch_trace, cursor = [], [], [], 0
     now = busy = 0.0
@@ -501,13 +559,17 @@ def simulate_serving_scheduler(requests: List[Dict[str, float]], policy: str = '
         for item in batch:
             completed.append({
                 'request_id': item.get('request_id', f"request-{item['_index']}"),
+                'arrival_ms': item['arrival_ms'],
+                'admitted_ms': start,
+                'finished_ms': now,
                 'queue_wait_ms': round(start - item['arrival_ms'], 4),
+                # 兼容旧示例的别名，不是首 token 实测值。
                 'ttft_ms': round(start - item['arrival_ms'], 4),
                 'e2e_ms': round(now - item['arrival_ms'], 4),
                 'output_tokens': item['output_tokens'],
             })
     makespan = now - min(item['arrival_ms'] for item in pending)
-    waits = [item['ttft_ms'] for item in completed]
+    waits = [item['queue_wait_ms'] for item in completed]
     mean_wait = sum(waits) / len(waits) if waits else 0.0
     spread = (max(waits) - min(waits)) if waits else 0.0
     fairness = max(0.0, 1.0 - spread / max(mean_wait, 1.0))
@@ -559,10 +621,13 @@ def compare_scheduler_to_baseline(baseline: Dict[str, float], candidate: Dict[st
 def validate_scheduler_contract(baseline, candidate):
     """核对请求流、模型、后端和测量过程是否一致。"""
     fixed_fields = ('model_id', 'revision', 'backend', 'request_stream_id', 'measurement_key')
-    mismatches = [field for field in fixed_fields if baseline.get(field) != candidate.get(field)]
+    mismatches = [field for field in fixed_fields
+                  if baseline.get(field) in (None, '') or candidate.get(field) in (None, '')
+                  or baseline.get(field) != candidate.get(field)]
     # TODO 1：固定条件一致，且唯一声明变化是调度策略。
     fixed_ok = not mismatches
-    changed_once = baseline.get('scheduler_policy') != candidate.get('scheduler_policy')
+    changed_once = (bool(baseline.get('scheduler_policy')) and bool(candidate.get('scheduler_policy'))
+                    and baseline['scheduler_policy'] != candidate['scheduler_policy'])
     issues = list(mismatches) + ([] if changed_once else ['scheduler_policy'])
     return {'contract_ok': fixed_ok and changed_once, 'issues': issues}
 
@@ -573,32 +638,47 @@ def build_scheduler_trace_evidence(baseline, candidate):
     request_ids = list(candidate.get('request_ids', []))
     completed_ids = list(candidate.get('completed_ids', []))
     required_metrics = ('ttft_p95_ms', 'tpot_p95_ms', 'throughput_tps', 'completion_rate', 'fairness', 'peak_memory_gb')
-    missing = [field for field in required_metrics if candidate.get(field) is None]
+    missing = [f'{name}.{field}' for name, record in (('baseline', baseline), ('candidate', candidate))
+               for field in required_metrics if record.get(field) is None]
     # TODO 2：请求必须全部且只完成一次，轨迹缺口不能伪装成性能收益。
-    trace_complete = set(completed_ids) == set(request_ids) and len(completed_ids) == len(set(completed_ids))
+    trace_complete = bool(request_ids) and bool(completed_ids)
     hard_failures = list(contract['issues'])
     if baseline.get('failure'):
         hard_failures.append('baseline')
     if candidate.get('failure'):
         hard_failures.append('candidate')
+    for name, record in (('baseline', baseline), ('candidate', candidate)):
+        expected = list(record.get('request_ids', []))
+        actual = list(record.get('completed_ids', []))
+        if expected and len(expected) != len(set(expected)):
+            hard_failures.append(f'{name}.duplicate_request_ids')
+        if actual and (len(actual) != len(set(actual)) or (expected and set(actual) != set(expected))):
+            hard_failures.append(f'{name}.invalid_completed_ids')
+        if not expected or not actual:
+            missing.append(f'{name}.request_trace')
+    if baseline.get('request_ids') != candidate.get('request_ids'):
+        hard_failures.append('request_ids')
+    throughput_gain = (candidate['throughput_tps'] - baseline['throughput_tps']
+                       if candidate.get('throughput_tps') is not None
+                       and baseline.get('throughput_tps') is not None else None)
     missing_evidence = list(missing) + ([] if trace_complete else ['request_trace'])
     return {'hard_failures': hard_failures, 'missing_evidence': missing_evidence,
             'ttft_p95_ms': candidate.get('ttft_p95_ms'), 'tpot_p95_ms': candidate.get('tpot_p95_ms'),
-            'throughput_gain': candidate.get('throughput_tps', 0.0) - baseline.get('throughput_tps', 0.0),
+            'throughput_gain': throughput_gain,
             'completion_rate': candidate.get('completion_rate'), 'fairness': candidate.get('fairness')}
 
 
 def decide_scheduler_candidate(evidence, max_ttft_p95_ms, max_tpot_p95_ms, min_throughput_gain, min_completion_rate, min_fairness):
     """按失败、缺证、用户体验和服务能力形成采用状态。"""
     # TODO 3：交互延迟与服务能力必须同时达标。
-    latency_ok = evidence['ttft_p95_ms'] <= max_ttft_p95_ms and evidence['tpot_p95_ms'] <= max_tpot_p95_ms
-    service_ok = (evidence['throughput_gain'] >= min_throughput_gain
-                  and evidence['completion_rate'] >= min_completion_rate
-                  and evidence['fairness'] >= min_fairness)
     if evidence['hard_failures']:
         return {'decision': 'reject', 'next_action': 'repair_contract_or_backend'}
     if evidence['missing_evidence']:
         return {'decision': 'tune', 'next_action': 'collect_request_trace'}
+    latency_ok = evidence['ttft_p95_ms'] <= max_ttft_p95_ms and evidence['tpot_p95_ms'] <= max_tpot_p95_ms
+    service_ok = (evidence['throughput_gain'] >= min_throughput_gain
+                  and evidence['completion_rate'] >= min_completion_rate
+                  and evidence['fairness'] >= min_fairness)
     if latency_ok and service_ok:
         return {'decision': 'accept', 'next_action': 'promote_to_deployment_comparison'}
     return {'decision': 'tune', 'next_action': 'adjust_queue_or_batch_policy'}
@@ -626,28 +706,26 @@ def recommend_serving_scheduler_run(
 
 ### 解析
 
-本题先用队列模拟解释状态变化，学习者负责项目级配对、请求轨迹完整性和服务采用判断。
-
-**TODO 1：核对调度对照契约**
+#### TODO 1：核对调度对照契约
 
 - 模型、后端、请求流和测量过程必须一致，唯一解释变量是调度策略。
-- 测试用后端错配和策略未变化两个反例阻止无效比较。
+- 测试分别检查后端错配、策略未变化和两侧共同缺少模型身份，避免把缺失当成一致。
 
-**TODO 2：建立请求轨迹证据**
+#### TODO 2：建立请求轨迹证据
 
 - 完成集合必须与请求集合一致，每个请求只能完成一次；否则完成率和延迟分布都不可信。
-- 测试把轨迹缺口与运行失败分开，分别对应补采证据和修复后端。
+- 重复完成或已知请求丢失进入拒绝；未采集完成清单或缺少指标则补采证据。这里核对的是完成清单，真实执行先后仍需后端事件。
 
-**TODO 3：形成调度候选状态**
+#### TODO 3：形成调度候选状态
 
 - TTFT 与 TPOT 的 P95 共同约束用户体验；吞吐增益、完成率和公平性共同约束服务能力。
-- 无硬失败和缺证，且两组门槛同时通过时才进入 `accept`。
+- 先处理失败与缺证，再进行数值比较；缺失指标测试确保返回补采状态，而非触发空值比较错误。
 
-### Step 5（可选）：单卡 GPU 调度策略对照
+## Step 5（可选）：单卡 GPU 调度策略对照
 | CPU 已验证 | 单卡 GPU 补充 | 本页输出 |
 |:---|:---|:---|
 | 到达后准入、容量上限、完成唯一性与决策门槛 | 同一 vLLM 版本下配对比较 FCFS 与 priority | 两组原始 JSON、逐请求首 token/完成顺序和采用判断 |
-#### 5.1 环境、请求流与固定条件
+### 5.1 环境、请求流与固定条件
 
 使用 `INF-VLLM-011-CU128` Profile，硬件下限为单张 12 GB NVIDIA GPU。首次运行先按[推理优化 Quickstart](../topic_discussion/inference_optimization/quickstart.md#inf-vllm-quickstart)创建环境。配置集中在下一单元：G0 与 G1 固定模型、请求流、并发、生成长度、队列容量和重复次数，只改变 vLLM 的 `scheduling-policy`；G1 才把 workload 中的 priority 字段发送给服务。固定的小 `max_num_seqs` 用来形成可观测的等待队列。
 
@@ -658,8 +736,10 @@ def recommend_serving_scheduler_run(
 
 ```python
 # 5.1：唯一可编辑配置。正式复测只修改本单元，并为 RUN_LABEL 使用新值。
-RUN_REAL_BACKEND = True  # 改为 True 后，5.4 会顺序启动 G0 与 G1；不要预先启动其他 vLLM 服务。
+RUN_REAL_BACKEND = False  # 改为 True 后，5.4 会顺序启动 G0 与 G1；不要预先启动其他 vLLM 服务。
 RUN_LABEL = 'rtx5070ti_scheduler_priority_v4'  # 每次复测使用新标签，保留旧 JSON。
+SEMANTIC_ID = 'INF-SERVING-SCHEDULER'
+SCHEMA_VERSION = 'inference-benchmark/v1'
 PROFILE_ID = 'INF-VLLM-011-CU128'  # vLLM 0.11 + CUDA 12.8 隔离环境。
 MODEL_ID = 'Qwen/Qwen2.5-0.5B-Instruct'  # 两组使用同一模型资产。
 MODEL_SOURCE = 'auto'  # 优先复用 model_cache；缺失时由共享解析器处理。
@@ -684,7 +764,7 @@ GROUPS = (
 )
 ```
 
-#### 5.2 环境与输入预检
+### 5.2 环境与输入预检
 
 本单元只检查当前 Kernel、GPU、vLLM 命令、固定请求流和 Profile 身份，不下载模型、不启动服务。
 
@@ -715,7 +795,7 @@ if RUN_REAL_BACKEND and (not preflight['cuda_available'] or not preflight['vllm_
 print(json.dumps(preflight, ensure_ascii=False, indent=2))
 ```
 
-#### 5.3 候选与可比性检查
+### 5.3 候选与可比性检查
 
 读取冻结请求流并检查 request_id、priority 和组别定义。该单元只派生结果路径，不启动后端。
 
@@ -743,11 +823,15 @@ RESULT_PATHS = {
     group['name']: RESULT_DIR / f"{group['name']}_{RUN_LABEL}.json"
     for group in GROUPS
 }
+RAW_RESULT_PATHS = {
+    group['name']: RESULT_DIR / f"{group['name']}_raw_{RUN_LABEL}.json"
+    for group in GROUPS
+}
 print({'request_ids': request_ids, 'priority_levels': sorted(set(priorities)),
        'groups': GROUPS, 'result_paths': {k: str(v) for k, v in RESULT_PATHS.items()}})
 ```
 
-#### 5.4 顺序执行两组真实服务
+### 5.4 顺序执行两组真实服务
 
 每组都单独启动 vLLM、完成预热与重复测量、保存逐请求结果，再释放显存。成功和失败都写入对应 JSON；本单元不形成采用结论。
 
@@ -761,11 +845,16 @@ inference_runtime = importlib.reload(inference_runtime)  # 再刷新项目运行
 start_optional_vllm = inference_runtime.start_optional_vllm
 stop_optional_vllm = inference_runtime.stop_optional_vllm
 run_backend_benchmark = inference_runtime.run_backend_benchmark
+from tools.project_runtime import save_json_record_once
 
 RESULT_DIR.mkdir(parents=True, exist_ok=True)
 if RUN_REAL_BACKEND:
+    collisions = [path for path in (*RESULT_PATHS.values(), *RAW_RESULT_PATHS.values()) if path.exists()]
+    if collisions:
+        raise FileExistsError(f'当前 RUN_LABEL 已有结果，请更换标签：{collisions}')
     for group in GROUPS:
         output_path = RESULT_PATHS[group['name']]
+        raw_output_path = RAW_RESULT_PATHS[group['name']]
         server = log_handle = None
         try:
             server, log_handle, port, selected_dtype, model_path = start_optional_vllm(
@@ -780,7 +869,7 @@ if RUN_REAL_BACKEND:
             )
             report = run_backend_benchmark(
                 project='70', base_url=f'http://127.0.0.1:{port}', model=MODEL_ID,
-                label=group['name'], output=output_path, workload=WORKLOAD,
+                label=group['name'], output=raw_output_path, workload=WORKLOAD,
                 num_prompts=NUM_PROMPTS, max_tokens=MAX_TOKENS,
                 concurrency=CONCURRENCY, warmup=WARMUP, repeats=REPEATS,
                 backend='vllm', dtype=selected_dtype, role=group['role'],
@@ -788,19 +877,22 @@ if RUN_REAL_BACKEND:
                 send_workload_priority=group['send_priority'],
                 synchronize_start=True,
             )
+            report.update({'schema_version': SCHEMA_VERSION, 'semantic_id': SEMANTIC_ID, 'run_label': RUN_LABEL, 'run_mode': 'real_backend', 'raw_result_path': str(raw_output_path)})
             report['scheduler_identity'] = {
                 **group, 'model_path': model_path, 'profile_id': PROFILE_ID,
                 'workload': WORKLOAD, 'concurrency': CONCURRENCY,
                 'max_num_seqs': MAX_NUM_SEQS, 'synchronized_start': True,
             }
-            output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+            save_json_record_once(output_path, report)
         except Exception as exc:
             failure = {
-                'schema_version': 'serving-scheduler-run/v1',
+                'schema_version': 'serving-scheduler-run/v1', 'semantic_id': SEMANTIC_ID,
+                'run_label': RUN_LABEL, 'run_mode': 'real_backend',
                 'scheduler_identity': group, 'status': 'failed',
                 'failure': {'type': type(exc).__name__, 'message': str(exc)},
             }
-            output_path.write_text(json.dumps(failure, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+            if not output_path.exists():
+                save_json_record_once(output_path, failure)
             print(failure)
         finally:
             if server is not None:
@@ -809,7 +901,7 @@ else:
     print('实验未启动：确认 5.1 后将 RUN_REAL_BACKEND 改为 True。')
 ```
 
-#### 5.5 读取配对证据
+### 5.5 读取配对证据
 
 只读两组 JSON，核对策略身份、请求完成率、输出非空、各轮首 token 顺序及服务指标。完成顺序只作为诊断字段，缺失字段保持缺失。
 
@@ -865,9 +957,22 @@ for name, record in loaded.items():
 print(json.dumps(scheduler_rows, ensure_ascii=False, indent=2))
 ```
 
-#### 5.6 形成调度采用判断
+### 5.6 形成调度采用判断
 
 先拒绝后端失败或不可比结果，再检查完成率和输出；最后用首 token 顺序判断高优先级请求是否更早获得服务，并检查吞吐、全体 TTFT 和低优先级长尾是否仍在门槛内。完成顺序只保留为诊断指标，避免生成长度混入调度采用门槛。priority 改善局部请求但造成明显饥饿时只能继续调优。
+
+将配对结果、采用判断和复测边界写入独立证据文件；原始 G0/G1 JSON 保持不变。
+
+**当前登记结果**
+
+| 字段 | 登记内容 |
+| --- | --- |
+| 项目与标签 | 70 节优先级调度；`rtx5070ti_scheduler_priority_v4` |
+| 运行条件 | RTX 5070 Ti Laptop GPU；FCFS 与 priority 配对请求流 |
+| 原始证据 | [FCFS 日志](../../benchmarks/results/70_serving_scheduler/g0_fcfs_rtx5070ti_scheduler_priority_v4.log)、[priority 日志](../../benchmarks/results/70_serving_scheduler/g1_priority_rtx5070ti_scheduler_priority_v4.log) |
+| 正式证据 | [G0](../../benchmarks/results/70_serving_scheduler/g0_fcfs_rtx5070ti_scheduler_priority_v4.json)、[G1](../../benchmarks/results/70_serving_scheduler/g1_priority_rtx5070ti_scheduler_priority_v4.json)、[证据记录](../../benchmarks/results/70_serving_scheduler/70_evidence_record_rtx5070ti_scheduler_priority_v4.json) |
+| 清单与交接 | 证据记录供 72 与 81 节引用 |
+| 结论 | `accept`（限当前优先级混合 workload）：高优先级首 token 顺序改善；吞吐和 TTFT 门槛通过，低优先级 E2E P95 增加约 6.9%，仍在设定上限内 |
 
 ```python
 # 5.6：基于 5.5 的只读视图形成 accept / tune / reject。
@@ -924,12 +1029,10 @@ else:
 print(json.dumps(scheduler_decision, ensure_ascii=False, indent=2))
 ```
 
-#### 5.7 保存调度证据记录
-
-将配对结果、采用判断和复测边界写成独立证据文件，供 72 与 81 消费；原始 G0/G1 JSON 保持不变。
 
 ```python
 # 5.7：只在 G0/G1 结果存在时登记独立证据，不覆盖原始测量。
+from tools.project_runtime import save_json_record_once
 EVIDENCE_PATH = RESULT_DIR / f'70_evidence_record_{RUN_LABEL}.json'
 baseline_record = loaded.get('g0_fcfs') or {}
 candidate_record = loaded.get('g1_priority') or {}
@@ -941,8 +1044,11 @@ failure_reason = None if pair_ok else '; '.join(
     if record.get('failure') or not record
 )
 evidence_record = {
-    'schema_version': 'inference-benchmark/v1',
+    'schema_version': SCHEMA_VERSION,
+    'semantic_id': SEMANTIC_ID,
     'project': '70',
+    'run_label': RUN_LABEL,
+    'run_mode': 'real_backend' if RUN_REAL_BACKEND else 'read_only',
     'strategy': 'priority_scheduler',
     'role': 'candidate',
     'config': {
@@ -984,7 +1090,7 @@ evidence_record = {
     },
     'source_paths': {name: str(path.relative_to(REPO_ROOT)) for name, path in RESULT_PATHS.items()},
 }
-EVIDENCE_PATH.write_text(json.dumps(evidence_record, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+save_json_record_once(EVIDENCE_PATH, evidence_record)
 print(f'调度证据已保存: {EVIDENCE_PATH.relative_to(REPO_ROOT)}')
 ```
 

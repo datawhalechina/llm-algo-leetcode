@@ -80,38 +80,38 @@ def fused_rope_kernel(
 ):
     # 1. 获取全局 Token 索引 (平铺 batch*seq_len*n_heads)
     pid = tl.program_id(0)
-    
+
     # 2. 定位当前 Token、Head 的特征起始指针
     # 假设张量 t 是连续的，形状是 (total_tokens, n_heads, head_dim)
     t_offset = pid * head_dim
-    
+
     # 获取当前 token 位置 (用于取 cos 和 sin)
     token_idx = pid // n_heads
-    
+
     # 3. 计算偶数和奇数的特征偏移量
     half_dim = head_dim // 2
     evens = tl.arange(0, BLOCK_SIZE // 2) * 2
     odds = evens + 1
-    
+
     mask = evens < head_dim
-    
+
     # 4. 加载特征 x
     x_evens = tl.load(t_ptr + t_offset + evens, mask=mask)
     x_odds = tl.load(t_ptr + t_offset + odds, mask=mask)
-    
+
     # 5. 加载 cos 和 sin
     freq_offset = token_idx * half_dim + tl.arange(0, BLOCK_SIZE // 2)
     freq_mask = tl.arange(0, BLOCK_SIZE // 2) < half_dim
-    
+
     cos_vals = tl.load(cos_ptr + freq_offset, mask=freq_mask)
     sin_vals = tl.load(sin_ptr + freq_offset, mask=freq_mask)
-    
+
     # ==========================================
     # TODO 1: 执行旋转公式
     # ==========================================
     # out_evens = ???
     # out_odds = ???
-    
+
     # ==========================================
     # TODO 2: 将计算结果写回 t_ptr (In-place 修改)
     # ==========================================
@@ -125,16 +125,16 @@ def triton_apply_rope(x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor):
     cos/sin: 形状 (seq_len, head_dim // 2)
     """
     seq_len, n_heads, head_dim = x.shape
-    
+
     # 这里通常假设连续内存
     x = x.contiguous()
     cos = cos.contiguous()
     sin = sin.contiguous()
-    
+
     BLOCK_SIZE = triton.next_power_of_2(head_dim)
     n_elements = seq_len * n_heads
     grid = (n_elements, )
-    
+
     fused_rope_kernel[grid](
         x, cos, sin,
         seq_len, n_heads, head_dim,
@@ -151,48 +151,48 @@ def test_fused_rope():
     if not torch.cuda.is_available():
         print("⏭️忽略测试：无 GPU。")
         return
-        
+
     try:
         torch.manual_seed(42)
         seq_len, n_heads, head_dim = 16, 8, 128
-        
+
         x = torch.randn(seq_len, n_heads, head_dim, device='cuda')
         x_ref = x.clone() # 复制供对照，Triton 是原地修改
-        
+
         cos = torch.randn(seq_len, head_dim // 2, device='cuda')
         sin = torch.randn(seq_len, head_dim // 2, device='cuda')
-        
+
         # 1. PyTorch 原生计算
         x_evens = x_ref[..., 0::2]
         x_odds = x_ref[..., 1::2]
         cos_b = cos.unsqueeze(1)
         sin_b = sin.unsqueeze(1)
-        
+
         out_evens = x_evens * cos_b - x_odds * sin_b
         out_odds = x_evens * sin_b + x_odds * cos_b
-        
+
         y_ref = torch.empty_like(x_ref)
         y_ref[..., 0::2] = out_evens
         y_ref[..., 1::2] = out_odds
-        
+
         # 2. Triton In-place 计算
         triton_apply_rope(x, cos, sin)
-        
+
         # 3. 验证结果
         diff = torch.max(torch.abs(y_ref - x))
         print(f"最大误差: {diff.item():.6e}")
         assert diff < 1e-5, "Triton RoPE 计算结果不正确！"
-        
+
         print("✅ 原地 (In-place) Triton Fused RoPE 算子实现成功！")
-        
-    
+
+
         print("\n--- 性能基准测试 (Benchmark) ---")
         # 增大测试规模 (模拟真实的 Prefill 阶段)
         seq_len, n_heads, head_dim = 2048, 32, 128
         x_large = torch.randn(seq_len, n_heads, head_dim, device='cuda', dtype=torch.float16)
         cos_large = torch.randn(seq_len, head_dim // 2, device='cuda', dtype=torch.float16)
         sin_large = torch.randn(seq_len, head_dim // 2, device='cuda', dtype=torch.float16)
-        
+
         def torch_rope(x, cos, sin):
             x_evens = x[..., 0::2]
             x_odds = x[..., 1::2]
@@ -204,11 +204,11 @@ def test_fused_rope():
             y[..., 0::2] = out_evens
             y[..., 1::2] = out_odds
             return y
-            
+
         quantiles = [0.5, 0.2, 0.8]
         ms_pt, _, _ = triton.testing.do_bench(lambda: torch_rope(x_large.clone(), cos_large, sin_large), quantiles=quantiles)
         ms_tr, _, _ = triton.testing.do_bench(lambda: triton_apply_rope(x_large, cos_large, sin_large), quantiles=quantiles)
-        
+
         print(f"PyTorch Time (Allocates new tensors): {ms_pt:.4f} ms")
         print(f"Triton Time (In-place operation):     {ms_tr:.4f} ms")
         print(f"Speedup:                              {ms_pt / ms_tr:.2f}x")
@@ -245,37 +245,37 @@ def fused_rope_kernel(
 ):
     # 1. 获取全局 Token 索引
     pid = tl.program_id(0)
-    
+
     # 2. 定位当前 Token、Head 的特征起始指针
     t_offset = pid * head_dim
-    
+
     # 获取当前 token 位置
     token_idx = pid // n_heads
-    
+
     # 3. 计算偶数和奇数的特征偏移量
     half_dim = head_dim // 2
     evens = tl.arange(0, BLOCK_SIZE // 2) * 2
     odds = evens + 1
-    
+
     mask = evens < head_dim
-    
+
     # 4. 加载特征 x
     x_evens = tl.load(t_ptr + t_offset + evens, mask=mask)
     x_odds = tl.load(t_ptr + t_offset + odds, mask=mask)
-    
+
     # 5. 加载 cos 和 sin
     freq_offset = token_idx * half_dim + tl.arange(0, BLOCK_SIZE // 2)
     freq_mask = tl.arange(0, BLOCK_SIZE // 2) < half_dim
-    
+
     cos_vals = tl.load(cos_ptr + freq_offset, mask=freq_mask)
     sin_vals = tl.load(sin_ptr + freq_offset, mask=freq_mask)
-    
+
     # ==========================================
     # TODO 1: 执行旋转公式
     # ==========================================
     out_evens = x_evens * cos_vals - x_odds * sin_vals
     out_odds = x_evens * sin_vals + x_odds * cos_vals
-    
+
     # ==========================================
     # TODO 2: 将计算结果写回 t_ptr (In-place 修改)
     # ==========================================
@@ -288,16 +288,16 @@ def triton_apply_rope(x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor):
     cos/sin: 形状 (seq_len, head_dim // 2)
     """
     seq_len, n_heads, head_dim = x.shape
-    
+
     # 这里通常假设连续内存
     x = x.contiguous()
     cos = cos.contiguous()
     sin = sin.contiguous()
-    
+
     BLOCK_SIZE = triton.next_power_of_2(head_dim)
     n_elements = seq_len * n_heads
     grid = (n_elements, )
-    
+
     fused_rope_kernel[grid](
         x, cos, sin,
         seq_len, n_heads, head_dim,

@@ -1,18 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="560" viewBox="0 0 1500 560" role="img" aria-labelledby="title desc">
-<title id="title">解码策略：从 logits 到下一个 token</title><desc id="desc">logits 经过温度调整后，可进入 Top-K 或 Top-p 候选筛选，再经过重整化，最后由 greedy 或 sampling 选择下一个 token。</desc>
-<defs><style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",Arial,sans-serif;fill:#172033}.title{font-size:29px;font-weight:700}.sub{font-size:15px;fill:#475569}.label{font-size:18px;font-weight:700}.small{font-size:13px;fill:#475569}.box{stroke-width:2.5;rx:18}.flow{stroke:#64748b;stroke-width:2.5;fill:none}.arrow{fill:#64748b}.branch{stroke:#2563eb;stroke-width:2.5;fill:none}.branchArrow{fill:#2563eb}</style></defs>
-<rect width="1500" height="560" fill="#f8fafc"/>
-<text x="750" y="42" text-anchor="middle" class="title">从 logits 到下一个 token</text><text x="750" y="70" text-anchor="middle" class="sub">先改变分布或候选空间，再决定输出的确定性与多样性</text>
-<rect x="55" y="205" width="210" height="110" class="box" fill="#dbeafe" stroke="#3b82f6"/><text x="160" y="250" text-anchor="middle" class="label">Logits</text><text x="160" y="279" text-anchor="middle" class="small">词表上的原始分数</text>
-<path d="M265 260H345" class="flow"/><polygon points="351,260 339,254 339,266" class="arrow"/>
-<rect x="345" y="205" width="230" height="110" class="box" fill="#fef3c7" stroke="#d97706"/><text x="460" y="250" text-anchor="middle" class="label">Temperature</text><text x="460" y="279" text-anchor="middle" class="small">改变分布尖锐程度</text>
-<path d="M575 260H640V190H715M575 260H640V330H715" class="branch"/><polygon points="721,190 709,184 709,196" class="branchArrow"/><polygon points="721,330 709,324 709,336" class="branchArrow"/>
-<rect x="715" y="140" width="230" height="100" class="box" fill="#dcfce7" stroke="#16a34a"/><text x="830" y="181" text-anchor="middle" class="label">Top-K</text><text x="830" y="210" text-anchor="middle" class="small">固定保留 K 个候选</text>
-<rect x="715" y="280" width="230" height="100" class="box" fill="#ecfccb" stroke="#65a30d"/><text x="830" y="321" text-anchor="middle" class="label">Top-p</text><text x="830" y="350" text-anchor="middle" class="small">按累计概率动态截断</text>
-<path d="M945 190H1005V260M945 330H1005V260H1060" class="flow"/><polygon points="1066,260 1054,254 1054,266" class="arrow"/>
-<rect x="1030" y="205" width="200" height="110" class="box" fill="#f5f3ff" stroke="#8b5cf6"/><text x="1130" y="250" text-anchor="middle" class="label">重整化</text><text x="1130" y="279" text-anchor="middle" class="small">候选概率重新归一化</text>
-<path d="M1230 260H1280V190H1320M1230 260H1280V330H1320" class="flow"/>
-<rect x="1320" y="140" width="140" height="100" class="box" fill="#fce7f3" stroke="#db2777"/><text x="1390" y="181" text-anchor="middle" class="label">greedy</text><text x="1390" y="210" text-anchor="middle" class="small">取最大值</text>
-<rect x="1320" y="280" width="140" height="100" class="box" fill="#fee2e2" stroke="#dc2626"/><text x="1390" y="321" text-anchor="middle" class="label">sampling</text><text x="1390" y="350" text-anchor="middle" class="small">按概率抽样</text>
-<polygon points="345,260 333,254 333,266" class="arrow"/><polygon points="715,190 703,184 703,196" class="branchArrow"/><polygon points="715,330 703,324 703,336" class="branchArrow"/><polygon points="1036,260 1024,254 1024,266" class="arrow"/><polygon points="1320,190 1308,184 1308,196" class="arrow"/><polygon points="1320,330 1308,324 1308,336" class="arrow"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="500" viewBox="0 0 1500 500" role="img" aria-labelledby="title desc">
+<title id="title">解码策略：先顺序过滤，再选择词元</title>
+<desc id="desc">本页按温度、Top-K、Top-p 的顺序处理词表分数，归一化后选择贪心最大值或按概率采样。Top-K 同分边界一起保留。</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52657a"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:16px;fill:#475569}.label{font-size:19px;font-weight:700}.small{font-size:15px;fill:#475569}.box{stroke-width:2;rx:16}.flow{stroke:#52657a;stroke-width:2.5;fill:none;marker-end:url(#arrow)}</style>
+</defs>
+<rect width="1500" height="500" fill="#f8fafc"/>
+<text x="750" y="48" text-anchor="middle" class="title">先改变分数与候选集合，再决定怎样选择下一个词元</text>
+<text x="750" y="80" text-anchor="middle" class="sub">本页的固定顺序：温度 → Top-K → Top-p；同一请求比较时保持这些规则一致</text>
+<rect x="45" y="200" width="185" height="110" class="box" fill="#dbeafe" stroke="#3b82f6"/>
+<text x="137" y="243" text-anchor="middle" class="label">词表分数</text><text x="137" y="275" text-anchor="middle" class="small">原始 logits</text>
+<rect x="275" y="200" width="190" height="110" class="box" fill="#fef3c7" stroke="#d97706"/>
+<text x="370" y="243" text-anchor="middle" class="label">温度缩放</text><text x="370" y="275" text-anchor="middle" class="small">分数除以正温度 T</text>
+<rect x="510" y="200" width="190" height="110" class="box" fill="#dcfce7" stroke="#16a34a"/>
+<text x="605" y="243" text-anchor="middle" class="label">Top-K</text><text x="605" y="275" text-anchor="middle" class="small">第 K 大值及同分候选</text>
+<rect x="745" y="200" width="190" height="110" class="box" fill="#ecfccb" stroke="#65a30d"/>
+<text x="840" y="243" text-anchor="middle" class="label">Top-p</text><text x="840" y="275" text-anchor="middle" class="small">在剩余候选中累计概率</text>
+<rect x="980" y="200" width="190" height="110" class="box" fill="#f5f3ff" stroke="#8b5cf6"/>
+<text x="1075" y="243" text-anchor="middle" class="label">归一化</text><text x="1075" y="275" text-anchor="middle" class="small">保留候选的概率和为 1</text>
+<rect x="1245" y="130" width="210" height="100" class="box" fill="#fce7f3" stroke="#db2777"/>
+<text x="1350" y="170" text-anchor="middle" class="label">贪心选择</text><text x="1350" y="202" text-anchor="middle" class="small">取最高分词元</text>
+<rect x="1245" y="280" width="210" height="100" class="box" fill="#fee2e2" stroke="#dc2626"/>
+<text x="1350" y="320" text-anchor="middle" class="label">随机采样</text><text x="1350" y="352" text-anchor="middle" class="small">按保留分布抽取词元</text>
+<path d="M230 255H275" class="flow"/><path d="M465 255H510" class="flow"/><path d="M700 255H745" class="flow"/><path d="M935 255H980" class="flow"/>
+<path d="M1170 255H1205V180H1245" class="flow"/><path d="M1205 255V330H1245" class="flow"/>
+<text x="750" y="450" text-anchor="middle" class="sub">本轮选出的词元追加到上下文，成为下一轮预测的输入；过滤本身不改写已有缓存</text>
 </svg>

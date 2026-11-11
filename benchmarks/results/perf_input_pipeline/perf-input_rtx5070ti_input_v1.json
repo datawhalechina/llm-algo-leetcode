@@ -1,0 +1,70 @@
+{
+  "schema_version": "performance-mechanism-gpu/v1",
+  "profile_id": "PERF-CUDA-MECHANISM",
+  "semantic_id": "PERF-INPUT",
+  "run_label": "rtx5070ti_input_v1",
+  "framework": {
+    "python": "3.12.15",
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8"
+  },
+  "hardware": {
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000
+  },
+  "workload": {
+    "batch_size": 8,
+    "seq_len": 128,
+    "feature_dim": 512,
+    "warmup_steps": 10,
+    "repeat_steps": 80,
+    "candidate_workers": 2,
+    "prefetch_factor": 2,
+    "seed": 42
+  },
+  "metrics": {
+    "pageable_single": {
+      "workers": 0,
+      "pin_memory": false,
+      "non_blocking": false,
+      "batch_wait_median_ms": 0.1414399994246196,
+      "h2d_median_ms": 0.22934400290250778,
+      "step_median_ms": 0.5671580001944676,
+      "step_p95_ms": 0.7046999999147374,
+      "samples_per_second": 13612.099493722711,
+      "peak_allocated_mb": 13.12646484375,
+      "checksum": 0.006802883930504322
+    },
+    "pinned_single": {
+      "workers": 0,
+      "pin_memory": true,
+      "non_blocking": true,
+      "batch_wait_median_ms": 0.1386144995194627,
+      "h2d_median_ms": 0.15163199603557587,
+      "step_median_ms": 0.3790555001614848,
+      "step_p95_ms": 0.5507519999810029,
+      "samples_per_second": 18842.31575864993,
+      "peak_allocated_mb": 13.12646484375,
+      "checksum": 0.006802883930504322
+    },
+    "prefetched_pinned": {
+      "workers": 2,
+      "pin_memory": true,
+      "non_blocking": true,
+      "batch_wait_median_ms": 0.03806650056503713,
+      "h2d_median_ms": 0.16222400218248367,
+      "step_median_ms": 0.3942535004171077,
+      "step_p95_ms": 0.48829399747774005,
+      "samples_per_second": 20302.64584869011,
+      "peak_allocated_mb": 13.12646484375,
+      "checksum": 0.006802883930504322
+    }
+  },
+  "correctness": {
+    "checksum_relative_diff": 0.0,
+    "passed": true
+  },
+  "failure": null,
+  "evidence_level": "local_mechanism_benchmark",
+  "decision": "accept_prefetch_candidate"
+}

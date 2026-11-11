@@ -1,0 +1,50 @@
+{
+  "schema_version": "performance-trace-mechanism/v2",
+  "profile_id": "PERF-CUDA-MECHANISM",
+  "semantic_id": "PERF-TRACE",
+  "run_label": "rtx5070ti_trace_v1",
+  "workload": {
+    "id": "perf-trace-critical-path",
+    "version": "v2",
+    "matrix_size": 2048,
+    "warmup_steps": 5,
+    "profile_steps": 10
+  },
+  "framework": {
+    "python": "3.12.15",
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8"
+  },
+  "hardware": {
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000
+  },
+  "metrics": {
+    "selected_events": {
+      "h2d_copy": {
+        "cpu_time_total_us": 0.0,
+        "cuda_time_total_us": 11639.729000000003,
+        "count": 10
+      },
+      "cuda_matmul": {
+        "cpu_time_total_us": 0.0,
+        "cuda_time_total_us": 10415.743999999999,
+        "count": 10
+      },
+      "host_sync": {
+        "cpu_time_total_us": 0.0,
+        "cuda_time_total_us": 7.67900000000418,
+        "count": 10
+      }
+    },
+    "event_groups": 28,
+    "missing_required_events": []
+  },
+  "artifacts": {
+    "trace_path": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/perf_trace/perf-trace-critical-path_rtx5070ti_trace_v1.trace.json",
+    "trace_bytes": 118743
+  },
+  "failure": null,
+  "evidence_level": "local_mechanism_trace",
+  "decision": "ready_for_trace_reading"
+}

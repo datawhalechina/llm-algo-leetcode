@@ -1,5 +1,45 @@
 {
   "task": "task3_training_memory_optimization",
+  "environment_preflight": {
+    "environment_profile": null,
+    "status": "ok",
+    "ready": true,
+    "runtime": {
+      "python": "3.12.15 (main, Oct  6 2026, 23:50:18) [GCC 15.3.0]",
+      "platform": "Linux-6.8.0-138-generic-x86_64-with-glibc2.35",
+      "torch": "2.8.0+cu128",
+      "torch_cuda": "12.8",
+      "cuda_available": true,
+      "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+      "device_capability": [
+        12,
+        0
+      ]
+    },
+    "gpu_memory_gb": 11.48,
+    "gpu_device_count": 1,
+    "native_bf16_supported": true,
+    "packages": {
+      "required": {
+        "transformers": true
+      },
+      "optional": {}
+    },
+    "required_packages_missing": [],
+    "distribution_versions": {},
+    "version_mismatches": {},
+    "exact_version_mismatches": {},
+    "forbidden_distributions_present": [],
+    "python_path_isolation": {
+      "sys_prefix": "/data/anaconda3/envs/llm_vllm_cu128",
+      "user_site_enabled": false,
+      "foreign_python_paths": [],
+      "external_site_paths": []
+    },
+    "reasons": [],
+    "next_actions": [],
+    "result_path": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/73_real_gpu_training.json"
+  },
   "stage": "measurement_baseline",
   "next_stage": "76_activation_checkpoint_offload_benchmark",
   "config": {
@@ -12,85 +52,128 @@
     "warmup": 2,
     "iters": 5,
     "amp_dtype": "torch.bfloat16",
-    "torch": "2.11.0+cu128",
+    "torch": "2.8.0+cu128",
     "torch_cuda": "12.8",
     "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "compute_capability": [
+      12,
+      0
+    ],
+    "native_bf16": true,
+    "mode": "paired",
     "seed": 42,
     "repeats": 3
   },
   "baseline": {
-    "step_time_ms": 482.753,
-    "samples_per_s": 2.072,
+    "step_time_ms": 473.353,
+    "samples_per_s": 2.113,
     "loss": 11.477,
-    "peak_mem_mb": 9782.563,
-    "peak_reserved_mb": 10766.0,
+    "peak_mem_mb": 9471.897,
+    "peak_reserved_mb": 10519.333,
     "runs": [
       {
-        "step_time_ms": 480.837,
-        "samples_per_s": 2.08,
+        "step_time_ms": 461.912,
+        "samples_per_s": 2.165,
         "loss": 11.477463,
-        "peak_mem_mb": 9782.73,
-        "peak_reserved_mb": 10750.0
+        "peak_mem_mb": 9474.19,
+        "peak_reserved_mb": 10854.0
       },
       {
-        "step_time_ms": 482.176,
-        "samples_per_s": 2.074,
-        "loss": 11.477463,
-        "peak_mem_mb": 9782.48,
-        "peak_reserved_mb": 10774.0
+        "step_time_ms": 483.61,
+        "samples_per_s": 2.068,
+        "loss": 11.477464,
+        "peak_mem_mb": 9470.75,
+        "peak_reserved_mb": 10352.0
       },
       {
-        "step_time_ms": 485.246,
-        "samples_per_s": 2.061,
-        "loss": 11.477463,
-        "peak_mem_mb": 9782.48,
-        "peak_reserved_mb": 10774.0
+        "step_time_ms": 474.537,
+        "samples_per_s": 2.107,
+        "loss": 11.477462,
+        "peak_mem_mb": 9470.75,
+        "peak_reserved_mb": 10352.0
       }
     ]
   },
   "tuned": {
-    "step_time_ms": 237.998,
-    "samples_per_s": 4.202,
-    "loss": 11.716,
-    "peak_mem_mb": 9477.25,
-    "peak_reserved_mb": 10624.0,
+    "step_time_ms": 270.983,
+    "samples_per_s": 3.698,
+    "loss": 11.717,
+    "peak_mem_mb": 9476.81,
+    "peak_reserved_mb": 10628.0,
     "runs": [
       {
-        "step_time_ms": 234.352,
-        "samples_per_s": 4.267,
-        "loss": 11.714277,
-        "peak_mem_mb": 9477.25,
-        "peak_reserved_mb": 10624.0
+        "step_time_ms": 253.477,
+        "samples_per_s": 3.945,
+        "loss": 11.718941,
+        "peak_mem_mb": 9476.81,
+        "peak_reserved_mb": 10628.0
       },
       {
-        "step_time_ms": 238.898,
-        "samples_per_s": 4.186,
-        "loss": 11.717899,
-        "peak_mem_mb": 9477.25,
-        "peak_reserved_mb": 10624.0
+        "step_time_ms": 280.699,
+        "samples_per_s": 3.563,
+        "loss": 11.715992,
+        "peak_mem_mb": 9476.81,
+        "peak_reserved_mb": 10628.0
       },
       {
-        "step_time_ms": 240.745,
-        "samples_per_s": 4.154,
-        "loss": 11.716588,
-        "peak_mem_mb": 9477.25,
-        "peak_reserved_mb": 10624.0
+        "step_time_ms": 278.774,
+        "samples_per_s": 3.587,
+        "loss": 11.714581,
+        "peak_mem_mb": 9476.81,
+        "peak_reserved_mb": 10628.0
       }
     ]
   },
   "summary": {
-    "step_time_delta_ms": 244.75,
-    "peak_mem_delta_mb": 305.31,
+    "step_time_delta_ms": 202.37,
+    "peak_mem_delta_mb": -4.91,
     "time_improved": true,
-    "memory_improved": true,
-    "time_improvement_pct": 50.7,
-    "memory_improvement_pct": 3.12,
+    "memory_improved": false,
+    "throughput_delta": 1.58,
+    "throughput_improved": true,
+    "time_improvement_pct": 42.75,
+    "memory_improvement_pct": -0.05,
     "meaningful_memory_improved": false
   },
-  "loss_delta_tuned_minus_baseline": 0.239,
+  "loss_delta_tuned_minus_baseline": 0.24,
   "evidence_level": "fixed_workload_performance_smoke",
   "decision": {
     "decision": "tune",
-    "reason": "至少有一项收益成立，但还没形成稳定项目结论，先继续微调。"
+    "reason": "至少有一项收益，但仍需继续验证。"
+  },
+  "experiment": {
+    "model": "Qwen/Qwen2.5-0.5B-Instruct",
+    "backend": "torch",
+    "dtype": "float32",
+    "optimizer": "AdamW",
+    "batch_size": 1,
+    "seq_len": 768,
+    "warmup": 2,
+    "iters": 5,
+    "seed": 42,
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "torch": "2.8.0+cu128",
+    "cuda": "12.8",
+    "workload": "pressure"
+  },
+  "standard_metrics": {
+    "baseline": {
+      "step_time_ms": 473.353,
+      "throughput_samples_per_s": 2.113,
+      "peak_memory_mb": 9471.897,
+      "peak_reserved_mb": 10519.333,
+      "loss": 11.477,
+      "eval_loss": null,
+      "status": "ok"
+    },
+    "tuned": {
+      "step_time_ms": 270.983,
+      "throughput_samples_per_s": 3.698,
+      "peak_memory_mb": 9476.81,
+      "peak_reserved_mb": 10628.0,
+      "loss": 11.717,
+      "eval_loss": null,
+      "status": "ok"
+    }
   }
 }

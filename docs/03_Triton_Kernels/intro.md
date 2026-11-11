@@ -42,7 +42,6 @@ Part 3 可以按多条入口理解：基础入门入口先把 Triton 编程模�
 
 ## Environment Notes | 环境说明
 
-- 整体定位：GPU-required
-- 这里只写 Part 级统一前提，不点到具体节号
-- 完整体验需要 NVIDIA GPU，推荐 Linux + CUDA + Triton
-- 少数 notebook 可能支持 CPU fallback 或仅用于阅读，但不构成第三部分的标准运行路径
+- **标准环境：** Part 03 为 `GPU-required`，使用 NVIDIA GPU、CUDA 与 Triton。
+- **准备入口：** 按[算子优化实验 Quickstart](../topic_discussion/operator_optimization/quickstart.md)创建和预检环境。
+- 少数 Notebook 可以阅读或局部使用 CPU fallback，但不构成 Part 03 的标准运行路径。

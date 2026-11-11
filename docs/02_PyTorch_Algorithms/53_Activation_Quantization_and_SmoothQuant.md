@@ -1,6 +1,6 @@
 # 53. Activation Quantization and SmoothQuant | 激活量化与 SmoothQuant
 
-**难度：** Hard　**环境：** CPU-first，GPU 可选　**标签：** `量化`, `激活`, `SmoothQuant`
+**难度：** Hard | **环境：** [CPU 主线，GPU 可选](#runtime-environment) | **标签：** `量化`、`激活`、`SmoothQuant` | **目标人群：** 理解线性层与量化缩放的读者
 
 > 🚀 **云端运行环境**
 >
@@ -12,59 +12,85 @@
 
 ## 本节导读
 
-W8A8 同时压缩权重和激活，但两者的数值分布并不对称：权重通常较平稳，激活却可能在少数通道出现远大于其他通道的异常值。SmoothQuant 通过保持线性层输出不变的通道变换，把部分量化难度从激活迁移到权重。
+同一层权重用 INT8 表示时误差很小，为什么再把激活变成 INT8，输出误差却可能明显增大？W8A8 中 W8 表示 8 位权重，A8 表示 8 位激活；它同时降低两侧位宽，但两者的数值分布并不对称：权重通常较平稳，激活却可能在少数通道出现远大于其他通道的异常值。SmoothQuant 通过保持线性层输出不变的通道变换，把部分量化难度从激活迁移到权重。
 
-本节依次分析异常通道、等价平滑和 `alpha` 选择，帮助你判断范围迁移何时能降低整体误差，何时只是把问题从激活侧转移到权重侧。
+本节比较异常通道、等价平滑和不同 `alpha` 的量化误差，判断范围迁移是否降低 W8A8 输出误差，还是仅把误差从激活侧转移到权重侧。
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
+- **框架核对：** 使用 [`Q-CPU`](../topic_discussion/quantization_compression/quickstart.md#q-cpu-quickstart)，运行 [框架函数保持检查](#framework-check)。
+- **GPU 实测：** 使用 `Q-CUDA-MECHANISM`；实验环境、运行配置与固定工作负载见 [Step 5](#gpu-experiment)。
+
+---
 ## 前置阅读
 
-**导语：** 先理解量化值、缩放因子与反量化，再进入“为什么激活比权重更难量化”的问题。
+先理解量化值、缩放因子与反量化，再进入“为什么激活比权重更难量化”的问题。
 
 - [52 量化校准与误差控制](./52_Quantization_Calibration_and_Error.md)
 - [25 W8A16 量化](./25_Quantization_W8A16.md)
-### Step 1：识别阻塞 W8A8 的激活异常通道
+## Step 1：识别阻塞 W8A8 的激活异常通道
 
-在线性层 `Y = XWᵀ` 中，`X` 的最后一维和 `W` 的输入维表示同一组通道。若少数激活通道的绝对值范围远大于其余通道，逐张量激活缩放因子必须覆盖这些异常值，普通通道可用的整数码点随之减少。判断是否需要 SmoothQuant，应先比较逐通道范围，而不是只看整个张量的最大值。
+激活是模型在当前输入下产生的中间值。在线性层 `Y = XWᵀ` 中，`X` 的最后一维和 `W` 的输入维表示同一组通道。若少数激活通道的绝对值范围远大于其余通道，逐张量量化为整个张量共用一个缩放因子；这个激活缩放因子必须覆盖这些异常值，普通通道可用的整数码点随之减少。判断是否需要 SmoothQuant，应先比较逐通道范围，而不是只看整个张量的最大值。
 
 | 观察对象 | 需要记录的统计量 | 对 W8A8 的影响 |
 |---|---|---|
-| 激活通道 | 校准样本上的 `absmax`、异常值比率 | 决定激活量化的动态范围 |
+| 激活通道 | 校准样本上的 绝对最大值（`absmax`）及其相对普通通道的幅度 | 决定激活量化的动态范围 |
 | 权重输入通道 | 每个输入通道的 `absmax` | 决定可承接多少范围压力 |
 | 线性层输出 | 浮点输出与量化输出误差 | 判断范围迁移是否真正有效 |
 
 ![SmoothQuant 全局关系](../public/02_PyTorch_Algorithms/53_smoothquant_overview.svg)
-### Step 2：用等价变换迁移量化难度
+## Step 2：用等价变换迁移量化难度
 
-对每个输入通道选择正数 `s`，令 `X′ = X / s`、`W′ = W × s`，则 `XWᵀ = X′W′ᵀ`。激活异常通道被压低的同时，对应权重通道会被放大；SmoothQuant 并未消除范围，而是在两个更容易共同量化的张量之间重新分配范围。
+令 $X$ 的最后一维与 $W$ 的输入维对齐，并为每个输入通道选择 $s_j>0$。记 $D_s=\operatorname{diag}(s)$，则
 
-常用缩放因子形式为 `s = act_max^alpha / weight_max^(1-alpha)`。`alpha` 越大，越优先压低激活范围，也越可能放大权重范围；因此它必须通过校准候选比较确定。
+$$
+XW^{\mathsf T}=(XD_s^{-1})(WD_s)^{\mathsf T}.
+$$
+
+该等式说明平滑只迁移动态范围，不改变浮点线性层输出。若 $a_j=\max|X_{:j}|$、$w_j=\max|W_{:j}|$，常用候选为
+
+$$
+s_j=\frac{a_j^{\alpha}}{w_j^{1-\alpha}},\qquad 0\le\alpha\le1.
+$$
+
+$\alpha$ 控制两侧如何分担范围：忽略正下限时，平滑后的通道范围分别为 $(a_jw_j)^{1-\alpha}$ 与 $(a_jw_j)^{\alpha}$。因此改变强度不保证所有通道的绝对范围都同向变化，更不保证输出误差单调下降。零范围通道用正下限保护除法；确定平滑因子后，在独立样本上复用同一因子。
 
 | `alpha` 位置 | 激活侧变化 | 权重侧变化 | 校准时重点观察 |
 |---|---|---|---|
-| 接近 0 | 平滑较弱 | 权重放大较少 | 激活误差是否仍由异常值主导 |
+| 接近 0 | 保留较多两侧范围乘积 | 输入通道范围趋近 1 | 激活异常值是否仍主导误差 |
 | 中间区域 | 两侧共同承担范围 | 两侧共同变化 | 端到端输出误差是否最低 |
-| 接近 1 | 激活压缩更强 | 权重放大更明显 | 权重量化误差是否反超 |
+| 接近 1 | 输入通道范围趋近 1 | 承接较多两侧范围乘积 | 权重量化误差是否反超 |
 
 ![SmoothQuant 等价平滑机制](../public/02_PyTorch_Algorithms/53_smoothquant_mechanism.svg)
-### Step 3：从误差迁移判断 W8A8 是否成立
+## Step 3：把浮点等价、量化误差与实际执行分开检查
 
-SmoothQuant 候选需要连续通过三项机制检查：平滑前后的浮点输出保持等价；激活与权重的恢复误差没有发生不可接受的转移；平滑后的 W8A8 输出误差低于未平滑基线或满足质量阈值。
+平滑前后的浮点输出保持等价，说明通道变换没有改变线性函数；它不保证舍入后的输出误差必然更小。激活或权重各自的恢复误差可帮助定位变化，但最终仍需比较线性层输出：两侧误差进入乘法后会共同传播，不能要求两侧误差都下降。
+
+在校准样本上选出平滑强度后，固定逐通道因子，在独立样本上检查输出误差。教学对照把 INT8 数值恢复为浮点后执行矩阵乘法；压缩产物生成则说明参数与配置可以保存。真实 W8A8 加速还需要目标后端的整数计算路径及完整调用计时。
 
 | 证据 | 判断问题 | 失败时的处理 |
 |---|---|---|
-| 浮点等价误差 | 通道变换是否正确 | 修正广播维度或缩放因子方向 |
-| 激活/权重恢复误差 | 误差是否只是从一侧转移到另一侧 | 调整 `alpha` 或量化粒度 |
-| 输出误差 | 当前候选是否通过质量门槛 | 保留浮点或换用更高精度路径 |
-### Step 4：实现通道平滑与 `alpha` 校准
+| 浮点等价误差 | 同一输入下变换前后是否保持线性函数 | 修正广播维度或缩放方向 |
+| 两侧恢复误差与输出误差 | 误差迁移后，输出是否满足预设容差 | 调整平滑强度或粒度 |
+| 固定因子的独立样本误差 | 校准选择是否适用于新输入 | 扩充代表性校准输入或保留高精度 |
+| 真实执行与完整调用时间 | 是否使用整数路径，缩放和转换是否抵消收益 | 检查内核、融合与目标负载 |
+
+<a id="mechanism-practice"></a>
+
+## Step 4：实现通道平滑与 `alpha` 校准
 
 题目区保留三个机制决策：由逐通道范围计算缩放因子、执行保持线性层等价的范围迁移、在候选集合中选择输出误差最低的 `alpha`。量化与反量化由骨架提供，让练习集中在 SmoothQuant 本身。
 
-| TODO | 机制责任 | 关键测试 |
-|---|---|---|
-| TODO 1 | 从激活与权重的逐通道范围生成正缩放因子 | 形状、有限值、异常通道响应 |
-| TODO 2 | 在同一输入通道上完成 `X/s` 与 `W×s` | 浮点输出等价 |
-| TODO 3 | 比较候选 `alpha` 的 W8A8 输出误差 | 最优候选、非法候选与误差记录 |
+| TODO / 函数 | 待实现机制 | 必须满足的约束 | 测试证据 |
+|:---|:---|:---|:---|
+| TODO 1：计算逐通道平滑因子<br>`SmoothQuantSimulator.channel_scale` | 由激活与权重的输入通道范围生成平滑因子 | 两类范围必须对齐同一输入通道，缩放因子有限且为正 | 形状、有限值与异常通道响应 |
+| TODO 2：执行等价范围迁移<br>`SmoothQuantSimulator.smooth` | 在同一输入通道上完成激活除法和权重乘法 | 变换前后的浮点线性层输出必须等价 | 广播形状与浮点输出等价 |
+| TODO 3：选择误差最低的 `alpha`<br>`SmoothQuantSimulator.select_alpha` | 从候选集合中选择 W8A8 输出误差最低的 `alpha` | 保留完整记录与因子，独立评测复用因子；空候选集失败 | 最优候选、非法候选与误差记录 |
 
 ```python
+from math import isfinite
 import torch
 ```
 
@@ -75,17 +101,31 @@ class SmoothQuantSimulator:
     """在输入通道上执行 SmoothQuant 等价平滑与教学 W8A8 对照。
 
     `activations` 的最后一维与 `weight` 的输入维相同；`weight` 形状为
-    `[out_features, in_features]`。本实现比较机制误差，不代表生产级 W8A8 计算内核。
+    `[out_features, in_features]`。输出用于比较范围迁移与量化误差；先恢复浮点再计算，不执行整数内核。Step 5 生成校准产物，内核证据需目标后端另行验证。
     """
 
     def __init__(self, qmax: int = 127, eps: float = 1e-8):
+        if type(qmax) is not int or not 1 <= qmax <= 127:
+            raise ValueError('qmax must be an integer in [1, 127] for the INT8 container.')
+        if not isfinite(eps) or eps <= 0:
+            raise ValueError('eps must be finite and positive.')
         self.qmax = qmax
         self.eps = eps
 
+    @staticmethod
+    def _validate_inputs(activations, weight):
+        """检查输入通道、设备以及 FP32 教学计算所需的有限范围。"""
+        if activations.ndim < 1 or weight.ndim != 2 or activations.numel() == 0 or weight.numel() == 0:
+            raise ValueError('activations must be nonempty and weight must be a nonempty matrix.')
+        if activations.shape[-1] != weight.shape[-1] or activations.device != weight.device:
+            raise ValueError('inputs must share input channels and device.')
+        for tensor in (activations, weight):
+            if not tensor.is_floating_point() or not bool(torch.isfinite(tensor.float()).all()):
+                raise ValueError('inputs must be floating point and finite in FP32.')
+
     def channel_scale(self, activations: torch.Tensor, weight: torch.Tensor, alpha: float):
         """根据校准激活与权重的逐输入通道范围计算平滑缩放因子。"""
-        if activations.shape[-1] != weight.shape[-1]:
-            raise ValueError('activations and weight must share the input-channel dimension.')
+        self._validate_inputs(activations, weight)
         if not 0.0 <= alpha <= 1.0:
             raise ValueError('alpha must be in [0, 1].')
 
@@ -103,6 +143,7 @@ class SmoothQuantSimulator:
         # TODO 2（等价迁移）：激活除以逐通道缩放因子，权重在输入通道维乘以同一缩放因子。
         # smooth_activations = ???
         # smooth_weight = ???
+        raise NotImplementedError("TODO 2: smooth_activations, smooth_weight")
         return smooth_activations, smooth_weight, scale
 
     def _quantize_dequantize_per_tensor(self, tensor: torch.Tensor):
@@ -117,18 +158,37 @@ class SmoothQuantSimulator:
     def compare(self, activations: torch.Tensor, weight: torch.Tensor, alpha: float):
         """返回一个 alpha 对应的浮点等价误差和教学 W8A8 输出误差。"""
         smooth_x, smooth_w, channel_scale = self.smooth(activations, weight, alpha)
+        return self._record(activations, weight, smooth_x, smooth_w, channel_scale, alpha)
+
+    def evaluate(self, activations: torch.Tensor, weight: torch.Tensor, channel_scale: torch.Tensor):
+        """独立样本复用校准因子，不重新统计逐通道范围或选择 alpha。"""
+        self._validate_inputs(activations, weight)
+        if channel_scale.shape != (weight.shape[-1],) or channel_scale.device != weight.device:
+            raise ValueError('scale must match input channels and device.')
+        if not bool(torch.isfinite(channel_scale).all()) or not bool((channel_scale > 0).all()):
+            raise ValueError('scale must be finite and positive.')
+        smooth_x = activations.float() / channel_scale
+        smooth_w = weight.float() * channel_scale.unsqueeze(0)
+        return self._record(activations, weight, smooth_x, smooth_w, channel_scale, alpha=None)
+
+    def _record(self, activations, weight, smooth_x, smooth_w, channel_scale, alpha):
+        """计算恢复误差；矩阵乘使用恢复后的 FP32 数值。"""
+        if not bool(torch.isfinite(smooth_x).all()) or not bool(torch.isfinite(smooth_w).all()):
+            raise ValueError('smoothing exceeds the finite FP32 range.')
         reference = activations.float() @ weight.float().t()
         smooth_float = smooth_x.float() @ smooth_w.float().t()
         restored_x = self._quantize_dequantize_per_tensor(smooth_x)
         restored_w = self._quantize_dequantize_per_tensor(smooth_w)
         quantized_output = restored_x @ restored_w.t()
         return {
-            'alpha': float(alpha),
+            'alpha': None if alpha is None else float(alpha),
             'channel_scale': channel_scale,
             'reference': reference,
             'smooth_float': smooth_float,
             'quantized_output': quantized_output,
             'equivalence_mse': float(torch.mean((reference - smooth_float) ** 2)),
+            'activation_reconstruction_mse': float(torch.mean((smooth_x - restored_x) ** 2)),
+            'weight_reconstruction_mse': float(torch.mean((smooth_w - restored_w) ** 2)),
             'quantized_mse': float(torch.mean((reference - quantized_output) ** 2)),
             'activation_absmax': float(smooth_x.abs().max()),
             'weight_absmax': float(smooth_w.abs().max()),
@@ -148,7 +208,7 @@ class SmoothQuantSimulator:
 
 ```
 
-### 测试
+## 测试
 
 测试不评价某个 `alpha` 是否对所有模型最佳，只验证通道缩放因子、等价变换和量化恢复的机制契约。
 
@@ -220,14 +280,53 @@ def test_invalid_alpha_candidates_are_rejected():
         pass
 
 
+def test_frozen_scale_on_independent_inputs():
+    """选择后固定因子，独立输入不能触发重新拟合。"""
+    calibration, weight = make_smoothquant_fixture()
+    sim = SmoothQuantSimulator()
+    best = sim.select_alpha(calibration, weight, [0.0, 0.5, 0.8])['best']
+    scale = best['channel_scale'].clone()
+    held_out = torch.tensor([[3.0, -20.0, 1.0, 0.25]])
+    result = sim.evaluate(held_out, weight, scale)
+    assert torch.equal(scale, best['channel_scale'])
+    torch.testing.assert_close(result['smooth_float'], held_out @ weight.T)
+    assert result['alpha'] is None and result['quantized_mse'] >= 0
+    assert result['activation_reconstruction_mse'] >= 0 and result['weight_reconstruction_mse'] >= 0
+    assert not torch.allclose(scale, sim.channel_scale(held_out, weight, best['alpha']))
+
+
+def test_zero_channels_and_invalid_inputs():
+    """零通道保持等价；INT8 容器、形状和有限范围不合法时明确失败。"""
+    sim = SmoothQuantSimulator()
+    for alpha in (0.0, 0.5, 1.0):
+        result = sim.compare(torch.zeros(2, 3), torch.zeros(4, 3), alpha)
+        assert result['equivalence_mse'] == 0 and result['quantized_mse'] == 0
+    calls = [lambda: SmoothQuantSimulator(qmax=0), lambda: SmoothQuantSimulator(qmax=128),
+             lambda: SmoothQuantSimulator(qmax=1.5), lambda: SmoothQuantSimulator(eps=float('nan')),
+             lambda: sim.compare(torch.empty(0, 3), torch.ones(2, 3), .5),
+             lambda: sim.compare(torch.ones(2, 3), torch.ones(3), .5),
+             lambda: sim.compare(torch.full((1, 3), float('nan')), torch.ones(2, 3), .5),
+             lambda: sim.compare(torch.ones(2, 3), torch.ones(2, 3), float('nan')),
+             lambda: sim.evaluate(torch.ones(1, 3), torch.ones(2, 3), torch.zeros(3))]
+    for call in calls:
+        try:
+            call()
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('invalid smoothing inputs should fail')
+
+
 def run_smoothquant_tests():
-    """汇总 SmoothQuant 的五项机制测试。"""
+    """汇总 SmoothQuant 的七组机制测试。"""
     tests = (
         test_channel_scale_contract_and_outlier_response,
         test_smoothing_preserves_float_product,
         test_smoothing_reduces_activation_peak_for_outlier_fixture,
         test_alpha_selection_returns_lowest_error_candidate,
         test_invalid_alpha_candidates_are_rejected,
+        test_frozen_scale_on_independent_inputs,
+        test_zero_channels_and_invalid_inputs,
     )
     for test in tests:
         test()
@@ -258,17 +357,31 @@ class SmoothQuantSimulator:
     """在输入通道上执行 SmoothQuant 等价平滑与教学 W8A8 对照。
 
     `activations` 的最后一维与 `weight` 的输入维相同；`weight` 形状为
-    `[out_features, in_features]`。本实现比较机制误差，不代表生产级 W8A8 计算内核。
+    `[out_features, in_features]`。输出用于比较范围迁移与量化误差；先恢复浮点再计算，不执行整数内核。Step 5 生成校准产物，内核证据需目标后端另行验证。
     """
 
     def __init__(self, qmax: int = 127, eps: float = 1e-8):
+        if type(qmax) is not int or not 1 <= qmax <= 127:
+            raise ValueError('qmax must be an integer in [1, 127] for the INT8 container.')
+        if not isfinite(eps) or eps <= 0:
+            raise ValueError('eps must be finite and positive.')
         self.qmax = qmax
         self.eps = eps
 
+    @staticmethod
+    def _validate_inputs(activations, weight):
+        """检查输入通道、设备以及 FP32 教学计算所需的有限范围。"""
+        if activations.ndim < 1 or weight.ndim != 2 or activations.numel() == 0 or weight.numel() == 0:
+            raise ValueError('activations must be nonempty and weight must be a nonempty matrix.')
+        if activations.shape[-1] != weight.shape[-1] or activations.device != weight.device:
+            raise ValueError('inputs must share input channels and device.')
+        for tensor in (activations, weight):
+            if not tensor.is_floating_point() or not bool(torch.isfinite(tensor.float()).all()):
+                raise ValueError('inputs must be floating point and finite in FP32.')
+
     def channel_scale(self, activations: torch.Tensor, weight: torch.Tensor, alpha: float):
         """根据校准激活与权重的逐输入通道范围计算平滑缩放因子。"""
-        if activations.shape[-1] != weight.shape[-1]:
-            raise ValueError('activations and weight must share the input-channel dimension.')
+        self._validate_inputs(activations, weight)
         if not 0.0 <= alpha <= 1.0:
             raise ValueError('alpha must be in [0, 1].')
 
@@ -277,6 +390,8 @@ class SmoothQuantSimulator:
         act_max = activations.detach().float().abs().reshape(-1, activations.shape[-1]).amax(dim=0).clamp_min(self.eps)
         weight_max = weight.detach().float().abs().amax(dim=0).clamp_min(self.eps)
         scale = (act_max.pow(alpha) / weight_max.pow(1.0 - alpha)).clamp_min(self.eps)
+        if not bool(torch.isfinite(scale).all()) or not bool((scale > 0).all()):
+            raise ValueError('smoothing scale must be finite and positive.')
         return scale
 
     def smooth(self, activations: torch.Tensor, weight: torch.Tensor, alpha: float):
@@ -300,18 +415,37 @@ class SmoothQuantSimulator:
     def compare(self, activations: torch.Tensor, weight: torch.Tensor, alpha: float):
         """返回一个 alpha 对应的浮点等价误差和教学 W8A8 输出误差。"""
         smooth_x, smooth_w, channel_scale = self.smooth(activations, weight, alpha)
+        return self._record(activations, weight, smooth_x, smooth_w, channel_scale, alpha)
+
+    def evaluate(self, activations: torch.Tensor, weight: torch.Tensor, channel_scale: torch.Tensor):
+        """独立样本复用校准因子，不重新统计逐通道范围或选择 alpha。"""
+        self._validate_inputs(activations, weight)
+        if channel_scale.shape != (weight.shape[-1],) or channel_scale.device != weight.device:
+            raise ValueError('scale must match input channels and device.')
+        if not bool(torch.isfinite(channel_scale).all()) or not bool((channel_scale > 0).all()):
+            raise ValueError('scale must be finite and positive.')
+        smooth_x = activations.float() / channel_scale
+        smooth_w = weight.float() * channel_scale.unsqueeze(0)
+        return self._record(activations, weight, smooth_x, smooth_w, channel_scale, alpha=None)
+
+    def _record(self, activations, weight, smooth_x, smooth_w, channel_scale, alpha):
+        """计算恢复误差；矩阵乘使用恢复后的 FP32 数值。"""
+        if not bool(torch.isfinite(smooth_x).all()) or not bool(torch.isfinite(smooth_w).all()):
+            raise ValueError('smoothing exceeds the finite FP32 range.')
         reference = activations.float() @ weight.float().t()
         smooth_float = smooth_x.float() @ smooth_w.float().t()
         restored_x = self._quantize_dequantize_per_tensor(smooth_x)
         restored_w = self._quantize_dequantize_per_tensor(smooth_w)
         quantized_output = restored_x @ restored_w.t()
         return {
-            'alpha': float(alpha),
+            'alpha': None if alpha is None else float(alpha),
             'channel_scale': channel_scale,
             'reference': reference,
             'smooth_float': smooth_float,
             'quantized_output': quantized_output,
             'equivalence_mse': float(torch.mean((reference - smooth_float) ** 2)),
+            'activation_reconstruction_mse': float(torch.mean((smooth_x - restored_x) ** 2)),
+            'weight_reconstruction_mse': float(torch.mean((smooth_w - restored_w) ** 2)),
             'quantized_mse': float(torch.mean((reference - quantized_output) ** 2)),
             'activation_absmax': float(smooth_x.abs().max()),
             'weight_absmax': float(smooth_w.abs().max()),
@@ -332,22 +466,131 @@ class SmoothQuantSimulator:
 
 ### 解析
 
-**TODO 1：逐通道范围。** 校准激活需要先把除最后一维以外的维度展平，再沿样本维取 `absmax`；权重沿输出维取 `absmax`。这样得到的两个向量都对应输入通道，才能计算平滑缩放因子。
+#### TODO 1：计算逐通道平滑因子
 
-**TODO 2：等价迁移。** 对激活除以 `s`、对权重输入通道乘以同一个 `s`，不会改变浮点线性层输出。测试先验证这一不变量，避免把广播错误误判成量化误差。
+- 激活范围与权重范围必须对应同一输入通道，平滑因子必须有限且为正。
+- 答案分别聚合激活样本维和权重输出维；形状、有限值与异常通道测试证明通道语义一致。
 
-**TODO 3：`alpha` 校准。** 不直接填写某个固定值，而是保留每个候选的激活峰值、权重峰值和 W8A8 输出误差，再选择当前校准工作负载下误差最低的候选。最终部署仍需独立质量集和真实执行后端复测。
-### Step 5：可选 GPU 实验——用 LLM Compressor 验证 SmoothQuant
+#### TODO 2：执行等价范围迁移
+
+- 激活除以平滑因子、权重输入通道乘以同一因子后，浮点线性层输出必须保持不变。
+- 答案在同一输入通道上完成两侧变换；广播形状与浮点输出测试证明范围迁移没有改变函数。
+
+#### TODO 3：选择误差最低的 `alpha`
+
+- 每个候选都必须保留量化误差记录，最终选择当前校准样本上误差最低的候选；选出的因子在独立输入上固定使用。
+- 答案评估完整候选集合后取最小值；最优候选测试核对取最小值，独立输入测试核对复用的是原因子而非重新拟合。
+<a id="framework-check"></a>
+
+## 框架函数保持检查（可选）
+
+教学线性层与 LLM Compressor 的微型 Llama 分别检查平滑前后的函数保持。两侧共用平滑强度，但模型、校准激活和缩放映射不同，因此结果不能解释为逐通道因子或算法实现等价。
+
+| 检查路径 | 受控输入 | 比较对象 | 通过条件 |
+|:---|:---|:---|:---|
+| 教学线性层 | 固定随机激活与权重、`alpha=0.5` | 变换前后浮点输出 | 相同输入上的输出在容差内一致 |
+| LLM Compressor 微型 Llama | 固定随机种子与两条校准序列、`alpha=0.5` | 变换前后目标权重与 logits | 权重发生变化且有限，相同 Token 的 logits 在容差内一致 |
+
+
+```python
+import importlib.metadata
+import tempfile
+
+from torch.utils.data import DataLoader
+from tokenizers import Tokenizer
+from tokenizers.models import WordLevel
+from transformers import LlamaConfig, LlamaForCausalLM, PreTrainedTokenizerFast
+from llmcompressor import oneshot, reset_session
+from llmcompressor.modifiers.transform.smoothquant import SmoothQuantModifier
+
+
+def check_smoothquant_framework_conformance():
+    """分别检查教学线性层与框架模型的函数保持，不声称两侧因子等价。"""
+    torch.manual_seed(0)
+    alpha = 0.5
+    activations = torch.randn(4, 8)
+    activations[:, 0] *= 12.0
+    weight = torch.randn(6, 8)
+    smooth_x, smooth_w, _ = SmoothQuantSimulator().smooth(activations, weight, alpha)
+    local_before = activations @ weight.T
+    local_after = smooth_x @ smooth_w.T
+
+    tokenizer = PreTrainedTokenizerFast(
+        tokenizer_object=Tokenizer(WordLevel({"[UNK]": 0, "[PAD]": 1}, unk_token="[UNK]")),
+        unk_token="[UNK]",
+        pad_token="[PAD]",
+    )
+    config = LlamaConfig(
+        vocab_size=64, hidden_size=16, intermediate_size=32,
+        num_hidden_layers=1, num_attention_heads=2, num_key_value_heads=2,
+        max_position_embeddings=32,
+    )
+    source_model = LlamaForCausalLM(config).eval()
+    input_ids = torch.randint(0, config.vocab_size, (2, 8))
+    with torch.no_grad():
+        framework_before = source_model(input_ids=input_ids).logits.detach()
+    calibration_loader = DataLoader([
+        {"input_ids": row, "attention_mask": torch.ones_like(row)}
+        for row in input_ids
+    ], batch_size=1)
+    original_weight = source_model.model.layers[0].self_attn.q_proj.weight.detach().clone()
+
+    try:
+        with tempfile.TemporaryDirectory(prefix="qcpu-smoothquant-") as model_dir:
+            source_model.save_pretrained(model_dir)
+            tokenizer.save_pretrained(model_dir)
+            transformed_model = oneshot(
+                model=model_dir, processor=tokenizer,
+                recipe=[SmoothQuantModifier(smoothing_strength=alpha)],
+                dataset=calibration_loader, num_calibration_samples=2,
+                max_seq_length=8, save_compressed=False,
+            ).eval()
+            transformed_weight = transformed_model.model.layers[0].self_attn.q_proj.weight.detach()
+            with torch.no_grad():
+                framework_after = transformed_model(input_ids=input_ids).logits.detach()
+    finally:
+        reset_session()
+
+    checks = {
+        "local_transform_is_equivalent": bool(torch.allclose(local_before, local_after, atol=1e-5, rtol=1e-5)),
+        "framework_weight_was_transformed": not torch.equal(original_weight, transformed_weight),
+        "framework_weight_is_finite": bool(torch.isfinite(transformed_weight).all()),
+        "framework_logits_are_preserved": bool(torch.allclose(framework_before, framework_after, atol=1e-5, rtol=1e-4)),
+    }
+    failed = [name for name, passed in checks.items() if not passed]
+    if failed:
+        raise AssertionError(f"框架函数保持检查失败：{failed}")
+    return {
+        "status": "passed",
+        "check_kind": "independent_function_preservation",
+        "cross_implementation_equivalence_claimed": False,
+        "versions": {
+            "torch": torch.__version__,
+            "transformers": importlib.metadata.version("transformers"),
+            "llmcompressor": importlib.metadata.version("llmcompressor"),
+        },
+        "checks": checks,
+        "max_framework_logit_delta": float((framework_before - framework_after).abs().max()),
+    }
+
+
+framework_check = check_smoothquant_framework_conformance()
+framework_check
+```
+
+<a id="gpu-experiment"></a>
+
+## Step 5：可选 GPU 实验——用 LLM Compressor 验证 SmoothQuant
 
 CPU 题目解释激活异常值、范围迁移和 `alpha` 的作用；GPU 实验把相同 BF16 检查点转换为未平滑 W8A8 与多个 SmoothQuant W8A8 产物，比较 Token 加权 NLL、真实层输入范围、校准成本和产物元数据。
 
-#### 5.1 固定实验条件并定义候选矩阵
+### 5.1 固定实验条件并定义候选矩阵
 
 本实验使用 `Q-CUDA-MECHANISM`。首次运行先完成[量化机制 GPU 环境 Quickstart](../topic_discussion/quantization_compression/quickstart.md#q-cuda-mechanism-quickstart)，已有环境执行 Profile 预检后再启动 JupyterLab。预检确认环境污染时才进入[环境隔离故障处理](../gpu_environment_assets.md#environment-isolation-troubleshooting)。
 
 实际执行包含三类、六条路径。所有路径固定模型与分词器版本、WikiText-2 版本、样本抽取种子、最大序列长度、BF16 基线、W8A8 方案、GPU 和软件环境；每个量化候选都从同一 BF16 检查点重新加载。校准集固定为 train 的 64 条样本，候选比较固定使用 validation 的 64 条样本及相同顺序，样本 ID 哈希随结果保存。唯一自变量是是否启用 SmoothQuant，以及启用时的 `alpha`。
 
-四个 `alpha` 是同一个无量纲超参数在一条有序强度轴上的候选值，不是四个分别控制不同模块的变量。`0.5` 作为激活侧与权重侧的平衡锚点，`0.7`、`0.8`、`0.9` 依次增强向权重侧迁移激活范围的力度；范围迁移强度随 `alpha` 单调增加，但量化质量不保证单调改善。标准实验保持这组候选不变；扩展搜索时修改 5.1 中的 `SMOOTHQUANT_ALPHA_CANDIDATES`，并同步更新工作负载版本和运行标签。
+四个 `alpha` 控制同一种范围分配。`0.5` 让两侧分担，`0.7`、`0.8`、`0.9` 逐渐把输入通道的激活范围推向 1、让权重承接更多范围乘积；绝对范围变化还取决于原通道统计，质量不保证单调改善。比较这组候选时固定其他条件；扩展搜索时修改 5.1 中的 `SMOOTHQUANT_ALPHA_CANDIDATES`，并使用新的运行标签和工作负载版本。
 
 `MODEL_REVISION="main"` 表示请求当前主分支；5.2 会在首次加载前自动解析一次实际 commit，并让 tokenizer、BF16 和全部量化候选共同使用该不可变快照。正式复测只需使用唯一 `RUN_LABEL`，JSON 会同时保存请求 revision 与解析出的 commit。本节 validation 结果用于筛选候选，不替代独立 test 或 Serving 后端验收。
 
@@ -359,7 +602,7 @@ CPU 题目解释激活异常值、范围迁移和 `alpha` 的作用；GPU 实验
 
 
 ```python
-# 5.1 只定义学习者入口、模型来源与固定实验协议；默认不下载模型、不占用 GPU。
+# 此单元设置运行模式、结果标签、模型与固定工作负载；dry_run 不下载模型或占用 GPU。
 # 学习者入口：普通复测通常只修改这两项。
 RUN_MODE = "dry_run"  # 默认值 dry_run：只登记计划；改为 real_gpu 才下载资产并执行完整候选矩阵。
 RUN_LABEL = "default"  # 默认值 default；正式复测改为唯一标签，并创建独立产物目录和 JSON。
@@ -401,14 +644,14 @@ RANGE_AUDIT_MODULES = (  # 固定范围审计模块；换模型时必须同步�
 SEED = 42  # 固定 PyTorch 随机状态与生成过程；正式复测保持不变。
 
 # 结果资产：5.1 只声明仓库相对路径，5.2 负责定位仓库和创建目录。
-ARTIFACT_RELATIVE_PATH = f"02_PyTorch_Algorithms/benchmarks/artifacts/53_smoothquant/{RUN_LABEL}"  # 每个 alpha 候选的量化产物根目录。
-OUTPUT_RELATIVE_PATH = f"02_PyTorch_Algorithms/benchmarks/results/53_llmcompressor_smoothquant_{RUN_LABEL}.json"  # 本轮 alpha 矩阵 JSON。
+ARTIFACT_RELATIVE_PATH = f"benchmarks/artifacts/53_smoothquant/{RUN_LABEL}"  # 每个 alpha 候选的量化产物根目录。
+OUTPUT_RELATIVE_PATH = f"benchmarks/results/53_llmcompressor_smoothquant_{RUN_LABEL}.json"  # 本轮 alpha 矩阵 JSON。
 
 ```
 
-#### 5.2 执行 BF16 / W8A8 / SmoothQuant alpha 矩阵
+### 5.2 执行 BF16 / W8A8 / SmoothQuant alpha 矩阵
 
-每个候选从同一 BF16 检查点独立加载，并共享校准样本、评测样本和范围审计样本。实验先生成未平滑 W8A8，再遍历四个 alpha；质量使用 Token 加权 NLL，生成一致率只作为小样本辅证。输出同时保存范围摘要、校准成本和量化产物 manifest，不在本节声称 Serving 吞吐收益。
+每个候选从同一 BF16 检查点独立加载，并共享校准样本、评测样本和范围审计样本。实验先生成未平滑 W8A8，再遍历四个 alpha；质量使用 Token 加权 NLL，生成一致率只作为小样本辅证。输出保存范围摘要、校准成本和量化产物清单；这些结果覆盖范围迁移与局部质量，Serving 吞吐需要在目标推理后端中测量。
 
 
 ```python
@@ -935,7 +1178,7 @@ print(json.dumps(result, ensure_ascii=False, indent=2))
 
 ```
 
-#### 5.3 读取 W8A8 与 alpha 候选矩阵
+### 5.3 读取 W8A8 与 alpha 候选矩阵
 
 读取单元先展示环境、数据划分和最终决策，再逐项列出未平滑 W8A8 与四个 SmoothQuant 候选的 Token 加权 NLL、质量比率、范围变化和产物完整性，不重新加载模型。
 
@@ -995,7 +1238,7 @@ else:
 
 ```
 
-#### 5.4 解释范围迁移、量化产物与质量代理
+### 5.4 解释范围迁移、量化产物与质量代理
 
 先确认数据划分哈希、候选矩阵和产物清单（artifact manifest）完整，再比较未平滑 W8A8 与各 `alpha` 的 Token 加权 NLL。SmoothQuant 只有在满足 BF16 质量上限，并相对未平滑 W8A8 达到预设改善幅度时，才被接受为候选产物；真实层范围比率用于解释改善来自哪里，贪心前缀一致率只作为小样本辅证。
 

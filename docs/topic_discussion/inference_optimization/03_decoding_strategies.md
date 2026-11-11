@@ -1,70 +1,99 @@
-# 03. Decoding Strategies | 解码策略
+# 03 解码策略（Decoding Strategies）
 
 ## 学习问题
 
-从首 token 之后的生成循环开始，观察单条请求每轮如何读取已有 KV 状态、产生输出，再比较生成策略对速度、质量和额外成本的影响。
+首个词元产生后，模型如何反复读取历史状态、选择下一个词元并判断停止？引入草稿候选后，怎样在保持目标模型分布的前提下提高每轮有效推进量？
 
 ## 核心机制
 
-Decode 是一轮一轮的小步生成：每一步读取已有 KV 状态，得到 logits，再选择下一个 token，并把新的 token 和状态追加到序列中。先用贪心解码建立基线；再把投机式生成看成一条策略链：经典 draft / target 验证、多个 token 推进与更一般的多候选验证，目标都是提高每轮有效推进量。本页重点是单条请求的生成决策；多个请求如何组织执行，放到 Task4 的调度正文中。
+### 单步解码、停止与输出检查
 
-这里的“加速”不是简单地减少模型调用次数，而是提高每次验证真正提交的 token 数。可以用 `effective_output_tokens / decode_step` 表示单轮有效推进量；它必须和 `acceptance_rate`、验证耗时、回退次数以及最终质量一起观察。这样才能区分“候选更多”与“有效生成更多”。
+带 KV 缓存的普通解码每轮把尚未处理的新词元作为输入，读取此前缓存，计算该输入位置的 K/V 并追加。模型输出词表上各词元的未归一化预测分数（logits），经采样规则处理并归一化后得到预测分布。随后选出的词元立即加入输出序列；它自身的 K/V 通常要等下一次前向处理它时才产生。预填充也遵循这个时序：处理完提示词后可以采出首个输出词元，此时缓存主要对应已经处理的提示词位置。
 
-![Decode 策略对照](../../public/topic_discussion/inference_optimization/decode_strategies_zh.svg)
+贪心解码选择概率最大的词元，适合作为确定性基线。随机采样中，温度调节概率分布的集中程度；Top-k 只保留分数最高的 k 个候选，Top-p 按概率从高到低保留累计概率达到阈值的候选集合，再从保留集合中采样。不同生成比较需要记录这些参数与随机种子，才能解释词元选择的差异。
 
-| 策略 | 主要改变什么 | 需要观察什么 |
+当前词元的选择决定下一次前向的输入，因此一条请求的普通自回归生成具有串行依赖。降低单次前向成本可以缩短每一步，但生成较长回答时仍需逐步推进。投机方案先提供一段候选输入，让目标模型在一次前向中评估多个位置；能提交多少位置，再由验证规则决定。
+
+每次选择后还要判断是否继续：遇到协议指定的终止词元（EOS）可以正常停止，达到最大新增词元数则因长度预算停止。两种情况都结束本次生成，却不能都解释为回答已经完整。多请求批次中，一个请求先结束，其余请求仍可继续；单步选择、单请求停止与批次成员更新因此需要分别观察。词元选择见[解码与采样](../../02_PyTorch_Algorithms/21_Decoding_Strategies.md)，输出长度和停止原因随请求记录保存。
+
+比较时，确定性生成可以逐项核对提交词元；随机生成则需要检查采样规则及分布正确性，相同种子也不保证不同执行路径得到相同序列。任务答案是否正确、格式是否合规还需单独评价：分布保持、输出复现与任务质量回答的是不同问题。
+
+| 生成环节 | 核心问题 | 需要固定或记录的证据 |
 |:---|:---|:---|
-| 贪心 Decode（基线） | 每轮选择 logits 最大的一个 token | 输出长度、TPOT、KV Cache 访问、质量 |
-| 随机采样 | 按 temperature、top-k / top-p 选择 token | 质量、重复率、TPOT、输出稳定性 |
-| 经典投机解码 | draft 提议、target 验证与修正 | acceptance rate、验证成本、TPOT |
-| 原生 MTP | verifier 内部多 Token 预测模块提出候选 | 原生头数、接受长度、backend 命中 |
-| EAGLE | 外置轻量草稿器复用目标模型隐藏表示 | 候选树、draft cost、配对 checkpoint |
-| 块级并行草稿（DFlash） | block diffusion 一次提出 token block | block 接受率、draft cost、verify cost |
-| 半自回归草稿（DSpark） | 置信度驱动地决定候选推进与验证预算 | confidence、proposal budget、负载下 TPOT |
-| Decode Scheduling | 不同请求的执行顺序，属于 Task4 的请求级调度 | 吞吐、TPOT、P99 |
+| 读取历史状态 | 本轮访问了多长的 KV Cache？ | 上下文长度、缓存表示、单轮延迟 |
+| 计算与选择 | 使用贪心还是随机采样？ | 随机种子、温度、Top-k、Top-p |
+| 停止 | 是否遇到终止词元或长度上限？ | 生成词元数、停止原因 |
+| 质量检查 | 更快的路径是否改变输出分布或任务质量？ | 固定输入、独立质量；输出散列仅辅助复现 |
 
-单请求的 Decode 可以按“读取状态 → 计算 logits → 选择 token → 检查停止 → 追加状态”理解。策略改变的是其中的候选生成、验证或单轮产出；它不会自动消除 KV Cache 的容量约束，也不能用吞吐提升替代质量检查。比较 speculative decoding 或 multi-token decoding 时，还要记录接受情况和回退成本。
+### 草稿、验证与校正
 
-| 生成环节 | 需要回答的问题 | 证据 |
-|:---|:---|:---|
-| 读取状态 | 本轮使用了哪些历史 KV？ | Cache 长度、TPOT、读写量 |
-| 选择 token | 是贪心、采样，还是 draft 提议后验证？ | temperature、top-k/top-p、acceptance rate |
-| 停止与回退 | 何时遇到 EOS，何时拒绝候选？ | generated tokens、停止原因、回退次数 |
-| 质量与成本 | 更快是否保持了目标质量？ | 质量指标、TPOT、吞吐、额外模型成本 |
+投机解码先用较低成本的路径提出一段候选，再由目标模型验证多个位置。设当前上下文下目标分布为 $p$、草稿分布为 $q$，草稿词元为 $x$。标准随机投机采样以 $\min(1,p(x)/q(x))$ 接受候选；候选从 $q$ 采出，因此其草稿概率为正。验证从左到右保留连续接受前缀，第一次拒绝时，从归一化的正残差分布采样修正词元：
 
-生成策略的比较需要把“可重复性”和“质量门槛”一起固定。贪心 Decode 适合作为确定性基线；采样实验应固定随机种子和采样参数；speculative decoding 还要记录 draft 与 target 的版本、接受率和拒绝后的回退路径。只有在输出质量达到同一门槛后，TPOT 或吞吐的改善才可以作为性能收益。
+$$
+r(v)=\frac{\max(p(v)-q(v),0)}{\sum_{u\in\mathcal V}\max(p(u)-q(u),0)}.
+$$
 
-### 候选生成的两条扩展路径
+其中 $\mathcal V$ 是词表，$v$ 是待采样词元，$u$ 是求和索引。这个修正分布补偿接受步骤造成的概率偏差，不能替换为直接从 $p$ 重采样。修正后丢弃后续草稿及其未提交状态；如果整段草稿全部接受，则从接受前缀后的目标分布再生成一个词元。上述接受与修正规则共同保持目标采样分布，贪心验证使用对应的确定性规则。
 
-经典 speculative decoding 的草稿阶段仍然通常按 token 自回归推进。原生 MTP 将预测模块放在 verifier checkpoint 内部；EAGLE 复用目标模型的隐藏表示，用外置轻量草稿器自回归扩展候选树；DFlash 则将轻量 block diffusion 模型用于并行产生一个候选 block。三者改变的是候选来源与生成拓扑，不改变“验证—接受—回退”的证据要求。[EAGLE-3 论文](https://arxiv.org/abs/2503.01840)、[DFlash 论文](https://arxiv.org/abs/2602.06036)和[vLLM Speculators 算法指南](https://docs.vllm.ai/projects/speculators/en/latest/user_guide/algorithms/decision_guide/)给出了对应实现背景。
+以两个词元 A、B 为例，草稿概率为 $(0.8,0.2)$，目标概率为 $(0.4,0.6)$。A 的接受概率是 0.5，B 的接受概率是 1；拒绝 A 后，正残差只在 B 上有质量，因此修正词元必为 B。最终 A 的概率为 $0.8\times0.5=0.4$，B 的概率为 $0.2+0.8\times0.5=0.6$，恢复了目标分布。若拒绝后直接从目标分布再采样，A 又会获得额外概率。逐步实现接受、修正和状态回退见 [Part 02 · 23 投机解码](../../02_PyTorch_Algorithms/23_Speculative_Decoding.md)，再用下面的提交量和时间判断收益。
 
-DSpark 进一步采用半自回归候选生成，并用置信度调度候选长度和验证预算。它同时连接了 Task2 的候选生成机制与 Task4 的服务调度：在单请求中观察置信度和有效推进量，在多请求中还要观察队列等待、TPOT 和尾延迟。[DSpark 论文](https://arxiv.org/abs/2607.05147) 和 [vLLM Speculators 中的 DSpark 文档](https://docs.vllm.ai/projects/speculators/en/latest/user_guide/algorithms/dspark/) 可用于了解实现入口。
+真正的收益来自“每轮提交更多有效词元”，而不是候选数量本身。候选过长会增加草稿和验证成本；候选过短则不足以摊薄目标模型调用。因此需要同时观察：
 
-| 扩展路径 | 候选生成方式 | Task2 重点 | Task4 交叉问题 |
+$$
+\text{有效推进量}=\frac{\text{最终提交词元数}}{\text{目标模型验证轮数}}
+$$
+
+这里的提交词元包括接受的草稿，以及按协议产生的修正或全接受后的追加词元，并受 EOS 与剩余长度预算限制。连续接受长度只计草稿前缀，两者需要分别记录；每轮推进量还要与该轮实际耗时一起观察。
+
+| 证据 | 回答的问题 |
+|:---|:---|
+| 连续接受长度与总提交量 | 草稿前缀接受了多少，加上修正或追加后实际推进多少？ |
+| 接受率与首个拒绝位置 | 草稿从哪里开始偏离目标模型？ |
+| 草稿与验证耗时 | 接受收益是否覆盖额外计算？ |
+| 回退次数 | 校正路径被触发得多频繁？ |
+| 端到端延迟与输出质量 | 局部接受率是否转化为真实收益？ |
+
+### 从双模型草稿到内置、特征与块草稿
+
+经典双模型方案用一个较小的自回归模型逐词元生成草稿，再由目标模型验证。草稿还可以来自内置预测头、外置特征草稿器或并行块草稿。它们都需要说明候选怎样被目标模型验证、拒绝后怎样处理状态；具体接受协议取决于候选结构、采样方式和后端实现，不能把上面的线性随机采样公式直接当作所有候选树或块草稿的实现。
+
+| 候选来源 | 候选如何产生 | 主要收益 | 主要约束 |
 |:---|:---|:---|:---|
-| 原生 MTP | verifier 内部预测层提出连续候选 | 模型能力检查、连续接受与验证成本 | backend 是否支持原生 MTP |
-| EAGLE | 多层表示融合后自回归扩展候选树 | 候选树宽深、draft cost、checkpoint 配对 | 树宽与 batch / KV 预算 |
-| DFlash | block diffusion 并行提出候选 block | block 长度、接受前缀、verify 成本 | batch 中不同请求的 block 预算 |
-| DSpark | 半自回归 + 置信度调度 | 置信度、候选长度、回退语义 | 高负载下的动态 speculation budget |
+| 经典双模型草稿 | 较小的自回归模型逐词元提出候选 | 草稿计算通常低于目标模型单独推进 | 两个模型的分词与生成协议需要匹配，并计入草稿成本 |
+| 原生多词元预测（MTP） | 目标模型内部的预测层提出后续词元 | 不需要加载独立草稿模型 | 模型必须包含对应预测层，后端必须支持 |
+| EAGLE | 外置轻量草稿器读取目标模型隐藏表示并扩展候选树 | 候选与目标模型特征更一致 | 草稿权重必须与目标模型版本配对 |
+| DFlash / DSpark | 块扩散并行提出候选；DSpark 再加入块内依赖与置信度控制 | 降低逐词元草稿的串行成本 | 需要专用草稿资产和执行后端 |
 
-| 对照条件 | 应固定的内容 | 额外记录 |
-|:---|:---|:---|
-| 贪心基线 | 模型、Prompt、最大输出长度、停止条件 | 输出 token、TPOT、E2E、质量基线 |
-| 随机采样 | seed、temperature、top-k/top-p、Prompt 集 | 重复率、格式成功率、质量分布 |
-| 经典投机解码 | draft/target 模型、proposal 长度、验证规则 | acceptance rate、回退次数、额外显存 |
-| 多 Token 投机式推进 | 候选来源、单轮候选数量、接受与回退规则 | 有效推进、验证成本、TPOT |
-| EAGLE | verifier / speculator 配对、树宽深、隐藏层配置 | 接受长度、draft cost、树验证成本 |
-| DFlash / DSpark | draft family、proposal mode、候选预算、置信度规则 | block 接受率、draft/verify cost、负载下 TPOT |
+DFlash 关注一次提出一个候选块；DSpark 在并行主干之外加入轻量顺序依赖和置信度估计，动态决定候选前缀。它们不是经典双模型投机解码的必经步骤，而是候选生成的扩展分支。
 
-参考入口：论文 [Fast Inference from Transformers via Speculative Decoding](https://arxiv.org/abs/2211.17192)；开源实现 [vLLM Speculative Decoding](https://docs.vllm.ai/en/latest/features/speculative_decoding/)。DFlash 和 DSpark 作为候选生成与动态预算的扩展，不要求在本页重写真实 draft model。
+### 动态候选预算与净收益
+
+固定候选长度无法适应所有输入：草稿置信度高时可以增加候选，偏离风险升高时应尽早停止。动态预算依据置信度、历史接受情况或服务负载调整本轮候选长度，但不能改变首个拒绝位置之后全部回退的正确性规则。
+
+用一组构造时间说明取舍：普通解码每提交一个词元耗时 10 ms；某候选方案一轮草稿耗时 4 ms、验证耗时 12 ms、采样与回退等其余处理耗时 2 ms，串行总计 18 ms。若平均提交三个词元，成本为每词元 6 ms；若只提交一个，则为 18 ms。两种情况下都执行了候选验证，只有前者比普通解码更省时间。这里假定没有重叠与排队，数值用于解释成本，不是实测结果。
+
+实际比较应在相同输出与停止协议下，用累计生成耗时除以累计提交词元数，避免将不同推进量的轮次直接平均。候选变长后，接受量与总耗时都会改变；根据置信度与历史接受情况调整长度，需要同时解释两者。引入服务负载后，还要观察较长验证是否占用更多批次与缓存预算、推迟其他请求，结合[服务调度](./05_serving_scheduling_and_pd.md)再比较尾延迟。
+
+候选还会带来临时状态：例如提出四个候选，只接受前两个后发生拒绝，目标模型验证产生的后续候选 KV 就不能作为已提交历史继续读取。实现需要保留有效前缀、撤销未提交部分，并让修正词元与下一轮输入的缓存进度一致。普通生成的持续追加、投机生成的状态回退，以及跨请求的前缀共享，都依赖逻辑位置与物理块的正确映射；[缓存管理](./04_kv_cache_lifecycle_and_reuse.md)进一步解释这些状态怎样驻留与回收。
+
+下图对照普通解码与标准线性投机：拒绝分支提交接受前缀和修正词元，全接受分支再追加目标词元；两者都在提交时检查停止条件。
+
+![普通解码循环与线性投机的验证、修正和状态回退](../../public/topic_discussion/inference_optimization/decode_strategies_zh.svg)
 
 ## 选择条件与验证证据
 
-本节承接 `02` 的 Prefill 与 Attention，先用 [21 Decoding Strategies](../../02_PyTorch_Algorithms/21_Decoding_Strategies.md)建立单步生成口径，再用 [23 Speculative Decoding](../../02_PyTorch_Algorithms/23_Speculative_Decoding.md)固定精确验证。候选生成分成三条路径：[35 原生 MTP](../../02_PyTorch_Algorithms/35_Multi_Token_Decoding.md)、[INF-EAGLE](../../02_PyTorch_Algorithms/INF-EAGLE_Feature_Drafter_and_Candidate_Tree.md)和[INF-PARALLEL-DRAFTING](../../02_PyTorch_Algorithms/INF-PARALLEL-DRAFTING_DFlash_and_DSpark.md)；[INF-PROPOSAL](../../02_PyTorch_Algorithms/INF-PROPOSAL_Dynamic_Proposal_and_Verification_Budget.md)再统一预算与净收益。随后由 [68 Benchmark](../../02_PyTorch_Algorithms/68_Speculative_Decoding_Benchmark.md)固定真实模型的质量与成本口径，最后通过 [36 Decode Scheduling](../../02_PyTorch_Algorithms/36_Decode_Scheduling.md)进入多请求组织。
-
-| 观察到的现象 | 优先判断 | 下一步 |
+| 现象 | 优先检查 | 动作 |
 |:---|:---|:---|
-| 每轮生成耗时高 | Decode 计算、KV Cache 访问或 sampling | 检查基础 Decode 和 `04` |
-| 循环次数过多 | 生成长度或单轮产出受限 | 检查 speculative / multi-token |
-| acceptance rate 低 | draft model 或 proposal 不匹配 | 调整 draft、长度或放弃策略 |
-| 多请求吞吐低、P99 高 | 请求组织或调度问题 | 进入 `07` / `06` |
+| 接受率高但端到端延迟没有下降 | 草稿器和验证器额外开销 | 缩短候选或换用更轻的草稿路径 |
+| 首个拒绝位置长期靠前 | 草稿与目标模型不匹配 | 检查模型版本、分词器和采样配置 |
+| 短候选稳定、长候选退化 | 候选预算过大 | 使用置信度或历史接受长度收缩预算 |
+| 单请求加速但高负载尾延迟变差 | 候选占用挤压批处理或缓存预算 | 进入服务调度实验复测 |
+
+普通解码与投机候选的比较，重点保留连续接受长度、最终提交量以及草稿、验证和回退耗时。请求配对、质量门槛与多轮统计使用[基准与决策](./07_benchmark_and_decision.md)的方法。
+
+## 相关阅读
+
+- [投机解码论文](https://arxiv.org/abs/2211.17192)
+- [EAGLE-3 论文](https://arxiv.org/abs/2503.01840)
+- [DFlash 论文](https://arxiv.org/abs/2602.06036)
+- [vLLM Speculators 算法指南](https://docs.vllm.ai/projects/speculators/en/latest/user_guide/algorithms/decision_guide/)

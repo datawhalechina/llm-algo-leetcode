@@ -5,10 +5,11 @@
 <rect x="45" y="165" width="235" height="105" rx="14" class="a"/><text x="163" y="202" text-anchor="middle" class="h">G0–G5 固定身份</text><text x="163" y="232" text-anchor="middle" class="b">target 与五类 proposer</text>
 <rect x="355" y="90" width="250" height="105" rx="14" class="g"/><text x="480" y="127" text-anchor="middle" class="h">G0：目标模型</text><text x="480" y="157" text-anchor="middle" class="b">逐词元直接生成</text>
 <rect x="355" y="260" width="250" height="105" rx="14" class="o"/><text x="480" y="297" text-anchor="middle" class="h">G1–G5：通过门禁者</text><text x="480" y="327" text-anchor="middle" class="b">按组顺序启动与释放</text>
-<path d="M280 218H315V143H355M315 218V313H355" class="l"/>
+<path d="M280 218H315V143H355" class="l"/><path d="M315 218V313H355" class="l"/>
 <rect x="680" y="90" width="250" height="105" rx="14" class="p"/><text x="805" y="127" text-anchor="middle" class="h">路径与质量证据</text><text x="805" y="157" text-anchor="middle" class="b">接受统计、输出一致性</text>
 <rect x="680" y="260" width="250" height="105" rx="14" class="p"/><text x="805" y="297" text-anchor="middle" class="h">性能与资源证据</text><text x="805" y="327" text-anchor="middle" class="b">TTFT、TPOT、吞吐与显存</text>
-<path d="M605 143H680M605 313H680" class="l"/>
-<rect x="1005" y="165" width="225" height="105" rx="14" class="g"/><text x="1118" y="202" text-anchor="middle" class="h">配对比较</text><text x="1118" y="232" text-anchor="middle" class="b">收益是否覆盖额外成本</text><path d="M930 143H968V218H1005M930 313H968V218" class="l"/>
-<rect x="1305" y="165" width="150" height="105" rx="14" class="r"/><text x="1380" y="202" text-anchor="middle" class="h">候选状态</text><text x="1380" y="232" text-anchor="middle" class="b">采用 / 补测 / 不评估</text><path d="M1230 218H1305" class="l"/>
+<path d="M605 143H640M605 313H640M640 143V313" fill="none" stroke="#52657a" stroke-width="3"/>
+<path d="M640 143H680" class="l"/><path d="M640 313H680" class="l"/>
+<rect x="1005" y="165" width="225" height="105" rx="14" class="g"/><text x="1118" y="202" text-anchor="middle" class="h">配对比较</text><text x="1118" y="232" text-anchor="middle" class="b">收益是否覆盖额外成本</text><path d="M930 143H968V218M930 313H968V218" fill="none" stroke="#52657a" stroke-width="3"/><path d="M968 218H1005" class="l"/>
+<rect x="1305" y="165" width="150" height="105" rx="14" class="r"/><text x="1380" y="195" text-anchor="middle" class="h">候选决策</text><text x="1380" y="225" text-anchor="middle" class="b">采用 / 调整 / 拒绝</text><text x="1380" y="250" text-anchor="middle" class="b">或缺少配对：不评估</text><path d="M1230 218H1305" class="l"/>
 </svg>

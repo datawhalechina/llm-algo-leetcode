@@ -39,11 +39,12 @@
 
 | Profile | 用途 | 操作与证据入口 |
 |:---|:---|:---|
-| <a id="base-cpu"></a>`BASE-CPU` | Part 00–02 普通 CPU 机制练习、题目与测试 | [使用指南](./guide.md) |
+| <a id="base-cpu"></a>`BASE-CPU` | Part 00–02 普通 CPU 机制练习、题目与测试 | [安装与启动](./guide.md#base-cpu) |
 | <a id="train-cpu"></a>`TRAIN-CPU` | 反向传播与训练控制机制页的 PyTorch、Transformers 与 Accelerate 核对 | [训练机制 Quickstart](../topic_discussion/backpropagation_training_mechanism/quickstart.md#train-cpu-quickstart) · [实验资产](../topic_discussion/backpropagation_training_mechanism/experiment_assets.md) |
 | <a id="pt-cpu"></a>`PT-CPU` | 后训练机制页的 Datasets、PEFT、TRL、TorchRL、Accelerate 与 Gymnasium 核对 | [后训练 Quickstart](../topic_discussion/post_training_optimization/quickstart.md#pt-cpu-quickstart) · [实验资产](../topic_discussion/post_training_optimization/experiment_assets.md) |
+| <a id="par-cpu"></a>`PAR-CPU` | 通信与并行机制页的两进程 Gloo、DTensor、上下文切分与 Pipeline API 核对 | [通信与并行 Quickstart](../topic_discussion/communication_parallelism/quickstart.md#par-cpu-quickstart) · [实验资产](../topic_discussion/communication_parallelism/experiment_assets.md) |
+| <a id="q-cpu"></a>`Q-CPU` | 量化机制页的 TorchAO、LLM Compressor、compressed-tensors 与 HQQ 小规模框架核对 | [量化 Quickstart](../topic_discussion/quantization_compression/quickstart.md#q-cpu-quickstart) · [实验资产](../topic_discussion/quantization_compression/experiment_assets.md) |
 | `PERF-DELIVERY` | 汇总性能证据并形成交付判断，不重新执行 GPU 实验 | [性能优化 Quickstart](../topic_discussion/performance_optimization/quickstart.md#perf-delivery-quickstart) · [实验资产](../topic_discussion/performance_optimization/experiment_assets.md) |
-| `INF-SERVICE-DELIVERY` | 汇总推理服务候选、SLO 与交付状态 | [推理优化 Quickstart](../topic_discussion/inference_optimization/quickstart.md#inf-service-delivery) · [实验资产](../topic_discussion/inference_optimization/experiment_assets.md) |
 
 ### CUDA 机制与训练环境
 
@@ -51,10 +52,10 @@
 |:---|:---|:---|
 | <a id="train-cuda-mechanism"></a>`TRAIN-CUDA-MECHANISM` | 单卡；梯度累积、AMP、重算与卸载 | [训练机制 Quickstart](../topic_discussion/backpropagation_training_mechanism/quickstart.md#train-cuda-mechanism-quickstart) · [实验资产](../topic_discussion/backpropagation_training_mechanism/experiment_assets.md) |
 | <a id="arch-cuda-mechanism"></a>`ARCH-CUDA-MECHANISM` | 单卡；Block、Attention、递推状态、MLA 与混合记忆 | [架构 Quickstart](../topic_discussion/llm_architecture_evolution/quickstart.md#arch-cuda-mechanism-quickstart) · [实验资产](../topic_discussion/llm_architecture_evolution/experiment_assets.md) |
-| <a id="perf-cuda-mechanism"></a>`PERF-CUDA-MECHANISM` | 单卡；Trace、显存时间线、输入流水线和 I/O | [性能分析 Quickstart](../topic_discussion/performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart) · [实验资产](../topic_discussion/performance_analysis/experiment_assets.md) |
+| <a id="perf-cuda-mechanism"></a>`PERF-CUDA-MECHANISM` | 单卡；性能分析机制实验及 Part 05·03、05 综合项目 | [性能分析 Quickstart](../topic_discussion/performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart) · [实验资产](../topic_discussion/performance_analysis/experiment_assets.md) |
 | <a id="inf-cuda-mechanism"></a>`INF-CUDA-MECHANISM` | 单卡；真实模型迭代成本、显存与局部延迟 | [推理优化 Quickstart](../topic_discussion/inference_optimization/quickstart.md#inf-cuda-mechanism-quickstart) · [实验资产](../topic_discussion/inference_optimization/experiment_assets.md) |
 | <a id="par-cuda-mechanism"></a>`PAR-CUDA-MECHANISM` | 至少双卡；collective、切分、同步和局部扩展行为 | [通信与并行 Quickstart](../topic_discussion/communication_parallelism/quickstart.md#par-cuda-mechanism-quickstart) · [实验资产](../topic_discussion/communication_parallelism/experiment_assets.md) |
-| <a id="q-cuda-mechanism"></a>`Q-CUDA-MECHANISM` | 单卡；校准、低精度执行和量化机制对照 | [量化 Quickstart](../topic_discussion/quantization_compression/quickstart.md#q-cuda-mechanism-quickstart) · [实验资产](../topic_discussion/quantization_compression/experiment_assets.md) |
+| <a id="q-cuda-mechanism"></a>`Q-CUDA-MECHANISM` | 单卡；量化机制对照及 Part 05·04 量化产物生成 | [量化 Quickstart](../topic_discussion/quantization_compression/quickstart.md#q-cuda-mechanism-quickstart) · [实验资产](../topic_discussion/quantization_compression/experiment_assets.md) |
 | <a id="q-qlora"></a>`Q-QLORA` | 单卡；BF16 LoRA 与 NF4 QLoRA 配对训练 | [量化 Quickstart](../topic_discussion/quantization_compression/quickstart.md#q-qlora-quickstart) · [实验资产](../topic_discussion/quantization_compression/experiment_assets.md) |
 | <a id="pt-sft-cuda"></a>`PT-SFT-CUDA` | 单卡；SFT、LoRA 更新、验证与训练产物 | [后训练 Quickstart](../topic_discussion/post_training_optimization/quickstart.md#pt-sft-cuda-quickstart) · [实验资产](../topic_discussion/post_training_optimization/experiment_assets.md) |
 | <a id="pt-rl-cuda"></a>`PT-RL-CUDA` | 单卡；奖励模型、奖励信号、DPO 与 GRPO 机制实验 | [后训练 Quickstart](../topic_discussion/post_training_optimization/quickstart.md#pt-rl-cuda-quickstart) · [实验资产](../topic_discussion/post_training_optimization/experiment_assets.md) |
@@ -66,7 +67,7 @@
 
 | Profile | 用途 | 操作与证据入口 |
 |:---|:---|:---|
-| <a id="inf-vllm-011-cu128"></a>`INF-VLLM-011-CU128` | 复现 vLLM 0.11、PyTorch 2.8 与 CUDA 12.8 历史服务基线 | [推理优化 Quickstart](../topic_discussion/inference_optimization/quickstart.md) · [实验资产](../topic_discussion/inference_optimization/experiment_assets.md) |
+| <a id="inf-vllm-011-cu128"></a>`INF-VLLM-011-CU128` | vLLM 0.11、PyTorch 2.8 与 CUDA 12.8；用于 Part 05·01 服务对照及 04 量化产物验证 | [推理优化 Quickstart](../topic_discussion/inference_optimization/quickstart.md) · [实验资产](../topic_discussion/inference_optimization/experiment_assets.md) |
 | <a id="inf-vllm-spec025"></a>`INF-VLLM-SPEC025` | vLLM 0.25.1、CUDA 12.9 的 N-gram、draft、EAGLE、DFlash 与 DSpark 选型 | [投机解码 Quickstart](../topic_discussion/inference_optimization/quickstart.md#inf-vllm-spec025-quickstart) · [实验资产](../topic_discussion/inference_optimization/experiment_assets.md) |
 | <a id="inf-vllm-mtp"></a>`INF-VLLM-MTP` | vLLM 原生 MTP 路径；与历史基线和 0.25.1 选型环境分离 | [MTP Quickstart](../topic_discussion/inference_optimization/quickstart.md#inf-vllm-mtp-quickstart) · [实验资产](../topic_discussion/inference_optimization/experiment_assets.md) |
 
@@ -77,7 +78,7 @@
 | CPU 机制环境 | 基础 CPU PyTorch + 对应能力包 | CUDA PyTorch、Serving 后端、量化运行时和多卡框架 |
 | CUDA PyTorch 机制环境 | CUDA PyTorch + 一个目标专题能力 Profile | vLLM、SGLang、TensorRT-LLM 及其他维护独立 PyTorch 栈的后端 |
 | 后训练环境 | SFT/LoRA、偏好/RL、教师—学生蒸馏和交付控制分别按 Profile 创建 | QLoRA 使用 `Q-QLORA`；多工作进程 rollout 与 Serving 采样另建项目环境 |
-| 量化环境 | `Q-CUDA-MECHANISM` 或 `Q-QLORA` 各自独立 | 不覆盖 Serving 环境；量化产物由匹配的后端另行验证 |
+| 量化环境 | `Q-CPU`、`Q-CUDA-MECHANISM` 或 `Q-QLORA` 按证据目标分别创建 | CPU 核对不作为 Kernel 或性能证据；量化产物由匹配的后端另行验证 |
 | 推理后端环境 | 同一 Profile 内固定 backend、PyTorch、CUDA 和模型资产 | 不同 vLLM 版本、SGLang、llama.cpp 与 TensorRT-LLM 不混装 |
 | 多卡训练环境 | CUDA PyTorch + `PAR-CUDA-MECHANISM` | Serving 后端和单卡机制环境不能直接充当多卡证据 |
 

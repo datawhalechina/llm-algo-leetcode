@@ -16,7 +16,7 @@
 
   <rect x="730" y="78" width="400" height="142" rx="16" class="tile"/>
   <text x="930" y="108" text-anchor="middle" class="label">当前 K/V 分块的局部贡献</text>
-  <text x="930" y="140" text-anchor="middle" class="formula">S_ij = Q_i × K_jᵀ</text>
+  <text x="930" y="140" text-anchor="middle" class="formula">S_ij = Q_i × K_jᵀ / √D</text>
   <text x="930" y="168" text-anchor="middle" class="formula">m_ij = rowmax(S_ij)</text>
   <text x="930" y="196" text-anchor="middle" class="formula">V_j：当前值向量分块</text>
 

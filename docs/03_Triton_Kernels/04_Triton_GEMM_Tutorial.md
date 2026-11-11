@@ -122,7 +122,7 @@ def matmul_kernel(
     offs_am = pid_m * BLOCK_SIZE_M + tl.arange(0, BLOCK_SIZE_M)
     offs_bn = pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N)
     offs_k = tl.arange(0, BLOCK_SIZE_K)
-    
+
     a_ptrs = a_ptr + (offs_am[:, None] * stride_am + offs_k[None, :] * stride_ak)
     b_ptrs = b_ptr + (offs_k[:, None] * stride_bk + offs_bn[None, :] * stride_bn)
 
@@ -166,13 +166,13 @@ def triton_gemm(a: torch.Tensor, b: torch.Tensor):
     assert a.is_contiguous(), "Matrix A must be contiguous"
     M, K = a.shape
     K, N = b.shape
-    
+
     # 预分配连续的输出张量
     c = torch.empty((M, N), device=a.device, dtype=torch.float16)
-    
+
     # 启动 1D Grid (包含所有计算块的扁平化数组)
     grid = lambda META: (triton.cdiv(M, META['BLOCK_SIZE_M']) * triton.cdiv(N, META['BLOCK_SIZE_N']), )
-    
+
     matmul_kernel[grid](
         a, b, c,
         M, N, K,
@@ -195,7 +195,7 @@ def test_fused_gemm():
         assert "triton_gemm" in globals(), "缺少 triton_gemm"
         print("✅ Triton GEMM 结构检查通过")
         return True
-        
+
     try:
         torch.manual_seed(42)
 
@@ -300,7 +300,7 @@ def matmul_kernel(
     offs_am = pid_m * BLOCK_SIZE_M + tl.arange(0, BLOCK_SIZE_M)
     offs_bn = pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N)
     offs_k = tl.arange(0, BLOCK_SIZE_K)
-    
+
     a_ptrs = a_ptr + (offs_am[:, None] * stride_am + offs_k[None, :] * stride_ak)
     b_ptrs = b_ptr + (offs_k[:, None] * stride_bk + offs_bn[None, :] * stride_bn)
 
@@ -318,12 +318,12 @@ def matmul_kernel(
         # ==========================================
         a = tl.load(a_ptrs, mask=(offs_am[:, None] < M) & k_mask[None, :], other=0.0)
         b = tl.load(b_ptrs, mask=k_mask[:, None] & (offs_bn[None, :] < N), other=0.0)
-        
+
         # ==========================================
         # TODO 2: 矩阵乘加 (底层调用 Tensor Core)
         # ==========================================
         accumulator += tl.dot(a, b)
-        
+
         # ==========================================
         # TODO 3: 推进指针到下一个 K 块
         # ==========================================
@@ -341,13 +341,13 @@ def triton_gemm(a: torch.Tensor, b: torch.Tensor):
     assert a.is_contiguous(), "Matrix A must be contiguous"
     M, K = a.shape
     K, N = b.shape
-    
+
     # 预分配连续的输出张量
     c = torch.empty((M, N), device=a.device, dtype=torch.float16)
-    
+
     # 启动 1D Grid (包含所有计算块的扁平化数组)
     grid = lambda META: (triton.cdiv(M, META['BLOCK_SIZE_M']) * triton.cdiv(N, META['BLOCK_SIZE_N']), )
-    
+
     matmul_kernel[grid](
         a, b, c,
         M, N, K,

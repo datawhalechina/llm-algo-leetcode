@@ -1,4 +1,6 @@
-# 83. Quantized Serving Profile Benchmark | 量化 Serving Profile 基准
+# 83. Quantized Serving Profile Benchmark | 量化服务 Profile 基准
+
+**难度：** Hard | **环境：** [CPU 主线，GPU 可选](#runtime-environment) | **标签：** `量化压缩`、`部署` | **目标人群：** 掌握推理指标与量化基础的读者
 
 > 🚀 **云端运行环境**
 >
@@ -8,363 +10,599 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-同一个量化 artifact 不会在所有请求形态下都表现最好。这里固定已经通过 artifact gate 的模型、格式、backend 和硬件，把请求目标分成低延迟、均衡和高吞吐三类 profile，记录每类 profile 的延迟、吞吐、显存、排队与失败证据，再按 SLO 选择配置。
+---
 
-关键词：`artifact lineage`、`SLO`、`TTFT`、`TPOT`、`P95`、`queue wait`、`serving profile`。
+## 本节导读
+
+一个量化候选通过固定工作负载的部署验证后，还需要面对不同请求压力。交互式请求更关心首 Token 延迟，混合流量需要兼顾生成延迟与吞吐，离线任务则允许更高并发来换取总吞吐。
+
+本节固定 67 已接受的量化部署资产，在同一后端上分别运行延迟优先、均衡和吞吐优先三类 Profile（请求压力与服务目标的组合）。SLO 是可接受的指标上限或下限；TTFT 是提交至首 Token 的时间，TPOT 是生成阶段平均每个后续 Token 的耗时。通过的场景生成稳定引用，供 72 结合其他候选复测。
+
+**关键词：** `服务 Profile`, `SLO`, `TTFT`, `TPOT`, `吞吐`, `尾延迟`
+
+## 运行环境
+
+- **CPU 练习：** [BASE-CPU](../topic_discussion/inference_optimization/quickstart.md)，验证血缘、服务目标与候选选择。
+- **真实实验：** [INF-VLLM-011-CU128](../topic_discussion/inference_optimization/quickstart.md)，需要 NVIDIA GPU 和已准备好的量化产物；创建与检查命令见 Quickstart。
+- **结果入口：** Step 5 按 `prepare → measure → close` 运行；prepare／close只检查磁盘证据，不启动后端。
+
 ## 前置阅读
 
-- [82 Quantization Artifact Evaluation Project](82_Quantization_Artifact_Evaluation_Project.md)：先确认 artifact、独立质量和 loader 兼容性。
-- [66 Inference Performance Comparison](66_Inference_Performance_Comparison.md)：提供同模型、同 backend、同 workload 的浮点 G0 baseline。
-- [67 Quantized Inference and Deployment](67_Quantized_Inference_and_Deployment.md)：确认量化候选在目标 backend 的部署对照。
-- [36 Serving Scheduler Basics](36_Decode_Scheduling.md)：理解并发、排队与批处理为何改变尾延迟。
+- [67. 量化推理与部署](./67_Quantized_Inference_and_Deployment.md)：提供本节唯一必需的量化部署稳定引用。
+- [36. 请求选择、准入与公平性](./36_Decode_Scheduling.md)：需要解释排队、并发和尾延迟时选读。
 
-83 不重新校准权重或验证 artifact 格式；它只比较一个已通过 gate 的 artifact 在不同服务目标下应使用哪套 profile。
-### Step 1：固定 artifact 血缘，再比较服务配置
+## Step 1：沿用已接受的部署血缘
 
-服务 profile 的比较必须指向同一个 artifact。它应能回溯到 82 的 gate 记录、66 的浮点 baseline 和 67 的量化部署记录；模型 revision、量化格式、backend、硬件和 tokenizer 也必须一致。否则 profile 间的差异可能来自不同模型或不同加载路径，而不是调度和配置。
+服务压力比较从已经通过配对部署验证的量化候选开始。上游记录需同时证明产物来源、低精度执行路径和当前环境，才能把后续差异归因于请求压力与服务配置。
 
-| 固定项 | 记录来源 | 为什么不能变化 |
-| --- | --- | --- |
-| artifact id / revision / format | 82 manifest | 避免比较不同权重或量化表示 |
-| backend / version / hardware | 67 部署记录 | backend 版本会改变执行路径 |
-| tokenizer 与质量门槛 | 82 质量记录 | 防止请求编码或能力标准漂移 |
-| baseline workload 定义 | 66 / 67 | 保留同 workload 的性能参照 |
+| 固定对象 | 上游证据 | 作用 |
+|:---|:---|:---|
+| 产物血缘 | 产物身份、模型版本、准入引用与哈希 | 保证三类服务配置使用同一候选 |
+| 执行路径 | 量化格式、执行后端、回退状态和日志证据 | 防止不同加载路径混入比较 |
+| 环境身份 | GPU、CUDA、PyTorch 与执行后端版本 | 解释性能变化是否来自环境 |
+| 基准入口 | 请求集版本、模型与分词器 | 生成三类服务压力配置 |
 
-![量化 artifact 到服务 profile 的证据链](../public/02_PyTorch_Algorithms/83_serving_profile_flow.svg)
-### Step 2：三类 profile 改变的是服务目标，不是模型能力
+![量化产物到服务 Profile 的证据链](../public/02_PyTorch_Algorithms/83_serving_profile_flow.svg)
 
-`latency` 面向交互式短请求，优先看 TTFT 与 P95；`balanced` 面向混合流量，兼顾 TPOT、吞吐和尾延迟；`throughput` 面向批量或离线场景，允许更高并发，但仍要记录 queue wait、失败和显存。三类请求可以使用不同并发和输入/输出长度，因此不能直接把原始耗时互相排序。
+## Step 2：用三类 Profile 表达不同服务目标
 
-| profile | 典型 workload | 主指标 | 约束指标 |
-| --- | --- | --- | --- |
-| `latency` | 并发 1、短输入/短输出 | TTFT P50 / P95 | TPOT、失败率 |
-| `balanced` | 中等并发、混合长度 | TTFT、TPOT、吞吐 | P95、显存、queue wait |
-| `throughput` | 高并发或长生成 | 输出吞吐 | P95、排队、OOM / 失败率 |
+三类 Profile 改变的是请求数量、并发和生成长度，不改变模型能力与量化产物。每类 Profile 都声明主指标及其方向，避免把低延迟和高吞吐配置放进同一个排序。
+
+| Profile | 请求压力 | 主指标 | 约束指标 |
+|:---|:---|:---|:---|
+| 延迟优先 | 低并发、短生成 | TTFT P95，越低越好 | TTFT上限、失败率 |
+| 均衡 | 中等并发和生成长度 | TPOT P95，越低越好 | TPOT上限、吞吐下限、失败率 |
+| 吞吐优先 | 较高并发和较长生成 | 输出 Token 吞吐，越高越好 | 吞吐下限、失败率 |
 
 ![服务目标决定比较指标](../public/02_PyTorch_Algorithms/83_serving_profile_metrics.svg)
-### Step 3：先在 profile 内比较，再按 SLO 选用
 
-每个 profile 内部应保持 prompt、输出上限、并发、重复次数和 backend 参数固定，只比较明确声明的一项服务配置，例如 batch 上限、KV cache 预算或 scheduler 设置。汇总时先过滤失败记录和 SLO 不达标候选，再选该 profile 下最符合主指标的配置；不同 profile 的推荐可以不同。
+## Step 3：在 Profile 内检查 SLO 并选择配置
 
-| 检查 | 记录方式 | 失败时的处理 |
-| --- | --- | --- |
-| 可比性 | 相同 artifact 血缘与 profile workload | 标为不可比较，不参与排序 |
-| SLO | profile 对应的主指标和上限 | `tune` 或 `reject` |
-| 资源 | peak memory、queue wait、错误数 | 记录压力来源与复测路径 |
-| 质量引用 | 82 的 held-out quality gate | gate 失效时停止 Serving 比较 |
-### Step 4：代码设计——血缘契约、profile 指标与 SLO 决策
+每个服务配置内部保持请求集、并发、生成上限和重复次数一致。候选先通过失败状态、产物血缘和请求负载可比性检查，再按各项服务目标的上限或下限过滤，最后依据主指标选择结果。
 
-题目区按服务选择的顺序组织。`TODO 1` 核验 82/66/67 的血缘字段；`TODO 2` 校验 profile workload 与 SLO；`TODO 3` 汇总可比较的 Serving 记录；`TODO 4` 为每个 profile 选择候选。测试分别覆盖血缘、profile 契约、指标汇总和决策，避免把吞吐收益掩盖尾延迟或失败。
+| 判断顺序 | 必须满足的条件 | 不满足时的状态 |
+|:---|:---|:---|
+| 可比性 | 同一 artifact、Profile 和 workload | 排除该记录并保留原因 |
+| 完整性 | 三类压力均完成，主指标和全部 SLO 指标有限且有效 | `pending`：补齐证据后再判断 |
+| SLO | `max` 指标不超上限，`min` 指标不低于下限 | 当前 Profile 不可接受 |
+| 证据等级 | 来自真实后端重复测量 | CPU 或配置记录不能 `accept` |
 
-| TODO | 学习者实现的机制 | 关键不变量 |
-| --- | --- | --- |
-| 1 | artifact 血缘检查 | 三份上游记录指向同一 artifact / backend / hardware |
-| 2 | profile 契约 | 主指标、workload 与 SLO 同时存在 |
-| 3 | Serving 记录汇总 | 无失败、同 profile、同血缘才可比较 |
-| 4 | profile 选择 | 先过 SLO，再按本 profile 的主指标排序 |
+## Step 4：实现部署血缘、Profile 契约与 SLO 选择
+
+题目区将服务决策拆成三个动作：确认 67 交接资产完整，检查 Profile 是否明确指标方向，再从同一 Profile 的真实记录中筛选满足 SLO 的候选。
+
+| 任务与目的 | 已知条件 | 完成标准 | 测试验证 |
+|:---|:---|:---|:---|
+| TODO 1：组合部署血缘门禁 | 已提取的接受状态、产物身份和 82 血缘 | 三项条件使用合取关系形成总状态 | 合格记录与缺血缘反例 |
+| TODO 2：检查 Profile 契约 | workload、主指标和方向化 SLO | 三类 Profile 均能独立解释 | 非法方向与缺字段反例 |
+| TODO 3：在合格候选中排序 | 已完成可比性和 SLO 过滤的记录 | 先按主指标方向选择，持平时优先余量更大的候选 | 延迟、吞吐与主指标持平反例 |
+
 
 ```python
 from typing import Any, Dict, List
 
-import json
-from pathlib import Path
+from tools.quantization_project_runtime import _finite_number, _positive_int, _text
+
 ```
 
 
 ```python
-# TODO 1：校验来自 82、66、67 的 artifact 血缘。
-def validate_artifact_lineage(gate: Dict[str, Any], baseline: Dict[str, Any], deployment: Dict[str, Any]) -> Dict[str, Any]:
-    """Return ready only when upstream records describe the same serving candidate.
-
-    Variables to determine:
-    # artifact_id = ???  # same across gate and deployment
-    # backend = ???      # same backend and version for baseline/deployment
-    # issues = ???       # missing upstream decision or inconsistent lineage
-    """
-    raise NotImplementedError('请先完成 TODO 1')
+SUPPORTED_PROFILES = {"latency", "balanced", "throughput"}
+SUPPORTED_DIRECTIONS = {"max", "min"}
 
 
-# TODO 2：校验一个 Serving profile 的 workload 与 SLO。
+def validate_deployment_lineage(deployment: Dict[str, Any]) -> Dict[str, Any]:
+    """检查 67 部署记录是否可以作为服务 Profile 的唯一上游资产。"""
+    artifact = deployment.get("artifact", {})
+    lineage = deployment.get("lineage", {})
+    # 给定实现：提取 67 接受状态、产物身份和 82 血缘事实。
+    accepted = (
+        deployment.get("stage") == "quantized_deployment"
+        and deployment.get("decision", {}).get("decision") == "accept"
+    )
+    artifact_ready = bool(artifact.get("artifact_id") and artifact.get("path"))
+    gate_lineage_ready = bool(
+        lineage.get("artifact_gate_reference") and lineage.get("artifact_gate_sha256")
+    )
+    # TODO 1（部署血缘）：组合三个不可互相替代的准入条件。
+    # lineage_ready = ???  # 接受状态、产物身份和 82 血缘必须同时成立。
+    if "lineage_ready" not in locals():
+        raise NotImplementedError("TODO 1：请完成部署血缘合取规则")
+    issues = []
+    if not accepted:
+        issues.append("deployment_not_accepted")
+    if not artifact_ready:
+        issues.append("artifact_identity_or_path_missing")
+    if not gate_lineage_ready:
+        issues.append("artifact_gate_lineage_missing")
+    return {"ready": lineage_ready, "issues": issues}
+
+
+def _positive_workload(workload: Dict[str, Any]) -> bool:
+    """给定实现：检查请求数、并发、生成上限和重复次数是否为正。"""
+    return all(
+        _positive_int(workload.get(key))
+        for key in ("num_prompts", "concurrency", "max_tokens", "repeats")
+    )
+
+
+def _valid_slo_rules(slo: Dict[str, Any]) -> bool:
+    """给定实现：检查每项 SLO 是否声明合法方向和数值阈值。"""
+    return all(
+        isinstance(rule, dict) and rule.get("direction") in SUPPORTED_DIRECTIONS
+        and _finite_number(rule.get("limit")) and rule["limit"] >= 0
+        for rule in slo.values()
+    )
+
+
 def validate_serving_profile(profile: Dict[str, Any]) -> Dict[str, Any]:
-    """Require a named workload, a primary metric and profile-appropriate limits.
+    """检查 workload、主指标和带方向 SLO 是否构成完整 Profile。"""
+    workload = profile.get("workload", {})
+    slo = profile.get("slo", {})
+    # TODO 2（Profile 契约）：组合 workload、SLO 和主指标约束。
+    # workload_ready = ???  # workload ID 存在，且四项规模参数均为正。
+    # slo_ready = ???  # SLO 非空，且每项规则都通过方向与阈值检查。
+    # primary_ready = ???  # 主指标必须出现在当前 Profile 的 SLO 中。
+    if not all(name in locals() for name in ("workload_ready", "slo_ready", "primary_ready")):
+        raise NotImplementedError("TODO 2：请完成三个 Profile 契约判断")
+    issues = []
+    if profile.get("name") not in SUPPORTED_PROFILES:
+        issues.append("unsupported_profile")
+    if not workload_ready:
+        issues.append("invalid_workload")
+    if not slo_ready:
+        issues.append("invalid_slo")
+    if not primary_ready:
+        issues.append("primary_metric_missing_from_slo")
+    return {"ready": not issues, "issues": issues}
 
-    Variables to determine:
-    # workload = ???      # concurrency, prompt_tokens, max_output_tokens, repeats
-    # primary_metric = ???
-    # slo = ???           # metric ceilings/floors for this profile
-    """
-    raise NotImplementedError('请先完成 TODO 2')
+
+def _meets_slo(metrics: Dict[str, Any], slo: Dict[str, Any]) -> bool:
+    """按每项指标声明的 max/min 方向检查 SLO。"""
+    for metric, rule in slo.items():
+        value = metrics.get(metric)
+        if not _finite_number(value) or value < 0:
+            return False
+        if rule["direction"] == "max" and value > rule["limit"]:
+            return False
+        if rule["direction"] == "min" and value < rule["limit"]:
+            return False
+    return True
 
 
-# TODO 3：汇总同 profile 内可比较的 Serving 记录。
-def summarize_profile_records(records: List[Dict[str, Any]], profile: Dict[str, Any]) -> Dict[str, Any]:
-    """Keep only matching, successful records and expose profile metrics.
-
-    Variables to determine:
-    # comparable = ???  # matching artifact_id, profile and workload id
-    # failures = ???    # failed or non-comparable record names
-    # summary = ???     # TTFT/TPOT/throughput/memory/queue fields
-    """
-    raise NotImplementedError('请先完成 TODO 3')
+def _slo_headroom(metrics: Dict[str, Any], slo: Dict[str, Any]) -> float:
+    """给定实现：计算已合格记录相对各项 SLO 的归一化余量之和。"""
+    headroom = 0.0
+    for metric, rule in slo.items():
+        value, limit = metrics[metric], rule["limit"]
+        scale = max(abs(float(limit)), 1.0)
+        headroom += ((limit - value) if rule["direction"] == "max" else (value - limit)) / scale
+    return headroom
 
 
-# TODO 4：按 profile 的 SLO 选择服务配置。
-def recommend_serving_profile(summary: Dict[str, Any], profile: Dict[str, Any]) -> Dict[str, str]:
-    """Return accept/tune/reject and the selected candidate for one profile.
+def choose_primary_record(
+    records: List[Dict[str, Any]], primary_metric: str, direction: str, slo: Dict[str, Any]
+) -> Dict[str, Any] | None:
+    """按主指标方向选择候选；过滤和 SLO 检查已由调用方完成。"""
+    if not records:
+        return None
+    best = records[0]
+    for candidate in records[1:]:
+        candidate_value = candidate["metrics"][primary_metric]
+        best_value = best["metrics"][primary_metric]
+        # TODO 3（候选排序）：先比主指标；主指标持平时比较整体 SLO 余量。
+        # candidate_is_better = ???
+        if "candidate_is_better" not in locals():
+            raise NotImplementedError("TODO 3：请完成方向化比较规则")
+        if candidate_is_better:
+            best = candidate
+    return best
 
-    Variables to determine:
-    # feasible = ???      # candidates satisfying all declared SLO values
-    # primary_metric = ???
-    # decision = ???      # accept only for real backend profile evidence
-    """
-    raise NotImplementedError('请先完成 TODO 4')
+
+def select_serving_candidate(
+    records: List[Dict[str, Any]], profile: Dict[str, Any], *, expected_artifact_id: str | None = None
+) -> Dict[str, Any]:
+    """在同一 Profile 内过滤不可比记录、检查 SLO 并选择主指标最优候选。"""
+    if not validate_serving_profile(profile)["ready"]:
+        raise ValueError("Profile 契约不完整")
+    expected_artifact = expected_artifact_id or next((record.get("artifact_id") for record in records if record.get("artifact_id")), None)
+    comparable = [
+        record for record in records
+        if record.get("status") == "ok"
+        and record.get("artifact_id") == expected_artifact
+        and record.get("profile_name") == profile["name"]
+        and record.get("workload_id") == profile["workload"]["id"]
+        and record.get("evidence_level") == "real_project_benchmark"
+    ]
+    feasible = [
+        record for record in comparable
+        if _meets_slo(record.get("metrics", {}), profile["slo"])
+    ]
+    primary_metric = profile["primary_metric"]
+    direction = profile["slo"][primary_metric]["direction"]
+    selected = choose_primary_record(feasible, primary_metric, direction, profile["slo"])
+    excluded = [record.get("name", "unnamed") for record in records if record not in feasible]
+    return {
+        "decision": "accept" if selected else "tune",
+        "selected": selected,
+        "comparable_count": len(comparable),
+        "feasible_count": len(feasible),
+        "excluded": excluded,
+    }
+
 ```
 
 
 ```python
-# Tests are split by responsibility: lineage, profile contract, record summary and SLO decision.
-def test_artifact_lineage():
-    gate = {'artifact_id': 'awq-r1', 'backend': 'vllm', 'backend_version': '0.x', 'hardware': 'gpu-a', 'decision': 'accept'}
-    baseline = {'artifact_id': 'fp16-r1', 'backend': 'vllm', 'backend_version': '0.x', 'hardware': 'gpu-a', 'decision': 'accept'}
-    deployment = {'artifact_id': 'awq-r1', 'backend': 'vllm', 'backend_version': '0.x', 'hardware': 'gpu-a', 'gate_artifact_id': 'awq-r1', 'decision': 'accept'}
-    assert validate_artifact_lineage(gate, baseline, deployment)['ready']
-    assert not validate_artifact_lineage(gate, baseline, {**deployment, 'hardware': 'gpu-b'})['ready']
-    return deployment
+def _deployment_record():
+    """构造已通过 67、且携带 82 血缘的部署记录。"""
+    return {
+        "stage": "quantized_deployment",
+        "artifact": {"artifact_id": "qwen-awq-r1", "path": "/tmp/qwen-awq-r1"},
+        "lineage": {"artifact_gate_reference": "82_ref.json", "artifact_gate_sha256": "abc123"},
+        "decision": {"decision": "accept"},
+    }
 
 
-def test_profile_contract():
-    profile = {'name': 'latency', 'workload': {'id': 'short-chat', 'concurrency': 1, 'prompt_tokens': 64, 'max_output_tokens': 64, 'repeats': 3}, 'primary_metric': 'ttft_p95_ms', 'slo': {'ttft_p95_ms': 500, 'failure_rate': 0.0}}
-    assert validate_serving_profile(profile)['ready']
-    assert not validate_serving_profile({**profile, 'workload': {}})['ready']
-    return profile
+def _latency_profile():
+    """构造使用上限型延迟 SLO 的交互式 Profile。"""
+    return {
+        "name": "latency",
+        "workload": {"id": "fixed-chat", "num_prompts": 8, "concurrency": 1, "max_tokens": 64, "repeats": 3},
+        "primary_metric": "ttft_p95_ms",
+        "slo": {
+            "ttft_p95_ms": {"direction": "max", "limit": 500.0},
+            "failure_rate": {"direction": "max", "limit": 0.0},
+        },
+    }
 
 
-def test_profile_summary(deployment, profile):
+def test_deployment_lineage():
+    """验证 67 接受状态和 82 血缘缺一不可。"""
+    deployment = _deployment_record()
+    assert validate_deployment_lineage(deployment)["ready"]
+    assert not validate_deployment_lineage({**deployment, "lineage": {}})["ready"]
+
+
+def test_serving_profile_contract():
+    """验证 workload、主指标和 SLO 方向组成完整契约。"""
+    profile = _latency_profile()
+    assert validate_serving_profile(profile)["ready"]
+    bad = {**profile, "slo": {"ttft_p95_ms": {"direction": "smaller", "limit": 500.0}}}
+    assert not validate_serving_profile(bad)["ready"]
+    for value in (True, 0, -1, 1.5):
+        invalid = {**profile, 'workload': {**profile['workload'], 'repeats': value}}
+        assert not validate_serving_profile(invalid)['ready']
+
+
+def test_profile_candidate_selection():
+    """验证上限型延迟和下限型吞吐使用相反选择方向。"""
+    latency = _latency_profile()
     records = [
-        {'name': 'c1', 'artifact_id': 'awq-r1', 'profile': 'latency', 'workload_id': 'short-chat', 'status': 'ok', 'evidence_level': 'real_backend_profile', 'ttft_p95_ms': 380, 'tpot_p95_ms': 12, 'throughput_tps': 80, 'peak_memory_mb': 1300, 'queue_wait_p95_ms': 5},
-        {'name': 'c2', 'artifact_id': 'awq-r1', 'profile': 'latency', 'workload_id': 'short-chat', 'status': 'failed', 'failure': 'oom'},
+        {"name": "c1", "status": "ok", "artifact_id": "qwen-awq-r1", "profile_name": "latency", "workload_id": "fixed-chat", "evidence_level": "real_project_benchmark", "metrics": {"ttft_p95_ms": 420.0, "failure_rate": 0.0}},
+        {"name": "c2", "status": "ok", "artifact_id": "qwen-awq-r1", "profile_name": "latency", "workload_id": "fixed-chat", "evidence_level": "real_project_benchmark", "metrics": {"ttft_p95_ms": 360.0, "failure_rate": 0.0}},
+        {"name": "failed", "status": "failed", "artifact_id": "qwen-awq-r1", "profile_name": "latency", "workload_id": "fixed-chat", "evidence_level": "real_project_benchmark", "metrics": {}},
     ]
-    summary = summarize_profile_records(records, profile)
-    assert summary['comparable_count'] == 1 and summary['failures'] == ['c2']
-    return summary
+    contaminated = [{**records[0], "name": "wrong-artifact", "artifact_id": "other"}, *records]
+    selected = select_serving_candidate(contaminated, latency, expected_artifact_id="qwen-awq-r1")
+    assert selected["decision"] == "accept" and selected["selected"]["name"] == "c2"
+    for value in (float('nan'), float('inf'), True, -1.0):
+        invalid = {**records[0], 'metrics': {'ttft_p95_ms': value, 'failure_rate': 0.0}}
+        assert select_serving_candidate([invalid], latency)['decision'] != 'accept'
+
+    throughput = {
+        **latency, "name": "throughput", "primary_metric": "throughput_tps",
+        "slo": {"throughput_tps": {"direction": "min", "limit": 70.0}},
+    }
+    throughput_records = [
+        {**record, "profile_name": "throughput", "metrics": {"throughput_tps": value}}
+        for record, value in zip(records[:2], (80.0, 95.0))
+    ]
+    assert select_serving_candidate(
+        throughput_records, throughput, expected_artifact_id="qwen-awq-r1"
+    )["selected"]["name"] == "c2"
+
+    tie_slo = {
+        "tpot_p95_ms": {"direction": "max", "limit": 80.0},
+        "throughput_tps": {"direction": "min", "limit": 20.0},
+    }
+    tied = [
+        {"name": "narrow", "metrics": {"tpot_p95_ms": 60.0, "throughput_tps": 22.0}},
+        {"name": "roomy", "metrics": {"tpot_p95_ms": 60.0, "throughput_tps": 30.0}},
+    ]
+    assert choose_primary_record(tied, "tpot_p95_ms", "max", tie_slo)["name"] == "roomy"
 
 
-def test_profile_decision(summary, profile):
-    result = recommend_serving_profile(summary, profile)
-    assert result['decision'] == 'accept' and result['recommended_name'] == 'c1'
-    tuned = recommend_serving_profile({**summary, 'evidence_level': 'cpu_profile_simulation'}, profile)
-    assert tuned['decision'] == 'tune'
+def run_serving_profile_tests():
+    """按项目顺序运行血缘、Profile 契约与候选选择测试。"""
+    test_deployment_lineage()
+    test_serving_profile_contract()
+    test_profile_candidate_selection()
+    print("✅ 部署血缘、Profile 契约和方向化 SLO 选择均已验证。")
 
 
-_deployment = test_artifact_lineage()
-_profile = test_profile_contract()
-_summary = test_profile_summary(_deployment, _profile)
-test_profile_decision(_summary, _profile)
-print('测试通过：artifact 血缘、Serving profile、指标汇总与 SLO 决策一致。')
+run_serving_profile_tests()
+
 ```
 
 ---
 
 ## 参考代码与解析
 
+
 ```python
-from typing import Any, Dict, List
+SUPPORTED_PROFILES = {"latency", "balanced", "throughput"}
+SUPPORTED_DIRECTIONS = {"max", "min"}
 
 
-def validate_artifact_lineage(gate: Dict[str, Any], baseline: Dict[str, Any], deployment: Dict[str, Any]) -> Dict[str, Any]:
-    """TODO 1：检查 82 gate、66 baseline 与 67 部署记录的血缘契约。"""
+def validate_deployment_lineage(deployment: Dict[str, Any]) -> Dict[str, Any]:
+    """检查 67 部署记录是否可以作为服务 Profile 的唯一上游资产。"""
+    artifact = deployment.get("artifact", {})
+    lineage = deployment.get("lineage", {})
+    # 给定实现：提取 67 接受状态、产物身份和 82 血缘事实。
+    accepted = (
+        deployment.get("stage") == "quantized_deployment"
+        and deployment.get("decision", {}).get("decision") == "accept"
+    )
+    artifact_ready = bool(artifact.get("artifact_id") and artifact.get("path"))
+    gate_lineage_ready = bool(
+        lineage.get("artifact_gate_reference") and lineage.get("artifact_gate_sha256")
+    )
+    # TODO 1（部署血缘）：组合三个不可互相替代的准入条件。
+    lineage_ready = accepted and artifact_ready and gate_lineage_ready
     issues = []
-    for name, record, fields in (
-        ('gate', gate, ('artifact_id', 'backend', 'backend_version', 'hardware', 'decision')),
-        ('baseline', baseline, ('backend', 'backend_version', 'hardware', 'decision')),
-        ('deployment', deployment, ('artifact_id', 'backend', 'backend_version', 'hardware', 'gate_artifact_id', 'decision')),
-    ):
-        issues.extend(f'missing {name}.{field}' for field in fields if field not in record)
-    if not issues:
-        if gate['decision'] != 'accept' or deployment['decision'] != 'accept':
-            issues.append('gate and deployment must be accepted before profile comparison')
-        if gate['artifact_id'] != deployment['artifact_id'] or deployment['gate_artifact_id'] != gate['artifact_id']:
-            issues.append('gate and deployment must reference the same quantized artifact')
-        for field in ('backend', 'backend_version', 'hardware'):
-            if len({gate[field], baseline[field], deployment[field]}) != 1:
-                issues.append(f'{field} must stay fixed across upstream records')
-    return {'ready': not issues, 'issues': issues}
+    if not accepted:
+        issues.append("deployment_not_accepted")
+    if not artifact_ready:
+        issues.append("artifact_identity_or_path_missing")
+    if not gate_lineage_ready:
+        issues.append("artifact_gate_lineage_missing")
+    return {"ready": lineage_ready, "issues": issues}
+
+
+def _positive_workload(workload: Dict[str, Any]) -> bool:
+    """给定实现：检查请求数、并发、生成上限和重复次数是否为正。"""
+    return all(
+        _positive_int(workload.get(key))
+        for key in ("num_prompts", "concurrency", "max_tokens", "repeats")
+    )
+
+
+def _valid_slo_rules(slo: Dict[str, Any]) -> bool:
+    """给定实现：检查每项 SLO 是否声明合法方向和数值阈值。"""
+    return all(
+        isinstance(rule, dict) and rule.get("direction") in SUPPORTED_DIRECTIONS
+        and _finite_number(rule.get("limit")) and rule["limit"] >= 0
+        for rule in slo.values()
+    )
 
 
 def validate_serving_profile(profile: Dict[str, Any]) -> Dict[str, Any]:
-    """TODO 2：检查 workload、主指标和 SLO 是否足以定义一个 profile。"""
+    """检查 workload、主指标和带方向 SLO 是否构成完整 Profile。"""
+    workload = profile.get("workload", {})
+    slo = profile.get("slo", {})
+    # TODO 2（Profile 契约）：组合 workload、SLO 和主指标约束。
+    workload_ready = bool(workload.get("id")) and _positive_workload(workload)
+    slo_ready = bool(slo) and _valid_slo_rules(slo)
+    primary_ready = profile.get("primary_metric") in slo
     issues = []
-    name = str(profile.get('name', ''))
-    workload = profile.get('workload', {})
-    if name not in {'latency', 'balanced', 'throughput'}:
-        issues.append('unsupported profile name')
-    if not isinstance(workload, dict):
-        issues.append('workload must be a mapping')
-    else:
-        for key in ('id', 'concurrency', 'prompt_tokens', 'max_output_tokens', 'repeats'):
-            if key not in workload:
-                issues.append(f'missing workload.{key}')
-        if not issues and any(float(workload[key]) <= 0 for key in ('concurrency', 'prompt_tokens', 'max_output_tokens', 'repeats')):
-            issues.append('workload counts must be positive')
-    if not profile.get('primary_metric'):
-        issues.append('missing primary_metric')
-    if not isinstance(profile.get('slo'), dict) or not profile['slo']:
-        issues.append('missing slo')
-    return {'ready': not issues, 'issues': issues}
+    if profile.get("name") not in SUPPORTED_PROFILES:
+        issues.append("unsupported_profile")
+    if not workload_ready:
+        issues.append("invalid_workload")
+    if not slo_ready:
+        issues.append("invalid_slo")
+    if not primary_ready:
+        issues.append("primary_metric_missing_from_slo")
+    return {"ready": not issues, "issues": issues}
 
 
-def summarize_profile_records(records: List[Dict[str, Any]], profile: Dict[str, Any]) -> Dict[str, Any]:
-    """TODO 3：只保留同 profile、同 workload 且成功的真实记录。"""
-    contract = validate_serving_profile(profile)
-    if not contract['ready']:
-        raise ValueError(f"非法 profile：{contract['issues']}")
-    comparable, failures = [], []
-    for record in records:
-        name = str(record.get('name', 'unnamed'))
-        same_profile = record.get('profile') == profile['name'] and record.get('workload_id') == profile['workload']['id']
-        if record.get('status') == 'ok' and same_profile:
-            comparable.append(record)
-        else:
-            failures.append(name)
-    required = ('ttft_p95_ms', 'tpot_p95_ms', 'throughput_tps', 'peak_memory_mb', 'queue_wait_p95_ms')
-    complete = [record for record in comparable if all(key in record for key in required)]
-    failures.extend(record.get('name', 'unnamed') for record in comparable if record not in complete)
-    return {'profile': profile['name'], 'comparable_count': len(complete), 'candidates': complete, 'failures': sorted(set(failures)), 'evidence_level': 'real_backend_profile'}
+def _meets_slo(metrics: Dict[str, Any], slo: Dict[str, Any]) -> bool:
+    """按每项指标声明的 max/min 方向检查 SLO。"""
+    for metric, rule in slo.items():
+        value = metrics.get(metric)
+        if not _finite_number(value) or value < 0:
+            return False
+        if rule["direction"] == "max" and value > rule["limit"]:
+            return False
+        if rule["direction"] == "min" and value < rule["limit"]:
+            return False
+    return True
 
 
-def recommend_serving_profile(summary: Dict[str, Any], profile: Dict[str, Any]) -> Dict[str, str]:
-    """TODO 4：先按 SLO 过滤，再按 profile 主指标选择配置。"""
-    if not summary.get('candidates'):
-        return {'decision': 'reject', 'recommended_name': None, 'reason': '没有完整且可比较的成功记录'}
-    slo = profile['slo']
-    feasible = []
-    for candidate in summary['candidates']:
-        failure_rate = 0.0
-        checks = [
-            candidate.get('ttft_p95_ms', float('inf')) <= slo.get('ttft_p95_ms', float('inf')),
-            candidate.get('tpot_p95_ms', float('inf')) <= slo.get('tpot_p95_ms', float('inf')),
-            candidate.get('peak_memory_mb', float('inf')) <= slo.get('peak_memory_mb', float('inf')),
-            candidate.get('queue_wait_p95_ms', float('inf')) <= slo.get('queue_wait_p95_ms', float('inf')),
-            failure_rate <= slo.get('failure_rate', 1.0),
-        ]
-        if all(checks): feasible.append(candidate)
-    if not feasible:
-        return {'decision': 'tune', 'recommended_name': None, 'reason': '所有候选至少有一项 SLO 未达标'}
-    metric = profile['primary_metric']
-    if metric == 'throughput_tps':
-        chosen = max(feasible, key=lambda record: float(record[metric]))
-    else:
-        chosen = min(feasible, key=lambda record: float(record[metric]))
-    if summary.get('evidence_level') != 'real_backend_profile':
-        return {'decision': 'tune', 'recommended_name': chosen['name'], 'reason': '仍需真实 backend profile 复测'}
-    return {'decision': 'accept', 'recommended_name': chosen['name'], 'reason': f"满足 {profile['name']} SLO，并在 {metric} 上最优"}
+def _slo_headroom(metrics: Dict[str, Any], slo: Dict[str, Any]) -> float:
+    """给定实现：计算已合格记录相对各项 SLO 的归一化余量之和。"""
+    headroom = 0.0
+    for metric, rule in slo.items():
+        value, limit = metrics[metric], rule["limit"]
+        scale = max(abs(float(limit)), 1.0)
+        headroom += ((limit - value) if rule["direction"] == "max" else (value - limit)) / scale
+    return headroom
+
+
+def choose_primary_record(
+    records: List[Dict[str, Any]], primary_metric: str, direction: str, slo: Dict[str, Any]
+) -> Dict[str, Any] | None:
+    """TODO 3：按主指标方向选择已经满足 SLO 的候选。"""
+    if not records:
+        return None
+    best = records[0]
+    for candidate in records[1:]:
+        candidate_value = candidate["metrics"][primary_metric]
+        best_value = best["metrics"][primary_metric]
+        primary_is_better = candidate_value < best_value if direction == "max" else candidate_value > best_value
+        primary_is_tied = candidate_value == best_value
+        candidate_is_better = primary_is_better or (
+            primary_is_tied
+            and _slo_headroom(candidate["metrics"], slo) > _slo_headroom(best["metrics"], slo)
+        )
+        if candidate_is_better:
+            best = candidate
+    return best
+
+
+def select_serving_candidate(
+    records: List[Dict[str, Any]], profile: Dict[str, Any], *, expected_artifact_id: str | None = None
+) -> Dict[str, Any]:
+    """在同一 Profile 内过滤不可比记录、检查 SLO 并选择主指标最优候选。"""
+    if not validate_serving_profile(profile)["ready"]:
+        raise ValueError("Profile 契约不完整")
+    expected_artifact = expected_artifact_id or next((record.get("artifact_id") for record in records if record.get("artifact_id")), None)
+    comparable = [
+        record for record in records
+        if record.get("status") == "ok"
+        and record.get("artifact_id") == expected_artifact
+        and record.get("profile_name") == profile["name"]
+        and record.get("workload_id") == profile["workload"]["id"]
+        and record.get("evidence_level") == "real_project_benchmark"
+    ]
+    feasible = [
+        record for record in comparable
+        if _meets_slo(record.get("metrics", {}), profile["slo"])
+    ]
+    primary_metric = profile["primary_metric"]
+    direction = profile["slo"][primary_metric]["direction"]
+    selected = choose_primary_record(feasible, primary_metric, direction, profile["slo"])
+    excluded = [record.get("name", "unnamed") for record in records if record not in feasible]
+    return {
+        "decision": "accept" if selected else "tune",
+        "selected": selected,
+        "comparable_count": len(comparable),
+        "feasible_count": len(feasible),
+        "excluded": excluded,
+    }
+
 ```
 
-### 答案解析
+### 解析
 
-- 83 先验证上游血缘，避免把不同 artifact、backend 或硬件上的记录放在同一个 profile 排名中。
-- profile 间的 workload 有意不同，因此只在同一 profile 内比较候选；`latency` 和 `throughput` 可以得到不同推荐。
-- 吞吐是 `throughput` profile 的主指标，但不能绕过 P95、queue wait、显存和失败约束。真实 backend 记录不足时，结论只能是 `tune`。
-### Step 5：可选 GPU/backend 实验——逐 profile 采集 Serving 证据
+先确认输入部署可以追溯，再检查服务目标，最后在相同压力内选择合格配置。
 
-填写一个已通过 82 的 artifact、67 的部署记录和实际 benchmark 命令模板。每种 profile 独立保存结果；命令模板中的 `{profile}` 会替换为 profile 名称。默认关闭，不下载模型、不启动未配置的服务。
+#### TODO 1：检查 67 部署血缘
+
+- 骨架已分别检查 67 接受状态、产物身份和 82 引用；TODO 使用合取关系形成部署血缘门禁。
+- `test_deployment_lineage` 验证删除嵌入血缘后不能开始 Profile 比较。
+
+#### TODO 2：检查 Profile 契约
+
+- workload 数量必须为正；每项 SLO 都显式声明 `max` 或 `min`，主指标也必须出现在 SLO 中。
+- `test_serving_profile_contract` 使用非标准方向名称验证契约不会静默通过。
+
+#### TODO 3：在合格候选中排序
+
+- 骨架负责排除失败、产物不一致或非真实后端记录，并完成 SLO 过滤；TODO 先按主指标方向比较，持平时再比较整体 SLO 余量。
+- `test_profile_candidate_selection` 分别验证延迟取更小值、吞吐取更大值，以及主指标持平时优先约束余量更大的候选。
+
+## Step 5：测量量化服务压力
+
+| 路径 | 验证对象 | 输出 |
+|---|---|---|
+| CPU | 部署血缘、带方向的SLO和配置选择 | 决策规则与边界测试 |
+| GPU／真实后端 | 同一量化产物下延迟、均衡和吞吐三类请求压力 | 原始请求结果、后端日志及运行身份 |
+| 登记与交接 | 重读来源、哈希、固定调用与完整性 | 逐场景达标范围、汇总报告与回执 |
+
+三类场景都需完成；每类在自身负载和SLO内判断。至少一类达标时accept只适用于达标场景，不表示三类均达标，也不比较不同场景的指标排名。
+
+### 5.1 本次运行配置
+
+使用 **INF-VLLM-011-CU128**，环境创建与检查见[推理优化Quickstart](../topic_discussion/inference_optimization/quickstart.md)。默认prepare，模型、请求和门槛由5.2加载固定合同。
+
 
 ```python
-RUN_SERVING_PROFILE_BENCHMARK = False
-SERVING_PROFILE_CONFIG = {
-    'artifact_gate_json': '',
-    'deployment_json': '',
-    'backend': 'vllm',
-    'benchmark_command_template': '',  # 必须包含 {profile}，并由你指向实际 benchmark 脚本。
-    'benchmark_result_template': '',  # 必须包含 {profile}；命令完成后该 JSON 必须包含 Serving 指标。
-    'artifact_id': '',
-    'result_dir': 'benchmarks/results/83_quantized_serving_profile',
-    'profiles': {
-        'latency': {'workload': {'id': 'short-chat', 'concurrency': 1, 'prompt_tokens': 64, 'max_output_tokens': 64, 'repeats': 5}, 'primary_metric': 'ttft_p95_ms', 'slo': {'ttft_p95_ms': 500, 'failure_rate': 0.0}},
-        'balanced': {'workload': {'id': 'mixed-chat', 'concurrency': 4, 'prompt_tokens': 256, 'max_output_tokens': 128, 'repeats': 5}, 'primary_metric': 'tpot_p95_ms', 'slo': {'ttft_p95_ms': 1200, 'tpot_p95_ms': 80, 'failure_rate': 0.0}},
-        'throughput': {'workload': {'id': 'batch-generate', 'concurrency': 16, 'prompt_tokens': 256, 'max_output_tokens': 256, 'repeats': 5}, 'primary_metric': 'throughput_tps', 'slo': {'queue_wait_p95_ms': 5000, 'failure_rate': 0.0}},
-    },
-}
-print('Serving profile benchmark disabled. Configure upstream JSON paths and command template before enabling.')
+RUN_LABEL = 'replace_with_unique_label'  # 本次唯一标签；不覆盖既有结果。
+RUN_STAGE = 'prepare'  # prepare / measure / close；默认只读预检。
+UPSTREAM_RUN_LABEL = 'replace_with_upstream_label'  # 67部署已接受结果的唯一标签。
+
 ```
 
-#### 5.2 上游证据与 backend 预检
+### 5.2 环境与唯一上游预检
+
+从67部署引用读取来源，核对SHA256、接受状态、嵌入的候选清单、实际产物文件与固定请求集。只有首次measure会检查GPU环境；prepare、close和已有测量的读取不初始化GPU。
+
 
 ```python
+import importlib
 import json
-from pathlib import Path
-import subprocess
 
-if RUN_SERVING_PROFILE_BENCHMARK:
-    gate_path = Path(SERVING_PROFILE_CONFIG['artifact_gate_json'])
-    deployment_path = Path(SERVING_PROFILE_CONFIG['deployment_json'])
-    if not gate_path.exists() or not deployment_path.exists():
-        raise FileNotFoundError('请提供 82 artifact gate 与 67 deployment JSON。')
-    gate_payload = json.loads(gate_path.read_text(encoding='utf-8'))
-    deployment_payload = json.loads(deployment_path.read_text(encoding='utf-8'))
-    from tools.quantization_result_schema import validate_profile_inputs
-    contract_errors = validate_profile_inputs(
-        gate_payload, deployment_payload, artifact_id=SERVING_PROFILE_CONFIG['artifact_id'],
-    )
-    if contract_errors:
-        raise ValueError('82/67 证据契约不满足：' + '; '.join(contract_errors))
-    for key in ('benchmark_command_template', 'benchmark_result_template'):
-        if '{profile}' not in SERVING_PROFILE_CONFIG[key]:
-            raise ValueError(f'{key} 必须包含 {{profile}} 占位符。')
-    if not SERVING_PROFILE_CONFIG['artifact_id']:
-        raise ValueError('请填写与 82 gate 一致的 artifact_id。')
-    print({'backend': SERVING_PROFILE_CONFIG['backend'], 'artifact_id': SERVING_PROFILE_CONFIG['artifact_id']})
+from tools.project_runtime import resolve_project_root
+import tools.quantized_deployment_runtime as deployment_runtime
+
+deployment_runtime = importlib.reload(deployment_runtime)
+plan = deployment_runtime.project_plan(resolve_project_root(), '83', RUN_LABEL, UPSTREAM_RUN_LABEL, RUN_STAGE)
+prepared = deployment_runtime.preflight_project(plan)
+print({'ready': prepared['ready'], 'issues': prepared['issues'],
+       'profile': plan['contract']['environment_profile'], 'inputs': prepared.get('snapshot')})
+
 ```
 
-#### 5.3 逐 profile 执行并保存 JSON
+### 5.3 核对压力矩阵与固定条件
+
+三类场景共用产物、后端、硬件和请求来源；每类明确请求数、并发、输出上限、重复次数、主指标和SLO。重复实验的p95采用各轮p95均值，不能解释为合并所有请求后的p95。
+
 
 ```python
-if RUN_SERVING_PROFILE_BENCHMARK:
-    result_dir = Path(SERVING_PROFILE_CONFIG['result_dir']); result_dir.mkdir(parents=True, exist_ok=True)
-    profile_paths = []
-    for name, spec in SERVING_PROFILE_CONFIG['profiles'].items():
-        command = SERVING_PROFILE_CONFIG['benchmark_command_template'].format(profile=name)
-        completed = subprocess.run(command, shell=True, text=True, capture_output=True)
-        external_path = Path(SERVING_PROFILE_CONFIG['benchmark_result_template'].format(profile=name))
-        status = 'ok' if completed.returncode == 0 and external_path.exists() else 'failed'
-        metrics = json.loads(external_path.read_text(encoding='utf-8')) if status == 'ok' else {}
-        failure = None if status == 'ok' else (completed.stderr[-1000:] or f'benchmark result missing: {external_path}')
-        record = {
-            'artifact_id': SERVING_PROFILE_CONFIG['artifact_id'], 'profile': name,
-            'workload': spec['workload'], 'workload_id': spec['workload']['id'], 'primary_metric': spec['primary_metric'], 'slo': spec['slo'],
-            'backend': SERVING_PROFILE_CONFIG['backend'], 'command': command,
-            'status': status, 'stdout': completed.stdout[-2000:], 'failure': failure,
-            'evidence_level': 'real_backend_profile' if status == 'ok' else 'failed_backend_profile', **metrics,
-        }
-        path = result_dir / f"83_{SERVING_PROFILE_CONFIG['artifact_id']}_{SERVING_PROFILE_CONFIG['backend']}_{name}.json"
-        path.write_text(json.dumps(record, indent=2, ensure_ascii=False), encoding='utf-8')
-        from tools.quantization_result_schema import save_record, serving_profile_record
-        normalized_path = path.with_name(f"{path.stem}_normalized.json")
-        save_record(normalized_path, serving_profile_record(record))
-        profile_paths.append(path)
-    SERVING_PROFILE_RESULT_PATHS = profile_paths
-    print('
-'.join(str(path) for path in profile_paths))
+print({'fixed_contract': plan['contract'],
+       'artifact': prepared.get('artifact'),
+       'quality_source': '67_deployment_evidence'})
+
 ```
 
-#### 5.4 汇总结果、失败记录与部署建议
+### 5.4 真实执行并保存原始证据
+
+measure按固定矩阵执行，逐项保存来源身份、原始请求结果、完整日志和失败。完整成员可在中断后复用；后端输出已存在但成员记录未完成时保留现场并使用新标签，避免覆盖。此处不生成稳定引用。
+
 
 ```python
-paths = globals().get('SERVING_PROFILE_RESULT_PATHS', [])
-if not paths:
-    print('尚未生成 profile JSON。完成 5.2–5.3 后，此处会汇总 latency、balanced 和 throughput 记录。')
+if RUN_STAGE == 'measure':
+    if not prepared['ready']:
+        raise RuntimeError('预检未通过：' + '; '.join(prepared['issues']))
+    measured = deployment_runtime.measure_project(plan)
+    print({'status': measured['status'], 'decision': measured['decision']})
 else:
-    payloads = [json.loads(Path(path).read_text(encoding='utf-8')) for path in paths]
-    summary_path = Path(SERVING_PROFILE_CONFIG['result_dir']) / f"83_{SERVING_PROFILE_CONFIG['artifact_id']}_{SERVING_PROFILE_CONFIG['backend']}_summary.json"
-    summary_path.write_text(json.dumps({'profiles': payloads}, indent=2, ensure_ascii=False), encoding='utf-8')
-    for payload in payloads:
-        print({'profile': payload['profile'], 'status': payload['status'], 'evidence_level': payload['evidence_level']})
-    print(f'written: {summary_path}')
+    print({'status': 'skipped', 'stage': RUN_STAGE})
+
+```
+
+### 5.5 只读核对已保存证据
+
+重新定位本标签的记录，逐项检查来源、固定合同、成员数量、身份、实际请求数及文件哈希，再重算决策。已有报告、交接和回执必须与原始证据一致；读取不会启动后端或补写结果。
+
+
+```python
+if prepared['ready']:
+    checked = deployment_runtime.read_project(plan)
+else:
+    checked = {'status': 'blocked', 'decision': {'decision': 'pending'}, 'issues': prepared['issues']}
+print({'status': checked['status'], 'decision': checked['decision'],
+       'profiles': checked.get('report', {}).get('profile_decisions'),
+       'issues': checked.get('issues', [])})
+
+```
+
+### 5.6 形成决策、登记与交接
+
+close只消费已保存证据，生成报告和SHA256回执；内容一致时复用，中断时补齐缺失资产，冲突时停止。三类压力完整后再判断各场景是否达标，不以单类成功掩盖缺测。
+
+| 已核对证据 | 决策 | 下一动作 |
+|---|---|---|
+| 测量不完整、失败或关键指标缺失 | pending | 补齐证据；失败复测使用新标签 |
+| 场景间的后端、硬件或精度身份发生变化 | reject | 保留报告，修复比较条件 |
+| 三类均完成，但没有一类达到自身SLO | tune | 调整后用新标签复测 |
+| 三类均完成，至少一类达到自身SLO | accept | 仅登记实际达标的服务场景 |
+
+**当前登记结果**：尚无本页新协议的真实GPU结果；临时目录CPU测试不作为实测登记。进度见[实验资产表](../topic_discussion/quantization_compression/experiment_assets.md)。
+
+
+```python
+if RUN_STAGE == 'close':
+    closed = deployment_runtime.close_project(plan) if prepared['ready'] else checked
+    print(closed)
+else:
+    print({'status': 'skipped', 'stage': RUN_STAGE})
+
 ```
 
 ## 相关阅读
 
-- [vLLM benchmarking](https://docs.vllm.ai/en/latest/benchmarking/)：Serving benchmark 的请求、并发与指标定义。
-- [SGLang Benchmarks](https://docs.sglang.ai/benchmark/benchmark.html)：SGLang 的服务测试入口与口径。
-- [82 Quantization Artifact Evaluation Project](82_Quantization_Artifact_Evaluation_Project.md)：在进入 profile 对照前检查 artifact 与质量证据。
-- [67 Quantized Inference and Deployment](67_Quantized_Inference_and_Deployment.md)：在同 workload 下比较浮点与量化部署候选。
+- [vLLM Benchmarking](https://docs.vllm.ai/en/latest/contributing/benchmarks.html)：核对请求并发、重复测量和服务指标。
+- [SGLang Benchmark](https://docs.sglang.ai/developer_guide/bench_serving.html)：需要增加同口径后端对照时使用。

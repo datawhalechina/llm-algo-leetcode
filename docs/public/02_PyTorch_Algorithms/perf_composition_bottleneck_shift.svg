@@ -1,13 +1,45 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
-  <title id="title">候选相互作用与瓶颈转移示例</title>
-  <desc id="desc">候选A减少计算时间后搬运成为主约束，候选B再减少搬运后启动等待成为主约束；组合收益必须来自实际复测。</desc>
-  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#334155"/></marker><style>.title{font-family:"Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#0f172a}.subtitle{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;fill:#475569}.head{font-family:"Noto Sans CJK SC",sans-serif;font-size:17px;font-weight:700;fill:#172033}.body{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;fill:#475569}.edge{fill:none;stroke:#334155;stroke-width:4;marker-end:url(#arrow)}</style></defs>
+  <title id="title">阶段缩短后，下一轮需要检查的对象怎样变化</title>
+  <desc id="desc">构造串行阶段对照，基线计算40搬运30等待20毫秒，总计90；A计算15搬运30等待20，总计65；A加B计算15搬运10等待20，总计45。最长阶段由计算到搬运再到等待，但这只是受控排查线索，不是GPU实测瓶颈证明。</desc>
+  <defs><style>
+    .title{font-family:"Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#0f172a}
+    .subtitle{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;fill:#475569}
+    .head{font-family:"Noto Sans CJK SC",sans-serif;font-size:17px;font-weight:700;fill:#172033}
+    .body{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;fill:#334155}
+    .compute{fill:#ddd6fe;stroke:#7c3aed;stroke-width:2}
+    .transfer{fill:#fde68a;stroke:#d97706;stroke-width:2}
+    .wait{fill:#fecaca;stroke:#dc2626;stroke-width:2}
+  </style></defs>
   <rect width="1200" height="620" rx="24" fill="#f8fafc"/>
-  <text x="600" y="48" text-anchor="middle" class="title">候选生效后，主约束会继续移动</text><text x="600" y="78" text-anchor="middle" class="subtitle">示意条长度只表达同一工作负载内的阶段占比，组合结果必须重新测量</text>
-  <text x="70" y="160" class="head">基线</text><rect x="210" y="110" width="430" height="84" rx="12" fill="#fecaca" stroke="#dc2626" stroke-width="2"/><text x="425" y="160" text-anchor="middle" class="body">计算 43 ms</text><rect x="640" y="110" width="230" height="84" rx="12" fill="#fde68a" stroke="#d97706" stroke-width="2"/><text x="755" y="160" text-anchor="middle" class="body">搬运 23 ms</text><rect x="870" y="110" width="120" height="84" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="930" y="160" text-anchor="middle" class="body">等待</text>
-  <text x="70" y="295" class="head">候选 A</text><rect x="210" y="245" width="230" height="84" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="325" y="295" text-anchor="middle" class="body">计算 23 ms</text><rect x="440" y="245" width="230" height="84" rx="12" fill="#fde68a" stroke="#d97706" stroke-width="3"/><text x="555" y="295" text-anchor="middle" class="body">搬运 23 ms</text><rect x="670" y="245" width="120" height="84" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="730" y="295" text-anchor="middle" class="body">等待</text><text x="830" y="295" class="body">主约束转为搬运</text>
-  <text x="70" y="430" class="head">A + B</text><rect x="210" y="380" width="230" height="84" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="325" y="430" text-anchor="middle" class="body">计算 23 ms</text><rect x="440" y="380" width="110" height="84" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="495" y="430" text-anchor="middle" class="body">搬运</text><rect x="550" y="380" width="150" height="84" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="3"/><text x="625" y="430" text-anchor="middle" class="body">启动等待</text><text x="750" y="430" class="body">新主约束是启动与调度</text>
-  <path d="M425 194V220H555V235" class="edge"/><path d="M555 329V355H625V370" class="edge"/>
-  <rect x="250" y="510" width="700" height="80" rx="14" fill="#f3e8ff" stroke="#9333ea" stroke-width="2.5"/><text x="600" y="544" text-anchor="middle" class="head">组合判断使用实测边际收益</text><text x="600" y="573" text-anchor="middle" class="body">比较基线、A、B 与 A+B；若组合不保留单项收益，则回退冲突候选</text>
-  <path d="M625 464V485H600V500" class="edge"/>
+  <text x="600" y="48" text-anchor="middle" class="title">阶段变短后，最长阶段可能改变</text>
+  <text x="600" y="78" text-anchor="middle" class="subtitle">构造的串行时间线，非 GPU 实测；三行使用同一比例，最长阶段仍需依赖与对照验证</text>
+  <text x="55" y="180" class="head">基线</text>
+  <g text-anchor="middle">
+    <rect x="200" y="130" width="320" height="80" class="compute"/><text x="360" y="177" class="body">计算 40 ms</text>
+    <rect x="520" y="130" width="240" height="80" class="transfer"/><text x="640" y="177" class="body">搬运 30 ms</text>
+    <rect x="760" y="130" width="160" height="80" class="wait"/><text x="840" y="177" class="body">等待 20 ms</text>
+  </g>
+  <text x="1030" y="165" text-anchor="middle" class="head">总计 90 ms</text>
+  <text x="1030" y="193" text-anchor="middle" class="body">计算最长</text>
+  <text x="55" y="330" class="head">单项 A</text>
+  <g text-anchor="middle">
+    <rect x="200" y="280" width="120" height="80" class="compute"/><text x="260" y="327" class="body">计算 15 ms</text>
+    <rect x="320" y="280" width="240" height="80" class="transfer"/><text x="440" y="327" class="body">搬运 30 ms</text>
+    <rect x="560" y="280" width="160" height="80" class="wait"/><text x="640" y="327" class="body">等待 20 ms</text>
+  </g>
+  <text x="1030" y="315" text-anchor="middle" class="head">总计 65 ms</text>
+  <text x="1030" y="343" text-anchor="middle" class="body">搬运最长，等待时长未变</text>
+  <text x="55" y="480" class="head">组合 A＋B</text>
+  <g text-anchor="middle">
+    <rect x="200" y="430" width="120" height="80" class="compute"/><text x="260" y="477" class="body">计算 15 ms</text>
+    <rect x="320" y="430" width="80" height="80" class="transfer"/><text x="360" y="462" class="body">搬运</text><text x="360" y="487" class="body">10 ms</text>
+    <rect x="400" y="430" width="160" height="80" class="wait"/><text x="480" y="477" class="body">等待 20 ms</text>
+  </g>
+  <text x="1030" y="465" text-anchor="middle" class="head">总计 45 ms</text>
+  <text x="1030" y="493" text-anchor="middle" class="body">等待最长，但自身并未变慢</text>
+  <line x1="200" y1="550" x2="960" y2="550" stroke="#64748b" stroke-width="2"/>
+  <g class="body" text-anchor="middle">
+    <text x="200" y="575">0</text><text x="360" y="575">20</text><text x="520" y="575">40</text><text x="680" y="575">60</text><text x="840" y="575">80</text><text x="920" y="575">90</text>
+  </g>
+  <text x="1100" y="605" text-anchor="end" class="body">时间（ms）→</text>
 </svg>

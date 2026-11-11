@@ -1,0 +1,197 @@
+{
+  "schema_version": "performance-regression-mechanism/v3",
+  "profile_id": "PERF-CUDA-MECHANISM",
+  "semantic_id": "PERF-REGRESSION",
+  "run_label": "rtx5070ti_regression_v2",
+  "framework": {
+    "python": "3.12.15",
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8"
+  },
+  "hardware": {
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000
+  },
+  "workload": {
+    "id": "perf-paired-regression",
+    "version": "v3",
+    "batch_size": 32,
+    "hidden_size": 2048,
+    "warmup_steps": 10,
+    "paired_trials": 30,
+    "minimum_pairs": 20,
+    "bootstrap_samples": 2000,
+    "seed": 42
+  },
+  "quality": {
+    "outputs_allclose": true
+  },
+  "metrics": {
+    "summary": {
+      "pair_count": 30,
+      "median_ratio": 0.9983113158047896,
+      "slower_fraction": 0.43333333333333335,
+      "ci_low": 0.992499925020227,
+      "ci_high": 1.0008142279397152
+    },
+    "paired_runs": [
+      {
+        "trial_id": 0,
+        "baseline_ms": 0.22150400280952454,
+        "candidate_ms": 0.21516799926757812
+      },
+      {
+        "trial_id": 1,
+        "baseline_ms": 0.2199680060148239,
+        "candidate_ms": 0.22153599560260773
+      },
+      {
+        "trial_id": 2,
+        "baseline_ms": 0.22172799706459045,
+        "candidate_ms": 0.21984000504016876
+      },
+      {
+        "trial_id": 3,
+        "baseline_ms": 0.22368000447750092,
+        "candidate_ms": 0.21984000504016876
+      },
+      {
+        "trial_id": 4,
+        "baseline_ms": 0.21702399849891663,
+        "candidate_ms": 0.2197760045528412
+      },
+      {
+        "trial_id": 5,
+        "baseline_ms": 0.2210559993982315,
+        "candidate_ms": 0.2215999960899353
+      },
+      {
+        "trial_id": 6,
+        "baseline_ms": 0.22204799950122833,
+        "candidate_ms": 0.22195200622081757
+      },
+      {
+        "trial_id": 7,
+        "baseline_ms": 0.22803199291229248,
+        "candidate_ms": 0.21935999393463135
+      },
+      {
+        "trial_id": 8,
+        "baseline_ms": 0.22803199291229248,
+        "candidate_ms": 0.22147199511528015
+      },
+      {
+        "trial_id": 9,
+        "baseline_ms": 0.22934399545192719,
+        "candidate_ms": 0.21750399470329285
+      },
+      {
+        "trial_id": 10,
+        "baseline_ms": 0.23971199989318848,
+        "candidate_ms": 0.23798400163650513
+      },
+      {
+        "trial_id": 11,
+        "baseline_ms": 0.2343679964542389,
+        "candidate_ms": 0.23580799996852875
+      },
+      {
+        "trial_id": 12,
+        "baseline_ms": 0.2356799989938736,
+        "candidate_ms": 0.23817600309848785
+      },
+      {
+        "trial_id": 13,
+        "baseline_ms": 0.23583999276161194,
+        "candidate_ms": 0.234047994017601
+      },
+      {
+        "trial_id": 14,
+        "baseline_ms": 0.23814399540424347,
+        "candidate_ms": 0.2359679937362671
+      },
+      {
+        "trial_id": 15,
+        "baseline_ms": 0.23792000114917755,
+        "candidate_ms": 0.23590399324893951
+      },
+      {
+        "trial_id": 16,
+        "baseline_ms": 0.23801599442958832,
+        "candidate_ms": 0.23772799968719482
+      },
+      {
+        "trial_id": 17,
+        "baseline_ms": 0.23558400571346283,
+        "candidate_ms": 0.23427200317382812
+      },
+      {
+        "trial_id": 18,
+        "baseline_ms": 0.23628799617290497,
+        "candidate_ms": 0.23756800591945648
+      },
+      {
+        "trial_id": 19,
+        "baseline_ms": 0.23443199694156647,
+        "candidate_ms": 0.23801599442958832
+      },
+      {
+        "trial_id": 20,
+        "baseline_ms": 0.2361920028924942,
+        "candidate_ms": 0.23635199666023254
+      },
+      {
+        "trial_id": 21,
+        "baseline_ms": 0.23628799617290497,
+        "candidate_ms": 0.23772799968719482
+      },
+      {
+        "trial_id": 22,
+        "baseline_ms": 0.2362239956855774,
+        "candidate_ms": 0.23571200668811798
+      },
+      {
+        "trial_id": 23,
+        "baseline_ms": 0.23555199801921844,
+        "candidate_ms": 0.2377920001745224
+      },
+      {
+        "trial_id": 24,
+        "baseline_ms": 0.23820799589157104,
+        "candidate_ms": 0.2356799989938736
+      },
+      {
+        "trial_id": 25,
+        "baseline_ms": 0.2356480062007904,
+        "candidate_ms": 0.23577600717544556
+      },
+      {
+        "trial_id": 26,
+        "baseline_ms": 0.2378239929676056,
+        "candidate_ms": 0.23635199666023254
+      },
+      {
+        "trial_id": 27,
+        "baseline_ms": 0.23443199694156647,
+        "candidate_ms": 0.23603199422359467
+      },
+      {
+        "trial_id": 28,
+        "baseline_ms": 0.23820799589157104,
+        "candidate_ms": 0.23635199666023254
+      },
+      {
+        "trial_id": 29,
+        "baseline_ms": 0.23580799996852875,
+        "candidate_ms": 0.23600000143051147
+      }
+    ]
+  },
+  "failure": null,
+  "evidence_level": "local_mechanism_benchmark",
+  "decision": {
+    "decision": "accept",
+    "reason": "no_confirmed_regression",
+    "regression_boundary": 1.05
+  }
+}

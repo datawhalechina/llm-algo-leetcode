@@ -1,0 +1,116 @@
+{
+  "schema_version": "performance-trace-mechanism/v4",
+  "profile_id": "PERF-CUDA-MECHANISM",
+  "semantic_id": "PERF-TRACE",
+  "run_label": "rtx5070ti_trace_v3",
+  "workload": {
+    "id": "perf-trace-critical-path",
+    "version": "v4",
+    "matrix_size": 2048,
+    "warmup_steps": 5,
+    "profile_steps": 10,
+    "benchmark_repeats": 10
+  },
+  "framework": {
+    "python": "3.12.15",
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8"
+  },
+  "hardware": {
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000
+  },
+  "metrics": {
+    "wall_time_ms": {
+      "sync_each_step": 25.890781500493176,
+      "sync_at_end": 25.320346998341847
+    },
+    "timing_samples_ms": {
+      "sync_each_step": [
+        25.94096599932527,
+        26.512817999901017,
+        25.84059700166108,
+        28.050682998582488,
+        25.08148400011123,
+        26.322552002966404,
+        27.12467599849333,
+        24.543193998397328,
+        25.484149002295453,
+        24.763626999629196
+      ],
+      "sync_at_end": [
+        27.86020500207087,
+        33.35688500010292,
+        24.510754003131296,
+        27.97492100216914,
+        25.76748999854317,
+        24.873203998140525,
+        27.503576999151846,
+        24.57423200030462,
+        24.631438998767408,
+        24.689709000085713
+      ]
+    },
+    "sync_at_end_speedup": 1.0225287000288221,
+    "selected_events": {
+      "sync_each_step": {
+        "cpu_time_total_us": 25093.045000000002,
+        "cuda_time_total_us": 0.0,
+        "cpu_annotation_count": 1,
+        "gpu_annotation_count": 0
+      },
+      "sync_each_step.h2d_copy": {
+        "cpu_time_total_us": 226.96699999999942,
+        "cuda_time_total_us": 0.0,
+        "cpu_annotation_count": 10,
+        "gpu_annotation_count": 0
+      },
+      "sync_each_step.cuda_matmul": {
+        "cpu_time_total_us": 280.94699999999966,
+        "cuda_time_total_us": 0.0,
+        "cpu_annotation_count": 10,
+        "gpu_annotation_count": 0
+      },
+      "sync_each_step.host_sync": {
+        "cpu_time_total_us": 24476.207999999995,
+        "cuda_time_total_us": 0.0,
+        "cpu_annotation_count": 10,
+        "gpu_annotation_count": 0
+      },
+      "sync_at_end": {
+        "cpu_time_total_us": 24592.987000000005,
+        "cuda_time_total_us": 1281.7249999999985,
+        "cpu_annotation_count": 1,
+        "gpu_annotation_count": 1
+      },
+      "sync_at_end.h2d_copy": {
+        "cpu_time_total_us": 104.59700000000521,
+        "cuda_time_total_us": 0.0,
+        "cpu_annotation_count": 10,
+        "gpu_annotation_count": 0
+      },
+      "sync_at_end.cuda_matmul": {
+        "cpu_time_total_us": 139.88200000000143,
+        "cuda_time_total_us": 2562.8410000000003,
+        "cpu_annotation_count": 10,
+        "gpu_annotation_count": 11
+      },
+      "sync_at_end.host_sync": {
+        "cpu_time_total_us": 24306.119,
+        "cuda_time_total_us": 1.8559999999997672,
+        "cpu_annotation_count": 1,
+        "gpu_annotation_count": 2
+      }
+    },
+    "event_groups": 31,
+    "missing_required_events": [],
+    "cpu_annotation_count_mismatches": {}
+  },
+  "artifacts": {
+    "trace_path": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/perf_trace/perf-trace-critical-path_rtx5070ti_trace_v3.trace.json",
+    "trace_bytes": 150585
+  },
+  "failure": null,
+  "evidence_level": "local_mechanism_trace",
+  "decision": "accept_delayed_sync_for_this_workload"
+}

@@ -1,44 +1,60 @@
-# 07 端到端性能工程与决策
+# 07 策略组合与瓶颈转移
 
-## 页面目标
+## 本节导读
 
-端到端性能工程不是把局部优化逐个相加，而是在真实 workload 下复查策略组合是否同时满足质量、SLO、容量和成本。本页把 Task0–5 的测量契约、trace、资源账本、关键路径与候选准入收成可交付的项目结论。
+单项候选即使各自有效，组合收益也不能直接相加。两个候选可能争用同一带宽或显存，也可能改变彼此的执行顺序，使原来的主约束转移到新的阶段。
+
+本节比较基线、单项候选、组合候选和回退方案，并在同一工作负载下重新检查关键路径、容量、质量与成本。正确性、质量和资源安全通过后，尚未达到收益目标的单项也可参与组合对照，但其未通过项仍需保留，最终采用以组合实测是否达到预设门槛为准。
 
 ![局部候选到端到端性能决策](../../public/topic_discussion/performance_optimization/strategy_combination_decision.svg)
 
-## 核心机制：五类 workload 使用同一证据合同
+## 单项候选之间有哪些依赖与冲突
 
-| 项目类型 | 首要问题 | 主要项目入口 | 最终要比较的证据 |
-|:---|:---|:---|:---|
-| 训练性能与显存 | 在质量门槛下怎样控制 step time 与 peak memory？ | [73 训练性能分析](../../02_PyTorch_Algorithms/73_Training_Performance_Analysis.md)、[74 Profiling 驱动优化](../../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.md)、[75 显存预算压缩](../../02_PyTorch_Algorithms/75_Memory_Budget_Compression_Project.md)、[76 Checkpoint / Offload](../../02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.md) | step time、吞吐、peak memory、质量、trace 与失败记录 |
-| 后训练资源与效率 | SFT、QLoRA、DPO 或 GRPO 的质量收益是否值得训练与 rollout 成本？ | [62 SFT](../../02_PyTorch_Algorithms/62_Instruction_Fine_Tuning_Project.md)、[65 QLoRA](../../02_PyTorch_Algorithms/65_QLoRA_Selection_Project.md)、[84 DPO](../../02_PyTorch_Algorithms/84_DPO_Preference_Project.md)、[85 GRPO](../../02_PyTorch_Algorithms/85_GRPO_Groupwise_Alignment_Project.md)、[86 在线 DPO](../../02_PyTorch_Algorithms/86_DPO_Online_Benchmark.md) | 多模型驻留、step/rollout/verifier 时间、有效样本、peak memory、质量与 artifact |
-| 推理与量化部署 | backend 和低比特策略能否在同一请求分布下成立？ | [66 推理性能对比](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.md)、[67 量化推理与部署](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.md)、[83 量化 Serving Profile](../../02_PyTorch_Algorithms/83_Quantized_Serving_Profile_Benchmark.md) | TTFT、TPOT、P99、吞吐、peak memory、质量与 artifact |
-| Serving 调度 | 排队、批次和状态管理能否改善服务质量？ | [70 Serving 调度基准](../../02_PyTorch_Algorithms/70_Serving_Scheduler_Benchmark.md) | queue wait、TTFT、TPOT、吞吐、尾延迟与资源利用 |
-| 多卡与通信 | 扩展是否降低关键路径而不是只增加设备？ | [79 分布式并行基准](../../02_PyTorch_Algorithms/79_Distributed_Parallel_Benchmark.md)、[80 MoE 专家并行](../../02_PyTorch_Algorithms/80_MoE_Expert_Parallel_Benchmark.md)、[81 分布式推理项目](../../02_PyTorch_Algorithms/81_Distributed_Inference_Project.md) | 通信暴露、扩展效率、容量、稳定性与恢复 |
+先列出每项改动的作用对象和资源需求，再判断两项能否同时启用。共享带宽或减少相同工作量时，组合收益可能低于单项收益之和；某项释放容量后，另一项也可能获得原先没有的执行空间。
 
-## 判断框架：组合策略必须重新测量
-
-| 步骤 | 需要完成的动作 | 输出 |
+| 组合关系 | 示例 | 必须检查 |
 |:---|:---|:---|
-| 定义 | 固定 workload、SLO、质量门槛、资源预算与回退条件 | 比较契约 |
-| 建立 baseline | 记录环境、版本、warmup、重复、原始指标与失败状态 | 可复查基线 |
-| 选择 candidate | 只选择有 profiler、账本或关键路径证据支撑的策略 | 策略与预期收益 |
-| 组合复测 | 比较单项、组合和回退方案，检查指标冲突 | 端到端结果表 |
-| 决策 | 根据质量、SLO、容量、成本和 evidence level 输出结论 | `accept / tune / reject` |
+| 前置依赖 | 量化产物必须先被加载器和执行后端支持，才能测试低精度内核 | 产物版本、加载路径与实际内核 |
+| 共享资源 | 输入预取与卸载同时占用主机内存和 PCIe 带宽 | 暴露 H2D/D2H、主机内存和单步时间 |
+| 容量协同 | 激活重算释放容量后允许增大批量 | 新批量下的吞吐、峰值和单步时间 |
+| 执行冲突 | 算子融合改变中间张量，可能破坏原来的重叠窗口 | 新时间线、工作区和同步位置 |
+| 服务冲突 | 更大批次提高吞吐，但拉长 TPOT 或 P99 | 请求分布、队列、吞吐和尾延迟 |
+| 量化与缓存或调度组合 | 压缩后的权重或 KV 改变可用容量，批处理和缓存策略随之调整 | 先固定请求、并发和调度测量单项与组合，再单独扫描容量；复查目标内核、长上下文质量和尾延迟 |
+| 分布式冲突 | 状态分片降低单卡容量，却增加集合通信 | 容量、暴露通信、扩展效率和恢复 |
 
-组合后必须重新测量：checkpoint 与更大 batch、量化与 backend、并行与通信 overlap 都可能互相改变资源和关键路径。单项收益不能直接相加。
+## 组合顺序如何改变资源与关键路径
 
-## 项目报告最小字段
+先固定负载比较基线、A、B 与 A+B，再计算组合相对本次最佳单项的边际变化。只有配置改写或执行顺序确实会改变产物、形状与依赖时，才另测 A→B 与 B→A；独立开关无需人为添加顺序实验。改变批量或并发后的扩容收益另设对照。
+
+| 比较阶段 | 固定内容 | 需要重新测量的内容 |
+|:---|:---|:---|
+| 基线 | 工作负载、环境、质量门槛和资源预算 | 原始关键路径、峰值和失败状态 |
+| 单项候选 A / B | 各自独立配置和执行路径 | 单项收益、代价转移和适用范围 |
+| 组合 A+B | 同一次实验中的输入、测量与判断门槛 | 相对最佳单项的边际收益、P95 和资源争用 |
+| 组合 A → B | 先应用 A，再在新状态下应用 B | B 的边际收益、共享资源和新同步点 |
+| 组合 B → A | 反向执行顺序可行时复测 | 顺序是否改变产物、形状或执行路径 |
+| 回退方案 | 可恢复的基线或已通过单项候选 | 回退时间、状态一致性和剩余容量 |
+
+## 主约束转移到了哪里
+
+组合后同时检查端到端时间和分阶段变化。原来的带宽限制可能减弱，容量释放也可能使输入供给成为新限制；仅观察某阶段占比升高不能确认它已成为主瓶颈，还需执行轨迹、资源参考或针对该阶段的对照。
+
+| 组合结果 | 需要回答的问题 | 判断动作 |
+|:---|:---|:---|
+| 总时间下降，原瓶颈占比降低 | 新的最长阶段是什么 | 对新阶段建立资源或依赖假设 |
+| 单项有效，组合后收益消失 | 两项是否争用同一资源或重复减少同一工作量 | 保留边际收益更高的一项 |
+| 容量提高但吞吐不变 | 输入、计算、通信或调度是否成为新上界 | 停止继续扩容，转查新约束 |
+| 平均值改善但 P99 退化 | 队列、长度离散或失败重试是否被放大 | 缩小适用范围或回退组合 |
+| 收益只在部分形状成立 | 执行路径或计算内核是否随形状变化 | 明确准入范围并保存回退路径 |
+
+## 组合复测与回退判断
+
+[PERF-COMPOSITION](../../02_PyTorch_Algorithms/PERF-COMPOSITION_Strategy_Interaction_and_Bottleneck_Shift.md)提供局部组合对照。完成后按目标工作负载检查实际路径、质量、重新分析与回退记录；局部 MLP 的输出相似度和延迟收益只能支持该局部比较。完整项目入口与已登记结果见[实验资产表](./experiment_assets.md#项目实验)。
 
 | 字段组 | 至少记录什么 |
 |:---|:---|
-| 比较条件 | 模型、版本、硬件、dtype、backend、workload、warmup、重复与并行配置 |
-| 结果 | baseline/candidate、阶段时间、延迟/吞吐、peak memory、通信或队列等待、I/O / handoff、rollout / verifier、质量 |
-| 证据 | profiler/trace、artifact、失败记录、evidence level 与可复测路径 |
-| 决策 | 适用范围、未验证风险、回退条件与 `accept / tune / reject` |
-
-图中的顺序刻意把“局部通过”与“组合通过”分开：Task5 的准入只说明一个候选值得进入复测；Task6 必须在相同 workload 下同时保留 baseline、单项候选、组合候选与回退方案，才能判断收益是否相互抵消或引入新回归。
-
-## 项目出口
-
-完成本页后，应交付一份端到端性能工程报告。它必须能回答：优化了什么、代价转移到哪里、在哪些 workload/硬件上成立、哪些约束仍不满足，以及为什么最终结论是 `accept`、`tune` 或 `reject`。
+| 比较条件 | 模型、版本、硬件、数据类型、执行后端、工作负载、预热、重复和并行配置 |
+| 候选配置 | 单项参数、必要的组合顺序、产物版本、执行路径和适用范围 |
+| 结果 | 阶段时间、延迟/吞吐、峰值显存、通信/队列等待、I/O、质量和失败 |
+| 瓶颈转移 | 组合前后的主约束、关键路径和资源上界 |
+| 决策 | `accept / tune / reject`、未验证风险、停止条件和回退方案 |

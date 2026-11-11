@@ -1,0 +1,432 @@
+{
+  "schema_version": "quantization-mechanism-gpu/v7",
+  "chapter": "26",
+  "run_mode": "real_gpu",
+  "run_label": "default2",
+  "environment_profile": "Q-QLORA",
+  "framework": {
+    "python": "3.12.14",
+    "torch": "2.11.0+cu128",
+    "transformers": "5.18.0",
+    "peft": "0.21.2",
+    "bitsandbytes": "0.50.2",
+    "datasets": "5.1.0",
+    "accelerate": "1.15.0"
+  },
+  "hardware": {
+    "cuda_available": true,
+    "cuda": "12.8",
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000,
+    "compute_capability": [
+      12,
+      0
+    ]
+  },
+  "dataset": {
+    "source": "huggingface",
+    "dataset_id": "Salesforce/wikitext",
+    "config": "wikitext-2-raw-v1",
+    "revision": "f776294184f13b8ff2337b3841cf9269a6216d1e",
+    "train_split": "train",
+    "validation_split": "validation",
+    "test_split": "test",
+    "train_samples": 128,
+    "validation_samples": 64,
+    "test_samples": 64,
+    "selection_seed": 42,
+    "train_ids_hash": "e80d2ff5f76942b2b39d0440c6e8c958413b7703ba5cf11b6b927c056c52dcf5",
+    "validation_ids_hash": "70d78bb1102023439a95093bf4921135670a8f3d5f1222969fe7858fae08ea30",
+    "test_ids_hash": "fe26ebefbaa7b745de59ceacbf1dbc8dd98a0df28f59453550b33ccc56260b94",
+    "filter": "non_empty_text"
+  },
+  "workload": {
+    "id": "quant-qlora-mechanism",
+    "version": "v4",
+    "model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+    "model_revision": "main",
+    "resolved_model_commit": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+    "revision_resolution_source": "huggingface_hub_api",
+    "cache_dir": null,
+    "sequence_lengths": [
+      64,
+      128,
+      256
+    ],
+    "batch_size": 1,
+    "gradient_accumulation_steps": 1,
+    "steps": 20,
+    "compute_dtype": "bfloat16",
+    "target_modules": [
+      "q_proj",
+      "v_proj"
+    ],
+    "lora_rank": 8,
+    "lora_alpha": 16,
+    "lora_dropout": 0.05,
+    "gradient_checkpointing": false,
+    "seed": 42
+  },
+  "baseline": {
+    "name": "bf16_lora"
+  },
+  "candidate": {
+    "name": "nf4_qlora",
+    "quant_type": "nf4",
+    "double_quant": true
+  },
+  "measurement_matrix": [
+    {
+      "path": "bf16_lora",
+      "sequence_length": 64,
+      "initial_validation_loss": 4.841762542724609,
+      "final_validation_loss": 4.7974772453308105,
+      "validation_loss_change": -0.04428529739379883,
+      "final_test_loss": 4.427093029022217,
+      "train_loss": 4.539090502262115,
+      "training_ms": 1220.8644679922145,
+      "training_ms_per_step": 61.043223399610724,
+      "base_allocated_bytes": 3109876736,
+      "peak_allocated_bytes": 3400370176,
+      "incremental_peak_allocated_bytes": 290493440,
+      "trainable_parameters": 1089536,
+      "total_parameters": 1544803840,
+      "base_parameters_frozen": true,
+      "params4bit_count": 0,
+      "path_confirmed": true,
+      "artifact_manifest": {
+        "path": "benchmarks/artifacts/26_qlora/default2/bf16_lora_64",
+        "files": [
+          "README.md",
+          "adapter_config.json",
+          "adapter_model.safetensors"
+        ],
+        "has_config": true,
+        "has_weights": true,
+        "base_model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+        "base_model_commit": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+        "base_representation": "bfloat16",
+        "target_modules": [
+          "q_proj",
+          "v_proj"
+        ]
+      }
+    },
+    {
+      "path": "nf4_qlora",
+      "sequence_length": 64,
+      "initial_validation_loss": 4.861589431762695,
+      "final_validation_loss": 4.829626560211182,
+      "validation_loss_change": -0.03196287155151367,
+      "final_test_loss": 4.611181259155273,
+      "train_loss": 4.589869427680969,
+      "training_ms": 1650.8154720067978,
+      "training_ms_per_step": 82.54077360033989,
+      "base_allocated_bytes": 1644300288,
+      "peak_allocated_bytes": 2493848576,
+      "incremental_peak_allocated_bytes": 849548288,
+      "trainable_parameters": 1089536,
+      "total_parameters": 889705984,
+      "base_parameters_frozen": true,
+      "params4bit_count": 655097856,
+      "path_confirmed": true,
+      "artifact_manifest": {
+        "path": "benchmarks/artifacts/26_qlora/default2/nf4_qlora_64",
+        "files": [
+          "README.md",
+          "adapter_config.json",
+          "adapter_model.safetensors"
+        ],
+        "has_config": true,
+        "has_weights": true,
+        "base_model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+        "base_model_commit": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+        "base_representation": "nf4",
+        "target_modules": [
+          "q_proj",
+          "v_proj"
+        ]
+      }
+    },
+    {
+      "path": "bf16_lora",
+      "sequence_length": 128,
+      "initial_validation_loss": 4.743833065032959,
+      "final_validation_loss": 4.707232475280762,
+      "validation_loss_change": -0.036600589752197266,
+      "final_test_loss": 4.3258490562438965,
+      "train_loss": 4.402788507938385,
+      "training_ms": 1351.1130190017866,
+      "training_ms_per_step": 67.55565095008933,
+      "base_allocated_bytes": 3109876736,
+      "peak_allocated_bytes": 3671473664,
+      "incremental_peak_allocated_bytes": 561596928,
+      "trainable_parameters": 1089536,
+      "total_parameters": 1544803840,
+      "base_parameters_frozen": true,
+      "params4bit_count": 0,
+      "path_confirmed": true,
+      "artifact_manifest": {
+        "path": "benchmarks/artifacts/26_qlora/default2/bf16_lora_128",
+        "files": [
+          "README.md",
+          "adapter_config.json",
+          "adapter_model.safetensors"
+        ],
+        "has_config": true,
+        "has_weights": true,
+        "base_model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+        "base_model_commit": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+        "base_representation": "bfloat16",
+        "target_modules": [
+          "q_proj",
+          "v_proj"
+        ]
+      }
+    },
+    {
+      "path": "nf4_qlora",
+      "sequence_length": 128,
+      "initial_validation_loss": 4.7505950927734375,
+      "final_validation_loss": 4.7122697830200195,
+      "validation_loss_change": -0.03832530975341797,
+      "final_test_loss": 4.494149208068848,
+      "train_loss": 4.437512671947479,
+      "training_ms": 1911.0940419923281,
+      "training_ms_per_step": 95.5547020996164,
+      "base_allocated_bytes": 1644300288,
+      "peak_allocated_bytes": 2863813120,
+      "incremental_peak_allocated_bytes": 1219512832,
+      "trainable_parameters": 1089536,
+      "total_parameters": 889705984,
+      "base_parameters_frozen": true,
+      "params4bit_count": 655097856,
+      "path_confirmed": true,
+      "artifact_manifest": {
+        "path": "benchmarks/artifacts/26_qlora/default2/nf4_qlora_128",
+        "files": [
+          "README.md",
+          "adapter_config.json",
+          "adapter_model.safetensors"
+        ],
+        "has_config": true,
+        "has_weights": true,
+        "base_model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+        "base_model_commit": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+        "base_representation": "nf4",
+        "target_modules": [
+          "q_proj",
+          "v_proj"
+        ]
+      }
+    },
+    {
+      "path": "bf16_lora",
+      "sequence_length": 256,
+      "initial_validation_loss": 4.684456825256348,
+      "final_validation_loss": 4.662703514099121,
+      "validation_loss_change": -0.021753311157226562,
+      "final_test_loss": 4.310744762420654,
+      "train_loss": 4.331567180156708,
+      "training_ms": 2272.9078690026654,
+      "training_ms_per_step": 113.64539345013327,
+      "base_allocated_bytes": 3109876736,
+      "peak_allocated_bytes": 4241857024,
+      "incremental_peak_allocated_bytes": 1131980288,
+      "trainable_parameters": 1089536,
+      "total_parameters": 1544803840,
+      "base_parameters_frozen": true,
+      "params4bit_count": 0,
+      "path_confirmed": true,
+      "artifact_manifest": {
+        "path": "benchmarks/artifacts/26_qlora/default2/bf16_lora_256",
+        "files": [
+          "README.md",
+          "adapter_config.json",
+          "adapter_model.safetensors"
+        ],
+        "has_config": true,
+        "has_weights": true,
+        "base_model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+        "base_model_commit": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+        "base_representation": "bfloat16",
+        "target_modules": [
+          "q_proj",
+          "v_proj"
+        ]
+      }
+    },
+    {
+      "path": "nf4_qlora",
+      "sequence_length": 256,
+      "initial_validation_loss": 4.693879127502441,
+      "final_validation_loss": 4.661838531494141,
+      "validation_loss_change": -0.03204059600830078,
+      "final_test_loss": 4.472442626953125,
+      "train_loss": 4.353707432746887,
+      "training_ms": 2684.7595120052574,
+      "training_ms_per_step": 134.23797560026287,
+      "base_allocated_bytes": 1644300288,
+      "peak_allocated_bytes": 3612356096,
+      "incremental_peak_allocated_bytes": 1968055808,
+      "trainable_parameters": 1089536,
+      "total_parameters": 889705984,
+      "base_parameters_frozen": true,
+      "params4bit_count": 655097856,
+      "path_confirmed": true,
+      "artifact_manifest": {
+        "path": "benchmarks/artifacts/26_qlora/default2/nf4_qlora_256",
+        "files": [
+          "README.md",
+          "adapter_config.json",
+          "adapter_model.safetensors"
+        ],
+        "has_config": true,
+        "has_weights": true,
+        "base_model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+        "base_model_commit": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+        "base_representation": "nf4",
+        "target_modules": [
+          "q_proj",
+          "v_proj"
+        ]
+      }
+    }
+  ],
+  "artifact_manifests": [
+    {
+      "path": "benchmarks/artifacts/26_qlora/default2/bf16_lora_64",
+      "files": [
+        "README.md",
+        "adapter_config.json",
+        "adapter_model.safetensors"
+      ],
+      "has_config": true,
+      "has_weights": true,
+      "base_model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+      "base_model_commit": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+      "base_representation": "bfloat16",
+      "target_modules": [
+        "q_proj",
+        "v_proj"
+      ]
+    },
+    {
+      "path": "benchmarks/artifacts/26_qlora/default2/nf4_qlora_64",
+      "files": [
+        "README.md",
+        "adapter_config.json",
+        "adapter_model.safetensors"
+      ],
+      "has_config": true,
+      "has_weights": true,
+      "base_model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+      "base_model_commit": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+      "base_representation": "nf4",
+      "target_modules": [
+        "q_proj",
+        "v_proj"
+      ]
+    },
+    {
+      "path": "benchmarks/artifacts/26_qlora/default2/bf16_lora_128",
+      "files": [
+        "README.md",
+        "adapter_config.json",
+        "adapter_model.safetensors"
+      ],
+      "has_config": true,
+      "has_weights": true,
+      "base_model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+      "base_model_commit": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+      "base_representation": "bfloat16",
+      "target_modules": [
+        "q_proj",
+        "v_proj"
+      ]
+    },
+    {
+      "path": "benchmarks/artifacts/26_qlora/default2/nf4_qlora_128",
+      "files": [
+        "README.md",
+        "adapter_config.json",
+        "adapter_model.safetensors"
+      ],
+      "has_config": true,
+      "has_weights": true,
+      "base_model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+      "base_model_commit": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+      "base_representation": "nf4",
+      "target_modules": [
+        "q_proj",
+        "v_proj"
+      ]
+    },
+    {
+      "path": "benchmarks/artifacts/26_qlora/default2/bf16_lora_256",
+      "files": [
+        "README.md",
+        "adapter_config.json",
+        "adapter_model.safetensors"
+      ],
+      "has_config": true,
+      "has_weights": true,
+      "base_model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+      "base_model_commit": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+      "base_representation": "bfloat16",
+      "target_modules": [
+        "q_proj",
+        "v_proj"
+      ]
+    },
+    {
+      "path": "benchmarks/artifacts/26_qlora/default2/nf4_qlora_256",
+      "files": [
+        "README.md",
+        "adapter_config.json",
+        "adapter_model.safetensors"
+      ],
+      "has_config": true,
+      "has_weights": true,
+      "base_model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+      "base_model_commit": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+      "base_representation": "nf4",
+      "target_modules": [
+        "q_proj",
+        "v_proj"
+      ]
+    }
+  ],
+  "failure": null,
+  "evidence_level": "matched_bf16_lora_nf4_qlora_sequence_matrix",
+  "decision": "accept_qlora_candidate",
+  "comparisons": [
+    {
+      "sequence_length": 64,
+      "peak_memory_saved_bytes": 906521600,
+      "peak_memory_reduction_ratio": 0.26659497439375257,
+      "incremental_training_peak_ratio": 2.9245007666954543,
+      "step_time_ratio": 1.3521693155028616,
+      "final_test_loss_ratio": 1.041582191502697,
+      "trainable_parameter_match": true
+    },
+    {
+      "sequence_length": 128,
+      "peak_memory_saved_bytes": 807660544,
+      "peak_memory_reduction_ratio": 0.21998266034681813,
+      "incremental_training_peak_ratio": 2.171509086317509,
+      "step_time_ratio": 1.4144590534730102,
+      "final_test_loss_ratio": 1.0389056921859139,
+      "trainable_parameter_match": true
+    },
+    {
+      "sequence_length": 256,
+      "peak_memory_saved_bytes": 629500928,
+      "peak_memory_reduction_ratio": 0.14840220319505049,
+      "incremental_training_peak_ratio": 1.7385954763198137,
+      "step_time_ratio": 1.1812003243155251,
+      "final_test_loss_ratio": 1.037510424171268,
+      "trainable_parameter_match": true
+    }
+  ]
+}

@@ -1,40 +1,40 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1400" height="760" viewBox="0 0 1400 760" role="img" aria-labelledby="title desc">
   <title id="title">推理优化 Benchmark 与项目决策</title>
-  <desc id="desc">固定工作负载后采集和解释指标，经过公平比较与质量检查，分流到接受、调优或拒绝。</desc>
+  <desc id="desc">先声明比较变量与共同条件，再配对测量、解释成本并检查质量和资源门槛。全部满足目标时采用，尚缺评估或差异待定位时调整或补证，有效比较已确认违反硬门槛时拒绝。</desc>
   <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#627d98"/></marker>
+    <marker markerUnits="userSpaceOnUse" id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#627d98"/></marker>
     <style>
-      .title{font:700 28px "Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172b4d}.group{font:700 19px "Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172b4d}.head{font:700 19px "Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172b4d}.body{font:500 15px "Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#243b53}.small{font:500 14px "Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#52606d}.box{stroke-width:2;rx:16}.flow{stroke:#627d98;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+      .title{font-family:"Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#172b4d}.group{font-family:"Noto Sans CJK SC",sans-serif;font-size:19px;font-weight:700;fill:#172b4d}.head{font-family:"Noto Sans CJK SC",sans-serif;font-size:19px;font-weight:700;fill:#172b4d}.body{font-family:"Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:500;fill:#243b53}.small{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;font-weight:500;fill:#52606d}.box{stroke-width:2;rx:16}.flow{stroke:#627d98;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
     </style>
   </defs>
   <rect width="1400" height="760" fill="#f7fafc"/>
   <text x="700" y="42" text-anchor="middle" class="title">Benchmark：从固定条件到项目决策</text>
-  <text x="700" y="70" text-anchor="middle" class="small">先固定比较口径，再解释指标与代价，最后决定接受、调参或切换。</text>
+  <text x="700" y="70" text-anchor="middle" class="small">先约定比较条件与门槛，再配对测量；缺少证据和已确认不合格分别处理。</text>
 
   <rect x="250" y="102" width="900" height="116" fill="#eef6ff" stroke="#8ab4df" class="box"/>
   <text x="700" y="136" text-anchor="middle" class="group">固定实验口径</text>
-  <text x="700" y="170" text-anchor="middle" class="body">模型 · 执行后端 · 数据类型 · 输入 / 输出 Token · 并发 · 请求分布</text>
-  <text x="700" y="197" text-anchor="middle" class="small">baseline 与 candidate 只改变一个主要变量，结果才能归因。</text>
+  <text x="700" y="170" text-anchor="middle" class="body">声明候选变化，控制其余输入、生成、到达与测量条件</text>
+  <text x="700" y="197" text-anchor="middle" class="small">单项实验解释机制；组合比较判断整套配置，不拆分单项贡献。</text>
 
   <rect x="55" y="300" width="290" height="120" fill="#e8f7ef" stroke="#45a36b" class="box"/>
-  <text x="200" y="337" text-anchor="middle" class="head">采集指标</text><text x="200" y="370" text-anchor="middle" class="body">TTFT · TPOT · E2E · 吞吐</text><text x="200" y="396" text-anchor="middle" class="small">峰值显存 · P50 / P99 · 质量</text>
+  <text x="200" y="337" text-anchor="middle" class="head">配对测量</text><text x="200" y="370" text-anchor="middle" class="body">同一请求集合 · 交替运行</text><text x="200" y="396" text-anchor="middle" class="small">时间 · 长度与停止 · 质量 · 显存</text>
   <rect x="405" y="300" width="290" height="120" fill="#fff5e6" stroke="#e0a23b" class="box"/>
   <text x="550" y="337" text-anchor="middle" class="head">解释瓶颈与代价</text><text x="550" y="370" text-anchor="middle" class="body">Prefill · Decode · Cache · 排队</text><text x="550" y="396" text-anchor="middle" class="small">计算、访存、显存、质量、稳定性</text>
   <rect x="755" y="300" width="290" height="120" fill="#f0eefb" stroke="#8069b5" class="box"/>
-  <text x="900" y="337" text-anchor="middle" class="head">公平比较</text><text x="900" y="370" text-anchor="middle" class="body">baseline vs candidate · 重复运行</text><text x="900" y="396" text-anchor="middle" class="small">证据等级 · 回归 · 质量门槛</text>
+  <text x="900" y="337" text-anchor="middle" class="head">检查质量与资源门槛</text><text x="900" y="370" text-anchor="middle" class="body">已通过 · 未通过 · 未评估</text><text x="900" y="396" text-anchor="middle" class="small">正确性 · 失败率 · 容量预算</text>
   <rect x="1105" y="300" width="240" height="120" fill="#ffffff" stroke="#829ab1" class="box"/>
-  <text x="1225" y="337" text-anchor="middle" class="head">决策检查</text><text x="1225" y="370" text-anchor="middle" class="body">是否达到服务目标</text><text x="1225" y="396" text-anchor="middle" class="small">形成可复查结论</text>
+  <text x="1225" y="337" text-anchor="middle" class="head">判断负载收益</text><text x="1225" y="370" text-anchor="middle" class="body">等待 · 吞吐 · 波动</text><text x="1225" y="396" text-anchor="middle" class="small">对照预先声明的服务目标</text>
   <path d="M700 218 V260 H200 V300" class="flow"/><path d="M345 360 H405" class="flow"/><path d="M695 360 H755" class="flow"/><path d="M1045 360 H1105" class="flow"/>
 
   <rect x="500" y="480" width="400" height="70" fill="#f2effc" stroke="#a795d0" class="box"/>
-  <text x="700" y="522" text-anchor="middle" class="group">决策分流：根据完整证据选择项目动作</text>
+  <text x="700" y="522" text-anchor="middle" class="group">逐项检查后决定采用、补证或拒绝</text>
   <path d="M1225 420 V480 H900" class="flow"/>
 
   <rect x="55" y="620" width="290" height="76" fill="#fee2e2" stroke="#dc2626" class="box"/>
-  <text x="200" y="653" text-anchor="middle" class="head">REJECT / SWITCH</text><text x="200" y="679" text-anchor="middle" class="small">收益不足或回归代价过高</text>
+  <text x="200" y="653" text-anchor="middle" class="head">拒绝 · REJECT</text><text x="200" y="679" text-anchor="middle" class="small">有效比较已确认违反硬性门槛</text>
   <rect x="555" y="620" width="290" height="76" fill="#fef3c7" stroke="#d97706" class="box"/>
-  <text x="700" y="653" text-anchor="middle" class="head">TUNE</text><text x="700" y="679" text-anchor="middle" class="small">方向正确，仍需调参或补证据</text>
+  <text x="700" y="653" text-anchor="middle" class="head">调整或补证 · TUNE</text><text x="700" y="679" text-anchor="middle" class="small">尚缺评估、差异待定位或收益待改善</text>
   <rect x="1055" y="620" width="290" height="76" fill="#dcfce7" stroke="#16a34a" class="box"/>
-  <text x="1200" y="653" text-anchor="middle" class="head">ACCEPT</text><text x="1200" y="679" text-anchor="middle" class="small">收益稳定，符合服务目标</text>
+  <text x="1200" y="653" text-anchor="middle" class="head">采用 · ACCEPT</text><text x="1200" y="679" text-anchor="middle" class="small">质量、性能、失败与资源门槛通过</text>
   <path d="M700 550 V580 H200 V620" class="flow"/><path d="M700 550 V620" class="flow"/><path d="M700 580 H1200 V620" class="flow"/>
 </svg>

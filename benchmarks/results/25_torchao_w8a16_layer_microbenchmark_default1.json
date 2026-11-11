@@ -1,0 +1,574 @@
+{
+  "schema_version": "quantization-mechanism-gpu/v5",
+  "chapter": "25",
+  "environment_profile": "Q-CUDA-MECHANISM",
+  "run_mode": "real_gpu",
+  "run_label": "default1",
+  "framework": {
+    "python": "3.12.14",
+    "torch": "2.11.0+cu128",
+    "transformers": "5.17.0",
+    "torchao": "0.18.0"
+  },
+  "hardware": {
+    "cuda_available": true,
+    "cuda": "12.8",
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000
+  },
+  "workload": {
+    "id": "quant-w8a16-layer",
+    "version": "v3",
+    "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "requested_model_revision": "main",
+    "resolved_model_commit": "7ae557604adf67be50417f59c2c2f167def9a775",
+    "loader_revision": "7ae557604adf67be50417f59c2c2f167def9a775",
+    "revision_resolution_source": "huggingface_hub_api",
+    "revision_is_pinned": true,
+    "target_layers": [
+      "q_proj",
+      "gate_proj",
+      "down_proj"
+    ],
+    "token_counts": [
+      1,
+      32,
+      256
+    ],
+    "warmup_steps": 10,
+    "repeat_steps": 20,
+    "inner_loops": 100,
+    "meaningful_median_ratio": 0.9,
+    "stable_p95_ratio": 0.95,
+    "seed": 42
+  },
+  "baseline": {
+    "name": "fp16_linear"
+  },
+  "candidate": {
+    "name": "torchao_int8_weight_only",
+    "config": "Int8WeightOnlyConfig"
+  },
+  "measurement_matrix": [
+    {
+      "layer": "q_proj",
+      "token_count": 1,
+      "input_shape": [
+        1,
+        1,
+        896
+      ],
+      "baseline": {
+        "median_latency_ms": 0.008233439922332764,
+        "p95_latency_ms": 0.009316160082817078,
+        "incremental_peak_bytes": 4096,
+        "state_bytes": 1607424
+      },
+      "candidate": {
+        "median_latency_ms": 0.02221711993217468,
+        "p95_latency_ms": 0.02411423921585083,
+        "incremental_peak_bytes": 1609728,
+        "state_bytes": 809088,
+        "weight_type": "Int8Tensor",
+        "storage_components": [
+          {
+            "name": "weight.qdata",
+            "dtype": "torch.int8",
+            "shape": [
+              896,
+              896
+            ],
+            "storage_bytes": 802816
+          },
+          {
+            "name": "weight.scale",
+            "dtype": "torch.float32",
+            "shape": [
+              896,
+              1
+            ],
+            "storage_bytes": 3584
+          },
+          {
+            "name": "weight.zero_point",
+            "dtype": "torch.int8",
+            "shape": [
+              896,
+              1
+            ],
+            "storage_bytes": 896
+          }
+        ]
+      },
+      "state_storage_reduction_ratio": 0.49665551839464883,
+      "latency_ratio_candidate_over_baseline": 2.698400685709983,
+      "p95_latency_ratio_candidate_over_baseline": 2.588431177811944,
+      "output_mse": 0.00040993455331772566,
+      "output_cosine_similarity": 0.999997079372406
+    },
+    {
+      "layer": "q_proj",
+      "token_count": 32,
+      "input_shape": [
+        1,
+        32,
+        896
+      ],
+      "baseline": {
+        "median_latency_ms": 0.026412800550460816,
+        "p95_latency_ms": 0.028410561084747314,
+        "incremental_peak_bytes": 114688,
+        "state_bytes": 1607424
+      },
+      "candidate": {
+        "median_latency_ms": 0.02299855947494507,
+        "p95_latency_ms": 0.02373215913772583,
+        "incremental_peak_bytes": 1720320,
+        "state_bytes": 809088,
+        "weight_type": "Int8Tensor",
+        "storage_components": [
+          {
+            "name": "weight.qdata",
+            "dtype": "torch.int8",
+            "shape": [
+              896,
+              896
+            ],
+            "storage_bytes": 802816
+          },
+          {
+            "name": "weight.scale",
+            "dtype": "torch.float32",
+            "shape": [
+              896,
+              1
+            ],
+            "storage_bytes": 3584
+          },
+          {
+            "name": "weight.zero_point",
+            "dtype": "torch.int8",
+            "shape": [
+              896,
+              1
+            ],
+            "storage_bytes": 896
+          }
+        ]
+      },
+      "state_storage_reduction_ratio": 0.49665551839464883,
+      "latency_ratio_candidate_over_baseline": 0.8707353629921618,
+      "p95_latency_ratio_candidate_over_baseline": 0.8353287732309812,
+      "output_mse": 0.00042899337131530046,
+      "output_cosine_similarity": 0.9999966621398926
+    },
+    {
+      "layer": "q_proj",
+      "token_count": 256,
+      "input_shape": [
+        1,
+        256,
+        896
+      ],
+      "baseline": {
+        "median_latency_ms": 0.016231679916381837,
+        "p95_latency_ms": 0.017004480361938478,
+        "incremental_peak_bytes": 917504,
+        "state_bytes": 1607424
+      },
+      "candidate": {
+        "median_latency_ms": 0.03330447912216186,
+        "p95_latency_ms": 0.0372489595413208,
+        "incremental_peak_bytes": 2523136,
+        "state_bytes": 809088,
+        "weight_type": "Int8Tensor",
+        "storage_components": [
+          {
+            "name": "weight.qdata",
+            "dtype": "torch.int8",
+            "shape": [
+              896,
+              896
+            ],
+            "storage_bytes": 802816
+          },
+          {
+            "name": "weight.scale",
+            "dtype": "torch.float32",
+            "shape": [
+              896,
+              1
+            ],
+            "storage_bytes": 3584
+          },
+          {
+            "name": "weight.zero_point",
+            "dtype": "torch.int8",
+            "shape": [
+              896,
+              1
+            ],
+            "storage_bytes": 896
+          }
+        ]
+      },
+      "state_storage_reduction_ratio": 0.49665551839464883,
+      "latency_ratio_candidate_over_baseline": 2.0518196079353,
+      "p95_latency_ratio_candidate_over_baseline": 2.190537949321639,
+      "output_mse": 0.00043039259617216885,
+      "output_cosine_similarity": 0.9999967813491821
+    },
+    {
+      "layer": "gate_proj",
+      "token_count": 1,
+      "input_shape": [
+        1,
+        1,
+        896
+      ],
+      "baseline": {
+        "median_latency_ms": 0.030788639783859255,
+        "p95_latency_ms": 0.03125823974609375,
+        "incremental_peak_bytes": 19456,
+        "state_bytes": 8716288
+      },
+      "candidate": {
+        "median_latency_ms": 0.05372319936752319,
+        "p95_latency_ms": 0.06388864040374756,
+        "incremental_peak_bytes": 8735744,
+        "state_bytes": 4382464,
+        "weight_type": "Int8Tensor",
+        "storage_components": [
+          {
+            "name": "weight.qdata",
+            "dtype": "torch.int8",
+            "shape": [
+              4864,
+              896
+            ],
+            "storage_bytes": 4358144
+          },
+          {
+            "name": "weight.scale",
+            "dtype": "torch.float32",
+            "shape": [
+              4864,
+              1
+            ],
+            "storage_bytes": 19456
+          },
+          {
+            "name": "weight.zero_point",
+            "dtype": "torch.int8",
+            "shape": [
+              4864,
+              1
+            ],
+            "storage_bytes": 4864
+          }
+        ]
+      },
+      "state_storage_reduction_ratio": 0.4972098214285714,
+      "latency_ratio_candidate_over_baseline": 1.7449033066958428,
+      "p95_latency_ratio_candidate_over_baseline": 2.0438975746141157,
+      "output_mse": 3.375329470145516e-05,
+      "output_cosine_similarity": 0.9999635219573975
+    },
+    {
+      "layer": "gate_proj",
+      "token_count": 32,
+      "input_shape": [
+        1,
+        32,
+        896
+      ],
+      "baseline": {
+        "median_latency_ms": 0.012377600073814391,
+        "p95_latency_ms": 0.0124399995803833,
+        "incremental_peak_bytes": 622592,
+        "state_bytes": 8716288
+      },
+      "candidate": {
+        "median_latency_ms": 0.04767519950866699,
+        "p95_latency_ms": 0.05013887882232666,
+        "incremental_peak_bytes": 9338880,
+        "state_bytes": 4382464,
+        "weight_type": "Int8Tensor",
+        "storage_components": [
+          {
+            "name": "weight.qdata",
+            "dtype": "torch.int8",
+            "shape": [
+              4864,
+              896
+            ],
+            "storage_bytes": 4358144
+          },
+          {
+            "name": "weight.scale",
+            "dtype": "torch.float32",
+            "shape": [
+              4864,
+              1
+            ],
+            "storage_bytes": 19456
+          },
+          {
+            "name": "weight.zero_point",
+            "dtype": "torch.int8",
+            "shape": [
+              4864,
+              1
+            ],
+            "storage_bytes": 4864
+          }
+        ]
+      },
+      "state_storage_reduction_ratio": 0.4972098214285714,
+      "latency_ratio_candidate_over_baseline": 3.851732098658361,
+      "p95_latency_ratio_candidate_over_baseline": 4.03045663292392,
+      "output_mse": 3.368206671439111e-05,
+      "output_cosine_similarity": 0.9999641180038452
+    },
+    {
+      "layer": "gate_proj",
+      "token_count": 256,
+      "input_shape": [
+        1,
+        256,
+        896
+      ],
+      "baseline": {
+        "median_latency_ms": 0.06403472185134887,
+        "p95_latency_ms": 0.06515103816986084,
+        "incremental_peak_bytes": 4980736,
+        "state_bytes": 8716288
+      },
+      "candidate": {
+        "median_latency_ms": 0.1685972785949707,
+        "p95_latency_ms": 0.17104703903198243,
+        "incremental_peak_bytes": 14123008,
+        "state_bytes": 4382464,
+        "weight_type": "Int8Tensor",
+        "storage_components": [
+          {
+            "name": "weight.qdata",
+            "dtype": "torch.int8",
+            "shape": [
+              4864,
+              896
+            ],
+            "storage_bytes": 4358144
+          },
+          {
+            "name": "weight.scale",
+            "dtype": "torch.float32",
+            "shape": [
+              4864,
+              1
+            ],
+            "storage_bytes": 19456
+          },
+          {
+            "name": "weight.zero_point",
+            "dtype": "torch.int8",
+            "shape": [
+              4864,
+              1
+            ],
+            "storage_bytes": 4864
+          }
+        ]
+      },
+      "state_storage_reduction_ratio": 0.4972098214285714,
+      "latency_ratio_candidate_over_baseline": 2.632904051435639,
+      "p95_latency_ratio_candidate_over_baseline": 2.6253923780313535,
+      "output_mse": 3.387430842849426e-05,
+      "output_cosine_similarity": 0.9999642372131348
+    },
+    {
+      "layer": "down_proj",
+      "token_count": 1,
+      "input_shape": [
+        1,
+        1,
+        4864
+      ],
+      "baseline": {
+        "median_latency_ms": 0.03979840040206909,
+        "p95_latency_ms": 0.04204415798187256,
+        "incremental_peak_bytes": 4096,
+        "state_bytes": 8716288
+      },
+      "candidate": {
+        "median_latency_ms": 0.060991199016571046,
+        "p95_latency_ms": 0.10320544242858887,
+        "incremental_peak_bytes": 8720384,
+        "state_bytes": 4362624,
+        "weight_type": "Int8Tensor",
+        "storage_components": [
+          {
+            "name": "weight.qdata",
+            "dtype": "torch.int8",
+            "shape": [
+              896,
+              4864
+            ],
+            "storage_bytes": 4358144
+          },
+          {
+            "name": "weight.scale",
+            "dtype": "torch.float32",
+            "shape": [
+              896,
+              1
+            ],
+            "storage_bytes": 3584
+          },
+          {
+            "name": "weight.zero_point",
+            "dtype": "torch.int8",
+            "shape": [
+              896,
+              1
+            ],
+            "storage_bytes": 896
+          }
+        ]
+      },
+      "state_storage_reduction_ratio": 0.49948601973684215,
+      "latency_ratio_candidate_over_baseline": 1.5325037790564104,
+      "p95_latency_ratio_candidate_over_baseline": 2.4546916238181327,
+      "output_mse": 0.00022405160416383296,
+      "output_cosine_similarity": 0.9999334812164307
+    },
+    {
+      "layer": "down_proj",
+      "token_count": 32,
+      "input_shape": [
+        1,
+        32,
+        4864
+      ],
+      "baseline": {
+        "median_latency_ms": 0.017682240009307862,
+        "p95_latency_ms": 0.02069920063018799,
+        "incremental_peak_bytes": 114688,
+        "state_bytes": 8716288
+      },
+      "candidate": {
+        "median_latency_ms": 0.05300863981246948,
+        "p95_latency_ms": 0.05436575889587402,
+        "incremental_peak_bytes": 8830976,
+        "state_bytes": 4362624,
+        "weight_type": "Int8Tensor",
+        "storage_components": [
+          {
+            "name": "weight.qdata",
+            "dtype": "torch.int8",
+            "shape": [
+              896,
+              4864
+            ],
+            "storage_bytes": 4358144
+          },
+          {
+            "name": "weight.scale",
+            "dtype": "torch.float32",
+            "shape": [
+              896,
+              1
+            ],
+            "storage_bytes": 3584
+          },
+          {
+            "name": "weight.zero_point",
+            "dtype": "torch.int8",
+            "shape": [
+              896,
+              1
+            ],
+            "storage_bytes": 896
+          }
+        ]
+      },
+      "state_storage_reduction_ratio": 0.49948601973684215,
+      "latency_ratio_candidate_over_baseline": 2.997846414513429,
+      "p95_latency_ratio_candidate_over_baseline": 2.6264665900472637,
+      "output_mse": 0.00020150393538642675,
+      "output_cosine_similarity": 0.9999368786811829
+    },
+    {
+      "layer": "down_proj",
+      "token_count": 256,
+      "input_shape": [
+        1,
+        256,
+        4864
+      ],
+      "baseline": {
+        "median_latency_ms": 0.06861359834671021,
+        "p95_latency_ms": 0.07187039852142334,
+        "incremental_peak_bytes": 917504,
+        "state_bytes": 8716288
+      },
+      "candidate": {
+        "median_latency_ms": 0.10668944358825683,
+        "p95_latency_ms": 0.12280287742614746,
+        "incremental_peak_bytes": 9633792,
+        "state_bytes": 4362624,
+        "weight_type": "Int8Tensor",
+        "storage_components": [
+          {
+            "name": "weight.qdata",
+            "dtype": "torch.int8",
+            "shape": [
+              896,
+              4864
+            ],
+            "storage_bytes": 4358144
+          },
+          {
+            "name": "weight.scale",
+            "dtype": "torch.float32",
+            "shape": [
+              896,
+              1
+            ],
+            "storage_bytes": 3584
+          },
+          {
+            "name": "weight.zero_point",
+            "dtype": "torch.int8",
+            "shape": [
+              896,
+              1
+            ],
+            "storage_bytes": 896
+          }
+        ]
+      },
+      "state_storage_reduction_ratio": 0.49948601973684215,
+      "latency_ratio_candidate_over_baseline": 1.554931473629268,
+      "p95_latency_ratio_candidate_over_baseline": 1.7086711629898923,
+      "output_mse": 0.00020729030075017363,
+      "output_cosine_similarity": 0.9999353885650635
+    }
+  ],
+  "summary": {
+    "storage_check_passed": true,
+    "quality_check_passed": true,
+    "raw_faster_cases": 1,
+    "meaningful_faster_cases": 1,
+    "speedup_candidates": [
+      {
+        "layer": "q_proj",
+        "token_count": 32
+      }
+    ],
+    "total_cases": 9
+  },
+  "failure": null,
+  "evidence_level": "local_mechanism_benchmark",
+  "decision": "accept_for_capacity_with_speedup_candidates"
+}

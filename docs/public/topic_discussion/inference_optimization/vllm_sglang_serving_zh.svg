@@ -1,10 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="760" viewBox="0 0 1400 760">
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="760" viewBox="0 0 1400 760" role="img" aria-labelledby="title desc">
+<title id="title">缓存容量、连续批次与同实例阶段调度</title><desc id="desc">缓存容量约束准入，连续批处理更新成员，分块预填充与阶段配额安排同一实例中的工作。资源拆分是同实例安排仍不足时的扩展，不是阶段竞争的唯一解决办法。</desc>
 <defs>
-<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#52606d"/></marker>
+<marker markerUnits="userSpaceOnUse" id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#52606d"/></marker>
 </defs>
 <rect width="1400" height="760" fill="#f7fafc"/>
 <style>
-.title{font:700 29px sans-serif;fill:#172b4d}.head{font:700 20px sans-serif;fill:#172b4d}.text{font:16px sans-serif;fill:#243b53}.small{font:14px sans-serif;fill:#52606d}.box{stroke-width:2;rx:14}.flow{stroke:#52606d;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.link{stroke:#829ab1;stroke-width:2.5;stroke-dasharray:8 6;fill:none;marker-end:url(#arrow)}
+.title{font-family:"Noto Sans CJK SC",sans-serif;font-size:29px;font-weight:700;fill:#172b4d}.head{font-family:"Noto Sans CJK SC",sans-serif;font-size:20px;font-weight:700;fill:#172b4d}.text{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;font-weight:400;fill:#243b53}.small{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;font-weight:400;fill:#52606d}.box{stroke-width:2;rx:14}.flow{stroke:#52606d;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.link{stroke:#829ab1;stroke-width:2.5;stroke-dasharray:8 6;fill:none;marker-end:url(#arrow)}
 </style>
 
 <text x="700" y="44" text-anchor="middle" class="title">服务执行：从资源竞争到请求调度</text>
@@ -35,18 +36,18 @@
 <text x="260" y="475" text-anchor="middle" class="text">PagedAttention / RadixAttention</text>
 <rect x="495" y="400" width="410" height="105" fill="#ffffff" stroke="#e0a23b" class="box"/>
 <text x="700" y="438" text-anchor="middle" class="head">批处理与队列</text>
-<text x="700" y="475" text-anchor="middle" class="text">连续批处理 / 分块预填充</text>
+<text x="700" y="475" text-anchor="middle" class="text">连续批处理 / 完成退出与等待补位</text>
 <rect x="935" y="400" width="410" height="105" fill="#ffffff" stroke="#8069b5" class="box"/>
-<text x="1140" y="438" text-anchor="middle" class="head">资源拆分与调度</text>
-<text x="1140" y="475" text-anchor="middle" class="text">PD 分离 / 队列 / 优先级</text>
+<text x="1140" y="438" text-anchor="middle" class="head">同实例阶段调度</text>
+<text x="1140" y="475" text-anchor="middle" class="text">分块预填充 / 解码配额 / 等待优先级</text>
 
-<path d="M260 328 V390" class="link"/><path d="M700 328 V390" class="link"/><path d="M1140 328 V390" class="link"/>
 <text x="700" y="545" text-anchor="middle" class="head">对应观察</text>
 <rect x="55" y="565" width="410" height="88" fill="#e8f1fb" stroke="#4c8eda" class="box"/>
-<text x="260" y="600" text-anchor="middle" class="text">vLLM 偏向分页；SGLang 偏向前缀复用</text><text x="260" y="628" text-anchor="middle" class="small">命中率 · 峰值显存 · TTFT</text>
+<text x="260" y="600" text-anchor="middle" class="text">核对实际分页、前缀索引与复用配置</text><text x="260" y="628" text-anchor="middle" class="small">命中率 · 峰值显存 · TTFT</text>
 <rect x="495" y="565" width="410" height="88" fill="#fff5e6" stroke="#e0a23b" class="box"/>
 <text x="700" y="600" text-anchor="middle" class="text">调整请求进入批次的粒度</text><text x="700" y="628" text-anchor="middle" class="small">TTFT · TPOT · 吞吐 · P99</text>
 <rect x="935" y="565" width="410" height="88" fill="#f0eefb" stroke="#8069b5" class="box"/>
-<text x="1140" y="600" text-anchor="middle" class="text">隔离 Prefill 与 Decode 资源</text><text x="1140" y="628" text-anchor="middle" class="small">排队时间 · P99 · GPU 利用率</text>
+<text x="1140" y="600" text-anchor="middle" class="text">比较新请求首词元与已有请求间隔</text><text x="1140" y="628" text-anchor="middle" class="small">TTFT · 生成间隔 · 吞吐 · 队列等待</text>
 <path d="M260 505 V557" class="link"/><path d="M700 505 V557" class="link"/><path d="M1140 505 V557" class="link"/>
+<text x="700" y="710" text-anchor="middle" class="small">同实例分块与配额仍难满足目标时，再评估 PD 分离及跨角色 KV 交接。</text>
 </svg>

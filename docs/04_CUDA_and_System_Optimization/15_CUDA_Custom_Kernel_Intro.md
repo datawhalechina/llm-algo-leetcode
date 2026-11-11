@@ -34,7 +34,7 @@
 > - **Grid (网格)**：整个计算任务的总称。由多个 Block 组成。
 > - **Block (线程块)**：由多个 Thread 组成。同一个 Block 内的线程可以共享 SRAM (Shared Memory) 并进行同步。
 > - **Thread (线程)**：GPU 计算的最小单位。
-> 
+>
 > **计算全局索引的公式 (必考！)：**
 > 如果我们把数据分为多个 Block，每个 Block 里有 `blockDim.x` 个线程。当前线程在整个大数组中的一维索引是：
 > `int index = blockIdx.x * blockDim.x + threadIdx.x;`
@@ -79,7 +79,7 @@ __global__ void vector_add_kernel(const float* x, const float* y, float* out, in
     // 提示: 使用 blockIdx.x, blockDim.x, threadIdx.x 计算
     // ==========================================
     // int index = ???;
-    
+
     // ==========================================
     // TODO 2: 越界检查 (防止访问超过 size 的内存)
     // 提示: 检查 index 是否小于 size
@@ -93,25 +93,25 @@ __global__ void vector_add_kernel(const float* x, const float* y, float* out, in
 torch::Tensor vector_add_cuda(torch::Tensor x, torch::Tensor y) {
     auto size = x.numel();
     auto out = torch::empty_like(x);
-    
+
     // 设置线程块大小 (每个 Block 包含 256 个线程)
     const int threads = 256;
-    
+
     // 计算需要的 Grid 大小 (向上取整)
     const int blocks = (size + threads - 1) / threads;
-    
+
     // 调用核函数: kernel<<<blocks, threads>>>(...)
     vector_add_kernel<<<blocks, threads>>>(
-        x.data_ptr<float>(), 
-        y.data_ptr<float>(), 
-        out.data_ptr<float>(), 
+        x.data_ptr<float>(),
+        y.data_ptr<float>(),
+        out.data_ptr<float>(),
         size
     );
-    
+
     // 确保 CUDA 执行完成 (同步)
     // 这里保留一次显式同步，便于 Notebook 立刻验证结果；实际工程更常用 stream 同步或让上层框架接管。
     cudaDeviceSynchronize();
-    
+
     return out;
 }
 '''
@@ -151,32 +151,32 @@ def test_cuda_vector_add():
     # 检查TODO是否完成
     if '// int index = ???;' in cuda_source or '// if (???)' in cuda_source:
         raise NotImplementedError("请先完成 TODO 1 和 TODO 2")
-    
+
     if not torch.cuda.is_available():
         print("⏭️ 无 GPU，完成结构检查；运行级验证需要 GPU。")
         assert "vector_add_extension" in globals() or "cuda_source" in globals(), "缺少 CUDA 向量加法实现"
         print("✅ CUDA 向量加法结构检查通过")
         return True
-    
+
     if 'vector_add_extension' not in globals():
         raise RuntimeError("CUDA 扩展编译失败，请检查 nvcc 是否安装")
-    
+
     torch.manual_seed(42)
     # 故意选一个不能被 256 整除的 size，测试边界检查是否正确
-    size = 10000 
-    
+    size = 10000
+
     x = torch.randn(size, device='cuda', dtype=torch.float32)
     y = torch.randn(size, device='cuda', dtype=torch.float32)
-    
+
     # 1. PyTorch 原生计算
     out_pt = x + y
-    
+
     # 2. 我们手写的 CUDA C++ 计算
     out_cu = vector_add_extension.vector_add_cuda(x, y)
-    
+
     diff = torch.max(torch.abs(out_pt - out_cu))
     assert diff < 1e-5, "CUDA 核函数计算结果错误！"
-    
+
     print("✅ CUDA C++ 向量加法核函数验证通过。")
     print("工程实践：全局索引公式 index = blockIdx.x * blockDim.x + threadIdx.x 是CUDA编程基础。")
 
@@ -207,7 +207,7 @@ cuda_source = '''
 __global__ void vector_add_kernel(const float* x, const float* y, float* out, int size) {
     // TODO 1: 计算当前线程的全局一维索引
     int index = blockIdx.x * blockDim.x + threadIdx.x;
-    
+
     // TODO 2: 越界检查
     if (index < size) {
         out[index] = x[index] + y[index];
@@ -217,17 +217,17 @@ __global__ void vector_add_kernel(const float* x, const float* y, float* out, in
 torch::Tensor vector_add_cuda(torch::Tensor x, torch::Tensor y) {
     auto size = x.numel();
     auto out = torch::empty_like(x);
-    
+
     const int threads = 256;
     const int blocks = (size + threads - 1) / threads;
-    
+
     vector_add_kernel<<<blocks, threads>>>(
-        x.data_ptr<float>(), 
-        y.data_ptr<float>(), 
-        out.data_ptr<float>(), 
+        x.data_ptr<float>(),
+        y.data_ptr<float>(),
+        out.data_ptr<float>(),
         size
     );
-    
+
     // 这里保留一次显式同步，便于 Notebook 立刻验证结果；实际工程更常用 stream 同步或让上层框架接管。
     cudaDeviceSynchronize();
     return out;
@@ -264,22 +264,22 @@ def test_cuda_vector_add():
     if not torch.cuda.is_available():
         print("⏭️ 无 GPU，跳过测试")
         return
-    
+
     if 'vector_add_extension' not in globals():
         raise RuntimeError("CUDA 扩展编译失败")
-    
+
     torch.manual_seed(42)
     size = 10000
-    
+
     x = torch.randn(size, device='cuda', dtype=torch.float32)
     y = torch.randn(size, device='cuda', dtype=torch.float32)
-    
+
     out_pt = x + y
     out_cu = vector_add_extension.vector_add_cuda(x, y)
-    
+
     diff = torch.max(torch.abs(out_pt - out_cu))
     assert diff < 1e-5, "CUDA 核函数计算结果错误！"
-    
+
     print("✅ CUDA C++ 向量加法核函数验证通过。")
 
 test_cuda_vector_add()
@@ -321,22 +321,22 @@ compare_pytorch_cuda_jit()
 
 **1. TODO 1: 计算全局线程索引**
 - **实现方式**: `int index = blockIdx.x * blockDim.x + threadIdx.x;`
-- **关键点**: 
+- **关键点**:
   - blockIdx.x: 当前Block在Grid中的索引
   - blockDim.x: 每个Block包含的线程数（256）
   - threadIdx.x: 当前线程在Block中的索引（0-255）
-- **技术细节**: 
+- **技术细节**:
   - 这是CUDA编程的核心公式，必须掌握
   - 适用于一维向量的并行计算
   - 每个线程负责一个数组元素
 
 **2. TODO 2: 越界检查**
 - **实现方式**: `if (index < size)`
-- **关键点**: 
+- **关键点**:
   - Grid总线程数通常大于数组大小
   - 必须检查边界，防止内存越界
   - 未检查会导致Segmentation Fault
-- **技术细节**: 
+- **技术细节**:
   - 例如：size=1000, threads=256, blocks=4
   - 总线程数 = 4 × 256 = 1024
   - 多出24个线程需要被过滤掉
@@ -422,17 +422,17 @@ compare_pytorch_cuda_jit()
 | 开发难度 | 高 | 低 |
 
 **CUDA两层结构的原因**:
-1. **硬件映射**: 
+1. **硬件映射**:
    - Block映射到SM（Streaming Multiprocessor）
    - Thread映射到CUDA Core
    - 一个SM可以同时运行多个Block
 
-2. **Shared Memory**: 
+2. **Shared Memory**:
    - 同一Block内的线程共享Shared Memory
    - 不同Block之间无法通信
    - 这种设计简化了硬件实现
 
-3. **同步机制**: 
+3. **同步机制**:
    - Block内可以使用__syncthreads()同步
    - Block间无法同步（除非使用Global Memory）
    - 适合数据并行计算
@@ -449,7 +449,7 @@ compare_pytorch_cuda_jit()
 - 需要深入理解硬件架构
 - 代码可读性差
 
-**工程启示**: 
+**工程启示**:
 - 简单算子用Triton（开发效率高）
 - 复杂算子用CUDA（性能极致）
 - 理解CUDA有助于优化Triton代码
@@ -477,18 +477,18 @@ compare_pytorch_cuda_jit()
 | 1024 | 很高 | 32 | 可能更差 | 寄存器压力大 |
 
 **关键因素**:
-1. **Warp调度**: 
+1. **Warp调度**:
    - GPU以warp（32个线程）为单位调度
    - threads应该是32的倍数
    - 256 = 8 warps，512 = 16 warps
 
-2. **SM占用率**: 
+2. **SM占用率**:
    - 每个SM最多1024个线程
    - threads=256时，每个SM可以运行4个Block
    - threads=512时，每个SM可以运行2个Block
    - 更多Block可以隐藏内存延迟
 
-3. **寄存器压力**: 
+3. **寄存器压力**:
    - 每个线程使用的寄存器数量有限
    - threads过大会导致寄存器溢出到Local Memory
    - 性能急剧下降
@@ -519,33 +519,33 @@ Triton提供了高层抽象，大多数情况下性能接近手写CUDA。但某�
 **答案**:
 
 **必须使用CUDA的场景**:
-1. **复杂的线程同步**: 
+1. **复杂的线程同步**:
    - 需要__syncthreads()、warp shuffle等
    - Triton不支持Block内同步
 
-2. **动态并行**: 
+2. **动态并行**:
    - Kernel内部启动新的Kernel
    - Triton不支持
 
-3. **特殊硬件特性**: 
+3. **特殊硬件特性**:
    - Tensor Core的精细控制
    - Shared Memory的bank conflict优化
    - Triton自动处理，但可能不是最优
 
-4. **极致性能优化**: 
+4. **极致性能优化**:
    - 需要手动优化每一个细节
    - Triton的自动优化有时不够
 
 **Triton的优势场景**:
-1. **简单的element-wise操作**: 
+1. **简单的element-wise操作**:
    - 向量加法、激活函数等
    - Triton代码简洁，性能接近CUDA
 
-2. **快速原型开发**: 
+2. **快速原型开发**:
    - 测试新算法
    - 验证想法
 
-3. **自动优化**: 
+3. **自动优化**:
    - Autotune自动选择最优配置
    - 减少手动调优工作
 

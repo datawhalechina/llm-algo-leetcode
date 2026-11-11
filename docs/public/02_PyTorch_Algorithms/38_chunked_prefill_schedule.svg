@@ -18,7 +18,7 @@
   <rect x="105" y="180" width="210" height="78" rx="15" class="blue"/>
   <text x="210" y="211" text-anchor="middle" class="h">未命中 suffix</text><text x="210" y="236" text-anchor="middle" class="t">仍需完成的输入 token</text>
   <rect x="420" y="180" width="210" height="78" rx="15" class="orange"/>
-  <text x="525" y="211" text-anchor="middle" class="h">chunk_size</text><text x="525" y="236" text-anchor="middle" class="t">单轮最多处理的 token</text>
+  <text x="525" y="211" text-anchor="middle" class="h">chunk_size</text><text x="525" y="236" text-anchor="middle" class="t">单请求输入块上限</text>
   <rect x="735" y="160" width="370" height="118" rx="15" class="orange"/>
   <text x="920" y="189" text-anchor="middle" class="h">有序 chunks</text>
   <rect x="765" y="210" width="90" height="42" rx="11" class="frame"/><text x="810" y="237" text-anchor="middle" class="t">chunk 1</text>

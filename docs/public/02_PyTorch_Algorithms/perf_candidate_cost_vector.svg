@@ -1,17 +1,38 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
-  <title id="title">候选效果向量与硬门槛</title>
-  <desc id="desc">同一个低位宽候选可以减少搬运字节和驻留容量，同时增加转换计算并带来质量风险；各维度分别记录并通过硬门槛判断。</desc>
-  <defs><style>.title{font-family:"Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#0f172a}.subtitle{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;fill:#475569}.head{font-family:"Noto Sans CJK SC",sans-serif;font-size:17px;font-weight:700;fill:#172033}.body{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;fill:#475569}.axis{stroke:#64748b;stroke-width:2.5}.zero{stroke:#94a3b8;stroke-width:2;stroke-dasharray:7 6}</style></defs>
+  <title id="title">权重减少并不保证整体峰值下降</title>
+  <desc id="desc">构造容量对照，各自峰值时刻按同一比例绘图：基线权重64MiB和其他驻留32MiB，共96MiB；候选权重32MiB、其他驻留32MiB和新增临时区40MiB，共104MiB。</desc>
+  <defs><style>
+    .title{font-family:"Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#0f172a}
+    .subtitle{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;fill:#475569}
+    .head{font-family:"Noto Sans CJK SC",sans-serif;font-size:18px;font-weight:700;fill:#172033}
+    .body{font-family:"Noto Sans CJK SC",sans-serif;font-size:15px;fill:#334155}
+    .axis{stroke:#64748b;stroke-width:2}
+  </style></defs>
   <rect width="1200" height="620" rx="24" fill="#f8fafc"/>
-  <text x="600" y="48" text-anchor="middle" class="title">候选不是一个分数，而是一组方向不同的变化</text>
-  <text x="600" y="78" text-anchor="middle" class="subtitle">示例：低位宽表示减少字节和容量，但可能增加转换计算与质量风险</text>
-  <line x1="400" y1="105" x2="400" y2="505" class="zero"/><text x="400" y="102" text-anchor="middle" class="body">基线 0</text>
-  <text x="145" y="166" class="head">搬运字节</text><rect x="220" y="117" width="180" height="90" rx="12" fill="#bbf7d0" stroke="#16a34a" stroke-width="2"/><text x="310" y="166" text-anchor="middle" class="body">减少</text>
-  <text x="145" y="261" class="head">峰值容量</text><rect x="265" y="212" width="135" height="90" rx="12" fill="#bbf7d0" stroke="#16a34a" stroke-width="2"/><text x="333" y="261" text-anchor="middle" class="body">减少</text>
-  <text x="145" y="356" class="head">转换计算</text><rect x="400" y="307" width="210" height="90" rx="12" fill="#fde68a" stroke="#d97706" stroke-width="2"/><text x="505" y="356" text-anchor="middle" class="body">增加</text>
-  <text x="145" y="451" class="head">质量风险</text><rect x="400" y="402" width="260" height="90" rx="12" fill="#fecaca" stroke="#dc2626" stroke-width="2"/><text x="530" y="451" text-anchor="middle" class="body">增加，必须过门槛</text>
-  <line x1="145" y1="520" x2="720" y2="520" class="axis"/><text x="220" y="550" class="body">减少目标约束</text><text x="610" y="550" class="body">新增代价或风险</text>
-  <rect x="780" y="145" width="340" height="90" rx="15" fill="#dcfce7" stroke="#16a34a" stroke-width="2.5"/><text x="950" y="180" text-anchor="middle" class="head">进入真实测量</text><text x="950" y="210" text-anchor="middle" class="body">作用方向正确，守护条件可满足</text>
-  <rect x="780" y="280" width="340" height="90" rx="15" fill="#ffedd5" stroke="#ea580c" stroke-width="2.5"/><text x="950" y="315" text-anchor="middle" class="head">调整候选</text><text x="950" y="345" text-anchor="middle" class="body">目标减少量不足或新增代价过高</text>
-  <rect x="780" y="415" width="340" height="90" rx="15" fill="#fee2e2" stroke="#dc2626" stroke-width="2.5"/><text x="950" y="450" text-anchor="middle" class="head">提前拒绝</text><text x="950" y="480" text-anchor="middle" class="body">正确性、质量或兼容性硬门失败</text>
+  <text x="600" y="48" text-anchor="middle" class="title">权重更小，新增临时区仍可能抬高整体峰值</text>
+  <text x="600" y="78" text-anchor="middle" class="subtitle">构造示例，非 BF16 实测：分别取两方案各自峰值时刻，所有块使用同一容量比例</text>
+  <text x="55" y="215" class="head">基线峰值</text>
+  <g text-anchor="middle">
+    <rect x="240" y="160" width="384" height="96" fill="#bfdbfe" stroke="#2563eb" stroke-width="2"/>
+    <text x="432" y="215" class="body">权重 64 MiB</text>
+    <rect x="624" y="160" width="192" height="96" fill="#bbf7d0" stroke="#16a34a" stroke-width="2"/>
+    <text x="720" y="215" class="body">其他驻留 32 MiB</text>
+  </g>
+  <text x="1030" y="215" text-anchor="middle" class="head">合计 96 MiB</text>
+  <text x="55" y="385" class="head">候选峰值</text>
+  <g text-anchor="middle">
+    <rect x="240" y="330" width="192" height="96" fill="#bfdbfe" stroke="#2563eb" stroke-width="2"/>
+    <text x="336" y="385" class="body">权重 32 MiB</text>
+    <rect x="432" y="330" width="192" height="96" fill="#bbf7d0" stroke="#16a34a" stroke-width="2"/>
+    <text x="528" y="385" class="body">其他驻留 32 MiB</text>
+    <rect x="624" y="330" width="240" height="96" fill="#fde68a" stroke="#d97706" stroke-width="2"/>
+    <text x="744" y="385" class="body">新增临时区 40 MiB</text>
+  </g>
+  <text x="1030" y="385" text-anchor="middle" class="head">合计 104 MiB</text>
+  <line x1="240" y1="490" x2="912" y2="490" class="axis"/>
+  <g class="body" text-anchor="middle">
+    <text x="240" y="520">0</text><text x="432" y="520">32</text>
+    <text x="624" y="520">64</text><text x="816" y="520">96</text><text x="912" y="520">112</text>
+  </g>
+  <text x="1080" y="560" text-anchor="end" class="body">容量（MiB）→</text>
 </svg>

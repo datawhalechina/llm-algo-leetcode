@@ -1,14 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="svg-title svg-desc">
-<title id="svg-title">真实后端执行状态与失败落盘</title><desc id="svg-desc">模型解析、服务启动、就绪检查、固定请求测量和进程清理依次执行，任一失败都进入同一证据文件。</desc>
-<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#52657a"/></marker><style>.t{font-weight:700;font-size:26px;font-family:sans-serif;fill:#18324b}.h{font-weight:600;font-size:18px;font-family:sans-serif;fill:#18324b}.b{font-size:15px;font-family:sans-serif;fill:#334e68}.l{fill:none;stroke:#52657a;stroke-width:3;marker-end:url(#arrow)}.d{fill:none;stroke:#9a6250;stroke-width:2.5;stroke-dasharray:8 6;marker-end:url(#arrow)}.a{fill:#e8f1fb;stroke:#3f78a8;stroke-width:2}.g{fill:#e8f6f1;stroke:#3f8b72;stroke-width:2}.o{fill:#fff3df;stroke:#b7791f;stroke-width:2}.p{fill:#f1edfb;stroke:#7657a5;stroke-width:2}.r{fill:#fbeceb;stroke:#b85c57;stroke-width:2}</style></defs>
-<rect width="1500" height="470" fill="#f8fafc"/><text x="750" y="42" text-anchor="middle" class="t">真实服务执行必须同时保存成功路径与失败路径</text>
-<rect x="45" y="120" width="205" height="100" rx="14" class="a"/><text x="148" y="157" text-anchor="middle" class="h">解析固定资产</text><text x="148" y="187" text-anchor="middle" class="b">revision 与本地快照</text>
-<rect x="295" y="120" width="205" height="100" rx="14" class="g"/><text x="398" y="157" text-anchor="middle" class="h">启动 vLLM</text><text x="398" y="187" text-anchor="middle" class="b">独立端口与日志</text>
-<rect x="545" y="120" width="205" height="100" rx="14" class="g"/><text x="648" y="157" text-anchor="middle" class="h">等待服务就绪</text><text x="648" y="187" text-anchor="middle" class="b">模型接口可响应</text>
-<rect x="795" y="120" width="205" height="100" rx="14" class="o"/><text x="898" y="157" text-anchor="middle" class="h">发送固定请求</text><text x="898" y="187" text-anchor="middle" class="b">预热后重复测量</text>
-<rect x="1045" y="120" width="205" height="100" rx="14" class="p"/><text x="1148" y="157" text-anchor="middle" class="h">保存原始证据</text><text x="1148" y="187" text-anchor="middle" class="b">请求、指标与环境</text>
-<rect x="1295" y="120" width="160" height="100" rx="14" class="a"/><text x="1375" y="157" text-anchor="middle" class="h">清理进程</text><text x="1375" y="187" text-anchor="middle" class="b">释放 GPU</text>
-<path d="M250 170H295M500 170H545M750 170H795M1000 170H1045M1250 170H1295" class="l"/>
-<rect x="545" y="320" width="455" height="90" rx="14" class="r"/><text x="773" y="354" text-anchor="middle" class="h">启动、就绪或请求失败</text><text x="773" y="383" text-anchor="middle" class="b">写入失败阶段、错误类型、日志位置和复测动作</text>
-<path d="M398 220V270H650V320M648 220V320M898 220V270H895V320" class="d"/><path d="M1000 365H1148V220" class="d"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">服务采集与失败清理：初始化、正式请求、原始记录分开</title><desc id="desc">解析模型并准备服务后测量固定请求，正常路径保存原始记录并清理进程；解析、启动或请求失败时保存失败记录，同样进入进程清理。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker><marker id="failure" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#b45309"/></marker></defs>
+<style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#0f172a}.title{font-size:28px;font-weight:700}.head{font-size:23px;font-weight:700}.body{font-size:20px}.note{font-size:19px;fill:#475569}.node{rx:12;stroke:#94a3b8;stroke-width:2}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}.failure{fill:none;stroke:#b45309;stroke-width:3;stroke-dasharray:8 5;marker-end:url(#failure)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/><text x="40" y="50" class="title">服务采集与失败清理：初始化、正式请求、原始记录分开</text>
+<rect x="40" y="130" width="240" height="100" class="node" fill="#dbeafe"/><text x="160" y="169" text-anchor="middle" class="head">解析模型快照</text><text x="160" y="202" text-anchor="middle" class="body">记录不可变版本</text>
+<rect x="350" y="130" width="240" height="100" class="node" fill="#dcfce7"/><text x="470" y="169" text-anchor="middle" class="head">服务启动与就绪</text><text x="470" y="202" text-anchor="middle" class="body">初始化不计请求时间</text>
+<rect x="660" y="130" width="240" height="100" class="node" fill="#dcfce7"/><text x="780" y="169" text-anchor="middle" class="head">预热与正式测量</text><text x="780" y="202" text-anchor="middle" class="body">保留每轮请求记录</text>
+<rect x="970" y="130" width="240" height="100" class="node" fill="#ede9fe"/><text x="1090" y="169" text-anchor="middle" class="head">保存原始记录</text><text x="1090" y="202" text-anchor="middle" class="body">日志、样本与资源</text>
+<rect x="1240" y="130" width="220" height="100" class="node" fill="#dbeafe"/><text x="1350" y="169" text-anchor="middle" class="head">清理服务进程</text><text x="1350" y="202" text-anchor="middle" class="body">回收本次执行资源</text>
+<rect x="660" y="330" width="240" height="100" class="node" fill="#ffedd5"/><text x="780" y="369" text-anchor="middle" class="head">保存失败记录</text><text x="780" y="402" text-anchor="middle" class="body">错误阶段与修复线索</text>
+<path d="M280 180H350" class="edge"/><path d="M590 180H660" class="edge"/><path d="M900 180H970" class="edge"/><path d="M1210 180H1240" class="edge"/>
+<path d="M160 230V290H700V330" class="failure"/><path d="M470 230V270H740V330" class="failure"/><path d="M780 230V330" class="failure"/>
+<path d="M900 380H1350V230" class="failure"/>
 </svg>

@@ -136,7 +136,7 @@ def fused_multi_lora_kernel(
     # ==========================================
     # out_ptrs = ???
     # tl.store(...)
-    
+
 def _question_placeholder_11():
     raise NotImplementedError("请完成 TODO 1-5")
 
@@ -146,17 +146,17 @@ def triton_multi_lora_forward(x: torch.Tensor, lora_a_pool: torch.Tensor, lora_b
     M, IN_DIM = x.shape
     num_loras, R, _ = lora_a_pool.shape
     _, OUT_DIM, _ = lora_b_pool.shape
-    
+
     out = torch.empty((M, OUT_DIM), device=x.device, dtype=x.dtype)
-    
+
     BLOCK_IN = 64
     BLOCK_OUT = 64
-    
+
     grid = (M, triton.cdiv(OUT_DIM, BLOCK_OUT))
-    
+
     fused_multi_lora_kernel[grid](
-        x, out, 
-        lora_a_pool, lora_b_pool, 
+        x, out,
+        lora_a_pool, lora_b_pool,
         lora_indices,
         M, IN_DIM, OUT_DIM, R,
         x.stride(0), x.stride(1),
@@ -175,7 +175,7 @@ def test_multi_lora():
     if not torch.cuda.is_available():
         print("⏭️ 忽略测试：无 GPU。")
         return
-        
+
     try:
         torch.manual_seed(42)
         batch_size = 4
@@ -183,18 +183,18 @@ def test_multi_lora():
         out_dim = 256
         num_loras = 3 # 内存池中有 3 个不同的 LoRA
         r = 16
-        
+
         x = torch.randn(batch_size, in_dim, device='cuda')
-        
+
         # 构造内存池
         # A_pool: (3, 16, 128)
         # B_pool: (3, 256, 16)
         lora_a_pool = torch.randn(num_loras, r, in_dim, device='cuda')
         lora_b_pool = torch.randn(num_loras, out_dim, r, device='cuda')
-        
+
         # 构造复杂的请求路由 (Token 0用LoRA_2, Token 1用LoRA_0...)
         lora_indices = torch.tensor([2, 0, 1, 2], device='cuda', dtype=torch.int32)
-        
+
         # 1. 纯 PyTorch 参考计算 (为了便于对照，使用较直观的 for 循环拼接)
         out_ref = torch.zeros(batch_size, out_dim, device='cuda')
         for i in range(batch_size):
@@ -202,24 +202,24 @@ def test_multi_lora():
             # 提取专属权重
             A = lora_a_pool[idx] # (r, in_dim)
             B = lora_b_pool[idx] # (out_dim, r)
-            
+
             # x[i]: (1, in_dim)
             # x_i @ A.T @ B.T
             h_r = x[i].unsqueeze(0) @ A.T # (1, r)
             y_i = h_r @ B.T               # (1, out_dim)
             out_ref[i] = y_i.squeeze(0)
-            
+
         # 2. Triton 单算子块级并行计算
         out_tri = triton_multi_lora_forward(x, lora_a_pool, lora_b_pool, lora_indices)
-        
+
         # 3. 验证结果
         diff = torch.max(torch.abs(out_ref - out_tri))
         print(f"最大误差: {diff.item():.6e}")
         assert diff < 1e-3, "Triton Multi-LoRA 路由或计算结果不正确！"
-        
+
         print("✅ Multi-LoRA 路由融合推理验证通过。")
         print("该算子实现了 Token 级别的动态路由，支持 Batch 内多模型并发推理。")
-        
+
     except NotImplementedError:
         print("请先完成 TODO 代码！")
     except Exception as e:
@@ -247,8 +247,8 @@ import triton.language as tl
 
 @triton.jit
 def fused_multi_lora_kernel(
-    x_ptr, out_ptr, 
-    lora_a_pool_ptr, lora_b_pool_ptr, 
+    x_ptr, out_ptr,
+    lora_a_pool_ptr, lora_b_pool_ptr,
     lora_indices_ptr,
     M, IN_DIM, OUT_DIM, R: tl.constexpr,
     stride_x_m, stride_x_in,
@@ -259,40 +259,40 @@ def fused_multi_lora_kernel(
 ):
     pid_m = tl.program_id(0)
     pid_n = tl.program_id(1)
-    
+
     offs_n = pid_n * BLOCK_OUT + tl.arange(0, BLOCK_OUT)
-    
+
     # TODO 1: 读取当前 Token 的 LoRA 索引
     lora_idx = tl.load(lora_indices_ptr + pid_m)
-    
+
     # TODO 2: 计算内存池中该 LoRA 的基地址偏移
     a_pool_base_ptr = lora_a_pool_ptr + lora_idx * stride_a_pool
     b_pool_base_ptr = lora_b_pool_ptr + lora_idx * stride_b_pool
-    
+
     acc = tl.zeros((BLOCK_OUT,), dtype=tl.float32)
     h_r = tl.zeros((R,), dtype=tl.float32)
-    
+
     # TODO 3: 计算 x @ A，得到中间激活 h_r
     num_k_blocks = tl.cdiv(IN_DIM, BLOCK_IN)
     for k in range(num_k_blocks):
         offs_in = k * BLOCK_IN + tl.arange(0, BLOCK_IN)
-        
+
         x_ptrs = x_ptr + pid_m * stride_x_m + offs_in * stride_x_in
         x_val = tl.load(x_ptrs, mask=offs_in < IN_DIM, other=0.0)
-        
+
         offs_r = tl.arange(0, R)
         a_ptrs = a_pool_base_ptr + offs_r[:, None] * stride_a_r + offs_in[None, :] * stride_a_in
         a_val = tl.load(a_ptrs, mask=offs_in[None, :] < IN_DIM, other=0.0)
-        
+
         h_r += tl.sum(x_val[None, :] * a_val, axis=1)
-    
+
     # TODO 4: 计算 h_r @ B，得到最终输出
     offs_r = tl.arange(0, R)
     b_ptrs = b_pool_base_ptr + offs_n[:, None] * stride_b_out + offs_r[None, :] * stride_b_r
     b_val = tl.load(b_ptrs, mask=offs_n[:, None] < OUT_DIM, other=0.0)
-    
+
     acc += tl.sum(h_r[None, :] * b_val, axis=1)
-    
+
     # TODO 5: 将结果写回显存
     out_ptrs = out_ptr + pid_m * stride_out_m + offs_n * stride_out_dim
     tl.store(out_ptrs, acc.to(out_ptr.dtype.element_ty), mask=offs_n < OUT_DIM)
@@ -301,17 +301,17 @@ def triton_multi_lora_forward(x: torch.Tensor, lora_a_pool: torch.Tensor, lora_b
     M, IN_DIM = x.shape
     num_loras, R, _ = lora_a_pool.shape
     _, OUT_DIM, _ = lora_b_pool.shape
-    
+
     out = torch.empty((M, OUT_DIM), device=x.device, dtype=x.dtype)
-    
+
     BLOCK_IN = 64
     BLOCK_OUT = 64
-    
+
     grid = (M, triton.cdiv(OUT_DIM, BLOCK_OUT))
-    
+
     fused_multi_lora_kernel[grid](
-        x, out, 
-        lora_a_pool, lora_b_pool, 
+        x, out,
+        lora_a_pool, lora_b_pool,
         lora_indices,
         M, IN_DIM, OUT_DIM, R,
         x.stride(0), x.stride(1),
