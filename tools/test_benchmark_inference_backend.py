@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import unittest
 import tempfile
 from pathlib import Path
@@ -12,6 +13,125 @@ from tools import inference_project_runtime
 
 
 class PriorityMetricTests(unittest.TestCase):
+    def test_content_end_is_separate_from_stream_end(self) -> None:
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def __iter__(self):
+                return iter([
+                    b'data: {"choices":[{"delta":{"content":"a"}}]}\n',
+                    b'data: {"choices":[{"delta":{"content":"b"}}]}\n',
+                    b'data: {"choices":[{"delta":{},"finish_reason":"stop"}],"usage":{"completion_tokens":4}}\n',
+                    b'data: [DONE]\n',
+                ])
+
+        with (
+            mock.patch.object(benchmark_module.urllib.request, "urlopen", return_value=Response()),
+            mock.patch.object(benchmark_module.time, "perf_counter", side_effect=[1.0, 1.02, 1.07, 1.08]),
+        ):
+            row = benchmark_module._run_request("http://localhost", "m", {"prompt": "p"}, 64, 0, 5)
+        self.assertEqual(row["first_content_offset_ms"], 20.0)
+        self.assertEqual(row["last_content_offset_ms"], 70.0)
+        self.assertEqual(row["completion_offset_ms"], 80.0)
+        self.assertEqual(row["content_tpot_proxy_ms"], 16.667)
+        self.assertEqual(row["tpot_ms"], 20.0)  # Preserve the shared legacy metric.
+        self.assertTrue(row["stream_done_received"])
+
+    def test_empty_and_single_token_streams_do_not_invent_content_intervals(self) -> None:
+        for content, tokens in (("", 0), ("x", 1)):
+            response = mock.MagicMock()
+            response.__enter__.return_value = response
+            response.__iter__.return_value = iter([
+                ("data: " + json.dumps({"choices": [{"delta": {"content": content},
+                 "finish_reason": "stop"}], "usage": {"completion_tokens": tokens}}) + "\n").encode(),
+                b'data: [DONE]\n',
+            ])
+            with mock.patch.object(benchmark_module.urllib.request, "urlopen", return_value=response):
+                row = benchmark_module._run_request("http://localhost", "m", {"prompt": "p"}, 64, 0, 5)
+            self.assertIsNone(row["content_tpot_proxy_ms"])
+            if not content:
+                self.assertIsNone(row["first_content_offset_ms"])
+                self.assertIsNone(row["last_content_offset_ms"])
+
+    def test_request_sends_chat_template_settings_and_records_finish_reason(self) -> None:
+        class MockResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def __iter__(self):
+                return iter([
+                    b'data: {"choices":[{"delta":{"content":"Answer: 42"},"finish_reason":null}]}\n',
+                    b'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n',
+                    b'data: [DONE]\n',
+                ])
+
+        with mock.patch.object(benchmark_module.urllib.request, "urlopen", return_value=MockResponse()) as urlopen:
+            result = benchmark_module._run_request(
+                "http://127.0.0.1:8000", "test-model",
+                {
+                    "prompt": "Add 35 and 7", "request_id": "r1", "expected_answer": "42",
+                    "chat_template_kwargs": {"enable_thinking": False},
+                },
+                16, 0.0, 5.0,
+            )
+        body = json.loads(urlopen.call_args.args[0].data)
+        self.assertEqual(body["chat_template_kwargs"], {"enable_thinking": False})
+        self.assertEqual(result["finish_reason"], "stop")
+        self.assertEqual(result["expected_answer"], "42")
+        self.assertEqual(result["output_text"], "Answer: 42")
+
+    def test_task_quality_separates_answer_from_completion_and_text(self) -> None:
+        rows = [
+            {
+                "ok": True,
+                "request_id": "q42",
+                "expected_answer": "42",
+                "output_text": "Answer: 42",
+                "finish_reason": "stop",
+            },
+            {
+                "ok": True,
+                "request_id": "q49",
+                "expected_answer": "49",
+                "output_text": "Answer: 49",
+                "finish_reason": "length",
+            },
+            {
+                "ok": True,
+                "request_id": "q26",
+                "expected_answer": "26",
+                "output_text": "The total is 26.",
+                "finish_reason": "stop",
+            },
+        ]
+        metrics = benchmark_module._attach_task_quality(rows)
+        self.assertEqual(metrics["expected_answer_accuracy"], 0.6667)
+        self.assertEqual(metrics["valid_answer_format_rate"], 0.6667)
+        self.assertEqual(metrics["response_completion_rate"], 0.6667)
+        self.assertEqual(metrics["complete_correct_rate"], 0.3333)
+        self.assertEqual(metrics["truncated_response_rate"], 0.3333)
+        self.assertEqual(metrics["unique_answer_tasks"], 3)
+        self.assertEqual(metrics["answer_repeat_consistency"], 0.6667)
+
+    def test_request_specs_preserve_answer_and_chat_template_settings(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_dir:
+            workload = Path(temporary_dir) / "workload.jsonl"
+            workload.write_text(
+                '{"request_id":"r1","prompt":"Add 35 and 7","expected_answer":42,'
+                '"chat_template_kwargs":{"enable_thinking":false}}\n',
+                encoding="utf-8",
+            )
+            specs = benchmark_module._read_request_specs(str(workload), "unused", 1)
+        self.assertEqual(specs[0]["expected_answer"], "42")
+        self.assertEqual(specs[0]["chat_template_kwargs"], {"enable_thinking": False})
+
     def test_first_token_score_uses_first_token_rank(self) -> None:
         results = [
             {"request_id": "high-1", "priority": 0, "first_token_rank": 1},

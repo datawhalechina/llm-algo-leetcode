@@ -12,6 +12,7 @@ import argparse
 import concurrent.futures
 import json
 import math
+import re
 import statistics
 import threading
 import time
@@ -86,6 +87,8 @@ def _read_request_specs(path: str | None, prompt: str, num_prompts: int) -> list
                 "prompt": prompt_text,
                 "request_id": str(item.get("request_id", f"request-{index}")),
                 "priority": int(item.get("priority", 0)),
+                **({"expected_answer": str(item["expected_answer"])} if "expected_answer" in item else {}),
+                **({"chat_template_kwargs": item["chat_template_kwargs"]} if "chat_template_kwargs" in item else {}),
             })
     if not rows:
         raise ValueError(f"Workload is empty: {path}")
@@ -118,6 +121,8 @@ def _run_request(base_url: str, model: str, request_spec: dict[str, Any], max_to
         "stream": True,
         "stream_options": {"include_usage": True},
     }
+    if request_spec.get("chat_template_kwargs") is not None:
+        body["chat_template_kwargs"] = request_spec["chat_template_kwargs"]
     if send_priority:
         body["priority"] = int(request_spec.get("priority", 0))
     request = urllib.request.Request(
@@ -131,12 +136,17 @@ def _run_request(base_url: str, model: str, request_spec: dict[str, Any], max_to
     started = time.perf_counter()
     clock_origin_s = started if clock_origin_s is None else clock_origin_s
     first_token_s: float | None = None
+    last_content_s: float | None = None
+    stream_done_received = False
     chunks = 0
     output_text: list[str] = []
     usage: dict[str, Any] | None = None
+    finish_reason: str | None = None
     try:
         with urllib.request.urlopen(request, timeout=timeout_s) as response:
             for raw_line in response:
+                if raw_line.strip() == b"data: [DONE]":
+                    stream_done_received = True
                 payload = _parse_sse_line(raw_line)
                 if payload is None:
                     continue
@@ -145,9 +155,13 @@ def _run_request(base_url: str, model: str, request_spec: dict[str, Any], max_to
                 choices = payload.get("choices") or []
                 if not choices:
                     continue
+                finish_reason = choices[0].get("finish_reason") or finish_reason
                 content = (choices[0].get("delta") or {}).get("content") or ""
                 if content:
-                    first_token_s = first_token_s or time.perf_counter()
+                    content_received_s = time.perf_counter()
+                    if first_token_s is None:
+                        first_token_s = content_received_s
+                    last_content_s = content_received_s
                     chunks += 1
                     output_text.append(content)
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
@@ -155,6 +169,7 @@ def _run_request(base_url: str, model: str, request_spec: dict[str, Any], max_to
             "ok": False, "error": str(exc), "prompt": prompt,
             "request_id": request_spec.get("request_id"),
             "priority": request_spec.get("priority", 0),
+            **({"expected_answer": request_spec["expected_answer"]} if "expected_answer" in request_spec else {}),
             "submit_offset_ms": round((started - clock_origin_s) * 1000, 3),
         }
 
@@ -171,17 +186,80 @@ def _run_request(base_url: str, model: str, request_spec: dict[str, Any], max_to
         "prompt": prompt,
         "request_id": request_spec.get("request_id"),
         "priority": request_spec.get("priority", 0),
+        **({"expected_answer": request_spec["expected_answer"]} if "expected_answer" in request_spec else {}),
         "output_text": "".join(output_text),
+        "finish_reason": finish_reason,
         "ttft_ms": round(ttft_ms, 3),
         "tpot_ms": round(tpot_ms, 3),
         "e2e_ms": round(e2e_ms, 3),
         "submit_offset_ms": round((started - clock_origin_s) * 1000, 3),
         "first_token_offset_ms": round(((first_token_s or finished) - clock_origin_s) * 1000, 3),
         "completion_offset_ms": round((finished - clock_origin_s) * 1000, 3),
+        "first_content_offset_ms": (
+            round((first_token_s - clock_origin_s) * 1000, 3)
+            if first_token_s is not None else None
+        ),
+        "last_content_offset_ms": (
+            round((last_content_s - clock_origin_s) * 1000, 3)
+            if last_content_s is not None else None
+        ),
+        "stream_done_received": stream_done_received,
+        "content_tpot_proxy_ms": (
+            round((last_content_s - first_token_s) * 1000 / (output_tokens - 1), 3)
+            if output_tokens > 1 and first_token_s is not None and last_content_s is not None
+            else None
+        ),
         "output_tokens": output_tokens,
         "estimated_output_tokens": estimated_tokens,
         "stream_chunks": chunks,
         "usage": usage,
+    }
+
+
+def _parse_answer_marker(output_text: str) -> str | None:
+    """Parse the frozen workload's explicit ``Answer: <integer>`` format."""
+    matches = re.findall(r"(?im)^\s*Answer\s*:\s*(-?\d+)\s*$", output_text)
+    return matches[-1] if matches else None
+
+
+def _attach_task_quality(results: list[dict[str, Any]]) -> dict[str, Any]:
+    """Score objective answer, format, and stop-vs-truncation evidence when available."""
+    scored = [item for item in results if item.get("ok") and "expected_answer" in item]
+    if not scored:
+        return {
+            "answer_scored_requests": 0,
+            "unique_answer_tasks": 0,
+            "expected_answer_accuracy": None,
+            "valid_answer_format_rate": None,
+            "response_completion_rate": None,
+            "complete_correct_rate": None,
+            "truncated_response_rate": None,
+            "answer_repeat_consistency": None,
+        }
+    for item in scored:
+        parsed = _parse_answer_marker(str(item.get("output_text", "")))
+        item["parsed_answer"] = parsed
+        item["answer_format_valid"] = parsed is not None
+        item["answer_correct"] = parsed == str(item["expected_answer"])
+        item["response_complete"] = item.get("finish_reason") == "stop"
+        item["complete_and_correct"] = item["answer_correct"] and item["response_complete"]
+    total = len(scored)
+    by_request: dict[str, list[str | None]] = {}
+    for item in scored:
+        by_request.setdefault(str(item.get("request_id", "")), []).append(item["parsed_answer"])
+    stable_tasks = sum(
+        bool(values) and all(value is not None for value in values) and len(set(values)) == 1
+        for values in by_request.values()
+    )
+    return {
+        "answer_scored_requests": total,
+        "unique_answer_tasks": len(by_request),
+        "expected_answer_accuracy": round(sum(item["answer_correct"] for item in scored) / total, 4),
+        "valid_answer_format_rate": round(sum(item["answer_format_valid"] for item in scored) / total, 4),
+        "response_completion_rate": round(sum(item["response_complete"] for item in scored) / total, 4),
+        "complete_correct_rate": round(sum(item["complete_and_correct"] for item in scored) / total, 4),
+        "truncated_response_rate": round(sum(item.get("finish_reason") == "length" for item in scored) / total, 4),
+        "answer_repeat_consistency": round(stable_tasks / len(by_request), 4) if by_request else None,
     }
 
 
@@ -232,6 +310,7 @@ def benchmark(args: argparse.Namespace) -> dict[str, Any]:
     duration_s = time.perf_counter() - started
 
     successful = [item for item in results if item["ok"]]
+    task_quality = _attach_task_quality(results)
     for first_token_rank, item in enumerate(
         sorted(successful, key=lambda row: (
             row["first_token_offset_ms"], str(row.get("request_id", ""))
@@ -287,6 +366,7 @@ def benchmark(args: argparse.Namespace) -> dict[str, Any]:
             if priority_order_score is not None else None,
             "priority_first_token_order_score": round(priority_first_token_order_score, 4)
             if priority_first_token_order_score is not None else None,
+            **task_quality,
         },
         "results": results if args.include_requests else None,
     }
