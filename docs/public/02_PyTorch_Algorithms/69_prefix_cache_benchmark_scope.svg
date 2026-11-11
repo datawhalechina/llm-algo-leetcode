@@ -4,10 +4,10 @@
 <rect width="1500" height="470" fill="#f8fafc"/><text x="750" y="42" text-anchor="middle" class="t">安全复用只发生在同一命名空间的连续完整块上</text>
 <rect x="35" y="120" width="220" height="105" rx="14" class="a"/><text x="145" y="157" text-anchor="middle" class="h">共享前缀请求</text><text x="145" y="187" text-anchor="middle" class="b">相同开头词元</text>
 <rect x="300" y="120" width="250" height="105" rx="14" class="o"/><text x="425" y="157" text-anchor="middle" class="h">核对缓存命名空间</text><text x="425" y="187" text-anchor="middle" class="b">模型、模板、适配器与位置</text>
-<rect x="595" y="120" width="220" height="105" rx="14" class="g"/><text x="705" y="157" text-anchor="middle" class="h">切分完整块</text><text x="705" y="187" text-anchor="middle" class="b">尾部残块不参与命中</text>
+<rect x="595" y="120" width="220" height="105" rx="14" class="g"/><text x="705" y="157" text-anchor="middle" class="h">切分完整块</text><text x="705" y="187" text-anchor="middle" class="b">完整前缀入键；尾块另算</text>
 <rect x="860" y="120" width="220" height="105" rx="14" class="g"/><text x="970" y="157" text-anchor="middle" class="h">累计连续命中</text><text x="970" y="187" text-anchor="middle" class="b">首个未命中处停止</text>
 <rect x="1125" y="120" width="220" height="105" rx="14" class="p"/><text x="1235" y="157" text-anchor="middle" class="h">复用缓存状态</text><text x="1235" y="187" text-anchor="middle" class="b">跳过已命中的 Prefill</text>
-<path d="M255 173H300M550 173H595M815 173H860M1080 173H1125" class="l"/>
+<path d="M255 173H300" class="l"/><path d="M550 173H595" class="l"/><path d="M815 173H860" class="l"/><path d="M1080 173H1125" class="l"/>
 <rect x="860" y="320" width="220" height="90" rx="14" class="o"/><text x="970" y="354" text-anchor="middle" class="h">计算未命中部分</text><text x="970" y="382" text-anchor="middle" class="b">Prefill 后写入新块</text><path d="M970 225V320" class="l"/>
-<rect x="1125" y="320" width="220" height="90" rx="14" class="r"/><text x="1235" y="354" text-anchor="middle" class="h">容量不足时驱逐</text><text x="1235" y="382" text-anchor="middle" class="b">释放旧块再写入</text><path d="M1080 365H1125" class="l"/><path d="M1235 320V275H705V225" class="f"/>
+<rect x="1125" y="320" width="220" height="90" rx="14" class="r"/><text x="1235" y="354" text-anchor="middle" class="h">容量不足时驱逐</text><text x="1235" y="382" text-anchor="middle" class="b">仅淘汰可安全释放的旧块</text><path d="M1080 365H1125" class="l"/><path d="M1235 320V275H705V225" class="f"/>
 </svg>
