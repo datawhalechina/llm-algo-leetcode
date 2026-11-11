@@ -1,50 +1,60 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
-  <title id="title">请求事件边界与指标统计样本</title>
-  <desc id="desc">单请求时间线给出排队、输入准备、预填充、解码和端到端延迟，下方区分成功率、首词元延迟与每词元延迟的统计样本。</desc>
-  <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto" markerUnits="userSpaceOnUse">
-      <path d="M0 0L10 5L0 10Z" fill="#475569"/>
-    </marker>
-    <style>
-      .title{font:700 26px sans-serif;fill:#0f172a}.head{font:700 16px sans-serif;fill:#0f172a}
-      .text{font:14px sans-serif;fill:#475569}.mono{font:12px monospace;fill:#334155}
-      .line{fill:none;stroke:#475569;stroke-width:2.4;marker-end:url(#arrow)}
-      .thin{fill:none;stroke:#94a3b8;stroke-width:2}
-    </style>
-  </defs>
-  <rect width="1200" height="520" rx="24" fill="#f8fafc"/>
-  <text x="600" y="42" text-anchor="middle" class="title">事件边界决定指标，也决定哪些请求能进入统计</text>
-
-  <text x="50" y="88" class="head">单请求事件时间线</text>
-  <path d="M90 145H1110" class="thin"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="title desc">
+  <title id="title">请求 A 的时间指标与有效统计样本</title>
+  <desc id="desc">请求 A 在零毫秒到达，二毫秒准入，三毫秒输入就绪，七、九、十一毫秒各输出一个词元，十二毫秒完成。TTFT 七毫秒，TPOT 二毫秒，词元跨度四毫秒，结束尾部一毫秒，端到端延迟十二毫秒。下方嵌套框表示样本包含关系，不是时间流程。</desc>
+  <defs><style>
+    text{font-family:Arial,'Noto Sans CJK SC',sans-serif;fill:#0f172a}
+    .title{font-size:26px;font-weight:700}.head{font-size:17px;font-weight:700}
+    .text{font-size:14px;fill:#475569}.number{font-size:15px;font-weight:700}
+    .bracket{fill:none;stroke:#64748b;stroke-width:1.8}
+  </style></defs>
+  <rect width="1200" height="700" rx="24" fill="#f8fafc"/>
+  <text x="600" y="43" text-anchor="middle" class="title">从同一条请求记录计算不同时间指标</text>
+  <text x="50" y="86" class="head">请求 A：每个输出事件对应一个词元</text>
+  <text x="1150" y="86" text-anchor="end" class="text">时间轴按毫秒等比例绘制</text>
+  <path d="M90 150H1050" stroke="#94a3b8" stroke-width="2"/>
   <g fill="#fff" stroke="#60a5fa" stroke-width="2">
-    <circle cx="100" cy="145" r="11"/><circle cx="290" cy="145" r="11"/>
-    <circle cx="480" cy="145" r="11"/><circle cx="670" cy="145" r="11"/>
-    <circle cx="860" cy="145" r="11"/><circle cx="1050" cy="145" r="11"/>
+    <circle cx="90" cy="150" r="7"/><circle cx="250" cy="150" r="7"/><circle cx="330" cy="150" r="7"/>
+    <circle cx="650" cy="150" r="7"/><circle cx="810" cy="150" r="7"/><circle cx="970" cy="150" r="7"/><circle cx="1050" cy="150" r="7"/>
   </g>
-  <text x="100" y="121" text-anchor="middle" class="mono">到达</text>
-  <text x="290" y="121" text-anchor="middle" class="mono">准入</text>
-  <text x="480" y="121" text-anchor="middle" class="mono">输入就绪</text>
-  <text x="670" y="121" text-anchor="middle" class="mono">首个词元</text>
-  <text x="860" y="121" text-anchor="middle" class="mono">后续词元</text>
-  <text x="1050" y="121" text-anchor="middle" class="mono">终止</text>
-
-  <path d="M100 174V194H290V174" class="thin"/><text x="195" y="218" text-anchor="middle" class="text">排队时间</text>
-  <path d="M290 174V194H480V174" class="thin"/><text x="385" y="218" text-anchor="middle" class="text">输入准备</text>
-  <path d="M480 174V194H670V174" class="thin"/><text x="575" y="218" text-anchor="middle" class="text">预填充</text>
-  <path d="M670 174V194H1050V174" class="thin"/><text x="860" y="218" text-anchor="middle" class="text">解码时间与词元间隔</text>
-  <path d="M100 245V265H670V245" class="thin"/><text x="385" y="289" text-anchor="middle" class="head">TTFT = 排队 + 输入准备 + 预填充</text>
-  <path d="M100 310V330H1050V310" class="thin"/><text x="575" y="354" text-anchor="middle" class="head">E2E：到达至任一终止事件</text>
-
-  <rect x="42" y="394" width="342" height="88" rx="15" fill="#eff6ff" stroke="#93c5fd"/>
-  <rect x="429" y="394" width="342" height="88" rx="15" fill="#f0fdf4" stroke="#86efac"/>
-  <rect x="816" y="394" width="342" height="88" rx="15" fill="#faf5ff" stroke="#d8b4fe"/>
-  <text x="213" y="425" text-anchor="middle" class="head">全部终止请求</text>
-  <text x="213" y="455" text-anchor="middle" class="text">成功率 · E2E · 终止状态计数</text>
-  <text x="600" y="425" text-anchor="middle" class="head">已产生首个词元</text>
-  <text x="600" y="455" text-anchor="middle" class="text">TTFT · 预填充时间 · 样本数</text>
-  <text x="987" y="425" text-anchor="middle" class="head">至少两个输出词元</text>
-  <text x="987" y="455" text-anchor="middle" class="text">TPOT · 词元跨度 · 样本数</text>
-  <path d="M384 438H429" class="line"/>
-  <path d="M771 438H816" class="line"/>
+  <g text-anchor="middle" class="text">
+    <text x="90" y="125">到达</text><text x="250" y="125">准入</text><text x="330" y="125">输入就绪</text>
+    <text x="650" y="125">首词元</text><text x="810" y="125">第二词元</text><text x="970" y="125">末词元</text><text x="1050" y="125">完成</text>
+  </g>
+  <g text-anchor="middle" class="number">
+    <text x="90" y="179">0</text><text x="250" y="179">2</text><text x="330" y="179">3</text>
+    <text x="650" y="179">7</text><text x="810" y="179">9</text><text x="970" y="179">11</text><text x="1050" y="179">12 ms</text>
+  </g>
+  <rect x="90" y="199" width="160" height="15" fill="#93c5fd"/>
+  <rect x="250" y="199" width="80" height="15" fill="#86efac"/>
+  <rect x="330" y="199" width="320" height="15" fill="#fcd34d"/>
+  <rect x="650" y="199" width="160" height="15" fill="#c4b5fd"/>
+  <rect x="810" y="199" width="160" height="15" fill="#c4b5fd"/>
+  <rect x="970" y="199" width="80" height="15" fill="#cbd5e1"/>
+  <path d="M810 199V214" stroke="#fff" stroke-width="2"/>
+  <g text-anchor="middle" class="text">
+    <text x="170" y="239">排队 2 ms</text><text x="290" y="239">准备 1 ms</text>
+    <text x="490" y="239">预填充观察区间 4 ms</text>
+    <text x="730" y="239">间隔 2 ms</text><text x="890" y="239">间隔 2 ms</text>
+  </g>
+  <path d="M1010 214V270H1050" class="bracket"/>
+  <text x="1060" y="268" class="text">结束尾部</text><text x="1060" y="289" class="text">1 ms</text>
+  <path d="M650 258V275H970V258" class="bracket"/>
+  <text x="810" y="298" text-anchor="middle" class="text">词元跨度 = 4 ms；TPOT = (2 + 2) / 2 = 2 ms</text>
+  <path d="M90 314V330H650V314" class="bracket"/>
+  <text x="370" y="355" text-anchor="middle" class="head">TTFT = 2 + 1 + 4 = 7 ms</text>
+  <path d="M90 371V387H1050V371" class="bracket"/>
+  <text x="570" y="413" text-anchor="middle" class="head">E2E = 12 ms（包含最后词元后的结束尾部）</text>
+  <text x="50" y="452" class="head">统计样本：内层是外层的子集，不是请求的执行顺序</text>
+  <rect x="45" y="471" width="1110" height="201" rx="18" fill="#eff6ff" stroke="#93c5fd" stroke-width="2"/>
+  <text x="70" y="507" class="head">全部已终止请求：A、B</text>
+  <text x="70" y="539" class="text">A 完成，B 在 5 ms 取消</text>
+  <text x="70" y="566" class="text">正常完成率 = 1 / 2</text>
+  <text x="70" y="593" class="text">E2E 分别为 12 ms、5 ms</text>
+  <rect x="430" y="490" width="700" height="161" rx="15" fill="#f0fdf4" stroke="#86efac" stroke-width="2"/>
+  <text x="450" y="523" class="head">已产生首词元：A</text>
+  <text x="450" y="555" class="text">TTFT 均值 = 7 ms，样本数 = 1</text>
+  <text x="450" y="582" class="text">B 无首词元，不以零计入均值</text>
+  <rect x="800" y="539" width="310" height="93" rx="12" fill="#faf5ff" stroke="#d8b4fe" stroke-width="2"/>
+  <text x="820" y="569" class="head">至少两个输出词元：A</text>
+  <text x="820" y="599" class="text">TPOT = 2 ms，有效请求数 = 1</text>
 </svg>
