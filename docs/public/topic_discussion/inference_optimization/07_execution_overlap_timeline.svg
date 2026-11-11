@@ -1,52 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1160" height="620" viewBox="0 0 1160 620" role="img" aria-labelledby="title desc">
-  <title id="title">服务执行关键路径与重叠</title>
-  <desc id="desc">CPU 准备、GPU 预填充/解码、KV 状态交接和下一轮调度在时间线上重叠，显示通信暴露与隐藏的区别。</desc>
-  <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L9,3 z" fill="#64748b"/>
-    </marker>
-    <style>
-      text{font-family:"Noto Sans SC","Microsoft YaHei",Arial,sans-serif}.title{font-size:28px;font-weight:700;fill:#0f172a}.sub{font-size:15px;fill:#475569}.lane{font-size:17px;font-weight:700;fill:#334155}.label{font-size:15px;font-weight:700}.small{font-size:13px}.flow{stroke:#64748b;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
-    </style>
-  </defs>
-  <rect width="1160" height="620" fill="#f8fafc"/>
-  <rect x="36" y="28" width="1088" height="564" rx="24" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
-  <text x="70" y="72" class="title">执行关键路径：哪些等待可以被隐藏？</text>
-  <text x="70" y="102" class="sub">四层调度决定任务，执行与通信重叠决定等待是否暴露给请求。</text>
-
-  <line x1="180" y1="150" x2="1050" y2="150" stroke="#cbd5e1" stroke-width="2"/>
-  <text x="180" y="135" class="small" fill="#64748b">时间 →</text>
-
-  <text x="70" y="205" class="lane">CPU</text>
-  <line x1="180" y1="198" x2="1050" y2="198" stroke="#e2e8f0" stroke-width="2"/>
-  <rect x="220" y="176" width="190" height="44" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
-  <text x="315" y="203" text-anchor="middle" class="label" fill="#1e3a8a">准备下一批请求</text>
-  <rect x="690" y="176" width="190" height="44" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
-  <text x="785" y="203" text-anchor="middle" class="label" fill="#1e3a8a">准备 Decode 状态</text>
-
-  <text x="70" y="300" class="lane">GPU</text>
-  <line x1="180" y1="293" x2="1050" y2="293" stroke="#e2e8f0" stroke-width="2"/>
-  <rect x="260" y="271" width="250" height="44" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
-  <text x="385" y="298" text-anchor="middle" class="label" fill="#92400e">Prefill chunk</text>
-  <rect x="540" y="271" width="150" height="44" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
-  <text x="615" y="298" text-anchor="middle" class="label" fill="#166534">Decode</text>
-  <rect x="770" y="271" width="190" height="44" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
-  <text x="865" y="298" text-anchor="middle" class="label" fill="#166534">下一轮 Decode</text>
-
-  <text x="70" y="395" class="lane">通信 / 搬运</text>
-  <line x1="180" y1="388" x2="1050" y2="388" stroke="#e2e8f0" stroke-width="2"/>
-  <rect x="430" y="366" width="180" height="44" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
-  <text x="520" y="393" text-anchor="middle" class="label" fill="#075985">H2D / KV 状态交接</text>
-  <rect x="820" y="366" width="170" height="44" rx="10" fill="#f3e8ff" stroke="#7c3aed" stroke-width="2"/>
-  <text x="905" y="393" text-anchor="middle" class="label" fill="#5b21b6">通信 / 同步</text>
-
-  <path d="M410 198 C470 198 470 250 470 271" class="flow"/>
-  <path d="M690 198 C720 198 720 250 720 271" class="flow"/>
-  <path d="M510 315 C510 340 520 340 520 366" class="flow"/>
-  <path d="M610 366 C650 366 650 315 650 315" class="flow"/>
-  <path d="M960 315 C1000 315 1000 250 1000 220" class="flow"/>
-
-  <rect x="220" y="468" width="760" height="78" rx="14" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
-  <text x="250" y="500" class="label" fill="#9a3412">判断关键路径</text>
-  <text x="250" y="527" class="small" fill="#7c2d12">被计算覆盖的通信不等于零成本；要同时记录 transfer bytes、exposed communication、idle gap 和池利用率。</text>
+<title id="title">准备、搬运与计算的就绪时间</title><desc id="desc">两批次构造时间线：A准备0至2、传输2至4、计算4至10；B准备2至4、传输4至6、计算10至16。B传输与A计算重叠，两批计算分别等待各自输入。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;font-weight:400;fill:#17324d}.title{font-size:26px;font-weight:700}.h{font-size:19px;font-weight:700}.s{font-size:16px}.note{font-size:15px;fill:#475569}.task{stroke:#829ab1;stroke-width:2;rx:8}.lane{stroke:#cbd5e1;stroke-width:1.5}.axis{stroke:#475569;stroke-width:2;marker-end:url(#a)}</style>
+<rect width="1160" height="620" fill="#f8fafc"/>
+<text x="40" y="48" class="title">输入就绪后才能计算，独立批次可以提前搬运</text>
+<text x="40" y="86" class="note">构造示例，统一毫秒比例；假设传输与计算支持并发，忽略带宽争用与提交开销。</text>
+<line x1="240" y1="130" x2="1080" y2="130" class="axis"/>
+<text x="240" y="119" text-anchor="middle" class="note">0</text><text x="340" y="119" text-anchor="middle" class="note">2</text><text x="440" y="119" text-anchor="middle" class="note">4</text><text x="540" y="119" text-anchor="middle" class="note">6</text><text x="740" y="119" text-anchor="middle" class="note">10</text><text x="1040" y="119" text-anchor="middle" class="note">16 ms</text>
+<text x="40" y="208" class="h">CPU 准备</text><line x1="240" y1="200" x2="1040" y2="200" class="lane"/>
+<rect x="240" y="175" width="100" height="50" fill="#dbeafe" class="task"/><text x="290" y="206" text-anchor="middle" class="s">批 A</text>
+<rect x="340" y="175" width="100" height="50" fill="#dbeafe" class="task"/><text x="390" y="206" text-anchor="middle" class="s">批 B</text>
+<text x="40" y="328" class="h">主机到设备传输</text><line x1="240" y1="320" x2="1040" y2="320" class="lane"/>
+<rect x="340" y="295" width="100" height="50" fill="#fef3c7" class="task"/><text x="390" y="326" text-anchor="middle" class="s">批 A</text>
+<rect x="440" y="295" width="100" height="50" fill="#fef3c7" class="task"/><text x="490" y="326" text-anchor="middle" class="s">批 B</text>
+<text x="40" y="448" class="h">GPU 计算</text><line x1="240" y1="440" x2="1040" y2="440" class="lane"/>
+<rect x="240" y="415" width="200" height="50" fill="#e2e8f0" class="task"/><text x="340" y="446" text-anchor="middle" class="s">等待首批输入</text>
+<rect x="440" y="415" width="300" height="50" fill="#dcfce7" class="task"/><text x="590" y="446" text-anchor="middle" class="s">批 A：4–10 ms</text>
+<rect x="740" y="415" width="300" height="50" fill="#dcfce7" class="task"/><text x="890" y="446" text-anchor="middle" class="s">批 B：10–16 ms</text>
+<line x1="440" y1="345" x2="440" y2="405" class="lane" stroke-dasharray="5 5"/><line x1="540" y1="345" x2="540" y2="405" class="lane" stroke-dasharray="5 5"/>
+<text x="720" y="530" text-anchor="middle" class="note">4–6 ms：批 B 的传输与批 A 的计算重叠</text>
+<text x="720" y="565" text-anchor="middle" class="note">批 B 输入在 6 ms 就绪，等待 GPU 到 10 ms 后开始计算</text>
 </svg>

@@ -1,89 +1,47 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="900" viewBox="0 0 1500 900">
-  <defs>
-    <marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L0 7 L7 3.5 Z" fill="#52606d"/></marker>
-    <marker id="arrowBlue" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L0 7 L7 3.5 Z" fill="#4c8eda"/></marker>
-    <marker id="arrowMap" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0 L0 6 L6 3 Z" fill="#829ab1"/></marker>
-    <marker id="arrowState" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0 L0 6 L6 3 Z" fill="#45a36b"/></marker>
-    <style>
-      .title{font:700 30px sans-serif;fill:#172b4d}.section{font:700 21px sans-serif;fill:#172b4d}
-      .group-title{font:700 16px sans-serif;fill:#36526f}.task{font:700 18px sans-serif;fill:#172b4d}
-      .text{font:16px sans-serif;fill:#243b53}.small{font:14px sans-serif;fill:#52606d}.tiny{font:13px sans-serif;fill:#52606d}
-      .box{stroke-width:2;rx:14}.group-bg{stroke-width:2;rx:20}
-      .flow{stroke:#52606d;stroke-width:2.2;fill:none;marker-end:url(#arrow)}
-      .map{stroke:#829ab1;stroke-width:1.8;stroke-dasharray:7 5;fill:none;marker-end:url(#arrowMap)}
-      .state{stroke:#45a36b;stroke-width:2;stroke-dasharray:7 5;fill:none;marker-end:url(#arrowState)}
-      .sequence{stroke:#4c8eda;stroke-width:2.8;fill:none;marker-end:url(#arrowBlue)}
-    </style>
-  </defs>
-  <rect width="1500" height="900" fill="#f7fafc"/>
-  <text x="750" y="42" text-anchor="middle" class="title">推理优化路线图：从请求链路到部署决策</text>
-
-  <rect x="12" y="78" width="1476" height="168" fill="#eef6ff" stroke="#8ab4df" class="group-bg"/>
-  <text x="30" y="104" class="group-title">请求生命周期</text>
-  <rect x="35" y="120" width="190" height="70" fill="#e8f1fb" stroke="#4c8eda" class="box"/>
-  <text x="130" y="150" text-anchor="middle" class="task">输入请求</text><text x="130" y="174" text-anchor="middle" class="small">输入提示 / 批量 / 序列长度</text>
-  <rect x="275" y="120" width="190" height="70" fill="#fff5e6" stroke="#e0a23b" class="box"/>
-  <text x="370" y="150" text-anchor="middle" class="task">Prefill</text><text x="370" y="174" text-anchor="middle" class="small">处理输入，建立初始状态</text>
-  <rect x="755" y="120" width="190" height="70" fill="#fce7f3" stroke="#db2777" class="box"/>
-  <text x="850" y="150" text-anchor="middle" class="task">Decode</text><text x="850" y="174" text-anchor="middle" class="small">逐 token 读取并追加 K/V</text>
-  <rect x="995" y="120" width="190" height="70" fill="#f0eefb" stroke="#8069b5" class="box"/>
-  <text x="1090" y="150" text-anchor="middle" class="task">服务执行</text><text x="1090" y="174" text-anchor="middle" class="small">组织批处理与队列</text>
-  <rect x="1235" y="120" width="190" height="70" fill="#eef2f5" stroke="#829ab1" class="box"/>
-  <text x="1330" y="150" text-anchor="middle" class="task">输出与评估</text><text x="1330" y="174" text-anchor="middle" class="small">延迟 / 吞吐 / 质量</text>
-  <path d="M225 155 H275" class="flow"/><path d="M465 155 H755" class="flow"/><path d="M945 155 H995" class="flow"/><path d="M1185 155 H1235" class="flow"/>
-  <rect x="515" y="195" width="190" height="48" fill="#e8f7ef" stroke="#45a36b" class="box"/>
-  <text x="610" y="216" text-anchor="middle" class="task">KV Cache 状态</text><text x="610" y="235" text-anchor="middle" class="tiny">Prefill 生成，Decode 读写</text>
-  <path d="M440 190 V219 H515" class="state"/><path d="M705 219 H800 V190" class="state"/>
-  <text x="250" y="215" text-anchor="middle" class="tiny">输入处理</text><text x="970" y="215" text-anchor="middle" class="tiny">组织请求</text><text x="1210" y="215" text-anchor="middle" class="tiny">返回与评估</text>
-
-  <rect x="12" y="248" width="1476" height="122" fill="#f4f7fa" stroke="#a7b7c8" class="group-bg"/>
-  <text x="30" y="270" class="group-title">问题对象与学习任务</text>
-  <rect x="20" y="280" width="330" height="72" fill="#ffffff" stroke="#829ab1" class="box"/>
-  <text x="185" y="310" text-anchor="middle" class="task">请求与注意力计算</text><text x="185" y="335" text-anchor="middle" class="small">请求口径与计算路径</text>
-  <rect x="390" y="280" width="430" height="72" fill="#ffffff" stroke="#829ab1" class="box"/>
-  <text x="605" y="310" text-anchor="middle" class="task">解码与 KV Cache</text><text x="605" y="335" text-anchor="middle" class="small">候选推进与状态复用</text>
-  <rect x="860" y="280" width="270" height="72" fill="#ffffff" stroke="#829ab1" class="box"/>
-  <text x="995" y="310" text-anchor="middle" class="task">服务预算与调度</text><text x="995" y="335" text-anchor="middle" class="small">单轮上界、批处理与 PD</text>
-  <rect x="1170" y="280" width="310" height="72" fill="#ffffff" stroke="#829ab1" class="box"/>
-  <text x="1325" y="310" text-anchor="middle" class="task">部署、输出与证据</text><text x="1325" y="335" text-anchor="middle" class="small">单卡部署与分布式决策</text>
-  <path d="M130 190 V280" class="map"/><path d="M300 190 V280" class="map"/>
-  <path d="M900 190 V260 H700 V280" class="map"/><path d="M1090 190 V280" class="map"/><path d="M1330 190 V280" class="map"/>
-  <path d="M610 243 V280" class="state"/>
-
-  <rect x="12" y="378" width="1476" height="250" fill="#f1f8f3" stroke="#8bc39c" class="group-bg"/>
-  <rect x="20" y="440" width="180" height="140" fill="#e8f7ef" stroke="#45a36b" class="box"/>
-  <text x="110" y="472" text-anchor="middle" class="task">请求入口</text><text x="110" y="500" text-anchor="middle" class="text">请求与工作负载</text><text x="110" y="524" text-anchor="middle" class="text">指标口径</text><text x="110" y="554" text-anchor="middle" class="small">状态、TTFT / TPOT 与基线</text>
-  <rect x="230" y="440" width="180" height="140" fill="#e8f7ef" stroke="#45a36b" class="box"/>
-  <text x="320" y="472" text-anchor="middle" class="task">计算执行</text><text x="320" y="500" text-anchor="middle" class="text">注意力计算</text><text x="320" y="526" text-anchor="middle" class="text">与执行分派</text><text x="320" y="554" text-anchor="middle" class="small">工作集 · 融合 · 后端回退</text>
-  <rect x="440" y="440" width="180" height="140" fill="#e8f7ef" stroke="#45a36b" class="box"/>
-  <text x="530" y="472" text-anchor="middle" class="task">解码推进</text><text x="530" y="500" text-anchor="middle" class="text">草稿生成</text><text x="530" y="526" text-anchor="middle" class="text">与候选验证</text><text x="530" y="552" text-anchor="middle" class="small">MTP / EAGLE / 并行草稿与预算</text>
-  <rect x="650" y="440" width="180" height="140" fill="#fff5e6" stroke="#e0a23b" class="box"/>
-  <text x="740" y="472" text-anchor="middle" class="task">缓存状态</text><text x="740" y="506" text-anchor="middle" class="text">KV Cache 管理与复用</text><text x="740" y="550" text-anchor="middle" class="small">分页、复用与容量边界</text>
-  <rect x="860" y="440" width="180" height="140" fill="#fff5e6" stroke="#e0a23b" class="box"/>
-  <text x="950" y="472" text-anchor="middle" class="task">服务调度</text><text x="950" y="500" text-anchor="middle" class="text">迭代预算与调度</text><text x="950" y="528" text-anchor="middle" class="text">异构协同</text><text x="950" y="554" text-anchor="middle" class="small">五类上界、组批、PD 与状态交接</text>
-  <rect x="1070" y="440" width="180" height="140" fill="#f0eefb" stroke="#8069b5" class="box"/>
-  <text x="1160" y="472" text-anchor="middle" class="task">单卡部署</text><text x="1160" y="500" text-anchor="middle" class="text">单卡执行、量化</text><text x="1160" y="528" text-anchor="middle" class="text">与部署验证</text><text x="1160" y="554" text-anchor="middle" class="small">表示 · 加载 · 内核 · 回退 · 复测</text>
-  <rect x="1280" y="440" width="180" height="140" fill="#f0eefb" stroke="#8069b5" class="box"/>
-  <text x="1370" y="472" text-anchor="middle" class="task">分布式扩展</text><text x="1370" y="500" text-anchor="middle" class="text">可靠性与恢复</text><text x="1370" y="528" text-anchor="middle" class="text">端到端决策</text><text x="1370" y="554" text-anchor="middle" class="small">副本 / 模型切分 · 扩展效率</text>
-  <path d="M200 527 H230" class="sequence"/><path d="M410 527 H440" class="sequence"/><path d="M620 527 H650" class="sequence"/><path d="M830 527 H860" class="sequence"/><path d="M1040 527 H1070" class="sequence"/><path d="M1250 527 H1280" class="sequence"/>
-  <path d="M110 352 V440" class="map"/><path d="M320 352 V440" class="map"/><path d="M530 352 V440" class="map"/><path d="M740 352 V440" class="map"/><path d="M950 352 V440" class="map"/><path d="M1090 352 V440" class="map"/><path d="M1370 352 V440" class="map"/>
-
-  <rect x="12" y="636" width="1476" height="150" fill="#f5f2fc" stroke="#a795d0" class="group-bg"/>
-  <text x="30" y="660" class="group-title">项目验证与决策</text><text x="750" y="678" text-anchor="middle" class="section">单卡基线 → 专项候选 → 分布式扩展</text>
-  <rect x="230" y="696" width="320" height="52" fill="#eef6ff" stroke="#4c8eda" class="box"/>
-  <text x="390" y="718" text-anchor="middle" class="task">建立单卡基线</text><text x="390" y="739" text-anchor="middle" class="tiny">固定模型、后端、工作负载与指标</text>
-  <rect x="590" y="696" width="320" height="52" fill="#fff8eb" stroke="#e0a23b" class="box"/>
-  <text x="750" y="718" text-anchor="middle" class="task">比较专项候选</text><text x="750" y="739" text-anchor="middle" class="tiny">缓存、投机、调度、产物与执行后端</text>
-  <rect x="950" y="696" width="320" height="52" fill="#f2effc" stroke="#8069b5" class="box"/>
-  <text x="1110" y="718" text-anchor="middle" class="task">扩展与统一决策</text><text x="1110" y="739" text-anchor="middle" class="tiny">核对通信、质量、速度、资源与回退</text>
-  <path d="M550 722 H590" class="sequence"/><path d="M910 722 H950" class="sequence"/>
-  <path d="M110 580 V650 H390 V696" class="sequence"/>
-  <path d="M1160 580 V670 H750 V696" class="sequence"/>
-  <path d="M1370 580 V615 H1110 V696" class="sequence"/>
-
-  <rect x="200" y="808" width="1100" height="48" fill="#ffffff" stroke="#c5d1de" class="box"/>
-  <path d="M230 832 H290" class="flow"/><text x="305" y="837" class="small">实线：生命周期</text>
-  <path d="M500 832 H560" class="map"/><text x="575" y="837" class="small">虚线：对象 / Task 映射</text>
-  <path d="M820 832 H880" class="sequence"/><text x="895" y="837" class="small">蓝色箭头：学习顺序 / 产物流</text>
-  <path d="M1160 832 H1220" class="state"/><text x="1235" y="837" class="small">绿色虚线：KV 状态关系</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="940" viewBox="0 0 1500 940" role="img" aria-labelledby="title desc">
+<title id="title">推理优化：学习顺序、共同基线与资源选择</title><desc id="desc">Task0至Task6表示首次学习顺序，不表示所有优化必须依次启用。每阶段使用共同负载比较。实例复制分担不同请求，跨设备切分让同一实例协作执行；两者在建立基线和复测时按条件选择。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52606d"/></marker></defs>
+<style>text{font:19px "Noto Sans CJK SC",sans-serif;fill:#17324d}.head{font-size:21px;font-weight:700}.title{font-size:28px;font-weight:700}.note{font-size:17px;fill:#475569}.edge{fill:none;stroke:#52606d;stroke-width:2.5;marker-end:url(#a)}</style>
+<rect width="1500" height="940" fill="#f7fafc"/>
+<text x="40" y="46" class="title">推理优化：学习顺序、共同基线与资源选择</text>
+<text x="40" y="85" class="note">实线表示首次学习顺序；各阶段的方案按瓶颈选择，不要求依次启用全部优化。</text>
+<rect x="40" y="145" width="310" height="110" rx="14" fill="#dbeafe" stroke="#829ab1" stroke-width="2"/>
+<text x="195" y="181" text-anchor="middle" class="head">Task0 · 请求基线</text>
+<text x="195" y="217" text-anchor="middle">请求事件 / 单并发测量</text>
+<path d="M350 200H410" class="edge"/>
+<rect x="410" y="145" width="310" height="110" rx="14" fill="#ecfdf5" stroke="#829ab1" stroke-width="2"/>
+<text x="565" y="181" text-anchor="middle" class="head">Task1 · 前向执行</text>
+<text x="565" y="217" text-anchor="middle">注意力 / FFN / 专家执行</text>
+<path d="M720 200H780" class="edge"/>
+<rect x="780" y="145" width="310" height="110" rx="14" fill="#dbeafe" stroke="#829ab1" stroke-width="2"/>
+<text x="935" y="181" text-anchor="middle" class="head">Task2 · 自回归与投机</text>
+<text x="935" y="217" text-anchor="middle">采样停止 / 接受与修正</text>
+<path d="M1090 200H1150" class="edge"/>
+<rect x="1150" y="145" width="310" height="110" rx="14" fill="#ecfdf5" stroke="#829ab1" stroke-width="2"/>
+<text x="1305" y="181" text-anchor="middle" class="head">Task3 · KV 管理与复用</text>
+<text x="1305" y="217" text-anchor="middle">物理块 / 引用 / 前缀</text>
+<path d="M1305 255V330H195V405" class="edge"/>
+<rect x="40" y="405" width="310" height="110" rx="14" fill="#ecfdf5" stroke="#829ab1" stroke-width="2"/>
+<text x="195" y="441" text-anchor="middle" class="head">Task4 · 多请求调度</text>
+<text x="195" y="477" text-anchor="middle">准入 / 连续组批 / 阶段预算</text>
+<rect x="600" y="405" width="310" height="110" rx="14" fill="#fef3c7" stroke="#829ab1" stroke-width="2"/>
+<text x="755" y="441" text-anchor="middle" class="head">Task5 · 低精度执行</text>
+<text x="755" y="477" text-anchor="middle">权重 / 激活与计算 / KV</text>
+<rect x="1150" y="405" width="310" height="110" rx="14" fill="#ede9fe" stroke="#829ab1" stroke-width="2"/>
+<text x="1305" y="441" text-anchor="middle" class="head">Task6 · 组合方案复测</text>
+<text x="1305" y="477" text-anchor="middle">质量 / SLO / 资源 / 失败</text>
+<path d="M350 460H600" class="edge"/>
+<path d="M910 460H1150" class="edge"/>
+<rect x="40" y="565" width="1420" height="90" rx="14" fill="#f1f5f9" stroke="#829ab1" stroke-width="2"/>
+<text x="750" y="601" text-anchor="middle" class="head">共同比较线：固定负载与质量要求</text>
+<text x="750" y="637" text-anchor="middle">每项机制与基线比较；将新增代价和单项结果放回目标负载，再判断整套配置是否采用。</text>
+<text x="40" y="705" class="head">执行资源：建立基线时和复测时都检查，不是 Task6 之后才进入的阶段</text>
+<rect x="40" y="740" width="680" height="160" rx="14" fill="#dbeafe" stroke="#829ab1" stroke-width="2"/>
+<text x="380" y="776" text-anchor="middle" class="head">请求压力超过实例能力，或需要服务隔离</text>
+<text x="380" y="812" text-anchor="middle">复制完整模型实例，分别接收请求并维护缓存</text>
+<text x="380" y="841" text-anchor="middle">通过请求路由分担压力，检查排队、热点与缓存局部性</text>
+<rect x="780" y="740" width="680" height="160" rx="14" fill="#fef3c7" stroke="#829ab1" stroke-width="2"/>
+<text x="1120" y="776" text-anchor="middle" class="head">模型或目标状态超出单卡容量</text>
+<text x="1120" y="812" text-anchor="middle">让一个实例跨设备切分模型或状态</text>
+<text x="1120" y="841" text-anchor="middle">检查每卡容量、通信、负载与同一请求的执行时间</text>
 </svg>

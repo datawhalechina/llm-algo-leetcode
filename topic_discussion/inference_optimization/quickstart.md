@@ -1,25 +1,86 @@
 # 推理优化实验 Quickstart
 
-本页只说明环境创建和进入方式。页面、工作负载、结果路径、实际版本和硬件快照见[实验资产表](./experiment_assets.md)及结果 JSON；跨专题 Profile 与隔离关系见[环境资产索引](../../docs/gpu_environment_assets.md)。以下命令均在仓库根目录执行。
+以下命令在仓库根目录执行。本页负责创建、恢复和验证环境；模型准备、逐实验服务参数和结果状态见[实验资产表](./experiment_assets.md)，跨专题隔离关系见[环境资产索引](../../docs/gpu_environment_assets.md)。
+
+## 选择环境
+
+| Profile | 环境名 | 适用实验与最低条件 |
+| --- | --- | --- |
+| [BASE-CPU](../../docs/guide.md#base-cpu) | `llm_algo_cpu` | 请求、路由、缓存、预算和调度的 CPU 题目；安装复用使用指南 |
+| [INF-CUDA-MECHANISM](#inf-cuda-mechanism-quickstart) | `llm_inference_mechanism_cu128` | 单卡计算、MoE 专家层、生成预算与执行重叠；需要匹配 CUDA 的 GPU |
+| [INF-VLLM-011-CU128](#inf-vllm-quickstart) | `llm_vllm_cu128` | 真实服务机制、Part02 传统服务基线及 Part05 服务项目 |
+| [INF-VLLM-SPEC025](#inf-vllm-spec025-quickstart) | `llm_vllm_spec025_cu129` | Part02·68 投机候选选型；先确认配对资产和 CUDA 12.9 驱动门禁 |
+| [INF-VLLM-MTP](#inf-vllm-mtp-quickstart) | `llm_vllm_mtp_cu129` | Part02·35 的独立原生 MTP 对照；不覆盖选型或历史服务环境 |
+| SGLang／通信与并行环境 | 由对应专题登记 | 可选跨后端或多卡分支，见[资产表](./experiment_assets.md#环境与实验入口)；本页不提供混装命令 |
+
+选择一个直接匹配实验的环境即可。服务端与客户端可以使用同一服务环境；是否由 Notebook 自动管理服务或需要外部终端，按[具体实验入口](./experiment_assets.md#外部服务准备)区分。
+
+教学引擎从 [nano-vLLM 请求跟踪](./nano_vllm_request_walkthrough.md#request-entry)开始，到缓存阶段加入 [Mini-SGLang 对照](./mini_sglang_cache_scheduling.md#prefix-cache)。两套独立环境尚未登记和验收，安装入口在实验前准备阶段补齐，准备状态见[资产表](./experiment_assets.md#teaching-engine)。Mini-SGLang 的低精度分支先确认代码身份与依赖，不直接混入上述机制或正式服务环境。
+
+## 首次创建
+
+安装器按登记依赖完成安装、仓库运行时注册、依赖检查、Profile 预检与 Kernel 注册。第一次运行使用新环境名；只看计划时，在对应命令末尾添加 `--dry-run`。运行时注册写入环境的导入路径，Notebook 重启后才使用新状态。
+
+如需增加 pip 下载超时和重试，可在命令前添加 `PIP_DEFAULT_TIMEOUT=120 PIP_RETRIES=8`；下载源可用 `PIP_INDEX_URL` 临时指定，下次省略即可恢复默认行为。这些设置不保证下载速度，也不覆盖 requirements 中固定的 PyTorch 或后端 wheel 来源。
 
 <a id="inf-cuda-mechanism-quickstart"></a>
 
-## INF-CUDA-MECHANISM：单卡推理机制环境
+### INF-CUDA-MECHANISM：单卡推理机制
 
-这一环境用于真实模型的迭代成本、执行分派、显存和局部延迟对照，不安装 vLLM 或 SGLang，也不形成服务吞吐结论。
-
-第一轮复测只修改各页 5.1 的 `RUN_MODE` 与 `RUN_LABEL`，保持默认模型、形状、候选矩阵、预热和重复次数不变。20、执行分派和执行重叠使用合成张量，不下载数据集；迭代预算下载 `Qwen/Qwen3-0.6B`；动态候选预算下载 `Qwen/Qwen2.5-1.5B-Instruct` 与 `Qwen/Qwen2.5-0.5B-Instruct`。模型由 Transformers 写入 Hugging Face 缓存，Notebook 会在结果中记录实际解析的模型版本；遇到 API 限流时先登录 Hugging Face 或等待限流窗口恢复，不把令牌写入 Notebook。
+使用 Conda 创建独立 PyTorch／Transformers 环境，提供局部计算和运行时实验所需依赖。MoE 专家层无需下载模型；其他模型与输入准备按资产表对应条目进行。该环境与 vLLM、SGLang 服务栈隔离。
 
 ```bash
-python tools/install_environment_profile.py \
-  --profile INF-CUDA-MECHANISM \
-  --env-name llm_inference_mechanism_cu128
-
-conda activate llm_inference_mechanism_cu128
-python -m jupyter lab
+python tools/install_environment_profile.py --profile INF-CUDA-MECHANISM --env-name llm_inference_mechanism_cu128
 ```
 
-只检查安装计划时添加 `--dry-run`。进入 Notebook 后先确认 Kernel 为该环境，再运行 Profile 预检；只有预检通过后才把 `RUN_MODE` 从 `dry_run` 改为 `real_gpu`。
+<a id="inf-vllm-quickstart"></a>
+
+### INF-VLLM-011-CU128：服务基线
+
+使用 Conda 创建服务环境，由该 Profile 的依赖提供匹配的 vLLM 与 PyTorch 栈。Part05 服务项目也使用本环境；Notebook 与服务进程无需另建两套环境。SGLang 对照另行隔离。
+
+```bash
+PIP_INDEX_URL=https://pypi.org/simple python tools/install_environment_profile.py --profile INF-VLLM-011-CU128 --env-name llm_vllm_cu128
+```
+
+<a id="inf-vllm-spec025-quickstart"></a>
+
+### INF-VLLM-SPEC025：投机候选选型
+
+使用 Conda 创建 Part02·68 的独立选型环境，安装仓库登记的 CUDA 12.9 后端 wheel 与约束。沿用 CUDA 12.9 Update 1 的 Linux R575.57 或更高驱动门禁；先通过 target-only 基线，再按模型资产、显存和方法支持条件开放候选。具体依赖身份以 Profile 与约束文件为准。
+
+```bash
+PIP_INDEX_URL=https://pypi.org/simple python tools/install_environment_profile.py --profile INF-VLLM-SPEC025 --env-name llm_vllm_spec025_cu129
+```
+
+<a id="inf-vllm-mtp-quickstart"></a>
+
+### INF-VLLM-MTP：原生 MTP 对照
+
+使用 Conda 创建 Part02·35 的独立环境，安装登记的 CUDA 12.9 专用 wheel，沿用上面的驱动门禁。它与 SPEC025 的用途和依赖组合不同；PyPI 默认构建或其他 CUDA 环境不能代替本 Profile。模型配置、历史失败与复测顺序见[原生 MTP 条目](./experiment_assets.md#mtp-experiment)。
+
+```bash
+PIP_INDEX_URL=https://pypi.org/simple python tools/install_environment_profile.py --profile INF-VLLM-MTP --env-name llm_vllm_mtp_cu129
+```
+
+## 中断续装与重新进入
+
+环境尚未创建时，重新运行对应创建命令。已创建但依赖下载中断时，先激活选择表中的环境，按日志定位对应 requirements；保持原有安装顺序、约束与缓存。
+
+| Profile | 依赖续装顺序 |
+| --- | --- |
+| INF-CUDA-MECHANISM | 先 `python -m pip install -r requirements/torch-cu128.txt`，再 `python -m pip install -r requirements/inference-mechanism.txt` |
+| INF-VLLM-011-CU128 | `python -m pip install -r requirements/inference-vllm.txt` |
+| INF-VLLM-SPEC025 | `python -m pip install -r requirements/inference-vllm-spec025.txt` |
+| INF-VLLM-MTP | `python -m pip install -r requirements/inference-vllm-mtp.txt` |
+
+依赖续装后，给原安装器命令添加 `--reuse`，补齐运行时、预检和 Kernel。下面以机制环境为例；服务分支同时替换 Profile 与环境名。只对确认属于同一 Profile 的环境使用 `--reuse`，身份不明或已有冲突时使用新环境名。
+
+```bash
+python tools/install_environment_profile.py --profile INF-CUDA-MECHANISM --env-name llm_inference_mechanism_cu128 --reuse
+```
+
+安装已完成时，直接激活并检查，不必重装。下面仍以机制环境为例，其他环境使用选择表中的对应名称和 Profile：
 
 ```bash
 conda activate llm_inference_mechanism_cu128
@@ -29,164 +90,38 @@ python tools/environment_preflight.py --profile INF-CUDA-MECHANISM
 python -m jupyter lab
 ```
 
-预检只确认环境、CUDA、依赖和仓库运行时可用，不代表某个候选一定更快。具体运行顺序、固定工作负载和证据状态见[实验资产表](./experiment_assets.md#单卡机制验证顺序)。
+## 手动创建（可选）
 
-<a id="inf-vllm-spec025-quickstart"></a>
+<details>
+<summary>安装器不可用时先查看等价安装计划</summary>
 
-## INF-VLLM-SPEC025：投机解码选型 CUDA 12.9 环境
-
-第 68 节使用独立的 vLLM 0.25.1 CUDA 12.9 环境完成 N-gram、原生 MTP、EAGLE、DFlash 与 DSpark 的候选准入和配对测量。0.25.1 是本项目覆盖 DFlash 与 DSpark 的最低推荐补丁版本；0.31 仅作为后续复测，不是第 68 节的硬依赖。该环境不能覆盖历史 `INF-VLLM-011-CU128` 基线。
+本专题的四个 Profile 都由安装器按注册表和约束生成顺序。尚未单独验收另一套手动安装链，因此先检查计划并修复安装器入口，避免临时拼接不同后端的依赖。命令按“基础环境 → requirements → 运行时注册 → 依赖检查 → Profile 预检 → Kernel”核对：
 
 ```bash
-PIP_INDEX_URL=https://pypi.org/simple \
-python tools/install_environment_profile.py \
-  --profile INF-VLLM-SPEC025 \
-  --env-name llm_vllm_spec025_cu129
+python tools/install_environment_profile.py --profile INF-CUDA-MECHANISM --env-name llm_inference_mechanism_cu128 --dry-run
+```
 
-conda activate llm_vllm_spec025_cu129
+</details>
+
+<a id="常见异常"></a>
+
+## 验证与常见问题
+
+完成门槛是：解释器属于所选环境，运行时 `registered=true`，`pip check` 无冲突，Profile 预检 `ready=true`。Notebook 选择对应 Kernel 后再运行实验；环境通过不代表实验成功。真实服务还要按资产表确认健康检查与配置。
+
+```bash
+python -c "import sys; print(sys.executable)"
 python tools/register_notebook_runtime.py --check
 python -m pip check
-python tools/environment_preflight.py --profile INF-VLLM-SPEC025
+python tools/environment_preflight.py --profile INF-CUDA-MECHANISM
 ```
-
-正式安装前主机驱动必须满足 CUDA 12.9 Update 1 的门禁；本仓库按 Linux R575.57 或更高版本验收。先运行 target-only 启动与固定请求 smoke，再开放 G1–G5；每个候选仍需分别通过方法声明、checkpoint 资产和显存门禁。
-
-<a id="inf-vllm-mtp-quickstart"></a>
-
-## INF-VLLM-MTP：原生 MTP CUDA 12.9 单卡环境
-
-第 35 节使用独立的 vLLM CUDA 12.9 环境，对同一个 `Qwen/Qwen3.5-0.8B` checkpoint 比较 target-only 与 MTP-1。该模型只带一个原生 MTP 层，因此默认候选深度固定为 1。默认 PyPI 上的 vLLM 0.31.0 是 CUDA 13.0 构建；该版本的官方 Release 另行发布 cu129 wheel，没有发布 cu128 wheel。本 Profile 固定 release commit 对应的 `wheels.vllm.ai` cu129 资产，不能复用已安装默认 wheel 的环境，也不要先安装 `torch-cu128.txt`，或复用 `INF-CUDA-MECHANISM` 与历史 vLLM 0.11 环境。
-
-```bash
-PIP_INDEX_URL=https://pypi.org/simple \
-python tools/install_environment_profile.py \
-  --profile INF-VLLM-MTP \
-  --env-name llm_vllm_mtp_cu129
-
-conda activate llm_vllm_mtp_cu129
-python -m jupyter lab
-```
-
-首次安装不要添加 `--reuse`。日志必须出现 `vllm-0.31.0+cu129` 和 `torch-2.13.0+cu129`；如果出现 `+cu130`，立即停止，不要运行实验。该执行栈要求主机驱动满足 CUDA 12.9 的完整运行条件：Linux 至少使用 R575.51，CUDA 12.9 Update 1 至少使用 R575.57。R570 虽能通过部分 CUDA 12.x 基础检查，但可能在 Triton 动态内核加载阶段失败，不作为本 Profile 的可运行驱动。
-
-进入 Notebook 前可独立复核环境：
-
-```bash
-conda activate llm_vllm_mtp_cu129
-python tools/register_notebook_runtime.py --check
-python -m pip check
-python tools/environment_preflight.py --profile INF-VLLM-MTP
-```
-
-预检必须同时满足 `runtime.torch_cuda == "12.9"`、`cuda_available == true` 和 `ready == true`。旧的 `llm_vllm_mtp` CUDA 13 环境与未完成的 `llm_vllm_mtp_cu128` 环境只保留失败诊断，不用于复测。
-
-首次验证只把第 35 节的 `RUN_MODE` 改为 `real_backend`，并设置唯一 `RUN_LABEL`。Notebook 会顺序启动两个隔离 worker，先运行 target-only，再运行 MTP-1；不要同时启动另一份占用 GPU 的 vLLM 服务。RTX 5070 Ti + R570 的已登记结果在 target-only 初始化 Triton RoPE 内核时失败；保持该主机驱动时不要反复安装或复测，改在满足驱动条件的独立机器上运行。
-
-<a id="inf-vllm-quickstart"></a>
-
-## INF-VLLM-011-CU128：vLLM 服务环境
-
-连续批处理、分块预填充、KV 生命周期等真实后端机制实验，以及 66–72 的服务项目，使用独立 vLLM Profile。不要先安装 `torch-cu128.txt`，也不要向机制环境追加 vLLM。
-
-```bash
-PIP_INDEX_URL=https://pypi.org/simple \
-PIP_DEFAULT_TIMEOUT=120 \
-PIP_RETRIES=8 \
-python tools/install_environment_profile.py \
-  --profile INF-VLLM-011-CU128 \
-  --env-name llm_vllm_cu128
-
-conda activate llm_vllm_cu128
-python -m jupyter lab
-```
-
-如果官方 PyPI 当前连接不稳定，可以把 `PIP_INDEX_URL` 替换为可访问的镜像源；不要在同一个命令中混用多个镜像来解析 vLLM、PyTorch 和约束文件。安装器已经使用 `conda run --no-capture-output`，终端会持续显示下载进度，不需要额外添加 `-v`。
-
-安装中断后不要删除环境或清空 Hugging Face、pip 缓存。重新进入同一个环境，使用 `--reuse` 继续安装：
-
-```bash
-PIP_INDEX_URL=https://pypi.org/simple \
-PIP_DEFAULT_TIMEOUT=120 \
-PIP_RETRIES=8 \
-python tools/install_environment_profile.py \
-  --profile INF-VLLM-011-CU128 \
-  --env-name llm_vllm_cu128 \
-  --reuse
-```
-
-如果下载速度持续过低，可以先停止当前安装，稍后用同一命令重试；不要同时启动多个 pip 安装进程。只有安装器最后输出“环境安装与预检完成”，才继续注册或选择 Notebook Kernel。
-
-SGLang 对照使用独立环境，不能与 vLLM 共享同一个 Python 环境。尚未登记稳定 Profile 的后端只作为可选候选，不进入默认复测链。
-
-Part 05 推理服务项目也使用这个 Profile。服务和 Notebook 分别在两个终端运行，但都激活 `llm_vllm_cu128`；同一时刻只运行一个候选服务，不另建控制环境。连续批处理实验必须关闭前缀缓存，避免后运行的一组因缓存命中获得额外收益。环境预检通过后，在独立终端启动固定服务：
-
-```bash
-conda activate llm_vllm_cu128
-vllm serve Qwen/Qwen3-0.6B \
-  --served-model-name Qwen/Qwen3-0.6B \
-  --dtype auto \
-  --host 127.0.0.1 \
-  --port 8000 \
-  --max-model-len 2048 \
-  --gpu-memory-utilization 0.8 \
-  --max-num-seqs 8
-```
-
-第 37 节需要一个已开启 Prefix Cache 的真实服务。停止前一个服务后，再启动以下配置：
-
-```bash
-conda activate llm_vllm_cu128
-vllm serve Qwen/Qwen3-0.6B \
-  --served-model-name Qwen/Qwen3-0.6B \
-  --dtype auto \
-  --host 127.0.0.1 \
-  --port 8000 \
-  --max-model-len 2048 \
-  --gpu-memory-utilization 0.8 \
-  --enable-prefix-caching
-```
-
-确认 `http://127.0.0.1:8000/v1/models` 与 `/metrics` 可访问后，再从同一环境启动 JupyterLab。连续批处理页和第 37 节均只修改运行模式与唯一结果标签；切换实验前先停止旧服务，不能把前缀缓存开关作为未记录变量。
-
-第 38 节比较同一模型和请求清单下的整段预填充与分块预填充。两种服务不能同时占用同一张 GPU；先启动一种配置、运行 Notebook 并保存阶段结果，停止服务后再启动另一种配置。
-
-整段预填充基线：
-
-```bash
-conda activate llm_vllm_cu128
-vllm serve Qwen/Qwen3-0.6B \
-  --served-model-name Qwen/Qwen3-0.6B \
-  --dtype auto \
-  --host 127.0.0.1 \
-  --port 8000 \
-  --max-model-len 4096 \
-  --gpu-memory-utilization 0.8 \
-  --no-enable-chunked-prefill
-```
-
-分块预填充候选：
-
-```bash
-conda activate llm_vllm_cu128
-vllm serve Qwen/Qwen3-0.6B \
-  --served-model-name Qwen/Qwen3-0.6B \
-  --dtype auto \
-  --host 127.0.0.1 \
-  --port 8000 \
-  --max-model-len 4096 \
-  --gpu-memory-utilization 0.8 \
-  --enable-chunked-prefill \
-  --max-num-batched-tokens 512
-```
-
-两次运行分别把第 38 节的 `SERVICE_VARIANT` 设为 `whole_prefill` 和 `chunked_prefill`，保持同一个 `PAIR_LABEL`。只有两个阶段结果都存在时，Notebook 才形成配对结论。
-
-## 常见异常
 
 | 现象 | 处理方式 |
-|:---|:---|
-| `pip check` 报依赖冲突 | 停止执行，按目标 Profile 新建环境，不在旧环境逐包覆盖 |
+| --- | --- |
+| Conda 提示覆盖 PYTHONPATH 等变量 | 属于 Profile 隔离设置；检查预检是否通过，不恢复混入的外部 site-packages |
+| 下载中断或速度过低 | 停止当前安装，保留缓存，按同 Profile 续装；只运行一个安装进程 |
+| `pip check` 冲突或预检不通过 | 保留失败输出，核对 Profile、约束、解释器与隔离状态；不逐包覆盖另一后端 |
 | Notebook 无法导入 `tools` | 在仓库根目录运行 `python tools/register_notebook_runtime.py`，重启 Kernel |
-| CUDA 或显存预检失败 | 保持 `RUN_MODE=dry_run`，记录失败，不绕过硬件门槛 |
-| 模型或数据下载失败 | 检查代理与缓存；不要把代理地址、令牌写入 Notebook |
-| 服务能够启动但没有稳定结果 | 只记录环境/能力预检，不升级为服务性能证据 |
+| CUDA wheel 或版本不匹配 | 以已登记的 Profile 和约束为准，停止真实实验；不把另一 CUDA 构建当作替代 |
+| 模型或数据访问受限 | 按资产条目检查缓存、认证与网络；令牌不写入 Notebook，也不清空已有缓存 |
+| 后端启动但没有成对结果 | 健康检查只证明可用性；固定输入与配置、完成基线和候选后再判断性能 |

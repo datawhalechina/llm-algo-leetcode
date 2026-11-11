@@ -1,110 +1,103 @@
-# 推理优化问题链：从性能症状到项目决策
+# 推理优化问题链：跟踪一组请求的等待、状态与执行
 
-阅读前提：默认你已经知道模型会经历 Prefill 和 Decode 两个阶段，并能把 `TTFT` 理解为首 token 延迟、把 `TPOT` 理解为后续 token 的平均生成间隔。如果这些概念还不熟，先看 [01 请求链路与指标](./01_request_path_and_metrics.md)，再回到问题链；这里重点是学习如何根据性能症状选择机制和项目，不要求先掌握具体 backend 的源码。
+同一个服务中，三个请求正在生成，一个长输入请求随后到达。长请求可能迟迟得不到首词元，已有请求也可能出现生成停顿。下面持续跟踪这组请求，区分层内计算、历史状态和共享资源，再选择需要比较的候选。
 
-假设你接手的是同一个在线服务：模型已经能跑，但长 prompt 下首 token 明显变慢；并发一起来，生成速度又开始恶化；为了继续把 batch 和上下文往上推，团队开始尝试 cache 策略和量化，结果显存虽然省了，服务体验却不一定更好。
+先记录请求时间与质量要求，按观测进入相应分支；每次改动后都回到同一请求协议重新测量。理解指标可先读[请求链路](./01_request_path_and_metrics.md)，具体机制与实验入口由各段链接提供。
 
-这条线最重要的是按暴露顺序判断：问题先出在哪一段，压下去以后瓶颈又转到哪里，最后哪些候选方案真的值得保留。
+![从请求观察选择机制并回到配对复测](../../docs/public/topic_discussion/inference_optimization/inference_optimization_story.svg)
 
-![推理优化从请求症状到部署决策](../../docs/public/topic_discussion/inference_optimization/inference_optimization_story.svg)
+## 首词元等待发生在哪一段
 
-图片先给出整条判断链：从请求阶段定位问题，再选择机制和项目，最后用统一 workload 做决策。下面各段只展开其中一个阶段。
+长请求从到达到首次输出，要经过排队、接纳、预填充和返回。若大部分时间在排队，即使缩短注意力计算也可能没有明显改善；若接纳后仍花很久，才继续查看层内前向。客户端首词元时间与设备阶段时间因此需要分别记录。
 
-## 第一段：先确认是不是 prefill 问题
+预填充建立初始 KV，解码继续读取和追加。已有请求的状态占用，还会影响长请求能否被接纳。下图把计算阶段和贯穿生成的状态分开。
 
-第一阶段最常见的症状是：短 prompt 还可以，一旦 prompt 拉长，`TTFT` 明显升高，但 decode 阶段单 token 速度还没完全坏掉。不要笼统说“模型太慢”，而是先把问题压到 prefill：
+![请求生命周期与状态、阶段指标](../../docs/public/topic_discussion/inference_optimization/request_lifecycle_zh.svg)
 
-- Part 01 [03 GPU Architecture and Memory](../../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.ipynb)
-- Part 01 [14 FlashAttention Memory Model](../../01_Hardware_Math_and_Systems/14_FlashAttention_Memory_Model.ipynb)
-- Part 01 [24 SRAM Optimization Techniques](../../01_Hardware_Math_and_Systems/24_SRAM_Optimization_Techniques.ipynb)
-- Part 02 [20 FlashAttention Sim](../../02_PyTorch_Algorithms/20_FlashAttention_Sim.ipynb)
-- Part 02 [INF-EXECUTION-DISPATCH 推理融合与后端分派](../../02_PyTorch_Algorithms/INF-EXECUTION-DISPATCH_Inference_Fusion_and_Backend_Dispatch.ipynb)
-- Part 02 [24 Prefix Cache Matching and Reuse](../../02_PyTorch_Algorithms/24_Prefix_Cache_Matching_and_Reuse.ipynb)
-- Part 02 [38 Prefill/Decode Scheduling](../../02_PyTorch_Algorithms/38_Prefill_Decode_Scheduling.ipynb)（长 prompt 影响并发时）
+## 已经接纳，为什么预填充仍然很长
 
-这里真正想确认的是：`TTFT` 升高是不是主要来自 attention 和 prefill，FlashAttention 或 chunked prefill 有没有空间，重复前缀是不是让无效 prefill 变多。第一个关键判断是：**首 token 慢，不等于生成慢。**
+沿同一解码器层读取注意力、投影、前馈和归一化时间。显式注意力的中间矩阵可能增加读写；稠密前馈包含门控与多个投影，很多短计算也可能消耗在提交与中间值写回上。先用[模型前向与执行](./02_prefill_and_attention_kernel.md)区分这些成本，再选择编译、融合或内核候选。
 
-![Prefill 与 Attention 访存](../../docs/public/topic_discussion/inference_optimization/prefill_attention_zh.svg)
+下图沿一个 LLaMA 类层展开注意力、两次残差与前馈计算，再区分内核读写、矩阵形状和计算提交。这里的 FFN 是前馈网络，Pre-Norm 表示子层计算前归一化，Graph 重放则重复提交已捕获的设备工作。
 
-这张图把长 Prompt、Prefill 和 TTFT 的关系拆开，并区分访存优化、分块处理与前缀复用；具体取舍仍需回到同一 workload 验证。
+![完整前向的层内数据流与三类执行成本](../../docs/public/topic_discussion/inference_optimization/prefill_attention_zh.svg)
 
-## 第二段：prefill 压下去以后，瓶颈转到 decode
+## 模型使用专家时，词元怎样重新组成批次
 
-团队把 prefill 调过一轮以后，经常会看到第二个问题：`TTFT` 下来了，但并发一高，`TPOT` 又开始恶化，generated tokens/s 还是不高。这时问题已经从 prefill 转移到了 decode loop 和请求组织：
+把这个服务换成 MoE 模型后，同一轮词元会被模型路由器分给不同专家。路由决定算哪些专家，执行器再按专家重排输入，计算后恢复原词元顺序并加权合并。偏斜可能形成少数较大矩阵，也可能造成跨卡等待，实际时间需要结合执行方式解释。
 
-- Part 02 [21 Decoding Strategies](../../02_PyTorch_Algorithms/21_Decoding_Strategies.ipynb)
-- Part 02 [23 Speculative Decoding](../../02_PyTorch_Algorithms/23_Speculative_Decoding.ipynb)
-- Part 02 [35 原生 Multi-Token Prediction](../../02_PyTorch_Algorithms/35_Multi_Token_Decoding.ipynb)
-- Part 02 [INF-EAGLE 特征草稿器与候选树](../../02_PyTorch_Algorithms/INF-EAGLE_Feature_Drafter_and_Candidate_Tree.ipynb)
-- Part 02 [INF-PARALLEL-DRAFTING DFlash 与 DSpark](../../02_PyTorch_Algorithms/INF-PARALLEL-DRAFTING_DFlash_and_DSpark.ipynb)
-- Part 02 [36 Decode Scheduling](../../02_PyTorch_Algorithms/36_Decode_Scheduling.ipynb)
+[MoE 专家执行](../../02_PyTorch_Algorithms/INF-MOE-EXECUTION_MoE_Inference_Dispatch_and_Expert_Execution.ipynb)保持专家选择和权重不变，比较逐词元与按专家执行。固定路由计划复用的结果，仍需另外计算动态计划构造成本，才能放回真实模型。
 
-这里最容易出现的误判是：只要引入 speculative decoding，吞吐就一定变高。真实情况更依赖 workload；如果请求短、并发低，复杂策略不一定值得，如果调度没排顺，单独换策略也未必真能把 TPOT 压下来。
+![专家分组改变执行排列，原词元身份与权重保持对应](../../docs/public/02_PyTorch_Algorithms/inf_moe_execution_flow.svg)
 
-![Decode 策略对照](../../docs/public/topic_discussion/inference_optimization/decode_strategies_zh.svg)
+## 首词元返回后，后续生成为什么还会停顿
 
-图中关注的是生成阶段的候选策略和代价：减少单步生成成本的同时，还要观察验证开销、请求长度和调度影响。
+已有请求需要反复前向、读取历史 KV，并等待下一轮获得资源。先对照单轮计算与轮次间等待；前者进入执行与缓存分析，后者进入批次和阶段配额。普通采样与投机生成也有不同的工作组成。
 
-## 第三段：吞吐还想继续上推，cache 开始决定边界
+若选择投机生成，草稿要经过连续接受与拒绝修正，整段接受后还可能追加目标词元。接受率高但草稿、验证和修正成本更高时，完整请求仍可能变慢；[解码策略](./03_decoding_strategies.md)通过最终提交量与总成本解释这个取舍。
 
-走到这一步，服务通常已经不是“完全跑不动”，而是开始被 KV cache 的容量和复用边界卡住：batch 想继续往上推，但 `peak memory` 顶住了；cache 一边跑一边涨，decode 稳定性和并发一起变差。这时先把注意力切到 cache 生命周期和复用：
+![普通生成与线性投机的接受、修正和状态回退](../../docs/public/topic_discussion/inference_optimization/decode_strategies_zh.svg)
 
-- Part 01 [11 KV Cache and Memory Growth](../../01_Hardware_Math_and_Systems/11_KV_Cache_and_Memory_Growth.ipynb)
-- Part 02 [22 vLLM PagedAttention](../../02_PyTorch_Algorithms/22_vLLM_PagedAttention.ipynb)
-- Part 02 [24 Prefix Cache Matching and Reuse](../../02_PyTorch_Algorithms/24_Prefix_Cache_Matching_and_Reuse.ipynb)
-- Part 02 [34 SGLang RadixAttention](../../02_PyTorch_Algorithms/34_SGLang_RadixAttention.ipynb)
+<a id="generation-cache-scheduling"></a>
 
-这里可以按四个问题理解 Cache：先看 Decode 保存的请求级状态，再看 PagedAttention 如何管理物理 Block；如果请求之间有重复前缀，再看 RadixAttention / Prefix Cache 如何减少重复 Prefill；当 Cache 接近预算时，才进入驱逐、压缩或 KV Cache 量化。推理优化关注这些机制如何影响吞吐、并发和服务稳定性；如果核心问题已经变成“装不下”，再转去显存专题。
+## 生成、缓存与调度怎样相互限制
 
-![KV Cache 生命周期](../../docs/public/topic_discussion/inference_optimization/kv_cache_lifecycle_zh.svg)
+三个解码请求继续生成时，候选预算决定本轮可能验证多少位置、申请多少临时状态；实际接受量又决定哪些状态保留、哪些回退。缓存池提供可用块、共享引用和恢复代价，调度器据此选择本轮成员与工作量。即使某条请求用更长候选能少调用几次目标模型，也可能因占用更多缓存和验证时间而推迟其他请求。
 
-这张图把 Cache 的增长、复用和调度边界放在一起；它用于判断瓶颈位置，不替代真实 backend 的命中率、并发和显存测量。
+图中实线表示需求、状态反馈或动作，虚线表示容量与预算约束。每条边都参与后续迭代，Task 编号表示学习入口，而不是请求依次通过的三个模块；抢占和释放必须通过缓存管理接口执行。
 
-## 第四段：Cache 边界暴露后，Serving 调度成为系统问题（对应正文 07）
+![生成需求、缓存容量和调度预算构成双向约束](../../docs/public/topic_discussion/inference_optimization/generation_cache_scheduling_constraints.svg)
 
-当 Cache 管理已经不能单独解决问题，新的瓶颈通常出现在请求之间：长 Prompt 的 Prefill 会带来突发计算，Decode 则需要持续获得稳定的计算和 Cache 访问。如果两类请求共享同一调度策略，TTFT、TPOT 和 P99 可能互相牵制。
+## 缓存增加怎样改变可接纳请求
 
-- Part 02 [INF-ITERATION-BUDGET 单轮成本与批次上界](../../02_PyTorch_Algorithms/INF-ITERATION-BUDGET_Serving_Iteration_Cost_and_Batch_Bounds.ipynb)
-- Part 02 [36 Decode Scheduling](../../02_PyTorch_Algorithms/36_Decode_Scheduling.ipynb)
-- Part 02 [37 KV Cache 生命周期与容量控制](../../02_PyTorch_Algorithms/37_KV_Cache_Lifecycle_and_Capacity_Control.ipynb)
-- Part 02 [INF-CONTINUOUS-BATCHING 连续批处理](../../02_PyTorch_Algorithms/INF-CONTINUOUS-BATCHING_Continuous_Batching.ipynb)
-- Part 02 [38 Prefill/Decode Scheduling](../../02_PyTorch_Algorithms/38_Prefill_Decode_Scheduling.ipynb)
-- Part 02 [39 Hetero PD and Serving Tiers](../../02_PyTorch_Algorithms/39_Hetero_PD_and_Serving_Tiers.ipynb)
-- Part 02 [70 Serving Scheduler Benchmark](../../02_PyTorch_Algorithms/70_Serving_Scheduler_Benchmark.ipynb)
-- 专题正文 [07 Serving 调度与 PD 分离](./07_serving_scheduling_and_pd.md)
+三个解码请求继续增长历史状态，长请求预填充又要申请新块。逻辑缓存随词元增长，物理块在跨页时申请；请求结束后，仍被共享引用的块不能立即回收。空闲槽位和可用缓存因此是不同条件。
 
-这一段先回答“单轮最多放多少”：slot、KV、scheduled token、SLO 与 backend 五类上界中，最小者决定当前批量边界。随后才判断当前请求分布是否需要 Continuous Batching、Chunked Prefill、PD 分离或异构路由。CPU 可以帮助理解预算、队列、分块与决策状态；调度收益、P99、跨实例通信、KV 交接和 GPU 利用率仍需真实 backend 验证。
+先根据层数、KV 头数、长度与精度估算逻辑容量，再对照块表、引用和实际分配。状态异常先修复分配与回收，容量确实不足时再比较抢占、重算或更紧凑的表示。
 
-## 第五段：量化进入候选集，但不自动代表服务更好
+![KV 建立、分页、共享与容量动作](../../docs/public/topic_discussion/inference_optimization/kv_cache_lifecycle_zh.svg)
 
-当 cache、batch 和部署成本一起成为约束时，团队通常会开始引入量化。这里最危险的误判是：只要显存降了，就默认服务更好。这一步应沿量化部署线来判断：
+## 长请求带着重复前缀时能跳过多少计算
 
-- Part 01 [21 Quantization Theory and INT4 INT8](../../01_Hardware_Math_and_Systems/21_Quantization_Theory_and_INT4_INT8.ipynb)
-- Part 02 [25 Quantization W8A16](../../02_PyTorch_Algorithms/25_Quantization_W8A16.ipynb)
-- Part 02 [40 GPTQ and AWQ Weight Quantization](../../02_PyTorch_Algorithms/40_GPTQ_and_AWQ_Weight_Quantization.ipynb)
-- Part 02 [41 FP8 运行时低精度路径](../../02_PyTorch_Algorithms/41_FP8_Runtime_Low_Precision_Paths.ipynb)
-- Part 02 [67 Quantized Inference and Deployment](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.ipynb)
+如果长请求与已有缓存共享连续前缀，可以只处理未命中后缀。复用前需核对词元序列、模型权重、位置、适配器和缓存表示，并确认访问权限；匹配成功后还要增加引用，保护正在使用的块。索引找到节点后，设备是否少处理了这些前缀位置，可以由实际复用词元数核对。
 
-这里真正要比较的是：这些方案改的是权重、KV cache 还是运行态张量；它们对 `TTFT / TPOT / throughput / peak memory` 的影响是否一致；当前服务目标更重在线交互还是更重离线吞吐。
+分页决定逻辑位置对应哪个物理块，前缀索引决定哪些已计算状态可被共享；两者可以组合。[缓存正文](./04_kv_cache_lifecycle_and_reuse.md)将命中词元、未命中后缀、容量占用与 TTFT 联系起来。
 
-![量化推理与部署](../../docs/public/topic_discussion/inference_optimization/quantized_deployment_zh.svg)
+![物理分页与前缀索引分别解决什么问题](../../docs/public/topic_discussion/inference_optimization/kv_cache_backend_mechanisms_zh.svg)
 
-量化不是单一的“降显存”开关；图中应先区分压缩对象和运行时支持，再回到延迟、吞吐、显存和质量一起判断。
+## 长输入怎样与已有解码分享下一轮
 
-## 第六段：最后回到同一 workload 做结论
+假设一轮最多处理八个词元，三个解码请求各占一个。缓存允许新请求进入时，长请求本轮可以先处理五个输入词元，再等待后续轮次。已有请求较早重新获得生成机会，长请求却需要更多轮才能完成预填充，二者的等待要一起比较。
 
-前面几段都还是局部判断，真正做结论时，必须回到同一个基准框架里。66 固定通用基线，68、69、70 分别承接解码、缓存和服务调度，82 → 67 → 83 形成量化服务候选，72 把这些结果整理为单卡部署交接清单。Part 05 再用冻结请求协议复测候选并检查质量、容量和回滚条件。当单实例无法满足容量或服务目标时，再进入 Task6 的模型内部并行、MoE 专家并行和分布式推理决策：
+完成请求退出后，连续批处理利用释放的槽位补入等待者；队列优先级、缓存和词元预算共同限制成员。下图从缓存、批次与阶段竞争分类，[服务调度](./05_serving_scheduling_and_pd.md)再展开具体轮次。
 
-![Benchmark 决策流程](../../docs/public/topic_discussion/inference_optimization/benchmark_decision_zh.svg)
+![缓存容量、组批与阶段竞争共同约束服务](../../docs/public/topic_discussion/inference_optimization/vllm_sglang_serving_zh.svg)
 
-最终比较必须固定 workload、指标和质量门槛，再将候选方案归入 `accept / tune / reject`；图片展示的是决策流程，不是某次实验的结果。
+## 下一轮准备能否提前完成
 
-- **核心项目：** Part 02 [66 Inference Performance Comparison](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.ipynb)
-- **扩展项目：** Part 02 [68 Speculative Decoding Benchmark](../../02_PyTorch_Algorithms/68_Speculative_Decoding_Benchmark.ipynb)
-- **主题项目：** Part 02 [69 Prefix Caching Benchmark](../../02_PyTorch_Algorithms/69_Prefix_Caching_Benchmark.ipynb)
-- **扩展项目：** Part 02 [70 Serving Scheduler Benchmark](../../02_PyTorch_Algorithms/70_Serving_Scheduler_Benchmark.ipynb)
-- **分布式机制与项目：** Part 02 [46 Communication Profiling with NCCL](../../02_PyTorch_Algorithms/47_Communication_Profiling_with_NCCL.ipynb) → [48 Communication Hotspots and Mitigation](../../02_PyTorch_Algorithms/48_Communication_Hotspots_and_Mitigation.ipynb) → [49 Parallelism Strategy Selection](../../02_PyTorch_Algorithms/49_Parallelism_Strategy_Selection.ipynb) → [79 Distributed Parallel Benchmark](../../02_PyTorch_Algorithms/79_Distributed_Parallel_Benchmark.ipynb) → [81 Distributed Inference Logic Validation](../../02_PyTorch_Algorithms/81_Distributed_Inference_Project.ipynb)；MoE 分支进入 [47](../../02_PyTorch_Algorithms/46_MoE_Expert_Parallel.ipynb) → [80](../../02_PyTorch_Algorithms/80_MoE_Expert_Parallel_Benchmark.ipynb)
-- **部署收口：** Part 02 [72 Multi-Model Deployment Comparison](../../02_PyTorch_Algorithms/72_Multi_Model_Deployment_Comparison.ipynb)
-- **综合交付：** Part 05 [推理服务交付综合项目](../../05_Integrated_Projects_and_Decisions/01_Inference_Service/index.md)
+选定成员后，CPU 准备、设备传输和计算还有各自依赖。后批输入可以在前批计算时搬运，但本批计算必须等自己的输入就绪，缓冲区也要等使用结束后才能覆盖。新增流或线程，需要时间线确认它真正减少了暴露等待。
 
-真正的 benchmark 收口不是“这个方法更先进”，而是 `accept / tune / reject`：它是否适合当前 workload 和服务目标。把这条故事走完以后，一个更像真实交付的结论通常是：长 prompt 下先解决 prefill，随后瓶颈转到 decode 与调度，再往后是 cache 和量化共同决定服务边界，最终被接受的不是某个单点技巧，而是一组在同一 workload 下同时站得住的链路优化组合。
+下图是两个批次的构造例子：后批传输与前批计算重叠，后批仍要等 GPU 可用。实际实验分别记录总时间、传输与空闲，不把传输总量减少当作已经缩短请求等待。
+
+![两个批次的准备、传输与计算时间](../../docs/public/topic_discussion/inference_optimization/07_execution_overlap_timeline.svg)
+
+## 容量仍然受限时，低比特改变了什么
+
+权重驻留挤占缓存时，可以评估权重表示；计算或激活读写成本突出时，比较激活缩放与低精度计算；历史状态随上下文增长时，则观察 KV 表示。权重候选需要核对产物与加载器，运行配置需要确认实际内核，缓存候选还要检查每步追加与恢复。转换、缩放或反量化都可能增加执行成本。
+
+使用相同任务与请求规则，分别检查输出长度、终止、质量、资源和延迟。[量化部署](./06_quantized_inference_and_deployment.md)关注既有候选在目标后端的表现，校准与位宽选择进入量化专题。
+
+![按量化对象进入加载、执行与结果比较](../../docs/public/topic_discussion/inference_optimization/quantized_deployment_zh.svg)
+
+## 哪个候选适合保留
+
+回到同一组请求，读取长请求首词元、已有请求生成间隔、有效吞吐、峰值与失败。单项开关解释机制，组合配置只说明整套方案的收益；首次准备、冷缓存和热复用也要分开。候选更快但回答不完整时，不能把减少的输出计成同工作量加速。
+
+[基准与决策](./07_benchmark_and_decision.md)把质量、SLO 和资源门槛放在排序之前。专项结果可提供候选来源；独立综合项目自行固定模型与请求并重新测量，单卡也可以完成采用判断。容量或吞吐仍不足时，再按[分布式推理](./08_distributed_inference_and_parallelism.md)比较副本或模型内部切分，额外测量通信、负载与恢复代价。
+
+![共同请求与质量协议下的比较和决策](../../docs/public/topic_discussion/inference_optimization/benchmark_decision_zh.svg)
+
+## 单实例不足后，增加的是副本还是模型分片
+
+模型能够完整驻留而请求排队时，副本可以分别处理不同请求；权重与状态超出单卡预算时，则需要拆分模型或上下文。下图用按层切分说明后一种路径：同一请求跨设备推进，还要等待层间激活传输。两种扩展分别比较路由与缓存局部性、切分后的通信与容量，具体取舍见[分布式推理](./08_distributed_inference_and_parallelism.md)。
+
+![副本分别接纳请求，按层切分通过激活连接同一请求](../../docs/public/topic_discussion/inference_optimization/distributed_request_paths.svg)

@@ -1,63 +1,61 @@
 # 推理优化（Inference Optimization）
 
-> 专题类型：主学习路线　主服务目标：请求性能与 Serving 决策
+> 专题类型：主学习路线　学习目标：在质量与资源约束下解释请求等待，并比较计算执行、状态管理和调度方案。
 
-推理优化研究模型如何把一组输入 Token 转换为连续输出，以及请求在排队、预填充（Prefill）、解码（Decode）、KV Cache 和执行后端中为何产生延迟、容量与吞吐差异。学习重点是把请求现象还原为状态、工作负载、执行路径和可比较证据。
+长输入可能让首个词元迟迟无法返回，重复前缀可能被反复计算，并发增大后还可能出现排队和生成停顿。推理优化从这些请求现象出发，分别跟踪模型计算、KV Cache 和服务批次，解释时间与显存花在哪里，再判断改动是否改善目标负载。
 
-本路线先固定请求生命周期和可比指标，再解释注意力执行、解码推进、KV Cache 管理、服务调度、低精度部署与分布式扩展如何改变延迟、吞吐和容量。最终结论必须来自固定工作负载下的真实执行路径和配对证据。
+缩短一次计算，可能仍留下排队等待；保留更多可复用前缀，也可能挤占新请求的缓存空间。理解这些取舍，才能选择适合目标负载的加速方案。
 
 ## 学习路线
 
-按 Task 顺序学习时使用下表；需要连续理解请求因果关系时进入[推理优化问题链](./walkthrough.md)，遇到延迟、容量、缓存或回退异常时使用[推理优化判断手册](./casebook.md)，术语差异查询[专题术语表](./glossary.md)。
+先建立请求基线，再分别研究计算、生成、缓存与调度，随后按瓶颈选择低精度分支，最后复测组合方案。每阶段都从减少的工作或等待出发，计入新增代价，再回看请求表现；基本顺序与入口见下表。
 
-| Task / 主题 | 本阶段要回答的问题 | 学习入口与验证出口 | 学习顺序 | 主要正文入口 |
+[基准与决策](./07_benchmark_and_decision.md)从第一次比较开始使用：单项实验解释机制，组合实验判断整套配置。连续理解请求变化使用[问题链](./walkthrough.md)，按现象查找原因使用[判断手册](./casebook.md)，概念差异见[术语表](./glossary.md)。
+
+| Task / 学习主题 | 优化对象与本阶段问题 | 学习入口与验证出口 | 学习顺序 | 主要正文入口 |
 |:---|:---|:---|:---|:---|
-| Task0 · 请求、工作负载与指标 | 一次仅解码器自回归请求如何经过预填充、逐词元解码和终止，并产生可比较的阶段指标？ | 核心：[Part 02 · INF-REQUEST 请求生命周期](../../02_PyTorch_Algorithms/INF-REQUEST-LIFECYCLE_Inference_Request_Lifecycle.ipynb)；项目：[Part 02 · 66 推理性能比较](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.ipynb) | 仅解码器生成路径 → 请求事件与状态 → 阶段指标 → 工作负载契约 → 失败与证据 → 真实后端基线验证 | [专题正文 · 01 请求链路与指标](./01_request_path_and_metrics.md) |
-| Task1 · 注意力计算与执行分派 | 注意力表示与执行路径如何决定预填充工作集、KV 状态和后续解码成本？ | 核心：[Part 02 · 04 MHA / GQA](../../02_PyTorch_Algorithms/04_Attention_MHA_GQA.ipynb) → [Part 02 · 20 FlashAttention / SDPA](../../02_PyTorch_Algorithms/20_FlashAttention_Sim.ipynb) → [Part 02 · INF-EXECUTION-DISPATCH](../../02_PyTorch_Algorithms/INF-EXECUTION-DISPATCH_Inference_Fusion_and_Backend_Dispatch.ipynb)；扩展：[算子优化](../operator_optimization/intro.md) | 复用 Task0 工作负载 → 注意力头表示 → 预填充建立 KV → 分块工作集与融合 → 执行后端能力门槛 → 向解码阶段交付 KV 状态 | [专题正文 · 02 预填充与注意力计算内核](./02_prefill_and_attention_kernel.md) |
-| Task2 · 解码推进与候选验证 | 解码如何读取已有状态，并通过草稿、验证和动态预算提高每轮有效推进量，同时保持目标分布？ | 核心：[Part 02 · 21 解码策略](../../02_PyTorch_Algorithms/21_Decoding_Strategies.ipynb) → [Part 02 · 23 投机解码](../../02_PyTorch_Algorithms/23_Speculative_Decoding.ipynb) → [Part 02 · 35 原生 MTP](../../02_PyTorch_Algorithms/35_Multi_Token_Decoding.ipynb)或[Part 02 · INF-EAGLE](../../02_PyTorch_Algorithms/INF-EAGLE_Feature_Drafter_and_Candidate_Tree.ipynb) → [Part 02 · INF-PROPOSAL 动态预算](../../02_PyTorch_Algorithms/INF-PROPOSAL_Dynamic_Proposal_and_Verification_Budget.ipynb)；项目：[Part 02 · 68 投机解码基准](../../02_PyTorch_Algorithms/68_Speculative_Decoding_Benchmark.ipynb)；扩展：[Part 02 · INF-PARALLEL-DRAFTING 并行草稿](../../02_PyTorch_Algorithms/INF-PARALLEL-DRAFTING_DFlash_and_DSpark.ipynb) | 单步解码与采样 → 精确验证语义 → MTP / EAGLE / 并行草稿候选 → 动态候选预算 → 真实模型净收益复测 | [专题正文 · 03 解码策略](./03_decoding_strategies.md) |
-| Task3 · KV Cache 表示、管理与复用 | KV Cache 在预填充阶段如何建立，并在持续解码中如何分页、追加、复用、驱逐与压缩？ | 核心：[Part 02 · 04 MHA / GQA](../../02_PyTorch_Algorithms/04_Attention_MHA_GQA.ipynb) → [Part 02 · 22 PagedAttention](../../02_PyTorch_Algorithms/22_vLLM_PagedAttention.ipynb) → [Part 02 · 37 KV 生命周期](../../02_PyTorch_Algorithms/37_KV_Cache_Lifecycle_and_Capacity_Control.ipynb) → [Part 02 · 24 Prefix Cache](../../02_PyTorch_Algorithms/24_Prefix_Cache_Matching_and_Reuse.ipynb) → [Part 02 · 34 RadixAttention](../../02_PyTorch_Algorithms/34_SGLang_RadixAttention.ipynb)；项目：[Part 02 · 69 Prefix Cache](../../02_PyTorch_Algorithms/69_Prefix_Caching_Benchmark.ipynb)；扩展：[Part 02 · ARCH-MLA 紧凑 KV 表示](../../02_PyTorch_Algorithms/ARCH-MLA_Multihead_Latent_Attention.ipynb) → [Part 02 · 71 MLA 基准](../../02_PyTorch_Algorithms/71_MLA_KV_Cache_Architecture_Benchmark.ipynb)，以及 [Part 02 · 54 KV Cache 量化](../../02_PyTorch_Algorithms/54_KV_Cache_Quantization_Strategies.ipynb) | KV 表示与容量 → 分页分配 → 生命周期与容量控制 → 通用前缀匹配 → Radix 索引 → 真实复用验证；按容量问题扩展 MLA 或 KV 量化 | [专题正文 · 04 KV Cache 表示、管理与复用](./04_kv_cache_lifecycle_and_reuse.md) |
-| Task4 · 服务迭代预算、调度与异构协同 | 单轮工作量上界如何进入请求选择、动态批次、阶段调度与异构路由？ | 核心：[Part 02 · INF-ITERATION-BUDGET](../../02_PyTorch_Algorithms/INF-ITERATION-BUDGET_Serving_Iteration_Cost_and_Batch_Bounds.ipynb) → [Part 02 · 36 请求调度](../../02_PyTorch_Algorithms/36_Decode_Scheduling.ipynb) → [Part 02 · INF-CONTINUOUS-BATCHING](../../02_PyTorch_Algorithms/INF-CONTINUOUS-BATCHING_Continuous_Batching.ipynb) → [Part 02 · 38 阶段调度](../../02_PyTorch_Algorithms/38_Prefill_Decode_Scheduling.ipynb) → [Part 02 · INF-SERVING-OVERLAP](../../02_PyTorch_Algorithms/INF-SERVING-OVERLAP_Serving_Overlap_and_State_Handoff.ipynb) → [Part 02 · 39 异构 PD](../../02_PyTorch_Algorithms/39_Hetero_PD_and_Serving_Tiers.ipynb)；项目：[Part 02 · 70 Serving 调度](../../02_PyTorch_Algorithms/70_Serving_Scheduler_Benchmark.ipynb)；扩展：[Part 02 · INF-AFD](../../02_PyTorch_Algorithms/INF-AFD_Attention_FFN_Disaggregation.ipynb) | 读取 Task3 容量状态 → 单轮预算 → 请求选择 → 动态批次 → 阶段调度 → 重叠与异构路由 → 真实后端调度复测 | [专题正文 · 07 Serving 调度与 PD 分离](./07_serving_scheduling_and_pd.md) |
-| Task5 · 低精度执行与单卡部署准入 | 一个浮点或量化产物怎样通过加载器、执行后端和计算内核检查，并在单卡工作负载下形成可复现的准入结论？ | 核心：[Part 02 · 66 浮点基线](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.ipynb) → [Part 02 · 52 校准与误差](../../02_PyTorch_Algorithms/52_Quantization_Calibration_and_Error.ipynb) → [Part 02 · 25 W8A16](../../02_PyTorch_Algorithms/25_Quantization_W8A16.ipynb) → [Part 02 · INF-EXECUTION-DISPATCH](../../02_PyTorch_Algorithms/INF-EXECUTION-DISPATCH_Inference_Fusion_and_Backend_Dispatch.ipynb)；项目：[Part 02 · 82 量化产物准入](../../02_PyTorch_Algorithms/82_Quantization_Artifact_Evaluation_Project.ipynb) → [Part 02 · 67 量化部署](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.ipynb) → [Part 02 · 83 Serving 复测](../../02_PyTorch_Algorithms/83_Quantized_Serving_Profile_Benchmark.ipynb)；扩展：[量化与压缩 · Task2–6](../quantization_compression/intro.md) | 浮点基线 → 量化对象与误差 → 产物 → 加载器 → 执行后端 → 计算内核或回退 → 单卡配对复测 | [专题正文 · 05 量化推理与部署](./05_quantized_inference_and_deployment.md) |
-| Task6 · 分布式 Serving、可靠性与 SLO 决策 | 单卡基线不足或设备失效时，应选择请求副本还是模型内部并行？通信、恢复和扩展代价能否满足目标 SLO？ | 核心：[Part 01 · 26 并行策略决策](../../01_Hardware_Math_and_Systems/26_Parallel_Strategy_Decision_Framework.ipynb) → [Part 02 · PAR-REPLICA 请求副本](../../02_PyTorch_Algorithms/PAR-REPLICA_Serving_Replica_Routing.ipynb) / [Part 02 · 87 模型内部并行](../../02_PyTorch_Algorithms/87_Model_Internal_Parallel_Benchmark.ipynb)；项目：[Part 02 · 81 分布式推理验证](../../02_PyTorch_Algorithms/81_Distributed_Inference_Project.ipynb)；扩展：[通信与并行](../communication_parallelism/intro.md) | 单卡基线 → 请求副本 / 模型内部并行 → 通信与恢复证据 → 扩展效率与 SLO 决策 | [专题正文 · 08 分布式推理与并行](./08_distributed_inference_and_parallelism.md) |
+| Task0 · 推理请求与测量基线 | 怎样建立工作量和时间口径明确的请求基线？ | 核心：[Part 02 · INF-REQUEST-LIFECYCLE 推理请求生命周期与核心指标](../../02_PyTorch_Algorithms/INF-REQUEST-LIFECYCLE_Inference_Request_Lifecycle.ipynb)；项目：[Part 02 · 66 单卡推理测量基线](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.ipynb)；[nano-vLLM 请求入口](./nano_vllm_request_walkthrough.md#request-entry) | 请求事件与指标 → 引擎生成观察 → 单并发基线 → 多请求概念对照 | [01 请求链路与指标](./01_request_path_and_metrics.md) |
+| Task1 · 模型前向、融合与执行分派 | 怎样减少一次前向的计算、读写与提交成本？ | 核心：[Part 02 · 05 LLaMA3 Block 教程](../../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.ipynb)、[Part 02 · 20 FlashAttention 模拟](../../02_PyTorch_Algorithms/20_FlashAttention_Sim.ipynb)、[Part 02 · INF-EXECUTION-DISPATCH 推理融合与后端分派](../../02_PyTorch_Algorithms/INF-EXECUTION-DISPATCH_Inference_Fusion_and_Backend_Dispatch.ipynb)；[nano-vLLM 模型执行](./nano_vllm_request_walkthrough.md#model-forward) | 层内数据流与形状 → 分块、融合与分派 → 准备成本与完整前向 | [02 模型前向与计算执行](./02_prefill_and_attention_kernel.md) |
+| Task2 · 自回归生成与投机验证 | 怎样让生成更快，并保持约定的采样与质量要求？ | 核心：[Part 02 · 21 解码策略](../../02_PyTorch_Algorithms/21_Decoding_Strategies.ipynb)、[Part 02 · 23 投机解码](../../02_PyTorch_Algorithms/23_Speculative_Decoding.ipynb)、[Part 02 · INF-PROPOSAL 动态候选生成与验证预算](../../02_PyTorch_Algorithms/INF-PROPOSAL_Dynamic_Proposal_and_Verification_Budget.ipynb)；[nano-vLLM 普通生成参照](./nano_vllm_request_walkthrough.md#generation-loop)；项目：[Part 02 · 68 投机解码机制选型基准](../../02_PyTorch_Algorithms/68_Speculative_Decoding_Benchmark.ipynb) | 普通生成与停止 → 投机接受与修正 → 候选成本与净收益 | [03 解码策略](./03_decoding_strategies.md) |
+| Task3 · KV 分页管理与前缀复用 | 怎样管理增长的 KV，并复用已有前缀？ | 核心：[Part 02 · 22 vLLM 分页注意力](../../02_PyTorch_Algorithms/22_vLLM_PagedAttention.ipynb)、[Part 02 · 37 KV Cache 生命周期与容量控制](../../02_PyTorch_Algorithms/37_KV_Cache_Lifecycle_and_Capacity_Control.ipynb)、[Part 02 · 24 Prefix Cache 匹配与复用](../../02_PyTorch_Algorithms/24_Prefix_Cache_Matching_and_Reuse.ipynb)；[nano-vLLM 块管理](./nano_vllm_request_walkthrough.md#cache-blocks)与[Mini-SGLang 前缀索引](./mini_sglang_cache_scheduling.md#prefix-cache)；项目：[Part 02 · 69 前缀缓存基准](../../02_PyTorch_Algorithms/69_Prefix_Caching_Benchmark.ipynb) | 逻辑容量 → 分页与引用 → 回收与前缀复用 | [04 KV Cache 表示、管理与复用](./04_kv_cache_lifecycle_and_reuse.md) |
+| Task4 · 请求准入、连续组批与阶段调度 | 下一轮运行谁、推进多少，怎样权衡等待与吞吐？ | 核心：[Part 02 · INF-ITERATION-BUDGET Serving 迭代成本与批次容量上界](../../02_PyTorch_Algorithms/INF-ITERATION-BUDGET_Serving_Iteration_Cost_and_Batch_Bounds.ipynb)、[Part 02 · 36 解码调度](../../02_PyTorch_Algorithms/36_Decode_Scheduling.ipynb)、[Part 02 · INF-CONTINUOUS-BATCHING 连续批处理](../../02_PyTorch_Algorithms/INF-CONTINUOUS-BATCHING_Continuous_Batching.ipynb)、[Part 02 · 38 Prefill/Decode 调度](../../02_PyTorch_Algorithms/38_Prefill_Decode_Scheduling.ipynb)；[nano-vLLM 请求选择](./nano_vllm_request_walkthrough.md#iteration-scheduling)与[Mini-SGLang 阶段调度](./mini_sglang_cache_scheduling.md#phase-scheduling)；项目：[Part 02 · 70 推理服务调度基准](../../02_PyTorch_Algorithms/70_Serving_Scheduler_Benchmark.ipynb) | 队列与缓存 → 成员与阶段预算 → 连续轮次与等待 | [05 服务预算、连续批处理与阶段调度](./05_serving_scheduling_and_pd.md) |
+| Task5 · 权重、激活与 KV 低精度执行 | 权重读取、计算或 KV 容量受限时，分别降低哪类数据的精度？ | 核心：权重：[Part 02 · 25 W8A16](../../02_PyTorch_Algorithms/25_Quantization_W8A16.ipynb) → [Part 02 · 40 GPTQ／AWQ](../../02_PyTorch_Algorithms/40_GPTQ_and_AWQ_Weight_Quantization.ipynb)；激活与计算：[Part 02 · 53 SmoothQuant](../../02_PyTorch_Algorithms/53_Activation_Quantization_and_SmoothQuant.ipynb) 或 [Part 02 · 41 FP8](../../02_PyTorch_Algorithms/41_FP8_Runtime_Low_Precision_Paths.ipynb)；KV：[Part 02 · 54 KV Cache 量化](../../02_PyTorch_Algorithms/54_KV_Cache_Quantization_Strategies.ipynb)；[Mini-SGLang 低精度源码对照](./mini_sglang_cache_scheduling.md#quantized-execution)（按所选分支能力）；项目：权重产物经 [Part 02 · 82 量化产物评估](../../02_PyTorch_Algorithms/82_Quantization_Artifact_Evaluation_Project.ipynb)，部署与服务比较进入 [Part 02 · 67 量化推理与部署](../../02_PyTorch_Algorithms/67_Quantized_Inference_and_Deployment.ipynb)、[Part 02 · 83 量化服务 Profile 基准](../../02_PyTorch_Algorithms/83_Quantized_Serving_Profile_Benchmark.ipynb) | 按瓶颈选择分支 → 核对表示、转换与实际内核 → 质量和请求收益；运行时精度与 KV 配置按后端能力复测，不强制生成量化权重产物 | [06 量化推理与部署](./06_quantized_inference_and_deployment.md) |
+| Task6 · 目标负载复测与方案采用 | 组合方案是否满足目标负载的质量、SLO 与资源门槛？ | 项目：[Part 02 · 72 单卡推理部署与 Backend 对比项目](../../02_PyTorch_Algorithms/72_Multi_Model_Deployment_Comparison.ipynb)、[Part 05 · 01 推理服务交付综合项目](../../05_Integrated_Projects_and_Decisions/01_Inference_Service/index.md) | 固定比较条件 → 配对与分桶复测 → 采用、调整或拒绝 | [07 端到端基准与决策](./07_benchmark_and_decision.md) |
 
-Task5 复用量化专题的机制 JSON 和版本化产物，不重复局部量化实验；当前 KV Cache 量化证据仅覆盖 Transformers `QuantizedCache` + HQQ，不能外推到 vLLM 或 SGLang。Task6 的 CPU 内容用于理解切分、路由和恢复决策，多卡通信、扩展效率与故障恢复证据暂缓到真实多 GPU 环境验证。
+Task2–4 的先后是学习顺序，实际服务中三者相互约束：较长的投机候选可能多占缓存和验证时间，可用块减少又会限制请求准入与批次规模。每轮执行后，接受、回退和完成事件都会改变下一轮的选择，关系见[生成、缓存与调度约束图](./walkthrough.md#generation-cache-scheduling)。低精度也会改变计算成本和可用容量，因此单项比较之后还需返回生成、缓存与调度复测。
 
-![推理优化学习路线：从请求链路到专项验证](../../docs/public/topic_discussion/inference_optimization/inference_optimization_roadmap.svg)
+完整模型实例是能够接收并执行请求的运行单元，通常维护自己的权重、缓存和调度状态。复制实例让不同请求分别执行；一个实例也可以让多张卡协作处理同一请求。因此实例数与卡数不是同一个量，两种方式还可以组合。请求压力或隔离需求可能要求复制实例，模型与目标状态放不下时则可能在建立基线前就需要跨设备切分；具体入口见[分布式推理](./08_distributed_inference_and_parallelism.md)。
 
-![推理优化知识地图：从请求对象到验证决策](../../docs/public/topic_discussion/inference_optimization/inference_optimization_knowledge_map.svg)
+![推理优化学习顺序、共同基线与两类执行资源选择](../../docs/public/topic_discussion/inference_optimization/inference_optimization_roadmap.svg)
+
+![低精度、计算、生成、缓存与调度怎样共同影响请求结果](../../docs/public/topic_discussion/inference_optimization/inference_optimization_knowledge_map.svg)
+
 
 ## 扩展与跨专题入口
 
-### 按需回补：架构与共享前置
+关键前置按当前问题选择：估算层内计算与驻留资源时读 [Part 01 · 02 大模型参数量与算力推导](../../01_Hardware_Math_and_Systems/02_LLM_Params_and_FLOPs.ipynb) 和 [Part 01 · 03 GPU 物理架构与内存层级](../../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.ipynb)；计算 KV 容量时读 [Part 01 · 11 KV Cache 与显存增长](../../01_Hardware_Math_and_Systems/11_KV_Cache_and_Memory_Growth.ipynb)；进入专家执行时先读 [Part 02 · 06 MoE 路由器](../../02_PyTorch_Algorithms/06_MoE_Router.ipynb) 与 [Part 01 · 22 MoE 模型参数量计算](../../01_Hardware_Math_and_Systems/22_MoE_Parameter_and_Compute.ipynb)。
 
-遇到架构、MoE、dtype 或精度方面的知识缺口时，从下表回补对应入口，再回到当前 Task 继续学习。
+计算细节按层内对象回补：[Part 02 · 04 多头注意力](../../02_PyTorch_Algorithms/04_Attention_MHA_GQA.ipynb)、[Part 02 · 01 RMSNorm 教程](../../02_PyTorch_Algorithms/01_RMSNorm_Tutorial.ipynb)、[Part 02 · 02 SwiGLU 激活](../../02_PyTorch_Algorithms/02_SwiGLU_Activation.ipynb)。缓存需要更紧凑表示或索引时，再选择 [Part 02 · ARCH-MLA MLA 与紧凑 KV 表示](../../02_PyTorch_Algorithms/ARCH-MLA_Multihead_Latent_Attention.ipynb)或 [Part 02 · 34 SGLang 基数注意力](../../02_PyTorch_Algorithms/34_SGLang_RadixAttention.ipynb)。
 
-| 补充主题 | Notebook 入口 | 建议时机 |
+教学引擎分阶段阅读：Task0 用 nano-vLLM 认识请求与生成，Task3 加入 Mini-SGLang 对照前缀复用，Task4 继续观察轮次调度；Task5 按所选版本和分支能力对照低精度执行。具体入口见[教学引擎导读](./teaching_engines.md)。
+
+| 遇到的问题 | 入口 | 衔接内容 |
 |:---|:---|:---|
-| Benchmark 证据与实验设计 | [Part 00 · 20 性能证据与实验设计](../../00_Prerequisites/20_Performance_Evidence_and_Experiment_Design.ipynb) | Task0 / Task6；需要固定工作负载、基线、重复测量、失败记录和证据等级时 |
-| 模型计算量与硬件资源 | [Part 01 · 02 参数量与 FLOPs](../../01_Hardware_Math_and_Systems/02_LLM_Params_and_FLOPs.ipynb) → [Part 01 · 03 GPU 架构与显存](../../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.ipynb) | Task0–1；需要估算计算、带宽与容量上界时 |
-| 注意力工作集与显存 | [Part 01 · 04 注意力显存优化](../../01_Hardware_Math_and_Systems/04_Attention_Memory_Optimization.ipynb) → [Part 01 · 14 FlashAttention 显存模型](../../01_Hardware_Math_and_Systems/14_FlashAttention_Memory_Model.ipynb) | Task1；需要先建立完整分数矩阵、分块工作集和显存读写直觉时 |
-| KV Cache 容量增长 | [Part 01 · 11 KV Cache 与显存增长](../../01_Hardware_Math_and_Systems/11_KV_Cache_and_Memory_Growth.ipynb) | Task3；需要从层数、KV 头数、上下文长度和并发度估算容量上界时 |
-| 架构基础 | [Part 02 · 05 LLaMA3 Block](../../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.ipynb)、[Part 02 · 08 Architecture Tricks](../../02_PyTorch_Algorithms/08_Architecture_Tricks.ipynb) | Task0 开始时需要确认仅解码器模型的数据流、持久状态或架构配置时 |
-| 数据类型、量化表示与运行时约束 | [Part 01 · 01 数据类型与精度](../../01_Hardware_Math_and_Systems/01_Data_Types_and_Precision.ipynb) → [Part 01 · 21 量化理论](../../01_Hardware_Math_and_Systems/21_Quantization_Theory_and_INT4_INT8.ipynb) → [Part 01 · 34 异构运行时约束](../../01_Hardware_Math_and_Systems/34_Heterogeneous_Accelerators_and_Runtime_Constraints.ipynb) | Task5；需要解释数据类型、产物兼容性或执行回退时 |
-| 异步执行与状态交接 | [Part 01 · 17 CUDA Stream](../../01_Hardware_Math_and_Systems/17_CUDA_Stream_and_Asynchrony.ipynb) | Task4；需要解释准备、计算和搬运重叠时 |
-| 通信拓扑与集合通信 | [Part 01 · 05 通信拓扑](../../01_Hardware_Math_and_Systems/05_Communication_Topologies.ipynb) → [Part 01 · 20 NCCL 与 AllReduce](../../01_Hardware_Math_and_Systems/20_NCCL_and_AllReduce_Basics.ipynb) | Task6；需要解释多卡通信上界时 |
-| 可靠性与恢复 | [Part 01 · 28 故障容错与检查点](../../01_Hardware_Math_and_Systems/28_Fault_Tolerance_and_Checkpointing.ipynb) | Task6；需要检查副本失效、重试、状态恢复和降级条件时 |
-| MoE 架构与计算 | [Part 02 · 06 MoE Router](../../02_PyTorch_Algorithms/06_MoE_Router.ipynb)、[Part 02 · 07 MoE Load Balancing](../../02_PyTorch_Algorithms/07_MoE_Load_Balancing_Loss.ipynb)、[Part 01 · 22 MoE 参数与计算](../../01_Hardware_Math_and_Systems/22_MoE_Parameter_and_Compute.ipynb) | Task4 / Task6；进入 AFD 或专家并行前 |
-
-### 跨专题入口
-
-需要核对注意力表示、MoE 或混合记忆时进入[模型架构演进](../llm_architecture_evolution/intro.md)；定位延迟和容量来源时进入[性能分析](../performance_analysis/intro.md)，比较候选和瓶颈转移时进入[性能优化](../performance_optimization/intro.md)；量化产物与低精度路径进入[量化与压缩](../quantization_compression/intro.md)，多卡切分与通信证据进入[通信与并行](../communication_parallelism/intro.md)，计算内核与融合进入[算子优化](../operator_optimization/intro.md)。
+| 不清楚层结构、注意力表示或稀疏专家语义 | [模型架构](../llm_architecture_evolution/intro.md) | 确认模型计算与状态定义 |
+| 不知道时间花在哪里 | [性能分析](../performance_analysis/intro.md) | 阶段归因、轨迹与资源瓶颈 |
+| 局部候选引起瓶颈转移 | [性能优化](../performance_optimization/intro.md) | 比较组合与目标负载收益 |
+| 需要修改分块、融合或内核 | [算子优化](../operator_optimization/intro.md) | 从已定位计算进入实现 |
+| 需要校准、格式转换或低比特质量分析 | [量化与压缩](../quantization_compression/intro.md) | 产物与目标执行路径 |
+| 单实例安排不足，需要资源拆分 | [Part 02 · 39 异构 PD 与服务分层](../../02_PyTorch_Algorithms/39_Hetero_PD_and_Serving_Tiers.ipynb)、[Part 02 · INF-AFD Attention–FFN 解耦](../../02_PyTorch_Algorithms/INF-AFD_Attention_FFN_Disaggregation.ipynb) | KV 或层间激活的跨角色交接；准备与搬运等待先比较[Part 02 · INF-SERVING-OVERLAP 服务重叠与状态交接](../../02_PyTorch_Algorithms/INF-SERVING-OVERLAP_Serving_Overlap_and_State_Handoff.ipynb) |
+| 需要专家放置、模型切分或通信分析 | [通信与并行](../communication_parallelism/intro.md)、[08 分布式推理与并行扩展](./08_distributed_inference_and_parallelism.md) | 请求副本与模型内部并行的代价 |
+| 需要跨设备放置、兼容性与资源选型 | [部署异构](../deployment_heterogeneous/intro.md) | 资源与运行时约束 |
 
 ## 实验与项目出口
 
-首次运行先按[实验 Quickstart](./quickstart.md)创建或恢复环境，再从[实验资产表](./experiment_assets.md)选择 Profile、模型、工作负载、候选和结果路径；跨专题的软件版本与硬件快照查询[GPU 环境资产表](../../docs/gpu_environment_assets.md)。机制页验证一个受控变量，项目页再进入真实执行后端、请求队列和部署决策。
+环境创建见 [Quickstart](./quickstart.md)，机制与项目的输入、结果和验证状态见[实验资产表](./experiment_assets.md)。CPU 练习确认数值、状态和预算；设备执行、服务收益与多卡扩展分别需要对应运行证据。
 
-| 证据阶段 | 要回答的问题 | 输出与入口 |
+| 实验层次 | 要回答的问题 | 与其他层的关系 |
 |:---|:---|:---|
-| CPU 机制 | 状态转换、公式、预算或选择规则是否成立？ | 各机制页的题目、测试、答案与解析 |
-| 单卡机制 GPU | 真实模型、算子或运行时路径是否改变局部质量、延迟或显存？ | [Part 02 · 20 FlashAttention / SDPA](../../02_PyTorch_Algorithms/20_FlashAttention_Sim.ipynb)、INF-ITERATION-BUDGET、INF-EXECUTION-DISPATCH、INF-PROPOSAL、INF-SERVING-OVERLAP，以及量化专题 25、40、41、53、54 和 Mixed-bit 的机制 JSON |
-| 专项后端 | 缓存、调度或投机策略是否在真实请求中成立？ | [Part 02 · 68 投机解码](../../02_PyTorch_Algorithms/68_Speculative_Decoding_Benchmark.ipynb)、[Part 02 · 69 前缀缓存](../../02_PyTorch_Algorithms/69_Prefix_Caching_Benchmark.ipynb)、[Part 02 · 70 服务调度](../../02_PyTorch_Algorithms/70_Serving_Scheduler_Benchmark.ipynb) |
-| 单卡部署 | 合格产物与专项策略能否在同一单卡请求负载下形成可复测候选？ | [Part 02 · 66 浮点基线](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.ipynb)，68–70 专项证据，以及 82 → 67 → 83 量化链，统一交给 [Part 02 · 72 单卡部署](../../02_PyTorch_Algorithms/72_Multi_Model_Deployment_Comparison.ipynb)生成交接清单 |
-| 综合交付 | 多个单卡候选在冻结请求与质量协议下，哪一个满足服务 SLO、容量和回滚条件？ | [Part 05 · 推理服务交付综合项目](../../05_Integrated_Projects_and_Decisions/01_Inference_Service/index.md) |
-| 分布式决策 | 多卡方案能否在通信代价下改善容量、延迟或吞吐？ | [Part 02 · 87 模型内部并行](../../02_PyTorch_Algorithms/87_Model_Internal_Parallel_Benchmark.ipynb) → [Part 02 · 81 分布式推理验证](../../02_PyTorch_Algorithms/81_Distributed_Inference_Project.ipynb) |
+| 局部机制 | 数值、执行路径、时间或容量怎样随受控改动变化？ | 解释原因，为专项服务比较提供假设 |
+| Part02 专项与部署比较 | 策略在真实请求中是否有效，候选证据是否足以支持部署判断？ | 使用相符的模型、请求和测量协议；结论限定于该实验 |
+| Part05 独立综合实践 | 自行固定工作负载和配置组合后，哪套方案满足门槛？ | 独立测量；Part02 结果可提供候选来源，不是强制输入 |

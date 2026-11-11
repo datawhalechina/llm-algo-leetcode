@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">完整副本与按层切分的请求路径</title>
+<desc id="desc">左侧路由器将不同请求分别送到两个完整模型副本，单个请求只选择一个副本。右侧是流水线按层切分示例，同一请求先经过设备零的前半层，再经过设备一的后半层，设备间传递激活。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0 L10 5 L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#0f172a}.title{font-size:28px;font-weight:700}.head{font-size:24px;font-weight:700}.body{font-size:21px}.note{font-size:20px;fill:#475569}.node{stroke:#94a3b8;stroke-width:2;rx:12}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="40" y="48" class="title">扩展的对象不同，单个请求经过的设备也不同</text>
+<rect x="35" y="85" width="700" height="350" rx="16" fill="#eff6ff" stroke="#cbd5e1" data-layout-role="panel"/>
+<rect x="765" y="85" width="700" height="350" rx="16" fill="#f0fdf4" stroke="#cbd5e1" data-layout-role="panel"/>
+<text x="65" y="125" class="head">完整副本：不同请求分别执行</text>
+<text x="795" y="125" class="head">按层切分示例：同一请求跨设备执行</text>
+<rect x="65" y="230" width="240" height="80" class="node" fill="#dbeafe"/>
+<text x="185" y="263" text-anchor="middle" class="head">请求路由</text><text x="185" y="292" text-anchor="middle" class="body">每条请求选择一个副本</text>
+<rect x="435" y="160" width="260" height="80" class="node" fill="#dbeafe"/>
+<text x="565" y="193" text-anchor="middle" class="head">设备 0 · 完整模型</text><text x="565" y="222" text-anchor="middle" class="body">请求 A 的计算与缓存</text>
+<rect x="435" y="300" width="260" height="80" class="node" fill="#dbeafe"/>
+<text x="565" y="333" text-anchor="middle" class="head">设备 1 · 完整模型</text><text x="565" y="362" text-anchor="middle" class="body">请求 B 的计算与缓存</text>
+<path d="M305 250 H365 V200 H435" class="edge"/><text x="335" y="184" class="note">A</text>
+<path d="M305 290 H345 V340 H435" class="edge"/><text x="365" y="328" class="note">B</text>
+<rect x="795" y="230" width="240" height="80" class="node" fill="#dbeafe"/>
+<text x="915" y="263" text-anchor="middle" class="head">请求 A</text><text x="915" y="292" text-anchor="middle" class="body">同一条生成路径</text>
+<rect x="1165" y="160" width="260" height="80" class="node" fill="#dcfce7"/>
+<text x="1295" y="193" text-anchor="middle" class="head">设备 0 · 前半层</text><text x="1295" y="222" text-anchor="middle" class="body">处理请求 A</text>
+<rect x="1165" y="325" width="260" height="80" class="node" fill="#dcfce7"/>
+<text x="1295" y="358" text-anchor="middle" class="head">设备 1 · 后半层</text><text x="1295" y="387" text-anchor="middle" class="body">继续处理请求 A</text>
+<path d="M1035 270 H1090 V200 H1165" class="edge"/>
+<path d="M1295 240 V325" class="edge"/><text x="1315" y="287" class="note">层间激活</text>
+</svg>

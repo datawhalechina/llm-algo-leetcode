@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="570" viewBox="0 0 1500 570" role="img" aria-labelledby="title desc">
+<title id="title">生成、缓存与调度的相互约束</title>
+<desc id="desc">生成向缓存提出候选状态需求并提交或回退状态，缓存以可分配容量约束生成。生成的有效推进量与计算需求供调度决策，调度提供成员和候选预算。缓存向调度提供容量和恢复成本，调度通过缓存管理接口请求准入、释放或抢占。执行后的状态继续参与下一轮决策。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d}.title{font-size:28px;font-weight:700}.head{font-size:23px;font-weight:700}.body{font-size:20px}.label{font-size:17px;fill:#475569}.box{stroke:#829ab1;stroke-width:2}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}.constraint{fill:none;stroke:#475569;stroke-width:3;stroke-dasharray:8 6;marker-end:url(#arrow)}</style>
+<rect width="1500" height="570" fill="#f8fafc"/>
+<text x="40" y="48" class="title">生成需要状态与执行机会，缓存和调度共同限制推进量</text>
+<text x="40" y="86" class="label">实线：需求、反馈或动作；虚线：容量与预算约束。箭头表示运行依赖，不是三个串行步骤。</text>
+<rect x="40" y="230" width="360" height="135" rx="14" fill="#dbeafe" class="box"/>
+<text x="220" y="271" text-anchor="middle" class="head">Task2 · 生成与候选验证</text>
+<text x="220" y="310" text-anchor="middle" class="body">提出候选 · 验证 · 有效提交</text>
+<text x="220" y="341" text-anchor="middle" class="body">收益随接受量与总成本变化</text>
+<rect x="570" y="230" width="360" height="135" rx="14" fill="#dcfce7" class="box"/>
+<text x="750" y="271" text-anchor="middle" class="head">Task3 · KV 状态管理</text>
+<text x="750" y="310" text-anchor="middle" class="body">分配 · 共享 · 追加 · 回收</text>
+<text x="750" y="341" text-anchor="middle" class="body">保留已提交状态，撤销无效候选</text>
+<rect x="1100" y="230" width="360" height="135" rx="14" fill="#ede9fe" class="box"/>
+<text x="1280" y="271" text-anchor="middle" class="head">Task4 · 请求与批次调度</text>
+<text x="1280" y="310" text-anchor="middle" class="body">选择成员 · 分配本轮预算</text>
+<text x="1280" y="341" text-anchor="middle" class="body">权衡等待、吞吐与恢复代价</text>
+<path d="M400 260H570" class="edge"/>
+<text x="485" y="246" text-anchor="middle" class="label">候选需求与状态更新</text>
+<path d="M570 335H400" class="constraint"/>
+<text x="485" y="359" text-anchor="middle" class="label">可分配容量</text>
+<path d="M930 260H1100" class="constraint"/>
+<text x="1015" y="246" text-anchor="middle" class="label">容量与恢复成本</text>
+<path d="M1100 335H930" class="edge"/>
+<text x="1015" y="359" text-anchor="middle" class="label">准入与回收动作</text>
+<path d="M220 230V155H1280V230" class="edge"/>
+<text x="750" y="137" text-anchor="middle" class="body">有效推进量与计算需求：决定不同候选值得分配多少资源</text>
+<path d="M1280 365V460H220V365" class="constraint"/>
+<text x="750" y="491" text-anchor="middle" class="body">本轮成员、候选上限与执行机会：限制生成与验证的实际工作量</text>
+<text x="750" y="541" text-anchor="middle" class="label">每轮执行后重新读取请求、接受情况与缓存状态；调度动作必须遵守生成规则和缓存引用约束。</text>
+</svg>
