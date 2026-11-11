@@ -1,0 +1,51 @@
+{
+  "schema_version": "project-registry/v1",
+  "description": "Stable identities and contracts for Part 05 integrated delivery projects.",
+  "projects": [
+    {
+      "semantic_id": "INF-INTEGRATED-DELIVERY",
+      "notebook": "05_Integrated_Projects_and_Decisions/01_Inference_Service/Inference_Service_Project.ipynb",
+      "title": "推理服务交付综合项目",
+      "primary_owner": "integrated_projects",
+      "project_type": "integrated_delivery",
+      "topic_order": 1,
+      "target_contract": "inference-service-delivery/v1"
+    },
+    {
+      "semantic_id": "PT-INTEGRATED-DELIVERY",
+      "notebook": "05_Integrated_Projects_and_Decisions/02_Post_Training_Delivery/Post_Training_Delivery_Project.ipynb",
+      "title": "MiniMind 后训练综合项目",
+      "primary_owner": "integrated_projects",
+      "project_type": "integrated_delivery",
+      "topic_order": 2,
+      "target_contract": "minimind-post-training-delivery/v1"
+    },
+    {
+      "semantic_id": "PERF-INTEGRATED-DELIVERY",
+      "notebook": "05_Integrated_Projects_and_Decisions/03_Performance_Optimization_Delivery/Performance_Optimization_Delivery_Project.ipynb",
+      "title": "端到端性能优化与回归交付项目",
+      "primary_owner": "integrated_projects",
+      "project_type": "integrated_delivery",
+      "topic_order": 3,
+      "target_contract": "performance-optimization-delivery/v2"
+    },
+    {
+      "semantic_id": "QUANT-INTEGRATED-DELIVERY",
+      "notebook": "05_Integrated_Projects_and_Decisions/04_Quantization_Delivery/Quantization_Delivery_Project.ipynb",
+      "title": "量化交付综合项目",
+      "primary_owner": "integrated_projects",
+      "project_type": "integrated_delivery",
+      "topic_order": 4,
+      "target_contract": "quantization-delivery/v1"
+    },
+    {
+      "semantic_id": "OP-INTEGRATED-DELIVERY",
+      "notebook": "05_Integrated_Projects_and_Decisions/05_Operator_Optimization_Delivery/Operator_Optimization_Delivery_Project.ipynb",
+      "title": "算子优化交付综合项目",
+      "primary_owner": "integrated_projects",
+      "project_type": "integrated_delivery",
+      "topic_order": 5,
+      "target_contract": "operator-optimization-delivery/v1"
+    }
+  ]
+}

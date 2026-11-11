@@ -1,4 +1,4 @@
-"""Shared, backend-neutral contracts for Part 02 project experiments.
+"""Shared, backend-neutral contracts for Part 02 and Part 05 projects.
 
 The contracts standardize the outer envelope only.  A project keeps its own
 mechanism-specific metrics and does not need to consume another notebook's
@@ -40,19 +40,34 @@ def default_registry_path() -> Path:
 
 
 def load_project_registry(path: str | Path | None = None) -> dict[str, dict[str, Any]]:
-    """Load the canonical project registry keyed by stable semantic ID."""
+    """Load and combine project registries keyed by stable semantic ID.
+
+    The default entry point is a small index whose source files are split by
+    tutorial part. A direct path to a standalone registry is also accepted.
+    """
 
     registry_path = Path(path) if path is not None else default_registry_path()
     payload = json.loads(registry_path.read_text(encoding="utf-8"))
-    projects = payload.get("projects")
-    if not isinstance(projects, list):
-        raise ValueError("project registry 必须包含 projects 列表")
     result: dict[str, dict[str, Any]] = {}
-    for project in projects:
-        semantic_id = project.get("semantic_id") if isinstance(project, Mapping) else None
-        if not semantic_id or semantic_id in result:
-            raise ValueError(f"project registry 存在空或重复 semantic_id: {semantic_id!r}")
-        result[str(semantic_id)] = dict(project)
+
+    if payload.get("schema_version") == "project-registry-index/v1":
+        sources = payload.get("sources")
+        if not isinstance(sources, list) or not sources:
+            raise ValueError("project registry index 必须包含非空 sources 列表")
+        source_paths = [registry_path.parent / str(source) for source in sources]
+    else:
+        source_paths = [registry_path]
+
+    for source_path in source_paths:
+        source_payload = json.loads(source_path.read_text(encoding="utf-8"))
+        projects = source_payload.get("projects")
+        if not isinstance(projects, list):
+            raise ValueError(f"project registry 必须包含 projects 列表: {source_path}")
+        for project in projects:
+            semantic_id = project.get("semantic_id") if isinstance(project, Mapping) else None
+            if not semantic_id or semantic_id in result:
+                raise ValueError(f"project registry 存在空或重复 semantic_id: {semantic_id!r}")
+            result[str(semantic_id)] = dict(project)
     return result
 
 
