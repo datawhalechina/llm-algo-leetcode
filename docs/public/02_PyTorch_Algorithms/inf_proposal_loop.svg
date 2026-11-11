@@ -23,15 +23,15 @@
 
   <rect x="522" y="130" width="190" height="82" rx="13" class="verify"/>
   <text x="617" y="162" text-anchor="middle" class="label">目标模型验证</text>
-  <text x="617" y="187" text-anchor="middle" class="small">逐位比较目标分布</text>
+  <text x="617" y="187" text-anchor="middle" class="small">按对应协议逐位验证</text>
 
   <rect x="758" y="104" width="180" height="72" rx="13" class="accept"/>
-  <text x="848" y="134" text-anchor="middle" class="label">连续接受</text>
-  <text x="848" y="157" text-anchor="middle" class="small">提交已通过前缀</text>
+  <text x="848" y="134" text-anchor="middle" class="label">全部接受</text>
+  <text x="848" y="157" text-anchor="middle" class="small">提交草稿并追加目标词元</text>
 
   <rect x="758" y="206" width="180" height="72" rx="13" class="reject"/>
-  <text x="848" y="236" text-anchor="middle" class="label">拒绝与修正</text>
-  <text x="848" y="259" text-anchor="middle" class="small">在首个分歧处改写</text>
+  <text x="848" y="236" text-anchor="middle" class="label">首次拒绝</text>
+  <text x="848" y="259" text-anchor="middle" class="small">提交前缀与修正词元</text>
 
   <rect x="984" y="130" width="150" height="82" rx="13" class="node"/>
   <text x="1059" y="162" text-anchor="middle" class="label">提交状态</text>

@@ -27,10 +27,10 @@
   <rect x="862" y="68" width="300" height="180" rx="17" class="group"/>
   <text x="1012" y="98" text-anchor="middle" class="label">本轮成本账本</text>
   <rect x="892" y="120" width="240" height="50" rx="11" class="node"/>
-  <text x="1012" y="151" text-anchor="middle" class="small">接受词元节省的基线时间</text>
+  <text x="1012" y="151" text-anchor="middle" class="small">最终提交词元对应的基线时间</text>
   <rect x="892" y="182" width="240" height="50" rx="11" class="node"/>
   <text x="1012" y="206" text-anchor="middle" class="small">草稿 + 验证 + 修正成本</text>
-  <text x="1012" y="224" text-anchor="middle" class="small">净收益 = 节省 − 额外成本</text>
+  <text x="1012" y="224" text-anchor="middle" class="small">完整收益 = 基线时间 − 总成本</text>
 
   <rect x="430" y="286" width="340" height="72" rx="14" class="gate"/>
   <text x="600" y="315" text-anchor="middle" class="label">预算控制器</text>

@@ -1,6 +1,6 @@
 # INF-PROPOSAL. Dynamic Proposal and Verification Budget | 动态候选生成与验证预算
 
-**难度：** Hard | **环境：** CPU-first | **标签：** `推理优化`, `投机解码`, `动态候选`
+**难度：** Hard | **环境：** [CPU 主线，GPU 可选](#runtime-environment) | **标签：** `推理优化`, `投机解码`, `动态候选` | **目标人群：** 理解自回归生成的学习者
 
 > 🚀 **云端运行环境**
 >
@@ -12,48 +12,64 @@
 
 ## 本节导读
 
-投机解码的收益不仅取决于草稿器是否更快，还取决于每轮提出多少候选、目标模型能连续接受多少，以及拒绝后需要付出多少修正成本。本节把这些量放入同一轮状态机，根据近期接受证据调整候选预算，再用成本账本判断这一轮是否真正节省时间。
+投机解码的收益不仅取决于草稿器是否更快，还取决于每轮提出多少候选、目标模型能连续接受多少，以及拒绝后需要付出多少修正成本。例如同样提出五个候选，连续接受四个与只接受一个，会摊出完全不同的验证成本。
+
+本节先根据近期接受情况调整下一轮候选数量，再把草稿、验证和修正的成本分开计算，解释为什么调用减少不一定意味着生成更快。
+
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 使用 [BASE-CPU](../guide.md#base-cpu)，运行本页的 CPU 题目与测试。
+- **GPU 实验：** 使用 [INF-CUDA-MECHANISM](../topic_discussion/inference_optimization/quickstart.md#inf-cuda-mechanism-quickstart)，模型与工作负载见 5.1。
 
 ## 前置阅读
 
+先理解投机验证如何得到连续接受前缀，再比较候选长度的取舍；原生多词元预测可在相关阅读中对照。
+
 - [Part 02 · 23：投机解码](./23_Speculative_Decoding.md)
 - [Part 02 · 35：Multi-Token Decoding](./35_Multi_Token_Decoding.md)
-### Step 1：候选、验证、接受和修正构成一轮状态机
+## Step 1：候选预算改变工作量，验证决定最终提交
 
-草稿器提出的 token 只是候选。目标模型从左到右验证候选，提交连续通过的前缀，并在首个分歧位置使用目标分布修正；下一轮必须从已经提交和修正后的上下文继续。
+草稿器是提出候选的模型或检索路径，目标模型负责验证；候选预算 $k$ 是本轮最多提出的词元数，不是最终提交数。验证仅保留连续接受前缀，首次拒绝就丢弃后缀；全部接受时还可追加一个目标词元，最终提交仍受 EOS 和剩余生成长度限制。
 
-| 阶段 | 输入 | 输出 | 正确性要求 |
+贪心验证比较候选与同位置目标最大分词元，拒绝时使用目标选择；随机验证则使用接受概率和正残差修正，不能只比较两个词元是否相同。两条路径都必须从已提交上下文继续，撤销未提交候选状态。
+
+| 阶段 | 使用的信息 | 输出 | 与预算的关系 |
 | --- | --- | --- | --- |
-| propose | 当前上下文与预算 `k` | 候选 token 路径 | 不直接提交给用户 |
-| verify | 候选与目标分布 | 接受前缀和首个分歧 | 保持目标分布语义 |
-| accept | 连续通过的候选 | 一次提交多个 token | 只能提交已验证部分 |
-| correct | 首个拒绝位置 | 目标模型修正 token | 从修正后上下文继续 |
+| 提出候选 | 当前上下文与上限 $k$ | 一段候选 | 提议数量可以小于上限 |
+| 目标验证 | 对齐位置的目标证据 | 连续接受前缀或首个拒绝 | 提出更多不保证接受更多 |
+| 修正或追加 | 拒绝位置或额外目标位置 | 本轮最终提交词元 | 该词元不计入草稿接受长度 |
+| 更新状态 | 已提交词元与有效缓存 | 下一轮上下文 | 拒绝后的候选状态必须撤销 |
 
-![动态候选与验证闭环](../public/02_PyTorch_Algorithms/inf_proposal_loop.svg)
+![动态候选与验证反馈](../public/02_PyTorch_Algorithms/inf_proposal_loop.svg)
 
-### Step 2：动态预算根据近期证据调整，而不是追求最大 k
+## Step 2：近期接受情况怎样改变下一轮候选长度
 
-候选过短会浪费 target 验证批量能力；候选过长则增加无效 draft 和验证工作。动态策略可以使用滑动接受率、连续接受长度、draft 不确定性或当前队列压力调整下一轮 `k`。DFlash、DSpark 等扩展可作为不同候选组织和预算策略阅读，但都必须保留 propose—verify—accept—correct 的正确性边界。
+候选过短，目标模型一次验证推进的位置可能太少；候选过长，则可能为最终丢弃的后缀付出草稿和验证成本。动态策略可以使用滑动接受率、连续接受长度、草稿不确定性或当前队列压力调整下一轮候选上限 $k$。近期接受率可按每轮已接受草稿数除以已提议数计算，空提议轮单列；它与模型对下一个候选的置信度不是同一个量。置信度提前停止还可能使实际提议数小于预算上限。
 
 | 信号 | 增大预算的条件 | 减小预算的条件 |
 | --- | --- | --- |
 | 接受率 | 连续多轮高接受 | 拒绝频繁 |
-| draft 置信 | 分布集中 | 不确定性升高 |
-| 系统负载 | 验证有余量 | target 队列或显存压力高 |
-### Step 3：净收益必须扣除 draft、verify 与修正成本
+| 草稿置信 | 分布集中 | 不确定性升高 |
+| 系统负载 | 验证有余量 | 目标模型队列或显存压力高 |
+## Step 3：接受收益怎样覆盖草稿与验证成本
 
-单轮净收益可用接受 token 带来的基线节省，减去 draft、验证和修正成本来解释。该模型用于比较预算，不代替真实 backend benchmark。
+设接受的草稿数为 $A$，总提议数为 $K$，普通解码每词元成本为 $t_b$，草稿每词元成本为 $t_d$，本轮验证和拒绝修正耗时分别为 $t_v$、$t_c$。先只计算接受草稿这一部分的时间差：$G_A=A t_b-[K t_d+t_v+\mathbf{1}_{A<K}t_c]$。例如 $A=K=4$、$t_b=2$ ms、$t_d=0.2$ ms、$t_v=1$ ms，得到 6.2 ms；四个草稿全部失败时，仍需支付草稿和验证成本。
+
+这项估算不计修正或追加词元的产出，因此不能单凭它为负就判定完整生成更慢。完整比较应固定输出协议，用总生成时间除以最终提交词元数，并单独记录草稿接受长度；队列、缓存和重叠执行会进一步改变实际耗时。
 
 ![候选预算的收益与浪费](../public/02_PyTorch_Algorithms/inf_proposal_budget.svg)
-### Step 4：实现动态预算、连续验证与收益账本
 
-本题用近期接受率、草稿/目标 token 和时间成本复现一轮动态控制。输入校验、预算边界与报告结构已经给出；你将补全预算调整、首个拒绝位置和净收益的两项成本。测试分别覆盖阈值区间、全部/部分接受、草稿越界与拒绝修正成本。
+## Step 4：实现动态预算、连续验证与收益账本
+
+本题用近期接受率、固定的草稿/目标贪心词元序列和时间成本观察预算、连续前缀和时间估算。输入校验、预算边界与报告结构已经给出；你将补全预算调整、首个拒绝位置和净收益的两项成本。前缀函数检查序列相同的位置，不实现随机接受或模型缓存。测试分别覆盖阈值、全部/部分接受、空候选、目标序列不足与修正成本。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 | --- | --- | --- | --- |
 | TODO 1 · `choose_proposal_budget` | 根据近期接受率调整候选预算 | 在 `min_k` / `max_k` 内按 high / low 阈值增大、保持或减小 | 高、中、低接受率和预算边界 |
 | TODO 2 · `verify_candidate_prefix` | 找到连续接受边界 | 在首个不同 Token 处停止；全部一致时无拒绝位置 | 全部接受、中途拒绝与空候选 |
-| TODO 3 · `estimate_net_gain` | 计算候选路径净收益 | 基线节省与 draft、verify、correction 额外成本分项记录 | 正收益、负收益与拒绝修正 |
+| TODO 3 · `estimate_net_gain` | 估算接受草稿部分的时间差 | 基线节省与 draft、verify、correction 额外成本分项记录 | 正收益、负收益与拒绝修正 |
 
 ```python
 from statistics import mean
@@ -80,15 +96,21 @@ def choose_proposal_budget(
     if not recent_acceptance:
         return current_k
     rate = mean(recent_acceptance)
-    # TODO 1（动态预算）：根据 high / low 选择 +1、-1 或 0。
+    # ==========================================
+    # TODO 1：按 high / low 阈值调整下一轮预算。
+    # ==========================================
     # adjustment = ???  # 根据 high/low 区间取 +1、-1 或 0。
+    raise NotImplementedError("请完成 TODO 1：adjustment")
     return min(max(current_k + adjustment, min_k), max_k)
 
 
 def verify_candidate_prefix(draft_tokens, target_tokens):
     """比较草稿与目标 token，返回连续接受数和首个拒绝位置。"""
-    # TODO 2（连续验证）：找到第一个 token 不同的位置；全部相同则为 None。
+    # ==========================================
+    # TODO 2：找到首个不同词元的位置。
+    # ==========================================
     # rejected_at = ???  # 首个不匹配索引；可比较前缀完全一致时为 None。
+    raise NotImplementedError("请完成 TODO 2：rejected_at")
     accepted = min(len(draft_tokens), len(target_tokens)) if rejected_at is None else rejected_at
     if rejected_at is None and len(draft_tokens) > len(target_tokens):
         rejected_at = accepted
@@ -108,9 +130,12 @@ def estimate_net_gain(
         raise ValueError('accepted 必须位于 0..proposed')
     if min(baseline_token_ms, draft_token_ms, verify_ms, correction_ms) < 0:
         raise ValueError('时间成本不得为负')
-    # TODO 3（收益账本）：分别计算基线节省和候选路径额外成本。
+    # ==========================================
+    # TODO 3：计算接受草稿的基线时间与额外成本。
+    # ==========================================
     # saved_ms = ???  # 已接受 token 按基线逐 token 执行可节省的时间。
     # extra_cost_ms = ???  # 全部草稿、一次验证和必要修正的成本。
+    raise NotImplementedError("请完成 TODO 3：saved_ms、extra_cost_ms")
     return {
         'saved_ms': saved_ms,
         'extra_cost_ms': extra_cost_ms,
@@ -119,7 +144,7 @@ def estimate_net_gain(
 
 ```
 
-### 测试
+## 测试
 
 测试动态预算边界、连续接受语义和净收益正负。
 
@@ -130,6 +155,10 @@ def test_budget_adaptation():
     assert choose_proposal_budget([0, 0, 1], 4) == 3
     assert choose_proposal_budget([], 4) == 4
     assert choose_proposal_budget([1], 8) == 8
+    assert choose_proposal_budget([0.8], 4) == 5
+    assert choose_proposal_budget([0.4], 4) == 3
+    assert choose_proposal_budget([0.6], 4) == 4
+    assert choose_proposal_budget([0], 1) == 1
 
 
 def test_budget_rejects_invalid_acceptance():
@@ -148,12 +177,16 @@ def test_contiguous_verification():
     assert verify_candidate_prefix([1, 2, 3, 4], [1, 2, 9, 4]) == {'accepted': 2, 'rejected_at': 2}
     assert verify_candidate_prefix([1, 2], [1, 2]) == {'accepted': 2, 'rejected_at': None}
     assert verify_candidate_prefix([1, 2, 3], [1, 2]) == {'accepted': 2, 'rejected_at': 2}
+    assert verify_candidate_prefix([], [1]) == {'accepted': 0, 'rejected_at': None}
 
 
 def test_net_gain_ledger():
     """收益账本应区分有效推进与拒绝修正成本。"""
     assert estimate_net_gain(4, 4, 2.0, 0.2, 1.0)['net_gain_ms'] == 6.2
     assert estimate_net_gain(0, 4, 2.0, 0.5, 2.0, 1.0)['net_gain_ms'] < 0
+    assert estimate_net_gain(4, 4, 2.0, 0.2, 1.0, 99.0)['net_gain_ms'] == 6.2
+    partial = estimate_net_gain(2, 4, 2.0, 0.5, 1.0, 0.25)
+    assert partial == {'saved_ms': 4.0, 'extra_cost_ms': 3.25, 'net_gain_ms': 0.75}
 
 
 test_budget_adaptation()
@@ -240,27 +273,28 @@ def estimate_net_gain(
 
 ### 解析
 
-**TODO 1：动态预算**
+#### TODO 1：按近期接受情况调整预算
 
-- 高接受率只把预算增加一步，低接受率只减少一步，中间区间保持不变；上下界阻止控制器持续扩张或收缩。
+- 平均接受率达到高阈值时加一步、降至低阈值时减一步，中间区间保持；上下界限制最终预算。
+- 测试检查两端阈值、中间区间、空历史和预算饱和，区别“大于”与“大于等于”的边界。
 
-**TODO 2：连续验证**
+#### TODO 2：找到可验证的连续前缀
 
-- 接受长度由第一个分歧决定。草稿比目标序列更长时，目标序列末尾也是当前可验证边界。
+- 贪心前缀在首个不同词元处结束，后面重新相同也不能补回；目标序列先结束时，该位置是验证上限，而非概率拒绝的证据。
+- 测试分别覆盖中途分歧、全部相同、目标较短和空候选，检查接受数量与首个未通过位置。
 
-**TODO 3：收益账本**
+#### TODO 3：核对接受草稿的时间账本
 
-- 基线节省只按已接受 token 计算；草稿成本按全部候选计算，出现拒绝时还要加入修正成本。
+- 草稿成本按总提议数计，基线收益按接受数计，发生拒绝才加入修正成本；这项估算未计额外提交词元。
+- 测试比较正负时间差，并单独改变修正成本，检查全接受时不扣修正、部分接受时只扣一次。
 
-真实草稿器与目标模型的 GPU 对照由 68 承接。EAGLE、DFlash 和 DSpark 需要配对权重与后端支持，不能用随机 logits 的 GPU 运行替代真实接受率和净收益证据。
-
-### Step 5：GPU 机制实验——Transformers 动态辅助生成
+## Step 5：GPU 机制实验——Transformers 动态辅助生成
 
 | 学习问题 | CPU 已确认 | GPU 要确认与后续使用 |
 | --- | --- | --- |
 | 固定、启发式和动态候选预算如何改变目标模型调用与端到端延迟 | 预算调整、连续接受和净收益账本 | 在同一目标/助手模型与提示集上确认输出一致性、目标前向次数、median/P95、峰值显存与加速边界；结果进入 68 的投机后端复测 |
 
-#### 5.1 环境与固定工作负载
+### 5.1 环境与固定工作负载
 
 使用 `INF-CUDA-MECHANISM` Profile；参考环境为单卡 12 GB 以上显存，首次运行需要下载目标模型与助手模型，不需要外部数据集。环境创建和预检见[推理优化实验 Quickstart](../topic_discussion/inference_optimization/quickstart.md#inf-cuda-mechanism-quickstart)，实验登记见[推理优化实验资产表](../topic_discussion/inference_optimization/experiment_assets.md)。运行前的 Profile 预检必须返回 `status=ok`。
 
@@ -275,7 +309,7 @@ def estimate_net_gain(
 
 ```python
 RUN_MODE = 'dry_run'  # 默认值 dry_run：只登记计划；改为 real_gpu 执行真实辅助生成矩阵。
-RUN_LABEL = 'default'  # 默认值 default；正式复测改为唯一标签，避免覆盖旧结果。
+RUN_LABEL = 'dry_run'  # 默认值 default；正式复测改为唯一标签，避免覆盖旧结果。
 ENVIRONMENT_PROFILE = 'INF-CUDA-MECHANISM'  # 默认单卡推理机制 Profile；预检必须返回 status=ok。
 WORKLOAD_ID = 'inf-dynamic-assisted-generation'  # 稳定实验身份；不要在 ID 中编码运行标签。
 WORKLOAD_VERSION = 'v1'  # 默认 v1：比较无助手、固定、启发式与动态预算。
@@ -290,17 +324,21 @@ PROMPTS = (  # 默认三类短提示；修改文本后递增 workload version。
     'A serving system has high TPOT but low queue wait. Diagnose likely causes.',
 )
 MAX_NEW_TOKENS = 64  # 默认生成 64 token；增大会提高复测时间与显存占用。
-SCHEDULES = ('constant', 'heuristic', 'dynamic')  # 默认比较三种 Transformers 助手预算策略。
 INITIAL_ASSISTANT_TOKENS = 5  # 默认初始候选预算 5 token。
-DYNAMIC_CONFIDENCE_THRESHOLD = 0.4  # 默认动态停止阈值 0.4；只用于 dynamic 候选。
+DYNAMIC_CONFIDENCE_THRESHOLD = 0.4  # 默认动态停止阈值 0.4；只用于置信度候选。
+ASSISTED_CANDIDATES = (  # 三个候选分别隔离固定预算、启发式预算和置信度提前停止。
+    {'name': 'constant', 'schedule': 'constant', 'confidence_threshold': 0.0},
+    {'name': 'heuristic_transient', 'schedule': 'heuristic_transient', 'confidence_threshold': 0.0},
+    {'name': 'dynamic_confidence', 'schedule': 'constant', 'confidence_threshold': DYNAMIC_CONFIDENCE_THRESHOLD},
+)
 WARMUP_STEPS = 1  # 默认每条路径预热 1 次；不进入统计。
 REPEAT_STEPS = 5  # 默认重复 5 次；用于计算 median 与 P95。
 SEED = 42  # 默认随机种子 42；贪心生成仍记录以固定环境状态。
-OUTPUT_RELATIVE_PATH = f'02_PyTorch_Algorithms/benchmarks/results/inf_proposal_{RUN_LABEL}.json'  # 默认仓库相对结果路径。
+OUTPUT_RELATIVE_PATH = f'benchmarks/results/inf_proposal_{RUN_LABEL}.json'  # 默认仓库相对结果路径。
 
 ```
 
-#### 5.2 执行并保存 JSON
+### 5.2 执行并保存 JSON
 
 执行单元只消费 5.1 配置。它先生成无助手参考输出，再依次运行三种助手预算策略；每次测量都重置候选预算，记录目标/助手前向次数、输出一致性、median/P95、峰值显存和失败原因。
 
@@ -309,6 +347,7 @@ OUTPUT_RELATIVE_PATH = f'02_PyTorch_Algorithms/benchmarks/results/inf_proposal_{
 from tools.notebook_runtime import package_version, resolve_model_commit
 from tools.project_runtime import resolve_project_root
 
+import copy
 import json
 import math
 import os
@@ -329,7 +368,22 @@ def percentile_95(values):
     return ordered[min(len(ordered) - 1, math.ceil(0.95 * len(ordered)) - 1)]
 
 
-def run_generation(model, tokenizer, prompts, assistant_model=None):
+def greedy_generation_config(model, tokenizer):
+    """从模型默认配置复制一份无采样、无重复惩罚的贪心配置。"""
+    config = copy.deepcopy(model.generation_config)
+    config.do_sample = False
+    config.temperature = None
+    config.top_p = None
+    config.top_k = None
+    config.repetition_penalty = 1.0
+    config.max_new_tokens = MAX_NEW_TOKENS
+    config.min_new_tokens = 0
+    config.use_cache = True
+    config.pad_token_id = tokenizer.eos_token_id
+    return config
+
+
+def run_generation(model, tokenizer, prompts, assistant_model=None, generation_config=None):
     """运行完整提示集并记录输出、前向次数与 CUDA 延迟。"""
     target_calls = 0
     assistant_calls = 0
@@ -356,9 +410,7 @@ def run_generation(model, tokenizer, prompts, assistant_model=None):
                 generated = model.generate(
                     **inputs,
                     assistant_model=assistant_model,
-                    do_sample=False,
-                    max_new_tokens=MAX_NEW_TOKENS,
-                    pad_token_id=tokenizer.eos_token_id,
+                    generation_config=generation_config,
                 )
                 outputs.append(generated[0].detach().cpu().tolist())
         finished.record()
@@ -407,7 +459,7 @@ result = {
         'dtype': MODEL_DTYPE,
         'prompt_count': len(PROMPTS),
         'max_new_tokens': MAX_NEW_TOKENS,
-        'schedules': list(SCHEDULES),
+        'assisted_candidates': list(ASSISTED_CANDIDATES),
         'initial_assistant_tokens': INITIAL_ASSISTANT_TOKENS,
         'dynamic_confidence_threshold': DYNAMIC_CONFIDENCE_THRESHOLD,
         'warmup_steps': WARMUP_STEPS,
@@ -438,9 +490,11 @@ if RUN_MODE == 'real_gpu':
         torch.manual_seed(SEED)
         tokenizer = AutoTokenizer.from_pretrained(TARGET_MODEL_ID, revision=target_commit, cache_dir=cache_dir, local_files_only=local_only)
         target = AutoModelForCausalLM.from_pretrained(TARGET_MODEL_ID, revision=target_commit, cache_dir=cache_dir, local_files_only=local_only, dtype=dtype).to('cuda').eval()
+        target_generation_config = greedy_generation_config(target, tokenizer)
+        target.generation_config = copy.deepcopy(target_generation_config)
         for _ in range(WARMUP_STEPS):
-            run_generation(target, tokenizer, PROMPTS[:1])
-        baseline_runs = [run_generation(target, tokenizer, PROMPTS) for _ in range(REPEAT_STEPS)]
+            run_generation(target, tokenizer, PROMPTS[:1], generation_config=target_generation_config)
+        baseline_runs = [run_generation(target, tokenizer, PROMPTS, generation_config=target_generation_config) for _ in range(REPEAT_STEPS)]
         reference_outputs = baseline_runs[0]['outputs']
         result['baseline'] = {
             'name': 'target_only',
@@ -451,19 +505,23 @@ if RUN_MODE == 'real_gpu':
         }
 
         assistant = AutoModelForCausalLM.from_pretrained(ASSISTANT_MODEL_ID, revision=assistant_commit, cache_dir=cache_dir, local_files_only=local_only, dtype=dtype).to('cuda').eval()
+        assistant_generation_config = greedy_generation_config(assistant, tokenizer)
+        assistant.generation_config = copy.deepcopy(assistant_generation_config)
 
-        for schedule in SCHEDULES:
-            assistant.generation_config.num_assistant_tokens_schedule = schedule
+        for candidate in ASSISTED_CANDIDATES:
+            assistant.generation_config.num_assistant_tokens_schedule = candidate['schedule']
             assistant.generation_config.num_assistant_tokens = INITIAL_ASSISTANT_TOKENS
-            assistant.generation_config.assistant_confidence_threshold = DYNAMIC_CONFIDENCE_THRESHOLD if schedule == 'dynamic' else 0.0
+            assistant.generation_config.assistant_confidence_threshold = candidate['confidence_threshold']
             runs = []
             for _ in range(REPEAT_STEPS):
                 assistant.generation_config.num_assistant_tokens = INITIAL_ASSISTANT_TOKENS
-                runs.append(run_generation(target, tokenizer, PROMPTS, assistant_model=assistant))
+                runs.append(run_generation(target, tokenizer, PROMPTS, assistant_model=assistant, generation_config=target_generation_config))
             median_ms = statistics.median(item['latency_ms'] for item in runs)
             outputs_match = all(item['outputs'] == reference_outputs for item in runs)
             result['candidates'].append({
-                'schedule': schedule,
+                'candidate': candidate['name'],
+                'schedule': candidate['schedule'],
+                'confidence_threshold': candidate['confidence_threshold'],
                 'outputs_match_baseline': outputs_match,
                 'median_latency_ms': median_ms,
                 'p95_latency_ms': percentile_95([item['latency_ms'] for item in runs]),
@@ -491,7 +549,7 @@ result
 
 ```
 
-#### 5.3 读取结果
+### 5.3 读取结果
 
 只读取 5.2 保存的 JSON。先展示环境、工作负载、失败、证据等级和决策，再比较三种预算策略的输出一致性、目标/助手前向次数、median/P95、峰值显存和相对延迟。
 
@@ -513,7 +571,9 @@ summary = {
 }
 matrix = [
     {
+        'candidate': item.get('candidate'),
         'schedule': item.get('schedule'),
+        'confidence_threshold': item.get('confidence_threshold'),
         'outputs_match_baseline': item.get('outputs_match_baseline'),
         'latency_ratio_vs_baseline': item.get('latency_ratio_vs_baseline'),
         'median_latency_ms': item.get('median_latency_ms'),
@@ -530,21 +590,26 @@ summary, report.get('baseline'), matrix
 
 ```
 
-#### 5.4 解释结果并作出决策
+### 5.4 解释结果并作出决策
 
 先检查目标/助手模型 commit、提示、生成长度和贪心语义是否一致，再确认候选路径已启用且输出与无助手基线完全一致。随后比较目标前向次数、每次目标调用的有效 token、median/P95 和峰值显存；调用更少但延迟更高时，说明助手成本或同步开销抵消了收益。
 
-当前页面尚无登记的真实 GPU 快照，因此结论保持“待验证”。下一步是在 `INF-CUDA-MECHANISM` 环境运行三种策略；通过一致性且在固定提示集上稳定降低 median/P95 的候选，再进入 68 扩大到 EAGLE、DFlash、DSpark 与真实投机后端。
+`rtx5070ti_proposal_v2` 已在 RTX 5070 Ti Laptop 12 GiB 上完成配对实验。三种候选均保持贪心输出与仅目标模型基线一致。固定预算把目标模型前向次数中位数从 192 降至 61，但延迟比为 1.059；启发式预算降至 68 次，延迟比为 1.006，两者的助手成本抵消了调用减少。置信度动态候选为 73 次目标前向和 186 次助手前向，延迟比为 0.854，Median 从 2594.6 ms 降至 2216.9 ms，成为本机候选。
 
 | 观察项 | 读取字段 | 当前结果 | 解释与动作 |
 | --- | --- | --- | --- |
-| 运行与口径 | `failure`、模型 commit、工作负载、生成参数 | 待验证 | 任一口径变化时先重跑，不合并旧结果 |
-| 机制与路径 | schedule、目标/助手前向次数、每次目标调用有效 token | 待验证 | 路径未命中或调用次数不变时检查配置 |
-| 正确性 | `outputs_match_baseline` | 待验证 | 贪心输出不一致时直接拒绝候选 |
-| 资源与性能 | median、P95、峰值显存、相对延迟 | 待验证 | 同时观察平均收益、长尾和助手驻留代价 |
-| 证据与决策 | `evidence_level`、`decision`、下一步 | `tune` | 稳定候选进入 68 的真实后端复测 |
+| 运行与口径 | `failure`、模型 commit、工作负载、生成参数 | 无失败；目标 1.5B、助手 0.5B、贪心生成 64 词元 | 口径变化后不得合并旧结果 |
+| 固定预算 | 目标/助手前向次数、相对延迟 | 61 / 289；1.059 | 调用减少但端到端更慢，拒绝当前配置 |
+| 启发式预算 | 目标/助手前向次数、相对延迟 | 68 / 256；1.006 | 尚无稳定收益，继续调参 |
+| 置信度动态候选 | 输出一致性、目标/助手前向次数、相对延迟 | 一致；73 / 186；0.854 | 接受为本机机制候选 |
+| 证据与下一步 | `evidence_level`、`decision` | `local_mechanism_benchmark`、`accept` | 扩大输入和负载后再作后端结论 |
 
 ## 相关阅读
+
+继续比较原生候选与真实后端选型，或查阅框架辅助生成协议。
+
+- [原生多词元预测](./35_Multi_Token_Decoding.md)：模型内部如何提出多个候选。
+- [投机解码机制选型基准](./68_Speculative_Decoding_Benchmark.md)：能力、资产、输出一致性与净收益的联合判断。
 
 - [Transformers Assisted Decoding](https://huggingface.co/docs/transformers/main/assisted_decoding)
 - [Speculative Decoding](https://arxiv.org/abs/2211.17192)
