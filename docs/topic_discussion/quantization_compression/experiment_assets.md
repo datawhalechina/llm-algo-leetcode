@@ -9,7 +9,7 @@
 | 环境 ID | 角色与直接入口 | 证据边界 |
 |:---|:---|:---|
 | `Q-CPU` | TorchAO、LLM Compressor、compressed-tensors 与 HQQ 的小规模框架核对 | 只形成 CPU 框架语义证据，不作为 Kernel、显存或性能证据 |
-| `Q-CUDA-MECHANISM` | 25、40、41、53、54、Mixed-bit、QAT | 单卡真实模型机制、产物生成或局部执行证据；不等于 Serving 证据 |
+| `Q-CUDA-MECHANISM` | 25、40、41、53、54、Mixed-bit、QAT、Part 05·04 量化阶段 | 单卡真实模型机制、产物生成或局部执行证据；不等于 Serving 证据 |
 | `Q-QLORA` | 26、65 | BF16 LoRA / NF4 QLoRA 配对训练和适配器交付 |
 | `INF-VLLM-011-CU128`（专题角色：`Q-VLLM`） | 67、82、83 的主服务后端 | 量化产物加载、实际请求和服务性能证据；使用 vLLM 0.11 / PyTorch 2.8 / CUDA 12.8 锁定组合 |
 | `Q-SGLANG` | 67、83 的可选同口径对照 | 必须固定同一模型、产物、硬件和请求清单 |
@@ -36,9 +36,9 @@
 | `QUANT-W8A16-LAYER` / 25 | `Q-CUDA-MECHANISM`；0.5B 的 `q_proj` / `gate_proj` / `down_proj`；1 / 32 / 256 Token | FP16 Linear → torchao INT8 仅权重量化 | `benchmarks/results/25_torchao_w8a16_layer_microbenchmark_default1.json`；容量和质量通过，只有 `q_proj`、32 Token 达到明显加速 |
 | `QUANT-QLORA-MECHANISM` / 26 | `Q-QLORA`；0.5B 与 1.5B；固定训练 / 验证 / 测试划分 | BF16 LoRA → NF4 QLoRA | 结果：`benchmarks/results/26_lora_qlora_mechanism_matrix_default2.json`；适配器：`benchmarks/artifacts/26_qlora/default2/`；1.5B 显存收益伴随质量和单步时间代价 |
 | `QUANT-WEIGHT-PTQ` / 40 | `Q-CUDA-MECHANISM`；0.5B；互斥校准 / 评测数据 | BF16 → RTN / GPTQ / AWQ W4A16 | 结果：`benchmarks/results/40_llmcompressor_gptq_awq_default11.json`；产物：`benchmarks/artifacts/40_gptq_awq/default11/`；GPTQ 入选下游检查，尚无 Serving 性能结论 |
-| `QUANT-SMOOTHQUANT` / 53 | `Q-CUDA-MECHANISM`；0.5B；互斥校准 / 评测数据 | BF16 / 普通 W8A8 → `alpha=0.5/0.7/0.8/0.9` | 结果：`benchmarks/results/53_llmcompressor_smoothquant_default111.json`；产物：`02_PyTorch_Algorithms/benchmarks/artifacts/53_smoothquant/default111/`；`alpha=0.5` 入选，真实 W8A8 Kernel 仍待验证 |
-| `QUANT-FP8-RUNTIME` / 41 | `Q-CUDA-MECHANISM`；0.5B；提示 × Token 长度矩阵 | BF16 → FP8 仅权重 / dynamic 逐张量 / dynamic PerRow | `benchmarks/results/41_torchao_fp8_runtime_default13.json`；路径完整，但门槛未全部通过，决策为 `tune_or_fallback` |
-| `QUANT-KV-RUNTIME` / 54 | `Q-CUDA-MECHANISM`；0.5B；上下文 × 高精度残留窗口 | Transformers `DynamicCache` → HQQ `QuantizedCache` | `benchmarks/results/54_transformers_quantized_cache_matrix_default18.json`；长上下文出现容量收益，但有延迟和质量代价 |
+| `QUANT-SMOOTHQUANT` / 53 | `Q-CUDA-MECHANISM`；0.5B；互斥校准 / 评测数据 | BF16 / 普通 W8A8 → `alpha=0.5/0.7/0.8/0.9` | 结果：`benchmarks/results/53_llmcompressor_smoothquant_default111.json`；产物：`benchmarks/artifacts/53_smoothquant/default111/`；`alpha=0.5` 入选，真实 W8A8 Kernel 仍待验证 |
+| `QUANT-FP8-RUNTIME` / 41 | `Q-CUDA-MECHANISM`；0.5B；提示 × Token 长度矩阵 | BF16 → FP8 仅权重 / dynamic 逐张量 / dynamic PerRow | `benchmarks/results/41_torchao_fp8_runtime_default13.json`；18 个矩阵点完成，存储与接口事件已记录；局部数值门槛未全部通过、无加速点，决策为 `tune_or_fallback`。原生路径仍需关联 CUDA 子内核与输入／累加类型 |
+| `QUANT-KV-RUNTIME` / 54 | `Q-CUDA-MECHANISM`；0.5B；上下文 × 高精度残留窗口 | Transformers `DynamicCache` → HQQ `QuantizedCache`，K/V 同轴 | `benchmarks/results/54_transformers_quantized_cache_matrix_default18.json`；六组矩阵，2048词元候选通过本地门槛，`accept_local_cache_candidate`。容量为生成增量峰值，时间含 Prefill；质量仅16词元固定轨迹，不代表独立任务集、KIVI 异轴收益或 Serving 准入 |
 | `QUANT-MIXED-BIT-ALLOCATION` / Mixed-bit | `Q-CUDA-MECHANISM`；0.5B；全层 Block 敏感度与独立评测 | 统一 INT8 / INT4 → 12.5% / 25% / 50% 高敏感 Block 保护 | `benchmarks/results/quant_mixed_bit_mechanism_default3.json`；接受 3/24 最小容量候选，6/24 为稳健候选；无加速结论 |
 | `QUANT-QAT-CLOSED-LOOP` / QAT | `Q-CUDA-MECHANISM`；0.5B 中间 Block；训练 / 验证 / 测试隔离 | INT4 PTQ → QAT 训练 5 / 20 / 50 步后转换 | 结果：`benchmarks/results/quant_qat_closed_loop_default2.json`；产物：`benchmarks/artifacts/quant_qat/default2/block_12_50_steps.pt`；证明局部质量恢复，不证明完整模型压缩或生产 Kernel |
 
@@ -64,6 +64,7 @@ vLLM 是 GPTQ/AWQ 服务执行的主验证后端；SGLang 只作同口径对照�
 | `QUANT-ARTIFACT-GATE` | 40 的已接受结果与获选产物 → 通过血缘、文件哈希、质量记录和真实加载器检查的产物 | 82；通过 `UPSTREAM_RUN_LABEL` 自动定位候选包，无需复制路径 |
 | `QUANT-INFERENCE-DEPLOY` | 浮点基线与合格产物 → 同模型后端部署结果 | 67；vLLM 主验证，GGUF 走独立路径 |
 | `QUANT-SERVING-PROFILE` | 同一产物与请求清单 → 延迟优先、均衡、吞吐优先结果 | 83；服务配置与决策收口 |
+| `QUANT-INTEGRATED-DELIVERY` | 固定模型与数据 → GPTQ 产物、留出集质量及 vLLM 服务配对 | Part 05·04；独立生成量化产物并形成跨环境交付结论，不替代 40、82、67、83 的专项证据 |
 
 ### 项目验证顺序
 
@@ -74,13 +75,13 @@ vLLM 是 GPTQ/AWQ 服务执行的主验证后端；SGLang 只作同口径对照�
 | 0 | 40 / `Q-CUDA-MECHANISM`，唯一 `RUN_LABEL` | 运行 RTN / GPTQ / AWQ 矩阵；确认决策接受且获选目录含 `candidate_bundle.json` | 40 结果 JSON 与本地产物目录 |
 | 1 | `INF-VLLM-011-CU128` | 检查 Serving 环境、模型缓存和结果目录；候选权重须可从本地路径读取 | 可执行加载器预检的环境 |
 | 2 | `QUANT-ARTIFACT-GATE` / 82，填写 40 的 `UPSTREAM_RUN_LABEL` | 自动定位获选候选；核对文件角色、哈希、数据隔离、质量方向和 vLLM 加载 | 合格产物 companion 与稳定引用 |
-| 3 | `QUANT-INFERENCE-DEPLOY` / 67，输入 82 的稳定引用 | 同硬件、同 backend、同模型 revision 和同 workload 下的浮点—量化配对执行 | 部署 companion 与稳定引用 |
-| 4 | `QUANT-SERVING-PROFILE` / 83，输入 67 的稳定引用 | 延迟优先、均衡、吞吐优先三类 profile 的重复测量与分方向 SLO | Profile 结果、决策和交接引用 |
+| 3 | `QUANT-INFERENCE-DEPLOY` / 67，填写 82 的 `UPSTREAM_RUN_LABEL` | 本地不可变浮点快照与同源量化产物；三轮交替顺序配对、相同请求与后端；启动参数不充当量化内核证据 | 原始成员、报告和回执；仅 accept 生成部署引用 |
+| 4 | `QUANT-SERVING-PROFILE` / 83，填写 67 的 `UPSTREAM_RUN_LABEL` | 延迟、均衡、吞吐三类压力都完成后按各自 SLO 判断；重复 p95 是各轮 p95 均值 | 逐场景结论、汇总报告与回执 |
 | 5 | 全链资产复核 | schema、血缘、失败记录、结果路径和唯一运行标签 | 可进入 Part 05 的项目证据 |
 
 40 必须先生成并接受候选包，82 才能进行加载准入；82、67、83 的项目结果需在对应环境按顺序完成。新环境复现时，先运行 40，再把该次运行标签填入 82 的 `UPSTREAM_RUN_LABEL`。机制实验的局部结论不能代替量化服务链验收。
 
-82 的 `accept` 只表示产物可以进入部署验证；67 的 `accept` 表示固定工作负载下量化候选能够正确执行并达到本页门槛；83 的 `accept` 表示至少一个服务 profile 满足对应 SLO。驱动、backend、候选产物或固定 workload 发生变化时，从受影响的最早阶段开始复测，不覆盖历史结果。
+82 的 `accept` 只表示产物可以进入部署验证；67 的 `accept` 表示固定工作负载下量化候选有足够执行证据并达到本页门槛，默认加载日志和启动参数尚不足时保持 `pending`；83 的 `accept` 要求三类压力均完成，且至少一类满足自身 SLO，范围仅限达标场景。当前尚未登记这三页新协议的真实结果。驱动、backend、候选产物或固定 workload 发生变化时，从受影响的最早阶段开始复测，不覆盖历史结果。
 
 ## 量化契约增量
 
