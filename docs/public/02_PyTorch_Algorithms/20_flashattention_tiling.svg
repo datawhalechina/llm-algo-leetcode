@@ -33,7 +33,7 @@
   <rect x="60" y="150" width="330" height="560" rx="24" fill="#fff7ed" stroke="#fdba74" stroke-width="2"/>
   <text x="95" y="195" class="group">问题与硬件前置</text>
   <rect x="95" y="225" width="260" height="78" class="box" fill="#ffffff" stroke="#f97316"/>
-  <text x="225" y="258" text-anchor="middle" class="label">Q / K / V → 完整 QKᵀ</text>
+  <text x="225" y="258" text-anchor="middle" class="label">Q / K / V → 完整 QKᵀ / √D</text>
   <text x="225" y="284" text-anchor="middle" class="small">分数矩阵约为 N × N</text>
   <path d="M 225 303 L 225 335" class="arrow"/>
   <rect x="95" y="335" width="260" height="82" class="box" fill="#ffffff" stroke="#f97316"/>
@@ -58,7 +58,7 @@
   <text x="800" y="331" text-anchor="middle" class="small">一次处理一个局部分块</text>
   <path d="M 800 357 L 800 405" class="arrow"/>
   <rect x="625" y="405" width="350" height="92" class="box" fill="#ffffff" stroke="#10b981"/>
-  <text x="800" y="443" text-anchor="middle" class="label">局部分数 Sᵢⱼ = Qᵢ × Kⱼᵀ</text>
+  <text x="800" y="443" text-anchor="middle" class="label">局部分数 Sᵢⱼ = QᵢKⱼᵀ / √D</text>
   <text x="800" y="471" text-anchor="middle" class="small">不保存完整分数矩阵</text>
   <path d="M 800 497 L 800 545" class="arrow"/>
   <rect x="625" y="545" width="350" height="130" class="box" fill="#ffffff" stroke="#10b981"/>

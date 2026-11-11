@@ -25,7 +25,7 @@
 
   <rect x="516" y="258" width="196" height="96" rx="14" class="node"/>
   <text x="614" y="292" text-anchor="middle" class="label">局部分数与掩码</text>
-  <text x="614" y="318" text-anchor="middle" class="formula">S_ij = Q_i × K_jᵀ</text>
+  <text x="614" y="318" text-anchor="middle" class="formula">S_ij = Q_iK_jᵀ/√D</text>
   <text x="614" y="340" text-anchor="middle" class="small">因果约束使用全局位置</text>
 
   <rect x="756" y="258" width="196" height="96" rx="14" class="state"/>
@@ -46,7 +46,7 @@
   <text x="1154" y="290" text-anchor="middle" class="small">有</text>
 
   <rect x="924" y="402" width="272" height="78" rx="14" class="result"/>
-  <text x="1060" y="433" text-anchor="middle" class="label">归一化并写回输出分块</text>
+  <text x="1060" y="433" text-anchor="middle" class="label">写回当前输出分块</text>
   <text x="1060" y="459" text-anchor="middle" class="formula">输出分块 i = O_i</text>
   <path d="M1060 368 V402" class="edge"/>
   <text x="1077" y="391" class="small">没有</text>
