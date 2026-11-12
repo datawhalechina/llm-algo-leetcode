@@ -30,13 +30,14 @@ Triton 使用 Program 和 Tile 把张量空间分块。张量尺寸不能被块�
 
 - [08. Programming Models and CUDA/Triton | 编程模型演进](./08_Programming_Models_CUDA_Triton.md)
 - [15. CUDA Execution Model | CUDA 执行模型](./15_CUDA_Execution_Model.md)
-- [Group 1D: Execution Models, Asynchrony and Operator Mapping | 1D: 执行模型、异步调度与算子映射](./1D.md)
 
 ## Q1：Program、数据块与线程是什么关系？
 
-Program 是处理一块逻辑数据的执行实例，数据块形状描述它覆盖哪些元素。Program ID 确定区域位置，块内偏移确定各元素索引；这些是数据空间中的划分，不应把每个逻辑元素直接对应成一个 CUDA 线程。
+Program 是处理一块逻辑数据的执行实例，Tile（数据块）描述它覆盖的张量元素。Program ID 确定区域位置，块内偏移确定元素索引；这些是数据空间的划分，不是物理线程数量。Triton 的启动网格指定 Program 实例数，不是 SM 数量。
 
-本例让一个 Program 覆盖一段连续元素，用向上取整得到最小网格。随后只改变块大小，检查 Program 数量、尾块有效元素与被屏蔽的元素槽数。
+例如一个 Program 处理 1024 个元素，采用 `num_warps=4`，在本节普通 NVIDIA 单 CTA 路径下使用 4 个 Warp、128 个线程。1024 是逻辑元素槽数，128 是线程数，编译布局将多个元素的工作分配给线程；不能为每个元素直接分配一个线程，也不能把这个逻辑块叫作“1024 线程的 CUDA Block”。这里的 CTA 是 CUDA 线程块，特殊的多 CTA 或 Warp 专业化配置另需核对其映射。
+
+改变 `BLOCK_SIZE` 会改变数据覆盖，改变 `num_warps` 会改变执行配置，两者又可能影响寄存器、共享内存和实际指令。本例先用向上取整得到最小网格，只验证 Program 数量、尾块有效元素与被屏蔽的元素槽；物理布局和资源留给生成代码与实际内核验证。
 
 ### Q1 机制计算器：Program 如何覆盖一维张量
 
@@ -64,14 +65,11 @@ assert program_coverage(1000, 256)['masked_slots'] == 24
 
 ```
 
-## Q2：为什么 Triton 要强调“先布局，再写细节”？
+## Q2：为什么 Triton 要先明确数据布局？
 
+布局决定同一张量中的元素怎样分配给 Program，再怎样由线程加载与计算。例如一个二维矩阵按行切块，可以让同一 Program 处理连续列；若输入是转置视图，同样的逻辑列在物理地址上可能并不连续。只看数据块形状，无法知道加载是否合并，也无法知道元素是否在片上反复使用。
 
-Triton 的写法先强调数据怎么切块、怎么映射、怎么覆盖整个张量，然后才决定具体算什么。
-
-这是因为 kernel 的性能往往不是先被算法名决定，而是先被数据组织方式决定。块切得合不合理、映射是否连续、每个 program 的职责是否清晰，都会影响后面的访存和复用。
-
-所以 Triton 看起来像在写“布局代码”，其实是在决定每个块如何靠近计算单元、如何减少无效搬运、以及如何把张量空间映射成更规整的执行单元。
+增大 Tile 可能减少 Program 数量并增加复用机会，也可能增加中间值、尾块填充和资源需求。不同设备与编译器对同一逻辑布局可能生成不同执行安排，因此“逻辑块更大”不等于“线程更多”或“执行更快”。下面只比较几何覆盖与填充，将实际地址、指令和时间分别留给实现与测量。
 
 ### Q2 布局计算：分块形状带来多少边界填充
 
@@ -146,9 +144,8 @@ print(tail)
 
 ## 相关阅读
 
-**导语：** 把 Triton 的 block 模型继续接到入门 kernel、GEMM 和 FlashAttention，会更容易把空间划分和真实实现串起来。
+把数据空间覆盖接到实际 kernel，再检查逻辑块怎样对应生成代码和资源。
 
-- [01. Triton 入门与 Hello World：向量加法 (Vector Addition)](../03_Triton_Kernels/01_Triton_Vector_Addition.md)
-- [04. Triton 矩阵乘法 (GEMM) 与自动调优 (Autotune)](../03_Triton_Kernels/04_Triton_GEMM_Tutorial.md)
-- [08. Triton Flash Attention | 真正的 Flash Attention 前向算子](../03_Triton_Kernels/08_Triton_Flash_Attention.md)
----
+- [Part03·01 向量加法](../03_Triton_Kernels/01_Triton_Vector_Addition.md)：Program ID、偏移与尾块掩码。
+- [Part03·18 编译产物与执行核对](../03_Triton_Kernels/18_Triton_Compilation_Artifacts_and_Execution.md)：特化条件、资源与实际启动对象。
+- [Triton 向量加法教程](https://triton-lang.org/main/getting-started/tutorials/01-vector-add.html)：逻辑块与启动网格的官方示例。

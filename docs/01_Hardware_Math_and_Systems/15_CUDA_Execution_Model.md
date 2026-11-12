@@ -14,7 +14,7 @@
 
 ## 本节导读
 
-CUDA kernel 会把同一项张量任务分配到 Grid、Block、Warp 和 Thread 四个层级。层级变化会影响覆盖范围、尾部空闲线程、协作边界和可用片上资源。
+CUDA 将一次内核启动的线程组织成 Grid 和 Block；同一 Block 内的线程再按 Warp 分组执行。程序选择网格和块大小，设备则决定这些工作如何在 SM 上驻留和执行。任务组织不是 GPU 核心数量的逐层展开。
 
 本节从任务覆盖、Warp 打包和 Block 资源约束建立执行账本。完成后，你应能从元素数量推导 launch 几何，并判断一个 Block 配置是否满足线程、共享内存和寄存器限制；这些能力直接支撑算子优化路线及 Part 03–04 的 Kernel 实现。
 
@@ -29,11 +29,14 @@ CUDA kernel 会把同一项张量任务分配到 Grid、Block、Warp 和 Thread 
 
 - [03. GPU Architecture and Memory | GPU 物理架构与内存层级](./03_GPU_Architecture_and_Memory.md)
 - [08. Programming Models and CUDA/Triton | 编程模型演进](./08_Programming_Models_CUDA_Triton.md)
-- [Group 1D: Execution Models, Asynchrony and Operator Mapping | 1D: 执行模型、异步调度与算子映射](./1D.md)
 
 ## Q1：GPU 上的 kernel 为什么不是“一个线程在跑”？
 
-一次计算内核启动包含多个线程块，每个块内的线程按 Warp 分组执行。块大小决定任务如何覆盖输入，也影响尾部屏蔽与块内协作；Warp 分组决定哪些 Lane 同时参与一条指令。它们是执行层级，不是逐层收窄的内存访问权限：各线程仍可按地址访问全局内存。
+Thread（线程）执行局部计算，若干线程组成 Block（线程块），一次启动的全部 Block 组成 Grid（网格）。这些是程序组织任务的单位，不是芯片预先固定拥有的 Grid 或 Block 数量。NVIDIA 将同一块内连续编号的线程按 32 个分为一个 Warp，Lane 表示线程在该组中的位置；分支和边界条件会让部分 Lane 不参与某条指令。
+
+例如每线程处理一个元素，1000 个元素使用每块 256 个线程时，需要 4 个 Block，每块 8 个 Warp，最后 24 个线程不处理有效元素。若改成每块 128 个线程，就需要 8 个 Block、每块 4 个 Warp。两者覆盖相同输入，却改变了块内协作与资源分配，不能仅凭总线程数相同就判断耗时相同。
+
+SM（流式多处理器）是承载这些工作的硬件单元。一个 SM 可以驻留多个满足资源约束的 Block，Grid 的 Block 数也可以多于 SM 数，剩余工作等待资源；Block 编号不指定某个固定 SM，Warp 也不是 32 个独占物理计算核心。线程可按地址访问全局内存，执行层级不是逐层收窄的内存权限。官方定义见 [CUDA 编程模型](https://docs.nvidia.com/cuda/cuda-programming-guide/01-introduction/programming-model.html)。
 
 ### Q1 机制计算器：从元素数量推导 Grid、Block 与 Warp
 
@@ -104,7 +107,7 @@ assert block_reuse_traffic(8, 4096, 2, 1)['global_read_bytes_saved'] == 0
 
 相同任务可以选择不同线程数、共享内存和寄存器用量，但这些资源都受设备与编译配置限制。先逐项计算单块需求，再与给定预算比较；线程数过多、共享内存超限或寄存器需求过高，都可能让配置无法按预期执行。
 
-下面用示例预算检查单块需求；多块驻留和分配粒度继续在 SRAM 优化小节计算。资源检查与张量覆盖检查需要同时成立，才能进入实际核函数验证；还应核对编译后的寄存器和共享内存用量、启动限制及输出，再测量时间。
+块大小是程序选择，允许的范围则由设备与内核共同限制；共享内存和寄存器的预算也不是所有代际通用的固定数字。下面用示例预算检查单块需求；多块驻留和分配粒度继续在 SRAM 优化小节计算。资源检查与张量覆盖检查需要同时成立，才能进入实际核函数验证；还应核对编译后的寄存器和共享内存用量、启动限制及输出，再测量时间。
 
 ![执行模型到内核实现的映射](../public/01_Hardware_Math_and_Systems/15_execution_model_to_kernel.svg)
 
@@ -159,9 +162,7 @@ print(invalid)
 
 ## 相关阅读
 
-**导语：** 把执行模型和 Triton 的 block 思维放一起看，后面写 kernel 会更稳。
+从逻辑任务覆盖继续到真实 CUDA 索引，或比较 Triton 的数据块抽象。
 
-- [Part 03: Triton Kernel Development | 第三部分：Triton 算子开发](../03_Triton_Kernels/intro.md)
-- [01. Triton 入门与 Hello World：向量加法 (Vector Addition)](../03_Triton_Kernels/01_Triton_Vector_Addition.md)
-- [04. Triton 矩阵乘法 (GEMM) 与自动调优 (Autotune)](../03_Triton_Kernels/04_Triton_GEMM_Tutorial.md)
----
+- [Part04·01 CUDA 向量加法](../04_CUDA_and_System_Optimization/01_CUDA_Custom_Kernel_Intro.md)：线程索引、尾块和实际启动。
+- [18 Triton Block 模型](./18_Triton_Block_Model.md)：Program、逻辑元素槽与物理线程的区别。

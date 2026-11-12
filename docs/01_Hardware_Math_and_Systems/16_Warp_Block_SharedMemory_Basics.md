@@ -14,7 +14,7 @@
 
 ## 本节导读
 
-同一数据被 Block 内多个线程重复使用时，反复访问 HBM 会产生不必要的外部流量。共享内存把这份数据保留在 Block 内，但同时受到容量和同步正确性的约束。
+同一数据被 Block 内多个线程重复使用时，反复从全局内存读取 会产生不必要的外部流量。共享内存把这份数据保留在 Block 内，但同时受到容量和同步正确性的约束。
 
 本节计算单块内的线程槽覆盖比例与复用前后的逻辑读取字节量，再分别检查容量、同步和复用收益。它主要支撑算子优化路线，也为 Triton Tile、融合和片上归约提供访存基础。
 
@@ -25,32 +25,17 @@
 ---
 ## 前置阅读
 
-**导语：** 先看执行层级，再看 shared memory 分工和片上复用会更顺。
+先区分程序定义的线程块与设备承载它的 SM，再观察块内数据复用。
 
-- [Group 1B: Single-Device Execution, Memory and Data Access | 1B: 单设备执行、内存与访存](./1B.md)
-- [Group 1D: Execution Models, Asynchrony and Operator Mapping | 1D: 执行模型、异步调度与算子映射](./1D.md)
-- [15. CUDA Execution Model | CUDA 执行模型](./15_CUDA_Execution_Model.md)
+- [15 CUDA 执行模型](./15_CUDA_Execution_Model.md)：网格覆盖、Warp 分组与单块资源限制。
 
-## Q1：warp、block 和 thread 分别负责什么？
+## Q1：Warp、Block 和 Thread 分别负责什么？
 
+一个 Thread 处理分配给它的元素，同一 Block 的线程共享协作范围，硬件将块内连续线程按 32 个组成 NVIDIA Warp。Warp 中的线程可以因条件不同而暂时不参与同一条指令；不能把“属于同一 Warp”理解成所有内存访问天然同步，也不能把 Warp 数当作物理核心数。
 
-这三个概念处在不同层级：
+例如一个 Block 有 48 个线程时，会占用两个 Warp 的线程槽，第二个 Warp 只有 16 个有效线程。两个这样的 Block 仍各自分成两个 Warp，不会把剩余线程拼成第三个满 Warp。下方计算的是线程槽覆盖比例，不是某个 SM 的实测占用率。
 
-- **Thread**：最小执行单元，负责执行最细粒度的工作。
-- **Warp**：硬件实际调度的基本执行单元，通常 32 个线程一起执行相同指令。
-- **Block**：程序组织与资源分配的基本单元，适合做协作、同步和局部复用。
-
-理解它们的关键，不是死记名词，而是知道每一层解决什么问题。Thread 负责计算细节，Warp 负责并行执行，Block 负责协作边界。
-
-```mermaid
-flowchart TD
-    T[Thread] --> W[Warp]
-    W --> B[Block]
-    B --> H[HBM / Global Memory]
-    B --> S[Shared Memory]
-    W --- C[SIMT]
-    B --- R[Block-level cooperation]
-```
+共享内存用于同块线程之间复用数据；在本节的普通线程块模型中，其他 Block 不直接使用这块副本。生产者完成写入、消费者读取和下一轮覆盖之间，仍需满足同步与可见性条件。设备代际会改变可用资源和支持机制，但不会把一次启动的全部线程变成一个共享内存协作组。
 
 ### Q1 覆盖率计算：单个 Block 的线程怎样装入 Warp
 
@@ -154,15 +139,13 @@ print(no_reuse)
 
 ```
 
-## 继续核对片上复用
+### 从逻辑复用到实际内核
 
 先判断线程协作与同步是否正确，再检查共享内存容量和逻辑读取减少量。继续扩大分块时，还要结合寄存器、驻留块数与编译结果验证；这些资源关系可在 [SRAM 优化技术](./24_SRAM_Optimization_Techniques.md)继续计算。
 
 ## 相关阅读
 
-**导语：** 把 warp / block / shared memory 直接接到 Triton kernel 和归约实现上，更容易看清 tile 是怎么真正落地的。
+先将块内协作接到实际共享内存矩阵乘，再继续计算资源与驻留的取舍。
 
-- [02. Triton 算子开发：融合门控激活函数 (Fused SwiGLU)](../03_Triton_Kernels/02_Triton_Fused_SwiGLU.md)
-- [03. Triton 算子开发实战：Fused RMSNorm](../03_Triton_Kernels/03_Triton_Fused_RMSNorm.md)
-- [06. Triton 进阶：跨线程归约与数值稳定 (Safe Softmax)](../03_Triton_Kernels/06_Triton_Fused_Softmax.md)
----
+- [Part04·06 共享内存 GEMM](../04_CUDA_and_System_Optimization/06_CUDA_Shared_Memory_Optimization.md)：协作装载、读取及覆盖前的同步。
+- [24 SRAM 优化技术](./24_SRAM_Optimization_Techniques.md)：共享内存、寄存器与驻留块数。
