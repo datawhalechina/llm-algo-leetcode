@@ -28,6 +28,10 @@
 
 确定了模型要预测哪些位置，还要选择更新哪些参数、怎样累计梯度，才能执行最小 SFT。已有指令模型若已具备任务所需的基本行为，可以先复测并固定其版本，直接作为后续比较起点。
 
+将提示、回答与结束标记拆成位置后，可以看见提示末尾的输出怎样预测首个回答词元。下图沿用正文01的简化位置记号，展示目标向后对齐，以及哪三个位置进入损失；它不对应这道算式的实际分词。
+
+![输入位置、下一词元目标与有效监督位置的对齐](../../public/topic_discussion/post_training_optimization/sft_prediction_and_label_alignment.svg)
+
 ![监督样本经过契约、模板和标签边界形成有效监督词元](../../public/topic_discussion/post_training_optimization/sft_data_supervision_pipeline.svg)
 
 ## 三、让参数方案与训练控制形成可复测基线
@@ -59,6 +63,10 @@ RLHF 与 RLVR 描述反馈来源，不与某一种更新算法一一绑定。人
 | 当前策略在线生成轨迹 | 价值模型估计的状态基线 | PPO | 奖励模型或可验证奖励 |
 | 当前策略在线生成候选组 | 同一提示下的组内基线 | GRPO | 模型评分、标准答案、测试或环境终态 |
 | 当前策略在线生成回答组 | 排除当前回答后的留一基线 | RLOO | 模型评分、标准答案、测试或环境终态 |
+
+组内比较还要区分基线与缩放。下面用同组奖励 0、1、3 展示：减去组均值与减去留一基线得到的优势同号，但幅度不同；GRPO 按总体标准差缩放后又会改变尺度。这是构造计算例，实际目标还需核对奖励塑形、比率粒度和归约。
+
+![组均值、留一基线与标准差缩放的数值比较](../../public/topic_discussion/post_training_optimization/group_baseline_and_advantage_comparison.svg)
 
 ![DPO 比较优选与非优选回答相对参考策略的偏移](../../public/topic_discussion/post_training_optimization/dpo_pairwise_objective.svg)
 

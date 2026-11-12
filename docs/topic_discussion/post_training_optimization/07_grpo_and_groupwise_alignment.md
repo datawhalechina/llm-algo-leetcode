@@ -20,7 +20,7 @@ $$
 
 三条回答的留一基线分别为 2、1.5、0.5，优势为 $(-2,-0.5,2.5)$。它们与未缩放的组内中心化奖励同号，但幅度不同：这里相差 $K/(K-1)=1.5$ 倍。目标中的缩放、裁剪和归约进一步影响更新，不能仅因优势同号就把两种算法视为相同。
 
-![GRPO 候选组经过奖励和组内归一化形成相对优势](../../public/topic_discussion/post_training_optimization/grpo_groupwise_candidates.svg)
+![相同奖励经过组均值、留一基线与标准差缩放得到不同优势](../../public/topic_discussion/post_training_optimization/group_baseline_and_advantage_comparison.svg)
 
 ## 回答优势怎样进入策略目标
 
@@ -35,6 +35,8 @@ $$
 PPO、GRPO 与 RLOO 是更新方法；可验证奖励强化学习（RLVR）描述反馈来自规则、测试或可检查的环境结果。使用代码测试给分，可以与不同更新方法组合；它不等于选定了 GRPO。
 
 验证器可执行，也可能遗漏真实任务要求。例如所有回答只因满足格式就获得相同高分，组内无法区分正确性；隐藏边界测试缺失时，模型还可能学到只通过已有测试的模式。超时与无法判定应保留独立状态，避免混入已确认的错误答案。
+
+![GRPO 候选组经过奖励和组内归一化形成相对优势](../../public/topic_discussion/post_training_optimization/grpo_groupwise_candidates.svg)
 
 ## 奖励差异不足时发生了什么
 
