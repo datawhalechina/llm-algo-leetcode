@@ -7,11 +7,11 @@
 | Profile | 环境 | 使用场景 | 运行条件 |
 |:---|:---|:---|:---|
 | `PT-CPU` | `llm_pt_cpu` | 13–18、30–33、50–51、相关 `PT-*` 与 DISTILL-OPD 的框架一致性核对 | CPU |
-| `PT-SFT-CUDA` | `llm_pt_sft_cu128` | SFT、LoRA、长上下文与参数适配 | 单张 CUDA GPU，至少 8 GiB |
+| `PT-SFT-CUDA` | `llm_pt_sft_cu128` | SFT、LoRA、长上下文与参数适配；Part 05 · 02 MiniMind 全流程 | 单张 CUDA GPU，至少 8 GiB；MiniMind 另做项目显存探测 |
 | `PT-RL-CUDA` | `llm_pt_rl_cu128` | 奖励模型、DPO、GRPO 与奖励信号 | 单张 CUDA GPU，至少 8 GiB |
 | `PT-VERL-CUDA` | 上游 uv 锁环境 | 轨迹生命周期与生成—更新系统机制 | 单张 CUDA GPU，至少 10 GiB；驱动支持 CUDA 13.0 |
 | `PT-DISTILL-CUDA` | `llm_pt_distill_cu128` | 固定轨迹 KD 与在线蒸馏 | 单张 CUDA GPU，至少 10 GiB |
-| `PT-DELIVERY-CUDA` | `llm_pt_delivery_cu128` | Part 05 冻结评测与交付决策 | 单张 CUDA GPU，至少 8 GiB |
+| `PT-DELIVERY-CUDA` | `llm_pt_delivery_cu128` | 历史候选冻结复测方案的兼容环境；当前 MiniMind 项目使用 `PT-SFT-CUDA` | 单张 CUDA GPU，至少 8 GiB |
 | [`Q-QLORA`](../quantization_compression/quickstart.md#q-qlora-quickstart) | 由量化专题维护 | QLoRA 与低比特训练 | 使用独立量化环境 |
 
 六个 `PT-*` Profile 彼此隔离。安装器根据 Profile 选择 Conda 或上游 uv 锁环境。
@@ -44,7 +44,7 @@ python tools/install_environment_profile.py \
 
 ### PT-SFT-CUDA
 
-创建用于单卡 SFT、LoRA 和长上下文实验的 Conda 环境：
+创建用于单卡 SFT、LoRA、长上下文及 [Part 05 · 02 MiniMind 项目](../../05_Integrated_Projects_and_Decisions/02_Post_Training_Delivery/index.md)的 Conda 环境；MiniMind 的原生 SFT、LoRA、DPO 与评测均在该环境运行：
 
 ```bash
 python tools/install_environment_profile.py \
@@ -94,7 +94,7 @@ python tools/install_environment_profile.py \
 
 ### PT-DELIVERY-CUDA
 
-创建用于 Part 05 后训练候选冻结评测与交付判断的 Conda 环境：
+该 Profile 保留用于历史候选冻结复测方案；当前 [Part 05 · 02 MiniMind 项目](../../05_Integrated_Projects_and_Decisions/02_Post_Training_Delivery/index.md)使用 `PT-SFT-CUDA`，不需要另建本环境。仅复现明确要求该 Profile 的历史方案时使用以下命令：
 
 ```bash
 python tools/install_environment_profile.py \
