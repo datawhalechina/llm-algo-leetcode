@@ -1,13 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="350" viewBox="0 0 1120 350">
-  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#52606d"/></marker></defs>
-  <rect width="1120" height="350" rx="18" fill="#f7f9fc"/>
-  <text x="40" y="44" font-family="sans-serif" font-size="24" font-weight="700" fill="#172b4d">归一化演进：统计对象、块内位置与稳定性</text>
-  <g font-family="sans-serif" text-anchor="middle">
-    <g fill="#e8f1ff" stroke="#4c78a8" stroke-width="2"><rect x="45" y="95" width="210" height="86" rx="12"/><rect x="315" y="95" width="210" height="86" rx="12"/><rect x="585" y="95" width="210" height="86" rx="12"/><rect x="855" y="95" width="210" height="86" rx="12"/></g>
-    <g fill="#172b4d"><text x="150" y="130" font-size="18">BatchNorm</text><text x="150" y="157" font-size="14">跨样本批次统计</text><text x="420" y="130" font-size="18">LayerNorm</text><text x="420" y="157" font-size="14">词元内中心化 + 缩放</text><text x="690" y="130" font-size="18">前置归一化</text><text x="690" y="157" font-size="14">分支读取前控制尺度</text><text x="960" y="130" font-size="18">RMSNorm</text><text x="960" y="157" font-size="14">只保留均方根缩放</text></g>
-    <g stroke="#52606d" stroke-width="2.5" fill="none" marker-end="url(#a)"><path d="M255 138 H305"/><path d="M525 138 H575"/><path d="M795 138 H845"/></g>
-    <rect x="270" y="235" width="580" height="70" rx="12" fill="#e7f7ef" stroke="#3b8c68" stroke-width="2"/>
-    <text x="560" y="263" fill="#174d39" font-size="17">共同目标：让残差主干与梯度在深层堆叠中保持可控</text>
-    <text x="560" y="288" fill="#174d39" font-size="14">验证：激活尺度 · 梯度范数 · 损失 · NaN/溢出 · 成本</text>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="350" viewBox="0 0 1120 350" role="img" aria-labelledby="title desc">
+  <title id="title">归一化的计算形式与放置位置</title>
+  <desc id="desc">左侧比较批归一化、层归一化和均方根归一化的计算；右侧比较分支前与残差合并后的放置位置。两侧是可组合的独立选择，没有逐级替代关系。</desc>
+  <style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172b4d}.title{font-size:24px;font-weight:700}.h{font-size:18px;font-weight:700}.s{font-size:14px;font-weight:400}.panel{stroke:#94a3b8;stroke-width:2;rx:14}.node{stroke:#60a5fa;stroke-width:2;rx:12}</style>
+  <rect width="1120" height="350" fill="#f7f9fc"/>
+  <text x="40" y="44" class="title">归一化：怎样计算，与放在哪里分别选择</text>
+  <rect x="35" y="80" width="600" height="235" class="panel" fill="#eff6ff" data-layout-role="panel"/>
+  <text x="55" y="111" class="h">计算形式：并列选项</text>
+  <rect x="55" y="135" width="160" height="100" class="node" fill="#ffffff"/>
+  <text x="135" y="174" text-anchor="middle" class="h">BatchNorm</text><text x="135" y="207" text-anchor="middle" class="s">使用跨样本等统计</text>
+  <rect x="245" y="135" width="160" height="100" class="node" fill="#ffffff"/>
+  <text x="325" y="174" text-anchor="middle" class="h">LayerNorm</text><text x="325" y="207" text-anchor="middle" class="s">中心化后缩放</text>
+  <rect x="435" y="135" width="160" height="100" class="node" fill="#ffffff"/>
+  <text x="515" y="174" text-anchor="middle" class="h">RMSNorm</text><text x="515" y="207" text-anchor="middle" class="s">按均方根缩放</text>
+  <text x="55" y="275" class="s">统计范围与中心化不同，不代表某种形式总是更优。</text>
+  <rect x="665" y="80" width="420" height="235" class="panel" fill="#ecfdf5" data-layout-role="panel"/>
+  <text x="685" y="111" class="h">放置位置：选定形式后再决定</text>
+  <rect x="685" y="135" width="160" height="100" class="node" fill="#ffffff"/>
+  <text x="765" y="174" text-anchor="middle" class="h">Pre-Norm</text><text x="765" y="207" text-anchor="middle" class="s">分支计算之前</text>
+  <rect x="885" y="135" width="160" height="100" class="node" fill="#ffffff"/>
+  <text x="965" y="174" text-anchor="middle" class="h">Post-Norm</text><text x="965" y="207" text-anchor="middle" class="s">残差相加之后</text>
+  <text x="685" y="275" class="s">例如 LayerNorm 或 RMSNorm 都可讨论放置位置。</text>
 </svg>

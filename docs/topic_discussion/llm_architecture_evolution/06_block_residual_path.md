@@ -2,19 +2,27 @@
 
 ## 学习问题
 
-单个算子不能解释模型深度。解码器块通过残差流把注意力与 MLP 的增量写回主干；归一化位置、分支尺度和层数共同决定状态能否稳定传播。连续堆叠时，每个块都必须保持主状态形状，并控制分支增量的尺度。
+一个块的输入输出形状相同，为什么堆叠很多层后数值仍可能变得不稳定？残差连接把注意力与前馈网络的输出加到已有隐状态上；每次相加的增量、归一化位置与层数共同影响状态和梯度的传播。
 
 ## 核心机制
 
-### 设计压力：为什么需要一条稳定的主干状态？
+### 子层怎样修改已有隐状态
 
 如果每个子层都直接覆盖隐状态，深层模型难以保留已有信息，也更容易出现梯度衰减或放大。残差流让子层学习增量更新，前置归一化则在分支读取主干前控制尺度。
 
-![多个 Transformer 块的残差更新：主干状态、分支增量与深度稳定性](../../public/topic_discussion/llm_architecture_evolution/block_residual_stability.svg)
+![单个 Pre-Norm 块先完成注意力残差相加，再计算前馈增量并完成第二次相加](../../public/topic_discussion/llm_architecture_evolution/block_residual_stability.svg)
 
-### 结构机制：一个 Transformer 块是两次受控状态更新
+### 一个前置归一化块包含两次残差更新
 
-设进入第 $l$ 个块的主干状态为 $h_l$，Pre-Norm 块先形成注意力增量 $a_l$，再形成 MLP 增量 $m_l$：$a_l=\mathrm{Attn}(\mathrm{Norm}(h_l))$，$m_l=\mathrm{MLP}(\mathrm{Norm}(h_l+a_l))$，最终 $h_{l+1}=h_l+a_l+m_l$。形状保持不变并不代表数值稳定；增量相对主干的比例会随深度累积。
+设进入第 $l$ 个块的隐状态为 $h_l$，$l$ 是块编号，$\mathrm{Norm}$ 表示该分支前的归一化，$\mathrm{Attn}$ 和 $\mathrm{MLP}$ 分别表示注意力与逐词元前馈。先得到注意力增量 $a_l$，再用已经更新的状态计算前馈增量 $m_l$：
+
+$$
+a_l=\mathrm{Attn}(\mathrm{Norm}(h_l)),\qquad
+m_l=\mathrm{MLP}(\mathrm{Norm}(h_l+a_l)),\qquad
+h_{l+1}=h_l+a_l+m_l.
+$$
+
+第二个分支读取的是 $h_l+a_l$，不是原始 $h_l$。三者形状能够相加，只说明接口匹配；增量相对主干的大小还会随深度变化。表中的范数衡量张量整体大小，均方根（RMS）衡量元素平方均值的平方根，用于比较各层的数值尺度。
 
 残差缩放、分支初始化和额外归一化都在控制增量写入速度。比较块变体时应固定深度、隐藏维度、参数预算和训练批次，再观察稳定性；只跑单个块无法暴露深度累积问题。
 
@@ -28,10 +36,7 @@
 
 Transformer 块变体要同时检查结构合法性、参数量/FLOPs、激活与梯度尺度、训练稳定性和目标任务质量。残差缩放或额外归一化只有在相同训练口径下，才能形成较强的稳定性证据。
 
-- [Part 00 · 13 Transformer 块数据流](../../00_Prerequisites/13_Transformer_Block_Dataflow_and_Residual_Stream.md)：建立组件到 Transformer 块的映射。
-- [Part 02 · 05 LLaMA3 Block](../../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.md)：实现两条残差更新。
-- [Part 02 · 08 架构技巧](../../02_PyTorch_Algorithms/08_Architecture_Tricks.md)：读取配置并审计参数归属。
-- [Part 02 · 60 解码器块稳定性项目](../../02_PyTorch_Algorithms/60_Decoder_Block_Stability_Benchmark.md)：比较 Transformer 块变体。
+组件到 Transformer 块的映射见 [Part 00 · 13](../../00_Prerequisites/13_Transformer_Block_Dataflow_and_Residual_Stream.md)，两次残差更新和配置审计分别进入 [Part 02 · 05](../../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.md)与 [Part 02 · 08](../../02_PyTorch_Algorithms/08_Architecture_Tricks.md)；多层稳定性证据由 [Part 02 · 60](../../02_PyTorch_Algorithms/60_Decoder_Block_Stability_Benchmark.md)承接。
 
 ## 相关阅读
 
