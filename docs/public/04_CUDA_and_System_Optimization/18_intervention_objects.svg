@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">按成本所在位置选择干预层次</title>
+<desc id="desc">图级中间张量、内核内数据组织和提交依赖是三种干预对象。分别对照组合或编译、Triton或CUDA自定义内核、Graph或Stream运行时调整。三条路径可按当前工作流的成本组合使用。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d}.title{font-size:28px;font-weight:700}.head{font-size:22px;font-weight:700}.body{font-size:20px}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#a)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="45" y="50" class="title">按成本所在位置选择干预层次</text>
+<text x="45" y="90" class="body">三列分别控制图级读写、内核组织与运行时等待，可按工作流需要组合使用。</text>
+<g fill="#dbeafe" stroke="#829ab1"><rect x="45" y="135" width="430" height="105" rx="12"/><rect x="535" y="135" width="430" height="105" rx="12"/><rect x="1025" y="135" width="430" height="105" rx="12"/></g>
+<text x="260" y="175" text-anchor="middle" class="head">中间张量重复写回与读取</text><text x="260" y="215" text-anchor="middle" class="body">先检查计算图怎样组合</text>
+<text x="750" y="175" text-anchor="middle" class="head">分块、复用或线程协作不合适</text><text x="750" y="215" text-anchor="middle" class="body">先检查内核内部的数据组织</text>
+<text x="1240" y="175" text-anchor="middle" class="head">提交、传输或依赖等待</text><text x="1240" y="215" text-anchor="middle" class="body">先检查操作何时能执行</text>
+<path d="M260 240V300" class="edge"/><path d="M750 240V300" class="edge"/><path d="M1240 240V300" class="edge"/>
+<rect x="45" y="300" width="430" height="115" rx="12" fill="#ede9fe" stroke="#829ab1"/>
+<text x="260" y="342" text-anchor="middle" class="head">已有算子组合／图编译</text><text x="260" y="385" text-anchor="middle" class="body">核对融合及实际生成路径</text>
+<rect x="535" y="300" width="430" height="115" rx="12" fill="#dcfce7" stroke="#829ab1"/>
+<text x="750" y="342" text-anchor="middle" class="head">Triton／CUDA自定义内核</text><text x="750" y="385" text-anchor="middle" class="body">按必需表达与控制选择实现</text>
+<rect x="1025" y="300" width="430" height="115" rx="12" fill="#fef3c7" stroke="#829ab1"/>
+<text x="1240" y="342" text-anchor="middle" class="head">Graph／Stream与缓冲安排</text><text x="1240" y="385" text-anchor="middle" class="body">分别核对重放、依赖与寿命</text>
+</svg>

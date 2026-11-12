@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">同一传输，在不同计算窗口后暴露多少等待</title>
+<desc id="desc">传输101毫秒，独立计算窗口分别为20和120毫秒；理想可并发条件下暴露等待分别为81和0毫秒。</desc>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;font-size:23px;fill:#1e293b}.title{font-size:30px;font-weight:700}.label{font-weight:700}.small{font-size:21px}.note{font-size:19px}</style>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<rect width="1500" height="470" fill="#fff"/>
+<text x="750" y="53" class="title" text-anchor="middle">同一传输，在不同计算窗口后暴露多少等待</text>
+<text x="750" y="91" class="small" text-anchor="middle">构造时间线：传输及时启动、资源允许并发；两个窗口使用同一时间比例。</text>
+<path d="M280 127V438" fill="none" stroke="#e2e8f0"/>
+<text x="280" y="119" class="small" text-anchor="middle">0</text>
+<path d="M460 127V438" fill="none" stroke="#e2e8f0"/>
+<text x="460" y="119" class="small" text-anchor="middle">20</text>
+<path d="M1189 127V438" fill="none" stroke="#e2e8f0"/>
+<text x="1189" y="119" class="small" text-anchor="middle">101</text>
+<path d="M1360 127V438" fill="none" stroke="#e2e8f0"/>
+<text x="1360" y="119" class="small" text-anchor="middle">120 ms</text>
+<text x="45" y="176" class="small" text-anchor="start">传输 101 ms</text>
+<rect x="280" y="145" width="909" height="45" rx="8" fill="#fef3c7" stroke="#94a3b8" data-layout-role="node"/>
+<text x="734.5" y="176" class="small" text-anchor="middle">等待前需完成的数据搬运</text>
+<text x="45" y="246" class="small" text-anchor="start">窗口 20 ms</text>
+<rect x="280" y="215" width="180" height="45" rx="8" fill="#dbeafe" stroke="#94a3b8" data-layout-role="node"/>
+<text x="370" y="246" class="small" text-anchor="middle">计算 20</text>
+<rect x="460" y="215" width="729" height="45" rx="8" fill="#fee2e2" stroke="#94a3b8" data-layout-role="node"/>
+<text x="824.5" y="246" class="small" text-anchor="middle">剩余等待 81 ms</text>
+<text x="45" y="346" class="small" text-anchor="start">传输 101 ms</text>
+<rect x="280" y="315" width="909" height="45" rx="8" fill="#fef3c7" stroke="#94a3b8" data-layout-role="node"/>
+<text x="734.5" y="346" class="small" text-anchor="middle">相同传输量与有效带宽</text>
+<text x="45" y="416" class="small" text-anchor="start">窗口 120 ms</text>
+<rect x="280" y="385" width="1080" height="45" rx="8" fill="#dbeafe" stroke="#94a3b8" data-layout-role="node"/>
+<text x="820" y="416" class="small" text-anchor="middle">独立计算 120 ms；数据及时到达，剩余等待为 0</text>
+</svg>

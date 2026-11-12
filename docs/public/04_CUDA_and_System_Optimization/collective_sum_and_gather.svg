@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">All-Reduce 求和与 All-Gather 收集的结果不同</title>
+<desc id="desc">同一两进程组中的两个独立示例。求和将两份向量对应位置相加，并交给每个 rank；收集不做归约，在每个 rank 上按来源编号保存完整列表。箭头是操作前后的数据变化，不是网络拓扑。</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker></defs>
+<style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172b4d} .title{font-size:30px;font-weight:700}.head{font-size:23px;font-weight:700}.body{font-size:21px}.note{font-size:19px}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}</style>
+<rect width="1500" height="470" fill="#fff"/>
+<text class="title" x="750" y="43" text-anchor="middle">同一进程组：求和改变数值，收集保留来源</text>
+<text class="note" x="750" y="80" text-anchor="middle">两个独立示例；箭头表示数据变化，不表示具体网络算法</text>
+<rect x="40" y="130" width="420" height="110" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+<text class="head" x="250" y="165" text-anchor="middle">两份局部向量</text>
+<text class="body" x="250" y="203" text-anchor="middle">rank0 [1, 2]　rank1 [2, 4]</text>
+<rect x="610" y="130" width="270" height="110" rx="12" fill="#f0fdfa" stroke="#2dd4bf" stroke-width="2"/>
+<text class="head" x="745" y="171" text-anchor="middle">All-Reduce</text>
+<text class="body" x="745" y="207" text-anchor="middle">对应位置 SUM</text>
+<rect x="1030" y="130" width="430" height="110" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/>
+<text class="head" x="1245" y="165" text-anchor="middle">每个 rank 都得到</text>
+<text class="body" x="1245" y="203" text-anchor="middle">[3, 6]</text>
+<path class="edge" d="M460 185 H610"/><path class="edge" d="M880 185 H1030"/>
+<rect x="40" y="300" width="420" height="110" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+<text class="head" x="250" y="335" text-anchor="middle">两份局部分片</text>
+<text class="body" x="250" y="373" text-anchor="middle">rank0 [0, 10]　rank1 [1, 11]</text>
+<rect x="610" y="300" width="270" height="110" rx="12" fill="#f0fdfa" stroke="#2dd4bf" stroke-width="2"/>
+<text class="head" x="745" y="341" text-anchor="middle">All-Gather</text>
+<text class="body" x="745" y="377" text-anchor="middle">按 rank 收集</text>
+<rect x="1030" y="300" width="430" height="110" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/>
+<text class="head" x="1245" y="335" text-anchor="middle">每个 rank 都得到</text>
+<text class="body" x="1245" y="373" text-anchor="middle">[[0, 10], [1, 11]]</text>
+<path class="edge" d="M460 355 H610"/><path class="edge" d="M880 355 H1030"/>
+</svg>

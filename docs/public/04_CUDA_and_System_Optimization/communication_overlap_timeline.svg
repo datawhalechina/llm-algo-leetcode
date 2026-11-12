@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">梯度桶在反向结束前就绪，通信仍可能留下尾部等待</title>
+<desc id="desc">构造时间线，所有区间共用同一比例的毫秒轴。反向计算从0到10毫秒；梯度桶6毫秒就绪后启动6毫秒通信，6到10毫秒重叠，10到12毫秒为暴露通信。若完全串行，结束点是16毫秒。数字不是多卡实测。</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker></defs>
+<style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172b4d}.title{font-size:30px;font-weight:700}.head{font-size:23px;font-weight:700}.body{font-size:21px}.note{font-size:19px}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}</style>
+<rect width="1500" height="470" fill="#fff"/>
+<text class="title" x="750" y="43" text-anchor="middle">梯度已就绪才能通信；最后一次同步仍可能需要等待</text>
+<text class="note" x="750" y="80" text-anchor="middle">构造时间线；不含额外调度间隙，假设两阶段耗时不因资源竞争改变</text>
+<path class="edge" d="M250 122 H1380"/>
+<text class="note" x="250" y="111" text-anchor="middle">0</text><text class="note" x="510" y="111" text-anchor="middle">4</text><text class="note" x="640" y="111" text-anchor="middle">6</text><text class="note" x="900" y="111" text-anchor="middle">10</text><text class="note" x="1030" y="111" text-anchor="middle">12</text><text class="note" x="1290" y="111" text-anchor="middle">16 ms</text>
+<text class="head" x="45" y="190">反向计算</text>
+<rect x="250" y="155" width="650" height="58" rx="9" fill="#dbeafe" stroke="#60a5fa" stroke-width="2"/>
+<text class="body" x="575" y="192" text-anchor="middle">计算 10 ms</text>
+<path class="edge" d="M640 213 V285"/><text class="note" x="660" y="253">梯度桶就绪，启动通信</text>
+<text class="head" x="45" y="320">梯度通信</text>
+<rect x="640" y="285" width="260" height="58" fill="#ccfbf1" stroke="#2dd4bf" stroke-width="2"/>
+<rect x="900" y="285" width="130" height="58" fill="#fee2e2" stroke="#f87171" stroke-width="2"/>
+<text class="body" x="770" y="322" text-anchor="middle">重叠 4 ms</text><text class="body" x="965" y="322" text-anchor="middle">等待 2 ms</text>
+<path d="M900 213 V285" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 5"/>
+<path d="M1030 343 V373" fill="none" stroke="#475569" stroke-width="2"/>
+<text class="note" x="1030" y="402" text-anchor="middle">12 ms：结果可用于更新</text>
+<text class="note" x="750" y="448" text-anchor="middle">相同阶段完全串行需 16 ms；本例合并为 10 + 6 − 4 = 12 ms</text>
+</svg>

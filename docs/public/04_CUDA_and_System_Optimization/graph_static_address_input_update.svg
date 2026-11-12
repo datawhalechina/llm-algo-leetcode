@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="600" viewBox="0 0 1500 600" role="img" aria-labelledby="title desc">
+<title id="title">更新静态缓冲内容不同于重新绑定变量</title>
+<desc id="desc">图捕获时记录输入地址A。上行原地更新A的内容后重放，读取A的新数据；下行只将Python变量指向B，原A仍存活且不变，重放仍读取A。所有更新与重放的依赖已正确建立。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d}.title{font-size:28px;font-weight:700}.head{font-size:22px;font-weight:700}.body{font-size:20px}.note{font-size:18px;fill:#475569}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#a)}</style>
+<rect width="1500" height="600" fill="#f8fafc"/>
+<text x="40" y="47" class="title">图记录的是输入地址；换数据需要更新它实际读取的缓冲区</text>
+<text x="40" y="83" class="note">两条对照均先捕获地址 A；缓冲区 A 持续有效，更新与读取之间具有正确依赖。</text>
+<text x="40" y="126" class="head">原地更新 A 的内容</text>
+<rect x="240" y="155" width="330" height="80" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="265" y="185" class="head">图记录地址 A</text><text x="265" y="213" class="body">原缓冲区仍然存活</text>
+<rect x="640" y="155" width="330" height="80" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="665" y="185" class="head">把本轮数据写入 A</text><text x="665" y="213" class="body">更新先于本轮读取</text>
+<rect x="1040" y="155" width="330" height="80" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="1065" y="185" class="head">重放使用 A 的新内容</text><text x="1065" y="213" class="body">地址不变，数值已更新</text>
+<text x="40" y="366" class="head">只把 Python 变量改绑到 B</text>
+<rect x="240" y="395" width="330" height="80" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="265" y="425" class="head">变量改绑到地址 B</text><text x="265" y="453" class="body">A 保持有效且内容不变</text>
+<rect x="640" y="395" width="330" height="80" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="665" y="425" class="head">捕获图仍记录 A</text><text x="665" y="453" class="body">变量绑定未修改图参数</text>
+<rect x="1040" y="395" width="330" height="80" rx="10" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+<text x="1065" y="425" class="head">重放仍使用 A 的旧内容</text><text x="1065" y="453" class="body">不会自动改为读取 B</text>
+<path d="M570 195H640" class="edge"/><path d="M970 195H1040" class="edge"/>
+<path d="M570 435H640" class="edge"/><path d="M970 435H1040" class="edge"/>
+<text x="750" y="563" text-anchor="middle" class="note">重放读取图中记录的地址，而不是当前 Python 变量的指向；输入、输出缓冲区都需持续有效。</text>
+</svg>

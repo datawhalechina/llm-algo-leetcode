@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">从NVMe调入参数需要分别检查存储到主机和主机到设备的路径</title>
+<desc id="desc">图示一次参数分片调入：NVMe中的分片先进入主机暂存区，再进入GPU供计算使用。两段有效带宽和固定开销分别计算；回写、优化器状态驻留及激活传输不在本图中。分块流水不能直接套用串行相加。</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker></defs>
+<style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172b4d}.title{font-size:30px;font-weight:700}.head{font-size:23px;font-weight:700}.body{font-size:21px}.note{font-size:19px}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}</style>
+<rect width="1500" height="470" fill="#fff"/>
+<text class="title" x="750" y="43" text-anchor="middle">NVMe 参数调入：存储到主机，再从主机到 GPU</text>
+<text class="note" x="750" y="80" text-anchor="middle">一次参数分片调入的两段路径；回写与其他状态的搬运按各自方向另计</text>
+<rect x="40" y="170" width="320" height="130" rx="12" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/>
+<text class="head" x="200" y="211" text-anchor="middle">NVMe 存储</text><text class="body" x="200" y="252" text-anchor="middle">已落盘的参数分片</text>
+<rect x="590" y="170" width="320" height="130" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+<text class="head" x="750" y="211" text-anchor="middle">主机内存</text><text class="body" x="750" y="252" text-anchor="middle">暂存读取的数据</text>
+<rect x="1140" y="170" width="320" height="130" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/>
+<text class="head" x="1300" y="211" text-anchor="middle">GPU 工作区</text><text class="body" x="1300" y="252" text-anchor="middle">供对应计算使用</text>
+<path class="edge" d="M360 235 H590"/><path class="edge" d="M910 235 H1140"/>
+<text class="note" x="475" y="210" text-anchor="middle">存储 → 主机</text><text class="note" x="1025" y="210" text-anchor="middle">主机 → 设备</text>
+<text class="body" x="475" y="341" text-anchor="middle">第一段有效带宽与开销</text><text class="body" x="1025" y="341" text-anchor="middle">第二段有效带宽与开销</text>
+<text class="note" x="750" y="422" text-anchor="middle">两段串行时才可直接相加；分块流水需要继续检查就绪、缓冲和依赖</text>
+</svg>

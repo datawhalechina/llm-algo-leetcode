@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">上一轮归约出的分片，在下一轮继续转发</title>
+<desc id="desc">rank0 首轮发 D0 收 C3；次轮转发 C0+C3 并收 B2+B3；第三轮转发 B 的部分和并完成 A 的总和。</desc>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;font-size:23px;fill:#1e293b}.title{font-size:30px;font-weight:700}.label{font-weight:700}.small{font-size:21px}.note{font-size:19px}</style>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<rect width="1500" height="470" fill="#fff"/>
+<text x="750" y="53" class="title" text-anchor="middle">上一轮归约出的分片，在下一轮继续转发</text>
+<text x="750" y="95" class="small" text-anchor="middle">只跟踪 rank0 的归约散射；发送与接收是同轮动作，跨列连线表示下一轮转发。</text>
+<text x="240" y="130" class="label" text-anchor="middle">第 1 轮</text>
+<rect x="45" y="150" width="390" height="65" rx="8" fill="#f1f5f9" stroke="#94a3b8" data-layout-role="node"/>
+<text x="240" y="190" class="small" text-anchor="middle">发 D₀ → rank1</text>
+<rect x="45" y="260" width="390" height="65" rx="8" fill="#dbeafe" stroke="#94a3b8" data-layout-role="node"/>
+<text x="240" y="300" class="small" text-anchor="middle">收 C₃，加本地 C₀</text>
+<path d="M240 325L240 365" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="45" y="365" width="390" height="65" rx="8" fill="#fef3c7" stroke="#94a3b8" data-layout-role="node"/>
+<text x="240" y="405" class="small" text-anchor="middle">C₀+C₃</text>
+<path d="M435 397L490 397L490 182L550 182" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+<text x="745" y="130" class="label" text-anchor="middle">第 2 轮</text>
+<rect x="550" y="150" width="390" height="65" rx="8" fill="#f1f5f9" stroke="#94a3b8" data-layout-role="node"/>
+<text x="745" y="190" class="small" text-anchor="middle">发 C₀+C₃ → rank1</text>
+<rect x="550" y="260" width="390" height="65" rx="8" fill="#dbeafe" stroke="#94a3b8" data-layout-role="node"/>
+<text x="745" y="300" class="small" text-anchor="middle">收 B₂+B₃，加本地 B₀</text>
+<path d="M745 325L745 365" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="550" y="365" width="390" height="65" rx="8" fill="#fef3c7" stroke="#94a3b8" data-layout-role="node"/>
+<text x="745" y="405" class="small" text-anchor="middle">B₀+B₂+B₃</text>
+<path d="M940 397L995 397L995 182L1055 182" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+<text x="1250" y="130" class="label" text-anchor="middle">第 3 轮</text>
+<rect x="1055" y="150" width="390" height="65" rx="8" fill="#f1f5f9" stroke="#94a3b8" data-layout-role="node"/>
+<text x="1250" y="190" class="small" text-anchor="middle">发 B₀+B₂+B₃ → rank1</text>
+<rect x="1055" y="260" width="390" height="65" rx="8" fill="#dbeafe" stroke="#94a3b8" data-layout-role="node"/>
+<text x="1250" y="300" class="small" text-anchor="middle">收 A₁+A₂+A₃，加本地 A₀</text>
+<path d="M1250 325L1250 365" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="1055" y="365" width="390" height="65" rx="8" fill="#fef3c7" stroke="#94a3b8" data-layout-role="node"/>
+<text x="1250" y="405" class="small" text-anchor="middle">AΣ=A₀+A₁+A₂+A₃</text>
+</svg>

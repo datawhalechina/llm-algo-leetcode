@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">从集合结果或训练状态分别进入，再对照等待条件</title><desc id="desc">实线是推荐阅读，虚线是窗口假设对照；没有结果文件依赖。</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker></defs>
+<style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172b4d}.title{font-size:30px;font-weight:700}.head{font-size:23px;font-weight:700}.body{font-size:20px}.note{font-size:19px}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}.choice{stroke-dasharray:7 5}</style>
+<rect width="1500" height="470" fill="#fff"/>
+<text class="title" x="750" y="43" text-anchor="middle">从集合结果或训练状态分别进入，再对照等待条件</text>
+<text class="note" x="750" y="80" text-anchor="middle">实线是推荐阅读，虚线是窗口假设对照；没有结果文件依赖</text>
+<g id="collective"><rect x="40" y="130" width="380" height="100" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text class="head" x="230" y="169" text-anchor="middle">13 集合结果</text><text class="body" x="230" y="204" text-anchor="middle">Gloo求和与按rank收集</text></g>
+<g id="ring"><rect x="560" y="130" width="380" height="100" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text class="head" x="750" y="169" text-anchor="middle">14 Ring通信量</text><text class="body" x="750" y="204" text-anchor="middle">逐轮分片与发送字节</text></g>
+<g id="overlap"><rect x="1080" y="130" width="380" height="100" rx="12" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text class="head" x="1270" y="169" text-anchor="middle">15 梯度通信时间</text><text class="body" x="1270" y="204" text-anchor="middle">就绪、重叠与暴露尾部</text></g>
+<g id="state"><rect x="40" y="320" width="380" height="100" rx="12" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/><text class="head" x="230" y="359" text-anchor="middle">已理解训练状态</text><text class="body" x="230" y="394" text-anchor="middle">参数、梯度与优化器</text></g>
+<g id="zero"><rect x="560" y="320" width="380" height="100" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text class="head" x="750" y="359" text-anchor="middle">16 ZeRO配置</text><text class="body" x="750" y="394" text-anchor="middle">分片对象与CPU驻留组合</text></g>
+<g id="offload"><rect x="1080" y="320" width="380" height="100" rx="12" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text class="head" x="1270" y="359" text-anchor="middle">17 卸载时间模型</text><text class="body" x="1270" y="394" text-anchor="middle">单向路径与理想隐藏窗口</text></g>
+<path class="edge" d="M420 180 H560" data-from="collective" data-to="ring"/>
+<path class="edge" d="M940 180 H1080" data-from="ring" data-to="overlap"/>
+<path class="edge" d="M420 370 H560" data-from="state" data-to="zero"/>
+<path class="edge" d="M940 370 H1080" data-from="zero" data-to="offload"/>
+<path class="edge choice" d="M1270 230 V320" data-from="overlap" data-to="offload"/>
+<text class="note" x="490" y="161" text-anchor="middle">拆开传输轮次</text>
+<text class="note" x="1010" y="161" text-anchor="middle">再看时间位置</text>
+<text class="note" x="490" y="351" text-anchor="middle">写清驻留选择</text>
+<text class="note" x="1010" y="351" text-anchor="middle">估算搬运代价</text>
+<text class="note" x="1290" y="281" text-anchor="start">对照窗口假设</text>
+</svg>

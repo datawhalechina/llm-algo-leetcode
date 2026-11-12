@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">线程索引确定输出位置，边界判断排除尾部线程</title>
+<desc id="desc">长度1000、每块256线程。块1线程7得到索引263并读写对应元素；块3线程255得到索引1023，超出有效范围，不访问输入与输出。两行分别表示两个线程的索引和访问决策。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:27px;font-weight:700}.h{font-size:23px;font-weight:700}.s{font-size:21px}.edge{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#a)}</style>
+<rect width="1500" height="470" rx="22" fill="#f8fafc"/>
+<text x="55" y="52" class="title">从线程编号到元素访问：长度 1000，每块 256 个线程</text>
+<rect x="60" y="115" width="390" height="120" rx="15" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="85" y="160" class="h">块 1，块内线程 7</text><text x="85" y="200" class="s">块起点 256，局部偏移 7</text>
+<rect x="555" y="115" width="390" height="120" rx="15" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="580" y="160" class="h">全局索引 263</text><text x="580" y="200" class="s">1 × 256 + 7，小于 1000</text>
+<rect x="1050" y="115" width="390" height="120" rx="15" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="1075" y="160" class="h">只处理位置 263</text><text x="1075" y="200" class="s">读两路输入，再写一个输出</text>
+<rect x="60" y="295" width="390" height="120" rx="15" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="85" y="340" class="h">块 3，块内线程 255</text><text x="85" y="380" class="s">块起点 768，局部偏移 255</text>
+<rect x="555" y="295" width="390" height="120" rx="15" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="580" y="340" class="h">全局索引 1023</text><text x="580" y="380" class="s">3 × 256 + 255，超出范围</text>
+<rect x="1050" y="295" width="390" height="120" rx="15" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+<text x="1075" y="340" class="h">不访问任何元素</text><text x="1075" y="380" class="s">判断同时保护读取与写回</text>
+<path d="M450 175H555" class="edge"/><path d="M945 175H1050" class="edge"/>
+<path d="M450 355H555" class="edge"/><path d="M945 355H1050" class="edge"/>
+</svg>

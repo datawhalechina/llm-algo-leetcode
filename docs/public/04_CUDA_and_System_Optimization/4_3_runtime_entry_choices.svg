@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">先看依赖、提交或显存现象，再选择运行时机制</title><desc id="desc">三条是问题入口，不是同一优化方案的三个连续步骤。</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker></defs>
+<style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172b4d}.title{font-size:30px;font-weight:700}.head{font-size:23px;font-weight:700}.body{font-size:20px}.note{font-size:19px}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}.choice{stroke-dasharray:7 5}</style>
+<rect width="1500" height="470" fill="#fff"/>
+<text class="title" x="750" y="43" text-anchor="middle">先看依赖、提交或显存现象，再选择运行时机制</text>
+<text class="note" x="750" y="80" text-anchor="middle">三条是问题入口，不是同一优化方案的三个连续步骤</text>
+<g id="observed"><rect x="40" y="190" width="340" height="110" rx="12" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/><text class="head" x="210" y="229" text-anchor="middle">时间线／显存样本</text><text class="body" x="210" y="264" text-anchor="middle">等待或占用发生在哪里？</text></g>
+<g id="transfer"><rect x="900" y="90" width="560" height="90" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text class="head" x="1180" y="129" text-anchor="middle">10 Stream与传输</text><text class="body" x="1180" y="164" text-anchor="middle">数据就绪、消费与缓冲复用</text></g>
+<g id="graph"><rect x="900" y="220" width="560" height="90" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text class="head" x="1180" y="259" text-anchor="middle">11 Graph重放</text><text class="body" x="1180" y="294" text-anchor="middle">固定工作流：准备与重复提交</text></g>
+<g id="memory"><rect x="900" y="350" width="560" height="90" rx="12" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text class="head" x="1180" y="389" text-anchor="middle">12 显存样本分类</text><text class="body" x="1180" y="424" text-anchor="middle">活跃、预留与分配失败</text></g>
+<path class="edge" d="M380 215 H500 V135 H900" data-from="observed" data-to="transfer"/>
+<path class="edge" d="M380 245 H900" data-from="observed" data-to="graph"/>
+<path class="edge" d="M380 275 H500 V395 H900" data-from="observed" data-to="memory"/>
+<text class="note" x="700" y="120" text-anchor="middle">传输与计算依赖</text>
+<text class="note" x="650" y="230" text-anchor="middle">逐项提交开销</text>
+<text class="note" x="700" y="380" text-anchor="middle">活跃／预留差异</text>
+</svg>

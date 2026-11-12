@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">十九个有效输入不等于只有十九个线程参与交换</title>
+<desc id="desc">完整32线程Warp中，前19个lane保存输入，余下13个lane保存求和中性值零。全部32个lane参与Shuffle。输入有效性与交换参与范围是不同条件。</desc>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:27px;font-weight:700}.h{font-size:23px;font-weight:700}.s{font-size:21px}</style>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="55" y="52" class="title">十九个有效输入，也可以由完整三十二线程Warp共同求和</text>
+<text x="55" y="94" class="s">下图按连续lane范围分段；每个范围的宽度与线程数成比例。</text>
+<text x="55" y="165" class="h">数据内容</text>
+<rect data-layout-role="glyph-group" x="230" y="125" width="712.5" height="85" fill="#dbeafe" stroke="#2563eb"/>
+<rect data-layout-role="glyph-group" x="942.5" y="125" width="487.5" height="85" fill="#e2e8f0" stroke="#64748b"/>
+<text x="586" y="160" text-anchor="middle" class="h">lane 0–18：19个输入</text><text x="586" y="193" text-anchor="middle" class="s">分别持有各自的真实数值</text>
+<text x="1186" y="160" text-anchor="middle" class="h">lane 19–31：13个零</text><text x="1186" y="193" text-anchor="middle" class="s">仍有寄存器值，不增加总和</text>
+<text x="55" y="295" class="h">交换参与</text>
+<rect data-layout-role="glyph-group" x="230" y="250" width="1200" height="85" fill="#dcfce7" stroke="#16a34a"/>
+<text x="830" y="285" text-anchor="middle" class="h">lane 0–31全部参与同一次Shuffle</text>
+<text x="830" y="318" text-anchor="middle" class="s">参与掩码覆盖完整Warp；数据无效的lane也照常交换零值与局部和</text>
+<text x="55" y="395" class="s">若改成只有部分lane参与，必须重新安排每轮来源；不能把输入长度直接当作参与方案。</text>
+<text x="55" y="435" class="s">本页CPU练习验证数值交换关系，不执行CUDA参与掩码。</text>
+</svg>

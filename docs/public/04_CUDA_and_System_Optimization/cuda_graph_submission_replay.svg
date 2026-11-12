@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="600" viewBox="0 0 1500 600" role="img" aria-labelledby="title desc">
+<title id="title">逐次提交与整图重放</title>
+<desc id="desc">普通路径由主机逐次提交加法、乘法和归约。Graph 路径预先捕获相同依赖，稳态只提交一次重放。两条路径设备计算相同。图只展示顺序与依赖，没有按时长比例绘制，不是实测时间线。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d}.title{font-size:28px;font-weight:700}.head{font-size:22px;font-weight:700}.body{font-size:20px}.note{font-size:18px;fill:#475569}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}.box{stroke:#829ab1;stroke-width:2}</style>
+<rect width="1500" height="600" fill="#f8fafc"/>
+<text x="40" y="47" class="title">相同设备计算，逐项提交变为整图重放</text>
+<text x="40" y="83" class="note">向右表示执行推进；连线表示依赖，方块与间距不按时长比例绘制。捕获准备只发生在重放之前。</text>
+<text x="40" y="126" class="head">普通路径</text>
+<text x="40" y="187" class="body">主机提交</text>
+<text x="40" y="287" class="body">设备执行</text>
+<rect x="300" y="145" width="210" height="72" rx="10" fill="#dbeafe" class="box"/>
+<text x="405" y="187" text-anchor="middle" class="body">提交加法</text>
+<rect x="700" y="145" width="210" height="72" rx="10" fill="#dbeafe" class="box"/>
+<text x="805" y="187" text-anchor="middle" class="body">提交乘法</text>
+<rect x="1100" y="145" width="210" height="72" rx="10" fill="#dbeafe" class="box"/>
+<text x="1205" y="187" text-anchor="middle" class="body">提交归约</text>
+<rect x="300" y="245" width="210" height="72" rx="10" fill="#dcfce7" class="box"/>
+<text x="405" y="287" text-anchor="middle" class="body">加法</text>
+<rect x="700" y="245" width="210" height="72" rx="10" fill="#dcfce7" class="box"/>
+<text x="805" y="287" text-anchor="middle" class="body">乘法</text>
+<rect x="1100" y="245" width="210" height="72" rx="10" fill="#dcfce7" class="box"/>
+<text x="1205" y="287" text-anchor="middle" class="body">归约</text>
+<path d="M510 181H700" class="edge"/><path d="M910 181H1100" class="edge"/>
+<path d="M405 217V245" class="edge"/><path d="M805 217V245" class="edge"/><path d="M1205 217V245" class="edge"/>
+<path d="M510 281H700" class="edge"/><path d="M910 281H1100" class="edge"/>
+<text x="40" y="350" class="head">稳态重放</text>
+<text x="40" y="375" class="note">捕获准备另计</text>
+<text x="40" y="427" class="body">主机提交</text>
+<text x="40" y="527" class="body">设备执行</text>
+<rect x="300" y="385" width="210" height="72" rx="10" fill="#ede9fe" class="box"/>
+<text x="405" y="427" text-anchor="middle" class="body">一次重放提交</text>
+<rect x="300" y="485" width="210" height="72" rx="10" fill="#dcfce7" class="box"/>
+<text x="405" y="527" text-anchor="middle" class="body">加法</text>
+<rect x="700" y="485" width="210" height="72" rx="10" fill="#dcfce7" class="box"/>
+<text x="805" y="527" text-anchor="middle" class="body">乘法</text>
+<rect x="1100" y="485" width="210" height="72" rx="10" fill="#dcfce7" class="box"/>
+<text x="1205" y="527" text-anchor="middle" class="body">归约</text>
+<path d="M405 457V485" class="edge"/><path d="M510 521H700" class="edge"/><path d="M910 521H1100" class="edge"/>
+<text x="750" y="585" text-anchor="middle" class="note">主机提交与设备执行可以重叠；减少提交次数能否缩短完成时间，需要同工作流配对测量。</text>
+</svg>

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">不写输出的线程，也可能提供有效输入</title>
+<desc id="desc">边缘块中，输出列越界的线程仍负责装载一项供有效输出使用的 A 数据；图只展开一行，不是所有边缘输出。</desc>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;font-size:23px;fill:#1e293b}.title{font-size:30px;font-weight:700}.label{font-weight:700}.small{font-size:21px}.note{font-size:19px}</style>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="45" y="53" class="title" text-anchor="start">不写输出的线程，也可能提供有效输入</text>
+<text x="45" y="95" class="small" text-anchor="start">M=N=K=35，tile=16；只展开输出块 (2, 2) 的 ty=0 行与第一段 K</text>
+<rect x="45" y="160" width="350" height="140" rx="8" fill="#fef3c7" stroke="#94a3b8" data-layout-role="node"/>
+<text x="220" y="201" class="label" text-anchor="middle">线程 (ty=0, tx=5)</text>
+<text x="220" y="242" class="small" text-anchor="middle">输出坐标 C[32, 37]</text>
+<text x="220" y="277" class="small" text-anchor="middle">列越界：最终不写 C</text>
+<rect x="560" y="160" width="360" height="140" rx="8" fill="#dbeafe" stroke="#94a3b8" data-layout-role="node"/>
+<text x="740" y="201" class="label" text-anchor="middle">仍装载合法输入</text>
+<text x="740" y="242" class="small" text-anchor="middle">A[32, 5] → sA[0, 5]</text>
+<text x="740" y="277" class="small" text-anchor="middle">B[0, 37] 越界，填零</text>
+<rect x="1085" y="160" width="370" height="140" rx="8" fill="#dbeafe" stroke="#94a3b8" data-layout-role="node"/>
+<text x="1270" y="201" class="label" text-anchor="middle">同一行的有效线程</text>
+<text x="1270" y="242" class="small" text-anchor="middle">tx=0、1、2</text>
+<text x="1270" y="277" class="small" text-anchor="middle">计算 C[32, 32:35]</text>
+<path d="M395 230 L560 230" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+<text x="478" y="208" class="small" text-anchor="middle">协作装载</text>
+<path d="M920 230 L1085 230" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+<text x="1002" y="208" class="small" text-anchor="middle">同步后读取</text>
+<rect x="235" y="355" width="1030" height="65" rx="8" fill="#fff" stroke="#94a3b8" data-layout-role="node"/>
+<text x="750" y="395" class="small" text-anchor="middle">输出越界 ≠ 没有协作任务；提前退出会丢失有效输入，并破坏块级同步。</text>
+</svg>

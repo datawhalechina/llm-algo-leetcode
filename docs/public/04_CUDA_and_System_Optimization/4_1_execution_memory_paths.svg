@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">从线程索引分开看地址、协作和每块资源</title><desc id="desc">先掌握有效索引，再按问题选择；CPU模型与CUDA执行分别核对。虚线为条件分支；05可从线程块基础直接进入，不必先完成矩阵页</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker></defs>
+<style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172b4d}.title{font-size:30px;font-weight:700}.head{font-size:23px;font-weight:700}.body{font-size:20px}.note{font-size:19px}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}.choice{stroke-dasharray:7 5}</style>
+<rect width="1500" height="470" fill="#fff"/>
+<text class="title" x="750" y="43" text-anchor="middle">从线程索引分开看地址、协作和每块资源</text>
+<text class="note" x="750" y="80" text-anchor="middle">先掌握有效索引，再按问题选择；CPU模型与CUDA执行分别核对</text>
+<g id="index"><rect x="40" y="190" width="300" height="100" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text class="head" x="190" y="229" text-anchor="middle">01 向量加法</text><text class="body" x="190" y="264" text-anchor="middle">索引、有效位置与当前流</text></g>
+<g id="global"><rect x="500" y="120" width="380" height="90" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text class="head" x="690" y="159" text-anchor="middle">02 全局地址</text><text class="body" x="690" y="194" text-anchor="middle">连续、偏移与跨步模型</text></g>
+<g id="warp"><rect x="500" y="310" width="380" height="90" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text class="head" x="690" y="349" text-anchor="middle">03 Warp归约</text><text class="body" x="690" y="384" text-anchor="middle">CPU局部和与跨Warp汇总</text></g>
+<g id="bank"><rect x="1060" y="120" width="400" height="90" rx="12" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text class="head" x="1260" y="159" text-anchor="middle">04 Bank地址映射</text><text class="body" x="1260" y="194" text-anchor="middle">CPU行跨度与填充</text></g>
+<g id="resource"><rect x="1060" y="310" width="400" height="90" rx="12" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text class="head" x="1260" y="349" text-anchor="middle">05 资源与驻留</text><text class="body" x="1260" y="384" text-anchor="middle">上界、查询与耗时</text></g>
+<path class="edge" d="M340 215 H420 V165 H500" data-from="index" data-to="global"/>
+<path class="edge" d="M340 265 H420 V355 H500" data-from="index" data-to="warp"/>
+<path class="edge choice" d="M880 165 H1060" data-from="global" data-to="bank"/>
+<path class="edge choice" d="M190 290 V430 H1260 V400" data-from="index" data-to="resource"/>
+<text class="note" x="970" y="145" text-anchor="middle">看共享地址</text>
+<text class="note" x="430" y="113" text-anchor="middle">看全局访存</text>
+<text class="note" x="650" y="291" text-anchor="middle">看线程协作</text>
+<text class="note" x="750" y="453" text-anchor="middle">虚线为条件分支；05可从线程块基础直接进入，不必先完成矩阵页</text>
+</svg>

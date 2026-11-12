@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">子块起点会移动，原矩阵的行跨度不变</title>
+<desc id="desc">用以元素为单位的地址偏移展示 A 与 B 的第二段 K 起点及下一行位置，区别原矩阵跨度和子块宽度。</desc>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;font-size:23px;fill:#1e293b}.title{font-size:28px;font-weight:700}.label{font-weight:700}.small{font-size:21px}.note{font-size:19px}</style>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="45" y="53" class="title" text-anchor="start">子块起点会移动，原矩阵的行跨度不变</text>
+<text x="45" y="95" class="small" text-anchor="start">输出块 (1, 2)，第二段 K=16…31；每个小框表示 16 个连续元素，框内为起始元素偏移</text>
+<rect x="45" y="125" width="680" height="290" rx="8" fill="#fff" stroke="#94a3b8" data-layout-role="panel"/>
+<text x="385" y="158" class="label" text-anchor="middle">A：32×64，选 A[16:32, 16:32]</text>
+<text x="100" y="242" class="small" text-anchor="middle">行 16</text>
+<rect x="140" y="205" width="130" height="58" rx="8" fill="#f1f5f9" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="205" y="241" class="small" text-anchor="middle">1024</text>
+<text x="205" y="192" class="small" text-anchor="middle">列 0…15</text>
+<rect x="280" y="205" width="130" height="58" rx="8" fill="#fef3c7" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="345" y="241" class="small" text-anchor="middle">1040</text>
+<text x="345" y="192" class="small" text-anchor="middle">列 16…31</text>
+<rect x="420" y="205" width="130" height="58" rx="8" fill="#f1f5f9" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="485" y="241" class="small" text-anchor="middle">1056</text>
+<text x="485" y="192" class="small" text-anchor="middle">列 32…47</text>
+<rect x="560" y="205" width="130" height="58" rx="8" fill="#f1f5f9" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="625" y="241" class="small" text-anchor="middle">1072</text>
+<text x="625" y="192" class="small" text-anchor="middle">列 48…63</text>
+<text x="100" y="357" class="small" text-anchor="middle">行 17</text>
+<rect x="140" y="320" width="130" height="58" rx="8" fill="#f1f5f9" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="205" y="356" class="small" text-anchor="middle">1088</text>
+<rect x="280" y="320" width="130" height="58" rx="8" fill="#fef3c7" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="345" y="356" class="small" text-anchor="middle">1104</text>
+<rect x="420" y="320" width="130" height="58" rx="8" fill="#f1f5f9" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="485" y="356" class="small" text-anchor="middle">1120</text>
+<rect x="560" y="320" width="130" height="58" rx="8" fill="#f1f5f9" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="625" y="356" class="small" text-anchor="middle">1136</text>
+<path d="M345 263 L345 320" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+<text x="400" y="301" class="small" text-anchor="middle">+64</text>
+<rect x="775" y="125" width="680" height="290" rx="8" fill="#fff" stroke="#94a3b8" data-layout-role="panel"/>
+<text x="1115" y="158" class="label" text-anchor="middle">B：64×48，选 B[16:32, 32:48]</text>
+<text x="830" y="242" class="small" text-anchor="middle">行 16</text>
+<rect x="870" y="205" width="175" height="58" rx="8" fill="#f1f5f9" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="957.5" y="241" class="small" text-anchor="middle">768</text>
+<text x="957.5" y="192" class="small" text-anchor="middle">列 0…15</text>
+<rect x="1055" y="205" width="175" height="58" rx="8" fill="#f1f5f9" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="1142.5" y="241" class="small" text-anchor="middle">784</text>
+<text x="1142.5" y="192" class="small" text-anchor="middle">列 16…31</text>
+<rect x="1240" y="205" width="175" height="58" rx="8" fill="#fef3c7" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="1327.5" y="241" class="small" text-anchor="middle">800</text>
+<text x="1327.5" y="192" class="small" text-anchor="middle">列 32…47</text>
+<text x="830" y="357" class="small" text-anchor="middle">行 17</text>
+<rect x="870" y="320" width="175" height="58" rx="8" fill="#f1f5f9" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="957.5" y="356" class="small" text-anchor="middle">816</text>
+<rect x="1055" y="320" width="175" height="58" rx="8" fill="#f1f5f9" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="1142.5" y="356" class="small" text-anchor="middle">832</text>
+<rect x="1240" y="320" width="175" height="58" rx="8" fill="#fef3c7" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="1327.5" y="356" class="small" text-anchor="middle">848</text>
+<path d="M1327.5 263 L1327.5 320" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+<text x="1382.5" y="301" class="small" text-anchor="middle">+48</text>
+<text x="750" y="452" class="small" text-anchor="middle">leading dimension 使用原矩阵行跨度 64／48，而不是子块宽度 16；本图不表示 fragment 的 lane 分配。</text>
+</svg>

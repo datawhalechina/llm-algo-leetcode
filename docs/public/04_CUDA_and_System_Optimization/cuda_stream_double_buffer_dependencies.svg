@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="600" viewBox="0 0 1500 600" role="img" aria-labelledby="title desc">
+<title id="title">双缓冲传输与计算的两类完成事件</title>
+<desc id="desc">锁页 CPU 批次由传输 Stream 写入两个轮换的设备槽位，计算 Stream 等待本批传输完成再读取。复用同一槽位前，传输 Stream 等待上次计算读取结束。A 和 C 使用槽零，B 使用槽一。实线为数据流，虚线为事件约束，不表示实测时间或重叠程度。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d}.title{font-size:28px;font-weight:700}.head{font-size:22px;font-weight:700}.body{font-size:20px}.note{font-size:18px;fill:#475569}.box{stroke:#829ab1;stroke-width:2}.data{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}.event{fill:none;stroke:#475569;stroke-width:3;stroke-dasharray:8 6;marker-end:url(#arrow)}</style>
+<rect width="1500" height="600" fill="#f8fafc"/>
+<text x="40" y="48" class="title">先等复制完成才能读取，先等读取完成才能覆盖</text>
+<text x="40" y="88" class="note">实线：数据流；虚线：完成事件约束。两条工作 Stream 初始都等待调用方准备的权重和缓冲区。</text>
+<rect x="40" y="210" width="230" height="110" rx="14" fill="#dbeafe" class="box"/>
+<text x="155" y="250" text-anchor="middle" class="head">锁页 CPU 批次</text>
+<text x="155" y="287" text-anchor="middle" class="body">源数据保留至复制结束</text>
+<rect x="335" y="210" width="230" height="110" rx="14" fill="#dbeafe" class="box"/>
+<text x="450" y="250" text-anchor="middle" class="head">传输 Stream</text>
+<text x="450" y="287" text-anchor="middle" class="body">异步复制并记录完成</text>
+<rect x="630" y="210" width="230" height="110" rx="14" fill="#fef3c7" class="box"/>
+<text x="745" y="250" text-anchor="middle" class="head">两个设备槽位</text>
+<text x="745" y="287" text-anchor="middle" class="body">槽 0、槽 1 交替使用</text>
+<rect x="925" y="210" width="230" height="110" rx="14" fill="#dcfce7" class="box"/>
+<text x="1040" y="250" text-anchor="middle" class="head">计算 Stream</text>
+<text x="1040" y="287" text-anchor="middle" class="body">读取本批输入做矩阵乘</text>
+<rect x="1220" y="210" width="230" height="110" rx="14" fill="#dcfce7" class="box"/>
+<text x="1335" y="250" text-anchor="middle" class="head">独立输出</text>
+<text x="1335" y="287" text-anchor="middle" class="body">按 A、B、C 顺序收集</text>
+<path d="M270 265H335" class="data"/><path d="M565 265H630" class="data"/><path d="M860 265H925" class="data"/><path d="M1155 265H1220" class="data"/>
+<path d="M450 210V150H1040V210" class="event"/>
+<text x="745" y="133" text-anchor="middle" class="body">传输完成事件：本批复制结束后，计算才可读取</text>
+<path d="M1040 320V410H450V320" class="event"/>
+<text x="745" y="444" text-anchor="middle" class="body">计算完成事件：同一槽位的旧数据读取结束后，才可再次写入</text>
+<text x="750" y="508" text-anchor="middle" class="note">A → 槽 0，B → 槽 1，C → 槽 0；C 覆盖槽 0 前等待 A 的计算完成。</text>
+<text x="750" y="547" text-anchor="middle" class="note">依赖正确后是否产生性能重叠，还取决于复制引擎、计算资源和实际负载。</text>
+</svg>

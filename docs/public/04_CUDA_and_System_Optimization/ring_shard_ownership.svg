@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">四 rank 环形归约的分片归属变化</title>
+<desc id="desc">每个 rank 初始持有四个局部分片。归约散射三轮后分别持有 A、B、C、D 的一个完整归约片，全收集再经过三轮后，每个 rank 都持有四个结果片。各阶段每 rank 每轮发送一片。此图表示阶段结果归属，网络方向与 rank0 的逐轮流转由正文说明。</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker></defs>
+<style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172b4d}.title{font-size:30px;font-weight:700}.head{font-size:22px;font-weight:700}.body{font-size:21px}.note{font-size:19px}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}.input{fill:#eff6ff;stroke:#60a5fa;stroke-width:2}.partial{fill:#fffbeb;stroke:#fbbf24;stroke-width:2}.output{fill:#f0fdf4;stroke:#4ade80;stroke-width:2}</style>
+<rect width="1500" height="470" fill="#fff"/>
+<text class="title" x="750" y="43" text-anchor="middle">先让每个 rank 得到一片总和，再传播所有结果片</text>
+<text class="note" x="750" y="79" text-anchor="middle">构造模型 P=4；Σ 表示四个 rank 同位置分片的总和；箭头是阶段状态变化</text>
+<text class="head" x="305" y="120" text-anchor="middle">初始：每 rank 共 S 字节</text>
+<text class="head" x="750" y="120" text-anchor="middle">归约散射后</text>
+<text class="head" x="1270" y="120" text-anchor="middle">全收集后</text>
+<text class="body" x="45" y="176">rank0</text><text class="body" x="45" y="241">rank1</text><text class="body" x="45" y="306">rank2</text><text class="body" x="45" y="371">rank3</text>
+<rect class="input" x="150" y="142" width="310" height="50" rx="8"/><text class="body" x="305" y="176" text-anchor="middle">A₀　B₀　C₀　D₀</text>
+<rect class="input" x="150" y="207" width="310" height="50" rx="8"/><text class="body" x="305" y="241" text-anchor="middle">A₁　B₁　C₁　D₁</text>
+<rect class="input" x="150" y="272" width="310" height="50" rx="8"/><text class="body" x="305" y="306" text-anchor="middle">A₂　B₂　C₂　D₂</text>
+<rect class="input" x="150" y="337" width="310" height="50" rx="8"/><text class="body" x="305" y="371" text-anchor="middle">A₃　B₃　C₃　D₃</text>
+<rect class="partial" x="650" y="142" width="200" height="50" rx="8"/><text class="body" x="750" y="176" text-anchor="middle">AΣ</text>
+<rect class="partial" x="650" y="207" width="200" height="50" rx="8"/><text class="body" x="750" y="241" text-anchor="middle">BΣ</text>
+<rect class="partial" x="650" y="272" width="200" height="50" rx="8"/><text class="body" x="750" y="306" text-anchor="middle">CΣ</text>
+<rect class="partial" x="650" y="337" width="200" height="50" rx="8"/><text class="body" x="750" y="371" text-anchor="middle">DΣ</text>
+<rect class="output" x="1090" y="142" width="360" height="50" rx="8"/><text class="body" x="1270" y="176" text-anchor="middle">AΣ　BΣ　CΣ　DΣ</text>
+<rect class="output" x="1090" y="207" width="360" height="50" rx="8"/><text class="body" x="1270" y="241" text-anchor="middle">AΣ　BΣ　CΣ　DΣ</text>
+<rect class="output" x="1090" y="272" width="360" height="50" rx="8"/><text class="body" x="1270" y="306" text-anchor="middle">AΣ　BΣ　CΣ　DΣ</text>
+<rect class="output" x="1090" y="337" width="360" height="50" rx="8"/><text class="body" x="1270" y="371" text-anchor="middle">AΣ　BΣ　CΣ　DΣ</text>
+<path class="edge" d="M460 167 H650"/><path class="edge" d="M460 232 H650"/><path class="edge" d="M460 297 H650"/><path class="edge" d="M460 362 H650"/>
+<path class="edge" d="M850 167 H1090"/><path class="edge" d="M850 232 H1090"/><path class="edge" d="M850 297 H1090"/><path class="edge" d="M850 362 H1090"/>
+<text class="note" x="555" y="432" text-anchor="middle">3 轮：发送、接收、累加</text><text class="note" x="970" y="432" text-anchor="middle">3 轮：传播已归约分片</text>
+</svg>

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">容量、证据与服务条件怎样约束成本比较</title>
+<desc id="desc">每个候选先检查容量。容量不足直接排除；容量足够后检查证据是否适用，不适用则需复测。证据适用时继续检查质量、P99和合格能力，全部通过的候选才进入同业务量成本比较。</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker></defs>
+<style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172b4d}.title{font-size:30px;font-weight:700}.head{font-size:23px;font-weight:700}.body{font-size:21px}.note{font-size:19px}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}</style>
+<rect width="1500" height="470" fill="#fff"/>
+<text class="title" x="750" y="48" text-anchor="middle">能算出价格，不等于可以进入成本排名</text>
+<text class="note" x="750" y="86" text-anchor="middle">先判断是否具备可比较的可行性；证据不适用与已知不满足条件分别保留</text>
+<rect x="50" y="140" width="260" height="100" rx="12" fill="#fffbeb" stroke="#d97706" stroke-width="2"/>
+<text class="head" x="180" y="177" text-anchor="middle">容量是否足够</text><text class="body" x="180" y="213" text-anchor="middle">扣除余量后覆盖峰值</text>
+<rect x="440" y="140" width="260" height="100" rx="12" fill="#ecfeff" stroke="#0891b2" stroke-width="2"/>
+<text class="head" x="570" y="177" text-anchor="middle">证据是否适用</text><text class="body" x="570" y="213" text-anchor="middle">模型、表示、请求分布</text>
+<rect x="830" y="140" width="260" height="100" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+<text class="head" x="960" y="177" text-anchor="middle">服务条件是否满足</text><text class="body" x="960" y="213" text-anchor="middle">质量、P99、合格能力</text>
+<rect x="1220" y="140" width="230" height="100" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+<text class="head" x="1335" y="177" text-anchor="middle">进入成本比较</text><text class="body" x="1335" y="213" text-anchor="middle">同周期、同业务量</text>
+<path class="edge" d="M310 190 H440"/><text class="note" x="375" y="174" text-anchor="middle">足够</text>
+<path class="edge" d="M700 190 H830"/><text class="note" x="765" y="174" text-anchor="middle">适用</text>
+<path class="edge" d="M1090 190 H1220"/><text class="note" x="1155" y="174" text-anchor="middle">全部通过</text>
+<rect x="50" y="330" width="260" height="100" rx="12" fill="#fef2f2" stroke="#dc2626" stroke-width="2"/>
+<text class="head" x="180" y="367" text-anchor="middle">排除当前方案</text><text class="body" x="180" y="403" text-anchor="middle">无需补造性能输入</text>
+<rect x="440" y="330" width="260" height="100" rx="12" fill="#fffbeb" stroke="#d97706" stroke-width="2"/>
+<text class="head" x="570" y="367" text-anchor="middle">需复测</text><text class="body" x="570" y="403" text-anchor="middle">保留容量与适用条件</text>
+<rect x="830" y="330" width="260" height="100" rx="12" fill="#fef2f2" stroke="#dc2626" stroke-width="2"/>
+<text class="head" x="960" y="367" text-anchor="middle">排除当前方案</text><text class="body" x="960" y="403" text-anchor="middle">记录未满足的服务条件</text>
+<path class="edge" d="M180 240 V330"/><text class="note" x="198" y="289">不足</text>
+<path class="edge" d="M570 240 V330"/><text class="note" x="588" y="289">不适用</text>
+<path class="edge" d="M960 240 V330"/><text class="note" x="978" y="289">未通过</text>
+</svg>
