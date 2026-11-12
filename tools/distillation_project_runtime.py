@@ -2768,6 +2768,30 @@ def validate_distillation_contract(spec: dict[str, Any]) -> dict[str, Any]:
     return {"ready": not issues, "issues": issues}
 
 
+def _finite_number(value: Any, name: str) -> float:
+    """Reject missing, boolean and non-finite evidence before comparisons."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        raise ValueError(f"{name} 必须为有限数")
+    return float(value)
+
+
+def _quality_categories(record: Mapping[str, Any], expected: set[str] | None = None) -> set[str]:
+    """Require a complete nonempty category set rather than its intersection."""
+    categories = record.get("category_scores")
+    if not isinstance(categories, Mapping) or not categories:
+        raise ValueError("必须提供非空类别分数")
+    names = set(categories)
+    if expected is not None and names != expected:
+        raise ValueError("类别集合必须与基线完整一致")
+    for name, row in categories.items():
+        if not isinstance(row, Mapping):
+            raise ValueError("类别记录必须包含质量分数")
+        score = _finite_number(row.get("quality_score"), str(name))
+        if not 0 <= score <= 1:
+            raise ValueError("类别质量必须位于 [0, 1]")
+    return names
+
+
 def summarize_distilled_candidate(
     teacher: dict[str, Any],
     student_baseline: dict[str, Any],
@@ -2776,6 +2800,11 @@ def summarize_distilled_candidate(
     """Summarize candidate quality and deployment ratios under one protocol."""
 
     numeric_fields = ("quality_score", "artifact_size_mb", "latency_ms")
+    for record in (teacher, student_baseline, candidate):
+        for field in numeric_fields:
+            _finite_number(record.get(field), field)
+        if not 0 <= record["quality_score"] <= 1:
+            raise ValueError("质量必须位于 [0, 1]")
     if any(
         not isinstance(record.get(field), (int, float))
         for record in (teacher, student_baseline, candidate)
@@ -2791,9 +2820,10 @@ def summarize_distilled_candidate(
     teacher_categories = teacher.get("category_scores", {})
     baseline_categories = student_baseline.get("category_scores", {})
     candidate_categories = candidate.get("category_scores", {})
-    common_categories = sorted(
-        set(teacher_categories) & set(baseline_categories) & set(candidate_categories)
-    )
+    expected_categories = _quality_categories(student_baseline)
+    _quality_categories(teacher, expected_categories)
+    _quality_categories(candidate, expected_categories)
+    common_categories = sorted(expected_categories)
     regressed_categories = [
         category
         for category in common_categories
@@ -2801,6 +2831,10 @@ def summarize_distilled_candidate(
         < float(baseline_categories[category]["quality_score"])
     ]
     latency_protocol = candidate.get("latency_protocol", {})
+    for field in ("repeats", "sample_count"):
+        count = latency_protocol.get(field, 0)
+        if isinstance(count, bool) or not isinstance(count, int) or count < 0:
+            raise ValueError(f"{field} 必须为非负整数")
     latency_measured = (
         int(latency_protocol.get("repeats", 0)) >= 2
         and int(latency_protocol.get("sample_count", 0)) >= 2
@@ -2834,6 +2868,11 @@ def decide_distilled_student(
 
     if not contract.get("ready"):
         return {"decision": "reject", "reason": "; ".join(contract.get("issues", []))}
+    for field in ("quality_gain", "teacher_retention", "teacher_size_ratio", "teacher_latency_ratio", "baseline_latency_ratio", "regressed_category_count"):
+        _finite_number(summary.get(field), field)
+    for field in ("min_quality_gain", "min_teacher_retention", "max_teacher_size_ratio", "max_teacher_latency_ratio", "max_baseline_latency_ratio", "max_regressed_categories"):
+        if _finite_number(gates.get(field), field) < 0:
+            raise ValueError("交付门槛必须非负")
     if not summary.get("artifact_verified") or not summary.get("load_ready"):
         return {"decision": "reject", "reason": "学生产物未通过完整性或加载检查"}
     if (
