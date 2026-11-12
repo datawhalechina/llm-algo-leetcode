@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="450" viewBox="0 0 1200 450" role="img" aria-labelledby="title desc">
-  <title id="title">参数更新范围与适配器交付</title><desc id="desc">从任务变化和资源预算选择全参、LoRA 或 QLoRA，并将更新范围连接到产物形式和验证证据。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="730" viewBox="0 0 1200 730" role="img" aria-labelledby="title desc">
+  <title id="title">参数更新范围与 LoRA 双路径计算</title><desc id="desc">上半部从任务和预算选择全参、LoRA或QLoRA并连接交付。下半部展示同一输入x分别经过冻结权重W0和可训练低秩矩阵A、B；低秩分支乘s后与W0x相加得到y。</desc>
   <defs><marker id="a" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker><style>.t{font-family:"Noto Sans CJK SC",sans-serif;font-size:25px;font-weight:700;fill:#172033}.s{font-family:"Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:400;fill:#475569}.h{font-family:"Noto Sans CJK SC",sans-serif;font-size:17px;font-weight:700;fill:#172033}.c{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;font-weight:400;fill:#334155}.l{fill:none;stroke:#475569;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#a)}</style></defs>
-  <rect width="1200" height="450" fill="#F8FAFC"/><rect x="28" y="24" width="1144" height="402" rx="24" fill="#FFF" stroke="#CBD5E1" stroke-width="2"/>
+  <rect width="1200" height="730" fill="#F8FAFC"/><rect x="28" y="24" width="1144" height="682" rx="24" fill="#FFF" stroke="#CBD5E1" stroke-width="2"/>
   <text x="62" y="68" class="t">参数更新范围决定训练状态和交付形态</text><text x="62" y="96" class="s">先固定任务与预算，再选择更新路径；目标模块、秩与缩放共同决定可训练参数。</text>
   <rect id="node-2" x="62" y="173" width="210" height="80" rx="16" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/><text x="84" y="196" class="h">任务与资源条件</text><text x="84" y="220" class="c">目标模块 · 数据 · 更新预算</text><text x="84" y="242" class="c">显存 · 部署 · 回滚要求</text>
   <rect id="node-3" x="338" y="112" width="210" height="72" rx="14" fill="#FEE2E2" stroke="#DC2626" stroke-width="2"/><text x="360" y="144" class="h">全参数微调</text><text x="360" y="168" class="c">更新全部主干权重</text>
@@ -11,4 +11,21 @@
   <rect id="node-7" x="924" y="173" width="214" height="80" rx="16" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/><text x="946" y="196" class="h">交付与验证</text><text x="946" y="220" class="c">适配器或合并模型</text><text x="946" y="242" class="c">版本、质量与资源记录</text>
   <path d="M272 190H304V148H338" data-source="node-2" data-target="node-3" class="l"/><path d="M272 213L338 234" data-source="node-2" data-target="node-4" class="l"/><path d="M272 236H304V320H338" data-source="node-2" data-target="node-5" class="l"/>
   <path d="M548 148H582V190H624" data-source="node-3" data-target="node-6" class="l"/><path d="M548 234L624 213" data-source="node-4" data-target="node-6" class="l"/><path d="M548 320H582V236H624" data-source="node-5" data-target="node-6" class="l"/><path d="M848 213H924" data-source="node-6" data-target="node-7" class="l"/>
+  <path d="M62 405H1138" stroke="#CBD5E1"/>
+  <text x="62" y="445" class="h">LoRA 双路径：同一输入经过冻结基座和可训练分支，再相加</text>
+  <rect id="input" x="80" y="535" width="100" height="60" rx="12" fill="#E0F2FE" stroke="#0284C7"/><text x="100" y="571" class="h">输入 x</text>
+  <rect id="base" x="280" y="475" width="240" height="62" rx="12" fill="#F1F5F9" stroke="#64748B"/><text x="302" y="501" class="h">W₀x</text><text x="302" y="523" class="c">W₀ 冻结，仍参与前向</text>
+  <rect id="lora-a" x="280" y="595" width="120" height="60" rx="12" fill="#FEF3C7" stroke="#D97706"/><text x="304" y="620" class="h">Ax</text><text x="304" y="643" class="c">降到 r 维</text>
+  <rect id="lora-b" x="460" y="595" width="130" height="60" rx="12" fill="#FEF3C7" stroke="#D97706"/><text x="480" y="620" class="h">B(Ax)</text><text x="480" y="643" class="c">回到输出维度</text>
+  <rect id="scale" x="650" y="595" width="100" height="60" rx="12" fill="#F3E8FF" stroke="#9333EA"/><text x="674" y="620" class="h">× s</text><text x="670" y="643" class="c">缩放增量</text>
+  <circle id="sum" cx="875" cy="565" r="27" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/><text x="866" y="573" class="h">+</text>
+  <rect id="output" x="970" y="535" width="150" height="60" rx="12" fill="#DCFCE7" stroke="#16A34A"/><text x="1018" y="571" class="h">输出 y</text>
+  <path data-source="input" data-target="base" d="M180 565H225V506H280" class="l"/>
+  <path data-source="input" data-target="lora-a" d="M225 565V625H280" class="l"/>
+  <path data-source="base" data-target="sum" d="M520 506H875V538" class="l"/>
+  <path data-source="lora-a" data-target="lora-b" d="M400 625H460" class="l"/>
+  <path data-source="lora-b" data-target="scale" d="M590 625H650" class="l"/>
+  <path data-source="scale" data-target="sum" d="M750 625H875V592" class="l"/>
+  <path data-source="sum" data-target="output" d="M902 565H970" class="l"/>
+  <text x="62" y="687" class="c">A、B 可训练，W₀ 冻结；r 为低秩维度，s 为缩放系数。可训练参数减少，基座计算与相关激活仍存在。</text>
 </svg>

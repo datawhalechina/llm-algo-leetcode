@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="660" viewBox="0 0 1200 660" role="img" aria-labelledby="title desc">
+  <title id="title">相同奖励的组均值、留一基线与标准差缩放</title>
+  <desc id="desc">同提示的三个回答奖励为0、1、3，组均值4/3。中心化奖励为-4/3、-1/3、5/3，RLOO留一基线为2、1.5、0.5，优势为-2、-0.5、2.5。GRPO用总体标准差sqrt14/3缩放后的优势约为-1.069、-0.267、1.336。这里统一使用给定奖励，仅比较基线与缩放，不代替完整算法目标。</desc>
+  <defs><style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#334155}.title{font-size:27px;font-weight:700;fill:#172033}.sub{font-size:15px}.head{font-size:18px;font-weight:700}.cell{font-size:19px;text-anchor:middle}.label{font-size:16px}.small{font-size:14px}</style></defs>
+  <rect width="1200" height="660" fill="#f8fafc"/>
+  <rect x="28" y="24" width="1144" height="612" rx="24" fill="white" stroke="#cbd5e1"/>
+  <text x="60" y="70" class="title">同一组奖励，比较基线与缩放怎样改变优势</text>
+  <text x="60" y="102" class="sub">同一提示的三个回答：r = (0, 1, 3)，K = 3；以下是构造计算例，不是训练测量。</text>
+  <rect x="60" y="128" width="1080" height="70" rx="14" fill="#e0f2fe" stroke="#0284c7"/>
+  <text x="82" y="158" class="head">共同统计</text>
+  <text x="82" y="183" class="sub">组均值 μ = 4/3；总体标准差 σ = √14 / 3 ≈ 1.247；本例 σ 大于稳定项 ε。</text>
+  <rect x="60" y="220" width="520" height="283" rx="16" fill="#f5f3ff" stroke="#a78bfa"/>
+  <text x="82" y="253" class="head">GRPO：先中心化，再按配置缩放</text>
+  <text x="82" y="283" class="sub">所有回答使用同一个组均值 μ。</text>
+  <rect x="620" y="220" width="520" height="283" rx="16" fill="#fff7ed" stroke="#fb923c"/>
+  <text x="642" y="253" class="head">RLOO：每条回答排除自己</text>
+  <text x="642" y="283" class="sub">基线 bᵢ = 其他两条回答的奖励均值。</text>
+  <g class="cell">
+    <text x="300" y="326">A</text><text x="405" y="326">B</text><text x="510" y="326">C</text>
+    <text x="300" y="369">4/3</text><text x="405" y="369">4/3</text><text x="510" y="369">4/3</text>
+    <text x="300" y="412">−4/3</text><text x="405" y="412">−1/3</text><text x="510" y="412">5/3</text>
+    <text x="300" y="463">−1.069</text><text x="405" y="463">−0.267</text><text x="510" y="463">1.336</text>
+    <text x="860" y="326">A</text><text x="965" y="326">B</text><text x="1070" y="326">C</text>
+    <text x="860" y="369">2</text><text x="965" y="369">1.5</text><text x="1070" y="369">0.5</text>
+    <text x="860" y="412">−2</text><text x="965" y="412">−0.5</text><text x="1070" y="412">2.5</text>
+  </g>
+  <g class="label">
+    <text x="82" y="326">回答</text><text x="82" y="369">组均值 μ</text><text x="82" y="412">中心化 rᵢ − μ</text><text x="82" y="463">除以 max(σ, ε)</text>
+    <text x="642" y="326">回答</text><text x="642" y="369">留一基线 bᵢ</text><text x="642" y="412">优势 rᵢ − bᵢ</text>
+  </g>
+  <path d="M82 430H558M642 430H1118" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="642" y="463" class="small">本例不再按组标准差缩放。</text>
+  <rect x="60" y="529" width="1080" height="75" rx="14" fill="#ecfdf5" stroke="#86efac"/>
+  <text x="82" y="560" class="head">留一优势 = 1.5 × 未缩放的中心化奖励</text>
+  <text x="82" y="587" class="sub">两者正负方向相同，幅度不同；实际更新还取决于奖励塑形、策略比率、裁剪和归约。</text>
+</svg>

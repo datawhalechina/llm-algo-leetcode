@@ -20,7 +20,7 @@
 <rect id="window" x="350" y="155" width="230" height="110" rx="14" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
 <text x="370" y="187" class="head">累积窗口结束</text>
 <text x="370" y="215" class="body">按约定分母归约梯度</text>
-<text x="370" y="240" class="body">混合精度时先反缩放</text>
+<text x="370" y="240" class="body">使用梯度缩放时先反缩放</text>
 <rect id="finite" x="640" y="155" width="230" height="110" rx="14" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
 <text x="660" y="187" class="head">梯度有限值检查</text>
 <text x="660" y="215" class="body">有限：按约定裁剪</text>

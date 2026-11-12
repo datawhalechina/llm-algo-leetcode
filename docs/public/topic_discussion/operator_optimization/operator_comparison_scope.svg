@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="430" viewBox="0 0 1100 430" role="img" aria-labelledby="title desc">
+<title id="title">同一个融合实现，三个不同的计时范围</title><desc id="desc">内核本体测准备好布局后的计算，完整调用纳入输入输出适配，组件再纳入上下游计算。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d;font-weight:400}.title{font-size:25px;font-weight:700}.h{font-size:18px;font-weight:700}.s{font-size:16px}.note{font-size:14px;fill:#475569}.box{stroke:#829ab1;stroke-width:2;rx:12}.line{fill:none;stroke:#475569;stroke-width:2.5;marker-end:url(#a)}.dash{fill:none;stroke:#475569;stroke-width:2.5;stroke-dasharray:6 5;marker-end:url(#a)}</style>
+<rect width="1100" height="430" fill="#f8fafc"/>
+<text x="40" y="42" class="title">同一个融合实现，三个不同的计时范围</text>
+<text x="40" y="77" class="note">示意计时边界；候选与基线必须采用同一行的范围和输出要求，框宽不代表耗时。</text>
+<text x="40" y="148" class="h">内核本体</text><rect x="210" y="100" width="230" height="80" fill="#f1f5f9" class="box"/><text x="325" y="132" text-anchor="middle" class="h">布局已准备好</text><text x="325" y="160" text-anchor="middle" class="s">输入 x、y</text>
+<rect x="485" y="100" width="230" height="80" fill="#e0f2fe" class="box"/><text x="600" y="132" text-anchor="middle" class="h">融合内核</text><text x="600" y="160" text-anchor="middle" class="s">z = SiLU(x) × y</text>
+<rect x="760" y="100" width="300" height="80" fill="#f1f5f9" class="box"/><text x="910" y="132" text-anchor="middle" class="h">输出 z</text><text x="910" y="160" text-anchor="middle" class="s">结束设备计时</text>
+<path d="M440 140H485" class="line"/>
+<path d="M715 140H760" class="line"/>
+<text x="40" y="253" class="h">完整调用</text><rect x="210" y="205" width="230" height="80" fill="#fef3c7" class="box"/><text x="325" y="237" text-anchor="middle" class="h">输入适配</text><text x="325" y="265" text-anchor="middle" class="s">需要时复制为连续布局</text>
+<rect x="485" y="205" width="230" height="80" fill="#e0f2fe" class="box"/><text x="600" y="237" text-anchor="middle" class="h">同一融合内核</text><text x="600" y="265" text-anchor="middle" class="s">同一目标计算</text>
+<rect x="760" y="205" width="300" height="80" fill="#fef3c7" class="box"/><text x="910" y="237" text-anchor="middle" class="h">输出适配</text><text x="910" y="265" text-anchor="middle" class="s">恢复调用处需要的布局</text>
+<path d="M440 245H485" class="line"/>
+<path d="M715 245H760" class="line"/>
+<text x="40" y="358" class="h">组件范围</text><rect x="210" y="310" width="230" height="80" fill="#dcfce7" class="box"/><text x="325" y="342" text-anchor="middle" class="h">上游计算</text><text x="325" y="370" text-anchor="middle" class="s">组件输入到 x、y</text>
+<rect x="485" y="310" width="230" height="80" fill="#e0f2fe" class="box"/><text x="600" y="342" text-anchor="middle" class="h">完整调用</text><text x="600" y="370" text-anchor="middle" class="s">包含适配与融合计算</text>
+<rect x="760" y="310" width="300" height="80" fill="#dcfce7" class="box"/><text x="910" y="342" text-anchor="middle" class="h">下游计算</text><text x="910" y="370" text-anchor="middle" class="s">继续使用 z，得到组件输出</text>
+<path d="M440 350H485" class="line"/>
+<path d="M715 350H760" class="line"/>
+</svg>

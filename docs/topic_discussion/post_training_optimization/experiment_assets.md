@@ -9,7 +9,7 @@
 | 环境与安装入口 | 适用入口 | 验证范围 |
 |:---|:---|:---|
 | [PT-CPU](./quickstart.md#pt-cpu-quickstart) | 13–18、30–33、50–51、相关 `PT-*` 与 DISTILL-OPD 的 Step 4 和框架核对 | 数据接口、标签、损失、适配器、偏好、奖励、策略新鲜度与阶段输入 / 输出字段 |
-| [PT-SFT-CUDA](./quickstart.md#pt-sft-cuda-quickstart) | 14、15、30、31；62–64 | 真实 LoRA/SFT 更新、长上下文训练代价、LoRA 变体路径、验证集与训练产物 |
+| [PT-SFT-CUDA](./quickstart.md#pt-sft-cuda-quickstart) | 14、15、30、31；62–64；Part 05 · 02 MiniMind | LoRA/SFT 更新、长上下文与变体机制；MiniMind 独立数据上的全参数 SFT、原生 LoRA 与 DPO |
 | [Q-QLORA](../quantization_compression/quickstart.md#q-qlora-quickstart) | 26、65 | NF4 QLoRA、适配器与低资源训练证据 |
 | [PT-RL-CUDA](./quickstart.md#pt-rl-cuda-quickstart) | 17、18、PT-REWARD-MODEL、PT-REWARD-SIGNAL；84、85 的单卡阶段 | 偏好、组内奖励、奖励头与信号构造的单卡对照 |
 | [PT-VERL-CUDA](./quickstart.md#pt-verl-cuda-quickstart) | PT-ROLLOUT-LIFECYCLE、PT-RL-SYSTEM | 一次受控更新、固定轨迹重评、权重同步与阶段资源观察 |
@@ -35,7 +35,7 @@
 | 离线偏好分支 | [Part 02 · 17 DPO](../../02_PyTorch_Algorithms/17_DPO_Loss_Tutorial.md)<br>`pt-dpo-real-model-update` | `PT-RL-CUDA`；Qwen2.5-0.5B；4 组偏好对、4 次更新 | β 为 0.05 / 0.10 / 0.30 | [结果 JSON](../../../benchmarks/results/pt_dpo/pt-dpo-real-model-update_rtx5070ti_dpo_v1.json)；`rtx5070ti_dpo_v1` 已通过；最高峰值分配约 3.19 GiB，`accept_mechanism` |
 | 离线反馈分支 | [Part 02 · PT-KTO 二元反馈对齐](../../02_PyTorch_Algorithms/PT-KTO_Binary_Feedback_Alignment.md) | `PT-CPU`；题目、答案测试与框架核对 | 二元标签、独立 KL 样本与类别加权 | CPU 练习与 TRL 核对；未登记独立 GPU 结果 |
 | 在线奖励分支 | [Part 02 · PT-RLOO 留一基线策略优化](../../02_PyTorch_Algorithms/PT-RLOO_Leave_One_Out_Policy_Optimization.md) | `PT-CPU`；题目、答案测试与框架核对 | 可评分组、留一优势与序列裁剪 | CPU 练习与 TRL 核对；未登记独立 GPU 结果 |
-| 奖励优化共同基础 | [Part 02 · PT-REWARD-MODEL 奖励模型训练、校准与过度优化](../../02_PyTorch_Algorithms/PT-REWARD-MODEL_Reward_Model_Training_and_Calibration.md)<br>`pt-reward-model-head-calibration` | `PT-RL-CUDA`；Qwen2.5-0.5B；6 组训练、4 组校准、4 组隐藏偏好对 | 正确标签 / 50% 错标负对照 | [结果 JSON](../../../benchmarks/results/pt_reward_model/pt-reward-model-head-calibration_rtx5070ti_reward_model_v1.json)；`rtx5070ti_reward_model_v1` 已通过；正确标签候选隐藏排序准确率 1.0，错标负对照为 0.5；峰值分配约 0.95 GiB，`accept_mechanism` |
+| 学习型奖励分支 | [Part 02 · PT-REWARD-MODEL 奖励模型训练、校准与过度优化](../../02_PyTorch_Algorithms/PT-REWARD-MODEL_Reward_Model_Training_and_Calibration.md)<br>`pt-reward-model-head-calibration` | `PT-RL-CUDA`；Qwen2.5-0.5B；6 组训练、4 组校准、4 组隐藏偏好对 | 正确标签 / 50% 错标负对照 | [结果 JSON](../../../benchmarks/results/pt_reward_model/pt-reward-model-head-calibration_rtx5070ti_reward_model_v1.json)；`rtx5070ti_reward_model_v1` 已通过；正确标签候选隐藏排序准确率 1.0，错标负对照为 0.5；峰值分配约 0.95 GiB，`accept_mechanism` |
 | 奖励优化共同基础 | [Part 02 · PT-REWARD-SIGNAL 奖励、价值与优势信号](../../02_PyTorch_Algorithms/PT-REWARD-SIGNAL_Reward_Model_Value_and_Advantage.md)<br>`pt-reward-signal-matrix` | `PT-RL-CUDA`；固定提示、回复与奖励 | 约束强度、终止奖励和回报；6 组候选 | [结果 JSON](../../../benchmarks/results/pt_reward_signal/pt-reward-signal-matrix_rtx5070ti_reward_signal_v3.json)；`rtx5070ti_reward_signal_v3` 已通过；峰值分配约 2.01 GiB，`accept_mechanism` |
 | PPO 分支 | [Part 02 · 16 PPO](../../02_PyTorch_Algorithms/16_RLHF_PPO_Memory.md) | `PT-CPU`；题目、答案测试与框架核对 | 解释策略、参考策略、奖励模型、价值模型与资源状态 | CPU 练习与 TRL 核对；尚无本页完整 PPO GPU 更新结果登记 |
 | GRPO / RLVR 分支 | [Part 02 · 18 GRPO 与可验证奖励](../../02_PyTorch_Algorithms/18_GRPO_Loss_Tutorial.md)<br>`pt-grpo-real-model-update_default3` | `PT-RL-CUDA`；Qwen2.5-0.5B；2 个提示、4 次更新 | 最小 / 扩展候选覆盖；integer-answer-v1 | [结果 JSON](../../../benchmarks/results/pt_grpo/pt-grpo-real-model-update_default3.json)；v3 `default3` 已通过；最高峰值分配约 3.06 GiB，`accept_mechanism`；扩展候选组暴露较高裁剪率，不用于自动选择组规模 |
@@ -60,7 +60,7 @@
 
 ## 项目实验
 
-监督和偏好 / 奖励项目按表中前置衔接；蒸馏从冻结教师与独立学生起点进入。64 与 86 的直接输入核对不依赖 CUDA；88 的终止判断与 Part 05 的 86 交接链分开登记。
+Part 02 的监督、偏好与奖励项目按表中前置衔接；Part 05 · 02 MiniMind 独立准备数据与训练预算，Part 02 · 88 从冻结教师与共同学生起点比较蒸馏路线。64 与 86 的直接输入核对不依赖 CUDA；三类项目分别登记结果与结论。
 
 | 顺序 | 项目入口 | 固定输入与前置 | 验证对象 | 正式结果与状态 | 输出与交接 |
 |:---|:---|:---|:---|:---|:---|
@@ -70,8 +70,9 @@
 | 3 | [Part 02 · 62 SFT 训练交付](../../02_PyTorch_Algorithms/62_Instruction_Fine_Tuning_Project.md) | 63 选定配置；正式短训、保存后恢复及重载评测 | 上游身份匹配、产物完整性、恢复/加载检查与交付状态 | [sft_delivery_v2_1](../../../benchmarks/results/62_sft_delivery/sft_delivery_evidence_sft_delivery_v2_1.json) 是旧契约证据；新交付契约待以 `rtx5070ti_sft_delivery_v3` 复测 | 检查点、SFT 适配器、评测报告与交付 清单 |
 | 4A | [Part 02 · 84 离线 DPO](../../02_PyTorch_Algorithms/84_DPO_Preference_Project.md) | 62 的 SFT 适配器；24 组训练 / 16 组评测偏好对，长度 1024，12 次更新，β=0.1 | 偏好数据准入、独立评测检查、质量—资源采用判断 | [dpo_offline_len1024_v5](../../../benchmarks/results/84_dpo_preference/dpo_evidence_dpo_offline_len1024_v5.json) 已完成；任务输入截断率降至 5%，回复截断率为 0，质量与资源检查全部通过，结论 `accept` | DPO 适配器、评测报告与候选 清单 |
 | 4B | [Part 02 · 85 在线奖励优化](../../02_PyTorch_Algorithms/85_GRPO_Groupwise_Alignment_Project.md) | 62 的 SFT 适配器；GSM8K 训练 24 题 / 评测 12 题，每题 8 条轨迹，最多 384 词元 | 采样 / 验证器覆盖检查、有效更新吞吐、质量—资源采用判断 | [grpo_rlvr_len384_v7](../../../benchmarks/results/85_grpo_alignment/grpo_evidence_grpo_rlvr_len384_v7.json) 已完成；平均奖励 +0.0521、`pass@group` +0.0833，有效组比例 0.75，结论 `accept` | GRPO 适配器、轨迹摘要、配对评测报告与候选 清单 |
-| 5 | [Part 02 · 86 生命周期与恢复](../../02_PyTorch_Algorithms/86_DPO_Online_Benchmark.md) | 84 / 85 候选与 62 回滚清单；CPU 生命周期与恢复检查 | 策略新鲜度、产物 / 回滚哈希、失败恢复与交接状态 | [post_training_lifecycle_v6](../../../benchmarks/results/86_post_training_lifecycle/lifecycle_handoff_post_training_lifecycle_v6.json) 已完成；DPO v5 与 GRPO / RLVR v7 的候选、产物哈希、回滚基线和新鲜度检查通过，交接状态 `ready` | 生命周期证据与 Part 05 交接清单；允许进入冻结评测，不表示已完成最终采用 |
+| 5 | [Part 02 · 86 生命周期与恢复](../../02_PyTorch_Algorithms/86_DPO_Online_Benchmark.md) | 84 / 85 候选与 62 回滚清单；CPU 生命周期与恢复检查 | 策略新鲜度、产物 / 回滚哈希、失败恢复与交接状态 | [post_training_lifecycle_v6](../../../benchmarks/results/86_post_training_lifecycle/lifecycle_handoff_post_training_lifecycle_v6.json) 已完成；DPO v5 与 GRPO / RLVR v7 的候选、产物哈希、回滚基线和新鲜度检查通过，交接状态 `ready` | 生命周期与候选交接清单；`ready` 是本记录的交接状态，不表示当前 MiniMind 项目读取该清单或已完成最终采用 |
 | D1 | [Part 02 · 88 蒸馏学生交付](../../02_PyTorch_Algorithms/88_Distilled_Student_Delivery_Project.md) | 冻结教师与共同 Qwen2.5-0.5B 学生；GSM8K 512 条训练、32 条开发、64 条验证；终止方案为 64 步锚定加 32 步在线蒸馏 | 教师—学生身份、G0/G1/G2 可比性、质量保持与部署收益 | [rtx5070ti_distill_gsm8k_hybrid_terminal_v9](../../../benchmarks/results/88_distillation_delivery/distillation_terminal_report_rtx5070ti_distill_gsm8k_hybrid_terminal_v9.json) 已结束：学生基线 19/64，混合候选 22/64；质量增益、格式和延迟未同时过门，结论 `tune`，不打开 最终留出集 | 基线、路线、候选与终止决策证据；无部署 交接文件 |
+| P5 | [Part 05 · 02 MiniMind 后训练项目](../../05_Integrated_Projects_and_Decisions/02_Post_Training_Delivery/index.md) | `PT-SFT-CUDA`；固定 MiniMind 源码与基座；独立生成 SFT、偏好与评测数据，不读取 Part 02 项目结果 | 全参数 SFT 与原生 LoRA 对照；全参 SFT 后继续 DPO；独立评测与产物身份 | 本地未发现项目结果目录，尚未登记实测；固定输入与输出位置见[项目配置](../../05_Integrated_Projects_and_Decisions/02_Post_Training_Delivery/project_config.example.yaml) | 独立项目报告、训练产物与哈希；不以 86 的 `ready` 或 88 的判断代替本项目结论 |
 
 ## 结果版本与复现
 

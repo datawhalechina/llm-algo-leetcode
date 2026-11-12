@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">读取完成之后，设备槽位才能被下一批覆盖</title>
+<desc id="desc">沿用传输4毫秒、计算6毫秒的构造值，只跟踪前三批。槽0在0到4毫秒写入A，4到10毫秒读取A，10毫秒后才写入C；槽1在4到8毫秒写入B，8到10毫秒等待，10到16毫秒读取B。蓝色写入、黄色就绪等待、绿色读取，共用时间尺度。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:27px;font-weight:700}.h{font-size:23px;font-weight:700}.s{font-size:21px}.copy{fill:#dbeafe;stroke:#2563eb;stroke-width:2}.read{fill:#dcfce7;stroke:#16a34a;stroke-width:2}.wait{fill:#fef3c7;stroke:#d97706;stroke-width:2}</style>
+<rect width="1500" height="470" rx="22" fill="#f8fafc"/>
+<text x="45" y="50" class="title">双缓冲不代表可以随时覆盖：A 读取结束后，C 才能写入槽 0</text>
+<text x="45" y="85" class="s">与主图相同的构造时长，只跟踪前三批；写入、等待和读取期间，槽位仍属于当前批次。</text>
+<text x="45" y="180" class="h">设备槽 0</text><text x="45" y="315" class="h">设备槽 1</text>
+<g data-layout-role="glyph-group"><rect class="copy" x="250" y="135" width="200" height="80"/><rect class="read" x="450" y="135" width="300" height="80"/><rect class="copy" x="750" y="135" width="200" height="80"/><rect class="wait" x="950" y="135" width="100" height="80"/><rect class="read" x="1050" y="135" width="300" height="80"/>
+<rect class="copy" x="450" y="270" width="200" height="80"/><rect class="wait" x="650" y="270" width="100" height="80"/><rect class="read" x="750" y="270" width="300" height="80"/></g>
+<g class="s" text-anchor="middle"><text x="350" y="182">写入 A</text><text x="600" y="182">读取 A</text><text x="850" y="182">写入 C</text><text x="1000" y="182">等待</text><text x="1200" y="182">读取 C</text><text x="550" y="317">写入 B</text><text x="700" y="317">等待</text><text x="900" y="317">读取 B</text></g>
+<path d="M750 105V235" stroke="#dc2626" stroke-width="2.5" stroke-dasharray="5 5"/>
+<text x="770" y="250" class="s">10 ms：A 释放槽 0，C 开始写入</text>
+<path d="M250 405H1405" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#a)"/>
+<g class="s" text-anchor="middle"><text x="250" y="445">0</text><text x="450" y="445">4</text><text x="650" y="445">8</text><text x="750" y="445">10</text><text x="950" y="445">14</text><text x="1050" y="445">16</text><text x="1350" y="445">22 ms</text></g>
+</svg>

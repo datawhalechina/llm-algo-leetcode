@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">删除一个名字，不会释放仍被另一个名字引用的张量</title>
+<desc id="desc">构造示例中，x与alias引用同一张量并只占400MB。删除x后alias仍持有它；删除最后引用且设备使用完成后，活跃占用回到零。图示假定分配器保留512MB预留空间，用于比较引用释放前后的统计变化。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:29px;font-weight:700}.h{font-size:23px;font-weight:700}.s{font-size:21px}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#a)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="45" y="54" class="title">两个变量名可以只持有一份张量存储</text>
+<text x="45" y="96" class="s">构造示例：张量占400 MB；引用与设备使用结束后，假设分配器继续保留512 MB预留空间。</text>
+<text x="45" y="146" class="h">① x与alias引用同一张量</text>
+<rect data-layout-role="glyph-group" x="80" y="180" width="120" height="45" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+<rect data-layout-role="glyph-group" x="280" y="180" width="120" height="45" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+<text x="140" y="211" text-anchor="middle" class="s">x</text><text x="340" y="211" text-anchor="middle" class="s">alias</text>
+<rect x="45" y="280" width="430" height="120" rx="15" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="65" y="322" class="h">同一张量及其存储</text><text x="65" y="359" class="s">活跃400／预留512 MB</text>
+<path d="M140 225V280" class="edge"/><path d="M340 225V280" class="edge"/>
+<text x="555" y="146" class="h">② 删除x，alias仍然引用</text>
+<rect data-layout-role="glyph-group" x="710" y="180" width="120" height="45" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+<text x="770" y="211" text-anchor="middle" class="s">alias</text>
+<rect x="555" y="280" width="430" height="120" rx="15" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="575" y="322" class="h">同一张量仍然存活</text><text x="575" y="359" class="s">活跃400／预留512 MB</text>
+<path d="M770 225V280" class="edge"/>
+<text x="1065" y="146" class="h">③ 最后引用与设备使用均结束</text>
+<text x="1085" y="211" class="s">x、alias均不再持有张量</text>
+<rect x="1065" y="280" width="390" height="120" rx="15" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="1085" y="322" class="h">原存储进入分配器缓存</text><text x="1085" y="359" class="s">活跃0／预留512 MB</text>
+<path d="M475 340H555" class="edge"/><path d="M985 340H1065" class="edge"/>
+</svg>

@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">跨块覆盖与尾部保护怎样配合双缓冲</title>
+<desc id="desc">前一个 block 覆盖八个 tile，后一个 block 只处理含七个有效元素的一个 tile；缓冲编号按块内 tile 轮换。</desc>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;font-size:23px;fill:#1e293b}.title{font-size:30px;font-weight:700}.label{font-weight:700}.small{font-size:21px}.note{font-size:19px}</style>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="45" y="53" class="title" text-anchor="start">跨块覆盖与尾部保护怎样配合双缓冲</text>
+<text x="45" y="95" class="small" text-anchor="start">N=1031；每块最多 8 个 tile，每个 tile 128 个元素。这里只画索引覆盖，不表示耗时。</text>
+<text x="45" y="184" class="label" text-anchor="start">block 0</text>
+<text x="45" y="224" class="small" text-anchor="start">1024 个元素</text>
+<rect x="220" y="150" width="135" height="120" rx="8" fill="#dbeafe" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="287.5" y="181" class="label" text-anchor="middle">tile 0</text>
+<text x="287.5" y="217" class="small" text-anchor="middle">0…127</text>
+<text x="287.5" y="251" class="small" text-anchor="middle">缓冲 0</text>
+<rect x="370" y="150" width="135" height="120" rx="8" fill="#fef3c7" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="437.5" y="181" class="label" text-anchor="middle">tile 1</text>
+<text x="437.5" y="217" class="small" text-anchor="middle">128…255</text>
+<text x="437.5" y="251" class="small" text-anchor="middle">缓冲 1</text>
+<rect x="520" y="150" width="135" height="120" rx="8" fill="#dbeafe" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="587.5" y="181" class="label" text-anchor="middle">tile 2</text>
+<text x="587.5" y="217" class="small" text-anchor="middle">256…383</text>
+<text x="587.5" y="251" class="small" text-anchor="middle">缓冲 0</text>
+<rect x="670" y="150" width="135" height="120" rx="8" fill="#fef3c7" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="737.5" y="181" class="label" text-anchor="middle">tile 3</text>
+<text x="737.5" y="217" class="small" text-anchor="middle">384…511</text>
+<text x="737.5" y="251" class="small" text-anchor="middle">缓冲 1</text>
+<rect x="820" y="150" width="135" height="120" rx="8" fill="#dbeafe" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="887.5" y="181" class="label" text-anchor="middle">tile 4</text>
+<text x="887.5" y="217" class="small" text-anchor="middle">512…639</text>
+<text x="887.5" y="251" class="small" text-anchor="middle">缓冲 0</text>
+<rect x="970" y="150" width="135" height="120" rx="8" fill="#fef3c7" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="1037.5" y="181" class="label" text-anchor="middle">tile 5</text>
+<text x="1037.5" y="217" class="small" text-anchor="middle">640…767</text>
+<text x="1037.5" y="251" class="small" text-anchor="middle">缓冲 1</text>
+<rect x="1120" y="150" width="135" height="120" rx="8" fill="#dbeafe" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="1187.5" y="181" class="label" text-anchor="middle">tile 6</text>
+<text x="1187.5" y="217" class="small" text-anchor="middle">768…895</text>
+<text x="1187.5" y="251" class="small" text-anchor="middle">缓冲 0</text>
+<rect x="1270" y="150" width="135" height="120" rx="8" fill="#fef3c7" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="1337.5" y="181" class="label" text-anchor="middle">tile 7</text>
+<text x="1337.5" y="217" class="small" text-anchor="middle">896…1023</text>
+<text x="1337.5" y="251" class="small" text-anchor="middle">缓冲 1</text>
+<text x="45" y="350" class="label" text-anchor="start">block 1</text>
+<text x="45" y="390" class="small" text-anchor="start">仅 7 个有效</text>
+<rect x="220" y="320" width="250" height="105" rx="8" fill="#dbeafe" stroke="#94a3b8" data-layout-role="node"/>
+<text x="345" y="353" class="label" text-anchor="middle">tile 0 → 缓冲 0</text>
+<text x="345" y="389" class="small" text-anchor="middle">有效：1024…1030</text>
+<path d="M470 372 L665 372" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+<text x="567" y="350" class="small" text-anchor="middle">尾部保护</text>
+<rect x="665" y="320" width="760" height="105" rx="8" fill="#fff" stroke="#94a3b8" data-layout-role="node"/>
+<text x="1045" y="354" class="small" text-anchor="middle">其余 121 个逻辑位置填零，不发出越界访问。</text>
+<text x="1045" y="391" class="small" text-anchor="middle">统一完成本 tile 的等待；只写出 7 个有效输出。</text>
+</svg>

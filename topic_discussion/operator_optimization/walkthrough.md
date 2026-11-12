@@ -1,55 +1,81 @@
-# 算子优化问题链：从计算内核到端到端收益
+# 算子优化问题链：从注意力计算到工作负载复测
 
-这条问题链假设你接手了一个可以运行、但性能不稳定的算子。目标不是直接寻找“最快写法”，而是逐步确认：语义是否正确、瓶颈是否明确、局部收益能否传到模型工作负载。
+假设一个解码器在长输入预填充时变慢，执行轨迹显示 Attention 占用了较多时间。接下来沿着同一个问题比较：现有 PyTorch 路径能否通过编译改善，注意力分块是否减少中间读写，以及替换后的收益能否保留到组件和目标负载中。这里描述判断过程，实际结论由对应环境中的测量给出。
 
-![算子优化：从语义到端到端验证](../../docs/public/topic_discussion/operator_optimization/operator_optimization_overview.svg)
+![从注意力基线选择编译或内核候选，再进入工作负载复测](../../docs/public/topic_discussion/operator_optimization/operator_optimization_overview.svg)
 
-## 候选计算内核怎样才算正确
+## 先固定正在比较的注意力计算
 
-从一个简单算子或模型组件开始，明确输入形状、数据类型、步长、边界和输出误差。Part 03 的[向量加法](../../03_Triton_Kernels/01_Triton_Vector_Addition.ipynb)和 [GEMM](../../03_Triton_Kernels/04_Triton_GEMM_Tutorial.ipynb)适合作为入口；参考实现先用 PyTorch 或 CPU 版本固定语义。
+注意力用查询（Q）与键（K）计算分数，再混合对应的值（V）。保留同一组 Q/K/V、头数、序列长度、数据类型和因果掩码，使用 PyTorch 参考路径核对候选输出，并记录实际调用的后端。教学中的显式矩阵计算便于理解语义；性能基线则采用当前环境中可用且配置明确的执行路径。比较分块方案前，还要覆盖尾块、不同长度和数值误差。索引与边界处理不熟悉时，可先完成[Part 03 · 01 向量加法](../../03_Triton_Kernels/01_Triton_Vector_Addition.ipynb)，再回到注意力计算。
 
-此时只回答一个问题：候选计算内核在什么条件下算“正确”？不要先用 GPU 时间替代正确性测试。
+先用较小的计算说明计时边界：$z=\operatorname{SiLU}(x)\odot y$ 对同形状的 $x,y$ 先激活再逐元素相乘，SiLU 将每个值 $t$ 变为 $t/(1+e^{-t})$。内核本体从布局就绪的输入开始，完整调用还要包含适配成本，组件则继续包含上下游计算。注意力替换同样需要区分这些计时范围。
 
-## 时间花在计算还是数据搬运
+![内核本体、完整调用与组件计时范围](../../docs/public/topic_discussion/operator_optimization/operator_comparison_scope.svg)
 
-当语义契约稳定后，观察 load、计算和 store 如何映射到 global memory、L2、shared memory、register 或 Tensor Core。Part 01 的 [Warp / Block / Shared Memory](../../01_Hardware_Math_and_Systems/16_Warp_Block_SharedMemory_Basics.ipynb) 和 Part 03 的 [Triton 内存模型](../../03_Triton_Kernels/12_Triton_Memory_Model_and_Debug.ipynb)用于解释布局与 tile。
+## 先评估编译能改变什么
 
-这里的判断是：候选实现减少了哪类搬运，代价又转移到了哪里？
+同一组件中，投影、布局变换和逐元素计算可能产生额外提交与中间张量。先对照逐操作执行与编译候选，核查图是否被完整捕获、哪些操作被融合、哪些依赖仍要求保留写回，再把首次编译与稳态运行分开计时。如果注意力已由高效后端执行，周围操作被融合也不意味着注意力内核发生了变化；如果剩余耗时集中在注意力内部，再进入分块与自定义内核。判断依据见[图编译、融合与执行候选](./02_graph_compilation_and_fusion.md)。
 
-## 图变换在什么条件下成立
+候选明确后，再核对记录里的输入条件、编译产物和设备调用是否对应同一次比较。同一个函数名可能生成多份特化代码；组件中的注意力也可能经分派调用另一后端。把这层对应关系弄清，后面的快慢比较才有明确对象。
 
-在融合前先看依赖图：中间张量是否只有一个消费者、是否存在共享分支、布局转换或动态形状，以及目标执行后端能否表达改写后的计算。常量折叠、公共子表达式消除、节点重排和融合都是候选；它们只有在语义、布局与执行约束同时满足时才进入下一段。
+## 时间花在矩阵计算还是中间读写
 
-此时要留下一个最小图级记录：改写前后依赖、被消除的读写、需要保留的同步点，以及不满足时的回退路径。图节点变少不是性能结论。
+显式注意力会产生随序列长度平方增长的分数或概率矩阵。跟踪这些中间值从哪里读取、在哪里复用、何时写回，才能解释分块方案想节省哪部分搬运。共享内存和寄存器承担存储职责，Tensor Core 承担矩阵计算；逻辑分块最终如何映射到它们，取决于生成代码和设备。发现错误步长、重复读取或边界异常时，可结合[Part 01 · 16 线程协作与共享内存](../../01_Hardware_Math_and_Systems/16_Warp_Block_SharedMemory_Basics.ipynb)和[Part 03 · 17 内存调试](../../03_Triton_Kernels/17_Triton_Memory_Model_and_Debug.ipynb)定位。
 
-## 减少中间写回是否值得融合
+两个更小的例子可以分别检查地址与归约范围：转置改变寻址步长，尾块补齐则不能改变真实计数。下图用转置视图和三元素均方值展示这两类错误的来源。
 
-如果多个阶段反复写回中间张量，再比较 RMSNorm、Softmax 或 Attention 的融合方案：[融合 RMSNorm](../../03_Triton_Kernels/03_Triton_Fused_RMSNorm.ipynb)、[融合 Softmax](../../03_Triton_Kernels/06_Triton_Fused_Softmax.ipynb)和 [FlashAttention](../../03_Triton_Kernels/08_Triton_Flash_Attention.ipynb)可以作为不同复杂度的例子。
+![转置步长与补齐归约的两个独立例子](../../docs/public/topic_discussion/operator_optimization/operator_memory_flow.svg)
 
-融合前先列出依赖和中间张量，融合后再检查寄存器、共享内存、占用率和边界处理。减少计算内核数量不是充分条件。
+## 省去写回是否值得融合
 
-## 同一配置为什么会因硬件而变化
+把注意力的分数计算、归一化和输出累积放进同一内核，可以缩短中间值的生命周期。更简单的对照是 `z = SiLU(x) * y`：分离执行时，激活结果先写回再被乘法读取；融合后，结果可在局部计算中直接消费。若中间结果还被其他分支使用，就要保留该分支所需的数据。融合也可能扩大局部状态、增加寄存器占用，因此要同时检查节省的读写与新增资源压力。
 
-同一个分块或融合方案在不同 GPU 上可能有不同结果。使用 Part 01 的 [Tensor Core](../../01_Hardware_Math_and_Systems/23_TensorCore_Deep_Dive.ipynb)，以及 Part 04 的 [CUDA / Triton / PyTorch 对照](../../04_CUDA_and_System_Optimization/21_CUDA_vs_Triton_vs_PyTorch.ipynb)和 [CUDA Stream](../../04_CUDA_and_System_Optimization/17_PyTorch_CUDA_Streams_and_Transfer.ipynb)，把数据类型、形状、同步和异步搬运纳入解释。
+![分离与融合路径对照：中间激活是否需要写回](../../docs/public/topic_discussion/operator_optimization/operator_fusion_lifecycle.svg)
 
-此时才开始做 GPU 微基准，并固定预热、重复次数、GPU 和编译目标。
+## 分块以后怎样保持注意力结果
 
-## 配置搜索怎样验证瓶颈假设
+先看矩阵复用：M、N为2，K为4，每轮处理两个K位置；A的两行与B的两列共同形成四个输出。下一轮继续向这四个部分和累加，而不是清零重算。
 
-在多种形状或多个 GPU 上，手工选一个配置通常不够。进入 [Triton 自动调优与性能剖析](../../03_Triton_Kernels/05_Triton_Autotune_and_Profiling.ipynb)，比较候选分块、warp 数和流水阶段数，并记录编译时间、缓存命中与运行时间。
+![同一A和B子块供多个输出使用，沿K维保留部分和](../../docs/public/topic_discussion/operator_optimization/operator_gemm_tile_reuse.svg)
 
-性能剖析的作用是验证瓶颈假设：如果计算内核变快但端到端不变，应该检查启动、同步和其他阶段，而不是继续盲目调整分块。
+固定一个查询块，分批读取 K/V 时，必须持续更新每行最大值、指数和及输出累积量，并在最大值变化时重新缩放旧贡献。这样才能在不保存完整分数矩阵的情况下得到对应的注意力输出。[Part 03 · 11 FlashAttention](../../03_Triton_Kernels/11_Triton_Flash_Attention.ipynb)用于实现并核对这条路径。若进一步转向逐词元解码，分页寻址和 KV 量化分别改变读取地址与数值恢复，它们需要各自的状态和误差检查，详见[矩阵计算与推理状态的数据路径](./04_attention_and_inference_data_paths.md)。
 
-## 局部收益能否传递到模型工作负载
+例如，四个键的分数是 1、2、3、4，每块处理两个键。第二块让行最大值从 2 变为 4，旧指数和与旧加权累积量都要乘以 $e^{-2}$，再加入新块贡献。图中的值向量 $v_1$–$v_4$、指数和 $\ell$ 和加权累积量 $a$ 对应这一构造示例。
 
-最后用 [Triton Llama3 Block 项目](../../03_Triton_Kernels/13_Triton_Llama3_Block_Project.ipynb)把算子放回模型组件，再用固定工作负载比较端到端延迟、吞吐、显存、编译成本和质量。
+![第二块改变最大值后同时重标定分子与分母](../../docs/public/topic_discussion/operator_optimization/operator_attention_block_state.svg)
 
-项目报告至少保留：
+## 剩余瓶颈需要改变哪一层
 
-- 参考实现与候选计算内核的语义和数值对照；
-- 形状、数据类型、GPU、编译目标、预热和重复次数；
-- 计算内核微基准与端到端基准；
-- 性能剖析观察到的瓶颈和失败条件；
-- `accept / tune / reject` 及其证据等级。
+同一分块在不同设备上的寄存器需求、共享内存占用和指令效率可能不同。若瓶颈仍在内核内部，就结合[测量归因与调优](./05_measurement_profiling_and_autotuning.md)检查线程协作、矩阵指令和数据复用；若输入搬运或大量小任务提交已经成为关键路径，再分别评估传输与计算的依赖、操作提交的复用。
 
-局部计算内核的收益只有在目标工作负载中重复出现，才可以成为端到端优化结论。
+缓冲区复用还要等待引用和在途访问结束。张量已释放而分配器仍预留显存时，要区分可复用空闲块与仍被使用的数据，不能把设备占用没有立刻下降直接判成泄漏。下图按搬运、提交和内存三个对象检查，具体的流与事件、图重放和显存观察见[传输、提交与显存生命周期](./06_cuda_execution_and_runtime_constraints.md)。
+
+![分批传输、重复提交与缓冲复用分别对应不同的依赖和完成条件](../../docs/public/topic_discussion/operator_optimization/operator_execution_path.svg)
+
+把等待画到时间线上：三批独立输入，每批传输4 ms、计算6 ms。串行共30 ms；具备并发条件时，B、C传输可被前批计算覆盖，双缓冲理想流水共22 ms。图中蓝色为传输、橙色为计算，箭头表示本批依赖；这些是构造时间。
+
+![同刻度串行与双缓冲流水，缓冲0等待A计算结束后交给C](../../docs/public/topic_discussion/operator_optimization/operator_transfer_pipeline_timeline.svg)
+
+## 配置搜索怎样检验瓶颈假设
+
+序列长度与头维度变化后，合适的分块、线程束数量和流水阶段也可能变化。对每组形状先核对候选正确性，分别记录首次编译与搜索成本、预热后的稳态耗时；[Part 03 · 09 自动调优与基准测量](../../03_Triton_Kernels/09_Triton_Autotune_and_Profiling.ipynb)提供配置搜索与计时练习。配置搜索回答“给定候选中谁更快”，性能轨迹则用于解释原因：例如更大分块是否因资源压力而退化，或内核加速是否被其他阶段抵消。有效但更慢的候选同样能帮助缩小下一轮搜索范围。
+
+![首次调用的编译搜索成本与缓存命中后的重复执行](../../docs/public/topic_discussion/operator_optimization/operator_autotune_evidence.svg)
+
+配置搜索还要解释资源取舍。下图每格代表4×4输出：16×16和32×32输出块分别保留256与1024个逻辑部分和，条长不代表实际寄存器分配或耗时。
+
+![扩大输出块后的复用机会与部分和负担](../../docs/public/topic_discussion/operator_optimization/operator_tile_resource_tradeoff.svg)
+
+## 替换回组件后完整调用是否改善
+
+若要检查单组件替换的影响，可在[Part 03 · 20 同权重 Block 对照](../../03_Triton_Kernels/20_Triton_Llama3_Block_Project.ipynb)中替换 Attention，重新核对输出并单独测量组件时间。若局部内核更快而 Block 收益很小，应检查它原本占总时间的比例，以及替换引入的布局转换、调用和同步开销。候选更慢时也保留记录，据此调整或拒绝采用。
+
+用构造成本解释这种抵消：原Block为100 ms，其中Attention为10 ms、其余计算为90 ms。候选Attention降到6 ms，但转换增加5 ms，完整时间反而为101 ms；把转换降到2 ms后，才得到98 ms。图中三行采用同一时间刻度。
+
+![局部节省4毫秒后，新增转换决定完整Block为101还是98毫秒](../../docs/public/topic_discussion/operator_optimization/operator_block_cost_comparison.svg)
+
+到同权重Block这一层，就可以根据输出、实际调用、完整耗时与资源预算决定保留、调整或回退。即使局部计算更快，接口成本也可能使候选不适合当前组件；更慢的结果同样能说明下一步应改哪里。具体负载与已登记结果见[实验资产表](./experiment_assets.md)。
+
+需要扩大到多层预填充时，可选[Part 05 · 05 独立综合项目](../../05_Integrated_Projects_and_Decisions/05_Operator_Optimization_Delivery/index.md)。它自行生成输入并重新测量两层解码器，Block报告不作为输入。下面的虚线表示可以复用实现代码，不表示已有局部结论自动适用于新负载；训练反向与在线服务也需要各自验证。
+
+![局部内核、同权重组件和独立工作负载的证据关系](../../docs/public/topic_discussion/operator_optimization/operator_optimization_evidence_flow.svg)

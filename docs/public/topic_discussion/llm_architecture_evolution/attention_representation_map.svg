@@ -1,14 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1560" height="700" viewBox="0 0 1560 700" role="img" aria-labelledby="title desc">
   <title id="title">注意力表示与 KV Cache 演进</title>
-  <desc id="desc">从多头注意力到共享 KV 头，再到潜在 KV 表示，展示结构压力、表示变化与需要验证的代价。</desc>
+  <desc id="desc">多头独立键值、查询头共享键值和共享潜在表示是三类并列选择。固定比较条件后，各自核对状态大小、质量和实际执行成本，不表示逐级替代。</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f8fafc"/><stop offset="1" stop-color="#ecfeff"/></linearGradient>
-    <style>.title{font:700 30px sans-serif;fill:#0f172a}.sub{font:500 16px sans-serif;fill:#475569}.group{font:700 17px sans-serif;fill:#475569}.head{font:700 19px sans-serif;fill:#0f172a}.body{font:500 15px sans-serif;fill:#334155}.node{stroke-width:2.5;rx:18}.arrow{stroke:#64748b;stroke-width:3.5;fill:none;marker-end:url(#arrow)}</style>
-    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#64748b"/></marker>
+    <style>.title{font-family:"Noto Sans CJK SC",sans-serif;font-size:30px;font-weight:700;fill:#0f172a}.sub{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;font-weight:500;fill:#475569}.group{font-family:"Noto Sans CJK SC",sans-serif;font-size:17px;font-weight:700;fill:#475569}.head{font-family:"Noto Sans CJK SC",sans-serif;font-size:19px;font-weight:700;fill:#0f172a}.body{font-family:"Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:500;fill:#334155}.node{stroke-width:2.5;rx:18}.arrow{stroke:#64748b;stroke-width:3.5;fill:none;marker-end:url(#arrow)}</style>
+    <marker id="arrow" viewBox="0 0 10 10" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#64748b"/></marker>
   </defs>
   <rect width="1560" height="700" fill="url(#bg)"/>
-  <text x="60" y="58" class="title">注意力表示演进：减少重复 KV，而不直接改变可见范围</text>
-  <text x="60" y="88" class="sub">三种结构都可让当前 Query 访问同一段历史；变化的是 K/V 保存的粒度与重建方式。</text>
+  <text x="60" y="58" class="title">注意力表示：独立键值、头共享与潜在编码分别比较</text>
+  <text x="60" y="88" class="sub">各方案可使用相同因果范围；下方字节数是正文单层、单请求的构造例子，不是显存实测。</text>
 
   <text x="95" y="148" class="group">表示压力</text>
   <rect x="70" y="170" width="1420" height="90" class="node" fill="#fff7ed" stroke="#d97706"/>
@@ -16,15 +16,15 @@
 
   <text x="95" y="326" class="group">KV 表示选择</text>
   <rect x="70" y="350" width="400" height="184" class="node" fill="#eff6ff" stroke="#2563eb"/>
-  <text x="100" y="390" class="head">MHA：每个查询头配一组 KV</text><text x="100" y="420" class="body">保存：多组完整 K/V</text><text x="100" y="448" class="body">优点：表达基线清晰</text><text x="100" y="476" class="body">代价：KV 复制与带宽压力最大</text>
+  <text x="100" y="390" class="head">MHA：各头有独立 K/V</text><text x="100" y="430" class="body">各头使用学习得到的不同表示</text><text x="100" y="470" class="body">例：8 个 KV 头，共 2 MiB</text>
   <rect x="580" y="350" width="400" height="184" class="node" fill="#ecfeff" stroke="#0891b2"/>
-  <text x="610" y="390" class="head">MQA / GQA：多个 Q 共享 KV</text><text x="610" y="420" class="body">保存：更少的 KV 注意力头</text><text x="610" y="448" class="body">收益：减少 KV 常驻与读取量</text><text x="610" y="476" class="body">取舍：共享粒度与质量需验证</text>
+  <text x="610" y="390" class="head">MQA / GQA：查询头共享 KV</text><text x="610" y="430" class="body">保存更少的 KV 头，查询输出仍独立</text><text x="610" y="470" class="body">例：2 头为 0.5 MiB，1 头为 0.25 MiB</text>
   <rect x="1090" y="350" width="400" height="184" class="node" fill="#f5f3ff" stroke="#7c3aed"/>
-  <text x="1120" y="390" class="head">MLA：缓存潜在 KV 表示</text><text x="1120" y="420" class="body">保存：压缩后的潜在状态</text><text x="1120" y="448" class="body">收益：改变每个词元的状态尺寸</text><text x="1120" y="476" class="body">取舍：投影、重建与实现路径</text>
-  <path d="M470 442 H580" class="arrow"/><path d="M980 442 H1090" class="arrow"/>
-  <path d="M780 260 V305 H270 V350" class="arrow"/><path d="M780 260 V350" class="arrow"/><path d="M780 260 V305 H1290 V350" class="arrow"/>
+  <text x="1120" y="390" class="head">MLA：共享潜在表示</text><text x="1120" y="430" class="body">保存潜在向量及所需位置分量</text><text x="1120" y="470" class="body">按实际维度与重建／改写路径计成本</text>
+  <path d="M270 260 V350" class="arrow"/><path d="M780 260 V350" class="arrow"/><path d="M1290 260 V350" class="arrow"/>
 
   <text x="95" y="596" class="group">同一套对照证据</text>
   <rect x="70" y="616" width="1420" height="52" class="node" fill="#f0fdf4" stroke="#16a34a"/>
-  <text x="100" y="649" class="body">固定层数、隐藏维度、序列长度、数据类型与批次；记录 KV 状态大小、理论带宽、质量约束和真实执行后端延迟。</text>
+  <text x="100" y="649" class="body">比较非候选条件、状态字节、任务质量与实际执行成本；不同模型快照的差异不能全部归因于 KV 表示。</text>
+  <path d="M270 534 V616" class="arrow"/><path d="M780 534 V616" class="arrow"/><path d="M1290 534 V616" class="arrow"/>
 </svg>

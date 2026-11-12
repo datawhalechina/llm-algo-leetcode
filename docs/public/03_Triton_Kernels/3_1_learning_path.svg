@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="410" viewBox="0 0 1200 410" role="img" aria-labelledby="title desc">
+  <title id="title">3.1 Triton 程序与布局学习路径</title>
+  <desc id="desc">从一维向量索引和尾块掩码开始，再学习二维 stride 与转置读写；常见设计模式页按需查阅，完成基础后进入 3.2。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+    <style>
+      .title{font:700 25px sans-serif;fill:#0f172a}.subtitle{font:16px sans-serif;fill:#475569}.head{font:700 19px sans-serif;fill:#172033}.body{font:15px sans-serif;fill:#334155}.tag{font:14px sans-serif;fill:#475569}.line{fill:none;stroke:#475569;stroke-width:2.4;marker-end:url(#arrow)}.optional{fill:none;stroke:#7c3aed;stroke-width:2;stroke-dasharray:7 6;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1200" height="410" rx="24" fill="#f8fafc"/>
+  <text x="40" y="48" class="title">先建立索引，再扩展到二维布局</text>
+  <text x="40" y="78" class="subtitle">设计模式是按需参考，不是主线必修节点。</text>
+  <rect x="55" y="125" width="315" height="165" rx="18" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="80" y="163" class="head">01 · 一维映射</text><text x="80" y="198" class="body">Program ID → offsets</text><text x="80" y="226" class="body">尾块 mask 与逐元素结果</text><text x="80" y="264" class="tag">输出：一维覆盖与边界直觉</text>
+  <rect x="445" y="125" width="315" height="165" rx="18" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="470" y="163" class="head">02 · 二维布局</text><text x="470" y="198" class="body">逻辑坐标 → stride 地址</text><text x="470" y="226" class="body">tile 转置与双向边界</text><text x="470" y="264" class="tag">输出：非连续视图寻址能力</text>
+  <path d="M370 207H438" class="line"/>
+  <rect x="835" y="125" width="315" height="165" rx="18" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="860" y="163" class="head">进入 3.2</text><text x="860" y="198" class="body">选择融合、归约或 GEMM</text><text x="860" y="226" class="body">沿用 Program、mask 与布局</text><text x="860" y="264" class="tag">后续：常见 kernel 结构</text>
+  <path d="M760 207H828" class="line"/>
+  <rect x="445" y="325" width="315" height="55" rx="14" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2" stroke-dasharray="7 5"/>
+  <text x="470" y="359" class="body">Triton 设计模式参考 · 按需查阅</text>
+  <path d="M602 290V317" class="optional"/>
+</svg>

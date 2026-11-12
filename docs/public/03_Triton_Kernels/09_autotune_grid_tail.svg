@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">块大小不同，不等于总逻辑覆盖按比例减少</title><desc id="desc">输入长度一万时，块宽五百一十二、一千零二十四、二千零四十八分别需要二十、十、五个Program。末块有效元素为二百七十二、七百八十四、一千八百零八，三种映射均覆盖一万零二百四十个逻辑位置，屏蔽二百四十个。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:30px;font-weight:700}.head{font-size:23px;font-weight:700}.body{font-size:23px}.small{font-size:21px;fill:#475569}.node{stroke:#94a3b8;stroke-width:2;rx:12}.edge{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="45" y="52" class="title">块大小不同，不等于总逻辑覆盖按比例减少</text><text x="45" y="88" class="small">N = 10000；三行是候选映射对照，不是执行先后或性能测量。</text>
+<rect x="45" y="120" width="250" height="95" class="node" fill="#dbeafe"/><text x="170" y="159" class="head" text-anchor="middle">块宽 B = 512</text><text x="170" y="194" class="body" text-anchor="middle">每 Program 至多 512 项</text>
+<rect x="425" y="120" width="250" height="95" class="node" fill="#dbeafe"/><text x="550" y="159" class="head" text-anchor="middle">20 个 Program</text><text x="550" y="194" class="body" text-anchor="middle">向上取整 10000 / 512</text>
+<rect x="815" y="120" width="250" height="95" class="node" fill="#fef3c7"/><text x="940" y="159" class="head" text-anchor="middle">末块有效 272 项</text><text x="940" y="194" class="body" text-anchor="middle">10000 − 19 × 512</text>
+<rect x="1210" y="120" width="245" height="95" class="node" fill="#dcfce7"/><text x="1332" y="159" class="head" text-anchor="middle">总覆盖 10240 项</text><text x="1332" y="194" class="body" text-anchor="middle">屏蔽 240 项</text>
+<rect x="45" y="235" width="250" height="95" class="node" fill="#dbeafe"/><text x="170" y="274" class="head" text-anchor="middle">块宽 B = 1024</text><text x="170" y="309" class="body" text-anchor="middle">每 Program 至多 1024 项</text>
+<rect x="425" y="235" width="250" height="95" class="node" fill="#dbeafe"/><text x="550" y="274" class="head" text-anchor="middle">10 个 Program</text><text x="550" y="309" class="body" text-anchor="middle">向上取整 10000 / 1024</text>
+<rect x="815" y="235" width="250" height="95" class="node" fill="#fef3c7"/><text x="940" y="274" class="head" text-anchor="middle">末块有效 784 项</text><text x="940" y="309" class="body" text-anchor="middle">10000 − 9 × 1024</text>
+<rect x="1210" y="235" width="245" height="95" class="node" fill="#dcfce7"/><text x="1332" y="274" class="head" text-anchor="middle">总覆盖 10240 项</text><text x="1332" y="309" class="body" text-anchor="middle">屏蔽 240 项</text>
+<rect x="45" y="350" width="250" height="95" class="node" fill="#dbeafe"/><text x="170" y="389" class="head" text-anchor="middle">块宽 B = 2048</text><text x="170" y="424" class="body" text-anchor="middle">每 Program 至多 2048 项</text>
+<rect x="425" y="350" width="250" height="95" class="node" fill="#dbeafe"/><text x="550" y="389" class="head" text-anchor="middle">5 个 Program</text><text x="550" y="424" class="body" text-anchor="middle">向上取整 10000 / 2048</text>
+<rect x="815" y="350" width="250" height="95" class="node" fill="#fef3c7"/><text x="940" y="389" class="head" text-anchor="middle">末块有效 1808 项</text><text x="940" y="424" class="body" text-anchor="middle">10000 − 4 × 2048</text>
+<rect x="1210" y="350" width="245" height="95" class="node" fill="#dcfce7"/><text x="1332" y="389" class="head" text-anchor="middle">总覆盖 10240 项</text><text x="1332" y="424" class="body" text-anchor="middle">屏蔽 240 项</text>
+<path d="M295 167H425" class="edge"/><path d="M675 167H815" class="edge"/><path d="M1065 167H1210" class="edge"/>
+<path d="M295 282H425" class="edge"/><path d="M675 282H815" class="edge"/><path d="M1065 282H1210" class="edge"/>
+<path d="M295 397H425" class="edge"/><path d="M675 397H815" class="edge"/><path d="M1065 397H1210" class="edge"/>
+</svg>

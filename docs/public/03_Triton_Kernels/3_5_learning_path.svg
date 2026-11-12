@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
+  <title id="title">3.5 Triton 调试与集成路径</title><desc id="desc">17 提供索引、stride 和 mask 调试；19 检查单算子接入 PyTorch、自动微分和编译图；20 检查共享 Attention helper 在固定权重 Block 中的集成；FAQ 为按需查阅参考。</desc>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker><style>.title{font:700 25px sans-serif;fill:#0f172a}.sub{font:16px sans-serif;fill:#475569}.head{font:700 18px sans-serif;fill:#172033}.body{font:15px sans-serif;fill:#334155}.line{fill:none;stroke:#475569;stroke-width:2.3;marker-end:url(#arrow)}.optional{fill:none;stroke:#7c3aed;stroke-width:2;stroke-dasharray:7 5;marker-end:url(#arrow)}</style></defs>
+  <rect width="1200" height="500" rx="24" fill="#f8fafc"/><text x="40" y="48" class="title">先定位 kernel 问题，再选择集成验证层级</text><text x="40" y="78" class="sub">单算子框架接入与模型组件配对验证是不同出口，不互相替代。</text>
+  <rect x="55" y="145" width="250" height="145" rx="17" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="80" y="183" class="head">17 · 内存与调试</text><text x="80" y="219" class="body">索引 / stride / mask</text><text x="80" y="252" class="body">定位地址与边界故障</text>
+  <rect x="475" y="120" width="295" height="145" rx="17" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="500" y="158" class="head">19 · PyTorch 算子集成</text><text x="500" y="194" class="body">前向、autograd、fullgraph</text><text x="500" y="227" class="body">单算子 API / 编译行为</text>
+  <rect x="475" y="305" width="295" height="105" rx="17" fill="#fef3c7" stroke="#d97706" stroke-width="2"/><text x="500" y="344" class="head">20 · 固定权重 Block</text><text x="500" y="376" class="body">Attention helper 的配对集成</text>
+  <path d="M305 205H467" class="optional"/><path d="M305 225H390V357H467" class="optional"/>
+  <rect x="865" y="165" width="280" height="145" rx="17" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/><text x="890" y="203" class="head">调试参考</text><text x="890" y="239" class="body">按编译 / 正确性 / 性能现象</text><text x="890" y="272" class="body">查找排查入口，不是必读步骤</text>
+  <path d="M770 192H857" class="line"/><path d="M770 357H815V285H857" class="line"/>
+  <text x="55" y="465" class="body">20 不读取 11 Notebook 输出；需要实现 Attention 时回看 3.3 对应机制页。</text>
+</svg>

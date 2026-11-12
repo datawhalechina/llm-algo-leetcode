@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">共享空间相同，每块预留不同</title>
+<desc id="desc">同一 kernel 每块 256 个线程。假设一个 SM 有 64 KiB 共享空间和 2048 个线程槽，每块 8 KiB 最多容纳八块，每块 16 KiB 最多四块。这是资源容量比较，不是任务执行时间线或本机实测。</desc>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;font-size:23px;fill:#1e293b}.title{font-size:30px;font-weight:700}.label{font-weight:700}.small{font-size:21px}</style>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="45" y="53" class="title">共享空间相同，每块预留不同</text>
+<text x="45" y="95" class="small">同一 kernel，256 线程／块；假设 SM 有 64 KiB、2048 个线程槽，最多 16 块（非本机规格）</text>
+<rect x="45" y="135" width="680" height="270" rx="12" fill="white" stroke="#94a3b8" data-layout-role="panel"/>
+<text x="385" y="176" text-anchor="middle" class="label">每块预留 8 KiB</text>
+<rect x="65" y="200" width="147.5" height="65" rx="6" fill="#dbeafe" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="138.75" y="240" text-anchor="middle" class="small">块 1</text>
+<rect x="222.5" y="200" width="147.5" height="65" rx="6" fill="#dbeafe" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="296.25" y="240" text-anchor="middle" class="small">块 2</text>
+<rect x="380" y="200" width="147.5" height="65" rx="6" fill="#dbeafe" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="453.75" y="240" text-anchor="middle" class="small">块 3</text>
+<rect x="537.5" y="200" width="147.5" height="65" rx="6" fill="#dbeafe" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="611.25" y="240" text-anchor="middle" class="small">块 4</text>
+<rect x="65" y="280" width="147.5" height="65" rx="6" fill="#dbeafe" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="138.75" y="320" text-anchor="middle" class="small">块 5</text>
+<rect x="222.5" y="280" width="147.5" height="65" rx="6" fill="#dbeafe" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="296.25" y="320" text-anchor="middle" class="small">块 6</text>
+<rect x="380" y="280" width="147.5" height="65" rx="6" fill="#dbeafe" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="453.75" y="320" text-anchor="middle" class="small">块 7</text>
+<rect x="537.5" y="280" width="147.5" height="65" rx="6" fill="#dbeafe" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="611.25" y="320" text-anchor="middle" class="small">块 8</text>
+<text x="385" y="382" text-anchor="middle" class="small">共享容量与线程槽均允许 8 块</text>
+<rect x="775" y="135" width="680" height="270" rx="12" fill="white" stroke="#94a3b8" data-layout-role="panel"/>
+<text x="1115" y="176" text-anchor="middle" class="label">每块预留 16 KiB</text>
+<rect x="795" y="200" width="305" height="65" rx="6" fill="#fef3c7" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="947.5" y="240" text-anchor="middle" class="small">块 1</text>
+<rect x="1110" y="200" width="305" height="65" rx="6" fill="#fef3c7" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="1262.5" y="240" text-anchor="middle" class="small">块 2</text>
+<rect x="795" y="280" width="305" height="65" rx="6" fill="#fef3c7" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="947.5" y="320" text-anchor="middle" class="small">块 3</text>
+<rect x="1110" y="280" width="305" height="65" rx="6" fill="#fef3c7" stroke="#94a3b8" data-layout-role="glyph-group"/>
+<text x="1262.5" y="320" text-anchor="middle" class="small">块 4</text>
+<text x="1115" y="382" text-anchor="middle" class="small">共享容量先限制到 4 块</text>
+</svg>

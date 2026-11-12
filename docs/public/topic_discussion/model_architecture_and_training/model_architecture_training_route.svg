@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="740" viewBox="0 0 1500 740" role="img" aria-labelledby="title desc">
+  <title id="title">模型架构与训练学习路线</title>
+  <desc id="desc">Task0建立解码器与损失基线，Task1理解注意力、位置和访问范围，Task2从稠密前馈进入按需学习的专家计算。可以直接在选定模型上进入Task4，也可先深入Task3递推与混合记忆。Task4到6依次学习计算图与局部反向，损失归约、梯度累积与有效更新，以及训练状态与重算卸载取舍。</desc>
+  <defs>
+    <marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#52677d"/></marker>
+  </defs>
+  <style>
+    text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#17324d}
+    .title{font-size:32px;font-weight:700}.head{font-size:23px;font-weight:700}.body{font-size:21px;font-weight:400}.note{font-size:19px;font-weight:400;fill:#475569}
+    .node{stroke:#829ab1;stroke-width:2.5;rx:12}.edge{fill:none;stroke:#52677d;stroke-width:3;marker-end:url(#arrow)}.choice{fill:none;stroke:#52677d;stroke-width:3;stroke-dasharray:8 6;marker-end:url(#arrow)}
+  </style>
+  <rect width="1500" height="740" fill="#f8fafc"/>
+  <text x="45" y="48" class="title">从结构选择到一次正确、可比较的训练更新</text>
+  <text x="45" y="82" class="note">实线：稠密 Transformer 的学习主线；虚线：按目标深入递推记忆，结构之间不表示优劣替代。</text>
+  <rect x="70" y="130" width="360" height="95" class="node" fill="#e0f2fe"/>
+  <text x="250" y="166" text-anchor="middle" class="head">Task0 解码器与训练起点</text>
+  <text x="250" y="199" text-anchor="middle" class="body">输入、解码器块、预测与损失</text>
+  <rect x="570" y="130" width="360" height="95" class="node" fill="#e0f2fe"/>
+  <text x="750" y="166" text-anchor="middle" class="head">Task1 注意力、位置与访问</text>
+  <text x="750" y="199" text-anchor="middle" class="body">历史怎样表示、哪些位置可见</text>
+  <rect x="1070" y="130" width="360" height="95" class="node" fill="#e0f2fe"/>
+  <text x="1250" y="166" text-anchor="middle" class="head">Task2 前馈与专家计算</text>
+  <text x="1250" y="199" text-anchor="middle" class="body">先稠密前馈，MoE 按需深入</text>
+  <path d="M430 177 H570" class="edge"/>
+  <path d="M930 177 H1070" class="edge"/>
+  <text x="575" y="284" class="note">选定模型后可直接进入反向传播</text>
+  <rect x="1070" y="350" width="360" height="95" class="node" fill="#e0f2fe"/>
+  <text x="1250" y="386" text-anchor="middle" class="head">Task3 递推与混合记忆</text>
+  <text x="1250" y="419" text-anchor="middle" class="body">历史怎样压缩、更新和检索</text>
+  <rect x="570" y="350" width="360" height="95" class="node" fill="#dcfce7"/>
+  <text x="750" y="386" text-anchor="middle" class="head">Task4 计算图与局部反向</text>
+  <text x="750" y="419" text-anchor="middle" class="body">梯度来源与保存状态</text>
+  <path d="M1120 225 V310 H850 V350" class="edge"/>
+  <path d="M1250 225 V350" class="choice"/>
+  <path d="M1070 397 H930" class="choice"/>
+  <rect x="570" y="590" width="360" height="95" class="node" fill="#dcfce7"/>
+  <text x="750" y="616" text-anchor="middle" class="head">Task5 损失归约、梯度累积</text>
+  <text x="750" y="642" text-anchor="middle" class="head">与有效更新</text>
+  <text x="750" y="669" text-anchor="middle" class="body">加权目标 → 参数更新</text>
+  <rect x="1070" y="590" width="360" height="95" class="node" fill="#fef3c7"/>
+  <text x="1250" y="626" text-anchor="middle" class="head">Task6 状态与重算卸载</text>
+  <text x="1250" y="659" text-anchor="middle" class="body">梯度、质量、峰值与时间</text>
+  <path d="M750 445 V590" class="edge"/>
+  <path d="M930 637 H1070" class="edge"/>
+</svg>

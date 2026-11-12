@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">输出子块归属与 K 方向矩阵乘加</title>
+<desc id="desc">32行48列的输出分成两行三列16乘16子块。选中的第1行第2列子块由一个Warp负责，它沿K等于64的方向加载四对输入片段，累加到同一份FP32片段，最后写到输出行16到31、列32到47，真实行跨度为48。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.h{font-size:23px;font-weight:700}.s{font-size:21px}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#a)}</style>
+<rect width="1500" height="470" rx="22" fill="#f8fafc"/>
+<text x="45" y="52" class="title">输出块相互独立，K 分段持续累加：M=32，N=48，K=64</text>
+<rect x="45" y="105" width="405" height="300" rx="16" fill="#eff6ff" stroke="#93c5fd" data-layout-role="container"/>
+<text x="65" y="140" class="h">输出网格：2 行 × 3 列</text>
+<g data-layout-role="glyph-group" fill="#dbeafe" stroke="#2563eb" stroke-width="2">
+<rect x="70" y="165" width="100" height="70" rx="9"/><rect x="195" y="165" width="100" height="70" rx="9"/><rect x="320" y="165" width="100" height="70" rx="9"/>
+<rect x="70" y="295" width="100" height="80" rx="9"/><rect x="195" y="295" width="100" height="80" rx="9"/>
+<rect x="320" y="295" width="100" height="80" rx="9" fill="#dcfce7" stroke="#16a34a"/>
+</g>
+<g class="s" text-anchor="middle"><text x="120" y="208">(0,0)</text><text x="245" y="208">(0,1)</text><text x="370" y="208">(0,2)</text><text x="120" y="342">(1,0)</text><text x="245" y="342">(1,1)</text><text x="370" y="342">(1,2)</text></g>
+<rect x="600" y="105" width="320" height="110" rx="16" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="625" y="148" class="h">每轮一对 A / B 片段</text><text x="625" y="187" class="s">K 起点：0、16、32、48</text>
+<rect x="600" y="280" width="320" height="110" rx="16" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="625" y="323" class="h">一个 Warp 的累加器</text><text x="625" y="362" class="s">清零一次，累积四轮乘积</text>
+<rect x="1090" y="280" width="350" height="110" rx="16" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="1115" y="323" class="h">写回 C[16:32, 32:48]</text><text x="1115" y="362" class="s">FP32，实际行跨度为 48</text>
+<path d="M420 335H600" class="edge"/><text x="465" y="318" class="s">输出归属</text>
+<path d="M760 215V280" class="edge"/><text x="775" y="257" class="s">矩阵乘加</text>
+<path d="M920 335H1090" class="edge"/><text x="953" y="318" class="s">全部轮次完成</text>
+</svg>

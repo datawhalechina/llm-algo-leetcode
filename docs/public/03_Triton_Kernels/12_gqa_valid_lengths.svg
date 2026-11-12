@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">缓存容量相同，归一化范围由每个请求的 L 决定</title><desc id="desc">绿色为真实上下文，灰色为补齐位置；特征维与注意力头在图中省略。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:24px;font-weight:700}.body{font-size:21px}.small{font-size:18px;fill:#475569}.node{stroke:#94a3b8;stroke-width:2;rx:12}.edge{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="45" y="52" class="title" text-anchor="start">缓存容量相同，归一化范围由每个请求的 L 决定</text>
+<text x="45" y="88" class="small" text-anchor="start">绿色为真实上下文，灰色为补齐位置；特征维与注意力头在图中省略。</text>
+<text x="490" y="135" class="small" text-anchor="middle">t = 0</text>
+<text x="625" y="135" class="small" text-anchor="middle">t = 1</text>
+<text x="760" y="135" class="small" text-anchor="middle">t = 2</text>
+<text x="895" y="135" class="small" text-anchor="middle">t = 3</text>
+<text x="1030" y="135" class="small" text-anchor="middle">t = 4</text>
+<text x="1165" y="135" class="small" text-anchor="middle">t = 5</text>
+<text x="1300" y="135" class="small" text-anchor="middle">t = 6</text>
+<rect x="45" y="160" width="290" height="100" class="node" fill="#dbeafe"/>
+<text x="190.0" y="197" class="head" text-anchor="middle">请求 0：L = 3</text>
+<text x="190.0" y="232" class="body" text-anchor="middle">容量 T_max = 7</text>
+<rect x="430" y="160" width="120" height="100" class="node" fill="#dcfce7"/>
+<text x="490.0" y="197" class="head" text-anchor="middle">0</text>
+<text x="490.0" y="232" class="body" text-anchor="middle">有效</text>
+<rect x="565" y="160" width="120" height="100" class="node" fill="#dcfce7"/>
+<text x="625.0" y="197" class="head" text-anchor="middle">1</text>
+<text x="625.0" y="232" class="body" text-anchor="middle">有效</text>
+<rect x="700" y="160" width="120" height="100" class="node" fill="#dcfce7"/>
+<text x="760.0" y="197" class="head" text-anchor="middle">2</text>
+<text x="760.0" y="232" class="body" text-anchor="middle">有效</text>
+<rect x="835" y="160" width="120" height="100" class="node" fill="#e2e8f0"/>
+<text x="895.0" y="197" class="head" text-anchor="middle">3</text>
+<text x="895.0" y="232" class="body" text-anchor="middle">补齐</text>
+<rect x="970" y="160" width="120" height="100" class="node" fill="#e2e8f0"/>
+<text x="1030.0" y="197" class="head" text-anchor="middle">4</text>
+<text x="1030.0" y="232" class="body" text-anchor="middle">补齐</text>
+<rect x="1105" y="160" width="120" height="100" class="node" fill="#e2e8f0"/>
+<text x="1165.0" y="197" class="head" text-anchor="middle">5</text>
+<text x="1165.0" y="232" class="body" text-anchor="middle">补齐</text>
+<rect x="1240" y="160" width="120" height="100" class="node" fill="#e2e8f0"/>
+<text x="1300.0" y="197" class="head" text-anchor="middle">6</text>
+<text x="1300.0" y="232" class="body" text-anchor="middle">补齐</text>
+<text x="430" y="285" class="small" text-anchor="start">仅前 3 个位置参与本请求的最大值、分母与 V 加权。</text>
+<rect x="45" y="310" width="290" height="100" class="node" fill="#dbeafe"/>
+<text x="190.0" y="347" class="head" text-anchor="middle">请求 1：L = 7</text>
+<text x="190.0" y="382" class="body" text-anchor="middle">容量 T_max = 7</text>
+<rect x="430" y="310" width="120" height="100" class="node" fill="#dcfce7"/>
+<text x="490.0" y="347" class="head" text-anchor="middle">0</text>
+<text x="490.0" y="382" class="body" text-anchor="middle">有效</text>
+<rect x="565" y="310" width="120" height="100" class="node" fill="#dcfce7"/>
+<text x="625.0" y="347" class="head" text-anchor="middle">1</text>
+<text x="625.0" y="382" class="body" text-anchor="middle">有效</text>
+<rect x="700" y="310" width="120" height="100" class="node" fill="#dcfce7"/>
+<text x="760.0" y="347" class="head" text-anchor="middle">2</text>
+<text x="760.0" y="382" class="body" text-anchor="middle">有效</text>
+<rect x="835" y="310" width="120" height="100" class="node" fill="#dcfce7"/>
+<text x="895.0" y="347" class="head" text-anchor="middle">3</text>
+<text x="895.0" y="382" class="body" text-anchor="middle">有效</text>
+<rect x="970" y="310" width="120" height="100" class="node" fill="#dcfce7"/>
+<text x="1030.0" y="347" class="head" text-anchor="middle">4</text>
+<text x="1030.0" y="382" class="body" text-anchor="middle">有效</text>
+<rect x="1105" y="310" width="120" height="100" class="node" fill="#dcfce7"/>
+<text x="1165.0" y="347" class="head" text-anchor="middle">5</text>
+<text x="1165.0" y="382" class="body" text-anchor="middle">有效</text>
+<rect x="1240" y="310" width="120" height="100" class="node" fill="#dcfce7"/>
+<text x="1300.0" y="347" class="head" text-anchor="middle">6</text>
+<text x="1300.0" y="382" class="body" text-anchor="middle">有效</text>
+<text x="430" y="435" class="small" text-anchor="start">仅前 7 个位置参与本请求的最大值、分母与 V 加权。</text>
+</svg>

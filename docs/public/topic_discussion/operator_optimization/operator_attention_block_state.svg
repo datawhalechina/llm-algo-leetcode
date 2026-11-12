@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="430" viewBox="0 0 1100 430" role="img" aria-labelledby="title desc">
+<title id="title">跨块更新：旧贡献随新的最大值一起重标定</title><desc id="desc">一个查询的分数为1、2、3、4，每块处理两个键。第一块留下m、指数和ell与加权累积a；第二块改变最大值后，同时缩放旧ell和旧a，最后求输出。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d;font-weight:400}.title{font-size:25px;font-weight:700}.h{font-size:18px;font-weight:700}.s{font-size:16px}.note{font-size:14px;fill:#475569}.box{stroke:#829ab1;stroke-width:2;rx:12}.line{fill:none;stroke:#475569;stroke-width:2.5;marker-end:url(#a)}.dash{fill:none;stroke:#475569;stroke-width:2.5;stroke-dasharray:6 5;marker-end:url(#a)}</style>
+<rect width="1100" height="430" fill="#f8fafc"/>
+<text x="40" y="42" class="title">跨块更新：旧贡献随新的最大值一起重标定</text>
+<text x="40" y="78" class="note">构造示例：v₁–v₄ 是值向量；m 是行最大值，ℓ 是指数和，a 是未归一化的加权累积。</text>
+<rect x="40" y="135" width="220" height="100" fill="#e0f2fe" class="box"/><text x="150" y="167" text-anchor="middle" class="h">第一块：分数 1、2</text><text x="150" y="195" text-anchor="middle" class="s">m₁ = 2；丢弃局部分数</text>
+<rect x="305" y="135" width="300" height="100" fill="#fef3c7" class="box"/><text x="455" y="167" text-anchor="middle" class="h">留下两项旧贡献</text><text x="455" y="195" text-anchor="middle" class="s">ℓ₁ = e⁻¹ + 1；a₁ = e⁻¹v₁ + v₂</text>
+<rect x="650" y="135" width="410" height="100" fill="#e0f2fe" class="box"/><text x="855" y="167" text-anchor="middle" class="h">第二块：分数 3、4</text><text x="855" y="195" text-anchor="middle" class="s">新最大值 m₂ = 4；旧贡献缩放 e⁻²</text>
+<path d="M260 185H305" class="line"/>
+<path d="M605 185H650" class="line"/>
+<rect x="305" y="310" width="300" height="90" fill="#fef3c7" class="box"/><text x="455" y="342" text-anchor="middle" class="h">更新分母</text><text x="455" y="370" text-anchor="middle" class="s">ℓ₂ = e⁻²ℓ₁ + e⁻¹ + 1</text>
+<rect x="650" y="310" width="410" height="90" fill="#dcfce7" class="box"/><text x="855" y="342" text-anchor="middle" class="h">更新分子，再求输出</text><text x="855" y="370" text-anchor="middle" class="s">a₂ = e⁻²a₁ + e⁻¹v₃ + v₄；o = a₂ / ℓ₂</text>
+<path d="M750 235V270H455V310" class="line"/>
+<path d="M855 235V310" class="line"/>
+<path d="M605 355H650" class="line"/>
+</svg>

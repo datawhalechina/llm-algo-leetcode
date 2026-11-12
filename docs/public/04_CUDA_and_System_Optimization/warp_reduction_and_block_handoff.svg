@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">Warp 内合并局部值，再跨 Warp 传递局部和</title>
+<desc id="desc">上行为四个lane的缩小示例：偏移2时前两个lane得到4和6，偏移1后lane0得到10。下行为多个Warp归约：各Warp先求局部和，写入不同共享位置，块级同步后读取并汇总。CPU模型只模拟算术数据流。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:27px;font-weight:700}.h{font-size:23px;font-weight:700}.s{font-size:21px}.edge{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#a)}</style>
+<rect width="1500" height="470" rx="22" fill="#f8fafc"/>
+<text x="55" y="52" class="title">单个 Warp 交换寄存器值，多个 Warp 通过共享位置传递结果</text>
+<rect x="60" y="115" width="390" height="120" rx="15" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="85" y="160" class="h">四 lane 示意：1、2、3、4</text><text x="85" y="200" class="s">同一轮读取更新前的值</text>
+<rect x="555" y="115" width="390" height="120" rx="15" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="580" y="160" class="h">偏移 2：1 + 3，2 + 4</text><text x="580" y="200" class="s">前两个 lane 分别得到 4、6</text>
+<rect x="1050" y="115" width="390" height="120" rx="15" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="1075" y="160" class="h">偏移 1：4 + 6 = 10</text><text x="1075" y="200" class="s">lane 0 持有完整局部和</text>
+<rect x="60" y="295" width="390" height="120" rx="15" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="85" y="340" class="h">每个 Warp 得到一个局部和</text><text x="85" y="380" class="s">尾部槽位补零，不重复贡献</text>
+<rect x="555" y="295" width="390" height="120" rx="15" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="580" y="340" class="h">分别写入共享位置并同步</text><text x="580" y="380" class="s">读取前等待所有局部和就绪</text>
+<rect x="1050" y="295" width="390" height="120" rx="15" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="1075" y="340" class="h">读取局部和，再汇总</text><text x="1075" y="380" class="s">形成整个线程块的结果</text>
+<path d="M450 175H555" class="edge"/><path d="M945 175H1050" class="edge"/>
+<path d="M450 355H555" class="edge"/><path d="M945 355H1050" class="edge"/>
+</svg>

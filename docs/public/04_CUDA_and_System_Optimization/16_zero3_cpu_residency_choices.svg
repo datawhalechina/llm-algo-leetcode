@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">分片归属相同，卸载选项改变驻留位置</title>
+<desc id="desc">两种配置均为 ZeRO-3，优化器状态都驻留 CPU；增加参数卸载后，参数分片主要驻留 CPU，GPU 按层调入使用。</desc>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;font-size:23px;fill:#1e293b}.title{font-size:30px;font-weight:700}.label{font-weight:700}.small{font-size:21px}.note{font-size:19px}</style>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<rect width="1500" height="470" fill="#fff"/>
+<text x="750" y="53" class="title" text-anchor="middle">分片归属相同，卸载选项改变驻留位置</text>
+<text x="750" y="95" class="small" text-anchor="middle">固定 ZeRO-3 与两个 rank：分片归属不变，比较低精度参数 P 和优化器状态 O 的主要驻留位置。</text>
+<rect x="45" y="125" width="680" height="300" rx="8" fill="#fff" stroke="#94a3b8" data-layout-role="panel"/>
+<text x="385" y="160" class="label" text-anchor="middle">CPU 优化器卸载；不卸载参数</text>
+<rect x="65" y="180" width="640" height="100" rx="8" fill="#dbeafe" stroke="#94a3b8" data-layout-role="container"/>
+<text x="90" y="211" class="label" text-anchor="start">GPU</text>
+<text x="385" y="233" class="small" text-anchor="middle">rank0：P[A]   rank1：P[B]</text>
+<text x="385" y="265" class="small" text-anchor="middle">分片参数驻留 GPU，按层聚集使用</text>
+<rect x="65" y="305" width="640" height="100" rx="8" fill="#fef3c7" stroke="#94a3b8" data-layout-role="container"/>
+<text x="90" y="336" class="label" text-anchor="start">CPU</text>
+<text x="420" y="348" class="small" text-anchor="middle">rank0：O[A]   rank1：O[B]</text>
+<text x="420" y="383" class="small" text-anchor="middle">CPU 执行优化器更新</text>
+<rect x="775" y="125" width="680" height="300" rx="8" fill="#fff" stroke="#94a3b8" data-layout-role="panel"/>
+<text x="1115" y="160" class="label" text-anchor="middle">另启用 CPU 参数卸载</text>
+<rect x="795" y="180" width="640" height="100" rx="8" fill="#dbeafe" stroke="#94a3b8" data-layout-role="container"/>
+<text x="820" y="211" class="label" text-anchor="start">GPU</text>
+<text x="1115" y="233" class="small" text-anchor="middle">当前层参数按需调入、聚集</text>
+<text x="1115" y="265" class="small" text-anchor="middle">临时 GPU 缓冲仍参与显存峰值</text>
+<rect x="795" y="305" width="640" height="100" rx="8" fill="#fef3c7" stroke="#94a3b8" data-layout-role="container"/>
+<text x="820" y="336" class="label" text-anchor="start">CPU</text>
+<text x="1150" y="348" class="small" text-anchor="middle">rank0：P[A]、O[A]</text>
+<text x="1150" y="383" class="small" text-anchor="middle">rank1：P[B]、O[B]</text>
+<text x="750" y="456" class="note" text-anchor="middle">只展开参数与优化器状态；梯度、激活及临时空间另计，不能据此直接推算显存峰值。</text>
+</svg>

@@ -1,0 +1,209 @@
+{
+  "status": "measured",
+  "evidence_scope": "local_allocator_lifecycle",
+  "config": {
+    "payload_mib": 64,
+    "payload_bytes": 67108864,
+    "repeats": 3
+  },
+  "runtime": {
+    "torch": "2.11.0+cu128",
+    "torch_cuda": "12.8",
+    "allocator_backend": "native",
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "device_index": 0,
+    "driver_version": "580.178.04",
+    "platform": "Linux-6.5.0-41-generic-x86_64-with-glibc2.35",
+    "device_total_bytes": 12318015488
+  },
+  "rounds": [
+    {
+      "repeat": 1,
+      "checks": {
+        "live_data_preserved": true,
+        "reallocated_data_correct": true,
+        "payload_accounted": true,
+        "last_reference_released": true,
+        "finished_at_baseline": true
+      },
+      "samples": [
+        {
+          "stage": "baseline",
+          "allocated_bytes": 0,
+          "reserved_bytes": 0,
+          "peak_allocated_bytes": 0,
+          "peak_reserved_bytes": 0
+        },
+        {
+          "stage": "allocated",
+          "allocated_bytes": 67108864,
+          "reserved_bytes": 67108864,
+          "peak_allocated_bytes": 67108864,
+          "peak_reserved_bytes": 67108864
+        },
+        {
+          "stage": "alias_retained",
+          "allocated_bytes": 67108864,
+          "reserved_bytes": 67108864,
+          "peak_allocated_bytes": 67108864,
+          "peak_reserved_bytes": 67108864
+        },
+        {
+          "stage": "cache_cleared_while_live",
+          "allocated_bytes": 67108864,
+          "reserved_bytes": 67108864,
+          "peak_allocated_bytes": 67108864,
+          "peak_reserved_bytes": 67108864
+        },
+        {
+          "stage": "last_reference_released",
+          "allocated_bytes": 0,
+          "reserved_bytes": 67108864,
+          "peak_allocated_bytes": 67108864,
+          "peak_reserved_bytes": 67108864
+        },
+        {
+          "stage": "reallocated",
+          "allocated_bytes": 67108864,
+          "reserved_bytes": 67108864,
+          "peak_allocated_bytes": 67108864,
+          "peak_reserved_bytes": 67108864
+        },
+        {
+          "stage": "finished",
+          "allocated_bytes": 0,
+          "reserved_bytes": 0,
+          "peak_allocated_bytes": 67108864,
+          "peak_reserved_bytes": 67108864
+        }
+      ]
+    },
+    {
+      "repeat": 2,
+      "checks": {
+        "live_data_preserved": true,
+        "reallocated_data_correct": true,
+        "payload_accounted": true,
+        "last_reference_released": true,
+        "finished_at_baseline": true
+      },
+      "samples": [
+        {
+          "stage": "baseline",
+          "allocated_bytes": 0,
+          "reserved_bytes": 0,
+          "peak_allocated_bytes": 0,
+          "peak_reserved_bytes": 0
+        },
+        {
+          "stage": "allocated",
+          "allocated_bytes": 67108864,
+          "reserved_bytes": 67108864,
+          "peak_allocated_bytes": 67108864,
+          "peak_reserved_bytes": 67108864
+        },
+        {
+          "stage": "alias_retained",
+          "allocated_bytes": 67108864,
+          "reserved_bytes": 67108864,
+          "peak_allocated_bytes": 67108864,
+          "peak_reserved_bytes": 67108864
+        },
+        {
+          "stage": "cache_cleared_while_live",
+          "allocated_bytes": 67108864,
+          "reserved_bytes": 67108864,
+          "peak_allocated_bytes": 67108864,
+          "peak_reserved_bytes": 67108864
+        },
+        {
+          "stage": "last_reference_released",
+          "allocated_bytes": 0,
+          "reserved_bytes": 67108864,
+          "peak_allocated_bytes": 67108864,
+          "peak_reserved_bytes": 67108864
+        },
+        {
+          "stage": "reallocated",
+          "allocated_bytes": 67108864,
+          "reserved_bytes": 67108864,
+          "peak_allocated_bytes": 67108864,
+          "peak_reserved_bytes": 67108864
+        },
+        {
+          "stage": "finished",
+          "allocated_bytes": 0,
+          "reserved_bytes": 0,
+          "peak_allocated_bytes": 67108864,
+          "peak_reserved_bytes": 67108864
+        }
+      ]
+    },
+    {
+      "repeat": 3,
+      "checks": {
+        "live_data_preserved": true,
+        "reallocated_data_correct": true,
+        "payload_accounted": true,
+        "last_reference_released": true,
+        "finished_at_baseline": true
+      },
+      "samples": [
+        {
+          "stage": "baseline",
+          "allocated_bytes": 0,
+          "reserved_bytes": 0,
+          "peak_allocated_bytes": 0,
+          "peak_reserved_bytes": 0
+        },
+        {
+          "stage": "allocated",
+          "allocated_bytes": 67108864,
+          "reserved_bytes": 67108864,
+          "peak_allocated_bytes": 67108864,
+          "peak_reserved_bytes": 67108864
+        },
+        {
+          "stage": "alias_retained",
+          "allocated_bytes": 67108864,
+          "reserved_bytes": 67108864,
+          "peak_allocated_bytes": 67108864,
+          "peak_reserved_bytes": 67108864
+        },
+        {
+          "stage": "cache_cleared_while_live",
+          "allocated_bytes": 67108864,
+          "reserved_bytes": 67108864,
+          "peak_allocated_bytes": 67108864,
+          "peak_reserved_bytes": 67108864
+        },
+        {
+          "stage": "last_reference_released",
+          "allocated_bytes": 0,
+          "reserved_bytes": 67108864,
+          "peak_allocated_bytes": 67108864,
+          "peak_reserved_bytes": 67108864
+        },
+        {
+          "stage": "reallocated",
+          "allocated_bytes": 67108864,
+          "reserved_bytes": 67108864,
+          "peak_allocated_bytes": 67108864,
+          "peak_reserved_bytes": 67108864
+        },
+        {
+          "stage": "finished",
+          "allocated_bytes": 0,
+          "reserved_bytes": 0,
+          "peak_allocated_bytes": 67108864,
+          "peak_reserved_bytes": 67108864
+        }
+      ]
+    }
+  ],
+  "schema_version": "cuda-allocator-lifecycle/v1",
+  "run_label": "rtx5070ti_allocator_lifecycle_20261111_v1",
+  "recorded_at_utc": "2026-11-11T10:50:07.036020+00:00",
+  "source_sha256": "51e4e64d990b5aef5ec9b3753d04e3aeb9f2677b50b9a33e8741be3177edd820",
+  "isolation": "fresh_python_subprocess"
+}

@@ -18,13 +18,13 @@
 
 [02 自动求导与 Transformer 反向传播](./02_autograd_and_transformer_backward.md) 解释 VJP、保存张量和 Transformer 局部梯度之间的关系。
 
-## 让监督尺度对应一次有效更新
+## 让损失权重对应一次有效更新
 
 标签移位、损失掩码和有效 token 数决定梯度代表什么；微批次、梯度累积、损失缩放和调度器时钟决定这份梯度何时真正写入参数。不同长度的微批次不能只按累计次数除损失，必须与有效 token 分母对齐。
 
-![监督范围、损失归约与有效更新](../../public/topic_discussion/backpropagation_training_mechanism/supervision_effective_update.svg)
+![目标位置、损失归约与有效更新](../../public/topic_discussion/backpropagation_training_mechanism/supervision_effective_update.svg)
 
-[03 监督、梯度尺度与有效更新](./03_supervision_gradient_scale_effective_update.md) 将监督边界接到更新时钟。
+[03 损失归约、梯度累积与有效更新](./03_loss_reduction_gradient_accumulation_effective_update.md) 将损失计算范围接到更新时钟。
 
 ## 找到峰值时仍然驻留的状态
 

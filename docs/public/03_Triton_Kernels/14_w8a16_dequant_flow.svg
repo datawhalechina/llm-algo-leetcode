@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">完整权重不必作为反量化中间输出</title><desc id="desc">两条路径使用同一份INT8权重Q、列尺度s与FP16输入X；图示只表达逻辑数据流。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:24px;font-weight:700}.body{font-size:21px}.small{font-size:18px;fill:#475569}.node{stroke:#94a3b8;stroke-width:2;rx:12}.edge{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="45" y="52" class="title" text-anchor="start">完整权重不必作为反量化中间输出</text>
+<text x="45" y="88" class="small" text-anchor="start">两条路径使用同一份INT8权重Q、列尺度s与FP16输入X；图示只表达逻辑数据流。</text>
+<rect x="45" y="210" width="290" height="100" class="node" fill="#dbeafe"/>
+<text x="190.0" y="247" class="head" text-anchor="middle">INT8 Q 与列尺度 s</text>
+<text x="190.0" y="282" class="body" text-anchor="middle">已给定的量化表示</text>
+<rect x="555" y="125" width="370" height="100" class="node" fill="#fef3c7"/>
+<text x="740.0" y="162" class="head" text-anchor="middle">显式：完整 FP16 权重</text>
+<text x="740.0" y="197" class="body" text-anchor="middle">先生成，再交给 GEMM</text>
+<rect x="555" y="295" width="370" height="100" class="node" fill="#fef3c7"/>
+<text x="740.0" y="332" class="head" text-anchor="middle">融合：当前权重子块</text>
+<text x="740.0" y="367" class="body" text-anchor="middle">恢复后直接参与点积</text>
+<rect x="1165" y="125" width="290" height="100" class="node" fill="#dcfce7"/>
+<text x="1310.0" y="162" class="head" text-anchor="middle">X × 完整重建权重</text>
+<text x="1310.0" y="197" class="body" text-anchor="middle">生成 FP16 输出</text>
+<rect x="1165" y="295" width="290" height="100" class="node" fill="#dcfce7"/>
+<text x="1310.0" y="332" class="head" text-anchor="middle">X 子块 × 重建子块</text>
+<text x="1310.0" y="367" class="body" text-anchor="middle">累加为 FP16 输出</text>
+<path d="M335 235H435V175H555" class="edge"/>
+<path d="M335 285H435V345H555" class="edge"/>
+<path d="M925 175H1165" class="edge"/>
+<path d="M925 345H1165" class="edge"/>
+<text x="45" y="440" class="body" text-anchor="start">融合省去完整重建张量的写出；不等于整数乘法，也不自动保证更快。</text>
+</svg>

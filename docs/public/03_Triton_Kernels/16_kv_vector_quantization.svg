@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">每条向量各存一份编码与尺度，再近似恢复</title><desc id="desc">x=[127,−127,0.5,−0.5]；按Token、头分别处理，K与V各自量化。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:24px;font-weight:700}.body{font-size:21px}.small{font-size:18px;fill:#475569}.node{stroke:#94a3b8;stroke-width:2;rx:12}.edge{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="45" y="52" class="title" text-anchor="start">每条向量各存一份编码与尺度，再近似恢复</text>
+<text x="45" y="88" class="small" text-anchor="start">x=[127,−127,0.5,−0.5]；按Token、头分别处理，K与V各自量化。</text>
+<rect x="45" y="210" width="285" height="100" class="node" fill="#dbeafe"/>
+<text x="187.5" y="247" class="head" text-anchor="middle">原始 FP32 向量 x</text>
+<text x="187.5" y="282" class="body" text-anchor="middle">4 个真实特征</text>
+<rect x="560" y="125" width="385" height="100" class="node" fill="#fef3c7"/>
+<text x="752.5" y="162" class="head" text-anchor="middle">INT8 编码 z</text>
+<text x="752.5" y="197" class="body" text-anchor="middle">[127, −127, 1, −1]</text>
+<rect x="560" y="295" width="385" height="100" class="node" fill="#fef3c7"/>
+<text x="752.5" y="332" class="head" text-anchor="middle">FP32 尺度 s = 1</text>
+<text x="752.5" y="367" class="body" text-anchor="middle">最大绝对值 127 ÷ 127</text>
+<rect x="1160" y="210" width="295" height="100" class="node" fill="#dcfce7"/>
+<text x="1307.5" y="247" class="head" text-anchor="middle">重建向量 z × s</text>
+<text x="1307.5" y="282" class="body" text-anchor="middle">半值发生量化误差</text>
+<path d="M330 235H440V175H560" class="edge"/>
+<path d="M330 285H440V345H560" class="edge"/>
+<path d="M945 175H1050V235H1160" class="edge"/>
+<path d="M945 345H1050V285H1160" class="edge"/>
+<text x="45" y="440" class="body" text-anchor="start">编码和尺度共同构成缓存表示；不能只统计INT8字节，也不能把近似恢复称为无损。</text>
+</svg>

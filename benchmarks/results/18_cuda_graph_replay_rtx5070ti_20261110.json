@@ -1,0 +1,179 @@
+{
+  "schema_version": "tutorial-local-benchmark-record/v1",
+  "provenance": {
+    "kind": "user_provided_terminal_output",
+    "recorded_on": "2026-11-10",
+    "measurement_timestamp": null,
+    "run_label": null,
+    "notebook": "04_CUDA_and_System_Optimization/18_CUDA_Graph_and_JIT_Compile.ipynb",
+    "environment_name": "llm_algo_cnb_gpu",
+    "cpu_validation": {
+      "question": "expected_fail",
+      "answer": "passed"
+    },
+    "note": "Transcribed from the user's complete benchmark output. No missing driver, OS or measurement timestamp fields were inferred. Separate from the assistant's earlier smoke run."
+  },
+  "report": {
+    "status": "measured",
+    "evidence_scope": "local_fixed_workflow",
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "torch": "2.11.0+cu128",
+    "torch_cuda": "12.8",
+    "chain_steps": 16,
+    "warmup": 3,
+    "iterations": 50,
+    "repeats": 6,
+    "timing": "host_wall_clock_with_device_sync_at_window_boundaries",
+    "input_update_in_timed_window": false,
+    "rows": [
+      {
+        "elements": 4096,
+        "dtype": "torch.float32",
+        "correctness": "passed",
+        "max_abs_error": 0,
+        "capture_and_first_replay_ms": 0.7066480029607192,
+        "eager_median_ms": 0.10772709007142112,
+        "graph_median_ms": 0.026714189880294725,
+        "median_paired_speedup": 4.033831159476562,
+        "estimated_setup_amortization_calls": 9,
+        "decision": "steady_state_candidate",
+        "pairs": [
+          {
+            "repeat": 1,
+            "order": [
+              "eager",
+              "graph"
+            ],
+            "eager_completion_ms": 0.10831107996637002,
+            "graph_completion_ms": 0.026705979835242033,
+            "speedup": 4.055686428080028
+          },
+          {
+            "repeat": 2,
+            "order": [
+              "graph",
+              "eager"
+            ],
+            "eager_completion_ms": 0.10746710002422333,
+            "graph_completion_ms": 0.0266893400112167,
+            "speedup": 4.026592638823525
+          },
+          {
+            "repeat": 3,
+            "order": [
+              "eager",
+              "graph"
+            ],
+            "eager_completion_ms": 0.12781112018274143,
+            "graph_completion_ms": 0.026761080080177635,
+            "speedup": 4.776007537805366
+          },
+          {
+            "repeat": 4,
+            "order": [
+              "graph",
+              "eager"
+            ],
+            "eager_completion_ms": 0.10718478006310761,
+            "graph_completion_ms": 0.02681637997739017,
+            "speedup": 3.996989159367478
+          },
+          {
+            "repeat": 5,
+            "order": [
+              "eager",
+              "graph"
+            ],
+            "eager_completion_ms": 0.1079870801186189,
+            "graph_completion_ms": 0.026722399925347418,
+            "speedup": 4.041069680129599
+          },
+          {
+            "repeat": 6,
+            "order": [
+              "graph",
+              "eager"
+            ],
+            "eager_completion_ms": 0.10687219997635111,
+            "graph_completion_ms": 0.026689940132200718,
+            "speedup": 4.004212802538758
+          }
+        ]
+      },
+      {
+        "elements": 65536,
+        "dtype": "torch.float32",
+        "correctness": "passed",
+        "max_abs_error": 0,
+        "capture_and_first_replay_ms": 0.6499509909190238,
+        "eager_median_ms": 0.10810430001583882,
+        "graph_median_ms": 0.03079285001149401,
+        "median_paired_speedup": 3.5112997091940064,
+        "estimated_setup_amortization_calls": 9,
+        "decision": "steady_state_candidate",
+        "pairs": [
+          {
+            "repeat": 1,
+            "order": [
+              "eager",
+              "graph"
+            ],
+            "eager_completion_ms": 0.10729417990660295,
+            "graph_completion_ms": 0.030802880064584315,
+            "speedup": 3.4832515557519144
+          },
+          {
+            "repeat": 2,
+            "order": [
+              "graph",
+              "eager"
+            ],
+            "eager_completion_ms": 0.10746449988801032,
+            "graph_completion_ms": 0.030793059850111604,
+            "speedup": 3.4898935153279624
+          },
+          {
+            "repeat": 3,
+            "order": [
+              "eager",
+              "graph"
+            ],
+            "eager_completion_ms": 0.10824116005096585,
+            "graph_completion_ms": 0.030792640172876418,
+            "speedup": 3.5151633456331446
+          },
+          {
+            "repeat": 4,
+            "order": [
+              "graph",
+              "eager"
+            ],
+            "eager_completion_ms": 0.10796743998071179,
+            "graph_completion_ms": 0.03078243986237794,
+            "speedup": 3.507436072754868
+          },
+          {
+            "repeat": 5,
+            "order": [
+              "eager",
+              "graph"
+            ],
+            "eager_completion_ms": 0.1094969199039042,
+            "graph_completion_ms": 0.03080368012888357,
+            "speedup": 3.5546700733732344
+          },
+          {
+            "repeat": 6,
+            "order": [
+              "graph",
+              "eager"
+            ],
+            "eager_completion_ms": 0.11310530011542141,
+            "graph_completion_ms": 0.03078784007811919,
+            "speedup": 3.673700390428004
+          }
+        ]
+      }
+    ]
+  }
+}

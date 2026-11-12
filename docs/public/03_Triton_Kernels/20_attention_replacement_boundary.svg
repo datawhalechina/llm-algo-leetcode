@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">固定其余计算，只替换注意力子图</title><desc id="desc">同一输入与权重产生投影和位置变换后的QKV。基线选择SDPA，候选选择共享Triton因果Attention，随后都恢复相同布局并完成同一投影、残差和MLP。两个注意力分支互为对照，不是先后执行。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d}.title{font-size:28px;font-weight:700}.head{font-size:22px;font-weight:700}.body{font-size:20px}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#a)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/><text x="40" y="48" class="title">固定同一组权重，比较注意力替换在组件中的结果</text>
+<text x="40" y="87" class="body">蓝色部分保持一致；中间两条路径二选一，均使用相同Q/K/V与因果条件。</text>
+<rect x="40" y="210" width="220" height="100" rx="10" fill="#dbeafe" stroke="#829ab1"/><text x="150" y="250" text-anchor="middle" class="head">输入隐状态</text><text x="150" y="285" text-anchor="middle" class="body">[B, S, D]</text>
+<rect x="340" y="210" width="280" height="100" rx="10" fill="#dbeafe" stroke="#829ab1"/><text x="480" y="250" text-anchor="middle" class="head">归一化与Q/K/V</text><text x="480" y="285" text-anchor="middle" class="body">拆分头并应用RoPE</text>
+<rect x="760" y="120" width="280" height="100" rx="10" fill="#ede9fe" stroke="#829ab1"/><text x="900" y="160" text-anchor="middle" class="head">基线：PyTorch SDPA</text><text x="900" y="195" text-anchor="middle" class="body">因果注意力</text>
+<rect x="760" y="310" width="280" height="100" rx="10" fill="#dcfce7" stroke="#829ab1"/><text x="900" y="350" text-anchor="middle" class="head">候选：Triton Attention</text><text x="900" y="385" text-anchor="middle" class="body">实际调用与数值均核对</text>
+<rect x="1180" y="210" width="280" height="100" rx="10" fill="#dbeafe" stroke="#829ab1"/><text x="1320" y="250" text-anchor="middle" class="head">恢复布局与后半段</text><text x="1320" y="285" text-anchor="middle" class="body">投影、残差与MLP</text>
+<path d="M260 260H340" class="edge"/><path d="M620 240H680V170H760" class="edge"/><path d="M620 280H710V360H760" class="edge"/><path d="M1040 170H1100V240H1180" class="edge"/><path d="M1040 360H1130V280H1180" class="edge"/>
+</svg>

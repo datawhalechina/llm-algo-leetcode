@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+  <title id="title">SwiGLU 中间激活的写回与局部消费</title>
+  <desc id="desc">分离执行时，SiLU 结果形成中间张量，之后由乘法读取。融合执行在同一内核中计算 SiLU 并乘第二路输入，仅写出最终结果；分组框不是硬件存储位置。</desc>
+  <defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+  <style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:24px;font-weight:700}.body{font-size:21px}.small{font-size:18px;fill:#475569}.node{stroke:#94a3b8;stroke-width:2;rx:12}.edge{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
+  <rect width="1500" height="470" fill="#f8fafc"/>
+  <text x="45" y="52" class="title">同一门控乘法：中间激活是否形成独立张量</text>
+  <text x="45" y="88" class="small">输入已完成线性投影；图示计算与张量生命周期，不指定寄存器或共享内存分配。</text>
+  <text x="45" y="175" class="head">分离</text><text x="45" y="207" class="head">执行</text>
+  <rect x="160" y="135" width="220" height="95" class="node" fill="#dbeafe"/>
+  <text x="270" y="174" class="head" text-anchor="middle">输入 x</text><text x="270" y="209" class="body" text-anchor="middle">逐元素读取</text>
+  <rect x="450" y="135" width="250" height="95" class="node" fill="#dcfce7"/>
+  <text x="575" y="174" class="head" text-anchor="middle">计算 SiLU(x)</text><text x="575" y="209" class="body" text-anchor="middle">生成激活结果 u</text>
+  <rect x="800" y="135" width="250" height="95" class="node" fill="#fef3c7"/>
+  <text x="925" y="174" class="head" text-anchor="middle">中间张量 u</text><text x="925" y="209" class="body" text-anchor="middle">写出后由下一内核读取</text>
+  <rect x="1160" y="135" width="295" height="95" class="node" fill="#dcfce7"/>
+  <text x="1307" y="174" class="head" text-anchor="middle">门控输出 z</text><text x="1307" y="209" class="body" text-anchor="middle">读取 u、y，计算 u × y</text>
+  <path d="M380 182H450" class="edge"/><path d="M700 182H800" class="edge"/><path d="M1050 182H1160" class="edge"/>
+  <text x="45" y="355" class="head">融合</text><text x="45" y="387" class="head">执行</text>
+  <rect x="430" y="295" width="640" height="140" rx="16" fill="#eef2ff" stroke="#a5b4fc" stroke-width="2" data-layout-role="container"/>
+  <text x="750" y="280" class="small" text-anchor="middle">同一个融合内核</text>
+  <rect x="160" y="315" width="220" height="95" class="node" fill="#dbeafe"/>
+  <text x="270" y="354" class="head" text-anchor="middle">输入 x、y</text><text x="270" y="389" class="body" text-anchor="middle">读取对应元素</text>
+  <rect x="450" y="315" width="250" height="95" class="node" fill="#dcfce7"/>
+  <text x="575" y="354" class="head" text-anchor="middle">计算 SiLU(x)</text><text x="575" y="389" class="body" text-anchor="middle">中间值直接交给乘法</text>
+  <rect x="800" y="315" width="250" height="95" class="node" fill="#dcfce7"/>
+  <text x="925" y="354" class="head" text-anchor="middle">乘以对应 y</text><text x="925" y="389" class="body" text-anchor="middle">不单独保存整张 u</text>
+  <rect x="1160" y="315" width="295" height="95" class="node" fill="#dcfce7"/>
+  <text x="1307" y="354" class="head" text-anchor="middle">最终输出 z</text><text x="1307" y="389" class="body" text-anchor="middle">只写出最终结果</text>
+  <path d="M380 362H450" class="edge"/><path d="M700 362H800" class="edge"/><path d="M1050 362H1160" class="edge"/>
+</svg>

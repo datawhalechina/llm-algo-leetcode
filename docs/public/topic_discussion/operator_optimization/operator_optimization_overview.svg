@@ -1,9 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560">
-  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#486581"/></marker><style>.title{font:700 29px sans-serif;fill:#17324d}.label{font:700 20px sans-serif;fill:#17324d}.text{font:16px sans-serif;fill:#334e68}.small{font:14px sans-serif;fill:#486581}.box{stroke:#829ab1;stroke-width:2;rx:14}.line{stroke:#486581;stroke-width:3;fill:none;marker-end:url(#arrow)}</style></defs>
-  <rect width="1200" height="560" fill="#f7fafc"/><text x="600" y="48" text-anchor="middle" class="title">算子优化：从数学语义到端到端收益</text>
-  <rect x="50" y="130" width="235" height="230" fill="#e6f6f5" class="box"/><text x="167" y="175" text-anchor="middle" class="label">算子语义</text><text x="90" y="230" class="text">输入 / 输出</text><text x="90" y="270" class="text">shape / dtype</text><text x="90" y="310" class="text">数值正确性</text>
-  <path d="M285 245 H390" class="line"/><rect x="390" y="130" width="235" height="230" fill="#fff4e6" class="box"/><text x="507" y="175" text-anchor="middle" class="label">Kernel 实现</text><text x="430" y="230" class="text">tile / block</text><text x="430" y="270" class="text">load / store</text><text x="430" y="310" class="text">fusion</text>
-  <path d="M625 245 H730" class="line"/><rect x="730" y="130" width="235" height="230" fill="#eef2ff" class="box"/><text x="847" y="175" text-anchor="middle" class="label">硬件代价</text><text x="770" y="230" class="text">访存 / 带宽</text><text x="770" y="270" class="text">occupancy</text><text x="770" y="310" class="text">Tensor Core / stream</text>
-  <path d="M965 245 H1070" class="line"/><rect x="1070" y="130" width="90" height="230" fill="#f0f4f8" class="box"/><text x="1115" y="175" text-anchor="middle" class="label">证据</text><text x="1088" y="235" class="small">kernel</text><text x="1088" y="275" class="small">trace</text><text x="1088" y="315" class="small">E2E</text>
-  <text x="600" y="425" text-anchor="middle" class="small">正确性是入口，kernel 指标是中间证据，端到端 workload 才是最终收益。</text><text x="600" y="465" text-anchor="middle" class="small">编译与图优化负责图变换；本路线聚焦具体算子、kernel 和执行代价。</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="430" viewBox="0 0 1100 430" role="img" aria-labelledby="title desc">
+  <title id="title">注意力优化：先定位，再选择改变哪条路径</title><desc id="desc">同输入基线进入编译候选或注意力内核候选，两者都经数值和路径核对，再进入组件与负载复测；测量发现残余瓶颈时回到候选选择。</desc>
+  <defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#486581"/></marker></defs>
+  <style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d}.title{font-size:26px;font-weight:700}.h{font-size:18px;font-weight:700}.x{font-size:16px;font-weight:400;fill:#334e68}.note{font-size:14px;font-weight:400;fill:#486581}.b{stroke:#829ab1;stroke-width:2;rx:12}.l{stroke:#486581;stroke-width:2.5;fill:none;marker-end:url(#a)}.d{stroke:#486581;stroke-width:2.5;stroke-dasharray:6 5;fill:none;marker-end:url(#a)}</style>
+  <rect width="1100" height="430" fill="#f7fafc"/>
+  <text x="550" y="44" text-anchor="middle" class="title">注意力优化：先定位，再选择改变哪条路径</text>
+  <text x="550" y="77" text-anchor="middle" class="note">实线：候选与核对；虚线：复测后重新定位。</text>
+  <rect x="35" y="190" width="190" height="90" fill="#e6f6f5" class="b"/>
+  <text x="130" y="224" text-anchor="middle" class="h">同输入注意力基线</text>
+  <text x="130" y="255" text-anchor="middle" class="x">形状 · 掩码 · 精度</text>
+  <rect x="285" y="100" width="230" height="90" fill="#fff4e6" class="b"/>
+  <text x="400" y="134" text-anchor="middle" class="h">图编译与周边融合</text>
+  <text x="400" y="165" text-anchor="middle" class="x">改变提交与中间读写</text>
+  <rect x="285" y="285" width="230" height="90" fill="#fff4e6" class="b"/>
+  <text x="400" y="319" text-anchor="middle" class="h">注意力内核候选</text>
+  <text x="400" y="350" text-anchor="middle" class="x">分块 · 复用 · 在线归约</text>
+  <rect x="585" y="190" width="210" height="90" fill="#e6f6f5" class="b"/>
+  <text x="690" y="224" text-anchor="middle" class="h">数值与路径核对</text>
+  <text x="690" y="255" text-anchor="middle" class="x">输出误差 · 实际调用</text>
+  <rect x="865" y="190" width="200" height="90" fill="#eef2ff" class="b"/>
+  <text x="965" y="224" text-anchor="middle" class="h">组件与负载复测</text>
+  <text x="965" y="255" text-anchor="middle" class="x">配对时间 · 资源门槛</text>
+  <path d="M225 210H255V145H285" class="l"/>
+  <path d="M225 260H255V330H285" class="l"/>
+  <path d="M515 145H550V210H585" class="l"/>
+  <path d="M515 330H550V260H585" class="l"/>
+  <path d="M795 235H865" class="l"/>
+  <path d="M965 280V405H130V280" class="d"/>
+  <text x="740" y="395" text-anchor="middle" class="note">重新定位残余瓶颈，选择下一轮候选</text>
 </svg>

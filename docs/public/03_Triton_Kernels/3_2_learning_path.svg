@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="470" viewBox="0 0 1200 470" role="img" aria-labelledby="title desc">
+  <title id="title">3.2 常见 Triton kernel 学习路径</title>
+  <desc id="desc">SwiGLU 展示逐元素融合，RMSNorm 与 Softmax 展示行归约，GEMM 展示矩阵分块；Softmax 反向从前向机制延伸，自动调优在任一正确性实现后按需进入。</desc>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker><style>.title{font:700 25px sans-serif;fill:#0f172a}.sub{font:16px sans-serif;fill:#475569}.head{font:700 18px sans-serif;fill:#172033}.body{font:15px sans-serif;fill:#334155}.branch{fill:none;stroke:#64748b;stroke-width:2;stroke-dasharray:7 5;marker-end:url(#arrow)}</style></defs>
+  <rect width="1200" height="470" rx="24" fill="#f8fafc"/><text x="40" y="48" class="title">按计算结构选例子，不是串行依赖链</text><text x="40" y="78" class="sub">先理解代表性 kernel；完成正确性实现后，再单独进入调优与测量。</text>
+  <rect x="45" y="130" width="245" height="125" rx="16" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="68" y="168" class="head">03 · SwiGLU</text><text x="68" y="201" class="body">逐元素融合</text><text x="68" y="230" class="body">中间值与尾块</text>
+  <rect x="345" y="130" width="245" height="125" rx="16" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="368" y="168" class="head">04 · RMSNorm</text><text x="368" y="201" class="body">行内平方和归约</text><text x="368" y="230" class="body">共享归一化尺度</text>
+  <rect x="645" y="130" width="245" height="125" rx="16" fill="#fef3c7" stroke="#d97706" stroke-width="2"/><text x="668" y="168" class="head">05 · GEMM</text><text x="668" y="201" class="body">M/N tile 与 K 累加</text><text x="668" y="230" class="body">复用与资源权衡</text>
+  <rect x="945" y="130" width="210" height="125" rx="16" fill="#fce7f3" stroke="#db2777" stroke-width="2"/><text x="968" y="168" class="head">07 · Softmax</text><text x="968" y="201" class="body">稳定行归约</text><text x="968" y="230" class="body">最大值与指数和</text>
+  <text x="430" y="112" class="sub">四类算子结构案例：按学习目标选择，不构成前后依赖</text>
+  <rect x="345" y="330" width="245" height="92" rx="15" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/><text x="368" y="366" class="head">08 · Softmax 反向</text><text x="368" y="396" class="body">从 07 延伸梯度归约</text><path d="M1070 255V290H468V322" class="branch"/>
+  <rect x="745" y="330" width="320" height="92" rx="15" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/><text x="770" y="366" class="head">09 · 自动调优与基准测量</text><text x="770" y="396" class="body">任一 kernel 正确后按需进入</text><path d="M600 270V295H905V322" class="branch"/>
+</svg>

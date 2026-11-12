@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="440" viewBox="0 0 1200 440" role="img" aria-labelledby="title desc">
+  <title id="title">3.3 Attention Triton kernel 学习路径</title><desc id="desc">RoPE 是位置变换分支，FlashAttention 是注意力计算主线；变长 GQA 使用连续补齐 KV，PagedAttention 使用块表寻址，二者用于对照 KV 表示方式。</desc>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker><style>.title{font:700 25px sans-serif;fill:#0f172a}.sub{font:16px sans-serif;fill:#475569}.head{font:700 19px sans-serif;fill:#172033}.body{font:15px sans-serif;fill:#334155}.line{fill:none;stroke:#475569;stroke-width:2.4;marker-end:url(#arrow)}.compare{fill:none;stroke:#7c3aed;stroke-width:2.2;stroke-dasharray:7 5;marker-end:url(#arrow)}</style></defs>
+  <rect width="1200" height="440" rx="24" fill="#f8fafc"/><text x="40" y="48" class="title">分清位置变换、注意力计算与 KV 表示</text><text x="40" y="78" class="sub">10 可为注意力输入提供位置变换；12 与 13 对照连续 KV 和物理块表两种表示。</text>
+  <rect x="55" y="145" width="250" height="150" rx="17" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="80" y="184" class="head">10 · RoPE</text><text x="80" y="219" class="body">位置 × 特征对</text><text x="80" y="249" class="body">Query/Key 旋转</text>
+  <rect x="475" y="145" width="260" height="150" rx="17" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="500" y="184" class="head">11 · FlashAttention</text><text x="500" y="219" class="body">Q tile × K/V tile</text><text x="500" y="249" class="body">在线 Softmax 状态</text>
+  <path d="M305 220H467" class="compare"/><text x="336" y="201" class="body">可组合，不是前置</text>
+  <rect x="740" y="345" width="320" height="70" rx="15" fill="#fef3c7" stroke="#d97706" stroke-width="2"/><text x="765" y="375" class="head">12 · 变长 GQA</text><text x="765" y="401" class="body">连续、padding KV + 头共享</text>
+  <rect x="740" y="145" width="320" height="150" rx="17" fill="#fce7f3" stroke="#db2777" stroke-width="2"/><text x="765" y="184" class="head">13 · PagedAttention</text><text x="765" y="219" class="body">逻辑块 → Block Table</text><text x="765" y="249" class="body">非连续物理 KV 页</text>
+  <path d="M900 345V303" class="compare"/><text x="1070" y="335" class="body">表示对照</text>
+  <text x="55" y="390" class="body">之后按目标选择 3.4：权重、LoRA 或 KV 状态 kernel。</text>
+</svg>

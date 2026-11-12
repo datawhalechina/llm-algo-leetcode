@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">先归约行点积，再修正每列梯度</title><desc id="desc">前向概率为四分之一和四分之三，上游梯度为二和负一。逐列乘积求和得到负四分之一，再用各列概率和上游梯度计算输入梯度十六分之九与负十六分之九。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:24px;font-weight:700}.body{font-size:21px}.small{font-size:18px;fill:#475569}.node{stroke:#94a3b8;stroke-width:2;rx:12}.edge{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="45" y="52" class="title">先归约行点积，再修正每列梯度</text><text x="45" y="88" class="small">一行两列的构造示例；箭头表示数据依赖，不表示实际线程或存储分配。</text>
+<rect x="45" y="215" width="250" height="95" class="node" fill="#dbeafe"/>
+<text x="170" y="254" class="head" text-anchor="middle">同一行 y、g</text><text x="170" y="289" class="body" text-anchor="middle">(¼, ¾)、(2, −1)</text>
+<rect x="425" y="110" width="250" height="95" class="node" fill="#dbeafe"/>
+<text x="550" y="149" class="head" text-anchor="middle">逐列乘积 yᵢgᵢ</text><text x="550" y="184" class="body" text-anchor="middle">(½, −¾)</text>
+<rect x="815" y="110" width="250" height="95" class="node" fill="#fef3c7"/>
+<text x="940" y="149" class="head" text-anchor="middle">行共享项 d</text><text x="940" y="184" class="body" text-anchor="middle">½ − ¾ = −¼</text>
+<rect x="1210" y="215" width="245" height="95" class="node" fill="#dcfce7"/>
+<text x="1332" y="254" class="head" text-anchor="middle">输入梯度 dx</text><text x="1332" y="289" class="body" text-anchor="middle">(9/16, −9/16)</text>
+<path d="M295 262H360V157H425" class="edge"/><path d="M675 157H815" class="edge"/>
+<path d="M1065 157H1130V262H1210" class="edge"/><text x="1118" y="135" class="small">共享 d</text>
+<path d="M170 310V390H1332V310" class="edge"/><text x="550" y="427" class="small">保留各列 yᵢ、gᵢ，计算 yᵢ(gᵢ − d)</text>
+</svg>

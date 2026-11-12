@@ -9,6 +9,7 @@
 """
 
 import sys
+import os
 import argparse
 import nbformat
 import re
@@ -16,14 +17,14 @@ from pathlib import Path
 import subprocess
 import tempfile
 
-# 理论章节（无代码实现，只需占位符测试）
+# 内容型决策页：不含代码练习，运行级代码测试不适用。
 THEORY_CHAPTERS = [
-    '21_CUDA_vs_Triton_vs_PyTorch.ipynb',
+    '18_CUDA_vs_Triton_vs_PyTorch.ipynb',
 ]
 
 # 分布式多进程章节（需要特殊环境，测试脚本中只验证结构）
 DISTRIBUTED_CHAPTERS = [
-    '19_Distributed_Communication_Primitives.ipynb',
+    '13_Distributed_Communication_Primitives.ipynb',
 ]
 
 # 迁移到结构化测试的 notebook 使用这一组标签。尚未迁移的旧 notebook
@@ -49,6 +50,25 @@ QUESTION_FAILURE_EXCEPTIONS = re.compile(
 def strict_question_failure_issues(stderr):
     """Return secondary failures that invalidate an expected TODO stop."""
     return sorted(set(QUESTION_FAILURE_EXCEPTIONS.findall(stderr)))
+
+
+def has_explicit_todo_failure(stderr):
+    """Recognize Python TODO guards or a local Triton TODO assertion.
+
+    Ordinary compiler failures, failed correctness assertions and unsupported
+    APIs must not become expected exercise failures merely by containing TODO
+    comments in a source excerpt.
+    """
+    if re.search(r'^NotImplementedError(?:\s*:|\s*$)', stderr, re.MULTILINE):
+        return True
+    return bool(
+        re.search(
+            r'^triton\.compiler\.errors\.CompileTimeAssertionFailure:',
+            stderr,
+            re.MULTILINE,
+        )
+        and re.search(r'^TODO\s+[1-9]\d*\s*[:：]', stderr, re.MULTILINE)
+    )
 
 
 def tagged_code_cells(notebook, tag):
@@ -177,6 +197,14 @@ def extract_answer_code(notebook_path):
     return '\n\n'.join(answer_code)
 
 
+def extract_benchmark_code(notebook_path):
+    """Return independently tagged microbenchmark cells."""
+    with open(notebook_path, 'r', encoding='utf-8') as f:
+        notebook = nbformat.read(f, as_version=4)
+
+    return '\n\n'.join(tagged_code_cells(notebook, 'tutorial-benchmark'))
+
+
 def extract_test_code(notebook_path, test_mode='answer'):
     """从notebook中提取测试代码
 
@@ -250,6 +278,7 @@ def test_notebook_answers(
     test_mode='answer',
     *,
     strict_question_failure=False,
+    timeout_s=None,
 ):
     """测试notebook的答案代码
 
@@ -257,7 +286,11 @@ def test_notebook_answers(
         notebook_path: notebook文件路径
         test_mode: 'answer' 测试答案区代码, 'question' 测试题目区代码
     """
-    mode_name = "答案区" if test_mode == 'answer' else "题目区"
+    mode_name = {
+        'answer': '答案区',
+        'question': '题目区',
+        'benchmark': '性能基准',
+    }.get(test_mode, test_mode)
     print(f"\n{'='*60}")
     print(f"测试: {notebook_path} ({mode_name})")
     print(f"{'='*60}\n")
@@ -265,15 +298,23 @@ def test_notebook_answers(
     if not validate_notebook_tags(notebook_path, verbose=True):
         return 'fail'
 
+    if Path(notebook_path).name in THEORY_CHAPTERS:
+        print('ℹ️ 内容型选型页，无代码练习；运行级代码测试不适用。')
+        return 'not_applicable'
+
     # 提取代码
     imports = extract_imports(notebook_path)
 
-    if test_mode == 'answer':
+    if test_mode in {'answer', 'benchmark'}:
         code = extract_answer_code(notebook_path)
     else:
         code = extract_question_code(notebook_path)
 
-    test_code = extract_test_code(notebook_path, test_mode)
+    test_code = (
+        extract_benchmark_code(notebook_path)
+        if test_mode == 'benchmark'
+        else extract_test_code(notebook_path, test_mode)
+    )
 
     if not code:
         print(f"❌ 未找到{mode_name}代码")
@@ -298,11 +339,18 @@ def test_notebook_answers(
         temp_path = f.name
 
     try:
+        run_env = os.environ.copy()
+        source_path = Path(notebook_path).resolve()
+        if source_path.parent.name in {'03_Triton_Kernels', '04_CUDA_and_System_Optimization'}:
+            project_root = str(source_path.parent.parent)
+            existing_pythonpath = run_env.get('PYTHONPATH')
+            run_env['PYTHONPATH'] = project_root if not existing_pythonpath else project_root + os.pathsep + existing_pythonpath
         result = subprocess.run(
             ['python', temp_path],
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=timeout_s if timeout_s is not None else (120 if test_mode == 'benchmark' else 30),
+            env=run_env,
         )
 
         print(result.stdout)
@@ -311,6 +359,7 @@ def test_notebook_answers(
             print(result.stderr)
 
         skip_markers = [
+            'SKIPPED:',
             '无 GPU，完成结构检查；运行级验证需要 GPU。',
             '结构检查通过',
             '忽略测试：无 GPU',
@@ -332,7 +381,7 @@ def test_notebook_answers(
             print(f"\n✅ {notebook_path} {mode_name}测试通过")
             return 'pass'
 
-        if test_mode == 'question' and 'NotImplementedError' in result.stderr:
+        if test_mode == 'question' and has_explicit_todo_failure(result.stderr):
             if strict_question_failure:
                 failure_issues = strict_question_failure_issues(result.stderr)
                 if failure_issues:
@@ -362,10 +411,12 @@ def main():
     parser.add_argument('notebook', nargs='?', help='Notebook文件路径')
     parser.add_argument('--all', action='store_true', help='测试所有notebook')
     parser.add_argument('--dir', default='.', help='Notebook目录路径')
-    parser.add_argument('--mode', choices=['answer', 'question', 'both'], default='answer',
-                        help='测试模式: answer=答案区, question=题目区, both=两者都测试')
+    parser.add_argument('--mode', choices=['answer', 'question', 'both', 'benchmark'], default='answer',
+                        help='测试模式: answer=答案区, question=题目区, both=正确性核对, benchmark=运行独立性能基准单元')
     parser.add_argument('--check-tags', action='store_true',
                         help='仅校验 tutorial tags 结构，不执行代码')
+    parser.add_argument('--timeout', type=float, default=None,
+                        help='单个子进程超时秒数；CUDA 首次编译时可显式增加')
     parser.add_argument(
         '--strict-question-failure',
         action='store_true',
@@ -373,6 +424,8 @@ def main():
     )
 
     args = parser.parse_args()
+    if args.timeout is not None and args.timeout <= 0:
+        parser.error('--timeout 必须大于 0')
 
     if args.all:
         # 测试目录下所有notebook
@@ -396,14 +449,16 @@ def main():
                     nb_path,
                     'question',
                     strict_question_failure=args.strict_question_failure,
+                    timeout_s=args.timeout,
                 )
-                a_success = test_notebook_answers(nb_path, 'answer')
+                a_success = test_notebook_answers(nb_path, 'answer', timeout_s=args.timeout)
                 results[nb_path.name] = {'question': q_success, 'answer': a_success}
             else:
                 success = test_notebook_answers(
                     nb_path,
                     args.mode,
                     strict_question_failure=args.strict_question_failure,
+                    timeout_s=args.timeout,
                 )
                 results[nb_path.name] = success
 
@@ -423,6 +478,7 @@ def main():
                     return {
                         'pass': "✅",
                         'skip': "⏭️ 跳过（无 GPU）",
+                        'not_applicable': "➖ 不适用（内容页）",
                         'expected_fail': "❌ 按预期失败（未完成题目）",
                         'fail': "❌",
                     }.get(status, "❓")
@@ -440,18 +496,23 @@ def main():
             a_expected_fail = sum(1 for r in results.values() if r['answer'] == 'expected_fail')
             q_skipped = sum(1 for r in results.values() if r['question'] == 'skip')
             a_skipped = sum(1 for r in results.values() if r['answer'] == 'skip')
+            q_not_applicable = sum(1 for r in results.values() if r['question'] == 'not_applicable')
+            a_not_applicable = sum(1 for r in results.values() if r['answer'] == 'not_applicable')
             print(f"\n题目区通过: {q_passed}/{total}")
             print(f"题目区按预期失败: {q_expected_fail}/{total}")
             print(f"题目区跳过: {q_skipped}/{total}")
+            print(f"题目区不适用: {q_not_applicable}/{total}")
             print(f"答案区通过: {a_passed}/{total}")
             print(f"答案区按预期失败: {a_expected_fail}/{total}")
             print(f"答案区跳过: {a_skipped}/{total}")
+            print(f"答案区不适用: {a_not_applicable}/{total}")
             return 0 if all(r['question'] != 'fail' and r['answer'] != 'fail' for r in results.values()) else 1
         else:
             for name, success in results.items():
                 status = {
                     'pass': "✅ 通过",
                     'skip': "⏭️ 跳过（无 GPU）",
+                    'not_applicable': "➖ 不适用（内容页）",
                     'expected_fail': "🟡 按预期失败",
                     'fail': "❌ 失败",
                 }.get(success, "❓ 未知")
@@ -460,7 +521,8 @@ def main():
             total = len(results)
             passed = sum(1 for v in results.values() if v == 'pass')
             skipped = sum(1 for v in results.values() if v == 'skip')
-            print(f"\n总计: {passed}/{total} 通过, {skipped}/{total} 跳过")
+            not_applicable = sum(1 for v in results.values() if v == 'not_applicable')
+            print(f"\n总计: {passed}/{total} 通过, {skipped}/{total} 跳过, {not_applicable}/{total} 不适用")
             return 0 if all(v != 'fail' for v in results.values()) else 1
 
     elif args.notebook:
@@ -472,20 +534,23 @@ def main():
                 args.notebook,
                 'question',
                 strict_question_failure=args.strict_question_failure,
+                timeout_s=args.timeout,
             )
-            a_success = test_notebook_answers(args.notebook, 'answer')
+            a_success = test_notebook_answers(args.notebook, 'answer', timeout_s=args.timeout)
             print(f"\n{'='*60}")
             print("测试结果")
             print(f"{'='*60}")
             q_label = {
                 'pass': '✅ 通过',
                 'skip': '⏭️ 跳过（无 GPU）',
+                'not_applicable': '➖ 不适用（内容页）',
                 'expected_fail': '❌ 按预期失败（未完成题目）',
                 'fail': '❌ 失败',
             }.get(q_success, '❓ 未知')
             a_label = {
                 'pass': '✅ 通过',
                 'skip': '⏭️ 跳过（无 GPU）',
+                'not_applicable': '➖ 不适用（内容页）',
                 'expected_fail': '❌ 按预期失败（未完成题目）',
                 'fail': '❌ 失败',
             }.get(a_success, '❓ 未知')
@@ -497,6 +562,7 @@ def main():
                 args.notebook,
                 args.mode,
                 strict_question_failure=args.strict_question_failure,
+                timeout_s=args.timeout,
             )
             return 0 if success != 'fail' else 1
 

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">张量使用结束与分配器缓存释放是两个事件</title>
+<desc id="desc">构造示例：首次分配后活跃400MB、预留512MB；张量访问完成且引用释放后活跃0MB、预留仍512MB；再次分配复用缓存后活跃400MB、预留512MB；再次结束使用并清理可整体释放的空闲块后两者为0。图示统计本页张量与分配器预留，数值按所列假设构造。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:29px;font-weight:700}.h{font-size:23px;font-weight:700}.s{font-size:21px}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#a)}</style>
+<rect width="1500" height="470" rx="22" fill="#f8fafc"/>
+<text x="45" y="54" class="title">活跃张量释放后，预留空间仍可以留给下一次申请</text>
+<rect x="45" y="180" width="270" height="120" rx="15" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="65" y="222" class="h">申请张量</text><text x="65" y="259" class="s">活跃 400／预留 512 MB</text>
+<rect x="425" y="180" width="270" height="120" rx="15" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="445" y="222" class="h">完成访问并释放引用</text><text x="445" y="259" class="s">活跃 0／预留 512 MB</text>
+<rect x="805" y="180" width="270" height="120" rx="15" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="825" y="222" class="h">再次申请，复用缓存</text><text x="825" y="259" class="s">活跃 400／预留 512 MB</text>
+<rect x="1185" y="180" width="270" height="120" rx="15" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="1205" y="222" class="h">使用结束后清缓存</text><text x="1205" y="259" class="s">活跃 0／预留 0 MB</text>
+<path d="M315 240H425" class="edge"/><path d="M695 240H805" class="edge"/><path d="M1075 240H1185" class="edge"/>
+<text x="45" y="382" class="s">构造示例：异步访问已完成，空闲块可整体释放；统计范围为本页张量与分配器预留。</text>
+<text x="45" y="425" class="s">预留减活跃表示非活跃预留，能否满足新申请取决于空闲块尺寸与请求要求。</text>
+</svg>

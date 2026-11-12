@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">先沿输入维累计h，再沿低秩维生成输出列</title><desc id="desc">D_in=70、R=3、D_out=65；当前Program只负责一个Token的一块输出列。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:24px;font-weight:700}.body{font-size:21px}.small{font-size:18px;fill:#475569}.node{stroke:#94a3b8;stroke-width:2;rx:12}.edge{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="45" y="52" class="title" text-anchor="start">先沿输入维累计h，再沿低秩维生成输出列</text>
+<text x="45" y="88" class="small" text-anchor="start">D_in=70、R=3、D_out=65；当前Program只负责一个Token的一块输出列。</text>
+<rect x="45" y="125" width="325" height="100" class="node" fill="#dbeafe"/>
+<text x="207.5" y="162" class="head" text-anchor="middle">输入块 0：特征 0–63</text>
+<text x="207.5" y="197" class="body" text-anchor="middle">与对应 A 列逐项归约</text>
+<rect x="45" y="295" width="325" height="100" class="node" fill="#dbeafe"/>
+<text x="207.5" y="332" class="head" text-anchor="middle">输入块 1：特征 64–69</text>
+<text x="207.5" y="367" class="body" text-anchor="middle">输入尾部补零</text>
+<rect x="590" y="210" width="300" height="100" class="node" fill="#fef3c7"/>
+<text x="740.0" y="247" class="head" text-anchor="middle">中间向量 h</text>
+<text x="740.0" y="282" class="body" text-anchor="middle">保留 3 个秩分量</text>
+<rect x="1120" y="210" width="335" height="100" class="node" fill="#dcfce7"/>
+<text x="1287.5" y="247" class="head" text-anchor="middle">h × 当前输出块的 B</text>
+<text x="1287.5" y="282" class="body" text-anchor="middle">沿秩归约，保留输出列</text>
+<path d="M370 175H470V235H590" class="edge"/>
+<path d="M370 345H470V285H590" class="edge"/>
+<path d="M890 260H1120" class="edge"/>
+<text x="45" y="440" class="body" text-anchor="start">输入块贡献相加，不覆盖；R补到4时A/B都屏蔽第4项，输出尾块只写有效列。</text>
+</svg>

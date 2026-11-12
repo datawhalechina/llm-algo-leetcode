@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="590" viewBox="0 0 1200 590" role="img" aria-labelledby="title desc">
+  <title id="title">SFT 输入、预测目标与损失位置对齐</title>
+  <desc id="desc">输入为p1、p2、a1、a2、EOS和PAD。按下一词元对齐后，p2位置的输出预测a1，a1预测a2，a2预测EOS，只有这三个目标进入损失。提示仍提供因果上下文。此图展示语义对齐后的目标，不是要求调用者再次移动框架标签。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L8 4L0 8Z" fill="#15803d"/></marker>
+    <style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#334155}.title{font-size:27px;font-weight:700;fill:#172033}.sub{font-size:15px}.label{font-size:16px;font-weight:700}.token{font-size:20px;text-anchor:middle}.small{font-size:14px}.keep{fill:#dcfce7;stroke:#16a34a}.ignore{fill:#f1f5f9;stroke:#94a3b8}.flow{fill:none;stroke:#15803d;stroke-width:2;marker-end:url(#arrow)}</style>
+  </defs>
+  <rect width="1200" height="590" fill="#f8fafc"/>
+  <rect x="28" y="24" width="1144" height="542" rx="24" fill="white" stroke="#cbd5e1"/>
+  <text x="60" y="70" class="title">预测位置向后对齐，损失只选择回答目标</text>
+  <text x="60" y="102" class="sub">p₁、p₂ 是提示；a₁、a₂ 是回答；EOS 是结束标记；PAD 是填充。示意位置不对应实际分词。</text>
+  <text x="60" y="159" class="label">输入位置</text>
+  <text x="60" y="264" class="label">下一词元目标</text>
+  <text x="60" y="369" class="label">进入损失？</text>
+  <g class="token">
+    <rect x="235" y="125" width="130" height="60" rx="12" fill="#e0f2fe" stroke="#0284c7"/><text x="300" y="163">p₁</text>
+    <rect x="380" y="125" width="130" height="60" rx="12" fill="#e0f2fe" stroke="#0284c7"/><text x="445" y="163">p₂</text>
+    <rect x="525" y="125" width="130" height="60" rx="12" class="keep"/><text x="590" y="163">a₁</text>
+    <rect x="670" y="125" width="130" height="60" rx="12" class="keep"/><text x="735" y="163">a₂</text>
+    <rect x="815" y="125" width="130" height="60" rx="12" class="keep"/><text x="880" y="163">EOS</text>
+    <rect x="960" y="125" width="130" height="60" rx="12" class="ignore"/><text x="1025" y="163">PAD</text>
+    <rect x="235" y="230" width="130" height="60" rx="12" class="ignore"/><text x="300" y="268">p₂</text>
+    <rect x="380" y="230" width="130" height="60" rx="12" class="keep"/><text x="445" y="268">a₁</text>
+    <rect x="525" y="230" width="130" height="60" rx="12" class="keep"/><text x="590" y="268">a₂</text>
+    <rect x="670" y="230" width="130" height="60" rx="12" class="keep"/><text x="735" y="268">EOS</text>
+    <rect x="815" y="230" width="130" height="60" rx="12" class="ignore"/><text x="880" y="268">PAD</text>
+    <rect x="960" y="230" width="130" height="60" rx="12" class="ignore"/><text x="1025" y="268">无后继</text>
+    <rect x="235" y="335" width="130" height="60" rx="12" class="ignore"/><text x="300" y="373">否</text>
+    <rect x="380" y="335" width="130" height="60" rx="12" class="keep"/><text x="445" y="373">是 · 1</text>
+    <rect x="525" y="335" width="130" height="60" rx="12" class="keep"/><text x="590" y="373">是 · 1</text>
+    <rect x="670" y="335" width="130" height="60" rx="12" class="keep"/><text x="735" y="373">是 · 1</text>
+    <rect x="815" y="335" width="130" height="60" rx="12" class="ignore"/><text x="880" y="373">否</text>
+    <rect x="960" y="335" width="130" height="60" rx="12" class="ignore"/><text x="1025" y="373">否</text>
+  </g>
+  <path d="M445 185V230" class="flow"/><path d="M590 185V230" class="flow"/><path d="M735 185V230" class="flow"/>
+  <path d="M445 290V335" class="flow"/><path d="M590 290V335" class="flow"/><path d="M735 290V335" class="flow"/>
+  <rect x="235" y="435" width="855" height="84" rx="14" fill="#eff6ff" stroke="#93c5fd"/>
+  <text x="257" y="467" class="label">有效目标数 = 3：a₁、a₂、EOS</text>
+  <text x="257" y="496" class="sub">p₂ 的输出预测首个回答词元 a₁；提示参与上下文，即使提示目标不计入损失。</text>
+  <text x="60" y="546" class="small">目标行展示对齐后的语义位置；模型接口是否内部移动标签，以对应机制页和实现为准。</text>
+</svg>

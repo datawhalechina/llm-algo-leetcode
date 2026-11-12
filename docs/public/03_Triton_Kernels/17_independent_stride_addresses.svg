@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">同一逻辑坐标，分别换算输入与输出地址</title>
+<desc id="desc">构造两个形状相同的二维视图。坐标一行二列按输入步长八和二读取偏移十二，按输出步长十一和三写入偏移十七；读取值加一后写回输出。图中偏移均相对各自起始指针，按元素而非字节计。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d}.title{font-size:28px;font-weight:700}.head{font-size:22px;font-weight:700}.body{font-size:20px}.note{font-size:18px;fill:#475569}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}.box{stroke:#829ab1;stroke-width:2}</style>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="40" y="47" class="title">同一逻辑坐标，输入和输出分别换算地址</text>
+<text x="40" y="83" class="note">构造示意：形状均为 2×3，坐标从零开始；偏移相对各自的视图起点，以元素计。</text>
+<rect x="50" y="185" width="280" height="100" rx="10" fill="#dbeafe" class="box"/>
+<text x="190" y="224" text-anchor="middle" class="head">逻辑坐标 (1, 2)</text>
+<text x="190" y="259" text-anchor="middle" class="body">同一行、同一列</text>
+<rect x="500" y="115" width="350" height="100" rx="10" fill="#e0f2fe" class="box"/>
+<text x="675" y="154" text-anchor="middle" class="head">输入步长 (8, 2)</text>
+<text x="675" y="189" text-anchor="middle" class="body">1×8 + 2×2 = 12</text>
+<rect x="500" y="315" width="350" height="100" rx="10" fill="#fef3c7" class="box"/>
+<text x="675" y="354" text-anchor="middle" class="head">输出步长 (11, 3)</text>
+<text x="675" y="389" text-anchor="middle" class="body">1×11 + 2×3 = 17</text>
+<rect x="1050" y="115" width="350" height="100" rx="10" fill="#e0f2fe" class="box"/>
+<text x="1225" y="154" text-anchor="middle" class="head">读取输入偏移 12</text>
+<text x="1225" y="189" text-anchor="middle" class="body">得到该坐标的输入值</text>
+<rect x="1050" y="315" width="350" height="100" rx="10" fill="#dcfce7" class="box"/>
+<text x="1225" y="354" text-anchor="middle" class="head">写入输出偏移 17</text>
+<text x="1225" y="389" text-anchor="middle" class="body">其他存储位置保持不变</text>
+<path d="M330 210H410V165H500" class="edge"/>
+<path d="M330 260H450V365H500" class="edge"/>
+<path d="M850 165H1050" class="edge"/>
+<path d="M850 365H1050" class="edge"/>
+<path d="M1225 215V315" class="edge"/>
+<text x="1250" y="273" class="body">加一后的值</text>
+</svg>

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">行跨度改变同列访问的字地址与 Bank 编号</title>
+<desc id="desc">采用32个Bank和32位字地址模型，取lane0到3读取各自行的第0列。行跨度32时字地址0、32、64、96映射到同一Bank0，但它们是不同字；行跨度33时字地址0、33、66、99分别映射到Bank0、1、2、3。真实完整Warp含32个lane。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:27px;font-weight:700}.h{font-size:23px;font-weight:700}.s{font-size:21px}.edge{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#a)}</style>
+<rect width="1500" height="470" rx="22" fill="#f8fafc"/>
+<text x="55" y="52" class="title">同列读取对照：32 个 Bank，每个元素为一个 32 位字</text>
+<rect x="60" y="115" width="390" height="120" rx="15" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="85" y="160" class="h">行跨度 32，读取第 0 列</text><text x="85" y="200" class="s">示意 lane：0、1、2、3</text>
+<rect x="555" y="115" width="390" height="120" rx="15" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="580" y="160" class="h">字地址：0、32、64、96</text><text x="580" y="200" class="s">行号 × 32 + 列号</text>
+<rect x="1050" y="115" width="390" height="120" rx="15" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+<text x="1075" y="160" class="h">Bank：0、0、0、0</text><text x="1075" y="200" class="s">同 Bank、不同字，需要分批</text>
+<rect x="60" y="295" width="390" height="120" rx="15" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="85" y="340" class="h">行跨度 33，读取第 0 列</text><text x="85" y="380" class="s">每行多留一个字作为填充</text>
+<rect x="555" y="295" width="390" height="120" rx="15" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="580" y="340" class="h">字地址：0、33、66、99</text><text x="580" y="380" class="s">行号 × 33 + 列号</text>
+<rect x="1050" y="295" width="390" height="120" rx="15" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="1075" y="340" class="h">Bank：0、1、2、3</text><text x="1075" y="380" class="s">对 32 取模，访问分散</text>
+<path d="M450 175H555" class="edge"/><path d="M945 175H1050" class="edge"/>
+<path d="M450 355H555" class="edge"/><path d="M945 355H1050" class="edge"/>
+</svg>

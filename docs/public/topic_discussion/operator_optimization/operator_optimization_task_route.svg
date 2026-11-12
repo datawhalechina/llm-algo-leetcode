@@ -1,18 +1,34 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="610" viewBox="0 0 1200 610" role="img" aria-labelledby="title desc">
-  <title id="title">算子优化 Task0 到 Task6 路线</title><desc id="desc">路线先从硬件成本进入计算内核语义和经典数据路径，再判断图级融合、Attention、调优和实现路径。</desc>
-  <style>.bg{fill:#f8fafc}.panel{stroke-width:2;rx:20}.box{stroke-width:2;rx:16}.blue{fill:#eff6ff;stroke:#60a5fa}.green{fill:#ecfdf5;stroke:#34d399}.orange{fill:#fff7ed;stroke:#fb923c}.slate{fill:#f1f5f9;stroke:#94a3b8}.line{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a)}.title{font:700 25px sans-serif;fill:#0f172a}.h{font:700 18px sans-serif;fill:#0f172a}.s{font:14px sans-serif;fill:#475569}.tag{font:700 13px sans-serif;fill:#2563eb}</style>
-  <defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0 0L10 3L0 6z" fill="#64748b"/></marker></defs>
-  <rect class="bg" width="1200" height="610" rx="20"/><text x="55" y="55" class="title">算子优化：从成本判断到 kernel 实现与端到端证据</text>
-  <rect class="panel" x="35" y="85" width="1130" height="205" fill="#f1f5f9" stroke="#cbd5e1"/><text x="60" y="116" class="tag">建立判断与实现基础</text>
-  <rect class="box blue" x="60" y="140" width="240" height="110"/><text x="85" y="177" class="h">Task0 · 成本模型</text><text x="85" y="206" class="s">FLOPs、bytes、roofline</text><text x="85" y="230" class="s">计算 / 访存 / launch</text>
-  <rect class="box green" x="340" y="140" width="240" height="110"/><text x="365" y="177" class="h">Task1 · 语义与正确性</text><text x="365" y="206" class="s">分块、掩码、布局</text><text x="365" y="230" class="s">参考实现 → 计算内核</text>
-  <rect class="box orange" x="620" y="140" width="240" height="110"/><text x="645" y="177" class="h">Task2 · 经典数据路径</text><text x="645" y="206" class="s">GEMM、Softmax、归一化</text><text x="645" y="230" class="s">分块、归约、片上复用</text>
-  <rect class="box blue" x="900" y="140" width="240" height="110"/><text x="925" y="177" class="h">Task3 · 图改写与融合</text><text x="925" y="206" class="s">依赖、中间读写、后端</text><text x="925" y="230" class="s">语义等价 → 融合候选</text>
-  <path class="line" d="M300 195H340"/><path class="line" d="M580 195H620"/><path class="line" d="M860 195H900"/>
-  <rect class="panel" x="35" y="340" width="1130" height="205" fill="#f1f5f9" stroke="#cbd5e1"/><text x="60" y="371" class="tag">面向模型场景调优并证明收益</text>
-  <rect class="box orange" x="165" y="395" width="250" height="110"/><text x="190" y="432" class="h">Task4 · Attention 算子</text><text x="190" y="461" class="s">RoPE、FlashAttention、分页</text><text x="190" y="485" class="s">分块算法与读写路径</text>
-  <rect class="box green" x="475" y="395" width="250" height="110"/><text x="500" y="432" class="h">Task5 · 调优与下探</text><text x="500" y="461" class="s">profiling、autotune、CUDA</text><text x="500" y="485" class="s">occupancy、访存、MMA</text>
-  <rect class="box slate" x="785" y="395" width="250" height="110"/><text x="810" y="432" class="h">Task6 · 项目与决策</text><text x="810" y="461" class="s">PyTorch / compile / Triton / CUDA</text><text x="810" y="485" class="s">正确性 → microbench → workload</text>
-  <path class="line" d="M1020 250V395H290"/><path class="line" d="M415 450H475"/><path class="line" d="M725 450H785"/>
-  <text x="60" y="580" class="s">Part01 提供硬件与编译前置；Part03 提供主实现；Part04 在明确瓶颈后提供 CUDA 下探。</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="title desc">
+<title id="title">算子优化 Task0–6 学习路线</title>
+<desc id="desc">从向量加法建立输出与耗时对照，再按成本选择图编译、基础内核、矩阵注意力或运行时干预。RoPE、变长、分页、量化与适配器按各自前置选学，不整体归入Task3。配置与实际执行在Task4核对，Part03的接口与同权重Block是Task6主验证出口，独立综合项目为后续扩展。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:26px;font-weight:700}.head{font-size:19px;font-weight:700}.body{font-size:16px}.small{font-size:15px;fill:#475569}.line{fill:none;stroke:#475569;stroke-width:2.5;marker-end:url(#arrow)}.branch{fill:none;stroke:#475569;stroke-width:2.5;stroke-dasharray:7 5;marker-end:url(#arrow)}</style></defs>
+<rect width="1200" height="650" rx="24" fill="#f8fafc"/>
+<text x="40" y="48" class="title">按成本选择改动，再核对实际执行与负载收益</text>
+<text x="40" y="82" class="body">实线：进入核对或复测；虚线：按问题选择。Part01 解释原理，Part02 核对模型计算语义。</text>
+<text x="40" y="108" class="small">RoPE、变长、分页、量化与适配器按前置选学；数值测试与计时入口见主表。</text>
+<rect x="40" y="300" width="200" height="100" rx="16" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="58" y="334" class="head">Task0 · 向量加法</text><text x="58" y="364" class="body">PyTorch / Triton 对照</text><text x="58" y="389" class="small">输出 / 尾块 / 耗时</text>
+<rect x="330" y="125" width="250" height="100" rx="16" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="350" y="159" class="head">Task1 · 图编译与融合</text><text x="350" y="190" class="body">Part01 原理 / Part03 三路径</text><text x="350" y="215" class="small">中间读写、准备与稳态成本</text>
+<rect x="330" y="300" width="250" height="100" rx="16" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="350" y="334" class="head">Task2 · 布局与归约</text><text x="350" y="364" class="body">步长、融合与有效范围</text><text x="350" y="389" class="small">Part04 对照访存与线程协作</text>
+<rect x="640" y="300" width="220" height="100" rx="16" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="657" y="334" class="head">Task3 · 矩阵与注意力</text><text x="657" y="364" class="body">子块复用 · 跨块归一化</text><text x="657" y="389" class="small">Part04 对照指令与流水线</text>
+<rect x="330" y="500" width="250" height="100" rx="16" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+<text x="350" y="534" class="head">Task5 · 传输与提交</text><text x="350" y="564" class="body">流与事件、Graph 与显存寿命</text><text x="350" y="589" class="small">Part04 运行时对照</text>
+<rect x="960" y="300" width="200" height="100" rx="16" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="977" y="334" class="head">Task4 · 资源与调优</text><text x="977" y="364" class="body">产物身份、配对测量</text><text x="977" y="389" class="small">Part04 驻留与资源限制</text>
+<rect x="960" y="500" width="200" height="100" rx="16" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="977" y="534" class="head">Task6 · 集成与复测</text><text x="977" y="564" class="body">接口核对 / 同权重Block</text><text x="977" y="589" class="small">完整调用、采用与回退</text>
+<path d="M240 325H285V175H330" class="branch"/>
+<path d="M240 350H330" class="branch"/>
+<path d="M240 375H285V550H330" class="branch"/>
+<path d="M580 175H1080V300" class="line"/>
+<path d="M580 350H640" class="branch"/>
+<path d="M550 300V250H1000V300" class="line"/><text x="620" y="239" class="small">常用内核可直接核对与测量</text>
+<path d="M860 350H960" class="line"/>
+<path d="M580 550H900V375H960" class="line"/>
+<path d="M1060 400V500" class="line"/><text x="1073" y="453" class="small">数值与路径通过</text>
+<text x="40" y="632" class="small">数值与计时从 Task0 开始；Part04 按问题穿插，通信、状态分片与成本选型为条件扩展。</text>
 </svg>

@@ -1,24 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640" role="img" aria-labelledby="title desc">
-  <title id="title">算子优化知识地图</title><desc id="desc">Part01 的性能和编译前置进入图与语义判断，Part03 将其实现为 Triton kernel，Part04 提供 CUDA 下探，所有路径以正确性、微基准和 workload 证据收口。</desc>
-  <style>.bg{fill:#f8fafc}.panel{stroke-width:2;rx:20}.box{stroke-width:2;rx:16}.blue{fill:#eff6ff;stroke:#60a5fa}.green{fill:#ecfdf5;stroke:#34d399}.orange{fill:#fff7ed;stroke:#fb923c}.slate{fill:#f1f5f9;stroke:#94a3b8}.line{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a)}.dash{stroke:#94a3b8;stroke-width:2;stroke-dasharray:7 7;fill:none;marker-end:url(#a)}.title{font:700 25px sans-serif;fill:#0f172a}.h{font:700 18px sans-serif;fill:#0f172a}.s{font:14px sans-serif;fill:#475569}.tag{font:700 13px sans-serif;fill:#2563eb}</style>
-  <defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0 0L10 3L0 6z" fill="#64748b"/></marker></defs>
-  <rect class="bg" width="1200" height="640" rx="20"/><text x="55" y="55" class="title">算子优化知识地图：原理、实现、下探与证据共同闭环</text>
-  <rect class="panel" x="45" y="90" width="320" height="390" fill="#eff6ff" stroke="#60a5fa"/><text x="70" y="122" class="tag">Part01 · 原理与图判断</text>
-  <rect class="box blue" x="75" y="150" width="260" height="85"/><text x="100" y="184" class="h">成本与硬件模型</text><text x="100" y="211" class="s">FLOPs · bytes · memory hierarchy</text>
-  <rect class="box blue" x="75" y="280" width="260" height="85"/><text x="100" y="314" class="h">图变换与融合</text><text x="100" y="341" class="s">依赖、layout、lowering、schedule</text>
-  <rect class="box blue" x="75" y="410" width="260" height="45"/><text x="100" y="439" class="h">执行约束：warp · shared memory · dtype</text>
-  <path class="line" d="M205 235V280"/><path class="line" d="M205 365V410"/>
-  <rect class="panel" x="440" y="90" width="320" height="390" fill="#ecfdf5" stroke="#34d399"/><text x="465" y="122" class="tag">Part03 · Triton 主实践</text>
-  <rect class="box green" x="470" y="150" width="260" height="85"/><text x="495" y="184" class="h">Reference → 正确 Kernel</text><text x="495" y="211" class="s">shape · mask · layout · tolerance</text>
-  <rect class="box green" x="470" y="280" width="260" height="85"/><text x="495" y="314" class="h">数据路径与经典模式</text><text x="495" y="341" class="s">tile · reduce · vectorize · fusion</text>
-  <rect class="box green" x="470" y="410" width="260" height="45"/><text x="495" y="439" class="h">Attention / Quant / Block 项目</text>
-  <path class="line" d="M600 235V280"/><path class="line" d="M600 365V410"/>
-  <rect class="panel" x="835" y="90" width="320" height="390" fill="#fff7ed" stroke="#fb923c"/><text x="860" y="122" class="tag">Part04 · CUDA 下探与选择</text>
-  <rect class="box orange" x="865" y="150" width="260" height="85"/><text x="890" y="184" class="h">片上资源与并行原语</text><text x="890" y="211" class="s">shared memory · bank · warp · MMA</text>
-  <rect class="box orange" x="865" y="280" width="260" height="85"/><text x="890" y="314" class="h">runtime 与编译路径</text><text x="890" y="341" class="s">stream · graph · JIT · launch</text>
-  <rect class="box orange" x="865" y="410" width="260" height="45"/><text x="890" y="439" class="h">PyTorch / Triton / CUDA 决策</text>
-  <path class="line" d="M995 235V280"/><path class="line" d="M995 365V410"/>
-  <path class="dash" d="M335 322H470"/><text x="365" y="307" class="s">实现</text><path class="dash" d="M730 322H865"/><text x="760" y="307" class="s">下探</text>
-  <rect class="box slate" x="205" y="530" width="790" height="65"/><text x="235" y="558" class="h">证据闭环</text><text x="235" y="583" class="s">reference correctness → microbenchmark → profiler / trace → fixed workload → accept / tune / reject</text>
-  <path class="line" d="M600 455V530"/>
+  <title id="title">算子优化知识地图</title><desc id="desc">Part03 向量加法是起步练习，Part01与Part02提供原理和语义参考。Part03、Part04分别按问题提供内核、编译、CUDA和Runtime核对，主线以接口与同权重Block验证为出口；Part05独立负载为可选扩展。</desc>
+  <style>.bg{fill:#f8fafc}.panel{stroke-width:2;rx:20}.box{stroke-width:2;rx:16}.blue{fill:#eff6ff;stroke:#60a5fa}.green{fill:#ecfdf5;stroke:#34d399}.orange{fill:#fff7ed;stroke:#fb923c}.slate{fill:#f1f5f9;stroke:#94a3b8}.line{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a)}.dash{stroke:#94a3b8;stroke-width:2;stroke-dasharray:7 7;fill:none;marker-end:url(#a)}.title{font-family:"Noto Sans CJK SC",sans-serif;font-size:25px;font-weight:700;fill:#0f172a}.h{font-family:"Noto Sans CJK SC",sans-serif;font-size:18px;font-weight:700;fill:#0f172a}.s{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;font-weight:400;fill:#475569}.tag{font-family:"Noto Sans CJK SC",sans-serif;font-size:13px;font-weight:700;fill:#2563eb}</style>
+  <defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="3" orient="auto"><path d="M0 0L10 3L0 6z" fill="#64748b"/></marker></defs>
+  <rect class="bg" width="1200" height="640" rx="20"/><text x="55" y="55" class="title">算子优化知识地图：基础、实现与独立复测</text>
+  <rect class="panel" x="45" y="90" width="320" height="390" fill="#eff6ff" stroke="#60a5fa"/><text x="70" y="122" class="tag">Part01 / 02 · 随计算引入原理与语义</text>
+  <rect class="box blue" x="75" y="150" width="260" height="85"/><text x="100" y="184" class="h">成本与硬件模型</text><text x="100" y="211" class="s">计算量 · 搬运量 · 存储层次</text>
+  <rect class="box blue" x="75" y="280" width="260" height="85"/><text x="100" y="314" class="h">图判断与算法语义</text><text x="100" y="341" class="s">依赖、布局、PyTorch 参考</text>
+  <rect class="box blue" x="75" y="410" width="260" height="45"/><text x="100" y="439" class="h">执行约束：线程协作与精度</text>
+
+  <rect class="panel" x="440" y="90" width="320" height="390" fill="#ecfdf5" stroke="#34d399"/><text x="465" y="122" class="tag">Part03 · 从向量加法开始实现与核对</text>
+  <rect class="box green" x="470" y="150" width="260" height="85"/><text x="495" y="184" class="h">访存、融合与任务分配</text><text x="495" y="211" class="s">常用算子 · Attention · 权重与路由</text>
+  <rect class="box green" x="470" y="280" width="260" height="85"/><text x="495" y="314" class="h">数值、编译产物与执行</text><text x="495" y="341" class="s">输入约束 · 特化条件 · 调用身份</text>
+  <rect class="box green" x="470" y="410" width="260" height="45"/><text x="495" y="439" class="h">按目标接入算子或组件</text>
+
+  <rect class="panel" x="835" y="90" width="320" height="390" fill="#fff7ed" stroke="#fb923c"/><text x="860" y="122" class="tag">Part04 · CUDA、运行时与选型对照</text>
+  <rect class="box orange" x="865" y="150" width="260" height="85"/><text x="890" y="184" class="h">块内协作、资源与计算</text><text x="890" y="211" class="s">片上复用 · 矩阵指令 · 驻留约束</text>
+  <rect class="box orange" x="865" y="280" width="260" height="85"/><text x="890" y="314" class="h">传输、提交与显存寿命</text><text x="890" y="341" class="s">流与事件 · 图重放 · 分配状态</text>
+  <rect class="box orange" x="865" y="410" width="260" height="45"/><text x="890" y="439" class="h">实现路径比较与选择</text>
+
+  <path class="dash" d="M335 192H470"/><text x="358" y="179" class="s">比较代价</text>
+  <path class="dash" d="M335 322H470"/><text x="358" y="309" class="s">保持语义</text>
+  <path class="dash" d="M335 432H470"/><text x="358" y="419" class="s">核对协作</text>
+  <path class="dash" d="M730 192H865"/><text x="749" y="179" class="s">分析协作与资源</text>
+  <path class="dash" d="M730 322H865"/><text x="749" y="309" class="s">需运行时干预</text>
+  <rect class="box slate" x="205" y="530" width="790" height="65"/><text x="235" y="558" class="h">可选扩展 · Part05独立负载复测</text><text x="235" y="583" class="s">Part03接口与Block验证之后，再按独立输入与门槛比较多层预填充</text>
+  <path class="dash" d="M600 455V530"/><path class="dash" d="M995 455V505H900V530"/>
 </svg>

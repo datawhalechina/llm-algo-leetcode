@@ -21,7 +21,7 @@
 | $\theta_u$ | 第 $u$ 次有效更新前的模型参数 | 参数 |
 | $\eta_u$ | 第 $u$ 次有效更新使用的学习率 | 更新步 |
 | $\mathcal U(g_u)$ | 优化器根据梯度和内部状态形成的更新方向 | 参数 |
-| $b_i$ | 第 $i$ 类训练状态的字节数 | 状态对象 |
+| $b_i$ | 去重后第 $i$ 块存储的字节数 | 独立存储 |
 | $a_i(t)$ | 状态 $i$ 在阶段 $t$ 是否驻留，驻留为 1，否则为 0 | 训练阶段 |
 | $B_{out},B_{in}$ | 搬出与搬回方向的有效带宽 | 传输链路 |
 | $T_{overlap}$ | 可由其他计算覆盖的传输时间 | 关键路径 |
@@ -39,16 +39,16 @@
 
 | 机制 | 规范表达 | 粒度与更新条件 | 正文与代码入口 |
 |:---|:---|:---|:---|
-| 有效 Token 损失 | $L=\dfrac{1}{N}\sum_{k,i}m_{k,i}\ell_{k,i}$，$N=\sum_{k,i}m_{k,i}$ | 先累计损失分子和有效 Token 数，再做一次统一归约 | [03 监督与有效更新](./03_supervision_gradient_scale_effective_update.md)、[Part 02 · 13 SFT](../../02_PyTorch_Algorithms/13_SFT_Training_Loop.md) |
+| 有效 Token 损失 | $L=\dfrac{1}{N}\sum_{k,i}m_{k,i}\ell_{k,i}$，$N=\sum_{k,i}m_{k,i}$ | 先累计损失分子和有效 Token 数，再做一次统一归约 | [03 损失归约、梯度累积与有效更新](./03_loss_reduction_gradient_accumulation_effective_update.md)、[Part 02 · 13 SFT](../../02_PyTorch_Algorithms/13_SFT_Training_Loop.md) |
 | 累计窗口梯度 | $g=\nabla_\theta L=\dfrac{1}{N}\sum_{k,i}m_{k,i}\nabla_\theta\ell_{k,i}$ | 不同长度微批次使用同一有效 Token 分母；窗口结束前不写回参数 | [Part 02 · 11 梯度累积](../../02_PyTorch_Algorithms/11_Gradient_Accumulation.md) |
 | 损失缩放与还原 | $\widetilde L=sL$，$\widetilde g=s g$，$g=\widetilde g/s$ | FP16 常用动态 $s$；有限值检查和裁剪作用于还原后的真实梯度 | [Part 02 · 混合精度反向](../../02_PyTorch_Algorithms/TRAIN-MIXED-PRECISION-BACKWARD_Mixed_Precision_Backward.md) |
-| 有效参数更新 | $\theta_{u+1}=\theta_u-\eta_u\mathcal U(g_u)$，条件为 $\operatorname{finite}(g_u)=1$ | 梯度非有限时参数和 scheduler 均不推进；$u$ 只统计成功更新 | [Part 02 · 12 优化器与调度](../../02_PyTorch_Algorithms/12_Optimizer_Updates_and_Learning_Rate_Scheduling.md)、[Part 02 · 55 更新动力学](../../02_PyTorch_Algorithms/55_Training_Update_Dynamics.md) |
+| 有效参数更新 | $\theta_{u+1}=\theta_u-\eta_u\mathcal U(g_u)$，条件为 $\operatorname{finite}(g_u)=1$ | 此处采用非有限梯度跳步、学习率按成功更新计数的约定；需要训练循环或 AMP 更新逻辑落实，并非所有优化器自动执行 | [Part 02 · 12 优化器与调度](../../02_PyTorch_Algorithms/12_Optimizer_Updates_and_Learning_Rate_Scheduling.md)、[Part 02 · 55 更新动力学](../../02_PyTorch_Algorithms/55_Training_Update_Dynamics.md) |
 
 ## 训练状态生命周期与峰值
 
 | 机制 | 规范表达 | 粒度与观察量 | 正文与代码入口 |
 |:---|:---|:---|:---|
-| 阶段驻留量 | $M_t=\sum_i a_i(t)b_i$ | $a_i(t)$ 由创建、最后消费和释放时刻决定 | [04 训练状态生命周期](./04_training_state_lifecycle.md)、[Part 02 · 43 内存账本](../../02_PyTorch_Algorithms/43_Unified_Training_Memory_Ledger.md) |
+| 阶段驻留量 | $M_t=\sum_i a_i(t)b_i$ | $i$ 枚举去重后的存储，$a_i(t)$ 表示是否驻留；共享存储的激活与保存张量不重复相加 | [04 训练状态生命周期](./04_training_state_lifecycle.md)、[Part 02 · 43 内存账本](../../02_PyTorch_Algorithms/43_Unified_Training_Memory_Ledger.md) |
 | 理论峰值 | $M_{peak}=\max_t M_t$ | 与 CUDA allocated/reserved 分开记录；理论账本用于解释主导对象 | [04 训练状态生命周期](./04_training_state_lifecycle.md)、[Part 00 · 18 显存账本](../../00_Prerequisites/18_Memory_Profiling_and_Optimization.md) |
 | Checkpoint 节省量 | $\Delta M_{ckpt}=M_{saved,base}-M_{saved,ckpt}$ | 基线和候选使用同一模型、输入、累计窗口和测量边界 | [05 激活检查点与卸载](./05_checkpointing_and_offload.md)、[Part 02 · 19](../../02_PyTorch_Algorithms/19_Activation_Checkpointing.md) |
 | Checkpoint 新增时间 | $\Delta T_{ckpt}=T_{ckpt}-T_{base}$ | 新增时间主要来自反向重算和调度开销；同时检查输出与梯度一致 | [Part 02 · 19 激活检查点](../../02_PyTorch_Algorithms/19_Activation_Checkpointing.md) |

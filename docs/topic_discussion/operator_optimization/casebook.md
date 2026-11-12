@@ -1,46 +1,37 @@
 # 算子优化判断手册
 
-> 这份手册按性能现象选择排查方向，不替代 Task0–6 的顺序学习。先确认语义和 workload，再决定进入访存、融合、硬件执行还是 autotune。
+按现象选择检查项，再用对照结果缩小原因范围。数值错误保留失败输入和参考输出；耗时异常保留形状、布局、精度、设备、后端及重复计时样本。链接中的练习解释相应机制，实际故障要结合当前调用的输入与执行记录定位。
 
-统一判断链是：
-
-```text
-现象 → 语义 / 访存 / 执行对象 → 候选机制 → 证据层级 → accept / tune / reject
-```
-
-![算子优化知识地图：语义、数据路径、硬件执行与验证证据](../../public/topic_discussion/operator_optimization/operator_optimization_knowledge_map.svg)
-
-## 按现象选择方向
-
-| 现象 | 优先检查 | 可能机制 | 验证出口 |
-|:---|:---|:---|:---|
-| 输出 shape 对，但数值误差大 | dtype、mask、边界和累加路径 | 精度控制、边界 tile、参考实现对齐 | [02 Kernel 语义与访存](./02_kernel_semantics_and_memory.md) |
-| kernel 能运行但明显变慢 | layout、合并访存、tile 和工作集 | memory coalescing、tile、shared memory | [02 Kernel 语义与访存](./02_kernel_semantics_and_memory.md) |
-| fusion 后 kernel 变慢 | register、shared memory、occupancy | 减少写回与资源压力的权衡 | [03 算子融合](./03_fusion_and_kernel_composition.md) |
-| 图改写后没有进入候选 kernel | lowering、算子覆盖与 fallback | legalization、layout、生成路径 | [03 图级优化与融合](./03_fusion_and_kernel_composition.md) |
-| 某张 GPU 快，另一张 GPU 慢 | dtype、shape、编译目标和硬件资源 | Tensor Core、warp、block、stream | [04 CUDA 执行](./04_cuda_execution_and_hardware_constraints.md) |
-| 不同 backend 给出相反结论 | layout、编译缓存与 runtime 假设 | backend 成本模型、冷/热运行 | [05 成本模型与 Profiling](./05_cost_model_and_profiling.md) |
-| autotune 结果不稳定 | shape 分布、warmup、测量口径 | 配置搜索、分桶、缓存和编译成本 | [05 成本模型与 Profiling](./05_cost_model_and_profiling.md) |
-| kernel 变快但模型不变快 | launch、同步、其他算子或输入管线 | 端到端瓶颈不在当前 kernel | [06 Benchmark 与验证](./06_benchmark_and_project_validation.md) |
-
-## 证据层级
-
-| 证据 | 可以确认什么 | 不能确认什么 |
-|:---|:---|:---|
-| CPU correctness | 语义、shape、边界和误差 | GPU 带宽、真实 kernel 时间 |
-| GPU microbenchmark | 固定 shape 下的 kernel 相对成本 | 模型或服务端到端收益 |
-| profiling trace | 当前 workload 的热点和等待 | 所有 shape 都适用 |
-| workload benchmark | 固定模型与输入下的系统变化 | 其他 GPU 或其他请求分布 |
-
-## 常见决策
-
-- `accept`：语义对齐，目标 workload 上有可重复收益，且编译和维护成本可接受。
-- `tune`：方向合理，但 shape、tile、dtype、调度或证据还不稳定。
-- `reject`：语义不对齐、收益不足，或额外资源与维护成本超过预算。
-
-## 相关入口
-
-- 想顺序学习：回到[算子优化专题入口](./intro.md)。
-- 想沿一个 kernel 项目推进：阅读[算子优化问题链](./walkthrough.md)。
-- 想定位系统热点：转到[性能分析](../performance_analysis/intro.md)。
-- 想理解图变换与 lowering：从[03 图级优化、融合与 Kernel 组合](./03_fusion_and_kernel_composition.md)进入，再按需回查 Part01 · 09 与 Part04 的编译实践。
+| 现象或目标 | 先检查什么 | 最小证据 | 机制入口 | 验证或转交入口 |
+|:---|:---|:---|:---|:---|
+| 输出形状正确但数值误差超限 | 先定位首个明显偏差，再检查该处的累加类型与掩码 | 失败输入、参考输出、最大误差与对应索引 | [03 语义与访存](./03_kernel_semantics_and_memory.md) | 寻址与边界练习：[Part 03 · 17 内存调试](../../03_Triton_Kernels/17_Triton_Memory_Model_and_Debug.md) |
+| 非整除长度时越界或遗漏元素 | 对照最后一个程序负责的索引，检查加载和写回是否都受掩码保护 | 整除与非整除长度的输出、尾块有效索引 | [03 语义与访存](./03_kernel_semantics_and_memory.md) | [Part 03 · 01 向量加法](../../03_Triton_Kernels/01_Triton_Vector_Addition.md) |
+| 内核正确但慢于性能基线 | 先确认计时是否包含相同工作，再比较分块配置 | 同输入、同计时范围的多轮耗时 | [05 测量与调优](./05_measurement_profiling_and_autotuning.md) | 基准练习：[Part 03 · 09 自动调优](../../03_Triton_Kernels/09_Triton_Autotune_and_Profiling.md) |
+| 循环分工时首个输出块正确，后续块错误 | 检查每个新 tile 是否重置累加器，编号是否映射到正确块行、块列 | 非方阵、多轮任务的逐块参考误差 | [03 程序分工](./03_kernel_semantics_and_memory.md#输出块怎样分给多个程序) | 状态与边界练习：[Part 03 · 06 持久化 GEMM](../../03_Triton_Kernels/06_Triton_Persistent_GEMM_and_Tile_Scheduling.md) |
+| 有限 Program 出现任务遗漏或重复 | 对照实际访问计数、归属与步进；不只检查 CPU 计划 | 每个 tile 的设备写入计数和归属 Program | [03 程序分工](./03_kernel_semantics_and_memory.md#输出块怎样分给多个程序) | 覆盖核对：[Part 03 · 06 持久化 GEMM](../../03_Triton_Kernels/06_Triton_Persistent_GEMM_and_Tile_Scheduling.md) |
+| 有限 Program 结果正确但更慢 | 先确认两条实际网格是否不同，再比较同配置下的并行任务数与多轮耗时 | 实际网格、tile 数、编译身份和逐轮耗时 | [05 执行身份](./05_measurement_profiling_and_autotuning.md#函数相同-实际执行的代码是否相同) | 同二进制网格对照：[Part 03 · 06 持久化 GEMM](../../03_Triton_Kernels/06_Triton_Persistent_GEMM_and_Tile_Scheduling.md) |
+| 融合后反而更慢 | 对照完整调用与内核耗时；检查是否新增转换，或内核本身退化 | 配对耗时、调用轨迹；内核退化时再查寄存器与访存记录 | [02 图编译与融合](./02_graph_compilation_and_fusion.md) | 原理与对照：[Part 01 · 19 算子融合](../../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md) |
+| 换编译后端后，原先较快的候选变慢 | 核对实际库／内核与布局转换，再比较相同范围的完整调用 | 两后端的版本、输入、实际路径、准备成本和重复耗时 | [05 后端与候选排序](./05_measurement_profiling_and_autotuning.md#换后端后-候选排序为什么会改变) | 在目标后端复测候选；组件对照方法见[07 完整调用](./07_integration_benchmarking_and_adoption.md) |
+| 编译后首次运行慢，后续较快 | 把首次编译、配置搜索与预热后的计算分开计时 | 首次调用耗时、编译记录与重复执行耗时 | [05 测量与调优](./05_measurement_profiling_and_autotuning.md) | 在当前程序分段计时；计时范围见[性能分析 · 可重复基线](../performance_analysis/02_reproducible_baseline.md) |
+| 稳态更快，但少量调用的总时间更长 | 比较新增准备成本与实际调用次数可节省的时间 | 同范围的准备差值、稳态配对和调用次数 | [05 成本摊销](./05_measurement_profiling_and_autotuning.md#准备成本需要多少次调用摊销) | 在当前任务核对复用次数及重编译；[公式与条件](./formula_reference.md#时间比较与准备成本) |
+| 改变长度后反复生成编译版本 | 对照触发重编译的输入形状与编译条件 | 输入长度序列、重编译原因与版本数量 | [02 图编译与融合](./02_graph_compilation_and_fusion.md) | [Part 01 · 30 动态形状](../../01_Hardware_Math_and_Systems/30_Dynamic_Shape_Handling.md) |
+| 计算被拆成多个编译片段 | 从第一个图中断位置查找未被捕获的操作 | 图中断位置、原因与前后编译片段 | [02 图编译与融合](./02_graph_compilation_and_fusion.md) | 编译基础：[Part 01 · 09 图编译](../../01_Hardware_Math_and_Systems/09_AI_Compilers_and_Graph_Optimization.md) |
+| 设置新内核后，轨迹中仍是其他实现 | 对应调用入口与设备事件，区分编译改写、名称差异和回退 | 对应输入、编译或调用记录、实际设备内核 | [07 组件集成](./07_integration_benchmarking_and_adoption.md) | 调用与设备事件对应见[性能分析 · 轨迹阅读](../performance_analysis/03_time_breakdown_and_trace_reading.md) |
+| 同名内核有多份特化记录，难以对应本次调用 | 将输入条件、编译配置和产物摘要与实际启动的对象对应 | 源码／配置、产物摘要、启动或 CUDA 活动记录 | [05 执行身份](./05_measurement_profiling_and_autotuning.md#函数相同-实际执行的代码是否相同) | 产物与真实调用核对：[Part 03 · 18 编译产物](../../03_Triton_Kernels/18_Triton_Compilation_Artifacts_and_Execution.md) |
+| 注意力单块正确，跨多个 K/V 块后出错 | 检查行最大值增大时，旧指数和与输出累积量是否同时重缩放 | 固定 Q/K/V 的单块、多块输出及参考误差 | [04 注意力分块](./04_attention_and_inference_data_paths.md) | [Part 03 · 11 FlashAttention](../../03_Triton_Kernels/11_Triton_Flash_Attention.md) |
+| Query 头与 KV 头数量不同时出错 | 先逐头核对 Query 到 KV 头的映射 | 各 Query 头使用的 KV 头编号与输出 | [04 头共享](./04_attention_and_inference_data_paths.md) | [Part 03 · 12 变长 GQA](../../03_Triton_Kernels/12_Triton_Variable_Length_GQA.md) |
+| 同批请求长度不同时输出出错 | 检查补齐位置是否在 Softmax 前被排除 | 同一请求单独运行与补齐后批量运行的输出 | [04 有效长度](./04_attention_and_inference_data_paths.md) | [Part 03 · 12 变长 GQA](../../03_Triton_Kernels/12_Triton_Variable_Length_GQA.md) |
+| KV 分页后输出变化 | 逐位置对照块表映射，先查跨页位置 | 相同逻辑 KV 的连续/非连续物理页布局与输出 | [04 分页寻址](./04_attention_and_inference_data_paths.md) | [Part 03 · 13 PagedAttention](../../03_Triton_Kernels/13_Triton_PagedAttention.md) |
+| KV 量化后注意力误差明显扩大 | 先核对同一 Token/头取到的缩放值，再检查反量化结果 | 原始与恢复后的 KV、注意力输出误差 | [04 KV 量化](./04_attention_and_inference_data_paths.md) | [Part 03 · 16 KV 量化解码](../../03_Triton_Kernels/16_Triton_KV_Cache_Quantized_Decode.md) |
+| 换 GPU 后同一配置变慢 | 先检查目标设备的生成代码与每块资源使用 | 两台设备的配置、寄存器/共享内存用量与配对耗时 | [05 设备资源](./05_measurement_profiling_and_autotuning.md) | 设备能力：[Part 01 · 03 GPU架构](../../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.md)；产物核对：[Part 03 · 18 编译与执行](../../03_Triton_Kernels/18_Triton_Compilation_Artifacts_and_Execution.md)；资源对照：[Part 04 · 05 驻留](../../04_CUDA_and_System_Optimization/05_CUDA_Block_Resources_and_Residency.md) |
+| 简化驻留上界高于 CUDA 查询 | 核对实际静态／动态共享需求、驱动预留及线程／函数限制，确认单位与分配粒度 | 同设备、同函数、同启动配置的需求与查询值 | [05 驻留约束](./05_measurement_profiling_and_autotuning.md#每块资源怎样限制同时驻留的任务) | 模型与查询对照：[Part 04 · 05 资源与驻留](../../04_CUDA_and_System_Optimization/05_CUDA_Block_Resources_and_Residency.md) |
+| 预测驻留能力更高，耗时却没有下降 | 区分容量预测与运行期活跃程度，检查任务量及每任务工作是否改变 | 网格与资源配置、配对耗时；需要时另采活跃线程束和等待记录 | [05 驻留与执行](./05_measurement_profiling_and_autotuning.md#每块资源怎样限制同时驻留的任务) | 容量控制实验：[Part 04 · 05 资源与驻留](../../04_CUDA_and_System_Optimization/05_CUDA_Block_Resources_and_Residency.md)，查询值不代替运行期指标 |
+| 自动调优每次选中的配置不同 | 固定输入和搜索集合，交替重复测量接近的配置 | 各配置重复样本、运行顺序与设备负载 | [05 测量与调优](./05_measurement_profiling_and_autotuning.md) | 调优练习：[Part 03 · 09 自动调优](../../03_Triton_Kernels/09_Triton_Autotune_and_Profiling.md) |
+| 多流计算偶发输出错误 | 先检查计算是否等待对应传输，以及缓冲区是否过早复用 | 事件依赖、缓冲区使用区间与失败输出 | [06 异步搬运](./06_cuda_execution_and_runtime_constraints.md) | [Part 04 · 10 Stream 与搬运](../../04_CUDA_and_System_Optimization/10_PyTorch_CUDA_Streams_and_Transfer.md) |
+| 使用多个流，搬运与计算仍然串行 | 对照两流的传输、计算与等待区间，再区分依赖串行化和并发条件不足 | 搬运与计算时间线、同步位置、主机内存与设备条件 | [06 执行重叠](./06_cuda_execution_and_runtime_constraints.md) | [Part 04 · 10 Stream 与搬运](../../04_CUDA_and_System_Optimization/10_PyTorch_CUDA_Streams_and_Transfer.md) |
+| CUDA Graph 重放后几乎没有加速 | 先比较原程序的主机提交间隙与设备计算时间 | 原调用与重放的配对时间线，准备成本另计 | [06 图重放](./06_cuda_execution_and_runtime_constraints.md) | 固定短链配对：[Part 04 · 11 Graph重放](../../04_CUDA_and_System_Optimization/11_CUDA_Graph_and_JIT_Compile.md)；当前程序另测输入更新、准备与完整调用 |
+| CUDA Graph 重放结果未随输入变化 | 检查是否更新了被捕获调用实际读取的缓冲区，并等待更新完成 | 两组不同输入、重放前缓冲区内容与输出对照 | [06 图重放输入](./06_cuda_execution_and_runtime_constraints.md) | 输入更新核对：[Part 04 · 11 Graph重放](../../04_CUDA_and_System_Optimization/11_CUDA_Graph_and_JIT_Compile.md)；当前调用另查跨流依赖 |
+| 直接调用正确，接入框架或编译后失败 | 先检查接入前后的形状、步长与输入是否被修改 | 相同输入的直接/集成调用输出；训练用途另测梯度 | [07 接口与组件](./07_integration_benchmarking_and_adoption.md) | 接口练习：[Part 03 · 19 PyTorch 算子集成](../../03_Triton_Kernels/19_Triton_PyTorch_Op_Integration.md) |
+| 内核变快，完整模块时间几乎不变 | 比较内核、完整调用与模块时间，区分接口开销和原有耗时占比的影响 | 内核、含转换调用、同权重模块的配对耗时 | [07 集成开销](./07_integration_benchmarking_and_adoption.md) | 组件对照：[Part 03 · 20 Block 集成](../../03_Triton_Kernels/20_Triton_Llama3_Block_Project.md) |
+| 低比特内核更快，但任务质量下降 | 先分清量化的是权重还是 KV，再定位引入误差的层或位置 | 浮点/量化输出、任务质量及实际计算类型 | [04 量化对象](./04_attention_and_inference_data_paths.md) | [量化与压缩专题](../quantization_compression/intro.md) |
+| 本地内核加速后，多卡作业仍在等待 | 先查最慢进程的暴露通信与等待区间 | 各进程时间线、集合通信耗时与载荷 | [05 耗时归因](./05_measurement_profiling_and_autotuning.md) | [通信与并行专题](../communication_parallelism/intro.md) |

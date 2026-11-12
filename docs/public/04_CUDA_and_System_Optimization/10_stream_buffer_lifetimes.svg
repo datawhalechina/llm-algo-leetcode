@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="600" viewBox="0 0 1500 600" role="img" aria-labelledby="title desc">
+<title id="title">源数据、复用槽位与独立输出有不同保护区间</title>
+<desc id="desc">三个数据对象分别保护到复制结束、计算读完和调用方消费结束；矩阵乘输出在计算阶段被写入，而不是完成后才分配。</desc>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;font-size:23px;fill:#1e293b}.title{font-size:28px;font-weight:700}.label{font-weight:700}.small{font-size:21px}.note{font-size:19px}</style>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<rect width="1500" height="600" fill="#f8fafc"/>
+<text x="45" y="53" class="title" text-anchor="start">源数据、复用槽位与独立输出有不同保护区间</text>
+<text x="40" y="97" class="small" text-anchor="start">保护区间与写读次序示意；不表示实际分配／释放时刻，也不按时长比例绘制。</text>
+<path d="M280 153V542" stroke="#cbd5e1" stroke-dasharray="5 6" fill="none"/>
+<text x="280" y="141" class="small" text-anchor="middle">开始复制 A</text>
+<path d="M620 153V542" stroke="#cbd5e1" stroke-dasharray="5 6" fill="none"/>
+<text x="620" y="141" class="small" text-anchor="middle">复制 A 完成</text>
+<path d="M1000 153V542" stroke="#cbd5e1" stroke-dasharray="5 6" fill="none"/>
+<text x="1000" y="141" class="small" text-anchor="middle">计算 A 完成</text>
+<path d="M1390 153V542" stroke="#cbd5e1" stroke-dasharray="5 6" fill="none"/>
+<text x="1390" y="141" class="small" text-anchor="middle">调用方用完</text>
+<text x="40" y="231" class="label" text-anchor="start">锁页源 A</text>
+<rect x="280" y="185" width="340" height="75" rx="8" fill="#fef3c7" stroke="#94a3b8" data-layout-role="node"/>
+<text x="450" y="230" class="small" text-anchor="middle">至少保留到复制结束</text>
+<text x="1040" y="230" class="small" text-anchor="middle">之后才可改写或回收该源数据</text>
+<text x="40" y="361" class="label" text-anchor="start">设备输入槽 0</text>
+<rect x="280" y="315" width="340" height="75" rx="8" fill="#fef3c7" stroke="#94a3b8" data-layout-role="node"/>
+<text x="450" y="360" class="small" text-anchor="middle">复制 A：写入</text>
+<rect x="620" y="315" width="380" height="75" rx="8" fill="#dbeafe" stroke="#94a3b8" data-layout-role="node"/>
+<text x="810" y="360" class="small" text-anchor="middle">计算 A：读取</text>
+<rect x="1000" y="315" width="390" height="75" rx="8" fill="#f1f5f9" stroke="#94a3b8" data-layout-role="node"/>
+<text x="1195" y="360" class="small" text-anchor="middle">现在才允许 C 覆盖</text>
+<text x="40" y="491" class="label" text-anchor="start">独立输出 A</text>
+<rect x="620" y="445" width="380" height="75" rx="8" fill="#dbeafe" stroke="#94a3b8" data-layout-role="node"/>
+<text x="810" y="490" class="small" text-anchor="middle">矩阵乘写出结果</text>
+<rect x="1000" y="445" width="390" height="75" rx="8" fill="#f1f5f9" stroke="#94a3b8" data-layout-role="node"/>
+<text x="1195" y="490" class="small" text-anchor="middle">保留给调用方消费</text>
+<text x="750" y="578" class="small" text-anchor="middle">两个等待分别约束“复制后才能读”和“读完后才能覆盖”；输出不能只引用可覆盖的输入槽。</text>
+</svg>

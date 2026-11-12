@@ -1,12 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="350" viewBox="0 0 1120 350">
-  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#52606d"/></marker></defs>
-  <rect width="1120" height="350" rx="18" fill="#f7f9fc"/>
-  <text x="40" y="44" font-family="sans-serif" font-size="24" font-weight="700" fill="#172b4d">FFN 演进：增加容量，同时控制每个词元的成本</text>
-  <g font-family="sans-serif" text-anchor="middle">
-    <g fill="#e8f1ff" stroke="#4c78a8" stroke-width="2"><rect x="65" y="105" width="250" height="105" rx="12"/><rect x="435" y="105" width="250" height="105" rx="12"/><rect x="805" y="105" width="250" height="105" rx="12"/></g>
-    <g fill="#172b4d"><text x="190" y="137" font-size="18">稠密 FFN</text><text x="190" y="165" font-size="14">上投影 → GELU/ReLU → 下投影</text><text x="190" y="188" font-size="14">统一参数路径</text><text x="560" y="137" font-size="18">SwiGLU</text><text x="560" y="165" font-size="14">门控 ⊙ 上投影 → 下投影</text><text x="560" y="188" font-size="14">内容相关门控</text><text x="930" y="137" font-size="18">MoE-FFN</text><text x="930" y="165" font-size="14">路由器 → 专家 → 合并</text><text x="930" y="188" font-size="14">稀疏激活容量</text></g>
-    <g stroke="#52606d" stroke-width="2.5" fill="none" marker-end="url(#a)"><path d="M315 157 H425"/><path d="M685 157 H795"/></g>
-    <rect x="265" y="260" width="590" height="52" rx="10" fill="#fff4df" stroke="#d99b2b" stroke-width="2"/>
-    <text x="560" y="291" fill="#5c4300" font-size="15">比较时固定参数预算，并分别记录激活计算、路由负载与通信成本</text>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="350" viewBox="0 0 1120 350" role="img" aria-labelledby="title desc">
+  <title id="title">前馈形式与专家选择是两个维度</title>
+  <desc id="desc">左侧比较普通前馈的两次投影与SwiGLU的门控三投影；右侧比较所有词元共享一套参数与按路由选择部分专家。专家内部也可使用门控前馈，不是把三个结构顺序执行。</desc>
+  <style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172b4d}.title{font-size:24px;font-weight:700}.h{font-size:18px;font-weight:700}.s{font-size:14px;font-weight:400}.panel{stroke:#94a3b8;stroke-width:2;rx:14}.node{stroke:#60a5fa;stroke-width:2;rx:12}</style>
+  <rect width="1120" height="350" fill="#f7f9fc"/>
+  <text x="40" y="44" class="title">前馈：怎样变换特征，与使用哪套参数分别选择</text>
+  <rect x="35" y="80" width="600" height="235" class="panel" fill="#eff6ff" data-layout-role="panel"/>
+  <text x="55" y="111" class="h">单个前馈的计算形式</text>
+  <rect x="55" y="135" width="240" height="100" class="node" fill="#ffffff"/>
+  <text x="175" y="174" text-anchor="middle" class="h">普通 FFN</text><text x="175" y="207" text-anchor="middle" class="s">上投影、激活、下投影</text>
+  <rect x="355" y="135" width="240" height="100" class="node" fill="#ffffff"/>
+  <text x="475" y="174" text-anchor="middle" class="h">SwiGLU</text><text x="475" y="207" text-anchor="middle" class="s">门控与上投影相乘，再下投影</text>
+  <text x="55" y="275" class="s">门控增加一条投影，比较时要说明中间宽度与参数预算。</text>
+  <rect x="665" y="80" width="420" height="235" class="panel" fill="#fff7ed" data-layout-role="panel"/>
+  <text x="685" y="111" class="h">每个词元使用哪些参数</text>
+  <rect x="685" y="135" width="160" height="100" class="node" fill="#ffffff"/>
+  <text x="765" y="174" text-anchor="middle" class="h">稠密共享</text><text x="765" y="207" text-anchor="middle" class="s">同一套前馈参数</text>
+  <rect x="885" y="135" width="160" height="100" class="node" fill="#ffffff"/>
+  <text x="965" y="174" text-anchor="middle" class="h">MoE 路由</text><text x="965" y="207" text-anchor="middle" class="s">选择部分专家参数</text>
+  <text x="685" y="275" class="s">专家内部也可采用 SwiGLU 等门控前馈。</text>
 </svg>

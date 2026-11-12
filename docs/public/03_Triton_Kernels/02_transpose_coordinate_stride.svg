@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+  <title id="title">同一元素从输入坐标到连续转置输出</title>
+  <desc id="desc">两行三列输入的元素二位于零行二列。读取其输入偏移二，再写入三行两列输出的二行零列，输出偏移为四。图中只为该元素画出读写连接，其余元素按相同坐标关系转置。</desc>
+  <defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+  <style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:24px;font-weight:700}.body{font-size:21px}.small{font-size:18px;fill:#475569}.value{font-size:25px;font-weight:700;text-anchor:middle}.edge{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}.cell{stroke:#94a3b8;stroke-width:2;rx:8;fill:#dbeafe}.selected{stroke:#16a34a;stroke-width:2;rx:8;fill:#dcfce7}</style>
+  <rect width="1500" height="470" fill="#f8fafc"/>
+  <text x="45" y="52" class="title">转置要交换坐标，并把数值写到新输出的位置</text>
+  <text x="45" y="88" class="small">以连续输入和连续输出为例；绿色突出值 2 的读写，其余元素按同一规则转置。</text>
+  <text x="95" y="145" class="head">输入 X：2 × 3</text>
+  <text x="145" y="180" class="small" text-anchor="middle">列 0</text><text x="255" y="180" class="small" text-anchor="middle">列 1</text><text x="365" y="180" class="small" text-anchor="middle">列 2</text>
+  <text x="65" y="235" class="small" text-anchor="end">行 0</text><text x="65" y="335" class="small" text-anchor="end">行 1</text>
+  <rect x="95" y="195" width="100" height="60" class="cell" data-layout-role="glyph-group"/><rect x="205" y="195" width="100" height="60" class="cell" data-layout-role="glyph-group"/><rect x="315" y="195" width="100" height="60" class="selected" data-layout-role="glyph-group"/>
+  <rect x="95" y="295" width="100" height="60" class="cell" data-layout-role="glyph-group"/><rect x="205" y="295" width="100" height="60" class="cell" data-layout-role="glyph-group"/><rect x="315" y="295" width="100" height="60" class="cell" data-layout-role="glyph-group"/>
+  <g class="value"><text x="145" y="235">0</text><text x="255" y="235">1</text><text x="365" y="235">2</text><text x="145" y="335">3</text><text x="255" y="335">4</text><text x="365" y="335">5</text></g>
+  <text x="95" y="397" class="body">输入步长：(3, 1)</text>
+  <rect x="570" y="175" width="400" height="100" rx="12" fill="#fef3c7" stroke="#94a3b8" stroke-width="2"/>
+  <text x="770" y="216" class="head" text-anchor="middle">X[0, 2] → Y[2, 0]</text>
+  <text x="770" y="252" class="body" text-anchor="middle">输入偏移 2；输出偏移 4</text>
+  <text x="1140" y="108" class="head">连续输出 Y：3 × 2</text>
+  <text x="1205" y="130" class="small" text-anchor="middle">列 0</text><text x="1315" y="130" class="small" text-anchor="middle">列 1</text>
+  <text x="1390" y="175" class="small">行 0</text><text x="1390" y="255" class="small">行 1</text><text x="1390" y="335" class="small">行 2</text>
+  <rect x="1155" y="135" width="100" height="60" class="cell" data-layout-role="glyph-group"/><rect x="1265" y="135" width="100" height="60" class="cell" data-layout-role="glyph-group"/>
+  <rect x="1155" y="215" width="100" height="60" class="cell" data-layout-role="glyph-group"/><rect x="1265" y="215" width="100" height="60" class="cell" data-layout-role="glyph-group"/>
+  <rect x="1155" y="295" width="100" height="60" class="selected" data-layout-role="glyph-group"/><rect x="1265" y="295" width="100" height="60" class="cell" data-layout-role="glyph-group"/>
+  <g class="value"><text x="1205" y="175">0</text><text x="1315" y="175">3</text><text x="1205" y="255">1</text><text x="1315" y="255">4</text><text x="1205" y="335">2</text><text x="1315" y="335">5</text></g>
+  <text x="1155" y="397" class="body">输出步长：(2, 1)</text>
+  <path d="M415 225H570" class="edge"/><path d="M970 225H1060V325H1155" class="edge"/>
+  <text x="570" y="435" class="small">元素偏移相对于各自张量首元素；视图输入另用其实际步长。</text>
+</svg>

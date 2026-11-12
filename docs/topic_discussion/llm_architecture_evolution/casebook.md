@@ -1,67 +1,18 @@
 # 架构问题排查手册
 
-第一次系统学习架构演进时，从[架构演进问题链](./walkthrough.md)进入；遇到配置冲突、容量异常或长序列质量问题时，先在症状索引定位，再补充结构证据。
+使用本表前，先固定模型、分词器、权重、配置和执行后端的版本，再区分模型声明、模块实例化与真实运行路径。至少保留结构字段、张量形状、目标工作负载、失败样例和成本证据。
 
-## 使用方式
-
-1. 先定位变化发生在输入、Transformer 块、注意力、FFN、MoE 还是记忆接口。
-2. 再区分模型声明、模块实例化与实际运行路径。
-3. 根据症状补齐结构、质量和成本证据；证据完整后进入 Part 02 · 61 作采用判断。
+从“现象或目标”列选择最接近的一行，先采集最小证据；证据不足时保留为结构假设，不用模型名称或经验补全未知字段。
 
 ![架构审计跨模块地图：从结构差异进入专项证据](../../public/topic_discussion/llm_architecture_evolution/cross_module_map.svg)
 
-## 症状索引
-
-| 现象 | 优先检查 | 缺少的证据 | 回查入口 |
-|:---|:---|:---|:---|
-| 配置声明与模块树不一致 | 模型版本、远程代码、权重键与实际模块 | 固定版本的配置、模块树和加载日志 | [08 代表模型与结构审计](./08_representative_models.md) |
-| KV 容量高于估算 | KV 注意力头、单头维度、潜在维度、数据类型与层数 | 表示账本和真实缓存分配 | [04 注意力表示](./04_attention_evolution.md) |
-| 长度增加后质量骤降 | RoPE 缩放、训练长度、访问范围 | 长度阶梯质量和失败样例 | [05 RoPE](./05_rope_position_encoding.md)、[Part 02 · 44](../../02_PyTorch_Algorithms/44_Local_Sliding_and_Sparse_Attention.md) |
-| MoE 吞吐或负载异常 | Top-k、专家容量、容量溢出、分发 | 专家负载、丢弃量和通信时间 | [09 MoE](./09_moe_sparsity_evolution.md) |
-| 混合模型状态成本不清 | 注意力/SSM 层分布和状态形状 | 分层状态账本、质量与延迟 | [10 混合记忆](./10_linear_attention_ssm_and_hybrid.md) |
-
-## 排查路径
-
-### 先按结构位置审计
-
-| 审计顺序 | 要确认的问题 | 记录的证据 |
-|:---|:---|:---|
-| 输入与主干 | 词元、嵌入、位置和残差的路径是什么？ | 配置字段、张量形状、权重共享关系 |
-| 注意力表示 | 注意力头、KV 注意力头或潜在 KV 如何变化？ | 注意力头数、KV 注意力头数、潜在维度、缓存形式 |
-| 位置与访问范围 | 位置如何进入 Q/K，哪些历史词元可见？ | RoPE 缩放、掩码、窗口或稀疏模式 |
-| 归一化与 FFN | 归一化放在哪里，通道如何扩展？ | 归一化类型、激活、中间维度、残差顺序 |
-| 容量与记忆机制 | 词元是否路由；历史是否显式保存？ | Top-k、专家容量、专家数、递推状态形状 |
-| 系统影响 | 这项替换可能影响什么，需要怎样验证？ | 参数 / 计算 / 状态 / 通信估算与真实测量 |
-
-### 再按术语回查机制
-
-| 看到的描述 | 先判断什么 | 回查入口 | 下一步证据 |
-|:---|:---|:---|:---|
-| “GQA / MQA / MLA” | Q 注意力头与 KV 表示是否真的改变 | [04 注意力](./04_attention_evolution.md) | KV 状态大小、上下文质量、真实延迟 |
-| “滑动窗口 / 稀疏注意力” | 每个词元的可见范围是什么 | [Part 02 · 44](../../02_PyTorch_Algorithms/44_Local_Sliding_and_Sparse_Attention.md) | 理论连接数、长上下文任务质量 |
-| “RMSNorm / SwiGLU” | 归一化位置、门控通道和参数量 | [03 Norm](./03_norm_evolution.md)、[07 MLP](./07_mlp_ffn_evolution.md) | 梯度稳定性、参数和计算量 |
-| “MoE / 共享专家” | 路由器、专家容量、容量溢出与分发如何定义 | [09 MoE](./09_moe_sparsity_evolution.md) | 负载、All-to-All、有效激活参数 |
-| “线性注意力 / SSM” | 是显式检索历史，还是递推压缩状态 | [10 线性注意力、SSM 与混合记忆](./10_linear_attention_ssm_and_hybrid.md)；[Part 02 · 77](../../02_PyTorch_Algorithms/77_Long_Sequence_Memory_Architecture_Benchmark.md) | 状态大小、并行条件、长序列质量与成本 |
-
-### 最后填写结构审计卡
-
-每次阅读一个模型至少填写下列字段；未知项保留为待验证，而不是用经验补全。
-
-| 字段 | 记录内容 |
-|:---|:---|
-| 基线组件 | 以解码器块、MHA、稠密 FFN 或显式 KV 为基线写明 |
-| 实际替换 | 模型实际使用的结构、配置值与来源 |
-| 目标 | 它主要针对质量、上下文、参数容量、状态成本还是通信 |
-| 代价 | 可能增加的计算、显存、通信、实现复杂度或质量风险 |
-| 证据等级 | 理论估算 / CPU 机制测试 / 单卡测量 / 多卡或线上基准测试 |
-| 结论 | 采用、继续验证或不采用，以及下一项需要的证据 |
-
-## 何时进入最终决策
-
-只有模型与分词器版本、配置和模块实例化证据、目标工作负载的质量与成本结果、失败记录和适用范围都已登记，才进入 [Part 02 · 61 模型架构审计](../../02_PyTorch_Algorithms/61_Model_Architecture_Exploration.md)。只读到模型卡或论文时，应保留为结构假设；只完成 CPU 机制实验时，不得写成目标执行后端收益。
-
-## 相关阅读
-
-- [LLaMA](https://arxiv.org/abs/2302.13971)：用完整配置阅读现代解码器块。
-- [DeepSeek-V2](https://arxiv.org/abs/2405.04434)：用 MLA、MoE 与负载策略阅读架构协同选择。
-- [Mamba](https://arxiv.org/abs/2312.00752)：用递推状态与注意力的差异阅读另一类长序列记忆路径。
+| 现象或目标 | 先检查什么 | 最小证据 | 机制入口 | 验证或转交入口 |
+|:---|:---|:---|:---|:---|
+| 配置声明与模块树不一致 | 模型提交版本、远程代码、权重键和实际模块 | 固定版本的配置、模块树、权重形状和加载日志 | [08 代表模型与结构审计](./08_representative_models.md) | [Part 02 · 08 配置与结构审计](../../02_PyTorch_Algorithms/08_Architecture_Tricks.md) / [Part 02 · 61 模型架构探索](../../02_PyTorch_Algorithms/61_Model_Architecture_Exploration.md) |
+| 输入或词表变化被误判为主干架构变化 | 分词器、词表、嵌入和权重绑定 | 分词器版本、词表大小、嵌入形状和共享关系 | [02 分词与输入表示](./02_tokenization_embedding.md) | [Part 02 · 61 模型架构探索](../../02_PyTorch_Algorithms/61_Model_Architecture_Exploration.md) |
+| KV 容量高于估算 | KV 注意力头、单头维度、潜在维度、层数和数据类型 | 逐层表示账本、真实缓存分配和执行路径 | [04 注意力表示演进](./04_attention_evolution.md) | [Part 02 · ARCH-MLA](../../02_PyTorch_Algorithms/ARCH-MLA_Multihead_Latent_Attention.md) / [Part 02 · 71 MLA / KV 结构基准](../../02_PyTorch_Algorithms/71_MLA_KV_Cache_Architecture_Benchmark.md) |
+| 长度增加后质量骤降 | RoPE 参数、训练长度、目标长度和可见范围 | 长度阶梯质量、掩码或窗口配置和失败样例 | [05 RoPE 与长上下文位置机制](./05_rope_position_encoding.md) | [Part 02 · 44 局部与稀疏注意力](../../02_PyTorch_Algorithms/44_Local_Sliding_and_Sparse_Attention.md) / [Part 02 · 78 注意力访问模式](../../02_PyTorch_Algorithms/78_Attention_Access_Pattern_Benchmark.md) |
+| 深层模型训练不稳定 | 归一化位置、残差顺序、中间维度和门控路径 | 模块顺序、激活与梯度统计、失败步 | [03 归一化演进](./03_norm_evolution.md) / [07 MLP / FFN 演进](./07_mlp_ffn_evolution.md) | [Part 02 · 60 Transformer 块稳定性](../../02_PyTorch_Algorithms/60_Decoder_Block_Stability_Benchmark.md) |
+| MoE 吞吐、专家负载或容量异常 | Top-k、专家容量、容量溢出、分发与跨卡交换 | 逐专家负载、丢弃量、All-to-All 载荷和暴露通信 | [09 MoE 与稀疏容量](./09_moe_sparsity_evolution.md) | [Part 02 · 80 MoE 专家并行](../../02_PyTorch_Algorithms/80_MoE_Expert_Parallel_Benchmark.md) / [通信与并行](../communication_parallelism/intro.md) |
+| 混合模型的状态成本或长序列收益不清 | 注意力 / SSM 层分布、递推状态形状和显式检索层 | 分层状态账本、长度阶梯质量、延迟和峰值显存 | [10 线性注意力、SSM 与混合记忆](./10_linear_attention_ssm_and_hybrid.md) | [Part 02 · 77 长序列记忆架构](../../02_PyTorch_Algorithms/77_Long_Sequence_Memory_Architecture_Benchmark.md) |
+| 模型卡声称新结构，但实际收益不明 | 声明、实例化和运行三层证据是否一致 | 配置来源、模块树、真实路径、配对质量与成本 | [08 代表模型与结构审计](./08_representative_models.md) | [Part 02 · 61 模型架构探索](../../02_PyTorch_Algorithms/61_Model_Architecture_Exploration.md) / [性能优化](../performance_optimization/intro.md) |

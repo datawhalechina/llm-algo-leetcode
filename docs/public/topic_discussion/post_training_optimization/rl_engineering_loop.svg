@@ -37,9 +37,9 @@
   <rect id="node-8" x="300" y="350" width="190" height="118" rx="15" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2"/>
   <text x="322" y="384" class="head">轨迹身份</text><text x="322" y="412" class="copy">提示 · 动作 · 行为策略</text><text x="322" y="438" class="small">奖励版本与采样配置</text>
   <rect id="node-9" x="532" y="350" width="190" height="118" rx="15" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2"/>
-  <text x="554" y="384" class="head">队列准入与预留</text><text x="554" y="412" class="copy">新鲜度 · 偏离 · 去重</text><text x="554" y="438" class="small">绑定更新批次，失败时释放</text>
+  <text x="554" y="384" class="head">队列准入与预留</text><text x="554" y="412" class="copy">偏离 · 奖励 · 复用计划</text><text x="554" y="438" class="small">绑定更新批次</text><text x="554" y="456" class="small">更新前失败按规则释放</text>
   <rect id="node-10" x="764" y="350" width="190" height="118" rx="15" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2"/>
-  <text x="786" y="384" class="head">更新与恢复状态</text><text x="786" y="412" class="copy">更新步、随机状态与游标</text><text x="786" y="438" class="small">提交后才标记轨迹已消费</text>
+  <text x="786" y="384" class="head">更新与恢复状态</text><text x="786" y="412" class="copy">更新步、随机状态与游标</text><text x="786" y="438" class="small">提交后才标记轨迹已消费</text><text x="786" y="456" class="small">提交不明先隔离、核对</text>
   <rect id="node-11" x="996" y="326" width="190" height="68" rx="14" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
   <text x="1018" y="359" class="head">激活新策略</text><text x="1018" y="383" class="small">广播版本并确认哈希</text>
   <rect id="node-12" x="996" y="424" width="190" height="68" rx="14" fill="#FEE2E2" stroke="#DC2626" stroke-width="2"/>

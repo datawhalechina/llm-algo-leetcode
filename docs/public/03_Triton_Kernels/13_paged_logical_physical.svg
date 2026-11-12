@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">逻辑位置先查页表，再与页内偏移组合</title><desc id="desc">页容量 C = 4，请求页表 T[b] = [5, 1, 7]；位置 6 对应物理页 1 的槽位 2。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:24px;font-weight:700}.body{font-size:21px}.small{font-size:18px;fill:#475569}.node{stroke:#94a3b8;stroke-width:2;rx:12}.edge{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="45" y="52" class="title" text-anchor="start">逻辑位置先查页表，再与页内偏移组合</text>
+<text x="45" y="88" class="small" text-anchor="start">页容量 C = 4，请求页表 T[b] = [5, 1, 7]；位置 6 对应物理页 1 的槽位 2。</text>
+<rect x="45" y="210" width="245" height="100" class="node" fill="#dbeafe"/>
+<text x="167.5" y="247" class="head" text-anchor="middle">逻辑位置 t = 6</text>
+<text x="167.5" y="282" class="body" text-anchor="middle">当前请求 b</text>
+<rect x="465" y="125" width="280" height="100" class="node" fill="#dbeafe"/>
+<text x="605.0" y="162" class="head" text-anchor="middle">逻辑块号 ℓ = 1</text>
+<text x="605.0" y="197" class="body" text-anchor="middle">6 整除 4</text>
+<rect x="465" y="295" width="280" height="100" class="node" fill="#dbeafe"/>
+<text x="605.0" y="332" class="head" text-anchor="middle">页内偏移 r = 2</text>
+<text x="605.0" y="367" class="body" text-anchor="middle">6 对 4 取余</text>
+<rect x="900" y="125" width="250" height="100" class="node" fill="#fef3c7"/>
+<text x="1025.0" y="162" class="head" text-anchor="middle">查表 T[b, 1]</text>
+<text x="1025.0" y="197" class="body" text-anchor="middle">得到物理页 p = 1</text>
+<rect x="1230" y="210" width="225" height="100" class="node" fill="#dcfce7"/>
+<text x="1342.5" y="247" class="head" text-anchor="middle">页 1 · 槽 2</text>
+<text x="1342.5" y="282" class="body" text-anchor="middle">读取当前头的 K/V</text>
+<path d="M290 235H375V175H465" class="edge"/>
+<path d="M290 285H375V345H465" class="edge"/>
+<path d="M745 175H900" class="edge"/>
+<path d="M1150 175H1190V235H1230" class="edge"/>
+<path d="M745 345H1342V310" class="edge"/>
+<text x="45" y="440" class="body" text-anchor="start">逻辑块号是页表列号，不是物理页号；物理页可以重新摆放，只需同步更新页表。</text>
+</svg>

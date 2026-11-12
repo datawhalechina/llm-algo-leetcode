@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+  <title id="title">Softmax 的行归约与逐列归一化</title>
+  <desc id="desc">输入行一千、一千零一、一千零二归约得到最大值一千零二。各列减去此值再取指数，指数向量一方面参与求和得到共享分母，另一方面进入最终逐列除法。</desc>
+  <defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+  <style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:24px;font-weight:700}.body{font-size:21px}.small{font-size:18px;fill:#475569}.node{stroke:#94a3b8;stroke-width:2;rx:12}.edge{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
+  <rect width="1500" height="470" fill="#f8fafc"/>
+  <text x="45" y="52" class="title">同一行先共享最大值，再共享指数和</text>
+  <text x="45" y="88" class="small">有限分数的构造示例；各行独立计算。箭头表示数据依赖，不表示物理线程或存储分配。</text>
+  <rect x="45" y="200" width="250" height="95" class="node" fill="#dbeafe"/>
+  <text x="170" y="239" class="head" text-anchor="middle">输入行 x</text><text x="170" y="274" class="body" text-anchor="middle">(1000, 1001, 1002)</text>
+  <rect x="425" y="110" width="250" height="95" class="node" fill="#fef3c7"/>
+  <text x="550" y="149" class="head" text-anchor="middle">行最大值 m</text><text x="550" y="184" class="body" text-anchor="middle">1002</text>
+  <rect x="425" y="320" width="250" height="95" class="node" fill="#dcfce7"/>
+  <text x="550" y="359" class="head" text-anchor="middle">指数 e^(xᵢ − m)</text><text x="550" y="394" class="body" text-anchor="middle">(e⁻², e⁻¹, 1)</text>
+  <rect x="850" y="110" width="250" height="95" class="node" fill="#fef3c7"/>
+  <text x="975" y="149" class="head" text-anchor="middle">行指数和 s</text><text x="975" y="184" class="body" text-anchor="middle">e⁻² + e⁻¹ + 1</text>
+  <rect x="1210" y="320" width="245" height="95" class="node" fill="#dcfce7"/>
+  <text x="1332" y="359" class="head" text-anchor="middle">概率 pᵢ</text><text x="1332" y="394" class="body" text-anchor="middle">e^(xᵢ − m) / s</text>
+  <path d="M295 225H350V157H425" class="edge"/>
+  <path d="M295 270H350V367H425" class="edge"/>
+  <path d="M550 205V320" class="edge"/><text x="565" y="267" class="small">广播 m</text>
+  <path d="M675 345H780V157H850" class="edge"/><text x="695" y="244" class="small">行内求和</text>
+  <path d="M675 390H1210" class="edge"/><text x="805" y="437" class="small">保留各列指数</text>
+  <path d="M975 205V367H1210" class="edge"/><text x="990" y="285" class="small">广播 s</text>
+</svg>

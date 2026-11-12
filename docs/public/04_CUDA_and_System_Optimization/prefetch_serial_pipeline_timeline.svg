@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">相同五批数据的串行与理想流水时间线</title>
+<desc id="desc">构造值：每批传输4毫秒、计算6毫秒，五批等长且独立。上下两组共享时间尺度。串行每批先传输再计算，50毫秒结束；双缓冲理想流水在上一批计算时传输下一批，保留首批传输与末批计算，34毫秒结束。不是GPU实测。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:27px;font-weight:700}.h{font-size:22px;font-weight:700}.s{font-size:20px}.copy{fill:#dbeafe;stroke:#2563eb;stroke-width:2}.compute{fill:#dcfce7;stroke:#16a34a;stroke-width:2}.grid{stroke:#cbd5e1;stroke-dasharray:4 6}</style>
+<rect width="1500" height="470" rx="22" fill="#f8fafc"/>
+<text x="45" y="48" class="title">传输 4 ms、计算 6 ms，五批等长任务：串行 50 ms，理想流水 34 ms</text>
+<text x="45" y="81" class="s">蓝色为传输，绿色为计算；构造时间，不计输入准备、提交与额外竞争。</text>
+<g class="grid"><path d="M270 105V400"/><path d="M490 105V400"/><path d="M710 105V400"/><path d="M930 105V400"/><path d="M1150 105V400"/><path d="M1370 105V400"/></g>
+<text x="45" y="143" class="h">串行 · 传输</text><text x="45" y="206" class="h">串行 · 计算</text>
+<g class="copy" data-layout-role="glyph-group"><rect x="270" y="115" width="88" height="45"/><rect x="490" y="115" width="88" height="45"/><rect x="710" y="115" width="88" height="45"/><rect x="930" y="115" width="88" height="45"/><rect x="1150" y="115" width="88" height="45"/></g>
+<g class="compute" data-layout-role="glyph-group"><rect x="358" y="178" width="132" height="45"/><rect x="578" y="178" width="132" height="45"/><rect x="798" y="178" width="132" height="45"/><rect x="1018" y="178" width="132" height="45"/><rect x="1238" y="178" width="132" height="45"/></g>
+<g class="s" text-anchor="middle"><text x="314" y="144">A</text><text x="534" y="144">B</text><text x="754" y="144">C</text><text x="974" y="144">D</text><text x="1194" y="144">E</text><text x="424" y="207">A</text><text x="644" y="207">B</text><text x="864" y="207">C</text><text x="1084" y="207">D</text><text x="1304" y="207">E</text></g>
+<text x="45" y="305" class="h">流水 · 传输</text><text x="45" y="368" class="h">流水 · 计算</text>
+<g class="copy" data-layout-role="glyph-group"><rect x="270" y="277" width="88" height="45"/><rect x="358" y="277" width="88" height="45"/><rect x="490" y="277" width="88" height="45"/><rect x="622" y="277" width="88" height="45"/><rect x="754" y="277" width="88" height="45"/></g>
+<g class="compute" data-layout-role="glyph-group"><rect x="358" y="340" width="132" height="45"/><rect x="490" y="340" width="132" height="45"/><rect x="622" y="340" width="132" height="45"/><rect x="754" y="340" width="132" height="45"/><rect x="886" y="340" width="132" height="45"/></g>
+<g class="s" text-anchor="middle"><text x="314" y="306">A</text><text x="402" y="306">B</text><text x="534" y="306">C</text><text x="666" y="306">D</text><text x="798" y="306">E</text><text x="424" y="369">A</text><text x="556" y="369">B</text><text x="688" y="369">C</text><text x="820" y="369">D</text><text x="952" y="369">E</text></g>
+<text x="1040" y="370" class="h">34 ms 完成</text>
+<path d="M270 425H1410" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#a)"/>
+<g class="s" text-anchor="middle"><text x="270" y="455">0</text><text x="490" y="455">10</text><text x="710" y="455">20</text><text x="930" y="455">30</text><text x="1150" y="455">40</text><text x="1370" y="455">50 ms</text></g>
+</svg>

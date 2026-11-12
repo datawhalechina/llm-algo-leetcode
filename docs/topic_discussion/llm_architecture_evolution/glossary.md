@@ -4,6 +4,8 @@
 
 | 中文主称 | 英文 / 缩写 | 本专题含义 | 容易混淆之处 | 学习入口 |
 |:---|:---|:---|:---|:---|
+| 词元 | token | 分词器按固定规则产生、供模型处理的离散单位 | 不等于字符、单词或请求中的文本长度 | [02 分词与输入表示](./02_tokenization_embedding.md) |
+| 分词器 | tokenizer | 固定词表、切分规则、特殊词元和输入模板的模型资产 | 相同文本在不同分词器下可能产生不同词元序列 | [02 分词与输入表示](./02_tokenization_embedding.md) |
 | 仅解码器主干 | Decoder-only backbone | 由因果解码器块堆叠形成的语言模型主干 | 不等于一次生成请求的解码阶段 | [01 仅解码器主干](./01_transformer_decoder.md) |
 | 主状态 | hidden state | 词元在各层之间传递并被残差更新的表示 | 不等于 KV Cache 或递推状态 | [06 Transformer 块与残差主干](./06_block_residual_path.md) |
 | 前置归一化 | Pre-Norm | 在注意力或 MLP 更新前归一化主状态 | RMSNorm 是归一化形式，Pre-Norm 是放置位置 | [03 归一化演进](./03_norm_evolution.md) |
@@ -12,6 +14,7 @@
 | 多查询注意力 | MQA | 多个 Q 注意力头共享一组 K/V 注意力头 | 不是把所有注意力头合并成一个 | [04 注意力演进](./04_attention_evolution.md) |
 | 分组查询注意力 | GQA | 多组 Q 注意力头分别共享 K/V 注意力头 | 共享粒度介于 MHA 与 MQA 之间 | [04 注意力演进](./04_attention_evolution.md) |
 | 多头潜在注意力 | MLA | 将历史 K/V 表示压缩为潜在状态，并按需要重建计算表示 | 不等于普通低比特 KV Cache 量化 | [ARCH-MLA](../../02_PyTorch_Algorithms/ARCH-MLA_Multihead_Latent_Attention.md) |
+| 键值缓存 | KV Cache | 在自回归生成中保存历史词元的 K/V 表示 | 表示格式、存储管理和访问范围是三个不同问题 | [04 注意力演进](./04_attention_evolution.md) |
 | 解耦位置分量 | decoupled positional component | 将位置相关分量与可压缩内容分量分开保存或计算 | 不等于完全移除 RoPE | [04 注意力演进](./04_attention_evolution.md) |
 | 旋转位置编码 | RoPE | 通过旋转 Q/K 成对维度表达相对位置关系 | 位置缩放改变外推条件，不自动保证长上下文质量 | [05 RoPE](./05_rope_position_encoding.md) |
 | 稠密前馈网络 | Dense FFN | 每个词元经过同一组前馈网络参数 | 与 MoE 的“总参数稀疏激活”不同 | [07 MLP / FFN](./07_mlp_ffn_evolution.md) |
@@ -30,6 +33,9 @@
 | 声明结构 | declared architecture | 论文、模型卡或配置文件声称采用的结构 | 不能证明当前模型快照已按该结构实例化 | [08 结构审计](./08_representative_models.md) |
 | 实例化模块 | materialized module | 加载模型快照后实际存在的模块、参数和权重形状 | 不保证目标后端真正执行预期计算内核 | [08 结构审计](./08_representative_models.md) |
 | 运行路径 | runtime path | 目标输入和后端下真正执行的算子、状态与回退路径 | 不能仅由配置字段推断 | [08 结构审计](./08_representative_models.md) |
+| 模型快照 | model snapshot / checkpoint | 固定版本的配置、权重和相关模型资产 | 模型家族名称不能唯一确定当前快照的结构 | [08 结构审计](./08_representative_models.md) |
+| 模型版本 | model revision | 用提交哈希或等价不可变标识固定模型快照 | `main` 是可移动引用，不能单独保证复测时资产不变 | [实验资产表](./experiment_assets.md) |
+| 执行后端 | execution backend | 实际加载模型并调度算子或计算内核的软件路径 | 语义正确不代表命中目标优化路径 | [实验资产表](./experiment_assets.md) |
 | 架构审计卡 | architecture audit card | 记录声明结构、实例化模块、运行路径、资源影响、证据等级和决策的结构化报告 | 不替代局部机制实验和真实质量基准 | [08 结构审计](./08_representative_models.md) |
 
 ## 使用规则

@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
   <title id="title">激活检查点与卸载的容量时间交换</title>
   <desc id="desc">同一保存状态压力可以通过反向重算或跨设备搬运缓解，两条路径使用不同资源并需要相同正确性门槛。</desc>
-  <style>.bg{fill:#f8fafc}.line{stroke:#64748b;stroke-width:2.5;fill:none;marker-end:url(#a)}.base{fill:#eff6ff;stroke:#60a5fa;stroke-width:2}.ckpt{fill:#fff7ed;stroke:#fb923c;stroke-width:2}.off{fill:#f5f3ff;stroke:#a78bfa;stroke-width:2}.gate{fill:#ecfdf5;stroke:#34d399;stroke-width:2}.n{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:18px;font-weight:700;fill:#0f172a}.s{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:14px;fill:#475569}.t{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:24px;font-weight:700;fill:#0f172a}</style>
-  <defs><marker id="a" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 3L0 6z" fill="#64748b"/></marker></defs>
+  <style>.bg{fill:#f8fafc}.line{stroke:#64748b;stroke-width:2.5;fill:none;marker-end:url(#a)}.base{fill:#eff6ff;stroke:#60a5fa;stroke-width:2}.ckpt{fill:#fff7ed;stroke:#fb923c;stroke-width:2}.off{fill:#f5f3ff;stroke:#a78bfa;stroke-width:2}.gate{fill:#ecfdf5;stroke:#34d399;stroke-width:2}.n{font-family:'Noto Sans CJK SC','Microsoft YaHei',sans-serif;font-size:18px;font-weight:700;fill:#0f172a}.s{font-family:'Noto Sans CJK SC','Microsoft YaHei',sans-serif;font-size:14px;fill:#475569}.t{font-family:'Noto Sans CJK SC','Microsoft YaHei',sans-serif;font-size:24px;font-weight:700;fill:#0f172a}</style>
+  <defs><marker id="a" markerWidth="9" markerHeight="9" refX="9" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 3L0 6z" fill="#64748b"/></marker></defs>
   <rect class="bg" width="1200" height="520" rx="20"/><text x="50" y="52" class="t">同一激活压力，两条不同的容量—时间交换路径</text>
-  <path class="line" d="M280 250H350V160H430"/><path class="line" d="M280 250H350V350H430"/>
+  <path class="line" d="M280 230H330V160H430"/><path class="line" d="M280 270H350V350H430"/>
   <path class="line" d="M700 160H790V250H850"/><path class="line" d="M700 350H790V270H850"/>
   <g><rect class="base" x="50" y="185" width="230" height="130" rx="16"/><text x="75" y="225" class="n">基线：保存中间激活</text><text x="75" y="255" class="s">反向直接读取</text><text x="75" y="280" class="s">GPU 驻留时间较长</text></g>
-  <g><rect class="ckpt" x="430" y="95" width="270" height="130" rx="16"/><text x="455" y="135" class="n">激活检查点</text><text x="455" y="165" class="s">只保留区段边界</text><text x="455" y="190" class="s">用反向重算换取容量</text></g>
+  <g><rect class="ckpt" x="430" y="95" width="270" height="130" rx="16"/><text x="455" y="135" class="n">激活检查点</text><text x="455" y="165" class="s">减少区段内部保存</text><text x="455" y="190" class="s">用反向重算换取容量</text></g>
   <g><rect class="off" x="430" y="285" width="270" height="130" rx="16"/><text x="455" y="325" class="n">激活卸载</text><text x="455" y="355" class="s">状态移到 CPU / 其他层级</text><text x="455" y="380" class="s">用搬运与等待换取容量</text></g>
-  <g><rect class="gate" x="850" y="185" width="300" height="130" rx="16"/><text x="875" y="225" class="n">统一采用门槛</text><text x="875" y="255" class="s">输出与梯度一致</text><text x="875" y="280" class="s">显存收益覆盖新增时间代价</text></g>
+  <g><rect class="gate" x="850" y="185" width="300" height="130" rx="16"/><text x="875" y="225" class="n">统一采用门槛</text><text x="875" y="255" class="s">输出与梯度一致</text><text x="875" y="280" class="s">峰值与时间满足目标要求</text></g>
 </svg>

@@ -7,26 +7,26 @@
       <stop offset="100%" stop-color="#eef2ff"/>
     </linearGradient>
     <style>
-      .title { font: 700 30px "Inter", "Noto Sans SC", sans-serif; fill: #111827; }
-      .sub { font: 500 16px "Inter", "Noto Sans SC", sans-serif; fill: #4b5563; }
-      .box { fill: #ffffff; stroke-width: 3; rx: 16; ry: 16; }
-      .label { font: 700 18px "Inter", "Noto Sans SC", sans-serif; fill: #111827; }
-      .small { font: 500 14px "Inter", "Noto Sans SC", sans-serif; fill: #374151; }
+      .title { font-family:"Noto Sans CJK SC",sans-serif;font-size:30px;font-weight:700; fill: #111827; }
+      .sub { font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;font-weight:500; fill: #4b5563; }
+      .box { stroke-width: 3; rx: 16; ry: 16; }
+      .label { font-family:"Noto Sans CJK SC",sans-serif;font-size:18px;font-weight:700; fill: #111827; }
+      .small { font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;font-weight:500; fill: #374151; }
       .arrow { stroke: #475569; stroke-width: 4; fill: none; marker-end: url(#arrow); }
       .res { stroke: #ef4444; stroke-width: 4; fill: none; stroke-dasharray: 8 6; marker-end: url(#arrowRed); }
       .alt { stroke: #8b5cf6; stroke-width: 3; fill: none; stroke-dasharray: 7 6; }
     </style>
-    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+    <marker id="arrow" viewBox="0 0 10 10" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
     </marker>
-    <marker id="arrowRed" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+    <marker id="arrowRed" viewBox="0 0 10 10" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444"/>
     </marker>
   </defs>
 
   <rect width="1760" height="640" fill="url(#bg)"/>
   <text x="64" y="64" class="title">现代解码器块：两条分支更新同一残差主干</text>
-  <text x="64" y="96" class="sub">注意力与 MLP 不是串行替换隐状态，而是分别产生增量并写回残差主干</text>
+  <text x="64" y="96" class="sub">注意力先产生增量，更新后的主干再进入前馈分支；图中只展开一个前置归一化块</text>
 
   <rect x="70" y="205" width="170" height="78" class="box" fill="#fff7ed" stroke="#f59e0b"/>
   <text x="155" y="238" text-anchor="middle" class="label">词元表示</text>
@@ -51,7 +51,7 @@
 
   <rect x="1190" y="180" width="230" height="130" class="box" fill="#f3e8ff" stroke="#8b5cf6"/>
   <text x="1305" y="214" text-anchor="middle" class="label">MLP / FFN</text>
-  <text x="1305" y="240" text-anchor="middle" class="small">GELU → SwiGLU</text>
+  <text x="1305" y="240" text-anchor="middle" class="small">可选普通或门控前馈</text>
   <text x="1305" y="266" text-anchor="middle" class="small">产生第二个分支增量</text>
 
   <rect x="1470" y="205" width="220" height="78" class="box" fill="#fff1f2" stroke="#e11d48"/>

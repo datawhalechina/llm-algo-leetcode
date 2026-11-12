@@ -51,7 +51,7 @@
   <g>
     <rect x="1020" y="92" width="430" height="145" class="card core"/>
     <text x="1042" y="123" class="tag">TASK 3</text>
-    <text x="1042" y="155" class="head">监督、梯度尺度与有效更新</text>
+    <text x="1042" y="155" class="head">损失归约、梯度累积与有效更新</text>
     <text x="1042" y="185" class="body">有效 Token 分母 → 累积梯度 → step / skip</text>
     <text x="1042" y="210" class="body">→ 调度时钟 → 参数位移</text>
   </g>
