@@ -1,10 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="430" viewBox="0 0 1100 430">
-  <defs><marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#486581"/></marker><style>.t{font:700 27px sans-serif;fill:#17324d}.s{font:15px sans-serif;fill:#486581}.h{font:700 18px sans-serif;fill:#17324d}.x{font:15px sans-serif;fill:#334e68}.b{stroke:#829ab1;stroke-width:2;rx:14}.l{stroke:#486581;stroke-width:3;fill:none;marker-end:url(#a)}.d{stroke:#829ab1;stroke-width:2;stroke-dasharray:7 6;fill:none;marker-end:url(#a)}</style></defs>
-  <rect width="1100" height="430" fill="#f7fafc"/><text x="550" y="40" text-anchor="middle" class="t">Autotune 与 Profiling：从候选配置到条件化结论</text><text x="550" y="68" text-anchor="middle" class="s">多 Shape 下分别测量，区分编译成本、Kernel 成本和系统收益</text>
-  <rect x="50" y="140" width="180" height="150" fill="#e6f6f5" class="b"/><text x="140" y="180" text-anchor="middle" class="h">Workload 集</text><text x="140" y="220" text-anchor="middle" class="x">shape / dtype</text><text x="140" y="250" text-anchor="middle" class="x">batch / 长度</text>
-  <path d="M230 215H275" class="l"/><rect x="275" y="140" width="180" height="150" fill="#fff4e6" class="b"/><text x="365" y="180" text-anchor="middle" class="h">候选配置</text><text x="365" y="220" text-anchor="middle" class="x">tile / warps</text><text x="365" y="250" text-anchor="middle" class="x">stages / layout</text>
-  <path d="M455 215H500" class="l"/><rect x="500" y="140" width="180" height="150" fill="#eef2ff" class="b"/><text x="590" y="180" text-anchor="middle" class="h">测量</text><text x="590" y="220" text-anchor="middle" class="x">compile / cache</text><text x="590" y="250" text-anchor="middle" class="x">kernel / trace</text>
-  <path d="M680 215H725" class="l"/><rect x="725" y="140" width="180" height="150" fill="#eef2ff" class="b"/><text x="815" y="180" text-anchor="middle" class="h">归因</text><text x="815" y="220" text-anchor="middle" class="x">访存 / 计算</text><text x="815" y="250" text-anchor="middle" class="x">同步 / 资源</text>
-  <path d="M905 215H950" class="l"/><rect x="950" y="140" width="115" height="150" fill="#f0f4f8" class="b"/><text x="1007" y="180" text-anchor="middle" class="h">决策</text><text x="1007" y="220" text-anchor="middle" class="x">accept</text><text x="1007" y="250" text-anchor="middle" class="x">tune / reject</text>
-  <path d="M815 300V350H365V290" class="d"/><text x="590" y="385" text-anchor="middle" class="s">某个 shape 的最优配置不自动推广到其他 shape，配置缓存和适用范围必须一起记录</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="430" viewBox="0 0 1100 430" role="img" aria-labelledby="title desc">
+<title id="title">同一输入：首次调用与命中缓存后的执行</title><desc id="desc">首次调用可能触发编译与配置搜索；命中已有缓存后直接运行选中的配置。示意框不按耗时比例绘制，实测分别报告启动与稳态成本。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d;font-weight:400}.title{font-size:25px;font-weight:700}.h{font-size:18px;font-weight:700}.s{font-size:16px}.note{font-size:14px;fill:#475569}.box{stroke:#829ab1;stroke-width:2;rx:12}.line{fill:none;stroke:#475569;stroke-width:2.5;marker-end:url(#a)}.dash{fill:none;stroke:#475569;stroke-width:2.5;stroke-dasharray:6 5;marker-end:url(#a)}</style>
+<rect width="1100" height="430" fill="#f8fafc"/>
+<text x="40" y="42" class="title">同一输入：首次调用与命中缓存后的执行</text>
+<text x="40" y="78" class="note">同一形状、数据类型与配置键；编译与搜索可能交错，示意框不按耗时比例绘制。</text>
+<rect x="40" y="180" width="200" height="90" fill="#e0f2fe" class="box"/><text x="140" y="212" text-anchor="middle" class="h">固定矩阵输入</text><text x="140" y="240" text-anchor="middle" class="s">保持形状与精度</text>
+<rect x="310" y="115" width="210" height="90" fill="#fef3c7" class="box"/><text x="415" y="147" text-anchor="middle" class="h">首次编译</text><text x="415" y="175" text-anchor="middle" class="s">生成候选内核</text>
+<rect x="565" y="115" width="210" height="90" fill="#fef3c7" class="box"/><text x="670" y="147" text-anchor="middle" class="h">配置搜索</text><text x="670" y="175" text-anchor="middle" class="s">试运行多个配置</text>
+<rect x="820" y="115" width="240" height="90" fill="#e0f2fe" class="box"/><text x="940" y="147" text-anchor="middle" class="h">选中配置执行</text><text x="940" y="175" text-anchor="middle" class="s">计入首次调用成本</text>
+<rect x="310" y="300" width="465" height="90" fill="#f1f5f9" class="box"/><text x="542.5" y="332" text-anchor="middle" class="h">命中编译与调优缓存</text><text x="542.5" y="360" text-anchor="middle" class="s">复用同一输入条件下已选中的配置</text>
+<rect x="820" y="300" width="240" height="90" fill="#dcfce7" class="box"/><text x="940" y="332" text-anchor="middle" class="h">选中配置执行</text><text x="940" y="360" text-anchor="middle" class="s">预热后多轮配对计时</text>
+<path d="M240 205H275V160H310" class="line"/>
+<path d="M520 160H565" class="line"/>
+<path d="M775 160H820" class="line"/>
+<path d="M240 245H275V345H310" class="line"/>
+<path d="M775 345H820" class="line"/>
 </svg>
