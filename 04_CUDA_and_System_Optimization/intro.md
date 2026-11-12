@@ -2,40 +2,53 @@
 
 ## Part Overview | Part 概览
 
-本部分位于 Part 3 之后，聚焦 CUDA C++、系统性能优化、分布式训练工程和架构选型。它承担的是把 Triton 级算子进一步下沉到 CUDA 内核与系统层的作用，也是后续硬件规划和成本视角的收口层。
+同一个张量计算，线程怎样分工、数据怎样复用，决定了内核内部做多少工作；任务怎样提交、状态放在哪里，又决定了内核之间和设备之间要等多久。本部分从这些问题进入 CUDA C++、运行时和分布式训练，再按工作负载比较实现方式与硬件成本。
 
-内容上，本部分沿着“从 kernel 到 system、从实现到选型”的路径展开：先理解 CUDA 编程基础和硬件执行方式，再过渡到系统级性能优化、分布式训练工程，最后落到架构视野与成本判断。
+从 Triton 进入时，选择当前案例缺少的控制或解释即可：需要看线程地址，进入4.1；需要协作复用与设备内搬运，进入4.2；问题在传输、提交或显存寿命，进入4.3。4.4是通信与训练状态分支，4.5承接实现与成本判断，不要求把所有组串行完成。
+
+![按内核、运行时与分布式问题选择入口](../docs/public/04_CUDA_and_System_Optimization/part04_learning_routes.svg)
 
 ## Part Asset Overview | Part 资产总览
 
-本部分分为 4 个学习组，先建立 CUDA 编程与硬件直觉，再过渡到系统优化、分布式训练和架构视野。
+先按问题选择学习组，具体小节和阅读条件见组页。
 
-| 学习组 | 职责作用 | 当前内容映射 | 每组多少节 |
-|:---|:---|:---|:---|
-| [4.1](./4_1.md) | 建立 CUDA 编程与硬件执行直觉 | [15](./15_CUDA_Custom_Kernel_Intro.ipynb)、[16](./16_CUDA_Shared_Memory_Optimization.ipynb)、[02.1](./02_1_Bank_Conflict_Deep_Dive.md)、[03](./03_Tensor_Core_MMA_Programming.md)、[04](./04_Warp_Level_Primitives.md) | 5 |
-| [4.2](./4_2.md) | 理解系统级性能优化手段 | [05](./17_PyTorch_CUDA_Streams_and_Transfer.ipynb)、[06](./18_CUDA_Graph_and_JIT_Compile.md)、[07](./07_Async_Data_Prefetch_and_Double_Buffering.md)、[07.1](./07_1_Double_Buffering_Deep_Dive.md)、[08](./08_Memory_Pool_and_VRAM_Management.md) | 5 |
-| [4.3](./4_3.md) | 形成分布式训练工程链路 | [09](./19_Distributed_Communication_Primitives.ipynb)、[09.1](./09_1_Ring_AllReduce_Deep_Dive.md)、[10](./20_DeepSpeed_Zero_Config.ipynb)、[11](./11_Communication_Computation_Overlap_Advanced_Scheduling.md)、[12](./12_Heterogeneous_Training_CPU_Offload_NVMe_Offload.md) | 5 |
-| [4.4](./4_4.md) | 建立架构视野与成本判断 | [13](./21_CUDA_vs_Triton_vs_PyTorch.ipynb)、[14](./22_TCO_and_Hardware_Selection.md)、[15](./15_Inference_Service_Architecture_Design.md)、[16](./16_Future_Hardware_Trends.md) | 4 |
+| 学习组 | 主要问题 | 与其他组的关系 |
+|:---|:---|:---|
+| [4.1 执行、访存与资源](./4_1.md) | 线程地址、Warp协作与每块资源怎样影响执行？ | 为4.2提供线程与共享内存基础；资源分析也可单独进入 |
+| [4.2 分块与数据复用](./4_2.md) | 输入子块怎样复用，搬运和计算怎样交错？ | 承接所需的4.1概念；区分CPU阶段模型与设备内实现 |
+| [4.3 运行时与显存](./4_3.md) | 跨流依赖、Graph重放与活跃／预留显存怎样判断？ | 按传输、提交或内存问题进入，不要求先完成矩阵内核 |
+| [4.4 分布式训练系统](./4_4.md) | rank间交换什么，分片与卸载新增哪些等待？ | 可从集合语义或训练状态两条路径进入 |
+| [4.5 实现与硬件选型](./4_5.md) | 完整调用和同业务量下，候选是否值得采用？ | 按当前决策回看相关组，保留不采用或继续验证的结论 |
 
 ## Learning Path | 学习路径
 
-Part 4 可以按多条入口理解：Kernel 优先入口先把 CUDA 编程与执行模型立住；系统优先、分布式优先和架构优先入口则可以从不同工程目标切入，最后都回到架构与成本收口。
-
 ### Recommended Order | 推荐顺序
 
-- Kernel 优先入口：先看 [4.1](./4_1.md) -> [4.2](./4_2.md) -> [4.3](./4_3.md) -> [4.4](./4_4.md)
-- 系统优先入口：先看 [4.2](./4_2.md) -> [4.3](./4_3.md) -> [4.4](./4_4.md)
-- 分布式优先入口：先看 [4.3](./4_3.md) -> [4.4](./4_4.md)
-- 架构优先入口：先看 [4.4](./4_4.md)，再回补 [4.1](./4_1.md) -> [4.3](./4_3.md)
+- **CUDA内核：** 从[4.1](./4_1.md)的索引、地址和协作进入[4.2](./4_2.md)的分块复用；不必先完成资源查询和所有CPU模型，才开始编写GEMM。
+- **运行时：** 按问题直接进入[4.3](./4_3.md)。需要分清线程与Stream时回看Part01；需要分析内核资源时，再进入4.1／4.2。
+- **分布式训练：** 从[4.4](./4_4.md)选择集合通信或状态分片入口。CPU字节和时间模型、Gloo结果语义与多GPU实测分别判断。
+- **实现与成本：** 从[4.5](./4_5.md)明确容量、收益与成本条件，再查相关实现；构造例子用于推导，不替代候选硬件的运行记录。
+
+沿[算子优化路线](../topic_discussion/operator_optimization/intro.md)学习时，Task2按需对照线程访存与Warp协作，Task3进入分块计算、矩阵片段与设备内拷贝，Task4用资源和驻留分析解释配置取舍，Task5处理传输、提交与内存寿命。4.4只在涉及通信或训练状态时进入，不把分布式训练当作单卡内核的必经步骤。
+
+### Prerequisites | 按需前置
+
+- 不熟悉Grid、Block、Warp与SM的区别时，先看[Part01·15 CUDA执行模型](../01_Hardware_Math_and_Systems/15_CUDA_Execution_Model.ipynb)。
+- 分不清Triton逻辑Tile与物理线程时，先看[Part01·18 Triton Block模型](../01_Hardware_Math_and_Systems/18_Triton_Block_Model.ipynb)。
+- 准备比较不同设备的可用路径时，先看[Part01·03 GPU架构与设备能力](../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.ipynb)，区分型号、计算能力和实际资源。
 
 ### Next Steps | 后续衔接
 
-- kernel 与硬件层：先看 [4.1](./4_1.md)、[4.2](./4_2.md)，把 CUDA、shared memory、调度和异步执行的底座立起来。
-- 分布式与工程层：先看 [4.3](./4_3.md)，把通信原语、ZeRO / Offload 和多机多卡工程链路串起来。
-- 架构与选型层：先看 [4.4](./4_4.md)，把 CUDA、Triton、PyTorch 的技术边界和成本判断串起来。
+- 需要同计算语义的Triton实现时，回看[Part03](../03_Triton_Kernels/intro.md)；需要并行策略时，进入[通信与并行路线](../topic_discussion/communication_parallelism/intro.md)。
+- 局部实现要回到目标组件和负载复测。可按任务进入[Part05独立综合项目](../05_Integrated_Projects_and_Decisions/intro.md)，项目自行准备输入并重新测量，不要求读取本部分所有页面的结果。
 
 ## Environment Notes | 环境说明
 
-- **标准环境：** Part 04 为 `GPU-required`，使用 NVIDIA GPU 与 CUDA。
-- **准备入口：** 4.1–4.2 使用[算子优化](../topic_discussion/operator_optimization/quickstart.md)或[性能优化 Quickstart](../topic_discussion/performance_optimization/quickstart.md)；4.3 使用[通信与并行 Quickstart](../topic_discussion/communication_parallelism/quickstart.md)；4.4 按[部署与异构 Quickstart](../topic_discussion/deployment_heterogeneous/quickstart.md)选择环境。
-- 少数页面可以阅读或局部执行，但不构成 Part 04 的标准运行路径。
+| 运行目标 | 条件与入口 | 能得到的证据 |
+|:---|:---|:---|
+| CPU推导与配置 | [基础CPU环境](../docs/guide.md#base-cpu)；03／04／08／12／14–17及05／11的CPU部分 | 索引、资源、字节、时间或字段关系，不执行目标设备路径 |
+| 原生CUDA C++ | [算子优化Quickstart](../topic_discussion/operator_optimization/quickstart.md#triton-environment)；01／02／05／06／07／09还需本机Toolkit、`nvcc`与兼容主机编译器 | 真实编译、数值或资源查询；性能按独立测量入口判断 |
+| 单GPU运行时 | [性能机制环境](../topic_discussion/performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart)或兼容的既有CUDA PyTorch环境；10／11／12／17的GPU部分 | Stream依赖、Graph重放、分配器生命周期或驻留／CPU往返对照；不要求本机CUDA C++编译 |
+| 本地集合通信 | [通信CPU环境](../topic_discussion/communication_parallelism/quickstart.md#par-cpu-quickstart)；13使用2／3进程Gloo | 每个rank的集合结果，不证明Ring算法或NCCL带宽 |
+| 多GPU性能 | 按[通信与并行Quickstart](../topic_discussion/communication_parallelism/quickstart.md)准备至少两张GPU及目标后端 | 需另行记录拓扑、通信与完成时间，CPU模型不能替代 |
+| 阅读与CPU选型练习 | [4.5](./4_5.md)无需GPU；19只用Python标准库 | 构造条件下的筛选、成本与情景判断；真实采用需匹配负载与计费范围的证据 |
