@@ -13,6 +13,7 @@ External URLs and same-page anchors are ignored.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
@@ -89,8 +90,7 @@ def main() -> int:
 
     missing: list[tuple[Path, str]] = []
 
-    for path in iter_markdown_files(args.scope):
-        text = path.read_text(encoding="utf-8")
+    for path, text in iter_link_sources(args.scope):
         for link in LINK_RE.findall(text):
             candidates = resolve_candidates(path, link)
             if candidates and not any(candidate.exists() for candidate in candidates):
@@ -105,6 +105,21 @@ def main() -> int:
 
     print(f"All Chapter 0 / 1 local links resolve to existing files for scope={args.scope}.")
     return 0
+
+
+def iter_link_sources(scope: str):
+    """Include source notebook prose, but never code cells or saved outputs."""
+    for path in iter_markdown_files(scope):
+        yield path, path.read_text(encoding="utf-8")
+    if scope == "source":
+        for directory in ("00_Prerequisites", "01_Hardware_Math_and_Systems"):
+            for path in sorted((ROOT / directory).glob("*.ipynb")):
+                notebook = json.loads(path.read_text(encoding="utf-8"))
+                yield path, "\n".join(
+                    "".join(cell.get("source", []))
+                    for cell in notebook.get("cells", [])
+                    if cell.get("cell_type") == "markdown"
+                )
 
 
 if __name__ == "__main__":

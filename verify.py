@@ -149,8 +149,11 @@ def verify_chapter0_1(*, build_docs: bool) -> None:
     # - convert source notebooks to docs mirrors
     # - check source/docs chapter links
     # - run sequential code-cell execution validation
-    run_python("tools/convert_chapter0_1.py")
     run_python("tools/check_chapter_links.py", "--scope", "source")
+    run_python("tools/convert_chapter0_1.py")
+    # Foundation pages link directly to kernel/runtime lessons. Generate their
+    # mirrors even in a clean checkout; conversion does not execute GPU code.
+    run_python("tools/convert_notebook.py", "--dir", "03_Triton_Kernels", "--dir", "04_CUDA_and_System_Optimization")
     run_python("tools/check_chapter_links.py", "--scope", "docs")
     run_python("tools/test_chapter0_1_notebooks.py")
     if build_docs:
