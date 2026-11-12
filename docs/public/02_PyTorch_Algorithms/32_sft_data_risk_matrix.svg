@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1440" height="620" viewBox="0 0 1440 620" role="img" aria-labelledby="title desc">
   <title id="title">完整样本重复与任务输入泄漏形成两路审计证据</title>
-  <desc id="desc">通过契约的训练样本分别用完整样本指纹检查训练内重复，用任务输入指纹检查与冻结评测集的任务重叠，两路证据共同决定准入或拒绝。</desc>
+  <desc id="desc">训练候选按可用内容分别构造完整样本指纹和任务输入指纹，检查训练内重复与冻结评测任务重叠；契约缺项与两路风险一并保留。</desc>
   <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker><style>.title{font-family:"Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#172033}.subtitle{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;fill:#475569}.head{font-family:"Noto Sans CJK SC",sans-serif;font-size:18px;font-weight:700;fill:#172033}.copy{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;fill:#334155}.line{fill:none;stroke:#475569;stroke-width:2.3;marker-end:url(#arrow)}</style></defs>
   <rect width="1440" height="620" fill="#F8FAFC"/><rect x="28" y="24" width="1384" height="572" rx="26" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
   <text x="62" y="70" class="title">两类指纹：训练重复不等于评测泄漏</text><text x="62" y="102" class="subtitle">完整样本回答“是否重复”，任务输入回答“是否泄漏”；同一样本可以同时命中。</text>
-  <rect x="58" y="255" width="210" height="112" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/><text x="80" y="292" class="head">已通过契约</text><text x="80" y="322" class="copy">身份、切分与监督语义</text><text x="80" y="346" class="copy">保留缺失字段记录</text>
+  <rect x="58" y="255" width="210" height="112" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/><text x="80" y="292" class="head">待审计训练样本</text><text x="80" y="322" class="copy">身份、切分与监督语义</text><text x="80" y="346" class="copy">按可用内容分别判定</text>
   <rect x="360" y="181" width="246" height="120" rx="15" fill="#FEE2E2" stroke="#DC2626" stroke-width="2"/><text x="382" y="218" class="head">训练内重复检查</text><text x="382" y="248" class="copy">完整样本指纹</text><text x="382" y="274" class="copy">指令 · 上下文 · 回答</text>
   <rect x="360" y="365" width="246" height="120" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/><text x="382" y="402" class="head">跨切分泄漏检查</text><text x="382" y="432" class="copy">任务输入指纹</text><text x="382" y="458" class="copy">指令 · 上下文</text>
   <rect x="708" y="181" width="256" height="120" rx="15" fill="#FCE7F3" stroke="#DB2777" stroke-width="2"/><text x="730" y="218" class="head">重复证据</text><text x="730" y="248" class="copy">首次出现与重复样本身份</text><text x="730" y="274" class="copy">回答相同才算完整重复</text>

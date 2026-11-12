@@ -2,7 +2,7 @@
   <title id="title">合成候选从任务蓝图进入验证准入</title>
   <desc id="desc">任务蓝图确定生成范围，生成身份绑定来源，候选经过相似度与污染检查、验证器检查后分为接纳、复核和拒绝。</desc>
   <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="9" refY="3" orient="auto" markerUnits="userSpaceOnUse">
       <path d="M0,0 L0,6 L9,3 z" fill="#64748b"/>
     </marker>
     <style>
@@ -24,7 +24,7 @@
   <rect x="330" y="115" width="210" height="155" rx="18" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
   <text x="435" y="158" text-anchor="middle" class="label">生成身份</text>
   <text x="435" y="193" text-anchor="middle" class="body">生成器 · 模板</text>
-  <text x="435" y="220" text-anchor="middle" class="body">批次 · 候选标识</text>
+  <text x="435" y="220" text-anchor="middle" class="body">蓝图 · 候选标识</text>
 
   <rect x="605" y="115" width="230" height="155" rx="18" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
   <text x="720" y="158" text-anchor="middle" class="label">数据筛查</text>
