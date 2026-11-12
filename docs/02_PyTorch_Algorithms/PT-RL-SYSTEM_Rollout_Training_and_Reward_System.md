@@ -1,6 +1,6 @@
 # PT-RL-SYSTEM. Rollout Training and Reward System | 采样、训练与奖励系统
 
-**难度：** Hard | **环境：** [CPU 机制练习](#runtime-environment) · [verl 单卡实验](#gpu-experiment) | **标签：** `后训练`, `强化学习系统`, `资源调度`
+**难度：** Hard | **环境：** [CPU 主线，GPU 可选](#runtime-environment) | **标签：** `后训练`, `强化学习系统`, `资源调度` | **目标人群：** 理解策略更新、需要检查轨迹版本与系统状态的学习者
 
 > 🚀 **云端运行环境**
 >
@@ -66,7 +66,7 @@ $$
 c_j=\frac{q_j}{m_j}, \qquad C_{pipe}=\min_j c_j, \qquad s_j=c_j-\lambda.
 $$
 
-例如以提示组为单位时，逐轨迹阶段的处理率需要除以每组候选数 $G$，学习阶段则按每次更新消费的提示组数换算。$s_j<0$ 表示该阶段的队列会持续增长。
+例如以提示组为单位时，逐轨迹阶段的处理率需要除以每组候选数 $G$，学习阶段则按每次更新消费的提示组数换算。$s_j<0$ 表示到达率超过阶段容量；$s_j=0$ 仅表示理想流量平衡，没有吸收随机波动的余量，不能证明随机队列稳定。
 
 对跨池边 $e$，令 $z_e$ 是单个对象的字节数，$m_e$ 是每个工作单位包含的对象数，$\lambda_e$ 是该边的工作单位频率，$B_e$ 是有效带宽，$o_e\in[0,1]$ 是可重叠比例。传输载荷、带宽占用和暴露占用分别为：
 
@@ -143,6 +143,8 @@ def test_capacity():
     assert result['effective_rates'] == {'rollout': 80.0, 'reward': 80.0, 'learner': 80.0}
     assert result['bottlenecks'] == ['learner', 'reward', 'rollout']
     assert result['unstable_stages'] == [] and result['queue_stable'] is True
+    balanced = pipeline_capacity({'reward': 80}, 80, {'reward': 1})
+    assert balanced['queue_margins'] == {'reward': 0.0} and balanced['queue_stable'] is True
     unstable = pipeline_capacity({'rollout': 120, 'reward': 80}, 90, {'rollout': 1, 'reward': 1})
     assert unstable['unstable_stages'] == ['reward']
     try:
@@ -189,6 +191,8 @@ def test_gate():
     """拒绝优先于调优，同一级别的触发原因全部保留。"""
     multipliers = {'rollout': 1, 'reward': 1}
     stable = pipeline_capacity({'rollout': 120, 'reward': 80}, 70, multipliers)
+    balanced = pipeline_capacity({'reward': 80}, 80, {'reward': 1})
+    assert balanced['queue_margins'] == {'reward': 0.0} and balanced['queue_stable'] is True
     unstable = pipeline_capacity({'rollout': 120, 'reward': 80}, 90, multipliers)
     low_transfer = {'fabric_exposed_seconds_per_s': {'pcie-0': 0.05}, 'critical_exposed_seconds_per_s': 0.05}
     high_transfer = {'fabric_exposed_seconds_per_s': {'pcie-0': 0.20}, 'critical_exposed_seconds_per_s': 0.20}
@@ -321,7 +325,7 @@ def evaluate_topology(capacity_report, memory_by_pool, memory_limits, transfer_r
 #### TODO 1：计算流水线容量与队列余量
 
 - **机制：** 用每工作单位对象数把各阶段处理率归一到同一工作单位，再由最慢阶段决定流水线容量。
-- **不变量：** 到达率必须与阶段容量使用同一单位；任一阶段的等价处理率低于到达率都会造成队列持续增长。
+- **不变量：** 到达率必须与阶段容量使用同一单位；任一阶段的等价处理率低于到达率都会造成积压；代码中的 queue_stable 仅表示确定性流量未超容量。
 - **测试证据：** 测试覆盖倍率归一、并列瓶颈、积压阶段和阶段映射不一致。
 
 #### TODO 2：建立跨池传输账本
@@ -342,7 +346,7 @@ def evaluate_topology(capacity_report, memory_by_pool, memory_limits, transfer_r
 
 CPU 练习换算各角色工作量并检查容量、资源池和链路；verl 单卡实验记录实际阶段事件及状态驻留。释放/保留对照保持输入和更新方式相同，关注生成引擎休眠、权重恢复、KV 恢复与学习器之间的资源交接。
 
-| 学习问题 | CPU 已确认 | GPU 需要的真实证据 |
+| 学习问题 | CPU 练习检查 | GPU 需要的真实证据 |
 |:---|:---|:---|
 | 各阶段实际花多少时间 | 按阶段倍率统一工作单位 | 生成、概率计算、更新、同步及状态切换事件；初始化单独记录 |
 | 哪些状态竞争同一资源池 | 驻留账本与显存预算检查 | 把事件与资源采样对应，区分引擎释放/保留；整卡峰值差不是 KV 大小 |
@@ -350,7 +354,7 @@ CPU 练习换算各角色工作量并检查容量、资源池和链路；verl �
 
 ### 5.1 环境与固定工作负载
 
-使用已有的 [`PT-VERL-CUDA`](../topic_discussion/post_training_optimization/quickstart.md#pt-verl-cuda-quickstart)。与轨迹生命周期页共用 v2 标签；该页完成运行后，本页只需运行 5.1、5.3 读取结果。尚未运行时，先 `dry_run` 预检，再改为 `real_gpu` 运行 5.1–5.3。本轮只确认初始参数一致的配对，不新增训练或性能搜索。 若仅提示缺少模型缓存，其他环境检查已通过，可改为 `real_gpu` 自动准备固定版本；CPU 核对通过后才开始训练。
+使用已有的 [`PT-VERL-CUDA`](../topic_discussion/post_training_optimization/quickstart.md#pt-verl-cuda-quickstart)。与轨迹生命周期页共用运行标签；显式填写历史 v2 标签后，可运行 5.1、5.3 只读已有结果。尚未运行时，先 `dry_run` 预检，再改为 `real_gpu` 运行 5.1–5.3。本轮只确认初始参数一致的配对，不新增训练或性能搜索。 若仅提示缺少模型缓存，其他环境检查已通过，可改为 `real_gpu` 自动准备固定版本；CPU 核对通过后才开始训练。
 
 | 配置 | 固定内容与操作 |
 |:---|:---|
@@ -365,8 +369,8 @@ CPU 练习换算各角色工作量并检查容量、资源池和链路；verl �
 from pathlib import Path
 from tools.project_runtime import resolve_project_root
 
-RUN_MODE = "dry_run"  # dry_run 仅预检；通过后改为 real_gpu。
-RUN_LABEL = "rtx5070ti_verl_mechanism_closure_v2"  # 两页共用；新实验换标签，已有结果只读。
+RUN_MODE = "dry_run"  # 默认值 dry_run：仅预检；显式改为 real_gpu 才允许真实执行。
+RUN_LABEL = "default"  # 默认值 default；正式复测换唯一标签，两页共用且保留旧结果。
 VERL_ROOT = Path.home() / "verl-v0.9.1"  # 已安装的 PT-VERL-CUDA，不创建新环境。
 
 PROJECT_ROOT = resolve_project_root()

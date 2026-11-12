@@ -1,6 +1,6 @@
 # PT-ROLLOUT-LIFECYCLE. Rollout and Policy Freshness | 轨迹与策略新鲜度
 
-**难度：** Hard | **环境：** [CPU 机制练习](#runtime-environment) · [verl 单卡实验](#gpu-experiment) | **标签：** `后训练`, `轨迹生命周期`, `策略新鲜度`
+**难度：** Hard | **环境：** [CPU 主线，GPU 可选](#runtime-environment) | **标签：** `后训练`, `轨迹生命周期`, `策略新鲜度` | **目标人群：** 理解策略更新、需要检查轨迹版本与系统状态的学习者
 
 > 🚀 **云端运行环境**
 >
@@ -85,9 +85,9 @@ $$
 ![策略更新与工作进程同步门槛](../public/02_PyTorch_Algorithms/pt_rollout_version_gate.svg)
 <a id="mechanism-practice"></a>
 
-## Step 4：实现轨迹准入、原子预留与策略激活
+## Step 4：实现轨迹准入、预留判断与策略激活
 
-题目用一个带修订号的内存账本复现生命周期状态、策略兼容性、竞争预留和策略激活。输入检查、失败报告与字典装配由骨架提供；学习者只补状态迁移、行为偏离、compare-and-set 预留和激活门槛。
+题目用一个带修订号的内存账本复现生命周期状态、策略兼容性、顺序调用下的竞争预留判断和策略激活。内存字典模拟修订号检查，不提供并发事务；真实原子预留需要锁或数据库比较并交换，本页测试不证明并发安全。输入检查、失败报告与字典装配由骨架提供；学习者只补状态迁移、行为偏离、compare-and-set 预留和激活门槛。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 | --- | --- | --- | --- |
@@ -121,10 +121,16 @@ def transition_lifecycle(state, event):
 
 def assess_policy_compatibility(old_log_probs, current_log_probs, action_mask, behavior_version, current_version, max_lag, max_mean_abs_log_ratio):
     """联合版本滞后与有效动作位置的行为偏离判断策略兼容性。"""
-    if max_lag < 0 or max_mean_abs_log_ratio < 0:
-        raise ValueError('兼容性阈值必须非负')
+    import math
+
+    if any(not isinstance(version, int) or isinstance(version, bool) or version < 0 for version in (behavior_version, current_version)):
+        raise ValueError('策略版本必须为非负整数')
+    if max_lag < 0 or not math.isfinite(float(max_mean_abs_log_ratio)) or max_mean_abs_log_ratio < 0:
+        raise ValueError('兼容性阈值必须为非负有限数')
     if not (len(old_log_probs) == len(current_log_probs) == len(action_mask)):
         raise ValueError('行为概率、当前概率与动作掩码必须同形')
+    if any(not isinstance(active, bool) for active in action_mask):
+        raise ValueError('动作掩码必须由布尔值组成')
     active_indices = [index for index, active in enumerate(action_mask) if active]
     if not active_indices:
         return {'accepted': False, 'reason': 'empty_action_mask', 'freshness': None, 'mean_abs_log_ratio': None}
@@ -141,7 +147,7 @@ def assess_policy_compatibility(old_log_probs, current_log_probs, action_mask, b
 
 
 def compare_and_reserve(ledger, rollout_id, expected_revision, update_id):
-    """按预期修订号竞争预留一条轨迹，并原子替换账本记录。"""
+    """在串行调用中按修订号判断预留；调用方须保证检查和写入互斥。"""
     if not update_id:
         raise ValueError('update_id 不能为空')
     current = ledger.get(rollout_id)
@@ -164,15 +170,25 @@ def compare_and_reserve(ledger, rollout_id, expected_revision, update_id):
 
 def activate_policy_version(active_pointer, artifact, worker_states, required_workers):
     """通过发布门槛时切换活动指针，失败时保持原策略。"""
-    artifact_version = artifact.get('version')
-    artifact_hash = artifact.get('artifact_hash')
+    artifact_version = artifact['version']
+    artifact_hash = artifact['artifact_hash']
+    active_version = active_pointer['version']
+    if any(not isinstance(version, int) or isinstance(version, bool) or version < 0 for version in (artifact_version, active_version)):
+        raise ValueError('策略版本必须为非负整数')
+    if not artifact_hash:
+        raise ValueError('artifact_hash 不能为空')
+    if len(required_workers) != len(set(required_workers)):
+        raise ValueError('required_workers 不能重复')
     # TODO 4：检查必需工作进程确认，并形成完整激活门槛。
     # missing_workers = ???  # 尚未报告加载结果的必需工作进程。
     # mismatched_workers = ???  # 已报告但版本或产物哈希不一致的工作进程。
-    # activated = ???  # 产物已提交，且不存在缺失或错误确认。
+    # monotonic_version = ???  # 候选版本须严格晚于当前活动版本。
+    # activated = ???  # 产物提交、版本递增且必需确认全部匹配。
     raise NotImplementedError("TODO 4：激活策略版本")
     if not artifact.get('committed', False):
         reason = 'artifact_not_committed'
+    elif not monotonic_version:
+        reason = 'non_monotonic_version'
     elif missing_workers:
         reason = 'missing_worker_ack'
     elif mismatched_workers:
@@ -402,13 +418,13 @@ def activate_policy_version(active_pointer, artifact, worker_states, required_wo
 #### TODO 3：竞争预留轨迹
 
 - **机制：** 调用方携带读取时看到的修订号，只有修订号和已奖励状态同时匹配时才能写入预留。
-- **不变量：** 两个更新基于同一旧修订号竞争时只能有一个成功；同一更新重试不重复递增修订号。
+- **不变量：** 串行模拟中，两个更新基于同一旧修订号申请时只有一个成功；同一更新重试不重复递增修订号。
 - **测试证据：** 测试核对首次预留、竞争冲突、幂等重试和终态拒绝。
 
 #### TODO 4：激活策略产物
 
-- **机制：** 新策略产物先完成提交，再由所有必需工作进程确认相同版本与不可变哈希，最后原子切换活动指针。
-- **不变量：** 未提交产物、缺失确认或版本—哈希不一致时都保持原活动策略。
+- **机制：** 新策略产物先完成提交，再由所有必需工作进程确认相同版本与不可变哈希，最后返回新的活动指针；跨进程发布仍需协调器提供原子提交。
+- **不变量：** 未提交产物、缺失确认或版本—哈希不一致或版本未递增时都保持原活动策略。
 - **测试证据：** 测试覆盖成功激活、未提交产物、缺失确认、错误哈希和旧指针保持。
 
 <a id="gpu-experiment"></a>
@@ -417,7 +433,7 @@ def activate_policy_version(active_pointer, artifact, worker_states, required_wo
 
 CPU 练习检查轨迹状态、版本判断、竞争预留和激活条件；verl 单卡实验观察真实动作概率、参数变化和权重同步。受控监督更新用于产生一个可追溯的新策略版本，是否提高奖励或触发拒绝不作为本节通过条件。
 
-| 学习问题 | CPU 已确认 | GPU 需要的真实证据 |
+| 学习问题 | CPU 练习检查 | GPU 需要的真实证据 |
 |:---|:---|:---|
 | 同一轨迹怎样绑定策略 | 身份、版本差和动作范围检查 | 固定提示、回复 Token、动作掩码与行为策略身份，先核对同版本概率 |
 | 策略变化后怎样判断旧轨迹 | 平均绝对对数概率差与准入阈值 | 在 verl 内确认实际参数变化，重评完全相同的轨迹；不以非零 GRPO 优势替代参数证据 |
@@ -441,8 +457,8 @@ CPU 练习检查轨迹状态、版本判断、竞争预留和激活条件；verl
 from pathlib import Path
 from tools.project_runtime import resolve_project_root
 
-RUN_MODE = "real_gpu"  # dry_run 仅预检；通过后改为 real_gpu。
-RUN_LABEL = "rtx5070ti_verl_mechanism_closure_v2"  # 两页共用；新实验换标签，已有结果只读。
+RUN_MODE = "dry_run"  # 默认值 dry_run：仅预检；显式改为 real_gpu 才允许真实执行。
+RUN_LABEL = "default"  # 默认值 default；正式复测换唯一标签，两页共用且保留旧结果。
 VERL_ROOT = Path.home() / "verl-v0.9.1"  # 已安装的 PT-VERL-CUDA，不创建新环境。
 
 PROJECT_ROOT = resolve_project_root()
