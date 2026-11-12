@@ -7,6 +7,6 @@ dependencies:
   - pip
   - pip:
       # Run `conda env create -f cnb/environment-gpu.yml` from repository root.
-      - -r requirements/base.txt
-      - -r requirements/dev.txt
-      - -r requirements/gpu.txt
+      - -r ../requirements/base.txt
+      - -r ../requirements/dev.txt
+      - -r ../requirements/gpu.txt
