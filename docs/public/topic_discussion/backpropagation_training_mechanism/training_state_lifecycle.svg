@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
   <title id="title">训练状态生命周期与峰值重叠</title>
-  <desc id="desc">参数、激活、反向保存张量、梯度、优化器状态和工作区在训练阶段中的驻留区间决定峰值。</desc>
+  <desc id="desc">已初始化优化器状态的构造生命周期示意，区间不按实际耗时比例。激活与反向保存张量按独立存储去重，峰值还可能出现在更新工作区阶段，不指定固定峰值时刻。</desc>
   <style>.bg{fill:#f8fafc}.axis{stroke:#64748b;stroke-width:2}.tick{stroke:#94a3b8;stroke-width:1.5}.bar1{fill:#dbeafe;stroke:#60a5fa}.bar2{fill:#ffedd5;stroke:#fb923c}.bar3{fill:#d1fae5;stroke:#34d399}.n{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:17px;font-weight:700;fill:#0f172a}.s{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:14px;fill:#475569}.t{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:24px;font-weight:700;fill:#0f172a}</style>
   <rect class="bg" width="1200" height="520" rx="20"/><text x="50" y="52" class="t">峰值来自同一阶段仍在驻留的状态重叠</text>
   <line class="axis" x1="260" y1="105" x2="1130" y2="105"/>
@@ -11,4 +11,5 @@
   <rect class="bar2" x="320" y="250" width="570" height="38" rx="10"/><rect class="bar3" x="650" y="310" width="480" height="38" rx="10"/>
   <rect class="bar2" x="330" y="370" width="130" height="38" rx="10"/><rect class="bar2" x="650" y="370" width="100" height="38" rx="10"/><rect class="bar2" x="1020" y="370" width="110" height="38" rx="10"/>
   <rect x="620" y="435" width="300" height="55" rx="14" fill="#fee2e2" stroke="#f87171" stroke-width="2"/><text x="645" y="468" class="n">重点检查：激活与梯度重叠阶段</text>
+  <text x="50" y="510" class="s">示意非比例；假设优化器状态已初始化；按独立存储计数，更新工作区也可能形成峰值。</text>
 </svg>
