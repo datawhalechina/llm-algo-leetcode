@@ -2,46 +2,37 @@
 
 ## Part Overview | Part 概览
 
-本部分位于 Part 2 之后、Part 4 之前，重点是把第二部分的算法实现进一步落到 Triton 层，形成从 `PyTorch -> Triton` 的算子实现过渡：先理解算子行为，再把 kernel、融合、调优和 profiling 真正落到 GPU 上。它承担的是“从框架级实现走向高性能 kernel”的中间层作用，也是后续 CUDA 系统优化的重要前导。
-
-Part 3 更像一张 Triton 实战地图：基础 kernel、设计模式、Attention 优化、推理优化和项目收口可以从不同入口进入，最后都汇到可运行、可调优的 kernel 实战。
+本部分承接 Part 02 的 PyTorch 算子与模型机制，聚焦 Triton 程序映射、kernel 实现、正确性和微基准；Part 04 再展开 CUDA C++、Runtime 与系统执行机制。这是学习内容的层次衔接，不表示每个工程优化都必须按 PyTorch、Triton、CUDA 依次重写。
 
 ## Part Asset Overview | Part 资产总览
 
-本章内容按 5 个主题组组织，后续页面也沿该结构继续扩展。
+本章按五组组织：先学习 Triton 程序与数据布局，再建立常用 kernel 和调优能力；之后按目标选择 Attention 或推理 kernel 分支，最后进入调试、框架集成与 Block 验证。各组的具体页面和组内顺序由对应组页维护。
 
-> 导航说明：先看总览，再进入具体组页。
-> 组页负责组内阅读顺序与资产收口，不需要一次性读完全部页面。
-> Part 3 既是 Triton 算子开发目录，也是 Part 2 之后、Part 4 之前的实现衔接层。
-
-| 学习组 | 职责作用 | 当前内容映射 | 每组多少节 |
-|:---|:---|:---|:---|
-| [3.1](./3_1.md) | 建立 Triton 编程模型和基础 kernel 直觉 | [01](./01_Triton_Vector_Addition.ipynb)、[02](./02_Triton_Fused_SwiGLU.ipynb)、[03](./03_Triton_Fused_RMSNorm.ipynb)、[04](./04_Triton_GEMM_Tutorial.ipynb)、[05](./05_Triton_Autotune_and_Profiling.ipynb) | 5 |
-| [3.2](./3_2.md) | 过渡到 Softmax 和设计模式 | [06](./06_Triton_Fused_Softmax.ipynb)、[06.5](./06_5_Triton_Design_Patterns.md) | 2 |
-| [3.3](./3_3.md) | 推进 Attention 路径上的算子优化 | [07](./07_Triton_Fused_RoPE.ipynb)、[08](./08_Triton_Flash_Attention.ipynb)、[09](./09_Triton_PagedAttention.ipynb) | 3 |
-| [3.4](./3_4.md) | 补齐推理侧的压缩和多 LoRA | [10](./10_Triton_Quantization.ipynb)、[11](./11_Triton_Multi_LoRA.ipynb) | 2 |
-| [3.5](./3_5.md) | 收口调试、内存模型与综合项目 | [12](./12_Triton_Memory_Model_and_Debug.ipynb)、[13](./13_Triton_Llama3_Block_Project.ipynb)、[14](./14_Triton_Best_Practices_and_FAQ.md) | 3 |
+| 学习组 | 职责作用 | 与其他组的关系 |
+|:---|:---|:---|
+| [3.1](./3_1.md) | 建立 Triton 程序、Block 与数据布局的映射 | 3.2 及后续 kernel 分支的共同基础 |
+| [3.2](./3_2.md) | 用融合、归约、矩阵计算、任务分配和调优建立常用 kernel 能力 | 3.3、3.4 的实现基础；持久化是 GEMM 分支，自动调优是可复用的方法，不是读完所有算子后的终点 |
+| [3.3](./3_3.md) | 实现 Attention、变长序列与 KV 寻址相关 kernel | 面向 Attention 路径的专题分支 |
+| [3.4](./3_4.md) | 实现推理侧权重、适配器与 KV 状态计算路径 | 面向推理场景的专题分支，与 3.3 按目标选学 |
+| [3.5](./3_5.md) | 调试 kernel，核对编译产物与实际执行，再按需接入 PyTorch 或模型组件 | 编译与集成验证出口；各页独立运行，不要求串行完成 |
 
 ## Learning Path | 学习路径
 
-Part 3 可以按多条入口理解：基础入门入口先把 Triton 编程模型和基础 kernel 立住；Attention 优先、推理优先和项目优先入口则可以从不同工程目标切入，最后都回到项目篇。
+先用3.1建立索引、掩码与步长基础，再从3.2选择当前目标需要的计算结构。融合、行归约、矩阵乘法不是后续每条路线都必须完成的前置；持久化、反向与调优也按问题进入。3.3、3.4分别展开Attention与推理侧内核，3.5处理调试、编译和集成。
 
 ### Recommended Order | 推荐顺序
 
-- 基础入门入口：先看 [3.1](./3_1.md) -> [3.2](./3_2.md)
-- Attention 优先入口：先看 [3.1](./3_1.md) -> [3.2](./3_2.md) -> [3.3](./3_3.md) -> [3.5](./3_5.md)
-- 推理优先入口：先看 [3.1](./3_1.md) -> [3.2](./3_2.md) -> [3.4](./3_4.md) -> [3.5](./3_5.md)
-- 项目优先入口：先看 [3.5](./3_5.md)，再回补 [3.1](./3_1.md)、[3.2](./3_2.md)、[3.3](./3_3.md)、[3.4](./3_4.md)
-- 系统学习：按 [3.1](./3_1.md) -> [3.2](./3_2.md) -> [3.3](./3_3.md) -> [3.4](./3_4.md) -> [3.5](./3_5.md) 顺序推进
+- 起步：完成[3.1](./3_1.md)，再从[3.2](./3_2.md)选择逐元素融合、行归约或矩阵分块案例；想系统练习常用算子时，可按组页的基本案例顺序展开。
+- Attention方向：已有行归约与矩阵分块基础后，进入[3.3](./3_3.md)；需要反向、持久化或调优时再回到3.2相应分支，不把它们当作进入Attention的必修页。
+- 推理kernel方向：按[3.4](./3_4.md)选择权重、适配器或KV路径，再回补所需的矩阵累加、归约与量化表示。
+- 调试与集成：实现基础kernel后，即可按问题进入[3.5](./3_5.md)的调试、编译或PyTorch集成；组件练习已提供共享Attention实现，可以直接核对布局和调用，再按需回看3.3的算法。
+- 完整学习：先完成基础与基本算子，再选择条件扩展、Attention和推理内核，最后做组件复测；这是推荐阅读顺序，不是文件执行依赖。
 
 ### Next Steps | 后续衔接
 
-- 基础认知层：先看 [3.1](./3_1.md)、[3.2](./3_2.md)，把 Triton 编程模型、Softmax 和设计模式先立住，再按需要进入 [3.3](./3_3.md)。
-- Attention 与推理层：先看 [3.3](./3_3.md)、[3.4](./3_4.md)，把 Attention 优化、量化和多 LoRA 的实现链路理顺，主要衔接后续项目篇。
-- 项目收口：最后看 [3.5](./3_5.md)，把调试、内存模型和综合项目串起来，并为 Part 4 的系统优化提供实现背景。
+- 进入 Part 04 前，按需要回看 [3.2](./3_2.md) 的 kernel 与调优基础，以及 [3.5](./3_5.md) 中与组件集成相关的内容；Part 04 的主目标是 CUDA/Runtime/系统机制，不是 Triton 课程的强制下一步。
 
 ## Environment Notes | 环境说明
 
-- **标准环境：** Part 03 为 `GPU-required`，使用 NVIDIA GPU、CUDA 与 Triton。
-- **准备入口：** 按[算子优化实验 Quickstart](../topic_discussion/operator_optimization/quickstart.md)创建和预检环境。
-- 少数 Notebook 可以阅读或局部使用 CPU fallback，但不构成 Part 03 的标准运行路径。
+- **真实 kernel 执行：** 需要 NVIDIA GPU、CUDA 可用的 PyTorch 与 Triton；创建和预检见[算子优化实验 Quickstart](../topic_discussion/operator_optimization/quickstart.md)。
+- **CPU 的用途：** 可阅读机制、运行不触发 Triton 的辅助逻辑；不能据此判定 GPU kernel 正确或更快。GPU 不可用时，目标 kernel 测试必须明确标记未运行。
