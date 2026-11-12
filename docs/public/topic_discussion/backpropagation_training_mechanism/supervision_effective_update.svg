@@ -1,14 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
-  <title id="title">监督范围、损失归约与有效更新</title>
+  <title id="title">目标位置、损失归约与有效更新</title>
   <desc id="desc">预训练和监督微调采用不同监督范围，但都要经过统一损失分母、梯度累积、尺度还原和有效更新。</desc>
-  <style>.bg{fill:#f8fafc}.line{stroke:#64748b;stroke-width:2.5;fill:none;marker-end:url(#a)}.box{fill:#eff6ff;stroke:#60a5fa;stroke-width:2}.branch{fill:#fff7ed;stroke:#fb923c;stroke-width:2}.gate{fill:#ecfdf5;stroke:#34d399;stroke-width:2}.n{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:18px;font-weight:700;fill:#0f172a}.s{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:14px;fill:#475569}.t{font-family:Arial,'Microsoft YaHei',sans-serif;font-size:24px;font-weight:700;fill:#0f172a}</style>
-  <defs><marker id="a" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 3L0 6z" fill="#64748b"/></marker></defs>
-  <rect class="bg" width="1200" height="500" rx="20"/><text x="50" y="52" class="t">监督范围不同，有效更新必须使用同一统计口径</text>
+  <style>.bg{fill:#f8fafc}.line{stroke:#64748b;stroke-width:2.5;fill:none;marker-end:url(#a)}.box{fill:#eff6ff;stroke:#60a5fa;stroke-width:2}.branch{fill:#fff7ed;stroke:#fb923c;stroke-width:2}.gate{fill:#ecfdf5;stroke:#34d399;stroke-width:2}.n{font-family:'Noto Sans CJK SC','Microsoft YaHei',sans-serif;font-size:18px;font-weight:700;fill:#0f172a}.s{font-family:'Noto Sans CJK SC','Microsoft YaHei',sans-serif;font-size:14px;fill:#475569}.t{font-family:'Noto Sans CJK SC','Microsoft YaHei',sans-serif;font-size:24px;font-weight:700;fill:#0f172a}</style>
+  <defs><marker id="a" markerWidth="9" markerHeight="9" refX="9" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 3L0 6z" fill="#64748b"/></marker></defs>
+  <rect class="bg" width="1200" height="500" rx="20"/><text x="50" y="52" class="t">目标位置不同，累计损失需要使用统一分母</text>
   <path class="line" d="M250 150H340V235H430"/><path class="line" d="M250 335H340V255H430"/>
   <path class="line" d="M650 245H710"/><path class="line" d="M910 245H970"/>
-  <g><rect class="branch" x="50" y="95" width="200" height="110" rx="16"/><text x="75" y="135" class="n">预训练监督</text><text x="75" y="165" class="s">全序列有效 Token</text><text x="75" y="188" class="s">预测下一个 Token</text></g>
-  <g><rect class="branch" x="50" y="280" width="200" height="110" rx="16"/><text x="75" y="320" class="n">SFT 监督</text><text x="75" y="350" class="s">响应区间与 EOS</text><text x="75" y="373" class="s">Prompt / Padding 屏蔽</text></g>
+  <g><rect class="branch" x="50" y="95" width="200" height="110" rx="16"/><text x="75" y="135" class="n">预训练目标</text><text x="75" y="165" class="s">全序列有效 Token</text><text x="75" y="188" class="s">预测下一个 Token</text></g>
+  <g><rect class="branch" x="50" y="280" width="200" height="110" rx="16"/><text x="75" y="320" class="n">响应区间 SFT</text><text x="75" y="350" class="s">响应区间与 EOS</text><text x="75" y="373" class="s">Prompt / Padding 屏蔽</text></g>
   <g><rect class="box" x="430" y="180" width="220" height="130" rx="16"/><text x="455" y="220" class="n">损失归约</text><text x="455" y="250" class="s">累计损失分子</text><text x="455" y="274" class="s">统一有效 Token 分母</text></g>
-  <g><rect class="box" x="710" y="180" width="200" height="130" rx="16"/><text x="735" y="220" class="n">梯度聚合</text><text x="735" y="250" class="s">微批次累积</text><text x="735" y="274" class="s">还原尺度与裁剪</text></g>
-  <g><rect class="gate" x="970" y="180" width="180" height="130" rx="16"/><text x="995" y="220" class="n">有效更新</text><text x="995" y="250" class="s">有限值通过</text><text x="995" y="274" class="s">Optimizer / Scheduler</text></g>
+  <g><rect class="box" x="710" y="180" width="200" height="130" rx="16"/><text x="735" y="220" class="n">梯度累积与检查</text><text x="735" y="250" class="s">微批次贡献相加</text><text x="735" y="274" class="s">按需还原尺度并检查</text></g>
+  <g><rect class="gate" x="970" y="180" width="180" height="130" rx="16"/><text x="995" y="220" class="n">裁剪与参数更新</text><text x="995" y="250" class="s">检查通过后再更新</text><text x="995" y="274" class="s">成功更新计数另记</text></g>
 </svg>
