@@ -105,7 +105,7 @@ $$
 GRPO 不使用状态价值模型，而是在同一提示的候选组 $g$ 内形成回答级优势。这里 $R_i$ 是第 $i$ 个回答的奖励，$\mu_g$ 与 $\sigma_g$ 是组内均值和标准差，$\varepsilon>0$ 防止近零方差导致除零：
 
 $$
-A_i^{GRPO}=\frac{R_i-\mu_g}{\max(\sigma_g,\varepsilon)}.
+A_i^{GRPO}=\begin{cases}(R_i-\mu_g)/(\sigma_g+\varepsilon),&\sigma_g>\varepsilon,\\0,&\sigma_g\le\varepsilon.\end{cases}
 $$
 
 GAE 用于说明 PPO 的完整机制，但 Step 4 只实现 $G_t-V(s_t)$，以便把回报递推、价值基线和组内基线分别核对。组内标准差还存在统计口径差异：总体标准差直接除以候选数，样本标准差使用贝塞尔修正；两者不改变中心化方向，但会改变有限候选组的缩放幅度，因此实验与复现必须记录所用口径。
@@ -133,6 +133,8 @@ import torch
 
 
 ```python
+import math
+
 # 题目区：沿着奖励 → 回报 → PPO / GRPO 优势的顺序补全训练信号。
 def build_token_rewards(task_reward, actor_log_probs, reference_log_probs, beta_kl, terminal_index=-1, action_mask=None):
     """构造 token 级奖励序列。
@@ -145,9 +147,23 @@ def build_token_rewards(task_reward, actor_log_probs, reference_log_probs, beta_
     """
     if actor_log_probs.ndim != 1 or actor_log_probs.shape != reference_log_probs.shape:
         raise ValueError("actor/reference log probabilities must be same-shape 1D tensors")
-    if beta_kl < 0:
-        raise ValueError("beta_kl must be non-negative")
-
+    if not torch.isfinite(actor_log_probs).all() or not torch.isfinite(reference_log_probs).all():
+        raise ValueError("actor/reference 对数概率必须为有限数")
+    task_reward_tensor = torch.as_tensor(task_reward, dtype=actor_log_probs.dtype, device=actor_log_probs.device)
+    if task_reward_tensor.numel() != 1 or not torch.isfinite(task_reward_tensor):
+        raise ValueError("task_reward 必须是有限标量")
+    beta_kl = float(beta_kl)
+    if not math.isfinite(beta_kl) or beta_kl < 0:
+        raise ValueError("beta_kl 必须是非负有限数")
+    if action_mask is None:
+        action_mask = torch.ones_like(actor_log_probs, dtype=torch.bool)
+    if action_mask.shape != actor_log_probs.shape or action_mask.dtype != torch.bool:
+        raise ValueError("action_mask 必须是与对数概率同形的布尔张量")
+    action_mask = action_mask.to(device=actor_log_probs.device)
+    if not -actor_log_probs.numel() <= terminal_index < actor_log_probs.numel():
+        raise IndexError("terminal_index 超出 Token 序列范围")
+    if not bool(action_mask[terminal_index]):
+        raise ValueError("terminal_index 必须指向有效动作 Token")
     # ==========================================
     # TODO 1：仅在有效动作上组合采样对数概率比约束与终局任务奖励。
     # sampled_log_ratio = ???  # 当前策略与参考策略在已采样 Token 上的对数概率差。
@@ -161,9 +177,9 @@ def discounted_returns(token_rewards, gamma=1.0):
     """从序列末端向前计算每个位置的折扣累计奖励。"""
     if token_rewards.ndim != 1:
         raise ValueError("token_rewards must be a 1D tensor")
-    if not 0.0 <= gamma <= 1.0:
-        raise ValueError("gamma must be in [0, 1]")
-
+    gamma = float(gamma)
+    if not torch.isfinite(token_rewards).all() or not math.isfinite(gamma) or not 0.0 <= gamma <= 1.0:
+        raise ValueError("token_rewards 必须有限且 gamma 必须位于 [0, 1]")
     # ==========================================
     # TODO 2：按 G_t = r_t + gamma * G_{t+1} 反向递推。
     # running_return = ???  # 从序列末端开始的累计回报。
@@ -177,7 +193,11 @@ def compute_advantages(returns, values, normalize=False, eps=1e-8):
     """计算 return 相对 value 基线的优势，可选做零均值标准化。"""
     if returns.shape != values.shape:
         raise ValueError("returns and values must have the same shape")
-
+    eps = float(eps)
+    if not torch.isfinite(returns).all() or not torch.isfinite(values).all():
+        raise ValueError("returns 与 values 必须为有限数")
+    if not math.isfinite(eps) or eps <= 0:
+        raise ValueError("eps 必须是正有限数")
     # ==========================================
     # TODO 3：计算回报相对价值基线的优势。
     # advantages = ???  # 逐位置回报减价值估计。
@@ -189,6 +209,13 @@ def compute_advantages(returns, values, normalize=False, eps=1e-8):
 
 def group_relative_advantages(group_rewards, eps=1e-8, correction=0):
     """按指定标准差修正量计算同提示候选组的回答级相对优势。"""
+    if group_rewards.ndim != 1 or group_rewards.numel() == 0:
+        raise ValueError("group_rewards 必须是非空一维张量")
+    eps = float(eps)
+    if not torch.isfinite(group_rewards).all() or not math.isfinite(eps) or eps <= 0:
+        raise ValueError("组奖励必须有限且 eps 必须为正有限数")
+    if correction not in (0, 1) or group_rewards.numel() <= correction:
+        raise ValueError("标准差修正量必须为 0 或 1，且小于候选数量")
     # ==========================================
     # TODO 4：以组均值为基线，并在方差有效时按组标准差缩放。
     # centered = ???  # 每个回答奖励减去组均值。
