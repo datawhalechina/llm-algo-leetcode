@@ -21,7 +21,7 @@
   <circle id="sum" cx="875" cy="565" r="27" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/><text x="866" y="573" class="h">+</text>
   <rect id="output" x="970" y="535" width="150" height="60" rx="12" fill="#DCFCE7" stroke="#16A34A"/><text x="1018" y="571" class="h">输出 y</text>
   <path data-source="input" data-target="base" d="M180 565H225V506H280" class="l"/>
-  <path data-source="input" data-target="lora-a" d="M225 565V625H280" class="l"/>
+  <path data-source="input" data-target="lora-a" d="M130 595V625H280" class="l"/>
   <path data-source="base" data-target="sum" d="M520 506H875V538" class="l"/>
   <path data-source="lora-a" data-target="lora-b" d="M400 625H460" class="l"/>
   <path data-source="lora-b" data-target="scale" d="M590 625H650" class="l"/>

@@ -15,6 +15,8 @@
 
 ![SFT 从固定输入、有效更新和独立验证进入恢复产物与推理交付](../../public/topic_discussion/post_training_optimization/sft_artifact_delivery.svg)
 
+<a id="sft-upgrade-conditions"></a>
+
 ## SFT 何时完成，何时升级
 
 SFT 通过示范学习任务接口、输出格式、指令遵循与答案内容。如果同类错误仍能通过更好的示范和覆盖得到改善，继续 SFT 往往比立即增加奖励系统更直接。已有指令模型若已满足这些要求，可先复测，再决定直接采用还是作为偏好或奖励优化的起点。

@@ -14,26 +14,26 @@
   <text x="60" y="369" class="label">进入损失？</text>
   <g class="token">
     <rect x="235" y="125" width="130" height="60" rx="12" fill="#e0f2fe" stroke="#0284c7"/><text x="300" y="163">p₁</text>
-    <rect x="380" y="125" width="130" height="60" rx="12" fill="#e0f2fe" stroke="#0284c7"/><text x="445" y="163">p₂</text>
-    <rect x="525" y="125" width="130" height="60" rx="12" class="keep"/><text x="590" y="163">a₁</text>
-    <rect x="670" y="125" width="130" height="60" rx="12" class="keep"/><text x="735" y="163">a₂</text>
+    <rect id="input-p2" x="380" y="125" width="130" height="60" rx="12" fill="#e0f2fe" stroke="#0284c7"/><text x="445" y="163">p₂</text>
+    <rect id="input-a1" x="525" y="125" width="130" height="60" rx="12" class="keep"/><text x="590" y="163">a₁</text>
+    <rect id="input-a2" x="670" y="125" width="130" height="60" rx="12" class="keep"/><text x="735" y="163">a₂</text>
     <rect x="815" y="125" width="130" height="60" rx="12" class="keep"/><text x="880" y="163">EOS</text>
     <rect x="960" y="125" width="130" height="60" rx="12" class="ignore"/><text x="1025" y="163">PAD</text>
     <rect x="235" y="230" width="130" height="60" rx="12" class="ignore"/><text x="300" y="268">p₂</text>
-    <rect x="380" y="230" width="130" height="60" rx="12" class="keep"/><text x="445" y="268">a₁</text>
-    <rect x="525" y="230" width="130" height="60" rx="12" class="keep"/><text x="590" y="268">a₂</text>
-    <rect x="670" y="230" width="130" height="60" rx="12" class="keep"/><text x="735" y="268">EOS</text>
+    <rect id="target-a1" x="380" y="230" width="130" height="60" rx="12" class="keep"/><text x="445" y="268">a₁</text>
+    <rect id="target-a2" x="525" y="230" width="130" height="60" rx="12" class="keep"/><text x="590" y="268">a₂</text>
+    <rect id="target-eos" x="670" y="230" width="130" height="60" rx="12" class="keep"/><text x="735" y="268">EOS</text>
     <rect x="815" y="230" width="130" height="60" rx="12" class="ignore"/><text x="880" y="268">PAD</text>
     <rect x="960" y="230" width="130" height="60" rx="12" class="ignore"/><text x="1025" y="268">无后继</text>
     <rect x="235" y="335" width="130" height="60" rx="12" class="ignore"/><text x="300" y="373">否</text>
-    <rect x="380" y="335" width="130" height="60" rx="12" class="keep"/><text x="445" y="373">是 · 1</text>
-    <rect x="525" y="335" width="130" height="60" rx="12" class="keep"/><text x="590" y="373">是 · 1</text>
-    <rect x="670" y="335" width="130" height="60" rx="12" class="keep"/><text x="735" y="373">是 · 1</text>
+    <rect id="loss-a1" x="380" y="335" width="130" height="60" rx="12" class="keep"/><text x="445" y="373">是 · 1</text>
+    <rect id="loss-a2" x="525" y="335" width="130" height="60" rx="12" class="keep"/><text x="590" y="373">是 · 1</text>
+    <rect id="loss-eos" x="670" y="335" width="130" height="60" rx="12" class="keep"/><text x="735" y="373">是 · 1</text>
     <rect x="815" y="335" width="130" height="60" rx="12" class="ignore"/><text x="880" y="373">否</text>
     <rect x="960" y="335" width="130" height="60" rx="12" class="ignore"/><text x="1025" y="373">否</text>
   </g>
-  <path d="M445 185V230" class="flow"/><path d="M590 185V230" class="flow"/><path d="M735 185V230" class="flow"/>
-  <path d="M445 290V335" class="flow"/><path d="M590 290V335" class="flow"/><path d="M735 290V335" class="flow"/>
+  <path d="M445 185V230" data-source="input-p2" data-target="target-a1" class="flow"/><path d="M590 185V230" data-source="input-a1" data-target="target-a2" class="flow"/><path d="M735 185V230" data-source="input-a2" data-target="target-eos" class="flow"/>
+  <path d="M445 290V335" data-source="target-a1" data-target="loss-a1" class="flow"/><path d="M590 290V335" data-source="target-a2" data-target="loss-a2" class="flow"/><path d="M735 290V335" data-source="target-eos" data-target="loss-eos" class="flow"/>
   <rect x="235" y="435" width="855" height="84" rx="14" fill="#eff6ff" stroke="#93c5fd"/>
   <text x="257" y="467" class="label">有效目标数 = 3：a₁、a₂、EOS</text>
   <text x="257" y="496" class="sub">p₂ 的输出预测首个回答词元 a₁；提示参与上下文，即使提示目标不计入损失。</text>

@@ -4,10 +4,6 @@
 
 后训练利用监督数据、偏好反馈、可验证奖励或教师反馈改变模型行为。学习者从已有失败和数据条件出发，选择监督、偏好、在线奖励或独立学生训练，并用独立评测检查能力收益、资源代价和回滚条件。
 
-![预训练、监督微调、偏好优化、在线奖励优化与评测的关系](../../public/topic_discussion/post_training_optimization/training_lifecycle_context.svg)
-
-![后训练优化对象与最小干预路径](../../public/topic_discussion/post_training_optimization/post_training_optimization_targets.svg)
-
 ## 学习路线
 
 首次学习按下表选择分支；连续理解数据、更新与评测的关系时阅读[后训练问题链](./walkthrough.md)，排查已有结果时使用[判断手册](./casebook.md)。术语和公式分别查询[术语表](./glossary.md)与[公式索引](./formula_reference.md)。
@@ -16,9 +12,9 @@
 
 | Task / 主题 | 本阶段要回答的问题 | 学习入口与验证出口 | 学习顺序 | 主要正文入口 |
 |:---|:---|:---|:---|:---|
-| Task0 · 目标诊断与阶段准入 | 现有失败需要哪一种干预？ | 核心：[问题链中的阶段选择](./walkthrough.md#一、先判断是否需要改变模型参数) → [Part 02 · 33 后训练准入](../../02_PyTorch_Algorithms/33_Fine_Tuning_Readiness.md) | 复测失败 → 比较提示、RAG、工具 → 判断是否更新参数及所需反馈 | [04 SFT 基线与升级条件](./04_end_to_end_experiment.md#sft-何时完成-何时升级) |
+| Task0 · 目标诊断与阶段准入 | 现有失败需要哪一种干预？ | 核心：[问题链中的阶段选择](./walkthrough.md#stage-selection) → [Part 02 · 33 后训练准入](../../02_PyTorch_Algorithms/33_Fine_Tuning_Readiness.md) | 复测失败 → 比较提示、RAG、工具 → 判断是否更新参数及所需反馈 | [04 SFT 基线与升级条件](./04_end_to_end_experiment.md#sft-upgrade-conditions) |
 | Task1 · 数据准备与监督目标 | 样本怎样形成有效的监督目标？ | 核心：[Part 02 · 32 数据契约与泄漏审计](../../02_PyTorch_Algorithms/32_Data_Engineering_for_SFT.md) → [Part 02 · 13 监督边界与损失](../../02_PyTorch_Algorithms/13_SFT_Training_Loop.md)；项目：[Part 02 · 64 数据准入](../../02_PyTorch_Algorithms/64_SFT_Data_Quality_Project.md)；扩展：示范不足时进入 [Part 02 · PT-SYNTHETIC-DATA 合成与验证](../../02_PyTorch_Algorithms/PT-SYNTHETIC-DATA_Instruction_Generation_and_Verifier_Admission.md)，长样本进入 [Part 02 · 30 长上下文微调](../../02_PyTorch_Algorithms/30_Long_Context_Fine_Tuning.md) | 来源与切分 → 模板、标签与损失 → 数据准入；合成候选验证后返回审计 | [01 SFT 数据与监督位置](./01_sft_data_and_loss.md) |
-| Task2 · 更新范围与参数高效适配 | 固定任务和预算后，应更新哪些参数？ | 核心：[Part 02 · 14 LoRA](../../02_PyTorch_Algorithms/14_LoRA_Tutorial.md) → [Part 02 · 31 LoRA 变体](../../02_PyTorch_Algorithms/31_LoRA_Variants_Theory.md)；项目：[Part 02 · 63 LoRA 选型](../../02_PyTorch_Algorithms/63_LoRA_Variants_Benchmark.md) / [Part 02 · 65 QLoRA 选型](../../02_PyTorch_Algorithms/65_QLoRA_Selection_Project.md) → [Part 02 · 62 训练交付](../../02_PyTorch_Algorithms/62_Instruction_Fine_Tuning_Project.md)；扩展：[Part 02 · 26 QLoRA](../../02_PyTorch_Algorithms/26_QLoRA_and_4bit_Quantization.md) | 模块、秩与预算比较 → 与监督目标在[03 训练控制](./03_training_control.md)汇合 → 保存基线 | [02 LoRA、PEFT 与训练对象](./02_lora_peft_design.md) |
+| Task2 · 更新范围与参数高效适配 | 固定任务和预算后，应更新哪些参数？ | 核心：[Part 02 · 14 LoRA](../../02_PyTorch_Algorithms/14_LoRA_Tutorial.md) → [Part 02 · 31 LoRA 变体](../../02_PyTorch_Algorithms/31_LoRA_Variants_Theory.md)；项目：[Part 02 · 63 LoRA 选型](../../02_PyTorch_Algorithms/63_LoRA_Variants_Benchmark.md)，随后进入 [Part 02 · 62 训练交付](../../02_PyTorch_Algorithms/62_Instruction_Fine_Tuning_Project.md)；扩展：需要低比特基座时先读 [Part 02 · 26 QLoRA](../../02_PyTorch_Algorithms/26_QLoRA_and_4bit_Quantization.md)，再进入 [Part 02 · 65 QLoRA 选型](../../02_PyTorch_Algorithms/65_QLoRA_Selection_Project.md) | 模块、秩与预算比较 → 与 Task1 监督目标在[03 训练控制](./03_training_control.md)汇合 → 再进入训练交付 | [02 LoRA、PEFT 与训练对象](./02_lora_peft_design.md) |
 | Task3 · 偏好数据与离线策略优化 | 已有反馈怎样形成离线策略更新？ | 核心：[Part 02 · 50 偏好数据与评测](../../02_PyTorch_Algorithms/50_Preference_Data_and_Evaluation.md) → 成对反馈进入 [Part 02 · 17 DPO](../../02_PyTorch_Algorithms/17_DPO_Loss_Tutorial.md)，单条二元反馈进入 [Part 02 · PT-KTO](../../02_PyTorch_Algorithms/PT-KTO_Binary_Feedback_Alignment.md)；项目：[Part 02 · 84 离线 DPO](../../02_PyTorch_Algorithms/84_DPO_Preference_Project.md) | 反馈含义与配对 → 参考策略 → 离线更新 → 独立复测 | [05 DPO、KTO 与离线反馈](./05_dpo_and_preference_optimization.md) |
 | Task4 · 奖励构造与在线策略更新 | 奖励怎样提供可用的更新信号？ | 核心：[Part 02 · PT-REWARD-SIGNAL 奖励、价值与优势](../../02_PyTorch_Algorithms/PT-REWARD-SIGNAL_Reward_Model_Value_and_Advantage.md) → [Part 02 · 16 PPO](../../02_PyTorch_Algorithms/16_RLHF_PPO_Memory.md)、[Part 02 · 18 GRPO](../../02_PyTorch_Algorithms/18_GRPO_Loss_Tutorial.md) 或 [Part 02 · PT-RLOO](../../02_PyTorch_Algorithms/PT-RLOO_Leave_One_Out_Policy_Optimization.md)；项目：[Part 02 · 85 GRPO / RLVR](../../02_PyTorch_Algorithms/85_GRPO_Groupwise_Alignment_Project.md)；扩展：学习型奖励进入 [Part 02 · PT-REWARD-MODEL 训练与校准](../../02_PyTorch_Algorithms/PT-REWARD-MODEL_Reward_Model_Training_and_Calibration.md) | 反馈来源与可靠性 → 回报与价值基线；采用组内基线时续读 [07 GRPO / RLOO](./07_grpo_and_groupwise_alignment.md) → 受约束更新 | [06 奖励信号、PPO 与 RLHF](./06_rlhf_and_ppo_system_cost.md) |
 | Task5 · 轨迹管理、在线执行与恢复 | 轨迹怎样被接纳、更新并在中断后恢复？ | 核心：[Part 02 · PT-ROLLOUT-LIFECYCLE 轨迹新鲜度](../../02_PyTorch_Algorithms/PT-ROLLOUT-LIFECYCLE_Rollout_and_Policy_Freshness.md) → [Part 02 · PT-RL-SYSTEM 采样、训练与奖励系统](../../02_PyTorch_Algorithms/PT-RL-SYSTEM_Rollout_Training_and_Reward_System.md)；项目：[Part 02 · 86 生命周期与恢复](../../02_PyTorch_Algorithms/86_DPO_Online_Benchmark.md)；扩展：[Part 02 · PT-AGENTIC-RL 环境轨迹与归因](../../02_PyTorch_Algorithms/PT-AGENTIC-RL_Environment_Trajectory_and_Credit_Assignment.md) / [Part 02 · 51 在线 DPO](../../02_PyTorch_Algorithms/51_Online_DPO.md) | 身份、奖励与消费准入 → [09 执行系统](./09_rl_execution_system_and_efficiency.md)中的队列、同步与恢复 | [08 轨迹生命周期与环境交互](./08_trajectory_lifecycle_and_environment_interaction.md) |
@@ -37,8 +33,6 @@ Task4 先用[06 奖励、价值与 PPO](./06_rlhf_and_ppo_system_cost.md)区分�
 ## 扩展与跨专题入口
 
 训练目标需要通过反向传播形成参数更新；训练数据、工具环境与部署执行也分别影响样本有效性和最终成本。按当前缺少的输入或观察选择下表入口。
-
-![后训练主线与数据工程、训练机制、Agent 和部署专题的分工](../../public/topic_discussion/post_training_optimization/post_training_ownership_map.svg)
 
 | 需要补齐的内容 | 首选入口 | 带回后训练的观察或产物 |
 |:---|:---|:---|
