@@ -1,0 +1,1841 @@
+{
+  "schema_version": "inference-kv-capacity-pressure/v1",
+  "semantic_id": "INF-KV-LIFECYCLE",
+  "environment_profile": "INF-VLLM-011-CU128",
+  "run_mode": "real_backend",
+  "run_label": "rtx5070ti_kv_pressure_v4_03",
+  "workload": {
+    "model_id": "Qwen/Qwen3-0.6B",
+    "max_tokens": 32,
+    "context_lengths_requested": [
+      512,
+      1024,
+      1536
+    ],
+    "concurrencies": [
+      4,
+      8,
+      16,
+      32
+    ],
+    "prefix_mode": "unique_per_block",
+    "max_model_len_guard": 2048
+  },
+  "cases": [
+    {
+      "context_length_requested": 512,
+      "prompt_tokens_actual": [
+        512,
+        512,
+        512,
+        512
+      ],
+      "concurrency": 4,
+      "workload": "benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c512_n4.jsonl",
+      "benchmark": {
+        "label": "kv_pressure_c512_n4_rtx5070ti_kv_pressure_v4_03",
+        "base_url": "http://127.0.0.1:8000",
+        "model": "Qwen/Qwen3-0.6B",
+        "workload": {
+          "source": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c512_n4.jsonl",
+          "requests": 4,
+          "max_tokens": 32,
+          "concurrency": 4,
+          "warmup": 0,
+          "repeats": 1
+        },
+        "metrics": {
+          "successful_requests": 4,
+          "failed_requests": 0,
+          "request_throughput_per_s": 1.1742,
+          "output_token_throughput_per_s": 37.5752,
+          "ttft_ms": {
+            "mean": 3241.254,
+            "p50": 3251.881,
+            "p95": 3253.52225,
+            "p99": 3253.73885
+          },
+          "tpot_ms": {
+            "mean": 5.199,
+            "p50": 4.876,
+            "p95": 5.98515,
+            "p99": 6.14103
+          },
+          "e2e_ms": {
+            "mean": 3402.431,
+            "p50": 3403.048,
+            "p95": 3404.4099,
+            "p99": 3404.56518
+          },
+          "output_tokens": 128,
+          "prompt_tokens_mean": 520,
+          "duration_s": 3.4065
+        },
+        "results": null,
+        "schema_version": "inference-benchmark/v1",
+        "normalized_result": {
+          "schema_version": "inference-benchmark/v1",
+          "project": "37",
+          "strategy": "kv_pressure_c512_n4_rtx5070ti_kv_pressure_v4_03",
+          "role": "candidate",
+          "config": {
+            "model": "Qwen/Qwen3-0.6B",
+            "backend": "vllm",
+            "dtype": "unknown",
+            "prompt_tokens": 520,
+            "generated_tokens": 32,
+            "batch": 1,
+            "concurrency": 4,
+            "cache_policy": "prefix_cache_enabled",
+            "role": "candidate",
+            "workload": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c512_n4.jsonl"
+          },
+          "metrics": {
+            "ttft_ms": {
+              "mean": 3241.254,
+              "p50": 3251.881,
+              "p95": 3253.52225,
+              "p99": 3253.73885
+            },
+            "tpot_ms": {
+              "mean": 5.199,
+              "p50": 4.876,
+              "p95": 5.98515,
+              "p99": 6.14103
+            },
+            "throughput_tokens_per_s": 37.5752,
+            "throughput_requests_per_s": 1.1742,
+            "p95_ms": null,
+            "p99_ms": 3404.56518,
+            "peak_memory_mb": null,
+            "queue_wait_ms": null,
+            "input_transfer_bytes": null,
+            "input_transfer_ms": null,
+            "transfer_bytes": null,
+            "handoff_ms": null,
+            "recompute_ms": null,
+            "network_wait_ms": null,
+            "communication_ms": null,
+            "exposed_comm_ms": null,
+            "overlap_ratio": null,
+            "idle_gap_ms": null,
+            "model_load_ms": null,
+            "stream_output_ms": null,
+            "e2e_latency_ms": {
+              "mean": 3402.431,
+              "p50": 3403.048,
+              "p95": 3404.4099,
+              "p99": 3404.56518
+            },
+            "successful_requests": 4,
+            "failed_requests": 0,
+            "duration_s": 3.4065
+          },
+          "quality": {},
+          "status": "not_recorded",
+          "evidence_level": "not_recorded",
+          "failure": {
+            "failure_reason": null,
+            "retest_path": null
+          },
+          "decision": {
+            "decision": "not_evaluated"
+          },
+          "source": "http://127.0.0.1:8000"
+        }
+      },
+      "metrics_before": {
+        "kv_cache_usage_perc": 100.0,
+        "prefix_cache_queries_total": 0.0,
+        "prefix_cache_hits_total": 0.0,
+        "num_preemptions_total": 0.0
+      },
+      "metrics_after": {
+        "kv_cache_usage_perc": 100.0,
+        "prefix_cache_queries_total": 2080.0,
+        "prefix_cache_hits_total": 0.0,
+        "num_preemptions_total": 0.0
+      },
+      "counter_delta": {
+        "prefix_cache_queries_total": 2080.0,
+        "prefix_cache_hits_total": 0.0,
+        "num_preemptions_total": 0.0
+      }
+    },
+    {
+      "context_length_requested": 512,
+      "prompt_tokens_actual": [
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512
+      ],
+      "concurrency": 8,
+      "workload": "benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c512_n8.jsonl",
+      "benchmark": {
+        "label": "kv_pressure_c512_n8_rtx5070ti_kv_pressure_v4_03",
+        "base_url": "http://127.0.0.1:8000",
+        "model": "Qwen/Qwen3-0.6B",
+        "workload": {
+          "source": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c512_n8.jsonl",
+          "requests": 8,
+          "max_tokens": 32,
+          "concurrency": 8,
+          "warmup": 0,
+          "repeats": 1
+        },
+        "metrics": {
+          "successful_requests": 8,
+          "failed_requests": 0,
+          "request_throughput_per_s": 24.7867,
+          "output_token_throughput_per_s": 793.1746,
+          "ttft_ms": {
+            "mean": 120.863,
+            "p50": 131.6995,
+            "p95": 134.0366,
+            "p99": 134.11612
+          },
+          "tpot_ms": {
+            "mean": 6.337,
+            "p50": 6.008,
+            "p95": 7.3338,
+            "p99": 7.33716
+          },
+          "e2e_ms": {
+            "mean": 317.305,
+            "p50": 318.046,
+            "p95": 319.92485,
+            "p99": 319.94417000000004
+          },
+          "output_tokens": 256,
+          "prompt_tokens_mean": 520,
+          "duration_s": 0.3228
+        },
+        "results": null,
+        "schema_version": "inference-benchmark/v1",
+        "normalized_result": {
+          "schema_version": "inference-benchmark/v1",
+          "project": "37",
+          "strategy": "kv_pressure_c512_n8_rtx5070ti_kv_pressure_v4_03",
+          "role": "candidate",
+          "config": {
+            "model": "Qwen/Qwen3-0.6B",
+            "backend": "vllm",
+            "dtype": "unknown",
+            "prompt_tokens": 520,
+            "generated_tokens": 32,
+            "batch": 1,
+            "concurrency": 8,
+            "cache_policy": "prefix_cache_enabled",
+            "role": "candidate",
+            "workload": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c512_n8.jsonl"
+          },
+          "metrics": {
+            "ttft_ms": {
+              "mean": 120.863,
+              "p50": 131.6995,
+              "p95": 134.0366,
+              "p99": 134.11612
+            },
+            "tpot_ms": {
+              "mean": 6.337,
+              "p50": 6.008,
+              "p95": 7.3338,
+              "p99": 7.33716
+            },
+            "throughput_tokens_per_s": 793.1746,
+            "throughput_requests_per_s": 24.7867,
+            "p95_ms": null,
+            "p99_ms": 319.94417000000004,
+            "peak_memory_mb": null,
+            "queue_wait_ms": null,
+            "input_transfer_bytes": null,
+            "input_transfer_ms": null,
+            "transfer_bytes": null,
+            "handoff_ms": null,
+            "recompute_ms": null,
+            "network_wait_ms": null,
+            "communication_ms": null,
+            "exposed_comm_ms": null,
+            "overlap_ratio": null,
+            "idle_gap_ms": null,
+            "model_load_ms": null,
+            "stream_output_ms": null,
+            "e2e_latency_ms": {
+              "mean": 317.305,
+              "p50": 318.046,
+              "p95": 319.92485,
+              "p99": 319.94417000000004
+            },
+            "successful_requests": 8,
+            "failed_requests": 0,
+            "duration_s": 0.3228
+          },
+          "quality": {},
+          "status": "not_recorded",
+          "evidence_level": "not_recorded",
+          "failure": {
+            "failure_reason": null,
+            "retest_path": null
+          },
+          "decision": {
+            "decision": "not_evaluated"
+          },
+          "source": "http://127.0.0.1:8000"
+        }
+      },
+      "metrics_before": {
+        "kv_cache_usage_perc": 100.0,
+        "prefix_cache_queries_total": 2080.0,
+        "prefix_cache_hits_total": 0.0,
+        "num_preemptions_total": 0.0
+      },
+      "metrics_after": {
+        "kv_cache_usage_perc": 100.0,
+        "prefix_cache_queries_total": 6240.0,
+        "prefix_cache_hits_total": 2048.0,
+        "num_preemptions_total": 0.0
+      },
+      "counter_delta": {
+        "prefix_cache_queries_total": 4160.0,
+        "prefix_cache_hits_total": 2048.0,
+        "num_preemptions_total": 0.0
+      }
+    },
+    {
+      "context_length_requested": 512,
+      "prompt_tokens_actual": [
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512
+      ],
+      "concurrency": 16,
+      "workload": "benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c512_n16.jsonl",
+      "benchmark": {
+        "label": "kv_pressure_c512_n16_rtx5070ti_kv_pressure_v4_03",
+        "base_url": "http://127.0.0.1:8000",
+        "model": "Qwen/Qwen3-0.6B",
+        "workload": {
+          "source": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c512_n16.jsonl",
+          "requests": 16,
+          "max_tokens": 32,
+          "concurrency": 16,
+          "warmup": 0,
+          "repeats": 1
+        },
+        "metrics": {
+          "successful_requests": 16,
+          "failed_requests": 0,
+          "request_throughput_per_s": 31.2105,
+          "output_token_throughput_per_s": 998.7352,
+          "ttft_ms": {
+            "mean": 194.104,
+            "p50": 211.8955,
+            "p95": 259.746,
+            "p99": 260.1684
+          },
+          "tpot_ms": {
+            "mean": 9.358,
+            "p50": 9.072,
+            "p95": 10.90825,
+            "p99": 10.92085
+          },
+          "e2e_ms": {
+            "mean": 484.211,
+            "p50": 492.54999999999995,
+            "p95": 506.99825000000004,
+            "p99": 507.05404999999996
+          },
+          "output_tokens": 512,
+          "prompt_tokens_mean": 520,
+          "duration_s": 0.5126
+        },
+        "results": null,
+        "schema_version": "inference-benchmark/v1",
+        "normalized_result": {
+          "schema_version": "inference-benchmark/v1",
+          "project": "37",
+          "strategy": "kv_pressure_c512_n16_rtx5070ti_kv_pressure_v4_03",
+          "role": "candidate",
+          "config": {
+            "model": "Qwen/Qwen3-0.6B",
+            "backend": "vllm",
+            "dtype": "unknown",
+            "prompt_tokens": 520,
+            "generated_tokens": 32,
+            "batch": 1,
+            "concurrency": 16,
+            "cache_policy": "prefix_cache_enabled",
+            "role": "candidate",
+            "workload": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c512_n16.jsonl"
+          },
+          "metrics": {
+            "ttft_ms": {
+              "mean": 194.104,
+              "p50": 211.8955,
+              "p95": 259.746,
+              "p99": 260.1684
+            },
+            "tpot_ms": {
+              "mean": 9.358,
+              "p50": 9.072,
+              "p95": 10.90825,
+              "p99": 10.92085
+            },
+            "throughput_tokens_per_s": 998.7352,
+            "throughput_requests_per_s": 31.2105,
+            "p95_ms": null,
+            "p99_ms": 507.05404999999996,
+            "peak_memory_mb": null,
+            "queue_wait_ms": null,
+            "input_transfer_bytes": null,
+            "input_transfer_ms": null,
+            "transfer_bytes": null,
+            "handoff_ms": null,
+            "recompute_ms": null,
+            "network_wait_ms": null,
+            "communication_ms": null,
+            "exposed_comm_ms": null,
+            "overlap_ratio": null,
+            "idle_gap_ms": null,
+            "model_load_ms": null,
+            "stream_output_ms": null,
+            "e2e_latency_ms": {
+              "mean": 484.211,
+              "p50": 492.54999999999995,
+              "p95": 506.99825000000004,
+              "p99": 507.05404999999996
+            },
+            "successful_requests": 16,
+            "failed_requests": 0,
+            "duration_s": 0.5126
+          },
+          "quality": {},
+          "status": "not_recorded",
+          "evidence_level": "not_recorded",
+          "failure": {
+            "failure_reason": null,
+            "retest_path": null
+          },
+          "decision": {
+            "decision": "not_evaluated"
+          },
+          "source": "http://127.0.0.1:8000"
+        }
+      },
+      "metrics_before": {
+        "kv_cache_usage_perc": 100.0,
+        "prefix_cache_queries_total": 6240.0,
+        "prefix_cache_hits_total": 2048.0,
+        "num_preemptions_total": 0.0
+      },
+      "metrics_after": {
+        "kv_cache_usage_perc": 100.0,
+        "prefix_cache_queries_total": 14560.0,
+        "prefix_cache_hits_total": 6144.0,
+        "num_preemptions_total": 0.0
+      },
+      "counter_delta": {
+        "prefix_cache_queries_total": 8320.0,
+        "prefix_cache_hits_total": 4096.0,
+        "num_preemptions_total": 0.0
+      }
+    },
+    {
+      "context_length_requested": 512,
+      "prompt_tokens_actual": [
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512,
+        512
+      ],
+      "concurrency": 32,
+      "workload": "benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c512_n32.jsonl",
+      "benchmark": {
+        "label": "kv_pressure_c512_n32_rtx5070ti_kv_pressure_v4_03",
+        "base_url": "http://127.0.0.1:8000",
+        "model": "Qwen/Qwen3-0.6B",
+        "workload": {
+          "source": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c512_n32.jsonl",
+          "requests": 32,
+          "max_tokens": 32,
+          "concurrency": 32,
+          "warmup": 0,
+          "repeats": 1
+        },
+        "metrics": {
+          "successful_requests": 32,
+          "failed_requests": 0,
+          "request_throughput_per_s": 42.9692,
+          "output_token_throughput_per_s": 1375.0137,
+          "ttft_ms": {
+            "mean": 255.581,
+            "p50": 233.738,
+            "p95": 403.50315,
+            "p99": 424.02417
+          },
+          "tpot_ms": {
+            "mean": 14.527,
+            "p50": 15.293,
+            "p95": 17.41105,
+            "p99": 17.82448
+          },
+          "e2e_ms": {
+            "mean": 705.907,
+            "p50": 710.2429999999999,
+            "p95": 723.97665,
+            "p99": 729.41626
+          },
+          "output_tokens": 1024,
+          "prompt_tokens_mean": 520,
+          "duration_s": 0.7447
+        },
+        "results": null,
+        "schema_version": "inference-benchmark/v1",
+        "normalized_result": {
+          "schema_version": "inference-benchmark/v1",
+          "project": "37",
+          "strategy": "kv_pressure_c512_n32_rtx5070ti_kv_pressure_v4_03",
+          "role": "candidate",
+          "config": {
+            "model": "Qwen/Qwen3-0.6B",
+            "backend": "vllm",
+            "dtype": "unknown",
+            "prompt_tokens": 520,
+            "generated_tokens": 32,
+            "batch": 1,
+            "concurrency": 32,
+            "cache_policy": "prefix_cache_enabled",
+            "role": "candidate",
+            "workload": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c512_n32.jsonl"
+          },
+          "metrics": {
+            "ttft_ms": {
+              "mean": 255.581,
+              "p50": 233.738,
+              "p95": 403.50315,
+              "p99": 424.02417
+            },
+            "tpot_ms": {
+              "mean": 14.527,
+              "p50": 15.293,
+              "p95": 17.41105,
+              "p99": 17.82448
+            },
+            "throughput_tokens_per_s": 1375.0137,
+            "throughput_requests_per_s": 42.9692,
+            "p95_ms": null,
+            "p99_ms": 729.41626,
+            "peak_memory_mb": null,
+            "queue_wait_ms": null,
+            "input_transfer_bytes": null,
+            "input_transfer_ms": null,
+            "transfer_bytes": null,
+            "handoff_ms": null,
+            "recompute_ms": null,
+            "network_wait_ms": null,
+            "communication_ms": null,
+            "exposed_comm_ms": null,
+            "overlap_ratio": null,
+            "idle_gap_ms": null,
+            "model_load_ms": null,
+            "stream_output_ms": null,
+            "e2e_latency_ms": {
+              "mean": 705.907,
+              "p50": 710.2429999999999,
+              "p95": 723.97665,
+              "p99": 729.41626
+            },
+            "successful_requests": 32,
+            "failed_requests": 0,
+            "duration_s": 0.7447
+          },
+          "quality": {},
+          "status": "not_recorded",
+          "evidence_level": "not_recorded",
+          "failure": {
+            "failure_reason": null,
+            "retest_path": null
+          },
+          "decision": {
+            "decision": "not_evaluated"
+          },
+          "source": "http://127.0.0.1:8000"
+        }
+      },
+      "metrics_before": {
+        "kv_cache_usage_perc": 100.0,
+        "prefix_cache_queries_total": 14560.0,
+        "prefix_cache_hits_total": 6144.0,
+        "num_preemptions_total": 0.0
+      },
+      "metrics_after": {
+        "kv_cache_usage_perc": 100.0,
+        "prefix_cache_queries_total": 31200.0,
+        "prefix_cache_hits_total": 14336.0,
+        "num_preemptions_total": 0.0
+      },
+      "counter_delta": {
+        "prefix_cache_queries_total": 16640.0,
+        "prefix_cache_hits_total": 8192.0,
+        "num_preemptions_total": 0.0
+      }
+    },
+    {
+      "context_length_requested": 1024,
+      "prompt_tokens_actual": [
+        1024,
+        1024,
+        1024,
+        1024
+      ],
+      "concurrency": 4,
+      "workload": "benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c1024_n4.jsonl",
+      "benchmark": {
+        "label": "kv_pressure_c1024_n4_rtx5070ti_kv_pressure_v4_03",
+        "base_url": "http://127.0.0.1:8000",
+        "model": "Qwen/Qwen3-0.6B",
+        "workload": {
+          "source": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c1024_n4.jsonl",
+          "requests": 4,
+          "max_tokens": 32,
+          "concurrency": 4,
+          "warmup": 0,
+          "repeats": 1
+        },
+        "metrics": {
+          "successful_requests": 4,
+          "failed_requests": 0,
+          "request_throughput_per_s": 12.173,
+          "output_token_throughput_per_s": 389.5356,
+          "ttft_ms": {
+            "mean": 111.862,
+            "p50": 126.54599999999999,
+            "p95": 127.80575,
+            "p99": 127.89395
+          },
+          "tpot_ms": {
+            "mean": 6.839,
+            "p50": 6.409000000000001,
+            "p95": 7.87285,
+            "p99": 8.07937
+          },
+          "e2e_ms": {
+            "mean": 323.873,
+            "p50": 325.185,
+            "p95": 326.5125,
+            "p99": 326.60970000000003
+          },
+          "output_tokens": 128,
+          "prompt_tokens_mean": 1032,
+          "duration_s": 0.3286
+        },
+        "results": null,
+        "schema_version": "inference-benchmark/v1",
+        "normalized_result": {
+          "schema_version": "inference-benchmark/v1",
+          "project": "37",
+          "strategy": "kv_pressure_c1024_n4_rtx5070ti_kv_pressure_v4_03",
+          "role": "candidate",
+          "config": {
+            "model": "Qwen/Qwen3-0.6B",
+            "backend": "vllm",
+            "dtype": "unknown",
+            "prompt_tokens": 1032,
+            "generated_tokens": 32,
+            "batch": 1,
+            "concurrency": 4,
+            "cache_policy": "prefix_cache_enabled",
+            "role": "candidate",
+            "workload": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c1024_n4.jsonl"
+          },
+          "metrics": {
+            "ttft_ms": {
+              "mean": 111.862,
+              "p50": 126.54599999999999,
+              "p95": 127.80575,
+              "p99": 127.89395
+            },
+            "tpot_ms": {
+              "mean": 6.839,
+              "p50": 6.409000000000001,
+              "p95": 7.87285,
+              "p99": 8.07937
+            },
+            "throughput_tokens_per_s": 389.5356,
+            "throughput_requests_per_s": 12.173,
+            "p95_ms": null,
+            "p99_ms": 326.60970000000003,
+            "peak_memory_mb": null,
+            "queue_wait_ms": null,
+            "input_transfer_bytes": null,
+            "input_transfer_ms": null,
+            "transfer_bytes": null,
+            "handoff_ms": null,
+            "recompute_ms": null,
+            "network_wait_ms": null,
+            "communication_ms": null,
+            "exposed_comm_ms": null,
+            "overlap_ratio": null,
+            "idle_gap_ms": null,
+            "model_load_ms": null,
+            "stream_output_ms": null,
+            "e2e_latency_ms": {
+              "mean": 323.873,
+              "p50": 325.185,
+              "p95": 326.5125,
+              "p99": 326.60970000000003
+            },
+            "successful_requests": 4,
+            "failed_requests": 0,
+            "duration_s": 0.3286
+          },
+          "quality": {},
+          "status": "not_recorded",
+          "evidence_level": "not_recorded",
+          "failure": {
+            "failure_reason": null,
+            "retest_path": null
+          },
+          "decision": {
+            "decision": "not_evaluated"
+          },
+          "source": "http://127.0.0.1:8000"
+        }
+      },
+      "metrics_before": {
+        "kv_cache_usage_perc": 100.0,
+        "prefix_cache_queries_total": 31200.0,
+        "prefix_cache_hits_total": 14336.0,
+        "num_preemptions_total": 0.0
+      },
+      "metrics_after": {
+        "kv_cache_usage_perc": 100.0,
+        "prefix_cache_queries_total": 35328.0,
+        "prefix_cache_hits_total": 16384.0,
+        "num_preemptions_total": 0.0
+      },
+      "counter_delta": {
+        "prefix_cache_queries_total": 4128.0,
+        "prefix_cache_hits_total": 2048.0,
+        "num_preemptions_total": 0.0
+      }
+    },
+    {
+      "context_length_requested": 1024,
+      "prompt_tokens_actual": [
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024
+      ],
+      "concurrency": 8,
+      "workload": "benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c1024_n8.jsonl",
+      "benchmark": {
+        "label": "kv_pressure_c1024_n8_rtx5070ti_kv_pressure_v4_03",
+        "base_url": "http://127.0.0.1:8000",
+        "model": "Qwen/Qwen3-0.6B",
+        "workload": {
+          "source": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c1024_n8.jsonl",
+          "requests": 8,
+          "max_tokens": 32,
+          "concurrency": 8,
+          "warmup": 0,
+          "repeats": 1
+        },
+        "metrics": {
+          "successful_requests": 8,
+          "failed_requests": 0,
+          "request_throughput_per_s": 21.098,
+          "output_token_throughput_per_s": 675.1352,
+          "ttft_ms": {
+            "mean": 135.429,
+            "p50": 141.9475,
+            "p95": 149.42175,
+            "p99": 151.24035
+          },
+          "tpot_ms": {
+            "mean": 7.577,
+            "p50": 7.378500000000001,
+            "p95": 8.5787,
+            "p99": 9.09334
+          },
+          "e2e_ms": {
+            "mean": 370.316,
+            "p50": 370.5725,
+            "p95": 373.35275,
+            "p99": 373.42975
+          },
+          "output_tokens": 256,
+          "prompt_tokens_mean": 1032,
+          "duration_s": 0.3792
+        },
+        "results": null,
+        "schema_version": "inference-benchmark/v1",
+        "normalized_result": {
+          "schema_version": "inference-benchmark/v1",
+          "project": "37",
+          "strategy": "kv_pressure_c1024_n8_rtx5070ti_kv_pressure_v4_03",
+          "role": "candidate",
+          "config": {
+            "model": "Qwen/Qwen3-0.6B",
+            "backend": "vllm",
+            "dtype": "unknown",
+            "prompt_tokens": 1032,
+            "generated_tokens": 32,
+            "batch": 1,
+            "concurrency": 8,
+            "cache_policy": "prefix_cache_enabled",
+            "role": "candidate",
+            "workload": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c1024_n8.jsonl"
+          },
+          "metrics": {
+            "ttft_ms": {
+              "mean": 135.429,
+              "p50": 141.9475,
+              "p95": 149.42175,
+              "p99": 151.24035
+            },
+            "tpot_ms": {
+              "mean": 7.577,
+              "p50": 7.378500000000001,
+              "p95": 8.5787,
+              "p99": 9.09334
+            },
+            "throughput_tokens_per_s": 675.1352,
+            "throughput_requests_per_s": 21.098,
+            "p95_ms": null,
+            "p99_ms": 373.42975,
+            "peak_memory_mb": null,
+            "queue_wait_ms": null,
+            "input_transfer_bytes": null,
+            "input_transfer_ms": null,
+            "transfer_bytes": null,
+            "handoff_ms": null,
+            "recompute_ms": null,
+            "network_wait_ms": null,
+            "communication_ms": null,
+            "exposed_comm_ms": null,
+            "overlap_ratio": null,
+            "idle_gap_ms": null,
+            "model_load_ms": null,
+            "stream_output_ms": null,
+            "e2e_latency_ms": {
+              "mean": 370.316,
+              "p50": 370.5725,
+              "p95": 373.35275,
+              "p99": 373.42975
+            },
+            "successful_requests": 8,
+            "failed_requests": 0,
+            "duration_s": 0.3792
+          },
+          "quality": {},
+          "status": "not_recorded",
+          "evidence_level": "not_recorded",
+          "failure": {
+            "failure_reason": null,
+            "retest_path": null
+          },
+          "decision": {
+            "decision": "not_evaluated"
+          },
+          "source": "http://127.0.0.1:8000"
+        }
+      },
+      "metrics_before": {
+        "kv_cache_usage_perc": 100.0,
+        "prefix_cache_queries_total": 35328.0,
+        "prefix_cache_hits_total": 16384.0,
+        "num_preemptions_total": 0.0
+      },
+      "metrics_after": {
+        "kv_cache_usage_perc": 100.0,
+        "prefix_cache_queries_total": 43584.0,
+        "prefix_cache_hits_total": 22528.0,
+        "num_preemptions_total": 0.0
+      },
+      "counter_delta": {
+        "prefix_cache_queries_total": 8256.0,
+        "prefix_cache_hits_total": 6144.0,
+        "num_preemptions_total": 0.0
+      }
+    },
+    {
+      "context_length_requested": 1024,
+      "prompt_tokens_actual": [
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024
+      ],
+      "concurrency": 16,
+      "workload": "benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c1024_n16.jsonl",
+      "benchmark": {
+        "label": "kv_pressure_c1024_n16_rtx5070ti_kv_pressure_v4_03",
+        "base_url": "http://127.0.0.1:8000",
+        "model": "Qwen/Qwen3-0.6B",
+        "workload": {
+          "source": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c1024_n16.jsonl",
+          "requests": 16,
+          "max_tokens": 32,
+          "concurrency": 16,
+          "warmup": 0,
+          "repeats": 1
+        },
+        "metrics": {
+          "successful_requests": 16,
+          "failed_requests": 0,
+          "request_throughput_per_s": 25.5324,
+          "output_token_throughput_per_s": 817.0371,
+          "ttft_ms": {
+            "mean": 218.486,
+            "p50": 232.293,
+            "p95": 282.70125,
+            "p99": 286.26105
+          },
+          "tpot_ms": {
+            "mean": 12.537,
+            "p50": 12.251000000000001,
+            "p95": 14.450249999999999,
+            "p99": 14.45805
+          },
+          "e2e_ms": {
+            "mean": 607.132,
+            "p50": 611.8145,
+            "p95": 619.19925,
+            "p99": 620.87985
+          },
+          "output_tokens": 512,
+          "prompt_tokens_mean": 1032,
+          "duration_s": 0.6267
+        },
+        "results": null,
+        "schema_version": "inference-benchmark/v1",
+        "normalized_result": {
+          "schema_version": "inference-benchmark/v1",
+          "project": "37",
+          "strategy": "kv_pressure_c1024_n16_rtx5070ti_kv_pressure_v4_03",
+          "role": "candidate",
+          "config": {
+            "model": "Qwen/Qwen3-0.6B",
+            "backend": "vllm",
+            "dtype": "unknown",
+            "prompt_tokens": 1032,
+            "generated_tokens": 32,
+            "batch": 1,
+            "concurrency": 16,
+            "cache_policy": "prefix_cache_enabled",
+            "role": "candidate",
+            "workload": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c1024_n16.jsonl"
+          },
+          "metrics": {
+            "ttft_ms": {
+              "mean": 218.486,
+              "p50": 232.293,
+              "p95": 282.70125,
+              "p99": 286.26105
+            },
+            "tpot_ms": {
+              "mean": 12.537,
+              "p50": 12.251000000000001,
+              "p95": 14.450249999999999,
+              "p99": 14.45805
+            },
+            "throughput_tokens_per_s": 817.0371,
+            "throughput_requests_per_s": 25.5324,
+            "p95_ms": null,
+            "p99_ms": 620.87985,
+            "peak_memory_mb": null,
+            "queue_wait_ms": null,
+            "input_transfer_bytes": null,
+            "input_transfer_ms": null,
+            "transfer_bytes": null,
+            "handoff_ms": null,
+            "recompute_ms": null,
+            "network_wait_ms": null,
+            "communication_ms": null,
+            "exposed_comm_ms": null,
+            "overlap_ratio": null,
+            "idle_gap_ms": null,
+            "model_load_ms": null,
+            "stream_output_ms": null,
+            "e2e_latency_ms": {
+              "mean": 607.132,
+              "p50": 611.8145,
+              "p95": 619.19925,
+              "p99": 620.87985
+            },
+            "successful_requests": 16,
+            "failed_requests": 0,
+            "duration_s": 0.6267
+          },
+          "quality": {},
+          "status": "not_recorded",
+          "evidence_level": "not_recorded",
+          "failure": {
+            "failure_reason": null,
+            "retest_path": null
+          },
+          "decision": {
+            "decision": "not_evaluated"
+          },
+          "source": "http://127.0.0.1:8000"
+        }
+      },
+      "metrics_before": {
+        "kv_cache_usage_perc": 100.0,
+        "prefix_cache_queries_total": 43584.0,
+        "prefix_cache_hits_total": 22528.0,
+        "num_preemptions_total": 0.0
+      },
+      "metrics_after": {
+        "kv_cache_usage_perc": 100.0,
+        "prefix_cache_queries_total": 60096.0,
+        "prefix_cache_hits_total": 34816.0,
+        "num_preemptions_total": 0.0
+      },
+      "counter_delta": {
+        "prefix_cache_queries_total": 16512.0,
+        "prefix_cache_hits_total": 12288.0,
+        "num_preemptions_total": 0.0
+      }
+    },
+    {
+      "context_length_requested": 1024,
+      "prompt_tokens_actual": [
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024
+      ],
+      "concurrency": 32,
+      "workload": "benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c1024_n32.jsonl",
+      "benchmark": {
+        "label": "kv_pressure_c1024_n32_rtx5070ti_kv_pressure_v4_03",
+        "base_url": "http://127.0.0.1:8000",
+        "model": "Qwen/Qwen3-0.6B",
+        "workload": {
+          "source": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c1024_n32.jsonl",
+          "requests": 32,
+          "max_tokens": 32,
+          "concurrency": 32,
+          "warmup": 0,
+          "repeats": 1
+        },
+        "metrics": {
+          "successful_requests": 32,
+          "failed_requests": 0,
+          "request_throughput_per_s": 30.1198,
+          "output_token_throughput_per_s": 963.8346,
+          "ttft_ms": {
+            "mean": 288.152,
+            "p50": 267.4915,
+            "p95": 463.17145000000005,
+            "p99": 481.16651
+          },
+          "tpot_ms": {
+            "mean": 22.537,
+            "p50": 22.904,
+            "p95": 25.4086,
+            "p99": 25.42956
+          },
+          "e2e_ms": {
+            "mean": 986.812,
+            "p50": 1009.0699999999999,
+            "p95": 1041.2595999999999,
+            "p99": 1042.73973
+          },
+          "output_tokens": 1024,
+          "prompt_tokens_mean": 1032,
+          "duration_s": 1.0624
+        },
+        "results": null,
+        "schema_version": "inference-benchmark/v1",
+        "normalized_result": {
+          "schema_version": "inference-benchmark/v1",
+          "project": "37",
+          "strategy": "kv_pressure_c1024_n32_rtx5070ti_kv_pressure_v4_03",
+          "role": "candidate",
+          "config": {
+            "model": "Qwen/Qwen3-0.6B",
+            "backend": "vllm",
+            "dtype": "unknown",
+            "prompt_tokens": 1032,
+            "generated_tokens": 32,
+            "batch": 1,
+            "concurrency": 32,
+            "cache_policy": "prefix_cache_enabled",
+            "role": "candidate",
+            "workload": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c1024_n32.jsonl"
+          },
+          "metrics": {
+            "ttft_ms": {
+              "mean": 288.152,
+              "p50": 267.4915,
+              "p95": 463.17145000000005,
+              "p99": 481.16651
+            },
+            "tpot_ms": {
+              "mean": 22.537,
+              "p50": 22.904,
+              "p95": 25.4086,
+              "p99": 25.42956
+            },
+            "throughput_tokens_per_s": 963.8346,
+            "throughput_requests_per_s": 30.1198,
+            "p95_ms": null,
+            "p99_ms": 1042.73973,
+            "peak_memory_mb": null,
+            "queue_wait_ms": null,
+            "input_transfer_bytes": null,
+            "input_transfer_ms": null,
+            "transfer_bytes": null,
+            "handoff_ms": null,
+            "recompute_ms": null,
+            "network_wait_ms": null,
+            "communication_ms": null,
+            "exposed_comm_ms": null,
+            "overlap_ratio": null,
+            "idle_gap_ms": null,
+            "model_load_ms": null,
+            "stream_output_ms": null,
+            "e2e_latency_ms": {
+              "mean": 986.812,
+              "p50": 1009.0699999999999,
+              "p95": 1041.2595999999999,
+              "p99": 1042.73973
+            },
+            "successful_requests": 32,
+            "failed_requests": 0,
+            "duration_s": 1.0624
+          },
+          "quality": {},
+          "status": "not_recorded",
+          "evidence_level": "not_recorded",
+          "failure": {
+            "failure_reason": null,
+            "retest_path": null
+          },
+          "decision": {
+            "decision": "not_evaluated"
+          },
+          "source": "http://127.0.0.1:8000"
+        }
+      },
+      "metrics_before": {
+        "kv_cache_usage_perc": 100.0,
+        "prefix_cache_queries_total": 60096.0,
+        "prefix_cache_hits_total": 34816.0,
+        "num_preemptions_total": 0.0
+      },
+      "metrics_after": {
+        "kv_cache_usage_perc": 100.0,
+        "prefix_cache_queries_total": 93120.0,
+        "prefix_cache_hits_total": 59392.0,
+        "num_preemptions_total": 0.0
+      },
+      "counter_delta": {
+        "prefix_cache_queries_total": 33024.0,
+        "prefix_cache_hits_total": 24576.0,
+        "num_preemptions_total": 0.0
+      }
+    },
+    {
+      "context_length_requested": 1536,
+      "prompt_tokens_actual": [
+        1536,
+        1536,
+        1536,
+        1536
+      ],
+      "concurrency": 4,
+      "workload": "benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c1536_n4.jsonl",
+      "benchmark": {
+        "label": "kv_pressure_c1536_n4_rtx5070ti_kv_pressure_v4_03",
+        "base_url": "http://127.0.0.1:8000",
+        "model": "Qwen/Qwen3-0.6B",
+        "workload": {
+          "source": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c1536_n4.jsonl",
+          "requests": 4,
+          "max_tokens": 32,
+          "concurrency": 4,
+          "warmup": 0,
+          "repeats": 1
+        },
+        "metrics": {
+          "successful_requests": 4,
+          "failed_requests": 0,
+          "request_throughput_per_s": 12.345,
+          "output_token_throughput_per_s": 395.041,
+          "ttft_ms": {
+            "mean": 112.715,
+            "p50": 125.846,
+            "p95": 126.94829999999999,
+            "p99": 127.08006
+          },
+          "tpot_ms": {
+            "mean": 6.668,
+            "p50": 6.2675,
+            "p95": 7.631399999999999,
+            "p99": 7.823880000000001
+          },
+          "e2e_ms": {
+            "mean": 319.425,
+            "p50": 320.141,
+            "p95": 321.18760000000003,
+            "p99": 321.31192000000004
+          },
+          "output_tokens": 128,
+          "prompt_tokens_mean": 1544,
+          "duration_s": 0.324
+        },
+        "results": null,
+        "schema_version": "inference-benchmark/v1",
+        "normalized_result": {
+          "schema_version": "inference-benchmark/v1",
+          "project": "37",
+          "strategy": "kv_pressure_c1536_n4_rtx5070ti_kv_pressure_v4_03",
+          "role": "candidate",
+          "config": {
+            "model": "Qwen/Qwen3-0.6B",
+            "backend": "vllm",
+            "dtype": "unknown",
+            "prompt_tokens": 1544,
+            "generated_tokens": 32,
+            "batch": 1,
+            "concurrency": 4,
+            "cache_policy": "prefix_cache_enabled",
+            "role": "candidate",
+            "workload": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c1536_n4.jsonl"
+          },
+          "metrics": {
+            "ttft_ms": {
+              "mean": 112.715,
+              "p50": 125.846,
+              "p95": 126.94829999999999,
+              "p99": 127.08006
+            },
+            "tpot_ms": {
+              "mean": 6.668,
+              "p50": 6.2675,
+              "p95": 7.631399999999999,
+              "p99": 7.823880000000001
+            },
+            "throughput_tokens_per_s": 395.041,
+            "throughput_requests_per_s": 12.345,
+            "p95_ms": null,
+            "p99_ms": 321.31192000000004,
+            "peak_memory_mb": null,
+            "queue_wait_ms": null,
+            "input_transfer_bytes": null,
+            "input_transfer_ms": null,
+            "transfer_bytes": null,
+            "handoff_ms": null,
+            "recompute_ms": null,
+            "network_wait_ms": null,
+            "communication_ms": null,
+            "exposed_comm_ms": null,
+            "overlap_ratio": null,
+            "idle_gap_ms": null,
+            "model_load_ms": null,
+            "stream_output_ms": null,
+            "e2e_latency_ms": {
+              "mean": 319.425,
+              "p50": 320.141,
+              "p95": 321.18760000000003,
+              "p99": 321.31192000000004
+            },
+            "successful_requests": 4,
+            "failed_requests": 0,
+            "duration_s": 0.324
+          },
+          "quality": {},
+          "status": "not_recorded",
+          "evidence_level": "not_recorded",
+          "failure": {
+            "failure_reason": null,
+            "retest_path": null
+          },
+          "decision": {
+            "decision": "not_evaluated"
+          },
+          "source": "http://127.0.0.1:8000"
+        }
+      },
+      "metrics_before": {
+        "kv_cache_usage_perc": 100.0,
+        "prefix_cache_queries_total": 93120.0,
+        "prefix_cache_hits_total": 59392.0,
+        "num_preemptions_total": 0.0
+      },
+      "metrics_after": {
+        "kv_cache_usage_perc": 100.0,
+        "prefix_cache_queries_total": 99296.0,
+        "prefix_cache_hits_total": 63488.0,
+        "num_preemptions_total": 0.0
+      },
+      "counter_delta": {
+        "prefix_cache_queries_total": 6176.0,
+        "prefix_cache_hits_total": 4096.0,
+        "num_preemptions_total": 0.0
+      }
+    },
+    {
+      "context_length_requested": 1536,
+      "prompt_tokens_actual": [
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536
+      ],
+      "concurrency": 8,
+      "workload": "benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c1536_n8.jsonl",
+      "benchmark": {
+        "label": "kv_pressure_c1536_n8_rtx5070ti_kv_pressure_v4_03",
+        "base_url": "http://127.0.0.1:8000",
+        "model": "Qwen/Qwen3-0.6B",
+        "workload": {
+          "source": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c1536_n8.jsonl",
+          "requests": 8,
+          "max_tokens": 32,
+          "concurrency": 8,
+          "warmup": 0,
+          "repeats": 1
+        },
+        "metrics": {
+          "successful_requests": 8,
+          "failed_requests": 0,
+          "request_throughput_per_s": 18.8658,
+          "output_token_throughput_per_s": 603.7045,
+          "ttft_ms": {
+            "mean": 148.317,
+            "p50": 155.9225,
+            "p95": 163.9164,
+            "p99": 166.49687999999998
+          },
+          "tpot_ms": {
+            "mean": 8.62,
+            "p50": 8.3975,
+            "p95": 9.77645,
+            "p99": 10.368089999999999
+          },
+          "e2e_ms": {
+            "mean": 415.523,
+            "p50": 416.003,
+            "p95": 418.21995000000004,
+            "p99": 418.29359000000005
+          },
+          "output_tokens": 256,
+          "prompt_tokens_mean": 1544,
+          "duration_s": 0.424
+        },
+        "results": null,
+        "schema_version": "inference-benchmark/v1",
+        "normalized_result": {
+          "schema_version": "inference-benchmark/v1",
+          "project": "37",
+          "strategy": "kv_pressure_c1536_n8_rtx5070ti_kv_pressure_v4_03",
+          "role": "candidate",
+          "config": {
+            "model": "Qwen/Qwen3-0.6B",
+            "backend": "vllm",
+            "dtype": "unknown",
+            "prompt_tokens": 1544,
+            "generated_tokens": 32,
+            "batch": 1,
+            "concurrency": 8,
+            "cache_policy": "prefix_cache_enabled",
+            "role": "candidate",
+            "workload": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c1536_n8.jsonl"
+          },
+          "metrics": {
+            "ttft_ms": {
+              "mean": 148.317,
+              "p50": 155.9225,
+              "p95": 163.9164,
+              "p99": 166.49687999999998
+            },
+            "tpot_ms": {
+              "mean": 8.62,
+              "p50": 8.3975,
+              "p95": 9.77645,
+              "p99": 10.368089999999999
+            },
+            "throughput_tokens_per_s": 603.7045,
+            "throughput_requests_per_s": 18.8658,
+            "p95_ms": null,
+            "p99_ms": 418.29359000000005,
+            "peak_memory_mb": null,
+            "queue_wait_ms": null,
+            "input_transfer_bytes": null,
+            "input_transfer_ms": null,
+            "transfer_bytes": null,
+            "handoff_ms": null,
+            "recompute_ms": null,
+            "network_wait_ms": null,
+            "communication_ms": null,
+            "exposed_comm_ms": null,
+            "overlap_ratio": null,
+            "idle_gap_ms": null,
+            "model_load_ms": null,
+            "stream_output_ms": null,
+            "e2e_latency_ms": {
+              "mean": 415.523,
+              "p50": 416.003,
+              "p95": 418.21995000000004,
+              "p99": 418.29359000000005
+            },
+            "successful_requests": 8,
+            "failed_requests": 0,
+            "duration_s": 0.424
+          },
+          "quality": {},
+          "status": "not_recorded",
+          "evidence_level": "not_recorded",
+          "failure": {
+            "failure_reason": null,
+            "retest_path": null
+          },
+          "decision": {
+            "decision": "not_evaluated"
+          },
+          "source": "http://127.0.0.1:8000"
+        }
+      },
+      "metrics_before": {
+        "kv_cache_usage_perc": 100.0,
+        "prefix_cache_queries_total": 99296.0,
+        "prefix_cache_hits_total": 63488.0,
+        "num_preemptions_total": 0.0
+      },
+      "metrics_after": {
+        "kv_cache_usage_perc": 100.0,
+        "prefix_cache_queries_total": 111648.0,
+        "prefix_cache_hits_total": 73728.0,
+        "num_preemptions_total": 0.0
+      },
+      "counter_delta": {
+        "prefix_cache_queries_total": 12352.0,
+        "prefix_cache_hits_total": 10240.0,
+        "num_preemptions_total": 0.0
+      }
+    },
+    {
+      "context_length_requested": 1536,
+      "prompt_tokens_actual": [
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536
+      ],
+      "concurrency": 16,
+      "workload": "benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c1536_n16.jsonl",
+      "benchmark": {
+        "label": "kv_pressure_c1536_n16_rtx5070ti_kv_pressure_v4_03",
+        "base_url": "http://127.0.0.1:8000",
+        "model": "Qwen/Qwen3-0.6B",
+        "workload": {
+          "source": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c1536_n16.jsonl",
+          "requests": 16,
+          "max_tokens": 32,
+          "concurrency": 16,
+          "warmup": 0,
+          "repeats": 1
+        },
+        "metrics": {
+          "successful_requests": 16,
+          "failed_requests": 0,
+          "request_throughput_per_s": 21.288,
+          "output_token_throughput_per_s": 681.2164,
+          "ttft_ms": {
+            "mean": 220.089,
+            "p50": 249.1445,
+            "p95": 306.32825,
+            "p99": 308.72645
+          },
+          "tpot_ms": {
+            "mean": 16.159,
+            "p50": 15.6075,
+            "p95": 18.2425,
+            "p99": 18.2557
+          },
+          "e2e_ms": {
+            "mean": 721.018,
+            "p50": 732.704,
+            "p95": 741.43775,
+            "p99": 744.18755
+          },
+          "output_tokens": 512,
+          "prompt_tokens_mean": 1544,
+          "duration_s": 0.7516
+        },
+        "results": null,
+        "schema_version": "inference-benchmark/v1",
+        "normalized_result": {
+          "schema_version": "inference-benchmark/v1",
+          "project": "37",
+          "strategy": "kv_pressure_c1536_n16_rtx5070ti_kv_pressure_v4_03",
+          "role": "candidate",
+          "config": {
+            "model": "Qwen/Qwen3-0.6B",
+            "backend": "vllm",
+            "dtype": "unknown",
+            "prompt_tokens": 1544,
+            "generated_tokens": 32,
+            "batch": 1,
+            "concurrency": 16,
+            "cache_policy": "prefix_cache_enabled",
+            "role": "candidate",
+            "workload": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c1536_n16.jsonl"
+          },
+          "metrics": {
+            "ttft_ms": {
+              "mean": 220.089,
+              "p50": 249.1445,
+              "p95": 306.32825,
+              "p99": 308.72645
+            },
+            "tpot_ms": {
+              "mean": 16.159,
+              "p50": 15.6075,
+              "p95": 18.2425,
+              "p99": 18.2557
+            },
+            "throughput_tokens_per_s": 681.2164,
+            "throughput_requests_per_s": 21.288,
+            "p95_ms": null,
+            "p99_ms": 744.18755,
+            "peak_memory_mb": null,
+            "queue_wait_ms": null,
+            "input_transfer_bytes": null,
+            "input_transfer_ms": null,
+            "transfer_bytes": null,
+            "handoff_ms": null,
+            "recompute_ms": null,
+            "network_wait_ms": null,
+            "communication_ms": null,
+            "exposed_comm_ms": null,
+            "overlap_ratio": null,
+            "idle_gap_ms": null,
+            "model_load_ms": null,
+            "stream_output_ms": null,
+            "e2e_latency_ms": {
+              "mean": 721.018,
+              "p50": 732.704,
+              "p95": 741.43775,
+              "p99": 744.18755
+            },
+            "successful_requests": 16,
+            "failed_requests": 0,
+            "duration_s": 0.7516
+          },
+          "quality": {},
+          "status": "not_recorded",
+          "evidence_level": "not_recorded",
+          "failure": {
+            "failure_reason": null,
+            "retest_path": null
+          },
+          "decision": {
+            "decision": "not_evaluated"
+          },
+          "source": "http://127.0.0.1:8000"
+        }
+      },
+      "metrics_before": {
+        "kv_cache_usage_perc": 100.0,
+        "prefix_cache_queries_total": 111648.0,
+        "prefix_cache_hits_total": 73728.0,
+        "num_preemptions_total": 0.0
+      },
+      "metrics_after": {
+        "kv_cache_usage_perc": 100.0,
+        "prefix_cache_queries_total": 136352.0,
+        "prefix_cache_hits_total": 94208.0,
+        "num_preemptions_total": 0.0
+      },
+      "counter_delta": {
+        "prefix_cache_queries_total": 24704.0,
+        "prefix_cache_hits_total": 20480.0,
+        "num_preemptions_total": 0.0
+      }
+    },
+    {
+      "context_length_requested": 1536,
+      "prompt_tokens_actual": [
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536,
+        1536
+      ],
+      "concurrency": 32,
+      "workload": "benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c1536_n32.jsonl",
+      "benchmark": {
+        "label": "kv_pressure_c1536_n32_rtx5070ti_kv_pressure_v4_03",
+        "base_url": "http://127.0.0.1:8000",
+        "model": "Qwen/Qwen3-0.6B",
+        "workload": {
+          "source": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c1536_n32.jsonl",
+          "requests": 32,
+          "max_tokens": 32,
+          "concurrency": 32,
+          "warmup": 0,
+          "repeats": 1
+        },
+        "metrics": {
+          "successful_requests": 32,
+          "failed_requests": 0,
+          "request_throughput_per_s": 23.9871,
+          "output_token_throughput_per_s": 767.5888,
+          "ttft_ms": {
+            "mean": 317.065,
+            "p50": 309.85400000000004,
+            "p95": 532.10735,
+            "p99": 560.11807
+          },
+          "tpot_ms": {
+            "mean": 30.977,
+            "p50": 31.689,
+            "p95": 34.99905,
+            "p99": 35.03091
+          },
+          "e2e_ms": {
+            "mean": 1277.336,
+            "p50": 1292.3890000000001,
+            "p95": 1318.6030999999998,
+            "p99": 1322.29015
+          },
+          "output_tokens": 1024,
+          "prompt_tokens_mean": 1544,
+          "duration_s": 1.334
+        },
+        "results": null,
+        "schema_version": "inference-benchmark/v1",
+        "normalized_result": {
+          "schema_version": "inference-benchmark/v1",
+          "project": "37",
+          "strategy": "kv_pressure_c1536_n32_rtx5070ti_kv_pressure_v4_03",
+          "role": "candidate",
+          "config": {
+            "model": "Qwen/Qwen3-0.6B",
+            "backend": "vllm",
+            "dtype": "unknown",
+            "prompt_tokens": 1544,
+            "generated_tokens": 32,
+            "batch": 1,
+            "concurrency": 32,
+            "cache_policy": "prefix_cache_enabled",
+            "role": "candidate",
+            "workload": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c1536_n32.jsonl"
+          },
+          "metrics": {
+            "ttft_ms": {
+              "mean": 317.065,
+              "p50": 309.85400000000004,
+              "p95": 532.10735,
+              "p99": 560.11807
+            },
+            "tpot_ms": {
+              "mean": 30.977,
+              "p50": 31.689,
+              "p95": 34.99905,
+              "p99": 35.03091
+            },
+            "throughput_tokens_per_s": 767.5888,
+            "throughput_requests_per_s": 23.9871,
+            "p95_ms": null,
+            "p99_ms": 1322.29015,
+            "peak_memory_mb": null,
+            "queue_wait_ms": null,
+            "input_transfer_bytes": null,
+            "input_transfer_ms": null,
+            "transfer_bytes": null,
+            "handoff_ms": null,
+            "recompute_ms": null,
+            "network_wait_ms": null,
+            "communication_ms": null,
+            "exposed_comm_ms": null,
+            "overlap_ratio": null,
+            "idle_gap_ms": null,
+            "model_load_ms": null,
+            "stream_output_ms": null,
+            "e2e_latency_ms": {
+              "mean": 1277.336,
+              "p50": 1292.3890000000001,
+              "p95": 1318.6030999999998,
+              "p99": 1322.29015
+            },
+            "successful_requests": 32,
+            "failed_requests": 0,
+            "duration_s": 1.334
+          },
+          "quality": {},
+          "status": "not_recorded",
+          "evidence_level": "not_recorded",
+          "failure": {
+            "failure_reason": null,
+            "retest_path": null
+          },
+          "decision": {
+            "decision": "not_evaluated"
+          },
+          "source": "http://127.0.0.1:8000"
+        }
+      },
+      "metrics_before": {
+        "kv_cache_usage_perc": 100.0,
+        "prefix_cache_queries_total": 136352.0,
+        "prefix_cache_hits_total": 94208.0,
+        "num_preemptions_total": 0.0
+      },
+      "metrics_after": {
+        "kv_cache_usage_perc": 100.0,
+        "prefix_cache_queries_total": 185760.0,
+        "prefix_cache_hits_total": 135168.0,
+        "num_preemptions_total": 0.0
+      },
+      "counter_delta": {
+        "prefix_cache_queries_total": 49408.0,
+        "prefix_cache_hits_total": 40960.0,
+        "num_preemptions_total": 0.0
+      }
+    }
+  ],
+  "failure": null,
+  "evidence_level": "backend_capacity_matrix",
+  "decision": "tune"
+}
