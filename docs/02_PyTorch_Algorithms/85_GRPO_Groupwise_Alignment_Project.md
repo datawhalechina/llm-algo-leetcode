@@ -27,7 +27,7 @@
 - [Part 02 · 62 SFT 训练交付项目](./62_Instruction_Fine_Tuning_Project.md)
 
 ---
-### Step 1：从可验证问题完成一次在线奖励优化交付
+## Step 1：从可验证问题完成一次在线奖励优化交付
 
 项目从已交付的 SFT 基线、可验证问题集和固定验证器开始。候选策略先为每个训练问题生成一组真实回答，验证器返回奖励，奖励存在组内差异的轨迹才进入更新。完成更新后，候选必须在隔离问题上重新生成一批回答；训练轨迹只说明更新发生过，不能兼任独立质量证据。最终交付包括适配器、策略与验证器身份、训练轨迹摘要和新轨迹评测。
 
@@ -41,9 +41,9 @@
 
 ![GRPO 真实轨迹生命周期](../public/02_PyTorch_Algorithms/85_grpo_trajectory_flow.svg)
 
-### Step 2：把采样成本换算成有效更新量
+## Step 2：把采样成本换算成有效更新量
 
-生成完成的轨迹不一定都能产生更新。只有问题身份完整、来自当前策略、通过验证且组内奖励可区分的完整组，才计入有效组；有效轨迹数等于有效组数乘以固定组规模。再用有效轨迹数除以采样、验证和更新的总耗时，得到有效轨迹吞吐。这个量把昂贵的生成成本与真正进入更新的训练信号联系起来，比原始生成吞吐更适合判断项目是否值得继续。
+生成完成的轨迹不一定都能产生更新。只有问题身份完整、来自当前策略、通过验证且组内奖励可区分的完整组，才计入有效组；有效轨迹数等于有效组数乘以固定组规模。再用有效轨迹数除以采样、验证和更新的总耗时，得到完整口径的有效轨迹吞吐。历史 v7 helper 的计时只覆盖生成与参数更新，漏记规则验证和旧/参考策略评分，因此其局部计时值不能作为完整流程吞吐的通过证据。新测量 v2 改为完整训练循环计时，需使用新标签复测，不能沿用历史吞吐数值。这个量把昂贵的生成成本与真正进入更新的训练信号联系起来，比原始生成吞吐更适合判断项目是否值得继续。
 
 | 项目量 | 计算或记录方式 | 需要防止的误判 |
 |:---|:---|:---|
@@ -52,9 +52,9 @@
 | 有效轨迹数 | 有效组数乘以组规模 | 不能用总轨迹数替代 |
 | 有效轨迹吞吐 | 有效轨迹数除以采样、验证和更新总耗时 | 不能只计算生成阶段耗时 |
 | 最大长度命中率 | 达到生成上限的回答数除以总回答数 | 高比例说明奖励可能基于截断回答 |
-| 更新约束记录 | 概率比限制、参考约束和实际更新次数 | 奖励提高不能证明更新幅度安全 |
+| 更新约束记录 | 回答平均对数概率代理比率、与参考分数差的平方惩罚和实际更新次数 | 奖励提高不能证明更新幅度安全 |
 
-### Step 3：用独立新轨迹验证策略变化
+## Step 3：用独立新轨迹验证策略变化
 
 训练轨迹既参与了优势计算又参与了参数更新，不能继续充当独立质量证据。候选模型必须在固定评测问题和随机条件下重新采样，与更新前策略配对比较平均奖励、组内至少一次通过率和长度分布。资源证据则分开记录采样、验证和更新阶段，避免把较高的生成吞吐误认为较低的训练成本。
 
@@ -69,7 +69,9 @@
 
 ![GRPO 候选的独立评测与交付](../public/02_PyTorch_Algorithms/85_grpo_delivery_gate.svg)
 
-### Step 4：实现轨迹准入、候选门槛和交付决策
+## Step 4：实现轨迹准入、候选门槛和交付决策
+
+题目骨架已提供字段读取、具名原子检查和失败原因装配；你将补全准入合取、候选资格或有效更新统计，以及拒绝、调优、交付的状态选择。测试使用 CPU 人工证据检验边界，不产生真实质量结论。
 
 | 任务与目的 | 已知条件 | 完成标准 | 测试验证 |
 |:---|:---|:---|:---|
@@ -83,34 +85,36 @@ from typing import Any, Dict, List
 
 
 ```python
-# ==========================================
 # TODO 1：检查轨迹组的身份与完整性
-# ==========================================
 def check_rollout_contract(groups: List[Dict[str, Any]], expected_policy_version: str, expected_verifier_version: str, expected_group_size: int) -> Dict[str, Any]:
     """检查实际轨迹的任务身份、版本、组大小和唯一性。"""
     trace_ids = [trace_id for group in groups for trace_id in group["trace_ids"]]
-    # checks = ???  # 分别检查问题身份、策略版本、验证器版本、组大小和轨迹唯一性。
-    # admitted = ???  # 非空轨迹组必须通过全部检查。
-    raise NotImplementedError("TODO 1：请构造轨迹组准入检查并形成结论")
+    checks = {
+        "prompt_identity": all(bool(group.get("prompt_id")) for group in groups),
+        "policy_version": all(group["source_policy_version"] == expected_policy_version for group in groups),
+        "verifier_version": all(group["verifier_version"] == expected_verifier_version for group in groups),
+        "group_size": all(len(group["trace_ids"]) == expected_group_size for group in groups),
+        "unique_traces": len(trace_ids) == len(set(trace_ids)),
+    }
+    # admitted = ???  # 非空轨迹组必须同时满足身份、版本、完整性与唯一性检查
+    raise NotImplementedError("TODO 1：请完成当前机制判据或公式")
     return {"admitted": admitted, "failed_checks": [name for name, passed in checks.items() if not passed]}
 
 
-# ==========================================
 # TODO 2：检查 GRPO 候选的质量、有效更新与资源门槛
-# ==========================================
 def evaluate_grpo_candidate(evidence: Dict[str, Any], gates: Dict[str, float]) -> Dict[str, Any]:
-    """使用有效更新、新轨迹质量、截断和资源证据判断候选资格。"""
+    """检查有效更新、新轨迹质量、截断和资源证据。"""
     rollout = evidence["rollout"]
     update = evidence["update"]
     elapsed_seconds = rollout["rollout_seconds"] + update["update_seconds"]
     reward_groups = rollout["reward_groups"]
     group_size = rollout["group_size"]
-    # complete_groups = ???  # 只保留奖励数量等于固定组规模的组。
-    # valid_groups = ???  # 只保留组内奖励存在差异、能够形成相对优势的完整组。
-    # valid_group_ratio = ???
-    # effective_trajectory_count = ???
-    # effective_trajectories_per_second = ???  # 分母覆盖采样、验证和更新。
-    raise NotImplementedError("TODO 2：请从逐组奖励形成有效更新与吞吐证据")
+    complete_groups = [rewards for rewards in reward_groups if len(rewards) == group_size]
+    valid_groups = [rewards for rewards in complete_groups if max(rewards) > min(rewards)]
+    # valid_group_ratio = ???  # 有效完整组占所有组的比例；空输入记为零
+    # effective_trajectory_count = ???  # 只有有效完整组中的轨迹计入更新量
+    # effective_trajectories_per_second = ???  # 有效更新量除以给定计时；非正耗时记为零
+    raise NotImplementedError("TODO 2：请完成当前机制判据或公式")
     checks = {
         "execution": evidence["status"] == "ok",
         "effective_groups": valid_group_ratio >= gates["minimum_valid_group_ratio"],
@@ -122,22 +126,19 @@ def evaluate_grpo_candidate(evidence: Dict[str, Any], gates: Dict[str, float]) -
         "memory": evidence["resources"]["peak_allocated_bytes"] <= gates["maximum_peak_allocated_bytes"],
     }
     eligible = all(checks.values())
-    return {"eligible": eligible, "valid_group_ratio": valid_group_ratio, "effective_trajectory_count": effective_trajectory_count, "effective_trajectories_per_second": effective_trajectories_per_second, "failed_checks": [name for name, passed in checks.items() if not passed]}
+    return {"eligible": eligible, "execution_ok": checks["execution"], "valid_group_ratio": valid_group_ratio, "effective_trajectory_count": effective_trajectory_count, "effective_trajectories_per_second": effective_trajectories_per_second, "failed_checks": [name for name, passed in checks.items() if not passed]}
 
 
-# ==========================================
 # TODO 3：形成 GRPO 项目交付决策
-# ==========================================
 def decide_grpo_delivery(rollout: Dict[str, Any], candidate: Dict[str, Any], artifact: Dict[str, Any]) -> Dict[str, Any]:
-    """依据轨迹、候选和适配器证据形成三态交付决策。"""
+    """区分轨迹或产物失败、候选待调优和可以交付。"""
     checks = {
         "rollout": rollout["admitted"],
         "candidate": candidate["eligible"],
         "artifact": bool(artifact.get("path")) and bool(artifact.get("sha256")),
     }
-    # 轨迹或产物失败时拒绝，候选未达标时调优，其余情况才可交付。
-    # decision = ???  # 含义：reject、tune 或 accept
-    raise NotImplementedError("TODO 3：请形成 GRPO 交付决策")
+    # decision = ???  # 数据/轨迹、执行或产物失败时拒绝；其余不足调优，全部通过交付
+    raise NotImplementedError("TODO 3：请完成当前机制判据或公式")
     return {"decision": decision, "failed_checks": [name for name, passed in checks.items() if not passed]}
 ```
 
@@ -172,6 +173,9 @@ def test_rollout_contract():
     ]
     rollout = check_rollout_contract(groups, "p1", "v1", 4)
     assert rollout["admitted"]
+    assert not check_rollout_contract([], "p1", "v1", 4)["admitted"]
+    assert not check_rollout_contract([{**groups[0], "prompt_id": ""}], "p1", "v1", 4)["admitted"]
+    assert not check_rollout_contract([{**groups[0], "trace_ids": ["a1"]}], "p1", "v1", 4)["admitted"]
     assert not check_rollout_contract([{**groups[0], "source_policy_version": "p0"}], "p1", "v1", 4)["admitted"]
     assert not check_rollout_contract([{**groups[0], "verifier_version": "v0"}], "p1", "v1", 4)["admitted"]
     duplicate = [groups[0], {**groups[1], "trace_ids": ["a1", "b2", "b3", "b4"]}]
@@ -201,10 +205,19 @@ def test_grpo_delivery_decision():
     assert decide_grpo_delivery(rollout, {"eligible": False}, {"path": "adapter", "sha256": "abc"})["decision"] == "tune"
 
 
+def test_grpo_execution_failure_rejected():
+    """执行失败不能被归为只需调参的候选。"""
+    evidence, gates = _grpo_candidate_fixture()
+    candidate = evaluate_grpo_candidate({**evidence, "status": "failed"}, gates)
+    assert decide_grpo_delivery({"admitted": True}, candidate, {"path": "adapter", "sha256": "abc"})["decision"] == "reject"
+
+
 test_rollout_contract()
 test_grpo_candidate_gates()
 test_grpo_delivery_decision()
 print("所有测试通过！")
+test_grpo_execution_failure_rejected()
+
 ```
 
 🛑 **STOP HERE** 🛑
@@ -252,7 +265,7 @@ def evaluate_grpo_candidate(evidence: Dict[str, Any], gates: Dict[str, float]) -
         "memory": evidence["resources"]["peak_allocated_bytes"] <= gates["maximum_peak_allocated_bytes"],
     }
     eligible = all(checks.values())
-    return {"eligible": eligible, "valid_group_ratio": valid_group_ratio, "effective_trajectory_count": effective_trajectory_count, "effective_trajectories_per_second": effective_trajectories_per_second, "failed_checks": [name for name, passed in checks.items() if not passed]}
+    return {"eligible": eligible, "execution_ok": checks["execution"], "valid_group_ratio": valid_group_ratio, "effective_trajectory_count": effective_trajectory_count, "effective_trajectories_per_second": effective_trajectories_per_second, "failed_checks": [name for name, passed in checks.items() if not passed]}
 
 
 # TODO 3：形成 GRPO 项目交付决策
@@ -263,7 +276,7 @@ def decide_grpo_delivery(rollout: Dict[str, Any], candidate: Dict[str, Any], art
         "candidate": candidate["eligible"],
         "artifact": bool(artifact.get("path")) and bool(artifact.get("sha256")),
     }
-    if not checks["rollout"] or not checks["artifact"]:
+    if not checks["rollout"] or not checks["artifact"] or not candidate.get("execution_ok", True):
         decision = "reject"
     elif not checks["candidate"]:
         decision = "tune"
@@ -277,19 +290,19 @@ def decide_grpo_delivery(rollout: Dict[str, Any], candidate: Dict[str, Any], art
 #### TODO 1：检查轨迹采样契约
 
 - **判断依据**：组内优势只能比较有明确问题身份、同一策略、同一验证器和完整组的真实轨迹；重复轨迹会重复计权。
-- **实现动作**：由问题身份、策略版本、验证器版本、组大小和轨迹唯一性构造具名检查，再形成准入结果。
+- **实现动作**：由问题身份、策略版本、验证器版本、组大小和轨迹唯一性读取骨架已提供的具名检查，再形成准入结果。
 - **测试证据**：测试覆盖合法组、旧策略、旧验证器和重复轨迹。
 
 #### TODO 2：检查候选门槛
 
 - **判断依据**：原始生成吞吐不代表有效更新；零方差组必须从有效组和有效轨迹吞吐中排除。
-- **实现动作**：从逐组奖励中先排除不完整组与零方差组，再计算有效组比例、有效轨迹数和覆盖采样、验证、更新的吞吐，最后检查独立质量、截断与显存。
+- **实现动作**：骨架先筛出完整且非零方差的组；TODO 用这些组计算有效组比例、有效轨迹数和给定耗时下的吞吐，后续具名检查与失败原因装配由骨架提供。真实 helper 的新测量口径及历史缺口仍按 Step 5 的说明区分。
 - **测试证据**：测试覆盖零方差组、不完整组、长度超限和显存越界；完成生成但没有相对奖励信号时不能通过。
 
 #### TODO 3：形成交付决策
 
 - **判断依据**：轨迹契约、候选收益和可追溯适配器是独立硬门槛。
-- **实现动作**：轨迹或产物失败时 `reject`，候选门槛未通过时 `tune`，三项完整时 `accept`。
+- **实现动作**：轨迹、执行或产物失败时 `reject`，候选门槛未通过时 `tune`，三项完整时 `accept`。
 - **测试证据**：测试覆盖缺少产物与候选仍需调优两类路径。
 ## Step 5：真实轨迹采样、GRPO 更新与新轨迹复测
 
@@ -297,7 +310,7 @@ CPU 题目区验证轨迹身份、有效组和候选决策；真实实验执行�
 
 | 对照层 | 输入 | 主要证据 | 输出与证据边界 |
 |:---|:---|:---|:---|
-| CPU 生命周期 | 人工构造的轨迹组和候选摘要 | 策略版本、新鲜度、有效组与采用状态 | 只确认轨迹与决策逻辑，不证明真实质量 |
+| CPU 生命周期 | 人工构造的轨迹组和候选摘要 | 策略版本字段相等、有效组与采用状态；不验证行为分布新鲜度 | 只确认轨迹与决策逻辑，不证明真实质量 |
 | 真实 GRPO / RLVR | 固定 SFT 策略、题集、验证器和生成预算 | 实际轨迹身份、奖励方差、更新、复测、截断与资源 | 输出候选清单；不外推到其他任务 |
 
 ### 5.1 环境、输入资产与固定条件
@@ -311,7 +324,11 @@ import json
 from tools.project_runtime import resolve_project_root
 
 RUN_MODE = "dry_run"  # 默认只检查配置；改为 real_gpu 执行新的真实轨迹与更新。
-RUN_LABEL = "grpo_rlvr_len384_v7"  # v6 的生成触顶率超限；v7 只扩大生成预算。
+RUN_LABEL = "replace_with_unique_label"  # 新运行使用唯一标签；历史 v7 结果在 5.6 登记。
+if RUN_MODE not in {"dry_run", "real_gpu"}:
+    raise ValueError("运行模式必须为dry_run或real_gpu")
+if RUN_MODE == "real_gpu" and RUN_LABEL == "replace_with_unique_label":
+    raise ValueError("真实运行前请设置唯一RUN_LABEL")
 PROFILE_ID = "PT-RL-CUDA"
 SEMANTIC_ID = "PT-GRPO-GROUPWISE"
 SCHEMA_VERSION = "model-evaluation/v1"
@@ -408,7 +425,9 @@ if RUN_MODE == "real_gpu":
 
 ### 5.4 执行真实轨迹采样、验证器奖励和有限更新
 
-零方差组会保存为成本证据，但不会进入优势更新；更新后使用评测问题重新生成，不复用训练轨迹。实际轨迹必须携带任务输入 ID、轨迹 ID、源策略版本和验证器版本。v5 有 12/24 个训练组产生非零方差，但基线与候选分别有 73.96% 和 72.92% 的回答触及 128 词元上限；本轮只扩大生成预算，检验质量持平是否由截断造成。
+新结果须使用唯一新标签；`measurement_version`、`objective_kind` 和 `timing_scope` 分别标记新测量口径、回答级代理目标与计时范围，历史 JSON 不变。
+
+零方差组会保存为成本证据，但不会进入优势更新；更新后使用评测问题重新生成，不复用训练轨迹。实际轨迹应携带任务输入 ID、轨迹 ID、生成时策略版本和验证器版本。历史 v7 helper 在逐组更新后仍写入初始 SFT 版本，且未保存回复 Token 或旧策略概率，因此历史摘要不能复核每组的真实行为策略。新测量 v2 分开记录初始适配器版本、采样时已完成更新步及运行内行为版本，轨迹 ID 纳入该步；行为版本不是已保存检查点哈希，仍不能据此重放完整行为分布。v5 有 12/24 个训练组产生非零方差，但基线与候选分别有 73.96% 和 72.92% 的回答触及 128 词元上限；本轮只扩大生成预算，检验质量持平是否由截断造成。
 
 ```python
 if RUN_MODE == "real_gpu":
@@ -489,7 +508,7 @@ if EVIDENCE_PATH.exists():
 | 长度预算 | 更新前策略与候选的触顶率为 11.46% / 18.75% | 通过 | 固定 384 词元上限 |
 | 项目决策 | 轨迹、资源、独立复测和适配器证据完整 | `accept` | 交给 86 进行生命周期交接 |
 
-`grpo_rlvr_len384_v7` 保持题集、组规模、策略与验证器不变，只把生成上限提高到 384，并使用新的轨迹窗口。平均奖励从 0.2708 提高到 0.3229，`pass@group` 从 0.5833 提高到 0.6667；24 个组中 18 个形成有效优势并完成更新。基线与候选触顶率分别为 11.46% 与 18.75%，峰值分配显存约 7.00 GiB、峰值保留显存约 9.50 GiB，全部门槛通过，结论为 `accept`。该结果仅适用于当前题集、组规模、策略版本与 384 词元预算。
+`grpo_rlvr_len384_v7` 保持题集、组规模、策略与验证器不变，只把生成上限提高到 384，并使用新的轨迹窗口。平均奖励从 0.2708 提高到 0.3229，`pass@group` 从 0.5833 提高到 0.6667；24 个组中 18 个形成有效优势并完成更新。基线与候选触顶率分别为 11.46% 与 18.75%，峰值分配显存约 7.00 GiB、峰值保留显存约 9.50 GiB，历史报告按当时的局部计时与版本字段检查返回 `accept`；该状态不证明完整流程吞吐或逐次采样策略身份已验证。该结果仅适用于当前题集、组规模、策略版本与 384 词元预算。
 
 **当前登记结果**
 
