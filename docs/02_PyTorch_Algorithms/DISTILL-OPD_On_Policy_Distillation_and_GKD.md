@@ -1,5 +1,5 @@
 # DISTILL-OPD. On Policy Distillation and GKD | 在策略蒸馏与 GKD
-**难度：** Hard | **环境：** [CPU 主线](#runtime-environment) | **标签：** `蒸馏`, `GKD`, `在策略采样`, `教师学生` | **目标人群：** 模型压缩与后训练学习者
+**难度：** Hard | **环境：** [CPU 主线](#runtime-environment) | **标签：** `蒸馏`, `GKD`, `在策略采样`, `教师学生` | **目标人群：** 理解概率分布、需要核对蒸馏掩码与梯度的学习者
 
 > 🚀 **云端运行环境**
 >
@@ -13,7 +13,7 @@
 
 ## 本节导读
 
-离线蒸馏通常在固定数据或教师生成数据上训练学生，学生部署时却要处理自己更容易产生的前缀和错误。GKD（Generalized Knowledge Distillation）让学生从自己的策略采样回答，再由冻结教师对这些学生轨迹给出逐 Token 分布反馈，从而把训练信号移到学生实际访问的状态附近。
+离线蒸馏通常在固定数据或教师生成数据上训练学生，学生部署时却要处理自己更容易产生的前缀和错误。广义知识蒸馏（Generalized Knowledge Distillation，GKD）让学生从自己的策略采样回答，再由冻结教师对这些学生轨迹给出逐 Token 分布反馈，从而把训练信号移到学生实际访问的状态附近。
 
 本节先确定离线与在策略轨迹的混合比例，再计算教师—学生分布差异，最后用完成区掩码形成学生更新。完成后，你应该能解释“谁生成轨迹、谁提供监督、哪些 Token 参与损失”，并用独立的 PyTorch 分布 API 核对教学实现。
 
@@ -99,7 +99,7 @@ D_{\mathrm{GJS}}^{\beta}(p^T_{b,t},p^S_{b,t})}
 {\sum_{b,t}M_{b,t}}.
 $$
 
-分母是有效蒸馏 Token 数；若分母为零，本批次没有可学习位置，应立即报错。教师参数保持冻结，梯度只流向学生。OPSD 可视为这一结构的扩展：教师与学生可以共享基础模型，但教师额外看到已验证推理或其他特权上下文；它仍需在学生轨迹、可见上下文和损失掩码上分别留痕。
+分母是有效蒸馏 Token 数；若分母为零，本批次没有可学习位置，应立即报错。教师参数保持冻结，梯度只流向学生。在策略自蒸馏（On-Policy Self-Distillation，OPSD）可视为这一结构的扩展：教师与学生可以共享基础模型，但教师额外看到已验证推理或其他特权上下文；它仍需在学生轨迹、可见上下文和损失掩码上分别留痕。
 
 | 对象 | 在训练中的状态 | 核对重点 |
 |:---|:---|:---|
@@ -113,7 +113,7 @@ $$
 <a id="mechanism-practice"></a>
 ## Step 4：实现轨迹混合与掩码蒸馏目标
 
-题目区使用小型 Logits 张量复现 GKD 的四个核心动作：按 $\lambda$ 选择在策略样本、按 $\beta$ 计算广义 JSD、从序列边界构造完成区掩码，再按有效 Token 归约损失。测试覆盖比例与随机种子、散度端点、提示与 Padding 排除、工具结果排除、空掩码和教师冻结。
+题目区使用小型 Logits 张量复现 GKD 的四个核心动作：按 $\lambda$ 选择在策略样本、按 $\beta$ 计算广义 JSD、从序列边界构造完成区掩码，再按有效 Token 归约损失。输入 Logits 已对齐到预测同一目标 Token 的位置；真实因果模型需先对齐前一位置 Logits 与下一 Token。提示长度按无左填充的位置计数，本题使用右侧 Padding。测试覆盖比例与随机种子、散度端点、提示与 Padding 排除、工具结果排除、空掩码和教师冻结。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 |:---|:---|:---|:---|
@@ -244,6 +244,7 @@ def test_completion_mask():
         [[False, False, True, False, False], [False, True, False, True, True]]
     )
     assert torch.equal(actual, expected)
+    _assert_raises(ValueError, lambda: build_completion_mask(torch.tensor([[0, 1, 1]]), torch.tensor([1])))
     _assert_raises(
         ValueError,
         lambda: build_completion_mask(attention_mask, torch.tensor([6, 1])),
@@ -269,6 +270,7 @@ def test_mask_and_gradient_isolation():
     changed = masked_distillation_loss(student, changed_teacher, mask, beta=0.5)
     assert torch.allclose(loss, changed, atol=1e-7)
 
+    _assert_raises(ValueError, lambda: masked_distillation_loss(student, teacher, torch.tensor([[0.0, 0.5, 1.0]]), 0.5))
     loss.backward()
     assert student.grad is not None and student.grad[:, 1:, :].abs().sum() > 0
     assert teacher.grad is None
@@ -364,6 +366,10 @@ def build_completion_mask(
         raise ValueError("prompt_lengths 形状必须等于批大小")
     if torch.any(prompt_lengths < 0) or torch.any(prompt_lengths > sequence_length):
         raise ValueError("prompt_lengths 必须位于序列边界内")
+    if torch.any((attention_mask != 0) & (attention_mask != 1)):
+        raise ValueError("attention_mask 必须为二值掩码")
+    if torch.any(attention_mask[:, 1:] > attention_mask[:, :-1]):
+        raise ValueError("本题只支持无左填充的右侧 Padding")
     positions = torch.arange(sequence_length, device=attention_mask.device).unsqueeze(0)
     completion_mask = attention_mask.bool() & (positions >= prompt_lengths.unsqueeze(1))
     if excluded_mask is not None:
@@ -383,6 +389,8 @@ def masked_distillation_loss(
     per_token_loss = generalized_jsd_from_logits(student_logits, teacher_logits, beta)
     if loss_mask.shape != per_token_loss.shape:
         raise ValueError("loss_mask 形状必须与逐 Token 损失一致")
+    if torch.any((loss_mask != 0) & (loss_mask != 1)):
+        raise ValueError("loss_mask 必须为二值掩码")
     float_mask = loss_mask.to(device=per_token_loss.device, dtype=per_token_loss.dtype)
     valid_tokens = float_mask.sum()
     if valid_tokens.item() == 0:
@@ -410,7 +418,7 @@ def masked_distillation_loss(
 
 #### TODO 4：归约有效蒸馏位置
 
-- 机制：逐 Token 散度与掩码相乘，再除以有效蒸馏 Token 数，而不是批大小或完整序列长度。
+- 机制：先拒绝非二值掩码，再将逐 Token 散度与掩码相乘，再除以有效蒸馏 Token 数，而不是批大小或完整序列长度。
 - 不变量：被屏蔽位置不能改变损失，空掩码不能产生伪零损失，梯度只进入学生；测试分别覆盖三项约束。
 
 <a id="framework-check"></a>

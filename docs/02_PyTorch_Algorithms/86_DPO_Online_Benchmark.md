@@ -28,7 +28,7 @@
 - [Part 02 · 85 GRPO 组内奖励优化项目](./85_GRPO_Groupwise_Alignment_Project.md)
 
 ---
-### Step 1：把并列候选送入生命周期交接流程
+## Step 1：把并列候选送入生命周期交接流程
 
 DPO 与 GRPO/RLVR 是从同一 SFT 基线派生的并列候选，而不是连续训练阶段。项目读取各分支已经形成的候选清单，核对候选血缘、证据新鲜度、产物完整性和回滚基线，并在失败时选择最晚可信恢复点。输出是 `ready_for_evaluation`、`tune` 或 `reject` 交接状态，不在本节比较不同任务指标，也不形成最终采用结论。
 
@@ -41,7 +41,7 @@ DPO 与 GRPO/RLVR 是从同一 SFT 基线派生的并列候选，而不是连续
 
 ![后训练候选的生命周期交接流程](../public/02_PyTorch_Algorithms/86_post_training_adoption_flow.svg)
 
-### Step 2：用证据身份判断候选是否仍然有效
+## Step 2：用证据身份判断候选是否仍然有效
 
 候选证据至少由源基线版本、候选策略版本、数据或反馈版本、评测版本和产物哈希共同标识。当前激活基线、评测集或验证规则发生变化时，旧结果可以保留为历史记录，却不能直接交给当前独立评测。在线候选还要检查轨迹窗口和源策略版本；离线候选则要确认偏好证据仍对应当前基线。
 
@@ -53,7 +53,7 @@ DPO 与 GRPO/RLVR 是从同一 SFT 基线派生的并列候选，而不是连续
 | 评测版本 | 原质量结论不能直接沿用 | 原新轨迹结论不能直接沿用 |
 | 产物哈希 | 无法证明审核对象仍是原候选 | 无法证明审核对象仍是原候选 |
 
-### Step 3：从最晚可信状态恢复并形成交接状态
+## Step 3：从最晚可信状态恢复并形成交接状态
 
 恢复动作由失败发生在哪个阶段以及此前保存了什么可信状态共同决定。恢复完成后仍要重新检查候选血缘、新鲜度、产物和回滚条件。上游已拒绝、证据失效、产物损坏或回滚不可用时输出 `reject`；上游仍需调优时输出 `tune`；生命周期条件全部通过时输出 `ready_for_evaluation`，由 Part 05 再检查质量、安全、鲁棒性和成本。
 
@@ -69,7 +69,7 @@ DPO 与 GRPO/RLVR 是从同一 SFT 基线派生的并列候选，而不是连续
 
 ![后训练失败阶段与恢复点](../public/02_PyTorch_Algorithms/86_recovery_state_flow.svg)
 
-### Step 4：实现新鲜度、恢复与交接判断
+## Step 4：实现新鲜度、恢复与交接判断
 
 | 任务与目的 | 已知条件 | 完成标准 | 测试验证 |
 |:---|:---|:---|:---|
@@ -148,11 +148,17 @@ def decide_lifecycle_handoff(upstream_decision: str, freshness: Dict[str, Any], 
         "artifact": evidence["artifact_verified"],
     }
 
-    # handoff_status = ???  # 含义：reject、tune 或 ready_for_evaluation。
+    hard_failures = [name for name, passed in hard_checks.items() if not passed]
+    if upstream_decision not in {"accept", "tune", "reject"}:
+        hard_failures.append("upstream_state")
+    elif upstream_decision == "reject":
+        hard_failures.append("upstream_reject")
+    # handoff_status = ???  # 硬失败拒绝，否则传播调优或进入独立评测。
     raise NotImplementedError("TODO 3：请形成生命周期交接状态")
     return {
         "handoff_status": handoff_status,
-        "hard_failures": [name for name, passed in hard_checks.items() if not passed],
+        "upstream_decision": upstream_decision,
+        "hard_failures": hard_failures,
     }
 ```
 
@@ -186,6 +192,8 @@ def test_recovery_actions():
     assert reward_fallback["recovery_state"] == "prompt_queue"
     assert reward_fallback["action"] == "restart_sampling_from_prompt_queue"
     assert choose_recovery_action({"stage": "reward", "available": {}})["action"] == "restart_sampling"
+    assert choose_recovery_action({"stage": "update", "available": {}})["action"] == "block_update"
+    assert choose_recovery_action({"stage": "update", "available": {"verified_baseline": True}})["action"] == "rollback_to_verified_baseline"
 
 
 def test_lifecycle_handoff():
@@ -294,7 +302,7 @@ def decide_lifecycle_handoff(upstream_decision: str, freshness: Dict[str, Any], 
 
 #### TODO 2：选择恢复动作
 
-- **判断依据**：恢复应复用最晚可信证据，避免奖励失败后重新采样，也避免更新失败后重复消费轨迹。
+- **判断依据**：恢复应复用最晚可信证据，奖励失败且轨迹可信时复用轨迹；更新失败时先选择检查点或基线。动作选择不等于已恢复优化器和消费账本，不能单凭此函数证明不会重复消费。
 - **实现动作**：按失败阶段列出由近到远的可信状态候选，选择第一个可用状态；没有状态可复用时才执行阶段回退。
 - **测试证据**：测试覆盖轨迹可复用、轨迹缺失但问题队列仍可用，以及无可信状态三种恢复范围。
 
@@ -323,7 +331,11 @@ import json
 from tools.project_runtime import resolve_project_root
 
 RUN_MODE = "dry_run"  # 默认值 dry_run：只检查配置；改为 real_artifact 审核真实产物。
-RUN_LABEL = "post_training_lifecycle_v6"  # v5 暴露了窗口年龄方向错误；v6 仍交接 84 v5 与 85 v7。
+RUN_LABEL = "replace_with_unique_label"  # 历史v6只在结果登记处引用。
+if RUN_MODE not in {"dry_run", "real_artifact"}:
+    raise ValueError("运行模式必须为dry_run或real_artifact")
+if RUN_MODE == "real_artifact" and RUN_LABEL == "replace_with_unique_label":
+    raise ValueError("真实产物审核前请设置唯一RUN_LABEL")
 SEMANTIC_ID = "PT-POST-TRAINING-LIFECYCLE"
 SCHEMA_VERSION = "post-training-lifecycle/v1"
 
@@ -384,25 +396,24 @@ def check_candidate_freshness_for_run(candidate, active_policy_version, maximum_
     return {"fresh": all(checks.values()), "failed_checks": [name for name, passed in checks.items() if not passed]}
 
 def choose_recovery_action_for_run(failure):
+    """只从实际可用的可信状态恢复；没有检查点或基线时阻止更新。"""
     stage, available = failure["stage"], failure["available"]
-    required_state_by_stage = {
-        "sampling": "prompt_queue", "reward": "trajectories",
-        "update": "pre_update_checkpoint", "artifact_validation": "verified_baseline",
+    candidates = {
+        "sampling": [("prompt_queue", "retry_sampling_from_prompt_queue")],
+        "reward": [("trajectories", "resume_reward_from_saved_trajectories"),
+                   ("prompt_queue", "restart_sampling_from_prompt_queue")],
+        "update": [("pre_update_checkpoint", "restore_pre_update_checkpoint"),
+                   ("verified_baseline", "rollback_to_verified_baseline")],
+        "artifact_validation": [("verified_baseline", "rollback_to_verified_baseline")],
     }
-    recovery_action_by_stage = {
-        "sampling": "retry_sampling_from_prompt_queue", "reward": "resume_reward_from_saved_trajectories",
-        "update": "restore_pre_update_checkpoint", "artifact_validation": "rollback_to_verified_baseline",
-    }
-    fallback_action_by_stage = {
-        "sampling": "rebuild_prompt_queue", "reward": "restart_sampling",
-        "update": "rollback_to_verified_baseline", "artifact_validation": "block_release",
-    }
-    if stage not in required_state_by_stage:
+    fallback = {"sampling": "rebuild_prompt_queue", "reward": "restart_sampling",
+                "update": "block_update", "artifact_validation": "block_release"}
+    if stage not in candidates:
         raise ValueError(f"未知失败阶段：{stage}")
-    required_state = required_state_by_stage[stage]
-    reuse_trusted_state = bool(available.get(required_state))
-    action = recovery_action_by_stage[stage] if reuse_trusted_state else fallback_action_by_stage[stage]
-    return {"stage": stage, "required_state": required_state, "reused_state": reuse_trusted_state, "action": action}
+    state, action = next(((state, action) for state, action in candidates[stage]
+                          if available.get(state) is True), (None, fallback[stage]))
+    return {"stage": stage, "required_state": state,
+            "reused_state": state is not None, "action": action}
 
 def decide_lifecycle_handoff_for_run(upstream_decision, freshness, evidence):
     hard_checks = {

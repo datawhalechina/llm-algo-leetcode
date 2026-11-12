@@ -6,11 +6,11 @@
   <text x="62" y="70" class="title">SFT 数据准入：契约、指纹与切分隔离</text><text x="62" y="102" class="subtitle">完整样本指纹检查训练重复，任务输入指纹检查评测泄漏；拒绝样本保留全部原因。</text>
 
   <rect x="54" y="214" width="184" height="112" rx="15" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/>
-  <text x="76" y="248" class="head">原始 SFT 样本</text><text x="76" y="278" class="copy">指令 · 上下文 · 回答</text><text x="76" y="304" class="copy">来源与许可记录</text>
+  <text x="76" y="248" class="head">原始 SFT 样本</text><text x="76" y="278" class="copy">指令 · 上下文 · 回答</text><text x="76" y="304" class="copy">来源与样本标识</text>
   <rect x="286" y="214" width="184" height="112" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
   <text x="308" y="248" class="head">冻结数据切分</text><text x="308" y="278" class="copy">训练 / 验证 / 评测</text><text x="308" y="304" class="copy">生成样本与来源身份</text>
-  <polygon points="590,200 680,270 590,340 500,270" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2"/>
-  <text x="542" y="263" class="head">契约完整？</text><text x="542" y="291" class="copy">身份与监督语义</text>
+  <rect x="500" y="214" width="180" height="112" rx="15" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2"/>
+  <text x="542" y="263" class="head">契约检查</text><text x="518" y="291" class="copy">记录字段与缺失原因</text>
   <rect x="732" y="214" width="190" height="112" rx="15" fill="#FEE2E2" stroke="#DC2626" stroke-width="2"/>
   <text x="754" y="248" class="head">构造两类指纹</text><text x="754" y="278" class="copy">任务输入指纹</text><text x="754" y="304" class="copy">完整样本指纹</text>
   <rect x="970" y="214" width="190" height="112" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
@@ -20,12 +20,10 @@
   <path d="M238 270H286" class="line"/><path d="M470 270H500" class="line"/><path d="M680 270H732" class="line"/><path d="M922 270H970" class="line"/><path d="M1160 270H1190" class="line"/>
 
   <rect x="1050" y="430" width="300" height="106" rx="15" fill="#ECFDF5" stroke="#16A34A" stroke-width="2"/>
-  <text x="1074" y="466" class="head">SFT 准入清单</text><text x="1074" y="496" class="copy">样本 · 来源 · 两类指纹</text><text x="1074" y="522" class="copy">交给模板与标签构造</text>
+  <text x="1074" y="466" class="head">SFT 准入记录</text><text x="1074" y="496" class="copy">内容快照 · 来源 · 验证证据</text><text x="1074" y="522" class="copy">交给模板与标签构造</text>
   <rect x="430" y="430" width="360" height="106" rx="15" fill="#FFF1F2" stroke="#DC2626" stroke-width="2"/>
   <text x="454" y="466" class="head">拒绝与修复记录</text><text x="454" y="496" class="copy">契约失败 · 重复身份 · 内容重复</text><text x="454" y="522" class="copy">评测泄漏 · 来源与失败阶段</text>
   <path d="M1280 340V430" class="line"/>
-  <path d="M590 340V366H540V430" class="reject"/>
-  <path d="M827 326V384H610V430" class="reject"/>
   <path d="M1238 326V402H680V430" class="reject"/>
-  <text x="688" y="250" class="copy">通过</text><text x="1292" y="390" class="copy">通过</text><text x="510" y="356" class="copy">失败</text>
+  <text x="1292" y="390" class="copy">通过</text><text x="955" y="392" class="copy">任一风险命中</text>
 </svg>

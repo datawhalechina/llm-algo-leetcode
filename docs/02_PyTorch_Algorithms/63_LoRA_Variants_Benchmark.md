@@ -1,6 +1,6 @@
 # 63. LoRA Variants Benchmark | LoRA 变体选型项目
 
-**难度：** Hard | **环境：** CPU + 单卡 GPU | **标签：** `监督微调`, `LoRA`, `候选选型` | **目标人群：** 项目决策练习者
+**难度：** Hard | **环境：** [CPU 主线，GPU 可选](#runtime-environment) | **标签：** `监督微调`, `LoRA`, `候选选型` | **目标人群：** 理解LoRA、需要比较微调配置的读者
 
 > 🚀 **云端运行环境**
 >
@@ -14,177 +14,280 @@
 
 ## 本节导读
 
-本节读取 64 节准入的数据清单，在固定模型、数据、训练预算和独立评测下比较 LoRA 候选。首先检查候选是否可比以及是否通过质量和资源门槛，再通过配对复测选出供 62 节训练使用的适配器配置。
+增大LoRA的秩会增加可训练参数，却不保证在当前数据和训练步数下得到更好的回答。若同时调整缩放或目标层，即使评测损失下降，也难以判断哪项变化起了作用；很小的损失差还可能随随机种子改变。
 
-**关键词：** `LoRA`, `单变量对照`, `独立评测`, `资源门槛`, `选型报告`
+本节在同一模型、数据和更新预算下比较秩配置，先检查每次运行的质量与资源，再用共享随机种子比较损失差。若差异落入预先规定的允许范围，就优先选择显存和步时更低的配置。数据来自已通过检查的固定清单，选中的配置与适配器供后续训练项目复用。
+
+**关键词：** `LoRA`, `秩与缩放`, `共享随机种子`, `配对损失差`, `资源比较`
 
 ---
+
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **CPU练习：** 使用 [BASE-CPU](../guide.md#base-cpu)，运行Step4、测试与参考代码。
+- **真实候选对照：** 使用 [PT-SFT-CUDA](../topic_discussion/post_training_optimization/quickstart.md#pt-sft-cuda-quickstart) 的单卡环境；模型、数据与训练预算见Step5。CPU练习不加载模型或占用GPU。
+
 ## 前置阅读
 
-**导语：** 先理解 LoRA 更新范围、有效 batch 和真实数据准入，再比较候选配置。
+先理解低秩分支、缩放与参数数量，再确认用于比较的数据已经去重并与评测任务分开。
 
-- [Part 02 · 14 LoRA 目标模块与低秩更新](./14_LoRA_Tutorial.md)
-- [Part 02 · 31 LoRA 变体与参数预算](./31_LoRA_Variants_Theory.md)
-- [Part 02 · 64 SFT 数据质量项目](./64_SFT_Data_Quality_Project.md)
+- [Part 02 · 14 低秩适配教程](./14_LoRA_Tutorial.md)：回看低秩分支、缩放与零初始化。
+- [Part 02 · 31 LoRA变体缩放与预算](./31_LoRA_Variants_Theory.md)：区分相同秩与相同参数上限的比较。
+- [Part 02 · 64 SFT数据质量项目](./64_SFT_Data_Quality_Project.md)：读取通过检查的样本与固定切分。
 
----
-### Step 1：定义单变量候选与固定实验条件
+## Step 1：固定训练条件，比较不同秩配置
 
-LoRA 候选可以改变低秩容量、缩放、正则化或更新范围，但一轮实验只能选择其中一个维度作为变量。模型版本、数据切分、训练预算、独立评测集和随机种子集合保持一致，才能把结果差异归因到该变量；本项目的真实 GPU 对照只改变秩。
+本项目固定模型版本、数据切分、训练步数、学习率、目标层和随机种子集合，只改变LoRA秩这一配置字段。秩控制低秩分支的宽度；标准LoRA的增量还乘以缩放系数 $s=\alpha/r$。例如固定 $\alpha=16$ 时，秩4、8、16对应的系数分别为4、2、1。因此本次比较同时包含参数数量与派生缩放的变化，回答的是“哪份秩配置适合这次训练”，而不是孤立测量容量的作用。
 
-| 候选维度 | 机制作用 | 本轮处理 | 必须固定的相关条件 |
-|:---|:---|:---|:---|
-| 秩 `rank` | 改变低秩分支的容量和可训练参数量 | 作为唯一变量 | 缩放、正则化和目标模块 |
-| 缩放 `alpha` | 改变低秩更新的缩放强度 | 保持不变 | 秩、正则化和目标模块 |
-| 丢弃率 `dropout` | 改变低秩分支的正则化强度 | 保持不变 | 秩、缩放和目标模块 |
-| 目标模块 `target_modules` | 改变模型中允许更新的参数范围 | 保持不变 | 秩、缩放和正则化 |
-| 公共实验条件 | 决定候选是否能够直接比较 | 全部固定 | 模型与数据版本、训练步数、评测集和随机种子集合 |
+每份配置都从同一基座重新训练，得到独立评测损失、显存与步时；通过检查后才比较资源。这里的训练预算是相同样本顺序、每步一条样本和相同更新次数，不能据此推断更长训练后的排名。
 
-![LoRA 变体的单变量实验](../public/02_PyTorch_Algorithms/63_lora_variant_experiment_flow.svg)
+| 比较对象 | 本次条件 | 为什么需要记录 |
+| --- | --- | --- |
+| 秩与缩放 | 秩4／8／16，缩放超参数固定16 | 实际系数随秩变化，不能只解释为参数增加 |
+| 模型与数据 | 相同基座提交、训练／评测成员、分词与最大长度 | 排除输入或起点变化 |
+| 训练预算 | 相同学习率、样本顺序和更新次数 | 比较相同短训练预算下的结果 |
+| 适配范围 | 相同目标层和随机失活率 | 避免同时改变更新位置与正则化 |
+| 重复运行 | 每个候选使用同一组随机种子 | 按同一个种子对应两份运行，比较损失差 |
 
-### Step 2：先检查可比性，再执行逐项准入
+![LoRA秩配置与共同实验条件](../public/02_PyTorch_Algorithms/63_lora_variant_experiment_flow.svg)
 
-候选首先要通过可比性检查：固定条件不能漂移，并且只能改变声明的一个 LoRA 维度。可比候选再分别接受执行、质量和资源检查；这些都是硬门槛，任一失败都不能由另一项优势抵消。更新前评测用于发现候选起点异常，固定更新预算后的独立评测才用于比较训练结果。
+## Step 2：怎样比较评测损失、显存与吞吐
 
-| 判断层 | 检查对象 | 通过条件 | 失败动作 |
-|:---|:---|:---|:---|
-| 可比性 | 模型与数据版本、训练预算、评测集、种子集合和 LoRA 配置 | 固定条件一致，且恰好改变一个声明维度 | 整组对照失效，修正后重跑 |
-| 执行准入 | 运行状态、失败记录和非有限值 | 必要运行全部有效 | 保留失败证据并补测 |
-| 质量准入 | 固定预算后的独立评测损失 | 不超过预先声明的上限 | 淘汰候选 |
-| 资源准入 | 峰值显存与监督词元吞吐 | 同时满足设备容量和速度下限 | 淘汰候选 |
-| 门槛余量 | 指标与对应阈值的距离 | 每项分别记录，不合成为加权总分 | 根据失败项调整候选或预算 |
+本项目的评测先对每条样本的有效监督词元取平均损失，再对全部评测样本取平均。设样本 $i$ 的损失总和为 $S_i$、有效目标数为 $N_i>0$，样本总数为 $M$，则 $L_{\mathrm{example}}=\frac1M\sum_i S_i/N_i$。它让每条样本权重相同，与13／15节的全词元平均 $\sum_i S_i/\sum_i N_i$ 不同。例如两条回答分别有2、6个目标，平均损失为1、3，则本项目指标为2，全词元平均为2.5。比较候选必须使用同一种计算方法和同一批评测样本。
 
-### Step 3：用共享随机种子完成配对选择
+损失、显存是上限，吞吐是下限，每一项都要通过。监督词元吞吐按训练更新计时窗口计算，包含前向、反向和优化器更新；不包含模型加载、评测和适配器保存。峰值分配显存则包含训练及训练后的评测，因而不是“纯训练峰值”。每次重复都检查这些指标，不能只凭候选摘要通过就跳过原始运行。
 
-首轮准入只能排除明显不合格的候选，不能证明细小质量差能够复现。最终比较要求每个合格候选使用完全相同的随机种子集合；缺失、重复或失败的运行都会破坏配对关系。对每个共享种子计算候选间的评测损失差，再结合候选自身的重复极差判断结果是否稳定。
+| 检查对象 | 通过条件 | 不通过时 |
+| --- | --- | --- |
+| 固定条件 | 声明的共同条件相同，没有未声明的配置变化 | 修正比较条件后再运行 |
+| 运行状态 | 所需运行全部成功，指标有限且非负 | 保留失败记录，修复或补测 |
+| 独立评测损失 | 每次重复均不超过上限 | 排除该候选 |
+| 峰值分配显存 | 每次重复均不超过预算 | 排除该候选 |
+| 监督词元吞吐 | 每次重复均不低于下限 | 排除该候选 |
+| 指标余量 | 分别记录距离各自门槛还有多少 | 按失败原因调整配置，不合成加权总分 |
 
-| 选择阶段 | 使用的证据 | 判断规则 | 输出状态 |
-|:---|:---|:---|:---|
-| 配对完整性 | 各候选的成功运行与随机种子 | 种子集合完全一致、无重复且达到最少次数 | 不完整则 `tune` |
-| 重复稳定性 | 同一候选跨种子的评测损失 | 最大值与最小值之差不超过预设上限 | 波动过大则 `tune` |
-| 配对质量差 | 每个共享种子上的候选损失差 | 损失差的中位数落入预设质量等价区间 | 进入资源比较 |
-| 资源排序 | 峰值显存、步时和可训练参数量 | 质量等价时依次选择代价更低的候选 | 唯一候选则 `accept` |
-| 无合格候选 | 逐项准入结果 | 没有候选同时通过全部硬门槛 | `reject` |
+## Step 3：按共享种子比较损失差，再选择低代价配置
 
-![LoRA 变体的 CPU 决策实现](../public/02_PyTorch_Algorithms/63_lora_cpu_todo_flow.svg)
+配对是把同一个随机种子下的两份运行对应起来。每个候选需要相同种子集合，种子不能重复，运行次数达到下限；缺一份运行就先补齐。随后检查同一候选损失的最大值与最小值之差，避免把波动过大的结果用于细小差异的比较。
 
-### Step 4：实现可比性、准入与选择
+先找出重复损失中位数最低的候选作为参考，再逐种子相减，取差值的中位数。其绝对值不超过预设允许偏差的候选，进入资源比较；这里的“质量等价”指满足这条数值规则，不是统计检验或所有任务质量相同。在这些候选中，依次比较重复运行的峰值显存中位数、步时中位数，最后用名称消除完全相同情况下的顺序差异。
 
-CPU 题目使用一个基线配置、多个候选记录和多随机种子复测记录。学习者需要找出固定条件与 LoRA 配置的变化，逐项检查执行、质量和资源门槛，再根据共享随机种子的配对损失差判断质量是否等价。测试覆盖固定条件漂移、单项门槛失败、配对缺失、运行失败和重复波动。
+| 判断 | 使用的结果 | 后续动作 |
+| --- | --- | --- |
+| 种子缺失、重复或运行失败 | 无法组成完整配对 | `tune`：补测或修复，暂不选择 |
+| 单次质量或资源未达标 | 候选摘要及逐次运行指标 | 排除该候选；全部排除则`reject` |
+| 重复损失波动过大 | 最大损失减最小损失超过上限 | `tune`：先检查波动原因 |
+| 配对损失差在允许范围内 | 逐种子损失差中位数的绝对值不超过阈值 | 进入显存、步时比较 |
+| 选出配置 | 所有检查通过后选择代价较低者 | `accept`：推荐当前负载下的配置；真实交接还需核对适配器文件 |
+
+![配对损失差与资源选择](../public/02_PyTorch_Algorithms/63_lora_cpu_todo_flow.svg)
+
+## Step 4：实现候选检查与配对选择
+
+题目给出基线配置、候选摘要和逐种子的质量／资源记录。骨架提供输入校验、变化字段、逐次门槛、配对组织、损失差及排序；你将补全可比条件、门槛组合和配对损失差判断。测试包含未声明的配置变化、非法数值、摘要通过但重复运行失败，以及“逐种子差的中位数”与“两个中位数相减”不同的反例。
 
 | 任务与目的 | 已知条件 | 完成标准 | 测试验证 |
-|:---|:---|:---|:---|
-| TODO 1：检查候选是否真正可比 | 固定字段与允许变化的配置字段 | 只允许一个声明变量发生变化 | 模型、数据、预算漂移与多变量变化 |
-| TODO 2：逐项执行候选准入 | 质量、显存、吞吐与执行状态 | 保留每项门槛余量，不使用加权总分 | 阈值边界、显存越界与执行失败 |
-| TODO 3：在质量等价区间内选择候选 | 共享随机种子上的配对损失差与资源记录 | 配对完整且稳定后，选择低代价方案 | 种子缺失、运行失败、波动过大与质量等价 |
+| --- | --- | --- | --- |
+| TODO 1：检查候选是否真正可比 | 固定字段变化、候选字段变化与未声明变化 | 固定字段不变、恰有一个声明字段变化，且无其他变化 | 步数变化、多个字段变化、漏列的长度变化与零变化 |
+| TODO 2：逐项检查质量与资源 | 运行、损失、显存和吞吐的检查结果 | 全部通过才允许继续 | 质量更好也不能抵消显存超限，阈值等号与非法数值分别检查 |
+| TODO 3：判断配对损失差是否落入允许范围 | 逐种子损失差的中位数与允许偏差 | 按绝对偏差判断，等号计入 | 配对中位数反例、阈值内外和输入顺序变化 |
+
 
 ```python
+import math
 import statistics
 from typing import Any, Dict, List
+
 ```
 
 
 ```python
-# ==========================================
-# TODO 1：检查候选是否保持单变量可比
-# ==========================================
+def _validate_lora_gates(gates: Dict[str, float]) -> None:
+    """检查门槛的方向、有限值及最少配对次数。"""
+    for key in (
+        "maximum_eval_loss", "maximum_peak_allocated_bytes",
+        "minimum_tokens_per_second", "maximum_repeat_eval_loss_spread",
+        "quality_equivalence_band",
+    ):
+        value = gates[key]
+        if type(value) not in (int, float) or not math.isfinite(value) or value < 0:
+            raise ValueError(f"{key}必须为非负有限数")
+    if type(gates["minimum_repeat_count"]) is not int or gates["minimum_repeat_count"] < 2:
+        raise ValueError("minimum_repeat_count必须为至少2的整数")
+
+
+def _validate_lora_measurement(candidate: Dict[str, Any]) -> None:
+    """在门槛比较前检查名称、运行状态及质量和资源数值。"""
+    if not isinstance(candidate["name"], str) or not candidate["name"].strip():
+        raise ValueError("候选名称不能为空")
+    if not isinstance(candidate["status"], str) or not candidate["status"].strip():
+        raise ValueError("运行状态不能为空")
+    for key in ("final_eval_loss", "peak_allocated_bytes",
+                "supervised_tokens_per_second", "median_step_time_ms"):
+        value = candidate[key]
+        if type(value) not in (int, float) or not math.isfinite(value) or value < 0:
+            raise ValueError(f"{key}必须为非负有限数")
+    if candidate["median_step_time_ms"] == 0:
+        raise ValueError("完成一步训练的时间必须大于0")
+
+
 def check_candidate_comparability(
     baseline: Dict[str, Any],
     candidate: Dict[str, Any],
     fixed_fields: List[str],
     allowed_variant_fields: List[str],
 ) -> Dict[str, Any]:
-    """报告固定字段漂移和未声明的 LoRA 配置变化。"""
+    """列出固定条件、候选配置及未声明字段的变化。"""
+    for fields in (fixed_fields, allowed_variant_fields):
+        if (not isinstance(fields, list) or not fields
+                or any(not isinstance(field, str) or not field for field in fields)
+                or len(fields) != len(set(fields))):
+            raise ValueError("字段列表必须非空、无重复且使用字段名")
+    if set(fixed_fields) & set(allowed_variant_fields):
+        raise ValueError("固定字段与候选字段不能重叠")
+    tracked = set(fixed_fields) | set(allowed_variant_fields)
+    if not tracked <= baseline.keys() or not tracked <= candidate.keys():
+        raise ValueError("基线或候选缺少需要比较的字段")
     fixed_mismatches = [field for field in fixed_fields if baseline[field] != candidate[field]]
     changed_variant_fields = [
         field for field in allowed_variant_fields if baseline[field] != candidate[field]
     ]
-
-    # 一轮实验必须恰好改变一个已声明的 LoRA 变量，且固定字段不能漂移。
-    # comparable = ???  # 固定条件无漂移，且恰好改变一个声明的候选维度。
-    raise NotImplementedError("TODO 1：请判断候选是否可比")
+    missing = object()
+    untracked_changes = [
+        field for field in sorted((baseline.keys() | candidate.keys()) - tracked - {"name"})
+        if baseline.get(field, missing) != candidate.get(field, missing)
+    ]
+    # TODO 1：检查候选是否真正可比
+    # comparable = ???  # bool；固定条件未变、恰有一个候选字段变化，且没有未声明的变化。
+    raise NotImplementedError("TODO 1：检查候选是否真正可比")
     return {
         "comparable": comparable,
         "fixed_mismatches": fixed_mismatches,
         "changed_variant_fields": changed_variant_fields,
+        "untracked_changes": untracked_changes,
     }
 
 
-# ==========================================
-# TODO 2：检查质量与资源硬门槛
-# ==========================================
 def evaluate_lora_candidate(candidate: Dict[str, Any], gates: Dict[str, float]) -> Dict[str, Any]:
-    """逐项检查候选，不允许用加权分数抵消失败门槛。"""
+    """逐项比较损失、显存上限与吞吐下限，保留失败项和余量。"""
+    _validate_lora_gates(gates)
+    _validate_lora_measurement(candidate)
     checks = {
         "execution": candidate["status"] == "ok",
         "quality": candidate["final_eval_loss"] <= gates["maximum_eval_loss"],
         "memory": candidate["peak_allocated_bytes"] <= gates["maximum_peak_allocated_bytes"],
         "throughput": candidate["supervised_tokens_per_second"] >= gates["minimum_tokens_per_second"],
     }
-
     margins = {
         "quality": gates["maximum_eval_loss"] - candidate["final_eval_loss"],
         "memory": gates["maximum_peak_allocated_bytes"] - candidate["peak_allocated_bytes"],
         "throughput": candidate["supervised_tokens_per_second"] - gates["minimum_tokens_per_second"],
     }
-    # eligible = ???  # 所有硬门槛必须同时通过，不能相互抵消。
-    raise NotImplementedError("TODO 2：请判断候选是否通过硬门槛")
+    # TODO 2：逐项检查质量与资源
+    # eligible = ???  # bool；执行、损失、显存与吞吐检查是否同时通过。
+    raise NotImplementedError("TODO 2：逐项检查质量与资源")
     return {
-        "name": candidate["name"],
-        "eligible": eligible,
+        "name": candidate["name"], "eligible": eligible,
         "failed_checks": [name for name, passed in checks.items() if not passed],
         "margins": margins,
     }
 
 
-# ==========================================
-# TODO 3：用共享随机种子选择质量等价候选
-# ==========================================
-def select_lora_candidate(candidates: List[Dict[str, Any]], repeat_results: List[Dict[str, Any]], gates: Dict[str, float]) -> Dict[str, Any]:
-    """检查配对复测完整性与稳定性，再从质量等价候选中选择低代价方案。"""
+def select_lora_candidate(
+    candidates: List[Dict[str, Any]],
+    repeat_results: List[Dict[str, Any]],
+    gates: Dict[str, float],
+) -> Dict[str, Any]:
+    """检查逐种子损失及资源，再比较损失差和重复波动。"""
+    _validate_lora_gates(gates)
+    if not candidates:
+        raise ValueError("候选列表不能为空")
     evaluations = [evaluate_lora_candidate(candidate, gates) for candidate in candidates]
+    names = [candidate["name"] for candidate in candidates]
+    if len(names) != len(set(names)):
+        raise ValueError("候选名称不能重复")
+    if any(record["name"] not in names for record in repeat_results):
+        raise ValueError("重复运行包含未声明的候选")
+    if any(type(record["seed"]) is not int or record["seed"] < 0 for record in repeat_results):
+        raise ValueError("随机种子必须为非负整数")
     eligible_names = {item["name"] for item in evaluations if item["eligible"]}
     eligible = [candidate for candidate in candidates if candidate["name"] in eligible_names]
     if not eligible:
-        return {"decision": "reject", "selected": None, "evaluations": evaluations, "failed_checks": ["no_eligible_candidate"]}
+        return {"decision": "reject", "selected": None, "evaluations": evaluations,
+                "failed_checks": ["no_eligible_candidate"]}
 
     relevant_repeats = [item for item in repeat_results if item["name"] in eligible_names]
     if any(item["status"] != "ok" for item in relevant_repeats):
-        return {"decision": "tune", "selected": None, "evaluations": evaluations, "failed_checks": ["repeat_execution_failure"]}
-
-    losses_by_candidate = {}
+        return {"decision": "tune", "selected": None, "evaluations": evaluations,
+                "failed_checks": ["repeat_execution_failure"]}
+    records_by_candidate = {}
     for candidate in eligible:
         records = [item for item in relevant_repeats if item["name"] == candidate["name"]]
         seeds = [item["seed"] for item in records]
         if len(seeds) != len(set(seeds)):
-            return {"decision": "tune", "selected": None, "evaluations": evaluations, "failed_checks": ["duplicate_repeat_seed"]}
+            return {"decision": "tune", "selected": None, "evaluations": evaluations,
+                    "failed_checks": ["duplicate_repeat_seed"]}
         if len(seeds) < gates["minimum_repeat_count"]:
-            return {"decision": "tune", "selected": None, "evaluations": evaluations, "failed_checks": ["paired_repeat_incomplete"]}
-        losses_by_candidate[candidate["name"]] = {item["seed"]: item["final_eval_loss"] for item in records}
+            return {"decision": "tune", "selected": None, "evaluations": evaluations,
+                    "failed_checks": ["paired_repeat_incomplete"]}
+        records_by_candidate[candidate["name"]] = records
 
-    seed_sets = [set(seed_losses) for seed_losses in losses_by_candidate.values()]
-    if any(seed_set != seed_sets[0] for seed_set in seed_sets[1:]):
-        return {"decision": "tune", "selected": None, "evaluations": evaluations, "failed_checks": ["paired_repeat_incomplete"]}
+    seed_sets = [{record["seed"] for record in records} for records in records_by_candidate.values()]
+    if any(seeds != seed_sets[0] for seeds in seed_sets[1:]):
+        return {"decision": "tune", "selected": None, "evaluations": evaluations,
+                "failed_checks": ["paired_repeat_incomplete"]}
     shared_seeds = sorted(seed_sets[0])
-
     summaries = []
+    losses_by_candidate = {}
     for candidate in eligible:
-        losses = [losses_by_candidate[candidate["name"]][seed] for seed in shared_seeds]
-        summaries.append({**candidate, "repeat_median_loss": statistics.median(losses), "repeat_spread": max(losses) - min(losses)})
+        records = records_by_candidate[candidate["name"]]
+        repeated_checks = [evaluate_lora_candidate(record, gates) for record in records]
+        failed = sorted({name for check in repeated_checks for name in check["failed_checks"]})
+        if failed:
+            evaluation = next(item for item in evaluations if item["name"] == candidate["name"])
+            evaluation["eligible"] = False
+            evaluation["failed_checks"].extend(f"repeat_{name}" for name in failed)
+            continue
+        losses_by_candidate[candidate["name"]] = {item["seed"]: item["final_eval_loss"] for item in records}
+        losses = list(losses_by_candidate[candidate["name"]].values())
+        summaries.append({
+            **candidate,
+            "repeat_median_loss": statistics.median(losses),
+            "repeat_spread": max(losses) - min(losses),
+            "peak_allocated_bytes": statistics.median(item["peak_allocated_bytes"] for item in records),
+            "median_step_time_ms": statistics.median(item["median_step_time_ms"] for item in records),
+        })
+    if not summaries:
+        return {"decision": "reject", "selected": None, "evaluations": evaluations,
+                "failed_checks": ["no_eligible_candidate"]}
     if any(item["repeat_spread"] > gates["maximum_repeat_eval_loss_spread"] for item in summaries):
-        return {"decision": "tune", "selected": None, "evaluations": evaluations, "failed_checks": ["repeat_instability"]}
+        return {"decision": "tune", "selected": None, "evaluations": evaluations,
+                "failed_checks": ["repeat_instability"]}
 
     best = min(summaries, key=lambda item: (item["repeat_median_loss"], item["name"]))
     best_losses = losses_by_candidate[best["name"]]
+    equivalent = []
     for item in summaries:
         deltas = [losses_by_candidate[item["name"]][seed] - best_losses[seed] for seed in shared_seeds]
         item["paired_delta_median"] = statistics.median(deltas)
-    equivalent = [item for item in summaries if abs(item["paired_delta_median"]) <= gates["quality_equivalence_band"]]
-    # 质量等价时，优先选择峰值显存和步时更低的候选。
-    # selected = ???  # 在质量等价候选中依次最小化显存、步时和名称。
-    raise NotImplementedError("TODO 3：请选择低代价的稳定候选")
-    return {"decision": "accept", "selected": selected, "evaluations": evaluations, "repeat_summaries": summaries, "shared_seeds": shared_seeds, "failed_checks": []}
+        # TODO 3：判断配对损失差是否落入允许范围
+        # quality_equivalent = ???  # bool；逐种子损失差的中位数是否位于允许偏差内，等号计入。
+        raise NotImplementedError("TODO 3：判断配对损失差是否落入允许范围")
+        if quality_equivalent:
+            equivalent.append(item)
+    selected = min(equivalent, key=lambda item: (
+        item["peak_allocated_bytes"], item["median_step_time_ms"], item["name"],
+    ))
+    return {"decision": "accept", "selected": selected, "evaluations": evaluations,
+            "repeat_summaries": summaries, "shared_seeds": shared_seeds, "failed_checks": []}
+
 ```
+
+## 测试
+
+先运行题目区再执行这些用例；核对固定条件、逐次门槛与损失差计算，而不要求某个秩在真实训练中必然获胜。
 
 
 ```python
@@ -213,6 +316,8 @@ def _lora_selection_fixture():
         {"name": "rank8", "seed": 11, "status": "ok", "final_eval_loss": 1.18},
         {"name": "rank8", "seed": 29, "status": "ok", "final_eval_loss": 1.19},
     ]
+    by_name = {candidate["name"]: candidate for candidate in candidates}
+    repeats = [{**by_name[item["name"]], **item} for item in repeats]
     return baseline, gates, candidates, repeats
 
 
@@ -243,6 +348,12 @@ def test_candidate_hard_gates():
     """验证资源失败不能被更好的质量值抵消。"""
     _, gates, candidates, _ = _lora_selection_fixture()
     assert evaluate_lora_candidate(candidates[2], gates)["failed_checks"] == ["memory"]
+    boundary = {**candidates[0], "final_eval_loss": gates["maximum_eval_loss"],
+                "peak_allocated_bytes": gates["maximum_peak_allocated_bytes"],
+                "supervised_tokens_per_second": gates["minimum_tokens_per_second"]}
+    checked = evaluate_lora_candidate(boundary, gates)
+    assert checked["eligible"] and all(value == 0 for value in checked["margins"].values())
+    assert not evaluate_lora_candidate({**boundary, "status": "failed"}, gates)["eligible"]
 
 
 def test_quality_equivalent_selection():
@@ -264,10 +375,109 @@ def test_quality_equivalent_selection():
     assert select_lora_candidate(candidates, unstable, gates)["failed_checks"] == ["repeat_instability"]
 
 
+
+def test_undeclared_changes_and_input_validation():
+    """检查未列入比较表的配置变化、重复名称和非法门槛。"""
+    baseline, gates, candidates, repeats = _lora_selection_fixture()
+    fixed = ["model_commit", "data_commit", "steps", "seed"]
+    variants = ["rank", "alpha", "dropout", "target_modules"]
+    report = check_candidate_comparability(
+        {**baseline, "max_length": 256}, {**baseline, "rank": 16, "max_length": 512},
+        fixed, variants,
+    )
+    assert not report["comparable"] and report["untracked_changes"] == ["max_length"]
+    assert not check_candidate_comparability(baseline, baseline, fixed, variants)["comparable"]
+    invalid_calls = [
+        lambda: check_candidate_comparability(baseline, baseline, fixed + ["steps"], variants),
+        lambda: check_candidate_comparability(baseline, baseline, fixed, ["rank", "steps"]),
+        lambda: select_lora_candidate(candidates + [candidates[0]], repeats, gates),
+        lambda: select_lora_candidate(candidates, repeats + [{**repeats[0], "name": "unknown"}], gates),
+        lambda: select_lora_candidate(candidates, [{**repeats[0], "seed": True}] + repeats[1:], gates),
+    ]
+    for field in ("final_eval_loss", "peak_allocated_bytes", "supervised_tokens_per_second", "median_step_time_ms"):
+        for value in (float("nan"), float("inf"), -1):
+            invalid_calls.append(lambda field=field, value=value: evaluate_lora_candidate(
+                {**candidates[0], field: value}, gates,
+            ))
+    invalid_calls.extend([
+        lambda: evaluate_lora_candidate(candidates[0], {**gates, "minimum_repeat_count": 1.5}),
+        lambda: evaluate_lora_candidate(candidates[0], {**gates, "quality_equivalence_band": float("nan")}),
+        lambda: select_lora_candidate(candidates, [{**repeats[0], "final_eval_loss": float("nan")}] + repeats[1:], gates),
+    ])
+    for call in invalid_calls:
+        try:
+            call()
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("非法事实或配置不能进入排名")
+
+
+def test_repeated_measurements_cannot_bypass_gates():
+    """候选摘要通过时，每条重复运行仍须通过损失、显存与吞吐门槛。"""
+    _, gates, candidates, repeats = _lora_selection_fixture()
+    for field, value, failed_check in (
+        ("final_eval_loss", 2.0, "repeat_quality"),
+        ("peak_allocated_bytes", 4_000, "repeat_memory"),
+        ("supervised_tokens_per_second", 1.0, "repeat_throughput"),
+    ):
+        changed = [{**item, field: value} if item["name"] == "rank4" else item for item in repeats]
+        selection = select_lora_candidate(candidates, changed, gates)
+        assert selection["selected"]["name"] == "rank8"
+        evaluation = next(item for item in selection["evaluations"] if item["name"] == "rank4")
+        assert failed_check in evaluation["failed_checks"]
+    resource_changed = [
+        {**item, "peak_allocated_bytes": 2_800} if item["name"] == "rank4" else item
+        for item in repeats
+    ]
+    assert select_lora_candidate(candidates, resource_changed, gates)["selected"]["name"] == "rank8"
+    duplicate = repeats + [repeats[0]]
+    assert select_lora_candidate(candidates, duplicate, gates)["failed_checks"] == ["duplicate_repeat_seed"]
+    wrong_seeds = [
+        {**item, "seed": 30} if item["name"] == "rank8" and item["seed"] == 29 else item
+        for item in repeats
+    ]
+    assert select_lora_candidate(candidates, wrong_seeds, gates)["failed_checks"] == ["paired_repeat_incomplete"]
+
+
+def test_paired_differences_and_inclusive_band():
+    """用非线性中位数反例区分逐种子差与两个独立中位数之差。"""
+    _, gates, candidates, repeats = _lora_selection_fixture()
+    gates = {**gates, "minimum_repeat_count": 3, "maximum_repeat_eval_loss_spread": 3.0,
+             "maximum_eval_loss": 3.0, "quality_equivalence_band": 0.0}
+    base = {item["name"]: item for item in candidates}
+    rows = []
+    for name, losses, memory in (("rank4", [0.0, 0.0, 2.0], 2_500),
+                                ("rank8", [0.0, 1.0, 1.0], 2_000)):
+        rows.extend({**base[name], "seed": seed, "final_eval_loss": loss,
+                     "peak_allocated_bytes": memory} for seed, loss in enumerate(losses))
+    selection = select_lora_candidate(candidates, rows, gates)
+    assert selection["selected"]["name"] == "rank8"
+    assert selection["selected"]["paired_delta_median"] == 0.0
+    assert statistics.median([0, 1, 1]) - statistics.median([0, 0, 2]) == 1
+    asymmetric = []
+    for name, losses, memory in (("rank4", [1.0, 1.0, 11.0], 2_500),
+                                ("rank8", [0.0, 2.0, 10.0], 2_000)):
+        asymmetric.extend({**base[name], "seed": seed, "final_eval_loss": loss,
+                           "peak_allocated_bytes": memory} for seed, loss in enumerate(losses))
+    absolute_gates = {**gates, "maximum_eval_loss": 12.0,
+                      "maximum_repeat_eval_loss_spread": 12.0}
+    assert select_lora_candidate(candidates, asymmetric, absolute_gates)["selected"]["name"] == "rank4"
+    _, gates, candidates, repeats = _lora_selection_fixture()
+    boundary = [{**item, "final_eval_loss": 1.25 if item["name"] == "rank4" else 1.125} for item in repeats]
+    assert select_lora_candidate(candidates, boundary, {**gates, "quality_equivalence_band": 0.125})["selected"]["name"] == "rank4"
+    assert select_lora_candidate(candidates, boundary, {**gates, "quality_equivalence_band": 0.124})["selected"]["name"] == "rank8"
+    reversed_selection = select_lora_candidate(list(reversed(candidates)), list(reversed(boundary)),
+                                              {**gates, "quality_equivalence_band": 0.125})
+    assert reversed_selection["selected"]["name"] == "rank4"
+
 test_candidate_comparability()
 test_candidate_hard_gates()
 test_quality_equivalent_selection()
-print("所有测试通过！")
+test_undeclared_changes_and_input_validation()
+test_repeated_measurements_cannot_bypass_gates()
+test_paired_differences_and_inclusive_band()
+print("LoRA配置比较、逐次门槛与配对选择测试通过。")
 ```
 
 ---
@@ -286,23 +496,75 @@ print("所有测试通过！")
 
 
 ```python
-# TODO 1：检查候选是否保持单变量可比
+def _validate_lora_gates(gates: Dict[str, float]) -> None:
+    """检查门槛的方向、有限值及最少配对次数。"""
+    for key in (
+        "maximum_eval_loss", "maximum_peak_allocated_bytes",
+        "minimum_tokens_per_second", "maximum_repeat_eval_loss_spread",
+        "quality_equivalence_band",
+    ):
+        value = gates[key]
+        if type(value) not in (int, float) or not math.isfinite(value) or value < 0:
+            raise ValueError(f"{key}必须为非负有限数")
+    if type(gates["minimum_repeat_count"]) is not int or gates["minimum_repeat_count"] < 2:
+        raise ValueError("minimum_repeat_count必须为至少2的整数")
+
+
+def _validate_lora_measurement(candidate: Dict[str, Any]) -> None:
+    """在门槛比较前检查名称、运行状态及质量和资源数值。"""
+    if not isinstance(candidate["name"], str) or not candidate["name"].strip():
+        raise ValueError("候选名称不能为空")
+    if not isinstance(candidate["status"], str) or not candidate["status"].strip():
+        raise ValueError("运行状态不能为空")
+    for key in ("final_eval_loss", "peak_allocated_bytes",
+                "supervised_tokens_per_second", "median_step_time_ms"):
+        value = candidate[key]
+        if type(value) not in (int, float) or not math.isfinite(value) or value < 0:
+            raise ValueError(f"{key}必须为非负有限数")
+    if candidate["median_step_time_ms"] == 0:
+        raise ValueError("完成一步训练的时间必须大于0")
+
+
 def check_candidate_comparability(
     baseline: Dict[str, Any],
     candidate: Dict[str, Any],
     fixed_fields: List[str],
     allowed_variant_fields: List[str],
 ) -> Dict[str, Any]:
-    """报告固定字段漂移和未声明的 LoRA 配置变化。"""
+    """列出固定条件、候选配置及未声明字段的变化。"""
+    for fields in (fixed_fields, allowed_variant_fields):
+        if (not isinstance(fields, list) or not fields
+                or any(not isinstance(field, str) or not field for field in fields)
+                or len(fields) != len(set(fields))):
+            raise ValueError("字段列表必须非空、无重复且使用字段名")
+    if set(fixed_fields) & set(allowed_variant_fields):
+        raise ValueError("固定字段与候选字段不能重叠")
+    tracked = set(fixed_fields) | set(allowed_variant_fields)
+    if not tracked <= baseline.keys() or not tracked <= candidate.keys():
+        raise ValueError("基线或候选缺少需要比较的字段")
     fixed_mismatches = [field for field in fixed_fields if baseline[field] != candidate[field]]
-    changed_variant_fields = [field for field in allowed_variant_fields if baseline[field] != candidate[field]]
-    comparable = not fixed_mismatches and len(changed_variant_fields) == 1
-    return {"comparable": comparable, "fixed_mismatches": fixed_mismatches, "changed_variant_fields": changed_variant_fields}
+    changed_variant_fields = [
+        field for field in allowed_variant_fields if baseline[field] != candidate[field]
+    ]
+    missing = object()
+    untracked_changes = [
+        field for field in sorted((baseline.keys() | candidate.keys()) - tracked - {"name"})
+        if baseline.get(field, missing) != candidate.get(field, missing)
+    ]
+    # TODO 1：检查候选是否真正可比
+    comparable = not fixed_mismatches and len(changed_variant_fields) == 1 and not untracked_changes
+    return {
+        "comparable": comparable,
+        "fixed_mismatches": fixed_mismatches,
+        "changed_variant_fields": changed_variant_fields,
+        "untracked_changes": untracked_changes,
+    }
 
 
-# TODO 2：检查质量与资源硬门槛
 def evaluate_lora_candidate(candidate: Dict[str, Any], gates: Dict[str, float]) -> Dict[str, Any]:
-    """逐项检查候选，不允许用加权分数抵消失败门槛。"""
+    """逐项比较损失、显存上限与吞吐下限，保留失败项和余量。"""
+    _validate_lora_gates(gates)
+    _validate_lora_measurement(candidate)
     checks = {
         "execution": candidate["status"] == "ok",
         "quality": candidate["final_eval_loss"] <= gates["maximum_eval_loss"],
@@ -314,69 +576,121 @@ def evaluate_lora_candidate(candidate: Dict[str, Any], gates: Dict[str, float]) 
         "memory": gates["maximum_peak_allocated_bytes"] - candidate["peak_allocated_bytes"],
         "throughput": candidate["supervised_tokens_per_second"] - gates["minimum_tokens_per_second"],
     }
+    # TODO 2：逐项检查质量与资源
     eligible = all(checks.values())
-    return {"name": candidate["name"], "eligible": eligible, "failed_checks": [name for name, passed in checks.items() if not passed], "margins": margins}
+    return {
+        "name": candidate["name"], "eligible": eligible,
+        "failed_checks": [name for name, passed in checks.items() if not passed],
+        "margins": margins,
+    }
 
 
-# TODO 3：用共享随机种子选择质量等价候选
-def select_lora_candidate(candidates: List[Dict[str, Any]], repeat_results: List[Dict[str, Any]], gates: Dict[str, float]) -> Dict[str, Any]:
-    """检查配对复测完整性与稳定性，再从质量等价候选中选择低代价方案。"""
+def select_lora_candidate(
+    candidates: List[Dict[str, Any]],
+    repeat_results: List[Dict[str, Any]],
+    gates: Dict[str, float],
+) -> Dict[str, Any]:
+    """检查逐种子损失及资源，再比较损失差和重复波动。"""
+    _validate_lora_gates(gates)
+    if not candidates:
+        raise ValueError("候选列表不能为空")
     evaluations = [evaluate_lora_candidate(candidate, gates) for candidate in candidates]
+    names = [candidate["name"] for candidate in candidates]
+    if len(names) != len(set(names)):
+        raise ValueError("候选名称不能重复")
+    if any(record["name"] not in names for record in repeat_results):
+        raise ValueError("重复运行包含未声明的候选")
+    if any(type(record["seed"]) is not int or record["seed"] < 0 for record in repeat_results):
+        raise ValueError("随机种子必须为非负整数")
     eligible_names = {item["name"] for item in evaluations if item["eligible"]}
     eligible = [candidate for candidate in candidates if candidate["name"] in eligible_names]
     if not eligible:
-        return {"decision": "reject", "selected": None, "evaluations": evaluations, "failed_checks": ["no_eligible_candidate"]}
+        return {"decision": "reject", "selected": None, "evaluations": evaluations,
+                "failed_checks": ["no_eligible_candidate"]}
+
     relevant_repeats = [item for item in repeat_results if item["name"] in eligible_names]
     if any(item["status"] != "ok" for item in relevant_repeats):
-        return {"decision": "tune", "selected": None, "evaluations": evaluations, "failed_checks": ["repeat_execution_failure"]}
-    losses_by_candidate = {}
+        return {"decision": "tune", "selected": None, "evaluations": evaluations,
+                "failed_checks": ["repeat_execution_failure"]}
+    records_by_candidate = {}
     for candidate in eligible:
         records = [item for item in relevant_repeats if item["name"] == candidate["name"]]
         seeds = [item["seed"] for item in records]
         if len(seeds) != len(set(seeds)):
-            return {"decision": "tune", "selected": None, "evaluations": evaluations, "failed_checks": ["duplicate_repeat_seed"]}
+            return {"decision": "tune", "selected": None, "evaluations": evaluations,
+                    "failed_checks": ["duplicate_repeat_seed"]}
         if len(seeds) < gates["minimum_repeat_count"]:
-            return {"decision": "tune", "selected": None, "evaluations": evaluations, "failed_checks": ["paired_repeat_incomplete"]}
-        losses_by_candidate[candidate["name"]] = {item["seed"]: item["final_eval_loss"] for item in records}
-    seed_sets = [set(seed_losses) for seed_losses in losses_by_candidate.values()]
-    if any(seed_set != seed_sets[0] for seed_set in seed_sets[1:]):
-        return {"decision": "tune", "selected": None, "evaluations": evaluations, "failed_checks": ["paired_repeat_incomplete"]}
+            return {"decision": "tune", "selected": None, "evaluations": evaluations,
+                    "failed_checks": ["paired_repeat_incomplete"]}
+        records_by_candidate[candidate["name"]] = records
+
+    seed_sets = [{record["seed"] for record in records} for records in records_by_candidate.values()]
+    if any(seeds != seed_sets[0] for seeds in seed_sets[1:]):
+        return {"decision": "tune", "selected": None, "evaluations": evaluations,
+                "failed_checks": ["paired_repeat_incomplete"]}
     shared_seeds = sorted(seed_sets[0])
     summaries = []
+    losses_by_candidate = {}
     for candidate in eligible:
-        losses = [losses_by_candidate[candidate["name"]][seed] for seed in shared_seeds]
-        summaries.append({**candidate, "repeat_median_loss": statistics.median(losses), "repeat_spread": max(losses) - min(losses)})
+        records = records_by_candidate[candidate["name"]]
+        repeated_checks = [evaluate_lora_candidate(record, gates) for record in records]
+        failed = sorted({name for check in repeated_checks for name in check["failed_checks"]})
+        if failed:
+            evaluation = next(item for item in evaluations if item["name"] == candidate["name"])
+            evaluation["eligible"] = False
+            evaluation["failed_checks"].extend(f"repeat_{name}" for name in failed)
+            continue
+        losses_by_candidate[candidate["name"]] = {item["seed"]: item["final_eval_loss"] for item in records}
+        losses = list(losses_by_candidate[candidate["name"]].values())
+        summaries.append({
+            **candidate,
+            "repeat_median_loss": statistics.median(losses),
+            "repeat_spread": max(losses) - min(losses),
+            "peak_allocated_bytes": statistics.median(item["peak_allocated_bytes"] for item in records),
+            "median_step_time_ms": statistics.median(item["median_step_time_ms"] for item in records),
+        })
+    if not summaries:
+        return {"decision": "reject", "selected": None, "evaluations": evaluations,
+                "failed_checks": ["no_eligible_candidate"]}
     if any(item["repeat_spread"] > gates["maximum_repeat_eval_loss_spread"] for item in summaries):
-        return {"decision": "tune", "selected": None, "evaluations": evaluations, "failed_checks": ["repeat_instability"]}
+        return {"decision": "tune", "selected": None, "evaluations": evaluations,
+                "failed_checks": ["repeat_instability"]}
+
     best = min(summaries, key=lambda item: (item["repeat_median_loss"], item["name"]))
     best_losses = losses_by_candidate[best["name"]]
+    equivalent = []
     for item in summaries:
         deltas = [losses_by_candidate[item["name"]][seed] - best_losses[seed] for seed in shared_seeds]
         item["paired_delta_median"] = statistics.median(deltas)
-    equivalent = [item for item in summaries if abs(item["paired_delta_median"]) <= gates["quality_equivalence_band"]]
-    selected = min(equivalent, key=lambda item: (item["peak_allocated_bytes"], item["median_step_time_ms"], item["name"]))
-    return {"decision": "accept", "selected": selected, "evaluations": evaluations, "repeat_summaries": summaries, "shared_seeds": shared_seeds, "failed_checks": []}
+        # TODO 3：判断配对损失差是否落入允许范围
+        quality_equivalent = abs(item["paired_delta_median"]) <= gates["quality_equivalence_band"]
+        if quality_equivalent:
+            equivalent.append(item)
+    selected = min(equivalent, key=lambda item: (
+        item["peak_allocated_bytes"], item["median_step_time_ms"], item["name"],
+    ))
+    return {"decision": "accept", "selected": selected, "evaluations": evaluations,
+            "repeat_summaries": summaries, "shared_seeds": shared_seeds, "failed_checks": []}
+
 ```
 
 ### 解析
 
-#### TODO 1：检查候选可比性
+#### TODO 1：检查候选是否真正可比
 
-- **判断依据**：模型、数据、预算或随机种子变化都会破坏归因；同一轮同时改变多个 LoRA 字段也无法说明收益来源。
-- **实现动作**：分别列出固定字段漂移和 LoRA 字段变化，要求前者为空且后者恰好一个。
-- **测试证据**：测试覆盖合法秩对照和训练步数变化。
+- 固定条件必须相同，只有一个声明的候选字段变化，未列入比较表的其他字段也不能悄悄改变。名称只是记录标识，不作为训练配置差异。
+- 将三个条件同时满足作为可比条件。测试在改变秩的同时，把未列入字段表的最大长度从256改为512，确认不能因为表内只变了秩就放行。
 
-#### TODO 2：执行硬门槛检查
+#### TODO 2：逐项检查质量与资源
 
-- **判断依据**：执行、质量、显存和吞吐任一失败都不能被其他指标抵消。
-- **实现动作**：逐项检查门槛并保留距离阈值的余量，避免只留下通过或失败。
-- **测试证据**：质量最好的秩 16 候选因显存越界被排除。
+- 损失和显存不超过上限、吞吐不低于下限，而且运行成功，四项必须同时成立。比较前先拒绝非有限值、负数等非法事实。
+- 质量最好的候选仍可能因显存超限被排除。重复运行再次调用同一检查：即使摘要合格，某次损失或资源不达标也会排除候选；排序使用重复运行的资源中位数。
 
-#### TODO 3：用共享随机种子选择质量等价候选
+#### TODO 3：判断配对损失差是否落入允许范围
 
-- **判断依据**：只有共享同一随机种子的运行才能形成配对差；缺失、重复或失败的运行都不能支持候选排名。
-- **实现动作**：先核对种子集合和重复极差，再计算相对最佳候选的逐种子损失差；差值中位数进入质量等价区间后，才按显存、步时和名称稳定选择。
-- **测试证据**：测试覆盖质量等价但资源不同、无合格候选、配对缺失、运行失败和重复波动过大。
+- 对同一种子的损失先相减，再取中位数，最后比较绝对差是否不超过允许偏差。两个候选各自取中位数再相减，不是同一种计算。
+- 反例中两组损失为`[0,0,2]`和`[0,1,1]`：逐种子差为`[0,1,-1]`、中位数为0，两个独立中位数之差却为1。阈值等号与输入顺序测试另外确认边界和稳定选择。
+
 ## Step 5：真实 LoRA 候选选型
 
 CPU 题目区验证候选可比性、质量等价带和资源排序；真实实验在固定模型、数据、更新预算与共享随机种子下比较三个 LoRA 秩候选。
@@ -386,82 +700,66 @@ CPU 题目区验证候选可比性、质量等价带和资源排序；真实实�
 | CPU 选型器 | 人工构造的候选与重复结果 | 可比性、质量等价区间、资源排序 | 只确认选型规则，不判断真实候选 |
 | 真实候选矩阵 | 固定数据、模型与多组配对随机种子 | 评测损失分布、显存、步时、吞吐与适配器 | 输出选型清单；不外推到其他模型或任务 |
 
-### 5.1 环境、输入资产与固定条件
+合法阶段为`prepare → measure → close`。准备只核对合同和本地数据清单；测量保存原始矩阵与适配器；交接重新读取文件，生成报告和回执。修改5.1后按六层顺序运行。
 
-按[后训练优化 Quickstart](../topic_discussion/post_training_optimization/quickstart.md#pt-sft-cuda-quickstart)准备 `PT-SFT-CUDA` 环境。12 GB 单卡使用 Qwen2.5-0.5B、长度 256、三个秩候选和相同更新预算；选中候选实测峰值分配约 1.77 GiB。
+### 5.1 运行意图与配置
+
+按[后训练优化 Quickstart](../topic_discussion/post_training_optimization/quickstart.md#pt-sft-cuda-quickstart)准备 `PT-SFT-CUDA` 环境。12 GB 单卡使用 Qwen2.5-0.5B、长度 256、三个秩候选和相同更新预算。
 
 ```python
-from pathlib import Path
-import json
+RUN_LABEL = "replace_with_unique_label"  # 新运行的唯一标签；历史标签只在5.6登记。
+RUN_STAGE = "prepare"  # prepare只检查，measure采集，close读取并交接。
 
-from tools.project_runtime import resolve_project_root
-
-RUN_MODE = "dry_run"  # 默认值 dry_run：只检查配置；改为 real_gpu 执行候选矩阵。
-RUN_LABEL = "lora_variant_selection_v2"  # 已登记标签；正式复测时改为唯一标签并保留旧结果。
-PROFILE_ID = "PT-SFT-CUDA"  # 与 64、65、62 共用 SFT 项目环境。
-SEMANTIC_ID = "PT-LORA-VARIANTS"  # 项目稳定语义身份。
-SCHEMA_VERSION = "fine-tuning-project/v1"
-
-PROJECT_ROOT = resolve_project_root()
-UPSTREAM_MANIFEST = PROJECT_ROOT / "benchmarks/results/64_sft_data_quality/sft_data_manifest_alpaca_qwen25_v2.json"  # 64 节带切分身份的交付清单。
-MODEL_ID = "Qwen/Qwen2.5-0.5B"  # 12 GB 单卡默认模型。
-MODEL_REVISION = "main"  # 运行时解析为不可变提交哈希。
-MAX_LENGTH = 256  # 与上游审计长度一致。
-TRAIN_EXAMPLES = 48  # 固定候选训练样本数。
-EVALUATION_EXAMPLES = 16  # 固定独立评测样本数。
-UPDATE_STEPS = 12  # 所有候选使用相同更新步数。
-LEARNING_RATE = 2e-4  # 所有候选固定学习率。
-DTYPE = "bfloat16"  # 不支持 BF16 时显式改为 float16。
-RUN_SEEDS = [42, 123, 2024]  # 每个候选使用相同随机种子集合，形成配对重复。
-
-BASE_VARIANT = {"name": "rank8", "rank": 8, "alpha": 16, "dropout": 0.0, "target_modules": ["q_proj", "v_proj"]}
-CANDIDATES = [
-    {"name": "rank4", "rank": 4, "alpha": 16, "dropout": 0.0, "target_modules": ["q_proj", "v_proj"]},
-    BASE_VARIANT,
-    {"name": "rank16", "rank": 16, "alpha": 16, "dropout": 0.0, "target_modules": ["q_proj", "v_proj"]},
-]
-GATES = {
-    "maximum_eval_loss": 2.0,
-    "maximum_peak_allocated_bytes": 10 * 1024**3,
-    "minimum_tokens_per_second": 1.0,
-    "minimum_repeat_count": 3,
-    "maximum_repeat_eval_loss_spread": 0.01,
-    "quality_equivalence_band": 0.01,
-}
-
-RESULTS_DIR = PROJECT_ROOT / "benchmarks/results/63_lora_variants"
-SWEEP_PATH = RESULTS_DIR / f"lora_variant_sweep_{RUN_LABEL}.json"
-DELIVERY_PATH = RESULTS_DIR / f"lora_variant_delivery_{RUN_LABEL}.json"
-ADAPTERS_DIR = RESULTS_DIR / f"adapters_{RUN_LABEL}"
-print({"run_mode": RUN_MODE, "sweep_path": str(SWEEP_PATH), "candidate_count": len(CANDIDATES)})
 ```
 
-### 5.2 预检环境与数据准入清单
+### 5.2 环境与输入预检
 
-预检要求 CUDA、Transformers、PEFT 与 Datasets 可用，并拒绝状态不是 `accept` 的 64 节结果。
+准备与收尾在CPU上读取固定合同和已归档数据清单；只有`measure`检查PT-SFT-CUDA并加载真实模型。上游清单绑定SHA256、分词器提交和样本成员，不依赖历史绝对路径。
+
 
 ```python
-import torch
-from tools.project_runtime import environment_preflight, require_input_file
-from tools.post_training_project_runtime import hash_directory, run_lora_candidate, save_json_record
+import hashlib
+import importlib
+import json
+import re
+from pathlib import Path
+from tools.project_runtime import bootstrap_project_root
+import tools.post_training_project_runtime as project_runtime
 
-preflight = environment_preflight(
-    torch,
-    required_packages=("transformers", "peft", "datasets", "huggingface_hub"),
-    require_gpu=RUN_MODE == "real_gpu",
-    output_path=SWEEP_PATH,
-    environment_profile=PROFILE_ID,
-)
-if not preflight["ready"]:
-    raise RuntimeError(preflight["reasons"])
-upstream_path = require_input_file(UPSTREAM_MANIFEST, "64 节数据准入清单")
-upstream = json.loads(upstream_path.read_text(encoding="utf-8"))
-if upstream["decision"] != "accept":
-    raise RuntimeError(f"上游数据未通过准入：{upstream['decision']}")
-for path in (DELIVERY_PATH, ADAPTERS_DIR):
-    if RUN_MODE == "real_gpu" and path.exists():
-        raise FileExistsError(f"输出已存在，请修改 RUN_LABEL：{path}")
-print({"preflight": preflight["status"], "upstream_decision": upstream["decision"], "existing_sweep": SWEEP_PATH.exists()})
+project_runtime = importlib.reload(project_runtime)
+PROJECT_ROOT = bootstrap_project_root()
+if RUN_STAGE not in {"prepare", "measure", "close"}:
+    raise ValueError("阶段必须为prepare、measure或close")
+if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,95}", RUN_LABEL):
+    raise ValueError("运行标签只允许字母、数字、下划线和连字符")
+if RUN_STAGE != "prepare" and RUN_LABEL == "replace_with_unique_label":
+    raise ValueError("采集或交接前请设置唯一标签")
+registry = json.loads((PROJECT_ROOT / "benchmarks/project_registry/part02.json").read_text(encoding="utf-8"))
+entry = next(item for item in registry["projects"] if item["semantic_id"] == "PT-LORA-VARIANTS")
+CONTRACT = json.loads((PROJECT_ROOT / entry["default_experiment_contract"]).read_text(encoding="utf-8"))
+upstream = project_runtime.read_lora_data_manifest(PROJECT_ROOT, CONTRACT)
+RESULTS_DIR = PROJECT_ROOT / "benchmarks/results/63_lora_variants"
+SWEEP_PATH = RESULTS_DIR / f"lora_variant_sweep_{RUN_LABEL}.json"
+REPORT_PATH = RESULTS_DIR / f"lora_variant_report_{RUN_LABEL}.json"
+DELIVERY_PATH = RESULTS_DIR / f"lora_variant_delivery_{RUN_LABEL}.json"
+RECEIPT_PATH = RESULTS_DIR / f"lora_variant_registration_{RUN_LABEL}.json"
+ADAPTERS_DIR = RESULTS_DIR / f"adapters_{RUN_LABEL}"
+if RUN_STAGE == "measure":
+    if any(path.exists() for path in (SWEEP_PATH, REPORT_PATH, DELIVERY_PATH, RECEIPT_PATH, ADAPTERS_DIR)):
+        raise FileExistsError("同名证据或适配器已存在；完成采集后使用close，重新采集需新标签")
+    import torch
+    from tools.project_runtime import environment_preflight
+    preflight = environment_preflight(
+        torch, required_packages=("transformers", "peft", "datasets", "huggingface_hub"),
+        require_gpu=True, environment_profile=CONTRACT["environment_profile"],
+    )
+    if not preflight["ready"]:
+        raise RuntimeError(preflight["reasons"])
+if RUN_STAGE == "close" and not SWEEP_PATH.is_file():
+    raise FileNotFoundError(f"缺少原始扫描证据：{SWEEP_PATH}")
+print({"stage": RUN_STAGE, "profile": CONTRACT["environment_profile"],
+       "upstream_label": upstream["run_label"], "sweep_path": str(SWEEP_PATH)})
+
 ```
 
 ### 5.3 固定候选与门槛
@@ -469,66 +767,59 @@ print({"preflight": preflight["status"], "upstream_decision": upstream["decision
 | 项目 | 固定条件 |
 |:---|:---|
 | 上游数据 | 64 节 `accept` 数据准入清单及其数据集提交哈希 |
-| 候选变量 | 仅改变秩（`rank`），其余 LoRA 字段固定 |
+| 候选变量 | 仅改变秩（`rank`），其余LoRA字段固定；实际系数按 `alpha/r` 随秩变化 |
 | 比较预算 | 相同样本、更新步数、学习率、长度和配对随机种子集合 |
 | 硬门槛 | 每次执行成功，评测损失、峰值显存和监督词元吞吐通过 |
 | 稳定性 | 每个候选重复次数达标，评测损失极差不超过阈值 |
 | 选择规则 | 先进入最佳质量的等价带，再比较显存和步时 |
-### 5.4 执行候选筛选并保存完整证据
-
-每个候选都使用同一组随机种子重新加载基础模型。第一组重复同时保存该候选的适配器，其余重复采集质量与资源证据，使候选比较与最终交付使用各自独立的记录。
 
 ```python
-if RUN_MODE == "real_gpu":
-    from datasets import load_dataset
-    from huggingface_hub import HfApi
-    from transformers import AutoTokenizer
+MODEL_ID = CONTRACT["model"]["id"]
+MODEL_COMMIT = CONTRACT["model"]["resolved_commit"]
+MAX_LENGTH = CONTRACT["workload"]["max_length"]
+TRAIN_EXAMPLES = CONTRACT["workload"]["train_examples"]
+EVALUATION_EXAMPLES = CONTRACT["workload"]["evaluation_examples"]
+UPDATE_STEPS = CONTRACT["workload"]["update_steps"]
+LEARNING_RATE = CONTRACT["workload"]["learning_rate"]
+DTYPE = CONTRACT["workload"]["dtype"]
+RUN_SEEDS = CONTRACT["workload"]["run_seeds"]
+CANDIDATES = CONTRACT["candidates"]
+GATES = CONTRACT["gates"]
+SCHEMA_VERSION = CONTRACT["schema_version"]
+SEMANTIC_ID = CONTRACT["semantic_id"]
+CONTRACT_SHA256 = hashlib.sha256(project_runtime.json_record_bytes(CONTRACT)).hexdigest()
+if len({item["name"] for item in CANDIDATES}) != len(CANDIDATES):
+    raise ValueError("候选名称重复")
+for item in CANDIDATES:
+    if (not re.fullmatch(r"rank[0-9]+", item["name"]) or type(item["rank"]) is not int
+            or item["rank"] <= 0 or any(item[key] != CANDIDATES[0][key]
+            for key in ("alpha", "dropout", "target_modules"))):
+        raise ValueError("候选只能改变秩，其他LoRA条件须相同")
 
-    model_commit = HfApi().model_info(MODEL_ID, revision=MODEL_REVISION).sha
-    dataset_info = upstream["dataset"]
-    source_count = upstream["workload"]["sample_count"]
-    dataset = load_dataset(dataset_info["id"], split=f"train[:{source_count}]", revision=dataset_info["resolved_commit"])
-    snapshot = upstream["snapshot"]
-    train_records = [dict(dataset[index]) for index in snapshot["train_record_indices"][:TRAIN_EXAMPLES]]
-    evaluation_records = [dict(dataset[index]) for index in snapshot["evaluation_record_indices"][:EVALUATION_EXAMPLES]]
-    if len(train_records) != TRAIN_EXAMPLES or len(evaluation_records) != EVALUATION_EXAMPLES:
-        raise RuntimeError("64 节准入快照不足以满足固定训练/评测工作负载")
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, revision=model_commit)
-    candidate_results = []
-    for candidate in CANDIDATES:
-        for repeat_index, run_seed in enumerate(RUN_SEEDS):
-            result = run_lora_candidate(
-                model_id=MODEL_ID, revision=model_commit, tokenizer=tokenizer,
-                train_records=train_records, evaluation_records=evaluation_records,
-                candidate=candidate, max_length=MAX_LENGTH, update_steps=UPDATE_STEPS,
-                learning_rate=LEARNING_RATE, seed=run_seed, dtype_name=DTYPE,
-                save_directory=ADAPTERS_DIR / candidate["name"] if repeat_index == 0 else None,
-            )
-            result["run_seed"] = run_seed
-            candidate_results.append(result)
-    sweep = {
-        "schema_version": SCHEMA_VERSION, "semantic_id": SEMANTIC_ID,
-        "environment_profile": PROFILE_ID, "run_mode": RUN_MODE, "run_label": RUN_LABEL,
-        "upstream_manifest": str(UPSTREAM_MANIFEST), "upstream_sample_ids_hash": upstream["audit"]["sample_ids_hash"],
-        "model": {"id": MODEL_ID, "requested_revision": MODEL_REVISION, "resolved_commit": model_commit},
-        "workload": {"max_length": MAX_LENGTH, "train_examples": TRAIN_EXAMPLES, "evaluation_examples": EVALUATION_EXAMPLES, "update_steps": UPDATE_STEPS, "learning_rate": LEARNING_RATE, "run_seeds": RUN_SEEDS},
-        "gates": GATES, "candidates": candidate_results,
-    }
-    save_json_record(SWEEP_PATH, sweep)
-    print({"sweep_path": str(SWEEP_PATH), "run_count": len(candidate_results), "candidate_names": [item["name"] for item in CANDIDATES]})
-else:
-    print({"run_mode": RUN_MODE, "next_action": "确认候选和门槛后改为 real_gpu"})
-```
-
-### 5.5 独立读取候选证据并形成选择
-
-从保存的 JSON 重新加载候选名称、运行状态和共享随机种子集合，再检查质量与资源硬门槛。通过门槛的候选按共享随机种子计算配对损失差；差值落入质量等价区间后，再比较峰值显存和步时。
-
-```python
 def select_lora_candidate_for_run(results, gates, expected_names, expected_seeds):
     """核对候选与共享种子矩阵，再按质量等价和资源成本选择候选。"""
     import statistics
 
+    import math
+    if (not expected_names or len(expected_names) != len(set(expected_names))
+            or not expected_seeds or len(expected_seeds) != len(set(expected_seeds))
+            or any(type(seed) is not int or seed < 0 for seed in expected_seeds)):
+        raise ValueError("候选名称与种子必须非空且唯一，种子为非负整数")
+    for key, value in gates.items():
+        if type(value) not in (int, float) or not math.isfinite(value) or value < 0:
+            raise ValueError("门槛必须为非负有限数")
+    if type(gates["minimum_repeat_count"]) is not int or gates["minimum_repeat_count"] < 2:
+        raise ValueError("配对次数至少为2")
+    for result in results:
+        if type(result["run_seed"]) is not int or result["run_seed"] < 0:
+            raise ValueError("运行种子必须为非负整数")
+        if result["status"] == "ok":
+            for key in ("final_eval_loss", "peak_allocated_bytes", "supervised_tokens_per_second", "median_step_time_ms"):
+                value = result[key]
+                if type(value) not in (int, float) or not math.isfinite(value) or value < 0:
+                    raise ValueError("运行指标必须为非负有限数")
+            if result["median_step_time_ms"] == 0:
+                raise ValueError("步时必须大于0")
     grouped = {}
     for result in results:
         grouped.setdefault(result["name"], []).append(result)
@@ -552,7 +843,6 @@ def select_lora_candidate_for_run(results, gates, expected_names, expected_seeds
             "quality": bool(losses) and all(loss <= gates["maximum_eval_loss"] for loss in losses),
             "memory": bool(successful) and all(item["peak_allocated_bytes"] <= gates["maximum_peak_allocated_bytes"] for item in successful),
             "throughput": bool(successful) and all(item["supervised_tokens_per_second"] >= gates["minimum_tokens_per_second"] for item in successful),
-            "stability": len(losses) >= 2 and max(losses) - min(losses) <= gates["maximum_repeat_eval_loss_spread"],
         }
         summaries.append({
             "name": name, "eligible": all(checks.values()),
@@ -566,6 +856,8 @@ def select_lora_candidate_for_run(results, gates, expected_names, expected_seeds
     eligible = [item for item in summaries if item["eligible"]]
     if not eligible:
         return {"decision": "reject", "selected": None, "failed_checks": ["no_eligible_candidate"], "summaries": summaries}
+    if any(item["eval_loss_spread"] > gates["maximum_repeat_eval_loss_spread"] for item in eligible):
+        return {"decision": "tune", "selected": None, "failed_checks": ["repeat_instability"], "summaries": summaries}
     best = min(eligible, key=lambda item: (item["median_eval_loss"], item["name"]))
     best_losses = losses_by_candidate[best["name"]]
     for item in eligible:
@@ -575,20 +867,87 @@ def select_lora_candidate_for_run(results, gates, expected_names, expected_seeds
     selected = min(equivalent, key=lambda item: (item["median_peak_allocated_bytes"], item["median_step_time_ms"], item["name"]))
     return {"decision": "accept", "selected": selected, "failed_checks": [], "shared_seeds": list(expected_seeds), "quality_floor": best["median_eval_loss"], "equivalent_candidates": [item["name"] for item in equivalent], "summaries": summaries}
 
-if SWEEP_PATH.exists():
-    sweep = json.loads(SWEEP_PATH.read_text(encoding="utf-8"))
-    selection = select_lora_candidate_for_run(sweep["candidates"], sweep["gates"], [item["name"] for item in CANDIDATES], sweep["workload"]["run_seeds"])
-    print({
-        "decision": selection["decision"],
-        "selected": selection["selected"]["name"] if selection["selected"] else None,
-        "quality_equivalent": selection.get("equivalent_candidates", []),
-        "summaries": selection["summaries"],
-    })
+print({"candidates": CANDIDATES, "workload": CONTRACT["workload"],
+       "loss_reduction": CONTRACT["evaluation_reduction"], "contract_sha256": CONTRACT_SHA256})
+
+```
+
+### 5.4 测量并保存原始证据
+
+每个候选从同一基座提交开始，使用相同训练／评测样本与随机种子。首个种子保存适配器，并在该运行记录中绑定路径与哈希；其余重复保存质量和资源指标。此阶段不生成最终清单。
+
+
+```python
+if RUN_STAGE == "measure":
+    from datasets import load_dataset
+    from transformers import AutoTokenizer
+
+    dataset = load_dataset(upstream["dataset"]["id"],
+                           split=f"train[:{upstream['workload']['sample_count']}]",
+                           revision=upstream["dataset"]["resolved_commit"])
+    snapshot = upstream["snapshot"]
+    train_records = [dict(dataset[index]) for index in snapshot["train_record_indices"][:TRAIN_EXAMPLES]]
+    evaluation_records = [dict(dataset[index]) for index in snapshot["evaluation_record_indices"][:EVALUATION_EXAMPLES]]
+    for split, records in (("train", train_records), ("evaluation", evaluation_records)):
+        ids = [project_runtime.stable_text_hash(tuple(
+            project_runtime.normalized_text(row.get(field)) for field in ("instruction", "input", "output")
+        )) for row in records]
+        if ids != snapshot[f"{split}_sample_ids"][:len(records)]:
+            raise ValueError("实际数据内容与已审计样本不匹配")
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, revision=MODEL_COMMIT)
+    candidate_results = []
+    for candidate in CANDIDATES:
+        for repeat_index, run_seed in enumerate(RUN_SEEDS):
+            save_directory = ADAPTERS_DIR / candidate["name"] if repeat_index == 0 else None
+            result = project_runtime.run_lora_candidate(
+                model_id=MODEL_ID, revision=MODEL_COMMIT, tokenizer=tokenizer,
+                train_records=train_records, evaluation_records=evaluation_records,
+                candidate=candidate, max_length=MAX_LENGTH, update_steps=UPDATE_STEPS,
+                learning_rate=LEARNING_RATE, seed=run_seed, dtype_name=DTYPE,
+                save_directory=save_directory,
+            )
+            result["run_seed"] = run_seed
+            result["artifact"] = (
+                {"path": save_directory.relative_to(PROJECT_ROOT).as_posix(),
+                 "sha256": project_runtime.hash_directory(save_directory)}
+                if save_directory is not None else None
+            )
+            candidate_results.append(result)
+    sweep = {key: CONTRACT[key] for key in (
+        "schema_version", "semantic_id", "measurement_version", "environment_profile",
+        "evaluation_reduction", "sequence_protocol", "model", "workload", "gates",
+        "upstream_manifest", "upstream_manifest_sha256",
+    )}
+    sweep.update({"run_mode": "real_gpu", "run_label": RUN_LABEL, "contract_sha256": CONTRACT_SHA256,
+                  "upstream_sample_ids_hash": upstream["audit"]["sample_ids_hash"],
+                  "candidates": candidate_results})
+    project_runtime.publish_json_record(SWEEP_PATH, sweep)
+    print({"sweep_path": str(SWEEP_PATH), "runs": len(candidate_results)})
+else:
+    print({"stage": RUN_STAGE, "measurement": "skipped"})
+
+```
+
+### 5.5 独立读取并核对扫描结果
+
+从JSON重新核对标签、合同、来源、完整候选矩阵、逐次指标与适配器哈希，再按配对损失差选择配置。收尾可在新Kernel中按5.1–5.6运行，不依赖测量单元留下的变量。
+
+
+```python
+if RUN_STAGE in {"measure", "close"}:
+    sweep, selection = project_runtime.read_lora_selection(
+        PROJECT_ROOT, SWEEP_PATH, CONTRACT, RUN_LABEL, select_lora_candidate_for_run,
+    )
+    print({"decision": selection["decision"], "selected": selection["selected"],
+           "failed_checks": selection["failed_checks"], "summaries": selection["summaries"]})
+else:
+    print({"stage": RUN_STAGE, "evidence_read": "skipped"})
+
 ```
 
 ### 5.6 形成选型清单并保存适配器配置
 
-根据 5.4 保存的配对重复证据和适配器，生成包含选择理由、候选摘要和适配器哈希的 JSON 清单。62 节以该清单中的唯一候选启动正式训练。
+`close`保存项目报告与登记回执，仅`accept`生成交接清单；所选适配器明确绑定保存它的种子，候选质量摘要则来自全部重复。报告或清单缺失时可补齐，内容一致时复用，同名内容冲突时停止。
 
 | 决策项 | 实测证据 | 结果 | 后续动作 |
 |:---|:---|:---|:---|
@@ -597,7 +956,7 @@ if SWEEP_PATH.exists():
 | 资源排序 | rank 4 的峰值分配显存和中位步时最低 | 选中 rank 4 | 交给 62 正式训练 |
 | 项目决策 | 候选矩阵、适配器与哈希完整 | `accept` | 保存选型清单 |
 
-`lora_variant_selection_v2` 已完成三个秩候选、三个共享随机种子的配对重复。三个候选均通过质量、稳定性、吞吐和显存门槛，并进入 0.01 的质量等价带；rank 4 的中位峰值分配显存约 1.76 GiB，中位步时约 35.05 ms，因此在当前固定负载下选中 rank 4，结论为 `accept`。该选择只适用于本次模型、数据和更新预算。
+以下为旧协议归档，新v3合同尚无真实采集记录。以下归档使用逐样本平均评测损失、固定α下的秩配置和12次更新，三个候选满足预设0.01损失偏差规则。它支持当前短预算下的配置选择，未使用13／15节的全词元加权指标；切换损失算法时应重新定义门槛并用新标签复测。
 
 **当前登记结果**
 
@@ -611,43 +970,21 @@ if SWEEP_PATH.exists():
 | 结论 | `accept`：当前固定负载选择 rank 4，交给 62 节正式训练 |
 
 ```python
-if RUN_MODE == "real_gpu":
-    sweep = json.loads(SWEEP_PATH.read_text(encoding="utf-8"))
-    selection = select_lora_candidate_for_run(sweep["candidates"], sweep["gates"], [item["name"] for item in CANDIDATES], sweep["workload"]["run_seeds"])
-    if selection["decision"] != "accept":
-        failed_delivery = {
-            "schema_version": SCHEMA_VERSION, "semantic_id": SEMANTIC_ID,
-            "run_label": RUN_LABEL, "decision": selection["decision"],
-            "decision_details": {"decision": selection["decision"], "failed_checks": selection["failed_checks"], "summaries": selection["summaries"]},
-            "selection_evidence": str(SWEEP_PATH), "upstream_manifest": str(UPSTREAM_MANIFEST),
-            "next_consumer": None,
-        }
-        save_json_record(DELIVERY_PATH, failed_delivery)
-        raise RuntimeError(f"候选选择未通过：{selection['decision']}，{selection['failed_checks']}；交付记录已保存")
-    selected_name = selection["selected"]["name"]
-    selected_config = next(item for item in CANDIDATES if item["name"] == selected_name)
-    selected_adapter_dir = ADAPTERS_DIR / selected_name
-    adapter_hash = hash_directory(selected_adapter_dir) if selected_adapter_dir.is_dir() else None
-    delivery_decision = "accept" if adapter_hash else "reject"
-    delivery = {
-        "schema_version": SCHEMA_VERSION, "semantic_id": SEMANTIC_ID,
-        "run_label": RUN_LABEL, "decision": delivery_decision, "selected_config": selected_config,
-        "decision_details": {"decision": delivery_decision, "failed_checks": [] if adapter_hash else ["selected_adapter_missing"], "quality_equivalent": selection["equivalent_candidates"], "candidate_summaries": selection["summaries"]},
-        "selection_evidence": str(SWEEP_PATH), "upstream_manifest": str(UPSTREAM_MANIFEST),
-        "model": sweep["model"], "workload": sweep["workload"], "repeat_seeds": sweep["workload"]["run_seeds"],
-        "candidates": sweep["candidates"],
-        "quality": {"median_eval_loss": selection["selected"]["median_eval_loss"], "repeat_eval_loss_spread": selection["selected"]["eval_loss_spread"]},
-        "resources": {"selected_peak_allocated_bytes": selection["selected"]["median_peak_allocated_bytes"], "selected_median_step_time_ms": selection["selected"]["median_step_time_ms"]},
-        "repeat_results": [item for item in sweep["candidates"] if item["name"] == selected_name], "artifact": {"role": "training.lora_selection", "adapter_path": str(selected_adapter_dir), "sha256": adapter_hash},
-        "next_consumer": "PT-SFT-DELIVERY" if delivery_decision == "accept" else None,
-    }
-    save_json_record(DELIVERY_PATH, delivery)
-    print({"delivery_path": str(DELIVERY_PATH), "decision": delivery_decision, "adapter_path": str(selected_adapter_dir), "adapter_sha256": adapter_hash})
+if RUN_STAGE == "close":
+    registration = project_runtime.close_lora_selection(
+        PROJECT_ROOT, SWEEP_PATH, REPORT_PATH, DELIVERY_PATH, RECEIPT_PATH,
+        CONTRACT, RUN_LABEL, select_lora_candidate_for_run,
+    )
+    print(registration)
+else:
+    print({"stage": RUN_STAGE, "registration": "skipped"})
+
 ```
 
 ## 相关阅读
 
-- [LoRA 原论文](https://arxiv.org/abs/2106.09685)
-- [Hugging Face PEFT 官方文档](https://huggingface.co/docs/peft)
-- [Part 02 · 62 SFT 训练交付项目](./62_Instruction_Fine_Tuning_Project.md)
-- [Part 02 · 65 QLoRA 低资源选型](./65_QLoRA_Selection_Project.md)
+理解固定预算下的秩配置选择后，可继续核对框架实现，再检查更长训练中的保存、重载与恢复。
+
+- [PEFT LoRA接口](https://huggingface.co/docs/peft/package_reference/lora)：对照秩、缩放、目标层及适配器配置。
+- [Part 02 · 65 QLoRA低资源选型](./65_QLoRA_Selection_Project.md)：把底座精度、质量与容量约束加入比较。
+- [Part 02 · 62 指令微调项目](./62_Instruction_Fine_Tuning_Project.md)：使用所选配置完成训练并核对产物重载。

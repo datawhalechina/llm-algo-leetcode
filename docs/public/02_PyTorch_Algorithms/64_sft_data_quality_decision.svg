@@ -28,7 +28,7 @@
 
   <polygon points="700,90 820,145 700,200 580,145" fill="#fefce8" stroke="#eab308" stroke-width="2"/>
   <text x="700" y="139" text-anchor="middle" class="h">可修复项超限？</text>
-  <text x="700" y="164" text-anchor="middle" class="b">重复 / 截断 / 覆盖不足</text>
+  <text x="700" y="164" text-anchor="middle" class="b">重复率 / 截断率超限</text>
   <path class="neutral" d="M520 145 H570"/>
   <text x="545" y="132" text-anchor="middle" class="b">否</text>
 
@@ -46,12 +46,14 @@
 
   <polygon points="700,330 835,400 700,470 565,400" fill="#ecfdf5" stroke="#22c55e" stroke-width="2"/>
   <text x="700" y="383" text-anchor="middle" class="h">清洗版本可晋级？</text>
-  <text x="700" y="408" text-anchor="middle" class="b">同源 · 同规则 · 评测覆盖不降</text>
+  <text x="700" y="408" text-anchor="middle" class="b">同源 · 同序列协议 · 评测量不降</text>
   <text x="700" y="430" text-anchor="middle" class="b">保留率与风险检查通过</text>
   <path class="neutral" d="M700 315 V320"/>
+  <path class="neutral" d="M520 295 H545 V350 H660"/>
+  <text x="550" y="337" class="b">修复后</text>
 
   <rect x="270" y="355" width="250" height="90" rx="14" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
-  <text x="395" y="390" text-anchor="middle" class="h">保留旧版本</text>
+  <text x="395" y="390" text-anchor="middle" class="h">暂不替换旧快照</text>
   <text x="395" y="419" text-anchor="middle" class="b">继续修复并重新审计</text>
   <path class="amber" d="M565 400 H530"/>
   <text x="547" y="386" text-anchor="middle" class="b">否</text>

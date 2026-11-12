@@ -1,0 +1,18 @@
+{
+  "schema_version": "fine-tuning-project/v1",
+  "semantic_id": "PT-SFT-DELIVERY",
+  "measurement_version": "sft-delivery-recovery/v4",
+  "environment_profile": "PT-SFT-CUDA",
+  "evaluation_reduction": "mean_of_per_example_token_means",
+  "sequence_protocol": "manual_instruction_separate_tokenization_eos_v1",
+  "recovery_scope": "same_process_model_rebuild",
+  "model": {"id": "Qwen/Qwen2.5-0.5B", "resolved_commit": "060db6499f32faf8b98477b0a26969ef7d8b9987"},
+  "selection_manifest": "benchmarks/results/63_lora_variants/lora_variant_delivery_lora_variant_selection_v2.json",
+  "selection_manifest_sha256": "e72f8e692b6af4f7314c7cd1f0ab5c12b9bd3c1469d410ba51de318a51a34d52",
+  "selection_evidence": "benchmarks/results/63_lora_variants/lora_variant_sweep_lora_variant_selection_v2.json",
+  "selection_evidence_sha256": "3065bdee6660dd271ef7af2387955c1880b977f0e84a0be1be1c1a14769a26ef",
+  "upstream_manifest": "benchmarks/results/64_sft_data_quality/sft_data_manifest_alpaca_qwen25_v2.json",
+  "upstream_manifest_sha256": "ae16f126aa50958da0b601d630ddd65a3cbdcf6174d6e73263d7c4366f48ffdf",
+  "workload": {"max_length": 256, "train_examples": 48, "evaluation_examples": 16, "total_steps": 24, "checkpoint_step": 12, "learning_rate": 0.0002, "seed": 42, "dtype": "bfloat16"},
+  "gates": {"maximum_eval_loss": 2.0, "maximum_eval_loss_regression": 0.0, "maximum_reload_loss_abs_diff": 0.0001, "require_finite_updates": true}
+}

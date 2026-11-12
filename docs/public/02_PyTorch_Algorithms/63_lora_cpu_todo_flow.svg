@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
-  <title id="title">LoRA 候选的证据选择关系</title>
-  <desc id="desc">先检查可比性和硬门槛，再用共享随机种子配对复测，并根据质量是否可区分选择候选。</desc>
+  <title id="title">按配对损失差筛选LoRA配置</title>
+  <desc id="desc">固定共同条件，每次重复检查损失、显存、吞吐和运行状态；相对参考候选的配对损失差在允许范围内才进入资源比较，超出范围则排除。该规则不表示统计显著性检验。</desc>
   <defs>
     <marker id="neutral" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker>
     <marker id="purple" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="#7c3aed"/></marker>
@@ -8,34 +8,34 @@
     <style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#0f172a}.t{font-size:28px;font-weight:700}.h{font-size:19px;font-weight:700}.b{font-size:15px;fill:#334155}.neutral,.purple,.green{fill:none;stroke-width:3}.neutral{stroke:#475569;marker-end:url(#neutral)}.purple{stroke:#7c3aed;marker-end:url(#purple)}.green{stroke:#16a34a;marker-end:url(#green)}</style>
   </defs>
   <rect width="1200" height="520" fill="#f8fafc"/>
-  <text x="600" y="45" text-anchor="middle" class="t">从可比候选到稳定选择</text>
+  <text x="600" y="45" text-anchor="middle" class="t">先逐次检查，再比较配对损失差</text>
 
-  <rect x="70" y="105" width="270" height="100" rx="15" fill="#ffedd5" stroke="#fb923c" stroke-width="2"/>
+  <rect id="conditions" x="70" y="105" width="270" height="100" rx="15" fill="#ffedd5" stroke="#fb923c" stroke-width="2"/>
   <text x="205" y="143" text-anchor="middle" class="h">可比性</text>
   <text x="205" y="174" text-anchor="middle" class="b">固定字段不变，只改变一个变量</text>
-  <rect x="465" y="105" width="270" height="100" rx="15" fill="#ffedd5" stroke="#fb923c" stroke-width="2"/>
+  <rect id="checks" x="465" y="105" width="270" height="100" rx="15" fill="#ffedd5" stroke="#fb923c" stroke-width="2"/>
   <text x="600" y="143" text-anchor="middle" class="h">候选准入</text>
-  <text x="600" y="174" text-anchor="middle" class="b">质量 · 显存 · 吞吐 · 执行状态</text>
-  <rect x="860" y="105" width="270" height="100" rx="15" fill="#ccfbf1" stroke="#14b8a6" stroke-width="2"/>
+  <text x="600" y="174" text-anchor="middle" class="b">每次检查损失、显存、吞吐与状态</text>
+  <rect id="pairs" x="860" y="105" width="270" height="100" rx="15" fill="#ccfbf1" stroke="#14b8a6" stroke-width="2"/>
   <text x="995" y="143" text-anchor="middle" class="h">配对复测</text>
   <text x="995" y="174" text-anchor="middle" class="b">共享种子 · 配对差 · 失败运行</text>
-  <path class="neutral" d="M340 155 H455"/>
-  <path class="neutral" d="M735 155 H850"/>
+  <path class="neutral" data-source="conditions" data-target="checks" d="M340 155 H465"/>
+  <path class="neutral" data-source="checks" data-target="pairs" d="M735 155 H860"/>
 
   <polygon points="760,270 890,330 760,390 630,330" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
-  <text x="760" y="324" text-anchor="middle" class="h">质量可区分？</text>
-  <text x="760" y="350" text-anchor="middle" class="b">配对差大于等价区间</text>
-  <path class="neutral" d="M995 205 V245 H760 V260"/>
+  <text x="760" y="324" text-anchor="middle" class="h">配对差在范围内？</text>
+  <text x="760" y="350" text-anchor="middle" class="b">|中位差| ≤ 阈值</text>
+  <path class="neutral" d="M995 205 V245 H760 V270"/>
 
   <rect x="300" y="285" width="290" height="90" rx="14" fill="#ede9fe" stroke="#a78bfa" stroke-width="2"/>
-  <text x="445" y="320" text-anchor="middle" class="h">质量近似</text>
-  <text x="445" y="348" text-anchor="middle" class="b">按显存、步时和参数量选择</text>
-  <path class="purple" d="M630 330 H600"/>
-  <text x="615" y="316" text-anchor="middle" class="b">否</text>
+  <text x="445" y="320" text-anchor="middle" class="h">进入资源比较</text>
+  <text x="445" y="348" text-anchor="middle" class="b">按显存、步时中位数选择</text>
+  <path class="purple" d="M630 330 H590"/>
+  <text x="615" y="316" text-anchor="middle" class="b">是</text>
 
   <rect x="920" y="285" width="240" height="90" rx="14" fill="#dcfce7" stroke="#4ade80" stroke-width="2"/>
-  <text x="1040" y="320" text-anchor="middle" class="h">质量差异明确</text>
-  <text x="1040" y="348" text-anchor="middle" class="b">选择质量更好的合格候选</text>
-  <path class="green" d="M890 330 H910"/>
-  <text x="900" y="316" text-anchor="middle" class="b">是</text>
+  <text x="1040" y="320" text-anchor="middle" class="h">不进入资源比较</text>
+  <text x="1040" y="348" text-anchor="middle" class="b">继续比较其余合格候选</text>
+  <path class="green" d="M890 330 H920"/>
+  <text x="900" y="316" text-anchor="middle" class="b">否</text>
 </svg>

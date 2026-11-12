@@ -1,0 +1,16 @@
+{
+  "schema_version": "fine-tuning-project/v1",
+  "semantic_id": "PT-SFT-DATA-QUALITY",
+  "measurement_version": "sft-data-admission/v2",
+  "environment_profile": "PT-SFT-CUDA",
+  "rule_version": "sft-data-admission-v1",
+  "sequence_protocol": "manual_instruction_separate_tokenization_eos_v1",
+  "dataset": {"id": "tatsu-lab/alpaca", "requested_revision": "main"},
+  "tokenizer": {"id": "Qwen/Qwen2.5-1.5B", "requested_revision": "main"},
+  "workload": {"sample_count": 512, "train_count": 448, "max_length": 256, "seed": 42},
+  "limits": {
+    "minimum_evaluation_count": 32,
+    "maximum_duplicate_ratio": 0.02,
+    "maximum_truncation_ratio": 0.1
+  }
+}

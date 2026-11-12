@@ -56,11 +56,11 @@
 
   <text x="180" y="451" text-anchor="middle" class="head">离线偏好优化</text>
   <text x="320" y="451" class="cell">可行回答间的偏好与安全选择</text>
-  <text x="720" y="451" class="cell">SFT 基线、偏好对、独立评测</text>
-  <text x="1140" y="451" class="cell">不在训练中实时采样</text>
+  <text x="720" y="451" class="cell">已复测基线、偏好对或二元反馈、评测</text>
+  <text x="1140" y="451" class="cell">DPO / KTO；离线固定数据</text>
 
-  <text x="180" y="513" text-anchor="middle" class="head">在线 RL / RLVR</text>
+  <text x="180" y="513" text-anchor="middle" class="head">在线强化学习</text>
   <text x="320" y="513" class="cell">需要探索或结果可客观验证</text>
-  <text x="720" y="513" class="cell">奖励 / 验证器、轨迹预算、回滚条件</text>
-  <text x="1140" y="513" class="cell">采样与更新形成闭环</text>
+  <text x="720" y="513" class="cell">基线、奖励来源、更新方法、预算与回滚</text>
+  <text x="1140" y="513" class="cell">PPO / GRPO / RLOO 另行选择</text>
 </svg>

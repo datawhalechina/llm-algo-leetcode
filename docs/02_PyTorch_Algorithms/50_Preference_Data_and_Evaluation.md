@@ -1,6 +1,6 @@
 # 50. Preference Data and Evaluation | 偏好数据与对齐评测
 
-**难度：** Medium | **环境：** [CPU 机制练习](#runtime-environment) | **标签：** `后训练对齐`, `偏好数据`, `评测协议` | **目标人群：** 希望把 DPO / GRPO 结果解释清楚的学习者
+**难度：** Medium | **环境：** [CPU 主线](#runtime-environment) | **标签：** `后训练对齐`, `偏好数据`, `评测协议` | **目标人群：** 希望把 DPO / GRPO 结果解释清楚的学习者
 
 > 🚀 **云端运行环境**
 >
@@ -63,7 +63,7 @@ R_{decision}=\frac{n_{candidate}+n_{baseline}}{n_{evaluated}}, \qquad
 W_{non\text{-}tie}=\frac{n_{candidate}}{n_{candidate}+n_{baseline}}.
 $$
 
-计算前必须确认相应分母大于零；$n_{tie}$ 属于已完成评测，因此进入覆盖率和明确判决率口径，但不进入非平局胜率分母。重复判分检查同一输入下的稳定性，交换回答位置检查位置偏差。令 $j_i^{(1)}$、$j_i^{(2)}$ 分别表示第 $i$ 个偏好对的首次与重复判分，$\widetilde{j}_i^{(swap)}$ 表示交换位置后还原到原方向的判分，$\mathbf 1(\cdot)$ 是指示函数，则：
+计划数与完成数必须大于零；没有明确胜负时，代码把非平局胜率记为 0，并由明确判决数门槛阻止准入；$n_{tie}$ 属于已完成评测，因此进入覆盖率和明确判决率口径，但不进入非平局胜率分母。重复判分检查同一输入下的稳定性，交换回答位置检查位置偏差。令 $j_i^{(1)}$、$j_i^{(2)}$ 分别表示第 $i$ 个偏好对的首次与重复判分，$\widetilde{j}_i^{(swap)}$ 表示交换位置后还原到原方向的判分，$\mathbf 1(\cdot)$ 是指示函数，则：
 
 $$
 C_{repeat}=\frac{1}{N}\sum_{i=1}^{N}\mathbf 1\!\left(j_i^{(1)}=j_i^{(2)}\right), \qquad
@@ -99,14 +99,14 @@ $$
 
 ## Step 4：实现偏好数据审计、成对统计与候选门禁
 
-题目区使用固定偏好对与评测记录复现数据准入和离线评测。骨架提供记录结构与决策顺序；学习者补全数据审计、指标汇总、判分一致性和评测门禁。测试覆盖空字段、重复与污染、平局与部分完成、顺序翻转，以及通过、复核和拒绝三类结果。
+题目区使用固定偏好对与评测记录复现数据准入和离线评测。骨架提供字段审计、胜负平计数、失败原因列表和报告装配；学习者只补跨切分重复数量、三个统计比例及明确判决数、逐对一致计数和候选状态判据。测试覆盖空字段、重复与污染、平局与部分完成、顺序翻转，以及通过、复核和拒绝三类结果。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 |:---|:---|:---|:---|
-| TODO 1：审计偏好数据<br>`audit_preference_dataset` | 审计完整性、来源、偏好依据、切分、重复和训练—评测污染 | 任务输入先规范化，各类风险分别计数 | 空 pair、来源缺失、非法切分、重复身份与规范化后污染 |
+| TODO 1：审计偏好数据<br>`audit_preference_dataset` | 由已规范化的训练与评测任务集合计算跨切分重复数量 | 任务输入先规范化，各类风险分别计数 | 空 pair、来源缺失、非法切分、重复身份与规范化后污染 |
 | TODO 2：汇总成对结果<br>`compute_pairwise_outcomes` | 汇总完成数、胜负平、覆盖率与明确判决率 | 平局不计为胜负，评测缺失与平局分开记录 | 重复 ID、部分完成、平局和空评测 |
-| TODO 3：检查评审一致性<br>`compute_judge_consistency` | 检查同一偏好对的重复判分 | 按样本身份比较，不能只比较总体比例 | 一致、翻转与长度不匹配 |
-| TODO 4：判定候选状态<br>`classify_preference_evidence` | 先检查数据与安全，再检查样本数、覆盖率、明确判决数、胜率和一致性 | 返回状态及全部失败原因 | `qualified / review / reject` 与原因列表 |
+| TODO 3：检查评审一致性<br>`compute_judge_consistency` | 检查同一偏好对的重复判分 | 调用前按同一偏好对顺序对齐，不能只比较总体比例 | 一致、翻转与长度不匹配 |
+| TODO 4：判定候选状态<br>`classify_preference_evidence` | 由骨架给定的数据/安全失败原因与其余复核原因，选择拒绝、复核或准入 | 返回状态及全部失败原因 | `qualified / review / reject` 与原因列表 |
 
 ```python
 from dataclasses import dataclass
@@ -115,6 +115,8 @@ from dataclasses import dataclass
 
 
 ```python
+from dataclasses import dataclass
+
 @dataclass
 class PreferenceSample:
     sample_id: str
@@ -133,12 +135,27 @@ def normalize_task_input(text: str) -> str:
 
 def audit_preference_dataset(samples: list[PreferenceSample]) -> dict[str, int]:
     """分别统计空字段、无效回答对、重复身份和训练—评测污染。"""
-    # ==========================================
-    # TODO 1：分别审计空字段、来源、偏好依据、切分、重复身份和跨切分污染。
-    # normalized_prompts = ???  # 规范化后再比较训练与评测任务输入。
-    # contamination_count = ???  # 两个切分共有的规范化任务输入数量。
-    # ==========================================
-    raise NotImplementedError("TODO 1：审计偏好数据")
+    allowed_splits = {"train", "validation", "eval", "test"}
+    ids = [sample.sample_id for sample in samples]
+    train_prompts = {normalize_task_input(sample.prompt) for sample in samples if sample.split == "train"}
+    eval_prompts = {normalize_task_input(sample.prompt) for sample in samples if sample.split in {"validation", "eval", "test"}}
+    # TODO 1：审计偏好数据
+    # contamination_count = ???  # 规范化后同时出现在训练与评测集的任务输入数量
+    raise NotImplementedError("TODO 1：请完成当前机制判据或公式")
+    return {
+        "total": len(samples),
+        "empty_count": sum(not sample.prompt.strip() or not sample.chosen.strip() or not sample.rejected.strip() for sample in samples),
+        "invalid_pair_count": sum(
+            bool(sample.chosen.strip())
+            and normalize_task_input(sample.chosen) == normalize_task_input(sample.rejected)
+            for sample in samples
+        ),
+        "missing_source_count": sum(not sample.source_id for sample in samples),
+        "missing_reason_count": sum(not sample.preference_reason for sample in samples),
+        "invalid_split_count": sum(sample.split not in allowed_splits for sample in samples),
+        "duplicate_id_count": len(ids) - len(set(ids)),
+        "contamination_count": contamination_count,
+    }
 
 
 def compute_pairwise_outcomes(
@@ -147,27 +164,59 @@ def compute_pairwise_outcomes(
     """分别汇总评测覆盖率、明确判决率与非平局胜率。"""
     if not pair_scores:
         raise ValueError("pair_scores 不能为空")
-    # ==========================================
-    # TODO 2：验证 pair ID 与预期样本数，再分开统计评测缺失、平局和胜负。
-    # evaluated_pairs = ???  # 实际完成评测的样本数。
-    # decided_pairs = ???  # 具有明确胜负的样本数。
-    # ==========================================
-    raise NotImplementedError("TODO 2：汇总成对评测结果")
+    import math
+
+    required_fields = {"pair_id", "candidate_score", "baseline_score"}
+    if any(not required_fields.issubset(row) for row in pair_scores):
+        raise ValueError("每条评测必须包含 pair_id 与双方分数")
+    pair_ids = [str(row['pair_id']).strip() for row in pair_scores]
+    if any(not pair_id for pair_id in pair_ids) or len(pair_ids) != len(set(pair_ids)):
+        raise ValueError("pair_id 必须非空且唯一")
+    if any(
+        not math.isfinite(float(row[name]))
+        for row in pair_scores for name in ("candidate_score", "baseline_score")
+    ):
+        raise ValueError("评测分数必须为有限数")
+    evaluated_pairs = len(pair_scores)
+    expected_pairs = evaluated_pairs if expected_pair_count is None else expected_pair_count
+    if expected_pairs < evaluated_pairs or expected_pairs <= 0:
+        raise ValueError("expected_pair_count 不能小于实际评测数")
+    wins = sum(row['candidate_score'] > row['baseline_score'] for row in pair_scores)
+    losses = sum(row['candidate_score'] < row['baseline_score'] for row in pair_scores)
+    ties = evaluated_pairs - wins - losses
+    # TODO 2：汇总成对结果
+    # decided_pairs = ???  # 已形成明确胜负的偏好对数量
+    # evaluation_coverage = ???  # 实际完成数占预期数的比例
+    # decision_rate = ???  # 明确判决数占已完成数的比例
+    # decided_win_rate = ???  # 候选在明确判决中的胜率；无判决时记为零
+    raise NotImplementedError("TODO 2：请完成当前机制判据或公式")
+    return {
+        "expected_pairs": expected_pairs,
+        "evaluated_pairs": evaluated_pairs,
+        "decided_pairs": decided_pairs,
+        "wins": wins,
+        "losses": losses,
+        "ties": ties,
+        "evaluation_coverage": evaluation_coverage,
+        "decision_rate": decision_rate,
+        "decided_win_rate": decided_win_rate,
+    }
 
 
 def compute_judge_consistency(first_pass: list[int], repeated_pass: list[int], remapped_swapped_pass: list[int]) -> dict[str, float]:
     """比较重复判分与交换回答顺序后的重映射结果。"""
     if not first_pass or len({len(first_pass), len(repeated_pass), len(remapped_swapped_pass)}) != 1:
         raise ValueError("三次判分必须非空且长度一致")
-    # ==========================================
     if any(value not in {-1, 0, 1} for values in (first_pass, repeated_pass, remapped_swapped_pass) for value in values):
         raise ValueError("判分只能使用 -1、0、1")
-    # TODO 3：分别计算重复稳定性与顺序交换后的重映射稳定性。
-    # repeated_agreements = ???  # 重复判分与首次判分一致的数量。
-    # swapped_agreements = ???  # 交换顺序并重映射后仍一致的数量。
-    # judge_consistency = ???  # 两项一致性中较低的一项。
-    # ==========================================
-    raise NotImplementedError("TODO 3：计算判分一致性")
+    # TODO 3：检查判分一致性。
+    # repeated_agreements = ???  # 同一偏好对首次与重复判分一致的数量
+    # swapped_agreements = ???  # 换序重映射后仍与首次一致的数量
+    raise NotImplementedError("TODO 3：请完成当前机制判据或公式")
+    repeat_consistency = repeated_agreements / len(first_pass)
+    swap_consistency = swapped_agreements / len(first_pass)
+    return {"total": len(first_pass), "repeat_consistency": repeat_consistency,
+            "swap_consistency": swap_consistency, "judge_consistency": min(repeat_consistency, swap_consistency)}
 
 
 def classify_preference_evidence(
@@ -182,12 +231,44 @@ def classify_preference_evidence(
     min_consistency: float = 0.8,
 ) -> dict[str, object]:
     """先检查数据与安全，再返回样本和质量条件的全部失败原因。"""
-    # ==========================================
-    # TODO 4：数据或安全检查失败时拒绝；否则收集其余未通过条件。
-    # rejection_reasons = ???  # 数据检查与安全检查的失败原因。
-    # review_reasons = ???  # 样本数、覆盖率、明确判决数、胜率与一致性的失败原因。
-    # ==========================================
-    raise NotImplementedError("TODO 4：判定候选状态并返回原因")
+    import math
+
+    required_outcomes = {"evaluated_pairs", "decided_pairs", "evaluation_coverage", "decided_win_rate"}
+    if not required_outcomes.issubset(outcomes):
+        raise ValueError("outcomes 缺少候选门禁字段")
+    evaluated_pairs = int(outcomes["evaluated_pairs"])
+    decided_pairs = int(outcomes["decided_pairs"])
+    coverage = float(outcomes["evaluation_coverage"])
+    win_rate = float(outcomes["decided_win_rate"])
+    rates = [coverage, win_rate, float(judge_consistency), float(min_win_rate),
+             float(min_evaluation_coverage), float(min_consistency)]
+    if any(not math.isfinite(value) or not 0.0 <= value <= 1.0 for value in rates):
+        raise ValueError("覆盖率、胜率、一致性及其门槛必须位于 [0, 1]")
+    if evaluated_pairs < 0 or decided_pairs < 0 or decided_pairs > evaluated_pairs:
+        raise ValueError("评测计数必须非负，且明确判决数不能超过已评测数")
+    if min_evaluated_pairs < 0 or min_decided_pairs < 0:
+        raise ValueError("样本数门槛必须非负")
+    rejection_reasons = []
+    if not data_pass:
+        rejection_reasons.append("data_gate_failed")
+    if not safety_pass:
+        rejection_reasons.append("safety_gate_failed")
+    review_reasons = []
+    if outcomes["evaluated_pairs"] < min_evaluated_pairs:
+        review_reasons.append("insufficient_evaluated_pairs")
+    if outcomes["evaluation_coverage"] < min_evaluation_coverage:
+        review_reasons.append("low_evaluation_coverage")
+    if outcomes["decided_pairs"] < min_decided_pairs:
+        review_reasons.append("insufficient_decided_pairs")
+    if outcomes["decided_win_rate"] < min_win_rate:
+        review_reasons.append("low_decided_win_rate")
+    if judge_consistency < min_consistency:
+        review_reasons.append("low_judge_consistency")
+    # TODO 4：判定候选状态
+    # status = ???  # 数据/安全失败优先拒绝，其余不足复核，全部通过才准入
+    raise NotImplementedError("TODO 4：请完成当前机制判据或公式")
+    reasons = rejection_reasons if status == "reject" else review_reasons
+    return {"status": status, "reasons": reasons}
 ```
 
 ## 测试
@@ -290,6 +371,24 @@ test_judge_consistency()
 test_preference_evidence_gate()
 test_invalid_preference_evidence_domains()
 print("✅ 偏好数据隔离、成对统计与候选决策测试通过。")
+def test_rejection_precedes_review_reasons():
+    """数据拒绝优先于样本不足复核，返回原因不能混入另一种状态。"""
+    outcomes = {"evaluated_pairs": 1, "decided_pairs": 0, "evaluation_coverage": 0.1, "decided_win_rate": 0.0}
+    assert classify_preference_evidence(outcomes, False, True, 0.1) == {"status": "reject", "reasons": ["data_gate_failed"]}
+
+
+test_rejection_precedes_review_reasons()
+
+def test_all_ties_keep_evaluation_but_no_decisions():
+    """平局属于已完成评测，但不能制造明确胜负或准入胜率。"""
+    report = compute_pairwise_outcomes([{"pair_id": "tie", "candidate_score": 0.5, "baseline_score": 0.5}], 2)
+    assert report["evaluation_coverage"] == 0.5
+    assert report["decided_pairs"] == 0 and report["decision_rate"] == 0.0
+    assert report["decided_win_rate"] == 0.0
+
+
+test_all_ties_keep_evaluation_but_no_decisions()
+
 ```
 
 ---
@@ -328,11 +427,12 @@ def normalize_task_input(text: str) -> str:
 
 def audit_preference_dataset(samples: list[PreferenceSample]) -> dict[str, int]:
     """分别统计空字段、无效回答对、重复身份和训练—评测污染。"""
-    # TODO 1：审计偏好数据。
     allowed_splits = {"train", "validation", "eval", "test"}
     ids = [sample.sample_id for sample in samples]
     train_prompts = {normalize_task_input(sample.prompt) for sample in samples if sample.split == "train"}
     eval_prompts = {normalize_task_input(sample.prompt) for sample in samples if sample.split in {"validation", "eval", "test"}}
+    # TODO 1：审计偏好数据
+    contamination_count = len(train_prompts & eval_prompts)
     return {
         "total": len(samples),
         "empty_count": sum(not sample.prompt.strip() or not sample.chosen.strip() or not sample.rejected.strip() for sample in samples),
@@ -345,7 +445,7 @@ def audit_preference_dataset(samples: list[PreferenceSample]) -> dict[str, int]:
         "missing_reason_count": sum(not sample.preference_reason for sample in samples),
         "invalid_split_count": sum(sample.split not in allowed_splits for sample in samples),
         "duplicate_id_count": len(ids) - len(set(ids)),
-        "contamination_count": len(train_prompts & eval_prompts),
+        "contamination_count": contamination_count,
     }
 
 
@@ -355,7 +455,6 @@ def compute_pairwise_outcomes(
     """分别汇总评测覆盖率、明确判决率与非平局胜率。"""
     if not pair_scores:
         raise ValueError("pair_scores 不能为空")
-    # TODO 2：汇总成对结果。
     import math
 
     required_fields = {"pair_id", "candidate_score", "baseline_score"}
@@ -376,7 +475,11 @@ def compute_pairwise_outcomes(
     wins = sum(row['candidate_score'] > row['baseline_score'] for row in pair_scores)
     losses = sum(row['candidate_score'] < row['baseline_score'] for row in pair_scores)
     ties = evaluated_pairs - wins - losses
+    # TODO 2：汇总成对结果
     decided_pairs = wins + losses
+    evaluation_coverage = evaluated_pairs / expected_pairs
+    decision_rate = decided_pairs / evaluated_pairs
+    decided_win_rate = wins / decided_pairs if decided_pairs else 0.0
     return {
         "expected_pairs": expected_pairs,
         "evaluated_pairs": evaluated_pairs,
@@ -384,9 +487,9 @@ def compute_pairwise_outcomes(
         "wins": wins,
         "losses": losses,
         "ties": ties,
-        "evaluation_coverage": evaluated_pairs / expected_pairs,
-        "decision_rate": decided_pairs / evaluated_pairs,
-        "decided_win_rate": wins / decided_pairs if decided_pairs else 0.0,
+        "evaluation_coverage": evaluation_coverage,
+        "decision_rate": decision_rate,
+        "decided_win_rate": decided_win_rate,
     }
 
 
@@ -417,7 +520,6 @@ def classify_preference_evidence(
     min_consistency: float = 0.8,
 ) -> dict[str, object]:
     """先检查数据与安全，再返回样本和质量条件的全部失败原因。"""
-    # TODO 4：判定候选状态。
     import math
 
     required_outcomes = {"evaluated_pairs", "decided_pairs", "evaluation_coverage", "decided_win_rate"}
@@ -440,8 +542,6 @@ def classify_preference_evidence(
         rejection_reasons.append("data_gate_failed")
     if not safety_pass:
         rejection_reasons.append("safety_gate_failed")
-    if rejection_reasons:
-        return {"status": "reject", "reasons": rejection_reasons}
     review_reasons = []
     if outcomes["evaluated_pairs"] < min_evaluated_pairs:
         review_reasons.append("insufficient_evaluated_pairs")
@@ -453,30 +553,32 @@ def classify_preference_evidence(
         review_reasons.append("low_decided_win_rate")
     if judge_consistency < min_consistency:
         review_reasons.append("low_judge_consistency")
-    status = "review" if review_reasons else "qualified"
-    return {"status": status, "reasons": review_reasons}
+    # TODO 4：判定候选状态
+    status = "reject" if rejection_reasons else "review" if review_reasons else "qualified"
+    reasons = rejection_reasons if status == "reject" else review_reasons
+    return {"status": status, "reasons": reasons}
 ```
 
 ### 解析
 
 #### TODO 1：审计偏好数据
 
-- 机制：分别统计空字段、相同回答、来源与偏好依据缺失、非法切分、重复身份和规范化任务输入的跨切分重复。
+- 骨架分别统计字段、来源、标签依据、切分与重复身份；TODO 只计算规范化训练集合与评测集合的交集大小。`test_preference_data_audit` 用大小写及空白变体检验污染不被漏报。
 - 不变量：各类风险独立记录；大小写或连续空白变化不能绕过训练—评测污染检查。
 
 #### TODO 2：汇总成对结果
 
-- 机制：预期样本数与实际完成数形成评测覆盖率，胜负数与完成数形成明确判决率，非平局胜率只使用胜负样本。
+- 机制：预期样本数与实际完成数形成评测覆盖率，胜负数与完成数形成明确判决率，非平局胜率只使用胜负样本。`test_all_ties_keep_evaluation_but_no_decisions` 验证全平局仍计完成数，但明确判决数与约定胜率均为零。
 - 不变量：平局属于已完成评测，但不进入胜率分母；缺失评测既不算平局，也不进入胜负统计。
 
 #### TODO 3：检查判分一致性
 
-- 机制：逐个偏好对比较重复判分，并把交换回答顺序后的结果重映射到原始候选身份。
+- 机制：逐个偏好对比较重复判分，调用方先把换序结果重映射到原始候选身份，并按同一偏好对顺序传入；本函数只逐位置比较，不读取样本 ID。
 - 不变量：三次判分长度一致且只使用 `-1 / 0 / 1`；重复稳定性与换序稳定性分别报告。
 
 #### TODO 4：判定候选状态
 
-- 机制：数据检查或安全检查失败时拒绝候选；两项检查通过后，再判断样本数、覆盖率、明确判决数、胜率和一致性。
+- 骨架构造两类原因列表；TODO 决定状态优先级，不能让已有数据或安全失败被普通复核原因降级。`test_preference_evidence_gate` 同时检查状态与原因集合。
 - 不变量：数据检查失败或任一安全指标低于阈值时返回 `reject`；其余条件不足时返回 `review`；全部通过时才返回 `qualified`。
 <a id="framework-check"></a>
 

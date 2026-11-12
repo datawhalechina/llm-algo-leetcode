@@ -33,20 +33,20 @@ Step 4 用 CPU 记录练习项目合同与决策逻辑；Step 5 在 `PT-DISTILL-
 
 ---
 
-### Step 1：怎样固定共同合同并区分蒸馏路线
+## Step 1：怎样固定共同合同并区分蒸馏路线
 
-项目先冻结教师与学生初始快照，再固定训练提示、独立评测集、解码参数和推理工作负载。G0 测量学生起点；离线路线使用训练前生成并通过验证的教师文本轨迹；在线路线由当前学生生成回答，再让兼容教师提供逐 Token 分布。候选共享学生起点、训练提示集合、验证集和指标口径，并分别记录教师身份、训练 Token 数与运行成本。
+项目先冻结教师与学生初始快照，再固定训练提示、独立评测集、解码参数和推理工作负载。G0 测量学生起点；固定轨迹路线使用数据集参考答案（必要时压缩推理段）或教师预先生成的文本轨迹；在线路线由当前学生生成回答，再让兼容教师提供逐 Token 分布。候选共享学生起点、训练提示集合、验证集和指标口径，并分别记录教师身份、训练 Token 数与运行成本。
 
 | 路线 | 学生起点 | 轨迹来源 | 教师作用 | 额外条件 |
 |:---|:---|:---|:---|:---|
 | G0 · student baseline | 固定学生初始快照 | 无蒸馏训练 | 提供质量上界 | 固定评测与推理协议 |
-| Offline trace | 与在线路线相同 | 教师预先生成并过滤的文本 | 提供答案或推理轨迹 | 轨迹可解析、正确且不过度截断 |
+| Offline trace | 与在线路线相同 | 固定参考答案或教师生成文本 | 提供答案或推理轨迹 | 轨迹可解析、正确且不过度截断 |
 | Online GKD | 与离线路线相同 | 当前学生生成 | 对学生访问的前缀给出分布 | 词表映射一致且联合显存准入 |
 | Hybrid | 先离线、后在线 | 两类轨迹依次使用 | 先锚定答案，再纠正学生生成 | 两条路线分别通过准入 |
 
 ![教师、学生和蒸馏候选进入同一项目](../public/02_PyTorch_Algorithms/88_distillation_project_flow.svg)
 
-### Step 2：每条路线需要哪些准入与交付证据
+## Step 2：每条路线需要哪些准入与交付证据
 
 离线路线先检查轨迹是否适合作为训练数据，在线路线先检查教师分布能否与学生逐 Token 对齐。路线准入后，质量比较至少包含教师、G0 和蒸馏候选；资源比较使用同一加载方式、相同输入和解码参数。
 
@@ -68,7 +68,7 @@ P_c=\frac{L_c}{L_T},
 B_c=\frac{L_c}{L_0}.
 $$
 
-$\Delta Q_c$ 证明候选相对学生起点的能力增益，$R_c$ 约束教师能力损失，$C_c$ 与 $P_c$ 检查相对教师的部署收益，$B_c$ 防止蒸馏学生相对 G0 出现明显延迟回归。各评测类别还要分别与 G0 比较，避免总分掩盖局部退化。
+$\Delta Q_c$ 表示当前评测中候选相对学生起点的分数增益，$R_c$ 约束教师能力损失，$C_c$ 与 $P_c$ 检查相对教师的部署收益，$B_c$ 防止蒸馏学生相对 G0 出现明显延迟回归。各评测类别还要分别与 G0 比较，避免总分掩盖局部退化。
 
 | 检查阶段 | 证据或指标 | 固定比较与通过条件 | 失败动作 |
 |:---|:---|:---|:---|
@@ -80,7 +80,7 @@ $\Delta Q_c$ 证明候选相对学生起点的能力增益，$R_c$ 约束教师�
 | 学生产物 | 候选目录、配置、分词器与哈希 | 文件完整并可独立加载 | 修复并重新生成产物 |
 | 部署收益 | $C_c$、$P_c$、$B_c$ 与类别分数 | 同一重复测量协议下，大小、延迟和类别退化同时达到门槛 | 保持 `tune` 并补充针对性复测 |
 
-### Step 3：怎样选择训练路线并形成交付决策
+## Step 3：怎样选择训练路线并形成交付决策
 
 路线选择和交付判断是两层决策。轨迹合格但词表不兼容时选择离线；词表、教师和显存都通过时可以选择在线；两边分别通过时才进入混合路线。完成训练后再检查项目合同、产物、质量和部署收益。
 
@@ -100,19 +100,20 @@ $\Delta Q_c$ 证明候选相对学生起点的能力增益，$R_c$ 约束教师�
 
 ![合同、质量、产物和部署证据形成蒸馏交付判断](../public/02_PyTorch_Algorithms/88_distillation_evidence_gate.svg)
 
-### Step 4：实现蒸馏项目合同与交付判断
+## Step 4：实现蒸馏项目合同与交付判断
 
 题目区使用小型项目记录复现四项工作：核对教师—学生与数据身份、根据轨迹和兼容性选择训练路线、计算候选相对 G0 和教师的指标、组合质量与部署门槛。测试覆盖路线阻塞、学生起点漂移、评测污染、质量不足、缺少部署证据和完整通过。
 
-| TODO / 函数 | 学习者完成的项目逻辑 | 必须满足的约束 | 测试证据 |
+| 任务与目的 | 已知条件 | 完成标准 | 测试验证 |
 |:---|:---|:---|:---|
-| TODO 1：核对项目合同<br>`validate_distillation_contract` | 固定教师、学生、数据切分和三组身份 | G1/G2 共享学生起点与训练预算；训练/评测哈希不同；教师保持冻结 | 学生版本漂移、评测污染和教师可训练状态分别被拒绝 |
-| TODO 2：选择蒸馏路线<br>`select_distillation_route` | 根据轨迹质量、词表兼容和显存准入选择路线 | 只有分别通过的路线才能组成 hybrid | 覆盖 `offline / online / hybrid / blocked` |
-| TODO 3：计算候选证据<br>`summarize_distilled_candidate` | 计算质量增益、教师保持率、教师侧资源比、G0 延迟比和类别退化 | 分母为正；候选必须携带内容哈希、加载状态和重复延迟协议 | 候选指标与手算结果一致，类别退化和无效延迟协议可被识别 |
-| TODO 4：形成交付判断<br>`decide_distilled_student` | 按合同、质量、产物和部署顺序组合门槛 | 硬失败优先；缺少推理证据不能接受；原因可追溯 | 分别得到 `reject / tune / measure / accept` |
+| TODO 1：核对项目合同<br>`validate_distillation_contract` | 教师、学生、数据切分和三组身份记录 | G1/G2 共享学生起点与训练预算；训练/评测哈希不同；教师保持冻结 | 学生版本漂移、评测污染和教师可训练状态分别被拒绝 |
+| TODO 2：选择蒸馏路线<br>`select_distillation_route` | 轨迹质量、词表兼容和显存预检结果 | 只有分别通过的路线才能组成 hybrid | 覆盖 `offline / online / hybrid / blocked` |
+| TODO 3：计算候选证据<br>`summarize_distilled_candidate` | 教师、G0 与候选的质量、大小、延迟和完整类别分数 | 分母为正；候选必须携带内容哈希、加载状态和重复延迟协议 | 候选指标与手算结果一致，类别退化和无效延迟协议可被识别 |
+| TODO 4：形成交付判断<br>`decide_distilled_student` | 已提供的合同检查、质量、产物与部署事实 | 硬失败优先；缺少推理证据不能接受；原因可追溯 | 分别得到 `reject / tune / measure / accept` |
 
 
 ```python
+import math
 from copy import deepcopy
 from typing import Any, Dict
 
@@ -219,6 +220,13 @@ def test_candidate_summary():
     assert abs(summary["teacher_latency_ratio"] - 0.40) < 1e-9
     assert abs(summary["baseline_latency_ratio"] - 1.0) < 1e-9
     assert summary["regressed_category_count"] == 0
+    for broken_candidate in ({**candidate, "quality_score": float("nan")}, {**candidate, "category_scores": {}}):
+        try:
+            summarize_distilled_candidate(teacher, baseline, broken_candidate)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("非有限指标或缺失类别必须拒绝")
     broken_teacher = {**teacher, "latency_ms": 0.0}
     try:
         summarize_distilled_candidate(broken_teacher, baseline, candidate)
@@ -336,10 +344,16 @@ def summarize_distilled_candidate(
         raise ValueError("教师、学生基线和候选缺少可比较数值")
     if teacher["quality_score"] <= 0 or any(record[field] <= 0 for record in (teacher, student_baseline, candidate) for field in ("artifact_size_mb", "latency_ms")):
         raise ValueError("教师质量以及三组大小和延迟必须为正")
+    if any(not math.isfinite(float(record[field])) for record in (teacher, student_baseline, candidate) for field in numeric_fields):
+        raise ValueError("质量、大小和延迟必须为有限数")
     teacher_categories = teacher.get("category_scores", {})
     baseline_categories = student_baseline.get("category_scores", {})
     candidate_categories = candidate.get("category_scores", {})
-    common_categories = sorted(set(teacher_categories) & set(baseline_categories) & set(candidate_categories))
+    if not baseline_categories or set(teacher_categories) != set(baseline_categories) or set(candidate_categories) != set(baseline_categories):
+        raise ValueError("教师、G0 和候选必须提供同一非空类别集合")
+    if any(not math.isfinite(float(values["quality_score"])) for categories in (teacher_categories, baseline_categories, candidate_categories) for values in categories.values()):
+        raise ValueError("类别质量必须为有限数")
+    common_categories = sorted(baseline_categories)
     regressed_categories = [name for name in common_categories if candidate_categories[name]["quality_score"] < baseline_categories[name]["quality_score"]]
     latency_protocol = candidate.get("latency_protocol", {})
     return {
@@ -393,7 +407,7 @@ def decide_distilled_student(
 #### TODO 3：计算质量和部署证据
 
 - 机制：候选同时与 G0 和教师比较，训练成本与部署收益分开记录。
-- 测试：用可手算数值检查四个指标，并拒绝零分母。
+- 测试：用可手算数值检查质量与资源比值，并拒绝零分母、非有限指标和缺失类别；类别缺失不能被集合交集掩盖。
 
 #### TODO 4：形成交付判断
 
@@ -1476,8 +1490,21 @@ else:
         if missing:
             raise FileNotFoundError(f"close 缺少同标签阶段：{missing}")
         records = {name: json.loads(path.read_text(encoding="utf-8")) for name, path in required.items()}
-        if any(record.get("config_hash") != CONFIG_HASH for record in records.values()):
-            raise RuntimeError("G0/G1/G2 配置哈希不一致")
+        if any(records[name].get("config_hash") != CONFIG_HASH for name in ("g1", "g2")):
+            raise RuntimeError("G1/G2 配置哈希不一致")
+        # G0 uses the smaller training manifest; only its evaluation identity is shared.
+        if records["g0"].get("config") != PROJECT_CONFIG:
+            raise RuntimeError("G0 与当前候选的模型或推理配置不一致")
+        close_identity_keys = (
+            "development_prompt_ids_hash", "development_reference_answers_hash",
+            "evaluation_prompt_ids_hash", "scoring_contract_sha256",
+        )
+        if any(not VALIDATION_IDENTITY.get(key)
+               or records["g0"].get("workload", {}).get(key) != VALIDATION_IDENTITY[key]
+               for key in close_identity_keys):
+            raise RuntimeError("G0 与当前候选的开发集或验证集身份不一致")
+        from tools.distillation_matrix_runtime import resolve_g1_close_record
+        records["g1"] = resolve_g1_close_record(records["g1"], G1_CONFIRM_PATH)
         student_revision = assets["student"]["snapshot"]
         contract_spec = {
             "schema_version": "distilled-student-project/v3",
@@ -1506,6 +1533,22 @@ else:
         summaries, decisions = {}, {}
         for name in ("g1", "g2"):
             evidence = records[name]["evidence"]
+            if records[name].get("close_promotable") is False:
+                # Matrix screening evaluates an in-memory model, not a delivered artifact.
+                quality = distillation_runtime._finite_number(evidence["evaluation"].get("quality_score"), "screening quality")
+                distillation_runtime._quality_categories(evidence["evaluation"], set(student_baseline["category_scores"]))
+                summaries[name] = {
+                    "quality_gain": quality - student_baseline["quality_score"],
+                    "teacher_retention": quality / teacher["quality_score"],
+                    "baseline_latency_ratio": distillation_runtime._finite_number(evidence["evaluation"].get("mean_latency_ms"), "screening latency") / student_baseline["latency_ms"],
+                    "artifact_verified": False, "load_ready": False,
+                }
+                decisions[name] = (
+                    {"decision": "reject", "reason": "; ".join(contract["issues"])}
+                    if not contract["ready"] else
+                    {"decision": "tune", "reason": "G1 只有矩阵筛选证据，尚无通过确认的持久化学生产物"}
+                )
+                continue
             candidate = {
                 "name": evidence["name"],
                 "quality_score": evidence["evaluation"]["quality_score"],
@@ -1525,7 +1568,7 @@ else:
             })
             decisions[name] = (
                 decide_distilled_student(contract, summaries[name], DELIVERY_GATES)
-                if dose_selection["selected_admissible"]
+                if not contract["ready"] or dose_selection["selected_admissible"]
                 else {"decision": "tune", "reason": "开发 canary 总分或分类表现未达到 G0 基线"}
             )
         decision_rank = {"accept": 3, "tune": 2, "measure": 1, "reject": 0}
@@ -1546,7 +1589,8 @@ else:
             "selected_candidate": selected,
             "decision": decisions[selected],
             "candidate_artifact": records[selected]["evidence"]["artifact"],
-            "source_evidence": {name: str(path) for name, path in required.items()},
+            "source_evidence": {**{name: str(path) for name, path in required.items()},
+                                **records["g1"].get("close_sources", {})},
             "handoff": (
                 {"artifact": records[selected]["evidence"]["artifact"], "source_stage": str(required[selected]), "rollback": str(assets["student"]["path"])}
                 if selected_decision == "accept" else None

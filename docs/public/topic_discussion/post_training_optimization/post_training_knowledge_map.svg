@@ -16,47 +16,47 @@
 
   <text x="82" y="150" class="column">数据对象</text><text x="340" y="150" class="column">学习信号</text><text x="620" y="150" class="column">模型与系统状态</text><text x="926" y="150" class="column">独立证据</text>
 
-  <rect x="76" y="172" width="204" height="108" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
+  <rect id="supervised-data" x="76" y="172" width="204" height="108" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
   <text x="96" y="204" class="label">监督样本</text><text x="96" y="232" class="copy">必需字段 · 输入 / 样本指纹</text><text x="96" y="256" class="copy">切分隔离 · 重复与冲突</text>
-  <rect x="332" y="172" width="224" height="108" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
+  <rect id="sft-objective" x="332" y="172" width="224" height="108" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
   <text x="352" y="204" class="label">标签与 SFT 损失</text><text x="352" y="232" class="copy">回复边界 · 有效监督词元</text><text x="352" y="256" class="copy">微批次 · 有效更新</text>
-  <rect x="608" y="172" width="242" height="108" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
+  <rect id="sft-state" x="608" y="172" width="242" height="108" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
   <text x="628" y="204" class="label">检查点 / 适配器</text><text x="628" y="232" class="copy">优化器 · 调度器 · 随机状态</text><text x="628" y="256" class="copy">恢复点与产物清单</text>
-  <path d="M280 226H332" class="line"/><path d="M556 226H608" class="line"/>
+  <path data-source="supervised-data" data-target="sft-objective" data-relation="构造监督目标" d="M280 226H332" class="line"/><path data-source="sft-objective" data-target="sft-state" data-relation="更新并保存训练状态" d="M556 226H608" class="line"/>
 
-  <rect x="76" y="310" width="204" height="108" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
+  <rect id="preference-data" x="76" y="310" width="204" height="108" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
   <text x="96" y="342" class="label">偏好对或二元反馈</text><text x="96" y="370" class="copy">成对排序或单条正负标签</text><text x="96" y="394" class="copy">固定标签含义与数据隔离</text>
-  <rect x="332" y="310" width="224" height="108" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
+  <rect id="preference-objective" x="332" y="310" width="224" height="108" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
   <text x="352" y="342" class="label">DPO / KTO 目标</text><text x="352" y="370" class="copy">成对边际或二元反馈目标</text><text x="352" y="394" class="copy">固定参考策略与各自归约规则</text>
-  <rect x="608" y="310" width="242" height="108" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
+  <rect id="policy-state" x="608" y="310" width="242" height="108" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
   <text x="628" y="342" class="label">当前策略 / 参考策略</text><text x="628" y="370" class="copy">固定参考策略版本</text><text x="628" y="394" class="copy">候选策略与更新记录</text>
-  <path d="M280 364H332" class="line"/><path d="M556 364H608" class="line"/>
+  <path data-source="preference-data" data-target="preference-objective" data-relation="构造偏好目标" d="M280 364H332" class="line"/><path data-source="preference-objective" data-target="policy-state" data-relation="更新当前策略并保留参考策略" d="M556 364H608" class="line"/>
 
-  <rect x="76" y="448" width="204" height="108" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
+  <rect id="reward-data" x="76" y="448" width="204" height="108" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
   <text x="96" y="480" class="label">偏好与反馈数据</text><text x="96" y="508" class="copy">人类标签 · 评分准则</text><text x="96" y="532" class="copy">训练 / 校准 / 测试隔离</text>
-  <rect x="332" y="448" width="224" height="108" rx="15" fill="#FFE4E6" stroke="#E11D48" stroke-width="2"/>
+  <rect id="reward-model" x="332" y="448" width="224" height="108" rx="15" fill="#FFE4E6" stroke="#E11D48" stroke-width="2"/>
   <text x="352" y="480" class="label">奖励模型与校准</text><text x="352" y="508" class="copy">偏好标签 → 标量奖励</text><text x="352" y="532" class="copy">排序准确率 · 校准 · 漂移</text>
-  <rect x="608" y="448" width="242" height="108" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
+  <rect id="reward-version" x="608" y="448" width="242" height="108" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
   <text x="628" y="480" class="label">奖励版本与适用域</text><text x="628" y="508" class="copy">模型 / 规则版本 · 阈值</text><text x="628" y="532" class="copy">过度优化与隐藏审计集</text>
-  <path d="M280 502H332" class="line"/><path d="M556 502H608" class="line"/>
+  <path data-source="reward-data" data-target="reward-model" data-relation="训练并校准奖励模型" d="M280 502H332" class="line"/><path data-source="reward-model" data-target="reward-version" data-relation="固定评分版本与适用域" d="M556 502H608" class="line"/>
 
-  <rect x="76" y="586" width="204" height="108" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
+  <rect id="online-trajectories" x="76" y="586" width="204" height="108" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
   <text x="96" y="618" class="label">候选组与在线轨迹</text><text x="96" y="646" class="copy">策略版本 · 采样配置</text><text x="96" y="670" class="copy">模型动作 · 环境终态</text>
-  <rect x="332" y="586" width="224" height="108" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
+  <rect id="advantage-signal" x="332" y="586" width="224" height="108" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
   <text x="352" y="618" class="label">回报、价值与优势</text><text x="352" y="646" class="copy">PPO / GRPO / RLOO</text><text x="352" y="670" class="copy">价值、组均值或留一基线</text>
-  <rect x="608" y="586" width="242" height="108" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
+  <rect id="online-state" x="608" y="586" width="242" height="108" rx="15" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
   <text x="628" y="618" class="label">采样器 / 学习器状态</text><text x="628" y="646" class="copy">队列 · 策略新鲜度 · 同步</text><text x="628" y="670" class="copy">检查点 · 失败恢复 · 回滚点</text>
-  <path d="M280 640H332" class="line"/><path d="M556 640H608" class="line"/>
+  <path data-source="online-trajectories" data-target="advantage-signal" data-relation="按算法构造更新信号" d="M280 640H332" class="line"/><path data-source="advantage-signal" data-target="online-state" data-relation="驱动更新并管理运行状态" d="M556 640H608" class="line"/>
 
-  <rect x="906" y="172" width="294" height="108" rx="15" fill="#ECFDF5" stroke="#16A34A" stroke-width="2"/>
+  <rect id="sft-evidence" x="906" y="172" width="294" height="108" rx="15" fill="#ECFDF5" stroke="#16A34A" stroke-width="2"/>
   <text x="928" y="204" class="label">监督与交付证据</text><text x="928" y="232" class="copy">目标质量 · 通用能力保持</text><text x="928" y="256" class="copy">评测隔离 · 恢复验证 · 训练成本</text>
-  <rect x="906" y="310" width="294" height="108" rx="15" fill="#ECFDF5" stroke="#16A34A" stroke-width="2"/>
+  <rect id="preference-evidence" x="906" y="310" width="294" height="108" rx="15" fill="#ECFDF5" stroke="#16A34A" stroke-width="2"/>
   <text x="928" y="342" class="label">偏好与安全证据</text><text x="928" y="370" class="copy">评审一致性 · 胜率 · 安全</text><text x="928" y="394" class="copy">参考策略版本 · 失败切片</text>
-  <rect x="906" y="448" width="294" height="108" rx="15" fill="#ECFDF5" stroke="#16A34A" stroke-width="2"/>
+  <rect id="reward-evidence" x="906" y="448" width="294" height="108" rx="15" fill="#ECFDF5" stroke="#16A34A" stroke-width="2"/>
   <text x="928" y="480" class="label">奖励模型验证</text><text x="928" y="508" class="copy">留出排序 · 校准误差</text><text x="928" y="532" class="copy">奖励投机 · 独立质量</text>
-  <rect x="906" y="586" width="294" height="108" rx="15" fill="#ECFDF5" stroke="#16A34A" stroke-width="2"/>
+  <rect id="online-evidence" x="906" y="586" width="294" height="108" rx="15" fill="#ECFDF5" stroke="#16A34A" stroke-width="2"/>
   <text x="928" y="618" class="label">在线系统证据</text><text x="928" y="646" class="copy">质量 · 显存 · 时间 · 成本</text><text x="928" y="670" class="copy">策略版本 · 恢复与回滚记录</text>
-  <path d="M850 226H906" class="line"/><path d="M850 364H906" class="line"/><path d="M850 502H906" class="line"/><path d="M850 640H906" class="line"/>
+  <path data-source="sft-state" data-target="sft-evidence" data-relation="独立验证产物" d="M850 226H906" class="line"/><path data-source="policy-state" data-target="preference-evidence" data-relation="独立验证候选" d="M850 364H906" class="line"/><path data-source="reward-version" data-target="reward-evidence" data-relation="验证排序校准与独立质量" d="M850 502H906" class="line"/><path data-source="online-state" data-target="online-evidence" data-relation="验证质量资源与恢复" d="M850 640H906" class="line"/>
 
   <rect id="teacher-input" x="76" y="724" width="204" height="108" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
   <text x="96" y="756" class="label">教师与学生轨迹</text><text x="96" y="784" class="copy">固定轨迹或在策略轨迹</text><text x="96" y="808" class="copy">冻结教师 · 共同学生起点</text>

@@ -1,5 +1,5 @@
 # 51. Online DPO | 在线 DPO
-**难度：** Hard | **环境：** [CPU 机制练习](#runtime-environment) | **标签：** `后训练对齐`, `DPO`, `在线优化` | **目标人群：** 项目决策练习者
+**难度：** Hard | **环境：** [CPU 主线](#runtime-environment) | **标签：** `后训练对齐`, `DPO`, `在线优化` | **目标人群：** 理解 DPO 目标、需要检查在线反馈与回滚条件的学习者
 
 > 🚀 **云端运行环境**
 >
@@ -74,7 +74,7 @@ $$
 
 | 判断维度 | 要回答的问题 | 风险响应 |
 |:---|:---|:---|
-| 身份完整性 | 同一反馈能否唯一识别，并与历史已消费集合区分 | 区分跨轮消费与当前流内重复 |
+| 身份完整性 | 同一反馈能否唯一识别，并与历史已消费集合区分 | 区分跨轮消费与当前流内重复；同一身份的内容或风险状态冲突时整组拒绝 |
 | 策略版本差 | 当前目标策略版本减去生成策略版本是否位于允许范围 | 接纳、拒绝或重新采样 |
 | 风险检查 | 样本是否命中需要人工复核的风险规则 | 阻止自动进入更新 |
 | 切分隔离 | 反馈是否污染独立评测 | 移出更新池并恢复隔离 |
@@ -123,6 +123,7 @@ $$
 
 ```python
 import hashlib
+import json
 
 ```
 
@@ -195,6 +196,8 @@ def test_pair_admission_reasons():
     assert classify_preference_pair(_pair('stale', version=7), 10, 2) == 'stale'
     assert classify_preference_pair(_pair('future', version=11), 10, 2) == 'future'
     assert classify_preference_pair(_pair('whitespace', chosen=' Same ', rejected='same'), 10, 2) == 'invalid_pair'
+    assert classify_preference_pair(_pair('fraction', version=10.9), 10, 2) == 'missing_identity'
+    assert classify_preference_pair(_pair('bool', version=True), 10, 2) == 'missing_identity'
     assert classify_preference_pair(_pair('missing-version') | {'policy_version': None}, 10, 2) == 'missing_identity'
 
 
@@ -215,8 +218,13 @@ def test_preference_window_identity_and_capacity():
     assert report["eligible_sources"] == ['prod', 'shadow']
     conflicting = [_pair('same-id', chosen='first'), _pair('same-id', chosen='changed')]
     conflict_report = build_preference_window(conflicting, 10, 2, max_pairs=2)
-    assert conflict_report["pair_ids"] == ['same-id']
+    assert conflict_report["pair_ids"] == []
     assert conflict_report["rejection_counts"] == {'identity_conflict': 1}
+    assert build_preference_window(list(reversed(conflicting)), 10, 2, 2)['pair_ids'] == []
+    assert build_preference_window([_pair('r'), _pair('r', risk=True)], 10, 2, 2)['pair_ids'] == []
+    left = build_preference_window([_pair('a|b'), _pair('c')], 10, 2, 2)
+    right = build_preference_window([_pair('a'), _pair('b|c')], 10, 2, 2)
+    assert left['window_id'] != right['window_id']
 
 
 def test_adopt_defer_rollback_and_halt():
@@ -277,16 +285,15 @@ def classify_preference_pair(
 ) -> str:
     """返回 eligible 或一个首要拒绝原因。"""
     # TODO 1：判断偏好对准入。
-    if not isinstance(current_policy_version, int) or current_policy_version < 0:
+    if not isinstance(current_policy_version, int) or isinstance(current_policy_version, bool) or current_policy_version < 0:
         raise ValueError('current_policy_version 必须为非负整数')
-    if not isinstance(max_policy_lag, int) or max_policy_lag < 0:
+    if not isinstance(max_policy_lag, int) or isinstance(max_policy_lag, bool) or max_policy_lag < 0:
         raise ValueError('max_policy_lag 必须为非负整数')
     pair_id = str(pair.get('pair_id', '')).strip()
     if not pair_id or not pair.get('prompt_id') or not pair.get('chosen') or not pair.get('rejected') or 'policy_version' not in pair:
         return 'missing_identity'
-    try:
-        generated_version = int(pair['policy_version'])
-    except (TypeError, ValueError):
+    generated_version = pair['policy_version']
+    if not isinstance(generated_version, int) or isinstance(generated_version, bool):
         return 'missing_identity'
     if generated_version < 0:
         return 'missing_identity'
@@ -319,12 +326,14 @@ def build_preference_window(
         raise ValueError('max_pairs 必须为正')
     consumed_ids = set(previously_consumed_ids or set())
     seen_identities, accepted_pairs = {}, []
+    conflicted_ids = set()
     rejection_counts = {}
     for pair in feedback_stream:
         pair_id = str(pair.get('pair_id', '')).strip()
         identity_payload = (
             str(pair.get('prompt_id', '')), str(pair.get('chosen', '')), str(pair.get('rejected', '')),
             str(pair.get('policy_version', '')), str(pair.get('split', '')), str(pair.get('source', '')),
+            bool(pair.get('risk', False)),
         )
         if pair_id in consumed_ids:
             reason = 'consumed'
@@ -332,15 +341,17 @@ def build_preference_window(
             reason = 'duplicate' if seen_identities[pair_id] == identity_payload else 'identity_conflict'
         else:
             reason = classify_preference_pair(pair, current_policy_version, max_policy_lag)
+        if reason == 'identity_conflict':
+            conflicted_ids.add(pair_id)
         seen_identities.setdefault(pair_id, identity_payload)
         if reason == 'eligible':
             accepted_pairs.append(pair)
         else:
             rejection_counts[reason] = rejection_counts.get(reason, 0) + 1
-    ordered_pairs = sorted(accepted_pairs, key=lambda item: str(item['pair_id']))
+    ordered_pairs = sorted((pair for pair in accepted_pairs if str(pair['pair_id']).strip() not in conflicted_ids), key=lambda item: str(item['pair_id']))
     selected_pairs, overflow_pairs = ordered_pairs[:max_pairs], ordered_pairs[max_pairs:]
     pair_ids = [str(item['pair_id']) for item in selected_pairs]
-    identity_payload = f"policy={current_policy_version}|pairs={'|'.join(pair_ids)}"
+    identity_payload = json.dumps([current_policy_version, pair_ids], ensure_ascii=False, separators=(',', ':'))
     window_id = hashlib.sha256(identity_payload.encode('utf-8')).hexdigest()[:16]
     return {'window_id': window_id, 'policy_version': current_policy_version, 'pair_ids': pair_ids,
             'overflow_pair_ids': [str(item['pair_id']) for item in overflow_pairs],
@@ -408,12 +419,12 @@ def recommend_online_dpo(
 #### TODO 1：判断偏好对准入
 
 - 机制：先验证成对回答是否完整且不同，再依次检查训练切分、风险状态和策略版本。
-- 不变量：每条数据只保留一个首要拒绝原因，使拒绝计数不会重复累计。
+- 不变量：每条数据只保留一个首要拒绝原因，使拒绝计数不会重复累计；生成策略版本只接受非负整数，不截断小数，也不接纳布尔值。
 
 #### TODO 2：形成在线偏好窗口
 
 - 机制：先排除历史窗口已经消费的偏好对 ID，再处理当前流内重复；其余样本稳定排序后分为本轮入选和容量延后两组，并由策略版本与入选 ID 生成窗口身份。
-- 不变量：相同策略版本与入选偏好对 ID 始终形成相同窗口 ID；同一偏好对 ID 不得跨轮或在同一轮重复消费。
+- 不变量：相同策略版本与入选偏好对 ID 始终形成相同窗口 ID；同一偏好对 ID 不得跨轮或在同一轮重复消费；内容或风险状态冲突时排除整组，不能按到达顺序保留首条。测试还区分包含分隔符的不同 ID 列表，防止窗口摘要歧义。
 
 #### TODO 3：选择采用、延迟或回滚
 

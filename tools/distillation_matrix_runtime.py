@@ -21,6 +21,69 @@ from typing import Any
 
 from tools.post_training_project_runtime import stable_text_hash
 from tools.post_training_project_runtime import save_json_record
+from tools.distillation_project_runtime import _finite_number, _quality_categories
+
+
+def resolve_g1_close_record(record: Mapping[str, Any], confirmation_path: str | Path) -> dict[str, Any]:
+    """Read one matrix member or confirmed seed; screening never becomes an artifact."""
+    if record.get("record_type") != "g1_validation_matrix":
+        return dict(record)
+    matrix = record["evidence"]
+    ranking = matrix.get("ranking", [])
+    if not ranking:
+        raise ValueError("G1 矩阵缺少候选排名")
+    selected = matrix.get("selected_candidate_ids", [])
+    if len(selected) > 1:
+        raise ValueError("close 要求唯一 G1 候选")
+    # With no eligible member, read the first ranked member for diagnostics only.
+    candidate_id = selected[0] if selected else ranking[0]["candidate_id"]
+    members = []
+    member_paths = []
+    for source in matrix.get("candidate_paths", []):
+        path = Path(source)
+        member = json.loads(path.read_text(encoding="utf-8"))
+        if (member.get("run_label") != record.get("run_label")
+                or member.get("plan_hash") != matrix.get("plan_hash")
+                or member.get("common_config_hash") != matrix.get("common_config_hash")):
+            raise ValueError("G1 矩阵成员与摘要身份不一致")
+        if member.get("candidate", {}).get("candidate_id") == candidate_id:
+            members.append(member)
+            member_paths.append(str(path))
+    if len(members) != 1:
+        raise ValueError("G1 矩阵缺少唯一对应成员")
+    member = members[0]
+    evidence = member["evidence"]
+    promotable = False
+    sources = {"matrix_member": member_paths[0]}
+    confirmation_path = Path(confirmation_path)
+    if selected and confirmation_path.is_file():
+        confirmation = json.loads(confirmation_path.read_text(encoding="utf-8"))
+        if (confirmation.get("config_hash") != record.get("config_hash")
+                or confirmation.get("run_label") != record.get("run_label")
+                or {key: value for key, value in confirmation.get("selected_candidate", {}).items()
+                    if key != "selected_step"} != member.get("candidate")):
+            raise ValueError("G1 确认证据与矩阵候选不一致")
+        ranked = next((row for row in ranking if row.get("candidate_id") == candidate_id), None)
+        if ranked is None or confirmation.get("selected_candidate", {}).get("selected_step") != ranked.get("selected_step"):
+            raise ValueError("G1 确认剂量与矩阵选择不一致")
+        confirmed = confirmation.get("evidence", {})
+        if confirmed.get("confirmed") is True:
+            seed = confirmed.get("selected_seed")
+            if isinstance(seed, bool) or not isinstance(seed, int):
+                raise ValueError("确认结果缺少有效种子")
+            seed_path = confirmation_path.with_name(f"{confirmation_path.stem}_seed_{seed}.json")
+            seed_record = json.loads(seed_path.read_text(encoding="utf-8"))
+            if (seed_record.get("config_hash") != record.get("config_hash")
+                    or seed_record.get("run_label") != record.get("run_label")
+                    or seed_record.get("seed") != seed
+                    or seed_record.get("candidate") != confirmation.get("selected_candidate")
+                    or seed_record.get("evidence", {}).get("artifact") != confirmed.get("selected_artifact")):
+                raise ValueError("确认种子与选中产物身份不一致")
+            evidence = seed_record["evidence"]
+            promotable = True
+            sources.update(confirmation=str(confirmation_path), seed=str(seed_path))
+    return {**record, "evidence": evidence, "close_promotable": promotable,
+            "close_sources": sources}
 
 
 G1_MATRIX: tuple[dict[str, Any], ...] = (
@@ -256,6 +319,13 @@ def rank_validation_candidates(
     if max_regressed_categories < 0:
         raise ValueError("max_regressed_categories 不能为负")
     baseline_quality = float(baseline.get("quality_score", 0.0))
+    _finite_number(baseline.get("quality_score"), "baseline quality")
+    expected_categories = _quality_categories(baseline)
+    for value in (min_quality_gain, max_regressed_categories, min_format_compliance):
+        _finite_number(value, "ranking gate")
+    for value in (max_saturation_increase, max_baseline_latency_ratio):
+        if value is not None:
+            _finite_number(value, "ranking gate")
     baseline_categories = baseline.get("category_scores", {})
     baseline_saturation = float(
         baseline.get("generated_tokens", {}).get("saturation_ratio", 0.0)
@@ -269,6 +339,15 @@ def rank_validation_candidates(
             raise ValueError("candidate_id 必须非空且唯一")
         seen.add(candidate_id)
         evaluation = candidate.get("validation", {})
+        _quality_categories(evaluation, expected_categories)
+        _finite_number(evaluation.get("quality_score"), "quality_score")
+        if "mean_latency_ms" in evaluation:
+            _finite_number(evaluation["mean_latency_ms"], "mean_latency_ms")
+        if "compliance_ratio" in evaluation.get("format_compliance", {}):
+            _finite_number(evaluation["format_compliance"]["compliance_ratio"], "format")
+        for field in ("saturation_ratio", "mean_per_request"):
+            if field in evaluation.get("generated_tokens", {}):
+                _finite_number(evaluation["generated_tokens"][field], field)
         quality = float(evaluation.get("quality_score", 0.0))
         format_ratio = float(
             evaluation.get("format_compliance", {}).get("compliance_ratio", 0.0)
@@ -377,10 +456,20 @@ def summarize_confirmation_runs(
     baseline_latency = float(baseline.get("mean_latency_ms", 0.0))
     if baseline_latency <= 0:
         raise ValueError("baseline mean_latency_ms 必须大于 0")
+    expected_categories = _quality_categories(baseline)
+    for value in (baseline_quality, baseline_saturation, baseline_latency, min_quality_gain,
+                  max_regressed_categories, max_saturation_increase, min_format_compliance,
+                  max_baseline_latency_ratio):
+        _finite_number(value, "confirmation metric or gate")
 
     summaries: list[dict[str, Any]] = []
     for run in runs:
         evaluation = run.get("evaluation", {})
+        _quality_categories(evaluation, expected_categories)
+        _finite_number(evaluation.get("quality_score"), "quality")
+        _finite_number(evaluation.get("mean_latency_ms"), "latency")
+        _finite_number(evaluation.get("generated_tokens", {}).get("saturation_ratio"), "saturation")
+        _finite_number(evaluation.get("format_compliance", {}).get("compliance_ratio"), "format")
         quality = float(evaluation.get("quality_score", 0.0))
         regressed = sorted(
             category

@@ -13,19 +13,23 @@
 
 ## 本节导读
 
-模型在固定任务上持续失败时，第一步不是选择训练算法，而是确认失败是否稳定、缺少的能力是什么，以及问题能否在不修改参数的情况下解决。判断顺序是：固定失败样本和验收门槛，复测提示词、RAG 或工具方案，再为仍未解决的模型内部缺口选择持续预训练、SFT、偏好优化或强化学习。
+模型在固定任务上持续失败时，先确认失败是否稳定、缺少的能力是什么，以及提示、检索增强生成（RAG）或工具能否解决问题。仍需修改参数时，再根据已有基线与反馈选择训练阶段：示范形成监督目标，偏好对或单条正负标签形成离线反馈，模型按当前参数生成的新回答则需要可靠奖励。
 
-**关键词：** `admission gate`, `parameter update`, `SFT baseline`, `preference`, `RLVR`
+策略是模型根据输入生成回答的行为；可用策略基线指固定版本、已经复测的生成模型，用作后续更新和比较的起点。它可以来自已有指令模型，也可以来自本地监督微调（SFT），即使用示范回答继续训练。奖励来自模型评分还是客观验证器，与选择PPO、GRPO或RLOO等在线更新方法，是两个不同问题。把这些条件分开，才能知道现在可以开始哪一种训练、还缺什么输入。
+
+**关键词：** `阶段准入`, `策略基线`, `反馈来源`, `更新方法`
 
 ---
+
 <a id="runtime-environment"></a>
 
 ## 运行环境
 
 - **基础练习：** 默认使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
-- **框架核对：** 如需检查阶段决策能否生成后续数据与训练入口需要的字段，使用 [`PT-CPU`](../topic_discussion/post_training_optimization/quickstart.md#pt-cpu-quickstart)；完成 Step 4 后运行[框架一致性核对](#framework-check)。
+- **框架核对：** 使用 [`PT-CPU`](../topic_discussion/post_training_optimization/quickstart.md#pt-cpu-quickstart)，完成 Step 4 后运行[框架一致性核对](#framework-check)，检查阶段决策与数据需求经过 Hugging Face Datasets 转换后是否保留原值。
 
 ---
+
 ## 前置阅读
 
 **导语：** 进入本节前，先理解可比较实验为什么需要固定目标、工作负载与基线。
@@ -35,16 +39,9 @@
 
 ## Step 1：如何复测稳定失败并定位问题来源
 
-先固定目标、验收门槛、工作负载和失败切片，并记录每个切片的复测次数与失败次数；达到重复次数和失败率门槛后，再判断缺口来自表达格式、外部知识、查询计算、外部动作，还是模型内部表示与行为。以 `procedure_order` 为例：模型已经获得完整规则，却仍不能稳定按“申请、核验、确认”的顺序回答；格式提示和检索复测仍未解决时，该切片才进入参数更新候选。
+失败切片是按同类任务或场景划出的样本子集，例如“已签收订单的退款流程”；它用于定位整体平均分掩盖的问题。先固定目标、验收门槛、工作负载和这些切片，并记录每个切片的复测次数与失败次数；达到重复次数和失败率门槛后，再判断缺口来自表达格式、外部知识、查询计算、外部动作，还是模型内部表示与行为。以流程顺序错误为例：模型已经获得完整规则，却仍不能稳定按“申请、核验、确认”的顺序回答；格式提示和检索复测仍未解决时，该切片才进入参数更新候选。
 
-对失败切片 $s$，设复测次数为 $n_s$、失败次数为 $k_s$，则经验失败率与可重复失败条件为
-
-$$
-\hat p_s=\frac{k_s}{n_s},\qquad
-Q(s)=\mathbf{1}[n_s\ge n_{\min}]\,\mathbf{1}[\hat p_s\ge p_{\min}].
-$$
-
-其中，$n_{\min}$ 是最少复测次数，$p_{\min}$ 是最低失败率，$\mathbf{1}[\cdot]$ 是条件成立时取 1、否则取 0 的指示函数。只有 $Q(s)=1$、评测样本已经隔离且基线覆盖该切片时，候选方案的前后比较才有意义。
+基线覆盖表示每个待处理切片都有已测结果；评测隔离表示训练或候选调整不能接触独立评测答案。先把问题与这些条件对应，再检查重复失败和候选方案是否达标。
 
 | 检查项 | 要回答的问题 | 结果如何流转 |
 |:---|:---|:---|
@@ -55,9 +52,17 @@ $$
 | 能力需求 | 缺少的是表达、外部知识、查询计算、外部动作，还是模型内部表示与行为 | 外部能力优先进入不修改参数路线；内部缺口进入参数更新候选路线 |
 
 ![微调准入决策链](./../public/02_PyTorch_Algorithms/33_finetuning_readiness_flow.svg)
-## Step 2：提示词、RAG 和工具能否在不更新参数时解决问题
+## Step 2：怎样筛选重复失败与已经解决的切片
 
-根据已识别的能力需求，只测试与当前失败相关的方案，并在相同工作负载、失败切片和验收门槛下比较原始基线与候选方案。每条候选记录目标指标值和新增失败切片；指标达到门槛且新增失败集合为空时，才把对应切片记为已解决。其余切片继续判断是否来自模型内部能力。工具可以通过 MCP、函数调用或业务 API 接入，这里比较工具结果，不比较接入协议。
+根据已识别的能力需求，只测试与当前失败相关的方案，并在相同工作负载、失败切片和验收门槛下比较原始基线与候选方案。每条候选记录目标指标值和新增失败切片；指标达到门槛且新增失败集合为空时，才把对应切片记为已解决。其余切片继续判断是否来自模型内部能力。
+
+对失败切片 $s$，设复测次数为 $n_s>0$、失败次数为 $k_s$，最少复测次数为 $n_{\min}$、最低失败率为 $p_{\min}$。只有复测充分且失败率达到门槛，才把它纳入可重复失败集合：
+
+$$
+\hat p_s=\frac{k_s}{n_s},\qquad Q(s)=\mathbf{1}[n_s\ge n_{\min}]\,\mathbf{1}[\hat p_s\ge p_{\min}].
+$$
+
+$\mathbf{1}[\cdot]$ 是条件成立时为 1、否则为 0 的指示函数。随后再核对评测隔离与基线覆盖，避免把样本不足或未测的切片当作参数缺口。
 
 设候选 $c$ 在切片 $s$ 上的指标为 $M(c,s)$，验收门槛为 $\tau$，新增失败集合为 $N(c,s)$，则
 
@@ -72,38 +77,41 @@ $$
 | 表达、格式或指令歧义 | 固定提示模板 | 指令遵循率、格式正确率或任务指标值；新增失败切片 | 指标达到门槛且无新增失败时移出参数更新候选 |
 | 外部或时效知识 | RAG | 检索命中、来源支持、引用正确性、任务指标值；新增失败切片 | 通过时移出候选；未通过时区分检索失败与模型内部缺口 |
 | 实时查询、精确计算、规则验证或外部动作 | 数据库、计算器、搜索接口、业务 API 或验证器 | 调用、参数与结果检查；任务指标值；新增失败切片 | 通过时移出候选；未通过时区分工具链失败与模型内部缺口 |
-## Step 3：何时选择持续预训练、SFT、偏好优化或在线强化学习
+## Step 3：基线与反馈怎样决定下一训练阶段
 
-提示词、RAG 和工具复测后仍未解决的问题，再按缺口来源分流：领域语料不足且缺少领域表示时进入持续预训练；已有候选监督示范、冻结评测清单和训练预算时进入 SFT 数据准备。SFT 产物、评测结果与版本清单已经登记后，偏好数据进入离线偏好优化，学习型奖励与探索需求进入在线 RL，客观验证器与多轨迹预算进入 RLVR；没有新的反馈信号时停在 SFT。
+重复失败仍未解决时，先区分需要补充领域表示，还是改变任务行为。领域语料支持持续预训练；示范回答支持 SFT。已有合适指令模型通过复测后，也可作为固定策略基线，和本地 SFT 产物一样进入偏好或在线更新，不必为了满足阶段名称重新训练一遍。
 
-阶段选择和阶段准入是两个连续判断。先根据参数缺口类型 $g$、SFT 基线状态 $b$ 和反馈形态 $f$ 选择候选阶段 $z^*$；再把该阶段所需资产集合记为 $P_{z^*}$，当前已经提供的资产集合记为 $A$：
+在行为更新中，成对偏好比较同一输入下哪份回答更好，进入直接偏好优化（DPO）分支；单条二元反馈只标记某份回答可取或不可取，进入KTO分支。在线训练还需要当前策略生成轨迹，即一次生成的输入、回答及对应奖励等记录，用来把反馈对齐到实际生成行为：学习型奖励检查评分模型版本，规则或环境奖励检查验证器版本；PPO、GRPO、RLOO 是另行选择的更新方法。可验证奖励强化学习（RLVR）描述奖励来源，不是与在线强化学习并列的下一阶段，也不自动指定 GRPO。
+
+先选择阶段 $z^*$，再检查现有训练输入集合 $A$ 是否包含该阶段所需集合 $P_{z^*}$。$F_{\mathrm{param}}$ 表示提示、检索或工具尝试后仍未解决、需要考虑修改模型参数的问题。只有这个集合非空且所需输入齐全，才允许开始所选训练：
 
 $$
-z^*=\operatorname{route}(g,b,f),\qquad
 G(z^*)=\mathbf{1}[F_{\mathrm{param}}\neq\varnothing]\,\mathbf{1}[P_{z^*}\subseteq A].
 $$
 
-$\operatorname{route}$ 对应本节的阶段分流规则，$G(z^*)$ 只检查被选阶段能否启动；它不允许绕过分流规则任意选择资产齐全的阶段。最终采用仍需要该阶段自己的质量、资源和回退门槛。
+该判断检查声明的启动条件；参数更新后的任务收益、资源与回滚表现仍需独立验证。没有可用的新反馈时，保留当前基线并检查反馈缺口，而不是强行切换算法。
 
-| 阶段 | 必要输入 | 不满足时的动作 |
+| 阶段 | 必要输入 | 条件分支与缺失处理 |
 |:---|:---|:---|
-| 持续预训练 | 领域语料版本、冻结评测清单、GPU 小时预算 | 缺哪项就补哪项；预算为零时停止 |
-| SFT | 候选示范数据版本、冻结评测清单、GPU 小时预算 | 生成数据需求单，交给 32 节完成契约与泄漏审计 |
-| 离线偏好优化 | SFT 产物清单、偏好数据版本、冻结评测清单 | 缺少上游产物或数据时停在 SFT |
-| 在线 RL | SFT 产物清单、奖励模型版本、探索需求、轨迹预算、回滚检查点 | 缺少奖励、轨迹或恢复条件时停止启动 |
-| RLVR | SFT 产物清单、验证器版本、探索需求、轨迹预算、回滚检查点 | 缺少验证器、轨迹或恢复条件时停止启动 |
+| 持续预训练 | 领域语料版本、冻结评测清单、训练预算 | 缺少语料、评测或预算时停止启动 |
+| SFT | 候选示范版本、冻结评测清单、训练预算 | 生成数据需求，随后审计示范的字段、重复与泄漏 |
+| 离线偏好优化 | 已复测基线及其来源、反馈数据版本、冻结评测清单 | 回答对进入 DPO；单条二元反馈进入 KTO；缺少基线时先复测或建立基线 |
+| 在线强化学习 | 已复测基线、冻结评测清单、探索需求、轨迹预算、回滚点与更新方法 | 学习型奖励提供评分模型版本；可验证奖励提供验证器版本；缺少任一声明输入时停止 |
 
-![从不修改参数的方案到训练分支的干预矩阵](./../public/02_PyTorch_Algorithms/33_intervention_matrix.svg)
+![训练阶段、反馈来源与更新方法的条件关系](../public/02_PyTorch_Algorithms/33_intervention_matrix.svg)
+
 <a id="mechanism-practice"></a>
+
 ## Step 4：实现后训练阶段准入
 
-题目区使用失败切片、无参数方案复测和训练前置资产复现阶段判断。骨架提供输入校验和结果结构；学习者补全失败切片筛选、复测后残留计算与训练分支选择。测试覆盖字段缺失、评测污染、无新增失败、不同训练入口和前置资产不足。
+给定失败切片、非参数方案的复测结果和训练输入，补全三个机制判断：哪些失败可重复，哪些已被解决，以及剩余问题应进入哪一阶段。骨架校验输入、检查所需模型和数据并整理结果；已有指令模型与本地SFT模型都要先通过相同的基线复测。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 |:---|:---|:---|:---|
-| TODO 1：计算可重复失败切片<br>`assess_problem_evidence` | 用重复次数和失败率筛选切片，再检查基线是否覆盖 | 字段缺失、评测未隔离和切片未覆盖分别记录 | 只有达到复测次数与失败率门槛的切片被保留；缺失字段、评测未隔离和基线未覆盖分别触发阻断 |
-| TODO 2：计算参数更新残留<br>`assess_parameter_update_need` | 根据候选指标和新增失败集合识别已解决切片 | 未登记切片、指标未过门槛或引入新失败时不得扣除 | 达标且没有新增失败的切片被移除；未登记、未达标或引入新失败的切片继续保留 |
-| TODO 3：选择下一训练阶段<br>`select_next_training_stage` | 根据缺口类型、SFT 基线与反馈形态选择持续预训练、SFT、偏好优化、在线 RL 或 RLVR | 各分支必须满足自己的前置条件；SFT 决策必须携带数据需求单 | 不同缺口与反馈形态进入对应训练阶段；前置条件不足时返回具体缺口，SFT 分支输出完整数据需求单 |
+| TODO 1：筛选可重复失败切片<br>`assess_problem_evidence` | 根据复测次数与失败率筛选切片，并找出基线未覆盖项 | 评测隔离与必需字段独立检查 | 达到门槛的切片保留；缺字段、未隔离或未覆盖分别阻断 |
+| TODO 2：找出仍需考虑参数更新的问题<br>`assess_parameter_update_need` | 从失败集合中扣除非参数方案已解决的切片 | 达到指标门槛且没有新增失败才算解决 | 通过、未达标及新增安全失败得到不同残留结果；未知或重复候选报错 |
+| TODO 3：选择训练阶段<br>`select_next_training_stage` | 按表示缺口与反馈形态选择持续预训练、SFT、离线偏好或在线训练 | 阶段、反馈来源与更新方法分别记录；基线来源不限定为 SFT | 指令模型可直接进入 DPO/KTO；两类奖励均可选择 PPO/GRPO/RLOO；缺少基线、反馈或评测时阻断 |
+
 
 ```python
 from typing import Dict, List
@@ -113,43 +121,63 @@ from typing import Dict, List
 
 ```python
 def assess_problem_evidence(evidence: Dict[str, object]) -> Dict[str, object]:
-    """用复测次数与失败率确定可重复失败，并检查评测隔离与基线覆盖。"""
+    """筛出反复失败的任务组，并记录缺少的基线或评测信息。"""
     required_fields = ["goal_metric", "target_threshold", "minimum_repeats", "minimum_failure_rate", "failure_runs"]
     required_checks = ["evaluation_ids_isolated"]
     baseline_slices = set(evidence.get("baseline_slices", []))
     missing_fields = [name for name in required_fields if name not in evidence]
     failed_checks = [name for name in required_checks if evidence.get(name) is not True]
+    # 输入计数由骨架校验，避免把非法比例送入筛选。
+    minimum_repeats = int(evidence.get("minimum_repeats", 0))
+    minimum_failure_rate = float(evidence.get("minimum_failure_rate", 0.0))
+    if minimum_repeats <= 0:
+        raise ValueError("minimum_repeats 必须为正整数")
+    if not 0.0 <= minimum_failure_rate <= 1.0:
+        raise ValueError("minimum_failure_rate 必须位于 [0, 1]")
+    failure_runs = evidence.get("failure_runs", {})
+    for name, run in failure_runs.items():
+        attempts, failures = int(run["attempts"]), int(run["failures"])
+        if attempts <= 0 or failures < 0 or failures > attempts:
+            raise ValueError(f"失败切片 {name} 的计数无效")
     # ==========================================
-    # TODO 1：按重复次数和失败率筛选可重复失败切片，再找出基线未覆盖项。
-    # repeatable_failure_slices = ???
-    # uncovered_failure_slices = ???
+    # TODO 1：筛选可重复失败切片
     # ==========================================
-    raise NotImplementedError("TODO 1：计算切片缺口")
+    # repeatable_failure_slices = ???  # 已达到复测次数与失败率门槛的切片，按名称排序。
+    # uncovered_failure_slices = ???  # 可重复失败中没有基线记录的切片，按名称排序。
+    raise NotImplementedError("TODO 1：筛选可重复失败切片")
     ready = bool(repeatable_failure_slices) and not missing_fields and not failed_checks and not uncovered_failure_slices
     return {"ready": ready, "repeatable_failure_slices": repeatable_failure_slices, "missing_fields": missing_fields, "failed_checks": failed_checks, "uncovered_failure_slices": uncovered_failure_slices}
 
 
 def assess_parameter_update_need(failure_slices: List[str], candidate_results: List[Dict[str, object]], target_threshold: float) -> Dict[str, object]:
-    """根据候选指标与新增失败，计算仍需参数更新的切片。"""
+    """扣除已达标且没有新增失败的非参数候选切片。"""
+    import math
+
     repeatable_failures = set(failure_slices)
-    unknown_slices = sorted({item["failure_slice"] for item in candidate_results} - repeatable_failures)
+    result_slices = [item["failure_slice"] for item in candidate_results]
+    unknown_slices = sorted(set(result_slices) - repeatable_failures)
     if unknown_slices:
         raise ValueError(f"候选结果包含未登记切片：{unknown_slices}")
+    if len(result_slices) != len(set(result_slices)):
+        raise ValueError("同一失败切片只能提供一条候选结果")
+    if not math.isfinite(float(target_threshold)):
+        raise ValueError("target_threshold 必须为有限数")
+    if any(not math.isfinite(float(item["metric_value"])) for item in candidate_results):
+        raise ValueError("候选指标必须为有限数")
     # ==========================================
-    # TODO 2：指标达到门槛且未引入新失败时，才把切片记为已解决。
-    # resolved_slices = ???
-    # residual_parameter_slices = ???
+    # TODO 2：找出仍需考虑参数更新的问题
     # ==========================================
-    raise NotImplementedError("TODO 2：计算参数内残留")
+    # resolved_slices = ???  # 达到指标门槛且没有新增失败的切片，按名称排序。
+    # residual_parameter_slices = ???  # 尚未被上述候选解决的失败切片，按名称排序。
+    raise NotImplementedError("TODO 2：找出仍需考虑参数更新的问题")
     return {"parameter_update_required": bool(residual_parameter_slices), "resolved_slices": resolved_slices, "residual_parameter_slices": residual_parameter_slices}
-
 
 def select_next_training_stage(
     evidence_report: Dict[str, object],
     parameter_report: Dict[str, object],
     context: Dict[str, object],
 ) -> Dict[str, object]:
-    """根据参数缺口、SFT 基线和反馈形态选择下一训练阶段。"""
+    """按问题与反馈选择训练阶段，再检查所需模型、数据和预算。"""
     if not evidence_report["ready"]:
         missing = evidence_report["missing_fields"] + evidence_report["failed_checks"] + evidence_report["uncovered_failure_slices"]
         return {"decision": "blocked", "reason": "missing_problem_evidence", "missing": missing}
@@ -157,19 +185,37 @@ def select_next_training_stage(
         return {"decision": "no_parameter_update", "reason": "non_parameter_baseline_resolved_failures", "missing": []}
     parameter_gap = context.get("parameter_gap", "behavior")
     feedback_mode = context.get("feedback_mode", "demonstrations")
+    if parameter_gap not in {"representation", "behavior"}:
+        raise ValueError("parameter_gap 必须为 representation 或 behavior")
+    if feedback_mode not in {"demonstrations", "preference_pairs", "binary_feedback", "learned_reward", "verifier", "none"}:
+        raise ValueError("未知反馈形态")
+    baseline_source = context.get("baseline_source")
+    if baseline_source not in (None, "", "instruction_model", "sft"):
+        raise ValueError("baseline_source 必须为 instruction_model 或 sft")
     requirements = {
         "continued_pretraining": ["domain_corpus_version", "evaluation_manifest", "training_budget_gpu_hours"],
         "sft": ["candidate_demonstration_version", "evaluation_manifest", "training_budget_gpu_hours"],
-        "offline_preference": ["sft_baseline_manifest", "preference_dataset_version", "evaluation_manifest"],
-        "online_rl": ["sft_baseline_manifest", "reward_model_version", "exploration_required", "rollout_budget", "rollback_checkpoint"],
-        "rlvr": ["sft_baseline_manifest", "verifier_version", "exploration_required", "rollout_budget", "rollback_checkpoint"],
+        "offline_preference": ["baseline_ready", "baseline_manifest", "baseline_source", "evaluation_manifest"],
+        "online_rl": ["baseline_ready", "baseline_manifest", "baseline_source", "evaluation_manifest",
+                      "exploration_required", "rollout_budget", "rollback_checkpoint", "update_method"],
     }
     # ==========================================
-    # TODO 3：根据参数缺口、SFT 基线和反馈形态选择下一阶段。
-    # next_stage = ???
+    # TODO 3：选择训练阶段
     # ==========================================
-    raise NotImplementedError("TODO 3：选择下一训练阶段")
-    missing = [name for name in requirements[next_stage] if context.get(name) in (None, False, "", 0)]
+    # next_stage = ???  # 由 parameter_gap 与 feedback_mode 选择 requirements 中的阶段。
+    # 无新增反馈时直接返回 stop_at_baseline，不创建新的训练分支。
+    raise NotImplementedError("TODO 3：选择训练阶段")
+    required = list(requirements[next_stage])
+    if next_stage == "offline_preference":
+        data_field = "preference_dataset_version" if feedback_mode == "preference_pairs" else "binary_feedback_dataset_version"
+        required.append(data_field)
+    elif next_stage == "online_rl":
+        required.append("reward_model_version" if feedback_mode == "learned_reward" else "verifier_version")
+        if context.get("update_method") not in (None, "", "ppo", "grpo", "rloo"):
+            raise ValueError("在线更新方法必须为 ppo、grpo 或 rloo")
+    missing = [name for name in required if context.get(name) in (None, False, "", 0)]
+    if "baseline_ready" in required and context.get("baseline_ready") is not True and "baseline_ready" not in missing:
+        missing.append("baseline_ready")
     if missing:
         return {"decision": "blocked", "reason": "stage_requirements_not_ready", "missing": missing}
     result = {"decision": next_stage, "reason": "stage_requirements_ready", "missing": []}
@@ -180,13 +226,22 @@ def select_next_training_stage(
             "required_record_fields": ["sample_id", "source_id", "split", "instruction", "input", "response"],
             "next_section": "32_Data_Engineering_for_SFT",
         }
+    elif next_stage in {"offline_preference", "online_rl"}:
+        result.update({
+            "baseline_source": baseline_source,
+            "baseline_manifest": context["baseline_manifest"],
+            "feedback_source": feedback_mode,
+            "update_method": (
+                "dpo" if feedback_mode == "preference_pairs" else "kto"
+            ) if next_stage == "offline_preference" else context["update_method"],
+        })
     return result
 
 ```
 
 ## 测试
 
-运行下方 CPU 机制测试，检查问题证据、候选准入、训练阶段选择，以及 SFT 数据需求单的字段合同。
+运行下方CPU机制测试，检查能否复现失败、提示或工具是否已解决问题、选择哪种训练，以及SFT数据需求是否包含必需信息。
 
 ```python
 def test_problem_evidence_gate():
@@ -210,20 +265,6 @@ def test_parameter_update_gate():
         pass
     else:
         raise AssertionError("未登记切片不应进入候选结果")
-
-
-def test_training_stage_branches():
-    """参数缺口、SFT 基线与反馈形态共同决定下一训练阶段。"""
-    evidence = {"ready": True, "repeatable_failure_slices": ["behavior"], "missing_fields": [], "failed_checks": [], "uncovered_failure_slices": []}
-    parameter = {"parameter_update_required": True, "residual_parameter_slices": ["behavior"]}
-    pretraining = select_next_training_stage(evidence, parameter, {"parameter_gap": "representation", "domain_corpus_version": "corpus-v1", "evaluation_manifest": "eval-v1.json", "training_budget_gpu_hours": 8})
-    assert pretraining["decision"] == "continued_pretraining"
-    sft = select_next_training_stage(evidence, parameter, {"candidate_demonstration_version": "candidate-v1", "evaluation_manifest": "eval-v1.json", "training_budget_gpu_hours": 4})
-    assert sft["decision"] == "sft"
-    preference = select_next_training_stage(evidence, parameter, {"sft_baseline_ready": True, "sft_baseline_manifest": "sft.json", "feedback_mode": "preference_pairs", "preference_dataset_version": "prefs-v1", "evaluation_manifest": "eval-v1.json"})
-    assert preference["decision"] == "offline_preference"
-    rlvr = select_next_training_stage(evidence, parameter, {"sft_baseline_ready": True, "sft_baseline_manifest": "sft.json", "feedback_mode": "verifier", "verifier_version": "math-v1", "exploration_required": True, "rollout_budget": 128, "rollback_checkpoint": "checkpoint-100"})
-    assert rlvr["decision"] == "rlvr"
 
 
 def test_sft_data_request_contract():
@@ -268,36 +309,105 @@ def test_invalid_evidence_and_candidate_domains():
         else:
             raise AssertionError("冲突或非有限候选结果必须被拒绝")
 
-
-def test_remaining_training_stage_outcomes():
-    """在线 RL、停在 SFT、无需更新和证据阻塞都应有独立结果。"""
-    evidence = {"ready": True, "repeatable_failure_slices": ["behavior"], "missing_fields": [], "failed_checks": [], "uncovered_failure_slices": []}
+def _stage_inputs():
+    """提供相同的失败证据与已复测指令模型，供各反馈分支比较。"""
+    evidence = {"ready": True, "repeatable_failure_slices": ["behavior"],
+                "missing_fields": [], "failed_checks": [], "uncovered_failure_slices": []}
     parameter = {"parameter_update_required": True, "residual_parameter_slices": ["behavior"]}
-    online = select_next_training_stage(evidence, parameter, {
-        "sft_baseline_ready": True, "sft_baseline_manifest": "sft.json", "feedback_mode": "learned_reward",
-        "reward_model_version": "rm-v1", "exploration_required": True, "rollout_budget": 128,
-        "rollback_checkpoint": "checkpoint-100",
+    baseline = {"baseline_ready": True, "baseline_source": "instruction_model",
+                "baseline_manifest": "instruction-baseline-v1.json", "evaluation_manifest": "eval-v1.json"}
+    return evidence, parameter, baseline
+
+
+def test_instruction_and_sft_baselines():
+    """指令模型与本地SFT基线均可直接进入离线反馈，标签决定DPO或KTO分支。"""
+    evidence, parameter, baseline = _stage_inputs()
+    for source in ("instruction_model", "sft"):
+        for feedback, field, method in (
+            ("preference_pairs", "preference_dataset_version", "dpo"),
+            ("binary_feedback", "binary_feedback_dataset_version", "kto"),
+        ):
+            result = select_next_training_stage(evidence, parameter, baseline | {
+                "baseline_source": source, "feedback_mode": feedback, field: "feedback-v1",
+            })
+            assert result["decision"] == "offline_preference"
+            assert result["update_method"] == method
+            assert result["feedback_source"] == feedback
+            assert result["baseline_source"] == source
+            assert result["baseline_manifest"] == baseline["baseline_manifest"]
+
+
+def test_online_feedback_and_method_are_independent():
+    """两类奖励均可进入在线阶段，更新方法由独立配置指定。"""
+    evidence, parameter, baseline = _stage_inputs()
+    for feedback, field in (("learned_reward", "reward_model_version"), ("verifier", "verifier_version")):
+        for method in ("ppo", "grpo", "rloo"):
+            result = select_next_training_stage(evidence, parameter, baseline | {
+                "feedback_mode": feedback, field: "reward-v1", "update_method": method,
+                "exploration_required": True, "rollout_budget": 32, "rollback_checkpoint": "checkpoint-100",
+            })
+            assert result["decision"] == "online_rl"
+            assert result["feedback_source"] == feedback
+            assert result["update_method"] == method
+
+
+def test_representation_and_stage_prerequisites():
+    """表示缺口进入持续预训练，离线和在线分支分别阻断缺失输入。"""
+    evidence, parameter, baseline = _stage_inputs()
+    pretraining = select_next_training_stage(evidence, parameter, {
+        "parameter_gap": "representation", "domain_corpus_version": "corpus-v1",
+        "evaluation_manifest": "eval-v1.json", "training_budget_gpu_hours": 8,
     })
-    assert online["decision"] == "online_rl"
-    stopped = select_next_training_stage(evidence, parameter, {"sft_baseline_ready": True, "feedback_mode": "none"})
-    assert stopped == {"decision": "stop_at_sft", "reason": "no_new_feedback_signal", "missing": []}
-    no_update = select_next_training_stage(evidence, {"parameter_update_required": False}, {})
-    assert no_update["decision"] == "no_parameter_update"
-    blocked = select_next_training_stage(
+    assert pretraining["decision"] == "continued_pretraining"
+    offline = baseline | {"feedback_mode": "binary_feedback", "binary_feedback_dataset_version": "binary-v1"}
+    for field in ("baseline_ready", "baseline_manifest", "baseline_source", "evaluation_manifest", "binary_feedback_dataset_version"):
+        incomplete = {key: value for key, value in offline.items() if key != field}
+        result = select_next_training_stage(evidence, parameter, incomplete)
+        assert result["decision"] == "blocked" and field in result["missing"]
+    online = baseline | {
+        "feedback_mode": "verifier", "verifier_version": "tests-v1", "update_method": "ppo",
+        "exploration_required": True, "rollout_budget": 32, "rollback_checkpoint": "checkpoint-100",
+    }
+    for field in ("verifier_version", "update_method", "rollout_budget", "rollback_checkpoint", "evaluation_manifest"):
+        incomplete = {key: value for key, value in online.items() if key != field}
+        result = select_next_training_stage(evidence, parameter, incomplete)
+        assert result["decision"] == "blocked" and field in result["missing"]
+    result = select_next_training_stage(evidence, parameter, offline | {"baseline_ready": "yes"})
+    assert result["decision"] == "blocked" and "baseline_ready" in result["missing"]
+
+
+def test_no_update_and_invalid_routing_inputs():
+    """无新反馈时停在当前基线；未知来源、方法或反馈不静默回退。"""
+    evidence, parameter, baseline = _stage_inputs()
+    assert select_next_training_stage(evidence, parameter, baseline | {"feedback_mode": "none"}) == {
+        "decision": "stop_at_baseline", "reason": "no_new_feedback_signal", "missing": [],
+    }
+    assert select_next_training_stage(evidence, {"parameter_update_required": False}, {})["decision"] == "no_parameter_update"
+    assert select_next_training_stage(
         {"ready": False, "missing_fields": ["target_threshold"], "failed_checks": [], "uncovered_failure_slices": []},
         parameter, {},
-    )
-    assert blocked == {"decision": "blocked", "reason": "missing_problem_evidence", "missing": ["target_threshold"]}
+    )["reason"] == "missing_problem_evidence"
+    for changes in ({"parameter_gap": "unknown"}, {"feedback_mode": "unknown"}, {"baseline_source": "unknown"},
+                    {"feedback_mode": "verifier", "update_method": "unknown"}):
+        try:
+            select_next_training_stage(evidence, parameter, baseline | changes)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("未知阶段输入必须报错")
 
 
 test_problem_evidence_gate()
 test_parameter_update_gate()
-test_training_stage_branches()
 test_sft_data_request_contract()
 test_training_stage_blockers()
 test_invalid_evidence_and_candidate_domains()
-test_remaining_training_stage_outcomes()
-print("✅ 后训练证据、参数更新与阶段准入测试通过。")
+test_instruction_and_sft_baselines()
+test_online_feedback_and_method_are_independent()
+test_representation_and_stage_prerequisites()
+test_no_update_and_invalid_routing_inputs()
+print("✅ 失败证据、策略基线、反馈分支与阶段准入测试通过。")
+
 ```
 
 ---
@@ -317,12 +427,13 @@ print("✅ 后训练证据、参数更新与阶段准入测试通过。")
 
 ```python
 def assess_problem_evidence(evidence: Dict[str, object]) -> Dict[str, object]:
+    """筛出反复失败的任务组，并记录缺少的基线或评测信息。"""
     required_fields = ["goal_metric", "target_threshold", "minimum_repeats", "minimum_failure_rate", "failure_runs"]
     required_checks = ["evaluation_ids_isolated"]
     baseline_slices = set(evidence.get("baseline_slices", []))
     missing_fields = [name for name in required_fields if name not in evidence]
     failed_checks = [name for name in required_checks if evidence.get(name) is not True]
-    # TODO 1：按重复次数和失败率计算可重复失败，再检查基线覆盖。
+    # 输入计数由骨架校验，避免把非法比例送入筛选。
     minimum_repeats = int(evidence.get("minimum_repeats", 0))
     minimum_failure_rate = float(evidence.get("minimum_failure_rate", 0.0))
     if minimum_repeats <= 0:
@@ -334,6 +445,7 @@ def assess_problem_evidence(evidence: Dict[str, object]) -> Dict[str, object]:
         attempts, failures = int(run["attempts"]), int(run["failures"])
         if attempts <= 0 or failures < 0 or failures > attempts:
             raise ValueError(f"失败切片 {name} 的计数无效")
+    # TODO 1：筛选可重复失败切片。
     repeatable_failure_slices = sorted(
         name for name, run in failure_runs.items()
         if int(run["attempts"]) >= minimum_repeats
@@ -345,6 +457,7 @@ def assess_problem_evidence(evidence: Dict[str, object]) -> Dict[str, object]:
 
 
 def assess_parameter_update_need(failure_slices: List[str], candidate_results: List[Dict[str, object]], target_threshold: float) -> Dict[str, object]:
+    """扣除已达标且没有新增失败的非参数候选切片。"""
     import math
 
     repeatable_failures = set(failure_slices)
@@ -358,13 +471,17 @@ def assess_parameter_update_need(failure_slices: List[str], candidate_results: L
         raise ValueError("target_threshold 必须为有限数")
     if any(not math.isfinite(float(item["metric_value"])) for item in candidate_results):
         raise ValueError("候选指标必须为有限数")
-    # TODO 2：只有指标达到门槛且未引入新失败的候选才能解决切片。
+    # TODO 2：找出仍需考虑参数更新的问题。
     resolved_slices = sorted({item["failure_slice"] for item in candidate_results if float(item["metric_value"]) >= target_threshold and not item.get("introduced_failures", [])})
     residual_parameter_slices = sorted(repeatable_failures - set(resolved_slices))
     return {"parameter_update_required": bool(residual_parameter_slices), "resolved_slices": resolved_slices, "residual_parameter_slices": residual_parameter_slices}
 
-
-def select_next_training_stage(evidence_report: Dict[str, object], parameter_report: Dict[str, object], context: Dict[str, object]) -> Dict[str, object]:
+def select_next_training_stage(
+    evidence_report: Dict[str, object],
+    parameter_report: Dict[str, object],
+    context: Dict[str, object],
+) -> Dict[str, object]:
+    """按问题与反馈选择训练阶段，再检查所需模型、数据和预算。"""
     if not evidence_report["ready"]:
         missing = evidence_report["missing_fields"] + evidence_report["failed_checks"] + evidence_report["uncovered_failure_slices"]
         return {"decision": "blocked", "reason": "missing_problem_evidence", "missing": missing}
@@ -372,27 +489,42 @@ def select_next_training_stage(evidence_report: Dict[str, object], parameter_rep
         return {"decision": "no_parameter_update", "reason": "non_parameter_baseline_resolved_failures", "missing": []}
     parameter_gap = context.get("parameter_gap", "behavior")
     feedback_mode = context.get("feedback_mode", "demonstrations")
+    if parameter_gap not in {"representation", "behavior"}:
+        raise ValueError("parameter_gap 必须为 representation 或 behavior")
+    if feedback_mode not in {"demonstrations", "preference_pairs", "binary_feedback", "learned_reward", "verifier", "none"}:
+        raise ValueError("未知反馈形态")
+    baseline_source = context.get("baseline_source")
+    if baseline_source not in (None, "", "instruction_model", "sft"):
+        raise ValueError("baseline_source 必须为 instruction_model 或 sft")
     requirements = {
         "continued_pretraining": ["domain_corpus_version", "evaluation_manifest", "training_budget_gpu_hours"],
         "sft": ["candidate_demonstration_version", "evaluation_manifest", "training_budget_gpu_hours"],
-        "offline_preference": ["sft_baseline_manifest", "preference_dataset_version", "evaluation_manifest"],
-        "online_rl": ["sft_baseline_manifest", "reward_model_version", "exploration_required", "rollout_budget", "rollback_checkpoint"],
-        "rlvr": ["sft_baseline_manifest", "verifier_version", "exploration_required", "rollout_budget", "rollback_checkpoint"],
+        "offline_preference": ["baseline_ready", "baseline_manifest", "baseline_source", "evaluation_manifest"],
+        "online_rl": ["baseline_ready", "baseline_manifest", "baseline_source", "evaluation_manifest",
+                      "exploration_required", "rollout_budget", "rollback_checkpoint", "update_method"],
     }
-    # TODO 3：根据参数缺口、SFT 基线和反馈形态选择下一阶段。
+    # TODO 3：选择训练阶段。
     if parameter_gap == "representation":
         next_stage = "continued_pretraining"
-    elif not context.get("sft_baseline_ready", False):
+    elif feedback_mode == "demonstrations":
         next_stage = "sft"
-    elif feedback_mode == "preference_pairs":
+    elif feedback_mode in {"preference_pairs", "binary_feedback"}:
         next_stage = "offline_preference"
-    elif feedback_mode == "learned_reward":
+    elif feedback_mode in {"learned_reward", "verifier"}:
         next_stage = "online_rl"
-    elif feedback_mode == "verifier":
-        next_stage = "rlvr"
     else:
-        return {"decision": "stop_at_sft", "reason": "no_new_feedback_signal", "missing": []}
-    missing = [name for name in requirements[next_stage] if context.get(name) in (None, False, "", 0)]
+        return {"decision": "stop_at_baseline", "reason": "no_new_feedback_signal", "missing": []}
+    required = list(requirements[next_stage])
+    if next_stage == "offline_preference":
+        data_field = "preference_dataset_version" if feedback_mode == "preference_pairs" else "binary_feedback_dataset_version"
+        required.append(data_field)
+    elif next_stage == "online_rl":
+        required.append("reward_model_version" if feedback_mode == "learned_reward" else "verifier_version")
+        if context.get("update_method") not in (None, "", "ppo", "grpo", "rloo"):
+            raise ValueError("在线更新方法必须为 ppo、grpo 或 rloo")
+    missing = [name for name in required if context.get(name) in (None, False, "", 0)]
+    if "baseline_ready" in required and context.get("baseline_ready") is not True and "baseline_ready" not in missing:
+        missing.append("baseline_ready")
     if missing:
         return {"decision": "blocked", "reason": "stage_requirements_not_ready", "missing": missing}
     result = {"decision": next_stage, "reason": "stage_requirements_ready", "missing": []}
@@ -403,125 +535,114 @@ def select_next_training_stage(evidence_report: Dict[str, object], parameter_rep
             "required_record_fields": ["sample_id", "source_id", "split", "instruction", "input", "response"],
             "next_section": "32_Data_Engineering_for_SFT",
         }
+    elif next_stage in {"offline_preference", "online_rl"}:
+        result.update({
+            "baseline_source": baseline_source,
+            "baseline_manifest": context["baseline_manifest"],
+            "feedback_source": feedback_mode,
+            "update_method": (
+                "dpo" if feedback_mode == "preference_pairs" else "kto"
+            ) if next_stage == "offline_preference" else context["update_method"],
+        })
     return result
+
 ```
 
 ### 解析
 
-#### TODO 1：计算切片缺口
+#### TODO 1：筛选可重复失败切片
 
-- 机制：每个切片先比较 `attempts` 与最少重复次数，再比较 `failures / attempts` 与失败率门槛；通过两项比较的切片减去基线已覆盖集合，得到证据缺口。
-- 不变量：只有可重复失败集合非空、评测样本已隔离、必需字段齐全且基线覆盖全部切片时，才允许比较候选。测试分别构造字段缺失、评测未隔离、重复次数不足和切片未覆盖。
+- 次数不足或失败率未达门槛的切片尚不足以支持本练习的干预判断；先筛出满足两项条件的切片，再找出缺少基线结果的部分。
+- `test_problem_evidence_gate` 分别改变重复次数、隔离条件与基线覆盖，检查这些缺口各自保留，不被汇总成同一个布尔值。
 
-#### TODO 2：计算参数内残留
+#### TODO 2：找出仍需考虑参数更新的问题
 
-- 机制：提示词、RAG 或工具候选的 `metric_value` 达到目标门槛且 `introduced_failures` 为空时，才从可重复失败集合中扣除对应切片。
-- 不变量：候选结果只能引用已登记切片；指标不足或产生新增失败时必须保留原切片。测试分别覆盖完全解决、引入安全失败和未知切片。
+- 候选达到指标门槛但新增安全失败时，不能把原切片记为已解决。答案仅扣除同时达标且没有新增失败的切片，未知或重复候选由骨架拒绝。
+- `test_parameter_update_gate` 比较完全解决与新增失败两条路径，非法输入测试另外检查重复候选和非有限指标。
 
-#### TODO 3：选择下一训练阶段
+#### TODO 3：选择训练阶段
 
-- 机制：领域表示缺口转入持续预训练；行为缺口先建立 SFT 基线，再根据偏好对、学习型奖励或客观验证器进入离线偏好、在线 RL 或 RLVR。
-- 不变量：持续预训练必须给出领域语料版本、冻结评测清单和非零 GPU 小时预算；偏好与强化学习分支必须给出 SFT 产物清单。SFT 分支接收候选示范版本，并把残留失败切片、必需字段和下一节写入数据需求单。缺少数据版本、评测清单、轨迹预算或回滚检查点时返回具体字段；没有新反馈信号时停在 SFT。
+- 阶段由缺口与反馈形态决定，可用策略基线的来源不限定为SFT。答案先区分持续预训练、监督、离线与在线阶段，再检查模型、数据与运行预算是否齐全，分别记录反馈来源和更新方法。
+- 指令模型与本地SFT、偏好对与二元标签分别形成交叉用例；两类奖励与三种在线方法的组合说明验证器不会自动选择GRPO。前置条件测试逐项删除输入，检查阻断原因；SFT数据需求仍由原交接测试验证。
+
 <a id="framework-check"></a>
 
 ## 框架一致性核对（可选）
 
-使用相同的阶段输入，核对 Step 4 路由结果能否形成完整的数据请求，并探测对应的 TRL 配置入口。
+将 Step 4 生成的阶段决策与 SFT 数据需求写入 Hugging Face Datasets，再逐项读回，检查字段、列表和分支身份是否保持。这里核对数据接口保持，不比较训练算法的数值结果。
 
 | 核对对象 | Step 4 教学实现 | 成熟框架 CPU 路径 | 共同输入与通过条件 |
 | --- | --- | --- | --- |
-| SFT 路由 | `select_next_training_stage` 生成 `data_request` | `trl.SFTConfig` 接口探测 | 使用相同阶段输入；候选数据版本、残留失败、必需字段和下一节完整 |
-| 离线偏好路由 | 输出离线偏好阶段决策 | `trl.DPOConfig` 接口探测 | 使用相同阶段输入；SFT 基线与偏好对资产齐全后通过 |
-| 验证器强化学习路由 | 输出 RLVR 阶段决策 | `trl.GRPOConfig` 接口探测 | 使用相同阶段输入；SFT 基线、验证器与轨迹预算齐全后通过 |
-| 阻塞结果 | 输出 `decision=blocked` 与缺失字段 | 配置创建前的输入检查 | 使用相同不完整输入；返回具体缺失字段，不生成训练入口 |
+| SFT 数据需求 | `select_next_training_stage` 输出的 `data_request` | `datasets.Dataset.from_list` 后逐列读取 | 使用同一残留失败和示范版本；所需字段、样本字段列表与下一入口完全一致 |
+| 离线反馈分支 | 指令模型起点的 DPO 与 KTO 决策 | `Dataset.from_list` 保留列与行顺序 | 同一基线下，阶段、反馈来源、方法和基线身份读回后不变 |
+| 在线奖励分支 | 两类奖励分别选择 PPO、GRPO、RLOO | `Dataset.from_list` 保留六条分支记录 | 奖励来源与更新方法分别保存，验证器来源不会变成独立训练阶段 |
+| 阻断结果 | 缺少输入时返回具体缺失项 | `Dataset.from_list` 保留拒绝记录 | 读回同一不完整输入的缺失字段，不把阻断结果作为可执行候选 |
+
 
 ```python
 from importlib.metadata import version
 
 try:
-    import trl
+    from datasets import Dataset
 except ImportError:
-    framework_check = {
-        "status": "skipped",
-        "reason": "请使用 PT-CPU 环境运行本单元",
-    }
+    framework_check = {"status": "skipped", "reason": "请使用 PT-CPU 环境安装已登记的 Datasets 依赖"}
 else:
-    def check_downstream_stage_contracts():
-        """核对阶段决策输出与后续训练配置入口的字段契约。"""
-        evidence = {
-            "ready": True,
-            "repeatable_failure_slices": ["procedure_order"],
-            "missing_fields": [],
-            "failed_checks": [],
-            "uncovered_failure_slices": [],
-        }
-        parameter = {
-            "parameter_update_required": True,
-            "residual_parameter_slices": ["procedure_order"],
-        }
+    def check_stage_data_interface():
+        """检查阶段输出与数据需求经Datasets转换后保持字段和顺序。"""
+        evidence = {"ready": True, "repeatable_failure_slices": ["procedure_order"],
+                    "missing_fields": [], "failed_checks": [], "uncovered_failure_slices": []}
+        parameter = {"parameter_update_required": True, "residual_parameter_slices": ["procedure_order"]}
+        baseline = {"baseline_ready": True, "baseline_source": "instruction_model",
+                    "baseline_manifest": "instruction-v1.json", "evaluation_manifest": "eval-v1.json"}
         sft = select_next_training_stage(evidence, parameter, {
-            "candidate_demonstration_version": "refund-procedure-v1",
-            "evaluation_manifest": "refund-eval-v1.json",
+            "candidate_demonstration_version": "procedure-v1", "evaluation_manifest": "eval-v1.json",
             "training_budget_gpu_hours": 4,
         })
+        request = sft["data_request"]
+        request_dataset = Dataset.from_list([request])
+        decisions = []
+        for feedback, field in (("preference_pairs", "preference_dataset_version"),
+                                ("binary_feedback", "binary_feedback_dataset_version")):
+            decisions.append(select_next_training_stage(evidence, parameter, baseline | {
+                "feedback_mode": feedback, field: "feedback-v1",
+            }))
+        for feedback, field in (("learned_reward", "reward_model_version"), ("verifier", "verifier_version")):
+            for method in ("ppo", "grpo", "rloo"):
+                decisions.append(select_next_training_stage(evidence, parameter, baseline | {
+                    "feedback_mode": feedback, field: "reward-v1", "update_method": method,
+                    "exploration_required": True, "rollout_budget": 32, "rollback_checkpoint": "checkpoint-100",
+                }))
+        decisions_dataset = Dataset.from_list(decisions)
+        restored = [decisions_dataset[i] for i in range(len(decisions_dataset))]
         blocked = select_next_training_stage(evidence, parameter, {
-            "candidate_demonstration_version": "refund-procedure-v1",
+            "feedback_mode": "binary_feedback", "binary_feedback_dataset_version": "binary-v1",
         })
-        preference = select_next_training_stage(evidence, parameter, {
-            "sft_baseline_ready": True,
-            "sft_baseline_manifest": "sft.json",
-            "feedback_mode": "preference_pairs",
-            "preference_dataset_version": "prefs-v1",
-            "evaluation_manifest": "eval-v1.json",
-        })
-        rlvr = select_next_training_stage(evidence, parameter, {
-            "sft_baseline_ready": True,
-            "sft_baseline_manifest": "sft.json",
-            "feedback_mode": "verifier",
-            "verifier_version": "refund-v1",
-            "exploration_required": True,
-            "rollout_budget": 32,
-            "rollback_checkpoint": "checkpoint-100",
-        })
-        required_request_fields = {
-            "residual_failure_slices",
-            "candidate_demonstration_version",
-            "required_record_fields",
-            "next_section",
-        }
-        entrypoints = {
-            "sft": getattr(trl, "SFTConfig", None),
-            "offline_preference": getattr(trl, "DPOConfig", None),
-            "rlvr": getattr(trl, "GRPOConfig", None),
-        }
+        blocked_dataset = Dataset.from_list([blocked])
         checks = {
-            "sft_request_complete": sft["decision"] == "sft" and required_request_fields <= set(sft["data_request"]),
-            "sft_routes_to_data_audit": sft["data_request"]["next_section"] == "32_Data_Engineering_for_SFT",
-            "blocked_stage_exposes_missing": blocked["decision"] == "blocked" and bool(blocked["missing"]),
-            "preference_contract_ready": preference["decision"] == "offline_preference" and not preference["missing"],
-            "rlvr_contract_ready": rlvr["decision"] == "rlvr" and not rlvr["missing"],
-            "trl_entrypoints_available": all(callable(entrypoint) for entrypoint in entrypoints.values()),
+            "sft_request_fields_preserved": request_dataset[0] == request,
+            "sft_data_audit_entry_preserved": request_dataset[0]["next_section"] == "32_Data_Engineering_for_SFT",
+            "decision_fields_and_order_preserved": restored == decisions,
+            "offline_feedback_methods_preserved": [r["update_method"] for r in restored[:2]] == ["dpo", "kto"],
+            "online_feedback_and_method_independent": {
+                (r["feedback_source"], r["update_method"]) for r in restored[2:]
+            } == {(f, m) for f in ("learned_reward", "verifier") for m in ("ppo", "grpo", "rloo")},
+            "blocked_missing_fields_preserved": blocked_dataset[0] == blocked and blocked["decision"] == "blocked",
         }
-        failed_checks = [name for name, passed in checks.items() if not passed]
-        if failed_checks:
-            raise AssertionError(f"下游配置接口核对失败：{failed_checks}")
-        return {
-            "status": "passed",
-            "check_kind": "downstream_contract",
-            "versions": {"trl": version("trl")},
-            "checks": checks,
-            "entrypoints": {stage: entrypoint.__name__ for stage, entrypoint in entrypoints.items()},
-        }
+        if not all(checks.values()):
+            raise AssertionError(f"阶段数据接口核对失败：{checks}")
+        return {"status": "passed", "check_kind": "data_interface",
+                "versions": {"datasets": version("datasets")}, "checks": checks}
 
-    framework_check = check_downstream_stage_contracts()
+    framework_check = check_stage_data_interface()
 
 framework_check
+
 ```
 
 ## 相关阅读
 
-完成问题与干预准入后，可以继续检查 SFT 数据、训练循环与项目交付。
+阶段准入后，按所选反馈准备输入，再用独立评测检查训练候选。
 
-- [32. SFT Dataset Contract and Leakage Audit | SFT 数据契约与泄漏审计](./32_Data_Engineering_for_SFT.md)
-- [13. SFT Training Loop | SFT 训练循环](./13_SFT_Training_Loop.md)
-- [62. Instruction Fine-Tuning Project | 指令微调项目](./62_Instruction_Fine_Tuning_Project.md)
+- [Part 02 · 32 SFT 数据契约与泄漏审计](./32_Data_Engineering_for_SFT.md)：把示范需求变成可训练记录。
+- [Part 02 · 50 偏好数据与评测](./50_Preference_Data_and_Evaluation.md)：核对反馈含义与评测隔离。
+- [后训练优化学习路线](../topic_discussion/post_training_optimization/intro.md)：按监督、离线反馈或在线奖励继续学习。

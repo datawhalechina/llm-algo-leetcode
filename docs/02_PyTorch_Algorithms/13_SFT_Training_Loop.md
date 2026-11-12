@@ -14,9 +14,11 @@
 
 ## 本节导读
 
-把模型结构写出来以后，下一步就是让它按监督数据学习回答。微调（fine-tuning）是继续训练预训练模型以适应下游任务的总称，监督微调（supervised fine-tuning，SFT）使用 prompt-response 标注数据建立输入与回答之间的监督关系。SFT 最容易出错的地方不在优化器，而在确定哪些位置提供监督、预测与标签如何错开一位，以及损失应除以多少个有效 Token：模型输入通常是 `[prompt + response]`，真正应该学习的是 response，而不是让模型复述 prompt。
+把模型结构写出来以后，下一步就是让它按监督数据学习回答。微调（fine-tuning）是继续训练预训练模型以适应下游任务的总称，监督微调（supervised fine-tuning，SFT）使用提示（prompt）与回答（response）组成的标注数据。提示给出任务和上下文，回答提供期望生成的内容。
 
-本节从一条样本进入损失计算开始，依次确定对话模板、prompt 与 response 的监督边界、下一个 Token 的预测对齐，以及变长样本下的损失分母。完成后，你应该能判断哪些位置提供监督、损失如何对齐，以及为什么不同长度样本应按有效监督 Token 数聚合。参数更新、学习率和评估记录由第 15 节继续完成。
+分词器（tokenizer）把文本转换为词元（Token）序列；词元可以是词、子词或符号，边界取决于所用分词器。SFT首先需要确定哪些位置提供监督、预测与标签如何错开一位，以及损失应除以多少个有效监督词元：提示和回答共同构成输入，但本例只把回答范围作为学习目标。
+
+本节用一条样本跟踪词元、标签和预测如何进入损失计算，再比较不同长度样本合成一批后的平均损失。算清这些位置与分母后，继续在第15节检查梯度累积怎样得到相同的参数更新。
 
 **关键词：** `SFT`, `chat template`, `label masking`, `next-token prediction`, `effective tokens`
 
@@ -38,11 +40,11 @@
 - [P0: 12. PyTorch Data Interface and Training Lifecycle | 数据接口与训练生命周期](../00_Prerequisites/12_PyTorch_Minimal_Training_Interface.md)
 
 ---
-## Step 1：一条 SFT 样本如何形成下一 Token 预测目标
+## Step 1：一条 SFT 样本如何形成下一词元预测目标
 
-SFT 用“输入—回答”样本继续训练预训练模型。它与语言模型预训练共享 next-token prediction 和反向传播链路，但两者的数据来源、监督范围与训练目标并不相同。真实对话样本还要先经过模型约定的对话模板：训练序列包含 assistant 回答，推理输入则停在 assistant 起始提示处。对话模板、分词器配置和监督边界必须属于同一个模型版本，否则监督位置可能发生偏移。
+SFT 用“输入—回答”样本继续训练预训练模型。它与语言模型预训练共享下一词元预测和反向传播链路，但两者的数据来源、监督范围与训练目标并不相同。对话模板（chat template）将角色、消息和分隔标记排列成模型约定的序列：训练序列包含助手（assistant）的回答，推理输入则停在助手回答的起始提示处。结束标记（EOS）标识回答结束，填充（padding）用于补齐批内不同样本的长度。对话模板、分词器配置和监督边界必须属于同一个模型版本，否则监督位置可能发生偏移。
 
-对模板化后的 Token 序列 $x_{1:T}$，因果语言模型把联合概率分解为逐位置条件概率。这里，$T$ 是序列长度，$t$ 是当前预测位置，$\theta$ 表示模型参数。模型在位置 $t$ 的输出用于预测 $x_{t+1}$；SFT 沿用这条概率链，但只选择回答范围内的目标计算损失。
+对模板化后的词元序列 $x_{1:T}$，因果语言模型把联合概率分解为逐位置条件概率。这里，$T$ 是序列长度，$t$ 是当前预测位置，$\theta$ 表示模型参数。模型在位置 $t$ 的输出用于预测 $x_{t+1}$；SFT 沿用这条概率链，但只选择回答范围内的目标计算损失。
 
 $$
 p_\theta(x_{1:T})=\prod_{t=0}^{T-1}p_\theta(x_{t+1}\mid x_{\le t})
@@ -50,20 +52,20 @@ $$
 
 | 对比项 | 语言模型预训练 | 监督微调（SFT） |
 | --- | --- | --- |
-| 常见起点 | 随机初始化或中间 checkpoint | 预训练模型 |
-| 数据形态 | 连续文本或文档语料 | prompt-response / 对话样本 |
+| 常见起点 | 随机初始化或中间检查点 | 预训练模型 |
+| 数据形态 | 连续文本或文档语料 | 提示—回答／对话样本 |
 | 训练目标 | 学习通用语言分布 | 学习指令遵循与回答行为 |
-| 监督范围 | 通常覆盖全部非 padding token | 通常只覆盖 response 与可选 EOS |
+| 监督范围 | 通常覆盖全部非填充词元 | 通常只覆盖回答与可选结束标记 |
 | 有效监督位置 | 正文中的非填充位置 | 回答与可选结束标记所在位置 |
-| 共同机制 | next-token cross entropy、反向传播和参数更新 | next-token cross entropy、反向传播和参数更新 |
+| 共同机制 | 下一词元交叉熵、反向传播和参数更新 | 下一词元交叉熵、反向传播和参数更新 |
 
 ![SFT 训练序列与预测目标](../public/02_PyTorch_Algorithms/13_sft_example_flow.svg)
 
 ## Step 2：上下文、回答与填充位置承担什么角色
 
-模板化序列同时包含上下文、回答、可选结束标记和填充位置。上下文帮助模型理解任务，但通常不作为 SFT 的目标；回答和结束标记提供监督；填充只负责让不同长度样本组成一批数据。assistant 起点必须从模板化序列中确定，不能用固定字符长度猜测。
+模板化序列同时包含上下文、回答、可选结束标记和填充位置。上下文帮助模型理解任务，但通常不作为 SFT 的目标；回答和结束标记提供监督；填充只负责让不同长度样本组成一批数据。助手回答的起点必须从模板化序列中确定，不能用固定字符长度猜测。
 
-令 $b$ 表示样本索引，$j$ 表示目标 Token 位置，$\mathbf{1}[\cdot]$ 表示指示函数，$\text{attention}_{b,j}$ 表示注意力掩码。监督掩码 $m_{b,j}$ 表示该位置是否参与监督：回答与可选结束标记取 1，提示和填充位置取 0。目标位置 $j$ 对应模型位置 $j-1$ 的预测；因此标签掩码必须在完成下一 Token 位移后与预测对齐。
+令 $b$ 表示样本索引，$j$ 表示目标词元位置，$\mathbf{1}[\cdot]$ 表示指示函数，$\text{attention}_{b,j}$ 表示注意力掩码。掩码（mask）是逐位置的选择标记：注意力掩码区分真实输入与填充，监督掩码决定哪些目标计入损失。监督掩码 $m_{b,j}$ 表示该位置是否参与监督：回答与可选结束标记取 1，提示和填充位置取 0。目标位置 $j$ 对应模型位置 $j-1$ 的预测；因此标签的有效位置必须在完成下一词元位移后与预测对齐。
 
 $$
 m_{b,j}=\mathbf{1}[j\in\text{response/EOS}]\,\mathbf{1}[\text{attention}_{b,j}=1]
@@ -71,19 +73,19 @@ $$
 
 | 位置 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| 语义 | prompt | prompt | prompt | response | response | response | response | EOS | padding |
+| 语义 | 提示 | 提示 | 提示 | 回答 | 回答 | 回答 | 回答 | EOS | 填充 |
 | 是否提供上下文 | 是 | 是 | 是 | 是 | 是 | 是 | 是 | 是 | 否 |
 | 是否提供监督 | 否 | 否 | 否 | 是 | 是 | 是 | 是 | 是 | 否 |
 
-## Step 3：如何从监督位置得到有效 Token 平均损失
+## Step 3：如何从监督位置得到有效词元平均损失
 
-模型在位置 $t$ 根据当前及更早的上下文预测位置 $t+1$。SFT 只从回答和可选结束标记对应的预测中收集损失；上下文与填充位置不贡献监督。一个 batch 的损失应先累加全部有效监督位置，再除以有效监督 Token 数，而不是让长短样本或微批次获得不受控制的权重。
+模型在位置 $t$ 根据当前及更早的上下文预测位置 $t+1$。SFT 只从回答和可选结束标记对应的预测中收集损失；上下文与填充位置不贡献监督。归约（reduction）是把多个位置的损失汇总为一个标量；这里先求和，再除以参与监督的目标总数。一个批次的损失应先累加全部有效监督位置，再除以有效监督词元数，而不是让长短样本或微批次获得不受控制的权重。
 
 $$
 \ell_{b,j}=-\log p_\theta(x_{b,j}\mid x_{b,<j}), \qquad L_{\mathrm{SFT}}=\frac{\sum_{b,j}m_{b,j}\ell_{b,j}}{\sum_{b,j}m_{b,j}}
 $$
 
-若一个逻辑批次被拆成多个微批次，第 $k$ 个微批次分别产生损失总和 $S_k$ 和有效目标数 $N_k$，精确聚合仍是总分子除以总分母；直接平均各微批次均值会让短回答和长回答获得错误权重。
+逻辑批次指共同形成一次参数更新的全部样本；微批次是其中一次送入模型计算的子集。若逻辑批次被拆成多个微批次，第 $k$ 个微批次分别产生损失总和 $S_k$ 和有效目标数 $N_k$，精确聚合仍是总分子除以总分母；直接平均各微批次均值会让短回答和长回答获得错误权重。
 
 $$
 L_{\mathrm{logical\ batch}}=\frac{\sum_k S_k}{\sum_k N_k}, \qquad S_k=\sum_{(b,j)\in k}m_{b,j}\ell_{b,j}, \quad N_k=\sum_{(b,j)\in k}m_{b,j}
@@ -91,7 +93,7 @@ $$
 
 | 预测位置 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| 下一 token 角色 | prompt | prompt | response | response | response | response | EOS | padding |
+| 下一词元角色 | 提示 | 提示 | 回答 | 回答 | 回答 | 回答 | EOS | 填充 |
 | 是否计入损失 | 否 | 否 | 是 | 是 | 是 | 是 | 是 | 否 |
 
 ![SFT 数据与损失对齐](../public/02_PyTorch_Algorithms/13_sft_alignment.svg)
@@ -180,8 +182,8 @@ def compute_sft_loss_terms(
     # ==========================================
     # TODO 3：完成 next-token 对齐
     # ==========================================
-    # shift_logits = ???  # 去掉最后一个预测位置。
-    # shift_labels = ???  # 去掉第一个目标位置。
+    # shift_logits = ???  # [batch, seq_len-1, vocab]；与后一位置的目标配对。
+    # shift_labels = ???  # [batch, seq_len-1]；每个目标对应前一位置的预测。
     raise NotImplementedError("TODO 3：对齐预测与目标")
 
     if attention_mask is not None:
@@ -209,11 +211,13 @@ def compute_sft_loss(logits: torch.Tensor, labels: torch.Tensor, attention_mask:
     # ==========================================
     # TODO 4：按有效监督 token 归约损失
     # ==========================================
-    # mean_loss = ???  # loss_sum 除以 valid_token_count。
+    # mean_loss = ???  # 有效监督词元等权的标量损失，不按样本数平均。
     raise NotImplementedError("TODO 4：按有效监督 token 数归一化损失")
     return mean_loss
 
 ```
+
+## 测试
 
 
 ```python
@@ -308,29 +312,15 @@ def _assert_effective_token_reduction():
     assert not torch.allclose(full_loss, unweighted_micro_mean), "变长样本不应等权平均 micro-batch mean"
 
 def test_sft_pipeline():
-    """运行 CPU-first 的 SFT 机制测试。"""
-    try:
-        tensors, prompt, pad_id, eos_id, max_len = _build_sft_test_case()
-        _assert_sft_data_contract(tensors)
-        _assert_truncation_guard(prompt, pad_id, eos_id)
-        logits, labels_batch, attention_batch = _assert_loss_alignment(tensors, max_len)
-        _assert_supervision_scope(logits, labels_batch, attention_batch)
-        _assert_effective_token_reduction()
+    """核对监督位置、目标对齐及变长样本的损失和梯度归约。"""
+    tensors, prompt, pad_id, eos_id, max_len = _build_sft_test_case()
+    _assert_sft_data_contract(tensors)
+    _assert_truncation_guard(prompt, pad_id, eos_id)
+    logits, labels_batch, attention_batch = _assert_loss_alignment(tensors, max_len)
+    _assert_supervision_scope(logits, labels_batch, attention_batch)
+    _assert_effective_token_reduction()
+    print("✅ SFT 监督边界、有效词元分母与梯度归约测试通过。")
 
-        print("✅ SFT 数据契约、监督边界与有效 token 聚合测试通过。")
-
-    except NotImplementedError:
-        print("请先完成 TODO 部分的代码！")
-        raise
-    except (AttributeError, NameError, TypeError, ValueError) as e:
-        print("代码可能未完成，导致变量未定义" if isinstance(e, NameError) else "代码可能未完成，导致了类型错误")
-        raise NotImplementedError("请先完成 TODO 部分的代码！") from e
-    except AssertionError as e:
-        print(f"❌ 测试失败: {e}")
-        raise NotImplementedError("请先完成 TODO 部分的代码！") from e
-    except Exception as e:
-        print(f"❌ 发生异常: {e}")
-        raise
 
 test_sft_pipeline()
 
@@ -423,7 +413,7 @@ def compute_sft_loss(logits: torch.Tensor, labels: torch.Tensor, attention_mask:
     """按有效监督 token 数归一化并返回 batch 平均损失。"""
     loss_sum, valid_token_count = compute_sft_loss_terms(logits, labels, attention_mask)
 
-    # TODO 4：按有效监督 token 聚合损失。
+    # TODO 4：按有效监督 token 归约损失。
     mean_loss = loss_sum / valid_token_count
     return mean_loss
 
@@ -431,29 +421,26 @@ def compute_sft_loss(logits: torch.Tensor, labels: torch.Tensor, attention_mask:
 
 ### 解析
 
-#### TODO 1：构造监督标签
+#### TODO 1：建立监督边界
 
-- 机制：prompt 与 padding 写入 `-100`，response 与 EOS 保留 Token ID；`valid_supervised` 统计截断后仍不等于 `-100` 的标签数。
-- 不变量：`input_ids` 与 `labels` 使用同一截断范围，且 `valid_supervised >= min_response_tokens`；否则拒绝样本。
-- 测试证据：`_assert_sft_data_contract` 检查标签范围，`_assert_truncation_guard` 检查监督量不足时必须失败。
+- 提示提供上下文，回答和可选结束标记提供目标。标签与输入使用相同截断范围，截断后仍须保留足够的有效监督位置。
+- 答案先构造标签再统计保留量；数据契约和截断测试分别验证提示忽略、回答保留及监督不足时拒绝。
 
 #### TODO 2：同步右侧填充
 
-- 机制：在真实 Token 右侧分别追加 `pad_id`、`0` 和 `-100`，形成输入、注意力掩码和监督标签。
-- 不变量：三个序列等长；padding 位置同时满足 `attention_mask=0` 和 `labels=-100`。
-- 测试证据：`_assert_sft_data_contract` 用变长样本检查长度、填充值与监督屏蔽。
+- 填充同时改变输入长度、注意力范围与标签范围；三者必须等长，填充标签保持忽略。
+- 同步追加输入填充值、无效注意力标记与忽略标签后，变长样本测试核对完整序列；掩码测试还会故意填入错误目标，确认它被排除。
 
-#### TODO 3：对齐 next-token 目标
+#### TODO 3：对齐预测与目标
 
-- 机制：`logits[..., :-1, :]` 与 `labels[..., 1:]` 配对，使位置 $t$ 的预测对应位置 $t+1$ 的目标。
-- 不变量：对齐后 batch、序列与词表维度匹配，且至少存在一个不等于 `-100` 的目标。
-- 测试证据：`_assert_loss_alignment` 检查张量维度，`_assert_supervision_scope` 用手工交叉熵检查监督范围。
+- 位置 t 的输出预测位置 t+1 的词元；两端错移后，预测、目标和有效位置仍须指向同一个目标词元。
+- 答案对齐预测与标签，再应用注意力范围；对齐测试检查已知预测位置，监督范围测试比较提示、回答和填充处的改变。
 
-#### TODO 4：按有效 Token 聚合
+#### TODO 4：按有效 Token 归约
 
-- 机制：先累加各微批次的损失总和与有效 Token 数，再计算 `loss_sum / valid_token_count`。
-- 不变量：变长微批次不能按微批次平均损失等权聚合；完整 batch 与相同样本的 Token 加权结果应一致。
-- 测试证据：`_assert_effective_token_reduction` 同时比较完整 batch、Token 加权微批次与错误的等权平均。
+- 变长微批次包含的目标数不同，应先汇总损失总和与有效目标数，再求整个逻辑批的平均。
+- 答案用有效目标数归约；长短样本测试同时比较完整批次和加权分批的损失、梯度，并确认错误的微批次等权平均会产生不同结果。这个分母随后用于训练控制页的实际梯度累积。
+
 <a id="framework-check"></a>
 
 ## 框架一致性核对（可选）
@@ -587,7 +574,9 @@ framework_check
 
 ## 相关阅读
 
-- [后训练优化公式索引与符号约定](../topic_discussion/post_training_optimization/formula_reference.md)
-- [15. SFT Training Lifecycle | SFT 有效更新与训练闭环](../02_PyTorch_Algorithms/15_End_to_End_Fine_Tuning_Experiment.md)
-- [30. Long-Context Fine-Tuning Mechanics | 长上下文微调机制](./30_Long_Context_Fine_Tuning.md)
-- [Hugging Face TRL SFTTrainer](https://huggingface.co/docs/trl/sft_trainer)
+损失与梯度的局部归约确认后，再把相同分母接入参数更新；长样本则继续检查截断后的监督保留量。
+
+- [Part 02 · 15 SFT 有效更新与训练闭环](./15_End_to_End_Fine_Tuning_Experiment.md)：比较完整批次与变长微批次更新。
+- [Part 02 · 30 长上下文微调机制](./30_Long_Context_Fine_Tuning.md)：检查窗口、监督保留与样本边界。
+- [后训练优化公式索引](../topic_discussion/post_training_optimization/formula_reference.md)：回查监督位置和归约分母。
+- [TRL SFTTrainer 文档](https://huggingface.co/docs/trl/sft_trainer)：进一步对照完成部分监督与批处理接口。

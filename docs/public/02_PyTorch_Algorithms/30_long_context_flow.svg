@@ -44,7 +44,7 @@
 
   <rect x="1260" y="115" width="185" height="100" rx="17" class="box" fill="#ECFDF5" stroke="#10B981"/>
   <text x="1352" y="154" text-anchor="middle" class="label">完整容纳</text>
-  <text x="1352" y="184" text-anchor="middle" class="small">记录 fit</text>
+  <text x="1352" y="184" text-anchor="middle" class="small">记录长度未溢出</text>
 
   <rect x="1260" y="275" width="185" height="100" rx="17" class="box" fill="#FEF2F2" stroke="#EF4444"/>
   <text x="1352" y="314" text-anchor="middle" class="label">发生溢出</text>

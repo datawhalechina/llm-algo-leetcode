@@ -26,7 +26,7 @@
 - [Part 02 · 62 SFT 训练交付项目](./62_Instruction_Fine_Tuning_Project.md)
 
 ---
-### Step 1：从 SFT 基线完成一次可复核的 DPO 交付
+## Step 1：从 SFT 基线完成一次可复核的 DPO 交付
 
 项目从一个已交付的 SFT 基线和两组相互隔离的偏好数据开始。训练分支复制该基线得到可更新策略，同时冻结一份参考模型；评测分支保留未参与更新的问题。训练完成后，项目不直接采用最低损失的检查点，而是用同一组独立评测对比较更新前后的偏好表现，再把适配器、模型血缘和评测结果一起交付。
 
@@ -39,7 +39,7 @@
 
 ![离线偏好优化的对象与数据流](../public/02_PyTorch_Algorithms/84_dpo_project_flow.svg)
 
-### Step 2：固定评测工作负载，比较更新前后的独立表现
+## Step 2：固定评测工作负载，比较更新前后的独立表现
 
 更新前策略与更新后候选必须使用同一模型起点、分词器、评测对、最大长度和评分方法。训练阶段只允许策略参数发生变化；参考模型、数据版本、偏好约束强度、更新步数和随机种子都写入运行记录。这样，偏好准确率和边际变化才能归因于本轮候选，而不是评测工作负载发生变化。
 
@@ -47,12 +47,12 @@
 |:---|:---|:---|
 | 评测工作负载 | 相同问题、偏好回答、分词器与序列上限 | 不一致时停止比较 |
 | 偏好准确率变化 | 候选减去更新前基线 | 判断更多评测对是否转向优选回答 |
-| 平均边际变化 | 候选减去更新前基线 | 判断整体偏好强度是否提高 |
-| 最差边际变化 | 候选减去更新前基线 | 防止均值改善掩盖尾部退化 |
+| 平均边际变化 | 候选减去更新前基线 | 判断回答 Token 平均对数概率边际是否提高；不与序列求和口径直接比较 |
+| 最差边际变化 | 候选减去更新前基线 | 限制均值改善时仍可能发生的尾部退化；真实实验容忍最差边际下降不超过 0.05 |
 | 问题与回答截断率 | 两次评测采用同一长度限制 | 截断超限时不使用质量变化作交付依据 |
 | 训练资源 | 更新耗时与峰值显存 | 质量通过但预算越界时进入调优 |
 
-### Step 3：按证据优先级形成候选状态
+## Step 3：按证据优先级形成候选状态
 
 交付判断不是把指标加权成一个总分，而是按依赖顺序检查。数据泄漏、执行失败或适配器缺失会使候选不可复现，应直接拒绝；独立质量、截断或资源门槛未达到时，已有训练证据仍可用于调参，因此进入 `tune`；只有数据、更新、独立质量、资源和产物全部成立时，候选才进入 86 的生命周期交接，最终采用判断留给 Part 05。
 
@@ -66,12 +66,14 @@
 
 ![DPO 候选交付证据链](../public/02_PyTorch_Algorithms/84_dpo_delivery_gate.svg)
 
-### Step 4：实现数据隔离、候选门槛和交付决策
+## Step 4：实现数据隔离、候选门槛和交付决策
+
+题目骨架已提供字段读取、具名原子检查和失败原因装配；你将补全准入合取、候选资格或有效更新统计，以及拒绝、调优、交付的状态选择。测试使用 CPU 人工证据检验边界，不产生真实质量结论。
 
 | 任务与目的 | 已知条件 | 完成标准 | 测试验证 |
 |:---|:---|:---|:---|
 | TODO 1：检查样本与任务输入隔离 | 训练/评测的偏好对和任务输入身份 | 两个层次都无交集，偏好对本身有效 | 同偏好对泄漏、同问题换回答泄漏与无效对 |
-| TODO 2：由更新前后评测形成候选门槛 | 更新前后胜率、平均/最差边际、截断和资源记录 | 正确计算增益，且无尾部退化、截断超限或资源越界 | 均值改善但尾部退化、截断过高与显存越界 |
+| TODO 2：由更新前后评测形成候选门槛 | 更新前后胜率、平均/最差边际、截断和资源记录 | 给定增益与具名检查后，联合全部门槛形成资格；不能以质量收益抵消资源越界 | 均值改善但尾部退化、截断过高与显存越界 |
 | TODO 3：区分拒绝、调优与交付 | 数据、候选和产物检查 | 数据或产物失败时拒绝，候选未达标时调优 | 缺产物、数据泄漏与候选质量不足 |
 
 ```python
@@ -80,39 +82,42 @@ from typing import Any, Dict, List
 
 
 ```python
-# ==========================================
 # TODO 1：检查训练—评测隔离与偏好数据准入
-# ==========================================
-def check_preference_partition(
-    train_pair_ids: List[str],
-    evaluation_pair_ids: List[str],
-    train_prompt_ids: List[str],
-    evaluation_prompt_ids: List[str],
-    audit: Dict[str, Any],
-    minimum_valid_ratio: float,
-) -> Dict[str, Any]:
+def check_preference_partition(train_pair_ids: List[str], evaluation_pair_ids: List[str], train_prompt_ids: List[str], evaluation_prompt_ids: List[str], audit: Dict[str, Any], minimum_valid_ratio: float) -> Dict[str, Any]:
     """检查偏好对、任务输入和样本内容能否支持独立评测。"""
     pair_overlap = sorted(set(train_pair_ids) & set(evaluation_pair_ids))
     prompt_overlap = sorted(set(train_prompt_ids) & set(evaluation_prompt_ids))
-    # checks = ???  # 分别判断偏好对隔离、任务输入隔离、有效率和回答差异。
-    # admitted = ???  # 四项检查必须全部通过。
-    raise NotImplementedError("TODO 1：请构造偏好数据准入检查并形成结论")
+    checks = {
+        "pair_isolation": not pair_overlap,
+        "prompt_isolation": not prompt_overlap,
+        "valid_ratio": audit["valid_ratio"] >= minimum_valid_ratio,
+        "distinct_responses": audit["identical_response_count"] == 0,
+    }
+    # admitted = ???  # 偏好对隔离、任务隔离、有效率与回答差异必须同时通过
+    raise NotImplementedError("TODO 1：请完成当前机制判据或公式")
     return {"admitted": admitted, "pair_overlap": pair_overlap, "prompt_overlap": prompt_overlap, "failed_checks": [name for name, passed in checks.items() if not passed]}
 
 
-# ==========================================
 # TODO 2：检查 DPO 候选的质量与资源门槛
-# ==========================================
 def evaluate_dpo_candidate(evidence: Dict[str, Any], gates: Dict[str, float]) -> Dict[str, Any]:
-    """逐项检查独立偏好评测、尾部边际、显存和执行状态。"""
+    """检查独立质量、截断和资源证据。"""
     baseline_margins = evidence["baseline_margins"]
     candidate_margins = evidence["candidate_margins"]
     if not baseline_margins or len(baseline_margins) != len(candidate_margins):
         raise ValueError("更新前后必须使用同一组非空偏好对")
-    # baseline = ???  # 由逐偏好对边际汇总偏好准确率、平均边际和最差边际。
-    # candidate = ???
-    # comparison = ???  # 对齐计算三项更新前后变化量。
-    raise NotImplementedError("TODO 2：请从逐偏好对边际形成候选证据")
+    def summarize(margins: List[float]) -> Dict[str, float]:
+        return {
+            "preference_accuracy": sum(margin > 0 for margin in margins) / len(margins),
+            "margin_mean": sum(margins) / len(margins),
+            "margin_min": min(margins),
+        }
+    baseline = summarize(baseline_margins)
+    candidate = summarize(candidate_margins)
+    comparison = {
+        "preference_accuracy_gain": candidate["preference_accuracy"] - baseline["preference_accuracy"],
+        "margin_mean_gain": candidate["margin_mean"] - baseline["margin_mean"],
+        "margin_floor_gain": candidate["margin_min"] - baseline["margin_min"],
+    }
     checks = {
         "execution": evidence["status"] == "ok",
         "accuracy_gain": comparison["preference_accuracy_gain"] >= gates["minimum_accuracy_gain"],
@@ -121,23 +126,21 @@ def evaluate_dpo_candidate(evidence: Dict[str, Any], gates: Dict[str, float]) ->
         "truncation": evidence["evaluation"]["truncation_ratio"] <= gates["maximum_truncation_ratio"],
         "memory": evidence["resources"]["peak_allocated_bytes"] <= gates["maximum_peak_allocated_bytes"],
     }
-    eligible = all(checks.values())
-    return {"eligible": eligible, "comparison": comparison, "failed_checks": [name for name, passed in checks.items() if not passed]}
+    # eligible = ???  # 执行、独立质量、截断与显存门槛必须同时通过
+    raise NotImplementedError("TODO 2：请完成当前机制判据或公式")
+    return {"eligible": eligible, "execution_ok": checks["execution"], "comparison": comparison, "failed_checks": [name for name, passed in checks.items() if not passed]}
 
 
-# ==========================================
 # TODO 3：形成 DPO 项目交付决策
-# ==========================================
 def decide_dpo_delivery(partition: Dict[str, Any], candidate: Dict[str, Any], artifact: Dict[str, Any]) -> Dict[str, Any]:
-    """只有数据、候选与适配器哈希同时通过时才交付。"""
+    """区分不可交付、需要调优和可以交付三种状态。"""
     checks = {
         "partition": partition["admitted"],
         "candidate": candidate["eligible"],
         "artifact": bool(artifact.get("path")) and bool(artifact.get("sha256")),
     }
-    # 数据或产物失败时拒绝，候选未达标时调优，其余情况才可交付。
-    # decision = ???  # 数据或产物失败应拒绝；候选未达标应调优。
-    raise NotImplementedError("TODO 3：请形成 DPO 交付决策")
+    # decision = ???  # 数据/轨迹、执行或产物失败时拒绝；其余不足调优，全部通过交付
+    raise NotImplementedError("TODO 3：请完成当前机制判据或公式")
     return {"decision": decision, "failed_checks": [name for name, passed in checks.items() if not passed]}
 ```
 
@@ -177,6 +180,8 @@ def test_dpo_candidate_gates():
     evidence, gates = _dpo_candidate_fixture()
     candidate = evaluate_dpo_candidate(evidence, gates)
     assert candidate["eligible"]
+    assert not evaluate_dpo_candidate({**evidence, "resources": {"peak_allocated_bytes": 10_001}}, gates)["eligible"]
+    assert evaluate_dpo_candidate({**evidence, "resources": {"peak_allocated_bytes": 10_000}}, gates)["eligible"]
     tail_regression = {**evidence, "candidate_margins": [-0.21, 0.05, 0.25, 0.47]}
     assert not evaluate_dpo_candidate(tail_regression, gates)["eligible"]
     assert not evaluate_dpo_candidate({**evidence, "evaluation": {"truncation_ratio": 0.20}}, gates)["eligible"]
@@ -199,10 +204,19 @@ def test_dpo_delivery_decision():
     assert decide_dpo_delivery(partition, {"eligible": False}, {"path": "adapter", "sha256": "abc"})["decision"] == "tune"
 
 
+def test_dpo_execution_failure_rejected():
+    """执行失败不能被归为只需调参的候选。"""
+    evidence, gates = _dpo_candidate_fixture()
+    candidate = evaluate_dpo_candidate({**evidence, "status": "failed"}, gates)
+    assert decide_dpo_delivery({"admitted": True}, candidate, {"path": "adapter", "sha256": "abc"})["decision"] == "reject"
+
+
 test_preference_partition_contract()
 test_dpo_candidate_gates()
 test_dpo_delivery_decision()
 print("所有测试通过！")
+test_dpo_execution_failure_rejected()
+
 ```
 
 🛑 **STOP HERE** 🛑
@@ -255,7 +269,7 @@ def evaluate_dpo_candidate(evidence: Dict[str, Any], gates: Dict[str, float]) ->
         "memory": evidence["resources"]["peak_allocated_bytes"] <= gates["maximum_peak_allocated_bytes"],
     }
     eligible = all(checks.values())
-    return {"eligible": eligible, "comparison": comparison, "failed_checks": [name for name, passed in checks.items() if not passed]}
+    return {"eligible": eligible, "execution_ok": checks["execution"], "comparison": comparison, "failed_checks": [name for name, passed in checks.items() if not passed]}
 
 
 # TODO 3：形成 DPO 项目交付决策
@@ -266,7 +280,7 @@ def decide_dpo_delivery(partition: Dict[str, Any], candidate: Dict[str, Any], ar
         "candidate": candidate["eligible"],
         "artifact": bool(artifact.get("path")) and bool(artifact.get("sha256")),
     }
-    if not checks["partition"] or not checks["artifact"]:
+    if not checks["partition"] or not checks["artifact"] or not candidate.get("execution_ok", True):
         decision = "reject"
     elif not checks["candidate"]:
         decision = "tune"
@@ -280,19 +294,19 @@ def decide_dpo_delivery(partition: Dict[str, Any], candidate: Dict[str, Any], ar
 #### TODO 1：检查偏好数据隔离
 
 - **判断依据**：同一偏好对或同一任务输入跨集合出现都会污染独立评测；相同回答则使偏好关系失效。
-- **实现动作**：由偏好对重合、任务输入重合、有效率和回答差异构造具名检查，再汇总准入结论。
+- **实现动作**：由偏好对重合、任务输入重合、有效率和回答差异读取骨架已提供的具名检查，再汇总准入结论。
 - **测试证据**：测试分别覆盖偏好对重合与同问题更换回答后的隐性泄漏。
 
 #### TODO 2：检查候选门槛
 
 - **判断依据**：平均边际改善不能掩盖最差边际退化，质量收益也不能抵消显存越界。
-- **实现动作**：先从同一组偏好对的逐样本边际分别汇总偏好准确率、平均边际和最差边际，再计算更新前后变化并检查截断率与显存。
+- **实现动作**：骨架从逐样本边际汇总准确率、平均与最差边际，并计算变化量及具名检查；TODO 将执行、质量、截断和显存检查按合取关系形成候选资格。
 - **测试证据**：测试覆盖样本无法配对、均值改善但尾部退化，以及截断超限三种失败。
 
 #### TODO 3：形成交付决策
 
 - **判断依据**：数据、训练证据和可追溯适配器是三个独立硬门槛。
-- **实现动作**：数据或产物失败时 `reject`，候选门槛未通过时 `tune`，三类证据完整时 `accept`。
+- **实现动作**：数据、执行或产物失败时 `reject`，候选门槛未通过时 `tune`，三类证据完整时 `accept`。
 - **测试证据**：测试覆盖缺少产物与候选仍需调优两类路径。
 ## Step 5：真实 DPO 候选训练与交付
 
@@ -314,7 +328,11 @@ import json
 from tools.project_runtime import resolve_project_root
 
 RUN_MODE = "dry_run"  # 默认只检查配置；改为 real_gpu 执行新的真实 DPO 更新。
-RUN_LABEL = "dpo_offline_len1024_v5"  # v4 的输入截断率超限；v5 只扩大统一序列上限。
+RUN_LABEL = "replace_with_unique_label"  # 新运行使用唯一标签；历史 v5 结果在 5.6 登记。
+if RUN_MODE not in {"dry_run", "real_gpu"}:
+    raise ValueError("运行模式必须为dry_run或real_gpu")
+if RUN_MODE == "real_gpu" and RUN_LABEL == "replace_with_unique_label":
+    raise ValueError("真实运行前请设置唯一RUN_LABEL")
 PROFILE_ID = "PT-RL-CUDA"
 SEMANTIC_ID = "PT-DPO-OFFLINE"
 SCHEMA_VERSION = "model-evaluation/v1"
@@ -463,7 +481,12 @@ def decide_dpo_candidate_for_run(evidence, gates, partition):
         "memory": evidence["resources"]["peak_allocated_bytes"] <= gates["maximum_peak_allocated_bytes"],
         "artifact": bool(evidence.get("artifact", {}).get("path")) and bool(evidence.get("artifact", {}).get("sha256")),
     }
-    decision = "accept" if all(checks.values()) else "reject"
+    if not checks["partition"] or not checks["execution"] or not checks["artifact"]:
+        decision = "reject"
+    elif not all(checks.values()):
+        decision = "tune"
+    else:
+        decision = "accept"
     return {"decision": decision, "failed_checks": [name for name, passed in checks.items() if not passed]}
 
 if EVIDENCE_PATH.exists():

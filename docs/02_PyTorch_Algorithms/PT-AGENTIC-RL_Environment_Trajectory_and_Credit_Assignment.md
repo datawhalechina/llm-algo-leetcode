@@ -1,6 +1,6 @@
 # PT-AGENTIC-RL. Environment Trajectory and Credit Assignment | 环境轨迹与奖励归因
 
-**难度：** Hard | **环境：** [CPU 机制练习](#runtime-environment) | **标签：** `后训练`, `Agentic RL`, `环境交互`, `奖励归因`
+**难度：** Hard | **环境：** [CPU 主线](#runtime-environment) | **标签：** `后训练`, `Agentic RL`, `环境交互`, `奖励归因`
 
 > 🚀 **云端运行环境**
 >
@@ -14,9 +14,9 @@
 
 ## 本节导读
 
-工具轨迹 SFT 可以模仿已验证的成功过程，但不能主动发现数据中没有的多步行为。只有任务需要在线探索，环境能够稳定重放动作与观察，并能把成功、失败、安全和成本反馈绑定到同一条轨迹时，Agentic RL 才具备可验证的训练入口。
+工具轨迹 SFT 可以模仿已验证的成功过程，但不能主动发现数据中没有的多步行为。只有任务需要在线探索，环境能够稳定重放动作与观察，并能把成功、失败、安全和成本反馈绑定到同一条轨迹时，智能体强化学习（Agentic Reinforcement Learning，Agentic RL）才具备可验证的训练入口。
 
-本节把单轮文本生成扩展为“状态 → 模型动作 → 工具或环境观察 → 下一状态”的多步轨迹，区分模型动作与环境观察，复算动作级奖励和回报，并根据监督基线、探索增益、安全与恢复证据判断是否进入在线探索。PPO、GRPO 或 DPO 的具体策略目标仍由各自机制页负责。
+本节把单轮文本生成扩展为“状态 → 模型动作 → 工具或环境观察 → 下一状态”的多步轨迹，区分模型动作与环境观察，复算动作级奖励和回报，并根据监督基线、探索增益、安全与恢复证据判断是否进入在线探索。这些检查用于选择训练阶段，不替代策略目标所需的动作概率与版本兼容性检查。
 
 **关键词：** 环境状态、模型动作、工具观察、轨迹身份、奖励归因、阶段准入
 
@@ -70,10 +70,10 @@ $$
 任务奖励可以只在终局出现，过程奖励可以落在正确调用或有效中间状态上，安全和成本惩罚则要绑定到触发它们的动作。令 $\gamma\in[0,1]$ 为折扣因子，从动作位置 $t$ 开始的回报为：
 
 $$
-G_t=\sum_{k=t}^{T}\gamma^{k-t}r_k.
+G_t=\sum_{k=t}^{T-1}\gamma^{k-t}r_k.
 $$
 
-奖励归因只处理环境证据怎样映射到模型动作；PPO 的价值基线、GRPO 的组内基线和策略目标仍由对应机制页计算。工具观察、系统重试和环境内部事件如果不是模型动作，只保留为证据，不获得动作掩码。
+这里共有 T 个动作，最后一个动作下标为 T−1；截断轨迹只累计已观测奖励，不包含价值函数自举。工具观察、系统重试和环境内部事件如果不是模型动作，只保留为证据，不获得动作掩码。
 
 ![Agent 轨迹的奖励分量、动作级回报与阶段门槛](../public/02_PyTorch_Algorithms/pt_agentic_rl_credit_gate.svg)
 
@@ -92,7 +92,7 @@ $$
 
 ## Step 4：实现受控环境、轨迹记录、奖励归因与阶段准入
 
-题目使用一个确定性的查询—提交环境复现多步交互。骨架给出动作效果、轨迹身份和更新准入检查；学习者补全终止语义、轨迹推进、动作级回报和训练阶段选择。测试覆盖成功、失败、超时、动作耗尽、版本不兼容、重复消费和监督基线不足。
+题目使用一个确定性的查询—提交环境复现多步交互。骨架给出动作效果、轨迹身份与环境版本、奖励状态、消费状态检查；该检查不含行为概率，不代表可直接进入 PPO/GRPO 更新。学习者补全终止语义、轨迹推进、动作级回报和训练阶段选择。测试覆盖成功、失败、超时、动作耗尽、版本不兼容、重复消费和监督基线不足。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 |:---|:---|:---|:---|
@@ -104,6 +104,8 @@ $$
 
 ```python
 from copy import deepcopy
+import hashlib
+import math
 
 ```
 
@@ -149,10 +151,12 @@ def environment_step(state, action, max_steps):
 
 def build_agent_trajectory(task_id, environment_version, policy_version, actions, max_steps=4):
     """把一组模型动作装配成带版本和终止原因的轨迹。"""
-    if not task_id or not environment_version or not isinstance(policy_version, int):
-        raise ValueError('任务、环境和策略身份必须完整')
-    if not actions:
-        raise ValueError('至少需要一个模型动作')
+    if not task_id or not environment_version or not isinstance(policy_version, int) or isinstance(policy_version, bool) or policy_version < 0:
+        raise ValueError('任务、环境和策略身份必须完整且策略版本非负')
+    if not actions or any(not isinstance(action, str) or not action for action in actions):
+        raise ValueError('至少需要一个非空模型动作')
+    if not isinstance(max_steps, int) or isinstance(max_steps, bool) or max_steps <= 0:
+        raise ValueError('max_steps 必须为正整数')
     state = {'step_index': 0, 'known_value': None, 'done': False}
     transitions = []
     for action in actions:
@@ -170,7 +174,8 @@ def build_agent_trajectory(task_id, environment_version, policy_version, actions
         transitions[-1]['truncated'] = True
         transitions[-1]['termination_reason'] = 'action_exhausted'
         transitions[-1]['state_after']['done'] = True
-    return {'trajectory_id': f'{task_id}:{environment_version}:{policy_version}', 'task_id': task_id,
+    action_digest = hashlib.sha256(chr(31).join(item['action'] for item in transitions).encode('utf-8')).hexdigest()[:12]
+    return {'trajectory_id': f'{task_id}:{environment_version}:{policy_version}:{action_digest}', 'task_id': task_id,
             'environment_version': environment_version, 'policy_version': policy_version,
             'reward_status': 'completed', 'lifecycle_state': 'rewarded', 'consumed_by': None,
             'transitions': transitions}
@@ -178,8 +183,9 @@ def build_agent_trajectory(task_id, environment_version, policy_version, actions
 
 def compute_action_returns(trajectory, gamma=1.0):
     """组合奖励分量并从后向前计算动作级回报。"""
-    if not 0.0 <= gamma <= 1.0:
-        raise ValueError('gamma 必须位于 [0, 1]')
+    gamma = float(gamma)
+    if not math.isfinite(gamma) or not 0.0 <= gamma <= 1.0:
+        raise ValueError('gamma 必须是位于 [0, 1] 的有限数')
     transitions = trajectory.get('transitions', [])
     if not transitions:
         raise ValueError('轨迹不能为空')
@@ -188,6 +194,9 @@ def compute_action_returns(trajectory, gamma=1.0):
         components = transition.get('reward_components', {})
         if set(components) != REWARD_KEYS or transition.get('action_mask') != 1:
             raise ValueError('奖励分量或动作掩码不完整')
+        values = [float(components[key]) for key in sorted(REWARD_KEYS)]
+        if any(not math.isfinite(value) for value in values):
+            raise ValueError('奖励分量必须为有限数')
         rewards.append(float(components['task']) + float(components['process']) - float(components['safety']) - float(components['cost']))
     running, rows = 0.0, []
     for index in range(len(rewards) - 1, -1, -1):
@@ -202,8 +211,9 @@ def compute_action_returns(trajectory, gamma=1.0):
 
 def assess_agentic_update(trajectory, expected_environment_version, current_policy_version, max_policy_lag=0):
     """检查轨迹版本、奖励、消费状态与终止证据。"""
-    if max_policy_lag < 0:
-        raise ValueError('最大策略滞后不能为负')
+    versions = (trajectory.get('policy_version'), current_policy_version, max_policy_lag)
+    if any(not isinstance(value, int) or isinstance(value, bool) or value < 0 for value in versions):
+        raise ValueError('策略版本与最大滞后必须是非负整数')
     if trajectory.get('environment_version') != expected_environment_version:
         return {'eligible': False, 'reason': 'environment_version_mismatch'}
     lag = current_policy_version - trajectory.get('policy_version', current_policy_version + 1)
@@ -218,15 +228,25 @@ def assess_agentic_update(trajectory, expected_environment_version, current_poli
     transitions = trajectory.get('transitions', [])
     if not transitions or not (transitions[-1].get('terminated') or transitions[-1].get('truncated')):
         return {'eligible': False, 'reason': 'missing_terminal_evidence', 'policy_lag': lag}
+    if any(item.get('terminated') or item.get('truncated') for item in transitions[:-1]):
+        return {'eligible': False, 'reason': 'transition_after_terminal', 'policy_lag': lag}
     if any(item.get('action_mask') != 1 or set(item.get('reward_components', {})) != REWARD_KEYS for item in transitions):
+        return {'eligible': False, 'reason': 'invalid_action_evidence', 'policy_lag': lag}
+    if any(not math.isfinite(float(value)) for item in transitions for value in item['reward_components'].values()):
         return {'eligible': False, 'reason': 'invalid_action_evidence', 'policy_lag': lag}
     return {'eligible': True, 'reason': 'ok', 'policy_lag': lag}
 
 
 def recommend_agentic_stage(sft_tool_contract_pass_rate, novel_success_gain, reward_replayable, safety_regression, min_sft_readiness=0.8, min_exploration_gain=0.05, max_safety_regression=0.0):
     """根据监督基线、探索增益和硬门槛选择训练阶段。"""
-    if not 0.0 <= sft_tool_contract_pass_rate <= 1.0:
-        raise ValueError('SFT 工具契约通过率必须位于 [0, 1]')
+    values = [float(sft_tool_contract_pass_rate), float(novel_success_gain), float(safety_regression),
+              float(min_sft_readiness), float(min_exploration_gain), float(max_safety_regression)]
+    if any(not math.isfinite(value) for value in values):
+        raise ValueError('阶段准入指标与门槛必须为有限数')
+    if not 0.0 <= sft_tool_contract_pass_rate <= 1.0 or not 0.0 <= min_sft_readiness <= 1.0:
+        raise ValueError('SFT 工具契约通过率及门槛必须位于 [0, 1]')
+    if min_exploration_gain < 0 or not isinstance(reward_replayable, bool):
+        raise ValueError('探索增益门槛必须非负，reward_replayable 必须是布尔值')
     # ==========================================
     # TODO 4：选择训练阶段
     # ==========================================
@@ -274,6 +294,10 @@ def test_reward_attribution():
     assert report[1]['reward'] == 0.95
     assert report[0]['reward'] == 0.15
     assert abs(report[0]['return'] - 1.10) < 1e-9
+    discounted = compute_action_returns(trajectory, gamma=0.5)
+    assert abs(discounted[0]['return'] - 0.625) < 1e-9
+    ignored_tail = build_agent_trajectory('task-6', 'env-v1', 3, ['lookup', 'submit:4', 'unused'])
+    assert ignored_tail['trajectory_id'] == trajectory['trajectory_id']
     invalid = deepcopy(trajectory)
     invalid['transitions'][0]['action_mask'] = 0
     try:
@@ -291,6 +315,9 @@ def test_update_admission():
     assert assess_agentic_update(trajectory, 'env-v2', 3)['reason'] == 'environment_version_mismatch'
     assert assess_agentic_update(trajectory, 'env-v1', 6, max_policy_lag=2)['reason'] == 'stale_policy'
     assert assess_agentic_update(trajectory, 'env-v1', 2)['reason'] == 'future_policy'
+    nonfinite = deepcopy(trajectory)
+    nonfinite['transitions'][0]['reward_components']['task'] = float('nan')
+    assert assess_agentic_update(nonfinite, 'env-v1', 3)['reason'] == 'invalid_action_evidence'
     consumed = {**trajectory, 'consumed_by': 'update-1'}
     assert assess_agentic_update(consumed, 'env-v1', 3)['reason'] == 'already_consumed'
 
@@ -404,7 +431,7 @@ def build_agent_trajectory(task_id, environment_version, policy_version, actions
         transitions[-1]['truncated'] = True
         transitions[-1]['termination_reason'] = 'action_exhausted'
         transitions[-1]['state_after']['done'] = True
-    action_digest = hashlib.sha256("\x1f".join(actions).encode('utf-8')).hexdigest()[:12]
+    action_digest = hashlib.sha256(chr(31).join(item['action'] for item in transitions).encode('utf-8')).hexdigest()[:12]
     return {'trajectory_id': f'{task_id}:{environment_version}:{policy_version}:{action_digest}', 'task_id': task_id,
             'environment_version': environment_version, 'policy_version': policy_version,
             'reward_status': 'completed', 'lifecycle_state': 'rewarded', 'consumed_by': None,
@@ -459,6 +486,8 @@ def assess_agentic_update(trajectory, expected_environment_version, current_poli
         return {'eligible': False, 'reason': 'transition_after_terminal', 'policy_lag': lag}
     if any(item.get('action_mask') != 1 or set(item.get('reward_components', {})) != REWARD_KEYS for item in transitions):
         return {'eligible': False, 'reason': 'invalid_action_evidence', 'policy_lag': lag}
+    if any(not math.isfinite(float(value)) for item in transitions for value in item['reward_components'].values()):
+        return {'eligible': False, 'reason': 'invalid_action_evidence', 'policy_lag': lag}
     return {'eligible': True, 'reason': 'ok', 'policy_lag': lag}
 
 
@@ -495,7 +524,7 @@ def recommend_agentic_stage(sft_tool_contract_pass_rate, novel_success_gain, rew
 
 #### TODO 2：推进并封装多步轨迹
 
-- **判断依据：** 轨迹只能保存实际执行过的动作，首个终止或截断状态之后的候选动作不属于该轨迹。
+- **判断依据：** 轨迹摘要也只使用实际执行过的动作；它是内容标识，不是独立采样事件的唯一 ID。轨迹只能保存实际执行过的动作，首个终止或截断状态之后的候选动作不属于该轨迹。
 - **实现与证据：** 每步更新状态后立即检查停止条件，骨架再为动作耗尽补充独立原因；测试分别验证成功停止、超时和 `action_exhausted`。
 
 #### TODO 3：计算动作级折扣回报

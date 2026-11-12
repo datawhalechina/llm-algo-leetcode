@@ -3,6 +3,7 @@
 from pathlib import Path
 import re
 import unittest
+import xml.etree.ElementTree as ET
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
@@ -12,7 +13,94 @@ from sync_docs_navigation import NAV_FILES
 import sync_docs_navigation
 
 
+def audit_topic_svg(path, *, require_connections=True):
+    """Check real arrow paths, including class and inline marker declarations.
+
+    Comparison panels need no markers. CSS support covers the simple class
+    selectors used by this topic, including multiple classes on one element.
+    Normalize only a temporary tree so the shared endpoint audit also sees
+    inline styles; never rewrite the source SVG during a check.
+    """
+    root = ET.parse(path).getroot()
+    local = lambda node: node.tag.rsplit("}", 1)[-1]
+    styles = "\n".join(node.text or "" for node in root.iter() if local(node) == "style")
+    rules = []
+    for selectors, body in re.findall(r"([^{}]+)\{([^{}]*)\}", styles):
+        for selector in selectors.split(","):
+            selector = selector.strip()
+            if re.fullmatch(r"(?:\.[\w-]+)+", selector):
+                rules.append((set(re.findall(r"\.([\w-]+)", selector)), body))
+    markers = {node.get("id"): node for node in root.iter() if local(node) == "marker"}
+    issues = []
+    for node in root.iter():
+        if local(node) != "path":
+            continue
+        value = node.get("marker-end", "")
+        classes = set(node.get("class", "").split())
+        matching = [(required, body) for required, body in rules if required <= classes]
+        for _, body in sorted(matching, key=lambda rule: len(rule[0])):
+            declarations = re.findall(r"(?:^|;)\s*marker-end\s*:\s*([^;]+)", body)
+            if declarations:
+                value = declarations[-1].strip()
+        inline = re.findall(r"(?:^|;)\s*marker-end\s*:\s*([^;]+)", node.get("style", ""))
+        if inline:
+            value = inline[-1].strip()
+        if not value or value == "none":
+            continue
+        node.set("marker-end", value)
+        if require_connections and (not node.get("data-source") or not node.get("data-target")):
+            issues.append(f"arrow {node.get('d', '')} requires data-source and data-target")
+        references = re.findall(r"url\(\s*['\"]?#([^)'\"\s]+)['\"]?\s*\)", value)
+        if not references:
+            issues.append("arrow must reference a local marker")
+        for marker_id in references:
+            marker = markers.get(marker_id)
+            if marker is None:
+                issues.append(f"missing marker: {marker_id}")
+            elif marker.get("markerUnits") != "userSpaceOnUse":
+                issues.append(f"marker {marker_id} requires userSpaceOnUse")
+    with TemporaryDirectory() as directory:
+        normalized = Path(directory) / "diagram.svg"
+        ET.ElementTree(root).write(normalized, encoding="unicode")
+        issues.extend(audit_svg_arrows(normalized))
+    return issues
+
+
 class PostTrainingDocsSyncTests(unittest.TestCase):
+    def test_lifecycle_feedback_branches_and_verifier_input(self):
+        path = Path(__file__).resolve().parents[1] / "docs/public/topic_discussion/post_training_optimization/training_lifecycle_context.svg"
+        root = ET.parse(path).getroot()
+        nodes = {node.get("id"): node for node in root.iter() if node.get("id")}
+        choice = nodes["feedback-choice"]
+        self.assertTrue(choice.tag.endswith("rect"))
+        self.assertEqual([choice.get(key) for key in ("x", "y", "width", "height")], ["1080", "180", "140", "82"])
+        edges = [node for node in root.iter() if node.tag.endswith("path") and node.get("class") in {"line", "data"}]
+        self.assertEqual(len(edges), 19)
+        self.assertEqual({node.get("data-target") for node in edges if node.get("data-source") == "feedback-choice"}, {"offline-feedback", "online-sampling"})
+        self.assertEqual([(node.get("data-source"), node.get("d")) for node in edges if node.get("data-target") == "verifier"], [("online-sampling", "M985 342H1080")])
+        self.assertEqual(audit_topic_svg(path), [])
+
+    def test_svg_arrow_rules_are_conditional_and_attribute_order_independent(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "fixture.svg"
+            def check(body):
+                path.write_text(f'<svg xmlns="http://www.w3.org/2000/svg">{body}</svg>', encoding="utf-8")
+                return audit_topic_svg(path)
+            self.assertEqual(check('<path d="M0 0H10" stroke="black"/>'), [])
+            nodes = '<rect id="a" x="0" y="0" width="10" height="10"/><rect id="b" x="30" y="0" width="10" height="10"/>'
+            marker = '<defs><marker id="arrow" markerUnits="userSpaceOnUse"/></defs>'
+            for declaration, styles in (
+                ('marker-end="url(#arrow)"', ''),
+                ('style="marker-end: url(#arrow)"', ''),
+                ('class="extra flow"', '<style>.flow{marker-end:url(#arrow)}</style>'),
+            ):
+                with self.subTest(declaration=declaration):
+                    edge = f'<path data-target="b" {declaration} d="M10 5H30" data-source="a"/>'
+                    self.assertEqual(check(marker + nodes + styles + edge), [])
+                    self.assertTrue(check(marker + nodes + styles + edge.replace(' data-source="a"', '')))
+                    self.assertTrue(check(marker.replace('userSpaceOnUse', 'strokeWidth') + nodes + styles + edge))
+                    self.assertTrue(check(marker + nodes + styles + edge.replace('M10 5', 'M15 5')))
+
     def test_scoped_topic_sync_preserves_other_directories_and_titles(self):
         with TemporaryDirectory() as directory:
             root = Path(directory)
@@ -88,7 +176,7 @@ class PostTrainingDocsSyncTests(unittest.TestCase):
 
     def test_post_training_reference_mirrors(self):
         root = Path(__file__).resolve().parents[1]
-        for name in ("glossary.md", "formula_reference.md", "experiment_assets.md", "quickstart.md"):
+        for name in ("glossary.md", "formula_reference.md", "experiment_assets.md", "quickstart.md", "walkthrough.md", "casebook.md"):
             with self.subTest(page=name):
                 relative = Path("topic_discussion/post_training_optimization") / name
                 expected = normalize_generated_markdown(
@@ -124,20 +212,30 @@ class PostTrainingDocsSyncTests(unittest.TestCase):
     def test_body_diagrams_have_connected_arrows_and_explicit_fonts(self):
         root = Path(__file__).resolve().parents[1]
         topic = root / "topic_discussion/post_training_optimization"
-        for page in sorted(topic.glob("[0-9][0-9]_*.md")):
+        for page in sorted(topic.glob("*.md")):
             images = re.findall(r"!\[[^\]]*\]\(([^)]+\.svg)\)", page.read_text(encoding="utf-8"))
-            self.assertTrue(images, page.name)
+            if re.match(r"[0-9][0-9]_", page.name):
+                self.assertTrue(images, page.name)
             for relative in images:
                 image = (page.parent / relative).resolve()
                 with self.subTest(page=page.name, image=image.name):
                     self.assertTrue(image.is_file())
-                    self.assertEqual(audit_svg_arrows(image), [])
+                    # Overview arrows now receive the same strict identity
+                    # checks as body arrows; unresolved geometry must fail.
+                    self.assertEqual(audit_topic_svg(image), [])
                     text = image.read_text(encoding="utf-8")
                     self.assertNotRegex(text, r"\bfont\s*:")
-                    self.assertIn('markerUnits="userSpaceOnUse"', text)
-                    for edge in re.findall(r"<path\b[^>]*class=\"(?:l|line|flow|state|bind|feedback)\"[^>]*/>", text):
-                        self.assertIn('data-source="', edge)
-                        self.assertIn('data-target="', edge)
+
+    def test_intro_overview_count_and_stage_anchors(self):
+        topic = Path(__file__).resolve().parents[1] / "topic_discussion/post_training_optimization"
+        intro = (topic / "intro.md").read_text(encoding="utf-8")
+        images = re.findall(r"!\[[^\]]*\]\(([^)]+\.svg)\)", intro)
+        self.assertEqual([Path(image).name for image in images], [
+            "post_training_roadmap.svg", "post_training_knowledge_map.svg",
+        ])
+        for name, anchor in (("walkthrough.md", "stage-selection"), ("04_end_to_end_experiment.md", "sft-upgrade-conditions")):
+            self.assertIn(f"./{name}#{anchor}", intro)
+            self.assertEqual((topic / name).read_text(encoding="utf-8").count(f'<a id="{anchor}"></a>'), 1)
 
     def test_navigation_uses_current_post_training_pages(self):
         entries = NAV_FILES["topic_discussion"]

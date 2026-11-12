@@ -50,7 +50,7 @@
   <rect x="1131" y="409" width="159" height="88" rx="12" fill="#FFEDD5" stroke="#EA580C" stroke-width="2"/>
   <text x="1210" y="437" text-anchor="middle" class="head" fill="#9A3412">反馈缺口</text>
   <text x="1210" y="462" text-anchor="middle" class="body">离线偏好优化</text>
-  <text x="1210" y="484" text-anchor="middle" class="body">在线 RL / RLVR</text>
+  <text x="1210" y="484" text-anchor="middle" class="body">在线强化学习</text>
 
   <rect x="1140" y="232" width="174" height="118" rx="16" fill="#FEE2E2" stroke="#DC2626" stroke-width="2"/>
   <text x="1227" y="266" text-anchor="middle" class="head" fill="#991B1B">分支前置条件</text>

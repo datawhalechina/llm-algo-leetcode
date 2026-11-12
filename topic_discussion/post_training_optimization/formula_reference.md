@@ -35,6 +35,7 @@
 |:---|:---|:---|:---|
 | 自回归分解 | $p_\theta(x_{1:T})=\prod_{t=0}^{T-1}p_\theta(x_{t+1}\mid x_{\le t})$ | 位置 $t$ 的输出预测位置 $t+1$ | [13 SFT 监督边界与损失](../../02_PyTorch_Algorithms/13_SFT_Training_Loop.ipynb)：`shift_logits`、`shift_labels` |
 | SFT 有效目标损失 | $L_{\mathrm{SFT}}=-\dfrac{\sum_{b,t}m_{b,t}\log p_\theta(x_{b,t+1}\mid x_{b,\le t})}{\sum_{b,t}m_{b,t}}$ | 有效词元总数必须大于 0；先汇总分子和分母，再统一归约 | [13 SFT 监督边界与损失](../../02_PyTorch_Algorithms/13_SFT_Training_Loop.ipynb)：`loss_sum`、`valid_token_count` |
+| 样本等权评测损失 | $L_{\mathrm{sample}}=\dfrac1N\sum_{i=1}^N\dfrac{\sum_t m_{i,t}\ell_{i,t}}{\sum_t m_{i,t}}$ | $\ell_{i,t}$ 为目标词元负对数概率；每条样本的有效目标数及 $N$ 均大于 0。先对每条样本的词元平均，再对样本平均 | [Part 02 · 63 LoRA 选型](../../02_PyTorch_Algorithms/63_LoRA_Variants_Benchmark.ipynb)历史评测采用此口径；不能与 Part 02 · 13 / 15 的全词元加权指标直接混比，切换口径需重定门槛并以新标签复测 |
 | LoRA 权重增量 | $W'=W_0+sBA$，其中 $A\in\mathbb{R}^{r\times d_{in}}$、$B\in\mathbb{R}^{d_{out}\times r}$ | 线性模块；标准 LoRA 常用 $s=\alpha/r$ | [14 LoRA](../../02_PyTorch_Algorithms/14_LoRA_Tutorial.ipynb)：可训练参数、旁路输出、合并误差 |
 | LoRA 参数量 | $N_{\mathrm{LoRA}}=r(d_{in}+d_{out})$ | 按目标模块逐项累计 | [31 LoRA 变体](../../02_PyTorch_Algorithms/31_LoRA_Variants_Theory.ipynb)：`trainable_params`、`parameter_budget` |
 | 长度溢出率 | $r_{\mathrm{overflow}}=\#\{L_i>C\}/N$ | 样本级统计，$C$ 为目标窗口 | [30 长上下文微调](../../02_PyTorch_Algorithms/30_Long_Context_Fine_Tuning.ipynb)：长度分布、监督保留量 |
@@ -104,6 +105,6 @@
 |:---|:---|
 | Attention mask 与目标 / 动作掩码 | 前者控制模型可见位置，后者决定哪些位置进入训练目标。 |
 | Token 平均与样本平均 | 回答长度不同时，两种分母会产生不同的损失和梯度权重。 |
-| 参考策略与旧策略 | 参考策略约束长期偏离；旧策略记录当前轨迹来自哪个行为分布。 |
+| 参考策略、行为策略与旧策略 | 参考策略提供固定的偏离参照；行为策略描述实际采样分布；旧策略是更新目标使用的固定比较快照。行为策略与旧策略是否一致，需核对采样设置和概率计算方式。 |
 | 采样 Token 上的对数概率差与完整 KL | 前者是已采样动作上的估计，不能直接称为完整词表分布的精确 KL。 |
 | 候选级优势与 Token 级策略比率 | GRPO 可把一个候选优势应用到该回答的有效 Token，但二者粒度不同。 |

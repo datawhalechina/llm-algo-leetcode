@@ -13,9 +13,9 @@
 
 ## 本节导读
 
-当真实示范无法覆盖目标任务的语言、难度或失败切片时，可以用模型生成新的指令与回答。生成数量本身不代表新增了有效监督：模板复写会制造近重复，评测任务重现会污染独立证据，未经验证的流畅回答也可能把错误送入训练集。
+当真实示范无法覆盖目标任务的语言、难度或失败切片时，可以用模型生成新的指令与回答。生成数量本身不代表新增了有效监督：模板复写指只替换少数字词、却没有增加新任务要求的生成，例如反复改写同一种退款提问；这会制造近重复，评测任务重现会污染独立证据，未经验证的流畅回答也可能把错误送入训练集。
 
-本节从任务蓝图出发，依次固定生成身份、比较候选与参考数据的相似度，并组合规则或执行验证器形成准入决定。完成后，你应该能把合成候选分为接纳、复核和拒绝三类，并把可追溯记录交给32节执行最终的数据契约与切分审计。
+任务蓝图是生成前写明的能力目标、输入范围和成功条件，用来限定要补足哪类示范。本节记录蓝图、生成模型和提示模板的版本，再检查新指令是否重复已有任务、回答是否通过规则或执行验证。检查后将候选分为接纳、复核和拒绝三类；接纳的记录保留来源与验证结果，交给32节继续检查字段、训练重复和评测任务重合。
 
 **关键词：** `task blueprint`, `generation identity`, `novelty`, `verifier`, `admission`
 
@@ -36,17 +36,17 @@
 - [32. SFT Dataset Contract and Leakage Audit | SFT 数据契约与泄漏审计](./32_Data_Engineering_for_SFT.md)
 
 ---
-## Step 1：任务蓝图如何形成可追溯的生成身份
+## Step 1：怎样记录合成样本的来源
 
 合成任务先固定要补足的能力、输入范围与成功条件，再选择生成模型和提示模板。相同文本若来自不同蓝图、生成器或模板版本，仍属于不同生成批次；缺少这些字段时，后续无法定位错误来自任务设计还是生成配置。
 
-设候选样本为 $z$，它的生成身份写成
+把这些来源信息与批次内的样本标识放在一起，称为生成身份。设候选样本为 $z$，写成
 
 $$
 g(z)=\big(b(z),m(z),p(z),s(z)\big),
 $$
 
-其中，$b(z)$ 是任务蓝图版本，$m(z)$ 是生成器版本，$p(z)$ 是提示模板版本，$s(z)$ 是候选在生成批次内的稳定标识。四个分量共同确定候选来源；生成身份只回答“样本怎样产生”，不判断内容是否新颖或正确。
+其中，$b(z)$ 是任务蓝图版本，$m(z)$ 是生成器版本，$p(z)$ 是提示模板版本，$s(z)$ 是候选在生成批次内的稳定标识。四个分量共同确定候选来源。把生成配置、验证结果和后续处理记录连到同一候选的来源链，称为生成血缘，用于回查问题发生在哪个环节；生成身份只回答“样本怎样产生”，不判断内容是否新颖或正确。
 
 | 生成身份字段 | 固定内容 | 支持的判断 |
 |:---|:---|:---|
@@ -58,76 +58,77 @@ $$
 ![合成候选从任务蓝图进入验证准入](../public/02_PyTorch_Algorithms/pt_synthetic_data_generation_admission.svg)
 ## Step 2：怎样区分新增覆盖、模板复写与评测污染
 
-候选需要同时与已有训练数据和冻结评测任务比较。训练侧比较用于识别模板化近重复，评测侧比较用于阻断任务重现；两者不能合并成一个“相似度合格”结论，因为近重复可以进入人工复核，评测污染必须直接拒绝。
+候选需要同时与已有训练数据和冻结评测任务比较。本例把全部任务条件写在指令中，不设独立上下文；带独立上下文的数据需将其纳入任务身份。训练侧比较用于识别模板化近重复，评测侧比较用于阻断任务重现；两者不能合并成一个“相似度合格”结论，因为近重复可以进入人工复核，评测污染必须直接拒绝。
 
-把文本 $x$ 的字符 $n$-gram 集合记为 $N_n(x)$，候选指令 $q_z$ 与参考指令集合 $D$ 的最大相似度为
+字符 $n$-gram 是连续 $n$ 个字符组成的片段；例如“三步退款”在 $n=2$ 时产生“三步”“步退”“退款”。Jaccard 相似度用共有片段数除以全部不同片段数。把文本 $x$ 的字符片段集合记为 $N_n(x)$，候选指令 $q_z$ 与参考指令集合 $D$ 的最大相似度为
 
 $$
 S(z,D)=\max_{d\in D}\frac{|N_n(q_z)\cap N_n(d)|}{|N_n(q_z)\cup N_n(d)|},
 \qquad \operatorname{novelty}(z)=1-S(z,D).
 $$
 
-$S(z,D)$ 越高，候选越接近已有训练指令；它只是一项筛查信号，不代表语义等价。冻结评测集另外使用规范化任务身份检查：候选与评测任务完全重合时，无论新颖度和回答质量如何，都不能进入训练数据池。
+$D$ 为空时约定最大相似度为0；两个空片段集合的相似度约定为1，空指令仍会因缺少任务而被拒绝。$S(z,D)$ 越高，候选越接近已有训练指令；它只是一项筛查信号，不代表语义等价。冻结评测集另外使用规范化任务身份检查：候选与评测任务完全重合时，无论新颖度和回答质量如何，都不能进入训练数据池。
 
 | 检查对象 | 比较范围 | 结果用途 |
 |:---|:---|:---|
 | 训练参考指令 | 候选与已有训练任务 | 高相似候选进入复核，检查模板复写或覆盖不足 |
 | 同批候选 | 当前生成批次内部 | 避免同一模板的大量轻微变体挤占数据预算 |
 | 冻结评测任务 | 候选任务与独立评测任务 | 完全重合时拒绝，保持后续评测独立 |
-## Step 3：验证器证据如何形成接纳、复核与拒绝
+## Step 3：验证器证据如何决定接纳、复核与拒绝
 
-验证器按任务类型提供不同证据：格式规则检查结构，执行验证检查可运行结果，质量评分补充开放式回答判断。每个候选都应保留验证器名称、版本、结果与失败原因，不能只保存一个聚合分数。
+验证器（verifier）对候选提供可回查的判断：格式规则检查结构，执行验证检查运行结果，质量评分补充开放式回答评价。每项结果保留验证器名称、版本、通过状态和失败原因。任务必须先声明至少一个必需验证器；空指令或空回答即使获得高评分，也无法提供有效监督。
 
-设必需验证器集合为 $H$，验证结果为 $v_h(z)\in\{0,1\}$，质量分数为 $Q(z)$，最低接纳分数为 $\tau_Q$。必需验证条件为
-
-$$
-V(z)=\prod_{h\in H}v_h(z).
-$$
-
-当生成身份缺失、命中评测污染或 $V(z)=0$ 时拒绝；验证通过但相似度过高或质量证据不足时进入复核；其余候选才接纳。三类结果都保留原因，使数据生产可以修复模板、验证器或任务蓝图。
+必需验证器全部通过后，再按质量与相似度决定候选去向。设质量分数为 $Q$，复核线与接纳线分别为 $\tau_r$、$\tau_a$，满足 $0\le\tau_r\le\tau_a\le1$：$Q<\tau_r$ 时拒绝；$\tau_r\le Q<\tau_a$ 时复核；$Q\ge\tau_a$ 且没有其他风险时接纳。例如两条线取0.60与0.80，0.60进入复核，0.80可以接纳。若同时命中污染与近重复，保留全部原因，但最终决定仍为拒绝。
 
 | 决定 | 触发条件 | 后续动作 |
 |:---|:---|:---|
-| 接纳 | 身份完整、无评测污染、必需验证通过、相似度与质量达到门槛 | 转换为带血缘的SFT候选记录 |
-| 复核 | 必需验证通过，但近重复或质量分数位于复核区间 | 人工检查任务价值与回答质量 |
-| 拒绝 | 身份缺失、评测污染或任一必需验证失败 | 保留失败原因并返回生成环节 |
+| 接纳 | 内容完整、无评测污染、必需验证通过、相似度低于复核线且质量达到接纳线 | 保留生成与验证证据，进入数据契约及切分审计 |
+| 复核 | 必需验证通过，但近重复或质量位于复核区间 | 人工检查任务价值与回答质量，再决定是否重新准入 |
+| 拒绝 | 内容缺失、评测污染、必需验证缺失或失败、质量低于复核线 | 保留原因，修复或移除候选 |
 
 ![相似度、评测污染与验证器共同决定候选去向](../public/02_PyTorch_Algorithms/pt_synthetic_data_verifier_gate.svg)
 <a id="mechanism-practice"></a>
 ## Step 4：实现合成候选的验证准入
 
-题目区使用小型任务蓝图、生成身份、参考指令和验证结果复现候选准入。学习者需要补全生成身份、字符片段相似度、三态准入和带证据的 SFT 交接。测试同时覆盖训练集复写、同批次近重复、评测污染、验证器版本、阈值边界和重复身份。
+题目给出任务蓝图、生成来源、参考指令和验证结果。骨架校验阈值、收集问题并保存结果；你将检查来源信息是否齐全、计算指令相似度、选择接纳／复核／拒绝，并筛出可以交给32节继续检查的候选。测试包含已有任务复写、同批近重复、评测任务重现、验证器缺失和阈值等号等情况。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 |:---|:---|:---|:---|
-| TODO 1：固定生成身份<br>`build_generation_identity` | 将蓝图、生成器、模板与候选标识组成可追溯身份 | 任一版本变化都必须改变身份；缺失字段不得形成有效身份 | 相同候选更换模板版本后身份变化，缺失生成器时报错 |
-| TODO 2：计算参考相似度<br>`max_reference_similarity` | 用字符片段 Jaccard 相似度识别模板复写 | $n$ 必须为正整数；空参考集返回零；精确重复返回一 | 精确重复、不同任务、空参考集和非法 $n$ 得到预期结果 |
-| TODO 3：聚合准入证据<br>`decide_synthetic_admission` | 组合训练参考、同批候选、评测污染、验证器和质量证据 | 阈值顺序有效；必需验证器保留版本和失败原因；拒绝优先于复核 | 干净候选接纳；两类近重复进入复核；污染、缺失或失败验证器被拒绝 |
-| TODO 4：构造 SFT 交接记录<br>`build_sft_candidate_records` | 只输出接纳样本并保留准入证据 | 样本身份不得重复；来源、验证器版本和决定可回查 | 拒绝行被排除；重复身份报错；交接字段与准入证据完整 |
+| TODO 1：检查生成来源是否齐全<br>`build_generation_identity` | 检查蓝图、生成器、模板与候选标识是否完整 | 任一版本变化都必须改变身份；缺失字段不得形成有效身份 | 相同候选更换模板版本后身份变化，缺失生成器时报错 |
+| TODO 2：计算集合相似度<br>`max_reference_similarity` | 用字符片段 Jaccard 相似度识别模板复写 | $n$ 必须为正整数；空参考集返回零；精确重复返回一 | 精确重复、不同任务、空参考集和非法 $n$ 得到预期结果 |
+| TODO 3：选择三态准入结果<br>`decide_synthetic_admission` | 在全部原因已收集后，按风险优先级选择准入结果 | 阈值顺序有效；必需验证器保留版本和失败原因；拒绝优先于复核 | 干净候选接纳；两类近重复进入复核；污染、缺失或失败验证器被拒绝 |
+| TODO 4：筛选可继续审计的记录<br>`build_sft_candidate_records` | 判断决定与原因是否同时允许交接 | 样本身份不得重复；来源、验证器版本和决定可回查 | 拒绝与复核行排除；决定与原因矛盾时排除；生成、评分和验证证据完整保留 |
 
 ```python
+from copy import deepcopy
+import json
 from typing import Dict, Iterable, List, Sequence
+
 ```
 
 
 ```python
 def normalize_text(text: object) -> str:
-    """统一大小写和空白，保留可复现的文本比较形式。"""
+    """统一大小写与空白，生成相似度及精确任务比较形式。"""
     return " ".join(str(text or "").casefold().split())
 
 
 def build_generation_identity(candidate: Dict[str, object]) -> tuple[str, str, str, str]:
-    """构造任务蓝图、生成器、模板和候选标识组成的生成身份。"""
+    """读取蓝图、生成模型、模板版本与候选标识，拒绝缺项或空值。"""
+    fields = ("blueprint_id", "generator_id", "template_id", "candidate_id")
+    identity = tuple(str(candidate.get(field) or "").strip() for field in fields)
     # ==========================================
-    # TODO 1：读取四个生成身份字段，缺失时抛出 ValueError。
-    # identity = (...)
+    # TODO 1：检查生成来源是否齐全
     # ==========================================
-    raise NotImplementedError("TODO 1：构造生成身份")
+    # missing = ???  # 字段名列表；只保留生成身份中为空的分量所对应的字段。
+    raise NotImplementedError("TODO 1：检查生成来源是否齐全")
+    if missing:
+        raise ValueError(f"生成身份字段缺失：{missing}")
     return identity
 
 
 def character_ngrams(text: object, n: int = 2) -> set[str]:
-    """把规范化文本转换为字符 n-gram 集合。"""
+    """提取字符片段集合，短文本保留为单个片段。"""
     normalized = normalize_text(text)
     if not normalized:
         return set()
@@ -139,13 +140,20 @@ def character_ngrams(text: object, n: int = 2) -> set[str]:
 def max_reference_similarity(
     instruction: object, references: Iterable[object], n: int = 2
 ) -> float:
-    """返回候选指令与参考指令的最大 Jaccard 相似度。"""
-    # ==========================================
-    # TODO 2：检查 n，逐一比较字符片段集合并返回最大相似度。
-    # candidate_ngrams = ...
-    # similarities = ...
-    # ==========================================
-    raise NotImplementedError("TODO 2：计算最大参考相似度")
+    """比较字符集合，返回候选与参考指令的最大重合率。"""
+    if type(n) is not int or n <= 0:
+        raise ValueError("n 必须为正整数")
+    candidate_ngrams = character_ngrams(instruction, n=n)
+    similarities = []
+    for reference in references:
+        reference_ngrams = character_ngrams(reference, n=n)
+        union = candidate_ngrams | reference_ngrams
+        # ==========================================
+        # TODO 2：计算集合相似度
+        # ==========================================
+        # similarity = ???  # [0, 1]；两组字符片段的重合率，两个空集合视为完全相同。
+        raise NotImplementedError("TODO 2：计算集合相似度")
+        similarities.append(similarity)
     return max(similarities, default=0.0)
 
 
@@ -159,20 +167,71 @@ def decide_synthetic_admission(
     quality_admit_threshold: float = 0.80,
     quality_review_threshold: float = 0.60,
 ) -> Dict[str, object]:
-    """组合来源、污染、相似度与验证器证据，形成三态准入决定。"""
+    """保留各项风险，按拒绝、复核、接纳的优先级选择结果。"""
+    if not required_verifiers or any(not isinstance(name, str) or not name.strip() for name in required_verifiers):
+        raise ValueError("必须声明至少一个具名验证器")
+    if not 0.0 <= similarity_review_threshold <= 1.0:
+        raise ValueError("similarity_review_threshold 必须位于 [0, 1]")
+    if not 0.0 <= quality_review_threshold <= quality_admit_threshold <= 1.0:
+        raise ValueError("质量阈值必须满足 0 <= review <= admit <= 1")
+    generation_identity = build_generation_identity(candidate)
+    instruction_key = normalize_text(candidate.get("instruction", ""))
+    training_similarity = max_reference_similarity(
+        candidate.get("instruction", ""), training_references
+    )
+    batch_similarity = max_reference_similarity(
+        candidate.get("instruction", ""), batch_references
+    )
+    quality_score = float(candidate.get("quality_score", 0.0))
+    if not 0.0 <= quality_score <= 1.0:
+        raise ValueError("quality_score 必须位于 [0, 1]")
+    verifier_evidence = deepcopy(candidate.get("verifier_results") or {})
+    if not isinstance(verifier_evidence, dict):
+        raise ValueError("verifier_results 必须为字典")
+    reasons = []
+    if not instruction_key:
+        reasons.append("missing_instruction")
+    if not normalize_text(candidate.get("response")):
+        reasons.append("missing_response")
+    if instruction_key in evaluation_tasks:
+        reasons.append("evaluation_task_leak")
+    for verifier in required_verifiers:
+        evidence = verifier_evidence.get(verifier)
+        if not isinstance(evidence, dict) or not evidence.get("version"):
+            reasons.append(f"required_verifier_missing:{verifier}")
+        elif evidence.get("passed") is not True:
+            reasons.append(f"required_verifier_failed:{verifier}")
+            if not str(evidence.get("failure_reason") or "").strip():
+                reasons.append(f"required_verifier_reason_missing:{verifier}")
+    if training_similarity >= similarity_review_threshold:
+        reasons.append("high_training_similarity")
+    if batch_similarity >= similarity_review_threshold:
+        reasons.append("high_batch_similarity")
+    if quality_review_threshold <= quality_score < quality_admit_threshold:
+        reasons.append("quality_needs_review")
+    elif quality_score < quality_review_threshold:
+        reasons.append("quality_below_minimum")
+
+    reject_reasons = [
+        reason for reason in reasons
+        if reason in {"evaluation_task_leak", "missing_instruction", "missing_response"}
+        or reason.startswith("required_verifier_missing:")
+        or reason.startswith("required_verifier_failed:")
+        or reason.startswith("required_verifier_reason_missing:")
+        or reason == "quality_below_minimum"
+    ]
     # ==========================================
-    # TODO 3：核对阈值和验证器证据，按 reject > review > admit 决策。
-    # reasons = ...
-    # decision = ...
+    # TODO 3：选择三态准入结果
     # ==========================================
-    raise NotImplementedError("TODO 3：聚合准入证据")
+    # decision = ???  # 字符串；有拒绝原因时拒绝，否则有复核原因时复核，其余接纳。
+    raise NotImplementedError("TODO 3：选择三态准入结果")
     return {
-        "candidate_id": str(candidate.get("candidate_id", "")),
-        "blueprint_id": str(candidate.get("blueprint_id", "")),
-        "generator_id": str(candidate.get("generator_id", "")),
-        "template_id": str(candidate.get("template_id", "")),
-        "instruction": str(candidate.get("instruction", "")),
-        "response": str(candidate.get("response", "")),
+        "candidate_id": generation_identity[3],
+        "blueprint_id": generation_identity[0],
+        "generator_id": generation_identity[1],
+        "template_id": generation_identity[2],
+        "instruction": str(candidate.get("instruction") or "").strip(),
+        "response": str(candidate.get("response") or "").strip(),
         "generation_identity": generation_identity,
         "training_similarity": training_similarity,
         "batch_similarity": batch_similarity,
@@ -184,20 +243,55 @@ def decide_synthetic_admission(
 
 
 def build_sft_candidate_records(rows: Sequence[Dict[str, object]]) -> List[Dict[str, object]]:
-    """把接纳记录转换为32节继续审计所需的带证据候选。"""
-    # ==========================================
-    # TODO 4：过滤接纳行、拒绝重复身份，并保留来源和验证器版本。
-    # records = ...
-    # ==========================================
-    raise NotImplementedError("TODO 4：构造 SFT 交接记录")
+    """将通过筛查的候选转为SFT记录，保留来源版本和验证结果。"""
+    records = []
+    seen_ids = set()
+    for row in rows:
+        # ==========================================
+        # TODO 4：筛选可继续审计的记录
+        # ==========================================
+        # handoff_allowed = ???  # bool；同时满足准入决定与原因清单的一致性。
+        raise NotImplementedError("TODO 4：筛选可继续审计的记录")
+        if not handoff_allowed:
+            continue
+        sample_id = str(row["candidate_id"])
+        if sample_id in seen_ids:
+            raise ValueError(f"接纳样本身份重复：{sample_id}")
+        seen_ids.add(sample_id)
+        verifier_versions = {
+            name: evidence["version"]
+            for name, evidence in row["verifier_evidence"].items()
+            if isinstance(evidence, dict) and evidence.get("version")
+        }
+        records.append({
+            "sample_id": sample_id,
+            "source_id": json.dumps(list(row["generation_identity"]), ensure_ascii=False, separators=(",", ":")),
+            "split": "train",
+            "instruction": row["instruction"],
+            "input": "",
+            "response": row["response"],
+            "admission_decision": row["decision"],
+            "verifier_versions": verifier_versions,
+            "provenance": {
+                "generation_identity": list(row["generation_identity"]),
+                "admission_decision": row["decision"],
+                "verifier_evidence": deepcopy(row["verifier_evidence"]),
+                "quality_score": row["quality_score"],
+                "training_similarity": row["training_similarity"],
+                "batch_similarity": row["batch_similarity"],
+                "reasons": list(row["reasons"]),
+            },
+        })
+    return records
 ```
 
 ## 测试
 
-运行下方 CPU 机制测试，检查生成身份、相似度边界、验证器优先级、三态准入决定，以及交给32节的血缘字段。
+运行下方CPU机制测试，检查来源版本是否齐全、相似度如何影响候选去向、验证失败是否优先拒绝，以及交给32节的记录是否仍保留生成与验证信息。
 
 ```python
 def _candidate(**overrides) -> Dict[str, object]:
+    """构造可覆盖来源、质量与验证结果的候选。"""
     base = {
         "candidate_id": "candidate-1",
         "blueprint_id": "refund-v1",
@@ -215,6 +309,7 @@ def _candidate(**overrides) -> Dict[str, object]:
 
 
 def _assert_raises(error_type, fn) -> None:
+    """确认非法输入抛出指定异常。"""
     try:
         fn()
     except error_type:
@@ -223,6 +318,7 @@ def _assert_raises(error_type, fn) -> None:
 
 
 def test_generation_identity():
+    """核对生成版本变化与身份缺失。"""
     original = _candidate()
     changed = _candidate(template_id="self-instruct-v2")
     assert build_generation_identity(original) != build_generation_identity(changed)
@@ -230,6 +326,7 @@ def test_generation_identity():
 
 
 def test_similarity_boundaries():
+    """核对空参考、完全重复与不同任务的相似度。"""
     instruction = "说明未发货订单如何修改收货地址"
     assert max_reference_similarity(instruction, []) == 0.0
     assert max_reference_similarity(instruction, [instruction]) == 1.0
@@ -239,6 +336,7 @@ def test_similarity_boundaries():
 
 
 def test_admission_decisions():
+    """分别覆盖接纳、复核与拒绝的来源。"""
     required = ["format", "answer"]
     clean = decide_synthetic_admission(
         _candidate(), ["解释退款处理时限"], [], set(), required
@@ -288,6 +386,7 @@ def test_admission_decisions():
 
 
 def test_reject_precedes_review():
+    """同时记录多项原因，并保证拒绝优先。"""
     candidate = _candidate(
         quality_score=0.70,
         verifier_results={
@@ -312,6 +411,7 @@ def test_reject_precedes_review():
 
 
 def test_sft_candidate_handoff():
+    """核对交接过滤、重复身份及验证器版本。"""
     admitted = decide_synthetic_admission(
         _candidate(), ["解释退款处理时限"], [], set(), ["format", "answer"]
     )
@@ -320,11 +420,53 @@ def test_sft_candidate_handoff():
         [], [], {normalize_text(_candidate()["instruction"])}, ["format", "answer"],
     )
     records = build_sft_candidate_records([admitted, rejected])
+    assert build_sft_candidate_records([rejected]) == []
+    assert build_sft_candidate_records([{**admitted, "decision": "review"}]) == []
     assert [record["sample_id"] for record in records] == ["candidate-1"]
-    assert records[0]["source_id"] == "refund-v1|teacher-v2|self-instruct-v1|candidate-1"
+    assert json.loads(records[0]["source_id"]) == ["refund-v1", "teacher-v2", "self-instruct-v1", "candidate-1"]
     assert records[0]["split"] == "train" and records[0]["response"]
     assert records[0]["verifier_versions"] == {"format": "format-v1", "answer": "answer-v2"}
     _assert_raises(ValueError, lambda: build_sft_candidate_records([admitted, admitted]))
+
+
+
+def test_empty_content_and_verifier_policy():
+    """空监督、空验证策略及缺失版本均不能获得接纳。"""
+    required = ["format", "answer"]
+    for field in ("instruction", "response"):
+        row = decide_synthetic_admission(_candidate(**{field: "   "}), [], [], set(), required)
+        assert row["decision"] == "reject" and f"missing_{field}" in row["reasons"]
+    _assert_raises(ValueError, lambda: build_generation_identity(_candidate(template_id=None)))
+    _assert_raises(ValueError, lambda: decide_synthetic_admission(_candidate(), [], [], set(), []))
+    row = decide_synthetic_admission(_candidate(verifier_results={"format": {"passed": True}}), [], [], set(), required)
+    assert row["decision"] == "reject"
+    assert set(row["reasons"]) == {"required_verifier_missing:format", "required_verifier_missing:answer"}
+    _assert_raises(ValueError, lambda: max_reference_similarity("文本", [], n=True))
+
+
+def test_quality_threshold_boundaries():
+    """质量恰好等于复核线和接纳线时，进入相应区间。"""
+    for score, expected in ((0.59, "reject"), (0.60, "review"), (0.799, "review"), (0.80, "admit")):
+        row = decide_synthetic_admission(_candidate(quality_score=score), [], [], set(), ["format", "answer"])
+        assert row["decision"] == expected
+    for score in (float("nan"), -0.1, 1.1):
+        _assert_raises(ValueError, lambda: decide_synthetic_admission(_candidate(quality_score=score), [], [], set(), ["format", "answer"]))
+
+
+def test_handoff_evidence_and_consistency():
+    """证据完整交接且独立复制，决定与原因矛盾时不得交接。"""
+    candidate = _candidate()
+    row = decide_synthetic_admission(candidate, [], [], set(), ["format", "answer"])
+    record = build_sft_candidate_records([row])[0]
+    assert record["provenance"]["generation_identity"] == list(row["generation_identity"])
+    assert record["provenance"]["verifier_evidence"] == candidate["verifier_results"]
+    row["verifier_evidence"]["answer"]["version"] = "changed"
+    assert record["provenance"]["verifier_evidence"]["answer"]["version"] == "answer-v2"
+    inconsistent = {**row, "reasons": ["evaluation_task_leak"]}
+    assert build_sft_candidate_records([inconsistent]) == []
+    # JSON编码保留身份分量边界，不因分量包含分隔符而改变来源。
+    special = decide_synthetic_admission(_candidate(blueprint_id="refund|v1"), [], [], set(), ["format", "answer"])
+    assert json.loads(build_sft_candidate_records([special])[0]["source_id"])[0] == "refund|v1"
 
 
 test_generation_identity()
@@ -333,6 +475,10 @@ test_admission_decisions()
 test_reject_precedes_review()
 test_sft_candidate_handoff()
 print("✅ 合成候选生成身份、相似度、验证器与三态准入测试通过。")
+test_empty_content_and_verifier_policy()
+test_quality_threshold_boundaries()
+test_handoff_evidence_and_consistency()
+
 ```
 
 ---
@@ -350,13 +496,15 @@ print("✅ 合成候选生成身份、相似度、验证器与三态准入测试
 
 ```python
 def normalize_text(text: object) -> str:
+    """统一大小写与空白，生成相似度及精确任务比较形式。"""
     return " ".join(str(text or "").casefold().split())
 
 
 def build_generation_identity(candidate: Dict[str, object]) -> tuple[str, str, str, str]:
-    # TODO 1：构造生成身份，缺失字段时立即停止准入。
+    """读取蓝图、生成模型、模板版本与候选标识，拒绝缺项或空值。"""
     fields = ("blueprint_id", "generator_id", "template_id", "candidate_id")
-    identity = tuple(str(candidate.get(field, "")).strip() for field in fields)
+    identity = tuple(str(candidate.get(field) or "").strip() for field in fields)
+    # TODO 1：检查生成来源是否齐全
     missing = [field for field, value in zip(fields, identity) if not value]
     if missing:
         raise ValueError(f"生成身份字段缺失：{missing}")
@@ -364,6 +512,7 @@ def build_generation_identity(candidate: Dict[str, object]) -> tuple[str, str, s
 
 
 def character_ngrams(text: object, n: int = 2) -> set[str]:
+    """提取字符片段集合，短文本保留为单个片段。"""
     normalized = normalize_text(text)
     if not normalized:
         return set()
@@ -375,14 +524,15 @@ def character_ngrams(text: object, n: int = 2) -> set[str]:
 def max_reference_similarity(
     instruction: object, references: Iterable[object], n: int = 2
 ) -> float:
-    # TODO 2：检查片段长度，再计算候选与参考指令的最大 Jaccard 相似度。
-    if not isinstance(n, int) or n <= 0:
+    """比较字符集合，返回候选与参考指令的最大重合率。"""
+    if type(n) is not int or n <= 0:
         raise ValueError("n 必须为正整数")
     candidate_ngrams = character_ngrams(instruction, n=n)
     similarities = []
     for reference in references:
         reference_ngrams = character_ngrams(reference, n=n)
         union = candidate_ngrams | reference_ngrams
+        # TODO 2：计算集合相似度
         similarity = len(candidate_ngrams & reference_ngrams) / len(union) if union else 1.0
         similarities.append(similarity)
     return max(similarities, default=0.0)
@@ -398,7 +548,9 @@ def decide_synthetic_admission(
     quality_admit_threshold: float = 0.80,
     quality_review_threshold: float = 0.60,
 ) -> Dict[str, object]:
-    # TODO 3：聚合两类相似度、污染、验证器和质量证据。
+    """保留各项风险，按拒绝、复核、接纳的优先级选择结果。"""
+    if not required_verifiers or any(not isinstance(name, str) or not name.strip() for name in required_verifiers):
+        raise ValueError("必须声明至少一个具名验证器")
     if not 0.0 <= similarity_review_threshold <= 1.0:
         raise ValueError("similarity_review_threshold 必须位于 [0, 1]")
     if not 0.0 <= quality_review_threshold <= quality_admit_threshold <= 1.0:
@@ -414,8 +566,14 @@ def decide_synthetic_admission(
     quality_score = float(candidate.get("quality_score", 0.0))
     if not 0.0 <= quality_score <= 1.0:
         raise ValueError("quality_score 必须位于 [0, 1]")
-    verifier_evidence = dict(candidate.get("verifier_results", {}))
+    verifier_evidence = deepcopy(candidate.get("verifier_results") or {})
+    if not isinstance(verifier_evidence, dict):
+        raise ValueError("verifier_results 必须为字典")
     reasons = []
+    if not instruction_key:
+        reasons.append("missing_instruction")
+    if not normalize_text(candidate.get("response")):
+        reasons.append("missing_response")
     if instruction_key in evaluation_tasks:
         reasons.append("evaluation_task_leak")
     for verifier in required_verifiers:
@@ -424,6 +582,8 @@ def decide_synthetic_admission(
             reasons.append(f"required_verifier_missing:{verifier}")
         elif evidence.get("passed") is not True:
             reasons.append(f"required_verifier_failed:{verifier}")
+            if not str(evidence.get("failure_reason") or "").strip():
+                reasons.append(f"required_verifier_reason_missing:{verifier}")
     if training_similarity >= similarity_review_threshold:
         reasons.append("high_training_similarity")
     if batch_similarity >= similarity_review_threshold:
@@ -435,19 +595,21 @@ def decide_synthetic_admission(
 
     reject_reasons = [
         reason for reason in reasons
-        if reason == "evaluation_task_leak"
+        if reason in {"evaluation_task_leak", "missing_instruction", "missing_response"}
         or reason.startswith("required_verifier_missing:")
         or reason.startswith("required_verifier_failed:")
+        or reason.startswith("required_verifier_reason_missing:")
         or reason == "quality_below_minimum"
     ]
+    # TODO 3：选择三态准入结果
     decision = "reject" if reject_reasons else "review" if reasons else "admit"
     return {
-        "candidate_id": str(candidate.get("candidate_id", "")),
-        "blueprint_id": str(candidate.get("blueprint_id", "")),
-        "generator_id": str(candidate.get("generator_id", "")),
-        "template_id": str(candidate.get("template_id", "")),
-        "instruction": str(candidate.get("instruction", "")),
-        "response": str(candidate.get("response", "")),
+        "candidate_id": generation_identity[3],
+        "blueprint_id": generation_identity[0],
+        "generator_id": generation_identity[1],
+        "template_id": generation_identity[2],
+        "instruction": str(candidate.get("instruction") or "").strip(),
+        "response": str(candidate.get("response") or "").strip(),
         "generation_identity": generation_identity,
         "training_similarity": training_similarity,
         "batch_similarity": batch_similarity,
@@ -459,11 +621,13 @@ def decide_synthetic_admission(
 
 
 def build_sft_candidate_records(rows: Sequence[Dict[str, object]]) -> List[Dict[str, object]]:
-    # TODO 4：只交接接纳行，并保留可回查的准入与验证器版本。
+    """将通过筛查的候选转为SFT记录，保留来源版本和验证结果。"""
     records = []
     seen_ids = set()
     for row in rows:
-        if row["decision"] != "admit":
+        # TODO 4：筛选可继续审计的记录
+        handoff_allowed = row["decision"] == "admit" and not row["reasons"]
+        if not handoff_allowed:
             continue
         sample_id = str(row["candidate_id"])
         if sample_id in seen_ids:
@@ -476,38 +640,47 @@ def build_sft_candidate_records(rows: Sequence[Dict[str, object]]) -> List[Dict[
         }
         records.append({
             "sample_id": sample_id,
-            "source_id": "|".join(row["generation_identity"]),
+            "source_id": json.dumps(list(row["generation_identity"]), ensure_ascii=False, separators=(",", ":")),
             "split": "train",
             "instruction": row["instruction"],
             "input": "",
             "response": row["response"],
             "admission_decision": row["decision"],
             "verifier_versions": verifier_versions,
+            "provenance": {
+                "generation_identity": list(row["generation_identity"]),
+                "admission_decision": row["decision"],
+                "verifier_evidence": deepcopy(row["verifier_evidence"]),
+                "quality_score": row["quality_score"],
+                "training_similarity": row["training_similarity"],
+                "batch_similarity": row["batch_similarity"],
+                "reasons": list(row["reasons"]),
+            },
         })
     return records
 ```
 
 ### 解析
 
-#### TODO 1：固定生成身份
+#### TODO 1：检查生成来源是否齐全
 
-- 机制：任务蓝图、生成器、提示模板和候选标识共同组成来源身份，任一字段缺失都停止准入。
-- 不变量：同一文本更换生成器或模板版本后必须得到不同身份；测试分别检查版本变化和缺失字段。
+- 来源身份包含蓝图、生成器、模板与候选标识；空值应作为缺失处理，不能先转换成看似有效的“None”文本。
+- 骨架按固定顺序规范化来源，答案找出缺失分量。`test_generation_identity` 和空内容测试检查版本变化、空串与空值，骨架统一拒绝不完整身份。
 
-#### TODO 2：计算参考相似度
+#### TODO 2：计算集合相似度
 
-- 机制：把规范化指令拆成字符片段集合，再计算候选与每条参考指令的 Jaccard 相似度并取最大值。
-- 不变量：片段长度必须为正整数，空参考集返回零，精确重复返回一；测试覆盖数值边界和非法参数。
+- Jaccard 比较共有片段占全部不同片段的比例。空参考集合没有可比对象，最大值约定为0；两个空集合视为完全重合。
+- 答案计算每对集合的交并比，由骨架取最大值；相似度测试覆盖精确重复、不同任务、空参考和非法片段长度。
 
-#### TODO 3：聚合准入证据
+#### TODO 3：选择三态准入结果
 
-- 机制：评测污染、缺失或失败的必需验证器、过低质量属于拒绝条件；训练集复写、同批次近重复和中间质量属于复核条件。
-- 不变量：质量阈值必须保持复核线不高于接纳线，验证器证据必须带版本；测试覆盖两类近重复、污染、验证失败和非法阈值。
+- 拒绝原因优先于复核原因：污染或验证失败不会因高质量评分而被抵消。质量恰好等于复核线、接纳线时，应分别进入对应区间。
+- 答案先判断拒绝原因，再判断其余原因。`test_reject_precedes_review` 保留组合风险，阈值与空监督测试检查低分、等边界和无有效回答的情况。
 
-#### TODO 4：构造 SFT 交接记录
+#### TODO 4：筛选可继续审计的记录
 
-- 机制：交接函数只输出接纳行，并把生成身份、准入决定和验证器版本写入训练候选。
-- 不变量：接纳样本身份必须唯一，拒绝行不得进入训练集；测试检查过滤结果、字段完整性和重复身份报错。
+- 交接同时要求决定为接纳且原因清单为空；复核不等于已经修复，不能随接纳行一起进入训练。
+- 只有状态为接纳且问题列表为空的记录才被复制。测试故意给出“写着接纳、却仍有拒绝原因”的候选，确认它被排除；通过记录的生成配置、评分和验证器信息则完整保留。
 <a id="framework-check"></a>
 
 ## 框架一致性核对（可选）
@@ -534,6 +707,7 @@ else:
     def check_synthetic_data_interface():
         """核对本地准入决定与 Datasets 过滤、血缘和SFT交接字段。"""
         def framework_candidate(**overrides):
+            """构造用于接口往返的三态候选。"""
             base = {
                 "candidate_id": "candidate-1",
                 "blueprint_id": "refund-v1",
@@ -571,7 +745,7 @@ else:
         serializable_rows = [
             {
                 **row,
-                "generation_identity": "|".join(row["generation_identity"]),
+                "generation_identity": list(row["generation_identity"]),
                 "reasons": list(row["reasons"]),
             }
             for row in rows
@@ -584,12 +758,14 @@ else:
         sft_dataset = Dataset.from_list(sft_records)
         checks = {
             "admitted_ids_match": framework_admitted_ids == local_admitted_ids,
+            "rows_values_and_order_preserved": dataset.to_list() == serializable_rows,
+            "handoff_values_preserved": sft_dataset.to_list() == sft_records,
             "lineage_fields_preserved": all(
                 row["blueprint_id"] and row["generator_id"] and row["template_id"]
                 for row in admitted_dataset
             ),
             "generation_identity_preserved": all(
-                len(row["generation_identity"].split("|")) == 4
+                len(row["generation_identity"]) == 4
                 for row in admitted_dataset
             ),
             "sft_handoff_fields_readable": all(
@@ -617,7 +793,9 @@ framework_check
 
 ## 相关阅读
 
-- [Self-Instruct: Aligning Language Models with Self-Generated Instructions](https://arxiv.org/abs/2212.10560)
-- [Magpie: Alignment Data Synthesis from Scratch by Prompting Aligned LLMs with Nothing](https://arxiv.org/abs/2406.08464)
-- [32. SFT Dataset Contract and Leakage Audit | SFT 数据契约与泄漏审计](./32_Data_Engineering_for_SFT.md)
-- [64. SFT Data Quality Project | SFT 数据质量项目](./64_SFT_Data_Quality_Project.md)
+理解生成与筛查后，可以对照数据合成方法，再将接纳候选交给切分审计与质量项目。
+
+- [Self-Instruct 论文](https://arxiv.org/abs/2212.10560)：观察种子任务、生成、过滤如何共同影响数据分布。
+- [Magpie 论文](https://arxiv.org/abs/2406.08464)：比较另一种合成来源与生成假设。
+- [32. SFT 数据契约与泄漏审计](./32_Data_Engineering_for_SFT.md)：继续检查具体记录、训练重复和冻结评测任务。
+- [64. SFT 数据质量项目](./64_SFT_Data_Quality_Project.md)：在固定模型与评测口径下比较数据选择的实际影响。

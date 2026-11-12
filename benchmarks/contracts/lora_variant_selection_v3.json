@@ -1,0 +1,18 @@
+{
+  "schema_version": "fine-tuning-project/v1",
+  "semantic_id": "PT-LORA-VARIANTS",
+  "measurement_version": "lora-selection/v3",
+  "environment_profile": "PT-SFT-CUDA",
+  "evaluation_reduction": "mean_of_per_example_token_means",
+  "sequence_protocol": "manual_instruction_separate_tokenization_eos_v1",
+  "model": {"id": "Qwen/Qwen2.5-0.5B", "resolved_commit": "060db6499f32faf8b98477b0a26969ef7d8b9987"},
+  "upstream_manifest": "benchmarks/results/64_sft_data_quality/sft_data_manifest_alpaca_qwen25_v2.json",
+  "upstream_manifest_sha256": "ae16f126aa50958da0b601d630ddd65a3cbdcf6174d6e73263d7c4366f48ffdf",
+  "workload": {"max_length": 256, "train_examples": 48, "evaluation_examples": 16, "update_steps": 12, "learning_rate": 0.0002, "run_seeds": [42, 123, 2024], "dtype": "bfloat16"},
+  "candidates": [
+    {"name": "rank4", "rank": 4, "alpha": 16, "dropout": 0.0, "target_modules": ["q_proj", "v_proj"]},
+    {"name": "rank8", "rank": 8, "alpha": 16, "dropout": 0.0, "target_modules": ["q_proj", "v_proj"]},
+    {"name": "rank16", "rank": 16, "alpha": 16, "dropout": 0.0, "target_modules": ["q_proj", "v_proj"]}
+  ],
+  "gates": {"maximum_eval_loss": 2.0, "maximum_peak_allocated_bytes": 10737418240, "minimum_tokens_per_second": 1.0, "minimum_repeat_count": 3, "maximum_repeat_eval_loss_spread": 0.01, "quality_equivalence_band": 0.01}
+}

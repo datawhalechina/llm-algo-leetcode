@@ -14,11 +14,11 @@
 
 ## 本节导读
 
-RLHF 能把模型往人类偏好方向拉，但 PPO 训练链路很重：要维护策略模型、参考模型、奖励模型和价值模型，还要处理采样、打分和策略更新的稳定性问题。
+基于人类反馈的强化学习（RLHF）能调整模型的偏好倾向，但近端策略优化（PPO）的训练链路较重：要维护策略模型、参考模型、奖励模型和价值模型，还要处理采样、打分和策略更新的稳定性问题。
 
 DPO 的切入点更直接：偏好数据已经给出同一提示下的优选回答（`chosen`）与非优选回答（`rejected`），因此可以把二者的比较关系写成可优化的损失，让当前策略相对参考策略更偏向优选回答。完成后，你应该能解释偏好比较如何转成对数概率差值，以及 DPO 为什么能简化完整 RLHF 闭环。
 
-**关键词：** `DPO`, `preference`, `loss`
+**关键词：** `DPO`, `偏好优化`, `损失`
 
 ---
 <a id="runtime-environment"></a>
@@ -114,14 +114,20 @@ import torch.nn.functional as F
 
 
 ```python
+import math
+
 def aggregate_response_logps(token_logps, response_mask, normalize=False):
     """按 response mask 聚合每条回复的 token log probability。"""
     if token_logps.shape != response_mask.shape or token_logps.ndim != 2:
         raise ValueError("token_logps 与 response_mask 必须是同形二维张量")
-    counts = response_mask.bool().sum(dim=-1)
+    if response_mask.dtype != torch.bool:
+        raise ValueError("response_mask 必须是布尔张量")
+    mask = response_mask
+    counts = mask.sum(dim=-1)
     if torch.any(counts == 0):
         raise ValueError("每条回复至少需要一个有效 token")
-
+    if not torch.isfinite(token_logps[mask]).all():
+        raise ValueError("有效回复位置的 token_logps 必须为有限数")
     # ==========================================
     # TODO 1：只聚合 response mask 内的 token；normalize=True 时按有效长度归一化。
     # response_logps = ???
@@ -142,10 +148,16 @@ def dpo_loss(
     四组 log probability 必须使用同一 tokenization 和回复范围；Reference 固定为
     SFT 基线，用于度量 Policy 的偏好偏移。
     """
+    tensors = (policy_chosen_logps, policy_rejected_logps, reference_chosen_logps, reference_rejected_logps)
     if not (policy_chosen_logps.shape == policy_rejected_logps.shape == reference_chosen_logps.shape == reference_rejected_logps.shape):
         raise ValueError("policy / reference 的 chosen-rejected logps 形状必须一致")
-    if beta <= 0:
-        raise ValueError("beta 必须是正数")
+    if policy_chosen_logps.ndim != 1 or policy_chosen_logps.numel() == 0:
+        raise ValueError("DPO 回答得分必须是非空一维张量")
+    if any(not torch.isfinite(tensor).all() for tensor in tensors):
+        raise ValueError("DPO 回答得分必须为有限数")
+    beta = float(beta)
+    if not math.isfinite(beta) or beta <= 0:
+        raise ValueError("beta 必须是正有限数")
 
     # ==========================================
     # TODO 2：冻结 Reference，分别计算 chosen / rejected 的 Policy—Reference 偏移。

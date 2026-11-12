@@ -2,7 +2,7 @@
   <title id="title">相似度、评测污染与验证器共同决定候选去向</title>
   <desc id="desc">拒绝条件优先处理评测污染和必需验证失败，通过后再依据训练相似度与质量证据决定接纳或复核。</desc>
   <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="9" refY="3" orient="auto" markerUnits="userSpaceOnUse">
       <path d="M0,0 L0,6 L9,3 z" fill="#64748b"/>
     </marker>
     <style>
@@ -24,8 +24,9 @@
 
   <rect x="310" y="165" width="220" height="155" rx="18" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
   <text x="420" y="210" text-anchor="middle" class="label">拒绝条件？</text>
-  <text x="420" y="244" text-anchor="middle" class="body">身份缺失 / 评测污染</text>
-  <text x="420" y="271" text-anchor="middle" class="body">必需验证失败 / 质量过低</text>
+  <text x="420" y="244" text-anchor="middle" class="body">内容缺失 / 评测污染</text>
+  <text x="420" y="271" text-anchor="middle" class="body">必需验证缺失或失败</text>
+  <text x="420" y="298" text-anchor="middle" class="body">质量低于复核线</text>
 
   <rect x="610" y="165" width="220" height="155" rx="18" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
   <text x="720" y="210" text-anchor="middle" class="label">复核条件？</text>
