@@ -14,7 +14,6 @@ from pathlib import Path
 
 from convert_notebook import normalize_generated_markdown, normalize_markdown_links
 
-
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 
@@ -36,7 +35,7 @@ NAV_FILES = {
         "2_10.md",
     ],
     "03_Triton_Kernels": ["intro.md", "3_1.md", "3_2.md", "3_3.md", "3_4.md", "3_5.md"],
-    "04_CUDA_and_System_Optimization": ["intro.md", "4_1.md", "4_2.md", "4_3.md", "4_4.md"],
+    "04_CUDA_and_System_Optimization": ["intro.md", "4_1.md", "4_2.md", "4_3.md", "4_4.md", "4_5.md"],
     "05_Integrated_Projects_and_Decisions": [
         "intro.md",
         "01_Inference_Service_Integrated_Project.md",
@@ -79,12 +78,13 @@ NAV_FILES = {
         "quantization_compression/casebook.md",
         "quantization_compression/walkthrough.md",
         "operator_optimization/intro.md",
-        "operator_optimization/01_why_operator_optimization_matters.md",
-        "operator_optimization/02_kernel_semantics_and_memory.md",
-        "operator_optimization/03_fusion_and_kernel_composition.md",
-        "operator_optimization/04_cuda_execution_and_hardware_constraints.md",
-        "operator_optimization/05_cost_model_and_profiling.md",
-        "operator_optimization/06_benchmark_and_project_validation.md",
+        "operator_optimization/01_optimization_targets_and_baselines.md",
+        "operator_optimization/02_graph_compilation_and_fusion.md",
+        "operator_optimization/03_kernel_semantics_and_memory.md",
+        "operator_optimization/04_attention_and_inference_data_paths.md",
+        "operator_optimization/05_measurement_profiling_and_autotuning.md",
+        "operator_optimization/06_cuda_execution_and_runtime_constraints.md",
+        "operator_optimization/07_integration_benchmarking_and_adoption.md",
     ],
     "team_study": [
         "intro.md",
@@ -97,8 +97,8 @@ NAV_FILES = {
 }
 
 
-def sync_topic(topic: str) -> None:
-    """Mirror one source topic without rebuilding or cleaning other directories."""
+def sync_topic(topic: str, *, prune: bool = False) -> None:
+    """Mirror one topic, optionally removing only its stale Markdown mirrors."""
     if not topic or topic in {".", ".."} or Path(topic).name != topic or "\\" in topic:
         raise ValueError("--topic must be a single topic directory name")
     source_dir = ROOT / "topic_discussion" / topic
@@ -107,6 +107,19 @@ def sync_topic(topic: str) -> None:
     sources = sorted(source_dir.rglob("*.md"))
     if not sources:
         raise ValueError(f"No Markdown source files found: {source_dir}")
+    target_dir = DOCS / "topic_discussion" / topic
+    stale_pages: list[Path] = []
+    if prune:
+        # Validate the entire deletion/write scope before changing any file.
+        if target_dir.is_symlink() or not target_dir.resolve().is_relative_to(DOCS.resolve()):
+            raise ValueError(f"Unsafe topic mirror directory: {target_dir}")
+        expected = {source.relative_to(source_dir) for source in sources}
+        existing = sorted(target_dir.rglob("*.md")) if target_dir.exists() else []
+        targets = [target_dir / relative for relative in expected]
+        for target in [*existing, *targets]:
+            if target.is_symlink() or not target.resolve().is_relative_to(target_dir.resolve()):
+                raise ValueError(f"Unsafe topic mirror path: {target}")
+        stale_pages = [path for path in existing if path.relative_to(target_dir) not in expected]
     for source in sources:
         target = DOCS / source.relative_to(ROOT)
         mirrored = normalize_generated_markdown(
@@ -114,12 +127,21 @@ def sync_topic(topic: str) -> None:
         )
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(mirrored, encoding="utf-8")
-    print(f"Synced {len(sources)} Markdown files for topic={topic}; no other directories cleaned")
+    for stale in stale_pages:
+        stale.unlink()
+    # Remove only directories made empty by these Markdown deletions.
+    parents = {parent for stale in stale_pages for parent in stale.parents if parent.is_relative_to(target_dir) and parent != target_dir}
+    for parent in sorted(parents, key=lambda path: len(path.parts), reverse=True):
+        if parent.is_dir() and not any(parent.iterdir()):
+            parent.rmdir()
+    print(f"Synced {len(sources)} Markdown files for topic={topic}; pruned {len(stale_pages)} stale Markdown mirrors; other topics untouched")
 
 
-def sync_navigation() -> None:
+def sync_navigation(selected_part: str | None = None) -> None:
     copied = 0
     for part, files in NAV_FILES.items():
+        if selected_part and part != selected_part:
+            continue
         src_dir = ROOT / part
         dst_dir = DOCS / part
         dst_dir.mkdir(parents=True, exist_ok=True)
@@ -157,15 +179,21 @@ def sync_navigation() -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--topic", help="Sync only one topic_discussion subdirectory, without cleanup.")
+    parser.add_argument("--topic", help="Sync one topic_discussion subdirectory; preserve stale mirrors unless --prune is set.")
+    parser.add_argument("--part", choices=sorted(NAV_FILES), help="Sync one Part navigation tree only.")
+    parser.add_argument("--prune", action="store_true", help="With --topic, remove stale Markdown mirrors only in that topic.")
     args = parser.parse_args()
+    if args.topic and args.part:
+        parser.error("--topic and --part cannot be combined")
+    if args.prune and not args.topic:
+        parser.error("--prune requires --topic")
     if args.topic:
         try:
-            sync_topic(args.topic)
+            sync_topic(args.topic, prune=args.prune)
         except ValueError as exc:
             parser.error(str(exc))
     else:
-        sync_navigation()
+        sync_navigation(selected_part=args.part)
     return 0
 
 
