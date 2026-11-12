@@ -1,0 +1,903 @@
+{
+  "schema_version": "swiglu-three-path-benchmark/v1",
+  "status": "measured",
+  "evidence_scope": "local_full_call_microbenchmark",
+  "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+  "torch": "2.11.0+cu128",
+  "torch_cuda": "12.8",
+  "triton": "3.6.0",
+  "device_capability": [
+    12,
+    0
+  ],
+  "compile": {
+    "backend": "inductor",
+    "fullgraph": true,
+    "dynamic": false,
+    "options": {
+      "triton.cudagraphs": false
+    }
+  },
+  "compiler_wrapper_build_ms": 522.9656570008956,
+  "preparation_scope": "process_first_call_per_shape; cache_not_cleared; not_pure_compilation",
+  "seed": 42,
+  "autograd": "inference_mode",
+  "warmup": 5,
+  "iterations": 50,
+  "repeats": 6,
+  "timing": "host_wall_clock_with_device_sync_at_window_boundaries",
+  "includes": [
+    "python_dispatch",
+    "output_allocation",
+    "completion_wait"
+  ],
+  "excludes": [
+    "input_generation",
+    "h2d",
+    "preparation",
+    "profiling",
+    "numeric_checks"
+  ],
+  "rows": [
+    {
+      "elements": 4096,
+      "dtype": "torch.float16",
+      "correctness": "passed",
+      "atol": 0.002,
+      "rtol": 0.002,
+      "errors": {
+        "eager": {
+          "max_abs_error_vs_eager": 0,
+          "max_abs_error_vs_fp64": 0.0021545585193942784
+        },
+        "compile": {
+          "max_abs_error_vs_eager": 0.00390625,
+          "max_abs_error_vs_fp64": 0.0017516914806057216
+        },
+        "triton": {
+          "max_abs_error_vs_eager": 0,
+          "max_abs_error_vs_fp64": 0.0021545585193942784
+        }
+      },
+      "first_call_completion_ms": {
+        "eager": 7.7157249907031655,
+        "compile": 658.4566090023145,
+        "triton": 14.878197020152584
+      },
+      "execution_activity": {
+        "eager": {
+          "device_events": [
+            "void at::native::vectorized_elementwise_kernel<4, at::native::(anonymous namespace)::silu_kernel(at::TensorIteratorBase&)::{lambda()#1}::operator()() const::{lambda()#5}::operator()() const::{lambda(c10::Half)#1}, std::array<char*, 2ul> >(int, at::native::(anonymous namespace)::silu_kernel(at::TensorIteratorBase&)::{lambda()#1}::operator()() const::{lambda()#5}::operator()() const::{lambda(c10::Half)#1}, std::array<char*, 2ul>)",
+            "void at::native::vectorized_elementwise_kernel<4, at::native::BinaryFunctor<c10::Half, c10::Half, c10::Half, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul> >(int, at::native::BinaryFunctor<c10::Half, c10::Half, c10::Half, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>)"
+          ],
+          "device_event_count": 2
+        },
+        "compile": {
+          "device_events": [
+            "triton_poi_fused_mul_silu_0"
+          ],
+          "device_event_count": 1
+        },
+        "triton": {
+          "device_events": [
+            "fused_swiglu_kernel"
+          ],
+          "device_event_count": 1
+        }
+      },
+      "median_ms": {
+        "eager": 0.005683630297426134,
+        "compile": 0.019690969784278423,
+        "triton": 0.010360860032960773
+      },
+      "median_paired_ratios": {
+        "eager_over_compile": 0.2957534126110968,
+        "eager_over_triton": 0.5609848120081138,
+        "compile_over_triton": 1.90062936941798
+      },
+      "pairs": [
+        {
+          "repeat": 1,
+          "order": [
+            "eager",
+            "compile",
+            "triton"
+          ],
+          "eager_ms": 0.0056009599938988686,
+          "compile_ms": 0.020235800184309483,
+          "triton_ms": 0.010431900154799223,
+          "eager_over_compile": 0.2767847054667877,
+          "eager_over_triton": 0.5369069786698574,
+          "compile_over_triton": 1.9398000253098617
+        },
+        {
+          "repeat": 2,
+          "order": [
+            "eager",
+            "triton",
+            "compile"
+          ],
+          "eager_ms": 0.005645659985020757,
+          "triton_ms": 0.009853800293058157,
+          "compile_ms": 0.020014579640701413,
+          "eager_over_compile": 0.2820773699158692,
+          "eager_over_triton": 0.5729423995935896,
+          "compile_over_triton": 2.0311533667676787
+        },
+        {
+          "repeat": 3,
+          "order": [
+            "compile",
+            "eager",
+            "triton"
+          ],
+          "compile_ms": 0.019939839839935303,
+          "eager_ms": 0.006064859917387366,
+          "triton_ms": 0.010522459633648396,
+          "eager_over_compile": 0.30415790528270586,
+          "eager_over_triton": 0.5763728375819419,
+          "compile_over_triton": 1.8949789815465103
+        },
+        {
+          "repeat": 4,
+          "order": [
+            "compile",
+            "triton",
+            "eager"
+          ],
+          "compile_ms": 0.019442099728621542,
+          "triton_ms": 0.010357960127294064,
+          "eager_ms": 0.005692760460078716,
+          "eager_over_compile": 0.292805846052634,
+          "eager_over_triton": 0.5496024690303482,
+          "compile_over_triton": 1.8770201361743066
+        },
+        {
+          "repeat": 5,
+          "order": [
+            "triton",
+            "eager",
+            "compile"
+          ],
+          "triton_ms": 0.009965620120055974,
+          "eager_ms": 0.005674500134773552,
+          "compile_ms": 0.01899725990369916,
+          "eager_over_compile": 0.2987009791695596,
+          "eager_over_triton": 0.5694076300734691,
+          "compile_over_triton": 1.9062797572894499
+        },
+        {
+          "repeat": 6,
+          "order": [
+            "triton",
+            "compile",
+            "eager"
+          ],
+          "triton_ms": 0.010363759938627481,
+          "compile_ms": 0.018817520467564464,
+          "eager_ms": 0.00572661985643208,
+          "eager_over_compile": 0.30432382769573635,
+          "eager_over_triton": 0.5525619939427584,
+          "compile_over_triton": 1.815704008873111
+        }
+      ]
+    },
+    {
+      "elements": 65536,
+      "dtype": "torch.float16",
+      "correctness": "passed",
+      "atol": 0.002,
+      "rtol": 0.002,
+      "errors": {
+        "eager": {
+          "max_abs_error_vs_eager": 0,
+          "max_abs_error_vs_fp64": 0.004408470316967339
+        },
+        "compile": {
+          "max_abs_error_vs_eager": 0.0078125,
+          "max_abs_error_vs_fp64": 0.0036759321918751198
+        },
+        "triton": {
+          "max_abs_error_vs_eager": 0.000244140625,
+          "max_abs_error_vs_fp64": 0.004408470316967339
+        }
+      },
+      "first_call_completion_ms": {
+        "eager": 0.02447600127197802,
+        "compile": 23.27313501155004,
+        "triton": 0.09681301889941096
+      },
+      "execution_activity": {
+        "eager": {
+          "device_events": [
+            "void at::native::vectorized_elementwise_kernel<4, at::native::(anonymous namespace)::silu_kernel(at::TensorIteratorBase&)::{lambda()#1}::operator()() const::{lambda()#5}::operator()() const::{lambda(c10::Half)#1}, std::array<char*, 2ul> >(int, at::native::(anonymous namespace)::silu_kernel(at::TensorIteratorBase&)::{lambda()#1}::operator()() const::{lambda()#5}::operator()() const::{lambda(c10::Half)#1}, std::array<char*, 2ul>)",
+            "void at::native::vectorized_elementwise_kernel<4, at::native::BinaryFunctor<c10::Half, c10::Half, c10::Half, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul> >(int, at::native::BinaryFunctor<c10::Half, c10::Half, c10::Half, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>)"
+          ],
+          "device_event_count": 2
+        },
+        "compile": {
+          "device_events": [
+            "triton_poi_fused_mul_silu_0"
+          ],
+          "device_event_count": 1
+        },
+        "triton": {
+          "device_events": [
+            "fused_swiglu_kernel"
+          ],
+          "device_event_count": 1
+        }
+      },
+      "median_ms": {
+        "eager": 0.0076040602289140224,
+        "compile": 0.02001948974793777,
+        "triton": 0.011497800005599856
+      },
+      "median_paired_ratios": {
+        "eager_over_compile": 0.37838105212640144,
+        "eager_over_triton": 0.6771538591938004,
+        "compile_over_triton": 1.6924505262276994
+      },
+      "pairs": [
+        {
+          "repeat": 1,
+          "order": [
+            "eager",
+            "compile",
+            "triton"
+          ],
+          "eager_ms": 0.02865549991838634,
+          "compile_ms": 0.024772160104475915,
+          "triton_ms": 0.01756093988660723,
+          "eager_over_compile": 1.1567622604380299,
+          "eager_over_triton": 1.6317748425436116,
+          "compile_over_triton": 1.4106397644108042
+        },
+        {
+          "repeat": 2,
+          "order": [
+            "eager",
+            "triton",
+            "compile"
+          ],
+          "eager_ms": 0.007686320459470153,
+          "triton_ms": 0.011158459819853306,
+          "compile_ms": 0.02095677948091179,
+          "eager_over_compile": 0.3667701168717807,
+          "eager_over_triton": 0.6888334576241903,
+          "compile_over_triton": 1.8781068193322847
+        },
+        {
+          "repeat": 3,
+          "order": [
+            "compile",
+            "eager",
+            "triton"
+          ],
+          "compile_ms": 0.018613539868965745,
+          "eager_ms": 0.00942879996728152,
+          "triton_ms": 0.01162213971838355,
+          "eager_over_compile": 0.5065559820247898,
+          "eager_over_triton": 0.8112791788561385,
+          "compile_over_triton": 1.6015587766100772
+        },
+        {
+          "repeat": 4,
+          "order": [
+            "compile",
+            "triton",
+            "eager"
+          ],
+          "compile_ms": 0.02020493964664638,
+          "triton_ms": 0.011872599716298282,
+          "eager_ms": 0.007521799998357892,
+          "eager_over_compile": 0.37227530148086146,
+          "eager_over_triton": 0.633542794172723,
+          "compile_over_triton": 1.7018125877611925
+        },
+        {
+          "repeat": 5,
+          "order": [
+            "triton",
+            "eager",
+            "compile"
+          ],
+          "triton_ms": 0.011098160175606608,
+          "eager_ms": 0.007385539938695729,
+          "compile_ms": 0.019834039849229157,
+          "eager_over_compile": 0.3723669002804169,
+          "eager_over_triton": 0.6654742607634104,
+          "compile_over_triton": 1.7871466563281115
+        },
+        {
+          "repeat": 6,
+          "order": [
+            "triton",
+            "compile",
+            "eager"
+          ],
+          "triton_ms": 0.011373460292816162,
+          "compile_ms": 0.019142539822496474,
+          "eager_ms": 0.0073583004996180534,
+          "eager_over_compile": 0.38439520397238597,
+          "eager_over_triton": 0.6469711336896995,
+          "compile_over_triton": 1.6830884646942064
+        }
+      ]
+    },
+    {
+      "elements": 1048576,
+      "dtype": "torch.float16",
+      "correctness": "passed",
+      "atol": 0.002,
+      "rtol": 0.002,
+      "errors": {
+        "eager": {
+          "max_abs_error_vs_eager": 0,
+          "max_abs_error_vs_fp64": 0.0066136444632771685
+        },
+        "compile": {
+          "max_abs_error_vs_eager": 0.0078125,
+          "max_abs_error_vs_fp64": 0.003888965058198579
+        },
+        "triton": {
+          "max_abs_error_vs_eager": 0.00048828125,
+          "max_abs_error_vs_fp64": 0.0066136444632771685
+        }
+      },
+      "first_call_completion_ms": {
+        "eager": 0.07564199040643871,
+        "compile": 23.31877200049348,
+        "triton": 0.09855601820163429
+      },
+      "execution_activity": {
+        "eager": {
+          "device_events": [
+            "void at::native::vectorized_elementwise_kernel<4, at::native::(anonymous namespace)::silu_kernel(at::TensorIteratorBase&)::{lambda()#1}::operator()() const::{lambda()#5}::operator()() const::{lambda(c10::Half)#1}, std::array<char*, 2ul> >(int, at::native::(anonymous namespace)::silu_kernel(at::TensorIteratorBase&)::{lambda()#1}::operator()() const::{lambda()#5}::operator()() const::{lambda(c10::Half)#1}, std::array<char*, 2ul>)",
+            "void at::native::vectorized_elementwise_kernel<4, at::native::BinaryFunctor<c10::Half, c10::Half, c10::Half, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul> >(int, at::native::BinaryFunctor<c10::Half, c10::Half, c10::Half, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>)"
+          ],
+          "device_event_count": 2
+        },
+        "compile": {
+          "device_events": [
+            "triton_poi_fused_mul_silu_0"
+          ],
+          "device_event_count": 1
+        },
+        "triton": {
+          "device_events": [
+            "fused_swiglu_kernel"
+          ],
+          "device_event_count": 1
+        }
+      },
+      "median_ms": {
+        "eager": 0.008395739714615047,
+        "compile": 0.01963146001799032,
+        "triton": 0.01189897011499852
+      },
+      "median_paired_ratios": {
+        "eager_over_compile": 0.42829337179936044,
+        "eager_over_triton": 0.7108504231986403,
+        "compile_over_triton": 1.641592077491687
+      },
+      "pairs": [
+        {
+          "repeat": 1,
+          "order": [
+            "eager",
+            "compile",
+            "triton"
+          ],
+          "eager_ms": 0.008364200475625694,
+          "compile_ms": 0.01968715980183333,
+          "triton_ms": 0.011267460067756474,
+          "eager_over_compile": 0.4248556195925627,
+          "eager_over_triton": 0.7423323823938908,
+          "compile_over_triton": 1.747258005215487
+        },
+        {
+          "repeat": 2,
+          "order": [
+            "eager",
+            "triton",
+            "compile"
+          ],
+          "eager_ms": 0.008352160220965743,
+          "triton_ms": 0.012698779464699328,
+          "compile_ms": 0.021086619817651808,
+          "eager_over_compile": 0.39608814941378473,
+          "eager_over_triton": 0.657713620760442,
+          "compile_over_triton": 1.6605233500014231
+        },
+        {
+          "repeat": 3,
+          "order": [
+            "compile",
+            "eager",
+            "triton"
+          ],
+          "compile_ms": 0.01833080023061484,
+          "eager_ms": 0.008420479716733098,
+          "triton_ms": 0.011328380205668509,
+          "eager_over_compile": 0.45936236338824926,
+          "eager_over_triton": 0.7433083604061637,
+          "compile_over_triton": 1.6181307387125348
+        },
+        {
+          "repeat": 4,
+          "order": [
+            "compile",
+            "triton",
+            "eager"
+          ],
+          "compile_ms": 0.01906459976453334,
+          "triton_ms": 0.013814279809594154,
+          "eager_ms": 0.008370999712496996,
+          "eager_over_compile": 0.439086045124845,
+          "eager_over_triton": 0.6059671461615577,
+          "compile_over_triton": 1.3800646886631605
+        },
+        {
+          "repeat": 5,
+          "order": [
+            "triton",
+            "eager",
+            "compile"
+          ],
+          "triton_ms": 0.012258359929546714,
+          "eager_ms": 0.008473799680359662,
+          "compile_ms": 0.01989116019103676,
+          "eager_over_compile": 0.42600831721108334,
+          "eager_over_triton": 0.6912669989347427,
+          "compile_over_triton": 1.6226608049819509
+        },
+        {
+          "repeat": 6,
+          "order": [
+            "triton",
+            "compile",
+            "eager"
+          ],
+          "triton_ms": 0.011539580300450325,
+          "compile_ms": 0.01957576023414731,
+          "eager_ms": 0.00842890003696084,
+          "eager_over_compile": 0.43057842638763755,
+          "eager_over_triton": 0.7304338474625379,
+          "compile_over_triton": 1.696401404943937
+        }
+      ]
+    },
+    {
+      "elements": 4096,
+      "dtype": "torch.float32",
+      "correctness": "passed",
+      "atol": 0.000001,
+      "rtol": 0.00001,
+      "errors": {
+        "eager": {
+          "max_abs_error_vs_eager": 0,
+          "max_abs_error_vs_fp64": 4.330211869074674e-7
+        },
+        "compile": {
+          "max_abs_error_vs_eager": 9.5367431640625e-7,
+          "max_abs_error_vs_fp64": 5.206531294987826e-7
+        },
+        "triton": {
+          "max_abs_error_vs_eager": 9.5367431640625e-7,
+          "max_abs_error_vs_fp64": 5.206531294987826e-7
+        }
+      },
+      "first_call_completion_ms": {
+        "eager": 0.04811098915524781,
+        "compile": 24.191737989895046,
+        "triton": 1.1001969978678972
+      },
+      "execution_activity": {
+        "eager": {
+          "device_events": [
+            "void at::native::vectorized_elementwise_kernel<4, at::native::(anonymous namespace)::silu_kernel(at::TensorIteratorBase&)::{lambda()#1}::operator()() const::{lambda()#2}::operator()() const::{lambda(float)#1}, std::array<char*, 2ul> >(int, at::native::(anonymous namespace)::silu_kernel(at::TensorIteratorBase&)::{lambda()#1}::operator()() const::{lambda()#2}::operator()() const::{lambda(float)#1}, std::array<char*, 2ul>)",
+            "void at::native::vectorized_elementwise_kernel<4, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul> >(int, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>)"
+          ],
+          "device_event_count": 2
+        },
+        "compile": {
+          "device_events": [
+            "triton_poi_fused_mul_silu_0"
+          ],
+          "device_event_count": 1
+        },
+        "triton": {
+          "device_events": [
+            "fused_swiglu_kernel"
+          ],
+          "device_event_count": 1
+        }
+      },
+      "median_ms": {
+        "eager": 0.0081549899186939,
+        "compile": 0.01940053014550358,
+        "triton": 0.011362450022716075
+      },
+      "median_paired_ratios": {
+        "eager_over_compile": 0.42740143155271293,
+        "eager_over_triton": 0.7295991554332881,
+        "compile_over_triton": 1.6590253051486359
+      },
+      "pairs": [
+        {
+          "repeat": 1,
+          "order": [
+            "eager",
+            "compile",
+            "triton"
+          ],
+          "eager_ms": 0.007314199465326965,
+          "compile_ms": 0.01944050018209964,
+          "triton_ms": 0.011215560371056199,
+          "eager_over_compile": 0.37623514810908565,
+          "eager_over_triton": 0.6521474829026458,
+          "compile_over_triton": 1.7333507679446316
+        },
+        {
+          "repeat": 2,
+          "order": [
+            "eager",
+            "triton",
+            "compile"
+          ],
+          "eager_ms": 0.028269359609112144,
+          "triton_ms": 0.0249497004551813,
+          "compile_ms": 0.020722520421259105,
+          "eager_over_compile": 1.3641853903114403,
+          "eager_over_triton": 1.1330540685205481,
+          "compile_over_triton": 0.8305719124157125
+        },
+        {
+          "repeat": 3,
+          "order": [
+            "compile",
+            "eager",
+            "triton"
+          ],
+          "compile_ms": 0.01809815992601216,
+          "eager_ms": 0.010224300203844905,
+          "triton_ms": 0.011420560185797513,
+          "eager_over_compile": 0.564935896557622,
+          "eager_over_triton": 0.8952538262142111,
+          "compile_over_triton": 1.5846998423526404
+        },
+        {
+          "repeat": 4,
+          "order": [
+            "compile",
+            "triton",
+            "eager"
+          ],
+          "compile_ms": 0.02296856022439897,
+          "triton_ms": 0.011304339859634638,
+          "eager_ms": 0.007981479866430163,
+          "eager_over_compile": 0.34749587211616434,
+          "eager_over_triton": 0.7060544857581917,
+          "compile_over_triton": 2.0318356055814237
+        },
+        {
+          "repeat": 5,
+          "order": [
+            "triton",
+            "eager",
+            "compile"
+          ],
+          "triton_ms": 0.011024799896404147,
+          "eager_ms": 0.008303259965032339,
+          "compile_ms": 0.01936056010890752,
+          "eager_over_compile": 0.42887498700061505,
+          "eager_over_triton": 0.7531438251083844,
+          "compile_over_triton": 1.7560917468644641
+        },
+        {
+          "repeat": 6,
+          "order": [
+            "triton",
+            "compile",
+            "eager"
+          ],
+          "triton_ms": 0.012183199869468808,
+          "compile_ms": 0.018798299715854228,
+          "eager_ms": 0.008006719872355461,
+          "eager_over_compile": 0.42592787610481087,
+          "eager_over_triton": 0.657193508941798,
+          "compile_over_triton": 1.5429689997094203
+        }
+      ]
+    },
+    {
+      "elements": 65536,
+      "dtype": "torch.float32",
+      "correctness": "passed",
+      "atol": 0.000001,
+      "rtol": 0.00001,
+      "errors": {
+        "eager": {
+          "max_abs_error_vs_eager": 0,
+          "max_abs_error_vs_fp64": 7.713586951396678e-7
+        },
+        "compile": {
+          "max_abs_error_vs_eager": 9.5367431640625e-7,
+          "max_abs_error_vs_fp64": 7.713586951396678e-7
+        },
+        "triton": {
+          "max_abs_error_vs_eager": 9.5367431640625e-7,
+          "max_abs_error_vs_fp64": 6.824859539733552e-7
+        }
+      },
+      "first_call_completion_ms": {
+        "eager": 0.02142999437637627,
+        "compile": 24.261109007056803,
+        "triton": 0.1023230142891407
+      },
+      "execution_activity": {
+        "eager": {
+          "device_events": [
+            "void at::native::vectorized_elementwise_kernel<4, at::native::(anonymous namespace)::silu_kernel(at::TensorIteratorBase&)::{lambda()#1}::operator()() const::{lambda()#2}::operator()() const::{lambda(float)#1}, std::array<char*, 2ul> >(int, at::native::(anonymous namespace)::silu_kernel(at::TensorIteratorBase&)::{lambda()#1}::operator()() const::{lambda()#2}::operator()() const::{lambda(float)#1}, std::array<char*, 2ul>)",
+            "void at::native::vectorized_elementwise_kernel<4, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul> >(int, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>)"
+          ],
+          "device_event_count": 2
+        },
+        "compile": {
+          "device_events": [
+            "triton_poi_fused_mul_silu_0"
+          ],
+          "device_event_count": 1
+        },
+        "triton": {
+          "device_events": [
+            "fused_swiglu_kernel"
+          ],
+          "device_event_count": 1
+        }
+      },
+      "median_ms": {
+        "eager": 0.007923950033728033,
+        "compile": 0.01882903976365924,
+        "triton": 0.011132910149171948
+      },
+      "median_paired_ratios": {
+        "eager_over_compile": 0.4207528341123986,
+        "eager_over_triton": 0.7110258529420981,
+        "compile_over_triton": 1.6970020305799631
+      },
+      "pairs": [
+        {
+          "repeat": 1,
+          "order": [
+            "eager",
+            "compile",
+            "triton"
+          ],
+          "eager_ms": 0.007972640451043844,
+          "compile_ms": 0.019190419698134065,
+          "triton_ms": 0.011222379980608821,
+          "eager_over_compile": 0.41544898842514866,
+          "eager_over_triton": 0.7104233206164637,
+          "compile_over_triton": 1.7100133600264151
+        },
+        {
+          "repeat": 2,
+          "order": [
+            "eager",
+            "triton",
+            "compile"
+          ],
+          "eager_ms": 0.007922539953142405,
+          "triton_ms": 0.010866500088013709,
+          "compile_ms": 0.01886059995740652,
+          "eager_over_compile": 0.42005768485807043,
+          "eager_over_triton": 0.7290792701397354,
+          "compile_over_triton": 1.7356646394555966
+        },
+        {
+          "repeat": 3,
+          "order": [
+            "compile",
+            "eager",
+            "triton"
+          ],
+          "compile_ms": 0.017840680084191263,
+          "eager_ms": 0.007925360114313662,
+          "triton_ms": 0.012950440286658704,
+          "eager_over_compile": 0.4442297085600662,
+          "eager_over_triton": 0.6119761134668307,
+          "compile_over_triton": 1.377611856376064
+        },
+        {
+          "repeat": 4,
+          "order": [
+            "compile",
+            "triton",
+            "eager"
+          ],
+          "compile_ms": 0.018797479569911957,
+          "triton_ms": 0.011162460432387888,
+          "eager_ms": 0.00792215985711664,
+          "eager_over_compile": 0.42144798336672673,
+          "eager_over_triton": 0.7097144850010385,
+          "compile_over_triton": 1.6839907011335111
+        },
+        {
+          "repeat": 5,
+          "order": [
+            "triton",
+            "eager",
+            "compile"
+          ],
+          "triton_ms": 0.011037840158678591,
+          "eager_ms": 0.007854840368963778,
+          "compile_ms": 0.018914120155386627,
+          "eager_over_compile": 0.41528975730477036,
+          "eager_over_triton": 0.7116283852677325,
+          "compile_over_triton": 1.7135707605364485
+        },
+        {
+          "repeat": 6,
+          "order": [
+            "triton",
+            "compile",
+            "eager"
+          ],
+          "triton_ms": 0.011103359865956008,
+          "compile_ms": 0.018641179776750505,
+          "eager_ms": 0.00795139989349991,
+          "eager_over_compile": 0.4265502499695319,
+          "eager_over_triton": 0.7161255682507134,
+          "compile_over_triton": 1.6788773850252474
+        }
+      ]
+    },
+    {
+      "elements": 1048576,
+      "dtype": "torch.float32",
+      "correctness": "passed",
+      "atol": 0.000001,
+      "rtol": 0.00001,
+      "errors": {
+        "eager": {
+          "max_abs_error_vs_eager": 0,
+          "max_abs_error_vs_fp64": 0.000001080439663070365
+        },
+        "compile": {
+          "max_abs_error_vs_eager": 9.5367431640625e-7,
+          "max_abs_error_vs_fp64": 0.000001080439663070365
+        },
+        "triton": {
+          "max_abs_error_vs_eager": 9.5367431640625e-7,
+          "max_abs_error_vs_fp64": 0.000001080439663070365
+        }
+      },
+      "first_call_completion_ms": {
+        "eager": 0.024186010705307126,
+        "compile": 24.58631299668923,
+        "triton": 0.10319502325728536
+      },
+      "execution_activity": {
+        "eager": {
+          "device_events": [
+            "void at::native::vectorized_elementwise_kernel<4, at::native::(anonymous namespace)::silu_kernel(at::TensorIteratorBase&)::{lambda()#1}::operator()() const::{lambda()#2}::operator()() const::{lambda(float)#1}, std::array<char*, 2ul> >(int, at::native::(anonymous namespace)::silu_kernel(at::TensorIteratorBase&)::{lambda()#1}::operator()() const::{lambda()#2}::operator()() const::{lambda(float)#1}, std::array<char*, 2ul>)",
+            "void at::native::vectorized_elementwise_kernel<4, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul> >(int, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>)"
+          ],
+          "device_event_count": 2
+        },
+        "compile": {
+          "device_events": [
+            "triton_poi_fused_mul_silu_0"
+          ],
+          "device_event_count": 1
+        },
+        "triton": {
+          "device_events": [
+            "fused_swiglu_kernel"
+          ],
+          "device_event_count": 1
+        }
+      },
+      "median_ms": {
+        "eager": 0.012486779887694865,
+        "compile": 0.019215280190110207,
+        "triton": 0.011333379952702671
+      },
+      "median_paired_ratios": {
+        "eager_over_compile": 0.6556264264163953,
+        "eager_over_triton": 1.1078804266201385,
+        "compile_over_triton": 1.6849618231101775
+      },
+      "pairs": [
+        {
+          "repeat": 1,
+          "order": [
+            "eager",
+            "compile",
+            "triton"
+          ],
+          "eager_ms": 0.012443099985830486,
+          "compile_ms": 0.019165180274285376,
+          "triton_ms": 0.011334579903632402,
+          "eager_over_compile": 0.6492555670100244,
+          "eager_over_triton": 1.0977998383374434,
+          "compile_over_triton": 1.6908593381695156
+        },
+        {
+          "repeat": 2,
+          "order": [
+            "eager",
+            "triton",
+            "compile"
+          ],
+          "eager_ms": 0.01247475971467793,
+          "triton_ms": 0.011419960064813495,
+          "compile_ms": 0.019343520398251712,
+          "eager_over_compile": 0.6449063799061836,
+          "eager_over_triton": 1.0923645655394558,
+          "compile_over_triton": 1.6938343294081932
+        },
+        {
+          "repeat": 3,
+          "order": [
+            "compile",
+            "eager",
+            "triton"
+          ],
+          "compile_ms": 0.0370813999325037,
+          "eager_ms": 0.036858979729004204,
+          "triton_ms": 0.028031920082867146,
+          "eager_over_compile": 0.9940018390917185,
+          "eager_over_triton": 1.3148931510949933,
+          "compile_over_triton": 1.3228276843999536
+        },
+        {
+          "repeat": 4,
+          "order": [
+            "compile",
+            "triton",
+            "eager"
+          ],
+          "compile_ms": 0.018880440038628876,
+          "triton_ms": 0.011244619963690639,
+          "eager_ms": 0.012498800060711801,
+          "eager_over_compile": 0.6619972858227663,
+          "eager_over_triton": 1.1115360146515367,
+          "compile_over_triton": 1.6790643080508394
+        },
+        {
+          "repeat": 5,
+          "order": [
+            "triton",
+            "eager",
+            "compile"
+          ],
+          "triton_ms": 0.01133218000177294,
+          "eager_ms": 0.012525239726528525,
+          "compile_ms": 0.018857999821193516,
+          "eager_over_compile": 0.6641870742013724,
+          "eager_over_triton": 1.1052806895556662,
+          "compile_over_triton": 1.6641105081496366
+        },
+        {
+          "repeat": 6,
+          "order": [
+            "triton",
+            "compile",
+            "eager"
+          ],
+          "triton_ms": 0.011224999907426536,
+          "compile_ms": 0.019265380105935037,
+          "eager_ms": 0.012465139734558761,
+          "eager_over_compile": 0.6470227769198624,
+          "eager_over_triton": 1.1104801636846109,
+          "compile_over_triton": 1.716292228491595
+        }
+      ]
+    }
+  ],
+  "run_label": "rtx5070ti_swiglu_three_path_20261111_v1",
+  "source_notebook": "03_Triton_Kernels/03_Triton_Fused_SwiGLU.ipynb"
+}

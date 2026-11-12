@@ -1,0 +1,249 @@
+{
+  "schema_version": "cuda-residency-tradeoff/v1",
+  "measured_at_utc": "2026-11-10T10:55:33.522559+00:00",
+  "kernel_source_sha256": "0a73aa8d1f2b6a90d1381d4a42a4cf95bf1a0d068deab764a95469307564ecc1",
+  "compile_options": [
+    "-O3"
+  ],
+  "status": "measured",
+  "evidence_scope": "local_reserved_shared_memory_tradeoff",
+  "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+  "versions": {
+    "torch": "2.11.0+cu128",
+    "torch_cuda": "12.8",
+    "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Fri_Feb_21_20:23:50_PST_2025\nCuda compilation tools, release 12.8, V12.8.93\nBuild cuda_12.8.r12.8/compiler.35583870_0",
+    "cxx": "c++ (Ubuntu 13.1.0-8ubuntu1~22.04) 13.1.0",
+    "driver_versions": [
+      "580.178.04"
+    ]
+  },
+  "elements": 1048576,
+  "dtype": "torch.float32",
+  "threads": 256,
+  "iterations": 50,
+  "warmup": 5,
+  "repeats": 6,
+  "timing": "cuda_event_window_per_launch",
+  "timed": "fixed kernel launches only; no input transfer, allocation, occupancy query or compilation",
+  "cuda_resource_info": {
+    "binary_version": 120,
+    "device_max_threads_per_block": 1024,
+    "device_shared_bytes_per_block": 49152,
+    "function_max_dynamic_shared_bytes": 49152,
+    "function_max_threads_per_block": 256,
+    "function_static_shared_bytes": 0,
+    "local_bytes_per_thread": 0,
+    "max_blocks_per_sm": 24,
+    "max_threads_per_sm": 1536,
+    "registers_per_sm": 65536,
+    "registers_per_thread": 10,
+    "reserved_shared_bytes_per_block": 1024,
+    "runtime_version": 12080,
+    "shared_bytes_per_sm": 102400,
+    "threads": 256,
+    "warp_size": 32
+  },
+  "rows": [
+    {
+      "dynamic_shared_bytes": 0,
+      "blocks_upper_bound": 6,
+      "cuda_blocks_per_sm": 6,
+      "cuda_theoretical_occupancy": 1,
+      "median_ms": 0.0061753601767122746,
+      "median_paired_speedup_vs_zero_reserved": 1,
+      "samples": [
+        {
+          "repeat": 1,
+          "order_position": 1,
+          "ms": 0.0061753601767122746
+        },
+        {
+          "repeat": 2,
+          "order_position": 5,
+          "ms": 0.0061753601767122746
+        },
+        {
+          "repeat": 3,
+          "order_position": 1,
+          "ms": 0.006174719892442226
+        },
+        {
+          "repeat": 4,
+          "order_position": 5,
+          "ms": 0.006298239808529615
+        },
+        {
+          "repeat": 5,
+          "order_position": 1,
+          "ms": 0.0061753601767122746
+        },
+        {
+          "repeat": 6,
+          "order_position": 5,
+          "ms": 0.0061753601767122746
+        }
+      ]
+    },
+    {
+      "dynamic_shared_bytes": 8192,
+      "blocks_upper_bound": 6,
+      "cuda_blocks_per_sm": 6,
+      "cuda_theoretical_occupancy": 1,
+      "median_ms": 0.0061753601767122746,
+      "median_paired_speedup_vs_zero_reserved": 0.9999481635182759,
+      "samples": [
+        {
+          "repeat": 1,
+          "order_position": 2,
+          "ms": 0.006176000460982323
+        },
+        {
+          "repeat": 2,
+          "order_position": 4,
+          "ms": 0.006174719892442226
+        },
+        {
+          "repeat": 3,
+          "order_position": 2,
+          "ms": 0.0061753601767122746
+        },
+        {
+          "repeat": 4,
+          "order_position": 4,
+          "ms": 0.0061753601767122746
+        },
+        {
+          "repeat": 5,
+          "order_position": 2,
+          "ms": 0.006184959784150124
+        },
+        {
+          "repeat": 6,
+          "order_position": 4,
+          "ms": 0.0061753601767122746
+        }
+      ]
+    },
+    {
+      "dynamic_shared_bytes": 16384,
+      "blocks_upper_bound": 6,
+      "cuda_blocks_per_sm": 5,
+      "cuda_theoretical_occupancy": 0.8333333333333334,
+      "median_ms": 0.008182399906218052,
+      "median_paired_speedup_vs_zero_reserved": 0.7547125840206652,
+      "samples": [
+        {
+          "repeat": 1,
+          "order_position": 3,
+          "ms": 0.008182399906218052
+        },
+        {
+          "repeat": 2,
+          "order_position": 3,
+          "ms": 0.008182399906218052
+        },
+        {
+          "repeat": 3,
+          "order_position": 3,
+          "ms": 0.008182399906218052
+        },
+        {
+          "repeat": 4,
+          "order_position": 3,
+          "ms": 0.008183039724826813
+        },
+        {
+          "repeat": 5,
+          "order_position": 3,
+          "ms": 0.008315520361065865
+        },
+        {
+          "repeat": 6,
+          "order_position": 3,
+          "ms": 0.00818048045039177
+        }
+      ]
+    },
+    {
+      "dynamic_shared_bytes": 32768,
+      "blocks_upper_bound": 3,
+      "cuda_blocks_per_sm": 3,
+      "cuda_theoretical_occupancy": 0.5,
+      "median_ms": 0.010271679610013962,
+      "median_paired_speedup_vs_zero_reserved": 0.6011714018590588,
+      "samples": [
+        {
+          "repeat": 1,
+          "order_position": 4,
+          "ms": 0.01028095930814743
+        },
+        {
+          "repeat": 2,
+          "order_position": 2,
+          "ms": 0.010354559868574142
+        },
+        {
+          "repeat": 3,
+          "order_position": 4,
+          "ms": 0.010271359235048294
+        },
+        {
+          "repeat": 4,
+          "order_position": 2,
+          "ms": 0.010271359235048294
+        },
+        {
+          "repeat": 5,
+          "order_position": 4,
+          "ms": 0.01027199998497963
+        },
+        {
+          "repeat": 6,
+          "order_position": 2,
+          "ms": 0.010271359235048294
+        }
+      ]
+    },
+    {
+      "dynamic_shared_bytes": 49152,
+      "blocks_upper_bound": 2,
+      "cuda_blocks_per_sm": 2,
+      "cuda_theoretical_occupancy": 0.3333333333333333,
+      "median_ms": 0.014368320349603891,
+      "median_paired_speedup_vs_zero_reserved": 0.4297899844600698,
+      "samples": [
+        {
+          "repeat": 1,
+          "order_position": 5,
+          "ms": 0.014368000440299511
+        },
+        {
+          "repeat": 2,
+          "order_position": 1,
+          "ms": 0.014449280686676502
+        },
+        {
+          "repeat": 3,
+          "order_position": 5,
+          "ms": 0.014363519847393036
+        },
+        {
+          "repeat": 4,
+          "order_position": 1,
+          "ms": 0.014366719871759415
+        },
+        {
+          "repeat": 5,
+          "order_position": 5,
+          "ms": 0.014416639693081379
+        },
+        {
+          "repeat": 6,
+          "order_position": 1,
+          "ms": 0.014368640258908272
+        }
+      ]
+    }
+  ],
+  "achieved_occupancy": null
+}
