@@ -1,0 +1,78 @@
+{
+  "schema_version": "inference-mechanism-gpu/v1",
+  "semantic_id": "INF-SDPA-ATTENTION",
+  "environment_profile": "INF-CUDA-MECHANISM",
+  "run_mode": "real_gpu",
+  "run_label": "rtx5070ti_sdpa_v1",
+  "workload": {
+    "id": "inference-attention-sdpa",
+    "version": "v2"
+  },
+  "created_at_utc": "20261009T095208Z",
+  "config": {
+    "dtype": "torch.bfloat16",
+    "batch_size": 1,
+    "num_heads": 8,
+    "seq_len": 512,
+    "head_dim": 64,
+    "causal": false,
+    "warmup": 5,
+    "iters": 20,
+    "seed": 42
+  },
+  "environment": {
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8",
+    "python": "3.12.15"
+  },
+  "results": [
+    {
+      "implementation": "naive",
+      "median_ms": 0.0543,
+      "p95_ms": 0.0804,
+      "peak_allocated_mb": 18.62,
+      "peak_reserved_mb": 24.0,
+      "status": "ok",
+      "max_error": 0.005859375
+    },
+    {
+      "implementation": "SDPA",
+      "median_ms": 0.0237,
+      "p95_ms": 0.0252,
+      "peak_allocated_mb": 11.14,
+      "peak_reserved_mb": 24.0,
+      "status": "ok",
+      "max_error": 0.005859375
+    }
+  ],
+  "baseline": {
+    "implementation": "naive",
+    "median_ms": 0.0543,
+    "p95_ms": 0.0804,
+    "peak_allocated_mb": 18.62,
+    "peak_reserved_mb": 24.0,
+    "status": "ok",
+    "max_error": 0.005859375
+  },
+  "candidate": {
+    "implementation": "SDPA",
+    "median_ms": 0.0237,
+    "p95_ms": 0.0252,
+    "peak_allocated_mb": 11.14,
+    "peak_reserved_mb": 24.0,
+    "status": "ok",
+    "max_error": 0.005859375
+  },
+  "evidence_level": "local_mechanism_benchmark",
+  "note": "naive 与 SDPA 的对照不能直接命名为 FlashAttention-3/4；稳定结论需要重复运行。",
+  "artifact": {
+    "result_path": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/20_flashattention/inference-attention-sdpa_rtx5070ti_sdpa_v1.json",
+    "artifact_type": "json_result"
+  },
+  "failure": null,
+  "decision": {
+    "decision": "reject",
+    "reason": "当前 workload 的数值误差未通过对照门槛"
+  }
+}

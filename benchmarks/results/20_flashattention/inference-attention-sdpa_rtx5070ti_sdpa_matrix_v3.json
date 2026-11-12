@@ -1,0 +1,181 @@
+{
+  "schema_version": "inference-mechanism-gpu/v2",
+  "semantic_id": "INF-SDPA-ATTENTION",
+  "environment_profile": "INF-CUDA-MECHANISM",
+  "run_mode": "real_gpu",
+  "run_label": "rtx5070ti_sdpa_matrix_v3",
+  "workload": {
+    "id": "inference-attention-sdpa",
+    "version": "v3"
+  },
+  "created_at_utc": "20261009T101700Z",
+  "config": {
+    "dtype": "torch.bfloat16",
+    "batch_size": 1,
+    "num_heads": 8,
+    "seq_lengths": [
+      512,
+      1024,
+      2048,
+      4096
+    ],
+    "head_dim": 64,
+    "causal": false,
+    "atol": 0.01,
+    "rtol": 0.01,
+    "warmup": 5,
+    "iters": 20,
+    "seed": 42
+  },
+  "environment": {
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8",
+    "python": "3.12.15"
+  },
+  "cases": [
+    {
+      "seq_len": 512,
+      "baseline": {
+        "implementation": "naive",
+        "median_ms": 0.0516,
+        "p95_ms": 0.056,
+        "peak_allocated_mb": 18.12,
+        "peak_reserved_mb": 24.0,
+        "status": "ok"
+      },
+      "candidate": {
+        "implementation": "SDPA",
+        "median_ms": 0.0242,
+        "p95_ms": 0.0273,
+        "peak_allocated_mb": 10.14,
+        "peak_reserved_mb": 24.0,
+        "status": "ok"
+      },
+      "correctness": {
+        "output_close": true,
+        "max_abs_error": 0.005859375,
+        "relative_l2_error": 0.004819181747734547,
+        "atol": 0.01,
+        "rtol": 0.01
+      },
+      "speedup": 2.1322314049586777,
+      "allocated_memory_reduction": 0.4403973509933775,
+      "sdpa_operator_keys": [
+        "aten::scaled_dot_product_attention",
+        "aten::_scaled_dot_product_flash_attention",
+        "aten::_flash_attention_forward"
+      ]
+    },
+    {
+      "seq_len": 1024,
+      "baseline": {
+        "implementation": "naive",
+        "median_ms": 0.1502,
+        "p95_ms": 0.1679,
+        "peak_allocated_mb": 44.13,
+        "peak_reserved_mb": 58.0,
+        "status": "ok"
+      },
+      "candidate": {
+        "implementation": "SDPA",
+        "median_ms": 0.067,
+        "p95_ms": 0.0675,
+        "peak_allocated_mb": 12.16,
+        "peak_reserved_mb": 58.0,
+        "status": "ok"
+      },
+      "correctness": {
+        "output_close": true,
+        "max_abs_error": 0.00390625,
+        "relative_l2_error": 0.004947355482727289,
+        "atol": 0.01,
+        "rtol": 0.01
+      },
+      "speedup": 2.2417910447761193,
+      "allocated_memory_reduction": 0.7244504871969182,
+      "sdpa_operator_keys": [
+        "aten::scaled_dot_product_attention",
+        "aten::_scaled_dot_product_flash_attention",
+        "aten::_flash_attention_forward"
+      ]
+    },
+    {
+      "seq_len": 2048,
+      "baseline": {
+        "implementation": "naive",
+        "median_ms": 1.1977,
+        "p95_ms": 1.2616,
+        "peak_allocated_mb": 144.13,
+        "peak_reserved_mb": 150.0,
+        "status": "ok"
+      },
+      "candidate": {
+        "implementation": "SDPA",
+        "median_ms": 0.2381,
+        "p95_ms": 0.2395,
+        "peak_allocated_mb": 16.19,
+        "peak_reserved_mb": 150.0,
+        "status": "ok"
+      },
+      "correctness": {
+        "output_close": true,
+        "max_abs_error": 0.0029296875,
+        "relative_l2_error": 0.004980397876352072,
+        "atol": 0.01,
+        "rtol": 0.01
+      },
+      "speedup": 5.030239395212096,
+      "allocated_memory_reduction": 0.8876708527024214,
+      "sdpa_operator_keys": [
+        "aten::scaled_dot_product_attention",
+        "aten::_scaled_dot_product_flash_attention",
+        "aten::_flash_attention_forward"
+      ]
+    },
+    {
+      "seq_len": 4096,
+      "baseline": {
+        "implementation": "naive",
+        "median_ms": 5.8355,
+        "p95_ms": 6.1021,
+        "peak_allocated_mb": 536.13,
+        "peak_reserved_mb": 554.0,
+        "status": "ok"
+      },
+      "candidate": {
+        "implementation": "SDPA",
+        "median_ms": 0.945,
+        "p95_ms": 1.0142,
+        "peak_allocated_mb": 24.25,
+        "peak_reserved_mb": 554.0,
+        "status": "ok"
+      },
+      "correctness": {
+        "output_close": true,
+        "max_abs_error": 0.001953125,
+        "relative_l2_error": 0.005003804340958595,
+        "atol": 0.01,
+        "rtol": 0.01
+      },
+      "speedup": 6.175132275132275,
+      "allocated_memory_reduction": 0.9547684330293026,
+      "sdpa_operator_keys": [
+        "aten::scaled_dot_product_attention",
+        "aten::_scaled_dot_product_flash_attention",
+        "aten::_flash_attention_forward"
+      ]
+    }
+  ],
+  "evidence_level": "local_mechanism_benchmark",
+  "note": "naive 与 SDPA 的对照不能直接命名为 FlashAttention-3/4；稳定结论需要重复运行。",
+  "artifact": {
+    "result_path": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/20_flashattention/inference-attention-sdpa_rtx5070ti_sdpa_matrix_v3.json",
+    "artifact_type": "json_result"
+  },
+  "failure": null,
+  "decision": {
+    "decision": "accept_for_mechanism_evidence",
+    "reason": "长度矩阵通过正确性检查，并观察到延迟或显存收益"
+  }
+}
