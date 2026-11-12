@@ -13,7 +13,7 @@
 
 ## 本节导读
 
-同一条样本经过对话模板和分词器后，实际 Token 长度可能超过模型窗口；直接截断可能删除回答监督，大量填充又会浪费计算。长上下文微调首先要判断样本能否完整进入目标窗口、溢出时会损失多少监督，再决定如何组织通过检查的样本。本节从真实 Token 长度出发，建立窗口容量、监督保留和训练资源之间的关系。
+同一条样本经过对话模板和分词器后，实际词元（Token）长度可能超过模型窗口，即一次序列允许容纳的词元上限；直接截断可能删除回答监督，大量填充又会浪费计算。长上下文微调首先要判断样本能否完整进入目标窗口、溢出时会损失多少监督，再决定如何组织通过检查的样本。本节从真实词元长度出发，建立窗口容量、监督保留和训练资源之间的关系。
 
 **关键词：** `length distribution`, `packing`, `context budget`, `length curriculum`
 
@@ -31,8 +31,8 @@
 
 **导语：** 进入本节前，先理解 SFT 的监督边界和最小训练基线，再比较样本长度分布与目标窗口是否匹配。
 
-- [13. SFT Training Loop | SFT 训练循环](./13_SFT_Training_Loop.md)
-- [15. End-to-End Fine-Tuning Experiment | 端到端微调实验](./15_End_to_End_Fine_Tuning_Experiment.md)
+- [13. SFT Supervision and Loss | SFT 监督边界与损失](./13_SFT_Training_Loop.md)
+- [15. SFT Training Lifecycle | SFT 有效更新与训练闭环](./15_End_to_End_Fine_Tuning_Experiment.md)
 
 ---
 
@@ -56,7 +56,7 @@ r_{\text{overflow}}
 =\frac{\left|\left\{i\in\{1,\ldots,N\}:L_{\text{total},i}>C\right\}\right|}{N}.
 $$
 
-其中，$i$ 是样本编号，$N$ 是参与统计的有效样本数，$|\{\cdot\}|$ 表示满足条件的样本数量，$C$ 是目标上下文窗口；$L_{\text{template},i}$、$L_{\text{prompt},i}$ 和 $L_{\text{sup},i}$ 分别表示模板 Token、非监督输入 Token 和监督 Token。若 EOS 被标签掩码排除，则 $L_{\text{EOS},i}=0$。代码中的 `template_tokens`、`prompt_tokens` 和 `supervised_tokens` 与这三个分量对应，并接收已经完成分词与区间对齐的长度。
+其中，$i$ 是样本编号，$N$ 是参与统计的有效样本数，$|\{\cdot\}|$ 表示满足条件的样本数量，$C$ 是目标上下文窗口；$L_{\text{template},i}$、$L_{\text{prompt},i}$ 和 $L_{\text{sup},i}$ 分别表示模板 Token、非监督输入 Token 和监督 Token。若 EOS 被标签掩码排除，则 $L_{\text{EOS},i}=0$。P50和P95分别描述至少50%与95%的样本不长于哪个长度，用来观察数据主体与长尾；本例按排序后的最近秩分位数计算。
 
 | 观察项 | 如何计算或比较 | 对训练设计的影响 |
 |:---|:---|:---|
@@ -70,19 +70,19 @@ $$
 ![长上下文微调机制链](../public/02_PyTorch_Algorithms/30_long_context_flow.svg)
 ## Step 2：如何处理溢出样本并安全拼接合格样本
 
-完成长度账本后，先逐条决定样本是否完整保留。若 `模板 + 提示 + 监督` 超过目标窗口，固定保留模板和提示，只在监督尾部执行既定截断；保留监督量和监督损失比例必须同时通过门槛，否则拒绝该样本。Packing 只接收已经通过窗口策略的样本，用剩余容量减少 Padding，同时保持标签、位置和注意力边界。
+记录每条样本的模板、提示和回答长度后，先逐条检查能否完整放入窗口。若 `模板 + 提示 + 监督` 超过目标窗口，固定保留模板和提示，只在监督尾部执行既定截断；无论是否截断，保留监督量和监督损失比例都必须同时通过门槛，否则拒绝该样本。序列拼接（packing）把多条短样本放入同一窗口，以减少填充（padding）。它只接收通过窗口策略的样本，并同时保留监督与注意力边界。例如两条样本各占3个词元，拼成长度6后，第二条的第一个词元仍没有本样本的前驱输出可用，其标签必须屏蔽；位置索引重置或隔离注意力，都不能代替这项监督处理。
 
 | 处理环节 | 必须保持的不变量 | 违反后的结果 |
 |:---|:---|:---|
 | 长度账本 | 分别记录模板、提示、原始监督和保留监督 Token | 无法解释样本为什么被保留、截断或拒绝 |
 | 受控截断 | 模板和提示保持不变；监督保留量与损失比例同时通过 | 残余监督不足或输入语义被破坏 |
 | Packing 容量 | 只拼接已准入样本，容器总 Token 不超过目标窗口 | 训练序列越界或混入已拒绝样本 |
-| 样本边界 | 标签对齐、位置语义正确、跨样本注意力隔离 | 上下文泄漏或监督污染 |
+| 样本边界 | 标签对齐且样本起点屏蔽，位置语义正确，跨样本注意力隔离 | 上下文泄漏或监督污染 |
 
 ![长上下文微调预算](../public/02_PyTorch_Algorithms/30_long_context_budget.svg)
 ## Step 3：何时扩大长样本比例和目标窗口
 
-序列长度课程逐步提高中长样本比例和目标窗口，但候选阶段必须与短窗口基线使用相同的模型、优化器、评测集和每优化器步有效监督 Token。扩大窗口不是只看长上下文得分：质量增益、短上下文保持、数值稳定、运行稳定和资源预算需要同时通过，任一门槛失败都应停留在当前阶段。
+逐阶段提高中长样本比例或目标窗口，称为序列长度课程。比较新阶段与短窗口基线时，保持模型、优化器、评测集和每次参数更新的有效监督词元数相同。只有长上下文得分的提升达到下限、短任务回退未超限，且损失与梯度有限、失败次数和资源占用未超预算，才进入新阶段。
 
 | 晋级门槛 | 比较口径 | 停止晋级的条件 |
 |:---|:---|:---|
@@ -96,14 +96,15 @@ $$
 
 ## Step 4：实现窗口策略与边界隔离序列拼接
 
-代码接收已经完成分词与区间对齐的长度账本：`supervised_tokens` 包含回答和受监督 EOS。它先根据监督保留量执行窗口策略，再构造边界隔离的序列拼接。序列长度课程的阶段门槛作为完整比较契约提供，用于验证两项机制产生的数据能否进入更长窗口训练。
+代码接收已经完成分词与区间对齐的长度账本：`supervised_tokens` 包含回答和受监督 EOS。它先根据监督保留量执行窗口策略，再构造边界隔离的序列拼接。骨架屏蔽各样本起点标签，避免下一词元损失跨越边界。序列长度课程的阶段门槛作为完整比较契约提供，用于验证两项机制产生的数据能否进入更长窗口训练。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 |:---|:---|:---|:---|
 | TODO 1：执行窗口策略<br>`audit_context_fit` | 计算保留监督量，并区分完整保留、受控截断和拒绝 | 截断必须同时通过最少监督量与最大损失比例 | 检查窗口边界、合法截断、严格拒绝、零监督和非法阈值 |
-| TODO 2：隔离样本边界<br>`build_boundary_isolated_packing` | 重置每条样本的位置索引，并构造样本内因果注意力掩码 | 标签与 Token 对齐，后一条样本不能看到前一条样本 | 检查标签与位置保留、样本内因果可见、跨样本隔离和错位输入 |
+| TODO 2：隔离样本边界<br>`build_boundary_isolated_packing` | 重置每条样本的位置索引，并构造样本内因果注意力掩码 | 标签与 Token 对齐，后一条样本不能看到前一条样本，也不借用其输出预测本样本起点 | 检查标签与位置保留、样本内因果可见、跨样本隔离、起点监督屏蔽和错位输入 |
 
 ```python
+import math
 from typing import Dict, List
 
 ```
@@ -114,44 +115,44 @@ def summarize_length_distribution(
     lengths: List[int], short_threshold: int, long_threshold: int
 ) -> Dict[str, object]:
     """统计长度分桶、P50 与 P95。"""
-    if short_threshold < 0 or long_threshold < short_threshold or any(length < 0 for length in lengths):
+    if any(type(value) is not int or value < 0 for value in [short_threshold, long_threshold, *lengths]) or long_threshold < short_threshold:
         raise ValueError("长度必须非负，且 short_threshold <= long_threshold")
-    ordered = sorted(int(length) for length in lengths)
+    ordered = sorted(lengths)
     buckets = {"short": sum(length <= short_threshold for length in ordered), "medium": sum(short_threshold < length <= long_threshold for length in ordered), "long": sum(length > long_threshold for length in ordered)}
-    p50_tokens = ordered[max(0, int(0.50 * len(ordered) + 0.999999) - 1)] if ordered else 0
-    p95_tokens = ordered[max(0, int(0.95 * len(ordered) + 0.999999) - 1)] if ordered else 0
+    p50_tokens = ordered[max(0, math.ceil(0.50 * len(ordered)) - 1)] if ordered else 0
+    p95_tokens = ordered[max(0, math.ceil(0.95 * len(ordered)) - 1)] if ordered else 0
     return {"count": len(ordered), "buckets": buckets, "p50_tokens": p50_tokens, "p95_tokens": p95_tokens}
 
 
 def audit_context_fit(
-    samples: List[Dict[str, int]],
+    samples: List[Dict[str, object]],
     target_context_len: int,
     template_tokens: int,
     min_kept_supervised_tokens: int = 1,
     max_supervision_loss_ratio: float = 0.0,
 ) -> Dict[str, object]:
     """按监督保留量区分完整保留、受控截断和拒绝。"""
-    if target_context_len <= 0 or template_tokens < 0 or min_kept_supervised_tokens <= 0:
+    if any(type(value) is not int for value in (target_context_len, template_tokens, min_kept_supervised_tokens)) or target_context_len <= 0 or template_tokens < 0 or min_kept_supervised_tokens <= 0:
         raise ValueError("窗口和最少监督量必须为正，模板长度必须非负")
     if not 0.0 <= max_supervision_loss_ratio <= 1.0:
         raise ValueError("监督损失比例必须位于 [0, 1]")
     records = []
     for sample in samples:
-        prompt_tokens = int(sample["prompt_tokens"])
-        supervised_tokens = int(sample["supervised_tokens"])
-        if prompt_tokens < 0 or supervised_tokens <= 0:
+        prompt_tokens = sample["prompt_tokens"]
+        supervised_tokens = sample["supervised_tokens"]
+        if any(type(value) is not int for value in (prompt_tokens, supervised_tokens)) or prompt_tokens < 0 or supervised_tokens <= 0:
             raise ValueError("提示长度必须非负，监督长度必须为正")
         prompt_and_template_tokens = template_tokens + prompt_tokens
         available_supervision_slots = max(0, target_context_len - prompt_and_template_tokens)
         # ==========================================
-        # TODO 1：计算监督保留量并执行窗口门槛。
-        # kept_supervised_tokens = ???  # 窗口内能够保留的回答 Token 数。
-        # loss_ratio = ???  # 被截断监督量占原始回答 Token 的比例。
-        # admitted = ???  # 同时满足最少监督量与最大损失比例。
+        # TODO 1：计算监督保留量并执行窗口门槛
         # ==========================================
+        # kept_supervised_tokens = ???  # 整数；窗口内保留的监督词元数，包含受监督结束标记。
+        # loss_ratio = ???  # [0, 1]；被截断的监督量占原始监督量的比例。
+        # admitted = ???  # bool；保留量和损失比例同时通过各自门槛。
         raise NotImplementedError("TODO 1：执行窗口策略")
         total_tokens = prompt_and_template_tokens + supervised_tokens
-        decision = "fit" if kept_supervised_tokens == supervised_tokens else ("truncate" if admitted else "overflow")
+        decision = "overflow" if not admitted else ("fit" if kept_supervised_tokens == supervised_tokens else "truncate")
         records.append({"name": sample["name"], "total_tokens": total_tokens, "kept_supervised_tokens": kept_supervised_tokens if admitted else 0, "supervision_loss_ratio": loss_ratio, "decision": decision})
     fit_names = [item["name"] for item in records if item["decision"] == "fit"]
     truncated_names = [item["name"] for item in records if item["decision"] == "truncate"]
@@ -161,7 +162,7 @@ def audit_context_fit(
 
 def pack_sample_lengths(lengths: List[int], max_tokens_per_bin: int) -> Dict[str, object]:
     """使用 first-fit decreasing 构造 Packing 容器。"""
-    if max_tokens_per_bin <= 0 or any(length <= 0 or length > max_tokens_per_bin for length in lengths):
+    if type(max_tokens_per_bin) is not int or max_tokens_per_bin <= 0 or any(type(length) is not int or length <= 0 or length > max_tokens_per_bin for length in lengths):
         raise ValueError("每个长度必须位于 (0, max_tokens_per_bin] 区间")
     bins: List[List[int]] = []
     for length in sorted(lengths, reverse=True):
@@ -187,6 +188,8 @@ def build_boundary_isolated_packing(samples: List[Dict[str, List[int]]]) -> Dict
         sample_labels = list(sample["labels"])
         if not sample_input_ids or len(sample_input_ids) != len(sample_labels):
             raise ValueError("每条样本必须非空，且 input_ids 与 labels 等长")
+        # 起点没有本样本的前驱预测；屏蔽它，避免移位损失借用前一条样本的输出。
+        sample_labels[0] = -100
         input_ids.extend(sample_input_ids)
         labels.extend(sample_labels)
         segment_ids.extend([segment_id] * len(sample_input_ids))
@@ -208,6 +211,23 @@ def evaluate_length_curriculum_stage(
     limit_required = {"min_long_context_gain", "max_short_context_regression", "max_failed_runs", "max_peak_memory_gb", "max_cost_per_supervised_token"}
     if baseline_required - baseline.keys() or candidate_required - candidate.keys() or limit_required - limits.keys():
         raise ValueError("序列长度课程比较缺少必要字段")
+    for field in ("long_context_score", "short_context_score"):
+        if not all(math.isfinite(float(row[field])) for row in (baseline, candidate)):
+            raise ValueError("质量指标必须为有限数")
+    for row in (baseline, candidate):
+        count = row["supervised_tokens_per_optimizer_step"]
+        if type(count) is not int or count <= 0:
+            raise ValueError("每步有效监督词元数必须为正整数")
+    if type(candidate["failed_runs"]) is not int or candidate["failed_runs"] < 0:
+        raise ValueError("失败次数必须为非负整数")
+    for field in ("peak_memory_gb", "cost_per_supervised_token"):
+        value = float(candidate[field])
+        if not math.isfinite(value) or value < 0:
+            raise ValueError("资源观测必须为非负有限数")
+    if any(not math.isfinite(float(value)) or value < 0 for value in limits.values()):
+        raise ValueError("阶段门槛必须为非负有限数")
+    if type(limits["max_failed_runs"]) is not int:
+        raise ValueError("失败次数上限必须为整数")
     evidence = {
         "token_budget_matches": baseline["supervised_tokens_per_optimizer_step"] == candidate["supervised_tokens_per_optimizer_step"],
         "long_context_gain": float(candidate["long_context_score"]) - float(baseline["long_context_score"]),
@@ -320,16 +340,55 @@ def test_invalid_length_inputs() -> None:
     _assert_raises_value_error(lambda: build_boundary_isolated_packing([{"input_ids": [1, 2], "labels": [-100]}]))
 
 
-try:
-    test_context_fit_preserves_supervision()
-    test_controlled_truncation()
-    test_packing_preserves_capacity_and_samples()
-    test_boundary_isolated_packing()
-    test_length_curriculum_stage_decision()
-    test_invalid_length_inputs()
-    print("✅ 长度、窗口、边界隔离与长度阶段晋级测试通过。")
-except (AttributeError, NameError, TypeError, ValueError, AssertionError) as error:
-    raise NotImplementedError("请先完成 TODO 代码！") from error
+
+def test_full_fit_still_requires_supervision_minimum():
+    """完整进入窗口不代表达到最低监督量，拒绝时不得标为fit。"""
+    report = audit_context_fit(
+        [{"name": "too-short", "prompt_tokens": 2, "supervised_tokens": 1}],
+        16, 1, min_kept_supervised_tokens=2,
+    )
+    assert report["fit_names"] == []
+    assert report["overflow_names"] == ["too-short"]
+    assert report["records"][0]["kept_supervised_tokens"] == 0
+
+
+def test_packing_masks_cross_sample_prediction():
+    """屏蔽每条样本起点，因果移位后只留下样本内部的目标。"""
+    samples = [
+        {"input_ids": [11, 12], "labels": [11, 12]},
+        {"input_ids": [21, 22, 23], "labels": [21, 22, 23]},
+    ]
+    packed = build_boundary_isolated_packing(samples)
+    assert packed["labels"] == [-100, 12, -100, 22, 23]
+    assert samples[1]["labels"][0] == 21, "构造拼接结果时不修改源样本"
+    pairs = [(i - 1, i) for i in range(1, len(packed["labels"])) if packed["labels"][i] != -100]
+    assert all(packed["segment_ids"][q] == packed["segment_ids"][k] for q, k in pairs)
+
+
+def test_invalid_discrete_lengths_and_nonfinite_evidence():
+    """离散长度不能静默截断，非有限指标不能绕过阶段门槛。"""
+    _assert_raises_value_error(lambda: summarize_length_distribution([1.5], 2, 4))
+    _assert_raises_value_error(lambda: pack_sample_lengths([2], True))
+    _assert_raises_value_error(lambda: audit_context_fit([{"name": "bad", "prompt_tokens": 2, "supervised_tokens": 1.5}], 16, 1))
+    baseline = {"long_context_score": 0.56, "short_context_score": 0.82, "supervised_tokens_per_optimizer_step": 8192}
+    candidate = {**baseline, "long_context_score": 0.63, "loss_finite": True, "gradients_finite": True, "failed_runs": 0, "peak_memory_gb": 9.8, "cost_per_supervised_token": 1.25}
+    limits = {"min_long_context_gain": 0.04, "max_short_context_regression": 0.02, "max_failed_runs": 0, "max_peak_memory_gb": 10.5, "max_cost_per_supervised_token": 1.4}
+    for field in ("long_context_score", "short_context_score", "peak_memory_gb", "cost_per_supervised_token"):
+        _assert_raises_value_error(lambda: evaluate_length_curriculum_stage(baseline, {**candidate, field: float("nan")}, limits))
+    _assert_raises_value_error(lambda: evaluate_length_curriculum_stage(baseline, {**candidate, "failed_runs": 0.5}, limits))
+
+
+test_context_fit_preserves_supervision()
+test_controlled_truncation()
+test_packing_preserves_capacity_and_samples()
+test_boundary_isolated_packing()
+test_length_curriculum_stage_decision()
+test_invalid_length_inputs()
+test_full_fit_still_requires_supervision_minimum()
+test_packing_masks_cross_sample_prediction()
+test_invalid_discrete_lengths_and_nonfinite_evidence()
+print("PASSED: 窗口准入、监督起点、注意力隔离与阶段门槛核对通过。")
+
 ```
 
 ---
@@ -352,46 +411,41 @@ def summarize_length_distribution(
     lengths: List[int], short_threshold: int, long_threshold: int
 ) -> Dict[str, object]:
     """统计长度分桶、P50 与 P95。"""
-    if short_threshold < 0 or long_threshold < short_threshold or any(length < 0 for length in lengths):
+    if any(type(value) is not int or value < 0 for value in [short_threshold, long_threshold, *lengths]) or long_threshold < short_threshold:
         raise ValueError("长度必须非负，且 short_threshold <= long_threshold")
-    ordered = sorted(int(length) for length in lengths)
+    ordered = sorted(lengths)
     buckets = {"short": sum(length <= short_threshold for length in ordered), "medium": sum(short_threshold < length <= long_threshold for length in ordered), "long": sum(length > long_threshold for length in ordered)}
-    p50_tokens = ordered[max(0, int(0.50 * len(ordered) + 0.999999) - 1)] if ordered else 0
-    p95_tokens = ordered[max(0, int(0.95 * len(ordered) + 0.999999) - 1)] if ordered else 0
-    return {
-        "count": len(ordered),
-        "buckets": buckets,
-        "p50_tokens": p50_tokens,
-        "p95_tokens": p95_tokens,
-    }
+    p50_tokens = ordered[max(0, math.ceil(0.50 * len(ordered)) - 1)] if ordered else 0
+    p95_tokens = ordered[max(0, math.ceil(0.95 * len(ordered)) - 1)] if ordered else 0
+    return {"count": len(ordered), "buckets": buckets, "p50_tokens": p50_tokens, "p95_tokens": p95_tokens}
 
 
 def audit_context_fit(
-    samples: List[Dict[str, int]],
+    samples: List[Dict[str, object]],
     target_context_len: int,
     template_tokens: int,
     min_kept_supervised_tokens: int = 1,
     max_supervision_loss_ratio: float = 0.0,
 ) -> Dict[str, object]:
     """按监督保留量区分完整保留、受控截断和拒绝。"""
-    if target_context_len <= 0 or template_tokens < 0 or min_kept_supervised_tokens <= 0:
+    if any(type(value) is not int for value in (target_context_len, template_tokens, min_kept_supervised_tokens)) or target_context_len <= 0 or template_tokens < 0 or min_kept_supervised_tokens <= 0:
         raise ValueError("窗口和最少监督量必须为正，模板长度必须非负")
     if not 0.0 <= max_supervision_loss_ratio <= 1.0:
         raise ValueError("监督损失比例必须位于 [0, 1]")
     records = []
     for sample in samples:
-        prompt_tokens = int(sample["prompt_tokens"])
-        supervised_tokens = int(sample["supervised_tokens"])
-        if prompt_tokens < 0 or supervised_tokens <= 0:
+        prompt_tokens = sample["prompt_tokens"]
+        supervised_tokens = sample["supervised_tokens"]
+        if any(type(value) is not int for value in (prompt_tokens, supervised_tokens)) or prompt_tokens < 0 or supervised_tokens <= 0:
             raise ValueError("提示长度必须非负，监督长度必须为正")
         prompt_and_template_tokens = template_tokens + prompt_tokens
         available_supervision_slots = max(0, target_context_len - prompt_and_template_tokens)
-        # TODO 1：计算监督保留量并应用两道窗口门槛。
+        # TODO 1：计算监督保留量并执行窗口门槛
         kept_supervised_tokens = min(supervised_tokens, available_supervision_slots)
         loss_ratio = (supervised_tokens - kept_supervised_tokens) / supervised_tokens
         admitted = kept_supervised_tokens >= min_kept_supervised_tokens and loss_ratio <= max_supervision_loss_ratio
         total_tokens = prompt_and_template_tokens + supervised_tokens
-        decision = "fit" if kept_supervised_tokens == supervised_tokens else ("truncate" if admitted else "overflow")
+        decision = "overflow" if not admitted else ("fit" if kept_supervised_tokens == supervised_tokens else "truncate")
         records.append({"name": sample["name"], "total_tokens": total_tokens, "kept_supervised_tokens": kept_supervised_tokens if admitted else 0, "supervision_loss_ratio": loss_ratio, "decision": decision})
     fit_names = [item["name"] for item in records if item["decision"] == "fit"]
     truncated_names = [item["name"] for item in records if item["decision"] == "truncate"]
@@ -400,8 +454,8 @@ def audit_context_fit(
 
 
 def pack_sample_lengths(lengths: List[int], max_tokens_per_bin: int) -> Dict[str, object]:
-    """使用 first-fit decreasing 构造 packing bins。"""
-    if max_tokens_per_bin <= 0 or any(length <= 0 or length > max_tokens_per_bin for length in lengths):
+    """使用 first-fit decreasing 构造 Packing 容器。"""
+    if type(max_tokens_per_bin) is not int or max_tokens_per_bin <= 0 or any(type(length) is not int or length <= 0 or length > max_tokens_per_bin for length in lengths):
         raise ValueError("每个长度必须位于 (0, max_tokens_per_bin] 区间")
     bins: List[List[int]] = []
     for length in sorted(lengths, reverse=True):
@@ -411,10 +465,7 @@ def pack_sample_lengths(lengths: List[int], max_tokens_per_bin: int) -> Dict[str
         else:
             target_bin.append(length)
     capacity = len(bins) * max_tokens_per_bin
-    return {
-        "bins": bins,
-        "utilization": sum(lengths) / capacity if capacity else 0.0,
-    }
+    return {"bins": bins, "utilization": sum(lengths) / capacity if capacity else 0.0}
 
 
 def build_boundary_isolated_packing(samples: List[Dict[str, List[int]]]) -> Dict[str, object]:
@@ -430,11 +481,13 @@ def build_boundary_isolated_packing(samples: List[Dict[str, List[int]]]) -> Dict
         sample_labels = list(sample["labels"])
         if not sample_input_ids or len(sample_input_ids) != len(sample_labels):
             raise ValueError("每条样本必须非空，且 input_ids 与 labels 等长")
+        # 起点没有本样本的前驱预测；屏蔽它，避免移位损失借用前一条样本的输出。
+        sample_labels[0] = -100
         input_ids.extend(sample_input_ids)
         labels.extend(sample_labels)
         segment_ids.extend([segment_id] * len(sample_input_ids))
         position_ids.extend(range(len(sample_input_ids)))
-    # TODO 2：构造边界隔离的因果注意力掩码。
+    # TODO 2：构造边界隔离的因果注意力掩码
     attention_allowed = [
         [query_segment == key_segment and key_position <= query_position for key_segment, key_position in zip(segment_ids, position_ids)]
         for query_segment, query_position in zip(segment_ids, position_ids)
@@ -445,34 +498,45 @@ def build_boundary_isolated_packing(samples: List[Dict[str, List[int]]]) -> Dict
 def evaluate_length_curriculum_stage(
     baseline: Dict[str, object], candidate: Dict[str, object], limits: Dict[str, float]
 ) -> Dict[str, object]:
+    """用得分变化、有限性、失败次数与资源上限判断是否进入下一阶段。"""
     baseline_required = {"long_context_score", "short_context_score", "supervised_tokens_per_optimizer_step"}
     candidate_required = baseline_required | {"loss_finite", "gradients_finite", "failed_runs", "peak_memory_gb", "cost_per_supervised_token"}
     limit_required = {"min_long_context_gain", "max_short_context_regression", "max_failed_runs", "max_peak_memory_gb", "max_cost_per_supervised_token"}
     if baseline_required - baseline.keys() or candidate_required - candidate.keys() or limit_required - limits.keys():
         raise ValueError("序列长度课程比较缺少必要字段")
+    for field in ("long_context_score", "short_context_score"):
+        if not all(math.isfinite(float(row[field])) for row in (baseline, candidate)):
+            raise ValueError("质量指标必须为有限数")
+    for row in (baseline, candidate):
+        count = row["supervised_tokens_per_optimizer_step"]
+        if type(count) is not int or count <= 0:
+            raise ValueError("每步有效监督词元数必须为正整数")
+    if type(candidate["failed_runs"]) is not int or candidate["failed_runs"] < 0:
+        raise ValueError("失败次数必须为非负整数")
+    for field in ("peak_memory_gb", "cost_per_supervised_token"):
+        value = float(candidate[field])
+        if not math.isfinite(value) or value < 0:
+            raise ValueError("资源观测必须为非负有限数")
+    if any(not math.isfinite(float(value)) or value < 0 for value in limits.values()):
+        raise ValueError("阶段门槛必须为非负有限数")
+    if type(limits["max_failed_runs"]) is not int:
+        raise ValueError("失败次数上限必须为整数")
     evidence = {
         "token_budget_matches": baseline["supervised_tokens_per_optimizer_step"] == candidate["supervised_tokens_per_optimizer_step"],
         "long_context_gain": float(candidate["long_context_score"]) - float(baseline["long_context_score"]),
         "short_context_regression": float(baseline["short_context_score"]) - float(candidate["short_context_score"]),
     }
-    # 阶段晋级逐项比较，不使用加权总分。
-    failed_gates = []
-    if not evidence["token_budget_matches"]:
-        failed_gates.append("token_budget_mismatch")
-    if evidence["long_context_gain"] < limits["min_long_context_gain"]:
-        failed_gates.append("insufficient_long_context_gain")
-    if evidence["short_context_regression"] > limits["max_short_context_regression"]:
-        failed_gates.append("short_context_regression")
-    if candidate["loss_finite"] is not True:
-        failed_gates.append("nonfinite_loss")
-    if candidate["gradients_finite"] is not True:
-        failed_gates.append("nonfinite_gradients")
-    if int(candidate["failed_runs"]) > limits["max_failed_runs"]:
-        failed_gates.append("failed_runs")
-    if float(candidate["peak_memory_gb"]) > limits["max_peak_memory_gb"]:
-        failed_gates.append("peak_memory_budget")
-    if float(candidate["cost_per_supervised_token"]) > limits["max_cost_per_supervised_token"]:
-        failed_gates.append("cost_budget")
+    gate_failures = [
+        ("token_budget_mismatch", not evidence["token_budget_matches"]),
+        ("insufficient_long_context_gain", evidence["long_context_gain"] < limits["min_long_context_gain"]),
+        ("short_context_regression", evidence["short_context_regression"] > limits["max_short_context_regression"]),
+        ("nonfinite_loss", candidate["loss_finite"] is not True),
+        ("nonfinite_gradients", candidate["gradients_finite"] is not True),
+        ("failed_runs", int(candidate["failed_runs"]) > limits["max_failed_runs"]),
+        ("peak_memory_budget", float(candidate["peak_memory_gb"]) > limits["max_peak_memory_gb"]),
+        ("cost_budget", float(candidate["cost_per_supervised_token"]) > limits["max_cost_per_supervised_token"]),
+    ]
+    failed_gates = [name for name, failed in gate_failures if failed]
     return {"decision": "advance" if not failed_gates else "hold", "failed_gates": failed_gates, "evidence": evidence}
 ```
 
@@ -480,13 +544,13 @@ def evaluate_length_curriculum_stage(
 
 #### TODO 1：执行窗口策略
 
-- 机制：`supervised_tokens` 已包含回答与受监督 EOS；先计算提示和模板占用，再用剩余槽位得到监督保留量；完整保留记为 `fit`，门槛允许的部分保留记为 `truncate`，其余记为 `overflow`。
-- 不变量：受控截断必须同时满足最少监督量和最大监督损失比例；测试覆盖窗口边界、允许截断、严格拒绝与非法阈值。
+- 监督长度包含回答及受监督的结束标记。剩余窗口决定最多保留多少目标，再同时检查最低保留量与最大截断比例；即使样本完整放入窗口，监督量不足仍要拒绝。
+- 答案计算保留量、损失比例与准入条件。受控截断测试核对两个门槛，完整保留反例验证不能跳过最低监督量；被拒记录沿用窗口审计的 `overflow` 状态。
 
 #### TODO 2：隔离样本边界
 
-- 机制：每条样本的位置索引从 0 重新开始，注意力同时检查“同一样本”和“键位置不晚于查询位置”。
-- 不变量：Token 与标签顺序不变，样本内保持因果可见性，跨样本位置全部不可见；测试直接检查两条样本的掩码矩阵。
+- 因果注意力同时满足“属于同一样本”和“键位置不晚于查询位置”。位置重置描述位置语义，注意力掩码控制可见范围，两者各有职责。
+- 答案构造两项条件的合取；骨架另外屏蔽每个样本的起点标签。掩码矩阵测试核对可见范围，移位监督反例核对每一对预测与目标都属于同一样本，并确认源标签未被修改。
 <a id="framework-check"></a>
 
 ## 框架一致性核对（可选）
@@ -495,10 +559,10 @@ def evaluate_length_curriculum_stage(
 
 | 核对对象 | Step 4 教学实现 | 成熟框架 CPU 路径 | 共同输入与通过条件 |
 | --- | --- | --- | --- |
-| Packing 容量 | `build_boundary_isolated_packing` 分配样本 | TRL `pack_dataset(strategy="bfd")` | 使用相同样本和窗口上限；每行不超长，每个样本恰好出现一次 |
-| Token 与标签 | 按样本拼接 Token 与标签 | TRL `pack_dataset` 输出 | 使用相同样本；逐样本 Token 顺序和标签保持不变 |
-| 样本边界 | 生成 `seq_lengths` 与 `position_ids` | TRL padding-free 批处理器 | 使用相同 Packed Row；长度和、位置重置与起点标签屏蔽一致 |
-| 内核元数据 | 生成 `cu_seq_lens` 与 `seq_idx` | TRL padding-free 批处理字段 | 使用相同 `seq_lengths`；累计边界和样本编号一致，不生成普通 Attention Mask |
+| Packing 容量 | 核对拼接后的容量与样本守恒 | TRL `pack_dataset(strategy="bfd")` | 使用相同样本和窗口上限；每行不超长，每个样本恰好出现一次 |
+| Token 与标签 | 按样本拼接 Token 与标签 | TRL `pack_dataset` 输出 | 使用相同样本；逐样本词元顺序与内部标签保持，起点标签按监督边界屏蔽 |
+| 样本边界 | 由各样本长度计算边界并生成位置索引 | TRL padding-free 批处理器 | 使用相同 Packed Row；长度和、位置重置与起点标签屏蔽一致 |
+| 内核元数据 | 由样本片段推导累计边界与编号 | TRL padding-free 批处理字段 | 使用相同 `seq_lengths`；累计边界和样本编号一致，不生成普通 Attention Mask |
 
 ```python
 from collections import Counter
@@ -520,7 +584,7 @@ else:
         max_length = 6
         source_examples = [
             {"input_ids": [11, 12, 13, 14], "labels": [-100, -100, 13, 14]},
-            {"input_ids": [21, 22, 23], "labels": [-100, 22, 23]},
+            {"input_ids": [21, 22, 23], "labels": [21, 22, 23]},
             {"input_ids": [31, 32], "labels": [-100, 32]},
         ]
         packed_dataset = pack_dataset(
@@ -544,6 +608,7 @@ else:
 
         # Packed Row 的顺序不是契约，使用多重集合只比较每个样本是否完整保留。
         def sample_counter(samples):
+            """忽略拼接顺序，比较样本内容及其出现次数。"""
             return Counter(
                 (tuple(sample["input_ids"]), tuple(sample["labels"]))
                 for sample in samples
@@ -578,7 +643,7 @@ else:
             ),
             "sample_identity_preserved": sample_counter(reconstructed_samples) == sample_counter(source_examples),
             "token_order_preserved": framework_batch["input_ids"].tolist()[0] == manual_contract["input_ids"],
-            "labels_preserved": framework_batch["labels"].tolist()[0] == manual_contract["labels"],
+            "internal_labels_and_boundary_mask_match": framework_batch["labels"].tolist()[0] == manual_contract["labels"],
             "position_ids_reset": framework_batch["position_ids"].tolist()[0] == manual_contract["position_ids"],
             "cumulative_boundaries_match": framework_batch["cu_seq_lens_q"].tolist() == expected_cu_seq_lens
             and framework_batch["cu_seq_lens_k"].tolist() == expected_cu_seq_lens,

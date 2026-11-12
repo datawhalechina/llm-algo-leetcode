@@ -14,7 +14,7 @@
   </defs>
   <rect width="1400" height="620" fill="#f8fafc"/>
   <text x="60" y="52" class="title">QLoRA：NF4 底座与 LoRA 旁路如何汇合</text>
-  <text x="60" y="82" class="sub">存储路径压缩底座；计算前恢复近似权重；训练路径只更新适配器。</text>
+  <text x="60" y="82" class="sub">存储路径压缩基座；基座权重冻结，但基座变换仍参与输入梯度计算。</text>
 
   <rect x="45" y="120" width="1310" height="205" rx="18" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2"/>
   <text x="70" y="153" class="group">冻结底座：索引、码点与缩放因子共同恢复计算权重</text>
@@ -44,8 +44,12 @@
   <text x="500" y="462" text-anchor="middle" class="head">LoRA A → B</text>
   <text x="500" y="486" text-anchor="middle" class="small">低秩可训练增量</text>
   <path d="M610 467 H760" class="line"/>
-  <path d="M1145 280 V400 H1040 V440" class="line"/>
-  <text x="1160" y="382" class="small">Ŵx</text>
+  <path d="M1145 280 V330" class="line"/>
+  <rect x="1010" y="330" width="270" height="65" rx="12" class="box" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="1145" y="356" text-anchor="middle" class="head">基座矩阵乘法</text>
+  <text x="1145" y="381" text-anchor="middle" class="small">输入与恢复权重相乘</text>
+  <path d="M300 467 H350 V405 H680 V345 H1010" class="line"/>
+  <path d="M1145 395 V412 H1040 V445" class="line"/>
   <rect x="760" y="430" width="250" height="75" rx="12" class="box" fill="#f3e8ff" stroke="#9333ea"/>
   <text x="885" y="462" text-anchor="middle" class="head">按 α/r 缩放</text>
   <text x="885" y="486" text-anchor="middle" class="small">LoRA 增量 BAx</text>
@@ -56,5 +60,5 @@
   <text x="1220" y="462" text-anchor="middle" class="head">输出</text>
   <text x="1220" y="486" text-anchor="middle" class="small">Ŵx + BAx·α/r</text>
   <path d="M1062 467 H1120" class="line"/>
-  <text x="70" y="585" class="small">颜色语义：蓝=底座表示，黄=反量化处理，紫=LoRA 训练分支，绿=汇合结果。</text>
+  <text x="70" y="585" class="small">输入梯度由基座变换与低秩旁路共同贡献；可训练参数更新发生在适配器。</text>
 </svg>

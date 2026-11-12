@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1500" height="600" viewBox="0 0 1500 600" role="img" aria-labelledby="title desc">
   <title id="title">窗口准入与边界隔离序列拼接</title>
-  <desc id="desc">完整 Token 账本先与目标窗口比较；溢出样本继续检查监督保留量和损失比例，只有完整保留或受控截断的样本才能进入边界隔离序列拼接。</desc>
+  <desc id="desc">完整词元账本先与窗口比较；完整放入与截断样本均须通过监督保留量和损失比例门槛，再进入起点监督屏蔽及注意力隔离的序列拼接。</desc>
   <defs>
     <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
       <stop offset="0%" stop-color="#F8FAFC"/>
@@ -33,7 +33,7 @@
   <text x="455" y="206" text-anchor="middle" class="small">是否不超过窗口 C？</text>
 
   <rect x="620" y="125" width="220" height="100" rx="17" class="box" fill="#ECFDF5" stroke="#10B981"/>
-  <text x="730" y="164" text-anchor="middle" class="label">完整保留</text>
+  <text x="730" y="164" text-anchor="middle" class="label">完整放入窗口</text>
   <text x="730" y="194" text-anchor="middle" class="small">输入与监督均不截断</text>
 
   <rect x="385" y="315" width="260" height="105" rx="17" class="box" fill="#FFF7ED" stroke="#F59E0B"/>
@@ -46,12 +46,12 @@
   <text x="790" y="388" text-anchor="middle" class="small">是否同时满足？</text>
 
   <rect x="930" y="295" width="220" height="105" rx="17" class="box" fill="#ECFDF5" stroke="#10B981"/>
-  <text x="1040" y="334" text-anchor="middle" class="label">受控截断</text>
-  <text x="1040" y="363" text-anchor="middle" class="small">保留足量监督</text>
-  <text x="1040" y="386" text-anchor="middle" class="small">记录被删除的 Token</text>
+  <text x="1040" y="334" text-anchor="middle" class="label">样本准入</text>
+  <text x="1040" y="363" text-anchor="middle" class="small">完整保留或受控截断</text>
+  <text x="1040" y="386" text-anchor="middle" class="small">记录原始与保留监督量</text>
 
   <rect x="930" y="445" width="220" height="100" rx="17" class="box" fill="#FEF2F2" stroke="#EF4444"/>
-  <text x="1040" y="484" text-anchor="middle" class="label">拒绝或更长窗口</text>
+  <text x="1040" y="484" text-anchor="middle" class="label">拒绝当前样本</text>
   <text x="1040" y="514" text-anchor="middle" class="small">不进入当前训练窗口</text>
 
   <rect x="1205" y="120" width="240" height="100" rx="17" class="box" fill="#ECFEFF" stroke="#0891B2"/>
@@ -61,7 +61,7 @@
   <rect x="1205" y="295" width="240" height="105" rx="17" class="box" fill="#EDE9FE" stroke="#7C3AED"/>
   <text x="1325" y="334" text-anchor="middle" class="label">边界隔离序列拼接</text>
   <text x="1325" y="363" text-anchor="middle" class="small">在容量内组合多条样本</text>
-  <text x="1325" y="386" text-anchor="middle" class="small">不改变各样本监督顺序</text>
+  <text x="1325" y="386" text-anchor="middle" class="small">保留内部标签，屏蔽起点</text>
 
   <rect x="1205" y="440" width="240" height="105" rx="17" class="box" fill="#FFFFFF" stroke="#64748B"/>
   <text x="1325" y="477" text-anchor="middle" class="label">拼接结果检查</text>
@@ -78,8 +78,8 @@
   <text x="900" y="330" text-anchor="middle" class="branch">是</text>
   <path d="M790 432V495H930" class="arrow"/>
   <text x="812" y="477" class="branch">否</text>
-  <path d="M840 175H1205" class="arrow"/>
-  <path d="M1150 347.5H1205" class="arrow"/>
+  <path d="M730 225V270H790V302" class="arrow"/>
+  <path d="M1150 347.5H1180V170H1205" class="arrow"/>
   <path d="M1325 220V295" class="arrow"/>
   <path d="M1325 400V440" class="arrow"/>
 </svg>

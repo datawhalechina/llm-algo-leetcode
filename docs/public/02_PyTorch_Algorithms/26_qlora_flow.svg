@@ -9,7 +9,7 @@
   </defs>
   <rect width="1400" height="620" fill="url(#bg)"/>
   <text x="55" y="48" class="title">QLoRA：低比特底座与可训练适配器</text>
-  <text x="55" y="76" class="sub">底座以低比特存储，计算时按需恢复；训练只更新 LoRA 适配器。</text>
+  <text x="55" y="76" class="sub">基座以低比特存储，训练更新 LoRA 参数；冻结权重仍参与输入激活的梯度计算。</text>
 
   <rect x="45" y="100" width="1310" height="225" rx="20" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2"/>
   <text x="70" y="132" class="group">底座存储与前向计算</text>

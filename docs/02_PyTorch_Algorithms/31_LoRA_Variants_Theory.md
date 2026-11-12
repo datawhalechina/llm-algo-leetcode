@@ -13,9 +13,11 @@
 
 ## 本节导读
 
-LoRA 变体改变低秩增量的缩放、参数化或挂载范围。比较这些方案时，需要固定基座、目标模块、监督输入与更新次数，再记录可训练参数量、loss 与梯度有限性、初始输出差异、合并输出差异和资源占用。真实任务指标的候选排序由后续项目完成。
+同样把秩设为8，LoRA与rsLoRA会使用不同的增量缩放，DoRA还增加一组幅值参数。若直接比较训练结果，看到的差异可能来自更新尺度，也可能来自新增参数，而不只是方案名称。
 
-**关键词：** `rank`, `alpha`, `dropout`, `target modules`
+本节先区分秩、缩放和幅值，再比较相同秩与相同参数上限两种条件。你将能够算出每个方案实际训练多少参数、预算允许多大的秩，并解释为什么参数量接近也不保证显存和速度接近。
+
+**关键词：** `LoRA`, `rsLoRA`, `DoRA`, `parameter budget`
 
 ---
 
@@ -35,82 +37,69 @@ LoRA 变体改变低秩增量的缩放、参数化或挂载范围。比较这些
 
 ---
 
-## Step 1：LoRA、rsLoRA 与 DoRA 改变了哪些参数化规则
+## Step 1：LoRA变体分别改变什么
 
-LoRA、rsLoRA 与 DoRA 都从低秩增量出发，差别在于增量怎样随 Rank 缩放，以及是否额外建模权重幅值。先写出三者共享的低秩路径，再比较缩放规则和附加参数，可以避免把 Rank、缩放与模型容量混为一谈。对一个输入维度为 $d_{in}$、输出维度为 $d_{out}$ 的线性层，LoRA 把权重增量限制在秩至多为 $r$ 的子空间：
+低秩适配同时涉及三个不同对象：秩决定低秩空间宽度，缩放决定增量乘以多大的系数，挂载范围决定哪些线性变换可以适配。增大秩不仅增加参数，还可能改变更新尺度，因此比较变体时需要把这些变化分开。
 
-$$
-\Delta W=sBA,\qquad
-A\in\mathbb R^{r\times d_{in}},\quad
-B\in\mathbb R^{d_{out}\times r},
-$$
+秩稳定LoRA（rank-stabilized LoRA，rsLoRA）改变随秩变化的缩放规则；权重分解适配（Weight-Decomposed Low-Rank Adaptation，DoRA）把每个输出通道的权重看作一个向量，进一步将其方向与幅值分开：幅值是向量的长度，方向描述各分量的相对比例；将向量除以自身长度以得到单位方向，称为归一化。它用低秩增量调整方向，并为输出通道增加可训练幅值。它们都可用于选定投影，但相同秩并不意味着相同参数量或相同输出变化。
 
-其中，$W,\Delta W\in\mathbb R^{d_{out}\times d_{in}}$ 分别是基座权重与适配器增量，$A$、$B$ 是两个低秩矩阵，$r$ 是 Rank，$s$ 是增量缩放系数。由矩阵形状可得到单个目标模块的参数量和两种缩放规则：
-
-$$
-N_{LoRA}=r(d_{in}+d_{out}),\qquad
-s_{LoRA}=\frac{\alpha}{r},\qquad
-s_{rsLoRA}=\frac{\alpha}{\sqrt r}.
-$$
-
-这里，$N_{LoRA}$ 是单个目标模块的可训练参数量，$\alpha$ 是配置中的缩放参数。标准初始化通常让一侧低秩矩阵为零，使适配器挂载后先保持基座输出。DoRA 进一步把幅值与方向分开，并为每个输出通道维护 $m\in\mathbb R^{d_{out}}$：
-
-$$
-W'=m\odot\frac{W+sBA}{\lVert W+sBA\rVert_{2,\,row}},\qquad
-N_{DoRA}=r(d_{in}+d_{out})+d_{out}.
-$$
-
-$\odot$ 表示逐输出通道缩放，$\lVert\cdot\rVert_{2,\,row}$ 表示按输出通道对应的权重行计算二范数；因此 $N_{DoRA}$ 比同一 Rank 的 LoRA 多 $d_{out}$ 个幅值参数。
-
-比较时既要固定 Rank，也要在同一参数上限内反推 Rank，避免把参数量差异误认为变体收益。
-
-| 变体 | 低秩增量或有效权重 | 缩放 | 附加状态 |
+| 方案 | 保留的结构 | 主要变化 | 比较时需同时观察 |
 |:---|:---|:---|:---|
-| LoRA | `ΔW = BA` | `alpha / r` | 无 |
-| rsLoRA | `ΔW = BA` | `alpha / sqrt(r)` | 无 |
-| DoRA | `W' = m × (W + (alpha / r)BA) / ‖W + (alpha / r)BA‖₂` | 低秩增量采用 `alpha / r` | 每个输出通道增加一个幅值参数 `m` |
+| LoRA | 冻结基座与低秩旁路 | 作为标准缩放基线 | 秩、目标范围与增量幅度 |
+| rsLoRA | 相同形状的低秩矩阵 | 缩放随秩变化的速度不同 | 参数量相同，但更新尺度不同 |
+| DoRA | 低秩方向增量与冻结基座 | 增加逐输出通道的幅值参数 | 参数预算与额外计算 |
 
-![LoRA 变体比较机制链](../public/02_PyTorch_Algorithms/31_lora_variants_map.svg)
-## Step 2：目标模块如何改变参数量与更新路径
+![LoRA变体比较机制链](../public/02_PyTorch_Algorithms/31_lora_variants_map.svg)
+## Step 2：目标范围与幅值参数怎样占用预算
 
-同一个 Rank 放在 `q_proj`、`v_proj` 或全部 Attention/MLP 投影上，会更新不同的计算路径，也会产生不同的参数量。设目标模块集合为 $T$，多模块参数量是各模块参数量之和：
-
-$$
-N_{LoRA}(T,r)=r\sum_{\ell\in T}(d_{in,\ell}+d_{out,\ell}),\qquad
-N_{DoRA}(T,r)=N_{LoRA}(T,r)+\sum_{\ell\in T}d_{out,\ell}.
-$$
-
-若参数上限为 $B$，用 $\delta_{DoRA}\in\{0,1\}$ 表示是否启用 DoRA，则预算允许的最大 Rank 为
+一个线性层的输入、输出维度分别为 $d_{\mathrm{in}}$、$d_{\mathrm{out}}$。秩为 $r$ 时，两组低秩矩阵共含 $r(d_{\mathrm{in}}+d_{\mathrm{out}})$ 个参数；DoRA另外为每个输出通道保存一个幅值参数。对目标模块集合 $T$，总参数量为
 
 $$
-r_{max}=\left\lfloor\frac{B-\delta_{DoRA}\sum_{\ell\in T}d_{out,\ell}}{\sum_{\ell\in T}(d_{in,\ell}+d_{out,\ell})}\right\rfloor.
+N_{\mathrm{LoRA}}(T,r)=r\sum_{\ell\in T}(d_{\mathrm{in},\ell}+d_{\mathrm{out},\ell}),\qquad
+N_{\mathrm{DoRA}}(T,r)=N_{\mathrm{LoRA}}(T,r)+\sum_{\ell\in T}d_{\mathrm{out},\ell}.
 $$
 
-当 $r_{max}<1$ 时，当前预算连 Rank 1 都无法容纳，应拒绝该配置。因此 Rank 相同不代表容量相同，目标模块变化后必须重新计算总参数量。
+其中 $\ell$ 是目标模块编号，$N$ 表示可训练参数总数。若参数上限为 $P$，以 $\delta_{\mathrm{DoRA}}\in\{0,1\}$ 表示是否启用DoRA，先扣除幅值参数，再计算还能容纳多少阶低秩参数：
 
-| 目标范围 | 主要改变 | 参数与训练代价 |
+$$
+r_{\max}=\left\lfloor
+\frac{P-\delta_{\mathrm{DoRA}}\sum_{\ell\in T}d_{\mathrm{out},\ell}}
+{\sum_{\ell\in T}(d_{\mathrm{in},\ell}+d_{\mathrm{out},\ell})}
+\right\rfloor.
+$$
+
+$\lfloor\cdot\rfloor$ 表示向下取整；若结果小于1，预算连秩1都无法容纳。例如两个目标层的输入／输出维度分别为16／16和16／8，每增加一阶需要56个参数，DoRA另需24个幅值参数。上限248时两者都可取秩4；上限224时，LoRA可取4，DoRA只能取3。DoRA是否降低可用秩，取决于剩余预算而非方案名称。
+
+| 目标范围 | 主要改变 | 预算变化 |
 |:---|:---|:---|
-| `q_proj` / `v_proj` | 注意力查询与取值映射 | 在本表三种范围中参数量最少，只更新查询和值路径 |
-| 全部 Attention 投影 | Q/K/V/O 共同适配 | 参数增加，注意力路径更完整 |
-| Attention + MLP | 同时适配信息交互与通道变换 | 参数和优化状态最多，需要重新核对预算 |
+| 查询与值投影 | 查询和内容读取路径 | 在这三组范围中参数最少 |
+| 全部注意力投影 | 查询、键、值与输出共同适配 | 增加低秩矩阵及可能的幅值参数 |
+| 注意力与前馈投影 | 信息交互和通道变换共同适配 | 目标维度总和增大，须重新反推可用秩 |
 
-![LoRA 目标模块范围与参数容量](../public/02_PyTorch_Algorithms/31_lora_target_scope.svg)
-## Step 3：如何在固定 rank 与固定参数预算下比较变体
+![LoRA目标模块范围与参数容量](../public/02_PyTorch_Algorithms/31_lora_target_scope.svg)
+## Step 3：相同秩与相同预算分别能比较什么
 
-比较分为两组：固定 rank 组观察参数化带来的参数量、更新时间和显存差异；固定参数上限组让 LoRA、rsLoRA 与 DoRA 的可训练参数量不超过同一上限。机制候选还必须通过逐项检查：loss 与梯度均为有限值、基座参数保持冻结、挂载适配器后的初始输出满足一致性阈值、合并前后输出满足余弦相似度、Top-1 一致率和 loss 差阈值。这里不使用短程 loss 排列真实任务质量。
+固定秩时，LoRA与rsLoRA的低秩矩阵形状相同，但缩放不同。记缩放超参数为 $\alpha>0$，增量系数为 $s$，则 $s_{\mathrm{LoRA}}=\alpha/r$，$s_{\mathrm{rsLoRA}}=\alpha/\sqrt r$。例如 $r=4$、$\alpha=8$ 时，两者分别为2与4；即使使用相同低秩矩阵，增量幅度也不同。
 
-| 检查对象 | 读取字段 | 不通过时的动作 |
-|:---|:---|:---|
-| 参数上限 | `trainable_params` 与 `parameter_budget` | 固定预算候选超出上限时调整 rank |
-| 数值路径 | `losses`、`gradient_norms` | 任一数值非有限时停止该候选 |
-| 初始输出 | 余弦相似度、Top-1 一致率、loss 绝对差 | 任一指标越过阈值时检查初始化与配置 |
-| 合并输出 | 合并前后的余弦相似度、Top-1 一致率、loss 绝对差 | 任一指标越过阈值时调整 rank、精度或合并方式 |
-| 真实任务指标 | 冻结评测集上的任务指标 | 留给 63 节项目比较，不由本节短程更新决定 |
+DoRA还改变有效权重的构造。记冻结基座为 $W$、低秩矩阵为 $A,B$、逐输出通道幅值为 $m$。向量二范数是各分量平方和的平方根，在这里用来计算每行权重的长度。例如权重行 $(3,4)$ 的长度为5，归一化方向为 $(0.6,0.8)$；幅值改为10时，权重变成 $(6,8)$，方向保持不变。其有效权重为
+
+$$
+W'=m\odot\frac{W+sBA}{\lVert W+sBA\rVert_{2,\mathrm{row}}}.
+$$
+
+分母按权重行计算二范数，$\odot$ 表示逐输出通道缩放；本页DoRA采用标准LoRA缩放。方向归一化与幅值学习增加了计算和状态，因此相同参数上限只能控制参数预算，不能直接控制峰值显存或更新时间。固定基座、目标范围、监督输入与更新次数后，两种比较分别回答不同问题。
+
+| 比较条件 | 控制了什么 | 能解释什么 | 仍需观察 |
+|:---|:---|:---|:---|
+| 相同秩 | 低秩空间宽度一致 | 缩放或幅值参数化带来的差异 | DoRA附加参数与归一化代价 |
+| 相同参数上限 | 总可训练参数不超过同一上限 | 各方案在有限容量内的选择 | 实际秩、预算余量、显存与时间 |
+| 初始化与合并核对 | 同一基座和确定性输入 | 起点及部署前后的数值差异 | 精度、随机失活及合并误差 |
+| 任务质量比较 | 冻结评测集与训练预算 | 哪种方案更适合当前任务 | 独立指标和不同随机种子的波动 |
 <a id="mechanism-practice"></a>
 
 ## Step 4：实现参数预算、变体规格与 rank 对齐
 
-题目区使用目标模块形状与参数上限复现固定 rank 和固定参数上限两种比较。骨架提供候选配置和账本结构；学习者补全单模块适配器参数量、变体缩放与总参数量，并反推出参数上限允许的最大 rank。测试覆盖 LoRA / rsLoRA / DoRA、未知模块、非法配置和预算不足路径。
+题目给出目标层形状与参数上限，比较相同秩和相同参数上限两种条件。骨架提供候选配置与结果结构；你将计算各层及全部目标层的适配器参数量、各变体的缩放系数，并反推预算允许的最大秩。测试检查三种变体的计算，以及未知模块、非法配置和预算不足时的处理。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 |:---|:---|:---|:---|
@@ -133,8 +122,10 @@ def count_adapter_parameters(
     use_dora: bool,
 ) -> int:
     """计算目标模块上的 LoRA / DoRA 可训练参数。"""
-    if rank <= 0:
+    if type(rank) is not int or rank <= 0:
         raise ValueError("rank 必须为正数")
+    if not target_modules:
+        raise ValueError("目标模块不能为空")
     if len(set(target_modules)) != len(target_modules):
         raise ValueError("目标模块不能重复")
     adapter_params = 0
@@ -142,7 +133,7 @@ def count_adapter_parameters(
         if name not in module_shapes:
             raise KeyError(f"未知目标模块：{name}")
         in_features, out_features = module_shapes[name]
-        if in_features <= 0 or out_features <= 0:
+        if any(type(dimension) is not int or dimension <= 0 for dimension in (in_features, out_features)):
             raise ValueError("模块输入和输出维度必须为正数")
         # ==========================================
         # TODO 1：计算模块适配器参数
@@ -157,13 +148,13 @@ def build_lora_variant_spec(
     variant: Dict[str, object], module_shapes: Dict[str, tuple[int, int]]
 ) -> Dict[str, object]:
     """生成包含缩放与参数量的统一变体规格。"""
-    rank = int(variant["rank"])
+    rank = variant["rank"]
     alpha = float(variant["alpha"])
     variant_type = str(variant.get("variant", "lora")).lower()
     target_modules = list(variant.get("target_modules", []))
     if variant_type not in {"lora", "rslora", "dora"}:
         raise ValueError(f"未知 LoRA 变体：{variant_type}")
-    if rank <= 0 or alpha <= 0 or not target_modules:
+    if type(rank) is not int or rank <= 0 or not math.isfinite(alpha) or alpha <= 0 or not target_modules:
         raise ValueError("rank、alpha 必须为正数且 target_modules 不能为空")
     # ==========================================
     # TODO 2：建立变体规格
@@ -171,7 +162,7 @@ def build_lora_variant_spec(
     # scaling = ???  # 正标量；按变体定义保持 rank 缩放语义。
     # trainable_params = ???  # 所有目标模块的适配器参数总量。
     raise NotImplementedError("TODO 2：建立变体规格")
-    return {**variant, "variant": variant_type, "target_modules": target_modules, "scaling": scaling, "trainable_params": trainable_params}
+    return {**variant, "rank": rank, "alpha": alpha, "variant": variant_type, "target_modules": target_modules, "scaling": scaling, "trainable_params": trainable_params}
 
 
 def max_rank_for_budget(
@@ -181,14 +172,14 @@ def max_rank_for_budget(
     use_dora: bool,
 ) -> Dict[str, object]:
     """在固定参数上限内求目标模块可使用的最大 rank。"""
-    if max_trainable_params <= 0 or not target_modules:
+    if type(max_trainable_params) is not int or max_trainable_params <= 0 or not target_modules:
         raise ValueError("参数上限必须为正数且 target_modules 不能为空")
     if len(set(target_modules)) != len(target_modules):
         raise ValueError("目标模块不能重复")
     for name in target_modules:
         if name not in module_shapes:
             raise KeyError(f"未知目标模块：{name}")
-        if any(dimension <= 0 for dimension in module_shapes[name]):
+        if any(type(dimension) is not int or dimension <= 0 for dimension in module_shapes[name]):
             raise ValueError("模块输入和输出维度必须为正数")
     rank_unit = sum(sum(module_shapes[name]) for name in target_modules)
     fixed_params = sum(module_shapes[name][1] for name in target_modules) if use_dora else 0
@@ -262,14 +253,44 @@ def test_insufficient_budget() -> None:
     assert result == {"max_rank": 0, "trainable_params": 0, "decision": "reject"}
 
 
-try:
-    test_parameter_budget_and_scaling()
-    test_budget_aligned_rank()
-    test_invalid_variant_inputs()
-    test_insufficient_budget()
-    print("✅ LoRA 参数预算、缩放与预算对齐测试通过。")
-except (AttributeError, KeyError, NameError, TypeError, ValueError, AssertionError) as error:
-    raise NotImplementedError("请先完成 TODO 代码！") from error
+
+def test_integer_and_finite_configuration():
+    """拒绝小数或布尔秩、非整数预算、非有限缩放和非法形状。"""
+    shapes = {"q_proj": (16, 16)}
+    base = {"variant": "lora", "rank": 4, "alpha": 8, "target_modules": ["q_proj"]}
+    for rank in (1.5, True, "4"):
+        _assert_raises(ValueError, lambda: count_adapter_parameters(shapes, ["q_proj"], rank, False))
+        _assert_raises(ValueError, lambda: build_lora_variant_spec({**base, "rank": rank}, shapes))
+    for alpha in (float("nan"), float("inf"), 0):
+        _assert_raises(ValueError, lambda: build_lora_variant_spec({**base, "alpha": alpha}, shapes))
+    for budget in (31.5, True, 0):
+        _assert_raises(ValueError, lambda: max_rank_for_budget(shapes, ["q_proj"], budget, False))
+    _assert_raises(ValueError, lambda: count_adapter_parameters(shapes, [], 4, False))
+    _assert_raises(ValueError, lambda: count_adapter_parameters({"q_proj": (16, 2.5)}, ["q_proj"], 4, False))
+
+
+def test_budget_maximality():
+    """返回秩能装入预算，而再增加一阶必定越界。"""
+    shapes = {"q_proj": (16, 16), "v_proj": (16, 8)}
+    for budget in (1, 55, 56, 79, 80, 224, 248, 1000):
+        for use_dora in (False, True):
+            result = max_rank_for_budget(shapes, list(shapes), budget, use_dora)
+            if result["decision"] == "accept":
+                rank = result["max_rank"]
+                assert result["trainable_params"] <= budget
+                assert count_adapter_parameters(shapes, list(shapes), rank + 1, use_dora) > budget
+            else:
+                assert count_adapter_parameters(shapes, list(shapes), 1, use_dora) > budget
+
+
+test_parameter_budget_and_scaling()
+test_budget_aligned_rank()
+test_invalid_variant_inputs()
+test_insufficient_budget()
+test_integer_and_finite_configuration()
+test_budget_maximality()
+print("PASSED: LoRA变体缩放、参数预算及最大可用秩核对通过。")
+
 ```
 
 ---
@@ -288,9 +309,6 @@ except (AttributeError, KeyError, NameError, TypeError, ValueError, AssertionErr
 
 
 ```python
-import math
-
-
 def count_adapter_parameters(
     module_shapes: Dict[str, tuple[int, int]],
     target_modules: List[str],
@@ -298,8 +316,10 @@ def count_adapter_parameters(
     use_dora: bool,
 ) -> int:
     """计算目标模块上的 LoRA / DoRA 可训练参数。"""
-    if rank <= 0:
+    if type(rank) is not int or rank <= 0:
         raise ValueError("rank 必须为正数")
+    if not target_modules:
+        raise ValueError("目标模块不能为空")
     if len(set(target_modules)) != len(target_modules):
         raise ValueError("目标模块不能重复")
     adapter_params = 0
@@ -307,12 +327,11 @@ def count_adapter_parameters(
         if name not in module_shapes:
             raise KeyError(f"未知目标模块：{name}")
         in_features, out_features = module_shapes[name]
-        if in_features <= 0 or out_features <= 0:
+        if any(type(dimension) is not int or dimension <= 0 for dimension in (in_features, out_features)):
             raise ValueError("模块输入和输出维度必须为正数")
-        # TODO 1：计算模块适配器参数。
-        adapter_params += rank * (in_features + out_features)
-        if use_dora:
-            adapter_params += out_features
+        # TODO 1：计算模块适配器参数
+        module_params = rank * (in_features + out_features) + (out_features if use_dora else 0)
+        adapter_params += module_params
     return adapter_params
 
 
@@ -320,26 +339,18 @@ def build_lora_variant_spec(
     variant: Dict[str, object], module_shapes: Dict[str, tuple[int, int]]
 ) -> Dict[str, object]:
     """生成包含缩放与参数量的统一变体规格。"""
-    rank = int(variant["rank"])
+    rank = variant["rank"]
     alpha = float(variant["alpha"])
     variant_type = str(variant.get("variant", "lora")).lower()
     target_modules = list(variant.get("target_modules", []))
     if variant_type not in {"lora", "rslora", "dora"}:
         raise ValueError(f"未知 LoRA 变体：{variant_type}")
-    if rank <= 0 or alpha <= 0 or not target_modules:
+    if type(rank) is not int or rank <= 0 or not math.isfinite(alpha) or alpha <= 0 or not target_modules:
         raise ValueError("rank、alpha 必须为正数且 target_modules 不能为空")
-    # TODO 2：建立变体规格。
+    # TODO 2：建立变体规格
     scaling = alpha / math.sqrt(rank) if variant_type == "rslora" else alpha / rank
-    trainable_params = count_adapter_parameters(
-        module_shapes, target_modules, rank, use_dora=variant_type == "dora"
-    )
-    return {
-        **variant,
-        "variant": variant_type,
-        "target_modules": target_modules,
-        "scaling": scaling,
-        "trainable_params": trainable_params,
-    }
+    trainable_params = count_adapter_parameters(module_shapes, target_modules, rank, use_dora=variant_type == "dora")
+    return {**variant, "rank": rank, "alpha": alpha, "variant": variant_type, "target_modules": target_modules, "scaling": scaling, "trainable_params": trainable_params}
 
 
 def max_rank_for_budget(
@@ -349,18 +360,18 @@ def max_rank_for_budget(
     use_dora: bool,
 ) -> Dict[str, object]:
     """在固定参数上限内求目标模块可使用的最大 rank。"""
-    if max_trainable_params <= 0 or not target_modules:
+    if type(max_trainable_params) is not int or max_trainable_params <= 0 or not target_modules:
         raise ValueError("参数上限必须为正数且 target_modules 不能为空")
     if len(set(target_modules)) != len(target_modules):
         raise ValueError("目标模块不能重复")
     for name in target_modules:
         if name not in module_shapes:
             raise KeyError(f"未知目标模块：{name}")
-        if any(dimension <= 0 for dimension in module_shapes[name]):
+        if any(type(dimension) is not int or dimension <= 0 for dimension in module_shapes[name]):
             raise ValueError("模块输入和输出维度必须为正数")
-    # TODO 3：反推预算允许的 rank。
     rank_unit = sum(sum(module_shapes[name]) for name in target_modules)
     fixed_params = sum(module_shapes[name][1] for name in target_modules) if use_dora else 0
+    # TODO 3：反推预算允许的rank
     max_rank = (max_trainable_params - fixed_params) // rank_unit
     if max_rank < 1:
         return {"max_rank": 0, "trainable_params": 0, "decision": "reject"}
@@ -372,21 +383,18 @@ def max_rank_for_budget(
 
 #### TODO 1：计算模块适配器参数
 
-- 机制：每个目标线性层贡献 `rank × (d_in + d_out)` 个低秩参数；DoRA 再增加 `d_out` 个幅值参数。
-- 不变量：rank、输入维度和输出维度必须为正，目标模块必须存在且不能重复。
-- 测试证据：`test_parameter_budget_and_scaling` 核对 LoRA 与 DoRA 参数量，`test_invalid_variant_inputs` 覆盖未知、重复和零维模块。
+- 每个目标层有两组低秩矩阵；DoRA另有逐输出通道的幅值参数。重复目标会重复计账，因此先由骨架检查模块身份与维度。
+- 答案按层求出参数量再累计。参数测试比较LoRA与DoRA，非法配置测试覆盖未知、重复、空目标和非整数形状。
 
 #### TODO 2：建立变体规格
 
-- 机制：LoRA 与 DoRA 使用 `alpha / rank`，rsLoRA 使用 `alpha / sqrt(rank)`；规格同时记录目标模块和总可训练参数。
-- 不变量：变体只能属于 LoRA、rsLoRA、DoRA，且 rank、alpha 和目标模块列表均有效。
-- 测试证据：`test_parameter_budget_and_scaling` 对比缩放结果，`test_invalid_variant_inputs` 检查非法变体和空目标范围。
+- rsLoRA改变的是缩放随秩变化的规则，矩阵参数量与相同秩的LoRA一致；DoRA使用标准缩放，但须计入幅值参数。
+- 答案分别计算缩放和目标模块总参数量。规格测试核对数值；新增输入测试拒绝小数秩和非有限缩放，避免静默截断后返回自相矛盾的规格。
 
-#### TODO 3：反推预算允许的 rank
+#### TODO 3：反推预算允许的秩
 
-- 机制：先从参数上限扣除 DoRA 幅值参数，再除以所有目标模块每增加一阶所需的参数量并向下取整。
-- 不变量：返回的 `trainable_params` 不能超过参数上限；如果 rank 1 也无法容纳，则返回 `reject`。DoRA 幅值状态可能降低最大 rank，但预算余量足够时也可能保持不变。
-- 测试证据：`test_budget_aligned_rank` 检查参数上限与两种余量情况，`test_insufficient_budget` 检查 rank 1 无法容纳的路径。
+- 可训练预算先扣除固定幅值参数，再除以每增加一阶所需的参数量并向下取整。余量不足以容纳一阶时拒绝。
+- 答案求最大整数秩。`test_budget_maximality` 同时验证当前秩不超预算、再加一阶必定超限；边界测试说明DoRA的幅值参数既可能降低可用秩，也可能被预算余量容纳。
 <a id="framework-check"></a>
 
 ## 框架一致性核对（可选）
@@ -398,7 +406,7 @@ def max_rank_for_budget(
 | LoRA 缩放 | $\alpha/r$ | `LoraConfig(r, lora_alpha)` | 目标投影的缩放值等于理论值 |
 | rsLoRA 缩放 | $\alpha/\sqrt r$ | `use_rslora=True` | 目标投影的缩放值等于理论值 |
 | DoRA 状态 | 每个目标模块增加 $d_{out}$ 个幅值参数 | `use_dora=True` | 幅值参数存在，且可训练参数量符合预算 |
-| 参数量 | 仅统计目标模块的可训练适配器参数 | `requires_grad=True` 参数总量 | LoRA 与 rsLoRA 参数量相同，DoRA 只增加幅值参数 |
+| 参数量 | 仅统计目标模块的可训练适配器参数 | `requires_grad=True` 参数总量 | 理论规格与实际可训练数相同；预算反推秩的DoRA注入后也不超上限 |
 
 ```python
 from importlib.metadata import version
@@ -417,7 +425,8 @@ else:
         rank, alpha, hidden_size = 4, 8, 16
         target_modules = ["q_proj", "v_proj"]
 
-        def build_variant(**kwargs):
+        def build_variant(adapter_rank=rank, **kwargs):
+            """创建随机微型基座并注入指定变体。"""
             config = LlamaConfig(
                 vocab_size=32, hidden_size=hidden_size, intermediate_size=32,
                 num_hidden_layers=1, num_attention_heads=2,
@@ -425,7 +434,7 @@ else:
             )
             model = LlamaForCausalLM(config)
             return get_peft_model(model, LoraConfig(
-                r=rank, lora_alpha=alpha,
+                r=adapter_rank, lora_alpha=alpha,
                 target_modules=target_modules, **kwargs,
             ))
 
@@ -434,21 +443,35 @@ else:
         dora = build_variant(use_dora=True)
 
         def trainable_count(model):
+            """读取框架实际训练的参数数目。"""
             return sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad)
 
         def q_scaling(model):
+            """读取已注入投影的实际缩放。"""
             projection = model.base_model.model.model.layers[0].self_attn.q_proj
             return float(projection.scaling["default"])
 
         # q_proj 与 v_proj 是两个同形目标模块，预算需要同时计入两组 A/B。
-        expected_lora = 2 * rank * (hidden_size + hidden_size)
-        expected_dora = expected_lora + 2 * hidden_size
+        shapes = {name: (hidden_size, hidden_size) for name in target_modules}
+        specs = {
+            name: build_lora_variant_spec({
+                "variant": name, "rank": rank, "alpha": alpha,
+                "target_modules": target_modules,
+            }, shapes) for name in ("lora", "rslora", "dora")
+        }
+        expected_lora = specs["lora"]["trainable_params"]
+        expected_dora = specs["dora"]["trainable_params"]
+        aligned = max_rank_for_budget(shapes, target_modules, expected_lora, use_dora=True)
+        budget_dora = build_variant(adapter_rank=aligned["max_rank"], use_dora=True)
         checks = {
-            "lora_scaling_match": abs(q_scaling(lora) - alpha / rank) < 1e-8,
-            "rslora_scaling_match": abs(q_scaling(rslora) - alpha / rank ** 0.5) < 1e-8,
+            "lora_scaling_match": abs(q_scaling(lora) - specs["lora"]["scaling"]) < 1e-8,
+            "rslora_scaling_match": abs(q_scaling(rslora) - specs["rslora"]["scaling"]) < 1e-8,
             "lora_parameter_count_match": trainable_count(lora) == expected_lora,
             "rslora_parameter_count_match": trainable_count(rslora) == expected_lora,
             "dora_parameter_count_match": trainable_count(dora) == expected_dora,
+            "dora_scaling_match": abs(q_scaling(dora) - specs["dora"]["scaling"]) < 1e-8,
+            "budget_rank_fits": aligned["trainable_params"] <= expected_lora,
+            "budget_aligned_framework_count_match": trainable_count(budget_dora) == aligned["trainable_params"],
             "dora_magnitude_present": any(
                 "lora_magnitude_vector" in name
                 for name, parameter in dora.named_parameters() if parameter.requires_grad

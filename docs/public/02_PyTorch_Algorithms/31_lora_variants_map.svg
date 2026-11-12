@@ -6,14 +6,14 @@
   </defs>
   <style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei","Droid Sans Fallback",sans-serif!important}</style>
   <rect width="1500" height="370" rx="24" fill="#F8FAFC"/>
-  <text x="54" y="54" fill="#0F172A" font-size="30" font-weight="700">LoRA 变体：固定条件、参数预算与逐项检查</text>
-  <text x="54" y="88" fill="#475569" font-size="18">短程机制实验只判断参数路径与输出等价性；真实任务指标由项目实验比较。</text>
+  <text x="54" y="54" fill="#0F172A" font-size="30" font-weight="700">LoRA变体：秩、缩放与幅值分别改变什么</text>
+  <text x="54" y="88" fill="#475569" font-size="18">固定基座与目标范围，再区分低秩容量、增量尺度与附加状态。</text>
 
   <rect x="50" y="128" width="250" height="174" rx="18" fill="#DBEAFE" stroke="#2563EB" stroke-width="2.5"/>
   <text x="76" y="166" fill="#1E3A8A" font-size="22" font-weight="700">固定比较条件</text>
   <text x="76" y="204" fill="#334155" font-size="17">同一基座与目标模块</text>
   <text x="76" y="234" fill="#334155" font-size="17">同一监督输入与更新次数</text>
-  <text x="76" y="264" fill="#334155" font-size="17">固定 dtype、学习率与随机种子</text>
+  <text x="76" y="264" fill="#334155" font-size="17">相同精度、学习率与随机种子</text>
 
   <rect x="340" y="128" width="250" height="174" rx="18" fill="#FEF3C7" stroke="#D97706" stroke-width="2.5"/>
   <text x="366" y="166" fill="#92400E" font-size="22" font-weight="700">计算参数上限</text>
@@ -28,16 +28,16 @@
   <text x="656" y="264" fill="#334155" font-size="17">DoRA：幅值 × 归一化方向</text>
 
   <rect x="920" y="128" width="260" height="174" rx="18" fill="#FCE7F3" stroke="#DB2777" stroke-width="2.5"/>
-  <text x="946" y="166" fill="#9D174D" font-size="22" font-weight="700">逐项检查</text>
-  <text x="946" y="204" fill="#334155" font-size="17">loss / 梯度为有限值</text>
-  <text x="946" y="234" fill="#334155" font-size="17">基座冻结、参数未超上限</text>
-  <text x="946" y="264" fill="#334155" font-size="17">初始与合并输出通过阈值</text>
+  <text x="946" y="166" fill="#9D174D" font-size="22" font-weight="700">观察变化</text>
+  <text x="946" y="204" fill="#334155" font-size="17">增量尺度与初始输出</text>
+  <text x="946" y="234" fill="#334155" font-size="17">幅值参数与归一化计算</text>
+  <text x="946" y="264" fill="#334155" font-size="17">合并误差与资源代价</text>
 
   <rect x="1220" y="128" width="230" height="174" rx="18" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2.5"/>
-  <text x="1246" y="166" fill="#5B21B6" font-size="22" font-weight="700">候选决策</text>
-  <text x="1246" y="204" fill="#334155" font-size="17">失败项为空：保留</text>
-  <text x="1246" y="234" fill="#334155" font-size="17">存在失败项：调参</text>
-  <text x="1246" y="264" fill="#334155" font-size="17">记录 checks 与原因</text>
+  <text x="1246" y="166" fill="#5B21B6" font-size="22" font-weight="700">选择比较条件</text>
+  <text x="1246" y="204" fill="#334155" font-size="17">相同秩：比较参数化</text>
+  <text x="1246" y="234" fill="#334155" font-size="17">相同上限：比较预算</text>
+  <text x="1246" y="264" fill="#334155" font-size="17">独立评测：比较质量</text>
 
   <path d="M300 215H328" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
   <path d="M590 215H618" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
