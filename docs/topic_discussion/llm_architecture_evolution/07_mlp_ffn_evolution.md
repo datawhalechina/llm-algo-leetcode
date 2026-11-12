@@ -2,36 +2,35 @@
 
 ## 学习问题
 
-注意力负责词元间交互，MLP/FFN 负责每个词元的通道变换。前馈网络从两层线性网络演进到门控 FFN，再进一步成为 MoE 的专家主体；每次变化都会重新分配参数容量和激活计算。
+注意力混合不同词元的信息后，每个词元自身的特征怎样继续变换？前馈网络（FFN，在 Transformer 中也常称 MLP）用线性投影与激活处理每个位置。门控形式改变特征怎样相乘，混合专家（MoE）则改变词元选择哪套前馈参数，两者可以组合。
 
 ## 核心机制
 
-### 设计压力：怎样增加逐词元表达能力？
+### 扩大中间层会增加哪些工作
 
 扩大 FFN 中间维度可以增加容量，也会同步增加参数、计算和内存访问。门控结构在相近预算下增加内容相关调制；MoE 则把“所有词元使用同一组参数”改为“每个词元激活部分专家”。
 
-![FFN 演进：稠密 FFN、SwiGLU 与 MoE 专家路径](../../public/topic_discussion/llm_architecture_evolution/mlp_evolution.svg)
+![单个前馈的普通或门控形式，与稠密共享或专家路由分别选择](../../public/topic_discussion/llm_architecture_evolution/mlp_evolution.svg)
 
-### 结构机制：从单路径变换到门控与稀疏激活
+### 两次投影和门控投影怎样比较预算
 
-普通 FFN 通常包含两次投影，参数量近似为 $2d_{model}d_{ff}$；SwiGLU 包含 gate、up 和 down 三次投影，近似为 $3d_{model}d_{ff}$。因此在固定 $d_{ff}$ 时直接比较会让 SwiGLU 天然拥有更多参数，公平对照应缩小其门控中间维度，或直接固定总参数量和每词元计算量。
+设每个词元输入的特征数为 $d_{model}$，前馈中间层宽度为 $d_{ff}$。普通 FFN 先把特征上投影到中间层，经过激活后再下投影回输入宽度；忽略偏置时，参数量为 $2d_{model}d_{ff}$。SwiGLU 另加门控投影：`up` 产生中间特征，`gate` 经 SiLU 激活后逐元素调节它，`down` 将乘积映射回输入宽度，参数量为 $3d_{model}d_{ff}$。
+
+例如固定 $d_{model}=12$，普通 FFN 取 $d_{ff}=24$ 时有 576 个权重；SwiGLU 若也取 24，就有 864 个。把后者中间宽度改为 16，才在这个构造例子中匹配到 576 个权重。固定参数预算与固定中间宽度是不同的比较，实际时间还受激活、投影形状与实现影响。
 
 门控 FFN 改变的是每个词元内部的通道调制；MoE 进一步改变参数访问范围，让不同词元进入不同专家。前者主要检查激活、参数和算子代价，后者还必须检查路由容量、分发和负载。
 
 | 结构 | 主要路径 | 容量与计算特征 |
 |:---|:---|:---|
 | ReLU / GELU FFN | `up → activation → down` | 所有词元使用同一稠密路径 |
-| GLU / SwiGLU | `gate ⊙ up → down` | 增加内容相关门控，需要公平匹配参数预算 |
+| GLU / SwiGLU | 门控分支与上投影相乘，再下投影 | 激活形式依具体变体，SwiGLU 对门控使用 SiLU |
 | MoE-FFN | 路由器 → 选中专家 → 合并输出 | 总参数增长快，单个词元只激活部分专家 |
 
 ## 选择条件与验证证据
 
 稠密 FFN 的执行规则稳定，MoE 则引入路由、容量上限、分发/合并和跨设备通信。结构审计需要把“模型容量”与“每个词元的激活计算”分开记录，并补充负载分布与容量溢出证据。
 
-- [Part 02 · 02 SwiGLU](../../02_PyTorch_Algorithms/02_SwiGLU_Activation.md)：比较门控结构与参数容量。
-- [Part 02 · 05 LLaMA3 Block](../../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.md)：把 MLP 放回 Transformer 块。
-- [Part 02 · 06 MoE 路由](../../02_PyTorch_Algorithms/06_MoE_Router.md)：由稠密 FFN 进入专家选择。
-- [Part 02 · 07 MoE 负载均衡](../../02_PyTorch_Algorithms/07_MoE_Load_Balancing_Loss.md)：检查专家利用率与稳定性。
+门控结构与参数容量由 [Part 02 · 02](../../02_PyTorch_Algorithms/02_SwiGLU_Activation.md)验证，并在 [Part 02 · 05](../../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.md)放回完整 Transformer 块；进入 MoE 后，再用 [Part 02 · 06](../../02_PyTorch_Algorithms/06_MoE_Router.md)和 [Part 02 · 07](../../02_PyTorch_Algorithms/07_MoE_Load_Balancing_Loss.md)检查专家选择、利用率与稳定性。
 
 ## 相关阅读
 

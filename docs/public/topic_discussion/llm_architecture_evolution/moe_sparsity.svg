@@ -7,27 +7,27 @@
       <stop offset="100%" stop-color="#f0f9ff"/>
     </linearGradient>
     <style>
-      .title { font: 700 30px "Inter", "Noto Sans SC", sans-serif; fill: #0f172a; }
-      .sub { font: 500 16px "Inter", "Noto Sans SC", sans-serif; fill: #475569; }
-      .box { fill: #ffffff; stroke-width: 3; rx: 16; ry: 16; }
-      .label { font: 700 18px "Inter", "Noto Sans SC", sans-serif; fill: #111827; }
-      .small { font: 500 14px "Inter", "Noto Sans SC", sans-serif; fill: #334155; }
+      .title { font-family:"Noto Sans CJK SC",sans-serif;font-size:30px;font-weight:700; fill: #0f172a; }
+      .sub { font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;font-weight:500; fill: #475569; }
+      .box { stroke-width: 3; rx: 16; ry: 16; }
+      .label { font-family:"Noto Sans CJK SC",sans-serif;font-size:18px;font-weight:700; fill: #111827; }
+      .small { font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;font-weight:500; fill: #334155; }
       .arrow { stroke: #475569; stroke-width: 4; fill: none; marker-end: url(#arrow); }
       .dense { stroke: #f97316; }
       .sparse { stroke: #7c3aed; }
     </style>
-    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+    <marker id="arrow" viewBox="0 0 10 10" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
     </marker>
   </defs>
 
   <rect width="1600" height="720" fill="url(#bg)"/>
-  <text x="64" y="64" class="title">MoE 演进：扩大参数容量，只激活少数专家</text>
-  <text x="64" y="96" class="sub">路由器、Top-k、负载均衡和专家并行共同把稠密 FFN 变成可执行的稀疏路径</text>
+  <text x="64" y="64" class="title">MoE 路由：输入词元选择专家，再合并输出</text>
+  <text x="64" y="96" class="sub">稠密前馈与专家路由是不同安排；下方流程从词元特征进入路由器，不先执行一遍稠密 FFN</text>
 
   <rect x="70" y="160" width="280" height="96" class="box" fill="#fff7ed" stroke="#f97316"/>
-  <text x="210" y="198" text-anchor="middle" class="label">稠密 FFN</text>
-  <text x="210" y="224" text-anchor="middle" class="small">所有词元经过同一条路径</text>
+  <text x="210" y="198" text-anchor="middle" class="label">输入词元特征</text>
+  <text x="210" y="224" text-anchor="middle" class="small">交给路由器选择参数路径</text>
 
   <rect x="410" y="160" width="280" height="96" class="box" fill="#f3e8ff" stroke="#7c3aed"/>
   <text x="550" y="198" text-anchor="middle" class="label">路由器</text>
@@ -43,7 +43,7 @@
   <text x="1260" y="198" text-anchor="middle" class="label">结果聚合</text>
   <text x="1260" y="224" text-anchor="middle" class="small">按路由权重合并专家输出</text>
 
-  <path d="M 350 208 L 410 208" class="arrow dense"/>
+  <path d="M 350 208 L 410 208" class="arrow"/>
   <path d="M 690 208 L 750 208" class="arrow sparse"/>
   <path d="M 1050 208 L 1110 208" class="arrow"/>
 
