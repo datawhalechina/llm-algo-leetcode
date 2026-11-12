@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">缩放的前向与上游梯度</title><desc id="desc">前向读取输入并产生独立输出。损失产生上游梯度后，反向将每个位置的梯度乘以同一次前向的系数。输入原存储保持不变。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d}.title{font-size:28px;font-weight:700}.head{font-size:22px;font-weight:700}.body{font-size:20px}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/><text x="40" y="48" class="title">前向缩放数值，反向缩放每个位置的上游梯度</text>
+<text x="40" y="87" class="body">例如 α = 0.5、g = (−2, 0, 3)，输入梯度是 (−1, 0, 1.5)，不是常数 0.5。</text>
+<rect x="50" y="130" width="300" height="100" rx="10" fill="#dbeafe" stroke="#829ab1" stroke-width="2"/><text x="200" y="169" text-anchor="middle" class="head">输入 x</text><text x="200" y="206" text-anchor="middle" class="body">保留原存储</text>
+<rect x="575" y="130" width="300" height="100" rx="10" fill="#dbeafe" stroke="#829ab1" stroke-width="2"/><text x="725" y="169" text-anchor="middle" class="head">前向 α × x</text><text x="725" y="206" text-anchor="middle" class="body">写入独立输出</text>
+<rect x="1100" y="130" width="300" height="100" rx="10" fill="#dbeafe" stroke="#829ab1" stroke-width="2"/><text x="1250" y="169" text-anchor="middle" class="head">输出 y</text><text x="1250" y="206" text-anchor="middle" class="body">由损失产生梯度</text>
+<rect x="1100" y="320" width="300" height="100" rx="10" fill="#dcfce7" stroke="#829ab1" stroke-width="2"/><text x="1250" y="359" text-anchor="middle" class="head">上游梯度 g</text><text x="1250" y="396" text-anchor="middle" class="body">各位置可不同</text>
+<rect x="575" y="320" width="300" height="100" rx="10" fill="#dcfce7" stroke="#829ab1" stroke-width="2"/><text x="725" y="359" text-anchor="middle" class="head">反向 α × g</text><text x="725" y="396" text-anchor="middle" class="body">使用前向保存的系数</text>
+<rect x="50" y="320" width="300" height="100" rx="10" fill="#dcfce7" stroke="#829ab1" stroke-width="2"/><text x="200" y="359" text-anchor="middle" class="head">输入梯度</text><text x="200" y="396" text-anchor="middle" class="body">保留上游的位置差异</text>
+<path d="M350 180H575" class="edge"/>
+<path d="M875 180H1100" class="edge"/>
+<path d="M1250 230V320" class="edge"/>
+<path d="M1100 370H875" class="edge"/>
+<path d="M575 370H350" class="edge"/>
+</svg>

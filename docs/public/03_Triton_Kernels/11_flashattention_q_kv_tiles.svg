@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">保留一个 Q 块，逐轮读取同一头的 K/V</title><desc id="desc">Program (2, 4)：B = 2、H = 3、S_q = 70；负责批次 1、头 1 的查询 64–69。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:24px;font-weight:700}.body{font-size:21px}.small{font-size:18px;fill:#475569}.node{stroke:#94a3b8;stroke-width:2;rx:12}.edge{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="45" y="52" class="title" text-anchor="start">保留一个 Q 块，逐轮读取同一头的 K/V</text>
+<text x="45" y="88" class="small" text-anchor="start">Program (2, 4)：B = 2、H = 3、S_q = 70；负责批次 1、头 1 的查询 64–69。</text>
+<rect x="45" y="210" width="290" height="100" class="node" fill="#dbeafe"/>
+<text x="190.0" y="247" class="head" text-anchor="middle">Q 的最后一个块</text>
+<text x="190.0" y="282" class="body" text-anchor="middle">6 行有效，26 行补齐</text>
+<rect x="540" y="120" width="360" height="100" class="node" fill="#dbeafe"/>
+<text x="720.0" y="157" class="head" text-anchor="middle">K/V 块 0</text>
+<text x="720.0" y="192" class="body" text-anchor="middle">该批次、该头的键 0–63</text>
+<rect x="540" y="300" width="360" height="100" class="node" fill="#dbeafe"/>
+<text x="720.0" y="337" class="head" text-anchor="middle">K/V 块 1</text>
+<text x="720.0" y="372" class="body" text-anchor="middle">继续读取键 64 及以后</text>
+<rect x="1130" y="210" width="325" height="100" class="node" fill="#dcfce7"/>
+<text x="1292.5" y="247" class="head" text-anchor="middle">同一 Q 块的输出</text>
+<text x="1292.5" y="282" class="body" text-anchor="middle">全部键处理完后归一化</text>
+<path d="M335 235H435V170H540" class="edge"/>
+<path d="M335 285H435V350H540" class="edge"/>
+<path d="M900 170H1000V235H1130" class="edge"/>
+<path d="M900 350H1000V285H1130" class="edge"/>
+<text x="540" y="266" class="small" text-anchor="start">循环间保留每行 m、l、a</text>
+<text x="45" y="435" class="body" text-anchor="start">局部分数按块产生并消费；不写回完整注意力矩阵，不连接其他批次或头。</text>
+</svg>

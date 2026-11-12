@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">两个查询头共用 K/V，但不共用权重与输出</title><desc id="desc">同一请求：H_q = 4，H_kv = 2，组大小 G = 2；箭头表示 K/V 数据被读取并参与计算。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:24px;font-weight:700}.body{font-size:21px}.small{font-size:18px;fill:#475569}.node{stroke:#94a3b8;stroke-width:2;rx:12}.edge{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="45" y="52" class="title" text-anchor="start">两个查询头共用 K/V，但不共用权重与输出</text>
+<text x="45" y="88" class="small" text-anchor="start">同一请求：H_q = 4，H_kv = 2，组大小 G = 2；箭头表示 K/V 数据被读取并参与计算。</text>
+<rect x="45" y="125" width="290" height="100" class="node" fill="#dbeafe"/>
+<text x="190.0" y="162" class="head" text-anchor="middle">KV 头 0</text>
+<text x="190.0" y="197" class="body" text-anchor="middle">保存一份 K 与一份 V</text>
+<rect x="45" y="295" width="290" height="100" class="node" fill="#dbeafe"/>
+<text x="190.0" y="332" class="head" text-anchor="middle">KV 头 1</text>
+<text x="190.0" y="367" class="body" text-anchor="middle">另一份 K 与 V</text>
+<rect x="565" y="125" width="370" height="100" class="node" fill="#fef3c7"/>
+<text x="750.0" y="162" class="head" text-anchor="middle">查询头 0、1</text>
+<text x="750.0" y="197" class="body" text-anchor="middle">各自计算权重并加权 V</text>
+<rect x="565" y="295" width="370" height="100" class="node" fill="#fef3c7"/>
+<text x="750.0" y="332" class="head" text-anchor="middle">查询头 2、3</text>
+<text x="750.0" y="367" class="body" text-anchor="middle">各自计算权重并加权 V</text>
+<rect x="1165" y="125" width="290" height="100" class="node" fill="#dcfce7"/>
+<text x="1310.0" y="162" class="head" text-anchor="middle">输出头 0、1</text>
+<text x="1310.0" y="197" class="body" text-anchor="middle">两份独立向量</text>
+<rect x="1165" y="295" width="290" height="100" class="node" fill="#dcfce7"/>
+<text x="1310.0" y="332" class="head" text-anchor="middle">输出头 2、3</text>
+<text x="1310.0" y="367" class="body" text-anchor="middle">另两份独立向量</text>
+<path d="M335 175H565" class="edge"/>
+<path d="M335 345H565" class="edge"/>
+<path d="M935 175H1165" class="edge"/>
+<path d="M935 345H1165" class="edge"/>
+<text x="45" y="440" class="body" text-anchor="start">KV 头编号 = 查询头编号整除 G；共享缓存并不把两个 Query 合成一个输出。</text>
+</svg>

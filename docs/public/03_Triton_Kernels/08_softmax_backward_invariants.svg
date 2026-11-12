@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">两种不同的零：行梯度和与逐列梯度</title><desc id="desc">整行输入分数共同平移时概率不变，因此输入梯度的行和为零，不代表每列梯度为零。上游梯度全部为同一常数时，共享点积等于该常数，因此每列输入梯度都为零。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:24px;font-weight:700}.body{font-size:21px}.small{font-size:18px;fill:#475569}.node{stroke:#94a3b8;stroke-width:2;rx:12}.edge{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="45" y="52" class="title">两种不同的零：行梯度和与逐列梯度</text><text x="45" y="88" class="small">前提：y 为有效 Softmax 概率，行和为 1。两行是不同条件的推导，不是顺序执行步骤。</text>
+<rect x="45" y="135" width="350" height="95" class="node" fill="#dbeafe"/><text x="220" y="174" class="head" text-anchor="middle">所有输入分数加 c</text><text x="220" y="209" class="body" text-anchor="middle">沿共同平移方向变化</text>
+<rect x="575" y="135" width="350" height="95" class="node" fill="#fef3c7"/><text x="750" y="174" class="head" text-anchor="middle">整行概率不变</text><text x="750" y="209" class="body" text-anchor="middle">沿此方向的损失导数为 0</text>
+<rect x="1105" y="135" width="350" height="95" class="node" fill="#dcfce7"/><text x="1280" y="174" class="head" text-anchor="middle">输入梯度之和为 0</text><text x="1280" y="209" class="body" text-anchor="middle">各列仍可有正负梯度</text>
+<rect x="45" y="315" width="350" height="95" class="node" fill="#dbeafe"/><text x="220" y="354" class="head" text-anchor="middle">所有上游梯度 gᵢ = c</text><text x="220" y="389" class="body" text-anchor="middle">各输出位置敏感度相同</text>
+<rect x="575" y="315" width="350" height="95" class="node" fill="#fef3c7"/><text x="750" y="354" class="head" text-anchor="middle">行共享项 d = c</text><text x="750" y="389" class="body" text-anchor="middle">d = c × Σyᵢ，且 Σyᵢ = 1</text>
+<rect x="1105" y="315" width="350" height="95" class="node" fill="#dcfce7"/><text x="1280" y="354" class="head" text-anchor="middle">每列输入梯度都为 0</text><text x="1280" y="389" class="body" text-anchor="middle">yᵢ(c − d) = 0</text>
+<path d="M395 182H575" class="edge"/><path d="M925 182H1105" class="edge"/><path d="M395 362H575" class="edge"/><path d="M925 362H1105" class="edge"/>
+</svg>

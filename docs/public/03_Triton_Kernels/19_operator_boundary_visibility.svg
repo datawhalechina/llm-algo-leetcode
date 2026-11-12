@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">算子能进入计算图，与内部实现可被追踪是两件事</title>
+<desc id="desc">同一个缩放计算可以采用不透明边界或可追踪的Triton封装。前者向编译器暴露整体契约，后者还允许继续追踪输出分配和Triton调用。箭头表示可分析范围，不是张量流向；可追踪不保证融合或加速。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d}.title{font-size:28px;font-weight:700}.head{font-size:22px;font-weight:700}.body{font-size:20px}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#a)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="40" y="48" class="title">同一缩放计算，封装边界决定编译器能继续分析哪些内容</text>
+<text x="40" y="87" class="body">两种接口的可见性对照；箭头表示编译器沿算子边界逐步展开的分析范围。</text>
+<rect x="50" y="210" width="300" height="100" rx="10" fill="#dbeafe" stroke="#829ab1" stroke-width="2"/>
+<text x="200" y="249" text-anchor="middle" class="head">缩放调用 y = αx</text><text x="200" y="286" text-anchor="middle" class="body">相同的数学输入与输出</text>
+<rect x="575" y="120" width="300" height="100" rx="10" fill="#e2e8f0" stroke="#829ab1" stroke-width="2"/>
+<text x="725" y="159" text-anchor="middle" class="head">不透明算子边界</text><text x="725" y="196" text-anchor="middle" class="body">custom_op</text>
+<rect x="575" y="320" width="300" height="100" rx="10" fill="#ede9fe" stroke="#829ab1" stroke-width="2"/>
+<text x="725" y="359" text-anchor="middle" class="head">可追踪Triton封装</text><text x="725" y="396" text-anchor="middle" class="body">triton_op</text>
+<rect x="1100" y="120" width="350" height="100" rx="10" fill="#e2e8f0" stroke="#829ab1" stroke-width="2"/>
+<text x="1275" y="159" text-anchor="middle" class="head">整体调用与输入输出契约</text><text x="1275" y="196" text-anchor="middle" class="body">不沿此接口展开内部实现</text>
+<rect x="1100" y="320" width="350" height="100" rx="10" fill="#dcfce7" stroke="#829ab1" stroke-width="2"/>
+<text x="1275" y="359" text-anchor="middle" class="head">继续看到内部张量操作</text><text x="1275" y="396" text-anchor="middle" class="body">输出分配与Triton调用</text>
+<path d="M350 235H440V170H575" class="edge"/>
+<path d="M350 285H470V370H575" class="edge"/>
+<path d="M875 170H1100" class="edge"/><path d="M875 370H1100" class="edge"/>
+</svg>

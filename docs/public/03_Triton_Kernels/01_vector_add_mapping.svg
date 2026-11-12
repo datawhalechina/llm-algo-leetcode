@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="520" viewBox="0 0 1500 520" role="img" aria-labelledby="title desc">
+  <title id="title">向量加法的 Program 分段与尾块掩码</title>
+  <desc id="desc">长度十、块宽四时启动三个 Program。前两个分别处理位置零至三、四至七；第三个生成位置八至十一，但只读取和写回位置八、九。图中位置为逻辑元素，不是物理线程编号。</desc>
+  <defs>
+    <marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+    <style>
+      text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}
+      .title{font-size:28px;font-weight:700}.body{font-size:20px}.small{font-size:18px;fill:#475569}.index{font-size:23px;font-weight:700;text-anchor:middle}
+      .line{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1500" height="520" rx="24" fill="#f8fafc"/>
+  <text x="45" y="50" class="title">N = 10，B = 4：三个 Program 覆盖十个有效元素</text>
+  <text x="45" y="87" class="small">每个格表示一个逻辑位置；绿色为有效位置，红色为补齐位置，不对应物理线程编号。</text>
+  <text x="70" y="135" class="small">Program 与起点</text><text x="460" y="135" class="small">全局位置 i = p × B + r，块内位置 r = 0、1、2、3</text><text x="1130" y="135" class="small">实际读取与写回</text>
+  <rect x="60" y="160" width="260" height="75" rx="14" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="85" y="191" class="body">Program 0</text><text x="85" y="218" class="small">起点 0 × 4 = 0</text>
+  <rect x="60" y="280" width="260" height="75" rx="14" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="85" y="311" class="body">Program 1</text><text x="85" y="338" class="small">起点 1 × 4 = 4</text>
+  <rect x="60" y="400" width="260" height="75" rx="14" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="85" y="431" class="body">Program 2</text><text x="85" y="458" class="small">起点 2 × 4 = 8</text>
+  <g fill="#dcfce7" stroke="#16a34a" stroke-width="2">
+    <rect x="460" y="160" width="120" height="75" rx="9"/><rect x="580" y="160" width="120" height="75" rx="9"/><rect x="700" y="160" width="120" height="75" rx="9"/><rect x="820" y="160" width="120" height="75" rx="9"/>
+    <rect x="460" y="280" width="120" height="75" rx="9"/><rect x="580" y="280" width="120" height="75" rx="9"/><rect x="700" y="280" width="120" height="75" rx="9"/><rect x="820" y="280" width="120" height="75" rx="9"/>
+    <rect x="460" y="400" width="120" height="75" rx="9"/><rect x="580" y="400" width="120" height="75" rx="9"/>
+  </g>
+  <g fill="#fee2e2" stroke="#dc2626" stroke-width="2" stroke-dasharray="6 4"><rect x="700" y="400" width="120" height="75" rx="9"/><rect x="820" y="400" width="120" height="75" rx="9"/></g>
+  <g class="index"><text x="520" y="205">0</text><text x="640" y="205">1</text><text x="760" y="205">2</text><text x="880" y="205">3</text><text x="520" y="325">4</text><text x="640" y="325">5</text><text x="760" y="325">6</text><text x="880" y="325">7</text><text x="520" y="445">8</text><text x="640" y="445">9</text><text x="760" y="445">10</text><text x="880" y="445">11</text></g>
+  <path d="M320 198H460" class="line"/><path d="M320 318H460" class="line"/><path d="M320 438H460" class="line"/>
+  <rect x="1120" y="160" width="325" height="75" rx="14" fill="#ecfdf5" stroke="#16a34a" stroke-width="2"/><text x="1145" y="191" class="body">读取 X[0:4]、Y[0:4]</text><text x="1145" y="218" class="small">相加 → 写 Z[0:4]</text>
+  <rect x="1120" y="280" width="325" height="75" rx="14" fill="#ecfdf5" stroke="#16a34a" stroke-width="2"/><text x="1145" y="311" class="body">读取 X[4:8]、Y[4:8]</text><text x="1145" y="338" class="small">相加 → 写 Z[4:8]</text>
+  <rect x="1120" y="400" width="325" height="75" rx="14" fill="#ecfdf5" stroke="#16a34a" stroke-width="2"/><text x="1145" y="431" class="body">只读取 X[8:10]、Y[8:10]</text><text x="1145" y="458" class="small">相加 → 只写 Z[8:10]</text>
+  <path d="M940 198H1120" class="line"/><path d="M940 318H1120" class="line"/><path d="M940 438H1120" class="line"/>
+  <text x="965" y="184" class="small">i &lt; 10</text><text x="965" y="304" class="small">i &lt; 10</text><text x="965" y="424" class="small">i &lt; 10</text>
+</svg>

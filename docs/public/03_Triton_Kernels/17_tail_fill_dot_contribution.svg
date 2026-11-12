@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">没有越界读取，错误填值仍会改变尾块点积</title>
+<desc id="desc">长度100、块宽64时，第二个Program有36个有效位置和28个补齐位置。两路有效输入均为一；补零得到36，错误补一多出28而得到64。矩形按计算角色分组，元素数量由框内标签给出。</desc>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.h{font-size:23px;font-weight:700}.s{font-size:21px}.op{font-size:32px;font-weight:700}</style>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="45" y="52" class="title">掩码阻止越界读取；填值决定补齐位置是否增加额外贡献</text>
+<text x="45" y="94" class="s">构造例子：N=100、块宽64；尾块生成位置64–127，仅64–99的36项有效。有效输入均为1。</text>
+<g fill="#dbeafe" stroke="#2563eb" stroke-width="2"><rect x="45" y="145" width="440" height="100" rx="12"/><rect x="45" y="310" width="440" height="100" rx="12"/></g>
+<text x="70" y="185" class="h">有效的36项：读取真实输入</text><text x="70" y="223" class="s">36 × (1 × 1) = 36</text>
+<text x="70" y="350" class="h">相同的36项：读取没有变化</text><text x="70" y="388" class="s">36 × (1 × 1) = 36</text>
+<rect x="600" y="145" width="440" height="100" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="625" y="185" class="h">补齐的28项：两路均填零</text><text x="625" y="223" class="s">28 × (0 × 0) = 0</text>
+<rect x="600" y="310" width="440" height="100" rx="12" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+<text x="625" y="350" class="h">补齐的28项：两路错误填一</text><text x="625" y="388" class="s">28 × (1 × 1) = 28</text>
+<text x="540" y="208" text-anchor="middle" class="op">＋</text><text x="540" y="373" text-anchor="middle" class="op">＋</text>
+<text x="1105" y="208" text-anchor="middle" class="op">＝</text><text x="1105" y="373" text-anchor="middle" class="op">＝</text>
+<rect x="1180" y="145" width="275" height="100" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="1317" y="185" text-anchor="middle" class="h">尾块部分和36</text><text x="1317" y="223" text-anchor="middle" class="s">只计真实位置</text>
+<rect x="1180" y="310" width="275" height="100" rx="12" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+<text x="1317" y="350" text-anchor="middle" class="h">尾块部分和64</text><text x="1317" y="388" text-anchor="middle" class="s">无越界，也能算错</text>
+</svg>

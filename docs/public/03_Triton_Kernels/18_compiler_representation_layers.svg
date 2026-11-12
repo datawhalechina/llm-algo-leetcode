@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">同一计算逐步降低表示层次，不是连续执行五次</title>
+<desc id="desc">缩放加偏置从Triton中间表示进入GPU布局表示、LLVM IR、PTX和目标二进制。编译产物说明代码怎样生成，实际调用仍需另行关联设备活动与输出。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d}.title{font-size:28px;font-weight:700}.head{font-size:22px;font-weight:700}.body{font-size:20px}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#a)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="45" y="50" class="title">同一条“缩放后加偏置”，逐步变成目标设备代码</text>
+<text x="45" y="90" class="body">示意NVIDIA编译路径；箭头表示编译转换，不是GPU上的执行先后。</text>
+<g fill="#dbeafe" stroke="#829ab1"><rect x="45" y="150" width="235" height="120" rx="12"/><rect x="335" y="150" width="235" height="120" rx="12"/><rect x="625" y="150" width="235" height="120" rx="12"/><rect x="915" y="150" width="235" height="120" rx="12"/><rect x="1205" y="150" width="250" height="120" rx="12"/></g>
+<text x="162" y="192" text-anchor="middle" class="head">TTIR</text><text x="162" y="235" text-anchor="middle" class="body">块内逐元素计算</text>
+<text x="452" y="192" text-anchor="middle" class="head">TTGIR</text><text x="452" y="235" text-anchor="middle" class="body">表达GPU数据布局</text>
+<text x="742" y="192" text-anchor="middle" class="head">LLVM IR</text><text x="742" y="235" text-anchor="middle" class="body">衔接目标代码生成</text>
+<text x="1032" y="192" text-anchor="middle" class="head">PTX</text><text x="1032" y="235" text-anchor="middle" class="body">NVIDIA虚拟指令</text>
+<text x="1330" y="192" text-anchor="middle" class="head">cubin</text><text x="1330" y="235" text-anchor="middle" class="body">目标GPU二进制</text>
+<path d="M280 210H335" class="edge"/><path d="M570 210H625" class="edge"/><path d="M860 210H915" class="edge"/><path d="M1150 210H1205" class="edge"/>
+<path d="M1330 270V330" class="edge"/>
+<rect x="1205" y="330" width="250" height="90" rx="12" fill="#ede9fe" stroke="#829ab1"/>
+<text x="1330" y="365" text-anchor="middle" class="head">反汇编观察SASS</text><text x="1330" y="398" text-anchor="middle" class="body">读取实际机器指令</text>
+<text x="45" y="365" class="body">读到产物：解释生成了什么代码。</text>
+<text x="45" y="405" class="body">确认执行：仍需连接编译对象、设备活动与本次输出，见本页主图。</text>
+</svg>

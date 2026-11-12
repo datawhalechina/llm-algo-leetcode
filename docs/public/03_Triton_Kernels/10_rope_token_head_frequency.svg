@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">不同头的输入不同，同一位置的角度表相同</title><desc id="desc">H = 2，D = 6；每个头有 6 个特征，每行角度表有 3 个配对角度。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:24px;font-weight:700}.body{font-size:21px}.small{font-size:18px;fill:#475569}.node{stroke:#94a3b8;stroke-width:2;rx:12}.edge{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="45" y="52" class="title" text-anchor="start">不同头的输入不同，同一位置的角度表相同</text>
+<text x="45" y="88" class="small" text-anchor="start">H = 2，D = 6；每个头有 6 个特征，每行角度表有 3 个配对角度。</text>
+<rect x="45" y="125" width="330" height="100" class="node" fill="#dbeafe"/>
+<text x="210.0" y="162" class="head" text-anchor="middle">Program 2：位置 1，头 0</text>
+<text x="210.0" y="197" class="body" text-anchor="middle">输入偏移 2 × 6 = 12</text>
+<rect x="45" y="290" width="330" height="100" class="node" fill="#dbeafe"/>
+<text x="210.0" y="327" class="head" text-anchor="middle">Program 3：位置 1，头 1</text>
+<text x="210.0" y="362" class="body" text-anchor="middle">输入偏移 3 × 6 = 18</text>
+<rect x="605" y="210" width="330" height="100" class="node" fill="#fef3c7"/>
+<text x="770.0" y="247" class="head" text-anchor="middle">角度表第 1 行</text>
+<text x="770.0" y="282" class="body" text-anchor="middle">表偏移 1 × 3 = 3</text>
+<rect x="1165" y="125" width="290" height="100" class="node" fill="#dcfce7"/>
+<text x="1310.0" y="162" class="head" text-anchor="middle">头 0 旋转输出</text>
+<text x="1310.0" y="197" class="body" text-anchor="middle">写回偏移 12</text>
+<rect x="1165" y="290" width="290" height="100" class="node" fill="#dcfce7"/>
+<text x="1310.0" y="327" class="head" text-anchor="middle">头 1 旋转输出</text>
+<text x="1310.0" y="362" class="body" text-anchor="middle">写回偏移 18</text>
+<path d="M935 235H1030V175H1165" class="edge"/>
+<path d="M935 285H1030V340H1165" class="edge"/>
+<path d="M375 155H1165" class="edge"/>
+<path d="M375 360H1165" class="edge"/>
+<text x="605" y="185" class="small" text-anchor="start">共享角度，不混合特征</text>
+<text x="45" y="435" class="body" text-anchor="start">位置 = Program 编号整除 H；头编号决定特征地址，但不增加角度表行号。</text>
+</svg>

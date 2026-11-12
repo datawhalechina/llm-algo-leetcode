@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">每个Token选择配套的A与B，共享权重不共享输入</title><desc id="desc">路由[2,0,1,2]；只展示三组读取关系，输出为低秩增量，不含基础投影。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:24px;font-weight:700}.body{font-size:21px}.small{font-size:18px;fill:#475569}.node{stroke:#94a3b8;stroke-width:2;rx:12}.edge{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="45" y="52" class="title" text-anchor="start">每个Token选择配套的A与B，共享权重不共享输入</text>
+<text x="45" y="88" class="small" text-anchor="start">路由[2,0,1,2]；只展示三组读取关系，输出为低秩增量，不含基础投影。</text>
+<rect x="45" y="115" width="340" height="90" class="node" fill="#dbeafe"/>
+<text x="215.0" y="152" class="head" text-anchor="middle">Token 0、3：各自输入</text>
+<text x="215.0" y="187" class="body" text-anchor="middle">两行路由都为 2</text>
+<rect x="45" y="225" width="340" height="90" class="node" fill="#dbeafe"/>
+<text x="215.0" y="262" class="head" text-anchor="middle">Token 1：独立输入</text>
+<text x="215.0" y="297" class="body" text-anchor="middle">路由为 0</text>
+<rect x="45" y="335" width="340" height="90" class="node" fill="#dbeafe"/>
+<text x="215.0" y="372" class="head" text-anchor="middle">Token 2：独立输入</text>
+<text x="215.0" y="407" class="body" text-anchor="middle">路由为 1</text>
+<rect x="595" y="115" width="300" height="90" class="node" fill="#fef3c7"/>
+<text x="745.0" y="152" class="head" text-anchor="middle">A₂、B₂</text>
+<text x="745.0" y="187" class="body" text-anchor="middle">同一适配器的配套矩阵</text>
+<rect x="595" y="225" width="300" height="90" class="node" fill="#fef3c7"/>
+<text x="745.0" y="262" class="head" text-anchor="middle">A₀、B₀</text>
+<text x="745.0" y="297" class="body" text-anchor="middle">同一适配器的配套矩阵</text>
+<rect x="595" y="335" width="300" height="90" class="node" fill="#fef3c7"/>
+<text x="745.0" y="372" class="head" text-anchor="middle">A₁、B₁</text>
+<text x="745.0" y="407" class="body" text-anchor="middle">同一适配器的配套矩阵</text>
+<rect x="1115" y="115" width="340" height="90" class="node" fill="#dcfce7"/>
+<text x="1285.0" y="152" class="head" text-anchor="middle">增量行 0、3</text>
+<text x="1285.0" y="187" class="body" text-anchor="middle">仍为两份独立结果</text>
+<rect x="1115" y="225" width="340" height="90" class="node" fill="#dcfce7"/>
+<text x="1285.0" y="262" class="head" text-anchor="middle">增量行 1</text>
+<text x="1285.0" y="297" class="body" text-anchor="middle">使用自己的低秩中间值</text>
+<rect x="1115" y="335" width="340" height="90" class="node" fill="#dcfce7"/>
+<text x="1285.0" y="372" class="head" text-anchor="middle">增量行 2</text>
+<text x="1285.0" y="407" class="body" text-anchor="middle">使用自己的低秩中间值</text>
+<path d="M385 160H595" class="edge"/>
+<path d="M385 270H595" class="edge"/>
+<path d="M385 380H595" class="edge"/>
+<path d="M895 160H1115" class="edge"/>
+<path d="M895 270H1115" class="edge"/>
+<path d="M895 380H1115" class="edge"/>
+</svg>

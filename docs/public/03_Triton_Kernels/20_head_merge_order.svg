@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">先交换头与位置维，再拼回每个位置的特征</title>
+<desc id="desc">两个头各含两个位置、每位置两个特征。位置零应拼为11、12、21、22，位置一应拼为13、14、23、24。直接按头优先存储展平会混入另一位置，形状相同仍会改变输出投影的输入。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d}.title{font-size:28px;font-weight:700}.head{font-size:22px;font-weight:700}.body{font-size:20px}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#a)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="40" y="48" class="title">输出形状相同，不代表输出投影读到了同一组特征</text>
+<text x="40" y="87" class="body">构造标记：B=1、H=2、S=2、每头D=2；数字只标识来源，不表示注意力实测结果。</text>
+<rect x="40" y="140" width="355" height="240" rx="12" fill="#dbeafe" stroke="#829ab1"/>
+<text x="65" y="180" class="head">每头输出 [B,H,S,D]</text>
+<text x="65" y="225" class="body">头0：位置0 [11,12]</text><text x="65" y="260" class="body">　　 位置1 [13,14]</text>
+<text x="65" y="305" class="body">头1：位置0 [21,22]</text><text x="65" y="340" class="body">　　 位置1 [23,24]</text>
+<rect x="540" y="140" width="390" height="105" rx="12" fill="#dcfce7" stroke="#829ab1"/>
+<text x="565" y="180" class="head">先换维，再合头 → [B,S,H×D]</text><text x="565" y="220" class="body">位置0：[11,12,21,22]</text>
+<rect x="540" y="295" width="390" height="105" rx="12" fill="#fee2e2" stroke="#829ab1"/>
+<text x="565" y="335" class="head">直接展平 → 相同形状，顺序错</text><text x="565" y="375" class="body">位置0：[11,12,13,14]</text>
+<path d="M395 200H540" class="edge"/><path d="M395 345H540" class="edge"/>
+<rect x="1075" y="140" width="385" height="105" rx="12" fill="#dbeafe" stroke="#829ab1"/>
+<text x="1100" y="180" class="head">输出投影读取同一位置的两头</text><text x="1100" y="220" class="body">位置1：[13,14,23,24]</text>
+<rect x="1075" y="295" width="385" height="105" rx="12" fill="#fee2e2" stroke="#829ab1"/>
+<text x="1100" y="335" class="head">输出投影混入另一位置的数据</text><text x="1100" y="375" class="body">数值与后续残差结果随之改变</text>
+<path d="M930 192H1075" class="edge"/><path d="M930 347H1075" class="edge"/>
+</svg>

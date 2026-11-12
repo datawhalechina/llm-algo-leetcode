@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+  <title id="title">RMSNorm 的行尺度与逐列权重</title>
+  <desc id="desc">输入行一二三的平方和为十四，使用真实列数三得到行尺度。保留的各列输入乘行尺度后，再与各列权重一零负一相乘。补齐列不增加归约分母。</desc>
+  <defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+  <style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:24px;font-weight:700}.body{font-size:21px}.small{font-size:18px;fill:#475569}.node{stroke:#94a3b8;stroke-width:2;rx:12}.edge{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
+  <rect width="1500" height="470" fill="#f8fafc"/>
+  <text x="45" y="52" class="title">一行共享归一化尺度，每列使用自己的权重</text>
+  <text x="45" y="88" class="small">构造输入 N = 3；计算块可补零至 4 列，但均方分母仍是 3，epsilon 为有限正数。</text>
+  <rect x="45" y="110" width="250" height="95" class="node" fill="#dbeafe"/>
+  <text x="170" y="149" class="head" text-anchor="middle">输入行 x</text><text x="170" y="184" class="body" text-anchor="middle">(1, 2, 3)</text>
+  <rect x="425" y="110" width="250" height="95" class="node" fill="#fef3c7"/>
+  <text x="550" y="149" class="head" text-anchor="middle">平方和 = 14</text><text x="550" y="184" class="body" text-anchor="middle">补零列不改变总和</text>
+  <rect x="815" y="110" width="250" height="95" class="node" fill="#fef3c7"/>
+  <text x="940" y="149" class="head" text-anchor="middle">行尺度 r</text><text x="940" y="184" class="body" text-anchor="middle">1 / √(14 / 3 + ε)</text>
+  <rect x="1210" y="110" width="245" height="95" class="node" fill="#dbeafe"/>
+  <text x="1332" y="149" class="head" text-anchor="middle">逐列权重 γ</text><text x="1332" y="184" class="body" text-anchor="middle">(1, 0, −1)</text>
+  <rect x="815" y="320" width="250" height="95" class="node" fill="#dcfce7"/>
+  <text x="940" y="359" class="head" text-anchor="middle">归一化 xᵢ × r</text><text x="940" y="394" class="body" text-anchor="middle">同一 r 广播到各列</text>
+  <rect x="1210" y="320" width="245" height="95" class="node" fill="#dcfce7"/>
+  <text x="1332" y="359" class="head" text-anchor="middle">输出 xᵢ × r × γᵢ</text><text x="1332" y="394" class="body" text-anchor="middle">第二列为零，第三列反号</text>
+  <path d="M295 157H425" class="edge"/><path d="M675 157H815" class="edge"/>
+  <path d="M940 205V320" class="edge"/><path d="M1332 205V320" class="edge"/>
+  <path d="M170 205V367H815" class="edge"/><text x="400" y="350" class="small">保留各列输入</text>
+  <path d="M1065 367H1210" class="edge"/>
+</svg>

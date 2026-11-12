@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">K轮次改变，输出列及其尺度不变</title><desc id="desc">输出列64–127，K=70，K块宽64；两轮贡献合并到同一输出块。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:24px;font-weight:700}.body{font-size:21px}.small{font-size:18px;fill:#475569}.node{stroke:#94a3b8;stroke-width:2;rx:12}.edge{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="45" y="52" class="title" text-anchor="start">K轮次改变，输出列及其尺度不变</text>
+<text x="45" y="88" class="small" text-anchor="start">输出列64–127，K=70，K块宽64；两轮贡献合并到同一输出块。</text>
+<rect x="45" y="125" width="330" height="100" class="node" fill="#dbeafe"/>
+<text x="210.0" y="162" class="head" text-anchor="middle">第一轮：k = 0–63</text>
+<text x="210.0" y="197" class="body" text-anchor="middle">读取对应 X、Q 子块</text>
+<rect x="45" y="295" width="330" height="100" class="node" fill="#dbeafe"/>
+<text x="210.0" y="332" class="head" text-anchor="middle">第二轮：k = 64–69</text>
+<text x="210.0" y="367" class="body" text-anchor="middle">其余K位置补零</text>
+<rect x="585" y="125" width="370" height="100" class="node" fill="#fef3c7"/>
+<text x="770.0" y="162" class="head" text-anchor="middle">使用列尺度 s₆₄ … s₁₂₇</text>
+<text x="770.0" y="197" class="body" text-anchor="middle">按输出列恢复当前权重</text>
+<rect x="585" y="295" width="370" height="100" class="node" fill="#fef3c7"/>
+<text x="770.0" y="332" class="head" text-anchor="middle">仍用 s₆₄ … s₁₂₇</text>
+<text x="770.0" y="367" class="body" text-anchor="middle">不是按K位置选择尺度</text>
+<rect x="1165" y="210" width="290" height="100" class="node" fill="#dcfce7"/>
+<text x="1310.0" y="247" class="head" text-anchor="middle">同一个 FP32 累加器</text>
+<text x="1310.0" y="282" class="body" text-anchor="middle">第一轮贡献 + 第二轮贡献</text>
+<path d="M375 175H585" class="edge"/>
+<path d="M375 345H585" class="edge"/>
+<path d="M955 175H1050V235H1165" class="edge"/>
+<path d="M955 345H1050V285H1165" class="edge"/>
+<text x="45" y="440" class="body" text-anchor="start">M/N/K的尾部各自屏蔽；不能因为输出块固定，就假设K轮次总是整块。</text>
+</svg>

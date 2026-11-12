@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">两个输出共同使用同一对原始分量</title><desc id="desc">相邻配对示例：角度 π/2；先读完 a、b，再覆盖原来的两个位置。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:24px;font-weight:700}.body{font-size:21px}.small{font-size:18px;fill:#475569}.node{stroke:#94a3b8;stroke-width:2;rx:12}.edge{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="45" y="52" class="title" text-anchor="start">两个输出共同使用同一对原始分量</text>
+<text x="45" y="88" class="small" text-anchor="start">相邻配对示例：角度 π/2；先读完 a、b，再覆盖原来的两个位置。</text>
+<rect x="45" y="210" width="270" height="100" class="node" fill="#dbeafe"/>
+<text x="180.0" y="247" class="head" text-anchor="middle">原始特征对</text>
+<text x="180.0" y="282" class="body" text-anchor="middle">a = 1，b = 2</text>
+<rect x="560" y="125" width="370" height="100" class="node" fill="#dcfce7"/>
+<text x="745.0" y="162" class="head" text-anchor="middle">偶数位置的新值 a′</text>
+<text x="745.0" y="197" class="body" text-anchor="middle">1 × 0 − 2 × 1 = −2</text>
+<rect x="560" y="290" width="370" height="100" class="node" fill="#dcfce7"/>
+<text x="745.0" y="327" class="head" text-anchor="middle">奇数位置的新值 b′</text>
+<text x="745.0" y="362" class="body" text-anchor="middle">1 × 1 + 2 × 0 = 1</text>
+<rect x="1160" y="210" width="295" height="100" class="node" fill="#fef3c7"/>
+<text x="1307.5" y="247" class="head" text-anchor="middle">原位写回</text>
+<text x="1307.5" y="282" class="body" text-anchor="middle">(1, 2) → (−2, 1)</text>
+<path d="M315 235H420V175H560" class="edge"/>
+<path d="M315 285H420V340H560" class="edge"/>
+<path d="M930 175H1040V235H1160" class="edge"/>
+<path d="M930 340H1040V285H1160" class="edge"/>
+<text x="45" y="420" class="body" text-anchor="start">两个分支都读原始 (a, b)；先覆盖 a 再算 b′ 会破坏旋转关系。</text>
+</svg>

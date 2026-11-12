@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">最大值改变时，两个历史和必须一起换基准</title><desc id="desc">一行查询、两个键；V 为标量，两个键分数分别为 0 和 ln 2。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:24px;font-weight:700}.body{font-size:21px}.small{font-size:18px;fill:#475569}.node{stroke:#94a3b8;stroke-width:2;rx:12}.edge{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="45" y="52" class="title" text-anchor="start">最大值改变时，两个历史和必须一起换基准</text>
+<text x="45" y="88" class="small" text-anchor="start">一行查询、两个键；V 为标量，两个键分数分别为 0 和 ln 2。</text>
+<rect x="45" y="210" width="305" height="100" class="node" fill="#dbeafe"/>
+<text x="197.5" y="247" class="head" text-anchor="middle">已处理第一个键</text>
+<text x="197.5" y="282" class="body" text-anchor="middle">m = 0，l = 1，a = 2</text>
+<rect x="565" y="120" width="365" height="100" class="node" fill="#fef3c7"/>
+<text x="747.5" y="157" class="head" text-anchor="middle">分母：旧 l × ½ + 新 p</text>
+<text x="747.5" y="192" class="body" text-anchor="middle">1 × ½ + 1 = 1.5</text>
+<rect x="565" y="300" width="365" height="100" class="node" fill="#fef3c7"/>
+<text x="747.5" y="337" class="head" text-anchor="middle">加权和：旧 a × ½ + pV</text>
+<text x="747.5" y="372" class="body" text-anchor="middle">2 × ½ + 1 × 4 = 5</text>
+<rect x="1160" y="210" width="295" height="100" class="node" fill="#dcfce7"/>
+<text x="1307.5" y="247" class="head" text-anchor="middle">合并后的输出</text>
+<text x="1307.5" y="282" class="body" text-anchor="middle">a / l = 5 / 1.5 = 10/3</text>
+<path d="M350 235H450V170H565" class="edge"/>
+<path d="M350 285H450V350H565" class="edge"/>
+<path d="M930 170H1040V235H1160" class="edge"/>
+<path d="M930 350H1040V285H1160" class="edge"/>
+<text x="400" y="265" class="small" text-anchor="start">α = ½</text>
+<text x="565" y="266" class="small" text-anchor="start">新基准 m′ = ln 2，当前 p = 1</text>
+<text x="45" y="435" class="body" text-anchor="start">旧 l 和旧 a 使用相同 α；只修正分母会错误地得到 4。</text>
+</svg>

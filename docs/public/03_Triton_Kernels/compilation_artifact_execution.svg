@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">同一编译对象，连接产物与实际调用</title>
+<desc id="desc">源码和特化条件共同准备一个编译对象。读取其产物，并直接启动同一对象，最后共同核对数值、编译身份和真实 CUDA 入口。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" refX="10" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;font-size:23px;fill:#1e293b}.title{font-size:30px;font-weight:700}.label{font-weight:700}.small{font-size:21px}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}</style>
+<rect width="1500" height="470" fill="#f8fafc"/>
+<text x="45" y="55" class="title">同一编译对象，连接产物与实际调用</text>
+<rect x="45" y="110" width="270" height="105" rx="12" fill="#dbeafe" stroke="#94a3b8"/>
+<text x="180" y="150" text-anchor="middle" class="label">融合计算源码</text><text x="180" y="188" text-anchor="middle" class="small">缩放后加偏置</text>
+<rect x="45" y="295" width="270" height="105" rx="12" fill="#fef3c7" stroke="#94a3b8"/>
+<text x="180" y="335" text-anchor="middle" class="label">特化条件与目标</text><text x="180" y="373" text-anchor="middle" class="small">完整块标志、块大小、GPU</text>
+<rect x="450" y="200" width="270" height="110" rx="12" fill="#dbeafe" stroke="#94a3b8"/>
+<text x="585" y="242" text-anchor="middle" class="label">当前编译对象</text><text x="585" y="280" text-anchor="middle" class="small">此时尚未执行计算</text>
+<rect x="870" y="100" width="250" height="105" rx="12" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="995" y="140" text-anchor="middle" class="label">读取生成产物</text><text x="995" y="178" text-anchor="middle" class="small">不同层次代码与摘要</text>
+<rect x="870" y="300" width="250" height="105" rx="12" fill="#dcfce7" stroke="#94a3b8"/>
+<text x="995" y="340" text-anchor="middle" class="label">直接启动同一对象</text><text x="995" y="378" text-anchor="middle" class="small">真实 CUDA 入口与输出</text>
+<rect x="1230" y="200" width="235" height="110" rx="12" fill="#dcfce7" stroke="#94a3b8"/>
+<text x="1347" y="242" text-anchor="middle" class="label">数值与身份核对</text><text x="1347" y="280" text-anchor="middle" class="small">不能只看函数名称</text>
+<path d="M315 162 H380 V230 H450" class="edge"/>
+<path d="M315 347 H400 V280 H450" class="edge"/>
+<path d="M720 230 H790 V152 H870" class="edge"/>
+<path d="M720 280 H810 V352 H870" class="edge"/>
+<path d="M1120 152 H1170 V230 H1230" class="edge"/>
+<path d="M1120 352 H1190 V280 H1230" class="edge"/>
+</svg>
