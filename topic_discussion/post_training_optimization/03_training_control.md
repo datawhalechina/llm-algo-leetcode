@@ -1,6 +1,6 @@
 # 03 · 训练控制与低资源 SFT
 
-多次微批次反向计算何时才构成一次参数更新，恢复后又该从哪一步继续？SFT、LoRA 与 QLoRA 都要对齐监督词元、梯度累积、数值检查和保存进度。累计窗口与有效更新的原理见[反向传播与训练机制](../backpropagation_training_mechanism/03_supervision_gradient_scale_effective_update.md)。
+多次微批次反向计算何时才构成一次参数更新，恢复后又该从哪一步继续？SFT、LoRA 与 QLoRA 都要对齐监督词元、梯度累积、数值检查和保存进度。累计窗口与有效更新的原理见[反向传播与训练机制](../backpropagation_training_mechanism/03_loss_reduction_gradient_accumulation_effective_update.md)。
 
 ## 一次更新需要固定哪些条件
 
