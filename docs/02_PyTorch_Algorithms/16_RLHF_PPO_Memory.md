@@ -1,6 +1,6 @@
 # 16. RLHF PPO Memory | RLHF / PPO 资源与状态
 
-**难度：** Hard | **环境：** [CPU 机制练习](#runtime-environment) | **标签：** `后训练对齐`, `RLHF`, `PPO` | **目标人群：** 训练机制学习者
+**难度：** Hard | **环境：** [CPU 主线](#runtime-environment) | **标签：** `后训练对齐`, `RLHF`, `PPO` | **目标人群：** 训练机制学习者
 
 > 🚀 **云端运行环境**
 >
@@ -14,7 +14,7 @@
 
 ## 本节导读
 
-完成 SFT 以后，模型已经能模仿数据里的回答，但还需要学习在多个可行答案中倾向于哪一种。RLHF/PPO 让当前策略先生成 response 或多步轨迹，再依据奖励信号调整生成倾向；Actor、Reference、Reward Model 和 Critic 因此同时参与同一轮训练。
+完成 SFT 以后，模型已经能模仿数据里的回答，但还需要学习在多个可行答案中倾向于哪一种。基于人类反馈的强化学习（RLHF）可使用近端策略优化（PPO）：策略先生成回复或多步轨迹，再依据奖励信号调整生成倾向；策略模型（Actor）、参考模型（Reference）、奖励模型（Reward Model）和价值模型（Critic）因此同时参与同一轮训练。
 
 这里先把 PPO 的更新信号拆成 `reward`、`value`、`advantage`、`ratio` 和 `clip`，再把它们放回一次 rollout 的状态账本。这样可以同时看清：奖励怎样转成更新方向，为什么当前策略、参考策略和反馈模型会带来额外驻留状态，以及 DPO / GRPO 为什么会选择更轻的反馈路径。
 
@@ -69,7 +69,7 @@ $$
 \mathcal L_V=\frac{1}{2}\,\mathbb E_t\left[(V_\phi(s_t)-R_t)^2\right].
 $$
 
-把策略、价值、熵与参考策略约束放回同一轮更新，可写成：
+若优势由未扣除参考策略 KL 的奖励计算，把策略、价值、熵与独立参考策略约束放回同一轮更新，可写成：
 
 $$
 \mathcal L_{PPO}=-\mathbb E_t[L_t^{clip}]
@@ -121,6 +121,8 @@ import torch.nn.functional as F
 
 
 ```python
+import math
+
 def compute_actor_loss(
     log_probs_new, log_probs_old, advantages, response_mask=None, clip_range=0.2, reduction="token_mean"
 ):
@@ -130,7 +132,7 @@ def compute_actor_loss(
     Args:
         log_probs_new: 当前 Actor 模型在采样的 Token 上的对数概率, shape [batch_size, seq_len]
         log_probs_old: 采样时(旧) Actor 模型在对应 Token 上的对数概率, shape [batch_size, seq_len]
-        advantages: 优势函数 (Reward - Critic Value), shape [batch_size, seq_len]
+        advantages: 优势（累计回报减去状态价值基线）, shape [batch_size, seq_len]
         response_mask: 有效生成 token 的布尔掩码；None 表示全部有效
         clip_range: 截断范围 epsilon，默认 0.2
         reduction: token_mean 或 sequence_mean
@@ -141,14 +143,17 @@ def compute_actor_loss(
     """
     if log_probs_new.shape != log_probs_old.shape or log_probs_new.shape != advantages.shape:
         raise ValueError("log_probs_new / log_probs_old / advantages 的形状必须一致")
-    if log_probs_new.ndim != 2:
-        raise ValueError("log_probs 必须是 [batch, sequence] 二维张量")
-    if clip_range < 0:
-        raise ValueError("clip_range 必须非负")
+    if log_probs_new.ndim != 2 or log_probs_new.numel() == 0:
+        raise ValueError("log_probs 必须是非空的 [batch, sequence] 二维张量")
+    if not torch.isfinite(log_probs_new).all() or not torch.isfinite(log_probs_old).all() or not torch.isfinite(advantages).all():
+        raise ValueError("策略对数概率与优势必须为有限数")
+    clip_range = float(clip_range)
+    if not math.isfinite(clip_range) or clip_range < 0:
+        raise ValueError("clip_range 必须是非负有限数")
     if response_mask is None:
         response_mask = torch.ones_like(log_probs_new, dtype=torch.bool)
-    if response_mask.shape != log_probs_new.shape or not torch.all(response_mask.bool().any(dim=-1)):
-        raise ValueError("response_mask 必须同形且至少包含一个有效位置")
+    if response_mask.shape != log_probs_new.shape or response_mask.dtype != torch.bool or not torch.all(response_mask.any(dim=-1)):
+        raise ValueError("response_mask 必须是同形布尔张量，且每条回复至少包含一个有效位置")
     if reduction not in {"token_mean", "sequence_mean"}:
         raise ValueError("reduction 必须是 token_mean 或 sequence_mean")
 
@@ -160,6 +165,7 @@ def compute_actor_loss(
 
     # ==========================================
     # TODO 2：冻结 advantage，构造原始、裁剪和保守目标。
+    raise NotImplementedError("TODO 2：构造裁剪目标")
     # surrogate = ???
     # clipped_ratio = ???
     # clipped_surrogate = ???
@@ -168,6 +174,7 @@ def compute_actor_loss(
 
     # ==========================================
     # TODO 3：按 reduction 口径聚合有效 response token。
+    raise NotImplementedError("TODO 3：聚合有效回答目标")
     mask = response_mask.bool()
     if reduction == "token_mean":
         # loss = ???
@@ -181,6 +188,7 @@ def compute_actor_loss(
 
     # ==========================================
     # TODO 4：在有效位置统计近似 KL、裁剪比例和 token 数。
+    raise NotImplementedError("TODO 4：计算更新诊断")
     # log_ratio = ???
     # approx_kl = ???
     # clip_fraction = ???
@@ -308,7 +316,7 @@ def compute_actor_loss(
     Args:
         log_probs_new: 当前 Actor 模型在采样的 Token 上的对数概率, shape [batch_size, seq_len]
         log_probs_old: 采样时(旧) Actor 模型在对应 Token 上的对数概率, shape [batch_size, seq_len]
-        advantages: 优势函数 (Reward - Critic Value), shape [batch_size, seq_len]
+        advantages: 优势（累计回报减去状态价值基线）, shape [batch_size, seq_len]
         response_mask: 有效生成 token 的布尔掩码；None 表示全部有效
         clip_range: 截断范围 epsilon，默认 0.2
         reduction: token_mean 或 sequence_mean

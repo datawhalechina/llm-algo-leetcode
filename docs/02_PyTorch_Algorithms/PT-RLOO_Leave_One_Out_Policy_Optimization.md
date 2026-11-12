@@ -1,6 +1,6 @@
 # PT-RLOO. Leave One Out Policy Optimization | 留一基线策略优化
 
-**难度：** Hard | **环境：** [CPU 主线，框架核对可选](#runtime-environment) | **标签：** `后训练对齐`, `RLOO`, `在线策略优化` | **目标人群：** 训练机制学习者
+**难度：** Hard | **环境：** [CPU 主线](#runtime-environment) | **标签：** `后训练对齐`, `RLOO`, `在线策略优化` | **目标人群：** 训练机制学习者
 
 > 🚀 **云端运行环境**
 >
@@ -14,9 +14,9 @@
 
 ## 本节导读
 
-在线策略优化需要把采样回答的奖励变成低方差更新信号。RLOO 对同一提示采样多个回答，并用“除当前回答外其余奖励的均值”作为基线，因此不需要单独训练 Critic。完成本节后，你应该能计算留一优势、解释它与 GRPO 组均值基线的差别，并核对序列级裁剪目标。
+在线策略优化需要把采样回答的奖励变成低方差更新信号。RLOO 对同一提示采样多个回答，并用“除当前回答外其余奖励的均值”作为基线，因此不需要单独训练价值模型（Critic）。完成本节后，你应该能计算留一优势、解释它与 GRPO 组均值基线的差别，并核对序列级裁剪目标。
 
-**关键词：** `RLOO`, `leave-one-out baseline`, `policy ratio`, `online RL`
+**关键词：** `RLOO`、`留一基线`、`策略比率`、`在线强化学习`
 
 ---
 <a id="runtime-environment"></a>
@@ -94,13 +94,19 @@ import torch
 
 
 ```python
+import math
+
 def aggregate_sequence_logps(token_logps, completion_mask):
     """在有效回答 Token 上聚合序列对数概率。"""
     if token_logps.ndim != 2 or token_logps.shape != completion_mask.shape:
         raise ValueError("token_logps 与 completion_mask 必须是同形二维张量")
-    if torch.any(completion_mask.bool().sum(dim=-1) == 0):
+    if completion_mask.dtype != torch.bool:
+        raise ValueError("completion_mask 必须是布尔张量")
+    mask = completion_mask
+    if torch.any(mask.sum(dim=-1) == 0):
         raise ValueError("每条回答至少需要一个有效 Token")
-    mask = completion_mask.bool()
+    if not torch.isfinite(token_logps[mask]).all():
+        raise ValueError("有效回答位置的 token_logps 必须为有限数")
     # ==========================================
     # TODO 1：聚合有效回答 Token
     # ==========================================
@@ -115,9 +121,16 @@ def shape_rloo_rewards(external_rewards, old_token_logps, reference_token_logps,
         raise ValueError("外部奖励必须是一维，旧策略与 Reference Token 得分必须同形")
     if old_token_logps.ndim != 2 or old_token_logps.shape != completion_mask.shape:
         raise ValueError("Token 得分、Reference 得分与 mask 必须是同形二维张量")
-    if external_rewards.shape[0] != old_token_logps.shape[0] or beta < 0:
-        raise ValueError("奖励批次大小必须匹配且 beta 必须非负")
-    mask = completion_mask.bool()
+    beta = float(beta)
+    if external_rewards.shape[0] != old_token_logps.shape[0] or not math.isfinite(beta) or beta < 0:
+        raise ValueError("奖励批次大小必须匹配且 beta 必须是非负有限数")
+    if torch.isinf(external_rewards).any():
+        raise ValueError("外部奖励可用 NaN 表示缺失，但不能包含无穷值")
+    if completion_mask.dtype != torch.bool:
+        raise ValueError("completion_mask 必须是布尔张量")
+    mask = completion_mask
+    if not torch.isfinite(old_token_logps[mask]).all() or not torch.isfinite(reference_token_logps[mask]).all():
+        raise ValueError("有效回答位置的旧策略与 Reference 得分必须有限")
     if torch.any(mask.sum(dim=-1) == 0):
         raise ValueError("每条回答至少需要一个有效 Token")
     # ==========================================
@@ -131,8 +144,10 @@ def shape_rloo_rewards(external_rewards, old_token_logps, reference_token_logps,
 
 def leave_one_out_advantages(rewards, group_ids):
     """按提示组计算回答级留一优势。"""
-    if rewards.ndim != 1 or group_ids.shape != rewards.shape:
-        raise ValueError("rewards 与 group_ids 必须是同形一维张量")
+    if rewards.ndim != 1 or rewards.numel() == 0 or group_ids.shape != rewards.shape:
+        raise ValueError("rewards 与 group_ids 必须是同形非空一维张量")
+    if torch.isinf(rewards).any():
+        raise ValueError("缺失奖励只能使用 NaN，不能使用无穷值")
     advantages = torch.zeros_like(rewards)
     for group_id in group_ids.unique(sorted=True):
         mask = group_ids == group_id
@@ -154,10 +169,13 @@ def leave_one_out_advantages(rewards, group_ids):
 
 def rloo_policy_loss(new_logps, old_logps, advantages, epsilon_low=0.2, epsilon_high=0.2):
     """返回序列级 RLOO 裁剪损失和策略比率。"""
-    if not (new_logps.shape == old_logps.shape == advantages.shape):
-        raise ValueError("新旧得分与优势形状必须一致")
-    if not 0 < epsilon_low < 1 or epsilon_high <= 0:
-        raise ValueError("epsilon_low 必须位于 0 与 1 之间，epsilon_high 必须为正")
+    if new_logps.ndim != 1 or new_logps.numel() == 0 or not (new_logps.shape == old_logps.shape == advantages.shape):
+        raise ValueError("新旧得分与优势必须是同形非空一维张量")
+    epsilon_low, epsilon_high = float(epsilon_low), float(epsilon_high)
+    if not math.isfinite(epsilon_low) or not math.isfinite(epsilon_high) or not 0 < epsilon_low < 1 or epsilon_high <= 0:
+        raise ValueError("epsilon_low 必须位于 0 与 1 之间，epsilon_high 必须为正有限数")
+    if not torch.isfinite(new_logps).all() or not torch.isfinite(old_logps).all() or not torch.isfinite(advantages).all():
+        raise ValueError("策略得分与优势必须为有限数")
     # ==========================================
     # TODO 4：构造非对称裁剪目标
     # ==========================================
@@ -220,6 +238,23 @@ def test_rloo_policy_loss():
     assert new.grad is not None and old.grad is None and advantages.grad is None
 
 
+def test_rloo_asymmetric_clipping_boundaries():
+    """分别命中非对称上下界，并验证反方向偏移不能被错误截断。"""
+    ratios = torch.tensor([1.5, 0.6, 0.6, 1.5], dtype=torch.float64)
+    old = torch.full((4,), -2.0, dtype=torch.float64)
+    new = (old + ratios.log()).requires_grad_()
+    advantages = torch.tensor([1.0, -1.0, 1.0, -1.0], dtype=torch.float64)
+    losses, actual_ratios = rloo_policy_loss(new, old, advantages, epsilon_low=0.1, epsilon_high=0.3)
+    assert torch.allclose(actual_ratios, ratios)
+    assert torch.allclose(losses, torch.tensor([-1.3, 0.9, -0.6, 1.5], dtype=torch.float64))
+    losses.sum().backward()
+    assert torch.allclose(new.grad[:2], torch.zeros(2, dtype=torch.float64))
+    assert torch.allclose(new.grad[2:], torch.tensor([-0.6, 1.5], dtype=torch.float64))
+    boundary_ratios = torch.tensor([0.9, 1.3], dtype=torch.float64)
+    boundary_losses, _ = rloo_policy_loss(old[:2] + boundary_ratios.log(), old[:2], advantages[:2], epsilon_low=0.1, epsilon_high=0.3)
+    assert torch.allclose(boundary_losses, torch.tensor([-0.9, 1.3], dtype=torch.float64))
+
+
 def test_rloo_input_checks():
     """验证形状不一致与非法裁剪范围会被显式拒绝。"""
     values = torch.zeros(2)
@@ -250,6 +285,7 @@ def run_rloo_tests():
     test_leave_one_out_advantages()
     test_leave_one_out_contract()
     test_rloo_policy_loss()
+    test_rloo_asymmetric_clipping_boundaries()
     test_rloo_input_checks()
     print("✅ RLOO 序列聚合、奖励塑形、缺失奖励、留一优势与非对称裁剪通过。")
 
@@ -359,7 +395,7 @@ def rloo_policy_loss(new_logps, old_logps, advantages, epsilon_low=0.2, epsilon_
 #### TODO 1：聚合有效回答 Token
 
 - **判断依据：** 序列比率只能覆盖回答 Token，Prompt、Padding 和占位值都不能进入分数。
-- **实现与证据：** 先转成布尔掩码，再将无效位置清零后求和；变长回答测试同时放入 `-inf` Padding，证明无效值不会传播。
+- **实现与证据：** 先要求输入为布尔掩码，再将无效位置清零后求和；变长回答测试同时放入 `-inf` Padding，证明无效值不会传播。
 
 #### TODO 2：塑形回答级奖励
 
@@ -374,7 +410,7 @@ def rloo_policy_loss(new_logps, old_logps, advantages, epsilon_low=0.2, epsilon_
 #### TODO 4：构造非对称裁剪目标
 
 - **判断依据：** 旧策略与优势都是采样后固定证据，只有新策略得分参与更新；正负优势必须共用同一保守裁剪规则。
-- **实现与证据：** 用序列对数概率差构造比率，并在非对称边界内裁剪后逐样本取较小代理目标；测试覆盖有限损失和三类张量的梯度边界。
+- **实现与证据：** 用序列对数概率差构造比率，并在非对称边界内裁剪后逐样本取较小代理目标；`test_rloo_asymmetric_clipping_boundaries` 用下界 0.9、上界 1.3 核对正优势上裁剪、负优势下裁剪和相反方向不裁剪的精确损失，并确认饱和侧梯度为零；另一个测试确认旧策略与优势不接收梯度。
 <a id="framework-check"></a>
 
 ## 框架一致性核对（可选）

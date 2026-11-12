@@ -129,12 +129,15 @@ import torch
 
 
 ```python
+import math
+
 def compute_group_advantages(rewards, group_ids, eps=1e-6):
     """在每个 prompt 组内标准化候选 reward。"""
-    if rewards.ndim != 1 or rewards.shape != group_ids.shape:
-        raise ValueError("rewards 与 group_ids 必须是同形一维张量")
-    if eps <= 0:
-        raise ValueError("eps 必须为正")
+    if rewards.ndim != 1 or rewards.numel() == 0 or rewards.shape != group_ids.shape:
+        raise ValueError("rewards 与 group_ids 必须是同形非空一维张量")
+    eps = float(eps)
+    if not torch.isfinite(rewards).all() or not math.isfinite(eps) or eps <= 0:
+        raise ValueError("rewards 必须有限且 eps 必须为正有限数")
     advantages = torch.zeros_like(rewards)
     for group_id in group_ids.unique(sorted=True):
         group_mask = group_ids == group_id
@@ -166,29 +169,36 @@ def compute_grpo_loss(log_probs_new, log_probs_old, rewards, group_ids, response
     Note:
         reward 只负责形成组内排序；独立质量仍需在 held-out 评测中确认。
     """
-    if log_probs_new.ndim != 2 or log_probs_new.shape != log_probs_old.shape:
-        raise ValueError("新旧策略 log_probs 必须是同形二维张量")
-    if rewards.shape[0] != log_probs_new.shape[0]:
+    if log_probs_new.ndim != 2 or log_probs_new.numel() == 0 or log_probs_new.shape != log_probs_old.shape:
+        raise ValueError("新旧策略 log_probs 必须是同形非空二维张量")
+    if rewards.shape[0] != log_probs_new.shape[0] or group_ids.shape != rewards.shape:
         raise ValueError("rewards / group_ids 必须与候选维一致")
-    if clip_range < 0 or beta < 0:
-        raise ValueError("clip_range 与 beta 必须非负")
+    clip_range, beta = float(clip_range), float(beta)
+    if any(not math.isfinite(value) or value < 0 for value in (clip_range, beta)):
+        raise ValueError("clip_range 与 beta 必须是非负有限数")
+    if not torch.isfinite(log_probs_new).all() or not torch.isfinite(log_probs_old).all():
+        raise ValueError("新旧策略 log_probs 必须为有限数")
     if log_probs_ref is not None and log_probs_ref.shape != log_probs_new.shape:
         raise ValueError("参考策略 log_probs 必须与当前策略同形")
     if response_mask is None:
         response_mask = torch.ones_like(log_probs_new, dtype=torch.bool)
-    if response_mask.shape != log_probs_new.shape or not torch.all(response_mask.bool().any(dim=-1)):
-        raise ValueError("response_mask 必须同形且至少包含一个有效位置")
+    if response_mask.shape != log_probs_new.shape or response_mask.dtype != torch.bool or not torch.all(response_mask.any(dim=-1)):
+        raise ValueError("response_mask 必须是同形布尔张量，且每条候选至少包含一个有效位置")
+    if log_probs_ref is not None and not torch.isfinite(log_probs_ref).all():
+        raise ValueError("参考策略 log_probs 必须为有限数")
 
     advantages = compute_group_advantages(rewards, group_ids, eps=eps)
 
     # ==========================================
     # TODO 2：冻结旧策略记录，计算 token 级策略比率及其裁剪值。
+    raise NotImplementedError("TODO 2：请完成当前机制")
     # ratio = ???
     # clipped_ratio = ???
     # ==========================================
 
     # ==========================================
     # TODO 3：广播候选优势，构造裁剪目标与可选 Reference KL。
+    raise NotImplementedError("TODO 3：请完成当前机制")
     # token_advantages = ???
     # surrogate = ???
     # clipped_surrogate = ???
@@ -198,6 +208,7 @@ def compute_grpo_loss(log_probs_new, log_probs_old, rewards, group_ids, response
 
     # ==========================================
     # TODO 4：每个候选先按有效 token 求均值，再在候选间等权聚合。
+    raise NotImplementedError("TODO 4：请完成当前机制")
     # token_counts = ???
     # per_candidate = ???
     # loss = ???
@@ -587,7 +598,7 @@ framework_check
 
 ## Step 5：可选 GPU 实验——验证器奖励、组内优势与有限更新
 
-CPU 题目确认组内归一化、策略比率和裁剪目标；GPU 实验让确定性验证器对固定候选逐项生成正确性与格式奖励，再比较最小候选组和扩展候选组的组内优势与有限更新。固定候选用于隔离采样噪声，因此这里只验证 RLVR 奖励接入 GRPO 的机制链，不把两档差异归因于纯组规模变化。
+CPU 题目确认组内归一化、策略比率和裁剪目标；GPU 实验让确定性验证器对固定候选逐项生成正确性与格式奖励，再比较最小候选组和扩展候选组的组内优势与有限更新。固定候选用于隔离采样噪声，该实验使用序列平均对数概率差的指数作为回答级代理比率，只验证奖励接入组内优势更新的局部机制；它不同于 Step 2 的逐 Token GRPO 目标，不构成该目标的 GPU 等价验证，不把两档差异归因于纯组规模变化。
 
 | 学习问题 | CPU 已确认 | GPU 要确认 |
 |:---|:---|:---|
