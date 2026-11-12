@@ -1,6 +1,6 @@
 # 大模型架构演进实验资产表
 
-本表登记架构机制与项目使用的 Profile、工作负载、结果路径和证据状态。环境创建见[实验 Quickstart](./quickstart.md)，精确依赖与硬件快照见[模型、执行栈与环境资产表](../../docs/gpu_environment_assets.md)，项目公共外层见[Part 02 结果资产与证据契约](../../docs/part02_result_assets.md)。
+本表登记架构机制与项目使用的 Profile、工作负载、结果路径和证据状态。环境创建见[实验 Quickstart](./quickstart.md)，Profile 与隔离关系见[环境资产索引](../../docs/gpu_environment_assets.md)，实际依赖与硬件写入结果 JSON；项目公共外层见[Part 02 结果资产与证据契约](../../docs/part02_result_assets.md)。
 
 ## 环境角色
 

@@ -1,6 +1,6 @@
 # 大模型架构演进实验资产表
 
-本表登记架构机制与项目使用的 Profile、工作负载、结果路径和证据状态。环境创建见[实验 Quickstart](./quickstart.md)，精确依赖与硬件快照见[模型、执行栈与环境资产表](../../gpu_environment_assets.md)，项目公共外层见[Part 02 结果资产与证据契约](../../part02_result_assets.md)。
+本表登记架构机制与项目使用的 Profile、工作负载、结果路径和证据状态。环境创建见[实验 Quickstart](./quickstart.md)，Profile 与隔离关系见[环境资产索引](../../gpu_environment_assets.md)，实际依赖与硬件写入结果 JSON；项目公共外层见[Part 02 结果资产与证据契约](../../part02_result_assets.md)。
 
 ## 环境角色
 
@@ -70,6 +70,8 @@
 | `ARCH-LONG-SEQUENCE-MEMORY` / 77 | 45、ARCH-HYBRID-MEMORY | 长度阶梯上的质量、状态与成本 | 局部证据生产者；默认属于跨模型观察 |
 | `ARCH-MODEL-AUDIT` / 61 | 前述项目的稳定引用与哈希 | 配置差异、证据等级和综合判断 | 聚合出口；不重新执行局部 benchmark |
 | `PAR-MOE-EXPERT` / 80 | 06、07 | 专家容量、容量溢出、分发和通信 | 通信与并行主归属，架构审计引用其结果 |
+
+60、71、77、78 以 `architecture-evaluation/v1` 写出生产者记录；61 只消费已登记的语义 ID、结果路径和 SHA-256，不读取上游 Notebook 的内部变量。受控 GPU 对照、跨模型观察和匹配质量基准分别登记为 `controlled_gpu_benchmark`、`observational_gpu_benchmark` 和 `matched_quality_benchmark`；质量或后端证据缺失时保持 `tune`，不得仅因代码成功运行而进入 `accept`。
 
 ## 产物与执行后端准入
 

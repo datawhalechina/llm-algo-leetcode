@@ -1,6 +1,6 @@
 # 大模型架构演进实验 Quickstart
 
-首次运行按本页创建环境，重新进入环境或安装中断时使用对应恢复命令。模型、工作负载、结果路径和证据状态见[实验资产表](./experiment_assets.md)；精确环境配置和硬件快照见[模型、执行栈与环境资产表](../../docs/gpu_environment_assets.md)。以下命令均在仓库根目录执行。
+首次运行按本页创建环境，重新进入环境或安装中断时使用对应恢复命令。模型、工作负载、结果路径、实际环境和硬件快照见[实验资产表](./experiment_assets.md)及结果 JSON；Profile 与隔离关系见[环境资产索引](../../docs/gpu_environment_assets.md)。以下命令均在仓库根目录执行。
 
 <a id="arch-cuda-mechanism-quickstart"></a>
 

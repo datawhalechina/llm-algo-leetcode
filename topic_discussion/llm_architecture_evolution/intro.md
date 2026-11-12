@@ -6,6 +6,8 @@
 
 ## 学习路线
 
+以下路线可独立用于完整的结构演进与审计。需要把结构选择接到反向依赖、有效更新和状态策略时，也可选择[模型架构与训练](../model_architecture_and_training/intro.md)的组合阅读顺序。
+
 连续学习时进入[架构演进问题链](./walkthrough.md)，遇到配置、容量或质量异常时使用[架构问题排查手册](./casebook.md)，术语差异查询[专题术语表](./glossary.md)。
 
 | Task / 主题 | 本阶段要回答的问题 | 学习入口与验证出口 | 学习顺序 | 主要正文入口 |
@@ -39,7 +41,7 @@
 
 ## 实验与项目出口
 
-首次运行先按[实验 Quickstart](./quickstart.md)创建环境，再从[实验资产表](./experiment_assets.md)选择机制页、模型、工作负载、结果路径和证据状态；跨专题的软件版本和硬件快照查询[GPU 环境资产表](../../docs/gpu_environment_assets.md)。
+首次运行先按[实验 Quickstart](./quickstart.md)创建环境，再从[实验资产表](./experiment_assets.md)选择机制页、模型、工作负载、结果路径和证据状态；跨专题 Profile 与隔离关系查询[环境资产索引](../../docs/gpu_environment_assets.md)，实际软件版本与硬件快照写入结果 JSON。
 
 | 证据阶段 | 要回答的问题 | 输出与入口 |
 |:---|:---|:---|
