@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+  <title id="title">四个和七个目标怎样形成同一轮更新</title>
+  <desc id="desc">A和B两个微批次分别有四个与七个有效目标，平均损失为LA和LB。按有效目标等权，分别用4LA/11和7LB/11反向传播，保持参数不变并累积梯度。检查通过后执行优化器步，成功更新才推进相应计数；图示为构造例子。</desc>
+  <defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52677d"/></marker></defs>
+  <style>
+    text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#17324d}
+    .title{font-size:32px;font-weight:700}.head{font-size:24px;font-weight:700}.body{font-size:22px;font-weight:400}.note{font-size:20px;font-weight:400;fill:#475569}
+    .node{stroke:#829ab1;stroke-width:2.5;rx:12}.edge{stroke:#52677d;stroke-width:3;fill:none;marker-end:url(#arrow)}
+  </style>
+  <rect width="1500" height="470" fill="#f8fafc"/>
+  <text x="40" y="44" class="title">四个和七个目标怎样形成同一轮更新</text>
+  <text x="40" y="79" class="note">按目标词元等权；两次计算之间参数不变，先累积、后更新。构造示例，不表示实测流程耗时。</text>
+  <rect x="40" y="115" width="270" height="100" class="node" fill="#e0f2fe"/>
+  <text x="175" y="155" text-anchor="middle" class="head">A：4 个有效目标</text>
+  <text x="175" y="190" text-anchor="middle" class="body">平均损失 L_A</text>
+  <rect x="40" y="305" width="270" height="100" class="node" fill="#e0f2fe"/>
+  <text x="175" y="345" text-anchor="middle" class="head">B：7 个有效目标</text>
+  <text x="175" y="380" text-anchor="middle" class="body">平均损失 L_B</text>
+  <rect x="390" y="115" width="270" height="100" class="node" fill="#fef3c7"/>
+  <text x="525" y="155" text-anchor="middle" class="head">加权后反向传播</text>
+  <text x="525" y="190" text-anchor="middle" class="body">4L_A / 11</text>
+  <rect x="390" y="305" width="270" height="100" class="node" fill="#fef3c7"/>
+  <text x="525" y="345" text-anchor="middle" class="head">加权后反向传播</text>
+  <text x="525" y="380" text-anchor="middle" class="body">7L_B / 11</text>
+  <rect x="750" y="210" width="290" height="100" class="node" fill="#dcfce7"/>
+  <text x="895" y="250" text-anchor="middle" class="head">累积同一轮梯度</text>
+  <text x="895" y="285" text-anchor="middle" class="body">两次反向的贡献相加</text>
+  <rect x="1130" y="210" width="330" height="100" class="node" fill="#dcfce7"/>
+  <text x="1295" y="250" text-anchor="middle" class="head">检查后执行优化器步</text>
+  <text x="1295" y="285" text-anchor="middle" class="body">成功更新才推进计数</text>
+  <path d="M310 165H390" class="edge"/>
+  <path d="M310 355H390" class="edge"/>
+  <path d="M660 165H705V240H750" class="edge"/>
+  <path d="M660 355H705V280H750" class="edge"/>
+  <path d="M1040 260H1130" class="edge"/>
+</svg>
