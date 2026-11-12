@@ -1,6 +1,6 @@
-# 01. Triton Vector Addition | Triton 入门与 Hello World：向量加法 (Vector Addition)
+# 01. Triton Vector Addition | Triton 向量加法入门
 
-**难度：** Easy | **标签：** `入门`, `Triton` | **目标人群：** 通用基础 (算法/Infra)
+**难度：** Easy | **环境：** [NVIDIA GPU 必需](#runtime-environment) | **标签：** `Triton`、`程序映射`、`尾块掩码` | **目标人群：** 掌握张量运算
 
 > 🚀 **云端运行环境**
 >
@@ -10,266 +10,288 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
-这是 Triton 编程的“Hello World”。在这里，你将抛弃平时在 PyTorch 里理所当然的 `z = x + y`，而是站在 GPU 硬件的视角，亲自控制“指针”、“内存偏移”和“线程块（Block）”，体会最原始的数据搬运。
+## 本节导读
 
-## 前置
+两个向量相加只需逐元素计算，但GPU上的实现还必须回答：每段数据交给哪个并行程序，最后一段不足整块时怎样避免越界？算式相同并不意味着索引和读写边界天然正确。
 
-**导语：** 这一节后面会从 `program_id`、`mask`、`stride` 和块级并行开始动手。
+一维向量的全局位置可以拆成并行程序实例（Program）的编号和块内偏移。分段必须覆盖全部有效元素，读取与写回则分别遵守边界；这些关系共同决定每个输出为何恰好产生一次。
 
-- [Part 1: 1B 单卡硬件与访存优化](../01_Hardware_Math_and_Systems/1B.md)
-- [Part 1: 1D 异构调度与算子编程](../01_Hardware_Math_and_Systems/1D.md)
-- [Part 1: 18 Triton Block 模型](../01_Hardware_Math_and_Systems/18_Triton_Block_Model.md)
+<a id="runtime-environment"></a>
 
-### Step 1: 核心思想与编程模型
+## 运行环境
 
-> **Triton 的核心理念：基于 Block 的编程**
-> 在原生的 CUDA C++ 中，你需要精确控制几万个“线程 (Thread)”该去读哪个数组元素。
-> 而在 Triton 中，你只需要控制一个“线程块 (Block)”。编译器会自动帮你把这个 Block 拆分给底层的 128 或 256 个线程去执行。
+- **GPU练习：** 使用[算子环境](../topic_discussion/operator_optimization/quickstart.md#triton-environment)，运行[题目与测试](#mechanism-practice)。需要NVIDIA GPU、CUDA版PyTorch与Triton。
+- **性能测量（可选）：** 沿用上述环境，运行[性能测量](#性能测量-可选)。
 
-> **程序的维度 (Grid)**
-> 假设我们要把两个长度为 10 万的向量相加。GPU 一次处理不了这么多。
-> 我们把任务切分成很多个“Block”（比如每个 Block 处理 1024 个元素）。
-> 那么我们需要启动 `100000 / 1024` 取整 个 Program。这就是所谓的 `Grid` 大小。
-> **为什么这里先用 1024？** 它是一个常见的 2 的幂次方块大小，便于对齐和分块；同时它足够大，能减少启动开销，但又不会大到太容易压低并行度。具体最优值仍然依赖 GPU 架构，后续会用 `@triton.autotune` 自动搜索。
+## 前置阅读
 
-### Step 2: Triton 内核与寻址掩码框架
-在 Triton 中，你需要使用 `tl.program_id` 确定当前线程块的 ID，并计算出所负责的数据指针偏移 `offs`。在加载和存储数据时，由于数组总长度不一定是 `BLOCK_SIZE` 的整数倍，必须生成一个类似 `offs < N` 的掩码变量 `mask` 并在 `tl.load` 和 `tl.store` 时传入以防止内存越界（Segmentation Fault）。
+若还不熟悉并行程序、逻辑块与读写边界，可先回看它们的对应关系。
 
-###  Step 3: 核心 API
+- [Part 01 · 18 Triton Block 模型](../01_Hardware_Math_and_Systems/18_Triton_Block_Model.md)
 
-Triton 的语法非常固定，通常包含以下三板斧：
-1. **定位自己**：`pid = tl.program_id(0)` 获取当前是第几个 Block。
-2. **计算偏移**：`offsets = pid * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)` 计算当前 Block 应该去读显存里的哪些位置。
-3. **边界保护 (Mask)**：如果向量长度不是 `BLOCK_SIZE` 的整数倍，最后一个 Block 就会越界报错。我们需要一个 `mask = offsets < N` 来保护显存读写。
+## Step 1：向量加法怎样拆给多个 Program
 
-###  Step 4: 动手实战
+设两个输入向量为 $x$ 和 $y$，长度均为 $N$，输出 $z$ 满足 $z_i=x_i+y_i$，其中 $0\le i<N$。每个输出只依赖同一位置的两个输入，因此可以将输出切成互不重叠的连续分段。GPU 内核（kernel）是提交到 GPU 执行的计算函数，Program 是同一内核的一份并行执行实例；按连续分段分工时，每份实例处理其中一段。把每个 Program 的逻辑块宽记为 $B$。本次调用的 Program 网格称为 grid，一维 grid 需要启动 $\lceil N/B\rceil$ 个 Program：每个 Program 生成至多 $B$ 个逻辑位置，并负责其中有效位置的读写。这里的块宽是程序处理的数据规模，不是物理线程数；一个 kernel 启动包含这些 Program，而不是每个 Program 各启动一次 kernel。
 
-**要求**：请补全下方 `add_kernel`，实现向量 `Z = X + Y` 的底层计算。
+例如 $N=10$、$B=4$ 时，三个 Program 分别生成位置 0–3、4–7、8–11。前两个分段完整，最后一段仅有 8、9 两个有效位置。
+
+![向量按 Program 分段，尾块屏蔽超出长度的逻辑位置](../public/03_Triton_Kernels/01_vector_add_mapping.svg)
+
+## Step 2：Program 编号怎样变成全局元素位置
+
+记零起始 Program 编号为 $p$，块内位置为 $r$，其中 $0\le r<B$。全局位置由块起点与块内偏移组成：
+
+$$
+i=pB+r,\qquad 0\le p<\lceil N/B\rceil.
+$$
+
+在上面的例子中，$p=2$ 的起点是 8；加上块内位置 0、1、2、3 后得到 8、9、10、11。有效条件 $i<N$ 因而得到真、真、假、假。这组控制各位置是否允许读写的布尔条件称为掩码（mask）。向上取整保证最后两个元素不会遗漏，mask 则排除为了补齐逻辑块而多出的两个位置。相邻 Program 的起点相差 $B$，负责的区间互不重叠；每个有效位置又都能写成唯一的 $pB+r$。这两个性质分别保证“不重复写”和“不遗漏”。如果仅把 Program 数向下取整，尾部元素不会被处理；如果所有 Program 都从位置 0 开始，多个 Program 就会覆盖同一段输出。
+
+## Step 3：为什么读取和写回都要使用 mask
+
+对每个逻辑位置，Program 依次读取 $x_i,y_i$、计算和、写回 $z_i$。有效条件始终是 $i<N$，但它必须分别作用于两路读取和输出写回。只有输出写回受保护时，无效位置仍可能越界读取输入；只有输入读取受保护时，输出仍可能写到分配范围之外。因此不能用“某个位置的计算值不会被用到”代替读写边界保护。
+
+实现时可以把无效读取的填充值设为零。向量加法的每个有效输出只使用对应位置的两个输入，不会依赖这些填充值；即使无效位置算出零，也仍需禁止它们写回。对于 $N=B$，所有位置有效；对于 $N=B+1$，第二个 Program 只有第一个位置有效。这两类输入能够区分整块路径和最小尾块路径。
+
+![同一个有效条件，分别保护读取与写回](../public/03_Triton_Kernels/01_tail_mask_read_write.svg)
+
+<a id="mechanism-practice"></a>
+
+## Step 4：实现向量加法并核对尾块
+
+本题使用一维连续 CUDA 浮点向量，即沿索引递增时元素紧邻存放在 GPU 上。`triton_add` 是 Python 启动函数（wrapper），已提供输入检查、输出分配和 grid 启动；请补全索引、mask、两路读取及求和写回。题目在 kernel 的各个局部 TODO 处停止；填写对应变量或语句后移除该处断言，启动函数不需要修改。测试使用单元素、小于一块、恰好一块、整块前后及多块尾部输入，并与 PyTorch 逐元素对照；同时检查输出属性和不支持的输入。
+
+张量属性 `shape`、`dtype`、`device` 分别表示形状、数据类型和所在设备。测试使用16位与32位浮点数（FP16／FP32）；代码中的 `offsets` 是相对于指针起点、以元素为单位的偏移。`@triton.jit` 在需要时把 Triton 函数编译为 GPU 代码，`tl.constexpr` 标出编译时已知的参数，本题的块宽就是这类参数。
+
+| TODO / 函数 | 待实现的机制 | 必须满足的约束 | 测试证据 |
+|:---|:---|:---|:---|
+| TODO 1：生成全局位置<br>`add_kernel` | 用 Program 起点与块内位置生成 offsets | 分段不重叠，覆盖所有有效元素 | 长度 1025、98432 检查跨块输出与参考一致 |
+| TODO 2：构造有效条件<br>`add_kernel` | 判断 offsets 是否小于真实长度 | 边界为严格小于，不包含位置 N | 长度 1、1023、1025 覆盖部分有效块 |
+| TODO 3：读取两路输入<br>`add_kernel` | 在同一 offsets 和 mask 下读取 x、y | 无效位置不访问输入，填充值为零 | 两种 dtype 下逐元素对照普通长度及尾块 |
+| TODO 4：求和并写回<br>`add_kernel` | 将和写到对应输出位置 | store 同样受 mask 保护，不修改输入 | 核对数值、shape、dtype、device 与输入保持不变 |
 
 
 ```python
-try:
-    import triton
-except ModuleNotFoundError:
-    try:
-        import google.colab  # type: ignore
-    except Exception:
-        raise
-    import subprocess, sys
-    print('Installing Triton for Part 3...')
-    subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-q', 'triton'])
-    import triton
-
 import torch
 import triton
 import triton.language as tl
+import triton.testing
 
 ```
 
 
 ```python
-
 @triton.jit
-def add_kernel(
-    x_ptr,  # 输入向量 X 的首地址指针
-    y_ptr,  # 输入向量 Y 的首地址指针
-    z_ptr,  # 输出向量 Z 的首地址指针
-    n_elements, # 向量的总长度 N
-    BLOCK_SIZE: tl.constexpr, # 每个 Block 处理的元素个数
-):
-    # 1. 获取当前 Block 的 ID
+def add_kernel(x_ptr, y_ptr, z_ptr, n_elements, BLOCK_SIZE: tl.constexpr):
     pid = tl.program_id(axis=0)
 
-    # ==========================================
-    # TODO 1: 计算当前 Block 需要处理的内存偏移量 (offsets)
-    # 提示: 使用 pid 和 BLOCK_SIZE 计算块的起始位置
-    # ==========================================
+    # TODO 1：生成全局位置
+    # 提示：pid 选择分段，BLOCK_SIZE 给出分段宽度。
     # block_start = ???
     # offsets = ???
+    tl.static_assert(False, "TODO 1：请填写全局位置，并移除此断言")
 
-    # ==========================================
-    # TODO 2: 计算边界保护 Mask
-    # 提示: 只有当 offsets 小于 n_elements 时，才是合法的访问
-    # ==========================================
+    # TODO 2：构造有效条件
+    # 提示：比较 offsets 与真实长度 n_elements。
     # mask = ???
+    tl.static_assert(False, "TODO 2：请填写有效条件，并移除此断言")
 
-    # ==========================================
-    # TODO 3: 从 HBM (显存) 中将 x 和 y 加载到 SRAM (片上内存) 中
-    # ==========================================
+    # TODO 3：读取两路输入
+    # 提示：使用相同 offsets、mask；无效读取设为零。
     # x = ???
     # y = ???
+    tl.static_assert(False, "TODO 3：请填写两路读取，并移除此断言")
 
-    # ==========================================
-    # TODO 4: 在 SRAM 中进行向量加法，并将结果写回 HBM 的 z_ptr
-    # ==========================================
+    # TODO 4：求和并写回
+    # 提示：写回 z_ptr 对应位置，并使用同一个 mask。
     # z = ???
-    pass
+    # tl.store(???, ???, mask=???)
+    tl.static_assert(False, "TODO 4：请填写求和写回，并移除此断言")
 
-def triton_add(x: torch.Tensor, y: torch.Tensor):
-    # 检查 kernel 是否已实现（通过检查源码中是否还有 pass）
-    import inspect
-    source = inspect.getsource(add_kernel.fn)
-    if 'pass' in source and '# block_start = ???' in source:
-        raise NotImplementedError("请完成 add_kernel 中的 TODO 1-4")
 
-    assert x.is_cuda and y.is_cuda and x.shape == y.shape
+def triton_add(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    """相加两个同形状、同设备的一维连续 CUDA 浮点向量。"""
+    if not (x.is_cuda and y.is_cuda):
+        raise ValueError("x 和 y 必须是 CUDA 张量")
+    if x.ndim != 1 or y.ndim != 1 or x.shape != y.shape or x.numel() == 0:
+        raise ValueError("x 和 y 必须是同形状的非空一维向量")
+    if x.device != y.device or x.dtype != y.dtype:
+        raise ValueError("x 和 y 的设备与 dtype 必须一致")
+    if not (x.is_contiguous() and y.is_contiguous()):
+        raise ValueError("x 和 y 必须连续存储")
+    if x.dtype not in (torch.float16, torch.float32):
+        raise ValueError("本练习支持 float16 和 float32")
+
     n_elements = x.numel()
     z = torch.empty_like(x)
-
-    # 定义 BLOCK_SIZE，通常为 2 的幂次方，如 1024
-    BLOCK_SIZE = 1024
-    # 计算需要启动多少个 Block (向上取整)
-    # meta 是 Triton 运行时传入的当前配置字典；这里返回的是一个 1 维 grid 的元组。
-    grid = lambda meta: (triton.cdiv(n_elements, meta['BLOCK_SIZE']),)
-
-    # 启动 Kernel
-    add_kernel[grid](x, y, z, n_elements, BLOCK_SIZE=BLOCK_SIZE)
+    block_size = 1024
+    grid = (triton.cdiv(n_elements, block_size),)
+    with torch.cuda.device(x.device):
+        add_kernel[grid](x, y, z, n_elements, BLOCK_SIZE=block_size)
     return z
 
 ```
 
+---
+
+> 先完成题目并运行正确性测试，再向下查看参考实现。
+## 正确性测试
+
+数值核对中的绝对容差 atol 与相对容差 rtol，允许每个位置的误差不超过 atol+rtol·|参考值|；前者约束零附近的误差，后者随参考值大小缩放。容差在运行前确定，不能因为候选出错再放宽。
+
 
 ```python
-# 测试你的实现
 def test_vector_add():
+    """核对两种 dtype、块边界、输入属性与不支持的输入。"""
     if not torch.cuda.is_available():
-        print("⏭️ 忽略测试：无 GPU。本节编译和运行 Triton/CUDA 算子必须依赖 NVIDIA GPU。")
-        return
+        print("SKIPPED: 本测试需要 NVIDIA GPU；请按算子优化 Quickstart 准备环境。")
+        return {"status": "skipped", "reason": "cuda_unavailable"}
 
-    try:
-        torch.manual_seed(0)
-        size = 98432  # 故意不用 2 的幂次方，测试 mask 是否生效
-        x = torch.rand(size, device='cuda')
-        y = torch.rand(size, device='cuda')
+    torch.manual_seed(0)
+    sizes = [1, 100, 1023, 1024, 1025, 98432]
+    for dtype in (torch.float16, torch.float32):
+        for size in sizes:
+            x = torch.randn(size, device="cuda", dtype=dtype)
+            y = torch.randn_like(x)
+            x_before, y_before = x.clone(), y.clone()
+            actual = triton_add(x, y)
+            assert actual.shape == x.shape and actual.dtype == dtype
+            assert actual.device == x.device and actual.is_contiguous()
+            torch.testing.assert_close(actual, x + y, msg=f"size={size}, dtype={dtype}")
+            torch.testing.assert_close(x, x_before, rtol=0, atol=0)
+            torch.testing.assert_close(y, y_before, rtol=0, atol=0)
 
-        # PyTorch Native
-        z_torch = x + y
+    x = torch.ones(8, device="cuda")
+    invalid_pairs = [
+        (x, torch.ones(9, device="cuda")),
+        (x, x.half()),
+        (x.view(2, 4), x.view(2, 4)),
+        (x[::2], x[::2]),
+        (x[:0], x[:0]),
+        (x.long(), x.long()),
+        (x.cpu(), x.cpu()),
+    ]
+    for left, right in invalid_pairs:
+        try:
+            triton_add(left, right)
+        except ValueError:
+            continue
+        raise AssertionError(f"未拒绝非法输入：shape={left.shape}, dtype={left.dtype}")
 
-        # Triton
-        z_triton = triton_add(x, y)
+    print("PASSED: 12 个数值用例及 7 个非法输入用例通过。")
+    return {"status": "passed", "numeric_cases": 12, "invalid_cases": 7}
 
-        assert torch.allclose(z_torch, z_triton), "Triton 算子输出不正确！"
-        print("✅ Vector Addition (Hello World) 算子测试通过！Mask 边界处理正确！")
-
-        # 边界测试
-        print("\n---  边界情况测试 ---")
-
-        # 测试1: 单元素向量
-        x1 = torch.tensor([1.0], device='cuda')
-        y1 = torch.tensor([2.0], device='cuda')
-        z1 = triton_add(x1, y1)
-        assert torch.allclose(z1, torch.tensor([3.0], device='cuda')), "单元素测试失败"
-        print("✅ 单元素向量测试通过")
-
-        # 测试2: 小向量（小于BLOCK_SIZE）
-        x2 = torch.rand(100, device='cuda')
-        y2 = torch.rand(100, device='cuda')
-        z2 = triton_add(x2, y2)
-        assert torch.allclose(x2 + y2, z2), "小向量测试失败"
-        print("✅ 小向量测试通过")
-
-        # 测试3: 恰好对齐BLOCK_SIZE
-        x3 = torch.rand(1024, device='cuda')
-        y3 = torch.rand(1024, device='cuda')
-        z3 = triton_add(x3, y3)
-        assert torch.allclose(x3 + y3, z3), "对齐测试失败"
-        print("✅ BLOCK_SIZE对齐测试通过")
-
-        print("\n---  性能基准测试 (Benchmark) ---")
-        quantiles = [0.5, 0.2, 0.8]
-        ms_pt, min_ms_pt, max_ms_pt = triton.testing.do_bench(lambda: x + y, quantiles=quantiles)
-        ms_tr, min_ms_tr, max_ms_tr = triton.testing.do_bench(lambda: triton_add(x, y), quantiles=quantiles)
-        print(f"PyTorch Time: {ms_pt:.4f} ms")
-        print(f"Triton Time:  {ms_tr:.4f} ms")
-        print(f"Speedup:      {ms_pt / ms_tr:.2f}x")
-    except NotImplementedError:
-        print("请先完成 TODO 代码！")
-        raise
-    except Exception as e:
-        print(f"❌ 测试失败 (可能需要 CUDA 环境): {e}")
 
 test_vector_add()
 ```
-
----
-
-🛑 **STOP HERE** 🛑
-<br><br><br><br><br><br><br><br><br><br>
-> 请先尝试自己完成代码并跑通测试。<br>
-> 如果你正在 Colab 中运行，并且遇到困难没有思路，可以向下滚动查看参考答案。
-<br><br><br><br><br><br><br><br><br><br>
-
----
 
 ## 参考代码与解析
 
 ### 代码
 
 ```python
-import torch
-import triton
-import triton.language as tl
-
 @triton.jit
 def add_kernel(x_ptr, y_ptr, z_ptr, n_elements, BLOCK_SIZE: tl.constexpr):
     pid = tl.program_id(axis=0)
 
-    # TODO 1: 计算内存偏移量
+    # TODO 1：生成全局位置
     block_start = pid * BLOCK_SIZE
     offsets = block_start + tl.arange(0, BLOCK_SIZE)
 
-    # TODO 2: 边界保护 Mask
+    # TODO 2：构造有效条件
     mask = offsets < n_elements
 
-    # TODO 3: 加载数据到 SRAM
-    x = tl.load(x_ptr + offsets, mask=mask)
-    y = tl.load(y_ptr + offsets, mask=mask)
+    # TODO 3：读取两路输入
+    x = tl.load(x_ptr + offsets, mask=mask, other=0.0)
+    y = tl.load(y_ptr + offsets, mask=mask, other=0.0)
 
-    # TODO 4: 计算并存回 HBM
+    # TODO 4：求和并写回
     z = x + y
     tl.store(z_ptr + offsets, z, mask=mask)
 
-def triton_add(x: torch.Tensor, y: torch.Tensor):
-    assert x.is_cuda and y.is_cuda and x.shape == y.shape
+
+def triton_add(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    """相加两个同形状、同设备的一维连续 CUDA 浮点向量。"""
+    if not (x.is_cuda and y.is_cuda):
+        raise ValueError("x 和 y 必须是 CUDA 张量")
+    if x.ndim != 1 or y.ndim != 1 or x.shape != y.shape or x.numel() == 0:
+        raise ValueError("x 和 y 必须是同形状的非空一维向量")
+    if x.device != y.device or x.dtype != y.dtype:
+        raise ValueError("x 和 y 的设备与 dtype 必须一致")
+    if not (x.is_contiguous() and y.is_contiguous()):
+        raise ValueError("x 和 y 必须连续存储")
+    if x.dtype not in (torch.float16, torch.float32):
+        raise ValueError("本练习支持 float16 和 float32")
+
     n_elements = x.numel()
     z = torch.empty_like(x)
-
-    # 定义 BLOCK_SIZE，通常为 2 的幂次方，如 1024
-    BLOCK_SIZE = 1024
-    # 计算需要启动多少个 Block (向上取整)
-    grid = lambda meta: (triton.cdiv(n_elements, meta['BLOCK_SIZE']),)
-
-    # 启动 Kernel
-    add_kernel[grid](x, y, z, n_elements, BLOCK_SIZE=BLOCK_SIZE)
+    block_size = 1024
+    grid = (triton.cdiv(n_elements, block_size),)
+    with torch.cuda.device(x.device):
+        add_kernel[grid](x, y, z, n_elements, BLOCK_SIZE=block_size)
     return z
+
 ```
 
 ### 解析
 
-**1. TODO 1: 计算内存偏移量**
-- **实现方式**：`block_start = pid * BLOCK_SIZE`，`offsets = block_start + tl.arange(0, BLOCK_SIZE)`
-- **关键点**：每个Block处理连续的BLOCK_SIZE个元素，通过pid确定起始位置
-- **技术细节**：`tl.arange(0, BLOCK_SIZE)` 生成 [0, 1, ..., BLOCK_SIZE-1] 的向量，加上block_start得到全局索引
+#### TODO 1：生成全局位置
 
-**2. TODO 2: 边界保护Mask**
-- **实现方式**：`mask = offsets < n_elements`
-- **关键点**：防止最后一个Block越界访问，避免Segmentation Fault
-- **技术细节**：mask是布尔向量，标记哪些位置是合法的内存访问。当向量长度不是BLOCK_SIZE的整数倍时，最后一个Block会有部分元素超出边界
+- 相邻 Program 的起点相差一个块宽，块内位置再补上段内偏移，才能让每个有效输出有唯一归属。
+- `block_start = pid * BLOCK_SIZE` 与递增索引共同得到 `offsets`；跨多个 Program 的长度用例能发现起点遗漏造成的重复覆盖。
 
-**3. TODO 3: 加载数据到SRAM**
-- **实现方式**：`x = tl.load(x_ptr + offsets, mask=mask)`，`y = tl.load(y_ptr + offsets, mask=mask)`
-- **关键点**：从HBM（显存）加载数据到SRAM（片上内存），使用mask保护越界访问
-- **技术细节**：指针算术 `x_ptr + offsets` 计算每个元素的地址。Triton会自动将这个向量化的加载操作映射到GPU的内存事务
+#### TODO 2：构造有效条件
 
-**4. TODO 4: 计算并存回HBM**
-- **实现方式**：`z = x + y`，`tl.store(z_ptr + offsets, z, mask=mask)`
-- **关键点**：在SRAM中进行向量化计算，然后写回HBM
-- **技术细节**：Triton自动进行SIMD向量化，无需手动循环。`tl.store` 同样需要mask保护，确保只写入合法位置
+- 合法位置恰为零到 `n_elements - 1`，因此边界比较必须使用严格小于，而不是小于等于。
+- `offsets < n_elements` 同时用于读写；1023／1024／1025 覆盖不足整块、整块和最小尾块。数值对照能发现错误结果，但不能单独证明绝无越界。
 
-**工程优化要点**
-- **BLOCK_SIZE选择**：通常为2的幂次方（256、512、1024），需要根据GPU架构调优。过小会增加kernel启动开销，过大会降低occupancy
-- **内存访问模式**：连续访问（coalesced access）可最大化带宽利用率。本例中每个Block访问连续的内存区域，符合最佳实践
-- **Mask开销**：虽然mask增加了分支判断，但避免了越界访问的严重后果（程序崩溃）。现代GPU对predicated execution有良好支持
-- **性能对比**：简单向量加法是 memory-bound 操作，Triton 与 PyTorch 性能接近，因为瓶颈在内存带宽而非计算。后续的 GEMM 章节会看到更明显的 Tensor Core 加速。
-- **Kernel融合**：向量加法通常不单独使用，而是与其他操作融合（kernel fusion）以减少内存往返次数
-- **工业实践**：Triton的优势在于复杂kernel的开发效率，对于简单操作如向量加法，PyTorch的优化已经足够好
+#### TODO 3：读取两路输入
+
+- 同一输出只依赖相同位置的两个输入，两路指针必须共享 `offsets` 与 `mask`。
+- 两次 `tl.load` 对无效位置补零；FP16／FP32 数值对照检查元素配对，有效输出不依赖这些填充值。
+
+#### TODO 4：求和并写回
+
+- 局部算出一个值不意味着该位置允许写回；输出仍须使用原来的有效条件。
+- `x + y` 写到 `z_ptr + offsets` 并带相同 mask；结果属性及输入不变断言检查没有误覆盖输入。
+
+## 性能测量（可选）
+
+输入预先在 GPU 上准备，先核对当前输入的输出，再分别测量 PyTorch 与 Triton 的完整调用。计时包含输出分配，不包含输入搬运与首次编译；这是固定输入的入门比较，多轮交替测量和性能归因见自动调优与基准测量页。
+
+
+```python
+def benchmark_vector_add(size=1 << 20, warmup_ms=25, repeat_ms=100):
+    """核对当前输入后，测量包含输出分配的 GPU 向量加法调用。"""
+    if not torch.cuda.is_available():
+        print("SKIPPED: benchmark 需要 NVIDIA GPU。")
+        return {"status": "skipped", "reason": "cuda_unavailable"}
+    torch.manual_seed(0)
+    x = torch.rand(size, device="cuda")
+    y = torch.rand_like(x)
+    torch.testing.assert_close(triton_add(x, y), x + y)
+    reference_ms = triton.testing.do_bench(lambda: x + y, warmup=warmup_ms, rep=repeat_ms)
+    candidate_ms = triton.testing.do_bench(lambda: triton_add(x, y), warmup=warmup_ms, rep=repeat_ms)
+    result = {
+        "status": "measured", "size": size, "dtype": str(x.dtype),
+        "device": torch.cuda.get_device_name(x.device),
+        "torch_version": torch.__version__, "triton_version": triton.__version__,
+        "warmup_ms": warmup_ms, "repeat_ms": repeat_ms,
+        "timing": "triton.testing.do_bench; GPU-resident inputs; output allocation included",
+        "reference_ms": reference_ms, "triton_ms": candidate_ms,
+        "speedup_vs_torch": reference_ms / candidate_ms,
+    }
+    print(result)
+    return result
+
+
+benchmark_vector_add()
+
+```
+
+## 相关阅读
+
+继续研究二维地址，或与官方示例核对一维索引和边界保护。
+
+- [二维布局与矩阵转置](./02_Triton_Layouts_and_Memory_Access.md)：理解 stride 和转置读写。
+- [Triton官方：向量加法](https://triton-lang.org/main/getting-started/tutorials/01-vector-add.html)：对照Program编号、块内偏移与尾部掩码。
