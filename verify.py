@@ -8,6 +8,7 @@ without changing their individual responsibilities.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import subprocess
 import sys
@@ -69,53 +70,78 @@ def resolve_candidates(source: Path, raw_link: str) -> list[Path]:
 
 
 def check_chapter3_intro_links() -> None:
-    """Verify source/docs entry-page links for Part 3."""
-    link_re = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
-    paths = [
-        ROOT / "03_Triton_Kernels/intro.md",
-        ROOT / "docs/03_Triton_Kernels/intro.md",
-    ]
-
-    missing: list[tuple[str, str]] = []
-    for path in paths:
-        text = path.read_text(encoding="utf-8")
-        for link in link_re.findall(text):
-            candidates = resolve_candidates(path, link)
-            if candidates and not any(candidate.exists() for candidate in candidates):
-                missing.append((str(path.relative_to(ROOT)), link))
-
-    if missing:
-        print("[verify] Part 3 intro link check failed:")
-        for path, link in missing:
-            print(f"  - {path}: {link}")
-        raise SystemExit(1)
-
-    print("[verify] Part 3 intro links are valid in source and docs.")
+    """Check the Part 3 entry, group navigation and chapter numbering."""
+    check_kernel_part_navigation("03_Triton_Kernels", "3")
 
 
 def check_chapter4_intro_links() -> None:
-    """Verify source/docs entry-page links for Part 4."""
-    link_re = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
-    paths = [
-        ROOT / "04_CUDA_and_System_Optimization/intro.md",
-        ROOT / "docs/04_CUDA_and_System_Optimization/intro.md",
+    """Check the Part 4 entry, group navigation and chapter numbering."""
+    check_kernel_part_navigation("04_CUDA_and_System_Optimization", "4")
+
+
+def check_kernel_part_navigation(part_dir: str, group_prefix: str) -> None:
+    """Check source/mirror navigation, lesson H1 numbers and sidebar coverage."""
+    link_re = re.compile(r"!?\[([^\]]*)\]\(([^)]+)\)")
+    problems: list[str] = []
+    source = ROOT / part_dir
+    chapters = [
+        path for path in source.iterdir()
+        if re.match(r"^\d{2}_", path.name) and path.suffix in {".md", ".ipynb"}
     ]
-
-    missing: list[tuple[str, str]] = []
-    for path in paths:
-        text = path.read_text(encoding="utf-8")
-        for link in link_re.findall(text):
-            candidates = resolve_candidates(path, link)
-            if candidates and not any(candidate.exists() for candidate in candidates):
-                missing.append((str(path.relative_to(ROOT)), link))
-
-    if missing:
-        print("[verify] Part 4 intro link check failed:")
-        for path, link in missing:
-            print(f"  - {path}: {link}")
+    numbers = sorted(int(path.name[:2]) for path in chapters)
+    if numbers != list(range(1, len(chapters) + 1)):
+        problems.append(f"{part_dir}: lesson numbers must be unique and consecutive")
+    sidebar = (ROOT / "docs/.vitepress/config.mts").read_text(encoding="utf-8")
+    sidebar_labels = dict(
+        (stem, label) for label, stem in re.findall(
+            r"\{ text: '([^']+)', link: '/" + re.escape(part_dir) + r"/([^']+)' \}", sidebar
+        )
+    )
+    for path in chapters:
+        if path.suffix == ".ipynb":
+            notebook = json.loads(path.read_text(encoding="utf-8"))
+            text = next(
+                "".join(cell["source"]) for cell in notebook["cells"]
+                if cell["cell_type"] == "markdown"
+            )
+        else:
+            text = path.read_text(encoding="utf-8")
+        if not text.startswith(f"# {path.name[:2]}. ") or " | " not in text.splitlines()[0]:
+            problems.append(f"{path.relative_to(ROOT)}: H1 number or bilingual title mismatch")
+        if f"/{part_dir}/{path.stem}'" not in sidebar:
+            problems.append(f"{path.relative_to(ROOT)}: missing sidebar entry")
+        elif not sidebar_labels.get(path.stem, "").startswith(f"{path.name[:2]}. "):
+            problems.append(f"{path.relative_to(ROOT)}: sidebar number mismatch")
+    for base in (source, ROOT / "docs" / part_dir):
+        pages = [base / "intro.md", *(base / f"{group_prefix}_{n}.md" for n in range(1, 6))]
+        group_targets: set[str] = set()
+        for page in pages:
+            if not page.exists():
+                problems.append(f"{page.relative_to(ROOT)}: missing navigation page")
+                continue
+            text = re.sub(r"```.*?```", "", page.read_text(encoding="utf-8"), flags=re.S)
+            for label, link in link_re.findall(text):
+                if not label.strip():
+                    problems.append(f"{page.relative_to(ROOT)}: empty link label")
+                candidates = resolve_candidates(page, link)
+                if base == source:
+                    candidates.extend(p.with_suffix(".ipynb") for p in list(candidates) if p.suffix == ".md")
+                if candidates and not any(p.exists() for p in candidates):
+                    problems.append(f"{page.relative_to(ROOT)}: missing target {link}")
+                target = Path(link.split("#", 1)[0])
+                if page.name != "intro.md" and target.parent == Path("."):
+                    group_targets.add(target.stem)
+                    label_number = re.match(r"^(\d{2})(?=[.\s]|$)", label)
+                    target_number = re.match(r"^(\d{2})_", target.stem)
+                    if label_number and target_number and label_number[1] != target_number[1]:
+                        problems.append(f"{page.relative_to(ROOT)}: link number mismatch {label} -> {link}")
+        missing = {p.stem for p in chapters} - group_targets
+        if missing:
+            problems.append(f"{base.relative_to(ROOT)}: lessons absent from group pages: {sorted(missing)}")
+    if problems:
+        print("[verify] Navigation check failed:\n" + "\n".join(f"  - {p}" for p in problems))
         raise SystemExit(1)
-
-    print("[verify] Part 4 intro links are valid in source and docs.")
+    print(f"[verify] Part {group_prefix}: numbering, H1, sidebar and all five source/docs groups passed.")
 
 
 def verify_chapter0_1(*, build_docs: bool) -> None:
@@ -154,7 +180,7 @@ def verify_chapter3(*, build_docs: bool) -> None:
     run_python("tools/convert_notebook.py", "--dir", "03_Triton_Kernels")
     run_python("tools/check_source_docs_mirror.py")
     if has_cuda():
-        run_python("tools/test_notebook_answers.py", "--all", "--dir", "03_Triton_Kernels", "--mode", "both")
+        run_python("tools/test_notebook_answers.py", "--all", "--dir", "03_Triton_Kernels", "--mode", "both", "--strict-question-failure", "--timeout", "180")
     else:
         print("[verify] GPU not available, skipping Part 3 notebook answer tests.")
     check_chapter3_intro_links()
@@ -166,7 +192,7 @@ def verify_chapter4(*, build_docs: bool) -> None:
     run_python("tools/convert_notebook.py", "--dir", "04_CUDA_and_System_Optimization")
     run_python("tools/check_source_docs_mirror.py")
     if has_cuda():
-        run_python("tools/test_notebook_answers.py", "--all", "--dir", "04_CUDA_and_System_Optimization", "--mode", "both")
+        run_python("tools/test_notebook_answers.py", "--all", "--dir", "04_CUDA_and_System_Optimization", "--mode", "both", "--strict-question-failure", "--timeout", "180")
     else:
         print("[verify] GPU not available, skipping Part 4 notebook answer tests.")
     check_chapter4_intro_links()
