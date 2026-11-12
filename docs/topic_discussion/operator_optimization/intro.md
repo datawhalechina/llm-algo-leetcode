@@ -1,70 +1,65 @@
 # 算子优化（Operator Optimization）
 
-> 专题类型：主学习路线　副标题：从计算图、Triton Kernel 到 CUDA 下探与端到端证据
+> 专题类型：主学习路线　学习目标：定位算子瓶颈，在保持数值与行为要求的前提下选择编译、计算内核或运行时优化，并判断局部收益能否传递到目标工作负载。
 
-## 页面导语
+矩阵乘法、归一化和 Attention 变慢，可能是计算量大、数据反复搬运，也可能是大量小任务的提交开销。以同输入的 PyTorch 实现为对照，结合执行轨迹判断瓶颈，再选择编译融合、内核分块或任务提交方式。
 
-算子优化的目标不是孤立地让某个 kernel 更复杂，而是在输入输出语义不变的前提下，减少不必要的数据移动、kernel launch 或硬件空转，并证明收益能传递到真实 workload。它承接性能优化已经定位出的局部瓶颈：性能优化回答“慢在哪里”，本专题回答“图、kernel 或执行路径怎样改，为什么值得改”。
+需要基本张量运算、矩阵乘法与 PyTorch 操作；可用[Part 02 · 00 PyTorch 热身](../../02_PyTorch_Algorithms/00_PyTorch_Warmup.md)回补。动手前按[Quickstart](./quickstart.md)准备主GPU环境，原生CUDA分支另检查编译工具链。
 
-路线从硬件成本与图变换进入 Triton 实现，再经过经典算子与 Attention，最后按需要下探到 CUDA。Part01 提供硬件、执行与编译前置；Part03 是 Triton 主实践；Part04 提供 CUDA、Tensor Core、warp、shared memory 与 runtime 的深层实现。Part00 与 Part02 只承担张量/调试基础和模型组件场景，不构成主路线。
+## 学习路线
+
+首次学习从向量加法进入，先完成同输入的 PyTorch／Triton 输出与边界核对，再比较调用耗时。随后判断该改图、改内核，还是减少传输和提交等待；已经定位问题时，可直接进入相应阶段。
+
+主表按“核心／项目／扩展”区分默认路径与按需分支；学习顺序描述核心路径。每个阶段先读正文理解要减少的工作，再进入 Part 小节核对或实现，最后回到正文解释代价与下一步。计时从 Task0 开始使用，Task4 再深入分析快慢原因；当前实验条件与结果从[实验资产表](./experiment_assets.md)查询。
+
+| Task / 主题 | 本阶段要回答的问题 | 学习入口与验证出口 | 学习顺序 | 主要正文入口 |
+|:---|:---|:---|:---|:---|
+| Task0 · 向量加法与耗时对照 | 同一计算的输出和时间应怎样对照？ | 核心：[Part 03 · 01 向量加法](../../03_Triton_Kernels/01_Triton_Vector_Addition.md)，核对输出与尾块；可选基准比较预热后的加法调用 <br>扩展：[Part 04 · 01 CUDA向量加法](../../04_CUDA_and_System_Optimization/01_CUDA_Custom_Kernel_Intro.md) | 固定输入 → 核对输出 → 预热与重复计时 → 解释比较范围 | [01 优化对象与比较基线](./01_optimization_targets_and_baselines.md) |
+| Task1 · 图编译、融合与准备成本 | 融合后的重复执行节省，何时足以抵消准备成本？ | 核心：[Part 01 · 09 图编译](../../01_Hardware_Math_and_Systems/09_AI_Compilers_and_Graph_Optimization.md) → [Part 03 · 03 SwiGLU](../../03_Triton_Kernels/03_Triton_Fused_SwiGLU.md)，观察给定三路径的数值、准备与稳态对照 | 中间值与依赖 → 三路径观察 → 准备与稳态 → 复用次数 | [02 图编译、融合与执行候选](./02_graph_compilation_and_fusion.md) |
+| Task2 · 布局、逐元素融合与归约 | 布局、融合与归约怎样改变访存成本？ | 核心：[Part 03 · 02 二维布局](../../03_Triton_Kernels/02_Triton_Layouts_and_Memory_Access.md) → [Part 03 · 04 RMSNorm](../../03_Triton_Kernels/04_Triton_Fused_RMSNorm.md)或[Part 03 · 07 Softmax](../../03_Triton_Kernels/07_Triton_Fused_Softmax.md)，核对地址、归约范围与局部调用时间 <br>扩展：[Part 03 · 08 Softmax反向](../../03_Triton_Kernels/08_Triton_Softmax_Backward.md)、[Part 03 · 10 RoPE](../../03_Triton_Kernels/10_Triton_Fused_RoPE.md)、[Part 04 · 02 合并访存](../../04_CUDA_and_System_Optimization/02_CUDA_Global_Memory_Coalescing.md)、[Part 04 · 03 Warp协作](../../04_CUDA_and_System_Optimization/03_Warp_Level_Primitives.md)、[Part 04 · 04 Bank冲突](../../04_CUDA_and_System_Optimization/04_Bank_Conflict_Deep_Dive.md) | 步长与有效位置 → 融合或行归约 → 数值边界 → 访存与计时范围 | [03 计算内核语义与访存](./03_kernel_semantics_and_memory.md) |
+| Task3 · 矩阵分块与 Attention 计算 | 怎样复用输入块，并避免保存完整注意力分数矩阵？ | 核心：[Part 03 · 05 GEMM](../../03_Triton_Kernels/05_Triton_GEMM_Tutorial.md)的数值与局部计时 → [Part 03 · 11 FlashAttention](../../03_Triton_Kernels/11_Triton_Flash_Attention.md)的前向数值核对 <br>扩展：按注意力输入选择[Part 03 · 12 变长GQA](../../03_Triton_Kernels/12_Triton_Variable_Length_GQA.md)、[Part 03 · 13 分页注意力](../../03_Triton_Kernels/13_Triton_PagedAttention.md)；低比特与参数路由见[Part 03 · 14 权重量化](../../03_Triton_Kernels/14_Triton_Quantization.md)、[Part 03 · 15 Multi-LoRA](../../03_Triton_Kernels/15_Triton_Multi_LoRA.md)、[Part 03 · 16 KV量化](../../03_Triton_Kernels/16_Triton_KV_Cache_Quantized_Decode.md)；矩阵实现与数据供给见[Part 04 · 06 共享内存GEMM](../../04_CUDA_and_System_Optimization/06_CUDA_Shared_Memory_Optimization.md)、[Part 04 · 07 WMMA](../../04_CUDA_and_System_Optimization/07_Tensor_Core_MMA_Programming.md)、[Part 04 · 08 流水估算](../../04_CUDA_and_System_Optimization/08_Async_Data_Prefetch_and_Double_Buffering.md)、[Part 04 · 09 异步拷贝](../../04_CUDA_and_System_Optimization/09_CUDA_Async_Copy_Pipeline.md) | 子块与累加 → 跨块 Softmax → 输出与尾块 → 组件复测 | [04 矩阵计算与推理状态的数据路径](./04_attention_and_inference_data_paths.md) |
+| Task4 · 编译产物、资源与配置调优 | 配置改变后，为什么同一计算有时更快、有时更慢？ | 核心：[Part 03 · 18 编译产物与执行](../../03_Triton_Kernels/18_Triton_Compilation_Artifacts_and_Execution.md)、[Part 03 · 09 自动调优](../../03_Triton_Kernels/09_Triton_Autotune_and_Profiling.md)、[Part 04 · 05 资源与驻留](../../04_CUDA_and_System_Optimization/05_CUDA_Block_Resources_and_Residency.md)，分别提供路径、计时与容量对照 <br>扩展：[Part 03 · 06 持久化GEMM](../../03_Triton_Kernels/06_Triton_Persistent_GEMM_and_Tile_Scheduling.md)对照任务分配；[Part 03 · 17 内存模型与调试](../../03_Triton_Kernels/17_Triton_Memory_Model_and_Debug.md) | 确认实际调用 → 比较资源限制 → 配对测量 → 检查原因解释 | [05 测量归因与自动调优](./05_measurement_profiling_and_autotuning.md) |
+| Task5 · 传输、提交与显存生命周期 | 传输、提交和缓冲寿命怎样影响等待与驻留？ | 核心：[Part 04 · 10 Stream与传输](../../04_CUDA_and_System_Optimization/10_PyTorch_CUDA_Streams_and_Transfer.md)核对依赖，[Part 04 · 11 Graph重放](../../04_CUDA_and_System_Optimization/11_CUDA_Graph_and_JIT_Compile.md)比较普通调用与重放，[Part 04 · 12 显存管理](../../04_CUDA_and_System_Optimization/12_Memory_Pool_and_VRAM_Management.md)观察生命周期 <br>扩展：[Part 04 · 13 通信原语](../../04_CUDA_and_System_Optimization/13_Distributed_Communication_Primitives.md)、[Part 04 · 14 Ring通信量](../../04_CUDA_and_System_Optimization/14_Ring_AllReduce_Deep_Dive.md)、[Part 04 · 15 通信重叠](../../04_CUDA_and_System_Optimization/15_Communication_Computation_Overlap_Advanced_Scheduling.md) | 等待位置 → 流、重放或缓冲复用 → 依赖与寿命 → 时间或驻留变化 | [06 传输、提交与显存生命周期](./06_cuda_execution_and_runtime_constraints.md) |
+| Task6 · 接口、组件与负载复测 | 新实现接回组件后，完整调用是否改善？ | 核心：[Part 03 · 19 算子接入](../../03_Triton_Kernels/19_Triton_PyTorch_Op_Integration.md)核对示例输出、梯度与编译；项目：[Part 03 · 20 同权重Block](../../03_Triton_Kernels/20_Triton_Llama3_Block_Project.md)比较 Attention 替换后的组件 <br>扩展：[Part 04 · 18 实现选型](../../04_CUDA_and_System_Optimization/18_CUDA_vs_Triton_vs_PyTorch.md)、[Part 04 · 16 ZeRO配置](../../04_CUDA_and_System_Optimization/16_DeepSpeed_Zero_Config.md)、[Part 04 · 17 CPU／NVMe卸载](../../04_CUDA_and_System_Optimization/17_Heterogeneous_Training_CPU_Offload_NVMe_Offload.md)、[Part 04 · 19 TCO选型](../../04_CUDA_and_System_Optimization/19_TCO_and_Hardware_Selection.md) | 固定输入与权重 → 核对接口与调用 → 比较完整成本 → 保留、调整或回退 | [07 集成、基准与采用判断](./07_integration_benchmarking_and_adoption.md) |
+
+Task1先观察给定实现，Task2再动手完成对应内核。常用内核通过数值测试后可直接进入Task4；矩阵与注意力问题则经过Task3。内核之间的等待进入Task5，结果同样用Task4的测量方法核对。各分支最后回到Task6，比较包含适配与同步的完整调用。
 
 ![算子优化学习路线](../../public/topic_discussion/operator_optimization/operator_optimization_task_route.svg)
 
-## 如何开始
-
-- **希望理解“为什么慢”：** Task0 → Task1，先用计算/访存和图结构判断候选。
-- **希望动手写 Triton：** Task0 → Task2 → Task3，再进入 Task5 调优。
-- **希望优化 Attention 或推理路径：** 回补 Task0/1 后进入 Task4；不要直接把服务级缓存或调度问题写成 kernel 问题。
-- **希望下探 CUDA：** 完成 Task2/3/5 后进入 Task6，在有明确实现瓶颈时比较 PyTorch、`torch.compile`、Triton 与 CUDA。
-
-CPU 可验证语义、边界、reference 与成本估算；真实 kernel 时间、autotune、Tensor Core、occupancy 和 backend 差异需要匹配 GPU。每次对照均固定 shape、layout、dtype、精度阈值、warmup、重复次数、软件版本与 baseline。
-
-## Task0–6 主学习路线
-
-| Task / 主题 | 要回答的问题 | 主实践与验证出口 | 专题正文入口 |
-|:---|:---|:---|:---|
-| Task0 · 算子语义与硬件成本 | 一个算子的时间主要花在计算、访存还是 launch/调度？ | [Part01 · 01 dtype](../../01_Hardware_Math_and_Systems/01_Data_Types_and_Precision.md) → [02 参数与 FLOPs](../../01_Hardware_Math_and_Systems/02_LLM_Params_and_FLOPs.md) → [03 GPU 架构](../../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.md)；输出 FLOPs、bytes 与 roofline 假设 | [01 算子性能心智模型](./01_why_operator_optimization_matters.md) |
-| Task1 · 图级优化与融合判断 | 哪些图节点能消除、重排或融合，何时会因寄存器压力或动态形状失效？ | [Part01 · 09 编译与图优化](../../01_Hardware_Math_and_Systems/09_AI_Compilers_and_Graph_Optimization.md) → [19 算子融合](../../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md) → [Part04 · 18 CUDA Graph / JIT](../../04_CUDA_and_System_Optimization/18_CUDA_Graph_and_JIT_Compile.md)；输出 graph rewrite、lowering 假设与融合候选 | [03 图级优化、融合与 Kernel 组合](./03_fusion_and_kernel_composition.md) |
-| Task2 · Triton 编程模型与正确性 | 如何将 reference 语义写成正确的 block-level kernel？ | [Part01 · 08 CUDA / Triton 模型](../../01_Hardware_Math_and_Systems/08_Programming_Models_CUDA_Triton.md) → [18 Triton Block](../../01_Hardware_Math_and_Systems/18_Triton_Block_Model.md) → [Part03 · 01 Vector Add](../../03_Triton_Kernels/01_Triton_Vector_Addition.md) → [02 Fused SwiGLU](../../03_Triton_Kernels/02_Triton_Fused_SwiGLU.md) → [03 RMSNorm](../../03_Triton_Kernels/03_Triton_Fused_RMSNorm.md) | [02 Kernel 语义与内存](./02_kernel_semantics_and_memory.md) |
-| Task3 · 经典 Kernel 与数据路径 | GEMM、Softmax、Norm 如何通过 tile、归约、片上复用与向量化减少访存？ | [Part03 · 04 GEMM](../../03_Triton_Kernels/04_Triton_GEMM_Tutorial.md) → [06 Softmax](../../03_Triton_Kernels/06_Triton_Fused_Softmax.md) → [06.5 设计模式](../../03_Triton_Kernels/06_5_Triton_Design_Patterns.md)；输出 reference / Triton 对照 | [03 融合与 Kernel 组合](./03_fusion_and_kernel_composition.md) |
-| Task4 · Attention 与模型关键算子 | RoPE、Attention、分页状态和分块算法怎样改变读写路径？ | [Part01 · 14 FlashAttention 显存模型](../../01_Hardware_Math_and_Systems/14_FlashAttention_Memory_Model.md) → [Part02 · 20 FlashAttention 模拟](../../02_PyTorch_Algorithms/20_FlashAttention_Sim.md) → [Part03 · 07 RoPE](../../03_Triton_Kernels/07_Triton_Fused_RoPE.md) → [08 FlashAttention](../../03_Triton_Kernels/08_Triton_Flash_Attention.md) → [09 PagedAttention](../../03_Triton_Kernels/09_Triton_PagedAttention.md) | [04 执行与硬件约束](./04_cuda_execution_and_hardware_constraints.md) |
-| Task5 · Profiling、autotune 与 CUDA 下探 | 如何用指标区分计算、访存、occupancy 与 launch 瓶颈，并选择下一个改动？ | [Part00 · 17 Profiling](../../00_Prerequisites/17_PyTorch_Profiling_Basics.md) → [Part01 · 13 瓶颈分析](../../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md) → [23 Tensor Core](../../01_Hardware_Math_and_Systems/23_TensorCore_Deep_Dive.md) → [24 SRAM 优化](../../01_Hardware_Math_and_Systems/24_SRAM_Optimization_Techniques.md) → [Part03 · 05 Autotune](../../03_Triton_Kernels/05_Triton_Autotune_and_Profiling.md) → [12 内存模型与调试](../../03_Triton_Kernels/12_Triton_Memory_Model_and_Debug.md) | [05 成本模型与 Profiling](./05_cost_model_and_profiling.md) |
-| Task6 · 综合项目与实现路径决策 | 何时选 PyTorch、`torch.compile`、Triton 或 CUDA，如何证明局部收益进入模型 workload？ | [Part03 · 10 Quantization](../../03_Triton_Kernels/10_Triton_Quantization.md) → [11 Multi-LoRA](../../03_Triton_Kernels/11_Triton_Multi_LoRA.md) → [13 LLaMA3 Block 项目](../../03_Triton_Kernels/13_Triton_Llama3_Block_Project.md) → [Part04 · 15 CUDA Kernel](../../04_CUDA_and_System_Optimization/15_CUDA_Custom_Kernel_Intro.md) → [16 Shared Memory](../../04_CUDA_and_System_Optimization/16_CUDA_Shared_Memory_Optimization.md) → [21 CUDA / Triton / PyTorch](../../04_CUDA_and_System_Optimization/21_CUDA_vs_Triton_vs_PyTorch.md) | [06 基准测试与项目验证](./06_benchmark_and_project_validation.md) |
-
-## Part00–04 对应关系
-
-| 来源 Part | 在算子优化中的定位 | 主要小节 / 资产 | 对应 Task |
-|:---|:---|:---|:---|
-| Part00 · 前置知识 | 最小张量、reference、调试与 profiling 习惯 | 05 Tensor、17 Profiling、19 调试、20 性能账本 | 支撑 Task0 / 2 / 5，不单独形成 kernel 路线 |
-| Part01 · 硬件、数学与系统 | 性能模型、存储层次、执行模型、编译与融合的机制前置 | 01–03、08–09、12–19、23–24、30–32 | Task0–5 的原理底座 |
-| Part02 · PyTorch 算法实战 | 模型组件和真实 workload 场景 | 04 Attention、05 Block、20 FlashAttention 模拟、40–41 低比特、66–67/73–74 结果证据 | 主要支撑 Task4 / 6；不替代 kernel 实现 |
-| Part03 · Triton 算子开发 | 主实践线：从正确 kernel 到项目 | 01–13、设计模式、内存调试、FAQ | Task2–6 的主要实现资产 |
-| Part04 · CUDA 与系统优化 | CUDA 下探与实现路径比较 | 15–16、02.1 Bank Conflict、03 MMA、04 Warp、17–18、21 | Task1 / 5 / 6 的深层实现与选型 |
+PyTorch语义按当前对象回补：融合与归约参考[Part 02 · 02 SwiGLU](../../02_PyTorch_Algorithms/02_SwiGLU_Activation.md)、[Part 02 · 01 RMSNorm](../../02_PyTorch_Algorithms/01_RMSNorm_Tutorial.md)；进入分块注意力前读[Part 02 · 20 FlashAttention模拟](../../02_PyTorch_Algorithms/20_FlashAttention_Sim.md)。CUDA对照从主表的扩展入口按问题选择。
 
 ![算子优化知识地图](../../public/topic_discussion/operator_optimization/operator_optimization_knowledge_map.svg)
 
-## 正文与项目证据
+## 扩展与跨专题入口
 
-专题正文负责从语义、图变换、数据路径、硬件执行到证据的判断链；不逐页复述 Part03 的实现代码。Task1 在正文 01、03–06 中依次处理 graph rewrite、lowering、legalization、schedule 与 backend 约束，不再把它们维护成另一条并列路线。
+先按当前计算回补硬件与编译原理；问题涉及模型语义、请求调度或跨设备执行时，再用下表进入对应专题。
 
-| 证据层 | 必须回答的问题 | 典型记录 |
+硬件原理按问题回补：精度与计算量看[Part 01 · 1A](../../01_Hardware_Math_and_Systems/1A.md)，执行与内存层次看[Part 01 · 1B](../../01_Hardware_Math_and_Systems/1B.md)；更换设备或选择专用指令时，看[Part 01 · 03 GPU架构与设备能力](../../01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.md)，区分架构、型号、计算能力与实际资源。线程映射和协作看[Part 01 · 15 CUDA执行模型](../../01_Hardware_Math_and_Systems/15_CUDA_Execution_Model.md)、[Part 01 · 16 Warp与共享内存](../../01_Hardware_Math_and_Systems/16_Warp_Block_SharedMemory_Basics.md)，瓶颈分析看[Part 01 · 13 性能剖析](../../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)。
+
+Program与物理线程的区别见[Part 01 · 18 Triton分块模型](../../01_Hardware_Math_and_Systems/18_Triton_Block_Model.md)，中间值能否省去见[Part 01 · 19 算子融合](../../01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction.md)；需要深入中间表示与调度计划时，再读[Part 01 · 32 TVM／MLIR编译链路](../../01_Hardware_Math_and_Systems/32_TVM_MLIR_Deep_Practice.md)。输入经常变化时，回补[Part 01 · 30 动态形状](../../01_Hardware_Math_and_Systems/30_Dynamic_Shape_Handling.md)，另查版本复用与重编译；Task1三路径基准提供的是逐形状对照。
+
+实现抽象层的选择见[Part 04 · 18 实现方式对照](../../04_CUDA_and_System_Optimization/18_CUDA_vs_Triton_vs_PyTorch.md)；分布式通信、状态分片与卸载见[Part 04 · 4.4](../../04_CUDA_and_System_Optimization/4_4.md)，硬件成本比较见[Part 04 · 4.5](../../04_CUDA_and_System_Optimization/4_5.md)。
+
+连续学习使用[算子优化问题链](./walkthrough.md)，按现象定位使用[判断手册](./casebook.md)，概念与计算条件分别查[术语表](./glossary.md)和[公式索引](./formula_reference.md)。
+
+| 遇到的问题 | 优先入口 | 算子优化的职责 |
 |:---|:---|:---|
-| 正确性 | 输出是否与 reference 在阈值内一致？ | 输入分布、shape、dtype、误差与边界样本 |
-| 微基准 | kernel 是否在相同输入下更快或更省？ | latency、bandwidth、FLOPs、peak memory、autotune 配置 |
-| profiler | 收益或退化来自什么执行路径？ | kernel 调用、occupancy、访存、launch、trace |
-| workload | 模型或服务是否真正受益？ | baseline/candidate、质量、端到端指标、环境与失败记录 |
+| 不知道整体慢在哪里 | [性能分析](../performance_analysis/intro.md)、[性能优化](../performance_optimization/intro.md) | 接收已经定位到局部计算或访存路径的瓶颈 |
+| 不确定 Attention、MLP、MoE 或记忆结构的语义 | [模型架构演进](../llm_architecture_evolution/intro.md) | 在结构语义稳定后再改变图、访存或计算内核 |
+| 请求、KV 或调度导致变慢 | [推理优化](../inference_optimization/intro.md) | 只优化确认位于关键路径的 Attention、RoPE、量化或模型组件 |
+| 多卡通信与扩展效率异常 | [通信与并行](../communication_parallelism/intro.md) | 处理已经确认暴露的本地计算或通信计算内核 |
+| 低比特表示或质量异常 | [量化与压缩](../quantization_compression/intro.md) | 实现低比特计算路径，不替代量化策略与质量决策 |
+| Agent 多步任务耗时较长 | [智能体基础设施](../agent/intro.md)、[性能分析](../performance_analysis/intro.md) | 先区分模型计算与工具等待；张量计算按Task2／3优化、组件收益在Task6核对，完整Agent任务再回原专题复测 |
 
-## 按需回补与跨专题入口
+## 实验与项目出口
 
-| 当你遇到的问题 | 应进入的专题 | 算子优化在其中的角色 |
+按下表区分数值、执行和性能证据。当前运行条件、结果与待测项见[实验资产表](./experiment_assets.md)；CPU推导、设备查询与真实执行分别判断。
+
+默认出口在接口与同权重Block层判断实现是否适合采用；量化、适配器或训练反向需要各自的组件核对。扩大到多层预填充负载时，可选[Part 05 · 05 独立综合项目](../../05_Integrated_Projects_and_Decisions/05_Operator_Optimization_Delivery/index.md)，重新准备输入并测量。
+
+| 证据阶段 | 要回答的问题 | 输出 |
 |:---|:---|:---|
-| 不知道整体慢在哪里 | [性能优化](../performance_optimization/intro.md)、[性能分析](../performance_analysis/intro.md) | 接收已定位的局部 compute / memory 瓶颈 |
-| 请求、KV 或服务调度导致变慢 | [推理优化](../inference_optimization/intro.md) | 优化明确暴露的 Attention、RoPE、量化或模型组件 kernel |
-| 多卡通信、all-to-all 或扩展效率问题 | [通信与并行](../communication_parallelism/intro.md) | 仅处理确认位于关键路径的本地计算/通信 kernel |
-| 低比特表示、artifact 与质量问题 | [量化与压缩](../quantization_compression/intro.md) | 实现或分析 quantization kernel，不替代量化策略与部署决策 |
-
-## 阅读入口
-
-- 想按问题连续推进：查看[算子优化问题链](./walkthrough.md)。
-- 想根据现象查找实现动作：查看[算子优化判断手册](./casebook.md)。
-- 需要图变换、IR 或 backend 细节：从[03 图级优化、融合与 Kernel 组合](./03_fusion_and_kernel_composition.md)进入，并按链接回查 Part01 · 09 与 Part04。
+| 正确性 | 候选与参考实现在边界输入上是否语义一致？ | 输入分布、形状、数据类型、误差和失败样本 |
+| 执行身份与资源 | 比较的是哪份代码、哪种配置和实际调用？ | 特化条件、生成产物、调用记录；按问题读取编译资源或运行时查询 |
+| 微基准与归因 | 相同输入下，节省的工作是否转化为更短时间？ | 准备成本、逐轮配对、形状分布；采集到的访存、资源或轨迹证据用于归因 |
+| 工作负载复测 | 局部收益能否传递到组件或两层解码器预填充？ | 配对基线、输出误差、负载延迟、显存、环境和失败记录 |
