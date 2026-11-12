@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="620" viewBox="0 0 1280 620" role="img" aria-labelledby="title desc">
 <title id="title">轨迹生命周期：交互、预留与成功提交</title>
-<desc id="desc">蓝色虚线表示未终止时继续交互；训练轨迹先预留，更新提交成功后才标记已消费。</desc>
+<desc id="desc">蓝色虚线表示未终止时继续交互；轨迹经过概率偏离、奖励完成与复用计划检查后预留，更新提交成功后才登记消费。更新前失败可按恢复规则释放；提交不明时先隔离并核对记录。</desc>
 <defs>
 <marker id="flow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
 <marker id="feedback" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#0284C7"/></marker>
@@ -35,16 +35,16 @@
 <text x="950" y="455" class="body">保存动作、观察和终态</text>
 <rect id="admit" x="640" y="370" width="230" height="110" rx="14" fill="#F3E8FF" stroke="#9333EA" stroke-width="2"/>
 <text x="660" y="402" class="head">检查与预留</text>
-<text x="660" y="430" class="body">新鲜度、奖励完成、去重</text>
+<text x="660" y="430" class="body">偏离、奖励与复用检查</text>
 <text x="660" y="455" class="body">绑定本次更新批次</text>
 <rect id="update" x="350" y="370" width="230" height="110" rx="14" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
 <text x="370" y="402" class="head">训练与提交</text>
 <text x="370" y="430" class="body">成功后标记轨迹已消费</text>
-<text x="370" y="455" class="body">失败时释放预留</text>
+<text x="370" y="455" class="body">提交不明先回查记录</text>
 <rect id="recover" x="60" y="370" width="230" height="110" rx="14" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
 <text x="80" y="402" class="head">恢复或下一批次</text>
-<text x="80" y="430" class="body">保留失败与提交记录</text>
-<text x="80" y="455" class="body">按声明的复用规则取样</text>
+<text x="80" y="430" class="body">更新前失败：按规则释放</text>
+<text x="80" y="455" class="body">提交不明：隔离后核对</text>
 <path data-source="policy" data-target="action" d="M290 200H350" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
 <path data-source="action" data-target="observation" d="M580 200H640" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
 <path data-source="observation" data-target="terminal" d="M870 200H930" fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#flow)"/>
