@@ -16,7 +16,7 @@
 | 奖励与终止 | 答案是否正确、工具是否正常完成 | 构造回报并区分反馈失败 |
 | 轨迹身份与消费状态 | 生成策略版本、绑定批次及提交状态 | 判断能否接纳、恢复或重试 |
 
-![轨迹从策略与环境交互进入版本和消费准入](../../docs/public/topic_discussion/post_training_optimization/trajectory_lifecycle.svg)
+![轨迹经过检查与预留后，分别处理成功提交、更新前失败和提交状态不明](../../docs/public/topic_discussion/post_training_optimization/trajectory_lifecycle.svg)
 
 ## 生成时的策略与更新时的策略
 

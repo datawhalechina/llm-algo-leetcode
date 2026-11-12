@@ -14,7 +14,7 @@ $$
 
 例如，输入与输出维度都是 1024、秩为 8 时，原权重有 $1024^2=1{,}048{,}576$ 个参数，两个 LoRA 矩阵合计只有 $8(1024+1024)=16{,}384$ 个。这个例子只计算单个线性层、忽略偏置；它说明了优化器需要维护的可训练参数为何减少。冻结基座仍要参与前向，训练也仍需要相关激活，即前向产生、反向计算可能需要的中间结果，所以可训练参数减少到原来的六十四分之一，并不意味着峰值显存同比例下降。
 
-![任务与资源条件如何决定参数更新范围、训练状态和交付形态](../../docs/public/topic_discussion/post_training_optimization/lora_peft_decision.svg)
+![参数方案连接训练与交付，LoRA 的冻结路径和低秩路径相加形成输出](../../docs/public/topic_discussion/post_training_optimization/lora_peft_decision.svg)
 
 ## 模块范围、秩与缩放分别改变什么
 
