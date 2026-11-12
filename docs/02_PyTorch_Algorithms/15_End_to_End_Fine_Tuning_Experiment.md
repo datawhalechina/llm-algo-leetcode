@@ -14,9 +14,9 @@
 
 ## 本节导读
 
-SFT 损失要真正改变模型，还需要让梯度累积、参数更新、学习率调度和评估记录共享同一个有效更新时钟。时钟一旦错位，参数、学习率与训练记录就会互相矛盾。
+SFT 损失要真正改变模型，还需要让梯度累积、参数更新、学习率调度和评估记录共享同一个有效更新时钟。这里的“有效更新”指累积完共同参与一次更新的全部样本（逻辑批次）后，优化器完成一次参数写回；“时钟”就是按这些写回次数计数，而非真实时间。时钟一旦错位，参数、学习率与训练记录就会互相矛盾。
 
-本节围绕一次有效更新展开：多个微批次先形成累计梯度，参数随后写回，调度器、评估与记录再按同一更新编号推进。
+本节围绕一次有效更新展开：微批次是逻辑批次中一次前向与反向处理的子集。多个微批次先形成累计梯度，参数随后写回，调度器、评估与记录再按同一更新编号推进。
 
 ---
 <a id="runtime-environment"></a>
@@ -36,21 +36,21 @@ SFT 损失要真正改变模型，还需要让梯度累积、参数更新、学�
 - [11. Gradient Accumulation | 梯度累积](../02_PyTorch_Algorithms/11_Gradient_Accumulation.md)
 
 ---
-## Step 1：SFT 训练闭环如何连接训练、更新与评估
+## Step 1：训练与评估如何计算损失、处理状态
 
-SFT 训练闭环从共享损失契约开始，并把梯度累积、参数写回、学习率推进和隔离评估组织到同一个有效更新时钟。对固定批次 $B$，训练与评估应使用相同的输入、监督标签、下一 Token 对齐和有效 Token 归约；两条路径的差别只在于是否保留计算图并更新可训练参数 $\theta$。
+训练与评估使用相同的监督位置、预测与标签对齐方式和损失分母，区别在于是否计算梯度、是否修改参数。对固定批次 $B$，两者都先累加有效监督位置的损失，再除以目标总数；训练保留计算图用于反向传播，评估则暂时切换模式并关闭梯度记录。评估结束后恢复原模式，使下一次训练能继续。
 
-记 $\mathcal{L}_{\mathrm{SFT}}$ 为有效监督 Token 上的平均损失，则同一批次在两条路径中的目标函数应满足
+记 $\mathcal{L}_{\mathrm{SFT}}$ 为有效监督词元 上的平均损失，对相同参数、输入和确定性的前向计算，两条路径的损失数值满足
 
 $$
 \mathcal{L}_{\mathrm{train}}(B;\theta)=\mathcal{L}_{\mathrm{eval}}(B;\theta)=\mathcal{L}_{\mathrm{SFT}}(B;\theta).
 $$
 
-训练路径由该损失产生梯度并更新 $\theta$；评估路径只读取当前模型状态，不改变模型模式、已有梯度或优化状态。
+随机失活（Dropout）在训练时随机屏蔽部分特征、在评估时关闭，因此训练模式与评估模式即使使用相同输入也可能产生不同数值。两种模式仍应采用相同监督位置与归约方式。训练路径由该损失产生梯度并更新 $\theta$；评估路径读取当前参数，计算后恢复调用前模式，并保持已有梯度和优化状态不变。
 
 | 路径 | 输入与输出 | 必须保持的语义 |
 |:---|:---|:---|
-| 共享损失契约 | 固定批次 → SFT 损失 | 监督位置、预测与标签对齐、有效 Token 归约一致 |
+| 损失计算 | 固定批次 → SFT 损失 | 监督位置、预测与标签对齐、有效词元归约一致 |
 | 训练路径 | SFT 损失 → 梯度 → 参数 | 保留计算图，只在有效更新边界写回参数 |
 | 评估路径 | 当前参数与固定数据 → 评估损失 | 不建立梯度，不污染训练状态 |
 
@@ -65,38 +65,38 @@ $$
 | 模型参数 | 每次有效更新只写回一次 | 有梯度但参数不变，或一个逻辑批次写回多次 |
 | 优化器状态 | 与参数写回同步推进一次 | 状态未建立，或按微批次错误推进 |
 | 学习率状态 | 与有效更新编号保持一致 | 比参数更新少一步或多一步 |
-| 评估与记录 | 在更新后的固定状态上生成配对证据 | 评估污染训练状态，或记录编号使用微批次计数 |
+| 评估与记录 | 记录同一次更新后模型的训练损失与验证损失 | 评估污染训练状态，或记录编号使用微批次计数 |
 ## Step 3：梯度累积如何形成一次有效更新
 
-一次有效更新从空的梯度状态开始。每个微批次贡献一部分梯度，达到累积边界后才写回参数；学习率状态、评估结果和过程记录随后使用同一个有效更新编号。
+一次有效更新从空的梯度状态开始。微批次逐个贡献梯度，整个逻辑批次处理完毕后才写回参数；学习率状态与过程记录也在这个边界推进。切分微批次节省了同时驻留的激活，却不应改变每个监督词元在目标中的权重。
 
-若一个逻辑批次由 $K$ 个等大微批次组成，$\mathcal{L}_{u,k}$ 表示第 $u$ 次有效更新中第 $k$ 个微批次的损失，$g_u$ 表示该次更新使用的累计梯度，$\theta_u$ 表示更新前的模型参数，则有效更新使用
+记第 $u$ 次更新的第 $k$ 个微批次有 $N_{u,k}$ 个有效监督词元，损失总和为 $S_{u,k}$，逻辑批次的目标总数为 $N_u=\sum_k N_{u,k}>0$。累计梯度应为
 
 $$
-g_u=\sum_{k=1}^{K}\nabla_\theta\frac{\mathcal{L}_{u,k}}{K},\qquad
+g_u=\sum_k\nabla_\theta\frac{S_{u,k}}{N_u},\qquad
 \theta_{u+1}=\operatorname{OptimizerStep}(\theta_u,g_u).
 $$
 
-这里的 $u$ 是有效更新编号，$k \in \{1, \ldots, K\}$ 是当前微批次编号，$K$ 是参与该次更新的微批次总数，$g_u$ 是写回前累积完成的梯度，$\theta_u$ 是更新前参数。$\operatorname{OptimizerStep}$ 表示根据 $g_u$ 完成一次参数写回。等大微批次可以按 $1/K$ 缩放；微批次包含的有效监督 Token 数不同时，各项贡献应按有效 Token 数加权。
-
-![一次有效更新的状态推进时间线](../public/02_PyTorch_Algorithms/15_training_loop.svg)
+例如两个微批次各有两条样本，但有效监督词元分别为4个与10个，应把两份损失总和都除以14。若先分别取平均，再各乘 $1/2$，短回答中的每个词元会获得更大的权重；只有各微批次有效目标数相等时，等权平均才等价。没有有效目标的微批次贡献零梯度；整个逻辑批次没有目标时，则无法定义平均损失。
 
 | 阶段 | 状态变化 | 必须满足的不变量 |
 |:---|:---|:---|
-| 更新开始 | 梯度状态归零 | 不携带上一轮的累计梯度 |
-| 微批次累积 | 各微批次贡献缩放后的梯度 | 累积期间参数保持不变 |
+| 更新开始 | 梯度归零，确定逻辑批次的目标总数 | 各微批次共用同一分母 |
+| 微批次累积 | 损失总和按逻辑批次目标数缩放后反传 | 累积期间参数保持不变 |
 | 有效更新 | 参数与学习率状态各推进一次 | 一个逻辑批次只产生一次参数写回 |
-| 配对评估 | 无梯度计算训练与验证损失 | 复用训练损失并恢复调用前模式 |
-| 过程记录 | 写入有效更新编号和配对指标 | 不按微批次错误推进记录 |
-<a id="mechanism-practice"></a>
-## Step 4：实现评估隔离与有效更新闭环
+| 更新后评估 | 读取当前参数的训练与验证损失 | 关闭梯度记录并恢复调用前模式 |
+| 过程记录 | 写入更新编号和指标 | 按有效更新而非微批次推进 |
 
-代码使用同一监督标签与下一 Token 预测损失完成训练和评估。学习者需要保持评估状态隔离，并在一次有效更新中正确缩放微批次损失、累积梯度和推进训练状态。本练习使用等大的微批次。
+![一次有效更新的状态推进时间线](../public/02_PyTorch_Algorithms/15_training_loop.svg)
+<a id="mechanism-practice"></a>
+## Step 4：实现评估状态恢复与梯度累积更新
+
+题目使用相同的监督标签与下一词元损失计算训练、评估结果。你将补全评估后恢复模型模式的处理，并按整个逻辑批次的目标总数缩放微批次损失，再累积梯度。测试中的微批次样本数相同，但回答长度与有效监督词元数可以不同。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 |:---|:---|:---|:---|
 | TODO 1：保持评估状态隔离<br>`evaluate_loss` | 无梯度评估并恢复调用前模式 | 复用训练损失，返回后不污染模型模式和参数梯度 | 检查训练模式、评估模式和异常退出后均恢复原模式，且参数与已有梯度不被修改 |
-| TODO 2：形成一次有效更新<br>`run_finetuning_experiment` | 按累积步数缩放微批次损失并反向传播 | 每个逻辑批次只更新一次，调度器和记录按有效更新推进 | 检查梯度累积与完整批次更新近似一致，并验证参数、优化器、调度器和记录按有效更新次数推进 |
+| TODO 2：形成一次有效更新<br>`run_finetuning_experiment` | 用逻辑批次的有效监督词元总数缩放损失总和并反向传播 | 每个逻辑批次只更新一次，调度器和记录按有效更新推进 | 检查变长回答、空监督微批次的梯度和参数与完整批次一致；用等权平均反例暴露错误，并检查更新次数 |
 
 ```python
 import torch
@@ -154,18 +154,34 @@ class TinyCausalLM(nn.Module):
         return logits
 
 
-def compute_sft_loss(logits, labels, attention_mask=None):
-    """按因果语言模型的下一 Token 对齐规则计算 SFT 损失。"""
-    aligned_logits = logits[..., :-1, :].contiguous()
-    aligned_targets = labels[..., 1:].contiguous()
+def count_supervised_targets(labels, attention_mask=None):
+    """统计下一词元对齐后、参与监督的目标数。"""
+    targets = labels[..., 1:]
+    valid = targets != -100
     if attention_mask is not None:
-        target_mask = attention_mask[..., 1:].contiguous()
-        aligned_targets = aligned_targets.masked_fill(target_mask == 0, -100)
-    if not torch.any(aligned_targets != -100):
-        raise ValueError("当前 batch 没有有效监督 token")
-    return nn.CrossEntropyLoss(ignore_index=-100)(
-        aligned_logits.view(-1, aligned_logits.size(-1)), aligned_targets.view(-1)
+        valid = valid & (attention_mask[..., 1:] != 0)
+    return int(valid.sum().item())
+
+
+def compute_sft_loss_terms(logits, labels, attention_mask=None):
+    """返回有效监督目标的损失总和与数量。"""
+    targets = labels[..., 1:].contiguous()
+    if attention_mask is not None:
+        targets = targets.masked_fill(attention_mask[..., 1:] == 0, -100)
+    count = count_supervised_targets(labels, attention_mask)
+    if count == 0:
+        raise ValueError("当前批次没有有效监督词元")
+    loss_sum = nn.functional.cross_entropy(
+        logits[..., :-1, :].reshape(-1, logits.size(-1)),
+        targets.reshape(-1), ignore_index=-100, reduction="sum",
     )
+    return loss_sum, count
+
+
+def compute_sft_loss(logits, labels, attention_mask=None):
+    """将损失总和按有效监督词元数归约。"""
+    loss_sum, count = compute_sft_loss_terms(logits, labels, attention_mask)
+    return loss_sum / count
 
 
 def evaluate_loss(model, batch):
@@ -189,8 +205,16 @@ def run_finetuning_experiment(model, optimizer, train_batch, val_batch=None, acc
     """
     在小批样本上训练，验证梯度累积、参数更新、可选学习率调度和 train / val 报告。
 
-    每次 optimizer.step() 前处理 accum_steps 个等大的 micro-batch。
+    每次参数写回前，按逻辑批次的有效监督词元总数累积梯度。
     """
+    for name, value in (("accum_steps", accum_steps), ("num_updates", num_updates), ("eval_every", eval_every)):
+        if type(value) is not int or value <= 0:
+            raise ValueError(f"{name} 必须为正整数")
+    logical_token_count = count_supervised_targets(
+        train_batch["labels"], train_batch.get("attention_mask")
+    )
+    if logical_token_count == 0:
+        raise ValueError("逻辑批次没有有效监督词元")
     if train_batch["input_ids"].size(0) % accum_steps != 0:
         raise ValueError("批次大小必须能被累积步数整除")
 
@@ -208,11 +232,16 @@ def run_finetuning_experiment(model, optimizer, train_batch, val_batch=None, acc
         for idx in range(accum_steps):
             start, end = idx * micro_size, (idx + 1) * micro_size
             mb = {key: value[start:end] for key, value in train_batch.items()}
+            if count_supervised_targets(mb["labels"], mb.get("attention_mask")) == 0:
+                continue
             logits = model(mb["input_ids"], mb.get("attention_mask"))
+            loss_sum, _ = compute_sft_loss_terms(
+                logits, mb["labels"], mb.get("attention_mask")
+            )
             # ==========================================
             # TODO 2：缩放微批次损失并反向传播
             # ==========================================
-            # scaled_loss = ???  # 当前微批次损失除以累积步数。
+            # scaled_loss = ???  # 当前微批次对逻辑批次平均损失的标量贡献。
             raise NotImplementedError("TODO 2：完成有效更新中的缩放反传")
             scaled_loss.backward()
         optimizer.step()
@@ -238,7 +267,7 @@ def run_finetuning_experiment(model, optimizer, train_batch, val_batch=None, acc
 def _build_sft_case():
     """构造固定的重复训练样本和独立的验证批次。"""
     train_samples = [([1, 2, 3], [4, 5, 6, 7])] * 4
-    val_samples = [([1, 2, 3], [4, 5, 6, 7])] * 2
+    val_samples = [([1, 2, 3], [4, 5, 6, 8])] * 2
     return (
         collate_sft_batch(train_samples, pad_id=0, eos_id=2, max_len=9),
         collate_sft_batch(val_samples, pad_id=0, eos_id=2, max_len=9),
@@ -273,6 +302,7 @@ def _assert_evaluation_state(train_batch):
     model.train()
     training_logits = model(train_batch["input_ids"], train_batch.get("attention_mask"))
     compute_sft_loss(training_logits, train_batch["labels"], train_batch.get("attention_mask")).backward()
+    parameters_before = [parameter.detach().clone() for parameter in model.parameters()]
     gradients_before = [parameter.grad.detach().clone() for parameter in model.parameters()]
     loss = evaluate_loss(model, train_batch)
     assert isinstance(loss, float), "evaluate_loss 应返回 Python float"
@@ -290,6 +320,7 @@ def _assert_evaluation_state(train_batch):
     else:
         raise AssertionError("无有效监督的评估批次应失败")
     assert model.training, "评估失败后也必须恢复调用前模式"
+    assert all(torch.equal(saved, parameter) for saved, parameter in zip(parameters_before, model.parameters())), "评估不应修改参数"
 
 
 def _assert_gradient_accumulation_equivalence(train_batch):
@@ -320,51 +351,99 @@ def _assert_training_update_and_report(train_batch, val_batch):
     assert scheduler.last_epoch == 30, "scheduler 应按有效 update 推进"
     assert len(report["history"]) >= 3, "训练过程应记录评估 history"
     assert report["final_train_loss"] < report["initial_train_loss"], "train loss 没有下降"
-    assert report["final_val_loss"] < report["initial_val_loss"], "val loss 没有下降"
+    assert torch.isfinite(torch.tensor(report["final_val_loss"])), "验证损失应为有限值"
+    assert [row["step"] for row in report["history"]] == [1, 10, 20, 30]
+
+
+
+def _assert_token_weighted_accumulation():
+    """用不同目标数的微批次，对照完整批次及旧的等权平均。"""
+    samples = [([1, 2, 3], [4])] * 2 + [([1, 2, 3], [4, 5, 6, 7])] * 2
+    batch = collate_sft_batch(samples, max_len=9)
+    counts = [count_supervised_targets(batch["labels"][i:i + 2]) for i in (0, 2)]
+    assert counts == [4, 10]
+    for empty_first in (False, True):
+        current = {key: value.clone() for key, value in batch.items()}
+        if empty_first:
+            current["labels"][:2] = -100
+        torch.manual_seed(37)
+        full = TinyCausalLM()
+        weighted = TinyCausalLM()
+        old_mean = TinyCausalLM()
+        weighted.load_state_dict(full.state_dict())
+        old_mean.load_state_dict(full.state_dict())
+        full_optimizer = torch.optim.SGD(full.parameters(), lr=0.1)
+        weighted_optimizer = torch.optim.SGD(weighted.parameters(), lr=0.1)
+        compute_sft_loss(full(current["input_ids"]), current["labels"], current["attention_mask"]).backward()
+        full_optimizer.step()
+        run_finetuning_experiment(weighted, weighted_optimizer, current, num_updates=1)
+        for expected, actual in zip(full.parameters(), weighted.parameters()):
+            torch.testing.assert_close(actual.grad, expected.grad, atol=1e-6, rtol=1e-5)
+            torch.testing.assert_close(actual, expected, atol=1e-6, rtol=1e-5)
+        if not empty_first:
+            for start in (0, 2):
+                micro = {key: value[start:start + 2] for key, value in current.items()}
+                (compute_sft_loss(old_mean(micro["input_ids"]), micro["labels"], micro["attention_mask"]) / 2).backward()
+            assert any(
+                not torch.allclose(old.grad, expected.grad, atol=1e-6, rtol=1e-5)
+                for old, expected in zip(old_mean.parameters(), full.parameters())
+            ), "反例必须区分旧的等权平均"
+            torch.optim.SGD(old_mean.parameters(), lr=0.1).step()
+            assert any(
+                not torch.allclose(old, expected, atol=1e-6, rtol=1e-5)
+                for old, expected in zip(old_mean.parameters(), full.parameters())
+            )
+
+
+def _assert_invalid_update_inputs(train_batch):
+    """拒绝空监督逻辑批次和无效更新配置，保持参数不变。"""
+    model = TinyCausalLM()
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+    before = [p.detach().clone() for p in model.parameters()]
+    empty = {**train_batch, "labels": torch.full_like(train_batch["labels"], -100)}
+    cases = [(empty, {})]
+    cases += [(train_batch, {name: value}) for name in ("accum_steps", "num_updates", "eval_every") for value in (0, -1, 1.5, True)]
+    for batch, kwargs in cases:
+        try:
+            run_finetuning_experiment(model, optimizer, batch, **kwargs)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("无效配置应在参数更新前失败")
+    assert all(torch.equal(p, saved) for p, saved in zip(model.parameters(), before))
 
 
 def test_end_to_end_finetuning():
-    """运行 CPU 上的 SFT 接线、有效更新和报告闭环测试。"""
-    try:
-        torch.manual_seed(7)
-        train_batch, val_batch = _build_sft_case()
-        _assert_sft_batch_contract(train_batch)
-        _assert_next_token_loss()
-        _assert_evaluation_state(train_batch)
-        _assert_gradient_accumulation_equivalence(train_batch)
-        _assert_training_update_and_report(train_batch, val_batch)
-        print("✅ SFT 损失已接入有效更新、评估隔离和训练记录。")
-    except (AttributeError, NameError, TypeError, ValueError, AssertionError) as error:
-        raise NotImplementedError("请先完成机制 TODO，再运行端到端 SFT 测试。") from error
+    """运行监督计数、梯度加权、评估隔离和更新时钟测试。"""
+    torch.manual_seed(7)
+    train_batch, val_batch = _build_sft_case()
+    _assert_sft_batch_contract(train_batch)
+    _assert_next_token_loss()
+    _assert_evaluation_state(train_batch)
+    _assert_gradient_accumulation_equivalence(train_batch)
+    _assert_token_weighted_accumulation()
+    _assert_invalid_update_inputs(train_batch)
+    _assert_training_update_and_report(train_batch, val_batch)
+    print("PASSED: 有效词元加权、评估隔离及更新时钟核对通过。")
 
 
 test_end_to_end_finetuning()
+
 ```
 
 ## CPU 运行记录
 
-`report` 是 `run_finetuning_experiment(...)` 返回的 Python 字典，包含训练集与验证集的初始损失、最终损失和过程记录 `history`。运行题目区与测试区后，用它核对有效更新编号与训练状态。
+测试分别核对损失、梯度、参数和更新编号。先读通过或失败的位置，再查看对应断言：变长回答的比较使用同一初始参数与同一逻辑批次；重复样本训练则检查参数确实更新，且优化器、调度器与记录保持同一时钟。
 
-运行题目区 → 运行测试区 → 复制结果 → 填写报告 → 写出结论
+| 检查项 | 测试来源 | 通过条件 |
+|:---|:---|:---|
+| 监督归约 | `_assert_next_token_loss` | 下一词元对齐后的损失与手工交叉熵一致 |
+| 词元加权 | `_assert_token_weighted_accumulation` | 变长与空监督微批次的梯度、参数与完整批次一致；旧的等权平均产生差异 |
+| 评估隔离 | `_assert_evaluation_state` | 模式恢复，参数与已有梯度保持不变，异常退出也能恢复 |
+| 更新与记录 | `_assert_training_update_and_report` | 参数改变、优化器状态建立，30次更新后调度器推进30次，记录编号为1、10、20、30 |
+| 损失记录 | 同上返回的 `report` | 重复训练样本的最终损失下降，独立回答的验证损失为有限值 |
 
-| 检查项 | 来源 | 记录内容 | CPU 实验说明 |
-|:---|:---|:---|:---|
-| 训练损失 | `report` | `initial_train_loss` → `final_train_loss` | 最终训练损失应低于初始训练损失；本实验不判断每一步都单调下降 |
-| 验证一致性 | `report` | `initial_val_loss` → `final_val_loss` | 验证阶段复用训练阶段的标签与损失计算 |
-| 评估记录 | `report["history"]` | 第 1 步、间隔步和最后一步的训练 / 验证损失 | 更新编号与训练、验证损失一一对应 |
-| 参数更新 | 测试输出 | `Optimizer updated parameters` | 为 `True`，证明 `optimizer.step()` 生效 |
-| 优化器状态 | 测试输出 | `state entries` | 大于 `0`，证明优化器状态已建立 |
-| 测试状态 | 测试区提示 | 端到端闭环测试结果 | 应为通过 |
-
-可直接使用下面的简短格式记录：
-
-```text
-实验环境：CPU；模型：TinyCausalLM；数据：重复样本
-训练结果：训练损失 ______ → ______；验证损失 ______ → ______
-闭环检查：参数更新 ______；优化器状态条目数 ______；测试 ______
-结论：CPU 训练闭环 ______，依据是 ____________________。
-证据边界：本报告不说明真实 GPU 显存、吞吐或任务泛化能力。
-```
+需要查看具体曲线时，可用 `run_finetuning_experiment(...)` 返回的 `report` 读取初始、最终损失及 `history`。上述CPU结果解释的是微型确定性模型上的更新机制；GPU资源代价与任务质量分别在Step 5及后续项目中比较。
 ---
 
 🛑 **STOP HERE** 🛑
@@ -380,12 +459,11 @@ test_end_to_end_finetuning()
 
 
 ```python
-import torch
-import torch.nn as nn
-
-
 def build_sft_batch(prompt_ids, response_ids, pad_id=0, eos_id=2, max_len=10):
-    """拼接一条 SFT 样本，并返回定长的输入、掩码和监督标签。"""
+    """拼接一条 SFT 样本，并返回定长的输入、掩码和监督标签。
+
+    提示只提供上下文，回答与结束标记提供监督目标；填充位置不产生损失。
+    """
     response_with_eos = response_ids + [eos_id]
     input_ids = prompt_ids + response_with_eos
     labels = [-100] * len(prompt_ids) + response_with_eos
@@ -398,10 +476,9 @@ def build_sft_batch(prompt_ids, response_ids, pad_id=0, eos_id=2, max_len=10):
 
     attention_mask = [1] * len(input_ids)
     pad_len = max_len - len(input_ids)
-    if pad_len > 0:
-        input_ids = input_ids + [pad_id] * pad_len
-        attention_mask = attention_mask + [0] * pad_len
-        labels = labels + [-100] * pad_len
+    input_ids = input_ids + [pad_id] * pad_len
+    attention_mask = attention_mask + [0] * pad_len
+    labels = labels + [-100] * pad_len
 
     return {
         "input_ids": torch.tensor(input_ids, dtype=torch.long),
@@ -411,13 +488,13 @@ def build_sft_batch(prompt_ids, response_ids, pad_id=0, eos_id=2, max_len=10):
 
 
 def collate_sft_batch(samples, pad_id=0, eos_id=2, max_len=10):
-    """将多条定长 SFT 样本堆叠成 batch。"""
+    """将多条定长 SFT 样本堆叠成批次。"""
     items = [build_sft_batch(prompt, response, pad_id=pad_id, eos_id=eos_id, max_len=max_len) for prompt, response in samples]
     return {key: torch.stack([item[key] for item in items], dim=0) for key in items[0]}
 
 
 class TinyCausalLM(nn.Module):
-    """用于验证训练接口与更新语义的最小语言模型。"""
+    """用于验证训练接口的最小语言模型。"""
     def __init__(self, vocab_size=64, hidden_size=32):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, hidden_size)
@@ -431,25 +508,42 @@ class TinyCausalLM(nn.Module):
         return logits
 
 
-def compute_sft_loss(logits, labels, attention_mask=None):
-    """按因果语言模型的下一 Token 对齐规则计算 SFT 损失。"""
-    aligned_logits = logits[..., :-1, :].contiguous()
-    aligned_targets = labels[..., 1:].contiguous()
+def count_supervised_targets(labels, attention_mask=None):
+    """统计下一词元对齐后、参与监督的目标数。"""
+    targets = labels[..., 1:]
+    valid = targets != -100
     if attention_mask is not None:
-        target_mask = attention_mask[..., 1:].contiguous()
-        aligned_targets = aligned_targets.masked_fill(target_mask == 0, -100)
-    if not torch.any(aligned_targets != -100):
-        raise ValueError("当前 batch 没有有效监督 token")
+        valid = valid & (attention_mask[..., 1:] != 0)
+    return int(valid.sum().item())
 
-    loss_fct = nn.CrossEntropyLoss(ignore_index=-100)
-    loss = loss_fct(aligned_logits.view(-1, aligned_logits.size(-1)), aligned_targets.view(-1))
-    return loss
+
+def compute_sft_loss_terms(logits, labels, attention_mask=None):
+    """返回有效监督目标的损失总和与数量。"""
+    targets = labels[..., 1:].contiguous()
+    if attention_mask is not None:
+        targets = targets.masked_fill(attention_mask[..., 1:] == 0, -100)
+    count = count_supervised_targets(labels, attention_mask)
+    if count == 0:
+        raise ValueError("当前批次没有有效监督词元")
+    loss_sum = nn.functional.cross_entropy(
+        logits[..., :-1, :].reshape(-1, logits.size(-1)),
+        targets.reshape(-1), ignore_index=-100, reduction="sum",
+    )
+    return loss_sum, count
+
+
+def compute_sft_loss(logits, labels, attention_mask=None):
+    """将损失总和按有效监督词元数归约。"""
+    loss_sum, count = compute_sft_loss_terms(logits, labels, attention_mask)
+    return loss_sum / count
 
 
 def evaluate_loss(model, batch):
     """在不记录梯度的条件下，复用训练损失计算一个批次。"""
-    # TODO 1：保持评估状态隔离。
-    was_training = model.training
+    # ==========================================
+    # TODO 1：在无梯度评估后恢复调用前模式
+    # ==========================================
+    was_training = model.training  # 骨架保存调用前状态，避免异常路径污染模型模式。
     try:
         model.eval()
         with torch.no_grad():
@@ -461,7 +555,19 @@ def evaluate_loss(model, batch):
 
 
 def run_finetuning_experiment(model, optimizer, train_batch, val_batch=None, accum_steps=2, num_updates=40, eval_every=10, scheduler=None):
-    """在小批样本上训练，记录梯度累积、参数更新和 train / val 报告。"""
+    """
+    在小批样本上训练，验证梯度累积、参数更新、可选学习率调度和 train / val 报告。
+
+    每次参数写回前，按逻辑批次的有效监督词元总数累积梯度。
+    """
+    for name, value in (("accum_steps", accum_steps), ("num_updates", num_updates), ("eval_every", eval_every)):
+        if type(value) is not int or value <= 0:
+            raise ValueError(f"{name} 必须为正整数")
+    logical_token_count = count_supervised_targets(
+        train_batch["labels"], train_batch.get("attention_mask")
+    )
+    if logical_token_count == 0:
+        raise ValueError("逻辑批次没有有效监督词元")
     if train_batch["input_ids"].size(0) % accum_steps != 0:
         raise ValueError("批次大小必须能被累积步数整除")
 
@@ -473,30 +579,31 @@ def run_finetuning_experiment(model, optimizer, train_batch, val_batch=None, acc
         "history": [],
     }
     micro_size = train_batch["input_ids"].size(0) // accum_steps
-
     for step in range(1, num_updates + 1):
         model.train()
         optimizer.zero_grad()
-
         for idx in range(accum_steps):
-            start = idx * micro_size
-            end = (idx + 1) * micro_size
+            start, end = idx * micro_size, (idx + 1) * micro_size
             mb = {key: value[start:end] for key, value in train_batch.items()}
+            if count_supervised_targets(mb["labels"], mb.get("attention_mask")) == 0:
+                continue
             logits = model(mb["input_ids"], mb.get("attention_mask"))
-            # TODO 2：形成一次有效更新。
-            scaled_loss = compute_sft_loss(logits, mb["labels"], mb.get("attention_mask")) / accum_steps
+            loss_sum, _ = compute_sft_loss_terms(
+                logits, mb["labels"], mb.get("attention_mask")
+            )
+            # ==========================================
+            # TODO 2：缩放微批次损失并反向传播
+            # ==========================================
+            scaled_loss = loss_sum / logical_token_count
             scaled_loss.backward()
-
         optimizer.step()
         if scheduler is not None:
             scheduler.step()
-
         if step == 1 or step % eval_every == 0 or step == num_updates:
             record = {"step": step, "train_loss": evaluate_loss(model, train_batch)}
             if val_batch is not None:
                 record["val_loss"] = evaluate_loss(model, val_batch)
             report["history"].append(record)
-
     report["final_train_loss"] = evaluate_loss(model, train_batch)
     report["final_val_loss"] = evaluate_loss(model, val_batch) if val_batch is not None else None
     return report
@@ -507,13 +614,13 @@ def run_finetuning_experiment(model, optimizer, train_batch, val_batch=None, acc
 
 #### TODO 1：保持评估状态隔离
 
-- 机制：评估关闭梯度记录并复用训练损失，通过 `finally` 保证正常返回或异常退出后都恢复调用前模式。
-- 不变量：评估前已有梯度的内容保持不变；测试同时覆盖训练模式、评估模式和异常路径。
+- 评估复用训练的监督位置与损失归约方式，但只读取参数。先保存模式、切换评估模式并关闭梯度记录；通过 `finally` 恢复模式，损失计算抛出异常时也能恢复。
+- `_assert_evaluation_state` 分别从训练、评估模式进入，并检查已有梯度和异常路径。验证集使用不同回答；它的损失只需有效记录，下降与否留待质量评估判断。
 
 #### TODO 2：形成一次有效更新
 
-- 机制：每个等大微批次的损失除以累积步数后再反向传播，使一次逻辑更新保持统一梯度尺度。
-- 不变量：累积更新应与同一有效批次的一次性更新近似等价；参数、优化器、调度器与评估记录都按有效更新推进。
+- 每份微批次损失总和除以整个逻辑批次的有效目标数，再反向传播。共同分母使每个词元具有相同权重；空监督微批次跳过，参数和调度器仍在逻辑批次结束时各推进一次。
+- `_assert_token_weighted_accumulation` 用4个与10个目标对照完整批次的梯度和参数，并确认旧的等权平均会产生差异。`_assert_training_update_and_report` 再核对优化器状态、学习率时钟与记录编号。
 <a id="framework-check"></a>
 
 ## 框架一致性核对（可选）
@@ -523,9 +630,9 @@ def run_finetuning_experiment(model, optimizer, train_batch, val_batch=None, acc
 | 核对对象 | Step 4 教学实现 | 成熟框架 CPU 路径 | 共同输入与通过条件 |
 | --- | --- | --- | --- |
 | 累积边界 | 两个微批次后调用一次 `optimizer.step()` | `accumulate` 与 `sync_gradients` 控制写回 | 第一个微批次后参数不变，第二个微批次后参数改变 |
-| 最终参数 | 等大微批次损失除以累积步数 | Accelerate 自动缩放累积损失 | 两条路径完成一次有效更新后的参数一致 |
+| 最终参数 | 微批次损失总和除以逻辑批次目标数 | 补偿 Accelerate 自动累积缩放后，使用相同词元分母 | 4个与10个目标的微批次更新后，两条路径参数一致 |
 | 更新时钟 | 调度器按有效更新推进 | Accelerate 仅在 `sync_gradients=True` 时推进调度器 | 两条路径的调度器都只推进一次 |
-| Trainer 有效更新 | 本节循环按逻辑批次更新参数 | `SFTTrainer.train()` 执行一个训练步 | `global_step=1` 且模型参数发生变化 |
+| Trainer 有效更新 | 本节循环按逻辑批次更新参数 | `SFTTrainer.train()` 执行一个训练步 | `global_step=1` 且模型参数发生变化；此项核对更新接线，词元加权的数值等价由上一项核对 |
 
 
 ```python
@@ -551,7 +658,7 @@ else:
     def check_accelerate_training_control():
         """比较本节循环与 Accelerate 的累积边界和有效更新。"""
         torch.manual_seed(23)
-        train_samples = [([1, 2, 3], [4, 5, 6, 7])] * 4
+        train_samples = [([1, 2, 3], [4])] * 2 + [([1, 2, 3], [4, 5, 6, 7])] * 2
         train_batch = collate_sft_batch(train_samples, pad_id=0, eos_id=2, max_len=9)
         reference_model = TinyCausalLM(vocab_size=64, hidden_size=32)
         accelerated_model = copy.deepcopy(reference_model)
@@ -576,6 +683,7 @@ else:
         sync_flags = []
         micro_size = train_batch["input_ids"].size(0) // 2
         accelerated_optimizer.zero_grad()
+        logical_token_count = count_supervised_targets(train_batch["labels"], train_batch["attention_mask"])
 
         for index in range(2):
             start, end = index * micro_size, (index + 1) * micro_size
@@ -584,10 +692,11 @@ else:
                 logits = accelerated_model(
                     micro_batch["input_ids"], micro_batch.get("attention_mask")
                 )
-                loss = compute_sft_loss(
+                loss_sum, _ = compute_sft_loss_terms(
                     logits, micro_batch["labels"], micro_batch.get("attention_mask")
                 )
-                accelerator.backward(loss)
+                # backward 自动除以累积步数；补偿后，每个词元仍共用逻辑批次分母。
+                accelerator.backward(loss_sum * accelerator.gradient_accumulation_steps / logical_token_count)
                 # Accelerate 在非同步微批次拦截参数写回，因此两条路径仍共享同一有效更新边界。
                 accelerated_optimizer.step()
                 if accelerator.sync_gradients:
@@ -651,7 +760,7 @@ else:
 
         with tempfile.TemporaryDirectory(prefix="sft-conformance-") as output_dir:
             args = SFTConfig(
-                output_dir=output_dir, use_cpu=True, report_to="none",
+                output_dir=output_dir, use_cpu=True, bf16=False, fp16=False, report_to="none",
                 dataset_text_field="text", max_length=16,
                 per_device_train_batch_size=2, max_steps=1, learning_rate=0.01,
                 logging_strategy="no", save_strategy="no",

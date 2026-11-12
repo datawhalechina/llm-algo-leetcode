@@ -27,7 +27,7 @@
   <rect width="1500" height="470" rx="24" fill="url(#bg)"/>
   <text x="60" y="60" class="title">一次有效更新如何推进训练状态</text>
   <text x="60" y="92" class="sub">微批次只累积梯度；参数、学习率、评估结果和记录编号都在有效更新边界推进。</text>
-  <text x="60" y="121" class="sub">k 表示当前微批次编号，K 表示一次有效更新包含的微批次总数。</text>
+  <text x="60" y="121" class="sub">k 是微批次编号，K 是微批次总数；每份损失总和都除以逻辑批次的有效监督词元总数。</text>
 
   <rect x="45" y="180" width="210" height="120" rx="17" class="box" fill="#FFF7ED" stroke="#F59E0B"/>
   <text x="150" y="224" text-anchor="middle" class="label">更新起点</text>
@@ -36,7 +36,7 @@
 
   <rect x="315" y="180" width="260" height="120" rx="17" class="box" fill="#EFF6FF" stroke="#3B82F6"/>
   <text x="445" y="224" text-anchor="middle" class="label">处理微批次 k / K</text>
-  <text x="445" y="257" text-anchor="middle" class="small">各自贡献缩放后的梯度</text>
+  <text x="445" y="257" text-anchor="middle" class="small">损失总和共用词元分母</text>
   <text x="445" y="283" text-anchor="middle" class="small">参数保持不变</text>
 
   <rect x="635" y="180" width="240" height="120" rx="17" class="box" fill="#ECFDF5" stroke="#10B981"/>
@@ -62,5 +62,5 @@
   <text x="605" y="220" text-anchor="middle" class="edgeText">k = K</text>
 
   <path d="M500 300V370H390V300" class="loop"/>
-  <text x="445" y="344" text-anchor="middle" class="loopText">k &lt; K：k ← k + 1，处理下一微批次</text>
+  <text x="445" y="405" text-anchor="middle" class="loopText">k &lt; K：k ← k + 1，处理下一微批次</text>
 </svg>

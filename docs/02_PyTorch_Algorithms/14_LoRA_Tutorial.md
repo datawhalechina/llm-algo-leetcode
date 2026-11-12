@@ -16,7 +16,9 @@
 
 大模型微调最直接的做法是更新全部参数，但这会把显存压力迅速放大：除了模型权重，还要保存梯度和优化器状态。很多场景里，我们真正需要的不是重写整个模型，而是在已有能力上做小幅适配。
 
-LoRA 的思路是冻结原始权重，只增加一条低秩可训练旁路。第 13 节确定 SFT 监督目标，LoRA 决定哪些参数承担更新；两者可以组合成 LoRA SFT，并由第 15 节的有效更新循环推进。本节沿着“挂载位置—低秩增量—权重合并”观察这条旁路，完成后能够判断参数预算、表示路径和部署形态之间的关系。
+参数高效微调（parameter-efficient fine-tuning，PEFT）通过只训练部分参数或新增少量参数来适配模型。低秩适配（Low-Rank Adaptation，LoRA）是其中一种方法：冻结原始权重，增加一条可训练的低秩旁路。
+
+SFT的标签和损失决定模型学什么，LoRA决定训练时更新哪些参数。适配器（adapter）在这里指新增的可训练低秩分支，挂载位置就是接入该分支的目标线性层。本节先选择要修改的线性层，再计算低秩分支的输出，最后将增量合并回基座；据此可以算出新增多少参数、检查首步梯度，并比较合并前后的推理输出。
 
 **关键词：** `LoRA`, `PEFT`, `adapter`, `target modules`
 
@@ -39,19 +41,19 @@ LoRA 的思路是冻结原始权重，只增加一条低秩可训练旁路。第
 ---
 ## Step 1：LoRA 如何选择更新路径并贯穿训练与部署
 
-全参微调会更新模型中的全部可训练权重。LoRA 保持基座线性变换冻结，只在选定表示路径旁增加低秩增量；选择挂载范围决定哪部分表示允许变化，低秩旁路随后承担训练更新，并可在部署前合并回基座权重。
+全参微调会更新模型中的全部可训练权重。LoRA 保持基座线性变换冻结，只在选定线性层旁增加低秩分支；注意力投影负责查询、内容读取等信息交互，前馈网络（MLP）投影负责逐词元的通道变换；选择哪些层挂载适配器，就决定在哪里加入可训练增量，并可在部署前合并回基座权重。
 
 | 位置 | 可适配的投影范围 | 改变的表示路径 | 适合的起点 |
 | --- | --- | --- | --- |
-| Attention | 查询与值投影 | 查询和内容聚合路径 | 参数预算很紧时的基础选择 |
-| Attention | 查询、键、值与输出投影 | 更完整的注意力表示 | 需要提高注意力适配容量时 |
-| MLP | 门控、扩展与回投影 | token 级前馈表示 | 需要提高前馈适配容量时 |
+| 注意力 | 查询与值投影 | 查询和内容聚合路径 | 参数预算很紧时的基础选择 |
+| 注意力 | 查询、键、值与输出投影 | 更完整的注意力表示 | 需要提高注意力适配容量时 |
+| 前馈网络 | 门控、扩展与回投影 | 逐词元前馈表示 | 需要提高前馈适配容量时 |
 
 ![LoRA 训练旁路与部署合并图](../public/02_PyTorch_Algorithms/14_lora_adapter.svg)
 
 ## Step 2：低秩参数、缩放与零初始化如何确定训练起点
 
-挂载位置确定后，还需要回答三个问题：低秩旁路能否保持原层的输入输出维度、训练开始时是否扰动冻结基座，以及不同 Rank 下怎样控制增量幅度。下面先由维度确定 A/B 的形状，再引入缩放与零初始化。
+挂载位置确定后，还需要回答三个问题：低秩旁路能否保持原层的输入输出维度、训练开始时是否扰动冻结基座，以及不同秩下怎样控制增量幅度。矩阵的秩可理解为独立方向的数量；LoRA用较少方向描述权重变化，配置的秩给出增量秩的上限。下面先由维度确定A/B的形状，再引入缩放与零初始化。
 
 设层输入为 $x\in\mathbb{R}^{d_{in}}$，层输出为 $h\in\mathbb{R}^{d_{out}}$，冻结权重为 $W_0\in\mathbb{R}^{d_{out}\times d_{in}}$。LoRA 在主变换旁并联两个小矩阵：$A$ 将输入映射到秩 $r$，$B$ 再映射回输出空间；$\Delta W$ 表示低秩权重增量，$\alpha$ 是控制增量幅度的缩放超参数。标准缩放取 $s=\alpha/r$，因此权重增量与前向输出分别为：
 
@@ -61,7 +63,7 @@ $$\Delta W=sBA, \qquad h=W_0x+\Delta Wx=W_0x+\frac{\alpha}{r}BAx$$
 
 $$N_{\mathrm{LoRA}}=r d_{in}+d_{out}r=r(d_{in}+d_{out})$$
 
-训练开始时令 $B=0$，因此 $\Delta W=0$，模块输出与冻结基座一致。此时 $B$ 可以在第一个反向传播步骤获得梯度，而 $A$ 的梯度因乘有 $B$ 暂时为零；当 $B$ 离开零点后，$A$ 才开始接收非零梯度。这是零初始化带来的预期更新顺序，不代表梯度链路断开。
+训练开始时令 $B=0$，因此 $\Delta W=0$，模块输出与冻结基座一致。此时 $B$ 可以在第一个反向传播步骤获得梯度，而 $A$ 的梯度因乘有 $B$ 暂时为零；当 $B$ 离开零点后，$A$ 才开始接收非零梯度。这是零初始化带来的预期更新顺序，不代表梯度链路断开。旁路还可使用随机失活（Dropout）：训练时随机屏蔽部分输入特征以减轻过拟合，评估与合并核对时关闭。
 
 | 对象 | 形状或定义 | 训练时的作用 |
 | --- | --- | --- |
@@ -110,8 +112,6 @@ import math
 
 
 ```python
-# 题目设计：冻结主权重，只让 LoRA 旁路承担可训练增量。
-# 三个 TODO 分别覆盖低秩参数契约、旁路前向和幂等 merge；初始化细节由骨架提供。
 def count_trainable_parameters(module: nn.Module) -> int:
     """统计模块中 requires_grad=True 的参数数量。"""
     return sum(p.numel() for p in module.parameters() if p.requires_grad)
@@ -135,11 +135,11 @@ class LoRALinear(nn.Module):
     def __init__(self, in_features: int, out_features: int, r: int = 8, lora_alpha: int = 16, lora_dropout: float = 0.0):
         """冻结基础线性层，只训练低秩 LoRA 旁路。"""
         super().__init__()
-        if in_features <= 0 or out_features <= 0:
+        if any(type(value) is not int or value <= 0 for value in (in_features, out_features)):
             raise ValueError('in_features 和 out_features 必须为正数')
-        if r <= 0:
+        if type(r) is not int or r <= 0:
             raise ValueError('r 必须为正数')
-        if lora_alpha <= 0:
+        if not math.isfinite(lora_alpha) or lora_alpha <= 0:
             raise ValueError('lora_alpha 必须为正数')
         if lora_dropout < 0.0 or lora_dropout > 1.0:
             raise ValueError('lora_dropout 必须位于 [0, 1]')
@@ -202,8 +202,6 @@ class LoRALinear(nn.Module):
 运行下方 CPU 机制测试，检查参数冻结、低秩矩阵形状、梯度路径、旁路前向公式和合并不变量。
 
 ```python
-# 测试设计：验证冻结参数、LoRA 形状、梯度路径、前向公式和 merge 不变量。
-# baseline 是冻结主线性层；candidate 是 LoRA 旁路或 merge 后的等价路径。
 def _build_lora_test_case():
     """构造固定尺寸的 CPU-first LoRA 测试样本。"""
     torch.manual_seed(42)
@@ -257,7 +255,7 @@ def _assert_forward_and_merge(layer, x):
 
 def _assert_lora_boundaries(in_dim, out_dim, x):
     """验证非法参数和 dropout 的训练/评估行为。"""
-    for kwargs in ({'r': 0}, {'lora_alpha': 0}, {'lora_dropout': 1.1}):
+    for kwargs in ({'r': 0}, {'r': 1.5}, {'r': True}, {'lora_alpha': 0}, {'lora_alpha': float('inf')}, {'lora_alpha': float('nan')}, {'lora_dropout': 1.1}):
         try:
             LoRALinear(in_dim, out_dim, **kwargs)
         except ValueError:
@@ -272,31 +270,28 @@ def _assert_lora_boundaries(in_dim, out_dim, x):
     dropout_layer.train()
     assert not torch.allclose(dropout_layer(x), dropout_layer(x)), "train 模式应启用 LoRA dropout"
 
-def test_lora():
-    """运行 CPU-first 的 LoRA 机制测试。"""
-    try:
-        layer, x, in_dim, out_dim = _build_lora_test_case()
-        _assert_parameter_contract(layer, in_dim, out_dim)
-        _assert_gradient_route(layer, x)
-        # 清理上一项梯度，避免影响后续仅比较前向的机制证据。
-        layer.zero_grad(set_to_none=True)
-        _assert_forward_and_merge(layer, x)
-        _assert_lora_boundaries(in_dim, out_dim, x)
-        print("✅ LoRA 核心算子、参数统计和 merge 逻辑实现正确。")
-        return
 
-    except NotImplementedError:
-        print("请先完成 TODO 部分的代码！")
-        raise
-    except (AttributeError, NameError, TypeError, ValueError) as e:
-        print("代码可能未完成，导致变量未定义" if isinstance(e, NameError) else "代码可能未完成，导致了类型错误")
-        raise NotImplementedError("请先完成 TODO 部分的代码！") from e
-    except AssertionError as e:
-        print(f"❌ 测试失败: {e}")
-        raise NotImplementedError("请先完成 TODO 部分的代码！") from e
-    except Exception as e:
-        print(f"❌ 发生异常: {e}")
-        raise
+def _assert_frozen_base_input_gradient():
+    """基座参数冻结后，输入激活仍通过基座变换接收梯度。"""
+    layer = LoRALinear(4, 3, r=2)
+    x = torch.randn(2, 4, requires_grad=True)
+    layer(x).sum().backward()
+    expected = layer.linear.weight.detach().sum(dim=0).expand_as(x)
+    torch.testing.assert_close(x.grad, expected)
+    assert layer.linear.weight.grad is None
+
+
+def test_lora():
+    """核对冻结、初始化梯度、前向及幂等合并。"""
+    layer, x, in_dim, out_dim = _build_lora_test_case()
+    _assert_parameter_contract(layer, in_dim, out_dim)
+    _assert_gradient_route(layer, x)
+    layer.zero_grad(set_to_none=True)
+    _assert_forward_and_merge(layer, x)
+    _assert_lora_boundaries(in_dim, out_dim, x)
+    _assert_frozen_base_input_gradient()
+    print("PASSED: LoRA参数、梯度路径和合并不变量核对通过。")
+
 
 test_lora()
 
@@ -323,14 +318,28 @@ def count_trainable_parameters(module: nn.Module) -> int:
 
 
 class LoRALinear(nn.Module):
-    """在线性层旁路中加入可训练低秩增量的 LoRA 模块。"""
+    """在线性层旁路中加入可训练低秩增量的 LoRA 模块。
+
+    主线性层被冻结；`lora_A` 和 `lora_B` 学习增量，`merged` 记录增量是否已经写回主权重。
+
+    Args:
+        in_features: 输入特征维度。
+        out_features: 输出特征维度。
+        r: LoRA 低秩维度，必须为正数。
+        lora_alpha: 控制旁路增量的缩放系数。
+        lora_dropout: 仅作用于未合并 LoRA 分支输入的 dropout 概率。
+
+    Note:
+        `merged=False` 时执行主分支与 LoRA 旁路；`merged=True` 时只执行已更新的主分支。
+    """
     def __init__(self, in_features: int, out_features: int, r: int = 8, lora_alpha: int = 16, lora_dropout: float = 0.0):
+        """冻结基础线性层，只训练低秩 LoRA 旁路。"""
         super().__init__()
-        if in_features <= 0 or out_features <= 0:
+        if any(type(value) is not int or value <= 0 for value in (in_features, out_features)):
             raise ValueError('in_features 和 out_features 必须为正数')
-        if r <= 0:
+        if type(r) is not int or r <= 0:
             raise ValueError('r 必须为正数')
-        if lora_alpha <= 0:
+        if not math.isfinite(lora_alpha) or lora_alpha <= 0:
             raise ValueError('lora_alpha 必须为正数')
         if lora_dropout < 0.0 or lora_dropout > 1.0:
             raise ValueError('lora_dropout 必须位于 [0, 1]')
@@ -338,15 +347,13 @@ class LoRALinear(nn.Module):
         self.lora_alpha = lora_alpha
         self.scaling = self.lora_alpha / self.r
         self.lora_dropout = nn.Dropout(lora_dropout)
-        self.merged = False
+        self.merged = False  # 记录 LoRA 增量是否已合并到主权重
 
-        # TODO 1：建立冻结基座与可训练低秩旁路。
+        # TODO 1：建立冻结基座与可训练低秩旁路
         self.linear = nn.Linear(in_features, out_features, bias=False)
         self.linear.weight.requires_grad = False
-
         self.lora_A = nn.Parameter(torch.empty(r, in_features))
         self.lora_B = nn.Parameter(torch.empty(out_features, r))
-
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -356,12 +363,14 @@ class LoRALinear(nn.Module):
         nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5))
         nn.init.zeros_(self.lora_B)
 
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """计算基础线性层输出，并在未 merge 时叠加 LoRA 增量。"""
-        # TODO 2：计算未合并状态的低秩旁路增量。
         result = self.linear(x)
         if self.merged:
             return result
+
+        # TODO 2：计算未合并状态的低秩旁路增量
         adapter_input = self.lora_dropout(x)
         adapter_delta = (adapter_input @ self.lora_A.T) @ self.lora_B.T * self.scaling
         return result + adapter_delta
@@ -370,7 +379,8 @@ class LoRALinear(nn.Module):
         """将 LoRA 增量合并到基础权重，并保证重复调用安全。"""
         if self.merged:
             return
-        # TODO 3：生成与基座同形状的合并增量。
+
+        # TODO 3：生成与基座同形状的合并增量
         delta_weight = (self.lora_B @ self.lora_A) * self.scaling
         with torch.no_grad():
             self.linear.weight.add_(delta_weight)
@@ -382,19 +392,18 @@ class LoRALinear(nn.Module):
 
 #### TODO 1：建立冻结基座与低秩参数
 
-- 基座权重冻结，`lora_A` 与 `lora_B` 保持可训练。
-- A/B 形状分别为 `[r, in_features]` 与 `[out_features, r]`，可训练参数量为 `r × (in_features + out_features)`。
-- B 初始化为零，使初始增量为零；首步 B 获得非零梯度，B 离开零点后 A 才获得非零梯度。
+- A把输入映射到秩空间，B映射回输出空间，因此形状分别为 `[r, in_features]` 与 `[out_features, r]`。基座权重冻结，新增两组矩阵才计入可训练参数。
+- 答案分别创建冻结线性层和可训练参数。参数契约测试核对形状及数量；零初始化测试确认起始输出保持基座结果，B先获得非零梯度，随后A才开始更新。
 
 #### TODO 2：计算低秩旁路
 
-- LoRA 分支按 `(x @ A.T) @ B.T × alpha / r` 计算，并与冻结主分支相加。
-- dropout 只作用于 LoRA 分支；测试检查基座梯度为空而 A/B 获得梯度。
+- 旁路对输入依次应用随机失活、A、B及缩放，再与主分支相加。冻结权重只阻止该权重更新，仍要保留对输入激活的梯度。
+- 答案保持两条分支共享输入；显式参考式核对数值，梯度测试核对A/B启动顺序与输入梯度，随机失活测试分别检查训练和评估模式。
 
 #### TODO 3：合并权重
 
-- 将 `(B @ A) × alpha / r` 一次性写回基座权重。
-- 测试检查合并前后输出一致，并确认重复调用不会再次修改权重。
+- 部署时将缩放后的低秩增量写回基座，可以去掉额外旁路计算。合并与未合并输出的比较使用评估模式，排除随机失活。
+- 答案生成与基座同形状的增量，由骨架完成一次写回并记录状态。前向与合并测试同时比较输出和第二次调用后的权重，防止重复叠加。
 <a id="framework-check"></a>
 
 ## 框架一致性核对（可选）
@@ -739,9 +748,10 @@ else:
 | 证据与决策 | `decision`、`merge_decision` | `accept_mechanism`；`tune` | 接受训练机制证据，同时保留独立的合并风险 |
 ## 相关阅读
 
-- [15. SFT Training Lifecycle | SFT 有效更新与训练闭环](../02_PyTorch_Algorithms/15_End_to_End_Fine_Tuning_Experiment.md)
-- [26. QLoRA and 4bit Quantization | QLoRA 与 4-bit 量化](../02_PyTorch_Algorithms/26_QLoRA_and_4bit_Quantization.md)
-- [62. Instruction Fine-Tuning Project | 指令微调项目](../02_PyTorch_Algorithms/62_Instruction_Fine_Tuning_Project.md)
-- [63. LoRA Variants Benchmark | LoRA 变体基准对比](../02_PyTorch_Algorithms/63_LoRA_Variants_Benchmark.md)
-- [LoRA: Low-Rank Adaptation of Large Language Models](https://arxiv.org/abs/2106.09685)
-- [Hugging Face PEFT LoRA guide](https://huggingface.co/docs/peft/en/developer_guides/lora)
+先将旁路接入有效更新，再比较变体与量化基座；项目实验进一步核对适配器交付和任务质量。
+
+- [15. SFT 有效更新与训练闭环](./15_End_to_End_Fine_Tuning_Experiment.md)：保留监督词元权重，核对更新与评估状态。
+- [31. LoRA 变体缩放与预算](./31_LoRA_Variants_Theory.md)：区分秩、缩放与幅值参数。
+- [26. QLoRA 与4-bit量化](./26_QLoRA_and_4bit_Quantization.md)：观察冻结基座改变存储表示后的训练路径。
+- [63. LoRA 变体基准对比](./63_LoRA_Variants_Benchmark.md)：在相同任务与预算下比较候选。
+- [LoRA 原论文](https://arxiv.org/abs/2106.09685)与[PEFT LoRA文档](https://huggingface.co/docs/peft/en/developer_guides/lora)：对照低秩参数化、注入与合并实现。
