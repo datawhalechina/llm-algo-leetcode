@@ -22,6 +22,7 @@
     },
     {
       "semantic_id": "PT-SFT-DELIVERY",
+      "default_experiment_contract": "benchmarks/contracts/sft_delivery_v4.json",
       "notebook": "02_PyTorch_Algorithms/62_Instruction_Fine_Tuning_Project.ipynb",
       "title": "指令微调项目",
       "primary_owner": "post_training_optimization",
@@ -31,6 +32,7 @@
     },
     {
       "semantic_id": "PT-LORA-VARIANTS",
+      "default_experiment_contract": "benchmarks/contracts/lora_variant_selection_v3.json",
       "notebook": "02_PyTorch_Algorithms/63_LoRA_Variants_Benchmark.ipynb",
       "title": "LoRA 变体对比项目",
       "primary_owner": "post_training_optimization",
@@ -40,6 +42,7 @@
     },
     {
       "semantic_id": "PT-SFT-DATA-QUALITY",
+      "default_experiment_contract": "benchmarks/contracts/sft_data_admission_v2.json",
       "notebook": "02_PyTorch_Algorithms/64_SFT_Data_Quality_Project.ipynb",
       "title": "SFT 数据质量项目",
       "primary_owner": "post_training_optimization",
@@ -49,6 +52,7 @@
     },
     {
       "semantic_id": "PT-QLORA-SELECTION",
+      "default_experiment_contract": "benchmarks/contracts/qlora_selection_v2.json",
       "notebook": "02_PyTorch_Algorithms/65_QLoRA_Selection_Project.ipynb",
       "title": "QLoRA 选型项目",
       "primary_owner": "post_training_optimization",

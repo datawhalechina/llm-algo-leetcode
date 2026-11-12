@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
   <title id="title">SFT 数据从来源到训练快照的准入链路</title>
-  <desc id="desc">数据依次经过身份登记、稳定切分、监督审计和准入交付。</desc>
+  <desc id="desc">数据固定来源与序列协议，收集监督事实，再清洗切分并检查重复和任务重合，形成准入结果。</desc>
   <defs>
     <marker id="neutral" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker>
     <marker id="green" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#16a34a"/></marker>
@@ -12,7 +12,7 @@
   </defs>
   <rect width="1200" height="520" fill="#f8fafc"/>
   <text x="600" y="44" text-anchor="middle" class="title">从原始数据到可训练快照</text>
-  <text x="600" y="73" text-anchor="middle" class="sub">每一步都产生可追溯事实，后一步不能绕过前一步</text>
+  <text x="600" y="73" text-anchor="middle" class="sub">样本身份与序列协议共同限定准入结果的适用范围</text>
 
   <rect x="55" y="130" width="235" height="125" rx="16" fill="#dbeafe" stroke="#60a5fa" stroke-width="2"/>
   <text x="172" y="169" text-anchor="middle" class="head">身份登记</text>
@@ -20,14 +20,14 @@
   <text x="172" y="230" text-anchor="middle" class="body">审计规则版本</text>
 
   <rect x="330" y="130" width="235" height="125" rx="16" fill="#ede9fe" stroke="#a78bfa" stroke-width="2"/>
-  <text x="447" y="169" text-anchor="middle" class="head">稳定切分</text>
-  <text x="447" y="203" text-anchor="middle" class="body">按稳定身份选样</text>
-  <text x="447" y="230" text-anchor="middle" class="body">保存训练 / 评测清单</text>
+  <text x="447" y="169" text-anchor="middle" class="head">序列与监督审计</text>
+  <text x="447" y="203" text-anchor="middle" class="body">固定模板与分词器</text>
+  <text x="447" y="230" text-anchor="middle" class="body">监督词元 · 截断</text>
 
   <rect x="605" y="130" width="235" height="125" rx="16" fill="#ffedd5" stroke="#fb923c" stroke-width="2"/>
-  <text x="722" y="169" text-anchor="middle" class="head">监督审计</text>
-  <text x="722" y="203" text-anchor="middle" class="body">字段 · 重复 · 截断</text>
-  <text x="722" y="230" text-anchor="middle" class="body">监督 Token · 跨集泄漏</text>
+  <text x="722" y="169" text-anchor="middle" class="head">清洗与切分</text>
+  <text x="722" y="203" text-anchor="middle" class="body">清洗后固定随机切分</text>
+  <text x="722" y="230" text-anchor="middle" class="body">检查重复与跨集重合</text>
 
   <rect x="880" y="130" width="265" height="125" rx="16" fill="#dcfce7" stroke="#4ade80" stroke-width="2"/>
   <text x="1012" y="169" text-anchor="middle" class="head">准入交付</text>

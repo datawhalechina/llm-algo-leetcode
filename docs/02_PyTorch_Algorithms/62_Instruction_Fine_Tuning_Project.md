@@ -14,7 +14,7 @@
 
 ## 本节导读
 
-本节读取 64 节的数据准入结果和 63 节的 LoRA 选型方案，按固定配置完成一次可恢复训练。训练交付包括检查点（checkpoint）、最终适配器（adapter）、分词器（tokenizer）、重载评测和不可变产物清单（manifest），并作为 DPO 或 GRPO 的基线。
+本节以 63 节 LoRA 选型清单为唯一直接上游，沿其血缘引用读取 64 节数据准入快照，按固定配置完成一次可恢复训练。训练交付包括检查点（checkpoint）、最终适配器（adapter）、分词器（tokenizer）、重载评测和不可变产物清单（manifest），并作为 DPO 或 GRPO 的基线。
 
 **关键词：** `SFT`, `检查点恢复`, `适配器`, `产物清单`
 
@@ -26,7 +26,7 @@
 - [Part 02 · 15 端到端微调实验](./15_End_to_End_Fine_Tuning_Experiment.md)
 - [Part 02 · 64 SFT 数据质量项目](./64_SFT_Data_Quality_Project.md)
 - [Part 02 · 63 LoRA 变体选型项目](./63_LoRA_Variants_Benchmark.md)
-- [Part 02 · 65 QLoRA 低资源选型项目](./65_QLoRA_Selection_Project.md)
+- 可选低资源对照（不是本页输入）：[Part 02 · 65 QLoRA 低资源选型项目](./65_QLoRA_Selection_Project.md)
 
 ---
 ### Step 1：从选定方案走到可交付训练产物
@@ -38,7 +38,7 @@
 | 启动检查 | 数据准入与方案选型结果 | 上游证据是否完整且相互一致 | 固定训练身份 |
 | 训练与保存 | 固定配置和目标步数 | 梯度、参数增量和有限值是否可解释；中断前是否保存了继续训练所需状态 | 阶段检查点与更新摘要 |
 | 恢复与完成 | 检查点和剩余训练预算 | 是否从正确步数继续且达到目标步数 | 最终候选 |
-| 重载与交付 | 保存产物和独立评测集 | 离开训练进程后能否复现质量 | SFT 基线产物清单 |
+| 重载与交付 | 保存产物和独立评测集 | 新模型实例能否复现质量（当前不退出进程） | SFT 基线产物清单 |
 
 ![指令微调的交付判断链](../public/02_PyTorch_Algorithms/62_instruction_finetuning_flow.svg)
 
@@ -82,6 +82,23 @@ CPU 题目依次检查更新方案清单、检查点摘要和独立评测结果�
 
 ```python
 from typing import Any, Dict, List
+import math
+
+def finite_number(value, *, minimum=0.0):
+    """拒绝布尔值、非数、NaN、Inf 及小于合法下界的输入。"""
+    return type(value) in (int, float) and math.isfinite(value) and value >= minimum
+
+def valid_selected_config(config):
+    """候选身份不止名称；检查可训练配置的数值与模块集合。"""
+    return (isinstance(config, dict) and isinstance(config.get('name'), str)
+            and bool(config['name'].strip())
+            and type(config.get('rank')) is int and config['rank'] > 0
+            and type(config.get('alpha')) is int and config['alpha'] > 0
+            and finite_number(config.get('dropout')) and config['dropout'] < 1
+            and isinstance(config.get('target_modules'), list) and bool(config['target_modules'])
+            and all(isinstance(x, str) and x.strip() for x in config['target_modules'])
+            and len(set(config['target_modules'])) == len(config['target_modules']))
+
 ```
 
 
@@ -98,13 +115,14 @@ def validate_selection_manifest(manifest: Dict[str, Any]) -> Dict[str, Any]:
     repeat_seeds = [item.get("seed") for item in repeat_results]
     checks = {
         "accepted": manifest.get("decision") == "accept",
-        "config_complete": required_config.issubset(selected_config),
+        "config_complete": required_config.issubset(selected_config) and valid_selected_config(selected_config),
         "repeat_complete": len(repeat_results) >= 2 and all(item.get("status") == "ok" for item in repeat_results),
         "same_candidate": False,
         "independent_seeds": False,
         "artifact_present": bool(manifest.get("artifact", {}).get("adapter_path")),
     }
 
+    # 同名但 config 漂移也必须失败（简化输入可省略 config）。
     # checks["same_candidate"] = ???  # 每次复测必须属于 selected_config 指定的候选。
     # checks["independent_seeds"] = ???  # 随机种子必须存在且不能重复。
     # failed_checks, consumable = ???  # 保留失败原因；无失败项时才能进入训练。
@@ -118,8 +136,9 @@ def validate_selection_manifest(manifest: Dict[str, Any]) -> Dict[str, Any]:
 def check_resume_contract(checkpoint: Dict[str, Any], expected: Dict[str, Any]) -> Dict[str, Any]:
     """检查训练身份、状态文件和恢复步数。"""
     identity_keys = ("model_commit", "data_hash", "config_hash")
-    state_complete = all(checkpoint.get(key, False) for key in ("adapter_present", "optimizer_state_present", "scheduler_state_present", "rng_state_present"))
-    progress_valid = 0 < checkpoint.get("global_step", -1) < expected["total_steps"]
+    state_complete = all(checkpoint.get(key) is True for key in ("adapter_present", "optimizer_state_present", "scheduler_state_present", "rng_state_present"))
+    progress_valid = (type(checkpoint.get("global_step")) is int and type(expected.get("total_steps")) is int
+                      and 0 < checkpoint["global_step"] < expected["total_steps"])
     identity_matches = False
     continuation_valid = False
 
@@ -137,8 +156,9 @@ def decide_sft_delivery(evidence: Dict[str, Any], gates: Dict[str, float]) -> Di
     """依据恢复、独立评测、重载一致性和产物哈希形成交付决策。"""
     checks = {
         "execution": evidence.get("status") == "ok",
-        "resume": evidence.get("checkpoint", {}).get("saved_step") == evidence.get("checkpoint", {}).get("resumed_from_step"),
-        "completed_budget": evidence["final_step"] == evidence["target_step"],
+        "resume": type(evidence.get("checkpoint", {}).get("saved_step")) is int and 0 < evidence["checkpoint"]["saved_step"] < evidence["target_step"] and evidence["checkpoint"]["saved_step"] == evidence["checkpoint"].get("resumed_from_step"),
+        "completed_budget": type(evidence["final_step"]) is int and type(evidence["target_step"]) is int and evidence["target_step"] > 0 and evidence["final_step"] == evidence["target_step"],
+        "finite_metrics": all(finite_number(evidence.get(key)) for key in ("initial_eval_loss", "final_eval_loss", "reload_loss_abs_diff")) and all(finite_number(gates.get(key)) for key in ("maximum_eval_loss_regression", "maximum_reload_loss_abs_diff")),
         "quality": evidence["final_eval_loss"] <= evidence["initial_eval_loss"] + gates["maximum_eval_loss_regression"],
         "reload": evidence["reload_loss_abs_diff"] <= gates["maximum_reload_loss_abs_diff"],
         "update_dynamics": evidence.get("update_dynamics", {}).get("finite_all") is True,
@@ -197,6 +217,53 @@ test_selection_manifest_contract()
 test_resume_contract()
 test_sft_delivery_decision()
 print("所有测试通过！")
+def test_sft_fail_closed_boundaries():
+    expected = {'total_steps': 20, 'first_resumed_step': 11}
+    checkpoint = {'global_step': 10, **{key: True for key in ('adapter_present', 'optimizer_state_present', 'scheduler_state_present', 'rng_state_present')}}
+    assert not check_resume_contract(checkpoint, expected)['resumable']
+    e = {'status': 'ok', 'initial_eval_loss': 1.9, 'final_eval_loss': 1.8, 'final_step': 20, 'target_step': 20, 'reload_loss_abs_diff': 0.0, 'checkpoint': {'saved_step': 10, 'resumed_from_step': 10}, 'update_dynamics': {'finite_all': True}, 'artifact': {'sha256': 'abc'}}
+    gates = {'maximum_eval_loss_regression': 0.0, 'maximum_reload_loss_abs_diff': 1e-4}
+    for change in ({'checkpoint': {}}, {'reload_loss_abs_diff': -1}, {'final_eval_loss': float('nan')}, {'initial_eval_loss': float('inf')}, {'target_step': True}):
+        assert decide_sft_delivery({**e, **change}, gates)['decision'] == 'reject'
+    for key in gates:
+        assert decide_sft_delivery(e, {**gates, key: float('inf')})['decision'] == 'reject'
+    cfg = {'name': 'r8', 'rank': 8, 'alpha': 16, 'dropout': 0., 'target_modules': ['q_proj']}
+    m = {'decision': 'accept', 'selected_config': cfg, 'repeat_results': [{'name': 'r8', 'seed': 1, 'status': 'ok'}, {'name': 'r8', 'seed': 2, 'status': 'ok'}], 'artifact': {'adapter_path': 'a'}}
+    assert validate_selection_manifest(m)['consumable']
+    for repeats in ([m['repeat_results'][0]] * 2, [{**x, 'config': {**cfg, 'rank': 16}} for x in m['repeat_results']]):
+        assert not validate_selection_manifest({**m, 'repeat_results': repeats})['consumable']
+
+test_sft_fail_closed_boundaries()
+
+def _load_visible_run_gate():
+    """仅编译页面纯函数，禁止执行 GPU、导出和结果登记单元。"""
+    import ast
+    import json
+    from pathlib import Path
+    filename = '62_Instruction_Fine_Tuning_Project.ipynb'
+    choices = [Path('02_PyTorch_Algorithms') / filename, Path(filename)]
+    path = next(path for path in choices if path.is_file())
+    cells = json.loads(path.read_text(encoding='utf-8'))['cells']
+    tree = ast.parse(''.join(next(cell['source'] for cell in cells if cell['id'] == '2ababa5c')))
+    functions = ast.Module(body=[node for node in tree.body if isinstance(node, ast.FunctionDef)], type_ignores=[])
+    scope = dict(globals())
+    scope.update(SEEDS=(17, 29, 43), QUALITY_TOLERANCE=.1, MAX_STEP_TIME_REGRESSION_RATIO=.15, MIN_MEMORY_SAVING_RATIO=.1)
+    exec(compile(functions, 'visible_run_gate', 'exec'), scope)
+    return scope['decide_sft_delivery_for_run']
+
+def test_visible_sft_run_gate():
+    gate = _load_visible_run_gate()
+    e = {'measurement_version': 'sft-delivery-recovery/v4', 'status': 'ok', 'initial_eval_loss': 1.9, 'final_eval_loss': 1.8, 'reload_loss_abs_diff': 0., 'checkpoint': {'saved_step': 12, 'resumed_from_step': 12, 'completed_step': 24, 'training_update_count': 24, 'optimizer_state_present': True, 'scheduler_state_present': True, 'rng_state_present': True, 'identity_verified': True, 'files_sha256_verified': True, 'sample_cursor_verified': True}, 'update_dynamics': {'finite_all': True}, 'artifact': {'sha256': 'abc'}}
+    limits = {'maximum_eval_loss': 2., 'maximum_eval_loss_regression': 0., 'maximum_reload_loss_abs_diff': 1e-4}
+    assert gate(e, limits, 24)['decision'] == 'accept'
+    assert gate(e, limits, 30)['decision'] == 'reject'
+    for value in (float('nan'), float('inf'), -1):
+        assert gate({**e, 'reload_loss_abs_diff': value}, limits, 24)['decision'] == 'reject'
+    for key in ('scheduler_state_present', 'rng_state_present', 'identity_verified', 'files_sha256_verified', 'sample_cursor_verified'):
+        assert gate({**e, 'checkpoint': {**e['checkpoint'], key: False}}, limits, 24)['decision'] == 'reject'
+
+test_visible_sft_run_gate()
+
 ```
 
 ---
@@ -225,14 +292,14 @@ def validate_selection_manifest(manifest: Dict[str, Any]) -> Dict[str, Any]:
     repeat_seeds = [item.get("seed") for item in repeat_results]
     checks = {
         "accepted": manifest.get("decision") == "accept",
-        "config_complete": required_config.issubset(selected_config),
+        "config_complete": required_config.issubset(selected_config) and valid_selected_config(selected_config),
         "repeat_complete": len(repeat_results) >= 2 and all(item.get("status") == "ok" for item in repeat_results),
         "same_candidate": False,
         "independent_seeds": False,
         "artifact_present": bool(manifest.get("artifact", {}).get("adapter_path")),
     }
-    checks["same_candidate"] = bool(selected_name) and all(item.get("name") == selected_name for item in repeat_results)
-    checks["independent_seeds"] = None not in repeat_seeds and len(repeat_seeds) == len(set(repeat_seeds))
+    checks["same_candidate"] = bool(selected_name) and all(item.get("name") == selected_name and ("config" not in item or item["config"] == selected_config) for item in repeat_results)
+    checks["independent_seeds"] = all(type(seed) is int and seed >= 0 for seed in repeat_seeds) and len(repeat_seeds) == len(set(repeat_seeds))
     failed_checks = [name for name, passed in checks.items() if not passed]
     consumable = not failed_checks
     return {"consumable": consumable, "failed_checks": failed_checks}
@@ -242,10 +309,11 @@ def validate_selection_manifest(manifest: Dict[str, Any]) -> Dict[str, Any]:
 def check_resume_contract(checkpoint: Dict[str, Any], expected: Dict[str, Any]) -> Dict[str, Any]:
     """检查训练身份、状态文件和恢复步数。"""
     identity_keys = ("model_commit", "data_hash", "config_hash")
-    state_complete = all(checkpoint.get(key, False) for key in ("adapter_present", "optimizer_state_present", "scheduler_state_present", "rng_state_present"))
-    progress_valid = 0 < checkpoint.get("global_step", -1) < expected["total_steps"]
-    identity_matches = all(checkpoint.get(key) == expected.get(key) for key in identity_keys)
-    continuation_valid = expected.get("first_resumed_step") == checkpoint.get("global_step", -1) + 1
+    state_complete = all(checkpoint.get(key) is True for key in ("adapter_present", "optimizer_state_present", "scheduler_state_present", "rng_state_present"))
+    progress_valid = (type(checkpoint.get("global_step")) is int and type(expected.get("total_steps")) is int
+                      and 0 < checkpoint["global_step"] < expected["total_steps"])
+    identity_matches = all(isinstance(expected.get(key), str) and bool(expected[key].strip()) and checkpoint.get(key) == expected[key] for key in identity_keys)
+    continuation_valid = progress_valid and type(expected.get("first_resumed_step")) is int and expected["first_resumed_step"] == checkpoint["global_step"] + 1
     resumable = identity_matches and state_complete and progress_valid and continuation_valid
     return {"resumable": resumable, "identity_matches": identity_matches, "state_complete": state_complete, "progress_valid": progress_valid, "continuation_valid": continuation_valid}
 
@@ -255,8 +323,9 @@ def decide_sft_delivery(evidence: Dict[str, Any], gates: Dict[str, float]) -> Di
     """依据恢复、独立评测、重载一致性和产物哈希形成交付决策。"""
     checks = {
         "execution": evidence.get("status") == "ok",
-        "resume": evidence.get("checkpoint", {}).get("saved_step") == evidence.get("checkpoint", {}).get("resumed_from_step"),
-        "completed_budget": evidence["final_step"] == evidence["target_step"],
+        "resume": type(evidence.get("checkpoint", {}).get("saved_step")) is int and 0 < evidence["checkpoint"]["saved_step"] < evidence["target_step"] and evidence["checkpoint"]["saved_step"] == evidence["checkpoint"].get("resumed_from_step"),
+        "completed_budget": type(evidence["final_step"]) is int and type(evidence["target_step"]) is int and evidence["target_step"] > 0 and evidence["final_step"] == evidence["target_step"],
+        "finite_metrics": all(finite_number(evidence.get(key)) for key in ("initial_eval_loss", "final_eval_loss", "reload_loss_abs_diff")) and all(finite_number(gates.get(key)) for key in ("maximum_eval_loss_regression", "maximum_reload_loss_abs_diff")),
         "quality": evidence["final_eval_loss"] <= evidence["initial_eval_loss"] + gates["maximum_eval_loss_regression"],
         "reload": evidence["reload_loss_abs_diff"] <= gates["maximum_reload_loss_abs_diff"],
         "update_dynamics": evidence.get("update_dynamics", {}).get("finite_all") is True,
@@ -278,7 +347,7 @@ def decide_sft_delivery(evidence: Dict[str, Any], gates: Dict[str, float]) -> Di
 
 - **判断依据**：模型、数据或配置变化时，旧优化器状态不再属于当前训练；恢复首步还必须紧接保存步。
 - **实现动作**：分别检查身份、状态文件、保存进度和恢复首步是否连续。
-- **测试证据**：数据哈希漂移、缺失优化器状态和恢复首步错位都会阻止恢复。
+- **测试证据**：数据哈希漂移、缺失调度器状态和恢复首步错位都会阻止恢复；新增边界用例还检查缺失身份。
 
 #### TODO 3：判断交付
 
@@ -293,169 +362,170 @@ CPU 题目区验证选型、恢复和交付条件；GPU 实验读取 63 节的 L
 |:---|:---|:---|:---|
 | CPU 交付状态机 | 人工构造的选型、检查点与评测摘要 | 选型一致性、恢复连续性、采用状态 | 只确认交付逻辑，不证明真实训练完成 |
 | 真实 SFT 交付 | 已接受的数据和 LoRA 选型清单 | 中断恢复、更新动力学、相对评测、重载一致性与产物哈希 | 输出 SFT 基线清单；不证明偏好、安全或通用能力保留 |
-### 5.1 环境、输入资产与固定条件
+### 5.1 运行意图与配置
 
-按[后训练优化 Quickstart](../topic_discussion/post_training_optimization/quickstart.md#pt-sft-cuda-quickstart)准备 `PT-SFT-CUDA` 环境。12 GB 单卡使用 Qwen2.5-0.5B、长度 256 和 LoRA 适配器；已登记实验的峰值分配约为 1.77 GiB。
+按[后训练优化 Quickstart](../topic_discussion/post_training_optimization/quickstart.md#pt-sft-cuda-quickstart)准备 `PT-SFT-CUDA` 环境。固定实验使用 Qwen2.5-0.5B、长度 256 和 LoRA，历史运行峰值分配约 1.77 GiB。先用 `prepare` 核对输入，再以唯一标签运行 `measure`；采集完成后切换到 `close`，重新读取记录并登记。准备和登记阶段均无需加载模型或占用 GPU。
+
 
 ```python
-from pathlib import Path
-import json
+RUN_LABEL = "replace_with_unique_label"  # 测量或登记前设置唯一标签。
+RUN_STAGE = "prepare"  # prepare：只读准备；measure：GPU训练；close：读取并登记。
 
-from tools.project_runtime import resolve_project_root
-
-RUN_MODE = "dry_run"  # 默认值 dry_run：只检查配置；改为 real_gpu 执行真实训练。
-RUN_LABEL = "rtx5070ti_sft_delivery_v3"  # 新交付契约的推荐标签；保留 v2_1 作为历史证据。
-PROFILE_ID = "PT-SFT-CUDA"
-SEMANTIC_ID = "PT-SFT-DELIVERY"
-SCHEMA_VERSION = "fine-tuning-project/v1"
-
-PROJECT_ROOT = resolve_project_root()
-SELECTION_MANIFEST = PROJECT_ROOT / "benchmarks/results/63_lora_variants/lora_variant_delivery_lora_variant_selection_v2.json"  # 63 节配对重复选型结果。
-MODEL_ID = "Qwen/Qwen2.5-0.5B"  # 必须与选型清单一致。
-MAX_LENGTH = 256  # 必须与数据审计和选型实验负载一致。
-TRAIN_EXAMPLES = 48  # 默认训练样本数；增大会提高训练时间。
-EVALUATION_EXAMPLES = 16  # 默认独立评测样本数；增大会提高评测时间。
-TOTAL_STEPS = 24  # 完整交付预算，高于候选筛选预算。
-CHECKPOINT_STEP = 12  # 在中点保存并强制恢复。
-LEARNING_RATE = 2e-4  # 默认学习率；修改后必须使用新标签重新形成基线。
-DTYPE = "bfloat16"  # 默认计算精度；可改为 float16，但需重新验证稳定性。
-SEED = 42  # 默认随机种子；用于复现训练与评测。
-GATES = {"maximum_eval_loss": 2.0, "maximum_eval_loss_regression": 0.0, "maximum_reload_loss_abs_diff": 1e-4, "require_finite_updates": True}
-
-RESULTS_DIR = PROJECT_ROOT / "benchmarks/results/62_sft_delivery"
-EVIDENCE_PATH = RESULTS_DIR / f"sft_delivery_evidence_{RUN_LABEL}.json"
-MANIFEST_PATH = RESULTS_DIR / f"sft_delivery_manifest_{RUN_LABEL}.json"
-CHECKPOINT_DIR = RESULTS_DIR / f"checkpoint_{RUN_LABEL}"
-ARTIFACT_DIR = RESULTS_DIR / f"adapter_{RUN_LABEL}"
-print({"run_mode": RUN_MODE, "evidence_path": str(EVIDENCE_PATH), "total_steps": TOTAL_STEPS})
 ```
 
 ### 5.2 预检环境与选型清单
 
-预检拒绝未接受、复测不足或缺少唯一 LoRA 配置的上游结果，并确认所有输出路径尚未存在。
-
-```python
-import torch
-from tools.project_runtime import environment_preflight, require_input_file
-from tools.post_training_project_runtime import run_lora_delivery, save_json_record
-
-def validate_selection_manifest_for_run(manifest):
-    required_config = {"name", "rank", "alpha", "dropout", "target_modules"}
-    repeat_results = manifest.get("repeat_results", [])
-    checks = {
-        "accepted": manifest.get("decision") == "accept",
-        "config_complete": required_config.issubset(manifest.get("selected_config", {})),
-        "repeat_complete": len(repeat_results) >= 2 and all(item.get("status") == "ok" for item in repeat_results),
-        "artifact_present": bool(manifest.get("artifact", {}).get("adapter_path")),
-    }
-    return {"consumable": all(checks.values()), "failed_checks": [name for name, passed in checks.items() if not passed]}
-
-preflight = environment_preflight(
-    torch, required_packages=("transformers", "peft", "datasets", "huggingface_hub"),
-    require_gpu=RUN_MODE == "real_gpu", output_path=EVIDENCE_PATH,
-    environment_profile=PROFILE_ID,
-)
-if not preflight["ready"]:
-    raise RuntimeError(preflight["reasons"])
-selection_path = require_input_file(SELECTION_MANIFEST, "63 节 LoRA 选型清单")
-selection_manifest = json.loads(selection_path.read_text(encoding="utf-8"))
-selection_check = validate_selection_manifest_for_run(selection_manifest)
-if not selection_check["consumable"]:
-    raise RuntimeError(selection_check["failed_checks"])
-for path in (EVIDENCE_PATH, MANIFEST_PATH, CHECKPOINT_DIR, ARTIFACT_DIR):
-    if RUN_MODE == "real_gpu" and path.exists():
-        raise FileExistsError(f"输出已存在，请修改 RUN_LABEL：{path}")
-print({"preflight": preflight["status"], "selected": selection_manifest["selected_config"]["name"]})
-```
+从注册表加载[固定交付合同](../../benchmarks/contracts/sft_delivery_v4.json)，核对63节选型清单及其扫描、64节数据清单的 SHA256。当前合同固定使用历史 v2 选型配置，交付训练从基座重新开始；新的恢复测量版本为 v4。历史绝对引用按合同中的仓库相对路径定位。只有测量阶段检查 GPU 和训练依赖。
 
 
 ```python
-# 显式记录选型结果和训练身份，运行期间保持不变。
-training_identity = {
-    "selection_manifest": str(SELECTION_MANIFEST),
-    "selected_config": selection_manifest["selected_config"],
-    "total_steps": TOTAL_STEPS,
-    "checkpoint_step": CHECKPOINT_STEP,
-    "max_length": MAX_LENGTH,
-    "learning_rate": LEARNING_RATE,
-    "seed": SEED,
-    "update_dynamics_fields": ["finite_all", "gradient_norm_median", "parameter_delta_norm_median", "learning_rate_start", "learning_rate_end"],
-}
-print(training_identity)
+import hashlib
+import importlib
+import json
+import re
+from pathlib import Path
+from tools.project_runtime import bootstrap_project_root
+import tools.post_training_project_runtime as project_runtime
+
+project_runtime = importlib.reload(project_runtime)
+PROJECT_ROOT = bootstrap_project_root()
+if RUN_STAGE not in {"prepare", "measure", "close"}:
+    raise ValueError("阶段必须为prepare、measure或close")
+if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,95}", RUN_LABEL):
+    raise ValueError("运行标签只允许字母、数字、下划线和连字符")
+if RUN_STAGE != "prepare" and RUN_LABEL == "replace_with_unique_label":
+    raise ValueError("测量或登记前请设置唯一标签")
+registry = json.loads((PROJECT_ROOT / "benchmarks/project_registry/part02.json").read_text(encoding="utf-8"))
+entry = next(item for item in registry["projects"] if item["semantic_id"] == "PT-SFT-DELIVERY")
+CONTRACT = json.loads((PROJECT_ROOT / entry["default_experiment_contract"]).read_text(encoding="utf-8"))
+selection_manifest, selection_scan, data_manifest = project_runtime.read_sft_delivery_inputs(PROJECT_ROOT, CONTRACT)
+RESULTS_DIR = PROJECT_ROOT / "benchmarks/results/62_sft_delivery"
+EVIDENCE_PATH = RESULTS_DIR / f"sft_delivery_evidence_{RUN_LABEL}.json"
+REPORT_PATH = RESULTS_DIR / f"sft_delivery_report_{RUN_LABEL}.json"
+MANIFEST_PATH = RESULTS_DIR / f"sft_delivery_manifest_{RUN_LABEL}.json"
+RECEIPT_PATH = RESULTS_DIR / f"sft_delivery_registration_{RUN_LABEL}.json"
+CHECKPOINT_DIR = RESULTS_DIR / f"checkpoint_{RUN_LABEL}"
+ARTIFACT_DIR = RESULTS_DIR / f"adapter_{RUN_LABEL}"
+if RUN_STAGE == "measure":
+    if any(path.exists() for path in (EVIDENCE_PATH, REPORT_PATH, MANIFEST_PATH, RECEIPT_PATH, CHECKPOINT_DIR, ARTIFACT_DIR)):
+        raise FileExistsError("同名记录或训练目录已存在；完成采集后使用close，重新训练需新标签")
+    import torch
+    from tools.project_runtime import environment_preflight
+    preflight = environment_preflight(
+        torch, required_packages=("transformers", "peft", "datasets", "huggingface_hub"),
+        require_gpu=True, environment_profile=CONTRACT["environment_profile"],
+    )
+    if not preflight["ready"]:
+        raise RuntimeError(preflight["reasons"])
+if RUN_STAGE == "close" and not EVIDENCE_PATH.is_file():
+    raise FileNotFoundError(f"缺少原始训练记录：{EVIDENCE_PATH}")
+print({"stage": RUN_STAGE, "profile": CONTRACT["environment_profile"],
+       "selection_label": selection_manifest["run_label"], "evidence_path": str(EVIDENCE_PATH)})
+
 ```
 
 ### 5.3 固定恢复与交付门槛
 
+训练按列表顺序逐条取样，有效 batch 为单卡 micro-batch 1、累积 1。检查点同时记录模型提交、实际分词后的样本顺序摘要、LoRA 配置与下一条样本位置，重建前核对文件哈希。恢复范围是同进程中重建模型、优化器和调度器；保存的状态包括 Torch CPU/单卡 CUDA 随机数及常数学习率调度器。
+
+评测先计算每条样本回答部分（含保留 EOS，排除提示与 padding）的平均 token loss，再对样本等权平均。梯度范数覆盖全部梯度，参数增量探测首个可训练张量的前4096个元素；有限性检查覆盖每次更新后的全部可训练参数。
+
 | 检查 | 固定条件 | 失败结果 |
 |:---|:---|:---|
-| 检查点身份 | 模型提交哈希、数据哈希、配置哈希不变 | 禁止恢复 |
-| 可恢复状态 | 适配器、优化器、调度器与随机数状态齐全 | 禁止恢复 |
-| 训练进度 | 从 `CHECKPOINT_STEP` 继续到 `TOTAL_STEPS`，更新总数完整 | `reject` |
-| 更新过程 | 全部更新有限，并记录梯度范数与参数增量 | `reject` |
-| 独立评测 | 最终损失不超过绝对门槛，且相对初始评测不退化 | `reject` |
-| 重载一致性 | 保存前后评测损失差异不超过容差 | `reject` |
-| 产物完整性 | 适配器、分词器与目录哈希存在 | `reject` |
+| 检查点身份 | 模型、数据顺序、配置与下一条样本位置匹配 | 禁止恢复 |
+| 可恢复状态 | 适配器、优化器、调度器、随机数和进度文件齐全且哈希匹配 | 禁止恢复 |
+| 训练进度 | 从检查点继续至完整预算，更新总数完整 | `reject` |
+| 更新过程 | 损失、梯度范数、参数增量和更新后参数有限 | `reject` |
+| 独立评测 | 满足绝对损失门槛且相对初始评测不退化 | `reject` |
+| 重载一致性 | 保存前后损失差异不超过容差 | `reject` |
+| 本地产物 | 检查点、适配器和目录哈希匹配 | `reject` |
+
 
 ```python
-# 本单元输出固定门槛；完整训练在 5.4 执行。
-print({"gates": GATES, "checkpoint_step": CHECKPOINT_STEP, "total_steps": TOTAL_STEPS})
+MODEL_ID = CONTRACT["model"]["id"]
+MODEL_COMMIT = CONTRACT["model"]["resolved_commit"]
+WORKLOAD = CONTRACT["workload"]
+GATES = CONTRACT["gates"]
+CONTRACT_SHA256 = hashlib.sha256(project_runtime.json_record_bytes(CONTRACT)).hexdigest()
+if not 0 < WORKLOAD["checkpoint_step"] < WORKLOAD["total_steps"]:
+    raise ValueError("检查点必须位于完整训练预算中间")
+print({"model": CONTRACT["model"], "selected_config": selection_manifest["selected_config"],
+       "workload": WORKLOAD, "gates": GATES, "recovery_scope": CONTRACT["recovery_scope"]})
+
 ```
 
-### 5.4 执行中断恢复训练并保存完整证据
+### 5.4 执行恢复训练并保存原始记录
 
-本单元执行固定配置的完整实验负载，并保存训练、恢复、评测与产物证据。
+`measure` 加载固定数据切分，先确认实际样本成员与审计快照一致，再完成训练、保存、重建、续训和重载评测。原始记录保存后，转入读取阶段；报告和基线清单由 `close` 生成。训练中断而未形成完整原始记录时，保留现场，重新测量使用新标签。
+
 
 ```python
-if RUN_MODE == "real_gpu":
+if RUN_STAGE == "measure":
     from datasets import load_dataset
     from transformers import AutoTokenizer
 
-    selection_manifest = json.loads(SELECTION_MANIFEST.read_text(encoding="utf-8"))
-    sweep = json.loads(Path(selection_manifest["selection_evidence"]).read_text(encoding="utf-8"))
-    data_manifest = json.loads(Path(selection_manifest["upstream_manifest"]).read_text(encoding="utf-8"))
-    model_commit = sweep["model"]["resolved_commit"]
+    selection_manifest, selection_scan, data_manifest = project_runtime.read_sft_delivery_inputs(PROJECT_ROOT, CONTRACT)
+    model_commit = MODEL_COMMIT
     dataset_info = data_manifest["dataset"]
     source_count = data_manifest["workload"]["sample_count"]
     dataset = load_dataset(dataset_info["id"], split=f"train[:{source_count}]", revision=dataset_info["resolved_commit"])
     snapshot = data_manifest["snapshot"]
-    train_records = [dict(dataset[index]) for index in snapshot["train_record_indices"][:TRAIN_EXAMPLES]]
-    evaluation_records = [dict(dataset[index]) for index in snapshot["evaluation_record_indices"][:EVALUATION_EXAMPLES]]
-    if len(train_records) != TRAIN_EXAMPLES or len(evaluation_records) != EVALUATION_EXAMPLES:
+    train_records = [dict(dataset[index]) for index in snapshot["train_record_indices"][:WORKLOAD["train_examples"]]]
+    evaluation_records = [dict(dataset[index]) for index in snapshot["evaluation_record_indices"][:WORKLOAD["evaluation_examples"]]]
+    if len(train_records) != WORKLOAD["train_examples"] or len(evaluation_records) != WORKLOAD["evaluation_examples"]:
         raise RuntimeError("64 节准入快照不足以满足固定训练/评测工作负载")
+    for split, records in (("train", train_records), ("evaluation", evaluation_records)):
+        sample_ids = [project_runtime.stable_text_hash((row["instruction"], row.get("input", ""), row["output"])) for row in records]
+        if sample_ids != snapshot[f"{split}_sample_ids"][:len(records)]:
+            raise RuntimeError(f"{split} 实际样本与数据审计快照不一致")
     tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, revision=model_commit)
-    run_evidence = run_lora_delivery(
+    run_evidence = project_runtime.run_lora_delivery(
         model_id=MODEL_ID, revision=model_commit, tokenizer=tokenizer,
         train_records=train_records, evaluation_records=evaluation_records,
-        lora_config=selection_manifest["selected_config"], max_length=MAX_LENGTH,
-        total_steps=TOTAL_STEPS, checkpoint_step=CHECKPOINT_STEP,
-        learning_rate=LEARNING_RATE, seed=SEED, dtype_name=DTYPE,
+        lora_config=selection_manifest["selected_config"], max_length=WORKLOAD["max_length"],
+        total_steps=WORKLOAD["total_steps"], checkpoint_step=WORKLOAD["checkpoint_step"],
+        learning_rate=WORKLOAD["learning_rate"], seed=WORKLOAD["seed"], dtype_name=WORKLOAD["dtype"],
         checkpoint_directory=CHECKPOINT_DIR, artifact_directory=ARTIFACT_DIR,
     )
     record = {
-        "schema_version": SCHEMA_VERSION, "semantic_id": SEMANTIC_ID,
-        "environment_profile": PROFILE_ID, "run_mode": RUN_MODE, "run_label": RUN_LABEL,
-        "selection_manifest": str(SELECTION_MANIFEST),
-        "model": {"id": MODEL_ID, "resolved_commit": model_commit},
-        "data": {"manifest": selection_manifest["upstream_manifest"], "sample_ids_hash": data_manifest["audit"]["sample_ids_hash"]},
-        "selected_config": selection_manifest["selected_config"],
-        "workload": {"max_length": MAX_LENGTH, "train_examples": TRAIN_EXAMPLES, "evaluation_examples": EVALUATION_EXAMPLES, "total_steps": TOTAL_STEPS, "checkpoint_step": CHECKPOINT_STEP, "learning_rate": LEARNING_RATE, "seed": SEED},
-        "gates": GATES, "evidence": run_evidence,
+        **{key: CONTRACT[key] for key in ("schema_version", "semantic_id", "measurement_version",
+            "environment_profile", "evaluation_reduction", "sequence_protocol", "model", "workload", "gates")},
+        "run_mode": "real_gpu", "run_label": RUN_LABEL, "contract_sha256": CONTRACT_SHA256,
+        "selection_manifest": CONTRACT["selection_manifest"],
+        "selection_manifest_sha256": CONTRACT["selection_manifest_sha256"],
+        "data": {"manifest": CONTRACT["upstream_manifest"], "sample_ids_hash": data_manifest["audit"]["sample_ids_hash"]},
+        "selected_config": selection_manifest["selected_config"], "evidence": run_evidence,
     }
-    save_json_record(EVIDENCE_PATH, record)
+    project_runtime.publish_json_record(EVIDENCE_PATH, record)
     print({"evidence_path": str(EVIDENCE_PATH), "artifact": run_evidence["artifact"]})
 else:
-    print({"run_mode": RUN_MODE, "next_action": "确认训练身份后改为 real_gpu"})
+    print({"stage": RUN_STAGE, "training": "skipped"})
+
 ```
 
-### 5.5 独立读取结果并核对恢复、质量与重载证据
+### 5.5 读取结果并核对恢复、质量与重载
+
+从磁盘重新读取原始记录，核对标签、合同摘要、模型、负载、上游来源及本地检查点和适配器文件，再按以下规则计算交付决策。读取过程不训练、不改写原始记录。
+
 
 ```python
-def decide_sft_delivery_for_run(evidence, gates):
+def decide_sft_delivery_for_run(evidence, gates, target_steps):
     """依据恢复、评测、重载和产物哈希形成交付决策。"""
+    from math import isfinite
+    def finite_metric(value):
+        """Reject bool, non-finite and negative metrics."""
+        return type(value) in (int, float) and isfinite(value) and value >= 0
+    checkpoint = evidence.get('checkpoint', {})
     checks = {
+        "finite_metrics": all(finite_metric(evidence.get(key)) for key in ("initial_eval_loss", "final_eval_loss", "reload_loss_abs_diff")) and all(finite_metric(gates.get(key)) for key in ("maximum_eval_loss", "maximum_eval_loss_regression", "maximum_reload_loss_abs_diff")),
+        "recovery_protocol": evidence.get("measurement_version") == "sft-delivery-recovery/v4",
+        "recovery_checks": all(checkpoint.get(key) is True for key in ("identity_verified", "files_sha256_verified", "sample_cursor_verified")),
+        "target_budget": type(target_steps) is int and target_steps > 0 and type(checkpoint.get('completed_step')) is int and checkpoint['completed_step'] == target_steps,
+        "valid_resume_step": type(checkpoint.get('saved_step')) is int and type(target_steps) is int and 0 < checkpoint['saved_step'] < target_steps,
+
         "execution": evidence.get("status") == "ok",
         "resume": evidence.get("checkpoint", {}).get("saved_step") == evidence.get("checkpoint", {}).get("resumed_from_step"),
-        "completed_budget": evidence.get("checkpoint", {}).get("completed_step") > evidence.get("checkpoint", {}).get("resumed_from_step", 0) and evidence.get("checkpoint", {}).get("training_update_count") == evidence.get("checkpoint", {}).get("completed_step"),
+        "completed_budget": type(checkpoint.get("completed_step")) is int and type(checkpoint.get("resumed_from_step")) is int and checkpoint["completed_step"] > checkpoint["resumed_from_step"] and evidence.get("checkpoint", {}).get("training_update_count") == evidence.get("checkpoint", {}).get("completed_step"),
         "recovery_state": all(evidence.get("checkpoint", {}).get(key) is True for key in ("optimizer_state_present", "scheduler_state_present", "rng_state_present")),
         "quality_absolute": evidence["final_eval_loss"] <= gates["maximum_eval_loss"],
         "quality_relative": evidence["final_eval_loss"] - evidence["initial_eval_loss"] <= gates["maximum_eval_loss_regression"],
@@ -466,23 +536,19 @@ def decide_sft_delivery_for_run(evidence, gates):
     decision = "accept" if all(checks.values()) else "reject"
     return {"decision": decision, "failed_checks": [name for name, passed in checks.items() if not passed]}
 
-if EVIDENCE_PATH.exists():
-    record = json.loads(EVIDENCE_PATH.read_text(encoding="utf-8"))
-    decision = decide_sft_delivery_for_run(record["evidence"], record["gates"])
-    print({
-        "decision": decision,
-        "final_eval_loss": record["evidence"]["final_eval_loss"],
-        "reload_loss_abs_diff": record["evidence"]["reload_loss_abs_diff"],
-        "checkpoint": record["evidence"]["checkpoint"],
-        "update_dynamics": record["evidence"].get("update_dynamics"),
-        "artifact": record["evidence"]["artifact"],
-        "peak_allocated_bytes": record["evidence"]["peak_allocated_bytes"],
-    })
+if RUN_STAGE in {"measure", "close"}:
+    record, decision = project_runtime.read_sft_delivery(PROJECT_ROOT, EVIDENCE_PATH, CONTRACT, RUN_LABEL, decide_sft_delivery_for_run)
+    print({"decision": decision, "final_eval_loss": record["evidence"]["final_eval_loss"],
+           "reload_loss_abs_diff": record["evidence"]["reload_loss_abs_diff"],
+           "recovery_scope": record["evidence"]["checkpoint"]["recovery_scope"]})
+else:
+    print({"stage": RUN_STAGE, "evidence_read": "skipped"})
+
 ```
 
 ### 5.6 形成 SFT 基线产物清单
 
-5.5 的全部硬门槛通过后，写入包含适配器哈希、完整恢复状态、更新动力学摘要和评测结论的交付清单。84 和 85 节从该 JSON 重新加载 SFT 基线。
+`close` 重新核对5.5的记录，生成报告和含来源文件、检查点及适配器哈希的登记回执；全部门槛通过才生成供84／85节加载的基线清单。同一标签和相同内容可重复登记，缺失的报告或清单可补齐；已有不同内容时停止。
 
 | 决策项 | 实测证据 | 结果 | 后续动作 |
 |:---|:---|:---|:---|
@@ -491,36 +557,29 @@ if EVIDENCE_PATH.exists():
 | 质量与重载 | 独立评测变化与重载差值 | 新运行读取 5.5 结果 | 固定 SFT 基线前必须通过 |
 | 项目决策 | 全部硬门槛 | 新运行读取 5.5 结果 | `accept` 后才交给 84 / 85 |
 
-`sft_delivery_v2_1` 是补充恢复状态字段之前的历史证据：它证明了旧交付链的恢复、质量和重载一致性，但不包含调度器、随机数和更新动力学摘要。保留该证据用于对照；按新契约重新运行时使用新的 `RUN_LABEL`，再登记新的结论。
+`sft_delivery_v2_1` 保留旧交付链的恢复、质量和重载结果。新的 v4 记录会在重建前核对检查点文件、模型提交、实际分词后的样本顺序、训练配置和下一条样本位置，并检查每次更新后的全部可训练参数是否有限；历史记录缺少这些字段，因此按历史协议解读。当前恢复仍在同一进程中重建模型、优化器和调度器，v4 尚待真实 GPU 运行验证。
 
 **当前登记结果**
 
 | 字段 | 登记内容 |
 | --- | --- |
 | 项目与标签 | 62 节 SFT 交付；`sft_delivery_v2_1` |
-| 运行条件 | Qwen2.5-0.5B-Instruct；中断恢复训练与独立重载检查 |
+| 运行条件 | Qwen2.5-0.5B（Base，按证据 model.id）；中断恢复训练与独立重载检查 |
 | 原始证据 | 训练、恢复和评测记录保存在正式证据中 |
 | 正式证据 | [SFT 证据](../../benchmarks/results/62_sft_delivery/sft_delivery_evidence_sft_delivery_v2_1.json) |
 | 清单与交接 | [交付清单](../../benchmarks/results/62_sft_delivery/sft_delivery_manifest_sft_delivery_v2_1.json)；本地 adapter 与 checkpoint 由清单记录 |
 | 结论 | 旧契约下可复用；当前契约仍需新标签复测调度器、随机数和更新动力学 |
 
 ```python
-if RUN_MODE == "real_gpu":
-    record = json.loads(EVIDENCE_PATH.read_text(encoding="utf-8"))
-    decision = decide_sft_delivery_for_run(record["evidence"], record["gates"])
-    manifest = {
-        "schema_version": SCHEMA_VERSION, "semantic_id": SEMANTIC_ID,
-        "run_label": RUN_LABEL, "decision": decision["decision"], "decision_details": decision,
-        "source_evidence": str(EVIDENCE_PATH),
-        "model": record["model"], "data": record["data"],
-        "selected_config": record["selected_config"],
-        "checkpoint": record["evidence"]["checkpoint"],
-        "artifacts": {"adapter": {"role": "training.sft_baseline", **record["evidence"]["artifact"]}},
-        "quality": {"final_eval_loss": record["evidence"]["final_eval_loss"], "reload_loss_abs_diff": record["evidence"]["reload_loss_abs_diff"]},
-        "next_consumer": ["PT-DPO-OFFLINE", "PT-GRPO-GROUPWISE"] if decision["decision"] == "accept" else [],
-    }
-    save_json_record(MANIFEST_PATH, manifest)
-    print({"manifest_path": str(MANIFEST_PATH), "decision": decision["decision"], "failed_checks": decision["failed_checks"]})
+if RUN_STAGE == "close":
+    registration = project_runtime.close_sft_delivery(
+        PROJECT_ROOT, EVIDENCE_PATH, REPORT_PATH, MANIFEST_PATH, RECEIPT_PATH,
+        CONTRACT, RUN_LABEL, decide_sft_delivery_for_run,
+    )
+    print(registration)
+else:
+    print({"stage": RUN_STAGE, "registration": "skipped"})
+
 ```
 
 ## 相关阅读

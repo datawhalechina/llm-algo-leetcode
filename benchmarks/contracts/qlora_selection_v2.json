@@ -1,0 +1,17 @@
+{
+  "schema_version": "qlora-benchmark/v1",
+  "semantic_id": "PT-QLORA-SELECTION",
+  "measurement_version": "qlora-selection/v2",
+  "environment_profile": "Q-QLORA",
+  "evaluation_reduction": "mean_of_per_example_token_means",
+  "timing_scope": "trainer_train_with_counting_sync_boundaries_excludes_eval_export",
+  "sequence_protocol": "manual_instruction_separate_tokenization_eos_v1",
+  "model": {"id": "Qwen/Qwen2.5-1.5B", "resolved_commit": "8faed761d45a263340a0528343f099c05c9a4323"},
+  "upstream_manifest": "benchmarks/results/64_sft_data_quality/sft_data_manifest_alpaca_qwen25_15b_v1.json",
+  "upstream_manifest_sha256": "d0adf12372755349cac585f4e2de35c6573f1326a181bd0b86b573ecb3d7dcda",
+  "workload": {"max_length": 256, "train_examples": 96, "evaluation_examples": 32, "steps": 12, "seeds": [17, 29, 43], "fixed_micro_batch": 1, "gradient_accumulation_steps": 1, "learning_rate": 0.0002, "evaluation_micro_batch": 1},
+  "adapter": {"rank": 8, "alpha": 16, "dropout": 0.05, "target_modules": ["q_proj", "k_proj", "v_proj", "o_proj"]},
+  "capacity_probe": {"enabled": true, "micro_batches": [1, 2, 4, 8], "steps": 2, "seed": 17},
+  "preparation": {"gradient_checkpointing": false, "kbit_preparation": "qlora_only", "comparison_scope": "bf16_lora_vs_nf4_kbit_training_workflows"},
+  "gates": {"quality_tolerance": 0.1, "maximum_step_time_regression_ratio": 0.15, "minimum_memory_saving_ratio": 0.1}
+}
