@@ -233,7 +233,7 @@ print('错误顺序：', validate_pipeline(invalid_pipeline))
 
 **导语：** 继续把生成路径交给具体内核和运行时验证。
 
-- [04. Triton 矩阵乘法与自动调优](../03_Triton_Kernels/04_Triton_GEMM_Tutorial.md)
-- [05. Triton 性能调优与基准测试](../03_Triton_Kernels/05_Triton_Autotune_and_Profiling.md)
+- [05. Triton 矩阵乘法与自动调优](../03_Triton_Kernels/05_Triton_GEMM_Tutorial.md)
+- [09. Triton 自动调优与基准测量](../03_Triton_Kernels/09_Triton_Autotune_and_Profiling.md)
 - [34. Heterogeneous Accelerators and Runtime Constraints | 异构加速器与运行时约束](./34_Heterogeneous_Accelerators_and_Runtime_Constraints.md)
 ---

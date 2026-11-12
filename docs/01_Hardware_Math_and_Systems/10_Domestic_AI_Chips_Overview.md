@@ -173,6 +173,6 @@ print('admission results:', candidates)
 
 ## 相关阅读
 **导语：** 如果想继续把选型、编译和通信侧的判断补完整，可以接着看这些页。
-- [05. Triton 性能调优与基准测试 (Autotune & Profiling)](../03_Triton_Kernels/05_Triton_Autotune_and_Profiling.md)
-- [15. CUDA Custom Kernel Intro | CUDA 自定义算子入门](../04_CUDA_and_System_Optimization/15_CUDA_Custom_Kernel_Intro.md)
-- [09. Distributed Communication Primitives | 分布式进阶：多机通信原语实战 (All-Reduce, All-Gather)](../04_CUDA_and_System_Optimization/19_Distributed_Communication_Primitives.md)
+- [09. Triton 自动调优与基准测量 (Autotuning & Benchmarking)](../03_Triton_Kernels/09_Triton_Autotune_and_Profiling.md)
+- [01. CUDA Custom Kernel Intro | CUDA 自定义算子入门](../04_CUDA_and_System_Optimization/01_CUDA_Custom_Kernel_Intro.md)
+- [09. Distributed Communication Primitives | 分布式进阶：多机通信原语实战 (All-Reduce, All-Gather)](../04_CUDA_and_System_Optimization/13_Distributed_Communication_Primitives.md)

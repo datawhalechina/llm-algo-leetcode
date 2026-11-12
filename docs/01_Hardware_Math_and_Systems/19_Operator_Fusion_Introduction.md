@@ -155,7 +155,7 @@ assert fusion_decision(*cases['shape_miss'])['failures'] == ['shape_supported']
 
 **导语：** 把算子融合继续接到性能调优、归约和 attention kernel，会更直观地看到中间张量是怎么被省掉的。
 
-- [05. Triton 性能调优与基准测试 (Autotune & Profiling)](../03_Triton_Kernels/05_Triton_Autotune_and_Profiling.md)
-- [06. Triton 进阶：跨线程归约与数值稳定 (Safe Softmax)](../03_Triton_Kernels/06_Triton_Fused_Softmax.md)
-- [08. Triton Flash Attention | 真正的 Flash Attention 前向算子](../03_Triton_Kernels/08_Triton_Flash_Attention.md)
+- [09. Triton 自动调优与基准测量 (Autotuning & Benchmarking)](../03_Triton_Kernels/09_Triton_Autotune_and_Profiling.md)
+- [07. Triton 进阶：跨线程归约与数值稳定 (Safe Softmax)](../03_Triton_Kernels/07_Triton_Fused_Softmax.md)
+- [11. Triton Flash Attention | 真正的 Flash Attention 前向算子](../03_Triton_Kernels/11_Triton_Flash_Attention.md)
 ---

@@ -178,5 +178,5 @@ print(blocked)
 **导语：** 如果想继续把编程模型和 kernel 组织方式补完整，可以接着看这些页。
 - [Part 03: Triton Kernel Development | 第三部分：Triton 算子开发](../03_Triton_Kernels/intro.md)
 - [01. Triton 入门与 Hello World：向量加法 (Vector Addition)](../03_Triton_Kernels/01_Triton_Vector_Addition.md)
-- [04. Triton 矩阵乘法 (GEMM) 与自动调优 (Autotune)](../03_Triton_Kernels/04_Triton_GEMM_Tutorial.md)
+- [05. Triton 矩阵乘法 (GEMM) 与自动调优 (Autotune)](../03_Triton_Kernels/05_Triton_GEMM_Tutorial.md)
 ---
