@@ -60,13 +60,13 @@ $$r_t^{\text{train}} = r_t^{\text{task}} - \beta_{KL}(\log \pi_{actor}-\log \pi_
 
 $$
 \rho_t = \exp(\log \pi_{new}-\log \pi_{old}), \qquad
-L_t^{clip}=\min\!\left(\rho_t A_t,\operatorname{clip}(\rho_t,1-\epsilon,1+\epsilon)A_t\right).
+L_t^{clip}=\min \left(\rho_t A_t,\mathrm{clip}(\rho_t,1-\epsilon,1+\epsilon)A_t\right).
 $$
 
 Critic 用固定回报目标拟合状态价值：
 
 $$
-\mathcal L_V=\frac{1}{2}\,\mathbb E_t\left[(V_\phi(s_t)-R_t)^2\right].
+\mathcal L_V=\frac{1}{2} \mathbb E_t\left[(V_\phi(s_t)-R_t)^2\right].
 $$
 
 若优势由未扣除参考策略 KL 的奖励计算，把策略、价值、熵与独立参考策略约束放回同一轮更新，可写成：
