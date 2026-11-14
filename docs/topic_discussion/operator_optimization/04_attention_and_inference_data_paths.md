@@ -27,7 +27,7 @@ Attention 在两次矩阵乘法之间增加了行归一化。它不能简单地�
 设查询（Query）矩阵为 $Q\in\mathbb{R}^{N_q\times d}$，键（Key）为 $K\in\mathbb{R}^{N_k\times d}$，值（Value）为 $V\in\mathbb{R}^{N_k\times d_v}$。 $N_q,N_k$ 分别表示查询与键的数量， $d$ 是点积维度， $d_v$ 是输出特征维度。对有效键位置按行归一化，输出为：
 
 $$
-O=\operatorname{softmax}\left(QK^\mathsf{T}/\sqrt{d}+M\right)V.
+O=\mathrm{softmax}\left(QK^\mathsf{T}/\sqrt{d}+M\right)V.
 $$
 
 其中 $M$ 表示掩码：允许的位置加零，被排除的位置加负无穷；每个有效查询至少有一个允许的键， $O$ 是注意力输出。直接计算会产生含 $N_qN_k$ 个元素的分数矩阵。分块则一次只计算当前 Q 块与一个 K 块之间的分数，随后继续处理下一个 K/V 块。
