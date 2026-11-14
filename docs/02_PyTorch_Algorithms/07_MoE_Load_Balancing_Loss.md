@@ -60,7 +60,7 @@ Top-K 路由器可以为单个 token 选择专家，却不保证一个批次或�
 
 $$
 P_i=\frac{1}{T}\sum_t p_{t,i},\qquad
-f_i=\frac{1}{TK}\sum_t\mathbf{1}_{i\in\operatorname{TopK}(p_t)},\qquad
+f_i=\frac{1}{TK}\sum_t\mathbf{1}_{i\in\mathrm{TopK}(p_t)},\qquad
 L_{balance}=\alpha E\sum_i f_iP_i.
 $$
 
@@ -322,12 +322,12 @@ def update_router_bias(
 
 #### TODO 1：统计平均路由偏好
 
-- 判断依据：$P_i$ 来自完整概率，所有专家的偏好质量之和应为 1。
+- 判断依据： $P_i$ 来自完整概率，所有专家的偏好质量之和应为 1。
 - 实现动作：沿 token 维求均值；`test_uniform_routing_statistics` 检查均匀分布。
 
 #### TODO 2：统计实际专家分配
 
-- 判断依据：$f_i$ 按 `tokens × top_k` 次选择归一化，不能用概率质量替代。
+- 判断依据： $f_i$ 按 `tokens × top_k` 次选择归一化，不能用概率质量替代。
 - 实现动作：把专家索引转为计数后归一化；`test_preference_and_dispatch_can_differ` 验证偏好与分配可以不同。
 
 #### TODO 3：计算辅助均衡损失

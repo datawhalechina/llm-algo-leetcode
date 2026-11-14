@@ -40,23 +40,23 @@
 
 ## Step 1：整数码、缩放因子与零点如何表示权重
 
-量化状态至少包含整数码和缩放因子；非对称量化还需要零点表示实数零落在哪个整数码点。令 $x_i$ 为浮点值，$q_i$ 为整数码，$s>0$ 为缩放因子，$z$ 为零点，$[q_{\min},q_{\max}]$ 为整数码范围。对称量化常取 $z=0$：
+量化状态至少包含整数码和缩放因子；非对称量化还需要零点表示实数零落在哪个整数码点。令 $x_i$ 为浮点值， $q_i$ 为整数码， $s>0$ 为缩放因子， $z$ 为零点， $[q_{\min},q_{\max}]$ 为整数码范围。对称量化常取 $z=0$：
 
 $$
 s=\frac{\max_i|x_i|}{q_{\max}},\qquad
-q_i=\operatorname{clip}\left(\operatorname{round}\frac{x_i}{s},q_{\min},q_{\max}\right),\qquad
+q_i=\mathrm{clip}\left(\mathrm{round}\frac{x_i}{s},q_{\min},q_{\max}\right),\qquad
 \hat{x}_i=sq_i.
 $$
 
-非对称量化使用包含实数零的范围：$x_{\min}=\min(0,\min_i x_i)$、$x_{\max}=\max(0,\max_i x_i)$，再计算 $s$ 与 $z$。若只使用全正或全负数据自身的端点，零点裁剪后可能使端部数值饱和；全零输入则用正下限保护缩放因子。恢复近似值 $\hat{x}_i$ 的关系为：
+非对称量化使用包含实数零的范围： $x_{\min}=\min(0,\min_i x_i)$、 $x_{\max}=\max(0,\max_i x_i)$，再计算 $s$ 与 $z$。若只使用全正或全负数据自身的端点，零点裁剪后可能使端部数值饱和；全零输入则用正下限保护缩放因子。恢复近似值 $\hat{x}_i$ 的关系为：
 
 $$
 s=\frac{x_{\max}-x_{\min}}{q_{\max}-q_{\min}},\quad
-z=\operatorname{clip}\left(\operatorname{round}\left(q_{\min}-\frac{x_{\min}}s\right),q_{\min},q_{\max}\right),
+z=\mathrm{clip}\left(\mathrm{round}\left(q_{\min}-\frac{x_{\min}}s\right),q_{\min},q_{\max}\right),
 $$
 
 $$
-q_i=\operatorname{clip}\left(\operatorname{round}\frac{x_i}{s}+z,q_{\min},q_{\max}\right),\qquad
+q_i=\mathrm{clip}\left(\mathrm{round}\frac{x_i}{s}+z,q_{\min},q_{\max}\right),\qquad
 \hat{x}_i=s(q_i-z).
 $$
 

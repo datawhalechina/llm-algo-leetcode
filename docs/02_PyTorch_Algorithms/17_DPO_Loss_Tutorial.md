@@ -70,15 +70,15 @@ DPO 先在回答范围聚合 Token 对数概率，再比较当前策略相对参
 
 $$s_{\pi}(y\mid x)=\sum_{t=1}^{T}m_t\log \pi(y_t\mid x,y_{<t})$$
 
-长度归一化形式为 $\bar{s}_{\pi}=s_{\pi}/\sum_t m_t$。总和与均值定义了不同的比较口径；当前策略、参考策略以及优选、非优选回答必须使用同一种口径。
+长度归一化形式为 $\bar s_\pi=\frac{s_\pi}{\sum_t m_t}$。总和与均值定义了不同的比较口径；当前策略、参考策略以及优选、非优选回答必须使用同一种口径。
 
-参考策略只提供固定比较锚点。$\operatorname{sg}$ 表示停止梯度：
+参考策略只提供固定比较锚点。 $\mathrm{sg}$ 表示停止梯度：
 
-$$d_y=s_{\pi_\theta}(y\mid x)-\operatorname{sg}\!\left(s_{\pi_{\mathrm{ref}}}(y\mid x)\right), \qquad y\in\{y^+,y^-\}$$
+$$d_y=s_{\pi_\theta}(y\mid x)-\mathrm{sg} \left(s_{\pi_{\mathrm{ref}}}(y\mid x)\right), \qquad y\in\lbrace y^+,y^-\rbrace$$
 
 系数 $\beta$ 缩放优选与非优选回答之间的相对偏移。标准 sigmoid DPO 的逐样本损失可写为：
 
-$$z=\beta(d_{y^+}-d_{y^-}), \qquad \ell_{\mathrm{DPO}}=-\log\sigma(z)=\operatorname{softplus}(-z)$$
+$$z=\beta(d_{y^+}-d_{y^-}), \qquad \ell_{\mathrm{DPO}}=-\log\sigma(z)=\mathrm{softplus}(-z)$$
 
 因为 $\partial \ell/\partial z=\sigma(z)-1<0$，扩大优选回答的相对偏好间隔会降低损失。训练时再对 $B$ 个偏好对取平均：
 

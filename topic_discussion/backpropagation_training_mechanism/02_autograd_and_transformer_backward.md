@@ -6,7 +6,7 @@
 
 ## 核心机制
 
-先看标量例子：$y=x^2$，损失为 $L=3y$。在 $x=2$ 时，损失对 $y$ 的上游梯度为 3，当前操作的局部导数为 $2x=4$，于是 $\partial L/\partial x=12$。反向只传来 3 不够，还要知道当前操作怎样依赖 $x$；平方求导因此需要原输入。
+先看标量例子： $y=x^2$，损失为 $L=3y$。在 $x=2$ 时，损失对 $y$ 的上游梯度为 3，当前操作的局部导数为 $2x=4$，于是 $\partial L/\partial x=12$。反向只传来 3 不够，还要知道当前操作怎样依赖 $x$；平方求导因此需要原输入。
 
 | 对象 | 表达的含义 | 常见误解 |
 |:---|:---|:---|
@@ -36,11 +36,11 @@ $$
 
 ### Transformer 中的局部反向
 
-以单个 Attention Head 为例，$Q$、$K$、$V$ 是查询、键和值，$d$ 是 Head 维度，$S$、$P$、$O$ 分别表示缩放分数、Softmax 概率和输出：
+以单个 Attention Head 为例， $Q$、 $K$、 $V$ 是查询、键和值， $d$ 是 Head 维度， $S$、 $P$、 $O$ 分别表示缩放分数、Softmax 概率和输出：
 
 $$
 S=\frac{QK^\mathsf{T}}{\sqrt d},\qquad
-P=\operatorname{softmax}(S),\qquad
+P=\mathrm{softmax}(S),\qquad
 O=PV.
 $$
 
@@ -51,7 +51,7 @@ dV=P^\mathsf{T}dO,\qquad dP=dOV^\mathsf{T},
 $$
 
 $$
-dS=P\odot\left[dP-\operatorname{rowsum}(dP\odot P)\right],
+dS=P\odot\left[dP-\mathrm{rowsum}(dP\odot P)\right],
 $$
 
 $$

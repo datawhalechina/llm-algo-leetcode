@@ -45,7 +45,7 @@
 
 ## Step 2: ReLU 如何根据前向状态门控梯度
 
-激活函数的局部反向接收上游梯度，再根据前向状态形成局部门控。对 $y=\operatorname{ReLU}(x)$，门控可写成 $g(x)=\mathbf{1}[x>0]$，因此 $\frac{\partial L}{\partial x}=\frac{\partial L}{\partial y}\odot g(x)$。正区间保留上游梯度的符号和大小，负区间阻断信号，零点则采用一致约定。
+激活函数的局部反向接收上游梯度，再根据前向状态形成局部门控。对 $y=\mathrm{ReLU}(x)$，门控可写成 $g(x)=\mathbf{1}[x>0]$，因此 $\frac{\partial L}{\partial x}=\frac{\partial L}{\partial y}\odot g(x)$。正区间保留上游梯度的符号和大小，负区间阻断信号，零点则采用一致约定。
 
 门控只改变已有梯度能否通过，不负责产生任务误差。表中的三区间共同决定一次局部向量—雅可比乘积的结果。
 
@@ -57,7 +57,7 @@
 
 ## Step 3: 交叉熵如何把误差送回 logits
 
-损失函数负责把任务目标转成训练信号。设第 $i$ 个位置的 logits 为 $z_i$，Softmax 概率为 $p_i=\operatorname{softmax}(z_i)$，one-hot 目标为 $y_i$，有效监督位置集合为 $\mathcal V$。使用有效位置平均时，交叉熵及其 logits 梯度为：
+损失函数负责把任务目标转成训练信号。设第 $i$ 个位置的 logits 为 $z_i$，Softmax 概率为 $p_i=\mathrm{softmax}(z_i)$，one-hot 目标为 $y_i$，有效监督位置集合为 $\mathcal V$。使用有效位置平均时，交叉熵及其 logits 梯度为：
 
 $$
 L=-\frac{1}{|\mathcal V|}\sum_{i\in\mathcal V}\sum_c y_{ic}\log p_{ic},
@@ -69,7 +69,7 @@ L=-\frac{1}{|\mathcal V|}\sum_{i\in\mathcal V}\sum_c y_{ic}\log p_{ic},
 \end{cases}
 $$
 
-其中 $c$ 表示类别，$|\mathcal V|$ 是有效监督位置数。公式同时说明了目标差、忽略位置和 `mean` 分母；若使用 `sum`，只需去掉 $|\mathcal V|$ 的缩放。
+其中 $c$ 表示类别， $|\mathcal V|$ 是有效监督位置数。公式同时说明了目标差、忽略位置和 `mean` 分母；若使用 `sum`，只需去掉 $|\mathcal V|$ 的缩放。
 
 | 环节 | 计算或配置 | 对反向的影响 |
 | --- | --- | --- |

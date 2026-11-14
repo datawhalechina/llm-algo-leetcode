@@ -62,11 +62,11 @@ $$
 对候选中的有效 Token $t$，策略比率和裁剪目标为：
 
 $$
-\rho_{i,t}=\exp\!\left(\log \pi_\theta(y_{i,t})-\log \pi_{old}(y_{i,t})\right),
+\rho_{i,t}=\exp \left(\log \pi_\theta(y_{i,t})-\log \pi_{old}(y_{i,t})\right),
 $$
 
 $$
-s_{i,t}=\min\!\left(\rho_{i,t}A_i,\;\operatorname{clip}(\rho_{i,t},1-\epsilon,1+\epsilon)A_i\right).
+s_{i,t}=\min \left(\rho_{i,t}A_i, \mathrm{clip}(\rho_{i,t},1-\epsilon,1+\epsilon)A_i\right).
 $$
 
 本节采用 TRL 标准 GRPO 路径使用的非负逐 Token KL 估计：
@@ -85,7 +85,7 @@ $$
 \sum_t m_{i,t}\left[-s_{i,t}+\beta\widehat D_{KL,i,t}\right].
 $$
 
-当 $\beta=0$ 时不使用参考策略惩罚；奖励相同或只有一个候选时，$A_i=0$，组内比较不应凭空制造更新方向。
+当 $\beta=0$ 时不使用参考策略惩罚；奖励相同或只有一个候选时， $A_i=0$，组内比较不应凭空制造更新方向。
 
 | 约束 | 比较对象 | 机制作用 | 失效时的风险 |
 | --- | --- | --- | --- |

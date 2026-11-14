@@ -35,7 +35,7 @@
 
 $$
 s=\max\left(\frac{\max_d|x_d|}{127},10^{-8}\right),\qquad
-z_d=\operatorname{clip}\left(\operatorname{round}_{away}(x_d/s),-127,127\right),\qquad
+z_d=\mathrm{clip}\left(\mathrm{round}_{away}(x_d/s),-127,127\right),\qquad
 \widehat x_d=z_ds.
 $$
 
@@ -49,7 +49,7 @@ $$
 
 $$
 s_t=\frac{\sum_d q_d(z^K_{t,d}s^K_t)}{\sqrt D},\qquad
-w_t=\operatorname{softmax}_{t<L}(s_t),\qquad
+w_t=\mathrm{softmax}_{t<L}(s_t),\qquad
 o_d=\sum_{t<L}w_t(z^V_{t,d}s^V_t).
 $$
 

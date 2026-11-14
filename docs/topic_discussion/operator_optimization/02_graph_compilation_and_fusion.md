@@ -4,7 +4,7 @@
 
 一段“先做激活，再逐元素相乘”的计算，在 Python 中是两步，在 GPU 上却可能只用一个内核完成。理解编译优化，可以从这两步之间的中间张量开始：它为什么需要写回，又在什么情况下可以省去？
 
-以 $u=\operatorname{SiLU}(x)$、$z=u\odot y$ 为例，$x,y$ 是同形状输入，$\odot$ 表示逐元素乘法。SiLU 将每个值 $t$ 变成 $t/(1+e^{-t})$，产生的中间值 $u$ 再被乘法读取。它是否还有其他用途，决定了融合后能否省去单独写回。
+以 $u=\mathrm{SiLU}(x)$、 $z=u\odot y$ 为例， $x,y$ 是同形状输入， $\odot$ 表示逐元素乘法。SiLU 将每个值 $t$ 变成 $t/(1+e^{-t})$，产生的中间值 $u$ 再被乘法读取。它是否还有其他用途，决定了融合后能否省去单独写回。
 
 ![分离与融合路径中激活中间值的写回对照](../../public/topic_discussion/operator_optimization/operator_fusion_lifecycle.svg)
 

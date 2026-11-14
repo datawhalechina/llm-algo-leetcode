@@ -58,11 +58,11 @@ W8A16 建立了整数码、量化参数和粒度的基础；继续压缩到 4 �
 
 线性层输出为 `Y = XWᵀ`。同样大小的权重误差，如果落在输入经常激活的方向上，会造成更大的输出偏移。GPTQ 使用校准矩阵构造二阶信息；每通道平方均值可以作为 Hessian 对角代理，给不同输入方向的误差赋予不同权重。均方误差（MSE）是误差平方的平均值；它不区分通道重要性，加权代理则使用输入统计。
 
-令 $X\in\mathbb R^{N\times d}$ 为校准输入，$W$ 为浮点权重，$\Delta W=\widehat W-W$ 为量化扰动。层输出扰动为 $\Delta Y=X\Delta W^{\mathsf T}$；用 $H=X^{\mathsf T}X/N$ 表示输入方向的二阶代理时，局部误差可写为
+令 $X\in\mathbb R^{N\times d}$ 为校准输入， $W$ 为浮点权重， $\Delta W=\widehat W-W$ 为量化扰动。层输出扰动为 $\Delta Y=X\Delta W^{\mathsf T}$；用 $H=X^{\mathsf T}X/N$ 表示输入方向的二阶代理时，局部误差可写为
 
 $$
 \frac1N\lVert\Delta Y\rVert_F^2
-=\operatorname{tr}(\Delta W H\Delta W^{\mathsf T}).
+=\mathrm{tr}(\Delta W H\Delta W^{\mathsf T}).
 $$
 
 因此普通权重 MSE 相同的两个候选，也可能产生不同输出误差。对角代理忽略了通道相关性；只用它给已经量化的权重打分，并未执行 GPTQ 的逐步量化与误差补偿。当前 CPU 的 gptq 选项正是“逐组直接舍入＋敏感度评价”，不能把评分变化解释成算法已经改善码值。

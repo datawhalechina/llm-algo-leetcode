@@ -74,7 +74,7 @@ $$
 
 $$
 g_u=\sum_k\nabla_\theta\frac{S_{u,k}}{N_u},\qquad
-\theta_{u+1}=\operatorname{OptimizerStep}(\theta_u,g_u).
+\theta_{u+1}=\mathrm{OptimizerStep}(\theta_u,g_u).
 $$
 
 例如两个微批次各有两条样本，但有效监督词元分别为4个与10个，应把两份损失总和都除以14。若先分别取平均，再各乘 $1/2$，短回答中的每个词元会获得更大的权重；只有各微批次有效目标数相等时，等权平均才等价。没有有效目标的微批次贡献零梯度；整个逻辑批次没有目标时，则无法定义平均损失。

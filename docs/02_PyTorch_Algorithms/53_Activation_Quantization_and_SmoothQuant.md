@@ -43,13 +43,13 @@
 ![SmoothQuant 全局关系](../public/02_PyTorch_Algorithms/53_smoothquant_overview.svg)
 ## Step 2：用等价变换迁移量化难度
 
-令 $X$ 的最后一维与 $W$ 的输入维对齐，并为每个输入通道选择 $s_j>0$。记 $D_s=\operatorname{diag}(s)$，则
+令 $X$ 的最后一维与 $W$ 的输入维对齐，并为每个输入通道选择 $s_j>0$。记 $D_s=\mathrm{diag}(s)$，则
 
 $$
 XW^{\mathsf T}=(XD_s^{-1})(WD_s)^{\mathsf T}.
 $$
 
-该等式说明平滑只迁移动态范围，不改变浮点线性层输出。若 $a_j=\max|X_{:j}|$、$w_j=\max|W_{:j}|$，常用候选为
+该等式说明平滑只迁移动态范围，不改变浮点线性层输出。若 $a_j=\max|X_{:j}|$、 $w_j=\max|W_{:j}|$，常用候选为
 
 $$
 s_j=\frac{a_j^{\alpha}}{w_j^{1-\alpha}},\qquad 0\le\alpha\le1.
