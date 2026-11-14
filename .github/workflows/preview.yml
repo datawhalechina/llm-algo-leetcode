@@ -50,6 +50,8 @@ jobs:
 
       - name: Build with VitePress
         working-directory: ./docs
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
         run: npm run docs:build
 
       - name: Upload preview artifact
