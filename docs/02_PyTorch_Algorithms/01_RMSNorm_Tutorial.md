@@ -49,11 +49,11 @@ RMSNorm 选择更直接的做法：不再减均值，只用均方根控制特征
 对每个 token 的隐藏向量 $x\in\mathbb{R}^d$，RMSNorm 沿最后一维计算
 
 $$
-\operatorname{RMS}(x)=\sqrt{\frac{1}{d}\sum_{i=1}^{d}x_i^2+\epsilon},\qquad
-y=\frac{x}{\operatorname{RMS}(x)}\odot\gamma.
+\mathrm{RMS}(x)=\sqrt{\frac{1}{d}\sum_{i=1}^{d}x_i^2+\epsilon},\qquad
+y=\frac{x}{\mathrm{RMS}(x)}\odot\gamma.
 $$
 
-批次维和序列维保持不变，只有每个 token 内部的通道共同参与统计。可学习参数 $\gamma\in\mathbb{R}^d$ 恢复逐通道缩放能力，$\epsilon$ 防止零向量或极小输入导致除零。与 LayerNorm 对照时，应同时检查统计轴、是否减均值、可学习参数和输出数据类型，不能只比较公式中少了一项运算。
+批次维和序列维保持不变，只有每个 token 内部的通道共同参与统计。可学习参数 $\gamma\in\mathbb{R}^d$ 恢复逐通道缩放能力， $\epsilon$ 防止零向量或极小输入导致除零。与 LayerNorm 对照时，应同时检查统计轴、是否减均值、可学习参数和输出数据类型，不能只比较公式中少了一项运算。
 
 | 检查对象 | RMSNorm 契约 | 常见错误 |
 |---|---|---|
