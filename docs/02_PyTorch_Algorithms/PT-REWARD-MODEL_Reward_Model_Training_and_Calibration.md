@@ -54,7 +54,7 @@
 ![奖励模型从偏好监督到策略候选审计](../public/02_PyTorch_Algorithms/pt_reward_model_overview.svg)
 ## Step 2：分数差如何形成成对奖励损失
 
-对第 $i$ 个偏好对，$x_i$ 是提示，$y_i^+$ 与 $y_i^-$ 分别是优选和非优选回答，$r_\phi$ 是参数为 $\phi$ 的共享奖励模型，$\sigma$ 是逻辑函数。Bradley–Terry 成对模型先计算奖励边际，再把边际映射成优选回答胜出的概率：
+对第 $i$ 个偏好对， $x_i$ 是提示， $y_i^+$ 与 $y_i^-$ 分别是优选和非优选回答， $r_\phi$ 是参数为 $\phi$ 的共享奖励模型， $\sigma$ 是逻辑函数。Bradley–Terry 成对模型先计算奖励边际，再把边际映射成优选回答胜出的概率：
 
 $$
 \Delta r_i=r_\phi(x_i,y_i^+)-r_\phi(x_i,y_i^-),\qquad
@@ -65,7 +65,7 @@ $$
 
 $$
 \mathcal L_{RM}=-\frac{1}{N}\sum_{i=1}^{N}\log\sigma(\Delta r_i)
-=\frac{1}{N}\sum_{i=1}^{N}\operatorname{softplus}(-\Delta r_i).
+=\frac{1}{N}\sum_{i=1}^{N}\mathrm{softplus}(-\Delta r_i).
 $$
 
 边际为零时概率为二分之一；边际为正且增大时，成对损失下降。
@@ -80,11 +80,11 @@ $$
 | 成对损失 | 正确偏好方向的负对数似然 | 错序和小边际应受到更大惩罚 |
 ## Step 3：如何用留出排序、概率校准和隐藏质量筛选奖励模型
 
-第一道门槛检查留出偏好对上的排序方向，回答评分器是否仍能区分优选与非优选回答。第二道门槛在独立留出集上选择校准温度，只调整分数差到概率的置信度，不改变排序。对包含 $M$ 个样本的校准集，给定正温度 $T$，令 $z_i\in\{0,1\}$ 表示第 $i$ 个样本的偏好标签，校准概率与 Brier 误差为：
+第一道门槛检查留出偏好对上的排序方向，回答评分器是否仍能区分优选与非优选回答。第二道门槛在独立留出集上选择校准温度，只调整分数差到概率的置信度，不改变排序。对包含 $M$ 个样本的校准集，给定正温度 $T$，令 $z_i\in\lbrace 0,1\rbrace$ 表示第 $i$ 个样本的偏好标签，校准概率与 Brier 误差为：
 
 $$
-\hat p_i(T)=\sigma\!\left(\frac{\Delta r_i}{T}\right),\qquad
-\operatorname{Brier}(T)=\frac{1}{M}\sum_{i=1}^{M}(\hat p_i(T)-z_i)^2.
+\hat p_i(T)=\sigma \left(\frac{\Delta r_i}{T}\right),\qquad
+\mathrm{Brier}(T)=\frac{1}{M}\sum_{i=1}^{M}(\hat p_i(T)-z_i)^2.
 $$
 
 温度只改变置信度尺度，不改变 $\Delta r_i$ 的符号和排序。第三道门槛把策略候选的代理奖励与冻结的隐藏质量指标并列比较，检查优化是否开始利用奖励漏洞。
