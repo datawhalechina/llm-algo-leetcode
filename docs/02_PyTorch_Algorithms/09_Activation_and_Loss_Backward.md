@@ -87,9 +87,9 @@ $$
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 | --- | --- | --- | --- |
-| TODO 1：构造 ReLU 门控<br>`relu_backward` | 用前向输入的符号决定上游梯度是否通过 | `x == 0` 按本节约定置零，保持 shape、dtype 与 device | `test_relu_backward` 对照自动求导并覆盖零点 |
-| TODO 2：建立有效监督分布<br>`softmax_ce_loss_and_grad` | 构造稳定概率、有效位置掩码与目标分布 | 忽略位置不参与目标比较，较大 logits 仍保持有限 | `test_cross_entropy_gradient` 对照原生交叉熵 |
-| TODO 3：归约 loss 与梯度<br>`softmax_ce_loss_and_grad` | 按有效位置数量完成 `mean/sum` 归约 | 忽略位置梯度为零，`mean` 分母只能是有效位置数 | `test_reduction_and_stability` 覆盖归约、全忽略和极值输入 |
+| TODO 1：构造 ReLU 门控<br>`relu_backward` | 用前向输入的符号决定上游梯度是否通过 | `x == 0` 按本节约定置零，保持 shape、dtype 与 device | 用相同上游梯度对照自动求导，并单独检查零点约定 |
+| TODO 2：建立有效监督分布<br>`softmax_ce_loss_and_grad` | 构造稳定概率、有效位置掩码与目标分布 | 忽略位置不参与目标比较，较大 logits 仍保持有限 | 对照原生交叉熵的损失与梯度，并检查忽略位置不产生梯度 |
+| TODO 3：归约 loss 与梯度<br>`softmax_ce_loss_and_grad` | 按有效位置数量完成 `mean/sum` 归约 | 忽略位置梯度为零，`mean` 分母只能是有效位置数 | 检查 sum / mean 缩放关系、全忽略标签和较大 logits 下的有限值 |
 
 
 ```python
