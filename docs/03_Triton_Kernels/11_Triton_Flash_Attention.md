@@ -25,9 +25,9 @@
 
 ## 前置阅读
 
-先理解按行归一化，再回顾为什么可以不保存完整注意力矩阵。
+先理解矩阵子块如何累加和行概率如何归一化，再回顾不保存完整注意力矩阵的在线状态。两次矩阵乘法分别形成分数和加权输出，都是本节实现的直接基础。
 
-- [07 融合 Softmax](./07_Triton_Fused_Softmax.md)：行最大值、指数和与补齐位置。
+- [05 GEMM分块与累加](./05_Triton_GEMM_Tutorial.md)：二维tile、K维部分和及矩阵点积；行内归一化不熟悉时回补[07 Softmax](./07_Triton_Fused_Softmax.md)。
 - [Part02·20 FlashAttention 模拟](../02_PyTorch_Algorithms/20_FlashAttention_Sim.md)：分块计算与在线状态的合并。
 
 ## Step 1：一个 Q 块怎样遍历所有 K/V 块
