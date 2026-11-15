@@ -16,26 +16,24 @@
 
 模型迁移不要求所有阶段都使用同一种设备。文本预处理可能只需少量主机内存，生成阶段却要容纳权重、缓存和工作区；若把生成阶段的需求套给预处理，就可能错误排除本来可用的 CPU。
 
-本节把任务拆成阶段，分别比较容量、精度、操作和运行时要求，再检查阶段之间的数据交接。完成后，你应能区分“声明匹配”“真实路径能够执行”和“性能满足要求”；这些判断接到部署与异构系统专题中的加载与执行验证。
+本节把任务拆成阶段，分别比较容量、精度、操作和运行时要求，再计算输入转换、跨设备搬运与同时驻留。完成后，你应能区分“声明匹配”“真实路径能够执行”和“性能满足要求”；这些判断接到部署与异构系统专题中的加载与执行验证。
 
-**关键词：** 异构加速器、模型产物、运行时、可执行契约
+**关键词：** 阶段需求、数据交接、格式转换、同时驻留、运行时
+
 ![预处理与生成使用各自的设备需求](../public/01_Hardware_Math_and_Systems/34_stage_requirements_and_handoff.svg)
 
 ## 前置阅读
 
-- [10 算力现状与替代方案](./10_Domestic_AI_Chips_Overview.md)
-- [1E 编译与后端](./1E.md)
-- [07 CPU 与 GPU 异构调度](./07_CPU_GPU_Heterogeneous_Scheduling.md)
-## Q1：声明的设备能力能排除哪些候选？
+先按任务筛选候选，再用搬运量与带宽估算阶段交接。
 
-先记录目标阶段的容量、精度、算子和运行时需求，再与设备声明比较。下面的 CPU、GPU、NPU 参数都是构造配置，不读取本机设备；集合中存在某个名称，不表示当前版本已经支持或实际执行了它。
+- [10 加速器选型与软件栈适配](./10_Domestic_AI_Chips_Overview.md)：任务需求与软件支持。
+- [07 CPU与GPU异构调度](./07_CPU_GPU_Heterogeneous_Scheduling.md)：数据位置、带宽与完整路径时间。
 
-| 判断维度 | 声明中要记录什么 | 实际运行仍需检查 |
-|:---|:---|:---|
-| 内存 | 对象峰值预算与设备可用容量 | 状态、工作区与其他进程的实际驻留 |
-| 精度 | 阶段所需的数据类型 | 产物格式与执行数据类型 |
-| 算子 | 阶段需要的操作集合 | 对应形状下的编译、执行与回退 |
-| 运行时与通信 | 执行框架及按需使用的集合通信 | 版本兼容、加载日志与功能测试 |
+## Q1：各阶段需要记录哪些资源与操作？
+
+以“主机分词 → 加速器生成”为例，前者需要词元编号与少量处理缓冲，后者需要权重、KV缓存和工作区。将整模型40 GB预算套给预处理，会错误排除小内存设备；只检查总容量，又可能遗漏生成阶段所需的精度、操作或执行框架。运行时是加载产物、组织操作执行的软件环境，名称相同也还需核对具体版本与路径。
+
+下面给出构造的CPU、GPU、NPU能力和两阶段需求。每阶段分别记录预计峰值、数值类型、所需操作、运行时及是否使用集合通信，再从同一份声明中读取字段。实际设备支持情况由目标规格与功能验证补充。
 
 
 ```python
@@ -57,27 +55,12 @@ def summarize_device_profile(profile):
         "operator_count": len(profile["ops"]),
         "runtime_count": len(profile["runtimes"]),
         "collective": profile["collective"],
+        "operators": sorted(profile["ops"]), "runtimes": sorted(profile["runtimes"]),
     }
 
 
 assert summarize_device_profile(DEVICE_PROFILES["gpu"])["operator_count"] == 4
-```
 
-## Q2：能力声明与实际加载有什么不同？
-
-候选身份来自模型版本、产物格式、分词器和模板；运行时检查则要确认设备、驱动、执行框架与关键操作能够配合。以下函数仅比较给定声明，不能替代模型加载或真实执行。
-
-容量使用十进制 GB，需求是所比较阶段的预计峰值。预处理阶段不应沿用生成阶段的完整模型容量与精度；各阶段的需求在下一问分别填写。
-
-| 检查 | 本例能做什么 | 需要另外验证什么 |
-|:---|:---|:---|
-| 容量 | 比较给定峰值预算与声明容量 | 真实分配峰值和安全余量 |
-| 数据类型与操作 | 求集合差，列出缺失项 | 目标形状与具体版本的支持情况 |
-| 运行时 | 检查名称是否被声明支持 | 环境启动、产物加载与实际路径 |
-| 集合通信 | 仅在阶段需要时检查声明 | 多进程执行与数值结果 |
-
-
-```python
 REQUEST_PLAN = {
     "estimated_peak_gb": 40,
     "precision": "bf16",
@@ -98,14 +81,31 @@ REQUEST_PLAN = {
     },
 }
 
+assert REQUEST_PLAN["stages"]["prepare"]["estimated_peak_gb"] == 0.5
+assert REQUEST_PLAN["stages"]["generate"]["estimated_peak_gb"] == 40
+print("GPU声明中的操作：", summarize_device_profile(DEVICE_PROFILES["gpu"])["operators"])
+print("预处理与生成预算：", [
+    stage["estimated_peak_gb"] for stage in REQUEST_PLAN["stages"].values()])
 
+```
+
+## Q2：哪些设备声明满足生成阶段的需求？
+
+生成要求BF16、40 GB预计峰值、预填充／解码／注意力操作及vLLM运行时。给定GPU声明全部满足；NPU虽有64 GB和BF16，却没有声明vLLM，因而不能直接采用同一执行路径。若改用它支持的运行时，还需重新准备匹配产物并验证结果，不能仅替换一个名称便视为已经迁移。
+
+下面逐项比较需求与声明，容量按十进制GB计。集合通信只在当前阶段需要时检查；阶段候选确定后，再计算它与相邻阶段之间新增的工作。
+
+
+```python
 def check_device_feasibility(profile, plan):
     """比较一个阶段与给定设备声明，不探测设备或执行模型。"""
     required = ("estimated_peak_gb", "precision", "required_ops",
                 "runtime", "requires_collective")
     if any(key not in plan for key in required):
         raise ValueError('阶段需求缺少必要字段')
-    if (not math.isfinite(profile["memory_gb"]) or profile["memory_gb"] <= 0
+    if (type(profile["memory_gb"]) not in (int, float)
+            or not math.isfinite(profile["memory_gb"]) or profile["memory_gb"] <= 0
+            or type(plan["estimated_peak_gb"]) not in (int, float)
             or not math.isfinite(plan["estimated_peak_gb"])
             or plan["estimated_peak_gb"] < 0):
         raise ValueError('设备容量须为有限正数，阶段预算须为有限非负数')
@@ -132,17 +132,13 @@ assert not check_device_feasibility(DEVICE_PROFILES["npu"], REQUEST_PLAN)["runti
 
 ```
 
-## Q3：各阶段怎样使用自己的资源与运行时需求？
+## Q3：阶段都能执行，交接还增加哪些搬运与内存？
 
-预处理、生成和输出具有不同的工作集与操作。计划中直接列出每个阶段的峰值预算、精度、运行时和通信需求，不从阶段名称猜测运行时，也不把整模型需求复制给全部阶段。这里的 FP32、BF16 是相应阶段的数值类型条件。
+沿用主机分词到GPU生成的路径，假设4096个词元编号由32位整数存储，消费端要求64位整数。转换前为16384 B，转换后为32768 B；先在主机产生转换缓冲、再传输时，两份编号暂时同时存在，主机载荷为49152 B。带宽按16 GB/s计算，32768 B的纯传输估算为0.002048 ms；类型转换、固定提交和等待时间另计。
 
-逐阶段有候选仍不代表整条路径可以执行：阶段之间还要传输数据、转换格式并同步，合并放在同一设备上的对象也可能同时驻留。CPU 计算器只筛选声明匹配的设备，实际放置要进一步验证交接与联合资源预算。
+这里转换改变存储位宽，编号数值、顺序和有效长度仍应保持。加速器若已有40000000000 B状态，同时还要接收32768 B输入，容量恰好40 GB便不足，48 GB则允许这两项共同驻留。共同驻留只对本例明确同时存活的对象求和；已有阶段峰值若包含该输入，就不再重复加入。下面先筛选阶段，再复现这组交接账目。
 
-| 阶段 | 示例要求 | 需要继续检查 |
-|:---|:---|:---|
-| 预处理 | 0.5 GB、Python、tokenize | 主机内存、输入协议与准备时间 |
-| 生成 | 40 GB、BF16、vLLM、prefill/decode/attention | 加载、状态容量与实际执行路径 |
-| 阶段交接 | 由所选设备组合决定 | 数据格式、传输、同步与联合驻留 |
+![4096个编号转换为int64后，主机两份缓冲同时存在，传输与GPU新增输入各为32768字节](../public/01_Hardware_Math_and_Systems/34_handoff_memory_and_transfer.svg)
 
 
 ```python
@@ -170,20 +166,63 @@ STAGE_TRACE = assign_stages(DEVICE_PROFILES, REQUEST_PLAN)
 assert "cpu" in STAGE_TRACE["prepare"]["candidate_devices"]
 assert STAGE_TRACE["generate"]["candidate_devices"] == ["gpu"]
 
+
+def handoff_ledger(num_tokens: int, source_dtype: str, target_dtype: str,
+                   bandwidth_gb_s: float) -> dict:
+    """估算CPU整数编号转换后传到GPU的载荷；GB/s按十进制计，时间为ms。
+
+    假设转换缓冲与源编号同时存在；传输窗口不包含转换、分配和提交。
+    """
+    sizes = {"int32": 4, "int64": 8}
+    if type(num_tokens) is not int or num_tokens <= 0:
+        raise ValueError("词元数须为正整数")
+    if (source_dtype, target_dtype) not in {("int32", "int32"), ("int64", "int64"),
+                                            ("int32", "int64")}:
+        raise ValueError("本例支持整数编号原类型传输或int32转int64")
+    if (type(bandwidth_gb_s) not in (int, float)
+            or not math.isfinite(bandwidth_gb_s) or bandwidth_gb_s <= 0):
+        raise ValueError("带宽须为有限正数，单位GB/s")
+    source_bytes = num_tokens * sizes[source_dtype]
+    target_bytes = num_tokens * sizes[target_dtype]
+    conversion_bytes = target_bytes if source_dtype != target_dtype else 0
+    return {"source_bytes": source_bytes, "target_bytes": target_bytes,
+            "host_live_bytes": source_bytes + conversion_bytes,
+            "transfer_ms": target_bytes / (bandwidth_gb_s * 1e9) * 1000}
+
+
+def placement_memory_check(resident_bytes: int, incoming_bytes: int,
+                           capacity_bytes: int) -> dict:
+    """将明确同时存活的既有状态与新增输入相加，单位B；输入未计入既有预算。"""
+    if any(type(value) is not int or value < 0
+           for value in (resident_bytes, incoming_bytes, capacity_bytes)):
+        raise ValueError("同时驻留载荷与容量须为非负整数字节数")
+    peak_bytes = resident_bytes + incoming_bytes
+    return {"peak_bytes": peak_bytes, "fits": peak_bytes <= capacity_bytes,
+            "shortfall_bytes": max(peak_bytes - capacity_bytes, 0)}
+
+
+handoff = handoff_ledger(num_tokens=4096, source_dtype="int32",
+                         target_dtype="int64", bandwidth_gb_s=16)
+assert handoff["source_bytes"] == 16384
+assert handoff["target_bytes"] == 32768 and handoff["host_live_bytes"] == 49152
+assert math.isclose(handoff["transfer_ms"], 0.002048)
+unchanged = handoff_ledger(4096, "int64", "int64", 16)
+assert unchanged["host_live_bytes"] == 32768
+capacity_miss = placement_memory_check(40_000_000_000, handoff["target_bytes"], 40_000_000_000)
+capacity_ok = placement_memory_check(40_000_000_000, handoff["target_bytes"], 48_000_000_000)
+assert capacity_miss["shortfall_bytes"] == 32768 and not capacity_miss["fits"]
+assert capacity_ok["fits"]
+assert placement_memory_check(40_000_000_000, 32768, 40_000_032_768)["fits"]
+print("主机转换与传输账目：", handoff)
+print("同时驻留检查：", capacity_miss, capacity_ok)
+
 ```
 
-## Q4：进入性能测量前还缺哪些检查？
+## Q4：完成估算后，运行时还要核对什么？
 
-先检查必需阶段是否齐全、有无声明匹配的设备，再确认质量和整条执行路径的功能测试。路径测试应覆盖加载、阶段交接与输出，不能要求“已有性能基准”才允许开始性能测量，否则会形成循环前提。
+前面已筛选阶段候选、计算转换后的传输载荷，并核对给定同时驻留量。实际路径还要验证模型与分词器匹配、编号类型与顺序、输入就绪依赖、模型加载以及最终输出。设备异步执行时，消费端必须等输入搬运完成；源缓冲也要保留到搬运结束，容量估算不能替代这些执行条件。
 
-下面的布尔值表示外部已经完成的检查；示例调用只是构造状态，不会生成真实运行证据。满足前提后才进入固定工作负载下的计时、吞吐与稳定性比较。
-
-| 条件 | 本例状态 | 下一步 |
-|:---|:---|:---|
-| 阶段缺失或没有声明匹配的设备 | blocked | 修正需求与设备声明 |
-| 质量检查未通过 | blocked | 检查模型、模板与数值结果 |
-| 整条路径尚未完成真实功能测试 | needs_runtime_check | 核对加载、交接和输出 |
-| 必要检查已声明通过 | benchmark_ready | 开始性能测量，不直接作部署采用判断 |
+下面用明确的外部检查结果演示下一动作：缺少阶段或候选时先补齐需求；功能与质量未通过时继续修复；功能路径完成后进入性能测量。示例中的状态是构造输入，不登记为真实加载或部署结果。
 
 
 ```python
@@ -218,6 +257,8 @@ assert benchmark_admission({}, required_stages, True, True)["status"] == "blocke
 
 ## 相关阅读
 
-- [部署与异构系统专题](../topic_discussion/deployment_heterogeneous/intro.md)
-- [通信与并行专题](../topic_discussion/communication_parallelism/intro.md)
-- [Part 02 · 72 多模型部署比较](../02_PyTorch_Algorithms/72_Multi_Model_Deployment_Comparison.md)
+把阶段账目用于真实加载与请求执行，再比较完整方案。
+
+- [部署与异构系统专题](../topic_discussion/deployment_heterogeneous/intro.md)：检查目标设备、产物、交接与回退路径。
+- [Part02·72 多模型部署比较](../02_PyTorch_Algorithms/72_Multi_Model_Deployment_Comparison.md)：在共同负载下比较运行方案。
+- [33 TCO与成本](./33_TCO_and_Cost_Model.md)：使用实际吞吐、可用时间与共同成功标准计算成本。
