@@ -257,12 +257,12 @@ def triton_add(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
 
 ## 性能测量（可选）
 
-输入预先在 GPU 上准备，先核对当前输入的输出，再分别测量 PyTorch 与 Triton 的完整调用。计时包含输出分配，不包含输入搬运与首次编译；这是固定输入的入门比较，多轮交替测量和性能归因见自动调优与基准测量页。
+输入预先在GPU上准备，先核对输出，再用 `triton.testing.do_bench` 预热并重复测量PyTorch与Triton调用。设备事件记录选定窗口内的设备侧耗时；被测函数每次创建输出，但该计时不单独量出主机分配与Python提交耗时，也不包含输入搬运和首次编译。完整主机调用成本与多轮配对比较在后续基准中展开。
 
 
 ```python
 def benchmark_vector_add(size=1 << 20, warmup_ms=25, repeat_ms=100):
-    """核对当前输入后，测量包含输出分配的 GPU 向量加法调用。"""
+    """核对当前输入后，用设备事件比较预热后的向量加法调用。"""
     if not torch.cuda.is_available():
         print("SKIPPED: benchmark 需要 NVIDIA GPU。")
         return {"status": "skipped", "reason": "cuda_unavailable"}
@@ -277,7 +277,8 @@ def benchmark_vector_add(size=1 << 20, warmup_ms=25, repeat_ms=100):
         "device": torch.cuda.get_device_name(x.device),
         "torch_version": torch.__version__, "triton_version": triton.__version__,
         "warmup_ms": warmup_ms, "repeat_ms": repeat_ms,
-        "timing": "triton.testing.do_bench; GPU-resident inputs; output allocation included",
+        "timing": "triton.testing.do_bench; device events; GPU-resident inputs; after warmup",
+        "allocation_scope": "each call creates an output; host allocation and Python submission are not separately timed",
         "reference_ms": reference_ms, "triton_ms": candidate_ms,
         "speedup_vs_torch": reference_ms / candidate_ms,
     }
