@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+  <title id="title">形状变化与返回旧版本</title>
+  <desc id="desc">固定静态形状的五次调用依次为2乘3、同形状新值、4乘3、重复4乘3、恢复2乘3。输入调用分别连接版本A或B，首次创建与复用以边标签区分；此处只展开形状变化，不是性能测量。</desc>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+  <style>
+    text{font-family:'Noto Sans CJK SC',sans-serif;fill:#0f172a}.title{font-size:28px;font-weight:700}.sub{font-size:19px;fill:#475569}.head{font-size:22px;font-weight:700}.body{font-size:19px}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}.reuse{stroke-dasharray:8 5}.label{font-size:18px;fill:#475569}
+  </style>
+  <rect width="1500" height="470" rx="22" fill="#f8fafc" data-layout-role="panel"/>
+  <text x="40" y="48" class="title">先有版本A，再有版本B；返回旧形状不必新增版本</text>
+  <text x="40" y="82" class="sub">dynamic=False、同一函数与后端；实线为首次捕获，虚线为复用。编号表示调用顺序，不是时间比例。</text>
+  <g fill="#dbeafe" stroke="#2563eb" stroke-width="2">
+    <rect x="40" y="130" width="240" height="95" rx="15"/><rect x="335" y="130" width="240" height="95" rx="15"/>
+    <rect x="630" y="130" width="240" height="95" rx="15"/><rect x="925" y="130" width="240" height="95" rx="15"/>
+    <rect x="1220" y="130" width="240" height="95" rx="15"/>
+  </g>
+  <text x="160" y="168" class="head" text-anchor="middle">① 首次2×3</text><text x="160" y="202" class="body" text-anchor="middle">新增版本</text>
+  <text x="455" y="168" class="head" text-anchor="middle">② 同形状新值</text><text x="455" y="202" class="body" text-anchor="middle">复用A</text>
+  <text x="750" y="168" class="head" text-anchor="middle">③ 改为4×3</text><text x="750" y="202" class="body" text-anchor="middle">新增版本</text>
+  <text x="1045" y="168" class="head" text-anchor="middle">④ 重复4×3</text><text x="1045" y="202" class="body" text-anchor="middle">复用B</text>
+  <text x="1340" y="168" class="head" text-anchor="middle">⑤ 返回2×3</text><text x="1340" y="202" class="body" text-anchor="middle">复用A</text>
+  <rect x="40" y="325" width="535" height="95" rx="15" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="307" y="363" class="head" text-anchor="middle">版本A：2×3、连续FP32</text><text x="307" y="397" class="body" text-anchor="middle">①创建，②和⑤复用</text>
+  <rect x="630" y="325" width="535" height="95" rx="15" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="897" y="363" class="head" text-anchor="middle">版本B：4×3、连续FP32</text><text x="897" y="397" class="body" text-anchor="middle">③创建，④复用</text>
+  <path d="M160 225V325" class="edge"/>
+  <path d="M455 225V325" class="edge reuse"/>
+  <path d="M750 225V325" class="edge"/>
+  <path d="M1045 225V325" class="edge reuse"/>
+  <path d="M1340 225V455H95V420" class="edge reuse"/>
+</svg>
