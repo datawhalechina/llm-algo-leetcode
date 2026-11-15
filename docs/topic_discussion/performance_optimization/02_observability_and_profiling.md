@@ -2,11 +2,21 @@
 
 ## 本节导读
 
-同一种“慢”可能来自计算量、显存带宽，也可能来自启动、同步或等待；驻留容量还会限制可用批量与并发。固定比较条件后，需要根据这些限制选择改动对象，说明它为什么可能改善目标指标。
+同一种“慢”可能来自计算量、显存读写，也可能来自启动、同步或等待。先把基线中的时间与峰值对应到具体事件和张量，再判断哪项限制最直接影响目标；这里把它称为主要限制。
 
-本节分别估算浮点运算、搬运字节与驻留容量，提出可检验的候选假设，再用实际执行和配对结果检查减少量是否转化为收益。
+本节从时间线与驻留记录出发，估算计算、搬运和容量需求，提出“减少什么、新增什么开销”的候选假设。图中的驻留指对象仍占用存储，等待指某项依赖尚未完成、后续工作无法开始。
+
+![从观察记录定位对象并提出候选](../../public/topic_discussion/performance_optimization/attribution_to_candidate_hypothesis.svg)
+
+## 从观察结果走到原因解释
+
+一个阶段耗时最多，只能说明值得继续检查。假设一轮训练需100 ms，其中输入等待30 ms、设备计算70 ms；计算阶段耗时即使降低20%，总时间也只降到86 ms，前提还是二者串行且其他开销不变。如果预取让下一批准备与当前计算重叠，应检查原来的30 ms究竟剩多少，以及主机内存是否增加。这两种改动减少的时间不同，不能仅凭同一张热点排名选择。
+
+时间线中的事件与依赖用[性能分析的时间线方法](methods/03_time_breakdown_and_trace_reading.md)读取；峰值时同时存在的张量用[驻留方法](methods/04_memory_timeline_and_residency.md)核对。随后改变一个能区分原因的条件，例如只调整输入供给而保持设备计算不变；这种对照称为判别实验，结果应支持或排除一个具体解释。
 
 ## 当前受哪类资源上界约束
+
+算术强度是浮点运算次数与搬运字节之比。Roofline用计算吞吐和带宽参考，估算给定算术强度下可能达到的吞吐；其计算量、字节量、单位和假设在[资源归因方法](methods/05_bottleneck_attribution.md#用算术强度比较计算与带宽约束)中推导。本地参考值是特定形状与执行条件的测量，不是硬件的严格上界。例如，同样的计算若要多次读取中间张量，可能先受带宽限制；融合减少读写后，计算本身或启动等待又可能成为新的限制。容量问题则要另看峰值时哪些对象共存，不能由算术强度推断。
 
 | 已有证据 | 可提出的资源假设 | 不能直接得出的结论 |
 |:---|:---|:---|
@@ -29,11 +39,9 @@
 | 增大批量 | 每词元分摊的权重读取 | 激活/KV 容量和单次迭代延迟 | 峰值、P99 或单步预算 |
 | 通信—计算重叠 | 暴露通信时间 | 额外缓冲区、调度和资源争用 | 数值一致性和总时间 |
 
-![从归因证据到候选假设](../../public/topic_discussion/performance_optimization/attribution_to_candidate_hypothesis.svg)
+## 什么结果会使候选假设不成立
 
-## 代价转移与证伪条件
-
-[PERF-ROOFLINE 资源参考实验](../../02_PyTorch_Algorithms/PERF-ROOFLINE_Arithmetic_Intensity_and_Resource_Ceiling.md)帮助判断可能的资源限制，[PERF-CANDIDATE 候选对照实验](../../02_PyTorch_Algorithms/PERF-CANDIDATE_Constraint_to_Candidate_and_Cost_Transfer.md)再检查改动后的时间、字节和输出。即使观察到加速，也需结合执行轨迹区分搬运减少、计算路径变化和等待缩短。
+[Part 02 · PERF-ROOFLINE 资源参考实验](../../02_PyTorch_Algorithms/PERF-ROOFLINE_Arithmetic_Intensity_and_Resource_Ceiling.md)帮助判断可能的资源限制，[Part 02 · PERF-CANDIDATE 候选对照实验](../../02_PyTorch_Algorithms/PERF-CANDIDATE_Constraint_to_Candidate_and_Cost_Transfer.md)检查改动后的时间、字节和输出。“证伪条件”就是预先说明什么结果会推翻预期，例如量化虽减少读取字节，反量化却使完整调用更慢。确定候选后，训练问题进入[训练步骤与状态](./03_training_memory_ledger.md)，推理问题进入[延迟、吞吐与容量](./04_inference_memory_and_kv_cache.md)；两者涉及传输等待时按需查看[计算、通信与I/O](./05_compute_communication_and_io.md)。
 
 | 候选假设 | 支持它的结果 | 证伪它的结果 |
 |:---|:---|:---|
