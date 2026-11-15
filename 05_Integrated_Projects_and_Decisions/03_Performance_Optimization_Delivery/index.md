@@ -29,7 +29,7 @@
 
 ## 运行方式
 
-1. 使用[性能分析单卡环境](../../topic_discussion/performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart) `llm_perf_cu128`，打开 [`Performance_Optimization_Delivery_Project.ipynb`](./Performance_Optimization_Delivery_Project.ipynb)，设置 `RUN_LABEL` 与 `RUN_STAGE`。
+1. 使用[性能机制GPU环境](../../topic_discussion/performance_optimization/gpu_quickstart.md#perf-cuda-mechanism-quickstart) `llm_perf_cu128`，打开 [`Performance_Optimization_Delivery_Project.ipynb`](./Performance_Optimization_Delivery_Project.ipynb)，设置 `RUN_LABEL` 与 `RUN_STAGE`。
 2. 依次运行 `contract_check`、`prepare`、`measure`、`close`；切换阶段后从头运行单元格。`prepare` 检查缓存、CUDA、BF16 和显存余量，并执行小型设备探测；失败即停止。`measure` 才加载模型，不自动下载。
 3. `close` 只核对本项目记录，不运行 GPU。证据缺失或未达门槛时保留 `tune`；身份、配对或正确性错误时拒绝对应候选。
 

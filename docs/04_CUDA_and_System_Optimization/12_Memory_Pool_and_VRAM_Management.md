@@ -21,7 +21,7 @@
 ## 运行环境
 
 - **基础练习：** 使用[基础CPU环境](../guide.md#base-cpu)，运行[题目与测试](#mechanism-practice)，只依赖Python标准库。
-- **GPU行为核对（可选）：** 使用[性能机制环境](../topic_discussion/performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart)或[兼容的算子环境](../topic_discussion/operator_optimization/quickstart.md#triton-environment)，进入[生命周期核对](#gpu-allocator-check)。需要CUDA PyTorch与NVIDIA GPU，无需本机nvcc。
+- **GPU行为核对（可选）：** 使用[性能机制GPU环境](../topic_discussion/performance_optimization/gpu_quickstart.md#perf-cuda-mechanism-quickstart)或[兼容的算子环境](../topic_discussion/operator_optimization/quickstart.md#triton-environment)，进入[生命周期核对](#gpu-allocator-check)。需要CUDA PyTorch与NVIDIA GPU，无需本机nvcc。
 
 ## 前置阅读
 

@@ -48,7 +48,7 @@
 |:---|:---|:---|
 | CPU推导与配置 | [基础CPU环境](../guide.md#base-cpu)；03／04／08／12／14–17及05／11的CPU部分 | 索引、资源、字节、时间或字段关系，不执行目标设备路径 |
 | 原生CUDA C++ | [算子优化Quickstart](../topic_discussion/operator_optimization/quickstart.md#triton-environment)；01／02／05／06／07／09还需本机Toolkit、`nvcc`与兼容主机编译器 | 真实编译、数值或资源查询；性能按独立测量入口判断 |
-| 单GPU运行时 | [性能机制环境](../topic_discussion/performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart)或兼容的既有CUDA PyTorch环境；10／11／12／17的GPU部分 | Stream依赖、Graph重放、分配器生命周期或驻留／CPU往返对照；不要求本机CUDA C++编译 |
+| 单GPU运行时 | [性能机制GPU环境](../topic_discussion/performance_optimization/gpu_quickstart.md#perf-cuda-mechanism-quickstart)或兼容的既有CUDA PyTorch环境；10／11／12／17的GPU部分 | Stream依赖、Graph重放、分配器生命周期或驻留／CPU往返对照；不要求本机CUDA C++编译 |
 | 本地集合通信 | [通信CPU环境](../topic_discussion/communication_parallelism/quickstart.md#par-cpu-quickstart)；13使用2／3进程Gloo | 每个rank的集合结果，不证明Ring算法或NCCL带宽 |
 | 多GPU性能 | 按[通信与并行Quickstart](../topic_discussion/communication_parallelism/quickstart.md)准备至少两张GPU及目标后端 | 需另行记录拓扑、通信与完成时间，CPU模型不能替代 |
 | 阅读与CPU选型练习 | [4.5](./4_5.md)无需GPU；19只用Python标准库 | 构造条件下的筛选、成本与情景判断；真实采用需匹配负载与计费范围的证据 |

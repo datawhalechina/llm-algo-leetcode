@@ -18,7 +18,7 @@ CPU 批次依次传入 GPU 时，下一批传输可能与当前批计算同时�
 
 ## 运行环境
 
-需要 NVIDIA GPU 与 CUDA 版 PyTorch；使用 [PERF-CUDA-MECHANISM](../topic_discussion/performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart)，或已有且通过检查的 [llm_algo_cnb_gpu](../topic_discussion/operator_optimization/quickstart.md#triton-environment)。练习调用 PyTorch Runtime，无需本机 `nvcc`；测试检查多批次输出和输入约束，性能重叠需另用时间线或配对测量确认。
+需要 NVIDIA GPU 与 CUDA 版 PyTorch；使用 [PERF-CUDA-MECHANISM](../topic_discussion/performance_optimization/gpu_quickstart.md#perf-cuda-mechanism-quickstart)，或已有且通过检查的 [llm_algo_cnb_gpu](../topic_discussion/operator_optimization/quickstart.md#triton-environment)。练习调用 PyTorch Runtime，无需本机 `nvcc`；测试检查多批次输出和输入约束，性能重叠需另用时间线或配对测量确认。
 
 ## 前置阅读
 
