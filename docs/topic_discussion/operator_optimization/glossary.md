@@ -36,6 +36,9 @@ Program、线程和tile分别描述什么，编译与Graph重放改变了什么�
 | 归约 | reduction | 沿指定维度将多个值合成较少结果，如一行求和或最大值；本教程主称归约 | 逐元素运算；规约是同义译法，不另设机制 | [Part 03 · 04 行内归约](../../03_Triton_Kernels/04_Triton_Fused_RMSNorm.md) |
 | 广播 | broadcasting | 按兼容维度将共享值用于多个位置，不要求先物理复制 | 集合通信广播；两者不是同一种操作 | [Part 03 · 02 坐标广播](../../03_Triton_Kernels/02_Triton_Layouts_and_Memory_Access.md) |
 | 累加器 | accumulator | 保存跨轮次部分和的中间状态，直到当前结果完成 | 每轮重置的临时乘积；输入数据类型 | [Part 03 · 05 K维累加](../../03_Triton_Kernels/05_Triton_GEMM_Tutorial.md) |
+| 跨Program归约 | multi-program reduction | 多个Program先写各自部分和，再由后续内核合并；各阶段分别处理有效范围与执行依赖 | 只在一个Program内求和；普通写入同一输出自动完成累加 | [Part03·22 两阶段归约](../../03_Triton_Kernels/22_Triton_Two_Stage_Reduction.md) |
+| 上游梯度 | upstream gradient | 后续损失对当前算子输出的导数g；反向将它与本算子的局部导数结合，得到输入梯度 | 损失数值；输入梯度；所有位置固定为1 | [Part03·19 前反向接入](../../03_Triton_Kernels/19_Triton_PyTorch_Op_Integration.md) |
+| 前向保存状态 | saved tensors / context | 保留同一次前向中反向需要的量，例如缩放系数或Softmax输出概率；张量由save_for_backward保存 | 默认保存全部输入；保存任意一轮输出都等价 | [Part03·19 保存概率与反向调用](../../03_Triton_Kernels/19_Triton_PyTorch_Op_Integration.md) |
 | 累加精度 | accumulation precision | 归约或矩阵乘加中保存中间累积结果的数据类型及其数值影响 | 输入与输出的数据类型 | [04 矩阵计算与推理状态](./04_attention_and_inference_data_paths.md) |
 | 浮点格式与舍入 | FP16 / BF16 / FP32 / FP64; rounding | 格式决定可表示范围与精度；舍入在结果或类型转换时发生，中间舍入位置可能改变输出 | 位宽相同就精度和范围相同；融合后应逐位一致 | [Part 03 · 03 中间精度](../../03_Triton_Kernels/03_Triton_Fused_SwiGLU.md) |
 | 绝对与相对容差 | atol / rtol | 逐元素允许误差不超过atol+rtol×参考值绝对值；运行前确定 | 只比较最大相对误差；看到结果后放宽阈值 | [Part 03 · 03 三路径数值要求](../../03_Triton_Kernels/03_Triton_Fused_SwiGLU.md) |
@@ -48,14 +51,15 @@ Program、线程和tile分别描述什么，编译与Graph重放改变了什么�
 | 图编译入口与后端 | torch.compile / Inductor | torch.compile是用户入口；本节选择Inductor，生成或选择执行实现 | 编译等于全部改写成手写Triton；fullgraph保证只有一个kernel | [Part 03 · 03 编译对照](../../03_Triton_Kernels/03_Triton_Fused_SwiGLU.md) |
 | 图编译 | graph compilation | 获取计算依赖，进行语义保持的改写，并生成或选择具体执行路径 | CUDA Graph 捕获与重放 | [02 图编译、融合与执行候选](./02_graph_compilation_and_fusion.md) |
 | 图中断 | graph break | 无法继续捕获当前计算时，编译图在该处中断，形成分段执行 | 整个函数都未编译，或必然发生数值错误 | [02 图编译、融合与执行候选](./02_graph_compilation_and_fusion.md) |
-| 守卫 | guard | 在复用编译版本前检查形状、步长等适用条件 | 掩码；守卫失败与图中断不是同一事件 | [02 图编译、融合与执行候选](./02_graph_compilation_and_fusion.md) |
-| 重编译 | recompilation | 当前输入无法复用适用编译版本时，可能重新捕获并生成版本；下层缓存仍可能命中 | 一次守卫失效必然全链重新生成；图中断 | [Part01·30 版本复用](../../01_Hardware_Math_and_Systems/30_Dynamic_Shape_Handling.md) |
+| 编译版本适用条件检查 | guard | 复用前检查输入的形状、步长、类型等是否符合该版本要求 | 掩码；条件不满足与图中断不是同一事件 | [02 图编译、融合与执行候选](./02_graph_compilation_and_fusion.md) |
+| 重编译 | recompilation | 当前输入无法复用适用编译版本时，可能重新捕获并生成版本；下层缓存仍可能命中 | 一次适用条件不满足就必然全链重新生成；图中断 | [Part01·30 版本复用](../../01_Hardware_Math_and_Systems/30_Dynamic_Shape_Handling.md) |
 | 编译特化 | specialization | 根据形状、类型、编译期常量等条件生成具体实现；形状特化是其中一种 | 一个版本覆盖所有输入；运行时参数必然触发新编译 | [02 图编译、融合与执行候选](./02_graph_compilation_and_fusion.md) |
 | 即时编译 | just-in-time compilation / JIT | 需要特定实现时生成或读取适用代码；准备过程可能命中缓存 | 第一次Python调用必定是无缓存冷编译 | [Part 03 · 18 编译准备](../../03_Triton_Kernels/18_Triton_Compilation_Artifacts_and_Execution.md) |
 | 中间表示与目标代码 | IR / PTX / SASS / cubin | IR表达编译阶段信息；PTX是虚拟指令表示，SASS是硬件机器指令表示，cubin是目标二进制 | PTX与最终机器指令相同；产物存在就已执行 | [Part 03 · 18 产物层次](../../03_Triton_Kernels/18_Triton_Compilation_Artifacts_and_Execution.md) |
 | 特化产物 | compiled specialization | 对应源码、签名和配置生成的中间表示、目标代码及相关元数据 | Python 函数名；产物存在不证明实际启动 | [Part 03 · 18 编译产物核对](../../03_Triton_Kernels/18_Triton_Compilation_Artifacts_and_Execution.md) |
 | 下沉 | lowering | 将较高层计算表示转换成更具体的操作或目标实现 | 仅减少图节点，或已经证明加速 | [02 图编译、融合与执行候选](./02_graph_compilation_and_fusion.md) |
 | 算子融合 | operator fusion | 在语义允许时合并操作，争取减少中间写回与启动，同时改变资源占用 | 图节点变少就必然更快 | [02 图编译、融合与执行候选](./02_graph_compilation_and_fusion.md) |
+| 矩阵尾部处理 | epilogue | 完整K维累加后、输出写回前施加偏置或激活；融合时仍需满足参考要求的中间舍入 | 在每段K部分和上分别激活；省去写回等于省去舍入 | [Part03·05 GEMM与尾部融合](../../03_Triton_Kernels/05_Triton_GEMM_Tutorial.md) |
 | 持久化任务分配 | persistent scheduling | 本专题用有限 Program 循环处理多个输出块，检查覆盖和每块状态 | 减少 CPU 启动次数；Program 少不保证更快 | [Part 03 · 06 持久化 GEMM](../../03_Triton_Kernels/06_Triton_Persistent_GEMM_and_Tile_Scheduling.md) |
 | 自动调优 | autotuning | 在固定语义和输入分布下搜索分块、线程束或流水阶段配置 | 不受约束地尝试任意代码 | [05 测量归因与自动调优](./05_measurement_profiling_and_autotuning.md) |
 | 回退路径 | fallback path | 目标后端或计算内核不满足条件时实际采用的替代执行路径 | 正常命中目标路径 | [02 图编译、融合与执行候选](./02_graph_compilation_and_fusion.md) |
