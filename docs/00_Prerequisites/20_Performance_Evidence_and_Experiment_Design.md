@@ -515,5 +515,5 @@ print('✅ 单变量、失败率、质量、P95 与统计量反例检查通过')
 ## 相关阅读
 **导语：** 完成本节后，可以进入性能归因页或专题路线，将这里的实验协议用于真实证据。
 - [Part 01 · 13 性能分析与瓶颈归因](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
-- [性能分析专题](../topic_discussion/performance_analysis/intro.md)
+- [性能分析方法](../topic_discussion/performance_optimization/methods/intro.md)
 - [PyTorch Profiler 官方教程](https://docs.pytorch.org/tutorials/recipes/recipes/profiler_recipe.html)

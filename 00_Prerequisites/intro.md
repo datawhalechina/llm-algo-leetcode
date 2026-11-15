@@ -28,7 +28,7 @@
 |:---|:---|
 | 理解梯度、损失归约和有效参数更新 | [反向传播与训练机制](../topic_discussion/backpropagation_training_mechanism/intro.md) |
 | 理解模型组件怎样组合与演进 | [Part 02 模型组件](../02_PyTorch_Algorithms/2_1.md)、[大模型架构演进](../topic_discussion/llm_architecture_evolution/intro.md) |
-| 从时间、容量现象定位性能问题 | [性能分析](../topic_discussion/performance_analysis/intro.md) |
+| 从时间、容量现象定位性能问题 | [性能分析](../topic_discussion/performance_optimization/methods/intro.md) |
 | 估算规模、访存和通信，或开始编写计算内核 | [Part 01 硬件、数学与系统](../01_Hardware_Math_and_Systems/intro.md) |
 
 ## 环境说明
