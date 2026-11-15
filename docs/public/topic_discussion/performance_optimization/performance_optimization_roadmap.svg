@@ -1,25 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
-  <title id="title">性能优化学习路线</title>
-  <desc id="desc">先固定比较基线并形成候选契约，再分别验证训练、推理与关键路径候选，最后完成单候选准入和组合复测。</desc>
-  <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
-    <style>.bg{fill:#f8fafc}.box{stroke-width:2.5}.blue{fill:#dbeafe;stroke:#2563eb}.cyan{fill:#e0f2fe;stroke:#0284c7}.green{fill:#dcfce7;stroke:#16a34a}.amber{fill:#fef3c7;stroke:#d97706}.violet{fill:#f3e8ff;stroke:#9333ea}.line{fill:none;stroke:#475569;stroke-width:3.5;marker-end:url(#arrow)}.stem{fill:none;stroke:#94a3b8;stroke-width:3}.title{font:700 28px sans-serif;fill:#0f172a}.head{font:700 18px sans-serif;fill:#172033}.body{font:14px sans-serif;fill:#475569}</style>
-  </defs>
-  <rect class="bg" width="1200" height="620" rx="24"/>
-  <text x="600" y="48" text-anchor="middle" class="title">从固定问题到可回退的组合决策</text>
-
-  <rect class="box blue" x="105" y="88" width="300" height="105" rx="16"/><text x="255" y="126" text-anchor="middle" class="head">工作负载与比较基线</text><text x="255" y="157" text-anchor="middle" class="body">目标指标 · 守护条件 · 重复规则</text><text x="255" y="180" text-anchor="middle" class="body">有效运行 · 失败与停止条件</text>
-  <rect class="box cyan" x="720" y="88" width="360" height="105" rx="16"/><text x="900" y="126" text-anchor="middle" class="head">资源约束与候选契约</text><text x="900" y="157" text-anchor="middle" class="body">计算 · 带宽 · 容量 · 关键路径</text><text x="900" y="180" text-anchor="middle" class="body">预期减少量 · 新增代价 · 证伪条件</text>
-  <path class="line" d="M405 140H710"/>
-
-  <path class="stem" d="M900 193V235H190M900 235H1010"/>
-  <path class="line" d="M190 235V263"/><path class="line" d="M600 235V263"/><path class="line" d="M1010 235V263"/>
-  <rect class="box green" x="55" y="275" width="270" height="110" rx="16"/><text x="190" y="314" text-anchor="middle" class="head">训练输入与状态</text><text x="190" y="345" text-anchor="middle" class="body">输入等待 · 激活 · 梯度</text><text x="190" y="369" text-anchor="middle" class="body">优化器状态 · 时间—容量取舍</text>
-  <rect class="box green" x="465" y="275" width="270" height="110" rx="16"/><text x="600" y="314" text-anchor="middle" class="head">推理请求与状态</text><text x="600" y="345" text-anchor="middle" class="body">请求分布 · KV Cache · 批量</text><text x="600" y="369" text-anchor="middle" class="body">并发 · 延迟 · 吞吐</text>
-  <rect class="box green" x="875" y="275" width="270" height="110" rx="16"/><text x="1010" y="314" text-anchor="middle" class="head">计算、通信与 I/O</text><text x="1010" y="345" text-anchor="middle" class="body">依赖 · 暴露时间 · 重叠</text><text x="1010" y="369" text-anchor="middle" class="body">同步 · 队列 · 回压</text>
-
-  <path class="line" d="M190 385V425H420V455"/><path class="line" d="M600 385V415H465V455"/><path class="line" d="M1010 385V425H510V455"/>
-  <rect class="box amber" x="330" y="465" width="270" height="100" rx="16"/><text x="465" y="504" text-anchor="middle" class="head">单候选执行与准入</text><text x="465" y="535" text-anchor="middle" class="body">执行路径 · 质量 · 回归</text><text x="465" y="558" text-anchor="middle" class="body">容量 · 成本 · 回退目标</text>
-  <rect class="box violet" x="785" y="465" width="340" height="100" rx="16"/><text x="955" y="504" text-anchor="middle" class="head">策略组合与瓶颈转移</text><text x="955" y="535" text-anchor="middle" class="body">比较单项与组合的边际收益</text><text x="955" y="558" text-anchor="middle" class="body">重新归因并决定保留或回退</text>
-  <path class="line" d="M600 515H775"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="740" viewBox="0 0 1280 740" role="img" aria-labelledby="title desc">
+<title id="title">性能优化统一学习路线</title>
+<desc id="desc">建立基线、观察耗时与峰值、归因后按训练或推理选择分支，再汇入单项复测和按需组合。新瓶颈返回观察与归因。性能分析方法贯穿各阶段。</desc>
+<defs><marker id="arrow" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 4.5L0 9Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.head{font-size:18px;font-weight:700}.body{font-size:15px;fill:#475569}.flow{fill:none;stroke:#475569;stroke-width:2.5;marker-end:url(#arrow)}</style></defs>
+<rect width="1280" height="740" rx="24" fill="#f8fafc"/>
+<text x="640" y="46" text-anchor="middle" class="title">先找出主要限制，再比较单项与组合</text>
+<text x="640" y="77" text-anchor="middle" class="body">性能分析方法贯穿：基线计时、时间线、对象驻留、归因与配对统计</text>
+<rect id="baseline" x="60" y="115" width="340" height="110" rx="16" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="230" y="149" text-anchor="middle" class="head">Task0 · 明确问题并建立基线</text><text x="230" y="182" text-anchor="middle" class="body">固定负载、目标与质量要求</text><text x="230" y="208" text-anchor="middle" class="body">保留重复样本和失败</text>
+<rect id="observe" x="460" y="115" width="340" height="110" rx="16" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="630" y="149" text-anchor="middle" class="head">Task1 · 找耗时、等待与峰值</text><text x="630" y="182" text-anchor="middle" class="body">事件依赖与同时驻留对象</text><text x="630" y="208" text-anchor="middle" class="body">计算、通信与 I/O 按需观察</text>
+<rect id="cause" x="860" y="115" width="340" height="110" rx="16" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="1030" y="149" text-anchor="middle" class="head">Task2 · 判断限制并选改动</text><text x="1030" y="182" text-anchor="middle" class="body">减少什么工作或等待</text><text x="1030" y="208" text-anchor="middle" class="body">新增什么代价，怎样检验</text>
+<rect id="training" x="260" y="315" width="340" height="110" rx="16" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="430" y="349" text-anchor="middle" class="head">Task3 · 改善训练步骤与状态</text><text x="430" y="382" text-anchor="middle" class="body">输入、激活、更新与分片</text><text x="430" y="408" text-anchor="middle" class="body">Part02 · 75／76／79 专项比较</text>
+<rect id="inference" x="740" y="315" width="340" height="110" rx="16" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="910" y="349" text-anchor="middle" class="head">Task4 · 改善推理延迟与容量</text><text x="910" y="382" text-anchor="middle" class="body">计算、KV、调度与精度</text><text x="910" y="408" text-anchor="middle" class="body">固定请求负载，另测扩容</text>
+<rect id="single" x="460" y="505" width="340" height="110" rx="16" fill="#fef3c7" stroke="#d97706" stroke-width="2"/><text x="630" y="539" text-anchor="middle" class="head">Task5 · 验证单项收益</text><text x="630" y="572" text-anchor="middle" class="body">实际执行、质量与配对结果</text><text x="630" y="598" text-anchor="middle" class="body">Part02 · 74 限定范围内的判断</text>
+<rect id="composition" x="860" y="505" width="340" height="110" rx="16" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/><text x="1030" y="539" text-anchor="middle" class="head">Task6 · 组合并复查瓶颈</text><text x="1030" y="572" text-anchor="middle" class="body">单项与组合的边际收益</text><text x="1030" y="598" text-anchor="middle" class="body">Part05·03 独立生成实验</text>
+<path class="flow" data-source="baseline" data-target="observe" d="M400 170H460"/>
+<path class="flow" data-source="observe" data-target="cause" d="M800 170H860"/>
+<path class="flow" data-source="cause" data-target="training" d="M950 225V270H430V315"/>
+<path class="flow" data-source="cause" data-target="inference" d="M1030 225V285H910V315"/>
+<path class="flow" data-source="training" data-target="single" d="M430 425V465H550V505"/>
+<path class="flow" data-source="inference" data-target="single" d="M910 425V465H710V505"/>
+<path class="flow" data-source="single" data-target="composition" d="M800 560H860" stroke-dasharray="7 6"/>
+<path class="flow" data-source="composition" data-target="observe" d="M1030 615V670H40V260H630V225" stroke-dasharray="7 6"/>
+<text x="640" y="298" text-anchor="middle" class="body">训练与推理按目标选择；通信、搬运与 I/O 都可能成为限制</text>
+<text x="830" y="489" text-anchor="middle" class="body">按需组合</text>
+<text x="640" y="704" text-anchor="middle" class="body">发现新的等待或峰值 → 回到Task1补测、Task2重新归因；虚线表示按需路径</text>
 </svg>

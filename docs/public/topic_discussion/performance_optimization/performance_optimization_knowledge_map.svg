@@ -1,35 +1,66 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
-  <title id="title">性能优化知识地图</title>
-  <desc id="desc">性能证据先定位约束，再映射到训练、推理或关键路径对象；候选动作改变对象后，通过单候选准入和组合复测形成决策。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" font-family="Noto Sans CJK SC, sans-serif" role="img" aria-labelledby="title desc">
+  <title id="title">性能优化：对象、手段与复测决策</title>
+  <desc id="desc">从可重复基线出发，用性能分析方法确定主要限制。候选分别改变训练输入与状态、推理请求与 KV 状态、模型表示与执行、跨设备与跨介质传输，再经过单项和组合复测，形成回退或采用决定。</desc>
   <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
-    <style>.bg{fill:#f8fafc}.box{stroke-width:2.5}.blue{fill:#dbeafe;stroke:#2563eb}.green{fill:#dcfce7;stroke:#16a34a}.amber{fill:#fef3c7;stroke:#d97706}.violet{fill:#f3e8ff;stroke:#9333ea}.line{fill:none;stroke:#475569;stroke-width:3.5;marker-end:url(#arrow)}.stem{fill:none;stroke:#94a3b8;stroke-width:3}.title{font:700 28px sans-serif;fill:#0f172a}.head{font:700 18px sans-serif;fill:#172033}.body{font:14px sans-serif;fill:#475569}.label{font:700 14px sans-serif;fill:#2563eb}</style>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 4.5L0 9Z" fill="#475569"/></marker>
+    <style>
+      .bg{fill:#f8fafc}.box{stroke-width:2.5}.object{fill:#dcfce7;stroke:#16a34a}.method{fill:#fef3c7;stroke:#d97706}.record{fill:#dbeafe;stroke:#2563eb}.decision{fill:#f3e8ff;stroke:#9333ea}.exit{fill:#ffe4e6;stroke:#e11d48}.line{fill:none;stroke:#475569;stroke-width:3.5;marker-end:url(#arrow)}.title{font-family:'Noto Sans CJK SC',sans-serif;font-size:28px;font-weight:700;fill:#0f172a}.subtitle{font-family:'Noto Sans CJK SC',sans-serif;font-size:15px;fill:#475569}.row{font-family:'Noto Sans CJK SC',sans-serif;font-size:14px;font-weight:700;fill:#2563eb}.head{font-family:'Noto Sans CJK SC',sans-serif;font-size:18px;font-weight:700;fill:#172033}.body{font-family:'Noto Sans CJK SC',sans-serif;font-size:14px;fill:#475569}.small{font-family:'Noto Sans CJK SC',sans-serif;font-size:13px;fill:#475569}
+    </style>
   </defs>
-  <rect class="bg" width="1200" height="620" rx="24"/>
-  <text x="600" y="48" text-anchor="middle" class="title">证据定位约束，候选改变对象，复测形成决策</text>
+  <rect class="bg" width="1200" height="680" rx="24"/>
+  <text x="600" y="44" text-anchor="middle" class="title">明确优化对象，选择改变约束的手段，再复测决策</text>
+  <text x="600" y="72" text-anchor="middle" class="subtitle">先用基线与分析确定主要限制；改动后复查收益、代价和新的等待</text>
 
-  <text x="48" y="103" class="label">约束证据</text>
-  <rect class="box blue" x="150" y="75" width="220" height="85" rx="15"/><text x="260" y="110" text-anchor="middle" class="head">时间与回归</text><text x="260" y="138" text-anchor="middle" class="body">阶段计时 · 配对分布</text>
-  <rect class="box blue" x="405" y="75" width="220" height="85" rx="15"/><text x="515" y="110" text-anchor="middle" class="head">资源上界</text><text x="515" y="138" text-anchor="middle" class="body">计算 · 带宽 · 容量</text>
-  <rect class="box blue" x="660" y="75" width="220" height="85" rx="15"/><text x="770" y="110" text-anchor="middle" class="head">对象驻留</text><text x="770" y="138" text-anchor="middle" class="body">生命周期 · 峰值重叠</text>
-  <rect class="box blue" x="915" y="75" width="220" height="85" rx="15"/><text x="1025" y="110" text-anchor="middle" class="head">依赖与等待</text><text x="1025" y="138" text-anchor="middle" class="body">执行轨迹 · 暴露时间</text>
+  <text x="38" y="142" class="row">优化对象</text>
+  <rect id="training-object" class="box object" x="95" y="100" width="235" height="115" rx="16"/>
+  <text x="212" y="143" text-anchor="middle" class="head">训练输入与状态</text>
+  <text x="212" y="173" text-anchor="middle" class="body">数据供给 · 激活 · 梯度 · 优化器</text>
+  <rect id="inference-object" class="box object" x="365" y="100" width="235" height="115" rx="16"/>
+  <text x="482" y="143" text-anchor="middle" class="head">推理请求与 KV 状态</text>
+  <text x="482" y="173" text-anchor="middle" class="body">请求分布 · KV · 批量 · 并发</text>
+  <rect id="execution-object" class="box object" x="635" y="100" width="235" height="115" rx="16"/>
+  <text x="752" y="143" text-anchor="middle" class="head">模型表示与执行</text>
+  <text x="752" y="173" text-anchor="middle" class="body">权重格式 · 计算图 · 后端 · 内核</text>
+  <rect id="transfer-object" class="box object" x="905" y="100" width="235" height="115" rx="16"/>
+  <text x="1022" y="143" text-anchor="middle" class="head">跨设备与跨介质传输</text>
+  <text x="1022" y="173" text-anchor="middle" class="body">通信 · 主机设备搬运 · 读写回写</text>
 
-  <path class="stem" d="M260 160V195H1025"/><path class="stem" d="M515 160V195"/><path class="stem" d="M770 160V195"/><path class="stem" d="M1025 160V195"/>
-  <path class="line" d="M290 195V223"/><path class="line" d="M600 195V223"/><path class="line" d="M910 195V223"/>
-  <text x="48" y="255" class="label">优化对象</text>
-  <rect class="box green" x="165" y="235" width="250" height="90" rx="15"/><text x="290" y="272" text-anchor="middle" class="head">训练状态与输入</text><text x="290" y="301" text-anchor="middle" class="body">激活 · 梯度 · 优化器 · 数据</text>
-  <rect class="box green" x="475" y="235" width="250" height="90" rx="15"/><text x="600" y="272" text-anchor="middle" class="head">推理请求与状态</text><text x="600" y="301" text-anchor="middle" class="body">KV · 批量 · 并发 · 队列</text>
-  <rect class="box green" x="785" y="235" width="250" height="90" rx="15"/><text x="910" y="272" text-anchor="middle" class="head">计算、通信与 I/O</text><text x="910" y="301" text-anchor="middle" class="body">计算内核 · 集合通信 · 交接</text>
+  <path class="line" d="M212 215V265" data-source="training-object" data-target="training-method" marker-end="url(#arrow)"/><path class="line" d="M482 215V265" data-source="inference-object" data-target="inference-method" marker-end="url(#arrow)"/><path class="line" d="M752 215V265" data-source="execution-object" data-target="execution-method" marker-end="url(#arrow)"/><path class="line" d="M1022 215V265" data-source="transfer-object" data-target="transfer-method" marker-end="url(#arrow)"/>
 
-  <path class="line" d="M290 325V363"/><path class="line" d="M600 325V363"/><path class="line" d="M910 325V363"/>
-  <text x="48" y="395" class="label">候选动作</text>
-  <rect class="box amber" x="165" y="375" width="250" height="90" rx="15"/><text x="290" y="411" text-anchor="middle" class="head">重算、搬运与分片</text><text x="290" y="440" text-anchor="middle" class="body">减少驻留，增加时间或通信</text>
-  <rect class="box amber" x="475" y="375" width="250" height="90" rx="15"/><text x="600" y="411" text-anchor="middle" class="head">表示、缓存与调度</text><text x="600" y="440" text-anchor="middle" class="body">改变容量、复用和服务延迟</text>
-  <rect class="box amber" x="785" y="375" width="250" height="90" rx="15"/><text x="910" y="411" text-anchor="middle" class="head">融合、重叠与布局</text><text x="910" y="440" text-anchor="middle" class="body">改变读写、同步和关键路径</text>
+  <text x="38" y="300" class="row">候选手段</text>
+  <rect id="training-method" class="box method" x="95" y="265" width="235" height="115" rx="16"/>
+  <text x="212" y="307" text-anchor="middle" class="head">减少训练等待或驻留</text>
+  <text x="212" y="336" text-anchor="middle" class="body">样本拼接 · 预取 · 重算</text>
+  <text x="212" y="361" text-anchor="middle" class="body">卸载 · 状态分片</text>
+  <rect id="inference-method" class="box method" x="365" y="265" width="235" height="115" rx="16"/>
+  <text x="482" y="307" text-anchor="middle" class="head">调整缓存与请求调度</text>
+  <text x="482" y="336" text-anchor="middle" class="body">缓存复用 · KV 量化</text>
+  <text x="482" y="361" text-anchor="middle" class="body">连续批处理 · 调度</text>
+  <rect id="execution-method" class="box method" x="635" y="265" width="235" height="115" rx="16"/>
+  <text x="752" y="307" text-anchor="middle" class="head">减少执行路径开销</text>
+  <text x="752" y="336" text-anchor="middle" class="body">低精度 · 融合 · 编译</text>
+  <text x="752" y="361" text-anchor="middle" class="body">加载器 · 后端 · 内核匹配</text>
+  <rect id="transfer-method" class="box method" x="905" y="265" width="235" height="115" rx="16"/>
+  <text x="1022" y="307" text-anchor="middle" class="head">隐藏或减少传输</text>
+  <text x="1022" y="336" text-anchor="middle" class="body">分桶 · 重叠 · 流水线</text>
+  <text x="1022" y="361" text-anchor="middle" class="body">压缩 · 产物与状态缓存</text>
 
-  <path class="line" d="M290 465V485H445V500"/><path class="line" d="M600 465V480H500V500"/><path class="line" d="M910 465V485H555V500"/>
-  <text x="48" y="535" class="label">决策证据</text>
-  <rect class="box violet" x="350" y="510" width="300" height="85" rx="15"/><text x="500" y="545" text-anchor="middle" class="head">单候选准入</text><text x="500" y="573" text-anchor="middle" class="body">质量 · 回归 · 容量 · 成本</text>
-  <rect class="box violet" x="800" y="510" width="320" height="85" rx="15"/><text x="960" y="545" text-anchor="middle" class="head">组合复测与回退</text><text x="960" y="573" text-anchor="middle" class="body">边际收益 · 新约束 · 回退目标</text>
-  <path class="line" d="M650 552H790"/>
+  <path class="line" d="M212 380V426" data-source="training-method" data-target="record" marker-end="url(#arrow)"/><path class="line" d="M482 380V426" data-source="inference-method" data-target="record" marker-end="url(#arrow)"/><path class="line" d="M752 380V426" data-source="execution-method" data-target="record" marker-end="url(#arrow)"/><path class="line" d="M1022 380V426" data-source="transfer-method" data-target="record" marker-end="url(#arrow)"/>
+  <text x="38" y="454" class="row">候选记录</text>
+  <rect id="record" class="box record" x="95" y="426" width="1045" height="90" rx="16"/>
+  <text x="617" y="463" text-anchor="middle" class="head">作用对象 · 预期减少量 · 新增代价 · 守护条件 · 证伪条件</text>
+  <text x="617" y="491" text-anchor="middle" class="small">固定输入与改动，记录需要复测的目标和代价</text>
+
+  <path class="line" d="M240 516V562" data-source="record" data-target="single" marker-end="url(#arrow)"/>
+  <text x="38" y="592" class="row">复测决策</text>
+  <rect id="single" class="box decision" x="95" y="562" width="290" height="92" rx="16"/>
+  <text x="240" y="598" text-anchor="middle" class="head">单候选准入</text>
+  <text x="240" y="625" text-anchor="middle" class="body">执行路径 · 质量 · 回归 · 成本</text>
+  <rect id="composition" class="box decision" x="455" y="562" width="290" height="92" rx="16"/>
+  <text x="600" y="598" text-anchor="middle" class="head">组合复测与重新归因</text>
+  <text x="600" y="625" text-anchor="middle" class="body">边际收益 · 新瓶颈 · 资源冲突</text>
+  <rect id="delivery" class="box exit" x="815" y="562" width="325" height="92" rx="16"/>
+  <text x="977" y="598" text-anchor="middle" class="head">回退或工程交接</text>
+  <text x="977" y="625" text-anchor="middle" class="body">回退目标 · 交接包 · 适用范围</text>
+  <path class="line" d="M385 608H455" data-source="single" data-target="composition" marker-end="url(#arrow)"/><path class="line" d="M745 608H815" data-source="composition" data-target="delivery" marker-end="url(#arrow)"/>
 </svg>

@@ -137,16 +137,18 @@ export default defineConfig({
             collapsed: true,
             items: [
               { text: '专题导读与 Task0–6', link: '/topic_discussion/performance_optimization/intro' },
+              { text: '测量与诊断方法', link: '/topic_discussion/performance_optimization/methods/intro' },
               { text: '01. 明确优化目标与比较条件', link: '/topic_discussion/performance_optimization/01_performance_problem_and_benchmark' },
               { text: '02. 资源约束与候选代价', link: '/topic_discussion/performance_optimization/02_observability_and_profiling' },
               { text: '03. 训练输入、状态与资源账本', link: '/topic_discussion/performance_optimization/03_training_memory_ledger' },
-              { text: '04. 推理状态容量与 KV Cache 成本', link: '/topic_discussion/performance_optimization/04_inference_memory_and_kv_cache' },
+              { text: '04. 推理延迟、吞吐与状态容量', link: '/topic_discussion/performance_optimization/04_inference_memory_and_kv_cache' },
               { text: '05. 跨路径：计算、通信与 I/O', link: '/topic_discussion/performance_optimization/05_compute_communication_and_io' },
               { text: '06. 单候选执行与准入', link: '/topic_discussion/performance_optimization/06_cost_model_and_production_decision' },
               { text: '07. 策略组合与瓶颈转移', link: '/topic_discussion/performance_optimization/07_end_to_end_performance_engineering' },
               { text: '问题链与图册', link: '/topic_discussion/performance_optimization/walkthrough' },
               { text: '判断手册', link: '/topic_discussion/performance_optimization/casebook' },
               { text: '术语表', link: '/topic_discussion/performance_optimization/glossary' },
+              { text: '公式索引', link: '/topic_discussion/performance_optimization/formula_reference' },
               { text: '环境 Quickstart', link: '/topic_discussion/performance_optimization/quickstart' },
               { text: '实验资产', link: '/topic_discussion/performance_optimization/experiment_assets' }
             ]
@@ -190,12 +192,11 @@ export default defineConfig({
             ]
           },
           {
-            text: '独立专题与分析',
+            text: '基础支撑专题',
             collapsed: true,
             items: [
               { text: '模型架构演进', link: '/topic_discussion/llm_architecture_evolution/intro' },
-              { text: '反向传播与训练机制', link: '/topic_discussion/backpropagation_training_mechanism/intro' },
-              { text: '性能分析', link: '/topic_discussion/performance_analysis/intro' }
+              { text: '反向传播与训练机制', link: '/topic_discussion/backpropagation_training_mechanism/intro' }
             ]
           }
         ]
