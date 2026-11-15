@@ -2,41 +2,41 @@
 
 ## Part Overview | Part 概览
 
-Part 01 把模型规模、设备资源和执行约束连接起来。学习者从数据类型、参数量和计算量出发，逐步理解单设备访存、多设备通信、程序执行、编译后端和设备运行时怎样共同限制训练与推理；完成后能够把一个模型或工作负载转成资源假设，并知道下一步应验证什么。
+模型权重能装入显存，训练状态却可能放不下；减少了中间张量读写，完整请求也未必更快。Part 01 从数据类型、参数量和计算量出发，解释容量、访存、通信、执行与软件支持怎样影响这些结果。各节用CPU上的计算器和给定记录核对数量、条件与变化，再把问题带到后续实现和实验。
 
 ## Learning Path | 学习路线
 
-先以 1A 和 1B 建立数量级、硬件层次和单设备工作集，再按实际问题选择通信并行、执行映射、编译后端或设备适配分支。
+默认先读01数据类型、02参数与计算量、03设备资源，即可按当前问题进入分支。1A的量化／MoE、1B的注意力／矩阵／片上复用均按需选读；进入其他组时，再回补具体小节，不要求先读完整个1A或1B。
 
 ![Part 01 学习路线](../public/01_Hardware_Math_and_Systems/part01_learning_route.svg)
 
 | 学习方式 | 推荐入口 | 能完成的判断 |
 |:---|:---|:---|
-| 建立共同基础 | [1A 数值与规模](./1A.md) → [1B 单设备执行、内存与访存](./1B.md) | 参数、状态、计算量和工作集是否落在可用资源内 |
+| 建立共同基础 | [01 数据类型](./01_Data_Types_and_Precision.md) → [02 参数与计算量](./02_LLM_Params_and_FLOPs.md) → [03 设备资源](./03_GPU_Architecture_and_Memory.md) | 状态占多少空间、计算量有多大、设备约束来自哪里 |
 | 训练或多卡问题 | [1C 通信、并行与容错](./1C.md) | 应切分什么、交换什么，以及恢复代价是否可接受 |
-| 算子或执行路径问题 | [1D 执行模型、异步调度与算子映射](./1D.md) → [1E 编译与后端](./1E.md) | 程序如何映射到设备，后端是否能生成目标执行路径 |
-| 部署与设备选型问题 | [1F 硬件适配与系统约束](./1F.md) | 模型产物、运行时和成本是否允许进入目标设备 |
+| 算子或执行路径问题 | 执行映射与异步依赖看[1D](./1D.md)；图变换与版本复用看[1E](./1E.md) | 映射哪些工作、减少哪些调用或读写、实现还需什么条件 |
+| 部署与设备选型问题 | [1F 硬件适配与系统约束](./1F.md) | 给定设备与软件声明缺什么，容量、隔离和成本怎样比较 |
 
 ## Group Overview | 六组学习入口
 
 | 学习组 | 要回答的问题 | 核心入口 | 交给后续专题的输入 |
 |:---|:---|:---|:---|
 | [1A 数值与规模](./1A.md) | 模型、训练状态和稀疏结构分别需要多少存储与计算？ | [01 数据类型与精度](./01_Data_Types_and_Precision.md) → [02 参数量与 FLOPs](./02_LLM_Params_and_FLOPs.md) | 量化、模型架构与性能候选的资源账本 |
-| [1B 单设备执行、内存与访存](./1B.md) | 工作集、KV 状态、矩阵计算和访存约束怎样形成单卡瓶颈？ | [03 GPU 架构与显存](./03_GPU_Architecture_and_Memory.md) | 推理、性能分析与算子优化的容量和关键路径假设 |
-| [1C 通信、并行与容错](./1C.md) | 状态怎样切分，通信何时暴露，系统中断后怎样恢复？ | [05 通信拓扑](./05_Communication_Topologies.md) → [06 显存计算与 ZeRO](./06_VRAM_Calculation_and_ZeRO.md) | 通信并行的策略、载荷和恢复条件 |
-| [1D 执行模型、异步调度与算子映射](./1D.md) | 任务如何落到主机、设备、线程、Warp、Block 或 Program？ | [07 CPU/GPU 异构调度](./07_CPU_GPU_Heterogeneous_Scheduling.md) → [08 CUDA/Triton 编程模型](./08_Programming_Models_CUDA_Triton.md) | 算子实现与性能优化的执行依赖 |
+| [1B 单设备执行、内存与访存](./1B.md) | 工作集、KV 状态、矩阵计算和访存约束怎样形成单卡瓶颈？ | [03 GPU 架构与显存](./03_GPU_Architecture_and_Memory.md) | 推理、性能优化与算子优化的容量和关键路径假设 |
+| [1C 通信、并行与容错](./1C.md) | 状态怎样切分，通信何时暴露，恢复前要保存与核对什么？ | 通信从[05](./05_Communication_Topologies.md)进入；容量从[06](./06_VRAM_Calculation_and_ZeRO.md)进入 | 每rank发送载荷、常驻状态、并行候选与分片清单 |
+| [1D 执行模型、异步调度与算子映射](./1D.md) | 任务如何落到主机、设备、线程、Warp、Block 或 Program？ | 映射从[08](./08_Programming_Models_CUDA_Triton.md)进入；阶段放置从[07](./07_CPU_GPU_Heterogeneous_Scheduling.md)进入 | 算子实现与性能优化的执行依赖 |
 | [1E 编译与后端](./1E.md) | 图、形状和融合怎样变成后端可执行的路径？ | [09 图优化与编译器](./09_AI_Compilers_and_Graph_Optimization.md) | 算子优化和部署中的后端约束 |
-| [1F 硬件适配与系统约束](./1F.md) | 设备、运行时、隔离和成本能否共同满足交付条件？ | [10 芯片与软件栈](./10_Domestic_AI_Chips_Overview.md) → [34 异构加速器与运行时](./34_Heterogeneous_Accelerators_and_Runtime_Constraints.md) | 部署与异构系统的准入条件 |
+| [1F 硬件适配与系统约束](./1F.md) | 设备、运行时、隔离和成本能否共同满足任务条件？ | [10 加速器选型与软件栈](./10_Domestic_AI_Chips_Overview.md) → [34 异构加速器与运行时](./34_Heterogeneous_Accelerators_and_Runtime_Constraints.md) | 候选缺项、阶段交接账目与同负载成本假设 |
 
 ## Topic Connections | 跨专题入口
 
-Part 01 先给出理论账本、资源上界和执行条件。基础支撑专题把这些对象组织成分析方法，主线与横向专题再据此选择机制并验证真实收益。
+带着计算出的字节数、发送载荷或执行条件进入对应路线。模型结构与反向更新可从组合路线学习，也可分别回查两个独立基础专题；测量、归因与方案比较统一进入性能优化。
 
 | 从 Part 01 带走的对象 | 首先进入 | 后续使用 |
 |:---|:---|:---|
-| 数据类型、训练状态字节和训练计算量 | [反向传播与训练机制](../topic_discussion/backpropagation_training_mechanism/intro.md) | [后训练优化](../topic_discussion/post_training_optimization/intro.md) |
+| 数据类型、训练状态字节和训练计算量 | [模型架构与训练](../topic_discussion/model_architecture_and_training/intro.md) | 单独回查[反向传播与训练机制](../topic_discussion/backpropagation_training_mechanism/intro.md)；应用于[后训练优化](../topic_discussion/post_training_optimization/intro.md) |
 | 参数量、活跃计算、KV 状态和稀疏结构账本 | [大模型架构演进](../topic_discussion/llm_architecture_evolution/intro.md) | [推理优化](../topic_discussion/inference_optimization/intro.md)、[通信与并行](../topic_discussion/communication_parallelism/intro.md) |
-| 计算、带宽、容量和关键路径假设 | [性能分析](../topic_discussion/performance_analysis/intro.md) | [性能优化](../topic_discussion/performance_optimization/intro.md) |
+| 计算、带宽、容量和关键路径假设 | [性能优化·测量与诊断方法](../topic_discussion/performance_optimization/methods/intro.md) | [性能优化](../topic_discussion/performance_optimization/intro.md)中的候选比较与组合复测 |
 | 量化表示、累加精度和低精度执行条件 | [量化与压缩](../topic_discussion/quantization_compression/intro.md) | [推理优化](../topic_discussion/inference_optimization/intro.md)、[部署与异构系统](../topic_discussion/deployment_heterogeneous/intro.md) |
 | 执行层级、矩阵路径、片上复用和图变换条件 | [算子优化](../topic_discussion/operator_optimization/intro.md) | [性能优化](../topic_discussion/performance_optimization/intro.md) |
 | 设备能力、后端支持、隔离和成本约束 | [部署与异构系统](../topic_discussion/deployment_heterogeneous/intro.md) | 目标设备上的加载、服务与回归验证 |
