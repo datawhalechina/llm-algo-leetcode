@@ -7,10 +7,10 @@
 <text class="note" x="640" y="76" text-anchor="middle">实线：推荐阅读；虚线：提供筛选条件。通信调度与保存恢复按问题分别进入。</text>
 <rect x="80" y="115" width="300" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text class="head" x="230" y="147" text-anchor="middle">05 切分对象与拓扑</text><text class="note" x="230" y="173" text-anchor="middle">交换什么数据，经过哪些链路</text>
 <rect x="80" y="285" width="300" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text class="head" x="230" y="317" text-anchor="middle">20 集合通信</text><text class="note" x="230" y="343" text-anchor="middle">通信量与理论传输时间</text>
-<rect x="900" y="285" width="300" height="80" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text class="head" x="1050" y="317" text-anchor="middle">06 状态复制与分片</text><text class="note" x="1050" y="343" text-anchor="middle">参数、梯度与优化器状态</text>
-<rect x="490" y="285" width="300" height="80" rx="12" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text class="head" x="640" y="317" text-anchor="middle">26 筛选并行方案</text><text class="note" x="640" y="343" text-anchor="middle">容量、互连与模型结构</text>
+<rect x="900" y="285" width="300" height="80" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text class="head" x="1050" y="317" text-anchor="middle">06 状态复制与分片</text><text class="note" x="1050" y="343" text-anchor="middle">参数、梯度、动量与主权重</text>
+<rect x="490" y="285" width="300" height="80" rx="12" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text class="head" x="640" y="317" text-anchor="middle">26 筛选并行方案</text><text class="note" x="640" y="343" text-anchor="middle">容量、放置规则与模型结构</text>
 <rect x="80" y="450" width="300" height="80" rx="12" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text class="head" x="230" y="482" text-anchor="middle">27 通信调度</text><text class="note" x="230" y="508" text-anchor="middle">就绪时间、重叠与暴露等待</text>
-<rect x="900" y="450" width="300" height="80" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text class="head" x="1050" y="482" text-anchor="middle">28 保存与恢复</text><text class="note" x="1050" y="508" text-anchor="middle">保存间隔与恢复后的正确性</text>
+<rect x="900" y="450" width="300" height="80" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text class="head" x="1050" y="482" text-anchor="middle">28 保存与恢复</text><text class="note" x="1050" y="508" text-anchor="middle">保存间隔与分片清单核对</text>
 <path class="edge" d="M230 195V285"/>
 <path class="edge detail" d="M380 325H490"/>
 <text class="note" x="435" y="308" text-anchor="middle">通信条件</text>
