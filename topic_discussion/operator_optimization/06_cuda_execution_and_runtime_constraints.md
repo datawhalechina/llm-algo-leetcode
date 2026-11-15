@@ -4,7 +4,7 @@
 
 一批数据从主机搬到 GPU，随后参与矩阵计算。设备可能在等待输入，内核可能在重复取数，而许多小任务之间还可能出现主机提交不及时造成的间隙。这些时间消耗在不同位置。
 
-假设当前内核计算已经确定，沿下一批输入的搬运、当前批的设备缓冲和反复运行的小任务继续追踪：搬运能否提前？提交安排能否复用？上一批的内存何时可以交给下一批？这些问题需要同时考虑执行依赖和数据寿命。
+先固定当前计算实现作对照，再追踪下一批输入的搬运、当前批的设备缓冲和反复运行的小任务：搬运能否提前？提交安排能否复用？上一批内存何时可以交给下一批？改变执行安排后，原来的计算还可能因资源竞争而变慢，因此需要同时比较依赖、数据寿命与完整完成时间。
 
 ![分别检查分批传输、重复提交和缓冲区复用所需的依赖与完成条件](../../docs/public/topic_discussion/operator_optimization/operator_execution_path.svg)
 
@@ -24,9 +24,9 @@ Stream（流）是按顺序提交设备工作的队列，不同流之间需要�
 
 主机输入通常还需要使用锁页内存（pinned memory），即在传输期间不会被操作系统换出的主机内存，以支持所用路径的异步搬运。锁页和多个流提供的是并发所需条件；若设备能力或带宽竞争限制并发，仍可能没有时间收益。
 
-输入缓冲区还要轮换使用。A 计算结束前，B 不能覆盖 A 正在读取的设备内存；两组设备缓冲区可让 A、B 分别使用，等 A 结束后再把它的缓冲区交给 C。主机源数据也要保留到相应传输结束。实际时间线可能因带宽竞争、设备能力或同步而偏离上述理想值，但依赖与缓冲区寿命必须始终正确。
+输入缓冲区还要轮换使用。A计算结束前，B不能覆盖A正在读取的设备内存；两组设备缓冲可让A、B分别使用，等A结束后再把它的缓冲交给C。主机源数据也要保留到相应传输结束。内核内部的预取在设备存储层次之间搬运子块，这里的H2D（主机到设备）则为下一批准备输入；两类流水可以组合，但会共同使用带宽等资源。
 
-下图用同一时间刻度比较串行与理想流水；蓝色为传输，橙色为计算，箭头连接本批传输与本批计算。[Part 04 · 10 Stream 与传输](../../04_CUDA_and_System_Optimization/10_PyTorch_CUDA_Streams_and_Transfer.ipynb)核对输出与依赖，[Part 04 · 08 双缓冲估算](../../04_CUDA_and_System_Optimization/08_Async_Data_Prefetch_and_Double_Buffering.ipynb)解释时间关系；图中数值不是实际重叠测量。
+如果并发争用使这三批的计算各需8 ms，而搬运仍各需4 ms，同一公式给出的流水时间就是28 ms，而非22 ms。重叠区间扩大多少与完整任务节省多少，需要结合改变后的阶段时间一起判断。下图保留原来4 ms搬运、6 ms计算的假设，用同一时间刻度比较串行与理想流水；蓝色为传输，橙色为计算，箭头连接本批传输与本批计算。[Part 04 · 10 Stream 与传输](../../04_CUDA_and_System_Optimization/10_PyTorch_CUDA_Streams_and_Transfer.ipynb)核对输出与依赖，[Part 04 · 08 双缓冲估算](../../04_CUDA_and_System_Optimization/08_Async_Data_Prefetch_and_Double_Buffering.ipynb)解释时间关系；图中数值不是实际重叠测量。
 
 ![三批串行30毫秒与双缓冲理想流水22毫秒，共用时间刻度](../../docs/public/topic_discussion/operator_optimization/operator_transfer_pipeline_timeline.svg)
 
@@ -52,4 +52,8 @@ Stream（流）是按顺序提交设备工作的队列，不同流之间需要�
 
 通信量确定后，还要判断多少通信留在计算之后。假设计算为10 ms、通信为6 ms，两者能合法重叠4 ms，且没有额外争用或间隙，则总时间为12 ms，仍有2 ms通信暴露在计算之外。这是时间区间的构造例子；把通信量除以带宽得到的估算，或CPU集合操作的正确输出，都不能替代多GPU时间线。[Part 04 · 14 Ring通信量](../../04_CUDA_and_System_Optimization/14_Ring_AllReduce_Deep_Dive.ipynb)推导每个参与者的发送量，[Part 04 · 15 通信重叠](../../04_CUDA_and_System_Optimization/15_Communication_Computation_Overlap_Advanced_Scheduling.ipynb)检查上述关键路径关系；真实GPU通信再进入[通信与并行专题](../communication_parallelism/intro.md)。
 
-比较搬运重叠、图重放或缓冲复用时，计时覆盖各自改变的工作；同步与稳态计时的安排见[测量与性能归因](./05_measurement_profiling_and_autotuning.md)。
+更细的安排会进入矩阵内部：输入矩阵按行分布在多个参与者时，每一块完整行到达后，就可与本地权重相乘，生成对应输出行，不必等待其他行全部到齐。这要求实现提供分块就绪与可见性保证，并在消费者完成后才复用缓冲区；“集合操作已提交”不是某块数据已经可读的证明。计算能按数据块推进，与两个完整操作在不同流中交叠，是不同粒度的问题。
+
+[Flux的设计说明](https://github.com/bytedance/flux/blob/main/docs/design.md)给出AllGather与GEMM的分块等待，以及GEMM输出侧结合ReduceScatter的例子，展示通信怎样与矩阵数据流连接。具体实现会受架构、同步和资源竞争影响；现有15节用于分析阶段等待，细粒度实现还需另核对分块结果、数据可见性与实际设备路径。
+
+比较搬运重叠时覆盖多批传输、计算及首尾等待；比较图重放时分别记录捕获准备、输入更新与稳态；比较缓冲复用时保留相同输出和数据寿命。改变这些安排后，重新核对各阶段是否变长及完整调用是否改善，再按[测量与性能归因](./05_measurement_profiling_and_autotuning.md)组织配对。将结果接回组件时，继续使用[完整组件的复测范围](./07_integration_benchmarking_and_adoption.md)。
