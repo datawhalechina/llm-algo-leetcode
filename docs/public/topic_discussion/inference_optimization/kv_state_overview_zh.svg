@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+<title id="title">KV状态：每词元表示、物理块映射与安全回收</title>
+<desc id="desc">表示决定每词元状态大小，长度和驻留请求决定逻辑总量。A引用P0、P1、P2，B引用P0、P1、P3，P0和P1共享，共四个物理块。后续读取按块表寻址。结束后释放活动引用，确认没有在途读写再决定保留或驱逐，回收容量反馈后续分配。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52606d"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d;font-size:19px}.title{font-size:27px;font-weight:700}.head{font-size:21px;font-weight:700}.note{font-size:17px;fill:#475569}.box{stroke:#829ab1;stroke-width:1.5;rx:12}.flow{fill:none;stroke:#52606d;stroke-width:2;marker-end:url(#arrow)}</style>
+<rect width="1200" height="760" fill="#f7fafc"/>
+<text x="40" y="44" class="title">同一批历史状态：先算逻辑大小，再看实际存储和引用</text>
+<text x="40" y="79" class="note">表示、分页、前缀共享与回收改变不同成本；示例假设兼容前缀可完整复用，每块容纳四个词元。</text>
+<rect x="40" y="120" width="440" height="100" fill="#dbeafe" class="box"/><text x="64" y="155" class="head">表示与逻辑容量（等长请求）</text><text x="64" y="191">每词元字节 × 缓存长度 × 驻留请求</text>
+<path d="M480 170H600" class="flow"/>
+<rect x="600" y="120" width="560" height="100" fill="#ecfdf5" class="box"/><text x="624" y="155" class="head">物理分配：按需申请，读取时按块表寻址</text><text x="624" y="191">物理驻留还包含尾块、元数据与预留空间</text>
+<rect x="40" y="263" width="1120" height="240" fill="#fff" class="box"/>
+<text x="64" y="300" class="head">两条请求的块表指向四个物理块</text>
+<text x="64" y="351">A：P0 → P1 → P2</text><text x="64" y="417">B：P0 → P1 → P3</text>
+<path d="M290 346H375V365H440" class="flow"/><path d="M290 412H375V395H440" class="flow"/>
+<rect x="440" y="330" width="310" height="104" fill="#dbeafe" class="box"/><text x="595" y="365" text-anchor="middle" class="head">共享 P0、P1</text><text x="595" y="401" text-anchor="middle" class="note">同一份八词元前缀 KV</text>
+<rect x="820" y="330" width="142" height="104" fill="#d1fae5" class="box"/><text x="891" y="365" text-anchor="middle" class="head">P2</text><text x="891" y="401" text-anchor="middle" class="note">A 的后缀</text>
+<rect x="982" y="330" width="142" height="104" fill="#fef3c7" class="box"/><text x="1053" y="365" text-anchor="middle" class="head">P3</text><text x="1053" y="401" text-anchor="middle" class="note">B 的后缀</text>
+<text x="64" y="475" class="note">按请求累加会重复计入前缀；物理驻留按唯一块计数。共享减少重复存储，并可跳过兼容前缀的计算。</text>
+<path d="M880 220V263" class="flow"/>
+<path d="M880 503V550" class="flow"/>
+<rect x="600" y="550" width="560" height="100" fill="#ede9fe" class="box"/><text x="624" y="585" class="head">结束后：先释放活动引用，再确认安全条件</text><text x="624" y="621">无在途读写后，决定保留前缀或驱逐归还空间</text>
+<path d="M600 600H480" class="flow"/>
+<rect x="40" y="550" width="440" height="100" fill="#fef3c7" class="box"/><text x="64" y="585" class="head">可用容量进入下一轮分配与准入</text><text x="64" y="621">A 结束时，B 仍引用的 P0、P1 继续保留</text>
+<text x="40" y="706">分别观察：每词元字节、逻辑长度、实际占用、复用量与请求时间。</text>
+<text x="40" y="739" class="note">更多可用块可能支持更多请求；单步是否更快，仍取决于历史读取、计算与调度等待。</text>
+</svg>
