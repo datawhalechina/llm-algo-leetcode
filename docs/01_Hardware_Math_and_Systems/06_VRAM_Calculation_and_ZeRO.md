@@ -16,9 +16,9 @@
 
 训练显存由参数、梯度、优化器状态、激活值、通信缓冲区和临时工作区共同组成。不同状态的复制方式与生命周期不同，因此峰值不能只按参数量估算。
 
-本节建立“训练状态 → 单卡账本 → DDP 复制 → ZeRO 分片 → 容量预算”的关系。完成后，你应能估算各类状态的理论占用，并判断多卡分片后仍需实测哪些峰值对象。
+分布式数据并行（DDP）为每个进程保留训练状态副本；零冗余优化（ZeRO）按阶段把不同状态分片。下面沿用01节的组件，计算单卡常驻状态和给定预留后的容量，继续为通信与并行路线中的策略筛选提供输入。
 
-**关键词：** `VRAM`, `ZeRO`, `AdamW`
+**关键词：** 训练状态、`DDP`、`ZeRO`、主权重
 
 ![本节概念关系](../public/01_Hardware_Math_and_Systems/06_vram_zero_map.svg)
 
@@ -33,259 +33,239 @@
 - [Part 01 · 05 通信拓扑](./05_Communication_Topologies.md)
 
 ---
-## Q1：DDP 下每张卡保存哪些训练状态？
+## Q1：DDP下每张卡保存哪些训练状态？
 
+本例的DDP不对训练状态分片，每个进程保留完整副本。沿用01节的7B配置：参数和梯度使用BF16，Adam的一阶矩、二阶矩使用FP32，并显式保留一份FP32主权重。主权重负责高精度更新，两个动量分别记录梯度及其平方的移动平均；这些对象各计一次。
 
-在 DDP 下，每张卡都保存完整模型、完整梯度和完整优化器状态。下面用 BF16 + Adam、7B 参数作为示例，把每参数字节数和理论占用放在同一张账本表中；Adam 的状态字节数取教学估算值，若实现另存 FP32 master weights、使用不同 optimizer 或改变参数 / 梯度 dtype，必须重新计算。
+代码默认在FP16／BF16参数下保留主权重，在FP32参数下不额外保存；也可显式选择。表格只统计静态状态，激活、通信缓冲、临时工作区和分配器预留另算。SGD对照采用不带动量的版本，因此没有Adam的两个动量。
 
-| 训练状态 | 每参数字节数（BF16 + Adam 示例） | 7B 理论占用 | DDP 是否完整驻留 |
-| --- | ---: | ---: | --- |
-| 参数 | 2 bytes | 14 GB | 是 |
-| 梯度 | 2 bytes | 14 GB | 是 |
-| Adam 状态 | 12 bytes | 84 GB | 是 |
-| 合计 | 16 bytes | 112 GB | 是 |
+| 训练状态 | 每参数字节数 | 7B占用（十进制GB） |
+| --- | ---: | ---: |
+| BF16参数 | 2 | 14 |
+| BF16梯度 | 2 | 14 |
+| Adam一阶矩，FP32 | 4 | 28 |
+| Adam二阶矩，FP32 | 4 | 28 |
+| 可选FP32主权重，本例保留 | 4 | 28 |
+| 合计 | 16 | 112 |
 
-这张表只覆盖参数、梯度和 optimizer state，不包含 activation、通信缓冲、临时 workspace、显存碎片或框架的 reserved memory。代码验证还应检查：改变 dtype / optimizer 后账本会变化，且三类状态仍被分别记录。
+### Q1机制计算器：逐项核对DDP副本
 
+先核对112 GB，再关闭主权重，确认总量下降28 GB到84 GB。优化器状态字段只汇总两个动量，主权重单列。
 
-### Q1小验证：拆分 DDP 单卡训练状态账本
 
 ```python
-def training_state_breakdown(num_params_b, model_dtype='fp16', optimizer='adam'):
-    """返回十进制 GB 的训练状态理论账本。
-
-    结果只覆盖参数、梯度和优化器状态，不模拟激活、通信缓冲、workspace
-    或 allocator reserve。
-    """
+def training_state_breakdown(
+    num_params_b, model_dtype='fp16', optimizer='adam', keep_master_weights=None,
+):
+    """计算单份静态状态的十进制GB；SGD示例不带动量，忽略步数等标量。"""
     if num_params_b < 0:
-        raise ValueError('num_params_b must be non-negative')
-    try:
-        model_bytes = {'fp32': 4, 'fp16': 2, 'bf16': 2}[model_dtype]
-        optimizer_bytes = {'adam': 12, 'sgd': 4}[optimizer]
-    except KeyError as exc:
-        raise ValueError('unsupported dtype or optimizer') from exc
-    values = {
+        raise ValueError('参数量须为非负数')
+    if model_dtype not in {'fp32', 'fp16', 'bf16'} or optimizer not in {'adam', 'sgd'}:
+        raise ValueError('使用fp32/fp16/bf16参数，以及adam或无动量sgd')
+    if keep_master_weights is None:
+        keep_master_weights = model_dtype != 'fp32'
+    if type(keep_master_weights) is not bool:
+        raise ValueError('keep_master_weights须为布尔值或None')
+    model_bytes = {'fp32': 4, 'fp16': 2, 'bf16': 2}[model_dtype]
+    moment_gb = num_params_b * 4 if optimizer == 'adam' else 0.0
+    components = {
         'parameters_gb': num_params_b * model_bytes,
         'gradients_gb': num_params_b * model_bytes,
-        'optimizer_state_gb': num_params_b * optimizer_bytes,
+        'adam_first_moment_gb': moment_gb,
+        'adam_second_moment_gb': moment_gb,
+        'master_weights_gb': num_params_b * 4 if keep_master_weights else 0.0,
     }
-    values['training_state_gb'] = sum(values.values())
-    return values
+    return {
+        **components,
+        'optimizer_state_gb': 2 * moment_gb,
+        'training_state_gb': sum(components.values()),
+    }
 
 
-def calculate_ddp_memory(num_params_b, model_dtype='fp16', optimizer='adam'):
-    """返回 DDP 单卡训练状态账本总量；不包含 activation 和 workspace。"""
-    return training_state_breakdown(num_params_b, model_dtype, optimizer)['training_state_gb']
+def calculate_ddp_memory(
+    num_params_b, model_dtype='fp16', optimizer='adam', keep_master_weights=None,
+):
+    """返回未分片静态状态的总GB，与training_state_breakdown使用同一配置。"""
+    return training_state_breakdown(
+        num_params_b, model_dtype, optimizer, keep_master_weights,
+    )['training_state_gb']
 
-ledger = training_state_breakdown(7, 'bf16', 'adam')
-print('7B parameters, BF16 + Adam theoretical training-state ledger (decimal GB):')
-for name, value in ledger.items():
-    print(f'  {name}: {value:.1f}')
+
+ledger = training_state_breakdown(7, model_dtype='bf16', optimizer='adam')
+print('7B、BF16参数与梯度、FP32动量和主权重的静态状态：')
+for name in ('parameters_gb', 'gradients_gb', 'adam_first_moment_gb',
+             'adam_second_moment_gb', 'master_weights_gb', 'training_state_gb'):
+    print(f'{name:<26} {ledger[name]:>6.1f} GB')
+
 ```
 
 
 ```python
 def test_calculate_ddp_memory():
-    result = calculate_ddp_memory(7, 'fp16', 'adam')
-    assert result == 112, f"错误：期望 112 GB，实际 {result} GB"
+    """核对组件、主权重增量与不同更新方式。"""
+    ledger = training_state_breakdown(7, model_dtype='bf16', optimizer='adam')
+    assert ledger['parameters_gb'] == ledger['gradients_gb'] == 14
+    assert ledger['adam_first_moment_gb'] == ledger['adam_second_moment_gb'] == 28
+    assert ledger['optimizer_state_gb'] == 56
+    assert ledger['master_weights_gb'] == 28
+    assert ledger['training_state_gb'] == 112
+    assert calculate_ddp_memory(7, keep_master_weights=False) == 84
+    assert calculate_ddp_memory(7, model_dtype='fp32') == 112
+    assert calculate_ddp_memory(7, model_dtype='fp32', keep_master_weights=True) == 140
+    assert calculate_ddp_memory(7, optimizer='sgd') == 56
+    print('静态状态组件和主权重增量核对通过')
 
-    result = calculate_ddp_memory(7, 'fp16', 'sgd')
-    assert result == 56, f"错误：期望 56 GB，实际 {result} GB"
-
-    bf16_ledger = training_state_breakdown(7, 'bf16', 'adam')
-    assert bf16_ledger['parameters_gb'] == 14
-    assert bf16_ledger['optimizer_state_gb'] == 84
-    assert training_state_breakdown(7, 'fp32', 'adam')['training_state_gb'] == 140
-    assert training_state_breakdown(7, 'bf16', 'sgd')['training_state_gb'] == 56
-    try:
-        training_state_breakdown(7, 'int8', 'adam')
-    except ValueError:
-        pass
-    else:
-        raise AssertionError('非法 dtype 应该被拒绝')
-    print("✅ DDP 显存函数测试通过！")
 
 test_calculate_ddp_memory()
+
 ```
 
-## Q2：ZeRO 如何分摊训练状态？
+## Q2：ZeRO各阶段分别分摊什么状态？
 
+先把状态分成参数、梯度、更新状态三组；这里的更新状态包含两个Adam动量和可选主权重。理想均匀切分时，分片组的单卡容量除以设备数，未分片组保持完整。7B配置在8卡上的DDP、ZeRO-1／2／3账本分别为112、38.5、26.25、14 GB。
 
-ZeRO 的核心思想是把训练状态分摊到多张 GPU 上。先看每个 stage 切分哪些状态，再用 `calculate_zero_memory()` 计算理想单卡占用；这里假设状态可以均匀切分，表格不包含 activation、通信 buffer、workspace、切分粒度和 allocator reserve。
+表格描述持续保存的状态。ZeRO-3执行某层时还可能临时收集该层参数；这部分峰值，以及激活和通信缓冲，需要结合实际执行过程观察。
 
-| ZeRO 阶段 | 分片状态 | 仍完整驻留的状态 | 理想单卡账本 | 主要代价 |
+| 阶段 | 更新状态 | 梯度 | 参数 | 运行时增加的工作 |
 | --- | --- | --- | --- | --- |
-| DDP / ZeRO-0 | 无 | 参数、梯度、优化器状态 | 全量状态 | 显存占用高 |
-| ZeRO-1 | 优化器状态 | 参数、梯度 | 参数 + 梯度 + 优化器分片 | 优化器状态通信 |
-| ZeRO-2 | 优化器状态、梯度 | 参数 | 参数 + 梯度分片 + 优化器分片 | 梯度同步和重建 |
-| ZeRO-3 | 参数、梯度、优化器状态 | 无完整训练状态 | 三类状态都按卡分摊 | 参数重建、通信和调度复杂度更高 |
+| DDP／ZeRO-0 | 完整 | 完整 | 完整 | 同步梯度 |
+| ZeRO-1 | 分片 | 完整 | 完整 | 分片更新、同步参数 |
+| ZeRO-2 | 分片 | 分片 | 完整 | 归约并分发梯度、同步参数 |
+| ZeRO-3 | 分片 | 分片 | 分片 | 按需收集参数、释放临时副本 |
 
-选择 stage 时，先问清楚要分摊的是 optimizer state、gradient 还是 parameter；这三个对象的分片范围不同，通信与实现复杂度也不同。
+### Q2对照验证：固定状态组成，只改变分片阶段
 
+参数、梯度和更新状态都从Q1取值，避免在每个阶段重新写一份字节常量。
 
-### Q2小验证：ZeRO 显存计算
 
 ```python
-def calculate_zero_memory(num_params_b, zero_stage, num_gpus, model_dtype='fp16', optimizer='adam'):
-    """估算理想均匀切分下的单卡训练状态显存。
+def calculate_zero_memory(
+    num_params_b, zero_stage, num_gpus, model_dtype='fp16',
+    optimizer='adam', keep_master_weights=None,
+):
+    """按理想均匀分片估算单卡常驻状态GB；不计执行时的临时收集峰值。"""
+    if type(num_gpus) is not int or num_gpus <= 0:
+        raise ValueError('设备数须为正整数')
+    ledger = training_state_breakdown(
+        num_params_b, model_dtype, optimizer, keep_master_weights,
+    )
+    parameters = ledger['parameters_gb']
+    gradients = ledger['gradients_gb']
+    updates = ledger['optimizer_state_gb'] + ledger['master_weights_gb']
+    if zero_stage in (0, 'ddp'):
+        return parameters + gradients + updates
+    if zero_stage == 1:
+        return parameters + gradients + updates / num_gpus
+    if zero_stage == 2:
+        return parameters + (gradients + updates) / num_gpus
+    if zero_stage == 3:
+        return (parameters + gradients + updates) / num_gpus
+    raise ValueError('阶段使用0/ddp、1、2或3')
 
-    只计算参数、梯度和优化器状态；不包含 activation、通信 buffer、
-    workspace、切分粒度和 allocator reserve，因此不能直接保证不 OOM。
-    """
-    if num_params_b < 0 or num_gpus <= 0:
-        raise ValueError('num_params_b must be non-negative and num_gpus must be positive')
-    try:
-        model_bytes = {'fp32': 4, 'fp16': 2, 'bf16': 2}[model_dtype]
-        optimizer_bytes = {'adam': 12, 'sgd': 4}[optimizer]
-    except KeyError as exc:
-        raise ValueError('unsupported dtype or optimizer') from exc
-    gradient_bytes = model_bytes
-
-    if zero_stage == 0 or zero_stage == 'ddp':
-        bytes_per_param = model_bytes + gradient_bytes + optimizer_bytes
-    elif zero_stage == 1:
-        bytes_per_param = model_bytes + gradient_bytes + optimizer_bytes / num_gpus
-    elif zero_stage == 2:
-        bytes_per_param = model_bytes + gradient_bytes / num_gpus + optimizer_bytes / num_gpus
-    elif zero_stage == 3:
-        bytes_per_param = (model_bytes + gradient_bytes + optimizer_bytes) / num_gpus
-    else:
-        raise ValueError('zero_stage must be 0/ddp, 1, 2 or 3')
-
-    return num_params_b * bytes_per_param
 ```
 
 
 ```python
 def test_calculate_zero_memory():
-    result = calculate_zero_memory(7, 1, 8, 'fp16', 'adam')
-    assert abs(result - 38.5) < 1e-9, f"错误：ZeRO-1 应该是 38.5 GB，实际 {result} GB"
+    """逐阶段核对同一7B状态账本，单卡时各阶段应相同。"""
+    for stage, expected_gb in [('ddp', 112), (1, 38.5), (2, 26.25), (3, 14)]:
+        assert calculate_zero_memory(7, stage, 8) == expected_gb
+        assert calculate_zero_memory(7, stage, 1) == 112
+    assert calculate_zero_memory(7, 3, 8, keep_master_weights=False) == 10.5
+    print('DDP与ZeRO各阶段的常驻状态核对通过')
 
-    result = calculate_zero_memory(7, 2, 8, 'fp16', 'adam')
-    assert abs(result - 26.25) < 1e-9, f"错误：ZeRO-2 应该是 26.25 GB，实际 {result} GB"
-
-    result = calculate_zero_memory(7, 3, 8, 'fp16', 'adam')
-    assert abs(result - 14) < 1e-9, f"错误：ZeRO-3 应该是 14 GB，实际 {result} GB"
-
-    assert calculate_zero_memory(7, 'ddp', 8, 'fp16', 'adam') > calculate_zero_memory(7, 3, 8, 'fp16', 'adam')
-    assert calculate_zero_memory(7, 1, 4, 'fp32', 'adam') > calculate_zero_memory(7, 1, 4, 'bf16', 'adam')
-    try:
-        calculate_zero_memory(7, 4, 8, 'fp16', 'adam')
-    except ValueError:
-        pass
-    else:
-        raise AssertionError('非法 ZeRO stage 应该被拒绝')
-    print("✅ ZeRO 显存函数测试通过！")
 
 test_calculate_zero_memory()
+
 ```
 
-### 账本工具：根据容量反推最大模型规模
+### 容量反推：给定状态预算能放下多少参数？
 
-这个辅助函数把显存容量、ZeRO stage 和预留系数转换为最大可训练参数量，供后面的策略决策表调用。
+每卡80 GB、预留20%时，留给静态状态的预算为64 GB。用它除以每1B参数的单卡状态量，得到当前假设下的可容纳规模；这不是包含激活和执行峰值的可训练上限。
+
 
 ```python
-def max_trainable_params(gpu_memory_gb, num_gpus, zero_stage, overhead_ratio=0.2, model_dtype='fp16', optimizer='adam'):
-    """Estimate parameter scale after a lumped safety reserve.
+def state_capacity_limit_params(
+    gpu_memory_gb, num_gpus, zero_stage, overhead_ratio=0.2,
+    model_dtype='fp16', optimizer='adam', keep_master_weights=None,
+):
+    """由每卡总GB和给定预留比例，反推静态状态可容纳的参数量，单位B。"""
+    if gpu_memory_gb <= 0 or not 0 <= overhead_ratio < 1:
+        raise ValueError('每卡容量须为正，预留比例须在[0, 1)内')
+    state_budget_gb = gpu_memory_gb * (1 - overhead_ratio)
+    state_gb_per_1b = calculate_zero_memory(
+        1, zero_stage, num_gpus, model_dtype, optimizer, keep_master_weights,
+    )
+    return state_budget_gb / state_gb_per_1b
 
-    ``overhead_ratio`` is a teaching knob for activations and communication;
-    it is not a measured peak-memory fraction and cannot guarantee no OOM.
-    """
-    if gpu_memory_gb <= 0 or num_gpus <= 0:
-        raise ValueError('gpu_memory_gb and num_gpus must be positive')
-    if not 0 <= overhead_ratio < 1:
-        raise ValueError('overhead_ratio must be in [0, 1)')
-    available_memory = gpu_memory_gb * (1 - overhead_ratio)
-    try:
-        model_bytes = {'fp32': 4, 'fp16': 2, 'bf16': 2}[model_dtype]
-        gradient_bytes = model_bytes
-        optimizer_bytes = {'adam': 12, 'sgd': 4}[optimizer]
-    except KeyError as exc:
-        raise ValueError('unsupported dtype or optimizer') from exc
-
-    if zero_stage == 0 or zero_stage == 'ddp':
-        bytes_per_param = model_bytes + gradient_bytes + optimizer_bytes
-    elif zero_stage == 1:
-        bytes_per_param = model_bytes + gradient_bytes + optimizer_bytes / num_gpus
-    elif zero_stage == 2:
-        bytes_per_param = model_bytes + gradient_bytes / num_gpus + optimizer_bytes / num_gpus
-    elif zero_stage == 3:
-        bytes_per_param = (model_bytes + gradient_bytes + optimizer_bytes) / num_gpus
-    else:
-        raise ValueError('zero_stage must be 0/ddp, 1, 2 or 3')
-
-    return available_memory / bytes_per_param
 ```
 
 
 ```python
-def test_max_trainable_params():
-    result = max_trainable_params(80, 8, 'ddp', 0.2)
-    assert abs(result - 4) < 1e-9, f"错误：DDP 应该最多训练 4B，实际 {result}B"
+def test_state_capacity_limit_params():
+    """核对64 GB状态预算对应的容量及预留比例变化。"""
+    assert state_capacity_limit_params(80, 8, 'ddp') == 4
+    assert state_capacity_limit_params(80, 8, 3) == 32
+    assert state_capacity_limit_params(80, 8, 3, overhead_ratio=0) == 40
+    assert calculate_zero_memory(state_capacity_limit_params(80, 8, 3), 3, 8) == 64
+    print('静态状态容量反推核对通过')
 
-    result = max_trainable_params(80, 8, 3, 0.2)
-    assert abs(result - 32) < 1e-9, f"错误：ZeRO-3 应该最多训练 32B，实际 {result}B"
 
-    assert max_trainable_params(80, 8, 3, 0.0) > max_trainable_params(80, 8, 3, 0.2)
-    print("✅ 最大模型反推函数测试通过！")
+test_state_capacity_limit_params()
 
-test_max_trainable_params()
 ```
 
-## Q3：如何把 ZeRO 账本转成容量候选表，并区分理论峰值？
+## Q3：容量表怎样帮助筛选ZeRO候选？
 
-**问题：** 如果你手上只有 8 张标称 80GB 的 GPU，并且用一个 20% 的教学预留系数近似 activation 和通信开销，如何把 DDP、ZeRO-1、ZeRO-2、ZeRO-3 放到同一张决策表中？
+继续使用每卡80 GB、8卡、预留20%的同一配置。比较各阶段的单卡常驻状态、相对DDP节省比例和静态状态可容纳规模，再列出分片后需要执行的通信工作。
 
-请把四种状态布局放在同一个表里比较最大可训练模型规模，并登记通信代价和实现复杂度的定性风险；可以调用前面的账本函数完成规模反推。这里生成的是容量候选证据，完整并行策略筛选在第 26 节完成。
-
-
-把 DDP、ZeRO-1、ZeRO-2、ZeRO-3 放在同一个表里，同时比较单卡训练状态、相对节省、可容纳参数规模，以及通信代价和工程复杂度。这里的“低 / 中 / 高”只是第一轮筛选标签：ZeRO stage 越高，通常需要更多状态分片、重建和同步。表格中的显存和模型规模都是理论账本结果，不等于真实训练可运行上限；最终应把同一模型、dtype、optimizer、batch、seq_len 和 checkpoint 配置带入 73–76 的 GPU 实验，检查 peak allocated、reserved、step time 和 OOM。
-
+容量候选可继续进入[26节并行策略筛选](./26_Parallel_Strategy_Decision_Framework.md)。实际验证则需固定模型、批量和序列长度，在[Part02·27状态分片](../02_PyTorch_Algorithms/27_ZeRO_Optimizer_Sim.md)理解状态流转，再在对应多卡实验中核对临时参数收集、通信缓冲和训练步耗时。
 
 
 ```python
-gpu_memory = 80
-num_gpus = 8
-overhead_ratio = 0.2
-def compare_zero_strategies(gpu_memory_gb, num_gpus, overhead_ratio=0.2, model_dtype='fp16', optimizer='adam'):
-    """生成 DDP/ZeRO 策略表，比较容量收益与定性通信代价。
-
-    显存数字仍是理论账本；communication_cost 和 engineering_cost
-    是帮助学习者做第一轮筛选的定性标签，不是多卡 benchmark 结果。
-    """
+def compare_zero_strategies(
+    gpu_memory_gb, num_gpus, overhead_ratio=0.2,
+    model_dtype='fp16', optimizer='adam', keep_master_weights=None,
+):
+    """比较相同配置下的静态状态、容量和分片引入的通信工作。"""
     strategies = [('DDP', 'ddp'), ('ZeRO-1', 1), ('ZeRO-2', 2), ('ZeRO-3', 3)]
-    tradeoffs = {
-        'DDP': ('低', '低'),
-        'ZeRO-1': ('中', '中'),
-        'ZeRO-2': ('中高', '中高'),
-        'ZeRO-3': ('高', '高'),
+    communication = {
+        'DDP': '梯度归约',
+        'ZeRO-1': '分片更新、参数同步',
+        'ZeRO-2': '梯度分片、参数同步',
+        'ZeRO-3': '梯度分片、按需收集参数',
     }
-    baseline = calculate_zero_memory(1, 'ddp', num_gpus, model_dtype, optimizer)
+    baseline = calculate_zero_memory(
+        1, 'ddp', num_gpus, model_dtype, optimizer, keep_master_weights,
+    )
     rows = []
     for name, stage in strategies:
-        per_gpu_state_gb = calculate_zero_memory(1, stage, num_gpus, model_dtype, optimizer)
+        state_gb = calculate_zero_memory(
+            1, stage, num_gpus, model_dtype, optimizer, keep_master_weights,
+        )
         rows.append({
-            'evidence_level': 'theoretical_ledger',
             'strategy': name,
-            'per_gpu_state_gb_per_1b': round(per_gpu_state_gb, 3),
-            'memory_saving_ratio': round(1 - per_gpu_state_gb / baseline, 3),
-            'max_trainable_params_b': round(max_trainable_params(gpu_memory_gb, num_gpus, stage, overhead_ratio, model_dtype, optimizer), 3),
-            'communication_cost': tradeoffs[name][0],
-            'engineering_cost': tradeoffs[name][1],
+            'per_gpu_state_gb_per_1b': round(state_gb, 3),
+            'memory_saving_ratio': round(1 - state_gb / baseline, 3),
+            'static_capacity_limit_params_b': round(state_capacity_limit_params(
+                gpu_memory_gb, num_gpus, stage, overhead_ratio,
+                model_dtype, optimizer, keep_master_weights,
+            ), 3),
+            'communication_work': communication[name],
         })
     return rows
 
-strategies = compare_zero_strategies(gpu_memory, num_gpus, overhead_ratio)
-assert strategies[0]['strategy'] == 'DDP'
-assert strategies[-1]['memory_saving_ratio'] > strategies[0]['memory_saving_ratio']
 
-print('8 x A100 80GB 的 ZeRO 理论账本决策表（FP16 + Adam，预留 20% 显存）：')
-print('证据级别：theoretical_ledger；不是 GPU 实测峰值。')
-print(f"{'策略':<10} {'单卡状态 GB/1B':>16} {'节省比例':>10} {'最大参数 B':>12} {'通信代价':>10} {'工程代价':>10}")
-print('-' * 76)
+GPU_MEMORY_GB = 80
+NUM_GPUS = 8
+RESERVED_RATIO = 0.2
+strategies = compare_zero_strategies(GPU_MEMORY_GB, NUM_GPUS, RESERVED_RATIO)
+assert strategies[0]['static_capacity_limit_params_b'] == 4
+assert strategies[-1]['static_capacity_limit_params_b'] == 32
+assert strategies[-1]['memory_saving_ratio'] == 0.875
+print('每卡80 GB、8卡、预留20%的静态状态容量：')
 for row in strategies:
-    print(f"{row['strategy']:<10} {row['per_gpu_state_gb_per_1b']:>16.3f} {row['memory_saving_ratio']:>10.3f} {row['max_trainable_params_b']:>12.3f} {row['communication_cost']:>10} {row['engineering_cost']:>10}")
-
+    print(row)
 
 ```
 
