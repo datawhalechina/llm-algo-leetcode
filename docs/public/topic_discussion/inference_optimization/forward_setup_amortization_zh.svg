@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+<title id="title">准备更久、稳态更短，需要多少次调用才能回本</title>
+<desc id="desc">构造参考调用1毫秒，候选每次0.6毫秒但额外准备200毫秒。100次参考100候选260；1000次参考1000候选800；500次持平。所有时间条共同比例。</desc>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d;font-size:19px}.title{font-size:27px;font-weight:700}.head{font-size:21px;font-weight:700}.note{font-size:17px;fill:#475569}.ref{fill:#dbeafe;stroke:#6b91b5}.setup{fill:#fef3c7;stroke:#b69b50}.steady{fill:#d1fae5;stroke:#6b9c8b}</style>
+<rect width="1200" height="620" fill="#f7fafc"/>
+<text x="32" y="44" class="title">稳态更快，也要计入首次准备成本</text>
+<text x="32" y="79" class="note">教学构造值：参考 1 ms／次；候选 0.6 ms／次，另付 200 ms 准备成本。时间条比例相同。</text>
+<rect x="40" y="106" width="22" height="18" class="ref"/><text x="72" y="123" class="note">参考执行</text><rect x="235" y="106" width="22" height="18" class="setup"/><text x="267" y="123" class="note">候选额外准备</text><rect x="460" y="106" width="22" height="18" class="steady"/><text x="492" y="123" class="note">候选重复执行</text>
+<text x="32" y="171" class="head">调用 100 次：准备成本尚未摊薄</text>
+<text x="48" y="214">参考</text><rect x="180" y="188" width="70" height="38" class="ref"/><text x="272" y="214">100 ms</text>
+<text x="48" y="268">候选</text><rect x="180" y="242" width="140" height="38" class="setup"/><rect x="320" y="242" width="42" height="38" class="steady"/><text x="385" y="268">200 + 60 = 260 ms</text>
+<text x="32" y="331" class="head">调用 1000 次：稳态节省覆盖了准备成本</text>
+<text x="48" y="374">参考</text><rect x="180" y="348" width="700" height="38" class="ref"/><text x="902" y="374">1000 ms</text>
+<text x="48" y="428">候选</text><rect x="180" y="402" width="140" height="38" class="setup"/><rect x="320" y="402" width="420" height="38" class="steady"/><text x="762" y="428">200 + 600 = 800 ms</text>
+<rect x="32" y="477" width="1136" height="74" fill="#fff" stroke="#cbd5e1" rx="12"/>
+<text x="56" y="509" class="head">持平点：200 ÷ (1 − 0.6) = 500 次调用</text>
+<text x="56" y="537" class="note">超过 500 次才有总时间收益；形状变化触发新的准备时，重新计算可复用的调用次数。</text>
+<text x="32" y="590">先比较完整片段，再返回完整前向和请求：局部节省只影响其中被替换的那一段。</text>
+</svg>
