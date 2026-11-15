@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="730" viewBox="0 0 1500 730" role="img" aria-labelledby="title desc">
+  <title id="title">图捕获、后端处理与版本复用</title>
+  <desc id="desc">输入先检查已有编译版本的适用条件。命中时执行所选后端返回的已有调用体；没有适用版本时捕获FX图，再交给已配置的后端。CPU记录后端保存图并返回图调用体，Inductor GPU路径组合库调用或生成内核并返回实现。两条分支表示不同配置，不是同一次调用依次经过的步骤。图中断与报错分支在正文另行解释。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#52677f"/></marker>
+    <style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:29px;font-weight:700}.head{font-size:21px;font-weight:700}.body{font-size:18px}.note{font-size:16px;fill:#475569}.box{stroke-width:2;rx:14}.edge{fill:none;stroke:#52677f;stroke-width:2.5;marker-end:url(#arrow)}</style>
+  </defs>
+  <rect width="1500" height="730" rx="24" fill="#f8fafc"/>
+  <text x="45" y="48" class="title">捕获到图之后，还要看后端返回什么、实际执行什么</text>
+  <text x="45" y="83" class="note">同一函数固定一种后端配置；下方两条路径用于对照不同后端的职责。</text>
+
+  <rect x="45" y="135" width="230" height="100" class="box" fill="#eff6ff" stroke="#60a5fa"/>
+  <text x="65" y="174" class="head">函数与输入张量</text>
+  <text x="65" y="207" class="body">形状、步长、类型</text>
+  <rect x="350" y="135" width="260" height="100" class="box" fill="#f5f3ff" stroke="#a78bfa"/>
+  <text x="370" y="174" class="head">版本适用条件检查</text>
+  <text x="370" y="207" class="body">查找可复用的已有版本</text>
+  <rect x="1000" y="135" width="400" height="100" class="box" fill="#ecfdf5" stroke="#34d399"/>
+  <text x="1020" y="174" class="head">执行已有调用体</text>
+  <text x="1020" y="207" class="body">沿用所选后端的实现，核对输出</text>
+  <path d="M275 185H350" class="edge"/>
+  <path d="M610 185H1000" class="edge"/>
+  <text x="680" y="166" class="note">满足已有版本条件：复用</text>
+
+  <rect x="350" y="335" width="260" height="100" class="box" fill="#eff6ff" stroke="#60a5fa"/>
+  <text x="370" y="374" class="head">Dynamo捕获FX图</text>
+  <text x="370" y="407" class="body">记录张量操作与依赖</text>
+  <path d="M480 235V335" class="edge"/>
+  <text x="498" y="290" class="note">无适用版本时尝试捕获</text>
+
+  <rect x="730" y="295" width="300" height="100" class="box" fill="#fff7ed" stroke="#fb923c"/>
+  <text x="750" y="334" class="head">CPU记录后端</text>
+  <text x="750" y="367" class="body">保存图，返回图的forward</text>
+  <rect x="1100" y="295" width="300" height="100" class="box" fill="#fff7ed" stroke="#fb923c"/>
+  <text x="1120" y="334" class="head">CPU执行图调用体</text>
+  <text x="1120" y="367" class="body">观察回调、执行次数与数值</text>
+  <path d="M610 385H660V345H730" class="edge"/>
+  <path d="M1030 345H1100" class="edge"/>
+
+  <rect x="730" y="505" width="300" height="125" class="box" fill="#ecfdf5" stroke="#34d399"/>
+  <text x="750" y="544" class="head">Inductor GPU后端</text>
+  <text x="750" y="577" class="body">组合库调用或生成内核</text>
+  <text x="750" y="606" class="body">返回可调用实现</text>
+  <rect x="1100" y="505" width="300" height="125" class="box" fill="#ecfdf5" stroke="#34d399"/>
+  <text x="1120" y="544" class="head">GPU执行与比较</text>
+  <text x="1120" y="577" class="body">核对输出与实际设备活动</text>
+  <text x="1120" y="606" class="body">分开准备与稳态耗时</text>
+  <path d="M660 385V565H730" class="edge"/>
+  <path d="M1030 565H1100" class="edge"/>
+  <text x="45" y="677" class="note">CPU记录后端用于观察捕获与复用；GPU路径用于核对生成实现与调用成本。</text>
+  <text x="45" y="706" class="note">一张FX图可以对应多个设备调用；图中断与整图捕获要求见正文。</text>
+</svg>
