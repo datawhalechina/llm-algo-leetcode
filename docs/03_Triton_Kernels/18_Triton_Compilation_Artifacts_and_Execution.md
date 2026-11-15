@@ -630,7 +630,7 @@ else:
 
 ## 相关阅读
 
-先进一步了解运行时参数的特化规则，再把核对过的内核接入PyTorch算子。
+了解运行时参数的特化规则后，可将缩放加偏置的产物核对方法用于其他计算；查看矩阵指令时，读取[05 GEMM](./05_Triton_GEMM_Tutorial.md)实际生成的代码，并核对对应配置与资源。接入PyTorch后，继续检查前向、梯度和整图调用。
 
 - [Triton：jit](https://triton-lang.org/main/python-api/generated/triton.jit.html)：运行时参数与特化控制。
 - [19. PyTorch 算子集成](./19_Triton_PyTorch_Op_Integration.md)：前向、梯度和完整图调用的核对。
