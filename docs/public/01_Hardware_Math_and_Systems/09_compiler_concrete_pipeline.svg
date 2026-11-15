@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="500" viewBox="0 0 1280 500" role="img" aria-labelledby="title desc">
+  <title id="title">从三步程序到计算图、后端安排与设备调用</title>
+  <desc id="desc">固定T等于X乘W、U等于T加偏置、Y等于ReLU作用于U的计算。一种可行后端安排保留矩阵乘库调用，融合偏置与激活，因此一张图仍对应两次设备计算调用。此图是示例，不是一次真实编译的产物导出。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="10" markerHeight="10" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#52677f"/></marker>
+    <style>text{font-family:'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#172033}.title{font-size:25px;font-weight:700}.head{font-size:19px;font-weight:700}.body{font-size:17px}.small{font-size:15px;fill:#475569}.edge{fill:none;stroke:#52677f;stroke-width:2.5;marker-end:url(#arrow)}</style>
+  </defs>
+  <rect width="1280" height="500" rx="20" fill="#f8fafc"/>
+  <text x="640" y="45" text-anchor="middle" class="title">跟踪同一份计算：程序 → 图节点 → 后端安排 → 设备调用</text>
+  <text x="640" y="80" text-anchor="middle" class="small">示例安排：矩阵乘保留库调用，偏置与ReLU生成融合内核</text>
+  <rect x="40" y="145" width="240" height="230" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="160" y="180" text-anchor="middle" class="head">① 程序表达计算</text>
+  <text x="63" y="224" class="body">T = X @ W</text>
+  <text x="63" y="262" class="body">U = T + b</text>
+  <text x="63" y="300" class="body">Y = ReLU(U)</text>
+  <text x="63" y="347" class="small">X、W、b是输入</text>
+  <rect x="360" y="145" width="240" height="230" rx="14" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/>
+  <text x="480" y="180" text-anchor="middle" class="head">② 图记录依赖</text>
+  <text x="382" y="224" class="body">矩阵乘 → 产生T</text>
+  <text x="382" y="262" class="body">加偏置 → 产生U</text>
+  <text x="382" y="300" class="body">ReLU → 产生Y</text>
+  <text x="382" y="347" class="small">记录谁使用谁的结果</text>
+  <rect x="680" y="145" width="240" height="230" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/>
+  <text x="800" y="180" text-anchor="middle" class="head">③ 后端选择实现</text>
+  <text x="702" y="224" class="body">矩阵乘：调用计算库</text>
+  <text x="702" y="262" class="body">偏置＋ReLU：融合</text>
+  <text x="702" y="300" class="body">U作为内核内部值</text>
+  <text x="702" y="347" class="small">T仍需供融合内核读取</text>
+  <rect x="1000" y="145" width="240" height="230" rx="14" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/>
+  <text x="1120" y="180" text-anchor="middle" class="head">④ 设备执行调用</text>
+  <text x="1022" y="224" class="body">调用1：得到T</text>
+  <text x="1022" y="262" class="body">调用2：读取T与b</text>
+  <text x="1022" y="300" class="body">写出Y，省去U写回</text>
+  <text x="1022" y="347" class="small">本例是一张图、两次调用</text>
+  <path d="M280 260H360" class="edge"/>
+  <path d="M600 260H680" class="edge"/>
+  <path d="M920 260H1000" class="edge"/>
+  <text x="640" y="427" text-anchor="middle" class="body">运行前检查形状、类型等复用条件；运行后核对输出、实际调用与完整耗时</text>
+  <text x="640" y="463" text-anchor="middle" class="small">捕获到图、生成了实现、设备完成执行，是三个需要分别确认的动作</text>
+</svg>

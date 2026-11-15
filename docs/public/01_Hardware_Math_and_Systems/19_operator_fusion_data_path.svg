@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="560" viewBox="0 0 1280 560" role="img" aria-labelledby="title desc">
-<title id="title">偏置与激活融合后，中间值在哪里继续被消费？</title><desc id="desc">固定矩阵乘结果 T，比较加偏置与激活两步。未融合路径写出并重读中间张量，融合路径在一个内核中继续消费中间值。图中片上复用是理想可行路径，真实布局和资源压力需另行检查。</desc>
+<title id="title">偏置与激活融合后，中间值在哪里继续被消费？</title><desc id="desc">固定矩阵乘结果T，比较偏置与激活。下方假设U只供同一内核内的激活使用，因此可省去完整写回与读取；融合区域外仍有使用者时，需要保留U的写回与外部读取。实际资源与布局另行核对。</desc>
 <defs><marker id="a" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#52677f"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:16px}.small{font-size:14px;fill:#475569}.edge{stroke:#52677f;stroke-width:3;fill:none;marker-end:url(#a)}</style></defs>
 <rect width="1280" height="560" rx="24" fill="#f8fafc"/>
 <text x="640" y="45" text-anchor="middle" class="title">偏置与激活融合后，中间值在哪里继续被消费？</text>
-<text x="640" y="76" text-anchor="middle" class="sub">固定矩阵乘结果 T，比较偏置与激活两步；同一输出要求下，核对读写、启动与资源代价</text>
+<text x="640" y="76" text-anchor="middle" class="sub">固定T；下方假设U只供激活使用，融合区域外仍需U时要保留写回</text>
 <text x="640" y="130" text-anchor="middle" class="head">未融合：两次内核启动，内部边界写出后重新读取</text>
 <rect x="40" y="165" width="210" height="80" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="145" y="196" text-anchor="middle" class="head">加偏置</text><text x="145" y="223" text-anchor="middle" class="body">U = T + b</text>
 <rect x="320" y="165" width="270" height="80" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="455" y="196" text-anchor="middle" class="head">中间张量 U</text><text x="455" y="223" text-anchor="middle" class="body">写回设备内存，再读取</text>
