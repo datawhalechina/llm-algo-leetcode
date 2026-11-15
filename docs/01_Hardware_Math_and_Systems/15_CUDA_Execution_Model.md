@@ -36,6 +36,8 @@ Thread（线程）执行局部计算，若干线程组成 Block（线程块）�
 
 例如每线程处理一个元素，1000 个元素使用每块 256 个线程时，需要 4 个 Block，每块 8 个 Warp，最后 24 个线程不处理有效元素。若改成每块 128 个线程，就需要 8 个 Block、每块 4 个 Warp。两者覆盖相同输入，却改变了块内协作与资源分配，不能仅凭总线程数相同就判断耗时相同。
 
+两种未使用位置也要分开：66个元素按每块33线程执行，两个Block正好覆盖输入，没有尾部越界线程；但每块仍分成两个Warp，共有62个未分配槽。这与1000个元素例子中的24个尾部线程是不同数量。
+
 SM（流式多处理器）是承载这些工作的硬件单元。一个 SM 可以驻留多个满足资源约束的 Block，Grid 的 Block 数也可以多于 SM 数，剩余工作等待资源；Block 编号不指定某个固定 SM，Warp 也不是 32 个独占物理计算核心。线程可按地址访问全局内存，执行层级不是逐层收窄的内存权限。官方定义见 [CUDA 编程模型](https://docs.nvidia.com/cuda/cuda-programming-guide/01-introduction/programming-model.html)。
 
 ### Q1 机制计算器：从元素数量推导 Grid、Block 与 Warp
@@ -89,17 +91,17 @@ for threads, result in reports.items():
 
 ```
 
-## Q2：Block 内怎样通过共享内存复用数据？
+## Q2：块数改变后，总读取与单块共享内存怎样变化？
 
 Block 为线程提供共享内存与协作边界，Warp 是线程的执行分组。生产者写入数据、消费者读取数据时，需要满足对应的同步与可见性条件；属于同一 Warp 不代表可以省略所有同步检查。
 
-例如8个线程块各处理4096个两字节元素，每块需要8 KiB数据。每份数据使用四次时，重复完整读取共256 KiB；若每块只从全局内存搬入一次，共读取64 KiB，可减少192 KiB逻辑读取。实际设备内存流量和耗时还受缓存命中、同步及资源占用影响。
+例如8个线程块各处理4096个两字节元素，每块需要8 KiB数据。每份数据使用四次时，重复完整读取共256 KiB；若每块只从全局内存搬入一次，共读取64 KiB，可减少192 KiB逻辑读取。若只改变为一个Block，总加载量降为8 KiB，而每块仍申请8 KiB共享内存。总读取随任务块数变化，单块资源需求却可以保持不变；实际峰值还要看同时驻留的块数，不能直接把整个Grid的副本相加当作一个SM的占用。实际设备内存流量与耗时继续由缓存、同步和执行安排决定。
 
 ![Block 内共享内存复用路径](../public/01_Hardware_Math_and_Systems/15_memory_reuse_path.svg)
 
-### Q2 流量账本：复用减少了多少全局读取请求
+### Q2 流量账本：把整个Grid的读取与单块申请分开
 
-假设每次都完整读取数据块，且暂不计缓存命中，比较重复读取与每块搬入一次的字节量。实际 HBM 流量还受缓存影响，不能直接用这些逻辑读取字节替代硬件计数。
+先核对8块使用四次时的256／64 KiB读取，再固定每块4096个两字节元素，比较1块和8块：总加载量相差8倍，单块申请均为8 KiB。这里统计逻辑读取，实际显存流量还需核对缓存行为。
 
 
 ```python
@@ -130,6 +132,13 @@ assert reports[4] == {
 }
 assert reports[2]["global_read_bytes_saved"] == 65_536
 assert reports[1]["global_read_bytes_saved"] == 0
+one_block = block_reuse_traffic(
+    blocks=1, tile_elements=4096, bytes_per_element=2, reuse_count=4,
+)
+assert one_block["shared_bytes_per_block"] == reports[4]["shared_bytes_per_block"] == 8192
+assert reports[4]["tiled_global_read_bytes"] == 8 * one_block["tiled_global_read_bytes"]
+print(f"1块／8块：总加载 {one_block['tiled_global_read_bytes'] // 1024}／"
+      f"{reports[4]['tiled_global_read_bytes'] // 1024} KiB，单块申请均为8 KiB")
 for count, result in reports.items():
     print(f"使用 {count} 次：逻辑全局读取 "
           f"{result['baseline_global_read_bytes'] / 1024:g} → "
