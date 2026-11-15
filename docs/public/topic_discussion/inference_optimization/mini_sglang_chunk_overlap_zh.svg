@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+<title id="title">分块预填充改变每轮工作，执行重叠改变时间安排</title>
+<desc id="desc">上半部分把长输入拆成三轮，轮次间穿插已有解码；下半部分在相同两批工作下，对照CPU准备与GPU计算串行安排和允许独立准备重叠的安排。分块与重叠分别比较，输入就绪约束保持不变。</desc>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d;font-size:19px}.title{font-size:27px;font-weight:700}.head{font-size:21px;font-weight:700}.note{font-size:17px;fill:#475569}.decode{fill:#dbeafe;stroke:#6b91b5}.prefill{fill:#d1fae5;stroke:#6b9c8b}.prepare{fill:#fef3c7;stroke:#b69b50}.frame{fill:#fff;stroke:#cbd5e1;stroke-width:1.5;rx:12}</style>
+<rect width="1200" height="760" fill="#f7fafc"/>
+<text x="40" y="44" class="title">先分清改变的是工作分配，还是准备与计算的相对时序</text>
+<text x="40" y="79" class="note">Task4 的教学示意；上半部分按轮次读，下半部分从左向右读时间，长度均不代表本机测量。</text>
+<rect x="40" y="111" width="1120" height="220" class="frame"/>
+<text x="64" y="148" class="head">分块预填充：长输入分多轮处理，为已有解码留下推进机会</text>
+<text x="64" y="204">第 1 轮</text><rect x="200" y="176" width="140" height="43" class="decode"/><text x="270" y="205" text-anchor="middle">已有解码</text><rect x="340" y="176" width="150" height="43" class="prefill"/><text x="415" y="205" text-anchor="middle">输入块 1</text>
+<text x="535" y="204">第 2 轮</text><rect x="650" y="176" width="140" height="43" class="decode"/><text x="720" y="205" text-anchor="middle">已有解码</text><rect x="790" y="176" width="150" height="43" class="prefill"/><text x="865" y="205" text-anchor="middle">输入块 2</text>
+<text x="64" y="274">第 3 轮</text><rect x="200" y="246" width="140" height="43" class="decode"/><text x="270" y="275" text-anchor="middle">已有解码</text><rect x="340" y="246" width="150" height="43" class="prefill"/><text x="415" y="275" text-anchor="middle">输入块 3</text>
+<text x="535" y="266" class="note">矩形表示本轮工作，不表示先解码再预填充。</text><text x="535" y="296" class="note">比较长输入首词元与已有请求间隔。</text>
+<rect x="40" y="351" width="1120" height="305" class="frame"/>
+<text x="64" y="388" class="head">执行重叠：固定两批工作，尝试提前准备下一批</text>
+<text x="64" y="442">串行安排</text><rect x="250" y="413" width="110" height="44" class="prepare"/><text x="305" y="442" text-anchor="middle">准备 1</text><rect x="360" y="413" width="220" height="44" class="decode"/><text x="470" y="442" text-anchor="middle">GPU 计算 1</text><rect x="580" y="413" width="110" height="44" class="prepare"/><text x="635" y="442" text-anchor="middle">准备 2</text><rect x="690" y="413" width="220" height="44" class="decode"/><text x="800" y="442" text-anchor="middle">GPU 计算 2</text>
+<text x="64" y="510">重叠 · CPU</text><rect x="250" y="481" width="110" height="44" class="prepare"/><text x="305" y="510" text-anchor="middle">准备 1</text><rect x="360" y="481" width="110" height="44" class="prepare"/><text x="415" y="510" text-anchor="middle">准备 2</text>
+<text x="64" y="578">重叠 · GPU</text><rect x="360" y="549" width="220" height="44" class="decode"/><text x="470" y="578" text-anchor="middle">GPU 计算 1</text><rect x="580" y="549" width="220" height="44" class="decode"/><text x="690" y="578" text-anchor="middle">GPU 计算 2</text>
+<path d="M470 510H580V549" fill="none" stroke="#64748b" stroke-dasharray="5 4" stroke-width="1.5"/><text x="825" y="574" class="note">各批计算等待自身输入就绪</text>
+<text x="64" y="631" class="note">这里只重叠独立的准备；依赖当前输出的采样和状态更新，仍需等待结果，缓冲区保持到使用结束。</text>
+<text x="40" y="702">分别改变分块与重叠设置，才能解释收益来自更合适的工作量，还是更少的准备等待。</text>
+<text x="40" y="736" class="note">示意表达观察方法；实际可用开关、输入依赖与执行次序，按所选 Mini-SGLang 固定版本核对。</text>
+</svg>
