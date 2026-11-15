@@ -42,7 +42,7 @@ Task0–2 建立公共机制，Task3 和 Task4 分别承载训练与推理分支
 
 ### 跨专题入口
 
-需要沿训练质量与适配器继续学习时进入[后训练优化](../post_training_optimization/intro.md)；需要解释 TTFT、TPOT 和 Serving 行为时进入[推理优化](../inference_optimization/intro.md)；需要归因容量、带宽和关键路径收益时进入[性能优化](../performance_optimization/intro.md)与[性能分析](../performance_analysis/intro.md)；需要判断设备、运行时和回退路径时进入[部署与异构系统](../deployment_heterogeneous/intro.md)。
+需要沿训练质量与适配器继续学习时进入[后训练优化](../post_training_optimization/intro.md)；需要解释 TTFT、TPOT 和 Serving 行为时进入[推理优化](../inference_optimization/intro.md)；需要归因容量、带宽和关键路径收益时进入[性能优化](../performance_optimization/intro.md)与[性能分析](../performance_optimization/methods/intro.md)；需要判断设备、运行时和回退路径时进入[部署与异构系统](../deployment_heterogeneous/intro.md)。
 
 ## 实验与项目出口
 

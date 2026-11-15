@@ -38,7 +38,7 @@ Task4 先用[06 奖励、价值与 PPO](./06_rlhf_and_ppo_system_cost.md)区分�
 |:---|:---|:---|
 | 损失归约、梯度、有效更新与恢复 | [反向传播与训练机制](../backpropagation_training_mechanism/intro.md) | 有效监督数、参数梯度、更新步、检查点与状态峰值 |
 | 来源、清洗、合成验证与切分 | [数据工程](../data_engineering/intro.md) / [后训练数据接口](../data_engineering/05_post_training_data_interfaces.md) | 数据版本、去重与污染检查、样本来源和切分清单 |
-| 训练峰值、采样吞吐与阶段等待 | [性能分析](../performance_analysis/intro.md) / [性能优化](../performance_optimization/intro.md) | 时间线、同时驻留的对象、配对测量与资源代价 |
+| 训练峰值、采样吞吐与阶段等待 | [性能分析](../performance_optimization/methods/intro.md) / [性能优化](../performance_optimization/intro.md) | 时间线、同时驻留的对象、配对测量与资源代价 |
 | QLoRA、学生压缩与部署格式 | [量化与压缩](../quantization_compression/intro.md) / [蒸馏与结构压缩](../quantization_compression/07_pruning_distillation_and_structured_sparsity.md) | 低比特执行路径、学生产物、质量保持与部署成本 |
 | 多卡状态切分与通信 | [通信与并行](../communication_parallelism/intro.md) | 并行配置、通信等待、状态分片和恢复记录 |
 | 工具调用、轨迹回放与沙盒权限 | [Agent 工作负载](../agent/00_agent_workload_and_trace.md) / [轨迹数据](../agent/01_agent_trajectory_data.md) / [沙盒环境](../agent/02_agent_sandbox_environment.md) | 环境版本、模型动作、工具观察、重试和终止记录 |

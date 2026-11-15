@@ -37,7 +37,7 @@
 
 ### 跨专题入口
 
-本专题解释结构机制；缓存与调度进入[推理优化](../inference_optimization/intro.md)，训练更新与模型适配分别进入[反向传播与训练机制](../backpropagation_training_mechanism/intro.md)和[后训练优化](../post_training_optimization/intro.md)，低精度执行与跨卡扩展分别进入[量化与压缩](../quantization_compression/intro.md)和[通信与并行](../communication_parallelism/intro.md)，时间、容量与成本由[性能分析](../performance_analysis/intro.md)和[性能优化](../performance_optimization/intro.md)继续验证。
+本专题解释结构机制；缓存与调度进入[推理优化](../inference_optimization/intro.md)，训练更新与模型适配分别进入[反向传播与训练机制](../backpropagation_training_mechanism/intro.md)和[后训练优化](../post_training_optimization/intro.md)，低精度执行与跨卡扩展分别进入[量化与压缩](../quantization_compression/intro.md)和[通信与并行](../communication_parallelism/intro.md)，时间、容量与成本由[性能分析](../performance_optimization/methods/intro.md)和[性能优化](../performance_optimization/intro.md)继续验证。
 
 ## 实验与项目出口
 

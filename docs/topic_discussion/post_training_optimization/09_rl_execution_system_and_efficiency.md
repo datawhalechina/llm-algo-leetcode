@@ -34,4 +34,4 @@
 | 资源放置与重试 | Ray 或框架内置调度器 | 分配设备与执行任务 |
 | 训练状态或模型切分 | PyTorch FSDP（全分片数据并行）、DeepSpeed、Megatron Core 等 | 分担状态、计算与通信 |
 
-阶段处理率与资源放置见[Part 02 · PT-RL-SYSTEM 采样、训练与奖励系统](../../02_PyTorch_Algorithms/PT-RL-SYSTEM_Rollout_Training_and_Reward_System.md)，实际环境与结果见[实验资产表](./experiment_assets.md)。定位跨阶段等待可结合[性能分析](../performance_analysis/intro.md)；系统恢复和执行效率核对后，再通过[独立评测](./10_evaluation_and_adoption_decision.md)判断策略是否真正改善任务表现。
+阶段处理率与资源放置见[Part 02 · PT-RL-SYSTEM 采样、训练与奖励系统](../../02_PyTorch_Algorithms/PT-RL-SYSTEM_Rollout_Training_and_Reward_System.md)，实际环境与结果见[实验资产表](./experiment_assets.md)。定位跨阶段等待可结合[阶段时间线与关键路径](../performance_optimization/methods/03_time_breakdown_and_trace_reading.md)；系统恢复和执行效率核对后，再通过[独立评测](./10_evaluation_and_adoption_decision.md)判断策略是否真正改善任务表现。
