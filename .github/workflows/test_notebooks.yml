@@ -8,6 +8,23 @@ on:
   workflow_dispatch:
 
 jobs:
+  math-compatibility:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    - name: Test math compatibility checks
+      run: python -m unittest tools.test_math_formula_compatibility
+    - name: Check reviewed topic math without Node or network
+      run: >-
+        python tools/check_math_formula_symbols.py
+        --github-compatible --static-only
+        --dir topic_discussion/post_training_optimization
+        --dir topic_discussion/operator_optimization
+
   test:
     runs-on: ubuntu-latest
     

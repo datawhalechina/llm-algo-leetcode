@@ -38,16 +38,20 @@ KV cache 本质上是在解码阶段保存历史 token 的 Key 和 Value。每�
 更具体地说，标准自回归推理里，缓存大小通常可以写成：
 
 $$
-\text{KV Cache Bytes} \approx 2 \times L \times B \times H_{kv} \times D \times S
+\mathrm{KVBytes} = 2 \times L \times B \times H_{kv} \times D \times S \times b
 $$
 
 其中：
+
 - $L$ 是层数
 - $B$ 是 batch size
 - $H_{kv}$ 是 KV 头数
 - $D$ 是 head dim
 - $S$ 是上下文长度
+- $b$ 是每元素字节数，对应代码中的 `dtype_bytes`；FP16／BF16为2字节，FP32为4字节
 - 前面的 $2$ 表示同时存 K 和 V
+
+公式计算各层使用相同维度、K和V使用相同类型时，缓存张量本身的理论字节数。实际分配还需计入元数据、布局填充和内存管理开销。
 
 这个公式告诉我们一个很关键的事实：**KV cache 是“历史状态成本”**。上下文越长，历史 token 越多，缓存就越大；batch 越大，缓存也会同步放大；层数越多，这个成本还会在每一层重复一次。
 
@@ -55,7 +59,7 @@ $$
 
 ### Q1小验证：KV cache 增长直觉
 
-把上下文长度翻倍，再看缓存大小是不是也几乎翻倍。
+先固定2层、1个序列、3个KV头、头维4和5个历史位置：K、V共含 $2\times2\times1\times3\times4\times5=240$ 个元素。每元素2字节时为480 B，4字节时为960 B；再把上下文长度翻倍，核对缓存字节数随之翻倍。
 
 ```python
 def kv_cache_bytes(seq_len, num_layers, num_kv_heads, head_dim, batch_size=1, dtype_bytes=2):
@@ -65,6 +69,11 @@ def kv_cache_bytes(seq_len, num_layers, num_kv_heads, head_dim, batch_size=1, dt
         raise ValueError('序列长度、层数、头数、维度、batch 和 dtype 字节数必须为正数')
     return 2 * seq_len * num_layers * num_kv_heads * head_dim * batch_size * dtype_bytes
 
+# 固定小例子同时核对元素数量与每元素字节数。
+assert kv_cache_bytes(5, 2, 3, 4, dtype_bytes=2) == 480
+assert kv_cache_bytes(5, 2, 3, 4, dtype_bytes=4) == 960
+assert kv_cache_bytes(10, 2, 3, 4, dtype_bytes=2) == 960
+
 examples = [(1024, 32, 32, 128), (2048, 32, 32, 128), (4096, 32, 32, 128)]
 for seq_len, layers, kv_heads, head_dim in examples:
     size_gb = kv_cache_bytes(seq_len, layers, kv_heads, head_dim) / 1e9
@@ -73,14 +82,15 @@ for seq_len, layers, kv_heads, head_dim in examples:
 
 ### 数量级速览
 
+固定缓存表示后，先比较长度、并发、层数与KV头数各自增加时的容量变化；分页分配造成的空槽在Q3单独计算。
+
 | 变化项 | 对 KV cache 的影响 | 直觉 |
 | --- | --- | --- |
-| `seq_len` 翻倍 | 近似翻倍 | 历史 token 变多，缓存线性增长 |
-| `batch_size` 翻倍 | 近似翻倍 | 多路请求共享同一层结构，但缓存要按样本复制 |
-| `num_layers` 翻倍 | 近似翻倍 | 每层都要单独保存一份 K/V |
-| `num_kv_heads` 增加 | 近似线性增加 | KV 头越多，缓存越大 |
+| `seq_len` 翻倍 | 翻倍 | 历史 token 变多 |
+| `batch_size` 翻倍 | 翻倍 | 不同序列各自保存历史状态 |
+| `num_layers` 翻倍 | 翻倍 | 每层单独保存 K/V |
+| `num_kv_heads` 翻倍 | 翻倍 | 标准 K/V 表示中需要保存的头数增加 |
 
-这一张表的目的，是先把“增长方向”记牢，再去看后面的 MHA / MQA / GQA 和分页管理。
 ## Q2：为什么 MHA、MQA 和 GQA 会影响 KV cache 压力？
 
 
@@ -122,9 +132,12 @@ for name, kv_heads in [("MHA", 32), ("GQA", 8), ("MQA", 1)]:
 | 前缀重复导致重复计算 | 缓存复用 | Prefix Cache（延伸） | 命中率、复用 token 数 |
 
 
-### Q3小验证：缓存管理与表示压缩的对照
+### Q3小验证：先算每个位置的字节数，再按页分配
 
-把“缓存管理”和“表示压缩”分开看，再判断它们各自对显存的影响。
+用一组缩小的尺寸计算：2层、1个序列、2个KV头、头维4，每元素2字节。MHA 每个位置每层保存 $2\times2\times4=16$ 个元素；采用共享潜在向量4维、位置键2维的表示时，改为保存6个元素。这里的位置键是 RoPE 分支保存的位置表示，与潜在向量一起计入缓存。
+
+5个历史位置的 MHA 状态为320 B，压缩表示为120 B；若每页4个位置，需要2页、共8个槽位，压缩表示的页容量为192 B。其中3个槽位尚未使用。将长度改为8后，页容量仍是192 B，尾页空闲变为0。前缀长度单独记录；判断共享是否节省物理页，还需给出其他请求及它们的共享关系。
+
 
 ```python
 def paged_attention_pages(seq_len, page_size):
@@ -138,51 +151,57 @@ def paged_cache_waste_tokens(seq_len, page_size):
     pages = paged_attention_pages(seq_len, page_size)
     return pages * page_size - seq_len
 
-def mla_cache_bytes(seq_len, num_layers, latent_dim, batch_size=1, dtype_bytes=2):
-    """估算 latent 表示的理论存储量；不是完整 MLA kernel 账本。"""
+def mla_cache_bytes(seq_len, num_layers, latent_dim, batch_size=1, dtype_bytes=2, rope_dim=0):
+    """计算共享潜在向量及位置键的缓存字节数；rope_dim=0 表示仅计内容分支。"""
     values = (seq_len, num_layers, latent_dim, batch_size, dtype_bytes)
     if any(value <= 0 for value in values):
         raise ValueError('序列长度、层数、latent_dim、batch 和 dtype 字节数必须为正数')
-    return seq_len * num_layers * latent_dim * batch_size * dtype_bytes
+    if type(rope_dim) is not int or rope_dim < 0:
+        raise ValueError('rope_dim 须为非负整数')
+    return seq_len * num_layers * (latent_dim + rope_dim) * batch_size * dtype_bytes
 
-def compare_cache_strategies(seq_len, page_size, base_kv_heads, head_dim, latent_dim, prefix_len=0, num_layers=32, batch_size=1, dtype_bytes=2):
-    """并列展示缓存组织与表示压缩的可观察量。
+def compare_cache_strategies(seq_len, page_size, base_kv_heads, head_dim, latent_dim, prefix_len=0, num_layers=32, batch_size=1, dtype_bytes=2, rope_dim=0):
+    """比较逻辑状态与按页分配的字节数；各序列等长，前缀仅计可复用长度。
 
-    PagedAttention 关注页数和尾页浪费；MLA proxy 关注每 token 的表示大小；
-    prefix_len 只记录可复用的前缀 token 数。三者不是同一个指标，也不等于真实 backend 的端到端收益。
+    压缩缓存保存共享潜在向量和位置键；页容量含尾页空槽，
+    元数据、工作区和跨请求共享节省另行计算。
     """
     if prefix_len < 0 or prefix_len > seq_len:
         raise ValueError('prefix_len 必须位于 [0, seq_len]')
+    pages = paged_attention_pages(seq_len, page_size)
     base_bytes = kv_cache_bytes(seq_len, num_layers, base_kv_heads, head_dim, batch_size, dtype_bytes)
-    compressed_bytes = mla_cache_bytes(seq_len, num_layers, latent_dim, batch_size, dtype_bytes)
+    compact_bytes = mla_cache_bytes(seq_len, num_layers, latent_dim, batch_size, dtype_bytes, rope_dim)
+    paged_bytes = mla_cache_bytes(pages * page_size, num_layers, latent_dim, batch_size, dtype_bytes, rope_dim)
     return {
         'management': {
-            'pages': paged_attention_pages(seq_len, page_size),
+            'pages': pages,
             'waste_tokens': paged_cache_waste_tokens(seq_len, page_size),
         },
         'representation': {
             'base_kv_bytes': base_bytes,
-            'latent_bytes_proxy': compressed_bytes,
-            'toy_representation_saving_ratio': round(1 - compressed_bytes / base_bytes, 4),
+            'compact_kv_bytes': compact_bytes,
+            'paged_compact_kv_bytes': paged_bytes,
+            'representation_saving_ratio': 1 - compact_bytes / base_bytes,
         },
-        'reuse': {
-            'prefix_reuse_tokens': prefix_len,
-        },
+        'reuse': {'prefix_reuse_tokens': prefix_len},
     }
 
-result = compare_cache_strategies(4096, 128, 32, 128, 64, prefix_len=1024)
-print('management ->', result['management'])
-print('representation ->', result['representation'])
-assert result['management']['pages'] == 32
-assert result['management']['waste_tokens'] == 0
-assert result['reuse']['prefix_reuse_tokens'] == 1024
-assert 0 < result['representation']['toy_representation_saving_ratio'] < 1
-try:
-    paged_attention_pages(4096, 0)
-except ValueError:
-    print('✅ 分页参数校验通过')
-else:
-    raise AssertionError('page_size 为 0 时应报错')
+
+case = dict(page_size=4, base_kv_heads=2, head_dim=4, latent_dim=4,
+            rope_dim=2, num_layers=2, batch_size=1, dtype_bytes=2)
+result = compare_cache_strategies(seq_len=5, prefix_len=2, **case)
+assert result['management'] == {'pages': 2, 'waste_tokens': 3}
+assert result['representation'] == {
+    'base_kv_bytes': 320, 'compact_kv_bytes': 120,
+    'paged_compact_kv_bytes': 192, 'representation_saving_ratio': 0.625,
+}
+assert result['reuse']['prefix_reuse_tokens'] == 2
+filled = compare_cache_strategies(seq_len=8, **case)
+assert filled['management']['waste_tokens'] == 0
+assert filled['representation']['compact_kv_bytes'] == filled['representation']['paged_compact_kv_bytes'] == 192
+print('5个位置 ->', result)
+print('8个位置 ->', filled)
+
 ```
 
 ---

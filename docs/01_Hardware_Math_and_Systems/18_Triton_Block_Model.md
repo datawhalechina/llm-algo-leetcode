@@ -14,9 +14,9 @@
 
 ## 本节导读
 
-Triton 使用 Program 和 Tile 把张量空间分块。张量尺寸不能被块大小整除时，最后一个 Program 的逻辑数据块会包含超出输入的元素槽，需要通过 Mask 保护边界访问。
+Triton用程序实例（Program）处理逻辑数据块（Tile）。例如100个元素按32个槽分块，需要4个Program；最后一块只有4个有效元素，其余28个槽在访问时用掩码（Mask）屏蔽。
 
-本节从一维覆盖、二维 Tile 布局和边界 Mask 建立空间映射。完成后，你应能计算 Program 数、边界填充和有效索引；这些能力直接连接算子优化路线与 Part 03 的 Triton Kernel。
+本节先计算一维覆盖，再比较二维分块的填充，最后逐项核对有效索引是否完整且不重复。这些计算支撑算子优化中的分块与边界处理，实际加载和存储可继续在Part03·01向量加法中核对。
 
 **关键词：** `program`, `block`, `tile`
 
@@ -45,23 +45,35 @@ Program 是处理一块逻辑数据的执行实例，Tile（数据块）描述�
 
 
 ```python
-def program_coverage(num_elements, block_size):
-    """计算最小网格的 Program 数、逻辑元素槽数与尾块有效元素。"""
+def program_coverage(num_elements: int, block_size: int) -> dict:
+    """返回一维最小网格的Program数、逻辑槽数和尾块有效元素数。"""
     if any(type(value) is not int or value <= 0 for value in (num_elements, block_size)):
-        raise ValueError('输入元素数与块大小必须是正整数')
+        raise ValueError("输入元素数与块大小须为正整数")
     programs = (num_elements + block_size - 1) // block_size
     covered_slots = programs * block_size
     last_program_valid = num_elements - (programs - 1) * block_size
     return {
-        'programs': programs,
-        'covered_slots': covered_slots,
-        'last_program_valid': last_program_valid,
-        'masked_slots': covered_slots - num_elements,
+        "programs": programs, "covered_slots": covered_slots,
+        "last_program_valid": last_program_valid,
+        "masked_slots": covered_slots - num_elements,
     }
 
-for block_size in [64, 128, 256]:
-    print(block_size, '->', program_coverage(1000, block_size))
-assert program_coverage(1000, 256)['masked_slots'] == 24
+
+# 对应主图：100个元素按32个逻辑槽分块，尾块只含4个有效元素。
+num_elements, block_size = 100, 32
+coverage = program_coverage(num_elements=num_elements, block_size=block_size)
+assert coverage == {
+    "programs": 4, "covered_slots": 128, "last_program_valid": 4, "masked_slots": 28,
+}
+for size, expected in (
+    (1, (1, 1, 31)), (32, (1, 32, 0)), (33, (2, 1, 31)), (64, (2, 32, 0)),
+):
+    result = program_coverage(num_elements=size, block_size=32)
+    assert (result["programs"], result["last_program_valid"],
+            result["masked_slots"]) == expected
+print(f"{num_elements} 个元素：{coverage['programs']} 个Program，"
+      f"尾块有效 {coverage['last_program_valid']} 个，"
+      f"总屏蔽槽 {coverage['masked_slots']} 个")
 
 ```
 
@@ -69,7 +81,7 @@ assert program_coverage(1000, 256)['masked_slots'] == 24
 
 布局决定同一张量中的元素怎样分配给 Program，再怎样由线程加载与计算。例如一个二维矩阵按行切块，可以让同一 Program 处理连续列；若输入是转置视图，同样的逻辑列在物理地址上可能并不连续。只看数据块形状，无法知道加载是否合并，也无法知道元素是否在片上反复使用。
 
-增大 Tile 可能减少 Program 数量并增加复用机会，也可能增加中间值、尾块填充和资源需求。不同设备与编译器对同一逻辑布局可能生成不同执行安排，因此“逻辑块更大”不等于“线程更多”或“执行更快”。下面只比较几何覆盖与填充，将实际地址、指令和时间分别留给实现与测量。
+增大 Tile 可能减少 Program 数量并增加复用机会，也可能增加中间值、尾块填充和资源需求。不同设备与编译器对同一逻辑布局可能生成不同执行安排，因此“逻辑块更大”不等于“线程更多”或“执行更快”。以100×130矩阵和32×32数据块为例，行方向需要4个Program，列方向需要5个，共覆盖20,480个逻辑槽；其中13,000个有效，7,480个被屏蔽。几何覆盖之外，还需检查实际地址、指令与时间。
 
 ### Q2 布局计算：分块形状带来多少边界填充
 
@@ -77,25 +89,38 @@ assert program_coverage(1000, 256)['masked_slots'] == 24
 
 
 ```python
-def tile_layout(rows, cols, block_rows, block_cols):
-    """计算二维分块网格、逻辑元素槽数与边界填充比例。"""
-    if any(type(value) is not int or value <= 0 for value in (rows, cols, block_rows, block_cols)):
-        raise ValueError('矩阵和块形状必须是正整数')
+def tile_layout(rows: int, cols: int, block_rows: int, block_cols: int) -> dict:
+    """返回二维几何覆盖的Program网格、逻辑槽数与有效元素比例。"""
+    if any(type(value) is not int or value <= 0
+           for value in (rows, cols, block_rows, block_cols)):
+        raise ValueError("矩阵和块形状须为正整数")
     row_programs = (rows + block_rows - 1) // block_rows
     col_programs = (cols + block_cols - 1) // block_cols
     useful_elements = rows * cols
     covered_elements = row_programs * col_programs * block_rows * block_cols
     return {
-        'program_grid': (row_programs, col_programs),
-        'useful_elements': useful_elements,
-        'covered_elements': covered_elements,
-        'padding_elements': covered_elements - useful_elements,
-        'useful_ratio': useful_elements / covered_elements,
+        "program_grid": (row_programs, col_programs),
+        "useful_elements": useful_elements, "covered_elements": covered_elements,
+        "padding_elements": covered_elements - useful_elements,
+        "useful_ratio": useful_elements / covered_elements,
     }
 
-for tile in [(16, 16), (32, 32), (64, 64)]:
-    print(tile, '->', tile_layout(100, 130, *tile))
-assert tile_layout(128, 128, 32, 32)['padding_elements'] == 0
+
+rows, cols = 100, 130
+reports = {tile: tile_layout(rows=rows, cols=cols, block_rows=tile[0], block_cols=tile[1])
+           for tile in ((16, 16), (32, 32), (64, 64))}
+# 32×32块：4×5个Program，共20,480槽；有效13,000个，屏蔽7,480个。
+assert reports[(32, 32)] == {
+    "program_grid": (4, 5), "useful_elements": 13_000, "covered_elements": 20_480,
+    "padding_elements": 7480, "useful_ratio": 13_000 / 20_480,
+}
+assert reports[(16, 16)]["covered_elements"] == 16_128
+assert reports[(64, 64)]["padding_elements"] == 11_576
+assert tile_layout(rows=128, cols=128, block_rows=32, block_cols=32)["useful_ratio"] == 1
+assert tile_layout(rows=1, cols=1, block_rows=16, block_cols=16)["padding_elements"] == 255
+for tile, result in reports.items():
+    print(f"块形状 {tile}：网格 {result['program_grid']}，"
+          f"覆盖 {result['covered_elements']} 槽，屏蔽 {result['padding_elements']} 槽")
 
 ```
 
@@ -111,34 +136,38 @@ CPU 计算器只验证逻辑索引；实际 Triton 实现还需使用编译器�
 
 
 ```python
-def program_offsets(program_id, block_size, num_elements):
-    """生成最小覆盖网格内一个 Program 的偏移与边界 Mask。"""
-    coverage = program_coverage(num_elements, block_size)
-    if type(program_id) is not int or not 0 <= program_id < coverage['programs']:
-        raise ValueError('Program ID 必须属于本例的最小覆盖网格')
+def program_offsets(program_id: int, block_size: int, num_elements: int) -> dict:
+    """返回最小覆盖网格中一个Program的偏移、布尔掩码与有效索引。"""
+    coverage = program_coverage(num_elements=num_elements, block_size=block_size)
+    if type(program_id) is not int or not 0 <= program_id < coverage["programs"]:
+        raise ValueError("Program ID须属于本例的最小覆盖网格")
     offsets = [program_id * block_size + slot for slot in range(block_size)]
     mask = [0 <= offset < num_elements for offset in offsets]
     valid_offsets = [offset for offset, valid in zip(offsets, mask) if valid]
     return {
-        'offsets': offsets, 'mask': mask, 'valid_offsets': valid_offsets,
-        'valid_count': len(valid_offsets),
-        'safe': all(0 <= offset < num_elements for offset in valid_offsets),
+        "offsets": offsets, "mask": mask, "valid_offsets": valid_offsets,
+        "valid_count": len(valid_offsets),
+        "safe": all(0 <= offset < num_elements for offset in valid_offsets),
     }
 
 
 tail = program_offsets(program_id=3, block_size=32, num_elements=100)
-assert tail['valid_offsets'] == [96, 97, 98, 99]
-assert tail['valid_count'] == 4 and tail['safe']
-for size in [1, 32, 64, 100]:
-    coverage = program_coverage(size, 32)
+assert tail["offsets"] == list(range(96, 128))
+assert tail["mask"] == [True] * 4 + [False] * 28
+assert tail["valid_offsets"] == [96, 97, 98, 99]
+assert tail["valid_count"] == 4 and tail["safe"]
+for size in (1, 31, 32, 33, 64, 100):
+    coverage = program_coverage(num_elements=size, block_size=32)
     all_valid = [
         offset
-        for program_id in range(coverage['programs'])
-        for offset in program_offsets(program_id, 32, size)['valid_offsets']
+        for program_id in range(coverage["programs"])
+        for offset in program_offsets(program_id=program_id, block_size=32,
+                                      num_elements=size)["valid_offsets"]
     ]
     assert all_valid == list(range(size))
-assert program_offsets(1, 32, 64)['valid_count'] == 32
-print(tail)
+assert program_offsets(program_id=1, block_size=32, num_elements=64)["valid_count"] == 32
+print("尾块有效索引：", tail["valid_offsets"])
+print(f"尾块屏蔽 {tail['mask'].count(False)} 个槽；全部Program恰好覆盖输入一次。")
 
 ```
 

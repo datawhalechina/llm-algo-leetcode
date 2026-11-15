@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="title desc">
+<title id="title">同一批编号，格式转换改变载荷与同时驻留</title>
+<desc id="desc">4096个int32编号占16384字节，在主机转换为int64后占32768字节。源和转换缓冲同时存在时主机载荷49152字节；传到GPU的载荷是32768字节。16 GB每秒的纯传输估算为0.002048毫秒。GPU既有40000000000字节状态未包含这份新增输入，加入后超过40 GB容量32768字节；数字均为给定条件的账目。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52677f"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:27px;font-weight:700}.head{font-size:20px;font-weight:700}.body{font-size:17px}.note{font-size:15px;fill:#475569}.edge{stroke:#52677f;stroke-width:2.5;fill:none;marker-end:url(#a)}</style></defs>
+<rect width="1280" height="520" rx="24" fill="#f8fafc"/>
+<text x="40" y="45" class="title">编号数不变，转换缓冲与搬运字节改变</text>
+<text x="40" y="78" class="note">4096个词元编号；假设在主机转换后再传到GPU，数值、顺序与有效长度保持一致。</text>
+<rect x="40" y="135" width="280" height="100" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+<text x="60" y="175" class="head">主机源编号</text><text x="60" y="208" class="body">int32：16384 B</text>
+<rect x="470" y="135" width="310" height="100" rx="14" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+<text x="490" y="175" class="head">主机转换缓冲</text><text x="490" y="208" class="body">int64：32768 B</text>
+<rect x="940" y="135" width="300" height="100" rx="14" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/>
+<text x="960" y="175" class="head">GPU新增输入</text><text x="960" y="208" class="body">int64：32768 B</text>
+<path d="M320 190H470" class="edge"/><text x="345" y="172" class="note">整数位宽转换</text>
+<path d="M780 190H940" class="edge"/><text x="818" y="172" class="note">跨设备传输</text>
+<rect x="40" y="300" width="740" height="90" rx="14" fill="#fff" stroke="#cbd5e1" stroke-width="2"/>
+<text x="60" y="337" class="head">转换时两份缓冲同时存在</text>
+<text x="60" y="373" class="body">主机载荷：16384 + 32768 = 49152 B</text>
+<rect x="940" y="300" width="300" height="90" rx="14" fill="#fff" stroke="#cbd5e1" stroke-width="2"/>
+<text x="960" y="337" class="head">GPU同时驻留</text><text x="960" y="373" class="body">既有状态 + 新增32768 B</text>
+<text x="40" y="450" class="note">16 GB/s纯传输估算：0.002048 ms；转换、分配、提交与等待成本另行记录。</text>
+<text x="40" y="484" class="note">若既有状态已占40 GB，再接收输入便超过40 GB容量；已有预算包含输入时不重复相加。</text>
+</svg>

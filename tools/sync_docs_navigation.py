@@ -20,7 +20,7 @@ DOCS = ROOT / "docs"
 
 NAV_FILES = {
     "00_Prerequisites": ["intro.md", "0A.md", "0B.md", "0C.md", "0D.md", "0E.md"],
-    "01_Hardware_Math_and_Systems": ["intro.md", "1A.md", "1B.md", "1C.md", "1D.md", "1E.md"],
+    "01_Hardware_Math_and_Systems": ["intro.md", "1A.md", "1B.md", "1C.md", "1D.md", "1E.md", "1F.md"],
     "02_PyTorch_Algorithms": [
         "intro.md",
         "2_1.md",

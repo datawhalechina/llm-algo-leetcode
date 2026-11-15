@@ -16,7 +16,7 @@
 
 CUDA 将一次内核启动的线程组织成 Grid 和 Block；同一 Block 内的线程再按 Warp 分组执行。程序选择网格和块大小，设备则决定这些工作如何在 SM 上驻留和执行。任务组织不是 GPU 核心数量的逐层展开。
 
-本节从任务覆盖、Warp 打包和 Block 资源约束建立执行账本。完成后，你应能从元素数量推导 launch 几何，并判断一个 Block 配置是否满足线程、共享内存和寄存器限制；这些能力直接支撑算子优化路线及 Part 03–04 的 Kernel 实现。
+本节从1000个元素的任务开始，计算需要多少线程块，区分尾部无效线程与Warp中未分配的线程槽，再检查块内复用和资源上限。这些计算支撑算子优化中的CUDA实现，后续可在Part04·01核对实际索引与启动。
 
 **关键词：** `grid`, `block`, `warp`
 
@@ -44,28 +44,48 @@ SM（流式多处理器）是承载这些工作的硬件单元。一个 SM 可�
 
 
 ```python
-def launch_geometry(num_elements, threads_per_block, warp_size=32):
-    """计算一维 kernel 的 block、warp 和尾块有效线程。"""
-    if any(type(value) is not int or value <= 0 for value in (num_elements, threads_per_block, warp_size)):
-        raise ValueError('元素数、块线程数和 Warp 大小必须是正整数')
+def launch_geometry(
+    num_elements: int, threads_per_block: int, warp_size: int = 32,
+) -> dict:
+    """每线程处理一个元素，返回最小网格、尾部无效线程和Warp未分配槽数。"""
+    if any(type(value) is not int or value <= 0
+           for value in (num_elements, threads_per_block, warp_size)):
+        raise ValueError("元素数、块线程数和Warp大小须为正整数")
     blocks = (num_elements + threads_per_block - 1) // threads_per_block
     warps_per_block = (threads_per_block + warp_size - 1) // warp_size
     launched_threads = blocks * threads_per_block
     return {
-        'grid_blocks': blocks,
-        'warps_per_block': warps_per_block,
-        'total_warps': blocks * warps_per_block,
-        'launched_threads': launched_threads,
-        'inactive_tail_threads': launched_threads - num_elements,
-        'warp_thread_slots': blocks * warps_per_block * warp_size,
-        'unassigned_warp_slots': blocks * (warps_per_block * warp_size - threads_per_block),
+        "grid_blocks": blocks,
+        "warps_per_block": warps_per_block,
+        "total_warps": blocks * warps_per_block,
+        "launched_threads": launched_threads,
+        "inactive_tail_threads": launched_threads - num_elements,
+        "warp_thread_slots": blocks * warps_per_block * warp_size,
+        "unassigned_warp_slots": blocks * (warps_per_block * warp_size - threads_per_block),
     }
 
-for threads_per_block in [64, 128, 256]:
-    print(threads_per_block, '->', launch_geometry(1000, threads_per_block))
-assert launch_geometry(1000, 256)['inactive_tail_threads'] == 24
-assert launch_geometry(66, 33)['unassigned_warp_slots'] == 62
-assert launch_geometry(66, 33)['inactive_tail_threads'] == 0
+
+num_elements = 1000
+reports = {threads: launch_geometry(num_elements=num_elements, threads_per_block=threads)
+           for threads in (128, 256)}
+assert reports[256] == {
+    "grid_blocks": 4, "warps_per_block": 8, "total_warps": 32,
+    "launched_threads": 1024, "inactive_tail_threads": 24,
+    "warp_thread_slots": 1024, "unassigned_warp_slots": 0,
+}
+assert reports[128]["grid_blocks"] == 8
+assert reports[128]["warps_per_block"] == 4
+assert reports[128]["inactive_tail_threads"] == 24
+# 两个33线程块共66线程：没有尾部越界线程，却有62个未分配Warp槽。
+packed = launch_geometry(num_elements=66, threads_per_block=33)
+assert packed["unassigned_warp_slots"] == 62
+assert packed["inactive_tail_threads"] == 0
+assert launch_geometry(num_elements=256, threads_per_block=256)["inactive_tail_threads"] == 0
+assert launch_geometry(num_elements=1, threads_per_block=32)["inactive_tail_threads"] == 31
+for threads, result in reports.items():
+    print(f"每块 {threads} 线程：{result['grid_blocks']} 块，"
+          f"每块 {result['warps_per_block']} 个Warp，"
+          f"尾部无效线程 {result['inactive_tail_threads']} 个")
 
 ```
 
@@ -73,7 +93,7 @@ assert launch_geometry(66, 33)['inactive_tail_threads'] == 0
 
 Block 为线程提供共享内存与协作边界，Warp 是线程的执行分组。生产者写入数据、消费者读取数据时，需要满足对应的同步与可见性条件；属于同一 Warp 不代表可以省略所有同步检查。
 
-把重复使用的数据先搬入共享内存，可以减少逻辑全局读取。是否减少实际 HBM 流量、是否缩短时间，还取决于缓存命中、同步和片上资源占用。
+例如8个线程块各处理4096个两字节元素，每块需要8 KiB数据。每份数据使用四次时，重复完整读取共256 KiB；若每块只从全局内存搬入一次，共读取64 KiB，可减少192 KiB逻辑读取。实际设备内存流量和耗时还受缓存命中、同步及资源占用影响。
 
 ![Block 内共享内存复用路径](../public/01_Hardware_Math_and_Systems/15_memory_reuse_path.svg)
 
@@ -83,23 +103,38 @@ Block 为线程提供共享内存与协作边界，Warp 是线程的执行分组
 
 
 ```python
-def block_reuse_traffic(blocks, tile_elements, bytes_per_element, reuse_count):
-    """比较整块重复全局读取与每块只搬入一次的逻辑字节量。"""
-    if any(type(value) is not int or value <= 0 for value in (blocks, tile_elements, bytes_per_element, reuse_count)):
-        raise ValueError('块数、元素数、元素字节数和使用次数必须是正整数')
+def block_reuse_traffic(
+    blocks: int, tile_elements: int, bytes_per_element: int, reuse_count: int,
+) -> dict:
+    """按每块完整加载一次，返回逻辑全局读取字节量及每块共享内存字节量。"""
+    if any(type(value) is not int or value <= 0
+           for value in (blocks, tile_elements, bytes_per_element, reuse_count)):
+        raise ValueError("块数、元素数、元素字节数和使用次数须为正整数")
     tile_bytes = tile_elements * bytes_per_element
     baseline_global_read_bytes = blocks * tile_bytes * reuse_count
     tiled_global_read_bytes = blocks * tile_bytes
     return {
-        'baseline_global_read_bytes': baseline_global_read_bytes,
-        'tiled_global_read_bytes': tiled_global_read_bytes,
-        'global_read_bytes_saved': baseline_global_read_bytes - tiled_global_read_bytes,
-        'shared_bytes_per_block': tile_bytes,
+        "baseline_global_read_bytes": baseline_global_read_bytes,
+        "tiled_global_read_bytes": tiled_global_read_bytes,
+        "global_read_bytes_saved": baseline_global_read_bytes - tiled_global_read_bytes,
+        "shared_bytes_per_block": tile_bytes,
     }
 
-for reuse_count in [1, 2, 4]:
-    print('reuse', reuse_count, '->', block_reuse_traffic(8, 4096, 2, reuse_count))
-assert block_reuse_traffic(8, 4096, 2, 1)['global_read_bytes_saved'] == 0
+
+inputs = dict(blocks=8, tile_elements=4096, bytes_per_element=2)
+reports = {count: block_reuse_traffic(**inputs, reuse_count=count) for count in (1, 2, 4)}
+# 每块8 KiB，共8块；使用四次时，256 KiB读取减到64 KiB。
+assert reports[4] == {
+    "baseline_global_read_bytes": 262_144, "tiled_global_read_bytes": 65_536,
+    "global_read_bytes_saved": 196_608, "shared_bytes_per_block": 8192,
+}
+assert reports[2]["global_read_bytes_saved"] == 65_536
+assert reports[1]["global_read_bytes_saved"] == 0
+for count, result in reports.items():
+    print(f"使用 {count} 次：逻辑全局读取 "
+          f"{result['baseline_global_read_bytes'] / 1024:g} → "
+          f"{result['tiled_global_read_bytes'] / 1024:g} KiB，"
+          f"每块共享内存 {result['shared_bytes_per_block'] / 1024:g} KiB")
 
 ```
 
@@ -107,7 +142,7 @@ assert block_reuse_traffic(8, 4096, 2, 1)['global_read_bytes_saved'] == 0
 
 相同任务可以选择不同线程数、共享内存和寄存器用量，但这些资源都受设备与编译配置限制。先逐项计算单块需求，再与给定预算比较；线程数过多、共享内存超限或寄存器需求过高，都可能让配置无法按预期执行。
 
-块大小是程序选择，允许的范围则由设备与内核共同限制；共享内存和寄存器的预算也不是所有代际通用的固定数字。下面用示例预算检查单块需求；多块驻留和分配粒度继续在 SRAM 优化小节计算。资源检查与张量覆盖检查需要同时成立，才能进入实际核函数验证；还应核对编译后的寄存器和共享内存用量、启动限制及输出，再测量时间。
+块大小是程序选择，允许的范围则由设备与内核共同限制；共享内存和寄存器的预算也不是所有代际通用的固定数字。下面用示例预算检查单块需求；多块驻留和分配粒度继续在[Part04·05资源与驻留](../04_CUDA_and_System_Optimization/05_CUDA_Block_Resources_and_Residency.md)中计算。计算寄存器总字节数时，本例按每线程寄存器数乘线程数，再乘每个寄存器的4 B；它与给定的单块上限比较。实际实现还需核对编译后的资源用量、启动与数值结果。
 
 ![执行模型到内核实现的映射](../public/01_Hardware_Math_and_Systems/15_execution_model_to_kernel.svg)
 
@@ -117,46 +152,71 @@ assert block_reuse_traffic(8, 4096, 2, 1)['global_read_bytes_saved'] == 0
 
 
 ```python
-def block_resource_gate(threads_per_block, shared_bytes_per_block,
-                        registers_per_thread, limits):
-    """按给定整数预算检查单块资源，不替代编译与设备启动验证。"""
+def block_resource_gate(
+    threads_per_block: int, shared_bytes_per_block: int,
+    registers_per_thread: int, limits: dict,
+) -> dict:
+    """按给定单块上限检查资源；每个寄存器按4 B计，返回用量与未满足项。
+
+    limits 提供每块线程数、共享字节数、每线程寄存器数和每块寄存器字节上限。
+    这里的单块预算不表示SM实际驻留容量。
+    """
     if type(threads_per_block) is not int or threads_per_block <= 0:
-        raise ValueError('块线程数必须是正整数')
+        raise ValueError("块线程数须为正整数")
     if any(type(value) is not int or value < 0
            for value in (shared_bytes_per_block, registers_per_thread)):
-        raise ValueError('共享内存字节数与寄存器数量必须是非负整数')
-    required = ('max_threads_per_block', 'max_shared_bytes_per_block',
-                'max_registers_per_thread', 'register_file_bytes_per_block')
+        raise ValueError("共享内存字节数与寄存器数量须为非负整数")
+    required = ("max_threads_per_block", "max_shared_bytes_per_block",
+                "max_registers_per_thread", "max_register_bytes_per_block")
     if any(key not in limits or type(limits[key]) is not int or limits[key] <= 0
            for key in required):
-        raise ValueError('必须提供全部资源预算，且预算为正整数')
+        raise ValueError("须提供全部资源上限，且上限为正整数")
     reasons = []
-    if threads_per_block > limits['max_threads_per_block']:
-        reasons.append('threads_per_block')
-    if shared_bytes_per_block > limits['max_shared_bytes_per_block']:
-        reasons.append('shared_memory')
-    if registers_per_thread > limits['max_registers_per_thread']:
-        reasons.append('registers_per_thread')
+    if threads_per_block > limits["max_threads_per_block"]:
+        reasons.append("threads_per_block")
+    if shared_bytes_per_block > limits["max_shared_bytes_per_block"]:
+        reasons.append("shared_memory")
+    if registers_per_thread > limits["max_registers_per_thread"]:
+        reasons.append("registers_per_thread")
     register_bytes = threads_per_block * registers_per_thread * 4
-    if register_bytes > limits['register_file_bytes_per_block']:
-        reasons.append('register_file')
-    return {'within_stated_limits': not reasons, 'reasons': reasons,
-            'register_bytes_per_block': register_bytes}
+    if register_bytes > limits["max_register_bytes_per_block"]:
+        reasons.append("register_file")
+    return {"within_stated_limits": not reasons, "reasons": reasons,
+            "register_bytes_per_block": register_bytes}
 
 
+# 给定预算用于分别核对约束，数值不绑定某个GPU型号。
 limits = {
-    'max_threads_per_block': 1024,
-    'max_shared_bytes_per_block': 64 * 1024,
-    'max_registers_per_thread': 128,
-    'register_file_bytes_per_block': 256 * 1024,
+    "max_threads_per_block": 1024, "max_shared_bytes_per_block": 64 * 1024,
+    "max_registers_per_thread": 128, "max_register_bytes_per_block": 64 * 1024,
 }
-valid = block_resource_gate(256, 32 * 1024, 64, limits)
-invalid = block_resource_gate(2048, 96 * 1024, 64, limits)
-assert valid['within_stated_limits']
-assert not invalid['within_stated_limits']
-assert 'registers_per_thread' in block_resource_gate(32, 0, 129, limits)['reasons']
-print(valid)
-print(invalid)
+base = dict(threads_per_block=256, shared_bytes_per_block=32 * 1024,
+            registers_per_thread=64, limits=limits)
+changes = {
+    "at_register_budget": {},
+    "over_threads": {"threads_per_block": 1025, "registers_per_thread": 0},
+    "over_shared": {"shared_bytes_per_block": 64 * 1024 + 1},
+    "over_per_thread": {"threads_per_block": 32, "registers_per_thread": 129},
+    "over_register_total": {"registers_per_thread": 65},
+    "at_threads_and_shared": {"threads_per_block": 1024, "registers_per_thread": 16,
+                               "shared_bytes_per_block": 64 * 1024},
+    "at_per_thread": {"threads_per_block": 32, "registers_per_thread": 128},
+}
+reports = {name: block_resource_gate(**(base | change)) for name, change in changes.items()}
+assert reports["at_register_budget"]["register_bytes_per_block"] == 65_536
+for name in ("at_register_budget", "at_threads_and_shared", "at_per_thread"):
+    assert reports[name]["within_stated_limits"]
+for name, reason in (("over_threads", "threads_per_block"),
+                     ("over_shared", "shared_memory"),
+                     ("over_per_thread", "registers_per_thread"),
+                     ("over_register_total", "register_file")):
+    assert reports[name]["reasons"] == [reason]
+combined = block_resource_gate(**(base | {"threads_per_block": 1025,
+                                         "shared_bytes_per_block": 65_537}))
+assert combined["reasons"] == ["threads_per_block", "shared_memory", "register_file"]
+for name, result in reports.items():
+    print(f"{name}: 寄存器 {result['register_bytes_per_block']:,} B/块，"
+          f"超限项={result['reasons']}")
 
 ```
 

@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="680" viewBox="0 0 1280 680" role="img" aria-labelledby="title desc">
-<title id="title">1E：从同一段计算出发，分别检查融合与形状变化</title><desc id="desc">09 建立共同计算图。中间读写问题进入19，输入形状变化进入30，两条阅读路径分别进入32检查目标计划。最后进入算子优化与1F，核对实际执行。箭头表示阅读顺序，不是固定编译器 Pass 顺序。</desc>
+<title id="title">1E：从同一段计算出发，分别检查融合与形状变化</title><desc id="desc">09是共同入口，中间读写问题进入19，输入变化进入30，两条分支可直接进入实践观察。32是从09按需选择的目标计划进阶分支，完成后再观察实际产物与执行。设备适配按需进入1F。箭头表示阅读顺序。</desc>
 <defs><marker id="a" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#52677f"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:16px}.small{font-size:14px;fill:#475569}.edge{stroke:#52677f;stroke-width:3;fill:none;marker-end:url(#a)}</style></defs>
 <rect width="1280" height="680" rx="24" fill="#f8fafc"/>
 <text x="640" y="45" text-anchor="middle" class="title">1E：从同一段计算出发，分别检查融合与形状变化</text>
@@ -7,13 +7,15 @@
 <rect x="40" y="285" width="230" height="90" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="155" y="316" text-anchor="middle" class="head">09 计算图与后端</text><text x="155" y="343" text-anchor="middle" class="body">原始计算与调用路径</text>
 <rect x="370" y="150" width="260" height="90" rx="14" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text x="500" y="181" text-anchor="middle" class="head">19 算子融合</text><text x="500" y="208" text-anchor="middle" class="body">哪些中间读写可以省去</text>
 <rect x="370" y="430" width="260" height="90" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="500" y="461" text-anchor="middle" class="head">30 动态形状</text><text x="500" y="488" text-anchor="middle" class="body">哪些填充与路径发生变化</text>
-<rect x="740" y="285" width="240" height="90" rx="14" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text x="860" y="316" text-anchor="middle" class="head">32 检查目标计划</text><text x="860" y="343" text-anchor="middle" class="body">形状、算子与分块条件</text>
-<rect x="1050" y="285" width="190" height="90" rx="14" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text x="1145" y="316" text-anchor="middle" class="head">实际执行验证</text><text x="1145" y="343" text-anchor="middle" class="body">算子优化与 1F</text>
+<rect x="740" y="525" width="240" height="90" rx="14" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text x="860" y="556" text-anchor="middle" class="head">32 编译阶段与目标计划</text><text x="860" y="583" text-anchor="middle" class="body">矩阵候选、能力与快照</text>
+<rect x="1010" y="285" width="230" height="110" rx="14" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text x="1125" y="316" text-anchor="middle" class="head">实践观察与复测</text><text x="1125" y="343" text-anchor="middle" class="body">Part03 捕获、产物与耗时</text><text x="1125" y="373" text-anchor="middle" class="small">设备适配按需进入 1F</text>
 <path d="M270 310H310V195H370" class="edge"/>
 <path d="M270 350H330V475H370" class="edge"/>
-<path d="M630 195H680V310H740" class="edge"/>
-<path d="M630 475H700V350H740" class="edge"/>
-<path d="M980 330H1050" class="edge"/>
+<path d="M630 195H880V310H1010" class="edge"/>
+<path d="M630 475H850V355H1010" class="edge"/>
+<path d="M155 375V570H740" class="edge" stroke-dasharray="7 5"/>
+<path d="M980 570H1125V395" class="edge"/>
 <text x="500" y="125" text-anchor="middle" class="small">中间结果反复写出</text>
-<text x="500" y="565" text-anchor="middle" class="small">输入长度或批次变化</text>
+<text x="500" y="410" text-anchor="middle" class="small">输入长度或批次变化</text>
+<text x="470" y="550" text-anchor="middle" class="small">需深入目标计划时选读</text>
 </svg>

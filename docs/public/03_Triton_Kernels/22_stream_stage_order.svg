@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+  <title id="title">提交顺序与同一CUDA流中的阶段依赖</title><desc id="desc">主机依次提交两个内核即可继续执行；设备在同一流中先完成全部部分和写入，再执行合并。两条泳道分别说明提交顺序与设备依赖。</desc>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+  <style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#0f172a}.title{font-size:28px;font-weight:700}.sub{font-size:19px;fill:#475569}.head{font-size:22px;font-weight:700}.body{font-size:19px}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}</style>
+  <rect width="1500" height="470" rx="22" fill="#f8fafc" data-layout-role="panel"/>
+  <text x="40" y="48" class="title">主机连续提交，当前流维护先写后读的依赖</text><text x="40" y="82" class="sub">两次启动使用同一流；两条泳道分别表示提交顺序与设备依赖</text>
+  <text x="50" y="178" class="head">主机</text><text x="50" y="366" class="head">同一设备流</text>
+  <rect x="250" y="125" width="430" height="90" rx="15" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="465" y="161" class="head" text-anchor="middle">提交部分和内核</text><text x="465" y="194" class="body" text-anchor="middle">网格包含P个Program</text>
+  <rect x="950" y="125" width="430" height="90" rx="15" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="1165" y="161" class="head" text-anchor="middle">提交合并内核</text><text x="1165" y="194" class="body" text-anchor="middle">网格包含一个Program</text>
+  <rect x="250" y="315" width="430" height="90" rx="15" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="465" y="351" class="head" text-anchor="middle">完成第一阶段</text><text x="465" y="384" class="body" text-anchor="middle">P个独占槽位全部写完</text>
+  <rect x="950" y="315" width="430" height="90" rx="15" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="1165" y="351" class="head" text-anchor="middle">执行第二阶段</text><text x="1165" y="384" class="body" text-anchor="middle">读取有效部分和，形成总和</text>
+  <path d="M680 170H950" class="edge"/><text x="730" y="149" class="body">按顺序提交</text>
+  <path d="M465 215V315" class="edge"/><text x="482" y="271" class="body">排入当前流</text>
+  <path d="M1165 215V315" class="edge"/><text x="1182" y="271" class="body">排入同一流</text>
+  <path d="M680 360H950" class="edge"/><text x="724" y="339" class="body">写完后才读取</text>
+</svg>

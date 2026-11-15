@@ -1,4 +1,4 @@
-# 05. Triton GEMM Tutorial | Triton 矩阵乘法：分块与累加
+# 05. Triton GEMM Tutorial | Triton 矩阵乘法：分块、累加与尾部融合
 
 **难度：** Advanced | **环境：** [NVIDIA GPU 必需](#runtime-environment) | **标签：** `Triton`、`GEMM`、`分块` | **目标人群：** 理解矩阵乘法
 
@@ -14,7 +14,7 @@
 
 通用矩阵乘法（GEMM）中，一个输出元素要读取A的一行与B的一列，相邻输出又会用到其中许多相同的数据。怎样让一个Program计算一块输出，在多个输出之间复用输入子块？
 
-本节沿两个输入相乘的共享维度（K维）解释分轮累加，跟踪部分和如何保留，并处理不满块的边界；再比较两种输出块编号方式涉及的输入子块集合，区分复用机会与实际缓存收益。
+本节沿两个输入相乘的共享维度（K维）解释分轮累加，跟踪部分和如何保留，并处理不满块的边界；再比较两种输出块编号方式涉及的输入子块集合，区分复用机会与实际缓存收益。输出阶段还可加入按列偏置和SiLU激活，在保留分步参考的舍入位置时，直接消费完整累加结果。
 
 <a id="runtime-environment"></a>
 
@@ -34,37 +34,38 @@
 
 矩阵乘法 $C_{M\times N}=A_{M\times K}B_{K\times N}$ 中，M、N 分别是输出行数与列数，K 是两个输入相乘并求和的维度。一个输出需要沿整个 K 维累加。本节让一个 Program 负责 $B_M\times B_N$ 个输出：每轮读取一个 $B_M\times B_K$ 的 A 子块和一个 $B_K\times B_N$ 的 B 子块，乘加到同一累加器中，最后只写回自己的输出区域。累加器是保存当前输出块中间结果的变量；遍历完 K 之前保留的结果称为部分和，使用32位浮点数（FP32）保存部分和，可避免每轮都将累加结果舍入回FP16。
 
-例如 $B_M=B_N=B_K=16$ 时，每轮读取的 256 个 A 元素分别参与 16 列输出，256 个 B 元素分别参与 16 行输出，共完成 4096 次乘加。这里的复用发生在一个 Program 内；其他 Program 是否能从缓存取得相同数据，要看访问次序、缓存容量和实际执行。 若矩阵乘后接SiLU激活，融合有机会直接消费完整累加结果，省去中间张量读写；这与另有门控输入的SwiGLU不同，且须保留参考路径要求的中间舍入。激活应作用于全部K分段合成的结果，不能将各段激活后再相加。
+例如 $B_M=B_N=B_K=16$ 时，每轮读取的 256 个 A 元素分别参与 16 列输出，256 个 B 元素分别参与 16 行输出，共完成 4096 次乘加。这里的复用发生在一个 Program 内；其他 Program 是否能从缓存取得相同数据，要看访问次序、缓存容量和实际执行。 矩阵乘后还可加一条长度为N的偏置向量，并施加SiLU激活。归约结束后、输出写回前进行这些操作称为尾部处理（epilogue）；把它们留在同一内核，能直接消费累加结果，省去中间矩阵的写回与再读取。这与另有门控输入的SwiGLU不同。
 
 ![GEMM 子块沿 K 累加](../public/03_Triton_Kernels/gemm_tile_accumulation.svg)
 
 ## Step 2：沿 K 维推进，并处理最后一个子块
 
-假设 $K=35$、$B_K=16$，同一输出块需要经历三轮累加，分别处理 K 坐标 0–15、16–31、32–34。最后一轮只有三个有效位置，其余位置加载为零。累加器必须跨轮保留，A、B 指针则分别沿列、行方向前进 16 个元素，不能每轮重新从 K=0 读取。
+假设 $K=35$、 $B_K=16$，同一输出块需要经历三轮累加，分别处理 K 坐标 0–15、16–31、32–34。最后一轮只有三个有效位置，其余位置加载为零。累加器必须跨轮保留，A、B 指针则分别沿列、行方向前进 16 个元素，不能每轮重新从 K=0 读取。
 
-M、N 尾块也可能不完整：加载 A 时保护输出行，加载 B 时保护输出列，写回时同时保护两者。K 的掩码保证补零项不改变部分和；M、N 的掩码保证边缘输出不会访问矩阵之外的位置。
+M、N 尾块也可能不完整：加载A时保护输出行，加载B时保护输出列，写回时同时保护两者；偏置按输出列广播，尾列也要保护。尾部融合要等全部K段相加后再做一次：若两段部分和为2和−3，完整结果为−1，SiLU约为−0.269；逐段激活再相加却约为1.619。FP16分步参考先将矩阵乘结果舍入为FP16，加偏置后再舍入为FP16，最后计算SiLU并输出FP16；融合保留这些舍入位置，省掉的是中间矩阵搬运，而非数值精度要求。
 
 ## Step 3：分组映射怎样提供缓存复用机会
 
 输出块可以先按分组高度合并若干行，组内沿M方向分配Program ID，再进入下一列；最后一组用实际剩余行数换算坐标，保持输出块既不重复也不遗漏。以4×4个输出块、分组高度2为例，固定同一段K，逐行排列的前四个ID涉及一个A子块和四个B子块；两行一组则涉及两个A子块和两个B子块。分组改变这些Program的输入访问足迹，使相邻ID有机会复用同一B子块，实际执行顺序仍由GPU调度决定。
 
-访问足迹描述潜在复用，缓存命中率与显存流量需要进一步测量。块内设计还涉及片上资源：较大的输出tile需要更多累加状态，软件流水将不同轮次的数据准备与计算交错安排，更多流水级可延长预取距离，也会增加寄存器或共享内存需求。逻辑Tile和Program经过编译才映射到线程与指令，可通过[编译产物与执行核对](./18_Triton_Compilation_Artifacts_and_Execution.md)观察实际矩阵指令和资源；换设备后，再按目标支持范围与资源预算判断这些复用安排是否成立。
+访问足迹描述潜在复用，缓存命中率与显存流量需要进一步测量。块内设计还涉及片上资源：较大的输出tile需要更多累加状态，软件流水将不同轮次的数据准备与计算交错安排，更多流水级可延长预取距离，也会增加寄存器或共享内存需求。逻辑tile和Program经过编译才映射到线程与指令；[18编译产物与执行核对](./18_Triton_Compilation_Artifacts_and_Execution.md)用逐元素计算说明核对方法，矩阵路径则需读取本页GEMM实际生成的代码。比较配置时记录输出块、K块、warp数和流水级数，再结合编译器报告的寄存器、共享内存及生成指令解释资源变化；这些数据描述生成实现，耗时仍需在相同输入上测量。
 
 ![前四个 Program ID 的二维位置与输入足迹](../public/03_Triton_Kernels/05_gemm_grouped_footprint.svg)
 
 <a id="mechanism-practice"></a>
 
-## Step 4：实现分块加载、累加与指针推进
+## Step 4：实现分块矩阵乘与可选尾部融合
 
-补全 `matmul_kernel` 的三个位置，让同一输出块完成全部 K 维累加。Program 映射、候选配置和输出写回已给出；本题重点是加载地址、部分和与归约步进的配合；补全变量后移除对应局部TODO断言，保持启动函数与测试不变。
+补全 `matmul_kernel` 的四项机制：加载、累加、指针推进，以及归约结束后的偏置／SiLU。默认 `triton_gemm(a, b)` 保持纯GEMM；`bias` 接收同设备FP16连续列向量，`activation` 可选 `none` 或 `silu`。骨架给出Program映射、输入检查和启动，补全提示中的变量后移除局部TODO断言，保持测试不变。
 
-给定的 `@triton.autotune` 会按 M、N、K 这组形状键，在列出的候选中计时选择配置。`num_warps` 表示每个 Program 使用的 warp 数；warp 是 NVIDIA GPU 的32线程执行组，不等于逻辑 tile 的元素数。块宽等 `tl.constexpr` 参数在编译时已知，可用于生成固定形状的计算块。
+给定的 `@triton.autotune` 会按M、N、K形状及偏置／激活模式，在列出的候选中计时选择配置。`num_warps` 表示每个 Program 使用的 warp 数；warp 是 NVIDIA GPU 的32线程执行组，不等于逻辑 tile 的元素数。块宽等 `tl.constexpr` 参数在编译时已知，可用于生成固定形状的计算块。
 
 | TODO / 函数 | 待实现的机制 | 必须满足的约束 | 测试证据 |
 | --- | --- | --- | --- |
 | TODO 1 / `matmul_kernel` | 加载 A、B 子块 | 分别保护 M/K 与 K/N 边界，无效位置补零 | 非方阵、非 tile 整除形状的数值核对 |
 | TODO 2 / `matmul_kernel` | 将矩阵乘积累加到部分和 | 不在 K 循环内重置累加器 | 与 PyTorch 矩阵乘结果比较 |
 | TODO 3 / `matmul_kernel` | 推进 A、B 的 K 维指针 | 使用各自 stride，覆盖后续 K 子块 | 多轮 K 累加及尾块结果核对 |
+| TODO 4 / `matmul_kernel` | 对完整累加结果加偏置并激活 | 按列广播；保留两处FP16舍入；SiLU在K归约后执行 | 四种尾部模式、负值、多轮K与专门的舍入对照 |
 
 
 ```python
@@ -77,6 +78,15 @@ import triton.testing
 
 
 ```python
+def gemm_reference(a, b, bias=None, activation="none"):
+    """分步FP16参考：矩阵乘、可选列偏置、可选SiLU，阶段间保留FP16结果。"""
+    output = torch.matmul(a, b)
+    if bias is not None:
+        output = (output.float() + bias.float()).to(a.dtype)
+    if activation == "silu":
+        output = torch.nn.functional.silu(output.float()).to(a.dtype)
+    return output
+
 @triton.autotune(
     configs=[
         triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 256, 'BLOCK_SIZE_K': 64, 'GROUP_SIZE_M': 8}, num_stages=3, num_warps=8),
@@ -88,19 +98,20 @@ import triton.testing
         triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 32, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 8}, num_stages=5, num_warps=2),
         triton.Config({'BLOCK_SIZE_M': 32, 'BLOCK_SIZE_N': 64, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 8}, num_stages=5, num_warps=2),
     ],
-    key=['M', 'N', 'K'],
+    key=['M', 'N', 'K', 'HAS_BIAS', 'APPLY_SILU'],
 )
 @triton.jit
 def matmul_kernel(
-    a_ptr, b_ptr, c_ptr,
+    a_ptr, b_ptr, c_ptr, bias_ptr,
     M, N, K,
     stride_am, stride_ak,
     stride_bk, stride_bn,
     stride_cm, stride_cn,
     BLOCK_SIZE_M: tl.constexpr, BLOCK_SIZE_N: tl.constexpr, BLOCK_SIZE_K: tl.constexpr,
     GROUP_SIZE_M: tl.constexpr,
+    HAS_BIAS: tl.constexpr, APPLY_SILU: tl.constexpr,
 ):
-    """计算矩阵乘法 C = A @ B."""
+    """完成K归约后，按编译模式添加列偏置和SiLU尾部处理。"""
     # 按组映射 Program ID；实际缓存收益需另测
     pid = tl.program_id(axis=0)
     num_pid_m = tl.cdiv(M, BLOCK_SIZE_M)
@@ -147,13 +158,23 @@ def matmul_kernel(
         # b_ptrs += ???
         tl.static_assert(False, "TODO 3：补全指针步进并移除此断言")
 
+    # TODO 4：完整K归约后，保留参考舍入再做尾部处理
+    output = accumulator.to(tl.float16).to(tl.float32)
+    if HAS_BIAS:
+        # bias = ???  # 按输出列加载，保护N尾部
+        # output = ???  # 按列广播相加，再保留FP16舍入
+        tl.static_assert(False, "TODO 4：补全偏置加载与相加并移除此断言")
+    if APPLY_SILU:
+        # output = ???  # 对完整结果施加SiLU
+        tl.static_assert(False, "TODO 4：补全SiLU并移除此断言")
+
     # 5. 将有效输出写入 C
     c_ptrs = c_ptr + stride_cm * offs_am[:, None] + stride_cn * offs_bn[None, :]
     c_mask = (offs_am[:, None] < M) & (offs_bn[None, :] < N)
-    tl.store(c_ptrs, accumulator.to(tl.float16), mask=c_mask)
+    tl.store(c_ptrs, output.to(tl.float16), mask=c_mask)
 
-def triton_gemm(a: torch.Tensor, b: torch.Tensor):
-    """运行自动调优 GEMM；输入为 CUDA FP16 矩阵。"""
+def triton_gemm(a: torch.Tensor, b: torch.Tensor, bias=None, activation="none"):
+    """运行CUDA FP16 GEMM；bias为N列向量，activation为none或silu。"""
     # 检查维度和类型
     if not (a.is_cuda and b.is_cuda):
         raise ValueError("a 和 b 必须是 CUDA 张量")
@@ -165,6 +186,12 @@ def triton_gemm(a: torch.Tensor, b: torch.Tensor):
         raise ValueError("当前实现要求 a、b 连续")
     if min(*a.shape, *b.shape) < 1:
         raise ValueError("本节要求非空矩阵")
+    if activation not in ("none", "silu"):
+        raise ValueError("activation须为none或silu")
+    if bias is not None:
+        if (bias.device != a.device or bias.dtype != a.dtype or bias.ndim != 1
+                or bias.shape[0] != b.shape[1] or not bias.is_contiguous()):
+            raise ValueError("bias须为同设备、同类型、连续且长度为N的一维张量")
     M, K = a.shape
     K, N = b.shape
 
@@ -176,11 +203,12 @@ def triton_gemm(a: torch.Tensor, b: torch.Tensor):
 
     with torch.cuda.device(a.device):
         matmul_kernel[grid](
-            a, b, c,
+            a, b, c, bias if bias is not None else a,
             M, N, K,
             a.stride(0), a.stride(1),
             b.stride(0), b.stride(1),
             c.stride(0), c.stride(1),
+            HAS_BIAS=bias is not None, APPLY_SILU=activation == "silu",
         )
     return c
 
@@ -190,7 +218,7 @@ def triton_gemm(a: torch.Tensor, b: torch.Tensor):
 
 
 ```python
-def test_fused_gemm():
+def test_gemm():
     """核对 K 累加、分组末尾、输出布局与输入约束。"""
     if not torch.cuda.is_available():
         print("SKIPPED: GEMM 数值测试需要 NVIDIA GPU。")
@@ -229,7 +257,81 @@ def test_fused_gemm():
     return {"status": "passed", "numeric_cases": len(cases), "invalid_cases": len(invalid)}
 
 
-test_fused_gemm()
+def test_gemm_epilogue():
+    """核对四种尾部模式、列广播、K归约顺序、舍入和输入不变性。"""
+    if not torch.cuda.is_available():
+        print("SKIPPED: GEMM尾部融合数值测试需要NVIDIA GPU。")
+        return {"status": "skipped", "reason": "cuda_unavailable"}
+
+    torch.manual_seed(43)
+    cases = [(1, 1, 1), (17, 19, 35), (65, 33, 97)]
+    numeric_cases = 0
+    for m, n, k in cases:
+        a = torch.randn((m, k), device="cuda", dtype=torch.float16) * 0.25
+        b = torch.randn((k, n), device="cuda", dtype=torch.float16) * 0.25
+        bias = torch.linspace(-2, 2, n, device="cuda", dtype=torch.float16)
+        snapshots = [tensor.clone() for tensor in (a, b, bias)]
+        for use_bias in (False, True):
+            for activation in ("none", "silu"):
+                current_bias = bias if use_bias else None
+                actual = triton_gemm(a, b, bias=current_bias, activation=activation)
+                expected = gemm_reference(a, b, bias=current_bias, activation=activation)
+                assert actual.shape == (m, n) and actual.dtype == a.dtype and actual.device == a.device
+                assert actual.is_contiguous()
+                torch.testing.assert_close(
+                    actual, expected, atol=2e-2, rtol=2e-2,
+                    msg=f"尾部M/N/K={m}/{n}/{k}, bias={use_bias}, activation={activation}")
+                numeric_cases += 1
+        for tensor, original in zip((a, b, bias), snapshots):
+            torch.testing.assert_close(tensor, original, atol=0, rtol=0)
+
+    # 全1与全负1交替出现，让不同K分段产生相反贡献。
+    a = torch.ones((2, 97), device="cuda", dtype=torch.float16)
+    b = torch.ones((97, 3), device="cuda", dtype=torch.float16)
+    b[48:] = -1
+    torch.testing.assert_close(triton_gemm(a, b, activation="silu"),
+                               gemm_reference(a, b, activation="silu"), atol=1e-3, rtol=1e-3)
+
+    # 精确构造FP16中点：1024.5先舍入到1024，再加-1024应为0。
+    a = torch.ones((1, 2), device="cuda", dtype=torch.float16)
+    b = torch.tensor([[1024.0], [0.5]], device="cuda", dtype=torch.float16)
+    bias = torch.tensor([-1024.0], device="cuda", dtype=torch.float16)
+    assert gemm_reference(a, b, bias=bias).item() == 0
+    assert triton_gemm(a, b, bias=bias).item() == 0
+
+    # 1 + 2^-11先舍入为1；若漏掉加偏置后的舍入，激活输出会跨FP16格点。
+    a = torch.ones((1, 1), device="cuda", dtype=torch.float16)
+    b = torch.ones((1, 1), device="cuda", dtype=torch.float16)
+    bias = torch.tensor([2 ** -11], device="cuda", dtype=torch.float16)
+    expected = gemm_reference(a, b, bias=bias, activation="silu")
+    unrounded = torch.nn.functional.silu((a @ b).float() + bias.float()).half()
+    assert expected.item() != unrounded.item()
+    torch.testing.assert_close(triton_gemm(a, b, bias=bias, activation="silu"),
+                               expected, atol=1e-4, rtol=0)
+
+    valid = torch.ones((2, 3), device="cuda", dtype=torch.float16)
+    weights = torch.ones((3, 4), device="cuda", dtype=torch.float16)
+    invalid_options = [
+        {"bias": torch.zeros(3, device="cuda", dtype=torch.float16)},
+        {"bias": torch.zeros((1, 4), device="cuda", dtype=torch.float16)},
+        {"bias": torch.zeros(4, dtype=torch.float16)},
+        {"bias": torch.zeros(4, device="cuda", dtype=torch.float32)},
+        {"bias": torch.zeros(8, device="cuda", dtype=torch.float16)[::2]},
+        {"activation": "relu"},
+    ]
+    for index, options in enumerate(invalid_options, 1):
+        try:
+            triton_gemm(valid, weights, **options)
+        except ValueError:
+            continue
+        raise AssertionError(f"尾部无效选项{index}未被拒绝")
+    print(f"PASSED: 尾部{numeric_cases}组模式、3组定向数值与{len(invalid_options)}组输入约束通过。")
+    return {"status": "passed", "numeric_cases": numeric_cases,
+            "targeted_cases": 3, "invalid_cases": len(invalid_options)}
+
+
+test_gemm()
+test_gemm_epilogue()
 
 ```
 
@@ -239,6 +341,15 @@ test_fused_gemm()
 
 
 ```python
+def gemm_reference(a, b, bias=None, activation="none"):
+    """分步FP16参考：矩阵乘、可选列偏置、可选SiLU，阶段间保留FP16结果。"""
+    output = torch.matmul(a, b)
+    if bias is not None:
+        output = (output.float() + bias.float()).to(a.dtype)
+    if activation == "silu":
+        output = torch.nn.functional.silu(output.float()).to(a.dtype)
+    return output
+
 @triton.autotune(
     configs=[
         triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 256, 'BLOCK_SIZE_K': 64, 'GROUP_SIZE_M': 8}, num_stages=3, num_warps=8),
@@ -250,19 +361,20 @@ test_fused_gemm()
         triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 32, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 8}, num_stages=5, num_warps=2),
         triton.Config({'BLOCK_SIZE_M': 32, 'BLOCK_SIZE_N': 64, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 8}, num_stages=5, num_warps=2),
     ],
-    key=['M', 'N', 'K'],
+    key=['M', 'N', 'K', 'HAS_BIAS', 'APPLY_SILU'],
 )
 @triton.jit
 def matmul_kernel(
-    a_ptr, b_ptr, c_ptr,
+    a_ptr, b_ptr, c_ptr, bias_ptr,
     M, N, K,
     stride_am, stride_ak,
     stride_bk, stride_bn,
     stride_cm, stride_cn,
     BLOCK_SIZE_M: tl.constexpr, BLOCK_SIZE_N: tl.constexpr, BLOCK_SIZE_K: tl.constexpr,
     GROUP_SIZE_M: tl.constexpr,
+    HAS_BIAS: tl.constexpr, APPLY_SILU: tl.constexpr,
 ):
-    """计算矩阵乘法 C = A @ B."""
+    """完成K归约后，按编译模式添加列偏置和SiLU尾部处理。"""
     # 按组映射 Program ID；实际缓存收益需另测
     pid = tl.program_id(axis=0)
     num_pid_m = tl.cdiv(M, BLOCK_SIZE_M)
@@ -306,13 +418,21 @@ def matmul_kernel(
         a_ptrs += BLOCK_SIZE_K * stride_ak
         b_ptrs += BLOCK_SIZE_K * stride_bk
 
+    # TODO 4：完整K归约后，保留参考舍入再做尾部处理
+    output = accumulator.to(tl.float16).to(tl.float32)
+    if HAS_BIAS:
+        bias = tl.load(bias_ptr + offs_bn, mask=offs_bn < N, other=0.0).to(tl.float32)
+        output = (output + bias[None, :]).to(tl.float16).to(tl.float32)
+    if APPLY_SILU:
+        output = output * tl.sigmoid(output)
+
     # 5. 将有效输出写入 C
     c_ptrs = c_ptr + stride_cm * offs_am[:, None] + stride_cn * offs_bn[None, :]
     c_mask = (offs_am[:, None] < M) & (offs_bn[None, :] < N)
-    tl.store(c_ptrs, accumulator.to(tl.float16), mask=c_mask)
+    tl.store(c_ptrs, output.to(tl.float16), mask=c_mask)
 
-def triton_gemm(a: torch.Tensor, b: torch.Tensor):
-    """运行自动调优 GEMM；输入为 CUDA FP16 矩阵。"""
+def triton_gemm(a: torch.Tensor, b: torch.Tensor, bias=None, activation="none"):
+    """运行CUDA FP16 GEMM；bias为N列向量，activation为none或silu。"""
     # 检查维度和类型
     if not (a.is_cuda and b.is_cuda):
         raise ValueError("a 和 b 必须是 CUDA 张量")
@@ -324,6 +444,12 @@ def triton_gemm(a: torch.Tensor, b: torch.Tensor):
         raise ValueError("当前实现要求 a、b 连续")
     if min(*a.shape, *b.shape) < 1:
         raise ValueError("本节要求非空矩阵")
+    if activation not in ("none", "silu"):
+        raise ValueError("activation须为none或silu")
+    if bias is not None:
+        if (bias.device != a.device or bias.dtype != a.dtype or bias.ndim != 1
+                or bias.shape[0] != b.shape[1] or not bias.is_contiguous()):
+            raise ValueError("bias须为同设备、同类型、连续且长度为N的一维张量")
     M, K = a.shape
     K, N = b.shape
 
@@ -335,11 +461,12 @@ def triton_gemm(a: torch.Tensor, b: torch.Tensor):
 
     with torch.cuda.device(a.device):
         matmul_kernel[grid](
-            a, b, c,
+            a, b, c, bias if bias is not None else a,
             M, N, K,
             a.stride(0), a.stride(1),
             b.stride(0), b.stride(1),
             c.stride(0), c.stride(1),
+            HAS_BIAS=bias is not None, APPLY_SILU=activation == "silu",
         )
     return c
 
@@ -362,7 +489,15 @@ def triton_gemm(a: torch.Tensor, b: torch.Tensor):
 - A 与 B 必须进入同一段新的 K 坐标，但两者归约维步长不同，输出块坐标不变。
 - 分别增加 `BLOCK_SIZE_K * stride_ak` 与 `BLOCK_SIZE_K * stride_bk`；多轮 K 及尾块输入能暴露重复读取首块的错误。
 
+#### TODO 4：在完整结果上施加偏置与SiLU
+
+- K循环结束后才有完整矩阵乘结果，偏置按N列广播，SiLU作用于加偏置后的结果；放进K循环会重复加偏置或改变非线性计算。
+- 先将累加器舍入FP16，加偏置后再次舍入FP16，再计算SiLU。转换发生在内核内，不要求中间矩阵写回；列偏置的加载仍需保护尾列。
+- 四模式对照覆盖纯矩阵乘、仅偏置、仅SiLU及偏置加SiLU；97个K位置的正负贡献检查归约顺序，1024.5和1加2⁻¹¹两个构造例子分别检查两处舍入，跨列正负偏置检查广播和激活输入。
+
 ## 性能测量（可选）
+
+下面仍比较默认纯GEMM，编译和自动调优在计时前完成。尾部融合的收益需另比较相同偏置、激活与舍入要求下的完整调用；已有纯GEMM计时保留原有范围。
 
 
 ```python
@@ -389,6 +524,7 @@ def benchmark_gemm(m=1024, n=1024, k=1024, warmup_ms=25, repeat_ms=100):
     result = {
         "status": "measured",
         "shape_mnk": [m, n, k],
+        "operation": "gemm_without_epilogue",
         "dtype": str(a.dtype),
         "device": torch.cuda.get_device_name(a.device),
         "torch_version": torch.__version__,
@@ -405,6 +541,89 @@ def benchmark_gemm(m=1024, n=1024, k=1024, warmup_ms=25, repeat_ms=100):
     return result
 
 benchmark_gemm()
+
+```
+
+### 查看本次GEMM的编译结果
+
+需要解释矩阵实现时，可开启下面的独立观察单元：固定128×128×128的FP16输入，让本页autotuner选择配置，核对输出，再从本次启动返回的对象读取代码摘要与资源字段。tile和warp数是选择条件，寄存器与共享内存是编译结果；资源字段保留编译器原始报告，缺失项记为空值；产物整理函数可先用CPU构造记录检查字段映射。
+
+PTX中的矩阵指令行用于定位生成路径，仍需与对应cubin、启动对象及设备条件一起解释；机器指令分析继续读取SASS，硬件利用率与耗时归因继续结合运行轨迹。准备过程包含自动调优，本单元记录产物与资源；冷启动及稳态成本另按计时协议测量。默认关闭，开启前使用本页GPU环境。
+
+
+```python
+RUN_GEMM_INSPECTION = False  # True时运行当前GEMM并读取产物；默认不启动GPU观察。
+
+
+def describe_gemm_artifacts(compiled, chosen):
+    """整理指定编译对象的代码摘要、配置与编译器资源报告。"""
+    import hashlib
+    import re
+
+    ptx = compiled.asm.get("ptx", "")
+    cubin = compiled.asm.get("cubin")
+    metadata = compiled.metadata
+    instruction_lines = [line.split("//", 1)[0].strip() for line in ptx.splitlines()]
+    matrix_lines = [
+        line for line in instruction_lines
+        if re.search(r"\b(?:mma\.|wgmma\.|tcgen05\.mma)", line)
+    ]
+    return {
+        "config": dict(chosen.kwargs),
+        "num_warps": chosen.num_warps,
+        "num_stages": chosen.num_stages,
+        "registers_per_thread": getattr(compiled, "n_regs", None),
+        "spill_report": getattr(compiled, "n_spills", None),
+        "shared_bytes_per_cta": getattr(metadata, "shared", None),
+        "artifact_formats": sorted(compiled.asm),
+        "ptx_sha256": hashlib.sha256(ptx.encode()).hexdigest() if ptx else None,
+        "cubin_sha256": hashlib.sha256(cubin).hexdigest() if cubin else None,
+        "matrix_ptx_lines": matrix_lines[:12],
+    }
+
+
+def inspect_gemm_artifacts():
+    """核对固定FP16 GEMM输出，再读取本次启动返回的编译对象。"""
+    if not torch.cuda.is_available():
+        raise RuntimeError("GEMM编译产物观察需要NVIDIA GPU")
+    torch.manual_seed(42)
+    m, n, k = 128, 128, 128
+    device = torch.device("cuda", torch.cuda.current_device())
+    a = torch.randn((m, k), device=device, dtype=torch.float16)
+    b = torch.randn((k, n), device=device, dtype=torch.float16)
+    output = torch.empty((m, n), device=device, dtype=torch.float16)
+    grid = lambda meta: (
+        triton.cdiv(m, meta["BLOCK_SIZE_M"]) * triton.cdiv(n, meta["BLOCK_SIZE_N"]),
+    )
+    # Autotuner完成候选搜索，再返回选定配置本次启动的编译对象。
+    with torch.cuda.device(device):
+        compiled = matmul_kernel[grid](
+            a, b, output, a, m, n, k,
+            a.stride(0), a.stride(1), b.stride(0), b.stride(1),
+            output.stride(0), output.stride(1),
+            HAS_BIAS=False, APPLY_SILU=False,
+        )
+    if compiled is None:
+        raise RuntimeError("当前Triton未返回编译对象，先核对运行时API")
+    torch.cuda.synchronize(device)
+    torch.testing.assert_close(output, a @ b, atol=2e-2, rtol=2e-2)
+    report = describe_gemm_artifacts(compiled, matmul_kernel.best_config)
+    report.update({
+        "status": "observed",
+        "shape_mnk": [m, n, k],
+        "dtype": str(a.dtype),
+        "device": torch.cuda.get_device_name(device),
+        "triton": triton.__version__,
+        "correctness": "passed",
+        "evidence_scope": "gemm_compilation_and_launch_not_performance",
+    })
+    return report
+
+
+if RUN_GEMM_INSPECTION:
+    print(inspect_gemm_artifacts())
+else:
+    print("NOT RUN: GEMM编译产物观察；需要时显式开启。")
 
 ```
 

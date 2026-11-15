@@ -82,7 +82,7 @@ $$
 
 题目区用形状为 `[batch, heads, tokens, head_dim]` 的 K/V 状态复现异轴量化与多轮追加生命周期。骨架已经提供量化码生成、恢复、分段状态和实际容器与理论打包字节；你需要补全 Key 量化轴、Value 量化轴，以及每轮应该从高精度窗口转存多少旧 Token。
 
-| TODO / 函数 | 待实现机制 | 必须满足的约束 | 测试证据 |
+| TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 |:---|:---|:---|:---|
 | TODO 1：按通道量化 Key<br>`quantize_key_per_channel` | 沿 Token 维估计 Key 的逐通道范围并生成量化码 | 缩放因子形状为 `[..., 1, head_dim]`，全零通道仍有限 | 形状、全零输入与恢复误差 |
 | TODO 2：按 Token 量化 Value<br>`quantize_value_per_token` | 沿头维估计 Value 的逐 Token 范围并生成量化码 | 缩放因子形状为 `[..., tokens, 1]`，每个 Token 独立 | 形状、全零输入与恢复误差 |

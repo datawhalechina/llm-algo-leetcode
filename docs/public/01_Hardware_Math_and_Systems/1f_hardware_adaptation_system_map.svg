@@ -22,7 +22,7 @@ text{font-family:'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#172033}
 
 <rect id="stage" x="350" y="150" width="250" height="100" rx="14" fill="#f0fdf4" stroke="#4ade80" class="node"/>
 <text x="475" y="189" text-anchor="middle" class="heading">34 分阶段检查</text>
-<text x="475" y="222" text-anchor="middle" class="body">各阶段的内存与运行时需求</text>
+<text x="475" y="222" text-anchor="middle" class="body">交接、搬运与同时驻留</text>
 
 <rect id="cost" x="990" y="150" width="250" height="100" rx="14" fill="#faf5ff" stroke="#a855f7" class="node"/>
 <text x="1115" y="189" text-anchor="middle" class="heading">33 成功请求成本</text>
@@ -34,7 +34,7 @@ text{font-family:'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#172033}
 
 <path data-source="device" data-target="stage" d="M280 200H350" class="edge" stroke="#315b7d" marker-end="url(#main-arrow)"/>
 <path data-source="stage" data-target="cost" d="M600 200H990" class="edge" stroke="#315b7d" marker-end="url(#main-arrow)"/>
-<text x="795" y="177" text-anchor="middle" class="body">单任务：直接进入成本计算</text>
+<text x="795" y="177" text-anchor="middle" class="body">带入功能与同负载测量结果</text>
 <path data-source="stage" data-target="isolation" d="M475 250V400H655" class="edge" stroke="#8064ae" stroke-dasharray="8 5" marker-end="url(#branch-arrow)"/>
 <text x="490" y="325" class="body">多个任务共享设备</text>
 <path data-source="isolation" data-target="cost" d="M905 400H1115V250" class="edge" stroke="#8064ae" stroke-dasharray="8 5" marker-end="url(#branch-arrow)"/>

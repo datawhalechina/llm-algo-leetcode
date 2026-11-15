@@ -25,172 +25,284 @@
 ---
 ## 前置阅读
 
-先从 [1D：执行模型、异步调度与算子映射](./1D.md)理解程序如何映射到设备执行单元。本节不要求预先掌握具体编译框架。
-## Q1：程序、计算图和设备代码怎样连接
+先理解张量任务怎样分成逻辑数据块，再追踪图中的依赖与后端安排。
 
-“矩阵乘 → 加偏置 → 激活”先是一段程序。图捕获识别其中的张量运算及依赖，用中间表示（IR）保存这些关系；图中的矩阵乘节点表达做什么计算，还没有指定线程分块、指令或哪一个库函数。图变换随后可以组合运算、改变布局或保留必要的中间结果，后端再选择并生成目标实现。
+- [18 Triton分块模型](./18_Triton_Block_Model.md)：区分计算区域与实际线程映射。
 
-以PyTorch的 `torch.compile` 为例，它是连接编译流程的用户入口，不是一个单独的融合算子。TorchDynamo捕获可处理的计算并建立适用条件，常用FX图表示运算关系；训练时，AOTAutograd参与前后向图的处理。默认后端TorchInductor对图进行后续处理，在GPU上可以生成Triton实现，也可以保留对已有计算库的调用。一个矩阵乘仍调用库、相邻偏置与激活生成融合内核，是完全可能的组合。
+## Q1：程序、计算图和设备实现怎样连接？
 
-因此，捕获到一张图不等于只启动一次GPU kernel，生成了Triton代码也不等于程序中的每个算子都由Triton执行。手写Triton从块级算法描述进入编译链，CUDA C++则经过自己的工具链；CUDA Graph重放复用的是操作与依赖的提交安排，不能用它代替上述图变换与代码生成。
+沿同一个例子跟踪三个值：矩阵乘产生 `T = X @ W`，加偏置产生 `U = T + b`，ReLU把U中的负值变为0，得到Y。计算图用节点记录运算，用连线表示谁使用谁的结果。从程序中提取这些关系称为图捕获；编译器保存计算信息的形式称为中间表示（IR），计算图是其中一种形式。它描述计算依赖，还没有指定线程分工或设备指令。
 
-| 环节 | 对当前计算做什么 | 能继续追问的问题 |
+编译后端把这些关系落实为目标实现。一种候选安排保留矩阵乘库调用，把偏置与ReLU合成一个内核；T仍须跨调用传递，U可以作为内部值直接消费。下面用CPU上的字典声明依赖和分组，计算谁使用T／U、哪些值跨组；它展示分组含义，不模拟真实图捕获或代码生成。实际PyTorch入口 `torch.compile` 涉及的名称按这条链理解：
+
+| 环节 | 本例中发生什么 | PyTorch中的对应角色 |
 | --- | --- | --- |
-| 图捕获与适用条件 | 取得运算依赖，记录输入和程序状态的约束 | 哪些代码被捕获，哪些输入可复用？ |
-| 图变换与后端生成 | 选择融合、布局、生成内核或库调用 | 中间值是否仍需写回，实际用了哪些实现？ |
-| 启动与设备执行 | 按依赖调用生成实现和已有库 | 调用是否真的发生，完整计算用了多久？ |
+| 取得计算关系 | 记录矩阵乘、加偏置与ReLU的依赖 | TorchDynamo捕获可处理的计算，FX图表示节点与连接 |
+| 选择实现 | 保留矩阵乘库调用，组合偏置与激活 | 常用后端TorchInductor组合库调用或生成代码，GPU实现可能包含Triton内核 |
+| 提交并执行 | 运行得到T的调用，再运行得到Y的调用 | 实际设备调用与数值、耗时需要另外确认 |
 
-## Q2：图变换能减少哪些启动与中间张量读写？
+![同一计算的程序、图节点、后端安排与设备调用](../public/01_Hardware_Math_and_Systems/09_compiler_concrete_pipeline.svg)
 
-把四个串行算子拆成四组执行时，组间结果需要写出并由下一组读取；合并为更少的组，有机会减少这些边界和启动次数。若变换还需要调整布局，就会增加额外读写，应与减少量分别计算。
 
-下面假设算子构成单链、各边界张量等大、每组对应一次启动。字节量是逻辑读写估算，启动耗时来自给定假设；它们不能直接相加，也不能代替端到端计时。
+```python
+def execution_plan_report(node_inputs: dict, groups: list, external_inputs: set) -> dict:
+    """按依赖顺序声明节点、按执行顺序声明分组；计算使用者与组间中间值，不运行编译器。"""
+    flattened = [name for group in groups for name in group]
+    if (not node_inputs or any(not group for group in groups)
+            or len(flattened) != len(set(flattened)) or set(flattened) != set(node_inputs)):
+        raise ValueError("各节点须恰好属于一个非空分组")
+    if set(node_inputs) & external_inputs:
+        raise ValueError("节点结果不能与外部输入同名")
+    owner = {name: index for index, group in enumerate(groups) for name in group}
+    available = set(external_inputs)
+    users = {name: [] for name in node_inputs}
+    for name, inputs in node_inputs.items():
+        if any(source not in available for source in inputs):
+            raise ValueError("节点输入须先于当前节点就绪")
+        for source in set(inputs) & set(node_inputs):
+            if owner[source] > owner[name]:
+                raise ValueError("分组执行顺序必须满足依赖")
+            users[source].append(name)
+        available.add(name)
+    boundaries = [name for name, readers in users.items()
+                  if any(owner[reader] != owner[name] for reader in readers)]
+    return {"users": users, "materialized_intermediates": boundaries,
+            "planned_calls": len(groups)}
 
-### Q2 机制计算器：分别记录启动开销与逻辑读写
 
-固定算子链与张量大小，只改变分组，再加入布局转换字节数作对照。
+# 手工声明同一条计算的输入依赖，分组是假设的实现安排。
+node_inputs = {"T": ("X", "W"), "U": ("T", "b"), "Y": ("U",)}
+node_ops = {"T": "matmul", "U": "add", "Y": "relu"}
+external_inputs = {"X", "W", "b"}
+separate_plan = execution_plan_report(node_inputs, [["T"], ["U"], ["Y"]], external_inputs)
+fused_plan = execution_plan_report(node_inputs, [["T"], ["U", "Y"]], external_inputs)
+assert separate_plan["users"] == {"T": ["U"], "U": ["Y"], "Y": []}
+assert separate_plan["materialized_intermediates"] == ["T", "U"]
+assert fused_plan["materialized_intermediates"] == ["T"]
+assert separate_plan["planned_calls"] == 3 and fused_plan["planned_calls"] == 2
+for name, plan in (("分离安排", separate_plan), ("偏置与激活合并", fused_plan)):
+    print(f"{name}: 计划调用 {plan['planned_calls']} 次，"
+          f"组间中间值 {plan['materialized_intermediates']}；最终输出始终是Y")
+
+```
+
+## Q2：分组改变后，哪些中间读写和启动可以减少？
+
+沿用Q1的三步计算，分离安排中T、U各跨一次组；偏置与激活合并后只剩T跨组。假设两者都含1024个FP32元素，每个组间值写一次、读一次，逻辑读写便从16 KiB减为8 KiB。这里给每组一次启动、每次启动5 μs的构造假设，启动项从15 μs减为10 μs。
+
+如果改写还需要布局转换，即为满足实现要求而重新排列或复制数据，其读写量也要记录。下面保留同一三步计算，只改变分组和新增布局字节；字节数与启动微秒数分开返回，不把两种单位直接相加。
+
+### Q2 机制计算器：把分组计划接到启动与读写账目
+
+使用Q1得到的三组／两组计划，核对16 KiB与8 KiB，再在两组安排中加入8 KiB布局读写。
 
 
 ```python
 import math
 
 
-def graph_cost(num_ops, fused_groups, intermediate_elements, bytes_per_element, layout_bytes=0, launch_overhead_us=5.0):
-    """估算 kernel launch 与中间张量读写，不把不同单位相加成任意分数。"""
+def graph_cost(
+    num_ops: int, fused_groups: int, intermediate_elements: int,
+    bytes_per_element: int, layout_bytes: int = 0,
+    launch_overhead_us: float = 5.0,
+) -> dict:
+    """按等大边界、每组一次启动的串行链，返回逻辑字节量与假设启动微秒数。"""
     if (type(num_ops) is not int or type(fused_groups) is not int
             or num_ops <= 0 or not 1 <= fused_groups <= num_ops):
-        raise ValueError('fused_groups must be in [1, num_ops]')
+        raise ValueError("算子数须为正整数，分组数须在 1 到算子数之间")
     if (type(intermediate_elements) is not int or intermediate_elements < 0
             or type(bytes_per_element) is not int or bytes_per_element <= 0
-            or type(layout_bytes) is not int or layout_bytes < 0
+            or type(layout_bytes) is not int or layout_bytes < 0):
+        raise ValueError("元素数和布局字节数须为非负整数，元素字节数须为正整数")
+    if (type(launch_overhead_us) not in (int, float)
             or not math.isfinite(launch_overhead_us) or launch_overhead_us < 0):
-        raise ValueError('元素数和布局字节数须为非负整数，元素字节数须为正整数，开销须为有限非负数')
+        raise ValueError("launch_overhead_us 须为有限非负实数")
     materialized_boundaries = fused_groups - 1
-    intermediate_bytes = materialized_boundaries * intermediate_elements * bytes_per_element * 2
+    intermediate_bytes = (
+        materialized_boundaries * intermediate_elements * bytes_per_element * 2
+    )
     return {
-        'launches': fused_groups,
-        'launch_overhead_us': fused_groups * launch_overhead_us,
-        'materialized_boundaries': materialized_boundaries,
-        'intermediate_traffic_bytes': intermediate_bytes,
-        'layout_traffic_bytes': layout_bytes,
-        'total_extra_traffic_bytes': intermediate_bytes + layout_bytes,
-    }
-
-naive = graph_cost(4, 4, 1_000_000, 2)
-fused = graph_cost(4, 1, 1_000_000, 2, layout_bytes=1_000_000)
-assert fused['launches'] < naive['launches']
-assert fused['total_extra_traffic_bytes'] < naive['total_extra_traffic_bytes']
-print('naive:', naive)
-print('fused:', fused)
-
-```
-
-## Q3：融合条件满足后，为什么还要单独记录代价？
-
-共享中间结果提供了融合机会，但还要检查语义、副作用和资源预算。这里用“无副作用”作为简化示例的保守前提，并不表示所有带副作用的操作都无法合法融合。
-
-满足这些前提后，再计算避免的中间读写减去新增布局读写。有净读写减少并不保证更快；没有净读写减少也不意味着不可执行，启动次数、计算和资源占用仍会影响耗时。布尔输入表示已给定的检查结果，函数本身不证明语义等价。
-
-### Q3 对照验证：分开记录前提和读写减少量
-
-
-```python
-def fusion_candidate(shared_bytes, layout_rewrite_bytes, no_side_effect,
-                     register_bytes, register_budget_bytes):
-    """记录示例前提与逻辑读写差额，不把成本增加当作执行失败。"""
-    if any(type(value) is not int or value < 0
-           for value in (shared_bytes, layout_rewrite_bytes, register_bytes)):
-        raise ValueError('字节数必须是非负整数')
-    if type(register_budget_bytes) is not int or register_budget_bytes <= 0:
-        raise ValueError('寄存器预算必须是正整数字节数')
-    if type(no_side_effect) is not bool:
-        raise ValueError('副作用检查结果必须是布尔值')
-    reasons = []
-    if not no_side_effect:
-        reasons.append('side_effect_requires_analysis')
-    if register_bytes > register_budget_bytes:
-        reasons.append('register_budget')
-    net = shared_bytes - layout_rewrite_bytes
-    return {
-        'stated_conditions_met': not reasons,
-        'net_logical_traffic_saved_bytes': net,
-        'has_net_traffic_saving': net > 0,
-        'reasons': reasons,
+        "launches": fused_groups,
+        "launch_overhead_us": fused_groups * launch_overhead_us,
+        "materialized_boundaries": materialized_boundaries,
+        "intermediate_traffic_bytes": intermediate_bytes,
+        "layout_traffic_bytes": layout_bytes,
+        "total_extra_traffic_bytes": intermediate_bytes + layout_bytes,
     }
 
 
-ideal = fusion_candidate(8_000_000, 0, True, 48_000, 64_000)
-layout_cost = fusion_candidate(8_000_000, 10_000_000, True, 48_000, 64_000)
-side_effect = fusion_candidate(8_000_000, 0, False, 48_000, 64_000)
-assert ideal['stated_conditions_met'] and ideal['has_net_traffic_saving']
-assert layout_cost['stated_conditions_met']
-assert layout_cost['net_logical_traffic_saved_bytes'] == -2_000_000
-assert not side_effect['stated_conditions_met']
-print(ideal)
-print(layout_cost)
-print(side_effect)
+# T、U均按1024个FP32元素计，调用数来自Q1的手工分组计划。
+inputs = dict(num_ops=len(node_inputs), intermediate_elements=1024, bytes_per_element=4)
+plans = {
+    "unfused": graph_cost(**inputs, fused_groups=separate_plan["planned_calls"]),
+    "partial": graph_cost(**inputs, fused_groups=fused_plan["planned_calls"]),
+    "partial_with_layout": graph_cost(**inputs, fused_groups=fused_plan["planned_calls"],
+                                      layout_bytes=8192),
+}
+assert plans["unfused"]["intermediate_traffic_bytes"] == 16384
+assert plans["unfused"]["launch_overhead_us"] == 15
+assert plans["partial"]["intermediate_traffic_bytes"] == 8192
+assert plans["partial"]["launch_overhead_us"] == 10
+assert plans["partial_with_layout"]["total_extra_traffic_bytes"] == 16384
+assert graph_cost(num_ops=1, fused_groups=1, intermediate_elements=0,
+                  bytes_per_element=4, launch_overhead_us=0)["total_extra_traffic_bytes"] == 0
+for name, row in plans.items():
+    print(f"{name}: 计划启动 {row['launches']} 次，假设启动项 {row['launch_overhead_us']:g} us，"
+          f"额外逻辑读写 {row['total_extra_traffic_bytes'] / 1024:g} KiB")
 
 ```
 
-## Q4：同一张图为什么会匹配不同后端路径？
+## Q3：新增布局读写会抵消多少减少量？
 
-目标后端支持的算子、数据类型、形状与工作区不同，同一张图因而可能需要不同的变换或回退路径。先核对声明的能力与预算，再比较可行候选的时间；实际部署还需检查设备、版本和执行结果。
+两组安排原本省去U的8 KiB写出与读取；若新增布局转换也读写8 KiB，净读写减少量就变为零；若新增12 KiB，则比原安排多4 KiB。但计划调用数仍从3降为2，给定的启动项仍减少5 μs。这些变化可以同时存在，不能把“净读写减少”当作唯一选择条件。
 
-下面使用虚构的后端能力和延迟输入练习筛选，不探测本机后端，也不表示 CPU 或 GPU 的真实速度。工作区统一使用 MiB；未满足形状或内存要求的候选，即使假设延迟更低也不能入选。
+下面直接比较Q2生成的账目，不重复填写一组融合条件。语义与中间值的使用者在[19 算子融合](./19_Operator_Fusion_Introduction.md)继续核对；寄存器、共享内存与实际调用则需要生成代码和运行记录。图的分组计划只提出希望减少的工作，实际耗时还要包含资源变化、布局与提交成本。
 
-### Q4 约束筛选：先检查给定条件，再比较假设延迟
+### Q3 对照验证：分别核对启动节省与净读写变化
+
+固定原来的分离安排，比较无布局转换、恰好抵消与布局开销更大的三种候选。
 
 
 ```python
-def choose_backend(requirements, candidates):
-    """使用算子、dtype、动态形状和显存硬约束筛选后端。"""
-    if (not math.isfinite(requirements['workspace_limit_mib'])
-            or requirements['workspace_limit_mib'] < 0
-            or type(requirements['dynamic_shape']) is not bool):
-        raise ValueError('工作区预算与动态形状条件不合法')
-    for candidate in candidates.values():
-        if (not math.isfinite(candidate['workspace_mib'])
-                or candidate['workspace_mib'] < 0
-                or not math.isfinite(candidate['estimated_latency_ms'])
-                or candidate['estimated_latency_ms'] <= 0
-                or type(candidate['dynamic_shape']) is not bool):
-            raise ValueError('候选工作区、假设延迟与动态形状条件不合法')
-    eligible = []
-    rejected = {}
+def graph_rewrite_delta(before: dict, after: dict) -> dict:
+    """比较graph_cost生成的两份同范围账目；分别返回启动与逻辑流量差。"""
+    net_bytes = before["total_extra_traffic_bytes"] - after["total_extra_traffic_bytes"]
+    return {
+        "saved_launches": before["launches"] - after["launches"],
+        "saved_launch_overhead_us": before["launch_overhead_us"] - after["launch_overhead_us"],
+        "net_logical_traffic_saved_bytes": net_bytes,
+        "has_net_traffic_saving": net_bytes > 0,
+    }
+
+
+more_layout = graph_cost(**inputs, fused_groups=fused_plan["planned_calls"], layout_bytes=12288)
+comparisons = {
+    "no_layout": graph_rewrite_delta(plans["unfused"], plans["partial"]),
+    "equal_layout": graph_rewrite_delta(plans["unfused"], plans["partial_with_layout"]),
+    "more_layout": graph_rewrite_delta(plans["unfused"], more_layout),
+}
+assert comparisons["no_layout"]["net_logical_traffic_saved_bytes"] == 8192
+assert comparisons["equal_layout"]["net_logical_traffic_saved_bytes"] == 0
+assert comparisons["more_layout"]["net_logical_traffic_saved_bytes"] == -4096
+assert all(row["saved_launches"] == 1 for row in comparisons.values())
+assert all(row["saved_launch_overhead_us"] == 5 for row in comparisons.values())
+assert not comparisons["more_layout"]["has_net_traffic_saving"]
+for name, row in comparisons.items():
+    print(f"{name}: 计划少 {row['saved_launches']} 次启动，"
+          f"给定启动项减少 {row['saved_launch_overhead_us']:g} us，"
+          f"净逻辑读写减少 {row['net_logical_traffic_saved_bytes'] / 1024:g} KiB")
+
+```
+
+## Q4：给定后端声明，哪些候选还能继续验证？
+
+沿用矩阵乘、加偏置和ReLU三个操作，假设现在还要覆盖变化的批量大小。不同后端声明支持的运算、数据类型、动态形状与工作区可能不同。工作区是执行期间额外使用的临时内存，例如某种矩阵乘实现的暂存空间；先按这些声明排除缺项，再比较剩余候选的假设延迟。
+
+动态形状指输入的一些维度可以变化。复用真实编译版本前，先进行编译版本适用条件检查（guard），判断输入是否仍符合该版本要求，失败后还可能查找其他缓存版本、重新编译或回退；具体维度、步长和图中断需要在版本复用问题中另查。下面只筛选给定声明，工作区以MiB计，动态支持是一个简化字段，不会捕获计算图或查询真实设备。
+
+### Q4 约束筛选：用同一计算需要的运算集合检查声明
+
+需求中的操作来自Q1的节点；构造更快但缺少操作、类型、动态支持或工作区超预算的候选，核对它们先被排除。
+
+
+```python
+def choose_backend(requirements: dict, candidates: dict) -> dict:
+    """按给定能力筛选，并取假设延迟最小者；同延迟保留输入顺序靠前者。
+
+    requirements 含 ops 集合、dtype 字符串、dynamic_shape 布尔值和
+    workspace_limit_mib；候选含 ops/dtypes 集合、dynamic_shape、
+    workspace_mib、estimated_latency_ms。返回入选名、可选名和排除原因。
+    """
+    if (type(requirements["ops"]) is not set
+            or type(requirements["dtype"]) is not str
+            or type(requirements["dynamic_shape"]) is not bool):
+        raise ValueError("需求的 ops/dtype/dynamic_shape 须为集合/字符串/布尔值")
+    limit_mib = requirements["workspace_limit_mib"]
+    if (type(limit_mib) not in (int, float)
+            or not math.isfinite(limit_mib) or limit_mib < 0):
+        raise ValueError("workspace_limit_mib 须为有限非负实数")
+    eligible, rejected = [], {}
     for name, candidate in candidates.items():
+        if (type(candidate["ops"]) is not set
+                or type(candidate["dtypes"]) is not set
+                or type(candidate["dynamic_shape"]) is not bool):
+            raise ValueError("候选的 ops/dtypes 须为集合，dynamic_shape 须为布尔值")
+        workspace_mib = candidate["workspace_mib"]
+        latency_ms = candidate["estimated_latency_ms"]
+        if (type(workspace_mib) not in (int, float)
+                or not math.isfinite(workspace_mib) or workspace_mib < 0
+                or type(latency_ms) not in (int, float)
+                or not math.isfinite(latency_ms) or latency_ms <= 0):
+            raise ValueError("候选工作区须为有限非负实数，假设延迟须为有限正实数")
         reasons = []
-        if not requirements['ops'].issubset(candidate['ops']):
-            reasons.append('missing_ops')
-        if requirements['dtype'] not in candidate['dtypes']:
-            reasons.append('unsupported_dtype')
-        if requirements['dynamic_shape'] and not candidate['dynamic_shape']:
-            reasons.append('dynamic_shape')
-        if candidate['workspace_mib'] > requirements['workspace_limit_mib']:
-            reasons.append('workspace')
+        if not requirements["ops"].issubset(candidate["ops"]):
+            reasons.append("missing_ops")
+        if requirements["dtype"] not in candidate["dtypes"]:
+            reasons.append("unsupported_dtype")
+        if requirements["dynamic_shape"] and not candidate["dynamic_shape"]:
+            reasons.append("dynamic_shape")
+        if workspace_mib > limit_mib:
+            reasons.append("workspace")
         if reasons:
             rejected[name] = reasons
         else:
             eligible.append(name)
-    selected = min(eligible, key=lambda name: candidates[name]['estimated_latency_ms']) if eligible else None
-    return {'selected': selected, 'eligible': eligible, 'rejected': rejected}
+    selected = min(
+        eligible, key=lambda name: candidates[name]["estimated_latency_ms"],
+        default=None,
+    )
+    return {"selected": selected, "eligible": eligible, "rejected": rejected}
 
-requirements = {'ops': {'matmul', 'softmax'}, 'dtype': 'bf16', 'dynamic_shape': True, 'workspace_limit_mib': 512}
-candidates = {
-    'host_example': {'ops': {'matmul', 'softmax'}, 'dtypes': {'fp32', 'bf16'}, 'dynamic_shape': True, 'workspace_mib': 64, 'estimated_latency_ms': 20.0},
-    'accelerator_example': {'ops': {'matmul', 'softmax'}, 'dtypes': {'fp16', 'bf16'}, 'dynamic_shape': True, 'workspace_mib': 256, 'estimated_latency_ms': 3.0},
-    'static_only': {'ops': {'matmul', 'softmax'}, 'dtypes': {'bf16'}, 'dynamic_shape': False, 'workspace_mib': 128, 'estimated_latency_ms': 1.5},
+
+requirements = {
+    "ops": set(node_ops.values()), "dtype": "bf16",
+    "dynamic_shape": True, "workspace_limit_mib": 512,
 }
-decision = choose_backend(requirements, candidates)
-assert decision['selected'] == 'accelerator_example'
-assert decision['rejected']['static_only'] == ['dynamic_shape']
-print(decision)
+base = {
+    "ops": set(node_ops.values()), "dtypes": {"fp16", "bf16"},
+    "dynamic_shape": True, "workspace_mib": 256, "estimated_latency_ms": 3.0,
+}
+# 每个不满足项都更快，检验能力筛选是否优先于假设延迟。
+changes = {
+    "supported": {},
+    "missing_op": {"ops": {"matmul"}, "estimated_latency_ms": 1.0},
+    "wrong_dtype": {"dtypes": {"fp32"}, "estimated_latency_ms": 1.0},
+    "static_only": {"dynamic_shape": False, "estimated_latency_ms": 1.0},
+    "over_workspace": {"workspace_mib": 513, "estimated_latency_ms": 1.0},
+    "at_workspace": {"workspace_mib": 512, "estimated_latency_ms": 4.0},
+    "slower_supported": {"estimated_latency_ms": 6.0},
+    "multiple_misses": {"ops": set(), "dtypes": set(), "dynamic_shape": False,
+                        "workspace_mib": 513, "estimated_latency_ms": 0.5},
+}
+candidates = {name: base | change for name, change in changes.items()}
+decision = choose_backend(requirements=requirements, candidates=candidates)
+assert decision["selected"] == "supported"
+assert decision["eligible"] == ["supported", "at_workspace", "slower_supported"]
+for name, reason in (("missing_op", "missing_ops"),
+                     ("wrong_dtype", "unsupported_dtype"),
+                     ("static_only", "dynamic_shape"),
+                     ("over_workspace", "workspace")):
+    assert decision["rejected"][name] == [reason]
+assert decision["rejected"]["multiple_misses"] == [
+    "missing_ops", "unsupported_dtype", "dynamic_shape", "workspace",
+]
+unavailable = choose_backend(
+    requirements=requirements, candidates={"static_only": candidates["static_only"]},
+)
+assert unavailable["selected"] is None and unavailable["eligible"] == []
+assert choose_backend(requirements=requirements, candidates={}) == {
+    "selected": None, "eligible": [], "rejected": {},
+}
+print("按给定能力可选：", decision["eligible"])
+print("按假设延迟入选：", decision["selected"])
+print("各候选的排除原因：", decision["rejected"])
 
 ```
 
 ## 相关阅读
 
-输入变化时先检查适用条件，需要追踪生成实现或比较实际成本时，再进入对应页面。
+先沿具体中间值判断改写，再按输入变化或实际执行问题继续：
 
-- [30 动态形状处理](./30_Dynamic_Shape_Handling.md)：守卫、形状复用与分桶。
-- [Part 03 · 18 编译产物与实际执行](../03_Triton_Kernels/18_Triton_Compilation_Artifacts_and_Execution.md)：特化产物、对象启动与设备事件。
-- [Part 04 · 11 CUDA Graph与JIT编译](../04_CUDA_and_System_Optimization/11_CUDA_Graph_and_JIT_Compile.md)：捕获重放与提交成本。
+- [19 算子融合导论](./19_Operator_Fusion_Introduction.md)：跟踪偏置与激活之间的U是否需要写回，并核对样例输出。
+- [30 动态形状处理](./30_Dynamic_Shape_Handling.md)：区分版本适用条件不满足、版本复用、重新编译和图中断。
+- [Part03·21 图捕获与版本复用](../03_Triton_Kernels/21_Torch_Compile_Graph_Reuse.md)：实际观察计算图、版本复用和受控图中断，再进入设备实现与性能比较。

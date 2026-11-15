@@ -17,6 +17,19 @@
 
 表中按需分支只在进入对应实验时选择，不要求全部创建，具体输入与状态见[实验资产表](./experiment_assets.md#环境与实验入口)。多GPU通信按通信专题的硬件与后端条件另行选择；需要DeepSpeed时使用独立兼容环境，不向性能、推理服务或Triton主环境临时混装。
 
+<a id="graph-capture-cpu"></a>
+
+### 图捕获CPU入口
+
+[Part03·21](../../03_Triton_Kernels/21_Torch_Compile_Graph_Reuse.ipynb)只创建CPU张量，使用真实torch.compile前端与记录后端，不需要GPU、Triton或本机CUDA Toolkit。可直接复用已准备的算子环境；已有带兼容PyTorch的CPU环境时也可使用，无需为本页另建环境。Notebook选择相同解释器，下面命令在仓库根目录执行；测试按实际输出核对图捕获与数值，不测量加速。
+
+```bash
+conda activate llm_algo_cnb_gpu
+python tools/test_notebook_answers.py \
+  03_Triton_Kernels/21_Torch_Compile_Graph_Reuse.ipynb \
+  --mode both --strict-question-failure
+```
+
 ## 首次创建
 
 <a id="triton-environment"></a>

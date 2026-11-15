@@ -14,199 +14,246 @@
 
 ## 本节导读
 
-两台设备都能运行同一个模型时，采购价更低的一台，未必能以更低成本完成请求。空闲耗电、适配工时、停机与较低的成功处理量，都可能改变最终比较结果。
+两台设备都能运行同一个模型时，采购价更低的一台，未必能以更低成本完成请求。空闲耗电、软件适配、停机和较少的成功处理量，都可能改变单位请求成本。
 
-本节在同一持有期内分别计算采购、繁忙与空闲能耗、运维和迁移成本，再除以成功请求数量。完成后，你应能解释利用率与成功率如何改变单位成本，并区分全额采购支出和折旧分摊；部署与性能比较还需使用对应工作负载的实际数据。
+本节沿同一组候选，先计算采购、能耗与运维，再加入迁移成本，最后除以成功请求数；折旧分摊则用另一个每小时成本对照说明。总拥有成本（TCO）指持有和使用设备期间计入的各项成本，哪些费用与风险纳入，需要随比较范围明确。部署与性能优化可据此用同一工作负载的实际数据继续选型。
 
-**关键词：** 总拥有成本（TCO）、单位成本、能耗
+**关键词：** 总拥有成本、可用率、繁忙比例、单位请求成本、折旧分摊
 
-![总拥有成本决策链](../public/01_Hardware_Math_and_Systems/33_tco_decision_chain.svg)
+![同一持有期的成本与成功请求数量](../public/01_Hardware_Math_and_Systems/33_tco_decision_chain.svg)
 
----
 ## 前置阅读
 
-**导语：** 先保留通过可执行性检查的候选，再比较持有期内的完整成本。
+先确认候选能完成相同的计算和质量要求，再比较它们在同一持有期内的成本；涉及共享隔离时，吞吐与尾延迟还应来自满足相同服务目标的方案。
 
-- [10. AI Chips Overview and Alternatives | 算力现状与替代方案](./10_Domestic_AI_Chips_Overview.md)
-- [34. Heterogeneous Accelerators and Runtime Constraints | 异构加速器与运行时约束](./34_Heterogeneous_Accelerators_and_Runtime_Constraints.md)
+- [10 加速器选型与软件栈适配](./10_Domestic_AI_Chips_Overview.md)：区分设备、软件栈和迁移条件。
+- [34 异构加速器与运行时约束](./34_Heterogeneous_Accelerators_and_Runtime_Constraints.md)：按阶段核对容量、算子和运行时支持。
 
-## Q1：TCO 为什么比单卡报价更重要？
+## Q1：采购更便宜，持有期成本就更低吗？
 
+以两个构造候选为例，A采购需30000，B需22000；金额使用同一货币单位，功率用千瓦（kW），电价按每千瓦时（kWh）计。先把采购、能耗和按月运维相加，下一问再加入迁移。每月固定30天，设备整个持有期通电；即使不可服务或没有任务，也按给定空闲功率计费。
 
-TCO 看的是总拥有成本，不只是买卡的钱。
+可用率是能提供服务的时间占日历时间的比例，利用率在这里固定指可用时间内的繁忙比例，不是GPU硬件利用率。两者乘以通电小时数，才得到繁忙小时数。比如一月720小时，可用率0.5、利用率0.5时繁忙180小时，其余540小时按空闲计；后面的请求数量也沿用这一定义。
 
-它会把采购、能耗、运维、迁移、停机风险和替换成本都放进来。对于长期运行的系统来说，单卡便宜不一定代表整体便宜，因为后续的电费、维护和迁移可能更贵。
+### Q1 成本计算：先核对繁忙180小时与空闲540小时
 
-所以真正要比较的是一段时间内谁更能稳定地把业务跑起来。
-
-### Q1 成本计算：分别计算繁忙与空闲能耗
-
-统一货币单位，以每月 30 天、设备整段持有期通电为假设。利用率表示繁忙时间比例；空闲时仍按空闲功率计电费。示例价格、功率与利用率均为构造输入，不是设备报价或实测结果。
+固定功率和电价，核对一个月的小例子，再计算A／B的24个月基础账目。所有价格、功率和比例都是构造输入。
 
 
 ```python
 import math
 
 
-def tco_ledger(purchase_cost, power_kw, electricity_per_kwh,
-               ops_cost_per_month, migration_cost, months, utilization,
-               idle_power_kw=0.0):
-    """按全额采购现金支出与繁忙/空闲能耗建立简化持有期成本。"""
+def tco_ledger(
+    purchase_cost: float, power_kw: float, electricity_per_kwh: float,
+    ops_cost_per_month: float, migration_cost: float, months: float,
+    utilization: float, idle_power_kw: float = 0.0, availability: float = 1.0,
+) -> dict:
+    """按每月30天、全期通电计成本；利用率按可用时间计，其他时间按空闲功率计。"""
     values = (purchase_cost, power_kw, electricity_per_kwh, ops_cost_per_month,
-              migration_cost, months, utilization, idle_power_kw)
-    if any(not math.isfinite(value) or value < 0 for value in values):
-        raise ValueError('成本与资源输入必须是有限非负数')
-    if months <= 0 or utilization > 1 or idle_power_kw > power_kw:
-        raise ValueError('月份须为正，利用率不得超过一，空闲功率不得高于繁忙功率')
+              migration_cost, months, utilization, idle_power_kw, availability)
+    if any(type(value) not in (int, float) or not math.isfinite(value) or value < 0 for value in values):
+        raise ValueError("金额、功率、月份和比例须为有限非负实数")
+    if months <= 0 or utilization > 1 or availability > 1 or idle_power_kw > power_kw:
+        raise ValueError("月份须为正，各比例不超过1，空闲功率不高于繁忙功率")
     powered_hours = months * 30 * 24
-    busy_hours = powered_hours * utilization
+    available_hours = powered_hours * availability
+    busy_hours = available_hours * utilization
     idle_hours = powered_hours - busy_hours
     energy_kwh = power_kw * busy_hours + idle_power_kw * idle_hours
     components = {
-        'purchase_cost': purchase_cost,
-        'energy_cost': energy_kwh * electricity_per_kwh,
-        'operations_cost': ops_cost_per_month * months,
-        'migration_cost': migration_cost,
+        "purchase_cost": purchase_cost,
+        "energy_cost": energy_kwh * electricity_per_kwh,
+        "operations_cost": ops_cost_per_month * months,
+        "migration_cost": migration_cost,
     }
     return {
-        'components': components, 'total_cost': sum(components.values()),
-        'powered_hours': powered_hours, 'busy_hours': busy_hours,
-        'idle_hours': idle_hours, 'energy_kwh': energy_kwh,
+        "components": components, "total_cost": sum(components.values()),
+        "powered_hours": powered_hours, "available_hours": available_hours,
+        "busy_hours": busy_hours, "idle_hours": idle_hours, "energy_kwh": energy_kwh,
     }
 
 
-gpu_a = tco_ledger(30000, 0.7, 0.8, 200, 2000, 24, 0.7, idle_power_kw=0.1)
-gpu_b = tco_ledger(22000, 0.9, 0.8, 350, 8000, 24, 0.7, idle_power_kw=0.15)
-assert gpu_a['total_cost'] == sum(gpu_a['components'].values())
-assert tco_ledger(0, 1, 1, 0, 0, 1, 0, idle_power_kw=0.1)['energy_kwh'] == 72
-print('A 构造成本：', gpu_a)
-print('B 构造成本：', gpu_b)
+one_month = tco_ledger(purchase_cost=0, power_kw=1, electricity_per_kwh=1,
+                       ops_cost_per_month=0, migration_cost=0, months=1,
+                       utilization=0.5, idle_power_kw=0.1, availability=0.5)
+assert one_month["busy_hours"] == 180 and one_month["idle_hours"] == 540
+assert one_month["energy_kwh"] == 234
+
+candidates = {
+    "A": dict(purchase_cost=30000, power_kw=0.7, electricity_per_kwh=0.8,
+              ops_cost_per_month=200, months=24, utilization=0.7,
+              idle_power_kw=0.1, availability=0.99),
+    "B": dict(purchase_cost=22000, power_kw=0.9, electricity_per_kwh=0.8,
+              ops_cost_per_month=350, months=24, utilization=0.7,
+              idle_power_kw=0.15, availability=0.96),
+}
+base_ledgers = {name: tco_ledger(**inputs, migration_cost=0)
+                for name, inputs in candidates.items()}
+assert math.isclose(base_ledgers["A"]["total_cost"], 41930.4192)
+assert math.isclose(base_ledgers["B"]["total_cost"], 39440.896)
+for name, row in base_ledgers.items():
+    print(f"{name}: 未加迁移的基础成本 {row['total_cost']:.2f}，繁忙 {row['busy_hours']:.2f} h")
 
 ```
 
-## Q2：为什么迁移成本和风险要算进模型里？
+## Q2：迁移工时和回滚风险怎样接回总成本？
 
+适配编译器、计算内核或部署流程需要工程工时，数值与性能回归核对需要验证工时。下面都按每小时100计，工程120小时、验证40小时，共16000。回滚指迁移未能采用时恢复原方案；假设仅发生回滚时额外停机2小时，每小时损失5000，回滚概率从0.05变为0.5时，期望停机损失由500增至5000。
 
-硬件切换不只是换设备，还会带来软件适配、调试、重构和性能回归风险。
+因此A／B的迁移模型分别得到16500和21000，直接接回上一问的候选账目，当前模型总成本变为约58430.42和60440.90。这里的停机损失是一次性迁移事件的条件期望，不是每月重复发生的费用；计划内停机或其他迁移损失应另计。Q1／Q3的可用率描述迁移完成后运行期的服务可用时间，避免把同一停机时段重复计算。
 
-如果迁移需要重新适配编译器、kernel、通信库或部署流程，那这些工作本身就是成本的一部分。
+### Q2 风险计算：先算期望损失，再更新A／B账目
 
-所以 TCO 不是财务问题和技术问题的二选一，而是把两者放进同一个判断框架。
-
-### Q2 风险计算：工时成本与条件回滚损失
-
-工程与验证工时按同一费率计费；停机时长在本例中仅指发生回滚时的额外停机，因此乘以回滚概率。计划内停机或其他损失需另列，不能也乘以该概率而漏算。
+只改变构造的回滚概率，核对16500与21000，再检查加入迁移后两候选的成本排序。
 
 
 ```python
-def migration_cost(engineering_hours, hourly_rate, validation_hours, downtime_hours, downtime_cost_per_hour, rollback_probability):
-    """计算迁移工程成本和按回滚概率加权的停机风险成本。"""
-    if any(not math.isfinite(value) or value < 0 for value in
-           (engineering_hours, hourly_rate, validation_hours, downtime_hours,
-            downtime_cost_per_hour)):
-        raise ValueError('migration inputs must be non-negative')
-    if not math.isfinite(rollback_probability) or not 0 <= rollback_probability <= 1:
-        raise ValueError('rollback_probability must be in [0, 1]')
+def migration_cost(
+    engineering_hours: float, hourly_rate: float, validation_hours: float,
+    downtime_hours: float, downtime_cost_per_hour: float, rollback_probability: float,
+) -> dict:
+    """金额使用同一货币；停机小时仅在回滚发生时计入，返回工时与期望风险成本。"""
+    values = (engineering_hours, hourly_rate, validation_hours, downtime_hours,
+              downtime_cost_per_hour, rollback_probability)
+    if any(type(value) not in (int, float) or not math.isfinite(value) or value < 0 for value in values):
+        raise ValueError("工时、费率和概率须为有限非负实数")
+    if rollback_probability > 1:
+        raise ValueError("回滚概率须位于[0,1]")
     labor_cost = (engineering_hours + validation_hours) * hourly_rate
     expected_rollback_cost = downtime_hours * downtime_cost_per_hour * rollback_probability
-    return {'labor_cost': labor_cost, 'expected_rollback_cost': expected_rollback_cost, 'total_cost': labor_cost + expected_rollback_cost}
+    return {"labor_cost": labor_cost, "expected_rollback_cost": expected_rollback_cost,
+            "total_cost": labor_cost + expected_rollback_cost}
 
-low_risk = migration_cost(120, 100, 40, 2, 5_000, 0.05)
-high_risk = migration_cost(120, 100, 40, 2, 5_000, 0.5)
-assert high_risk['total_cost'] > low_risk['total_cost']
-print('low risk:', low_risk)
-print('high risk:', high_risk)
+
+migration_inputs = dict(engineering_hours=120, hourly_rate=100, validation_hours=40,
+                        downtime_hours=2, downtime_cost_per_hour=5000)
+migration_reports = {
+    "A": migration_cost(**migration_inputs, rollback_probability=0.05),
+    "B": migration_cost(**migration_inputs, rollback_probability=0.5),
+}
+assert migration_reports["A"] == {"labor_cost": 16000, "expected_rollback_cost": 500, "total_cost": 16500}
+assert migration_reports["B"]["expected_rollback_cost"] == 5000
+assert migration_reports["B"]["total_cost"] == 21000
+ledgers = {name: tco_ledger(**inputs, migration_cost=migration_reports[name]["total_cost"])
+           for name, inputs in candidates.items()}
+assert math.isclose(ledgers["A"]["total_cost"], 58430.4192)
+assert math.isclose(ledgers["B"]["total_cost"], 60440.896)
+assert base_ledgers["A"]["total_cost"] > base_ledgers["B"]["total_cost"]
+assert ledgers["A"]["total_cost"] < ledgers["B"]["total_cost"]
+for name, row in ledgers.items():
+    print(f"{name}: 迁移成本 {migration_reports[name]['total_cost']:g}，模型总成本 {row['total_cost']:.2f}")
+
 ```
 
 ## Q3：每百万成功请求的分母怎样计算？
 
-先固定成本持有期，再估算期间完成的成功请求数。下面的请求率是服务可用且繁忙时的处理速率，可用率表示可服务时间占比，利用率表示可服务时间内的繁忙比例，成功率表示尝试中完成质量与功能要求的比例；四项相乘得到成功请求总量。
+繁忙时请求率表示设备可服务且有任务时，每秒处理多少次请求；成功率表示其中满足共同功能和质量要求的比例。沿用Q1的可用率与利用率，繁忙小时数乘3600、请求率和成功率，就得到持有期内的成功请求数量。请求集合、输入规模和成功标准保持相同，才能解释候选差异。10节提供候选与迁移条件，34节检查阶段执行；若使用31节的隔离方案，则先在共同吞吐与延迟要求下确认运行记录，再把对应请求率接到成本分母。
 
-如果输入请求率已经按完整日历时间平均，就不能再乘一次可用率与利用率。成功请求数为零时，单位成本未定义，不能报告为零。
+下面假设A繁忙时每秒处理20次，成功率0.98；B为18次和0.95。总成本使用Q2加入迁移后的账目，再分别除以各自成功数量。若请求率已经按整个日历时间平均，就应直接乘日历秒数，不能再重复乘可用率和利用率；成功数量为零时，单位成本未定义。
 
-### Q3 单位成本：分开记录可用率、利用率和成功率
+### Q3 单位成本：成本分子与请求分母沿用同一时间假设
+
+先用一月的手算例子得到每百万请求1000，再用A／B运行期内的繁忙小时数核对成功数量和单位成本。
 
 
 ```python
-def cost_per_million_successful_requests(total_cost, requests_per_second,
-                                          availability, months,
-                                          utilization=1.0, success_rate=1.0):
-    """请求率按可用且繁忙时间计；分母另计可用率、利用率与成功率。"""
-    values = (total_cost, requests_per_second, availability, months,
-              utilization, success_rate)
-    if any(not math.isfinite(value) or value < 0 for value in values):
-        raise ValueError('输入必须是有限非负数')
-    if months <= 0 or any(value > 1 for value in
-                          (availability, utilization, success_rate)):
-        raise ValueError('月份须为正，各比例须位于 [0, 1]')
+def cost_per_million_successful_requests(
+    total_cost: float, requests_per_second: float, availability: float,
+    months: float, utilization: float = 1.0, success_rate: float = 1.0,
+) -> float:
+    """请求率按可用且繁忙时间计；返回每百万成功请求成本，同一货币单位。"""
+    values = (total_cost, requests_per_second, availability, months, utilization, success_rate)
+    if any(type(value) not in (int, float) or not math.isfinite(value) or value < 0 for value in values):
+        raise ValueError("金额、请求率、月份和比例须为有限非负实数")
+    if months <= 0 or any(value > 1 for value in (availability, utilization, success_rate)):
+        raise ValueError("月份须为正，各比例须位于[0,1]")
     successful_requests = (requests_per_second * availability * utilization
                            * success_rate * months * 30 * 24 * 3600)
     if successful_requests <= 0:
-        raise ValueError('没有成功请求，单位成本未定义')
+        raise ValueError("没有成功请求，单位成本未定义")
     return total_cost / successful_requests * 1_000_000
 
 
-options = {
-    'stable_example': cost_per_million_successful_requests(
-        gpu_a['total_cost'], 20, 0.99, 24, utilization=0.7, success_rate=0.98),
-    'alternative_example': cost_per_million_successful_requests(
-        gpu_b['total_cost'], 18, 0.96, 24, utilization=0.7, success_rate=0.95),
+assert cost_per_million_successful_requests(
+    total_cost=324, requests_per_second=1, availability=0.5,
+    months=1, utilization=0.5, success_rate=0.5) == 1000
+request_profiles = {
+    "A": dict(requests_per_second=20, success_rate=0.98),
+    "B": dict(requests_per_second=18, success_rate=0.95),
 }
-assert all(value > 0 for value in options.values())
-print('每百万成功请求的构造成本：', options)
+unit_costs = {}
+for name, profile in request_profiles.items():
+    inputs, ledger = candidates[name], ledgers[name]
+    successful_requests = ledger["busy_hours"] * 3600 * profile["requests_per_second"] * profile["success_rate"]
+    unit_costs[name] = cost_per_million_successful_requests(
+        total_cost=ledger["total_cost"], **profile, availability=inputs["availability"],
+        months=inputs["months"], utilization=inputs["utilization"])
+    assert math.isclose(unit_costs[name], ledger["total_cost"] / successful_requests * 1_000_000)
+    print(f"{name}: 成功请求约 {successful_requests / 1_000_000:.2f} 百万，"
+          f"每百万成本 {unit_costs[name]:.2f}")
+assert unit_costs["A"] < unit_costs["B"]
 
 ```
 
-## Q4：为什么扩容节奏和折旧周期也会改变 TCO 结论？
+## Q4：全额采购与折旧分摊，为什么会得到不同的每小时成本？
 
+前面把全额采购计入总成本，现在只改变采购分摊方式：假设A仍用同一台设备、观察24个月，按36个月直线分摊、不计残值，则本观察期分摊30000的三分之二，即20000。能耗、运维和迁移仍使用前面的24个月金额，分母也沿用同一繁忙小时数。与全额采购口径相比，每繁忙小时成本相差10000除以该小时数。
 
-TCO 不只是“买得起还是用得起”，还取决于你要在多长时间内把这套系统跑满。
+折旧分摊期描述采购金额怎样分配，不决定设备何时必须替换。下面不会模拟分期扩容或再次采购；观察期超过分摊期时，这台设备累计只分摊一次采购金额。若要讨论需求增长与扩容，需要另外给出逐期需求、采购和替换计划。
 
-如果扩容太慢，前期买来的算力可能闲置，单位产出成本会被拉高；如果折旧周期太短，硬件还没充分发挥就要更新，账面成本也会迅速上升。
+### Q4 利用率对照：先换分摊方式，再单独改变繁忙比例
 
-因此真正的成本模型，往往要同时考虑：
-- 初始采购成本；
-- 运行成本；
-- 迁移和切换成本；
-- 扩容与折旧节奏。
-
-把这些变量放在一起看，才更接近真实的技术选型决策。
-
-### Q4 利用率对照：区分折旧分摊与采购现金支出
-
-本例按折旧期分摊采购成本，再除以使用小时；运维与迁移成本输入为同一观察期的合计。它与 Q1 的全额采购现金支出是不同口径，不能把两项采购成本相加；示例同样假设每月 30 天。
+固定A的24个月非采购成本，比较全额采购与36个月分摊，再只改变利用率观察分母效应；此敏感性对照暂不重新计算用电。
 
 
 ```python
-def effective_cost_per_used_hour(purchase_cost, operations_cost, migration_cost, horizon_months, depreciation_months, utilization):
-    """按折旧期分摊采购成本，并以实际使用小时归一化。"""
-    if any(not math.isfinite(value) or value < 0
-           for value in (purchase_cost, operations_cost, migration_cost)):
-        raise ValueError('costs must be non-negative')
-    if (any(not math.isfinite(value) for value in
-            (horizon_months, depreciation_months, utilization))
-            or horizon_months <= 0 or depreciation_months <= 0
-            or not 0 < utilization <= 1):
-        raise ValueError('invalid horizon, depreciation or utilization')
+def effective_cost_per_used_hour(
+    purchase_cost: float, operations_cost: float, migration_cost: float,
+    horizon_months: float, depreciation_months: float, utilization: float,
+    availability: float = 1.0,
+) -> dict:
+    """非采购费用为观察期合计；按零残值直线分摊采购，分母为可用时间内的繁忙小时。"""
+    values = (purchase_cost, operations_cost, migration_cost, horizon_months,
+              depreciation_months, utilization, availability)
+    if any(type(value) not in (int, float) or not math.isfinite(value) or value < 0 for value in values):
+        raise ValueError("金额、月份和比例须为有限非负实数")
+    if (horizon_months <= 0 or depreciation_months <= 0
+            or not 0 < utilization <= 1 or not 0 < availability <= 1):
+        raise ValueError("观察期与分摊期须为正，可用率和利用率须位于(0,1]")
     allocated_purchase = purchase_cost * min(horizon_months / depreciation_months, 1.0)
-    used_hours = horizon_months * 30 * 24 * utilization
+    used_hours = horizon_months * 30 * 24 * availability * utilization
     total_allocated_cost = allocated_purchase + operations_cost + migration_cost
-    return {'allocated_purchase': allocated_purchase, 'used_hours': used_hours, 'cost_per_used_hour': total_allocated_cost / used_hours}
+    return {"allocated_purchase": allocated_purchase, "used_hours": used_hours,
+            "cost_per_used_hour": total_allocated_cost / used_hours}
 
-scenarios = {
-    'high_utilization': effective_cost_per_used_hour(30_000, 5_000, 2_000, 24, 36, 0.8),
-    'low_utilization': effective_cost_per_used_hour(30_000, 5_000, 2_000, 24, 36, 0.3),
-}
-assert scenarios['high_utilization']['cost_per_used_hour'] < scenarios['low_utilization']['cost_per_used_hour']
-print(scenarios)
+
+a_inputs, a_ledger = candidates["A"], ledgers["A"]
+period_costs = a_ledger["components"]
+inputs = dict(
+    purchase_cost=a_inputs["purchase_cost"],
+    operations_cost=period_costs["energy_cost"] + period_costs["operations_cost"],
+    migration_cost=period_costs["migration_cost"], horizon_months=a_inputs["months"],
+    availability=a_inputs["availability"], utilization=a_inputs["utilization"],
+)
+full_purchase = effective_cost_per_used_hour(**inputs, depreciation_months=24)
+allocated = effective_cost_per_used_hour(**inputs, depreciation_months=36)
+assert allocated["allocated_purchase"] == 20000
+assert math.isclose(allocated["used_hours"], a_ledger["busy_hours"])
+assert math.isclose(full_purchase["cost_per_used_hour"], a_ledger["total_cost"] / a_ledger["busy_hours"])
+assert math.isclose(full_purchase["cost_per_used_hour"] - allocated["cost_per_used_hour"],
+                    10000 / a_ledger["busy_hours"])
+lower_use = effective_cost_per_used_hour(**(inputs | {"utilization": 0.35}), depreciation_months=36)
+assert math.isclose(lower_use["cost_per_used_hour"], 2 * allocated["cost_per_used_hour"])
+print(f"A全额采购口径：每繁忙小时 {full_purchase['cost_per_used_hour']:.3f}")
+print(f"A按36个月分摊：每繁忙小时 {allocated['cost_per_used_hour']:.3f}")
+print(f"只将利用率减半、费用固定：每繁忙小时 {lower_use['cost_per_used_hour']:.3f}")
 
 ```
 
 ## 相关阅读
 
-**导语：** 把成本结果交给部署与性能专题，与真实工作负载证据一起判断。
+把构造输入换成同一工作负载的测量与费用记录，再比较部署方案。
 
-- [31. GPU Virtualization and MIG | GPU 虚拟化与 MIG](./31_GPU_Virtualization_and_MIG.md)
-- [性能优化专题](../topic_discussion/performance_optimization/intro.md)
-- [部署与异构系统专题](../topic_discussion/deployment_heterogeneous/intro.md)
----
+- [性能优化专题](../topic_discussion/performance_optimization/intro.md)：固定负载、测量范围与结果比较。
+- [部署与异构系统专题](../topic_discussion/deployment_heterogeneous/intro.md)：核对可执行性、部署路径与迁移条件。

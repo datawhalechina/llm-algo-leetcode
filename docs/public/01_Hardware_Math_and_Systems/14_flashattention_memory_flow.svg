@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="560" viewBox="0 0 1280 560">
 <defs>
-  <marker id="a" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9z" fill="#64748b"/></marker>
+  <marker id="a" viewBox="0 0 9 9" markerWidth="9" markerHeight="9" refX="9" refY="4.5" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L9 4.5L0 9z" fill="#64748b"/></marker>
   <style>
     text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}
     .title{font-size:27px;font-weight:700}.sub{font-size:15px;fill:#475569}
@@ -16,38 +16,38 @@
 
 <rect width="1280" height="560" fill="#f8fafc"/>
 <text x="640" y="42" text-anchor="middle" class="title">FlashAttention：从物化矩阵到分块工作集</text>
-<text x="640" y="70" text-anchor="middle" class="sub">标准 Attention 暴露 IO 压力，Tiling 与 Online Softmax 协同控制工作集，再用 GPU workload 验证收益</text>
+<text x="640" y="70" text-anchor="middle" class="sub">分块控制临时载荷，在线归一化保留行状态；块数、工作集与实际流量分别核对</text>
 
 <!-- Q1: materialization problem -->
 <rect x="40" y="105" width="250" height="360" fill="#fee2e2" class="panel"/>
 <text x="165" y="140" text-anchor="middle" class="group">物化问题</text>
 <rect x="70" y="190" width="190" height="125" fill="#fff" class="item"/>
-<text x="165" y="222" text-anchor="middle" class="head">标准 Attention</text>
+<text x="165" y="222" text-anchor="middle" class="head">完整得分物化</text>
 <text x="165" y="250" text-anchor="middle" class="body">生成 QKᵀ / score</text>
 <text x="165" y="274" text-anchor="middle" class="body">规模接近 N × N</text>
-<text x="165" y="298" text-anchor="middle" class="small">中间结果可能写回 HBM</text>
+<text x="165" y="298" text-anchor="middle" class="small">写出再读回增加搬运</text>
 
 <!-- Q2: cooperative mechanisms -->
 <rect x="330" y="105" width="300" height="360" fill="#e0f2fe" class="panel"/>
 <text x="480" y="140" text-anchor="middle" class="group">分块计算机制</text>
 <rect x="360" y="160" width="240" height="95" fill="#fff" class="item"/>
-<text x="480" y="192" text-anchor="middle" class="head">Tiling</text>
+<text x="480" y="192" text-anchor="middle" class="head">分块计算</text>
 <text x="480" y="218" text-anchor="middle" class="body">Q / K / V 分成小块</text>
 <text x="480" y="241" text-anchor="middle" class="small">控制一次处理的工作集</text>
 <rect x="360" y="305" width="240" height="95" fill="#fff" class="item"/>
-<text x="480" y="337" text-anchor="middle" class="head">Online Softmax</text>
-<text x="480" y="363" text-anchor="middle" class="body">分块更新归约量</text>
-<text x="480" y="386" text-anchor="middle" class="small">避免保存完整 score</text>
+<text x="480" y="337" text-anchor="middle" class="head">在线 Softmax</text>
+<text x="480" y="363" text-anchor="middle" class="body">更新最大值、指数和与输出</text>
+<text x="480" y="386" text-anchor="middle" class="small">新最大值改变时重缩放旧状态</text>
 
 <!-- Q3: hierarchy and tile tradeoff -->
 <rect x="670" y="105" width="260" height="360" fill="#dcfce7" class="panel"/>
 <text x="800" y="140" text-anchor="middle" class="group">工作集与存储层级</text>
 <rect x="700" y="160" width="200" height="95" fill="#fff" class="item"/>
-<text x="800" y="192" text-anchor="middle" class="head">SRAM / HBM</text>
-<text x="800" y="218" text-anchor="middle" class="body">SRAM：近、快、容量小</text>
-<text x="800" y="241" text-anchor="middle" class="small">HBM：容量大、往返代价高</text>
+<text x="800" y="192" text-anchor="middle" class="head">片上状态与显存</text>
+<text x="800" y="218" text-anchor="middle" class="body">共享内存、寄存器各有预算</text>
+<text x="800" y="241" text-anchor="middle" class="small">局部得分、累加器精度分开计</text>
 <rect x="700" y="305" width="200" height="95" fill="#fff" class="item"/>
-<text x="800" y="337" text-anchor="middle" class="head">tile size 权衡</text>
+<text x="800" y="337" text-anchor="middle" class="head">块宽取舍</text>
 <text x="800" y="363" text-anchor="middle" class="body">小：工作集小、tile 多</text>
 <text x="800" y="386" text-anchor="middle" class="body">大：tile 少、片上压力高</text>
 
@@ -56,11 +56,11 @@
 <text x="1105" y="140" text-anchor="middle" class="group">IO 收益与验证</text>
 <rect x="1000" y="160" width="210" height="95" fill="#fff" class="item"/>
 <text x="1105" y="192" text-anchor="middle" class="head">IO-aware 收益</text>
-<text x="1105" y="218" text-anchor="middle" class="body">减少中间结果 HBM 往返</text>
+<text x="1105" y="218" text-anchor="middle" class="body">避免完整中间矩阵往返</text>
 <text x="1105" y="241" text-anchor="middle" class="small">计算定义未被改变</text>
 <rect x="1000" y="305" width="210" height="95" fill="#fff" class="item"/>
-<text x="1105" y="337" text-anchor="middle" class="head">GPU workload</text>
-<text x="1105" y="363" text-anchor="middle" class="body">比较 SDPA / FlashAttention</text>
+<text x="1105" y="337" text-anchor="middle" class="head">同负载 GPU 复测</text>
+<text x="1105" y="363" text-anchor="middle" class="body">核对数值与实际注意力后端</text>
 <text x="1105" y="386" text-anchor="middle" class="small">记录显存、延迟和吞吐</text>
 
 <!-- clear connections -->

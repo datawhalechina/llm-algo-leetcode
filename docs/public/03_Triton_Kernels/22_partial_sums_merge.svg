@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+  <title id="title">从独占部分和槽位到最终总和</title><desc id="desc">输入一到十按四个位置一段分给三个Program，各自写入10、26、19，第二阶段再合并为55。每个部分和槽位只有一个写入者。</desc>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+  <style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#0f172a}.title{font-size:28px;font-weight:700}.sub{font-size:19px;fill:#475569}.head{font-size:22px;font-weight:700}.body{font-size:19px}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}</style>
+  <rect width="1500" height="470" rx="22" fill="#f8fafc" data-layout-role="panel"/>
+  <text x="40" y="48" class="title">第一阶段分别写部分和，第二阶段读取并合并</text><text x="40" y="82" class="sub">N=10、块宽B=4：尾部缺少两个元素，使用加法单位元0补齐</text>
+  <rect x="40" y="185" width="230" height="100" rx="15" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="155" y="226" class="head" text-anchor="middle">输入向量</text><text x="155" y="261" class="body" text-anchor="middle">x = [1, 2, …, 10]</text>
+  <rect x="390" y="120" width="240" height="75" rx="15" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="510" y="150" class="head" text-anchor="middle">Program 0</text><text x="510" y="178" class="body" text-anchor="middle">1 + 2 + 3 + 4 = 10</text>
+  <rect x="390" y="220" width="240" height="75" rx="15" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="510" y="250" class="head" text-anchor="middle">Program 1</text><text x="510" y="278" class="body" text-anchor="middle">5 + 6 + 7 + 8 = 26</text>
+  <rect x="390" y="320" width="240" height="75" rx="15" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="510" y="350" class="head" text-anchor="middle">Program 2</text><text x="510" y="378" class="body" text-anchor="middle">9 + 10 + 0 + 0 = 19</text>
+  <rect x="800" y="205" width="260" height="100" rx="15" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="930" y="246" class="head" text-anchor="middle">三个独占槽位</text><text x="930" y="281" class="body" text-anchor="middle">p = [10, 26, 19]</text>
+  <rect x="1170" y="205" width="280" height="100" rx="15" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="1310" y="246" class="head" text-anchor="middle">第二阶段求和</text><text x="1310" y="281" class="body" text-anchor="middle">10 + 26 + 19 = 55</text>
+  <path d="M270 205H310V157H390" class="edge"/><path d="M270 235H340V257H390" class="edge"/><path d="M270 265H295V357H390" class="edge"/>
+  <path d="M630 157H720V225H800" class="edge"/><path d="M630 257H800" class="edge"/><path d="M630 357H720V285H800" class="edge"/>
+  <path d="M1060 255H1170" class="edge"/>
+</svg>

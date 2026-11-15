@@ -10,6 +10,10 @@ Usage:
     python tools/check_math_formula_symbols.py
     python tools/check_math_formula_symbols.py --dir docs/02_PyTorch_Algorithms
     python tools/check_math_formula_symbols.py --file README.md --file docs/index.md
+    python tools/check_math_formula_symbols.py --github-compatible --static-only --file lesson.ipynb
+
+GitHub mode checks known static risks only. It makes no network requests and
+does not establish that GitHub's final math renderer accepts every expression.
 """
 
 from __future__ import annotations
@@ -79,15 +83,18 @@ class Formula:
     content: str
     display: bool
     kind: str
+    cell: int | None = None
 
 
 def iter_markdown_files(paths: list[Path]) -> list[Path]:
     files: list[Path] = []
     for path in paths:
-        if path.is_file() and path.suffix == ".md":
+        if path.is_file() and path.suffix in {".md", ".ipynb"}:
             files.append(path)
         elif path.is_dir():
-            files.extend(sorted(p for p in path.rglob("*.md") if "node_modules" not in p.parts))
+            files.extend(sorted(p for p in path.rglob("*")
+                                if p.suffix in {".md", ".ipynb"}
+                                and not {"node_modules", ".ipynb_checkpoints"}.intersection(p.parts)))
     # Deduplicate while preserving order
     seen: set[Path] = set()
     unique: list[Path] = []
@@ -118,8 +125,9 @@ def line_number(text: str, index: int) -> int:
     return text.count("\n", 0, index) + 1
 
 
-def extract_formulas(path: Path) -> list[Formula]:
-    raw = path.read_text(encoding="utf-8")
+def extract_formulas(path: Path, raw: str | None = None) -> list[Formula]:
+    if raw is None:
+        raw = path.read_text(encoding="utf-8")
     text = strip_code_fences(raw)
     formulas: list[Formula] = []
 
@@ -201,25 +209,94 @@ def validate_formulas(formulas: list[Formula]) -> list[tuple[Formula, str]]:
     return failures
 
 
-def scan_file(path: Path) -> list[tuple[Formula, str]]:
+def markdown_sources(path: Path) -> list[tuple[int | None, str]]:
+    """Read prose only; notebook cell numbers are one-based."""
     raw = path.read_text(encoding="utf-8")
+    if path.suffix == ".ipynb":
+        notebook = json.loads(raw)
+        return [(index + 1, "".join(cell.get("source", [])))
+                for index, cell in enumerate(notebook.get("cells", []))
+                if cell.get("cell_type") == "markdown"]
+    return [(None, raw)]
+
+
+def mask_code(text: str) -> str:
+    """Mask fenced/inline code while retaining offsets and line numbers."""
+    lines = []
+    fence = None
+    for line in text.splitlines(keepends=True):
+        marker = re.match(r"^\s*(`{3,}|~{3,})(.*)$", line.rstrip("\n"))
+        if fence is not None:
+            if marker and marker[1][0] == fence[0] and len(marker[1]) >= fence[1] and not marker[2].strip():
+                fence = None
+            lines.append(re.sub(r"[^\n]", " ", line))
+        elif marker:
+            fence = (marker[1][0], len(marker[1]))
+            lines.append(re.sub(r"[^\n]", " ", line))
+        else:
+            lines.append(line)
+    masked = "".join(lines)
+    return re.sub(r"(`+)(?!`)(.*?)(?<!`)\1(?!`)",
+                  lambda match: re.sub(r"[^\n]", " ", match[0]), masked, flags=re.S)
+
+
+def github_compatibility_issues(path: Path, raw: str, cell: int | None = None) -> list[tuple[Formula, str]]:
+    """Flag observed compatibility risks, not proof of final GitHub rendering."""
+    text = mask_code(raw)
+    pattern = re.compile(r"(?<!\\)\$\$(.*?)\$\$|(?<!\\)\$(?!\$)([^$\n]+?)(?<!\\)\$(?!\$)", re.S)
+    issues = []
+    for match in pattern.finditer(text):
+        display = match[1] is not None
+        content = match[1] if display else match[2]
+        item = Formula(path, line_number(text, match.start()), content.strip(), display, "github-risk", cell)
+        if not display and match.start() and not text[match.start() - 1].isspace():
+            issues.append((item, "GitHub边界风险：行内公式起始符前补空格（尤其中文标点后）"))
+        if re.search(r"\\operatorname\b", content):
+            issues.append((item, "GitHub宏兼容风险：operatorname已有禁止宏报错；按含义选择兼容写法"))
+        if re.search(r"(?<!\\)\\[,!;:%#{}]", content):
+            issues.append((item, "GitHub转义风险：排版间距、百分号、井号或花括号可能先被Markdown处理"))
+        if re.search(r"\^\*", content):
+            issues.append((item, r"GitHub强调标记风险：裸星号上标改用^{\ast}"))
+        if re.search(r"\\(?:bar|hat)\{[^}]+\}_", content):
+            issues.append((item, "GitHub下标边界风险：重音命令花括号后紧接下划线，需实际渲染复核"))
+    for match in re.finditer(r"\\\((.*?)\\\)|\\\[(.*?)\\\]", text, re.S):
+        item = Formula(path, line_number(text, match.start()), match[0], match[2] is not None, "github-risk", cell)
+        issues.append((item, r"双端分隔符风险：当前站点使用$...$或$$...$$，不要直接使用\(...\)或\[...\]"))
+    return issues
+
+
+def scan_source(path: Path, raw: str, *, github_compatible: bool = False,
+                static_only: bool = False, cell: int | None = None) -> list[tuple[Formula, str]]:
+    """Check one Markdown document or notebook Markdown cell."""
     control_hits = [
         (line_number(raw, match.start()), repr(match.group(0)))
         for match in CONTROL_CHAR_RE.finditer(raw)
     ]
-    formulas = extract_formulas(path)
-    failures = validate_formulas(formulas)
+    formulas = extract_formulas(path, mask_code(raw))
+    for formula in formulas:
+        formula.cell = cell
+    failures = [] if static_only else validate_formulas(formulas)
+    if github_compatible:
+        failures.extend(github_compatibility_issues(path, raw, cell))
 
     if control_hits:
         # Attach control-char issues as pseudo failures tied to the first formula-like line.
         first_line = control_hits[0][0]
         failures.append(
             (
-                Formula(path=path, line=first_line, content="control character found in markdown", display=False, kind="control"),
+                Formula(path=path, line=first_line, content="control character found in markdown", display=False, kind="control", cell=cell),
                 f"control character(s) found: {', '.join(ch for _, ch in control_hits[:5])}",
             )
         )
     return failures
+
+
+def scan_file(path: Path, *, github_compatible: bool = False,
+              static_only: bool = False) -> list[tuple[Formula, str]]:
+    """Check Markdown or prose cells without executing notebooks or using network."""
+    return [issue for cell, raw in markdown_sources(path)
+            for issue in scan_source(path, raw, github_compatible=github_compatible,
+                                     static_only=static_only, cell=cell)]
 
 
 def main() -> int:
@@ -236,7 +313,13 @@ def main() -> int:
         default=None,
         help="Directory to scan recursively. Can be passed multiple times.",
     )
+    parser.add_argument("--github-compatible", action="store_true",
+                        help="Also report known GitHub compatibility risks; no network calls.")
+    parser.add_argument("--static-only", action="store_true",
+                        help="With --github-compatible, skip local MathJax; only Python is required.")
     args = parser.parse_args()
+    if args.static_only and not args.github_compatible:
+        parser.error("--static-only requires --github-compatible")
 
     targets: list[Path] = []
     if args.file:
@@ -256,13 +339,16 @@ def main() -> int:
     formula_count = 0
     for path in markdown_files:
         checked += 1
-        file_formulas = extract_formulas(path)
-        formula_count += len(file_formulas)
-        failures.extend(scan_file(path))
+        formula_count += sum(len(extract_formulas(path, mask_code(raw)))
+                             for _, raw in markdown_sources(path))
+        failures.extend(scan_file(path, github_compatible=args.github_compatible,
+                                  static_only=args.static_only))
 
     if failures:
         for item, message in failures:
-            print(f"{item.path.relative_to(ROOT)}:{item.line}: math formula parse failed")
+            location = os.path.relpath(item.path, ROOT)
+            cell = f":cell {item.cell}" if item.cell is not None else ""
+            print(f"{location}{cell}:{item.line}: math formula issue")
             print(f"  kind: {item.kind}")
             print(f"  content: {item.content}")
             print(f"  error: {message}")
@@ -270,7 +356,9 @@ def main() -> int:
         print(f"Checked {checked} markdown file(s), {formula_count} formula(s), {len(failures)} issue(s) found.")
         return 1
 
-    print(f"Checked {checked} markdown file(s), {formula_count} formula(s): all valid.")
+    detail = ("no known static compatibility risks; final GitHub display not verified"
+              if args.github_compatible else "all valid")
+    print(f"Checked {checked} file(s), {formula_count} formula(s): {detail}.")
     return 0
 
 

@@ -329,7 +329,7 @@ export default defineConfig({
               { text: '09. AI 编译器与图优化', link: '/01_Hardware_Math_and_Systems/09_AI_Compilers_and_Graph_Optimization' },
               { text: '19. 算子融合导论', link: '/01_Hardware_Math_and_Systems/19_Operator_Fusion_Introduction' },
               { text: '30. 动态 Shape 处理', link: '/01_Hardware_Math_and_Systems/30_Dynamic_Shape_Handling' },
-              { text: '32. TVM / MLIR 深度实践', link: '/01_Hardware_Math_and_Systems/32_TVM_MLIR_Deep_Practice' }
+              { text: '32. 编译阶段与目标计划', link: '/01_Hardware_Math_and_Systems/32_TVM_MLIR_Deep_Practice' }
             ]
           },
           {
@@ -337,7 +337,7 @@ export default defineConfig({
             collapsed: true,
             items: [
               { text: '组内导读', link: '/01_Hardware_Math_and_Systems/1F' },
-              { text: '10. 国产 AI 芯片概览', link: '/01_Hardware_Math_and_Systems/10_Domestic_AI_Chips_Overview' },
+              { text: '10. 加速器选型与软件栈适配', link: '/01_Hardware_Math_and_Systems/10_Domestic_AI_Chips_Overview' },
               { text: '31. GPU 虚拟化与 MIG', link: '/01_Hardware_Math_and_Systems/31_GPU_Virtualization_and_MIG' },
               { text: '33. TCO 与成本模型', link: '/01_Hardware_Math_and_Systems/33_TCO_and_Cost_Model' },
               { text: '34. 异构加速器与运行时约束', link: '/01_Hardware_Math_and_Systems/34_Heterogeneous_Accelerators_and_Runtime_Constraints' }
@@ -543,7 +543,8 @@ export default defineConfig({
               { text: '06. Persistent GEMM and Tile Scheduling', link: '/03_Triton_Kernels/06_Triton_Persistent_GEMM_and_Tile_Scheduling' },
               { text: '07. Triton Fused Softmax', link: '/03_Triton_Kernels/07_Triton_Fused_Softmax' },
               { text: '08. Triton Softmax Backward', link: '/03_Triton_Kernels/08_Triton_Softmax_Backward' },
-              { text: '09. Triton Autotune and Profiling', link: '/03_Triton_Kernels/09_Triton_Autotune_and_Profiling' }
+              { text: '09. Triton Autotune and Profiling', link: '/03_Triton_Kernels/09_Triton_Autotune_and_Profiling' },
+              { text: '22. Triton Two-Stage Reduction', link: '/03_Triton_Kernels/22_Triton_Two_Stage_Reduction' }
             ]
           },
           {
@@ -558,7 +559,7 @@ export default defineConfig({
             ]
           },
           {
-            text: '3.4 推理专用 kernel',
+            text: '3.4 量化与适配器内核',
             collapsed: true,
             items: [
               { text: '组内导读', link: '/03_Triton_Kernels/3_4' },
@@ -572,6 +573,7 @@ export default defineConfig({
             collapsed: true,
             items: [
               { text: '组内导读', link: '/03_Triton_Kernels/3_5' },
+              { text: '21. Torch Compile Graph Capture and Reuse', link: '/03_Triton_Kernels/21_Torch_Compile_Graph_Reuse' },
               { text: '17. Triton Memory Model and Debug', link: '/03_Triton_Kernels/17_Triton_Memory_Model_and_Debug' },
               { text: '18. Compilation Artifacts and Execution', link: '/03_Triton_Kernels/18_Triton_Compilation_Artifacts_and_Execution' },
               { text: '19. Triton PyTorch Op Integration', link: '/03_Triton_Kernels/19_Triton_PyTorch_Op_Integration' },

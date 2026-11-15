@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="650" viewBox="0 0 1280 650" role="img" aria-labelledby="title desc">
-  <title id="title">稀疏计算与稀疏注意力：从对象到验证证据</title>
-  <desc id="desc">将稀疏对象、稀疏模式、执行映射和 Sparse Attention 分开表达，最后连接到 CPU 机制验证和 GPU 实际收益。</desc>
+  <title id="title">稀疏计算：保留位置、格式与实际执行</title>
+  <desc id="desc">保留位置决定密度与连接语义；局部分组检查不同于内核支持。CPU掩码参考核对输出，稀疏执行另外检查索引、准备与完整调用成本。</desc>
   <defs>
-    <marker id="arrow25" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+    <marker id="arrow25" viewBox="0 0 9 9" markerWidth="9" markerHeight="9" refX="9" refY="4.5" markerUnits="userSpaceOnUse" orient="auto">
       <path d="M0 0L9 4.5L0 9Z" fill="#64748b"/>
     </marker>
     <style>
@@ -21,71 +21,71 @@
   </defs>
 
   <rect width="1280" height="650" fill="#f8fafc"/>
-  <text x="640" y="42" text-anchor="middle" class="title">稀疏计算与稀疏注意力：从对象到验证证据</text>
-  <text x="640" y="70" text-anchor="middle" class="subtitle">先定义稀疏对象和模式，再分别观察通用执行映射与 Attention 连接</text>
+  <text x="640" y="42" text-anchor="middle" class="title">稀疏计算：保留位置、格式与实际执行</text>
+  <text x="640" y="70" text-anchor="middle" class="subtitle">数清保留位置，检查局部模式；连接输出与实际跳过计算分别核对</text>
 
   <rect x="30" y="110" width="220" height="300" fill="#e0f2fe" class="panel"/>
   <text x="140" y="145" text-anchor="middle" class="group">稀疏对象</text>
   <rect x="55" y="172" width="170" height="78" fill="#fff" class="item"/>
   <text x="140" y="202" text-anchor="middle" class="head">对象</text>
-  <text x="140" y="226" text-anchor="middle" class="body">权重 · 激活 · Attention 连接</text>
+  <text x="140" y="226" text-anchor="middle" class="body">权重 · 激活 · 连接</text>
   <rect x="55" y="275" width="170" height="78" fill="#fff" class="item"/>
   <text x="140" y="305" text-anchor="middle" class="head">成本变化</text>
-  <text x="140" y="329" text-anchor="middle" class="body">存储 · 计算 · token 连接</text>
-  <path d="M140 250V269" class="inner"/>
+  <text x="140" y="329" text-anchor="middle" class="body">存储 · 乘加 · 连接数</text>
+  <path d="M140 250V275" class="inner"/>
 
   <rect x="280" y="110" width="220" height="300" fill="#dcfce7" class="panel"/>
   <text x="390" y="145" text-anchor="middle" class="group">稀疏模式</text>
   <rect x="305" y="172" width="170" height="64" fill="#fff" class="item"/>
   <text x="390" y="200" text-anchor="middle" class="head">非结构化</text>
-  <text x="390" y="221" text-anchor="middle" class="small">位置随机</text>
+  <text x="390" y="221" text-anchor="middle" class="small">各位置可独立保留</text>
   <rect x="305" y="250" width="170" height="64" fill="#fff" class="item"/>
   <text x="390" y="278" text-anchor="middle" class="head">结构化</text>
-  <text x="390" y="299" text-anchor="middle" class="small">行列 · Block · 局部窗口</text>
+  <text x="390" y="299" text-anchor="middle" class="small">行列 · 分块 · 2:4分组</text>
   <rect x="305" y="328" width="170" height="50" fill="#fff" class="item"/>
-  <text x="390" y="359" text-anchor="middle" class="body">density / 保留连接数</text>
+  <text x="390" y="359" text-anchor="middle" class="body">密度相同，分布可不同</text>
 
   <rect x="530" y="110" width="240" height="300" fill="#fef3c7" class="panel"/>
   <text x="650" y="145" text-anchor="middle" class="group">执行映射</text>
   <rect x="555" y="172" width="190" height="64" fill="#fff" class="item"/>
-  <text x="650" y="200" text-anchor="middle" class="head">规则结构</text>
-  <text x="650" y="221" text-anchor="middle" class="small">映射到 tile / warp</text>
+  <text x="650" y="200" text-anchor="middle" class="head">格式约束</text>
+  <text x="650" y="221" text-anchor="middle" class="small">局部分组 · 索引 · 块形状</text>
   <rect x="555" y="250" width="190" height="64" fill="#fff" class="item"/>
-  <text x="650" y="278" text-anchor="middle" class="head">kernel 支持</text>
-  <text x="650" y="299" text-anchor="middle" class="small">真正跳过无效元素</text>
+  <text x="650" y="278" text-anchor="middle" class="head">实际内核</text>
+  <text x="650" y="299" text-anchor="middle" class="small">匹配布局、类型与设备</text>
   <rect x="555" y="328" width="190" height="50" fill="#fff" class="item"/>
-  <text x="650" y="359" text-anchor="middle" class="body">索引 · 分支 · 不规则访存</text>
+  <text x="650" y="359" text-anchor="middle" class="body">索引 · 准备 · 聚集成本</text>
 
   <rect x="350" y="455" width="320" height="160" fill="#fef3c7" class="panel"/>
-  <text x="510" y="490" text-anchor="middle" class="group">Sparse Attention 机制</text>
+  <text x="510" y="490" text-anchor="middle" class="group">局部注意力语义</text>
   <rect x="375" y="515" width="120" height="58" fill="#fff" class="item"/>
   <text x="435" y="540" text-anchor="middle" class="head">QKᵀ</text>
   <text x="435" y="560" text-anchor="middle" class="small">连接分数</text>
   <rect x="520" y="515" width="120" height="58" fill="#fff" class="item"/>
-  <text x="580" y="540" text-anchor="middle" class="head">mask</text>
+  <text x="580" y="540" text-anchor="middle" class="head">掩码</text>
   <text x="580" y="560" text-anchor="middle" class="small">保留连接</text>
-  <path d="M495 544H514" class="inner"/>
-  <text x="510" y="603" text-anchor="middle" class="small">softmax → 加权 V</text>
+  <path d="M495 544H520" class="inner"/>
+  <text x="510" y="603" text-anchor="middle" class="small">CPU参考先算完整得分，再屏蔽并归一化</text>
 
   <rect x="900" y="190" width="330" height="350" fill="#fce7f3" class="panel"/>
-  <text x="1065" y="225" text-anchor="middle" class="group">验证证据</text>
+  <text x="1065" y="225" text-anchor="middle" class="group">分别核对</text>
   <rect x="930" y="255" width="270" height="105" fill="#fff" class="item"/>
-  <text x="1065" y="285" text-anchor="middle" class="head">CPU 机制验证</text>
-  <text x="1065" y="310" text-anchor="middle" class="body">连接数 · 理论计算量</text>
-  <text x="1065" y="334" text-anchor="middle" class="body">输出差异 · 数值稳定性</text>
+  <text x="1065" y="285" text-anchor="middle" class="head">实际稀疏执行</text>
+  <text x="1065" y="310" text-anchor="middle" class="body">采用的算子 · 完整调用时间</text>
+  <text x="1065" y="334" text-anchor="middle" class="body">包括索引与准备等必要开销</text>
   <rect x="930" y="385" width="270" height="105" fill="#fff" class="item"/>
-  <text x="1065" y="415" text-anchor="middle" class="head">GPU 实际收益</text>
-  <text x="1065" y="440" text-anchor="middle" class="body">kernel · 延迟 · 吞吐</text>
-  <text x="1065" y="464" text-anchor="middle" class="body">显存收益与实际跳零</text>
+  <text x="1065" y="415" text-anchor="middle" class="head">CPU 语义与数量级</text>
+  <text x="1065" y="440" text-anchor="middle" class="body">连接数 · 理论计算量</text>
+  <text x="1065" y="464" text-anchor="middle" class="body">输出差异 · 数值稳定性</text>
 
-  <path d="M250 245H272" class="flow"/>
-  <path d="M500 245H522" class="flow"/>
-  <path d="M390 410V447" class="flow"/>
-  <path d="M770 245H840V300H892" class="flow"/>
-  <path d="M670 535H820V455H892" class="flow"/>
+  <path d="M250 245H280" class="flow"/>
+  <path d="M500 245H530" class="flow"/>
+  <path d="M390 410V455" class="flow"/>
+  <path d="M770 245H840V300H930" class="flow"/>
+  <path d="M670 535H820V455H930" class="flow"/>
   <text x="261" y="228" text-anchor="middle" class="small">定义</text>
   <text x="511" y="228" text-anchor="middle" class="small">结构</text>
   <text x="410" y="435" class="small">连接规则</text>
-  <text x="805" y="232" class="small">执行代价</text>
-  <text x="745" y="520" text-anchor="middle" class="small">机制结果</text>
+  <text x="805" y="232" class="small">调用成本</text>
+  <text x="745" y="520" text-anchor="middle" class="small">连接与输出</text>
 </svg>

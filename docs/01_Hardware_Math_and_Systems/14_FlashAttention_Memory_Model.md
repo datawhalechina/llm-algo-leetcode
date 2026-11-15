@@ -1,6 +1,6 @@
 # 14. FlashAttention Memory Model | FlashAttention 显存模型
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `推理优化`, `FlashAttention`, `显存模型` | **目标人群：** 需要理解 Attention 访存成本的学习者
+**难度：** Medium | **环境：** CPU-first | **标签：** `推理优化`, `FlashAttention`, `显存模型` | **目标人群：** 系统性能入门者
 
 > 🚀 **云端运行环境**
 >
@@ -14,174 +14,171 @@
 
 ## 本节导读
 
-标准注意力可能物化接近 $N \times N$ 的中间结果，序列变长后，临时工作集和显存读写会迅速增长。FlashAttention 通过分块和在线 Softmax 避免完整保存这些中间结果。
+序列从2048增长到4096时，单个注意力头的完整得分矩阵会扩大四倍。若实现把它写入显存、再读回计算，临时存储和搬运都会增加；FlashAttention通过分块与在线Softmax，避免保存完整的得分与概率矩阵。
 
-本节建立“分块大小 → 片上工作集 → 显存读写 → 容量与时间”的关系。完成后，你应能估算分块带来的 I/O 变化，并把临时工作集与长期 KV Cache 区分开。
+本节计算中间矩阵与块级工作集，再解释逐块合并为何仍能得到同一个注意力输出。它支撑推理与算子优化中的注意力访存判断，随后可进入Part02·20的分块模拟和Part03·11的GPU实现。
 
+**关键词：** 得分矩阵、分块、在线Softmax、片上工作集
 
-**关键词：** `FlashAttention`, `tiling`, `SRAM`
+![FlashAttention物化、分块与在线状态](../public/01_Hardware_Math_and_Systems/14_flashattention_memory_flow.svg)
 
-![本节概念关系](../public/01_Hardware_Math_and_Systems/14_flashattention_memory_flow.svg)
-
-
----
 ## 前置阅读
 
-**导语：** 先理解 Attention 的 score、softmax 和输出计算，再观察 FlashAttention 如何用分块工作集减少中间结果物化，并据此判断显存压力和数据搬运成本。
+先核对注意力计算对象和存储层次，再比较完整矩阵与分块状态。
 
-- [Part 01 · 03 GPU 架构与显存](./03_GPU_Architecture_and_Memory.md)
-- [Part 01 · 04 Attention 与显存优化](./04_Attention_Memory_Optimization.md)
----
-## Q1：为什么标准 Attention 会在长序列下迅速变成显存瓶颈？
+- [03 GPU架构与内存层次](./03_GPU_Architecture_and_Memory.md)：区分显存、共享内存与寄存器。
+- [04 Attention与显存优化](./04_Attention_Memory_Optimization.md)：理解Q、K、V、得分矩阵与输出。
 
+## Q1：完整得分矩阵为什么会迅速占满临时存储？
 
-标准 Attention 的问题，不是“算不动”，而是中间结果太大。
+对长度为 $N$ 的自注意力，查询Q与键K相乘得到 $N \times N$ 个得分。物化是指为中间结果分配存储并实际写入；若每个得分用四字节表示，单头、单样本在 $N=2048$ 时占16 MiB， $N=4096$ 时占64 MiB。批量大小与头数还会成倍放大这个量。
 
-在长序列场景里，$QK^T$ 会生成一个接近 $N 	imes N$ 的注意力矩阵。如果这个矩阵要频繁写回 HBM，再读出来做 Softmax 和后续乘法，显存访问次数就会非常多。
+下面只统计一份得分张量；若完整写出一次再读回一次，逻辑读写量是其大小的两倍。这既不包含其他中间张量，也不等于实际显存流量：缓存和实现方式会改变物理搬运。矩阵越大越值得检查访存，但是否受带宽限制仍需结合运算量与执行测量。
 
-这意味着两件事：
-- 中间结果占用的显存会迅速膨胀；
-- 数据搬运会比计算本身更容易成为瓶颈。
+### Q1 机制计算器：序列翻倍，存储与一次往返各增加多少？
 
-所以 FlashAttention 要解决的，不是“让矩阵更小”，而是“不要让大矩阵长期落到 HBM 上”。
+固定四字节得分，先核对16 MiB与64 MiB，再改变批量大小和头数。MiB按1024进位。
 
-### Q1小验证：计算序列长度对应的中间矩阵规模
-
-根据序列长度计算 score 矩阵的元素数和字节数，再判断它写入 HBM 后的容量与搬运代价。
 
 ```python
-def attention_score_bytes(seq_len, batch_size=1, num_heads=1, dtype_bytes=2):
-    """估算物化 score 张量的理论大小，不代表真实 HBM 流量。"""
-    values = (seq_len, batch_size, num_heads, dtype_bytes)
-    if any(value <= 0 for value in values):
-        raise ValueError('序列长度、batch、头数和 dtype 字节数必须为正数')
+def attention_score_bytes(seq_len: int, batch_size: int = 1,
+                          num_heads: int = 1, dtype_bytes: int = 4) -> int:
+    """返回一份完整自注意力得分张量的字节数，不含其他张量。"""
+    if any(type(value) is not int or value <= 0
+           for value in (seq_len, batch_size, num_heads, dtype_bytes)):
+        raise ValueError("序列、批量、头数与元素字节数须为正整数")
     return batch_size * num_heads * seq_len * seq_len * dtype_bytes
 
-for n in [1024, 2048, 4096]:
-    naive_gb = attention_score_bytes(n) / 1024 / 1024 / 1024
-    print(f'seq_len={n:4d} -> score matrix ≈ {naive_gb:6.2f} GB')
+
+small = attention_score_bytes(seq_len=2048)
+large = attention_score_bytes(seq_len=4096)
+assert small == 16 * 1024**2
+assert large == 64 * 1024**2 == 4 * small
+assert attention_score_bytes(seq_len=4096, batch_size=2, num_heads=4) == 8 * large
+for length in (2048, 4096):
+    size = attention_score_bytes(seq_len=length)
+    print(f"N={length}: 得分 {size / 1024**2:g} MiB；一次写出再读回 {2 * size / 1024**2:g} MiB")
 
 ```
 
-## Q2：FlashAttention 为什么要用 tiling 和 online softmax？
+## Q2：不保存完整得分，怎样得到相同的归一化输出？
 
+分块（tiling）将Q、K、V划为小块，每次只计算一小块得分。在线Softmax中的“在线”指逐块更新状态，而不是网络服务：对每行保留当前最大得分 $m$ 、平移后的指数和 $l$ 及指数加权的值之和 $u$ ，最终输出为 $u/l$ 。新块带来更大的最大值时，旧的 $l$ 和 $u$ 都要按新旧最大值差重新缩放，才能合并到同一个尺度。
 
-FlashAttention 的变化可以拆成两个动作：用 tiling 控制一次处理的工作集，用 online softmax 在分块过程中完成归约。表格中的大小和工作集都是理论模型，不代表完整 kernel 的 shared memory、寄存器或 CUDA workspace；下面把标准 Attention 与分块工作集放在同一口径下。
+例如得分为 $[0,0,\log 2]$ 、对应值为 $[1,3,5]$ ，权重比例是 $[1,1,2]$ ，输出为3.5。先处理前两个得分时，状态为 $m=0,l=2,u=4$ ；合并最后一个得分后，旧状态缩小一半，得到 $l=2,u=7$ 。下方用一行标量值演示合并；真实注意力对每行维护向量输出累加器，还需处理缩放、掩码与浮点误差。
 
-| 对比项 | 标准 Attention | FlashAttention 工作集模型 |
-| --- | --- | --- |
-| score 结果 | 接近 $N \times N$ 的完整矩阵 | 单个 score tile |
-| softmax | 对完整矩阵统一处理 | 按块更新局部统计量 |
-| 中间结果 | 可能长期写回 HBM | 尽量留在片上工作集 |
-| 主要参数 | 序列长度决定矩阵规模 | tile size、head dim、dtype |
-| 结论类型 | 理论物化规模 | 理论工作集，不是 kernel 实测 |
+### Q2 对照验证：完整归一化与逐块合并是否一致？
 
-### Q2小验证：分块之后为什么更稳
+用同一组得分和值，比较块宽1、2和3；再把全部得分加1000，核对最大值平移仍能避免指数溢出。
 
-把一个大矩阵拆成多个小块，再区分一维 tile 数、二维 score tile 数和单个 score tile 的理论大小。这里的数值是工作集模型，不是完整 kernel 的 shared memory 或寄存器占用。
 
 ```python
-def num_1d_tiles(seq_len, tile_size):
-    """返回一条序列维度上的 tile 数；不代表 Attention 的二维 tile 总数。"""
-    if seq_len <= 0 or tile_size <= 0:
-        raise ValueError('seq_len 和 tile_size 必须为正数')
+import math
+
+
+def online_attention_scalar(scores: list, values: list, block_size: int) -> float:
+    """合并已给定的有限得分与标量值，返回Softmax加权均值。"""
+    if (not scores or len(scores) != len(values)
+            or type(block_size) is not int or block_size <= 0):
+        raise ValueError("得分与值须非空且等长，块宽须为正整数")
+    if any(not math.isfinite(value) for value in (*scores, *values)):
+        raise ValueError("得分与值须为有限实数")
+    maximum, denominator, numerator = -math.inf, 0.0, 0.0
+    for start in range(0, len(scores), block_size):
+        block_scores = scores[start:start + block_size]
+        block_values = values[start:start + block_size]
+        updated_maximum = max(maximum, max(block_scores))
+        rescale = math.exp(maximum - updated_maximum)
+        weights = [math.exp(score - updated_maximum) for score in block_scores]
+        denominator = denominator * rescale + sum(weights)
+        numerator = numerator * rescale + sum(w * value for w, value in zip(weights, block_values))
+        maximum = updated_maximum
+    return numerator / denominator
+
+
+scores, values = [0.0, 0.0, math.log(2)], [1.0, 3.0, 5.0]
+weights = [math.exp(score - max(scores)) for score in scores]
+reference = sum(w * value for w, value in zip(weights, values)) / sum(weights)
+assert math.isclose(reference, 3.5)
+for block_size in (1, 2, 3):
+    actual = online_attention_scalar(scores, values, block_size=block_size)
+    shifted = online_attention_scalar([s + 1000 for s in scores], values, block_size=block_size)
+    assert math.isclose(actual, reference, abs_tol=1e-12)
+    assert math.isclose(shifted, reference, abs_tol=1e-12)
+    print(f"块宽={block_size}: 加权输出 {actual:g}")
+
+```
+
+## Q3：块变大后，工作集和分块次数怎样相互制约？
+
+片上存储用来暂存数据和累加状态，容量小于显存；其中共享内存由线程块显式使用，寄存器保存线程临时值，它们不能当成一个可任意互换的SRAM预算。下面用一个方形块的载荷模型分项估算：Q/K/V为两字节元素，局部得分、输出累加器以及每行的最大值与指数和用四字节。块宽128、头维128时，分别为96、64、64和1 KiB，共225 KiB；这个总和用于比较算法工作集，不是某个内核的实际共享内存分配。
+
+块宽变大可减少块组合与循环次数，但增加片上状态；块组合也不等于内核启动次数，一个内核可以遍历多个块。完整得分矩阵与单块得分的大小比只比较存储规模，不能当作显存流量减少倍数或加速比。真实实现还要检查K/V的重复读取、缓冲生命周期、寄存器用量和同步成本；长期KV缓存也仍需单独保存。
+
+| 对象 | 本例载荷模型 | 块宽增大后的变化 |
+| --- | --- | --- |
+| Q/K/V块 | $3td$ 个两字节元素 | 随块宽 $t$ 线性增长 |
+| 局部得分 | $t^2$ 个四字节元素 | 随块宽平方增长 |
+| 输出累加器 | $td$ 个四字节元素 | 随块宽线性增长 |
+| 行统计量 | $2t$ 个四字节元素 | 随块宽线性增长 |
+| 非因果方形块组合 | $\lceil N/t\rceil^2$ | 变少，但尾块仍需掩码 |
+
+### Q3 机制计算器：先核对225 KiB，再改变块宽与尾块
+
+固定头维128，比较块宽64、128和256。最后用长度130、块宽64核对一维3块与二维9个组合；这里按完整块预留空间。
+
+
+```python
+def num_1d_tiles(seq_len: int, tile_size: int) -> int:
+    """返回正长度的一维向上取整块数。"""
+    if any(type(value) is not int or value <= 0 for value in (seq_len, tile_size)):
+        raise ValueError("序列长度与块宽须为正整数")
     return (seq_len + tile_size - 1) // tile_size
 
-def num_score_tiles(seq_len, tile_size):
-    """返回 Q tile 与 K tile 组合形成的二维 score tile 数。"""
-    tiles_1d = num_1d_tiles(seq_len, tile_size)
-    return tiles_1d * tiles_1d
 
-def score_tile_bytes(tile_size, dtype_bytes=2):
-    """只估算一个 score tile，不代表完整 FlashAttention 工作集。"""
-    if tile_size <= 0 or dtype_bytes <= 0:
-        raise ValueError('tile_size 和 dtype_bytes 必须为正数')
-    return tile_size * tile_size * dtype_bytes
-
-def flashattention_working_set_bytes(tile_size, head_dim, dtype_bytes=2):
-    """估算 Q/K/V、score 和输出块的教学工作集。
-
-    这是块级容量模型，不等于完整 kernel 的 shared memory、寄存器
-    或 CUDA workspace 占用。
-    """
-    if tile_size <= 0 or head_dim <= 0 or dtype_bytes <= 0:
-        raise ValueError('tile_size、head_dim 和 dtype_bytes 必须为正数')
-    qkv = 3 * tile_size * head_dim
-    score = tile_size * tile_size
-    output = tile_size * head_dim
-    return (qkv + score + output) * dtype_bytes
+def num_score_tiles(seq_len: int, tile_size: int) -> int:
+    """返回非因果方形自注意力的块组合数，不是内核启动次数。"""
+    return num_1d_tiles(seq_len, tile_size) ** 2
 
 
-seq_len = 4096
-for tile in [64, 128, 256]:
-    tiles_1d = num_1d_tiles(seq_len, tile)
-    score_tiles = num_score_tiles(seq_len, tile)
-    score_tile_kb = score_tile_bytes(tile) / 1024
-    working_set_kb = flashattention_working_set_bytes(tile, head_dim=128) / 1024
-    print(f'tile={tile:3d} -> 1D tiles={tiles_1d:3d}, score tiles={score_tiles:4d}, score tile ≈ {score_tile_kb:6.1f} KB, working set ≈ {working_set_kb:6.1f} KB')
+def score_tile_bytes(tile_size: int, dtype_bytes: int = 4) -> int:
+    """返回一个完整方形得分块的载荷字节。"""
+    return attention_score_bytes(seq_len=tile_size, dtype_bytes=dtype_bytes)
 
-assert flashattention_working_set_bytes(128, 128) > score_tile_bytes(128)
-try:
-    flashattention_working_set_bytes(0, 128)
-except ValueError:
-    print('✅ 工作集参数校验通过')
-else:
-    raise AssertionError('tile_size 为 0 时应报错')
+
+def flashattention_working_set_bytes(tile_size: int, head_dim: int,
+                                     dtype_bytes: int = 2) -> int:
+    """返回Q/K/V、四字节得分、输出累加器及行统计量的载荷总和。"""
+    if any(type(value) is not int or value <= 0 for value in (tile_size, head_dim, dtype_bytes)):
+        raise ValueError("块宽、头维与Q/K/V元素字节数须为正整数")
+    qkv_bytes = 3 * tile_size * head_dim * dtype_bytes
+    score_bytes = tile_size * tile_size * 4
+    output_bytes = tile_size * head_dim * 4
+    statistics_bytes = 2 * tile_size * 4
+    return qkv_bytes + score_bytes + output_bytes + statistics_bytes
+
+
+def score_materialization_ratio(seq_len: int, tile_size: int, dtype_bytes: int = 4) -> float:
+    """比较完整得分与一个块的存储大小，不计算流量或加速比。"""
+    return (attention_score_bytes(seq_len=seq_len, dtype_bytes=dtype_bytes)
+            / score_tile_bytes(tile_size=tile_size, dtype_bytes=dtype_bytes))
+
+
+assert flashattention_working_set_bytes(tile_size=128, head_dim=128) == 225 * 1024
+assert num_1d_tiles(seq_len=130, tile_size=64) == 3
+assert num_score_tiles(seq_len=130, tile_size=64) == 9
+assert score_materialization_ratio(seq_len=4096, tile_size=128) == 1024
+for tile_size in (64, 128, 256):
+    working_set = flashattention_working_set_bytes(tile_size=tile_size, head_dim=128)
+    count = num_score_tiles(seq_len=4096, tile_size=tile_size)
+    print(f"块宽={tile_size}: 载荷 {working_set / 1024:g} KiB，块组合 {count}")
 
 ```
 
-## Q3：如何根据工作集、tile size 和数据搬运判断 FlashAttention 的收益？
-
-
-HBM 容量大但访问代价高，SRAM 容量小但离计算更近。tile size 需要在单块工作集和分块次数之间取舍：tile 越小，片上占用越低但调度次数越多；tile 越大，分块次数减少但片上存储压力上升。
-
-| tile size | 单块 score / 工作集 | tile 数量 | 主要权衡 |
-| ---: | --- | ---: | --- |
-| 小 | 较小 | 较多 | 片上压力低，循环和调度开销可能增加 |
-| 中 | 中等 | 中等 | 工作集与调度成本较平衡 |
-| 大 | 较大 | 较少 | 调度次数少，但片上存储压力更高 |
-
-FlashAttention 的 IO-aware 价值在于减少大规模中间结果的 HBM 往返；具体收益仍取决于序列长度、dtype、硬件和 kernel 实现，不能只凭理论工作集推出端到端加速。
-
-### Q3小验证：物化矩阵与分块工作集的对照
-
-改变序列长度和 tile 大小，比较物化 score 矩阵与分块工作集的数量级，再判断数据搬运是否可能成为主要代价。
-
-```python
-def tile_tradeoff(seq_len, tile_size, head_dim=128, dtype_bytes=2):
-    """返回 tile 数量、单块 score 和工作集，便于比较 tile size。"""
-    return {
-        'tile_count': num_score_tiles(seq_len, tile_size),
-        'score_tile_bytes': score_tile_bytes(tile_size, dtype_bytes),
-        'working_set_bytes': flashattention_working_set_bytes(tile_size, head_dim, dtype_bytes),
-    }
-
-def score_materialization_ratio(seq_len, tile_size, dtype_bytes=2):
-    """比较完整 score 矩阵与单个 score tile 的理论存储规模。
-
-    这不是实际 HBM 流量、kernel 加速比或端到端性能指标。
-    """
-    if seq_len <= 0 or tile_size <= 0 or dtype_bytes <= 0:
-        raise ValueError('seq_len、tile_size 和 dtype_bytes 必须为正数')
-    full = attention_score_bytes(seq_len, dtype_bytes=dtype_bytes)
-    tile = score_tile_bytes(tile_size, dtype_bytes)
-    return full / tile
-
-tile_rows = {}
-for tile in [64, 128, 256]:
-    tile_rows[tile] = tile_tradeoff(4096, tile)
-    print(f'tile={tile:3d} -> {tile_rows[tile]}, materialization ratio ≈ {score_materialization_ratio(4096, tile):.0f}x')
-print('smaller tile => smaller working set, but more tiles and more scheduling work')
-assert score_materialization_ratio(4096, 64) > score_materialization_ratio(4096, 256)
-
-```
-
----
 ## 相关阅读
 
-本节可以从 IO-aware Attention 论文回到工作集模拟，再进入 Triton 实现和推理侧 prefill 验证。
+先验证在线状态更新，再查看实际GPU内核如何安排不同存储与执行。
 
-- [FlashAttention 论文](https://arxiv.org/abs/2205.14135)
-- [20. FlashAttention 模拟](../02_PyTorch_Algorithms/20_FlashAttention_Sim.md)
-- [11. Triton Flash Attention 前向算子](../03_Triton_Kernels/11_Triton_Flash_Attention.md)
----
+- [Part02·20 FlashAttention模拟](../02_PyTorch_Algorithms/20_FlashAttention_Sim.md)：分块计算、在线归一化与输出的数值核对。
+- [Part03·11 Triton FlashAttention](../03_Triton_Kernels/11_Triton_Flash_Attention.md)：对照掩码、片上状态与实际前向实现。
+- [FlashAttention论文](https://arxiv.org/abs/2205.14135)：阅读分块与显存读写分析，区分算法I/O模型与具体硬件测量。

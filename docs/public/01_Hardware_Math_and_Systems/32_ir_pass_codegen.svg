@@ -1,17 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="title desc">
-<title id="title">矩阵乘怎样从符号形状变成目标执行计划？</title><desc id="desc">示例将矩阵乘的M、N、K绑定为128、256、64，检查目标声明支持FP16矩阵乘，再检查整除分块和资源预算，生成Python目标计划。下层条件分别约束对应阶段，任一条件不满足即停止。</desc>
+<title id="title">矩阵乘怎样从符号形状变成目标执行计划？</title><desc id="desc">示例将矩阵乘的M、N、K绑定为128、256、64，检查目标声明支持FP16矩阵乘，再检查整除分块，记录分块与Warp配置，生成Python目标计划。下层条件分别约束对应阶段，任一条件不满足即停止。</desc>
 <defs><marker id="a" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#52677f"/></marker><style>text{font-family:'Noto Sans CJK SC',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:16px}.small{font-size:14px;fill:#475569}.edge{stroke:#52677f;stroke-width:3;fill:none;marker-end:url(#a)}</style></defs>
 <rect width="1280" height="520" rx="24" fill="#f8fafc"/>
 <text x="640" y="45" text-anchor="middle" class="title">矩阵乘怎样从符号形状变成目标执行计划？</text>
-<text x="640" y="76" text-anchor="middle" class="sub">本例使用 Python 计划和给定目标能力；不调用 TVM / MLIR，也不生成可执行计算内核</text>
+<text x="640" y="76" text-anchor="middle" class="sub">同一128×256×64矩阵贯穿形状绑定、候选筛选、目标能力与阶段记录；终点为Python计划</text>
 <rect x="40" y="150" width="240" height="90" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="160" y="181" text-anchor="middle" class="head">绑定符号形状</text><text x="160" y="208" text-anchor="middle" class="body">M=128，N=256，K=64</text>
-<rect x="360" y="150" width="240" height="90" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="480" y="181" text-anchor="middle" class="head">核对目标支持</text><text x="480" y="208" text-anchor="middle" class="body">矩阵乘与 FP16</text>
+<rect x="360" y="150" width="240" height="90" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="480" y="181" text-anchor="middle" class="head">核对目标支持</text><text x="480" y="208" text-anchor="middle" class="body">FP16矩阵乘与候选能力</text>
 <rect x="680" y="150" width="240" height="90" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="800" y="181" text-anchor="middle" class="head">选择分块</text><text x="800" y="208" text-anchor="middle" class="body">例如 (8, 128, 64)</text>
-<rect x="1000" y="150" width="240" height="90" rx="14" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text x="1120" y="181" text-anchor="middle" class="head">生成目标计划</text><text x="1120" y="208" text-anchor="middle" class="body">安排循环、内存与线程</text>
+<rect x="1000" y="150" width="240" height="90" rx="14" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text x="1120" y="181" text-anchor="middle" class="head">生成目标计划</text><text x="1120" y="208" text-anchor="middle" class="body">记录分块与 Warp 配置</text>
 <rect x="40" y="350" width="240" height="80" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="160" y="381" text-anchor="middle" class="head">维度已提供</text><text x="160" y="408" text-anchor="middle" class="body">符号绑定为正整数</text>
 <rect x="360" y="350" width="240" height="80" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="480" y="381" text-anchor="middle" class="head">目标能力声明</text><text x="480" y="408" text-anchor="middle" class="body">支持算子与精度</text>
-<rect x="680" y="350" width="240" height="80" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="800" y="381" text-anchor="middle" class="head">边界与资源预算</text><text x="800" y="408" text-anchor="middle" class="body">满足本例整除分块规则</text>
-<rect x="1000" y="350" width="240" height="80" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="1120" y="381" text-anchor="middle" class="head">前置阶段已完成</text><text x="1120" y="408" text-anchor="middle" class="body">执行链达到指定终点</text>
+<rect x="680" y="350" width="240" height="80" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="800" y="381" text-anchor="middle" class="head">整除与输入暂存</text><text x="800" y="408" text-anchor="middle" class="body">9216／17408 B与给定预算</text>
+<rect x="1000" y="350" width="240" height="80" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="1120" y="381" text-anchor="middle" class="head">阶段内容一致</text><text x="1120" y="408" text-anchor="middle" class="body">形状、算子与所选调度相符</text>
 <path d="M280 195H360" class="edge"/>
 <path d="M600 195H680" class="edge"/>
 <path d="M920 195H1000" class="edge"/>

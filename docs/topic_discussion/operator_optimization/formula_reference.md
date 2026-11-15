@@ -23,7 +23,7 @@ $T_b,T_c>0$ 是相同工作范围的基线、候选耗时；统计方法必须�
 |:---|:---|:---|:---|
 | 二维视图地址 | $\mathrm{offset}(i,j)=i\cdot s_0+j\cdot s_1$ | $s_0,s_1$ 为相对视图首元素的步长；不能用逻辑行宽代替任意视图步长 | [03 坐标与地址](./03_kernel_semantics_and_memory.md#逻辑坐标怎样变成实际地址) |
 | 输出块总数 | $T=\lceil M/B_M\rceil\lceil N/B_N\rceil$ | $M,N,B_M,B_N$ 为正整数；M/N 尾块仍需有效范围掩码 | [Part 03 · 05 GEMM](../../03_Triton_Kernels/05_Triton_GEMM_Tutorial.md) |
-| 循环任务编号 | $t_{p,q}=p+qP<T$ | $0\le p<P$、 $q\ge0$；按实际网格步进，合法 tile 归属余数唯一 | [03 输出块分工](./03_kernel_semantics_and_memory.md#输出块怎样分给多个程序) |
+| 循环任务编号 | $t_{p,q}=p+qP<T$ | $0\le p<P$、 $q\ge0$；按实际网格步进，合法 tile 归属余数唯一 | [04 输出块分工](./04_attention_and_inference_data_paths.md#persistent-output-tile-assignment) |
 | 扁平编号到二维块 | $r=\lfloor t/N_{\mathrm{tile}}\rfloor$， $c=t\bmod N_{\mathrm{tile}}$ | $N_{\mathrm{tile}}=\lceil N/B_N\rceil$；除数是 tile 列数，不是矩阵元素列数 | [Part 03 · 06 持久化 GEMM](../../03_Triton_Kernels/06_Triton_Persistent_GEMM_and_Tile_Scheduling.md) |
 | 激活后相乘的逻辑读写 | 分离 $5Eb$，融合 $3Eb$ | $E$ 个元素，每元素 $b$ 字节；中间值只有当前消费者、类型一致且省去独立写回。不是实测 HBM 流量 | [02 中间张量读写](./02_graph_compilation_and_fusion.md#两次调用之间-中间张量经历了什么) |
 

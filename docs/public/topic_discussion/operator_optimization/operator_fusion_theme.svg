@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640" role="img" aria-labelledby="title desc">
+  <title id="title">融合改变了哪些中间数据的去向</title>
+  <desc id="desc">四列并列展示逐元素、归约、矩阵尾部融合及通信计算协作的进阶方向。前三列强调中间值在局部计算中直接消费，第四列强调远端数据块的就绪与消费条件。各列都需要核对使用者、精度、依赖和资源，并比较完整调用。此图不表示通信融合已有本库实验结果。</desc>
+  <defs>
+    <marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52677f"/></marker>
+    <style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:26px;font-weight:700}.head{font-size:18px;font-weight:700}.body{font-size:16px}.small{font-size:14px;fill:#475569}.panel{stroke-width:1.5;rx:18}.node{stroke-width:2;rx:13}.edge{fill:none;stroke:#52677f;stroke-width:2.5;marker-end:url(#arrow)}.check{fill:none;stroke:#52677f;stroke-width:2.5;stroke-dasharray:6 5;marker-end:url(#arrow)}</style>
+  </defs>
+  <rect width="1200" height="640" rx="24" fill="#f8fafc"/>
+  <text x="40" y="46" class="title">融合：让中间结果在哪里被直接消费？</text>
+  <text x="40" y="78" class="body">图编译与手写内核提供不同控制入口；下面四列是并列问题，不是依次升级的步骤。</text>
+
+  <rect x="40" y="112" width="250" height="393" class="panel" fill="#eff6ff" stroke="#93c5fd" data-layout-role="panel"/>
+  <text x="165" y="144" text-anchor="middle" class="head">逐元素融合</text>
+  <rect x="55" y="175" width="220" height="70" class="node" fill="#fff" stroke="#60a5fa"/>
+  <text x="165" y="204" text-anchor="middle" class="head">输入 x、y</text>
+  <text x="165" y="229" text-anchor="middle" class="small">相同形状，先激活再相乘</text>
+  <rect x="55" y="285" width="220" height="70" class="node" fill="#ecfdf5" stroke="#34d399"/>
+  <text x="165" y="314" text-anchor="middle" class="head">激活值直接参与乘法</text>
+  <text x="165" y="339" text-anchor="middle" class="small">中间向量留在局部计算中</text>
+  <rect x="55" y="395" width="220" height="70" class="node" fill="#fff" stroke="#60a5fa"/>
+  <text x="165" y="424" text-anchor="middle" class="head">最终向量</text>
+  <text x="165" y="449" text-anchor="middle" class="small">减少激活张量的写回与读取</text>
+  <path d="M165 245V285" class="edge"/><path d="M165 355V395" class="edge"/>
+
+  <rect x="330" y="112" width="250" height="393" class="panel" fill="#eff6ff" stroke="#93c5fd" data-layout-role="panel"/>
+  <text x="455" y="144" text-anchor="middle" class="head">归约与元素计算融合</text>
+  <rect x="345" y="175" width="220" height="70" class="node" fill="#fff" stroke="#60a5fa"/>
+  <text x="455" y="204" text-anchor="middle" class="head">一行输入</text>
+  <text x="455" y="229" text-anchor="middle" class="small">统计均方值或指数和等</text>
+  <rect x="345" y="285" width="220" height="70" class="node" fill="#ecfdf5" stroke="#34d399"/>
+  <text x="455" y="314" text-anchor="middle" class="head">统计量参与逐元素计算</text>
+  <text x="455" y="339" text-anchor="middle" class="small">局部归约后用于归一化</text>
+  <rect x="345" y="395" width="220" height="70" class="node" fill="#fff" stroke="#60a5fa"/>
+  <text x="455" y="424" text-anchor="middle" class="head">归一化输出</text>
+  <text x="455" y="449" text-anchor="middle" class="small">减少中间数组的反复搬运</text>
+  <path d="M455 245V285" class="edge"/><path d="M455 355V395" class="edge"/>
+
+  <rect x="620" y="112" width="250" height="393" class="panel" fill="#eff6ff" stroke="#93c5fd" data-layout-role="panel"/>
+  <text x="745" y="144" text-anchor="middle" class="head">矩阵尾部融合</text>
+  <rect x="635" y="175" width="220" height="70" class="node" fill="#fff" stroke="#60a5fa"/>
+  <text x="745" y="204" text-anchor="middle" class="head">完整矩阵乘结果</text>
+  <text x="745" y="229" text-anchor="middle" class="small">K 维全部累加后</text>
+  <rect x="635" y="285" width="220" height="70" class="node" fill="#ecfdf5" stroke="#34d399"/>
+  <text x="745" y="314" text-anchor="middle" class="head">列偏置与激活</text>
+  <text x="745" y="339" text-anchor="middle" class="small">直接消费累加结果</text>
+  <rect x="635" y="395" width="220" height="70" class="node" fill="#fff" stroke="#60a5fa"/>
+  <text x="745" y="424" text-anchor="middle" class="head">输出矩阵块</text>
+  <text x="745" y="449" text-anchor="middle" class="small">省中间写回，保留参考舍入</text>
+  <path d="M745 245V285" class="edge"/><path d="M745 355V395" class="edge"/>
+
+  <rect x="910" y="112" width="250" height="393" class="panel" fill="#fff7ed" stroke="#fdba74" data-layout-role="panel"/>
+  <text x="1035" y="139" text-anchor="middle" class="head">通信—计算融合</text>
+  <text x="1035" y="162" text-anchor="middle" class="small">进阶方向：按块就绪与消费</text>
+  <rect x="925" y="175" width="220" height="70" class="node" fill="#fff" stroke="#fb923c"/>
+  <text x="1035" y="204" text-anchor="middle" class="head">远端输入行块</text>
+  <text x="1035" y="229" text-anchor="middle" class="small">等待所需数据到齐并可见</text>
+  <rect x="925" y="285" width="220" height="70" class="node" fill="#fff7ed" stroke="#fb923c"/>
+  <text x="1035" y="314" text-anchor="middle" class="head">就绪块参与矩阵乘</text>
+  <text x="1035" y="339" text-anchor="middle" class="small">其他块可继续传输</text>
+  <rect x="925" y="395" width="220" height="70" class="node" fill="#fff" stroke="#fb923c"/>
+  <text x="1035" y="424" text-anchor="middle" class="head">对应输出行</text>
+  <text x="1035" y="449" text-anchor="middle" class="small">消费结束后再复用输入缓冲</text>
+  <path d="M1035 245V285" class="edge"/><path d="M1035 355V395" class="edge"/>
+
+  <rect x="40" y="545" width="1120" height="65" class="node" fill="#f5f3ff" stroke="#a78bfa"/>
+  <text x="600" y="572" text-anchor="middle" class="head">共同核对：其他使用者 · 数值与依赖 · 寄存器／共享内存 · 完整调用耗时</text>
+  <text x="600" y="596" text-anchor="middle" class="small">实线表示生成或消费；虚线表示检查条件。局部节省与新增准备、同步和资源代价一起比较。</text>
+  <path d="M165 465V545" class="check"/><path d="M455 465V545" class="check"/>
+  <path d="M745 465V545" class="check"/><path d="M1035 465V545" class="check"/>
+</svg>

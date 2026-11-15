@@ -6,8 +6,8 @@
 <text x="640" y="76" text-anchor="middle" class="sub">先保留计算语义，再检查改写与目标条件；声明满足后仍需加载、数值对照和计时</text>
 <rect x="350" y="110" width="580" height="80" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="640" y="141" text-anchor="middle" class="head">固定计算：矩阵乘 → 加偏置 → 激活</text><text x="640" y="168" text-anchor="middle" class="body">输入、输出与数值要求保持一致</text>
 <rect x="200" y="280" width="350" height="80" rx="14" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text x="375" y="311" text-anchor="middle" class="head">检查图变换改变了什么</text><text x="375" y="338" text-anchor="middle" class="body">启动次数、中间读写与布局代价</text>
-<rect x="730" y="280" width="350" height="80" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="905" y="311" text-anchor="middle" class="head">检查目标能否执行</text><text x="905" y="338" text-anchor="middle" class="body">算子、精度、形状与工作区</text>
-<rect x="450" y="430" width="380" height="70" rx="14" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text x="640" y="461" text-anchor="middle" class="head">保留可行的执行路径</text><text x="640" y="488" text-anchor="middle" class="body">原始或融合调用 → 实际验证</text>
+<rect x="730" y="280" width="350" height="80" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="905" y="311" text-anchor="middle" class="head">核对目标支持声明</text><text x="905" y="338" text-anchor="middle" class="body">算子、精度、动态支持与工作区</text>
+<rect x="450" y="430" width="380" height="70" rx="14" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/><text x="640" y="461" text-anchor="middle" class="head">选择候选，再加载与执行</text><text x="640" y="488" text-anchor="middle" class="body">原始或融合调用 → 数值与耗时</text>
 <path d="M500 190V235H375V280" class="edge"/>
 <path d="M780 190V235H905V280" class="edge"/>
 <path d="M375 360V465H450" class="edge"/>

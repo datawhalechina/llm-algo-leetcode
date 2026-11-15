@@ -1,6 +1,6 @@
 # 12. TensorCore and Mixed Precision | Tensor Core 与混合精度
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `硬件系统`, `Tensor Core`, `混合精度` | **目标人群：** 需要理解低精度训练与推理成本的学习者
+**难度：** Medium | **环境：** CPU-first | **标签：** `硬件系统`, `Tensor Core`, `混合精度` | **目标人群：** 系统性能入门者
 
 > 🚀 **云端运行环境**
 >
@@ -14,141 +14,132 @@
 
 ## 本节导读
 
-混合精度会为存储、计算和累加选择不同数据类型，并尝试使用 Tensor Core 加速矩阵运算。位宽降低可能减少容量和搬运，但硬件路径与数值稳定性仍需分别检查。
+同样一个4096×4096张量，用FP32存储需64 MiB，换成FP16或BF16需32 MiB。但输入存储变小，不代表累加器、输出或训练状态都随之减半，也不保证采用了某条矩阵指令。
 
-本节建立“数据类型 → 矩阵形状 → 累加精度 → 执行条件”的关系。完成后，你应能区分理论低精度收益与真实 Tensor Core 路径，并判断何时需要进一步验证吞吐和数值误差。
+本节先核对矩阵运算量，再分别计算各类张量的存储，区分输入、乘法与累加精度。这些判断支撑算子优化的矩阵路径选择，具体实现条件和指令证据继续在23节核对。
 
+**关键词：** 矩阵乘加、输入存储、累加精度、混合精度
 
-**关键词：** `FP16`, `BF16`, `Tensor Core`
-
-![本节概念关系](../public/01_Hardware_Math_and_Systems/12_tensorcore_precision_map.svg)
+![数据格式、矩阵路径与精度分配](../public/01_Hardware_Math_and_Systems/12_tensorcore_precision_map.svg)
 
 ---
 
 ## 前置阅读
 
-**导语：** 先掌握数据类型和 GPU 显存层级，再看 Tensor Core 如何处理矩阵乘加，以及混合精度如何在吞吐、显存和稳定性之间取舍。
+先区分数值表示与GPU资源，再计算不同精度下的工作量和字节数。
 
-- [Part 01 · 01 数据类型与精度](./01_Data_Types_and_Precision.md)
-- [Part 01 · 03 GPU 架构与显存](./03_GPU_Architecture_and_Memory.md)
-- [Part 01 · 06 显存计算与 ZeRO](./06_VRAM_Calculation_and_ZeRO.md)
+- [01 数据类型与精度](./01_Data_Types_and_Precision.md)：表示范围、精度与元素字节数。
+- [03 GPU架构与内存层次](./03_GPU_Architecture_and_Memory.md)：矩阵计算资源、工作集和存储层次。
 
-## Q1：Tensor Core 到底是什么，为什么它比普通 CUDA Core 更适合矩阵计算？
+## Q1：矩阵乘加打包后，运算量为什么不变？
 
+矩阵乘法（GEMM）的左输入为M×K，右输入为K×N，输出含M×N个元素。每个输出累加K个乘积，按一次乘法与一次加法各计一次浮点运算，共约2MNK次；这里忽略额外缩放和数据转换。融合乘加（FMA）处理标量乘加，矩阵乘加（MMA）则用受支持的矩阵块执行相应工作。
 
-Tensor Core 不是“更快的标量算术单元”，而是专门为矩阵乘加设计的硬件路径。普通 CUDA Core 更像是按元素执行标量 FMA，而 Tensor Core 会把一小块矩阵乘加打包成一次 MMA（Matrix Multiply-Accumulate）完成。
+Tensor Core是矩阵乘加的硬件路径。将工作分块打包可以提高吞吐与数据复用，但不会把同一矩阵乘所需的2MNK变少。一个16×16×16逻辑子问题对应8192 FLOPs，实际要映射多少条指令，还取决于目标架构、精度与实现。
 
-这件事的重要性在于：大模型里最贵的计算几乎都来自 GEMM，也就是矩阵乘法。如果计算单元一次能处理更多乘加，且数据复用路径更短，那么同样的时钟预算就能完成更多工作。
+### Q1 机制计算器：先核对小矩阵，再扩大规模
 
-混合精度和 Tensor Core 的关系也在这里：低精度输入可以让乘法吞吐更高，而高精度累加器保住结果稳定性。也就是说，Tensor Core 不是单独在“提速”，而是在用更合适的数据组织方式把吞吐做上去。
+用2×3输出、归约维度4手算48 FLOPs，再计算16×16×16逻辑子问题与1024维矩阵。
 
-### Q1小验证：矩阵计算为什么更适合打包执行
-
-把标量 FMA 和块状 MMA 的思路对比一下，观察矩阵块处理如何改变单位时间内的计算量。
 
 ```python
-def gemm_flops(m, n, k):
-    """计算 dense GEMM 的乘加 FLOPs 数量；不代表硬件实际耗时。"""
-    if min(m, n, k) <= 0:
-        raise ValueError('m、n、k 必须为正数')
+def gemm_flops(m: int, n: int, k: int) -> int:
+    """乘加按两次运算计，返回矩阵乘的2MNK，不估算指令数或耗时。"""
+    if any(type(dim) is not int or dim <= 0 for dim in (m, n, k)):
+        raise ValueError("m、n、k须为正整数")
     return 2 * m * n * k
 
-# 一个 1024x1024 的矩阵乘法
-m = n = k = 1024
-flops = gemm_flops(m, n, k)
-print(f'GEMM FLOPs: {flops / 1e9:.2f} GFLOPs')
-print('Tensor Core 的意义不是改变 FLOPs 数量，而是提高单位时间可完成的矩阵乘加密度。')
+
+assert gemm_flops(m=2, n=3, k=4) == 48
+assert gemm_flops(m=16, n=16, k=16) == 8192
+assert gemm_flops(m=1, n=1, k=1) == 2
+work = gemm_flops(m=1024, n=1024, k=1024)
+assert work == 2_147_483_648
+print(f"1024维矩阵乘：{work:,} FLOPs；是否更快需观察实际执行。")
+
 ```
 
-## Q2：FP16、BF16、FP32 的差别在哪里，为什么混合精度不会简单等于“越低越差”？
+## Q2：输入存储、乘法与累加为什么要分开记录？
 
+存储类型决定张量每个元素占多少字节，乘法类型决定矩阵路径如何处理输入，累加类型决定中间和采用什么精度。例如给定BF16输入、BF16乘法与FP32累加的路径，输入仍是两字节元素，FP32累加器则需要单独安排。较高精度累加可以减轻累积舍入，但不能恢复输入转换已经丢失的信息，也不能保证整个模型稳定。
 
-精度选择要同时看表示范围、每元素字节数和计算路径。混合精度的做法不是把所有数据都改成最低精度，而是让适合低精度的输入走低精度路径，让敏感的累加或状态保留较高精度。下面的表格先把常见 dtype 放在同一口径下。
+FP32输入还可能使用TF32矩阵计算模式，输入存储仍为四字节；TF32不是这里可直接替换为更小存储张量的dtype。FP8则包含不同数值格式与缩放方案，表中的一字节只是元素载荷，不含量化元数据。各类路径的实际支持与误差需分别核对。
 
-| dtype | 每元素字节数 | 主要特点 | 常见用途 | 需要 GPU 验证的内容 |
-| --- | ---: | --- | --- | --- |
-| FP32 | 4 | 范围和精度较高 | 数值稳定基线、累加 | 实际吞吐与峰值显存 |
-| FP16 | 2 | 存储和传输成本较低，动态范围较窄 | Tensor Core 输入、推理 | 是否溢出、是否走硬件加速 |
-| BF16 | 2 | 指数范围接近 FP32，尾数精度较低 | 训练和部分推理路径 | 硬件是否原生支持、吞吐变化 |
-| FP8 | 1 | 字节数更低，但范围和精度约束更强 | 特定硬件和量化路径 | kernel 支持与任务质量 |
+| 存储类型 | 每元素字节数 | 表示特点 | 需要继续核对 |
+| --- | ---: | --- | --- |
+| FP32 | 4 | 较高表示精度与较宽范围 | 是否采用IEEE FP32或允许TF32计算 |
+| FP16 | 2 | 字节较少，范围小于FP32 | 转换溢出、下溢与累加方式 |
+| BF16 | 2 | 指数范围接近FP32，有效精度较低 | 输入误差、原生支持与累加方式 |
+| FP8 | 1 | 范围与精度随具体格式变化 | 格式、缩放、内核支持及质量 |
 
-### Q2小验证：不同精度的显存占用差多少？
+### Q2 机制计算器：相同元素数量对应多少存储？
 
-同样一个张量，只改 dtype，就能直观看到显存和带宽压力的变化。
+固定4096×4096元素，仅改变每元素字节数。输出使用MiB，按1024进位；计算的是张量载荷，不是运行时峰值。
+
 
 ```python
-def tensor_storage_bytes(numel, dtype_bytes):
-    """计算张量理论存储字节数，不包含 allocator 和临时 workspace。"""
-    if numel < 0 or dtype_bytes <= 0:
-        raise ValueError('numel 不能为负数，dtype_bytes 必须为正数')
+def tensor_storage_bytes(numel: int, dtype_bytes: int) -> int:
+    """返回张量载荷字节数；numel可为零，元素字节数须为正整数。"""
+    if type(numel) is not int or numel < 0 or type(dtype_bytes) is not int or dtype_bytes <= 0:
+        raise ValueError("元素数须为非负整数，元素字节数须为正整数")
     return numel * dtype_bytes
 
-shape = (4096, 4096)
-numel = shape[0] * shape[1]
-for name, bytes_per_elem in [('FP32', 4), ('BF16/FP16', 2), ('FP8', 1)]:
-    size_mb = tensor_storage_bytes(numel, bytes_per_elem) / 1024 / 1024
-    print(f'{name:8s}: {size_mb:8.2f} MB')
 
-assert tensor_storage_bytes(1024, 4) == 4096
-assert tensor_storage_bytes(1024, 2) == 2048
-print('✅ dtype 存储量计算通过；实际 GPU peak memory 仍需单独测量')
+numel = 4096 * 4096
+sizes = {name: tensor_storage_bytes(numel=numel, dtype_bytes=width)
+         for name, width in (("FP32", 4), ("BF16/FP16", 2), ("FP8载荷", 1))}
+assert sizes["FP32"] == 67_108_864
+assert sizes["BF16/FP16"] == 33_554_432
+assert sizes["FP8载荷"] == 16_777_216
+assert tensor_storage_bytes(numel=0, dtype_bytes=4) == 0
+for name, size in sizes.items():
+    print(f"{name}: {size / 1024**2:g} MiB")
+
 ```
 
-## Q3：精度选择为什么会同时影响内存、吞吐和计算路径？
+## Q3：一类张量降精度后，总存储为什么未必减半？
 
+参数、激活和KV缓存可以采用不同存储格式。以一组简化推理张量为例：参数有1 Mi个元素，激活2 Mi个，KV缓存1 Mi个，全部FP32时共16 MiB；若只将激活和KV改为两字节元素，参数仍占4 MiB，总量降到10 MiB，而不是8 MiB。实际需要转换和搬运多少字节，还取决于各类张量的使用次数。
 
-精度不是单纯的数值选择，它会同时改写三个成本：
+下面分别传入三种存储宽度，不把它们强行绑定为一个dtype。这个账目只含列出的三类张量；训练时还需计梯度、优化器状态等对象，实际执行还可能增加转换缓冲与工作区。输入存储与累加精度也不是同一份内存账目。
 
-1. **内存成本**：每个元素占多少字节，决定了模型参数、激活值和 KV cache 的体积。
-2. **传输成本**：同样的总字节数，搬运时间会直接影响带宽瓶颈是否明显。
-3. **计算路径成本**：某些硬件路径对特定低精度格式有专门加速，Tensor Core 就是典型例子。
+### Q3 对照验证：只改激活和KV，再与统一两字节比较
 
-这也是为什么低精度推理、混合精度训练和吞吐比较经常放在一起讨论：dtype 会同时改变模型执行时的内存、带宽和计算路径。
+Mi个元素表示1024×1024个元素。先核对16 MiB基线，再比较10 MiB的混合存储与8 MiB的统一两字节假设。
 
-因此，看精度问题时，不能只问“还能不能算对”，还要问“这条路径是不是更省内存、更少搬运、也更容易跑满硬件”。下面的 INT8 结果只表示每元素 1 字节的理论下界；真实量化模型还要考虑 scale、zero-point、packing、metadata 和对应 kernel。
-
-### Q3小验证：字节数如何影响模型体积
-
-把参数量固定，看看不同 dtype 对模型大小的直接影响。
 
 ```python
-def precision_impact_ledger(params, activation_elements, kv_elements, dtype_bytes):
-    """按同一 dtype 估算权重、激活和 KV Cache 的理论存储量。
-
-    结果不包含 optimizer state、CUDA allocator、workspace 或实际 kernel 吞吐。
-    """
-    values = (params, activation_elements, kv_elements)
-    if any(value < 0 for value in values) or dtype_bytes <= 0:
-        raise ValueError('元素数量不能为负数，dtype_bytes 必须为正数')
-    return {
-        'weights_gb': round(tensor_storage_bytes(params, dtype_bytes) / 1e9, 3),
-        'activation_gb': round(tensor_storage_bytes(activation_elements, dtype_bytes) / 1e9, 3),
-        'kv_cache_gb': round(tensor_storage_bytes(kv_elements, dtype_bytes) / 1e9, 3),
+def precision_impact_ledger(
+    params: int, activation_elements: int, kv_elements: int,
+    weights_bytes: int, activation_bytes: int, kv_bytes: int,
+) -> dict:
+    """按三类张量各自的存储宽度，返回载荷字节数与总和。"""
+    sizes = {
+        "weights_bytes": tensor_storage_bytes(numel=params, dtype_bytes=weights_bytes),
+        "activation_bytes": tensor_storage_bytes(numel=activation_elements, dtype_bytes=activation_bytes),
+        "kv_cache_bytes": tensor_storage_bytes(numel=kv_elements, dtype_bytes=kv_bytes),
     }
+    return sizes | {"total_bytes": sum(sizes.values())}
 
-params = 7_000_000_000
-activation_elements = 2_000_000_000
-kv_elements = 1_000_000_000
-for name, bytes_per_elem in [('FP32', 4), ('BF16/FP16', 2), ('INT8', 1)]:
-    ledger = precision_impact_ledger(params, activation_elements, kv_elements, bytes_per_elem)
-    print(name, '->', ledger)
 
-fp32 = precision_impact_ledger(params, activation_elements, kv_elements, 4)
-bf16 = precision_impact_ledger(params, activation_elements, kv_elements, 2)
-assert bf16['weights_gb'] == fp32['weights_gb'] / 2
-assert bf16['activation_gb'] == fp32['activation_gb'] / 2
-assert bf16['kv_cache_gb'] == fp32['kv_cache_gb'] / 2
-try:
-    precision_impact_ledger(params, activation_elements, kv_elements, 0)
-except ValueError:
-    print('✅ dtype 字节数校验通过')
-else:
-    raise AssertionError('dtype_bytes 为 0 时应报错')
+elements = dict(params=1024**2, activation_elements=2 * 1024**2, kv_elements=1024**2)
+baseline = precision_impact_ledger(**elements, weights_bytes=4, activation_bytes=4, kv_bytes=4)
+mixed = precision_impact_ledger(**elements, weights_bytes=4, activation_bytes=2, kv_bytes=2)
+uniform_two_bytes = precision_impact_ledger(**elements, weights_bytes=2, activation_bytes=2, kv_bytes=2)
+assert baseline["total_bytes"] == 16 * 1024**2
+assert mixed["total_bytes"] == 10 * 1024**2
+assert mixed["weights_bytes"] == baseline["weights_bytes"] == 4 * 1024**2
+assert mixed["activation_bytes"] == baseline["activation_bytes"] / 2
+assert uniform_two_bytes["total_bytes"] == 8 * 1024**2
+for name, row in (("全部FP32", baseline), ("只改激活与KV", mixed), ("统一两字节假设", uniform_two_bytes)):
+    print(f"{name}: {row['total_bytes'] / 1024**2:g} MiB")
+
 ```
 
 ## 相关阅读
-本节从数据类型继续进入混合精度训练与低比特适配；阅读时要区分理论字节数、硬件执行路径和任务质量。
-- [01. 数据类型与精度](./01_Data_Types_and_Precision.md)
-- [PyTorch Automatic Mixed Precision 文档](https://pytorch.org/docs/stable/amp.html)
-- [26. QLoRA 与 4-bit 量化](../02_PyTorch_Algorithms/26_QLoRA_and_4bit_Quantization.md)
----
+
+从精度账目进入具体矩阵路径，再按训练或内核问题继续验证。
+
+- [23 Tensor Core矩阵路径](./23_TensorCore_Deep_Dive.md)：核对精度组合、实现条件与指令观察。
+- [PyTorch 2.11 AMP说明](https://docs.pytorch.org/docs/2.11/amp.html)：查看按操作选择计算类型，区分自动转换与数值保护。
+- [PyTorch 2.11 TF32说明](https://docs.pytorch.org/docs/2.11/notes/cuda.html#tensorfloat-32-tf32-on-ampere-and-later-devices)：区分FP32输入存储与内部矩阵计算模式。

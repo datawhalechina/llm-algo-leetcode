@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="590" viewBox="0 0 1200 590">
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
     <style>
       text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}
       .title{font-size:27px;font-weight:700}.sub{font-size:15px;fill:#475569}
@@ -34,7 +34,7 @@
   <rect x="350" y="170" width="212" height="105" fill="#fff" stroke="#4ade80" class="item"/>
   <text x="456" y="201" text-anchor="middle" class="head">Tensor Core</text>
   <text x="456" y="228" text-anchor="middle" class="body">矩阵乘加 MMA</text>
-  <text x="456" y="250" text-anchor="middle" class="small">dtype × 形状 × 对齐</text>
+  <text x="456" y="250" text-anchor="middle" class="small">精度组合 × 架构 × 实现</text>
   <rect x="350" y="318" width="212" height="88" fill="#fff" stroke="#4ade80" class="item"/>
   <text x="456" y="348" text-anchor="middle" class="head">算子与库支持</text>
   <text x="456" y="374" text-anchor="middle" class="body">kernel 是否使用加速路径</text>
@@ -45,7 +45,7 @@
   <text x="638" y="146" class="group">混合精度分配</text>
   <rect x="640" y="170" width="212" height="105" fill="#fff" stroke="#f59e0b" class="item"/>
   <text x="746" y="201" text-anchor="middle" class="head">按路径分配 dtype</text>
-  <text x="746" y="228" text-anchor="middle" class="body">计算 · 存储 · 梯度</text>
+  <text x="746" y="228" text-anchor="middle" class="body">存储 · 乘法 · 累加</text>
   <text x="746" y="250" text-anchor="middle" class="small">不必使用同一种格式</text>
   <rect x="640" y="318" width="212" height="88" fill="#fff" stroke="#f59e0b" class="item"/>
   <text x="746" y="348" text-anchor="middle" class="head">数值保护</text>
@@ -71,6 +71,6 @@
 
   <!-- internal relations -->
   <path d="M166 275V318" class="branch"/><path d="M456 275V318" class="branch"/>
-  <path d="M746 275V318" class="branch"/><text x="762" y="300" class="label">保护稳定性</text>
+  <path d="M746 275V318" class="branch"/><text x="762" y="300" class="label">检查误差</text>
   <path d="M1035 275V318" class="branch"/><text x="1051" y="300" class="label">检查质量</text>
 </svg>

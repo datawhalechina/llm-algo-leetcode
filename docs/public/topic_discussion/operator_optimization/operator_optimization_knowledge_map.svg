@@ -5,12 +5,12 @@
   <rect class="bg" width="1200" height="640" rx="20"/><text x="55" y="55" class="title">算子优化知识地图：基础、实现与独立复测</text>
   <rect class="panel" x="45" y="90" width="320" height="390" fill="#eff6ff" stroke="#60a5fa"/><text x="70" y="122" class="tag">Part01 / 02 · 随计算引入原理与语义</text>
   <rect class="box blue" x="75" y="150" width="260" height="85"/><text x="100" y="184" class="h">成本与硬件模型</text><text x="100" y="211" class="s">计算量 · 搬运量 · 存储层次</text>
-  <rect class="box blue" x="75" y="280" width="260" height="85"/><text x="100" y="314" class="h">图判断与算法语义</text><text x="100" y="341" class="s">依赖、布局、PyTorch 参考</text>
+  <rect class="box blue" x="75" y="280" width="260" height="85"/><text x="100" y="314" class="h">图融合与算法语义</text><text x="100" y="341" class="s">中间值使用者 · PyTorch参考</text>
   <rect class="box blue" x="75" y="410" width="260" height="45"/><text x="100" y="439" class="h">执行约束：线程协作与精度</text>
 
-  <rect class="panel" x="440" y="90" width="320" height="390" fill="#ecfdf5" stroke="#34d399"/><text x="465" y="122" class="tag">Part03 · 从向量加法开始实现与核对</text>
-  <rect class="box green" x="470" y="150" width="260" height="85"/><text x="495" y="184" class="h">访存、融合与任务分配</text><text x="495" y="211" class="s">常用算子 · Attention · 权重与路由</text>
-  <rect class="box green" x="470" y="280" width="260" height="85"/><text x="495" y="314" class="h">数值、编译产物与执行</text><text x="495" y="341" class="s">输入约束 · 特化条件 · 调用身份</text>
+  <rect class="panel" x="440" y="90" width="320" height="390" fill="#ecfdf5" stroke="#34d399"/><text x="465" y="122" class="tag">Part03 · 内核、编译观察与接入</text>
+  <rect class="box green" x="470" y="150" width="260" height="85"/><text x="495" y="180" class="h">融合、分块与任务分配</text><text x="495" y="205" class="s">逐元素 · 归约 · 矩阵尾部</text><text x="495" y="226" class="s">Attention · 权重与路由</text>
+  <rect class="box green" x="470" y="280" width="260" height="85"/><text x="495" y="314" class="h">图捕获、编译产物与执行</text><text x="495" y="341" class="s">输入约束 · 特化条件 · 调用身份</text>
   <rect class="box green" x="470" y="410" width="260" height="45"/><text x="495" y="439" class="h">按目标接入算子或组件</text>
 
   <rect class="panel" x="835" y="90" width="320" height="390" fill="#fff7ed" stroke="#fb923c"/><text x="860" y="122" class="tag">Part04 · CUDA、运行时与选型对照</text>

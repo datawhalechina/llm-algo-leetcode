@@ -14,9 +14,9 @@
 
 ## 本节导读
 
-吞吐受限不一定来自单个计算内核过慢，也可能来自拷贝、计算和同步被排成了不必要的串行链。本节从任务依赖出发，解释 Stream 顺序、事件同步和异步提交怎样共同决定可重叠区间。
+CUDA流（Stream）是设备上的操作队列，同一流内按提交顺序执行。下一批输入的10 ms搬运若与当前批20 ms计算独立，两者可能重叠；当前批的计算则需要等待自身输入。异步提交允许主机先继续工作，设备完成时刻仍由依赖和资源决定。
 
-完成后，你应能区分主机提交顺序、设备执行顺序和真实依赖，并使用时间线判断重叠是否发生、同步是否暴露在关键路径上。
+本节先比较这两种依赖，再检查事件、锁页内存和并发条件，最后计算互不重叠区间的时间占比。这些判断支撑算子优化的运行时安排；实际传输继续在Part04·10验证，更复杂的多批依赖在29节计算。
 
 **关键词：** CUDA Stream、异步执行（asynchrony）、重叠（overlap）
 
@@ -25,92 +25,103 @@
 ---
 ## 前置阅读
 
-**导语：** 先理解阶段放置和设备执行顺序，再看 Stream 与 Event 怎样表达异步依赖。
+先计算阶段放置与搬运成本，再看队列如何约束这些阶段。
 
-- [07. CPU and GPU Heterogeneous Scheduling | CPU 与 GPU 异构调度](./07_CPU_GPU_Heterogeneous_Scheduling.md)
-- [15. CUDA Execution Model | CUDA 执行模型](./15_CUDA_Execution_Model.md)
-- [Group 1D: Execution Models, Asynchrony and Operator Mapping | 1D: 执行模型、异步调度与算子映射](./1D.md)
+- [07 CPU与GPU异构调度](./07_CPU_GPU_Heterogeneous_Scheduling.md)：完整路径、依赖前缀与可隐藏时间。
+- [15 CUDA执行模型](./15_CUDA_Execution_Model.md)：区分内核内部任务组织与内核之间的队列安排。
 
 ## Q1：不同 Stream 中的任务什么时候可以重叠？
 
 同一 Stream 内的任务按顺序执行，不同 Stream 之间还要满足数据依赖与资源条件。只有计算不依赖当前搬运的数据、且设备能同时提供相应资源时，才有机会重叠。例如，下一批输入搬运可以与当前批计算独立；当前批计算则必须等待自身输入就绪。
 
-下面用两个独立阶段说明理想上限：忽略争用和提交开销时，重叠部分取两段时间的较小值，总时间取较大值；末尾同步开销仍串行加入。若计算依赖这次搬运，就使用两段时间之和。
+下面比较两种依赖模型：忽略争用和提交开销时，独立阶段的重叠部分取两段时间的较小值，总时间取较大值；末尾同步开销仍串行加入。若计算依赖这次搬运，就使用两段时间之和。主图跨批窗口假设A输入已就绪，24 ms与34 ms不能直接作为单批请求的加速结论；完整两批工作量的对照在29节计算。
 
-### Q1小验证：只改变数据依赖，比较完成时间
+### Q1 对照验证：只改变数据依赖，比较完成时间
+
+沿主图固定搬运10 ms、计算20 ms和末尾同步4 ms。独立时估算24 ms，相依时34 ms；再检查没有搬运与空窗口。
 
 
 ```python
 import math
 
 
-def stream_timeline(copy_ms, compute_ms, sync_ms, independent=True):
-    """估算两阶段时间；independent 表示计算不依赖这次搬运。"""
-    values = (copy_ms, compute_ms, sync_ms)
-    if any(not math.isfinite(value) or value < 0 for value in values):
-        raise ValueError('阶段时间必须为有限非负数')
+def stream_timeline(
+    copy_ms: float, compute_ms: float, sync_ms: float, independent: bool = True,
+) -> dict:
+    """按两个资源可并发的阶段与末尾开销，返回估算ms；空窗口时间比为None。"""
+    if any(type(value) not in (int, float) or not math.isfinite(value) or value < 0
+           for value in (copy_ms, compute_ms, sync_ms)):
+        raise ValueError("阶段时间须为有限非负实数")
     if type(independent) is not bool:
-        raise ValueError('independent 必须是布尔值')
+        raise ValueError("independent须为布尔值")
     serial_ms = copy_ms + compute_ms + sync_ms
-    elapsed_ms = (max(copy_ms, compute_ms) if independent
-                  else copy_ms + compute_ms) + sync_ms
+    elapsed_ms = (max(copy_ms, compute_ms) if independent else copy_ms + compute_ms) + sync_ms
     return {
-        'serial_ms': serial_ms,
-        'estimated_elapsed_ms': elapsed_ms,
-        'hidden_ms': serial_ms - elapsed_ms,
-        'speedup': serial_ms / elapsed_ms if elapsed_ms else 1.0,
+        "serial_ms": serial_ms, "estimated_elapsed_ms": elapsed_ms,
+        "hidden_ms": serial_ms - elapsed_ms,
+        "speedup": serial_ms / elapsed_ms if elapsed_ms else None,
     }
 
 
-for independent in [True, False]:
-    print(independent, '->', stream_timeline(10, 20, 4, independent))
-assert stream_timeline(10, 20, 4)['hidden_ms'] == 10
-assert stream_timeline(10, 20, 4, independent=False)['hidden_ms'] == 0
-assert stream_timeline(0, 20, 4)['speedup'] == 1.0
+inputs = dict(copy_ms=10, compute_ms=20, sync_ms=4)
+independent = stream_timeline(**inputs, independent=True)
+dependent = stream_timeline(**inputs, independent=False)
+assert independent["serial_ms"] == 34
+assert independent["estimated_elapsed_ms"] == 24 and independent["hidden_ms"] == 10
+assert dependent["estimated_elapsed_ms"] == 34 and dependent["hidden_ms"] == 0
+assert stream_timeline(copy_ms=0, compute_ms=20, sync_ms=4)["speedup"] == 1
+assert stream_timeline(copy_ms=0, compute_ms=0, sync_ms=0)["speedup"] is None
+for name, result in (("独立数据", independent), ("相依数据", dependent)):
+    print(f"{name}: 完成于 {result['estimated_elapsed_ms']:g} ms，"
+          f"相对串行隐藏 {result['hidden_ms']:g} ms")
 
 ```
 
-## Q2：具备异步拷贝条件后，为什么还不能直接预测收益？
+## Q2：怎样让消费者等待输入，同时保留其他重叠机会？
 
-对主机与设备搬运，固定页内存是常见的异步拷贝条件之一；要获得重叠，还需要独立数据、合适的队列与可并行资源。任一条件缺失，计算器就不把搬运计入可隐藏时间。
+事件（Event）是在某个流中记录的进度标记。搬运流在输入传输后记录事件，计算流等待该事件后再使用输入；设备侧的事件等待可只约束相关消费者，主机不必为此阻塞到整个设备空闲。主机若立即读取回传结果，则需确认对应传输已完成。
 
-下面把这些条件作为显式输入，先计算理想可隐藏时间，再减去假设的暴露事件开销。开销大于隐藏时间时，净节省为负；这些输入应由实际时间线核实，而非根据 Stream 数量猜测。
+对于本例主机—设备异步搬运，锁页内存（Pinned Memory）是固定在主机内存、供传输使用的缓冲区；主机输入缓冲区在传输完成前须保持有效且内容不变，设备输入缓冲区也须保留到消费者用完；只有生命周期和输入就绪都满足，才能安全复用。下面固定使用不同流，分别检查锁页缓冲、独立数据和并发资源，再从理想隐藏时间减去给定的暴露事件开销。开销等于或超过隐藏时间时，净节省可能为零或负数。
 
-### Q2小验证：逐项撤掉重叠条件
+### Q2 对照验证：逐项撤掉条件，再改变事件开销
+
+布尔值是给定条件，不执行真实事件记录或传输。比较缺少一项条件、开销相等和开销更大的结果。
 
 
 ```python
-def overlap_candidate(copy_ms, compute_ms, event_overhead_ms=0.0,
-                      pinned_memory=True, independent=True,
-                      concurrent_resources=True):
-    """估算给定条件下的重叠空间，不执行异步拷贝。"""
-    values = (copy_ms, compute_ms, event_overhead_ms)
-    if any(not math.isfinite(value) or value < 0 for value in values):
-        raise ValueError('时间必须为有限非负数')
-    conditions = {
-        'pinned_memory': pinned_memory,
-        'independent': independent,
-        'concurrent_resources': concurrent_resources,
-    }
+def overlap_candidate(
+    copy_ms: float, compute_ms: float, event_overhead_ms: float = 0.0,
+    pinned_memory: bool = True, independent: bool = True, concurrent_resources: bool = True,
+) -> dict:
+    """在本例不同流、锁页缓冲模型中，返回缺少条件与估算隐藏/净节省ms。"""
+    if any(type(value) not in (int, float) or not math.isfinite(value) or value < 0
+           for value in (copy_ms, compute_ms, event_overhead_ms)):
+        raise ValueError("时间须为有限非负实数")
+    conditions = {"pinned_memory": pinned_memory, "independent": independent,
+                  "concurrent_resources": concurrent_resources}
     if any(type(value) is not bool for value in conditions.values()):
-        raise ValueError('重叠条件必须是布尔值')
+        raise ValueError("重叠条件须为布尔值")
     missing = [name for name, value in conditions.items() if not value]
     hidden = min(copy_ms, compute_ms) if not missing else 0.0
     return {
-        'missing_conditions': missing,
-        'ideal_hidden_ms': hidden,
-        'event_overhead_ms': event_overhead_ms,
-        'estimated_net_saved_ms': hidden - event_overhead_ms,
+        "missing_conditions": missing, "ideal_hidden_ms": hidden,
+        "event_overhead_ms": event_overhead_ms,
+        "estimated_net_saved_ms": hidden - event_overhead_ms,
     }
 
 
-print(overlap_candidate(10, 20, 1))
-assert overlap_candidate(10, 20, 1)['estimated_net_saved_ms'] == 9
-for condition in ['pinned_memory', 'independent', 'concurrent_resources']:
-    report = overlap_candidate(10, 20, 1, **{condition: False})
-    assert report['ideal_hidden_ms'] == 0
-    assert report['missing_conditions'] == [condition]
-assert overlap_candidate(1, 3, 3)['estimated_net_saved_ms'] == -2
+inputs = dict(copy_ms=10, compute_ms=20, event_overhead_ms=1)
+report = overlap_candidate(**inputs)
+assert report["ideal_hidden_ms"] == 10 and report["estimated_net_saved_ms"] == 9
+for condition in ("pinned_memory", "independent", "concurrent_resources"):
+    missing = overlap_candidate(**inputs, **{condition: False})
+    assert missing["ideal_hidden_ms"] == 0
+    assert missing["estimated_net_saved_ms"] == -1
+    assert missing["missing_conditions"] == [condition]
+assert overlap_candidate(**(inputs | {"event_overhead_ms": 10}))["estimated_net_saved_ms"] == 0
+assert overlap_candidate(copy_ms=1, compute_ms=3, event_overhead_ms=3)["estimated_net_saved_ms"] == -2
+print(f"给定条件齐全：理想隐藏 {report['ideal_hidden_ms']:g} ms，"
+      f"计入事件开销后净节省 {report['estimated_net_saved_ms']:g} ms")
 
 ```
 
@@ -120,48 +131,58 @@ assert overlap_candidate(1, 3, 3)['estimated_net_saved_ms'] == -2
 
 下面只接受已去除重叠的区间长度。不能把多个 Stream 的完整事件时长直接相加，也不能把最长类别直接当成已确认的瓶颈。
 
-### Q3小验证：用互不重叠的时间计算占比
+### Q3 对照验证：用互不重叠的时间计算占比
+
+区间已按计算、暴露搬运、暴露同步与空闲互斥分类。分别改变最长类别；比例保留完整精度，仅在展示时四舍五入。
 
 
 ```python
-def classify_timeline(kernel_ms, exposed_copy_ms, exposed_sync_ms, idle_ms):
-    """汇总互不重叠的暴露区间；最长类别不等于已确认的瓶颈。"""
-    parts = {
-        'kernel': kernel_ms,
-        'copy': exposed_copy_ms,
-        'sync': exposed_sync_ms,
-        'idle': idle_ms,
-    }
-    if any(not math.isfinite(value) or value < 0 for value in parts.values()):
-        raise ValueError('时间线字段必须是有限非负数')
+def classify_timeline(
+    kernel_ms: float, exposed_copy_ms: float, exposed_sync_ms: float, idle_ms: float,
+) -> dict:
+    """返回互斥时间总长、最长类别和占比；并列时按输入类别顺序展示一个。"""
+    parts = {"kernel": kernel_ms, "copy": exposed_copy_ms, "sync": exposed_sync_ms, "idle": idle_ms}
+    if any(type(value) not in (int, float) or not math.isfinite(value) or value < 0
+           for value in parts.values()):
+        raise ValueError("时间线字段须为有限非负实数")
     total_ms = sum(parts.values())
     if total_ms == 0:
-        raise ValueError('时间线总时间必须大于 0')
-    dominant = max(parts, key=parts.get)
+        raise ValueError("时间线总时间须大于0")
     return {
-        'total_ms': total_ms,
-        'dominant': dominant,
-        'fractions': {name: round(value / total_ms, 3) for name, value in parts.items()},
+        "total_ms": total_ms, "dominant": max(parts, key=parts.get),
+        "fractions": {name: value / total_ms for name, value in parts.items()},
     }
 
-plans = {
-    'kernel_longest': (18, 2, 1, 1),
-    'sync_longest': (6, 2, 12, 1),
-    'copy_longest': (5, 14, 2, 1),
-}
-for name, timeline in plans.items():
-    print(name, '->', classify_timeline(*timeline))
 
-assert classify_timeline(*plans['sync_longest'])['dominant'] == 'sync'
+cases = {
+    "kernel_longest": dict(kernel_ms=18, exposed_copy_ms=2, exposed_sync_ms=1, idle_ms=1),
+    "sync_longest": dict(kernel_ms=6, exposed_copy_ms=2, exposed_sync_ms=12, idle_ms=1),
+    "copy_longest": dict(kernel_ms=5, exposed_copy_ms=14, exposed_sync_ms=2, idle_ms=1),
+    "idle_longest": dict(kernel_ms=1, exposed_copy_ms=1, exposed_sync_ms=1, idle_ms=9),
+}
+reports = {name: classify_timeline(**values) for name, values in cases.items()}
+for name, expected in (("kernel_longest", "kernel"), ("sync_longest", "sync"),
+                       ("copy_longest", "copy"), ("idle_longest", "idle")):
+    assert reports[name]["dominant"] == expected
+    assert math.isclose(sum(reports[name]["fractions"].values()), 1.0)
+assert reports["kernel_longest"]["total_ms"] == 22
+assert reports["kernel_longest"]["fractions"]["kernel"] == 18 / 22
+assert classify_timeline(kernel_ms=1, exposed_copy_ms=1, exposed_sync_ms=0,
+                         idle_ms=0)["dominant"] == "kernel"
+for name, result in reports.items():
+    shares = {key: f"{value:.1%}" for key, value in result["fractions"].items()}
+    print(f"{name}: 总长 {result['total_ms']:g} ms，占比 {shares}")
 
 ```
 
 ## 继续检查重叠条件
 
-把估算接到真实运行时，分别记录输入就绪、任务提交和设备完成时刻，并注明所用资源。完整依赖链仍需等待，独立任务是否真正重叠要从执行轨迹判断；实际收益则由固定输入下的重复端到端计时核对。
+把估算接到真实运行时，分别记录输入就绪、任务提交和设备完成时刻，并注明所用资源。完整依赖链仍需等待，独立任务是否真正重叠要从执行轨迹判断；实际收益则由固定输入下的重复端到端计时核对。这里关注主机与设备之间的跨批搬运；单个内核内部从全局内存预取到共享内存的流水，使用的是块内数据就绪与覆盖顺序，继续见[Part04·09](../04_CUDA_and_System_Optimization/09_CUDA_Async_Copy_Pipeline.md)。
 
 ## 相关阅读
 
-- [29 CUDA Stream 高级调度](./29_CUDA_Stream_Advanced_Scheduling.md)：计算显式依赖与队列顺序共同约束的时间线。
-- [13 性能分析与瓶颈定位](./13_Profiling_and_Bottleneck_Analysis.md)：区分资源上限、低效率和暴露等待。
-- [性能分析：时间线、I/O 与关键路径](../topic_discussion/performance_analysis/03_time_breakdown_and_trace_reading.md)：核对实际执行轨迹中的等待与重叠。
+先在真实传输中核对等待和缓冲寿命，再扩展到多批次的完整依赖图。
+
+- [Part04·10 Stream与传输](../04_CUDA_and_System_Optimization/10_PyTorch_CUDA_Streams_and_Transfer.md)：跨流事件、输入就绪与内存生命周期。
+- [29 CUDA Stream高级调度](./29_CUDA_Stream_Advanced_Scheduling.md)：显式依赖、同队列顺序和多批流水线。
+- [PyTorch 2.11 CUDA语义](https://docs.pytorch.org/docs/2.11/notes/cuda.html#cuda-streams)：重点看CUDA streams与Use pinned memory buffers，对照同步和锁页缓冲的要求。

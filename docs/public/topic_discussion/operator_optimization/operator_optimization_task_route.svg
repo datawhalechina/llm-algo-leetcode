@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="title desc">
 <title id="title">算子优化 Task0–6 学习路线</title>
-<desc id="desc">从向量加法建立输出与耗时对照，再按成本选择图编译、基础内核、矩阵注意力或运行时干预。RoPE、变长、分页、量化与适配器按各自前置选学，不整体归入Task3。配置与实际执行在Task4核对，Part03的接口与同权重Block是Task6主验证出口，独立综合项目为后续扩展。</desc>
+<desc id="desc">从向量加法建立输出与耗时对照，再按成本选择图编译、基础内核、矩阵注意力或运行时干预。RoPE按Task2前置选学，变长与分页解码、量化及适配器按Task3前置选学。配置与实际执行在Task4核对，Part03的接口与同权重Block是Task6主验证出口，独立综合项目为后续扩展。</desc>
 <defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
 <style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:26px;font-weight:700}.head{font-size:19px;font-weight:700}.body{font-size:16px}.small{font-size:15px;fill:#475569}.line{fill:none;stroke:#475569;stroke-width:2.5;marker-end:url(#arrow)}.branch{fill:none;stroke:#475569;stroke-width:2.5;stroke-dasharray:7 5;marker-end:url(#arrow)}</style></defs>
 <rect width="1200" height="650" rx="24" fill="#f8fafc"/>
@@ -10,9 +10,9 @@
 <rect x="40" y="300" width="200" height="100" rx="16" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
 <text x="58" y="334" class="head">Task0 · 向量加法</text><text x="58" y="364" class="body">PyTorch / Triton 对照</text><text x="58" y="389" class="small">输出 / 尾块 / 耗时</text>
 <rect x="330" y="125" width="250" height="100" rx="16" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
-<text x="350" y="159" class="head">Task1 · 图编译与融合</text><text x="350" y="190" class="body">Part01 原理 / Part03 三路径</text><text x="350" y="215" class="small">中间读写、准备与稳态成本</text>
+<text x="350" y="159" class="head">Task1 · 图编译与融合</text><text x="350" y="190" class="body">捕获与复用 · 三路径对照</text><text x="350" y="215" class="small">中间读写、准备与稳态成本</text>
 <rect x="330" y="300" width="250" height="100" rx="16" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
-<text x="350" y="334" class="head">Task2 · 布局与归约</text><text x="350" y="364" class="body">步长、融合与有效范围</text><text x="350" y="389" class="small">Part04 对照访存与线程协作</text>
+<text x="350" y="334" class="head">Task2 · 布局与归约</text><text x="350" y="364" class="body">步长、融合与分阶段归约</text><text x="350" y="389" class="small">Part04 对照访存与线程协作</text>
 <rect x="640" y="300" width="220" height="100" rx="16" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
 <text x="657" y="334" class="head">Task3 · 矩阵与注意力</text><text x="657" y="364" class="body">子块复用 · 跨块归一化</text><text x="657" y="389" class="small">Part04 对照指令与流水线</text>
 <rect x="330" y="500" width="250" height="100" rx="16" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
@@ -24,6 +24,7 @@
 <path d="M240 325H285V175H330" class="branch"/>
 <path d="M240 350H330" class="branch"/>
 <path d="M240 375H285V550H330" class="branch"/>
+<path d="M455 225V300" class="branch"/><text x="466" y="270" class="small">需改内核</text>
 <path d="M580 175H1080V300" class="line"/>
 <path d="M580 350H640" class="branch"/>
 <path d="M550 300V250H1000V300" class="line"/><text x="620" y="239" class="small">常用内核可直接核对与测量</text>

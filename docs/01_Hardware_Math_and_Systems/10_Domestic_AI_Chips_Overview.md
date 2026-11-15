@@ -1,4 +1,4 @@
-# 10. Domestic AI Chips Overview | 算力现状与替代方案
+# 10. Domestic AI Chips Overview | 加速器选型与软件栈适配
 
 **难度：** Medium | **环境：** CPU-first | **标签：** `硬件系统`, `AI 芯片`, `异构算力` | **目标人群：** 硬件约束学习者
 
@@ -18,26 +18,22 @@
 
 本节先列出同一任务的容量与操作需求，再检查所需软件组件、迁移工期和功率上限。完成后，你应能指出候选具体缺少什么，而不是用一个综合分数掩盖问题；保留的候选继续在运行时约束与部署专题中验证。
 
-**关键词：** 设备生态、软件栈、迁移风险
+**关键词：** 阶段需求、软件栈、算子支持、迁移工期
 
 ![加速器候选的可用性判断](../public/01_Hardware_Math_and_Systems/10_accelerator_readiness.svg)
 
 ## 前置阅读
-**导语：** 先准备单设备资源和多设备通信两个约束，再筛选硬件候选。
-- [1B：单设备执行、内存与访存](./1B.md)
-- [1C：通信、并行与容错](./1C.md)
-## Q1：选芯片时为什么不能只看算力峰值？
 
+先理解工作集与设备能力，再按同一任务需求筛选候选。
 
-纸面峰值只说明“理论上能跑多快”，不说明“真实工作负载里能不能持续跑快”。
+- [03 GPU架构与内存](./03_GPU_Architecture_and_Memory.md)：容量、计算与访存约束。
+- [09 图编译与后端](./09_AI_Compilers_and_Graph_Optimization.md)：操作支持声明与实际执行的区别。
 
-实际选型还要看：
-- 软件栈是否成熟；
-- 编译器和关键内核是否可用；
-- 通信和调度能力是否匹配；
-- 迁移和维护成本是否可控。
+## Q1：同一任务需要哪些容量、精度和操作？
 
-所以选型不是单一性能数字的比较，而是端到端可落地性的比较。
+假设一个生成阶段需要8 GB预计峰值、BF16类型与矩阵乘／Softmax操作。16 GB候选若声明支持这些操作与类型，可以继续检查软件路径；若需求改为20 GB，容量便不足。即使设备峰值算力更高，缺少当前计算所需的操作或数值类型，也无法直接执行这一方案。
+
+架构规定一类设备的指令与执行能力，具体产品给出可用内存、带宽和功率等规格，软件版本决定当前框架能调用哪些实现。同一架构下不同产品的容量可以不同，同为BF16也可能采用不同矩阵计算路径。容量需求应合计同一阶段的权重、状态与工作区；容量和操作满足后，再在固定负载上比较带宽与计算时间，而不是按型号名称或峰值算力直接排序。
 
 ### Q1 可行性检查：先比较预算与已声明能力
 
@@ -50,7 +46,7 @@ import math
 
 def accelerator_feasibility(required_peak_bytes, device_memory_bytes, required_ops, supported_ops, required_dtype, supported_dtypes):
     """在比较峰值前检查容量、算子和 dtype 三个硬条件。"""
-    if any(not math.isfinite(value) or value <= 0
+    if any(type(value) not in (int, float) or not math.isfinite(value) or value <= 0
            for value in (required_peak_bytes, device_memory_bytes)):
         raise ValueError('memory bytes must be positive')
     reasons = []
@@ -67,17 +63,23 @@ ready = accelerator_feasibility(8e9, 16e9, {'matmul', 'softmax'}, {'matmul', 'so
 blocked = accelerator_feasibility(20e9, 16e9, {'matmul', 'softmax'}, {'matmul'}, 'bf16', {'fp16'})
 assert ready['feasible'] is True
 assert blocked['feasible'] is False
+assert blocked['reasons'] == ['insufficient_memory', 'missing_ops', 'unsupported_dtype']
+assert blocked['missing_ops'] == ['softmax']
+assert accelerator_feasibility(
+    16e9, 16e9, {'matmul'}, {'matmul'}, 'bf16', {'bf16'})['feasible']
 print('ready:', ready)
 print('blocked:', blocked)
 ```
 
-## Q2：软件栈要检查哪些必要组件？
+## Q2：所选执行路径需要哪些软件组件？
 
-设备能力需要驱动、执行框架、目标内核与相关依赖配合。检查清单应由执行路径决定：单进程、无集合通信的工作负载不应因缺少通信库而被阻止；需要集合通信时，则必须检查对应支持。
+驱动连接设备，执行框架加载产物并安排操作，内核完成具体计算。某些路径还需要编译或已经生成的目标产物，以及跨设备集合通信。按阶段要求列出这些条件，比把所有设备都套入同一安装清单更准确；例如单进程、无集合通信的任务可先检查本地执行，确实需要多设备通信时再检查相应组件。
 
-下面只比较已声明的组件状态。编译器字段表示所选路径所需的编译或产物支持，不表示每台机器都必须安装本地工具链；具体版本兼容和实际执行仍需独立验证。
+Python调用相似也可能使用不同底层软件。[PyTorch的HIP说明](https://docs.pytorch.org/docs/2.11/notes/hip.html#hip-interfaces-reuse-the-cuda-interfaces)以ROCm构建复用许多`torch.cuda`接口，调用形式本身不足以识别底层设备或软件栈；自定义扩展还要核对目标工具链与产物。下面的编译支持字段表示所选路径需要的编译或产物能力，预编译路径可由匹配产物满足。关键操作覆盖率只统计本任务必需操作；组件状态由外部给定，加载与数值结果仍需实际检查。
 
-### Q2 条件检查：通信支持是否为当前路径所必需
+### Q2 条件检查：哪些组件能沿用，哪些需要补齐
+
+固定Q1的8 GB需求与16 GB设备声明，只改变软件条件：单设备路径不需要集合通信；需要跨设备通信时补查通信组件；已有目标框架但尚无目标编译／产物和关键内核时，则分别列出这两项缺口。容量相同，不代表迁移工作相同。
 
 
 ```python
@@ -91,7 +93,8 @@ def stack_readiness(driver, compiler, runtime, kernel, communication,
     if any(type(value) is not bool for value in
            (*layers.values(), requires_communication)):
         raise ValueError('组件状态与通信需求必须是布尔值')
-    if not math.isfinite(kernel_coverage) or not 0 <= kernel_coverage <= 1:
+    if (type(kernel_coverage) not in (int, float) or not math.isfinite(kernel_coverage)
+            or not 0 <= kernel_coverage <= 1):
         raise ValueError('关键算子覆盖率必须位于 [0, 1]')
     required = ['driver', 'compiler', 'runtime', 'kernel']
     if requires_communication:
@@ -107,28 +110,28 @@ def stack_readiness(driver, compiler, runtime, kernel, communication,
     }
 
 
-single_device = stack_readiness(True, True, True, True, False)
-multi_device = stack_readiness(True, True, True, True, False,
-                               requires_communication=True)
+component_states = dict(driver=True, compiler=True, runtime=True,
+                        kernel=True, communication=False)
+single_device = stack_readiness(**component_states)
+multi_device = stack_readiness(**component_states, requires_communication=True)
 assert single_device['declared_requirements_met']
 assert multi_device['missing'] == ['communication']
-assert stack_readiness(True, False, True, True, True)['missing'] == ['compiler']
+assert stack_readiness(**(component_states | {'compiler': False}))['missing'] == ['compiler']
+target_components = component_states | {'compiler': False, 'kernel': False}
+needs_target_artifacts = stack_readiness(**target_components)
+assert ready['feasible']
+assert needs_target_artifacts['missing'] == ['compiler', 'kernel']
 print('无通信需求：', single_device)
 print('需要通信：', multi_device)
+print('容量满足，目标产物与内核待补齐：', needs_target_artifacts)
 
 ```
 
-## Q3：替代方案什么时候值得进入后续验证？
+## Q3：哪些候选值得进入迁移与运行验证？
 
+沿用前两问的容量、操作与软件条件，再加入当前任务的工期和功率限制。假设允许8周迁移、1 kW功率；需要6周、0.5 kW的替代方案可以继续验证，软件条件未满足的候选则先补齐缺项。供应风险也应来自明确调查或场景假设，与当前允许上限比较，不由设备品牌或产地推算。
 
-当预算、供应链、功耗、部署环境或合规要求发生变化时，替代方案就不只是备选，而可能成为主方案。
-
-候选能否继续验证，要回到三件事：
-- 是否满足容量、精度和关键算子硬条件；
-- 软件栈是否闭环；
-- 迁移工期、供应风险和功耗是否超过当前上限。
-
-这里先形成候选清单，不计算完整总拥有成本；单位成功请求成本由 [33 TCO 与成本模型](./33_TCO_and_Cost_Model.md)统一计算。
+下面只形成下一步候选：保留哪种设备声明、缺什么软件、迁移条件是否超限。进入[34 阶段与运行时约束](./34_Heterogeneous_Accelerators_and_Runtime_Constraints.md)后，再检查阶段之间的数据交接；采用判断还需共同功能、质量与性能记录，完整费用在[33 TCO与成本](./33_TCO_and_Cost_Model.md)计算。
 
 ### Q3 候选筛选：给定风险与资源是否超过上限
 
@@ -140,7 +143,7 @@ def admit_accelerator_candidate(feasible, stack_ready, migration_weeks, max_migr
     """在完整 TCO 计算前，用硬约束和风险上限筛选设备候选。"""
     if type(feasible) is not bool or type(stack_ready) is not bool:
         raise ValueError('条件检查结果必须是布尔值')
-    if any(not math.isfinite(value) or value < 0 for value in
+    if any(type(value) not in (int, float) or not math.isfinite(value) or value < 0 for value in
            (migration_weeks, max_migration_weeks, supply_risk, max_supply_risk,
             power_kw, power_cap_kw)):
         raise ValueError('risk and resource inputs must be non-negative')
@@ -160,9 +163,18 @@ def admit_accelerator_candidate(feasible, stack_ready, migration_weeks, max_migr
     return {'admitted': not reasons, 'reasons': reasons}
 
 candidates = {
-    'baseline': admit_accelerator_candidate(True, True, 2, 8, 0.2, 0.5, 0.7, 1.0),
-    'alternative': admit_accelerator_candidate(True, True, 6, 8, 0.4, 0.5, 0.5, 1.0),
-    'immature_stack': admit_accelerator_candidate(True, False, 4, 8, 0.3, 0.5, 0.6, 1.0),
+    'baseline': admit_accelerator_candidate(feasible=ready['feasible'],
+        stack_ready=single_device['declared_requirements_met'], migration_weeks=2,
+        max_migration_weeks=8, supply_risk=0.2, max_supply_risk=0.5,
+        power_kw=0.7, power_cap_kw=1.0),
+    'alternative': admit_accelerator_candidate(feasible=ready['feasible'],
+        stack_ready=single_device['declared_requirements_met'], migration_weeks=6,
+        max_migration_weeks=8, supply_risk=0.4, max_supply_risk=0.5,
+        power_kw=0.5, power_cap_kw=1.0),
+    'immature_stack': admit_accelerator_candidate(feasible=ready['feasible'],
+        stack_ready=needs_target_artifacts['declared_requirements_met'], migration_weeks=4,
+        max_migration_weeks=8, supply_risk=0.3, max_supply_risk=0.5,
+        power_kw=0.6, power_cap_kw=1.0),
 }
 admitted = [name for name, result in candidates.items() if result['admitted']]
 assert admitted == ['baseline', 'alternative']
@@ -172,7 +184,9 @@ print('admission results:', candidates)
 ```
 
 ## 相关阅读
-**导语：** 如果想继续把选型、编译和通信侧的判断补完整，可以接着看这些页。
-- [09. Triton 自动调优与基准测量 (Autotuning & Benchmarking)](../03_Triton_Kernels/09_Triton_Autotune_and_Profiling.md)
-- [01. CUDA Custom Kernel Intro | CUDA 自定义算子入门](../04_CUDA_and_System_Optimization/01_CUDA_Custom_Kernel_Intro.md)
-- [09. Distributed Communication Primitives | 分布式进阶：多机通信原语实战 (All-Reduce, All-Gather)](../04_CUDA_and_System_Optimization/13_Distributed_Communication_Primitives.md)
+
+将候选条件继续用于阶段交接与同口径成本比较。
+
+- [34 异构加速器与运行时约束](./34_Heterogeneous_Accelerators_and_Runtime_Constraints.md)：逐阶段需求、输入转换、搬运与同时驻留。
+- [33 TCO与成本](./33_TCO_and_Cost_Model.md)：将迁移工时与运行记录接到单位成功请求成本。
+- [部署与异构系统专题](../topic_discussion/deployment_heterogeneous/intro.md)：完成目标设备上的产物加载与执行验证。
