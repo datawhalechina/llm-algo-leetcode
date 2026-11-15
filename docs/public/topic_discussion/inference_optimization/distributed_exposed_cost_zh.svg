@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="660" viewBox="0 0 1200 660" role="img" aria-labelledby="title desc">
+<title id="title">双卡的计算节省能否覆盖暴露通信与等待</title>
+<desc id="desc">相同工作量的构造例子：单设备20毫秒。双卡关键路径计算11毫秒，加未覆盖的通信与等待7毫秒为18毫秒，约1.11倍；若增加到12毫秒则为23毫秒，比单设备慢。条形是关键路径成本分解，不是各卡时间相加或通信总时长。</desc>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d;font-size:19px}.title{font-size:27px;font-weight:700}.head{font-size:21px;font-weight:700}.note{font-size:17px;fill:#475569}.compute{fill:#dbeafe;stroke:#6b91b5}.wait{fill:#fef3c7;stroke:#b69b50}</style>
+<rect width="1200" height="660" fill="#f7fafc"/>
+<text x="40" y="44" class="title">计算分到两张卡以后，还要等通信和最慢参与者</text>
+<text x="40" y="79" class="note">教学构造值；同一工作量，时间条比例一致，分解关键路径成本，不表示所有计算和通信严格串行。</text>
+<text x="40" y="151" class="head">单设备参考</text><rect x="290" y="120" width="600" height="57" class="compute"/><text x="590" y="156" text-anchor="middle">完成一次迭代：20 ms</text><text x="1010" y="156" class="head">20 ms</text>
+<text x="40" y="263" class="head">双卡 · 暴露等待较少</text><rect x="290" y="232" width="330" height="57" class="compute"/><rect x="620" y="232" width="210" height="57" class="wait"/><text x="455" y="268" text-anchor="middle">计算 11 ms</text><text x="725" y="268" text-anchor="middle">通信与等待 7 ms</text><text x="1010" y="268" class="head">18 ms</text>
+<text x="290" y="323" class="note">节省 9 ms 计算，新增 7 ms 暴露成本；20 ÷ 18 ≈ 1.11 倍。</text>
+<text x="40" y="407" class="head">双卡 · 暴露等待较多</text><rect x="290" y="376" width="330" height="57" class="compute"/><rect x="620" y="376" width="360" height="57" class="wait"/><text x="455" y="412" text-anchor="middle">计算 11 ms</text><text x="800" y="412" text-anchor="middle">通信与等待 12 ms</text><text x="1010" y="412" class="head">23 ms</text>
+<text x="290" y="467" class="note">新增成本超过计算节省；20 ÷ 23 ≈ 0.87 倍，完整迭代变慢。</text>
+<rect x="40" y="509" width="1120" height="99" fill="#fff" stroke="#829ab1" stroke-width="1.5" rx="12"/>
+<text x="64" y="545" class="head">暴露通信：未被独立计算覆盖、会阻塞后继工作的部分</text>
+<text x="64" y="580">对照各设备完成时刻、通信和空闲区间；通信总时长不等于新增等待，各卡时间也不能直接相加。</text>
+<text x="40" y="641" class="note">图中只比较固定工作的迭代时间；请求路由、排队、容量与故障恢复另行复测。</text>
+</svg>
