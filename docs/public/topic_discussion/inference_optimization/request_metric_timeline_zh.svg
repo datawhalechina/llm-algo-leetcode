@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="570" viewBox="0 0 1200 570" role="img" aria-labelledby="title desc">
+<title id="title">同一条请求的首词元、生成间隔与结束尾部</title>
+<desc id="desc">构造记录到达0毫秒，准入12，输入就绪15，四个词元在45、55、65、75毫秒收到，80毫秒终止。TTFT45毫秒，TPOT10毫秒，E2E80毫秒。</desc>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d;font-size:19px}.title{font-size:27px;font-weight:700}.head{font-size:21px;font-weight:700}.note{font-size:17px;fill:#475569}.tick{stroke:#52606d;stroke-width:2}.span{fill:none;stroke-width:4}</style>
+<rect width="1200" height="570" fill="#f7fafc"/>
+<text x="32" y="44" class="title">最后一个词元已收到，等待请求结束的时间仍要计入</text>
+<text x="32" y="79" class="note">教学构造记录；同一客户端时钟，每个点恰好对应一个词元，时间单位为 ms。</text>
+<rect x="140" y="195" width="450" height="55" fill="#dbeafe"/>
+<rect x="590" y="195" width="300" height="55" fill="#d1fae5"/>
+<rect x="890" y="195" width="50" height="55" fill="#fef3c7"/>
+<path d="M140 250H940" class="tick"/>
+<g class="tick"><path d="M140 190V265M260 240V265M290 240V265M590 190V265M690 190V265M790 190V265M890 190V265M940 190V265"/></g>
+<text x="140" y="151" text-anchor="middle">到达</text><text x="240" y="125" text-anchor="middle">准入 12</text><path d="M240 134L260 185" fill="none" stroke="#64748b"/>
+<text x="350" y="159" text-anchor="middle">输入就绪 15</text><path d="M325 164L290 185" fill="none" stroke="#64748b"/>
+<text x="590" y="151" text-anchor="middle">首词元</text><text x="890" y="125" text-anchor="middle">末词元</text><text x="1005" y="159" text-anchor="middle">终止</text><path d="M991 166L940 185" fill="none" stroke="#64748b"/>
+<text x="140" y="290" text-anchor="middle">0</text><text x="590" y="290" text-anchor="middle">45</text><text x="690" y="290" text-anchor="middle">55</text><text x="790" y="290" text-anchor="middle">65</text><text x="890" y="290" text-anchor="middle">75</text><text x="940" y="290" text-anchor="middle">80</text>
+<text x="365" y="230" text-anchor="middle">排队、准备、预填充与首次返回</text>
+<path d="M140 320V333H590V320" stroke="#4b83b5" class="span"/><text x="365" y="367" text-anchor="middle" class="head">TTFT = 45 − 0 = 45 ms</text>
+<path d="M590 320V333H890V320" stroke="#409b7c" class="span"/><text x="775" y="401" text-anchor="middle" class="head">TPOT = (75 − 45) ÷ 3 = 10 ms</text>
+<path d="M140 425V438H940V425" stroke="#8b80b0" class="span"/><text x="540" y="475" text-anchor="middle" class="head">E2E = 80 − 0 = 80 ms</text>
+<text x="32" y="521">末词元后的 5 ms 属于结束尾部：计入 E2E，排除在首末词元跨度与 TPOT 之外。</text>
+<text x="32" y="552" class="note">流式接口若合并多个词元，直接观察到的是内容块时刻；平均内容间隔仅作相应代理。</text>
+</svg>
