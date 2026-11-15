@@ -31,165 +31,180 @@
 - [20. NCCL and AllReduce Basics | NCCL 与 AllReduce 基础](./20_NCCL_and_AllReduce_Basics.md)
 - [26. Parallel Strategy Decision Framework | 并行策略决策框架](./26_Parallel_Strategy_Decision_Framework.md)
 
-## Q1：通信成本如何由数据量、带宽、延迟和同步共同决定？
+## Q1：相同总发送量，为什么拆分次数会影响时间？
 
-一次通信的理想时间可拆成固定启动成本和载荷传输成本。对同样的总字节数，拆成更多消息不会降低理想传输量，却会重复支付启动延迟。
+通信时间可拆成固定开销和载荷传输两项。这里的载荷是一个rank在整个通信阶段发送的总MiB；拆成更多调用时，传输总量不变，固定开销重复支付。与26节“每次发送量×调用次数”的输入方式不同，这里直接给总量。
 
-| 数量 | 单位 | 对通信时间的影响 |
-| --- | --- | --- |
-| 有效载荷 | MiB | 在带宽固定时线性增长 |
-| 可持续带宽 | GiB/s | 决定载荷传输下限 |
-| 单次启动延迟 | μs | 小消息或高频通信更敏感 |
-| 启动次数 | 次 | 决定固定成本被支付多少次 |
+环形All-Reduce的梯度张量大小需先乘 `2(P−1)/P` 才得到每rank发送量。每次调用的固定开销则作为给定条件，已汇总该次集合通信的启动成本。下面用50 GiB/s、每次8 μs比较，接收可与发送同时进行，传输项按单向发送量计算。
 
-### Q1小验证
+### Q1机制计算器：先换算发送量，再比较调用次数
 
-拆开数据量、带宽、延迟和同步次数的影响。
+固定总发送载荷为256 MiB，传输项始终为5 ms，只有固定开销随调用次数变化。
+
 
 ```python
+def ring_allreduce_payload_mib(tensor_mib, world_size):
+    """把完整输入张量MiB换算为等长Ring每rank的发送MiB，不含接收。"""
+    if tensor_mib < 0 or type(world_size) is not int or world_size < 2:
+        raise ValueError('张量容量须非负，进程数须为至少2的整数')
+    return tensor_mib * 2 * (world_size - 1) / world_size
+
+
 def communication_time_ms(payload_mib, bandwidth_gib_s, latency_us, launches=1):
-    """用 alpha-beta 模型估算一个通信阶段的理想时间。"""
-    if payload_mib < 0 or bandwidth_gib_s <= 0 or latency_us < 0 or launches <= 0:
-        raise ValueError('有效载荷、带宽、延迟或启动次数非法')
+    """估算总发送MiB的串行完成时间；latency_us是每次调用的给定固定开销。"""
+    if payload_mib < 0 or bandwidth_gib_s <= 0 or latency_us < 0 or type(launches) is not int or launches < 1:
+        raise ValueError('载荷、带宽、固定开销或调用次数无效')
     transfer_ms = payload_mib / 1024 / bandwidth_gib_s * 1000
     launch_ms = launches * latency_us / 1000
     return {
         'payload_mib': payload_mib,
         'launches': launches,
-        'transfer_ms': round(transfer_ms, 4),
-        'launch_ms': round(launch_ms, 4),
-        'communication_ms': round(transfer_ms + launch_ms, 4),
+        'transfer_ms': transfer_ms,
+        'launch_ms': launch_ms,
+        'communication_ms': transfer_ms + launch_ms,
     }
+
 
 for launches in (1, 8, 64):
     print(communication_time_ms(256, bandwidth_gib_s=50, latency_us=8, launches=launches))
-
-assert communication_time_ms(0, 50, 8, 4)['communication_ms'] == 0.032
 assert communication_time_ms(256, 50, 8, 8)['transfer_ms'] == 5.0
+assert communication_time_ms(256, 50, 8, 8)['launch_ms'] == 0.064
 
 ```
 
-## Q2：为什么把小通信合并成大通信通常更稳？
+## Q2：合并梯度什么时候省启动，什么时候增加等待？
 
-在反向传播中，梯度只有在对应层完成后才能进入通信。较小的分桶能更早启动 All-Reduce，但会增加启动次数；较大的分桶减少启动成本，却可能等待更多梯度就绪。
+梯度桶（bucket）把若干层的梯度合成一次通信；桶内所有梯度就绪后才能发送。小桶通常较早启动，大桶减少调用次数，却可能把已有梯度留在桶中等待其他层。比较时要同时看通信结束时间与反向结束后的等待。
 
-| 分桶变化 | 可能收益 | 可能代价 | 应观察的量 |
-| --- | --- | --- | --- |
-| 减小分桶 | 通信更早开始 | 启动次数增加 | 首个分桶启动时间、启动数 |
-| 增大分桶 | 固定启动成本降低 | 等待就绪的时间增加 | 通信完成时间、暴露通信 |
-| 就绪顺序改变 | 与反向计算形成更长重叠窗口 | 可能破坏原有依赖 | 分桶就绪时间与关键路径 |
+固定4个rank、4层梯度，每层32 MiB，分别在2、5、9、14 ms就绪。桶容量32、64、128 MiB时，每rank总发送量均为192 MiB；按Q1条件计算，反向结束后的等待分别为0.9455、1.883、3.758 ms，大桶在这个例子中更晚完成。如果四层都在0 ms就绪，合桶不再增加就绪等待，反而能节省固定开销。
 
-### Q2小验证
+代码按给定层顺序装桶，假设各rank采用相同顺序和就绪时间，通信在一个队列中串行执行。本例不拆分单层梯度，因此桶容量须不小于最大单层梯度。
 
-比较合并消息后的启动开销与 overlap 空间。
+### Q2对照验证：总梯度不变，只改变桶容量
+
+先观察分批就绪，再把四层就绪时间同时设为0，比较两种情况下合桶的效果。
+
 
 ```python
-def schedule_gradient_buckets(layers, bucket_cap_mib, bandwidth_gib_s=50, latency_us=8):
-    """根据梯度就绪时间和分桶容量构建通信时间线。"""
+def schedule_gradient_buckets(layers, bucket_cap_mib, bandwidth_gib_s=50, latency_us=8, world_size=4):
+    """按给定层顺序和容量装桶；以每rank Ring发送量计算串行通信时间线。"""
     if bucket_cap_mib <= 0 or not layers:
-        raise ValueError('分桶容量必须为正，且层列表不能为空')
+        raise ValueError('桶容量须为正，层列表须非空')
+    if any(layer['ready_ms'] < 0 or not 0 < layer['size_mib'] <= bucket_cap_mib for layer in layers):
+        raise ValueError('就绪时间须非负，每层梯度须非零且能装入单桶')
     buckets, pending, pending_mib = [], [], 0.0
-    for layer in sorted(layers, key=lambda item: item['ready_ms']):
-        pending.append(layer)
-        pending_mib += layer['size_mib']
-        if pending_mib >= bucket_cap_mib:
+    for layer in layers:
+        if pending and pending_mib + layer['size_mib'] > bucket_cap_mib:
             buckets.append((pending, pending_mib))
             pending, pending_mib = [], 0.0
+        pending.append(layer)
+        pending_mib += layer['size_mib']
     if pending:
         buckets.append((pending, pending_mib))
 
     timeline, communication_available_ms = [], 0.0
-    for bucket_id, (members, size_mib) in enumerate(buckets):
+    for bucket_id, (members, tensor_mib) in enumerate(buckets):
         ready_ms = max(member['ready_ms'] for member in members)
         start_ms = max(ready_ms, communication_available_ms)
-        duration_ms = communication_time_ms(size_mib, bandwidth_gib_s, latency_us)['communication_ms']
+        send_mib = ring_allreduce_payload_mib(tensor_mib, world_size)
+        duration_ms = communication_time_ms(send_mib, bandwidth_gib_s, latency_us)['communication_ms']
         end_ms = start_ms + duration_ms
         timeline.append({
             'bucket_id': bucket_id,
             'layers': [member['name'] for member in members],
-            'size_mib': round(size_mib, 2),
-            'ready_ms': round(ready_ms, 4),
-            'start_ms': round(start_ms, 4),
-            'end_ms': round(end_ms, 4),
+            'tensor_mib': tensor_mib, 'send_mib_per_rank': send_mib,
+            'ready_ms': ready_ms, 'start_ms': start_ms, 'end_ms': end_ms,
         })
         communication_available_ms = end_ms
 
     backward_end_ms = max(layer['ready_ms'] for layer in layers)
     return {
         'bucket_count': len(timeline),
+        'total_send_mib_per_rank': sum(row['send_mib_per_rank'] for row in timeline),
         'backward_end_ms': backward_end_ms,
         'communication_end_ms': round(communication_available_ms, 4),
-        'exposed_after_backward_ms': round(max(communication_available_ms - backward_end_ms, 0.0), 4),
+        'exposed_after_backward_ms': round(max(communication_available_ms - backward_end_ms, 0), 4),
         'timeline': timeline,
     }
 
-layers = [
-    {'name': 'L4', 'ready_ms': 2.0, 'size_mib': 32},
-    {'name': 'L3', 'ready_ms': 5.0, 'size_mib': 32},
-    {'name': 'L2', 'ready_ms': 9.0, 'size_mib': 32},
-    {'name': 'L1', 'ready_ms': 14.0, 'size_mib': 32},
-]
-for bucket_cap_mib in (32, 64, 128):
-    print(bucket_cap_mib, schedule_gradient_buckets(layers, bucket_cap_mib))
 
-assert schedule_gradient_buckets(layers, 32)['bucket_count'] == 4
-assert schedule_gradient_buckets(layers, 128)['bucket_count'] == 1
+layers = [
+    dict(name='L4', ready_ms=2.0, size_mib=32),
+    dict(name='L3', ready_ms=5.0, size_mib=32),
+    dict(name='L2', ready_ms=9.0, size_mib=32),
+    dict(name='L1', ready_ms=14.0, size_mib=32),
+]
+for capacity, expected_tail in [(32, 0.9455), (64, 1.883), (128, 3.758)]:
+    result = schedule_gradient_buckets(layers, capacity)
+    assert result['total_send_mib_per_rank'] == 192
+    assert result['exposed_after_backward_ms'] == expected_tail
+    print('分批就绪，桶容量', capacity, 'MiB：', result['communication_end_ms'], 'ms结束')
+
+ready_together = [dict(layer, ready_ms=0) for layer in layers]
+small = schedule_gradient_buckets(ready_together, 32)
+large = schedule_gradient_buckets(ready_together, 128)
+assert small['communication_end_ms'] == 3.782
+assert large['communication_end_ms'] == 3.758
+print('同时就绪，小桶／大桶结束时间：', small['communication_end_ms'], large['communication_end_ms'])
 
 ```
 
-## Q3：为什么 All-Reduce / All-to-All 的优化目标不同？
+## Q3：All-Reduce发送量与All-to-All路由负载怎样区分？
 
-All-Reduce 对每个 rank 的同尺寸张量做规约并广播，环形实现中每个 rank 的逻辑传输量约为 `2(P-1)/P` 倍载荷。All-to-All 则把不同数量的状态发往不同 rank；总载荷相近时，最忙 rank 的接收量仍可能决定完成时间。
+4个rank对256 MiB张量做环形All-Reduce时，每rank发送384 MiB，接收量相同；这沿用20节的计量方向。
 
-| 集合通信 | 主要负载 | 主要不均衡来源 | 调度时优先观察 |
-| --- | --- | --- | --- |
-| All-Reduce | 梯度或分片张量 | rank 变慢、分桶就绪时间不一致 | 分桶就绪、启动次数、暴露通信 |
-| All-to-All | token、专家输入或序列分片 | 路由或序列分布倾斜 | 最大 rank 载荷、长尾与空闲 rank |
+All-to-All的输入则是一张路由计数矩阵：行表示源rank，列表示目标rank，每格记录token分配次数。对角线是本地分配，其他格才产生跨rank发送；把这些格相加，可得全组远程载荷，每份发送计一次。MoE中同一token可能被分配给多个专家，因此分配次数可大于独立token数。
 
-### Q3小验证
+下面另列每rank的远程发送、远程接收及包含本地分配的总接收负载。网络接收不均衡用“最大远程接收量÷平均远程接收量”表示；没有远程流量时，比例记为 `None`。这可区分网络压力与本地专家计算负载。
 
-区分 All-Reduce 的同步压力和 All-to-All 的路由压力。
+### Q3对照验证：平衡路由、倾斜路由和零流量
+
+固定每次分配的字节数，观察远程载荷与最忙接收rank。只有本地分配时，网络载荷应为0。
+
 
 ```python
-def ring_allreduce_payload_mib(tensor_mib, world_size):
-    """返回环形 All-Reduce 中每个 rank 的逻辑传输量。"""
-    if tensor_mib < 0 or world_size < 2:
-        raise ValueError('张量容量必须非负，world_size 至少为 2')
-    return tensor_mib * 2 * (world_size - 1) / world_size
-
 def alltoall_route_ledger(token_matrix, bytes_per_token):
-    """计算 All-to-All 路由矩阵的跨 rank 载荷和接收不均衡。"""
+    """按源×目标分配矩阵计算全组唯一远程发送载荷，以及各rank接收负载。"""
     world_size = len(token_matrix)
     if world_size < 2 or any(len(row) != world_size for row in token_matrix):
-        raise ValueError('token_matrix 必须是至少包含两个 rank 的方阵')
-    if bytes_per_token <= 0 or any(token < 0 for row in token_matrix for token in row):
-        raise ValueError('token 数或每 token 字节数非法')
-    received_tokens = [sum(token_matrix[src][dst] for src in range(world_size)) for dst in range(world_size)]
-    remote_tokens = sum(
-        token_matrix[src][dst]
-        for src in range(world_size) for dst in range(world_size) if src != dst
-    )
-    mean_received = sum(received_tokens) / world_size
+        raise ValueError('路由矩阵须为至少2个rank的方阵')
+    if type(bytes_per_token) is not int or bytes_per_token <= 0:
+        raise ValueError('每次分配的字节数须为正整数')
+    if any(type(count) is not int or count < 0 for row in token_matrix for count in row):
+        raise ValueError('分配次数须为非负整数')
+    received = [sum(token_matrix[src][dst] for src in range(world_size)) for dst in range(world_size)]
+    remote_sent = [sum(row[dst] for dst in range(world_size) if src != dst) for src, row in enumerate(token_matrix)]
+    remote_received = [
+        sum(token_matrix[src][dst] for src in range(world_size) if src != dst)
+        for dst in range(world_size)
+    ]
+    total_remote = sum(remote_sent)
+    mean_remote_received = total_remote / world_size
     return {
-        'remote_payload_mib': round(remote_tokens * bytes_per_token / 2**20, 4),
-        'received_tokens': received_tokens,
-        'max_to_mean_receive_ratio': round(max(received_tokens) / mean_received, 4),
+        'remote_send_mib': total_remote * bytes_per_token / 2**20,
+        'remote_send_assignments_per_rank': remote_sent,
+        'remote_receive_assignments_per_rank': remote_received,
+        'received_assignments_including_local': received,
+        'max_to_mean_remote_receive_ratio': (
+            max(remote_received) / mean_remote_received if total_remote else None
+        ),
     }
+
 
 balanced = [[16, 16, 16, 16] for _ in range(4)]
 skewed = [[4, 4, 52, 4] for _ in range(4)]
-print('Ring All-Reduce per-rank MiB:', ring_allreduce_payload_mib(256, 4))
-print('Balanced All-to-All:', alltoall_route_ledger(balanced, bytes_per_token=4096))
-print('Skewed All-to-All:', alltoall_route_ledger(skewed, bytes_per_token=4096))
-
 assert ring_allreduce_payload_mib(256, 4) == 384
-assert alltoall_route_ledger(skewed, 4096)['max_to_mean_receive_ratio'] > 3
+assert alltoall_route_ledger(balanced, 4096)['remote_send_mib'] == 0.75
+assert alltoall_route_ledger(skewed, 4096)['max_to_mean_remote_receive_ratio'] == 3.25
+assert alltoall_route_ledger([[0, 0], [0, 0]], 4096)['max_to_mean_remote_receive_ratio'] is None
+for matrix in (balanced, skewed, [[8, 0], [0, 4]]):
+    print(alltoall_route_ledger(matrix, bytes_per_token=4096))
 
 ```
 
 ## Q4：怎样把通信排进计算间隙？
 
-通信隐藏只能来自与它没有未解决数据依赖的计算区间。多个计算区间可能相互重叠，因此要先求它们在通信区间内的并集，再计算已隐藏和暴露时间，不能直接累加重叠窗口。
+先假设计算与通信没有未解决的数据依赖、资源争用也不改变各自耗时，再用给定区间观察重叠。多个计算区间可能彼此重叠，需要先求区间并集，再统计覆盖通信的时间；重复覆盖的一段只能计一次。这个理想覆盖量可帮助解释时间线，实际收益仍要比较整步完成时间。
 
 | 时间量 | 含义 | 与关键路径的关系 |
 | --- | --- | --- |
@@ -230,7 +245,7 @@ def communication_exposure(comm_interval, independent_compute_intervals):
         'communication_ms': round(communication_ms, 4),
         'hidden_ms': round(hidden_ms, 4),
         'exposed_ms': round(exposed_ms, 4),
-        'overlap_ratio': round(hidden_ms / communication_ms, 4) if communication_ms else 1.0,
+        'overlap_ratio': round(hidden_ms / communication_ms, 4) if communication_ms else None,
         'merged_overlap_intervals': [tuple(interval) for interval in merged],
     }
 
