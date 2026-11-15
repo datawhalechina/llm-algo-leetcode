@@ -496,7 +496,7 @@ CPU 练习验证依赖图和关键路径算法；GPU 实验用 `torch.profiler` 
 
 ### 5.1 环境与固定工作负载
 
-本实验使用 `PERF-CUDA-MECHANISM`。首次运行按[专题 Quickstart](../topic_discussion/performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart)创建并预检环境，输入与当前登记结果见[实验资产表](../topic_discussion/performance_analysis/experiment_assets.md)。
+本实验使用 `PERF-CUDA-MECHANISM`。首次运行按[性能机制GPU环境](../topic_discussion/performance_optimization/gpu_quickstart.md#perf-cuda-mechanism-quickstart)创建并预检环境，输入与当前登记结果见[实验资产表](../topic_discussion/performance_optimization/measurement_assets.md)。
 
 | 配置层 | 本节固定口径 | 修改规则 |
 | --- | --- | --- |
@@ -728,4 +728,4 @@ else:
 要解释 I/O 服务时间如何变成实际等待，可接着看关键路径上的 I/O 分析。
 
 - [PERF-IO · I/O 关键路径](./PERF-IO_Artifact_State_and_Output_IO_Critical_Path.md)：区分传输服务时间与暴露等待。
-- [性能分析 · 时间线与关键路径](../topic_discussion/performance_analysis/03_time_breakdown_and_trace_reading.md)：结合阶段计时解释执行轨迹。
+- [性能分析 · 时间线与关键路径](../topic_discussion/performance_optimization/methods/03_time_breakdown_and_trace_reading.md)：结合阶段计时解释执行轨迹。

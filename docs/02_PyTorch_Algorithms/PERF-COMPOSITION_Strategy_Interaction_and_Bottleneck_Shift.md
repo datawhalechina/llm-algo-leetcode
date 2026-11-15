@@ -384,7 +384,7 @@ def decide_composition(baseline, singles, combined, guardrails_passed, minimum_m
 
 ### 5.1 环境与固定工作负载
 
-本实验使用 `PERF-CUDA-MECHANISM`，首次运行按[专题 Quickstart](../topic_discussion/performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart)创建并预检环境，结果登记见[实验资产表](../topic_discussion/performance_optimization/experiment_assets.md)。本机合成数据，无外部模型或数据下载。
+本实验使用 `PERF-CUDA-MECHANISM`，首次运行按[性能机制GPU环境](../topic_discussion/performance_optimization/gpu_quickstart.md#perf-cuda-mechanism-quickstart)创建并预检环境，结果登记见[实验资产表](../topic_discussion/performance_optimization/experiment_assets.md)。本机合成数据，无外部模型或数据下载。
 
 | 配置层 | 本节固定设置 | 修改规则 |
 | --- | --- | --- |

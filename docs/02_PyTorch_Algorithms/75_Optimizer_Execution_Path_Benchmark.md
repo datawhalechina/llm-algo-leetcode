@@ -217,7 +217,7 @@ CPU 部分验证候选契约与采用规则；单 GPU 部分测量 PyTorch 的�
 
 #### 5.1 本次运行配置
 
-运行环境：`PERF-CUDA-MECHANISM`，单卡显存至少 8 GiB；环境创建与验证见[性能分析 Quickstart](../topic_discussion/performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart)。
+运行环境：`PERF-CUDA-MECHANISM`，单卡显存至少 8 GiB；环境创建与验证见[性能机制GPU环境](../topic_discussion/performance_optimization/gpu_quickstart.md#perf-cuda-mechanism-quickstart)。
 
 只在配置单元修改唯一标签和阶段。先用 `prepare` 顺序核对 5.1–5.6；确认无误后改为 `measure` 再运行，最后改为 `close` 顺序运行以读取证据并登记决策。
 

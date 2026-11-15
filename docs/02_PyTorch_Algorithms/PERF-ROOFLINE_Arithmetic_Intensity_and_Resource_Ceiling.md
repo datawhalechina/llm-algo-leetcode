@@ -339,7 +339,7 @@ CPU 练习计算工作量与资源区间；GPU 实验使用设备内复制和两
 
 ### 5.1 环境与固定工作负载
 
-本实验使用 `PERF-CUDA-MECHANISM`，首次运行按[专题 Quickstart](../topic_discussion/performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart)创建和预检环境，结果登记见[实验资产表](../topic_discussion/performance_analysis/experiment_assets.md)。
+本实验使用 `PERF-CUDA-MECHANISM`，首次运行按[性能机制GPU环境](../topic_discussion/performance_optimization/gpu_quickstart.md#perf-cuda-mechanism-quickstart)创建和预检环境，结果登记见[实验资产表](../topic_discussion/performance_optimization/measurement_assets.md)。
 
 | 配置层 | 本节固定设置 | 修改规则 |
 | --- | --- | --- |
@@ -535,4 +535,4 @@ else:
 
 - [Roofline: An Insightful Visual Performance Model](https://doi.org/10.1145/1498765.1498785)
 - [NVIDIA Nsight Compute Roofline Charts](https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#roofline-charts)
-- [性能分析 · 05 瓶颈归因](../topic_discussion/performance_analysis/05_bottleneck_attribution.md)
+- [性能分析 · 05 瓶颈归因](../topic_discussion/performance_optimization/methods/05_bottleneck_attribution.md)

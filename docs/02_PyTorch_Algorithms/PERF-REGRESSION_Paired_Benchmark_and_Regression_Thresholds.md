@@ -29,7 +29,7 @@
 先学习如何固定工作负载、计时范围和重复运行，再进入配对统计。
 
 - [Part 00 · 20 性能证据与实验设计](../00_Prerequisites/20_Performance_Evidence_and_Experiment_Design.md)
-- [性能分析 · 02 可重复基线](../topic_discussion/performance_analysis/02_reproducible_baseline.md)
+- [性能分析 · 02 可重复基线](../topic_discussion/performance_optimization/methods/02_reproducible_baseline.md)
 ## Step 1：哪些运行可以配成一对
 
 一对试验使用相同输入、模型权重、环境与计时范围，只改变待比较的方案。执行顺序在不同轮次交替，减少固定先后带来的偏差，但不能保证消除温度漂移或后台干扰。配对编号连接的是同一轮，而不是让基线与候选永远按相同顺序运行。
@@ -511,7 +511,7 @@ CPU 练习验证配对与统计规则；GPU 实验在同一微型多层感知机
 
 ### 5.1 环境与固定工作负载
 
-本实验使用 `PERF-CUDA-MECHANISM`，首次运行按[专题 Quickstart](../topic_discussion/performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart)创建并预检环境，结果登记见[实验资产表](../topic_discussion/performance_analysis/experiment_assets.md)。
+本实验使用 `PERF-CUDA-MECHANISM`，首次运行按[性能机制GPU环境](../topic_discussion/performance_optimization/gpu_quickstart.md#perf-cuda-mechanism-quickstart)创建并预检环境，结果登记见[实验资产表](../topic_discussion/performance_optimization/measurement_assets.md)。
 
 | 配置层 | 本节固定设置 | 修改规则 |
 | --- | --- | --- |
@@ -795,6 +795,6 @@ else:
 
 把配对方法用于训练和服务比较时，继续核对各自的工作负载和质量约束。
 
-- [性能分析 · 回归、噪声与阈值](../topic_discussion/performance_analysis/06_benchmark_design_and_regression_validation.md)
+- [性能分析 · 回归、噪声与阈值](../topic_discussion/performance_optimization/methods/06_benchmark_design_and_regression_validation.md)
 - [Part 02 · 推理性能比较](./66_Inference_Performance_Comparison.md)：在服务负载下应用比较方法。
 - [Part 02 · 训练性能分析](./73_Training_Performance_Analysis.md)：将计时与质量约束用于训练路径。
