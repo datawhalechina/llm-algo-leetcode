@@ -10,7 +10,7 @@
 | `llm_algo_cnb_gpu`主GPU环境 | Part03 Triton、Part04原生CUDA与单GPU Runtime；源为`cnb/environment-gpu.yml`，不要求另建一套Runtime环境 | [主GPU环境](./quickstart.md#triton-environment) |
 | 原生CUDA C++工具链条件 | Part04编译页在同一CUDA PyTorch环境中还需兼容的`nvcc`、主机编译器和头文件；不是独立Python环境 | [工具链检查](./quickstart.md#原生cuda工具链)及各页运行环境 |
 | `INF-CUDA-MECHANISM` | Part02·20 的显式注意力与 SDPA 对照 | [推理机制 Quickstart](../inference_optimization/quickstart.md#inf-cuda-mechanism-quickstart) |
-| `PERF-CUDA-MECHANISM` | PERF-ROOFLINE 和 Part05·05；硬件门槛按各页说明 | [性能机制 Quickstart](../performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart) |
+| `PERF-CUDA-MECHANISM` | PERF-ROOFLINE 和 Part05·05；硬件门槛按各页说明 | [性能机制GPU环境](../performance_optimization/gpu_quickstart.md#perf-cuda-mechanism-quickstart) |
 | `PAR-CPU` / 多GPU通信环境 | Part04·13的CPU/Gloo核对与另行设计的NCCL实测分别选择；已有主环境支持Gloo并通过13测试时可复用 | [通信与并行Quickstart](../communication_parallelism/quickstart.md) |
 | 已有独立DeepSpeed环境 | Part04·16可选配置解析，不要求两张GPU，不代表完整训练验证；真实执行状态见下方16条目 | [框架核对命令](./quickstart.md#zero-config-check) |
 
