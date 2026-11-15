@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+<title id="title">nano-vLLM：沿两条输入跟踪生成循环</title>
+<desc id="desc">离线生成调用建立A与B序列。引擎反复调度，结合块管理信息准备模型输入，前向和采样后更新序列。未完成序列继续，已完成结果按原输入关系收集。Task标签表示阅读位置，不是执行步骤编号。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52606d"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d;font-size:19px}.title{font-size:27px;font-weight:700}.head{font-size:21px;font-weight:700}.note{font-size:17px;fill:#475569}.box{stroke:#829ab1;stroke-width:1.5;rx:12}.flow{fill:none;stroke:#52606d;stroke-width:2;marker-end:url(#arrow)}</style>
+<rect width="1200" height="760" fill="#f7fafc"/>
+<text x="40" y="44" class="title">从两条输入出发，跟踪同一条序列怎样跨轮次推进</text>
+<text x="40" y="79" class="note">离线调用的阅读路径示意；Task 标签标出学习位置，具体函数与执行组织按固定源码版本核对。</text>
+<rect x="40" y="125" width="300" height="92" fill="#dbeafe" class="box"/><text x="60" y="160" class="head">Task0 · 生成入口</text><text x="60" y="193">提示词 A、B 与采样配置</text>
+<path d="M340 171H440" class="flow"/>
+<rect x="440" y="125" width="330" height="92" fill="#dbeafe" class="box"/><text x="460" y="160" class="head">建立各自的序列状态</text><text x="460" y="193">输入、输出与生成进度分别保留</text>
+<path d="M605 217V300H190V330" class="flow"/>
+<rect x="40" y="330" width="300" height="155" fill="#fef3c7" class="box"/><text x="60" y="367" class="head">Task4 · 调度器</text><text x="60" y="405">读取等待与运行集合</text><text x="60" y="442">选出本轮序列与阶段</text>
+<path d="M340 408H440" class="flow"/>
+<rect x="440" y="330" width="330" height="155" fill="#ecfdf5" class="box"/><text x="460" y="367" class="head">Task1 · 模型执行器</text><text x="460" y="405">词元、位置、缓存映射</text><text x="460" y="442">预填充或解码前向</text>
+<path d="M770 408H860" class="flow"/>
+<rect x="860" y="330" width="300" height="155" fill="#ede9fe" class="box"/><text x="880" y="367" class="head">Task2 · 采样与更新</text><text x="880" y="405">追加词元，检查停止</text><text x="880" y="442">保留各序列的完成状态</text>
+<path d="M1010 485V550H190V485" class="flow"/><text x="600" y="535" text-anchor="middle">未完成序列继续进入后续轮次；A、B 可以在不同轮次结束</text>
+<rect x="40" y="616" width="330" height="100" fill="#fff" class="box"/><text x="60" y="652" class="head">Task3 · 块管理器</text><text x="60" y="685">分配、块表、复用与引用释放</text>
+<path d="M205 616V585H20V408H40" class="flow"/>
+<text x="410" y="652">选择成员时检查缓存能否分配；模型执行时按块表寻址。</text>
+<text x="410" y="687" class="note">同时跟踪请求状态与缓存引用，区分序列完成、引用释放和实际回收。</text>
+<path d="M1160 408H1180V171H1110" class="flow"/>
+<rect x="860" y="125" width="250" height="92" fill="#dbeafe" class="box"/><text x="880" y="160" class="head">收集已完成结果</text><text x="880" y="193" class="note">按原输入关系交还离线调用</text>
+<text x="40" y="737" class="note">整批返回时间描述离线调用；TTFT 与 TPOT 还需要对应的首个和后续输出事件。</text>
+</svg>
