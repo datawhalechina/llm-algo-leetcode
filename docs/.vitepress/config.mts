@@ -121,7 +121,6 @@ export default defineConfig({
                 text: '教学引擎实践',
                 collapsed: true,
                 items: [
-                  { text: '阅读入口', link: '/topic_discussion/inference_optimization/teaching_engines' },
                   { text: 'nano-vLLM 请求跟踪', link: '/topic_discussion/inference_optimization/nano_vllm_request_walkthrough' },
                   { text: 'Mini-SGLang 缓存与执行', link: '/topic_discussion/inference_optimization/mini_sglang_cache_scheduling' }
                 ]
