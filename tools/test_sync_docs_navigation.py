@@ -1,4 +1,4 @@
-"""Check opt-in topic mirror pruning without touching repository documents."""
+"""Check navigation coverage and scoped pruning without changing repository documents."""
 
 from contextlib import redirect_stderr, redirect_stdout
 import io
@@ -8,6 +8,50 @@ import unittest
 from unittest.mock import patch
 
 import sync_docs_navigation as sync
+
+
+class FoundationNavigationTests(unittest.TestCase):
+    """Keep every Part01 group registered and verify the real mirror conversion."""
+
+    def test_all_part01_groups_are_registered(self):
+        """New source group pages must be included in navigation synchronization."""
+        part = "01_Hardware_Math_and_Systems"
+        groups = {path.name for path in (sync.ROOT / part).glob("1[A-Z].md")}
+        self.assertTrue(groups, "Part01 source group pages must exist")
+        self.assertIn("1F.md", groups)
+        self.assertFalse(groups - set(sync.NAV_FILES[part]))
+
+    def test_part01_sync_updates_1f_and_preserves_other_parts(self):
+        """Use the registered list to convert 1F links and update its existing mirror."""
+        part = "01_Hardware_Math_and_Systems"
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / part
+            target = root / "docs" / part
+            source.mkdir(parents=True)
+            target.mkdir(parents=True)
+            page = source / "1F.md"
+            page.write_text(
+                "# Group 1F\n\n[Runtime](./34_Runtime.ipynb)\n"
+                "![Map](../docs/public/01_Hardware_Math_and_Systems/map.svg)\n",
+                encoding="utf-8",
+            )
+            (target / "1F.md").write_text("outdated\n", encoding="utf-8")
+            sibling = root / "docs" / "03_Triton_Kernels" / "intro.md"
+            sibling.parent.mkdir(parents=True)
+            sibling.write_text("preserve\n", encoding="utf-8")
+            expected = (
+                "# Group 1F\n\n[Runtime](./34_Runtime.md)\n"
+                "![Map](../public/01_Hardware_Math_and_Systems/map.svg)\n"
+            )
+            with patch.object(sync, "ROOT", root), patch.object(sync, "DOCS", root / "docs"):
+                with redirect_stdout(io.StringIO()):
+                    sync.sync_navigation(selected_part=part)
+                self.assertEqual((target / "1F.md").read_text(encoding="utf-8"), expected)
+                with redirect_stdout(io.StringIO()):
+                    sync.sync_navigation(selected_part=part)
+                self.assertEqual((target / "1F.md").read_text(encoding="utf-8"), expected)
+            self.assertEqual(sibling.read_text(encoding="utf-8"), "preserve\n")
 
 
 class ScopedTopicPruningTests(unittest.TestCase):
