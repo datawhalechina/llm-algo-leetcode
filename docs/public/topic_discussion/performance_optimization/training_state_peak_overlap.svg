@@ -1,11 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="title desc">
   <title id="title">训练输入供给与状态峰值时间线</title>
-  <desc id="desc">输入批次在主机准备并搬运到设备，参数持续驻留，激活从前向保留到反向，梯度、工作区和通信缓冲区在反向与更新阶段形成峰值窗口。</desc>
+  <desc id="desc">稳态单步示意，优化器状态已初始化。当前输入在前向开始前就绪；图中某层激活从前向保留到对应反向后释放，示例采用更新后释放梯度存储的方式。横向仅表示阶段顺序，条块高度不表示对象字节；红框是待检查的并存区间，不是实测峰值。</desc>
   <defs>
-    <style>.bg{fill:#f8fafc}.grid{stroke:#cbd5e1;stroke-width:2;stroke-dasharray:7 7}.bar{stroke-width:2.5}.title{font:700 26px sans-serif;fill:#0f172a}.head{font:700 16px sans-serif;fill:#172033}.body{font:14px sans-serif;fill:#475569}.phase{font:700 15px sans-serif;fill:#2563eb}.peak{fill:#fee2e2;opacity:.5;stroke:#dc2626;stroke-width:2;stroke-dasharray:8 6}</style>
+    <style>.bg{fill:#f8fafc}.grid{stroke:#cbd5e1;stroke-width:2;stroke-dasharray:7 7}.bar{stroke-width:2.5}.title{font-family:"Noto Sans CJK SC",sans-serif;font-size:26px;font-weight:700;fill:#0f172a}.head{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;font-weight:700;fill:#172033}.body{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;fill:#475569}.phase{font-family:"Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:700;fill:#2563eb}.peak{fill:#fee2e2;opacity:.5;stroke:#dc2626;stroke-width:2;stroke-dasharray:8 6}</style>
   </defs>
   <rect class="bg" width="1200" height="650" rx="24"/>
   <text x="600" y="48" text-anchor="middle" class="title">输入等待与状态重叠限制同一个训练步骤</text>
+  <text x="600" y="72" text-anchor="middle" class="body">稳态单步示意；横向表示阶段顺序，条块高度不表示对象大小</text>
 
   <text x="255" y="92" text-anchor="middle" class="phase">输入准备</text>
   <text x="485" y="92" text-anchor="middle" class="phase">前向传播</text>
@@ -16,28 +17,28 @@
   <line x1="830" y1="105" x2="830" y2="610" class="grid"/>
 
   <rect x="600" y="205" width="335" height="390" rx="14" class="peak" data-layout-role="decoration"/>
-  <text x="768" y="198" text-anchor="middle" class="head">状态峰值候选窗口</text>
+  <text x="768" y="198" text-anchor="middle" class="head">检查对象并存区间（非实测峰值）</text>
 
   <text x="45" y="158" class="head">输入批次</text>
-  <rect x="205" y="122" width="350" height="60" rx="13" fill="#cffafe" stroke="#0891b2" class="bar" data-layout-role="glyph"/>
-  <text x="380" y="158" text-anchor="middle" class="body">CPU 解析与组批 → 页锁定内存 → H2D</text>
+  <rect x="205" y="122" width="165" height="60" rx="13" fill="#cffafe" stroke="#0891b2" class="bar" data-layout-role="glyph"/>
+  <text x="287" y="158" text-anchor="middle" class="body">组批与 H2D</text>
 
   <text x="45" y="250" class="head">参数与优化器状态</text>
   <rect x="205" y="214" width="850" height="60" rx="13" fill="#dbeafe" stroke="#2563eb" class="bar" data-layout-role="glyph"/>
-  <text x="630" y="250" text-anchor="middle" class="body">加载后持续驻留；精度、分片与卸载改变容量</text>
+  <text x="630" y="250" text-anchor="middle" class="body">稳态中已初始化；精度、分片与卸载改变容量</text>
 
   <text x="45" y="342" class="head">保存的激活</text>
   <rect x="390" y="306" width="390" height="60" rx="13" fill="#dcfce7" stroke="#16a34a" class="bar" data-layout-role="glyph"/>
-  <text x="585" y="342" text-anchor="middle" class="body">前向创建，完成对应反向后释放</text>
+  <text x="585" y="342" text-anchor="middle" class="body">某层激活：前向创建，反向后释放</text>
 
   <text x="45" y="434" class="head">梯度</text>
   <rect x="620" y="398" width="390" height="60" rx="13" fill="#fef3c7" stroke="#d97706" class="bar" data-layout-role="glyph"/>
-  <text x="815" y="434" text-anchor="middle" class="body">反向产生，累积或参数更新后清零</text>
+  <text x="815" y="434" text-anchor="middle" class="body">示例：反向产生，更新后释放存储</text>
 
   <text x="45" y="526" class="head">工作区与通信缓冲区</text>
   <rect x="650" y="490" width="310" height="60" rx="13" fill="#ffedd5" stroke="#ea580c" class="bar" data-layout-role="glyph"/>
   <text x="805" y="526" text-anchor="middle" class="body">计算内核、分桶和同步窗口内临时驻留</text>
 
   <text x="45" y="602" class="head">复测指标</text>
-  <text x="205" y="602" class="body">取批等待 · 暴露 H2D · 峰值显存 · 单步时间 · 有效 Token 吞吐</text>
+  <text x="205" y="602" class="body">取批等待 · 暴露 H2D · 峰值显存 · 单步时间 · 有效词元吞吐</text>
 </svg>
