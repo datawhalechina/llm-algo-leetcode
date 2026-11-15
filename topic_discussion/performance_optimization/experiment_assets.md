@@ -1,6 +1,6 @@
 # 性能优化实验资产表
 
-本表登记单卡机制对照、训练项目结果和交付输入。环境操作见[实验 Quickstart](./quickstart.md)，结果字段说明见[公共结果规范](../../docs/part02_result_assets.md)。每项结论以所链接 JSON 的输入、运行版本和测量范围为准。
+本页是性能优化的实验总索引，按测量诊断、候选对照和项目实践查找输入与结果。环境操作见[实验 Quickstart](./quickstart.md)，结果字段说明见[公共结果规范](../../docs/part02_result_assets.md)。每项结论以所链接 JSON 的输入、运行版本和测量范围为准。
 
 ## 环境与实验入口
 
@@ -9,37 +9,39 @@
 | 环境 | 实验入口 | 运行条件 |
 |:---|:---|:---|
 | [BASE-CPU](../../docs/guide.md#base-cpu) | 各机制页 Step 4 的题目与测试 | 按页面说明安装基础依赖 |
-| [PERF-CUDA-MECHANISM](../performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart) | PERF-INPUT、PERF-IO、PERF-CANDIDATE、PERF-COMPOSITION | 单卡至少 8 GiB 显存，环境预检通过 |
+| [PERF-CUDA-MECHANISM](gpu_quickstart.md#perf-cuda-mechanism-quickstart) | PERF-INPUT、PERF-IO、PERF-CANDIDATE、PERF-COMPOSITION | 单卡至少 8 GiB 显存，环境预检通过 |
 | 训练项目原环境 | [Part 02 · 73 训练基线](../../02_PyTorch_Algorithms/73_Training_Performance_Analysis.ipynb)、[Part 02 · 76 显存策略](../../02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.ipynb)、[Part 02 · 74 性能分析与交接](../../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.ipynb) | 按各页 5.1 与固定模型输入准备；保留结果中的 PyTorch 版本 |
-| [PERF-CUDA-MECHANISM](../performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart) | [Part 02 · 75 AdamW 执行路径](../../02_PyTorch_Algorithms/75_Optimizer_Execution_Path_Benchmark.ipynb) | 单 GPU；PyTorch CUDA；无需下载模型或数据 |
-| [PERF-CUDA-MECHANISM](../performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart) | [Part 05 · 性能优化交付](../../05_Integrated_Projects_and_Decisions/03_Performance_Optimization_Delivery/index.md) | 同一环境运行本项目测量与决策核对；`close` 不调用 GPU，不依赖 Part 02 · 74 交接包 |
+| [PERF-CUDA-MECHANISM](gpu_quickstart.md#perf-cuda-mechanism-quickstart) | [Part 02 · 75 AdamW 执行路径](../../02_PyTorch_Algorithms/75_Optimizer_Execution_Path_Benchmark.ipynb) | 单 GPU；PyTorch CUDA；无需下载模型或数据 |
+| [通信与并行环境](../communication_parallelism/quickstart.md) | [Part 02 · 79 训练状态并行](../../02_PyTorch_Algorithms/79_Distributed_Parallel_Benchmark.ipynb) | 条件扩展：CPU账本用于筛选；真实DDP/FSDP/ZeRO比较需按该页准备多GPU、通信后端和互联拓扑 |
+| [PERF-CUDA-MECHANISM](gpu_quickstart.md#perf-cuda-mechanism-quickstart) | [Part 05 · 性能优化交付](../../05_Integrated_Projects_and_Decisions/03_Performance_Optimization_Delivery/index.md) | 同一环境运行本项目测量与决策核对；`close` 不调用 GPU，不依赖 Part 02 · 74 交接包 |
 | 其他候选原环境 | [推理优化](../inference_optimization/quickstart.md)、[量化与压缩](../quantization_compression/quickstart.md)、[通信与并行](../communication_parallelism/quickstart.md) | 使用目标后端与对应设备条件，测量结果需保留原始样本和失败记录 |
 
 ## 机制实验
 
-当前四项记录均来自 RTX 5070 Ti Laptop GPU 的局部实验。输入流水线与 I/O 使用构造数据；候选和组合使用随机初始化的 SwiGLU MLP，隐藏维度 2048、中间维度 5504，每次处理 8 批输入。它们用于比较输入供给、浮点精度和搬运重叠，不能直接推出完整模型训练质量、服务性能或低比特量化收益。
+测量与诊断使用[TRACE、显存驻留、Roofline与配对回归登记](measurement_assets.md#机制实验)；下表登记输入流水线、I/O、候选和组合四项局部实验，均来自RTX 5070 Ti Laptop GPU。输入流水线与I/O使用构造数据；候选和组合使用随机初始化的SwiGLU MLP，隐藏维度2048、中间维度5504，每次处理8批输入。结果按各自计时范围解释，不直接推出完整训练质量、服务性能或低比特量化收益。
 
 下表的“延迟下降”按“1 − 候选中位数 / 对照中位数”计算，“加速比”按“对照中位数 / 候选中位数”计算。候选和组合的活动字节指参数与输入缓冲区；同一矩阵中多组模型共同驻留，其分配峰值不能当作每个候选独立运行的峰值。
 
-关键路径、显存驻留、资源参考和配对回归的正式记录统一见[性能分析实验资产表](../performance_analysis/experiment_assets.md)。使用这些结果提出候选时，应核对输入、设备和运行版本；其收益不能与本表实验直接相加。候选矩阵中的复制与计算分阶段计时也不能单独证明优化后的端到端瓶颈已经转移，仍需执行轨迹或判别对照。
+关键路径、显存驻留、资源参考和配对回归的正式记录统一见[测量与诊断实验记录](measurement_assets.md)。使用这些结果提出候选时，应核对输入、设备和运行版本；其收益不能与本表实验直接相加。候选矩阵中的复制与计算分阶段计时也不能单独证明优化后的端到端瓶颈已经转移，仍需执行轨迹或判别对照。
 
 | 实验 / 页面 | 固定输入与受控变量 | 当前结果 | 结论与限制 |
 |:---|:---|:---|:---|
 | [PERF-INPUT · 输入流水线](../../02_PyTorch_Algorithms/PERF-INPUT_Training_Input_Pipeline_Performance.ipynb) | 批量 8、长度 128、特征维度 512；预热 10 步、测量 80 步；比较普通内存、锁页异步复制、双进程预取 | [input_v1](../../benchmarks/results/perf_input_pipeline/perf-input_rtx5070ti_input_v1.json) | 锁页单进程步骤中位数最低：0.379 ms；双进程预取 P95 最低：0.488 ms，吞吐最高：20302.65 样本/秒。原始决策为接受预取候选，但不同指标各有最优配置；正确性仅以校验和核对，未保留逐步样本 |
-| [PERF-IO · I/O 关键路径](../../02_PyTorch_Algorithms/PERF-IO_Artifact_State_and_Output_IO_Critical_Path.ipynb) | 64 MiB 本地产物分阶段测量；8 批复制与计算比较串行和双缓冲；预热 5 次、测量 20 次，本地热缓存 | [io_v2](../../benchmarks/results/perf_io_critical_path/perf-io_rtx5070ti_io_v2.json) | 复制与计算中位数 7.066 → 4.965 ms，加速比 1.423×；保存与加载、输出回写不包含在该加速比中。产物往返检查和流水线校验和检查通过；未验证远端存储或冷缓存 |
+| [PERF-IO · I/O 关键路径](../../02_PyTorch_Algorithms/PERF-IO_Artifact_State_and_Output_IO_Critical_Path.ipynb) | 64 MiB 本地产物分阶段测量；8 批复制与计算比较串行和双缓冲；预热 5 次、测量 20 次，本地热缓存 | [io_v2](../../benchmarks/results/perf_io_critical_path/perf-io_rtx5070ti_io_v2.json) | 复制与计算中位数 7.066 → 4.965 ms，加速比 1.423×；保存与加载、输出回写不包含在该加速比中。主机—设备—主机张量与末次流水线校验和检查通过；未核对加载文件及输出文件重载内容。v3文件校验分支尚未GPU实测；不外推远端存储或冷缓存 |
 | [PERF-CANDIDATE · 约束到候选](../../02_PyTorch_Algorithms/PERF-CANDIDATE_Constraint_to_Candidate_and_Cost_Transfer.ipynb) | 每批 32 / 256 Token；FP32 串行对比 BF16 串行、FP32 双缓冲；预热 12 轮、轮换顺序测量 24 轮 | [candidate_rotating_v2](../../benchmarks/results/perf_candidate/perf-candidate_rtx5070ti_candidate_rotating_v2.json) | BF16 两档加速比 2.651× / 2.876×，参数与输入缓冲区字节减半；FP32 重叠在 32 Token 下为 `tune`，256 Token 达到 1.03× 加速与 P95 门槛。输出余弦相似度通过 0.999 门槛；这不是训练或任务质量评测 |
-| [PERF-COMPOSITION · 策略组合](../../02_PyTorch_Algorithms/PERF-COMPOSITION_Strategy_Interaction_and_Bottleneck_Shift.ipynb) | 同一轮比较 FP32 串行、BF16 串行、FP32 重叠、BF16 重叠；尺寸与预热、重复设置同候选实验；使用本次矩阵内的单项对照 | [composition_rotating_v2](../../benchmarks/results/perf_composition/perf-composition_rtx5070ti_composition_rotating_v2.json) | 相对最佳单项 BF16 串行，组合中位延迟下降 5.57% / 12.16%；两档均为 24/24 轮更快，P95 比值为 0.727 / 0.893。局部规则选择保留组合，回退目标为 BF16 串行；输出相似度由单独前向核对，未证明完整重叠执行的逐元素一致性或项目可采用 |
+| [PERF-COMPOSITION · 策略组合](../../02_PyTorch_Algorithms/PERF-COMPOSITION_Strategy_Interaction_and_Bottleneck_Shift.ipynb) | 同一轮比较 FP32 串行、BF16 串行、FP32 重叠、BF16 重叠；尺寸与预热、重复设置同候选实验；使用本次矩阵内的单项对照 | [composition_rotating_v2](../../benchmarks/results/perf_composition/perf-composition_rtx5070ti_composition_rotating_v2.json) | 相对最佳单项 BF16 串行，组合中位延迟下降 5.57% / 12.16%；两档均为 24/24 轮更快，P95 比值为 0.727 / 0.893。历史schema v1局部规则选择保留组合，回退目标为BF16串行；当前schema v2的合格回退规则经CPU复核，尚无新增GPU测量。输出相似度由单独前向核对，未证明完整重叠执行的逐元素一致性或项目可采用 |
 
 ## 项目实验
 
-下列结果使用 Qwen2.5-0.5B-Instruct，保留各文件原有的 PyTorch 2.8.0+cu128 快照，与上方 PyTorch 2.11.0+cu128 的局部 MLP 测量分开解释。AdamW 完整训练与无动量 SGD 激活隔离实验分别判断；局部显存节省不能提升为完整训练采用结论。
+Part 02 · 73／76的历史模型测量以及74引用的对应报告，使用Qwen2.5-0.5B-Instruct并保留各文件原有的PyTorch 2.8.0+cu128快照；75则是PyTorch 2.11.0+cu128上的合成MLP执行路径比较。各项按自身模型、输入和环境解释，不把跨版本数据合成一组对照。AdamW完整训练与无动量SGD激活隔离实验也分别判断；局部显存节省不能提升为完整训练采用结论。
 
 | 项目入口 | 直接输入与比较对象 | 正式结果与交接 | 当前登记结论 |
 |:---|:---|:---|:---|
-| [Part 02 · 73 训练性能基线](../../02_PyTorch_Algorithms/73_Training_Performance_Analysis.ipynb) | 批量 1、长度 768、AdamW；FP32 与 BF16 混合精度；3 次重复 | [训练基线](../../benchmarks/results/73_real_gpu_training_rtx5070ti_training_baseline_v1.json) | `tune`：时间改善，显存收益未达到门槛；为后续候选提供训练对照 |
+| [Part 02 · 73 训练性能基线](../../02_PyTorch_Algorithms/73_Training_Performance_Analysis.ipynb) | 批量 1、长度 768、AdamW；FP32 与 BF16 混合精度；3 次重复 | [训练基线](../../benchmarks/results/73_real_gpu_training_rtx5070ti_training_baseline_v1.json) | `tune`：时间改善，显存收益未达到门槛；计时从输入已驻留GPU后开始，不含输入准备与H2D搬运，为同范围候选提供训练对照 |
 | [Part 02 · 76 重算、卸载与预算敏感性](../../02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.ipynb) | 同标签 G0 为 AdamW 固定长度对照；G1 改用无动量 SGD，逐档比较激活显存；`close` 对 G0 实测候选重算预算情景 | [G0](../../benchmarks/results/76_real_gpu_memory_rtx5070ti_activation_memory_v1.json)、[G1](../../benchmarks/results/76_real_gpu_memory_boundary_rtx5070ti_activation_memory_v1.json)、[输入清单](../../benchmarks/results/76_input_manifest_rtx5070ti_activation_memory_v1.json)、[并入前的 75 历史预算记录](../../benchmarks/results/75_memory_budget_decision_rtx5070ti_memory_budget_v1.json) | G0 为 `tune`。G1 在已测长度 1280 下，checkpoint 节省约 2820 MiB、吞吐比为 0.831，达到激活隔离实验门槛；更长序列因安全边界停止，证据仍标记为 `blocked`。74 v7 仅将其登记为激活显存范围内的 `accept`，不外推为完整训练采用。历史 75 记录保留，预算情景与策略实验在 76 收口 |
 | [Part 02 · 75 AdamW 执行路径基准](../../02_PyTorch_Algorithms/75_Optimizer_Execution_Path_Benchmark.ipynb) | RTX 5070 Ti Laptop GPU；PyTorch 2.11.0+cu128；固定 AdamW 与学习率；比较 single-tensor、foreach、fused；两种等元素数布局及完整 MLP 训练步；3 次重复 | [原始测量](../../benchmarks/results/75_optimizer_path/optimizer_path_rtx5070ti_adamw_path_v1.json)、[决策登记](../../benchmarks/results/75_optimizer_path/optimizer_path_decision_rtx5070ti_adamw_path_v1.json) | `accept`：本 workload 下选 `fused`，完整训练步加速 1.691×，分配显存减少 7.938 MiB，最大参数误差 1.79e-7。只适用于该合成 MLP、GPU 与 PyTorch 组合；优化器单步计时仅作诊断 |
 | [Part 02 · 74 性能分析与交接](../../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.ipynb) | Profiler 摘要、激活专项及同工作负载训练证据；分别判断完整训练与激活隔离范围 | [报告 v7](../../benchmarks/results/74_profiling_optimization_rtx5070ti_profiling_dual_scope_v7.json)、[交接包 v7](../../benchmarks/results/74_profile/performance_handoff_rtx5070ti_profiling_dual_scope_v7.json) | 顶层 `tune`；专项为 `accept_for_activation_memory_scope`，且明确 `promotable_to_full_training=false`，不能登记为完整训练采用 |
+| [Part 02 · 79 训练状态并行](../../02_PyTorch_Algorithms/79_Distributed_Parallel_Benchmark.ipynb)（条件扩展） | 固定模型、有效批量、精度、GPU数与拓扑，比较DDP基线和FSDP/ZeRO状态分片；与单卡优化器实现及激活策略分开 | [通信与并行资产登记](../communication_parallelism/experiment_assets.md#项目接口)；CPU筛选与结果聚合已接入，真实多卡待验证 | 尚无真实多卡采用结论；单卡账本或配置检查不能证明分片通信与扩展收益 |
 | [Part 05 · 性能优化交付](../../05_Integrated_Projects_and_Decisions/03_Performance_Optimization_Delivery/index.md) | 独立负载：Qwen2.5-0.5B、B=1、S=768；比较基线、fused AdamW、激活检查点及其组合；固定缓存模型与合成 token 输入 | GPU 实验尚未运行 | `close` 只核对配对和交付规则，不调用 GPU；结论待本项目实测，不从 Part 02 · 74 推导 |
 
 ## 结果版本与复现
@@ -51,7 +53,7 @@
 | 阅读当前结果 | 打开表中 JSON，核对工作负载、版本、测量范围及原始决策 | 无需运行 GPU；缺失值保持缺失，不用历史值补齐 |
 | 复现机制实验 | 按机制页 5.1 设置环境与输入，使用新的运行标签；保留预热、重复和轮换顺序 | 生成新 JSON；预检失败或正确性、资源检查失败时停止后续采用判断 |
 | 复现项目实验 | 按项目页阶段执行，核对输入清单与来源文件 | 同一范围内比较；保存失败与安全停止状态，不把专项通过改成完整训练通过 |
-| 检查结果完整性 | 核对逐次样本、样本数、分位数算法、分阶段范围、原始决策与回退目标；当前候选、组合和 I/O 流水线的 P95 使用排序后索引 floor(0.95 × (n − 1)) 的样本值 | PERF-INPUT 仅有汇总，不能回算逐次分布；矩阵峰值与活动字节分开解释 |
+| 检查结果完整性 | 核对逐次样本、样本数、分位数算法、分阶段范围、原始决策与回退目标；候选、组合和 I/O 流水线的 P95 使用排序后索引 floor(0.95 × (n − 1)) 的样本值 | PERF-INPUT 仅有汇总，不能回算逐次分布；矩阵峰值与活动字节分开解释 |
 | 处理本地产物 | PERF-IO 会生成运行目录中的 `artifact.pt` 和 `output.pt` | 当前计时与结论可由 JSON 阅读；重新测量时生成新产物，不能用缺失产物宣称内容复验完成 |
 
 <details>
