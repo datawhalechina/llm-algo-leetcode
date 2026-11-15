@@ -49,3 +49,4 @@ __pycache__/
 
 # Local model artifacts produced by the distilled-student delivery project.
 benchmarks/results/88_distillation_delivery/student_*/
+05_Integrated_Projects_and_Decisions/open_practice/*/project_config.yaml

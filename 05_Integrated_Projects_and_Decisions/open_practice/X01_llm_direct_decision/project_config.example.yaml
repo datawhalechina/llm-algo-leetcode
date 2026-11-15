@@ -1,0 +1,66 @@
+# X01_llm_direct_decision 配置模板（开放实践项目唯一配置入口）
+# 用法：复制为 project_config.yaml 后按需修改。留空的路径对应章节自动跳过。
+# 不保存密钥或本地绝对路径——本地路径只写进你私有的 project_config.yaml（勿提交）。
+
+schema_version: open-practice-project/v1
+semantic_id: X01-llm-direct-decision
+run_label: arena960x540_seed0
+
+project:
+  question: >-
+    4B 指令模型不经推理链、单次前向直接输出 8 个离散动作概率时，
+    零样本（SemIf 提示词）与 QLoRA 微调（kev）在 2D 格斗决策任务上的胜率差距有多大？
+  owner_topic: 05_Integrated_Projects_and_Decisions / 推理与显存优化综合实战
+  environment_profile: macOS MPS / CUDA 24GB（训练）/ llama.cpp Metal（GGUF 推理）
+
+workload:
+  # 数据由 notebook 内第 7 节的规则专家自动采集生成（jsonl），无需外部数据集
+  source: self-generated expert rollout (rule expert, 36k samples)
+  seed: 42
+
+gates:
+  # 可执行质量门槛：kev 评估胜率 vs random ≥ 90%，vs 规则 dvd ≥ 90%（演示默认各 3 局）
+  quality: "eval win-rate: vs_random>=0.9 and vs_dvd>=0.9 (demo: 3 matches each)"
+  resource_budget: "训练: 24GB 显存约 6.6h（A10/4090D，QLoRA NF4）；推理: GGUF Q4 约 3GB"
+
+outputs:
+  # 产物根目录：仓库内统一登记到 benchmarks/results/<本主题同名文件夹>，
+  # 相对路径以 notebook 所在目录（open_practice/X01_llm_direct_decision/）解析，
+  # 即仓库根下的 benchmarks/results/X01_llm_direct_decision/。
+  # 大型权重、数据集、缓存不放项目目录内。
+  directory: ../../../benchmarks/results/X01_llm_direct_decision
+
+paths:
+  # 产物根目录（在本项目文件夹之外；相对路径以 notebook 所在目录解析）
+  # 与 outputs.directory 保持一致
+  results_root: ../../../benchmarks/results/X01_llm_direct_decision
+
+  # SemIf 零训练大脑用的 GGUF（2.6GB）
+  # 例：/Users/you/models/Qwen3.5-4B_Q4_k_m.gguf
+  gguf_q4: ""
+
+  # kev 微调大脑 / 训练用的 bf16 基座目录（8.8GB）
+  # 例：/Users/you/models/qwen35-4b-bf16
+  base_bf16: ""
+
+  # 训练好的 LoRA adapter 目录（含 adapter_model.safetensors）
+  # 例：/Users/you/models/kev_v1/ckpt-step2000
+  kev_adapter: ""
+
+  # 训练数据集（36k 专家样本 jsonl；数据采集/训练复现时需要）
+  # 例：/Users/you/data/expert_v1.jsonl
+  dataset: ""
+
+runtime:
+  device: auto          # auto / cuda / mps / cpu
+  decision_interval: 12 # 决策间隔 tick（12 = 5Hz）
+  seed: 0
+  temperature: 1.0
+
+demo:
+  eval_matches: 3       # 演示评估局数（kev 每局上限 ~5.5min，SemIf 类似）
+  record_seed: 0        # 演示录像的种子
+
+arena:
+  w: 960                # 场地尺寸（kev 训练分布是 960x540，换尺寸是零样本迁移）
+  h: 540
