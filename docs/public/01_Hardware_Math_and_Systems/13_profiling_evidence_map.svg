@@ -1,6 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470">
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+  <title id="title">从性能记录形成资源假设并设计对照</title>
+  <desc id="desc">先核对工作负载与测量区间，再换算吞吐和暴露时间，与同路径参考上界比较形成待检验假设，选择一个实现条件进行对照，同时检查正确性与完整阶段时间。</desc>
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="10" markerHeight="10" orient="auto" markerUnits="userSpaceOnUse">
       <path d="M0 0L10 5L0 10Z" fill="#64748b"/>
     </marker>
     <style>
@@ -13,7 +15,7 @@
   </defs>
   <rect width="1500" height="470" rx="24" fill="#f8fafc"/>
   <text x="750" y="45" text-anchor="middle" class="title">性能归因：从已有证据到判别实验</text>
-  <text x="750" y="72" text-anchor="middle" class="sub">不重新采集工作负载；统一单位、判断关键路径，再用单变量实验验证或推翻假设</text>
+  <text x="750" y="72" text-anchor="middle" class="sub">统一工作负载与区间，把吞吐、暴露等待和参考上界放在一起比较</text>
 
   <rect x="45" y="120" width="300" height="245" rx="18" fill="#eff6ff" stroke="#60a5fa" class="panel"/>
   <text x="70" y="155" class="head">1. 输入已有证据</text>
@@ -26,10 +28,10 @@
   <rect x="420" y="120" width="300" height="245" rx="18" fill="#f0fdf4" stroke="#4ade80" class="panel"/>
   <text x="445" y="155" class="head">2. 派生资源指标</text>
   <text x="445" y="190" class="body">算术强度：FLOPs / bytes</text>
-  <text x="445" y="220" class="body">实际 TFLOP/s 与 GB/s</text>
+  <text x="445" y="220" class="body">由记录换算 TFLOP/s 与 GB/s</text>
   <text x="445" y="250" class="body">暴露时间及关键路径占比</text>
   <text x="445" y="292" class="small">统一数量级和单位</text>
-  <text x="445" y="322" class="small">避免用预设“压力分数”代替证据</text>
+  <text x="445" y="322" class="small">同时保留来源与测量范围</text>
 
   <rect x="795" y="120" width="300" height="245" rx="18" fill="#fffbeb" stroke="#f59e0b" class="panel"/>
   <text x="820" y="155" class="head">3. 形成瓶颈假设</text>
@@ -45,11 +47,11 @@
   <text x="1195" y="220" class="body">只改变一个机制变量</text>
   <text x="1195" y="250" class="body">同时观察收益与代价</text>
   <text x="1195" y="292" class="small">结果支持假设：进入候选复测</text>
-  <text x="1195" y="322" class="small">结果不支持：返回时间线重新归因</text>
+  <text x="1195" y="322" class="small">结果不支持：核查改动与其他开销</text>
 
   <path d="M345 242H420" class="flow"/><text x="383" y="226" text-anchor="middle" class="label">换算</text>
   <path d="M720 242H795" class="flow"/><text x="758" y="226" text-anchor="middle" class="label">比较</text>
-  <path d="M1095 242H1170" class="flow"/><text x="1133" y="226" text-anchor="middle" class="label">证伪</text>
+  <path d="M1095 242H1170" class="flow"/><text x="1133" y="226" text-anchor="middle" class="label">对照</text>
 
-  <text x="750" y="425" text-anchor="middle" class="sub">Part 00 · 17 负责采集，Part 01 · 13 负责资源归因，Part 00 · 20 负责回归与实验协议</text>
+  <text x="750" y="425" text-anchor="middle" class="sub">对照后同时检查数值、内核时间与完整阶段时间；结果不支持时返回记录核查</text>
 </svg>

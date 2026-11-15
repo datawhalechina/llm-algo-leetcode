@@ -47,8 +47,8 @@
 <text x="755" y="236" text-anchor="middle" class="small">降低缓存与潜在读取量</text>
 <rect x="648" y="260" width="214" height="90" fill="#fff" class="item"/>
 <text x="755" y="290" text-anchor="middle" class="head">MLA</text>
-<text x="755" y="313" text-anchor="middle" class="small">缓存 latent 表示</text>
-<text x="755" y="333" text-anchor="middle" class="small">用恢复计算换缓存空间</text>
+<text x="755" y="313" text-anchor="middle" class="small">共享潜在向量与位置键</text>
+<text x="755" y="333" text-anchor="middle" class="small">内容投影可合并到计算侧</text>
 <text x="755" y="375" text-anchor="middle" class="small">改变“保存什么”</text>
 
 <!-- 运行时管理分支 -->
