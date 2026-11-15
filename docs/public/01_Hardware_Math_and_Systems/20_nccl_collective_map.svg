@@ -18,5 +18,5 @@
   <path d="M286 278H334" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)"/><text x="310" y="260" text-anchor="middle" class="lab">需要交换</text>
   <path d="M584 278H632" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)"/><text x="608" y="260" text-anchor="middle" class="lab">受拓扑影响</text>
   <path d="M882 278H930" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)"/><text x="906" y="260" text-anchor="middle" class="lab">形成证据</text>
-  <text x="600" y="500" text-anchor="middle" class="sub">本节验证 Ring 语义、chunk 所有权与理论成本；NCCL 算法选择和多卡性能由 Part 02 · 46 验证</text>
+  <text x="600" y="500" text-anchor="middle" class="sub">本节验证 Ring 语义、分块所有权与理论成本；NCCL 算法选择和多卡性能继续进入 Part 02 · 47</text>
 </svg>

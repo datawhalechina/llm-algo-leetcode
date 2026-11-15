@@ -27,7 +27,6 @@
 ## 前置阅读
 **导语：** 先复习 GPU 内存层级和设备间连接，再用 DP、TP、PP 的示例回答三个问题：数据放在哪里、哪些数据需要交换、链路带宽如何改变并行收益。
 - [03. GPU Architecture and Memory | GPU 物理架构与内存层级](./03_GPU_Architecture_and_Memory.md)
-- [Group 1C: Communication, Parallelism and Fault Tolerance | 1C: 通信、并行与容错](./1C.md)
 
 ---
 ## Q1：DP、TP、PP 分别如何切分数据、张量和层？
@@ -54,8 +53,8 @@
 ```python
 def three_d_parallel(dp, tp, pp):
     """组合 DP、TP、PP 三个并行维度，返回切分关系和通信关注点。"""
-    if any(value <= 0 for value in (dp, tp, pp)):
-        raise ValueError('dp、tp、pp 必须为正数')
+    if any(type(value) is not int or value <= 0 for value in (dp, tp, pp)):
+        raise ValueError('dp、tp、pp须为正整数')
     # 先记录三个并行维度，再观察它们组合后的 worker 数量和通信关系。
     return {
         'dp_groups': dp,
@@ -84,60 +83,63 @@ print('3D parallelism = DP × TP × PP')
 
 ```
 
-## Q2：All-Reduce、All-Gather、Reduce-Scatter 分别有什么区别？
+## Q2：集合通信怎样改变每个进程的输入与输出？
 
+集合通信要求一组进程共同参与，进程编号称为rank，参与进程数称为world size。下面固定4个rank：All-Reduce归约后返回完整结果，All-Gather收集分片，Reduce-Scatter先归约再把结果分片。代码中的形状始终指每个rank实际传给接口的输入，不在不同原语间改变含义。
 
-这三种集合通信原语的区别，先从每张卡的输入、输出和数据变化看起。下面的形状只是数据流示意；实际耗时还会受到消息大小、world size、拓扑、collective 算法和通信库实现影响。代码只模拟这些输入 / 输出形状，不执行真实 NCCL 通信。
+| 原语 | 每rank输入形状 | 每rank输出形状 | 数据变化 |
+| --- | --- | --- | --- |
+| All-Reduce | (8, 1024) | (8, 1024) | 逐元素归约，每rank获得相同完整结果 |
+| All-Gather | (8, 1024) | (32, 1024) | 按第0维拼接各rank分片 |
+| Reduce-Scatter | (32, 1024) | (8, 1024) | 归约完整输入，再按第0维等分 |
 
-| 通信原语 | 每卡输入 | 每卡输出 | 数据变化 | 常见使用场景 |
-| --- | --- | --- | --- | --- |
-| All-Reduce | 局部张量 | 相同形状的归约结果 | 归约后复制到每卡 | DP 梯度同步 |
-| All-Gather | 局部分片 | 拼接后的完整张量 | 收集各卡分片 | TP 激活或参数收集 |
-| Reduce-Scatter | 较大的局部输入 | 归约后的局部结果 | 先归约，再切分 | 分片梯度或参数同步 |
+### Q2对照验证：统一按每rank输入推导输出
 
-### Q2小验证：通信原语如何改变每张卡看到的数据
+Reduce-Scatter要求第0维能均分给4个rank；归约后的具体数值继续在20节展开。
 
-先观察“聚合”“收集”“切分再发回”三种数据流。
 
 ```python
-def collective_shape(kind, world_size, local_shape):
-    """返回集合通信的输入 / 输出形状；只模拟数据流，不执行真实通信。"""
-    if world_size <= 0 or not local_shape or any(dim <= 0 for dim in local_shape):
-        raise ValueError('world_size 和 local_shape 必须为正数')
-    table = {
-        'allreduce': {'operation': 'reduce + broadcast', 'input_per_rank': local_shape, 'output_per_rank': local_shape},
-        'allgather': {'operation': 'gather all pieces', 'input_per_rank': local_shape, 'output_per_rank': (local_shape[0] * world_size, *local_shape[1:])},
-        'reducescatter': {'operation': 'reduce then scatter', 'input_per_rank': (local_shape[0] * world_size, *local_shape[1:]), 'output_per_rank': local_shape},
-    }
-    if kind not in table:
-        raise ValueError(f'未知通信原语: {kind}')
-    return table[kind]
+def collective_shape(kind, world_size, input_shape):
+    """按每rank输入形状推导输出；收集和切分均沿第0维进行。"""
+    if type(world_size) is not int or world_size <= 0:
+        raise ValueError('进程数须为正整数')
+    if not input_shape or any(type(dim) is not int or dim <= 0 for dim in input_shape):
+        raise ValueError('输入形状各维度须为正整数')
+    shape = tuple(input_shape)
+    if kind == 'allreduce':
+        output_shape = shape
+    elif kind == 'allgather':
+        output_shape = (shape[0] * world_size, *shape[1:])
+    elif kind == 'reducescatter':
+        if shape[0] % world_size != 0:
+            raise ValueError('Reduce-Scatter的第0维须能被进程数整除')
+        output_shape = (shape[0] // world_size, *shape[1:])
+    else:
+        raise ValueError(f'未知通信原语：{kind}')
+    return {'input_per_rank': shape, 'output_per_rank': output_shape}
 
-world_size = 4
-local_shape = (8, 1024)
-for kind in ['allreduce', 'allgather', 'reducescatter']:
-    print(kind, '->', collective_shape(kind, world_size, local_shape))
+
+WORLD_SIZE = 4
+inputs = {'allreduce': (8, 1024), 'allgather': (8, 1024), 'reducescatter': (32, 1024)}
+for kind, shape in inputs.items():
+    print(kind, '→', collective_shape(kind, WORLD_SIZE, shape))
 assert collective_shape('allreduce', 4, (8, 1024))['output_per_rank'] == (8, 1024)
 assert collective_shape('allgather', 4, (8, 1024))['output_per_rank'] == (32, 1024)
-assert collective_shape('reducescatter', 4, (8, 1024))['input_per_rank'] == (32, 1024)
-try:
-    collective_shape('unknown', 4, (8, 1024))
-except ValueError:
-    print('✅ 非法通信原语校验通过')
-else:
-    raise AssertionError('未知通信原语应报错')
+assert collective_shape('reducescatter', 4, (32, 1024))['output_per_rank'] == (8, 1024)
+
 ```
 
-## Q3：通信拓扑如何改变通信代价？
+## Q3：同一份数据经过不同链路，传输下界怎样变化？
 
+这里统一使用MiB表示载荷、GiB/s表示单向链路带宽：256 MiB等于0.25 GiB，在100 GiB/s链路上传输下界为2.5 ms。若规格按Gb/s给出，先换算；1 GiB/s约等于8.59 Gb/s，二者不能直接代入同一公式。
 
-先区分通信发生在哪里，再比较相同消息大小经过不同链路的理想传输时间。下表中的带宽统一按 Gb/s 表示，只是教学示例，不代表所有 GPU、主板、驱动或网络配置；真实实验应以 `nvidia-smi topo -m`、NCCL 测试或厂商规格为准。
+下面的带宽是给定的教学条件。跨节点路径假设数据可流水传输，单份长消息的理想持续吞吐由最窄链路限制；各跳启动和转发延迟尚未计入。实际共享路径还可能受到拥塞影响。
 
-| 通信位置 | 常见链路 | 教学示例带宽（Gb/s） | 主要特点 | 适合承载的通信 |
-| --- | --- | ---: | --- | --- |
-| GPU 机内 | NVLink / NVSwitch | 900 级 | 带宽高、延迟较低 | 高频 TP 或集合通信 |
-| GPU 到 CPU | PCIe | 64 级 | 带宽较低、路径更长 | 参数搬运、低频同步 |
-| 跨节点 | 网络互连 | 以实际集群为准 | 受网络和拓扑影响大 | 低频或可重叠通信 |
+| 路径中的链路 | 给定单向带宽（GiB/s） | 对本例的影响 |
+| --- | ---: | --- |
+| 机内GPU互连 | 100 | 256 MiB的下界为2.5 ms |
+| GPU到网卡 | 50 | 跨节点路径的第一跳 |
+| 节点间网络 | 12.5 | 比第一跳窄，形成20 ms传输下界 |
 
 ### Q3小验证：相同消息经过不同链路需要多久
 
@@ -145,7 +147,7 @@ else:
 
 ```python
 def path_transfer_lower_bound(payload_mib, links):
-    """按路径最窄链路估算单向传输下界，不包含协议与拥塞开销。"""
+    """按流水路径的最窄单向带宽估算传输下界；载荷MiB，带宽GiB/s。"""
     if payload_mib < 0 or not links:
         raise ValueError('payload_mib 不得为负，links 不得为空')
     if any(link['bandwidth_gib_s'] <= 0 for link in links):
@@ -158,55 +160,61 @@ def path_transfer_lower_bound(payload_mib, links):
         'lower_bound_ms': round(lower_bound_ms, 3),
     }
 
-intra_node = path_transfer_lower_bound(256, [{'name': 'NVLink', 'bandwidth_gib_s': 100}])
+intra_node = path_transfer_lower_bound(256, [{'name': 'intra-node GPU link', 'bandwidth_gib_s': 100}])
 cross_node = path_transfer_lower_bound(256, [
     {'name': 'GPU-NIC', 'bandwidth_gib_s': 50},
     {'name': 'network', 'bandwidth_gib_s': 12.5},
 ])
-assert cross_node['lower_bound_ms'] > intra_node['lower_bound_ms']
+assert intra_node['lower_bound_ms'] == 2.5
+assert cross_node['lower_bound_ms'] == 20.0
+assert cross_node['bottleneck_link'] == 'network'
 print('机内路径：', intra_node)
 print('跨节点路径：', cross_node)
 ```
 
-## Q4：如何把并行组放到合适的拓扑域？
+## Q4：怎样检查并行组是否满足给定放置规则？
 
+先查看当前任务允许哪些放置域，再检查并行组实际落在哪里。例如某个TP组被要求留在机内，而DP组允许机内或跨节点；检查的是这份任务规则，不由位置名称推断实际带宽。
 
-并行组放置先看通信频率和可用拓扑域。TP、EP 等高频通信通常优先限制在机内；DP 或 PP 可以跨节点，但仍需在后续实验中测量实际集合通信或阶段传输。
+高频通信更需要关注链路带宽、时延与共享流量。若考虑放宽机内限制，应带着消息大小和调用频率进入26节，比较目标路径的成本与容量条件。
 
-| 观察条件 | 可能的风险 | 放置检查 |
-| --- | --- | --- |
-| DP 需要跨低带宽链路同步梯度 | 梯度通信拖慢每轮更新 | 登记跨节点带宽和梯度载荷 |
-| TP 需要跨低带宽链路频繁同步 | 集合通信成为瓶颈 | 缩小 TP 范围，优先放在高速互连内 |
-| PP 跨阶段传输激活较多 | 阶段间等待、pipeline bubble | 登记 stage 边界和跨域载荷 |
-| EP 跨节点交换 token | All-to-All 与负载不均叠加 | 优先检查专家组是否可限制在机内 |
-| 只有理想带宽估算 | 无法确认真实部署收益 | 把同一 workload 带入后续系统实验 |
+| 当前规则或现象 | 应检查什么 |
+| --- | --- |
+| TP组只允许机内 | 是否有rank被放到其他节点 |
+| EP组需要跨节点交换token | 任务规则是否允许，以及All-to-All负载是否可承受 |
+| DP组允许两种放置域 | 拓扑约束通过后，继续比较同步成本 |
+| 跨节点路径反而更快 | 按实际链路数据判断，不套用位置强弱排序 |
 
-### Q4小验证：检查并行组与拓扑域是否匹配
+### Q4条件检查：对照允许域与实际放置域
+
+保持规则不变，只改变实际放置；输出是否符合放置规则，不把通过结果当成性能结论。
+
 
 ```python
-DOMAIN_ORDER = {'cross_node': 1, 'intra_node': 2}
-
 def check_group_placement(groups):
-    """比较并行组要求的拓扑域与实际放置域。"""
+    """检查给定允许域；位置类别不代表带宽或时延等级。"""
+    domains = {'intra_node', 'cross_node'}
     reports = []
     for group in groups:
-        accepted = DOMAIN_ORDER[group['actual_domain']] >= DOMAIN_ORDER[group['required_domain']]
+        allowed = set(group['allowed_domains'])
+        if not allowed or not allowed <= domains or group['actual_domain'] not in domains:
+            raise ValueError('使用明确的机内或跨节点放置域')
         reports.append({
             'name': group['name'],
-            'required_domain': group['required_domain'],
+            'allowed_domains': sorted(allowed),
             'actual_domain': group['actual_domain'],
-            'accepted': accepted,
+            'placement_allowed': group['actual_domain'] in allowed,
         })
     return reports
 
+
 groups = [
-    {'name': 'TP group', 'required_domain': 'intra_node', 'actual_domain': 'intra_node'},
-    {'name': 'EP group', 'required_domain': 'intra_node', 'actual_domain': 'cross_node'},
-    {'name': 'DP group', 'required_domain': 'cross_node', 'actual_domain': 'cross_node'},
+    dict(name='TP group', allowed_domains=['intra_node'], actual_domain='intra_node'),
+    dict(name='EP group', allowed_domains=['intra_node'], actual_domain='cross_node'),
+    dict(name='DP group', allowed_domains=['intra_node', 'cross_node'], actual_domain='cross_node'),
 ]
 reports = check_group_placement(groups)
-assert next(row for row in reports if row['name'] == 'TP group')['accepted']
-assert not next(row for row in reports if row['name'] == 'EP group')['accepted']
+assert [row['placement_allowed'] for row in reports] == [True, False, True]
 for report in reports:
     print(report)
 

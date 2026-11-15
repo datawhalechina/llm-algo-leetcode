@@ -26,9 +26,8 @@
 ---
 ## 前置阅读
 
-**导语：** 先把通信和并行层级对齐，再看 AllReduce 与 NCCL 如何影响同步、effective batch 和扩展效率。
+**导语：** 先区分集合通信的输入输出和链路单位，再用环形传播过程核对归约结果与发送载荷。
 
-- [Group 1C: Communication, Parallelism and Fault Tolerance | 1C: 通信、并行与容错](./1C.md)
 - [05. Communication Topologies | 通信拓扑与分布式基石](./05_Communication_Topologies.md)
 ---
 ## Q1：NCCL 在分布式训练里到底解决什么问题？
@@ -36,7 +35,7 @@
 
 NCCL 为 NVIDIA GPU 提供集合通信和点到点通信实现。它执行 All-Reduce、All-Gather、Reduce-Scatter 等原语，但不负责选择 DP、TP 或 PP，也不替代上层调度器。
 
-在数据并行训练中，各 rank 先得到局部梯度，再调用集合通信形成一致结果。若 collective 没有被计算覆盖，未覆盖部分会直接进入训练步关键路径。
+在数据并行训练中，各进程（rank）先得到局部梯度，再调用集合通信形成一致结果。这里假设通信与独立计算可以重叠；通信未被覆盖的尾部等待会延长训练步。下面用给定区间计算完成时间，实际重叠窗口仍需从执行记录中观察。
 
 ### Q1小验证：同步等待如何进入训练步
 
@@ -86,47 +85,58 @@ local_gradients = [[1.0, 2.0], [10.0, 20.0], [100.0, 200.0], [1000.0, 2000.0]]
 global_gradients = allreduce_sum(local_gradients)
 print('rank 0 local:', local_gradients[0])
 print('all ranks  :', global_gradients)
-assert all(row == global_gradients[0] for row in global_gradients)
+assert global_gradients == [[1111.0, 2222.0] for _ in range(4)]
 
 ```
 
-## Q3：为什么通信带宽和拓扑会直接影响训练扩展效果？
+## Q3：Ring All-Reduce每个rank发送多少数据？
 
+设参与进程数为P，每rank持有的完整输入载荷为S字节。等长分片的环形算法包含两个阶段，每阶段有P−1轮，每轮每rank向相邻rank发送S/P字节。因此，单rank总发送量为 `2(P−1)S/P`；接收量相同，发送与接收之和再乘2。
 
-通信不是只有“能不能通”的问题，更重要的是“通得快不快”。
+发送和接收可以同时发生。用单向带宽估算传输时间时采用发送量，不能把收发合计再除以同一单向带宽。总时间还要加上每轮启动时延。
 
-Ring All-Reduce 包含 `2 × (world_size - 1)` 轮通信。固定 payload 下，每个 rank 的理论通信量趋近 payload 的两倍；启动时延随轮数增长，传输项则受有效链路带宽约束。
+继续使用256 MiB输入、8个rank：每rank发送448 MiB，接收448 MiB；按100 GiB/s、每轮0.01 ms估算，传输4.375 ms、启动0.14 ms，合计4.515 ms。相同条件换为12.5 GiB/s时，合计35.14 ms。
 
-### Q3小验证：Ring 的理论通信量与 alpha-beta 成本
+### Q3机制计算器：分开发送量、接收量与完成时间
 
-对固定全量 payload，计算每个 rank 在两阶段中搬运的字节数，并把每轮启动延迟与传输成本分开。
+载荷能被进程数整除时，每轮发送等长字节片段。两条教学链路沿用05节的GiB/s单位；本例按每轮通信串行推进、单轮收发可并行估算。
+
 
 ```python
-def ring_cost(payload_bytes, world_size, alpha_ms, bandwidth_gbps):
-    """估算 Ring AllReduce 的轮数、每 rank 通信量和 alpha-beta 时间。"""
-    if payload_bytes < 0 or world_size < 2 or alpha_ms < 0 or bandwidth_gbps <= 0:
-        raise ValueError('检查 payload、world_size、alpha 和 bandwidth')
+def ring_cost(payload_bytes, world_size, alpha_ms, bandwidth_gib_s):
+    """估算等长分片Ring的每rank收发字节与时间；带宽按单向GiB/s。"""
+    if type(payload_bytes) is not int or payload_bytes < 0:
+        raise ValueError('载荷须为非负整数字节')
+    if type(world_size) is not int or world_size < 2 or payload_bytes % world_size:
+        raise ValueError('至少两个进程，等长分片要求载荷能被进程数整除')
+    if alpha_ms < 0 or bandwidth_gib_s <= 0:
+        raise ValueError('每轮启动时延须非负，单向带宽须为正')
     rounds = 2 * (world_size - 1)
-    bytes_per_rank = 2 * (world_size - 1) / world_size * payload_bytes
-    bandwidth_bytes_per_ms = bandwidth_gbps * 1e9 / 8 / 1000
+    send_bytes = rounds * (payload_bytes // world_size)
     latency_ms = rounds * alpha_ms
-    transfer_ms = bytes_per_rank / bandwidth_bytes_per_ms
+    transfer_ms = send_bytes / (bandwidth_gib_s * 2**30) * 1000
     return {
         'rounds': rounds,
-        'bytes_per_rank': int(bytes_per_rank),
+        'send_bytes_per_rank': send_bytes,
+        'receive_bytes_per_rank': send_bytes,
+        'send_receive_bytes_per_rank': 2 * send_bytes,
         'latency_ms': latency_ms,
         'transfer_ms': transfer_ms,
         'total_ms': latency_ms + transfer_ms,
     }
 
-payload_bytes = 256 * 1024 * 1024
-nvlink_like = ring_cost(payload_bytes, world_size=8, alpha_ms=0.01, bandwidth_gbps=900.0)
-pcie_like = ring_cost(payload_bytes, world_size=8, alpha_ms=0.01, bandwidth_gbps=64.0)
-assert nvlink_like['rounds'] == 14
-assert nvlink_like['bytes_per_rank'] == 2 * 7 * payload_bytes // 8
-assert pcie_like['transfer_ms'] > nvlink_like['transfer_ms']
-print('高速链路：', nvlink_like)
-print('低速链路：', pcie_like)
+
+PAYLOAD_BYTES = 256 * 1024 * 1024
+fast_link = ring_cost(PAYLOAD_BYTES, world_size=8, alpha_ms=0.01, bandwidth_gib_s=100)
+slow_link = ring_cost(PAYLOAD_BYTES, world_size=8, alpha_ms=0.01, bandwidth_gib_s=12.5)
+assert fast_link['rounds'] == 14
+assert fast_link['send_bytes_per_rank'] == 448 * 2**20
+assert fast_link['receive_bytes_per_rank'] == 448 * 2**20
+assert fast_link['send_receive_bytes_per_rank'] == 896 * 2**20
+assert abs(fast_link['total_ms'] - 4.515) < 1e-12
+assert abs(slow_link['total_ms'] - 35.14) < 1e-12
+print('100 GiB/s单向链路：', fast_link)
+print('12.5 GiB/s单向链路：', slow_link)
 
 ```
 
@@ -188,11 +198,15 @@ print('reduce-scatter owners:', result['owned_after_reduce_scatter'])
 print('rank 0 output:', result['outputs'][0])
 print('rounds:', len(result['trace']))
 
+assert result['outputs'] == [[60, 64, 68, 72] for _ in range(4)]
+assert len(result['trace']) == 6
+assert result['owned_after_reduce_scatter'] == {0: 60, 1: 64, 2: 68, 3: 72}
+
 ```
 
 ---
 ## 相关阅读
-本节只建立算法语义与理论代价。真实 NCCL 可能依据消息规模和拓扑选择 Ring、Tree 或其他实现；继续进入 Part 02 · 47 验证请求算法、实际算法和多卡时间。
+继续在固定消息大小和进程数下观察实际算法、链路带宽与完成时间。NCCL可采用Ring、Tree等实现，下面的资料用于核对本例与真实运行的差异。
 - [NCCL 官方文档](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/)：查阅集合通信原语、拓扑和通信环境。
 - [NCCL Tests](https://github.com/NVIDIA/nccl-tests)：用固定消息大小和 GPU 数量观察集合通信带宽。
 - [47. Communication Profiling with NCCL | NCCL 通信剖析](../02_PyTorch_Algorithms/47_Communication_Profiling_with_NCCL.md)
