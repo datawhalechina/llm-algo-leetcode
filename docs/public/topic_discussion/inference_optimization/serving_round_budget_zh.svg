@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="title desc">
+<title id="title">请求结束后，下轮的解码位置与预填充配额一起变化</title>
+<desc id="desc">每轮最多8个词元位置，缓存足够。A和C每轮各解码1个位置，B第一轮结束。D的20个输入分为5、6、6、3，第四轮完成预填充并产生首词元。</desc>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d;font-size:19px}.title{font-size:27px;font-weight:700}.head{font-size:21px;font-weight:700}.note{font-size:17px;fill:#475569}.decode{fill:#dbeafe;stroke:#6b91b5;rx:8}.prefill{fill:#d1fae5;stroke:#6b9c8b;rx:8}.empty{fill:#f1f5f9;stroke:#cbd5e1;rx:8}</style>
+<rect width="1200" height="650" fill="#f7fafc"/>
+<text x="32" y="44" class="title">同一组请求：B 结束，D 从下一轮获得更多输入处理配额</text>
+<text x="32" y="79" class="note">教学构造：每轮预算 8 个位置，缓存足够，优先保留已有解码。等宽列表示轮次顺序，不代表等长时间。</text>
+<text x="32" y="130" class="head">请求与阶段</text><text x="390" y="130" text-anchor="middle" class="head">第 1 轮</text><text x="600" y="130" text-anchor="middle" class="head">第 2 轮</text><text x="810" y="130" text-anchor="middle" class="head">第 3 轮</text><text x="1020" y="130" text-anchor="middle" class="head">第 4 轮</text>
+<text x="32" y="188">A · 解码</text><text x="32" y="263">B · 解码</text><text x="32" y="338">C · 解码</text><text x="32" y="413">D · 预填充</text>
+<g class="decode"><rect x="300" y="155" width="180" height="51"/><rect x="510" y="155" width="180" height="51"/><rect x="720" y="155" width="180" height="51"/><rect x="930" y="155" width="180" height="51"/><rect x="300" y="230" width="180" height="51"/><rect x="300" y="305" width="180" height="51"/><rect x="510" y="305" width="180" height="51"/><rect x="720" y="305" width="180" height="51"/><rect x="930" y="305" width="180" height="51"/></g>
+<g text-anchor="middle"><text x="390" y="188">1 个位置</text><text x="600" y="188">1 个位置</text><text x="810" y="188">1 个位置</text><text x="1020" y="188">1 个位置</text><text x="390" y="263">1 个位置后结束</text><text x="390" y="338">1 个位置</text><text x="600" y="338">1 个位置</text><text x="810" y="338">1 个位置</text><text x="1020" y="338">1 个位置</text></g>
+<rect x="510" y="230" width="600" height="51" class="empty"/><text x="810" y="263" text-anchor="middle" class="note">B 已结束，后续轮次移出活跃集合</text>
+<g class="prefill"><rect x="300" y="380" width="180" height="51"/><rect x="510" y="380" width="180" height="51"/><rect x="720" y="380" width="180" height="51"/><rect x="930" y="380" width="180" height="51"/></g>
+<g text-anchor="middle"><text x="390" y="413">5 个输入位置</text><text x="600" y="413">6 个输入位置</text><text x="810" y="413">6 个输入位置</text><text x="1020" y="413">3 个输入位置</text></g>
+<text x="32" y="473">D 的累计输入进度</text><g text-anchor="middle"><text x="390" y="473">5／20</text><text x="600" y="473">11／20</text><text x="810" y="473">17／20</text><text x="1020" y="473">20／20 · 首次采样</text></g>
+<text x="32" y="521">本轮总工作量</text><g text-anchor="middle"><text x="390" y="521">3 + 5 = 8</text><text x="600" y="521">2 + 6 = 8</text><text x="810" y="521">2 + 6 = 8</text><text x="1020" y="521">2 + 3 = 5</text></g>
+<text x="32" y="579">成员更新释放了本轮预算；缓存能否重新分配，还要检查共享引用、保留策略与在途读写。</text>
+<text x="32" y="616" class="note">真实等待取决于各轮耗时：把成员、输入分块与上下文放回时间记录，再比较首词元和生成间隔。</text>
+</svg>

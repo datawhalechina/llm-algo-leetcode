@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+<title id="title">服务迭代：读取状态、分配工作、执行与更新</title>
+<desc id="desc">调度器结合等待和活跃请求、缓存余量及等待目标，决定本轮成员与阶段预算。准备和执行后更新生成、完成和缓存引用，反馈至下一轮。可用容量须由安全的缓存状态确定。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52606d"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d;font-size:19px}.title{font-size:27px;font-weight:700}.head{font-size:21px;font-weight:700}.note{font-size:17px;fill:#475569}.box{stroke:#829ab1;stroke-width:1.5;rx:12}.flow{fill:none;stroke:#52606d;stroke-width:2;marker-end:url(#arrow)}</style>
+<rect width="1200" height="620" fill="#f7fafc"/>
+<text x="40" y="44" class="title">每轮都要重新回答：谁能进入，推进多少，执行后留下什么状态？</text>
+<text x="40" y="79" class="note">一个实例的服务迭代；成员选择、缓存容量与词元预算共同约束工作，不是固定不变的一批请求。</text>
+<rect x="40" y="145" width="230" height="174" fill="#dbeafe" class="box"/><text x="60" y="182" class="head">1 · 读取当前状态</text><text x="60" y="219">等待者与活跃请求</text><text x="60" y="253">缓存余量与活动引用</text><text x="60" y="287">阶段进度与等待目标</text>
+<path d="M270 232H330" class="flow"/>
+<rect x="330" y="145" width="230" height="174" fill="#fef3c7" class="box"/><text x="350" y="182" class="head">2 · 决定本轮工作</text><text x="350" y="219">准入与批次成员</text><text x="350" y="253">解码位置与输入分块</text><text x="350" y="287">检查预算及可写空间</text>
+<path d="M560 232H620" class="flow"/>
+<rect x="620" y="145" width="230" height="174" fill="#ecfdf5" class="box"/><text x="640" y="182" class="head">3 · 准备并执行</text><text x="640" y="219">组织输入和缓存信息</text><text x="640" y="253">运行模型并更新 KV</text><text x="640" y="287">需要时采样、提交输出</text>
+<path d="M850 232H910" class="flow"/>
+<rect x="910" y="145" width="250" height="174" fill="#ede9fe" class="box"/><text x="930" y="182" class="head">4 · 更新请求与资源</text><text x="930" y="219">生成进度与停止事件</text><text x="930" y="253">退出成员、释放活动引用</text><text x="930" y="287">核对可重新分配的块</text>
+<path d="M1035 319V390H155V319" class="flow"/>
+<text x="600" y="375" text-anchor="middle">新请求到达、成员完成与缓存变化，一起进入下一轮选择</text>
+<rect x="40" y="438" width="1120" height="135" fill="#fff" class="box"/>
+<text x="64" y="475" class="head">把这条循环放回请求时间</text>
+<text x="64" y="512">长输入分块影响已有解码的等待；成员退出改变后续配额；前缀命中减少待处理输入。</text>
+<text x="64" y="546" class="note">记录每轮成员、阶段、缓存余量和实际耗时，再比较新请求首词元、已有请求间隔与整体吞吐。</text>
+</svg>
