@@ -12,6 +12,11 @@ import json
 from pathlib import Path
 from typing import Any, Mapping
 
+try:
+    from .result_migration_io import save_migration_report
+except ImportError:  # Direct execution from tools/.
+    from result_migration_io import save_migration_report
+
 
 SCHEMA_VERSION = "training-memory-benchmark/v1"
 
@@ -118,13 +123,14 @@ def normalize_report(report: Mapping[str, Any], *, source: str | None = None) ->
     return normalized
 
 
-def normalize_file(source: str | Path, output: str | Path | None = None) -> Path:
+def normalize_file(
+    source: str | Path, output: str | Path | None = None, *, dry_run: bool = False,
+) -> Path:
+    """Create a legacy sidecar, preserving raw input and conflicting outputs."""
     source_path = Path(source)
     report = json.loads(source_path.read_text(encoding="utf-8"))
     output_path = Path(output) if output else source_path.with_name(f"{source_path.stem}_v1.json")
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
-        json.dumps(normalize_report(report, source=str(source_path)), ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
+    return save_migration_report(
+        source_path, output_path, normalize_report(report, source=str(source_path)),
+        dry_run=dry_run,
     )
-    return output_path

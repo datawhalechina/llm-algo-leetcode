@@ -12,8 +12,10 @@ from pathlib import Path
 
 try:
     from inference_result_schema import from_backend_report
+    from result_migration_io import save_migration_report
 except ModuleNotFoundError:  # pragma: no cover - direct repository execution
     from tools.inference_result_schema import from_backend_report
+    from tools.result_migration_io import save_migration_report
 
 
 def normalize_file(
@@ -22,6 +24,7 @@ def normalize_file(
     output_path: str | Path | None = None,
     project: str = "66",
     strategy: str | None = None,
+    dry_run: bool = False,
 ) -> Path:
     source = Path(input_path)
     report = json.loads(source.read_text(encoding="utf-8"))
@@ -37,9 +40,7 @@ def normalize_file(
         )
 
     target = Path(output_path) if output_path else source.with_name(f"{source.stem}_normalized.json")
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(normalized, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    return target
+    return save_migration_report(source, target, normalized, dry_run=dry_run)
 
 
 def main() -> int:
@@ -48,8 +49,11 @@ def main() -> int:
     parser.add_argument("--output", help="Output normalized JSON path")
     parser.add_argument("--project", default="66", help="Project number")
     parser.add_argument("--strategy", help="Optional strategy name")
+    parser.add_argument("--dry-run", action="store_true", help="Validate output without writing files")
     args = parser.parse_args()
-    print(normalize_file(args.input, output_path=args.output, project=args.project, strategy=args.strategy))
+    target = normalize_file(args.input, output_path=args.output, project=args.project,
+                            strategy=args.strategy, dry_run=args.dry_run)
+    print(f"[dry-run] {target}" if args.dry_run else target)
     return 0
 
 
