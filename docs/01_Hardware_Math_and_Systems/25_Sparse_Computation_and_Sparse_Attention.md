@@ -1,6 +1,6 @@
 # 25. Sparse Computation and Sparse Attention | 稀疏计算与稀疏注意力
 
-**难度：** Hard | **环境：** CPU-first | **标签：** `模型结构`, `Sparse`, `Sparse Attention` | **目标人群：** 需要判断稀疏结构能否转化为实际收益的学习者
+**难度：** Hard | **环境：** CPU-first | **标签：** `模型结构`, `Sparse`, `Sparse Attention` | **目标人群：** 系统性能入门者
 
 > 🚀 **云端运行环境**
 >
@@ -14,278 +14,251 @@
 
 ## 本节导读
 
-稀疏只有同时改变数据结构和执行路径，才可能转化为容量、计算或访存收益。权重、激活值和注意力连接的稀疏模式具有不同的可跳过对象与执行约束。
-本节建立“稀疏对象 → 结构粒度 → 保留连接 → 执行收益”的关系。完成后，你应能计算稀疏率与理论工作量，并判断随机、行列或块稀疏是否具备硬件执行条件。
+两个矩阵都只有一半非零元素，非零位置却可能完全不同：一个每四项保留两项，另一个把非零项集中在少数位置。它们的密度相同，但索引方式、可选内核与实际执行工作未必相同。
 
-**关键词：** 稀疏率、结构粒度、密度
+本节先数保留了多少内容，再检查局部分组、索引存储和准备开销，最后用局部注意力观察连接变化与输出差异。它支撑算子优化中的稀疏分支，注意力访问范围可继续进入Part02·44核对。
 
-![本节概念关系](../public/01_Hardware_Math_and_Systems/25_sparse_execution_map.svg)
+**关键词：** 密度、稀疏模式、索引存储、局部窗口、掩码
 
-
+![稀疏对象、模式检查与执行验证](../public/01_Hardware_Math_and_Systems/25_sparse_execution_map.svg)
 
 ## 前置阅读
 
-**导语：** 先理解 Attention 的显存对象和 Tensor Core 的规则计算，再判断稀疏模式能否映射到执行路径。
+先理解注意力连接的含义，再区分矩阵工作量和实际指令路径。
 
-- [04. Attention Variants and Memory Optimization | 注意力变体与显存优化](./04_Attention_Memory_Optimization.md)
-- [23. TensorCore Deep Dive | Tensor Core 深度剖析](./23_TensorCore_Deep_Dive.md)
+- [04 Attention与显存优化](./04_Attention_Memory_Optimization.md)：查询、键、值与得分矩阵。
+- [23 Tensor Core矩阵路径](./23_TensorCore_Deep_Dive.md)：精度、布局、指令观察与时间改善的区别。
 
-## Q1：稀疏的对象、模式和密度分别是什么？
+## Q1：有多少非零值，与允许多少注意力连接是一回事吗？
 
+权重或激活的密度是非零元素占全部元素的比例；稀疏率是其补数。注意力连接的密度则按掩码允许的位置计数。比如八个位置允许四个参与，连接密度为0.5，即使这四个位置的得分恰好都是零，它们仍会参与Softmax归一化。
 
-稀疏的第一个任务是把对象、模式和密度说清楚：稀疏对象可以是权重、激活或 Attention 连接；稀疏模式描述保留元素如何分布；密度表示仍然保留的元素比例。
+仅把权重置零而继续用稠密张量与矩阵乘，存储大小和运算遍历范围可能完全不变。下面从实际布尔保留标记计数，不根据“权重”或“注意力”标签直接判断性能；非零权重与允许连接要分别生成各自的标记。
 
-如果只是把矩阵里很多位置置零，但 kernel 仍然按 dense 的方式扫描、广播和累加，零值就只是换了个存法，计算和搬运未必真的少。
+### Q1 机制计算器：同样的密度，保留位置可以不同
 
-密度下降本身不等于计算和搬运已经减少；后面的结构判断会继续检查这些元素能否被执行路径跳过。
+先核对八项保留四项，再比较全保留与全移除。后者可以用于统计，但注意力中整行移除会失去归一化对象。
 
-### Q1小验证：稀疏带来的不是自动加速
-
-先判断稀疏是否能被执行路径真正利用。
 
 ```python
-def sparsity_definition_report(target='weights', density=0.5, structure='block'):
-    """整理稀疏对象、模式和密度，不判断执行候选路径。"""
-    if target not in {'weights', 'activation', 'attention'}:
-        raise ValueError(f'未知稀疏对象: {target}')
-    if not 0 <= density <= 1:
-        raise ValueError('density 必须位于 [0, 1]')
-    if structure not in {'block', 'row', 'column', 'random'}:
-        raise ValueError(f'未知稀疏结构: {structure}')
-    return {
-        'target': target,
-        'density': density,
-        'zero_ratio': round(1 - density, 2),
-        'structure': structure,
-    }
+def retained_position_report(keep: list) -> dict:
+    """统计非空布尔序列的保留位置、密度与移除比例。"""
+    if not keep or any(type(value) is not bool for value in keep):
+        raise ValueError("保留标记须为非空布尔序列")
+    retained = sum(keep)
+    return {"total_positions": len(keep), "retained_positions": retained,
+            "density": retained / len(keep), "removed_ratio": 1 - retained / len(keep)}
 
-for case in [('weights', 0.1, 'block'), ('attention', 0.5, 'block'), ('activation', 0.5, 'random')]:
-    print(case, '->', sparsity_definition_report(*case))
-assert sparsity_definition_report('weights', 0.5, 'block')['zero_ratio'] == 0.5
-assert sparsity_definition_report('attention', 0.5, 'random')['target'] == 'attention'
-try:
-    sparsity_definition_report('unknown', 0.5, 'block')
-except ValueError:
-    print('✅ 稀疏对象校验通过')
-else:
-    raise AssertionError('未知稀疏对象应报错')
+
+balanced = [True, False, True, False, True, False, True, False]
+clustered = [True, True, True, False, False, False, False, True]
+assert retained_position_report(balanced)["retained_positions"] == 4
+assert retained_position_report(balanced)["density"] == retained_position_report(clustered)["density"] == 0.5
+assert retained_position_report([True] * 8)["removed_ratio"] == 0
+assert retained_position_report([False] * 8)["density"] == 0
+for name, keep in (("分散保留", balanced), ("集中保留", clustered)):
+    row = retained_position_report(keep)
+    print(f"{name}: 保留 {row['retained_positions']}/{row['total_positions']}，密度 {row['density']:g}")
 
 ```
 
-## Q2：为什么结构化稀疏比非结构化稀疏更容易落地？
+## Q2：总体密度相同，为什么局部稀疏模式未必合格？
 
+非结构化稀疏允许各位置独立保留；行列稀疏直接移除整行或整列；块稀疏以小矩阵为单位保留。半结构化稀疏又增加局部约束，例如2:4模式按指定维度的每四项保留两个存储槽，其余位置为零，保留槽本身也可能包含零值。全矩阵有一半零值，并不保证每组四项都满足要求。
 
-结构化稀疏会把稀疏模式固定成硬件更容易识别和优化的形状，因此更容易映射到 tile、warp 或 sparse MMA。
+下方只检查给定一行的每四项是否至多有两个非零值；非零数为三的组明确违规。它不是设备能力查询：实际稀疏矩阵乘还要满足接口规定的维度、格式、布局和设备支持。任意块稀疏或行列稀疏都不能仅因“规则”就被认定为可使用稀疏矩阵乘加指令。
 
-非结构化稀疏虽然灵活，但通常需要额外索引、分支和不规则访存；如果 kernel 没有对应支持，数据变稀疏并不会自动减少执行工作。
+### Q2 条件核对：50%非零，能否通过每四项的局部检查？
 
-可以用下面的对照表把模式、执行路径和代价放在同一口径下。
+用两行八元素权重复现全局密度相同、局部非零数却为“2、2”与“3、1”的区别。
 
-| 稀疏模式 | 结构特点 | 执行路径 | 主要代价 |
-| --- | --- | --- | --- |
-| 非结构化稀疏 | 零值位置随机 | 需要索引和不规则访存 | 分支、索引、访存碎片 |
-| 行 / 列结构化稀疏 | 按行或列裁剪 | 较容易映射规则访问 | 结构约束较强 |
-| Block 稀疏 | 按块保留或裁剪 | 容易映射 tile / warp | 粒度可能影响质量 |
-| 硬件约束结构 | 满足特定 sparse MMA 形状 | 可使用专用路径 | 依赖硬件与 backend |
-
-### Q2小验证：为什么规则形状更容易优化
-
-规则越强，越容易映射到规则的 tile、warp 或 sparse MMA 计算路径；本节先用 CPU 代码检查这种结构关系。
 
 ```python
-def structured_path_report(shape='block', hardware='mma'):
-    """报告稀疏结构与硬件路径的匹配关系，不生成固定性能分数。"""
-    if shape not in {'block', 'row', 'column', 'random'}:
-        raise ValueError(f'未知稀疏形状: {shape}')
-    if hardware not in {'mma', 'tensorcore', 'cpu'}:
-        raise ValueError(f'未知硬件路径: {hardware}')
-    regular = shape in {'block', 'row', 'column'}
-    hardware_path = hardware in {'mma', 'tensorcore'}
-    return {
-        'regular_structure': regular,
-        'hardware_path_available': hardware_path,
-        'execution_candidate': bool(regular and hardware_path),
-    }
+def group_sparsity_report(values: list, group_size: int = 4,
+                          max_nonzero: int = 2) -> dict:
+    """检查一行连续分组的非零数上限，不判断硬件或内核可用性。"""
+    if (type(group_size) is not int or group_size <= 0
+            or type(max_nonzero) is not int or not 0 <= max_nonzero <= group_size):
+        raise ValueError("组大小须为正整数，非零上限须位于组大小范围内")
+    if not values or len(values) % group_size:
+        raise ValueError("输入须非空且可划为完整分组")
+    counts = [sum(value != 0 for value in values[start:start + group_size])
+              for start in range(0, len(values), group_size)]
+    violating = [index for index, count in enumerate(counts) if count > max_nonzero]
+    return {"nonzero_counts": counts, "violating_groups": violating,
+            "pattern_matches": not violating}
 
-cases = [('block', 'mma'), ('row', 'mma'), ('random', 'mma'), ('block', 'cpu')]
-for shape, hw in cases:
-    print((shape, hw), '->', structured_path_report(shape, hw))
-assert structured_path_report('block', 'mma')['execution_candidate']
-assert not structured_path_report('random', 'mma')['execution_candidate']
+
+balanced_weights = [1, 0, 2, 0, 3, 0, 4, 0]
+clustered_weights = [1, 2, 3, 0, 0, 0, 0, 4]
+assert sum(value != 0 for value in balanced_weights) == sum(value != 0 for value in clustered_weights) == 4
+regular = group_sparsity_report(balanced_weights)
+irregular = group_sparsity_report(clustered_weights)
+assert regular["nonzero_counts"] == [2, 2] and regular["pattern_matches"]
+assert irregular["nonzero_counts"] == [3, 1] and irregular["violating_groups"] == [0]
+assert group_sparsity_report([0, 0, 0, 0])["pattern_matches"]
+print("分散非零：", regular)
+print("集中非零：", irregular)
 
 ```
 
-## Q3：权重、Attention 和 MLP 稀疏的收益有什么不同？
+## Q3：非零元素少了，为什么索引存储仍可能更大？
 
+稀疏存储需要告诉计算程序“值在哪里”。坐标格式（COO）为每个保留的二维权重保存数值、行索引和列索引。一个4×4权重矩阵若数值占两字节，稠密载荷为32 B；只保留四个数值虽只需8 B，但两份四字节索引又占32 B，合计40 B。块格式和2:4压缩元数据有不同账目，不能套用这个COO例子。
 
-三类稀疏首先改变的对象不同：
+对输入 $M \times K$ 与权重 $K \times N$ 相乘，按一次乘加计两次运算，稠密工作量为 $2MKN$ ；若确实逐个跳过零权重，理想算术工作量为 $2M n_{\mathrm{nz}}$ ，其中 $n_{\mathrm{nz}}$ 是保留权重数。这里未计索引遍历、Softmax或负载不均衡；权重稀疏、注意力连接稀疏和前馈网络的动态通道选择，分别省去不同工作，不能共用一个密度乘耗时公式。
 
-| 稀疏对象 | 主要改变 | 可能节省的成本 | 额外风险 |
-| --- | --- | --- | --- |
-| 权重稀疏 | 参数矩阵和权重加载 | 权重存储、矩阵乘法工作量 | 稀疏权重需要匹配的矩阵 kernel |
-| Attention 稀疏 | token-token 连接或 score 计算 | 长序列计算量、部分中间结果 | 动态索引和不规则访存 |
-| MLP 稀疏 | FFN 的激活或通道 | 激活路径、矩阵乘法工作量 | 路由和负载不均衡 |
+| 稀疏对象 | 可跳过的对象 | 还需核对的代价 |
+| --- | --- | --- |
+| 权重 | 被移除权重参与的乘加 | 索引、格式转换和实际稀疏矩阵乘 |
+| 注意力连接 | 选定查询—键连接的得分及值加权 | 掩码生成、连接选择和输出质量 |
+| 前馈网络通道／激活 | 未选通道或零激活参与的计算 | 选择、聚集和各工作块的负载差异 |
 
-下面的代码继续把对象、density、结构和理论执行条件整理成报告；它不生成真实加速比。
+### Q3 机制计算器：分别计算数值、索引和乘加工作量
 
-### Q3小验证：稀疏能不能落到执行上
+固定4×4权重与两行输入，比较保留四项、两项和零项的COO载荷与理想运算量。零项仅用于权重账目，不作为全屏蔽注意力示例。
 
-先区分稀疏对象改变了哪类成本，再检查结构是否具备落到执行路径的条件。
 
 ```python
-def sparsity_execution_ledger(target='attention', density=0.3, structure='block'):
-    """整理稀疏对象、主要成本和执行候选条件。
-
-    返回值是机制判断表，不是 speedup 预测；本节只验证对象、结构和理论成本。
-    """
-    profiles = {
-        'weights': {
-            'primary_cost': 'weight_storage_and_matmul',
-            'possible_saving': 'storage_and_compute',
-            'extra_risk': 'kernel_mapping',
-        },
-        'attention': {
-            'primary_cost': 'token_token_score',
-            'possible_saving': 'long_context_compute',
-            'extra_risk': 'dynamic_indexing_and_irregular_access',
-        },
-        'mlp': {
-            'primary_cost': 'ffn_activation_and_matmul',
-            'possible_saving': 'activation_path_and_compute',
-            'extra_risk': 'routing_and_load_imbalance',
-        },
-    }
-    if target not in profiles:
-        raise ValueError(f'未知稀疏对象: {target}')
-    if not 0 <= density <= 1:
-        raise ValueError('density 必须位于 [0, 1]')
-    if structure not in {'block', 'row', 'column', 'random'}:
-        raise ValueError(f'未知稀疏结构: {structure}')
-    regular = structure in {'block', 'row', 'column'}
+def sparse_matmul_ledger(m: int, n: int, k: int, retained_weights: int,
+                         value_bytes: int = 2, index_bytes: int = 4) -> dict:
+    """估算二维COO载荷与2M乘保留项数的理想FLOPs，忽略容器开销。"""
+    if any(type(value) is not int or value <= 0 for value in (m, n, k, value_bytes, index_bytes)):
+        raise ValueError("矩阵维度与元素字节数须为正整数")
+    if type(retained_weights) is not int or not 0 <= retained_weights <= k * n:
+        raise ValueError("保留权重数须位于[0,K×N]内")
     return {
-        'target': target,
-        'zero_ratio': round(1 - density, 2),
-        **profiles[target],
-        'regular_structure': regular,
-        'theoretical_path_condition': regular and density < 1,
+        "dense_weight_bytes": k * n * value_bytes,
+        "coo_value_bytes": retained_weights * value_bytes,
+        "coo_index_bytes": retained_weights * 2 * index_bytes,
+        "coo_total_bytes": retained_weights * (value_bytes + 2 * index_bytes),
+        "dense_flops": 2 * m * k * n,
+        "ideal_sparse_flops": 2 * m * retained_weights,
     }
 
-for case in [('weights', 0.25, 'block'), ('attention', 0.25, 'block'), ('mlp', 0.25, 'row')]:
-    print(case, '->', sparsity_execution_ledger(*case))
-assert sparsity_execution_ledger('weights', 0.25, 'block')['possible_saving'] == 'storage_and_compute'
-assert sparsity_execution_ledger('attention', 0.25, 'random')['regular_structure'] is False
-try:
-    sparsity_execution_ledger('unknown', 0.25, 'block')
-except ValueError:
-    print('✅ 稀疏对象校验通过')
-else:
-    raise AssertionError('未知稀疏对象应报错')
-```
 
-## Q4：为什么理论稀疏度可能没有转化成较低计算量？
-
-
-Q4 要把“理论上更稀”转成可检查的对照：固定输入、density、稀疏模式和计算规则，分别记录 dense / sparse 的保留连接数、理论计算量和输出差异。
-
-如果稀疏只改变了存储格式，却没有减少实际计算，理论计算量也不会自动转化为运行收益。下面的代码先整理 CPU 可验证的风险提示和对照指标。
-
-可以按下面的对照表组织机制实验，先固定输入口径，再只改变稀疏 mask。
-
-| 对照项 | 保持不变 | 只改变的条件 | 需要记录 |
-| --- | --- | --- | --- |
-| dense baseline | 输入、dtype、shape、softmax 规则 | 全连接 mask | 输出、理论计算量 |
-| sparse candidate | 输入、dtype、shape、softmax 规则 | sparse mask / density | 输出、保留连接数 |
-| quality check | 评测输入和误差口径 | 是否使用稀疏 mask | 输出差异、数值稳定性 |
-
-### Q4小验证：如何设计 dense / sparse 对照
-
-先列出固定输入、dense baseline、sparse mask 和需要记录的 CPU 指标。
-
-```python
-def sparse_failure_reason(density, structure='block'):
-    """列出稀疏机制对照的风险提示，不输出硬件性能结论。"""
-    if not 0 <= density <= 1:
-        raise ValueError('density 必须位于 [0, 1]')
-    if structure not in {'block', 'row', 'column', 'random'}:
-        raise ValueError(f'未知稀疏结构: {structure}')
-    reasons = []
-    if density >= 0.7:
-        reasons.append('density_high_risk_for_this_demo')
-    if structure == 'random':
-        reasons.append('irregular_pattern')
-    if structure in ['row', 'column'] and density < 0.3:
-        reasons.append('weak_structure_gain')
-    return {
-        'usable_for_demo': len(reasons) == 0,
-        'reasons': reasons or ['path_ready'],
-        'comparison_metrics': ['retained_connections', 'theoretical_ops', 'max_abs_diff'],
-        'requires_dense_baseline': True,
-    }
-
-cases = [(0.1, 'block'), (0.5, 'random'), (0.8, 'block'), (0.3, 'row')]
-for case in cases:
-    print(case, '->', sparse_failure_reason(*case))
-assert 'density_high_risk_for_this_demo' in sparse_failure_reason(0.8, 'block')['reasons']
-assert sparse_failure_reason(0.3, 'block')['usable_for_demo']
+four = sparse_matmul_ledger(m=2, n=4, k=4, retained_weights=4)
+two = sparse_matmul_ledger(m=2, n=4, k=4, retained_weights=2)
+assert four["dense_weight_bytes"] == 32
+assert four["coo_value_bytes"] == 8 and four["coo_index_bytes"] == 32
+assert four["coo_total_bytes"] == 40 > four["dense_weight_bytes"]
+assert four["dense_flops"] == 64 and four["ideal_sparse_flops"] == 16
+assert two["coo_total_bytes"] == 20 and two["ideal_sparse_flops"] == 8
+assert sparse_matmul_ledger(m=2, n=4, k=4, retained_weights=0)["ideal_sparse_flops"] == 0
+for retained in (4, 2, 0):
+    row = sparse_matmul_ledger(m=2, n=4, k=4, retained_weights=retained)
+    print(f"保留{retained}项：COO载荷 {row['coo_total_bytes']} B，理想乘加 {row['ideal_sparse_flops']} FLOPs")
 
 ```
 
-## Q5：Sparse Attention 如何减少 token-token 连接？
+## Q4：矩阵乘变快了，为什么一次完整调用还可能更慢？
 
+稀疏路径往往先准备掩码、索引或压缩格式，再执行乘法。假设稠密调用为1 ms，稀疏主体为0.6 ms，一次准备需要2 ms：仅调用一次时共2.6 ms；同一份准备结果可复用十次时，平均每次为0.8 ms。是否允许复用取决于权重和稀疏模式是否保持不变；动态激活或每次变化的注意力连接可能需要重新准备。
 
-用一个布尔 mask 保留局部窗口中的连接，就可以在 CPU 上明确观察 dense attention 与 sparse attention 的差别：输入和 softmax 规则保持不变，只改变允许参与计算的连接。这里验证的是 mask、保留连接数、理论计算量和输出差异，不把理论减少量写成运行加速。
+下面用给定的构造耗时练习摊销计算，不由密度预测稀疏耗时。比较时应把每次发生的索引、聚集等开销纳入主体，并检查相同输入的数值或任务质量。图中和代码中的时间差是不同于模式合格、存储节省的另一项判断。
 
-### Q5小验证：先验证连接，再观察输出
+### Q4 对照验证：只改变准备结果的复用次数
 
-下面的实现使用局部窗口构造 sparse mask，并与 dense mask 对照。
+固定三项构造耗时，比较复用一次与十次，再核对平均耗时恰好等于基线的边界。
+
 
 ```python
 import math
+
+
+def sparse_call_cost(dense_ms: float, sparse_ms: float, setup_ms: float,
+                     reuse_calls: int) -> dict:
+    """按一次准备、复用N次的串行模型计算平均ms；输入是给定耗时。"""
+    times = (dense_ms, sparse_ms, setup_ms)
+    if any(type(value) not in (int, float) or not math.isfinite(value) or value < 0 for value in times):
+        raise ValueError("各项耗时须为有限非负实数")
+    if dense_ms == 0 or sparse_ms == 0 or type(reuse_calls) is not int or reuse_calls <= 0:
+        raise ValueError("主体耗时与复用次数须为正")
+    average = sparse_ms + setup_ms / reuse_calls
+    return {"average_sparse_ms": average, "saved_ms_per_call": dense_ms - average}
+
+
+once = sparse_call_cost(dense_ms=1, sparse_ms=0.6, setup_ms=2, reuse_calls=1)
+reused = sparse_call_cost(dense_ms=1, sparse_ms=0.6, setup_ms=2, reuse_calls=10)
+assert math.isclose(once["average_sparse_ms"], 2.6)
+assert once["saved_ms_per_call"] < 0
+assert math.isclose(reused["average_sparse_ms"], 0.8)
+assert reused["saved_ms_per_call"] > 0
+assert sparse_call_cost(dense_ms=1, sparse_ms=0.5, setup_ms=2, reuse_calls=4)["saved_ms_per_call"] == 0
+print(f"复用一次：平均 {once['average_sparse_ms']:g} ms")
+print(f"复用十次：平均 {reused['average_sparse_ms']:g} ms")
+
+```
+
+## Q5：局部窗口减少连接后，输出和实际计算各改变了什么？
+
+局部窗口仅允许查询位置关注附近的键。下方采用双向、包含自身、左右半径为1的窗口：长度8时保留22个连接，而全连接有64个；批量与头数各自重复这个连接图。它不是自回归因果窗口，若用于因果生成还需排除未来位置。
+
+掩码（mask）中的True表示允许连接。这个CPU参考先计算完整 $QK^T$ ，再把不允许的得分设为负无穷、重新归一化，因此验证的是访问语义，而非真正跳过矩阵乘；仅把被屏蔽得分改成零，仍会留下非零概率。以全部得分为零、值为位置编号为例，稠密输出均值为3.5，局部窗口首位置的输出为0.5。改变连接会改变模型函数，输出差异应解释与评估，不能一律要求与稠密结果相等。
+
+### Q5 对照验证：先数22个连接，再核对输出均值
+
+固定CPU输入，比较全连接、半径1和只看自身；将窗口扩大到覆盖整个序列时，才要求与全连接结果一致。所有行都至少保留一个键。
+
+
+```python
 import torch
 
-def build_local_attention_mask(seq_len, window):
-    """构造包含自身位置的局部窗口 mask，返回 [1, 1, L, L]。"""
-    if seq_len <= 0 or window < 0:
-        raise ValueError('seq_len 必须为正，window 不能为负')
-    positions = torch.arange(seq_len)
+
+def build_local_attention_mask(seq_len: int, window: int):
+    """返回[1,1,L,L]布尔掩码，表示双向、含自身的窗口半径。"""
+    if type(seq_len) is not int or seq_len <= 0 or type(window) is not int or window < 0:
+        raise ValueError("序列长度须为正整数，窗口半径须为非负整数")
+    positions = torch.arange(seq_len, device="cpu")
     return (positions[:, None] - positions[None, :]).abs().le(window)[None, None]
 
+
 def masked_attention_cpu(q, k, v, mask):
-    """在 CPU 上按 mask 计算 scaled dot-product attention。"""
+    """对同形状[B,H,L,D] CPU浮点输入做完整得分计算，再施加布尔掩码。"""
+    if (q.ndim != 4 or q.shape != k.shape or q.shape != v.shape
+            or any(size == 0 for size in q.shape)):
+        raise ValueError("Q/K/V须为相同的非空[B,H,L,D]形状")
+    if any(x.device.type != "cpu" or not x.is_floating_point() or x.dtype != q.dtype for x in (q, k, v)):
+        raise ValueError("Q/K/V须为同类型CPU浮点张量")
+    length = q.shape[-2]
+    if mask.device.type != "cpu" or mask.dtype != torch.bool or mask.shape != (1, 1, length, length):
+        raise ValueError("掩码须为[1,1,L,L] CPU布尔张量")
+    if not mask.any(dim=-1).all().item():
+        raise ValueError("每个查询须至少允许一个键参与归一化")
     scores = q @ k.transpose(-2, -1) / math.sqrt(q.shape[-1])
-    scores = scores.masked_fill(~mask, torch.finfo(scores.dtype).min)
-    weights = torch.softmax(scores, dim=-1)
+    weights = torch.softmax(scores.masked_fill(~mask, -math.inf), dim=-1)
     return weights @ v
 
-torch.manual_seed(0)
-batch, heads, seq_len, head_dim = 1, 2, 8, 4
-q = torch.randn(batch, heads, seq_len, head_dim)
-k = torch.randn_like(q)
-v = torch.randn_like(q)
-dense_mask = torch.ones(1, 1, seq_len, seq_len, dtype=torch.bool)
-sparse_mask = build_local_attention_mask(seq_len, window=2)
+
+batch, heads, seq_len, head_dim = 1, 2, 8, 2
+q = torch.zeros(batch, heads, seq_len, head_dim, device="cpu")
+k = torch.zeros_like(q)
+v = torch.arange(seq_len, dtype=q.dtype).view(1, 1, seq_len, 1).expand_as(q)
+dense_mask = build_local_attention_mask(seq_len=seq_len, window=seq_len - 1)
+local_mask = build_local_attention_mask(seq_len=seq_len, window=1)
 dense_out = masked_attention_cpu(q, k, v, dense_mask)
-sparse_out = masked_attention_cpu(q, k, v, sparse_mask)
-retained = int(sparse_mask.sum().item())
-dense_connections = seq_len * seq_len
-report = {
-    'dense_connections': dense_connections,
-    'sparse_connections': retained,
-    'theoretical_connection_ratio': round(retained / dense_connections, 4),
-    'max_abs_diff': round((dense_out - sparse_out).abs().max().item(), 6),
-}
-print(report)
-assert dense_out.shape == sparse_out.shape == (batch, heads, seq_len, head_dim)
-assert torch.isfinite(sparse_out).all()
-assert 0 < retained < dense_connections
+local_out = masked_attention_cpu(q, k, v, local_mask)
+self_out = masked_attention_cpu(q, k, v, build_local_attention_mask(seq_len=seq_len, window=0))
+assert dense_mask.sum().item() == 64 and local_mask.sum().item() == 22
+assert dense_out.shape == local_out.shape == (batch, heads, seq_len, head_dim)
+torch.testing.assert_close(dense_out, torch.full_like(dense_out, 3.5))
+torch.testing.assert_close(local_out[0, 0, :, 0], torch.tensor([0.5, 1, 2, 3, 4, 5, 6, 6.5]))
+torch.testing.assert_close(self_out, v)
+torch.testing.assert_close(masked_attention_cpu(q, k, v, build_local_attention_mask(seq_len, seq_len)), dense_out)
+assert torch.isfinite(local_out).all()
+# 每连接的QK与加权V共约4D FLOPs，不含Softmax；实际参考仍遍历全部连接。
+dense_flops = 4 * batch * heads * seq_len**2 * head_dim
+ideal_local_flops = 4 * batch * heads * int(local_mask.sum().item()) * head_dim
+assert dense_flops == 1024 and ideal_local_flops == 352
+print(f"每头连接：64→22；理想QK/PV工作量 {dense_flops}→{ideal_local_flops} FLOPs")
+print(f"局部首位置输出 {local_out[0, 0, 0, 0].item():g}，稠密输出 {dense_out[0, 0, 0, 0].item():g}")
 
 ```
 
 ## 相关阅读
 
-**导语：** 继续进入稀疏 Attention 机制、规则块执行和成熟组件实现。
+从连接语义进入机制练习，再对照具体格式的实际支持条件。
 
-- [Part 02 · 44 Local, Sliding and Sparse Attention](../02_PyTorch_Algorithms/44_Local_Sliding_and_Sparse_Attention.md)
-- [18. Triton Block Model | Triton Block 模型](./18_Triton_Block_Model.md)
-- [xFormers | Meta 开源高效 Transformer 组件](https://github.com/facebookresearch/xformers)
----
+- [Part02·44 局部、滑动与稀疏注意力](../02_PyTorch_Algorithms/44_Local_Sliding_and_Sparse_Attention.md)：核对窗口方向、掩码和输出变化。
+- [PyTorch半结构化稀疏教程](https://docs.pytorch.org/tutorials/advanced/semi_structured_sparse.html)：区分剪枝置零、格式转换与稀疏内核，检查所用版本的支持条件。
+- [PyTorch 2.11 SDPA接口](https://docs.pytorch.org/docs/2.11/generated/torch.nn.functional.scaled_dot_product_attention.html)：查看布尔掩码与归一化语义，区分接口与实际选择的后端。

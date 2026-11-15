@@ -1,22 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="700" viewBox="0 0 1280 700" role="img" aria-labelledby="title desc">
-<title id="title">Tensor Core 从输入条件到 GPU 证据</title>
-<desc id="desc">dtype 和硬件支持进入 MMA tile，经过 warp 级矩阵乘加，再受到 shape、layout 和片上资源约束，最后通过 kernel 和 profiler 观察有效吞吐。</desc>
+<title id="title">Tensor Core 的精度路径、实现条件与执行观察</title>
+<desc id="desc">区分输入存储、乘法与累加，结合架构接口组织矩阵计算，处理尾块和布局，分别观察目标矩阵指令与完整调用时间。</desc>
 <defs>
-  <marker id="arrow23" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
+  <marker id="arrow23" viewBox="0 0 10 10" markerWidth="10" markerHeight="10" refX="10" refY="5" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
   <style>
     text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:15px;fill:#475569}.group{font-size:19px;font-weight:700}.head{font-size:17px;font-weight:700}.body{font-size:14px}.small{font-size:12px;fill:#475569}.panel{stroke:#94a3b8;stroke-width:2;rx:16}.item{stroke:#cbd5e1;stroke-width:1.5;rx:10}.flow{stroke:#64748b;stroke-width:2.5;fill:none;marker-end:url(#arrow23)}
   </style>
 </defs>
 <rect width="1280" height="700" fill="#f8fafc"/>
-<text x="640" y="42" text-anchor="middle" class="title">Tensor Core：从输入条件到有效吞吐</text>
-<text x="640" y="70" text-anchor="middle" class="sub">先确认计算路径，再理解 tile、布局和片上资源如何决定最终 GPU 证据。</text>
+<text x="640" y="42" text-anchor="middle" class="title">Tensor Core：精度路径、实现条件与执行观察</text>
+<text x="640" y="70" text-anchor="middle" class="sub">配置用于选择实现；矩阵指令与完整调用时间分别回答“用了什么”和“是否更快”。</text>
 
 <!-- 输入条件 -->
 <rect x="45" y="120" width="245" height="430" fill="#e0f2fe" class="panel"/>
 <text x="167" y="157" text-anchor="middle" class="group">输入条件</text>
 <rect x="75" y="205" width="185" height="90" fill="#fff" class="item"/>
 <text x="167" y="239" text-anchor="middle" class="head">dtype 与累加</text>
-<text x="167" y="266" text-anchor="middle" class="small">输入格式、累加精度</text>
+<text x="167" y="266" text-anchor="middle" class="small">输入存储、乘法、累加</text>
 <rect x="75" y="365" width="185" height="90" fill="#fff" class="item"/>
 <text x="167" y="399" text-anchor="middle" class="head">架构与 kernel</text>
 <text x="167" y="426" text-anchor="middle" class="small">是否具备 Tensor Core 路径</text>
@@ -28,15 +28,15 @@
 <text x="477" y="239" text-anchor="middle" class="head">MMA tile</text>
 <text x="477" y="266" text-anchor="middle" class="small">把矩阵乘法切成块</text>
 <rect x="370" y="365" width="215" height="90" fill="#fff" class="item"/>
-<text x="477" y="399" text-anchor="middle" class="head">warp 级矩阵乘加</text>
-<text x="477" y="426" text-anchor="middle" class="small">fragment 输入与累加器</text>
+<text x="477" y="399" text-anchor="middle" class="head">指令块与线程协作</text>
+<text x="477" y="426" text-anchor="middle" class="small">WMMA 示例：一个 warp 协作</text>
 
 <!-- 执行约束 -->
 <rect x="665" y="120" width="285" height="430" fill="#fef3c7" class="panel"/>
 <text x="807" y="157" text-anchor="middle" class="group">执行约束</text>
 <rect x="700" y="205" width="215" height="90" fill="#fff" class="item"/>
 <text x="807" y="239" text-anchor="middle" class="head">shape 与 layout</text>
-<text x="807" y="266" text-anchor="middle" class="small">tile 对齐、访存连续</text>
+<text x="807" y="266" text-anchor="middle" class="small">尾块、步长与布局适配</text>
 <rect x="700" y="365" width="215" height="90" fill="#fff" class="item"/>
 <text x="807" y="399" text-anchor="middle" class="head">片上资源</text>
 <text x="807" y="426" text-anchor="middle" class="small">register、shared memory、occupancy</text>
@@ -44,7 +44,7 @@
 <!-- 证据 -->
 <rect x="995" y="190" width="235" height="290" fill="#fce7f3" class="panel"/>
 <text x="1112" y="227" text-anchor="middle" class="group">GPU 证据</text>
-<text x="1112" y="284" text-anchor="middle" class="body">kernel / HMMA 指令</text>
+<text x="1112" y="284" text-anchor="middle" class="body">目标架构的矩阵指令</text>
 <text x="1112" y="319" text-anchor="middle" class="body">tensor pipe / occupancy</text>
 <text x="1112" y="354" text-anchor="middle" class="body">CUDA 时间与吞吐</text>
 <text x="1112" y="402" text-anchor="middle" class="small">需要真实 GPU profiler</text>

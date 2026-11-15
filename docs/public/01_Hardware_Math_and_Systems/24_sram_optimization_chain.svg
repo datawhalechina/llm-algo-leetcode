@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="560" viewBox="0 0 1280 560" role="img" aria-labelledby="title desc">
 <title id="title">SRAM 优化：从复用到资源约束</title>
-<desc id="desc">先判断 shared memory 的复用收益，再检查 bank 访问模式，协同设计 tile、布局和 occupancy，最后评估寄存器压力与 spill 风险。</desc>
+<desc id="desc">分别计算全局逻辑读取、共享内存读写与同步，区分同字广播和不同字冲突，再以共享内存、线程与寄存器预算共同估算驻留上限。</desc>
 <defs>
-  <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+  <marker id="arrow" viewBox="0 0 10 10" markerWidth="10" markerHeight="10" refX="10" refY="5" markerUnits="userSpaceOnUse" orient="auto">
     <path d="M0 0L10 5L0 10Z" fill="#64748b"/>
   </marker>
   <style>
@@ -19,19 +19,19 @@
 
 <rect width="1280" height="560" fill="#f8fafc"/>
 <text x="640" y="42" text-anchor="middle" class="title">SRAM 优化：从复用到资源约束</text>
-<text x="640" y="70" text-anchor="middle" class="subtitle">先判断片上复用是否值得，再检查访问模式与资源是否允许优化持续生效</text>
+<text x="640" y="70" text-anchor="middle" class="subtitle">逻辑读取减少多少、存储体怎样服务、资源允许驻留几块，需要分别计算</text>
 
 <!-- Q1 -->
 <rect x="35" y="120" width="260" height="320" fill="#e0f2fe" class="panel"/>
 <text x="58" y="154" class="group">片上复用</text>
 <rect x="58" y="182" width="214" height="82" class="item" stroke="#60a5fa"/>
 <text x="165" y="214" text-anchor="middle" class="head">shared memory</text>
-<text x="165" y="239" text-anchor="middle" class="body">减少 HBM 往返</text>
+<text x="165" y="239" text-anchor="middle" class="body">减少重复全局读取</text>
 <rect x="58" y="286" width="214" height="112" class="item" stroke="#60a5fa"/>
 <text x="165" y="316" text-anchor="middle" class="head">复用收益</text>
-<text x="165" y="343" text-anchor="middle" class="small">复用次数增加 → 更少搬运</text>
-<text x="165" y="368" text-anchor="middle" class="small">同步与搬运成本不能过高</text>
-<text x="165" y="389" text-anchor="middle" class="small">判断：收益是否覆盖代价</text>
+<text x="165" y="343" text-anchor="middle" class="small">4 KiB × 4 次 → 只搬入一次</text>
+<text x="165" y="368" text-anchor="middle" class="small">增加共享内存读写与同步</text>
+<text x="165" y="389" text-anchor="middle" class="small">字节节省与时间分开核对</text>
 
 <!-- Q2 -->
 <rect x="340" y="120" width="260" height="320" fill="#fee2e2" class="panel"/>
@@ -40,10 +40,10 @@
 <text x="470" y="214" text-anchor="middle" class="head">bank 映射</text>
 <text x="470" y="239" text-anchor="middle" class="body">线程访问落到哪些 bank</text>
 <rect x="363" y="286" width="214" height="112" class="item" stroke="#f87171"/>
-<text x="470" y="316" text-anchor="middle" class="head">stride / padding / broadcast</text>
+<text x="470" y="316" text-anchor="middle" class="head">步长 · 填充 · 广播</text>
 <text x="470" y="343" text-anchor="middle" class="small">不同地址同 bank → conflict</text>
 <text x="470" y="368" text-anchor="middle" class="small">padding 可改变行步长</text>
-<text x="470" y="389" text-anchor="middle" class="small">同地址读取不等同于普通冲突</text>
+<text x="470" y="389" text-anchor="middle" class="small">同字广播：32线程，冲突度1</text>
 
 <!-- Q3 -->
 <rect x="645" y="120" width="260" height="320" fill="#dcfce7" class="panel"/>
@@ -52,10 +52,10 @@
 <text x="775" y="214" text-anchor="middle" class="head">tile 与工作集</text>
 <text x="775" y="239" text-anchor="middle" class="body">决定复用和并行粒度</text>
 <rect x="668" y="286" width="214" height="112" class="item" stroke="#4ade80"/>
-<text x="775" y="316" text-anchor="middle" class="head">layout + occupancy</text>
-<text x="775" y="343" text-anchor="middle" class="small">连续访问与资源占用</text>
-<text x="775" y="368" text-anchor="middle" class="small">三者需要共同设计</text>
-<text x="775" y="389" text-anchor="middle" class="small">不能只调 tile 大小</text>
+<text x="775" y="316" text-anchor="middle" class="head">填充与缓冲份数</text>
+<text x="775" y="343" text-anchor="middle" class="small">分块、填充决定每块用量</text>
+<text x="775" y="368" text-anchor="middle" class="small">双缓冲增加预留容量</text>
+<text x="775" y="389" text-anchor="middle" class="small">共享内存与线程预算取最小值</text>
 
 <!-- Q4 -->
 <rect x="950" y="120" width="295" height="320" fill="#fef3c7" class="panel"/>
@@ -64,14 +64,14 @@
 <text x="1097" y="214" text-anchor="middle" class="head">register pressure</text>
 <text x="1097" y="239" text-anchor="middle" class="body">tile 与临时值变大</text>
 <rect x="973" y="286" width="249" height="112" class="item" stroke="#f59e0b"/>
-<text x="1097" y="316" text-anchor="middle" class="head">spill → 更慢层级</text>
-<text x="1097" y="343" text-anchor="middle" class="small">寄存器不足会抵消复用收益</text>
-<text x="1097" y="368" text-anchor="middle" class="small">并可能进一步降低 occupancy</text>
-<text x="1097" y="389" text-anchor="middle" class="small">需要用 kernel 指标验证</text>
+<text x="1097" y="316" text-anchor="middle" class="head">分配与驻留上限</text>
+<text x="1097" y="343" text-anchor="middle" class="small">每线程用量 × 每块线程数</text>
+<text x="1097" y="368" text-anchor="middle" class="small">SM总量决定另一项驻留上限</text>
+<text x="1097" y="389" text-anchor="middle" class="small">实际溢出另查编译与执行</text>
 
 <!-- 主流程：四个 Q 的机制递进 -->
 <path d="M295 222H340" class="flow"/>
-<text x="318" y="205" text-anchor="middle" class="label">收益成立</text>
+<text x="318" y="205" text-anchor="middle" class="label">检查布局</text>
 <path d="M600 222H645" class="flow"/>
 <text x="622" y="205" text-anchor="middle" class="label">访问检查</text>
 <path d="M905 222H950" class="flow"/>
@@ -79,5 +79,5 @@
 
 <!-- Q4 对 Q3 的反作用：不再增加底部总结块。 -->
 <path d="M1097 398V465H775V440" class="constraint"/>
-<text x="930" y="488" text-anchor="middle" class="label">spill 可能抵消前面的优化收益</text>
+<text x="930" y="488" text-anchor="middle" class="label">与共享内存、线程上限共同限制驻留块数</text>
 </svg>
