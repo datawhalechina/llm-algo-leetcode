@@ -6,9 +6,12 @@ It keeps the markdown content and splits fenced code blocks into code cells so
 the generated notebook can serve as a first-class source artifact.
 
 Usage:
-    python tools/md_to_notebook.py --dir 00_Prerequisites
-    python tools/md_to_notebook.py --dir 01_Hardware_Math_and_Systems
-    python tools/md_to_notebook.py --file 00_Prerequisites/02_PyTorch_Tensor_Fundamentals.md
+    python tools/md_to_notebook.py --dir 00_Prerequisites --dry-run
+    python tools/md_to_notebook.py --dir 01_Hardware_Math_and_Systems --dry-run
+    python tools/md_to_notebook.py --file 00_Prerequisites/02_PyTorch_Tensor_Fundamentals.md --dry-run
+
+Review the preview before omitting --dry-run. Intro and numbered group pages
+(for example, 1A.md and 1F.md) remain Markdown and are excluded from conversion.
 """
 
 from __future__ import annotations
@@ -25,7 +28,8 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def is_group_page(path: Path) -> bool:
-    return bool(re.fullmatch(r"[0-9][A-E]", path.stem))
+    """Recognize numbered group indexes without limiting their letter to A--E."""
+    return bool(re.fullmatch(r"[0-9]+[A-Z]", path.stem))
 
 
 def iter_source_files(paths: list[Path]) -> list[Path]:
