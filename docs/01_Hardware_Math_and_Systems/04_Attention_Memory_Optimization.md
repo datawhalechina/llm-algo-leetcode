@@ -172,7 +172,7 @@ assert changed["restore_then_score"] == changed["transform_then_score"] == -11
 
 ```
 
-## Q4：PagedAttention 如何用分页管理减少 KV Cache 的空间浪费？
+## Q4：PagedAttention按页分配后，预留与尾页浪费怎样变化？
 
 
 除了修改模型架构，系统层面的缓存管理同样重要。早期推理实现常为每个请求预留连续空间，但生成长度不可预知，长短请求混合时容易造成预留浪费和空间组织困难。
@@ -185,6 +185,10 @@ assert changed["restore_then_score"] == changed["transform_then_score"] == -11
 **收益**：
 PagedAttention 改变的是缓存的分配和寻址方式，不是 KV 表示本身；实际并发收益还取决于 block size、调度、kernel、prefix sharing 和 workspace。
 
+用长度64、96、128、320、512的五个请求作对照：每个请求连续预留512个位置，共2560个槽位；按128个位置一页分配，分别需要1、1、1、3、4页，共1280个槽位。有效位置共1120个，分页后的利用率为87.5%，其余12.5%是尾页空槽。每个请求的K/V表示保持不变，比较的只是分配槽位。
+
+尾页也有代价：单个长度129的请求，若连续方案恰好预留129个位置，只需129个槽位；分页却需两页、共256个槽位。因此页大小与连续方案的预留规则要一起给出，不能从前一组例子推断所有输入都更省。
+
 需要把两类系统机制分开：PagedAttention 主要解决物理 block 的分配、寻址和回收；Prefix Cache / RadixAttention 主要解决不同请求之间的共享前缀复用。前者回答“缓存放在哪里”，后者回答“已有前缀能否重复使用”。
 
 | 机制 | 主要解决的问题 | 观察指标 |
@@ -192,42 +196,52 @@ PagedAttention 改变的是缓存的分配和寻址方式，不是 KV 表示本�
 | PagedAttention | 请求内部的 block 分配、寻址与回收 | 空间利用率、碎片、可容纳请求数 |
 | Prefix Cache / RadixAttention | 请求之间的共享前缀复用 | 命中率、复用 token 数、prefill 节省 |
 
-### Q4小验证：分页后的显存利用率
+### Q4小验证：同时核对预留减少与尾页代价
 
-比较连续预留与按 block 向上取整后的槽位；结果只观察空间利用率，不等同于 vLLM 的真实 block allocator 或服务吞吐。
+先复现2560／1280个槽位、87.5%利用率与12.5%空槽，再比较长度128与129的边界。长度、页大小和连续预留上限均为正整数；槽位模型不执行真实分配或测量服务吞吐。
+
 
 ```python
-def contiguous_reserved_tokens(lengths, max_len):
-    """模拟每个请求预留 max_len 个连续 token 槽位。"""
-    if not lengths or max_len <= 0:
-        raise ValueError('lengths 不能为空，max_len 必须为正数')
-    if any(length <= 0 or length > max_len for length in lengths):
-        raise ValueError('每个请求长度必须在 (0, max_len] 内')
+def contiguous_reserved_tokens(lengths: list | tuple, max_len: int) -> int:
+    """每个请求预留max_len个词元槽；非空长度序列及预留上限均为正整数。"""
+    if (not isinstance(lengths, (list, tuple)) or not lengths
+            or type(max_len) is not int or max_len <= 0):
+        raise ValueError("须提供非空长度序列和正整数预留上限")
+    if any(type(length) is not int or not 0 < length <= max_len for length in lengths):
+        raise ValueError("每个请求长度须为不超过预留上限的正整数")
     return len(lengths) * max_len
 
 
-def paged_reserved_tokens(lengths, block_size):
-    """模拟按固定 block_size 向上取整后的分页 token 槽位。"""
-    if not lengths or block_size <= 0:
-        raise ValueError('lengths 不能为空，block_size 必须为正数')
-    if any(length <= 0 for length in lengths):
-        raise ValueError('请求长度必须为正数')
+def paged_reserved_tokens(lengths: list | tuple, block_size: int) -> int:
+    """逐请求按页向上取整，返回总词元槽数；长度与页大小均为正整数。"""
+    if (not isinstance(lengths, (list, tuple)) or not lengths
+            or type(block_size) is not int or block_size <= 0):
+        raise ValueError("须提供非空长度序列和正整数页大小")
+    if any(type(length) is not int or length <= 0 for length in lengths):
+        raise ValueError("请求长度须为正整数")
     return sum(((length + block_size - 1) // block_size) * block_size for length in lengths)
+
 
 lengths = [64, 96, 128, 320, 512]
 max_len = max(lengths)
 block_size = 128
-contiguous = contiguous_reserved_tokens(lengths, max_len)
-paged = paged_reserved_tokens(lengths, block_size)
+contiguous = contiguous_reserved_tokens(lengths=lengths, max_len=max_len)
+paged = paged_reserved_tokens(lengths=lengths, block_size=block_size)
 utilization = sum(lengths) / paged
 waste = 1 - utilization
+assert sum(lengths) == 1120
+assert contiguous == 2560 and paged == 1280
+assert utilization == 0.875 and waste == 0.125
+assert paged_reserved_tokens(lengths=[128], block_size=128) == 128
 
-print(f'Contiguous reservation: {contiguous} tokens')
-print(f'Paged reservation: {paged} tokens')
-print(f'Paged utilization: {utilization:.1%}')
-print(f'Paged waste: {waste:.1%}')
-assert paged <= contiguous
-assert 0 < utilization <= 1
+tail_contiguous = contiguous_reserved_tokens(lengths=[129], max_len=129)
+tail_paged = paged_reserved_tokens(lengths=[129], block_size=128)
+assert tail_contiguous == 129 and tail_paged == 256
+assert tail_paged - tail_contiguous == 127
+
+print(f"五请求：连续预留 {contiguous} 槽，分页 {paged} 槽；"
+      f"利用率 {utilization:.1%}，尾页空槽 {waste:.1%}")
+print(f"长度129：按需连续预留 {tail_contiguous} 槽，分页 {tail_paged} 槽")
 
 ```
 
