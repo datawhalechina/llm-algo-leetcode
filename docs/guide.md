@@ -55,13 +55,16 @@ python -m jupyter lab
 | 反向传播与训练机制 | [训练机制实验 Quickstart](./topic_discussion/backpropagation_training_mechanism/quickstart.md) |
 | 后训练优化 | [后训练实验 Quickstart](./topic_discussion/post_training_optimization/quickstart.md) |
 | 推理优化与 Serving | [推理优化实验 Quickstart](./topic_discussion/inference_optimization/quickstart.md) |
-| 性能分析与性能优化 | [性能分析实验 Quickstart](./topic_discussion/performance_analysis/quickstart.md) |
+| 性能优化与分析方法 | [性能优化实验 Quickstart](./topic_discussion/performance_optimization/quickstart.md) |
 | 架构机制 | [架构实验 Quickstart](./topic_discussion/llm_architecture_evolution/quickstart.md) |
 | 量化与压缩 | [量化实验 Quickstart](./topic_discussion/quantization_compression/quickstart.md) |
 | 通信与并行 | [通信与并行实验 Quickstart](./topic_discussion/communication_parallelism/quickstart.md) |
 | 算子与部署 | [算子优化实验 Quickstart](./topic_discussion/operator_optimization/quickstart.md)、[部署与异构实验 Quickstart](./topic_discussion/deployment_heterogeneous/quickstart.md) |
 
 不同专题 Profile 和独立 Serving 后端不要混装。Profile 用途、GPU 门槛和隔离关系见[环境资产索引](./gpu_environment_assets.md)；精确依赖由 [`requirements/environment-profiles.json`](../requirements/environment-profiles.json) 维护。
+
+<a id="project-environment-preflight"></a>
+<a id="项目环境预检与安装"></a>
 
 ## 4. 预检、运行并查找结果
 
@@ -84,7 +87,7 @@ python tools/environment_preflight.py --profile <PROFILE_ID>
 3. 按 Notebook 的 Step 顺序执行，不跳过环境检查和实验准入条件。
 4. 在 `benchmarks/results/` 查看结果 JSON、日志和 artifact；已有结果存在时更换唯一 `RUN_LABEL`，不要覆盖。
 
-结果应记录运行时快照、配置、状态、失败原因和证据等级。CPU 账本、模拟结果和 smoke test 不能替代真实 GPU、后端或多卡证据；公共字段和证据等级见 [Part 02 结果资产与证据契约](./part02_result_assets.md)。推理项目 66–70 的专项核对见[推理项目验证清单](./verification/inference_projects.md)。
+结果应记录运行时快照、配置、状态、失败原因和证据等级。CPU 账本、模拟结果和 smoke test 不能替代真实 GPU、后端或多卡证据；公共字段和证据等级见 [Part 02 结果资产与证据契约](./part02_result_assets.md)。推理项目的安装与预检见[推理实验 Quickstart](./topic_discussion/inference_optimization/quickstart.md)，已登记结果与待验证项见[推理实验资产表](./topic_discussion/inference_optimization/experiment_assets.md)；具体运行阶段和参数以项目 Notebook 为准。
 
 ## 常见问题
 
