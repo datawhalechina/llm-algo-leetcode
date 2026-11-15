@@ -1,30 +1,34 @@
 # 维护与发布手册
 
-本手册只回答三个操作问题：修改哪个源文件、怎样生成 `docs/` 镜像、怎样验证改动。页面结构与写作规则见[模板总纲](./template_guidelines.md)，环境和结果字段分别见[环境资产表](./gpu_environment_assets.md)与[Part 02 结果资产](./part02_result_assets.md)。
+本手册说明修改哪个源文件、怎样生成 `docs/` 镜像，以及怎样验证和发布。内容贡献要求见[贡献指南](./contributing.md)，环境和结果字段分别见[环境资产索引](./gpu_environment_assets.md)与[Part 02 结果说明](./part02_result_assets.md)。
 
 ## 维护信息所有权
 
 | 信息 | 唯一维护入口 | 本手册是否展开 |
 |:---|:---|:---:|
-| 页面类型与共同规则 | [模板总纲](./template_guidelines.md) | 否 |
-| Part 00–01 基础页 | [基础页编写规范](./authoring/foundation_notebooks.md) | 否 |
-| 专题 intro、walkthrough、casebook、Quickstart | [专题页面编写规范](./authoring/topic_pages.md) | 否 |
-| Part 02 机制页 / 项目页 | [机制页规范](./authoring/part02_mechanism_notebooks.md) / [项目页规范](./authoring/part02_project_notebooks.md) | 否 |
-| 图示与 SVG | [图示与 SVG 规范](./authoring/visual_guidelines.md) | 否 |
-| 模型、依赖 Profile、驱动和硬件事实 | [GPU 环境资产表](./gpu_environment_assets.md) | 否 |
+| 教学页面、代码与图片的贡献要求 | [贡献指南](./contributing.md)与同类源页面 | 否 |
+| GitHub 与网页的公式兼容 | [公式兼容说明](./math_compatibility.md) | 否 |
+| 模型与 Profile 索引、跨专题隔离关系 | [环境资产索引](./gpu_environment_assets.md) | 否 |
 | 结果字段、证据等级和项目资产 | [Part 02 结果资产](./part02_result_assets.md) | 否 |
-| 文档、自动化、视觉和引用资产归属 | [资产总登记](./asset_registry.md) | 否 |
+| 工具用途、参数与迁移限制 | [仓库工具说明](https://github.com/datawhalechina/llm-algo-leetcode/blob/main/tools/README.md) | 否 |
 | 转换、同步、检查、构建和交接 | 本手册 | 是 |
 
 规则冲突时，先确定信息属于哪一行，再修改对应唯一维护源。不要在 Notebook、专题页或维护页增加第二份完整规则。
+
+## 本地记录与正式规则
+
+批次计划、审计过程、交接笔记和历史快照保存在被忽略的 `.local/notes/`；临时扫描报告保存在 `.local/reports/`。这些文件保留本地，不加入学习导航或作为正式文档的链接目标。
+
+可长期复用的同步与验证规则保存在本手册；实验状态登记在对应专题资产表和结果文件中。详细编写模板保留在本地 `.local/authoring/`，不作为公开链接目标。将历史记录移出正式目录时，先保留当前完整内容和未提交差异，再清理正式引用。
 
 ## 源文件与派生文件
 
 - 源 Notebook、源 Markdown 和根目录 `README.md` 是正文事实来源。
 - `docs/` 下的正文和导航是派生镜像，不能作为最终修改入口。
 - `docs/public/` 中的正式 SVG、图片等静态资产直接维护，不由 Notebook 转换生成。
+- 本手册、使用指南、贡献指南、环境索引、公共结果说明、术语表和公式兼容说明是直接维护的站点文档，不属于正文镜像。
 - 镜像与源文件不一致时，以源文件为准；重新同步会覆盖镜像。
-- 兼容页、旧路径和生成链的归属见[文档交付资产表](./documentation_assets.md)。
+- 旧路径迁移先核对引用；日常同步入口见下方表格，迁移过程保存在本地交接记录中。
 
 ## 标准维护流程
 
@@ -41,7 +45,7 @@
 ### 1. 修改前
 
 1. 使用 `git status --short` 确认工作区已有改动，避免覆盖他人或此前实验结果。
-2. 从[模板总纲](./template_guidelines.md)确定页面类型，从[资产总登记](./asset_registry.md)确定事实归属。
+2. 从贡献指南判断页面类型，参考同类源文件；配置、结果字段、安装步骤分别在其现有维护入口修改。
 3. 涉及重命名、调号或目录迁移时，先搜索源文件、镜像、导航、脚本和结果资产中的全部引用。
 
 ### 2. 修改与定向检查
@@ -127,14 +131,22 @@ cd docs && npm run docs:build
 | SVG | `tools/check_svg_arrows.py`、`tools/check_svg_layout.py` | 检查箭头结构、画布和页面尺度 |
 | 历史迁移 | `tools/md_to_notebook.py` | Markdown → Notebook 迁移辅助，不进入日常流程 |
 
-完整稳定工具资产及其消费者见[自动化与验证资产表](./automation_assets.md)。本表不枚举一次性修复脚本。
+Part 03 单节验证示例（在 `llm_algo_cnb_gpu` 环境运行）：
+
+```bash
+python tools/test_notebook_answers.py 03_Triton_Kernels/01_Triton_Vector_Addition.ipynb --mode both
+```
+
+题目区显示“按预期失败”表示 TODO 仍未完成；答案区应通过。无 GPU 时的 `SKIPPED` 不算运行级验证通过。
+
+工具分类、批量改写风险和迁移限制见[仓库工具说明](https://github.com/datawhalechina/llm-algo-leetcode/blob/main/tools/README.md)，回归测试入口见[工具测试说明](https://github.com/datawhalechina/llm-algo-leetcode/blob/main/tools/tests/README.md)。
 
 ## 环境与实验维护
 
 - `requirements/base.txt` 不放 PyTorch、GPU 驱动或 Serving backend。
-- CPU / CUDA PyTorch、能力 Profile 和 backend 组合按[GPU 环境资产表](./gpu_environment_assets.md)维护。
+- CPU / CUDA PyTorch、能力 Profile 和 backend 的机器规则在 `requirements/environment-profiles.json` 维护；跨专题入口和隔离关系在[环境资产索引](./gpu_environment_assets.md)维护。
 - Notebook 可以检查环境，但不能静默替换 PyTorch、驱动、vLLM、SGLang 或其他 CUDA 执行栈。
-- 学习者安装流程和项目预检见[使用指南](./guide.md#项目环境预检与安装)；Notebook 只保留当前页需要修改的配置和短入口。
+- 安装流程和项目预检见[使用指南](./guide.md#project-environment-preflight)；Notebook 只保留当前页需要修改的配置和短入口。
 - 运行结果必须保存 runtime snapshot、配置、状态和失败原因；已完成标签进入结果 JSON 和专题实验资产表，不回写为源 Notebook 默认配置。
 
 ## 模型评测与跨专题质量门槛
@@ -142,7 +154,7 @@ cd docs && npm run docs:build
 本节保留为历史链接入口，不在维护手册重复定义评测字段。凡候选方案会改变模型输出，项目决策必须同时检查质量、失败状态和性能，不能只凭吞吐或显存变化采用方案。
 
 - 公共结果外层、证据等级和字段复用：[Part 02 结果资产](./part02_result_assets.md)
-- 项目页中的质量门槛、决策和交接位置：[Part 02 项目页编写规范](./authoring/part02_project_notebooks.md)
+- 项目特有的质量门槛、决策和交接步骤：对应源 Notebook 的 Step 5
 - 评测数据可信度和领域指标：对应横向专题及其实验资产表
 
 ## 迁移、重命名与兼容页
@@ -152,7 +164,7 @@ cd docs && npm run docs:build
 3. 迁移完成后运行镜像、链接和站点构建检查，确认无引用后再删除旧入口。
 4. 不通过手改 `docs/` 镜像绕过源文件迁移。
 
-稳定路径和兼容页登记见[文档交付资产表](./documentation_assets.md)；项目语义 ID 和产物关系见 `benchmarks/project_registry.json` 与 `benchmarks/project_asset_relations.json`。
+项目语义 ID 和产物关系见 `benchmarks/project_registry.json` 与 `benchmarks/project_asset_relations.json`。原始路径、备份位置和尚未处理的外部引用记录在本地交接中，不再增加一份公开迁移台账。
 
 ## 故障处理
 
