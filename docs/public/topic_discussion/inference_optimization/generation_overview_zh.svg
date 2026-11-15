@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="850" viewBox="0 0 1200 850" role="img" aria-labelledby="title desc">
+  <title id="title">从首次采样到持续生成：普通解码与投机生成</title>
+  <desc id="desc">提示词和生成配置进入预填充，建立提示词缓存并首次采样。提交输出后检查EOS与长度预算。继续时选择普通逐步生成或投机候选验证，提交有效输出后再次检查。普通生成选出的词元通常下一轮才写入自身KV。结束原因和任务质量分别检查。</desc>
+  <defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52606d"/></marker></defs>
+  <style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d;font-size:19px}.title{font-size:27px;font-weight:700}.head{font-size:21px;font-weight:700}.note{font-size:17px;fill:#475569}.box{stroke:#829ab1;stroke-width:1.5;rx:12}.flow{fill:none;stroke:#52606d;stroke-width:2;marker-end:url(#arrow)}.link{fill:none;stroke:#52606d;stroke-width:2}</style>
+  <rect width="1200" height="850" fill="#f7fafc"/>
+  <text x="40" y="44" class="title">先看共同生成过程，再比较怎样推进下一段输出</text>
+  <text x="40" y="79" class="note">以下为单请求概览：停止条件约束最终提交的输出；普通生成与投机生成分别展开推进方式。</text>
+  <rect x="40" y="130" width="300" height="80" fill="#dbeafe" class="box"/>
+  <text x="190" y="161" text-anchor="middle" class="head">提示词与生成配置</text><text x="190" y="191" text-anchor="middle" class="note">词元、采样参数、长度预算</text>
+  <path d="M340 170H450" class="flow"/>
+  <rect x="450" y="130" width="300" height="80" fill="#dbeafe" class="box"/>
+  <text x="600" y="161" text-anchor="middle" class="head">预填充</text><text x="600" y="191" text-anchor="middle" class="note">处理提示词，建立对应 KV</text>
+  <path d="M750 170H860" class="flow"/>
+  <rect x="860" y="130" width="300" height="80" fill="#dbeafe" class="box"/>
+  <text x="1010" y="161" text-anchor="middle" class="head">首次采样与提交</text><text x="1010" y="191" text-anchor="middle" class="note">选出第一个输出词元</text>
+  <path d="M1010 210V240H600V260" class="flow"/>
+  <rect x="440" y="260" width="320" height="80" fill="#fef3c7" class="box"/>
+  <text x="600" y="291" text-anchor="middle" class="head">检查是否停止</text><text x="600" y="321" text-anchor="middle" class="note">EOS 或已达到输出长度预算？</text>
+  <path d="M760 300H860" class="flow"/><text x="810" y="285" text-anchor="middle" class="note">是</text>
+  <rect x="860" y="260" width="300" height="80" fill="#ede9fe" class="box"/>
+  <text x="1010" y="291" text-anchor="middle" class="head">结束本次生成</text><text x="1010" y="321" text-anchor="middle" class="note">保留长度、原因与终止状态</text>
+  <path d="M600 340V375H300V400" class="flow"/><path d="M600 375H900V400" class="flow"/>
+  <text x="617" y="366" class="note">否：继续推进</text>
+  <rect x="40" y="400" width="520" height="150" fill="#eaf2ff" class="box"/>
+  <text x="64" y="435" class="head">普通解码：逐步推进</text>
+  <text x="64" y="473">处理上次选出的词元 → 读取并追加 KV</text>
+  <text x="64" y="510">得到预测分数 → 采样并提交下一词元</text>
+  <rect x="640" y="400" width="520" height="150" fill="#ecfdf5" class="box"/>
+  <text x="664" y="435" class="head">投机生成：候选与验证</text>
+  <text x="664" y="473">提出一段候选 → 目标模型验证</text>
+  <text x="664" y="510">按协议提交有效结果，处理未提交状态</text>
+  <path d="M300 550V590H20V300H440" class="flow"/>
+  <path d="M900 550V590H300" class="link"/>
+  <text x="400" y="581" class="note">每轮提交后返回停止判断；投机提交也受 EOS 和剩余长度限制。</text>
+  <rect x="40" y="635" width="1120" height="88" fill="#fff" class="box"/>
+  <text x="64" y="670" class="head">词元已选出 ≠ 它的 KV 已写入</text>
+  <text x="64" y="701">普通生成中，新词元通常要在下一轮作为输入被处理后，才产生它自己的 KV；已选输出与缓存进度分开记录。</text>
+  <rect x="40" y="743" width="1120" height="80" fill="#fff" class="box"/>
+  <text x="64" y="775" class="head">停止判断决定是否继续；任务检查判断回答是否可用</text>
+  <text x="64" y="805" class="note">达到长度上限可能截断回答。结束后另查答案与格式；执行失败、取消和超时也分别保留记录。</text>
+</svg>
