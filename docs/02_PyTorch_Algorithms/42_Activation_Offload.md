@@ -1010,5 +1010,4 @@ Offload 适合放回显存预算和性能证据链中理解：先看设备间传
 - [Part 01 · 07. CPU/GPU 异构调度](../01_Hardware_Math_and_Systems/07_CPU_GPU_Heterogeneous_Scheduling.md)
 - [19. 激活检查点](./19_Activation_Checkpointing.md)
 - [73. 训练性能分析](./73_Training_Performance_Analysis.md)
-- [75. 显存预算压缩项目](./75_Memory_Budget_Compression_Project.md)
-- [76. Checkpoint 与 Offload 对比项目](./76_Activation_Checkpoint_Offload_Benchmark.md)
+- [Part 02 · 76 激活重算与卸载对比项目](./76_Activation_Checkpoint_Offload_Benchmark.md)
