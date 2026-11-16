@@ -1,8 +1,17 @@
 # 部署与异构实验 Quickstart
 
-部署专题的单卡真实后端实验复用 `INF-VLLM-011-CU128`。该环境用于 Part 02 · 66、67、72、82、83 的加载、请求和服务基准；它不用于生成量化产物，也不承担多卡通信实验。vLLM 提供与其匹配的 PyTorch 栈，不要先安装 `requirements/torch-cu128.txt`，也不要把 SGLang、torchao 或量化训练依赖追加到同一环境。
+先按要完成的任务选环境：只读专题正文无需安装；运行契约、候选和决策练习使用 `BASE-CPU`；启动真实 vLLM 服务时再创建 `INF-VLLM-011-CU128`；多卡通信使用独立的 `PAR-CUDA-MECHANISM`。单卡环境不产生多卡证据，多卡环境也不替代真实 Serving 后端。
 
-## 一键创建
+| 目标 | 环境与入口 | 能完成什么 |
+|:---|:---|:---|
+| 阅读正文与问题链 | 不需要环境 | 学习部署候选、兼容性、数据路径和决策方法 |
+| 运行 CPU 检查 | [`BASE-CPU`](../../docs/guide.md#base-cpu) | 运行 Part 00–02 普通 CPU 练习与项目逻辑检查 |
+| 测量单卡 vLLM 服务 | `INF-VLLM-011-CU128`，见下方一键创建 | 加载模型、发送固定请求并记录单卡服务指标 |
+| 验证多卡通信机制 | [`PAR-CUDA-MECHANISM`](../communication_parallelism/quickstart.md#par-cuda-mechanism-quickstart) | 在至少双卡设备上检查通信与切分行为；不是端到端 Serving 交付证据 |
+
+单卡真实后端实验使用与 vLLM 配套的 PyTorch 栈。不要先安装 `requirements/torch-cu128.txt`，也不要把 SGLang、torchao 或量化训练依赖追加到该环境。量化产物需在其专用环境中生成，多卡通信使用独立 Profile。
+
+## 单卡真实服务：一键创建
 
 在仓库根目录执行：
 

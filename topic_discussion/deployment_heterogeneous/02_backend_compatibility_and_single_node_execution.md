@@ -49,7 +49,7 @@
 
 | 工具层 | Part 02 入口 | 在该入口中验证什么 | 不应从该入口推断什么 |
 |:---|:---|:---|:---|
-| Transformers / PyTorch | [Part 02 · 13 SFT 训练循环](../../02_PyTorch_Algorithms/13_SFT_Training_Loop.ipynb)、[Part 02 · 15 端到端微调](../../02_PyTorch_Algorithms/15_End_to_End_Fine_Tuning_Experiment.ipynb) | 模型训练、输入格式和检查点产物 | 生产服务的吞吐或调度能力 |
+| Transformers / PyTorch | [Part 02 · 13 SFT 监督边界与损失](../../02_PyTorch_Algorithms/13_SFT_Training_Loop.ipynb)、[Part 02 · 15 SFT 有效更新与训练闭环](../../02_PyTorch_Algorithms/15_End_to_End_Fine_Tuning_Experiment.ipynb) | 模型训练、输入格式和检查点产物 | 生产服务的吞吐或调度能力 |
 | 注意力与计算内核 | [Part 02 · 20 FlashAttention 模拟](../../02_PyTorch_Algorithms/20_FlashAttention_Sim.ipynb) | 注意力路径、SDPA 对照和局部机制 | 某一服务运行时的完整执行行为 |
 | vLLM / SGLang | [Part 02 · 22 PagedAttention](../../02_PyTorch_Algorithms/22_vLLM_PagedAttention.ipynb)、[Part 02 · 34 RadixAttention](../../02_PyTorch_Algorithms/34_SGLang_RadixAttention.ipynb)、[Part 02 · 66 推理性能比较](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.ipynb) | 缓存、后端机制与共同请求指标 | 任意模型、硬件、版本下的通用排名 |
 | 量化与产物 | [Part 02 · 25 W8A16](../../02_PyTorch_Algorithms/25_Quantization_W8A16.ipynb)、[Part 02 · 40 GPTQ / AWQ](../../02_PyTorch_Algorithms/40_GPTQ_and_AWQ_Weight_Quantization.ipynb)、[Part 02 · 41 FP8 运行时](../../02_PyTorch_Algorithms/41_FP8_Runtime_Low_Precision_Paths.ipynb)、[Part 02 · 54 KV Cache 量化](../../02_PyTorch_Algorithms/54_KV_Cache_Quantization_Strategies.ipynb)、[Part 02 · 82 产物项目](../../02_PyTorch_Algorithms/82_Quantization_Artifact_Evaluation_Project.ipynb) | 表示、误差、产物准入与质量记录 | 低比特计算内核必然更快 |
