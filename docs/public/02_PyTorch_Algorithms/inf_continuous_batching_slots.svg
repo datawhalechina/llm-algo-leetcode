@@ -1,19 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="390" viewBox="0 0 1120 390">
-  <rect width="1120" height="390" rx="24" fill="#f7f9fc"/>
-  <text x="560" y="42" text-anchor="middle" font-size="24" font-weight="700" fill="#172033">Static Batch 与 Continuous Batch 的空槽差异</text>
-  <g font-family="sans-serif" font-size="15">
-    <text x="70" y="105" font-weight="700" fill="#172033">Static Batch</text>
-    <text x="70" y="242" font-weight="700" fill="#172033">Continuous Batch</text>
-    <g text-anchor="middle">
-      <rect x="210" y="78" width="145" height="58" rx="10" fill="#dceafe" stroke="#4f7fc9"/><text x="283" y="112" fill="#172033">A · active</text>
-      <rect x="375" y="78" width="145" height="58" rx="10" fill="#eef1f5" stroke="#9aa5b5"/><text x="448" y="112" fill="#69768b">B · idle slot</text>
-      <rect x="540" y="78" width="145" height="58" rx="10" fill="#dceafe" stroke="#4f7fc9"/><text x="613" y="112" fill="#172033">C · active</text>
-      <rect x="705" y="78" width="145" height="58" rx="10" fill="#eef1f5" stroke="#9aa5b5"/><text x="778" y="112" fill="#69768b">D · idle slot</text>
-      <rect x="210" y="215" width="145" height="58" rx="10" fill="#dceafe" stroke="#4f7fc9"/><text x="283" y="249" fill="#172033">A · active</text>
-      <rect x="375" y="215" width="145" height="58" rx="10" fill="#e3f4ea" stroke="#4a9a6b"/><text x="448" y="249" fill="#172033">E · admitted</text>
-      <rect x="540" y="215" width="145" height="58" rx="10" fill="#dceafe" stroke="#4f7fc9"/><text x="613" y="249" fill="#172033">C · active</text>
-      <rect x="705" y="215" width="145" height="58" rx="10" fill="#e3f4ea" stroke="#4a9a6b"/><text x="778" y="249" fill="#172033">F · admitted</text>
-    </g>
-    <text x="210" y="324" fill="#526079">批次重组能减少因输出长度不同产生的空槽，但准入仍受 KV 容量、优先级和 SLO 约束。</text>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="410" viewBox="0 0 1120 410" role="img" aria-labelledby="title desc">
+<title id="title">短请求结束后的空位，何时可以补入新请求</title><desc id="desc">对比同一时刻四个槽位：批次屏障仍等待长请求，滚动方式补入新请求；真实实验记录客户端槽位而非GPU计算忙碌率。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#52657a"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:15px;font-weight:400;fill:#334e68}.title{font-size:25px;font-weight:700;fill:#18324b}.h{font-size:18px;font-weight:600;fill:#18324b}.small{font-size:14px}.edge{fill:none;stroke:#52657a;stroke-width:2.5;marker-end:url(#arrow)}.feedback{fill:none;stroke:#7657a5;stroke-width:2;stroke-dasharray:7 5;marker-end:url(#arrow)}</style></defs>
+<rect width="1120" height="410" fill="#f8fafc"/><text x="560" y="42" text-anchor="middle" class="title">短请求结束后的空位，何时可以补入新请求</text>
+<text x="560" y="80" text-anchor="middle" class="small">示意：B、D 已结束，A、C 仍在进行；E、F 等待补入</text>
+<text x="120" y="160" text-anchor="middle" class="h">整批屏障</text>
+<text x="120" y="280" text-anchor="middle" class="h">滚动补位</text>
+<rect x="230" y="115" width="190" height="80" rx="14" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="325" y="161" text-anchor="middle" class="h">A 继续</text>
+<rect x="445" y="115" width="190" height="80" rx="14" fill="#fff3df" stroke="#b7791f" stroke-width="2"/><text x="540" y="161" text-anchor="middle" class="h">空位：B 已结束</text>
+<rect x="660" y="115" width="190" height="80" rx="14" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="755" y="161" text-anchor="middle" class="h">C 继续</text>
+<rect x="875" y="115" width="190" height="80" rx="14" fill="#fff3df" stroke="#b7791f" stroke-width="2"/><text x="970" y="161" text-anchor="middle" class="h">空位：D 已结束</text>
+<rect x="230" y="235" width="190" height="80" rx="14" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="325" y="281" text-anchor="middle" class="h">A 继续</text>
+<rect x="445" y="235" width="190" height="80" rx="14" fill="#e8f6f1" stroke="#3f8b72" stroke-width="2"/><text x="540" y="281" text-anchor="middle" class="h">E 补入</text>
+<rect x="660" y="235" width="190" height="80" rx="14" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="755" y="281" text-anchor="middle" class="h">C 继续</text>
+<rect x="875" y="235" width="190" height="80" rx="14" fill="#e8f6f1" stroke="#3f8b72" stroke-width="2"/><text x="970" y="281" text-anchor="middle" class="h">F 补入</text>
+<text x="560" y="345" text-anchor="middle" class="small">本图只比较补位时机：服务端实际准入仍受 KV 容量与本轮工作量限制</text>
+<text x="560" y="377" text-anchor="middle" class="small">客户端实验中，槽位从发出请求占用至响应结束，包含服务端排队、计算与传输</text>
 </svg>
