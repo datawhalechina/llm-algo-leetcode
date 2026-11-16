@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="790" viewBox="0 0 1500 790" role="img" aria-labelledby="title desc">
+  <title id="title">量化与低比特适配学习路径</title>
+  <desc id="desc">先学习量化表示和校准方法，再按对象分流：QLoRA 进入训练选型，量化权重包进入产物和部署检查，FP8 与 KV Cache 在各页验证执行与容量；下方蒸馏扩展进入独立学生项目。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 4.5L0 9Z" fill="#475569"/></marker>
+    <style>
+      .title{font-family:"Noto Sans CJK SC",sans-serif;font-size:29px;font-weight:700;fill:#0F172A}.sub{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;fill:#475569}
+      .step{font-family:"Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:700;fill:#475569}.head{font-family:"Noto Sans CJK SC",sans-serif;font-size:19px;font-weight:700;fill:#172033}
+      .body{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;fill:#334155}.small{font-family:"Noto Sans CJK SC",sans-serif;font-size:13px;fill:#475569}
+      .line{fill:none;stroke:#475569;stroke-width:2.4;marker-end:url(#arrow)}.divider{stroke:#CBD5E1;stroke-width:2;stroke-dasharray:8 8}
+    </style>
+  </defs>
+  <rect width="1500" height="790" fill="#F8FAFC"/>
+  <rect x="28" y="24" width="1444" height="742" rx="26" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+  <text x="62" y="70" class="title">量化主线：先固定表示与校准，再按压缩对象选择路径</text>
+  <text x="62" y="102" class="sub">分支分别检查误差、资源代价和执行路径；训练适配、权重包与运行时状态使用各自的验证入口。</text>
+
+  <text x="66" y="153" class="step">表示基础</text>
+  <rect x="60" y="170" width="260" height="158" rx="18" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/>
+  <text x="84" y="208" class="head">25 · W8A16 表示</text>
+  <text x="84" y="242" class="body">整数码、缩放因子与零点</text>
+  <text x="84" y="270" class="body">逐张量、逐通道与分组粒度</text>
+  <rect x="84" y="288" width="212" height="28" rx="8" fill="#EFF6FF"/>
+  <text x="98" y="308" class="small">输出：量化状态与恢复误差</text>
+
+  <text x="370" y="153" class="step">范围选择</text>
+  <rect x="364" y="170" width="270" height="158" rx="18" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2"/>
+  <text x="388" y="208" class="head">52 · 校准与误差</text>
+  <text x="388" y="242" class="body">校准集生成范围候选</text>
+  <text x="388" y="270" class="body">验证集比较误差与饱和率</text>
+  <rect x="388" y="288" width="222" height="28" rx="8" fill="#F5F3FF"/>
+  <text x="402" y="308" class="small">输出：可复验的校准协议</text>
+
+  <path d="M320 249H364" class="line"/>
+
+  <text x="692" y="133" class="step">按压缩对象分流</text>
+  <rect x="686" y="148" width="364" height="122" rx="16" fill="#FFF7ED" stroke="#EA580C" stroke-width="2"/>
+  <text x="710" y="184" class="head">训练期低比特适配</text>
+  <text x="710" y="216" class="body">26 · QLoRA　｜　QUANT-QAT · 量化感知训练</text>
+  <text x="710" y="244" class="small">QLoRA → 65；QAT 导出后检查目标加载器</text>
+
+  <rect x="686" y="294" width="364" height="122" rx="16" fill="#ECFDF5" stroke="#059669" stroke-width="2"/>
+  <text x="710" y="330" class="head">权重、激活与位宽分配</text>
+  <text x="710" y="362" class="body">40 · GPTQ/AWQ　｜　53 · SmoothQuant</text>
+  <text x="710" y="390" class="small">QUANT-MIXED-BIT · 按层敏感度分配预算</text>
+
+  <rect x="686" y="440" width="364" height="122" rx="16" fill="#F0F9FF" stroke="#0284C7" stroke-width="2"/>
+  <text x="710" y="476" class="head">运行时格式与缓存状态</text>
+  <text x="710" y="508" class="body">41 · FP8 路径　｜　54 · KV Cache 量化</text>
+  <text x="710" y="536" class="small">检查原生内核、状态容量与 Decode 代价</text>
+
+  <path d="M634 218L686 209" class="line"/>
+  <path d="M634 249L686 355" class="line"/>
+  <path d="M634 280L686 501" class="line"/>
+
+  <text x="1110" y="227" class="step">产物与部署验证</text>
+  <rect x="1104" y="244" width="330" height="202" rx="18" fill="#FDF2F8" stroke="#DB2777" stroke-width="2"/>
+  <text x="1128" y="282" class="head">82 · 量化产物检查</text>
+  <text x="1128" y="316" class="body">权重、量化参数与 loader 兼容</text>
+  <text x="1128" y="344" class="body">独立质量集与浮点基线对照</text>
+  <path d="M1128 366H1410" stroke="#F9A8D4" stroke-width="2"/>
+  <text x="1128" y="396" class="body">67 · 量化部署收益验证</text>
+  <text x="1128" y="424" class="small">83 · 按 Serving SLO 选择运行 Profile</text>
+
+  <path d="M1050 355H1104" class="line"/>
+  <rect x="1104" y="466" width="330" height="96" rx="16" fill="#F0F9FF" stroke="#0284C7" stroke-width="2"/>
+  <text x="1128" y="498" class="head">41 / 54 · 本页 Step 5</text>
+  <text x="1128" y="530" class="body">执行路径、质量、耗时与缓存容量</text>
+  <path d="M1050 501H1104" class="line"/>
+
+  <path d="M60 606H1434" class="divider"/>
+  <text x="66" y="646" class="step">蒸馏扩展：改变学生模型，而不是量化表示</text>
+  <rect x="364" y="664" width="420" height="72" rx="16" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2"/>
+  <text x="388" y="694" class="head">DISTILL-OPD · 在策略蒸馏与 GKD</text>
+  <text x="388" y="720" class="small">固定轨迹 / 学生轨迹 → 冻结教师逐 Token 反馈</text>
+  <path d="M784 700H912" class="line"/>
+  <rect x="912" y="664" width="376" height="72" rx="16" fill="#ECFDF5" stroke="#059669" stroke-width="2"/>
+  <text x="936" y="694" class="head">88 · 蒸馏学生交付</text>
+  <text x="936" y="720" class="small">G0/G1/G2 → 质量、产物与部署收益</text>
+</svg>
