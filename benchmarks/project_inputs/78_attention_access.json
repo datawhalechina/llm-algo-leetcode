@@ -1,0 +1,10 @@
+{
+  "schema_version": "architecture-project-input/v1",
+  "semantic_id": "ARCH-ATTENTION-ACCESS",
+  "model_id": "",
+  "model_revision": "",
+  "native_sparse_adapter": "",
+  "mechanism_result": "benchmarks/results/44_sparse_attention",
+  "workload_path": "benchmarks/workloads/attention_access_long_context.jsonl",
+  "status": "awaiting_native_sparse_backend"
+}
