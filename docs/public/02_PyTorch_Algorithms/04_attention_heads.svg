@@ -1,32 +1,49 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
-  <title id="title">Attention 的当前计算与历史 K/V 状态</title>
-  <desc id="desc">当前隐藏状态产生 Query 和当前 K/V；Query 读取历史与当前 K/V 得到上下文，当前 K/V 同时追加到缓存供后续 token 使用。</desc>
-  <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
-    <style>.title{font:700 27px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.sub{font:500 15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.head{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#111827}.body{font:500 14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.label{font:600 14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.box{stroke-width:2.5;rx:14}.flow{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#arrow)}.state{stroke:#7c3aed;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
-  </defs>
-  <rect width="1500" height="470" fill="#f8fafc"/>
-  <text x="50" y="48" class="title">Attention：当前上下文计算与跨轮 K/V 状态</text>
-  <text x="50" y="76" class="sub">Query 负责本轮读取；K/V 同时参与本轮计算并成为后续 token 可读取的历史。</text>
-  <rect x="55" y="190" width="175" height="82" class="box" fill="#dbeafe" stroke="#2563eb"/>
-  <text x="142" y="221" text-anchor="middle" class="head">当前隐藏状态</text><text x="142" y="248" text-anchor="middle" class="body">当前 token 表示</text>
-  <rect x="340" y="120" width="190" height="76" class="box" fill="#fef3c7" stroke="#d97706"/>
-  <text x="435" y="149" text-anchor="middle" class="head">Query</text><text x="435" y="174" text-anchor="middle" class="body">发起本轮查询</text>
-  <rect x="340" y="270" width="190" height="76" class="box" fill="#ccfbf1" stroke="#0f766e"/>
-  <text x="435" y="299" text-anchor="middle" class="head">当前 K / V</text><text x="435" y="324" text-anchor="middle" class="body">位置索引与候选内容</text>
-  <rect x="675" y="225" width="220" height="82" class="box" fill="#ede9fe" stroke="#7c3aed"/>
-  <text x="785" y="256" text-anchor="middle" class="head">可读取的 K / V</text><text x="785" y="283" text-anchor="middle" class="body">历史状态 + 当前状态</text>
-  <rect x="1010" y="145" width="210" height="82" class="box" fill="#fff7ed" stroke="#ea580c"/>
-  <text x="1115" y="176" text-anchor="middle" class="head">相关性与聚合</text><text x="1115" y="203" text-anchor="middle" class="body">Q 读取 K/V</text>
-  <rect x="1320" y="145" width="140" height="82" class="box" fill="#ffe4e6" stroke="#e11d48"/>
-  <text x="1390" y="176" text-anchor="middle" class="head">上下文更新</text><text x="1390" y="203" text-anchor="middle" class="body">写回 Block</text>
-  <rect x="675" y="345" width="220" height="76" class="box" fill="#f5f3ff" stroke="#7c3aed"/>
-  <text x="785" y="374" text-anchor="middle" class="head">历史 K/V Cache</text><text x="785" y="399" text-anchor="middle" class="body">供后续 token 读取</text>
-  <path d="M230 213C280 213 285 158 340 158" class="flow"/><path d="M230 249C280 249 285 308 340 308" class="flow"/>
-  <path d="M530 158C750 158 780 186 1010 186" class="flow"/>
-  <path d="M530 290C600 290 610 266 675 266" class="flow"/><path d="M895 266C955 266 955 207 1010 207" class="flow"/>
-  <path d="M1220 186H1320" class="flow"/>
-  <path d="M530 326C595 326 610 383 675 383" class="state"/>
-  <path d="M785 345V307" class="state"/>
-  <text x="565" y="355" class="label">追加</text><text x="805" y="330" class="label">读取历史</text>
+<title id="title">单步Attention的当前计算与下一轮KV状态</title><desc id="desc">旧缓存C_t减1与当前未扩展K/V只追加一次形成C_t。C_t一路匹配查询头后用于本轮Attention，一路保存供下一轮；Q与mask分别输入，聚合后经输出投影回主状态。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:18px;fill:#475569}.head{font-size:19px;font-weight:700}.body{font-size:18px}.small{font-size:16px;fill:#475569}.node{stroke-width:2;rx:12}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}</style></defs>
+<rect width="1500" height="470" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="55" y="48" class="title" text-anchor="start">当前K/V追加一次，新缓存同时服务本轮读取与下一轮保存</text>
+<text x="55" y="80" class="sub" text-anchor="start">以单步解码为例：旧缓存Cₜ₋₁已有t−1个位置，本轮追加第t个位置后得到Cₜ。</text>
+<rect x="55" y="140" width="180" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="145" y="169" class="head" text-anchor="middle">当前主状态 xₜ</text>
+<text x="145" y="197" class="body" text-anchor="middle">本轮Token表示</text>
+<rect x="300" y="140" width="200" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="400" y="169" class="head" text-anchor="middle">Q/K/V投影</text>
+<text x="400" y="197" class="body" text-anchor="middle">分别组织Query与KV头</text>
+<rect x="560" y="110" width="200" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="660" y="139" class="head" text-anchor="middle">当前Qₜ</text>
+<text x="660" y="167" class="body" text-anchor="middle">[B,H,1,D]</text>
+<rect x="560" y="260" width="200" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="660" y="289" class="head" text-anchor="middle">当前Kₜ、Vₜ</text>
+<text x="660" y="317" class="body" text-anchor="middle">KV头保持未扩展</text>
+<rect x="55" y="310" width="220" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="165" y="339" class="head" text-anchor="middle">旧缓存 Cₜ₋₁</text>
+<text x="165" y="367" class="body" text-anchor="middle">未扩展KV头；t−1个位置</text>
+<rect x="830" y="260" width="220" height="80" class="node" fill="#dcfce7" stroke="#15803d"/>
+<text x="940" y="289" class="head" text-anchor="middle">追加得到 Cₜ</text>
+<text x="940" y="317" class="body" text-anchor="middle">[历史, 当前K/V]</text>
+<rect x="1080" y="145" width="190" height="110" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="1175" y="174" class="head" text-anchor="middle">注意力与聚合</text>
+<text x="1175" y="202" class="body" text-anchor="middle">匹配Q头后读取KV</text>
+<rect x="1310" y="145" width="140" height="110" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="1380" y="174" class="head" text-anchor="middle">输出投影</text>
+<text x="1380" y="202" class="body" text-anchor="middle">回到主状态</text>
+<rect x="830" y="390" width="220" height="60" class="node" fill="#dcfce7" stroke="#15803d"/>
+<text x="940" y="419" class="head" text-anchor="middle">供下一轮复用</text>
+<text x="940" y="447" class="body" text-anchor="middle">保存未扩展的Cₜ</text>
+<rect x="1310" y="330" width="140" height="70" class="node" fill="#fef3c7" stroke="#d97706"/>
+<text x="1380" y="359" class="head" text-anchor="middle">可见范围M</text>
+<text x="1380" y="387" class="body" text-anchor="middle">加到scores</text>
+<path id="x-to-projections" d="M235 180H300" class="flow"/>
+<path id="query-projection" d="M500 160H530V150H560" class="flow"/>
+<path id="kv-projection" d="M500 200H530V300H560" class="flow"/>
+<path id="current-to-cache" d="M760 300H830" class="flow"/>
+<path id="past-to-cache" d="M275 350H790V320H830" class="flow"/>
+<path id="query-to-attention" d="M760 150H1030V175H1080" class="flow"/>
+<path id="cache-to-attention" d="M1050 300H1175V255" class="flow"/>
+<path id="cache-to-next" d="M940 340V390" class="flow"/>
+<path id="attention-to-output" d="M1270 200H1310" class="flow"/>
+<path id="mask-to-attention" d="M1380 330V285H1240V255" class="flow"/>
+<text x="55" y="450" class="small" text-anchor="start">模型集成时在Q/K加入RoPE；位置旋转机制见前置阅读。</text>
 </svg>
