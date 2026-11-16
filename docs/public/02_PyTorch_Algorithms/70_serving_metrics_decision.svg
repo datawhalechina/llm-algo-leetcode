@@ -1,16 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="svg-title svg-desc">
-<title id="svg-title">优先级调度候选的证据门禁</title><desc id="svg-desc">候选先确认策略生效与请求完整，再检查优先级排序收益、整体性能约束和低优先级长尾，形成项目状态。</desc>
-<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#52657a"/></marker><style>.t{font-weight:700;font-size:26px;font-family:sans-serif;fill:#18324b}.h{font-weight:600;font-size:17px;font-family:sans-serif;fill:#18324b}.b{font-size:14px;font-family:sans-serif;fill:#334e68}.l{fill:none;stroke:#52657a;stroke-width:3;marker-end:url(#arrow)}.d{fill:none;stroke:#9a6250;stroke-width:2.5;marker-end:url(#arrow)}.a{fill:#e8f1fb;stroke:#3f78a8;stroke-width:2}.g{fill:#e8f6f1;stroke:#3f8b72;stroke-width:2}.o{fill:#fff3df;stroke:#b7791f;stroke-width:2}.r{fill:#fbeceb;stroke:#b85c57;stroke-width:2}</style></defs>
-<rect width="1500" height="470" fill="#f8fafc"/><text x="750" y="42" text-anchor="middle" class="t">优先级排序改善后，还要检查整体性能与低优先级长尾</text>
-<rect x="35" y="115" width="205" height="100" rx="14" class="a"/><text x="138" y="151" text-anchor="middle" class="h">同一请求流</text><text x="138" y="181" text-anchor="middle" class="b">G0 FCFS / G1 priority</text>
-<rect x="285" y="115" width="205" height="100" rx="14" class="g"/><text x="388" y="151" text-anchor="middle" class="h">策略确实生效</text><text x="388" y="181" text-anchor="middle" class="b">配置与首 token 顺序</text>
-<rect x="535" y="115" width="205" height="100" rx="14" class="g"/><text x="638" y="151" text-anchor="middle" class="h">请求完整</text><text x="638" y="181" text-anchor="middle" class="b">无丢失、重复或失败</text>
-<rect x="785" y="115" width="205" height="100" rx="14" class="o"/><text x="888" y="151" text-anchor="middle" class="h">排序收益达标</text><text x="888" y="181" text-anchor="middle" class="b">高优先级更早响应</text>
-<rect x="1035" y="115" width="205" height="100" rx="14" class="o"/><text x="1138" y="151" text-anchor="middle" class="h">整体性能受控</text><text x="1138" y="181" text-anchor="middle" class="b">吞吐与 TTFT 未越界</text>
-<rect x="1285" y="115" width="180" height="100" rx="14" class="g"/><text x="1375" y="151" text-anchor="middle" class="h">低优先级可接受</text><text x="1375" y="181" text-anchor="middle" class="b">E2E 长尾未失控</text>
-<path d="M240 165H285" class="l"/><path d="M490 165H535" class="l"/><path d="M740 165H785" class="l"/><path d="M990 165H1035" class="l"/><path d="M1240 165H1285" class="l"/>
-<rect x="535" y="325" width="205" height="85" rx="14" class="r"/><text x="638" y="358" text-anchor="middle" class="h">拒绝候选</text><text x="638" y="386" text-anchor="middle" class="b">路径无效或请求不完整</text>
-<rect x="910" y="325" width="205" height="85" rx="14" class="o"/><text x="1013" y="358" text-anchor="middle" class="h">继续调优</text><text x="1013" y="386" text-anchor="middle" class="b">收益不足或软约束越界</text>
-<rect x="1285" y="325" width="180" height="85" rx="14" class="g"/><text x="1375" y="358" text-anchor="middle" class="h">采用候选</text><text x="1375" y="386" text-anchor="middle" class="b">全部门槛通过</text>
-<path d="M388 215V270H638V325" class="d"/><path d="M638 215V325" class="d"/><path d="M888 215V270H1013V325" class="d"/><path d="M1138 215V270H1013V325" class="d"/><path d="M1375 215V325" class="l"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">排序收益、整组性能与低优先级等待一起判断</title><desc id="desc">先核对配置与请求完整性，再依次比较首内容顺序分数、整体吞吐和TTFT、低优先级E2E尾延迟。完整性失败拒绝，任一收益条件未满足则调整。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#52657a"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:15px;font-weight:400;fill:#334e68}.title{font-size:25px;font-weight:700;fill:#18324b}.h{font-size:18px;font-weight:600;fill:#18324b}.small{font-size:14px}.edge{fill:none;stroke:#52657a;stroke-width:2.5;marker-end:url(#arrow)}.feedback{fill:none;stroke:#7657a5;stroke-width:2;stroke-dasharray:7 5;marker-end:url(#arrow)}</style></defs>
+<rect width="1500" height="470" fill="#f8fafc"/><text x="750" y="42" text-anchor="middle" class="title">排序收益、整组性能与低优先级等待一起判断</text>
+<rect x="35" y="100" width="240" height="100" rx="14" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="155" y="135" text-anchor="middle" class="h">配置与请求核对</text><text x="155" y="165" text-anchor="middle">开关生效、请求完整</text>
+<rect x="330" y="100" width="240" height="100" rx="14" fill="#e8f6f1" stroke="#3f8b72" stroke-width="2"/><text x="450" y="135" text-anchor="middle" class="h">首内容顺序分数</text><text x="450" y="165" text-anchor="middle">跨优先级请求对的符合率</text>
+<rect x="625" y="100" width="240" height="100" rx="14" fill="#fff3df" stroke="#b7791f" stroke-width="2"/><text x="745" y="135" text-anchor="middle" class="h">整组性能</text><text x="745" y="165" text-anchor="middle">吞吐与 TTFT P95</text>
+<rect x="920" y="100" width="240" height="100" rx="14" fill="#fff3df" stroke="#b7791f" stroke-width="2"/><text x="1040" y="135" text-anchor="middle" class="h">低优先级等待</text><text x="1040" y="165" text-anchor="middle">各轮 E2E P95 的均值</text>
+<rect x="1215" y="100" width="240" height="100" rx="14" fill="#e8f6f1" stroke="#3f8b72" stroke-width="2"/><text x="1335" y="135" text-anchor="middle" class="h">局部采用</text><text x="1335" y="165" text-anchor="middle">当前固定请求流达标</text>
+<path d="M275 150H330" class="edge"/>
+<path d="M570 150H625" class="edge"/>
+<path d="M865 150H920" class="edge"/>
+<path d="M1160 150H1215" class="edge"/>
+<text x="302" y="130" text-anchor="middle" class="small">通过</text>
+<text x="597" y="130" text-anchor="middle" class="small">达标</text>
+<text x="892" y="130" text-anchor="middle" class="small">达标</text>
+<text x="1187" y="130" text-anchor="middle" class="small">达标</text>
+<rect x="35" y="320" width="240" height="90" rx="14" fill="#fbeceb" stroke="#b85c57" stroke-width="2"/><text x="155" y="355" text-anchor="middle" class="h">拒绝候选</text><text x="155" y="385" text-anchor="middle">运行失败或请求不完整</text>
+<rect x="330" y="320" width="830" height="90" rx="14" fill="#fff3df" stroke="#b7791f" stroke-width="2"/><text x="745" y="355" text-anchor="middle" class="h">调整后重新比较</text><text x="745" y="385" text-anchor="middle">顺序收益不足、吞吐／TTFT 越界或低优先级等待过长</text>
+<path d="M155 200V320" class="edge"/>
+<text x="205" y="270" text-anchor="middle" class="small">未通过</text>
+<path d="M450 200V320" class="edge"/>
+<path d="M745 200V320" class="edge"/>
+<path d="M1040 200V320" class="edge"/>
+<text x="450" y="270" text-anchor="middle" class="small">未达标</text>
+<text x="745" y="270" text-anchor="middle" class="small">未达标</text>
+<text x="1040" y="270" text-anchor="middle" class="small">未达标</text>
+<text x="750" y="452" text-anchor="middle" class="small">首内容顺序来自客户端观测；持续到达负载中的长期等待，另用跨轮请求轨迹检查</text>
 </svg>
