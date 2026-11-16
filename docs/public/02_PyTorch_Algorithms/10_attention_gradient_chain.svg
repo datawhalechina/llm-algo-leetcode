@@ -1,49 +1,46 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1240" height="600" viewBox="0 0 1240 600" role="img" aria-labelledby="title desc">
-  <title id="title">Attention 反向传播的四段局部机制</title>
-  <desc id="desc">四张机制卡依次说明值梯度、概率梯度、Softmax 输入梯度以及查询和键梯度所需的输入、输出与检查条件。</desc>
-  <defs>
-    <linearGradient id="bg" x1="0" x2="1"><stop offset="0" stop-color="#f8fafc"/><stop offset="1" stop-color="#eef2ff"/></linearGradient>
-    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L12 6L0 12Z" fill="#7c3aed"/></marker>
-    <style>
-      .title{font:700 27px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.sub{font:500 15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.step{font:700 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#6d28d9}.label{font:700 18px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#111827}.small{font:500 13px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.formula{font:600 15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#1e293b}.card{stroke:#8b5cf6;stroke-width:2.5}.flow{stroke:#7c3aed;stroke-width:3;fill:none;marker-end:url(#arrow)}.check{font:600 13px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#166534}
-    </style>
-  </defs>
-  <rect width="1240" height="600" fill="url(#bg)"/>
-  <text x="48" y="48" class="title">四段局部反向：操作数、结果与不变量</text>
-  <text x="48" y="76" class="sub">每一段先独立对照自动求导，再组合成自定义 Attention backward</text>
-
-  <rect x="48" y="116" width="260" height="260" rx="18" fill="#eff6ff" class="card"/>
-  <text x="70" y="148" class="step">TODO 1</text><text x="70" y="180" class="label">Value 分支</text>
-  <text x="70" y="218" class="small">已知：P、dO</text><text x="70" y="252" class="formula">dV = Pᵀ · dO</text>
-  <line x1="70" y1="278" x2="286" y2="278" stroke="#c4b5fd" stroke-width="2"/>
-  <text x="70" y="310" class="small">输出：与 V 同形状</text><text x="70" y="342" class="check">检查：局部自动求导一致</text>
-
-  <rect x="340" y="116" width="260" height="260" rx="18" fill="#eff6ff" class="card"/>
-  <text x="362" y="148" class="step">TODO 2</text><text x="362" y="180" class="label">概率分支</text>
-  <text x="362" y="218" class="small">已知：dO、V</text><text x="362" y="252" class="formula">dP = dO · Vᵀ</text>
-  <line x1="362" y1="278" x2="578" y2="278" stroke="#c4b5fd" stroke-width="2"/>
-  <text x="362" y="310" class="small">输出：与 P 同形状</text><text x="362" y="342" class="check">检查：局部自动求导一致</text>
-
-  <rect x="632" y="116" width="260" height="260" rx="18" fill="#f5f3ff" class="card"/>
-  <text x="654" y="148" class="step">TODO 3</text><text x="654" y="180" class="label">穿过 Softmax</text>
-  <text x="654" y="218" class="small">已知：P、dP</text><text x="654" y="248" class="formula">dS = P ⊙ (dP − c)</text>
-  <text x="654" y="270" class="small">c 为每行概率加权和</text>
-  <line x1="654" y1="288" x2="870" y2="288" stroke="#c4b5fd" stroke-width="2"/>
-  <text x="654" y="316" class="small">输出：与打分矩阵同形状</text><text x="654" y="348" class="check">检查：每行梯度和接近 0</text>
-
-  <rect x="924" y="116" width="268" height="260" rx="18" fill="#ecfccb" class="card"/>
-  <text x="946" y="148" class="step">TODO 4</text><text x="946" y="180" class="label">Query / Key 分支</text>
-  <text x="946" y="214" class="small">已知：dS、Q、K、scale</text>
-  <text x="946" y="246" class="formula">dQ = dS · K · scale</text><text x="946" y="272" class="formula">dK = dSᵀ · Q · scale</text>
-  <line x1="946" y1="294" x2="1170" y2="294" stroke="#bef264" stroke-width="2"/>
-  <text x="946" y="320" class="small">输出：分别与 Q、K 同形状</text><text x="946" y="348" class="check">检查：两支路使用相同 scale</text>
-
-  <path d="M308 246H340" class="flow"/><path d="M600 246H632" class="flow"/><path d="M892 246H924" class="flow"/>
-
-  <rect x="48" y="424" width="1144" height="112" rx="18" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
-  <text x="72" y="458" class="label">组合验证</text>
-  <text x="72" y="492" class="small">局部对照定位单段公式错误</text>
-  <text x="386" y="492" class="small">行和与形状检查保护机制不变量</text>
-  <text x="744" y="492" class="small">gradcheck 验证四段组合后的数值梯度</text>
-  <path d="M294 486H350" class="flow"/><path d="M690 486H724" class="flow"/>
+<title id="title">Attention反向的两条支路</title>
+<desc id="desc">输出梯度dO分别参与dV与dP计算。dP穿过Softmax生成dS，再分成dQ与dK。各节点标注前向保存的操作数。</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>
+text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}
+.title{font-size:26px;font-weight:700}.sub{font-size:16px;fill:#475569}
+.head{font-size:18px;font-weight:700}.body{font-size:17px}.small{font-size:15px;fill:#475569}
+.node{stroke-width:2;rx:12}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+</style>
+</defs>
+<rect width="1240" height="600" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="48" y="48" text-anchor="start" class="title">dO先分两支，再沿Softmax回到Q与K</text>
+<text x="48" y="78" text-anchor="start" class="sub">单头等长示例 · 省略batch维 · Q、K、V、dO：N × d；P、dP、dS：N × N</text>
+<rect x="48" y="260" width="190" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="143" y="289" text-anchor="middle" class="head">输出梯度 dO</text>
+<text x="143" y="315" text-anchor="middle" class="body">来自上游损失</text>
+<rect x="310" y="130" width="230" height="80" class="node" fill="#dcfce7" stroke="#16a34a"/>
+<text x="425" y="159" text-anchor="middle" class="head">Value梯度 dV</text>
+<text x="425" y="185" text-anchor="middle" class="body">dV = Pᵀ · dO</text>
+<rect x="310" y="350" width="230" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="425" y="379" text-anchor="middle" class="head">概率梯度 dP</text>
+<text x="425" y="405" text-anchor="middle" class="body">dP = dO · Vᵀ</text>
+<rect x="620" y="350" width="250" height="80" class="node" fill="#fef3c7" stroke="#d97706"/>
+<text x="745" y="379" text-anchor="middle" class="head">打分梯度 dS</text>
+<text x="745" y="405" text-anchor="middle" class="body">dS = P ⊙ (dP − c)</text>
+<rect x="952" y="240" width="240" height="80" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="1072" y="269" text-anchor="middle" class="head">Query梯度 dQ</text>
+<text x="1072" y="295" text-anchor="middle" class="body">dQ = dS · K · scale</text>
+<rect x="952" y="440" width="240" height="80" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="1072" y="469" text-anchor="middle" class="head">Key梯度 dK</text>
+<text x="1072" y="495" text-anchor="middle" class="body">dK = dSᵀ · Q · scale</text>
+<path id="dO-to-dV" d="M238 280H270V170H310" class="flow"/>
+<path id="dO-to-dP" d="M238 320H270V390H310" class="flow"/>
+<path id="dP-to-dS" d="M540 390H620" class="flow"/>
+<path id="dS-to-dQ" d="M870 372H910V280H952" class="flow"/>
+<path id="dS-to-dK" d="M870 408H910V480H952" class="flow"/>
+<text x="425" y="111" text-anchor="middle" class="small">读取保存的 P</text>
+<text x="425" y="458" text-anchor="middle" class="small">读取保存的 V</text>
+<text x="745" y="458" text-anchor="middle" class="small">读取保存的 P</text>
+<text x="1072" y="221" text-anchor="middle" class="small">读取 K 与 scale</text>
+<text x="1072" y="548" text-anchor="middle" class="small">读取 Q 与 scale</text>
+<text x="620" y="548" text-anchor="middle" class="body">cᵢ = Σⱼ Pᵢⱼ dPᵢⱼ；沿行广播</text>
+<text x="620" y="575" text-anchor="middle" class="small">⊙：逐元素乘法；scale = 1 / √d</text>
 </svg>
