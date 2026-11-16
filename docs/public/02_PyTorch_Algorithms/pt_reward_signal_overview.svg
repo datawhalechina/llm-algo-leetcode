@@ -1,34 +1,30 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1440" height="560" viewBox="0 0 1440 560" role="img" aria-labelledby="title desc">
-  <title id="title">奖励、回报、价值与优势的转换链</title>
-  <desc id="desc">策略轨迹在有效动作位置组合任务反馈和采样对数概率比约束，再分别使用 PPO 状态价值或 GRPO 组内统计形成优势。</desc>
-  <defs>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker>
-    <style>.title{font-family:"Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#0F172A}.subtitle{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;fill:#475569}.head{font-family:"Noto Sans CJK SC",sans-serif;font-size:18px;font-weight:700;fill:#172033}.copy{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;fill:#334155}.line{fill:none;stroke:#475569;stroke-width:2.4;marker-end:url(#arrow)}</style>
-  </defs>
-  <rect width="1440" height="560" fill="#F8FAFC"/><rect x="28" y="24" width="1384" height="512" rx="26" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
-  <text x="62" y="70" class="title">从反馈到策略更新：每一种标量信号承担什么职责</text>
-  <text x="62" y="102" class="subtitle">任务反馈评价结果，参考策略约束偏移；PPO 与 GRPO 使用不同基线形成更新方向。</text>
-
-  <rect x="58" y="224" width="190" height="94" rx="15" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/>
-  <text x="80" y="258" class="head">策略轨迹</text><text x="80" y="286" class="copy">状态 · 动作 · 对数概率</text><text x="80" y="308" class="copy">有效动作位置</text>
-  <rect x="320" y="142" width="210" height="88" rx="15" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
-  <text x="342" y="176" class="head">任务反馈</text><text x="342" y="204" class="copy">奖励模型 / 验证器 / 环境</text>
-  <rect x="320" y="332" width="210" height="88" rx="15" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2"/>
-  <text x="342" y="366" class="head">参考策略约束</text><text x="342" y="394" class="copy">采样词元对数概率比</text>
-  <rect x="608" y="224" width="200" height="94" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
-  <text x="630" y="258" class="head">动作词元奖励</text><text x="630" y="286" class="copy">任务反馈 − β × 对数概率比</text><text x="630" y="308" class="copy">仅在动作掩码内记录</text>
-  <rect x="876" y="142" width="204" height="88" rx="15" fill="#FFEDD5" stroke="#F97316" stroke-width="2"/>
-  <text x="898" y="176" class="head">折扣回报</text><text x="898" y="204" class="copy">当前位置之后的累计反馈</text>
-  <rect x="876" y="332" width="204" height="88" rx="15" fill="#ECFEFF" stroke="#0891B2" stroke-width="2"/>
-  <text x="898" y="362" class="head">基线选择</text><text x="898" y="388" class="copy">PPO：逐位置状态价值</text><text x="898" y="410" class="copy">GRPO：同提示组内统计</text>
-  <rect x="1148" y="224" width="210" height="94" rx="15" fill="#FFE4E6" stroke="#E11D48" stroke-width="2"/>
-  <text x="1170" y="258" class="head">相对优势</text><text x="1170" y="286" class="copy">PPO：逐词元优势</text><text x="1170" y="308" class="copy">GRPO：回答级组内优势</text>
-  <rect x="1148" y="420" width="210" height="66" rx="14" fill="#ECFDF5" stroke="#16A34A" stroke-width="2"/>
-  <text x="1170" y="460" class="head">受约束策略更新</text>
-
-  <path d="M248 250H280V186H312" class="line"/><path d="M248 292H280V376H312" class="line"/>
-  <path d="M530 186H566V250H600" class="line"/><path d="M530 376H566V292H600" class="line"/>
-  <path d="M808 250H842V186H868" class="line"/><path d="M808 292H842V376H868" class="line"/>
-  <path d="M1080 186H1112V250H1140" class="line"/><path d="M1080 376H1112V292H1140" class="line"/>
-  <path d="M1253 318V412" class="line"/>
+<title id="title">同一任务反馈，PPO 与 GRPO 走不同的优势路径</title><desc id="desc">PPO将词元奖励累计成回报，再减去状态价值；GRPO对同题回答奖励作组内比较。</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.subtitle{font-size:16px;fill:#475569}.head{font-size:18px;font-weight:700}.copy{font-size:15px;fill:#334155}.edge{fill:none;stroke:#475569;stroke-width:2.8;marker-end:url(#arrow)}</style></defs>
+<rect width="1440" height="560" fill="#F8FAFC"/><rect x="28" y="24" width="1384" height="512" rx="26" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2" data-layout-role="panel"/>
+<text x="62" y="70" class="title">同一任务反馈，PPO 与 GRPO 走不同的优势路径</text><text x="62" y="104" class="subtitle">上路按生成位置累计回报；下路比较同一提示的多条回答，基线的单位不同。</text>
+<rect id="answers" x="55" y="237" width="180" height="100" rx="14" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/>
+<text x="145" y="269" text-anchor="middle" class="head">同题多条回答</text><text x="145" y="295" text-anchor="middle" class="copy">生成位置与任务结果</text>
+<rect id="feedback" x="300" y="237" width="205" height="100" rx="14" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+<text x="402.5" y="269" text-anchor="middle" class="head">任务反馈</text><text x="402.5" y="295" text-anchor="middle" class="copy">验证器 / 环境 / 奖励模型</text>
+<rect id="token-reward" x="590" y="142" width="220" height="100" rx="14" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
+<text x="700" y="174" text-anchor="middle" class="head">PPO 词元奖励</text><text x="700" y="200" text-anchor="middle" class="copy">终局反馈 + 参考约束</text>
+<rect id="return" x="875" y="142" width="200" height="100" rx="14" fill="#FFEDD5" stroke="#F97316" stroke-width="2"/>
+<text x="975" y="174" text-anchor="middle" class="head">折扣回报 G</text><text x="975" y="200" text-anchor="middle" class="copy">逐位置累计未来奖励</text>
+<rect id="ppo-advantage" x="1140" y="142" width="240" height="100" rx="14" fill="#FFE4E6" stroke="#E11D48" stroke-width="2"/>
+<text x="1260" y="174" text-anchor="middle" class="head">PPO 逐位置优势</text><text x="1260" y="200" text-anchor="middle" class="copy">回报 G − 状态价值 V</text>
+<rect id="reward-group" x="590" y="352" width="220" height="100" rx="14" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
+<text x="700" y="384" text-anchor="middle" class="head">GRPO 回答奖励组</text><text x="700" y="410" text-anchor="middle" class="copy">同一提示，多个奖励 R</text>
+<rect id="group-stat" x="875" y="352" width="200" height="100" rx="14" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2"/>
+<text x="975" y="384" text-anchor="middle" class="head">组均值与标准差</text><text x="975" y="410" text-anchor="middle" class="copy">组内中心化及缩放</text>
+<rect id="grpo-advantage" x="1140" y="352" width="240" height="100" rx="14" fill="#FFE4E6" stroke="#E11D48" stroke-width="2"/>
+<text x="1260" y="384" text-anchor="middle" class="head">GRPO 回答级优势</text><text x="1260" y="410" text-anchor="middle" class="copy">同分组的相对信号为零</text>
+<path d="M235 287 H300" class="edge" data-source="answers" data-target="feedback"/>
+<path d="M505 267 H545 V192 H590" class="edge" data-source="feedback" data-target="token-reward"/>
+<path d="M505 307 H545 V402 H590" class="edge" data-source="feedback" data-target="reward-group"/>
+<path d="M810 192 H875" class="edge" data-source="token-reward" data-target="return"/>
+<path d="M1075 192 H1140" class="edge" data-source="return" data-target="ppo-advantage"/>
+<path d="M810 402 H875" class="edge" data-source="reward-group" data-target="group-stat"/>
+<path d="M1075 402 H1140" class="edge" data-source="group-stat" data-target="grpo-advantage"/>
 </svg>
