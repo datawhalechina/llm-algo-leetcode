@@ -1,49 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1240" height="600" viewBox="0 0 1240 600" role="img" aria-labelledby="title desc">
-  <title id="title">量化部署资产到三类服务 Profile 的证据链</title>
-  <desc id="desc">67 的已接受部署引用作为唯一上游，保持产物与后端身份不变，分别运行延迟、均衡和吞吐 Profile，最后形成分 Profile 决策。</desc>
-  <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L10,5 L0,10 Z" fill="#475569"/>
-    </marker>
-    <filter id="shadow" x="-10%" y="-15%" width="120%" height="130%">
-      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.10"/>
-    </filter>
-  </defs>
-  <rect width="1240" height="600" rx="28" fill="#f8fafc"/>
-  <text x="620" y="46" text-anchor="middle" font-family="Arial, sans-serif" font-size="26" font-weight="700" fill="#0f172a">量化服务 Profile：固定部署身份，改变请求压力</text>
-  <text x="620" y="76" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" fill="#475569">唯一直接上游是 67 的稳定引用；三类 Profile 不重新选择量化算法或产物</text>
-
-  <rect x="390" y="104" width="460" height="84" rx="16" fill="#dbeafe" stroke="#2563eb" stroke-width="2" filter="url(#shadow)"/>
-  <text x="620" y="137" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#1e3a8a">67 已接受的量化部署引用</text>
-  <text x="620" y="166" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#1e40af">artifact · model revision · backend · hardware · 82 门禁血缘</text>
-
-  <rect x="60" y="248" width="260" height="128" rx="16" fill="#ecfeff" stroke="#0891b2" stroke-width="2" filter="url(#shadow)"/>
-  <text x="190" y="282" text-anchor="middle" font-family="Arial, sans-serif" font-size="19" font-weight="700" fill="#155e75">延迟优先</text>
-  <text x="190" y="312" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#164e63">低并发 · 短生成</text>
-  <text x="190" y="339" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#164e63">主指标：TTFT P95</text>
-  <text x="190" y="362" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#475569">约束：TTFT上限 · 失败率</text>
-
-  <rect x="490" y="248" width="260" height="128" rx="16" fill="#f0fdf4" stroke="#16a34a" stroke-width="2" filter="url(#shadow)"/>
-  <text x="620" y="282" text-anchor="middle" font-family="Arial, sans-serif" font-size="19" font-weight="700" fill="#166534">均衡</text>
-  <text x="620" y="312" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#14532d">中并发 · 中等生成</text>
-  <text x="620" y="339" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#14532d">主指标：TPOT P95</text>
-  <text x="620" y="362" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#475569">约束：TPOT · 吞吐 · 失败率</text>
-
-  <rect x="920" y="248" width="260" height="128" rx="16" fill="#fff7ed" stroke="#ea580c" stroke-width="2" filter="url(#shadow)"/>
-  <text x="1050" y="282" text-anchor="middle" font-family="Arial, sans-serif" font-size="19" font-weight="700" fill="#9a3412">吞吐优先</text>
-  <text x="1050" y="312" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#7c2d12">高并发 · 较长生成</text>
-  <text x="1050" y="339" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#7c2d12">主指标：输出 Token 吞吐</text>
-  <text x="1050" y="362" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#475569">约束：吞吐下限 · 失败率</text>
-
-  <rect x="270" y="432" width="700" height="112" rx="18" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" filter="url(#shadow)"/>
-  <text x="620" y="468" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#5b21b6">分 Profile 证据与服务决策</text>
-  <text x="620" y="498" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#4c1d95">固定血缘 · 方向化 SLO · 真实后端重复测量 · failure</text>
-  <text x="620" y="526" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" font-weight="700" fill="#4c1d95">三类均完成后，accept仅表示列出的场景达标</text>
-
-  <path d="M620 188 V222 H190 V248" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)"/>
-  <path d="M620 188 V248" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)"/>
-  <path d="M620 222 H1050 V248" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)"/>
-  <path d="M190 376 V420 H620" fill="none" stroke="#475569" stroke-width="2.5"/>
-  <path d="M1050 376 V420 H620" fill="none" stroke="#475569" stroke-width="2.5"/>
-  <path d="M620 376 V432" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)"/>
+<title id="title">固定量化部署，分别测量三类请求压力</title><desc id="desc">同一部署输入分别进入延迟、均衡和吞吐场景，三类测量齐全后按各自服务目标登记达标范围。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#52657a"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:15px;font-weight:400;fill:#334e68}.title{font-size:25px;font-weight:700;fill:#18324b}.h{font-size:18px;font-weight:600;fill:#18324b}.s{font-size:14px}.e{stroke:#52657a;stroke-width:2.5;fill:none;marker-end:url(#a)}.d{stroke:#7657a5;stroke-width:2;fill:none;stroke-dasharray:7 5;marker-end:url(#a)}</style></defs><rect width="1240" height="600" fill="#f8fafc"/><text x="620" y="43" text-anchor="middle" class="title">固定量化部署，分别测量三类请求压力</text>
+<rect x="380" y="100" width="480" height="85" rx="13" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="620" y="132" text-anchor="middle" class="h">已接受的量化部署</text><text x="620" y="159" text-anchor="middle">模型、产物、后端与设备身份</text>
+<rect x="60" y="270" width="280" height="100" rx="13" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="200" y="302" text-anchor="middle" class="h">延迟优先</text><text x="200" y="329" text-anchor="middle">低并发、短输出；首响应</text>
+<rect x="480" y="270" width="280" height="100" rx="13" fill="#e8f6f1" stroke="#3f8b72" stroke-width="2"/><text x="620" y="302" text-anchor="middle" class="h">均衡场景</text><text x="620" y="329" text-anchor="middle">中并发；输出间隔与吞吐</text>
+<rect x="900" y="270" width="280" height="100" rx="13" fill="#fff3df" stroke="#b7791f" stroke-width="2"/><text x="1040" y="302" text-anchor="middle" class="h">吞吐优先</text><text x="1040" y="329" text-anchor="middle">高并发、较长输出</text>
+<path d="M440 185V220H200V270" class="e"/>
+<path d="M620 185V270" class="e"/>
+<path d="M800 185V220H1040V270" class="e"/>
+<rect x="270" y="460" width="700" height="95" rx="13" fill="#f1edfb" stroke="#7657a5" stroke-width="2"/><text x="620" y="492" text-anchor="middle" class="h">核对测量完整性，分别判断服务目标</text><text x="620" y="519" text-anchor="middle">三类测齐后汇总接受，仅列出实际达标场景</text>
+<path d="M200 370V410H420V460" class="e"/>
+<path d="M620 370V460" class="e"/>
+<path d="M1040 370V410H820V460" class="e"/>
+<text x="620" y="585" text-anchor="middle" class="s">当前真实矩阵每类一份固定配置并重复测量；跨场景不作统一排名</text>
 </svg>
