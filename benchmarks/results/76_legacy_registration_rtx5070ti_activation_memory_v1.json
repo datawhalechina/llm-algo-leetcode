@@ -1,0 +1,31 @@
+{
+  "schema_version": "training-result-registration/v1",
+  "semantic_id": "PERF-MEMORY-STRATEGY",
+  "run_label": "rtx5070ti_activation_memory_v1",
+  "registration_mode": "post_run",
+  "registered_on": "2026-10-15",
+  "measurements_modified": false,
+  "upstream_baseline": {
+    "role": "measurement_baseline",
+    "source_path": "benchmarks/results/73_real_gpu_training.json",
+    "source_sha256": "893eff676846cb2e60a970a9a7ee231c3970519da0e05c0958e2db5c1c1fa9a5",
+    "registered_path": "benchmarks/results/73_real_gpu_training_rtx5070ti_training_baseline_v1.json",
+    "registered_sha256": "e43020e6daf3e4fe242184728a624cfecbe2ddb55b1dfdbc552eee2c0831ec70"
+  },
+  "records": [
+    {
+      "role": "activation_checkpoint_offload_benchmark",
+      "source_path": "benchmarks/results/76_real_gpu_memory.json",
+      "source_sha256": "0416df920993742d6db3a0a530580d1f43e9251fc2b99b0d83ddb788b0173477",
+      "registered_path": "benchmarks/results/76_real_gpu_memory_rtx5070ti_activation_memory_v1.json",
+      "registered_sha256": "2df4eb5375e1ad31b9bfa7c2d0194ace555b590b18cec7b90504212db8bb3832"
+    },
+    {
+      "role": "activation_memory_boundary",
+      "source_path": "benchmarks/results/76_real_gpu_memory_boundary.json",
+      "source_sha256": "38c1f04e87111614f25098d99d8702c32a48c57e100a560c7be4c086dc011c6c",
+      "registered_path": "benchmarks/results/76_real_gpu_memory_boundary_rtx5070ti_activation_memory_v1.json",
+      "registered_sha256": "69faf3c885c76c13d7ee5dc7e9e40a6e700e79cf0e8f987beccc972eeb21f204"
+    }
+  ]
+}
