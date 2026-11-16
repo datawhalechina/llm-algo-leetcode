@@ -1,21 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-labelledby="title desc">
-  <title id="title">GRPO 有效更新与独立复测的双证据链</title><desc id="desc">训练分支把总轨迹筛成有效组并形成候选，评测分支在隔离问题上重新采样，两类证据共同进入交付门禁。</desc>
-  <defs><marker id="neutral" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#475569"/></marker><style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#0f172a}.title{font-size:27px;font-weight:700}.lane{font-size:16px;font-weight:700;fill:#475569}.head{font-size:17px;font-weight:700}.body{font-size:14px;fill:#334155}.neutral{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#neutral)}</style></defs>
-  <rect width="1200" height="600" fill="#f8fafc"/><text x="600" y="42" text-anchor="middle" class="title">生成成本、有效更新与独立质量分开核对</text>
+  <title id="title">GRPO 有效更新与独立复测的双证据链</title><desc id="desc">训练分支把总轨迹筛成有效组并形成候选，评测分支在隔离问题上重新采样，两类证据分别进入候选条件检查。</desc>
+  <defs><marker id="neutral" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#475569"/></marker><style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#0f172a}.title{font-size:27px;font-weight:700}.lane{font-size:16px;font-weight:700;fill:#475569}.head{font-size:17px;font-weight:700}.body{font-size:14px;fill:#334155}.neutral{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#neutral)}</style></defs>
+  <rect width="1200" height="600" fill="#f8fafc"/><text x="600" y="42" text-anchor="middle" class="title">生成成本、有效更新与留出得分分开核对</text>
   <text x="42" y="130" class="lane">训练分支</text>
   <rect x="150" y="82" width="210" height="82" rx="14" fill="#dbeafe" stroke="#60a5fa" stroke-width="2"/><text x="255" y="114" text-anchor="middle" class="head">全部训练轨迹</text><text x="255" y="141" text-anchor="middle" class="body">已支付生成与验证成本</text>
   <rect x="440" y="82" width="210" height="82" rx="14" fill="#ffedd5" stroke="#fb923c" stroke-width="2"/><text x="545" y="114" text-anchor="middle" class="head">有效组筛选</text><text x="545" y="141" text-anchor="middle" class="body">完整组且奖励可区分</text>
-  <rect x="730" y="82" width="210" height="82" rx="14" fill="#ede9fe" stroke="#a78bfa" stroke-width="2"/><text x="835" y="114" text-anchor="middle" class="head">有效更新量</text><text x="835" y="141" text-anchor="middle" class="body">有效轨迹数与单位时间吞吐</text>
-  <path class="neutral" d="M360 123 H430"/><path class="neutral" d="M650 123 H720"/>
+  <rect x="730" y="82" width="210" height="82" rx="14" fill="#ede9fe" stroke="#a78bfa" stroke-width="2"/><text x="835" y="114" text-anchor="middle" class="head">相对信号统计</text><text x="835" y="141" text-anchor="middle" class="body">有效回答数与训练循环吞吐</text>
+  <path class="neutral" d="M360 123 H440"/><path class="neutral" d="M650 123 H730"/>
 
   <text x="42" y="388" class="lane">评测分支</text>
   <rect x="150" y="340" width="210" height="82" rx="14" fill="#dbeafe" stroke="#60a5fa" stroke-width="2"/><text x="255" y="372" text-anchor="middle" class="head">隔离评测问题</text><text x="255" y="399" text-anchor="middle" class="body">固定问题与随机条件</text>
   <rect x="440" y="340" width="210" height="82" rx="14" fill="#ccfbf1" stroke="#14b8a6" stroke-width="2"/><text x="545" y="372" text-anchor="middle" class="head">基线与候选新轨迹</text><text x="545" y="399" text-anchor="middle" class="body">不复用训练轨迹</text>
-  <rect x="730" y="340" width="210" height="82" rx="14" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/><text x="835" y="372" text-anchor="middle" class="head">配对质量变化</text><text x="835" y="399" text-anchor="middle" class="body">奖励、组通过率、长度分布</text>
-  <path class="neutral" d="M360 381 H430"/><path class="neutral" d="M650 381 H720"/>
+  <rect x="730" y="340" width="210" height="82" rx="14" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/><text x="835" y="372" text-anchor="middle" class="head">留出结果变化</text><text x="835" y="399" text-anchor="middle" class="body">奖励、组通过率、长度分布</text>
+  <path class="neutral" d="M360 381 H440"/><path class="neutral" d="M650 381 H730"/>
 
-  <rect x="985" y="185" width="170" height="110" rx="14" fill="#ffedd5" stroke="#fb923c" stroke-width="2"/><text x="1070" y="220" text-anchor="middle" class="head">交付门禁</text><text x="1070" y="247" text-anchor="middle" class="body">轨迹契约 · 资源</text><text x="1070" y="270" text-anchor="middle" class="body">独立质量 · 适配器</text>
-  <path class="neutral" d="M940 123 H955 V215 H975"/><path class="neutral" d="M940 381 H970 V265 H975"/>
+  <rect x="985" y="185" width="170" height="110" rx="14" fill="#ffedd5" stroke="#fb923c" stroke-width="2"/><text x="1070" y="220" text-anchor="middle" class="head">候选条件</text><text x="1070" y="247" text-anchor="middle" class="body">组记录 · 显存与长度</text><text x="1070" y="270" text-anchor="middle" class="body">规则得分 · 适配器</text>
+  <path class="neutral" d="M940 123 H955 V215 H985"/><path class="neutral" d="M940 381 H970 V265 H985"/>
   <rect x="945" y="470" width="250" height="86" rx="14" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/><text x="1070" y="503" text-anchor="middle" class="head">项目状态</text><text x="1070" y="530" text-anchor="middle" class="body">拒绝 / 调优 / 接受</text>
-  <path class="neutral" d="M1070 295 V460"/>
+  <path class="neutral" d="M1070 295 V470"/>
 </svg>
