@@ -1,13 +1,37 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1500" height="650" viewBox="0 0 1500 650" role="img" aria-labelledby="title desc">
-<title id="title">Serving Replica 请求路由闭环</title><desc id="desc">请求经路由器选择三个模型副本之一，所有副本回传队列、缓存和延迟证据更新路由决策。</desc>
-<defs><style>.t{font:700 29px sans-serif;fill:#0f172a}.s{font:500 16px sans-serif;fill:#475569}.h{font:700 17px sans-serif;fill:#111827;text-anchor:middle}.b{font:500 14px sans-serif;fill:#334155;text-anchor:middle}.x{stroke-width:2.5;rx:16}.a{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#m)}.f{stroke:#7c3aed;stroke-width:3;fill:none;marker-end:url(#p);stroke-dasharray:8 5}</style><marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#475569"/></marker><marker id="p" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7c3aed"/></marker></defs>
-<rect width="1500" height="650" fill="#f8fafc"/><text x="55" y="58" class="t">Serving Replica：路由请求，而不是同步训练梯度</text><text x="55" y="88" class="s">每个副本持有完整模型；路由器综合队列、缓存局部性和健康状态，副本再回传运行证据。</text>
-<rect x="55" y="250" width="180" height="92" class="x" fill="#eff6ff" stroke="#2563eb"/><text x="145" y="286" class="h">请求入口</text><text x="145" y="313" class="b">prompt / SLO / tenant</text>
-<rect x="315" y="225" width="220" height="142" class="x" fill="#fff7ed" stroke="#d97706"/><text x="425" y="263" class="h">Replica Router</text><text x="425" y="292" class="b">queue + cache + health</text><text x="425" y="320" class="b">选择一个可执行副本</text>
-<rect x="665" y="115" width="220" height="92" class="x" fill="#ecfccb" stroke="#65a30d"/><text x="775" y="151" class="h">Replica A</text><text x="775" y="178" class="b">完整模型 + KV pool</text>
-<rect x="665" y="255" width="220" height="92" class="x" fill="#ecfccb" stroke="#65a30d"/><text x="775" y="291" class="h">Replica B</text><text x="775" y="318" class="b">完整模型 + KV pool</text>
-<rect x="665" y="395" width="220" height="92" class="x" fill="#ecfccb" stroke="#65a30d"/><text x="775" y="431" class="h">Replica C</text><text x="775" y="458" class="b">完整模型 + KV pool</text>
-<rect x="1035" y="225" width="230" height="142" class="x" fill="#f5f3ff" stroke="#7c3aed"/><text x="1150" y="263" class="h">请求结果</text><text x="1150" y="292" class="b">tokens / latency / failure</text><text x="1150" y="320" class="b">streaming output</text>
-<rect x="1035" y="455" width="310" height="92" class="x" fill="#ede9fe" stroke="#8b5cf6"/><text x="1190" y="491" class="h">路由证据</text><text x="1190" y="518" class="b">queue wait / hit rate / P99 / health</text>
-<path d="M235 296H315" class="a"/><path d="M535 260H605V161H665" class="a"/><path d="M535 296H665" class="a"/><path d="M535 332H605V441H665" class="a"/><path d="M885 161H960V260H1035" class="a"/><path d="M885 301H1035" class="a"/><path d="M885 441H960V332H1035" class="a"/><path d="M1150 367V455" class="f"/><path d="M1035 501H955V385H425V367" class="f"/>
+<title id="title">Serving副本的数据流与状态输入</title><desc id="desc">请求经路由器选择三个独立模型副本之一，输出经返回通道送回。可用时间、缓存与会话归属作为路由器的独立状态输入，不将响应结果直接当作缓存或队列状态。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:24px;font-weight:700}.sub{font-size:16px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:16px}.small{font-size:14px;fill:#475569}.node{stroke-width:2;rx:12}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.feedback{stroke:#7c3aed;stroke-width:2.5;stroke-dasharray:7 5;fill:none;marker-end:url(#arrow)}</style></defs><rect width="1500" height="650" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="55" y="48" class="title" text-anchor="start">请求选一个副本执行，运行状态另行送入路由器</text>
+<text x="55" y="80" class="sub" text-anchor="start">每个副本保存完整模型与本地KV状态；实线为请求／响应，虚线为副本上报的路由状态。</text>
+<rect x="55" y="285" width="210" height="90" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="160" y="313" class="head" text-anchor="middle">请求入口</text>
+<text x="160" y="337" class="body" text-anchor="middle">到达时间、Prefix、Session</text>
+<rect x="355" y="260" width="250" height="140" class="node" fill="#fef3c7" stroke="#d97706"/>
+<text x="480" y="288" class="head" text-anchor="middle">副本路由器</text>
+<text x="480" y="312" class="body" text-anchor="middle">轮询／队列／局部性</text>
+<rect x="780" y="135" width="240" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="900" y="163" class="head" text-anchor="middle">副本 A</text>
+<text x="900" y="187" class="body" text-anchor="middle">完整模型＋本地KV</text>
+<rect x="780" y="290" width="240" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="900" y="318" class="head" text-anchor="middle">副本 B</text>
+<text x="900" y="342" class="body" text-anchor="middle">完整模型＋本地KV</text>
+<rect x="780" y="445" width="240" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="900" y="473" class="head" text-anchor="middle">副本 C</text>
+<text x="900" y="497" class="body" text-anchor="middle">完整模型＋本地KV</text>
+<rect x="1185" y="290" width="260" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="1315" y="318" class="head" text-anchor="middle">返回请求结果</text>
+<text x="1315" y="342" class="body" text-anchor="middle">Token／耗时／失败</text>
+<path id="request-to-router" d="M265 330H355" class="flow"/>
+<path id="route-A" d="M605 280H690V175H780" class="flow"/>
+<path id="route-B" d="M605 330H780" class="flow"/>
+<path id="route-C" d="M605 380H690V485H780" class="flow"/>
+<path id="return-A" d="M1020 175H1110V310H1185" class="flow"/>
+<path id="return-B" d="M1020 330H1185" class="flow"/>
+<path id="return-C" d="M1020 485H1110V350H1185" class="flow"/>
+<rect x="355" y="535" width="250" height="80" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="480" y="563" class="head" text-anchor="middle">副本上报状态</text>
+<text x="480" y="587" class="body" text-anchor="middle">可用时间、缓存、会话归属</text>
+<path id="status-to-router" d="M480 535V400" class="feedback"/>
+<text x="55" y="640" class="sub" text-anchor="start">Queue-Aware比较预计开始时间；Locality-Aware额外读取缓存与会话信息。</text>
 </svg>
