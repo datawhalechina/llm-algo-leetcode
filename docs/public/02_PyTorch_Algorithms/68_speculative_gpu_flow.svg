@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="svg-title svg-desc">
 <title id="svg-title">G0–G5 投机候选的真实后端选择流程</title><desc id="svg-desc">先为六个固定组生成能力与资产状态，只对可运行候选启动服务，再核对路径、质量、性能和资源。</desc>
 <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#52657a"/></marker><style>.t{font-weight:700;font-size:26px;font-family:sans-serif;fill:#18324b}.h{font-weight:600;font-size:18px;font-family:sans-serif;fill:#18324b}.b{font-size:15px;font-family:sans-serif;fill:#334e68}.l{fill:none;stroke:#52657a;stroke-width:3;marker-end:url(#arrow)}.a{fill:#e8f1fb;stroke:#3f78a8;stroke-width:2}.g{fill:#e8f6f1;stroke:#3f8b72;stroke-width:2}.o{fill:#fff3df;stroke:#b7791f;stroke-width:2}.p{fill:#f1edfb;stroke:#7657a5;stroke-width:2}.r{fill:#fbeceb;stroke:#b85c57;stroke-width:2}</style></defs>
-<rect width="1500" height="470" fill="#f8fafc"/><text x="750" y="42" text-anchor="middle" class="t">先门禁、后执行：未运行候选也保留状态证据</text>
+<rect width="1500" height="470" fill="#f8fafc"/><text x="750" y="42" text-anchor="middle" class="t">先检查启动条件，再执行；跳过或失败的候选保留原因</text>
 <rect x="45" y="165" width="235" height="105" rx="14" class="a"/><text x="163" y="202" text-anchor="middle" class="h">G0–G5 固定身份</text><text x="163" y="232" text-anchor="middle" class="b">target 与五类 proposer</text>
 <rect x="355" y="90" width="250" height="105" rx="14" class="g"/><text x="480" y="127" text-anchor="middle" class="h">G0：目标模型</text><text x="480" y="157" text-anchor="middle" class="b">逐词元直接生成</text>
-<rect x="355" y="260" width="250" height="105" rx="14" class="o"/><text x="480" y="297" text-anchor="middle" class="h">G1–G5：通过门禁者</text><text x="480" y="327" text-anchor="middle" class="b">按组顺序启动与释放</text>
+<rect x="355" y="260" width="250" height="105" rx="14" class="o"/><text x="480" y="297" text-anchor="middle" class="h">G1–G5：可尝试启动</text><text x="480" y="327" text-anchor="middle" class="b">按组顺序启动与释放</text>
 <path d="M280 218H315V143H355" class="l"/><path d="M315 218V313H355" class="l"/>
 <rect x="680" y="90" width="250" height="105" rx="14" class="p"/><text x="805" y="127" text-anchor="middle" class="h">路径与质量证据</text><text x="805" y="157" text-anchor="middle" class="b">接受统计、输出一致性</text>
 <rect x="680" y="260" width="250" height="105" rx="14" class="p"/><text x="805" y="297" text-anchor="middle" class="h">性能与资源证据</text><text x="805" y="327" text-anchor="middle" class="b">TTFT、TPOT、吞吐与显存</text>
