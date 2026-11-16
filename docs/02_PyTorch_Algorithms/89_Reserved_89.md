@@ -23,7 +23,7 @@
 **导语：** 先看后训练对齐项目，再看这个通用预留页；这一页只保留后续扩展的统一入口。
 - [84. DPO Preference Project | DPO 偏好项目](./84_DPO_Preference_Project.md)
 - [85. GRPO Groupwise Alignment Project | GRPO 分组对齐项目](./85_GRPO_Groupwise_Alignment_Project.md)
-- [86. DPO Online Benchmark | DPO 在线基准](./86_DPO_Online_Benchmark.md)
+- [86. Online Post-Training Lifecycle and Adoption Decision | 在线后训练生命周期与采用决策](./86_DPO_Online_Benchmark.md)
 
 ## 相关阅读
 
