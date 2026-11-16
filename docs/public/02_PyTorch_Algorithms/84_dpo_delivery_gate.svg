@@ -1,42 +1,65 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-labelledby="title desc">
-  <title id="title">DPO 候选的硬门槛与调优门槛</title>
-  <desc id="desc">先检查数据与产物能否复现，再检查独立质量与资源是否达标；硬失败拒绝，软失败调优，全部通过后接受。</desc>
+  <title id="title">DPO 候选的先决条件与指标条件</title>
+  <desc id="desc">先检查数据与产物能否复现，再检查离线偏好指标与资源是否达标；硬失败拒绝，软失败调优，全部通过后接受。</desc>
   <defs>
-    <marker id="neutral" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker>
-    <marker id="red" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#dc2626"/></marker>
-    <marker id="amber" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#d97706"/></marker>
-    <marker id="green" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#16a34a"/></marker>
+    <marker id="neutral" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+<path d="M0 0 L10 5 L0 10 Z" fill="#475569"/>
+</marker>
+    <marker id="red" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+<path d="M0 0 L10 5 L0 10 Z" fill="#dc2626"/>
+</marker>
+    <marker id="amber" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+<path d="M0 0 L10 5 L0 10 Z" fill="#d97706"/>
+</marker>
+    <marker id="green" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+<path d="M0 0 L10 5 L0 10 Z" fill="#16a34a"/>
+</marker>
     <style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#0f172a}.title{font-size:27px;font-weight:700}.lane{font-size:16px;font-weight:700;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:14px;fill:#334155}.neutral,.red,.amber,.green{fill:none;stroke-width:3}.neutral{stroke:#475569;marker-end:url(#neutral)}.red{stroke:#dc2626;marker-end:url(#red)}.amber{stroke:#d97706;marker-end:url(#amber)}.green{stroke:#16a34a;marker-end:url(#green)}</style>
   </defs>
   <rect width="1200" height="600" fill="#f8fafc"/>
-  <text x="600" y="42" text-anchor="middle" class="title">先判断能否复现，再判断是否值得交付</text>
+  <text x="600" y="42" text-anchor="middle" class="title">先检查数据与产物记录，再比较离线指标</text>
 
-  <text x="35" y="139" class="lane">硬门槛</text>
+  <text x="35" y="139" class="lane">先决条件</text>
   <rect x="135" y="92" width="220" height="90" rx="14" fill="#dbeafe" stroke="#60a5fa" stroke-width="2"/>
-  <text x="245" y="126" text-anchor="middle" class="head">数据门禁</text><text x="245" y="153" text-anchor="middle" class="body">有效偏好对 · 双层隔离</text>
+  <text x="245" y="126" text-anchor="middle" class="head">偏好数据检查</text>
+<text x="245" y="153" text-anchor="middle" class="body">有效偏好对 · 双层隔离</text>
   <rect x="415" y="92" width="220" height="90" rx="14" fill="#ede9fe" stroke="#a78bfa" stroke-width="2"/>
-  <text x="525" y="126" text-anchor="middle" class="head">执行与产物</text><text x="525" y="153" text-anchor="middle" class="body">更新成功 · 适配器可验证</text>
+  <text x="525" y="126" text-anchor="middle" class="head">执行与产物</text>
+<text x="525" y="153" text-anchor="middle" class="body">更新成功 · 适配器路径与哈希</text>
   <polygon points="755,87 855,137 755,187 655,137" fill="#ffedd5" stroke="#fb923c" stroke-width="2"/>
-  <text x="755" y="132" text-anchor="middle" class="head">硬门槛通过？</text><text x="755" y="157" text-anchor="middle" class="body">可追溯且可复现</text>
+  <text x="755" y="132" text-anchor="middle" class="head">先决条件通过？</text>
+<text x="755" y="157" text-anchor="middle" class="body">各项均通过</text>
   <rect x="925" y="92" width="225" height="90" rx="14" fill="#fee2e2" stroke="#f87171" stroke-width="2"/>
-  <text x="1037" y="126" text-anchor="middle" class="head">拒绝候选</text><text x="1037" y="153" text-anchor="middle" class="body">修复数据或重新产出</text>
-  <path class="neutral" d="M355 137 H405"/><path class="neutral" d="M635 137 H645"/>
-  <path class="red" d="M855 137 H915"/><text x="885" y="124" text-anchor="middle" class="body">否</text>
+  <text x="1037" y="126" text-anchor="middle" class="head">拒绝候选</text>
+<text x="1037" y="153" text-anchor="middle" class="body">修复数据或重新产出</text>
+  <path class="neutral" d="M355 137 H415"/>
+<path class="neutral" d="M635 137 H655"/>
+  <path class="red" d="M855 137 H925"/>
+<text x="885" y="124" text-anchor="middle" class="body">否</text>
 
-  <text x="35" y="365" class="lane">调优门槛</text>
+  <text x="35" y="365" class="lane">指标条件</text>
   <rect x="135" y="318" width="220" height="90" rx="14" fill="#ccfbf1" stroke="#14b8a6" stroke-width="2"/>
-  <text x="245" y="352" text-anchor="middle" class="head">独立质量</text><text x="245" y="379" text-anchor="middle" class="body">准确率 · 均值 · 尾部</text>
+  <text x="245" y="352" text-anchor="middle" class="head">离线偏好指标</text>
+<text x="245" y="379" text-anchor="middle" class="body">正边际率 · 均值 · 最小值</text>
   <rect x="415" y="318" width="220" height="90" rx="14" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
-  <text x="525" y="352" text-anchor="middle" class="head">序列与资源</text><text x="525" y="379" text-anchor="middle" class="body">截断 · 显存 · 更新时间</text>
+  <text x="525" y="352" text-anchor="middle" class="head">序列与资源</text>
+<text x="525" y="379" text-anchor="middle" class="body">截断比例 · 峰值分配显存</text>
   <polygon points="755,313 855,363 755,413 655,363" fill="#ffedd5" stroke="#fb923c" stroke-width="2"/>
-  <text x="755" y="358" text-anchor="middle" class="head">调优门槛通过？</text><text x="755" y="383" text-anchor="middle" class="body">质量与预算均达标</text>
+  <text x="755" y="358" text-anchor="middle" class="head">指标条件通过？</text>
+<text x="755" y="383" text-anchor="middle" class="body">分数与预算达标</text>
   <rect x="925" y="318" width="225" height="90" rx="14" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
-  <text x="1037" y="352" text-anchor="middle" class="head">继续调优</text><text x="1037" y="379" text-anchor="middle" class="body">候选可复用，证据未达标</text>
-  <path class="neutral" d="M755 187 V245 H245 V308"/><text x="720" y="232" text-anchor="middle" class="body">是：继续独立复测</text>
-  <path class="neutral" d="M355 363 H405"/><path class="neutral" d="M635 363 H645"/>
-  <path class="amber" d="M855 363 H915"/><text x="885" y="350" text-anchor="middle" class="body">否</text>
+  <text x="1037" y="352" text-anchor="middle" class="head">继续调优</text>
+<text x="1037" y="379" text-anchor="middle" class="body">按失败项调整后复测</text>
+  <path class="neutral" d="M755 187 V245 H245 V318"/>
+<text x="520" y="232" text-anchor="middle" class="body">是：比较留出指标</text>
+  <path class="neutral" d="M355 363 H415"/>
+<path class="neutral" d="M635 363 H655"/>
+  <path class="amber" d="M855 363 H925"/>
+<text x="885" y="350" text-anchor="middle" class="body">否</text>
 
   <rect x="645" y="485" width="220" height="72" rx="14" fill="#dcfce7" stroke="#4ade80" stroke-width="2"/>
-  <text x="755" y="515" text-anchor="middle" class="head">接受候选</text><text x="755" y="540" text-anchor="middle" class="body">证据完整，可进入交付</text>
-  <path class="green" d="M755 413 V475"/><text x="776" y="455" class="body">是</text>
+  <text x="755" y="515" text-anchor="middle" class="head">保留候选</text>
+<text x="755" y="540" text-anchor="middle" class="body">当前检查通过</text>
+  <path class="green" d="M755 413 V485"/>
+<text x="776" y="455" class="body">是</text>
 </svg>
