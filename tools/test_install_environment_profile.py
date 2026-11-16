@@ -1,6 +1,6 @@
 """Installer regression tests: commands are mocked, never install or download."""
 
-import importlib.util
+import importlib
 from pathlib import Path
 import subprocess
 import sys
@@ -8,17 +8,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from tools import project_runtime
-
-
 @pytest.fixture
-def installer(monkeypatch):
-    monkeypatch.setitem(sys.modules, 'project_runtime', project_runtime)
-    path = Path(__file__).with_name('install_environment_profile.py')
-    spec = importlib.util.spec_from_file_location('installer_under_test', path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+def installer():
+    return importlib.import_module('tools.install_environment_profile')
 
 
 @pytest.fixture
