@@ -2,7 +2,7 @@
   <title id="title">推理服务的单轮执行闭环</title>
   <desc id="desc">请求从等待队列进入本轮选择，再由执行引擎完成前向、采样和状态更新；未完成请求返回等待队列。</desc>
   <defs>
-    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#486581"/></marker>
+    <marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#486581"/></marker>
     <style>.t{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#203040}.h{font-size:22px;font-weight:700}.b{font-size:17px}.s{font-size:14px;fill:#526777}.box{stroke-width:2;rx:14}.line{fill:none;stroke:#486581;stroke-width:2.2;marker-end:url(#arrow)}</style>
   </defs>
   <rect width="1200" height="520" fill="#f7f9fc"/>
@@ -30,7 +30,7 @@
   <path d="M340 217 H465" class="line"/><path d="M735 217 H860" class="line"/>
   <rect x="880" y="390" width="230" height="58" rx="12" fill="#f1eaff" stroke="#8c6bc7" stroke-width="2"/>
   <text x="995" y="416" text-anchor="middle" class="t b">已完成：返回结果</text><text x="995" y="438" text-anchor="middle" class="t s">释放状态与序列槽位</text>
-  <path d="M1035 300 V390" class="line"/>
-  <path d="M955 300 V375 H205 V342" class="line"/>
+  <path d="M1035 342 V390" class="line"/>
+  <path d="M955 342 V375 H205 V342" class="line"/>
   <text x="550" y="367" text-anchor="middle" class="t s">未完成：携带新 KV 状态进入下一轮</text>
 </svg>
