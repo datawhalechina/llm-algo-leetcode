@@ -1,1 +1,1 @@
-"""Read-only checks for tutorial sources and generated documentation."""
+"""Tutorial source checks; explicit baseline updates retain their original flags."""

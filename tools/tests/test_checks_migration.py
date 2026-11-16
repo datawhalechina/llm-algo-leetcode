@@ -12,18 +12,21 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
+CHECKS = ("check_source_docs_mirror", "check_mermaid_blocks",
+          "check_svg_arrows", "check_svg_layout")
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 
 class ChecksMigrationTests(unittest.TestCase):
     def test_legacy_and_classified_imports_share_one_module(self):
-        for name in ("check_source_docs_mirror", "check_mermaid_blocks"):
+        for name in CHECKS:
             with self.subTest(name=name):
                 old = importlib.import_module(f"tools.{name}")
                 new = importlib.import_module(f"tools.checks.{name}")
                 self.assertIs(old, new)
-                self.assertEqual(new.ROOT, ROOT)
+                if hasattr(new, "ROOT"):
+                    self.assertEqual(new.ROOT, ROOT)
 
     def test_bare_legacy_import_preserves_module_identity(self):
         probe = (
@@ -34,7 +37,7 @@ class ChecksMigrationTests(unittest.TestCase):
             "assert old is new"
         )
         with tempfile.TemporaryDirectory() as directory:
-            for name in ("check_source_docs_mirror", "check_mermaid_blocks"):
+            for name in CHECKS:
                 result = subprocess.run(
                     [sys.executable, "-S", "-c", probe, name], cwd=directory,
                     capture_output=True, text=True, timeout=10,
@@ -92,13 +95,59 @@ class ChecksMigrationTests(unittest.TestCase):
             f"runpy.run_path(str(__import__('pathlib').Path({str(ROOT)!r}) / 'tools' / "
             "(sys.argv[1] + '.py')), run_name='__main__')"
         )
-        for name in ("check_source_docs_mirror", "check_mermaid_blocks"):
+        for name in CHECKS:
             for code in (0, 1):
                 result = subprocess.run(
                     [sys.executable, "-S", "-c", probe, name, str(code)],
                     cwd=ROOT, capture_output=True, text=True, timeout=10,
                 )
                 self.assertEqual(result.returncode, code, result.stderr)
+
+    def test_svg_arrow_old_and_new_commands_agree_on_valid_and_invalid_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            page = Path(directory) / "fixture.svg"
+            for marker, expected in (("arrow", 0), ("missing", 1)):
+                page.write_text(
+                    '<svg xmlns="http://www.w3.org/2000/svg">'
+                    '<defs><marker id="arrow"/></defs>'
+                    f'<path d="M0 0H10" marker-end="url(#{marker})"/></svg>'
+                )
+                entries = [
+                    [str(ROOT / "tools/check_svg_arrows.py")],
+                    [str(ROOT / "tools/checks/check_svg_arrows.py")],
+                    ["-m", "tools.check_svg_arrows"],
+                    ["-m", "tools.checks.check_svg_arrows"],
+                ]
+                for entry in entries:
+                    with self.subTest(marker=marker, entry=entry):
+                        result = subprocess.run(
+                            [sys.executable, "-S", *entry, str(page)], cwd=ROOT,
+                            capture_output=True, text=True, timeout=10,
+                        )
+                        self.assertEqual(result.returncode, expected, result.stderr)
+
+    def test_svg_layout_default_baseline_does_not_move_with_implementation(self):
+        module = importlib.import_module("tools.checks.check_svg_layout")
+        with patch.object(sys, "argv", ["check_svg_layout.py"]), \
+                patch.object(module, "audit", return_value=[]), \
+                patch.object(module, "load_baseline", return_value=set()) as load, \
+                patch.object(module, "write_baseline") as write, \
+                redirect_stdout(io.StringIO()):
+            self.assertEqual(module.main(), 0)
+            load.assert_called_once_with(ROOT / "tools/svg_layout_baseline.json")
+            write.assert_not_called()
+
+    def test_svg_layout_help_supports_all_entry_modes(self):
+        for entry in ([str(ROOT / "tools/check_svg_layout.py")],
+                      [str(ROOT / "tools/checks/check_svg_layout.py")],
+                      ["-m", "tools.check_svg_layout"],
+                      ["-m", "tools.checks.check_svg_layout"]):
+            result = subprocess.run(
+                [sys.executable, "-S", *entry, "--help"], cwd=ROOT,
+                capture_output=True, text=True, timeout=10,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("--update-baseline", result.stdout)
 
 
 if __name__ == "__main__":

@@ -16,7 +16,7 @@
 
 下表中的路径除 `verify.py` 外均相对于 `tools/`。完整参数以各命令的 `--help` 和所属专题 Quickstart 为准。
 
-已迁入 [`checks/`](./checks/README.md) 的检查器：`check_source_docs_mirror.py`、`check_mermaid_blocks.py`。推荐使用 `python -m tools.checks.<模块名>`；旧脚本命令与导入继续转发到同一实现。其他检查器仍在根目录，后续逐批迁移。
+已迁入 [`checks/`](./checks/README.md) 的检查器：`check_source_docs_mirror.py`、`check_mermaid_blocks.py`、`check_svg_arrows.py`、`check_svg_layout.py`。推荐使用 `python -m tools.checks.<模块名>`；旧脚本命令与导入继续转发到同一实现。其他检查器仍在根目录，后续逐批迁移。
 
 ## 临时脚本
 
@@ -24,7 +24,7 @@
 
 ## 长期分类方案
 
-下表列出分批迁移的目标。`tests/` 已承载回归测试，`checks/` 已迁入上方两项检查器；其余条目的新命令路径尚未整体启用。按工具职责分类，不按教程小节编号建目录。
+下表列出分批迁移的目标。`tests/` 已承载回归测试，`checks/` 已迁入上方四项检查器；其余条目的新命令路径尚未整体启用。按工具职责分类，不按教程小节编号建目录。
 
 | 目标目录 | 存放内容 | 现有例子 |
 |:---|:---|:---|
