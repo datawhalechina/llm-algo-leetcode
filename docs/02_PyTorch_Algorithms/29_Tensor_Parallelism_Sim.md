@@ -22,6 +22,14 @@ TP 的核心不是孤立地切开矩阵，而是让相邻算子的布局连续�
 
 ---
 
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
+- **多 GPU 实测：** 使用 `PAR-CUDA-MECHANISM`；环境、运行配置与固定工作负载见 [Step 5](#gpu-experiment)。
+
+---
 ## 前置阅读
 
 **导语：** 先用并行策略决策框架识别张量切分解决的问题；ZeRO 与 Pipeline 是并列比较项，不是学习本节的必经前置。
@@ -30,21 +38,31 @@ TP 的核心不是孤立地切开矩阵，而是让相邻算子的布局连续�
 
 
 ---
-### Step 1：理解 Column / Row 两种张量布局
+## Step 1：理解 Column / Row 两种张量布局
 
-假设输入 $X$ 形状为 `(batch, in_dim)`，权重 $A$ 形状为 `(in_dim, out_dim)`，经过线性层变为 $Y = XA$，形状 `(batch, out_dim)`。
+假设输入 $X$ 形状为 `(batch, in_dim)`，权重 $A$ 形状为 `(in_dim, out_dim)`，经过线性层变为 $Y = XA$，形状 `(batch, out_dim)`； $P$ 表示参与该张量并行组的进程数。
 
-> **Column Parallel（列切分）：切分 $A$ 的列，即输出维度**
-> $A=[A_0,A_1]$ 后，各 rank 计算 $Y_i=XA_i$，得到输出特征分片。若下游需要完整 $Y$，再 All-Gather 拼接；若下游正好接受相同分片布局，则可以先不聚合。
+**Column Parallel（列切分）**把输出维写成 $A=[A_1,\ldots,A_P]$，各进程计算
 
-> **Row Parallel（行切分）：切分 $A$ 的行，即输入维度**
-> 输入也要按同一范围切为 $X_i$。各 rank 计算局部部分和 $Y_i=X_iA_i$；完整输出为 $Y=\sum_iY_i$，因此末端需要 All-Reduce（Sum）。
+$$
+Y_i=XA_i,\qquad Y=[Y_1,\ldots,Y_P].
+$$
+
+若下游接受同一分片布局，可以延后 All-Gather。
+
+**Row Parallel（行切分）**把输入和权重输入维写成 $X=[X_1,\ldots,X_P]$、 $A=[A_1^{\mathsf T},\ldots,A_P^{\mathsf T}]^{\mathsf T}$，完整输出为
+
+$$
+Y=XA=\sum_{i=1}^PX_iA_i,
+$$
+
+因此末端需要求和归约。
 
 两种布局在 MLP 中通常成对出现：扩维层采用 Column Parallel，激活保持分片，缩维层采用匹配的 Row Parallel；这样中间 activation 不需要先拼成完整张量再重新切分。
 
 ![Tensor Parallelism：权重切分决定通信位置](../public/02_PyTorch_Algorithms/29_tensor_parallel_split.svg)
 
-### Step 2：在 MLP 与 Attention 中保持布局连续
+## Step 2：在 MLP 与 Attention 中保持布局连续
 
 在两层前馈网络 $Y=\mathrm{act}(XW_1)W_2$ 中，将 $W_1$ 按列切分会产生 hidden 分片 $H_i$；把 $W_2$ 按行切分后，rank $i$ 正好可以消费同一范围的 $H_i$。Attention 采用相同思想：Q/K/V 投影通常沿输出维按 Head 切分，各 rank 完成本地 Attention，输出投影再沿输入维切分并归约。
 
@@ -52,7 +70,7 @@ TP 的核心不是孤立地切开矩阵，而是让相邻算子的布局连续�
 
 ![Tensor Parallelism：切分方向决定通信算子](../public/02_PyTorch_Algorithms/29_tensor_parallel_communication.svg)
 
-### Step 3：比较布局收益与 collective 代价
+## Step 3：比较布局收益与 collective 代价
 Tensor Parallel 降低每卡持有的权重与单层计算量，但在 layer 内引入高频 collective。是否值得使用，要同时看布局是否连续、payload 是否落在关键路径，以及互联能否承受这些重复同步。
 
 | 路径 | 切分对象 | 局部输出如何恢复 | 常见位置 | 主要代价 |
@@ -64,18 +82,20 @@ Tensor Parallel 降低每卡持有的权重与单层计算量，但在 layer 内
 | Attention 输出投影 | 输入 Head 维切分 | 末端 All-Reduce / Reduce-Scatter | Attention 输出 | 归约位于层内关键路径 |
 | GQA 的 KV Head 映射 | KV Head 分片或跨 rank 复制 | 本地 Q Head 访问对应 KV Head | 紧凑 KV 表示 | 复制会增加 KV 状态占用 |
 
-### Step 4：CPU 实现——验证配对 MLP 的 TP 布局
+<a id="mechanism-practice"></a>
+
+## Step 4：CPU 实现——验证配对 MLP 的 TP 布局
 
 本题先实现独立 Linear 的 Column / Row 路径，再把它们连接成两层 MLP；最后根据 Query Head、KV Head 与 TP degree 判断 Attention 应采用 KV 分片还是复制。实现重点是局部布局、恢复位置和 Head 映射约束。
 
 测试区分别检查 Column / Row 与 dense 线性层的数值等价、配对 MLP 的布局连续性，以及 GQA 在可分片、需复制和不兼容配置下的行为。
 
-| 任务与目的 | 已知条件 | 完成标准 | 测试验证 |
-| --- | --- | --- | --- |
-| TODO 1：完成 Column Parallel 路径 | `X`、沿输出维切分的权重 | 各 rank 计算输出分片；需要完整视图时沿特征维拼接 | 与 dense 输出的数值等价和形状契约 |
-| TODO 2：完成 Row Parallel 路径 | 沿同一输入维切分的 `X` 与权重 | 各 rank 计算部分和；末端按元素求和 | 与 dense 输出的数值等价和形状契约 |
-| TODO 3：保持配对 MLP 的 hidden 分片 | `W1 / W2` 的匹配 hidden 范围、`partial_outputs` | 中间 activation 不提前拼接，最终输出才归约 | 配对 MLP 与 dense 等价、hidden 维度边界 |
-| TODO 4：规划 Attention Head 映射 | `num_q_heads`、`num_kv_heads`、`tp_size` | Q Head 均匀分片；KV Head 可分片时分片，数量较少时复制，不兼容配置拒绝 | 分片、复制与异常输入 |
+| TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
+|:---|:---|:---|:---|
+| TODO 1：执行 Column Parallel<br>`tensor_parallel_column_sim` | 沿输出维计算局部结果并按需拼接 | 局部分片范围完整，恢复维度正确 | 与 dense 输出比较数值和形状 |
+| TODO 2：执行 Row Parallel<br>`tensor_parallel_row_sim` | 沿输入维计算局部部分和并归约 | 输入与权重使用相同切分范围 | 与 dense 输出比较数值和形状 |
+| TODO 3：保持 MLP 中间分片<br>`tensor_parallel_mlp_sim` | 让 Column 输出直接进入匹配的 Row 分片 | 中间激活不提前恢复完整布局 | 检查配对 MLP 等价与 hidden 边界 |
+| TODO 4：规划 Attention Head<br>`plan_attention_tp` | 判断 Q/KV Head 应分片还是复制 | Q Head 均匀分片，KV Head 显式处理复制条件 | 检查可分片、复制与不兼容配置 |
 
 
 ```python
@@ -91,14 +111,14 @@ def tensor_parallel_column_sim(X: torch.Tensor, A: torch.Tensor, num_gpus: int =
     """
     模拟 Column Parallel Linear: Y = X @ A
     将权重 A 沿列 (输出特征维度) 切分，分布到不同的 GPU 上计算，最后拼接。
-    
+
     参数:
     X: 形状 (batch, in_features)
     A: 形状 (in_features, out_features)
     """
     in_features, out_features = A.shape
     assert out_features % num_gpus == 0, "输出维度必须能被 GPU 数量整除"
-    
+
     # ==========================================
     # TODO 1（Column Parallel）：完成输出维切分、本地计算与结果恢复。
     # weight_chunks = ???  # 沿输出特征维形成 num_gpus 个权重分片。
@@ -113,14 +133,14 @@ def tensor_parallel_row_sim(X: torch.Tensor, A: torch.Tensor, num_gpus: int = 2)
     """
     模拟 Row Parallel Linear: Y = X @ A
     将权重 A 沿行 (输入特征维度) 切分，输入 X 也同步切分，最后将各卡输出求和。
-    
+
     参数:
     X: 形状 (batch, in_features)
     A: 形状 (in_features, out_features)
     """
     in_features, out_features = A.shape
     assert in_features % num_gpus == 0, "输入维度必须能被 GPU 数量整除"
-    
+
     # ==========================================
     # TODO 2（Row Parallel）：完成输入维配对切分、局部部分和与结果归约。
     # input_chunks = ???  # 沿输入特征维形成 num_gpus 个输入分片。
@@ -404,6 +424,71 @@ def plan_attention_tp(num_q_heads: int, num_kv_heads: int, tp_size: int):
 - KV Head 足够多时直接分片；KV Head 少于 rank 且能均匀覆盖时复制，每个 KV Head 会服务多个 rank。
 - 复制避免了不规则映射，但会增加 KV 状态占用；无法均匀分片或复制的配置应在执行前失败。
 
+<a id="framework-check"></a>
+
+## 框架一致性核对（可选）
+
+下面在两个本地 Gloo 进程中使用 PyTorch DeviceMesh 与 DTensor，核对按输出维切分和恢复完整张量的布局语义。该核对不测量 GPU Tensor Parallel 计算内核或集合通信性能。
+
+| 核对项 | 对比内容 | 通过条件 |
+|:---|:---|:---|
+| 局部分片 | DTensor `Shard(1)` 与本节 Column 切分 | 每个进程持有对应输出维分片 |
+| 完整恢复 | DTensor `Replicate()` 与原始张量 | 恢复值完全一致 |
+| 分片覆盖 | 两个进程的本地张量 | 拼接后不重不漏地恢复原张量 |
+
+```python
+import torch.distributed as dist
+
+from tools.parallel_cpu_conformance import run_local_gloo_world
+
+
+def _dtensor_framework_worker(rank, world_size):
+    try:
+        from torch.distributed.device_mesh import init_device_mesh
+        from torch.distributed.tensor import Replicate, Shard, distribute_tensor
+    except ImportError:
+        from torch.distributed._tensor import Replicate, Shard, distribute_tensor
+        from torch.distributed.device_mesh import init_device_mesh
+    full = torch.arange(24, dtype=torch.float32).reshape(4, 6)
+    mesh = init_device_mesh("cpu", (world_size,))
+    sharded = distribute_tensor(full, mesh, placements=[Shard(1)])
+    local = sharded.to_local().contiguous()
+    replicated = sharded.redistribute(mesh, placements=[Replicate()]).to_local().contiguous()
+    local_parts = [torch.empty_like(local) for _ in range(world_size)]
+    dist.all_gather(local_parts, local)
+    return {
+        "rank": rank,
+        "local": local.tolist(),
+        "expected_local": full.chunk(world_size, dim=1)[rank].tolist(),
+        "replicated": replicated.tolist(),
+        "full": full.tolist(),
+        "reconstructed": torch.cat(local_parts, dim=1).tolist(),
+    }
+
+
+def check_tensor_parallel_framework_conformance():
+    """核对本节输出维切分与 PyTorch DeviceMesh、DTensor 布局语义。"""
+    results = run_local_gloo_world(_dtensor_framework_worker, world_size=2)
+    checks = {
+        "local_shards_match": all(item["local"] == item["expected_local"] for item in results),
+        "replicated_matches_full": all(item["replicated"] == item["full"] for item in results),
+        "shards_reconstruct_full": all(item["reconstructed"] == item["full"] for item in results),
+    }
+    failed = [name for name, passed in checks.items() if not passed]
+    if failed:
+        raise AssertionError(f"框架一致性核对失败：{failed}")
+    return {
+        "status": "passed", "versions": {"torch": torch.__version__},
+        "checks": checks, "world_size": 2, "rank_results": results,
+    }
+
+
+framework_check = check_tensor_parallel_framework_conformance()
+framework_check
+```
+
+<a id="gpu-experiment"></a>
+
 ### Step 5（可选）：GPU Tensor Parallel 机制基准
 
 先用 CPU 实验验证 Column / Row Parallel 的等价关系，再在多张 GPU 上运行真实的 Column → 激活 → Row 配对 MLP。每个 rank 只持有本地权重分片，末端执行 All-Reduce，并与 dense 输出核对。
@@ -438,7 +523,8 @@ DTYPE = 'bf16'  # Notebook 配置名；runner 转换为 bfloat16。
 RUNNER_DTYPE = 'bfloat16' if DTYPE == 'bf16' else 'float32'
 WARMUP = 5  # 预热轮数，不进入统计。
 REPEATS = 20  # 正式重复轮数。
-RESULT_PATH = f'benchmarks/results/29_tensor_parallel_benchmark_{RUN_LABEL}.json'  # 标签隔离历史结果。
+from tools.project_runtime import resolve_project_root
+RESULT_PATH = resolve_project_root() / f'benchmarks/results/29_tensor_parallel_benchmark_{RUN_LABEL}.json'  # 标签隔离历史结果。
 print({'run_mode': RUN_MODE, 'profile': ENVIRONMENT_PROFILE, 'world_size': WORLD_SIZE, 'shape': [BATCH_SIZE, IN_DIM, HIDDEN_DIM, OUT_DIM], 'dtype': DTYPE, 'result': RESULT_PATH})
 
 ```
