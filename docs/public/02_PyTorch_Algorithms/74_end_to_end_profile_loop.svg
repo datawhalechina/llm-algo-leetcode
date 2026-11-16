@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1440" height="650" viewBox="0 0 1440 650" role="img" aria-labelledby="title desc">
-  <title id="title">74节三类性能证据的分析与交接</title>
+  <title id="title">训练测量与性能剖析的使用方式</title>
   <desc id="desc">完整训练、激活显存专项和Profiler归因分别核对各自配置，形成范围内结论，再保留来源与限制交接给后续项目。</desc>
   <defs>
-    <marker id="arrow" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1L11 6L1 11Z" fill="#475569"/></marker>
+    <marker id="arrow" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="9" markerHeight="9" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1L11 6L1 11Z" fill="#475569"/></marker>
     <style>
       text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#1f2937}
       .title{font-size:27px;font-weight:700}.sub{font-size:15px;fill:#475569}.col{font-size:16px;font-weight:700;fill:#475569}.head{font-size:17px;font-weight:700}.body{font-size:14px;fill:#334155}
@@ -10,17 +10,17 @@
     </style>
   </defs>
   <rect width="1440" height="650" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
-  <text x="720" y="43" text-anchor="middle" class="title">三类证据各自回答一个问题，再并列交接</text>
-  <text x="720" y="71" text-anchor="middle" class="sub">同一份报告可以并列记录结论，但不能把不同配置的指标合并比较</text>
+  <text x="720" y="43" text-anchor="middle" class="title">分别使用训练对照、激活实验与性能剖析</text>
+  <text x="720" y="71" text-anchor="middle" class="sub">先核对每组条件，再分别记录采用判断与变化原因</text>
 
-  <text x="175" y="113" text-anchor="middle" class="col">证据来源</text>
+  <text x="175" y="113" text-anchor="middle" class="col">测量记录</text>
   <text x="505" y="113" text-anchor="middle" class="col">先核对配置</text>
   <text x="850" y="113" text-anchor="middle" class="col">形成范围内判断</text>
-  <text x="1260" y="113" text-anchor="middle" class="col">交接时保留</text>
+  <text x="1260" y="113" text-anchor="middle" class="col">报告中保留</text>
 
   <rect x="40" y="138" width="270" height="100" class="box" fill="#e0f2fe" stroke="#0284c7"/>
   <text x="175" y="177" text-anchor="middle" class="head">完整训练测量</text>
-  <text x="175" y="207" text-anchor="middle" class="body">73 基线 · 76 G0</text>
+  <text x="175" y="207" text-anchor="middle" class="body">训练基线与策略对照</text>
   <rect x="370" y="138" width="270" height="100" class="box" fill="#f1f5f9" stroke="#94a3b8"/>
   <text x="505" y="177" text-anchor="middle" class="head">训练条件一致吗？</text>
   <text x="505" y="207" text-anchor="middle" class="body">模型 · 负载 · 优化器</text>
@@ -30,17 +30,17 @@
 
   <rect x="40" y="273" width="270" height="100" class="box" fill="#fefce8" stroke="#eab308"/>
   <text x="175" y="312" text-anchor="middle" class="head">激活显存专项</text>
-  <text x="175" y="342" text-anchor="middle" class="body">76 G1 长度阶梯</text>
+  <text x="175" y="342" text-anchor="middle" class="body">相同长度下比较保存策略</text>
   <rect x="370" y="273" width="270" height="100" class="box" fill="#f1f5f9" stroke="#94a3b8"/>
   <text x="505" y="312" text-anchor="middle" class="head">隔离条件是什么？</text>
-  <text x="505" y="342" text-anchor="middle" class="body">SGD · 长度 · 安全余量</text>
+  <text x="505" y="342" text-anchor="middle" class="body">优化器 · 长度 · 显存余量</text>
   <rect x="715" y="273" width="270" height="100" class="box" fill="#fffbeb" stroke="#f59e0b"/>
   <text x="850" y="312" text-anchor="middle" class="head">已测范围有收益吗？</text>
-  <text x="850" y="342" text-anchor="middle" class="body">不推断未测长度或 OOM</text>
+  <text x="850" y="342" text-anchor="middle" class="body">记录已测容量与吞吐</text>
 
   <rect x="40" y="408" width="270" height="100" class="box" fill="#f3e8ff" stroke="#a855f7"/>
   <text x="175" y="447" text-anchor="middle" class="head">Profiler 与阶段测量</text>
-  <text x="175" y="477" text-anchor="middle" class="body">74 trace / phase</text>
+  <text x="175" y="477" text-anchor="middle" class="body">算子轨迹与阶段峰值</text>
   <rect x="370" y="408" width="270" height="100" class="box" fill="#f1f5f9" stroke="#94a3b8"/>
   <text x="505" y="447" text-anchor="middle" class="head">测量方式可比吗？</text>
   <text x="505" y="477" text-anchor="middle" class="body">成对配置 · profiler 开销</text>
@@ -49,15 +49,15 @@
   <text x="850" y="477" text-anchor="middle" class="body">解释阶段与算子代价</text>
 
   <rect x="1090" y="250" width="310" height="195" class="box" fill="#ecfdf5" stroke="#34d399"/>
-  <text x="1245" y="290" text-anchor="middle" class="head">交接给性能优化项目</text>
+  <text x="1245" y="290" text-anchor="middle" class="head">供后续实验读取</text>
   <text x="1245" y="330" text-anchor="middle" class="body">分别记录范围内结论</text>
   <text x="1245" y="360" text-anchor="middle" class="body">附配置、限制与来源</text>
-  <text x="1245" y="400" text-anchor="middle" class="body">采用判断与归因不混用</text>
+  <text x="1245" y="400" text-anchor="middle" class="body">据目标任务选择下一项对照</text>
 
-  <path d="M310 188H362" class="flow"/><path d="M640 188H707" class="flow"/>
-  <path d="M310 323H362" class="flow"/><path d="M640 323H707" class="flow"/>
-  <path d="M310 458H362" class="flow"/><path d="M640 458H707" class="flow"/>
-  <path d="M985 188H1045V285H1082" class="flow"/>
-  <path d="M985 323H1082" class="flow"/>
-  <path d="M985 458H1045V410H1082" class="flow"/>
+  <path d="M310 188H370" class="flow"/><path d="M640 188H715" class="flow"/>
+  <path d="M310 323H370" class="flow"/><path d="M640 323H715" class="flow"/>
+  <path d="M310 458H370" class="flow"/><path d="M640 458H715" class="flow"/>
+  <path d="M985 188H1045V285H1090" class="flow"/>
+  <path d="M985 323H1090" class="flow"/>
+  <path d="M985 458H1045V410H1090" class="flow"/>
 </svg>
