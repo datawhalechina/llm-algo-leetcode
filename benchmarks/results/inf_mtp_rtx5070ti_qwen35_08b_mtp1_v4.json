@@ -1,0 +1,34 @@
+{
+  "schema_version": "inference-mtp-mechanism/v1",
+  "semantic_id": "INF-MTP",
+  "environment_profile": "INF-VLLM-MTP",
+  "run_mode": "real_backend",
+  "run_label": "rtx5070ti_qwen35_08b_mtp1_v4",
+  "workload": {
+    "id": "inf-native-mtp-qwen35-08b",
+    "version": "v2",
+    "model_id": "Qwen/Qwen3.5-0.8B",
+    "requested_revision": "main",
+    "resolved_commit": null,
+    "dtype": "bfloat16",
+    "prompt_count": 3,
+    "max_new_tokens": 64,
+    "max_model_len": 2048,
+    "gpu_memory_utilization": 0.75,
+    "enforce_eager": false,
+    "warmup_steps": 2,
+    "repeat_steps": 5,
+    "speculative_tokens": 1,
+    "seed": 42
+  },
+  "model_contract": null,
+  "baseline": null,
+  "candidate": null,
+  "comparison": null,
+  "failure": {
+    "type": "RuntimeError",
+    "message": "本实验要求 vllm 0.31.0 CUDA 12.9 构建；请使用 INF-VLLM-MTP Profile"
+  },
+  "evidence_level": "failed_real_backend_attempt",
+  "decision": "reject_until_fixed"
+}
