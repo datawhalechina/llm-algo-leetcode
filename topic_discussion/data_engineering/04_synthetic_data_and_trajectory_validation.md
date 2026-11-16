@@ -33,4 +33,4 @@
 
 ## 从合成候选进入后训练接口
 
-合格回答可转为 SFT 样本，成对候选可转为偏好数据，带奖励与策略版本的执行过程可转为在线强化学习轨迹。继续阅读 [05 后训练数据接口与诊断](./05_post_training_data_interfaces.md)；工具轨迹的执行语义由[智能体轨迹数据与验证](../agent/01_agent_trajectory_data.md)补充。
+合格回答可转为 SFT 样本，成对候选可转为偏好数据，带奖励与策略版本的执行过程可转为在线强化学习轨迹。[合成指令生成与验证准入](../../02_PyTorch_Algorithms/PT-SYNTHETIC-DATA_Instruction_Generation_and_Verifier_Admission.ipynb)提供生成身份、相似度筛查、验证器聚合和三态准入的 CPU 机制练习；通过的 SFT 候选还要进入[32 SFT 数据契约与泄漏审计](../../02_PyTorch_Algorithms/32_Data_Engineering_for_SFT.ipynb)完成最终切分检查。继续阅读 [05 后训练数据接口与诊断](./05_post_training_data_interfaces.md)；工具轨迹的执行语义由[智能体轨迹数据与验证](../agent/01_agent_trajectory_data.md)补充。

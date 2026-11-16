@@ -1,0 +1,36 @@
+schema_version: operator-optimization-delivery-config/v1
+semantic_id: OP-INTEGRATED-DELIVERY
+environment_profile: PERF-CUDA-MECHANISM
+stages: [contract_check, measure, close]
+
+workload:
+  model: synthetic_two_layer_decoder
+  batch_size: 1
+  sequence_lengths: [128, 512, 1024, 2048]
+  hidden_size: 512
+  num_attention_heads: 8
+  num_key_value_heads: 8
+  head_dim: 64
+  layers: 2
+  dtype: bfloat16
+  causal: true
+  seed: 42
+  warmup: 3
+  repeats: 10
+
+candidates:
+  baseline: torch_sdpa_auto
+  candidate: triton_flash_attention
+
+gates:
+  max_relative_error_rtol: 0.02
+  max_absolute_error_atol: 0.02
+  minimum_speedup_long_sequence: 0.05
+  long_sequence_lengths: [1024, 2048]
+  maximum_short_sequence_regression: 0.10
+  short_sequence_lengths: [128, 512]
+  maximum_peak_memory_gib: 11.0
+  require_kernel_trace: true
+
+outputs:
+  directory: benchmarks/results/part05_operator_delivery

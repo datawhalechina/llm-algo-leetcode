@@ -1,0 +1,20 @@
+{"request_id":"qdel-01","prompt":"A box contains 18 red balls and 24 blue balls. How many balls are there in total? Return only one line as Answer: <integer>.","expected_answer":42}
+{"request_id":"qdel-02","prompt":"A shop sells 7 notebooks for 5 dollars each. What is the total cost? Return only one line as Answer: <integer>.","expected_answer":35}
+{"request_id":"qdel-03","prompt":"There are 56 apples. 19 are given away. How many remain? Return only one line as Answer: <integer>.","expected_answer":37}
+{"request_id":"qdel-04","prompt":"A train travels 12 kilometers each hour for 4 hours. How far does it travel? Return only one line as Answer: <integer>.","expected_answer":48}
+{"request_id":"qdel-05","prompt":"A library has 31 fiction books and 17 science books. How many books are there? Return only one line as Answer: <integer>.","expected_answer":48}
+{"request_id":"qdel-06","prompt":"Mina has 9 bags with 6 oranges in each bag. How many oranges does she have? Return only one line as Answer: <integer>.","expected_answer":54}
+{"request_id":"qdel-07","prompt":"A 90-page book is read over 5 days at the same number of pages per day. How many pages are read each day? Return only one line as Answer: <integer>.","expected_answer":18}
+{"request_id":"qdel-08","prompt":"A farmer collects 28 eggs on Monday and 36 on Tuesday. How many eggs are collected in total? Return only one line as Answer: <integer>.","expected_answer":64}
+{"request_id":"qdel-09","prompt":"A bus has 48 passengers. 13 get off and 7 get on. How many passengers are on the bus now? Return only one line as Answer: <integer>.","expected_answer":42}
+{"request_id":"qdel-10","prompt":"A rope is 72 meters long and is cut into 8 equal pieces. How many meters long is each piece? Return only one line as Answer: <integer>.","expected_answer":9}
+{"request_id":"qdel-11","prompt":"Four teams each score 11 points. What is their combined score? Return only one line as Answer: <integer>.","expected_answer":44}
+{"request_id":"qdel-12","prompt":"A baker makes 45 rolls and puts 9 rolls in each box. How many boxes are needed? Return only one line as Answer: <integer>.","expected_answer":5}
+{"request_id":"qdel-13","prompt":"A tank holds 100 liters. It contains 37 liters and then receives 28 more liters. How many liters are in it now? Return only one line as Answer: <integer>.","expected_answer":65}
+{"request_id":"qdel-14","prompt":"A class has 26 students. 8 are absent. How many students are present? Return only one line as Answer: <integer>.","expected_answer":18}
+{"request_id":"qdel-15","prompt":"A garden has 6 rows with 14 plants in each row. How many plants are there? Return only one line as Answer: <integer>.","expected_answer":84}
+{"request_id":"qdel-16","prompt":"A cyclist rides 15 kilometers in the morning and 23 kilometers in the afternoon. How far does the cyclist ride in total? Return only one line as Answer: <integer>.","expected_answer":38}
+{"request_id":"qdel-17","prompt":"A 96-dollar bill is split equally among 12 people. How many dollars does each person pay? Return only one line as Answer: <integer>.","expected_answer":8}
+{"request_id":"qdel-18","prompt":"There are 5 shelves with 18 cups on each shelf. How many cups are there? Return only one line as Answer: <integer>.","expected_answer":90}
+{"request_id":"qdel-19","prompt":"A store has 83 pencils and sells 27. How many pencils remain? Return only one line as Answer: <integer>.","expected_answer":56}
+{"request_id":"qdel-20","prompt":"A delivery covers 16 kilometers per hour for 3 hours. How many kilometers are covered? Return only one line as Answer: <integer>.","expected_answer":48}

@@ -1,14 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="460" viewBox="0 0 1200 460" role="img" aria-labelledby="title desc">
-  <title id="title">部署与异构系统学习路线</title><desc id="desc">从模型产物契约经过 backend、设备路径、服务分层与观测，最终形成部署决策。</desc>
+  <title id="title">部署与异构系统学习路线</title><desc id="desc">默认从候选契约、单机执行进入回归与选择；设备路径异常或单实例不足时，再经设备路径、多设备与服务分层返回回归验证。</desc>
   <defs><marker id="a" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9z" fill="#476a95"/></marker><style>text{font-family:Arial,'Noto Sans SC',sans-serif;fill:#17324d}.h{font-size:18px;font-weight:700}.s{font-size:14px}.cap{font-size:13px;fill:#55708a}</style></defs>
   <rect width="1200" height="460" rx="20" fill="#f5f9fd"/>
   <text x="52" y="50" class="h">部署与异构：从可加载候选到可交付服务</text>
-  <text x="52" y="77" class="cap">每一步都保留候选身份、共同 workload、质量门槛与 evidence level。</text>
+  <text x="52" y="77" class="cap">固定候选身份、请求负载和质量门槛，分别检查执行路径与测量结果。</text>
   <g fill="#fff" stroke="#9fc0df" stroke-width="2">
     <rect x="52" y="150" width="158" height="126" rx="14"/><rect x="244" y="150" width="158" height="126" rx="14"/><rect x="436" y="150" width="158" height="126" rx="14"/><rect x="628" y="150" width="158" height="126" rx="14"/><rect x="820" y="150" width="158" height="126" rx="14"/><rect x="1012" y="150" width="136" height="126" rx="14"/>
   </g>
-  <g stroke="#476a95" stroke-width="3" fill="none" marker-end="url(#a)"><path d="M210 213H238"/><path d="M402 213H430"/><path d="M594 213H622"/><path d="M786 213H814"/><path d="M978 213H1006"/></g>
+  <g stroke="#476a95" stroke-width="3" fill="none" marker-end="url(#a)"><path d="M210 213H244"/><path d="M323 150V115H899V150"/><path d="M978 213H1012"/></g>
+  <g stroke="#476a95" stroke-width="2" stroke-dasharray="6 5" fill="none" marker-end="url(#a)"><path d="M402 213H436"/><path d="M594 213H628"/><path d="M786 213H820"/></g>
+  <text x="610" y="104" text-anchor="middle" class="cap">单机默认路径：执行后进入回归与选择</text>
+  <text x="610" y="304" text-anchor="middle" class="cap">设备路径异常或单实例不足时，再进入 Task2／3</text>
   <g text-anchor="middle"><text x="131" y="190" class="h">Task0</text><text x="131" y="216" class="s">模型产物</text><text x="131" y="239" class="s">与部署契约</text><text x="323" y="190" class="h">Task1</text><text x="323" y="216" class="s">Backend 与</text><text x="323" y="239" class="s">单机执行</text><text x="515" y="190" class="h">Task2</text><text x="515" y="216" class="s">设备协同</text><text x="515" y="239" class="s">与数据路径</text><text x="707" y="190" class="h">Task3</text><text x="707" y="216" class="s">多设备与</text><text x="707" y="239" class="s">服务分层</text><text x="899" y="190" class="h">Task4</text><text x="899" y="216" class="s">观测、回归</text><text x="899" y="239" class="s">与发布</text><text x="1080" y="190" class="h">Task5–6</text><text x="1080" y="216" class="s">选型、成本</text><text x="1080" y="239" class="s">与交付</text></g>
   <g fill="#e8f3ed" stroke="#82b495" stroke-width="2"><rect x="244" y="330" width="158" height="64" rx="12"/><rect x="628" y="330" width="158" height="64" rx="12"/><rect x="1012" y="330" width="136" height="64" rx="12"/></g>
-  <g text-anchor="middle"><text x="323" y="357" class="s">66：浮点 baseline</text><text x="323" y="380" class="s">72：单卡部署</text><text x="707" y="357" class="s">81：多卡推理</text><text x="707" y="380" class="s">39：PD 分层机制</text><text x="1080" y="357" class="s">83：Serving profile</text><text x="1080" y="380" class="s">Part 05：交付决策</text></g>
+  <g text-anchor="middle"><text x="323" y="357" class="s">66：浮点 baseline</text><text x="323" y="380" class="s">72：单卡部署</text><text x="707" y="357" class="s">81：多卡推理</text><text x="707" y="380" class="s">39：PD 分层机制</text><text x="1080" y="357" class="s">83：量化服务配置</text><text x="1080" y="380" class="s">Part 05：交付决策</text></g>
 </svg>

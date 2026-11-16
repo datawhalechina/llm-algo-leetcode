@@ -12,9 +12,10 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "tools"))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-from performance_result_review import (
+from tools.performance_result_review import (
     FORMATS,
     read_composition_result,
     read_performance_result,
@@ -329,7 +330,7 @@ class InputIOReaderTests(unittest.TestCase):
                 yield path, json.loads(path.read_text())
 
     def read_fixture(self, record, expected=None):
-        from performance_result_review import read_input_io_result
+        from tools.performance_result_review import read_input_io_result
         expected = expected or record
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "result.json"
@@ -337,7 +338,7 @@ class InputIOReaderTests(unittest.TestCase):
             return read_input_io_result(path, semantic_id=expected["semantic_id"], run_label=expected["run_label"])
 
     def test_history_is_checked_without_mutation(self):
-        from performance_result_review import read_input_io_result
+        from tools.performance_result_review import read_input_io_result
         for path, record in self.records():
             original = path.read_bytes()
             loaded, review = read_input_io_result(path, semantic_id=record["semantic_id"], run_label=record["run_label"])

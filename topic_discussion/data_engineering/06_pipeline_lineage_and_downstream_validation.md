@@ -33,4 +33,4 @@
 
 ## 从数据版本进入项目交付
 
-[Part 02 · 64 SFT 数据质量项目](../../02_PyTorch_Algorithms/64_SFT_Data_Quality_Project.ipynb)验证训练数据准入；[Part 05 · 后训练交付综合项目](../../05_Integrated_Projects_and_Decisions/02_Post_Training_Delivery_Project.md)消费固定数据版本并给出候选采用判断。检索或性能消费者使用同一运行身份，但采用各自的质量和成本指标。
+[Part 02 · 64 SFT 数据质量项目](../../02_PyTorch_Algorithms/64_SFT_Data_Quality_Project.ipynb)检查既定训练数据能否使用；[Part 05 · MiniMind 后训练项目](../../05_Integrated_Projects_and_Decisions/02_Post_Training_Delivery/index.md)独立生成并固定自己的训练与评测数据，比较全参数 SFT、LoRA 与后续 DPO。两者可用于学习数据检查与下游比较，不是直接传递数据文件的同一条流水线。检索或性能任务应分别保留输入版本，并采用各自的质量和成本指标。

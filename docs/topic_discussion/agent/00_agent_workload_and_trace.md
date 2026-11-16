@@ -1,10 +1,10 @@
 # 00 Agent 工作负载与执行链
 
-## 页面目标
+## 学习问题
 
 Agent 的性能与可靠性不能只按一次模型调用衡量。一个任务会在模型生成、工具执行、上下文更新和重试之间往返；因此先把“任务完成”拆成可记录的轨迹，后续的数据、沙盒、调度和评测才有共同对象。
 
-## 核心机制：从单轮请求到任务轨迹
+## 单轮请求怎样扩展为任务轨迹
 
 | 对象 | 在单轮推理中 | 在 Agent 任务中 | 需要记录的结果 |
 |:---|:---|:---|:---|
@@ -15,9 +15,9 @@ Agent 的性能与可靠性不能只按一次模型调用衡量。一个任务�
 
 ![Agent 从任务输入到可审计轨迹](../../public/topic_discussion/agent/agent_workload_trace.svg)
 
-## Workload 契约
+## 哪些条件必须在比较前固定
 
-开始比较 Agent 策略前，先固定任务集合和工具行为。相同 prompt 但工具延迟、返回值或环境状态不同，不能视作同一 workload。
+开始比较智能体策略前，先固定任务集合和工具行为。相同提示但工具延迟、返回值或环境状态不同，不能视作同一工作负载。
 
 | 契约字段 | 需要固定或保存的内容 | 为什么影响结论 |
 |:---|:---|:---|
@@ -27,14 +27,14 @@ Agent 的性能与可靠性不能只按一次模型调用衡量。一个任务�
 | 上下文 | memory 规则、截断、压缩与注入内容 | 影响每步输入长度和行为一致性 |
 | 证据 | trace、日志、输出、环境快照与失败原因 | 让任务结果可复查、可比较 |
 
-## 连接到现有专题
+## 一条轨迹需要哪些外部证据
 
 | 需要补的能力 | 入口 | 在 Agent 中的作用 |
 |:---|:---|:---|
-| 请求阶段、队列与服务指标 | [推理优化](../inference_optimization/intro.md)、[70 Serving 调度](../../02_PyTorch_Algorithms/70_Serving_Scheduler_Benchmark.md) | 拆分模型等待、队列等待与工具等待 |
-| 轨迹数据、奖励与评测 | [后训练优化](../post_training_optimization/intro.md)、[50 偏好数据与评测](../../02_PyTorch_Algorithms/50_Preference_Data_and_Evaluation.md) | 定义轨迹质量、验证器与回归集 |
+| 请求阶段、队列与服务指标 | [推理优化](../inference_optimization/intro.md)、[Part 02 · 70 Serving 调度](../../02_PyTorch_Algorithms/70_Serving_Scheduler_Benchmark.md) | 拆分模型等待、队列等待与工具等待 |
+| 轨迹数据、奖励与评测 | [后训练优化](../post_training_optimization/intro.md)、[Part 02 · 50 偏好数据与评测](../../02_PyTorch_Algorithms/50_Preference_Data_and_Evaluation.md) | 定义轨迹质量、验证器与回归集 |
 | trace、资源与关键路径 | [性能优化](../performance_optimization/intro.md) | 记录模型、工具、网络与沙盒的时间代价 |
 
-## 交付物
+## 什么记录可以支持后续比较
 
-完成本页后，应能写出一份 Agent workload 卡：任务目标、工具集合、成功条件、最大步数、模型配置、环境版本和 trace 字段齐全。Task1 用它生产轨迹数据，Task2 用它固定可复现的执行环境。
+一份可用的智能体工作负载卡应包含任务目标、工具集合、成功条件、最大步数、模型配置、环境版本和执行轨迹字段。轨迹数据生产与沙盒复测都必须引用同一份工作负载身份，才能把行为变化与环境变化分开。

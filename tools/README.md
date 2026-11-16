@@ -16,13 +16,21 @@
 
 下表中的路径除 `verify.py` 外均相对于 `tools/`。完整参数以各命令的 `--help` 和所属专题 Quickstart 为准。
 
+已迁入 [`checks/`](./checks/README.md) 的检查器：`check_source_docs_mirror.py`、`check_mermaid_blocks.py`、`check_svg_arrows.py`、`check_svg_layout.py`。推荐使用 `python -m tools.checks.<模块名>`；旧脚本命令与导入继续转发到同一实现。其他检查器仍在根目录，后续逐批迁移。
+
+文档工具的实现已迁入 [`docs/`](./docs/README.md)：`convert_notebook.py`、`convert_chapter0_1.py`、`sync_docs_navigation.py`、`sync_docs_index.py`。可使用 `python -m tools.docs.<模块名>`；原脚本入口保持兼容，生成文件仍写入根目录的`docs/`。
+
+环境工具的实现已迁入 [`environment/`](./environment/README.md)：`install_environment_profile.py`、`environment_preflight.py`、`register_notebook_runtime.py`。可使用 `python -m tools.environment.<模块名>`；安装、预检与路径注册仍是三个不同操作，迁移不改变环境Profile和注册位置。
+
+实验入口的实现已迁入 [`benchmarks/`](./benchmarks/README.md)：`aggregate_distributed_evidence.py`、`benchmark_inference_backend.py`。可使用 `python -m tools.benchmarks.<模块名>`；这里只存命令实现，实验配置、工作负载与结果仍位于根目录`benchmarks/`。
+
 ## 临时脚本
 
 一次性排查、批量迁移草稿放在 [`_scratch/`](./_scratch/README.md)，不再放到 `tools/` 根目录。该目录默认忽略本地内容，仅保留说明和忽略规则。正式测试、公共运行时、实验结果不放在这里。
 
 ## 长期分类方案
 
-下表是分批迁移的目标，不是当前可用的新命令路径。`tests/` 已承载基础页、机制实现、入口兼容与文档回归测试，其余正式分类尚未整体迁移。按工具职责分类，不按教程小节编号建目录。
+下表列出分批迁移的目标。`tests/`已承载回归测试，`checks/`、`docs/`、`environment/`和`benchmarks/`已迁入上方列出的实现；其余条目的新命令路径尚未整体启用。按工具职责分类，不按教程小节编号建目录。
 
 | 目标目录 | 存放内容 | 现有例子 |
 |:---|:---|:---|

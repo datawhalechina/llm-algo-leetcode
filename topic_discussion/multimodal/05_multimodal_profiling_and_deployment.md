@@ -30,4 +30,4 @@
 
 ## 从关键路径进入候选决策
 
-继续阅读 [06 视觉与多模态交付决策](./06_multimodal_delivery_decision.md)。通用执行轨迹方法由[性能分析](../performance_analysis/intro.md)负责，产物和运行时兼容由[部署与异构](../deployment_heterogeneous/intro.md)负责。
+继续阅读 [06 视觉与多模态交付决策](./06_multimodal_delivery_decision.md)。需要逐事件分析等待时，参照[性能优化 · 时间线与关键路径](../performance_optimization/methods/03_time_breakdown_and_trace_reading.md)；检查产物和运行时兼容时，进入[部署与异构](../deployment_heterogeneous/intro.md)。

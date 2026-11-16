@@ -1,10 +1,10 @@
-# 04 多模态 Workload、缓存与 Baseline
+# 04 多模态工作负载、缓存与基线
 
-## 页面目标
+## 学习问题
 
 纯文本请求通常从 token 化后直接进入 Prefill；图像请求在此之前还会经历媒体读取、预处理、视觉编码和连接器映射。多模态性能比较首先要拆开这些阶段，再判断视觉 token 如何扩大 Prefill 与 KV 状态，并决定瓶颈来自视觉侧、语言侧还是请求配置。
 
-## 核心机制：图像请求新增的关键路径
+## 图像请求增加了哪些执行阶段
 
 | 阶段 | 纯文本请求 | 图像请求新增或改变的工作 | 应记录的指标 |
 |:---|:---|:---|:---|
@@ -15,7 +15,7 @@
 
 ![同一任务下，纯文本与图像请求的阶段对照](../../public/topic_discussion/multimodal/vlm_workload_baseline.svg)
 
-## 缓存与 Baseline 契约
+## 缓存与基线怎样保持可比较
 
 比较不是让“没有图像的请求”替代多模态 baseline，而是在任务目标一致的前提下，分别固定图像 workload 和文本 workload，说明两者的输入差异。
 
@@ -28,14 +28,14 @@
 
 视觉特征、视觉 token 与文本 token 的缓存位置并不相同：媒体预处理结果可避免重复 decode/resize；视觉编码结果可避免同一图像重复进入视觉塔；进入语言模型的视觉 token 会像文本上下文一样影响 Prefill 和 KV 容量。后续缓存策略必须分别记录命中对象、复用范围和质量回归，不能把“图像已经处理过”直接等同于“KV Cache 已复用”。
 
-## 连接到现有专题
+## 阶段证据怎样进入瓶颈归因
 
 | 需要补的能力 | 入口 | 本页如何使用 |
 |:---|:---|:---|
-| Benchmark 与阶段归因 | [性能优化](../performance_optimization/intro.md)、[66 推理性能对比](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.md) | 固定 workload、分阶段计时、记录失败和证据等级 |
-| Prefill、Decode 与 KV | [推理优化](../inference_optimization/intro.md)、[Part02 · 71 MLA / KV 项目](../../02_PyTorch_Algorithms/71_MLA_KV_Cache_Architecture_Benchmark.md) | 判断视觉 token 如何改变容量与服务指标 |
+| 基准测试与阶段归因 | [性能优化](../performance_optimization/intro.md)、[Part 02 · 66 推理性能对比](../../02_PyTorch_Algorithms/66_Inference_Performance_Comparison.md) | 固定工作负载、分阶段计时、记录失败和证据等级 |
+| 预填充、解码与 KV | [推理优化](../inference_optimization/intro.md)、[Part 02 · 71 MLA / KV 项目](../../02_PyTorch_Algorithms/71_MLA_KV_Cache_Architecture_Benchmark.md) | 判断视觉词元如何改变容量与服务指标 |
 | 输入处理与数据契约 | [数据工程](../data_engineering/intro.md) | 区分媒体解析质量问题与模型服务瓶颈 |
 
-## 交付物
+## 什么基线可以支持多模态复测
 
-完成本页后，应有一份可复测的多模态 benchmark 配置：模型和 processor、图片集与任务、分辨率、文本模板、输出上限、硬件、阶段指标、质量规则与失败记录。Task2–6 的 token 压缩、缓存和 backend 对照均复用这份配置。
+可复测基线需要固定模型与处理器、图片集与任务、分辨率、文本模板、输出上限、硬件、阶段指标、质量规则和失败记录。词元压缩、缓存或后端候选只有复用这些条件时，差异才可以归因到被修改的机制。
