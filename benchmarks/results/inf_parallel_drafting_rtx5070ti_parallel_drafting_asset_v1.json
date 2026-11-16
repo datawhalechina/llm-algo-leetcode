@@ -1,0 +1,68 @@
+{
+  "schema_version": "inference-mechanism-gpu/v2",
+  "semantic_id": "INF-PARALLEL-DRAFTING",
+  "environment_profile": "INF-CUDA-MECHANISM",
+  "run_mode": "asset_check",
+  "run_label": "rtx5070ti_parallel_drafting_asset_v1",
+  "framework": {
+    "python": "3.12.15",
+    "packages": {
+      "vllm": false,
+      "speculators": false
+    }
+  },
+  "workload": {
+    "id": "inf-parallel-drafting",
+    "version": "v1",
+    "mechanism": "dspark",
+    "required_assets": [
+      {
+        "name": "target_model_id",
+        "value": "",
+        "configured": false
+      },
+      {
+        "name": "target_model_revision",
+        "value": "",
+        "configured": false
+      },
+      {
+        "name": "speculator_model_id",
+        "value": "",
+        "configured": false
+      },
+      {
+        "name": "speculator_model_revision",
+        "value": "",
+        "configured": false
+      },
+      {
+        "name": "speculator_backend",
+        "value": "",
+        "configured": false
+      }
+    ]
+  },
+  "asset_gate": {
+    "ready": false,
+    "missing_packages": [
+      "vllm",
+      "speculators"
+    ],
+    "missing_assets": [
+      "target_model_id",
+      "target_model_revision",
+      "speculator_model_id",
+      "speculator_model_revision",
+      "speculator_backend"
+    ]
+  },
+  "baseline": null,
+  "candidates": [],
+  "failure": {
+    "type": "assets_not_ready",
+    "message": "公开 DFlash/DSpark 配对或本地训练产物尚未满足；当前单卡不执行替代性探针。"
+  },
+  "evidence_level": "not_ready",
+  "decision": "defer_to_project"
+}
