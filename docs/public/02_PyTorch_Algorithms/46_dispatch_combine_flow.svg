@@ -1,43 +1,56 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
-  <title id="title">MoE Dispatch 与 Combine 数据流</title>
-  <desc id="desc">Token 表示携带 token id、专家 id 和路由权重，通过容量门控、分组发送、专家计算和回程合并恢复原 token 顺序；旁路记录溢出、负载和跨 rank 字节。</desc>
-  <defs>
-    <marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#475569"/></marker>
-    <style>
-      .title{font:700 26px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.sub{font:500 15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.label{font:700 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#111827}.body{font:500 13px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}.observe{fill:none;stroke:#64748b;stroke-width:2;stroke-dasharray:7 6;marker-end:url(#arrow)}.edgeText{font:600 12px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.box{stroke-width:2.5;rx:14}
-    </style>
-  </defs>
-  <rect width="1200" height="620" fill="#f8fafc"/>
-  <text x="48" y="48" class="title">Dispatch / Combine：数据怎样出去，又怎样回到原 token</text>
-  <text x="48" y="76" class="sub">路由索引和权重随表示一起流动；通信代价是旁路证据，不是参与合并的数据分支。</text>
-
-  <rect x="36" y="150" width="166" height="92" class="box" fill="#eff6ff" stroke="#3b82f6"/>
-  <text x="119" y="184" text-anchor="middle" class="label">Token 表示</text><text x="119" y="208" text-anchor="middle" class="body">token id · hidden</text>
-  <rect x="238" y="150" width="166" height="92" class="box" fill="#eef2ff" stroke="#6366f1"/>
-  <text x="321" y="184" text-anchor="middle" class="label">路由索引</text><text x="321" y="208" text-anchor="middle" class="body">expert id · weight</text>
-  <rect x="440" y="150" width="166" height="92" class="box" fill="#fff7ed" stroke="#ea580c"/>
-  <text x="523" y="184" text-anchor="middle" class="label">容量门控</text><text x="523" y="208" text-anchor="middle" class="body">accepted · overflow</text>
-  <rect x="642" y="150" width="174" height="92" class="box" fill="#fef3c7" stroke="#d97706"/>
-  <text x="729" y="184" text-anchor="middle" class="label">Dispatch 打包</text><text x="729" y="208" text-anchor="middle" class="body">按 owner rank 分组</text>
-  <rect x="852" y="150" width="174" height="92" class="box" fill="#ecfccb" stroke="#65a30d"/>
-  <text x="939" y="184" text-anchor="middle" class="label">专家计算</text><text x="939" y="208" text-anchor="middle" class="body">All-to-All 后执行</text>
-
-  <rect x="852" y="332" width="174" height="92" class="box" fill="#f5f3ff" stroke="#8b5cf6"/>
-  <text x="939" y="366" text-anchor="middle" class="label">Combine 回程</text><text x="939" y="390" text-anchor="middle" class="body">结果 + token id + weight</text>
-  <rect x="642" y="332" width="174" height="92" class="box" fill="#ecfeff" stroke="#0891b2"/>
-  <text x="729" y="366" text-anchor="middle" class="label">原序输出</text><text x="729" y="390" text-anchor="middle" class="body">按 token id 加权累加</text>
-  <rect x="238" y="474" width="368" height="82" class="box" fill="#e0f2fe" stroke="#0284c7"/>
-  <text x="422" y="508" text-anchor="middle" class="label">旁路账本</text><text x="422" y="532" text-anchor="middle" class="body">accepted / overflow · rank 负载 · 跨 rank 往返字节</text>
-
-  <path d="M202 196 H238" class="edge"/>
-  <path d="M404 196 H440" class="edge"/>
-  <path d="M606 196 H642" class="edge"/>
-  <path d="M816 196 H852" class="edge"/>
-  <text x="820" y="184" class="edgeText">All-to-All</text>
-  <path d="M939 242 V332" class="edge"/>
-  <text x="950" y="291" class="edgeText">回程</text>
-  <path d="M852 378 H816" class="edge"/>
-  <path d="M523 242 C510 330 470 407 438 474" class="observe"/>
-  <path d="M729 242 C690 340 582 430 520 474" class="observe"/>
-  <path d="M939 424 C820 485 690 508 606 515" class="observe"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="620" viewBox="0 0 1500 620" role="img" aria-labelledby="title desc">
+<title id="title">两个Token如何经本地和远端专家恢复原序输出</title><desc id="desc">来源rank0的t0路由到E0和E2，t1路由到E1和E3。rank0拥有E0和E1，rank1拥有E2和E3。远端结果回到来源rank后按Token索引和权重combine，得到t0输出0.5、3及t1输出2、1。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto">
+<path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:26px;font-weight:700}.group{font-size:18px;font-weight:700}.head{font-size:17px;font-weight:700}.body{font-size:15px;font-weight:400}.sub{font-size:16px;fill:#475569}.flow{fill:none;stroke:#475569;stroke-width:2.5;marker-end:url(#arrow)}</style></defs>
+<rect width="1500" height="620" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="55" y="48" class="title" text-anchor="start">两条本地路由、两条跨rank路由，怎样合回两个Token？</text>
+<text x="55" y="80" class="sub" text-anchor="start">构造例：Top-2、4个专家，每专家接收1条路由；容量为1时全部进入计算，索引与权重保留在来源rank。</text>
+<g id="source">
+<rect x="55" y="260" width="300" height="100" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2" class="node"/>
+<text x="205" y="287" class="head" text-anchor="middle">来源rank0：t0、t1</text>
+<text x="205" y="313" class="body" text-anchor="middle">t0权重(E0,E2)＝(0.25,0.75)</text>
+<text x="205" y="336" class="body" text-anchor="middle">t1权重(E1,E3)＝(0.5,0.5)</text>
+</g>
+<g id="rank0-experts">
+<rect x="535" y="140" width="280" height="100" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2" class="node"/>
+<text x="675" y="167" class="head" text-anchor="middle">rank0拥有E0、E1</text>
+<text x="675" y="193" class="body" text-anchor="middle">本地路由：t0→E0；t1→E1</text>
+<text x="675" y="216" class="body" text-anchor="middle">各接收1条Token表示</text>
+</g>
+<g id="rank1-experts">
+<rect x="535" y="360" width="280" height="100" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2" class="node"/>
+<text x="675" y="387" class="head" text-anchor="middle">rank1拥有E2、E3</text>
+<text x="675" y="413" class="body" text-anchor="middle">跨rank路由：t0→E2；t1→E3</text>
+<text x="675" y="436" class="body" text-anchor="middle">各接收1条Token表示</text>
+</g>
+<g id="local-results">
+<rect x="925" y="140" width="230" height="100" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2" class="node"/>
+<text x="1040" y="167" class="head" text-anchor="middle">本地专家结果</text>
+<text x="1040" y="193" class="body" text-anchor="middle">E0(t0)＝[2,0]</text>
+<text x="1040" y="216" class="body" text-anchor="middle">E1(t1)＝[1,1]</text>
+</g>
+<g id="remote-results">
+<rect x="925" y="360" width="230" height="100" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2" class="node"/>
+<text x="1040" y="387" class="head" text-anchor="middle">远端结果回到rank0</text>
+<text x="1040" y="413" class="body" text-anchor="middle">E2(t0)＝[0,4]</text>
+<text x="1040" y="436" class="body" text-anchor="middle">E3(t1)＝[3,1]</text>
+</g>
+<g id="combined-result">
+<rect x="1225" y="260" width="220" height="100" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" class="node"/>
+<text x="1335" y="287" class="head" text-anchor="middle">按原Token加权合并</text>
+<text x="1335" y="313" class="body" text-anchor="middle">t0＝[0.5,3]</text>
+<text x="1335" y="336" class="body" text-anchor="middle">t1＝[2,1]</text>
+</g>
+<path id="local-dispatch" d="M355 285H435V190H535" class="flow"/>
+<text x="480" y="174" class="body" text-anchor="middle">本地</text>
+<path id="remote-dispatch" d="M355 335H435V410H535" class="flow"/>
+<text x="480" y="394" class="body" text-anchor="middle">分发</text>
+<path id="local-result" d="M815 190H925" class="flow"/>
+<path id="remote-return" d="M815 410H925" class="flow"/>
+<text x="870" y="394" class="body" text-anchor="middle">回程</text>
+<path id="local-to-output" d="M1155 190H1190V285H1225" class="flow"/>
+<path id="remote-to-output" d="M1155 410H1190V335H1225" class="flow"/>
+<text x="55" y="515" class="group" text-anchor="start">按索引恢复顺序，再用来源rank保留的权重累加</text>
+<text x="55" y="546" class="body" text-anchor="start">t0：0.25×[2,0]＋0.75×[0,4]＝[0.5,3]；t1：0.5×[1,1]＋0.5×[3,1]＝[2,1]</text>
+<text x="55" y="587" class="sub" text-anchor="start">载荷示例：D=2、FP32，每路由8B；跨rank去程16B、回程16B（仅表示载荷，不含元数据与协议）。</text></svg>

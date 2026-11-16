@@ -1,45 +1,55 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
-  <title id="title">NCCL 通信剖析总览：从并行工作负载到热点归因</title>
-  <desc id="desc">并行工作负载同时产生计算时间线和 collective 时间线；两者对齐后得到可隐藏与暴露的通信时间，再按 collective 和 rank 归因。</desc>
-  <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
-    <style>
-      .title{font:700 27px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.sub{font:500 15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.group{font:700 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.node{font:700 18px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.body{font:500 14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.arrow{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}.shell{stroke-width:2.5;stroke-dasharray:7 6;rx:18}.box{stroke-width:2.5;rx:14}
-    </style>
-  </defs>
-  <rect width="1200" height="620" fill="#f8fafc"/>
-  <text x="48" y="54" class="title">NCCL 通信剖析：从并行工作负载到热点归因</text>
-  <text x="48" y="82" class="sub">关键不是单独测一条 collective，而是把计算与通信放到同一时间轴中，找出真正暴露在关键路径上的通信。</text>
-
-  <rect x="435" y="112" width="330" height="72" class="box" fill="#eef2ff" stroke="#6366f1"/>
-  <text x="600" y="143" text-anchor="middle" class="node">并行工作负载</text>
-  <text x="600" y="168" text-anchor="middle" class="body">训练或推理 · 多 rank</text>
-
-  <rect x="75" y="236" width="425" height="178" class="shell" fill="#eff6ff" stroke="#60a5fa"/>
-  <text x="99" y="266" class="group">计算时间线</text>
-  <rect x="102" y="288" width="165" height="86" class="box" fill="#fff" stroke="#3b82f6"/>
-  <text x="184" y="323" text-anchor="middle" class="node">计算区间</text>
-  <text x="184" y="348" text-anchor="middle" class="body">forward / backward</text>
-  <rect x="305" y="288" width="165" height="86" class="box" fill="#fff" stroke="#3b82f6"/>
-  <text x="387" y="323" text-anchor="middle" class="node">执行位置</text>
-  <text x="387" y="348" text-anchor="middle" class="body">rank · stream</text>
-
-  <rect x="700" y="236" width="425" height="178" class="shell" fill="#fff7ed" stroke="#fb923c"/>
-  <text x="724" y="266" class="group">collective 时间线</text>
-  <rect x="727" y="288" width="165" height="86" class="box" fill="#fff" stroke="#f97316"/>
-  <text x="809" y="323" text-anchor="middle" class="node">通信对象</text>
-  <text x="809" y="348" text-anchor="middle" class="body">all-reduce / all-to-all</text>
-  <rect x="930" y="288" width="165" height="86" class="box" fill="#fff" stroke="#f97316"/>
-  <text x="1012" y="323" text-anchor="middle" class="node">传输证据</text>
-  <text x="1012" y="348" text-anchor="middle" class="body">耗时 · bytes · rank</text>
-
-  <rect x="402" y="462" width="396" height="108" class="box" fill="#f0fdf4" stroke="#22c55e"/>
-  <text x="600" y="498" text-anchor="middle" class="node">在同一时间轴对齐</text>
-  <text x="600" y="524" text-anchor="middle" class="body">区分可被计算隐藏的通信与暴露通信</text>
-  <text x="600" y="548" text-anchor="middle" class="body">再按 collective 与 rank 汇总优先级</text>
-
-  <path d="M600 184V210H287V236" class="arrow"/>
-  <path d="M600 210H912V236" class="arrow"/>
-  <path d="M287 414V438H510V462" class="arrow"/>
-  <path d="M912 414V438H690V462" class="arrow"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="620" viewBox="0 0 1500 620" role="img" aria-labelledby="title desc">
+<title id="title">NCCL剖析如何从事件对齐走到通信排查</title><desc id="desc">固定负载分别提供计算事件和collective事件。按同rank、同时间单位对齐，合并计算覆盖后求通信交集和剩余时间，再按collective汇总。真实Trace补充rank、stream、同步依赖，用于解释等待。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto">
+<path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:26px;font-weight:700}.group{font-size:18px;font-weight:700}.head{font-size:17px;font-weight:700}.body{font-size:15px;font-weight:400}.sub{font-size:16px;fill:#475569}.flow{fill:none;stroke:#475569;stroke-width:2.5;marker-end:url(#arrow)}.support{fill:none;stroke:#64748b;stroke-width:2;stroke-dasharray:7 6;marker-end:url(#arrow)}</style></defs>
+<rect width="1500" height="620" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="55" y="48" class="title" text-anchor="start">NCCL 通信剖析：事件怎样对齐，哪些等待需要继续排查？</text>
+<text x="55" y="80" class="sub" text-anchor="start">CPU构造事件用于理解区间统计；真实设备Trace还需保留执行上下文与同步依赖。</text>
+<g id="workload">
+<rect x="55" y="240" width="230" height="80" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2" class="node"/>
+<text x="170" y="267" class="head" text-anchor="middle">固定模型与负载</text>
+<text x="170" y="293" class="body" text-anchor="middle">采集计算与通信事件</text>
+</g>
+<g id="compute-events">
+<rect x="435" y="140" width="230" height="80" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2" class="node"/>
+<text x="550" y="167" class="head" text-anchor="middle">计算事件</text>
+<text x="550" y="193" class="body" text-anchor="middle">名称、起止时间</text>
+</g>
+<g id="communication-events">
+<rect x="435" y="340" width="230" height="80" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2" class="node"/>
+<text x="550" y="367" class="head" text-anchor="middle">通信事件</text>
+<text x="550" y="393" class="body" text-anchor="middle">collective、bytes、起止时间</text>
+</g>
+<g id="alignment">
+<rect x="805" y="240" width="230" height="80" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2" class="node"/>
+<text x="920" y="267" class="head" text-anchor="middle">同rank、同单位对齐</text>
+<text x="920" y="293" class="body" text-anchor="middle">计算区间先取并集</text>
+</g>
+<g id="interval-estimates">
+<rect x="1205" y="240" width="230" height="80" rx="12" fill="#e0f2fe" stroke="#0284c7" stroke-width="2" class="node"/>
+<text x="1320" y="267" class="head" text-anchor="middle">区间交集与剩余时间</text>
+<text x="1320" y="293" class="body" text-anchor="middle">逐事件统计，保留归属</text>
+</g>
+<g id="execution-context">
+<rect x="805" y="460" width="230" height="80" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2" class="node"/>
+<text x="920" y="487" class="head" text-anchor="middle">真实Trace补充上下文</text>
+<text x="920" y="513" class="body" text-anchor="middle">rank、stream与同步依赖</text>
+</g>
+<g id="collective-summary">
+<rect x="1205" y="460" width="230" height="80" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" class="node"/>
+<text x="1320" y="487" class="head" text-anchor="middle">按collective汇总</text>
+<text x="1320" y="513" class="body" text-anchor="middle">按总暴露时间确定排查顺序</text>
+</g>
+<path id="workload-to-compute" d="M285 265H355V180H435" class="flow"/>
+<path id="workload-to-communication" d="M285 295H355V380H435" class="flow"/>
+<path id="compute-to-alignment" d="M665 180H735V265H805" class="flow"/>
+<path id="communication-to-alignment" d="M665 380H735V295H805" class="flow"/>
+<path id="alignment-to-estimates" d="M1035 280H1205" class="flow"/>
+<path id="context-to-alignment" d="M920 460V320" class="support"/>
+<text x="934" y="399" class="body" text-anchor="start">解释依赖与等待</text>
+<path id="estimates-to-summary" d="M1320 320V460" class="flow"/>
+<text x="55" y="466" class="group" text-anchor="start">保留两层判断</text>
+<text x="55" y="500" class="body" text-anchor="start">区间统计：先找到哪些通信值得排查</text>
+<text x="55" y="530" class="body" text-anchor="start">依赖与完成时间：再判断它是否拖慢整轮执行</text>
+<text x="55" y="590" class="sub" text-anchor="start">不同rank分别整理时间线；rank差异与同步等待根据实际采集信息解释，缺失项保留unknown。</text></svg>
