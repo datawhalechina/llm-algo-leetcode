@@ -31,7 +31,7 @@
 | `TRAIN-SCHEDULER-CLOCK` / Part 02 · 12 | 成功更新与跳步下的 WSD 时钟 | Warmup/Stable/Decay 边界、有效更新计数 | CPU 机制完整；无需独立 GPU benchmark |
 | `TRAIN-UPDATE-DYNAMICS` / Part 02 · 55 | 基准学习率 / 高学习率无裁剪 / 高学习率裁剪 | 有限值、梯度范数、裁剪系数、参数增量、峰值、step median/P95 | GPU 实验已准备；局部稳定性不替代独立质量与保留集评测 |
 | `TRAIN-CONTINUAL-PRETRAIN` / Part 02 · 56 | 0 更新基线 → 固定步数全序列领域续训 | 领域 / 保留 token loss、有限值、checkpoint 字段、峰值、step median/P95 | GPU 实验已准备；内置小文本只验证测量链，真实结论需版本化领域与保留集 |
-| `TRAIN-AMP-BACKWARD` / 混合精度反向 | FP32 → AMP 与溢出样本 | 有限值、scale、跳步、峰值、单步时间 | RTX 5070 Ti、Qwen2.5-0.5B 的 `default14` 已验证；FP16 显存下降约 10.7%，时间基本持平 |
+| `TRAIN-AMP-BACKWARD` / 混合精度反向 | FP32 → AMP 与人工 FP16 溢出样本 | 梯度范数有限值、参数探针变化、缩放值、峰值、单步时间 | 历史 [default14](../../../benchmarks/results/train_mixed_precision_backward/train-amp-backward_default14.json)（RTX 5070 Ti、Qwen2.5-0.5B）通过所记录的更新检查；峰值约 4841 → 4322 MiB，中位时间 96.50 → 94.21 ms。程序 `accept` 依据更新检查；稳定速度收益待交替配对，BF16 异常跳步待补显式检查 |
 | `TRAIN-CHECKPOINT` / Part 02 · 19 | 普通保存 → 原生 gradient checkpointing | loss/梯度范数、峰值、单步时间 | RTX 5070 Ti、Qwen2.5-0.5B 的 `b2s512_default2` 已验证；allocated 峰值降低约 33.7%，median 增加约 19.2%，决策为 `accept` |
 | `TRAIN-OFFLOAD` / Part 02 · 42 | GPU 驻留 → host offload | loss/梯度范数、D2H/H2D、峰值、单步时间 | RTX 5070 Ti、Qwen2.5-0.5B 的 `b2s512_default1` 已验证；allocated 峰值降低约 34.3%，median 增至 5.87 倍，决策为 `tune` |
 | `TRAIN-STATE-LEDGER` / Part 02 · 43 | 基线生命周期 → 策略后生命周期 | 分阶段驻留、峰值对象、理论峰值 | CPU 账本完整；真实峰值由 Part 02 · 19、42、76 提供 |
@@ -40,9 +40,10 @@
 
 | 稳定项目 ID | 输入机制资产 | 项目补充的证据 |
 |:---|:---|:---|
-| `TRAIN-BASELINE` / Part 02 · 73 | 监督、有效更新与 AMP | 固定模型和数据的训练基线、吞吐与质量 |
-| `TRAIN-PROFILING-DIAGNOSIS` / Part 02 · 74 | 生命周期账本与 trace 字段 | 主导状态、关键路径和候选归因 |
-| `TRAIN-MEMORY-STRATEGY` / Part 02 · 76 | checkpoint、offload、AMP | 单策略与组合策略的质量—容量—时间决策 |
+| `PERF-TRAINING-BASELINE` / [Part 02 · 73](../../02_PyTorch_Algorithms/73_Training_Performance_Analysis.md) | 监督、有效更新与 AMP | 固定模型和数据的训练基线、吞吐与质量 |
+| `PERF-PROFILING-CLOSURE` / [Part 02 · 74](../../02_PyTorch_Algorithms/74_Profiling_Driven_End_to_End_Optimization.md) | 生命周期账本与 trace 字段 | 固定训练条件的采用判断与激活显存专项剖析 |
+| `PERF-OPTIMIZER-PATH` / [Part 02 · 75](../../02_PyTorch_Algorithms/75_Optimizer_Execution_Path_Benchmark.md) | AdamW 更新与执行路径 | 单张量、foreach、fused 的数值误差、耗时和峰值显存 |
+| `PERF-MEMORY-STRATEGY` / [Part 02 · 76](../../02_PyTorch_Algorithms/76_Activation_Checkpoint_Offload_Benchmark.md) | checkpoint、offload、AMP | 固定训练条件下的策略对照及预算敏感性 |
 
 ## 公共结果字段
 

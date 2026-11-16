@@ -1,0 +1,100 @@
+{
+  "schema_version": "training-mechanism-gpu/v3",
+  "semantic_id": "TRAIN-AMP-BACKWARD",
+  "profile_id": "TRAIN-CUDA-MECHANISM",
+  "run_label": "default14",
+  "model": {
+    "id": "Qwen/Qwen2.5-0.5B",
+    "requested_revision": "main",
+    "resolved_commit": "060db6499f32faf8b98477b0a26969ef7d8b9987",
+    "resolution_source": "huggingface_hub_api",
+    "tokenizer_class": "Qwen2Tokenizer"
+  },
+  "workload": {
+    "candidate_dtype": "float16",
+    "batch_size": 1,
+    "seq_len": 128,
+    "repeats": 20,
+    "warmup": 1,
+    "learning_rate": 0.0001,
+    "initial_scale": 65536.0,
+    "max_scale_backoff_steps": 12,
+    "seed": 2026,
+    "prompts": [
+      "Explain mixed precision training."
+    ]
+  },
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000,
+    "compute_capability": [
+      12,
+      0
+    ],
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8",
+    "bf16_supported": true
+  },
+  "metrics": {
+    "baseline": {
+      "label": "fp32",
+      "dtype": "torch.float32",
+      "status": "measured",
+      "step_median_ms": 96.49764633178711,
+      "step_p95_ms": 152.78189086914062,
+      "peak_allocated_mb": 4841.42626953125,
+      "grad_norm": 461.010498046875,
+      "grad_is_finite": true,
+      "probe_parameter": "model.layers.0.self_attn.q_proj.weight",
+      "parameter_delta_max": 7.636845111846924e-08,
+      "scale_initial": 1.0,
+      "scale_before": 1.0,
+      "scale_after": 1.0,
+      "scale_backoff_steps": 0,
+      "attempted_steps": 21,
+      "successful_steps": 21,
+      "step_applied": true
+    },
+    "candidate": {
+      "label": "amp",
+      "dtype": "torch.float16",
+      "status": "measured",
+      "step_median_ms": 94.20500946044922,
+      "step_p95_ms": 157.0991668701172,
+      "peak_allocated_mb": 4321.677734375,
+      "grad_norm": 468.8563537597656,
+      "grad_is_finite": true,
+      "probe_parameter": "model.layers.0.self_attn.q_proj.weight",
+      "parameter_delta_max": 7.962808012962341e-08,
+      "scale_initial": 65536.0,
+      "scale_before": 1024.0,
+      "scale_after": 1024.0,
+      "scale_backoff_steps": 6,
+      "attempted_steps": 27,
+      "successful_steps": 21,
+      "step_applied": true
+    },
+    "overflow": {
+      "label": "overflow",
+      "dtype": "torch.float16",
+      "status": "measured",
+      "step_median_ms": null,
+      "step_p95_ms": null,
+      "peak_allocated_mb": 4321.67724609375,
+      "grad_norm": null,
+      "grad_is_finite": false,
+      "probe_parameter": "model.layers.0.self_attn.q_proj.weight",
+      "parameter_delta_max": 0.0,
+      "scale_initial": 65536.0,
+      "scale_before": 65536.0,
+      "scale_after": 32768.0,
+      "scale_backoff_steps": 0,
+      "attempted_steps": 1,
+      "successful_steps": 0,
+      "step_applied": false
+    }
+  },
+  "failure": null,
+  "evidence_level": "real_model_mechanism_benchmark",
+  "decision": "accept"
+}
