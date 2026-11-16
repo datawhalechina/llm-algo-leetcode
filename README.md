@@ -7,7 +7,7 @@
 
 <p align="center">
   <strong>主学习路线 / Core Routes</strong><br>
-  <a href="./topic_discussion/llm_architecture_evolution/intro.md">大模型架构演进 / Architecture</a> ·
+  <a href="./topic_discussion/model_architecture_and_training/intro.md">模型架构与训练 / Architecture &amp; Training</a> ·
   <a href="./topic_discussion/post_training_optimization/intro.md">后训练优化 / Post-Training</a> ·
   <a href="./topic_discussion/inference_optimization/intro.md">推理优化 / Inference</a> ·
   <a href="./topic_discussion/performance_optimization/intro.md">性能优化 / Performance</a> ·
@@ -50,7 +50,7 @@
 
 ## 🌐 教程总览
 
-教程提供两种阅读方式：按 `Part 00 -> Part 04` 逐层推进，或从大模型架构演进、后训练优化、推理优化、性能优化和算子优化五条主学习路线进入，再按问题回补基础与横向专题。五条路线的排列表示从模型结构、能力形成到服务运行、性能诊断和底层实现的对象层次，不是严格的前置依赖。推荐先从 [`Part 02`](./02_PyTorch_Algorithms/intro.md) 建立算法实践感，再按需要回补 `Part 00` / `Part 01`，最后进入 `Part 03` / `Part 04`；完成相关主线后，可进入 `Part 05` 的综合项目，把机制、实验和架构决策收敛为可交付方案。
+教程提供两种阅读方式：按 `Part 00 -> Part 04` 逐层推进，或从模型架构与训练、后训练优化、推理优化、性能优化和算子优化五条主学习路线进入，再按问题回补基础与横向专题。五条路线的排列表示从模型结构、能力形成到服务运行、性能诊断和底层实现的对象层次，不是严格的前置依赖。推荐先从 [`Part 02`](./02_PyTorch_Algorithms/intro.md) 建立算法实践感，再按需要回补 `Part 00` / `Part 01`，最后进入 `Part 03` / `Part 04`；完成相关主线后，可进入 `Part 05` 的综合项目，把机制、实验和架构决策收敛为可交付方案。
 
 [topic_discussion](./topic_discussion/intro.md) 用于组织跨 Part 的专题路线。页面顶部提供常用专题入口，下面的资产总览和专题总览分别说明主线结构与专题覆盖范围。
 
@@ -80,13 +80,13 @@
 
 | 层级 | 入口 | 内容定位 | 适合对象 | 状态 |
 | ---- | ---- | ---- | ---- | ---- |
-| 主学习路线（建设中） | [`大模型架构演进（LLM Architecture Evolution）`](./topic_discussion/llm_architecture_evolution/intro.md) | 从 Decoder Block、Attention、位置、MoE 到模型结构审计。 | 想读懂模型结构选择及其质量、资源与系统影响的学习者。 | 🛠 建设中 |
+| 主学习路线（建设中） | [`模型架构与训练（Model Architecture and Training）`](./topic_discussion/model_architecture_and_training/intro.md) | 从注意力、位置、专家和记忆结构，进入局部反向、有效更新与状态策略。 | 想把模型结构与训练机制联系起来的学习者。 | 🛠 建设中 |
 | 主学习路线（建设中） | [`后训练优化（Post-Training Optimization）`](./topic_discussion/post_training_optimization/intro.md) | SFT / LoRA 基础、偏好数据、DPO、GRPO 与项目交付。 | 想从监督微调继续进入偏好优化与对齐的学习者。 | 🛠 建设中 |
 | 主学习路线 | [`推理优化（Inference Optimization）`](./topic_discussion/inference_optimization/intro.md) | FlashAttention、解码、PagedAttention、cache 与 benchmark。 | 想系统理解推理加速路径的学习者。 | ✅ 持续优化 |
-| 主学习路线 | [`性能优化（Performance Optimization）`](./topic_discussion/performance_optimization/intro.md) | 从性能分析、显存管理、通信代价到端到端决策。 | 想系统定位并优化训练、推理和系统性能的学习者。 | 🛠 建设中 |
+| 主学习路线 | [`性能优化（Performance Optimization）`](./topic_discussion/performance_optimization/intro.md) | 包含[测量与诊断方法](./topic_discussion/performance_optimization/methods/intro.md)，从基线、资源约束走到单项与组合决策。 | 想系统定位并优化训练、推理和系统性能的学习者。 | 🛠 建设中 |
 | 主学习路线（建设中） | [`算子优化（Operator Optimization）`](./topic_discussion/operator_optimization/intro.md) | 从硬件直觉、图级优化、Triton、经典算子、Attention 到 CUDA 与端到端验证。 | 想从算子实现走向 kernel 和端到端性能优化的学习者。 | 🛠 建设中 |
+| 基础支撑专题 | [`模型架构演进（LLM Architecture Evolution）`](./topic_discussion/llm_architecture_evolution/intro.md) | Decoder、注意力、位置、专家与记忆结构比较。 | 想独立研究模型结构的学习者。 | 🛠 建设中 |
 | 基础支撑专题 | [`反向传播与训练机制（Backpropagation and Training Mechanics）`](./topic_discussion/backpropagation_training_mechanism/intro.md) | autograd、backward、checkpointing、offload 与训练节奏。 | 想补训练机制底座的学习者。 | ✅ 持续优化 |
-| 基础支撑专题 | [`性能分析（Performance Analysis）`](./topic_discussion/performance_analysis/intro.md) | 性能取证、trace 阅读、回归验证和行动决策。 | 想系统补性能意识与排障方法的学习者。 | ✅ 持续优化 |
 | 横切支撑专题 | [`量化与压缩（Quantization and Compression）`](./topic_discussion/quantization_compression/intro.md) | PTQ、QAT、GPTQ、AWQ、FP8 与部署决策。 | 想同时考虑精度、显存、吞吐和部署取舍的学习者。 | ✅ 持续优化 |
 | 横切支撑专题 | [`通信与并行（Communication and Parallelism）`](./topic_discussion/communication_parallelism/intro.md) | NCCL、AllReduce、ZeRO、PP、TP 和并行验证。 | 想理解多卡训练和通信边界的学习者。 | ✅ 持续优化 |
 | 横切支撑专题（建设中） | [`数据工程（Data Engineering）`](./topic_discussion/data_engineering/intro.md) | 数据生命周期、解析、清洗、去重、配比、合成、血缘与工程化。 | 想同时服务训练、RAG 与数据质量治理的学习者。 | 🛠 建设中 |
@@ -188,7 +188,7 @@ The tutorial is organized around runnable implementations, experimental validati
 
 ## 🌐 Tutorial Overview
 
-This tutorial offers two ways to read: follow the `Part 00 -> Part 04` progression, or enter through one of five main routes—LLM architecture evolution, post-training optimization, inference optimization, performance optimization, and operator optimization—then backfill foundation and cross-cutting topics as needed. Their left-to-right order describes a progression of objects from model structure and capability formation to serving, diagnosis, and low-level implementation; it is not a strict prerequisite chain. We recommend starting with [`Part 02`](./02_PyTorch_Algorithms/intro.md) to build implementation intuition, then backfilling `Part 00` / `Part 01` before moving to `Part 03` / `Part 04`; after completing the relevant routes, use `Part 05` integrated projects to turn mechanisms, experiments, and architecture choices into a deliverable plan.
+This tutorial offers two ways to read: follow the `Part 00 -> Part 04` progression, or enter through one of five main routes—model architecture and training, post-training optimization, inference optimization, performance optimization, and operator optimization—then backfill foundation and cross-cutting topics as needed. Their left-to-right order describes a progression of objects from model structure and capability formation to serving, diagnosis, and low-level implementation; it is not a strict prerequisite chain. We recommend starting with [`Part 02`](./02_PyTorch_Algorithms/intro.md) to build implementation intuition, then backfilling `Part 00` / `Part 01` before moving to `Part 03` / `Part 04`; after completing the relevant routes, use `Part 05` integrated projects to turn mechanisms, experiments, and architecture choices into a deliverable plan.
 
 [topic_discussion](./topic_discussion/intro.md) organizes cross-Part topic paths. The top of the page provides common topic entries; the asset and topic overviews below describe the main structure and topic coverage.
 
@@ -215,13 +215,13 @@ You do not need to start from `00` in strict order. `00` is the prerequisite lan
 
 | Layer | Entry | Content Positioning | Suitable For | Status |
 | ---- | ---- | ---- | ---- | ---- |
-| Main Study Path (In Progress) | [LLM Architecture Evolution Topic](./topic_discussion/llm_architecture_evolution/intro.md) | Decoder Block, attention, position, MoE, and model architecture audit. | Learners who want to connect structural choices to quality, resources, and system impact. | 🛠 In progress |
+| Main Study Path (In Progress) | [Model Architecture and Training Topic](./topic_discussion/model_architecture_and_training/intro.md) | Attention, position, experts, memory, local backward, effective updates, and training-state strategies. | Learners who want to connect model structure with training mechanics. | 🛠 In progress |
 | Main Study Path (In Progress) | [Post-Training Optimization Topic](./topic_discussion/post_training_optimization/intro.md) | SFT / LoRA foundations, preference data, DPO, GRPO, and project delivery. | Learners who want to continue from supervised fine-tuning into alignment. | 🛠 In progress |
 | Main Study Path | [Inference Optimization Topic](./topic_discussion/inference_optimization/intro.md) | FlashAttention, decoding, PagedAttention, cache, and benchmark. | Learners who want practical inference acceleration. | ✅ Ongoing |
-| Main Study Path | [Performance Optimization Topic](./topic_discussion/performance_optimization/intro.md) | Performance analysis, memory management, communication costs, and end-to-end decisions. | Learners who want to diagnose and optimize training, inference, and system performance. | 🛠 In progress |
+| Main Study Path | [Performance Optimization Topic](./topic_discussion/performance_optimization/intro.md) | [Measurement and diagnosis methods](./topic_discussion/performance_optimization/methods/intro.md), memory management, communication costs, and end-to-end decisions. | Learners who want to diagnose and optimize training, inference, and system performance. | 🛠 In progress |
 | Main Study Path (In Progress) | [Operator Optimization Topic](./topic_discussion/operator_optimization/intro.md) | Graph rewrites, fusion, Triton, CUDA, memory access, autotuning, and kernel-to-end-to-end validation. | Learners who want to move from operator implementation to kernel and end-to-end optimization. | 🛠 In progress |
+| Foundation Topic | [LLM Architecture Evolution Topic](./topic_discussion/llm_architecture_evolution/intro.md) | Decoder, attention, position, experts, and memory structures. | Learners who want to study model architecture independently. | 🛠 In progress |
 | Foundation Topic | [Backpropagation and Training Mechanics Topic](./topic_discussion/backpropagation_training_mechanism/intro.md) | Autograd, backward, checkpointing, offload, and training rhythm. | Learners who want stronger training-mechanism foundations. | ✅ Ongoing |
-| Foundation Topic | [Performance Analysis Topic](./topic_discussion/performance_analysis/intro.md) | Evidence collection, trace reading, regression validation, and action decisions. | Learners who want systematic performance diagnosis and debugging methods. | ✅ Ongoing |
 | Cross-Cutting Topic | [Quantization and Compression Topic](./topic_discussion/quantization_compression/intro.md) | PTQ, QAT, GPTQ, AWQ, FP8, and deployment decisions. | Learners balancing accuracy, memory, throughput, and deployment cost. | ✅ Ongoing |
 | Cross-Cutting Topic | [Communication and Parallelism Topic](./topic_discussion/communication_parallelism/intro.md) | NCCL, AllReduce, ZeRO, PP, TP, and validation. | Learners who want to understand multi-GPU scaling and communication cost. | ✅ Ongoing |
 | Cross-Cutting Topic (In Progress) | [Data Engineering Topic](./topic_discussion/data_engineering/intro.md) | Data lifecycle, parsing, cleaning, deduplication, mixtures, synthesis, lineage, and production pipelines. | Learners building reliable data paths for training, RAG, and evaluation. | 🛠 In progress |

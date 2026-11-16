@@ -1,0 +1,112 @@
+{
+  "label": "kv_pressure_c1536_n4_rtx5070ti_kv_pressure_v4_03",
+  "base_url": "http://127.0.0.1:8000",
+  "model": "Qwen/Qwen3-0.6B",
+  "workload": {
+    "source": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c1536_n4.jsonl",
+    "requests": 4,
+    "max_tokens": 32,
+    "concurrency": 4,
+    "warmup": 0,
+    "repeats": 1
+  },
+  "metrics": {
+    "successful_requests": 4,
+    "failed_requests": 0,
+    "request_throughput_per_s": 12.345,
+    "output_token_throughput_per_s": 395.041,
+    "ttft_ms": {
+      "mean": 112.715,
+      "p50": 125.846,
+      "p95": 126.94829999999999,
+      "p99": 127.08006
+    },
+    "tpot_ms": {
+      "mean": 6.668,
+      "p50": 6.2675,
+      "p95": 7.631399999999999,
+      "p99": 7.823880000000001
+    },
+    "e2e_ms": {
+      "mean": 319.425,
+      "p50": 320.141,
+      "p95": 321.18760000000003,
+      "p99": 321.31192000000004
+    },
+    "output_tokens": 128,
+    "prompt_tokens_mean": 1544,
+    "duration_s": 0.324
+  },
+  "results": null,
+  "schema_version": "inference-benchmark/v1",
+  "normalized_result": {
+    "schema_version": "inference-benchmark/v1",
+    "project": "37",
+    "strategy": "kv_pressure_c1536_n4_rtx5070ti_kv_pressure_v4_03",
+    "role": "candidate",
+    "config": {
+      "model": "Qwen/Qwen3-0.6B",
+      "backend": "vllm",
+      "dtype": "unknown",
+      "prompt_tokens": 1544,
+      "generated_tokens": 32,
+      "batch": 1,
+      "concurrency": 4,
+      "cache_policy": "prefix_cache_enabled",
+      "role": "candidate",
+      "workload": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/37_kv_cache_lifecycle/rtx5070ti_kv_pressure_v4_03/unique_c1536_n4.jsonl"
+    },
+    "metrics": {
+      "ttft_ms": {
+        "mean": 112.715,
+        "p50": 125.846,
+        "p95": 126.94829999999999,
+        "p99": 127.08006
+      },
+      "tpot_ms": {
+        "mean": 6.668,
+        "p50": 6.2675,
+        "p95": 7.631399999999999,
+        "p99": 7.823880000000001
+      },
+      "throughput_tokens_per_s": 395.041,
+      "throughput_requests_per_s": 12.345,
+      "p95_ms": null,
+      "p99_ms": 321.31192000000004,
+      "peak_memory_mb": null,
+      "queue_wait_ms": null,
+      "input_transfer_bytes": null,
+      "input_transfer_ms": null,
+      "transfer_bytes": null,
+      "handoff_ms": null,
+      "recompute_ms": null,
+      "network_wait_ms": null,
+      "communication_ms": null,
+      "exposed_comm_ms": null,
+      "overlap_ratio": null,
+      "idle_gap_ms": null,
+      "model_load_ms": null,
+      "stream_output_ms": null,
+      "e2e_latency_ms": {
+        "mean": 319.425,
+        "p50": 320.141,
+        "p95": 321.18760000000003,
+        "p99": 321.31192000000004
+      },
+      "successful_requests": 4,
+      "failed_requests": 0,
+      "duration_s": 0.324
+    },
+    "quality": {},
+    "status": "not_recorded",
+    "evidence_level": "not_recorded",
+    "failure": {
+      "failure_reason": null,
+      "retest_path": null
+    },
+    "decision": {
+      "decision": "not_evaluated"
+    },
+    "source": "http://127.0.0.1:8000"
+  }
+}

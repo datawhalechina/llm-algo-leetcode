@@ -1,0 +1,2529 @@
+{
+  "label": "target-only",
+  "base_url": "http://127.0.0.1:47297",
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "workload": {
+    "source": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/workloads/fixed.jsonl",
+    "requests": 30,
+    "max_tokens": 64,
+    "concurrency": 1,
+    "warmup": 5,
+    "repeats": 3,
+    "workload_priority_sent": false
+  },
+  "metrics": {
+    "successful_requests": 30,
+    "failed_requests": 0,
+    "request_throughput_per_s": 1.4255,
+    "output_token_throughput_per_s": 80.1113,
+    "ttft_ms": {
+      "mean": 44.166,
+      "p50": 43.9758,
+      "p95": 46.4145,
+      "p99": 48.2666
+    },
+    "tpot_ms": {
+      "mean": 11.914,
+      "p50": 11.8462,
+      "p95": 12.2085,
+      "p99": 12.7305
+    },
+    "e2e_ms": {
+      "mean": 701.363,
+      "p50": 788.957,
+      "p95": 814.089,
+      "p99": 824.4885
+    },
+    "output_tokens": 1686,
+    "prompt_tokens_mean": 38.4,
+    "duration_s": 21.0462,
+    "priority_order_score": null
+  },
+  "results": [
+    {
+      "ok": true,
+      "prompt": "Explain KV cache in one sentence.",
+      "request_id": "request-0",
+      "priority": 0,
+      "output_text": "KV cache is a type of data storage and retrieval system that stores key-value pairs for fast access and efficient memory usage.",
+      "ttft_ms": 44.186,
+      "tpot_ms": 13.822,
+      "e2e_ms": 375.918,
+      "output_tokens": 25,
+      "estimated_output_tokens": false,
+      "stream_chunks": 24,
+      "usage": {
+        "prompt_tokens": 37,
+        "total_tokens": 62,
+        "completion_tokens": 25
+      },
+      "completion_rank": 1
+    },
+    {
+      "ok": true,
+      "prompt": "What is the difference between prefill and decode?",
+      "request_id": "request-1",
+      "priority": 0,
+      "output_text": "In natural language processing (NLP) and machine learning, \"prefill\" and \"decode\" refer to two different processes used in sequence-to-sequence models.\n\n1. **Prefill**: This refers to the process of filling in missing or incomplete parts of a sequence. In NLP, this often involves predicting the",
+      "ttft_ms": 45.031,
+      "tpot_ms": 11.329,
+      "e2e_ms": 758.728,
+      "output_tokens": 64,
+      "estimated_output_tokens": false,
+      "stream_chunks": 64,
+      "usage": {
+        "prompt_tokens": 39,
+        "total_tokens": 103,
+        "completion_tokens": 64
+      },
+      "completion_rank": 2
+    },
+    {
+      "ok": true,
+      "prompt": "Why can prefix caching reduce TTFT?",
+      "request_id": "request-2",
+      "priority": 0,
+      "output_text": "Prefix caching can significantly reduce the Time to First Traversal (TTFT) in several ways:\n\n1. **Reducing Network Latency**: When a user requests content from a server, they often need to traverse multiple layers of network infrastructure before reaching their destination. By caching frequently accessed prefixes on local devices or edge servers,",
+      "ttft_ms": 43.665,
+      "tpot_ms": 12.184,
+      "e2e_ms": 811.287,
+      "output_tokens": 64,
+      "estimated_output_tokens": false,
+      "stream_chunks": 64,
+      "usage": {
+        "prompt_tokens": 37,
+        "total_tokens": 101,
+        "completion_tokens": 64
+      },
+      "completion_rank": 3
+    },
+    {
+      "ok": true,
+      "prompt": "Give two metrics for evaluating an inference backend.",
+      "request_id": "request-3",
+      "priority": 0,
+      "output_text": "Two common metrics used to evaluate an inference backend include:\n\n1. **Throughput**: This measures the number of requests or operations that can be processed per unit of time (e.g., per second). A high throughput indicates that the backend is capable of handling large volumes of data quickly and efficiently.\n\n2. **Latency",
+      "ttft_ms": 45.924,
+      "tpot_ms": 11.935,
+      "e2e_ms": 797.858,
+      "output_tokens": 64,
+      "estimated_output_tokens": false,
+      "stream_chunks": 64,
+      "usage": {
+        "prompt_tokens": 38,
+        "total_tokens": 102,
+        "completion_tokens": 64
+      },
+      "completion_rank": 4
+    },
+    {
+      "ok": true,
+      "prompt": "When can a throughput improvement be unsuitable for online serving?",
+      "request_id": "request-4",
+      "priority": 0,
+      "output_text": "A throughput improvement in an online service can sometimes become unsuitable if it leads to increased latency or other performance issues that negatively impact user experience. Here are some scenarios where a throughput improvement might not be suitable:\n\n1. **Latency Issues**: If the new throughput allows for faster processing but increases latency significantly, users may perceive",
+      "ttft_ms": 44.278,
+      "tpot_ms": 11.788,
+      "e2e_ms": 786.903,
+      "output_tokens": 64,
+      "estimated_output_tokens": false,
+      "stream_chunks": 64,
+      "usage": {
+        "prompt_tokens": 41,
+        "total_tokens": 105,
+        "completion_tokens": 64
+      },
+      "completion_rank": 5
+    },
+    {
+      "ok": true,
+      "prompt": "Explain KV cache in one sentence.",
+      "request_id": "request-0",
+      "priority": 0,
+      "output_text": "KV cache is a type of data storage and retrieval system that stores key-value pairs for fast access and efficient memory usage.",
+      "ttft_ms": 43.648,
+      "tpot_ms": 11.447,
+      "e2e_ms": 318.386,
+      "output_tokens": 25,
+      "estimated_output_tokens": false,
+      "stream_chunks": 24,
+      "usage": {
+        "prompt_tokens": 37,
+        "total_tokens": 62,
+        "completion_tokens": 25
+      },
+      "completion_rank": 6
+    },
+    {
+      "ok": true,
+      "prompt": "What is the difference between prefill and decode?",
+      "request_id": "request-1",
+      "priority": 0,
+      "output_text": "In natural language processing (NLP) and machine learning, \"prefill\" and \"decode\" refer to two different processes used in sequence-to-sequence models.\n\n1. **Prefill**: This refers to the process of filling in missing or incomplete parts of a sequence. In NLP, this often involves predicting the",
+      "ttft_ms": 44.009,
+      "tpot_ms": 11.945,
+      "e2e_ms": 796.56,
+      "output_tokens": 64,
+      "estimated_output_tokens": false,
+      "stream_chunks": 64,
+      "usage": {
+        "prompt_tokens": 39,
+        "total_tokens": 103,
+        "completion_tokens": 64
+      },
+      "completion_rank": 7
+    },
+    {
+      "ok": true,
+      "prompt": "Why can prefix caching reduce TTFT?",
+      "request_id": "request-2",
+      "priority": 0,
+      "output_text": "Prefix caching can significantly reduce the Time to First Traversal (TTFT) in several ways:\n\n1. **Reducing Network Latency**: When a user requests content from a server, they often need to traverse multiple layers of network infrastructure before reaching their destination. By caching frequently accessed prefixes on local devices or edge servers,",
+      "ttft_ms": 45.488,
+      "tpot_ms": 11.721,
+      "e2e_ms": 783.929,
+      "output_tokens": 64,
+      "estimated_output_tokens": false,
+      "stream_chunks": 64,
+      "usage": {
+        "prompt_tokens": 37,
+        "total_tokens": 101,
+        "completion_tokens": 64
+      },
+      "completion_rank": 8
+    },
+    {
+      "ok": true,
+      "prompt": "Give two metrics for evaluating an inference backend.",
+      "request_id": "request-3",
+      "priority": 0,
+      "output_text": "Two common metrics used to evaluate an inference backend include:\n\n1. **Throughput**: This measures the number of requests or operations that can be processed per unit of time (e.g., per second). A high throughput indicates that the backend is capable of handling large volumes of data quickly and efficiently.\n\n2. **Latency",
+      "ttft_ms": 44.351,
+      "tpot_ms": 11.659,
+      "e2e_ms": 778.842,
+      "output_tokens": 64,
+      "estimated_output_tokens": false,
+      "stream_chunks": 64,
+      "usage": {
+        "prompt_tokens": 38,
+        "total_tokens": 102,
+        "completion_tokens": 64
+      },
+      "completion_rank": 9
+    },
+    {
+      "ok": true,
+      "prompt": "When can a throughput improvement be unsuitable for online serving?",
+      "request_id": "request-4",
+      "priority": 0,
+      "output_text": "A throughput improvement in an online service can sometimes become unsuitable if it leads to increased latency or other performance issues that negatively impact user experience. Here are some scenarios where a throughput improvement might not be suitable:\n\n1. **Latency Issues**: If the new throughput allows for faster processing but increases latency significantly, users may perceive",
+      "ttft_ms": 42.93,
+      "tpot_ms": 11.808,
+      "e2e_ms": 786.828,
+      "output_tokens": 64,
+      "estimated_output_tokens": false,
+      "stream_chunks": 64,
+      "usage": {
+        "prompt_tokens": 41,
+        "total_tokens": 105,
+        "completion_tokens": 64
+      },
+      "completion_rank": 10
+    },
+    {
+      "ok": true,
+      "prompt": "Explain KV cache in one sentence.",
+      "request_id": "request-0",
+      "priority": 0,
+      "output_text": "KV cache is a type of data storage and retrieval system that stores key-value pairs for fast access and efficient memory usage.",
+      "ttft_ms": 43.668,
+      "tpot_ms": 11.871,
+      "e2e_ms": 328.571,
+      "output_tokens": 25,
+      "estimated_output_tokens": false,
+      "stream_chunks": 24,
+      "usage": {
+        "prompt_tokens": 37,
+        "total_tokens": 62,
+        "completion_tokens": 25
+      },
+      "completion_rank": 11
+    },
+    {
+      "ok": true,
+      "prompt": "What is the difference between prefill and decode?",
+      "request_id": "request-1",
+      "priority": 0,
+      "output_text": "In natural language processing (NLP) and machine learning, \"prefill\" and \"decode\" refer to two different processes used in sequence-to-sequence models.\n\n1. **Prefill**: This refers to the process of filling in missing or incomplete parts of a sequence. In NLP, this often involves predicting the",
+      "ttft_ms": 42.891,
+      "tpot_ms": 11.707,
+      "e2e_ms": 780.443,
+      "output_tokens": 64,
+      "estimated_output_tokens": false,
+      "stream_chunks": 64,
+      "usage": {
+        "prompt_tokens": 39,
+        "total_tokens": 103,
+        "completion_tokens": 64
+      },
+      "completion_rank": 12
+    },
+    {
+      "ok": true,
+      "prompt": "Why can prefix caching reduce TTFT?",
+      "request_id": "request-2",
+      "priority": 0,
+      "output_text": "Prefix caching can significantly reduce the Time to First Traversal (TTFT) in several ways:\n\n1. **Reducing Network Latency**: When a user requests content from a server, they often need to traverse multiple layers of network infrastructure before reaching their destination. By caching frequently accessed prefixes on local devices or edge servers,",
+      "ttft_ms": 44.438,
+      "tpot_ms": 11.808,
+      "e2e_ms": 788.337,
+      "output_tokens": 64,
+      "estimated_output_tokens": false,
+      "stream_chunks": 64,
+      "usage": {
+        "prompt_tokens": 37,
+        "total_tokens": 101,
+        "completion_tokens": 64
+      },
+      "completion_rank": 13
+    },
+    {
+      "ok": true,
+      "prompt": "Give two metrics for evaluating an inference backend.",
+      "request_id": "request-3",
+      "priority": 0,
+      "output_text": "Two common metrics used to evaluate an inference backend include:\n\n1. **Throughput**: This measures the number of requests or operations that can be processed per unit of time (e.g., per second). A high throughput indicates that the backend is capable of handling large volumes of data quickly and efficiently.\n\n2. **Latency",
+      "ttft_ms": 45.687,
+      "tpot_ms": 11.762,
+      "e2e_ms": 786.673,
+      "output_tokens": 64,
+      "estimated_output_tokens": false,
+      "stream_chunks": 64,
+      "usage": {
+        "prompt_tokens": 38,
+        "total_tokens": 102,
+        "completion_tokens": 64
+      },
+      "completion_rank": 14
+    },
+    {
+      "ok": true,
+      "prompt": "When can a throughput improvement be unsuitable for online serving?",
+      "request_id": "request-4",
+      "priority": 0,
+      "output_text": "A throughput improvement in an online service can sometimes become unsuitable if it leads to increased latency or other performance issues that negatively impact user experience. Here are some scenarios where a throughput improvement might not be suitable:\n\n1. **Latency Issues**: If the new throughput allows for faster processing but increases latency significantly, users may perceive",
+      "ttft_ms": 43.143,
+      "tpot_ms": 11.784,
+      "e2e_ms": 785.514,
+      "output_tokens": 64,
+      "estimated_output_tokens": false,
+      "stream_chunks": 64,
+      "usage": {
+        "prompt_tokens": 41,
+        "total_tokens": 105,
+        "completion_tokens": 64
+      },
+      "completion_rank": 15
+    },
+    {
+      "ok": true,
+      "prompt": "Explain KV cache in one sentence.",
+      "request_id": "request-0",
+      "priority": 0,
+      "output_text": "KV cache is a type of data storage and retrieval system that stores key-value pairs for fast access and efficient memory usage.",
+      "ttft_ms": 43.45,
+      "tpot_ms": 12.039,
+      "e2e_ms": 332.385,
+      "output_tokens": 25,
+      "estimated_output_tokens": false,
+      "stream_chunks": 24,
+      "usage": {
+        "prompt_tokens": 37,
+        "total_tokens": 62,
+        "completion_tokens": 25
+      },
+      "completion_rank": 16
+    },
+    {
+      "ok": true,
+      "prompt": "What is the difference between prefill and decode?",
+      "request_id": "request-1",
+      "priority": 0,
+      "output_text": "In natural language processing (NLP) and machine learning, \"prefill\" and \"decode\" refer to two different processes used in sequence-to-sequence models.\n\n1. **Prefill**: This refers to the process of filling in missing or incomplete parts of a sequence. In NLP, this often involves predicting the",
+      "ttft_ms": 50.235,
+      "tpot_ms": 12.118,
+      "e2e_ms": 813.696,
+      "output_tokens": 64,
+      "estimated_output_tokens": false,
+      "stream_chunks": 64,
+      "usage": {
+        "prompt_tokens": 39,
+        "total_tokens": 103,
+        "completion_tokens": 64
+      },
+      "completion_rank": 17
+    },
+    {
+      "ok": true,
+      "prompt": "Why can prefix caching reduce TTFT?",
+      "request_id": "request-2",
+      "priority": 0,
+      "output_text": "Prefix caching can significantly reduce the Time to First Traversal (TTFT) in several ways:\n\n1. **Reducing Network Latency**: When a user requests content from a server, they often need to traverse multiple layers of network infrastructure before reaching their destination. By caching frequently accessed prefixes on local devices or edge servers,",
+      "ttft_ms": 43.264,
+      "tpot_ms": 12.349,
+      "e2e_ms": 821.257,
+      "output_tokens": 64,
+      "estimated_output_tokens": false,
+      "stream_chunks": 64,
+      "usage": {
+        "prompt_tokens": 37,
+        "total_tokens": 101,
+        "completion_tokens": 64
+      },
+      "completion_rank": 18
+    },
+    {
+      "ok": true,
+      "prompt": "Give two metrics for evaluating an inference backend.",
+      "request_id": "request-3",
+      "priority": 0,
+      "output_text": "Two common metrics used to evaluate an inference backend include:\n\n1. **Throughput**: This measures the number of requests or operations that can be processed per unit of time (e.g., per second). A high throughput indicates that the backend is capable of handling large volumes of data quickly and efficiently.\n\n2. **Latency",
+      "ttft_ms": 45.576,
+      "tpot_ms": 12.304,
+      "e2e_ms": 820.702,
+      "output_tokens": 64,
+      "estimated_output_tokens": false,
+      "stream_chunks": 64,
+      "usage": {
+        "prompt_tokens": 38,
+        "total_tokens": 102,
+        "completion_tokens": 64
+      },
+      "completion_rank": 19
+    },
+    {
+      "ok": true,
+      "prompt": "When can a throughput improvement be unsuitable for online serving?",
+      "request_id": "request-4",
+      "priority": 0,
+      "output_text": "A throughput improvement in an online service can sometimes become unsuitable if it leads to increased latency or other performance issues that negatively impact user experience. Here are some scenarios where a throughput improvement might not be suitable:\n\n1. **Latency Issues**: If the new throughput allows for faster processing but increases latency significantly, users may perceive",
+      "ttft_ms": 46.694,
+      "tpot_ms": 12.311,
+      "e2e_ms": 822.316,
+      "output_tokens": 64,
+      "estimated_output_tokens": false,
+      "stream_chunks": 64,
+      "usage": {
+        "prompt_tokens": 41,
+        "total_tokens": 105,
+        "completion_tokens": 64
+      },
+      "completion_rank": 20
+    },
+    {
+      "ok": true,
+      "prompt": "Explain KV cache in one sentence.",
+      "request_id": "request-0",
+      "priority": 0,
+      "output_text": "KV cache is a type of data storage and retrieval system that stores key-value pairs for fast access and efficient memory usage.",
+      "ttft_ms": 42.445,
+      "tpot_ms": 12.214,
+      "e2e_ms": 335.585,
+      "output_tokens": 25,
+      "estimated_output_tokens": false,
+      "stream_chunks": 24,
+      "usage": {
+        "prompt_tokens": 37,
+        "total_tokens": 62,
+        "completion_tokens": 25
+      },
+      "completion_rank": 21
+    },
+    {
+      "ok": true,
+      "prompt": "What is the difference between prefill and decode?",
+      "request_id": "request-1",
+      "priority": 0,
+      "output_text": "In natural language processing (NLP) and machine learning, \"prefill\" and \"decode\" refer to two different processes used in sequence-to-sequence models.\n\n1. **Prefill**: This refers to the process of filling in missing or incomplete parts of a sequence. In NLP, this often involves predicting the",
+      "ttft_ms": 44.347,
+      "tpot_ms": 11.739,
+      "e2e_ms": 783.91,
+      "output_tokens": 64,
+      "estimated_output_tokens": false,
+      "stream_chunks": 64,
+      "usage": {
+        "prompt_tokens": 39,
+        "total_tokens": 103,
+        "completion_tokens": 64
+      },
+      "completion_rank": 22
+    },
+    {
+      "ok": true,
+      "prompt": "Why can prefix caching reduce TTFT?",
+      "request_id": "request-2",
+      "priority": 0,
+      "output_text": "Prefix caching can significantly reduce the Time to First Traversal (TTFT) in several ways:\n\n1. **Reducing Network Latency**: When a user requests content from a server, they often need to traverse multiple layers of network infrastructure before reaching their destination. By caching frequently accessed prefixes on local devices or edge servers,",
+      "ttft_ms": 43.102,
+      "tpot_ms": 11.717,
+      "e2e_ms": 781.293,
+      "output_tokens": 64,
+      "estimated_output_tokens": false,
+      "stream_chunks": 64,
+      "usage": {
+        "prompt_tokens": 37,
+        "total_tokens": 101,
+        "completion_tokens": 64
+      },
+      "completion_rank": 23
+    },
+    {
+      "ok": true,
+      "prompt": "Give two metrics for evaluating an inference backend.",
+      "request_id": "request-3",
+      "priority": 0,
+      "output_text": "Two common metrics used to evaluate an inference backend include:\n\n1. **Throughput**: This measures the number of requests or operations that can be processed per unit of time (e.g., per second). A high throughput indicates that the backend is capable of handling large volumes of data quickly and efficiently.\n\n2. **Latency",
+      "ttft_ms": 42.306,
+      "tpot_ms": 11.772,
+      "e2e_ms": 783.95,
+      "output_tokens": 64,
+      "estimated_output_tokens": false,
+      "stream_chunks": 64,
+      "usage": {
+        "prompt_tokens": 38,
+        "total_tokens": 102,
+        "completion_tokens": 64
+      },
+      "completion_rank": 24
+    },
+    {
+      "ok": true,
+      "prompt": "When can a throughput improvement be unsuitable for online serving?",
+      "request_id": "request-4",
+      "priority": 0,
+      "output_text": "A throughput improvement in an online service can sometimes become unsuitable if it leads to increased latency or other performance issues that negatively impact user experience. Here are some scenarios where a throughput improvement might not be suitable:\n\n1. **Latency Issues**: If the new throughput allows for faster processing but increases latency significantly, users may perceive",
+      "ttft_ms": 43.855,
+      "tpot_ms": 11.784,
+      "e2e_ms": 786.243,
+      "output_tokens": 64,
+      "estimated_output_tokens": false,
+      "stream_chunks": 64,
+      "usage": {
+        "prompt_tokens": 41,
+        "total_tokens": 105,
+        "completion_tokens": 64
+      },
+      "completion_rank": 25
+    },
+    {
+      "ok": true,
+      "prompt": "Explain KV cache in one sentence.",
+      "request_id": "request-0",
+      "priority": 0,
+      "output_text": "KV cache is a type of data storage and retrieval system that stores key-value pairs for fast access and efficient memory usage.",
+      "ttft_ms": 43.764,
+      "tpot_ms": 12.094,
+      "e2e_ms": 334.014,
+      "output_tokens": 25,
+      "estimated_output_tokens": false,
+      "stream_chunks": 24,
+      "usage": {
+        "prompt_tokens": 37,
+        "total_tokens": 62,
+        "completion_tokens": 25
+      },
+      "completion_rank": 26
+    },
+    {
+      "ok": true,
+      "prompt": "What is the difference between prefill and decode?",
+      "request_id": "request-1",
+      "priority": 0,
+      "output_text": "In natural language processing (NLP) and machine learning, \"prefill\" and \"decode\" refer to two different processes used in sequence-to-sequence models.\n\n1. **Prefill**: This refers to the process of filling in missing or incomplete parts of a sequence. In NLP, this often involves predicting the",
+      "ttft_ms": 42.602,
+      "tpot_ms": 11.774,
+      "e2e_ms": 784.352,
+      "output_tokens": 64,
+      "estimated_output_tokens": false,
+      "stream_chunks": 64,
+      "usage": {
+        "prompt_tokens": 39,
+        "total_tokens": 103,
+        "completion_tokens": 64
+      },
+      "completion_rank": 27
+    },
+    {
+      "ok": true,
+      "prompt": "Why can prefix caching reduce TTFT?",
+      "request_id": "request-2",
+      "priority": 0,
+      "output_text": "Prefix caching can significantly reduce the Time to First Traversal (TTFT) in several ways:\n\n1. **Reducing Network Latency**: When a user requests content from a server, they often need to traverse multiple layers of network infrastructure before reaching their destination. By caching frequently accessed prefixes on local devices or edge servers,",
+      "ttft_ms": 42.402,
+      "tpot_ms": 11.801,
+      "e2e_ms": 785.87,
+      "output_tokens": 64,
+      "estimated_output_tokens": false,
+      "stream_chunks": 64,
+      "usage": {
+        "prompt_tokens": 37,
+        "total_tokens": 101,
+        "completion_tokens": 64
+      },
+      "completion_rank": 28
+    },
+    {
+      "ok": true,
+      "prompt": "Give two metrics for evaluating an inference backend.",
+      "request_id": "request-3",
+      "priority": 0,
+      "output_text": "Two common metrics used to evaluate an inference backend include:\n\n1. **Throughput**: This measures the number of requests or operations that can be processed per unit of time (e.g., per second). A high throughput indicates that the backend is capable of handling large volumes of data quickly and efficiently.\n\n2. **Latency",
+      "ttft_ms": 44.08,
+      "tpot_ms": 11.551,
+      "e2e_ms": 771.805,
+      "output_tokens": 64,
+      "estimated_output_tokens": false,
+      "stream_chunks": 64,
+      "usage": {
+        "prompt_tokens": 38,
+        "total_tokens": 102,
+        "completion_tokens": 64
+      },
+      "completion_rank": 29
+    },
+    {
+      "ok": true,
+      "prompt": "When can a throughput improvement be unsuitable for online serving?",
+      "request_id": "request-4",
+      "priority": 0,
+      "output_text": "A throughput improvement in an online service can sometimes become unsuitable if it leads to increased latency or other performance issues that negatively impact user experience. Here are some scenarios where a throughput improvement might not be suitable:\n\n1. **Latency Issues**: If the new throughput allows for faster processing but increases latency significantly, users may perceive",
+      "ttft_ms": 42.148,
+      "tpot_ms": 11.901,
+      "e2e_ms": 791.94,
+      "output_tokens": 64,
+      "estimated_output_tokens": false,
+      "stream_chunks": 64,
+      "usage": {
+        "prompt_tokens": 41,
+        "total_tokens": 105,
+        "completion_tokens": 64
+      },
+      "completion_rank": 30
+    }
+  ],
+  "runs": [
+    {
+      "label": "target-only",
+      "base_url": "http://127.0.0.1:47297",
+      "model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "workload": {
+        "source": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/workloads/fixed.jsonl",
+        "requests": 30,
+        "max_tokens": 64,
+        "concurrency": 1,
+        "warmup": 5,
+        "repeats": 1,
+        "workload_priority_sent": false
+      },
+      "metrics": {
+        "successful_requests": 30,
+        "failed_requests": 0,
+        "request_throughput_per_s": 1.4272,
+        "output_token_throughput_per_s": 80.2089,
+        "ttft_ms": {
+          "mean": 44.12,
+          "p50": 43.8095,
+          "p95": 46.347500000000004,
+          "p99": 49.20811
+        },
+        "tpot_ms": {
+          "mean": 11.935,
+          "p50": 11.8045,
+          "p95": 12.331900000000001,
+          "p99": 13.39483
+        },
+        "e2e_ms": {
+          "mean": 700.47,
+          "p50": 784.933,
+          "p95": 821.00725,
+          "p99": 822.0088900000001
+        },
+        "output_tokens": 1686,
+        "prompt_tokens_mean": 38.4,
+        "duration_s": 21.0201,
+        "priority_order_score": null
+      },
+      "results": [
+        {
+          "ok": true,
+          "prompt": "Explain KV cache in one sentence.",
+          "request_id": "request-0",
+          "priority": 0,
+          "output_text": "KV cache is a type of data storage and retrieval system that stores key-value pairs for fast access and efficient memory usage.",
+          "ttft_ms": 44.186,
+          "tpot_ms": 13.822,
+          "e2e_ms": 375.918,
+          "output_tokens": 25,
+          "estimated_output_tokens": false,
+          "stream_chunks": 24,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 62,
+            "completion_tokens": 25
+          },
+          "completion_rank": 1
+        },
+        {
+          "ok": true,
+          "prompt": "What is the difference between prefill and decode?",
+          "request_id": "request-1",
+          "priority": 0,
+          "output_text": "In natural language processing (NLP) and machine learning, \"prefill\" and \"decode\" refer to two different processes used in sequence-to-sequence models.\n\n1. **Prefill**: This refers to the process of filling in missing or incomplete parts of a sequence. In NLP, this often involves predicting the",
+          "ttft_ms": 45.031,
+          "tpot_ms": 11.329,
+          "e2e_ms": 758.728,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 39,
+            "total_tokens": 103,
+            "completion_tokens": 64
+          },
+          "completion_rank": 2
+        },
+        {
+          "ok": true,
+          "prompt": "Why can prefix caching reduce TTFT?",
+          "request_id": "request-2",
+          "priority": 0,
+          "output_text": "Prefix caching can significantly reduce the Time to First Traversal (TTFT) in several ways:\n\n1. **Reducing Network Latency**: When a user requests content from a server, they often need to traverse multiple layers of network infrastructure before reaching their destination. By caching frequently accessed prefixes on local devices or edge servers,",
+          "ttft_ms": 43.665,
+          "tpot_ms": 12.184,
+          "e2e_ms": 811.287,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 101,
+            "completion_tokens": 64
+          },
+          "completion_rank": 3
+        },
+        {
+          "ok": true,
+          "prompt": "Give two metrics for evaluating an inference backend.",
+          "request_id": "request-3",
+          "priority": 0,
+          "output_text": "Two common metrics used to evaluate an inference backend include:\n\n1. **Throughput**: This measures the number of requests or operations that can be processed per unit of time (e.g., per second). A high throughput indicates that the backend is capable of handling large volumes of data quickly and efficiently.\n\n2. **Latency",
+          "ttft_ms": 45.924,
+          "tpot_ms": 11.935,
+          "e2e_ms": 797.858,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 38,
+            "total_tokens": 102,
+            "completion_tokens": 64
+          },
+          "completion_rank": 4
+        },
+        {
+          "ok": true,
+          "prompt": "When can a throughput improvement be unsuitable for online serving?",
+          "request_id": "request-4",
+          "priority": 0,
+          "output_text": "A throughput improvement in an online service can sometimes become unsuitable if it leads to increased latency or other performance issues that negatively impact user experience. Here are some scenarios where a throughput improvement might not be suitable:\n\n1. **Latency Issues**: If the new throughput allows for faster processing but increases latency significantly, users may perceive",
+          "ttft_ms": 44.278,
+          "tpot_ms": 11.788,
+          "e2e_ms": 786.903,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 41,
+            "total_tokens": 105,
+            "completion_tokens": 64
+          },
+          "completion_rank": 5
+        },
+        {
+          "ok": true,
+          "prompt": "Explain KV cache in one sentence.",
+          "request_id": "request-0",
+          "priority": 0,
+          "output_text": "KV cache is a type of data storage and retrieval system that stores key-value pairs for fast access and efficient memory usage.",
+          "ttft_ms": 43.648,
+          "tpot_ms": 11.447,
+          "e2e_ms": 318.386,
+          "output_tokens": 25,
+          "estimated_output_tokens": false,
+          "stream_chunks": 24,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 62,
+            "completion_tokens": 25
+          },
+          "completion_rank": 6
+        },
+        {
+          "ok": true,
+          "prompt": "What is the difference between prefill and decode?",
+          "request_id": "request-1",
+          "priority": 0,
+          "output_text": "In natural language processing (NLP) and machine learning, \"prefill\" and \"decode\" refer to two different processes used in sequence-to-sequence models.\n\n1. **Prefill**: This refers to the process of filling in missing or incomplete parts of a sequence. In NLP, this often involves predicting the",
+          "ttft_ms": 44.009,
+          "tpot_ms": 11.945,
+          "e2e_ms": 796.56,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 39,
+            "total_tokens": 103,
+            "completion_tokens": 64
+          },
+          "completion_rank": 7
+        },
+        {
+          "ok": true,
+          "prompt": "Why can prefix caching reduce TTFT?",
+          "request_id": "request-2",
+          "priority": 0,
+          "output_text": "Prefix caching can significantly reduce the Time to First Traversal (TTFT) in several ways:\n\n1. **Reducing Network Latency**: When a user requests content from a server, they often need to traverse multiple layers of network infrastructure before reaching their destination. By caching frequently accessed prefixes on local devices or edge servers,",
+          "ttft_ms": 45.488,
+          "tpot_ms": 11.721,
+          "e2e_ms": 783.929,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 101,
+            "completion_tokens": 64
+          },
+          "completion_rank": 8
+        },
+        {
+          "ok": true,
+          "prompt": "Give two metrics for evaluating an inference backend.",
+          "request_id": "request-3",
+          "priority": 0,
+          "output_text": "Two common metrics used to evaluate an inference backend include:\n\n1. **Throughput**: This measures the number of requests or operations that can be processed per unit of time (e.g., per second). A high throughput indicates that the backend is capable of handling large volumes of data quickly and efficiently.\n\n2. **Latency",
+          "ttft_ms": 44.351,
+          "tpot_ms": 11.659,
+          "e2e_ms": 778.842,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 38,
+            "total_tokens": 102,
+            "completion_tokens": 64
+          },
+          "completion_rank": 9
+        },
+        {
+          "ok": true,
+          "prompt": "When can a throughput improvement be unsuitable for online serving?",
+          "request_id": "request-4",
+          "priority": 0,
+          "output_text": "A throughput improvement in an online service can sometimes become unsuitable if it leads to increased latency or other performance issues that negatively impact user experience. Here are some scenarios where a throughput improvement might not be suitable:\n\n1. **Latency Issues**: If the new throughput allows for faster processing but increases latency significantly, users may perceive",
+          "ttft_ms": 42.93,
+          "tpot_ms": 11.808,
+          "e2e_ms": 786.828,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 41,
+            "total_tokens": 105,
+            "completion_tokens": 64
+          },
+          "completion_rank": 10
+        },
+        {
+          "ok": true,
+          "prompt": "Explain KV cache in one sentence.",
+          "request_id": "request-0",
+          "priority": 0,
+          "output_text": "KV cache is a type of data storage and retrieval system that stores key-value pairs for fast access and efficient memory usage.",
+          "ttft_ms": 43.668,
+          "tpot_ms": 11.871,
+          "e2e_ms": 328.571,
+          "output_tokens": 25,
+          "estimated_output_tokens": false,
+          "stream_chunks": 24,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 62,
+            "completion_tokens": 25
+          },
+          "completion_rank": 11
+        },
+        {
+          "ok": true,
+          "prompt": "What is the difference between prefill and decode?",
+          "request_id": "request-1",
+          "priority": 0,
+          "output_text": "In natural language processing (NLP) and machine learning, \"prefill\" and \"decode\" refer to two different processes used in sequence-to-sequence models.\n\n1. **Prefill**: This refers to the process of filling in missing or incomplete parts of a sequence. In NLP, this often involves predicting the",
+          "ttft_ms": 42.891,
+          "tpot_ms": 11.707,
+          "e2e_ms": 780.443,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 39,
+            "total_tokens": 103,
+            "completion_tokens": 64
+          },
+          "completion_rank": 12
+        },
+        {
+          "ok": true,
+          "prompt": "Why can prefix caching reduce TTFT?",
+          "request_id": "request-2",
+          "priority": 0,
+          "output_text": "Prefix caching can significantly reduce the Time to First Traversal (TTFT) in several ways:\n\n1. **Reducing Network Latency**: When a user requests content from a server, they often need to traverse multiple layers of network infrastructure before reaching their destination. By caching frequently accessed prefixes on local devices or edge servers,",
+          "ttft_ms": 44.438,
+          "tpot_ms": 11.808,
+          "e2e_ms": 788.337,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 101,
+            "completion_tokens": 64
+          },
+          "completion_rank": 13
+        },
+        {
+          "ok": true,
+          "prompt": "Give two metrics for evaluating an inference backend.",
+          "request_id": "request-3",
+          "priority": 0,
+          "output_text": "Two common metrics used to evaluate an inference backend include:\n\n1. **Throughput**: This measures the number of requests or operations that can be processed per unit of time (e.g., per second). A high throughput indicates that the backend is capable of handling large volumes of data quickly and efficiently.\n\n2. **Latency",
+          "ttft_ms": 45.687,
+          "tpot_ms": 11.762,
+          "e2e_ms": 786.673,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 38,
+            "total_tokens": 102,
+            "completion_tokens": 64
+          },
+          "completion_rank": 14
+        },
+        {
+          "ok": true,
+          "prompt": "When can a throughput improvement be unsuitable for online serving?",
+          "request_id": "request-4",
+          "priority": 0,
+          "output_text": "A throughput improvement in an online service can sometimes become unsuitable if it leads to increased latency or other performance issues that negatively impact user experience. Here are some scenarios where a throughput improvement might not be suitable:\n\n1. **Latency Issues**: If the new throughput allows for faster processing but increases latency significantly, users may perceive",
+          "ttft_ms": 43.143,
+          "tpot_ms": 11.784,
+          "e2e_ms": 785.514,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 41,
+            "total_tokens": 105,
+            "completion_tokens": 64
+          },
+          "completion_rank": 15
+        },
+        {
+          "ok": true,
+          "prompt": "Explain KV cache in one sentence.",
+          "request_id": "request-0",
+          "priority": 0,
+          "output_text": "KV cache is a type of data storage and retrieval system that stores key-value pairs for fast access and efficient memory usage.",
+          "ttft_ms": 43.45,
+          "tpot_ms": 12.039,
+          "e2e_ms": 332.385,
+          "output_tokens": 25,
+          "estimated_output_tokens": false,
+          "stream_chunks": 24,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 62,
+            "completion_tokens": 25
+          },
+          "completion_rank": 16
+        },
+        {
+          "ok": true,
+          "prompt": "What is the difference between prefill and decode?",
+          "request_id": "request-1",
+          "priority": 0,
+          "output_text": "In natural language processing (NLP) and machine learning, \"prefill\" and \"decode\" refer to two different processes used in sequence-to-sequence models.\n\n1. **Prefill**: This refers to the process of filling in missing or incomplete parts of a sequence. In NLP, this often involves predicting the",
+          "ttft_ms": 50.235,
+          "tpot_ms": 12.118,
+          "e2e_ms": 813.696,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 39,
+            "total_tokens": 103,
+            "completion_tokens": 64
+          },
+          "completion_rank": 17
+        },
+        {
+          "ok": true,
+          "prompt": "Why can prefix caching reduce TTFT?",
+          "request_id": "request-2",
+          "priority": 0,
+          "output_text": "Prefix caching can significantly reduce the Time to First Traversal (TTFT) in several ways:\n\n1. **Reducing Network Latency**: When a user requests content from a server, they often need to traverse multiple layers of network infrastructure before reaching their destination. By caching frequently accessed prefixes on local devices or edge servers,",
+          "ttft_ms": 43.264,
+          "tpot_ms": 12.349,
+          "e2e_ms": 821.257,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 101,
+            "completion_tokens": 64
+          },
+          "completion_rank": 18
+        },
+        {
+          "ok": true,
+          "prompt": "Give two metrics for evaluating an inference backend.",
+          "request_id": "request-3",
+          "priority": 0,
+          "output_text": "Two common metrics used to evaluate an inference backend include:\n\n1. **Throughput**: This measures the number of requests or operations that can be processed per unit of time (e.g., per second). A high throughput indicates that the backend is capable of handling large volumes of data quickly and efficiently.\n\n2. **Latency",
+          "ttft_ms": 45.576,
+          "tpot_ms": 12.304,
+          "e2e_ms": 820.702,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 38,
+            "total_tokens": 102,
+            "completion_tokens": 64
+          },
+          "completion_rank": 19
+        },
+        {
+          "ok": true,
+          "prompt": "When can a throughput improvement be unsuitable for online serving?",
+          "request_id": "request-4",
+          "priority": 0,
+          "output_text": "A throughput improvement in an online service can sometimes become unsuitable if it leads to increased latency or other performance issues that negatively impact user experience. Here are some scenarios where a throughput improvement might not be suitable:\n\n1. **Latency Issues**: If the new throughput allows for faster processing but increases latency significantly, users may perceive",
+          "ttft_ms": 46.694,
+          "tpot_ms": 12.311,
+          "e2e_ms": 822.316,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 41,
+            "total_tokens": 105,
+            "completion_tokens": 64
+          },
+          "completion_rank": 20
+        },
+        {
+          "ok": true,
+          "prompt": "Explain KV cache in one sentence.",
+          "request_id": "request-0",
+          "priority": 0,
+          "output_text": "KV cache is a type of data storage and retrieval system that stores key-value pairs for fast access and efficient memory usage.",
+          "ttft_ms": 42.445,
+          "tpot_ms": 12.214,
+          "e2e_ms": 335.585,
+          "output_tokens": 25,
+          "estimated_output_tokens": false,
+          "stream_chunks": 24,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 62,
+            "completion_tokens": 25
+          },
+          "completion_rank": 21
+        },
+        {
+          "ok": true,
+          "prompt": "What is the difference between prefill and decode?",
+          "request_id": "request-1",
+          "priority": 0,
+          "output_text": "In natural language processing (NLP) and machine learning, \"prefill\" and \"decode\" refer to two different processes used in sequence-to-sequence models.\n\n1. **Prefill**: This refers to the process of filling in missing or incomplete parts of a sequence. In NLP, this often involves predicting the",
+          "ttft_ms": 44.347,
+          "tpot_ms": 11.739,
+          "e2e_ms": 783.91,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 39,
+            "total_tokens": 103,
+            "completion_tokens": 64
+          },
+          "completion_rank": 22
+        },
+        {
+          "ok": true,
+          "prompt": "Why can prefix caching reduce TTFT?",
+          "request_id": "request-2",
+          "priority": 0,
+          "output_text": "Prefix caching can significantly reduce the Time to First Traversal (TTFT) in several ways:\n\n1. **Reducing Network Latency**: When a user requests content from a server, they often need to traverse multiple layers of network infrastructure before reaching their destination. By caching frequently accessed prefixes on local devices or edge servers,",
+          "ttft_ms": 43.102,
+          "tpot_ms": 11.717,
+          "e2e_ms": 781.293,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 101,
+            "completion_tokens": 64
+          },
+          "completion_rank": 23
+        },
+        {
+          "ok": true,
+          "prompt": "Give two metrics for evaluating an inference backend.",
+          "request_id": "request-3",
+          "priority": 0,
+          "output_text": "Two common metrics used to evaluate an inference backend include:\n\n1. **Throughput**: This measures the number of requests or operations that can be processed per unit of time (e.g., per second). A high throughput indicates that the backend is capable of handling large volumes of data quickly and efficiently.\n\n2. **Latency",
+          "ttft_ms": 42.306,
+          "tpot_ms": 11.772,
+          "e2e_ms": 783.95,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 38,
+            "total_tokens": 102,
+            "completion_tokens": 64
+          },
+          "completion_rank": 24
+        },
+        {
+          "ok": true,
+          "prompt": "When can a throughput improvement be unsuitable for online serving?",
+          "request_id": "request-4",
+          "priority": 0,
+          "output_text": "A throughput improvement in an online service can sometimes become unsuitable if it leads to increased latency or other performance issues that negatively impact user experience. Here are some scenarios where a throughput improvement might not be suitable:\n\n1. **Latency Issues**: If the new throughput allows for faster processing but increases latency significantly, users may perceive",
+          "ttft_ms": 43.855,
+          "tpot_ms": 11.784,
+          "e2e_ms": 786.243,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 41,
+            "total_tokens": 105,
+            "completion_tokens": 64
+          },
+          "completion_rank": 25
+        },
+        {
+          "ok": true,
+          "prompt": "Explain KV cache in one sentence.",
+          "request_id": "request-0",
+          "priority": 0,
+          "output_text": "KV cache is a type of data storage and retrieval system that stores key-value pairs for fast access and efficient memory usage.",
+          "ttft_ms": 43.764,
+          "tpot_ms": 12.094,
+          "e2e_ms": 334.014,
+          "output_tokens": 25,
+          "estimated_output_tokens": false,
+          "stream_chunks": 24,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 62,
+            "completion_tokens": 25
+          },
+          "completion_rank": 26
+        },
+        {
+          "ok": true,
+          "prompt": "What is the difference between prefill and decode?",
+          "request_id": "request-1",
+          "priority": 0,
+          "output_text": "In natural language processing (NLP) and machine learning, \"prefill\" and \"decode\" refer to two different processes used in sequence-to-sequence models.\n\n1. **Prefill**: This refers to the process of filling in missing or incomplete parts of a sequence. In NLP, this often involves predicting the",
+          "ttft_ms": 42.602,
+          "tpot_ms": 11.774,
+          "e2e_ms": 784.352,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 39,
+            "total_tokens": 103,
+            "completion_tokens": 64
+          },
+          "completion_rank": 27
+        },
+        {
+          "ok": true,
+          "prompt": "Why can prefix caching reduce TTFT?",
+          "request_id": "request-2",
+          "priority": 0,
+          "output_text": "Prefix caching can significantly reduce the Time to First Traversal (TTFT) in several ways:\n\n1. **Reducing Network Latency**: When a user requests content from a server, they often need to traverse multiple layers of network infrastructure before reaching their destination. By caching frequently accessed prefixes on local devices or edge servers,",
+          "ttft_ms": 42.402,
+          "tpot_ms": 11.801,
+          "e2e_ms": 785.87,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 101,
+            "completion_tokens": 64
+          },
+          "completion_rank": 28
+        },
+        {
+          "ok": true,
+          "prompt": "Give two metrics for evaluating an inference backend.",
+          "request_id": "request-3",
+          "priority": 0,
+          "output_text": "Two common metrics used to evaluate an inference backend include:\n\n1. **Throughput**: This measures the number of requests or operations that can be processed per unit of time (e.g., per second). A high throughput indicates that the backend is capable of handling large volumes of data quickly and efficiently.\n\n2. **Latency",
+          "ttft_ms": 44.08,
+          "tpot_ms": 11.551,
+          "e2e_ms": 771.805,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 38,
+            "total_tokens": 102,
+            "completion_tokens": 64
+          },
+          "completion_rank": 29
+        },
+        {
+          "ok": true,
+          "prompt": "When can a throughput improvement be unsuitable for online serving?",
+          "request_id": "request-4",
+          "priority": 0,
+          "output_text": "A throughput improvement in an online service can sometimes become unsuitable if it leads to increased latency or other performance issues that negatively impact user experience. Here are some scenarios where a throughput improvement might not be suitable:\n\n1. **Latency Issues**: If the new throughput allows for faster processing but increases latency significantly, users may perceive",
+          "ttft_ms": 42.148,
+          "tpot_ms": 11.901,
+          "e2e_ms": 791.94,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 41,
+            "total_tokens": 105,
+            "completion_tokens": 64
+          },
+          "completion_rank": 30
+        }
+      ]
+    },
+    {
+      "label": "target-only",
+      "base_url": "http://127.0.0.1:47297",
+      "model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "workload": {
+        "source": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/workloads/fixed.jsonl",
+        "requests": 30,
+        "max_tokens": 64,
+        "concurrency": 1,
+        "warmup": 5,
+        "repeats": 1,
+        "workload_priority_sent": false
+      },
+      "metrics": {
+        "successful_requests": 30,
+        "failed_requests": 0,
+        "request_throughput_per_s": 1.4332,
+        "output_token_throughput_per_s": 80.5476,
+        "ttft_ms": {
+          "mean": 43.878,
+          "p50": 43.796,
+          "p95": 46.036699999999996,
+          "p99": 46.685900000000004
+        },
+        "tpot_ms": {
+          "mean": 11.829,
+          "p50": 11.813500000000001,
+          "p95": 12.043099999999999,
+          "p99": 12.256369999999999
+        },
+        "e2e_ms": {
+          "mean": 697.564,
+          "p50": 786.919,
+          "p95": 804.55295,
+          "p99": 817.24678
+        },
+        "output_tokens": 1686,
+        "prompt_tokens_mean": 38.4,
+        "duration_s": 20.9317,
+        "priority_order_score": null
+      },
+      "results": [
+        {
+          "ok": true,
+          "prompt": "Explain KV cache in one sentence.",
+          "request_id": "request-0",
+          "priority": 0,
+          "output_text": "KV cache is a type of data storage and retrieval system that stores key-value pairs for fast access and efficient memory usage.",
+          "ttft_ms": 42.071,
+          "tpot_ms": 11.76,
+          "e2e_ms": 324.306,
+          "output_tokens": 25,
+          "estimated_output_tokens": false,
+          "stream_chunks": 24,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 62,
+            "completion_tokens": 25
+          },
+          "completion_rank": 1
+        },
+        {
+          "ok": true,
+          "prompt": "What is the difference between prefill and decode?",
+          "request_id": "request-1",
+          "priority": 0,
+          "output_text": "In natural language processing (NLP) and machine learning, \"prefill\" and \"decode\" refer to two different processes used in sequence-to-sequence models.\n\n1. **Prefill**: This refers to the process of filling in missing or incomplete parts of a sequence. In NLP, this often involves predicting the",
+          "ttft_ms": 42.798,
+          "tpot_ms": 11.819,
+          "e2e_ms": 787.396,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 39,
+            "total_tokens": 103,
+            "completion_tokens": 64
+          },
+          "completion_rank": 2
+        },
+        {
+          "ok": true,
+          "prompt": "Why can prefix caching reduce TTFT?",
+          "request_id": "request-2",
+          "priority": 0,
+          "output_text": "Prefix caching can significantly reduce the Time to First Traversal (TTFT) in several ways:\n\n1. **Reducing Network Latency**: When a user requests content from a server, they often need to traverse multiple layers of network infrastructure before reaching their destination. By caching frequently accessed prefixes on local devices or edge servers,",
+          "ttft_ms": 42.439,
+          "tpot_ms": 11.811,
+          "e2e_ms": 786.516,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 101,
+            "completion_tokens": 64
+          },
+          "completion_rank": 3
+        },
+        {
+          "ok": true,
+          "prompt": "Give two metrics for evaluating an inference backend.",
+          "request_id": "request-3",
+          "priority": 0,
+          "output_text": "Two common metrics used to evaluate an inference backend include:\n\n1. **Throughput**: This measures the number of requests or operations that can be processed per unit of time (e.g., per second). A high throughput indicates that the backend is capable of handling large volumes of data quickly and efficiently.\n\n2. **Latency",
+          "ttft_ms": 44.542,
+          "tpot_ms": 11.714,
+          "e2e_ms": 782.527,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 38,
+            "total_tokens": 102,
+            "completion_tokens": 64
+          },
+          "completion_rank": 4
+        },
+        {
+          "ok": true,
+          "prompt": "When can a throughput improvement be unsuitable for online serving?",
+          "request_id": "request-4",
+          "priority": 0,
+          "output_text": "A throughput improvement in an online service can sometimes become unsuitable if it leads to increased latency or other performance issues that negatively impact user experience. Here are some scenarios where a throughput improvement might not be suitable:\n\n1. **Latency Issues**: If the new throughput allows for faster processing but increases latency significantly, users may perceive",
+          "ttft_ms": 43.045,
+          "tpot_ms": 11.797,
+          "e2e_ms": 786.275,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 41,
+            "total_tokens": 105,
+            "completion_tokens": 64
+          },
+          "completion_rank": 5
+        },
+        {
+          "ok": true,
+          "prompt": "Explain KV cache in one sentence.",
+          "request_id": "request-0",
+          "priority": 0,
+          "output_text": "KV cache is a type of data storage and retrieval system that stores key-value pairs for fast access and efficient memory usage.",
+          "ttft_ms": 44.952,
+          "tpot_ms": 11.822,
+          "e2e_ms": 328.681,
+          "output_tokens": 25,
+          "estimated_output_tokens": false,
+          "stream_chunks": 24,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 62,
+            "completion_tokens": 25
+          },
+          "completion_rank": 6
+        },
+        {
+          "ok": true,
+          "prompt": "What is the difference between prefill and decode?",
+          "request_id": "request-1",
+          "priority": 0,
+          "output_text": "In natural language processing (NLP) and machine learning, \"prefill\" and \"decode\" refer to two different processes used in sequence-to-sequence models.\n\n1. **Prefill**: This refers to the process of filling in missing or incomplete parts of a sequence. In NLP, this often involves predicting the",
+          "ttft_ms": 42.348,
+          "tpot_ms": 11.898,
+          "e2e_ms": 791.89,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 39,
+            "total_tokens": 103,
+            "completion_tokens": 64
+          },
+          "completion_rank": 7
+        },
+        {
+          "ok": true,
+          "prompt": "Why can prefix caching reduce TTFT?",
+          "request_id": "request-2",
+          "priority": 0,
+          "output_text": "Prefix caching can significantly reduce the Time to First Traversal (TTFT) in several ways:\n\n1. **Reducing Network Latency**: When a user requests content from a server, they often need to traverse multiple layers of network infrastructure before reaching their destination. By caching frequently accessed prefixes on local devices or edge servers,",
+          "ttft_ms": 43.213,
+          "tpot_ms": 11.828,
+          "e2e_ms": 788.372,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 101,
+            "completion_tokens": 64
+          },
+          "completion_rank": 8
+        },
+        {
+          "ok": true,
+          "prompt": "Give two metrics for evaluating an inference backend.",
+          "request_id": "request-3",
+          "priority": 0,
+          "output_text": "Two common metrics used to evaluate an inference backend include:\n\n1. **Throughput**: This measures the number of requests or operations that can be processed per unit of time (e.g., per second). A high throughput indicates that the backend is capable of handling large volumes of data quickly and efficiently.\n\n2. **Latency",
+          "ttft_ms": 43.311,
+          "tpot_ms": 11.787,
+          "e2e_ms": 785.878,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 38,
+            "total_tokens": 102,
+            "completion_tokens": 64
+          },
+          "completion_rank": 9
+        },
+        {
+          "ok": true,
+          "prompt": "When can a throughput improvement be unsuitable for online serving?",
+          "request_id": "request-4",
+          "priority": 0,
+          "output_text": "A throughput improvement in an online service can sometimes become unsuitable if it leads to increased latency or other performance issues that negatively impact user experience. Here are some scenarios where a throughput improvement might not be suitable:\n\n1. **Latency Issues**: If the new throughput allows for faster processing but increases latency significantly, users may perceive",
+          "ttft_ms": 46.196,
+          "tpot_ms": 11.794,
+          "e2e_ms": 789.212,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 41,
+            "total_tokens": 105,
+            "completion_tokens": 64
+          },
+          "completion_rank": 10
+        },
+        {
+          "ok": true,
+          "prompt": "Explain KV cache in one sentence.",
+          "request_id": "request-0",
+          "priority": 0,
+          "output_text": "KV cache is a type of data storage and retrieval system that stores key-value pairs for fast access and efficient memory usage.",
+          "ttft_ms": 44.263,
+          "tpot_ms": 11.701,
+          "e2e_ms": 325.079,
+          "output_tokens": 25,
+          "estimated_output_tokens": false,
+          "stream_chunks": 24,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 62,
+            "completion_tokens": 25
+          },
+          "completion_rank": 11
+        },
+        {
+          "ok": true,
+          "prompt": "What is the difference between prefill and decode?",
+          "request_id": "request-1",
+          "priority": 0,
+          "output_text": "In natural language processing (NLP) and machine learning, \"prefill\" and \"decode\" refer to two different processes used in sequence-to-sequence models.\n\n1. **Prefill**: This refers to the process of filling in missing or incomplete parts of a sequence. In NLP, this often involves predicting the",
+          "ttft_ms": 43.284,
+          "tpot_ms": 11.795,
+          "e2e_ms": 786.34,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 39,
+            "total_tokens": 103,
+            "completion_tokens": 64
+          },
+          "completion_rank": 12
+        },
+        {
+          "ok": true,
+          "prompt": "Why can prefix caching reduce TTFT?",
+          "request_id": "request-2",
+          "priority": 0,
+          "output_text": "Prefix caching can significantly reduce the Time to First Traversal (TTFT) in several ways:\n\n1. **Reducing Network Latency**: When a user requests content from a server, they often need to traverse multiple layers of network infrastructure before reaching their destination. By caching frequently accessed prefixes on local devices or edge servers,",
+          "ttft_ms": 43.834,
+          "tpot_ms": 11.784,
+          "e2e_ms": 786.217,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 101,
+            "completion_tokens": 64
+          },
+          "completion_rank": 13
+        },
+        {
+          "ok": true,
+          "prompt": "Give two metrics for evaluating an inference backend.",
+          "request_id": "request-3",
+          "priority": 0,
+          "output_text": "Two common metrics used to evaluate an inference backend include:\n\n1. **Throughput**: This measures the number of requests or operations that can be processed per unit of time (e.g., per second). A high throughput indicates that the backend is capable of handling large volumes of data quickly and efficiently.\n\n2. **Latency",
+          "ttft_ms": 41.948,
+          "tpot_ms": 11.843,
+          "e2e_ms": 788.052,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 38,
+            "total_tokens": 102,
+            "completion_tokens": 64
+          },
+          "completion_rank": 14
+        },
+        {
+          "ok": true,
+          "prompt": "When can a throughput improvement be unsuitable for online serving?",
+          "request_id": "request-4",
+          "priority": 0,
+          "output_text": "A throughput improvement in an online service can sometimes become unsuitable if it leads to increased latency or other performance issues that negatively impact user experience. Here are some scenarios where a throughput improvement might not be suitable:\n\n1. **Latency Issues**: If the new throughput allows for faster processing but increases latency significantly, users may perceive",
+          "ttft_ms": 42.118,
+          "tpot_ms": 11.84,
+          "e2e_ms": 788.069,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 41,
+            "total_tokens": 105,
+            "completion_tokens": 64
+          },
+          "completion_rank": 15
+        },
+        {
+          "ok": true,
+          "prompt": "Explain KV cache in one sentence.",
+          "request_id": "request-0",
+          "priority": 0,
+          "output_text": "KV cache is a type of data storage and retrieval system that stores key-value pairs for fast access and efficient memory usage.",
+          "ttft_ms": 45.58,
+          "tpot_ms": 11.494,
+          "e2e_ms": 321.441,
+          "output_tokens": 25,
+          "estimated_output_tokens": false,
+          "stream_chunks": 24,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 62,
+            "completion_tokens": 25
+          },
+          "completion_rank": 16
+        },
+        {
+          "ok": true,
+          "prompt": "What is the difference between prefill and decode?",
+          "request_id": "request-1",
+          "priority": 0,
+          "output_text": "In natural language processing (NLP) and machine learning, \"prefill\" and \"decode\" refer to two different processes used in sequence-to-sequence models.\n\n1. **Prefill**: This refers to the process of filling in missing or incomplete parts of a sequence. In NLP, this often involves predicting the",
+          "ttft_ms": 43.004,
+          "tpot_ms": 11.891,
+          "e2e_ms": 792.168,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 39,
+            "total_tokens": 103,
+            "completion_tokens": 64
+          },
+          "completion_rank": 17
+        },
+        {
+          "ok": true,
+          "prompt": "Why can prefix caching reduce TTFT?",
+          "request_id": "request-2",
+          "priority": 0,
+          "output_text": "Prefix caching can significantly reduce the Time to First Traversal (TTFT) in several ways:\n\n1. **Reducing Network Latency**: When a user requests content from a server, they often need to traverse multiple layers of network infrastructure before reaching their destination. By caching frequently accessed prefixes on local devices or edge servers,",
+          "ttft_ms": 44.626,
+          "tpot_ms": 11.796,
+          "e2e_ms": 787.792,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 101,
+            "completion_tokens": 64
+          },
+          "completion_rank": 18
+        },
+        {
+          "ok": true,
+          "prompt": "Give two metrics for evaluating an inference backend.",
+          "request_id": "request-3",
+          "priority": 0,
+          "output_text": "Two common metrics used to evaluate an inference backend include:\n\n1. **Throughput**: This measures the number of requests or operations that can be processed per unit of time (e.g., per second). A high throughput indicates that the backend is capable of handling large volumes of data quickly and efficiently.\n\n2. **Latency",
+          "ttft_ms": 43.556,
+          "tpot_ms": 11.78,
+          "e2e_ms": 785.719,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 38,
+            "total_tokens": 102,
+            "completion_tokens": 64
+          },
+          "completion_rank": 19
+        },
+        {
+          "ok": true,
+          "prompt": "When can a throughput improvement be unsuitable for online serving?",
+          "request_id": "request-4",
+          "priority": 0,
+          "output_text": "A throughput improvement in an online service can sometimes become unsuitable if it leads to increased latency or other performance issues that negatively impact user experience. Here are some scenarios where a throughput improvement might not be suitable:\n\n1. **Latency Issues**: If the new throughput allows for faster processing but increases latency significantly, users may perceive",
+          "ttft_ms": 43.617,
+          "tpot_ms": 11.82,
+          "e2e_ms": 788.305,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 41,
+            "total_tokens": 105,
+            "completion_tokens": 64
+          },
+          "completion_rank": 20
+        },
+        {
+          "ok": true,
+          "prompt": "Explain KV cache in one sentence.",
+          "request_id": "request-0",
+          "priority": 0,
+          "output_text": "KV cache is a type of data storage and retrieval system that stores key-value pairs for fast access and efficient memory usage.",
+          "ttft_ms": 43.799,
+          "tpot_ms": 11.814,
+          "e2e_ms": 327.33,
+          "output_tokens": 25,
+          "estimated_output_tokens": false,
+          "stream_chunks": 24,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 62,
+            "completion_tokens": 25
+          },
+          "completion_rank": 21
+        },
+        {
+          "ok": true,
+          "prompt": "What is the difference between prefill and decode?",
+          "request_id": "request-1",
+          "priority": 0,
+          "output_text": "In natural language processing (NLP) and machine learning, \"prefill\" and \"decode\" refer to two different processes used in sequence-to-sequence models.\n\n1. **Prefill**: This refers to the process of filling in missing or incomplete parts of a sequence. In NLP, this often involves predicting the",
+          "ttft_ms": 44.19,
+          "tpot_ms": 11.743,
+          "e2e_ms": 784.003,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 39,
+            "total_tokens": 103,
+            "completion_tokens": 64
+          },
+          "completion_rank": 22
+        },
+        {
+          "ok": true,
+          "prompt": "Why can prefix caching reduce TTFT?",
+          "request_id": "request-2",
+          "priority": 0,
+          "output_text": "Prefix caching can significantly reduce the Time to First Traversal (TTFT) in several ways:\n\n1. **Reducing Network Latency**: When a user requests content from a server, they often need to traverse multiple layers of network infrastructure before reaching their destination. By caching frequently accessed prefixes on local devices or edge servers,",
+          "ttft_ms": 43.866,
+          "tpot_ms": 11.782,
+          "e2e_ms": 786.151,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 101,
+            "completion_tokens": 64
+          },
+          "completion_rank": 23
+        },
+        {
+          "ok": true,
+          "prompt": "Give two metrics for evaluating an inference backend.",
+          "request_id": "request-3",
+          "priority": 0,
+          "output_text": "Two common metrics used to evaluate an inference backend include:\n\n1. **Throughput**: This measures the number of requests or operations that can be processed per unit of time (e.g., per second). A high throughput indicates that the backend is capable of handling large volumes of data quickly and efficiently.\n\n2. **Latency",
+          "ttft_ms": 43.793,
+          "tpot_ms": 11.887,
+          "e2e_ms": 792.657,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 38,
+            "total_tokens": 102,
+            "completion_tokens": 64
+          },
+          "completion_rank": 24
+        },
+        {
+          "ok": true,
+          "prompt": "When can a throughput improvement be unsuitable for online serving?",
+          "request_id": "request-4",
+          "priority": 0,
+          "output_text": "A throughput improvement in an online service can sometimes become unsuitable if it leads to increased latency or other performance issues that negatively impact user experience. Here are some scenarios where a throughput improvement might not be suitable:\n\n1. **Latency Issues**: If the new throughput allows for faster processing but increases latency significantly, users may perceive",
+          "ttft_ms": 45.842,
+          "tpot_ms": 11.86,
+          "e2e_ms": 793.051,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 41,
+            "total_tokens": 105,
+            "completion_tokens": 64
+          },
+          "completion_rank": 25
+        },
+        {
+          "ok": true,
+          "prompt": "Explain KV cache in one sentence.",
+          "request_id": "request-0",
+          "priority": 0,
+          "output_text": "KV cache is a type of data storage and retrieval system that stores key-value pairs for fast access and efficient memory usage.",
+          "ttft_ms": 43.984,
+          "tpot_ms": 11.851,
+          "e2e_ms": 328.41,
+          "output_tokens": 25,
+          "estimated_output_tokens": false,
+          "stream_chunks": 24,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 62,
+            "completion_tokens": 25
+          },
+          "completion_rank": 26
+        },
+        {
+          "ok": true,
+          "prompt": "What is the difference between prefill and decode?",
+          "request_id": "request-1",
+          "priority": 0,
+          "output_text": "In natural language processing (NLP) and machine learning, \"prefill\" and \"decode\" refer to two different processes used in sequence-to-sequence models.\n\n1. **Prefill**: This refers to the process of filling in missing or incomplete parts of a sequence. In NLP, this often involves predicting the",
+          "ttft_ms": 43.086,
+          "tpot_ms": 11.813,
+          "e2e_ms": 787.322,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 39,
+            "total_tokens": 103,
+            "completion_tokens": 64
+          },
+          "completion_rank": 27
+        },
+        {
+          "ok": true,
+          "prompt": "Why can prefix caching reduce TTFT?",
+          "request_id": "request-2",
+          "priority": 0,
+          "output_text": "Prefix caching can significantly reduce the Time to First Traversal (TTFT) in several ways:\n\n1. **Reducing Network Latency**: When a user requests content from a server, they often need to traverse multiple layers of network infrastructure before reaching their destination. By caching frequently accessed prefixes on local devices or edge servers,",
+          "ttft_ms": 45.009,
+          "tpot_ms": 12.152,
+          "e2e_ms": 810.56,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 101,
+            "completion_tokens": 64
+          },
+          "completion_rank": 28
+        },
+        {
+          "ok": true,
+          "prompt": "Give two metrics for evaluating an inference backend.",
+          "request_id": "request-3",
+          "priority": 0,
+          "output_text": "Two common metrics used to evaluate an inference backend include:\n\n1. **Throughput**: This measures the number of requests or operations that can be processed per unit of time (e.g., per second). A high throughput indicates that the backend is capable of handling large volumes of data quickly and efficiently.\n\n2. **Latency",
+          "ttft_ms": 46.886,
+          "tpot_ms": 11.91,
+          "e2e_ms": 797.211,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 38,
+            "total_tokens": 102,
+            "completion_tokens": 64
+          },
+          "completion_rank": 29
+        },
+        {
+          "ok": true,
+          "prompt": "When can a throughput improvement be unsuitable for online serving?",
+          "request_id": "request-4",
+          "priority": 0,
+          "output_text": "A throughput improvement in an online service can sometimes become unsuitable if it leads to increased latency or other performance issues that negatively impact user experience. Here are some scenarios where a throughput improvement might not be suitable:\n\n1. **Latency Issues**: If the new throughput allows for faster processing but increases latency significantly, users may perceive",
+          "ttft_ms": 45.139,
+          "tpot_ms": 12.299,
+          "e2e_ms": 819.978,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 41,
+            "total_tokens": 105,
+            "completion_tokens": 64
+          },
+          "completion_rank": 30
+        }
+      ]
+    },
+    {
+      "label": "target-only",
+      "base_url": "http://127.0.0.1:47297",
+      "model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "workload": {
+        "source": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/workloads/fixed.jsonl",
+        "requests": 30,
+        "max_tokens": 64,
+        "concurrency": 1,
+        "warmup": 5,
+        "repeats": 1,
+        "workload_priority_sent": false
+      },
+      "metrics": {
+        "successful_requests": 30,
+        "failed_requests": 0,
+        "request_throughput_per_s": 1.416,
+        "output_token_throughput_per_s": 79.5775,
+        "ttft_ms": {
+          "mean": 44.5,
+          "p50": 44.322,
+          "p95": 46.8594,
+          "p99": 48.90593
+        },
+        "tpot_ms": {
+          "mean": 11.978,
+          "p50": 11.9205,
+          "p95": 12.2504,
+          "p99": 12.540190000000003
+        },
+        "e2e_ms": {
+          "mean": 706.055,
+          "p50": 795.019,
+          "p95": 816.70675,
+          "p99": 834.2099700000001
+        },
+        "output_tokens": 1686,
+        "prompt_tokens_mean": 38.4,
+        "duration_s": 21.1869,
+        "priority_order_score": null
+      },
+      "results": [
+        {
+          "ok": true,
+          "prompt": "Explain KV cache in one sentence.",
+          "request_id": "request-0",
+          "priority": 0,
+          "output_text": "KV cache is a type of data storage and retrieval system that stores key-value pairs for fast access and efficient memory usage.",
+          "ttft_ms": 44.44,
+          "tpot_ms": 11.867,
+          "e2e_ms": 329.236,
+          "output_tokens": 25,
+          "estimated_output_tokens": false,
+          "stream_chunks": 24,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 62,
+            "completion_tokens": 25
+          },
+          "completion_rank": 1
+        },
+        {
+          "ok": true,
+          "prompt": "What is the difference between prefill and decode?",
+          "request_id": "request-1",
+          "priority": 0,
+          "output_text": "In natural language processing (NLP) and machine learning, \"prefill\" and \"decode\" refer to two different processes used in sequence-to-sequence models.\n\n1. **Prefill**: This refers to the process of filling in missing or incomplete parts of a sequence. In NLP, this often involves predicting the",
+          "ttft_ms": 45.071,
+          "tpot_ms": 12.116,
+          "e2e_ms": 808.383,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 39,
+            "total_tokens": 103,
+            "completion_tokens": 64
+          },
+          "completion_rank": 2
+        },
+        {
+          "ok": true,
+          "prompt": "Why can prefix caching reduce TTFT?",
+          "request_id": "request-2",
+          "priority": 0,
+          "output_text": "Prefix caching can significantly reduce the Time to First Traversal (TTFT) in several ways:\n\n1. **Reducing Network Latency**: When a user requests content from a server, they often need to traverse multiple layers of network infrastructure before reaching their destination. By caching frequently accessed prefixes on local devices or edge servers,",
+          "ttft_ms": 44.114,
+          "tpot_ms": 12.624,
+          "e2e_ms": 839.432,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 101,
+            "completion_tokens": 64
+          },
+          "completion_rank": 3
+        },
+        {
+          "ok": true,
+          "prompt": "Give two metrics for evaluating an inference backend.",
+          "request_id": "request-3",
+          "priority": 0,
+          "output_text": "Two common metrics used to evaluate an inference backend include:\n\n1. **Throughput**: This measures the number of requests or operations that can be processed per unit of time (e.g., per second). A high throughput indicates that the backend is capable of handling large volumes of data quickly and efficiently.\n\n2. **Latency",
+          "ttft_ms": 46.426,
+          "tpot_ms": 12.135,
+          "e2e_ms": 810.94,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 38,
+            "total_tokens": 102,
+            "completion_tokens": 64
+          },
+          "completion_rank": 4
+        },
+        {
+          "ok": true,
+          "prompt": "When can a throughput improvement be unsuitable for online serving?",
+          "request_id": "request-4",
+          "priority": 0,
+          "output_text": "A throughput improvement in an online service can sometimes become unsuitable if it leads to increased latency or other performance issues that negatively impact user experience. Here are some scenarios where a throughput improvement might not be suitable:\n\n1. **Latency Issues**: If the new throughput allows for faster processing but increases latency significantly, users may perceive",
+          "ttft_ms": 45.046,
+          "tpot_ms": 12.006,
+          "e2e_ms": 801.408,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 41,
+            "total_tokens": 105,
+            "completion_tokens": 64
+          },
+          "completion_rank": 5
+        },
+        {
+          "ok": true,
+          "prompt": "Explain KV cache in one sentence.",
+          "request_id": "request-0",
+          "priority": 0,
+          "output_text": "KV cache is a type of data storage and retrieval system that stores key-value pairs for fast access and efficient memory usage.",
+          "ttft_ms": 44.51,
+          "tpot_ms": 12.014,
+          "e2e_ms": 332.847,
+          "output_tokens": 25,
+          "estimated_output_tokens": false,
+          "stream_chunks": 24,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 62,
+            "completion_tokens": 25
+          },
+          "completion_rank": 6
+        },
+        {
+          "ok": true,
+          "prompt": "What is the difference between prefill and decode?",
+          "request_id": "request-1",
+          "priority": 0,
+          "output_text": "In natural language processing (NLP) and machine learning, \"prefill\" and \"decode\" refer to two different processes used in sequence-to-sequence models.\n\n1. **Prefill**: This refers to the process of filling in missing or incomplete parts of a sequence. In NLP, this often involves predicting the",
+          "ttft_ms": 44.309,
+          "tpot_ms": 12.335,
+          "e2e_ms": 821.425,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 39,
+            "total_tokens": 103,
+            "completion_tokens": 64
+          },
+          "completion_rank": 7
+        },
+        {
+          "ok": true,
+          "prompt": "Why can prefix caching reduce TTFT?",
+          "request_id": "request-2",
+          "priority": 0,
+          "output_text": "Prefix caching can significantly reduce the Time to First Traversal (TTFT) in several ways:\n\n1. **Reducing Network Latency**: When a user requests content from a server, they often need to traverse multiple layers of network infrastructure before reaching their destination. By caching frequently accessed prefixes on local devices or edge servers,",
+          "ttft_ms": 49.597,
+          "tpot_ms": 12.065,
+          "e2e_ms": 809.706,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 101,
+            "completion_tokens": 64
+          },
+          "completion_rank": 8
+        },
+        {
+          "ok": true,
+          "prompt": "Give two metrics for evaluating an inference backend.",
+          "request_id": "request-3",
+          "priority": 0,
+          "output_text": "Two common metrics used to evaluate an inference backend include:\n\n1. **Throughput**: This measures the number of requests or operations that can be processed per unit of time (e.g., per second). A high throughput indicates that the backend is capable of handling large volumes of data quickly and efficiently.\n\n2. **Latency",
+          "ttft_ms": 47.214,
+          "tpot_ms": 11.619,
+          "e2e_ms": 779.208,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 38,
+            "total_tokens": 102,
+            "completion_tokens": 64
+          },
+          "completion_rank": 9
+        },
+        {
+          "ok": true,
+          "prompt": "When can a throughput improvement be unsuitable for online serving?",
+          "request_id": "request-4",
+          "priority": 0,
+          "output_text": "A throughput improvement in an online service can sometimes become unsuitable if it leads to increased latency or other performance issues that negatively impact user experience. Here are some scenarios where a throughput improvement might not be suitable:\n\n1. **Latency Issues**: If the new throughput allows for faster processing but increases latency significantly, users may perceive",
+          "ttft_ms": 43.625,
+          "tpot_ms": 12.065,
+          "e2e_ms": 803.742,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 41,
+            "total_tokens": 105,
+            "completion_tokens": 64
+          },
+          "completion_rank": 10
+        },
+        {
+          "ok": true,
+          "prompt": "Explain KV cache in one sentence.",
+          "request_id": "request-0",
+          "priority": 0,
+          "output_text": "KV cache is a type of data storage and retrieval system that stores key-value pairs for fast access and efficient memory usage.",
+          "ttft_ms": 42.267,
+          "tpot_ms": 12.123,
+          "e2e_ms": 333.224,
+          "output_tokens": 25,
+          "estimated_output_tokens": false,
+          "stream_chunks": 24,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 62,
+            "completion_tokens": 25
+          },
+          "completion_rank": 11
+        },
+        {
+          "ok": true,
+          "prompt": "What is the difference between prefill and decode?",
+          "request_id": "request-1",
+          "priority": 0,
+          "output_text": "In natural language processing (NLP) and machine learning, \"prefill\" and \"decode\" refer to two different processes used in sequence-to-sequence models.\n\n1. **Prefill**: This refers to the process of filling in missing or incomplete parts of a sequence. In NLP, this often involves predicting the",
+          "ttft_ms": 42.723,
+          "tpot_ms": 11.871,
+          "e2e_ms": 790.627,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 39,
+            "total_tokens": 103,
+            "completion_tokens": 64
+          },
+          "completion_rank": 12
+        },
+        {
+          "ok": true,
+          "prompt": "Why can prefix caching reduce TTFT?",
+          "request_id": "request-2",
+          "priority": 0,
+          "output_text": "Prefix caching can significantly reduce the Time to First Traversal (TTFT) in several ways:\n\n1. **Reducing Network Latency**: When a user requests content from a server, they often need to traverse multiple layers of network infrastructure before reaching their destination. By caching frequently accessed prefixes on local devices or edge servers,",
+          "ttft_ms": 45.403,
+          "tpot_ms": 12.147,
+          "e2e_ms": 810.694,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 101,
+            "completion_tokens": 64
+          },
+          "completion_rank": 13
+        },
+        {
+          "ok": true,
+          "prompt": "Give two metrics for evaluating an inference backend.",
+          "request_id": "request-3",
+          "priority": 0,
+          "output_text": "Two common metrics used to evaluate an inference backend include:\n\n1. **Throughput**: This measures the number of requests or operations that can be processed per unit of time (e.g., per second). A high throughput indicates that the backend is capable of handling large volumes of data quickly and efficiently.\n\n2. **Latency",
+          "ttft_ms": 41.947,
+          "tpot_ms": 11.951,
+          "e2e_ms": 794.873,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 38,
+            "total_tokens": 102,
+            "completion_tokens": 64
+          },
+          "completion_rank": 14
+        },
+        {
+          "ok": true,
+          "prompt": "When can a throughput improvement be unsuitable for online serving?",
+          "request_id": "request-4",
+          "priority": 0,
+          "output_text": "A throughput improvement in an online service can sometimes become unsuitable if it leads to increased latency or other performance issues that negatively impact user experience. Here are some scenarios where a throughput improvement might not be suitable:\n\n1. **Latency Issues**: If the new throughput allows for faster processing but increases latency significantly, users may perceive",
+          "ttft_ms": 44.165,
+          "tpot_ms": 11.927,
+          "e2e_ms": 795.594,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 41,
+            "total_tokens": 105,
+            "completion_tokens": 64
+          },
+          "completion_rank": 15
+        },
+        {
+          "ok": true,
+          "prompt": "Explain KV cache in one sentence.",
+          "request_id": "request-0",
+          "priority": 0,
+          "output_text": "KV cache is a type of data storage and retrieval system that stores key-value pairs for fast access and efficient memory usage.",
+          "ttft_ms": 43.497,
+          "tpot_ms": 11.857,
+          "e2e_ms": 328.067,
+          "output_tokens": 25,
+          "estimated_output_tokens": false,
+          "stream_chunks": 24,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 62,
+            "completion_tokens": 25
+          },
+          "completion_rank": 16
+        },
+        {
+          "ok": true,
+          "prompt": "What is the difference between prefill and decode?",
+          "request_id": "request-1",
+          "priority": 0,
+          "output_text": "In natural language processing (NLP) and machine learning, \"prefill\" and \"decode\" refer to two different processes used in sequence-to-sequence models.\n\n1. **Prefill**: This refers to the process of filling in missing or incomplete parts of a sequence. In NLP, this often involves predicting the",
+          "ttft_ms": 44.335,
+          "tpot_ms": 11.883,
+          "e2e_ms": 792.971,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 39,
+            "total_tokens": 103,
+            "completion_tokens": 64
+          },
+          "completion_rank": 17
+        },
+        {
+          "ok": true,
+          "prompt": "Why can prefix caching reduce TTFT?",
+          "request_id": "request-2",
+          "priority": 0,
+          "output_text": "Prefix caching can significantly reduce the Time to First Traversal (TTFT) in several ways:\n\n1. **Reducing Network Latency**: When a user requests content from a server, they often need to traverse multiple layers of network infrastructure before reaching their destination. By caching frequently accessed prefixes on local devices or edge servers,",
+          "ttft_ms": 44.709,
+          "tpot_ms": 11.912,
+          "e2e_ms": 795.165,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 101,
+            "completion_tokens": 64
+          },
+          "completion_rank": 18
+        },
+        {
+          "ok": true,
+          "prompt": "Give two metrics for evaluating an inference backend.",
+          "request_id": "request-3",
+          "priority": 0,
+          "output_text": "Two common metrics used to evaluate an inference backend include:\n\n1. **Throughput**: This measures the number of requests or operations that can be processed per unit of time (e.g., per second). A high throughput indicates that the backend is capable of handling large volumes of data quickly and efficiently.\n\n2. **Latency",
+          "ttft_ms": 43.064,
+          "tpot_ms": 11.857,
+          "e2e_ms": 790.061,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 38,
+            "total_tokens": 102,
+            "completion_tokens": 64
+          },
+          "completion_rank": 19
+        },
+        {
+          "ok": true,
+          "prompt": "When can a throughput improvement be unsuitable for online serving?",
+          "request_id": "request-4",
+          "priority": 0,
+          "output_text": "A throughput improvement in an online service can sometimes become unsuitable if it leads to increased latency or other performance issues that negatively impact user experience. Here are some scenarios where a throughput improvement might not be suitable:\n\n1. **Latency Issues**: If the new throughput allows for faster processing but increases latency significantly, users may perceive",
+          "ttft_ms": 42.905,
+          "tpot_ms": 11.996,
+          "e2e_ms": 798.641,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 41,
+            "total_tokens": 105,
+            "completion_tokens": 64
+          },
+          "completion_rank": 20
+        },
+        {
+          "ok": true,
+          "prompt": "Explain KV cache in one sentence.",
+          "request_id": "request-0",
+          "priority": 0,
+          "output_text": "KV cache is a type of data storage and retrieval system that stores key-value pairs for fast access and efficient memory usage.",
+          "ttft_ms": 43.916,
+          "tpot_ms": 11.839,
+          "e2e_ms": 328.05,
+          "output_tokens": 25,
+          "estimated_output_tokens": false,
+          "stream_chunks": 24,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 62,
+            "completion_tokens": 25
+          },
+          "completion_rank": 21
+        },
+        {
+          "ok": true,
+          "prompt": "What is the difference between prefill and decode?",
+          "request_id": "request-1",
+          "priority": 0,
+          "output_text": "In natural language processing (NLP) and machine learning, \"prefill\" and \"decode\" refer to two different processes used in sequence-to-sequence models.\n\n1. **Prefill**: This refers to the process of filling in missing or incomplete parts of a sequence. In NLP, this often involves predicting the",
+          "ttft_ms": 43.423,
+          "tpot_ms": 11.85,
+          "e2e_ms": 789.988,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 39,
+            "total_tokens": 103,
+            "completion_tokens": 64
+          },
+          "completion_rank": 22
+        },
+        {
+          "ok": true,
+          "prompt": "Why can prefix caching reduce TTFT?",
+          "request_id": "request-2",
+          "priority": 0,
+          "output_text": "Prefix caching can significantly reduce the Time to First Traversal (TTFT) in several ways:\n\n1. **Reducing Network Latency**: When a user requests content from a server, they often need to traverse multiple layers of network infrastructure before reaching their destination. By caching frequently accessed prefixes on local devices or edge servers,",
+          "ttft_ms": 45.859,
+          "tpot_ms": 11.914,
+          "e2e_ms": 796.428,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 101,
+            "completion_tokens": 64
+          },
+          "completion_rank": 23
+        },
+        {
+          "ok": true,
+          "prompt": "Give two metrics for evaluating an inference backend.",
+          "request_id": "request-3",
+          "priority": 0,
+          "output_text": "Two common metrics used to evaluate an inference backend include:\n\n1. **Throughput**: This measures the number of requests or operations that can be processed per unit of time (e.g., per second). A high throughput indicates that the backend is capable of handling large volumes of data quickly and efficiently.\n\n2. **Latency",
+          "ttft_ms": 44.621,
+          "tpot_ms": 11.93,
+          "e2e_ms": 796.18,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 38,
+            "total_tokens": 102,
+            "completion_tokens": 64
+          },
+          "completion_rank": 24
+        },
+        {
+          "ok": true,
+          "prompt": "When can a throughput improvement be unsuitable for online serving?",
+          "request_id": "request-4",
+          "priority": 0,
+          "output_text": "A throughput improvement in an online service can sometimes become unsuitable if it leads to increased latency or other performance issues that negatively impact user experience. Here are some scenarios where a throughput improvement might not be suitable:\n\n1. **Latency Issues**: If the new throughput allows for faster processing but increases latency significantly, users may perceive",
+          "ttft_ms": 45.497,
+          "tpot_ms": 11.891,
+          "e2e_ms": 794.661,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 41,
+            "total_tokens": 105,
+            "completion_tokens": 64
+          },
+          "completion_rank": 25
+        },
+        {
+          "ok": true,
+          "prompt": "Explain KV cache in one sentence.",
+          "request_id": "request-0",
+          "priority": 0,
+          "output_text": "KV cache is a type of data storage and retrieval system that stores key-value pairs for fast access and efficient memory usage.",
+          "ttft_ms": 43.994,
+          "tpot_ms": 11.88,
+          "e2e_ms": 329.121,
+          "output_tokens": 25,
+          "estimated_output_tokens": false,
+          "stream_chunks": 24,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 62,
+            "completion_tokens": 25
+          },
+          "completion_rank": 26
+        },
+        {
+          "ok": true,
+          "prompt": "What is the difference between prefill and decode?",
+          "request_id": "request-1",
+          "priority": 0,
+          "output_text": "In natural language processing (NLP) and machine learning, \"prefill\" and \"decode\" refer to two different processes used in sequence-to-sequence models.\n\n1. **Prefill**: This refers to the process of filling in missing or incomplete parts of a sequence. In NLP, this often involves predicting the",
+          "ttft_ms": 46.09,
+          "tpot_ms": 11.91,
+          "e2e_ms": 796.439,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 39,
+            "total_tokens": 103,
+            "completion_tokens": 64
+          },
+          "completion_rank": 27
+        },
+        {
+          "ok": true,
+          "prompt": "Why can prefix caching reduce TTFT?",
+          "request_id": "request-2",
+          "priority": 0,
+          "output_text": "Prefix caching can significantly reduce the Time to First Traversal (TTFT) in several ways:\n\n1. **Reducing Network Latency**: When a user requests content from a server, they often need to traverse multiple layers of network infrastructure before reaching their destination. By caching frequently accessed prefixes on local devices or edge servers,",
+          "ttft_ms": 44.916,
+          "tpot_ms": 11.89,
+          "e2e_ms": 793.971,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 37,
+            "total_tokens": 101,
+            "completion_tokens": 64
+          },
+          "completion_rank": 28
+        },
+        {
+          "ok": true,
+          "prompt": "Give two metrics for evaluating an inference backend.",
+          "request_id": "request-3",
+          "priority": 0,
+          "output_text": "Two common metrics used to evaluate an inference backend include:\n\n1. **Throughput**: This measures the number of requests or operations that can be processed per unit of time (e.g., per second). A high throughput indicates that the backend is capable of handling large volumes of data quickly and efficiently.\n\n2. **Latency",
+          "ttft_ms": 43.235,
+          "tpot_ms": 11.892,
+          "e2e_ms": 792.417,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 38,
+            "total_tokens": 102,
+            "completion_tokens": 64
+          },
+          "completion_rank": 29
+        },
+        {
+          "ok": true,
+          "prompt": "When can a throughput improvement be unsuitable for online serving?",
+          "request_id": "request-4",
+          "priority": 0,
+          "output_text": "A throughput improvement in an online service can sometimes become unsuitable if it leads to increased latency or other performance issues that negatively impact user experience. Here are some scenarios where a throughput improvement might not be suitable:\n\n1. **Latency Issues**: If the new throughput allows for faster processing but increases latency significantly, users may perceive",
+          "ttft_ms": 44.091,
+          "tpot_ms": 11.969,
+          "e2e_ms": 798.137,
+          "output_tokens": 64,
+          "estimated_output_tokens": false,
+          "stream_chunks": 64,
+          "usage": {
+            "prompt_tokens": 41,
+            "total_tokens": 105,
+            "completion_tokens": 64
+          },
+          "completion_rank": 30
+        }
+      ]
+    }
+  ],
+  "schema_version": "inference-benchmark/v1",
+  "normalized_result": {
+    "schema_version": "inference-benchmark/v1",
+    "project": "68",
+    "strategy": "target-only",
+    "role": "baseline",
+    "config": {
+      "model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "backend": "vllm",
+      "dtype": "bfloat16",
+      "prompt_tokens": 38.4,
+      "generated_tokens": 64,
+      "batch": 1,
+      "concurrency": 1,
+      "cache_policy": "default",
+      "role": "baseline",
+      "workload": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/workloads/fixed.jsonl"
+    },
+    "metrics": {
+      "ttft_ms": {
+        "mean": 44.166,
+        "p50": 43.9758,
+        "p95": 46.4145,
+        "p99": 48.2666
+      },
+      "tpot_ms": {
+        "mean": 11.914,
+        "p50": 11.8462,
+        "p95": 12.2085,
+        "p99": 12.7305
+      },
+      "throughput_tokens_per_s": 80.1113,
+      "throughput_requests_per_s": 1.4255,
+      "p95_ms": null,
+      "p99_ms": 824.4885,
+      "peak_memory_mb": null,
+      "queue_wait_ms": null,
+      "input_transfer_bytes": null,
+      "input_transfer_ms": null,
+      "transfer_bytes": null,
+      "handoff_ms": null,
+      "recompute_ms": null,
+      "network_wait_ms": null,
+      "communication_ms": null,
+      "exposed_comm_ms": null,
+      "overlap_ratio": null,
+      "idle_gap_ms": null,
+      "model_load_ms": null,
+      "stream_output_ms": null,
+      "e2e_latency_ms": {
+        "mean": 701.363,
+        "p50": 788.957,
+        "p95": 814.089,
+        "p99": 824.4885
+      },
+      "successful_requests": 30,
+      "failed_requests": 0,
+      "duration_s": 21.0462
+    },
+    "quality": {},
+    "status": "not_recorded",
+    "evidence_level": "not_recorded",
+    "failure": {
+      "failure_reason": null,
+      "retest_path": null
+    },
+    "decision": {
+      "decision": "not_evaluated"
+    },
+    "source": "http://127.0.0.1:47297"
+  }
+}

@@ -1,9 +1,9 @@
 import os
-import glob
 import shutil
 import json
 import re
 import argparse
+from pathlib import Path
 
 SOURCE_DIRS = [
     "00_Prerequisites",
@@ -11,7 +11,40 @@ SOURCE_DIRS = [
     "02_PyTorch_Algorithms",
     "03_Triton_Kernels",
     "04_CUDA_and_System_Optimization",
+    "05_Integrated_Projects_and_Decisions",
 ]
+
+IGNORED_SOURCE_DIRS = {
+    "__pycache__",
+    "benchmarks",
+    "model_cache",
+}
+
+MIRROR_ASSET_NAMES = {
+    "project_config.example.yaml",
+}
+
+
+def is_document_source(path):
+    """只同步课程源文件，跳过缓存、实验产物和隐藏目录。"""
+    parts = Path(path).parts
+    return not any(
+        part.startswith(".") or part in IGNORED_SOURCE_DIRS
+        for part in parts
+    )
+
+
+def is_supported_source(path):
+    source = Path(path)
+    return source.suffix in {".ipynb", ".md"} or source.name in MIRROR_ASSET_NAMES
+
+
+def collect_source_files(root):
+    paths = list(root.rglob("*.ipynb"))
+    paths.extend(root.rglob("*.md"))
+    for asset_name in MIRROR_ASSET_NAMES:
+        paths.extend(root.rglob(asset_name))
+    return sorted(paths)
 
 def generate_cloud_env_block(ipynb_path):
     """生成云端运行环境区块"""
@@ -93,11 +126,11 @@ def normalize_markdown_links(source_text):
     )
     return source_text
 
+
 def normalize_generated_markdown(source_text):
     """清理镜像文件中的行尾空白，并保留一个文件末尾换行。"""
     lines = [line.rstrip() for line in source_text.splitlines()]
     return '\n'.join(lines).rstrip() + '\n'
-
 
 def process_markdown_file(md_path, out_path):
     """处理纯 Markdown 文件，主要是合并双语标题"""
@@ -111,7 +144,7 @@ def process_markdown_file(md_path, out_path):
         source_text = normalize_markdown_links(source_text)
 
         with open(out_path, "w", encoding="utf-8") as f:
-            f.write(source_text)
+            f.write(normalize_generated_markdown(source_text))
         return
 
     # 对于 md 文件，提取方式和 ipynb 略有不同（后缀不同）
@@ -124,7 +157,7 @@ def process_markdown_file(md_path, out_path):
         source_text = normalize_markdown_links(source_text)
 
         with open(out_path, "w", encoding="utf-8") as f:
-            f.write(source_text)
+            f.write(normalize_generated_markdown(source_text))
         return
 
     number = parts[0]
@@ -152,7 +185,7 @@ def process_markdown_file(md_path, out_path):
             lines[0] = f"# {number}. {english_title} | {chinese_title}"
 
     with open(out_path, "w", encoding="utf-8") as f:
-        f.write('\n'.join(lines))
+        f.write(normalize_generated_markdown('\n'.join(lines)))
 
 
 def collect_targets(args):
@@ -164,14 +197,12 @@ def collect_targets(args):
 
     if args.dirs:
         for d in args.dirs:
-            targets.extend(sorted(glob.glob(os.path.join(d, "*.ipynb"))))
-            targets.extend(sorted(glob.glob(os.path.join(d, "*.md"))))
+            root = Path(d)
+            targets.extend(str(path) for path in collect_source_files(root))
 
-    if not targets:
+    if not targets and not args.dirs and not args.files:
         for d in SOURCE_DIRS:
-            targets.extend(sorted(glob.glob(os.path.join(d, "*.ipynb"))))
-        for d in SOURCE_DIRS:
-            targets.extend(sorted(glob.glob(os.path.join(d, "*.md"))))
+            targets.extend(str(path) for path in collect_source_files(Path(d)))
 
     deduped = []
     seen = set()
@@ -179,12 +210,17 @@ def collect_targets(args):
         norm = os.path.normpath(item)
         if norm in seen:
             continue
+        if not is_supported_source(norm):
+            continue
+        if not is_document_source(norm):
+            continue
         if not (
             norm.startswith("00_Prerequisites" + os.sep)
             or norm.startswith("01_Hardware_Math_and_Systems" + os.sep)
             or norm.startswith("02_PyTorch_Algorithms" + os.sep)
             or norm.startswith("03_Triton_Kernels" + os.sep)
             or norm.startswith("04_CUDA_and_System_Optimization" + os.sep)
+            or norm.startswith("05_Integrated_Projects_and_Decisions" + os.sep)
         ):
             continue
         seen.add(norm)
@@ -199,6 +235,7 @@ def clean_full_docs_tree():
         "docs/02_PyTorch_Algorithms",
         "docs/03_Triton_Kernels",
         "docs/04_CUDA_and_System_Optimization",
+        "docs/05_Integrated_Projects_and_Decisions",
     ]:
         if os.path.exists(d):
             shutil.rmtree(d)
@@ -215,7 +252,7 @@ def write_text(path, content, dry_run=False):
         return
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
-        f.write(content)
+        f.write(normalize_generated_markdown(content))
 
 def main():
     parser = argparse.ArgumentParser(description="Convert Chapter 2/3 notebooks and markdown to docs mirror.")
@@ -231,7 +268,7 @@ def main():
     targets = collect_targets(args)
     if not args.dirs and not args.files:
         if args.dry_run:
-            print("[dry-run] 清理 docs/02_PyTorch_Algorithms 和 docs/03_Triton_Kernels")
+            print("[dry-run] 清理并重建全部 docs 镜像目录")
         else:
             clean_full_docs_tree()
         print("✅ 目录清理完成")
@@ -240,6 +277,7 @@ def main():
 
     converted_count = 0
     md_count = 0
+    asset_count = 0
     for source_path in targets:
         out_path = output_path_for_source(source_path)
 
@@ -268,7 +306,7 @@ def main():
 
             write_text(out_path, "\n".join(md_lines))
             converted_count += 1
-        else:
+        elif source_path.endswith(".md"):
             if args.dry_run:
                 print(f"[dry-run] copy markdown {source_path} -> {out_path}")
                 md_count += 1
@@ -276,10 +314,19 @@ def main():
             os.makedirs(os.path.dirname(out_path), exist_ok=True)
             process_markdown_file(source_path, out_path)
             md_count += 1
+        else:
+            if args.dry_run:
+                print(f"[dry-run] copy asset {source_path} -> {out_path}")
+                asset_count += 1
+                continue
+            os.makedirs(os.path.dirname(out_path), exist_ok=True)
+            shutil.copyfile(source_path, out_path)
+            asset_count += 1
 
     print(f"✅ 转换完成: {converted_count} 个 Notebook")
 
     print(f"✅ 处理并复制完成: {md_count} 个 Markdown 文件")
+    print(f"✅ 复制完成: {asset_count} 个配置文件")
     print("=" * 60)
     print("文档构建全部完成！")
 

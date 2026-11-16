@@ -12,6 +12,8 @@
 
 ## 五条主学习路线
 
+当前有13个有效学习入口：5条主学习路线、2个基础支撑专题、4个横向工程专题和2个领域专题。其中“模型架构与训练”是组合路线，组织两个基础专题的学习顺序，不复制它们的内容；旧性能分析、旧显存优化目录仅兼容历史链接，不计入专题数量。
+
 五条路线可按目标独立进入；下表从模型结构、能力形成依次排到服务运行、性能诊断和底层实现，用来表达对象层次，而不是严格的前置依赖。
 
 | 路线 | 解决的核心问题 | 主要入口 | 当前建设重点 |
@@ -19,7 +21,7 @@
 | 模型架构与训练 | 结构选择怎样改变前向计算、反向依赖和训练状态？ | [模型架构与训练](./model_architecture_and_training/intro.md) | 注意力、位置、专家与记忆分支，局部反向、有效更新和状态策略 |
 | 后训练优化 | 如何完成 SFT、偏好优化、RL 对齐及其工程交付？ | [后训练优化](./post_training_optimization/intro.md) | 数据、DPO、GRPO、RL 工程与评测 |
 | 推理优化 | 如何降低请求延迟、提高吞吐并稳定 Serving？ | [推理优化](./inference_optimization/intro.md) | decode、KV Cache、调度、PD 与分布式推理 |
-| 性能优化 | 如何在质量与资源约束下筛选、组合并复测优化方案？ | [性能优化](./performance_optimization/intro.md) | 候选代价、状态账本、执行准入与组合复测 |
+| 性能优化 | 如何在质量与资源约束下筛选、组合并复测优化方案？ | [性能优化](./performance_optimization/intro.md) | 测量诊断、候选代价、状态账本、执行准入与组合复测；按需查[方法索引](./performance_optimization/methods/intro.md) |
 | 算子优化 | 怎样选择图编译、内核或运行时干预，并核对完整调用收益？ | [算子优化](./operator_optimization/intro.md) | 编译与融合、Triton／CUDA实现、执行归因与组件复测 |
 
 ## 横向工程专题
@@ -28,7 +30,7 @@
 
 | 专题 | 主要服务对象 | 当前判断 |
 |:---|:---|:---|
-| [量化与压缩](./quantization_compression/intro.md) | 推理、后训练、部署 | 主线已覆盖对象、校准、PTQ、QLoRA、运行时低精度、artifact 与 Serving 决策；剪枝、蒸馏和稀疏化仍是后续扩展，不应被默认当作已覆盖内容。 |
+| [量化与压缩](./quantization_compression/intro.md) | 推理、后训练、部署 | 覆盖对象、校准、PTQ、QLoRA、运行时低精度、产物与 Serving 决策；蒸馏已有机制页与 88 项目，剪枝与结构稀疏以正文讲解为主。 |
 | [通信与并行](./communication_parallelism/intro.md) | 训练、推理、MoE、性能 | 覆盖通信原语、状态切分、并行、EP hotspot、overlap 与 benchmark；真实多卡项目提供最终证据。 |
 | [数据工程](./data_engineering/intro.md) | 后训练、RAG、性能 | 已覆盖生命周期、解析、清洗、去重、配比、合成验证、后训练接口、血缘与下游采用。 |
 | [部署与异构系统](./deployment_heterogeneous/intro.md) | 推理、量化、通信、领域服务 | 把 artifact、backend、设备兼容、数据路径、服务分层、端边云、发布与成本收束为可交付部署方案。 |
@@ -44,15 +46,16 @@
 
 领域专题复用推理、后训练、数据、性能和部署的共同证据字段，但应保留自己的质量协议，例如任务完成率、VQA/OCR 指标或轨迹正确性。
 
-## 独立专题与分析入口
+## 基础支撑专题
+
+模型架构演进与反向传播训练机制保留完整讲解和独立阅读入口，由“模型架构与训练”组织共同主线；其他专题也可按问题直接回补。
 
 | 入口 | 用途 | 何时进入 |
 |:---|:---|:---|
 | [模型架构演进](./llm_architecture_evolution/intro.md) | 解码器、注意力、位置、专家与递推记忆的结构比较 | 希望独立研究模型结构或审计具体模型时 |
 | [反向传播与训练机制](./backpropagation_training_mechanism/intro.md) | autograd、saved tensors、checkpoint、offload 与训练状态账本 | 训练、后训练或训练侧性能问题需要回补机制时 |
-| [性能分析](./performance_analysis/intro.md) | profiling、trace、回归验证与行动决策 | 需要先拿到时间、显存、通信或服务路径证据时 |
 
-SFT／LoRA 从[后训练优化](./post_training_optimization/intro.md) Task1–2 进入。图编译与融合从[算子优化](./operator_optimization/intro.md) Task1 进入，Task4 核对编译产物与配置，Task6 回到组件复测。训练与推理显存问题分别进入[性能优化](./performance_optimization/intro.md)的状态和缓存分支；需要先采集证据时，使用独立的性能分析专题。
+SFT／LoRA 从[后训练优化](./post_training_optimization/intro.md) Task1–2 进入。图编译与融合从[算子优化](./operator_optimization/intro.md) Task1 进入，Task4 核对编译产物与配置，Task6 回到组件复测。训练与推理显存问题分别进入[性能优化](./performance_optimization/intro.md)的状态和缓存分支；需要先采集证据时，进入该路线的[测量与诊断方法索引](./performance_optimization/methods/intro.md)。
 
 ## 从现象选择入口
 
@@ -73,7 +76,7 @@ SFT／LoRA 从[后训练优化](./post_training_optimization/intro.md) Task1–2
 
 | 专题 | 模型评测中的主责 | 需要交给其他专题的部分 |
 |:---|:---|:---|
-| [数据工程](./data_engineering/intro.md) | 评测集版本、训练/评测隔离、去污染、覆盖与血缘 | 后训练判断能力提升；推理判断检索与服务效果 |
+| [数据工程](./data_engineering/intro.md) | 评测集版本、训练/评测隔离、去污染、覆盖与血缘 | 后训练判断能力提升；RAG 任务检查检索质量；推理优化分析模型请求执行 |
 | [后训练优化](./post_training_optimization/intro.md) | 任务质量、安全、有用性、鲁棒性、judge 一致性与在线回滚 | 数据工程保证评测可信；性能优化解释资源代价 |
 | [量化与压缩](./quantization_compression/intro.md) | 复用质量门槛，检查低比特表示造成的质量回归 | 性能与部署记录 artifact、延迟、显存和 backend 路径 |
 | [通信与并行](./communication_parallelism/intro.md) | 复用质量门槛，检查数值一致性和训练回归 | 性能优化记录通信、overflow 与扩展代价 |

@@ -1,0 +1,913 @@
+{
+  "task": "task3_training_memory_optimization",
+  "stage": "activation_memory_boundary",
+  "source_g0": "benchmarks/results/76_real_gpu_memory.json",
+  "environment_preflight": {
+    "environment_profile": null,
+    "status": "ok",
+    "ready": true,
+    "runtime": {
+      "python": "3.12.15 (main, Oct  6 2026, 23:50:18) [GCC 15.3.0]",
+      "platform": "Linux-6.8.0-138-generic-x86_64-with-glibc2.35",
+      "torch": "2.8.0+cu128",
+      "torch_cuda": "12.8",
+      "cuda_available": true,
+      "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+      "device_capability": [
+        12,
+        0
+      ]
+    },
+    "gpu_memory_gb": 11.48,
+    "gpu_device_count": 1,
+    "native_bf16_supported": true,
+    "packages": {
+      "required": {
+        "transformers": true
+      },
+      "optional": {}
+    },
+    "required_packages_missing": [],
+    "distribution_versions": {},
+    "version_mismatches": {},
+    "exact_version_mismatches": {},
+    "forbidden_distributions_present": [],
+    "python_path_isolation": {
+      "sys_prefix": "/data/anaconda3/envs/llm_vllm_cu128",
+      "user_site_enabled": false,
+      "foreign_python_paths": [],
+      "external_site_paths": []
+    },
+    "reasons": [],
+    "next_actions": [],
+    "result_path": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/76_real_gpu_memory.json"
+  },
+  "status": "blocked",
+  "evidence_level": "safe_activation_isolation_length_ladder",
+  "config": {
+    "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "workload": "pressure",
+    "batch_size": 1,
+    "seq_len": 768,
+    "dtype": "float32",
+    "amp_dtype": null,
+    "mode": "fp32",
+    "optimizer": "SGD",
+    "warmup": 1,
+    "iters": 3,
+    "strategies": [
+      "baseline",
+      "checkpoint",
+      "offload",
+      "hybrid"
+    ],
+    "torch": "2.8.0+cu128",
+    "torch_cuda": "12.8",
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "seed": 42,
+    "optimizer_momentum": 0.0,
+    "repeats": 3,
+    "seq_lens": [
+      768,
+      1024,
+      1280,
+      1536,
+      1792
+    ],
+    "comparison_scope": "activation_memory_isolation"
+  },
+  "budget": {
+    "memory_cap_mb": 11200.0,
+    "min_samples_per_s": 1.0,
+    "min_memory_saving_mb": 512.0,
+    "min_throughput_ratio": 0.7
+  },
+  "quality_floor": {
+    "max_val_loss": 13.00194
+  },
+  "admission": {
+    "status": "blocked",
+    "total_memory_mb": 11757.81,
+    "safety_margin_mb": 2048.0,
+    "checks": [
+      {
+        "seq_len": 1024,
+        "status": "admitted",
+        "free_memory_mb": 10815.62,
+        "safety_margin_mb": 2048.0,
+        "safe_process_limit_mb": 8767.62,
+        "projected_peak_mb": 7113.07,
+        "projection": "conservative_linear_from_previous_sgd_peak_allocated"
+      },
+      {
+        "seq_len": 1280,
+        "status": "admitted",
+        "free_memory_mb": 10815.62,
+        "safety_margin_mb": 2048.0,
+        "safe_process_limit_mb": 8767.62,
+        "projected_peak_mb": 8191.01,
+        "projection": "conservative_linear_from_previous_sgd_peak_allocated"
+      },
+      {
+        "seq_len": 1536,
+        "status": "blocked",
+        "free_memory_mb": 10815.62,
+        "safety_margin_mb": 2048.0,
+        "safe_process_limit_mb": 8767.62,
+        "projected_peak_mb": 9196.43,
+        "projection": "conservative_linear_from_previous_sgd_peak_allocated"
+      }
+    ]
+  },
+  "length_records": [
+    {
+      "seq_len": 768,
+      "source": "g1_sgd_baseline",
+      "candidates": [
+        {
+          "name": "baseline",
+          "seq_len": 768,
+          "optimizer": "sgd",
+          "status": "ok",
+          "step_time_ms": 380.455,
+          "samples_per_s": 2.63,
+          "loss": 12.785,
+          "eval_loss": 12.747,
+          "peak_memory_mb": 5334.8,
+          "peak_reserved_mb": 7202.0,
+          "runs": [
+            {
+              "name": "baseline",
+              "seq_len": 768,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 385.389,
+              "samples_per_s": 2.595,
+              "loss": 12.785422,
+              "eval_loss": 12.746725,
+              "peak_memory_mb": 5334.8,
+              "peak_reserved_mb": 7202.0
+            },
+            {
+              "name": "baseline",
+              "seq_len": 768,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 369.704,
+              "samples_per_s": 2.705,
+              "loss": 12.785421,
+              "eval_loss": 12.746725,
+              "peak_memory_mb": 5334.8,
+              "peak_reserved_mb": 7202.0
+            },
+            {
+              "name": "baseline",
+              "seq_len": 768,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 386.272,
+              "samples_per_s": 2.589,
+              "loss": 12.785422,
+              "eval_loss": 12.746725,
+              "peak_memory_mb": 5334.8,
+              "peak_reserved_mb": 7202.0
+            }
+          ],
+          "successful_runs": 3,
+          "oom_runs": 0,
+          "stability": {
+            "step_time_range_ms": 16.568,
+            "throughput_range_samples_per_s": 0.116,
+            "peak_memory_range_mb": 0.0,
+            "successful_runs": 3,
+            "oom_runs": 0
+          }
+        },
+        {
+          "name": "checkpoint",
+          "seq_len": 768,
+          "optimizer": "sgd",
+          "status": "ok",
+          "step_time_ms": 462.616,
+          "samples_per_s": 2.161,
+          "loss": 12.785,
+          "eval_loss": 12.747,
+          "peak_memory_mb": 4832.83,
+          "peak_reserved_mb": 5764.0,
+          "runs": [
+            {
+              "name": "checkpoint",
+              "seq_len": 768,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 462.652,
+              "samples_per_s": 2.161,
+              "loss": 12.785422,
+              "eval_loss": 12.746725,
+              "peak_memory_mb": 4832.83,
+              "peak_reserved_mb": 5764.0
+            },
+            {
+              "name": "checkpoint",
+              "seq_len": 768,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 463.405,
+              "samples_per_s": 2.158,
+              "loss": 12.785421,
+              "eval_loss": 12.746725,
+              "peak_memory_mb": 4832.83,
+              "peak_reserved_mb": 5764.0
+            },
+            {
+              "name": "checkpoint",
+              "seq_len": 768,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 461.79,
+              "samples_per_s": 2.165,
+              "loss": 12.785422,
+              "eval_loss": 12.746725,
+              "peak_memory_mb": 4832.83,
+              "peak_reserved_mb": 5764.0
+            }
+          ],
+          "successful_runs": 3,
+          "oom_runs": 0,
+          "stability": {
+            "step_time_range_ms": 1.615,
+            "throughput_range_samples_per_s": 0.007,
+            "peak_memory_range_mb": 0.0,
+            "successful_runs": 3,
+            "oom_runs": 0
+          }
+        },
+        {
+          "name": "offload",
+          "seq_len": 768,
+          "optimizer": "sgd",
+          "status": "ok",
+          "step_time_ms": 1556.456,
+          "samples_per_s": 0.643,
+          "loss": 12.785,
+          "eval_loss": 12.747,
+          "peak_memory_mb": 4828.13,
+          "peak_reserved_mb": 5488.0,
+          "runs": [
+            {
+              "name": "offload",
+              "seq_len": 768,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 1556.682,
+              "samples_per_s": 0.642,
+              "loss": 12.785422,
+              "eval_loss": 12.746725,
+              "peak_memory_mb": 4828.13,
+              "peak_reserved_mb": 5488.0
+            },
+            {
+              "name": "offload",
+              "seq_len": 768,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 1561.217,
+              "samples_per_s": 0.641,
+              "loss": 12.785422,
+              "eval_loss": 12.746725,
+              "peak_memory_mb": 4828.13,
+              "peak_reserved_mb": 5488.0
+            },
+            {
+              "name": "offload",
+              "seq_len": 768,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 1551.47,
+              "samples_per_s": 0.645,
+              "loss": 12.785422,
+              "eval_loss": 12.746725,
+              "peak_memory_mb": 4828.13,
+              "peak_reserved_mb": 5488.0
+            }
+          ],
+          "successful_runs": 3,
+          "oom_runs": 0,
+          "stability": {
+            "step_time_range_ms": 9.747,
+            "throughput_range_samples_per_s": 0.004,
+            "peak_memory_range_mb": 0.0,
+            "successful_runs": 3,
+            "oom_runs": 0
+          }
+        },
+        {
+          "name": "hybrid",
+          "seq_len": 768,
+          "optimizer": "sgd",
+          "status": "ok",
+          "step_time_ms": 1547.369,
+          "samples_per_s": 0.647,
+          "loss": 12.785,
+          "eval_loss": 12.747,
+          "peak_memory_mb": 4835.14,
+          "peak_reserved_mb": 5492.0,
+          "runs": [
+            {
+              "name": "hybrid",
+              "seq_len": 768,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 1485.79,
+              "samples_per_s": 0.673,
+              "loss": 12.785422,
+              "eval_loss": 12.746725,
+              "peak_memory_mb": 4835.14,
+              "peak_reserved_mb": 5492.0
+            },
+            {
+              "name": "hybrid",
+              "seq_len": 768,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 1578.832,
+              "samples_per_s": 0.633,
+              "loss": 12.785422,
+              "eval_loss": 12.746725,
+              "peak_memory_mb": 4835.14,
+              "peak_reserved_mb": 5492.0
+            },
+            {
+              "name": "hybrid",
+              "seq_len": 768,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 1577.484,
+              "samples_per_s": 0.634,
+              "loss": 12.785422,
+              "eval_loss": 12.746725,
+              "peak_memory_mb": 4835.14,
+              "peak_reserved_mb": 5492.0
+            }
+          ],
+          "successful_runs": 3,
+          "oom_runs": 0,
+          "stability": {
+            "step_time_range_ms": 93.042,
+            "throughput_range_samples_per_s": 0.04,
+            "peak_memory_range_mb": 0.0,
+            "successful_runs": 3,
+            "oom_runs": 0
+          }
+        }
+      ]
+    },
+    {
+      "seq_len": 1024,
+      "source": "g1_sgd",
+      "candidates": [
+        {
+          "name": "baseline",
+          "seq_len": 1024,
+          "optimizer": "sgd",
+          "status": "ok",
+          "step_time_ms": 520.353,
+          "samples_per_s": 1.923,
+          "loss": 12.724,
+          "eval_loss": 12.727,
+          "peak_memory_mb": 6552.81,
+          "peak_reserved_mb": 6782.0,
+          "runs": [
+            {
+              "name": "baseline",
+              "seq_len": 1024,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 525.515,
+              "samples_per_s": 1.903,
+              "loss": 12.723942,
+              "eval_loss": 12.726547,
+              "peak_memory_mb": 6552.81,
+              "peak_reserved_mb": 6782.0
+            },
+            {
+              "name": "baseline",
+              "seq_len": 1024,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 503.735,
+              "samples_per_s": 1.985,
+              "loss": 12.723943,
+              "eval_loss": 12.726547,
+              "peak_memory_mb": 6552.81,
+              "peak_reserved_mb": 6782.0
+            },
+            {
+              "name": "baseline",
+              "seq_len": 1024,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 531.809,
+              "samples_per_s": 1.88,
+              "loss": 12.723943,
+              "eval_loss": 12.726547,
+              "peak_memory_mb": 6552.81,
+              "peak_reserved_mb": 6782.0
+            }
+          ],
+          "successful_runs": 3,
+          "oom_runs": 0,
+          "stability": {
+            "step_time_range_ms": 28.074,
+            "throughput_range_samples_per_s": 0.105,
+            "peak_memory_range_mb": 0.0,
+            "successful_runs": 3,
+            "oom_runs": 0
+          }
+        },
+        {
+          "name": "checkpoint",
+          "seq_len": 1024,
+          "optimizer": "sgd",
+          "status": "ok",
+          "step_time_ms": 675.649,
+          "samples_per_s": 1.48,
+          "loss": 12.724,
+          "eval_loss": 12.727,
+          "peak_memory_mb": 4843.02,
+          "peak_reserved_mb": 5642.0,
+          "runs": [
+            {
+              "name": "checkpoint",
+              "seq_len": 1024,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 676.86,
+              "samples_per_s": 1.477,
+              "loss": 12.723942,
+              "eval_loss": 12.726546,
+              "peak_memory_mb": 4843.02,
+              "peak_reserved_mb": 5642.0
+            },
+            {
+              "name": "checkpoint",
+              "seq_len": 1024,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 673.519,
+              "samples_per_s": 1.485,
+              "loss": 12.723942,
+              "eval_loss": 12.726547,
+              "peak_memory_mb": 4843.02,
+              "peak_reserved_mb": 5642.0
+            },
+            {
+              "name": "checkpoint",
+              "seq_len": 1024,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 676.568,
+              "samples_per_s": 1.478,
+              "loss": 12.723943,
+              "eval_loss": 12.726546,
+              "peak_memory_mb": 4843.02,
+              "peak_reserved_mb": 5642.0
+            }
+          ],
+          "successful_runs": 3,
+          "oom_runs": 0,
+          "stability": {
+            "step_time_range_ms": 3.341,
+            "throughput_range_samples_per_s": 0.008,
+            "peak_memory_range_mb": 0.0,
+            "successful_runs": 3,
+            "oom_runs": 0
+          }
+        },
+        {
+          "name": "offload",
+          "seq_len": 1024,
+          "optimizer": "sgd",
+          "status": "ok",
+          "step_time_ms": 2130.58,
+          "samples_per_s": 0.47,
+          "loss": 12.724,
+          "eval_loss": 12.727,
+          "peak_memory_mb": 4833.77,
+          "peak_reserved_mb": 5074.0,
+          "runs": [
+            {
+              "name": "offload",
+              "seq_len": 1024,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 2081.407,
+              "samples_per_s": 0.48,
+              "loss": 12.723942,
+              "eval_loss": 12.726547,
+              "peak_memory_mb": 4833.77,
+              "peak_reserved_mb": 5074.0
+            },
+            {
+              "name": "offload",
+              "seq_len": 1024,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 2120.177,
+              "samples_per_s": 0.472,
+              "loss": 12.723942,
+              "eval_loss": 12.726547,
+              "peak_memory_mb": 4833.77,
+              "peak_reserved_mb": 5074.0
+            },
+            {
+              "name": "offload",
+              "seq_len": 1024,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 2190.155,
+              "samples_per_s": 0.457,
+              "loss": 12.723943,
+              "eval_loss": 12.726546,
+              "peak_memory_mb": 4833.77,
+              "peak_reserved_mb": 5074.0
+            }
+          ],
+          "successful_runs": 3,
+          "oom_runs": 0,
+          "stability": {
+            "step_time_range_ms": 108.748,
+            "throughput_range_samples_per_s": 0.023,
+            "peak_memory_range_mb": 0.0,
+            "successful_runs": 3,
+            "oom_runs": 0
+          }
+        },
+        {
+          "name": "hybrid",
+          "seq_len": 1024,
+          "optimizer": "sgd",
+          "status": "ok",
+          "step_time_ms": 2143.717,
+          "samples_per_s": 0.466,
+          "loss": 12.724,
+          "eval_loss": 12.727,
+          "peak_memory_mb": 4836.813,
+          "peak_reserved_mb": 5141.333,
+          "runs": [
+            {
+              "name": "hybrid",
+              "seq_len": 1024,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 2144.634,
+              "samples_per_s": 0.466,
+              "loss": 12.723943,
+              "eval_loss": 12.726546,
+              "peak_memory_mb": 4837.52,
+              "peak_reserved_mb": 5152.0
+            },
+            {
+              "name": "hybrid",
+              "seq_len": 1024,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 2130.64,
+              "samples_per_s": 0.469,
+              "loss": 12.723942,
+              "eval_loss": 12.726547,
+              "peak_memory_mb": 4836.46,
+              "peak_reserved_mb": 5136.0
+            },
+            {
+              "name": "hybrid",
+              "seq_len": 1024,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 2155.878,
+              "samples_per_s": 0.464,
+              "loss": 12.723942,
+              "eval_loss": 12.726546,
+              "peak_memory_mb": 4836.46,
+              "peak_reserved_mb": 5136.0
+            }
+          ],
+          "successful_runs": 3,
+          "oom_runs": 0,
+          "stability": {
+            "step_time_range_ms": 25.238,
+            "throughput_range_samples_per_s": 0.005,
+            "peak_memory_range_mb": 1.06,
+            "successful_runs": 3,
+            "oom_runs": 0
+          }
+        }
+      ]
+    },
+    {
+      "seq_len": 1280,
+      "source": "g1_sgd",
+      "candidates": [
+        {
+          "name": "baseline",
+          "seq_len": 1280,
+          "optimizer": "sgd",
+          "status": "ok",
+          "step_time_ms": 742.591,
+          "samples_per_s": 1.347,
+          "loss": 12.731,
+          "eval_loss": 12.723,
+          "peak_memory_mb": 7663.69,
+          "peak_reserved_mb": 7872.0,
+          "runs": [
+            {
+              "name": "baseline",
+              "seq_len": 1280,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 731.917,
+              "samples_per_s": 1.366,
+              "loss": 12.730633,
+              "eval_loss": 12.723127,
+              "peak_memory_mb": 7663.69,
+              "peak_reserved_mb": 7872.0
+            },
+            {
+              "name": "baseline",
+              "seq_len": 1280,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 768.805,
+              "samples_per_s": 1.301,
+              "loss": 12.730633,
+              "eval_loss": 12.723127,
+              "peak_memory_mb": 7663.69,
+              "peak_reserved_mb": 7872.0
+            },
+            {
+              "name": "baseline",
+              "seq_len": 1280,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 727.051,
+              "samples_per_s": 1.375,
+              "loss": 12.730632,
+              "eval_loss": 12.723126,
+              "peak_memory_mb": 7663.69,
+              "peak_reserved_mb": 7872.0
+            }
+          ],
+          "successful_runs": 3,
+          "oom_runs": 0,
+          "stability": {
+            "step_time_range_ms": 41.754,
+            "throughput_range_samples_per_s": 0.074,
+            "peak_memory_range_mb": 0.0,
+            "successful_runs": 3,
+            "oom_runs": 0
+          }
+        },
+        {
+          "name": "checkpoint",
+          "seq_len": 1280,
+          "optimizer": "sgd",
+          "status": "ok",
+          "step_time_ms": 893.166,
+          "samples_per_s": 1.12,
+          "loss": 12.731,
+          "eval_loss": 12.723,
+          "peak_memory_mb": 4843.35,
+          "peak_reserved_mb": 5476.0,
+          "runs": [
+            {
+              "name": "checkpoint",
+              "seq_len": 1280,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 893.639,
+              "samples_per_s": 1.119,
+              "loss": 12.730634,
+              "eval_loss": 12.723126,
+              "peak_memory_mb": 4843.35,
+              "peak_reserved_mb": 5476.0
+            },
+            {
+              "name": "checkpoint",
+              "seq_len": 1280,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 886.654,
+              "samples_per_s": 1.128,
+              "loss": 12.730632,
+              "eval_loss": 12.723126,
+              "peak_memory_mb": 4843.35,
+              "peak_reserved_mb": 5476.0
+            },
+            {
+              "name": "checkpoint",
+              "seq_len": 1280,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 899.204,
+              "samples_per_s": 1.112,
+              "loss": 12.730633,
+              "eval_loss": 12.723127,
+              "peak_memory_mb": 4843.35,
+              "peak_reserved_mb": 5476.0
+            }
+          ],
+          "successful_runs": 3,
+          "oom_runs": 0,
+          "stability": {
+            "step_time_range_ms": 12.55,
+            "throughput_range_samples_per_s": 0.016,
+            "peak_memory_range_mb": 0.0,
+            "successful_runs": 3,
+            "oom_runs": 0
+          }
+        },
+        {
+          "name": "offload",
+          "seq_len": 1280,
+          "optimizer": "sgd",
+          "status": "ok",
+          "step_time_ms": 2692.977,
+          "samples_per_s": 0.372,
+          "loss": 12.731,
+          "eval_loss": 12.723,
+          "peak_memory_mb": 4850.4,
+          "peak_reserved_mb": 5396.0,
+          "runs": [
+            {
+              "name": "offload",
+              "seq_len": 1280,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 2851.647,
+              "samples_per_s": 0.351,
+              "loss": 12.730632,
+              "eval_loss": 12.723126,
+              "peak_memory_mb": 4850.4,
+              "peak_reserved_mb": 5396.0
+            },
+            {
+              "name": "offload",
+              "seq_len": 1280,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 2644.704,
+              "samples_per_s": 0.378,
+              "loss": 12.730632,
+              "eval_loss": 12.723126,
+              "peak_memory_mb": 4850.4,
+              "peak_reserved_mb": 5396.0
+            },
+            {
+              "name": "offload",
+              "seq_len": 1280,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 2582.581,
+              "samples_per_s": 0.387,
+              "loss": 12.730632,
+              "eval_loss": 12.723127,
+              "peak_memory_mb": 4850.4,
+              "peak_reserved_mb": 5396.0
+            }
+          ],
+          "successful_runs": 3,
+          "oom_runs": 0,
+          "stability": {
+            "step_time_range_ms": 269.066,
+            "throughput_range_samples_per_s": 0.036,
+            "peak_memory_range_mb": 0.0,
+            "successful_runs": 3,
+            "oom_runs": 0
+          }
+        },
+        {
+          "name": "hybrid",
+          "seq_len": 1280,
+          "optimizer": "sgd",
+          "status": "ok",
+          "step_time_ms": 3214.754,
+          "samples_per_s": 0.311,
+          "loss": 12.731,
+          "eval_loss": 12.723,
+          "peak_memory_mb": 4847.35,
+          "peak_reserved_mb": 5382.0,
+          "runs": [
+            {
+              "name": "hybrid",
+              "seq_len": 1280,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 3017.855,
+              "samples_per_s": 0.331,
+              "loss": 12.730633,
+              "eval_loss": 12.723126,
+              "peak_memory_mb": 4847.35,
+              "peak_reserved_mb": 5382.0
+            },
+            {
+              "name": "hybrid",
+              "seq_len": 1280,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 3253.281,
+              "samples_per_s": 0.307,
+              "loss": 12.730633,
+              "eval_loss": 12.723126,
+              "peak_memory_mb": 4847.35,
+              "peak_reserved_mb": 5382.0
+            },
+            {
+              "name": "hybrid",
+              "seq_len": 1280,
+              "optimizer": "sgd",
+              "status": "ok",
+              "step_time_ms": 3373.126,
+              "samples_per_s": 0.296,
+              "loss": 12.730634,
+              "eval_loss": 12.723126,
+              "peak_memory_mb": 4847.35,
+              "peak_reserved_mb": 5382.0
+            }
+          ],
+          "successful_runs": 3,
+          "oom_runs": 0,
+          "stability": {
+            "step_time_range_ms": 355.271,
+            "throughput_range_samples_per_s": 0.035,
+            "peak_memory_range_mb": 0.0,
+            "successful_runs": 3,
+            "oom_runs": 0
+          }
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "tested_seq_lens": [
+      768,
+      1024,
+      1280
+    ],
+    "baseline_available": true,
+    "baseline_max_runnable_seq_len": 1280,
+    "baseline_oom_seq_len": null,
+    "boundary_observed": false,
+    "max_runnable_seq_len": {
+      "baseline": 1280,
+      "checkpoint": 1280,
+      "offload": 1280,
+      "hybrid": 1280
+    },
+    "quality_failed": [],
+    "comparisons": [
+      {
+        "name": "checkpoint",
+        "max_runnable_seq_len": 1280,
+        "comparison_seq_len": 1280,
+        "capacity_extended": false,
+        "memory_saving_mb": 2820.3399999999992,
+        "throughput_ratio": 0.8314773570898294,
+        "meaningful_memory_gain": true,
+        "acceptable_throughput": true,
+        "accepted": true
+      },
+      {
+        "name": "offload",
+        "max_runnable_seq_len": 1280,
+        "comparison_seq_len": 1280,
+        "capacity_extended": false,
+        "memory_saving_mb": 2813.29,
+        "throughput_ratio": 0.27616926503340755,
+        "meaningful_memory_gain": true,
+        "acceptable_throughput": false,
+        "accepted": false
+      },
+      {
+        "name": "hybrid",
+        "max_runnable_seq_len": 1280,
+        "comparison_seq_len": 1280,
+        "capacity_extended": false,
+        "memory_saving_mb": 2816.3399999999992,
+        "throughput_ratio": 0.23088344469190794,
+        "meaningful_memory_gain": true,
+        "acceptable_throughput": false,
+        "accepted": false
+      }
+    ],
+    "eligible_strategies": [
+      "checkpoint"
+    ],
+    "min_memory_saving_mb": 512.0,
+    "min_throughput_ratio": 0.7
+  },
+  "decision": {
+    "decision": "accept",
+    "reason": "capacity_or_memory_gain_meets_throughput_guardrail",
+    "next_action": "promote_best_strategy_to_training_run"
+  }
+}

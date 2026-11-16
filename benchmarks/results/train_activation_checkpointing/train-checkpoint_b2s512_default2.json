@@ -1,0 +1,73 @@
+{
+  "schema_version": "training-mechanism-gpu/v4",
+  "semantic_id": "TRAIN-CHECKPOINT",
+  "profile_id": "TRAIN-CUDA-MECHANISM",
+  "run_label": "b2s512_default2",
+  "model": {
+    "id": "Qwen/Qwen2.5-0.5B",
+    "requested_revision": "main",
+    "resolved_commit": "060db6499f32faf8b98477b0a26969ef7d8b9987",
+    "resolution_source": "huggingface_hub_api",
+    "tokenizer_class": "Qwen2Tokenizer"
+  },
+  "workload": {
+    "dtype": "bfloat16",
+    "batch_size": 2,
+    "seq_len": 512,
+    "warmup": 1,
+    "repeats": 20,
+    "min_memory_reduction_mb": 32.0,
+    "min_memory_reduction_ratio": 0.01,
+    "seed": 42,
+    "prompts": [
+      "Explain why activation checkpointing trades compute for memory."
+    ]
+  },
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000,
+    "compute_capability": [
+      12,
+      0
+    ],
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8",
+    "bf16_supported": true
+  },
+  "metrics": {
+    "baseline": {
+      "step_median_ms": 139.556587,
+      "step_p95_ms": 179.926529,
+      "peak_allocated_mb": 4221.726562,
+      "peak_reserved_mb": 4550.0,
+      "loss": 5.869967,
+      "gradient_l2_norm": 356.442688,
+      "gradient_is_finite": true,
+      "checkpoint_enabled": false
+    },
+    "candidate": {
+      "step_median_ms": 166.417862,
+      "step_p95_ms": 202.312408,
+      "peak_allocated_mb": 2799.574219,
+      "peak_reserved_mb": 4198.0,
+      "loss": 5.869967,
+      "gradient_l2_norm": 356.442688,
+      "gradient_is_finite": true,
+      "checkpoint_enabled": true
+    }
+  },
+  "correctness": {
+    "loss_abs_diff": 0.0,
+    "gradient_norm_abs_diff": 0.0,
+    "gradient_norm_relative_diff": 0.0,
+    "passed": true
+  },
+  "resource_gate": {
+    "memory_reduction_mb": 1422.15234375,
+    "memory_reduction_ratio": 0.3368651007344818,
+    "passed": true
+  },
+  "failure": null,
+  "evidence_level": "real_model_mechanism_benchmark",
+  "decision": "accept"
+}

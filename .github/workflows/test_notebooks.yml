@@ -17,7 +17,9 @@ jobs:
       with:
         python-version: '3.10'
     - name: Test math compatibility checks
-      run: python -m unittest tools.test_math_formula_compatibility
+      run: python -m unittest tools.tests.test_math_formula_compatibility
+    - name: Test migrated test entry points
+      run: python -m unittest tools.tests.test_test_entrypoints
     - name: Check reviewed topic math without Node or network
       run: >-
         python tools/check_math_formula_symbols.py

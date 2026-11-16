@@ -1,0 +1,93 @@
+{
+  "schema_version": "training-mechanism-gpu/v4",
+  "semantic_id": "TRAIN-GRADIENT-ACCUMULATION",
+  "profile_id": "TRAIN-CUDA-MECHANISM",
+  "run_label": "seq256_default1",
+  "model": {
+    "id": "Qwen/Qwen2.5-0.5B",
+    "requested_revision": "main",
+    "resolved_commit": "060db6499f32faf8b98477b0a26969ef7d8b9987",
+    "resolution_source": "huggingface_hub_api",
+    "tokenizer_class": "Qwen2Tokenizer"
+  },
+  "workload": {
+    "parameter_dtype": "float32",
+    "effective_batch": 4,
+    "micro_batch_counts": [
+      1,
+      2,
+      4
+    ],
+    "seq_len": 256,
+    "warmup_steps": 1,
+    "repeat_steps": 20,
+    "learning_rate": 0.0001,
+    "seed": 42,
+    "prompts": [
+      "Explain gradient accumulation.",
+      "Compare micro-batch and effective batch."
+    ]
+  },
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000,
+    "compute_capability": [
+      12,
+      0
+    ],
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8",
+    "bf16_supported": true
+  },
+  "metrics": [
+    {
+      "accumulation_count": 1,
+      "micro_batch_size": 4,
+      "median_step_ms": 395.318893,
+      "p95_step_ms": 454.977051,
+      "peak_allocated_mb": 6482.867188,
+      "peak_incremental_mb": 4578.132324,
+      "correctness_loss": 5.859967,
+      "final_loss": 0.460133,
+      "probe_parameter": "model.layers.0.self_attn.q_proj.weight",
+      "update_delta_max": 4e-06,
+      "parameter_max_abs_diff": 0.0,
+      "loss_abs_diff": 0.0
+    },
+    {
+      "accumulation_count": 2,
+      "micro_batch_size": 2,
+      "median_step_ms": 479.894119,
+      "p95_step_ms": 497.239716,
+      "peak_allocated_mb": 6050.138184,
+      "peak_incremental_mb": 4145.40332,
+      "correctness_loss": 5.859966,
+      "final_loss": 0.460289,
+      "probe_parameter": "model.layers.0.self_attn.q_proj.weight",
+      "update_delta_max": 4e-06,
+      "parameter_max_abs_diff": 0.0,
+      "loss_abs_diff": 1e-06
+    },
+    {
+      "accumulation_count": 4,
+      "micro_batch_size": 1,
+      "median_step_ms": 527.678864,
+      "p95_step_ms": 561.131714,
+      "peak_allocated_mb": 5361.94873,
+      "peak_incremental_mb": 3457.213867,
+      "correctness_loss": 5.859971,
+      "final_loss": 0.460182,
+      "probe_parameter": "model.layers.0.self_attn.q_proj.weight",
+      "update_delta_max": 4e-06,
+      "parameter_max_abs_diff": 0.0,
+      "loss_abs_diff": 4e-06
+    }
+  ],
+  "correctness": {
+    "tolerance": 0.0002,
+    "passed": true
+  },
+  "failure": null,
+  "evidence_level": "real_model_mechanism_benchmark",
+  "decision": "accept"
+}

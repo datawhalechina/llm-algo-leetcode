@@ -1,0 +1,109 @@
+{
+  "schema_version": "inference-mechanism-gpu/v1",
+  "semantic_id": "INF-PROPOSAL",
+  "environment_profile": "INF-CUDA-MECHANISM",
+  "run_mode": "real_gpu",
+  "run_label": "rtx5070ti_proposal_v2",
+  "framework": {
+    "python": "3.12.15",
+    "torch": "2.11.0+cu128",
+    "transformers": "5.19.0"
+  },
+  "hardware": {
+    "cuda_available": true,
+    "cuda": "12.8",
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU"
+  },
+  "workload": {
+    "id": "inf-dynamic-assisted-generation",
+    "version": "v1",
+    "target_model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+    "target_revision": "main",
+    "target_commit": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+    "assistant_model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "assistant_revision": "main",
+    "assistant_commit": "7ae557604adf67be50417f59c2c2f167def9a775",
+    "dtype": "float16",
+    "prompt_count": 3,
+    "max_new_tokens": 64,
+    "assisted_candidates": [
+      {
+        "name": "constant",
+        "schedule": "constant",
+        "confidence_threshold": 0.0
+      },
+      {
+        "name": "heuristic_transient",
+        "schedule": "heuristic_transient",
+        "confidence_threshold": 0.0
+      },
+      {
+        "name": "dynamic_confidence",
+        "schedule": "constant",
+        "confidence_threshold": 0.4
+      }
+    ],
+    "initial_assistant_tokens": 5,
+    "dynamic_confidence_threshold": 0.4,
+    "warmup_steps": 1,
+    "repeat_steps": 5,
+    "seed": 42
+  },
+  "baseline": {
+    "name": "target_only",
+    "median_latency_ms": 2594.56103515625,
+    "p95_latency_ms": 2624.812744140625,
+    "median_target_forward_calls": 192,
+    "peak_memory_bytes": 3104360448
+  },
+  "candidates": [
+    {
+      "candidate": "constant",
+      "schedule": "constant",
+      "confidence_threshold": 0.0,
+      "outputs_match_baseline": true,
+      "median_latency_ms": 2746.853759765625,
+      "p95_latency_ms": 2749.577392578125,
+      "latency_ratio_vs_baseline": 1.0586969134839426,
+      "median_target_forward_calls": 61,
+      "median_assistant_forward_calls": 289,
+      "median_tokens_per_target_call": 3.1475409836065573,
+      "peak_memory_bytes": 4119702016,
+      "final_num_assistant_tokens": 5,
+      "path_confirmed": true
+    },
+    {
+      "candidate": "heuristic_transient",
+      "schedule": "heuristic_transient",
+      "confidence_threshold": 0.0,
+      "outputs_match_baseline": true,
+      "median_latency_ms": 2610.867431640625,
+      "p95_latency_ms": 2614.35595703125,
+      "latency_ratio_vs_baseline": 1.0062848382687568,
+      "median_target_forward_calls": 68,
+      "median_assistant_forward_calls": 256,
+      "median_tokens_per_target_call": 2.823529411764706,
+      "peak_memory_bytes": 4127287808,
+      "final_num_assistant_tokens": 5,
+      "path_confirmed": true
+    },
+    {
+      "candidate": "dynamic_confidence",
+      "schedule": "constant",
+      "confidence_threshold": 0.4,
+      "outputs_match_baseline": true,
+      "median_latency_ms": 2216.906982421875,
+      "p95_latency_ms": 2218.6953125,
+      "latency_ratio_vs_baseline": 0.8544439511666251,
+      "median_target_forward_calls": 73,
+      "median_assistant_forward_calls": 186,
+      "median_tokens_per_target_call": 2.6301369863013697,
+      "peak_memory_bytes": 4119429632,
+      "final_num_assistant_tokens": 5,
+      "path_confirmed": true
+    }
+  ],
+  "failure": null,
+  "evidence_level": "local_mechanism_benchmark",
+  "decision": "accept"
+}

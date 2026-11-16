@@ -1,15 +1,56 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="650" viewBox="0 0 1500 650" role="img" aria-labelledby="title desc">
-<title id="title">Part 02 大模型算法实战知识地图</title>
-<desc id="desc">展示 Part 02 从基础组件、模型结构、训练对齐、系统优化到项目验证的学习范围，以及与前置和后续 Part 的联系。</desc>
-<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#475569"/></marker><style>
-.title{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;font-size:30px;font-weight:700;fill:#0f172a}.sub{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;font-size:16px;font-weight:500;fill:#475569}.group{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;font-size:16px;font-weight:700;fill:#64748b}.head{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;font-size:19px;font-weight:700;fill:#111827}.body{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;font-size:14px;font-weight:500;fill:#334155}.small{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;font-size:13px;font-weight:500;fill:#475569}.box{stroke-width:2.5;rx:16}.line{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}
-</style></defs>
-<rect width="1500" height="650" fill="#f8fafc"/><text x="70" y="58" class="title">Part 02：把大模型算法写成可验证的 PyTorch 实现</text><text x="70" y="91" class="sub">从组件正确性出发，经过模型与训练机制，进入推理、显存、量化、并行和项目验证；全程关注语义、资源代价和可复核证据。</text>
-<rect x="35" y="135" width="150" height="190" fill="#e2e8f0" class="box" stroke="#64748b"/><text x="110" y="178" text-anchor="middle" class="head">前置基础</text><text x="110" y="220" text-anchor="middle" class="body">PyTorch</text><text x="110" y="250" text-anchor="middle" class="body">硬件与数学</text><text x="110" y="291" text-anchor="middle" class="small">Part 00 / Part 01</text>
-<rect x="235" y="135" width="220" height="190" fill="#dbeafe" class="box" stroke="#3b82f6"/><text x="345" y="178" text-anchor="middle" class="head">组件表达</text><text x="345" y="220" text-anchor="middle" class="body">张量、Embedding</text><text x="345" y="250" text-anchor="middle" class="body">RoPE、Attention</text><text x="345" y="291" text-anchor="middle" class="small">00–04</text>
-<rect x="505" y="135" width="220" height="190" fill="#dcfce7" class="box" stroke="#16a34a"/><text x="615" y="178" text-anchor="middle" class="head">模型组装</text><text x="615" y="220" text-anchor="middle" class="body">Decoder Block</text><text x="615" y="250" text-anchor="middle" class="body">MoE 与架构变体</text><text x="615" y="291" text-anchor="middle" class="small">05–08</text>
-<rect x="775" y="135" width="220" height="190" fill="#fef3c7" class="box" stroke="#d97706"/><text x="885" y="178" text-anchor="middle" class="head">训练与对齐</text><text x="885" y="220" text-anchor="middle" class="body">SFT、LoRA、优化器</text><text x="885" y="250" text-anchor="middle" class="body">反向传播与显存</text><text x="885" y="291" text-anchor="middle" class="small">09–19</text>
-<rect x="1045" y="135" width="220" height="190" fill="#fce7f3" class="box" stroke="#db2777"/><text x="1155" y="178" text-anchor="middle" class="head">系统优化</text><text x="1155" y="220" text-anchor="middle" class="body">FlashAttention、解码</text><text x="1155" y="250" text-anchor="middle" class="body">缓存、量化、并行</text><text x="1155" y="291" text-anchor="middle" class="small">20–59</text>
-<rect x="1315" y="135" width="150" height="190" fill="#ede9fe" class="box" stroke="#7c3aed"/><text x="1390" y="178" text-anchor="middle" class="head">项目验证</text><text x="1390" y="220" text-anchor="middle" class="body">测量</text><text x="1390" y="250" text-anchor="middle" class="body">比较</text><text x="1390" y="291" text-anchor="middle" class="small">60–89</text>
-<path d="M185 230H225" class="line"/><path d="M455 230H495" class="line"/><path d="M725 230H765" class="line"/><path d="M995 230H1035" class="line"/><path d="M1265 230H1305" class="line"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="700" viewBox="0 0 1500 700" role="img" aria-labelledby="title desc">
+  <title id="title">Part 02 大模型算法实战知识地图</title>
+  <desc id="desc">从 PyTorch 与硬件基础出发，分别进入模型架构、训练与后训练、推理与服务三条主线；每条主线形成独立证据，最终进入项目采用判断。精度、显存、通信与性能证据横向约束三条主线。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+    <style>
+      .title{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:30px;font-weight:700;fill:#0f172a}.sub{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:16px;fill:#475569}.head{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:18px;font-weight:700;fill:#172033}.copy{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:14px;fill:#334155}.group{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:15px;font-weight:700;fill:#334155}.line{fill:none;stroke:#475569;stroke-width:2.6;marker-end:url(#arrow)}.guide{fill:none;stroke:#94a3b8;stroke-width:2;stroke-dasharray:7 6}
+    </style>
+  </defs>
+  <rect width="1500" height="700" fill="#f8fafc"/>
+  <rect x="28" y="24" width="1444" height="652" rx="26" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="62" y="70" class="title">Part 02：从算法表达走向可采用的工程证据</text>
+  <text x="62" y="102" class="sub">架构、训练与推理是三条并行主线；精度、显存、通信和性能分析横向约束每一条主线。</text>
+
+  <rect x="58" y="248" width="210" height="126" rx="16" fill="#e2e8f0" stroke="#64748b" stroke-width="2"/>
+  <text x="82" y="284" class="head">前置能力</text>
+  <text x="82" y="314" class="copy">张量 · 自动微分 · 模块状态</text>
+  <text x="82" y="340" class="copy">硬件、数值与系统基础</text>
+
+  <rect x="350" y="136" width="230" height="112" rx="16" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="374" y="172" class="head">模型架构</text><text x="374" y="202" class="copy">组件、残差流与注意力</text><text x="374" y="226" class="copy">MoE、稀疏与记忆结构</text>
+  <rect x="350" y="262" width="230" height="112" rx="16" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="374" y="298" class="head">训练与后训练</text><text x="374" y="328" class="copy">监督目标与参数更新</text><text x="374" y="352" class="copy">偏好、奖励与在线生命周期</text>
+  <rect x="350" y="388" width="230" height="112" rx="16" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="374" y="424" class="head">推理与服务</text><text x="374" y="454" class="copy">请求执行、解码与缓存</text><text x="374" y="478" class="copy">调度、低精度与部署</text>
+
+  <rect x="660" y="136" width="250" height="112" rx="16" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="684" y="172" class="head">结构候选与资源影响</text><text x="684" y="202" class="copy">访问范围 · 状态表示</text><text x="684" y="226" class="copy">容量、质量与计算代价</text>
+  <rect x="660" y="262" width="250" height="112" rx="16" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/>
+  <text x="684" y="298" class="head">训练候选与交付状态</text><text x="684" y="328" class="copy">数据准入 · 更新范围</text><text x="684" y="352" class="copy">检查点、评测与回滚</text>
+  <rect x="660" y="388" width="250" height="112" rx="16" fill="#fffbeb" stroke="#f59e0b" stroke-width="2"/>
+  <text x="684" y="424" class="head">服务策略与运行状态</text><text x="684" y="454" class="copy">延迟 · 吞吐 · 显存</text><text x="684" y="478" class="copy">队列、失败与服务目标</text>
+
+  <rect x="990" y="136" width="220" height="112" rx="16" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+  <text x="1014" y="172" class="head">架构证据</text><text x="1014" y="202" class="copy">固定输入比较候选</text><text x="1014" y="226" class="copy">检查访问、容量与质量</text>
+  <rect x="990" y="262" width="220" height="112" rx="16" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <text x="1014" y="298" class="head">训练证据</text><text x="1014" y="328" class="copy">固定数据比较候选</text><text x="1014" y="352" class="copy">检查质量、状态与恢复</text>
+  <rect x="990" y="388" width="220" height="112" rx="16" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+  <text x="1014" y="424" class="head">服务证据</text><text x="1014" y="454" class="copy">固定工作负载比较候选</text><text x="1014" y="478" class="copy">检查性能、容量与可靠性</text>
+
+  <rect x="1280" y="202" width="170" height="236" rx="18" fill="#f3e8ff" stroke="#9333ea" stroke-width="2"/>
+  <text x="1304" y="242" class="head">项目采用判断</text>
+  <text x="1304" y="282" class="copy">固定基线与候选</text><text x="1304" y="312" class="copy">质量与资源门槛</text><text x="1304" y="342" class="copy">失败与恢复证据</text><text x="1304" y="382" class="group">采用 / 调优 / 拒绝</text>
+
+  <path d="M268 311H308V192H342" class="line"/><path d="M268 311H342" class="line"/><path d="M268 311H308V444H342" class="line"/>
+  <path d="M580 192H652" class="line"/><path d="M580 318H652" class="line"/><path d="M580 444H652" class="line"/>
+  <path d="M910 192H982" class="line"/><path d="M910 318H982" class="line"/><path d="M910 444H982" class="line"/>
+  <path d="M1210 192H1242V258H1272" class="line"/><path d="M1210 318H1272" class="line"/><path d="M1210 444H1242V382H1272" class="line"/>
+
+  <text x="58" y="568" class="group">横切约束</text>
+  <rect x="180" y="540" width="260" height="58" rx="14" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/><text x="310" y="575" text-anchor="middle" class="copy">数据类型、量化与数值稳定性</text>
+  <rect x="470" y="540" width="220" height="58" rx="14" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/><text x="580" y="575" text-anchor="middle" class="copy">显存、状态与 I/O</text>
+  <rect x="720" y="540" width="250" height="58" rx="14" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/><text x="845" y="575" text-anchor="middle" class="copy">通信、并行与资源拓扑</text>
+  <rect x="1000" y="540" width="250" height="58" rx="14" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/><text x="1125" y="575" text-anchor="middle" class="copy">测量、归因与性能回归</text>
+  <path d="M310 532V516H1125V532" class="guide"/>
 </svg>

@@ -39,7 +39,7 @@
 | `QUANT-SMOOTHQUANT` / 53 | `Q-CUDA-MECHANISM`；0.5B；互斥校准 / 评测数据 | BF16 / 普通 W8A8 → `alpha=0.5/0.7/0.8/0.9` | 结果：`benchmarks/results/53_llmcompressor_smoothquant_default111.json`；产物：`benchmarks/artifacts/53_smoothquant/default111/`；`alpha=0.5` 入选，真实 W8A8 Kernel 仍待验证 |
 | `QUANT-FP8-RUNTIME` / 41 | `Q-CUDA-MECHANISM`；0.5B；提示 × Token 长度矩阵 | BF16 → FP8 仅权重 / dynamic 逐张量 / dynamic PerRow | `benchmarks/results/41_torchao_fp8_runtime_default13.json`；18 个矩阵点完成，存储与接口事件已记录；局部数值门槛未全部通过、无加速点，决策为 `tune_or_fallback`。原生路径仍需关联 CUDA 子内核与输入／累加类型 |
 | `QUANT-KV-RUNTIME` / 54 | `Q-CUDA-MECHANISM`；0.5B；上下文 × 高精度残留窗口 | Transformers `DynamicCache` → HQQ `QuantizedCache`，K/V 同轴 | `benchmarks/results/54_transformers_quantized_cache_matrix_default18.json`；六组矩阵，2048词元候选通过本地门槛，`accept_local_cache_candidate`。容量为生成增量峰值，时间含 Prefill；质量仅16词元固定轨迹，不代表独立任务集、KIVI 异轴收益或 Serving 准入 |
-| `QUANT-MIXED-BIT-ALLOCATION` / Mixed-bit | `Q-CUDA-MECHANISM`；0.5B；全层 Block 敏感度与独立评测 | 统一 INT8 / INT4 → 12.5% / 25% / 50% 高敏感 Block 保护 | `benchmarks/results/quant_mixed_bit_mechanism_default3.json`；接受 3/24 最小容量候选，6/24 为稳健候选；无加速结论 |
+| `QUANT-MIXED-BIT-ALLOCATION` / Mixed-bit | `Q-CUDA-MECHANISM`；0.5B；校准扫描 Block 敏感度，验证集比较并选择候选 | 统一 INT8／INT4 → 12.5%／25%／50% 高敏感 Block 保护 | `benchmarks/results/quant_mixed_bit_mechanism_default3.json`；历史选中保护 3/24 个 Block 的候选，它在通过该验证集质量门槛的方案中模型状态字节数最少，6/24 在该验证集上质量余量更大；最终独立测试、目标加载器与服务性能另行验证 |
 | `QUANT-QAT-CLOSED-LOOP` / QAT | `Q-CUDA-MECHANISM`；0.5B 中间 Block；训练 / 验证 / 测试隔离 | INT4 PTQ → QAT 训练 5 / 20 / 50 步后转换 | 结果：`benchmarks/results/quant_qat_closed_loop_default2.json`；产物：`benchmarks/artifacts/quant_qat/default2/block_12_50_steps.pt`；证明局部质量恢复，不证明完整模型压缩或生产 Kernel |
 
 ## 产物与执行后端

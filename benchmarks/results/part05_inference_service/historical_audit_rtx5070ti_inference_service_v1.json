@@ -1,0 +1,55 @@
+{
+  "schema_version": "historical-result-audit/v1",
+  "run_label": "rtx5070ti_inference_service_v1",
+  "status": "partial_archive_original_workload_missing",
+  "sources": [
+    {
+      "role": "baseline",
+      "path": "benchmarks/results/part05_inference_service/baseline_rtx5070ti_inference_service_v1.json",
+      "sha256": "29d5ac4726d9afe731f64266a59d0333bc327304d131225735b70389adf71f5c"
+    },
+    {
+      "role": "candidate",
+      "path": "benchmarks/results/part05_inference_service/candidate_rtx5070ti_inference_service_v1.json",
+      "sha256": "be2e2d310ef8ea6defae95c37a4f201de88bf5d25927f79ff332da7fd037082f"
+    },
+    {
+      "role": "delivery",
+      "path": "benchmarks/results/part05_inference_service/inference_service_delivery_rtx5070ti_inference_service_v1.json",
+      "sha256": "156c9844fcc398ae3518f0a966d18b807034402d1d1a1aa2c1032202e1224e2f"
+    }
+  ],
+  "request_trace": {
+    "path": "benchmarks/results/part05_inference_service/request_trace_rtx5070ti_inference_service_v1.json",
+    "sha256": "1f231fa6de904be0bc7964e0bd4f55521991139fa67f6d76b05bc7013e04d7b6"
+  },
+  "checks": {
+    "requests_per_condition": 60,
+    "repeats": 3,
+    "requests_per_repeat": 20,
+    "unique_request_id_prompt_priority_combinations": 5,
+    "same_request_identities_and_counts_across_conditions": true,
+    "delivery_embedded_results_match_raw_reports": true,
+    "current_workload_prompt_matches": 0,
+    "raw_reports_modified": false
+  },
+  "grouped_output_fidelity": {
+    "matched_requests": 33,
+    "compared_requests": 60,
+    "score": 0.55,
+    "method": "按run_index、request_id和prompt分组，对重复输出排序后逐项比较；不是唯一请求ID的一一配对，也不是答案质量评分。"
+  },
+  "historical_decision": {
+    "delivery_decision": "accept",
+    "selected_candidate": "baseline",
+    "interpretation": "历史汇总accept选择baseline；不表示候选前缀缓存方案通过。"
+  },
+  "limits": [
+    "原报告引用的工作负载路径现行内容与测量请求不同；已查Git版本4123b70也是现行内容，原输入协议未找回。",
+    "请求摘录只有报告保存的文本、ID和priority，缺少原始expected_answer与chat_template_kwargs，不能代替冻结工作负载。",
+    "历史output_fidelity=0.55是两条件重复输出的分组比较，不是与预期答案核对的质量分数。",
+    "候选同时改变prefix caching与max_num_seqs（4到8），按组合方案解释，不能归因单一缓存机制。",
+    "本档案不补齐缺失输入，不升级历史决策，不声称完成新质量协议或完整服务复现。",
+    "原报告记录的server.log未纳入本档案，不能据此声称完成公开的完整服务日志核对。"
+  ]
+}

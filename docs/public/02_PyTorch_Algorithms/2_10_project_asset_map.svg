@@ -1,61 +1,59 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="650" viewBox="0 0 1100 650">
-  <style>
-    text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#1f2937}
-    .title{font-size:26px;font-weight:700}.head{font-size:19px;font-weight:700}.label{font-size:17px;font-weight:600}.small{font-size:15px}.box{fill:#f8fafc;stroke:#64748b;stroke-width:2;rx:12}.route{fill:#eff6ff;stroke:#3b82f6;stroke-width:2;rx:12}.out{fill:#ecfdf5;stroke:#10b981;stroke-width:2;rx:12}.line{stroke:#64748b;stroke-width:3;fill:none}.arrow{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#arrow)}
-  </style>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="820" viewBox="0 0 1500 820" role="img" aria-labelledby="title desc">
+  <title id="title">项目验证与工程收口的六条证据链</title>
+  <desc id="desc">展示架构、后训练、推理、性能、量化压缩和通信并行六条项目链各自的输入、候选比较和项目出口；量化部署与蒸馏学生交付是两条压缩分支，通信并行按目标选择独立出口。</desc>
   <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L9,3 L0,6 Z" fill="#64748b"/></marker>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
+    <style>
+      .title{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:30px;font-weight:700;fill:#0f172a}.sub{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:16px;fill:#475569}.lane{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:18px;font-weight:700;fill:#172033}.head{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:16px;font-weight:700;fill:#172033}.copy{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:13px;fill:#475569}.line{fill:none;stroke:#64748b;stroke-width:2.5;marker-end:url(#arrow)}
+    </style>
   </defs>
-  <rect x="0" y="0" width="1100" height="650" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
-  <text x="550" y="38" text-anchor="middle" class="title">项目资产之间的承接关系</text>
+  <rect width="1500" height="820" fill="#f8fafc"/>
+  <rect x="28" y="24" width="1444" height="772" rx="26" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="62" y="70" class="title">项目验证与工程收口：六条独立证据链</text>
+  <text x="62" y="102" class="sub">按问题选择项目；箭头表示阅读与检查顺序，运行输入以各页配置为准。</text>
 
-  <rect x="355" y="65" width="390" height="70" class="box"/>
-  <text x="550" y="94" text-anchor="middle" class="head">Part02 机制与方法小节</text>
-  <text x="550" y="119" text-anchor="middle" class="small">训练、推理、显存、量化、并行等基础能力</text>
+  <rect x="50" y="126" width="1400" height="92" rx="18" fill="#eff6ff"/>
+  <text x="76" y="179" class="lane">模型架构</text>
+  <rect x="250" y="144" width="210" height="56" rx="13" fill="#ffffff" stroke="#60a5fa" stroke-width="2"/><text x="355" y="178" text-anchor="middle" class="head">结构稳定性候选</text>
+  <rect x="530" y="144" width="230" height="56" rx="13" fill="#ffffff" stroke="#60a5fa" stroke-width="2"/><text x="645" y="168" text-anchor="middle" class="head">访问与记忆结构</text><text x="645" y="188" text-anchor="middle" class="copy">注意力 · MLA · 长序列</text>
+  <rect x="830" y="144" width="220" height="56" rx="13" fill="#ffffff" stroke="#2563eb" stroke-width="2"/><text x="940" y="178" text-anchor="middle" class="head">架构候选审计</text>
+  <path d="M460 172H522" class="line"/><path d="M760 172H822" class="line"/>
 
-  <path d="M550 135 V165" class="arrow"/>
-  <rect x="75" y="165" width="950" height="65" class="box"/>
-  <text x="550" y="193" text-anchor="middle" class="head">项目设计：明确输入、变量、指标和证据边界</text>
-  <text x="550" y="217" text-anchor="middle" class="small">CPU 检查机制与报告逻辑；GPU / backend 产生真实实验数据</text>
+  <rect x="50" y="230" width="1400" height="92" rx="18" fill="#f0fdf4"/>
+  <text x="76" y="283" class="lane">后训练</text>
+  <rect x="210" y="248" width="180" height="56" rx="13" fill="#ffffff" stroke="#4ade80" stroke-width="2"/><text x="300" y="282" text-anchor="middle" class="head">数据准入</text>
+  <rect x="440" y="248" width="190" height="56" rx="13" fill="#ffffff" stroke="#4ade80" stroke-width="2"/><text x="535" y="272" text-anchor="middle" class="head">更新方案选择</text><text x="535" y="292" text-anchor="middle" class="copy">LoRA / QLoRA</text>
+  <rect x="680" y="248" width="180" height="56" rx="13" fill="#ffffff" stroke="#4ade80" stroke-width="2"/><text x="770" y="282" text-anchor="middle" class="head">SFT 训练交付</text>
+  <rect x="910" y="248" width="210" height="56" rx="13" fill="#ffffff" stroke="#16a34a" stroke-width="2"/><text x="1015" y="272" text-anchor="middle" class="head">DPO / GRPO 候选</text><text x="1015" y="292" text-anchor="middle" class="copy">并列优化分支</text>
+  <rect x="1170" y="248" width="220" height="56" rx="13" fill="#ffffff" stroke="#059669" stroke-width="2"/><text x="1280" y="272" text-anchor="middle" class="head">生命周期与采用判断</text><text x="1280" y="292" text-anchor="middle" class="copy">恢复 · 回滚 · 证据缺口</text>
+  <path d="M390 276H432" class="line"/><path d="M630 276H672" class="line"/><path d="M860 276H902" class="line"/><path d="M1120 276H1162" class="line"/>
 
-  <path d="M550 230 V260" class="arrow"/>
-  <rect x="35" y="260" width="190" height="145" class="route"/>
-  <text x="130" y="292" text-anchor="middle" class="head">训练微调</text>
-  <text x="130" y="325" text-anchor="middle" class="label">60–65</text>
-  <text x="130" y="353" text-anchor="middle" class="small">Project</text>
-  <text x="130" y="378" text-anchor="middle" class="small">Benchmark / Decision</text>
+  <rect x="50" y="334" width="1400" height="92" rx="18" fill="#fffbeb"/>
+  <text x="76" y="387" class="lane">推理优化</text>
+  <rect x="250" y="352" width="220" height="56" rx="13" fill="#ffffff" stroke="#fbbf24" stroke-width="2"/><text x="360" y="386" text-anchor="middle" class="head">浮点运行基线</text>
+  <rect x="540" y="352" width="270" height="56" rx="13" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/><text x="675" y="376" text-anchor="middle" class="head">缓存、解码与调度候选</text><text x="675" y="396" text-anchor="middle" class="copy">按瓶颈选择，不互为前置</text>
+  <rect x="880" y="352" width="230" height="56" rx="13" fill="#ffffff" stroke="#d97706" stroke-width="2"/><text x="995" y="386" text-anchor="middle" class="head">单卡部署比较</text>
+  <path d="M470 380H532" class="line"/><path d="M810 380H872" class="line"/>
 
-  <rect x="245" y="260" width="190" height="145" class="route"/>
-  <text x="340" y="292" text-anchor="middle" class="head">推理优化</text>
-  <text x="340" y="325" text-anchor="middle" class="label">66–71</text>
-  <text x="340" y="353" text-anchor="middle" class="small">Benchmark</text>
-  <text x="340" y="378" text-anchor="middle" class="small">Project + Benchmark</text>
+  <rect x="50" y="438" width="1400" height="92" rx="18" fill="#fff7ed"/>
+  <text x="76" y="491" class="lane">性能优化</text>
+  <rect x="250" y="456" width="230" height="56" rx="13" fill="#ffffff" stroke="#fb923c" stroke-width="2"/><text x="365" y="480" text-anchor="middle" class="head">基线测量与瓶颈归因</text><text x="365" y="500" text-anchor="middle" class="copy">Trace · Roofline · 显存时间线</text>
+  <rect x="550" y="456" width="230" height="56" rx="13" fill="#ffffff" stroke="#f97316" stroke-width="2"/><text x="665" y="480" text-anchor="middle" class="head">按瓶颈比较单项方案</text><text x="665" y="500" text-anchor="middle" class="copy">75 优化器 · 76 激活与卸载</text>
+  <rect x="850" y="456" width="250" height="56" rx="13" fill="#ffffff" stroke="#ea580c" stroke-width="2"/><text x="975" y="480" text-anchor="middle" class="head">固定条件下复核结果</text><text x="975" y="500" text-anchor="middle" class="copy">74 训练对照与激活显存专项</text>
+  <path d="M480 484H542" class="line"/><path d="M780 484H842" class="line"/>
 
-  <rect x="455" y="260" width="190" height="145" class="route"/>
-  <text x="550" y="292" text-anchor="middle" class="head">显存优化</text>
-  <text x="550" y="325" text-anchor="middle" class="label">73–76</text>
-  <text x="550" y="353" text-anchor="middle" class="small">Analysis</text>
-  <text x="550" y="378" text-anchor="middle" class="small">Benchmark / Decision</text>
+  <rect x="50" y="542" width="1400" height="92" rx="18" fill="#fdf4ff"/>
+  <text x="76" y="595" class="lane">量化压缩</text>
+  <rect x="250" y="560" width="220" height="56" rx="13" fill="#ffffff" stroke="#c084fc" stroke-width="2"/><text x="360" y="584" text-anchor="middle" class="head">量化产物准入</text><text x="360" y="604" text-anchor="middle" class="copy">质量 · 格式 · 后端兼容</text>
+  <rect x="540" y="560" width="230" height="56" rx="13" fill="#ffffff" stroke="#a855f7" stroke-width="2"/><text x="655" y="594" text-anchor="middle" class="head">量化推理部署</text>
+  <rect x="840" y="560" width="240" height="56" rx="13" fill="#ffffff" stroke="#9333ea" stroke-width="2"/><text x="960" y="584" text-anchor="middle" class="head">服务场景复测</text><text x="960" y="604" text-anchor="middle" class="copy">延迟 · 吞吐 · 服务目标</text>
+  <rect x="1150" y="560" width="240" height="56" rx="13" fill="#ffffff" stroke="#7c3aed" stroke-width="2"/><text x="1270" y="584" text-anchor="middle" class="head">蒸馏学生交付</text><text x="1270" y="604" text-anchor="middle" class="copy">教师反馈 · 独立学生 · 部署收益</text>
+  <path d="M470 588H532" class="line"/><path d="M770 588H832" class="line"/>
 
-  <rect x="665" y="260" width="190" height="145" class="route"/>
-  <text x="760" y="292" text-anchor="middle" class="head">分布式并行</text>
-  <text x="760" y="325" text-anchor="middle" class="label">79–81</text>
-  <text x="760" y="353" text-anchor="middle" class="small">Benchmark</text>
-  <text x="760" y="378" text-anchor="middle" class="small">Project</text>
-
-  <rect x="875" y="260" width="190" height="145" class="route"/>
-  <text x="970" y="292" text-anchor="middle" class="head">后训练对齐</text>
-  <text x="970" y="325" text-anchor="middle" class="label">84–86</text>
-  <text x="970" y="353" text-anchor="middle" class="small">Project</text>
-  <text x="970" y="378" text-anchor="middle" class="small">Benchmark</text>
-
-  <path d="M130 405 V435 H550 M340 405 V435 H550 M550 405 V435 M760 405 V435 H550 M970 405 V435 H550" class="line"/>
-  <path d="M550 435 V455" class="arrow"/>
-  <rect x="175" y="455" width="750" height="90" class="out"/>
-  <text x="550" y="490" text-anchor="middle" class="head">统一项目产出</text>
-  <text x="550" y="518" text-anchor="middle" class="small">实验条件 · 指标结果 · 失败原因 · 报告文件 · accept / tune / reject</text>
-
-  <path d="M550 545 V575" class="arrow"/>
-  <rect x="245" y="575" width="610" height="52" class="box"/>
-  <text x="550" y="608" text-anchor="middle" class="small">横向专题负责复用和解释；项目节负责在具体条件下验证</text>
+  <rect x="50" y="646" width="1400" height="112" rx="18" fill="#f5f3ff"/>
+  <text x="76" y="699" class="lane">通信并行</text><text x="76" y="724" class="copy">按目标选择独立出口</text>
+  <rect x="300" y="672" width="210" height="60" rx="13" fill="#ffffff" stroke="#8b5cf6" stroke-width="2"/><text x="405" y="696" text-anchor="middle" class="head">训练状态并行</text><text x="405" y="716" text-anchor="middle" class="copy">DDP / FSDP / ZeRO</text>
+  <rect x="550" y="672" width="210" height="60" rx="13" fill="#ffffff" stroke="#8b5cf6" stroke-width="2"/><text x="655" y="696" text-anchor="middle" class="head">模型内部并行</text><text x="655" y="716" text-anchor="middle" class="copy">张量 / 流水线 / 上下文</text>
+  <rect x="800" y="672" width="210" height="60" rx="13" fill="#ffffff" stroke="#8b5cf6" stroke-width="2"/><text x="905" y="696" text-anchor="middle" class="head">专家并行</text><text x="905" y="716" text-anchor="middle" class="copy">路由 · 分发 · 合并</text>
+  <rect x="1050" y="672" width="220" height="60" rx="13" fill="#ffffff" stroke="#7c3aed" stroke-width="2"/><text x="1160" y="696" text-anchor="middle" class="head">分布式推理</text><text x="1160" y="716" text-anchor="middle" class="copy">服务形态 · 通信 · 扩展</text>
 </svg>

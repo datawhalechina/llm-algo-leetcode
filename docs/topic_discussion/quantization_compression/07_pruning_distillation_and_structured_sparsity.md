@@ -34,4 +34,6 @@
 
 候选至少通过四类证据：固定评测集上的质量、压缩产物与加载契约、目标执行后端的实际执行路径，以及同工作负载的内存和延迟 / 吞吐结果。缺少稀疏计算内核时，剪枝结果只能证明参数被置零；缺少独立学生评测时，蒸馏损失只能证明训练目标下降。
 
-蒸馏需要继续验证教师—学生训练与独立质量，稀疏方法需要检查数据布局和计算内核，所有候选还要完成资源归因和设备兼容验证。对应入口分别是[后训练优化](../post_training_optimization/intro.md)、[算子优化](../operator_optimization/intro.md)、[性能优化](../performance_optimization/intro.md)和[部署与异构系统](../deployment_heterogeneous/intro.md)。
+蒸馏从 [DISTILL-OPD 在策略蒸馏与 GKD](../../02_PyTorch_Algorithms/DISTILL-OPD_On_Policy_Distillation_and_GKD.md) 开始核对轨迹来源、教师—学生分布和完成区掩码，再由 [88 蒸馏学生交付项目](../../02_PyTorch_Algorithms/88_Distilled_Student_Delivery_Project.md) 比较学生基线、固定轨迹 KD 与 on-policy 蒸馏；OPSD 作为“教师额外看到特权上下文”的扩展保留在机制页。
+
+剪枝与结构稀疏先按本页比较连接模式、数据布局与目标内核，再到[算子优化](../operator_optimization/intro.md)核对实际执行。教师反馈与训练质量进入[后训练优化](../post_training_optimization/intro.md)，资源归因进入[性能优化](../performance_optimization/intro.md)，目标设备与加载兼容性进入[部署与异构系统](../deployment_heterogeneous/intro.md)。

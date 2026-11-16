@@ -1,0 +1,210 @@
+{
+  "schema_version": "inference-project-manifest/v1",
+  "project": "68",
+  "experiment": "speculative_decoding",
+  "config": {
+    "model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "backend": "vllm",
+    "dtype": "bfloat16",
+    "prompt_tokens": null,
+    "generated_tokens": 64,
+    "batch": 1,
+    "concurrency": 1,
+    "cache_policy": "default",
+    "draft_model": "Qwen/Qwen2.5-0.5B-Instruct",
+    "proposal_length": 5,
+    "min_acceptance_rate": 0.6,
+    "draft_family": "autoregressive_draft",
+    "proposal_mode": "tokenwise",
+    "num_prompts": 30,
+    "warmup": 5,
+    "repeats": 3,
+    "temperature": 0.0,
+    "hardware_profile": "H0_12GB_5070Ti_Laptop",
+    "workload": "benchmarks/workloads/fixed.jsonl"
+  },
+  "artifact": {
+    "manifest_path": "benchmarks/results/68_manifest_rtx5070ti_speculative_project_v5.json",
+    "candidate_result_path": "benchmarks/results/68_g1_speculative_vllm_rtx5070ti_speculative_project_v5.json",
+    "baseline_result_path": "benchmarks/results/68_g0_target_baseline_vllm_rtx5070ti_speculative_project_v5.json",
+    "baseline_raw_path": "benchmarks/results/68_g0_target_raw_rtx5070ti_speculative_project_v5.json",
+    "candidate_raw_path": "benchmarks/results/68_g1_speculative_raw_rtx5070ti_speculative_project_v5.json"
+  },
+  "groups": [
+    {
+      "schema_version": "inference-benchmark/v1",
+      "project": "68",
+      "strategy": "target_only",
+      "role": "baseline",
+      "config": {
+        "model": "Qwen/Qwen2.5-1.5B-Instruct",
+        "backend": "vllm",
+        "dtype": "bfloat16",
+        "prompt_tokens": null,
+        "generated_tokens": 64,
+        "batch": 1,
+        "concurrency": 1,
+        "cache_policy": "default",
+        "draft_model": "Qwen/Qwen2.5-0.5B-Instruct",
+        "proposal_length": 5,
+        "min_acceptance_rate": 0.6,
+        "draft_family": "autoregressive_draft",
+        "proposal_mode": "tokenwise",
+        "num_prompts": 30,
+        "warmup": 5,
+        "repeats": 3,
+        "temperature": 0.0,
+        "hardware_profile": "H0_12GB_5070Ti_Laptop",
+        "workload": "benchmarks/workloads/fixed.jsonl",
+        "role": "baseline"
+      },
+      "metrics": {
+        "ttft_ms": {
+          "mean": 44.166,
+          "p50": 43.9758,
+          "p95": 46.4145,
+          "p99": 48.2666
+        },
+        "tpot_ms": {
+          "mean": 11.914,
+          "p50": 11.8462,
+          "p95": 12.2085,
+          "p99": 12.7305
+        },
+        "throughput_tokens_per_s": 80.1113,
+        "throughput_requests_per_s": 1.4255,
+        "p95_ms": null,
+        "p99_ms": 824.4885,
+        "peak_memory_mb": null,
+        "queue_wait_ms": null,
+        "input_transfer_bytes": null,
+        "input_transfer_ms": null,
+        "transfer_bytes": null,
+        "handoff_ms": null,
+        "recompute_ms": null,
+        "network_wait_ms": null,
+        "communication_ms": null,
+        "exposed_comm_ms": null,
+        "overlap_ratio": null,
+        "idle_gap_ms": null,
+        "model_load_ms": null,
+        "stream_output_ms": null,
+        "e2e_latency_ms": {
+          "mean": 701.363,
+          "p50": 788.957,
+          "p95": 814.089,
+          "p99": 824.4885
+        },
+        "successful_requests": 30,
+        "failed_requests": 0,
+        "duration_s": 21.0462
+      },
+      "quality": {
+        "status": "reference_only",
+        "speculative_enabled": false,
+        "output_completeness": "passed",
+        "raw_result_path": "benchmarks/results/68_g0_target_raw_rtx5070ti_speculative_project_v5.json"
+      },
+      "status": "reference_only",
+      "evidence_level": "real_backend_baseline",
+      "failure": {
+        "failure_reason": null,
+        "retest_path": null
+      },
+      "decision": {
+        "decision": "measure",
+        "reason": "G0 仅作为同标签基线"
+      },
+      "strategy_metrics": {
+        "speculative_enabled": false,
+        "evidence_level": "real_backend_baseline",
+        "resolved_target_snapshot": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306"
+      }
+    },
+    {
+      "schema_version": "inference-benchmark/v1",
+      "project": "68",
+      "strategy": "draft_and_verify",
+      "role": "candidate",
+      "config": {
+        "model": "Qwen/Qwen2.5-1.5B-Instruct",
+        "backend": "vllm",
+        "dtype": "bfloat16",
+        "prompt_tokens": null,
+        "generated_tokens": 64,
+        "batch": 1,
+        "concurrency": 1,
+        "cache_policy": "default",
+        "draft_model": "Qwen/Qwen2.5-0.5B-Instruct",
+        "proposal_length": 5,
+        "min_acceptance_rate": 0.6,
+        "draft_family": "autoregressive_draft",
+        "proposal_mode": "tokenwise",
+        "num_prompts": 30,
+        "warmup": 5,
+        "repeats": 3,
+        "temperature": 0.0,
+        "hardware_profile": "H0_12GB_5070Ti_Laptop",
+        "workload": "benchmarks/workloads/fixed.jsonl",
+        "role": "candidate"
+      },
+      "metrics": {
+        "ttft_ms": null,
+        "tpot_ms": null,
+        "throughput_tokens_per_s": null,
+        "throughput_requests_per_s": null,
+        "p95_ms": null,
+        "p99_ms": null,
+        "peak_memory_mb": null,
+        "queue_wait_ms": null,
+        "input_transfer_bytes": null,
+        "input_transfer_ms": null,
+        "transfer_bytes": null,
+        "handoff_ms": null,
+        "recompute_ms": null,
+        "network_wait_ms": null,
+        "communication_ms": null,
+        "exposed_comm_ms": null,
+        "overlap_ratio": null,
+        "idle_gap_ms": null,
+        "model_load_ms": null,
+        "stream_output_ms": null
+      },
+      "quality": {
+        "status": "failed",
+        "speculative_enabled": true,
+        "failure_reason": "Backend did not become ready at http://127.0.0.1:52331/v1/models: timed out",
+        "retest_path": "检查显存、模型兼容性和后端日志后复测"
+      },
+      "status": "failed",
+      "evidence_level": "backend_execution_failure",
+      "failure": {
+        "failure_reason": "Backend did not become ready at http://127.0.0.1:52331/v1/models: timed out",
+        "retest_path": "检查显存、模型兼容性和后端日志后复测"
+      },
+      "decision": {
+        "decision": "tune",
+        "reason": "G1 后端执行失败"
+      },
+      "strategy_metrics": {
+        "evidence_level": "backend_execution_failure",
+        "capability": {
+          "status": "supported",
+          "mode": "speculative_config",
+          "command": "/home/yulinlin/anaconda3/envs/llm_vllm_cu128/bin/vllm",
+          "returncode": 0,
+          "help_mode": "all"
+        }
+      }
+    }
+  ],
+  "evidence_level": "real_backend_baseline",
+  "failure": {
+    "failure_reason": "Backend did not become ready at http://127.0.0.1:52331/v1/models: timed out",
+    "retest_path": "检查显存、模型兼容性和后端日志后复测"
+  },
+  "decision": {
+    "decision": "tune",
+    "reason": "当前只有基线或 G1 失败，不得解释加速收益"
+  }
+}

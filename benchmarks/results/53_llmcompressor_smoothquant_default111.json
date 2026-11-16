@@ -110,7 +110,7 @@
       "allocated_before_bytes": 9568256,
       "peak_allocated_bytes": 1390513152,
       "peak_incremental_bytes": 1380944896,
-      "artifact_path": "02_PyTorch_Algorithms/benchmarks/artifacts/53_smoothquant/default111/w8a8",
+      "artifact_path": "benchmarks/artifacts/53_smoothquant/default111/w8a8",
       "artifact_manifest": {
         "file_count": 7,
         "total_bytes": 642326426,
@@ -245,7 +245,7 @@
       "allocated_before_bytes": 1002336256,
       "peak_allocated_bytes": 2384001024,
       "peak_incremental_bytes": 1381664768,
-      "artifact_path": "02_PyTorch_Algorithms/benchmarks/artifacts/53_smoothquant/default111/smoothquant_alpha_0.5",
+      "artifact_path": "benchmarks/artifacts/53_smoothquant/default111/smoothquant_alpha_0.5",
       "artifact_manifest": {
         "file_count": 7,
         "total_bytes": 642326799,
@@ -380,7 +380,7 @@
       "allocated_before_bytes": 1995824128,
       "peak_allocated_bytes": 3380911616,
       "peak_incremental_bytes": 1385087488,
-      "artifact_path": "02_PyTorch_Algorithms/benchmarks/artifacts/53_smoothquant/default111/smoothquant_alpha_0.7",
+      "artifact_path": "benchmarks/artifacts/53_smoothquant/default111/smoothquant_alpha_0.7",
       "artifact_manifest": {
         "file_count": 7,
         "total_bytes": 642326799,
@@ -515,7 +515,7 @@
       "allocated_before_bytes": 2992949248,
       "peak_allocated_bytes": 4372877312,
       "peak_incremental_bytes": 1379928064,
-      "artifact_path": "02_PyTorch_Algorithms/benchmarks/artifacts/53_smoothquant/default111/smoothquant_alpha_0.8",
+      "artifact_path": "benchmarks/artifacts/53_smoothquant/default111/smoothquant_alpha_0.8",
       "artifact_manifest": {
         "file_count": 7,
         "total_bytes": 642326799,
@@ -650,7 +650,7 @@
       "allocated_before_bytes": 3984700416,
       "peak_allocated_bytes": 5367872512,
       "peak_incremental_bytes": 1383172096,
-      "artifact_path": "02_PyTorch_Algorithms/benchmarks/artifacts/53_smoothquant/default111/smoothquant_alpha_0.9",
+      "artifact_path": "benchmarks/artifacts/53_smoothquant/default111/smoothquant_alpha_0.9",
       "artifact_manifest": {
         "file_count": 7,
         "total_bytes": 642326799,

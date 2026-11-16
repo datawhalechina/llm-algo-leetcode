@@ -1,6 +1,27 @@
 # 通信与并行实验 Quickstart
 
-本页用于创建、恢复和预检真实多卡机制环境。页面、workload、结果路径和证据状态见[实验资产表](./experiment_assets.md)；精确 Profile 定义、隔离规则和硬件快照见[GPU 环境资产表](../../gpu_environment_assets.md)。以下命令均在仓库根目录执行。
+本页用于创建、恢复和预检 CPU 多进程核对环境与真实多卡机制环境。页面、workload、结果路径、实际环境和硬件快照见[实验资产表](./experiment_assets.md)及结果 JSON；精确 Profile 定义在注册表中维护，隔离关系见[环境资产索引](../../gpu_environment_assets.md)。以下命令均在仓库根目录执行。
+
+<a id="par-cpu-quickstart"></a>
+
+## PAR-CPU：两进程框架核对环境
+
+基础题目与答案测试可以使用 `BASE-CPU`；需要核对 Gloo collective、DTensor、上下文切分或 Pipeline API 时使用 `PAR-CPU`。框架核对默认在本机启动两个短生命周期 CPU 进程，不形成 NCCL、GPU 带宽或扩展效率证据。
+
+```bash
+python tools/install_environment_profile.py \
+  --profile PAR-CPU \
+  --env-name llm_parallel_cpu
+
+conda activate llm_parallel_cpu
+python tools/environment_preflight.py --profile PAR-CPU
+python tools/test_framework_conformance.py \
+  --all-part02 \
+  --profile PAR-CPU \
+  --require-passed
+```
+
+已有同 Profile 环境可在安装命令末尾添加 `--reuse`。Notebook 中的框架核对会自行建立本地 Gloo rendezvous 并在结束后销毁进程组；若上一次运行被强制中断，重启 Kernel 后再运行该单元。
 
 <a id="par-cuda-mechanism-quickstart"></a>
 
@@ -61,14 +82,7 @@ PAR-REPLICA 的机制实验仍使用 `PAR-CUDA-MECHANISM`，只验证独立 GPU 
 
 当前机制环境不安装 Ray。27–29、46–48、PAR-CONTEXT 和 PAR-REPLICA 直接使用 `torchrun + torch.distributed + NCCL`，避免将 actor 启动、调度等待或对象存储时间混入 collective 机制结果。
 
-只有项目出现以下需求时，才创建独立 Ray Profile：
-
-| 计划环境 | 使用条件 | Ray 负责什么 | Ray 不证明什么 |
-|:---|:---|:---|:---|
-| `PAR-TRAIN-CLUSTER-RAY` | 79、PAR-MODEL-INTERNAL 或 80 需要跨节点 worker、资源整组预留或失败恢复 | Ray Train、placement group 与运行编排 | NCCL 正确性、collective 带宽和模型扩展效率 |
-| `PAR-SERVING-RAY` | 81 需要服务副本、跨节点 TP / PP worker 或弹性伸缩 | Ray Serve、副本生命周期、placement group 与请求编排 | vLLM / SGLang 的 kernel、KV Cache 和最终服务性能 |
-
-这两个 Profile 目前只登记职责，不加入 `requirements/distributed.txt`。待对应项目的模型、backend、拓扑和 workload 固定后，再分别锁定依赖版本与预检规则。
+跨节点训练编排使用规划中的 `PAR-TRAIN-CLUSTER-RAY`，集群 Serving 编排使用规划中的 `PAR-SERVING-RAY`。两者当前只登记职责，不加入 `requirements/distributed.txt`；适用项目、证据边界和建设状态统一见[实验资产表](./experiment_assets.md)。
 
 ## 常见异常入口
 

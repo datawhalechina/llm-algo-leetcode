@@ -1,0 +1,220 @@
+{
+  "schema_version": "inference-mechanism-gpu/v2",
+  "semantic_id": "INF-SPECULATIVE-DECODING",
+  "environment_profile": "INF-CUDA-MECHANISM",
+  "run_mode": "real_gpu",
+  "run_label": "rtx5070ti_qwen3b_05b_v2",
+  "framework": {
+    "python": "3.12.15",
+    "torch": "2.11.0+cu128",
+    "transformers": "5.19.0"
+  },
+  "hardware": {
+    "cuda_available": true,
+    "cuda": "12.8",
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU"
+  },
+  "workload": {
+    "id": "inf-classic-draft-verify",
+    "version": "v6",
+    "target_model_id": "Qwen/Qwen2.5-3B-Instruct",
+    "target_revision": "main",
+    "target_commit": "aa8e72537993ba99e69dfaafa59ed015b17504d1",
+    "assistant_model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "assistant_revision": "main",
+    "assistant_commit": "7ae557604adf67be50417f59c2c2f167def9a775",
+    "dtype": "bfloat16",
+    "prompt_count": 3,
+    "max_new_tokens": 64,
+    "assistant_tokens": 5,
+    "warmup_steps": 3,
+    "repeat_steps": 10,
+    "seed": 42,
+    "model_compatibility": {
+      "target_vocab_size": 151936,
+      "assistant_vocab_size": 151936,
+      "vocab_size_match": true,
+      "tokenizer_vocab_size": 151665,
+      "target_eos_token_id": [
+        151645,
+        151643
+      ],
+      "assistant_eos_token_id": [
+        151645,
+        151643
+      ],
+      "eos_match": true,
+      "pad_token_id": 151643
+    }
+  },
+  "baseline": {
+    "name": "target_only",
+    "outputs_stable_across_repeats": true,
+    "output_hashes": [
+      "0e9cbddb18ea25dcb7a26021966741e86dec84eba2681087020d13f1141a75b6",
+      "69e2501b44026b0c8485c03d9b787018d9fc6bc323d50fd5b4bdf3cf9b28f9af",
+      "12beda07592d4050c386d73d408f3029997d78b1924c4ec2f3d9d019e7b9a5a5"
+    ],
+    "generated_tokens_per_prompt": [
+      64,
+      64,
+      64
+    ],
+    "median_latency_ms": 4661.576171875,
+    "p95_latency_ms": 4742.79931640625,
+    "median_target_forward_calls": 192.0,
+    "peak_memory_bytes": 6301485056
+  },
+  "candidates": [
+    {
+      "candidate": "fixed_budget_assistant",
+      "outputs_match_baseline": false,
+      "baseline_stable": true,
+      "candidate_stable_across_repeats": true,
+      "output_hashes_by_repeat": [
+        [
+          "0e9cbddb18ea25dcb7a26021966741e86dec84eba2681087020d13f1141a75b6",
+          "69e2501b44026b0c8485c03d9b787018d9fc6bc323d50fd5b4bdf3cf9b28f9af",
+          "c9a3ed672b3dac26e22b335c562d6ed82ccf364469ae27d8ea8dfeea3ad925e1"
+        ],
+        [
+          "0e9cbddb18ea25dcb7a26021966741e86dec84eba2681087020d13f1141a75b6",
+          "69e2501b44026b0c8485c03d9b787018d9fc6bc323d50fd5b4bdf3cf9b28f9af",
+          "c9a3ed672b3dac26e22b335c562d6ed82ccf364469ae27d8ea8dfeea3ad925e1"
+        ],
+        [
+          "0e9cbddb18ea25dcb7a26021966741e86dec84eba2681087020d13f1141a75b6",
+          "69e2501b44026b0c8485c03d9b787018d9fc6bc323d50fd5b4bdf3cf9b28f9af",
+          "c9a3ed672b3dac26e22b335c562d6ed82ccf364469ae27d8ea8dfeea3ad925e1"
+        ],
+        [
+          "0e9cbddb18ea25dcb7a26021966741e86dec84eba2681087020d13f1141a75b6",
+          "69e2501b44026b0c8485c03d9b787018d9fc6bc323d50fd5b4bdf3cf9b28f9af",
+          "c9a3ed672b3dac26e22b335c562d6ed82ccf364469ae27d8ea8dfeea3ad925e1"
+        ],
+        [
+          "0e9cbddb18ea25dcb7a26021966741e86dec84eba2681087020d13f1141a75b6",
+          "69e2501b44026b0c8485c03d9b787018d9fc6bc323d50fd5b4bdf3cf9b28f9af",
+          "c9a3ed672b3dac26e22b335c562d6ed82ccf364469ae27d8ea8dfeea3ad925e1"
+        ],
+        [
+          "0e9cbddb18ea25dcb7a26021966741e86dec84eba2681087020d13f1141a75b6",
+          "69e2501b44026b0c8485c03d9b787018d9fc6bc323d50fd5b4bdf3cf9b28f9af",
+          "c9a3ed672b3dac26e22b335c562d6ed82ccf364469ae27d8ea8dfeea3ad925e1"
+        ],
+        [
+          "0e9cbddb18ea25dcb7a26021966741e86dec84eba2681087020d13f1141a75b6",
+          "69e2501b44026b0c8485c03d9b787018d9fc6bc323d50fd5b4bdf3cf9b28f9af",
+          "c9a3ed672b3dac26e22b335c562d6ed82ccf364469ae27d8ea8dfeea3ad925e1"
+        ],
+        [
+          "0e9cbddb18ea25dcb7a26021966741e86dec84eba2681087020d13f1141a75b6",
+          "69e2501b44026b0c8485c03d9b787018d9fc6bc323d50fd5b4bdf3cf9b28f9af",
+          "c9a3ed672b3dac26e22b335c562d6ed82ccf364469ae27d8ea8dfeea3ad925e1"
+        ],
+        [
+          "0e9cbddb18ea25dcb7a26021966741e86dec84eba2681087020d13f1141a75b6",
+          "69e2501b44026b0c8485c03d9b787018d9fc6bc323d50fd5b4bdf3cf9b28f9af",
+          "c9a3ed672b3dac26e22b335c562d6ed82ccf364469ae27d8ea8dfeea3ad925e1"
+        ],
+        [
+          "0e9cbddb18ea25dcb7a26021966741e86dec84eba2681087020d13f1141a75b6",
+          "69e2501b44026b0c8485c03d9b787018d9fc6bc323d50fd5b4bdf3cf9b28f9af",
+          "c9a3ed672b3dac26e22b335c562d6ed82ccf364469ae27d8ea8dfeea3ad925e1"
+        ]
+      ],
+      "output_diagnostics": [
+        {
+          "prompt_index": 0,
+          "match": true,
+          "prompt_tokens": 8,
+          "reference_generated_tokens": 64,
+          "candidate_generated_tokens": 64,
+          "first_mismatch_absolute_index": null,
+          "first_mismatch_generated_index": null,
+          "reference_hash": "0e9cbddb18ea25dcb7a26021966741e86dec84eba2681087020d13f1141a75b6",
+          "candidate_hash": "0e9cbddb18ea25dcb7a26021966741e86dec84eba2681087020d13f1141a75b6",
+          "reference_token_at_mismatch": null,
+          "candidate_token_at_mismatch": null
+        },
+        {
+          "prompt_index": 1,
+          "match": true,
+          "prompt_tokens": 6,
+          "reference_generated_tokens": 64,
+          "candidate_generated_tokens": 64,
+          "first_mismatch_absolute_index": null,
+          "first_mismatch_generated_index": null,
+          "reference_hash": "69e2501b44026b0c8485c03d9b787018d9fc6bc323d50fd5b4bdf3cf9b28f9af",
+          "candidate_hash": "69e2501b44026b0c8485c03d9b787018d9fc6bc323d50fd5b4bdf3cf9b28f9af",
+          "reference_token_at_mismatch": null,
+          "candidate_token_at_mismatch": null
+        },
+        {
+          "prompt_index": 2,
+          "match": false,
+          "prompt_tokens": 12,
+          "reference_generated_tokens": 64,
+          "candidate_generated_tokens": 64,
+          "first_mismatch_absolute_index": 16,
+          "first_mismatch_generated_index": 4,
+          "reference_hash": "12beda07592d4050c386d73d408f3029997d78b1924c4ec2f3d9d019e7b9a5a5",
+          "candidate_hash": "c9a3ed672b3dac26e22b335c562d6ed82ccf364469ae27d8ea8dfeea3ad925e1",
+          "reference_token_at_mismatch": 7595,
+          "candidate_token_at_mismatch": 1462
+        }
+      ],
+      "target_margin_diagnostics": [
+        {
+          "prompt_index": 0,
+          "available": false
+        },
+        {
+          "prompt_index": 1,
+          "available": false
+        },
+        {
+          "prompt_index": 2,
+          "available": true,
+          "target_top1_token_id": 7595,
+          "target_top2_token_id": 1462,
+          "target_top1_logit": 23.125,
+          "target_top2_logit": 23.0,
+          "target_top1_top2_margin": 0.125,
+          "target_logit_dtype": "bfloat16",
+          "target_top1_ulp": 0.125,
+          "margin_in_target_ulps": 1.0,
+          "near_tie_within_two_ulps": true,
+          "reference_token_at_mismatch": 7595,
+          "candidate_token_at_mismatch": 1462
+        }
+      ],
+      "all_mismatches_near_tie": true,
+      "all_repeat_matches": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "median_latency_ms": 3634.81884765625,
+      "p95_latency_ms": 3699.839599609375,
+      "latency_ratio_vs_baseline": 0.779740309637424,
+      "median_target_forward_calls": 64.0,
+      "median_assistant_forward_calls": 303.0,
+      "median_tokens_per_target_call": 3.0,
+      "peak_memory_bytes": 7315756544,
+      "path_confirmed": true,
+      "acceptance_rate": null,
+      "acceptance_rate_note": "Transformers generate 未暴露逐候选接受日志；本页不从前向次数反推接受率。"
+    }
+  ],
+  "failure": null,
+  "evidence_level": "local_mechanism_benchmark",
+  "decision": "tune_numeric_equivalence"
+}

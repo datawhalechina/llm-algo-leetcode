@@ -67,7 +67,9 @@
 
 基础页回归测试的实现位于 `tools/tests/test_foundation_performance_evidence.py`，旧命令 `python tools/test_foundation_performance_evidence.py` 仍可运行。旧文件只负责启动，不导出测试类，避免扫描 `tools/` 时重复收集同一组测试；运行全部已迁入测试见[回归测试说明](./tests/README.md)。
 
-首批入口的自动化检查位于 `tools/tests/test_test_entrypoints.py`，覆盖新旧命令、参数选择、跨目录运行、重复收集和真实断言失败。运行时模块或实验入口后续迁移时，还需增加相应导入、结果文件与调用方验证，不能用这批测试代替。
+章节链接、SVG 箭头、SVG 布局与数学公式兼容的回归测试也位于 `tools/tests/`，原脚本路径保留转发入口。这四个旧入口通过 `load_tests` 支持显式的 `python -m unittest tools.test_<name>`；目录扫描只收集新位置，不导出第二份测试类。数学兼容 CI 直接调用 `tools.tests.test_math_formula_compatibility`，并运行入口回归测试核对实际用例数。
+
+入口的自动化检查位于 `tools/tests/test_test_entrypoints.py`，按实际用例数核对新旧脚本、检查类测试的模块入口、参数选择、跨目录运行、重复收集和真实断言失败。运行时模块或实验入口后续迁移时，还需增加相应导入、结果文件与调用方验证，不能用这批测试代替。
 
 | 验证项 | 通过条件 |
 |:---|:---|

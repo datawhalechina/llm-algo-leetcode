@@ -12,7 +12,10 @@ import shutil
 import argparse
 from pathlib import Path
 
-from convert_notebook import normalize_generated_markdown, normalize_markdown_links
+if __package__:
+    from .convert_notebook import normalize_generated_markdown, normalize_markdown_links
+else:
+    from convert_notebook import normalize_generated_markdown, normalize_markdown_links
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
@@ -39,7 +42,14 @@ NAV_FILES = {
     "05_Integrated_Projects_and_Decisions": [
         "intro.md",
         "01_Inference_Service_Integrated_Project.md",
+        "01_Inference_Service/index.md",
+        "01_Inference_Service/project_config.example.yaml",
         "02_Post_Training_Delivery_Project.md",
+        "02_Post_Training_Delivery/index.md",
+        "02_Post_Training_Delivery/project_config.example.yaml",
+        "open_practice/_template/README.md",
+        "open_practice/_template/index.md",
+        "open_practice/_template/project_config.example.yaml",
     ],
     "topic_discussion": [
         "intro.md",
@@ -146,20 +156,26 @@ def sync_navigation(selected_part: str | None = None) -> None:
         dst_dir = DOCS / part
         dst_dir.mkdir(parents=True, exist_ok=True)
         if part == "topic_discussion":
+            # Reuse the scoped topic converter, including benchmark links.
+            # Stale mirrors are removed only by explicit --topic ... --prune.
+            for topic_dir in sorted(src_dir.iterdir()):
+                if topic_dir.is_dir() and not topic_dir.is_symlink() and any(topic_dir.rglob("*.md")):
+                    sync_topic(topic_dir.name)
             files = sorted(
                 path.relative_to(src_dir).as_posix()
-                for path in src_dir.rglob("*.md")
+                for path in src_dir.glob("*.md")
             )
-            source_files = {src_dir / name for name in files}
-            for stale in dst_dir.rglob("*.md"):
-                if stale not in source_files:
-                    stale.unlink()
         for name in files:
             src = src_dir / name
             if not src.exists():
                 continue
             dst = dst_dir / name
             text = src.read_text(encoding="utf-8")
+            if part == "topic_discussion":
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                dst.write_text(normalize_generated_markdown(normalize_markdown_links(text)), encoding="utf-8")
+                copied += 1
+                continue
             mirrored = text.replace(".ipynb)", ".md)")
             # Source topic pages may link to docs/guide.md. Once mirrored
             # inside docs/topic_discussion, guide.md is already at the docs

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Check that source chapter prose files have matching docs mirror pages.
+"""Check that source chapter files have matching docs mirror files.
 
 This repo keeps prose and notebook content in the source tree, and the docs
-tree is expected to mirror the prose pages. Notebook files are validated by
-separate notebook tests; this script only checks Markdown pages.
+tree is expected to mirror prose pages and learner-facing example configs.
+Notebook files are validated by separate notebook tests.
 
 Usage:
     python3 tools/check_source_docs_mirror.py
@@ -22,15 +22,26 @@ SOURCE_DIRS = [
     ROOT / "02_PyTorch_Algorithms",
     ROOT / "03_Triton_Kernels",
     ROOT / "04_CUDA_and_System_Optimization",
+    ROOT / "05_Integrated_Projects_and_Decisions",
 ]
 DOCS_DIR = ROOT / "docs"
+MIRROR_ASSET_NAMES = {"project_config.example.yaml"}
+
+
+def is_mirrored_source(path: Path) -> bool:
+    return path.suffix == ".md" or path.name in MIRROR_ASSET_NAMES
 
 
 def is_generated_path(path: Path) -> bool:
     """Skip local/generated artifacts that are not tutorial source pages."""
     parts = path.parts
-    benchmark_artifact = "benchmarks" in parts and "artifacts" in parts
-    return benchmark_artifact or "model_cache" in parts or "__pycache__" in parts
+    return (
+        any(part.startswith(".") for part in parts)
+        or "benchmarks" in parts
+        or "model_cache" in parts
+        or "__pycache__" in parts
+        or ".ipynb_checkpoints" in parts
+    )
 
 
 def iter_source_pages() -> set[Path]:
@@ -41,10 +52,10 @@ def iter_source_pages() -> set[Path]:
         for path in base.rglob("*"):
             if is_generated_path(path):
                 continue
-            if path.suffix != ".md":
+            if not path.is_file() or not is_mirrored_source(path):
                 continue
             rel = path.relative_to(ROOT)
-            expected.add(Path("docs") / rel.with_suffix(".md"))
+            expected.add(Path("docs") / rel)
     return expected
 
 
@@ -54,8 +65,10 @@ def iter_docs_pages() -> set[Path]:
         docs_base = DOCS_DIR / base.name
         if not docs_base.exists():
             continue
-        for path in docs_base.rglob("*.md"):
+        for path in docs_base.rglob("*"):
             if is_generated_path(path):
+                continue
+            if not path.is_file() or not is_mirrored_source(path):
                 continue
             actual.add(path.relative_to(ROOT))
     return actual

@@ -1,0 +1,215 @@
+{
+  "schema_version": "inference-mechanism-gpu/v3",
+  "semantic_id": "INF-EXECUTION-DISPATCH",
+  "profile_id": "INF-CUDA-MECHANISM",
+  "run_label": "rtx5070ti_dispatch_v3",
+  "workload": {
+    "id": "inference-execution-dispatch",
+    "version": "v3",
+    "token_counts": [
+      1,
+      32,
+      256,
+      1024
+    ],
+    "hidden_size": 1024,
+    "block_depth": 4,
+    "dtype": "float16",
+    "warmup": 10,
+    "repeats": 30
+  },
+  "hardware": {
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "torch_version": "2.11.0+cu128",
+    "cuda": "12.8"
+  },
+  "candidate_matrix": [
+    {
+      "token_count": 1,
+      "output_close": true,
+      "graph_count": 1,
+      "graph_break_count": 0,
+      "first_call_ms": 465.2837659996294,
+      "eager_operator_keys": [
+        "aten::rms_norm",
+        "aten::_fused_rms_norm",
+        "aten::empty",
+        "Activity Buffer Request",
+        "cudaLaunchKernel",
+        "aten::view",
+        "aten::linear",
+        "aten::t",
+        "aten::transpose",
+        "aten::as_strided"
+      ],
+      "compiled_operator_keys": [
+        "Pregraph bytecode",
+        "AOTDispatcher Runtime Wrapper Prologue",
+        "Activity Buffer Request",
+        "triton_per_fused__fused_rms_norm_0",
+        "cuLaunchKernel",
+        "aten::mm",
+        "cudaLaunchKernel",
+        "triton_per_fused__fused_rms_norm_add_mul_silu_1",
+        "triton_per_fused__fused_rms_norm_add_mul_silu_2",
+        "triton_poi_fused_add_mul_silu_3"
+      ],
+      "eager": {
+        "median_ms": 0.14004799723625183,
+        "p95_ms": 0.15007999539375305,
+        "peak_allocated_bytes": 25321472
+      },
+      "compiled": {
+        "median_ms": 0.12518399953842163,
+        "p95_ms": 0.13184000551700592,
+        "peak_allocated_bytes": 25323520
+      },
+      "speedup": 1.1187372008614258,
+      "p95_ratio": 0.8784648824855551,
+      "benefit_gate_passed": true
+    },
+    {
+      "token_count": 32,
+      "output_close": true,
+      "graph_count": 1,
+      "graph_break_count": 0,
+      "first_call_ms": 658.2647539980826,
+      "eager_operator_keys": [
+        "aten::rms_norm",
+        "aten::_fused_rms_norm",
+        "aten::empty",
+        "Activity Buffer Request",
+        "cudaLaunchKernel",
+        "aten::view",
+        "aten::linear",
+        "aten::t",
+        "aten::transpose",
+        "aten::as_strided"
+      ],
+      "compiled_operator_keys": [
+        "Pregraph bytecode",
+        "AOTDispatcher Runtime Wrapper Prologue",
+        "Activity Buffer Request",
+        "triton_per_fused__fused_rms_norm_0",
+        "cuLaunchKernel",
+        "aten::mm",
+        "cudaDeviceGetAttribute",
+        "triton_per_fused__fused_rms_norm_add_mul_silu_1",
+        "triton_per_fused__fused_rms_norm_add_mul_silu_2",
+        "triton_poi_fused_add_mul_silu_3"
+      ],
+      "eager": {
+        "median_ms": 0.1486399993300438,
+        "p95_ms": 0.1722240000963211,
+        "peak_allocated_bytes": 25829376
+      },
+      "compiled": {
+        "median_ms": 0.1117280013859272,
+        "p95_ms": 0.13833600282669067,
+        "peak_allocated_bytes": 25894912
+      },
+      "speedup": 1.3303737423586088,
+      "p95_ratio": 0.8032330148488154,
+      "benefit_gate_passed": true
+    },
+    {
+      "token_count": 256,
+      "output_close": true,
+      "graph_count": 1,
+      "graph_break_count": 0,
+      "first_call_ms": 454.42633100174135,
+      "eager_operator_keys": [
+        "aten::rms_norm",
+        "aten::_fused_rms_norm",
+        "aten::empty",
+        "Activity Buffer Request",
+        "cudaLaunchKernel",
+        "aten::view",
+        "aten::linear",
+        "aten::t",
+        "aten::transpose",
+        "aten::as_strided"
+      ],
+      "compiled_operator_keys": [
+        "Pregraph bytecode",
+        "AOTDispatcher Runtime Wrapper Prologue",
+        "Activity Buffer Request",
+        "triton_per_fused__fused_rms_norm_0",
+        "cuLaunchKernel",
+        "aten::mm",
+        "cudaDeviceGetAttribute",
+        "triton_per_fused__fused_rms_norm_add_mul_silu_1",
+        "triton_per_fused__fused_rms_norm_add_mul_silu_2",
+        "triton_poi_fused_add_mul_silu_3"
+      ],
+      "eager": {
+        "median_ms": 0.18996800482273102,
+        "p95_ms": 0.23552000522613525,
+        "peak_allocated_bytes": 29499392
+      },
+      "compiled": {
+        "median_ms": 0.1849919930100441,
+        "p95_ms": 0.1921599954366684,
+        "peak_allocated_bytes": 30023680
+      },
+      "speedup": 1.026898525345455,
+      "p95_ratio": 0.8158967016503137,
+      "benefit_gate_passed": false
+    },
+    {
+      "token_count": 1024,
+      "output_close": true,
+      "graph_count": 1,
+      "graph_break_count": 0,
+      "first_call_ms": 526.7467110024882,
+      "eager_operator_keys": [
+        "aten::rms_norm",
+        "aten::_fused_rms_norm",
+        "aten::empty",
+        "Activity Buffer Request",
+        "cudaLaunchKernel",
+        "aten::view",
+        "aten::linear",
+        "aten::t",
+        "aten::transpose",
+        "aten::as_strided"
+      ],
+      "compiled_operator_keys": [
+        "Pregraph bytecode",
+        "AOTDispatcher Runtime Wrapper Prologue",
+        "Activity Buffer Request",
+        "triton_per_fused__fused_rms_norm_0",
+        "cuLaunchKernel",
+        "aten::mm",
+        "cudaDeviceGetAttribute",
+        "triton_per_fused__fused_rms_norm_add_mul_silu_1",
+        "triton_per_fused__fused_rms_norm_add_mul_silu_2",
+        "triton_poi_fused_add_mul_silu_3"
+      ],
+      "eager": {
+        "median_ms": 0.4298879951238632,
+        "p95_ms": 0.4350079894065857,
+        "peak_allocated_bytes": 42082304
+      },
+      "compiled": {
+        "median_ms": 0.41603200137615204,
+        "p95_ms": 0.5670719742774963,
+        "peak_allocated_bytes": 44179456
+      },
+      "speedup": 1.0333051152360353,
+      "p95_ratio": 1.3035897916520227,
+      "benefit_gate_passed": false
+    }
+  ],
+  "summary": {
+    "correctness_passed": true,
+    "captured_without_breaks": true,
+    "accepted_cases": 2,
+    "total_cases": 4,
+    "minimum_speedup": 1.05,
+    "maximum_p95_ratio": 1.05
+  },
+  "failure": null,
+  "evidence_level": "local_mechanism_benchmark",
+  "decision": "accept_for_selected_shapes"
+}

@@ -1,0 +1,39 @@
+{
+  "schema_version": "inference-mtp-mechanism/v1",
+  "semantic_id": "INF-MTP",
+  "environment_profile": "INF-VLLM-MTP",
+  "run_mode": "real_backend",
+  "run_label": "rtx5070ti_qwen35_08b_mtp1_v3",
+  "workload": {
+    "id": "inf-native-mtp-qwen35-08b",
+    "version": "v2",
+    "model_id": "Qwen/Qwen3.5-0.8B",
+    "requested_revision": "main",
+    "resolved_commit": "2fc06364715b967f1860aea9cf38778875588b17",
+    "dtype": "bfloat16",
+    "prompt_count": 3,
+    "max_new_tokens": 64,
+    "max_model_len": 2048,
+    "gpu_memory_utilization": 0.75,
+    "enforce_eager": false,
+    "warmup_steps": 2,
+    "repeat_steps": 5,
+    "speculative_tokens": 1,
+    "seed": 42
+  },
+  "model_contract": {
+    "model_type": "qwen3_5",
+    "text_model_type": "qwen3_5_text",
+    "mtp_num_hidden_layers": 1,
+    "resolution_source": "huggingface_hub_api"
+  },
+  "baseline": null,
+  "candidate": null,
+  "comparison": null,
+  "failure": {
+    "type": "RuntimeError",
+    "message": "baseline worker failed (exit=1): \nParse safetensors files:   0%|          | 0/1 [00:00<?, ?it/s]\nParse safetensors files: 100%|██████████| 1/1 [00:01<00:00,  1.43s/it]\nParse safetensors files: 100%|██████████| 1/1 [00:01<00:00,  1.43s/it]\nProcess EngineCore:\nTraceback (most recent call last):\n  File \"/home/yulinlin/anaconda3/envs/llm_vllm_mtp_cu129/lib/python3.12/multiprocessing/process.py\", line 314, in _bootstrap\n    self.run()\n  File \"/home/yulinlin/anaconda3/envs/llm_vllm_mtp_cu129/lib/python3.12/multiprocessing/process.py\", line 108, in run\n    self._target(*self._args, **self._kwargs)\n  File \"/home/yulinlin/anaconda3/envs/llm_vllm_mtp_cu129/lib/python3.12/site-packages/vllm/v1/engine/core.py\", line 1437, in run_engine_core\n    raise e\n  File \"/home/yulinlin/anaconda3/envs/llm_vllm_mtp_cu129/lib/python3.12/site-packages/vllm/v1/engine/core.py\", line 1395, in run_engine_core\n    engine_core = EngineCoreProc(*args, engine_index=dp_rank, **kwargs)\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/yulinlin/anaconda3/envs/llm_vllm_mtp_cu129/lib/python3.12/site-packages/vllm/tracing/otel.py\", line 175, in sync_wrapper\n    return func(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/yulinlin/anaconda3/envs/llm_vllm_mtp_cu129/lib/python3.12/site-packages/vllm/v1/engine/core.py\", line 1151, in __init__\n    super().__init__(\n  File \"/home/yulinlin/anaconda3/envs/llm_vllm_mtp_cu129/lib/python3.12/site-packages/vllm/v1/engine/core.py\", line 140, in __init__\n    self.model_executor = executor_class(vllm_config)\n                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/yulinlin/anaconda3/envs/llm_vllm_mtp_cu129/lib/python3.12/site-packages/vllm/tracing/otel.py\", line 175, in sync_wrapper\n    return func(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/yulinlin/anaconda3/envs/llm_vllm_mtp_cu129/lib/python3.12/site-packages/vllm/v1/executor/abstract.py\", line 113, in __init__\n    self._init_executor()\n  File \"/home/yulinlin/anaconda3/envs/llm_vllm_mtp_cu129/lib/python3.12/site-packages/vllm/v1/executor/uniproc_executor.py\", line 69, in _init_executor\n    self.driver_worker.init_device()\n  File \"/home/yulinlin/anaconda3/envs/llm_vllm_mtp_cu129/lib/python3.12/site-packages/vllm/v1/worker/worker_base.py\", line 343, in init_device\n    self.worker.init_device()  # type: ignore\n    ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/yulinlin/anaconda3/envs/llm_vllm_mtp_cu129/lib/python3.12/site-packages/vllm/tracing/otel.py\", line 175, in sync_wrapper\n    return func(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/yulinlin/anaconda3/envs/llm_vllm_mtp_cu129/lib/python3.12/site-packages/vllm/v1/worker/gpu_worker.py\", line 490, in init_device\n    self.requested_memory = request_memory(init_snapshot, self.cache_config)\n                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/yulinlin/anaconda3/envs/llm_vllm_mtp_cu129/lib/python3.12/site-packages/vllm/v1/worker/utils.py\", line 548, in request_memory\n    raise ValueError(\nValueError: Free memory on device cuda:0 (3.45/11.48 GiB) on startup is less than desired GPU memory utilization (0.75, 8.61 GiB). Decrease GPU memory utilization or reduce GPU memory used by other processes.\n[rank0]:[W1009 22:48:21.585684150 ProcessGroupNCCL.cpp:1624] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())\n"
+  },
+  "evidence_level": "failed_real_backend_attempt",
+  "decision": "reject_until_fixed"
+}

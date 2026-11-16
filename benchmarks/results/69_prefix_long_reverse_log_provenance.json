@@ -1,0 +1,44 @@
+{
+  "schema_version": "historical-log-provenance/v1",
+  "status": "partial_identity_match",
+  "log": {
+    "path": "benchmarks/results/66_backend.log",
+    "sha256": "2ca08d1dea8b647538eacfb9403c4da307a43c5b1609e766a291fc979dae12ed",
+    "original_sha256": "9e27298d0ad6c7bbc833f7fbd8abf7583133f329d4242a8186228363e497b24c",
+    "format_change": "删除4个行尾空格，CR/LF、ANSI标记和其余字节保持不变。"
+  },
+  "reports": [
+    {
+      "role": "baseline",
+      "path": "benchmarks/results/69_g0_cache_off_vllm_rtx5070ti_prefix_long_rev_v1.json",
+      "sha256": "c45c1a64289ace39e275a32a4d64fb0c0619d3026aa72b3045f4dfa6ff5907fd",
+      "base_url": "http://127.0.0.1:40353"
+    },
+    {
+      "role": "candidate",
+      "path": "benchmarks/results/69_g1_prefix_cache_vllm_rtx5070ti_prefix_long_rev_v1.json",
+      "sha256": "ff194908d4c192e570b5a2ae1b7c8f9a73d72c8ede27a315ab1678727e843cbd",
+      "base_url": "http://127.0.0.1:57907"
+    }
+  ],
+  "observed": {
+    "server_endpoint": "http://127.0.0.1:40353",
+    "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "model_commit": "7ae557604adf67be50417f59c2c2f167def9a775",
+    "vllm_version": "0.11.0",
+    "dtype": "bfloat16",
+    "enforce_eager": true,
+    "enable_prefix_caching": false,
+    "chat_completion_requests": 105
+  },
+  "interpretation": {
+    "baseline": "端口、模型、关闭前缀缓存配置及请求数量与G0吻合；原报告未绑定日志哈希或唯一运行标识，因此只登记配置吻合。",
+    "candidate": "G1端口为57907，与日志40353不同；两份历史报告虽然使用相同log_path，此日志不能证明G1执行，未恢复G1原日志。",
+    "old_66_baseline": "旧66基线端口39101，与当前日志不符，不能配为同次运行。"
+  },
+  "limits": [
+    "不更改历史报告、比较指标或实验决策。",
+    "不将这份日志解释为两组完整执行证据。",
+    "共享log_path可被后续服务覆盖；核对历史时应重新检查本记录中的SHA256。"
+  ]
+}

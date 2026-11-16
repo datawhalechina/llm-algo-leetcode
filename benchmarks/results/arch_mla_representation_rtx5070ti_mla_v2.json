@@ -1,0 +1,131 @@
+{
+  "schema_version": "architecture-mechanism-gpu/v1",
+  "identity": {
+    "semantic_id": "ARCH-MLA-REPRESENTATION-MECHANISM",
+    "workload_id": "arch-mla-representation-v1",
+    "run_label": "rtx5070ti_mla_v2",
+    "profile_id": "ARCH-CUDA-MECHANISM"
+  },
+  "mechanism": "kv_representation",
+  "workload": {
+    "dtype": "bfloat16",
+    "sequence_lengths": [
+      512,
+      2048,
+      8192
+    ],
+    "batch_size": 1,
+    "query_heads": 16,
+    "head_dim": 64,
+    "warmup": 10,
+    "repeats": 100,
+    "kv_heads": 4,
+    "latent_dim": 256,
+    "rope_dim": 64
+  },
+  "framework": {
+    "torch": "2.11.0+cu128"
+  },
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "cuda": "12.8",
+    "dtype": "bfloat16",
+    "total_memory_bytes": 12328960000
+  },
+  "baseline": {
+    "name": "mha_full_kv"
+  },
+  "candidates": [
+    "gqa_shared_kv",
+    "latent_kv_proxy"
+  ],
+  "metrics": {
+    "comparison_type": "controlled_representation_proxy",
+    "rows": [
+      {
+        "sequence_length": 512,
+        "representation": "mha_full_kv",
+        "cache_bytes": 2097152,
+        "mean_step_ms": 0.01369,
+        "peak_memory_mb": 2.016,
+        "reconstruction": false,
+        "output_finite": true
+      },
+      {
+        "sequence_length": 512,
+        "representation": "gqa_shared_kv",
+        "cache_bytes": 524288,
+        "mean_step_ms": 0.0116,
+        "peak_memory_mb": 0.516,
+        "reconstruction": false,
+        "output_finite": true
+      },
+      {
+        "sequence_length": 512,
+        "representation": "latent_kv_proxy",
+        "cache_bytes": 327680,
+        "mean_step_ms": 0.02797,
+        "peak_memory_mb": 9.203,
+        "reconstruction": true,
+        "output_finite": true
+      },
+      {
+        "sequence_length": 2048,
+        "representation": "mha_full_kv",
+        "cache_bytes": 8388608,
+        "mean_step_ms": 0.02467,
+        "peak_memory_mb": 16.148,
+        "reconstruction": false,
+        "output_finite": true
+      },
+      {
+        "sequence_length": 2048,
+        "representation": "gqa_shared_kv",
+        "cache_bytes": 2097152,
+        "mean_step_ms": 0.01248,
+        "peak_memory_mb": 10.164,
+        "reconstruction": false,
+        "output_finite": true
+      },
+      {
+        "sequence_length": 2048,
+        "representation": "latent_kv_proxy",
+        "cache_bytes": 1310720,
+        "mean_step_ms": 0.02881,
+        "peak_memory_mb": 11.664,
+        "reconstruction": true,
+        "output_finite": true
+      },
+      {
+        "sequence_length": 8192,
+        "representation": "mha_full_kv",
+        "cache_bytes": 33554432,
+        "mean_step_ms": 0.05985,
+        "peak_memory_mb": 40.152,
+        "reconstruction": false,
+        "output_finite": true
+      },
+      {
+        "sequence_length": 8192,
+        "representation": "gqa_shared_kv",
+        "cache_bytes": 8388608,
+        "mean_step_ms": 0.03058,
+        "peak_memory_mb": 16.196,
+        "reconstruction": false,
+        "output_finite": true
+      },
+      {
+        "sequence_length": 8192,
+        "representation": "latent_kv_proxy",
+        "cache_bytes": 5242880,
+        "mean_step_ms": 0.08177,
+        "peak_memory_mb": 21.446,
+        "reconstruction": true,
+        "output_finite": true
+      }
+    ]
+  },
+  "failure": null,
+  "evidence_level": "single_gpu_mechanism_benchmark",
+  "decision": "accept_latent_representation_mechanism"
+}

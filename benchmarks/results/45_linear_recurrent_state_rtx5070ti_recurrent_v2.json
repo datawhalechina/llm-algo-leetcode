@@ -1,0 +1,105 @@
+{
+  "schema_version": "architecture-mechanism-gpu/v1",
+  "identity": {
+    "semantic_id": "ARCH-RECURRENT-STATE-MECHANISM",
+    "workload_id": "arch-linear-recurrence-v2",
+    "run_label": "rtx5070ti_recurrent_v2",
+    "profile_id": "ARCH-CUDA-MECHANISM"
+  },
+  "mechanism": "linear_recurrence",
+  "workload": {
+    "mode": "linear_recurrence",
+    "output": "/data/llm-algo-leetcode-datawhale/llm-algo-leetcode/benchmarks/results/45_linear_recurrent_state_rtx5070ti_recurrent_v2.json",
+    "semantic_id": "ARCH-RECURRENT-STATE-MECHANISM",
+    "workload_id": "arch-linear-recurrence-v2",
+    "run_label": "rtx5070ti_recurrent_v2",
+    "profile_id": "ARCH-CUDA-MECHANISM",
+    "dtype": "bfloat16",
+    "sequence_lengths": [
+      512,
+      2048,
+      8192
+    ],
+    "batch_size": 1,
+    "query_heads": 8,
+    "kv_heads": 4,
+    "head_dim": 64,
+    "latent_dim": 256,
+    "rope_dim": 64,
+    "num_layers": 4,
+    "attention_every": 4,
+    "warmup": 10,
+    "repeats": 100
+  },
+  "framework": {
+    "torch": "2.11.0+cu128"
+  },
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "cuda": "12.8",
+    "dtype": "bfloat16",
+    "total_memory_bytes": 12328960000
+  },
+  "baseline": {
+    "name": "explicit_attention_history"
+  },
+  "candidates": [
+    "fixed_recurrent_state"
+  ],
+  "metrics": {
+    "comparison_type": "controlled_single_layer_state_proxy",
+    "rows": [
+      {
+        "sequence_length": 512,
+        "representation": "explicit_attention_history",
+        "state_bytes": 1048576,
+        "mean_step_ms": 0.01117,
+        "peak_memory_mb": 1.009,
+        "output_finite": true
+      },
+      {
+        "sequence_length": 512,
+        "representation": "fixed_recurrent_state",
+        "state_bytes": 65536,
+        "mean_step_ms": 0.01759,
+        "peak_memory_mb": 8.379,
+        "output_finite": true
+      },
+      {
+        "sequence_length": 2048,
+        "representation": "explicit_attention_history",
+        "state_bytes": 4194304,
+        "mean_step_ms": 0.01697,
+        "peak_memory_mb": 12.146,
+        "output_finite": true
+      },
+      {
+        "sequence_length": 2048,
+        "representation": "fixed_recurrent_state",
+        "state_bytes": 65536,
+        "mean_step_ms": 0.01703,
+        "peak_memory_mb": 8.379,
+        "output_finite": true
+      },
+      {
+        "sequence_length": 8192,
+        "representation": "explicit_attention_history",
+        "state_bytes": 16777216,
+        "mean_step_ms": 0.03194,
+        "peak_memory_mb": 24.151,
+        "output_finite": true
+      },
+      {
+        "sequence_length": 8192,
+        "representation": "fixed_recurrent_state",
+        "state_bytes": 65536,
+        "mean_step_ms": 0.01708,
+        "peak_memory_mb": 8.379,
+        "output_finite": true
+      }
+    ]
+  },
+  "failure": null,
+  "evidence_level": "single_gpu_mechanism_benchmark",
+  "decision": "accept_fixed_state_growth_mechanism"
+}

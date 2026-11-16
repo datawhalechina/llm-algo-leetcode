@@ -1,0 +1,76 @@
+{
+  "schema_version": "inference-benchmark/v1",
+  "project": "68",
+  "strategy": "draft_and_verify",
+  "role": "candidate",
+  "config": {
+    "model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "backend": "vllm",
+    "dtype": "bfloat16",
+    "prompt_tokens": null,
+    "generated_tokens": 64,
+    "batch": 1,
+    "concurrency": 1,
+    "cache_policy": "default",
+    "draft_model": "Qwen/Qwen2.5-0.5B-Instruct",
+    "proposal_length": 5,
+    "min_acceptance_rate": 0.6,
+    "draft_family": "autoregressive_draft",
+    "proposal_mode": "tokenwise",
+    "num_prompts": 30,
+    "warmup": 5,
+    "repeats": 3,
+    "temperature": 0.0,
+    "hardware_profile": "H0_12GB_5070Ti_Laptop",
+    "workload": "benchmarks/workloads/fixed.jsonl",
+    "role": "candidate"
+  },
+  "metrics": {
+    "ttft_ms": null,
+    "tpot_ms": null,
+    "throughput_tokens_per_s": null,
+    "throughput_requests_per_s": null,
+    "p95_ms": null,
+    "p99_ms": null,
+    "peak_memory_mb": null,
+    "queue_wait_ms": null,
+    "input_transfer_bytes": null,
+    "input_transfer_ms": null,
+    "transfer_bytes": null,
+    "handoff_ms": null,
+    "recompute_ms": null,
+    "network_wait_ms": null,
+    "communication_ms": null,
+    "exposed_comm_ms": null,
+    "overlap_ratio": null,
+    "idle_gap_ms": null,
+    "model_load_ms": null,
+    "stream_output_ms": null
+  },
+  "quality": {
+    "status": "failed",
+    "speculative_enabled": true,
+    "failure_reason": "Backend did not become ready at http://127.0.0.1:52331/v1/models: timed out",
+    "retest_path": "检查显存、模型兼容性和后端日志后复测"
+  },
+  "status": "failed",
+  "evidence_level": "backend_execution_failure",
+  "failure": {
+    "failure_reason": "Backend did not become ready at http://127.0.0.1:52331/v1/models: timed out",
+    "retest_path": "检查显存、模型兼容性和后端日志后复测"
+  },
+  "decision": {
+    "decision": "tune",
+    "reason": "G1 后端执行失败"
+  },
+  "strategy_metrics": {
+    "evidence_level": "backend_execution_failure",
+    "capability": {
+      "status": "supported",
+      "mode": "speculative_config",
+      "command": "/home/yulinlin/anaconda3/envs/llm_vllm_cu128/bin/vllm",
+      "returncode": 0,
+      "help_mode": "all"
+    }
+  }
+}

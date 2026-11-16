@@ -1,45 +1,42 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
-  <title id="title">67 GPU 量化实验的固定条件</title>
-  <desc id="desc">为了比较 G0、G1 和可选 G2，需要同时固定运行环境、输入 workload 和对照变量。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="600" viewBox="0 0 1240 600" role="img" aria-labelledby="title desc">
+  <title id="title">量化部署实验的配对执行矩阵</title>
+  <desc id="desc">统一环境和请求负载分别驱动浮点基线与量化候选，并核对量化候选的实际执行路径；结果按相同字段写入配对记录。</desc>
   <defs>
-    <marker id="a67g" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
-      <path d="M0 0L10 5L0 10Z" fill="#64748b"/>
-    </marker>
     <style>
-      .title{font:700 30px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}
-      .subtitle{font:500 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}
-      .head{font:700 21px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#111827}
-      .body{font:500 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}
-      .group{font:700 18px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}
-      .box{stroke-width:2.5;rx:18}
-      .line{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a67g)}
+      .title{font:700 28px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324d}.sub{font:15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#526b7d}.h{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324d}.t{font:14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#526b7d}.blue{fill:#e8f3fb;stroke:#3978a8;stroke-width:2}.purple{fill:#f1eafa;stroke:#8b6bb1;stroke-width:2}.green{fill:#eaf7ef;stroke:#4c9870;stroke-width:2}.orange{fill:#fff1df;stroke:#c78335;stroke-width:2}.frame{fill:#fff;stroke:#c7d9e7;stroke-width:1.5}.flow{stroke:#3978a8;stroke-width:3;fill:none;marker-end:url(#arrow)}.optional{stroke:#8b6bb1;stroke-width:2.5;stroke-dasharray:8 6;fill:none;marker-end:url(#purpleArrow)}
     </style>
+    <marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#3978a8"/></marker>
+    <marker id="purpleArrow" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#8b6bb1"/></marker>
   </defs>
+  <rect width="1240" height="600" rx="24" fill="#f8fbfd"/>
+  <text x="620" y="48" text-anchor="middle" class="title">真实量化部署：固定条件下的配对执行矩阵</text>
+  <text x="620" y="76" text-anchor="middle" class="sub">G0 与 G1 共享模型版本、请求、硬件和测量方法，只改变权重产物与量化执行路径</text>
 
-  <rect width="1200" height="500" fill="#f8fafc"/>
-  <text x="60" y="52" class="title">5.1：固定 G0 / G1 / G2 的比较条件</text>
-  <text x="60" y="84" class="subtitle">三类条件同时固定，后续性能和显存差异才可以比较。</text>
+  <rect x="300" y="112" width="640" height="82" rx="18" class="blue"/>
+  <text x="620" y="143" text-anchor="middle" class="h">统一环境与 workload</text>
+  <text x="620" y="168" text-anchor="middle" class="t">模型与 tokenizer commit · 请求文件 · 并发 · 生成上限 · GPU · backend 版本</text>
 
-  <rect x="390" y="115" width="420" height="82" class="box" fill="#fef3c7" stroke="#d97706"/>
-  <text x="497" y="151" class="head">可比较的实验对照</text>
-  <text x="478" y="180" class="body">G0 浮点 · G1 量化 · G2 可选</text>
+  <rect x="65" y="270" width="300" height="106" rx="18" class="green"/>
+  <text x="215" y="307" text-anchor="middle" class="h">G0 浮点基线</text>
+  <text x="215" y="334" text-anchor="middle" class="t">原始模型 · 浮点加载路径</text>
+  <text x="215" y="356" text-anchor="middle" class="t">作为延迟、吞吐和显存参照</text>
+  <rect x="470" y="270" width="300" height="106" rx="18" class="orange"/>
+  <text x="620" y="307" text-anchor="middle" class="h">G1 量化候选</text>
+  <text x="620" y="334" text-anchor="middle" class="t">82 准入产物 · 目标量化路径</text>
+  <text x="620" y="356" text-anchor="middle" class="t">核对真实执行与 fallback</text>
+  <rect x="875" y="270" width="300" height="106" rx="18" class="blue"/>
+  <text x="1025" y="307" text-anchor="middle" class="h">G1 执行路径核对</text>
+  <text x="1025" y="334" text-anchor="middle" class="t">量化启动参数 · backend 日志</text>
+  <text x="1025" y="356" text-anchor="middle" class="t">确认命中路径并记录 fallback</text>
 
-  <rect x="45" y="245" width="1110" height="190" class="box" fill="#f8fafc" stroke="#94a3b8"/>
-  <text x="465" y="278" class="group">三类同时固定的实验条件</text>
+  <path d="M540 194C470 224 300 232 215 270" class="flow"/>
+  <path d="M620 194V270" class="flow"/>
+  <path d="M700 194C770 224 940 232 1025 270" class="flow"/>
 
-  <rect x="75" y="310" width="300" height="90" class="box" fill="#dbeafe" stroke="#2563eb"/>
-  <text x="171" y="347" class="head">运行环境</text>
-  <text x="143" y="376" class="body">GPU · CUDA · backend</text>
-
-  <rect x="450" y="310" width="300" height="90" class="box" fill="#dcfce7" stroke="#16a34a"/>
-  <text x="535" y="347" class="head">输入 workload</text>
-  <text x="523" y="376" class="body">模型 · 请求 · cache</text>
-
-  <rect x="825" y="310" width="300" height="90" class="box" fill="#e0e7ff" stroke="#4f46e5"/>
-  <text x="910" y="347" class="head">对照变量</text>
-  <text x="879" y="376" class="body">G0 / G1 / G2 格式</text>
-
-  <path d="M600 197V220H225V310" class="line"/>
-  <path d="M600 197V310" class="line"/>
-  <path d="M600 197V220H975V310" class="line"/>
+  <rect x="250" y="465" width="740" height="82" rx="18" class="frame"/>
+  <text x="620" y="497" text-anchor="middle" class="h">同字段原始结果与执行证据</text>
+  <text x="620" y="523" text-anchor="middle" class="t">TTFT · TPOT · 输出吞吐 · 峰值显存 · failure · backend 日志 · evidence level</text>
+  <path d="M215 376C290 420 430 420 500 465" class="flow"/>
+  <path d="M620 376V465" class="flow"/>
+  <path d="M1025 376C950 420 810 420 740 465" class="flow"/>
 </svg>

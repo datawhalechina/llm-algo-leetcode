@@ -1,0 +1,68 @@
+{
+  "schema_version": "inference-mechanism-gpu/v2",
+  "semantic_id": "INF-EAGLE",
+  "environment_profile": "INF-CUDA-MECHANISM",
+  "run_mode": "asset_check",
+  "run_label": "rtx5070ti_eagle_asset_v1",
+  "framework": {
+    "python": "3.12.15",
+    "packages": {
+      "vllm": false,
+      "speculators": false
+    }
+  },
+  "workload": {
+    "id": "inf-eagle-feature-drafter",
+    "version": "v1",
+    "mechanism": "eagle",
+    "required_assets": [
+      {
+        "name": "target_model_id",
+        "value": "",
+        "configured": false
+      },
+      {
+        "name": "target_model_revision",
+        "value": "",
+        "configured": false
+      },
+      {
+        "name": "eagle_model_id",
+        "value": "",
+        "configured": false
+      },
+      {
+        "name": "eagle_model_revision",
+        "value": "",
+        "configured": false
+      },
+      {
+        "name": "eagle_backend",
+        "value": "",
+        "configured": false
+      }
+    ]
+  },
+  "asset_gate": {
+    "ready": false,
+    "missing_packages": [
+      "vllm",
+      "speculators"
+    ],
+    "missing_assets": [
+      "target_model_id",
+      "target_model_revision",
+      "eagle_model_id",
+      "eagle_model_revision",
+      "eagle_backend"
+    ]
+  },
+  "baseline": null,
+  "candidates": [],
+  "failure": {
+    "type": "assets_not_ready",
+    "message": "推荐 EAGLE 配对与后端尚未满足；当前 12 GB 单卡不执行替代性探针。"
+  },
+  "evidence_level": "not_ready",
+  "decision": "defer_to_multi_gpu"
+}
