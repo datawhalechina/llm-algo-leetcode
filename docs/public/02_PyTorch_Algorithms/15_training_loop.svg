@@ -1,66 +1,37 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
-  <title id="title">端到端 SFT 的有效更新时间线</title>
-  <desc id="desc">展示一次有效更新中梯度归零、多个微批次累积、参数写回、训练时钟推进以及隔离评估与记录的先后关系。</desc>
-  <defs>
-    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0%" stop-color="#F8FAFC"/>
-      <stop offset="100%" stop-color="#FDF2F8"/>
-    </linearGradient>
-    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto" markerUnits="userSpaceOnUse">
-      <path d="M0 0L10 5L0 10Z" fill="#475569"/>
-    </marker>
-    <marker id="loopArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto" markerUnits="userSpaceOnUse">
-      <path d="M0 0L10 5L0 10Z" fill="#0891B2"/>
-    </marker>
-    <style>
-      .title{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:30px;font-weight:700;fill:#0F172A}
-      .sub{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:17px;font-weight:500;fill:#475569}
-      .label{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:19px;font-weight:700;fill:#111827}
-      .small{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:500;fill:#334155}
-      .box{stroke-width:2.5}
-      .arrow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
-      .loop{stroke:#0891B2;stroke-width:2.5;fill:none;marker-end:url(#loopArrow)}
-      .loopText{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:600;fill:#0E7490}
-      .edgeText{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:700;fill:#475569}
-    </style>
-  </defs>
-  <rect width="1500" height="470" rx="24" fill="url(#bg)"/>
-  <text x="60" y="60" class="title">一次有效更新如何推进训练状态</text>
-  <text x="60" y="92" class="sub">微批次只累积梯度；参数、学习率、评估结果和记录编号都在有效更新边界推进。</text>
-  <text x="60" y="121" class="sub">k 是微批次编号，K 是微批次总数；每份损失总和都除以逻辑批次的有效监督词元总数。</text>
-
-  <rect x="45" y="180" width="210" height="120" rx="17" class="box" fill="#FFF7ED" stroke="#F59E0B"/>
-  <text x="150" y="224" text-anchor="middle" class="label">更新起点</text>
-  <text x="150" y="257" text-anchor="middle" class="small">梯度状态归零</text>
-  <text x="150" y="283" text-anchor="middle" class="small">建立更新编号 u</text>
-
-  <rect x="315" y="180" width="260" height="120" rx="17" class="box" fill="#EFF6FF" stroke="#3B82F6"/>
-  <text x="445" y="224" text-anchor="middle" class="label">处理微批次 k / K</text>
-  <text x="445" y="257" text-anchor="middle" class="small">损失总和共用词元分母</text>
-  <text x="445" y="283" text-anchor="middle" class="small">参数保持不变</text>
-
-  <rect x="635" y="180" width="240" height="120" rx="17" class="box" fill="#ECFDF5" stroke="#10B981"/>
-  <text x="755" y="224" text-anchor="middle" class="label">有效更新边界</text>
-  <text x="755" y="257" text-anchor="middle" class="small">累计梯度写回参数</text>
-  <text x="755" y="283" text-anchor="middle" class="small">每个逻辑批次一次</text>
-
-  <rect x="935" y="180" width="220" height="120" rx="17" class="box" fill="#F5F3FF" stroke="#8B5CF6"/>
-  <text x="1045" y="224" text-anchor="middle" class="label">训练时钟推进</text>
-  <text x="1045" y="257" text-anchor="middle" class="small">学习率状态前进一步</text>
-  <text x="1045" y="283" text-anchor="middle" class="small">更新编号变为 u+1</text>
-
-  <rect x="1215" y="180" width="240" height="120" rx="17" class="box" fill="#FDF2F8" stroke="#DB2777"/>
-  <text x="1335" y="224" text-anchor="middle" class="label">隔离评估与记录</text>
-  <text x="1335" y="257" text-anchor="middle" class="small">固定更新后的模型状态</text>
-  <text x="1335" y="283" text-anchor="middle" class="small">写入同编号配对证据</text>
-
-  <path d="M255 240H315" class="arrow"/>
-  <path d="M575 240H635" class="arrow"/>
-  <path d="M875 240H935" class="arrow"/>
-  <path d="M1155 240H1215" class="arrow"/>
-  <text x="285" y="220" text-anchor="middle" class="edgeText">k = 1</text>
-  <text x="605" y="220" text-anchor="middle" class="edgeText">k = K</text>
-
-  <path d="M500 300V370H390V300" class="loop"/>
-  <text x="445" y="405" text-anchor="middle" class="loopText">k &lt; K：k ← k + 1，处理下一微批次</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="500" viewBox="0 0 1500 500" role="img" aria-labelledby="title desc">
+<title id="title">两微批次共享词元分母与一次有效更新</title><desc id="desc">两个微批次分别有4与10有效监督目标，两份损失总和均除以14后累积，之后一次optimizer更新并可选推进scheduler；满足首末或eval_every条件时评估记录。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:26px;font-weight:700}.sub{font-size:17px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:17px}.small{font-size:15px;fill:#475569}.node{stroke-width:2;rx:12}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}</style></defs>
+<rect width="1500" height="500" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="55" y="46" class="title" text-anchor="start">两个微批次共用14个有效目标的分母，再推进一次参数更新</text>
+<text x="55" y="78" class="sub" text-anchor="start">S₁、S₂是各微批次有效监督位置的损失总和；参数在累计梯度期间保持同一版本。</text>
+<rect x="55" y="150" width="180" height="90" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="145" y="178" class="head" text-anchor="middle">本轮开始</text>
+<text x="145" y="203" class="body" text-anchor="middle">梯度归零；N=14</text>
+<rect x="295" y="150" width="220" height="90" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="405" y="178" class="head" text-anchor="middle">微批次1：4个目标</text>
+<text x="405" y="203" class="body" text-anchor="middle">反传S₁ / 14</text>
+<rect x="575" y="150" width="220" height="90" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="685" y="178" class="head" text-anchor="middle">微批次2：10个目标</text>
+<text x="685" y="203" class="body" text-anchor="middle">反传S₂ / 14</text>
+<rect x="855" y="150" width="230" height="90" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="970" y="178" class="head" text-anchor="middle">有效更新边界</text>
+<text x="970" y="203" class="body" text-anchor="middle">optimizer.step一次</text>
+<rect x="1170" y="150" width="275" height="90" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="1307.5" y="178" class="head" text-anchor="middle">训练时钟推进</text>
+<text x="1307.5" y="203" class="body" text-anchor="middle">配置scheduler时推进一次</text>
+<path id="begin-to-micro1" d="M235 195H295" class="flow"/>
+<path id="micro1-to-micro2" d="M515 195H575" class="flow"/>
+<path id="micro2-to-update" d="M795 195H855" class="flow"/>
+<path id="update-to-clock" d="M1085 195H1170" class="flow"/>
+<rect x="295" y="285" width="500" height="70" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2" data-layout-role="panel"/><text x="545" y="313" class="head" text-anchor="middle">同一梯度缓冲区</text>
+<text x="545" y="340" class="body" text-anchor="middle">g = ∇S₁ / 14 + ∇S₂ / 14</text>
+<path id="micro1-to-gradient" d="M405 240V285" class="flow"/>
+<path id="micro2-to-gradient" d="M685 240V285" class="flow"/>
+<path id="gradient-to-update" d="M795 320H970V240" class="flow"/>
+<rect x="1170" y="350" width="275" height="80" class="node" fill="#dcfce7" stroke="#15803d"/>
+<text x="1307.5" y="378" class="head" text-anchor="middle">按条件评估并记录</text>
+<text x="1307.5" y="403" class="body" text-anchor="middle">首轮／末轮／eval_every</text>
+<path id="clock-to-conditional-evaluation" d="M1307 240V350" class="flow"/>
+<text x="55" y="460" class="sub" text-anchor="start">两份损失总和都除以14，使每个有效词元的权重一致；评估与history按记录条件执行。</text>
 </svg>

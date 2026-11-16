@@ -1,53 +1,57 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="560" viewBox="0 0 1600 560" role="img" aria-labelledby="title desc">
-  <title id="title">LoRA 训练旁路与部署合并</title>
-  <desc id="desc">上半部分展示冻结主分支和可训练低秩旁路共同产生训练输出，下半部分展示基础权重与低秩增量共同形成部署权重。</desc>
-  <defs>
-    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0%" stop-color="#f8fafc"/>
-      <stop offset="100%" stop-color="#fff7ed"/>
-    </linearGradient>
-    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto" markerUnits="userSpaceOnUse">
-      <path d="M0 0 L10 5 L0 10 Z" fill="#475569"/>
-    </marker>
-    <marker id="mergeArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto" markerUnits="userSpaceOnUse">
-      <path d="M0 0 L10 5 L0 10 Z" fill="#DB2777"/>
-    </marker>
-    <style>
-      .title{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:30px;font-weight:700;fill:#0f172a}.sub{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:16px;font-weight:500;fill:#475569}.lane{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:17px;font-weight:700;fill:#334155}.label{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:18px;font-weight:700;fill:#111827}.small{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:14px;font-weight:500;fill:#334155}.box{stroke-width:3;rx:16;ry:16}.arrow{stroke:#475569;stroke-width:4;fill:none;marker-end:url(#arrow)}.merge{stroke:#DB2777;stroke-width:4;fill:none;marker-end:url(#mergeArrow)}
-    </style>
-  </defs>
-  <rect width="1600" height="560" fill="url(#bg)"/>
-  <text x="60" y="58" class="title">LoRA：训练旁路与部署合并</text>
-  <text x="60" y="88" class="sub">训练时冻结 W₀、更新 A/B；部署时把 sBA 与 W₀ 合并为一个线性权重。</text>
-
-  <text x="60" y="145" class="lane">训练路径</text>
-  <rect x="60" y="175" width="150" height="82" class="box" fill="#fff7ed" stroke="#f59e0b"/>
-  <text x="135" y="208" text-anchor="middle" class="label">输入 x</text><text x="135" y="233" text-anchor="middle" class="small">共享输入</text>
-  <rect x="290" y="135" width="220" height="92" class="box" fill="#eff6ff" stroke="#3b82f6"/>
-  <text x="400" y="170" text-anchor="middle" class="label">冻结主分支</text><text x="400" y="198" text-anchor="middle" class="small">W₀x</text>
-  <rect x="290" y="270" width="180" height="92" class="box" fill="#ecfccb" stroke="#65a30d"/>
-  <text x="380" y="305" text-anchor="middle" class="label">LoRA A</text><text x="380" y="333" text-anchor="middle" class="small">d_in → r</text>
-  <rect x="535" y="270" width="180" height="92" class="box" fill="#ecfccb" stroke="#65a30d"/>
-  <text x="625" y="305" text-anchor="middle" class="label">LoRA B</text><text x="625" y="333" text-anchor="middle" class="small">r → d_out · 初始 B=0</text>
-  <rect x="780" y="270" width="150" height="92" class="box" fill="#f5f3ff" stroke="#8b5cf6"/>
-  <text x="855" y="305" text-anchor="middle" class="label">缩放 s</text><text x="855" y="333" text-anchor="middle" class="small">s = α / r</text>
-  <rect x="1010" y="175" width="150" height="82" class="box" fill="#fdf2f8" stroke="#db2777"/>
-  <text x="1085" y="208" text-anchor="middle" class="label">求和</text><text x="1085" y="233" text-anchor="middle" class="small">W₀x + sBAx</text>
-  <rect x="1240" y="175" width="180" height="82" class="box" fill="#ecfeff" stroke="#0891b2"/>
-  <text x="1330" y="208" text-anchor="middle" class="label">训练输出</text><text x="1330" y="233" text-anchor="middle" class="small">保持输出维度</text>
-  <path d="M210 216 H250 V181 H290" class="arrow"/><path d="M210 216 H250 V316 H290" class="arrow"/><circle cx="250" cy="216" r="5" fill="#475569"/>
-  <path d="M470 316 H535" class="arrow"/><path d="M715 316 H780" class="arrow"/>
-  <path d="M510 181 H970 V205 H1010" class="arrow"/><path d="M930 316 H970 V227 H1010" class="arrow"/>
-  <path d="M1160 216 H1240" class="arrow"/>
-
-  <text x="60" y="425" class="lane">部署合并</text>
-  <rect x="290" y="445" width="220" height="75" class="box" fill="#eff6ff" stroke="#3b82f6"/>
-  <text x="400" y="476" text-anchor="middle" class="label">基础权重 W₀</text><text x="400" y="500" text-anchor="middle" class="small">冻结权重</text>
-  <rect x="590" y="445" width="220" height="75" class="box" fill="#ecfccb" stroke="#65a30d"/>
-  <text x="700" y="476" text-anchor="middle" class="label">低秩增量 sBA</text><text x="700" y="500" text-anchor="middle" class="small">由 A/B 生成</text>
-  <rect x="930" y="445" width="250" height="75" class="box" fill="#fdf2f8" stroke="#db2777"/>
-  <text x="1055" y="476" text-anchor="middle" class="label">合并权重 Wₘ</text><text x="1055" y="500" text-anchor="middle" class="small">Wₘ = W₀ + sBA</text>
-  <rect x="1270" y="445" width="190" height="75" class="box" fill="#ecfeff" stroke="#0891b2"/>
-  <text x="1365" y="476" text-anchor="middle" class="label">单路径部署</text><text x="1365" y="500" text-anchor="middle" class="small">Wₘx</text>
-  <path d="M510 482 H550 V420 H875 V470 H930" class="merge"/><path d="M810 482 H875 V494 H930" class="merge"/><path d="M1180 482 H1270" class="arrow"/>
+<title id="title">LoRA训练旁路与评估模式下的权重合并</title><desc id="desc">训练时输入分为冻结W0主路与仅作用于旁路的Dropout、A、B、缩放路径，两路相加。评估关闭Dropout后，W0与sBA分别进入权重加法，合并权重执行单路线性变换。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:26px;font-weight:700}.sub{font-size:17px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:17px}.small{font-size:15px;fill:#475569}.node{stroke-width:2;rx:12}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}</style></defs>
+<rect width="1600" height="560" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="55" y="46" class="title" text-anchor="start">训练保留低秩旁路；评估时可把增量合并到基座权重</text>
+<text x="55" y="77" class="sub" text-anchor="start">W₀冻结，A/B可训练；Dropout只作用于旁路输入。合并等价性在评估模式下核对。</text>
+<rect x="55" y="160" width="160" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="135" y="188" class="head" text-anchor="middle">输入 x</text>
+<text x="135" y="213" class="body" text-anchor="middle">维度 dᵢₙ</text>
+<rect x="355" y="120" width="220" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="465" y="148" class="head" text-anchor="middle">冻结主分支 W₀</text>
+<text x="465" y="173" class="body" text-anchor="middle">W₀ x</text>
+<rect x="300" y="270" width="180" height="70" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="390" y="298" class="head" text-anchor="middle">旁路Dropout</text>
+<text x="390" y="323" class="body" text-anchor="middle">仅训练时随机</text>
+<rect x="540" y="270" width="160" height="70" class="node" fill="#dcfce7" stroke="#15803d"/>
+<text x="620" y="298" class="head" text-anchor="middle">可训练 A</text>
+<text x="620" y="323" class="body" text-anchor="middle">dᵢₙ → r</text>
+<rect x="760" y="270" width="160" height="70" class="node" fill="#dcfce7" stroke="#15803d"/>
+<text x="840" y="298" class="head" text-anchor="middle">可训练 B</text>
+<text x="840" y="323" class="body" text-anchor="middle">r → dₒᵤₜ</text>
+<rect x="980" y="270" width="160" height="70" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="1060" y="298" class="head" text-anchor="middle">缩放 s</text>
+<text x="1060" y="323" class="body" text-anchor="middle">s = α / r</text>
+<rect x="1190" y="160" width="160" height="80" class="node" fill="#fef3c7" stroke="#d97706"/>
+<text x="1270" y="188" class="head" text-anchor="middle">输出相加</text>
+<text x="1270" y="213" class="body" text-anchor="middle">W₀x + Δh</text>
+<rect x="1410" y="160" width="140" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="1480" y="188" class="head" text-anchor="middle">输出 h</text>
+<text x="1480" y="213" class="body" text-anchor="middle">维度 dₒᵤₜ</text>
+<path id="input-to-base" d="M215 180H260V160H355" class="flow"/>
+<path id="input-to-adapter" d="M215 220H260V305H300" class="flow"/>
+<path id="dropout-to-A" d="M480 305H540" class="flow"/>
+<path id="A-to-B" d="M700 305H760" class="flow"/>
+<path id="B-to-scale" d="M920 305H980" class="flow"/>
+<path id="base-to-sum" d="M575 160H1160V185H1190" class="flow"/>
+<path id="adapter-to-sum" d="M1140 305H1270V240" class="flow"/>
+<path id="sum-to-output" d="M1350 200H1410" class="flow"/>
+<text x="55" y="434" class="head" text-anchor="start">评估时合并</text>
+<text x="55" y="466" class="small" text-anchor="start">旁路Dropout关闭</text>
+<rect x="355" y="370" width="220" height="65" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="465" y="398" class="head" text-anchor="middle">基础权重 W₀</text>
+<text x="465" y="423" class="body" text-anchor="middle">dₒᵤₜ × dᵢₙ</text>
+<rect x="355" y="475" width="220" height="65" class="node" fill="#dcfce7" stroke="#15803d"/>
+<text x="465" y="503" class="head" text-anchor="middle">低秩增量 ΔW</text>
+<text x="465" y="528" class="body" text-anchor="middle">ΔW = sBA</text>
+<rect x="780" y="420" width="300" height="80" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="930" y="448" class="head" text-anchor="middle">权重相加</text>
+<text x="930" y="473" class="body" text-anchor="middle">W_m = W₀ + ΔW</text>
+<rect x="1200" y="420" width="350" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="1375" y="448" class="head" text-anchor="middle">合并后单路径输出</text>
+<text x="1375" y="473" class="body" text-anchor="middle">h = W_m x</text>
+<path id="base-weight-to-merge" d="M575 402H680V440H780" class="flow"/>
+<path id="delta-weight-to-merge" d="M575 507H680V480H780" class="flow"/>
+<path id="merged-weight-to-inference" d="M1080 460H1200" class="flow"/>
 </svg>
