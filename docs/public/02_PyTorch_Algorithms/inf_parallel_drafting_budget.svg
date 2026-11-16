@@ -1,46 +1,37 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="500" viewBox="0 0 1120 500">
-  <defs>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-      <path d="M0 0 L0 8 L8 4 z" fill="#315b7d"/>
-    </marker>
-    <style>
-      .panel{fill:#eef4f8;stroke:#a8bdcb;stroke-width:2}.node{fill:#ffffff;stroke:#477a9e;stroke-width:2}.green{fill:#e8f4ec;stroke:#4e8a68;stroke-width:2}.amber{fill:#fff3e8;stroke:#bf7447;stroke-width:2}.title{font:700 21px sans-serif;fill:#17324d}.label{font:600 16px sans-serif;fill:#17324d}.small{font:14px sans-serif;fill:#365269}.edge{fill:none;stroke:#315b7d;stroke-width:2.2;marker-end:url(#arrow)}.branch{font:600 14px sans-serif;fill:#315b7d}
-    </style>
-  </defs>
-  <rect width="1120" height="500" fill="#f7fafc"/>
-  <text x="560" y="36" text-anchor="middle" class="title">置信度决定验证长度，目标模型决定接受结果</text>
-  <rect x="34" y="64" width="1052" height="394" rx="20" class="panel"/>
-
-  <rect x="66" y="200" width="208" height="82" rx="12" class="node"/>
-  <text x="170" y="229" text-anchor="middle" class="label">候选块与位置置信度</text>
-  <text x="170" y="255" text-anchor="middle" class="small">候选 t₁…tₖ，置信度 c₁…cₖ</text>
-
-  <rect x="326" y="200" width="214" height="82" rx="12" class="green"/>
-  <text x="433" y="229" text-anchor="middle" class="label">选择连续前缀预算 k</text>
-  <text x="433" y="255" text-anchor="middle" class="small">首个低置信位置立即停止</text>
-
-  <rect x="610" y="92" width="214" height="72" rx="12" class="amber"/>
-  <text x="717" y="121" text-anchor="middle" class="label">普通 Decode</text>
-  <text x="717" y="145" text-anchor="middle" class="small">不提交草稿候选</text>
-
-  <rect x="610" y="244" width="214" height="82" rx="12" class="node"/>
-  <text x="717" y="273" text-anchor="middle" class="label">目标模型验证</text>
-  <text x="717" y="299" text-anchor="middle" class="small">得到实际接受长度 a</text>
-
-  <rect x="878" y="186" width="170" height="72" rx="12" class="green"/>
-  <text x="963" y="215" text-anchor="middle" class="label">a = k</text>
-  <text x="963" y="239" text-anchor="middle" class="small">提交全部候选</text>
-
-  <rect x="878" y="336" width="170" height="84" rx="12" class="amber"/>
-  <text x="963" y="365" text-anchor="middle" class="label">a &lt; k</text>
-  <text x="963" y="389" text-anchor="middle" class="small">提交接受前缀</text>
-  <text x="963" y="409" text-anchor="middle" class="small">并修正首拒位置</text>
-
-  <path d="M274 241 H326" class="edge"/>
-  <path d="M540 222 H570 V128 H610" class="edge"/>
-  <text x="566" y="116" text-anchor="end" class="branch">k = 0</text>
-  <path d="M540 260 H574 V285 H610" class="edge"/>
-  <text x="570" y="281" text-anchor="end" class="branch">k &gt; 0</text>
-  <path d="M824 273 H852 V222 H878" class="edge"/>
-  <path d="M824 297 H852 V378 H878" class="edge"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="500" viewBox="0 0 1120 500" role="img" aria-labelledby="title desc">
+<title id="title">教学置信度预算与实际验证</title><desc id="desc">教学例置信度0.9、0.8、0.3、0.95在阈值0.5时选择连续前缀2，不越过第三位置去选第四位置。目标验证示例实际接受1个，提交接受Token与修正Token。零预算转普通Decode。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:24px;font-weight:700}.sub{font-size:16px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:16px}.small{font-size:14px;fill:#475569}.node{stroke-width:2;rx:12}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.feedback{stroke:#7c3aed;stroke-width:2.5;stroke-dasharray:7 5;fill:none;marker-end:url(#arrow)}</style></defs><rect width="1120" height="500" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="35" y="38" class="title" text-anchor="start">预算k是计划验证长度，接受长度a由目标模型决定</text>
+<text x="35" y="68" class="sub" text-anchor="start">固定阈值教学例：置信度 [0.90, 0.80, 0.30, 0.95]，阈值0.50，上限K=4。</text>
+<rect x="35" y="125" width="215" height="72" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="142.5" y="153" class="head" text-anchor="middle">候选块＋置信度</text>
+<text x="142.5" y="177" class="body" text-anchor="middle">候选 t₁、t₂、t₃、t₄</text>
+<rect x="310" y="125" width="215" height="72" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="417.5" y="153" class="head" text-anchor="middle">选择连续预算 k</text>
+<text x="417.5" y="177" class="body" text-anchor="middle">本例k=2，第3位置停止</text>
+<rect x="590" y="125" width="215" height="72" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="697.5" y="153" class="head" text-anchor="middle">目标模型验证</text>
+<text x="697.5" y="177" class="body" text-anchor="middle">示例：实际接受 a = 1</text>
+<rect x="865" y="125" width="215" height="72" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="972.5" y="153" class="head" text-anchor="middle">提交本轮结果</text>
+<text x="972.5" y="177" class="body" text-anchor="middle">t₁ ＋ 首拒修正词元</text>
+<path id="block-to-budget" d="M250 161H310" class="flow"/>
+<path id="budget-to-verify" d="M525 161H590" class="flow"/>
+<path id="verify-to-commit" d="M805 161H865" class="flow"/>
+<text x="558" y="110" class="small" text-anchor="middle">k &gt; 0</text>
+<text x="698" y="233" class="small" text-anchor="middle">t₁通过，t₂拒绝</text>
+<rect x="590" y="310" width="215" height="72" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="697.5" y="338" class="head" text-anchor="middle">零预算普通Decode</text>
+<text x="697.5" y="362" class="body" text-anchor="middle">首位置低于阈值时</text>
+<rect x="865" y="310" width="215" height="72" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="972.5" y="338" class="head" text-anchor="middle">下一轮状态</text>
+<text x="972.5" y="362" class="body" text-anchor="middle">更新已提交序列与KV</text>
+<path id="zero-budget-fallback" d="M417 197V346H590" class="flow"/>
+<path id="fallback-to-next" d="M805 346H865" class="flow"/>
+<path id="commit-to-next" d="M972 197V310" class="flow"/>
+<text x="449" y="285" class="small" text-anchor="middle">k = 0</text>
+<text x="35" y="414" class="body" text-anchor="start">后部高置信位置不跨过低置信位置单独送验。</text>
+<text x="35" y="447" class="body" text-anchor="start">若a=k，提交全部候选；额外Token按验证协议处理。</text>
+<text x="35" y="480" class="small" text-anchor="start">DSpark完整调度还结合校准后的前缀存活概率、负载与吞吐曲线。</text>
 </svg>
