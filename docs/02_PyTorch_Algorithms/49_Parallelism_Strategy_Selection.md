@@ -19,6 +19,14 @@
 
 ---
 
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
+- **多 GPU 实测：** 使用 `PAR-CUDA-MECHANISM`；环境、运行配置与固定工作负载见 [Step 5](#gpu-experiment)。
+
+---
 ## 前置阅读
 
 **导语：** 先回顾四类并行各自切分什么，再把显存、通信和负载信号连接到合适的候选方案。
@@ -31,7 +39,7 @@
 
 ---
 
-### Step 1：从 workload 信号识别切分对象
+## Step 1：从 workload 信号识别切分对象
 
 先判断压力来自训练状态、单层张量、模型层、序列上下文、专家路由，还是 Serving 请求队列。切分对象判断错误，会用新的 collective 或路由开销掩盖原有问题。
 
@@ -46,9 +54,17 @@
 
 ![并行策略选择总览](../public/02_PyTorch_Algorithms/49_parallel_strategy_overview.svg)
 
-### Step 2：用约束生成并行候选
+## Step 2：用约束生成并行候选
 
 并行方式不是互斥菜单。ZeRO 处理训练状态，TP 切层内张量，PP 切模型层，CP 切长序列，EP 切专家；Serving 副本不切模型，而是分发独立请求。候选排序还要满足模型结构、workload 与互联条件。
+
+组合并行首先满足进程总数约束：
+
+$$
+P=P_{\mathrm{DP}}P_{\mathrm{TP}}P_{\mathrm{PP}}P_{\mathrm{CP}}P_{\mathrm{EP}}.
+$$
+
+该乘积只是必要条件；每个并行维还要满足层数、Head 数、序列长度、专家数、设备网格和进程组的可整除或复制规则。
 
 | 候选 | 适用约束 | 主要收益 | 首先复测的风险 |
 | --- | --- | --- | --- |
@@ -61,9 +77,17 @@
 
 ![并行候选的收益与代价](../public/02_PyTorch_Algorithms/49_strategy_tradeoff.svg)
 
-### Step 3：比较风险并设计复测
+## Step 3：比较风险并设计复测
 
 候选排序只是开始。对每个候选固定同一模型、batch、序列长度和精度后，再读取容量、最大 rank 时间、通信量和负载分布。47 提供 `collective / payload_bytes_per_rank / median_max_rank_ms / p95_max_rank_ms`，48 在同一口径上增加配对调度收益；只有真实 Trace 提供 `exposed_comm_ms` 和 step time 时，才计算 49 使用的 `comm_exposed_ratio`。
+
+若 $T_1$ 是单设备基线时间， $T_P$ 是 $P$ 个设备上的时间，则加速比与扩展效率为
+
+$$
+S_P=\frac{T_1}{T_P},\qquad \eta_P=\frac{S_P}{P}.
+$$
+
+容量可行、正确性通过和可恢复性成立后，才用 $\eta_P$、最大进程时间与暴露通信判断采用价值。
 
 | 方案已被排到前列时 | 需要保留的证据 | 出现什么情况要回调策略 |
 | --- | --- | --- |
@@ -74,15 +98,17 @@
 | CP / Sequence Parallel | 序列通信量、暴露通信时间、单 rank 状态 | 通信增长抵消长上下文容量收益 |
 | Serving 副本 | 各副本队列、缓存命中、P95 / P99 | 吞吐增加但请求或缓存分布持续偏斜 |
 
-### Step 4：CPU 机制实现——从约束到候选方案
+<a id="mechanism-practice"></a>
+
+## Step 4：CPU 机制实现——从约束到候选方案
 
 题目区用归一化信号模拟选型：先识别最强压力，再结合模型容量、互联、结构、上下文长度和 Serving workload 生成候选，最后给出主策略、兼容候选和复测证据。`signals` 的值在 0–1 之间；`constraints` 表示模型与集群条件。
 
-| 任务与目的 | 已知条件 | 完成标准 | 测试验证 |
-| --- | --- | --- | --- |
-| TODO 1：识别主要压力并保留次要风险 | `classify_parallel_bottleneck` 已提供信号到瓶颈的映射 | 只保留一个主压力；达到阈值的其余信号进入次要风险 | 最大信号、阈值边界与非法输入 |
-| TODO 2：对满足硬约束的候选计算相关度并排序 | `rank_parallel_candidates` 已提供候选的适用条件、目标压力和风险 | 不可行候选不得进入列表；主压力匹配优先于次要风险匹配 | 状态、MoE、长上下文与 Serving 条件 |
-| TODO 3：组合兼容方案并形成复测决策 | `recommend_parallel_followup` 已提供兼容关系和每类候选的测量字段 | 输出首选方案、兼容候选和 `accept / tune / collect_more_evidence` | 无候选、无风险接受、风险调优与组合兼容 |
+| TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
+|:---|:---|:---|:---|
+| TODO 1：识别主要压力<br>`classify_parallel_bottleneck` | 选择主压力并保留达到阈值的次要风险 | 信号必须位于 0–1，只保留一个主压力 | 检查最大信号、阈值和非法输入 |
+| TODO 2：排序可行候选<br>`rank_parallel_candidates` | 按硬约束与压力相关度筛选方案 | 不可行候选不得进入结果 | 检查状态、MoE、长上下文和 Serving 条件 |
+| TODO 3：组合方案并设计复测<br>`recommend_parallel_followup` | 输出首选、兼容候选和复测字段 | 组合关系合法，决策证据完整 | 检查无候选、接受、调优与组合兼容 |
 
 
 ```python
