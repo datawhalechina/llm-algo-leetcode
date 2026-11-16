@@ -40,7 +40,7 @@
 - **INT4 (4位整型)**: 4 bits = **0.5 Byte** (通常用于极度压缩的量化如 AWQ/GPTQ)
 
 **实战估算：**
-做权重下界估算时，可以把参数量乘以每参数字节数。比如一个 7B（70亿）参数的模型，如果采用 FP16/BF16 加载，纯权重占用约为：$7 \times 10^9 \times 2 \text{ Bytes} \approx 14 \text{ GB}$。这不是完整的推理或训练峰值显存。
+做权重下界估算时，可以把参数量乘以每参数字节数。比如一个 7B（70亿）参数的模型，如果采用 FP16/BF16 加载，纯权重占用约为： $7 \times 10^9 \times 2 \text{ Bytes} \approx 14 \text{ GB}$。这不是完整的推理或训练峰值显存。
 
 ### Q1 机制计算器：从位宽换算理论权重容量
 
@@ -138,7 +138,7 @@ for dtype in DTYPE_CANDIDATES:
    - 尾数长，所以它对小数部分的表示非常“精细”。
 
 2. **BF16 (Brain Float 16) 的结构**：1 位符号 + **8 位指数** + 7 位尾数。
-   - 它是 Google Brain 专门为深度学习发明的。它其实就是直接把 FP32（8位指数）砍掉了后面的 16 位尾数！
+   - 它与 FP32 一样使用 8 位指数，但只保留 7 位尾数；从 FP32 转换时还会发生舍入。
    - 因为拥有 8 位指数，BF16 的指数范围与 FP32 相同（最大有限值约为 $3.4 \times 10^{38}$），在许多训练 workload 中比 FP16 更不容易因范围不足而溢出；这不等于不会出现 Inf/NaN。代价是尾数位从 10 降到了 7，舍入精度相对较低。
 
 位分布先解释数值范围与精度；训练状态账本、优化器状态和 Master Weights 放到后面的 Q4 与显存账本小节中。
@@ -146,6 +146,8 @@ for dtype in DTYPE_CANDIDATES:
 ### Q2 对照验证：真实转换后的范围与舍入误差
 
 使用同一组 FP32 数值分别转换为 FP16 和 BF16，观察最大有限值、机器精度、有限值数量和转换误差。唯一变化变量是目标 dtype。
+
+误差只统计转换后仍为有限值的元素；全部溢出时，有限值误差记为 `None`，同时单独报告溢出数量。
 
 
 ```python
@@ -159,22 +161,27 @@ TORCH_FLOAT_DTYPES = {
 
 
 def cast_error_report(values, dtype_name):
-    """将同一 FP32 输入转换到目标 dtype，并报告范围与舍入误差。"""
+    """转换有限 FP32 输入；仅统计有限结果误差，无有限结果时返回 None。"""
     if dtype_name not in TORCH_FLOAT_DTYPES:
         raise ValueError(f'unsupported float dtype: {dtype_name}')
     source = torch.tensor(values, dtype=torch.float32)
+    if not torch.isfinite(source).all():
+        raise ValueError('输入须为有限的 FP32 数值')
     target_dtype = TORCH_FLOAT_DTYPES[dtype_name]
     converted = source.to(target_dtype)
     restored = converted.to(torch.float32)
     info = torch.finfo(target_dtype)
     finite_mask = torch.isfinite(converted)
+    finite_count = int(finite_mask.sum().item())
+    finite_errors = (restored[finite_mask] - source[finite_mask]).abs()
     return {
         'dtype': dtype_name,
         'max_finite': info.max,
         'eps_near_one': info.eps,
-        'finite_count': int(finite_mask.sum().item()),
+        'finite_count': finite_count,
+        'overflow_count': source.numel() - finite_count,
         'total_count': source.numel(),
-        'max_abs_error': float((restored[finite_mask] - source[finite_mask]).abs().max().item()),
+        'max_abs_error': float(finite_errors.max().item()) if finite_count else None,
         'restored': restored.tolist(),
     }
 ```
@@ -187,6 +194,10 @@ def test_cast_error_report():
     fp16 = cast_error_report(values, 'fp16')
     bf16 = cast_error_report(values, 'bf16')
     assert fp16['finite_count'] == 3
+    assert fp16['overflow_count'] == 1
+    all_overflow = cast_error_report([70_000.0], 'fp16')
+    assert all_overflow['overflow_count'] == 1
+    assert all_overflow['max_abs_error'] is None
     assert bf16['finite_count'] == 4
     assert fp16['eps_near_one'] < bf16['eps_near_one']
     try:
@@ -205,6 +216,8 @@ PROBE_VALUES = [1.0, 1.001, 60_000.0, 70_000.0]  # 可修改：同时包含精�
 for dtype_name in ['fp16', 'bf16']:
     report = cast_error_report(PROBE_VALUES, dtype_name)
     print(dtype_name, '->', report)
+print('全部溢出时：', cast_error_report([70_000.0], 'fp16'))
+
 ```
 
 ## Q3：损失缩放能解决 FP16 的哪些问题？
@@ -224,7 +237,7 @@ BF16 的指数范围更大，通常较少依赖损失缩放，但尾数更短，
 
 ```python
 def gradient_survival_report(gradients, dtype_name, loss_scale=1.0):
-    """模拟缩放、低精度转换与反缩放，统计仍可参与更新的梯度。"""
+    """模拟梯度缩放与反缩放，分别统计非零、有限及有限非零数量。"""
     if loss_scale <= 0:
         raise ValueError('loss_scale must be positive')
     if dtype_name not in {'fp16', 'bf16'}:
@@ -238,6 +251,7 @@ def gradient_survival_report(gradients, dtype_name, loss_scale=1.0):
         'loss_scale': loss_scale,
         'nonzero_count': int((restored != 0).sum().item()),
         'finite_count': int(torch.isfinite(restored).sum().item()),
+        'finite_nonzero_count': int((torch.isfinite(restored) & (restored != 0)).sum().item()),
         'restored': restored.tolist(),
     }
 
@@ -250,26 +264,24 @@ fp16_unscaled = gradient_survival_report(TINY_GRADIENTS, 'fp16', loss_scale=1.0)
 fp16_scaled = gradient_survival_report(TINY_GRADIENTS, 'fp16', loss_scale=1024.0)
 bf16_unscaled = gradient_survival_report(TINY_GRADIENTS, 'bf16', loss_scale=1.0)
 
-assert fp16_scaled['nonzero_count'] >= fp16_unscaled['nonzero_count']
+assert fp16_scaled['finite_nonzero_count'] >= fp16_unscaled['finite_nonzero_count']
 assert bf16_unscaled['finite_count'] == len(TINY_GRADIENTS)
 print('FP16 without scaling:', fp16_unscaled)
 print('FP16 with scaling:   ', fp16_scaled)
 print('BF16 without scaling:', bf16_unscaled)
 ```
 
-## Q4：为什么混合精度训练仍可能保留 FP32 Master Weights？
+## Q4：为什么混合精度训练仍可能保留 FP32 主权重？
 
+参数更新会从旧权重中减去学习率与梯度的乘积：
 
-在一种常见的混合精度训练配置中，前向和反向的部分计算使用 16-bit，但参数更新可能继续使用 FP32 状态。是否保留 Master Weights，取决于 optimizer、框架和 AMP 实现。
+$$
+W_{new} = W_{old} - \mathrm{LR} \times \mathrm{Gradient}.
+$$
 
-但问题出在**参数更新（Optimizer Step）**这一步：
-$$ W_{new} = W_{old} - \text{Learning\_Rate} \times \text{Gradient} $$
+如果权重只以16位浮点数保存，较小的更新量可能在舍入时消失。一些混合精度实现会保留FP32主权重（Master Weights）：先更新高精度副本，再转换成前向计算使用的格式。是否需要这份副本，取决于参数存储方式、优化器和框架实现。
 
-在大模型训练后期，学习率（LR）通常非常小（例如 $10^{-5}$），计算出的梯度通常也很小。两者的乘积是一个极其微小的更新量 $\Delta W$。
-如果 $W_{old}$ 也只用 16-bit 格式保存，有限的尾数精度可能让一部分很小的更新在舍入时消失（例如 $1.0 + 0.0000001$ 在低精度下可能仍接近 $1.0$）。因此，一些实现会在 FP32 副本上累积更新，再把结果转换到前向计算使用的 dtype。
-
-因此，一些全参数混合精度训练实现会保留一份 **FP32 Master Weights**：梯度在高精度副本上参与更新，再把结果转换到前向计算使用的 dtype。它是训练状态账本的一部分，不应与静态模型权重占用混为一谈。
-下面的容量估算只用于观察 Master Weights 的理论增量和静态权重容量；它不模拟 activation、通信 buffer、allocator peak 或真实 OOM 边界。
+下面按一种明确配置计算容量：参数与梯度各用2字节，Adam的一阶矩、二阶矩各用4字节，额外主权重用4字节。7B模型保留主权重时共112 GB，不保留时为84 GB，差额28 GB来自这一份副本。该账本统计静态训练状态；激活与临时缓冲还会占用其他空间。
 
 ### Q4 机制计算器：逐项建立训练状态账本
 
@@ -398,13 +410,13 @@ else:
    - **侧重：动态范围**。
    - **用途**：常用于梯度等需要更大动态范围的张量；实际映射也取决于训练实现和数值校准。
 
-常见的 `HYBRID` recipe 会让前向使用 E4M3、反向使用 E5M2：前向激活更看重精度，反向梯度更看重动态范围。但这不是所有模型的固定规则，具体选择还受张量分布、缩放因子和框架 recipe 影响。FP8 通常需要根据 `amax` 历史计算 scaling factor，才能把高精度张量映射到有限的 FP8 范围。
+常见的 `HYBRID` recipe 会让前向使用 E4M3、反向使用 E5M2：前向激活更看重精度，反向梯度更看重动态范围。但这不是所有模型的固定规则，具体选择还受张量分布、缩放因子和框架 recipe 影响。缩放前先取得张量的绝对最大值（`amax`），再用“格式最大有限值 ÷ `amax`”计算缩放因子。例如E4M3的最大有限值为448，给定 `amax=2` 时，缩放因子为224。实际实现可以从当前张量或历史观测中选取 `amax`；下面直接使用给定值。
 
-下面的代码只验证格式策略和缩放需求，不执行 FP8 量化，也不能证明 H100 已经使用 FP8 Tensor Core；真实硬件路径需要 Transformer Engine、CUDA profiler 或固定 workload benchmark。
+下面比较格式与缩放因子；实际FP8数值误差和Tensor Core执行路径，需要在目标设备上另行测量。
 
 ### Q6小验证：FP8 格式策略与缩放需求
 
-比较 `HYBRID`、`E4M3` 和 `E5M2` 三种策略，记录前向 / 反向格式以及是否需要 scaling factor。
+比较 `HYBRID`、`E4M3` 和 `E5M2` 三种策略，记录前向／反向格式，以及由给定绝对最大值计算出的缩放因子。
 
 
 ```python
@@ -445,7 +457,7 @@ def fp8_variant_policy(recipe='hybrid', forward_amax=1.0, backward_amax=1.0):
         'forward_scale': fp8_scale_from_amax(forward_amax, stages['forward']['format']),
         'backward_scale': fp8_scale_from_amax(backward_amax, stages['backward']['format']),
         'scaling_required': True,
-        'scaling_source': 'amax history',
+        'scaling_source': 'provided_amax',
         'requires_gpu_validation': True,
     }
 

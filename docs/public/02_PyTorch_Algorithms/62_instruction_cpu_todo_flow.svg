@@ -1,14 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
-  <title id="title">SFT 恢复与重载交付证据</title><desc id="desc">检查点恢复必须保持身份和进度连续，最终产物必须通过独立重载。</desc>
+  <title id="title">SFT 恢复与重载交付证据</title><desc id="desc">检查点恢复必须保持身份和进度连续，最终产物在同进程的新模型实例中重载并核对留出验证损失。</desc>
   <defs><marker id="neutral" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker><marker id="green" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="#16a34a"/></marker><style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#0f172a}.t{font-size:28px;font-weight:700}.h{font-size:19px;font-weight:700}.b{font-size:15px;fill:#334155}.neutral,.green{fill:none;stroke-width:3}.neutral{stroke:#475569;marker-end:url(#neutral)}.green{stroke:#16a34a;marker-end:url(#green)}</style></defs>
   <rect width="1200" height="520" fill="#f8fafc"/><text x="600" y="45" text-anchor="middle" class="t">恢复与重载如何形成交付清单</text>
-  <rect x="70" y="105" width="285" height="100" rx="15" fill="#ffedd5" stroke="#fb923c" stroke-width="2"/><text x="212" y="142" text-anchor="middle" class="h">选型结果可消费</text><text x="212" y="174" text-anchor="middle" class="b">同一候选 · 共享种子配对 · 产物路径</text>
+  <rect x="70" y="105" width="285" height="100" rx="15" fill="#ffedd5" stroke="#fb923c" stroke-width="2"/><text x="212" y="142" text-anchor="middle" class="h">选型记录完整</text><text x="212" y="174" text-anchor="middle" class="b">同一候选 · 种子互异 · 产物路径</text>
   <rect x="457" y="105" width="285" height="100" rx="15" fill="#ccfbf1" stroke="#14b8a6" stroke-width="2"/><text x="600" y="142" text-anchor="middle" class="h">检查点可恢复</text><text x="600" y="174" text-anchor="middle" class="b">身份一致 · 状态齐全 · 步数连续</text>
   <rect x="845" y="105" width="285" height="100" rx="15" fill="#ede9fe" stroke="#a78bfa" stroke-width="2"/><text x="987" y="142" text-anchor="middle" class="h">训练预算完成</text><text x="987" y="174" text-anchor="middle" class="b">最终步数达到预设目标</text>
   <path class="neutral" d="M355 155 H447"/><path class="neutral" d="M742 155 H835"/>
   <path class="neutral" d="M987 205 V240 H855 V265"/>
-  <rect x="725" y="275" width="260" height="95" rx="14" fill="#dcfce7" stroke="#4ade80" stroke-width="2"/><text x="855" y="312" text-anchor="middle" class="h">新实例重载</text><text x="855" y="342" text-anchor="middle" class="b">基础模型 + 适配器 + 分词器</text>
-  <rect x="215" y="275" width="380" height="95" rx="14" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/><text x="405" y="312" text-anchor="middle" class="h">独立交付门槛</text><text x="405" y="342" text-anchor="middle" class="b">质量不退化 · 重载一致 · 哈希完整</text>
+  <rect x="725" y="275" width="260" height="95" rx="14" fill="#dcfce7" stroke="#4ade80" stroke-width="2"/><text x="855" y="312" text-anchor="middle" class="h">新实例重载</text><text x="855" y="342" text-anchor="middle" class="b">同进程创建新模型并加载适配器</text>
+  <rect x="215" y="275" width="380" height="95" rx="14" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/><text x="405" y="312" text-anchor="middle" class="h">分别检查质量与文件</text><text x="405" y="342" text-anchor="middle" class="b">验证损失变化 · 重载差 · 文件哈希</text>
   <path class="neutral" d="M725 322 H605"/>
   <rect x="215" y="410" width="380" height="80" rx="14" fill="#dcfce7" stroke="#4ade80" stroke-width="2"/><text x="405" y="442" text-anchor="middle" class="h">SFT 基线产物清单</text><text x="405" y="469" text-anchor="middle" class="b">适配器 · 分词器 · 检查点 · 评测证据</text>
   <path class="green" d="M405 370 V400"/>

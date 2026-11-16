@@ -1,6 +1,6 @@
 # PERF-TRACE. Trace Dependencies and Critical Path | 执行轨迹依赖与关键路径
 
-**难度：** Medium | **环境：** [CPU 主线，GPU 可选](#runtime-environment) | **标签：** `性能分析` `执行轨迹` `关键路径` | **目标人群：** 需要区分计算耗时与等待的学习者
+**难度：** Medium | **环境：** [CPU基础练习，GPU可选](#runtime-environment) | **标签：** `性能分析`、`执行轨迹`、`关键路径` | **目标人群：** 具备性能分析基础的读者
 
 > 🚀 **云端运行环境**
 >
@@ -12,79 +12,79 @@
 
 ## 本节导读
 
-GPU 利用率低只能说明设备没有持续忙碌，不能说明原因。主机提交、数据复制、同步和前驱事件都可能让计算晚开始。
+GPU间歇空闲时，计算可能在等输入、主机提交或其他设备任务。即使某个算子耗时很长，把它改快也未必让整次任务更早结束：另一条并行任务可能仍在运行。
 
-从事件起止和依赖关系重建完成链，找出就绪后仍未开始的间隔，再用单变量对照验证原因。
+本节从事件何时开始、何时结束，以及必须等谁完成入手，重建通向最终完成的事件链，再找出已知前驱结束后仍未开始的间隔。接着用只改变一个条件的对照，检查减少这段计算或等待是否真的缩短总时间。
 
-**关键词：** 执行轨迹、事件依赖、串行通道、关键路径、暴露等待
+**关键词：** 执行轨迹、事件依赖、串行通道、完成链、就绪后间隔
 
 <a id="runtime-environment"></a>
 
 ## 运行环境
 
-- **基础练习：** 使用 [BASE-CPU](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
-- **GPU 实测：** 阅读 [Step 5](#gpu-experiment)；环境与固定工作负载见其中 5.1。
+- **基础练习：** 使用[BASE-CPU](../guide.md#base-cpu)，运行[Step 4的题目与测试](#mechanism-practice)。
+- **GPU实测：** 环境与固定工作负载见[Step 5](#gpu-experiment)。
+
 ## 前置阅读
 
 先学习 PyTorch 轨迹和 CUDA 异步执行，认识事件时间与执行通道。
 
 - [Part 00 · 17 PyTorch 性能分析基础](../00_Prerequisites/17_PyTorch_Profiling_Basics.md)
 - [Part 01 · 17 CUDA 流与异步执行](../01_Hardware_Math_and_Systems/17_CUDA_Stream_and_Asynchrony.md)
-## Step 1：从事件时间线找到等待关系
+## Step 1：从事件区间找到必须等待的关系
 
-执行轨迹（Trace）同时记录 CPU、复制与设备计算事件。先选定观测窗口，将时间换算到共同起点和单位，再按线程或串行流识别执行通道，补充输出消费与同步关系，最后判断哪条链延长了完成时间。
+执行轨迹（trace）记录CPU工作、数据复制与GPU计算的时间。执行通道是按顺序处理工作的线程或设备流；CUDA流是一串有序提交的设备操作，不同流的操作可能重叠。先选定同一观察窗口，将事件时刻换到共同起点与单位，再识别数据依赖与同步关系。
 
-| 观察对象 | 需要知道什么 | 能作出的判断 |
+关键路径关注哪些前后约束限制最终完成，而不只是哪些事件加起来最耗时。本节根据已观测时刻回溯完成链：它解释这一次运行的时间组成，改动后仍需重新测量。
+
+| 对象 | 需要知道什么 | 可以确认什么 |
 | --- | --- | --- |
-| 事件区间 | 开始、结束与执行通道 | 持续时间及时间重叠 |
-| 数据与同步关系 | 哪个前驱完成后才能继续 | 后继最早何时具备执行条件 |
-| 观测完成链 | 前驱完成、实际开始与结束 | 哪些事件和间隔通向最终完成 |
-| 单变量对照 | 同一工作量下改变一个提交或等待条件 | 原解释是否得到实际结果支持 |
+| 事件区间 | 开始、结束与执行通道 | 持续多久，是否与其他事件重叠 |
+| 数据与同步依赖 | 后继必须等哪些工作结束 | 已知依赖何时允许后继执行 |
+| 最终完成链 | 最晚完成事件及其前驱 | 哪些事件和间隔通向任务结束 |
+| 单条件对照 | 固定工作量，改变提交或等待方式 | 解释是否得到实际结果支持 |
 
-![从事件区间与依赖定位完成链](../public/02_PyTorch_Algorithms/perf_trace_evidence_layers.svg)
-## Step 2：串行通道和数据依赖怎样限制开始时间
+![按事件与依赖重建本次完成链](../public/02_PyTorch_Algorithms/perf_trace_evidence_layers.svg)
 
-同一 CPU 线程或串行 CUDA 流内的非嵌套事件按顺序执行；不同流即使位于同一块 GPU，也不能仅按开始时间添加串行关系。数据依赖则跨越通道，把输出产生者与使用者相连。父级范围注解与内部算子可能嵌套，需要先选定同一粒度的事件，避免重复计时。
+## Step 2：确定后继最早何时具备执行条件
 
-设事件 $i$ 的实际开始、结束和持续时间分别为 $s_i$、$e_i$、$d_i$，单位均为毫秒，时间相对观测窗口起点 0。前驱集合为 $\mathcal{P}(i)$，前驱 $j$ 的完成时刻为 $C_j$。由所有已知前驱确定的就绪时刻 $r_i$ 为：
+同一线程或串行 CUDA 流内，非嵌套事件按顺序执行；跨流事件则依据数据使用关系和同步操作连接前驱。数据依赖连接输出产生者与使用者，同步依赖要求相关工作完成后才能继续。父级注解常包含内部算子，应先选定同一粒度，避免把同一工作算两次。
+
+设实际开始、结束与持续时间为 $s_i,e_i,d_i$，均使用相对窗口起点的毫秒。事件 $i$ 的前驱集合为 $\mathcal P(i)$，前驱 $j$ 的完成时刻为 $C_j$，已知依赖决定的就绪时刻为 $r_i$；无前驱时取0。若实际开始早于前驱完成，说明时间或依赖记录存在矛盾；依赖有环也无法形成有效执行顺序。
 
 $$
 d_i=e_i-s_i,\qquad
-r_i=\max\left(\{C_j:j\in\mathcal{P}(i)\}\cup\{0\}\right),
-\qquad s_i\ge r_i.
+r_i=\max\left(\lbrace C_j:j\in\mathcal P(i)\rbrace\cup\lbrace 0\rbrace\right),\qquad
+s_i\ge r_i.
 $$
 
-没有前驱时以 0 为就绪时刻；若后继早于已声明前驱完成，需检查时钟、事件粒度或错误依赖。事件图必须无环，否则无法构成有效的先后关系。
-
-| 关系 | 依据 | 对后继的约束 | 常见误判 |
+| 关系 | 依据 | 对后继的约束 | 容易误判什么 |
 | --- | --- | --- | --- |
-| 数据依赖 | 后继使用前驱输出 | 等待所需输出就绪 | 仅凭视觉相邻推断依赖 |
-| 资源串行 | 同一线程或串行流内的非嵌套事件 | 前一事件完成后才执行下一事件 | 把整个 GPU 或全部 CPU 线程当成一条通道 |
-| 同步依赖 | 被同步范围内的未完成工作 | 相关前驱完成后才能越过同步点 | 将局部流同步当成全设备同步 |
-## Step 3：完成链上哪些间隔需要继续解释
+| 数据依赖 | 使用前驱输出 | 等输出就绪 | 图上相邻未必依赖 |
+| 资源串行 | 同一线程或串行流 | 等前一事件完成 | 整个GPU不是单一通道 |
+| 同步依赖 | 等待相关工作完成 | 完成后才能越过同步点 | 局部流同步不等于全设备同步 |
 
-事件持续时间与等待间隔分开计算，才能区分执行成本和尚未解释的空洞。实际开始比已知依赖就绪更晚的间隔记为 $w_i$，它只是当前依赖图下的残余间隔，不能直接归因为同步或 I/O。
+## Step 3：沿完成链解释执行时间与间隔
 
-沿用上一节符号，事件完成时刻 $C_i$ 和观测窗口内的最终完成时刻 $T$ 为：
+实际开始比已知依赖就绪更晚的部分记为 $w_i$。例如数据搬运在6ms结束，相关计算在7ms才开始，则留下1ms间隔；先查主机提交时刻，再查同期资源活动和同步依赖，确定这1ms来自哪里。事件完成时刻记为 $C_i$，全部事件集合为 $V$，窗口最终完成时刻为 $T$。
+
+由最后完成事件沿最晚完成的前驱回溯，得到本次完成链；并行支路不与主链简单相加。下图读取0–2ms、准备2.5–4ms、复制4–6ms、计算7–12ms，链上共留下0.5ms和1ms的待解释间隔，日志支路在5ms结束。这里固定了实际开始时刻，因此减少等待后的新调度需要重新运行才能确认。
 
 $$
 w_i=\max(s_i-r_i,0),\qquad
 C_i=r_i+w_i+d_i,\qquad
-T=\max\left(\{C_i:i\in V\}\cup\{0\}\right).
+T=\max\left(\lbrace C_i:i\in V\rbrace\cup\lbrace 0\rbrace\right).
 $$
-
-$V$ 为窗口内全部事件的集合。由最终完成事件沿最晚完成的前驱回溯，得到本次观测的完成链；并行支路不能与主链简单相加。只有链上的间隔才可能影响该链的完成时间，且改动后是否缩短总时间仍需重新测量。固定实际开始时刻的重建算法不预测删除等待后的新调度。
-
-下图采用统一时间比例：读取 0–2 ms、准备 2.5–4 ms、复制 4–6 ms、计算 7–12 ms。准备前的 0.5 ms 与计算前的 1 ms 是待解释间隔，日志支路在 5 ms 结束，未延长 12 ms 的最终完成。
 
 | 观察 | 可以确认 | 下一步检查 |
 | --- | --- | --- |
-| 某事件耗时很长 | 单事件执行成本较高 | 是否位于完成链，有无并行支路覆盖 |
-| 就绪后仍未开始 | 已知前驱不足以解释开始时刻 | 隐藏依赖、提交延迟、排队与资源争用 |
-| 完成链上的等待减少 | 本次链的组成或时刻发生变化 | 同一工作量下总时间和失败情况 |
-| 链以外的支路变短 | 局部开销减少 | 是否影响后续共享资源或新的完成链 |
+| 单事件很长 | 该事件执行成本较高 | 是否延长最终完成 |
+| 就绪后仍未开始 | 已知依赖还不能解释开始时刻 | 隐藏依赖、提交与资源争用 |
+| 链上间隔变短 | 本次完成链的时刻发生变化 | 同工作量下总时间与运行状态 |
+| 链外支路变短 | 局部工作减少 | 是否影响共享资源或新的完成链 |
 
-![统一时间比例下的事件依赖与等待间隔](../public/02_PyTorch_Algorithms/perf_trace_critical_path.svg)
+![同一毫秒刻度下的完成链与待解释间隔](../public/02_PyTorch_Algorithms/perf_trace_critical_path.svg)
+
 <a id="mechanism-practice"></a>
 
 ## Step 4：实现事件校验、串行依赖与完成链重建
@@ -355,11 +355,6 @@ run_perf_trace_tests()
 ### 代码
 
 ```python
-from collections import defaultdict, deque
-from math import isfinite
-from typing import Dict, List, Sequence, Tuple
-
-
 def normalize_trace_events(events: Sequence[Dict[str, object]]) -> List[Dict[str, object]]:
     """检查事件标识、相对时间与前驱，补充毫秒持续时间。"""
     raw_ids = [str(event.get("event_id", "")).strip() for event in events]
@@ -486,17 +481,17 @@ def critical_path_report(
 
 ## Step 5：GPU 机制实验——比较同步位置与真实执行轨迹
 
-CPU 练习验证依赖图和关键路径算法；GPU 实验用 `torch.profiler` 记录 CPU 准备、主机到设备（H2D）搬运、CUDA 计算和主机同步，确认这些事件在真实时间线上的先后关系与暴露空洞。
+CPU练习验证依赖图与完成链重建；GPU 实验用 `torch.profiler` 记录 CPU 准备、主机到设备（H2D）搬运、CUDA 计算和主机同步，确认这些事件在真实时间线上的先后关系与提交、计算之间的空档。
 
 | 学习问题 | CPU 已确认 | GPU 要确认与后续使用 |
 | --- | --- | --- |
-| 主机同步是否把设备工作暴露到关键路径 | 事件依赖、关键路径和暴露等待的计算规则 | 在相同设备工作量下比较逐步同步与延迟同步的时间线、同步事件和阶段延迟 |
+| 主机同步是否把设备工作暴露到关键路径 | 事件依赖、完成链和就绪后间隔的计算规则 | 在相同设备工作量下比较逐步同步与延迟同步的时间线、同步事件和阶段延迟 |
 
 <a id="gpu-experiment-setup"></a>
 
 ### 5.1 环境与固定工作负载
 
-本实验使用 `PERF-CUDA-MECHANISM`。首次运行按[专题 Quickstart](../topic_discussion/performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart)创建并预检环境，输入与当前登记结果见[实验资产表](../topic_discussion/performance_analysis/experiment_assets.md)。
+本实验使用 `PERF-CUDA-MECHANISM`。首次运行按[性能机制GPU环境](../topic_discussion/performance_optimization/gpu_quickstart.md#perf-cuda-mechanism-quickstart)创建并预检环境，输入与当前登记结果见[实验资产表](../topic_discussion/performance_optimization/measurement_assets.md)。
 
 | 配置层 | 本节固定口径 | 修改规则 |
 | --- | --- | --- |
@@ -521,7 +516,7 @@ RESULT_RELATIVE_DIR = "benchmarks/results/perf_trace"  # 摘要 JSON 与执行�
 
 ### 5.2 执行并保存 JSON
 
-先核对运行模式、参数、输出路径和 Profile，再执行同工作量的两条同步路径。独立计时与 Profiler 采集分开进行；JSON 保存统计，执行轨迹另存为同标签文件。CPU 注解计数检查只能确认采集范围，不能代替 CUDA 依赖或输出正确性检查。
+先核对运行模式、参数、输出路径和 Profile，再执行同工作量的两条同步路径。独立计时与 Profiler 采集分开进行；JSON 保存统计，执行轨迹另存为同标签文件。CPU 注解计数用于核对采集范围；CUDA 依赖通过设备事件核对，输出正确性通过两条路径的数值对照检查。
 
 ```python
 from pathlib import Path
@@ -679,12 +674,14 @@ else:
 
 ### 5.3 读取结果
 
-设置已有运行标签后可直接读取，本单元不执行 GPU。先显示条件和原始决策，再列出两条路径的全部计时样本与注解计数；轨迹位置优先使用仓库内的同名文件，不依赖另一台机器保存的绝对路径。
+按已有`RUN_LABEL`读取记录，核对来源与协议版本，再从原始样本重算统计。读取结果同时展示哪些事件、计数和输出检查已经完成，供5.4逐项解释。
+
 
 ```python
 from pathlib import Path
 import json
 from tools.project_runtime import resolve_project_root
+from tools.performance_result_review import read_performance_result
 
 result_path = resolve_project_root() / RESULT_RELATIVE_DIR / f"{WORKLOAD_ID}_{RUN_LABEL}.json"
 if not result_path.is_file():
@@ -693,7 +690,11 @@ if not result_path.is_file():
     trace_record = {"status": "not_run", "result_path": str(result_path)}
     print(trace_record)
 else:
-    trace_record = json.loads(result_path.read_text(encoding="utf-8"))
+    trace_record, result_review = read_performance_result(
+        result_path, semantic_id=SEMANTIC_ID, run_label=RUN_LABEL,
+        workload_id=WORKLOAD_ID, current_version=WORKLOAD_VERSION,
+    )
+    print(json.dumps(result_review, ensure_ascii=False, indent=2))
     print(json.dumps({key: trace_record.get(key) for key in (
         "schema_version", "run_label", "workload", "framework", "hardware",
         "failure", "evidence_level", "decision",
@@ -716,7 +717,7 @@ else:
 
 当前登记为 [rtx5070ti_trace_v3](../../benchmarks/results/perf_trace/perf-trace-critical-path_rtx5070ti_trace_v3.json)，工作负载版本为 v4；运行标签与协议版本分别记录。该结果无运行失败，必需事件与 CPU 注解计数通过检查，两条同步路径使用相同设备工作量。
 
-末尾同步的中位时间略低，但 10 对样本仅 5 对更快，当前解释为可读取同步位置与等待的局部轨迹，不据此采用延迟同步。原始 JSON 的采用字样保留，不能代替上述样本判断；轨迹采集也没有完成自动 CUDA 依赖提取或完整输出一致性验证。
+末尾同步的中位时间略低，但 10 对样本仅 5 对更快，当前用它观察同步位置与时间关系，策略采用仍需补测。历史JSON中保留了采用标记；本次按原始配对重新解释为收益不稳定，且尚缺完整输出误差与自动CUDA依赖核对。
 
 | 观察项 | 读取字段 | 当前结果 | 解释与动作 |
 | --- | --- | --- | --- |
@@ -725,7 +726,7 @@ else:
 | 数值与路径范围 | H2D、矩阵乘法与同步注解 | 轨迹包含相关范围，但没有完整输出误差记录 | 若要采用策略，补输出一致性与扩大负载对照；若要解释具体等待，核对实际 CUDA 事件和依赖 |
 ## 相关阅读
 
-要解释 I/O 服务时间如何变成实际等待，可接着看关键路径上的 I/O 分析。
+需要继续解释间隔来源时，检查对应输入或I/O活动；需要比较策略是否稳定改善时，再做配对测量。
 
-- [PERF-IO · I/O 关键路径](./PERF-IO_Artifact_State_and_Output_IO_Critical_Path.md)：区分传输服务时间与暴露等待。
-- [性能分析 · 时间线与关键路径](../topic_discussion/performance_analysis/03_time_breakdown_and_trace_reading.md)：结合阶段计时解释执行轨迹。
+- [PERF-IO. I/O关键路径](./PERF-IO_Artifact_State_and_Output_IO_Critical_Path.md)：区分传输服务时间与任务实际多等的时间。
+- [PERF-REGRESSION. 配对基准与性能回归阈值](./PERF-REGRESSION_Paired_Benchmark_and_Regression_Thresholds.md)：保留逐轮差异，检查收益是否稳定。

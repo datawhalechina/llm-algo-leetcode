@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="620" viewBox="0 0 1500 620" role="img" aria-labelledby="title desc">
+<title id="title">先检查候选是否合格，再比较吞吐</title><desc id="desc">布局、正确性和容量失败需要修复；超过本项目空转或通信预算的候选不参与本轮排序。合格集合按吞吐、通信占比和显存排序。</desc>
+<defs><style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:29px;font-weight:700}.sub{font-size:14px;fill:#475569}.h{font-size:16px;font-weight:700;text-anchor:middle}.b{font-size:14px;text-anchor:middle}.small{font-size:13px;fill:#475569}.node{stroke-width:1.8;rx:12}.edge{fill:none;stroke:#475569;stroke-width:2.5;marker-end:url(#arrow)}.warn{stroke:#b45309;marker-end:url(#warning)}.fail{stroke:#be123c;marker-end:url(#failure)}</style>
+<marker id="arrow" viewBox="0 0 10 10" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<marker id="warning" viewBox="0 0 10 10" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#b45309"/></marker>
+<marker id="failure" viewBox="0 0 10 10" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#be123c"/></marker>
+</defs><rect width="1500" height="620" fill="#f8fafc"/>
+<text x="40" y="48" class="title">先检查候选是否合格，再比较吞吐</text>
+<text x="40" y="86" class="sub">空转与通信占比是本次筛选条件；布局、结果正确性和设备容量决定候选能否执行。</text>
+<path d="M255 260H320" class="edge "/>
+<path d="M560 260H630" class="edge "/>
+<path d="M870 260H940" class="edge "/>
+<path d="M1160 260H1230" class="edge "/>
+<path d="M440 310V440" class="edge fail"/>
+<path d="M750 310V440" class="edge warn"/>
+<g><rect x="55" y="210" width="200" height="100" class="node" fill="#DBEAFE" stroke="#2563EB"/><text x="155" y="239" class="h">并行组合候选</text><text x="155" y="263" class="b">流水／张量／上下文切分</text><text x="155" y="284" class="b">固定模型与工作负载</text></g>
+<g><rect x="320" y="210" width="240" height="100" class="node" fill="#FEF3C7" stroke="#D97706"/><text x="440" y="239" class="h">执行与容量检查</text><text x="440" y="263" class="b">布局有效、运行成功</text><text x="440" y="284" class="b">结果正确、峰值显存达标</text></g>
+<g><rect x="630" y="210" width="240" height="100" class="node" fill="#FEF3C7" stroke="#D97706"/><text x="750" y="239" class="h">本次比例预算</text><text x="750" y="263" class="b">流水空转占比</text><text x="750" y="284" class="b">通信占比</text></g>
+<g><rect x="940" y="210" width="220" height="100" class="node" fill="#DCFCE7" stroke="#16A34A"/><text x="1050" y="239" class="h">合格候选集合</text><text x="1050" y="263" class="b">所有检查通过</text><text x="1050" y="284" class="b">才参与本轮排序</text></g>
+<g><rect x="1230" y="210" width="220" height="100" class="node" fill="#EDE9FE" stroke="#7C3AED"/><text x="1340" y="239" class="h">按目标排序</text><text x="1340" y="263" class="b">优先吞吐量</text><text x="1340" y="284" class="b">再比较通信与显存</text></g>
+<g><rect x="320" y="440" width="240" height="100" class="node" fill="#FFF1F2" stroke="#E11D48"/><text x="440" y="469" class="h">保留失败原因</text><text x="440" y="493" class="b">修复布局、接口或容量</text><text x="440" y="514" class="b">本轮不参与排序</text></g>
+<g><rect x="630" y="440" width="240" height="100" class="node" fill="#FEF3C7" stroke="#D97706"/><text x="750" y="469" class="h">调整后重新比较</text><text x="750" y="493" class="b">改变切分或微批次</text><text x="750" y="514" class="b">本轮不参与排序</text></g>
+<text x="465" y="382" class="small">未通过</text><text x="775" y="382" class="small">超过预算</text>
+<text x="580" y="238" class="small">通过</text><text x="890" y="238" class="small">通过</text>
+<text x="40" y="585" class="small">各项失败分别保留；图中的检查顺序不表示只记录首个失败。实际收益另由多卡测量确认。</text>
+</svg>

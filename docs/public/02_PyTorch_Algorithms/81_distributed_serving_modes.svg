@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+  <title id="title">分布式推理服务形态</title>
+  <desc id="desc">完整副本、模型内部并行和预填充解码分离三种服务形态。</desc>
+  <defs>
+    <marker markerUnits="userSpaceOnUse" id="a" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker>
+    <style>.t{font-family:'Noto Sans CJK SC','Microsoft YaHei',sans-serif;font-size:24px;font-weight:500;fill:#0f172a}.s{font-family:'Noto Sans CJK SC','Microsoft YaHei',sans-serif;font-size:18px;font-weight:500;fill:#334155}.n{stroke:#64748b;stroke-width:2;rx:14}.e{fill:none;stroke:#475569;stroke-width:2.5;marker-end:url(#a)}</style>
+  </defs>
+  <rect width="1200" height="560" fill="#f8fafc"/>
+  <text x="600" y="48" text-anchor="middle" class="t">请求与资源共同决定服务分工</text>
+  <g class="n">
+    <rect x="55" y="180" width="190" height="120" fill="#dbeafe"/>
+    <rect x="325" y="65" width="240" height="120" fill="#dcfce7"/>
+    <rect x="325" y="220" width="240" height="120" fill="#fef3c7"/>
+    <rect x="325" y="375" width="240" height="120" fill="#fee2e2"/>
+    <rect x="655" y="170" width="220" height="140" fill="#e0e7ff"/>
+    <rect x="960" y="170" width="185" height="140" fill="#f3e8ff"/>
+  </g>
+  <g text-anchor="middle">
+    <text x="150" y="232" class="t">请求工作负载</text><text x="150" y="270" class="s">长度 · 到达 · 并发</text>
+    <text x="445" y="112" class="t">完整副本</text><text x="445" y="150" class="s">路由与缓存局部性</text>
+    <text x="445" y="267" class="t">模型内部并行</text><text x="445" y="305" class="s">集合通信与阶段传输</text>
+    <text x="445" y="422" class="t">预填充 / 解码分离</text><text x="445" y="460" class="s">KV传输与两类队列</text>
+    <text x="765" y="212" class="t">服务测量</text><text x="765" y="250" class="s">TTFT · TPOT · 排队</text><text x="765" y="284" class="s">通信 · 长尾 · 显存</text>
+    <text x="1052" y="222" class="t">服务选择</text><text x="1052" y="264" class="s">目标与代价匹配</text>
+  </g>
+  <path class="e" d="M245 240H285V125H325"/><path class="e" d="M245 240H325"/><path class="e" d="M245 240H285V435H325"/>
+  <path class="e" d="M565 125H610V205H655"/><path class="e" d="M565 280H655"/><path class="e" d="M565 435H610V275H655"/><path class="e" d="M875 240H960"/>
+</svg>

@@ -29,51 +29,28 @@
 - [02. LLM Params and FLOPs | 大模型参数量与算力推导](./02_LLM_Params_and_FLOPs.md)
 - [05. Communication Topologies | 通信拓扑与分布式基石](./05_Communication_Topologies.md)
 ---
-## Q1：MoE 和普通 dense Transformer 的参数量差别在哪里？
+## Q1：MoE如何增加总参数，同时限制单个token的计算量？
 
+混合专家模型（MoE）用多个专家前馈网络替换原来的单个前馈网络。路由器为每个token选择得分最高的 $k$ 个专家（top-k路由）；模型保存全部专家参数，单个token只经过选中的专家。
 
-普通 dense Transformer 的每层参数主要来自：
-- Attention
-- FFN / MLP
+先用一个简化的单层模型计算：隐藏维度4096，中间维度16384，共8个专家，每个token选择2个专家。每个专家采用升维、降维两个矩阵，因此参数量为 `2 × 4096 × 16384 = 134217728`；8个专家共1073741824个参数，单token使用的专家参数为268435456个。按每个矩阵权重对应一次乘法、一次加法，专家前馈计算约为536870912 FLOPs/token。
 
-而 MoE 会把原本的 FFN / MLP 替换成多个专家（experts）。粗略地说：
-
-- 一个 dense FFN 的参数量约为 `2 d d_ff`
-- 如果有 `E` 个专家，那么专家总参数量约为 `E × 2 d d_ff`
-- 但每个 token 通常只会激活 `k` 个专家，而不是全部 `E` 个
-
-所以 MoE 的特点是：
-- **总参数量**：很大
-- **单 token 激活参数量**：相对没那么大
-- **单 token 计算量**：通常按 `k` 而不是按 `E` 增长
-
-这就是为什么 MoE 常被用来扩大模型容量，但不把每次计算都线性放大。这里的“活跃参数量”只描述 token 经过的专家规模；完整的推理 FLOPs 还包括 Attention、Router、数据搬运和其他算子，不能直接把活跃参数量当成完整 FLOPs。
-
-一个最常见的直觉例子是 Mixtral 8x7B：
-
-| 维度 | 量级直觉 |
-| --- | --- |
-| 隐藏维度 `d` | 4096 |
-| 专家数 `E` | 8 |
-| 激活专家数 `k` | 2 |
-| `d_ff` | 约 `4d = 16384` |
-
-如果只看专家 FFN，单个专家参数量大约是 `2 × d × d_ff ≈ 134M`，8 个专家加起来大约 `1.07B` 级别。加上 Attention、Embedding 和其他层之后，模型总参数可以到 `47B` 左右，但每个 token 实际只激活其中一小部分，常见说法是“活跃参数”大约在 `13B` 量级。
+这些数字对应两矩阵专家的教学配置。三矩阵SwiGLU专家应使用 `3 × d × d_ff`，真实模型还要按各层结构累计。下面单层总量另外计入MHA的四个投影和一个线性路由器；完整前向还包含注意力计算、激活函数和路由处理。
 
 ```mermaid
 flowchart TD
-    Dense[Dense Transformer] --> A[Attention]
-    Dense --> F[Single FFN / MLP]
-    MoE[MoE Layer] --> A
-    MoE --> R[Router / Gate]
-    R --> E1[Expert 1]
-    R --> E2[Expert 2]
-    R --> EN[Expert N]
+    Dense[稠密模型的一层] --> A[注意力]
+    Dense --> F[一个前馈网络]
+    MoE[混合专家模型的一层] --> A
+    MoE --> R[路由器选择top-k]
+    R --> E1[专家1]
+    R --> E2[专家2]
+    R --> EN[其他专家]
 ```
 
 ### Q1小验证：计算专家参数量与活跃 FFN FLOPs
 
-写出参数量公式，再对比 dense 和 MoE 的总参数、活跃参数与专家 FFN FLOPs。
+运行两矩阵专家的参考公式，对比 dense 和 MoE 的总参数、活跃参数与专家 FFN FLOPs。
 
 ```python
 import math
@@ -154,171 +131,133 @@ print('MoE 单层粗略参数量:', to_billion(moe_layer_params(4096, 16384, 8))
 
 ```
 
-## Q2：Router / Gate 为什么重要？
+## Q2：top-k路由怎样形成专家负载和容量溢出？
 
+路由器（Router，也称Gate）先对专家打分，再选出每个token要访问的专家。同一个token选择两个专家时，会产生两次“token—专家”分配；专家负载统计的是这些分配次数，而不是互不重复的token数量。
 
-Router / Gate 先根据每个 token 的分数选择 top-k 专家，再决定每个专家会不会过载，以及路由结果会不会引入额外通信和同步开销。
+例如4个token、4个专家、top-2路由，共有8次分配。按容量因子1平均分配，每个专家容量为2；若实际负载为[4, 3, 1, 0]，前两个专家分别超出2次和1次，合计3次分配溢出，占全部分配的3/8。这个比例与“有多少个独立token完全失去专家输出”不同。
 
-从原理上看，Router 至少同时承担三件事：
+实际实现可丢弃、重分配或延后处理超量分配，也可使用负载均衡损失调整路由。本例只统计选择与溢出，后续在MoE Router与负载均衡机制页中继续观察训练过程。
 
-1. **选择专家**
-   - 对每个 token 打分，决定 top-k 专家是谁。
-   - 这一步决定了 token 的计算路径，不同 token 可能走完全不同的专家。
+### Q2小验证：由同一份路由结果计算负载和溢出
 
-2. **控制容量**
-   - 每个专家能接收的 token 数量是有限的。
-   - 如果 token 分布不均衡，某些专家会过载，部分 token 可能被丢弃或被迫重分配。
+先核对4个token产生8次分配，再计算每专家容量与3次溢出。修改专家分数时，保持token数量和top-k不变，观察负载分布如何变化。
 
-3. **影响训练稳定性**
-   - 如果路由长期偏向少数专家，MoE 可能退化成“少数专家在工作，其余专家闲置”。
-   - 所以很多方案会引入 load balancing loss 或容量因子，强迫路由更均匀。
-
-这也是为什么 MoE 不只是“参数变多了”，它的工程难点其实在路由质量和负载均衡，而不是单纯在 FFN 参数本身。当前小验证只观察 top-k 路由、容量和溢出；load balancing loss 作为训练机制在这里保留概念说明，不由这段代码直接计算。
-
-```mermaid
-flowchart LR
-    Token[Token] --> Router[Router / Gate]
-    Router --> E1[Expert A]
-    Router --> E2[Expert B]
-    Router --> E3[Expert C]
-    E1 --> Cap[Capacity limit]
-    E2 --> Cap
-    E3 --> Cap
-    Cap --> Balance[Load balancing / overflow]
-```
-
-### Q2小验证：观察 Router / Gate 的容量和负载均衡
-
-先估算每个专家的容量，再看 token 分布不均时会发生什么。
 
 ```python
-def expert_capacity(num_tokens: int, num_experts: int, capacity_factor: float = 1.0) -> int:
-    """每个专家可接收的 token 数量上限。"""
-    return math.ceil(num_tokens / num_experts * capacity_factor)
+def expert_capacity(num_tokens: int, num_experts: int, capacity_factor: float = 1.0, top_k: int = 1) -> int:
+    """按token数×top-k估算每专家可接收的分配次数。"""
+    if num_tokens < 0 or num_experts <= 0 or not 1 <= top_k <= num_experts or capacity_factor <= 0:
+        raise ValueError('检查token数、专家数、top-k和容量因子')
+    return math.ceil(num_tokens * top_k / num_experts * capacity_factor)
 
 
 def overflow_tokens(token_counts: List[int], capacity: int) -> int:
-    """给定每个专家接收的 token 数量，计算总溢出 token 数。"""
-    return sum(max(0, c - capacity) for c in token_counts)
+    """统计超出专家容量的分配次数，同一token可能出现多次。"""
+    return sum(max(0, count - capacity) for count in token_counts)
 
 
 def load_balance_stats(token_counts: List[int], capacity: int) -> Dict[str, float]:
-    """根据 Router 已产生的专家 token 数，统计容量和溢出。"""
+    """由专家分配计数计算负载与溢出比例。"""
     total = sum(token_counts)
     overflow = overflow_tokens(token_counts, capacity)
     return {
-        'total_tokens': total,
+        'total_assignments': total,
         'capacity_per_expert': capacity,
-        'max_tokens': max(token_counts),
-        'min_tokens': min(token_counts),
-        'overflow_tokens': overflow,
-        'drop_rate': overflow / total if total else 0.0,
+        'max_assignments': max(token_counts),
+        'min_assignments': min(token_counts),
+        'overflow_assignments': overflow,
+        'overflow_assignment_rate': overflow / total if total else 0.0,
     }
 
 
 def route_tokens(router_scores: torch.Tensor, top_k: int = 1) -> Dict[str, object]:
-    """根据 token 对各专家的分数，选择 top-k 专家并统计分布。
-
-    输入形状为 `[num_tokens, num_experts]`；这里只模拟离散路由，
-    不实现专家网络、容量截断或跨设备通信。
-    """
+    """为[num_tokens, num_experts]分数选择top-k，返回选择与专家分配次数。"""
     if router_scores.ndim != 2:
-        raise ValueError('router_scores 必须是 [num_tokens, num_experts]')
+        raise ValueError('router_scores须为二维张量')
     num_tokens, num_experts = router_scores.shape
     if not 1 <= top_k <= num_experts:
-        raise ValueError('top_k 必须在 1 和 num_experts 之间')
+        raise ValueError('top_k须在1与专家数之间')
     selected = torch.topk(router_scores, k=top_k, dim=-1).indices
-    token_counts = torch.bincount(selected.reshape(-1), minlength=num_experts).tolist()
-    return {'selected_experts': selected, 'token_counts': token_counts, 'top_k': top_k}
+    counts = torch.bincount(selected.reshape(-1), minlength=num_experts).tolist()
+    return {'selected_experts': selected, 'token_counts': counts, 'top_k': top_k}
 
 
-torch.manual_seed(0)
-router_scores = torch.randn(32, 4)
+router_scores = torch.tensor([
+    [4.0, 3.0, 0.0, -1.0],
+    [4.0, 3.0, 0.0, -1.0],
+    [4.0, 0.0, 3.0, -1.0],
+    [4.0, 3.0, 0.0, -1.0],
+])
 route = route_tokens(router_scores, top_k=2)
-print('top-k 路由后的专家 token 数:', route['token_counts'])
-assert route['selected_experts'].shape == (32, 2)
-assert sum(route['token_counts']) == 32 * 2
+assert route['selected_experts'].shape == (4, 2)
+assert route['token_counts'] == [4, 3, 1, 0]
 
 ```
 
 
 ```python
-token_counts = [140, 40, 70, 90, 110, 80, 60, 110]
-capacity = expert_capacity(sum(token_counts), len(token_counts), capacity_factor=1.0)
+token_counts = route['token_counts']
+capacity = expert_capacity(
+    num_tokens=router_scores.shape[0], num_experts=router_scores.shape[1],
+    top_k=route['top_k'], capacity_factor=1.0,
+)
 stats = load_balance_stats(token_counts, capacity)
-
-print('专家 token 分布:', token_counts)
-print('每个专家容量上限:', capacity)
-print('-' * 60)
-for k, v in stats.items():
-    if k.endswith('rate'):
-        print(f'{k:20s}: {v:.1%}')
-    else:
-        print(f'{k:20s}: {v}')
+assert stats['total_assignments'] == 8
+assert capacity == 2
+assert stats['overflow_assignments'] == 3
+assert stats['overflow_assignment_rate'] == 3 / 8
+print('专家分配次数：', token_counts)
+print('容量与溢出：', stats)
 
 ```
 
-## Q3：为什么 MoE 的工程代价不只在计算，还在通信？
+## Q3：专家分配怎样转成跨设备通信量？
 
+专家并行（Expert Parallelism，EP）把专家放到不同设备。输入按路由选择分发（dispatch）给专家，计算后再把专家输出送回原来的token位置并合并（combine）。输入与输出都按隐藏维度传输时，每次远程分配各产生一次去程和回程载荷。
 
-MoE 的额外代价主要来自专家并行（Expert Parallelism）下的 token 调度和 All-to-All 通信。
+先计算全部分配的逻辑载荷：`token数 × top-k × 隐藏维度 × 每元素字节数 × 2`。其中只有源设备与专家设备不同的分配需要跨设备传输；专家总数本身不再额外乘到流量上。按每次分配分别传输时，同一设备上的多个专家也可能重复接收输入；实际实现还可能合并这些副本。
 
-可以把这一层理解成：
-- token 先按 Router 的结果分发到不同专家所在的设备
-- 专家计算完成后，再把结果聚合回原来的序列位置
+若专家等量放在各设备，路由选择与源设备无关，则远程分配比例的期望值为 `1 − 1/设备数`。8台设备对应7/8，单设备对应0。若已有路由与放置记录，就直接使用统计得到的远程比例。下面按整层全部输入统计期望发送载荷，每份远程载荷计一次，包含分发和回传；实际链路耗时还受路由偏斜与通信实现影响。
 
-这意味着 MoE 的通信不是“顺手搬一点数据”，而是会在每一层都出现比较明确的分发 / 聚合过程。
+### Q3机制计算器：区分全部分配载荷与远程发送载荷
 
-如果 token 数、hidden_dim 或 batch 变大，通信量就会明显增加；如果 token 分布不均衡，某些专家设备还会比别的设备更忙，进一步放大尾部等待时间。
+固定token数、top-k和数据宽度，只改变专家数、设备数或远程比例。先核对手算字节数，再观察本地分配为什么不会产生跨设备发送。
 
-所以 MoE 的核心权衡可以概括成：
-- **容量**：更大
-- **激活计算**：不一定同比增大
-- **系统复杂度**：更高，尤其是路由、负载均衡和通信
-
-```mermaid
-flowchart LR
-    Tokens[Tokens] --> Dispatch[Dispatch / All-to-All]
-    Dispatch --> Devices[Expert devices]
-    Devices --> Gather[Gather / All-to-All]
-    Gather --> Output[Output tokens]
-```
-
-### Q3小验证：粗估专家并行通信量
-
-先把 top-k 视为每个 token 的路由副本数，估算每层的 dispatch / gather 数据量，再看它为什么会成为 MoE 的工程代价。这个结果是容量级估算，不是 NCCL All-to-All 实测。
 
 ```python
 def estimate_expert_parallel_traffic(
-    batch: int,
-    seq_len: int,
-    hidden_dim: int,
-    num_experts: int,
-    num_devices: int,
-    top_k: int = 1,
-    bytes_per_param: int = 2,
-    dispatch_and_gather_factor: float = 2.0,
+    batch: int, seq_len: int, hidden_dim: int, num_experts: int,
+    num_devices: int, top_k: int = 1, bytes_per_element: int = 2,
+    dispatch_and_gather_factor: float = 2.0, remote_fraction=None,
 ) -> int:
-    """粗略估算专家并行的通信量（字节）。
+    """估算整层远程发送字节数，包含分发与回传；每份载荷计一次。
 
-    这里按 token 数、hidden size、top-k 和 dispatch/gather 次数
-    做数量级估算；不代表 NCCL All-to-All 的真实 trace。
+    未给远程比例时，假设专家等量分布、路由与源设备无关。
+    输入与输出等宽，按每次专家分配独立传输，忽略跨分配副本合并。
     """
-    tokens = batch * seq_len
-    traffic = tokens * hidden_dim * bytes_per_param
-    if top_k <= 0 or num_devices <= 0:
-        raise ValueError('top_k 和 num_devices 必须为正数')
-    traffic *= top_k
-    traffic *= (num_experts / num_devices)
-    traffic *= dispatch_and_gather_factor
-    return int(traffic)
+    if min(batch, seq_len) < 0 or min(hidden_dim, num_experts, num_devices, bytes_per_element) <= 0:
+        raise ValueError('token数量须非负，维度、专家数、设备数和数据宽度须为正')
+    if not 1 <= top_k <= num_experts or dispatch_and_gather_factor <= 0:
+        raise ValueError('top-k须在专家数范围内，传输次数因子须为正')
+    if remote_fraction is None:
+        if num_experts % num_devices != 0:
+            raise ValueError('等量放置假设要求专家数能被设备数整除，其他放置请给定远程比例')
+        remote_fraction = 1 - 1 / num_devices
+    if not 0 <= remote_fraction <= 1 or (num_devices == 1 and remote_fraction != 0):
+        raise ValueError('远程比例须在[0, 1]内，单设备时为0')
+    assignments = batch * seq_len * top_k
+    logical_bytes = assignments * hidden_dim * bytes_per_element * dispatch_and_gather_factor
+    return int(logical_bytes * remote_fraction)
 
 
 def bytes_to_mb(x: int) -> float:
+    """把字节换算成十进制MB。"""
     return x / 1e6
 
 
 def bytes_to_gb(x: int) -> float:
+    """把字节换算成十进制GB。"""
     return x / 1e9
 
 ```
@@ -335,25 +274,26 @@ traffic = estimate_expert_parallel_traffic(
     batch, seq_len, hidden_dim, num_experts, num_devices, top_k=top_k
 )
 
-print('专家并行通信量粗估：')
+print('等量专家放置、均匀路由假设下的整层远程发送量：')
 print('-' * 60)
 print(f'batch={batch}, seq_len={seq_len}, hidden_dim={hidden_dim}, top_k={top_k}')
-print(f'communication = {bytes_to_mb(traffic):.1f} MB / layer')
-print(f'communication = {bytes_to_gb(traffic):.3f} GB / layer')
+print(f'remote send = {bytes_to_mb(traffic):.1f} MB / layer（含分发与回传）')
+print(f'remote send = {bytes_to_gb(traffic):.3f} GB / layer')
 
 ```
 
 
 ```python
 def test_traffic_estimation():
-    traffic_small = estimate_expert_parallel_traffic(4, 1024, 4096, 8, 8, top_k=1)
-    traffic_large = estimate_expert_parallel_traffic(8, 2048, 4096, 8, 8, top_k=1)
-    traffic_top2 = estimate_expert_parallel_traffic(4, 1024, 4096, 8, 8, top_k=2)
-    assert traffic_small > 0
-    assert traffic_large > traffic_small
-    assert traffic_large == 4 * traffic_small
-    assert traffic_top2 == 2 * traffic_small
-    print('✅ 通信量测试通过')
+    """核对载荷字节、路由副本数与本地分配的影响。"""
+    # 4 tokens × top-2 × 32元素 × 2字节 × 去回2次 × 远程比例3/4。
+    expected = 768
+    assert estimate_expert_parallel_traffic(1, 4, 32, 8, 4, top_k=2) == expected
+    assert estimate_expert_parallel_traffic(1, 4, 32, 16, 4, top_k=2) == expected
+    assert estimate_expert_parallel_traffic(1, 4, 32, 8, 1, top_k=2) == 0
+    assert estimate_expert_parallel_traffic(1, 4, 32, 8, 4, top_k=1) == expected / 2
+    assert estimate_expert_parallel_traffic(1, 4, 32, 8, 4, top_k=2, remote_fraction=0.5) == 512
+    print('专家并行发送载荷公式核对通过')
 
 
 test_traffic_estimation()

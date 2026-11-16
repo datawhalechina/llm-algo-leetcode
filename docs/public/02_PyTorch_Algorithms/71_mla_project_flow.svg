@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+  <title id="title">GQA 与 MLA 架构比较项目路径</title>
+  <desc id="desc">分别检查两个模型的版本与状态形状，估算保存量，并使用相同请求测量实际运行表现。</desc>
+  <defs>
+    <marker viewBox="0 0 10 10" id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#52657a"/>
+    </marker>
+    <style>
+      .title{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-weight:700;font-size:24px;fill:#17324d}.label{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-weight:600;font-size:18px;fill:#17324d}.small{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-weight:500;font-size:15px;fill:#40566d}
+      .input{fill:#e8f3ff;stroke:#4d86b8;stroke-width:2}.process{fill:#eef8ef;stroke:#57945d;stroke-width:2}.evidence{fill:#fff4df;stroke:#b98332;stroke-width:2}.decision{fill:#f2ecff;stroke:#7c62ad;stroke-width:2}
+      .line{fill:none;stroke:#52657a;stroke-width:2.5;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1200" height="560" fill="#f8fafc"/>
+  <text x="600" y="48" text-anchor="middle" class="title">GQA与MLA：分别记录保存量与实际运行</text>
+
+  <rect x="60" y="105" width="220" height="92" rx="14" class="input"/>
+  <text x="170" y="140" text-anchor="middle" class="label">模型版本</text>
+  <text x="170" y="169" text-anchor="middle" class="small">模型ID／版本／结构</text>
+  <rect x="60" y="315" width="220" height="92" rx="14" class="input"/>
+  <text x="170" y="350" text-anchor="middle" class="label">固定请求集合</text>
+  <text x="170" y="379" text-anchor="middle" class="small">输入 · 输出上限 · 并发 · 重复</text>
+
+  <rect x="365" y="105" width="220" height="92" rx="14" class="process"/>
+  <text x="475" y="140" text-anchor="middle" class="label">检查版本与保存方式</text>
+  <text x="475" y="169" text-anchor="middle" class="small">配置中的GQA或MLA字段</text>
+  <rect x="365" y="315" width="220" height="92" rx="14" class="process"/>
+  <text x="475" y="350" text-anchor="middle" class="label">运行同一批请求</text>
+  <text x="475" y="379" text-anchor="middle" class="small">加载、预热、请求与失败</text>
+
+  <rect x="670" y="105" width="220" height="92" rx="14" class="evidence"/>
+  <text x="780" y="140" text-anchor="middle" class="label">估算保存大小</text>
+  <text x="780" y="169" text-anchor="middle" class="small">每词元字节数及增长</text>
+  <rect x="670" y="315" width="220" height="92" rx="14" class="evidence"/>
+  <text x="780" y="350" text-anchor="middle" class="label">实际运行记录</text>
+  <text x="780" y="379" text-anchor="middle" class="small">得分／耗时／吞吐／显存</text>
+
+  <rect x="975" y="210" width="170" height="92" rx="14" class="decision"/>
+  <text x="1060" y="245" text-anchor="middle" class="label">逐项检查</text>
+  <text x="1060" y="274" text-anchor="middle" class="small">失败／缺失／达标</text>
+  <rect x="975" y="400" width="170" height="92" rx="14" class="decision"/>
+  <text x="1060" y="435" text-anchor="middle" class="label">架构比较记录</text>
+  <text x="1060" y="464" text-anchor="middle" class="small">源文件／指标／判断</text>
+
+  <path d="M280 151 H365" class="line"/>
+  <path d="M280 361 H365" class="line"/>
+  <path d="M585 151 H670" class="line"/>
+  <path d="M475 197 V315" class="line"/>
+  <path d="M585 361 H670" class="line"/>
+  <path d="M890 151 H930 V238 H975" class="line"/>
+  <path d="M890 361 H930 V274 H975" class="line"/>
+  <path d="M1060 302 V400" class="line"/>
+</svg>

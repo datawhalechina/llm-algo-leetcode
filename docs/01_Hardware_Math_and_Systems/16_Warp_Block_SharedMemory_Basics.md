@@ -34,11 +34,13 @@
 
 线程（Thread）执行局部计算，同一线程块中的线程构成协作范围；NVIDIA把块内连续线程按32个分成线程束（Warp），线程在Warp中的位置称为Lane。一个48线程块需要两个Warp，第二个Warp分配16个线程，其余16个槽未分配。两个这样的线程块各自分组，共需四个Warp，剩余线程不会跨块拼成第三个满Warp。
 
+若真正把任务改成一个96线程块，才会按三个Warp分组；这同时改变了协作范围和单块资源需求。下面保持总线程数96不变，对照两个48线程块与一个96线程块，检查分组边界如何改变Warp数。
+
 这里统计的是已分配线程占Warp槽的比例。分支与边界条件还会改变某条指令的活跃Lane数；SM占用率则涉及驻留Warp数与设备上限。共享内存的协作边界也不同：普通线程块各自保留副本，生产者与消费者仍需保证写入、读取和下一轮覆盖的顺序。
 
-### Q1 覆盖率计算：比较一个块与两个块的线程槽
+### Q1 覆盖率计算：同样96个线程，按一块还是两块分组？
 
-先核对48线程块的两个Warp，再将两个块的Warp数相加。小输入和恰好32线程的情形用于检查尾Warp计算。
+先核对48线程块需要两个Warp，再比较两个独立块共四个Warp与一个96线程块的三个Warp。小输入与恰好填满Warp的情况检查尾Warp计算；两种块安排的性能需另外比较。
 
 
 ```python
@@ -63,20 +65,23 @@ assert one_block == {
     "thread_slot_utilization": 0.75,
 }
 assert blocks * one_block["warps"] == 4
+merged = execution_coverage(num_threads=threads_per_block * blocks)
+assert merged["warps"] == 3 and merged["thread_slot_utilization"] == 1.0
 for threads, expected in ((1, (1, 1)), (32, (1, 32)), (33, (2, 1)), (65, (3, 1))):
     result = execution_coverage(num_threads=threads)
     assert (result["warps"], result["last_warp_assigned_threads"]) == expected
 print(f"每块 {threads_per_block} 线程：{one_block['warps']} 个Warp，"
       f"线程槽利用比例 {one_block['thread_slot_utilization']:.0%}")
 print(f"{blocks} 个独立线程块共需 {blocks * one_block['warps']} 个Warp")
+print(f"改成一个96线程块：{merged['warps']} 个Warp；协作范围也随块安排改变")
 
 ```
 
-## Q2：共享内存怎样改变重复读取？
+## Q2：同一块内四次使用数据，读取怎样减少？
 
 同一Block多次使用一份数据时，可以先把数据从全局内存搬入共享内存，再读取片上副本。沿主图的32 KiB数据块计算：使用四次时，逻辑全局读取从128 KiB降到32 KiB，减少96 KiB，即75%。如果有多个Block各自使用这份数据，每块仍要独立搬入，不能把块内复用当成跨块共享。
 
-上述减少量对应完整数据块的读取请求，实际设备内存流量还取决于原方案的缓存命中。读取请求可能先由缓存满足，因此逻辑请求字节数与实际设备内存字节数需要分别观察。搬入、同步和片上占用也会影响完整调用时间。
+上述减少量对应完整数据块的读取请求，实际设备内存流量还取决于原方案的缓存命中。读取请求可能先由缓存满足，因此逻辑请求字节数与实际设备内存字节数需要分别观察。下方先算同一块内的重复使用，再在Q3检查这份副本的容量与写入、读取、覆盖顺序；读取减少与协作正确分别判断。
 
 ### Q2 对照验证：从主图的单块例子扩大到多个块
 

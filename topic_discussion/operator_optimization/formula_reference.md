@@ -65,4 +65,4 @@ $f$ 是目标算子在原总耗时 $T_0>0$ 中的占比， $s>0$ 是该算子的
 | 无新增成本的整体加速比 | $S=1/[(1-f)+f/s]$ | $0\le f\le1$；例如 $f=0.1,s=2$ 时，整体约 $1.053$ 倍 | [01 局部与整体](./01_optimization_targets_and_baselines.md#为什么局部变快可能只带来很小的整体改善) |
 | 加入净新增适配成本 | $T_{\mathrm{new}}=T_0[(1-f)+f/s]+\Delta T$ | $\Delta T$ 为同一范围中净新增且未在算子候选时间中计入的转换、调用或同步耗时，避免重复计算 | [07 布局复制](./07_integration_benchmarking_and_adoption.md#布局复制带来的额外耗时) |
 
-理论估计用来判断量级，采用决定仍使用完整调用、组件与独立负载的实际复测。带宽上界、时间区间和回归区间的进一步计算见[性能分析公式索引](../performance_analysis/formula_reference.md)。
+理论估计用来判断量级，采用决定仍使用完整调用、组件与独立负载的实际复测。带宽上界、时间区间和回归区间的进一步计算见[性能优化公式索引](../performance_optimization/formula_reference.md)。

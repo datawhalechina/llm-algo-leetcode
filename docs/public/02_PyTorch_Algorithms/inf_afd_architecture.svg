@@ -2,42 +2,43 @@
   <title id="title">Attention 与 FFN 解耦后的执行角色</title>
   <desc id="desc">请求由 Attention 侧维护调度与 KV 状态，经 connector 把激活和路由信息交给 FFN 专家侧，再返回 FFN 输出继续残差路径。</desc>
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto">
       <path d="M0 0L10 5L0 10Z" fill="#475569"/>
     </marker>
     <style>
-      .title{font:700 29px "Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#0f172a}.sub{font:500 16px "Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#475569}.head{font:700 18px "Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#111827;text-anchor:middle}.body{font:500 14px "Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#334155;text-anchor:middle}.node{stroke-width:2.5;rx:16}.group{stroke-width:2;rx:20}.flow{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}
+      .title{font-weight:700;font-size:29px;font-family: "Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#0f172a}.sub{font-weight:500;font-size:16px;font-family: "Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#475569}.head{font-weight:700;font-size:18px;font-family: "Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#111827;text-anchor:middle}.body{font-weight:500;font-size:14px;font-family: "Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#334155;text-anchor:middle}.node{stroke-width:2.5;rx:16}.group{stroke-width:2;rx:20}.flow{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}
     </style>
   </defs>
   <rect width="1500" height="680" fill="#f8fafc"/>
   <text x="55" y="58" class="title">AFD：让 Attention 与 FFN / 专家使用不同的执行拓扑</text>
-  <text x="55" y="88" class="sub">拆分不改变模型层语义；它改变角色部署、跨角色载荷、同步关系与独立扩缩容方式。</text>
+  <text x="55" y="88" class="sub">保持模型层的数值语义，分别安排两类角色；每层新增激活发送与结果返回。</text>
 
   <rect x="45" y="180" width="360" height="370" class="group" fill="#eff6ff" stroke="#2563eb"/>
   <text x="225" y="215" class="head">Attention 角色</text>
   <rect x="85" y="245" width="280" height="76" class="node" fill="#dbeafe" stroke="#2563eb"/>
-  <text x="225" y="276" class="head">请求与迭代调度</text><text x="225" y="301" class="body">batch / sampling / metadata</text>
+  <text x="225" y="276" class="head">请求与迭代调度</text><text x="225" y="301" class="body">批次安排、采样与元数据</text>
   <rect x="85" y="350" width="280" height="76" class="node" fill="#dbeafe" stroke="#2563eb"/>
-  <text x="225" y="381" class="head">Attention 与 KV 状态</text><text x="225" y="406" class="body">Prefill / Decode / Cache</text>
+  <text x="225" y="381" class="head">Attention 与 KV 状态</text><text x="225" y="406" class="body">预填充、解码与历史状态</text>
   <rect x="85" y="455" width="280" height="62" class="node" fill="#dbeafe" stroke="#2563eb"/>
-  <text x="225" y="493" class="head">Residual / Sampling</text>
+  <text x="225" y="493" class="head">残差与后续层</text>
 
   <rect x="530" y="230" width="360" height="270" class="group" fill="#fff7ed" stroke="#d97706"/>
-  <text x="710" y="265" class="head">AFD Connector</text>
+  <text x="710" y="265" class="head">AFD 连接器</text>
   <rect x="570" y="295" width="280" height="76" class="node" fill="#fef3c7" stroke="#d97706"/>
-  <text x="710" y="326" class="head">A → F 载荷</text><text x="710" y="351" class="body">activation / routing metadata</text>
+  <text x="710" y="326" class="head">A → F 载荷</text><text x="710" y="351" class="body">隐藏表示；按需附路由信息</text>
   <rect x="570" y="400" width="280" height="62" class="node" fill="#fef3c7" stroke="#d97706"/>
   <text x="710" y="438" class="head">F → A：FFN 输出</text>
 
   <rect x="1015" y="180" width="430" height="370" class="group" fill="#f5f3ff" stroke="#7c3aed"/>
   <text x="1230" y="215" class="head">FFN / 专家角色</text>
   <rect x="1065" y="245" width="330" height="76" class="node" fill="#ede9fe" stroke="#7c3aed"/>
-  <text x="1230" y="276" class="head">Router / Top-k</text><text x="1230" y="301" class="body">可位于 A 侧或 F 侧</text>
+  <text x="1230" y="276" class="head">路由与重排</text><text x="1230" y="301" class="body">路由器在 A 侧时，接收已选专家</text>
   <rect x="1065" y="350" width="330" height="76" class="node" fill="#ede9fe" stroke="#7c3aed"/>
-  <text x="1230" y="381" class="head">Expert Dispatch / Compute</text><text x="1230" y="406" class="body">EP / All-to-All / MoE Kernel</text>
+  <text x="1230" y="381" class="head">专家分发与计算</text><text x="1230" y="406" class="body">专家并行、通信与计算内核</text>
   <rect x="1065" y="455" width="330" height="62" class="node" fill="#ede9fe" stroke="#7c3aed"/>
-  <text x="1230" y="493" class="head">Combine FFN Output</text>
+  <text x="1230" y="493" class="head">合并 FFN 输出</text>
 
+  <path d="M225 321V350" class="flow"/>
   <path d="M365 388H470V333H570" class="flow"/>
   <path d="M850 333H960V283H1065" class="flow"/>
   <path d="M1230 321V350" class="flow"/>
@@ -45,7 +46,6 @@
   <path d="M1065 486H960V431H850" class="flow"/>
   <path d="M570 431H470V486H365" class="flow"/>
 
-  <rect x="440" y="585" width="620" height="58" class="node" fill="#ecfccb" stroke="#65a30d"/>
-  <text x="750" y="610" class="head">独立扩缩容，但必须保持层顺序、请求身份与数值语义</text>
-  <text x="750" y="632" class="body">Attention 容量看 KV / sequence；FFN 容量看 routed tokens / expert load</text>
+  <text x="225" y="602" class="body">角色规模：按上下文与缓存压力调整</text>
+  <text x="1230" y="602" class="body">角色规模：按选中词元与专家负载调整</text>
 </svg>

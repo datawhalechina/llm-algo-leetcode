@@ -186,6 +186,49 @@ def decide_memory_strategy_project(summary: Dict[str, object]) -> Dict[str, obje
     }
 
 
+def evaluate_memory_budget_sensitivity(
+    candidates: List[Dict[str, object]],
+    scenarios: List[Dict[str, object]],
+) -> Dict[str, object]:
+    """Re-evaluate one measured candidate set under named budget scenarios."""
+    results = []
+    for scenario in scenarios:
+        name = scenario.get("name")
+        budget = scenario.get("budget")
+        quality_floor = scenario.get("quality_floor")
+        if not isinstance(name, str) or not name or not isinstance(budget, dict) or not isinstance(quality_floor, dict):
+            raise ValueError("each sensitivity scenario needs a name, budget, and quality_floor")
+        validation = validate_strategy_budget(budget, quality_floor)
+        if not validation["is_valid"]:
+            raise ValueError(f"invalid sensitivity scenario {name}: {validation}")
+        summary = summarize_memory_strategy_candidates(candidates, budget, quality_floor)
+        decision = decide_memory_strategy_project(summary)
+        results.append({
+            "name": name,
+            "budget": budget,
+            "quality_floor": quality_floor,
+            "summary": summary,
+            "decision": decision,
+        })
+
+    if not results:
+        raise ValueError("at least one sensitivity scenario is required")
+    reference = results[0]
+    stable = all(
+        row["decision"].get("decision") == reference["decision"].get("decision")
+        and row["summary"].get("best_candidate") == reference["summary"].get("best_candidate")
+        and row["summary"].get("feasible_names") == reference["summary"].get("feasible_names")
+        for row in results[1:]
+    )
+    no_feasible = any(row["summary"].get("feasible_count", 0) == 0 for row in results)
+    return {
+        "scenario_count": len(results),
+        "status": "no_feasible_candidate" if no_feasible else "stable" if stable else "threshold_sensitive",
+        "reference_scenario": reference["name"],
+        "results": results,
+    }
+
+
 def summarize_memory_boundary(
     length_records: List[Dict[str, object]],
     budget: Dict[str, float],

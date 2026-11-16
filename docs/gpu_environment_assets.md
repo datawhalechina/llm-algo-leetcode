@@ -1,7 +1,5 @@
 # 教程模型、执行栈与环境资产索引
 
-> 统一审阅入口见[教程资产总登记与审阅台账](./asset_registry.md)。
-
 本页帮助学习者选择环境 Profile、确认环境隔离关系，并找到模型、执行栈和实验快照的维护入口。它不复制安装命令、逐包版本、Notebook 配置或实验结果；这些信息分别由 Profile 注册表、专题 Quickstart、专题实验资产表和结果 JSON 维护。
 
 ## 信息所有权
@@ -13,7 +11,7 @@
 | 模型、数据、工作负载、结果路径和当前证据状态 | 对应专题 `experiment_assets.md` | 说明资产归属 |
 | 本次软件、驱动、硬件和运行参数 | 结果 JSON 的 runtime snapshot | 说明必须记录的字段组 |
 | 项目公共结果字段和证据等级 | [Part 02 结果资产与证据契约](./part02_result_assets.md) | 不重复字段定义 |
-| 托管镜像与文档交付状态 | [教程资产总登记与审阅台账](./asset_registry.md) | 只说明运行入口 |
+| 托管环境与 CNB 配置 | [运行指南](./guide.md)与根目录 `cnb/` 配置 | 提供运行入口 |
 
 ## 环境分层
 
@@ -52,7 +50,7 @@
 |:---|:---|:---|
 | <a id="train-cuda-mechanism"></a>`TRAIN-CUDA-MECHANISM` | 单卡；梯度累积、AMP、重算与卸载 | [训练机制 Quickstart](../topic_discussion/backpropagation_training_mechanism/quickstart.md#train-cuda-mechanism-quickstart) · [实验资产](../topic_discussion/backpropagation_training_mechanism/experiment_assets.md) |
 | <a id="arch-cuda-mechanism"></a>`ARCH-CUDA-MECHANISM` | 单卡；Block、Attention、递推状态、MLA 与混合记忆 | [架构 Quickstart](../topic_discussion/llm_architecture_evolution/quickstart.md#arch-cuda-mechanism-quickstart) · [实验资产](../topic_discussion/llm_architecture_evolution/experiment_assets.md) |
-| <a id="perf-cuda-mechanism"></a>`PERF-CUDA-MECHANISM` | 单卡；性能分析机制实验及 Part 05·03、05 综合项目 | [性能分析 Quickstart](../topic_discussion/performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart) · [实验资产](../topic_discussion/performance_analysis/experiment_assets.md) |
+| <a id="perf-cuda-mechanism"></a>`PERF-CUDA-MECHANISM` | 单卡；性能分析机制实验及 Part 05·03、05 综合项目 | [性能优化 GPU Quickstart](./topic_discussion/performance_optimization/gpu_quickstart.md#perf-cuda-mechanism-quickstart) · [测量与诊断实验记录](./topic_discussion/performance_optimization/measurement_assets.md) |
 | <a id="inf-cuda-mechanism"></a>`INF-CUDA-MECHANISM` | 单卡；真实模型迭代成本、显存与局部延迟 | [推理优化 Quickstart](../topic_discussion/inference_optimization/quickstart.md#inf-cuda-mechanism-quickstart) · [实验资产](../topic_discussion/inference_optimization/experiment_assets.md) |
 | <a id="par-cuda-mechanism"></a>`PAR-CUDA-MECHANISM` | 至少双卡；collective、切分、同步和局部扩展行为 | [通信与并行 Quickstart](../topic_discussion/communication_parallelism/quickstart.md#par-cuda-mechanism-quickstart) · [实验资产](../topic_discussion/communication_parallelism/experiment_assets.md) |
 | <a id="q-cuda-mechanism"></a>`Q-CUDA-MECHANISM` | 单卡；量化机制对照及 Part 05·04 量化产物生成 | [量化 Quickstart](../topic_discussion/quantization_compression/quickstart.md#q-cuda-mechanism-quickstart) · [实验资产](../topic_discussion/quantization_compression/experiment_assets.md) |

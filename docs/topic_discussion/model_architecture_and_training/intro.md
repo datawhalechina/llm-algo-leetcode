@@ -39,7 +39,7 @@ Task0 的[输入表示](../llm_architecture_evolution/02_tokenization_embedding.
 | 需要用示范、偏好或奖励改变模型行为 | [后训练优化](../post_training_optimization/intro.md) | 数据、训练目标与独立任务评测 |
 | 模型结构已确定，需要降低生成和服务成本 | [推理优化](../inference_optimization/intro.md) | 请求时间、缓存与调度条件 |
 | 已定位局部计算，需要改编译或内核实现 | [算子优化](../operator_optimization/intro.md) | 实际执行路径、数值和完整调用成本 |
-| 需要定位整步热点、峰值或多设备通信 | [性能分析](../performance_analysis/intro.md)／[通信与并行](../communication_parallelism/intro.md) | 时间线、状态重叠和暴露通信 |
+| 需要定位整步热点、峰值或多设备通信 | [性能分析](../performance_optimization/methods/intro.md)／[通信与并行](../communication_parallelism/intro.md) | 时间线、状态重叠和暴露通信 |
 
 概念回查分别使用[架构术语表](../llm_architecture_evolution/glossary.md)与[训练术语表](../backpropagation_training_mechanism/glossary.md)。线性注意力与状态空间模型（SSM）都可以涉及递推状态，但更新公式与表示能力不同，不能仅因都使用固定大小状态就视为同一种结构。
 

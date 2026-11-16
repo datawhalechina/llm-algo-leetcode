@@ -1,26 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1400" height="620" viewBox="0 0 1400 620" role="img" aria-labelledby="title desc">
   <title id="title">RLOO 奖励塑形、留一优势与策略更新</title>
-  <desc id="desc">外部奖励和旧策略相对参考策略的序列 KL 形成塑形奖励；有效留一优势与当前策略相对旧策略的序列比率进入裁剪目标，无效优势产生零贡献。</desc>
+  <desc id="desc">外部奖励和旧策略相对参考策略的采样对数比之和 形成塑形奖励；有效留一优势与当前策略相对旧策略的序列比率进入裁剪目标，无效优势产生零贡献。</desc>
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker>
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker>
     <style>
-      .title{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:30px;font-weight:700;fill:#0f172a}.subtitle{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:17px;font-weight:500;fill:#475569}.label{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:20px;font-weight:700}.body{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:16px;font-weight:500}.node{stroke-width:2.5;rx:18;ry:18}.edge{stroke:#475569;stroke-width:3.5;fill:none;marker-end:url(#arrow)}
+      .title{font-family:"Noto Sans CJK SC","Inter",sans-serif;font-size:30px;font-weight:700;fill:#0f172a}.subtitle{font-family:"Noto Sans CJK SC","Inter",sans-serif;font-size:17px;font-weight:500;fill:#475569}.label{font-family:"Noto Sans CJK SC","Inter",sans-serif;font-size:20px;font-weight:700}.body{font-family:"Noto Sans CJK SC","Inter",sans-serif;font-size:16px;font-weight:500}.node{stroke-width:2.5;rx:18;ry:18}.edge{stroke:#475569;stroke-width:3.5;fill:none;marker-end:url(#arrow)}
     </style>
   </defs>
   <rect width="1400" height="620" rx="28" fill="#f8fafc"/>
   <text x="55" y="55" class="title">RLOO：奖励与序列比率在更新目标处汇合</text>
-  <text x="55" y="85" class="subtitle">上支路计算留一优势，下支路计算新旧策略比率；两者只在有效回答的裁剪目标中相乘。</text>
+  <text x="55" y="85" class="subtitle">上支路计算留一优势，下支路计算新旧策略比率；优势固定，新策略分数保留梯度。</text>
 
   <rect id="external-reward" x="45" y="125" width="240" height="90" class="node" fill="#dcfce7" stroke="#4ade80"/>
   <text x="165" y="162" text-anchor="middle" class="label" fill="#14532d">外部奖励 r_ext</text>
   <text x="165" y="190" text-anchor="middle" class="body" fill="#166534">奖励函数加权结果</text>
   <rect id="kl-source" x="45" y="255" width="240" height="100" class="node" fill="#e2e8f0" stroke="#94a3b8"/>
-  <text x="165" y="294" text-anchor="middle" class="label" fill="#1e293b">旧策略 / Reference</text>
-  <text x="165" y="325" text-anchor="middle" class="body" fill="#334155">回答 Token 对数比率求和</text>
+  <text x="165" y="294" text-anchor="middle" class="label" fill="#1e293b">旧策略 / 固定参考</text>
+  <text x="165" y="325" text-anchor="middle" class="body" fill="#334155">回答词元 对数比率求和</text>
 
   <rect id="shaped-reward" x="370" y="180" width="270" height="110" class="node" fill="#fef3c7" stroke="#fbbf24"/>
   <text x="505" y="222" text-anchor="middle" class="label" fill="#78350f">塑形奖励 R</text>
-  <text x="505" y="257" text-anchor="middle" class="body" fill="#92400e">r_ext − β · 序列 KL</text>
+  <text x="505" y="257" text-anchor="middle" class="body" fill="#92400e">r_ext − β · 采样对数比和</text>
   <path d="M285 170 H325 V215 H370" class="edge" data-source="external-reward" data-target="shaped-reward"/>
   <path d="M285 305 H325 V255 H370" class="edge" data-source="kl-source" data-target="shaped-reward"/>
 
@@ -40,13 +40,13 @@
 
   <rect id="clipped-objective" x="1090" y="240" width="265" height="130" class="node" fill="#fff7ed" stroke="#f59e0b"/>
   <text x="1222" y="283" text-anchor="middle" class="label" fill="#78350f">非对称裁剪目标</text>
-  <text x="1222" y="316" text-anchor="middle" class="body" fill="#92400e">clip(ρ_i) · A_i</text>
+  <text x="1222" y="316" text-anchor="middle" class="body" fill="#92400e">−min(ρA, clip(ρ)A)</text>
   <text x="1222" y="344" text-anchor="middle" class="body" fill="#92400e">只更新当前策略</text>
   <path d="M1005 235 H1045 V280 H1090" class="edge" data-source="loo-advantage" data-target="clipped-objective"/>
-  <path d="M640 480 H680 V390 H1045 V330 H1090" class="edge" data-source="sequence-ratio" data-target="clipped-objective"/>
+  <path d="M640 480 H680 V565 H1045 V330 H1090" class="edge" data-source="sequence-ratio" data-target="clipped-objective"/>
 
   <rect id="zero-contribution" x="725" y="430" width="280" height="100" class="node" fill="#fee2e2" stroke="#f87171"/>
-  <text x="865" y="470" text-anchor="middle" class="label" fill="#7f1d1d">无效优势：贡献为 0</text>
+  <text x="865" y="470" text-anchor="middle" class="label" fill="#7f1d1d">缺失或单例：优势为 0</text>
   <text x="865" y="501" text-anchor="middle" class="body" fill="#991b1b">不可评分或同组不足 2 条</text>
   <path d="M865 295 V430" class="edge" data-source="loo-advantage" data-target="zero-contribution"/>
 </svg>

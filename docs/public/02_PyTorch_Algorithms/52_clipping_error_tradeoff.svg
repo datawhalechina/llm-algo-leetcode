@@ -1,37 +1,67 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1240" height="520" viewBox="0 0 1240 520" role="img" aria-labelledby="title desc">
-  <title id="title">裁剪范围与两类量化误差的权衡</title>
-  <desc id="desc">较宽范围降低饱和但增大步长和舍入误差，较窄范围细化网格但提高裁剪与饱和误差，最终在独立验证数据上应用约束并选择候选。</desc>
-  <defs>
-    <style>.title{font:700 27px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324d}.sub{font:15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#526b7d}.h{font:700 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324d}.t{font:14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#526b7d}.wide{fill:#e8f3fb;stroke:#3978a8;stroke-width:2}.narrow{fill:#fff1df;stroke:#c78335;stroke-width:2}.metric{fill:#f1eafa;stroke:#8b6bb1;stroke-width:2}.decision{fill:#eaf7ef;stroke:#4c9870;stroke-width:2}.flow{stroke:#3978a8;stroke-width:2.5;fill:none}</style>
-    <marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#3978a8"/></marker>
-  </defs>
-  <rect width="1240" height="520" rx="24" fill="#f8fbfd"/>
-  <text x="620" y="44" text-anchor="middle" class="title">裁剪不是越强越好：范围宽窄会交换两类误差</text>
-  <text x="620" y="72" text-anchor="middle" class="sub">位宽和粒度固定时，候选分位数只改变范围、缩放因子与饱和比例</text>
-  <rect x="70" y="118" width="470" height="168" rx="18" class="wide"/>
-  <text x="305" y="151" text-anchor="middle" class="h">范围较宽：高分位数</text>
-  <rect x="105" y="174" width="170" height="76" rx="13" fill="#fff" stroke="#3978a8"/>
-  <text x="190" y="202" text-anchor="middle" class="h">缩放因子较大</text><text x="190" y="226" text-anchor="middle" class="t">整数网格更粗</text>
-  <rect x="335" y="174" width="170" height="76" rx="13" fill="#fff" stroke="#3978a8"/>
-  <text x="420" y="202" text-anchor="middle" class="h">饱和比例较低</text><text x="420" y="226" text-anchor="middle" class="t">异常值更少被裁剪</text>
-  <rect x="700" y="118" width="470" height="168" rx="18" class="narrow"/>
-  <text x="935" y="151" text-anchor="middle" class="h">范围较窄：低分位数</text>
-  <rect x="735" y="174" width="170" height="76" rx="13" fill="#fff" stroke="#c78335"/>
-  <text x="820" y="202" text-anchor="middle" class="h">缩放因子较小</text><text x="820" y="226" text-anchor="middle" class="t">普通值网格更细</text>
-  <rect x="965" y="174" width="170" height="76" rx="13" fill="#fff" stroke="#c78335"/>
-  <text x="1050" y="202" text-anchor="middle" class="h">饱和比例较高</text><text x="1050" y="226" text-anchor="middle" class="t">尾部数值被裁剪</text>
-
-  <rect x="160" y="338" width="260" height="86" rx="15" class="metric"/>
-  <text x="290" y="368" text-anchor="middle" class="h">验证舍入误差</text><text x="290" y="393" text-anchor="middle" class="t">均方误差 · 余弦相似度</text>
-  <rect x="490" y="338" width="260" height="86" rx="15" class="metric"/>
-  <text x="620" y="368" text-anchor="middle" class="h">应用饱和约束</text><text x="620" y="393" text-anchor="middle" class="t">先过滤不可接受候选</text>
-  <rect x="820" y="338" width="260" height="86" rx="15" class="decision"/>
-  <text x="950" y="368" text-anchor="middle" class="h">选择验证误差最低者</text><text x="950" y="393" text-anchor="middle" class="t">冻结范围与缩放因子</text>
-  <path d="M305 286V314H290V338" class="flow" marker-end="url(#arrow)"/>
-  <path d="M935 286V314H290V338" class="flow" marker-end="url(#arrow)"/>
-  <path d="M420 212H620V338" class="flow" marker-end="url(#arrow)"/>
-  <path d="M1050 250V314H620V338" class="flow" marker-end="url(#arrow)"/>
-  <path d="M420 381H490" class="flow" marker-end="url(#arrow)"/><path d="M750 381H820" class="flow" marker-end="url(#arrow)"/>
-  <rect x="350" y="454" width="540" height="42" rx="12" fill="#fff" stroke="#c7d9e7"/>
-  <text x="620" y="481" text-anchor="middle" class="t">校准数据生成范围；独立验证数据只比较候选，不重新估计范围</text>
+<title id="title">宽窄量化范围下的整数码与恢复值</title>
+<desc id="desc">对原值1.1和100分别使用范围100和2量化。宽范围将1.1恢复到0.7874，窄范围恢复到1.1024；尾部100在窄范围下的舍入码6350被裁到127，恢复为2。</desc>
+<defs>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-weight:400;fill:#17324d}.title{font-size:28px;font-weight:700}.h{font-size:18px;font-weight:700}.b{font-size:15px;fill:#475569}.small{font-size:14px;fill:#475569}.flow{fill:none;stroke:#3978a8;stroke-width:2.5;marker-end:url(#arrow)}</style>
+<marker id="arrow" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
+<path d="M0 0 L9 4.5 L0 9 Z" fill="#3978a8"/>
+</marker>
+</defs>
+<rect width="1240" height="520" fill="#f8fbfd"/>
+<text x="620" y="43" text-anchor="middle" class="title">同一数值：细网格减少舍入偏差，窄范围可能裁掉尾部</text>
+<text x="620" y="77" text-anchor="middle" class="small">原理算例，非实验测量；固定对称 INT8，整数码范围 −127～127</text>
+<rect x="40" y="110" width="550" height="360" rx="13" fill="#e8f3fb" stroke="#3978a8" stroke-width="2" data-layout-role="panel"/>
+<text x="315" y="143" text-anchor="middle" class="h">范围 c = 100</text>
+<text x="315" y="174" text-anchor="middle" class="b">步长 s = 100 / 127 ≈ 0.7874</text>
+<rect x="60" y="205" width="100" height="90" rx="13" fill="#fff" stroke="#3978a8" stroke-width="2"/>
+<text x="110" y="236" text-anchor="middle" class="h">原值</text>
+<text x="110" y="263" text-anchor="middle" class="b">1.1</text>
+<rect x="200" y="205" width="150" height="90" rx="13" fill="#fff" stroke="#3978a8" stroke-width="2"/>
+<text x="275" y="236" text-anchor="middle" class="h">舍入整数码</text>
+<text x="275" y="263" text-anchor="middle" class="b">1</text>
+<rect x="390" y="205" width="170" height="90" rx="13" fill="#fff" stroke="#3978a8" stroke-width="2"/>
+<text x="475" y="236" text-anchor="middle" class="h">恢复值</text>
+<text x="475" y="263" text-anchor="middle" class="b">0.7874</text>
+<text x="475" y="286" text-anchor="middle" class="b">绝对误差 0.3126</text>
+<path class="flow" d="M160 250 H200"/>
+<path class="flow" d="M350 250 H390"/>
+<rect x="60" y="340" width="100" height="90" rx="13" fill="#fff" stroke="#3978a8" stroke-width="2"/>
+<text x="110" y="371" text-anchor="middle" class="h">原值</text>
+<text x="110" y="398" text-anchor="middle" class="b">100</text>
+<rect x="200" y="340" width="150" height="90" rx="13" fill="#fff" stroke="#3978a8" stroke-width="2"/>
+<text x="275" y="371" text-anchor="middle" class="h">舍入整数码</text>
+<text x="275" y="398" text-anchor="middle" class="b">127</text>
+<rect x="390" y="340" width="170" height="90" rx="13" fill="#fff" stroke="#3978a8" stroke-width="2"/>
+<text x="475" y="371" text-anchor="middle" class="h">恢复值</text>
+<text x="475" y="398" text-anchor="middle" class="b">100</text>
+<text x="475" y="421" text-anchor="middle" class="b">绝对误差 0</text>
+<path class="flow" d="M160 385 H200"/>
+<path class="flow" d="M350 385 H390"/>
+<rect x="650" y="110" width="550" height="360" rx="13" fill="#fff1df" stroke="#c78335" stroke-width="2" data-layout-role="panel"/>
+<text x="925" y="143" text-anchor="middle" class="h">范围 c = 2</text>
+<text x="925" y="174" text-anchor="middle" class="b">步长 s = 2 / 127 ≈ 0.0157</text>
+<rect x="670" y="205" width="100" height="90" rx="13" fill="#fff" stroke="#c78335" stroke-width="2"/>
+<text x="720" y="236" text-anchor="middle" class="h">原值</text>
+<text x="720" y="263" text-anchor="middle" class="b">1.1</text>
+<rect x="810" y="205" width="150" height="90" rx="13" fill="#fff" stroke="#c78335" stroke-width="2"/>
+<text x="885" y="236" text-anchor="middle" class="h">舍入整数码</text>
+<text x="885" y="263" text-anchor="middle" class="b">70</text>
+<rect x="1000" y="205" width="170" height="90" rx="13" fill="#fff" stroke="#c78335" stroke-width="2"/>
+<text x="1085" y="236" text-anchor="middle" class="h">恢复值</text>
+<text x="1085" y="263" text-anchor="middle" class="b">1.1024</text>
+<text x="1085" y="286" text-anchor="middle" class="b">绝对误差 0.0024</text>
+<path class="flow" d="M770 250 H810"/>
+<path class="flow" d="M960 250 H1000"/>
+<rect x="670" y="340" width="100" height="90" rx="13" fill="#fff" stroke="#c78335" stroke-width="2"/>
+<text x="720" y="371" text-anchor="middle" class="h">原值</text>
+<text x="720" y="398" text-anchor="middle" class="b">100</text>
+<rect x="810" y="340" width="150" height="90" rx="13" fill="#fff" stroke="#c78335" stroke-width="2"/>
+<text x="885" y="371" text-anchor="middle" class="h">舍入后裁剪</text>
+<text x="885" y="398" text-anchor="middle" class="b">6350 → 127</text>
+<rect x="1000" y="340" width="170" height="90" rx="13" fill="#fff" stroke="#c78335" stroke-width="2"/>
+<text x="1085" y="371" text-anchor="middle" class="h">恢复值</text>
+<text x="1085" y="398" text-anchor="middle" class="b">2</text>
+<text x="1085" y="421" text-anchor="middle" class="b">绝对误差 98</text>
+<path class="flow" d="M770 385 H810"/>
+<path class="flow" d="M960 385 H1000"/>
 </svg>

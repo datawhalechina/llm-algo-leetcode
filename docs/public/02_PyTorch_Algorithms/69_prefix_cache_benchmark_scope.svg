@@ -1,13 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="svg-title svg-desc">
-<title id="svg-title">前缀缓存的安全匹配、连续命中与容量反馈</title><desc id="svg-desc">请求先核对缓存命名空间，再按块匹配连续前缀；命中状态直接复用，未命中部分重新预填充并写回，容量不足时驱逐旧块。</desc>
-<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#52657a"/></marker><style>.t{font-weight:700;font-size:26px;font-family:sans-serif;fill:#18324b}.h{font-weight:600;font-size:18px;font-family:sans-serif;fill:#18324b}.b{font-size:15px;font-family:sans-serif;fill:#334e68}.l{fill:none;stroke:#52657a;stroke-width:3;marker-end:url(#arrow)}.f{fill:none;stroke:#7657a5;stroke-width:2.5;stroke-dasharray:8 6;marker-end:url(#arrow)}.a{fill:#e8f1fb;stroke:#3f78a8;stroke-width:2}.g{fill:#e8f6f1;stroke:#3f8b72;stroke-width:2}.o{fill:#fff3df;stroke:#b7791f;stroke-width:2}.p{fill:#f1edfb;stroke:#7657a5;stroke-width:2}.r{fill:#fbeceb;stroke:#b85c57;stroke-width:2}</style></defs>
-<rect width="1500" height="470" fill="#f8fafc"/><text x="750" y="42" text-anchor="middle" class="t">安全复用只发生在同一命名空间的连续完整块上</text>
-<rect x="35" y="120" width="220" height="105" rx="14" class="a"/><text x="145" y="157" text-anchor="middle" class="h">共享前缀请求</text><text x="145" y="187" text-anchor="middle" class="b">相同开头词元</text>
-<rect x="300" y="120" width="250" height="105" rx="14" class="o"/><text x="425" y="157" text-anchor="middle" class="h">核对缓存命名空间</text><text x="425" y="187" text-anchor="middle" class="b">模型、模板、适配器与位置</text>
-<rect x="595" y="120" width="220" height="105" rx="14" class="g"/><text x="705" y="157" text-anchor="middle" class="h">切分完整块</text><text x="705" y="187" text-anchor="middle" class="b">完整前缀入键；尾块另算</text>
-<rect x="860" y="120" width="220" height="105" rx="14" class="g"/><text x="970" y="157" text-anchor="middle" class="h">累计连续命中</text><text x="970" y="187" text-anchor="middle" class="b">首个未命中处停止</text>
-<rect x="1125" y="120" width="220" height="105" rx="14" class="p"/><text x="1235" y="157" text-anchor="middle" class="h">复用缓存状态</text><text x="1235" y="187" text-anchor="middle" class="b">跳过已命中的 Prefill</text>
-<path d="M255 173H300" class="l"/><path d="M550 173H595" class="l"/><path d="M815 173H860" class="l"/><path d="M1080 173H1125" class="l"/>
-<rect x="860" y="320" width="220" height="90" rx="14" class="o"/><text x="970" y="354" text-anchor="middle" class="h">计算未命中部分</text><text x="970" y="382" text-anchor="middle" class="b">Prefill 后写入新块</text><path d="M970 225V320" class="l"/>
-<rect x="1125" y="320" width="220" height="90" rx="14" class="r"/><text x="1235" y="354" text-anchor="middle" class="h">容量不足时驱逐</text><text x="1235" y="382" text-anchor="middle" class="b">仅淘汰可安全释放的旧块</text><path d="M1080 365H1125" class="l"/><path d="M1235 320V275H705V225" class="f"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">相同历史前缀决定哪些 KV 可以复用</title><desc id="desc">核对命名空间后匹配从开头连续命中的完整块；命中状态与重新计算的后缀共同支持后续生成。空闲容量决定新块怎样保留。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#52657a"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:15px;font-weight:400;fill:#334e68}.title{font-size:25px;font-weight:700;fill:#18324b}.h{font-size:18px;font-weight:600;fill:#18324b}.small{font-size:14px}.edge{fill:none;stroke:#52657a;stroke-width:2.5;marker-end:url(#arrow)}.feedback{fill:none;stroke:#7657a5;stroke-width:2;stroke-dasharray:7 5;marker-end:url(#arrow)}</style></defs>
+<rect width="1500" height="470" fill="#f8fafc"/><text x="750" y="42" text-anchor="middle" class="title">相同历史前缀决定哪些 KV 可以复用</text>
+<rect x="35" y="115" width="220" height="100" rx="14" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="145" y="150" text-anchor="middle" class="h">共享前缀请求</text><text x="145" y="180" text-anchor="middle">相同开头词元</text>
+<rect x="305" y="115" width="220" height="100" rx="14" fill="#fff3df" stroke="#b7791f" stroke-width="2"/><text x="415" y="150" text-anchor="middle" class="h">核对命名空间</text><text x="415" y="180" text-anchor="middle">权重、模板、位置等</text>
+<rect x="575" y="115" width="270" height="100" rx="14" fill="#e8f6f1" stroke="#3f8b72" stroke-width="2"/><text x="710" y="150" text-anchor="middle" class="h">匹配连续完整前缀</text><text x="710" y="180" text-anchor="middle">首个未命中处停止</text>
+<rect x="895" y="115" width="250" height="100" rx="14" fill="#e8f6f1" stroke="#3f8b72" stroke-width="2"/><text x="1020" y="150" text-anchor="middle" class="h">复用已命中状态</text><text x="1020" y="180" text-anchor="middle">省去对应位置的预填充</text>
+<rect x="1200" y="115" width="255" height="100" rx="14" fill="#f1edfb" stroke="#7657a5" stroke-width="2"/><text x="1327.5" y="150" text-anchor="middle" class="h">继续生成</text><text x="1327.5" y="180" text-anchor="middle">结合历史 KV 与新状态</text>
+<path d="M255 165H305" class="edge"/>
+<path d="M525 165H575" class="edge"/>
+<path d="M845 165H895" class="edge"/>
+<path d="M1145 165H1200" class="edge"/>
+<rect x="575" y="310" width="270" height="100" rx="14" fill="#fff3df" stroke="#b7791f" stroke-width="2"/><text x="710" y="345" text-anchor="middle" class="h">预填充未命中后缀</text><text x="710" y="375" text-anchor="middle">生成本次新增 KV</text>
+<rect x="895" y="310" width="250" height="100" rx="14" fill="#f1edfb" stroke="#7657a5" stroke-width="2"/><text x="1020" y="345" text-anchor="middle" class="h">保留可复用新块</text><text x="1020" y="375" text-anchor="middle">受物理容量与引用约束</text>
+<rect x="35" y="310" width="490" height="100" rx="14" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="280" y="345" text-anchor="middle" class="h">每块 2 个词元的例子</text><text x="280" y="375" text-anchor="middle">旧 [9,9,5,6] 与新 [1,2,5,6] 的末块历史不同</text>
+<path d="M710 215V310" class="edge"/>
+<path d="M845 360H895" class="edge"/>
+<path d="M845 335H865V270H1327V215" class="edge"/>
+<text x="1100" y="260" text-anchor="middle" class="small">新状态参与当前生成</text>
+<path d="M1145 385H1480V80H710V115" class="feedback"/>
+<text x="1060" y="70" text-anchor="middle" class="small">保留的新块供后续请求匹配</text>
+<text x="865" y="450" text-anchor="middle" class="small">保留新块前核对容量；需要时回收可安全释放的旧块</text>
 </svg>

@@ -66,5 +66,5 @@
 |:---|:---|
 | SFT、DPO、GRPO、PPO、奖励与优势 | [后训练优化公式索引](../post_training_optimization/formula_reference.md) |
 | All-Reduce、Reduce-Scatter、并行切分与扩展效率 | [通信与并行](../communication_parallelism/intro.md) |
-| 吞吐、延迟、分位数、Roofline 与回归阈值 | [性能分析](../performance_analysis/intro.md) |
+| 吞吐、延迟、分位数、Roofline 与回归阈值 | [性能优化公式索引](../performance_optimization/formula_reference.md) |
 | 量化范围、缩放、校准误差与低比特表示 | [量化与压缩](../quantization_compression/intro.md) |

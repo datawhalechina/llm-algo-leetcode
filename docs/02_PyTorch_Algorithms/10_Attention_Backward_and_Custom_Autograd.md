@@ -14,7 +14,7 @@
 
 ## 本节导读
 
-Attention 的前向计算把 $Q$、$K$、$V$ 组合成输出；反向传播沿相反的依赖关系，把输出梯度分配给 Value、概率、打分矩阵以及 Query/Key。每条分支依赖不同的前向状态，因此梯度公式和状态保存需要一起分析。
+Attention 的前向计算把 $Q$、 $K$、 $V$ 组合成输出；反向传播沿相反的依赖关系，把输出梯度分配给 Value、概率、打分矩阵以及 Query/Key。每条分支依赖不同的前向状态，因此梯度公式和状态保存需要一起分析。
 
 本节先建立完整梯度链，再拆解矩阵乘法、Softmax 和缩放点积的局部反向，最后核对保存状态的容量代价。完成后，你将能用自动求导与数值梯度验证手写 backward，并判断融合实现减少了哪些中间状态。
 
@@ -40,7 +40,7 @@ Attention 的前向计算把 $Q$、$K$、$V$ 组合成输出；反向传播沿�
 
 ## Step 1：dO 如何分解为 dV、dP、dS、dQ 与 dK
 
-把 Attention 看成一条依赖链：前向阶段由 $Q、K、V$ 形成 $S$、$P$ 和 $O$；反向阶段从输出梯度 $dO$ 出发，先分成 $dV$ 与 $dP$，再经过 $dS$ 回到 $dQ$ 和 $dK$。其中 $dO$ 是这条反向链的起点。
+把 Attention 看成一条依赖链：前向阶段由 $Q、K、V$ 形成 $S$、 $P$ 和 $O$；反向阶段从输出梯度 $dO$ 出发，先分成 $dV$ 与 $dP$，再经过 $dS$ 回到 $dQ$ 和 $dK$。其中 $dO$ 是这条反向链的起点。
 
 先把每个量的形状和流向对齐，再把梯度依赖、保存状态和显存账本放到同一条链上观察。
 
@@ -79,18 +79,18 @@ $$ dK = dS^T \cdot Q \cdot \frac{1}{\sqrt{d}} $$
 
 ## Step 3：saved tensors 与反向显存代价
 
-反向计算需要前向阶段留下部分中间状态。若 $Q、K、V\in\mathbb R^{B\times N\times d}$、$P\in\mathbb R^{B\times N\times N}$，每个元素占 $b$ 字节，则教学版显式路径的保存容量可估为：
+反向计算需要前向阶段留下部分中间状态。若 $Q、K、V\in\mathbb R^{B\times N\times d}$、 $P\in\mathbb R^{B\times N\times N}$，每个元素占 $b$ 字节，则教学版显式路径的保存容量可估为：
 
 $$
 C_{saved}=b\left(3BNd+BN^2\right).
 $$
 
-其中 $B$ 是 batch，$N$ 是序列长度，$d$ 是 head 维度；$BN^2$ 项说明完整概率矩阵会随序列长度二次增长。再用 `numel × element_size` 可在代码中复核这一理论容量。这个账本用于解释压力来源，不等同于 CUDA 峰值。若反向仍需要归一化结果，就要思考能否不保存完整的 $P$，而是在分块计算中保留足够的统计量。FlashAttention 通过分块计算、online softmax 和片上数据复用，改变了中间状态的保存与搬运方式；实际显存和速度收益仍需结合 GPU、序列长度、dtype 和 workload 测量。
+其中 $B$ 是 batch， $N$ 是序列长度， $d$ 是 head 维度； $BN^2$ 项说明完整概率矩阵会随序列长度二次增长。再用 `numel × element_size` 可在代码中复核这一理论容量。这个账本用于解释压力来源，不等同于 CUDA 峰值。若反向仍需要归一化结果，就要思考能否不保存完整的 $P$，而是在分块计算中保留足够的统计量。FlashAttention 通过分块计算、online softmax 和片上数据复用，改变了中间状态的保存与搬运方式；实际显存和速度收益仍需结合 GPU、序列长度、dtype 和 workload 测量。
 
 | 前向状态或策略 | 反向用途 | 需要关注的代价 | 后续机制 |
 | --- | --- | --- | --- |
 | $Q / K / V$ | 回到输入投影的梯度 | 保存量随 batch、序列长度和 head 维度变化 | checkpoint 可选择重算部分状态 |
-| $P$ | 计算 $dV$、$dP$ 并穿过 Softmax | 形状含 $N×N$，可能增加激活显存和 HBM 读写 | FlashAttention 避免显式保存完整 $P$ |
+| $P$ | 计算 $dV$、 $dP$ 并穿过 Softmax | 形状含 $N×N$，可能增加激活显存和 HBM 读写 | FlashAttention 避免显式保存完整 $P$ |
 | 只保存边界或重算 | 在反向阶段恢复中间结果 | 用额外计算换保存空间 | activation checkpointing / online softmax |
 | 理论账本 | 统计各状态的 numel 与 dtype 字节数 | 只能说明保存对象的容量下界 | [43 统一训练内存账本](./43_Unified_Training_Memory_Ledger.md) 将其映射到完整 step 生命周期 |
 
@@ -102,10 +102,10 @@ $$
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 | --- | --- | --- | --- |
-| TODO 1：回传 Value 分支<br>`value_gradient` | 从输出梯度和概率得到 `dV` | batch、序列和特征维保持对齐 | `test_value_gradient` 对照局部自动求导 |
-| TODO 2：回传概率分支<br>`probability_gradient` | 从输出梯度和 Value 得到 `dP` | 输出形状必须与概率矩阵一致 | `test_probability_gradient` 对照局部自动求导 |
-| TODO 3：穿过 Softmax<br>`softmax_backward` | 用行内加权和把 `dP` 转成 `dS` | 每行梯度和接近零，结果保持有限 | `test_softmax_backward` 对照原生 Softmax |
-| TODO 4：回传 Query/Key<br>`query_key_gradients` | 把 `dS` 和缩放因子传回 Q/K | 两条输入支路均包含相同 scale | `test_query_key_gradients` 对照缩放点积自动求导 |
+| TODO 1：回传 Value 分支<br>`value_gradient` | 从输出梯度和概率得到 `dV` | batch、序列和特征维保持对齐 | 用局部自动求导核对 `dV` 的数值与形状 |
+| TODO 2：回传概率分支<br>`probability_gradient` | 从输出梯度和 Value 得到 `dP` | 输出形状必须与概率矩阵一致 | 用局部自动求导核对 `dP` 的数值与形状 |
+| TODO 3：穿过 Softmax<br>`softmax_backward` | 用行内加权和把 `dP` 转成 `dS` | 每行梯度和接近零，结果保持有限 | 对照原生 Softmax 反向结果，并检查每行梯度和为零 |
+| TODO 4：回传 Query/Key<br>`query_key_gradients` | 把 `dS` 和缩放因子传回 Q/K | 两条输入支路均包含相同 scale | 对照缩放点积自动求导核对 `dQ` 与 `dK`，并用 `gradcheck` 检查组合反向 |
 
 
 ```python
@@ -228,7 +228,7 @@ class CustomAttention(torch.autograd.Function):
 
 ## 测试
 
-运行下方 CPU 机制测试，依次检查 Attention 前向、$dQ/dK/dV$、Softmax 反向的数值梯度，以及输入形状契约。
+运行下方 CPU 机制测试，依次检查 Attention 前向、 $dQ/dK/dV$、Softmax 反向的数值梯度，以及输入形状契约。
 
 ```python
 # 每个测试函数对应一段局部梯度，组合测试再检查完整自定义 backward。

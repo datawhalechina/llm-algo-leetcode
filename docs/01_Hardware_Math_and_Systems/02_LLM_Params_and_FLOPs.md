@@ -29,50 +29,44 @@
 - [Group 0B: PyTorch Tensors and Autograd | 0B: PyTorch 张量与自动求导](../00_Prerequisites/0B.md)
 
 ---
-## Q1：假设隐藏层维度为 $d$，词表大小为 $V$。请推导一个 Decoder 的总参数量，并比较标准 FFN 与 SwiGLU。
+## Q1：如何根据隐藏维度、词表和层数计算Decoder参数量？
 
+先选定一个简化结构：隐藏维度为 $d$，词表大小为 $V$，层数为 $L$；注意力使用多头注意力（MHA），每块有两个仅含缩放向量的归一化层。计算中省略偏置和末尾归一化层，词嵌入与输出头默认不共享。
 
-我们把 Transformer 拆解为三大部分（忽略极小的 bias 和 LayerNorm 的权重，它们对百亿参数的占比不到千分之一）：
+**1. 词嵌入与输出头**
 
-**1. 嵌入层 (Embedding Layer) 与 输出层 (LM Head)**
-- Token Embedding: 形状 $[V, d]$，参数量为 $V \times d$。
-- LM Head (输出映射): 形状 $[d, V]$，参数量为 $V \times d$。
-- *(注：很多模型如 Gemma/Qwen 会共享这两个权重，参数量减半。这里我们假设不共享)*。
+词嵌入和输出头各有 $Vd$ 个参数。共享两者时只减少一份 $Vd$，而不是整个模型的参数量减半。
 
-**2. 注意力机制 (Multi-Head Attention, MHA)**
-在每个 Decoder 块中：
-- 投影 Q, K, V：三个形状为 $[d, d]$ 的矩阵。参数量 $3d^2$。
-- 投影 Output (O)：一个形状为 $[d, d]$ 的矩阵。参数量 $d^2$。
-- **MHA 总参数量 = $4d^2$**。
-*(如果采用 GQA，K 和 V 的参数量会大幅减少，这里按最原始的 MHA 计算)*。
+**2. 注意力投影**
 
-**3. 前馈神经网络 (Feed Forward Network, FFN / MLP)**
-在标准 GPT 架构中，隐藏层会先升维到 $4d$，再降维回 $d$：
-- 升维矩阵 $W_{up}$：$[d, 4d]$，参数量 $4d^2$。
-- 降维矩阵 $W_{down}$：$[4d, d]$，参数量 $4d^2$。
-- **FFN 总参数量 = $8d^2$**。
-*(如果在 LLaMA 中使用 SwiGLU，通常会把中间维度缩放到约 $\frac{8}{3}d$；虽然有 3 个矩阵，但总参数量仍约为 $3 \times \frac{8}{3}d^2 = 8d^2$。如果直接使用 $4d$ 作为 SwiGLU 中间维度，参数量会变成 $12d^2$，不能与标准 FFN 的公式混用。)*
+Q、K、V和输出投影各有一个 $d \times d$ 矩阵，因此每块共有 $4d^2$ 个注意力参数。分组查询注意力（GQA）会改变K、V投影的大小，需要按实际头数另算。
 
-**综上所述：**
-- 一个 Block 的参数量 = $4d^2$ (Attn) + $8d^2$ (MLP) = **$12d^2$**。
-- 总参数量 $\approx 2Vd + L \times 12d^2$。
+**3. 前馈网络与归一化**
 
-*以一个约 7B 参数规模的配置为例：$d=4096, L=32, V=32000$*
-*Block 参数 = $32 \times 12 \times 4096^2 \approx 6.4 \text{ Billion}$*
-*Embedding = $2 \times 32000 \times 4096 \approx 0.26 \text{ Billion}$*
-*总计约 6.7B，也就是所谓的 7B 模型！*
+设前馈中间维度为 $m$。标准前馈网络（FFN）有升维、降维两个矩阵，参数量为 $2dm$；SwiGLU多一个门控投影，共 $3dm$。SwiGLU可理解为一条激活分支与一条线性分支逐元素相乘后，再投影回隐藏维度。每块两个归一化缩放向量另占 $2d$ 个参数。
 
-### Q1小验证：参数量计算
+标准FFN取 $m=4d$，或SwiGLU取 $m \approx 8d/3$ 时，前馈参数均约为 $8d^2$。省略较小的归一化项，可以得到常用近似：
 
-运行参考函数，显式选择标准 FFN 或 SwiGLU，比较词嵌入是否共享时的参数量。断言失败会直接报错，便于定位公式或实现偏差。
+$$
+P \approx 2Vd + 12Ld^2.
+$$
+
+代码会计入 $2Ld$ 个归一化参数，并使用实际整数中间维度。用 $V=10,d=6,L=1$、标准FFN的 $m=24$ 手算：词嵌入与输出头120，注意力144，前馈288，归一化12，合计564；省略归一化时为552。SwiGLU取 $m=16$ 时，前馈同样有288个参数。
+
+较大配置沿用同一公式： $V=32000,d=4096,L=32$、SwiGLU中间维度11008。这里的11008是显式配置，不把它替换成未经取整的 $8d/3$。
+
+### Q1小验证：从同一配置核对参数量
+
+先复现564个参数的小例子，再只改变前馈结构或词嵌入共享方式。归一化项与前馈矩阵数分别进入断言。
 
 
 ```python
 def calculate_transformer_params(vocab_size, hidden_dim, num_layers, intermediate_size=None, tie_embeddings=False, ffn_type='swiglu'):
     """按 dense Decoder-only Transformer 的简化结构估算参数量。
 
-    忽略 bias、具体 norm 变体和 MoE 路由差异；结果用于数量级预算，
-    不替代具体模型 config 或 checkpoint 的参数统计。
+    使用 MHA，每块计入两个仅含缩放向量的归一化层；忽略 bias 和末尾 norm。
+    未给定中间维度时，dense 取 4d，SwiGLU 将 8d/3 四舍五入为整数，
+    不额外模拟硬件对齐。结果用于数量级预算。
     ffn_type='dense' 使用两个 FFN 矩阵；ffn_type='swiglu' 使用三个矩阵。
     """
     if min(vocab_size, hidden_dim, num_layers) <= 0:
@@ -98,6 +92,13 @@ def calculate_transformer_params(vocab_size, hidden_dim, num_layers, intermediat
 
 ```python
 def test_calculate_transformer_params():
+    dense_small = calculate_transformer_params(10, 6, 1, ffn_type='dense')
+    swiglu_small = calculate_transformer_params(10, 6, 1, intermediate_size=16)
+    assert dense_small == 120 + 144 + 288 + 12 == 564
+    assert swiglu_small == dense_small
+    assert dense_small - (2 * 10 * 6 + 12 * 6**2) == 12
+    assert calculate_transformer_params(10, 6, 1, tie_embeddings=True) == 504
+
     result = calculate_transformer_params(1000, 64, 2, 256, tie_embeddings=True)
     assert result == 195328, f"错误：期望 195328，实际 {result}"
 
@@ -107,7 +108,7 @@ def test_calculate_transformer_params():
     assert dense == 162560, f"标准 FFN 参数量不符合预期，实际 {dense}"
 
     result = calculate_transformer_params(32000, 4096, 32, 11008, tie_embeddings=False)
-    assert result > 6000000000, f"错误：LLaMA 级别模型参数量应大于 6B，实际 {result}"
+    assert result == 6_738_411_520, f"7B级教学配置参数量与逐项计算不符：{result}"
 
     print("✅ 参数量函数测试通过！")
 
@@ -127,7 +128,7 @@ intermediate_size = 11008
 
 total_params = calculate_transformer_params(vocab_size, hidden_dim, num_layers, intermediate_size, tie_embeddings=False)
 print(f"估算参数量: {total_params / 1e9:.2f}B")
-print("提示：不同实现会因为是否共享词嵌入、是否计入偏置而略有差异。")
+print("当前配置：MHA、三矩阵SwiGLU、每块两个归一化向量、词嵌入与输出头不共享。")
 ```
 
 ## Q2：已知参数量和 token 数，一次前向需要多少 FLOPs？
@@ -265,10 +266,11 @@ scenarios = [
     ('1x A100 80GB', 312, 1, 0.35),
     ('8x A100 80GB', 312, 8, 0.35),
     ('1000x A100 80GB', 312, 1000, 0.35),
-    ('8x H100 80GB', 500, 8, 0.45),
+    ('8卡假设峰值500 TFLOP/s', 500, 8, 0.45),
 ]
 
-print('LLaMA-7B 训练时间粗估（1T tokens）：')
+assert abs(estimate_training_time(7, 1_000_000_000_000, 312, 1000, 0.35) / 24 - 4.451566951566952) < 1e-9
+print('7B训练计算时间粗估（1T tokens；峰值与效率为给定条件，不检查显存容量）：')
 print('-' * 70)
 for name, gpu_tflops, num_gpus, eff in scenarios:
     hours = estimate_training_time(7, 1_000_000_000_000, gpu_tflops, num_gpus, eff)
@@ -282,21 +284,21 @@ for name, gpu_tflops, num_gpus, eff in scenarios:
 
 - **理论算力 (Peak FLOPs)**：显卡说明书上写的算力。比如 A100 BF16 理论峰值是 312 TFLOPs（每秒执行 312 万亿次浮点运算）。
 - **实际算力 (Observed FLOPs)**：即我们用 $6PT$ 算出的整个训练所需的理论运算量，除以跑完这些步骤所花的**实际时间**。
-- **MFU = 实际模型 FLOPs / 硬件理论峰值 FLOPs**。实际模型 FLOPs 通常需要结合模型结构和 token 数估算，不能直接把一个时间占比当成 MFU。
+- **MFU = 模型FLOPs ÷ 实际秒数 ÷ 硬件峰值FLOP/s**。三项须覆盖同一范围：计算整个集群的模型工作量时，分母使用参与设备的峰值之和；计算单卡工作量时，使用单卡峰值。
 
 **为什么 MFU 很难达到 100%？**
 因为在真正的训练集群中，存在 **Memory-bound (显存墙)** 和 **Communication (通信瓶颈)**。GPU 很多时间在等待数据从内存搬运过来，或者在等其他机器的 All-Reduce 数据传过来，并没有在做有效的乘加运算。
 
 MFU 没有脱离模型、精度、硬件、并行方式和统计口径的通用合格线。较低的 MFU 只能说明需要继续检查，不能单独证明通信或 I/O 是主瓶颈；应把它与时间线、访存、通信和输入流水线记录一起交给性能分析。
 
-### Q4小验证：计算时间占比与瓶颈分解
+### Q4小验证：分别计算MFU和时间占比
 
-把计算、显存等待和通信等待拆开，观察时间线上哪些部分在拖慢执行。下面同时给出 MFU 的公式估算和时间线占比：前者使用模型 FLOPs、实际耗时与硬件峰值，后者只描述时间线上计算与等待的比例，两者不能互相替代。
+先比较单卡与8卡：工作量和硬件峰值都扩大8倍、耗时相同时，MFU应保持不变。再观察给定时间线上计算与等待的占比；这些区间按互不重叠的完成时间片段相加。
 
 
 ```python
 def calculate_mfu(model_flops, elapsed_seconds, peak_tflops):
-    """根据模型 FLOPs、实际耗时和硬件峰值估算 MFU；不是 profiler 实测值。"""
+    """用同一范围的模型 FLOPs、完成秒数和总峰值 TFLOP/s 计算 MFU。"""
     if model_flops < 0 or elapsed_seconds <= 0 or peak_tflops <= 0:
         raise ValueError('model_flops 不能为负数，elapsed_seconds 和 peak_tflops 必须为正数')
     achieved_flops = model_flops / elapsed_seconds
@@ -304,12 +306,18 @@ def calculate_mfu(model_flops, elapsed_seconds, peak_tflops):
 
 
 def compute_time_fraction(compute_ms, memory_wait_ms, comm_wait_ms):
+    """汇总非重叠的计算与等待区间；不据此推断设备瓶颈。"""
+    if min(compute_ms, memory_wait_ms, comm_wait_ms) < 0:
+        raise ValueError("时间区间须为非负数")
     total_ms = compute_ms + memory_wait_ms + comm_wait_ms
     if total_ms <= 0:
         return {'compute_time_fraction': 0.0, 'dominant_stall': 'none', 'stall_ratio': 0.0}
     compute_fraction = compute_ms / total_ms
     stalls = {'memory': memory_wait_ms, 'communication': comm_wait_ms}
-    dominant = max(stalls, key=stalls.get)
+    if memory_wait_ms == comm_wait_ms:
+        dominant = 'none' if memory_wait_ms == 0 else 'mixed'
+    else:
+        dominant = max(stalls, key=stalls.get)
     return {
         'compute_time_fraction': round(compute_fraction, 3),
         'dominant_stall': dominant,
@@ -324,7 +332,12 @@ cases = [
 for case in cases:
     print(case, '->', compute_time_fraction(*case))
 print('MFU example:', round(calculate_mfu(1e15, 10, 312), 4))
-assert 0 < calculate_mfu(1e15, 10, 312) < 1
+single_mfu = calculate_mfu(1e15, 10, 312)
+cluster_mfu = calculate_mfu(8e15, 10, 8 * 312)
+assert abs(single_mfu - 1 / 3.12) < 1e-12
+assert single_mfu == cluster_mfu
+assert compute_time_fraction(100, 0, 0)['dominant_stall'] == 'none'
+assert compute_time_fraction(100, 30, 20)['compute_time_fraction'] == 0.667
 assert compute_time_fraction(0, 0, 0)['dominant_stall'] == 'none'
 print('A high compute-time fraction does not by itself prove high MFU')
 

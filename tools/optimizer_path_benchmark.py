@@ -19,6 +19,18 @@ WORKLOADS: dict[str, dict[str, int]] = {
     "few_large": {"tensor_count": 4, "elements_per_tensor": 4_194_304},
 }
 
+EXPERIMENT_CONFIG: dict[str, Any] = {
+    "learning_rate": 1e-4,
+    "weight_decay": 0.01,
+    "seed": 42,
+    "warmup": 5,
+    "iterations": 30,
+    "repeats": 3,
+    "minimum_training_speedup": 1.05,
+    "maximum_peak_memory_increase_mb": 256.0,
+    "maximum_parameter_error": 1e-4,
+}
+
 
 def validate_optimizer_candidates(
     candidates: list[dict[str, Any]], *, learning_rate: float, weight_decay: float

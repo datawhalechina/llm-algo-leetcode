@@ -1,35 +1,63 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-labelledby="title desc">
   <title id="title">DPO 项目从输入准入到交付的完整路径</title>
-  <desc id="desc">SFT 基线、训练偏好对和独立评测对先完成准入，再经过同源策略与冻结参考、DPO 更新、独立配对复测，最终交付适配器和证据。</desc>
+  <desc id="desc">SFT 基线、训练偏好对和留出偏好对先完成准入，再经过同源策略与冻结参考、DPO 更新、留出回答打分，最终交付适配器和证据。</desc>
   <defs>
-    <marker id="blue" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#2563eb"/></marker><marker id="purple" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#7c3aed"/></marker><marker id="orange" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#ea580c"/></marker><marker id="teal" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#0f766e"/></marker><marker id="green" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#16a34a"/></marker>
+    <marker id="blue" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+<path d="M0,0 L10,5 L0,10 Z" fill="#2563eb"/>
+</marker>
+<marker id="purple" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+<path d="M0,0 L10,5 L0,10 Z" fill="#7c3aed"/>
+</marker>
+<marker id="orange" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+<path d="M0,0 L10,5 L0,10 Z" fill="#ea580c"/>
+</marker>
+<marker id="teal" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+<path d="M0,0 L10,5 L0,10 Z" fill="#0f766e"/>
+</marker>
+<marker id="green" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+<path d="M0,0 L10,5 L0,10 Z" fill="#16a34a"/>
+</marker>
     <style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#0f172a}.title{font-size:27px;font-weight:700}.head{font-size:18px;font-weight:700}.body{font-size:14px;fill:#334155}.blue,.purple,.orange,.teal,.green{fill:none;stroke-width:3}.blue{stroke:#2563eb;marker-end:url(#blue)}.purple{stroke:#7c3aed;marker-end:url(#purple)}.orange{stroke:#ea580c;marker-end:url(#orange)}.teal{stroke:#0f766e;marker-end:url(#teal)}.green{stroke:#16a34a;marker-end:url(#green)}</style>
   </defs>
   <rect width="1200" height="600" fill="#f8fafc"/>
-  <text x="600" y="42" text-anchor="middle" class="title">DPO 候选的训练、复测与交付</text>
+  <text x="600" y="42" text-anchor="middle" class="title">偏好更新后，比较同一批留出回答</text>
 
   <rect x="70" y="80" width="260" height="82" rx="14" fill="#dbeafe" stroke="#60a5fa" stroke-width="2"/>
-  <text x="200" y="112" text-anchor="middle" class="head">SFT 交付基线</text><text x="200" y="139" text-anchor="middle" class="body">模型、分词器、适配器血缘</text>
+  <text x="200" y="112" text-anchor="middle" class="head">SFT 交付基线</text>
+<text x="200" y="139" text-anchor="middle" class="body">基础模型提交与适配器版本</text>
   <rect x="470" y="80" width="260" height="82" rx="14" fill="#dbeafe" stroke="#60a5fa" stroke-width="2"/>
-  <text x="600" y="112" text-anchor="middle" class="head">训练偏好对</text><text x="600" y="139" text-anchor="middle" class="body">问题、优选回答、拒选回答</text>
+  <text x="600" y="112" text-anchor="middle" class="head">训练偏好对</text>
+<text x="600" y="139" text-anchor="middle" class="body">问题、优选与非优选回答</text>
   <rect x="870" y="80" width="260" height="82" rx="14" fill="#dbeafe" stroke="#60a5fa" stroke-width="2"/>
-  <text x="1000" y="112" text-anchor="middle" class="head">独立评测对</text><text x="1000" y="139" text-anchor="middle" class="body">未参与更新的问题集合</text>
+  <text x="1000" y="112" text-anchor="middle" class="head">留出偏好对</text>
+<text x="1000" y="139" text-anchor="middle" class="body">未参与更新的问题集合</text>
 
   <rect x="455" y="215" width="290" height="82" rx="14" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
-  <text x="600" y="247" text-anchor="middle" class="head">输入准入</text><text x="600" y="274" text-anchor="middle" class="body">核对基线身份与双层数据隔离</text>
-  <path class="blue" d="M200 162 V190 H540 V205"/><path class="blue" d="M600 162 V205"/><path class="blue" d="M1000 162 V190 H660 V205"/>
+  <text x="600" y="247" text-anchor="middle" class="head">输入准入</text>
+<text x="600" y="274" text-anchor="middle" class="body">核对基线身份与双层数据隔离</text>
+  <path class="blue" d="M200 162 V190 H540 V215"/>
+<path class="blue" d="M600 162 V215"/>
+<path class="blue" d="M1000 162 V190 H660 V215"/>
 
   <rect x="55" y="360" width="230" height="86" rx="14" fill="#ede9fe" stroke="#a78bfa" stroke-width="2"/>
-  <text x="170" y="393" text-anchor="middle" class="head">同源双模型</text><text x="170" y="420" text-anchor="middle" class="body">可更新策略 + 冻结参考</text>
+  <text x="170" y="393" text-anchor="middle" class="head">同一 SFT 起点</text>
+<text x="170" y="420" text-anchor="middle" class="body">可更新策略 + 冻结参考</text>
   <rect x="355" y="360" width="210" height="86" rx="14" fill="#ede9fe" stroke="#a78bfa" stroke-width="2"/>
-  <text x="460" y="393" text-anchor="middle" class="head">DPO 更新</text><text x="460" y="420" text-anchor="middle" class="body">固定预算与随机条件</text>
+  <text x="460" y="393" text-anchor="middle" class="head">DPO 更新</text>
+<text x="460" y="420" text-anchor="middle" class="body">平均词元分数构造目标</text>
   <rect x="635" y="360" width="230" height="86" rx="14" fill="#ccfbf1" stroke="#14b8a6" stroke-width="2"/>
-  <text x="750" y="393" text-anchor="middle" class="head">独立配对复测</text><text x="750" y="420" text-anchor="middle" class="body">准确率、均值与尾部边际</text>
+  <text x="750" y="393" text-anchor="middle" class="head">留出回答评分</text>
+<text x="750" y="420" text-anchor="middle" class="body">正边际率、均值与最小值</text>
   <rect x="935" y="360" width="210" height="86" rx="14" fill="#dcfce7" stroke="#22c55e" stroke-width="2"/>
-  <text x="1040" y="393" text-anchor="middle" class="head">交付候选</text><text x="1040" y="420" text-anchor="middle" class="body">适配器、哈希、评测证据</text>
-  <path class="purple" d="M545 297 V325 H170 V350"/><path class="purple" d="M285 403 H345"/><path class="teal" d="M565 403 H625"/><path class="green" d="M865 403 H925"/>
+  <text x="1040" y="393" text-anchor="middle" class="head">保留候选</text>
+<text x="1040" y="420" text-anchor="middle" class="body">适配器、哈希、评测证据</text>
+  <path class="purple" d="M545 297 V325 H170 V360"/>
+<path class="purple" d="M285 403 H355"/>
+<path class="teal" d="M565 403 H635"/>
+<path class="green" d="M865 403 H935"/>
 
   <rect x="310" y="500" width="580" height="58" rx="12" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2"/>
-  <text x="600" y="526" text-anchor="middle" class="head">固定比较条件</text><text x="600" y="548" text-anchor="middle" class="body">同一评测问题、分词器、序列上限与评分方法</text>
-  <path class="teal" d="M600 500 V472 H750 V456"/>
+  <text x="600" y="526" text-anchor="middle" class="head">固定比较条件</text>
+<text x="600" y="548" text-anchor="middle" class="body">同一评测问题、分词器、序列上限与评分方法</text>
+  <path class="teal" stroke-dasharray="6 5" d="M600 500 V472 H750 V446"/>
 </svg>

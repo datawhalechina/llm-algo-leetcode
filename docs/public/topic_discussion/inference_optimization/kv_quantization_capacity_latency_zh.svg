@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+  <title id="title">KV量化：状态更小，单步读取与注意力仍可能更慢</title>
+  <desc id="desc">教学构造例子，同一组历史状态浮点载荷4GiB，量化载荷1GiB加缩放元数据及高精度窗口0.2GiB，共1.2GiB。每步历史读取与注意力从2毫秒变为读取计算1.2毫秒加恢复1毫秒，共2.2毫秒。容量与时间分别采用统一比例。</desc>
+  <style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d;font-size:19px}.title{font-size:27px;font-weight:700}.head{font-size:21px;font-weight:700}.note{font-size:17px;fill:#475569}.fp{fill:#dbeafe;stroke:#6b91b5}.quant{fill:#d1fae5;stroke:#6b9c8b}.extra{fill:#fef3c7;stroke:#b69b50}.panel{fill:#fff;stroke:#cbd5e1;stroke-width:1.5;rx:12}</style>
+  <rect width="1200" height="800" fill="#f7fafc"/>
+  <text x="40" y="44" class="title">同一组历史状态：容量下降，单步耗时却可能上升</text>
+  <text x="40" y="79" class="note">教学构造值。上半部比较 GiB，下半部比较 ms；各自使用相同比例，两种单位分别阅读。</text>
+  <rect x="40" y="110" width="1120" height="267" class="panel"/>
+  <text x="64" y="148" class="head">KV 状态账本：计入量化载荷、缩放信息与高精度窗口</text>
+  <text x="64" y="213">浮点</text>
+  <rect x="250" y="180" width="720" height="55" class="fp"/>
+  <text x="610" y="215" text-anchor="middle">历史 KV 载荷：4 GiB</text>
+  <text x="1000" y="215" class="head">4 GiB</text>
+  <text x="64" y="302">量化</text>
+  <rect x="250" y="269" width="180" height="55" class="quant"/>
+  <rect x="430" y="269" width="36" height="55" class="extra"/>
+  <text x="340" y="304" text-anchor="middle">载荷 1 GiB</text>
+  <text x="490" y="292">缩放信息与高精度窗口：0.2 GiB</text>
+  <text x="1000" y="304" class="head">1.2 GiB</text>
+  <text x="64" y="355" class="note">这是 KV 状态的字节账本；模型权重、执行工作区和分配器占用另行统计。</text>
+  <rect x="40" y="397" width="1120" height="267" class="panel"/>
+  <text x="64" y="435" class="head">每步历史读取与注意力：把状态恢复成本加回来</text>
+  <text x="64" y="500">浮点</text>
+  <rect x="250" y="467" width="600" height="55" class="fp"/>
+  <text x="550" y="502" text-anchor="middle">历史读取与注意力：2 ms</text>
+  <text x="1000" y="502" class="head">2 ms</text>
+  <text x="64" y="589">量化</text>
+  <rect x="250" y="556" width="360" height="55" class="quant"/>
+  <rect x="610" y="556" width="300" height="55" class="extra"/>
+  <text x="430" y="591" text-anchor="middle">读取与计算：1.2 ms</text>
+  <text x="760" y="591" text-anchor="middle">状态恢复：1 ms</text>
+  <text x="1000" y="591" class="head">2.2 ms</text>
+  <text x="64" y="642" class="note">时间条分解本例的成本；实际恢复是否融合、与其他计算是否重叠，要按执行路径核对。</text>
+  <text x="40" y="713" class="head">容量收益与延迟收益分别判断，再回到请求负载</text>
+  <text x="40" y="749">新增容量若支持目标上下文或更多驻留请求，还需结合质量、排队与吞吐比较整体收益。</text>
+  <text x="40" y="782" class="note">该时间范围只覆盖每步历史读取与注意力，整次模型前向与请求端到端时间另行记录。</text>
+</svg>

@@ -2,13 +2,13 @@
   <title id="title">量化产物的三层准入证据</title>
   <desc id="desc">同一候选包分别产生静态契约、数据与质量、真实加载三层证据，三层结果汇合为产物准入状态。</desc>
   <style>
-    text{font-family:"Noto Sans SC","Microsoft YaHei",Arial,sans-serif;fill:#172033}
+    text{font-family:"Noto Sans CJK SC","Microsoft YaHei",Arial,sans-serif;fill:#172033}
     .title{font-size:24px;font-weight:700}.sub{font-size:14px;fill:#536174}
     .label{font-size:16px;font-weight:700}.body{font-size:13px;fill:#45556d}.tiny{font-size:12px;fill:#536174}
     .box{stroke:#93a3b8;stroke-width:1.5;rx:14}.arrow{fill:none;stroke:#52657d;stroke-width:2.2;marker-end:url(#arrow)}
   </style>
   <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse">
       <path d="M0,0 L10,5 L0,10 Z" fill="#52657d"/>
     </marker>
   </defs>
@@ -20,9 +20,9 @@
   <text x="560" y="132" class="label" text-anchor="middle">标准候选包</text>
   <text x="560" y="153" class="body" text-anchor="middle">固定产物身份与输入证据</text>
 
-  <path d="M500 172 C500 202 196 196 196 228" class="arrow"/>
-  <path d="M560 172 V228" class="arrow"/>
-  <path d="M620 172 C620 202 924 196 924 228" class="arrow"/>
+  <path d="M500 172 C500 202 196 196 196 238" class="arrow"/>
+  <path d="M560 172 V238" class="arrow"/>
+  <path d="M620 172 C620 202 924 196 924 238" class="arrow"/>
 
   <rect x="68" y="238" width="256" height="120" class="box" fill="#eaf8f1"/>
   <text x="196" y="268" class="label" text-anchor="middle">静态契约</text>
@@ -34,17 +34,17 @@
   <text x="560" y="268" class="label" text-anchor="middle">数据与质量</text>
   <text x="560" y="293" class="body" text-anchor="middle">校准与评测来源可追溯</text>
   <text x="560" y="315" class="body" text-anchor="middle">指标方向与质量阈值通过</text>
-  <text x="560" y="339" class="tiny" text-anchor="middle">回答：能力证据是否可信</text>
+  <text x="560" y="339" class="tiny" text-anchor="middle">回答：候选评测是否达标</text>
 
   <rect x="796" y="238" width="256" height="120" class="box" fill="#f3ebff"/>
   <text x="924" y="268" class="label" text-anchor="middle">真实加载</text>
-  <text x="924" y="293" class="body" text-anchor="middle">目标 backend 成功加载</text>
-  <text x="924" y="315" class="body" text-anchor="middle">往返生成、显存与失败记录</text>
+  <text x="924" y="293" class="body" text-anchor="middle">目标后端成功加载</text>
+  <text x="924" y="315" class="body" text-anchor="middle">往返生成与运行失败记录</text>
   <text x="924" y="339" class="tiny" text-anchor="middle">回答：产物是否可以执行</text>
 
-  <path d="M196 358 C196 370 500 366 500 372" class="arrow"/>
-  <path d="M560 358 V372" class="arrow"/>
-  <path d="M924 358 C924 370 620 366 620 372" class="arrow"/>
+  <path d="M196 358 C196 370 500 366 500 382" class="arrow"/>
+  <path d="M560 358 V382" class="arrow"/>
+  <path d="M924 358 C924 370 620 366 620 382" class="arrow"/>
 
   <rect x="420" y="382" width="280" height="52" class="box" fill="#e8f0ff"/>
   <text x="560" y="404" class="label" text-anchor="middle">产物准入状态</text>

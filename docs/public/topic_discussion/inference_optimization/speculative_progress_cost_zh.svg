@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="title desc">
+  <title id="title">一轮更长，平均每词元仍可能更快</title>
+  <desc id="desc">教学示例：普通解码每词元10毫秒，三个词元30毫秒。投机一轮草稿4毫秒、验证12毫秒、其他2毫秒，共18毫秒。提交三个词元时每词元6毫秒，提交一个时18毫秒。</desc>
+  <style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d;font-size:19px}.title{font-size:28px;font-weight:700}.head{font-size:21px;font-weight:700}.note{font-size:17px;fill:#475569}.label{font-size:18px;font-weight:700}.frame{fill:#fff;stroke:#cbd5e1;stroke-width:1.5;rx:12}</style>
+  <rect width="1200" height="680" fill="#f7fafc"/>
+  <text x="32" y="44" class="title">比较每个提交词元的成本，而不只看一轮接受了多少</text>
+  <text x="32" y="78" class="note">教学构造时间：串行执行，无排队与重叠；条形长度采用同一时间比例，非 GPU 实测。</text>
+  <text x="32" y="126" class="head">普通解码：提交 3 个词元需要 3 轮</text>
+  <rect x="80" y="148" width="300" height="55" fill="#dbeafe" stroke="#6b91b5"/><rect x="380" y="148" width="300" height="55" fill="#dbeafe" stroke="#6b91b5"/><rect x="680" y="148" width="300" height="55" fill="#dbeafe" stroke="#6b91b5"/>
+  <text x="230" y="183" text-anchor="middle">词元 a：10 ms</text><text x="530" y="183" text-anchor="middle">词元 b：10 ms</text><text x="830" y="183" text-anchor="middle">词元 c：10 ms</text>
+  <text x="1010" y="182" class="head">共 30 ms</text>
+  <text x="80" y="234">30 ms ÷ 3 个提交词元 = 10 ms／词元</text>
+  <text x="32" y="288" class="head">投机解码：一轮耗时 18 ms，收益取决于最终提交量</text>
+  <rect x="80" y="310" width="120" height="60" fill="#d1fae5" stroke="#6b9c8b"/><rect x="200" y="310" width="360" height="60" fill="#ede9fe" stroke="#8b80b0"/><rect x="560" y="310" width="60" height="60" fill="#fef3c7" stroke="#b69b50"/>
+  <text x="140" y="336" text-anchor="middle" class="label">草稿</text><text x="140" y="359" text-anchor="middle">4 ms</text><text x="380" y="347" text-anchor="middle">目标验证：12 ms</text>
+  <text x="650" y="335">其他处理：2 ms</text><text x="650" y="363" class="note">含采样与回退等处理</text>
+  <rect x="32" y="419" width="548" height="157" class="frame"/>
+  <text x="56" y="455" class="head">情况 A：最终提交 3 个词元</text>
+  <g fill="#d1fae5" stroke="#6b9c8b"><rect x="56" y="476" width="46" height="37" rx="5"/><rect x="114" y="476" width="46" height="37" rx="5"/><rect x="172" y="476" width="46" height="37" rx="5"/></g>
+  <text x="79" y="502" text-anchor="middle">a</text><text x="137" y="502" text-anchor="middle">b</text><text x="195" y="502" text-anchor="middle">c</text>
+  <text x="56" y="549">18 ÷ 3 = 6 ms／词元，比普通解码更快</text>
+  <rect x="604" y="419" width="564" height="157" class="frame"/>
+  <text x="628" y="455" class="head">情况 B：最终只提交 1 个词元</text>
+  <rect x="628" y="476" width="46" height="37" rx="5" fill="#fef3c7" stroke="#b69b50"/><text x="651" y="502" text-anchor="middle">a</text>
+  <text x="628" y="549">18 ÷ 1 = 18 ms／词元，比普通解码更慢</text>
+  <text x="32" y="617">多轮比较：累计生成耗时 ÷ 累计提交词元数；提交量包含协议产生的修正或追加词元。</text>
+  <text x="32" y="652" class="note">服务负载下继续观察排队、缓存占用与尾延迟，再判断请求是否整体变快。</text>
+</svg>

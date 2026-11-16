@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
   <title id="title">轨迹与策略版本生命周期</title>
-  <desc id="desc">轨迹依次经过生成、奖励、新鲜度准入、独占预留与更新、策略发布，再由新策略开始下一轮生成。</desc>
+  <desc id="desc">轨迹依次经过生成、奖励、版本与动作偏离、独占预留与更新、策略发布，再由新策略开始下一轮生成。</desc>
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto">
       <path d="M0 0L10 5L0 10Z" fill="#64748b"/>
     </marker>
     <style>
@@ -15,7 +15,7 @@
   </defs>
 
   <rect width="1500" height="470" rx="24" fill="#f8fafc"/>
-  <text x="750" y="48" text-anchor="middle" class="title">轨迹、奖励与策略版本形成闭环</text>
+  <text x="750" y="48" text-anchor="middle" class="title">轨迹怎样绑定更新，策略怎样切换版本</text>
 
   <rect x="35" y="125" width="250" height="150" rx="18" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
   <text x="160" y="178" text-anchor="middle" class="node-title">生成轨迹</text>
@@ -28,13 +28,13 @@
   <text x="455" y="238" text-anchor="middle" class="node-text">失败与未完成单独保留</text>
 
   <rect x="625" y="125" width="250" height="150" rx="18" fill="#fffbeb" stroke="#f59e0b" stroke-width="2"/>
-  <text x="750" y="178" text-anchor="middle" class="node-title">新鲜度准入</text>
+  <text x="750" y="178" text-anchor="middle" class="node-title">版本与动作偏离</text>
   <text x="750" y="211" text-anchor="middle" class="node-text">联合版本滞后与行为偏离</text>
-  <text x="750" y="238" text-anchor="middle" class="node-text">拒绝未来、过期或漂移轨迹</text>
+  <text x="750" y="238" text-anchor="middle" class="node-text">超限时按算法规则处理</text>
 
   <rect x="920" y="125" width="250" height="150" rx="18" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
   <text x="1045" y="178" text-anchor="middle" class="node-title">独占预留与更新</text>
-  <text x="1045" y="211" text-anchor="middle" class="node-text">一次轨迹只服务一次更新</text>
+  <text x="1045" y="211" text-anchor="middle" class="node-text">按更新绑定，重试复用预留</text>
   <text x="1045" y="238" text-anchor="middle" class="node-text">提交成功后进入已消费状态</text>
 
   <rect x="1215" y="125" width="250" height="150" rx="18" fill="#faf5ff" stroke="#a855f7" stroke-width="2"/>
@@ -46,6 +46,6 @@
   <path d="M580 200H625" class="flow"/>
   <path d="M875 200H920" class="flow"/>
   <path d="M1170 200H1215" class="flow"/>
-  <path d="M1340 275V350H160V278" class="flow"/>
+  <path d="M1340 275V350H160V275" class="flow"/>
   <text x="750" y="397" text-anchor="middle" class="caption">活动策略切换完成后，下一轮轨迹才登记为新的策略身份</text>
 </svg>

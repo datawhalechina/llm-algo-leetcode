@@ -1,38 +1,89 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
-  <title id="title">权重减少并不保证整体峰值下降</title>
-  <desc id="desc">构造容量对照，各自峰值时刻按同一比例绘图：基线权重64MiB和其他驻留32MiB，共96MiB；候选权重32MiB、其他驻留32MiB和新增临时区40MiB，共104MiB。</desc>
-  <defs><style>
-    .title{font-family:"Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#0f172a}
-    .subtitle{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;fill:#475569}
-    .head{font-family:"Noto Sans CJK SC",sans-serif;font-size:18px;font-weight:700;fill:#172033}
-    .body{font-family:"Noto Sans CJK SC",sans-serif;font-size:15px;fill:#334155}
-    .axis{stroke:#64748b;stroke-width:2}
-  </style></defs>
-  <rect width="1200" height="620" rx="24" fill="#f8fafc"/>
-  <text x="600" y="48" text-anchor="middle" class="title">权重更小，新增临时区仍可能抬高整体峰值</text>
-  <text x="600" y="78" text-anchor="middle" class="subtitle">构造示例，非 BF16 实测：分别取两方案各自峰值时刻，所有块使用同一容量比例</text>
-  <text x="55" y="215" class="head">基线峰值</text>
-  <g text-anchor="middle">
-    <rect x="240" y="160" width="384" height="96" fill="#bfdbfe" stroke="#2563eb" stroke-width="2"/>
-    <text x="432" y="215" class="body">权重 64 MiB</text>
-    <rect x="624" y="160" width="192" height="96" fill="#bbf7d0" stroke="#16a34a" stroke-width="2"/>
-    <text x="720" y="215" class="body">其他驻留 32 MiB</text>
-  </g>
-  <text x="1030" y="215" text-anchor="middle" class="head">合计 96 MiB</text>
-  <text x="55" y="385" class="head">候选峰值</text>
-  <g text-anchor="middle">
-    <rect x="240" y="330" width="192" height="96" fill="#bfdbfe" stroke="#2563eb" stroke-width="2"/>
-    <text x="336" y="385" class="body">权重 32 MiB</text>
-    <rect x="432" y="330" width="192" height="96" fill="#bbf7d0" stroke="#16a34a" stroke-width="2"/>
-    <text x="528" y="385" class="body">其他驻留 32 MiB</text>
-    <rect x="624" y="330" width="240" height="96" fill="#fde68a" stroke="#d97706" stroke-width="2"/>
-    <text x="744" y="385" class="body">新增临时区 40 MiB</text>
-  </g>
-  <text x="1030" y="385" text-anchor="middle" class="head">合计 104 MiB</text>
-  <line x1="240" y1="490" x2="912" y2="490" class="axis"/>
-  <g class="body" text-anchor="middle">
-    <text x="240" y="520">0</text><text x="432" y="520">32</text>
-    <text x="624" y="520">64</text><text x="816" y="520">96</text><text x="912" y="520">112</text>
-  </g>
-  <text x="1080" y="560" text-anchor="end" class="body">容量（MiB）→</text>
-</svg>
+<title id="title">临时区生命周期怎样改变候选峰值</title><desc id="desc">构造驻留示例：基线权重64MiB、其他32MiB，三个阶段均96MiB。候选权重32、其他32，临时区创建前64，中间临时区40共驻留时104，释放后回到64。候选权重少32，但整体峰值增加8MiB。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto">
+<path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:26px;font-weight:700}.group{font-size:18px;font-weight:700}.head{font-size:17px;font-weight:700}.body{font-size:15px;font-weight:400}.sub{font-size:16px;fill:#475569}.flow{fill:none;stroke:#475569;stroke-width:2.5;marker-end:url(#arrow)}</style></defs>
+<rect x="0" y="0" width="1200" height="620" rx="12" fill="#f8fafc" stroke="#f8fafc" stroke-width="2" class="decoration" data-layout-role="decoration"/>
+<text x="45" y="48" class="title" text-anchor="start">临时区只驻留一段时间，也可能把整体峰值抬高</text>
+<text x="45" y="80" class="sub" text-anchor="start">构造驻留示例：按各阶段同时存活的对象求和；阶段位置表示事件顺序，不表示持续时长。</text>
+<rect x="55" y="110" width="18" height="18" rx="2" fill="#bfdbfe" stroke="#2563eb" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="82" y="125" class="body" text-anchor="start">权重：基线64／候选32MiB</text>
+<rect x="405" y="110" width="18" height="18" rx="2" fill="#bbf7d0" stroke="#16a34a" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="432" y="125" class="body" text-anchor="start">其他驻留：32MiB</text>
+<rect x="755" y="110" width="18" height="18" rx="2" fill="#fde68a" stroke="#d97706" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="782" y="125" class="body" text-anchor="start">临时区：40MiB，仅中间阶段</text><line x1="170" y1="190" x2="170" y2="430" stroke="#64748b" stroke-width="2"/><line x1="170" y1="430" x2="1020" y2="430" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 5"/>
+<text x="153" y="435" class="body" text-anchor="end">0</text><line x1="170" y1="366" x2="1020" y2="366" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 5"/>
+<text x="153" y="371" class="body" text-anchor="end">32</text><line x1="170" y1="302" x2="1020" y2="302" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 5"/>
+<text x="153" y="307" class="body" text-anchor="end">64</text><line x1="170" y1="238" x2="1020" y2="238" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 5"/>
+<text x="153" y="243" class="body" text-anchor="end">96</text><line x1="170" y1="206" x2="1020" y2="206" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 5"/>
+<text x="153" y="211" class="body" text-anchor="end">112</text>
+<text x="170" y="172" class="body" text-anchor="middle">MiB</text>
+<g id="phase-0-baseline-0" data-mib="64" data-layout-role="glyph-group">
+<rect x="210" y="302" width="70" height="128" rx="0" fill="#bfdbfe" stroke="#2563eb" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="245" y="371" class="body" text-anchor="middle">64</text>
+</g>
+<g id="phase-0-baseline-1" data-mib="32" data-layout-role="glyph-group">
+<rect x="210" y="238" width="70" height="64" rx="0" fill="#bbf7d0" stroke="#16a34a" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="245" y="275" class="body" text-anchor="middle">32</text>
+</g>
+<text x="245" y="226" class="head" text-anchor="middle">96MiB</text>
+<text x="245" y="455" class="body" text-anchor="middle">基线</text>
+<g id="phase-0-candidate-0" data-mib="32" data-layout-role="glyph-group">
+<rect x="300" y="366" width="70" height="64" rx="0" fill="#bfdbfe" stroke="#2563eb" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="335" y="403" class="body" text-anchor="middle">32</text>
+</g>
+<g id="phase-0-candidate-1" data-mib="32" data-layout-role="glyph-group">
+<rect x="300" y="302" width="70" height="64" rx="0" fill="#bbf7d0" stroke="#16a34a" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="335" y="339" class="body" text-anchor="middle">32</text>
+</g>
+<text x="335" y="290" class="head" text-anchor="middle">64MiB</text>
+<text x="335" y="455" class="body" text-anchor="middle">候选</text>
+<text x="290" y="490" class="head" text-anchor="middle">临时区创建前</text>
+<g id="phase-1-baseline-0" data-mib="64" data-layout-role="glyph-group">
+<rect x="510" y="302" width="70" height="128" rx="0" fill="#bfdbfe" stroke="#2563eb" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="545" y="371" class="body" text-anchor="middle">64</text>
+</g>
+<g id="phase-1-baseline-1" data-mib="32" data-layout-role="glyph-group">
+<rect x="510" y="238" width="70" height="64" rx="0" fill="#bbf7d0" stroke="#16a34a" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="545" y="275" class="body" text-anchor="middle">32</text>
+</g>
+<text x="545" y="226" class="head" text-anchor="middle">96MiB</text>
+<text x="545" y="455" class="body" text-anchor="middle">基线</text>
+<g id="phase-1-candidate-0" data-mib="32" data-layout-role="glyph-group">
+<rect x="600" y="366" width="70" height="64" rx="0" fill="#bfdbfe" stroke="#2563eb" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="635" y="403" class="body" text-anchor="middle">32</text>
+</g>
+<g id="phase-1-candidate-1" data-mib="32" data-layout-role="glyph-group">
+<rect x="600" y="302" width="70" height="64" rx="0" fill="#bbf7d0" stroke="#16a34a" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="635" y="339" class="body" text-anchor="middle">32</text>
+</g>
+<g id="phase-1-candidate-2" data-mib="40" data-layout-role="glyph-group">
+<rect x="600" y="222" width="70" height="80" rx="0" fill="#fde68a" stroke="#d97706" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="635" y="267" class="body" text-anchor="middle">40</text>
+</g>
+<text x="635" y="210" class="head" text-anchor="middle">104MiB</text>
+<text x="635" y="455" class="body" text-anchor="middle">候选</text>
+<text x="590" y="490" class="head" text-anchor="middle">临时区共驻留</text>
+<g id="phase-2-baseline-0" data-mib="64" data-layout-role="glyph-group">
+<rect x="810" y="302" width="70" height="128" rx="0" fill="#bfdbfe" stroke="#2563eb" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="845" y="371" class="body" text-anchor="middle">64</text>
+</g>
+<g id="phase-2-baseline-1" data-mib="32" data-layout-role="glyph-group">
+<rect x="810" y="238" width="70" height="64" rx="0" fill="#bbf7d0" stroke="#16a34a" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="845" y="275" class="body" text-anchor="middle">32</text>
+</g>
+<text x="845" y="226" class="head" text-anchor="middle">96MiB</text>
+<text x="845" y="455" class="body" text-anchor="middle">基线</text>
+<g id="phase-2-candidate-0" data-mib="32" data-layout-role="glyph-group">
+<rect x="900" y="366" width="70" height="64" rx="0" fill="#bfdbfe" stroke="#2563eb" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="935" y="403" class="body" text-anchor="middle">32</text>
+</g>
+<g id="phase-2-candidate-1" data-mib="32" data-layout-role="glyph-group">
+<rect x="900" y="302" width="70" height="64" rx="0" fill="#bbf7d0" stroke="#16a34a" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="935" y="339" class="body" text-anchor="middle">32</text>
+</g>
+<text x="935" y="290" class="head" text-anchor="middle">64MiB</text>
+<text x="935" y="455" class="body" text-anchor="middle">候选</text>
+<text x="890" y="490" class="head" text-anchor="middle">临时区释放后</text>
+<text x="45" y="541" class="body" text-anchor="start">候选中间阶段：权重32＋其他32＋临时区40＝104MiB；释放临时区后回到64MiB。</text>
+<text x="45" y="583" class="sub" text-anchor="start">权重减少32MiB，但整体峰值从96增至104MiB；以降低峰值为目标时，该候选未达标。</text></svg>

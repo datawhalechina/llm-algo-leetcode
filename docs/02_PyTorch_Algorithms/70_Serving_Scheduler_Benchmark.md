@@ -10,13 +10,14 @@
 
 
 ---
+
 ## 本节导读
 
 短请求和长请求排在同一队列里时，先来先服务可能让短请求久等；提高业务优先级又可能把等待转移给其他请求。比较调度策略，需要同时看到谁先开始、谁先完成，以及整组请求的吞吐是否变化。
 
 从固定请求流出发，先用 CPU 队列模型解释排序与等待，再用同一后端配对比较先到先服务和业务优先级策略。把高优先级请求的收益与低优先级请求的长尾放在一起，才能判断这次排序变化是否值得采用。
 
-**关键词：** `serving scheduler`, `TTFT`, `TPOT`, `throughput`, `fairness`, `utilization`
+**关键词：** 请求排序、首内容延迟、吞吐、等待差距、低优先级长尾
 
 ---
 <a id="runtime-environment"></a>
@@ -35,14 +36,15 @@
 - [38. Prefill/Decode Scheduling | Prefill/Decode 调度](./38_Prefill_Decode_Scheduling.md)
 
 ---
+
 ## Step 1：把请求流、准入策略与执行后端分开记录
 
-一个 Serving 调度器持续处理同一条状态链：请求到达后进入 pending，被选入 batch 后进入 active，完成后进入 completed。请求选择策略决定谁先获得执行资格；后端的连续批处理、抢占、块管理和执行内核决定这一批怎样运行。CPU 模型以整批结束作为释放边界：最慢请求决定批次窗口，批内请求在窗口结束时一起退出；真实后端的连续批处理则可在轮次边界补位。优先级策略在这里与后端实验都采用数值越小越优先的约定。
+服务调度沿请求状态安排执行：请求到达后进入等待集合（pending），被选入批次（batch）后变为活跃（active），结束后标记完成（completed）。请求选择策略决定谁先获得执行资格；后端的连续批处理、抢占、块管理和执行内核决定这一批怎样运行。CPU 模型以整批结束作为释放边界：最慢请求决定批次窗口，批内请求在窗口结束时一起退出；真实后端的连续批处理则可在轮次边界补位。优先级策略在这里与后端实验都采用数值越小越优先的约定。
 
 | 状态或动作 | 发生了什么 | 会影响什么 |
 |:---|:---|:---|
 | pending | 请求已到达、尚未获准执行 | queue wait、队列长度 |
-| 选择策略 | FIFO、shortest 或 priority 从 ready queue 选择请求 | 完成顺序与公平性 |
+| 选择策略 | 先到先服务（FIFO）、最短请求优先或业务优先级，从已到达队列选择请求 | 完成顺序与公平性 |
 | active batch | 至多 batch_size 个请求共享一次服务窗口 | 批次耗时、utilization、吞吐 |
 | completed | batch 结束后请求完成并从队列移除 | E2E、完成数与下一轮等待 |
 | 策略对照 | 对同一请求流比较 baseline 与 candidate | 是否接受、继续调优或拒绝 |
@@ -51,7 +53,7 @@
 
 ## Step 2：验证准入不变量与后端执行证据
 
-CPU 模型固定请求流与服务成本，检查请求到达后才执行、每个请求只完成一次、批次不超过容量。真实后端对照固定模型、请求流、并发、生成参数和硬件，只改变已声明的调度策略；配置记录与首 token 顺序共同用于判断策略是否生效。客户端记录了提交、首 token 与完成时间，并未直接测到服务器内部的准入时刻，因此不能把 TTFT 当作纯排队等待。
+CPU 模型固定请求流与服务成本，检查请求到达后才执行、每个请求只完成一次、批次不超过容量。真实后端对照固定模型、请求流、并发、生成参数和硬件，只改变已声明的调度策略；配置记录与首内容返回顺序共同用于判断策略是否生效。客户端记录提交、首次非空内容和完成时刻；服务端何时允许请求进入计算，需要另采后端事件。两组记录对齐后，才能分开排队与首轮执行。
 
 | 对照对象 | 固定条件 | 唯一变化 | 必须保持的不变量 |
 |:---|:---|:---|:---|
@@ -60,19 +62,18 @@ CPU 模型固定请求流与服务成本，检查请求到达后才执行、每�
 | 批次对照 | 同一请求流与选择策略 | batch_size 或 batch_speedup | batch 不超过上限；未选请求留在队列 |
 | 到达模式对照 | 同一服务成本与策略 | arrival_ms | 只有已到达请求可参与当前轮 |
 
+## Step 3：分清排队等待与首内容延迟
 
-## Step 3：分清排队等待与首 token 延迟
+请求到达、获准执行、首次收到内容和流结束，是四个不同事件。排队等待止于获准执行，首次内容返回还要经过首轮计算与传输。CPU 模型记录前两者之间的等待；后端实验则沿用客户端 TTFT 和 TPOT 字段，分别观察首次内容与之后至流结束的平均时长，后者包含收尾时间。
 
-请求到达、获准执行、收到首 token 和完成，是四个不同事件。排队等待止于获准执行；首 token 延迟（TTFT）还包含首 token 产生和传回的时间。CPU 模型只有整批服务窗口，没有首 token 事件，因此其等待值不能当作真实 TTFT；后端实验使用客户端实测 TTFT 与后续 token 平均耗时（TPOT）。
-
-吞吐变高仍可能让一部分请求等得更久。采用候选时，先确认同一请求流确实由不同策略执行，再检查完成情况、延迟门槛与吞吐。下表中的公平性只是根据等待差距构造的教学分数，不等于通用公平性定义；资源记录齐全也不代表已经满足显存上限。
+吞吐变高仍可能让一部分请求等得更久。采用候选时，先确认同一请求流确实由不同策略执行，再检查完成情况、延迟门槛与吞吐。CPU示例用等待差距构造公平性分数；真实对照改看低优先级请求的端到端长尾，分别说明两类判断。容量是否达标则要另将实际峰值与设备预算比较。下表列出 CPU 模型的统计口径，下图展示真实服务如何联合判断响应顺序与延迟代价。
 
 | 指标 | 单位 | 定义与比较条件 |
 |:---|:---|:---|
 | `queue_wait_ms` | ms | CPU 中从到达到获准执行的等待；旧字段 `ttft_ms` 仅保留为同值兼容别名 |
 | `makespan_ms` | ms | 首个请求到达至最后一个请求完成的观察窗口，不是绝对完成时刻 |
 | `throughput_tps` | token/s | 总输出 token 数除以观察窗口，结合请求等待共同判断 |
-| `utilization` | 0–1 | 模拟 worker 忙碌时间占窗口的比例，不是 GPU SM 利用率 |
+| `utilization` | 0–1 | 模拟执行者忙碌时间占窗口的比例；GPU忙碌情况另看设备采样 |
 | `fairness` | 0–1 | 等待极差除以不小于 1 ms 的平均等待，再用 1 减去该比值并截断到非负；仅用于本题 |
 | `completed_count` | 请求数 | 与输入请求数相等，并逐项核对完成编号是否重复或丢失 |
 
@@ -80,7 +81,7 @@ CPU 模型固定请求流与服务成本，检查请求到达后才执行、每�
 
 ## Step 4：实现 CPU 调度机制与决策
 
-题目区先用队列推进模型解释状态变化，重点判断请求流是否可比、请求完成清单是否完整，以及调度候选能否同时满足延迟、完成率和公平性门槛。
+题目提供队列推进模型和结果记录，补全请求流是否可比、请求完成清单是否完整，以及调度候选能否同时满足延迟、完成率和公平性门槛。
 
 | 任务与目的 | 已知条件 | 完成标准 | 测试验证 |
 |:---|:---|:---|:---|
@@ -492,6 +493,7 @@ test_serving_scheduler_benchmark_template()
 
 ### 代码
 
+
 ```python
 from typing import Dict, List
 def select_next_batch(queue: List[Dict[str, float]], policy: str, batch_size: int) -> tuple[list[Dict[str, float]], list[Dict[str, float]]]:
@@ -722,17 +724,20 @@ def recommend_serving_scheduler_run(
 - 先处理失败与缺证，再进行数值比较；缺失指标测试确保返回补采状态，而非触发空值比较错误。
 
 ## Step 5（可选）：单卡 GPU 调度策略对照
+
 | CPU 已验证 | 单卡 GPU 补充 | 本页输出 |
 |:---|:---|:---|
 | 到达后准入、容量上限、完成唯一性与决策门槛 | 同一 vLLM 版本下配对比较 FCFS 与 priority | 两组原始 JSON、逐请求首 token/完成顺序和采用判断 |
+
 ### 5.1 环境、请求流与固定条件
 
-使用 `INF-VLLM-011-CU128` Profile，硬件下限为单张 12 GB NVIDIA GPU。首次运行先按[推理优化 Quickstart](../topic_discussion/inference_optimization/quickstart.md#inf-vllm-quickstart)创建环境。配置集中在下一单元：G0 与 G1 固定模型、请求流、并发、生成长度、队列容量和重复次数，只改变 vLLM 的 `scheduling-policy`；G1 才把 workload 中的 priority 字段发送给服务。固定的小 `max_num_seqs` 用来形成可观测的等待队列。
+使用 `INF-VLLM-011-CU128` Profile，当前固定配置面向单张约12 GB显存的NVIDIA GPU，运行前按模型与服务预算预检。首次运行先按[推理优化 Quickstart](../topic_discussion/inference_optimization/quickstart.md#inf-vllm-quickstart)创建环境。配置集中在下一单元：G0 与 G1 固定模型、请求流、并发、生成长度、队列容量和重复次数，只改变 vLLM 的 `scheduling-policy`；G1 才把 workload 中的 priority 字段发送给服务。固定的小 `max_num_seqs` 用来形成可观测的等待队列。
 
 | 组别 | 服务端策略 | 请求 priority | 回答的问题 |
 |:---|:---|:---|:---|
 | G0 | FCFS | 不发送，但保留标签用于离线统计 | 默认完成顺序与服务指标是什么 |
 | G1 | priority | 发送；数值越小越早 | 交互请求是否更早完成，且没有不可接受的整体退化 |
+
 
 ```python
 # 5.1：唯一可编辑配置。正式复测只修改本单元，并为 RUN_LABEL 使用新值。
@@ -768,6 +773,7 @@ GROUPS = (
 
 本单元只检查当前 Kernel、GPU、vLLM 命令、固定请求流和 Profile 身份，不下载模型、不启动服务。
 
+
 ```python
 # 5.2：只读预检；失败时先修复环境或输入，再进入候选检查。
 import json
@@ -798,6 +804,7 @@ print(json.dumps(preflight, ensure_ascii=False, indent=2))
 ### 5.3 候选与可比性检查
 
 读取冻结请求流并检查 request_id、priority 和组别定义。该单元只派生结果路径，不启动后端。
+
 
 ```python
 # 5.3：检查同负载配对以及 priority 的可辨识性。
@@ -834,6 +841,7 @@ print({'request_ids': request_ids, 'priority_levels': sorted(set(priorities)),
 ### 5.4 顺序执行两组真实服务
 
 每组都单独启动 vLLM、完成预热与重复测量、保存逐请求结果，再释放显存。成功和失败都写入对应 JSON；本单元不形成采用结论。
+
 
 ```python
 # 5.4：顺序运行 FCFS 与 priority；不要并行启动两组服务。
@@ -903,7 +911,8 @@ else:
 
 ### 5.5 读取配对证据
 
-只读两组 JSON，核对策略身份、请求完成率、输出非空、各轮首 token 顺序及服务指标。完成顺序只作为诊断字段，缺失字段保持缺失。
+读取两组JSON，核对策略、请求完成、非空输出和各轮首次内容返回顺序。旧字段保留原名；TPOT包含从首次内容至流结束的尾部。低优先级长尾使用各轮E2E P95的平均值，逐轮保留以便复核；完成顺序另作诊断。
+
 
 ```python
 # 5.5：读取原始结果并形成统一视图；不启动服务、不改写 JSON。
@@ -959,9 +968,9 @@ print(json.dumps(scheduler_rows, ensure_ascii=False, indent=2))
 
 ### 5.6 形成调度采用判断
 
-先拒绝后端失败或不可比结果，再检查完成率和输出；最后用首 token 顺序判断高优先级请求是否更早获得服务，并检查吞吐、全体 TTFT 和低优先级长尾是否仍在门槛内。完成顺序只保留为诊断指标，避免生成长度混入调度采用门槛。priority 改善局部请求但造成明显饥饿时只能继续调优。
+先拒绝后端失败或不可比结果，再检查完成率和输出；最后用首次内容返回顺序判断高优先级请求是否更早看到响应，并检查吞吐、全体 TTFT 和低优先级长尾是否仍在门槛内。完成顺序只保留为诊断指标，避免生成长度混入调度采用门槛。若低优先级长尾超出设定预算，调整优先级分层或容量后复测；长期饥饿另用持续请求流检查。
 
-将配对结果、采用判断和复测边界写入独立证据文件；原始 G0/G1 JSON 保持不变。
+首次内容顺序分数统计不同优先级请求对中，高优先级先返回的比例；同优先级请求对不计入。本次两组平均分数从0.4625到0.8625，相差0.4，表示顺序符合率提高40个百分点。将这一结果与时间、吞吐和低优先级代价一起写入独立证据文件。
 
 **当前登记结果**
 
@@ -972,7 +981,8 @@ print(json.dumps(scheduler_rows, ensure_ascii=False, indent=2))
 | 原始证据 | [FCFS 日志](../../benchmarks/results/70_serving_scheduler/g0_fcfs_rtx5070ti_scheduler_priority_v4.log)、[priority 日志](../../benchmarks/results/70_serving_scheduler/g1_priority_rtx5070ti_scheduler_priority_v4.log) |
 | 正式证据 | [G0](../../benchmarks/results/70_serving_scheduler/g0_fcfs_rtx5070ti_scheduler_priority_v4.json)、[G1](../../benchmarks/results/70_serving_scheduler/g1_priority_rtx5070ti_scheduler_priority_v4.json)、[证据记录](../../benchmarks/results/70_serving_scheduler/70_evidence_record_rtx5070ti_scheduler_priority_v4.json) |
 | 清单与交接 | 证据记录供 72 与 81 节引用 |
-| 结论 | `accept`（限当前优先级混合 workload）：高优先级首 token 顺序改善；吞吐和 TTFT 门槛通过，低优先级 E2E P95 增加约 6.9%，仍在设定上限内 |
+| 结论 | `accept`（限当前优先级混合 workload）：高优先级首内容返回顺序改善；吞吐和 TTFT 门槛通过，低优先级 E2E P95 增加约 6.9%，仍在设定上限内 |
+
 
 ```python
 # 5.6：基于 5.5 的只读视图形成 accept / tune / reject。
@@ -1096,8 +1106,8 @@ print(f'调度证据已保存: {EVIDENCE_PATH.relative_to(REPO_ROOT)}')
 
 ## 相关阅读
 
-完成 serving 调度 benchmark 后，可继续观察调度器实现、负载扫描和分布式资源组织。下面的项目链接用于连接到后续并行实验，开源实现和开发文档用于对照真实 serving 系统中的调度与 batching 行为。
-- [79. Distributed Parallel Benchmark | 分布式并行基准项目](./79_Distributed_Parallel_Benchmark.md)
-- [vLLM Scheduler 开源实现](https://github.com/vllm-project/vllm/blob/main/vllm/v1/core/sched/scheduler.py)
-- [SGLang Benchmark and Profiling 开发文档](https://github.com/sgl-project/sglang/blob/main/docs_new/docs/developer_guide/benchmark_and_profiling.mdx)
-- [SGLang Server Arguments：调度与 batching 配置](https://github.com/sgl-project/sglang/blob/main/docs/advanced_features/server_arguments.md)
+先比较轮次补位和单轮预算，再把调度方案放到多实例请求分配中。
+
+- [连续批处理](./INF-CONTINUOUS-BATCHING_Continuous_Batching.md)：完成请求退出后，下一轮怎样补入成员。
+- [服务迭代成本与批次容量上界](./INF-ITERATION-BUDGET_Serving_Iteration_Cost_and_Batch_Bounds.md)：一次前向能安排多少工作。
+- [服务副本路由](./PAR-REPLICA_Serving_Replica_Routing.md)：请求分给多个模型实例时，怎样比较负载与缓存复用。

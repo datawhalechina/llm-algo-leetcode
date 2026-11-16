@@ -1,29 +1,31 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
-  <title id="title">RoPE 将位置与通道频率写入 Query 和 Key</title>
-  <desc id="desc">位置和每个成对维度的频率共同确定旋转角，Query 与 Key 分别旋转后做点积，使结果携带相对位置差。</desc>
-  <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
-    <style>.title{font:700 27px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.sub{font:500 15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.head{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#111827}.body{font:500 14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.box{stroke-width:2.5;rx:14}.flow{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
-  </defs>
-  <rect width="1500" height="470" fill="#f8fafc"/>
-  <text x="50" y="48" class="title">RoPE：位置 × 通道频率 → Q/K 旋转 → 相对位置点积</text>
-  <text x="50" y="76" class="sub">RoPE 不改写 V，也不决定可见范围；它改变的是 Q/K 的位置相位。</text>
-  <rect x="60" y="130" width="180" height="72" class="box" fill="#dbeafe" stroke="#2563eb"/>
-  <text x="150" y="158" text-anchor="middle" class="head">位置 m / n</text><text x="150" y="183" text-anchor="middle" class="body">序列中的 token</text>
-  <rect x="60" y="270" width="180" height="72" class="box" fill="#cffafe" stroke="#0891b2"/>
-  <text x="150" y="298" text-anchor="middle" class="head">成对维频率 θⱼ</text><text x="150" y="323" text-anchor="middle" class="body">D/2 个旋转平面</text>
-  <rect x="355" y="200" width="200" height="82" class="box" fill="#ede9fe" stroke="#7c3aed"/>
-  <text x="455" y="231" text-anchor="middle" class="head">旋转角</text><text x="455" y="258" text-anchor="middle" class="body">m·θⱼ / n·θⱼ</text>
-  <rect x="675" y="120" width="210" height="82" class="box" fill="#fef3c7" stroke="#d97706"/>
-  <text x="780" y="151" text-anchor="middle" class="head">旋转 Query</text><text x="780" y="178" text-anchor="middle" class="body">Qᵣ(m)</text>
-  <rect x="675" y="280" width="210" height="82" class="box" fill="#ccfbf1" stroke="#0f766e"/>
-  <text x="780" y="311" text-anchor="middle" class="head">旋转 Key</text><text x="780" y="338" text-anchor="middle" class="body">Kᵣ(n)</text>
-  <rect x="1030" y="200" width="230" height="82" class="box" fill="#f5f3ff" stroke="#7c3aed"/>
-  <text x="1145" y="231" text-anchor="middle" class="head">Attention 点积</text><text x="1145" y="258" text-anchor="middle" class="body">Qᵣ(m) · Kᵣ(n)</text>
-  <rect x="1340" y="200" width="120" height="82" class="box" fill="#ffe4e6" stroke="#e11d48"/>
-  <text x="1400" y="231" text-anchor="middle" class="head">相位差</text><text x="1400" y="258" text-anchor="middle" class="body">m − n</text>
-  <path d="M240 166C300 166 300 220 355 220" class="flow"/><path d="M240 306C300 306 300 262 355 262" class="flow"/>
-  <path d="M555 220C610 220 610 161 675 161" class="flow"/><path d="M555 262C610 262 610 321 675 321" class="flow"/>
-  <path d="M885 161C955 161 955 220 1030 220" class="flow"/><path d="M885 321C955 321 955 262 1030 262" class="flow"/>
-  <path d="M1260 241H1340" class="flow"/>
+<title id="title">RoPE的二维旋转与相对相位</title><desc id="desc">在单个通道对中取q和k均为单位横向向量，频率pi/6。位置1的q旋转30度，位置2的k旋转60度，内积为cos30度，取决于相对角而不是裸位置差。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:18px;fill:#475569}.head{font-size:19px;font-weight:700}.body{font-size:18px}.small{font-size:16px;fill:#475569}.node{stroke-width:2;rx:12}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}</style></defs>
+<rect width="1500" height="470" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="55" y="48" class="title" text-anchor="start">每个通道对是一张旋转平面，相对角还要乘对应频率</text>
+<text x="55" y="80" class="sub" text-anchor="start">示例：q=k=(1,0)，ω=π/6，位置m=1、n=2；虚线为原向量，彩色实线为旋转后向量。</text>
+<rect x="55" y="115" width="470" height="285" rx="12" fill="#fff" stroke="#cbd5e1" data-layout-role="panel"/>
+<rect x="565" y="115" width="470" height="285" rx="12" fill="#fff" stroke="#cbd5e1" data-layout-role="panel"/>
+<rect x="1080" y="115" width="365" height="285" rx="12" fill="#fff" stroke="#cbd5e1" data-layout-role="panel"/>
+<text x="275" y="147" class="head" text-anchor="middle">Query：mω=30°</text>
+<g data-layout-role="glyph-group"><line x1="145" y1="290" x2="420" y2="290" stroke="#cbd5e1" stroke-width="1.5"/><line x1="245" y1="365" x2="245" y2="160" stroke="#cbd5e1" stroke-width="1.5"/>
+<line x1="245" y1="290" x2="375" y2="290" stroke="#64748b" stroke-width="2.5" stroke-dasharray="7 5" marker-end="url(#arrow)"/>
+<line data-angle-rad="0.5235987755982988" x1="245" y1="290" x2="357.58330249197707" y2="225" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow)"/>
+<path d="M310 290 A65 65 0 0 0 301.29165124598853 257.5" fill="none" stroke="#2563eb" stroke-width="2"/></g>
+<text x="405" y="319" class="small" text-anchor="middle">(1,0)</text>
+<text x="227" y="316" class="small" text-anchor="middle">0</text>
+<text x="785" y="147" class="head" text-anchor="middle">Key：nω=60°</text>
+<g data-layout-role="glyph-group"><line x1="655" y1="290" x2="930" y2="290" stroke="#cbd5e1" stroke-width="1.5"/><line x1="755" y1="365" x2="755" y2="160" stroke="#cbd5e1" stroke-width="1.5"/>
+<line x1="755" y1="290" x2="885" y2="290" stroke="#64748b" stroke-width="2.5" stroke-dasharray="7 5" marker-end="url(#arrow)"/>
+<line data-angle-rad="1.0471975511965976" x1="755" y1="290" x2="820" y2="177.416697508023" stroke="#d97706" stroke-width="3" marker-end="url(#arrow)"/>
+<path d="M820 290 A65 65 0 0 0 787.5 233.7083487540115" fill="none" stroke="#d97706" stroke-width="2"/></g>
+<text x="915" y="319" class="small" text-anchor="middle">(1,0)</text>
+<text x="737" y="316" class="small" text-anchor="middle">0</text>
+<text x="1262" y="159" class="head" text-anchor="middle">相对旋转角</text>
+<text x="1262" y="201" class="body" text-anchor="middle">(n−m)ω = π/6</text>
+<text x="1262" y="252" class="body" text-anchor="middle">qᵀ R((n−m)ω) k</text>
+<text x="1262" y="301" class="body" text-anchor="middle">内积 = cos(π/6)</text>
+<text x="1262" y="342" class="head" text-anchor="middle">≈ 0.866025</text>
+<text x="55" y="442" class="sub" text-anchor="start">这里展示一个通道对；完整向量由多组不同频率的旋转共同组成。</text>
 </svg>

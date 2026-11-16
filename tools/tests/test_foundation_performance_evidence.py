@@ -46,6 +46,7 @@ class FoundationPerformanceTests(unittest.TestCase):
         cls.resource = notebook_functions("01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.ipynb")
         cls.precision = notebook_functions("01_Hardware_Math_and_Systems/12_TensorCore_and_Mixed_Precision.ipynb")
         cls.attention = notebook_functions("01_Hardware_Math_and_Systems/14_FlashAttention_Memory_Model.ipynb")
+        cls.cache_allocation = notebook_functions("01_Hardware_Math_and_Systems/04_Attention_Memory_Optimization.ipynb")
         cls.matrixpath = notebook_functions("01_Hardware_Math_and_Systems/23_TensorCore_Deep_Dive.ipynb")
         cls.hardware = notebook_functions("01_Hardware_Math_and_Systems/03_GPU_Architecture_and_Memory.ipynb")
         cls.scale = notebook_functions("01_Hardware_Math_and_Systems/02_LLM_Params_and_FLOPs.ipynb")
@@ -308,6 +309,54 @@ class FoundationPerformanceTests(unittest.TestCase):
         self.assertEqual(roof["limiting_roof"], "balance")
         self.assertEqual(roof["roofline_upper_tflops"], 300)
         self.assertNotIn("bottleneck", roof)
+
+    def test_cache_allocation_reproduces_slot_counts_and_utilization(self):
+        """Check the exact five-request example, not just the direction of savings."""
+        lengths = [64, 96, 128, 320, 512]
+        snapshot = list(lengths)
+        contiguous = self.cache_allocation['contiguous_reserved_tokens'](lengths, 512)
+        paged = self.cache_allocation['paged_reserved_tokens'](lengths, 128)
+        self.assertEqual(sum(lengths), 1120)
+        self.assertEqual(contiguous, 2560)
+        self.assertEqual(paged, 1280)
+        self.assertEqual(sum(lengths) / paged, 0.875)
+        self.assertEqual(1 - sum(lengths) / paged, 0.125)
+        self.assertEqual(lengths, snapshot)
+
+    def test_paging_tail_can_exceed_exact_contiguous_reservation(self):
+        """The reservation policy, rather than paging alone, determines savings."""
+        contiguous = self.cache_allocation['contiguous_reserved_tokens']
+        paged = self.cache_allocation['paged_reserved_tokens']
+        self.assertEqual(paged([128], 128), 128)
+        self.assertEqual(contiguous([129], 129), 129)
+        self.assertEqual(paged([129], 128), 256)
+        self.assertEqual(contiguous([129], 256), paged([129], 128))
+        for page_size in (1, 2, 128):
+            with self.subTest(page_size=page_size):
+                lengths = [1, page_size, page_size + 1]
+                slots = paged(lengths, page_size)
+                self.assertEqual(slots, 4 * page_size)
+                self.assertGreaterEqual(slots, sum(lengths))
+                self.assertLessEqual(slots - sum(lengths), len(lengths) * (page_size - 1))
+
+    def test_cache_allocation_requires_positive_integer_counts(self):
+        """Reject fractional pages and flags instead of returning partial token slots."""
+        for name in ('contiguous_reserved_tokens', 'paged_reserved_tokens'):
+            check = self.cache_allocation[name]
+            for bad_count in (True, False, 0, -1, 0.5, 128.0, '128',
+                              float('nan'), float('inf')):
+                with self.subTest(function=name, count=bad_count), self.assertRaises(ValueError):
+                    check([1], bad_count)
+            for bad_length in (True, False, 0, -1, 0.5, 1.0, '1',
+                               float('nan'), float('inf')):
+                with self.subTest(function=name, length=bad_length), self.assertRaises(ValueError):
+                    check([bad_length], 128)
+            for empty_or_invalid in ([], (), None, '128', 128):
+                with self.subTest(function=name, lengths=empty_or_invalid), self.assertRaises(ValueError):
+                    check(empty_or_invalid, 128)
+        with self.assertRaises(ValueError):
+            self.cache_allocation['contiguous_reserved_tokens']([129], 128)
+        self.assertEqual(self.cache_allocation['paged_reserved_tokens']((1, 128, 129), 128), 512)
 
     def test_resource_metrics_exact_units_and_bad_records(self):
         """Use disjoint windows and finite real fields for record-derived metrics."""
@@ -590,6 +639,17 @@ class FoundationPerformanceTests(unittest.TestCase):
         self.assertEqual(report["shared_read_bytes"], 4096)
         self.assertEqual(report["sync_points"], 3)
         self.assertEqual(self.sram["reuse_traffic_ledger"](1024, 1)["global_read_bytes_saved"], 0)
+        first = self.sram["reuse_traffic_ledger"](4096, 4, sync_points=1)
+        self.assertEqual(first, {
+            'global_read_bytes_without_reuse': 16384,
+            'global_read_bytes_with_reuse': 4096,
+            'global_read_bytes_saved': 12288,
+            'shared_write_bytes': 4096,
+            'shared_read_bytes': 16384,
+            'sync_points': 1,
+        })
+        changed = self.sram["reuse_traffic_ledger"](4096, 4, sync_points=3)
+        self.assertEqual(changed, first | {'sync_points': 3})
 
     def test_buffering_and_padding_consume_shared_memory(self):
         ledger = self.sram["tile_resource_ledger"]
@@ -861,6 +921,33 @@ class FoundationPerformanceTests(unittest.TestCase):
         self.assertEqual(result["reasons"], ["registers_per_thread"])
         with self.assertRaises(ValueError):
             self.launch["block_resource_gate"](32, 0, 1, {})
+
+    def test_grid_load_scales_without_changing_per_block_shared_bytes(self):
+        """Grid-wide logical reads and a single block's allocation have different scopes."""
+        check = self.launch['block_reuse_traffic']
+        inputs = dict(tile_elements=4096, bytes_per_element=2, reuse_count=4)
+        one = check(blocks=1, **inputs)
+        eight = check(blocks=8, **inputs)
+        self.assertEqual(one['tiled_global_read_bytes'], 8192)
+        self.assertEqual(eight['tiled_global_read_bytes'], 65536)
+        self.assertEqual(one['shared_bytes_per_block'], eight['shared_bytes_per_block'])
+        self.assertEqual(eight['shared_bytes_per_block'], 8192)
+        for field in ('baseline_global_read_bytes', 'tiled_global_read_bytes',
+                      'global_read_bytes_saved'):
+            self.assertEqual(eight[field], 8 * one[field])
+
+    def test_equal_thread_totals_can_have_different_block_warp_counts(self):
+        """Packing is local to each block; merging changes the actual block arrangement."""
+        check = self.shared['execution_coverage']
+        split = check(num_threads=48)
+        merged = check(num_threads=96)
+        self.assertEqual(2 * split['threads'], merged['threads'])
+        self.assertEqual(2 * split['warps'], 4)
+        self.assertEqual(merged['warps'], 3)
+        self.assertEqual(split['last_warp_assigned_threads'], 16)
+        self.assertEqual(merged['last_warp_assigned_threads'], 32)
+        self.assertEqual(split['thread_slot_utilization'], 0.75)
+        self.assertEqual(merged['thread_slot_utilization'], 1)
 
     def test_correct_shared_memory_can_have_no_read_reduction(self):
         result = self.shared["shared_memory_candidate"](1024, 1, 8, 65536, True)

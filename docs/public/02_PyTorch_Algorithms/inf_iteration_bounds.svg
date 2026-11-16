@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
   <title id="title">服务批次的五类容量上界</title><desc id="desc">序列槽位、KV容量、本轮Token预算、服务目标和执行能力共同约束可执行批次，最小上界决定当前瓶颈。</desc>
-  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#486581"/></marker><style>.t{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#203040}.h{font-size:22px;font-weight:700}.b{font-size:16px}.s{font-size:13px;fill:#526777}.l{fill:none;stroke:#486581;stroke-width:2;marker-end:url(#a)}</style></defs>
+  <defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#486581"/></marker><style>.t{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#203040;font-weight:400}.h{font-size:22px;font-weight:700}.b{font-size:16px}.s{font-size:13px;fill:#526777}.l{fill:none;stroke:#486581;stroke-width:2;marker-end:url(#a)}</style></defs>
   <rect width="1200" height="560" fill="#f7f9fc"/><text x="600" y="42" text-anchor="middle" class="t h">服务批次的五类容量上界</text>
   <g>
     <rect x="35" y="90" width="200" height="64" rx="13" fill="#e8f2ff" stroke="#5b8def" stroke-width="2"/><text x="135" y="116" text-anchor="middle" class="t b">序列槽位</text><text x="135" y="140" text-anchor="middle" class="t s">可同时驻留多少请求</text>

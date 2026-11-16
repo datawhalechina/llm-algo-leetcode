@@ -2,8 +2,12 @@
   <title id="title">奖励模型的成对训练与独立验证</title>
   <desc id="desc">训练偏好对由同一个奖励模型分别评分，分数差形成成对损失并经优化器更新共享参数；训练完成后的冻结候选再用独立留出偏好对检查排序、校准和适用范围。</desc>
   <defs>
-    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 4.5L0 9Z" fill="#475569"/></marker>
-    <marker id="updateArrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 4.5L0 9Z" fill="#16A34A"/></marker>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
+<path d="M0 0L9 4.5L0 9Z" fill="#475569"/>
+</marker>
+    <marker id="updateArrow" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
+<path d="M0 0L9 4.5L0 9Z" fill="#16A34A"/>
+</marker>
     <style>
       text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif}
       .title{font-size:28px;font-weight:700;fill:#0F172A}.subtitle{font-size:16px;fill:#475569}.lane{font-size:16px;font-weight:700;fill:#475569}.head{font-size:18px;font-weight:700;fill:#172033}.copy{font-size:14px;fill:#334155}.line{fill:none;stroke:#475569;stroke-width:2.3;marker-end:url(#arrow)}.update{fill:none;stroke:#16A34A;stroke-width:2.4;stroke-dasharray:8 6;marker-end:url(#updateArrow)}
@@ -12,25 +16,37 @@
   <rect width="1440" height="620" fill="#F8FAFC"/>
   <rect x="28" y="24" width="1384" height="572" rx="26" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
   <text x="62" y="70" class="title">奖励模型怎样学习排序，并通过独立数据验证</text>
-  <text x="62" y="102" class="subtitle">两条回答共享同一组参数；训练更新与留出验证分开，避免把训练边际误当成可用奖励。</text>
+  <text x="62" y="102" class="subtitle">两条回答共享参数学习排序；留出数据分别检查排序与偏好概率。</text>
 
   <text x="62" y="145" class="lane">成对训练</text>
   <rect id="train-pair" x="58" y="170" width="200" height="156" rx="16" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/>
-  <text x="80" y="206" class="head">训练偏好对</text><text x="80" y="238" class="copy">同一提示</text><text x="80" y="266" class="copy">优选回答 y⁺</text><text x="80" y="294" class="copy">非优选回答 y⁻</text>
+  <text x="80" y="206" class="head">训练偏好对</text>
+<text x="80" y="238" class="copy">同一提示</text>
+<text x="80" y="266" class="copy">优选回答 y⁺</text>
+<text x="80" y="294" class="copy">非优选回答 y⁻</text>
 
   <rect id="shared-reward-model" x="330" y="170" width="220" height="156" rx="16" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2"/>
-  <text x="352" y="206" class="head">共享奖励模型</text><text x="352" y="238" class="copy">同一参数快照 θ</text><text x="352" y="266" class="copy">分别读取 y⁺ 与 y⁻</text><text x="352" y="294" class="copy">输出可比较标量</text>
+  <text x="352" y="206" class="head">共享奖励模型</text>
+<text x="352" y="238" class="copy">同一组参数 φ</text>
+<text x="352" y="266" class="copy">分别读取 y⁺ 与 y⁻</text>
+<text x="352" y="294" class="copy">输出可比较标量</text>
 
   <rect id="chosen-score" x="620" y="154" width="188" height="82" rx="14" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
-  <text x="642" y="188" class="head">优选分数</text><text x="642" y="216" class="copy">rθ(x, y⁺)</text>
+  <text x="642" y="188" class="head">优选分数</text>
+<text x="642" y="216" class="copy">rφ(x, y⁺)</text>
   <rect id="rejected-score" x="620" y="260" width="188" height="82" rx="14" fill="#FFF7ED" stroke="#F59E0B" stroke-width="2"/>
-  <text x="642" y="294" class="head">非优选分数</text><text x="642" y="322" class="copy">rθ(x, y⁻)</text>
+  <text x="642" y="294" class="head">非优选分数</text>
+<text x="642" y="322" class="copy">rφ(x, y⁻)</text>
 
   <rect id="pairwise-loss" x="872" y="188" width="210" height="120" rx="16" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
-  <text x="894" y="224" class="head">分数差与成对损失</text><text x="894" y="254" class="copy">Δr = r⁺ − r⁻</text><text x="894" y="282" class="copy">惩罚错序与过小边际</text>
+  <text x="894" y="224" class="head">分数差与成对损失</text>
+<text x="894" y="254" class="copy">Δr = r⁺ − r⁻</text>
+<text x="894" y="282" class="copy">惩罚错序与过小边际</text>
 
   <rect id="optimizer" x="1142" y="188" width="206" height="120" rx="16" fill="#ECFDF5" stroke="#16A34A" stroke-width="2"/>
-  <text x="1164" y="224" class="head">反向传播与更新</text><text x="1164" y="254" class="copy">仅使用训练偏好对</text><text x="1164" y="282" class="copy">写回共享参数 θ</text>
+  <text x="1164" y="224" class="head">反向传播与更新</text>
+<text x="1164" y="254" class="copy">仅使用训练偏好对</text>
+<text x="1164" y="282" class="copy">写回共享参数 φ</text>
 
   <path id="edge-pair-model" data-source="train-pair" data-target="shared-reward-model" d="M258 248H330" class="line"/>
   <path id="edge-model-chosen" data-source="shared-reward-model" data-target="chosen-score" d="M550 218H584V195H620" class="line"/>
@@ -42,12 +58,18 @@
 
   <text x="62" y="432" class="lane">独立验证</text>
   <rect id="holdout-pair" x="330" y="454" width="220" height="94" rx="15" fill="#E0F2FE" stroke="#0284C7" stroke-width="2"/>
-  <text x="352" y="488" class="head">独立留出偏好对</text><text x="352" y="518" class="copy">不参与参数更新</text><text x="352" y="542" class="copy">固定切分与标注规则</text>
+  <text x="352" y="488" class="head">独立留出偏好对</text>
+<text x="352" y="518" class="copy">不参与参数更新</text>
+<text x="352" y="542" class="copy">固定切分与标注规则</text>
   <rect id="frozen-candidate" x="650" y="454" width="220" height="94" rx="15" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2"/>
-  <text x="672" y="488" class="head">冻结奖励模型候选</text><text x="672" y="518" class="copy">训练完成后的参数快照</text><text x="672" y="542" class="copy">固定评分协议</text>
+  <text x="672" y="488" class="head">冻结奖励模型候选</text>
+<text x="672" y="518" class="copy">训练完成后固定参数</text>
+<text x="672" y="542" class="copy">固定评分协议</text>
   <rect id="validation-report" x="970" y="454" width="280" height="94" rx="15" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
-  <text x="992" y="488" class="head">留出验证报告</text><text x="992" y="518" class="copy">排序准确率 · 校准误差</text><text x="992" y="542" class="copy">泄漏、漂移与适用范围</text>
-  <path id="edge-optimizer-candidate" data-source="optimizer" data-target="frozen-candidate" d="M1245 308V410H760V454" class="line"/>
+  <text x="992" y="488" class="head">留出验证报告</text>
+<text x="992" y="518" class="copy">排序准确率 · 校准误差</text>
+<text x="992" y="542" class="copy">按当前样本与评分规则解释</text>
+  <path id="edge-optimizer-candidate" data-source="optimizer" data-target="frozen-candidate" d="M1320 308V410H760V454" class="line"/>
   <path id="edge-holdout-candidate" data-source="holdout-pair" data-target="frozen-candidate" d="M550 501H650" class="line"/>
   <path id="edge-candidate-report" data-source="frozen-candidate" data-target="validation-report" d="M870 501H970" class="line"/>
 </svg>

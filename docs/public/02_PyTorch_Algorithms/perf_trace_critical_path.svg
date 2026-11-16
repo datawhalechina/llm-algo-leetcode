@@ -6,7 +6,7 @@
     <style>
       .title{font-family:"Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#0f172a}.subtitle{font-family:"Noto Sans CJK SC",sans-serif;font-size:15px;fill:#475569}
       .lane{font-family:"Noto Sans CJK SC",sans-serif;font-size:17px;font-weight:700;fill:#172033}.label{font-family:"Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:700;fill:#172033}.small{font-family:"Noto Sans CJK SC",sans-serif;font-size:13px;fill:#475569}
-      .dep{fill:none;stroke:#334155;stroke-width:3;marker-end:url(#arrow)}.tick{stroke:#cbd5e1;stroke-width:1.5;stroke-dasharray:5 5}
+      .dep{fill:none;stroke:#334155;stroke-width:2.5;marker-end:url(#arrow)}.tick{stroke:#cbd5e1;stroke-width:1.5;stroke-dasharray:5 5}
     </style>
   </defs>
   <rect width="1200" height="620" rx="24" fill="#f8fafc"/>

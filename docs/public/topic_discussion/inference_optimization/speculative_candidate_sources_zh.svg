@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="790" viewBox="0 0 1200 790" role="img" aria-labelledby="title desc">
+  <title id="title">投机候选从哪里来：序列、候选树与候选块</title>
+  <desc id="desc">四行对照小模型逐步草稿、模型内置多词元预测、特征草稿候选树和块草稿。每种候选都需目标模型验证，最终提交有效前缀或路径，具体协议随分支实现。</desc>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#52606d"/></marker></defs>
+  <style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d;font-size:18px}.title{font-size:27px;font-weight:700}.head{font-size:20px;font-weight:700}.note{font-size:16px;fill:#475569}.card{fill:#fff;stroke:#cbd5e1;stroke-width:1.5;rx:12}.token{fill:#dbeafe;stroke:#6b91b5;rx:6}.edge{fill:none;stroke:#52606d;stroke-width:2;marker-end:url(#arrow)}.tree{fill:none;stroke:#64748b;stroke-width:2}</style>
+  <rect width="1200" height="790" fill="#f7fafc"/>
+  <text x="32" y="43" class="title">候选来源不同，目标模型怎样验证也要分别观察</text>
+  <text x="32" y="76" class="note">从左向右读：产生候选的计算 → 候选结构 → 验证后提交的内容。节点表示候选词元。</text>
+  <text x="52" y="118" class="head">候选从哪里产生</text><text x="452" y="118" class="head">候选怎样组织</text><text x="880" y="118" class="head">目标模型验证后</text>
+  <rect x="32" y="137" width="1136" height="120" class="card"/>
+  <text x="52" y="174" class="head">经典双模型</text><text x="52" y="207">较小草稿模型逐词元前向</text><text x="52" y="236" class="note">每个候选依赖此前草稿</text>
+  <path d="M345 195H410" class="edge"/>
+  <rect x="435" y="175" width="56" height="40" class="token"/><text x="463" y="202" text-anchor="middle">a</text>
+  <path d="M491 195H530" class="edge"/><rect x="530" y="175" width="56" height="40" class="token"/><text x="558" y="202" text-anchor="middle">b</text>
+  <path d="M586 195H625" class="edge"/><rect x="625" y="175" width="56" height="40" class="token"/><text x="653" y="202" text-anchor="middle">c</text>
+  <path d="M715 195H850" class="edge"/><text x="880" y="185">保留连续接受前缀</text><text x="880" y="216" class="note">拒绝处修正，撤销后续状态</text>
+  <rect x="32" y="271" width="1136" height="120" class="card"/>
+  <text x="52" y="309" class="head">原生多词元预测 MTP</text><text x="52" y="342">模型内部预测层提出候选</text><text x="52" y="371" class="note">层间依赖取决于模型设计</text>
+  <path d="M345 331H410" class="edge"/>
+  <rect x="428" y="290" width="267" height="82" fill="#ecfdf5" stroke="#6b9c8b" rx="8"/>
+  <text x="446" y="318" class="note">内置预测：深度 1 → a</text>
+  <text x="526" y="344" class="note">深度 2 → b</text>
+  <text x="446" y="363" class="note">按未来位置排列为 [a, b]</text>
+  <path d="M715 331H850" class="edge"/><text x="880" y="321">验证并提交有效前缀</text><text x="880" y="352" class="note">核对模型与后端的验证协议</text>
+  <rect x="32" y="405" width="1136" height="145" class="card"/>
+  <text x="52" y="444" class="head">EAGLE 特征草稿</text><text x="52" y="477">目标隐藏表示 → 轻量草稿器</text><text x="52" y="506" class="note">扩展不同候选路径</text>
+  <path d="M345 475H410" class="edge"/>
+  <path d="M465 475L545 442M465 475L545 508M565 442L645 428M565 442L645 459M565 508L645 508" class="tree"/>
+  <g fill="#ede9fe" stroke="#8b80b0"><circle cx="455" cy="475" r="17"/><circle cx="555" cy="442" r="17"/><circle cx="555" cy="508" r="17"/><circle cx="655" cy="428" r="13"/><circle cx="655" cy="459" r="13"/><circle cx="655" cy="508" r="13"/></g>
+  <path d="M715 475H850" class="edge"/><text x="880" y="465">确定可提交的候选路径</text><text x="880" y="496" class="note">核对树结构与状态保留方式</text>
+  <rect x="32" y="564" width="1136" height="140" class="card"/>
+  <text x="52" y="603" class="head">DFlash／DSpark 块草稿</text><text x="52" y="636">并行生成一个候选块</text><text x="52" y="667" class="note">DSpark 加入块内依赖与置信度控制</text>
+  <path d="M345 634H410" class="edge"/>
+  <rect x="428" y="596" width="267" height="77" fill="#fef3c7" stroke="#b69b50" rx="9"/>
+  <g class="token"><rect x="443" y="614" width="48" height="40"/><rect x="506" y="614" width="48" height="40"/><rect x="569" y="614" width="48" height="40"/><rect x="632" y="614" width="48" height="40"/></g>
+  <text x="467" y="641" text-anchor="middle">a</text><text x="530" y="641" text-anchor="middle">b</text><text x="593" y="641" text-anchor="middle">c</text><text x="656" y="641" text-anchor="middle">d</text>
+  <path d="M715 634H850" class="edge"/><text x="880" y="624">验证并选出有效前缀</text><text x="880" y="655" class="note">计入块生成与长度选择成本</text>
+  <text x="32" y="744">共同记录：候选数、提交数、草稿耗时、验证耗时和未提交状态的处理。</text>
+  <text x="32" y="774" class="note">结构示意；具体接受、修正与追加规则以对应模型和后端协议为准。</text>
+</svg>

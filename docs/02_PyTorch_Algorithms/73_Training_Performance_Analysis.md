@@ -1,6 +1,6 @@
 # 73. Training Performance Analysis | 训练性能分析
 
-**难度：** Hard | **环境：** CPU 可完成代码与模板验证；有 GPU 时可补充真实运行数据 | **标签：** `显存优化`, `训练剖析`, `性能分析` | **目标人群：** 项目决策练习者
+**难度：** Hard | **环境：** CPU基础练习，GPU训练测量 | **标签：** `显存优化`、`训练剖析`、`性能分析` | **目标人群：** 具备训练基础的读者
 
 > 🚀 **云端运行环境**
 >
@@ -14,68 +14,78 @@
 
 ## 本节导读
 
-前面的训练与显存内容介绍了参数、梯度、激活值和优化器状态如何影响训练成本。本节从一次完整训练 step 出发，学习如何把这些显存对象与耗时、吞吐等信息整理成训练成本记录，并进一步判断主要成本来自哪里。
+训练变慢或显存快用满时，应该先改批量、精度，还是优化器？只看一个总耗时或显存峰值，很难决定。需要先固定模型、输入和更新方式，分别弄清训练中保存了什么、一次更新花了多久，以及较多时间或容量出现在哪个阶段。
 
-完成后，你应能读懂一份训练成本报告，区分静态显存账本和运行时观测结果，并提出下一步分析方向。
+本节从一次参数更新开始，整理状态大小、重复计时与显存测量，再提出下一项对照实验。目标不是从热点表直接选优化方案，而是把“可能慢在哪里”变成能用同一训练任务检验的问题。
 
-**关键词：** `training`, `profiling`, `memory`, `step time`
+**关键词：** `training`、`profiling`、`memory`、`step time`
 
 ---
 
 ## 前置阅读
 
-**导语：** 先回顾训练循环和优化器如何共同完成一次参数更新，再进入本节记录一次 training step 的时间、吞吐和显存成本。
-- [13 SFT 训练循环](./13_SFT_Training_Loop.md)
-- [Part 00 · 11 Optimizers and Loss | 优化器与损失](../00_Prerequisites/11_PyTorch_Optimizers_and_Loss.md)
-- [Part 01 · 13 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
+先回顾一次参数更新包含哪些操作，再理解计时与显存统计各自回答什么问题。
+
+- [13. SFT训练循环](./13_SFT_Training_Loop.md)：追踪前向、反向与参数更新。
+- [Part00·11 优化器与损失](../00_Prerequisites/11_PyTorch_Optimizers_and_Loss.md)：理解梯度与优化器状态何时产生。
+- [Part01·13 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)：区分高耗时操作与限制总时间的瓶颈。
 
 ---
-### Step 1：从固定训练任务建立基线证据
 
-训练性能分析从固定模型、数据批次和更新配置开始，同时建立显存对象账本与完整训练步基线。账本解释容量由哪些对象构成，计时与吞吐记录描述运行现象，阶段 trace 用来定位等待发生在哪里；三者共同形成可交给候选实验的基线证据。
+## Step 1：固定训练任务，分别记录状态与运行情况
 
-| 输入资产 | 分析操作 | 证据输出 | 后续用途 |
+基线是后续改动的比较起点：模型、输入、精度、批量、序列长度与更新方式先保持一致。训练中常驻的参数、梯度和优化器状态可以逐张量统计字节；激活值是前向传播保存、供反向使用的中间结果，临时工作区则随算子执行分配和释放。因此，各对象大小相加不一定等于某一时刻的显存峰值。活跃占用是当前张量使用的内存，分配器预留则还包括暂未使用、留待复用的内存，两者分别报告。
+
+训练步（step）在这里指完成一次参数更新的流程。耗时与吞吐说明它完成得多快，显存峰值说明同一窗口内最多用了多少内存；执行轨迹（trace）进一步展示线程、搬运和算子何时活动。先把这几类记录对应起来，再选择要验证的改动。
+
+| 记录对象 | 怎样取得 | 回答什么问题 |
+|:---|:---|:---|
+| 固定训练条件 | 保存模型、输入和更新配置 | 基线与候选是否在做同一件事 |
+| 状态张量 | 按元素数与类型统计字节 | 参数、梯度和优化器状态分别多大 |
+| 完整更新 | 同步计时并记录吞吐、损失与峰值 | 训练速度和容量是否满足目标 |
+| 执行轨迹 | 记录事件起止与通道 | 哪些操作或等待需要进一步检查 |
+
+![训练状态字节与实测显存峰值](../public/02_PyTorch_Algorithms/73_memory_ledger_map.svg)
+
+## Step 2：说明一次更新从哪里计时到哪里
+
+需要解释数据供给时，把批次准备与搬运一起计入；需要比较设备内训练时，可以先把输入放到GPU，再计梯度清理、前向、反向、参数更新和损失读取。损失读回主机会等待相关GPU工作完成，是否包含这段等待会改变数字。基线与候选必须使用相同起止点。
+
+吞吐按窗口内实际处理的样本数除以时间计算；词元吞吐还要明确是否排除填充位置。下面的GPU实验采用输入已就绪的窗口，计时前后同步设备，并将损失读取计入更新流程。
+
+| 阶段 | 包含输入准备的整步 | 输入已驻留设备的测量 |
+|:---|:---|:---|
+| 批次准备与搬到设备 | 计入 | 在计时前完成 |
+| 梯度清理 | 计入 | 计入 |
+| 前向与损失计算 | 计入 | 计入 |
+| 反向计算梯度 | 计入 | 计入 |
+| 参数更新与损失读取 | 计入 | 计入，包含读取等待 |
+
+![训练步骤与两种计时范围](../public/02_PyTorch_Algorithms/73_training_step_boundary.svg)
+
+## Step 3：从观察结果选择下一项对照
+
+先检查重复运行是否稳定，再看耗时与容量。某阶段耗时最高，说明它值得进一步检查；它是否限制整步速度，还要结合事件依赖与计算重叠判断。例如反向传播变快了，但同时发生的另一条长任务没有结束，整步时间就可能不变。
+
+容量也要结合时刻解释：前向激活减少后，峰值仍可能出现在优化器更新。下一项实验应围绕一个具体问题改变条件，比较完整更新是否变快、最大占用是否下降，而不是把一处局部变化直接当作整体收益。
+
+| 观察结果 | 继续查看什么 | 要检验的问题 | 下一项对照 |
 |:---|:---|:---|:---|
-| 固定训练任务 | 核对模型、数据、精度、批次、序列长度和更新配置 | 可复现的负载身份 | 保证候选与基线可配对 |
-| 显存对象 | 统计参数、梯度、优化器状态、激活和临时工作区 | 对象账本与生命周期 | 解释峰值容量来源 |
-| 完整训练步 | 测量输入准备、前向、反向和参数更新 | 耗时、吞吐、loss 与峰值显存 | 建立性能基线 |
-| 阶段活动 | 记录阶段时间和必要的 trace | 主要等待阶段与候选瓶颈假设 | 指定下一次单变量实验 |
+| 反向耗时较高 | 算子、保存张量与事件依赖 | 减少反向工作是否缩短整步 | 同任务下比较计算或保存策略 |
+| 峰值接近容量上限 | 峰值时刻与存活对象 | 哪类对象占据峰值 | 比较重算、卸载或状态分片 |
+| 设备空闲、输入较晚就绪 | 批次准备与搬运时间线 | 输入供给是否拖延更新开始 | 固定模型比较输入流水线 |
+| 重复运行差异大 | 样本顺序、后台活动与预热 | 测量条件是否足够稳定 | 先固定条件并补测 |
 
-![训练显存对象、影响因素与账本字段](../public/02_PyTorch_Algorithms/73_memory_ledger_map.svg)
+## Step 4：检查基线记录并提出待验证假设
 
-### Step 2：定义训练 step 与测量边界
-
-一次训练 step 可以理解为“准备一个 batch，并完成一次参数更新”。为了比较两次训练的成本，必须让两次测量从同一个位置开始，到同一个位置结束。下面的表格说明每个阶段做什么，以及它是否计入一次完整训练 step。
-
-| 训练阶段 | 这一步发生什么 | 是否计入一次完整 step | 主要观察 |
-|:---|:---|:---:|:---|
-| 输入准备 | 准备 batch，并把数据放到计算设备 | 是 | 输入准备和搬运时间 |
-| 梯度清理 | 清除上一轮遗留的梯度 | 是 | 梯度状态维护的成本 |
-| 前向与损失计算 | 根据 batch 计算模型输出和损失 | 是 | 激活值规模与前向耗时 |
-| 梯度计算 | 根据损失求出各参数的梯度 | 是 | 梯度、重算和反向耗时 |
-| 参数更新 | 使用梯度更新参数及训练状态 | 是 | 更新耗时与优化器状态 |
-
-
-![73 training step 测量边界](../public/02_PyTorch_Algorithms/73_training_step_boundary.svg)
-### Step 3：把测量结果转成可验证的瓶颈假设
-
-基线报告不能只给出一个训练步耗时。先检查运行是否成功、重复测量是否稳定，再把时间热点、容量峰值和对象账本对应起来，形成一个可以由单变量候选实验证伪的假设。证据不足时保留待补测状态，不根据单次热点直接指定优化方案。
-
-| 观察结果 | 结合的证据 | 可验证假设 | 交给下一阶段的动作 |
-|:---|:---|:---|:---|
-| 反向传播占时最高 | 阶段 trace、算子活动和精度路径 | 反向计算或保存张量位于关键路径 | 比较检查点、精度或算子候选 |
-| 峰值接近容量上限 | 峰值时刻、对象账本和分配时间线 | 激活或训练状态导致容量压力 | 比较重算、卸载或状态压缩候选 |
-| 设备空闲且输入等待明显 | 输入准备时间与主机—设备搬运活动 | 输入流水线限制训练步 | 固定模型后比较输入候选 |
-| 重复运行波动过大 | 多次训练步样本和失败记录 | 当前证据不足以确定瓶颈 | 先修复测量条件并补测 |
-### Step 4：形成训练基线与瓶颈假设
-
-计时与训练状态账本作为给定工具。请完成 3 个项目级任务：先核验基线报告能否用于归因，再把重复测量、阶段耗时和对象账本合成证据，最后提出可由下一项单变量实验验证的瓶颈假设。CPU 示例验证证据流，不产生 GPU 峰值结论；真实指标由 Step 5 采集。
+题目提供CPU计时、状态张量计数和示例阶段记录，补全样本可用性、阶段汇总与容量判断。阶段占比按“该阶段中位耗时／所有阶段中位耗时之和”计算；稳定性用耗时标准差除以均值，当前以不超过10%作为示例条件。`capacity_ratio`使用各次峰值的中位数除以容量，描述典型占用；判断能否安全运行时，还要另外查看最大峰值。这里的阶段判断是待验证假设，不是自动识别的真实关键路径。
 
 | 任务与目的 | 已知条件 | 完成标准 | 测试验证 |
 |:---|:---|:---|:---|
-| TODO 1：核验基线契约 | 固定任务身份、运行状态和重复样本 | 缺失身份、失败运行或样本不足时停止归因 | 完整与缺失报告均有断言 |
-| TODO 2：构造基线证据 | 重复样本、阶段耗时、容量和对象账本 | 输出波动、主导阶段与容量压力 | 时间热点和容量热点分别可见 |
-| TODO 3：提出瓶颈假设 | 基线证据与判定阈值 | 输出假设、依据和下一项单变量实验 | 不稳定证据优先要求复测 |
+| TODO 1：检查记录能否统计 | 任务标识、状态、重复样本和阶段名称 | 必需字段与数值合法，各轮阶段名称一致 | 缺失、非有限值与阶段名称不同 |
+| TODO 2：汇总耗时与容量 | 重复样本、状态字节与设备容量 | 计算波动、阶段中位数、最高耗时阶段和典型容量占比 | 已知阶段耗时与非法输入 |
+| TODO 3：选择下一项实验 | 汇总结果与阈值 | 波动大时先补测，容量高时检查状态，其余检查耗时阶段 | 改变稳定性、容量与阶段占比 |
+
 
 ```python
 import math
@@ -87,9 +97,6 @@ import torch
 
 
 ```python
-# 完成训练性能统计和基础显存账本函数
-# 目标：完成 measure -> compare -> decide，并统计训练状态 tensor 的实际字节数
-
 def measure_train_step(train_step_fn, warmup=2, iters=8, batch_size=1):
     """测量 CPU training step；不读取或模拟 GPU 峰值显存。
 
@@ -159,154 +166,312 @@ def summarize_training_memory_ledger(model, optimizer):
         'parameter_dtype': str(first_parameter.dtype) if first_parameter is not None else None,
     }
 
+def _valid_baseline_number(value, *, positive=False):
+    """检查JSON指标的类型、有限性与方向，布尔值不是测量。"""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        finite = math.isfinite(value)
+    except OverflowError:
+        return False
+    return finite and (value > 0 if positive else value >= 0)
+
+
 def validate_training_baseline(report, minimum_samples=3):
-    """确认训练基线具备归因所需的身份、状态和重复样本。"""
-    # ==========================================
-    # TODO 1：核验基线契约。
-    # 检查 workload_id、status、samples，以及每个样本的阶段耗时和峰值字段。
-    # issues = ???
-    # 返回 is_valid、issues 和 sample_count。
-    # ==========================================
-    raise NotImplementedError('请先完成 TODO 代码！')
+    """核验身份、重复数与可统计的样本，保留失败原因。"""
+    if type(minimum_samples) is not int or minimum_samples < 1:
+        raise ValueError('minimum_samples必须为正整数')
+    if not isinstance(report, dict):
+        return {'is_valid': False, 'issues': ['report_not_mapping'], 'sample_count': 0}
+    issues = []
+    if not isinstance(report.get('workload_id'), str) or not report['workload_id'].strip():
+        issues.append('workload_id_missing')
+    if report.get('status') != 'ok':
+        issues.append('baseline_failed')
+    samples = report.get('samples')
+    if not isinstance(samples, list) or len(samples) < minimum_samples:
+        issues.append('insufficient_samples')
+        samples = samples if isinstance(samples, list) else []
+    required = ('step_time_ms', 'samples_per_s', 'peak_memory_mb', 'stages_ms')
+    expected_stages = None
+    for index, sample in enumerate(samples):
+        if not isinstance(sample, dict) or not all(key in sample for key in required):
+            issues.append(f'sample_{index}:incomplete')
+            continue
+        scalar_values_valid = (
+            _valid_baseline_number(sample['step_time_ms'], positive=True)
+            and _valid_baseline_number(sample['samples_per_s'], positive=True)
+            and _valid_baseline_number(sample['peak_memory_mb'])
+        )
+        stages = sample['stages_ms']
+        stages_valid = (
+            isinstance(stages, dict) and bool(stages)
+            and all(isinstance(name, str) and name.strip() for name in stages)
+            and all(_valid_baseline_number(value) for value in stages.values())
+        )
+        if stages_valid:
+            stages_valid = _valid_baseline_number(sum(stages.values()), positive=True)
+        stage_names = set(stages) if stages_valid else set()
+        if stages_valid and expected_stages is None:
+            expected_stages = stage_names
+        stage_names_match = stages_valid and stage_names == expected_stages
+        # TODO 1：判断样本能否进入统计
+        # sample_is_usable = ???  # bool；标量合法、阶段合法且各轮阶段名称一致
+        raise NotImplementedError('TODO 1：请判断样本是否可用')
+        if not sample_is_usable:
+            issues.append(f'sample_{index}:invalid_metrics')
+    return {'is_valid': not issues, 'issues': issues, 'sample_count': len(samples)}
+
 
 def build_training_baseline_evidence(report, memory_ledger, capacity_mb):
-    """把重复样本、阶段耗时与对象账本合成为基线证据。"""
+    """检查样本后汇总耗时；容量为正数，状态大小用非负整数字节。"""
+    review = validate_training_baseline(report)
+    if not review['is_valid']:
+        raise ValueError(f"基线不能用于归因：{review['issues']}")
+    if not _valid_baseline_number(capacity_mb, positive=True):
+        raise ValueError('capacity_mb必须为有限正数')
+    ledger_keys = ('parameter_bytes', 'gradient_bytes', 'optimizer_state_bytes')
+    if (not isinstance(memory_ledger, dict)
+            or any(type(memory_ledger.get(key)) is not int or memory_ledger[key] < 0
+                   for key in ledger_keys)):
+        raise ValueError('各类状态必须提供非负整数字节数')
+    samples = report['samples']
+    step_times = [sample['step_time_ms'] for sample in samples]
+    step_median = statistics.median(step_times)
+    step_cv = statistics.pstdev(step_times) / statistics.fmean(step_times)
+    stage_names = samples[0]['stages_ms'].keys()
     # ==========================================
-    # TODO 2：构造基线证据。
-    # 计算 step time 中位数与变异系数、各阶段中位数、主导阶段和容量占用率。
-    # stage_medians = ???
-    # dominant_stage = ???
-    # 返回稳定性、容量压力和账本摘要。
+    # TODO 2：汇总阶段耗时并识别主导阶段
+    # stage_medians = ???  # dict[str, float]；每个阶段在重复样本上的中位数
+    # dominant_stage = ???  # str；阶段中位数最高的阶段名
     # ==========================================
-    raise NotImplementedError('请先完成 TODO 代码！')
+    raise NotImplementedError('TODO 2：请汇总阶段证据')
+    peak_memory_mb = statistics.median(sample['peak_memory_mb'] for sample in samples)
+    return {
+        'workload_id': report['workload_id'], 'step_time_median_ms': step_median,
+        'step_time_cv': step_cv, 'stable': step_cv <= 0.10,
+        'stage_medians_ms': stage_medians, 'dominant_stage': dominant_stage,
+        'dominant_stage_share': stage_medians[dominant_stage] / sum(stage_medians.values()),
+        'peak_memory_mb': peak_memory_mb, 'capacity_ratio': peak_memory_mb / capacity_mb,
+        'memory_ledger': memory_ledger,
+    }
 
 def classify_training_bottleneck(evidence, capacity_alert_ratio=0.90, hotspot_share=0.40):
     """依据基线证据提出下一项可验证实验。"""
+    if not evidence.get('stable', False):
+        return {'status': 'rerun_required', 'hypothesis': 'measurement_unstable', 'evidence': ['step_time_cv'], 'next_experiment': 'repeat_training_baseline'}
     # ==========================================
-    # TODO 3：提出瓶颈假设。
-    # 证据不稳定时先复测；容量压力优先进入 76；否则根据主导阶段占比选择下一项实验。
-    # 返回 status、hypothesis、evidence 和 next_experiment。
+    # TODO 3：判断典型占用是否达到容量提醒阈值
+    # capacity_is_high = ???  # bool；容量占用率达到 capacity_alert_ratio 时为 True
     # ==========================================
-    raise NotImplementedError('请先完成 TODO 代码！')
+    raise NotImplementedError('TODO 3：请判断容量压力')
+    if capacity_is_high:
+        return {'status': 'ready', 'hypothesis': 'training_capacity_pressure', 'evidence': ['peak_memory_mb', 'capacity_ratio', 'memory_ledger'], 'next_experiment': '76_activation_checkpoint_offload'}
+    if evidence['dominant_stage_share'] >= hotspot_share:
+        stage = evidence['dominant_stage']
+        return {'status': 'ready', 'hypothesis': f'{stage}_critical_path', 'evidence': ['stage_medians_ms', 'dominant_stage_share'], 'next_experiment': f'test_{stage}_candidate'}
+    return {'status': 'needs_more_evidence', 'hypothesis': 'no_dominant_bottleneck', 'evidence': ['stage_medians_ms'], 'next_experiment': 'collect_trace'}
 
 ```
+
+## 测试
 
 
 ```python
 # 测试你的实现
 def test_training_project_template():
-    try:
-        torch.manual_seed(42)
-        counter = {'n': 0}
-        model = torch.nn.Sequential(torch.nn.Linear(8, 16), torch.nn.Tanh(), torch.nn.Linear(16, 4))
-        # AdamW 在第一次 optimizer.step() 后创建状态，便于检查 optimizer state 账本。
-        optimizer = torch.optim.AdamW(model.parameters(), lr=0.01)
-        inputs = torch.randn(2, 8)
-        targets = torch.randn(2, 4)
+    """验证训练计时、状态大小和基线归因的核心边界。"""
+    torch.manual_seed(42)
+    counter = {'n': 0}
+    model = torch.nn.Sequential(torch.nn.Linear(8, 16), torch.nn.Tanh(), torch.nn.Linear(16, 4))
+    # AdamW 在第一次 optimizer.step() 后创建状态，便于检查 优化器状态大小。
+    optimizer = torch.optim.AdamW(model.parameters(), lr=0.01)
+    inputs = torch.randn(2, 8)
+    targets = torch.randn(2, 4)
 
-        def train_step():
-            counter['n'] += 1
-            optimizer.zero_grad(set_to_none=True)
-            loss = torch.nn.functional.mse_loss(model(inputs), targets)
-            loss.backward()
-            optimizer.step()
-            return loss.detach()
+    def train_step():
+        counter['n'] += 1
+        optimizer.zero_grad(set_to_none=True)
+        loss = torch.nn.functional.mse_loss(model(inputs), targets)
+        loss.backward()
+        optimizer.step()
+        return loss.detach()
 
-        timing_calls = {'n': 0}
-        def count_step():
-            timing_calls['n'] += 1
-        warmup_result = measure_train_step(count_step, warmup=2, iters=3)
-        assert timing_calls['n'] == 5, 'warmup 应执行但不能混入正式迭代次数'
-        assert warmup_result['samples_per_s'] > 0.0
+    timing_calls = {'n': 0}
+    def count_step():
+        timing_calls['n'] += 1
+    warmup_result = measure_train_step(count_step, warmup=2, iters=3)
+    assert timing_calls['n'] == 5, 'warmup 应执行但不能混入正式迭代次数'
+    assert warmup_result['samples_per_s'] > 0.0
 
-        before = [parameter.detach().clone() for parameter in model.parameters()]
-        result = measure_train_step(train_step, warmup=0, iters=2)
-        assert counter['n'] == 2, "measure_train_step 没有正确执行训练迭代次数！"
-        assert {'step_time_ms', 'samples_per_s', 'peak_mem_mb'} <= result.keys(), "训练统计字段不完整！"
-        assert result['samples_per_s'] > 0.0, "samples_per_s 应为正数！"
-        assert result['step_time_ms'] >= 0.0, "step_time_ms 应为非负数！"
-        assert result['peak_mem_mb'] == 0.0, "CPU 测量不能虚构 GPU 峰值显存！"
-        assert all(parameter.grad is not None for parameter in model.parameters()), "训练 step 必须完成 backward 并产生梯度！"
-        assert all(torch.isfinite(parameter).all() for parameter in model.parameters()), "参数出现 NaN 或 Inf！"
-        assert any(not torch.equal(previous, parameter) for previous, parameter in zip(before, model.parameters())), "optimizer.step 必须更新至少一个参数！"
-        ledger = summarize_training_memory_ledger(model, optimizer)
-        expected_parameter_bytes = sum(parameter.numel() * parameter.element_size() for parameter in model.parameters())
-        assert ledger['parameter_bytes'] == expected_parameter_bytes, "参数字节数账本不正确！"
-        assert ledger['gradient_bytes'] > 0, "完成 backward 后应能统计梯度字节数！"
-        assert ledger['optimizer_state_bytes'] > 0, "完成 AdamW step 后应能统计 optimizer state 字节数！"
-        assert ledger['parameter_dtype'] == 'torch.float32', "参数 dtype 记录不正确！"
-        for invalid in ({'warmup': -1, 'iters': 2}, {'warmup': 0, 'iters': 0}):
-            try:
-                measure_train_step(train_step, **invalid)
-            except ValueError:
-                pass
-            else:
-                raise AssertionError('非法 warmup / iters 应明确拒绝！')
-
-        baseline = {'step_time_ms': 120.0, 'peak_mem_mb': 8192.0, 'samples_per_s': 8.0}
-        tuned = {'step_time_ms': 98.0, 'peak_mem_mb': 6144.0, 'samples_per_s': 10.0}
-        summary = summarize_training_result(baseline, tuned)
-        assert summary['step_time_delta_ms'] == 22.0, "step_time_delta_ms 计算不正确！"
-        assert summary['peak_mem_delta_mb'] == 2048.0, "peak_mem_delta_mb 计算不正确！"
-        assert summary['time_improved'] is True, "time_improved 判断不正确！"
-        assert summary['memory_improved'] is True, "memory_improved 判断不正确！"
-        assert summary['throughput_delta'] == 2.0, "throughput_delta 计算不正确！"
-        assert summary['throughput_improved'] is True, "throughput_improved 判断不正确！"
-        decision = recommend_training_decision(summary, min_time_delta_ms=10.0, min_memory_delta_mb=512.0)
-        assert decision['decision'] == 'accept', "速度和显存收益都达标时应建议 accept！"
-
-        weak_summary = {'step_time_delta_ms': 6.0, 'peak_mem_delta_mb': 256.0, 'time_improved': True, 'memory_improved': True}
-        assert recommend_training_decision(weak_summary, min_time_delta_ms=10.0, min_memory_delta_mb=512.0)['decision'] == 'tune', "收益不够稳时应建议 tune！"
-
-        bad_summary = {'step_time_delta_ms': -4.0, 'peak_mem_delta_mb': 0.0, 'time_improved': False, 'memory_improved': False}
-        assert recommend_training_decision(bad_summary, min_time_delta_ms=10.0, min_memory_delta_mb=512.0)['decision'] == 'reject', "没有形成有效收益时应建议 reject！"
-
-        baseline_report = {
-            'workload_id': 'train-b2-s1024', 'status': 'ok',
-            'samples': [
-                {'step_time_ms': 100.0, 'samples_per_s': 20.0, 'peak_memory_mb': 9200.0, 'stages_ms': {'input': 10.0, 'forward': 25.0, 'backward': 50.0, 'update': 15.0}},
-                {'step_time_ms': 102.0, 'samples_per_s': 19.6, 'peak_memory_mb': 9250.0, 'stages_ms': {'input': 11.0, 'forward': 25.0, 'backward': 51.0, 'update': 15.0}},
-                {'step_time_ms': 98.0, 'samples_per_s': 20.4, 'peak_memory_mb': 9180.0, 'stages_ms': {'input': 9.0, 'forward': 24.0, 'backward': 50.0, 'update': 15.0}},
-            ],
-        }
-        contract = validate_training_baseline(baseline_report)
-        assert contract['is_valid'] is True
-        assert validate_training_baseline({**baseline_report, 'workload_id': ''})['is_valid'] is False
-        evidence = build_training_baseline_evidence(baseline_report, ledger, capacity_mb=10000.0)
-        assert evidence['stable'] is True and evidence['dominant_stage'] == 'backward'
-        assert evidence['capacity_ratio'] > 0.90
-        hypothesis = classify_training_bottleneck(evidence)
-        assert hypothesis['hypothesis'] == 'training_capacity_pressure'
-        assert hypothesis['next_experiment'] == '76_activation_checkpoint_offload'
-        noisy = {**evidence, 'stable': False}
-        assert classify_training_bottleneck(noisy)['status'] == 'rerun_required'
-        print("✅ 训练性能分析项目模板代码通过基础校验。")
-
-    except NotImplementedError:
-        print("请先完成 TODO 代码！")
-        raise
-    except (AttributeError, NameError, TypeError, ValueError, AssertionError, RuntimeError) as e:
-        if isinstance(e, AttributeError):
-            print("代码未完成，无法找到必要的属性")
-        elif isinstance(e, NameError):
-            print("代码可能未完成，导致了变量未定义")
-        elif isinstance(e, TypeError):
-            print("代码可能未完成，导致了操作错误")
-        elif isinstance(e, ValueError):
-            print("代码可能未完成，导致了数值错误")
-        elif isinstance(e, AssertionError):
-            print(f"❌ 测试失败: {e}")
-        elif isinstance(e, RuntimeError):
-            print("代码可能未完成，导致了运行时错误")
+    before = [parameter.detach().clone() for parameter in model.parameters()]
+    result = measure_train_step(train_step, warmup=0, iters=2)
+    assert counter['n'] == 2, "measure_train_step 没有正确执行训练迭代次数！"
+    assert {'step_time_ms', 'samples_per_s', 'peak_mem_mb'} <= result.keys(), "训练统计字段不完整！"
+    assert result['samples_per_s'] > 0.0, "samples_per_s 应为正数！"
+    assert result['step_time_ms'] >= 0.0, "step_time_ms 应为非负数！"
+    assert result['peak_mem_mb'] == 0.0, "CPU 测量不能虚构 GPU 峰值显存！"
+    assert all(parameter.grad is not None for parameter in model.parameters()), "训练 step 必须完成 backward 并产生梯度！"
+    assert all(torch.isfinite(parameter).all() for parameter in model.parameters()), "参数出现 NaN 或 Inf！"
+    assert any(not torch.equal(previous, parameter) for previous, parameter in zip(before, model.parameters())), "optimizer.step 必须更新至少一个参数！"
+    ledger = summarize_training_memory_ledger(model, optimizer)
+    expected_parameter_bytes = sum(parameter.numel() * parameter.element_size() for parameter in model.parameters())
+    assert ledger['parameter_bytes'] == expected_parameter_bytes, "参数字节数不正确！"
+    assert ledger['gradient_bytes'] > 0, "完成 backward 后应能统计梯度字节数！"
+    assert ledger['optimizer_state_bytes'] > 0, "完成 AdamW step 后应能统计 optimizer state 字节数！"
+    assert ledger['parameter_dtype'] == 'torch.float32', "参数 dtype 记录不正确！"
+    for invalid in ({'warmup': -1, 'iters': 2}, {'warmup': 0, 'iters': 0}):
+        try:
+            measure_train_step(train_step, **invalid)
+        except ValueError:
+            pass
         else:
-            print("代码可能未完成，导致了断言失败")
-        raise NotImplementedError("请先完成 TODO 代码！") from e
-    except Exception as e:
-        print(f"❌ 发生未知异常: {e}")
-        raise
+            raise AssertionError('非法 warmup / iters 应明确拒绝！')
 
+    baseline = {'step_time_ms': 120.0, 'peak_mem_mb': 8192.0, 'samples_per_s': 8.0}
+    tuned = {'step_time_ms': 98.0, 'peak_mem_mb': 6144.0, 'samples_per_s': 10.0}
+    summary = summarize_training_result(baseline, tuned)
+    assert summary['step_time_delta_ms'] == 22.0, "step_time_delta_ms 计算不正确！"
+    assert summary['peak_mem_delta_mb'] == 2048.0, "peak_mem_delta_mb 计算不正确！"
+    assert summary['time_improved'] is True, "time_improved 判断不正确！"
+    assert summary['memory_improved'] is True, "memory_improved 判断不正确！"
+    assert summary['throughput_delta'] == 2.0, "throughput_delta 计算不正确！"
+    assert summary['throughput_improved'] is True, "throughput_improved 判断不正确！"
+    decision = recommend_training_decision(summary, min_time_delta_ms=10.0, min_memory_delta_mb=512.0)
+    assert decision['decision'] == 'accept', "速度和显存收益都达标时应建议 accept！"
+
+    weak_summary = {'step_time_delta_ms': 6.0, 'peak_mem_delta_mb': 256.0, 'time_improved': True, 'memory_improved': True}
+    assert recommend_training_decision(weak_summary, min_time_delta_ms=10.0, min_memory_delta_mb=512.0)['decision'] == 'tune', "收益不够稳时应建议 tune！"
+
+    bad_summary = {'step_time_delta_ms': -4.0, 'peak_mem_delta_mb': 0.0, 'time_improved': False, 'memory_improved': False}
+    assert recommend_training_decision(bad_summary, min_time_delta_ms=10.0, min_memory_delta_mb=512.0)['decision'] == 'reject', "没有形成有效收益时应建议 reject！"
+
+    baseline_report = {
+        'workload_id': 'train-b2-s1024', 'status': 'ok',
+        'samples': [
+            {'step_time_ms': 100.0, 'samples_per_s': 20.0, 'peak_memory_mb': 9200.0, 'stages_ms': {'input': 10.0, 'forward': 25.0, 'backward': 50.0, 'update': 15.0}},
+            {'step_time_ms': 102.0, 'samples_per_s': 19.6, 'peak_memory_mb': 9250.0, 'stages_ms': {'input': 11.0, 'forward': 25.0, 'backward': 51.0, 'update': 15.0}},
+            {'step_time_ms': 98.0, 'samples_per_s': 20.4, 'peak_memory_mb': 9180.0, 'stages_ms': {'input': 9.0, 'forward': 24.0, 'backward': 50.0, 'update': 15.0}},
+        ],
+    }
+    contract = validate_training_baseline(baseline_report)
+    assert contract['is_valid'] is True
+    assert validate_training_baseline({**baseline_report, 'workload_id': ''})['is_valid'] is False
+    evidence = build_training_baseline_evidence(baseline_report, ledger, capacity_mb=10000.0)
+    assert evidence['stable'] is True and evidence['dominant_stage'] == 'backward'
+    assert evidence['capacity_ratio'] > 0.90
+    hypothesis = classify_training_bottleneck(evidence)
+    assert hypothesis['hypothesis'] == 'training_capacity_pressure'
+    assert hypothesis['next_experiment'] == '76_activation_checkpoint_offload'
+    noisy = {**evidence, 'stable': False}
+    assert classify_training_bottleneck(noisy)['status'] == 'rerun_required'
+    print("✅ 训练计时、状态计数与基线分析测试通过。")
+
+
+def _baseline_report_fixture():
+    """构造三次完整且稳定的训练基线样本。"""
+    return {
+        'workload_id': 'train-b2-s1024', 'status': 'ok',
+        'samples': [
+            {'step_time_ms': 100.0, 'samples_per_s': 20.0, 'peak_memory_mb': 9200.0, 'stages_ms': {'input': 10.0, 'forward': 25.0, 'backward': 50.0, 'update': 15.0}},
+            {'step_time_ms': 102.0, 'samples_per_s': 19.6, 'peak_memory_mb': 9250.0, 'stages_ms': {'input': 11.0, 'forward': 25.0, 'backward': 51.0, 'update': 15.0}},
+            {'step_time_ms': 98.0, 'samples_per_s': 20.4, 'peak_memory_mb': 9180.0, 'stages_ms': {'input': 9.0, 'forward': 24.0, 'backward': 50.0, 'update': 15.0}},
+        ],
+    }
+
+def test_baseline_contract_rejects_incomplete_reports():
+    """完整报告通过，身份、状态、重复数或样本字段缺失时拒绝归因。"""
+    report = _baseline_report_fixture()
+    assert validate_training_baseline(report)['is_valid'] is True
+    assert not validate_training_baseline({**report, 'workload_id': ''})['is_valid']
+    assert not validate_training_baseline({**report, 'status': 'failed'})['is_valid']
+    assert not validate_training_baseline({**report, 'samples': report['samples'][:2]})['is_valid']
+    incomplete = _baseline_report_fixture()
+    incomplete['samples'][0].pop('stages_ms')
+    assert 'sample_0:incomplete' in validate_training_baseline(incomplete)['issues']
+
+def _expect_baseline_value_error(function, *args):
+    """非法样本或预算必须在统计前停止。"""
+    try:
+        function(*args)
+    except ValueError:
+        return
+    raise AssertionError('非法基线未被拒绝')
+
+
+def test_baseline_contract_rejects_invalid_metrics():
+    """拒绝非有限值、布尔值、错误方向与不可比较的阶段。"""
+    for field in ('step_time_ms', 'samples_per_s', 'peak_memory_mb'):
+        values = [None, True, '1', -1, float('nan'), float('inf')]
+        if field != 'peak_memory_mb':
+            values.append(0)
+        for invalid in values:
+            report = _baseline_report_fixture()
+            report['samples'][0][field] = invalid
+            assert not validate_training_baseline(report)['is_valid'], (field, invalid)
+    for stages in ({}, None, {'forward': 0}, {'': 10}, {'forward': True},
+                   {'forward': -1}, {'forward': float('nan')},
+                   {'forward': 1e308, 'backward': 1e308}, {'other': 100}):
+        report = _baseline_report_fixture()
+        report['samples'][0]['stages_ms'] = stages
+        assert not validate_training_baseline(report)['is_valid'], stages
+    report = _baseline_report_fixture()
+    report['samples'][0]['peak_memory_mb'] = 0.0
+    assert validate_training_baseline(report)['is_valid']
+    for sample in report['samples']:
+        sample['stages_ms']['input'] = 0.0
+    assert validate_training_baseline(report)['is_valid']
+    for invalid in (None, [], {'status': 'ok'}, {'workload_id': '   ', 'samples': []}):
+        assert not validate_training_baseline(invalid)['is_valid']
+    for invalid in (0, -1, True, 1.5):
+        _expect_baseline_value_error(validate_training_baseline, report, invalid)
+
+
+def test_baseline_evidence_rejects_invalid_inputs():
+    """汇总入口自行执行门禁，容量和状态字节也必须合法。"""
+    ledger = {'parameter_bytes': 100, 'gradient_bytes': 100, 'optimizer_state_bytes': 200}
+    report = _baseline_report_fixture()
+    for invalid in (0, -1, True, float('nan'), float('inf')):
+        _expect_baseline_value_error(build_training_baseline_evidence, report, ledger, invalid)
+    for invalid in (None, {}, {**ledger, 'gradient_bytes': -1},
+                    {**ledger, 'parameter_bytes': True}):
+        _expect_baseline_value_error(build_training_baseline_evidence, report, invalid, 10000)
+    report['samples'][0]['step_time_ms'] = float('nan')
+    _expect_baseline_value_error(build_training_baseline_evidence, report, ledger, 10000)
+
+
+def test_baseline_evidence_summarizes_stability_and_hotspot():
+    """重复测量给出稳定性、阶段中位数、主导阶段和容量占用。"""
+    evidence = build_training_baseline_evidence(
+        _baseline_report_fixture(),
+        {'parameter_bytes': 100, 'gradient_bytes': 100, 'optimizer_state_bytes': 200},
+        capacity_mb=10000.0,
+    )
+    assert evidence['stable'] is True
+    assert evidence['stage_medians_ms']['backward'] == 50.0
+    assert evidence['dominant_stage'] == 'backward'
+    assert evidence['capacity_ratio'] > 0.90
+
+def test_bottleneck_hypothesis_prioritizes_remeasurement_and_capacity():
+    """不稳定先复测，稳定但显存接近上限时转入容量实验。"""
+    evidence = build_training_baseline_evidence(
+        _baseline_report_fixture(),
+        {'parameter_bytes': 100, 'gradient_bytes': 100, 'optimizer_state_bytes': 200},
+        capacity_mb=10000.0,
+    )
+    assert classify_training_bottleneck({**evidence, 'stable': False})['next_experiment'] == 'repeat_training_baseline'
+    capacity = classify_training_bottleneck(evidence)
+    assert capacity['hypothesis'] == 'training_capacity_pressure'
+    assert capacity['next_experiment'] == '76_activation_checkpoint_offload'
+    time_bound = classify_training_bottleneck({**evidence, 'capacity_ratio': 0.5, 'dominant_stage_share': 0.6})
+    assert time_bound['next_experiment'] == 'test_backward_candidate'
 
 test_training_project_template()
+test_baseline_contract_rejects_incomplete_reports()
+test_baseline_contract_rejects_invalid_metrics()
+test_baseline_evidence_rejects_invalid_inputs()
+test_baseline_evidence_summarizes_stability_and_hotspot()
+test_bottleneck_hypothesis_prioritizes_remeasurement_and_capacity()
 
 ```
 
@@ -327,9 +492,6 @@ test_training_project_template()
 
 
 ```python
-import time
-import torch
-
 def measure_train_step(train_step_fn, warmup=2, iters=8, batch_size=1):
     """测量 CPU training step 的平均耗时；不采集或模拟 GPU 显存。
 
@@ -341,12 +503,11 @@ def measure_train_step(train_step_fn, warmup=2, iters=8, batch_size=1):
     for _ in range(warmup):
         train_step_fn()
 
-    # TODO 1 提示：只包住正式迭代；start / end 是总耗时边界，elapsed 是平均 step time。
-    start = time.perf_counter()  # TODO 1 对应挖空：开始正式计时
+    start = time.perf_counter()
     for _ in range(iters):
         train_step_fn()
-    end = time.perf_counter()  # TODO 1 对应挖空：结束正式计时
-    elapsed = (end - start) / iters  # TODO 1 对应挖空：计算平均 step time
+    end = time.perf_counter()
+    elapsed = (end - start) / iters
 
     peak_mem_mb = 0.0
 
@@ -362,10 +523,9 @@ def summarize_training_result(base_metrics, tuned_metrics):
     正值表示 tuned 相对 baseline 有改善：耗时和显存取 baseline - tuned，
     吞吐取 tuned - baseline。
     """
-    # TODO 2 提示：time_delta / mem_delta 用 baseline - tuned；throughput_delta 反向相减。
-    time_delta = base_metrics['step_time_ms'] - tuned_metrics['step_time_ms']  # TODO 2 对应挖空：耗时差值
-    mem_delta = base_metrics['peak_mem_mb'] - tuned_metrics['peak_mem_mb']  # TODO 2 对应挖空：显存差值
-    throughput_delta = tuned_metrics['samples_per_s'] - base_metrics['samples_per_s']  # TODO 2 对应挖空：吞吐差值
+    time_delta = base_metrics['step_time_ms'] - tuned_metrics['step_time_ms']
+    mem_delta = base_metrics['peak_mem_mb'] - tuned_metrics['peak_mem_mb']
+    throughput_delta = tuned_metrics['samples_per_s'] - base_metrics['samples_per_s']
     return {
         'step_time_delta_ms': round(time_delta, 2),
         'peak_mem_delta_mb': round(mem_delta, 2),
@@ -385,13 +545,13 @@ def recommend_training_decision(summary, min_time_delta_ms=10.0, min_memory_delt
         reason = '训练速度和显存收益都达标，值得继续保留当前优化。'
     elif summary['time_improved'] or summary['memory_improved']:
         decision = 'tune'
-        reason = '至少有一项收益成立，但还没形成稳定项目结论，先继续微调。'
+        reason = '至少有一项收益成立，但尚未同时达到时间与显存门槛，需继续比较。'
     else:
         decision = 'reject'
         reason = '速度和显存都没有形成有效收益，当前改动不值得保留。'
     return {'decision': decision, 'reason': reason}
 
-# 给定实现：统计训练状态账本；optimizer.step() 后 optimizer state 才会出现
+# 给定实现：统计训练状态字节；optimizer.step() 后 optimizer state 才会出现
 def summarize_training_memory_ledger(model, optimizer):
     """返回参数、梯度和 optimizer state 的实际字节数。
 
@@ -420,9 +580,25 @@ def summarize_training_memory_ledger(model, optimizer):
         'parameter_dtype': str(first_parameter.dtype) if first_parameter is not None else None,
     }
 
+def _valid_baseline_number(value, *, positive=False):
+    """检查JSON指标的类型、有限性与方向，布尔值不是测量。"""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        finite = math.isfinite(value)
+    except OverflowError:
+        return False
+    return finite and (value > 0 if positive else value >= 0)
+
+
 def validate_training_baseline(report, minimum_samples=3):
+    """核验身份、重复数与可统计的样本，保留失败原因。"""
+    if type(minimum_samples) is not int or minimum_samples < 1:
+        raise ValueError('minimum_samples必须为正整数')
+    if not isinstance(report, dict):
+        return {'is_valid': False, 'issues': ['report_not_mapping'], 'sample_count': 0}
     issues = []
-    if not isinstance(report.get('workload_id'), str) or not report.get('workload_id'):
+    if not isinstance(report.get('workload_id'), str) or not report['workload_id'].strip():
         issues.append('workload_id_missing')
     if report.get('status') != 'ok':
         issues.append('baseline_failed')
@@ -431,17 +607,53 @@ def validate_training_baseline(report, minimum_samples=3):
         issues.append('insufficient_samples')
         samples = samples if isinstance(samples, list) else []
     required = ('step_time_ms', 'samples_per_s', 'peak_memory_mb', 'stages_ms')
+    expected_stages = None
     for index, sample in enumerate(samples):
-        if not isinstance(sample, dict) or any(key not in sample for key in required):
+        if not isinstance(sample, dict) or not all(key in sample for key in required):
             issues.append(f'sample_{index}:incomplete')
+            continue
+        scalar_values_valid = (
+            _valid_baseline_number(sample['step_time_ms'], positive=True)
+            and _valid_baseline_number(sample['samples_per_s'], positive=True)
+            and _valid_baseline_number(sample['peak_memory_mb'])
+        )
+        stages = sample['stages_ms']
+        stages_valid = (
+            isinstance(stages, dict) and bool(stages)
+            and all(isinstance(name, str) and name.strip() for name in stages)
+            and all(_valid_baseline_number(value) for value in stages.values())
+        )
+        if stages_valid:
+            stages_valid = _valid_baseline_number(sum(stages.values()), positive=True)
+        stage_names = set(stages) if stages_valid else set()
+        if stages_valid and expected_stages is None:
+            expected_stages = stage_names
+        stage_names_match = stages_valid and stage_names == expected_stages
+        # TODO 1：判断样本能否进入统计
+        sample_is_usable = scalar_values_valid and stages_valid and stage_names_match
+        if not sample_is_usable:
+            issues.append(f'sample_{index}:invalid_metrics')
     return {'is_valid': not issues, 'issues': issues, 'sample_count': len(samples)}
 
+
 def build_training_baseline_evidence(report, memory_ledger, capacity_mb):
+    """检查样本后汇总耗时；容量为正数，状态大小用非负整数字节。"""
+    review = validate_training_baseline(report)
+    if not review['is_valid']:
+        raise ValueError(f"基线不能用于归因：{review['issues']}")
+    if not _valid_baseline_number(capacity_mb, positive=True):
+        raise ValueError('capacity_mb必须为有限正数')
+    ledger_keys = ('parameter_bytes', 'gradient_bytes', 'optimizer_state_bytes')
+    if (not isinstance(memory_ledger, dict)
+            or any(type(memory_ledger.get(key)) is not int or memory_ledger[key] < 0
+                   for key in ledger_keys)):
+        raise ValueError('各类状态必须提供非负整数字节数')
     samples = report['samples']
     step_times = [sample['step_time_ms'] for sample in samples]
     step_median = statistics.median(step_times)
     step_cv = statistics.pstdev(step_times) / statistics.fmean(step_times)
     stage_names = samples[0]['stages_ms'].keys()
+    # TODO 2：汇总阶段耗时并识别主导阶段
     stage_medians = {name: statistics.median(sample['stages_ms'][name] for sample in samples) for name in stage_names}
     dominant_stage = max(stage_medians, key=stage_medians.get)
     peak_memory_mb = statistics.median(sample['peak_memory_mb'] for sample in samples)
@@ -455,9 +667,12 @@ def build_training_baseline_evidence(report, memory_ledger, capacity_mb):
     }
 
 def classify_training_bottleneck(evidence, capacity_alert_ratio=0.90, hotspot_share=0.40):
+    """依据稳定性、容量压力与阶段占比提出待验证假设。"""
     if not evidence.get('stable', False):
         return {'status': 'rerun_required', 'hypothesis': 'measurement_unstable', 'evidence': ['step_time_cv'], 'next_experiment': 'repeat_training_baseline'}
-    if evidence['capacity_ratio'] >= capacity_alert_ratio:
+    # TODO 3：判断典型占用是否达到容量提醒阈值
+    capacity_is_high = evidence['capacity_ratio'] >= capacity_alert_ratio
+    if capacity_is_high:
         return {'status': 'ready', 'hypothesis': 'training_capacity_pressure', 'evidence': ['peak_memory_mb', 'capacity_ratio', 'memory_ledger'], 'next_experiment': '76_activation_checkpoint_offload'}
     if evidence['dominant_stage_share'] >= hotspot_share:
         stage = evidence['dominant_stage']
@@ -469,30 +684,34 @@ def classify_training_bottleneck(evidence, capacity_alert_ratio=0.90, hotspot_sh
 
 ### 解析
 
-基线是否稳定、时间热点和容量压力是否有对应证据，决定瓶颈假设能否进入下一项单变量实验。
+#### TODO 1：判断样本是否满足统计条件
 
-**TODO 1：核验基线契约**
-固定工作负载身份、成功状态和重复样本数量；身份缺失、运行失败或样本不足时停止归因。测试用完整报告与身份缺失报告验证准入条件。
+- 标量合法、阶段耗时合法且各轮阶段名称一致，三项同时满足才使用该样本。任务标识只检查存在与非空，真实模型和配置还要在项目测量中核对。
+- 缺失、NaN、负值、全零阶段与名称改变的测试，分别检查这些条件是否被遗漏。
 
-**TODO 2：构造基线证据**
-用重复样本的中位数和变异系数判断计时稳定性，以阶段耗时定位时间热点，并结合峰值容量和对象账本判断容量压力。测试分别覆盖时间热点与容量预警。
+#### TODO 2：汇总各阶段的重复测量
 
-**TODO 3：提出瓶颈假设**
-证据不稳定时先补测；容量接近上限时比较检查点或卸载策略；否则围绕主导阶段设计单变量实验。测试验证容量压力与测量不稳定时会给出不同的下一步动作。
+- 每个阶段取中位数，再选中位耗时最高者；占比的分母是各阶段中位数之和。例如50ms占10＋25＋50＋15ms的50%。
+- 该比例适合题目的阶段记录，不能把有重叠的GPU活动直接相加后当作墙钟时间。测试核对阶段汇总，并检查容量和状态字节是否合法。
 
-### Step 5（项目实验）：测量训练基线
+#### TODO 3：按稳定性与容量选择下一步
 
-在相同模型、输入和训练步骤下，各重复三次 FP32 与 BF16，比较单步耗时、吞吐和峰值显存。运行顺序是 `prepare → measure → close`。
+- 耗时波动超过示例阈值时先重复测量；典型峰值接近容量时，检查各阶段存活对象并比较显存策略。
+- 容量压力不高时再围绕最高耗时阶段提出对照。返回的关键路径名称仍是假设，需通过实际依赖与完整更新计时检验。
+
+## Step 5：测量训练基线
+
+在相同模型、输入和训练步骤下，各重复三次 FP32 与 BF16，输入在计时前驻留GPU，比较梯度清理、前向、反向、更新及损失读取的耗时、吞吐和峰值显存。运行顺序是 `prepare → measure → close`。
 
 | 核对内容 | CPU 练习 | GPU 测量与结果 |
 |:---|:---|:---|
 | 报告可用性 | 检查任务身份、重复样本和失败输入 | 5.5 检查模型与工作负载、重复次数和有限数值 |
-| 训练与资源 | 小网络完成反向传播和参数更新，统计训练状态字节 | 固定模型测量 FP32 与自动混合精度的整步耗时、吞吐和峰值显存 |
-| 后续实验 | 用给定阶段耗时提出可验证假设 | 形成 76 的比较基线；实际阶段耗时由 74 的剖析实验补充 |
+| 训练与资源 | 小网络完成反向传播和参数更新，统计训练状态字节 | 固定模型与设备输入，测量FP32与混合精度的训练步耗时、吞吐和峰值显存 |
+| 后续实验 | 用给定阶段耗时提出可验证假设 | 为76提供同范围训练对照；阶段归因需另有剖析记录，74核对这些记录与候选证据 |
 
-#### 5.1 本次运行配置
+### 5.1 本次运行配置
 
-运行环境：`PERF-CUDA-MECHANISM`，单卡显存至少 8 GiB；环境创建与验证见[性能分析 Quickstart](../topic_discussion/performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart)。
+运行环境：`PERF-CUDA-MECHANISM`，单卡显存至少 8 GiB；环境创建与验证见[性能机制GPU环境](../topic_discussion/performance_optimization/gpu_quickstart.md#perf-cuda-mechanism-quickstart)。
 
 只需填写本次标签和运行阶段。首次打开保持 `prepare`；新测量使用同一唯一标签依次运行 `measure`、`close`。
 
@@ -504,7 +723,7 @@ RUN_STAGE = 'prepare'  # 可选 prepare / measure / close；prepare 只读取和
 
 ```
 
-#### 5.2 固定实验配置与环境预检
+### 5.2 固定实验配置与环境预检
 
 检查项目路径、PyTorch、CUDA 和模型文件，并加载固定训练配置。`prepare` 不加载模型。
 
@@ -562,9 +781,9 @@ if torch.cuda.is_available():
 
 ```
 
-#### 5.3 对照合同与结果路径
+### 5.3 核对比较条件与结果路径
 
-确认 FP32 与 BF16 使用相同模型、输入、训练步骤和重复次数，只改变计算精度。
+确认FP32与BF16使用相同模型、输入、更新步骤和重复次数，只改变计算精度。
 
 
 ```python
@@ -587,7 +806,7 @@ print(EXPERIMENT_IDENTITY)
 
 ```
 
-#### 5.4 采集训练测量
+### 5.4 采集训练测量
 
 `measure` 各运行三次 FP32 与 BF16 并保存原始结果；其他阶段跳过 GPU。
 
@@ -786,33 +1005,69 @@ else:
 
 ```
 
-#### 5.5 核对测量结果
+### 5.5 核对测量结果
 
-读取保存的结果，核对实验配置、重复次数和两组指标。本单元不重新训练。
+读取原始报告，检查模型、输入配置、重复次数和数值，再从样本重算组均值与差异。下方只读保存结果，汇总不一致时停止登记。
 
 
 ```python
 import hashlib
+import math
+
 result_path = PROJECT_ROOT / READ_RESULT_RELATIVE_PATH
 if not result_path.is_file():
-    raise FileNotFoundError(f'找不到训练 baseline：{result_path}')
-report = json.loads(result_path.read_text(encoding='utf-8'))
-is_paired = report.get('config', {}).get('mode') == 'paired'
-evidence_review = {
-    'path': str(result_path.relative_to(PROJECT_ROOT)),
-    'sha256': hashlib.sha256(result_path.read_bytes()).hexdigest(),
-    'schema_version': report.get('schema_version'), 'semantic_id': report.get('semantic_id'),
-    'run_label': report.get('run_label'), 'config': report.get('config'),
-    'baseline': report.get('baseline'), 'candidate': report.get('tuned', report.get('candidate')),
-    'summary': report.get('summary'), 'evidence_level': report.get('evidence_level'),
-}
-def validate_measured_training_report(report):
-    """核对整步测量的身份、样本与数值，不推断阶段热点或质量等价。"""
-    import math
+    raise FileNotFoundError(f'找不到训练基线：{result_path}')
+source_bytes = result_path.read_bytes()
+report = json.loads(source_bytes)
+if not isinstance(report, dict):
+    raise ValueError('训练报告必须为JSON对象')
+
+
+def _valid_training_measurement(value, *, positive=False):
+    """只接受有限的JSON数值，排除布尔值与非法方向。"""
+    if type(value) not in (int, float):
+        return False
+    try:
+        return math.isfinite(value) and (value > 0 if positive else value >= 0)
+    except OverflowError:
+        return False
+
+
+def recompute_measured_training_summary(baseline, tuned):
+    """按原v1舍入规则从两组已核验均值重算差异。"""
+    time_delta = baseline['step_time_ms'] - tuned['step_time_ms']
+    memory_delta = baseline['peak_mem_mb'] - tuned['peak_mem_mb']
+    throughput_delta = tuned['samples_per_s'] - baseline['samples_per_s']
+    return {
+        'step_time_delta_ms': round(time_delta, 2),
+        'peak_mem_delta_mb': round(memory_delta, 2),
+        'time_improved': time_delta > 0,
+        'memory_improved': memory_delta > 0,
+        'throughput_delta': round(throughput_delta, 2),
+        'throughput_improved': throughput_delta > 0,
+        'time_improvement_pct': round(time_delta / baseline['step_time_ms'] * 100, 2),
+        'memory_improvement_pct': round(memory_delta / baseline['peak_mem_mb'] * 100, 2),
+        'meaningful_memory_improved': memory_delta >= 512.0,
+    }
+
+
+def review_measured_training_report(report):
+    """从原始重复样本重算组均值和summary，不推断任务质量或阶段热点。"""
     issues = []
-    config = report.get('config') or {}
+    review = {'issues': issues, 'recomputed_groups': {}, 'recomputed_summary': None}
+    if not isinstance(report, dict) or not isinstance(report.get('config'), dict):
+        issues.append('invalid_report_or_config')
+        return review
+    if report.get('schema_version') != SCHEMA_VERSION:
+        issues.append('schema_mismatch')
+    if report.get('semantic_id') != SEMANTIC_ID:
+        issues.append('semantic_id_mismatch')
+    if report.get('failure') is not None:
+        issues.append('measurement_failed')
+    config = report['config']
     repeats = config.get('repeats')
-    if type(repeats) is not int or repeats < 3:
+    valid_repeats = type(repeats) is int and repeats >= 3
+    if not valid_repeats:
         issues.append('repeats_must_be_at_least_three')
     expected = {
         'model_id': MODEL_ID, 'workload': WORKLOAD,
@@ -821,53 +1076,101 @@ def validate_measured_training_report(report):
         'optimizer': 'AdamW', 'dtype': 'float32',
     }
     for key, value in expected.items():
-        if config.get(key) != value:
+        if type(config.get(key)) is not type(value) or config.get(key) != value:
             issues.append(f'config_mismatch:{key}')
     mode = config.get('mode')
     if mode not in {'paired', 'bf16_probe'}:
         issues.append('unknown_measurement_mode')
-    positive = ('step_time_ms', 'samples_per_s', 'peak_mem_mb', 'peak_reserved_mb')
-    for name in (('baseline', 'tuned') if mode == 'paired' else ('candidate',)):
+        return review
+    metrics = ('step_time_ms', 'samples_per_s', 'loss', 'peak_mem_mb', 'peak_reserved_mb')
+    names = ('baseline', 'tuned') if mode == 'paired' else ('candidate',)
+    for name in names:
         group = report.get(name)
         if not isinstance(group, dict):
             issues.append(f'{name}:missing')
             continue
         runs = group.get('runs')
-        if not isinstance(runs, list) or type(repeats) is not int or len(runs) != repeats:
+        rows_valid = valid_repeats and isinstance(runs, list) and len(runs) == repeats
+        if not rows_valid:
             issues.append(f'{name}:repeat_count_mismatch')
         for index, row in enumerate([group] + (runs if isinstance(runs, list) else [])):
             if not isinstance(row, dict):
                 issues.append(f'{name}:{index}:invalid_row')
+                rows_valid = False
                 continue
             if row.get('status', 'ok') != 'ok':
                 issues.append(f'{name}:{index}:failed')
-            for key in (*positive, 'loss'):
-                value = row.get(key)
-                if (type(value) not in (int, float) or not math.isfinite(value)
-                        or (key in positive and value <= 0)):
+                rows_valid = False
+            for key in metrics:
+                if not _valid_training_measurement(row.get(key), positive=key != 'loss'):
                     issues.append(f'{name}:{index}:invalid_{key}')
-    return issues
+                    rows_valid = False
+        if not rows_valid:
+            continue
+        try:
+            derived = {key: round(math.fsum(row[key] for row in runs) / repeats, 3)
+                       for key in metrics}
+        except OverflowError:
+            issues.append(f'{name}:aggregate_overflow')
+            continue
+        if not all(_valid_training_measurement(value, positive=key != 'loss')
+                   for key, value in derived.items()):
+            issues.append(f'{name}:invalid_aggregate')
+            continue
+        review['recomputed_groups'][name] = derived
+        # v1组均值保存三位小数，仅允许末位舍入差。
+        for key, value in derived.items():
+            if not math.isclose(group[key], value, rel_tol=0, abs_tol=0.0005 + 1e-10):
+                issues.append(f'{name}:aggregate_mismatch:{key}')
+    if mode == 'paired' and set(review['recomputed_groups']) == {'baseline', 'tuned'}:
+        summary = recompute_measured_training_summary(
+            review['recomputed_groups']['baseline'], review['recomputed_groups']['tuned'])
+        review['recomputed_summary'] = summary
+        saved = report.get('summary')
+        if not isinstance(saved, dict):
+            issues.append('summary_missing')
+        else:
+            # v1差异保存两位小数；方向标记必须是实际布尔值。
+            for key, value in summary.items():
+                stored = saved.get(key)
+                if isinstance(value, bool):
+                    matches = type(stored) is bool and stored == value
+                else:
+                    matches = (_valid_training_measurement(abs(stored)) if type(stored) in (int, float) else False)
+                    matches = (matches
+                               and math.isclose(stored, value, rel_tol=0,
+                                                abs_tol=0.005 + 1e-10))
+                if not matches:
+                    issues.append(f'summary_mismatch:{key}')
+    return review
 
-measurement_issues = validate_measured_training_report(report)
-evidence_review['issues'] = measurement_issues
+
+measurement_review = review_measured_training_report(report)
+evidence_review = {
+    'path': str(result_path.relative_to(PROJECT_ROOT)),
+    'sha256': hashlib.sha256(source_bytes).hexdigest(),
+    'schema_version': report.get('schema_version'), 'semantic_id': report.get('semantic_id'),
+    'run_label': report.get('run_label'), 'config': report.get('config'),
+    'baseline': report.get('baseline'), 'candidate': report.get('tuned', report.get('candidate')),
+    'summary': report.get('summary'), 'evidence_level': report.get('evidence_level'),
+    **measurement_review,
+}
 evidence_review['ready_for_decision'] = (
-    evidence_review['schema_version'] == SCHEMA_VERSION
-    and evidence_review['semantic_id'] == SEMANTIC_ID
-    and not measurement_issues
+    not evidence_review['issues']
     and report.get('run_label') == ('rtx5070ti_training_baseline_v1' if RUN_STAGE == 'prepare' else RUN_LABEL)
 )
 print(evidence_review)
 
 ```
 
-#### 5.6 形成训练基线结论
+### 5.6 形成训练基线结论
 
-`close` 保存决策记录，并核对标签、schema、结论、来源文件和 SHA256。
+`close`再次核对原始文件哈希，使用独立重算的差异形成决策，再保存登记。来源在读取后改变、汇总不一致或标签不符时停止，保留原文件。
 
 | 结果 | 条件 | 下一步 |
 | --- | --- | --- |
-| `accept` | 单步耗时和显存收益均达到门槛 | 将结果交给 76 |
-| `tune` | 只有一项改善 | 保留测量并继续比较显存策略 |
+| `accept` | 单步耗时和显存收益均达到门槛 | 继续比较76的显存策略 |
+| `tune` | 存在正向改善，但未同时达到两项收益门槛 | 保留测量并继续比较显存策略 |
 | `reject` | 两项均未改善 | 保留 FP32 基线 |
 | `measure` | 缺少完整 FP32/BF16 对照 | 补齐测量 |
 
@@ -876,19 +1179,26 @@ print(evidence_review)
 | 字段 | 登记内容 |
 | --- | --- |
 | 项目与标签 | 73 节训练性能基线；`rtx5070ti_training_baseline_v1` |
-| 运行条件 | RTX 5070 Ti Laptop GPU；固定完整训练 workload |
-| 原始证据 | 正式结果内保存重复测量、运行时和显存记录 |
+| 运行条件 | RTX 5070 Ti Laptop GPU；固定模型与训练输入；输入在计时前驻留设备 |
+| 原始证据 | 结果文件内保存重复计时、运行条件和显存记录 |
 | 正式证据 | [训练基线](../../benchmarks/results/73_real_gpu_training_rtx5070ti_training_baseline_v1.json) |
-| 清单与交接 | 无独立 handoff；74、75、76 节按同一 workload 身份引用 |
-| 结论 | `tune`：真实单卡基线已形成，可继续比较显存与 profiling 候选 |
+| 清单与交接 | `close`可生成来源可核对的基线决策；74／76引用时匹配模型与计时范围，75使用独立合成MLP负载 |
+| 结论 | `tune`：真实单卡基线已形成，可继续比较显存策略并用剖析记录解释耗时 |
 
 ```python
 if RUN_STAGE == 'close':
     if not evidence_review['ready_for_decision']:
         raise RuntimeError(f'训练结果核对未通过：{evidence_review}')
+    current_bytes = (PROJECT_ROOT / evidence_review['path']).read_bytes()
+    if hashlib.sha256(current_bytes).hexdigest() != evidence_review['sha256']:
+        raise RuntimeError('原始报告在读取后发生变化，请重新执行5.5。')
+    close_report = json.loads(current_bytes)
+    close_review = review_measured_training_report(close_report)
+    if close_review['issues'] or close_report.get('run_label') != RUN_LABEL:
+        raise RuntimeError(f"关闭登记前核对失败：{close_review['issues']}")
     training_decision = (
-        recommend_training_decision(report['summary'])
-        if report.get('config', {}).get('mode') == 'paired'
+        recommend_training_decision(close_review['recomputed_summary'])
+        if close_report.get('config', {}).get('mode') == 'paired'
         else {'decision': 'measure', 'reason': 'bf16_probe_without_fp32_control'}
     )
     decision_asset = {
@@ -897,7 +1207,7 @@ if RUN_STAGE == 'close':
         'source_evidence': {'path': evidence_review['path'], 'sha256': evidence_review['sha256']},
         'decision': training_decision,
         'handoff': {'consumer': '76_activation_checkpoint_offload',
-                    'workload': report.get('config', {}).get('workload')},
+                    'workload': close_report.get('config', {}).get('workload')},
     }
     decision_output_path = PROJECT_ROOT / DECISION_OUTPUT_RELATIVE_PATH
     if decision_output_path.exists():
@@ -920,28 +1230,16 @@ if RUN_STAGE == 'close':
     if not all(registration_receipt.values()):
         raise RuntimeError(f'训练基线登记核对失败：{registration_receipt}')
     print({'registration_receipt': registration_receipt, 'decision_path': str(decision_output_path.relative_to(PROJECT_ROOT))})
-    registered_decision = json.loads(decision_output_path.read_text(encoding='utf-8'))
-    registered_evidence_path = PROJECT_ROOT / registered_decision['source_evidence']['path']
-    registration_receipt = {
-        'run_label_matches': registered_decision.get('run_label') == RUN_LABEL,
-        'schema_matches': registered_decision.get('schema_version') == 'training-baseline-decision/v1',
-        'decision_recorded': isinstance(registered_decision.get('decision', {}).get('decision'), str),
-        'registered_files_exist': decision_output_path.is_file() and registered_evidence_path.is_file(),
-        'source_hash_matches': hashlib.sha256(registered_evidence_path.read_bytes()).hexdigest() == registered_decision['source_evidence']['sha256'],
-    }
-    if not all(registration_receipt.values()):
-        raise RuntimeError(f'训练基线登记核对失败：{registration_receipt}')
-    print({'registration_receipt': registration_receipt, 'decision_path': str(decision_output_path.relative_to(PROJECT_ROOT))})
+
 else:
     print(f'跳过决策写入：当前 RUN_STAGE={RUN_STAGE!r}。')
 
 ```
 
----
 ## 相关阅读
 
-- [PyTorch Profiler 官方文档](https://pytorch.org/docs/stable/profiler.html)
-- [PyTorch CUDA 内存管理](https://pytorch.org/docs/stable/notes/cuda.html#cuda-memory-management)
-- [PyTorch Automatic Mixed Precision](https://pytorch.org/docs/stable/amp.html)
-- [76 Activation / Checkpoint / Offload 对比项目](./76_Activation_Checkpoint_Offload_Benchmark.md)
-- [74 Profiling 驱动的端到端优化](./74_Profiling_Driven_End_to_End_Optimization.md)
+根据本次观察选择下一步：显存压力看策略比较，等待问题看事件依赖，需要汇总不同条件下的结果时再做候选复核。
+
+- [76. 激活重算、卸载与预算比较](./76_Activation_Checkpoint_Offload_Benchmark.md)：比较容量变化与额外计算、搬运代价。
+- [PERF-TRACE. 执行轨迹依赖与关键路径](./PERF-TRACE_Trace_Dependencies_and_Critical_Path.md)：检查事件依赖与尚未解释的间隔。
+- [74. 性能剖析与训练策略复核](./74_Profiling_Driven_End_to_End_Optimization.md)：分开使用训练对照、阶段显存和剖析结果。

@@ -37,11 +37,7 @@
 ---
 ## Step 1：裁剪与学习率如何共同决定参数位移
 
-一次参数更新不是把原始梯度直接写入权重，而是先限制异常尺度，再由学习率和优化器状态把梯度转换为参数位移。下图先给出这条因果链，随后用最简单的 SGD 情形明确各个量的关系。
-
-![梯度经过裁剪和学习率形成参数位移](../public/02_PyTorch_Algorithms/55_update_dynamics_overview.svg)
-
-设原始梯度向量为 $g$、裁剪阈值为 $m$。全局范数裁剪系数 $c$、裁剪后梯度 $\tilde g$ 和 SGD 参数位移 $\Delta\theta$ 可写为
+使用全局范数裁剪时，梯度先按阈值缩放，再由学习率和优化器状态形成参数位移。以下用最简单的 SGD 说明这些量的关系；梯度范数为零时，约定裁剪系数为 1。设原始梯度向量为 $g$、裁剪阈值为 $m$。全局范数裁剪系数 $c$、裁剪后梯度 $\tilde g$ 和 SGD 参数位移 $\Delta\theta$ 可写为
 
 $$
 c=\min\left(1,\frac{m}{\lVert g\rVert_2}\right),\qquad
@@ -57,12 +53,15 @@ $$
 
 | 符号 | 含义 | 在更新链中的作用 | 不能单独说明什么 |
 |:---|:---|:---|:---|
-| $g$、$\lVert g\rVert_2$ | 原始梯度及其全局 L2 范数 | 给出本轮未经裁剪的方向和尺度 | 参数最终移动多远 |
-| $m$、$c$ | 裁剪阈值与 $[0,1]$ 内的裁剪系数 | 只在梯度范数超过阈值时缩小梯度 | 模型质量是否提升 |
+| $g$、 $\lVert g\rVert_2$ | 原始梯度及其全局 L2 范数 | 给出本轮未经裁剪的方向和尺度 | 参数最终移动多远 |
+| $m$、 $c$ | 裁剪阈值与 $[0,1]$ 内的裁剪系数 | 只在梯度范数超过阈值时缩小梯度 | 模型质量是否提升 |
 | $\tilde g$ | 裁剪后的有效梯度 | 作为最简 SGD 更新方向 | 动量或逐坐标缩放的影响 |
 | $\eta$ | 当前成功更新步使用的学习率 | 控制参数位移的全局尺度 | 梯度信号是否可靠 |
-| $\theta$、$\Delta\theta$ | 更新前参数与本轮参数变化 | 描述参数实际写回结果 | 泛化或遗忘程度 |
-| $\rho$、$\varepsilon$ | 相对更新比率与防止除零的小正数 | 跨参数规模比较更新幅度 | 独立任务上的能力变化 |
+| $\theta$、 $\Delta\theta$ | 更新前参数与本轮参数变化 | 描述参数实际写回结果 | 泛化或遗忘程度 |
+| $\rho$、 $\varepsilon$ | 相对更新比率与防止除零的小正数 | 跨参数规模比较更新幅度 | 独立任务上的能力变化 |
+
+![梯度经过裁剪和学习率形成参数位移](../public/02_PyTorch_Algorithms/55_update_dynamics_overview.svg)
+
 ## Step 2：微批次梯度如何合并为一次有效更新
 
 梯度累积只有在监督权重保持一致时，才等价于一个完整逻辑批次。若第 $i$ 个微批次包含 $n_i$ 个有效目标，并产生按有效目标平均的梯度 $g_i$，则逻辑批次梯度应按目标数加权：
@@ -71,15 +70,16 @@ $$
 g_{eff}=\sum_i\frac{n_i}{\sum_j n_j}g_i.
 $$
 
-这里 $i$ 和 $j$ 都表示微批次索引，$n_i$ 是第 $i$ 个微批次的有效监督 Token 数，$g_i$ 是该微批次的平均梯度，$\sum_j n_j$ 是逻辑批次的总有效目标数，$g_{eff}$ 是一次参数更新实际使用的合并梯度。下图说明不同长度的微批次如何共享一次更新边界。
-
-![不同长度微批次按有效目标数合并](../public/02_PyTorch_Algorithms/55_effective_batch_update.svg)
+这里 $i$ 和 $j$ 都表示微批次索引， $n_i$ 是第 $i$ 个微批次的有效监督 Token 数， $g_i$ 是该微批次的平均梯度， $\sum_j n_j$ 是逻辑批次的总有效目标数， $g_{eff}$ 是一次参数更新实际使用的合并梯度。下图说明不同长度的微批次如何共享一次更新边界。
 
 | 固定条件 | 改变项 | 会改变的量 | 必须保持的比较条件 |
 |:---|:---|:---|:---|
 | 单次逻辑更新 | 微批次切分 | 单次 activation 峰值与反向次数 | 样本、有效 Token 权重和一次更新总量 |
 | 固定 Token 预算 | 有效批次大小 | 更新次数与调度器步数 | 数据顺序、总 Token 和调度定义 |
 | 固定学习率 | 有效批次大小 | 梯度估计噪声与参数轨迹 | 不能把不同更新次数当成同一训练过程 |
+
+![不同长度微批次按有效目标数合并](../public/02_PyTorch_Algorithms/55_effective_batch_update.svg)
+
 ## Step 3：有限值、裁剪与参数位移如何定位异常
 
 一次训练记录至少应同时保留 loss、梯度范数、裁剪系数、参数位移、有限值状态和成功更新步。组合观察这些量，才能区分“原始梯度较大但已受控”“梯度存在但参数几乎未移动”和“数值已经失效”三类情况。
@@ -88,20 +88,21 @@ $$
 |:---|:---|:---|:---|
 | 非有限 loss、梯度或参数 | dtype、缩放、输入和最近更新 | 本次更新不可信 | 停止候选比较，定位首个非有限值 |
 | 梯度范数为零 | 监督掩码、冻结参数和计算图 | 当前参数组没有收到训练信号 | 核对标签范围与 `requires_grad` |
-| 梯度范数高，裁剪系数远小于 1 | 阈值和学习率 | 原始梯度经常被压缩 | 联合比较阈值、学习率和任务评测 |
+| 梯度范数高，裁剪系数远小于 1 | 阈值和学习率 | 本次梯度被显著压缩 | 联合比较阈值、学习率和任务评测 |
 | 梯度有限，参数位移接近零 | 学习率、optimizer state、冻结参数 | 写回幅度可能不足 | 核对参数组与调度器阶段 |
 | 更新记录稳定但评测未提升 | 独立评测与数据分布 | 更新稳定不等于能力提升 | 转入训练项目的质量与保留集评测 |
 <a id="mechanism-practice"></a>
 
-## Step 4：实现梯度合并、裁剪与更新诊断
+## Step 4：实现裁剪系数、监督权重与更新诊断
 
-题目区用向量梯度模拟一次逻辑更新。学习者需要完成全局裁剪、按有效目标数合并微批次梯度，以及根据有限值、梯度范数、裁剪系数和参数位移形成状态记录。
+骨架提供输入校验、梯度范数、诊断优先级和结果装配。你将补全裁剪系数、按有效目标数加权的合并梯度，以及梯度／裁剪／位移的三个判断条件；题目使用 CPU 上的向量，不执行模型训练。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 | --- | --- | --- | --- |
-| TODO 1：计算全局裁剪系数<br>`global_clip_scale` | 将梯度范数与阈值映射为 $[0,1]$ 内的缩放系数 | 阈值和梯度范数必须有限；零梯度不放大；超过阈值才缩小 | 阈值内返回 1，阈值外返回 $m/\lVert g\rVert_2$ |
-| TODO 2：合并有效监督梯度<br>`merge_token_weighted_gradients` | 按每个微批次的有效目标数构造逻辑批次平均梯度 | 目标数为正；张量形状一致；权重和为 1 | 不等长微批次的结果与完整逻辑批次平均一致 |
-| TODO 3：记录更新状态<br>`summarize_update_state` | 按优先级解释数值、梯度、裁剪和参数位移 | 指标范围合法；非有限优先阻断；稳定状态不写成质量结论 | 区分无梯度、强裁剪、低位移和可继续评测 |
+| TODO 1：计算全局裁剪系数<br>`global_clip_scale` | 用给定范数与阈值计算统一缩放系数 | 系数在 $[0,1]$；零范数及阈值内保持为 1 | 零梯度、等于阈值、超限及零阈值 |
+| TODO 2：合并有效监督梯度<br>`merge_token_weighted_gradients` | 按有效目标数归一化权重，再合并微批次平均梯度 | 输入梯度同形，权重和为 1；拆分微批次不改变逻辑平均 | 目标数 1／3 得到 6.5／8.5，与四条目标直接平均一致 |
+| TODO 3：判断梯度与参数变化<br>`summarize_update_state` | 判断是否存在梯度、是否强裁剪、是否有参数变化 | 使用骨架阈值；状态优先级与记录格式由骨架给定 | 零梯度优先于强裁剪，裁剪系数 0.1 及位移阈值等号 |
+
 
 ```python
 import math
@@ -111,22 +112,70 @@ import torch
 
 
 ```python
-# 题目设计：将原始梯度、有效监督权重和参数写回结果组织成一次可诊断的更新记录。
-
 def global_clip_scale(gradient: torch.Tensor, max_norm: float) -> float:
-    """返回全局范数裁剪系数；不直接修改输入梯度。"""
-    # TODO 1：验证阈值与梯度范数，并计算 [0, 1] 内的缩放系数。
-    raise NotImplementedError
+    """由原梯度的全局二范数计算裁剪系数，保持输入梯度不变。"""
+    if not math.isfinite(max_norm) or max_norm < 0:
+        raise ValueError('max_norm 必须是有限非负数')
+    gradient_norm = float(torch.linalg.vector_norm(gradient.detach().float()))
+    if not math.isfinite(gradient_norm):
+        raise ValueError('梯度范数必须有限')
+    # ==========================================
+    # TODO 1：计算全局裁剪系数
+    # ==========================================
+    # clip_scale = ???  # 标量；只压缩超过阈值的梯度，零范数时保持原梯度。
+    raise NotImplementedError("TODO 1：请完成计算全局裁剪系数")
+    return clip_scale
 
-def merge_token_weighted_gradients(gradient_parts: list[torch.Tensor], valid_target_counts: list[int]) -> torch.Tensor:
-    """按有效监督 Token 数合并多个微批次的平均梯度。"""
-    # TODO 2：验证输入并构造一次逻辑更新对应的加权平均梯度。
-    raise NotImplementedError
 
-def summarize_update_state(*, finite: bool, gradient_norm: float, clip_scale: float, parameter_delta_norm: float) -> dict:
-    """把一次更新的局部状态转换为下一步检查建议，而不判断模型能力。"""
-    # TODO 3：验证指标范围，再按非有限、无梯度、强裁剪和低位移的顺序判断。
-    raise NotImplementedError
+def merge_token_weighted_gradients(
+    gradient_parts: list[torch.Tensor], valid_target_counts: list[int],
+) -> torch.Tensor:
+    """按有效目标数合并微批次的平均梯度，返回同形的逻辑批次平均。"""
+    if not gradient_parts or len(gradient_parts) != len(valid_target_counts):
+        raise ValueError('梯度与有效目标数必须一一对应且非空')
+    if any(count <= 0 for count in valid_target_counts):
+        raise ValueError('有效目标数必须为正')
+    reference_shape = gradient_parts[0].shape
+    if any(part.shape != reference_shape for part in gradient_parts):
+        raise ValueError('所有微批次梯度形状必须一致')
+    total_targets = sum(valid_target_counts)
+    # ==========================================
+    # TODO 2：合并有效监督梯度
+    # ==========================================
+    # target_weights = ???  # 每个微批次的监督权重；与目标数对应且总和为 1。
+    # merged_gradient = ???  # 与各输入梯度同形；代表全部有效目标的平均梯度。
+    raise NotImplementedError("TODO 2：请完成合并有效监督梯度")
+    return merged_gradient
+
+
+def summarize_update_state(
+    *, finite: bool, gradient_norm: float, clip_scale: float,
+    parameter_delta_norm: float,
+) -> dict:
+    """根据局部更新指标给出检查方向，诊断状态按骨架中的优先级选择。"""
+    if not finite:
+        return {'state': 'blocked_nonfinite', 'next_check': '检查输入、dtype、缩放和首个非有限值'}
+    values = (gradient_norm, clip_scale, parameter_delta_norm)
+    if not all(math.isfinite(value) for value in values):
+        raise ValueError('更新指标必须有限')
+    if gradient_norm < 0 or parameter_delta_norm < 0 or not 0.0 <= clip_scale <= 1.0:
+        raise ValueError('更新指标超出合法范围')
+    strong_clip_threshold = 0.1
+    minimum_parameter_motion = 1e-12
+    # ==========================================
+    # TODO 3：判断梯度与参数变化
+    # ==========================================
+    # has_gradient = ???  # 布尔值；当前梯度范数是否表示存在更新信号。
+    # strong_clipping = ???  # 布尔值；结合 clip_scale 与给定阈值识别明显压缩。
+    # has_parameter_motion = ???  # 布尔值；参数位移是否超过给定的最小变化量。
+    raise NotImplementedError("TODO 3：请完成判断梯度与参数变化")
+    if not has_gradient:
+        return {'state': 'no_gradient', 'next_check': '核对监督掩码、冻结参数和计算图'}
+    if strong_clipping:
+        return {'state': 'heavily_clipped', 'next_check': '核对学习率、裁剪阈值和梯度来源'}
+    if not has_parameter_motion:
+        return {'state': 'low_parameter_motion', 'next_check': '核对学习率、冻结参数和优化器状态'}
+    return {'state': 'observe_with_evaluation', 'next_check': '比较任务评测，检查局部更新之后的质量变化'}
 
 ```
 
@@ -175,7 +224,39 @@ def test_update_state_priority():
 test_global_clip_scale()
 test_token_weighted_gradient_merge()
 test_update_state_priority()
-print('✅ 更新动力学机制测试通过')
+
+def test_clip_input_and_zero_threshold():
+    """裁剪保持输入不变，零阈值可把非零梯度缩为零。"""
+    gradient = torch.tensor([3.0, 4.0])
+    before = gradient.clone()
+    assert global_clip_scale(gradient, 0.0) == 0.0
+    assert torch.equal(gradient, before)
+
+
+def test_merge_matches_full_target_average():
+    """不等长微批次合并应等于全目标平均，并对计数同比缩放不变。"""
+    target_gradients = torch.tensor([[2.0, 4.0], [8.0, 10.0], [8.0, 10.0], [8.0, 10.0]])
+    parts = [target_gradients[:1].mean(0), target_gradients[1:].mean(0)]
+    expected = target_gradients.mean(0)
+    for counts in ([1, 3], [2, 6]):
+        torch.testing.assert_close(merge_token_weighted_gradients(parts, counts), expected)
+    assert not torch.allclose(torch.stack(parts).mean(0), expected)
+
+
+def test_diagnostic_thresholds_and_priority():
+    """多个现象并存时按固定顺序诊断，阈值等号按已声明规则处理。"""
+    base = dict(finite=True, gradient_norm=1.0, clip_scale=1.0, parameter_delta_norm=0.1)
+    assert summarize_update_state(**{**base, 'gradient_norm': 0.0, 'clip_scale': 0.02})['state'] == 'no_gradient'
+    assert summarize_update_state(**{**base, 'clip_scale': 0.1})['state'] == 'observe_with_evaluation'
+    assert summarize_update_state(**{**base, 'parameter_delta_norm': 1e-12})['state'] == 'low_parameter_motion'
+    assert summarize_update_state(**{**base, 'parameter_delta_norm': 1.1e-12})['state'] == 'observe_with_evaluation'
+    assert summarize_update_state(**{**base, 'finite': False, 'gradient_norm': float('nan')})['state'] == 'blocked_nonfinite'
+
+
+test_clip_input_and_zero_threshold()
+test_merge_matches_full_target_average()
+test_diagnostic_thresholds_and_priority()
+print('✅ 6 项更新动力学机制测试通过')
 
 ```
 
@@ -191,23 +272,22 @@ print('✅ 更新动力学机制测试通过')
 ### 代码
 
 ```python
-# 参考实现：保留题目区的函数、参数和 TODO 位置，只补全机制规则。
-
 def global_clip_scale(gradient: torch.Tensor, max_norm: float) -> float:
-    """返回全局范数裁剪系数；不直接修改输入梯度。"""
-    # TODO 1：验证阈值与梯度范数，并计算 [0, 1] 内的缩放系数。
+    """由原梯度的全局二范数计算裁剪系数，保持输入梯度不变。"""
     if not math.isfinite(max_norm) or max_norm < 0:
         raise ValueError('max_norm 必须是有限非负数')
     gradient_norm = float(torch.linalg.vector_norm(gradient.detach().float()))
     if not math.isfinite(gradient_norm):
         raise ValueError('梯度范数必须有限')
-    if gradient_norm == 0.0 or gradient_norm <= max_norm:
-        return 1.0
-    return max_norm / gradient_norm
+    # TODO 1：计算全局裁剪系数
+    clip_scale = 1.0 if gradient_norm == 0.0 else min(1.0, max_norm / gradient_norm)
+    return clip_scale
 
-def merge_token_weighted_gradients(gradient_parts: list[torch.Tensor], valid_target_counts: list[int]) -> torch.Tensor:
-    """按有效监督 Token 数合并多个微批次的平均梯度。"""
-    # TODO 2：验证输入并构造一次逻辑更新对应的加权平均梯度。
+
+def merge_token_weighted_gradients(
+    gradient_parts: list[torch.Tensor], valid_target_counts: list[int],
+) -> torch.Tensor:
+    """按有效目标数合并微批次的平均梯度，返回同形的逻辑批次平均。"""
     if not gradient_parts or len(gradient_parts) != len(valid_target_counts):
         raise ValueError('梯度与有效目标数必须一一对应且非空')
     if any(count <= 0 for count in valid_target_counts):
@@ -216,11 +296,17 @@ def merge_token_weighted_gradients(gradient_parts: list[torch.Tensor], valid_tar
     if any(part.shape != reference_shape for part in gradient_parts):
         raise ValueError('所有微批次梯度形状必须一致')
     total_targets = sum(valid_target_counts)
-    return sum(part * (count / total_targets) for part, count in zip(gradient_parts, valid_target_counts))
+    # TODO 2：合并有效监督梯度
+    target_weights = [count / total_targets for count in valid_target_counts]
+    merged_gradient = sum(part * weight for part, weight in zip(gradient_parts, target_weights))
+    return merged_gradient
 
-def summarize_update_state(*, finite: bool, gradient_norm: float, clip_scale: float, parameter_delta_norm: float) -> dict:
-    """把一次更新的局部状态转换为下一步检查建议，而不判断模型能力。"""
-    # TODO 3：验证指标范围，再按非有限、无梯度、强裁剪和低位移的顺序判断。
+
+def summarize_update_state(
+    *, finite: bool, gradient_norm: float, clip_scale: float,
+    parameter_delta_norm: float,
+) -> dict:
+    """根据局部更新指标给出检查方向，诊断状态按骨架中的优先级选择。"""
     if not finite:
         return {'state': 'blocked_nonfinite', 'next_check': '检查输入、dtype、缩放和首个非有限值'}
     values = (gradient_norm, clip_scale, parameter_delta_norm)
@@ -228,13 +314,19 @@ def summarize_update_state(*, finite: bool, gradient_norm: float, clip_scale: fl
         raise ValueError('更新指标必须有限')
     if gradient_norm < 0 or parameter_delta_norm < 0 or not 0.0 <= clip_scale <= 1.0:
         raise ValueError('更新指标超出合法范围')
-    if gradient_norm == 0.0:
+    strong_clip_threshold = 0.1
+    minimum_parameter_motion = 1e-12
+    # TODO 3：判断梯度与参数变化
+    has_gradient = gradient_norm > 0.0
+    strong_clipping = clip_scale < strong_clip_threshold
+    has_parameter_motion = parameter_delta_norm > minimum_parameter_motion
+    if not has_gradient:
         return {'state': 'no_gradient', 'next_check': '核对监督掩码、冻结参数和计算图'}
-    if clip_scale < 0.1:
+    if strong_clipping:
         return {'state': 'heavily_clipped', 'next_check': '核对学习率、裁剪阈值和梯度来源'}
-    if parameter_delta_norm <= 1e-12:
+    if not has_parameter_motion:
         return {'state': 'low_parameter_motion', 'next_check': '核对学习率、冻结参数和优化器状态'}
-    return {'state': 'observe_with_evaluation', 'next_check': '进入独立评测，不把局部稳定性当成能力提升'}
+    return {'state': 'observe_with_evaluation', 'next_check': '比较任务评测，检查局部更新之后的质量变化'}
 
 ```
 
@@ -242,26 +334,31 @@ def summarize_update_state(*, finite: bool, gradient_norm: float, clip_scale: fl
 
 #### TODO 1：计算全局裁剪系数
 
-先计算脱离计算图的 FP32 全局范数，再与阈值比较。零梯度和阈值内梯度都返回 1，避免裁剪过程放大原始信号；非有限阈值或梯度范数没有可解释的缩放比例，因此直接拒绝。
+- 零梯度与阈值内梯度保持系数 1；超限时让裁剪后的范数等于阈值。阈值为零且梯度非零时，系数为零。
+- 校验与范数计算由骨架提供。测试检查零范数、阈值内外、零阈值，并确认输入张量保持不变。
 
 #### TODO 2：合并有效监督梯度
 
-每个微批次的平均梯度按有效监督 Token 数加权，权重之和为 1。这样改变微批次切分不会改变同一逻辑批次的平均梯度；空输入、非正目标数和形状不一致都无法定义该合并。
+- 每个输入已是微批次内的平均梯度，合并时应按有效目标数加权；目标数 1 和 3 对应权重 1/4 与 3/4。
+- 先算权重，再合并同形张量。测试把微批次合并结果与全部四条目标的直接平均比较，并把目标数同比放大，确认结果不变。
 
-#### TODO 3：形成更新状态
+#### TODO 3：判断局部更新状态
 
-状态判断先处理非有限更新，再确认指标范围，随后依次识别无梯度、强裁剪和低参数位移。最后的可继续观察只表示局部更新链可解释，模型能力仍需独立评测。
+- 梯度、裁剪系数和参数位移分别描述信号是否存在、压缩程度和写回变化；它们指向不同的排查动作。
+- 填写三个布尔条件，由骨架按优先级选状态。测试叠加零梯度与强裁剪，并检查系数 0.1、位移 $10^{-12}$ 的边界；能力变化仍通过任务评测观察。
+
 <a id="framework-check"></a>
 
 ## 框架一致性核对（可选）
 
-下面在同一参数和梯度上比较本节更新账本与 PyTorch 原生全局范数裁剪、SGD 参数写回。
+在同一参数、梯度、裁剪阈值和学习率上，比较本节系数与 PyTorch 全局范数裁剪及 SGD 参数写回。
 
-| 核对对象 | 本节实现 | 成熟框架入口 | 通过条件 |
+| 核对对象 | Step 4 教学实现 | 成熟框架 CPU 路径 | 共同输入与通过条件 |
 | --- | --- | --- | --- |
-| 全局梯度范数 | `global_clip_scale` 使用的 L2 范数 | `clip_grad_norm_` 返回值 | 裁剪前全局范数一致 |
-| 裁剪后梯度 | 原梯度乘本节裁剪系数 | `clip_grad_norm_` 写回的梯度 | 逐元素一致 |
-| 参数位移 | 学习率乘裁剪后梯度 | PyTorch SGD 写回前后参数差 | 位移方向与大小一致 |
+| 原梯度范数 | 全局二范数 | `clip_grad_norm_` 返回值 | 相同原梯度的范数一致 |
+| 裁剪后梯度 | 原梯度乘 `global_clip_scale` 返回系数 | `clip_grad_norm_` 写回梯度 | 相同阈值，逐元素在容差内一致 |
+| 参数变化 | 学习率乘裁剪后梯度 | `torch.optim.SGD.step` | 相同初始参数和学习率，位移方向与大小一致 |
+
 
 ```python
 from importlib.metadata import version

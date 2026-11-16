@@ -24,6 +24,14 @@ MoE 不是简单地“把参数变多”，它真正难的地方在于：token �
 
 ---
 
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
+- **多 GPU 实测：** 使用 `PAR-CUDA-MECHANISM`；环境、运行配置与固定工作负载见 [Step 5](#gpu-experiment)。
+
+---
 ## 前置阅读
 
 **导语：** 进入本节前，先能说明 Router 如何选择专家、负载均衡如何约束选择，再观察专家跨设备后如何产生 dispatch 和 all-to-all 通信。
@@ -31,7 +39,7 @@ MoE 不是简单地“把参数变多”，它真正难的地方在于：token �
 - [06. MoE Router | MoE 路由器](./06_MoE_Router.md)
 - [07. MoE Load Balancing Loss | MoE 负载均衡损失](./07_MoE_Load_Balancing_Loss.md)
 ---
-### Step 1：从 MoE 路由到 Expert Parallel
+## Step 1：从 MoE 路由到 Expert Parallel
 
 MoE 的稀疏激活让每个 token 只计算少量专家。Expert Parallel 再把专家分给不同 rank：router 选出的专家若不在 token 的来源 rank，就必须先把 token 表示送过去；专家完成计算后，结果还要按原 token 顺序 combine。
 
@@ -39,17 +47,35 @@ MoE 的稀疏激活让每个 token 只计算少量专家。Expert Parallel 再�
 
 ![MoE 专家并行总览](../public/02_PyTorch_Algorithms/46_expert_parallel_overview.svg)
 
-### Step 2：路由、capacity 与 token dispatch
+## Step 2：路由、capacity 与 token dispatch
 
 每个 token 的 `routes` 给出 top-k 专家候选。系统先统计 `expert_loads`，再依据 `capacity_factor` 为每个专家分配可接收路由数；超过 capacity 的部分成为 `overflow`。被接受的路由根据专家所属 rank 分成同 rank 与跨 rank 两类，后者才需要实际 dispatch。
 
 因此，全部 route 的表示规模与真正跨 rank 的网络传输必须分开记录：前者是逻辑工作量，后者才取决于专家放置。图中的 dispatch 与 combine 分别是同一轮路由的去程和回程；若某个 expert 接收的 token 明显更多，会同时放大该 rank 的计算等待与通信长尾。
 
+令 $T$ 为输入 Token 数， $E$ 为专家数，Top- $k$ 路由共产生 $kT$ 条路由，容量系数为 $c$。单专家容量常写为
+
+$$
+C=\left\lceil c\frac{kT}{E}\right\rceil,
+\qquad
+O=\sum_{e=1}^E\max(0,n_e-C),
+$$
+
+其中 $n_e$ 是专家 $e$ 收到的路由数， $O$ 是总溢出路由数。
+
 ![MoE Dispatch 与 Combine 的数据流](../public/02_PyTorch_Algorithms/46_dispatch_combine_flow.svg)
 
-### Step 3：比较路由分布与专家放置
+## Step 3：比较路由分布与专家放置
 
 比较专家并行方案时，要把三类结果分开：路由分布决定每个专家承担多少工作，容量上限决定有多少路由能够进入专家计算，专家放置决定被接受的路由中有多少需要跨 rank 传输。三者共同影响有效 token 吞吐和最慢 rank 时间。
+
+负载偏斜可用最忙专家相对平均负载的比值表示：
+
+$$
+\rho_{\mathrm{imbalance}}=\frac{\max_e n_e}{kT/E}.
+$$
+
+若每条跨进程路由携带 $D$ 个、每元素 $b$ byte 的激活，跨进程路由数为 $R_{\mathrm{cross}}$，单向 dispatch 有效载荷近似为 $R_{\mathrm{cross}}Db$；返回结果还会产生对应 combine 载荷。
 
 | 变化 | 首先改变什么 | 需要一起观察的量 |
 |---|---|---|
@@ -58,15 +84,17 @@ MoE 的稀疏激活让每个 token 只计算少量专家。Expert Parallel 再�
 | capacity factor 增大 | 更少 token 被拒绝 | 预留空间、padding 与计算浪费 |
 | 专家放置更本地化 | 跨 rank dispatch 减少 | 本地命中率、跨卡 bytes、负载是否反而偏斜 |
 
-### Step 4：CPU 机制实现——比较路由、容量与专家放置
+<a id="mechanism-practice"></a>
+
+## Step 4：CPU 机制实现——比较路由、容量与专家放置
 
 题目区先从路由得到专家负载、容量与溢出，再将专家映射到逻辑 rank，区分本地和跨 rank token。最后依据负载、溢出和跨卡比例给出 `accept / tune / reject`。
 
-| 任务与目的 | 已知条件 | 完成标准 | 测试验证 |
-| --- | --- | --- | --- |
-| TODO 1：计算容量与溢出，判断 capacity 是否容纳当前路由 | `summarize_expert_parallel` 已提供专家负载和平均负载 | 得到单专家容量与总溢出；空路由返回零 | 均匀、偏斜、空路由与非法配置 |
-| TODO 2：判断路由局部性，区分本地计算与跨 rank dispatch | `summarize_dispatch_locality` 已提供 token 来源和 expert owner | 本地与跨 rank 路由之和保持不变 | 本地命中率与跨卡字节 |
-| TODO 3：联合容量、负载与通信风险形成决策 | 已提供溢出比例、负载比、跨 rank 比例和阈值 | 返回 `accept / tune / reject` | 接受、调优、拒绝与高跨卡比例 |
+| TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
+|:---|:---|:---|:---|
+| TODO 1：计算容量与溢出<br>`summarize_expert_parallel` | 从专家负载得到单专家容量和总溢出 | 空路由返回零，非法配置明确失败 | 检查均匀、偏斜、空路由和非法配置 |
+| TODO 2：判断 dispatch 局部性<br>`summarize_dispatch_locality` | 区分本地与跨进程路由 | 两类路由之和保持不变 | 检查本地命中率与跨进程字节 |
+| TODO 3：形成专家并行建议<br>`recommend_moe_parallel_plan` | 联合负载、溢出和跨进程比例给出决策 | 阈值口径一致，输出限定为三类决策 | 检查接受、调优、拒绝与高跨进程比例 |
 
 
 ```python
@@ -459,6 +487,66 @@ def combine_expert_outputs(token_indices, expert_outputs, routing_weights, num_t
 **TODO 3：形成容量、负载与通信联合决策**
 
 答案先计算溢出比例和跨 rank 比例，再分别应用接受阈值与调优阈值。测试覆盖无风险接受、轻度溢出调优、跨 rank 比例过高调优和严重热点拒绝；`combine_expert_outputs` 的独立测试验证 top-k 输出按 token id 与路由权重恢复。
+<a id="framework-check"></a>
+
+## 框架一致性核对（可选）
+
+下面在两个本地 Gloo 进程中执行 PyTorch `all_to_all_single`，核对专家 dispatch 的目标进程分桶、交换和覆盖关系。该核对不包含真实专家计算内核、GPU 路由吞吐或 NCCL 带宽。
+
+| 核对项 | 对比内容 | 通过条件 |
+|:---|:---|:---|
+| dispatch 分桶 | 每个源进程发往两个目标的 Token | 分桶顺序符合 split 约定 |
+| All-to-All 输出 | PyTorch `all_to_all_single` 结果 | 每个目标收到所有源进程对应分桶 |
+| 路由守恒 | 输入与输出元素 | 不重不漏、总数保持不变 |
+
+```python
+import torch.distributed as dist
+
+from tools.parallel_cpu_conformance import run_local_gloo_world
+
+
+def _expert_dispatch_framework_worker(rank, world_size):
+    payload = torch.tensor([rank * 10 + index for index in range(4)], dtype=torch.int64)
+    output = torch.empty_like(payload)
+    dist.all_to_all_single(output, payload)
+    gathered_inputs = [torch.empty_like(payload) for _ in range(world_size)]
+    dist.all_gather(gathered_inputs, payload)
+    chunk_size = payload.numel() // world_size
+    expected = torch.cat([
+        source.chunk(world_size)[rank] for source in gathered_inputs
+    ])
+    return {
+        "rank": rank, "input": payload.tolist(), "output": output.tolist(),
+        "expected": expected.tolist(),
+        "input_sum": int(sum(int(item.sum()) for item in gathered_inputs)),
+        "output_sum": int(output.sum()),
+    }
+
+
+def check_expert_dispatch_framework_conformance():
+    """核对本节专家 dispatch 与两进程 PyTorch All-to-All 语义。"""
+    results = run_local_gloo_world(_expert_dispatch_framework_worker, world_size=2)
+    checks = {
+        "dispatch_matches_expected": all(item["output"] == item["expected"] for item in results),
+        "global_element_conservation": sum(sum(item["output"]) for item in results)
+        == results[0]["input_sum"],
+        "equal_output_sizes": len({len(item["output"]) for item in results}) == 1,
+    }
+    failed = [name for name, passed in checks.items() if not passed]
+    if failed:
+        raise AssertionError(f"框架一致性核对失败：{failed}")
+    return {
+        "status": "passed", "versions": {"torch": torch.__version__},
+        "checks": checks, "world_size": 2, "rank_results": results,
+    }
+
+
+framework_check = check_expert_dispatch_framework_conformance()
+framework_check
+```
+
+<a id="gpu-experiment"></a>
+
 ### Step 5（可选）：GPU Expert Parallel 机制基准
 
 下面固定 token 数、hidden size、top-k、capacity factor 和专家放置，在真实 NCCL 环境中执行 dispatch → 本地专家计算 → combine，并比较本地优先、均匀与偏斜路由。
@@ -495,7 +583,8 @@ RUNNER_DTYPE = 'bfloat16' if DTYPE == 'bf16' else 'float32'
 ROUTING_SCENARIOS = ['local_heavy', 'balanced', 'skewed']  # 分别观察局部性、均衡和热点。
 WARMUP = 5  # 计时前预热轮数。
 REPEATS = 20  # 正式计时重复轮数。
-RESULT_DIR = f'benchmarks/results/46_expert_parallel/{RUN_LABEL}'
+from tools.project_runtime import resolve_project_root
+RESULT_DIR = resolve_project_root() / f'benchmarks/results/46_expert_parallel/{RUN_LABEL}'
 print({'run_mode': RUN_MODE, 'profile': ENVIRONMENT_PROFILE, 'routing': ROUTING_SCENARIOS, 'world_size': WORLD_SIZE, 'result_dir': RESULT_DIR})
 
 ```

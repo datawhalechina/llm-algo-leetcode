@@ -1,0 +1,15 @@
+{
+  "schema_version": "architecture-audit-input/v1",
+  "semantic_id": "ARCH-MODEL-AUDIT",
+  "baseline_model": "",
+  "candidate_model": "",
+  "revision": "main",
+  "changed_field": "num_key_value_heads",
+  "producer_results": {
+    "ARCH-BLOCK-STABILITY": "",
+    "ARCH-ATTENTION-ACCESS": "",
+    "ARCH-MLA-KV": "benchmarks/results/71_mla_kv_architecture/71_mla_kv_rtx5070ti_mla_architecture_v1.json",
+    "ARCH-LONG-SEQUENCE-MEMORY": ""
+  },
+  "status": "awaiting_model_pair_and_producer_results"
+}

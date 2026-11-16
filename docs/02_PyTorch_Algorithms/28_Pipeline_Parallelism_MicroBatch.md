@@ -22,6 +22,15 @@
 
 ---
 
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
+- **框架核对：** 使用 [`PAR-CPU`](../topic_discussion/communication_parallelism/quickstart.md#par-cpu-quickstart)；完成 Step 4 后运行 [框架一致性核对](#framework-check)。
+- **多 GPU 实测：** 使用 `PAR-CUDA-MECHANISM`；环境、运行配置与固定工作负载见 [Step 5](#gpu-experiment)。
+
+---
 ## 前置阅读
 
 **导语：** 进入本节前，先能根据模型层和设备之间的连接关系选择并行方式，再观察 micro-batch 如何让不同 stage 交错执行。
@@ -29,7 +38,7 @@
 - [P1: 05. Communication Topologies | 通信拓扑与分布式基石](../01_Hardware_Math_and_Systems/05_Communication_Topologies.md)
 
 ---
-### Step 1：理解 stage、micro-batch 与跨阶段依赖
+## Step 1：理解 stage、micro-batch 与跨阶段依赖
 
 Pipeline 并行先把模型层划分为多个 stage，再把一个大 batch 切成 $m$ 个 micro-batch。一个 micro-batch 的前向必须按 `stage 0 → stage 1 → …` 推进；反向则沿相反方向返回。当前 stage 把前向结果交给下游后，才有机会接收下一个 micro-batch 或处理已经返回的反向。
 
@@ -46,21 +55,25 @@ Pipeline 并行先把模型层划分为多个 stage，再把一个大 batch 切�
 
 ![Pipeline 并行与微批次总览](../public/02_PyTorch_Algorithms/28_pipeline_overview.svg)
 
-### Step 2：比较训练调度与推理流水线
+## Step 2：比较训练调度与推理流水线
 
 **fill-drain（GPipe 风格）**先完成所有 micro-batch 的前向，再统一开始反向；实现直观，但早期 stage 会同时保留较多 activation。**1F1B** 在满足依赖后优先安排反向，使前向和反向交错，从而更早释放 activation。两者都要经历灌入和排空，差异主要体现在 activation 生命周期与时间线的交错方式。
 
-对于均衡 stage 的**简化前向时间线**，设 $p$ 为 stage 数、$m$ 为 micro-batch 数，灌入和排空阶段没有被计算占用的槽位就是 bubble：
+对于均衡 stage 的简化前向时间线，令 $S$ 为 stage 数、 $m$ 为 micro-batch 数。总槽位为 $S(m+S-1)$，有效计算槽位为 $Sm$，所以理想气泡比例为
 
-$\text{Bubble Ratio} = \frac{p \times (m + p - 1) - m \times p}{p \times (m + p - 1)} = \frac{p - 1}{m + p - 1}$。
+$$
+\rho_{\mathrm{bubble}}=
+\frac{S(m+S-1)-Sm}{S(m+S-1)}
+=\frac{S-1}{m+S-1}.
+$$
 
-当 $m$ 远大于 $p$ 时，比例近似为 $(p-1)/m$。它用于理解灌入—排空的理想下界，不直接等于完整训练的 fill-drain 或 1F1B step time；真实 schedule 还要检查前反向依赖、stage 不均衡和边界通信。
+当 $m\gg S$ 时， $\rho_{\mathrm{bubble}}\approx(S-1)/m$。若第 $s$ 个 stage 的单个 micro-batch 时间为 $t_s$，稳态时钟仍满足 $T_{\mathrm{clock}}\ge\max_s t_s$；因此该比例只解释均衡时间轴的灌入—排空，不替代完整 step time。
 
 对于前向-only 推理，同一公式仍可描述一批 micro-batch 的灌入与排空；但在线服务还要区分单请求延迟和跨请求吞吐。持续到达的请求可以摊薄部分排空气泡，却会引入排队、动态 batch 和 stage 间 handoff。请求选择属于 Serving 调度，本节只分析既定请求进入 Pipeline 后的 stage 执行。
 
 ![简化流水线中 micro-batch 越过 stage 的时间轴](../public/02_PyTorch_Algorithms/28_pipeline_bubble.svg)
 
-### Step 3：在 bubble、activation 与负载均衡间取舍
+## Step 3：在 bubble、activation 与负载均衡间取舍
 
 理想 bubble ratio 只描述均衡时间轴上的空槽位。实际选择 schedule 时，还要同时看 activation 留存、每个 stage 的计算时间和边界通信：较小的 bubble 并不自动等于更高的端到端吞吐。
 
@@ -73,18 +86,20 @@ $\text{Bubble Ratio} = \frac{p \times (m + p - 1) - m \times p}{p \times (m + p 
 | 通信落在关键路径 | 理想公式低估真实等待 | step time 上升 | 分开记录计算、通信和等待时间 |
 | 推理请求持续进入 | 可摊薄部分排空气泡 | 排队、动态 batch 与状态 handoff 增加 | 同时观察单请求延迟和跨请求吞吐 |
 
-### Step 4：CPU 实现——验证前反向依赖与调度取舍
+<a id="mechanism-practice"></a>
+
+## Step 4：CPU 实现——验证前反向依赖与调度取舍
 
 本题先构造简化前向时间轴，再把每个 `(stage, micro-batch)` 的前向和反向依赖排进 `fill_drain` 或简化 `1f1b` 时间线。骨架已提供依赖集合和事件容器；你将补全时间轴、事件选择和 activation 生命周期统计。
 
 测试区分别检查时间轴覆盖、bubble 的槽位关系、前反向依赖，以及两种策略的 activation 驻留差异。
 
-| 任务与目的 | 已知条件 | 完成标准 | 测试验证 |
-| --- | --- | --- | --- |
-| TODO 1：构造灌入—排空时间轴。看清 micro-batch 如何逐 stage 推进。 | `p`、`m`、时间步和 stage 索引 | 每个 `(stage, micro_batch)` 恰好出现一次，并保持对角线式推进 | 时间轴长度、坐标范围、推进顺序与覆盖次数 |
-| TODO 2：计算 bubble。把空闲看成未被活跃事件占用的槽位。 | `timeline`、`active_slots`、`total_slots` | bubble 在 0–1 内；增加 micro-batch 不应放大理想流水线的 bubble | 槽位守恒与 micro-batch 对照 |
-| TODO 3：选择前反向事件。比较 fill-drain 与 1F1B 的调度优先级。 | `ready_forward`、`ready_backward`、`policy`、`completed` | 每 stage 每步最多一个事件；所有事件满足前反向依赖 | 依赖顺序、事件唯一性与策略差异 |
-| TODO 4：统计 activation 生命周期。解释为什么调度会影响训练显存。 | 前向 / 反向完成集合、`peak_live_activations` | activation 从前向完成后存活，到对应反向完成后释放 | 峰值 activation 与 fill-drain / 1F1B 对照 |
+| TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
+|:---|:---|:---|:---|
+| TODO 1：构造灌入—排空时间线<br>`build_pipeline_timeline` | 让 micro-batch 逐 stage 推进 | 每个 `(stage, micro_batch)` 恰好出现一次 | 检查时间轴长度、坐标范围与覆盖次数 |
+| TODO 2：计算理想气泡<br>`compute_bubble_ratio` | 用活跃槽位与总槽位计算空闲比例 | 结果在 0–1 内，增加 micro-batch 不放大理想气泡 | 检查槽位守恒与 micro-batch 对照 |
+| TODO 3：选择前反向事件<br>`select_pipeline_event` | 按 fill-drain 或 1F1B 优先级选择事件 | 每 stage 每步最多一个事件，依赖全部满足 | 检查前反向依赖、事件唯一性与策略差异 |
+| TODO 4：统计激活生命周期<br>`summarize_pipeline_schedule` | 从前向完成到对应反向完成跟踪激活 | 释放时机与反向完成一致 | 比较 fill-drain 与 1F1B 的峰值激活 |
 
 
 ```python
@@ -131,11 +146,11 @@ def compute_bubble_ratio(p: int, m: int) -> float:
 
     先用时间轴统计实际活跃槽位，再用所有 stage 在所有时间步都满载时
     的槽位数作为分母，避免把 bubble ratio 写成只依赖 `p`、`m` 的孤立公式。
-    
+
     Args:
         p: Pipeline Stage 数量 (GPU 数量)
         m: Micro-batch 的数量
-        
+
     Returns:
         float: 气泡占比 [0, 1]
     """
@@ -251,7 +266,7 @@ def test_pipeline_bubble():
         ratio = compute_bubble_ratio(p=8, m=32)
         expected = (8 - 1) / (32 + 8 - 1)
         assert abs(ratio - expected) < 1e-12, f"Bubble Ratio 应为 {expected}，实际为 {ratio}"
-        
+
         print("✅ 时间轴与 bubble ratio 一致；增加 micro-batch 通常降低理想气泡，但还需检查激活与调度开销。")
     except NotImplementedError:
         print("请先完成 TODO 部分的代码！")
@@ -505,6 +520,85 @@ def summarize_pipeline_schedule(p: int, m: int, policy: str) -> dict:
 - 一个 `(stage, micro_batch)` 的 activation 从前向完成后开始存活，到该 stage 的反向完成后释放。
 - 因此，时间轴不仅能计算 bubble，也能比较不同策略的峰值 activation 驻留。
 
+<a id="framework-check"></a>
+
+## 框架一致性核对（可选）
+
+下面在两个本地 Gloo 进程中使用 PyTorch Distributed Pipelining 的 GPipe 调度，把一个 batch 切成两个 micro-batch 并跨两个 stage 执行。该核对验证阶段边界、micro-batch 形状和输出一致性，不测量 GPU 气泡或跨卡带宽。
+
+| 核对项 | 对比内容 | 通过条件 |
+|:---|:---|:---|
+| 阶段划分 | 两层模型与 PyTorch Pipeline stage | 每个进程只执行对应 stage |
+| micro-batch 调度 | 完整 batch 与两个 GPipe micro-batch | 输出恢复为完整 batch 形状 |
+| 数值结果 | Pipeline 输出与相同权重的 dense 前向 | 两条路径数值一致 |
+
+```python
+import torch.distributed as dist
+import torch.nn as nn
+
+from tools.parallel_cpu_conformance import run_local_gloo_world
+
+
+def _pipeline_framework_worker(rank, world_size):
+    from torch.distributed.pipelining import SplitPoint, ScheduleGPipe, pipeline
+
+    class TinyPipelineModel(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.stage0 = nn.Linear(4, 4)
+            self.relu = nn.ReLU()
+            self.stage1 = nn.Linear(4, 2)
+
+        def forward(self, inputs):
+            return self.stage1(self.relu(self.stage0(inputs)))
+
+    torch.manual_seed(42)
+    model = TinyPipelineModel()
+    batch = torch.arange(16, dtype=torch.float32).reshape(4, 4) / 16.0
+    with torch.no_grad():
+        expected = model(batch).clone()
+    pipe = pipeline(
+        model,
+        mb_args=(batch[:2],),
+        split_spec={"stage1": SplitPoint.BEGINNING},
+    )
+    stage = pipe.build_stage(rank, torch.device("cpu"), group=dist.group.WORLD)
+    schedule = ScheduleGPipe(stage, n_microbatches=2)
+    if rank == 0:
+        output = schedule.step(batch)
+        return {"rank": rank, "source_stage_returns_none": output is None}
+    output = schedule.step()
+    return {
+        "rank": rank,
+        "output_shape": list(output.shape),
+        "max_abs_error": float((output - expected).abs().max()),
+    }
+
+
+def check_pipeline_framework_conformance():
+    """核对本节两 stage、两 micro-batch 语义与 PyTorch GPipe 调度。"""
+    results = run_local_gloo_world(_pipeline_framework_worker, world_size=2)
+    source, destination = results
+    checks = {
+        "source_stage_contract": source["source_stage_returns_none"],
+        "merged_output_shape": destination["output_shape"] == [4, 2],
+        "dense_output_match": destination["max_abs_error"] < 1e-7,
+    }
+    failed = [name for name, passed in checks.items() if not passed]
+    if failed:
+        raise AssertionError(f"框架一致性核对失败：{failed}")
+    return {
+        "status": "passed", "versions": {"torch": torch.__version__},
+        "checks": checks, "world_size": 2, "rank_results": results,
+    }
+
+
+framework_check = check_pipeline_framework_conformance()
+framework_check
+```
+
+<a id="gpu-experiment"></a>
+
 ### Step 5（可选）：GPU Pipeline 并行复测
 
 先用 CPU 时间线理解 micro-batch 如何减少 stage 空闲，再在固定 workload 下观察 Pipeline 的实际执行记录。单 stage 使用一张 GPU，两 stage Pipeline 使用两张 GPU；结合每 rank 的显存、最慢 stage 时间和所用 GPU 数，判断下一轮应优先调整 stage 切分还是 micro-batch。
@@ -536,7 +630,9 @@ SEQ_LEN = 256  # 每个样本的 Token 长度。
 DTYPE = 'bf16'  # 参数与计算数据类型。
 WARMUP = 2  # 预热步数，不进入统计。
 REPEATS = 5  # 正式训练步数。
-RESULT_DIR = f'benchmarks/results/28_pipeline/{RUN_LABEL}'  # 标签隔离历史结果。
+from tools.project_runtime import resolve_project_root
+PROJECT_ROOT = resolve_project_root()
+RESULT_DIR = PROJECT_ROOT / f'benchmarks/results/28_pipeline/{RUN_LABEL}'  # 标签隔离历史结果。
 PIPELINE_RUNS = [
     {'name': 'single_stage_baseline', 'world_size': 1, 'pipeline_stages': 1},
     {'name': 'two_stage_pipeline', 'world_size': 2, 'pipeline_stages': 2},

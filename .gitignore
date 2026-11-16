@@ -44,7 +44,7 @@ __pycache__/
 # Large raw profiler traces; retain derived summary and decision records.
 /benchmarks/results/**/*.pt.trace.json
 
-# Local-only notes, archives, and recovery materials.
+# Local-only authoring templates, notes, archives, and recovery materials.
 /.local/
 
 # Local model artifacts produced by the distilled-student delivery project.

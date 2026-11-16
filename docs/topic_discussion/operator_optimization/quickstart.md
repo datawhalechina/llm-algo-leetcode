@@ -9,7 +9,7 @@
 | [主GPU环境](#triton-environment)，Conda YAML管理 | `llm_algo_cnb_gpu` | Part03 Triton、Part04原生CUDA与单GPU Runtime；需要兼容的NVIDIA GPU，原生CUDA另检查本机工具链 |
 | [BASE-CPU](../../guide.md#base-cpu) | `llm_algo_cpu` | Part01/02 CPU参考及Part04标准库推导；无需GPU，不运行Triton/CUDA内核 |
 | 按需：`INF-CUDA-MECHANISM` | [推理机制环境](../inference_optimization/quickstart.md#inf-cuda-mechanism-quickstart) | Part02·20注意力实测；不为Part03 Triton练习额外安装 |
-| 按需：`PERF-CUDA-MECHANISM` | [性能机制环境](../performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart) | PERF-ROOFLINE、Part05·05；已有该环境时也可运行兼容的Part04单GPU Runtime |
+| 按需：`PERF-CUDA-MECHANISM` | [性能机制GPU环境](../performance_optimization/gpu_quickstart.md#perf-cuda-mechanism-quickstart) | PERF-ROOFLINE、Part05·05；已有该环境时也可运行兼容的Part04单GPU Runtime |
 | 按需：`PAR-CPU` | [通信CPU环境](../communication_parallelism/quickstart.md#par-cpu-quickstart) | Part04·13的CPU/Gloo集合通信；主环境支持Gloo并通过该页测试时可复用，不必另建 |
 | 按需：独立DeepSpeed环境 | 已有兼容环境；可复用[PAR-CUDA-MECHANISM](../communication_parallelism/quickstart.md#par-cuda-mechanism-quickstart)的依赖 | Part04·16可选配置解析；本项不要求两张GPU，也不代表双卡Profile预检通过 |
 

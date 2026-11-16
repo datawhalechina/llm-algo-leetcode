@@ -1,42 +1,80 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 580" role="img" aria-labelledby="t d">
-<title id="t">并行候选的风险与复测</title>
-<desc id="d">四类并行候选各自解决不同压力，也有不同风险和需要复测的证据字段。</desc>
-<defs>
-  <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
-  <style>.title{font:700 27px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.sub{font:500 15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.group{font:700 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.head{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.body{font:500 14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.box{stroke-width:2.4;rx:13}.line{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
-</defs>
-<rect width="1200" height="580" fill="#f8fafc"/>
-<text x="54" y="55" class="title">候选策略必须同时比较收益、风险与复测证据</text>
-<text x="54" y="83" class="sub">统一 workload 后，候选是否保留取决于它解决的压力是否大于新增的通信、气泡或负载代价。</text>
-
-<text x="72" y="130" class="group">候选策略</text><text x="410" y="130" class="group">主要解决的压力</text><text x="700" y="130" class="group">需要先看的风险</text><text x="963" y="130" class="group">复测字段</text>
-
-<g>
-<rect x="55" y="154" width="230" height="70" class="box" fill="#eff6ff" stroke="#3b82f6"/><text x="170" y="196" text-anchor="middle" class="head">DP + ZeRO</text>
-<rect x="355" y="154" width="260" height="70" class="box" fill="#ecfccb" stroke="#65a30d"/><text x="485" y="184" text-anchor="middle" class="head">优化器 / 参数状态显存</text><text x="485" y="206" text-anchor="middle" class="body">按 rank 分片</text>
-<rect x="685" y="154" width="230" height="70" class="box" fill="#fff1f2" stroke="#e11d48"/><text x="800" y="196" text-anchor="middle" class="head">collective 频率</text>
-<rect x="970" y="154" width="185" height="70" class="box" fill="#f5f3ff" stroke="#8b5cf6"/><text x="1062" y="184" text-anchor="middle" class="head">峰值显存</text><text x="1062" y="206" text-anchor="middle" class="body">collective 时间</text>
-<path d="M285 189H355M615 189H685M915 189H970" class="line"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="620" viewBox="0 0 1500 620" role="img" aria-labelledby="title desc">
+<title id="title">DP张量流水线组合的八rank排布与验收</title><desc id="desc">构造示意DP等于2、TP等于2、PP等于2、CP和EP均为1，共八个rank。两行DP副本各含两个PP阶段，每阶段两个TP rank。进程数匹配之后仍需检查结构和进程组、拓扑容量与同步，再在同模型负载精度下复测。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto">
+<path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:26px;font-weight:700}.group{font-size:18px;font-weight:700}.head{font-size:17px;font-weight:700}.body{font-size:15px;font-weight:400}.sub{font-size:16px;fill:#475569}.flow{fill:none;stroke:#475569;stroke-width:2.5;marker-end:url(#arrow)}</style></defs>
+<rect x="0" y="0" width="1500" height="620" rx="12" fill="#f8fafc" stroke="#f8fafc" stroke-width="2" class="decoration" data-layout-role="decoration"/>
+<text x="55" y="48" class="title" text-anchor="start">8个rank排得下组合，还要检查结构、资源与实际执行</text>
+<text x="55" y="80" class="sub" text-anchor="start">构造例：DP=2、TP=2、PP=2，CP=EP=1；每行DP副本处理不同样本，stage内部使用TP。</text>
+<text x="55" y="132" class="group" text-anchor="start">DP×TP×PP＝2×2×2＝8 · 排布示意</text>
+<g id="eight-rank-layout">
+<rect x="55" y="155" width="760" height="290" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2" class="panel" data-layout-role="panel"/>
+<rect x="130" y="175" width="280" height="255" rx="12" fill="#eff6ff" stroke="#93c5fd" stroke-width="2" class="panel" data-layout-role="panel"/>
+<rect x="515" y="175" width="280" height="255" rx="12" fill="#f0fdf4" stroke="#86efac" stroke-width="2" class="panel" data-layout-role="panel"/>
+<text x="270" y="207" class="head" text-anchor="middle">PP stage0</text>
+<text x="655" y="207" class="head" text-anchor="middle">PP stage1</text>
+<text x="90" y="272" class="head" text-anchor="middle">DP0</text>
+<g id="rank-0" data-dp="0" data-pp="0" data-tp="0" data-layout-role="glyph-group">
+<rect x="150" y="225" width="100" height="80" rx="12" fill="#ffffff" stroke="#2563eb" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="200" y="254" class="head" text-anchor="middle">rank0</text>
+<text x="200" y="280" class="body" text-anchor="middle">TP0</text>
 </g>
-<g>
-<rect x="55" y="258" width="230" height="70" class="box" fill="#eff6ff" stroke="#3b82f6"/><text x="170" y="300" text-anchor="middle" class="head">TP</text>
-<rect x="355" y="258" width="260" height="70" class="box" fill="#ecfccb" stroke="#65a30d"/><text x="485" y="288" text-anchor="middle" class="head">大线性层的容量与计算</text><text x="485" y="310" text-anchor="middle" class="body">矩阵维度拆分</text>
-<rect x="685" y="258" width="230" height="70" class="box" fill="#fff1f2" stroke="#e11d48"/><text x="800" y="300" text-anchor="middle" class="head">all-reduce 暴露</text>
-<rect x="970" y="258" width="185" height="70" class="box" fill="#f5f3ff" stroke="#8b5cf6"/><text x="1062" y="288" text-anchor="middle" class="head">payload</text><text x="1062" y="310" text-anchor="middle" class="body">exposed time</text>
-<path d="M285 293H355M615 293H685M915 293H970" class="line"/>
+<g id="rank-1" data-dp="0" data-pp="0" data-tp="1" data-layout-role="glyph-group">
+<rect x="295" y="225" width="100" height="80" rx="12" fill="#ffffff" stroke="#2563eb" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="345" y="254" class="head" text-anchor="middle">rank1</text>
+<text x="345" y="280" class="body" text-anchor="middle">TP1</text>
 </g>
-<g>
-<rect x="55" y="362" width="230" height="70" class="box" fill="#eff6ff" stroke="#3b82f6"/><text x="170" y="404" text-anchor="middle" class="head">PP</text>
-<rect x="355" y="362" width="260" height="70" class="box" fill="#ecfccb" stroke="#65a30d"/><text x="485" y="392" text-anchor="middle" class="head">模型单卡放不下</text><text x="485" y="414" text-anchor="middle" class="body">分段放置层</text>
-<rect x="685" y="362" width="230" height="70" class="box" fill="#fff1f2" stroke="#e11d48"/><text x="800" y="404" text-anchor="middle" class="head">bubble / stage 失衡</text>
-<rect x="970" y="362" width="185" height="70" class="box" fill="#f5f3ff" stroke="#8b5cf6"/><text x="1062" y="392" text-anchor="middle" class="head">bubble ratio</text><text x="1062" y="414" text-anchor="middle" class="body">stage time</text>
-<path d="M285 397H355M615 397H685M915 397H970" class="line"/>
+<g id="rank-2" data-dp="0" data-pp="1" data-tp="0" data-layout-role="glyph-group">
+<rect x="535" y="225" width="100" height="80" rx="12" fill="#ffffff" stroke="#16a34a" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="585" y="254" class="head" text-anchor="middle">rank2</text>
+<text x="585" y="280" class="body" text-anchor="middle">TP0</text>
 </g>
-<g>
-<rect x="55" y="466" width="230" height="70" class="box" fill="#eff6ff" stroke="#3b82f6"/><text x="170" y="508" text-anchor="middle" class="head">EP</text>
-<rect x="355" y="466" width="260" height="70" class="box" fill="#ecfccb" stroke="#65a30d"/><text x="485" y="496" text-anchor="middle" class="head">MoE 专家计算分配</text><text x="485" y="518" text-anchor="middle" class="body">专家维度切分</text>
-<rect x="685" y="466" width="230" height="70" class="box" fill="#fff1f2" stroke="#e11d48"/><text x="800" y="508" text-anchor="middle" class="head">all-to-all / 热门专家</text>
-<rect x="970" y="466" width="185" height="70" class="box" fill="#f5f3ff" stroke="#8b5cf6"/><text x="1062" y="496" text-anchor="middle" class="head">expert token CV</text><text x="1062" y="518" text-anchor="middle" class="body">P95 step time</text>
-<path d="M285 501H355M615 501H685M915 501H970" class="line"/>
+<g id="rank-3" data-dp="0" data-pp="1" data-tp="1" data-layout-role="glyph-group">
+<rect x="680" y="225" width="100" height="80" rx="12" fill="#ffffff" stroke="#16a34a" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="730" y="254" class="head" text-anchor="middle">rank3</text>
+<text x="730" y="280" class="body" text-anchor="middle">TP1</text>
 </g>
-</svg>
+<text x="90" y="392" class="head" text-anchor="middle">DP1</text>
+<g id="rank-4" data-dp="1" data-pp="0" data-tp="0" data-layout-role="glyph-group">
+<rect x="150" y="345" width="100" height="80" rx="12" fill="#ffffff" stroke="#2563eb" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="200" y="374" class="head" text-anchor="middle">rank4</text>
+<text x="200" y="400" class="body" text-anchor="middle">TP0</text>
+</g>
+<g id="rank-5" data-dp="1" data-pp="0" data-tp="1" data-layout-role="glyph-group">
+<rect x="295" y="345" width="100" height="80" rx="12" fill="#ffffff" stroke="#2563eb" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="345" y="374" class="head" text-anchor="middle">rank5</text>
+<text x="345" y="400" class="body" text-anchor="middle">TP1</text>
+</g>
+<g id="rank-6" data-dp="1" data-pp="1" data-tp="0" data-layout-role="glyph-group">
+<rect x="535" y="345" width="100" height="80" rx="12" fill="#ffffff" stroke="#16a34a" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="585" y="374" class="head" text-anchor="middle">rank6</text>
+<text x="585" y="400" class="body" text-anchor="middle">TP0</text>
+</g>
+<g id="rank-7" data-dp="1" data-pp="1" data-tp="1" data-layout-role="glyph-group">
+<rect x="680" y="345" width="100" height="80" rx="12" fill="#ffffff" stroke="#16a34a" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="730" y="374" class="head" text-anchor="middle">rank7</text>
+<text x="730" y="400" class="body" text-anchor="middle">TP1</text>
+</g>
+</g>
+<g id="group-and-shape-constraints">
+<rect x="955" y="135" width="440" height="80" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2" class="node"/>
+<text x="1175" y="164" class="head" text-anchor="middle">进程数匹配后，检查结构与分组</text>
+<text x="1175" y="190" class="body" text-anchor="middle">层／Head划分、进程组、模型和后端支持</text>
+</g>
+<g id="runtime-constraints">
+<rect x="955" y="300" width="440" height="80" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2" class="node"/>
+<text x="1175" y="329" class="head" text-anchor="middle">检查拓扑、容量与同步</text>
+<text x="1175" y="355" class="body" text-anchor="middle">互联、峰值显存、流水线stage与通信开销</text>
+</g>
+<g id="matched-workload-retest">
+<rect x="955" y="465" width="440" height="80" rx="12" fill="#e0f2fe" stroke="#0284c7" stroke-width="2" class="node"/>
+<text x="1175" y="494" class="head" text-anchor="middle">同模型、同负载、同精度复测</text>
+<text x="1175" y="520" class="body" text-anchor="middle">先核对正确性／容量，再比较完成时间与扩展效率</text>
+</g>
+<path id="layout-to-constraints" d="M815 285H885V175H955" class="flow"/>
+<path id="structure-to-runtime" d="M1175 215V300" class="flow"/>
+<path id="runtime-to-retest" d="M1175 380V465" class="flow"/>
+<text x="55" y="485" class="body" text-anchor="start">排布图表示进程角色，不表示通信的执行顺序。</text>
+<text x="55" y="520" class="body" text-anchor="start">CP／EP按序列与MoE条件加入，重新核对具体后端的进程组。</text>
+<text x="55" y="555" class="body" text-anchor="start">Serving副本在请求层分流，实例内部仍可使用模型并行。</text>
+<text x="55" y="599" class="sub" text-anchor="start">候选兼容清单用于提出计划；实际组合能否运行、是否更快，需要对应后端与同负载结果支持。</text></svg>

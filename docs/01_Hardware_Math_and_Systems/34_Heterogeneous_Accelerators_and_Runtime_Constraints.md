@@ -218,17 +218,17 @@ print("同时驻留检查：", capacity_miss, capacity_ok)
 
 ```
 
-## Q4：完成估算后，运行时还要核对什么？
+## Q4：已有功能与质量检查结果，下一步应做什么？
 
-前面已筛选阶段候选、计算转换后的传输载荷，并核对给定同时驻留量。实际路径还要验证模型与分词器匹配、编号类型与顺序、输入就绪依赖、模型加载以及最终输出。设备异步执行时，消费端必须等输入搬运完成；源缓冲也要保留到搬运结束，容量估算不能替代这些执行条件。
+前面的阶段候选与交接账目提供估算条件，模型加载、编号类型与顺序、输入就绪依赖以及最终输出仍需在实际路径上检查。例如，异步传输的源缓冲要保留到搬运结束，消费端要等待输入就绪；单凭容量足够无法确认这些行为。
 
-下面用明确的外部检查结果演示下一动作：缺少阶段或候选时先补齐需求；功能与质量未通过时继续修复；功能路径完成后进入性能测量。示例中的状态是构造输入，不登记为真实加载或部署结果。
+下面接收已经给出的功能与质量检查结论，再选择下一动作：阶段缺失或没有候选时补齐需求，质量未通过时先定位输出问题，功能路径尚未核对时先做加载与执行测试，两项检查均通过后才进入性能测量。代码消费外部结论，不执行模型或重新检查缓冲寿命；这里的输入都是构造场景。将同一份阶段候选固定下来，只改变检查结果，可以看到“还要做功能测试”与“可以开始测量”的区别。
 
 
 ```python
 def benchmark_admission(stage_trace, required_stages, quality_gate_passed,
                         runtime_smoke_passed):
-    """根据给定检查结果判断是否可进入计时，不验证证据真实性。"""
+    """读取阶段候选与外部功能、质量结论，只选择下一动作；不执行模型。"""
     if (type(quality_gate_passed) is not bool
             or type(runtime_smoke_passed) is not bool):
         raise ValueError('质量与路径检查结果必须是布尔值')
@@ -249,9 +249,29 @@ def benchmark_admission(stage_trace, required_stages, quality_gate_passed,
 
 
 required_stages = list(REQUEST_PLAN["stages"])
-assert benchmark_admission(STAGE_TRACE, required_stages, True, False)["status"] == "needs_runtime_check"
-assert benchmark_admission(STAGE_TRACE, required_stages, True, True)["status"] == "benchmark_ready"
-assert benchmark_admission({}, required_stages, True, True)["status"] == "blocked"
+given_results = {
+    "待做功能测试": dict(quality_gate_passed=True, runtime_smoke_passed=False),
+    "质量未通过": dict(quality_gate_passed=False, runtime_smoke_passed=True),
+    "可以开始测量": dict(quality_gate_passed=True, runtime_smoke_passed=True),
+}
+next_actions = {
+    name: benchmark_admission(
+        stage_trace=STAGE_TRACE, required_stages=required_stages, **checks,
+    )
+    for name, checks in given_results.items()
+}
+assert next_actions["待做功能测试"]["status"] == "needs_runtime_check"
+assert next_actions["质量未通过"]["status"] == "blocked"
+assert next_actions["质量未通过"]["reason"] == "质量检查未通过"
+assert next_actions["可以开始测量"]["status"] == "benchmark_ready"
+missing_stage = benchmark_admission(
+    stage_trace={}, required_stages=required_stages,
+    **given_results["可以开始测量"],
+)
+assert missing_stage["status"] == "blocked"
+assert missing_stage["missing"] == sorted(required_stages)
+for name, action in next_actions.items():
+    print(f"给定场景：{name}；下一步：{action['reason']}")
 
 ```
 

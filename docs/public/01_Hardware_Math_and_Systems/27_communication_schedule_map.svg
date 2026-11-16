@@ -8,8 +8,8 @@
   <text x="640" y="42" text-anchor="middle" class="title">通信调度：从成本模型到计算重叠</text>
   <text x="640" y="70" text-anchor="middle" class="sub">通信总量不变时，消息粒度和时间位置仍可能改变 step time</text>
 
-  <rect x="40" y="110" width="285" height="155" fill="#e0f2fe" class="panel"/><text x="65" y="145" class="group">成本拆解</text><text x="65" y="180" class="body">数据量 / 带宽：传输下限</text><text x="65" y="207" class="body">延迟 / 启动次数：小消息开销</text><text x="65" y="234" class="body">同步：是否暴露在关键路径</text>
-  <rect x="370" y="110" width="285" height="155" fill="#dcfce7" class="panel"/><text x="395" y="145" class="group">消息与 Collective</text><text x="395" y="180" class="body">合并小通信，控制消息粒度</text><text x="395" y="207" class="body">AllReduce：全局聚合</text><text x="395" y="234" class="body">All-to-All：token / 专家路由</text>
+  <rect x="40" y="110" width="285" height="155" fill="#e0f2fe" class="panel"/><text x="65" y="145" class="group">成本拆解</text><text x="65" y="180" class="body">数据量 / 带宽：传输下限</text><text x="65" y="207" class="body">启动开销 × 次数：固定成本</text><text x="65" y="234" class="body">同步：是否暴露在关键路径</text>
+  <rect x="370" y="110" width="285" height="155" fill="#dcfce7" class="panel"/><text x="395" y="145" class="group">消息与 Collective</text><text x="395" y="180" class="body">桶大小：启动成本与就绪等待</text><text x="395" y="207" class="body">AllReduce：全局聚合</text><text x="395" y="234" class="body">All-to-All：token / 专家路由</text>
   <rect x="700" y="110" width="500" height="155" fill="#fef3c7" class="panel"/><text x="725" y="145" class="group">观测指标</text><text x="725" y="180" class="body">通信区间 · 计算区间 · overlap</text><text x="725" y="207" class="body">关键路径等待 · step time · 吞吐</text><text x="725" y="234" class="small">选择 collective 后仍需观察时间线，而不是只看通信总量</text>
   <path d="M325 188H360" class="flow"/><path d="M655 188H690" class="flow"/>
   <text x="342" y="170" text-anchor="middle" class="small">组织</text><text x="672" y="170" text-anchor="middle" class="small">观测</text>

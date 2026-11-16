@@ -1,6 +1,6 @@
 # PERF-REGRESSION. Paired Benchmark and Regression Thresholds | 配对基准与性能回归阈值
 
-**难度：** Medium | **环境：** [CPU 主线，GPU 可选](#runtime-environment) | **标签：** `性能分析` `配对基准` `回归阈值` | **目标人群：** 性能测试学习者
+**难度：** Medium | **环境：** [CPU基础练习，GPU可选](#runtime-environment) | **标签：** `性能分析`、`配对基准`、`回归阈值` | **目标人群：** 具备性能测试基础的读者
 
 > 🚀 **云端运行环境**
 >
@@ -12,9 +12,9 @@
 
 ## 本节导读
 
-一次运行更快，可能来自顺序、温度或后台负载变化。把同一轮基线和候选配成一对，能保留轮次差异；失败和缺失也要单独计入结果。
+同一任务改动后变慢，称为性能回归。但一次候选运行更快或更慢，也可能是温度、执行顺序或后台工作改变。把同一轮的基线与候选配成一对，可以保留轮次差异，再判断变化是否超过事先允许的幅度。
 
-从逐轮延迟比例估计变化范围，再按预先设定的回归边界区分通过、拒绝和需要补测。
+本节以延迟为例，先核对哪些运行能够配对，再从逐对比例估计典型变化及其不确定性，最后决定通过、回退或补测。比如允许慢5%时，通过检查只说明当前数据满足这条要求，并不等于已经加速。
 
 **关键词：** 配对试验、延迟比例、自助重采样、中位数、性能回归
 
@@ -22,55 +22,55 @@
 
 ## 运行环境
 
-- **基础练习：** 使用 [BASE-CPU](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
-- **GPU 实测：** 阅读 [Step 5](#gpu-experiment)；环境和固定工作负载见其中 5.1。
+- **基础练习：** 使用[BASE-CPU](../guide.md#base-cpu)，运行[Step 4的题目与测试](#mechanism-practice)。
+- **GPU实测：** 环境和固定工作负载见[Step 5](#gpu-experiment)。
+
 ## 前置阅读
 
 先学习如何固定工作负载、计时范围和重复运行，再进入配对统计。
 
 - [Part 00 · 20 性能证据与实验设计](../00_Prerequisites/20_Performance_Evidence_and_Experiment_Design.md)
-- [性能分析 · 02 可重复基线](../topic_discussion/performance_analysis/02_reproducible_baseline.md)
+- [性能分析 · 02 可重复基线](../topic_discussion/performance_optimization/methods/02_reproducible_baseline.md)
 ## Step 1：哪些运行可以配成一对
 
-一对试验使用相同输入、模型权重、环境与计时范围，只改变待比较的方案。执行顺序在不同轮次交替，减少固定先后带来的偏差，但不能保证消除温度漂移或后台干扰。配对编号连接的是同一轮，而不是让基线与候选永远按相同顺序运行。
+一对试验使用相同输入、模型权重、环境与计时范围，只改变待比较的方案。配对编号连接同一轮的基线与候选。不同轮次交替执行顺序，以减少固定先后带来的偏差；同时记录温度、设备状态和后台负载，分析跨轮波动。
 
 基线与候选任一侧缺失、失败或计时无效时，该轮不能进入成功比例分布，仍需计入试验记录。若两侧都没有留下记录，仅靠编号并集无法知道它曾被计划；因此还要保留计划轮数，与完成轮数核对。
 
 | 信息 | 配对要求 | 不满足时怎样处理 |
 | --- | --- | --- |
 | 试验编号 | 每侧唯一，连接同一轮运行 | 重复编号拒绝；单侧缺失单独登记 |
-| 工作负载签名 | 编码输入、形状、模型及环境等固定条件；本次汇总只对应一种签名 | 任一有效运行签名不一致则拒绝合并 |
+| 固定条件标识 | 编码输入、形状、模型及环境等固定条件；本次汇总只对应同一组固定条件 | 任一有效运行固定条件不同则拒绝合并 |
 | 延迟 | 两侧均为有限正数，单位相同 | 非法计时拒绝，不生成比例 |
 | 执行状态 | 两侧均成功才能比较时间 | 失败保留编号；不能仅凭剩余成功样本采用候选 |
 | 计划与完成轮数 | 计划量独立保存，不能由成功数倒推 | 缺失需修复或补测；当前严格规则不允许失败运行通过 |
 
 ![配对运行与缺失失败记录](../public/02_PyTorch_Algorithms/perf_regression_paired_runs.svg)
-## Step 2：怎样从逐对延迟得到中位比例区间
+## Step 2：从逐对延迟估计中位比例的范围
 
-设共有 $N$ 个成功配对，第 $i$ 对的基线和候选延迟分别为 $b_i,c_i$，二者均为正数且使用相同时间单位。先求逐对比例 $r_i$，再计算其中位数 $\hat r$ 和变慢占比 $s$：
+设 $N$ 个成功配对中，第 $i$ 对的基线与候选延迟为 $b_i,c_i$，均为同单位正数。先算候选除以基线的比例 $r_i$，再取其中位数 $\hat r$。例如基线10ms、候选11ms，比例为1.1，表示该轮慢10%；变慢占比 $s$ 则统计有多少轮比例大于1。 $\mathbf{1}[\cdot]$ 在条件成立时取1，否则取0。
 
 $$
 r_i=\frac{c_i}{b_i},\qquad
 \hat r=\mathrm{median}(r_1,\ldots,r_N),\qquad
-s=\frac{1}{N}\sum_{i=1}^{N}\mathbf{1}[r_i>1].
+s=\frac{1}{N}\sum_{i=1}^N\mathbf1[r_i>1].
 $$
 
-$\mathbf{1}[\cdot]$ 在条件成立时取 1，否则取 0； $r_i>1$ 表示该轮候选更慢。这里统计的是“逐对比例的中位数”，不是“两组延迟中位数之比”，两者一般不同。
-
-为估计中位比例的不确定性，每次从 $N$ 个已配对比例中有放回抽取 $N$ 个数，求一个重采样中位数。重复 $K$ 次形成 $\hat r_1^{\ast},\ldots,\hat r_K^{\ast}$，取其 5% 与 95% 分位得到 90% 百分位自助区间 $[L,U]$：
+自助重采样（Bootstrap）从已观测比例中有放回抽取 $N$ 个数，每次求中位数；重复 $K$ 次，再取这些中位数的5%与95%分位数，得到90%百分位区间 $[L,U]$。例如两个比例0.9和1.05，重采样可以重复抽到0.9，也可以各抽一个；这里重采样的是整对比例，不是拆散两侧时间。 $Q_p$ 表示分位函数，本节用排序后最接近的位置取值。
 
 $$
-L=Q_{0.05}(\hat r_1^{\ast},\ldots,\hat r_K^{\ast}),\qquad
-U=Q_{0.95}(\hat r_1^{\ast},\ldots,\hat r_K^{\ast}).
+L=Q_{0.05}(\hat r_1^\ast,\ldots,\hat r_K^\ast),\qquad
+U=Q_{0.95}(\hat r_1^\ast,\ldots,\hat r_K^\ast).
 $$
 
-$Q_p$ 表示分位函数，代码使用排序后最接近的位置取值。该方法把配对视为可独立重采样的观测；持续漂移和轮次相关会削弱区间解释，固定种子只让计算可重复，不会消除这些偏差。增加重采样次数也不能代替新增真实配对。
-
-| 统计量 | 回答的问题 | 不能替代的证据 |
+| 统计对象 | 回答什么问题 | 解释时注意什么 |
 | --- | --- | --- |
-| 中位比例 | 典型配对比基线快还是慢 | 不表达差异的不确定性 |
-| 90% 自助区间 | 当前样本下中位比例的估计范围 | 不是包含 90% 单次延迟的区间，也不是全部负载的联合保证 |
-| 变慢占比 | 有多少成功配对变慢 | 不表达变慢幅度，也不包含失败运行 |
+| 逐对比例的中位数 | 典型配对快还是慢 | 一般不同于两组延迟中位数之比 |
+| 中位比例的90%自助区间 | 当前样本下中位比例有多不确定 | 不是包含90%单次延迟的范围，也不是所有负载的联合保证 |
+| 变慢占比 | 成功配对中有多少轮更慢 | 不表示变慢幅度，失败另计 |
+| 独立重采样假设 | 每对能否当作独立观测 | 持续漂移或轮次相关会削弱区间解释 |
+| 重采样次数与种子 | 统计计算是否可重复 | 增加计算次数不能代替新增真实配对 |
+
 ## Step 3：区间相对允许回归边界怎样决定结果
 
 设事先允许的相对延迟增加量为 $\delta\ge0$，例如 $\delta=0.05$ 表示允许慢 5%；对应比例边界 $\tau$ 为：
@@ -79,14 +79,14 @@ $$
 \tau=1+\delta.
 $$
 
-先检查正确性与执行失败，再检查缺失和有效配对数量，最后将中位比例区间 $[L,U]$ 与 $\tau$ 比较。当前教学规则对执行失败零容忍，缺失则要求补齐；多个负载分别判断，任一拒绝则整体拒绝，其余存在待复测项则整体继续复测。即使 $U\le\tau$，候选也可能略慢，不能把回归检查通过写成已证明加速。
+先检查正确性与执行失败，再检查缺失和有效配对数量，最后将中位比例区间 $[L,U]$ 与 $\tau$ 比较。当前教学规则对执行失败零容忍，缺失则要求补齐；多个负载分别判断，任一拒绝则整体拒绝，其余存在待复测项则整体继续复测。 $U\le\tau$表示通过本次允许变慢检查；是否更快，还要另与比例1比较。
 
 | 条件，按顺序判断 | 结果 | 下一步 |
 | --- | --- | --- |
 | 正确性未通过或存在执行失败 | `reject` | 修复或回退，保留失败记录 |
 | 存在缺失配对或有效数量不足 | `tune` | 补齐运行后重新统计 |
 | $L>\tau$ | `reject` | 区间整体超过允许变慢幅度，回退候选 |
-| $U\le\tau$ | `accept` | 通过当前回归检查，再检查质量与交付目标 |
+| $U\le\tau$ | `accept` | 通过当前回归检查，再核对其他任务要求 |
 | 其他位置，包括 $L=\tau<U$ | `tune` | 区间未能明确落在边界一侧，固定条件复测 |
 
 ![性能回归的顺序判断](../public/02_PyTorch_Algorithms/perf_regression_decision_gate.svg)
@@ -94,7 +94,7 @@ $$
 
 ## Step 4：实现配对检查、重采样与回归判断
 
-输入基线和候选的运行记录，先检查唯一编号与工作负载签名，再补全配对分支、比例重采样和决策条件。骨架负责字段校验与失败清单；失败和缺失计数需要传给决策函数，不能只传成功样本的区间。没有成功配对时无法估计区间，应直接报告无法统计，不把空数据当作没有回归。
+输入基线和候选的运行记录，先检查唯一编号与固定条件标识（`workload_signature`），再补全配对分支、比例重采样和决策条件。骨架负责字段校验与失败清单；决策函数同时接收成功样本的区间、失败数量和缺失数量。成功配对为空时，报告无法统计，并保留失败与缺失原因，供补测时定位。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 | --- | --- | --- | --- |
@@ -183,8 +183,9 @@ def summarize_paired_ratios(pairs, bootstrap_samples=1000, seed=42):
     if not isinstance(seed, int) or isinstance(seed, bool):
         raise ValueError("随机种子必须为整数")
     for pair in pairs:
-        _finite_latency(pair["baseline_ms"])
-        _finite_latency(pair["candidate_ms"])
+        baseline_value = _finite_latency(pair["baseline_ms"])
+        candidate_value = _finite_latency(pair["candidate_ms"])
+        _finite_latency(candidate_value / baseline_value)
     rng = Random(seed)
     # TODO 2：汇总比例分布
     # ratios = ???
@@ -292,6 +293,10 @@ def test_invalid_statistical_inputs():
         for key in ("baseline_ms", "candidate_ms"):
             pair = {"baseline_ms": 10, "candidate_ms": 10, key: invalid}
             _expect_regression_error(summarize_paired_ratios, [pair])
+    # 两侧有限为正，仍可能在求比值时溢出或下溢。
+    for baseline, candidate in ((1e-308, 1e308), (1e308, 1e-308)):
+        _expect_regression_error(summarize_paired_ratios,
+                                 [{"baseline_ms": baseline, "candidate_ms": candidate}])
     _expect_regression_error(summarize_paired_ratios, [])
     for invalid in (0, -1, True, 1.5):
         _expect_regression_error(summarize_paired_ratios, [{"baseline_ms": 1, "candidate_ms": 1}], invalid)
@@ -431,8 +436,9 @@ def summarize_paired_ratios(pairs, bootstrap_samples=1000, seed=42):
     if not isinstance(seed, int) or isinstance(seed, bool):
         raise ValueError("随机种子必须为整数")
     for pair in pairs:
-        _finite_latency(pair["baseline_ms"])
-        _finite_latency(pair["candidate_ms"])
+        baseline_value = _finite_latency(pair["baseline_ms"])
+        candidate_value = _finite_latency(pair["candidate_ms"])
+        _finite_latency(candidate_value / baseline_value)
     rng = Random(seed)
     # TODO 2：汇总比例分布
     ratios = [float(pair["candidate_ms"]) / float(pair["baseline_ms"]) for pair in pairs]
@@ -483,25 +489,26 @@ def decide_performance_regression(summary, quality_passed, regression_threshold,
 
 ### 解析
 
-#### TODO 1：建立配对运行
+#### TODO 1：同时保留成功、缺失与失败
 
-- 编号先经过唯一性检查，再按两侧是否存在和是否成功分流；不能用字典覆盖重复记录，也不能把失败轮当作不存在。
-- 答案保留缺失清单、失败明细与已见轮数；乱序和两侧缺失测试核对配对关系，重复编号与签名冲突测试阻止混合比较。
+- 两侧先各自检查编号唯一，再按相同编号连接；重复编号不能靠字典覆盖，执行失败也不能当成记录缺失。
+- 测试核对乱序配对、单侧缺失和失败明细，并用固定条件不同的记录检查是否错误混合比较。
 
-#### TODO 2：汇总比例分布
+#### TODO 2：对完整配对的比例重采样
 
-- 先计算逐对比例，再对比例有放回重采样；每次抽取与原配对数相同的样本，得到中位数而不是重采样均值。
-- 答案固定随机种子，并从重采样中位数取 5% 和 95% 分位；已知比例、单样本和复现测试验证算法，非法计时测试避免无效比例传播。
+- 先逐对求候选／基线，再有放回抽取同样数量的比例，计算每次中位数；不能把两侧分别打乱，或改成重采样均值。
+- 已知比例、单样本与固定种子测试检查结果，非法计时测试阻止无效数值进入区间。
 
-#### TODO 3：判断性能回归
+#### TODO 3：先检查可用性，再比较区间
 
-- 质量与失败优先于统计收益；缺失或成功数量不足时继续补测，区间上界等于允许边界时可通过回归检查。
-- 答案按顺序组合条件；集成用例用 20 个更快的成功配对和 1 次失败检查“成功样本不能掩盖失败”，等号测试区分通过与跨界。
+- 正确性不通过或执行失败时拒绝；缺失或成功数量不足时补测；其余再比较区间与允许边界。上界等于边界时通过，下界等于边界而上界超过时仍需补测。
+- 集成用例包含20个更快的成功配对和1次失败，检查是否把失败传入决策；仅统计成功样本会错误放行。
+
 <a id="gpu-experiment"></a>
 
 ## Step 5：GPU 机制实验——普通执行与编译执行的配对复测
 
-CPU 练习验证配对与统计规则；GPU 实验在同一微型多层感知机、相同权重与输入上交替运行普通执行和 `torch.compile`。首次执行单独计时，避免把编译准备成本混入稳态比例。
+CPU 练习验证配对与统计规则；GPU 实验在同一微型多层感知机、相同权重与输入上交替运行普通执行和图编译入口`torch.compile`生成的执行方案。首次执行单独计时，避免把编译准备成本混入稳态比例。
 
 | 学习问题 | CPU 已确认 | GPU 要确认与后续使用 |
 | --- | --- | --- |
@@ -511,7 +518,7 @@ CPU 练习验证配对与统计规则；GPU 实验在同一微型多层感知机
 
 ### 5.1 环境与固定工作负载
 
-本实验使用 `PERF-CUDA-MECHANISM`，首次运行按[专题 Quickstart](../topic_discussion/performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart)创建并预检环境，结果登记见[实验资产表](../topic_discussion/performance_analysis/experiment_assets.md)。
+本实验使用 `PERF-CUDA-MECHANISM`，首次运行按[性能机制GPU环境](../topic_discussion/performance_optimization/gpu_quickstart.md#perf-cuda-mechanism-quickstart)创建并预检环境，结果登记见[实验资产表](../topic_discussion/performance_optimization/measurement_assets.md)。
 
 | 配置层 | 本节固定设置 | 修改规则 |
 | --- | --- | --- |
@@ -751,12 +758,14 @@ else:
 
 ### 5.3 读取结果
 
-按已有 `RUN_LABEL` 读取结果，查看工作负载版本、逐负载决策和配对记录。
+按已有`RUN_LABEL`读取，从原始配对重算中位比例、自助区间与逐负载判断，再核对总决策。历史协议与当前协议的差异由读取器列出，原始记录保持不变。
+
 
 ```python
 from pathlib import Path
 import json
 from tools.project_runtime import resolve_project_root
+from tools.performance_result_review import read_regression_result
 
 result_path = resolve_project_root() / RESULT_RELATIVE_DIR / f"{WORKLOAD_ID}_{RUN_LABEL}.json"
 if not result_path.is_file():
@@ -765,7 +774,8 @@ if not result_path.is_file():
     regression_record = {"status": "not_run", "result_path": str(result_path)}
     print(regression_record)
 else:
-    regression_record = json.loads(result_path.read_text(encoding="utf-8"))
+    regression_record, result_review = read_regression_result(result_path, run_label=RUN_LABEL)
+    print(json.dumps(result_review, ensure_ascii=False, indent=2))
     print(json.dumps({key: regression_record.get(key) for key in (
         "schema_version", "run_label", "framework", "hardware", "workload",
         "failure", "evidence_level", "decision",
@@ -783,18 +793,18 @@ else:
 
 ### 5.4 解释配对结果
 
-当前登记为 [rtx5070ti_regression_v3](../../benchmarks/results/perf_regression/perf-paired-regression_rtx5070ti_regression_v3.json)，工作负载版本为 v4。RTX 5070 Ti 实测中，三档负载均通过输出一致性检查且没有执行失败。编译候选没有在任一负载下获得稳态加速；随着 Token 数增加，延迟差距由明确回归逐步缩小。
+当前登记为[rtx5070ti_regression_v3](../../benchmarks/results/perf_regression/perf-paired-regression_rtx5070ti_regression_v3.json)，工作负载版本为v4；以下按决策记录中的1.05边界复算历史判断。历史文件未保存独立阈值配置；后续复测应在采样前保存阈值，方便核对其设定时点。RTX 5070 Ti 实测中，三档负载均通过输出一致性检查且没有执行失败。编译候选没有在任一负载下获得稳态加速；随着 Token 数增加，延迟差距由明确回归逐步缩小。
 
 | 观察项 | 读取字段 | 当前结果 | 解释与动作 |
 | --- | --- | --- | --- |
 | 正确性与执行 | `failure`、`quality.outputs_allclose` | 三档首次输出均 `allclose=true`；各 30 对，无失败 | 当前差异可以进入性能判断，不由正确性失败解释 |
 | 首次调用代价 | `first_execution.eager_ms`、`compile_ms` 与比例 | 1 Token：7.27 / 404.44 ms；32 Token：0.46 / 29.00 ms；256 Token：1.11 / 245.67 ms | 候选首次调用包含编译准备且受形状与缓存影响，不混入稳态分布 |
 | 稳态回归 | `summary.median_ratio` 与 90% Bootstrap 区间 | 1 Token：1.089，区间 [1.082, 1.100]；32 Token：1.055，[1.050, 1.063]；256 Token：1.017，[1.014, 1.020] | 1 Token 确认超过 5% 回归；32 Token 跨越门槛；256 Token 未越过门槛但仍略慢 |
-| 适用边界 | 三档逐负载决策与总决策 | `reject / tune / accept`；总决策 `reject` | `accept` 仅表示未确认超过回归门槛；三档均未证明编译加速，不能将 256 Token 的 `accept` 表述为性能收益 |
+| 适用边界 | 三档逐负载决策与总决策 | `reject / tune / accept`；总决策 `reject` | `accept`表示区间上界未超过允许回归门槛；三档均未证明编译加速，256 Token的通过与加速是不同判断 |
 ## 相关阅读
 
-把配对方法用于训练和服务比较时，继续核对各自的工作负载和质量约束。
+把配对方法用于训练或服务时，先核对各自的计时范围、输入和质量要求。
 
-- [性能分析 · 回归、噪声与阈值](../topic_discussion/performance_analysis/06_benchmark_design_and_regression_validation.md)
-- [Part 02 · 推理性能比较](./66_Inference_Performance_Comparison.md)：在服务负载下应用比较方法。
-- [Part 02 · 训练性能分析](./73_Training_Performance_Analysis.md)：将计时与质量约束用于训练路径。
+- [性能优化方法·回归、噪声与阈值](../topic_discussion/performance_optimization/methods/06_benchmark_design_and_regression_validation.md)：区分测量波动、允许回归和采用条件。
+- [66. 推理性能比较](./66_Inference_Performance_Comparison.md)：在固定服务请求下比较延迟与吞吐。
+- [73. 训练性能分析](./73_Training_Performance_Analysis.md)：把计时起止点与参数更新对应起来。

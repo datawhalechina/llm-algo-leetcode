@@ -1,6 +1,6 @@
 # QUANT-MIXED-BIT. Mixed Bit Allocation | 混合位宽分配
 
-**难度：** Hard　**环境：** CPU-first，GPU 可选　**标签：** `量化`, `mixed-bit`, `budget`
+**难度：** Hard | **环境：** [CPU 主线，GPU 可选](#runtime-environment) | **标签：** `量化`、`混合位宽`、`容量预算` | **目标人群：** 理解量化误差、需要分配精度预算的读者
 
 > 🚀 **云端运行环境**
 >
@@ -12,9 +12,19 @@
 
 ## 本节导读
 
-统一位宽把所有层视为同样敏感，但实际模型中，不同层对量化误差的容忍度并不相同。混合位宽先在统一评测协议下测量逐层候选，再结合容量预算和保护层规则分配位宽。
+把所有层降到同一位宽，有些层几乎不受影响，有些层却会明显改变模型输出。若允许多保留一点容量，应该先把哪些层恢复到较高精度？
 
-本节把层级敏感度、容量代价和可执行约束连成一条决策链，帮助你解释为什么某些层需要保留更高精度。
+混合位宽先比较各层降低精度后的误差，再把可用字节分给更值得升级的对象。沿候选误差、最低允许精度和容量预算，判断一次升级换回多少误差下降，最后在完整模型中复查分配后的表现。
+
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
+- **框架核对：** 使用 [`Q-CPU`](../topic_discussion/quantization_compression/quickstart.md#q-cpu-quickstart)，在 Step 4 后运行 [框架一致性核对](#framework-check)。
+- **GPU 实测：** 使用 `Q-CUDA-MECHANISM`；实验环境、运行配置与固定工作负载见 [Step 5](#gpu-experiment)。
+
+---
 ## 前置阅读
 
 先掌握统一误差协议和权重量化产物，再进入跨层预算分配。
@@ -22,47 +32,66 @@
 - [52 量化校准与误差控制](./52_Quantization_Calibration_and_Error.md)
 - [40 GPTQ / AWQ 权重量化](./40_GPTQ_and_AWQ_Weight_Quantization.md)
 - [53 激活量化与 SmoothQuant](./53_Activation_Quantization_and_SmoothQuant.md)
-### Step 1：混合位宽需要哪些共同输入
+## Step 1：每层的位宽候选怎样进入分配
 
-混合位宽不是凭层名猜测精度，而是为每层准备可比较候选。每个候选至少包含位宽、实测误差、权重字节和执行后端支持状态；保护层规则用于表达嵌入层、输出头或其他高敏感层的最低精度。
+位宽是表示每个量化数值所用的比特数；混合位宽让不同层采用不同精度。先在固定模型和样本上，为每层准备位宽、误差和字节数候选，再过滤目标实现不支持的格式。保护规则为指定层设置最低位宽，防止总预算把这些层压到允许范围之外。
 
-| 输入 | 作用 | 典型失败 |
-|---|---|---|
-| 逐层候选误差 | 衡量降低位宽的质量代价 | 使用不同校准样本导致不可比 |
-| 参数量与元数据 | 计算真实容量 | 只算打包权重（weight），漏掉缩放因子 |
-| 执行后端支持位宽 | 过滤无法执行的候选 | 策略存在但加载器/计算内核不支持 |
-| 保护层规则 | 保留最低允许精度 | 全局预算把关键层压得过低 |
+估算容量时要说明包含哪些对象：理想权重字节由参数量和位宽计算，实际表示还可能包含缩放因子、零点、填充及保留为浮点的参数。预算必须与所用统计范围一致，再用转换后状态的实际存储核对。
 
-![混合位宽分配流程](../public/02_PyTorch_Algorithms/quant_mixed_bit_flow.svg)
-### Step 2：敏感度必须来自统一协议
+| 共同输入 | 用于判断什么 | 核对方式 |
+| --- | --- | --- |
+| 逐层误差 | 降低位宽的代价 | 固定样本、其余层状态和误差定义 |
+| 容量范围 | 每个候选增加多少字节 | 分开理想权重、元数据与实际状态 |
+| 后端支持 | 目标格式是否可执行 | 核对加载器与计算实现 |
+| 最低精度 | 哪些层需要保留更高位宽 | 在分配前应用保护规则 |
 
-逐层敏感度可以由输出重建误差、任务质量下降或两者组合得到。无论选择哪种指标，校准数据、其余层状态和评测方法都必须固定；否则“某层更敏感”可能只是实验条件不同。
+![从层候选到受预算约束的位宽策略](../public/02_PyTorch_Algorithms/quant_mixed_bit_flow.svg)
 
-| 测量方式 | 优点 | 局限 | 适用阶段 |
-|---|---|---|---|
-| 层输出 MSE | 快、可逐层扫描 | 不等同于任务质量 | 候选初筛 |
-| Hessian/激活加权误差 | 更贴近输入分布 | 仍是代理指标 | 权重量化排序 |
-| 任务质量消融 | 决策意义强 | 成本高、噪声大 | 最终保护层确认 |
-### Step 3：在预算内升级敏感层并保留回退路径
+## Step 2：怎样比较各层降低精度的影响
 
-一种可解释的启发式做法是：先为所有层选择最低可行位宽，再把剩余预算用于升级“单位额外字节可减少最多误差”的层。该策略不保证全局最优，但每次升级都有可追溯理由，也能显式处理保护层和执行后端回退路径。
+敏感度表示改变某层精度后，输出或任务指标变化多大。均方误差（MSE）比较恢复输出与参考输出的平方差平均值，负对数似然（NLL）衡量语言模型对参考词元的预测损失；二者越低越好，但观察的是不同对象。
 
-| 阶段 | 决策 | 输出 |
-|---|---|---|
-| 最低可行策略 | 应用执行后端与保护层约束 | 容量下界 |
-| 候选升级 | 比较误差下降 / 额外字节 | 升级优先级 |
-| 独立复验 | 固定质量集和真实执行后端 | accept / tune / reject |
+逐层扫描时固定其余层与数据，例如从统一 INT8 出发，每次只把一个 Block 的线性层降为 INT4。Decoder Block 是一组注意力与前馈子层，这样得到的是一个 Block 的条件敏感度。多个 Block 一起降精度后还会相互影响，因此组合候选需要重新评估。
 
-![混合位宽候选的质量—容量前沿](../public/02_PyTorch_Algorithms/quant_mixed_bit_budget.svg)
-### Step 4：实现预算约束下的混合位宽分配
+| 指标 | 观察对象 | 适合用途 |
+| --- | --- | --- |
+| 层输出 MSE | 本层输入分布下的重建误差 | 快速筛选 |
+| 激活或二阶信息加权误差 | 更强调重要输入方向的误差 | 权重量化排序 |
+| 模型 NLL 或任务消融 | 修改该层后的完整模型输出 | 确定保护对象，再复查组合 |
 
-题目区实现候选契约、保护层基线和贪心升级。代码不负责产生敏感度数据；它要求输入已经来自统一协议，从而把练习集中在跨层策略组合。
+## Step 3：有限字节应该优先分给哪次升级
 
-| TODO | 机制责任 | 关键测试 |
-|---|---|---|
-| TODO 1 | 过滤执行后端不支持的位宽并计算候选字节 | 支持集合、容量计算 |
-| TODO 2 | 建立满足保护规则的最低容量策略 | 最低位宽与无候选错误 |
-| TODO 3 | 按误差下降/额外字节选择升级 | 预算不超限、敏感层优先 |
+先为各层选择满足保护规则的最低容量候选，再比较每次升级的“误差下降／额外字节”。例如一层多用 500 字节可减少 0.37 误差，另一层多用 1000 字节只减少 0.10，前者优先；这种贪心选择给出逐步可解释的方案，最优组合仍可能受层间影响和离散预算限制。
+
+令 $b_l$ 为第 $l$ 层从可执行集合 $\mathcal{B}_l$ 中选择的位宽， $E_l$ 为误差代理， $C_l$ 为当前协议统计的字节数， $B$ 为总预算， $b_l^{\min}$ 为最低允许位宽。以各层误差相加作近似，目标是在总字节不超预算时减小误差：
+
+$$
+\min_{b_l\in\mathcal{B}_l}\sum_l E_l(b_l)
+\quad\text{s.t.}\quad
+\sum_l C_l(b_l)\le B,\qquad b_l\ge b_l^{\min}.
+$$
+
+| 阶段 | 选择规则 | 继续核对什么 |
+| --- | --- | --- |
+| 初始分配 | 每层选满足保护要求的最小容量候选 | 总预算能否容纳 |
+| 逐次升级 | 当前预算内选单位字节误差收益最高者 | 正收益、剩余字节与可执行性 |
+| 组合复验 | 测完整候选的质量与实际状态字节 | 层间误差、元数据与目标后端 |
+| 最终选择 | 在合格候选中比较质量和容量 | 同时更省容量且质量不差的候选是否存在 |
+
+![质量门槛和容量预算的共同约束](../public/02_PyTorch_Algorithms/quant_mixed_bit_budget.svg)
+
+<a id="mechanism-practice"></a>
+
+## Step 4：实现预算约束下的混合位宽分配
+
+本题给出逐层误差和支持位宽，骨架负责遍历候选及记录结果。请补全候选过滤、最低精度选择和单位字节收益排序。CPU 容量按参数量乘位宽向上取整计算，只包含理想权重字节；实际模型的元数据和物理存储在转换后另测。测试核对支持集合、保护规则、预算上限、升级顺序与不可行预算。
+
+| TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
+| --- | --- | --- | --- |
+| TODO 1：构建可执行位宽候选<br>`MixedBitAllocator.build_options` | 过滤位宽并计算理想权重字节 | 同时有误差记录且在支持集合中 | 支持集合外的位宽被排除 |
+| TODO 2：选择最低容量保护基线<br>`MixedBitAllocator.select_initial_option` | 选择满足最低位宽的最小容量候选 | 保护层不低于给定下限 | 最终保护层位宽符合要求 |
+| TODO 3：选择预算内升级<br>`MixedBitAllocator.allocate` | 按单位额外字节的误差下降选择 | 总字节不超预算，只升级正收益候选 | 优先升级敏感层、预算上限与不足预算 |
+
 
 ```python
 import math
@@ -85,7 +114,11 @@ class MixedBitAllocator:
         error_by_bits = {int(bits): float(error) for bits, error in layer_spec["error_by_bits"].items()}
 
         # TODO 1（候选契约）：仅保留执行后端支持且有实测误差的位宽，并计算权重字节。
-        # options = ???
+        # ==========================================
+        # TODO 1：构建可执行位宽候选
+        # ==========================================
+        # options = ???  # 有误差记录且后端支持的候选，包含位宽、字节与误差。
+        raise NotImplementedError("请完成 TODO 1：options")
         if not options:
             raise ValueError(f"{layer_name} has no supported bit-width candidate")
         return sorted(options, key=lambda option: option["bytes"])
@@ -94,8 +127,12 @@ class MixedBitAllocator:
     def select_initial_option(options, minimum_bits: int):
         """选择满足保护规则的最低容量候选。"""
         # TODO 2（保护规则）：过滤 bits >= minimum_bits 的候选，再选择字节最少者。
-        # eligible = ???
-        # initial = ???
+        # ==========================================
+        # TODO 2：选择最低容量保护基线
+        # ==========================================
+        # eligible = ???  # 满足最低允许位宽的候选集合。
+        # initial = ???  # 合法集合中字节最少的候选；空集合应报错。
+        raise NotImplementedError("请完成 TODO 2：eligible 与 initial")
         return initial
 
     def allocate(self, layer_specs: dict, budget_bytes: int, protected_min_bits=None):
@@ -130,7 +167,11 @@ class MixedBitAllocator:
                 break
 
             # TODO 3（预算分配）：选择单位额外字节带来最大误差下降的升级。
-            # best_upgrade = ???
+            # ==========================================
+            # TODO 3：选择预算内升级
+            # ==========================================
+            # best_upgrade = ???  # 单位额外字节误差收益最高者；持平时比较总误差收益。
+            raise NotImplementedError("请完成 TODO 3：best_upgrade")
             policy[best_upgrade["layer"]] = best_upgrade["candidate"]
             total_bytes += best_upgrade["extra_bytes"]
 
@@ -142,9 +183,10 @@ class MixedBitAllocator:
         }
 ```
 
-### 测试
+## 测试
 
-测试覆盖候选过滤、保护层、预算守恒、升级优先级和不可行预算。
+核对支持位宽、保护下限、预算守恒、升级顺序和最低方案都放不下的情况。
+
 
 ```python
 # 机制测试：执行后端候选、保护层、容量预算与敏感层升级。
@@ -299,22 +341,122 @@ class MixedBitAllocator:
 
 ### 解析
 
-**TODO 1：候选契约。** 只有同时具备实测误差和执行后端支持的位宽才能进入分配；候选字节按参数量与位宽计算，生产量化产物还需追加缩放因子、零点和布局元数据。
+#### TODO 1：构建可执行位宽候选
 
-**TODO 2：最低可行策略。** 保护层先应用最低位宽约束，再选择容量最小的候选。若该基线已经超过预算，应直接报告不可行，而不是静默破坏保护规则。
+- 候选位宽需要在支持集合中并有对应误差，理想权重字节按“参数数目 × 位宽／8”向上取整。
+- 答案据此过滤并计算字节；测试排除不受支持的位宽。缩放参数等实际存储另在模型转换后统计。
 
-**TODO 3：预算内升级。** 每轮选择 `error_reduction / extra_bytes` 最大的升级，直到没有预算内的正收益候选。输出必须保留逐层位宽与误差，供 82 的量化产物准入检查和后续执行后端 benchmark 复验。
-### Step 5：可选 GPU 实验——从层敏感度生成混合位宽策略
+#### TODO 2：选择最低容量保护基线
 
-CPU 题目已经验证候选过滤、保护规则与预算内升级；GPU 实验进一步使用真实模型和互斥数据划分测量 Block 敏感度，再比较统一 INT4、统一 INT8 与多个保护预算。实验要回答的不是“某一层能否量化”，而是“增加多少 INT8 容量，能够换回多少独立评测质量”。
+- 先保留不低于保护下限的候选，再选择字节最少者；没有合法候选时报告失败。
+- 答案分开过滤与最小容量选择，保护层测试核对最终策略的最低位宽。
+
+#### TODO 3：选择预算内升级
+
+- 仅考虑额外字节能放入预算且误差下降为正的升级，再按误差下降／额外字节排序。
+- 答案逐次应用当前最高收益升级。测试核对一次预算只够升级敏感层、最终字节上限，以及预算低于初始方案时的失败。
+
+<a id="framework-check"></a>
+
+## 框架一致性核对（可选）
+
+使用 TorchAO 的完整模块名（FQN）配置，将策略映射到具体线性层。配置映射核对 INT4／INT8 类型；实际 CPU 前向只对指定层应用 INT8，并保留另一层为浮点。两者分别检查映射和选择性转换，GPU INT4 路径在真实模型实验中另测。
+
+| 核对对象 | Step 4 教学实现 | 成熟框架 CPU 路径 | 共同输入与通过条件 |
+| --- | --- | --- | --- |
+| 位宽映射 | 分配器生成逐模块策略 | TorchAO `FqnToConfig` | 相同模块名，每层映射到对应配置类型 |
+| 选择性转换 | 指定转换与保留目标 | `quantize_` 只转换目标层 | 转换层权重类型改变，保留层不变 |
+| 小模块前向 | 保留输入输出约束 | 转换后的 CPU INT8 线性层 | 输入形状相同，输出形状正确且数值有限 |
+
+
+```python
+import torch
+from collections import OrderedDict
+import importlib.metadata
+
+from torch import nn
+from torchao.quantization import (
+    FqnToConfig,
+    Int4WeightOnlyConfig,
+    Int8WeightOnlyConfig,
+    quantize_,
+)
+
+
+def check_mixed_bit_framework_conformance():
+    """核对本节策略到 TorchAO FQN 配置及选择性量化的转换。"""
+    layer_specs = {
+        "attention": {"numel": 1000, "error_by_bits": {4: 0.40, 8: 0.03}},
+        "mlp": {"numel": 2000, "error_by_bits": {4: 0.18, 8: 0.08}},
+    }
+    allocation = MixedBitAllocator(supported_bits=(4, 8)).allocate(
+        layer_specs, budget_bytes=2000
+    )
+    config_by_bits = {
+        4: Int4WeightOnlyConfig(group_size=32),
+        8: Int8WeightOnlyConfig(),
+    }
+    policy_to_fqn = OrderedDict(
+        (name, config_by_bits[bits]) for name, bits in allocation["policy"].items()
+    )
+    framework_policy = FqnToConfig(policy_to_fqn)
+
+    model = nn.ModuleDict({
+        "attention": nn.Linear(64, 64, bias=False),
+        "mlp": nn.Linear(64, 64, bias=False),
+    }).eval()
+    original_types = {name: type(module.weight).__name__ for name, module in model.items()}
+    executable_mapping = FqnToConfig(OrderedDict([
+        ("attention", Int8WeightOnlyConfig()),
+        ("mlp", None),
+    ]))
+    quantize_(model, executable_mapping, filter_fn=None)
+    output = model["attention"](torch.randn(2, 64))
+    transformed_types = {name: type(module.weight).__name__ for name, module in model.items()}
+
+    checks = {
+        "policy_matches_local_allocator": allocation["policy"] == {"attention": 8, "mlp": 4},
+        "all_policy_targets_registered": list(framework_policy.fqn_to_config) == ["attention", "mlp"],
+        "policy_config_types_match": (
+            type(framework_policy.fqn_to_config["attention"]).__name__ == "Int8WeightOnlyConfig"
+            and type(framework_policy.fqn_to_config["mlp"]).__name__ == "Int4WeightOnlyConfig"
+        ),
+        "attention_was_quantized": transformed_types["attention"] != original_types["attention"],
+        "mlp_was_preserved": transformed_types["mlp"] == original_types["mlp"],
+        "cpu_forward_is_finite": output.shape == (2, 64) and bool(torch.isfinite(output).all()),
+    }
+    failed = [name for name, passed in checks.items() if not passed]
+    if failed:
+        raise AssertionError(f"框架一致性核对失败：{failed}")
+    return {
+        "status": "passed",
+        "versions": {
+            "torch": torch.__version__,
+            "torchao": importlib.metadata.version("torchao"),
+        },
+        "checks": checks,
+        "policy": allocation["policy"],
+        "weight_types": transformed_types,
+    }
+
+
+framework_check = check_mixed_bit_framework_conformance()
+framework_check
+```
+
+<a id="gpu-experiment"></a>
+
+## Step 5：可选 GPU 实验——从层敏感度生成混合位宽策略
+
+CPU 题目已经验证候选过滤、保护规则与预算内升级；GPU 实验进一步使用真实模型和不同数据划分测量 Block 敏感度，再比较统一 INT4、统一 INT8 与多个保护预算。比较增加多少 INT8 状态字节，能够减少多少模型 NLL。
 
 | 学习问题 | CPU 已确认 | GPU 要确认 |
 |---|---|---|
-| Block 敏感度能否转化为更好的质量—容量权衡 | 候选字节、保护对象与预算升级逻辑 | 全层 Block 敏感度、实际位宽命中、独立评测 NLL、有效平均位宽与 Pareto 候选 |
+| Block 敏感度能否转化为更好的质量—容量权衡 | 候选字节、保护对象与预算升级逻辑 | 全层 Block 敏感度、实际位宽命中、候选验证 NLL、有效平均位宽与 Pareto 候选 |
 
-#### 5.1 固定环境、数据划分与保护预算
+### 5.1 环境与固定工作负载
 
-本实验使用 `Q-CUDA-MECHANISM`。首次运行先完成[量化机制 GPU 环境 Quickstart](../topic_discussion/quantization_compression/quickstart.md#q-cuda-mechanism-quickstart)，已有环境执行 Profile 预检后再启动 JupyterLab。校准集只生成 Block 敏感度排序，独立评测集只比较最终候选。
+本实验使用 `Q-CUDA-MECHANISM`。首次运行先完成[量化机制 GPU 环境 Quickstart](../topic_discussion/quantization_compression/quickstart.md#q-cuda-mechanism-quickstart)，已有环境执行 Profile 预检后再启动 JupyterLab。校准集生成 Block 敏感度排序，另一验证划分用于候选比较与选择；最终独立测试需要另留样本。
 
 | 配置层 | 本节固定口径 | 修改规则 |
 |---|---|---|
@@ -322,7 +464,7 @@ CPU 题目已经验证候选过滤、保护规则与预算内升级；GPU 实验
 | 模型与数据 | Qwen2.5-0.5B；固定 WikiText-2 校准/评测划分 | 模型或数据改变后新建运行记录 |
 | 敏感度单位 | 一个 Decoder Block 内全部 Attention/MLP 线性层 | 从统一 INT8 出发，每次只将一个 Block 降为 INT4 |
 | 保护预算 | 保护 12.5% / 25% / 50% 的高敏感 Block 为 INT8 | 比例按实际 Block 数换算，至少保护一个 Block |
-| 候选矩阵 | BF16、统一 INT8、统一 INT4、三档混合位宽 | 最终候选均使用同一检查点和独立评测样本 |
+| 候选矩阵 | BF16、统一 INT8、统一 INT4、三档混合位宽 | 最终候选均使用同一检查点和同一验证样本 |
 | 决策指标 | NLL、状态字节、有效平均位宽、质量恢复/额外 MiB、Pareto 状态 | 校准 NLL 不进入最终质量结论 |
 | 结果资产 | `quant_mixed_bit_mechanism_<run_label>.json` | 正式复测使用唯一 `RUN_LABEL` |
 
@@ -367,12 +509,12 @@ HF_DATASETS_CACHE = os.getenv("HF_DATASETS_CACHE")  # 可选数据缓存环境�
 DATA_CACHE_DIR = Path(HF_DATASETS_CACHE) if HF_DATASETS_CACHE else None  # 数据缓存；None 使用 Datasets 默认目录。
 LOCAL_DATA_FILES = None  # local_jsonl 模式传入 calibration/evaluation JSONL 路径映射。
 LOCAL_FILES_ONLY = False  # 模型已按相同 revision 预下载时可设为 True。
-OUTPUT_RELATIVE_PATH = f"02_PyTorch_Algorithms/benchmarks/results/quant_mixed_bit_mechanism_{RUN_LABEL}.json"  # 仓库相对结果路径；由 5.2 锚定。
+OUTPUT_RELATIVE_PATH = f"benchmarks/results/quant_mixed_bit_mechanism_{RUN_LABEL}.json"  # 仓库相对结果路径；由 5.2 锚定。
 ```
 
-#### 5.2 执行并保存 JSON
+### 5.2 执行并保存 JSON
 
-执行单元先从校准数据划分固定抽样，以 Decoder Block 为单位计算“统一 INT8 中单个 Block 降为 INT4”的 NLL 增量，再按排序生成三档保护预算。所有最终候选从同一模型检查点独立加载，在同一评测批次上记录质量、容量、有效平均位宽、质量恢复效率、失败原因和实际模块路径。
+执行单元先从校准数据划分固定抽样，以 Decoder Block 为单位计算“统一 INT8 中单个 Block 降为 INT4”的 NLL 增量，再按排序生成三档保护预算。所有最终候选从同一模型检查点独立加载，在同一候选验证批次上记录质量、容量、有效平均位宽、质量恢复效率、失败原因和实际模块路径。
 
 
 ```python
@@ -798,9 +940,10 @@ print({
 })
 ```
 
-#### 5.3 读取结果
+### 5.3 读取结果
 
-读取单元只展示数据清单、敏感度排序、候选矩阵和决策，不重新下载模型、数据或执行量化。
+当前单元读取执行阶段在内核中建立的 `OUTPUT_PATH`，展示运行身份、全部 Block 敏感度和候选矩阵。重启内核后读取历史记录时，先按已有标签恢复结果路径；这里不会重新下载或量化模型。
+
 
 ```python
 # 5.3 只读取 5.2 保存的 JSON，并按运行身份、敏感度、候选矩阵分层展示。
@@ -839,23 +982,23 @@ else:
     print(f"等待 Mixed-bit 机制矩阵：{OUTPUT_PATH}")
 ```
 
-#### 5.4 解释保护预算、容量与质量结果
+### 5.4 解释保护比例、状态字节与候选质量
 
-先确认校准和评测样本 ID 哈希不同，再检查高敏感 Block 是否真实保留为 INT8。`effective_average_bits` 表示按线性层权重元素数加权后的计划位宽；`quality_recovery_fraction` 表示候选相对统一 INT4 恢复了多少 INT8—INT4 质量差距；`nll_recovery_per_extra_mib` 用于比较每增加 1 MiB 状态换回的 NLL。最终选择必须同时通过独立质量阈值并位于本次候选的 Pareto 前沿。
+`default3` 在校准划分上扫描 24 个 Block，再用同一验证划分比较并选择候选。保护 3／24 个 Block 的候选计划平均位宽为 4.36，实际状态字节相对 BF16 减少约 39.1%，NLL 比为 1.0494，接近 1.05 门槛；保护 6／24 个时为 1.0352，在这批样本上的质量余量更大。
 
-`default3` 已完成 v4 全层 Block 扫描。保护 3/24 个高敏感 Block 的候选以 4.36 有效平均位宽将状态容量相对 BF16 缩减约 39.1%，NLL ratio 为 1.0494，刚好通过 1.05 门槛，并相对统一 INT4 恢复约 31.3% 的 INT8—INT4 质量差距。它是最省容量的边界候选；保护 6/24 个 Block 时 NLL ratio 降至 1.0352、质量恢复约 49.4%，更适合作为稳健复测候选。三档混合位宽的吞吐均未超过 BF16，峰值显存也更高，因此本节只接受位宽分配机制，不形成 Kernel、部署显存或 Serving 加速结论。
+计划平均位宽按线性层权重元素数加权，实际状态字节还包括当前表示引用的存储，两者分别读取。校准与验证记录的摘要用于追溯抽样，集合重叠与文本重复需另查；本次验证集参与选择，候选确定后再用未参与选择的测试样本复验。
 
-| 观察项 | 读取字段 | 本地应形成的结论 | 不能外推到 |
-|---|---|---|---|
-| 运行身份 | `resolved_model_commit`、两个样本 ID 哈希、`failure` | 是否固定模型并隔离校准与评测 | 其他模型或数据分布 |
-| 敏感度 | `sensitivity[].block_index`、`nll_increase_vs_uniform_int8` | 哪些 Decoder Block 更需要高精度保护 | 未测模型上的敏感层位置 |
-| 位宽预算 | `protected_block_fraction`、`effective_average_bits` | 实际保护比例与权重加权位宽 | 产物文件的编码效率 |
-| 质量恢复 | `quality_recovery_fraction`、`nll_recovery_per_extra_mib` | 增加容量是否有效修复统一 INT4 误差 | 下游任务质量的全部变化 |
-| Pareto 决策 | `quality_gate_passed`、`pareto_optimal`、`selected_candidate` | 接受最小容量合格候选或继续调参 | Backend 兼容、吞吐与延迟收益 |
+| 观察项 | 当前结果 | 解释与下一动作 |
+| --- | --- | --- |
+| 数据用途 | 校准 train 16 条；候选验证 validation 64 条 | 固定划分与抽样；另留最终测试 |
+| 位宽与状态 | 3／24 保护，计划 4.36 位，状态减少约 39.1% | 分开计划精度、状态存储、文件和运行峰值 |
+| 质量恢复 | 3／24 恢复约 31.3%，6／24 约 49.4% | 相对统一 INT4 恢复 INT8—INT4 的 NLL 差距；继续测未见样本 |
+| 性能观察 | 三档混合候选的评测吞吐均低于 BF16，记录峰值更高 | 当前保留质量—状态选择结论；计时与独立资源窗口仍需专门复测 |
+| 选择与范围 | 历史 `accept_mixed_bit_candidate`；选中 3／24 | 是该验证矩阵中的最小状态合格候选，目标加载器与服务表现另测 |
+
 ## 相关阅读
 
-- [torchao：FqnToConfig API](https://docs.pytorch.org/ao/stable/api_reference/generated/torchao.quantization.FqnToConfig.html)
-- [torchao 与 vLLM 的 FQN 配置示例](https://docs.pytorch.org/ao/stable/eager_tutorials/torchao_vllm_integration.html)
-- [HAWQ](https://arxiv.org/abs/1905.03696)
-- [HAWQ-V2](https://arxiv.org/abs/1911.03852)
-- [82. Quantization 量化产物评测 Project | 量化产物评估](./82_Quantization_Artifact_Evaluation_Project.md)
+将策略映射到框架后，继续检查产物能否被目标后端读取。
+
+- [TorchAO FqnToConfig](https://docs.pytorch.org/ao/stable/api_reference/generated/torchao.quantization.FqnToConfig.html)：按完整模块名分配量化配置。
+- [量化产物评估](./82_Quantization_Artifact_Evaluation_Project.md)：文件、质量记录与真实加载分别检查。

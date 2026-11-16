@@ -1,36 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1080" height="520" viewBox="0 0 1080 520" role="img" aria-labelledby="title desc">
-  <title id="title">QLoRA GPU 配对复测</title>
-  <desc id="desc">固定模型、数据与训练步数，分别运行 LoRA 和 QLoRA，统一记录显存、步时、质量与 adapter 产物后形成选型决策。</desc>
-  <defs>
-    <style>.title{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:25px;font-weight:700;fill:#172554}.sub{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:15px;fill:#475569}.h{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:18px;font-weight:700;fill:#172554}.t{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:14px;fill:#475569}.blue{fill:#eff6ff;stroke:#60a5fa;stroke-width:2}.purple{fill:#f5f3ff;stroke:#8b5cf6;stroke-width:2}.green{fill:#f0fdf4;stroke:#4ade80;stroke-width:2}.orange{fill:#fff7ed;stroke:#fb923c;stroke-width:2}.flow{stroke:#64748b;stroke-width:2.5;fill:none;marker-end:url(#arrow)}</style>
-    <marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#64748b"/></marker>
-  </defs>
-  <rect width="1080" height="520" rx="22" fill="#fafcff"/>
-  <text x="540" y="44" text-anchor="middle" class="title">QLoRA：固定口径下的真实训练复测</text>
-  <text x="540" y="72" text-anchor="middle" class="sub">两条训练路径共享 workload，只改变底座精度与量化配置</text>
-  <rect x="55" y="178" width="210" height="108" rx="16" class="blue"/>
-  <text x="160" y="216" text-anchor="middle" class="h">统一训练口径</text>
-  <text x="160" y="244" text-anchor="middle" class="t">模型 · 数据 · seed</text>
-  <text x="160" y="266" text-anchor="middle" class="t">batch · seq_len · steps</text>
-  <rect x="325" y="108" width="210" height="108" rx="16" class="green"/>
-  <text x="430" y="146" text-anchor="middle" class="h">LoRA baseline</text>
-  <text x="430" y="174" text-anchor="middle" class="t">浮点底座 · adapter</text>
-  <text x="430" y="196" text-anchor="middle" class="t">显存 · 步时 · loss</text>
-  <rect x="325" y="278" width="210" height="108" rx="16" class="purple"/>
-  <text x="430" y="316" text-anchor="middle" class="h">QLoRA candidate</text>
-  <text x="430" y="344" text-anchor="middle" class="t">NF4 · double quant</text>
-  <text x="430" y="366" text-anchor="middle" class="t">显存 · 步时 · loss</text>
-  <rect x="595" y="178" width="210" height="108" rx="16" class="orange"/>
-  <text x="700" y="216" text-anchor="middle" class="h">结果与产物</text>
-  <text x="700" y="244" text-anchor="middle" class="t">配对 JSON · failure</text>
-  <text x="700" y="266" text-anchor="middle" class="t">adapter manifest</text>
-  <rect x="865" y="178" width="160" height="108" rx="16" class="blue"/>
-  <text x="945" y="216" text-anchor="middle" class="h">训练决策</text>
-  <text x="945" y="244" text-anchor="middle" class="t">accept · tune</text>
-  <text x="945" y="266" text-anchor="middle" class="t">reject · 复测</text>
-  <path d="M265 220C290 200 300 162 325 162" class="flow"/>
-  <path d="M265 244C290 270 300 332 325 332" class="flow"/>
-  <path d="M535 162C565 172 570 210 595 218" class="flow"/>
-  <path d="M535 332C565 322 570 254 595 246" class="flow"/>
-  <path d="M805 232H865" class="flow"/>
+<title id="title">QLoRA 固定批次比较与容量阶梯</title><desc id="desc">共享模型数据和适配器配置。固定批次三种子交替配对比较质量、速度和显存；容量阶梯单独增加微批次并记录成功或显存不足，形成不同用途的决定。</desc>
+<defs><style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#0f172a;font-weight:400}.title{font-size:25px;font-weight:700}.h{font-size:18px;font-weight:700}.b{font-size:15px;fill:#334155}.small{font-size:14px;fill:#475569}.flow{fill:none;stroke:#64748b;stroke-width:2.5;marker-end:url(#arrow)}</style><marker id="arrow" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L9 4.5 L0 9 Z" fill="#64748b"/></marker></defs><rect width="1080" height="520" fill="#f8fafc"/>
+<text x="540" y="38" text-anchor="middle" class="title">同一训练任务，两种测量问题</text><rect x="300" y="70" width="480" height="88" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="540" y="100" text-anchor="middle" class="h">共同条件</text><text x="540" y="127" text-anchor="middle" class="b">模型提交、数据切分、适配器配置与序列长度</text><rect x="40" y="220" width="450" height="100" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="265" y="250" text-anchor="middle" class="h">固定批次：比较质量与速度</text><text x="265" y="277" text-anchor="middle" class="b">固定有效批次、步数和共享种子</text><text x="265" y="301" text-anchor="middle" class="b">每个种子配对，先后顺序交替</text><rect x="590" y="220" width="450" height="100" rx="12" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/><text x="815" y="250" text-anchor="middle" class="h">容量阶梯：寻找可行批次</text><text x="815" y="277" text-anchor="middle" class="b">微批次 1 → 2 → 4 → 8，累积次数固定</text><text x="815" y="301" text-anchor="middle" class="b">逐档短训，记录成功或显存不足</text><path class="flow" d="M420 158 V190 H265 V220"/><path class="flow" d="M660 158 V190 H815 V220"/><rect x="40" y="385" width="450" height="100" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text x="265" y="415" text-anchor="middle" class="h">质量达标后，检查步时回退</text><text x="265" y="442" text-anchor="middle" class="b">分别报告训练时间、吞吐与峰值显存</text><text x="265" y="466" text-anchor="middle" class="b">按速度门槛决定是否采用</text><rect x="590" y="385" width="450" height="100" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/><text x="815" y="415" text-anchor="middle" class="h">检查显存下降与最大可行档位</text><text x="815" y="442" text-anchor="middle" class="b">容量用途允许速度与显存之间的交换</text><text x="815" y="466" text-anchor="middle" class="b">有效批次变化，质量仍看左侧固定比较</text><path class="flow" d="M265 320 V385"/><path class="flow" d="M815 320 V385"/>
 </svg>

@@ -63,7 +63,7 @@
 | 算术强度 | $I=F/B$ | 单位 FLOP/byte；最低搬运量估计与实际测量流量分别标明 | [05 算术强度](./methods/05_bottleneck_attribution.md#用算术强度比较计算与带宽约束) |
 | 理想吞吐上界 | $P\le\min(P_{\max},I W_{\max})$ | $P$ 为所选范围的实际计算吞吐，单位 FLOP/s；各项匹配同一计算路径与存储层级 | [Part 02 · PERF-ROOFLINE](../../02_PyTorch_Algorithms/PERF-ROOFLINE_Arithmetic_Intensity_and_Resource_Ceiling.md) |
 | 理想耗时下界 | $T\ge\max(F/P_{\max},B/W_{\max})$ | 启动、同步、排队和不能重叠的阶段会使实际耗时更长；局部下界不直接解释端到端瓶颈 | [05 算术强度](./methods/05_bottleneck_attribution.md#用算术强度比较计算与带宽约束) |
-| 理论机器平衡点 | $I^*=P_{\max}/W_{\max}$ | 单位 FLOP/byte；在理想模型中区分计算侧与带宽侧约束 | [性能分析术语表](./glossary.md) |
+| 理论机器平衡点 | $I^{\ast}=P_{\max}/W_{\max}$ | 单位 FLOP/byte；在理想模型中区分计算侧与带宽侧约束 | [性能分析术语表](./glossary.md) |
 | 相对经验参考 | $P_{\mathrm{obs}}=F/T_{\mathrm{kernel}}$， $\rho=P_{\mathrm{obs}}/P_{\mathrm{ref}}$ | $T_{\mathrm{kernel}}>0$ 为匹配范围的设备计时；形状与路径不同可使 $\rho>1$，不登记为硬件效率超过 100% | [05 经验参考](./methods/05_bottleneck_attribution.md#用算术强度比较计算与带宽约束) |
 
 ## 通信与独立计算的重叠

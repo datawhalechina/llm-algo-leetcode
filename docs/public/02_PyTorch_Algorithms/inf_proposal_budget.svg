@@ -1,10 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+  <title id="title">按接受情况、系统压力与时间成本调整候选预算</title>
+  <desc id="desc">接受长度和置信度、队列与显存压力、整轮时间成本共同用于调整候选上限。先检查输出正确与预算边界，再选择增大、保持或减小。</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
       <path d="M0 0 L10 5 L0 10 Z" fill="#486581"/>
     </marker>
     <style>
-      .title{font:700 25px sans-serif;fill:#102a43}.group{fill:#eef5fb;stroke:#9fb9cf;stroke-width:2}.node{fill:#fff;stroke:#477a9e;stroke-width:2}.grow{fill:#e9f6ee;stroke:#4e8a68;stroke-width:2}.hold{fill:#fff6e8;stroke:#c9852f;stroke-width:2}.shrink{fill:#fff0ea;stroke:#c56f43;stroke-width:2}.gate{fill:#f2edfb;stroke:#8066b3;stroke-width:2}.label{font:700 16px sans-serif;fill:#17324d}.small{font:14px sans-serif;fill:#365269}.edge{fill:none;stroke:#486581;stroke-width:2.4;marker-end:url(#arrow)}
+      .title{font-family:'Noto Sans CJK SC',sans-serif;font-size:25px;font-weight:700;fill:#102a43}.group{fill:#eef5fb;stroke:#9fb9cf;stroke-width:2}.node{fill:#fff;stroke:#477a9e;stroke-width:2}.grow{fill:#e9f6ee;stroke:#4e8a68;stroke-width:2}.hold{fill:#fff6e8;stroke:#c9852f;stroke-width:2}.shrink{fill:#fff0ea;stroke:#c56f43;stroke-width:2}.gate{fill:#f2edfb;stroke:#8066b3;stroke-width:2}.label{font-family:'Noto Sans CJK SC',sans-serif;font-size:16px;font-weight:700;fill:#17324d}.small{font-family:'Noto Sans CJK SC',sans-serif;font-size:14px;font-weight:400;fill:#365269}.edge{fill:none;stroke:#486581;stroke-width:2.4;marker-end:url(#arrow)}
     </style>
   </defs>
   <rect x="0" y="0" width="1200" height="520" fill="#f8fafc"/>
@@ -25,7 +27,7 @@
   <text x="600" y="213" text-anchor="middle" class="small">显存压力与尾延迟</text>
 
   <rect x="862" y="68" width="300" height="180" rx="17" class="group"/>
-  <text x="1012" y="98" text-anchor="middle" class="label">本轮成本账本</text>
+  <text x="1012" y="98" text-anchor="middle" class="label">本轮时间比较</text>
   <rect x="892" y="120" width="240" height="50" rx="11" class="node"/>
   <text x="1012" y="151" text-anchor="middle" class="small">最终提交词元对应的基线时间</text>
   <rect x="892" y="182" width="240" height="50" rx="11" class="node"/>
@@ -34,7 +36,7 @@
 
   <rect x="430" y="286" width="340" height="72" rx="14" class="gate"/>
   <text x="600" y="315" text-anchor="middle" class="label">预算控制器</text>
-  <text x="600" y="340" text-anchor="middle" class="small">先守住正确性与 k 的上下界，再比较收益和压力</text>
+  <text x="600" y="340" text-anchor="middle" class="small">先检查输出与预算边界，再比较收益和压力</text>
 
   <path d="M188 248 V270 Q188 286 204 286 H430" class="edge"/>
   <path d="M600 248 V286" class="edge"/>

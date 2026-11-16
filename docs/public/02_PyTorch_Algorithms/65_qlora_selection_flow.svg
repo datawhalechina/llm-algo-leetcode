@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1080" height="520" viewBox="0 0 1080 520" role="img" aria-labelledby="title desc">
   <title id="title">QLoRA 预算选型流程</title>
-  <desc id="desc">从训练预算和状态账本出发，并列比较 LoRA 与 QLoRA，最后根据容量、质量和产物要求形成选型判断。</desc>
+  <desc id="desc">从训练预算和显存组成估算出发，并列比较 LoRA 与 QLoRA，最后根据容量、质量和产物要求形成选型判断。</desc>
   <defs>
     <style>.title{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:25px;font-weight:700;fill:#172554}.sub{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:15px;fill:#475569}.h{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:18px;font-weight:700;fill:#172554}.t{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:14px;fill:#475569}.blue{fill:#eff6ff;stroke:#60a5fa;stroke-width:2}.purple{fill:#f5f3ff;stroke:#8b5cf6;stroke-width:2}.green{fill:#f0fdf4;stroke:#4ade80;stroke-width:2}.orange{fill:#fff7ed;stroke:#fb923c;stroke-width:2}.flow{stroke:#64748b;stroke-width:2.5;fill:none;marker-end:url(#arrow)}</style>
     <marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#64748b"/></marker>
@@ -13,8 +13,8 @@
   <text x="157" y="244" text-anchor="middle" class="t">显存 · 步时 · 质量目标</text>
   <text x="157" y="266" text-anchor="middle" class="t">模型 · 数据 · 序列长度</text>
   <rect x="315" y="178" width="205" height="104" rx="16" class="orange"/>
-  <text x="417" y="216" text-anchor="middle" class="h">训练状态账本</text>
-  <text x="417" y="244" text-anchor="middle" class="t">底座权重 · adapter</text>
+  <text x="417" y="216" text-anchor="middle" class="h">显存组成估算</text>
+  <text x="417" y="244" text-anchor="middle" class="t">冻结权重 · 适配器</text>
   <text x="417" y="266" text-anchor="middle" class="t">梯度 · 优化器 · 激活</text>
   <rect x="580" y="112" width="205" height="104" rx="16" class="green"/>
   <text x="682" y="150" text-anchor="middle" class="h">LoRA 候选</text>
@@ -22,12 +22,12 @@
   <text x="682" y="200" text-anchor="middle" class="t">容量充足时的基线</text>
   <rect x="580" y="268" width="205" height="104" rx="16" class="purple"/>
   <text x="682" y="306" text-anchor="middle" class="h">QLoRA 候选</text>
-  <text x="682" y="334" text-anchor="middle" class="t">NF4 底座 · 反量化前向</text>
+  <text x="682" y="334" text-anchor="middle" class="t">NF4 权重 · 反量化计算</text>
   <text x="682" y="356" text-anchor="middle" class="t">低显存训练路径</text>
   <rect x="840" y="178" width="190" height="104" rx="16" class="blue"/>
   <text x="935" y="216" text-anchor="middle" class="h">候选决策</text>
   <text x="935" y="244" text-anchor="middle" class="t">容量与质量门槛</text>
-  <text x="935" y="266" text-anchor="middle" class="t">adapter 交付要求</text>
+  <text x="935" y="266" text-anchor="middle" class="t">速度与容量分别判断</text>
   <path d="M260 230H315" class="flow"/>
   <path d="M520 220C545 200 555 164 580 164" class="flow"/>
   <path d="M520 240C545 260 555 320 580 320" class="flow"/>

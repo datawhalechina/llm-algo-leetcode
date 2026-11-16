@@ -19,7 +19,7 @@
 ## 运行环境
 
 - **CPU 练习：** 使用 [BASE-CPU](../guide.md#base-cpu)，完成候选筛查和边界测试。
-- **GPU 核对与测量：** 复用已有 CUDA PyTorch 环境，例如 [PERF-CUDA-MECHANISM](../topic_discussion/performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart)；已有 `llm_algo_cnb_gpu` 也可按[算子环境检查](../topic_discussion/operator_optimization/quickstart.md#triton-environment)进入。使用 PyTorch Runtime，无需编译 CUDA C++ 扩展。独立 GPU 单元由 `--mode benchmark` 执行，普通题目／答案测试只运行 CPU。
+- **GPU 核对与测量：** 复用已有 CUDA PyTorch 环境，例如 [PERF-CUDA-MECHANISM](../topic_discussion/performance_optimization/gpu_quickstart.md#perf-cuda-mechanism-quickstart)；已有 `llm_algo_cnb_gpu` 也可按[算子环境检查](../topic_discussion/operator_optimization/quickstart.md#triton-environment)进入。使用 PyTorch Runtime，无需编译 CUDA C++ 扩展。独立 GPU 单元由 `--mode benchmark` 执行，普通题目／答案测试只运行 CPU。
 
 ## 前置阅读
 

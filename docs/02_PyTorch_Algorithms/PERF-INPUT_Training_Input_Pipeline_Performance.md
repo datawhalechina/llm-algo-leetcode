@@ -12,9 +12,9 @@
 
 ## 本节导读
 
-一个训练批次要经过读取、预处理、组批和 H2D 才能被 GPU 使用。提前准备下一批可以减少 CPU 等待；复制与计算重叠还需要额外的异步条件。
+GPU 算完当前批次后，下一批数据却还没准备好，计算就会停下来等输入。一个批次要经过读取、预处理、组批和主机到设备搬运（H2D）才能被模型使用；短样本还可能带来大量填充位置，占用搬运和计算时间。
 
-沿一个批次检查填充、取批等待和 H2D 时间，分清预取与复制重叠分别解决什么。
+减少填充、提前准备下一批、让复制与计算并行，改变的是三个不同环节。本节沿批次到达 GPU 的过程，分别看有效词元比例、取批等待和 H2D 时间，再检查整步耗时与吞吐怎样变化。
 
 **关键词：** 输入供给、顺序装箱、填充比例、预取、暴露等待
 
@@ -34,7 +34,9 @@
 - [Part 01 · 07 CPU/GPU 异构调度](../01_Hardware_Math_and_Systems/07_CPU_GPU_Heterogeneous_Scheduling.md)：理解主机准备、设备执行与数据搬运。
 ## Step 1：输入对象如何到达 GPU
 
-一个训练批次通常经历样本读取、解码或分词、批次整理、主机缓冲、主机到设备搬运，最后才被模型消费。在各阶段有独立资源、缓冲足够且依赖允许并行时，稳态供给受最慢阶段限制；串行执行还会累加各阶段耗时。队列只能吸收短时抖动，不能消除长期供给不足。
+在 PyTorch 中，Dataset 提供单条样本的读取方式，DataLoader 按采样顺序取样并组织批次。一个训练批次通常经历样本读取、解码或分词、批次整理、主机缓冲、主机到设备搬运，最后才被模型消费。在各阶段有独立资源、缓冲足够且依赖允许并行时，稳态供给受最慢阶段限制；串行执行还会累加各阶段耗时。队列只能吸收短时抖动，不能消除长期供给不足。
+
+锁页内存是操作系统暂不换出的主机内存，可供设备异步搬运使用；它仍位于主机，不是显存。下游消费速度持续落后、队列填满后，上游也必须等待，这种等待向上游传播的现象称为回压，也常称背压。
 
 | 阶段 | 主要对象 | 典型资源 | 可观察证据 |
 | --- | --- | --- | --- |
@@ -43,17 +45,17 @@
 | 主机缓冲与搬运 | 锁页或普通内存张量 | 内存带宽、PCIe | 搬运时间、并行区间与同步点 |
 | GPU 消费 | 设备张量 | GPU 计算与显存 | 计算内核区间、设备空闲与吞吐 |
 
-![训练输入流水线与背压传播](../public/02_PyTorch_Algorithms/perf_input_pipeline_map.svg)
+![训练输入流水线与等待来源](../public/02_PyTorch_Algorithms/perf_input_pipeline_map.svg)
 ## Step 2：装箱怎样改变有效位置与填充比例
 
-填充把不同长度的样本补到容器长度；顺序装箱则把相邻短样本放进同一固定容量容器，不拆分样本。设共有 $J$ 个非空容器，每个容量为 $C$ 个词元，第 $i$ 条样本长度为 $\ell_i$，则有效输入位置 $U$、容器位置总数 $A$、填充位置 $Z$ 与利用率 $\eta$ 为：
+填充（padding）把不同长度的样本补到容器长度；装箱（packing）把多个短样本合放进一个容器，提高有效词元比例。顺序装箱按输入顺序逐条放入，放不下时开启新容器，保留每条样本的完整边界。设共有 $J$ 个非空容器，每个容量为 $C$ 个词元，第 $i$ 条样本长度为 $\ell_i$，则有效输入位置 $U$、容器位置总数 $A$、填充位置 $Z$ 与利用率 $\eta$ 为：
 
 $$
 U=\sum_i\ell_i,\qquad A=JC,\qquad Z=A-U,\qquad
 \eta=\frac{U}{A}\quad(A>0).
 $$
 
-长度表示实际输入词元数，不等于参与损失的监督词元数。空输入时约定利用率为 1，避免除零，该约定不表示产生了训练吞吐。顺序装箱保持样本顺序，但不保证使用最少容器；超长样本需要另行截断或切分，不能偷偷改变原始长度。
+长度统计实际输入的词元；其中哪些位置参与损失，由标签和损失掩码决定。顺序装箱按当前顺序放置样本，所需容器数取决于长度排列。超长样本先明确截断或切分规则，再用处理后的实际长度装箱。空输入的利用率按 1 返回，以便处理除零；其有效词元数仍为 0，吞吐需另外按完成的词元数与时间计算。
 
 | 量或约束 | 如何判断 | 对真实执行的影响 |
 | --- | --- | --- |
@@ -63,9 +65,9 @@ $$
 | 实际计算量 | 结合填充、注意力和计算内核实现判断 | 利用率提高不等于时间按相同比例下降 |
 ## Step 3：预取与复制—计算重叠怎样分别减少等待
 
-CPU 可以在当前批计算时准备下一批，不要求复制同时异步。复制与计算并发还需要可异步使用的主机缓冲、允许非阻塞提交、独立执行资源，以及消费前的数据依赖；锁页内存或一个开关本身不能证明重叠已经发生。
+预取指当前批尚在计算时，就提前读取或准备后续批次。CPU 预取可以与 GPU 计算并行，而 H2D 复制仍按顺序执行。让复制与计算并发，需要可异步使用的主机缓冲、非阻塞提交、独立执行资源，以及消费前的数据依赖。配置这些条件后，再从执行时间线检查两段活动是否实际重叠。
 
-设第 $i$ 批的准备、复制和计算耗时分别为 $p_i,h_i,c_i$，结束时刻为 $P_i,H_i,C_i$，初始状态 $P_0=H_0=C_0=0$。理想三阶段流水线中，各资源串行服务、资源之间允许重叠，开始时刻 $S_i^p,S_i^h,S_i^c$ 与暴露等待 $W_i$ 满足：
+下面用确定性模型比较两类依赖，假设缓冲足够、阶段耗时不随资源争用改变。没有预取时，准备要等上一批计算结束；复制与计算串行时，复制也要等上一批计算结束。首批等待包含流水线填充，后续计算间的空隙反映输入供给带来的等待。设第 $i$ 批的准备、复制和计算耗时分别为 $p_i,h_i,c_i$，结束时刻为 $P_i,H_i,C_i$，初始状态 $P_0=H_0=C_0=0$。理想三阶段流水线中，各资源串行服务、资源之间允许重叠，开始时刻 $S_i^p,S_i^h,S_i^c$ 与暴露等待 $W_i$ 满足：
 
 $$
 S_i^p=P_{i-1},\quad P_i=S_i^p+p_i,\qquad
@@ -75,8 +77,6 @@ $$
 S_i^c=\max(H_i,C_{i-1}),\quad C_i=S_i^c+c_i,\qquad
 W_i=\max(0,S_i^c-C_{i-1}).
 $$
-
-不预取时，准备还要等上一批计算结束；复制不允许与计算重叠时，复制也要等上一批计算结束。首批等待包含流水线填充，后续空隙才反映持续供给不足。该确定性模型假设缓冲足够、耗时不随争用改变；真实有限队列和资源竞争需要测量。
 
 | 条件 | 控制的阶段 | 缺少时如何调度 |
 | --- | --- | --- |
@@ -128,13 +128,13 @@ def build_greedy_packs(lengths: list[int], capacity: int) -> list[list[int]]:
 
 
 def packing_accounting(packs: list[list[int]], capacity: int) -> dict[str, float]:
-    """计算 packing 的 Token 守恒账本。"""
+    """计算装箱后的有效、填充位置及容量利用率。"""
     if not isinstance(capacity, int) or isinstance(capacity, bool) or capacity <= 0:
         raise ValueError("容量必须为正整数")
     if any(not pack or any(not isinstance(x, int) or isinstance(x, bool) or x <= 0 for x in pack)
            or sum(pack) > capacity for pack in packs):
         raise ValueError("容量非法或 pack 超过容量")
-    # TODO 2：建立 Token 守恒账本。
+    # TODO 2：计算有效、容器和填充位置。
     # useful_tokens = ???
     # container_tokens = ???
     # padding_tokens = ???
@@ -237,6 +237,7 @@ def test_input_starvation_and_missing_stream():
 
 
 def test_prefetch_independent_of_copy_options():
+    """预取独立于复制开关，复制保持本模型规定的依赖。"""
     flags = dict(prefetch=True, pinned=True, non_blocking=True, separate_copy_stream=True)
     for key in ("pinned", "non_blocking", "separate_copy_stream"):
         timeline = schedule_input_pipeline([4, 4], [2, 2], [10, 10], **{**flags, key: False})
@@ -246,6 +247,7 @@ def test_prefetch_independent_of_copy_options():
 
 
 def test_strict_lengths_and_packs():
+    """检查样本长度、容器容量和内容是否合法。"""
     for bad in (0, -1, True, 1.5):
         try:
             build_greedy_packs([1], bad)
@@ -265,6 +267,7 @@ def test_strict_lengths_and_packs():
 
 
 def test_nonfinite_stage_times():
+    """拒绝无法用于时间递推的非有限值。"""
     flags = dict(prefetch=True, pinned=True, non_blocking=True, separate_copy_stream=True)
     for bad in (float("nan"), float("inf"), -1, True):
         for index in range(3):
@@ -279,6 +282,7 @@ def test_nonfinite_stage_times():
 
 
 def test_zero_times_and_dependencies():
+    """零耗时也保持阶段先后依赖。"""
     timeline = schedule_input_pipeline([0, 0], [0, 0], [0, 0], prefetch=True,
         pinned=True, non_blocking=True, separate_copy_stream=True)
     assert all(all(value == 0 for value in point.values()) for point in timeline)
@@ -334,13 +338,13 @@ def build_greedy_packs(lengths: list[int], capacity: int) -> list[list[int]]:
 
 
 def packing_accounting(packs: list[list[int]], capacity: int) -> dict[str, float]:
-    """计算 packing 的 Token 守恒账本。"""
+    """计算装箱后的有效、填充位置及容量利用率。"""
     if not isinstance(capacity, int) or isinstance(capacity, bool) or capacity <= 0:
         raise ValueError("容量必须为正整数")
     if any(not pack or any(not isinstance(x, int) or isinstance(x, bool) or x <= 0 for x in pack)
            or sum(pack) > capacity for pack in packs):
         raise ValueError("容量非法或 pack 超过容量")
-    # TODO 2：建立 Token 守恒账本。
+    # TODO 2：计算有效、容器和填充位置。
     useful_tokens = sum(sum(pack) for pack in packs)
     container_tokens = len(packs) * capacity
     padding_tokens = container_tokens - useful_tokens
@@ -402,7 +406,7 @@ def schedule_input_pipeline(
 
 ## 框架一致性核对（可选）
 
-使用 PyTorch 的 `TensorDataset` 与 `DataLoader`，把 Step 4 的装箱计划交给真实批次采样接口，检查相同样本编号和长度是否完整、有序地到达消费端；另用固定批量核对尾批行为。核对只在 CPU 单进程执行，不重新证明装箱算法，也不验证锁页、预取速度或复制重叠。
+`TensorDataset` 将已有张量按第一维组织成可按编号读取的样本。使用它与 `DataLoader`，把 Step 4 的装箱计划交给真实批次采样接口，检查相同样本编号和长度是否完整、有序地到达消费端；另用固定批量核对尾批行为。核对只在 CPU 单进程执行，不重新证明装箱算法，也不验证锁页、预取速度或复制重叠。
 
 | 核对对象 | Step 4 教学实现 | 成熟框架 CPU 路径 | 共同输入与通过条件 |
 | --- | --- | --- | --- |
@@ -485,7 +489,7 @@ CPU 题目验证装箱守恒、准备与复制的依赖；GPU 实验固定已生
 
 ### 5.1 环境与固定工作负载
 
-本实验使用 `PERF-CUDA-MECHANISM`。首次运行按[专题 Quickstart](../topic_discussion/performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart)创建并预检环境，输入与结果登记见[实验资产表](../topic_discussion/performance_optimization/experiment_assets.md)。
+本实验使用 `PERF-CUDA-MECHANISM`。首次运行按[性能机制GPU环境](../topic_discussion/performance_optimization/gpu_quickstart.md#perf-cuda-mechanism-quickstart)创建并预检环境，输入与结果登记见[实验资产表](../topic_discussion/performance_optimization/experiment_assets.md)。
 
 | 配置层 | 本节固定设置 | 修改规则 |
 | --- | --- | --- |
@@ -633,12 +637,14 @@ else:
 
 ### 5.3 读取结果
 
-使用已有 `RUN_LABEL` 独立读取，不必执行 5.2 或切到 `real_gpu`。先核对条件、失败与校验值，再比较三个配置的等待、中位数、尾延迟和吞吐。
+填写已有 `RUN_LABEL` 后读取。读取器核对机制编号、运行标签、配置字段与累计校验值，再展示三种配置的中位数、P95 和吞吐。逐步时间未保存在这份记录中，统计值按原汇总展示；下一次复测需保存逐步样本，才能重算这些统计量。
+
 
 ```python
 from pathlib import Path
 import json
 from tools.project_runtime import resolve_project_root
+from tools.performance_result_review import read_input_io_result
 
 result_path = resolve_project_root() / RESULTS_RELATIVE_DIR / f"{SEMANTIC_ID.lower()}_{RUN_LABEL}.json"
 if not result_path.is_file():
@@ -647,7 +653,8 @@ if not result_path.is_file():
     record = {"status": "not_run", "result_path": str(result_path)}
     print(record)
 else:
-    record = json.loads(result_path.read_text(encoding="utf-8"))
+    record, result_review = read_input_io_result(result_path, semantic_id=SEMANTIC_ID, run_label=RUN_LABEL)
+    print(json.dumps(result_review, ensure_ascii=False, indent=2))
     print(json.dumps({key: record.get(key) for key in (
         "schema_version", "run_label", "framework", "hardware", "workload",
         "correctness", "failure", "evidence_level", "decision",
@@ -661,9 +668,9 @@ else:
 
 ### 5.4 解释证据与决策
 
-当前登记为 [rtx5070ti_input_v1](../../benchmarks/results/perf_input_pipeline/perf-input_rtx5070ti_input_v1.json)。三条配置的累计校验值相同，锁页单进程的步骤中位数最低，多进程预取的等待、P95 和吞吐更好。原始决策为 `accept_prefetch_candidate`，适用于本次供给配置，不是所有指标最优。
+当前登记为 [rtx5070ti_input_v1](../../benchmarks/results/perf_input_pipeline/perf-input_rtx5070ti_input_v1.json)。三条配置的累计校验值相同，锁页单进程的步骤中位数最低，多进程预取的等待、P95 和吞吐更好。原始决策为 `accept_prefetch_candidate`，对应本次吞吐与尾延迟的改善。
 
-该结果仅含汇总与一次配置顺序，无法重算逐步波动或证明稳定收益。校验值相同也不等于逐元素一致，实际训练采用前还需补充数值对照与重复测量。
+该记录保存了固定顺序下的一组统计汇总。下一次复测应保留逐步时间并轮换配置顺序，以比较运行波动；同时补充逐元素输出对照，再将候选放进目标训练任务。
 
 | 观察项 | 读取字段 | 当前结果 | 解释与动作 |
 | --- | --- | --- | --- |

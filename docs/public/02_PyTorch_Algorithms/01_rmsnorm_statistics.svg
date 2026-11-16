@@ -1,18 +1,45 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
-  <title id="title">RMSNorm 的混合精度统计路径</title>
-  <desc id="desc">低精度输入先转换为 FP32，完成平方、均值、加稳定项和倒平方根，再归一化、应用逐通道缩放并恢复输入数据类型。</desc>
-  <defs>
-    <style>.title{font:700 28px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.sub{font:500 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.head{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.body{font:500 13px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.box{stroke-width:2.5}.arrow{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
-    <marker id="arrow" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
-  </defs>
-  <rect width="1500" height="470" fill="#f8fafc"/>
-  <text x="55" y="55" class="title">混合精度路径：主状态低精度，归约统计使用 FP32</text>
-  <text x="55" y="85" class="sub">提升统计精度不改变归一化轴；输出恢复输入数据类型，保持后续 Block 接口稳定。</text>
-  <rect x="45" y="175" width="190" height="105" rx="15" fill="#dbeafe" stroke="#2563eb" class="box"/><text x="140" y="215" text-anchor="middle" class="head">输入主状态</text><text x="140" y="246" text-anchor="middle" class="body">FP16 / BF16 · [B,S,D]</text>
-  <rect x="285" y="175" width="190" height="105" rx="15" fill="#e0f2fe" stroke="#0284c7" class="box"/><text x="380" y="215" text-anchor="middle" class="head">提升统计精度</text><text x="380" y="246" text-anchor="middle" class="body">转换为 FP32</text>
-  <rect x="525" y="175" width="190" height="105" rx="15" fill="#fff7ed" stroke="#d97706" class="box"/><text x="620" y="207" text-anchor="middle" class="head">平方与均值</text><text x="620" y="236" text-anchor="middle" class="body">沿最后一维归约</text><text x="620" y="258" text-anchor="middle" class="body">保留单例统计轴</text>
-  <rect x="765" y="175" width="190" height="105" rx="15" fill="#fef3c7" stroke="#d97706" class="box"/><text x="860" y="207" text-anchor="middle" class="head">稳定倒均方根</text><text x="860" y="236" text-anchor="middle" class="body">加入 ε 后开方</text><text x="860" y="258" text-anchor="middle" class="body">避免除零</text>
-  <rect x="1005" y="175" width="190" height="105" rx="15" fill="#dcfce7" stroke="#16a34a" class="box"/><text x="1100" y="207" text-anchor="middle" class="head">归一化与缩放</text><text x="1100" y="236" text-anchor="middle" class="body">逐 token 归一化</text><text x="1100" y="258" text-anchor="middle" class="body">逐通道应用 γ</text>
-  <rect x="1245" y="175" width="210" height="105" rx="15" fill="#f5f3ff" stroke="#7c3aed" class="box"/><text x="1350" y="215" text-anchor="middle" class="head">恢复输出契约</text><text x="1350" y="246" text-anchor="middle" class="body">原数据类型 · [B,S,D]</text>
-  <path d="M235 227H285" class="arrow"/><path d="M475 227H525" class="arrow"/><path d="M715 227H765" class="arrow"/><path d="M955 227H1005" class="arrow"/><path d="M1195 227H1245" class="arrow"/>
+<title id="title">RMSNorm混合精度中的操作数与统计</title><desc id="desc">低精度输入转FP32后一路计算均方和倒平方根，另一路直接进入归一化乘法。归一化结果再乘转换后的gamma，最后恢复输入dtype；统计量形状B乘S乘1沿通道广播。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:18px;fill:#475569}.head{font-size:19px;font-weight:700}.body{font-size:18px}.small{font-size:16px;fill:#475569}.node{stroke-width:2;rx:12}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.saved{stroke:#15803d;stroke-width:2.5;stroke-dasharray:7 5;fill:none;marker-end:url(#arrow)}</style></defs>
+<rect width="1500" height="470" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="55" y="48" class="title" text-anchor="start">统计量与原始输入在乘法处相遇，再应用逐通道缩放</text>
+<text x="55" y="80" class="sub" text-anchor="start">本页实现：统计和归一化使用FP32；γ先转换为输入dtype，缩放结果最后恢复输入dtype。</text>
+<rect x="55" y="135" width="200" height="85" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="155" y="162" class="head" text-anchor="middle">输入 x</text>
+<text x="155" y="187" class="body" text-anchor="middle">[B,S,D] · FP16/BF16</text>
+<rect x="305" y="135" width="200" height="85" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="405" y="162" class="head" text-anchor="middle">转为FP32</text>
+<text x="405" y="187" class="body" text-anchor="middle">x_f32 · [B,S,D]</text>
+<rect x="555" y="135" width="240" height="85" class="node" fill="#fef3c7" stroke="#d97706"/>
+<text x="675" y="162" class="head" text-anchor="middle">沿D计算均方 m</text>
+<text x="675" y="187" class="body" text-anchor="middle">mean(x_f32²) · [B,S,1]</text>
+<rect x="845" y="135" width="240" height="85" class="node" fill="#fef3c7" stroke="#d97706"/>
+<text x="965" y="162" class="head" text-anchor="middle">倒平方根 r</text>
+<text x="965" y="187" class="body" text-anchor="middle">r = 1 / √(m + ε)</text>
+<rect x="1160" y="135" width="280" height="85" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="1300" y="162" class="head" text-anchor="middle">归一化 n = x_f32 × r</text>
+<text x="1300" y="187" class="body" text-anchor="middle">r沿D维广播</text>
+<path id="cast-input" d="M255 170H305" class="flow"/>
+<path id="input-to-statistic" d="M505 170H555" class="flow"/>
+<path id="statistic-to-rsqrt" d="M795 170H845" class="flow"/>
+<path id="rsqrt-to-normalize" d="M1085 170H1160" class="flow"/>
+<path id="original-input-to-normalize" d="M405 135V105H1300V135" class="flow"/>
+<rect x="845" y="280" width="240" height="85" class="node" fill="#dcfce7" stroke="#15803d"/>
+<text x="965" y="307" class="head" text-anchor="middle">逐通道参数 γ</text>
+<text x="965" y="332" class="body" text-anchor="middle">[D]；先转换到输入dtype</text>
+<rect x="1160" y="280" width="280" height="85" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="1300" y="307" class="head" text-anchor="middle">缩放 n × γ</text>
+<text x="1300" y="332" class="body" text-anchor="middle">乘法结果为FP32</text>
+<path id="normalized-to-scale" d="M1300 220V280" class="flow"/>
+<path id="gamma-to-scale" d="M1085 315H1160" class="flow"/>
+<rect x="1160" y="390" width="280" height="60" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="1300" y="417" class="head" text-anchor="middle">恢复输入dtype</text>
+<text x="1300" y="442" class="body" text-anchor="middle">输出仍为[B,S,D]</text>
+<path id="scale-to-output" d="M1300 365V390" class="flow"/>
+<rect x="55" y="280" width="660" height="150" rx="12" fill="#fff" stroke="#cbd5e1" data-layout-role="panel"/>
+<text x="80" y="311" class="head" text-anchor="start">单Token统计例：x=[3,4]，ε=10⁻⁶</text>
+<text x="80" y="347" class="body" text-anchor="start">m=(3²+4²)/2=12.5；r≈0.282843</text>
+<text x="80" y="384" class="body" text-anchor="start">n≈[0.848528, 1.131371]，再按通道乘γ</text>
+<text x="80" y="414" class="small" text-anchor="start">示例数值为FP32近似；最终输出还会按输入dtype舍入。</text>
 </svg>

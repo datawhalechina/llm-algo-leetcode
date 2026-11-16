@@ -4,6 +4,10 @@
 
 Task0 从请求入口开始；模型前向与生成循环分别在 Task1、2 简短对照，块管理和轮次选择在 Task3、4 继续阅读。安装见 [Quickstart](./quickstart.md)，固定代码版本、模型与运行准备见[教学引擎资产](./experiment_assets.md#teaching-engine)；下面的观察顺序不表示已完成本机实验。
 
+下图是源码阅读地图：先找到离线调用中的输入和结果，再沿生成循环跟踪调度、模型执行和序列更新。Task 标签标出分阶段阅读的位置，实际运行顺序由循环和状态依赖决定。
+
+![nano-vLLM两条输入、调度与模型执行、序列更新及块管理的跟踪路径](../../public/topic_discussion/inference_optimization/nano_vllm_request_trace_zh.svg)
+
 <a id="request-entry"></a>
 
 ## 从两条输入跟到正常结束
@@ -23,7 +27,7 @@ Task0 从请求入口开始；模型前向与生成循环分别在 Task1、2 简
 
 结合[模型前向与计算执行](./02_prefill_and_attention_kernel.md)，阅读[模型执行器](https://github.com/GeeeekExplorer/nano-vllm/blob/main/nanovllm/engine/model_runner.py)：被选中的序列怎样整理为输入词元、位置和缓存信息，再送入模型？预填充处理尚未计算的输入，解码则利用历史 KV 推进生成，输入规模和历史读取量不同。
 
-只对照两阶段传入模型的信息与输出用途。需要解释 CUDA Graph 时，再读 [Part 04 · 11 CUDA Graph 与 JIT 编译](../../04_CUDA_and_System_Optimization/11_CUDA_Graph_and_JIT_Compile.md)，区分准备、捕获与重放；首次初始化不能混入稳态前向耗时。
+先对照两阶段传入模型的信息与输出用途，再完成Task1的融合与执行分派对照。需要理解执行器中的CUDA Graph路径时，按需进入执行扩展[Part 04 · 11 CUDA Graph 与 JIT 编译](../../04_CUDA_and_System_Optimization/11_CUDA_Graph_and_JIT_Compile.md)，查看静态缓冲如何接收新输入、捕获后如何重放；分别记录准备成本与稳态前向耗时。
 
 <a id="generation-loop"></a>
 

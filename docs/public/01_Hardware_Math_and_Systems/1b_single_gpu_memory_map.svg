@@ -9,14 +9,16 @@
   </defs>
   <rect width="1280" height="680" fill="#f8fafc"/>
   <text x="640" y="42" text-anchor="middle" class="title">1B 单设备执行、内存与访存：按问题选择分析分支</text>
-  <text x="640" y="70" text-anchor="middle" class="sub">共同资源模型提供坐标，各分支回答不同问题，最后用性能证据核对瓶颈</text>
+  <text x="640" y="70" text-anchor="middle" class="sub">先看计算、带宽与容量，再按对象计算资源需求，最后核对瓶颈假设</text>
 
   <rect x="40" y="205" width="235" height="260" fill="#e0f2fe" class="panel"/>
   <text x="157" y="245" text-anchor="middle" class="group">03 共同入口</text>
   <rect x="68" y="280" width="179" height="62" fill="#fff" class="item"/>
   <text x="157" y="307" text-anchor="middle" class="head">资源模型</text><text x="157" y="329" text-anchor="middle" class="small">计算 · 带宽 · 容量</text>
-  <rect x="68" y="365" width="179" height="62" fill="#fff" class="item"/>
-  <text x="157" y="392" text-anchor="middle" class="head">内存层级</text><text x="157" y="414" text-anchor="middle" class="small">寄存器 · SRAM · HBM</text>
+  <rect x="68" y="355" width="179" height="92" fill="#fff" class="item"/>
+  <text x="157" y="381" text-anchor="middle" class="head">内存层级</text>
+  <text x="157" y="405" text-anchor="middle" class="small">寄存器 · 共享内存</text>
+  <text x="157" y="429" text-anchor="middle" class="small">缓存 · 全局显存</text>
 
   <rect x="335" y="105" width="610" height="470" fill="#f1f5f9" class="panel"/>
   <text x="640" y="142" text-anchor="middle" class="group">按当前问题选择分支</text>
@@ -52,11 +54,11 @@
   <text x="1122" y="324" text-anchor="middle" class="body">派生指标</text>
   <text x="1122" y="356" text-anchor="middle" class="body">候选瓶颈</text>
   <text x="1122" y="388" text-anchor="middle" class="body">判别实验</text>
-  <text x="1122" y="430" text-anchor="middle" class="small">性能分析 → 性能优化</text>
+  <text x="1122" y="430" text-anchor="middle" class="small">性能优化·测量与诊断</text>
 
   <path d="M275 335H325" class="flow"/>
   <path d="M945 335H995" class="flow"/>
   <text x="300" y="317" text-anchor="middle" class="small">选择问题</text>
   <text x="970" y="317" text-anchor="middle" class="small">核对证据</text>
-  <text x="640" y="622" text-anchor="middle" class="sub">各分支不是固定流水线：只选择与当前问题有关的路径，再回到统一证据口径</text>
+  <text x="640" y="622" text-anchor="middle" class="sub">按当前问题选择分支，再用对应记录核对资源假设</text>
 </svg>

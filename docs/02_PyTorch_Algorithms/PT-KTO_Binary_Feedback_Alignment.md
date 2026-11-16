@@ -1,6 +1,6 @@
 # PT-KTO. Binary Feedback Alignment | 二元反馈对齐
 
-**难度：** Hard | **环境：** [CPU 主线](#runtime-environment) | **标签：** `后训练对齐`, `KTO`, `二元反馈` | **目标人群：** 训练机制学习者
+**难度：** Hard | **环境：** [CPU 主线](#runtime-environment) | **标签：** `后训练对齐`, `KTO`, `二元反馈` | **目标人群：** 理解策略对数概率、需要利用单条反馈的读者
 
 > 🚀 **云端运行环境**
 >
@@ -14,11 +14,14 @@
 
 ## 本节导读
 
-DPO 需要同一提示下成对的优选与非优选回答，实际反馈却常以单条点赞、点踩或验收结果出现。KTO 直接使用回答级二元标签，并用当前策略相对参考策略（reference policy）的对数概率偏移构造更新目标。完成本节后，你应该能区分成对偏好与非成对反馈，解释 KL 基线如何为偏移提供比较锚点，并验证正负样本权重不会悄悄改变训练目标。
+实际反馈常常只有一条回答的点赞、点踩或验收结果，而没有同一问题的另一条回答可供配对。KTO 可以使用这种回答级好坏标签，但仍需先确定标签的含义、反馈来源和评测切分。
 
-**关键词：** `KTO`、`二元反馈`、`参考策略`、`KL 基线`
+本节比较当前策略与固定参考策略对同一回答的概率，再结合 KL 比较基线，计算可接受与不可接受样本的两个方向目标。最后分别查看类别数量、权重和奖励均值，解释总损失为何可能随反馈组成变化。
+
+**关键词：** `KTO`, `二元反馈`, `参考策略`, `对数概率偏移`, `KL 基线`
 
 ---
+
 <a id="runtime-environment"></a>
 
 ## 运行环境
@@ -29,80 +32,87 @@ DPO 需要同一提示下成对的优选与非优选回答，实际反馈却常�
 ---
 ## 前置阅读
 
-- [13 SFT 监督边界](./13_SFT_Training_Loop.md)：参考策略来自固定的 SFT 基线。
-- [17 DPO](./17_DPO_Loss_Tutorial.md)：对比成对偏好与单条二元反馈。
-- [50 偏好数据与评测](./50_Preference_Data_and_Evaluation.md)：先固定反馈来源、标签含义和数据切分。
+先确定回答词元范围与反馈含义，再对照成对偏好目标。
 
----
-## Step 1：单条反馈如何替代成对偏好
+- [13 SFT 监督边界](./13_SFT_Training_Loop.md)：识别回答、提示和填充位置。
+- [17 DPO](./17_DPO_Loss_Tutorial.md)：理解策略与固定参考的回答对数概率差。
+- [50 偏好数据与评测](./50_Preference_Data_and_Evaluation.md)：核对标签来源、标准与训练／评测切分。
 
-每条样本由提示 $x$、回答 $y$ 与二元标签 $c\in\{1,0\}$ 组成；$c=1$ 表示 desirable，$c=0$ 表示 undesirable。KTO 不要求为同一个提示同时准备正负回答，因此点赞、点踩、验收结果等非配对反馈可以直接进入训练。这个变化只取消了配对要求，没有取消数据治理：标签必须指向完整回答，提示与回答不能跨切分重复，同一反馈来源中的接受标准也要保持稳定。
+## Step 1：把偏好对换成回答级二元标签
 
-![DPO 成对偏好与 KTO 单条二元反馈的数据形态对比](../public/02_PyTorch_Algorithms/pt_kto_binary_feedback.svg)
+每条记录包含问题 $x$、回答 $y$ 与标签 $c\in\lbrace1,0\rbrace$。标签1表示该回答被标为可接受（desirable），标签0表示不可接受（undesirable）；同一问题可以只有一条带标签回答。相较于 DPO，KTO省去了为每条问题准备有顺序的两条回答这一要求。
 
-| 数据形态 | 必需字段 | 能表达什么 | 主要风险 |
+例如“订单未发货时能否修改地址”的一条回答通过验收，可记录为1；另一问题的回答未通过，可记录为0，两者无需拼成偏好对。标签仍描述具体来源的判断标准；混入不同渠道或不同验收规则时，应保留来源并检查含义，训练与评测问题也需分开。
+
+| 数据形式 | 记录内容 | 表达的判断 | 需检查什么 |
 |:---|:---|:---|:---|
-| 成对偏好 | prompt、chosen、rejected | 同一上下文中的相对偏好 | 配对成本与回答泄漏 |
-| 二元反馈 | prompt、response、label | 单条回答是否被接受 | 标签比例失衡与反馈含义漂移 |
-| 混合反馈源 | prompt、response、label、source | 不同渠道的接受结果 | 不同来源把同一标签用于不同含义 |
-## Step 2：策略偏移如何变成正负样本损失
+| 成对偏好 | 问题、优选和非优选回答 | 同一问题内哪条更好 | 两条回答的共享上下文与顺序 |
+| 二元反馈 | 问题、单条回答、0/1标签 | 该回答是否被当前规则接受 | 标签含义与类别数量 |
+| 多来源反馈 | 二元记录及反馈来源 | 各来源的接受结果 | 标准变化和来源占比 |
 
-先在回答范围内聚合 Token 对数概率。令 $\pi_\theta$ 表示当前策略，$y_{<t}$ 表示位置 $t$ 之前的回答前缀，$m_t\in\{0,1\}$ 标记回答中的有效位置；提示词、Padding 与 EOS 之后的位置不参与求和。当前策略的回答序列得分为：
+![DPO 成对记录与 KTO 回答级标签](../public/02_PyTorch_Algorithms/pt_kto_binary_feedback.svg)
 
-$$s_\theta(x,y)=\sum_t m_t\log\pi_\theta(y_t\mid x,y_{<t}).$$
+## Step 2：用策略偏移和 KL 比较基线构造损失
 
-令 $s_{ref}(x,y)$ 表示固定参考策略在相同 Token 范围内得到的回答序列得分。当前策略与参考策略的序列级偏移为：
+先累加回答范围内的词元对数概率。 $\pi_\theta$ 是当前策略， $y_{<t}$ 是此前回答前缀， $m_t$ 标记有效回答位置；提示、填充和结束标记之后的位置忽略。固定参考策略在相同位置得到 $s_{ref}$，两者之差 $d_\theta$ 表示当前策略相对参考对这条回答的偏移：
 
-$$d_\theta(x,y)=s_\theta(x,y)-s_{ref}(x,y).$$
+$$
+s_\theta(x,y)=\sum_t m_t\log\pi_\theta(y_t\mid x,y_{<t}),\qquad
+d_\theta(x,y)=s_\theta(x,y)-s_{ref}(x,y).
+$$
 
-KTO 还使用独立于当前二元标签批次的 KL 样本估计平均策略偏移。设该批次包含 $B_{KL}$ 个提示—回答对，$(x_j^{KL},y_j^{KL})$ 表示第 $j$ 个样本，则非负基线为：
+KTO还用另一组比较对估计 KL 基线。它们不按当前好坏标签筛选；一种实现方式是在训练批次内把提示与其他回答错配，而非另外准备独立数据集。设比较对有 $B_{KL}$ 个，先求平均偏移、截断为非负并停止该基线的梯度。该近似依赖样本构造，不能仅从一组输入分数验证其采样方式。 $\beta>0$ 缩放偏移，逻辑函数为 $\sigma(a)=1/(1+e^{-a})$；正负标签使用相反方向：
 
-$$z_{KL}=\max\left(0,\frac{1}{B_{KL}}\sum_{j=1}^{B_{KL}}d_\theta(x_j^{KL},y_j^{KL})\right),$$
+$$
+z_{KL}=\max\left(0,\frac1{B_{KL}}\sum_{j=1}^{B_{KL}}d_\theta(x_j^{KL},y_j^{KL})\right).
+$$
 
-$z_{KL}$ 在进入目标函数前停止梯度，不能由当前正负标签的比例或测试集构造。$\beta>0$ 控制偏移尺度，正样本希望 $d_\theta$ 高于基线，负样本希望它低于基线：
+$$
+\ell^+(d)=1-\sigma(\beta(d-z_{KL})),\qquad
+\ell^-(d)=1-\sigma(\beta(z_{KL}-d)).
+$$
 
-$$\ell^+(d)=1-\sigma(\beta(d-z_{KL})),\qquad \ell^-(d)=1-\sigma(\beta(z_{KL}-d)).$$
+## Step 3：区分类别权重、批次损失与奖励诊断
 
-其中 $\sigma$ 是 sigmoid。Reference 与 KL 基线都只提供比较锚点，不接收当前目标的梯度。
-## Step 3：类别权重、批次归约与诊断如何配合
+正样本使用 $\ell^+$、负样本使用 $\ell^-$，分别乘正权重 $w_+$ 与 $w_-$。设当前批次有 $B$ 条记录、标签为 $c_i$，目标按加权后的逐样本损失取普通均值，而不除以权重之和：
 
-训练损失按标签选择 $\ell^+$ 或 $\ell^-$，再分别乘 desirable 与 undesirable 权重。设 $B$ 是当前训练批次大小，$c_i\in\{0,1\}$ 是第 $i$ 条回答的二元标签，$w_+,w_->0$ 是两类权重；批次目标采用逐样本加权后求均值：
+$$
+\mathcal L_{KTO}=\frac1B\sum_{i=1}^{B}\left[c_iw_+\ell^+(d_i)+(1-c_i)w_-\ell^-(d_i)\right].
+$$
 
-$$\mathcal L_{KTO}=\frac{1}{B}\sum_{i=1}^{B}\left[c_iw_+\ell^+(d_i)+(1-c_i)w_-\ell^-(d_i)\right].$$
+类别权重可以调整样本比例或错误代价的影响，需与类别数量一起记录。隐式奖励 $r_i=\beta d_i$ 是策略相对参考的分数偏移，不是另外训练的奖励模型分数；分别计算正负类均值，两类均存在时才计算差值。只有总损失变化而没有这些记录，难以区分策略改变与标签组成改变。
 
-逐样本加权损失再取批次均值，得到 $\mathcal L_{KTO}$。这种接口便于按类别诊断，也要求调用方明确完成 Batch 归约。类别权重用于表达采样比例或错误代价，不应自动等同于类别频率倒数。除了总损失，还应分别记录正负样本数量、隐式奖励 $r_i=\beta d_i$ 的类别均值，以及两类奖励差；否则类别比例变化可能被误判为策略改善。
-
-![二元标签经过策略偏移、KL 基线和类别权重形成 KTO 损失](../public/02_PyTorch_Algorithms/pt_kto_loss_path.svg)
-
-| 检查项 | 正常现象 | 需要停止或重做 |
+| 检查项 | 观察什么 | 对应动作 |
 |:---|:---|:---|
-| 正样本方向 | 增大 $d_\theta$ 会降低正样本损失 | 正负标签方向颠倒 |
-| 负样本方向 | 减小 $d_\theta$ 会降低负样本损失 | Reference 参与梯度更新 |
-| 类别权重 | 只改变对应类别贡献 | 未记录权重和类别数量却比较不同运行 |
-| KL 基线 | 独立估计、截断为非负并停止梯度 | 用当前标签或测试集构造基线 |
-| 奖励诊断 | 分别记录正负样本均值和差值 | 只看混合后的总损失 |
+| 正样本方向 | 固定基线时，增大偏移降低正样本损失 | 核对标签与目标方向 |
+| 负样本方向 | 固定基线时，减小偏移降低负样本损失 | 核对负类分支 |
+| 类别权重 | 各类在普通批次平均中的贡献 | 保存权重与两类数量 |
+| KL 比较基线 | 比较样本构造、非负截断与停止梯度 | 与标签使用分开，排除测试数据 |
+| 类别奖励 | 正负类均值及差值 | 缺少某类时记录缺失值 |
+
+![策略偏移、比较基线与二元标签形成 KTO 损失](../public/02_PyTorch_Algorithms/pt_kto_loss_path.svg)
+
 <a id="mechanism-practice"></a>
 
 ## Step 4：实现 KTO 的二元反馈损失
 
-题目区使用 Token 对数概率、回答掩码、参考策略分数和二元标签复现 KTO 目标。骨架提供输入校验与批次报告；学习者补全回答得分、独立 KL 基线、正负样本目标和批次诊断。测试覆盖变长回答、非有限 padding、负基线截断、单一类别和非法标签。
+题目区使用 Token 对数概率、回答掩码、参考策略分数和二元标签复现 KTO 目标。骨架提供输入校验与批次报告；学习者补全回答得分、KL 比较基线、正负样本目标和批次诊断。测试覆盖变长回答、非有限 padding、负基线截断、单一类别和非法标签。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 |:---|:---|:---|:---|
 | TODO 1：聚合回答得分<br>`aggregate_response_logps` | 聚合有效回答 Token | mask 同形且每条回答非空 | 变长回答与非有限 Padding |
-| TODO 2：估计非负 KL 基线<br>`estimate_kl_baseline` | 从独立样本估计非负 KL 基线 | Policy / Reference 同形；结果停止梯度 | 负均值截断与梯度隔离 |
+| TODO 2：估计非负 KL 基线<br>`estimate_kl_baseline` | 从另构造的比较样本估计非负基线 | Policy / Reference 同形；结果停止梯度 | 负均值截断与梯度隔离 |
 | TODO 3：计算加权二元目标<br>`kto_loss` | 计算逐样本策略偏移、隐式奖励与加权损失 | Reference 与 KL 基线停止梯度；标签为 0/1；权重为正 | 精确数值、双侧权重、基线作用与梯度隔离 |
 | TODO 4：汇总类别奖励<br>`summarize_kto_batch` | 计算类别奖励均值和奖励差 | 单类别批次不伪造另一类均值 | 全类别、仅正类、仅负类与非法标签 |
 
 ```python
+import math
 import torch
 import torch.nn.functional as F
 ```
 
 
 ```python
-import math
-
 def aggregate_response_logps(token_logps, response_mask):
     """按回答掩码聚合每条回答的 Token 对数概率。"""
     if token_logps.ndim != 2 or token_logps.shape != response_mask.shape:
@@ -119,7 +129,7 @@ def aggregate_response_logps(token_logps, response_mask):
 
 
 def estimate_kl_baseline(policy_kl_logps, reference_kl_logps):
-    """从独立 KL 样本估计停止梯度的非负基线。"""
+    """从 KL 比较样本估计停止梯度的非负基线。"""
     if policy_kl_logps.ndim != 1 or policy_kl_logps.shape != reference_kl_logps.shape:
         raise ValueError("KL 样本的策略与参考得分必须是同形一维张量")
     if policy_kl_logps.numel() == 0:
@@ -177,6 +187,9 @@ def summarize_kto_batch(implicit_rewards, desirable):
 ```
 
 ## 测试
+
+分别核对回答掩码、求和得分、停止梯度、正负目标方向与类别权重，再检查单类别诊断的缺失值。
+
 
 ```python
 def test_kto_aggregation_and_contract():
@@ -299,12 +312,6 @@ run_kto_tests()
 ### 代码
 
 ```python
-import math
-
-
-import math
-
-
 def aggregate_response_logps(token_logps, response_mask):
     """按回答掩码聚合每条回答的 Token 对数概率。"""
     if token_logps.ndim != 2 or token_logps.shape != response_mask.shape:
@@ -320,7 +327,7 @@ def aggregate_response_logps(token_logps, response_mask):
 
 
 def estimate_kl_baseline(policy_kl_logps, reference_kl_logps):
-    """从独立 KL 样本估计停止梯度的非负基线。"""
+    """从 KL 比较样本估计停止梯度的非负基线。"""
     if policy_kl_logps.ndim != 1 or policy_kl_logps.shape != reference_kl_logps.shape:
         raise ValueError("KL 样本的策略与参考得分必须是同形一维张量")
     if policy_kl_logps.numel() == 0:
@@ -380,37 +387,36 @@ def summarize_kto_batch(implicit_rewards, desirable):
 
 ### 解析
 
-#### TODO 1：聚合回答得分
+#### TODO 1：累加有效回答得分
 
-- 回答得分只累计有效词元的对数概率；先将无效位置清零再求和，不能直接乘掩码，否则被屏蔽的 `-inf` 乘零仍会产生非有限值。
-- `test_kto_aggregation_and_contract` 用变长回答和 `-inf` 填充核对得分，并验证空回答被拒绝。
+- 只累计有效回答位置；应先把忽略位置清零，避免填充中的负无穷参与运算。
+- 测试用不等长回答和负无穷填充核对求和，并检查空回答报错。
 
-#### TODO 2：估计非负 KL 基线
+#### TODO 2：估计比较基线
 
-- 独立样本的平均策略偏移可能因有限样本而为负；先截断为零，再停止梯度，使该批次的基线成为固定比较量，而不是额外的可训练目标。
-- `test_kto_kl_baseline` 分别核对零基线与正基线，并检查基线不接收梯度；独立样本的来源由调用方保证，函数不能仅凭分数识别样本是否独立。
+- 对KL比较对求平均偏移，截断为非负并停止梯度，使其在本批目标中作为固定比较量。
+- 测试分别输入负均值和正均值，并确认输出不接收梯度。样本如何错配或采样由数据准备保证，函数只处理给定分数。
 
-#### TODO 3：计算加权二元目标
+#### TODO 3：计算两类目标
 
-- 参考分数与 KL 基线均停止梯度；正样本希望策略偏移高于基线，负样本希望低于基线，两类使用相反方向的逻辑函数目标，再乘各自权重。批次目标对加权逐样本损失取均值，不除以权重之和。
-- `test_kto_direction_weights_and_gradients` 核对两类手算损失、不同权重和非零基线，分别改变正负样本得分验证损失方向，并确认只有当前策略收到梯度。
+- 可接受样本提高相对基线的偏移，不可接受样本降低偏移；参考分数和基线均停止梯度，类别权重分别作用。
+- 测试核对手算损失、非零基线和两侧权重，改变样本分数检查方向，并确认只有策略分数收到梯度。批次目标按加权损失的普通均值归约。
 
 #### TODO 4：汇总类别奖励
 
-- 分别计算两类隐式奖励的均值，只有两类都存在时才计算奖励差；缺失类别返回 `None`，不能用零伪造比较对象。
-- `test_kto_batch_summary` 核对双类别的均值与奖励差，并用仅正类、仅负类批次检验缺失值；非法标签也必须拒绝。
+- 每类单独求隐式奖励均值，两类都出现时再相减；某类不存在就返回 `None`。
+- 测试包含双类别、仅正类、仅负类和非法标签，防止用零伪造缺失类别的比较。
 
 <a id="framework-check"></a>
 
 ## 框架一致性核对（可选）
 
-下面把受控的 Policy、Reference 与独立 KL 样本送入 TRL `KTOTrainer._compute_loss`，核对 KL 基线、二元标签和标准 KTO 损失，不下载模型。
+给定相同策略分数、参考分数、KL比较分数与标签，比较本地损失均值与 TRL `KTOTrainer._compute_loss`。这是依赖固定版本的内部入口，核对时固定单进程、标准KTO目标和两类等权配置。
 
-| 核对项 | 本节实现 | TRL 路径 | 通过条件 |
+| 核对对象 | Step 4 教学实现 | 成熟框架 CPU 路径 | 共同输入与通过条件 |
 |:---|:---|:---|:---|
-| 回答得分 | 回答 Token 对数概率求和 | Trainer 汇总逐 Token 对数概率 | 序列得分一致 |
-| KL 基线 | 独立样本平均偏移、非负截断 | `calculate_KL=True` | 受控 KL 基线一致 |
-| 二元目标 | 按标签选择正负 sigmoid 损失 | `loss_type='kto'` | 相同 $\beta$、基线与权重下 Batch 损失一致 |
+| 批次二元目标 | `estimate_kl_baseline`、`kto_loss` | `KTOTrainer._compute_loss` | 相同回答分数、比较基线、标签、β和权重下，标量批次损失在容差内一致 |
+
 
 ```python
 from collections import defaultdict
@@ -489,7 +495,8 @@ framework_check
 
 ## 相关阅读
 
-- [17 DPO](./17_DPO_Loss_Tutorial.md)
-- [50 偏好数据与评测](./50_Preference_Data_and_Evaluation.md)
-- [TRL KTO Trainer](https://huggingface.co/docs/trl/kto_trainer)
-- [KTO: Model Alignment as Prospect Theoretic Optimization](https://arxiv.org/abs/2402.01306)
+将公式对应到真实数据准备时，重点查看比较样本和类别权重的处理。
+
+- [TRL KTO Trainer](https://huggingface.co/docs/trl/kto_trainer)：查看批次内错配的KL比较对，以及二元数据格式。
+- [KTO 原论文](https://arxiv.org/abs/2402.01306)：理解参照点、正负反馈与加权目标的设计。
+- [17 DPO](./17_DPO_Loss_Tutorial.md)：对照序列对数概率比在成对与二元反馈中的作用。

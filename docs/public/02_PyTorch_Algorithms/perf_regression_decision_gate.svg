@@ -1,17 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
-  <title id="title">性能回归的顺序决策门</title>
+  <title id="title">性能回归的三步判断</title>
   <desc id="desc">先检查正确性和执行失败，再检查缺失和成功配对数，最后比较中位比例区间与允许变慢边界。通过仅表示回归检查通过，不等于加速。</desc>
   <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#334155"/></marker>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#334155"/></marker>
     <marker id="bad-arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#dc2626"/></marker>
     <style>
       .title{font-family:"Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#0f172a}.subtitle{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;fill:#475569}
       .head{font-family:"Noto Sans CJK SC",sans-serif;font-size:17px;font-weight:700;fill:#172033}.body{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;fill:#475569}.branch{font-family:"Noto Sans CJK SC",sans-serif;font-size:13px;font-weight:700;fill:#334155}
-      .edge{fill:none;stroke:#334155;stroke-width:4;marker-end:url(#arrow)}.bad{fill:none;stroke:#dc2626;stroke-width:4;marker-end:url(#bad-arrow)}
+      .edge{fill:none;stroke:#334155;stroke-width:2.5;marker-end:url(#arrow)}.bad{fill:none;stroke:#dc2626;stroke-width:2.5;marker-end:url(#bad-arrow)}
     </style>
   </defs>
   <rect width="1200" height="620" rx="24" fill="#f8fafc"/>
-  <text x="600" y="48" text-anchor="middle" class="title">性能回归必须按顺序通过三道决策门</text>
+  <text x="600" y="48" text-anchor="middle" class="title">先核对正确性与配对，再比较区间</text>
   <text x="600" y="78" text-anchor="middle" class="subtitle">阈值在查看候选结果前固定；质量失败不能被速度收益抵消</text>
 
   <rect x="55" y="145" width="230" height="104" rx="16" fill="#dbeafe" stroke="#2563eb" stroke-width="2.5"/>
@@ -30,7 +30,7 @@
   <rect x="400" y="390" width="170" height="90" rx="15" fill="#ffedd5" stroke="#ea580c" stroke-width="2.5"/>
   <text x="485" y="425" text-anchor="middle" class="head">补齐复测</text><text x="485" y="453" text-anchor="middle" class="body">缺失或数量不足</text>
   <rect x="715" y="390" width="170" height="90" rx="15" fill="#ffedd5" stroke="#ea580c" stroke-width="2.5"/>
-  <text x="800" y="425" text-anchor="middle" class="head">继续调优</text><text x="800" y="453" text-anchor="middle" class="body">区间跨界</text>
+  <text x="800" y="425" text-anchor="middle" class="head">固定条件补测</text><text x="800" y="453" text-anchor="middle" class="body">区间跨界</text>
   <rect x="970" y="390" width="210" height="90" rx="15" fill="#fee2e2" stroke="#dc2626" stroke-width="2.5"/>
   <text x="1075" y="425" text-anchor="middle" class="head">拒绝</text><text x="1075" y="453" text-anchor="middle" class="body">确认性能回归</text>
 

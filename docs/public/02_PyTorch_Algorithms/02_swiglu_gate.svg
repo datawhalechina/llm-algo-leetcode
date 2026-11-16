@@ -1,41 +1,37 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
-  <title id="title">SwiGLU 从单路激活到双路门控</title>
-  <desc id="desc">上方展示 FFN、GLU、SwiGLU 的演进，下方展示门控分支、候选分支、逐元素相乘与输出映射的数据流。</desc>
-  <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
-    <style>.title{font:700 27px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.sub{font:500 15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.head{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#111827}.body{font:500 14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.label{font:600 14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.box{stroke-width:2.5;rx:14}.flow{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
-  </defs>
-  <rect width="1500" height="470" fill="#f8fafc"/>
-  <text x="50" y="48" class="title">SwiGLU：从单路非线性到双路门控</text>
-  <text x="50" y="76" class="sub">演进改变选择机制；两条中间分支共同决定每个特征通过多少。</text>
-
-  <text x="55" y="118" class="label">结构演进</text>
-  <rect x="165" y="92" width="245" height="62" class="box" fill="#eff6ff" stroke="#2563eb"/>
-  <text x="287" y="118" text-anchor="middle" class="head">普通 FFN</text><text x="287" y="142" text-anchor="middle" class="body">单路 activation</text>
-  <rect x="625" y="92" width="245" height="62" class="box" fill="#fff7ed" stroke="#ea580c"/>
-  <text x="747" y="118" text-anchor="middle" class="head">GLU</text><text x="747" y="142" text-anchor="middle" class="body">Sigmoid 门控</text>
-  <rect x="1085" y="92" width="245" height="62" class="box" fill="#f5f3ff" stroke="#7c3aed"/>
-  <text x="1207" y="118" text-anchor="middle" class="head">SwiGLU</text><text x="1207" y="142" text-anchor="middle" class="body">SiLU 平滑门控</text>
-  <path d="M410 123H625" class="flow"/><text x="518" y="111" text-anchor="middle" class="label">加入门控</text>
-  <path d="M870 123H1085" class="flow"/><text x="978" y="111" text-anchor="middle" class="label">替换门函数</text>
-
-  <text x="55" y="216" class="label">SwiGLU 数据流</text>
-  <rect x="75" y="252" width="170" height="82" class="box" fill="#dbeafe" stroke="#2563eb"/>
-  <text x="160" y="283" text-anchor="middle" class="head">输入 x</text><text x="160" y="310" text-anchor="middle" class="body">hidden size D</text>
-  <rect x="350" y="210" width="190" height="72" class="box" fill="#fef3c7" stroke="#d97706"/>
-  <text x="445" y="238" text-anchor="middle" class="head">门控分支</text><text x="445" y="263" text-anchor="middle" class="body">SiLU 门控特征</text>
-  <rect x="350" y="320" width="190" height="72" class="box" fill="#ecfccb" stroke="#65a30d"/>
-  <text x="445" y="348" text-anchor="middle" class="head">候选分支</text><text x="445" y="373" text-anchor="middle" class="body">待选择的内容</text>
-  <rect x="675" y="252" width="210" height="82" class="box" fill="#ede9fe" stroke="#7c3aed"/>
-  <text x="780" y="283" text-anchor="middle" class="head">逐元素相乘</text><text x="780" y="310" text-anchor="middle" class="body">SiLU(gate) × up</text>
-  <rect x="1015" y="252" width="190" height="82" class="box" fill="#ffe4e6" stroke="#e11d48"/>
-  <text x="1110" y="283" text-anchor="middle" class="head">输出映射</text><text x="1110" y="310" text-anchor="middle" class="body">H → D</text>
-  <rect x="1310" y="252" width="140" height="82" class="box" fill="#ecfeff" stroke="#0891b2"/>
-  <text x="1380" y="283" text-anchor="middle" class="head">输出</text><text x="1380" y="310" text-anchor="middle" class="body">hidden size D</text>
-  <path d="M245 276C290 276 300 246 350 246" class="flow"/>
-  <path d="M245 310C290 310 300 356 350 356" class="flow"/>
-  <path d="M540 246C610 246 610 273 675 273" class="flow"/>
-  <path d="M540 356C610 356 610 313 675 313" class="flow"/>
-  <path d="M885 293H1015" class="flow"/>
-  <path d="M1205 293H1310" class="flow"/>
+<title id="title">SwiGLU的融合投影与门控</title><desc id="desc">输入经融合线性投影得到2H特征，切分为gate和up。gate经SiLU后与up逐元素相乘，最后经down投影恢复D。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:18px;fill:#475569}.head{font-size:19px;font-weight:700}.body{font-size:18px}.small{font-size:16px;fill:#475569}.node{stroke-width:2;rx:12}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}</style></defs>
+<rect width="1500" height="470" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="55" y="48" class="title" text-anchor="start">一次融合投影产生两组特征，门控后再映射回隐藏维</text>
+<text x="55" y="80" class="sub" text-anchor="start">两组中间特征都由可训练线性映射产生；SiLU作用于gate，up保留待调制的内容。</text>
+<rect x="55" y="225" width="170" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="140" y="254" class="head" text-anchor="middle">输入 x</text>
+<text x="140" y="282" class="body" text-anchor="middle">最后一维 D</text>
+<rect x="285" y="225" width="230" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="400" y="254" class="head" text-anchor="middle">融合gate/up投影</text>
+<text x="400" y="282" class="body" text-anchor="middle">D → 2H</text>
+<rect x="580" y="145" width="180" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="670" y="174" class="head" text-anchor="middle">gate分片</text>
+<text x="670" y="202" class="body" text-anchor="middle">最后一维 H</text>
+<rect x="580" y="315" width="180" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="670" y="344" class="head" text-anchor="middle">up分片</text>
+<text x="670" y="372" class="body" text-anchor="middle">最后一维 H</text>
+<rect x="825" y="145" width="180" height="80" class="node" fill="#fef3c7" stroke="#d97706"/>
+<text x="915" y="174" class="head" text-anchor="middle">SiLU(gate)</text>
+<text x="915" y="202" class="body" text-anchor="middle">gate × σ(gate)</text>
+<rect x="1065" y="225" width="180" height="80" class="node" fill="#dcfce7" stroke="#15803d"/>
+<text x="1155" y="254" class="head" text-anchor="middle">逐元素乘法</text>
+<text x="1155" y="282" class="body" text-anchor="middle">SiLU(gate) ⊙ up</text>
+<rect x="1310" y="225" width="140" height="80" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="1380" y="254" class="head" text-anchor="middle">down投影</text>
+<text x="1380" y="282" class="body" text-anchor="middle">H → D</text>
+<path id="input-to-projection" d="M225 265H285" class="flow"/>
+<path id="split-gate" d="M515 245H545V185H580" class="flow"/>
+<path id="split-up" d="M515 285H545V355H580" class="flow"/>
+<path id="gate-to-silu" d="M760 185H825" class="flow"/>
+<path id="silu-to-product" d="M1005 185H1155V225" class="flow"/>
+<path id="up-to-product" d="M760 355H1015V285H1065" class="flow"/>
+<path id="product-to-down" d="M1245 265H1310" class="flow"/>
+<text x="55" y="444" class="sub" text-anchor="start">gate与up按同一中间特征索引相乘；输出恢复D维后进入模型块的后续路径。</text>
 </svg>

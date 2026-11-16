@@ -19,6 +19,14 @@
 
 ---
 
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
+- **多 GPU 实测：** 使用 `PAR-CUDA-MECHANISM`；环境、运行配置与固定工作负载见 [Step 5](#gpu-experiment)。
+
+---
 ## 前置阅读
 
 **导语：** 先从时间线中读出 collective、计算重叠和暴露通信时间；本节继续判断这些信号分别指向传输量、同步还是负载不均衡问题。
@@ -28,9 +36,19 @@
 
 ---
 
-### Step 1：从时间线建立热点证据
+## Step 1：从时间线建立热点证据
 
 通信总时长只能说明某类 collective 很忙，不能说明它一定在拖慢关键路径。判断热点时，需要同时观察以下信号：
+
+对通信事件 $e$，令总时长为 $T_e$、被计算覆盖的并集时长为 $O_e$，则暴露通信为 $E_e=\max(0,T_e-O_e)$。按 collective $c$ 聚合后
+
+$$
+E_c=\sum_{e\in c}E_e,
+\qquad
+c^{\ast}=\arg\max_cE_c.
+$$
+
+$c^{\ast}$ 只是优先排查对象；根因还要结合载荷、同步频率和进程不均衡判断。
 
 | 证据 | 它说明什么 | 常见后续问题 |
 |------|------------|--------------|
@@ -41,9 +59,19 @@
 
 ![通信热点识别总览](../public/02_PyTorch_Algorithms/48_comm_hotspot_overview.svg)
 
-### Step 2：识别热点属于哪种模式
+## Step 2：识别热点属于哪种模式
 
 同样是通信慢，根因可能不同。先按证据归入模式，才能避免把所有问题都归结为带宽不足。
+
+同步步骤的完成时间受最慢进程约束：
+
+$$
+T_{\mathrm{step}}\ge\max_rT_r,
+\qquad
+\rho_{\mathrm{rank}}=\frac{\max_rT_r}{\mathrm{median}_rT_r}-1.
+$$
+
+$\rho_{\mathrm{rank}}$ 只在采集到各进程时间时计算；缺失进程级证据时保持 unknown，不能用零替代。
 
 | 热点模式 | 典型证据 | 首要检查方向 |
 |----------|----------|--------------|
@@ -51,7 +79,7 @@
 | 暴露通信压力 | 暴露时间高，重叠比例低，或小同步过于频繁 | 延后同步、调整 bucket，寻找可重叠计算 |
 | rank 不均衡 | 个别 rank 明显更晚到达或完成 | 调整切分、专家容量或负载均衡策略 |
 
-### Step 3：选择缓解动作并设计复测
+## Step 3：选择缓解动作并设计复测
 
 缓解动作不是结论，而是下一轮对照实验的候选。每次调整都要保持 workload 不变，并记录它可能带来的新代价。下表中的 Dual Batch Overlap（DBO）用于说明 Serving 调度候选，本节 GPU 实验只验证 collective 与合成计算的重叠，不把结果写成 DBO 实测证据。
 
@@ -64,15 +92,17 @@
 
 ![通信热点到缓解动作](../public/02_PyTorch_Algorithms/48_mitigation_decision.svg)
 
-### Step 4：CPU 机制实现——热点归因与缓解建议
+<a id="mechanism-practice"></a>
+
+## Step 4：CPU 机制实现——热点归因与缓解建议
 
 题目区提供一组简化的 trace 事件。你需要先按 collective 汇总调用次数、payload、暴露时间、重叠与不均衡，再依据热点模式选择缓解动作，最后给出下一轮复测的决策。
 
-| TODO | 函数 / 机制 | 输入与关键变量 | 输出与不变量 | 测试关注点 |
-| --- | --- | --- | --- | --- |
-| 1 | `summarize_comm_hotspots`：热点聚合 | collective、同步次数、暴露时间、payload、overlap、rank 不均衡 | 同类 collective 先聚合；priority 必须是总暴露时间最大的项 | 重复 collective 的频率、流量汇总与优先热点 |
-| 2 | `choose_comm_mitigation`：动作匹配 | priority 的 payload、overlap、rank 不均衡 | 返回策略、目标 collective 与复测字段；不平衡优先级最高 | 路由、低 overlap 与不均衡分支 |
-| 3 | `recommend_comm_followup`：实验决策 | priority、mitigation、暴露通信强度 | 返回 `accept / tune / collect_more_evidence` 与下一轮字段 | 缺少 trace、低暴露与高暴露对照 |
+| TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
+|:---|:---|:---|:---|
+| TODO 1：聚合通信热点<br>`summarize_comm_hotspots` | 合并同类 collective 并选择优先热点 | 优先级由总暴露时间决定，缺失不均衡保持 unknown | 检查频率、流量与热点排序 |
+| TODO 2：匹配缓解动作<br>`choose_comm_mitigation` | 根据载荷、重叠和进程不均衡选择动作 | 不均衡、低重叠与路由压力按证据分支 | 检查三类热点和默认分支 |
+| TODO 3：形成复测决策<br>`recommend_comm_followup` | 根据暴露强度输出下一轮实验 | 只返回接受、调优或补充证据 | 检查无 Trace、低暴露与高暴露对照 |
 
 
 ```python
@@ -323,6 +353,8 @@ def recommend_comm_followup(summary: Dict[str, Any], mitigation: Dict[str, Any])
 - 没有 trace 时先补证据；暴露通信较低时接受当前方案；暴露通信明显时进入调优。
 - 决策必须带上下一轮测量项，才能验证动作是否真的降低了关键路径通信。
 
+<a id="gpu-experiment"></a>
+
 ### Step 5：可选多 GPU 复测——通信与计算重叠
 
 CPU 时间线说明如何计算 overlap；本实验进一步验证异步 collective 是否真的缩短最大 rank 的 step 时间。它使用合成矩阵计算和真实 NCCL `all_reduce`，不代表完整训练框架已经实现同等重叠。
@@ -346,7 +378,8 @@ PAYLOAD_ELEMENTS = 4 * 1024 * 1024  # 每个 rank 的 all-reduce 元素数。
 COMPUTE_DIM = 2048  # 与通信并行执行的方阵乘法维度。
 WARMUP = 3  # 排除首次初始化与 kernel 预热。
 REPEATS = 10  # 收集重复 step，结果取最大 rank 平均时间。
-RESULT_PATH = f'benchmarks/results/48_communication_overlap_{RUN_LABEL}.json'  # 运行标签进入文件名，避免覆盖历史结果。
+from tools.project_runtime import resolve_project_root
+RESULT_PATH = resolve_project_root() / f'benchmarks/results/48_communication_overlap_{RUN_LABEL}.json'  # 运行标签进入文件名，避免覆盖历史结果。
 print({'run_mode': RUN_MODE, 'profile': ENVIRONMENT_PROFILE, 'world_size': WORLD_SIZE, 'payload_elements': PAYLOAD_ELEMENTS, 'compute_dim': COMPUTE_DIM, 'result': RESULT_PATH})
 
 ```

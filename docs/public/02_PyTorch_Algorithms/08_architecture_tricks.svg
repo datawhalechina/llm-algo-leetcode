@@ -1,18 +1,41 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="650" viewBox="0 0 1600 650" role="img" aria-labelledby="title desc">
-<title id="title">架构配置审计链</title><desc id="desc">从配置声明追踪到模块实例、参数归属、运行时状态与系统后果。</desc>
-<defs><style>.t{font:700 30px sans-serif;fill:#0f172a}.s{font:500 16px sans-serif;fill:#475569}.h{font:700 17px sans-serif;fill:#111827;text-anchor:middle}.b{font:500 14px sans-serif;fill:#334155;text-anchor:middle}.g{font:700 16px sans-serif;fill:#475569}.x{stroke-width:2.5;rx:16}.a{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#m)}</style><marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#475569"/></marker></defs>
-<rect width="1600" height="650" fill="#f8fafc"/><text x="55" y="58" class="t">架构配置审计：从字段追踪到真实模块和系统后果</text><text x="55" y="88" class="s">同一字段只有落实为模块、参数和运行时状态后，才能解释参数量、显存、计算、通信与质量变化。</text>
-<rect x="55" y="220" width="190" height="96" class="x" fill="#fff7ed" stroke="#d97706"/><text x="150" y="258" class="h">配置声明</text><text x="150" y="285" class="b">注意力头 / 归一化 / MoE / 绑定</text>
-<rect x="300" y="220" width="190" height="96" class="x" fill="#eff6ff" stroke="#2563eb"/><text x="395" y="258" class="h">模块实例化</text><text x="395" y="285" class="b">实际层类型与连接</text>
-<rect x="545" y="220" width="190" height="96" class="x" fill="#f5f3ff" stroke="#7c3aed"/><text x="640" y="258" class="h">参数归属与形状</text><text x="640" y="285" class="b">共享 / 独立 / 分片</text>
-<rect x="790" y="220" width="190" height="96" class="x" fill="#ecfeff" stroke="#0891b2"/><text x="885" y="258" class="h">运行时状态</text><text x="885" y="285" class="b">激活 / KV / 路由</text>
-<rect x="1035" y="220" width="210" height="96" class="x" fill="#ecfccb" stroke="#65a30d"/><text x="1140" y="258" class="h">执行路径</text><text x="1140" y="285" class="b">内核 / 分发 / 集合通信</text>
-<rect x="1300" y="220" width="240" height="96" class="x" fill="#fff1f2" stroke="#e11d48"/><text x="1420" y="258" class="h">系统与质量后果</text><text x="1420" y="285" class="b">容量 / 延迟 / 通信 / 稳定性</text>
-<path d="M245 268H300" class="a"/><path d="M490 268H545" class="a"/><path d="M735 268H790" class="a"/><path d="M980 268H1035" class="a"/><path d="M1245 268H1300" class="a"/>
-<text x="65" y="400" class="g">典型审计入口</text>
-<rect x="65" y="430" width="300" height="85" class="x" fill="#ffffff" stroke="#94a3b8"/><text x="215" y="464" class="h">参数共享</text><text x="215" y="490" class="b">词嵌入 ↔ LM Head</text>
-<rect x="420" y="430" width="300" height="85" class="x" fill="#ffffff" stroke="#94a3b8"/><text x="570" y="464" class="h">归一化与残差</text><text x="570" y="490" class="b">前置归一化 / RMSNorm / 缩放</text>
-<rect x="775" y="430" width="300" height="85" class="x" fill="#ffffff" stroke="#94a3b8"/><text x="925" y="464" class="h">注意力表示</text><text x="925" y="490" class="b">注意力头 / RoPE / KV 状态</text>
-<rect x="1130" y="430" width="300" height="85" class="x" fill="#ffffff" stroke="#94a3b8"/><text x="1280" y="464" class="h">MoE 稀疏路径</text><text x="1280" y="490" class="b">路由器 / 专家容量 / 专家</text>
-<text x="800" y="585" class="s" text-anchor="middle">审计输出应能回答：配置是否生效、谁拥有参数、运行时保存什么、成本和行为为何变化。</text>
+<title id="title">从具体配置追踪参数共享与归一化缩放</title><desc id="desc">绑定实例检查两个模块是否引用同一Parameter，V8、D4时共享32个参数；GemmaRMSNorm的weight零初始化使1加weight有效缩放为1。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker><marker id="blue" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#2563eb"/></marker><marker id="red" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#e11d48"/></marker><marker id="purple" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#7c3aed"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:26px;font-weight:700}.sub{font-size:17px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:17px}.small{font-size:15px;fill:#475569}.node{stroke-width:2;rx:12}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.read{stroke:#2563eb;stroke-width:2.5;fill:none;marker-end:url(#blue)}.grad{stroke:#e11d48;stroke-width:2.5;stroke-dasharray:7 5;fill:none;marker-end:url(#red)}.control{stroke:#7c3aed;stroke-width:2.5;stroke-dasharray:7 5;fill:none;marker-end:url(#purple)}</style></defs>
+<rect width="1600" height="650" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="55" y="52" class="title" text-anchor="start">把配置落实到参数对象和前向表达式，再解释结构变化</text>
+<text x="55" y="87" class="sub" text-anchor="start">本页两个可运行例子：词嵌入／LM Head共享参数，以及Gemma风格的1+weight缩放。</text>
+<text x="55" y="143" class="head" text-anchor="start">例一：权重绑定；取词表V=8、隐藏维D=4</text>
+<rect x="55" y="180" width="275" height="90" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="192.5" y="209" class="head" text-anchor="middle">声明采用权重绑定</text>
+<text x="192.5" y="236" class="body" text-anchor="middle">tie_word_embeddings = true</text>
+<path id="tying-0" d="M330 225H420" class="flow"/>
+<rect x="420" y="180" width="300" height="90" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="570" y="209" class="head" text-anchor="middle">两个模块引用同一W</text>
+<text x="570" y="236" class="body" text-anchor="middle">检查Parameter对象身份</text>
+<path id="tying-1" d="M720 225H810" class="flow"/>
+<rect x="810" y="180" width="300" height="90" class="node" fill="#dcfce7" stroke="#15803d"/>
+<text x="960" y="209" class="head" text-anchor="middle">词表参数计数只计一份</text>
+<text x="960" y="236" class="body" text-anchor="middle">8 × 4 = 32</text>
+<path id="tying-2" d="M1110 225H1200" class="flow"/>
+<rect x="1200" y="180" width="320" height="90" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="1360" y="209" class="head" text-anchor="middle">两路梯度归属同一参数</text>
+<text x="1360" y="236" class="body" text-anchor="middle">累积到W.grad</text>
+<text x="55" y="365" class="head" text-anchor="start">例二：Gemma风格RMSNorm；有效通道缩放为1+weight</text>
+<rect x="55" y="410" width="275" height="90" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="192.5" y="439" class="head" text-anchor="middle">通道参数零初始化</text>
+<text x="192.5" y="466" class="body" text-anchor="middle">weight = 0</text>
+<path id="scale-0" d="M330 455H420" class="flow"/>
+<rect x="420" y="410" width="300" height="90" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="570" y="439" class="head" text-anchor="middle">读取实际模块表达式</text>
+<text x="570" y="466" class="body" text-anchor="middle">n × (1 + weight)</text>
+<path id="scale-1" d="M720 455H810" class="flow"/>
+<rect x="810" y="410" width="300" height="90" class="node" fill="#fef3c7" stroke="#d97706"/>
+<text x="960" y="439" class="head" text-anchor="middle">初始有效缩放为1</text>
+<text x="960" y="466" class="body" text-anchor="middle">归一化输出乘单位缩放</text>
+<path id="scale-2" d="M1110 455H1200" class="flow"/>
+<rect x="1200" y="410" width="320" height="90" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="1360" y="439" class="head" text-anchor="middle">按表达式核对数值</text>
+<text x="1360" y="466" class="body" text-anchor="middle">修改weight后重新比较输出</text>
+<text x="55" y="595" class="sub" text-anchor="start">参数共享要检查对象身份；归一化缩放要把初始值和生效公式一起阅读。</text>
 </svg>

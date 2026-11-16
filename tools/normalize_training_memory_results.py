@@ -6,9 +6,8 @@ Usage:
       benchmarks/results/76_real_gpu_memory.json \
       benchmarks/results/75_memory_budget_decision.json
 
-The command never overwrites an input unless an explicit output path is
-provided for that input.  Existing experiment results therefore remain the
-source of truth.
+The command preserves raw inputs and conflicting outputs, including when an
+explicit output directory is supplied. Identical sidecars can be reused.
 """
 
 from __future__ import annotations
@@ -16,20 +15,25 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from training_memory_result_schema import normalize_file
+try:
+    from .training_memory_result_schema import normalize_file
+except ImportError:  # Direct script execution.
+    from training_memory_result_schema import normalize_file
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("inputs", nargs="+", type=Path, help="Legacy result JSON files")
     parser.add_argument("--output-dir", type=Path, help="Directory for generated sidecar files")
+    parser.add_argument("--dry-run", action="store_true", help="Validate outputs without writing files")
     args = parser.parse_args()
 
     for source in args.inputs:
         output = None
         if args.output_dir:
             output = args.output_dir / f"{source.stem}_v1.json"
-        print(normalize_file(source, output))
+        target = normalize_file(source, output, dry_run=args.dry_run)
+        print(f"[dry-run] {target}" if args.dry_run else target)
     return 0
 
 

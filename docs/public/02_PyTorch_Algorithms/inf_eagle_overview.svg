@@ -1,69 +1,42 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520">
-  <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-      <path d="M0 0 L10 5 L0 10 Z" fill="#486581"/>
-    </marker>
-    <style>
-      .title{font:700 25px sans-serif;fill:#102a43}.group{fill:#eef5fb;stroke:#9fb9cf;stroke-width:2}.node{fill:#fff;stroke:#477a9e;stroke-width:2}.feature{fill:#eaf3fb;stroke:#5684aa;stroke-width:2}.draft{fill:#eaf7ef;stroke:#4e8a68;stroke-width:2}.verify{fill:#fff6e8;stroke:#c9852f;stroke-width:2}.reject{fill:#fff0ea;stroke:#c56f43;stroke-width:2}.label{font:700 16px sans-serif;fill:#17324d}.small{font:14px sans-serif;fill:#365269}.edge{fill:none;stroke:#486581;stroke-width:2.4;marker-end:url(#arrow)}.feedback{fill:none;stroke:#8066b3;stroke-width:2.4;stroke-dasharray:7 5;marker-end:url(#arrow)}
-    </style>
-  </defs>
-  <rect x="0" y="0" width="1200" height="520" fill="#f8fafc"/>
-  <text x="600" y="38" text-anchor="middle" class="title">EAGLE：复用目标模型的多层表示生成候选，最终仍由目标模型验证</text>
-
-  <rect x="30" y="66" width="330" height="356" rx="18" class="group"/>
-  <text x="195" y="96" text-anchor="middle" class="label">目标模型提供草稿条件</text>
-  <rect x="65" y="122" width="260" height="64" rx="12" class="node"/>
-  <text x="195" y="149" text-anchor="middle" class="label">已提交序列与当前词元</text>
-  <text x="195" y="171" text-anchor="middle" class="small">确定本轮上下文</text>
-  <rect x="65" y="218" width="76" height="72" rx="11" class="feature"/>
-  <rect x="157" y="218" width="76" height="72" rx="11" class="feature"/>
-  <rect x="249" y="218" width="76" height="72" rx="11" class="feature"/>
-  <text x="103" y="246" text-anchor="middle" class="label">浅层</text>
-  <text x="103" y="270" text-anchor="middle" class="small">局部</text>
-  <text x="195" y="246" text-anchor="middle" class="label">中层</text>
-  <text x="195" y="270" text-anchor="middle" class="small">组合</text>
-  <text x="287" y="246" text-anchor="middle" class="label">深层</text>
-  <text x="287" y="270" text-anchor="middle" class="small">语义</text>
-  <rect x="92" y="326" width="206" height="66" rx="12" class="feature"/>
-  <text x="195" y="353" text-anchor="middle" class="label">归一化表示融合</text>
-  <text x="195" y="376" text-anchor="middle" class="small">固定层集合、形状与权重</text>
-  <path d="M103 290 V306 H195 V326" class="edge"/>
-  <path d="M195 290 V326" class="edge"/>
-  <path d="M287 290 V306 H195 V326" class="edge"/>
-
-  <rect x="402" y="66" width="350" height="356" rx="18" class="group"/>
-  <text x="577" y="96" text-anchor="middle" class="label">轻量特征草稿器</text>
-  <rect x="452" y="126" width="250" height="70" rx="12" class="draft"/>
-  <text x="577" y="155" text-anchor="middle" class="label">表示投影与词元预测</text>
-  <text x="577" y="178" text-anchor="middle" class="small">低成本提出下一步分支</text>
-  <rect x="452" y="238" width="250" height="72" rx="12" class="draft"/>
-  <text x="577" y="267" text-anchor="middle" class="label">自回归扩展候选</text>
-  <text x="577" y="291" text-anchor="middle" class="small">每一步依赖已选草稿历史</text>
-  <rect x="452" y="350" width="250" height="50" rx="12" class="node"/>
-  <text x="577" y="381" text-anchor="middle" class="label">形成带父节点与分数的候选树</text>
-  <path d="M577 196 V238" class="edge"/>
-  <path d="M577 310 V350" class="edge"/>
-
-  <rect x="794" y="66" width="376" height="356" rx="18" class="group"/>
-  <text x="982" y="96" text-anchor="middle" class="label">目标验证与状态提交</text>
-  <rect x="854" y="126" width="256" height="70" rx="12" class="verify"/>
-  <text x="982" y="155" text-anchor="middle" class="label">批量验证候选路径</text>
-  <text x="982" y="178" text-anchor="middle" class="small">目标模型定义最终分布</text>
-  <rect x="824" y="244" width="148" height="72" rx="12" class="draft"/>
-  <text x="898" y="273" text-anchor="middle" class="label">连续通过</text>
-  <text x="898" y="297" text-anchor="middle" class="small">提交候选前缀</text>
-  <rect x="992" y="244" width="148" height="72" rx="12" class="reject"/>
-  <text x="1066" y="273" text-anchor="middle" class="label">首个拒绝</text>
-  <text x="1066" y="297" text-anchor="middle" class="small">修正并丢弃后缀</text>
-  <rect x="866" y="350" width="232" height="50" rx="12" class="node"/>
-  <text x="982" y="381" text-anchor="middle" class="label">更新输出与缓存状态</text>
-  <path d="M982 196 V220 Q982 232 970 232 H898 V244" class="edge"/>
-  <path d="M982 196 V220 Q982 232 994 232 H1066 V244" class="edge"/>
-  <path d="M898 316 V334 Q898 344 908 344 H954 V350" class="edge"/>
-  <path d="M1066 316 V334 Q1066 344 1056 344 H1010 V350" class="edge"/>
-
-  <path d="M298 359 H376 Q402 359 402 333 V161 H452" class="edge"/>
-  <path d="M702 375 H770 Q794 375 794 351 V161 H854" class="edge"/>
-  <path d="M982 400 V468 H16 V154 H65" class="feedback"/>
-  <text x="600" y="500" text-anchor="middle" class="small">只把已验证词元和修正结果写回下一轮；草稿分数不能直接提交状态</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+<title id="title">EAGLE-3从目标表示到下一轮状态</title><desc id="desc">已提交上下文经目标模型取得多层表示，拼接投影后与当前Token嵌入送入自回归草稿器；候选经同一目标模型验证，提交连续前缀并更新下一轮状态。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:24px;font-weight:700}.sub{font-size:16px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:16px}.small{font-size:14px;fill:#475569}.node{stroke-width:2;rx:12}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.feedback{stroke:#7c3aed;stroke-width:2.5;stroke-dasharray:7 5;fill:none;marker-end:url(#arrow)}</style></defs><rect width="1200" height="520" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="40" y="40" class="title" text-anchor="start">EAGLE-3：目标表示提供条件，草稿依次扩展，目标模型验证</text>
+<text x="40" y="70" class="sub" text-anchor="start">真实草稿器采用特征拼接与学习投影；本页CPU的加权和用于练习特征维度与贡献。</text>
+<rect x="40" y="115" width="210" height="72" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="145" y="143" class="head" text-anchor="middle">已提交上下文</text>
+<text x="145" y="167" class="body" text-anchor="middle">包含当前Token</text>
+<rect x="300" y="115" width="240" height="72" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="420" y="143" class="head" text-anchor="middle">目标模型前向</text>
+<text x="420" y="167" class="body" text-anchor="middle">Prefill或上一轮验证</text>
+<rect x="600" y="115" width="230" height="72" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="715" y="143" class="head" text-anchor="middle">多层特征拼接／投影</text>
+<text x="715" y="167" class="body" text-anchor="middle">浅、中、深层 → 草稿条件</text>
+<rect x="900" y="115" width="250" height="72" class="node" fill="#dcfce7" stroke="#15803d"/>
+<text x="1025" y="143" class="head" text-anchor="middle">草稿器自回归扩展</text>
+<text x="1025" y="167" class="body" text-anchor="middle">当前Token嵌入＋特征</text>
+<path id="context-to-target" d="M250 151H300" class="flow"/>
+<path id="target-to-features" d="M540 151H600" class="flow"/>
+<path id="features-to-drafter" d="M830 151H900" class="flow"/>
+<path id="token-to-drafter" d="M145 187V250H950V187" class="flow"/>
+<text x="530" y="238" class="small" text-anchor="middle">当前Token嵌入</text>
+<rect x="900" y="330" width="250" height="72" class="node" fill="#dcfce7" stroke="#15803d"/>
+<text x="1025" y="358" class="head" text-anchor="middle">候选树</text>
+<text x="1025" y="382" class="body" text-anchor="middle">父子关系保留草稿历史</text>
+<rect x="600" y="330" width="230" height="72" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="715" y="358" class="head" text-anchor="middle">同一目标模型验证</text>
+<text x="715" y="382" class="body" text-anchor="middle">按树路径组织注意力</text>
+<rect x="300" y="330" width="240" height="72" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="420" y="358" class="head" text-anchor="middle">提交连续接受前缀</text>
+<text x="420" y="382" class="body" text-anchor="middle">首拒按验证协议修正</text>
+<rect x="40" y="330" width="210" height="72" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="145" y="358" class="head" text-anchor="middle">下一轮状态</text>
+<text x="145" y="382" class="body" text-anchor="middle">提交序列、KV与目标特征</text>
+<path id="drafter-to-tree" d="M1025 187V330" class="flow"/>
+<path id="tree-to-verifier" d="M900 366H830" class="flow"/>
+<path id="verifier-to-commit" d="M600 366H540" class="flow"/>
+<path id="commit-to-next" d="M300 366H250" class="flow"/>
+<text x="1045" y="295" class="small" text-anchor="start">同一路径逐步扩展</text>
+<text x="40" y="474" class="sub" text-anchor="start">每轮以新的已提交状态开始；草稿中的未接受分支在提交时丢弃。</text>
 </svg>

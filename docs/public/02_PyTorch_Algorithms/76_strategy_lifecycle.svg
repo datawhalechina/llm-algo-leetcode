@@ -1,80 +1,39 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="660" viewBox="0 0 1200 660" style="background:#e5eef5">
-  <style>
-    text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#1f2937}
-    .title{font-size:26px;font-weight:700}.subtitle{font-size:15px;fill:#475569}
-    .group{font-size:17px;font-weight:700;fill:#31566f}.label{font-size:18px;font-weight:700}
-    .small{font-size:15px}.tiny{font-size:14px}.panel{fill:#dceaf3;stroke:#b4ccda;stroke-width:1.5;rx:18}
-    .box{fill:#f8fafc;stroke:#475569;stroke-width:2;rx:12}.soft{fill:#eef5f8;stroke:#64748b;stroke-width:1.5;rx:10}
-    .arrow{fill:none;stroke:#64748b;stroke-width:3;marker-end:url(#a)}
-  </style>
-  <defs>
-    <marker id="a" markerWidth="11" markerHeight="11" refX="9" refY="3.5" orient="auto">
-      <path d="M0,0 L10,3.5 L0,7 Z" fill="#64748b"/>
-    </marker>
-  </defs>
-
-  <rect x="0" y="0" width="1200" height="660" rx="20" fill="#e5eef5" stroke="#c5d5e2" stroke-width="2"/>
-  <text x="600" y="42" text-anchor="middle" class="title">同一训练任务下比较激活策略</text>
-  <text x="600" y="68" text-anchor="middle" class="subtitle">统一实验条件，观察显存与速度代价，形成可复核的 GPU benchmark 证据</text>
-
-  <!-- 输入 -->
-  <rect x="35" y="105" width="245" height="455" class="panel"/>
-  <text x="60" y="138" class="group">输入与实验契约</text>
-  <rect x="60" y="170" width="195" height="105" class="box"/>
-  <text x="157" y="204" text-anchor="middle" class="label">训练基线</text>
-  <text x="157" y="232" text-anchor="middle" class="small">同一模型与训练口径</text>
-  <text x="157" y="255" text-anchor="middle" class="tiny">模型 / dtype / optimizer</text>
-  <rect x="60" y="315" width="195" height="145" class="box"/>
-  <text x="157" y="350" text-anchor="middle" class="label">固定 workload</text>
-  <text x="157" y="380" text-anchor="middle" class="small">batch · seq_len · seed</text>
-  <text x="157" y="407" text-anchor="middle" class="small">相同输入与训练步数</text>
-  <text x="157" y="434" text-anchor="middle" class="tiny">只改变 activation 策略</text>
-
-  <!-- 策略 -->
-  <rect x="330" y="105" width="360" height="455" class="panel"/>
-  <text x="355" y="138" class="group">策略对照：如何处理激活值</text>
-  <rect x="355" y="170" width="310" height="70" class="box"/>
-  <text x="380" y="200" class="label">baseline</text>
-  <text x="380" y="224" class="small">激活留在 GPU，反向直接读取</text>
-  <rect x="355" y="260" width="310" height="70" class="box"/>
-  <text x="380" y="290" class="label">checkpoint</text>
-  <text x="380" y="314" class="small">保存边界，反向阶段重算</text>
-  <rect x="355" y="350" width="310" height="70" class="box"/>
-  <text x="380" y="380" class="label">offload</text>
-  <text x="380" y="404" class="small">激活搬到 CPU，需要搬运</text>
-  <rect x="355" y="440" width="310" height="70" class="box"/>
-  <text x="380" y="470" class="label">hybrid</text>
-  <text x="380" y="494" class="small">重算与搬运组合</text>
-
-  <!-- 指标 -->
-  <rect x="740" y="105" width="260" height="455" class="panel"/>
-  <text x="765" y="138" class="group">统一观察指标</text>
-  <rect x="765" y="170" width="210" height="65" class="soft"/>
-  <text x="870" y="198" text-anchor="middle" class="label">显存</text>
-  <text x="870" y="220" text-anchor="middle" class="small">allocated / reserved</text>
-  <rect x="765" y="260" width="210" height="65" class="soft"/>
-  <text x="870" y="288" text-anchor="middle" class="label">速度</text>
-  <text x="870" y="310" text-anchor="middle" class="small">step time / throughput</text>
-  <rect x="765" y="350" width="210" height="65" class="soft"/>
-  <text x="870" y="378" text-anchor="middle" class="label">可运行性</text>
-  <text x="870" y="400" text-anchor="middle" class="small">OOM / status</text>
-  <rect x="765" y="440" width="210" height="65" class="soft"/>
-  <text x="870" y="468" text-anchor="middle" class="label">质量代理</text>
-  <text x="870" y="490" text-anchor="middle" class="small">loss</text>
-
-  <!-- 输出 -->
-  <rect x="1045" y="180" width="125" height="300" class="panel"/>
-  <text x="1068" y="215" class="group">输出</text>
-  <rect x="1060" y="250" width="95" height="85" class="box"/>
-  <text x="1107" y="282" text-anchor="middle" class="label">JSON</text>
-  <text x="1107" y="307" text-anchor="middle" class="tiny">重复运行</text>
-  <text x="1107" y="325" text-anchor="middle" class="tiny">聚合指标</text>
-  <rect x="1060" y="370" width="95" height="85" class="box"/>
-  <text x="1107" y="402" text-anchor="middle" class="label">预算决策</text>
-  <text x="1107" y="427" text-anchor="middle" class="tiny">预算决策</text>
-
-  <!-- 三条主线，避免策略节点之间交叉 -->
-  <path d="M280 332 H325" class="arrow"/>
-  <path d="M690 332 H735" class="arrow"/>
-  <path d="M1000 332 H1040" class="arrow"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="660" viewBox="0 0 1200 660" role="img" aria-labelledby="title desc">
+<title id="title">四种激活保存与恢复方式</title>
+<desc id="desc">同一训练任务下，完整保存保留GPU激活，重算保留边界输入，卸载把保存张量放在主机，混合组合两种方法；箭头表示反向需要时的恢复动作，时间与容量需分别测量。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" markerWidth="9" markerHeight="9" refX="10" refY="5" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#1f2937}.title{font-size:26px;font-weight:700}.head{font-size:18px;font-weight:700}.body{font-size:17px}.small{font-size:14px;fill:#475569}.node{stroke-width:2;rx:12}.edge{fill:none;stroke:#64748b;stroke-width:2.5;marker-end:url(#arrow)}</style></defs>
+<rect width="1200" height="660" fill="#f8fafc"/>
+<text x="600" y="42" text-anchor="middle" class="title">前向结束后保存什么，反向需要时怎样恢复？</text>
+<text x="600" y="72" text-anchor="middle" class="small">固定模型、输入与优化器；四行是不同策略，不是依次执行的步骤</text>
+<text x="140" y="110" text-anchor="middle" class="head">策略</text>
+<text x="470" y="110" text-anchor="middle" class="head">保存期间的状态</text>
+<text x="995" y="110" text-anchor="middle" class="head">反向使用时的动作与代价</text>
+<path d="M640 180H830" class="edge"/><path d="M640 300H830" class="edge"/><path d="M640 420H830" class="edge"/><path d="M640 540H830" class="edge"/>
+<g text-anchor="middle">
+<rect x="40" y="130" width="200" height="100" class="node" fill="#e0f2fe" stroke="#0284c7"/>
+<text x="140" y="170" class="head">完整保存</text><text x="140" y="202" class="small">baseline</text>
+<rect x="300" y="130" width="340" height="100" class="node" fill="#eff6ff" stroke="#60a5fa"/>
+<text x="470" y="170" class="head">激活继续保存在GPU</text><text x="470" y="202" class="body">保持到反向读取</text>
+<rect x="830" y="130" width="330" height="100" class="node" fill="#eff6ff" stroke="#60a5fa"/>
+<text x="995" y="170" class="head">直接使用保存张量</text><text x="995" y="202" class="body">以持续占用换取直接读取</text>
+<rect x="40" y="250" width="200" height="100" class="node" fill="#fef3c7" stroke="#d97706"/>
+<text x="140" y="290" class="head">激活重算</text><text x="140" y="322" class="small">checkpoint</text>
+<rect x="300" y="250" width="340" height="100" class="node" fill="#fffbeb" stroke="#f59e0b"/>
+<text x="470" y="290" class="head">保留边界输入或部分激活</text><text x="470" y="322" class="body">中间结果按需重新生成</text>
+<rect x="830" y="250" width="330" height="100" class="node" fill="#fffbeb" stroke="#f59e0b"/>
+<text x="995" y="290" class="head">重新执行选定前向区域</text><text x="995" y="322" class="body">增加恢复中间结果的计算</text>
+<rect x="40" y="370" width="200" height="100" class="node" fill="#dcfce7" stroke="#16a34a"/>
+<text x="140" y="410" class="head">主机卸载</text><text x="140" y="442" class="small">offload</text>
+<rect x="300" y="370" width="340" height="100" class="node" fill="#f0fdf4" stroke="#4ade80"/>
+<text x="470" y="410" class="head">所需张量暂放主机内存</text><text x="470" y="442" class="body">GPU保存期间的占用可减少</text>
+<rect x="830" y="370" width="330" height="100" class="node" fill="#f0fdf4" stroke="#4ade80"/>
+<text x="995" y="410" class="head">搬回GPU后使用</text><text x="995" y="442" class="body">增加传输与可能的等待</text>
+<rect x="40" y="490" width="200" height="100" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="140" y="530" class="head">混合策略</text><text x="140" y="562" class="small">hybrid</text>
+<rect x="300" y="490" width="340" height="100" class="node" fill="#f5f3ff" stroke="#a78bfa"/>
+<text x="470" y="530" class="head">部分保留，部分卸载</text><text x="470" y="562" class="body">实际保存范围由实现决定</text>
+<rect x="830" y="490" width="330" height="100" class="node" fill="#f5f3ff" stroke="#a78bfa"/>
+<text x="995" y="530" class="head">按需重算与搬回</text><text x="995" y="562" class="body">重新比较计算、搬运与峰值</text>
+<text x="600" y="632" class="small">保存方式改变的是状态与恢复代价；是否降低整步峰值、是否值得采用，仍看完整更新测量</text>
+</g></svg>

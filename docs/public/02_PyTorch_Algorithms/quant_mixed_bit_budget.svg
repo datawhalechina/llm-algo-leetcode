@@ -1,66 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
-  <title id="title">混合位宽的质量容量前沿</title>
-  <desc id="desc">从统一低位宽基线逐步保护高敏感对象，容量增加而质量损失下降；在质量门槛与容量预算共同约束下选择最小合格候选。</desc>
-  <defs>
-    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
-      <path d="M0,0 L9,4.5 L0,9 Z" fill="#475569"/>
-    </marker>
-    <style>
-      .title{font:700 25px sans-serif;fill:#0f172a;text-anchor:middle}.sub{font:15px sans-serif;fill:#475569;text-anchor:middle}
-      .axis{stroke:#475569;stroke-width:2.2;fill:none;marker-end:url(#arrow)}.grid{stroke:#cbd5e1;stroke-width:1.5;stroke-dasharray:7 7}
-      .frontier{stroke:#2563eb;stroke-width:3;fill:none;marker-end:url(#arrow)}
-      .node{stroke-width:2.2}.low{fill:#fee2e2;stroke:#dc2626}.mid{fill:#ffedd5;stroke:#ea580c}.pass{fill:#dcfce7;stroke:#16a34a}.high{fill:#dbeafe;stroke:#2563eb}
-      .t{font:700 16px sans-serif;fill:#0f172a;text-anchor:middle}.s{font:13px sans-serif;fill:#475569;text-anchor:middle}.label{font:700 15px sans-serif;fill:#334155}
-      .gate{font:700 14px sans-serif;fill:#15803d}.budget{font:700 14px sans-serif;fill:#b45309}.note{fill:#fff;stroke:#cbd5e1;stroke-width:2;rx:14}
-    </style>
-  </defs>
-  <rect width="1200" height="620" fill="#f8fafc"/>
-  <text x="600" y="42" class="title">预算内升级：寻找最小容量的合格候选</text>
-  <text x="600" y="70" class="sub">保护更多高敏感对象通常改善质量，但会提高有效平均位宽和容量成本</text>
-
-  <rect x="105" y="105" width="815" height="405" fill="#ffffff" stroke="#cbd5e1" stroke-width="2" rx="16"/>
-  <rect x="107" y="107" width="811" height="174" fill="#ecfdf5" opacity="0.72" rx="14"/>
-  <text x="130" y="132" class="gate">质量合格区</text>
-  <path d="M130 495 V132" class="axis"/>
-  <path d="M130 495 H885" class="axis"/>
-  <text x="82" y="305" class="label" transform="rotate(-90 82 305)">质量损失（越低越好）</text>
-  <text x="510" y="548" class="label">容量成本 / 有效平均位宽（向右增加）</text>
-
-  <path d="M130 282 H885" class="grid"/>
-  <text x="142" y="273" class="gate">质量门槛</text>
-  <path d="M785 132 V495" class="grid"/>
-  <text x="696" y="493" class="budget">容量预算</text>
-
-  <path d="M215 420 C300 390 330 350 390 332 S515 250 575 238 S695 190 748 176" class="frontier"/>
-
-  <circle cx="215" cy="420" r="30" class="node" fill="#fee2e2" stroke="#dc2626"/>
-  <text x="215" y="414" class="t">统一</text><text x="215" y="434" class="s">低位宽</text>
-  <text x="215" y="466" class="s">容量最小，质量未过门槛</text>
-
-  <circle cx="390" cy="332" r="34" class="node" fill="#ffedd5" stroke="#ea580c"/>
-  <text x="390" y="326" class="t">少量保护</text><text x="390" y="346" class="s">高敏感对象</text>
-  <text x="390" y="382" class="s">质量恢复但仍需调参</text>
-
-  <circle cx="575" cy="238" r="38" class="node" fill="#dcfce7" stroke="#16a34a"/>
-  <text x="575" y="232" class="t">最小合格</text><text x="575" y="253" class="s">候选策略</text>
-  <text x="575" y="198" class="gate">优先选择</text>
-
-  <circle cx="748" cy="176" r="38" class="node" fill="#dbeafe" stroke="#2563eb"/>
-  <text x="748" y="170" class="t">更多保护</text><text x="748" y="191" class="s">质量更稳健</text>
-  <text x="748" y="228" class="s">容量代价继续增加</text>
-
-  <circle cx="855" cy="145" r="34" class="node" fill="#dbeafe" stroke="#2563eb"/>
-  <text x="855" y="140" class="t">统一</text><text x="855" y="160" class="s">高位宽</text>
-  <text x="855" y="198" class="budget">超过预算</text>
-
-  <rect x="955" y="128" width="205" height="334" class="note" fill="#ffffff" stroke="#cbd5e1" rx="14"/>
-  <text x="1057" y="164" class="t">选择顺序</text>
-  <text x="1057" y="205" class="s">① 过滤 backend</text>
-  <text x="1057" y="228" class="s">不支持的位宽</text>
-  <text x="1057" y="273" class="s">② 按误差下降 /</text>
-  <text x="1057" y="296" class="s">额外字节升级</text>
-  <text x="1057" y="341" class="s">③ 同时检查质量门槛</text>
-  <text x="1057" y="364" class="s">与容量预算</text>
-  <text x="1057" y="409" class="s">④ 独立复验后输出</text>
-  <text x="1057" y="432" class="s">accept / tune / reject</text>
+<title id="title">质量门槛与容量预算共同筛选候选</title><desc id="desc">纵轴质量损失向上增加，横轴容量向右增加；同时位于质量阈值下方和容量预算左方的候选才合格。点位为示意而非实测。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#52657a"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:15px;font-weight:400;fill:#334e68}.title{font-size:25px;font-weight:700;fill:#18324b}.h{font-size:18px;font-weight:600;fill:#18324b}.s{font-size:14px}.e{stroke:#52657a;stroke-width:2.5;fill:none;marker-end:url(#a)}.d{stroke:#7657a5;stroke-width:2;fill:none;stroke-dasharray:7 5;marker-end:url(#a)}</style></defs><rect width="1200" height="620" fill="#f8fafc"/><text x="600" y="43" text-anchor="middle" class="title">质量门槛与容量预算共同筛选候选</text>
+<rect x="130" y="315" width="670" height="190" fill="#e8f6f1" data-layout-role="panel"/>
+<path d="M130 505V115" class="e"/><path d="M130 505H1090" class="e"/>
+<path d="M130 315H1090" fill="none" stroke="#3f8b72" stroke-width="2" stroke-dasharray="7 6"/>
+<path d="M800 115V505" fill="none" stroke="#b7791f" stroke-width="2" stroke-dasharray="7 6"/>
+<text x="45" y="330" transform="rotate(-90 45 330)" class="h" text-anchor="middle">质量损失（向上增加）</text>
+<text x="610" y="558" class="h" text-anchor="middle">容量字节（向右增加）</text>
+<circle cx="230" cy="185" r="13" fill="#b85c57"/><circle cx="440" cy="275" r="13" fill="#b7791f"/>
+<circle cx="610" cy="365" r="13" fill="#3f8b72"/><circle cx="740" cy="420" r="13" fill="#3f78a8"/>
+<circle cx="985" cy="455" r="13" fill="#7657a5"/>
+<text x="245" y="155" text-anchor="middle" class="s">统一低位宽：损失较高</text>
+<text x="440" y="245" text-anchor="middle" class="s">少量保护，仍未达标</text>
+<text x="600" y="345" text-anchor="middle" class="s">最小容量合格候选</text>
+<text x="735" y="455" text-anchor="middle" class="s">更多保护</text>
+<text x="985" y="420" text-anchor="middle" class="s">超过容量预算</text>
+<text x="900" y="300" text-anchor="middle" class="s">质量门槛</text>
+<text x="815" y="100" text-anchor="middle" class="s">容量预算</text>
+<text x="330" y="465" text-anchor="middle" class="s">同时满足两项条件的区域</text>
+<text x="600" y="600" text-anchor="middle" class="s">机制示意，非实测曲线；真实候选逐个测量，组合误差可能非单调</text>
 </svg>

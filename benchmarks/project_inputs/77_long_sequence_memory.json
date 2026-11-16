@@ -1,0 +1,22 @@
+{
+  "schema_version": "architecture-project-input/v1",
+  "semantic_id": "ARCH-LONG-SEQUENCE-MEMORY",
+  "models": [
+    {
+      "name": "baseline",
+      "model_id": "",
+      "revision": "",
+      "architecture_type": "explicit_kv"
+    },
+    {
+      "name": "candidate",
+      "model_id": "",
+      "revision": "",
+      "architecture_type": "recurrent_state"
+    }
+  ],
+  "comparison_design": "cross_model_observational",
+  "comparison_notes": "",
+  "revision": "main",
+  "status": "awaiting_local_model_pair"
+}

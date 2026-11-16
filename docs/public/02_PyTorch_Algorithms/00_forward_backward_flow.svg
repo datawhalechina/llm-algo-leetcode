@@ -1,26 +1,49 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
-  <title id="title">局部前向状态如何支撑反向传播</title>
-  <desc id="desc">前向依次形成线性结果、激活与损失，并保存输入、权重和门控状态；反向从损失梯度出发产生输入、权重和偏置梯度。</desc>
-  <defs>
-    <style>.title{font:700 28px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.sub{font:500 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.label{font:700 16px "Noto Sans SC","Microsoft YaHei",sans-serif}.head{font:700 18px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.body{font:500 14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.box{stroke-width:2.5}.forward{stroke:#2563eb;stroke-width:3;fill:none;marker-end:url(#blue)}.backward{stroke:#db2777;stroke-width:3;fill:none;marker-end:url(#pink)}</style>
-    <marker id="blue" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#2563eb"/></marker>
-    <marker id="pink" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#db2777"/></marker>
-  </defs>
-  <rect width="1500" height="470" fill="#f8fafc"/>
-  <text x="55" y="55" class="title">训练闭环：前向保存什么，反向就消费什么</text>
-  <text x="55" y="85" class="sub">蓝色表示前向数据流，粉色表示反向梯度流；两条路径共享前向保存的输入、权重和激活门控。</text>
-  <text x="55" y="155" class="label" fill="#2563eb">前向</text>
-  <rect x="150" y="115" width="230" height="90" rx="15" fill="#dbeafe" stroke="#2563eb" class="box"/><text x="265" y="150" text-anchor="middle" class="head">输入与参数</text><text x="265" y="178" text-anchor="middle" class="body">保存输入、权重</text>
-  <rect x="475" y="115" width="230" height="90" rx="15" fill="#dcfce7" stroke="#16a34a" class="box"/><text x="590" y="150" text-anchor="middle" class="head">线性变换</text><text x="590" y="178" text-anchor="middle" class="body">形成激活前值</text>
-  <rect x="800" y="115" width="230" height="90" rx="15" fill="#fef3c7" stroke="#d97706" class="box"/><text x="915" y="150" text-anchor="middle" class="head">激活门控</text><text x="915" y="178" text-anchor="middle" class="body">保存正负状态</text>
-  <rect x="1125" y="115" width="230" height="90" rx="15" fill="#ede9fe" stroke="#7c3aed" class="box"/><text x="1240" y="150" text-anchor="middle" class="head">损失</text><text x="1240" y="178" text-anchor="middle" class="body">产生上游梯度</text>
-  <path d="M380 160H475" class="forward"/><path d="M705 160H800" class="forward"/><path d="M1030 160H1125" class="forward"/>
-
-  <text x="55" y="333" class="label" fill="#db2777">反向</text>
-  <rect x="1125" y="290" width="230" height="90" rx="15" fill="#fce7f3" stroke="#db2777" class="box"/><text x="1240" y="325" text-anchor="middle" class="head">上游梯度</text><text x="1240" y="353" text-anchor="middle" class="body">从损失向前一层传播</text>
-  <rect x="800" y="290" width="230" height="90" rx="15" fill="#fff1f2" stroke="#e11d48" class="box"/><text x="915" y="325" text-anchor="middle" class="head">门控梯度</text><text x="915" y="353" text-anchor="middle" class="body">关闭位置变为 0</text>
-  <rect x="475" y="290" width="230" height="90" rx="15" fill="#ecfeff" stroke="#0891b2" class="box"/><text x="590" y="325" text-anchor="middle" class="head">矩阵梯度</text><text x="590" y="353" text-anchor="middle" class="body">输入梯度 · 权重梯度</text>
-  <rect x="150" y="290" width="230" height="90" rx="15" fill="#f0fdf4" stroke="#16a34a" class="box"/><text x="265" y="325" text-anchor="middle" class="head">参数与输入</text><text x="265" y="353" text-anchor="middle" class="body">接收对应梯度</text>
-  <path d="M1125 335H1030" class="backward"/><path d="M800 335H705" class="backward"/><path d="M475 335H380" class="backward"/>
-  <path d="M1240 205V290" class="backward"/>
+<title id="title">Linear与ReLU前向保存及局部反向</title><desc id="desc">本页局部Function前向保存输入x、权重W与正值掩码；上游梯度先经ReLU门控形成G_z，线性局部反向读取x与W并返回输入、权重和偏置梯度。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:18px;fill:#475569}.head{font-size:19px;font-weight:700}.body{font-size:18px}.small{font-size:16px;fill:#475569}.node{stroke-width:2;rx:12}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.saved{stroke:#15803d;stroke-width:2.5;stroke-dasharray:7 5;fill:none;marker-end:url(#arrow)}</style></defs>
+<rect width="1500" height="470" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="55" y="48" class="title" text-anchor="start">前向保存x、W与mask，反向据此形成三类梯度</text>
+<text x="55" y="80" class="sub" text-anchor="start">实线：数值或梯度；虚线：保存与读取。x形状为[N,Dᵢₙ]，W形状为[Dₒᵤₜ,Dᵢₙ]。</text>
+<rect x="55" y="110" width="260" height="70" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="185" y="137" class="head" text-anchor="middle">输入与参数</text>
+<text x="185" y="162" class="body" text-anchor="middle">x、W、b</text>
+<rect x="400" y="110" width="260" height="70" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="530" y="137" class="head" text-anchor="middle">线性变换</text>
+<text x="530" y="162" class="body" text-anchor="middle">z = x Wᵀ + b</text>
+<rect x="745" y="110" width="260" height="70" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="875" y="137" class="head" text-anchor="middle">ReLU</text>
+<text x="875" y="162" class="body" text-anchor="middle">y = max(0, z)</text>
+<rect x="1090" y="110" width="260" height="70" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="1220" y="137" class="head" text-anchor="middle">输出给后续网络</text>
+<text x="1220" y="162" class="body" text-anchor="middle">y</text>
+<path id="inputs-to-linear" d="M315 145H400" class="flow"/>
+<path id="linear-to-relu" d="M660 145H745" class="flow"/>
+<path id="relu-to-output" d="M1005 145H1090" class="flow"/>
+<rect x="55" y="220" width="260" height="70" class="node" fill="#dcfce7" stroke="#15803d"/>
+<text x="185" y="247" class="head" text-anchor="middle">保存x与W</text>
+<text x="185" y="272" class="body" text-anchor="middle">供线性层局部反向读取</text>
+<rect x="745" y="220" width="260" height="70" class="node" fill="#dcfce7" stroke="#15803d"/>
+<text x="875" y="247" class="head" text-anchor="middle">保存mask = (z &gt; 0)</text>
+<text x="875" y="272" class="body" text-anchor="middle">供ReLU反向读取</text>
+<path id="save-input-weight" d="M185 180V220" class="saved"/>
+<path id="save-relu-mask" d="M875 180V220" class="saved"/>
+<rect x="1090" y="335" width="260" height="80" class="node" fill="#fee2e2" stroke="#e11d48"/>
+<text x="1220" y="362" class="head" text-anchor="middle">接收上游梯度 Gᵧ</text>
+<text x="1220" y="387" class="body" text-anchor="middle">由外部损失与后续网络回传</text>
+<rect x="745" y="335" width="260" height="80" class="node" fill="#fef3c7" stroke="#d97706"/>
+<text x="875" y="362" class="head" text-anchor="middle">ReLU局部反向</text>
+<text x="875" y="387" class="body" text-anchor="middle">G_z = Gᵧ ⊙ mask</text>
+<rect x="400" y="335" width="260" height="80" class="node" fill="#fef3c7" stroke="#d97706"/>
+<text x="530" y="362" class="head" text-anchor="middle">线性层局部反向</text>
+<text x="530" y="387" class="body" text-anchor="middle">读取G_z、x与W</text>
+<path id="upstream-to-gate" d="M1090 375H1005" class="flow"/>
+<path id="gate-to-linear-backward" d="M745 375H660" class="flow"/>
+<path id="mask-to-backward" d="M875 290V335" class="saved"/>
+<path id="x-weight-to-backward" d="M315 255H530V335" class="saved"/>
+<rect x="55" y="330" width="260" height="115" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/><text x="185" y="355" class="head" text-anchor="middle">返回x、W、b的梯度</text>
+<text x="185" y="381" class="body" text-anchor="middle">G_x = G_z W</text>
+<text x="185" y="405" class="body" text-anchor="middle">G_W = G_zᵀ x</text>
+<text x="185" y="429" class="body" text-anchor="middle">G_b = Σₙ G_z</text>
+<path id="return-three-gradients" d="M400 375H315" class="flow"/>
 </svg>

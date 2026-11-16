@@ -1,6 +1,6 @@
 # 86. DPO Online Benchmark | 在线后训练生命周期与恢复
 
-**难度：** Hard | **环境：** CPU + 真实产物 | **标签：** `策略版本`, `恢复`, `回滚`, `交接状态` | **目标人群：** 后训练交付学习者
+**难度：** Hard | **环境：** [CPU 与本地训练产物](#runtime-environment) | **标签：** `策略版本`, `恢复`, `回退基线` | **目标人群：** 理解偏好更新、需要核对候选来源与恢复条件的读者
 
 > 🚀 **云端运行环境**
 >
@@ -14,68 +14,85 @@
 
 ## 本节导读
 
-本节接收 84 的 DPO 候选或 85 的 GRPO/RLVR 候选，检查候选是否来自当前 SFT 基线、反馈或轨迹是否仍然有效、各阶段失败后能否恢复，并把通过生命周期检查的候选交给 Part 05 独立评测。
+候选适配器已经训练完成，准备评测时却发现基线换了、目录内容变了，或更新失败后找不到可恢复状态。怎样判断手里的文件仍对应那次训练？失败后哪些步骤可以复用，哪些需要重做？
 
-**关键词：** `策略版本`、`证据新鲜度`、`恢复`、`回滚`、`交接状态`
+本节把候选清单、源基线和本地适配器放在一起核对，分别检查版本记录、文件哈希及回退来源，再按失败阶段选择恢复动作。结果说明哪些候选可以继续评测；不同算法的质量与成本仍需在共同任务上比较。
+
+**关键词：** `候选来源`、`版本记录`、`产物哈希`、`恢复动作`
 
 ---
+
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+使用 [BASE-CPU](../guide.md#base-cpu) 运行题目和本地文件核对。Step 5 读取已保存的候选清单与适配器目录，不加载模型、不执行新的训练。
+
 ## 前置阅读
 
-- [Part 02 · 51 在线 DPO 与反馈窗口](./51_Online_DPO.md)
-- [Part 02 · PT-RL-SYSTEM Rollout、训练与奖励系统](./PT-RL-SYSTEM_Rollout_Training_and_Reward_System.md)
-- [Part 02 · PT-ROLLOUT-LIFECYCLE 轨迹生命周期与策略新鲜度](./PT-ROLLOUT-LIFECYCLE_Rollout_and_Policy_Freshness.md)
-- [Part 02 · 84 DPO 偏好优化项目](./84_DPO_Preference_Project.md)
-- [Part 02 · 85 GRPO 组内奖励优化项目](./85_GRPO_Groupwise_Alignment_Project.md)
+按已有候选选择离线或在线分支，再了解生成记录怎样随策略变化。
 
----
-## Step 1：把并列候选送入生命周期交接流程
+- [84 离线偏好项目](./84_DPO_Preference_Project.md)：查看偏好候选、适配器与离线评分记录。
+- [85 组内奖励项目](./85_GRPO_Groupwise_Alignment_Project.md)：查看分组生成、规则得分与候选清单。
+- [轨迹生命周期与策略版本](./PT-ROLLOUT-LIFECYCLE_Rollout_and_Policy_Freshness.md)：区分初始来源、生成时策略与实际行为偏离。
 
-DPO 与 GRPO/RLVR 是从同一 SFT 基线派生的并列候选，而不是连续训练阶段。项目读取各分支已经形成的候选清单，核对候选血缘、证据新鲜度、产物完整性和回滚基线，并在失败时选择最晚可信恢复点。输出是 `ready_for_evaluation`、`tune` 或 `reject` 交接状态，不在本节比较不同任务指标，也不形成最终采用结论。
+## Step 1：核对候选来源、适配器与回退基线
 
-| 阶段 | 输入 | 关键动作 | 输出或失败处理 |
-|:---|:---|:---|:---|
-| 分支状态 | DPO 或 GRPO/RLVR 候选清单 | 核对上游状态、候选产物和分支结论 | `reject` 排除；`tune` 保留调优；`accept` 进入生命周期检查 |
-| 身份核对 | 当前 SFT 基线、评测版本和候选血缘 | 比较源策略、评测与产物身份 | 输出新鲜度报告；身份失配则 `reject` |
-| 产物检查 | 候选适配器与 SFT 回滚基线 | 重新计算哈希并核对磁盘产物 | 产物或回滚失配则 `reject` |
-| 恢复与交接 | 失败阶段和已保存状态 | 选择最晚可信恢复点并汇总检查结果 | 输出恢复动作与交接状态 |
+离线偏好与组内奖励可以从同一 SFT 起点分别训练出候选。保留各分支的清单和结果，才能知道当前目录对应哪个模型、训练起点及评测记录。这里同时处理一个或多个已有分支；缺少某一分支时，先核对已有候选。
 
-![后训练候选的生命周期交接流程](../public/02_PyTorch_Algorithms/86_post_training_adoption_flow.svg)
+核对分为两类：记录检查确认源策略相符、候选及评测标识存在，并检查分支特有字段；文件检查重新计算候选和回退适配器的哈希，与记录值比较。恢复动作则根据失败阶段和给定可用状态单独选择。三项都应留下具体结果，避免把“记录齐全”“文件相符”和“恢复已经执行”混成一个判断。
 
-## Step 2：用证据身份判断候选是否仍然有效
-
-候选证据至少由源基线版本、候选策略版本、数据或反馈版本、评测版本和产物哈希共同标识。当前激活基线、评测集或验证规则发生变化时，旧结果可以保留为历史记录，却不能直接交给当前独立评测。在线候选还要检查轨迹窗口和源策略版本；离线候选则要确认偏好证据仍对应当前基线。
-
-| 发生变化的身份 | DPO 证据受到的影响 | GRPO / RLVR 证据受到的影响 |
+| 核对对象 | 当前使用的信息 | 输出 |
 |:---|:---|:---|
-| 当前 SFT 基线 | 相对参考与候选血缘失配 | 轨迹来源与候选血缘失配 |
-| 偏好数据或问题集 | 需要重新检查隔离与质量门槛 | 需要重新采样并验证轨迹 |
-| 参考模型或验证器 | 相对边际的参照发生变化 | 奖励含义和组内优势发生变化 |
-| 评测版本 | 原质量结论不能直接沿用 | 原新轨迹结论不能直接沿用 |
-| 产物哈希 | 无法证明审核对象仍是原候选 | 无法证明审核对象仍是原候选 |
+| 来源与分支记录 | 源策略、候选及评测标识，偏好来源或在线窗口 | 通过项与缺失项 |
+| 本地适配器 | 候选及回退目录、预期哈希 | 重新计算的哈希与相等结果 |
+| 上游决定 | 接受、调整或拒绝 | 与本页条件共同形成候选状态 |
+| 恢复场景 | 失败阶段、声明可用的状态 | 建议复用的状态和下一动作 |
 
-## Step 3：从最晚可信状态恢复并形成交接状态
+![已有候选经过记录与本地产物核对后形成状态](../public/02_PyTorch_Algorithms/86_post_training_adoption_flow.svg)
 
-恢复动作由失败发生在哪个阶段以及此前保存了什么可信状态共同决定。恢复完成后仍要重新检查候选血缘、新鲜度、产物和回滚条件。上游已拒绝、证据失效、产物损坏或回滚不可用时输出 `reject`；上游仍需调优时输出 `tune`；生命周期条件全部通过时输出 `ready_for_evaluation`，由 Part 05 再检查质量、安全、鲁棒性和成本。
+## Step 2：区分来源匹配、窗口年龄与行为偏离
 
-| 事件或检查 | 可复用的最晚可信状态 | 动作与候选状态 |
+源策略标识必须与所选 SFT 基线相同；候选标识与评测标识则要求非空。离线分支另保留偏好结果的版本或路径，在线分支另保留验证器标识，并检查“当前窗口序号减生成窗口序号”是否处于允许范围。例如当前窗口为 5、生成窗口为 3，窗口年龄是 2，它不是经过了两小时，也不是策略更新了两次。
+
+这些条件检查记录对应关系。要判断评测协议是否相同，还需比较题集、评分规则与解码配置；要判断旧轨迹是否适合当前策略，还需比较同一动作的新旧概率。评测标识存在、验证器标识存在或窗口年龄合格，分别保留为本页实际检查的结果。
+
+| 条件 | 本页如何检查 | 进一步比较什么 |
 |:---|:---|:---|
-| 采样失败 | 问题队列 | 从队列重试；缺失时重建队列 |
-| 奖励失败 | 已保存轨迹 | 重新计算奖励；缺失时重新采样 |
-| 更新失败 | 更新前检查点 | 恢复检查点；缺失时回滚基线 |
-| 产物校验失败 | 已验证基线 | 回滚并阻断发布 |
-| 血缘、产物或回滚失败 | 无可接受替代证据 | `reject` |
-| 上游候选仍需调优 | 候选及现有证据仍可复用 | `tune` |
-| 生命周期条件全部通过 | 已验证候选与回滚基线 | `ready_for_evaluation` |
+| 源策略 | 等于所选 SFT 适配器标识 | 模型与分词器等来源是否配套 |
+| 候选与评测记录 | 对应标识非空 | 评测协议与当前任务是否一致 |
+| 离线偏好来源 | 偏好记录版本或路径非空 | 数据切分、评分目标与参数 |
+| 在线生成窗口 | 验证器标识非空，窗口年龄在区间内 | 验证器内容、逐次行为版本与动作概率 |
+| 磁盘目录 | 实际哈希等于保存值 | 后续加载、恢复和任务评测 |
 
-![后训练失败阶段与恢复点](../public/02_PyTorch_Algorithms/86_recovery_state_flow.svg)
+## Step 3：选择恢复动作并决定哪些候选继续评测
 
-## Step 4：实现新鲜度、恢复与交接判断
+失败发生在哪个阶段，决定优先查找哪些保存状态。奖励计算失败时，先找已保存回答，仍可用就重新评分；回答也丢失时，再从问题队列生成。更新失败时，优先使用更新前检查点，其次回退已验证基线；两者都没有时停止更新。这里选择动作，实际恢复还要加载状态并核对优化器、随机状态和消费记录。
+
+候选的上游状态与本页条件共同决定后续操作：来源、产物或回退检查失败则拒绝；检查通过但上游仍在调整则保留调整状态；上游接受且本页条件通过则进入后续评测。多个候选同时通过时，各自保留，不把偏好边际与数学题得分直接排序。
+
+| 情况 | 可复用状态或触发条件 | 动作 |
+|:---|:---|:---|
+| 采样失败 | 问题队列仍可用 | 从队列重试；队列缺失则重建 |
+| 奖励失败 | 回答或问题队列仍可用 | 重算奖励，或重新生成 |
+| 更新失败 | 更新前检查点或已验证基线 | 恢复检查点，或回退基线；都缺失则停止 |
+| 产物校验失败 | 已验证基线 | 回退；基线缺失则停止发布 |
+| 来源、产物或回退失败，或上游拒绝 | 任一拒绝条件成立 | `reject`，修复失败项 |
+| 本页通过，上游需要调整 | 已有候选仍可追查 | `tune`，继续分支实验 |
+| 本页通过，上游接受 | 当前记录及目录核对通过 | `ready_for_evaluation`，进入任务评测 |
+
+![失败阶段对应的可用状态与恢复动作选择](../public/02_PyTorch_Algorithms/86_recovery_state_flow.svg)
+
+## Step 4：实现记录检查、恢复选择与候选状态
+
+题目使用候选摘要、失败阶段和状态可用性标记。骨架已给出共同字段检查与恢复优先表；你将补分支条件、选择第一个可用恢复点，再传播拒绝、调整或待评测状态。CPU 测试检查判断逻辑，磁盘目录哈希在 Step 5 核对。
 
 | 任务与目的 | 已知条件 | 完成标准 | 测试验证 |
 |:---|:---|:---|:---|
-| TODO 1：检查候选血缘与分支证据有效期 | 候选类型、源策略、评测身份及分支证据 | DPO 保留偏好证据身份；GRPO/RLVR 还满足轨迹窗口与验证器条件 | 基线推进、在线窗口过期、评测或分支身份缺失 |
-| TODO 2：按失败阶段选择恢复点 | 失败阶段和现有可信状态 | 指出要复用的状态，并选择最小重试或回退动作 | 采样、奖励、更新和产物校验失败 |
-| TODO 3：传播上游状态并形成交接判断 | 上游状态、新鲜度、产物和回滚 | 上游拒绝或生命周期硬失败则拒绝；上游调优则调优；其余进入独立评测 | 上游三态、证据失效、产物失配与回滚缺失 |
+| TODO 1：检查候选来源与分支记录 | 源策略、非空标识、分支版本及窗口年龄 | 共同来源与对应分支条件都满足 | 源基线不符、缺少标识、窗口过期与验证器缺失 |
+| TODO 2：按阶段选择恢复点 | 优先表与可用状态标记 | 选第一个可用状态；否则执行阶段回退 | 回答可用、仅队列可用、检查点与基线都缺失 |
+| TODO 3：形成待评测状态 | 上游决定、记录、文件及回退检查 | 拒绝条件优先，其后保留调整或待评测 | 上游三态、来源失配与回退缺失 |
+
 
 ```python
 from typing import Any, Dict
@@ -84,7 +101,7 @@ from typing import Any, Dict
 
 ```python
 # ==========================================
-# TODO 1：检查候选策略血缘与证据新鲜度
+# TODO 1：检查来源与分支记录
 # ==========================================
 def check_candidate_freshness(candidate: Dict[str, Any], active_policy_version: str, maximum_window_age: int) -> Dict[str, Any]:
     """按离线偏好或在线轨迹分支检查候选证据。"""
@@ -96,14 +113,14 @@ def check_candidate_freshness(candidate: Dict[str, Any], active_policy_version: 
         "evaluation_identity": bool(candidate.get("evaluation_version")),
     }
     # branch_evidence_fresh = ???  # DPO 要有偏好证据身份；在线候选还要有验证器身份且窗口未过期。
-    # fresh = ???  # 共同血缘与分支证据必须同时有效。
-    raise NotImplementedError("TODO 1：请判断分支证据与共同血缘是否新鲜")
+    # fresh = ???  # 共同来源与分支条件必须同时满足。
+    raise NotImplementedError("TODO 1：请检查来源与分支条件")
     checks = {**common_checks, "branch_evidence": branch_evidence_fresh}
     return {"fresh": fresh, "failed_checks": [name for name, passed in checks.items() if not passed]}
 
 
 # ==========================================
-# TODO 2：根据失败阶段选择最晚可信恢复点
+# TODO 2：按阶段选择恢复点
 # ==========================================
 def choose_recovery_action(failure: Dict[str, Any]) -> Dict[str, str]:
     """依据失败阶段和已保存证据选择恢复动作。"""
@@ -138,7 +155,7 @@ def choose_recovery_action(failure: Dict[str, Any]) -> Dict[str, str]:
 
 
 # ==========================================
-# TODO 3：形成生命周期交接状态
+# TODO 3：形成待评测状态
 # ==========================================
 def decide_lifecycle_handoff(upstream_decision: str, freshness: Dict[str, Any], evidence: Dict[str, Any]) -> Dict[str, Any]:
     """传播上游状态，并检查产物与回滚条件。"""
@@ -154,7 +171,7 @@ def decide_lifecycle_handoff(upstream_decision: str, freshness: Dict[str, Any], 
     elif upstream_decision == "reject":
         hard_failures.append("upstream_reject")
     # handoff_status = ???  # 硬失败拒绝，否则传播调优或进入独立评测。
-    raise NotImplementedError("TODO 3：请形成生命周期交接状态")
+    raise NotImplementedError("TODO 3：请形成待评测状态")
     return {
         "handoff_status": handoff_status,
         "upstream_decision": upstream_decision,
@@ -162,10 +179,14 @@ def decide_lifecycle_handoff(upstream_decision: str, freshness: Dict[str, Any], 
     }
 ```
 
+## 测试
+
+逐项改变来源、分支标识、窗口与可用状态，核对恢复选择和候选状态。
+
 
 ```python
 def test_candidate_freshness():
-    """TODO 1：验证候选血缘和证据窗口。"""
+    """TODO 1：验证候选来源和窗口条件。"""
     candidate = {"candidate_kind": "dpo", "decision": "accept", "source_policy_version": "sft-v1", "policy_version": "dpo-v1", "evaluation_version": "pref-eval-v1", "preference_evidence_version": "pref-train-v1", "window_age": 99}
     freshness = check_candidate_freshness(candidate, "sft-v1", 2)
     assert freshness["fresh"]
@@ -220,7 +241,7 @@ print("所有测试通过！")
 ### 代码
 
 ```python
-# TODO 1：检查候选策略血缘与证据新鲜度
+# TODO 1：检查来源与分支记录
 def check_candidate_freshness(candidate: Dict[str, Any], active_policy_version: str, maximum_window_age: int) -> Dict[str, Any]:
     """按离线偏好或在线轨迹分支检查候选证据。"""
     candidate_kind = candidate.get("candidate_kind")
@@ -239,7 +260,7 @@ def check_candidate_freshness(candidate: Dict[str, Any], active_policy_version: 
     return {"fresh": fresh, "failed_checks": [name for name, passed in checks.items() if not passed]}
 
 
-# TODO 2：根据失败阶段选择最晚可信恢复点
+# TODO 2：按阶段选择恢复点
 def choose_recovery_action(failure: Dict[str, Any]) -> Dict[str, str]:
     """依据失败阶段和现有可信状态选择最小恢复范围。"""
     stage = failure["stage"]
@@ -271,7 +292,7 @@ def choose_recovery_action(failure: Dict[str, Any]) -> Dict[str, str]:
     return {"stage": stage, "recovery_state": recovery_state, "reused_state": recovery_state is not None, "action": action}
 
 
-# TODO 3：形成生命周期交接状态
+# TODO 3：形成待评测状态
 def decide_lifecycle_handoff(upstream_decision: str, freshness: Dict[str, Any], evidence: Dict[str, Any]) -> Dict[str, Any]:
     """传播上游状态，并按生命周期硬条件形成三态交接。"""
     hard_checks = {
@@ -294,35 +315,36 @@ def decide_lifecycle_handoff(upstream_decision: str, freshness: Dict[str, Any], 
 
 ### 解析
 
-#### TODO 1：检查候选新鲜度
+#### TODO 1：检查来源与分支记录
 
-- **判断依据**：所有候选都必须来自当前基线并声明独立评测身份；DPO 还要保留偏好证据版本，GRPO/RLVR 则要检查验证器身份和轨迹窗口。上游采用状态不属于新鲜度。
-- **实现动作**：先检查共同血缘，再按候选分支检查偏好证据或在线轨迹证据。
-- **测试证据**：测试区分 DPO 的偏好证据缺失与在线候选的窗口过期、验证器缺失。
+- 所有分支共用源策略匹配、候选标识及评测标识检查；离线分支要求偏好记录存在，在线分支再要求验证器标识和窗口年龄合格。
+- 测试中的离线候选即使窗口年龄为 99 也可通过，因为它不使用在线窗口条件；在线候选在年龄 2 通过、3 被拒绝，用来验证分支差异和上界。
 
 #### TODO 2：选择恢复动作
 
-- **判断依据**：恢复应复用最晚可信证据，奖励失败且轨迹可信时复用轨迹；更新失败时先选择检查点或基线。动作选择不等于已恢复优化器和消费账本，不能单凭此函数证明不会重复消费。
-- **实现动作**：按失败阶段列出由近到远的可信状态候选，选择第一个可用状态；没有状态可复用时才执行阶段回退。
-- **测试证据**：测试覆盖轨迹可复用、轨迹缺失但问题队列仍可用，以及无可信状态三种恢复范围。
+- 同一失败阶段可能有不同可用状态，应按优先表逐项找，而不是仅凭阶段名称返回固定动作。
+- 奖励失败时优先复用回答，其次复用问题队列；测试另设两者都缺失的情况，核对重新采样动作。更新状态都不可用时则停止更新。
 
-#### TODO 3：形成交接状态
+#### TODO 3：形成候选状态
 
-- **判断依据**：上游 `reject`、证据失效、回滚失败或产物损坏会阻断候选；上游 `tune` 继续保留调优状态；其余候选只获得进入独立评测的资格。
-- **实现动作**：先传播上游三态，再检查血缘、产物和回滚硬条件，输出 `reject`、`tune` 或 `ready_for_evaluation`。
-- **测试证据**：测试分别覆盖上游拒绝、上游调优、证据失效、回滚缺失和进入独立评测路径。
-## Step 5：真实产物生命周期与故障恢复演练
+- 本页任一拒绝条件成立时优先拒绝，即使上游已接受；条件通过后才传播上游调整或待评测状态。
+- 测试区分上游拒绝、上游调整、来源失配和回退缺失，并确认全部满足时返回 `ready_for_evaluation`。
 
-本实验读取 62、84、85 的 JSON 证据，重新计算基线与候选适配器目录哈希，并验证候选进入独立评测前的血缘、新鲜度、恢复和回滚契约。该阶段消费既有训练产物，因此使用 CPU 即可完成。
 
-| 对照层 | 输入 | 主要证据 | 输出与证据边界 |
-|:---|:---|:---|:---|
-| CPU 状态机 | 人工构造的候选、失败阶段与可用状态 | 新鲜度、恢复动作、交接状态 | 只确认生命周期逻辑，不证明真实产物可恢复 |
-| 真实产物审核 | SFT 基线与 DPO/GRPO 候选清单、磁盘产物 | 血缘、哈希与回滚路径 | 输出交接清单；质量、安全、鲁棒性和成本由 Part 05 复测 |
+## Step 5：核对本地产物并记录恢复建议
+
+读取已有候选清单，重新计算候选与 SFT 回退目录哈希，再保存记录检查及恢复动作。四种失败场景使用声明可用的状态进行动作选择，实际训练恢复应在加载检查点后另行验证。
+
+| 比较层 | 输入 | 结果 |
+|:---|:---|:---|
+| CPU 判断 | 人工候选、失败阶段与可用性标记 | 分支条件、恢复选择与候选状态 |
+| 本地文件核对 | 候选清单、SFT 来源与适配器目录 | 目录哈希比较及候选清单 |
 
 ### 5.1 环境、输入资产与固定条件
 
-本页不启动新的训练进程，使用能够导入仓库运行时的 CPU 环境读取 62、84、85 的已保存清单与适配器目录。固定输入为 SFT 回退基线、DPO 候选和 GRPO / RLVR 候选；修改候选集合或新鲜度窗口时必须使用新的结果标签。
+使用能导入仓库运行时的 CPU 环境，读取所选 SFT 基线和至少一个候选清单。修改候选集合或窗口条件时使用新标签；原始训练指标按各分支自己的实验协议解释。
+
+
 
 ```python
 from pathlib import Path
@@ -374,9 +396,10 @@ else:
     print({"run_mode": RUN_MODE, "next_action": "完成 84 或 85 后改为 real_artifact"})
 ```
 
-### 5.3 固定新鲜度窗口与故障场景
+### 5.3 固定窗口条件与恢复场景
 
-故障演练覆盖采样、奖励、更新和产物校验四个阶段；每个场景只改变失败阶段和可用证据。
+在线窗口年龄为当前窗口减记录窗口。四种恢复场景分别给定问题队列、已保存回答、更新前检查点或基线可用，代码据此输出建议动作。
+
 
 ```python
 def check_candidate_freshness_for_run(candidate, active_policy_version, maximum_window_age):
@@ -438,9 +461,10 @@ FAILURE_SCENARIOS = [
 print([choose_recovery_action_for_run(scenario) for scenario in FAILURE_SCENARIOS])
 ```
 
-### 5.4 执行真实候选清单审核与恢复演练
+### 5.4 执行候选记录与目录核对
 
-真实审核重新计算候选与回滚产物哈希，并核对候选是否仍来自当前 SFT 基线。它不比较 DPO、GRPO 与 SFT 的质量或资源指标；这些分支使用不同训练负载，统一比较留给 Part 05 的冻结评测。
+逐候选比较源策略、分支记录与适配器目录哈希，再核对回退基线目录。输出保留各候选状态及恢复建议；不同分支的任务得分继续在其原始报告中读取。
+
 
 ```python
 if RUN_MODE == "real_artifact":
@@ -479,9 +503,10 @@ if RUN_MODE == "real_artifact":
     print({"evidence_path": str(EVIDENCE_PATH), "candidate_count": len(candidate_records)})
 ```
 
-### 5.5 独立读取生命周期证据
+### 5.5 读取候选状态与核对结果
 
-本节只列出可进入独立评测的候选，不在 DPO 偏好准确率与 GRPO `pass@group` 之间强行排序。多个候选通过时全部交给 Part 05，在同一任务与解码协议下复测。
+读取当前标签文件，查看每个候选通过或失败的具体项、预期与实际目录哈希，再列出待评测候选。当前读取单元只展示紧凑状态，复核详细内容时同时打开原始结果。
+
 
 ```python
 if EVIDENCE_PATH.exists():
@@ -490,29 +515,28 @@ if EVIDENCE_PATH.exists():
     print({"ready_for_evaluation": [item["semantic_id"] for item in ready], "candidate_status": {item["semantic_id"]: item["handoff_status"] for item in record["candidate_records"]}})
 ```
 
-### 5.6 保存生命周期交接清单
+### 5.6 保存候选核对清单
 
-交接清单引用候选清单和已验证基线，只保存 Part 05 所需的身份、产物、恢复与回滚证据。
+历史 `post_training_lifecycle_v6` 中，两条候选的源基线、分支记录、目录哈希与回退目录核对通过，候选状态为 `ready_for_evaluation`，汇总状态为 `ready`。后续任务可用该清单追查来源；Part05 MiniMind 项目独立准备模型、数据与候选，不读取这份历史清单。
 
-| 候选或恢复项 | 实测证据 | 结果 | 后续动作 |
-|:---|:---|:---|:---|
-| DPO 候选 | 84 v5 为 `accept`；血缘、产物哈希与回滚基线通过 | `ready_for_evaluation` | 交给 Part 05 冻结评测 |
-| GRPO / RLVR 候选 | 85 v7 为 `accept`；验证器、窗口、产物哈希与回滚基线通过 | `ready_for_evaluation` | 交给 Part 05 冻结评测 |
-| 故障恢复 | 采样、奖励、更新和产物校验均可复用可信状态 | 通过 | 保留四类恢复记录 |
-| Part 05 交接 | 两个候选均通过生命周期核对 | `ready` | 在统一任务、解码协议与成本口径下比较 |
-
-`post_training_lifecycle_v6` 交接 84 的 DPO v5 与 85 的 GRPO / RLVR v7。两个候选都来自当前 SFT 基线，分支证据、适配器哈希和 SFT 回滚基线均通过核对；GRPO / RLVR 的证据窗口与当前窗口一致。交接清单状态为 `ready`，表示两个候选可以进入 Part 05 的统一冻结评测，而不是已经比较出算法优劣或完成最终采用。质量、安全、鲁棒性和成本仍由 Part 05 决定。
+| 观察项 | 历史记录 | 解释与下一动作 |
+|:---|:---|:---|
+| 离线候选 | DPO v5 来源与目录哈希通过 | 保留对应偏好评分记录，另作任务比较 |
+| 在线候选 | GRPO / RLVR v7 来源、窗口与目录哈希通过 | 窗口通过按索引解释，行为概率与新协议测量另查 |
+| 恢复选择 | 四类场景各给出可复用状态和动作 | 此处记录建议；实际恢复需加载相应状态验证 |
+| 汇总状态 | 两条候选待评测，汇总 `ready` | 保留二者，按统一任务和生成预算继续比较 |
 
 **当前登记结果**
 
 | 字段 | 登记内容 |
 | --- | --- |
-| 项目与标签 | 86 节后训练生命周期交接；`post_training_lifecycle_v6` |
-| 运行条件 | 当前 SFT 基线；84 DPO v5 与 85 GRPO / RLVR v7 并列候选 |
-| 原始证据 | 由生命周期证据引用两条候选分支、恢复演练和回滚基线 |
-| 正式证据 | [生命周期证据](../../benchmarks/results/86_post_training_lifecycle/lifecycle_evidence_post_training_lifecycle_v6.json) |
-| 清单与交接 | [生命周期交接](../../benchmarks/results/86_post_training_lifecycle/lifecycle_handoff_post_training_lifecycle_v6.json) |
-| 结论 | `ready`：允许进入 Part 05 冻结评测；尚未完成 DPO 与 GRPO / RLVR 的最终采用比较 |
+| 项目与标签 | 候选来源与恢复检查；`post_training_lifecycle_v6` |
+| 固定输入 | 历史 SFT 基线、DPO v5 与 GRPO / RLVR v7 候选及其目录 |
+| 原始与正式记录 | [生命周期结果](../../benchmarks/results/86_post_training_lifecycle/lifecycle_evidence_post_training_lifecycle_v6.json)，含目录哈希与四种恢复动作 |
+| 候选清单 | [来源与状态汇总](../../benchmarks/results/86_post_training_lifecycle/lifecycle_handoff_post_training_lifecycle_v6.json) |
+| 结论 | 历史 `ready`，表示记录与目录检查通过；任务质量和实际恢复另行验证 |
+
+
 
 ```python
 if RUN_MODE == "real_artifact":
@@ -533,6 +557,8 @@ if RUN_MODE == "real_artifact":
 
 ## 相关阅读
 
-- [Part 02 · PT-RL-SYSTEM Rollout、训练与奖励系统](./PT-RL-SYSTEM_Rollout_Training_and_Reward_System.md)
-- [Part 02 · PT-ROLLOUT-LIFECYCLE 轨迹生命周期与策略新鲜度](./PT-ROLLOUT-LIFECYCLE_Rollout_and_Policy_Freshness.md)
-- [Part 02 · 51 在线 DPO 与反馈窗口](./51_Online_DPO.md)
+进一步核对旧轨迹的使用条件与实际训练资源安排。
+
+- [轨迹生命周期与策略版本](./PT-ROLLOUT-LIFECYCLE_Rollout_and_Policy_Freshness.md)：计算动作概率偏离，区分窗口记录与行为比较。
+- [采样、训练与奖励系统](./PT-RL-SYSTEM_Rollout_Training_and_Reward_System.md)：查看生成、更新和同步如何争用资源。
+- [51 在线 DPO](./51_Online_DPO.md)：比较反馈窗口与偏好候选更新。

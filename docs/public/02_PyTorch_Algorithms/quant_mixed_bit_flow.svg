@@ -1,60 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
-  <title id="title">混合位宽分配的全局输入与输出</title>
-  <desc id="desc">统一协议产生逐层候选矩阵，约束分配器结合容量预算、保护规则和后端能力，输出位宽策略、回退记录与复验证据。</desc>
-  <defs>
-    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
-      <path d="M0,0 L9,4.5 L0,9 Z" fill="#475569"/>
-    </marker>
-    <style>
-      .title{font:700 25px sans-serif;fill:#0f172a;text-anchor:middle}.sub{font:15px sans-serif;fill:#475569;text-anchor:middle}
-      .group{fill:#ffffff;stroke:#cbd5e1;stroke-width:2;rx:18}.group-title{font:700 17px sans-serif;fill:#334155;text-anchor:middle}
-      .node{stroke-width:2;rx:12}.blue{fill:#eff6ff;stroke:#2563eb}.orange{fill:#fff7ed;stroke:#ea580c}.green{fill:#ecfdf5;stroke:#059669}.violet{fill:#f5f3ff;stroke:#7c3aed}
-      .t{font:700 17px sans-serif;fill:#0f172a;text-anchor:middle}.s{font:14px sans-serif;fill:#475569;text-anchor:middle}
-      .line{stroke:#475569;stroke-width:2.2;fill:none;marker-end:url(#arrow)}.join{stroke:#94a3b8;stroke-width:2;fill:none}
-    </style>
-  </defs>
-  <rect width="1200" height="620" fill="#f8fafc"/>
-  <text x="600" y="42" class="title">混合位宽分配：从共同输入到可审计策略</text>
-  <text x="600" y="70" class="sub">先固定比较协议，再组合敏感度、容量和执行约束；最终输出仍需独立复验</text>
-
-  <rect x="38" y="100" width="300" height="470" class="group" fill="#ffffff" stroke="#cbd5e1"/>
-  <text x="188" y="132" class="group-title">共同输入</text>
-  <rect x="68" y="158" width="240" height="72" class="node" fill="#eff6ff" stroke="#2563eb" rx="12"/>
-  <text x="188" y="187" class="t">统一比较协议</text><text x="188" y="212" class="s">模型 · 数据 · 评测方法</text>
-  <rect x="68" y="252" width="240" height="72" class="node" fill="#eff6ff" stroke="#2563eb" rx="12"/>
-  <text x="188" y="281" class="t">逐层误差证据</text><text x="188" y="306" class="s">候选位宽 · 敏感度</text>
-  <rect x="68" y="346" width="240" height="72" class="node" fill="#fff7ed" stroke="#ea580c" rx="12"/>
-  <text x="188" y="375" class="t">容量账本</text><text x="188" y="400" class="s">权重 · scale · 元数据</text>
-  <rect x="68" y="440" width="240" height="92" class="node" fill="#fff7ed" stroke="#ea580c" rx="12"/>
-  <text x="188" y="472" class="t">可执行约束</text><text x="188" y="497" class="s">保护规则 · backend</text><text x="188" y="518" class="s">支持位宽与 fallback</text>
-
-  <path d="M308 194 H370" class="join"/><path d="M308 288 H370" class="join"/><path d="M308 382 H370" class="join"/><path d="M308 486 H370" class="join"/>
-  <path d="M370 194 V486" class="join"/><path d="M370 245 H430" class="line"/>
-
-  <rect x="430" y="170" width="320" height="150" class="node" fill="#f5f3ff" stroke="#7c3aed" rx="12"/>
-  <text x="590" y="208" class="t">逐层候选矩阵</text>
-  <text x="590" y="237" class="s">layer × bits × error × bytes</text>
-  <text x="590" y="263" class="s">保留可比较且可执行的候选</text>
-  <text x="590" y="289" class="s">不可执行路径先过滤并记录原因</text>
-
-  <rect x="430" y="382" width="320" height="130" class="node" fill="#fff7ed" stroke="#ea580c" rx="12"/>
-  <text x="590" y="420" class="t">约束下的位宽分配</text>
-  <text x="590" y="449" class="s">容量预算 + 保护规则</text>
-  <text x="590" y="475" class="s">质量收益 / 额外字节</text>
-  <path d="M590 320 V382" class="line"/>
-
-  <rect x="842" y="100" width="320" height="470" class="group" fill="#ffffff" stroke="#cbd5e1"/>
-  <text x="1002" y="132" class="group-title">可审计输出</text>
-  <rect x="872" y="170" width="260" height="82" class="node" fill="#ecfdf5" stroke="#059669" rx="12"/>
-  <text x="1002" y="202" class="t">位宽策略</text><text x="1002" y="228" class="s">对象 → bits → 选择理由</text>
-  <rect x="872" y="286" width="260" height="82" class="node" fill="#f5f3ff" stroke="#7c3aed" rx="12"/>
-  <text x="1002" y="318" class="t">回退记录</text><text x="1002" y="344" class="s">不兼容对象与替代路径</text>
-  <rect x="872" y="402" width="260" height="112" class="node" fill="#ecfdf5" stroke="#059669" rx="12"/>
-  <text x="1002" y="434" class="t">独立复验证据</text><text x="1002" y="460" class="s">质量 · 容量 · 路径</text><text x="1002" y="486" class="s">accept / tune / reject</text>
-
-  <path d="M750 447 H805" class="join"/>
-  <path d="M805 211 V458" class="join"/>
-  <path d="M805 211 H872" class="line"/>
-  <path d="M805 327 H872" class="line"/>
-  <path d="M805 458 H872" class="line"/>
+<title id="title">从误差候选到预算内的位宽策略</title><desc id="desc">统一协议得到逐层误差与候选字节，保护规则限定最低位宽，再用剩余预算升级，转换后测组合质量与实际存储。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#52657a"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:15px;font-weight:400;fill:#334e68}.title{font-size:25px;font-weight:700;fill:#18324b}.h{font-size:18px;font-weight:600;fill:#18324b}.s{font-size:14px}.e{stroke:#52657a;stroke-width:2.5;fill:none;marker-end:url(#a)}.d{stroke:#7657a5;stroke-width:2;fill:none;stroke-dasharray:7 5;marker-end:url(#a)}</style></defs><rect width="1200" height="620" fill="#f8fafc"/><text x="600" y="43" text-anchor="middle" class="title">从误差候选到预算内的位宽策略</text>
+<rect x="45" y="125" width="250" height="90" rx="13" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="170" y="157" text-anchor="middle" class="h">统一条件测误差</text><text x="170" y="184" text-anchor="middle">模型、样本与其余层固定</text>
+<rect x="455" y="125" width="290" height="90" rx="13" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="600" y="157" text-anchor="middle" class="h">构造候选集合</text><text x="600" y="184" text-anchor="middle">位宽、误差与统计字节</text>
+<rect x="905" y="125" width="250" height="90" rx="13" fill="#fff3df" stroke="#b7791f" stroke-width="2"/><text x="1030" y="157" text-anchor="middle" class="h">最低精度规则</text><text x="1030" y="184" text-anchor="middle">指定必须保护的对象</text>
+<path d="M295 170H455" class="e"/>
+<rect x="455" y="310" width="290" height="90" rx="13" fill="#f1edfb" stroke="#7657a5" stroke-width="2"/><text x="600" y="342" text-anchor="middle" class="h">初始分配与逐次升级</text><text x="600" y="369" text-anchor="middle">按误差收益／额外字节选择</text>
+<path d="M600 215V310" class="e"/>
+<path d="M1030 215V355H745" class="e"/>
+<rect x="45" y="310" width="250" height="90" rx="13" fill="#fff3df" stroke="#b7791f" stroke-width="2"/><text x="170" y="342" text-anchor="middle" class="h">总字节预算</text><text x="170" y="369" text-anchor="middle">先保证初始分配能放下</text>
+<path d="M295 355H455" class="e"/>
+<rect x="455" y="490" width="290" height="90" rx="13" fill="#e8f6f1" stroke="#3f8b72" stroke-width="2"/><text x="600" y="522" text-anchor="middle" class="h">逐层位宽策略</text><text x="600" y="549" text-anchor="middle">记录每次升级及剩余预算</text>
+<rect x="905" y="490" width="250" height="90" rx="13" fill="#e8f6f1" stroke="#3f8b72" stroke-width="2"/><text x="1030" y="522" text-anchor="middle" class="h">转换后组合复验</text><text x="1030" y="549" text-anchor="middle">模型 NLL 与实际状态字节</text>
+<path d="M600 400V490" class="e"/>
+<path d="M745 535H905" class="e"/>
+<text x="600" y="608" text-anchor="middle" class="s">CPU 使用理想权重字节；转换后另计缩放参数、填充和保留状态</text>
 </svg>

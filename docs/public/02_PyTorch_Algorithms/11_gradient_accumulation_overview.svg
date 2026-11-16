@@ -1,51 +1,47 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1240" height="600" viewBox="0 0 1240 600" role="img" aria-labelledby="title desc">
-  <title id="title">梯度累积如何完成一次参数更新</title>
-  <desc id="desc">有效批次被拆成多个微批次，梯度保留到累积结束，再执行一次参数更新。</desc>
-  <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
-    <style>
-      text{font-family:"Noto Sans CJK SC","Microsoft YaHei",Arial,sans-serif;fill:#172033}.title{font-size:30px;font-weight:700}.sub{font-size:16px;fill:#475569}.group{font-size:19px;font-weight:700}.head{font-size:17px;font-weight:700}.body{font-size:14px;fill:#334155}.panel{stroke-width:2;rx:18}.node{fill:#fff;stroke:#cbd5e1;stroke-width:1.6;rx:12}.flow{stroke:#475569;stroke-width:2.4;fill:none;marker-end:url(#arrow)}
-    </style>
-  </defs>
-  <rect width="1240" height="600" fill="#f8fafc"/>
-  <text x="620" y="44" text-anchor="middle" class="title">梯度累积如何完成一次参数更新</text>
-  <text x="620" y="73" text-anchor="middle" class="sub">有效批次拆成多个微批次，梯度保留到累积结束后再写回参数</text>
-
-  <rect x="430" y="102" width="380" height="86" fill="#e0f2fe" stroke="#38bdf8" class="panel"/>
-  <text x="620" y="138" text-anchor="middle" class="group">一次有效参数更新</text>
-  <text x="620" y="164" text-anchor="middle" class="body">有效批次 = 微批次大小 × 累积次数</text>
-
-  <path d="M620 188V218H205V260" class="flow"/>
-  <path d="M620 188V260" class="flow"/>
-  <path d="M620 188V218H1035V260" class="flow"/>
-
-  <rect x="45" y="260" width="320" height="270" fill="#eff6ff" stroke="#60a5fa" class="panel"/>
-  <text x="205" y="296" text-anchor="middle" class="group">拆分计算</text>
-  <rect x="82" y="327" width="246" height="72" class="node"/>
-  <text x="205" y="357" text-anchor="middle" class="head">每次处理一个微批次</text>
-  <text x="205" y="381" text-anchor="middle" class="body">依次完成前向与反向</text>
-  <path d="M205 399V432" class="flow"/>
-  <rect x="82" y="432" width="246" height="72" class="node"/>
-  <text x="205" y="462" text-anchor="middle" class="head">当前激活值用完即释放</text>
-  <text x="205" y="486" text-anchor="middle" class="body">不同时保留完整有效批次</text>
-
-  <rect x="460" y="260" width="320" height="270" fill="#fff7ed" stroke="#fb923c" class="panel"/>
-  <text x="620" y="296" text-anchor="middle" class="group">保留梯度</text>
-  <rect x="497" y="327" width="246" height="72" class="node"/>
-  <text x="620" y="357" text-anchor="middle" class="head">梯度跨微批次累积</text>
-  <text x="620" y="381" text-anchor="middle" class="body">达到更新边界前不清空</text>
-  <path d="M620 399V432" class="flow"/>
-  <rect x="497" y="432" width="246" height="72" class="node"/>
-  <text x="620" y="462" text-anchor="middle" class="head">参数与优化器状态常驻</text>
-  <text x="620" y="486" text-anchor="middle" class="body">拆分微批次不会消除它们</text>
-
-  <rect x="875" y="260" width="320" height="270" fill="#ecfdf5" stroke="#34d399" class="panel"/>
-  <text x="1035" y="296" text-anchor="middle" class="group">按有效批次更新</text>
-  <rect x="912" y="327" width="246" height="72" class="node"/>
-  <text x="1035" y="357" text-anchor="middle" class="head">按样本占比缩放损失</text>
-  <text x="1035" y="381" text-anchor="middle" class="body">与完整批次使用同一分母</text>
-  <path d="M1035 399V432" class="flow"/>
-  <rect x="912" y="432" width="246" height="72" class="node"/>
-  <text x="1035" y="462" text-anchor="middle" class="head">累积完成后 step 一次</text>
-  <text x="1035" y="486" text-anchor="middle" class="body">不按每个微批次写回参数</text>
-</svg>
+<title id="title">三个微批次形成一次参数更新</title>
+<desc id="desc">同一有效批次12个样本拆成三个4样本微批次，各自平均损失乘三分之一后反向，依次写入同一梯度缓冲区，最后更新一次参数。</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>
+text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}
+.title{font-size:26px;font-weight:700}.sub{font-size:16px;fill:#475569}
+.head{font-size:18px;font-weight:700}.body{font-size:17px}.small{font-size:15px;fill:#475569}
+.node{stroke-width:2;rx:12}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+</style>
+</defs>
+<rect width="1240" height="600" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="48" y="48" text-anchor="start" class="title">三个微批次，累积到同一个梯度缓冲区</text>
+<text x="48" y="78" text-anchor="start" class="sub">示例：12个样本 = 3 × 4个样本；每个微批次使用样本平均损失，反向前乘 1/3</text>
+<text x="48" y="121" text-anchor="start" class="small">执行顺序</text>
+<text x="376" y="121" text-anchor="start" class="small">gᵢ = ∇θ Lᵢ；各次梯度依次写入下方缓冲区</text>
+<rect x="48" y="146" width="230" height="84" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="163" y="175" text-anchor="middle" class="head">微批次 1 · 4个样本</text>
+<text x="163" y="201" text-anchor="middle" class="body">前向 → L₁ / 3 → 反向</text>
+<rect x="376" y="146" width="230" height="84" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="491" y="175" text-anchor="middle" class="head">微批次 2 · 4个样本</text>
+<text x="491" y="201" text-anchor="middle" class="body">前向 → L₂ / 3 → 反向</text>
+<rect x="704" y="146" width="230" height="84" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="819" y="175" text-anchor="middle" class="head">微批次 3 · 4个样本</text>
+<text x="819" y="201" text-anchor="middle" class="body">前向 → L₃ / 3 → 反向</text>
+<rect x="1010" y="146" width="182" height="84" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="1101" y="175" text-anchor="middle" class="head">更新一次</text>
+<text x="1101" y="201" text-anchor="middle" class="body">θ → θ′</text>
+<path id="microbatch-1-to-2" d="M278 188H376" class="flow"/>
+<path id="microbatch-2-to-3" d="M606 188H704" class="flow"/>
+<path id="microbatch-3-to-update" d="M934 188H1010" class="flow"/>
+<rect x="48" y="300" width="886" height="96" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2" data-layout-role="panel"/><text x="68" y="327" text-anchor="start" class="head">同一梯度缓冲区 · 窗口开始时清空一次</text>
+<text x="163" y="370" text-anchor="middle" class="head">g = g₁ / 3</text>
+<path id="write-gradient-163" d="M163 230V300" class="flow"/>
+<text x="491" y="370" text-anchor="middle" class="head">g += g₂ / 3</text>
+<path id="write-gradient-491" d="M491 230V300" class="flow"/>
+<text x="819" y="370" text-anchor="middle" class="head">g += g₃ / 3</text>
+<path id="write-gradient-819" d="M819 230V300" class="flow"/>
+<path id="consume-accumulated-gradient" d="M934 348H1101V230" class="flow"/>
+<text x="1006" y="376" text-anchor="middle" class="small">使用累计梯度</text>
+<text x="48" y="435" text-anchor="start" class="small">状态驻留</text>
+<g data-layout-role="glyph-group"><rect x="48" y="454" width="886" height="44" rx="6" fill="#dbeafe" stroke="#2563eb"/><text x="491" y="482" text-anchor="middle" class="body">整个累积窗口使用同一版参数 θ；优化器状态持续保留</text>
+</g><g data-layout-role="glyph-group"><rect x="48" y="520" width="230" height="42" rx="6" fill="#dcfce7" stroke="#16a34a"/><text x="163" y="547" text-anchor="middle" class="small">激活 1：本次反向后释放</text>
+</g><g data-layout-role="glyph-group"><rect x="376" y="520" width="230" height="42" rx="6" fill="#dcfce7" stroke="#16a34a"/><text x="491" y="547" text-anchor="middle" class="small">激活 2：本次反向后释放</text>
+</g><g data-layout-role="glyph-group"><rect x="704" y="520" width="230" height="42" rx="6" fill="#dcfce7" stroke="#16a34a"/><text x="819" y="547" text-anchor="middle" class="small">激活 3：本次反向后释放</text>
+</g></svg>

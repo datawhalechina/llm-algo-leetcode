@@ -1,14 +1,42 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
-  <title id="title">MoE 路由统计与两类负载均衡反馈</title><desc id="desc">Router 产生概率与分配，统计偏好、负载和溢出后，通过辅助损失或路由偏置影响下一轮路由。</desc>
-  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker><marker id="p" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#7c3aed"/></marker><style>.t{font:700 27px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.s{font:500 15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.h{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#111827}.b{font:500 14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.box{stroke-width:2.4;rx:14}.f{stroke:#475569;stroke-width:2.4;fill:none;marker-end:url(#a)}.p{stroke:#7c3aed;stroke-width:2.4;fill:none;stroke-dasharray:7 5;marker-end:url(#p)}</style></defs>
-  <rect width="1500" height="470" fill="#f8fafc"/><text x="50" y="48" class="t">MoE 负载均衡：从批次统计形成下一轮路由反馈</text><text x="50" y="76" class="s">均衡不是让每个专家完全相同，而是避免长期热点在容量、通信和任务质量约束下持续放大。</text>
-  <rect x="55" y="175" width="170" height="86" class="box" fill="#dbeafe" stroke="#2563eb"/><text x="140" y="207" text-anchor="middle" class="h">路由器</text><text x="140" y="235" text-anchor="middle" class="b">路由分数与参数</text>
-  <rect x="310" y="105" width="185" height="78" class="box" fill="#cffafe" stroke="#0891b2"/><text x="402" y="136" text-anchor="middle" class="h">偏好质量 Pᵢ</text><text x="402" y="161" text-anchor="middle" class="b">完整概率的平均值</text>
-  <rect x="310" y="270" width="185" height="78" class="box" fill="#f5f3ff" stroke="#7c3aed"/><text x="402" y="301" text-anchor="middle" class="h">实际分配 fᵢ</text><text x="402" y="326" text-anchor="middle" class="b">Top-K 选择频率</text>
-  <rect x="600" y="175" width="200" height="86" class="box" fill="#fff7ed" stroke="#d97706"/><text x="700" y="207" text-anchor="middle" class="h">负载统计</text><text x="700" y="235" text-anchor="middle" class="b">偏好 / 分配 / 溢出</text>
-  <rect x="930" y="105" width="205" height="78" class="box" fill="#fef3c7" stroke="#d97706"/><text x="1032" y="136" text-anchor="middle" class="h">辅助损失</text><text x="1032" y="161" text-anchor="middle" class="b">进入训练总损失</text>
-  <rect x="930" y="270" width="205" height="78" class="box" fill="#ecfccb" stroke="#65a30d"/><text x="1032" y="301" text-anchor="middle" class="h">无辅助均衡</text><text x="1032" y="326" text-anchor="middle" class="b">更新路由选择偏置</text>
-  <rect x="1235" y="175" width="200" height="86" class="box" fill="#fff1f2" stroke="#e11d48"/><text x="1335" y="207" text-anchor="middle" class="h">下一批次路由</text><text x="1335" y="235" text-anchor="middle" class="b">质量与负载再观测</text>
-  <path d="M225 197C265 197 270 144 310 144" class="f"/><path d="M225 239C265 239 270 309 310 309" class="f"/><path d="M495 144C545 144 550 197 600 197" class="f"/><path d="M495 309C545 309 550 239 600 239" class="f"/><path d="M800 197C850 197 870 144 930 144" class="f"/><path d="M800 239C850 239 870 309 930 309" class="f"/><path d="M1135 144C1190 144 1195 197 1235 197" class="p"/><path d="M1135 309C1190 309 1195 239 1235 239" class="p"/><path d="M1335 261V405H140V261" class="p"/>
-  <text x="510" y="414" class="s">辅助损失改变梯度；无辅助方法改变路由状态；两者都必须继续检查溢出与任务质量。</text>
+<title id="title">MoE两种均衡反馈分别改变什么</title><desc id="desc">同一批路由统计形成两种反馈：辅助损失经反向更新路由参数；无辅助路径直接更新选择偏置。两条不是默认同时启用的步骤。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker><marker id="blue" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#2563eb"/></marker><marker id="red" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#e11d48"/></marker><marker id="purple" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#7c3aed"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:26px;font-weight:700}.sub{font-size:17px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:17px}.small{font-size:15px;fill:#475569}.node{stroke-width:2;rx:12}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.read{stroke:#2563eb;stroke-width:2.5;fill:none;marker-end:url(#blue)}.grad{stroke:#e11d48;stroke-width:2.5;stroke-dasharray:7 5;fill:none;marker-end:url(#red)}.control{stroke:#7c3aed;stroke-width:2.5;stroke-dasharray:7 5;fill:none;marker-end:url(#purple)}</style></defs>
+<rect width="1500" height="470" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="55" y="48" class="title" text-anchor="start">辅助损失更新路由参数，无辅助均衡直接调整选择偏置</text>
+<text x="55" y="80" class="sub" text-anchor="start">两条路径作为方案对照：都读取本批负载，但写入不同的训练状态。</text>
+<rect x="55" y="190" width="230" height="90" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="170" y="219" class="head" text-anchor="middle">本批路由输出</text>
+<text x="170" y="246" class="body" text-anchor="middle">完整概率与Top-K编号</text>
+<rect x="355" y="190" width="230" height="90" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="470" y="219" class="head" text-anchor="middle">统计专家负载</text>
+<text x="470" y="246" class="body" text-anchor="middle">Pᵢ、fᵢ与分配计数</text>
+<text x="660" y="111" class="small" text-anchor="start">辅助损失路径</text>
+<rect x="660" y="130" width="230" height="80" class="node" fill="#fef3c7" stroke="#d97706"/>
+<text x="775" y="159" class="head" text-anchor="middle">构造均衡辅助项</text>
+<text x="775" y="186" class="body" text-anchor="middle">α E Σᵢ fᵢ Pᵢ</text>
+<rect x="950" y="130" width="230" height="80" class="node" fill="#fef3c7" stroke="#d97706"/>
+<text x="1065" y="159" class="head" text-anchor="middle">加入训练总损失</text>
+<text x="1065" y="186" class="body" text-anchor="middle">L_task + L_balance</text>
+<rect x="1240" y="130" width="205" height="80" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="1342.5" y="159" class="head" text-anchor="middle">反向与优化器更新</text>
+<text x="1342.5" y="186" class="body" text-anchor="middle">路由器参数 θ</text>
+<text x="660" y="281" class="small" text-anchor="start">无辅助偏置路径</text>
+<rect x="660" y="300" width="230" height="80" class="node" fill="#dcfce7" stroke="#15803d"/>
+<text x="775" y="329" class="head" text-anchor="middle">计算相对负载误差</text>
+<text x="775" y="356" class="body" text-anchor="middle">专家计数与平均计数比较</text>
+<rect x="950" y="300" width="230" height="80" class="node" fill="#dcfce7" stroke="#15803d"/>
+<text x="1065" y="329" class="head" text-anchor="middle">直接更新选择偏置</text>
+<text x="1065" y="356" class="body" text-anchor="middle">b ← b − η e</text>
+<rect x="1240" y="300" width="205" height="80" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="1342.5" y="329" class="head" text-anchor="middle">下一批次选择</text>
+<text x="1342.5" y="356" class="body" text-anchor="middle">读取新的偏置 b</text>
+<path id="routing-to-stats" d="M285 235H355" class="flow"/>
+<path id="stats-to-aux" d="M585 215H620V170H660" class="flow"/>
+<path id="stats-to-bias-error" d="M585 255H620V340H660" class="flow"/>
+<path id="aux-to-total" d="M890 170H950" class="flow"/>
+<path id="loss-to-parameter-update" d="M1180 170H1240" class="flow"/>
+<path id="error-to-bias" d="M890 340H950" class="flow"/>
+<path id="bias-to-next-routing" d="M1180 340H1240" class="flow"/>
+<text x="55" y="442" class="sub" text-anchor="start">辅助项通过梯度影响θ；偏置路径按负载统计更新b。容量、任务质量与通信表现需要分别观察。</text>
 </svg>

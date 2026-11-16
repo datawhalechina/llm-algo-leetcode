@@ -1,6 +1,6 @@
 # 88. Distilled Student Delivery Project | 蒸馏学生交付项目
 
-**难度：** Hard | **环境：** CPU 完成合同与决策练习；`PT-DISTILL-CUDA` 执行真实蒸馏实验 | **标签：** `蒸馏`, `学生模型`, `配对实验`, `交付门禁` | **目标人群：** 模型压缩与后训练项目学习者
+**难度：** Hard | **环境：** [CPU 主线，GPU 实验](#runtime-environment) | **标签：** `蒸馏`、`学生模型`、`配对实验`、`质量与部署比较` | **目标人群：** 具备微调基础、准备比较蒸馏方案的读者
 
 > 🚀 **云端运行环境**
 >
@@ -14,102 +14,95 @@
 
 ## 本节导读
 
-蒸馏损失下降只说明学生更接近教师分布，不能证明学生获得了可交付收益。本项目固定教师、学生初始快照、数据切分和推理工作负载，依次比较学生基线、固定轨迹蒸馏和在策略蒸馏，再用独立质量、产物完整性、模型规模与推理性能共同决定候选是否值得交付。
+较小的学生模型运行成本低，却可能答错教师能解的题。蒸馏让学生学习教师的回答或下一词元分布；训练损失下降后，还要回答两个问题：学生比训练前多解了多少题，保存并加载后的学生是否仍有大小和延迟优势？
 
-Step 4 用 CPU 记录练习项目合同与决策逻辑；Step 5 在 `PT-DISTILL-CUDA` 环境中先做教师、轨迹、词表和显存准入，再运行通过准入的蒸馏路线。
+这里从同一学生初始版本出发，比较固定回答训练与学生自己生成回答后接受教师反馈的训练。教师提供当前任务上的质量参照，训练前的学生提供起点；验证集用于选训练方案，另外保留最终评测数据。质量、文件完整性和推理成本一起决定候选下一步是调参、补测还是交付。
 
-**关键词：** `student baseline`, `offline trace distillation`, `on-policy distillation`, `quality retention`, `delivery gate`
+**关键词：** `knowledge distillation`、`fixed trajectory`、`on-policy distillation`、`quality retention`
+
+---
+
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 使用 [BASE-CPU](../guide.md#base-cpu)，运行 Step 4 的记录检查、指标计算与决策测试。
+- **GPU 实验：** 使用 [PT-DISTILL-CUDA](../topic_discussion/post_training_optimization/quickstart.md#pt-distill-cuda-quickstart)，按 Step 5 选择准备、训练或读取阶段。
 
 ---
 
 ## 前置阅读
 
-**导语：** 先掌握完成区监督、教师轨迹准入、在线轨迹新鲜度和 GKD，再进入本项目比较离线、在线与混合蒸馏路线。
+先理解回答位置如何进入损失，再看教师怎样在学生生成的前缀上提供分布反馈。
 
-- [13. SFT Supervision and Loss | SFT 监督边界与损失](./13_SFT_Training_Loop.md)
-- [PT-SYNTHETIC-DATA. Instruction Generation and Verifier Admission | 合成数据与验证器准入](./PT-SYNTHETIC-DATA_Instruction_Generation_and_Verifier_Admission.md)
-- [PT-ROLLOUT-LIFECYCLE. Rollout and Policy Freshness | 轨迹与策略新鲜度](./PT-ROLLOUT-LIFECYCLE_Rollout_and_Policy_Freshness.md)
-- [DISTILL-OPD. On-Policy Distillation and GKD | 在策略蒸馏与 GKD](./DISTILL-OPD_On_Policy_Distillation_and_GKD.md)
+- [13. SFT Supervision and Loss | SFT 监督边界与损失](./13_SFT_Training_Loop.md)：核对提示、回答与损失位置的关系。
+- [DISTILL-OPD. On-Policy Distillation and GKD | 在策略蒸馏与 GKD](./DISTILL-OPD_On_Policy_Distillation_and_GKD.md)：区分轨迹来源、教师反馈和学生更新。
 
 ---
 
-## Step 1：怎样固定共同合同并区分蒸馏路线
+## Step 1：从同一学生起点比较蒸馏路线
 
-项目先冻结教师与学生初始快照，再固定训练提示、独立评测集、解码参数和推理工作负载。G0 测量学生起点；固定轨迹路线使用数据集参考答案（必要时压缩推理段）或教师预先生成的文本轨迹；在线路线由当前学生生成回答，再让兼容教师提供逐 Token 分布。候选共享学生起点、训练提示集合、验证集和指标口径，并分别记录教师身份、训练 Token 数与运行成本。
+先固定教师与学生的模型版本、数据切分和推理协议。轨迹是提示之后的一段回答序列：固定轨迹预先准备，在线轨迹由当前学生生成。教师在两类轨迹的前缀上提供下一词元分布，学生学习这种分布差异。G0 是训练前学生的比较基线，教师分数是当前题集上的参照；学生也可能在某些题目上超过教师。
 
-| 路线 | 学生起点 | 轨迹来源 | 教师作用 | 额外条件 |
+G1 与 G2 从相同学生版本开始，使用同一训练提示集和相同的步数设置；实际生成词元数、耗时与显存另行记录。混合路线则先用固定参考答案训练，再从该中间模型继续在线蒸馏。固定参考答案和另一位教师生成的文本是两种数据来源，分别检查质量与来源。
+
+| 路线 | 学生起点 | 回答来源 | 教师的作用 | 比较时记录什么 |
 |:---|:---|:---|:---|:---|
-| G0 · student baseline | 固定学生初始快照 | 无蒸馏训练 | 提供质量上界 | 固定评测与推理协议 |
-| Offline trace | 与在线路线相同 | 固定参考答案或教师生成文本 | 提供答案或推理轨迹 | 轨迹可解析、正确且不过度截断 |
-| Online GKD | 与离线路线相同 | 当前学生生成 | 对学生访问的前缀给出分布 | 词表映射一致且联合显存准入 |
-| Hybrid | 先离线、后在线 | 两类轨迹依次使用 | 先锚定答案，再纠正学生生成 | 两条路线分别通过准入 |
+| G0：训练前学生 | 固定初始版本 | 学生推理输出 | 单独测量教师作为参照 | 相同题集、解码参数和推理计时 |
+| G1：固定轨迹蒸馏 | 同一初始版本 | 数据集参考答案 | 对固定前缀给出分布 | 回答来源、训练步数与词元数 |
+| G2：在线 GKD | 同一初始版本 | 当前学生采样 | 对学生访问的前缀给出分布 | 词表对齐、生成成本与联合显存 |
+| 混合路线 | 固定轨迹阶段保存的模型 | 先参考答案，后学生采样 | 分别提供两阶段反馈 | 中间模型、两阶段配方和成本 |
 
-![教师、学生和蒸馏候选进入同一项目](../public/02_PyTorch_Algorithms/88_distillation_project_flow.svg)
+![共同学生起点、两类轨迹与同题比较](../public/02_PyTorch_Algorithms/88_distillation_project_flow.svg)
 
-## Step 2：每条路线需要哪些准入与交付证据
+## Step 2：计算质量变化与部署成本
 
-离线路线先检查轨迹是否适合作为训练数据，在线路线先检查教师分布能否与学生逐 Token 对齐。路线准入后，质量比较至少包含教师、G0 和蒸馏候选；资源比较使用同一加载方式、相同输入和解码参数。
+教师与学生的词表分布逐词元对齐，需要词元到 ID 的映射及特殊词元一致，并为两个模型与训练状态留出显存。若使用教师另行生成的文本，则先检查答案正确率、可解析率、长度和截断情况。训练、开发与评测数据通过逐条样本或提示比较检查重合；两个整集哈希不同只说明文件集合不同，部分样本仍可能相同。
 
-设教师质量为 $Q_T$，学生基线为 $Q_0$，候选为 $Q_c$，则候选的学生增益和教师保持率分别为
-
-$$
-\Delta Q_c=Q_c-Q_0,
-\qquad
-R_c=\frac{Q_c}{Q_T}.
-$$
-
-设教师、学生基线和候选的产物大小为 $S_T,S_0,S_c$，推理延迟为 $L_T,L_0,L_c$，则教师侧压缩收益和学生侧延迟回归分别由
+设教师、训练前学生、候选的质量分数为 $Q_T,Q_0,Q_c$，产物大小为 $S_T,S_0,S_c$，推理延迟为 $L_T,L_0,L_c$。质量分数越高越好，大小和延迟越小越好；同类比值使用相同单位，教师分数与资源分母取正值。以下指标既比较候选与教师，也保留学生训练前后的变化；教师保持率可大于 1，表示候选在当前题集得分更高。
 
 $$
-C_c=\frac{S_c}{S_T},
-\qquad
-P_c=\frac{L_c}{L_T},
-\qquad
+\Delta Q_c=Q_c-Q_0,\qquad
+R_c=\frac{Q_c}{Q_T},\qquad
+C_c=\frac{S_c}{S_T},\qquad
+P_c=\frac{L_c}{L_T},\qquad
 B_c=\frac{L_c}{L_0}.
 $$
 
-$\Delta Q_c$ 表示当前评测中候选相对学生起点的分数增益，$R_c$ 约束教师能力损失，$C_c$ 与 $P_c$ 检查相对教师的部署收益，$B_c$ 防止蒸馏学生相对 G0 出现明显延迟回归。各评测类别还要分别与 G0 比较，避免总分掩盖局部退化。
-
-| 检查阶段 | 证据或指标 | 固定比较与通过条件 | 失败动作 |
-|:---|:---|:---|:---|
-| Offline trace 准入 | 最终答案可解析率、正确率、截断率、长度与来源哈希 | 轨迹质量不低于同题教师基线，并满足解析与截断门槛 | 清洗轨迹、调整生成协议或更换教师 |
-| Online GKD 准入 | token→ID 映射、特殊 Token、教师上界与联合显存 | 教师—学生分布可逐 Token 对齐，教师与显存均通过预检 | 改用离线轨迹或兼容教师 |
-| Hybrid 准入 | 两条路线的准入结果与学生血缘 | 离线和在线分别通过，阶段间学生产物可追溯 | 保留通过准入的单一路线 |
-| 学生能力增益 | $\Delta Q_c$ | 候选相对 G0 达到最低增益 | 调整数据、预算或训练目标 |
-| 教师能力保持 | $R_c$ | 候选达到最低教师能力保持率 | 调整蒸馏强度或更换候选 |
-| 学生产物 | 候选目录、配置、分词器与哈希 | 文件完整并可独立加载 | 修复并重新生成产物 |
-| 部署收益 | $C_c$、$P_c$、$B_c$ 与类别分数 | 同一重复测量协议下，大小、延迟和类别退化同时达到门槛 | 保持 `tune` 并补充针对性复测 |
-
-## Step 3：怎样选择训练路线并形成交付决策
-
-路线选择和交付判断是两层决策。轨迹合格但词表不兼容时选择离线；词表、教师和显存都通过时可以选择在线；两边分别通过时才进入混合路线。完成训练后再检查项目合同、产物、质量和部署收益。
-
-| 路线状态 | 触发条件 | 下一步 |
+| 检查对象 | 指标与含义 | 怎样比较 |
 |:---|:---|:---|
-| `offline` | 轨迹通过，在线兼容性或显存未通过 | 使用已验证文本轨迹训练学生 |
-| `online` | 在线教师通过，离线轨迹未通过 | 在学生当前轨迹上执行 GKD |
-| `hybrid` | 两条路线分别通过 | 先离线锚定，再在线纠偏 |
-| `blocked` | 两条路线都未通过 | 修复教师、轨迹或资源条件 |
+| 学生质量增益 | $\Delta Q_c$，相对训练前的分数变化 | 与最低增益比较，同时检查各类别分数 |
+| 教师质量保持 | $R_c$，候选分数与教师分数之比 | 与最低保持率比较 |
+| 模型大小 | $C_c$，候选文件大小与教师之比 | 同一保存格式和统计范围，检查压缩幅度 |
+| 教师侧延迟 | $P_c$，候选延迟与教师之比 | 同输入、加载方式、生成参数和计时范围重复测量 |
+| 学生侧延迟 | $B_c$，候选延迟与 G0 之比 | 检查质量改善是否伴随明显延迟增加 |
+| 产物可用性 | 文件哈希与独立加载结果 | 保存后重新读取文件、核对内容并加载模型 |
+
+## Step 3：按检查顺序决定候选下一步
+
+选择训练路线与判断训练结果分开进行。有合格固定文本时可以训练固定轨迹；教师分布对齐且显存足够时可以训练在线轨迹；混合方案还要保存并明确使用哪一个中间模型。完成训练后，先核对共同学生起点、数据记录与产物，再检查质量、重复计时和资源比值。
+
+决策中的 `accept` 表示所列检查条件通过，具体成立范围由输入记录决定。验证集已经用于选择训练方案，因此最终任务质量还需要在冻结配方后用留出集评测。记录中的文件校验和加载状态应来自实际检查；CPU 决策函数负责组合这些检查结果。
 
 | 状态 | 触发条件 | 下一步 |
 |:---|:---|:---|
-| `reject` | 身份不一致、评测污染、教师被更新或产物不可恢复 | 修复实验设计并重新建立三组证据 |
-| `tune` | 合同有效，但质量增益或教师保持率不足 | 调整数据、训练预算或蒸馏目标后复测 |
-| `measure` | 质量与产物通过，但缺少同协议推理证据 | 执行教师—学生配对部署测量 |
-| `accept` | 合同、质量、产物、大小和延迟门槛全部通过 | 输出蒸馏学生交接清单 |
+| `reject` | 合同检查失败，或产物校验／加载失败 | 修复模型、数据或文件问题，再重新比较 |
+| `tune` | 质量增益或保持率不足；或重复测量后大小、延迟、类别分数超出门槛 | 调整具体训练条件后复测 |
+| `measure` | 前述质量与产物检查通过，重复计时次数或样本数不足 | 补测推理延迟并核对比较协议 |
+| `accept` | 当前记录的合同、产物、质量与资源门槛全部通过 | 按评测数据用途判断是否还需最终留出评测 |
 
-![合同、质量、产物和部署证据形成蒸馏交付判断](../public/02_PyTorch_Algorithms/88_distillation_evidence_gate.svg)
+![产物、质量、计时与资源检查的决策顺序](../public/02_PyTorch_Algorithms/88_distillation_evidence_gate.svg)
 
-## Step 4：实现蒸馏项目合同与交付判断
+## Step 4：实现蒸馏记录检查与候选判断
 
-题目区使用小型项目记录复现四项工作：核对教师—学生与数据身份、根据轨迹和兼容性选择训练路线、计算候选相对 G0 和教师的指标、组合质量与部署门槛。测试覆盖路线阻塞、学生起点漂移、评测污染、质量不足、缺少部署证据和完整通过。
+补全四个函数：检查三组模型与数据标识，组合轨迹和在线条件，计算候选指标，再按优先级返回决策。输入是已经汇总的小型记录；逐样本去重、文件读取和实际模型加载由实验阶段完成。
 
 | 任务与目的 | 已知条件 | 完成标准 | 测试验证 |
 |:---|:---|:---|:---|
-| TODO 1：核对项目合同<br>`validate_distillation_contract` | 教师、学生、数据切分和三组身份记录 | G1/G2 共享学生起点与训练预算；训练/评测哈希不同；教师保持冻结 | 学生版本漂移、评测污染和教师可训练状态分别被拒绝 |
-| TODO 2：选择蒸馏路线<br>`select_distillation_route` | 轨迹质量、词表兼容和显存预检结果 | 只有分别通过的路线才能组成 hybrid | 覆盖 `offline / online / hybrid / blocked` |
-| TODO 3：计算候选证据<br>`summarize_distilled_candidate` | 教师、G0 与候选的质量、大小、延迟和完整类别分数 | 分母为正；候选必须携带内容哈希、加载状态和重复延迟协议 | 候选指标与手算结果一致，类别退化和无效延迟协议可被识别 |
-| TODO 4：形成交付判断<br>`decide_distilled_student` | 已提供的合同检查、质量、产物与部署事实 | 硬失败优先；缺少推理证据不能接受；原因可追溯 | 分别得到 `reject / tune / measure / accept` |
+| TODO 1：核对共同起点与记录<br>`validate_distillation_contract` | 教师、学生版本、两份数据哈希和三组训练设置 | 检查教师冻结、学生版本一致、G1/G2 步数相同、两整集哈希不同 | 改动学生版本、将两个哈希设为相同、取消教师冻结时返回对应问题 |
+| TODO 2：选择可用路线<br>`select_distillation_route` | 轨迹解析率、质量、截断率与在线检查布尔值 | 分别计算两条路线是否满足条件，再组合路线名 | 两边通过得到 hybrid、只固定轨迹通过得到 offline、都失败得到 blocked |
+| TODO 3：计算质量与资源比值<br>`summarize_distilled_candidate` | 三组分数、大小、延迟、完整类别，以及产物与计时摘要 | 拒绝非有限数、非正资源分母和类别缺失；读取校验、加载与重复计时字段 | 手算比值一致，类别缺失、NaN 和零延迟报错 |
+| TODO 4：按顺序返回决策<br>`decide_distilled_student` | 前三项汇总与质量、大小、延迟门槛 | 记录／产物失败优先拒绝，再判断质量、计时和资源条件 | 构造 reject、tune、measure、accept 四种输入 |
 
 
 ```python
@@ -122,10 +115,10 @@ from typing import Any, Dict
 
 ```python
 def validate_distillation_contract(spec: Dict[str, Any]) -> Dict[str, Any]:
-    """核对教师、学生、数据隔离和三组实验是否可比较。"""
+    """核对教师、学生、数据哈希标识和三组实验的共同设置。"""
     # ==========================================
-    # TODO 1：检查模型身份、教师冻结、数据隔离与 G1/G2 配对条件。
-    # issues = ...
+    # TODO 1：检查模型身份、教师冻结、整集哈希与 G1/G2 起点和步数。
+    # issues = ???
     # ==========================================
     raise NotImplementedError("TODO 1：核对蒸馏项目合同")
 
@@ -160,15 +153,20 @@ def decide_distilled_student(
 ) -> Dict[str, str]:
     """按合同、质量、产物和部署证据形成项目判断。"""
     # ==========================================
-    # TODO 4：按 reject > tune > measure > accept 的顺序判断。
+    # TODO 4：先检查合同与产物，再检查质量、重复计时和资源比值。
     # ==========================================
     raise NotImplementedError("TODO 4：形成蒸馏学生交付判断")
 
 ```
 
+## 测试
+
+运行下方 CPU 测试，核对模型与数据标识、路线组合、可手算指标和四种决策。
+
 
 ```python
 def _project_fixture() -> Dict[str, Any]:
+    """构造三组共同起点与数据标识。"""
     return {
         "schema_version": "distilled-student-project/v2",
         "teacher": {"model_id": "Qwen/Qwen2.5-1.5B-Instruct", "revision": "teacher-rev", "frozen": True},
@@ -183,6 +181,7 @@ def _project_fixture() -> Dict[str, Any]:
 
 
 def _evidence_fixture():
+    """构造可手算的质量与资源摘要。"""
     teacher = {"name": "teacher", "quality_score": 0.80, "artifact_size_mb": 3000.0, "latency_ms": 60.0, "category_scores": {"core": {"quality_score": 0.75}}}
     baseline = {"name": "g0", "quality_score": 0.55, "artifact_size_mb": 1000.0, "latency_ms": 24.0, "category_scores": {"core": {"quality_score": 0.60}}}
     candidate = {
@@ -195,6 +194,7 @@ def _evidence_fixture():
 
 
 def test_distillation_contract():
+    """检查版本、数据哈希与冻结状态。"""
     spec = _project_fixture()
     assert validate_distillation_contract(spec)["ready"]
 
@@ -212,6 +212,7 @@ def test_distillation_contract():
 
 
 def test_candidate_summary():
+    """检查比值、类别和无效输入。"""
     teacher, baseline, candidate = _evidence_fixture()
     summary = summarize_distilled_candidate(teacher, baseline, candidate)
     assert abs(summary["quality_gain"] - 0.17) < 1e-9
@@ -237,6 +238,7 @@ def test_candidate_summary():
 
 
 def test_distillation_route_selection():
+    """检查两边通过、固定轨迹通过和两边失败。"""
     gates = {"min_trace_parse_ratio": 0.80, "max_trace_saturation_ratio": 0.25}
     offline = {"trace_available": True, "parse_ratio": 0.90, "quality_score": 0.75, "baseline_quality_score": 0.70, "saturation_ratio": 0.10}
     online = {"teacher_ready": True, "full_logit_compatible": True, "memory_admitted": True}
@@ -248,6 +250,7 @@ def test_distillation_route_selection():
 
 
 def test_delivery_decision():
+    """核对四种候选决策。"""
     teacher, baseline, candidate = _evidence_fixture()
     summary = summarize_distilled_candidate(teacher, baseline, candidate)
     gates = {"min_quality_gain": 0.10, "min_teacher_retention": 0.85, "max_teacher_size_ratio": 0.50, "max_teacher_latency_ratio": 0.60, "max_baseline_latency_ratio": 1.05, "max_regressed_categories": 0}
@@ -276,11 +279,12 @@ print("✅ 蒸馏项目合同、候选证据和交付判断测试通过。")
 
 ## 参考代码与解析
 
-### 参考代码
+### 代码
 
 
 ```python
 def validate_distillation_contract(spec: Dict[str, Any]) -> Dict[str, Any]:
+    """核对教师、学生、数据哈希标识和三组实验的共同设置。"""
     # TODO 1：逐项记录会破坏三组可比性的合同问题。
     issues = []
     teacher = spec.get("teacher", {})
@@ -313,6 +317,7 @@ def select_distillation_route(
     evidence: Dict[str, Any],
     gates: Dict[str, float],
 ) -> Dict[str, Any]:
+    """根据离线轨迹和在线教师证据选择训练路线。"""
     # TODO 2：离线检查轨迹，在线检查教师、词表和联合显存。
     offline = evidence.get("offline", {})
     online = evidence.get("online", {})
@@ -338,7 +343,8 @@ def summarize_distilled_candidate(
     student_baseline: Dict[str, Any],
     candidate: Dict[str, Any],
 ) -> Dict[str, float | bool | str]:
-    # TODO 3：使用同一质量与推理协议计算四个配对比值。
+    """计算候选相对教师和学生基线的质量与部署指标。"""
+    # TODO 3：计算质量增益以及相对教师和 G0 的资源比值。
     numeric_fields = ("quality_score", "artifact_size_mb", "latency_ms")
     if any(not isinstance(record.get(field), (int, float)) for record in (teacher, student_baseline, candidate) for field in numeric_fields):
         raise ValueError("教师、学生基线和候选缺少可比较数值")
@@ -377,7 +383,8 @@ def decide_distilled_student(
     summary: Dict[str, Any],
     gates: Dict[str, float],
 ) -> Dict[str, str]:
-    # TODO 4：硬合同失败优先，其次检查质量，再检查可测量性与部署门槛。
+    """按合同、质量、产物和部署证据形成项目判断。"""
+    # TODO 4：先检查合同与产物，再检查质量、重复计时和资源门槛。
     if not contract.get("ready"):
         return {"decision": "reject", "reason": "; ".join(contract.get("issues", []))}
     if not summary.get("artifact_verified") or not summary.get("load_ready"):
@@ -394,39 +401,39 @@ def decide_distilled_student(
 
 ### 解析
 
-#### TODO 1：固定三组实验的共同身份
+#### TODO 1：核对教师与学生起点
 
-- 机制：教师冻结、学生起点、训练预算和数据隔离共同决定实验是否可比较。
-- 测试：分别改变 G2 学生版本、评测哈希和教师冻结状态，确认任一硬问题都会阻止准入。
+- 同一学生版本和相同训练步数使 G1/G2 保留共同起点；依次检查教师冻结、各组版本与步数，并收集具体问题。
+- 测试将整集哈希设为相同以触发数据问题。真实数据隔离还需逐条比较样本或提示，才能发现两个不同集合中的交叉内容。
 
-#### TODO 2：选择离线、在线或混合路线
+#### TODO 2：组合两条路线的检查结果
 
-- 机制：离线准入检查轨迹可解析率、正确率和截断率；在线准入检查教师、词表映射和联合显存。
-- 测试：分别构造两条路线都通过、只有离线通过和两条路线都阻塞的输入。
+- 先用解析率、质量与截断率判断固定轨迹，再组合教师可用、词表兼容和显存通过三个在线条件；两边分别通过才返回 hybrid。
+- 现有测试覆盖两边通过、只固定轨迹通过和两边失败。在线单独通过的分支也应由对应条件返回 online。
 
-#### TODO 3：计算质量和部署证据
+#### TODO 3：保留两个比较基线
 
-- 机制：候选同时与 G0 和教师比较，训练成本与部署收益分开记录。
-- 测试：用可手算数值检查质量与资源比值，并拒绝零分母、非有限指标和缺失类别；类别缺失不能被集合交集掩盖。
+- 质量增益使用候选减 G0，保持率使用候选除教师；大小、延迟比值分别保留教师与 G0 的参照。类别集合应完整匹配后再计算退化数量。
+- 文件是否校验、是否加载以及计时次数来自输入摘要。测试用手算指标核对比值，并检查缺失类别、非有限数和零资源分母。
 
-#### TODO 4：形成交付判断
+#### TODO 4：按失败原因选择下一步
 
-- 机制：合同和产物属于硬门禁；质量不足与部署收益不足进入调优；没有推理证据时保持测量状态。
-- 测试：四个输入分别覆盖 `reject / tune / measure / accept`。
+- 先处理合同与产物失败；质量不足返回 tune，质量通过但重复计时不足返回 measure，最后比较大小、延迟与类别退化。
+- 四组断言核对各状态。当前 accept 表示给定摘要满足这些门槛，实际文件检查、测量协议和最终留出评测应有各自记录。
 
-## Step 5：真实蒸馏与学生交付实验
+## Step 5：真实蒸馏与学生模型比较
 
-实验先用 `teacher_check / trace_check` 判断教师适合在线分布蒸馏还是离线轨迹蒸馏，再按 `prepare → prompt_check → preflight → g0 → g1/g2 → confirm` 执行候选训练；final holdout 在配方冻结前只登记身份与哈希。
+先准备数据、选择提示词并建立教师与 G0 的比较，再运行固定轨迹、在线或混合训练。开发集选择提示词与训练剂量，验证集用于候选比较；最终留出集目前登记身份、哈希并检查提示重合，尚未执行最终评分。
 
-| 证据层 | Step 4 CPU 验证 | Step 5 真实环境补充 | 项目输出 |
-|:---|:---|:---|:---|
-| 路线准入 | 轨迹、词表和显存事实如何组合成路线 | 真实轨迹质量、tokenizer 映射和显存预检 | `offline / online / hybrid / blocked` |
-| 候选比较 | 配对指标与类别退化计算 | 教师、G0 和训练后学生的同口径评测 | 候选证据 JSON |
-| 交付门禁 | 合同、质量、产物与部署状态机 | 模型产物加载、延迟、显存和质量 | `accept / tune / reject / measure` 与交接资产 |
+| 阶段 | 输入与实际动作 | 保存内容 |
+|:---|:---|:---|
+| 准备与预检 | 固定数据和模型版本，核对词表映射与显存 | 数据身份、提示选择与预检记录 |
+| 候选训练 | G1 使用固定参考答案；G2 使用学生采样；混合方案分两阶段 | 指标、训练配置和模型文件 |
+| 结果比较 | 按原始记录读取质量、大小与重复延迟 | 比较报告、决策和文件引用 |
 
 ### 5.1 配置本次运行
 
-按[后训练优化 Quickstart](../topic_discussion/post_training_optimization/quickstart.md#pt-distill-cuda-quickstart)创建并选择 `PT-DISTILL-CUDA` Kernel。学习者只需设置唯一 `RUN_LABEL` 和当前 `RUN_STAGE`；G1、G2 会自动复用已通过的数据、提示词、预检与 G0 基线。
+按[后训练优化 Quickstart](../topic_discussion/post_training_optimization/quickstart.md#pt-distill-cuda-quickstart)选择 `PT-DISTILL-CUDA` Kernel。设置唯一 `RUN_LABEL` 与 `RUN_STAGE`；同标签的 G1/G2 读取已经生成的提示选择、预检与 G0 记录。
 
 
 ```python
@@ -440,14 +447,14 @@ RUN_STAGE = "prepare"  # 每次只切换阶段；默认先运行核心复现路�
 
 ### 5.2 环境与输入预检
 
-本轮继续使用固定 GSM8K 切分。先在 32 条 development 上比较提示词并固定安全选项，再建立新 G0；提示词筛选不读取 64 条 validation 和 final holdout。
+固定 GSM8K 的训练、开发、验证与最终留出四个切分。提示词比较使用 32 条开发样本；训练剂量也在开发集选择，训练配方在验证集比较。最终留出集保留给配方固定后的评测。
 
-| 数据或变量 | 本轮方案 | 作用 |
+| 数据 | 样本数 | 实际用途 |
 |:---|:---|:---|
-| 训练集 | 512 条 | 四档复杂度均衡抽样；一个 epoch 为 512 步 |
-| 开发集 | 32 条 | 四档各 8 条；选择训练剂量 |
-| 验证集 | 64 条 | 四档各 16 条；比较训练配方 |
-| final holdout | 64 条 | 四档各 16 条；配方冻结后只验收一次 |
+| 训练集 | 512 | 四档复杂度均衡抽样，提供训练提示与参考答案 |
+| 开发集 | 32，四档各 8 | 选择提示词与训练剂量 |
+| 验证集 | 64，四档各 16 | 比较教师、候选配方及输出成本 |
+| 最终留出集 | 64，四档各 16 | 登记身份与提示重合检查；最终评分尚未执行 |
 
 
 ```python
@@ -682,11 +689,11 @@ TEACHER_CHECK_SOURCE_PATH = TEACHER_CHECK_PATH
 
 ```
 
-### 5.3 项目候选与可比性检查
+### 5.3 核对教师、数据与候选设置
 
-当前先确认教师路线，不启动学生训练。`trace_check` 使用全部 64 条验证样本，按 q1–q4 分层比较 DeepSeek 原生轨迹与当前教师，并记录配对净胜题数、分组最低正确率、95% 区间、可用轨迹比例和生成成本。验证样本只用于判断路线，不能回流训练；路线通过后再从 train split 生成并过滤训练轨迹。
+下方构建数据与模型记录，检查切分、类别和共同学生起点。固定轨迹训练使用数据集参考答案；若另行评估 DeepSeek 教师，先有 G0 再运行 `teacher_check`，按相同验证协议比较质量、输出成本和词元映射。
 
-`teacher_check` 不重新训练学生，只在原验证协议上比较 DeepSeek-R1-Distill-Qwen-1.5B 与当前教师，并核对 token→ID 映射。它用于决定后续采用全词表 GKD、离线轨迹蒸馏，还是保留当前教师。
+`trace_check` 随后使用 64 条验证题比较该教师的原生回答与当前教师，记录配对胜负、分档正确率、区间、可用比例与生成成本。这批验证回答用于判断文本来源质量；训练轨迹应从训练切分另行生成。
 
 
 ```python
@@ -746,9 +753,11 @@ PROJECT_CONTRACT
 
 ```
 
-### 5.4 真实执行并保存原始证据
+### 5.4 运行选定阶段并保存记录
 
-已有合格基线时直接运行 `hybrid`。锚定阶段完成后立即保存中间 JSON 和模型，因此在线阶段异常时可以复用中间产物；最终结果同时登记 G0→锚定、G0→最终和锚定→最终三组变化，以及在线轨迹正确率、格式、截断、KL/熵日志和 LoRA 更新强度。final holdout 仍保持封存。
+基础顺序为 `prepare → prompt_check → preflight → g0`，随后分别运行 `g1` 或 `g2`。`confirm` 复测 G1 选出的唯一配方与剂量；`close` 读取 G0/G1/G2 记录生成比较报告。`teacher_check` 与 `trace_check` 是另外评估教师与文本来源的分支。
+
+`hybrid` 读取同标签预检与 G0，先执行 64 步参考答案锚定，再执行 32 步在线蒸馏。锚定模型和 JSON 保存后，重跑相同配置可以复用它们继续在线阶段；结果比较 G0、锚定和最终模型的质量、格式、截断与延迟。下方尚无最终留出集评分阶段，close 中基于验证集的选择应按验证结果理解。
 
 
 ```python
@@ -1605,7 +1614,7 @@ STAGE_RESULT
 
 ### 5.5 读取结果与核对证据
 
-本单元只读取同标签文件，不触发模型加载，用于检查教师、轨迹、基线、候选与确认结果是否齐全。
+下方读取同标签的预检、G0、G1、G1 确认以及可选教师／轨迹记录，显示已保存内容并查找确认种子文件，读取过程不加载模型。G2、混合阶段和最终比较报告还需按各自保存路径核对配置、模型版本、数据身份与文件哈希；此处的文件列表覆盖的是前述读取项。
 
 
 ```python
@@ -1639,20 +1648,14 @@ AVAILABLE_EVIDENCE
 
 ```
 
-### 5.6 形成决策、登记结果与交接资产
+### 5.6 解释决策并核对历史登记
 
-| 阶段 | 开放条件 | 必需输出 |
-|:---|:---|:---|
-| `g0` | 预检通过 | 64 条验证集与 32 条开发集上的教师—学生差距、复杂度分档和截断率 |
-| `teacher_check` | 已冻结 G0，且候选模型已进入本地缓存 | 同口径教师质量、输出成本、tokenizer 兼容性与下一条蒸馏路线 |
-| `trace_check` | teacher_check 已完成，候选快照不变 | 64 条分层原生轨迹的正确率区间、配对净胜题数、分组下限、可用轨迹比例、成本与路线判断 |
-| `g2` | G0 证明教师具有稳定上界 | LoRA 在线轨迹候选、64/128 步剂量证据、合并后学生产物与验证集门槛 |
-| `hybrid` | G1/G2 已完成机制诊断 | 64步参考答案锚定、32步在线蒸馏、阶段间诊断与两个可恢复模型产物 |
-| `confirm` | G1 或 G2 选出唯一合格配方 | 两个种子复测选中剂量；分别保存模型并核对质量、分档、截断、格式和延迟 |
-| 确认通过 | 两个种子都满足确认门槛 | 冻结选中种子的模型产物与配方 |
-| 最终验收 | 训练配方已经冻结 | 打开 64 条 final holdout 一次；仅通过交付门槛时生成 handoff |
+`close` 根据验证集结果比较 G1/G2，产物失败时拒绝、质量或资源条件不足时调参、重复计时不足时补测。最终留出集的独立评分应在配方固定后执行；现有 close 按验证集条件选择候选并可能生成交接文件，阅读报告时要同时核对所用题集。
 
-**当前登记结果**
+下面登记的是已经结束的混合实验。紧随表格的回执单元固定读取这个历史标签，逐项显示来源文件是否存在、SHA-256 是否匹配；新的 RUN_LABEL 由其自己的报告与引用文件核对。
+
+**历史登记结果**
+
 
 | 字段 | 登记内容 |
 |:---|:---|
@@ -1660,8 +1663,8 @@ AVAILABLE_EVIDENCE
 | 复现范围 | RTX 5070 Ti Laptop GPU；PyTorch 2.11.0+cu128；Qwen2.5-1.5B 教师 / 0.5B 学生；512 条训练、32 条开发、64 条验证样本；64 步参考答案锚定后执行 32 步在线蒸馏 |
 | 终态报告 | [`distillation_terminal_report_rtx5070ti_distill_gsm8k_hybrid_terminal_v9.json`](../../benchmarks/results/88_distillation_delivery/distillation_terminal_report_rtx5070ti_distill_gsm8k_hybrid_terminal_v9.json)，其中登记阶段证据路径与 SHA-256 |
 | 观测结果 | 学生基线为 19/64；混合候选为 22/64，质量增益 0.046875；四个难度分组均未退化，截断率由 0.2500 降至 0.1406，但格式合规率仅 0.5312，平均延迟由 1010.2 ms 增至 1337.6 ms |
-| 教师路线 | DeepSeek 离线轨迹未通过质量与可用率门槛；在线 full-logit GKD 通过兼容性和显存准入，但未形成交付候选 |
-| 决策与交接 | `tune`；`selection_status=no_eligible_candidates`。不打开 final holdout，不生成部署 handoff；本地 `student_*` 目录不作为提交资产 |
+| 教师路线 | DeepSeek 离线轨迹未通过质量与可用率门槛；当前教师的在线全词表分布通过兼容性和显存预检；最终训练候选未同时满足交付门槛 |
+| 决策与交接 | `tune`；`selection_status=no_eligible_candidates`。最终留出集未评分，部署交接文件为空；本地 `student_*` 目录保留训练产物 |
 
 
 ```python
@@ -1701,6 +1704,8 @@ registration_receipt
 
 ## 相关阅读
 
-- [TRL DistillationTrainer](https://huggingface.co/docs/trl/distillation_trainer)
-- [On-Policy Distillation of Language Models](https://arxiv.org/abs/2306.13649)
-- [2.8 量化与低比特适配](./2_8.md)
+需要追查训练目标或固定文本的来源时，可以继续看以下资料。
+
+- [TRL DistillationTrainer](https://huggingface.co/docs/trl/distillation_trainer)：查看学生生成回答、冻结教师反馈及训练配置；接口以所用版本为准。
+- [On-Policy Distillation of Language Models](https://arxiv.org/abs/2306.13649)：阅读固定轨迹与学生自生成轨迹的目标差别。
+- [合成数据与验证器准入](./PT-SYNTHETIC-DATA_Instruction_Generation_and_Verifier_Admission.md)：检查教师生成文本如何按解析、正确率与来源记录筛选。

@@ -1,6 +1,6 @@
-# 76. Activation Checkpoint Offload Benchmark | Activation / Checkpoint / Offload 对比项目
+# 76. Activation Checkpoint Offload Benchmark | 激活重算、卸载与预算比较
 
-**难度：** Hard | **环境：** CPU 可完成正确性验证；GPU 用于策略 benchmark | **标签：** `显存优化`, `Checkpoint/Offload`, `基准对比` | **目标人群：** 准备比较训练显存策略的学习者
+**难度：** Hard | **环境：** CPU数值与筛选练习，GPU策略测量 | **标签：** `显存优化`、`Checkpoint/Offload`、`基准对比` | **目标人群：** 具备反向传播与训练基础的读者
 
 > 🚀 **云端运行环境**
 >
@@ -14,69 +14,76 @@
 
 ## 本节导读
 
-前面的内容介绍了激活值如何参与反向传播，以及保存、重算和搬运之间的代价。本节围绕同一训练任务比较 checkpoint、offload 和组合方案，观察它们如何改变显存占用、训练速度和运行稳定性。完成后，你应能根据显存压力和速度代价判断哪种策略值得继续验证。
+长序列训练快用满显存时，可以少保存一些激活，在反向时重算；也可以先搬到主机内存，需要时再搬回。两种方式都可能减少设备占用，却分别增加计算或传输。把它们一起启用，是否一定更合算？
 
-**关键词：** `activation`, `checkpoint`, `offload`, `memory`, `benchmark`
+本节固定训练任务，对照完整保存、重算、卸载与组合策略，先检查输出与梯度，再比较峰值、吞吐和损失。最后用同一批测量改变显存与速度要求，观察候选选择怎样变化，避免只凭“最省显存”决定采用。
+
+**关键词：** `activation`、`checkpointing`、`offload`、`memory budget`
 
 ---
 
 ## 前置阅读
 
-**导语：** 先理解 checkpoint 和 offload 如何改变激活值的保存与计算，再参考 73 节的测量口径，比较同一训练任务下不同策略的显存收益和速度代价。
-- [19. Activation Checkpointing | 激活检查点](./19_Activation_Checkpointing.md)
-- [42. Activation Offload | 激活卸载](./42_Activation_Offload.md)
-- [73. Training Performance Analysis | 训练性能分析](./73_Training_Performance_Analysis.md)
+先理解反向需要哪些保存张量，以及重算和卸载怎样恢复它们，再确定训练更新的计时范围。
 
+- [19. 激活检查点](./19_Activation_Checkpointing.md)：理解保留边界输入、在反向重算中间结果。
+- [42. 激活卸载](./42_Activation_Offload.md)：追踪张量保存到主机与搬回设备。
+- [73. 训练性能分析](./73_Training_Performance_Analysis.md)：区分状态大小、阶段峰值与完整更新。
 
----
+## Step 1：固定训练条件，比较激活的保存与恢复
 
-### Step 1：把固定训练基线转换为策略候选实验
-本项目接收训练性能基线和其中的容量假设，固定模型、数据与更新过程，只改变反向传播所需激活值的保存位置和恢复方式。最终交付不是显存最低的单个数字，而是一组可配对的策略记录，供预算项目判断哪些候选值得采用。
+激活是前向中产生、反向仍要使用的中间结果。激活检查点（checkpointing）减少保存的中间张量，在反向重新执行相应前向计算；它与写磁盘保存模型不同。卸载（offload）则把需要保留的张量放到主机内存，即CPU一侧的内存，等反向需要时搬回GPU。
 
-| 输入资产 | 项目操作 | 证据与交付物 |
+比较时保持模型、输入、精度、优化器和更新过程一致，只改变保存与恢复方式。既看设备少占了多少，也看重算、搬运和等待增加了多少完整更新耗时，再判断策略是否满足当前训练目标。
+
+| 对照内容 | 固定或检查什么 | 记录什么 |
 |:---|:---|:---|
-| 训练性能基线 | 核对模型、数据、精度、批次、序列长度和更新配置 | 可追溯的共同训练任务 |
-| 激活策略候选 | 分别运行完整保存、选择性重算、主机卸载和混合策略 | 每种策略的真实执行记录 |
-| 配对测量协议 | 统一预热、重复次数、随机种子和测量边界 | 峰值显存、训练步耗时、吞吐与 loss |
-| 候选门禁 | 检查失败、质量、显存收益和吞吐保留率 | `accept`、`tune` 或 `reject` 的候选报告 |
+| 训练任务 | 模型、输入、批量、长度、精度与优化器 | 同一任务的基线 |
+| 保存策略 | 完整保存、重算、主机卸载与混合 | 实际执行的路径与状态变化 |
+| 时间与容量 | 预热、重复次数与计时起止相同 | 整步耗时、吞吐与峰值 |
+| 数值与运行 | 输出、梯度、评估损失与失败 | 比较是否可继续 |
 
+![激活怎样从前向保存到反向恢复](../public/02_PyTorch_Algorithms/76_strategy_lifecycle.svg)
 
+## Step 2：追踪从前向结束到反向使用的状态
 
-![76 训练激活值的保存方式与代价](../public/02_PyTorch_Algorithms/76_strategy_lifecycle.svg)
+完整保存让中间结果继续留在GPU；重算保留边界输入，延后再生成中间结果；卸载把保存期间的容量移到主机，但反向要等数据可用。混合策略同时使用重算与搬运，其代价由实际包围的计算区域和保存张量决定，不是两种收益简单相加。
 
-### Step 2：区分保存、重算和搬运的生命周期
-四种候选改变的是激活值在前向结束到反向使用之间的生命周期。完整保存以容量换取直接读取；选择性重算减少保存量但增加前向计算；主机卸载把容量压力转成传输和同步；混合策略同时引入重算与搬运。比较时必须证明声明路径真实生效。
+减少激活不一定降低整步峰值。例如前向峰值下降了，更新阶段的参数、梯度、优化器状态和临时张量仍可能决定最大占用。比较时要确认重算与搬运实际发生，再查看峰值出现在什么阶段。
 
-| 策略 | 前向后的激活状态 | 反向前的恢复动作 | 主要代价 |
+| 策略 | 保存期间 | 反向使用前 | 新增代价 |
 |:---|:---|:---|:---|
-| 完整保存 | 激活保留在设备显存 | 直接读取 | 容量占用 |
-| 选择性重算 | 只保留边界输入或部分激活 | 重新执行选定前向区域 | 额外计算 |
-| 主机卸载 | 保存张量移到主机内存 | 搬回设备并等待可用 | 传输与同步 |
-| 混合策略 | 部分激活丢弃，部分移到主机 | 重算与搬运共同恢复 | 计算、传输与调度 |
+| 完整保存 | 激活留在GPU | 直接读取 | 持续占用显存 |
+| 重算 | 保留边界输入或部分激活 | 重新执行选定前向区域 | 额外计算 |
+| 主机卸载 | 保存张量移到主机内存 | 搬回GPU并等待可用 | 传输与同步 |
+| 混合 | 部分保留，部分移到主机 | 按需重算和搬回 | 两类工作及其调度 |
 
-### Step 3：指标与项目判定
-显存最低的方案不一定最值得采用。先确认训练任务与执行路径可比，再联合峰值显存、训练步耗时、吞吐、loss 和失败状态判断候选。项目只产出候选证据，不在这里替代后续预算敏感性决策。
+## Step 3：先满足训练要求，再看预算变化
 
-| 指标 | 含义 | 用于判断 |
+活跃分配峰值（peak allocated）是测量窗口内张量分配占用的最高值；分配器预留峰值（peak reserved）还包括留待复用的块。两者分别记录；分析碎片还需查看分配块大小、空闲块分布与申请行为。吞吐保留率是候选吞吐除以基线吞吐，例如0.8表示保留80%的速度；评估损失用于检查当前输入下的数值差异，长期质量仍需训练任务评估。
+
+先排除执行失败、路径未生效和数值不符合要求的候选，再按显存上限、吞吐下限与损失要求筛选。在满足条件的集合中，根据目标选择较省显存或较快的方案。改变这些阈值后复用同一批测量重新筛选；多个预算得到相同选择，说明该选择在这些预算范围内保持不变。评估计时波动对选择的影响，则要保留重复测量样本并重新比较。
+
+| 判断对象 | 查看什么 | 用于什么选择 |
 |:---|:---|:---|
-| peak allocated | 张量实际达到的显存峰值 | 观察显存收益 |
-| peak reserved | allocator 保留的显存峰值 | 观察缓存和碎片影响 |
-| step time / samples/s | 重算、搬运和同步的时间代价 | 观察吞吐损失 |
-| val loss / OOM | 训练质量和可运行性 | 过滤不可接受方案 |
-| 执行路径 | 重算活动、主机保存与传输证据 | 排除声明启用但实际回退的候选 |
-| 判定规则 | 无硬失败和关键缺证，质量达标，并满足显存收益与吞吐保留率 | 输出 `accept / tune / reject` |
+| 可运行与数值 | 失败、输出、梯度与评估损失 | 排除不可比较方案 |
+| 路径是否生效 | 重算活动、主机保存与传输 | 确认比较的是预期策略 |
+| 容量 | 活跃与预留峰值、峰值阶段 | 检查设备预算 |
+| 时间代价 | 整步耗时、吞吐与保留率 | 限制重算和搬运成本 |
+| 预算敏感性 | 更改阈值后的可行集合与选择 | 确认选择是否依赖某个预算 |
 
-![76 显存策略指标与预算决策](../public/02_PyTorch_Algorithms/76_strategy_decision_flow.svg)
+![同一批测量怎样用于多个预算情景](../public/02_PyTorch_Algorithms/76_strategy_decision_flow.svg)
 
-### Step 4：形成可移交的策略证据
+## Step 4：比较数值结果，并按预算选择候选
 
-请补全下方 3 个函数，把同一训练任务下的基线与策略候选整理成可移交给预算项目的配对证据。CPU 题目区只检查实验身份、证据派生和移交条件；真实保存、重算与搬运路径由 Step 5 采集。
+小型CPU网络检查四种策略的输出、损失与全部参数梯度，再用给定测量样例复算预算。CPU张量本来就在主机内存，卸载路径在这里用于数值语义对照，真实GPU搬运另测。预算练习按绝对显存上限、吞吐下限和损失上限筛选，基线也参与；同样满足时先选显存更低者，再比吞吐。
 
 | 任务与目的 | 已知条件 | 完成标准 | 测试验证 |
 |:---|:---|:---|:---|
-| TODO 1：绑定实验身份 | 已有基线、策略报告和固定训练任务 | 拒绝工作负载、硬件或重复次数不一致的比较 | 身份不一致和重复策略均被发现 |
-| TODO 2：构造配对证据 | 已通过身份检查的基线与候选 | 保留失败状态，并计算显存、吞吐和质量差异 | OOM 不伪造成收益，正常候选产生完整差异 |
-| TODO 3：形成移交状态 | 配对证据与最低证据门槛 | 区分可移交、需复测和无有效候选 | 只有执行路径和重复运行均完整的候选进入 75 |
+| TODO 1：核对比较条件 | 基线与候选任务、设备和重复数 | 条件一致，名称不重复且路径已核对 | 条件不同、重复名称与路径未核对 |
+| TODO 2：计算相对基线的变化 | 已检查条件的基线与候选 | 分别计算显存节省、吞吐比和损失差，保留运行失败 | 显存不足记录与正常差值 |
+| TODO 3：选择各预算的候选 | 不同预算下的可行项 | 保留可行集合，按显存再按吞吐选择 | 收紧吞吐要求后选择改变 |
+| TODO 4：比较预算选择 | 各情景的选择结果 | 区分选择一致、选择变化和某情景无可行项 | `stable / threshold_sensitive / no_feasible_candidate` |
 
 
 ```python
@@ -87,106 +94,178 @@ from typing import Dict, List
 
 
 ```python
-# 3 个核心 TODO：实验身份、配对证据、预算项目移交。
-# 指标读取与数值检查已给出；学习者负责决定哪些证据可以比较、怎样形成差异、何时允许移交。
+# 4 个核心 TODO：实验身份、配对差异、情景选取与结论稳定性。
+# 阈值情景复用同一批测量，不重复运行模型。
 
 def _metrics_are_finite(report: Dict[str, object]) -> bool:
+    """检查显存、吞吐与损失是否为有限数值。"""
     values = [report.get('peak_memory_mb'), report.get('samples_per_s'), report.get('eval_loss')]
     return all(isinstance(value, (int, float)) and math.isfinite(value) for value in values)
 
 def validate_strategy_experiment(baseline: Dict[str, object], candidates: List[Dict[str, object]]) -> Dict[str, object]:
     """确认候选与基线属于同一训练任务和设备条件。"""
-    # ==========================================
-    # TODO 1：绑定实验身份。
-    # 比较 workload_id、hardware_id 与 repeat_count，并拒绝名称重复或缺少执行路径证据的候选。
-    # issues = ???
-    # candidate_names = ???
-    # 返回 is_valid、issues 和 candidate_names；不要在这里按收益挑选策略。
-    # ==========================================
-    raise NotImplementedError("请先完成 TODO 代码！")
+    issues = []
+    candidate_names = []
+    identity_keys = ('workload_id', 'hardware_id', 'repeat_count')
+    for candidate in candidates:
+        name = candidate.get('name')
+        if not isinstance(name, str) or not name:
+            issues.append('candidate:missing_name')
+            continue
+        if name in candidate_names:
+            issues.append(f'{name}:duplicate_name')
+        candidate_names.append(name)
+        for key in identity_keys:
+            # ==========================================
+            # TODO 1：核对候选与基线身份
+            # identity_matches = ???  # bool；当前身份字段与基线相同
+            # ==========================================
+            raise NotImplementedError('TODO 1：请核对候选身份')
+            if not identity_matches:
+                issues.append(f'{name}:{key}_mismatch')
+        if candidate.get('execution_path_verified') is not True:
+            issues.append(f'{name}:execution_path_unverified')
+    if not _metrics_are_finite(baseline):
+        issues.append('baseline:invalid_metrics')
+    return {'is_valid': not issues, 'issues': issues, 'candidate_names': candidate_names}
 
 def build_strategy_pair_evidence(baseline: Dict[str, object], candidates: List[Dict[str, object]]) -> Dict[str, object]:
     """以固定基线构造候选差异，并保留失败运行。"""
-    # ==========================================
-    # TODO 2：构造配对证据。
-    # 对正常候选计算 memory_saving_mb、throughput_ratio 和 quality_delta；OOM、failed、invalid 原样保留。
-    # comparisons = ???
-    # comparable_count = ???
-    # 返回 baseline、comparisons 和各状态计数；不要在这里使用预算阈值。
-    # ==========================================
-    raise NotImplementedError("请先完成 TODO 代码！")
+    comparisons = []
+    counts = {'comparable': 0, 'oom': 0, 'failed': 0, 'invalid': 0}
+    for candidate in candidates:
+        name = candidate.get('name')
+        status = candidate.get('status', 'ok')
+        if status in {'oom', 'failed'}:
+            counts[status] += 1
+            comparisons.append({'name': name, 'status': status})
+            continue
+        if not _metrics_are_finite(candidate):
+            counts['invalid'] += 1
+            comparisons.append({'name': name, 'status': 'invalid'})
+            continue
+        counts['comparable'] += 1
+        # ==========================================
+        # TODO 2：计算候选相对基线的差异
+        # memory_saving_mb = ???  # MB；正值表示候选显存更低
+        # throughput_ratio = ???  # 无单位；候选吞吐除以基线吞吐
+        # quality_delta = ???  # loss；候选验证损失减去基线损失
+        # ==========================================
+        raise NotImplementedError('TODO 2：请计算配对差异')
+        comparisons.append({
+            'name': name, 'status': 'comparable',
+            'repeat_count': candidate['repeat_count'],
+            'execution_path_verified': candidate.get('execution_path_verified') is True,
+            'candidate_peak_memory_mb': candidate['peak_memory_mb'],
+            'candidate_samples_per_s': candidate['samples_per_s'],
+            'candidate_eval_loss': candidate['eval_loss'],
+            'memory_saving_mb': memory_saving_mb,
+            'throughput_ratio': throughput_ratio,
+            'quality_delta': quality_delta,
+        })
+    return {
+        'baseline': baseline, 'comparisons': comparisons,
+        'comparable_count': counts['comparable'], 'oom_count': counts['oom'],
+        'failed_count': counts['failed'], 'invalid_count': counts['invalid'],
+    }
 
-def decide_strategy_handoff(evidence: Dict[str, object], minimum_repeats: int = 3) -> Dict[str, object]:
-    """判断配对证据是否足以移交给显存预算项目。"""
+def decide_strategy_sensitivity(evidence: Dict[str, object], scenarios: List[Dict[str, object]]) -> Dict[str, object]:
+    """在不同预算门槛下重算候选选择并判断结论稳定性。"""
+    baseline = evidence.get('baseline', {})
+    if not scenarios:
+        raise ValueError('至少需要一个预算情景')
+    options = [{'name': 'baseline', 'status': 'comparable', 'candidate_peak_memory_mb': baseline.get('peak_memory_mb'), 'candidate_samples_per_s': baseline.get('samples_per_s'), 'candidate_eval_loss': baseline.get('eval_loss'), 'execution_path_verified': True}]
+    options.extend(item for item in evidence.get('comparisons', []) if item.get('status') == 'comparable' and item.get('execution_path_verified') is True)
+    results = []
+    for scenario in scenarios:
+        required = ('memory_cap_mb', 'min_samples_per_s', 'max_val_loss')
+        if any(not isinstance(scenario.get(key), (int, float)) or not math.isfinite(scenario[key]) for key in required):
+            raise ValueError(f'预算情景无效: {scenario.get("name")}')
+        feasible = [item for item in options if _metrics_are_finite({'peak_memory_mb': item.get('candidate_peak_memory_mb'), 'samples_per_s': item.get('candidate_samples_per_s'), 'eval_loss': item.get('candidate_eval_loss')}) and item['candidate_peak_memory_mb'] <= scenario['memory_cap_mb'] and item['candidate_samples_per_s'] >= scenario['min_samples_per_s'] and item['candidate_eval_loss'] <= scenario['max_val_loss']]
+        feasible.sort(key=lambda item: (item['candidate_peak_memory_mb'], -item['candidate_samples_per_s']))
+        # ==========================================
+        # TODO 3：按预算选择候选并记录情景结果
+        # feasible_names = ???  # list[str]；本情景下满足全部预算的候选名
+        # selected_candidate = ???  # str | None；按骨架排序后的首个候选名
+        # ==========================================
+        raise NotImplementedError('TODO 3：请记录预算情景结果')
+        results.append({'name': scenario.get('name'), 'feasible_names': feasible_names, 'selected_candidate': selected_candidate})
+    selected = [item['selected_candidate'] for item in results]
     # ==========================================
-    # TODO 3：形成移交状态。
-    # 先检查基线与候选的重复次数，再检查是否至少存在一个执行路径完整的可比较候选。
-    # eligible_candidates = ???
-    # 返回 status、reason、eligible_candidates 和 next_action。
+    # TODO 4：比较情景选择并判断结论稳定性
+    # sensitivity_status = ???  # stable、threshold_sensitive 或 no_feasible_candidate
     # ==========================================
-    raise NotImplementedError("请先完成 TODO 代码！")
+    raise NotImplementedError('TODO 4：请判断预算敏感性')
+    return {'status': sensitivity_status, 'scenarios': results}
 
 ```
+
+## 测试
 
 
 ```python
 # 测试你的实现
-def test_memory_strategy_project():
-    try:
-        baseline = {
-            'name': 'baseline', 'workload_id': 'train-b2-s1024', 'hardware_id': 'gpu-a',
-            'repeat_count': 5, 'status': 'ok', 'execution_path_verified': True,
-            'peak_memory_mb': 11000.0, 'samples_per_s': 8.0, 'eval_loss': 1.06,
-        }
-        candidates = [
-            {**baseline, 'name': 'checkpoint', 'peak_memory_mb': 8200.0, 'samples_per_s': 6.8, 'eval_loss': 1.08},
-            {**baseline, 'name': 'offload', 'status': 'oom', 'peak_memory_mb': None, 'samples_per_s': None, 'eval_loss': None},
-        ]
-        contract = validate_strategy_experiment(baseline, candidates)
-        assert contract['is_valid'] is True
-        mismatch = validate_strategy_experiment(baseline, [{**candidates[0], 'hardware_id': 'gpu-b'}])
-        assert mismatch['is_valid'] is False and 'checkpoint:hardware_id_mismatch' in mismatch['issues']
-        duplicate = validate_strategy_experiment(baseline, [candidates[0], dict(candidates[0])])
-        assert 'checkpoint:duplicate_name' in duplicate['issues']
+def _strategy_fixture():
+    """构造同一 workload 和设备上的基线、候选与失败记录。"""
+    baseline = {
+        'name': 'baseline', 'workload_id': 'train-b2-s1024', 'hardware_id': 'gpu-a',
+        'repeat_count': 5, 'status': 'ok', 'execution_path_verified': True,
+        'peak_memory_mb': 11000.0, 'samples_per_s': 8.0, 'eval_loss': 1.06,
+    }
+    candidates = [
+        {**baseline, 'name': 'checkpoint', 'peak_memory_mb': 8200.0, 'samples_per_s': 6.8, 'eval_loss': 1.08},
+        {**baseline, 'name': 'offload', 'status': 'oom', 'peak_memory_mb': None, 'samples_per_s': None, 'eval_loss': None},
+    ]
+    return baseline, candidates
 
-        evidence = build_strategy_pair_evidence(baseline, candidates)
-        checkpoint = next(item for item in evidence['comparisons'] if item['name'] == 'checkpoint')
-        assert checkpoint['memory_saving_mb'] == 2800.0
-        assert round(checkpoint['throughput_ratio'], 2) == 0.85
-        assert round(checkpoint['quality_delta'], 2) == 0.02
-        assert evidence['oom_count'] == 1 and evidence['comparable_count'] == 1
+def test_strategy_identity_gate():
+    """同一身份通过，设备错配、重复名称和未核验路径被拒绝。"""
+    baseline, candidates = _strategy_fixture()
+    assert validate_strategy_experiment(baseline, candidates)['is_valid'] is True
+    mismatch = validate_strategy_experiment(baseline, [{**candidates[0], 'hardware_id': 'gpu-b'}])
+    assert mismatch['is_valid'] is False
+    assert 'checkpoint:hardware_id_mismatch' in mismatch['issues']
+    duplicate = validate_strategy_experiment(baseline, [candidates[0], dict(candidates[0])])
+    assert 'checkpoint:duplicate_name' in duplicate['issues']
+    unverified = validate_strategy_experiment(baseline, [{**candidates[0], 'execution_path_verified': False}])
+    assert 'checkpoint:execution_path_unverified' in unverified['issues']
 
-        handoff = decide_strategy_handoff(evidence, minimum_repeats=3)
-        assert handoff['status'] == 'ready_for_budget_review'
-        assert handoff['eligible_candidates'] == ['checkpoint']
-        low_repeat = build_strategy_pair_evidence({**baseline, 'repeat_count': 2}, [{**candidates[0], 'repeat_count': 2}])
-        assert decide_strategy_handoff(low_repeat, minimum_repeats=3)['status'] == 'rerun_required'
-        failed_only = build_strategy_pair_evidence(baseline, [{**candidates[1], 'status': 'failed'}])
-        assert decide_strategy_handoff(failed_only)['status'] == 'no_valid_candidate'
-        print('所有测试通过！')
-    except NotImplementedError:
-        print('请先完成 TODO 代码！')
-        raise
-    except AssertionError as e:
-        print(f'测试失败: {e}')
-        raise NotImplementedError('请先完成 TODO 代码！') from e
-    except Exception as e:
-        print(f'发生非预期错误: {e}')
-        raise
+def test_pair_evidence_preserves_failures_and_computes_deltas():
+    """正常候选产生配对差异，OOM 记录只计数、不伪造成收益。"""
+    baseline, candidates = _strategy_fixture()
+    evidence = build_strategy_pair_evidence(baseline, candidates)
+    checkpoint = next(item for item in evidence['comparisons'] if item['name'] == 'checkpoint')
+    assert checkpoint['memory_saving_mb'] == 2800.0
+    assert round(checkpoint['throughput_ratio'], 2) == 0.85
+    assert round(checkpoint['quality_delta'], 2) == 0.02
+    assert evidence['oom_count'] == 1 and evidence['comparable_count'] == 1
+    oom = next(item for item in evidence['comparisons'] if item['name'] == 'offload')
+    assert oom == {'name': 'offload', 'status': 'oom'}
+    invalid = {**candidates[0], 'name': 'invalid', 'eval_loss': float('nan')}
+    with_invalid = build_strategy_pair_evidence(baseline, [candidates[0], invalid])
+    assert with_invalid['invalid_count'] == 1
 
+def test_budget_sensitivity_changes_selected_candidate():
+    """收紧吞吐门槛后重算选择，并识别阈值敏感结论。"""
+    baseline, candidates = _strategy_fixture()
+    evidence = build_strategy_pair_evidence(baseline, candidates)
+    scenarios = [
+        {'name': 'reference', 'memory_cap_mb': 12000.0, 'min_samples_per_s': 1.0, 'max_val_loss': 1.1},
+        {'name': 'throughput_tighter', 'memory_cap_mb': 12000.0, 'min_samples_per_s': 7.0, 'max_val_loss': 1.1},
+    ]
+    sensitivity = decide_strategy_sensitivity(evidence, scenarios)
+    assert sensitivity['status'] == 'threshold_sensitive'
+    assert sensitivity['scenarios'][0]['selected_candidate'] == 'checkpoint'
+    assert sensitivity['scenarios'][1]['selected_candidate'] == 'baseline'
+    stable = decide_strategy_sensitivity(evidence, [scenarios[0], scenarios[0]])
+    assert stable['status'] == 'stable'
+    no_feasible = {**scenarios[0], 'name': 'no_feasible', 'min_samples_per_s': 20.0}
+    assert decide_strategy_sensitivity(evidence, [no_feasible])['status'] == 'no_feasible_candidate'
 
-test_memory_strategy_project()
+test_strategy_identity_gate()
+test_pair_evidence_preserves_failures_and_computes_deltas()
+test_budget_sensitivity_changes_selected_candidate()
 
-```
-
-#### Step 4 测试：核对四种策略的梯度语义
-
-没有 GPU 时，不能验证真实 peak memory、CUDA kernel 或 CPU-GPU 搬运速度，但仍可以用一个小型网络检查策略语义：baseline、checkpoint、offload 和 hybrid 应该得到一致的 loss 与参数梯度。测试还会观察 baseline / checkpoint 的 saved tensors；`save_on_cpu` 会接管 offload 的保存钩子，因此 offload / hybrid 不伪造张量数量。这个测试验证的是 autograd 正确性，不是显存收益；真实显存结论由 Step 5 的 GPU benchmark 给出。
-
-运行这个 cell 前不需要下载模型或准备 CUDA。重点检查三件事：四种策略的 loss 是否一致、参数梯度是否一致、offload 是否确实改变了保存位置。
-
-
-```python
 # CPU 正确性 cell：使用小型网络验证四种策略的 autograd 语义，不启动 GPU benchmark。
 # 预期输出是 loss / gradient 一致性和 saved-tensor 观察结果；不要把这些数值填入 GPU 结果表。
 import contextlib
@@ -197,6 +276,7 @@ from torch.utils.checkpoint import checkpoint
 VALID_STRATEGIES = {'baseline', 'checkpoint', 'offload', 'hybrid'}
 
 def run_cpu_strategy(strategy, observe_saved_tensors=False):
+    """在小型 CPU 网络上比较输出、损失和参数梯度。"""
     if strategy not in VALID_STRATEGIES:
         raise ValueError(f'未知策略: {strategy}')
     torch.manual_seed(42)
@@ -210,9 +290,11 @@ def run_cpu_strategy(strategy, observe_saved_tensors=False):
     )
     saved, unpacked = [], []
     def pack(tensor):
+        """记录 autograd 保存张量的形状、大小与设备。"""
         saved.append({'shape': tuple(tensor.shape), 'numel': tensor.numel(), 'device': str(tensor.device)})
         return tensor
     def unpack(tensor):
+        """记录 autograd 反向阶段取回的张量。"""
         unpacked.append({'shape': tuple(tensor.shape), 'numel': tensor.numel(), 'device': str(tensor.device)})
         return tensor
     observe_context = (
@@ -227,7 +309,7 @@ def run_cpu_strategy(strategy, observe_saved_tensors=False):
                 hidden = first(x)
             loss = ((second(hidden) - target) ** 2).mean()
             loss.backward()
-    gradients = [first.weight.grad.detach().clone(), second.weight.grad.detach().clone()]
+    gradients = [parameter.grad.detach().clone() for layer in (first, second) for parameter in layer.parameters()]
     observation = {
         'saved_count': len(saved) if observe_saved_tensors and strategy not in {'offload', 'hybrid'} else None,
         'unpacked_count': len(unpacked) if observe_saved_tensors and strategy not in {'offload', 'hybrid'} else None,
@@ -271,14 +353,13 @@ print('CPU correctness test passed; this does not measure real GPU memory saving
 
 
 ```python
-import math
-from typing import Dict, List
-
 def _metrics_are_finite(report: Dict[str, object]) -> bool:
+    """检查显存、吞吐与损失是否为有限数值。"""
     values = [report.get('peak_memory_mb'), report.get('samples_per_s'), report.get('eval_loss')]
     return all(isinstance(value, (int, float)) and math.isfinite(value) for value in values)
 
 def validate_strategy_experiment(baseline: Dict[str, object], candidates: List[Dict[str, object]]) -> Dict[str, object]:
+    """比较任务、硬件和重复数，保留名称及路径问题。"""
     issues = []
     candidate_names = []
     identity_keys = ('workload_id', 'hardware_id', 'repeat_count')
@@ -291,7 +372,9 @@ def validate_strategy_experiment(baseline: Dict[str, object], candidates: List[D
             issues.append(f'{name}:duplicate_name')
         candidate_names.append(name)
         for key in identity_keys:
-            if candidate.get(key) != baseline.get(key):
+            # TODO 1：核对候选与基线身份
+            identity_matches = candidate.get(key) == baseline.get(key)
+            if not identity_matches:
                 issues.append(f'{name}:{key}_mismatch')
         if candidate.get('execution_path_verified') is not True:
             issues.append(f'{name}:execution_path_unverified')
@@ -300,6 +383,7 @@ def validate_strategy_experiment(baseline: Dict[str, object], candidates: List[D
     return {'is_valid': not issues, 'issues': issues, 'candidate_names': candidate_names}
 
 def build_strategy_pair_evidence(baseline: Dict[str, object], candidates: List[Dict[str, object]]) -> Dict[str, object]:
+    """保留运行状态，计算显存节省、吞吐比与损失差。"""
     comparisons = []
     counts = {'comparable': 0, 'oom': 0, 'failed': 0, 'invalid': 0}
     for candidate in candidates:
@@ -314,6 +398,10 @@ def build_strategy_pair_evidence(baseline: Dict[str, object], candidates: List[D
             comparisons.append({'name': name, 'status': 'invalid'})
             continue
         counts['comparable'] += 1
+        # TODO 2：计算候选相对基线的差异
+        memory_saving_mb = baseline['peak_memory_mb'] - candidate['peak_memory_mb']
+        throughput_ratio = candidate['samples_per_s'] / baseline['samples_per_s']
+        quality_delta = candidate['eval_loss'] - baseline['eval_loss']
         comparisons.append({
             'name': name, 'status': 'comparable',
             'repeat_count': candidate['repeat_count'],
@@ -321,9 +409,9 @@ def build_strategy_pair_evidence(baseline: Dict[str, object], candidates: List[D
             'candidate_peak_memory_mb': candidate['peak_memory_mb'],
             'candidate_samples_per_s': candidate['samples_per_s'],
             'candidate_eval_loss': candidate['eval_loss'],
-            'memory_saving_mb': baseline['peak_memory_mb'] - candidate['peak_memory_mb'],
-            'throughput_ratio': candidate['samples_per_s'] / baseline['samples_per_s'],
-            'quality_delta': candidate['eval_loss'] - baseline['eval_loss'],
+            'memory_saving_mb': memory_saving_mb,
+            'throughput_ratio': throughput_ratio,
+            'quality_delta': quality_delta,
         })
     return {
         'baseline': baseline, 'comparisons': comparisons,
@@ -331,40 +419,66 @@ def build_strategy_pair_evidence(baseline: Dict[str, object], candidates: List[D
         'failed_count': counts['failed'], 'invalid_count': counts['invalid'],
     }
 
-def decide_strategy_handoff(evidence: Dict[str, object], minimum_repeats: int = 3) -> Dict[str, object]:
+def decide_strategy_sensitivity(evidence: Dict[str, object], scenarios: List[Dict[str, object]]) -> Dict[str, object]:
+    """复用测量筛选不同预算，并比较候选选择。"""
     baseline = evidence.get('baseline', {})
-    comparable = [item for item in evidence.get('comparisons', []) if item.get('status') == 'comparable']
-    if baseline.get('repeat_count', 0) < minimum_repeats or any(item.get('repeat_count', 0) < minimum_repeats for item in comparable):
-        return {'status': 'rerun_required', 'reason': 'insufficient_repeats', 'eligible_candidates': [], 'next_action': 'repeat_paired_runs'}
-    eligible_candidates = [item['name'] for item in comparable if item.get('execution_path_verified') is True]
-    if not eligible_candidates:
-        return {'status': 'no_valid_candidate', 'reason': 'no_comparable_strategy', 'eligible_candidates': [], 'next_action': 'repair_strategy_execution'}
-    return {'status': 'ready_for_budget_review', 'reason': 'paired_evidence_complete', 'eligible_candidates': eligible_candidates, 'next_action': 'send_to_memory_budget_project'}
+    if not scenarios:
+        raise ValueError('至少需要一个预算情景')
+    options = [{'name': 'baseline', 'status': 'comparable', 'candidate_peak_memory_mb': baseline.get('peak_memory_mb'), 'candidate_samples_per_s': baseline.get('samples_per_s'), 'candidate_eval_loss': baseline.get('eval_loss'), 'execution_path_verified': True}]
+    options.extend(item for item in evidence.get('comparisons', []) if item.get('status') == 'comparable' and item.get('execution_path_verified') is True)
+    results = []
+    for scenario in scenarios:
+        required = ('memory_cap_mb', 'min_samples_per_s', 'max_val_loss')
+        if any(not isinstance(scenario.get(key), (int, float)) or not math.isfinite(scenario[key]) for key in required):
+            raise ValueError(f'预算情景无效: {scenario.get("name")}')
+        feasible = [item for item in options if _metrics_are_finite({'peak_memory_mb': item.get('candidate_peak_memory_mb'), 'samples_per_s': item.get('candidate_samples_per_s'), 'eval_loss': item.get('candidate_eval_loss')}) and item['candidate_peak_memory_mb'] <= scenario['memory_cap_mb'] and item['candidate_samples_per_s'] >= scenario['min_samples_per_s'] and item['candidate_eval_loss'] <= scenario['max_val_loss']]
+        feasible.sort(key=lambda item: (item['candidate_peak_memory_mb'], -item['candidate_samples_per_s']))
+        # TODO 3：选择情景候选
+        feasible_names = [item['name'] for item in feasible]
+        selected_candidate = feasible[0]['name'] if feasible else None
+        results.append({'name': scenario.get('name'), 'feasible_names': feasible_names, 'selected_candidate': selected_candidate})
+    selected = [item['selected_candidate'] for item in results]
+    # TODO 4：比较情景选择并判断结论稳定性
+    sensitivity_status = 'no_feasible_candidate' if any(item is None for item in selected) else 'stable' if len(set(selected)) == 1 else 'threshold_sensitive'
+    return {'status': sensitivity_status, 'scenarios': results}
 
 ```
 
 ### 解析
 
-**1. 机制：绑定实验身份**
-- 基线与候选只有在训练任务、设备和重复次数一致时才能形成配对比较。策略名称去重和执行路径验证可以阻止不同实验被误拼成一组。
-- 不变量：身份不一致的报告不得进入收益计算。
-- 测试证据：测试分别覆盖硬件不一致和候选名称重复。
+#### TODO 1：核对候选与基线条件
 
-**2. 机制：构造配对证据**
-- 正常候选相对固定基线计算显存节省、吞吐保留率和质量变化；OOM 与执行失败作为失败证据保留，不参与收益排序。
-- 不变量：失败运行不能被缺失指标伪装成低显存候选。
-- 测试证据：测试同时检查正常候选的三个差异量和 OOM 计数。
+- 工作负载、硬件与重复数逐项一致才比较；重复策略名和未经核对的执行路径分别记录。
+- 对应测试分别改变这些条件。真实模型、输入与实现是否相同，还需按项目原始记录核对。
 
-**3. 机制：形成移交状态**
-- 重复次数不足时要求复测；至少有一个执行路径完整的可比较候选时，才把证据移交给 75 进行预算与敏感性判断。
-- 不变量：76 只确认候选证据可用，不替代 75 选择最终策略。
-- 测试证据：测试覆盖可移交、重复次数不足和无有效候选三种状态。
+#### TODO 2：保持差值方向一致
 
-### Step 5（项目实验）：比较训练显存策略
+- 显存节省为基线减候选，吞吐比为候选除基线，损失差为候选减基线；三者的正负含义不同。
+- 运行显存不足或失败时保留状态，不用缺失数值构造收益。测试同时核对差值与失败记录。
 
-本实验分两步：G0 在固定 AdamW 训练配置下比较 baseline、checkpoint、offload 和 hybrid；G1 使用无动量 SGD 长度阶梯单独观察激活显存。两步使用同一唯一标签，运行顺序是 `prepare → g0 → g1 → close`。
+#### TODO 3：从满足预算的集合中选择
 
-#### 5.1 本次运行配置
+- 同时检查显存不超上限、吞吐不低于下限、损失不超上限，再按显存升序与吞吐降序排序；基线也可被选中。
+- 测试收紧吞吐要求，使较省显存但较慢的策略失去可行性，检查选择是否随目标变化。
+
+#### TODO 4：限定“稳定”的含义
+
+- 所列情景全部选择同一项时为`stable`；选择改变时为`threshold_sensitive`；任一情景无可行项时为`no_feasible_candidate`。
+- 这些状态比较预算情景的结果，不估计测量置信度，也不外推未列出的预算。
+
+## Step 5：比较训练显存策略
+
+本实验分两步：G0 在固定 AdamW 训练配置下比较 baseline、checkpoint、offload 和 hybrid；G1 使用无动量SGD（随机梯度下降）逐长度对照单独观察激活显存。两步使用同一唯一标签，运行顺序是 `prepare → g0 → g1 → close`。`close` 会复用 G0 结果重算预算情景，不增加 GPU 运行。
+
+| 核对内容 | CPU 练习与测试 | GPU 实验与结果 |
+|:---|:---|:---|
+| 比较条件 | 检查任务、硬件、重复次数和失败状态 | G0 复用 73 的训练配置，G1 使用独立 SGD 配置；分别核对同范围样本 |
+| 策略语义 | 小网络比较四种策略的输出、损失和全部参数梯度 | 测量真实模型的显存、吞吐和验证损失；CPU 梯度一致不替代真实模型核对 |
+| 收益与预算 | 计算候选差异并复算阈值情景 | G0记录策略判断与预算选择；G1 单独形成激活隔离结论，安全停止不代表已测到 OOM 边界 |
+
+### 5.1 本次运行配置
+
+运行环境：`PERF-CUDA-MECHANISM`，单卡显存至少 8 GiB；环境创建与验证见[性能机制GPU环境](../topic_discussion/performance_optimization/gpu_quickstart.md#perf-cuda-mechanism-quickstart)。
 
 只需填写本次标签和运行阶段。修改阶段后按 5.1–5.6 顺序运行。
 
@@ -383,7 +497,7 @@ RUN_STAGE = 'prepare'  # 默认 prepare 只读检查；可选 prepare / g0 / g1 
 
 ```
 
-#### 5.2 固定实验配置与环境预检
+### 5.2 固定实验配置与环境预检
 
 检查项目路径、Python、PyTorch、CUDA、模型文件和固定输入清单。`prepare` 只读文件，不加载模型。
 
@@ -426,7 +540,7 @@ DECISION_OUTPUT_RELATIVE_PATH = Path(f'benchmarks/results/{PROJECT_ID}_memory_st
 if RUN_STAGE not in {'prepare', 'g0', 'g1', 'close'}:
     raise ValueError("RUN_STAGE 只能是 'prepare'、'g0'、'g1' 或 'close'。")
 if RUN_STAGE in {'g0', 'g1', 'close'} and RUN_LABEL == 'replace_with_unique_label':
-    raise ValueError('执行或收口前请把 RUN_LABEL 改为本次唯一标签。')
+    raise ValueError('执行或登记前请把 RUN_LABEL 改为本次唯一标签。')
 configured_root = os.environ.get('LLM_ALGO_PROJECT_ROOT')
 start_dir = Path(configured_root).expanduser().resolve() if configured_root else Path.cwd().resolve()
 GPU_PROJECT_ROOT = next(
@@ -471,7 +585,7 @@ else:
 
 ```
 
-#### 5.3 对照合同与结果路径
+### 5.3 比较条件与结果路径
 
 从固定配置派生工作负载和结果路径。`prepare` 读取已登记结果；`g0`、`g1`、`close` 只读取当前标签的文件，G1 不会自动补跑 G0。
 
@@ -508,9 +622,9 @@ print(EXPERIMENT_IDENTITY)
 
 ```
 
-#### 5.4 采集策略测量
+### 5.4 采集策略测量
 
-`g0` 运行 AdamW 完整训练对照；`g1` 要求同标签且重复完整的 G0，再运行无动量 SGD 长度阶梯。每个更长序列开始前先检查显存余量，余量不足时记录安全边界，不用实际 OOM 探测。
+`g0` 运行 AdamW 完整训练对照；`g1` 要求同标签且重复完整的 G0，再运行无动量 SGD 长度阶梯。每个更长序列开始前先检查显存余量，不满足预留余量时记录停止位置，避免用实际显存不足来试探设备极限。
 
 
 ```python
@@ -549,6 +663,7 @@ from tools.memory_strategy_runtime import (
     decide_memory_boundary,
     summarize_memory_strategy_candidates,
     decide_memory_strategy_project,
+    evaluate_memory_budget_sensitivity,
 )
 
 PROJECT_ROOT = resolve_project_root(PROJECT_ROOT)
@@ -901,7 +1016,7 @@ else:
 
 ```
 
-#### 5.5 核对 G0/G1 结果
+### 5.5 核对 G0/G1 结果
 
 读取 G0/G1 文件，核对配置、重复次数、稳定性、OOM 和显存安全检查。本单元不加载模型、不覆盖文件。
 
@@ -932,35 +1047,91 @@ evidence_review = {
     'g1_summary': boundary_report.get('summary') if boundary_report else None,
     'g1_admission': boundary_report.get('admission') if boundary_report else None,
 }
-evidence_review['g0_complete'] = (
-    len(rows) == len(STRATEGIES)
-    and all(row['successful_runs'] >= REPEATS for row in rows)
-)
-evidence_review['g1_ready'] = (
-    boundary_report is not None
-    and boundary_report.get('schema_version') == SCHEMA_VERSION
-    and boundary_report.get('semantic_id') == SEMANTIC_ID
-)
-evidence_review['ready_for_decision'] = (
-    evidence_review['schema_version'] == SCHEMA_VERSION
-    and evidence_review['semantic_id'] == SEMANTIC_ID
-    and len(rows) == len(STRATEGIES)
-    and evidence_review['g1_ready']
-)
+def review_strategy_reports(g0, g1):
+    """核对策略集合、原始重复样本和 G0/G1 比较范围。"""
+    import math
+    issues = []
+    expected_label = 'rtx5070ti_activation_memory_v1' if RUN_STAGE == 'prepare' else RUN_LABEL
+    def check_identity(record, prefix):
+        if not isinstance(record, dict):
+            issues.append(f'{prefix}:missing_report')
+            return {}
+        for key, expected in (('schema_version', SCHEMA_VERSION), ('semantic_id', SEMANTIC_ID), ('run_label', expected_label)):
+            if record.get(key) != expected:
+                issues.append(f'{prefix}:{key}_mismatch')
+        return record.get('config') or {}
+    def check_candidates(candidates, prefix):
+        if not isinstance(candidates, list) or sorted(str(item.get('name')) for item in candidates) != sorted(STRATEGIES):
+            issues.append(f'{prefix}:strategy_set_mismatch')
+            return False
+        complete = True
+        for item in candidates:
+            runs = item.get('runs', [])
+            if not isinstance(runs, list):
+                issues.append(f'{prefix}:{item.get("name")}:invalid_runs')
+                complete = False
+                continue
+            successful = [run for run in runs if run.get('status') == 'ok']
+            if item.get('successful_runs') != len(successful):
+                issues.append(f'{prefix}:{item.get("name")}:repeat_count_mismatch')
+            complete &= item.get('status') == 'ok' and len(successful) >= REPEATS
+            for row in ([item] if item.get('status') == 'ok' else []) + successful:
+                for key in ('step_time_ms', 'samples_per_s', 'peak_memory_mb', 'eval_loss'):
+                    value = row.get(key)
+                    if type(value) not in (int, float) or not math.isfinite(value) or (key != 'eval_loss' and value <= 0):
+                        issues.append(f'{prefix}:{item.get("name")}:invalid_{key}')
+        return complete
+    c0 = check_identity(g0, 'g0')
+    c1 = check_identity(g1, 'g1')
+    for key in ('model_id', 'workload', 'batch_size', 'seq_len', 'dtype', 'seed', 'device', 'torch', 'torch_cuda'):
+        if c0.get(key) is None or c0.get(key) != c1.get(key):
+            issues.append(f'comparison_identity_mismatch:{key}')
+    for key, value in (('model_id', MODEL_ID), ('workload', WORKLOAD), ('batch_size', BATCH_SIZE), ('seq_len', SEQ_LEN), ('seed', SEED)):
+        if c0.get(key) != value:
+            issues.append(f'g0:config_mismatch:{key}')
+    if c0.get('optimizer') != 'AdamW':
+        issues.append('g0:optimizer_mismatch')
+    if (c1.get('optimizer') != 'SGD' or c1.get('optimizer_momentum') != 0.0
+            or c1.get('comparison_scope') != 'activation_memory_isolation'):
+        issues.append('g1:isolation_scope_mismatch')
+    complete = check_candidates(g0.get('candidates'), 'g0')
+    if isinstance(g1, dict):
+        records = g1.get('length_records')
+        if not isinstance(records, list) or not records:
+            issues.append('g1:missing_length_records')
+        for record in records if isinstance(records, list) else []:
+            check_candidates(record.get('candidates'), f'g1:{record.get("seq_len")}')
+    return issues, complete
+
+review_issues, g0_complete = review_strategy_reports(report, boundary_report)
+evidence_review['issues'] = review_issues
+evidence_review['g0_complete'] = g0_complete
+evidence_review['g1_ready'] = boundary_report is not None and not review_issues
+evidence_review['ready_for_decision'] = not review_issues
 print(evidence_review)
 
 ```
 
-#### 5.6 形成分范围结论
+### 5.6 形成分范围结论
+
+`close` 保存分范围决策，并核对标签、schema、G0/G1 文件、输入清单和来源哈希。
 
 | 结论 | 依据 | 用途 |
 | --- | --- | --- |
-| 完整训练 `accept / tune / reject` | G0 的 AdamW 固定训练配置 | 交给 75 做预算分析 |
-| `accept_for_activation_memory_scope` | G1 长度阶梯通过显存和吞吐门槛 | 仅说明激活显存范围内有效 |
-| `measure / tune` | 未观察到足够长度，或质量、显存、吞吐未同时通过 | 扩大安全长度阶梯或调整策略 |
+| 完整训练 `accept / tune / reject` | G0 的 AdamW 固定训练配置及基准门槛 | 与预算选择一起保存 |
+| 激活显存专项 | G1按已测长度分别检查容量、吞吐与损失 | 在该优化器与已测长度条件下记录 |
+| `measure / tune` | 质量、显存或吞吐门槛未同时通过 | 按安全预算重新评估测试范围或调整策略 |
 
-若长度阶梯被显存余量检查提前停止，结果状态记录为 `completed_with_safety_boundary`，同时保留最后一个安全长度。G1 不会把限定范围结论改写成完整训练 `accept`；顶层结论由 G0 决定。
+**当前登记结果**
 
+| 字段 | 登记内容 |
+| --- | --- |
+| 项目与标签 | 76 节 checkpoint / offload；`rtx5070ti_activation_memory_v1` |
+| 运行条件 | RTX 5070 Ti Laptop GPU；G0 为 AdamW 固定训练，G1为减少优化器状态干扰的逐长度对照 |
+| 原始证据 | [G0 策略对照](../../benchmarks/results/76_real_gpu_memory_rtx5070ti_activation_memory_v1.json)、[G1逐长度对照](../../benchmarks/results/76_real_gpu_memory_boundary_rtx5070ti_activation_memory_v1.json) |
+| 正式证据 | G0、G1 原始文件分别记录完整训练策略结论与激活显存专项结论；G1 状态为 `blocked`，专项门槛结论仅适用于已测范围 |
+| 清单与登记 | [输入清单](../../benchmarks/results/76_input_manifest_rtx5070ti_activation_memory_v1.json)；决策和预算情景写入 76策略决策文件 |
+| 结论 | 顶层 `tune`；checkpoint 在已测激活显存范围内达到收益与吞吐门槛，安全余量检查停止更长长度，实际显存不足点未知 |
 
 ```python
 if RUN_STAGE == 'close':
@@ -968,6 +1139,16 @@ if RUN_STAGE == 'close':
         raise RuntimeError(f'G0/G1 证据身份复核未通过：{evidence_review}')
     if evidence_review['g0_complete']:
         g0_decision = decide_memory_strategy_project(report['summary'])
+        base_budget = report['budget']
+        base_quality = report['quality_floor']
+        budget_scenarios = [
+            {'name': 'reference', 'budget': dict(base_budget), 'quality_floor': dict(base_quality)},
+            {'name': 'memory_cap_5pct_tighter', 'budget': {**base_budget, 'memory_cap_mb': base_budget['memory_cap_mb'] * 0.95}, 'quality_floor': dict(base_quality)},
+            {'name': 'throughput_floor_10pct_higher', 'budget': {**base_budget, 'min_samples_per_s': base_budget['min_samples_per_s'] * 1.10}, 'quality_floor': dict(base_quality)},
+            {'name': 'quality_floor_1pct_tighter', 'budget': dict(base_budget), 'quality_floor': {**base_quality, 'max_val_loss': base_quality['max_val_loss'] * 0.99}},
+            {'name': 'combined_tighter', 'budget': {**base_budget, 'memory_cap_mb': base_budget['memory_cap_mb'] * 0.95, 'min_samples_per_s': base_budget['min_samples_per_s'] * 1.10}, 'quality_floor': {**base_quality, 'max_val_loss': base_quality['max_val_loss'] * 0.99}},
+        ]
+        budget_sensitivity = evaluate_memory_budget_sensitivity(report['candidates'], budget_scenarios)
     else:
         g0_decision = {
             'decision': 'tune',
@@ -978,6 +1159,7 @@ if RUN_STAGE == 'close':
                 if row['successful_runs'] < REPEATS
             ],
         }
+        budget_sensitivity = {'status': 'not_evaluated', 'reason': 'g0_incomplete_repeats', 'scenario_count': 0, 'results': []}
     if boundary_report is None:
         g1_decision = {'decision': 'not_recorded', 'reason': 'missing_boundary_evidence'}
     elif boundary_report.get('status') == 'blocked' and not boundary_report.get('summary', {}).get('eligible_strategies'):
@@ -1003,12 +1185,13 @@ if RUN_STAGE == 'close':
         'source_g1_sha256': g1_sha256,
         'top_level_decision_scope': 'full_training_adoption',
         'decision': g0_decision,
+        'summary': (budget_sensitivity['results'][0]['summary'] if budget_sensitivity.get('results') else report.get('summary', {})),
         'decision_scopes': {
             'full_training_adoption': {**g0_decision, 'scope': 'full_training_adoption'},
             'activation_memory_mechanism': g1_decision,
         },
         'g0_decision': g0_decision, 'g1_decision': g1_decision,
-        'handoff': {'consumer': '75_memory_budget_compression', 'status': g0_decision.get('decision')},
+        'budget_sensitivity': budget_sensitivity,
     }
     decision_output_path = PROJECT_ROOT / DECISION_OUTPUT_RELATIVE_PATH
     if decision_output_path.exists():
@@ -1019,18 +1202,34 @@ if RUN_STAGE == 'close':
     else:
         save_json_record_once(decision_output_path, decision_asset)
         decision_status = 'written'
-    print({'status': decision_status, 'saved': str(decision_output_path), 'decision': decision_asset})
+    registered_g0_path = PROJECT_ROOT / decision_asset['source_g0']
+    registered_g1_path = PROJECT_ROOT / decision_asset['source_g1'] if decision_asset['source_g1'] else None
+    registration_receipt = {
+        'run_label_matches': decision_asset.get('run_label') == RUN_LABEL,
+        'schema_matches': decision_asset.get('schema_version') == 'memory-strategy-decision/v1',
+        'top_level_decision_recorded': isinstance(decision_asset.get('decision', {}).get('decision'), str),
+        'decision_and_sources_exist': (
+            decision_output_path.is_file() and registered_g0_path.is_file()
+            and registered_g1_path is not None and registered_g1_path.is_file() and manifest_path.is_file()
+        ),
+        'source_hashes_match': (
+            hashlib.sha256(registered_g0_path.read_bytes()).hexdigest() == decision_asset['source_g0_sha256']
+            and registered_g1_path is not None
+            and hashlib.sha256(registered_g1_path.read_bytes()).hexdigest() == decision_asset['source_g1_sha256']
+        ),
+    }
+    if not all(registration_receipt.values()):
+        raise RuntimeError(f'显存策略登记核对失败：{registration_receipt}')
+    print({'status': decision_status, 'saved': str(decision_output_path), 'registration_receipt': registration_receipt, 'decision': decision_asset})
 else:
     print(f'跳过决策写入：当前 RUN_STAGE={RUN_STAGE!r}；只有 close 会写入。')
 
 ```
 
----
 ## 相关阅读
 
-- [Training Deep Nets with Sublinear Memory Cost 论文](https://arxiv.org/abs/1604.06174)
-- [ZeRO-Offload 论文](https://arxiv.org/abs/2101.06840)
-- [PyTorch activation checkpointing 文档](https://pytorch.org/docs/stable/checkpoint.html)
-- [73 训练性能分析](./73_Training_Performance_Analysis.md)
-- [75 显存预算压缩项目](./75_Memory_Budget_Compression_Project.md)
-- [74 Profiling 驱动的端到端优化](./74_Profiling_Driven_End_to_End_Optimization.md)
+需要解释节省为何没有传到全局峰值时，看对象驻留；需要判断两种策略是否值得组合时，看单项与组合对照。
+
+- [PERF-MEMORY-TIMELINE. 显存驻留与峰值重叠](./PERF-MEMORY-TIMELINE_Memory_Residency_and_Peak_Overlap.md)：按同一时刻存活的存储解释峰值。
+- [PERF-COMPOSITION. 策略相互作用与瓶颈转移](./PERF-COMPOSITION_Strategy_Interaction_and_Bottleneck_Shift.md)：比较组合相对最佳可用单项的新增收益。
+- [74. 性能剖析与训练策略复核](./74_Profiling_Driven_End_to_End_Optimization.md)：分开使用完整更新、激活实验与剖析结果。

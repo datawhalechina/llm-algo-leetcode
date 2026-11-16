@@ -1,6 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+<title id="title">训练步骤与计时范围</title><desc id="desc">区分含输入准备的完整流程与输入已驻留设备的更新计时，结果记录对应同一计时窗口。</desc>
   <defs>
-    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="9" refY="3" orient="auto" markerUnits="userSpaceOnUse">
       <path d="M0,0 L9,3 L0,6 Z" fill="#52606d"/>
     </marker>
     <style>
@@ -15,51 +16,53 @@
   </defs>
 
   <rect width="1200" height="560" fill="#f7f9fc"/>
-  <text x="600" y="42" text-anchor="middle" class="title">一次完整训练 step：阶段顺序与记录结果</text>
+  <text x="600" y="42" text-anchor="middle" class="title">训练步骤与计时范围</text>
 
   <!-- 总：一次完整训练 step -->
   <rect x="35" y="72" width="1130" height="220" rx="16" fill="#e7f0ff" stroke="#2f5597" stroke-width="3"/>
-  <text x="600" y="105" text-anchor="middle" class="section">一次完整 training step</text>
-  <text x="600" y="132" text-anchor="middle" class="small">从准备一个 batch 开始，到完成一次参数更新结束</text>
+  <text x="600" y="105" text-anchor="middle" class="section">含输入准备的完整流程</text>
+  <text x="600" y="132" text-anchor="middle" class="small">先区分输入准备与设备上的训练，再声明测量起止点</text>
+  <rect x="255" y="155" width="885" height="101" rx="12" fill="none" stroke="#2f5597" stroke-width="2" stroke-dasharray="5 4"/>
+  <text x="697" y="280" text-anchor="middle" class="small">本节 GPU 计时：输入已驻留设备，从清零梯度到读取损失</text>
 
   <!-- 分：训练阶段 -->
   <rect x="65" y="174" width="175" height="66" class="box" fill="#fff3d6" stroke-dasharray="8 6"/>
   <text x="152" y="203" text-anchor="middle" class="label">输入准备</text>
-  <text x="152" y="226" text-anchor="middle" class="small">batch / 设备</text>
+  <text x="152" y="226" text-anchor="middle" class="small">准备批次并搬到设备</text>
 
   <rect x="270" y="174" width="175" height="66" class="box" fill="#ffffff"/>
   <text x="357" y="212" text-anchor="middle" class="label">清零梯度</text>
 
   <rect x="475" y="174" width="175" height="66" class="box" fill="#ffffff"/>
-  <text x="562" y="203" text-anchor="middle" class="label">前向与 loss</text>
+  <text x="562" y="203" text-anchor="middle" class="label">前向与损失</text>
   <text x="562" y="226" text-anchor="middle" class="small">产生激活</text>
 
   <rect x="680" y="174" width="175" height="66" class="box" fill="#ffffff"/>
   <text x="767" y="212" text-anchor="middle" class="label">反向传播</text>
 
   <rect x="885" y="174" width="235" height="66" class="box" fill="#ffffff"/>
-  <text x="1002" y="203" text-anchor="middle" class="label">optimizer.step</text>
-  <text x="1002" y="226" text-anchor="middle" class="small">完成参数更新</text>
+  <text x="1002" y="203" text-anchor="middle" class="label">参数更新与损失读取</text>
+  <text x="1002" y="226" text-anchor="middle" class="small">更新 · 读回损失</text>
 
-  <line x1="240" y1="207" x2="265" y2="207" class="line"/>
-  <line x1="445" y1="207" x2="470" y2="207" class="line"/>
-  <line x1="650" y1="207" x2="675" y2="207" class="line"/>
-  <line x1="855" y1="207" x2="880" y2="207" class="line"/>
+  <line x1="240" y1="207" x2="270" y2="207" class="line"/>
+  <line x1="445" y1="207" x2="475" y2="207" class="line"/>
+  <line x1="650" y1="207" x2="680" y2="207" class="line"/>
+  <line x1="855" y1="207" x2="885" y2="207" class="line"/>
 
   <!-- 从完整流程汇总到记录结果 -->
-  <line x1="600" y1="292" x2="600" y2="342" class="line"/>
+  <line x1="600" y1="292" x2="600" y2="350" class="line"/>
   <rect x="185" y="350" width="830" height="145" rx="16" fill="#e3fcef" stroke="#5c8d77" stroke-width="2.5"/>
-  <text x="600" y="383" text-anchor="middle" class="section">这个 step 统一记录的结果</text>
+  <text x="600" y="383" text-anchor="middle" class="section">按声明的计时范围记录结果</text>
 
   <rect x="215" y="410" width="230" height="62" class="metric" fill="#f0fdf4"/>
   <text x="330" y="437" text-anchor="middle" class="label">时间与吞吐</text>
-  <text x="330" y="459" text-anchor="middle" class="small">step time · samples/s</text>
+  <text x="330" y="459" text-anchor="middle" class="small">每步耗时 · 样本每秒</text>
 
   <rect x="475" y="410" width="230" height="62" class="metric" fill="#f0fdf4"/>
   <text x="590" y="437" text-anchor="middle" class="label">显存</text>
-  <text x="590" y="459" text-anchor="middle" class="small">peak allocated · reserved</text>
+  <text x="590" y="459" text-anchor="middle" class="small">活跃占用峰值 · 预留峰值</text>
 
   <rect x="735" y="410" width="230" height="62" class="metric" fill="#f0fdf4"/>
   <text x="850" y="437" text-anchor="middle" class="label">训练状态</text>
-  <text x="850" y="459" text-anchor="middle" class="small">loss · OOM · status</text>
+  <text x="850" y="459" text-anchor="middle" class="small">损失 · 显存不足 · 状态</text>
 </svg>

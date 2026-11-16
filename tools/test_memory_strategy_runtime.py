@@ -3,12 +3,41 @@ import unittest
 from tools.memory_strategy_runtime import (
     decide_memory_boundary,
     decide_memory_strategy_project,
+    evaluate_memory_budget_sensitivity,
     summarize_memory_boundary,
     summarize_memory_strategy_candidates,
 )
 
 
 class MemoryStrategyRuntimeTest(unittest.TestCase):
+    def test_budget_sensitivity_reports_stable_and_changed_selection(self):
+        candidates = [
+            {"name": "baseline", "status": "ok", "peak_memory_mb": 1000.0, "samples_per_s": 2.0, "eval_loss": 1.0},
+            {"name": "checkpoint", "status": "ok", "peak_memory_mb": 800.0, "samples_per_s": 1.6, "eval_loss": 1.02},
+            {"name": "offload", "status": "ok", "peak_memory_mb": 700.0, "samples_per_s": 0.7, "eval_loss": 1.02},
+        ]
+        base_budget = {
+            "memory_cap_mb": 1100.0,
+            "min_samples_per_s": 1.0,
+            "min_memory_saving_mb": 100.0,
+            "min_throughput_ratio": 0.7,
+        }
+        quality_floor = {"max_val_loss": 1.1}
+        stable = evaluate_memory_budget_sensitivity(candidates, [
+            {"name": "reference", "budget": base_budget, "quality_floor": quality_floor},
+            {"name": "stricter_memory", "budget": {**base_budget, "memory_cap_mb": 1050.0}, "quality_floor": quality_floor},
+        ])
+        self.assertEqual(stable["status"], "stable")
+        changed = evaluate_memory_budget_sensitivity(candidates, [
+            {"name": "reference", "budget": base_budget, "quality_floor": quality_floor},
+            {"name": "stricter_throughput", "budget": {**base_budget, "min_samples_per_s": 1.8}, "quality_floor": quality_floor},
+        ])
+        self.assertEqual(changed["status"], "threshold_sensitive")
+        empty = evaluate_memory_budget_sensitivity(candidates, [
+            {"name": "too_strict", "budget": {**base_budget, "memory_cap_mb": 650.0}, "quality_floor": quality_floor},
+        ])
+        self.assertEqual(empty["status"], "no_feasible_candidate")
+
     def test_valid_baseline_is_available_to_decision(self):
         candidates = [
             {

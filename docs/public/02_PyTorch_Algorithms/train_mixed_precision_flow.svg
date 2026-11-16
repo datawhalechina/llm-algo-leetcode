@@ -1,30 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="430" viewBox="0 0 1120 430">
-  <rect width="1120" height="430" rx="24" fill="#f7f9fc"/>
-  <text x="560" y="42" text-anchor="middle" font-size="24" font-weight="700" fill="#172033">混合精度训练中的梯度安全链</text>
-  <text x="560" y="70" text-anchor="middle" font-size="15" fill="#526079">低精度前向与真实参数更新之间必须经过尺度还原和有限值检查</text>
-  <g font-family="sans-serif" font-size="15" text-anchor="middle">
-    <rect x="50" y="132" width="150" height="72" rx="14" fill="#dceafe" stroke="#4f7fc9" stroke-width="2"/>
-    <text x="125" y="161" fill="#172033">Autocast 前向</text><text x="125" y="184" fill="#526079">FP16 / BF16</text>
-    <rect x="245" y="132" width="150" height="72" rx="14" fill="#e8e1fb" stroke="#7658bb" stroke-width="2"/>
-    <text x="320" y="161" fill="#172033">缩放 Loss</text><text x="320" y="184" fill="#526079">loss × scale</text>
-    <rect x="440" y="132" width="150" height="72" rx="14" fill="#e3f4ea" stroke="#4a9a6b" stroke-width="2"/>
-    <text x="515" y="161" fill="#172033">Backward</text><text x="515" y="184" fill="#526079">累积缩放梯度</text>
-    <rect x="635" y="132" width="150" height="72" rx="14" fill="#fff1d8" stroke="#c98b2f" stroke-width="2"/>
-    <text x="710" y="161" fill="#172033">Unscale</text><text x="710" y="184" fill="#526079">恢复真实梯度</text>
-    <rect x="830" y="132" width="190" height="72" rx="14" fill="#fde5e3" stroke="#c65d55" stroke-width="2"/>
-    <text x="925" y="161" fill="#172033">有限值 / 溢出检查</text><text x="925" y="184" fill="#526079">NaN / Inf</text>
-  </g>
-  <g stroke="#66758d" stroke-width="2.4" fill="none" marker-end="url(#arrow)">
-    <path d="M200 168H238"/><path d="M395 168H433"/><path d="M590 168H628"/><path d="M785 168H823"/>
-    <path d="M925 204V267H745"/><path d="M925 204V347H745"/>
-  </g>
-  <g font-family="sans-serif" font-size="15" text-anchor="middle">
-    <text x="836" y="252" fill="#397857">梯度有限</text>
-    <rect x="525" y="236" width="220" height="64" rx="14" fill="#e3f4ea" stroke="#4a9a6b" stroke-width="2"/>
-    <text x="635" y="262" fill="#172033">裁剪真实梯度 → optimizer.step</text><text x="635" y="284" fill="#526079">随后更新 scale</text>
-    <text x="836" y="332" fill="#a24540">检测到溢出</text>
-    <rect x="525" y="316" width="220" height="64" rx="14" fill="#fde5e3" stroke="#c65d55" stroke-width="2"/>
-    <text x="635" y="342" fill="#172033">跳过参数更新</text><text x="635" y="364" fill="#526079">降低 scale，清理梯度</text>
-  </g>
-  <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#66758d"/></marker></defs>
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="430" viewBox="0 0 1120 430" role="img" aria-labelledby="title desc">
+<title id="title">FP16 损失缩放与梯度更新</title><desc id="desc">FP16 缩放反向后还原尺度并检查非有限值。有限梯度进入裁剪更新，异常分支跳过并降低缩放因子。BF16通常以缩放因子1计算，异常时需要显式跳步。</desc>
+<defs><style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#0f172a;font-weight:400}.title{font-size:25px;font-weight:700}.h{font-size:18px;font-weight:700}.b{font-size:15px;fill:#334155}.small{font-size:14px;fill:#475569}.flow{fill:none;stroke:#64748b;stroke-width:2.5;marker-end:url(#arrow)}</style><marker id="arrow" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L9 4.5 L0 9 Z" fill="#64748b"/></marker></defs><rect width="1120" height="430" fill="#f8fafc"/>
+<text x="560" y="40" text-anchor="middle" class="title">还原尺度与检查，决定本轮更新</text><text x="560" y="73" text-anchor="middle" class="small">图示 FP16 缩放路径；BF16 通常取 s = 1，训练循环仍需检查异常</text><rect x="30" y="115" width="170" height="88" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="115" y="145" text-anchor="middle" class="h">自动混合精度</text><text x="115" y="172" text-anchor="middle" class="b">前向并得到损失 L</text><rect x="245" y="115" width="170" height="88" rx="12" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/><text x="330" y="145" text-anchor="middle" class="h">缩放并反向</text><text x="330" y="172" text-anchor="middle" class="b">sL → 缩放梯度 g′</text><rect x="460" y="115" width="170" height="88" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/><text x="545" y="145" text-anchor="middle" class="h">还原尺度</text><text x="545" y="172" text-anchor="middle" class="b">g = g′ / s</text><rect x="675" y="115" width="215" height="88" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/><text x="782.5" y="145" text-anchor="middle" class="h">检查有限值</text><text x="782.5" y="172" text-anchor="middle" class="b">识别 Inf / NaN</text><path class="flow" d="M200 159 H245"/><path class="flow" d="M415 159 H460"/><path class="flow" d="M630 159 H675"/><rect x="115" y="290" width="390" height="100" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text x="310" y="320" text-anchor="middle" class="h">有限：裁剪后更新</text><text x="310" y="347" text-anchor="middle" class="b">用原尺度梯度计算裁剪系数</text><text x="310" y="371" text-anchor="middle" class="b">更新参数与优化器状态</text><rect x="665" y="290" width="390" height="100" rx="12" fill="#fee2e2" stroke="#f87171" stroke-width="2"/><text x="860" y="320" text-anchor="middle" class="h">非有限：跳过更新</text><text x="860" y="347" text-anchor="middle" class="b">参数与优化器状态保持原值</text><text x="860" y="371" text-anchor="middle" class="b">FP16 降低缩放因子，再清理梯度</text><path class="flow" d="M730 203 V247 H310 V290"/><path class="flow" d="M835 203 V247 H860 V290"/><text x="460" y="238" text-anchor="middle" class="small">有限</text><text x="935" y="238" text-anchor="middle" class="small">Inf / NaN</text>
 </svg>

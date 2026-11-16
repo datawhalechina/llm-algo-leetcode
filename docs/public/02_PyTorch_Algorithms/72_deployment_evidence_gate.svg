@@ -1,16 +1,26 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="svg-title svg-desc">
-<title id="svg-title">单卡部署候选的证据门禁</title><desc id="svg-desc">共享基线和已启用专项策略共同进入候选证据包，依次检查身份、执行、质量服务目标、容量与回滚，最后形成采用状态。</desc>
-<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#52657a"/></marker><style>.t{font-weight:700;font-size:26px;font-family:sans-serif;fill:#18324b}.h{font-weight:600;font-size:17px;font-family:sans-serif;fill:#18324b}.b{font-size:14px;font-family:sans-serif;fill:#334e68}.l{fill:none;stroke:#52657a;stroke-width:3;marker-end:url(#arrow)}.d{fill:none;stroke:#9a6250;stroke-width:2.5;marker-end:url(#arrow)}.a{fill:#e8f1fb;stroke:#3f78a8;stroke-width:2}.g{fill:#e8f6f1;stroke:#3f8b72;stroke-width:2}.o{fill:#fff3df;stroke:#b7791f;stroke-width:2}.p{fill:#f1edfb;stroke:#7657a5;stroke-width:2}.r{fill:#fbeceb;stroke:#b85c57;stroke-width:2}</style></defs>
-<rect width="1500" height="470" fill="#f8fafc"/><text x="750" y="42" text-anchor="middle" class="t">只有实际启用的策略证据才进入部署候选门禁</text>
-<rect x="35" y="90" width="200" height="90" rx="14" class="a"/><text x="135" y="124" text-anchor="middle" class="h">共享基线</text><text x="135" y="152" text-anchor="middle" class="b">同负载参考指标</text>
-<rect x="35" y="260" width="200" height="90" rx="14" class="p"/><text x="135" y="294" text-anchor="middle" class="h">已启用策略证据</text><text x="135" y="322" text-anchor="middle" class="b">质量、性能与资源</text>
-<rect x="300" y="175" width="200" height="100" rx="14" class="a"/><text x="400" y="212" text-anchor="middle" class="h">候选证据包</text><text x="400" y="242" text-anchor="middle" class="b">原始请求与专项结果</text><path d="M235 135H265V225H300M235 305H265V225" class="l"/>
-<rect x="565" y="175" width="185" height="100" rx="14" class="g"/><text x="658" y="212" text-anchor="middle" class="h">身份可比</text><text x="658" y="242" text-anchor="middle" class="b">同产物、同负载</text>
-<rect x="815" y="175" width="185" height="100" rx="14" class="g"/><text x="908" y="212" text-anchor="middle" class="h">执行与质量</text><text x="908" y="242" text-anchor="middle" class="b">请求成功、输出合格</text>
-<rect x="1065" y="175" width="185" height="100" rx="14" class="o"/><text x="1158" y="212" text-anchor="middle" class="h">服务与容量</text><text x="1158" y="242" text-anchor="middle" class="b">SLO、显存与回滚</text>
-<rect x="1315" y="175" width="150" height="100" rx="14" class="g"/><text x="1390" y="212" text-anchor="middle" class="h">采用</text><text x="1390" y="242" text-anchor="middle" class="b">生成交接清单</text>
-<path d="M500 225H565M750 225H815M1000 225H1065M1250 225H1315" class="l"/>
-<rect x="565" y="355" width="185" height="75" rx="14" class="r"/><text x="658" y="385" text-anchor="middle" class="h">拒绝</text><text x="658" y="411" text-anchor="middle" class="b">身份不可比较</text><path d="M658 275V355" class="d"/>
-<rect x="875" y="355" width="250" height="75" rx="14" class="r"/><text x="1000" y="385" text-anchor="middle" class="h">修复后复测</text><text x="1000" y="411" text-anchor="middle" class="b">执行失败或质量越界</text><path d="M908 275V320H1000V355" class="d"/>
-<rect x="1190" y="355" width="250" height="75" rx="14" class="o"/><text x="1315" y="385" text-anchor="middle" class="h">补齐证据</text><text x="1315" y="411" text-anchor="middle" class="b">服务、容量或回滚条件缺失</text><path d="M1158 275V320H1315V355" class="d"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">比较条件、执行与质量分别决定下一步</title><desc id="desc">比较不成立或执行失败时拒绝；缺质量或服务容量条件未通过时调整；满足条件后生成采用结果与交接清单。</desc><defs>
+<marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#52657a"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:15px;font-weight:400;fill:#334e68}.title{font-size:26px;font-weight:700;fill:#18324b}.h{font-size:18px;font-weight:600;fill:#18324b}.s{font-size:14px}.edge{fill:none;stroke:#52657a;stroke-width:2.5;marker-end:url(#arrow)}.opt{fill:none;stroke:#7657a5;stroke-width:2;stroke-dasharray:7 5;marker-end:url(#arrow)}</style></defs><rect width="1500" height="470" fill="#f8fafc"/><text x="750" y="43" text-anchor="middle" class="title">比较条件、执行与质量分别决定下一步</text>
+<rect x="35" y="105" width="240" height="100" rx="13" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="155" y="138" text-anchor="middle" class="h">比较条件一致</text><text x="155" y="166" text-anchor="middle">固定身份与声明变化</text>
+<rect x="330" y="105" width="240" height="100" rx="13" fill="#e8f6f1" stroke="#3f8b72" stroke-width="2"/><text x="450" y="138" text-anchor="middle" class="h">实际执行成功</text><text x="450" y="166" text-anchor="middle">请求和已启用策略</text>
+<rect x="625" y="105" width="240" height="100" rx="13" fill="#fff3df" stroke="#b7791f" stroke-width="2"/><text x="745" y="138" text-anchor="middle" class="h">质量与服务达标</text><text x="745" y="166" text-anchor="middle">独立评测、延迟与吞吐</text>
+<rect x="920" y="105" width="240" height="100" rx="13" fill="#fff3df" stroke="#b7791f" stroke-width="2"/><text x="1040" y="138" text-anchor="middle" class="h">容量与回滚可用</text><text x="1040" y="166" text-anchor="middle">峰值、余量与恢复配置</text>
+<rect x="1215" y="105" width="240" height="100" rx="13" fill="#e8f6f1" stroke="#3f8b72" stroke-width="2"/><text x="1335" y="138" text-anchor="middle" class="h">采用</text><text x="1335" y="166" text-anchor="middle">保存结果与交接清单</text>
+<path d="M275 155H330" class="edge"/>
+<path d="M570 155H625" class="edge"/>
+<path d="M865 155H920" class="edge"/>
+<path d="M1160 155H1215" class="edge"/>
+<rect x="35" y="320" width="240" height="90" rx="13" fill="#fbeceb" stroke="#b85c57" stroke-width="2"/><text x="155" y="353" text-anchor="middle" class="h">拒绝并重新比较</text><text x="155" y="381" text-anchor="middle">修复错配或未声明变化</text>
+<rect x="330" y="320" width="240" height="90" rx="13" fill="#fbeceb" stroke="#b85c57" stroke-width="2"/><text x="450" y="353" text-anchor="middle" class="h">拒绝并修复运行</text><text x="450" y="381" text-anchor="middle">保存失败或上游拒绝</text>
+<rect x="625" y="320" width="535" height="90" rx="13" fill="#fff3df" stroke="#b7791f" stroke-width="2"/><text x="892.5" y="353" text-anchor="middle" class="h">调整后复测</text><text x="892.5" y="381" text-anchor="middle">缺证或质量、服务、资源条件尚未通过</text>
+<path d="M155 205V320" class="edge"/>
+<path d="M450 205V320" class="edge"/>
+<path d="M745 205V320" class="edge"/>
+<path d="M1040 205V320" class="edge"/>
+<text x="155" y="267" text-anchor="middle" class="s">不成立</text>
+<text x="450" y="267" text-anchor="middle" class="s">失败</text>
+<text x="745" y="267" text-anchor="middle" class="s">未通过／缺证</text>
+<text x="1040" y="267" text-anchor="middle" class="s">未通过／缺证</text>
+<text x="750" y="450" text-anchor="middle" class="s">专项结果采用与组合采用分开；后续综合项目可独立制定自己的负载与判断条件</text>
 </svg>

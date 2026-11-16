@@ -1,57 +1,57 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="title desc">
   <title id="title">单候选执行与准入判断</title>
-  <desc id="desc">候选依次检查执行路径、质量正确性、性能容量和成本风险，再根据证据输出接受、继续调优或拒绝。</desc>
+  <desc id="desc">候选依次核对执行路径、正确性与质量、性能容量和成本风险，再判断是否保留。通过安全与质量检查但收益不足的候选可作探索性组合，采用结论仍需组合实测。</desc>
   <defs>
-    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L12 6L0 12Z" fill="#334155"/></marker>
-    <style>.title{font:700 28px sans-serif;fill:#0f172a}.head{font:700 20px sans-serif;fill:#172033}.body{font:16px sans-serif;fill:#475569}.line{fill:none;stroke:#334155;stroke-width:3;marker-end:url(#arrow)}</style>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 4.5L0 9Z" fill="#334155"/></marker>
+    <style>.title{font-family:"Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#0f172a}.head{font-family:"Noto Sans CJK SC",sans-serif;font-size:20px;font-weight:700;fill:#172033}.body{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;fill:#475569}.line{fill:none;stroke:#334155;stroke-width:3;marker-end:url(#arrow)}</style>
   </defs>
   <rect width="1200" height="650" rx="28" fill="#f8fafc"/>
   <text x="600" y="52" text-anchor="middle" class="title">候选必须先证明实际执行，再判断是否采用</text>
 
   <g text-anchor="middle">
-    <rect x="55" y="125" width="225" height="125" rx="18" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+    <rect id="execution" x="55" y="125" width="225" height="125" rx="18" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
     <text x="168" y="169" class="head">执行路径</text>
     <text x="168" y="203" class="body">产物 · 加载器 · 后端</text>
     <text x="168" y="229" class="body">计算内核 · 回退</text>
 
-    <rect x="335" y="125" width="225" height="125" rx="18" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+    <rect id="quality" x="335" y="125" width="225" height="125" rx="18" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
     <text x="448" y="169" class="head">质量与正确性</text>
     <text x="448" y="203" class="body">输出 · 质量 · 安全</text>
     <text x="448" y="229" class="body">回归集</text>
 
-    <rect x="615" y="125" width="225" height="125" rx="18" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+    <rect id="performance" x="615" y="125" width="225" height="125" rx="18" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
     <text x="728" y="169" class="head">性能与容量</text>
     <text x="728" y="203" class="body">延迟 · 吞吐 · 峰值</text>
     <text x="728" y="229" class="body">SLO · 失败边界</text>
 
-    <rect x="895" y="125" width="225" height="125" rx="18" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+    <rect id="cost" x="895" y="125" width="225" height="125" rx="18" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
     <text x="1008" y="169" class="head">成本与风险</text>
     <text x="1008" y="203" class="body">设备 · 时间 · 兼容</text>
     <text x="1008" y="229" class="body">恢复 · 回退</text>
 
-    <path d="M280 188H325" class="line"/>
-    <path d="M560 188H605" class="line"/>
-    <path d="M840 188H885" class="line"/>
+    <path d="M280 188H335" class="line" data-source="execution" data-target="quality" marker-end="url(#arrow)"/>
+    <path d="M560 188H615" class="line" data-source="quality" data-target="performance" marker-end="url(#arrow)"/>
+    <path d="M840 188H895" class="line" data-source="performance" data-target="cost" marker-end="url(#arrow)"/>
 
-    <rect x="450" y="325" width="300" height="90" rx="18" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+    <rect id="decision" x="450" y="325" width="300" height="90" rx="18" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
     <text x="600" y="364" class="head">准入判断</text>
     <text x="600" y="394" class="body">检查收益、守护条件与失败证据</text>
-    <path d="M1008 250V285H600V315" class="line"/>
+    <path d="M1008 250V285H600V325" class="line" data-source="cost" data-target="decision" marker-end="url(#arrow)"/>
 
-    <rect x="90" y="500" width="250" height="95" rx="18" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+    <rect id="accept" x="90" y="500" width="250" height="95" rx="18" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
     <text x="215" y="539" class="head">接受</text>
-    <text x="215" y="570" class="body">进入组合复测</text>
+    <text x="215" y="570" class="body">按验证范围保留</text>
 
-    <rect x="475" y="500" width="250" height="95" rx="18" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+    <rect id="tune" x="475" y="500" width="250" height="95" rx="18" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
     <text x="600" y="539" class="head">继续调优</text>
-    <text x="600" y="570" class="body">缩小范围或调整配置</text>
+    <text x="600" y="570" class="body">调整配置或探索组合</text>
 
-    <rect x="860" y="500" width="250" height="95" rx="18" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+    <rect id="reject" x="860" y="500" width="250" height="95" rx="18" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
     <text x="985" y="539" class="head">拒绝</text>
     <text x="985" y="570" class="body">保存失败并恢复基线</text>
 
-    <path d="M535 415V450H215V490" class="line"/>
-    <path d="M600 415V490" class="line"/>
-    <path d="M665 415V450H985V490" class="line"/>
+    <path d="M535 415V450H215V500" class="line" data-source="decision" data-target="accept" marker-end="url(#arrow)"/>
+    <path d="M600 415V500" class="line" data-source="decision" data-target="tune" marker-end="url(#arrow)"/>
+    <path d="M665 415V450H985V500" class="line" data-source="decision" data-target="reject" marker-end="url(#arrow)"/>
   </g>
 </svg>

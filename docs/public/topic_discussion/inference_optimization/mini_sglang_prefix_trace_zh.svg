@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="690" viewBox="0 0 1200 690" role="img" aria-labelledby="title desc">
+<title id="title">共享前缀：先找到索引，再引用真实KV状态</title>
+<desc id="desc">依次处理A为P加问题一、B为P加问题二、C为Q加问题三。A计算后保留P的状态；B在条件兼容且状态仍驻留时匹配P并登记共享引用，计算未复用部分；C在本例没有可复用前缀。索引和实际状态分开维护。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#52606d"/></marker></defs>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d;font-size:19px}.title{font-size:27px;font-weight:700}.head{font-size:21px;font-weight:700}.note{font-size:17px;fill:#475569}.box{stroke:#829ab1;stroke-width:1.5;rx:10}.flow{fill:none;stroke:#52606d;stroke-width:2;marker-end:url(#arrow)}</style>
+<rect width="1200" height="690" fill="#f7fafc"/>
+<text x="40" y="44" class="title">A 先建立状态，B 再尝试复用；相同前缀与相同答案是两件事</text>
+<text x="40" y="79" class="note">Task3 的三请求情景：按 A → B → C 的顺序观察；P、Q 表示实际词元前缀，本例 Q 与 P 无可复用前缀。</text>
+<text x="40" y="128" class="head">请求词元</text><text x="440" y="128" class="head">前缀查找与状态引用</text><text x="850" y="128" class="head">进入模型的工作</text>
+<text x="40" y="181" class="head">A</text><rect x="85" y="153" width="90" height="43" fill="#dbeafe" class="box"/><text x="130" y="182" text-anchor="middle">P</text><rect x="185" y="153" width="160" height="43" fill="#ecfdf5" class="box"/><text x="265" y="182" text-anchor="middle">问题一</text>
+<path d="M345 175H425" class="flow"/>
+<rect x="425" y="147" width="300" height="95" fill="#fff" class="box"/><text x="445" y="181">首次查找：P 尚无可用状态</text><text x="445" y="218" class="note">计算完成后关联索引与状态</text>
+<path d="M725 194H815" class="flow"/><text x="835" y="186">处理 P 与问题一</text><text x="835" y="219" class="note">建立后续可复用的状态</text>
+<text x="40" y="312" class="head">B</text><rect x="85" y="284" width="90" height="43" fill="#dbeafe" class="box"/><text x="130" y="313" text-anchor="middle">P</text><rect x="185" y="284" width="160" height="43" fill="#ecfdf5" class="box"/><text x="265" y="313" text-anchor="middle">问题二</text>
+<path d="M345 306H425" class="flow"/>
+<rect x="425" y="278" width="300" height="95" fill="#dbeafe" class="box"/><text x="445" y="312">匹配 P，确认状态可用</text><text x="445" y="349" class="note">登记共享引用，保留物理状态</text>
+<path d="M575 242V278" class="flow"/>
+<path d="M725 325H815" class="flow"/><text x="835" y="312">跳过可复用的前缀计算</text><text x="835" y="349" class="note">处理后缀及实现要求的边界</text>
+<text x="40" y="443" class="head">C</text><rect x="85" y="415" width="90" height="43" fill="#fef3c7" class="box"/><text x="130" y="444" text-anchor="middle">Q</text><rect x="185" y="415" width="160" height="43" fill="#ecfdf5" class="box"/><text x="265" y="444" text-anchor="middle">问题三</text>
+<path d="M345 437H425" class="flow"/>
+<rect x="425" y="409" width="300" height="95" fill="#fff" class="box"/><text x="445" y="443">本例未命中可用前缀</text><text x="445" y="480" class="note">分配状态并建立自己的路径</text>
+<path d="M725 456H815" class="flow"/><text x="835" y="444">处理 Q 与问题三</text><text x="835" y="481" class="note">保持普通预填充行为</text>
+<rect x="40" y="547" width="1120" height="100" fill="#fff" class="box"/>
+<text x="64" y="582" class="head">索引找到哪里 ≠ 实际跳过多少计算 ≠ 首词元省下多少时间</text>
+<text x="64" y="618" class="note">分别记录匹配长度、真实复用量、状态引用与 TTFT；复用还受模型、权限、存储粒度及驻留状态约束。</text>
+<text x="40" y="676" class="note">请求结束释放活动引用；是否保留前缀、何时驱逐和归还容量，由缓存策略与安全释放条件决定。</text>
+</svg>

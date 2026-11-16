@@ -37,9 +37,7 @@
 ---
 ## Step 1：哪些 Token 参与持续预训练损失
 
-持续预训练沿用自回归语言建模目标：序列中的每个非 padding Token 都为下一 Token 预测提供监督。它与只监督回答区间的 SFT 使用不同标签掩码，下图先对照两种监督范围。
-
-![持续预训练与 SFT 的监督范围对照](../public/02_PyTorch_Algorithms/56_supervision_scope.svg)
+持续预训练沿用自回归语言建模目标：除首个输入位置外，每个非 padding Token 都可作为前一位置的预测目标。它与只监督回答区间的 SFT 使用不同标签掩码，下图对照两种监督范围。
 
 设有效预测位置集合为 $\mathcal V$，持续预训练的平均自回归损失为
 
@@ -49,54 +47,57 @@ $$
 
 | 符号 | 含义 | 在目标函数中的作用 |
 |:---|:---|:---|
-| $\mathcal V$、$|\mathcal V|$ | 非 padding 的有效预测位置集合及其大小 | 决定哪些位置参与平均 |
+| $\mathcal V$、 $|\mathcal V|$ | 非 padding 的有效预测位置集合及其大小 | 决定哪些位置参与平均 |
 | $t$ | 当前预测位置索引 | 枚举每个有效监督位置 |
-| $x_{\le t}$、$x_{t+1}$ | 当前及以前的上下文、下一 Token 目标 | 定义一次因果语言建模预测 |
+| $x_{\le t}$、 $x_{t+1}$ | 当前及以前的上下文、下一 Token 目标 | 定义一次因果语言建模预测 |
 | $p_\theta$ | 参数为 $\theta$ 的当前模型分布 | 给出目标 Token 的条件概率 |
 | $L_{CLM}$ | 有效位置上的平均负对数似然 | 作为持续预训练的优化目标 |
+
+![持续预训练与 SFT 的监督范围对照](../public/02_PyTorch_Algorithms/56_supervision_scope.svg)
+
 ## Step 2：如何用领域集与保留集测量收益和退化
 
-训练 loss 只能说明模型对参与更新的数据拟合得怎样。要判断持续预训练是否值得，需要把领域训练集、独立领域评测集和通用保留集按样本身份隔离，并在更新前后使用相同评测口径。
-
-设领域评测损失和通用保留损失在训练前后的变化分别为
+训练 loss 只能说明模型对参与更新的数据拟合得怎样。要判断持续预训练是否值得，需要把领域训练集、独立领域评测集和通用保留集按样本身份隔离，并在更新前后使用相同评测口径。设领域评测损失和通用保留损失在训练前后的变化分别为
 
 $$
 \Delta_{domain}=L^{after}_{domain}-L^{before}_{domain},\qquad
 \Delta_{retain}=L^{after}_{retain}-L^{before}_{retain}.
 $$
 
-其中 $L^{before}_{domain}$、$L^{after}_{domain}$ 是更新前后的领域评测损失，$L^{before}_{retain}$、$L^{after}_{retain}$ 是通用保留损失；$\Delta_{domain}<0$ 表示域内损失降低，$\Delta_{retain}>0$ 表示保留集退化。若允许的最大保留损失增量为 $\tau_{retain}\ge0$，最小接受门槛可写为 $\Delta_{domain}<0$ 且 $\Delta_{retain}\le\tau_{retain}$。
-
-![领域收益与通用能力保留的双评测路径](../public/02_PyTorch_Algorithms/56_retention_decision.svg)
+其中 $L^{before}_{domain}$、 $L^{after}_{domain}$ 是更新前后的领域评测损失， $L^{before}_{retain}$、 $L^{after}_{retain}$ 是通用保留损失； $\Delta_{domain}<0$ 表示域内损失降低， $\Delta_{retain}>0$ 表示保留集退化。若允许的最大保留损失增量为 $\tau_{retain}\ge0$，最小接受门槛可写为 $\Delta_{domain}<0$ 且 $\Delta_{retain}\le\tau_{retain}$。
 
 | 数据切分 | 是否参与参数更新 | 它回答的问题 | 不允许的混用 |
 |:---|:---|:---|:---|
 | 领域训练集 | 是 | 新领域 Token 让模型看到什么 | 直接兼作领域评测 |
 | 领域评测集 | 否 | 域内损失或任务指标是否改善 | 回流为训练样本 |
 | 通用保留集 | 否 | 原有通用能力是否明显退化 | 由领域训练文本派生 |
+
+![领域收益与通用能力保留的双评测路径](../public/02_PyTorch_Algorithms/56_retention_decision.svg)
+
 ## Step 3：何时继续、调低或回退持续预训练
 
-领域收益和保留代价只有在更新数值有效、数据切分独立且 checkpoint 可恢复时才可解释。判断顺序应先处理不可恢复和非有限状态，再检查保留阈值，最后确认领域评测是否改善。
+先检查恢复摘要是否列出所需状态，再检查更新及指标是否有限，随后比较保留阈值与领域评测变化。字段齐全为实际保存、加载与续训检查提供待核对清单。
 
 | 检查顺序 | 通过时说明什么 | 失败时的处理 |
 |:---|:---|:---|
-| checkpoint 包含模型、优化器、调度器、随机数状态和全局步 | 中断后可从同一训练状态继续 | 补齐状态，暂不接受候选 |
+| 恢复摘要列出模型、优化器、调度器、随机数状态和全局步 | 明确续训需要保存和读取哪些状态 | 补齐状态，暂不接受候选 |
 | 更新及两类损失变化均为有限值 | 本轮参数写回和指标可解释 | 定位数值或输入问题 |
-| $\Delta_{retain}\le\tau_{retain}$ | 通用能力退化未超过预设上限 | 降低步数或学习率，或回退 checkpoint |
+| $\Delta_{retain}\le\tau_{retain}$ | 保留文本上的损失增量未超过上限 | 降低步数或学习率，或回退 checkpoint |
 | $\Delta_{domain}<0$ | 独立领域集上的语言建模损失降低 | 调整数据配比或训练日程 |
 | 全部通过 | 候选可进入更完整的任务评测 | 继续观察，不直接宣称能力提升 |
 <a id="mechanism-practice"></a>
 
-## Step 4：实现全序列损失、切分审计与继续训练判断
+## Step 4：实现全序列监督、切分交集与收益条件
 
-题目区用 Token ID、logits 和样本 ID 建立最小持续预训练判断。学习者先构造全序列标签并按有效 Token 归约下一 Token 损失，再审计三份数据切分，最后根据领域收益、保留退化和恢复清单形成顺序判断。
+骨架提供输入校验、交叉熵调用、状态检查及报告装配。你将补全全序列标签、下一词元位移及有效目标数、三个切分交集，以及领域／保留损失的判断条件。恢复字段清单用于发现缺项；实际检查点保存和续训另行验证。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 | --- | --- | --- | --- |
-| TODO 1：构造全序列标签<br>`build_continual_pretraining_labels` | 保留全部非 padding Token，屏蔽 padding | 输入与掩码形状一致；掩码只能取 0 或 1 | 非 padding 标签保持原 Token，padding 标签为 `-100` |
-| TODO 2：归约全序列损失<br>`continual_pretraining_loss` | 位移 logits 与标签，只平均有效预测位置 | batch、序列维对齐；至少存在一个有效目标 | 与手工有效 Token 平均一致；全忽略输入被拒绝 |
-| TODO 3：审计数据切分<br>`audit_continual_splits` | 检查训练、领域评测和保留集的样本身份 | 三个集合均非空；任意两集合不得重叠 | 清洁切分返回各组数量，污染切分被拒绝 |
-| TODO 4：形成继续训练判断<br>`decide_continual_pretraining` | 按恢复、数值、保留阈值和领域收益依次判断 | 阈值非负；损失变化有限；不可恢复优先阻断 | 区分阻断、回退、调整数据日程和继续评测 |
+| TODO 1：构造全序列标签<br>`build_continual_pretraining_labels` | 保留非填充词元，屏蔽填充位置 | 返回同形新张量，输入不变；按掩码而非词元编号屏蔽 | 有效词元编号为 0 也保留，填充标签为 −100 |
+| TODO 2：对齐下一词元监督<br>`continual_pretraining_loss` | 对齐预测与下一位置标签，统计有效目标 | 位移后形状对应，分母是全批次有效目标数 | 不等长两样本与手工词元平均一致，被忽略位置梯度为零 |
+| TODO 3：比较三组样本交集<br>`audit_continual_splits` | 分别求训练、领域评测和保留集两两交集 | 交集均为空，非空检查和结果装配由骨架提供 | 三种重合及三种空集合分别报错 |
+| TODO 4：比较领域收益与保留代价<br>`decide_continual_pretraining` | 判断保留损失是否越界、领域损失是否下降 | 先检查恢复字段与有限值，再按骨架顺序判断 | 保留阈值取等可通过，领域损失不降需调整，缺项和非有限优先处理 |
+
 
 ```python
 import math
@@ -105,27 +106,94 @@ import torch
 
 
 ```python
-# 题目设计：用标签、样本身份和可恢复状态建立持续预训练的最小判断。
+def build_continual_pretraining_labels(
+    input_ids: torch.Tensor, attention_mask: torch.Tensor,
+) -> torch.Tensor:
+    """返回全序列监督标签，padding 位置忽略，原始词元张量保持不变。"""
+    if input_ids.shape != attention_mask.shape:
+        raise ValueError('input_ids 与 attention_mask 形状必须一致')
+    if not bool(torch.all((attention_mask == 0) | (attention_mask == 1))):
+        raise ValueError('attention_mask 只能包含 0 或 1')
+    # ==========================================
+    # TODO 1：构造全序列标签
+    # ==========================================
+    # labels = ???  # 与 input_ids 同形的新张量；保留非填充词元，填充标签为 -100。
+    raise NotImplementedError("TODO 1：请完成构造全序列标签")
+    return labels
 
-def build_continual_pretraining_labels(input_ids: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
-    """构造全序列监督标签，仅屏蔽 padding。"""
-    # TODO 1：检查形状和二值掩码，并把 padding 位置写为 -100。
-    raise NotImplementedError
 
 def continual_pretraining_loss(logits: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
-    """位移因果语言模型目标，并按有效 Token 数平均损失。"""
-    # TODO 2：对齐下一 Token 目标，忽略 -100，并按有效位置归约。
-    raise NotImplementedError
+    """对齐下一词元目标，并按整个批次的有效预测位置归约损失。"""
+    if logits.ndim != 3 or labels.ndim != 2:
+        raise ValueError('logits 必须为 [batch, seq, vocab]，labels 必须为 [batch, seq]')
+    if logits.shape[:2] != labels.shape or logits.size(1) < 2:
+        raise ValueError('logits 与 labels 的 batch/序列维必须一致，且序列长度至少为 2')
+    # ==========================================
+    # TODO 2：对齐下一词元监督
+    # ==========================================
+    # shift_logits = ???  # [batch, seq-1, vocab]；每个预测对应序列中的后一位置。
+    # shift_labels = ???  # [batch, seq-1]；与预测一一对应的下一词元目标。
+    # valid_count = ???  # 整数；位移后真正参与损失的目标数量。
+    raise NotImplementedError("TODO 2：请完成对齐下一词元监督")
+    if valid_count == 0:
+        raise ValueError('至少需要一个有效的下一 Token 目标')
+    loss_sum = torch.nn.functional.cross_entropy(
+        shift_logits.view(-1, shift_logits.size(-1)),
+        shift_labels.view(-1),
+        ignore_index=-100,
+        reduction='sum',
+    )
+    return loss_sum / valid_count
 
-def audit_continual_splits(train_ids: set[str], domain_eval_ids: set[str], retention_ids: set[str]) -> dict:
-    """审计领域训练、领域评测和通用保留集之间的样本身份。"""
-    # TODO 3：拒绝空集合与任意集合交叠，并返回每组大小。
-    raise NotImplementedError
 
-def decide_continual_pretraining(*, update_finite: bool, domain_loss_change: float, retention_loss_change: float, max_retention_increase: float, checkpoint_fields: set[str]) -> dict:
-    """在恢复、更新和两类独立评测都具备后给出继续、调低或阻断建议。"""
-    # TODO 4：验证阈值和指标，再按不可恢复、非有限、保留退化与领域收益判断。
-    raise NotImplementedError
+def audit_continual_splits(
+    train_ids: set[str], domain_eval_ids: set[str], retention_ids: set[str],
+) -> dict:
+    """检查三组样本编号是否两两分开，返回各组数量。"""
+    groups = {'train': train_ids, 'domain_eval': domain_eval_ids, 'retention': retention_ids}
+    if any(not ids for ids in groups.values()):
+        raise ValueError('三类数据集都必须非空')
+    # ==========================================
+    # TODO 3：比较三组样本交集
+    # ==========================================
+    # train_domain_overlap = ???  # 集合；领域训练与领域评测重复使用的样本编号。
+    # train_retention_overlap = ???  # 集合；领域训练与通用保留集重复使用的样本编号。
+    # domain_retention_overlap = ???  # 集合；领域评测与通用保留集重复使用的样本编号。
+    raise NotImplementedError("TODO 3：请完成比较三组样本交集")
+    overlaps = {
+        'train_domain_eval': train_domain_overlap,
+        'train_retention': train_retention_overlap,
+        'domain_eval_retention': domain_retention_overlap,
+    }
+    if any(overlaps.values()):
+        raise ValueError(f'数据切分存在样本重叠：{overlaps}')
+    return {'clean': True, 'counts': {name: len(ids) for name, ids in groups.items()}}
+
+
+def decide_continual_pretraining(
+    *, update_finite: bool, domain_loss_change: float, retention_loss_change: float,
+    max_retention_increase: float, checkpoint_fields: set[str],
+) -> dict:
+    """先检查恢复摘要和数值，再依据两类损失变化决定下一步。"""
+    if not math.isfinite(max_retention_increase) or max_retention_increase < 0:
+        raise ValueError('max_retention_increase 必须是有限非负数')
+    required_fields = {'model', 'optimizer', 'scheduler', 'rng', 'global_step'}
+    if not required_fields.issubset(checkpoint_fields):
+        return {'decision': 'blocked_unrecoverable', 'missing_fields': sorted(required_fields - checkpoint_fields)}
+    metric_values = (domain_loss_change, retention_loss_change)
+    if not update_finite or not all(math.isfinite(value) for value in metric_values):
+        return {'decision': 'blocked_nonfinite'}
+    # ==========================================
+    # TODO 4：比较领域收益与保留代价
+    # ==========================================
+    # retention_exceeded = ???  # 布尔值；保留损失变化是否越过给定的允许上限。
+    # domain_improved = ???  # 布尔值；领域评测损失在这次更新后是否改善。
+    raise NotImplementedError("TODO 4：请完成比较领域收益与保留代价")
+    if retention_exceeded:
+        return {'decision': 'tune_or_rollback'}
+    if not domain_improved:
+        return {'decision': 'tune_data_or_schedule'}
+    return {'decision': 'continue_with_evaluation'}
 
 ```
 
@@ -189,7 +257,83 @@ test_full_sequence_labels()
 test_effective_token_loss()
 test_continual_split_audit()
 test_continual_decision_priority()
-print('✅ 持续预训练机制测试通过')
+
+def _expect_continual_value_error(callback):
+    """确认切分或阈值非法时，调用明确报错。"""
+    try:
+        callback()
+    except ValueError:
+        return
+    raise AssertionError('预期 ValueError')
+
+
+def test_labels_follow_mask_without_mutation():
+    """有效位置的编号0仍参与监督，且构造标签不改写原始输入。"""
+    input_ids = torch.tensor([[0, 5, 7, 9]])
+    attention_mask = torch.tensor([[1, 1, 1, 0]])
+    original = input_ids.clone()
+    labels = build_continual_pretraining_labels(input_ids, attention_mask)
+    assert labels.tolist() == [[0, 5, 7, -100]]
+    assert torch.equal(input_ids, original)
+    assert labels.data_ptr() != input_ids.data_ptr()
+
+
+def test_unequal_target_counts_and_ignored_gradients():
+    """两样本有效目标数不同，按全批次词元平均，忽略位置不回传梯度。"""
+    torch.manual_seed(17)
+    logits = torch.randn(2, 4, 10, dtype=torch.double, requires_grad=True)
+    labels = torch.tensor([[2, 4, 6, -100], [7, 3, -100, -100]])
+    actual = continual_pretraining_loss(logits, labels)
+    log_probs = torch.log_softmax(logits, dim=-1)
+    expected = -torch.stack([log_probs[0, 0, 4], log_probs[0, 1, 6], log_probs[1, 0, 3]]).mean()
+    torch.testing.assert_close(actual, expected)
+    actual.backward()
+    assert torch.count_nonzero(logits.grad[0, 2:]) == 0
+    assert torch.count_nonzero(logits.grad[1, 1:]) == 0
+    assert torch.count_nonzero(logits.grad[0, :2]) > 0
+    assert torch.count_nonzero(logits.grad[1, :1]) > 0
+
+
+def test_every_split_pair_and_empty_group():
+    """分别核对三个切分交集和三个空集合，而非只检查训练与领域评测。"""
+    dirty_groups = [
+        ({'x'}, {'x'}, {'r'}),
+        ({'x'}, {'d'}, {'x'}),
+        ({'t'}, {'x'}, {'x'}),
+        (set(), {'d'}, {'r'}),
+        ({'t'}, set(), {'r'}),
+        ({'t'}, {'d'}, set()),
+    ]
+    for groups in dirty_groups:
+        _expect_continual_value_error(lambda: audit_continual_splits(*groups))
+
+
+def test_continual_boundaries_and_blocking_priority():
+    """保留上限等号可通过，领域损失为零需调整，缺项与非有限优先。"""
+    base = dict(
+        update_finite=True, domain_loss_change=-0.2, retention_loss_change=0.05,
+        max_retention_increase=0.05,
+        checkpoint_fields={'model', 'optimizer', 'scheduler', 'rng', 'global_step'},
+    )
+    assert decide_continual_pretraining(**base)['decision'] == 'continue_with_evaluation'
+    assert decide_continual_pretraining(**{**base, 'domain_loss_change': 0.0})['decision'] == 'tune_data_or_schedule'
+    assert decide_continual_pretraining(**{**base, 'update_finite': False, 'retention_loss_change': 1.0})['decision'] == 'blocked_nonfinite'
+    missing = decide_continual_pretraining(**{
+        **base, 'checkpoint_fields': {'model'}, 'domain_loss_change': float('nan'),
+    })
+    assert missing['decision'] == 'blocked_unrecoverable'
+    assert missing['missing_fields'] == ['global_step', 'optimizer', 'rng', 'scheduler']
+    for invalid_limit in (-1.0, float('nan')):
+        _expect_continual_value_error(lambda: decide_continual_pretraining(**{
+            **base, 'max_retention_increase': invalid_limit,
+        }))
+
+
+test_labels_follow_mask_without_mutation()
+test_unequal_target_counts_and_ignored_gradients()
+test_every_split_pair_and_empty_group()
+test_continual_boundaries_and_blocking_priority()
+print('✅ 8 项持续预训练机制测试通过')
 
 ```
 
@@ -205,26 +349,26 @@ print('✅ 持续预训练机制测试通过')
 ### 代码
 
 ```python
-# 参考实现：保留题目区的函数、参数和 TODO 位置，只补全机制规则。
-
-def build_continual_pretraining_labels(input_ids: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
-    """构造全序列监督标签，仅屏蔽 padding。"""
-    # TODO 1：检查形状和二值掩码，并把 padding 位置写为 -100。
+def build_continual_pretraining_labels(
+    input_ids: torch.Tensor, attention_mask: torch.Tensor,
+) -> torch.Tensor:
+    """返回全序列监督标签，padding 位置忽略，原始词元张量保持不变。"""
     if input_ids.shape != attention_mask.shape:
         raise ValueError('input_ids 与 attention_mask 形状必须一致')
     if not bool(torch.all((attention_mask == 0) | (attention_mask == 1))):
         raise ValueError('attention_mask 只能包含 0 或 1')
-    labels = input_ids.clone()
-    labels[attention_mask == 0] = -100
+    # TODO 1：构造全序列标签
+    labels = input_ids.masked_fill(attention_mask == 0, -100)
     return labels
 
+
 def continual_pretraining_loss(logits: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
-    """位移因果语言模型目标，并按有效 Token 数平均损失。"""
-    # TODO 2：对齐下一 Token 目标，忽略 -100，并按有效位置归约。
+    """对齐下一词元目标，并按整个批次的有效预测位置归约损失。"""
     if logits.ndim != 3 or labels.ndim != 2:
         raise ValueError('logits 必须为 [batch, seq, vocab]，labels 必须为 [batch, seq]')
     if logits.shape[:2] != labels.shape or logits.size(1) < 2:
         raise ValueError('logits 与 labels 的 batch/序列维必须一致，且序列长度至少为 2')
+    # TODO 2：对齐下一词元监督
     shift_logits = logits[:, :-1].contiguous()
     shift_labels = labels[:, 1:].contiguous()
     valid_count = int(shift_labels.ne(-100).sum().item())
@@ -238,24 +382,33 @@ def continual_pretraining_loss(logits: torch.Tensor, labels: torch.Tensor) -> to
     )
     return loss_sum / valid_count
 
-def audit_continual_splits(train_ids: set[str], domain_eval_ids: set[str], retention_ids: set[str]) -> dict:
-    """审计领域训练、领域评测和通用保留集之间的样本身份。"""
-    # TODO 3：拒绝空集合与任意集合交叠，并返回每组大小。
+
+def audit_continual_splits(
+    train_ids: set[str], domain_eval_ids: set[str], retention_ids: set[str],
+) -> dict:
+    """检查三组样本编号是否两两分开，返回各组数量。"""
     groups = {'train': train_ids, 'domain_eval': domain_eval_ids, 'retention': retention_ids}
     if any(not ids for ids in groups.values()):
         raise ValueError('三类数据集都必须非空')
+    # TODO 3：比较三组样本交集
+    train_domain_overlap = train_ids & domain_eval_ids
+    train_retention_overlap = train_ids & retention_ids
+    domain_retention_overlap = domain_eval_ids & retention_ids
     overlaps = {
-        'train_domain_eval': train_ids & domain_eval_ids,
-        'train_retention': train_ids & retention_ids,
-        'domain_eval_retention': domain_eval_ids & retention_ids,
+        'train_domain_eval': train_domain_overlap,
+        'train_retention': train_retention_overlap,
+        'domain_eval_retention': domain_retention_overlap,
     }
     if any(overlaps.values()):
         raise ValueError(f'数据切分存在样本重叠：{overlaps}')
     return {'clean': True, 'counts': {name: len(ids) for name, ids in groups.items()}}
 
-def decide_continual_pretraining(*, update_finite: bool, domain_loss_change: float, retention_loss_change: float, max_retention_increase: float, checkpoint_fields: set[str]) -> dict:
-    """在恢复、更新和两类独立评测都具备后给出继续、调低或阻断建议。"""
-    # TODO 4：验证阈值和指标，再按不可恢复、非有限、保留退化与领域收益判断。
+
+def decide_continual_pretraining(
+    *, update_finite: bool, domain_loss_change: float, retention_loss_change: float,
+    max_retention_increase: float, checkpoint_fields: set[str],
+) -> dict:
+    """先检查恢复摘要和数值，再依据两类损失变化决定下一步。"""
     if not math.isfinite(max_retention_increase) or max_retention_increase < 0:
         raise ValueError('max_retention_increase 必须是有限非负数')
     required_fields = {'model', 'optimizer', 'scheduler', 'rng', 'global_step'}
@@ -264,9 +417,12 @@ def decide_continual_pretraining(*, update_finite: bool, domain_loss_change: flo
     metric_values = (domain_loss_change, retention_loss_change)
     if not update_finite or not all(math.isfinite(value) for value in metric_values):
         return {'decision': 'blocked_nonfinite'}
-    if retention_loss_change > max_retention_increase:
+    # TODO 4：比较领域收益与保留代价
+    retention_exceeded = retention_loss_change > max_retention_increase
+    domain_improved = domain_loss_change < 0.0
+    if retention_exceeded:
         return {'decision': 'tune_or_rollback'}
-    if domain_loss_change >= 0:
+    if not domain_improved:
         return {'decision': 'tune_data_or_schedule'}
     return {'decision': 'continue_with_evaluation'}
 
@@ -276,33 +432,34 @@ def decide_continual_pretraining(*, update_finite: bool, domain_loss_change: flo
 
 #### TODO 1：构造全序列标签
 
-- 持续预训练监督所有非 padding Token，因此输入和掩码必须同形，且掩码只能表达保留或屏蔽；response-only mask 不能直接复用。
-- 答案复制 `input_ids` 并把 padding 位置写成 `-100`；`test_full_sequence_labels` 在 CPU 上同时验证正常标签和两类非法掩码。
+- 持续预训练保留全序列中的非填充词元；忽略位置由注意力掩码指定，而不是根据词元编号是否为零判断。
+- 返回新的标签张量，在填充位置设置 −100。测试包含有效位置的编号 0，并确认原输入没有被改写。
 
-#### TODO 2：归约全序列损失
+#### TODO 2：对齐预测与目标
 
-- 因果语言模型用位置 $t$ 的 logits 预测位置 $t+1$ 的标签，平均分母只能包含非 `-100` 的有效目标。
-- 答案完成时间位移，以 `sum / valid_count` 归约并拒绝全忽略输入；`test_effective_token_loss` 在 CPU 上用手工 log-prob 平均核对数值和空分母边界。
+- 位置 $t$ 的预测对应位置 $t+1$ 的标签，首个输入词元不作为这一步的目标。损失平均分母是位移后所有非忽略目标数。
+- 填写两个位移张量和计数，交叉熵求和及除法由骨架执行。测试以有效目标数 2 和 1 的两条样本核对整体平均，并检查被忽略位置的梯度为零。
 
-#### TODO 3：审计数据切分
+#### TODO 3：求三个切分交集
 
-- 领域训练、领域评测和通用保留集必须非空且两两不相交，否则更新后的损失变化无法区分训练记忆、领域收益和通用退化。
-- 答案显式计算三组交集并返回样本计数；`test_continual_split_audit` 在 CPU 上验证清洁切分和训练—评测污染，但不能替代真实数据的版本与来源审计。
+- 训练与领域评测、训练与保留集、领域评测与保留集是三个不同的重合检查，漏掉任意一组都可能混入重复样本编号。
+- 分别计算三组集合交集，错误处理由骨架提供。测试逐一制造三种交叠，并分别传入空集合，确认都被识别。
 
-#### TODO 4：形成继续训练判断
+#### TODO 4：比较两类损失变化
 
-- 恢复字段和有限值是解释收益的前提，随后才比较保留阈值与领域损失变化；短期领域改善不能覆盖不可恢复或非有限状态。
-- 答案按不可恢复、非有限、保留退化、领域无收益的顺序返回状态；`test_continual_decision_priority` 在 CPU 上覆盖四条失败分支和继续评测分支，但不证明真实领域能力已经提升。
+- 损失变化按更新后减更新前计算：领域损失下降才表示当前评测改善，保留损失增加量允许达到给定上限。
+- 填写两个布尔条件，由骨架先处理恢复缺项与非有限值。测试检查上限等号、领域变化为零，以及多个问题同时出现时的判断顺序。
+
 <a id="framework-check"></a>
 
 ## 框架一致性核对（可选）
 
-下面使用 Transformers 的微型随机 Causal LM 核对全序列标签、下一 Token 位移和有效位置平均；该核对不下载模型。
+构造 CPU 上的微型随机语言模型，把同一组全序列标签交给本节实现与 Transformers 内置损失，比较因果位移及有效目标平均；模型由配置创建，无需下载权重。
 
-| 核对对象 | 本节实现 | 成熟框架入口 | 通过条件 |
+| 核对对象 | Step 4 教学实现 | 成熟框架 CPU 路径 | 共同输入与通过条件 |
 | --- | --- | --- | --- |
-| 全序列标签 | `build_continual_pretraining_labels` | Transformers Causal LM 标签接口 | 非 padding Token 保留，padding 写为 `-100` |
-| 下一 Token 损失 | `continual_pretraining_loss` | `AutoModelForCausalLM` 内置 loss | 相同 logits、labels 和有效位置下损失一致 |
+| 下一词元损失 | `continual_pretraining_loss` | `AutoModelForCausalLM` 内置 loss | 相同 logits、labels 与忽略位置，损失在容差内一致 |
+
 
 ```python
 from importlib.metadata import version

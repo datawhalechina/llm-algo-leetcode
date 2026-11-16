@@ -1,34 +1,61 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
-  <title id="title">从离散输入和空间特征到序列主状态</title>
-  <desc id="desc">词表编号经过查表、空间特征把空间位置展开为序列，两条输入路径形成按 token 排列的连续状态，再进入模型组件。</desc>
-  <defs>
-    <style>
-      .title{font:700 28px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.sub{font:500 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.head{font:700 18px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.body{font:500 14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.box{stroke-width:2.5}.arrow{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#arrow)}
-    </style>
-    <marker id="arrow" markerUnits="userSpaceOnUse" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
-  </defs>
-  <rect width="1500" height="470" fill="#f8fafc"/>
-  <text x="55" y="55" class="title">PyTorch 热身：先看懂每个维度，再进入模型主状态</text>
-  <text x="55" y="85" class="sub">不同输入都要先满足形状与索引契约，才能形成按 token 排列的连续表示。</text>
-
-  <rect x="60" y="125" width="250" height="105" rx="16" fill="#dbeafe" stroke="#2563eb" class="box"/>
-  <text x="185" y="165" text-anchor="middle" class="head">词表编号</text><text x="185" y="196" text-anchor="middle" class="body">[B, S] · 整数且不越界</text>
-  <rect x="390" y="125" width="250" height="105" rx="16" fill="#dcfce7" stroke="#16a34a" class="box"/>
-  <text x="515" y="165" text-anchor="middle" class="head">词表查表</text><text x="515" y="196" text-anchor="middle" class="body">[V, D] 中选择对应行</text>
-
-  <rect x="60" y="285" width="250" height="105" rx="16" fill="#e0f2fe" stroke="#0284c7" class="box"/>
-  <text x="185" y="325" text-anchor="middle" class="head">空间特征</text><text x="185" y="356" text-anchor="middle" class="body">[B, C, H, W]</text>
-  <rect x="390" y="285" width="250" height="105" rx="16" fill="#fef3c7" stroke="#d97706" class="box"/>
-  <text x="515" y="325" text-anchor="middle" class="head">空间位置展开</text><text x="515" y="356" text-anchor="middle" class="body">[B, H×W, C]</text>
-
-  <rect x="760" y="205" width="270" height="105" rx="16" fill="#f5f3ff" stroke="#7c3aed" class="box"/>
-  <text x="895" y="245" text-anchor="middle" class="head">序列主状态</text><text x="895" y="276" text-anchor="middle" class="body">[B, S, D] · token 顺序稳定</text>
-  <rect x="1160" y="205" width="270" height="105" rx="16" fill="#fce7f3" stroke="#db2777" class="box"/>
-  <text x="1295" y="245" text-anchor="middle" class="head">模型组件</text><text x="1295" y="276" text-anchor="middle" class="body">Norm · Attention · MLP</text>
-
-  <path d="M310 177H390" class="arrow"/>
-  <path d="M310 337H390" class="arrow"/>
-  <path d="M640 177H700V235H760" class="arrow"/>
-  <path d="M640 337H700V280H760" class="arrow"/>
-  <path d="M1030 257H1160" class="arrow"/>
+<title id="title">空间特征展开时保留位置与通道的对应</title><desc id="desc">B为1、两个通道各含2乘2空间位置。先把通道轴放到最后，再按行合并空间位置，得到Token依次为1与11、2与12、3与13、4与14。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.sub{font-size:18px;fill:#475569}.head{font-size:19px;font-weight:700}.body{font-size:18px}.small{font-size:16px;fill:#475569}.node{stroke-width:2;rx:12}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.saved{stroke:#15803d;stroke-width:2.5;stroke-dasharray:7 5;fill:none;marker-end:url(#arrow)}</style></defs>
+<rect width="1500" height="470" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="55" y="48" class="title" text-anchor="start">从空间网格到Token序列：移动轴，保留每个位置的通道组</text>
+<text x="55" y="80" class="sub" text-anchor="start">示例：B=1、C=2、H=W=2；按行遍历空间位置，每个Token保留同一位置的两个通道值。</text>
+<rect x="55" y="120" width="350" height="285" rx="12" fill="#fff" stroke="#cbd5e1" data-layout-role="panel"/>
+<text x="230" y="151" class="head" text-anchor="middle">输入 [1, 2, 2, 2]</text>
+<text x="145" y="186" class="head" text-anchor="middle">通道 0</text>
+<g data-layout-role="glyph-group"><rect data-channel="0" data-h="0" data-w="0" data-value="1" x="80" y="205" width="62" height="60" rx="5" fill="#dbeafe" stroke="#2563eb"/><text x="111" y="244" class="head" text-anchor="middle">1</text>
+</g>
+<g data-layout-role="glyph-group"><rect data-channel="0" data-h="0" data-w="1" data-value="2" x="148" y="205" width="62" height="60" rx="5" fill="#dbeafe" stroke="#2563eb"/><text x="179" y="244" class="head" text-anchor="middle">2</text>
+</g>
+<g data-layout-role="glyph-group"><rect data-channel="0" data-h="1" data-w="0" data-value="3" x="80" y="273" width="62" height="60" rx="5" fill="#dbeafe" stroke="#2563eb"/><text x="111" y="312" class="head" text-anchor="middle">3</text>
+</g>
+<g data-layout-role="glyph-group"><rect data-channel="0" data-h="1" data-w="1" data-value="4" x="148" y="273" width="62" height="60" rx="5" fill="#dbeafe" stroke="#2563eb"/><text x="179" y="312" class="head" text-anchor="middle">4</text>
+</g>
+<text x="315" y="186" class="head" text-anchor="middle">通道 1</text>
+<g data-layout-role="glyph-group"><rect data-channel="1" data-h="0" data-w="0" data-value="11" x="250" y="205" width="62" height="60" rx="5" fill="#dcfce7" stroke="#15803d"/><text x="281" y="244" class="head" text-anchor="middle">11</text>
+</g>
+<g data-layout-role="glyph-group"><rect data-channel="1" data-h="0" data-w="1" data-value="12" x="318" y="205" width="62" height="60" rx="5" fill="#dcfce7" stroke="#15803d"/><text x="349" y="244" class="head" text-anchor="middle">12</text>
+</g>
+<g data-layout-role="glyph-group"><rect data-channel="1" data-h="1" data-w="0" data-value="13" x="250" y="273" width="62" height="60" rx="5" fill="#dcfce7" stroke="#15803d"/><text x="281" y="312" class="head" text-anchor="middle">13</text>
+</g>
+<g data-layout-role="glyph-group"><rect data-channel="1" data-h="1" data-w="1" data-value="14" x="318" y="273" width="62" height="60" rx="5" fill="#dcfce7" stroke="#15803d"/><text x="349" y="312" class="head" text-anchor="middle">14</text>
+</g>
+<text x="230" y="377" class="small" text-anchor="middle">每个通道内部：左上→右上→左下→右下</text>
+<rect x="500" y="120" width="390" height="285" rx="12" fill="#fff" stroke="#cbd5e1" data-layout-role="panel"/>
+<text x="695" y="151" class="head" text-anchor="middle">先调整轴顺序 [B,H,W,C]</text>
+<text x="525" y="210" class="body" text-anchor="start">位置(0,0)</text>
+<g data-layout-role="glyph-group"><rect x="665" y="186" width="190" height="34" rx="5" fill="#fef3c7" stroke="#d97706"/><text x="760" y="210" class="head" text-anchor="middle">[1, 11]</text>
+</g>
+<text x="525" y="254" class="body" text-anchor="start">位置(0,1)</text>
+<g data-layout-role="glyph-group"><rect x="665" y="230" width="190" height="34" rx="5" fill="#fef3c7" stroke="#d97706"/><text x="760" y="254" class="head" text-anchor="middle">[2, 12]</text>
+</g>
+<text x="525" y="298" class="body" text-anchor="start">位置(1,0)</text>
+<g data-layout-role="glyph-group"><rect x="665" y="274" width="190" height="34" rx="5" fill="#fef3c7" stroke="#d97706"/><text x="760" y="298" class="head" text-anchor="middle">[3, 13]</text>
+</g>
+<text x="525" y="342" class="body" text-anchor="start">位置(1,1)</text>
+<g data-layout-role="glyph-group"><rect x="665" y="318" width="190" height="34" rx="5" fill="#fef3c7" stroke="#d97706"/><text x="760" y="342" class="head" text-anchor="middle">[4, 14]</text>
+</g>
+<text x="695" y="387" class="small" text-anchor="middle">每个位置的C维仍成组保存</text>
+<rect x="985" y="120" width="460" height="285" rx="12" fill="#fff" stroke="#cbd5e1" data-layout-role="panel"/>
+<text x="1215" y="151" class="head" text-anchor="middle">合并空间轴 → [1, 4, 2]</text>
+<g data-layout-role="glyph-group"><rect data-token="0" data-values="1,11" x="1160" y="182" width="235" height="36" rx="5" fill="#ede9fe" stroke="#7c3aed"/><text x="1055" y="207" class="body" text-anchor="middle">Token 0</text>
+<text x="1277" y="207" class="head" text-anchor="middle">[1, 11]</text>
+</g>
+<g data-layout-role="glyph-group"><rect data-token="1" data-values="2,12" x="1160" y="227" width="235" height="36" rx="5" fill="#ede9fe" stroke="#7c3aed"/><text x="1055" y="252" class="body" text-anchor="middle">Token 1</text>
+<text x="1277" y="252" class="head" text-anchor="middle">[2, 12]</text>
+</g>
+<g data-layout-role="glyph-group"><rect data-token="2" data-values="3,13" x="1160" y="272" width="235" height="36" rx="5" fill="#ede9fe" stroke="#7c3aed"/><text x="1055" y="297" class="body" text-anchor="middle">Token 2</text>
+<text x="1277" y="297" class="head" text-anchor="middle">[3, 13]</text>
+</g>
+<g data-layout-role="glyph-group"><rect data-token="3" data-values="4,14" x="1160" y="317" width="235" height="36" rx="5" fill="#ede9fe" stroke="#7c3aed"/><text x="1055" y="342" class="body" text-anchor="middle">Token 3</text>
+<text x="1277" y="342" class="head" text-anchor="middle">[4, 14]</text>
+</g>
+<path id="reorder-axes" d="M405 262H500" class="flow"/>
+<path id="merge-spatial-axes" d="M890 262H985" class="flow"/>
+<text x="55" y="446" class="sub" text-anchor="start">变化的是轴顺序与空间索引；同一位置的通道值始终一起进入对应Token。</text>
 </svg>

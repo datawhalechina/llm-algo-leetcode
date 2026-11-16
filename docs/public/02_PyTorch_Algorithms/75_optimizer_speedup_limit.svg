@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="390" viewBox="0 0 1120 390" role="img" aria-labelledby="title desc">
+  <title id="title">优化器局部提速对完整训练步的影响</title>
+  <desc id="desc">构造示例中，优化器更新占基线训练步的百分之二十。局部更新加速两倍后，非优化器阶段不变，完整训练步缩短到基线的百分之九十，总体加速约为一点一一倍。</desc>
+  <defs>
+    <style>
+      text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172b4d}
+      .title{font-size:24px;font-weight:700}.head{font-size:17px;font-weight:700}.body{font-size:15px}.small{font-size:13px;fill:#526579}
+      .frame{fill:#f7f9fc;stroke:#9aabbd;stroke-width:1.5}.other{fill:#dbeafe;stroke:#4f78a5;stroke-width:1.5}.update{fill:#ffedd5;stroke:#ca7b2b;stroke-width:1.5}.arrow{stroke:#526579;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+    </style>
+    <marker markerUnits="userSpaceOnUse" id="arrow" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#526579"/></marker>
+  </defs>
+  <rect width="1120" height="390" rx="20" fill="#fff"/>
+  <text x="560" y="42" text-anchor="middle" class="title">优化器更新变快，完整训练步能快多少？</text>
+  <text x="560" y="70" text-anchor="middle" class="small">构造示例：更新占比 p=0.20，局部更新加速 s=2；其余阶段耗时不变</text>
+
+  <text x="82" y="132" class="head">基线</text>
+  <rect x="180" y="103" width="660" height="54" rx="10" class="frame"/>
+  <rect x="180" y="103" width="528" height="54" rx="10" class="other"/>
+  <rect x="708" y="103" width="132" height="54" rx="10" class="update"/>
+  <text x="444" y="136" text-anchor="middle" class="body">前向、反向与其他阶段：0.80</text>
+  <text x="774" y="126" text-anchor="middle" class="small">更新</text>
+  <text x="774" y="147" text-anchor="middle" class="small">0.20</text>
+  <text x="860" y="136" class="body">总耗时 = 1.00</text>
+
+  <text x="82" y="226" class="head">候选</text>
+  <rect x="180" y="197" width="594" height="54" rx="10" class="frame"/>
+  <rect x="180" y="197" width="528" height="54" rx="10" class="other"/>
+  <rect x="708" y="197" width="66" height="54" rx="10" class="update"/>
+  <text x="444" y="230" text-anchor="middle" class="body">其他阶段不变：0.80</text>
+  <text x="741" y="220" text-anchor="middle" class="small">更新</text>
+  <text x="741" y="241" text-anchor="middle" class="small">0.10</text>
+  <text x="794" y="230" class="body">总耗时 = 0.90</text>
+  <path d="M741 157V197" class="arrow"/>
+
+  <rect x="180" y="286" width="760" height="66" rx="12" fill="#f0fdf4" stroke="#5d8a67" stroke-width="1.5"/>
+  <text x="560" y="314" text-anchor="middle" class="head">完整训练步加速比 S = 1 / ((1 − p) + p / s) ≈ 1.11×</text>
+  <text x="560" y="338" text-anchor="middle" class="small">构造比例示例：其他阶段保持不变，完整训练步由1.00缩短到0.90。</text>
+</svg>

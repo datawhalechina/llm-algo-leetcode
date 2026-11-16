@@ -1,14 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="svg-title svg-desc">
-<title id="svg-title">Serving 请求从到达到完成的调度生命周期</title><desc id="svg-desc">到达请求进入就绪队列，调度策略选择请求组成活动批次；完成请求退出，未完成请求返回下一轮执行。</desc>
-<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#52657a"/></marker><style>.t{font-weight:700;font-size:26px;font-family:sans-serif;fill:#18324b}.h{font-weight:600;font-size:18px;font-family:sans-serif;fill:#18324b}.b{font-size:15px;font-family:sans-serif;fill:#334e68}.l{fill:none;stroke:#52657a;stroke-width:3;marker-end:url(#arrow)}.f{fill:none;stroke:#7657a5;stroke-width:2.5;stroke-dasharray:8 6;marker-end:url(#arrow)}.a{fill:#e8f1fb;stroke:#3f78a8;stroke-width:2}.g{fill:#e8f6f1;stroke:#3f8b72;stroke-width:2}.o{fill:#fff3df;stroke:#b7791f;stroke-width:2}.p{fill:#f1edfb;stroke:#7657a5;stroke-width:2}</style></defs>
-<rect width="1500" height="470" fill="#f8fafc"/><text x="750" y="42" text-anchor="middle" class="t">调度策略改变谁先进入执行，不改变请求本身</text>
-<rect x="40" y="120" width="205" height="105" rx="14" class="a"/><text x="143" y="157" text-anchor="middle" class="h">请求到达</text><text x="143" y="187" text-anchor="middle" class="b">记录到达时间与优先级</text>
-<rect x="290" y="120" width="205" height="105" rx="14" class="a"/><text x="393" y="157" text-anchor="middle" class="h">就绪队列</text><text x="393" y="187" text-anchor="middle" class="b">等待获得执行资格</text>
-<rect x="540" y="120" width="205" height="105" rx="14" class="p"/><text x="643" y="157" text-anchor="middle" class="h">请求选择</text><text x="643" y="187" text-anchor="middle" class="b">FCFS 或 priority</text>
-<rect x="790" y="120" width="205" height="105" rx="14" class="g"/><text x="893" y="157" text-anchor="middle" class="h">组成活动批次</text><text x="893" y="187" text-anchor="middle" class="b">受 token 与序列预算约束</text>
-<rect x="1040" y="120" width="205" height="105" rx="14" class="o"/><text x="1143" y="157" text-anchor="middle" class="h">执行一次迭代</text><text x="1143" y="187" text-anchor="middle" class="b">Prefill 或 Decode</text>
-<rect x="1290" y="120" width="165" height="105" rx="14" class="g"/><text x="1373" y="157" text-anchor="middle" class="h">请求完成</text><text x="1373" y="187" text-anchor="middle" class="b">保存完成时间</text>
-<path d="M245 173H290M495 173H540M745 173H790M995 173H1040M1245 173H1290" class="l"/>
-<rect x="790" y="325" width="455" height="85" rx="14" class="p"/><text x="1018" y="358" text-anchor="middle" class="h">未完成请求保留状态</text><text x="1018" y="386" text-anchor="middle" class="b">返回下一轮活动批次，与新准入请求共同竞争预算</text>
-<path d="M1143 225V325" class="l"/><path d="M790 368H700V260H893V225" class="f"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">请求选择与轮次执行分别决定谁等待、谁推进</title><desc id="desc">服务端请求到达后等待选择，选中的批次执行一轮；未完成成员保留状态，完成成员退出。CPU整批窗口模型与此通用循环分开解释。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#52657a"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:15px;font-weight:400;fill:#334e68}.title{font-size:25px;font-weight:700;fill:#18324b}.h{font-size:18px;font-weight:600;fill:#18324b}.small{font-size:14px}.edge{fill:none;stroke:#52657a;stroke-width:2.5;marker-end:url(#arrow)}.feedback{fill:none;stroke:#7657a5;stroke-width:2;stroke-dasharray:7 5;marker-end:url(#arrow)}</style></defs>
+<rect width="1500" height="470" fill="#f8fafc"/><text x="750" y="42" text-anchor="middle" class="title">请求选择与轮次执行分别决定谁等待、谁推进</text>
+<rect x="35" y="115" width="210" height="100" rx="14" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="140" y="150" text-anchor="middle" class="h">请求到达</text><text x="140" y="180" text-anchor="middle">记录时间与业务优先级</text>
+<rect x="285" y="115" width="210" height="100" rx="14" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="390" y="150" text-anchor="middle" class="h">等待集合</text><text x="390" y="180" text-anchor="middle">已到达、尚未获选</text>
+<rect x="535" y="115" width="210" height="100" rx="14" fill="#f1edfb" stroke="#7657a5" stroke-width="2"/><text x="640" y="150" text-anchor="middle" class="h">请求选择</text><text x="640" y="180" text-anchor="middle">先到先服务／优先级</text>
+<rect x="785" y="115" width="210" height="100" rx="14" fill="#e8f6f1" stroke="#3f8b72" stroke-width="2"/><text x="890" y="150" text-anchor="middle" class="h">组成执行批次</text><text x="890" y="180" text-anchor="middle">受槽位、KV 与词元限制</text>
+<rect x="1035" y="115" width="210" height="100" rx="14" fill="#fff3df" stroke="#b7791f" stroke-width="2"/><text x="1140" y="150" text-anchor="middle" class="h">执行一轮</text><text x="1140" y="180" text-anchor="middle">预填充或解码</text>
+<rect x="1290" y="115" width="170" height="100" rx="14" fill="#e8f6f1" stroke="#3f8b72" stroke-width="2"/><text x="1375" y="150" text-anchor="middle" class="h">完成退出</text><text x="1375" y="180" text-anchor="middle">保存结束时刻</text>
+<path d="M245 165H285" class="edge"/>
+<path d="M495 165H535" class="edge"/>
+<path d="M745 165H785" class="edge"/>
+<path d="M995 165H1035" class="edge"/>
+<path d="M1245 165H1290" class="edge"/>
+<rect x="1035" y="310" width="210" height="90" rx="14" fill="#f1edfb" stroke="#7657a5" stroke-width="2"/><text x="1140" y="345" text-anchor="middle" class="h">未完成成员</text><text x="1140" y="375" text-anchor="middle">携带更新后的 KV</text>
+<path d="M1140 215V310" class="edge"/>
+<path d="M1035 355H890V215" class="feedback"/>
+<text x="600" y="335" text-anchor="middle" class="small">服务端轮次循环：未完成成员保留，空位可接纳新成员</text>
+<text x="600" y="375" text-anchor="middle" class="small">CPU 模型：整批结束后释放；客户端首内容时刻：用于观察响应顺序</text>
 </svg>

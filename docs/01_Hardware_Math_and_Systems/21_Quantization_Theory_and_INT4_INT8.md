@@ -29,35 +29,24 @@
 - [02. LLM Params and FLOPs | 大模型参数量与算力推导](./02_LLM_Params_and_FLOPs.md)
 - [03. GPU Architecture and Memory | GPU 物理架构与内存层级](./03_GPU_Architecture_and_Memory.md)
 
-## Q1：为什么量化能显著减少显存和带宽压力？
+## Q1：位宽降低后，权重和量化元数据分别占多少空间？
 
+权重从FP16改为INT8时，每个参数由2字节降为1字节；改为INT4时，两个参数可以打包到一个字节。下面先算纯权重载荷，再加上缩放因子等元数据。GB按十进制计算。
 
-如果把权重从 FP16 压到 INT8，单个参数的存储从 2 Bytes 变成 1 Byte，理论上权重显存约减半；如果压到 INT4，则理论上进一步降到 0.5 Byte，权重体积还会继续下降。
+| 权重格式 | 每参数字节数 | 7B模型纯权重载荷 | 相对FP16 |
+| --- | ---: | ---: | ---: |
+| FP16 | 2 | 14 GB | 1 |
+| INT8 | 1 | 7 GB | 0.5 |
+| INT4 | 0.5 | 3.5 GB | 0.25 |
 
-下面用一个 7B 模型例子计算不同位宽下的权重存储量：
+分组量化还会为每组保存缩放因子（scale），非对称量化通常另存零点（zero-point）。例如1024个权重采用INT4、每128个一组、每组保存2字节缩放因子，合计为512字节权重加16字节元数据，共528字节；FP16则为2048字节。减小分组后，缩放因子变多，存储也会增加。
 
-| 权重格式 | 每参数字节数 | 7B 模型权重显存 | 相对 FP16 |
-| --- | --- | --- | --- |
-| FP16 | 2 Bytes | 14 GB | 1x |
-| INT8 | 1 Byte | 7 GB | 0.5x |
-| INT4 | 0.5 Byte | 3.5 GB | 0.25x |
+权重载荷减少，可降低权重读取的带宽需求，并为缓存或激活腾出空间。完整执行成本还包括反量化、元数据读取、布局转换和实际内核调用，应在固定负载下测量。
 
-这对推理很重要，原因不只是“模型更小了”，还因为：
-- 显存占用下降后，更大的 batch 或更长上下文更容易装进去
-- 读权重时需要搬运的数据更少，HBM 带宽压力也会下降
-- 在一些带宽受限的场景里，吞吐会明显改善
+### Q1机制计算器：分别计算权重载荷与元数据
 
-但要注意，量化通常不会让所有成本都按比特数线性下降：
-- 激活值可能仍然保留更高精度
-- 部分层会保留 FP16 / BF16 累加
-- 反量化和 scale 处理也有额外开销
-- INT8 / INT4 是否真的加速，还取决于硬件是否原生支持低比特矩阵运算；如果硬件没有对应 Tensor Core / MMA 支持，量化有时只会省显存，不一定省时间
+先核对7B模型的纯权重容量，再用1024个权重的小例子检查分组元数据。两者分别使用GB和字节，避免把打包后的文件大小与单个张量的dtype混为一谈。
 
-所以量化的收益通常是“显存更小 + 带宽更低 + 吞吐更高”，而不是单纯的“位宽缩小了多少，速度就提升多少”。
-
-### Q1小验证：实现模型权重显存计算函数
-
-实现一个函数，计算给定参数量和数据格式的模型权重显存占用。
 
 ```python
 def calculate_weight_memory(num_params_b, dtype):
@@ -86,6 +75,21 @@ def test_calculate_weight_memory():
 
 # 运行测试
 test_calculate_weight_memory()
+
+def quantized_weight_bytes(num_params, bitwidth=4, group_size=128, scale_bytes=2, zero_point_bytes=0):
+    """返回打包权重和每组元数据的字节数；忽略文件头与额外对齐。"""
+    if type(num_params) is not int or num_params < 0 or type(group_size) is not int or group_size <= 0:
+        raise ValueError('参数数目须为非负整数，分组大小须为正整数')
+    if bitwidth not in (4, 8) or scale_bytes <= 0 or zero_point_bytes < 0:
+        raise ValueError('使用4或8位表示，以及有效的元数据字节数')
+    groups = (num_params + group_size - 1) // group_size
+    payload = (num_params * bitwidth + 7) // 8
+    metadata = groups * (scale_bytes + zero_point_bytes)
+    return {'weight_bytes': payload, 'metadata_bytes': metadata, 'total_bytes': payload + metadata}
+
+assert quantized_weight_bytes(1024) == {'weight_bytes': 512, 'metadata_bytes': 16, 'total_bytes': 528}
+assert quantized_weight_bytes(1024, group_size=32)['total_bytes'] == 576
+
 ```
 
 ### Q1扩展验证：对比不同数据格式
@@ -102,6 +106,8 @@ print('-' * 40)
 for dtype in dtypes:
     memory = calculate_weight_memory(num_params, dtype)
     print(f'{dtype.upper():<6} {memory:>6.1f} GB')
+
+print('1024个INT4权重，每128个一组：', quantized_weight_bytes(1024))
 
 ```
 
@@ -137,9 +143,9 @@ q = round(x / scale) + zero_point
 
 这也是为什么真正落地时，量化不是“把 dtype 改小”这么简单，而是要同时决定 scale、zero point、分组粒度和累加精度。
 
-### Q2小验证：实现最小的 per-tensor 对称量化
+### Q2对照验证：观察对称量化的映射与误差
 
-本题只实现一个最小分支：整个张量共用一组 scale，且 zero-point 固定为 0。非对称量化和 per-channel 量化先通过概念理解，不要求在本题完整实现。`num_bits=4` 时只模拟 4-bit 的数值范围，返回的 PyTorch Tensor 仍是 `torch.int8`，不代表真实 packed INT4 存储。
+整个张量共用一个缩放因子，零点固定为0。示例支持4位和8位数值范围；量化整数均用INT8张量保存，实际INT4打包存储由Q1单独计算。缩放因子在FP32中计算，避免全零FP16输入的最小缩放值下溢。
 
 
 ```python
@@ -147,41 +153,49 @@ import torch
 
 
 def quantize_per_tensor(x, num_bits=8):
-    """对张量做对称 per-tensor 量化。
-
-    `num_bits=4` 只控制逻辑量化范围；返回值仍用 int8 Tensor 保存，未实现 bit packing。
-    """
+    """模拟4位或8位对称量化；返回INT8整数张量和FP32缩放因子。"""
+    if num_bits not in (4, 8):
+        raise ValueError('本例支持4位和8位量化')
+    source = x.to(torch.float32)
+    if not torch.isfinite(source).all():
+        raise ValueError('输入须为有限数值')
     qmax = 2 ** (num_bits - 1) - 1
-    scale = x.abs().max() / qmax if x.numel() > 0 else torch.tensor(1.0, device=x.device, dtype=x.dtype)
-    scale = torch.clamp(scale, min=1e-8)
-    # 这里用 int8 承载量化整数，便于观察映射和误差；真实 INT4 需要额外 packing。
-    q = torch.clamp(torch.round(x / scale), -qmax - 1, qmax).to(torch.int8)
+    absmax = source.abs().max() if source.numel() else source.new_tensor(0.0)
+    scale = torch.where(absmax > 0, absmax / qmax, torch.ones_like(absmax))
+    q = torch.clamp(torch.round(source / scale), -qmax, qmax).to(torch.int8)
     return q, scale
 
 
 def dequantize_per_tensor(q, scale):
-    """把量化整数恢复为 float32；不模拟真实 kernel 的累加路径。"""
+    """把量化整数恢复为FP32值，用于比较数值误差。"""
     return q.to(torch.float32) * scale
 
 
 def per_channel_scales(x, axis=0, num_bits=8):
-    """返回 per-channel 对称量化的 scale，只用于观察粒度差异。"""
-    if x.ndim != 2 or axis not in (0, 1):
-        raise ValueError('示例只接受二维张量，axis 必须为 0 或 1')
+    """按二维张量的行或列计算FP32缩放因子；全零通道使用1。"""
+    if x.ndim != 2 or axis not in (0, 1) or x.numel() == 0:
+        raise ValueError('使用非空二维张量，axis为0或1')
+    if num_bits not in (4, 8):
+        raise ValueError('本例支持4位和8位量化')
+    source = x.to(torch.float32)
+    if not torch.isfinite(source).all():
+        raise ValueError('输入须为有限数值')
     qmax = 2 ** (num_bits - 1) - 1
     reduce_dims = (1,) if axis == 0 else (0,)
-    scale = x.abs().amax(dim=reduce_dims, keepdim=True) / qmax
-    return torch.clamp(scale, min=1e-8)
+    absmax = source.abs().amax(dim=reduce_dims, keepdim=True)
+    return torch.where(absmax > 0, absmax / qmax, torch.ones_like(absmax))
 
 
 def test_quantize_per_tensor():
+    """核对量化整数、误差上界与全零输入。"""
     x = torch.tensor([-1.0, -0.5, 0.0, 0.5, 1.0])
     q, scale = quantize_per_tensor(x, 8)
     x_hat = dequantize_per_tensor(q, scale)
-    assert q.dtype == torch.int8 and x_hat.shape == x.shape
-    print('q:', q.tolist(), 'scale:', float(scale))
-    print('x_hat:', x_hat.tolist())
-    print('✅ quantize_per_tensor tests passed')
+    assert q.tolist() == [-127, -64, 0, 64, 127]
+    assert torch.max(torch.abs(x_hat - x)) <= scale / 2 + 1e-7
+    zero_q, zero_scale = quantize_per_tensor(torch.zeros(3, dtype=torch.float16), 4)
+    assert torch.all(zero_q == 0) and zero_scale.item() == 1.0
+    print('量化整数：', q.tolist(), '缩放因子：', float(scale))
 
 
 test_quantize_per_tensor()
@@ -273,114 +287,92 @@ assert select_quantization_path('GGUF')['backend'] == 'llama.cpp 等'
 
 ```
 
-## Q4：量化什么时候要考虑 QAT？
+## Q4：PTQ质量下降后，何时考虑QAT？
 
+训练后量化（PTQ）先在固定验证集上测量质量下降。若下降幅度在给定门槛内，可以保留这条候选路径；若超过门槛，则需要调整位宽、分组或校准方法，也可以尝试量化感知训练（QAT）。
 
-QAT（Quantization-Aware Training）不是第一选择，但它在以下场景里很有价值：
+QAT会增加训练时间、数据和实现成本。比较预算时，应先对当前模型估算一次试验所需时间，再与可用预算比较。例如同一验证指标允许下降0.5个百分点，PTQ实际下降0.6个百分点；即使只有8小时预算，也不能把不合格PTQ改判为合格。若这次QAT试验预计需10小时，应保留“调整量化方案或增加预算”的结论。QAT试验完成后仍要重新测量质量。
 
-- PTQ 之后精度损失过大，比如困惑度或任务指标下降明显
-- 模型本身对低比特特别敏感，尤其是较小模型或生成类任务
-- 你有足够的训练数据和算力，能够接受再训练或微调成本
+### Q4小验证：分别检查质量门槛和试验预算
 
-一句话判断：
-- 如果目标是“快速落地”，先用 PTQ
-- 如果目标是“把低比特精度尽量拉回来”，再考虑 QAT
-
-QAT 的代价是训练流程更复杂、成本更高，但它能把量化误差直接纳入训练过程，是 PTQ 之外的重要补救路线。下面的判断只用于组织实验，不是自动证明 QAT 一定优于 PTQ；最终仍要比较固定验证集上的质量和训练成本。
-
-### Q4小验证：什么时候该考虑 QAT？
-
-把量化误差和训练预算放在一起，判断是否需要从 PTQ 转向 QAT。
+质量下降与门槛使用同一指标、同一单位；下面均按百分点。训练时间来自当前试验的给定估算，而不是通用的10小时门槛。
 
 
 ```python
-def qat_recommendation(ptq_drop, acceptable_drop=0.5, retrain_budget_hours=0, sensitivity='medium'):
-    score = 0
-    if ptq_drop > acceptable_drop:
-        score += 2
-    if sensitivity == 'high':
-        score += 1
-    if retrain_budget_hours >= 10:
-        score += 1
-    if ptq_drop > acceptable_drop and retrain_budget_hours >= 10:
-        recommendation = 'QAT'
+def qat_recommendation(
+    ptq_drop, acceptable_drop=0.5, retrain_budget_hours=0,
+    sensitivity='medium', estimated_qat_hours=None,
+):
+    """根据给定质量下降和试验耗时，列出PTQ候选或下一步动作。"""
+    if min(ptq_drop, acceptable_drop, retrain_budget_hours) < 0:
+        raise ValueError('质量下降、门槛和预算须为非负数')
+    if estimated_qat_hours is not None and estimated_qat_hours <= 0:
+        raise ValueError('QAT试验耗时须为正数')
+    quality_met = ptq_drop <= acceptable_drop
+    if quality_met:
+        recommendation = 'PTQ_candidate'
+    elif estimated_qat_hours is None:
+        recommendation = 'estimate_QAT_cost'
+    elif retrain_budget_hours >= estimated_qat_hours:
+        recommendation = 'QAT_trial'
     else:
-        recommendation = 'PTQ'
+        recommendation = 'adjust_quantization_or_budget'
     return {
+        'ptq_quality_met': quality_met,
         'recommendation': recommendation,
-        'risk_score': score,
-        'ptq_drop': ptq_drop,
-        'acceptable_drop': acceptable_drop,
+        'inspect_sensitive_layers': sensitivity == 'high',
     }
 
 cases = [
-    (0.2, 0.5, 0, 'low'),
-    (0.8, 0.5, 12, 'high'),
-    (0.6, 0.5, 8, 'high'),
+    dict(ptq_drop=0.2, retrain_budget_hours=0),
+    dict(ptq_drop=0.6, retrain_budget_hours=12, estimated_qat_hours=10),
+    dict(ptq_drop=0.6, retrain_budget_hours=8, estimated_qat_hours=10),
 ]
 for case in cases:
-    print(case, '->', qat_recommendation(*case))
-print('QAT is worth considering when PTQ drop is too large and retraining budget exists')
+    print(case, '→', qat_recommendation(**case))
+assert qat_recommendation(0.5)['ptq_quality_met']
+assert qat_recommendation(0.6, retrain_budget_hours=8, estimated_qat_hours=10) == {
+    'ptq_quality_met': False,
+    'recommendation': 'adjust_quantization_or_budget',
+    'inspect_sensitive_layers': False,
+}
+assert qat_recommendation(0.6, retrain_budget_hours=10, estimated_qat_hours=10)['recommendation'] == 'QAT_trial'
 
 ```
 
-## Q5：为什么理论压缩不能直接证明低比特方案可用？
+## Q5：从理论压缩进入执行验证，还需要检查什么？
 
+位宽账本说明表示需要多少字节，数值对照说明给定输入的舍入误差。进入实际负载后，还要检查校准数据是否覆盖目标输入、敏感层的误差如何变化，以及后端能否直接使用低比特产物。
 
-位宽账本只能给出理论存储下界。要把低比特表示交给后续专题验证，还需要同时记录四类条件：
+低比特内核可用时，继续测量反量化和完整调用的耗时；需要回退到其他实现时，则记录回退后的空间和时间。下面分别列出这些待检查条件，不把质量与硬件支持加权成一个风险分数。
 
-- **“INT4 一定比 INT8 好”**
-  不对。比特更低并不自动更优，误差和硬件支持都可能让 INT4 更难用。
+### Q5小验证：把执行条件与待检查项分开
 
-- **“量化只是改一下 dtype”**
-  不对。真正的量化会涉及校准、分组、反量化、累加精度和 kernel 支持。
-
-- **“量化一定不影响效果”**
-  不对。不同层、不同通道、不同模型对低比特的容忍度差别很大。
-
-- **“量化只影响权重”**
-  也不完整。推理时真正卡住性能的常常还包括激活、缓存和带宽。
-
-因此，本节只整理量化候选的数值与执行风险；质量、真实显存、执行路径和吞吐必须在量化与压缩专题的固定工作负载中验证。下面的风险函数只是教学用检查表，不是硬件性能或模型质量的预测器。
-
-### Q5小验证：量化配置里最常见的问题
-
-看看哪些配置更容易踩坑，而不是把量化简单理解成“降 dtype”。
+固定量化位宽，改变低比特内核是否可用，观察下一步需要核对的执行路径。
 
 
 ```python
 def quantization_risk(bitwidth, hardware_support=True, calibration_quality=1.0, activation_sensitive=False):
-    """用可解释条件做量化风险的教学筛查，不预测真实质量或吞吐。"""
-    score = 0
-    if bitwidth <= 4:
-        score += 2
+    """根据给定条件列出待检查项；calibration_quality是外部给定指标。"""
+    if bitwidth not in (4, 8) or not 0 <= calibration_quality <= 1:
+        raise ValueError('位宽使用4或8，给定校准指标须在[0, 1]内')
+    checks = ['validation_quality', 'complete_call_time', 'peak_memory']
+    if bitwidth == 4:
+        checks.append('packing_and_metadata')
     if not hardware_support:
-        score += 2
-    if calibration_quality < 0.7:
-        score += 1
+        checks.append('fallback_execution_path')
     if activation_sensitive:
-        score += 1
-    if score >= 4:
-        level = 'high'
-    elif score >= 2:
-        level = 'medium'
-    else:
-        level = 'low'
+        checks.append('activation_error_by_layer')
     return {
-        'risk_level': level,
-        'risk_score': score,
-        'bitwidth': bitwidth,
-        'evidence_level': 'teaching_checklist',
+        'low_bit_kernel_available': hardware_support,
+        'given_calibration_quality': calibration_quality,
+        'required_checks': checks,
     }
 
-cases = [
-    (8, True, 0.9, False),
-    (4, True, 0.8, True),
-    (4, False, 0.6, True),
-]
-for case in cases:
-    print(case, '->', quantization_risk(*case))
-print('quantization fails when bitwidth, calibration, and hardware support are all under pressure')
+for kernel_available in (True, False):
+    print(quantization_risk(4, hardware_support=kernel_available, activation_sensitive=True))
+assert 'fallback_execution_path' in quantization_risk(4, hardware_support=False)['required_checks']
+assert 'fallback_execution_path' not in quantization_risk(4, hardware_support=True)['required_checks']
 
 ```
 

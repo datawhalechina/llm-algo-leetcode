@@ -3,16 +3,16 @@
   <desc id="desc">浮点基线与量化候选的配对结果分别进入质量、执行路径和资源性能检查，随后按指标方向形成统一账本，并输出待验证、拒绝、调整或接受四种部署状态。</desc>
   <defs>
     <style>
-      .title{font:700 28px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324d}.sub{font:15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#526b7d}.h{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324d}.t{font:14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#526b7d}.frame{fill:#fff;stroke:#c7d9e7;stroke-width:1.5}.blue{fill:#e8f3fb;stroke:#3978a8;stroke-width:2}.purple{fill:#f1eafa;stroke:#8b6bb1;stroke-width:2}.green{fill:#eaf7ef;stroke:#4c9870;stroke-width:2}.orange{fill:#fff1df;stroke:#c78335;stroke-width:2}.red{fill:#fce8e6;stroke:#c65f58;stroke-width:2}.gray{fill:#f1f5f8;stroke:#718597;stroke-width:2}.flow{stroke:#3978a8;stroke-width:3;fill:none;marker-end:url(#arrow)}
+      .title{font-weight:700;font-size:28px;font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#17324d}.sub{font-weight:400;font-size:15px;font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#526b7d}.h{font-weight:700;font-size:17px;font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#17324d}.t{font-weight:400;font-size:14px;font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#526b7d}.frame{fill:#fff;stroke:#c7d9e7;stroke-width:1.5}.blue{fill:#e8f3fb;stroke:#3978a8;stroke-width:2}.purple{fill:#f1eafa;stroke:#8b6bb1;stroke-width:2}.green{fill:#eaf7ef;stroke:#4c9870;stroke-width:2}.orange{fill:#fff1df;stroke:#c78335;stroke-width:2}.red{fill:#fce8e6;stroke:#c65f58;stroke-width:2}.gray{fill:#f1f5f8;stroke:#718597;stroke-width:2}.flow{stroke:#3978a8;stroke-width:3;fill:none;marker-end:url(#arrow)}
     </style>
-    <marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#3978a8"/></marker>
+    <marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#3978a8"/></marker>
   </defs>
   <rect width="1240" height="600" rx="24" fill="#f8fbfd"/>
   <text x="620" y="48" text-anchor="middle" class="title">量化部署证据：从配对结果到阶段化决策</text>
   <text x="620" y="76" text-anchor="middle" class="sub">三类证据分别回答质量、执行真实性和资源收益，不能用单一指标替代</text>
 
   <rect x="390" y="104" width="460" height="64" rx="16" class="blue"/>
-  <text x="620" y="131" text-anchor="middle" class="h">固定条件下的 G0 / G1 配对结果</text>
+  <text x="620" y="131" text-anchor="middle" class="h">配对结果与来源质量记录</text>
   <text x="620" y="153" text-anchor="middle" class="t">浮点基线 · 量化候选 · 相同模型、请求、后端与硬件</text>
 
   <rect x="70" y="226" width="300" height="88" rx="16" class="green"/>
@@ -30,8 +30,8 @@
   <path d="M680 168C740 190 920 196 1020 226" class="flow"/>
 
   <rect x="330" y="370" width="580" height="72" rx="17" class="frame"/>
-  <text x="620" y="399" text-anchor="middle" class="h">方向化比较账本</text>
-  <text x="620" y="424" text-anchor="middle" class="t">质量与 TPOT 看上限 · 吞吐看下限 · 显存看相对降幅 · 缺失值保留为空</text>
+  <text x="620" y="399" text-anchor="middle" class="h">按指标方向计算比值与降幅</text>
+  <text x="620" y="424" text-anchor="middle" class="t">本题质量与 TPOT 看上限 · 吞吐看下限 · 显存看相对降幅 · 缺失值保留为空</text>
   <path d="M220 314C280 342 430 342 480 370" class="flow"/>
   <path d="M620 314V370" class="flow"/>
   <path d="M1020 314C960 342 810 342 760 370" class="flow"/>
@@ -47,7 +47,7 @@
   <text x="767" y="550" text-anchor="middle" class="t">资源门槛尚未达到</text>
   <rect x="940" y="505" width="245" height="58" rx="14" class="green"/>
   <text x="1062" y="529" text-anchor="middle" class="h">accept</text>
-  <text x="1062" y="550" text-anchor="middle" class="t">质量、路径与收益成立</text>
+  <text x="1062" y="550" text-anchor="middle" class="t">质量、路径与容许条件成立</text>
   <path d="M500 442C430 466 270 474 177 505" class="flow"/>
   <path d="M575 442C550 466 500 478 472 505" class="flow"/>
   <path d="M665 442C690 466 740 478 767 505" class="flow"/>

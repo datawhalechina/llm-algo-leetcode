@@ -25,8 +25,8 @@
 <text x="172" y="201" text-anchor="middle" class="head">参数与梯度</text>
 <text x="172" y="224" text-anchor="middle" class="small">dtype × 参数量 × 2 类状态</text>
 <rect x="70" y="258" width="205" height="70" fill="#fff" class="item"/>
-<text x="172" y="287" text-anchor="middle" class="head">优化器状态</text>
-<text x="172" y="310" text-anchor="middle" class="small">Adam 状态 / master weights</text>
+<text x="172" y="287" text-anchor="middle" class="head">更新状态</text>
+<text x="172" y="310" text-anchor="middle" class="small">Adam动量 / 可选主权重</text>
 <rect x="70" y="344" width="205" height="48" fill="#eff6ff" class="item"/>
 <text x="172" y="374" text-anchor="middle" class="body">得到每参数字节数</text>
 
@@ -39,7 +39,7 @@
 <text x="507" y="246" text-anchor="middle" class="small">梯度同步是主要并行代价</text>
 <rect x="380" y="280" width="255" height="110" fill="#fff" class="item"/>
 <text x="507" y="309" text-anchor="middle" class="head">ZeRO：分片驻留</text>
-<text x="507" y="333" text-anchor="middle" class="small">ZeRO-1：optimizer state</text>
+<text x="507" y="333" text-anchor="middle" class="small">ZeRO-1：更新状态</text>
 <text x="507" y="353" text-anchor="middle" class="small">ZeRO-2：+ gradient</text>
 <text x="507" y="373" text-anchor="middle" class="small">ZeRO-3：+ parameter</text>
 
@@ -48,12 +48,12 @@
 <text x="842" y="147" text-anchor="middle" class="group">理论账本</text>
 <rect x="740" y="172" width="205" height="86" fill="#fff" class="item"/>
 <text x="842" y="202" text-anchor="middle" class="head">单卡状态占用</text>
-<text x="842" y="226" text-anchor="middle" class="small">参数 · 梯度 · optimizer</text>
+<text x="842" y="226" text-anchor="middle" class="small">参数 · 梯度 · 更新状态</text>
 <text x="842" y="246" text-anchor="middle" class="small">理想均匀分片结果</text>
 <rect x="740" y="280" width="205" height="110" fill="#fff" class="item"/>
 <text x="842" y="309" text-anchor="middle" class="head">容量反推</text>
 <text x="842" y="333" text-anchor="middle" class="small">GPU 容量 − 教学预留</text>
-<text x="842" y="353" text-anchor="middle" class="small">最大参数规模</text>
+<text x="842" y="353" text-anchor="middle" class="small">静态状态可容纳规模</text>
 <text x="842" y="373" text-anchor="middle" class="small">仍不是实测峰值</text>
 
 <rect x="1020" y="112" width="220" height="310" fill="#fce7f3" class="panel"/>

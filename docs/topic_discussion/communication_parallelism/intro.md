@@ -34,7 +34,7 @@ Task0–1 建立多卡执行、拓扑与集合通信的共同语言；Task2 处�
 
 无法解释参数、梯度和优化器状态时，先补 Task2 标出的训练生命周期；无法解释带宽、延迟和拓扑时，回到 Task0–1；准备形成项目结论时，再补 Task6 的实验设计与证据口径。
 
-Task5 关注梯度、参数、激活、序列状态或 token 路由的通信—计算重叠；请求排队、Continuous Batching 与 Prefill / Decode 路由进入[推理优化 · Serving 调度](../inference_optimization/07_serving_scheduling_and_pd.md)。AFD 的主归属同样是推理优化，通信专题只提供 activation、routing metadata、connector 与 overlap 的分析语言。副本路由同时依赖队列、缓存局部性和通信证据；瓶颈归因可继续进入[性能分析](../performance_analysis/intro.md)，设备与 backend 选择可进入[部署与异构系统](../deployment_heterogeneous/intro.md)。
+Task5 关注梯度、参数、激活、序列状态或 token 路由的通信—计算重叠；请求排队、Continuous Batching 与 Prefill / Decode 路由进入[推理优化 · Serving 调度](../inference_optimization/07_serving_scheduling_and_pd.md)。AFD 的主归属同样是推理优化，通信专题只提供 activation、routing metadata、connector 与 overlap 的分析语言。副本路由同时依赖队列、缓存局部性和通信证据；瓶颈归因可继续进入[性能分析](../performance_optimization/methods/intro.md)，设备与 backend 选择可进入[部署与异构系统](../deployment_heterogeneous/intro.md)。
 
 ## 实验与项目出口
 

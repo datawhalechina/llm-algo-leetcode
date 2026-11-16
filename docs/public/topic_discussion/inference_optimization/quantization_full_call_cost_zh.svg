@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+<title id="title">低精度矩阵更快，完整调用还要加上转换成本</title>
+<desc id="desc">教学构造值：浮点片段1毫秒；低精度计算0.6毫秒加缩放转换0.5毫秒为1.1；融合后缩放转换0.1加计算0.6为0.7。各条使用同一比例，并分别观察容量与质量。</desc>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#17324d;font-size:19px}.title{font-size:27px;font-weight:700}.head{font-size:21px;font-weight:700}.note{font-size:17px;fill:#475569}.fp{fill:#dbeafe;stroke:#6b91b5}.compute{fill:#d1fae5;stroke:#6b9c8b}.convert{fill:#fef3c7;stroke:#b69b50}</style>
+<rect width="1200" height="620" fill="#f7fafc"/>
+<text x="32" y="44" class="title">只看矩阵计算会得出加速，完整调用可能反而变慢</text>
+<text x="32" y="79" class="note">教学构造值，同一片段与输出要求；时间条长度比例一致，分段用于成本分解，不表示操作顺序。</text>
+<text x="32" y="148" class="head">浮点参考</text><rect x="270" y="117" width="600" height="54" class="fp"/><text x="570" y="151" text-anchor="middle">完整片段：1 ms</text><text x="955" y="151" class="head">1.0 ms</text>
+<text x="32" y="252" class="head">低精度 · 独立转换</text><rect x="270" y="221" width="360" height="54" class="compute"/><rect x="630" y="221" width="300" height="54" class="convert"/><text x="450" y="255" text-anchor="middle">矩阵计算 0.6</text><text x="780" y="255" text-anchor="middle">缩放与转换 0.5</text><text x="955" y="255" class="head">1.1 ms</text><text x="270" y="307" class="note">计算节省 0.4 ms，新增处理花费 0.5 ms：完整调用增加 0.1 ms。</text>
+<text x="32" y="386" class="head">低精度 · 融合处理</text><rect x="270" y="355" width="360" height="54" class="compute"/><rect x="630" y="355" width="60" height="54" class="convert"/><text x="450" y="389" text-anchor="middle">矩阵计算 0.6</text><text x="715" y="389">缩放与转换 0.1</text><text x="955" y="389" class="head">0.7 ms</text>
+<rect x="32" y="459" width="1136" height="102" fill="#fff" stroke="#cbd5e1" rx="12"/>
+<text x="56" y="494" class="head">分别回答三个问题</text><text x="56" y="531">容量：总驻留减少多少？　时间：完整调用是否缩短？　质量：目标任务是否仍达标？</text>
+<text x="32" y="597" class="note">KV 量化同样计入恢复与读取成本，再返回目标上下文、并发和请求等待进行比较。</text>
+</svg>

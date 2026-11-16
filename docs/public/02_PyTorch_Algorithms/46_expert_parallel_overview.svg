@@ -1,52 +1,70 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 680" role="img" aria-labelledby="title desc">
-  <title id="title">MoE 专家并行全局机制</title>
-  <desc id="desc">Token 经路由和容量门控后，根据专家所在 rank 分成本地与跨 rank 路径，完成专家计算与结果合并，并形成负载、溢出和通信证据。</desc>
-  <defs>
-    <marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#475569"/></marker>
-    <style>
-      .title{font:700 26px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.sub{font:500 15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.label{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#111827}.body{font:500 13px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}.observe{fill:none;stroke:#64748b;stroke-width:2;stroke-dasharray:7 6;marker-end:url(#arrow)}.edgeText{font:600 12px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.box{stroke-width:2.5;rx:14}
-    </style>
-  </defs>
-  <rect width="1200" height="680" fill="#f8fafc"/>
-  <text x="48" y="48" class="title">MoE 专家并行：从路由结果到系统证据</text>
-  <text x="48" y="76" class="sub">容量决定哪些路由被接受，专家放置决定哪些表示需要跨 rank 传输。</text>
-
-  <rect x="42" y="132" width="180" height="82" class="box" fill="#eff6ff" stroke="#3b82f6"/>
-  <text x="132" y="166" text-anchor="middle" class="label">Token 表示</text><text x="132" y="190" text-anchor="middle" class="body">来源 rank · token id</text>
-  <rect x="272" y="132" width="180" height="82" class="box" fill="#eef2ff" stroke="#6366f1"/>
-  <text x="362" y="166" text-anchor="middle" class="label">Top-k 路由</text><text x="362" y="190" text-anchor="middle" class="body">expert id · weight</text>
-  <rect x="502" y="132" width="190" height="82" class="box" fill="#fff7ed" stroke="#ea580c"/>
-  <text x="597" y="166" text-anchor="middle" class="label">容量门控</text><text x="597" y="190" text-anchor="middle" class="body">capacity · accepted</text>
-  <rect x="742" y="132" width="190" height="82" class="box" fill="#fefce8" stroke="#ca8a04"/>
-  <text x="837" y="166" text-anchor="middle" class="label">专家放置</text><text x="837" y="190" text-anchor="middle" class="body">expert → owner rank</text>
-
-  <rect x="502" y="282" width="190" height="78" class="box" fill="#fff1f2" stroke="#e11d48"/>
-  <text x="597" y="314" text-anchor="middle" class="label">溢出路由</text><text x="597" y="338" text-anchor="middle" class="body">drop / reroute / reserve</text>
-  <rect x="720" y="282" width="180" height="78" class="box" fill="#ecfdf5" stroke="#059669"/>
-  <text x="810" y="314" text-anchor="middle" class="label">本地路径</text><text x="810" y="338" text-anchor="middle" class="body">来源 rank = owner</text>
-  <rect x="942" y="282" width="206" height="78" class="box" fill="#fef3c7" stroke="#d97706"/>
-  <text x="1045" y="314" text-anchor="middle" class="label">跨 rank 分发</text><text x="1045" y="338" text-anchor="middle" class="body">All-to-All payload</text>
-
-  <rect x="742" y="430" width="190" height="82" class="box" fill="#ecfccb" stroke="#65a30d"/>
-  <text x="837" y="464" text-anchor="middle" class="label">专家计算</text><text x="837" y="488" text-anchor="middle" class="body">每 rank 接收负载</text>
-  <rect x="972" y="430" width="176" height="82" class="box" fill="#f5f3ff" stroke="#8b5cf6"/>
-  <text x="1060" y="464" text-anchor="middle" class="label">结果合并</text><text x="1060" y="488" text-anchor="middle" class="body">按 token id 加权</text>
-  <rect x="502" y="566" width="430" height="72" class="box" fill="#e0f2fe" stroke="#0284c7"/>
-  <text x="717" y="596" text-anchor="middle" class="label">机制证据</text><text x="717" y="620" text-anchor="middle" class="body">负载比 · overflow · 跨 rank 字节 · 最慢 rank 时间</text>
-
-  <path d="M222 173 H272" class="edge"/>
-  <path d="M452 173 H502" class="edge"/>
-  <path d="M692 173 H742" class="edge"/>
-  <path d="M597 214 V282" class="edge"/>
-  <text x="607" y="252" class="edgeText">超出容量</text>
-  <path d="M807 214 V282" class="edge"/>
-  <text x="744" y="252" class="edgeText">本地命中</text>
-  <path d="M867 214 C900 238 975 242 1024 282" class="edge"/>
-  <text x="933" y="246" class="edgeText">跨 rank</text>
-  <path d="M810 360 V430" class="edge"/>
-  <path d="M1045 360 C1036 392 932 404 887 430" class="edge"/>
-  <path d="M932 471 H972" class="edge"/>
-  <path d="M597 360 V566" class="observe"/>
-  <path d="M810 360 C775 430 748 500 730 566" class="observe"/>
-  <path d="M1045 360 C1010 438 930 520 866 566" class="observe"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="620" viewBox="0 0 1500 620" role="img" aria-labelledby="title desc">
+<title id="title">MoE专家并行的本地、远端与结果回程</title><desc id="desc">Token经Top-k路由和容量筛选后，查询专家所在rank。本地专家结果直接按Token合并；远端专家先接收dispatch载荷，计算后将结果送回来源rank再加权合并。溢出路由单独统计。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto">
+<path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:26px;font-weight:700}.group{font-size:18px;font-weight:700}.head{font-size:17px;font-weight:700}.body{font-size:15px;font-weight:400}.sub{font-size:16px;fill:#475569}.flow{fill:none;stroke:#475569;stroke-width:2.5;marker-end:url(#arrow)}</style></defs>
+<rect width="1500" height="620" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="55" y="48" class="title" text-anchor="start">MoE 专家并行：专家在哪里，Token 就怎样去、怎样回来</text>
+<text x="55" y="80" class="sub" text-anchor="start">rank表示参与进程；同一Token的多条路由分别计算，结果最终回到来源rank按路由权重合并。</text>
+<g id="tokens">
+<rect x="55" y="150" width="190" height="80" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2" class="node"/>
+<text x="150" y="177" class="head" text-anchor="middle">输入Token表示</text>
+<text x="150" y="203" class="body" text-anchor="middle">来源rank与Token索引</text>
+</g>
+<g id="router">
+<rect x="295" y="150" width="190" height="80" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2" class="node"/>
+<text x="390" y="177" class="head" text-anchor="middle">Top-k专家路由</text>
+<text x="390" y="203" class="body" text-anchor="middle">expert索引与路由权重</text>
+</g>
+<g id="capacity">
+<rect x="535" y="150" width="190" height="80" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2" class="node"/>
+<text x="630" y="177" class="head" text-anchor="middle">检查专家容量</text>
+<text x="630" y="203" class="body" text-anchor="middle">接受路由／溢出路由</text>
+</g>
+<g id="owner-lookup">
+<rect x="825" y="150" width="230" height="80" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2" class="node"/>
+<text x="940" y="177" class="head" text-anchor="middle">查询专家放置映射</text>
+<text x="940" y="203" class="body" text-anchor="middle">expert → 所属rank</text>
+</g>
+<g id="overflow">
+<rect x="535" y="335" width="190" height="80" rx="12" fill="#fff1f2" stroke="#e11d48" stroke-width="2" class="node"/>
+<text x="630" y="362" class="head" text-anchor="middle">溢出路由</text>
+<text x="630" y="388" class="body" text-anchor="middle">另行计数与处理</text>
+</g>
+<g id="local-expert">
+<rect x="825" y="335" width="230" height="80" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2" class="node"/>
+<text x="940" y="362" class="head" text-anchor="middle">本地专家计算</text>
+<text x="940" y="388" class="body" text-anchor="middle">所属rank＝来源rank</text>
+</g>
+<g id="remote-expert">
+<rect x="1175" y="335" width="230" height="80" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2" class="node"/>
+<text x="1290" y="362" class="head" text-anchor="middle">远端专家计算</text>
+<text x="1290" y="388" class="body" text-anchor="middle">接收跨rank分发的表示</text>
+</g>
+<g id="return-payload">
+<rect x="1175" y="485" width="230" height="80" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2" class="node"/>
+<text x="1290" y="512" class="head" text-anchor="middle">结果送回来源rank</text>
+<text x="1290" y="538" class="body" text-anchor="middle">跨rank回程载荷</text>
+</g>
+<g id="combine">
+<rect x="825" y="485" width="230" height="80" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" class="node"/>
+<text x="940" y="512" class="head" text-anchor="middle">恢复原Token输出</text>
+<text x="940" y="538" class="body" text-anchor="middle">按索引与权重累加</text>
+</g>
+<path id="tokens-to-router" d="M245 190H295" class="flow"/>
+<path id="router-to-capacity" d="M485 190H535" class="flow"/>
+<path id="accepted-to-owner" d="M725 190H825" class="flow"/>
+<text x="775" y="174" class="body" text-anchor="middle">接受路由</text>
+<path id="capacity-to-overflow" d="M630 230V335" class="flow"/>
+<text x="643" y="285" class="body" text-anchor="start">超容量</text>
+<path id="owner-to-local" d="M940 230V335" class="flow"/>
+<text x="954" y="285" class="body" text-anchor="start">本地命中</text>
+<path id="owner-to-remote" d="M1055 190H1290V335" class="flow"/>
+<text x="1180" y="174" class="body" text-anchor="middle">跨rank dispatch</text>
+<path id="local-to-combine" d="M940 415V485" class="flow"/>
+<path id="remote-to-return" d="M1290 415V485" class="flow"/>
+<path id="return-to-combine" d="M1175 525H1055" class="flow"/>
+<text x="1115" y="507" class="body" text-anchor="middle">回程结果</text>
+<text x="55" y="501" class="group" text-anchor="start">观察量 · 与数据流分开统计</text>
+<text x="55" y="534" class="body" text-anchor="start">专家负载与溢出；跨rank路由数；去程和回程载荷</text>
+<text x="55" y="590" class="sub" text-anchor="start">专家放置改变通信局部性；容量与路由分布决定各专家实际接收的工作量。</text></svg>

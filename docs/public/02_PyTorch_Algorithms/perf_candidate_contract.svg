@@ -1,22 +1,54 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
-  <title id="title">权重量化：显存收益、运行代价与质量检查</title>
-  <desc id="desc">构造示例：权重低比特化减少权重驻留，但会增加反量化计算并带来量化误差。按对象、单位分别比较，决定是否进入实际测量。</desc>
-  <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#334155"/></marker>
-    <style>.title{font-family:"Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#0f172a}.subtitle{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;fill:#475569}.head{font-family:"Noto Sans CJK SC",sans-serif;font-size:18px;font-weight:700;fill:#172033}.body{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;fill:#475569}.edge{fill:none;stroke:#334155;stroke-width:4;marker-end:url(#arrow)}</style>
-  </defs>
-  <rect width="1200" height="620" rx="24" fill="#f8fafc"/>
-  <text x="600" y="48" text-anchor="middle" class="title">权重量化先看权重字节，再看时间和误差</text>
-  <text x="600" y="78" text-anchor="middle" class="subtitle">构造示例；字节、毫秒和质量损失分别核对</text>
-  <g text-anchor="middle">
-    <rect x="45" y="150" width="205" height="108" rx="16" fill="#dbeafe" stroke="#2563eb" stroke-width="2.5"/><text x="148" y="188" class="head">权重驻留偏高</text><text x="148" y="219" class="body">先记录整步峰值</text><text x="148" y="243" class="body">确定比较基线</text>
-    <rect x="285" y="150" width="205" height="108" rx="16" fill="#e0f2fe" stroke="#0284c7" stroke-width="2.5"/><text x="388" y="188" class="head">权重低比特化</text><text x="388" y="219" class="body">权重表示变小</text><text x="388" y="243" class="body">记录量化格式</text>
-    <rect x="525" y="150" width="205" height="108" rx="16" fill="#dcfce7" stroke="#16a34a" stroke-width="2.5"/><text x="628" y="188" class="head">权重存储字节</text><text x="628" y="219" class="body">估算后再实测</text><text x="628" y="243" class="body">同一模型与输入</text>
-    <rect x="765" y="150" width="205" height="108" rx="16" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/><text x="868" y="188" class="head">反量化计算</text><text x="868" y="219" class="body">临时缓冲与误差</text><text x="868" y="243" class="body">一起记录</text>
-    <rect x="1005" y="150" width="150" height="108" rx="16" fill="#f3e8ff" stroke="#9333ea" stroke-width="2.5"/><text x="1080" y="188" class="head">筛选结果</text><text x="1080" y="219" class="body">实测 / 调整 / 拒绝</text><text x="1080" y="243" class="body">需结合实测</text>
-  </g>
-  <path d="M250 204H285" class="edge"/><path d="M490 204H525" class="edge"/><path d="M730 204H765" class="edge"/><path d="M970 204H1005" class="edge"/>
-  <rect x="765" y="390" width="205" height="104" rx="16" fill="#ffedd5" stroke="#ea580c" stroke-width="2.5"/><text x="868" y="428" text-anchor="middle" class="head">整步时间预算</text><text x="868" y="459" text-anchor="middle" class="body">毫秒与字节分开</text><text x="868" y="482" text-anchor="middle" class="body">检查实际峰值</text>
-  <rect x="1005" y="390" width="150" height="104" rx="16" fill="#fee2e2" stroke="#dc2626" stroke-width="2.5"/><text x="1080" y="428" text-anchor="middle" class="head">验证损失门槛</text><text x="1080" y="459" text-anchor="middle" class="body">预先设定允许变化</text><text x="1080" y="482" text-anchor="middle" class="body">超过就不采用</text>
-  <path d="M868 390V258" class="edge"/><path d="M1080 390V258" class="edge"/>
-</svg>
+<title id="title">候选改动的目标收益、新增成本和质量影响</title><desc id="desc">以低比特权重候选为例。由容量受限问题提出候选，同一改动分别影响权重驻留、反量化和临时空间，以及质量指标。三种影响独立进入原单位的目标、质量和新增开销检查，再决定进入测量、调整或拒绝。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto">
+<path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:26px;font-weight:700}.group{font-size:18px;font-weight:700}.head{font-size:17px;font-weight:700}.body{font-size:15px;font-weight:400}.sub{font-size:16px;fill:#475569}.flow{fill:none;stroke:#475569;stroke-width:2.5;marker-end:url(#arrow)}</style></defs>
+<rect x="0" y="0" width="1200" height="620" rx="12" fill="#f8fafc" stroke="#f8fafc" stroke-width="2" class="decoration" data-layout-role="decoration"/>
+<text x="45" y="48" class="title" text-anchor="start">同一候选：节省了什么，又增加了哪些成本？</text>
+<text x="45" y="80" class="sub" text-anchor="start">以低比特权重为例；资源、时间与质量分别比较，目标减少量和新增代价分别记账。</text>
+<g id="capacity-pressure">
+<rect x="45" y="270" width="210" height="80" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2" class="node"/>
+<text x="150" y="299" class="head" text-anchor="middle">峰值容量受限</text>
+<text x="150" y="325" class="body" text-anchor="middle">先定位峰值驻留对象</text>
+</g>
+<g id="candidate">
+<rect x="315" y="270" width="210" height="80" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" class="node"/>
+<text x="420" y="299" class="head" text-anchor="middle">权重低比特化</text>
+<text x="420" y="325" class="body" text-anchor="middle">改变权重的存储表示</text>
+</g>
+<g id="weight-effect">
+<rect x="650" y="120" width="210" height="80" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2" class="node"/>
+<text x="755" y="149" class="head" text-anchor="middle">权重存储减少</text>
+<text x="755" y="175" class="body" text-anchor="middle">再核对整体驻留峰值</text>
+</g>
+<g id="runtime-effect">
+<rect x="650" y="270" width="210" height="80" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2" class="node"/>
+<text x="755" y="299" class="head" text-anchor="middle">可能新增的运行成本</text>
+<text x="755" y="325" class="body" text-anchor="middle">核对反量化与临时区</text>
+</g>
+<g id="quality-effect">
+<rect x="650" y="420" width="210" height="80" rx="12" fill="#e0f2fe" stroke="#0284c7" stroke-width="2" class="node"/>
+<text x="755" y="449" class="head" text-anchor="middle">质量变化</text>
+<text x="755" y="475" class="body" text-anchor="middle">按预定数据与指标检查</text>
+</g>
+<g id="independent-checks">
+<rect x="945" y="270" width="210" height="80" rx="12" fill="#e0f2fe" stroke="#0284c7" stroke-width="2" class="node"/>
+<text x="1050" y="299" class="head" text-anchor="middle">按原单位逐项筛选</text>
+<text x="1050" y="325" class="body" text-anchor="middle">目标、质量、新增开销</text>
+</g>
+<g id="screening-outcome">
+<rect x="945" y="460" width="210" height="80" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" class="node"/>
+<text x="1050" y="489" class="head" text-anchor="middle">measure / tune / reject</text>
+<text x="1050" y="515" class="body" text-anchor="middle">满足筛选后再做真实对照</text>
+</g>
+<path id="pressure-to-candidate" d="M255 310H315" class="flow"/>
+<path id="candidate-to-weight" d="M525 285H570V160H650" class="flow"/>
+<path id="candidate-to-runtime" d="M525 310H650" class="flow"/>
+<path id="candidate-to-quality" d="M525 335H570V460H650" class="flow"/>
+<path id="weight-to-checks" d="M860 160H900V290H945" class="flow"/>
+<path id="runtime-to-checks" d="M860 310H945" class="flow"/>
+<path id="quality-to-checks" d="M860 460H900V330H945" class="flow"/>
+<path id="checks-to-outcome" d="M1050 350V460" class="flow"/>
+<text x="45" y="461" class="group" text-anchor="start">三条分支是同一改动的不同影响</text>
+<text x="45" y="493" class="body" text-anchor="start">新增临时区可能抵消权重节省，甚至抬高整体峰值。</text>
+<text x="45" y="590" class="sub" text-anchor="start">目标先对应到完整观测范围：减少权重字节，与降低整轮峰值容量，是两个不同判断。</text></svg>

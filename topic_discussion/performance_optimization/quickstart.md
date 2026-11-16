@@ -4,24 +4,25 @@
 
 ## 1. 选择环境
 
-本项目全程复用 `llm_perf_cu128`，包括不调用 GPU 的配置核对和结果收口；无需切换内核。`PERF-DELIVERY` 仍可供只做 CPU 结果审查的场景单独使用。
+本专题的单卡测量与机制实验统一使用 `llm_perf_cu128`。Part 05 · 03的测量、配置核对与结果登记也可在这个环境完成。训练模型、推理服务和多卡实验仍按对应页面选择环境；只做CPU结果审查时，才按需选择独立的 `PERF-DELIVERY` 控制环境。
 
 | 实验 | 环境入口 | 运行条件 |
 |:---|:---|:---|
 | 机制页 CPU 练习 | [BASE-CPU 安装与启动](../../docs/guide.md#base-cpu) | 按各页运行环境说明选择依赖 |
-| PERF-INPUT、PERF-IO、PERF-CANDIDATE、PERF-COMPOSITION | [PERF-CUDA-MECHANISM](../performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart)，环境名 `llm_perf_cu128` | 单张 GPU 至少 8 GiB 显存，Profile 预检通过 |
-| Part 05 性能优化交付 | [PERF-CUDA-MECHANISM](../performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart)，环境名 `llm_perf_cu128` | 本项目所有阶段共用；`close` 不调用 GPU |
+| PERF-TRACE、PERF-MEMORY-TIMELINE、PERF-ROOFLINE、PERF-REGRESSION；PERF-INPUT、PERF-IO、PERF-CANDIDATE、PERF-COMPOSITION | [PERF-CUDA-MECHANISM](gpu_quickstart.md#perf-cuda-mechanism-quickstart)，环境名 `llm_perf_cu128` | 单张 GPU 至少 8 GiB 显存，Profile 预检通过 |
+| Part 05 性能优化交付 | [PERF-CUDA-MECHANISM](gpu_quickstart.md#perf-cuda-mechanism-quickstart)，环境名 `llm_perf_cu128` | 本项目所有阶段共用；`close` 不调用 GPU |
 | 训练、推理服务、量化或多卡候选复测 | 候选实验原有的环境 | 保持目标后端、硬件和测量条件一致 |
+| 可选：仅CPU结果审查 | [PERF-DELIVERY](#perf-delivery-quickstart)，环境名 `llm_perf_delivery` | 读取已有结果，不执行GPU测量 |
 
 ## 2. 首次创建
 
-单卡机制环境的创建、续装和预检统一使用[性能分析 Quickstart](../performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart)。以下命令创建可选的 CPU 交付控制环境；Part 05·03 不需要创建它。添加 `--dry-run` 可查看安装计划，不会创建环境或执行预检。
+首次运行单卡机制实验，进入[性能机制GPU环境的一键创建](gpu_quickstart.md#perf-cuda-mechanism-quickstart)，创建 `PERF-CUDA-MECHANISM`；已有同一环境时直接进入下一节。下方只提供可选CPU控制环境的安装入口，Part 05 · 03使用主环境时无需另建。安装器添加 `--dry-run` 可查看计划，不会创建环境或执行预检。
 
 ### PERF-DELIVERY：交付控制环境
 
 <a id="perf-delivery-quickstart"></a>
 
-`PERF-DELIVERY` 使用独立 Conda 环境，读取本项目的配对测量、剖析和回退记录并生成决策；它不要求 Part 02 先通过，也不运行 GPU 测量。
+`PERF-DELIVERY` 使用独立Conda环境，供只读取已有配对测量、剖析和回退记录的CPU审查使用。Part 05 · 03独立产生其测量输入，不要求Part 02先通过。
 
 ```bash
 python tools/install_environment_profile.py \
@@ -31,19 +32,19 @@ python tools/install_environment_profile.py \
 
 ## 3. 中断续装与重新进入
 
-环境尚未创建时重新运行创建命令。已创建且确认属于 `PERF-DELIVERY` 时，使用下面的命令继续安装并完成检查；`--reuse` 会修改该环境，不能用于混装环境。单卡机制环境续装见[性能分析 Quickstart](../performance_analysis/quickstart.md#_3-中断续装与重新进入)。
+单卡主环境安装中断时，按[性能分析续装说明](gpu_quickstart.md#_3-中断续装与重新进入)恢复；已经安装完成时，只需激活并启动Jupyter，选择 `Python (llm_perf_cu128)`。其他训练或服务环境按其所属Quickstart恢复。
+
+```bash
+conda activate llm_perf_cu128
+python tools/register_notebook_runtime.py --check
+python tools/environment_preflight.py --profile PERF-CUDA-MECHANISM
+python -m jupyter lab
+```
+
+可选CPU控制环境已经创建且确认属于 `PERF-DELIVERY` 时，可使用下面的续装命令；`--reuse` 会修改该环境，不能用于身份不明或已混装的环境。安装完成后激活 `llm_perf_delivery` 并选择同名内核。激活时出现 `PYTHONPATH` 覆盖提示属于隔离设置，是否可用以预检结果为准。
 
 ```bash
 python tools/install_environment_profile.py --profile PERF-DELIVERY --env-name llm_perf_delivery --reuse
-```
-
-安装完成后，激活环境并启动 Jupyter，在 Notebook 中选择 `Python (llm_perf_delivery)`。激活时出现 `PYTHONPATH` 覆盖提示属于隔离设置，是否可用以预检结果为准。
-
-```bash
-conda activate llm_perf_delivery
-python tools/register_notebook_runtime.py --check
-python tools/environment_preflight.py --profile PERF-DELIVERY
-python -m jupyter lab
 ```
 
 ## 4. 手动创建（可选）
@@ -51,7 +52,7 @@ python -m jupyter lab
 <details>
 <summary>安装器不可用时创建交付控制环境</summary>
 
-手动路径使用 Profile 中同一份依赖文件；完成依赖检查、Profile 预检和内核登记后再启动 Notebook。单卡机制环境的手动步骤仍见[性能分析 Quickstart](../performance_analysis/quickstart.md#_4-手动创建-可选)。
+手动路径使用 Profile 中同一份依赖文件；完成依赖检查、Profile 预检和内核登记后再启动 Notebook。单卡机制环境的手动步骤见[性能机制GPU环境](gpu_quickstart.md#_4-手动创建-可选)。
 
 ```bash
 conda create -n llm_perf_delivery python=3.12 -y
@@ -72,20 +73,20 @@ python -m ipykernel install --user \
 
 ## 5. 验证与常见问题
 
-先激活目标环境，再检查依赖、Profile 和解释器。下面验证交付控制环境；GPU 测量环境按[性能分析 Quickstart](../performance_analysis/quickstart.md#_5-验证与常见问题)检查。Notebook 的 `sys.executable` 应指向所选环境；环境预检通过后，还要在项目 Notebook 中运行 `prepare`。
+下面检查单卡主环境；Notebook的 `sys.executable` 应指向 `llm_perf_cu128`。CPU控制环境则将环境名与Profile分别换为 `llm_perf_delivery`、`PERF-DELIVERY`。通过预检后，按具体页面执行准备阶段；项目中的 `prepare` 与机制页中的 `dry_run` 以各页说明为准。
 
 ```bash
-conda activate llm_perf_delivery
+conda activate llm_perf_cu128
 python -m pip check
 python tools/register_notebook_runtime.py --check
-python tools/environment_preflight.py --profile PERF-DELIVERY
+python tools/environment_preflight.py --profile PERF-CUDA-MECHANISM
 python -c "import sys; print(sys.executable)"
 ```
 
 | 现象 | 处理方式 |
 |:---|:---|
 | 控制环境找不到本项目结果 | 核对本次 `RUN_LABEL` 的测量清单和路径；缺少测量时回到 `PERF-CUDA-MECHANISM` 运行 `measure` |
-| 依赖冲突或 Profile 检测到禁止安装的后端 | 使用新的环境名创建独立控制环境，保留原环境排查 |
+| 依赖冲突或Profile检测到禁止安装的后端 | 保留原环境排查；按所需实验的Profile用新环境名创建，不把主环境改装成控制或服务环境 |
 | Notebook 找不到 `tools` 或解释器错误 | 在目标环境注册仓库运行时，选择对应内核并重启 |
 | 只有 CPU 决策结果 | 可检查比较条件、冲突与回退规则；GPU 或服务收益必须来自实际测量 |
 | 候选的原环境不可用 | 保存失败原因及缺失测量，暂停采用判断；恢复原环境后补测 |

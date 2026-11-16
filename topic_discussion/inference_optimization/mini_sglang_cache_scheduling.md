@@ -12,6 +12,10 @@
 
 构造三条示意输入：A 为“公共前缀 P＋问题一”，B 为“P＋问题二”，C 使用不同前缀。先处理 A，再处理 B，观察匹配到多少输入、剩余后缀还要计算多少；C 用于检查不匹配时的行为。比较对象应是应用对话模板后实际送入模型的词元序列，文字看起来相同不一定意味着词元前缀相同，匹配也可能受存储粒度限制。
 
+下图假定 A 建立的 P 状态仍可复用、B 的计算条件与共享权限也兼容。按请求顺序观察索引、引用和模型工作，才能区分“找到相同前缀”与“真正少算了一段输入”。
+
+![A建立前缀、B复用兼容状态及C未命中的索引与计算对照](../../docs/public/topic_discussion/inference_optimization/mini_sglang_prefix_trace_zh.svg)
+
 观察请求结束时，先区分“释放活动引用”和“删除可复用缓存”：已经没有活动请求使用的前缀仍可能保留，直到容量压力要求回收；仍被其他请求使用的状态则不能直接覆盖。详细的匹配与引用练习见 [Part 02 · 24 Prefix Cache 匹配与复用](../../02_PyTorch_Algorithms/24_Prefix_Cache_Matching_and_Reuse.ipynb)与 [Part 02 · 34 SGLang 基数注意力](../../02_PyTorch_Algorithms/34_SGLang_RadixAttention.ipynb)。
 
 ## 怎样判断减少的是重复计算
@@ -27,6 +31,10 @@
 Task4 沿用同一引擎，再查看[分块预填充与执行重叠说明](https://github.com/sgl-project/mini-sglang/blob/main/docs/features.md)。分块预填充把长输入拆成可分轮处理的部分，为其他请求留下调度机会；执行重叠则让独立的 CPU 准备与 GPU 计算同时进行。前者改变每轮推进量，后者改变准备和计算的时间安排，两者需要分别观察。
 
 使用三个活跃解码请求与一个新长输入，逐轮记录成员、预填充量、解码量和完成事件；例子见[服务预算、连续批处理与阶段调度](./05_serving_scheduling_and_pd.md)。先解释长输入怎样插入，再根据固定版本实际提供的开关分别比较，避免同时改变分块与重叠后无法判断收益来源。
+
+下图把两种改动分开：上半部改变长输入在各轮的分配，下半部固定两批工作，只改变独立准备与设备计算的相对时序。实际能提前准备哪些信息，仍取决于对当前轮输出的依赖。
+
+![分块预填充的跨轮分配与独立CPU准备、GPU计算重叠的区别](../../docs/public/topic_discussion/inference_optimization/mini_sglang_chunk_overlap_zh.svg)
 
 <a id="quantized-execution"></a>
 

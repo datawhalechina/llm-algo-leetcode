@@ -1,24 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="390" viewBox="0 0 1120 390">
-  <rect width="1120" height="390" rx="24" fill="#f7f9fc"/>
-  <text x="560" y="42" text-anchor="middle" font-size="24" font-weight="700" fill="#172033">梯度累积中的缩放与更新边界</text>
-  <text x="560" y="70" text-anchor="middle" font-size="15" fill="#526079">每个微批次参与 backward；unscale、clip 与 step 只发生在有效更新边界</text>
-  <g font-family="sans-serif" font-size="15" text-anchor="middle">
-    <rect x="55" y="120" width="190" height="76" rx="14" fill="#dceafe" stroke="#4f7fc9" stroke-width="2"/>
-    <text x="150" y="150" fill="#172033">Micro-batch 1</text><text x="150" y="174" fill="#526079">scale(loss / K) → backward</text>
-    <rect x="285" y="120" width="190" height="76" rx="14" fill="#dceafe" stroke="#4f7fc9" stroke-width="2"/>
-    <text x="380" y="150" fill="#172033">Micro-batch 2</text><text x="380" y="174" fill="#526079">scale(loss / K) → backward</text>
-    <rect x="515" y="120" width="190" height="76" rx="14" fill="#dceafe" stroke="#4f7fc9" stroke-width="2"/>
-    <text x="610" y="150" fill="#172033">Micro-batch K</text><text x="610" y="174" fill="#526079">scale(loss / K) → backward</text>
-    <rect x="760" y="108" width="300" height="100" rx="16" fill="#e8e1fb" stroke="#7658bb" stroke-width="2"/>
-    <text x="910" y="137" fill="#172033">有效更新边界</text>
-    <text x="910" y="162" fill="#526079">unscale → finite check → clip</text>
-    <text x="910" y="185" fill="#526079">step / skip → scaler.update</text>
-    <rect x="280" y="270" width="560" height="66" rx="14" fill="#fff1d8" stroke="#c98b2f" stroke-width="2"/>
-    <text x="560" y="298" fill="#172033">关键不变量：裁剪和更新读取的是 K 个微批次累积后的真实梯度</text>
-    <text x="560" y="321" fill="#526079">不能在仍为 scaled gradient 时裁剪，也不能每个微批次都调用 optimizer.step</text>
-  </g>
-  <g stroke="#66758d" stroke-width="2.4" fill="none" marker-end="url(#arrow)">
-    <path d="M245 158H278"/><path d="M475 158H508"/><path d="M705 158H753"/><path d="M910 208V258H560V263"/>
-  </g>
-  <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#66758d"/></marker></defs>
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="390" viewBox="0 0 1120 390" role="img" aria-labelledby="title desc">
+<title id="title">梯度累积的权重与更新边界</title><desc id="desc">每个微批次用相同缩放因子s和自己的损失权重wi反向。累积结束后只还原一次，再检查、裁剪、更新并清理梯度。有效目标数相同才使用1/K。</desc>
+<defs><style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#0f172a;font-weight:400}.title{font-size:25px;font-weight:700}.h{font-size:18px;font-weight:700}.b{font-size:15px;fill:#334155}.small{font-size:14px;fill:#475569}.flow{fill:none;stroke:#64748b;stroke-width:2.5;marker-end:url(#arrow)}</style><marker id="arrow" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L9 4.5 L0 9 Z" fill="#64748b"/></marker></defs><rect width="1120" height="390" fill="#f8fafc"/>
+<text x="560" y="40" text-anchor="middle" class="title">先累积加权梯度，在更新边界统一还原</text><text x="560" y="73" text-anchor="middle" class="small">同一窗口保持 s 不变；按监督词元平均时，wᵢ = 本批有效目标数 / 全部有效目标数</text><rect x="30" y="120" width="205" height="90" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="132.5" y="150" text-anchor="middle" class="h">微批次 1</text><text x="132.5" y="177" text-anchor="middle" class="b">s × w₁ × L₁ → 反向</text><rect x="275" y="120" width="205" height="90" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="377.5" y="150" text-anchor="middle" class="h">微批次 2</text><text x="377.5" y="177" text-anchor="middle" class="b">s × w₂ × L₂ → 反向</text><rect x="520" y="120" width="205" height="90" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="622.5" y="150" text-anchor="middle" class="h">微批次 K</text><text x="622.5" y="177" text-anchor="middle" class="b">s × wₖ × Lₖ → 反向</text><rect x="790" y="108" width="300" height="118" rx="12" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/><text x="940" y="138" text-anchor="middle" class="h">累积结束</text><text x="940" y="165" text-anchor="middle" class="b">还原尺度 → 检查 → 裁剪</text><text x="940" y="189" text-anchor="middle" class="b">更新或跳过，再更新缩放值</text><path class="flow" d="M235 165 H275"/><path class="flow" d="M480 165 H520"/><rect x="220" y="285" width="680" height="85" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/><text x="560" y="315" text-anchor="middle" class="h">累积梯度缓冲：g′ = s Σ wᵢ gᵢ</text><text x="560" y="342" text-anchor="middle" class="b">目标数相同取 1/K；目标数为 2、6 时，权重分别为 1/4、3/4</text><path class="flow" d="M622 210 V250 H560 V285"/><path class="flow" d="M900 327 H1100 V250 H940 V226"/>
 </svg>

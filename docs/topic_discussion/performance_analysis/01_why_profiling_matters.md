@@ -1,45 +1,9 @@
-# 01 明确测量对象与问题
+# 内容已并入性能优化
 
-训练步变慢、首词元延迟（TTFT）升高或多卡扩展变差时，先指出变慢的阶段、受影响的指标和运行条件，再追查原因。
+本页内容已迁移至[性能优化中的对应页面](../performance_optimization/methods/01_why_profiling_matters.md)。旧链接继续可用；若未自动跳转，请点击此链接。
 
-## 先检查运行，再固定问题
-
-先检查输入形状、数值和输出是否符合要求。OOM、超时或错误输出单独记录在失败统计中，不能当作正常完成的延迟样本。对有效运行，记录下表条件，并提出下一次测量能够检查的原因，例如“设备在等待输入搬运完成”。
-
-| 要记录的内容 | 示例 | 作用 |
-|:---|:---|:---|
-| 现象与阶段 | 解码阶段单输出词元延迟（TPOT）上升 | 限定问题发生的位置 |
-| 目标指标 | `TPOT`、`step_time_ms`、峰值显存 | 明确比较方向与单位 |
-| 工作负载 | 模型、输入长度、批量、并发与采样参数 | 让结果可复现 |
-| 可能原因 | 输入搬运拉长了关键路径 | 指定要观察的事件，以及怎样验证这个解释 |
-| 质量门槛 | 输出误差、任务分数和失败率的允许范围 | 性能比较同时检查结果是否可用 |
-
-![从性能现象到可测问题](../../public/topic_discussion/performance_analysis/profiling_evidence_overview.svg)
-
-## 怎样用对照检查原因
-
-热点、峰值和利用率提供检查位置。要判断原因，还需在固定条件下改变一个相关因素，观察预期事件和目标指标是否随之变化。例如，检查输入等待时，可以比较相同批次下的搬运时机、设备空闲区间和训练步耗时。这类判别对照用于检查原因；优化方案另需验证收益和质量。
-
-| 已有观察 | 可以说明什么 | 下一步 |
-|:---|:---|:---|
-| 单次计时或截图 | 有值得检查的现象 | 固定工作负载，建立基线 |
-| 执行轨迹与阶段变化一致 | 某阶段可能在拖慢关键路径 | 检查输入、形状、同步或状态变化 |
-| 改变一个因素后，事件与目标指标按预期变化 | 当前结果支持该因素限制了性能 | 重复对照，并检查其他可能解释与输出质量 |
-
-## 几类分析结果分别回答什么
-
-指标描述变化大小，执行轨迹记录先后与等待，性能剖析定位耗时对象；结合这些记录提出原因，再用对照检查。已有候选或版本改动时，用性能回归检查判断退化是否超过允许范围。
-
-| 分析结果 | 主要回答 | 典型内容 |
-|:---|:---|:---|
-| 指标 | 发生了多大变化？ | 延迟、吞吐、峰值显存、失败率与扩展效率 |
-| 执行轨迹（Trace） | 事件何时发生，谁在等待谁？ | CPU / GPU 时间线、CUDA 流、同步、通信与 I/O |
-| 性能剖析（Profile） | 时间和资源集中在哪些对象？ | 算子、计算内核、调用栈、内存对象与驻留 |
-| 瓶颈归因 | 哪类计算、资源或等待正在限制目标指标？ | 计算、带宽、容量、通信、I/O、排队与判别实验 |
-| 性能回归检查 | 候选或版本改动是否超过允许退化范围？ | 基线与候选的配对分布、阈值、质量和失败 |
-
-## 进入可重复基线
-
-运行有效性可从[Part 00 · 19 异常定位](../../00_Prerequisites/19_Debugging_and_Anomaly_Localization.md)检查，再用[Part 00 · 20 性能证据与实验设计](../../00_Prerequisites/20_Performance_Evidence_and_Experiment_Design.md)固定指标和结果字段。[Part 01 · 13 性能分析](../../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)提供资源归因基础；随后进入[可重复基线](./02_reproducible_baseline.md)保存运行条件。
-
-相关阅读：[PyTorch Profiler](https://docs.pytorch.org/docs/stable/profiler.html)。
+<script setup>
+import { onMounted } from 'vue'
+import { withBase } from 'vitepress'
+onMounted(() => window.location.replace(withBase('/topic_discussion/performance_optimization/methods/01_why_profiling_matters') + window.location.search + window.location.hash))
+</script>

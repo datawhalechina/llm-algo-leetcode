@@ -1,6 +1,6 @@
 # PT-RLOO. Leave One Out Policy Optimization | 留一基线策略优化
 
-**难度：** Hard | **环境：** [CPU 主线](#runtime-environment) | **标签：** `后训练对齐`, `RLOO`, `在线策略优化` | **目标人群：** 训练机制学习者
+**难度：** Hard | **环境：** [CPU 主线](#runtime-environment) | **标签：** `后训练`, `RLOO`, `策略优化` | **目标人群：** 理解组内奖励、需要比较优势基线的读者
 
 > 🚀 **云端运行环境**
 >
@@ -14,11 +14,14 @@
 
 ## 本节导读
 
-在线策略优化需要把采样回答的奖励变成低方差更新信号。RLOO 对同一提示采样多个回答，并用“除当前回答外其余奖励的均值”作为基线，因此不需要单独训练价值模型（Critic）。完成本节后，你应该能计算留一优势、解释它与 GRPO 组均值基线的差别，并核对序列级裁剪目标。
+同一道题生成三条回答，奖励分别为 1、2、4。评价第一条回答时，用另外两条的平均奖励 3 作比较，得到优势 −2；评价第三条时，基线变为 1.5，优势为 2.5。每条回答都有自己的比较基线。
 
-**关键词：** `RLOO`、`留一基线`、`策略比率`、`在线强化学习`
+留一基线策略优化（RLOO）用同组其他回答提供这个基线，省去单独训练价值模型。这里先计算奖励与留一优势，再比较新旧策略对同一整段回答的概率，观察正负优势怎样影响裁剪目标。
+
+**关键词：** `RLOO`、`留一基线`、`序列概率比`、`裁剪目标`
 
 ---
+
 <a id="runtime-environment"></a>
 
 ## 运行环境
@@ -29,73 +32,85 @@
 ---
 ## 前置阅读
 
-- [PT-REWARD-SIGNAL](./PT-REWARD-SIGNAL_Reward_Model_Value_and_Advantage.md)：区分 reward、return、value 与 advantage。
-- [18 GRPO](./18_GRPO_Loss_Tutorial.md)：比较同组奖励中心化与相对更新。
-- [PT-ROLLOUT-LIFECYCLE](./PT-ROLLOUT-LIFECYCLE_Rollout_and_Policy_Freshness.md)：固定采样策略版本与轨迹身份。
+先区分任务奖励、参考策略与优势，再比较两种组内基线。
 
----
-## Step 1：同一提示的回答如何组成可比较的采样组
+- [奖励、价值与优势信号](./PT-REWARD-SIGNAL_Reward_Model_Value_and_Advantage.md)：理解奖励塑形与固定参考策略。
+- [18 GRPO 组内优势](./18_GRPO_Loss_Tutorial.md)：比较含当前回答的组均值与留一均值。
 
-RLOO 对同一提示 $x_g$ 采样 $K\ge2$ 条回答，并保存采样策略版本、奖励函数版本和组边界。只有同组回答才共享基线；来自不同提示、不同奖励定义或不同策略版本的回答不能为了凑足组大小而混在一起。奖励函数可以返回缺失值，此时该回答不能进入其他回答的基线分母，也不能获得更新信号。
+## Step 1：为每条回答计算同组其他奖励的均值
 
-留一基线必须排除当前回答，避免同一奖励同时出现在被评价项和比较基线中。设组 $g$ 中可评分回答的索引集合为 $S_g$， $R_{g,i}$ 是回答 $i$ 进入留一计算前的塑形奖励。对 $i\in S_g$，留一基线和回答级优势为：
+对同一提示 $x_g$，从固定采样策略生成至少两条回答，并使用同一奖励定义评分。组标识把这些回答归到一起；采样策略与奖励函数版本帮助核对比较条件。若某条回答没有可用评分，用缺失值标记，并从其他回答的基线计算中排除。组内只剩一个可评分回答时，本页将其优势置零。
 
-$$b_{g,-i}=\frac{1}{|S_g|-1}\sum_{j\in S_g, j\ne i}R_{g,j},\qquad A_{g,i}=R_{g,i}-b_{g,-i}.$$
+设 $S_g$ 为组内可评分回答的索引集合， $R_{g,i}$ 为回答 $i$ 经参考约束调整后的奖励， $b_{g,-i}$ 为排除当前回答的均值， $A_{g,i}$ 为留一优势。对 $i\in S_g$ 且 $|S_g|\ge2$，基线和优势如下；奖励 $[1,2,4]$ 对应基线 $[3,2.5,1.5]$、优势 $[-2,-0.5,2.5]$。相同可评分数量 $n$ 下，留一优势也等于 $n/(n-1)$ 倍的“奖励减含自身组均值”。
 
-$b_{g,-i}$ 是排除当前回答后的基线， $A_{g,i}$ 是回答级优势。若一组只有一条可评分回答，则没有可比较对象，该回答的优势置零。
+$$
+b_{g,-i}=\frac{1}{|S_g|-1}\sum_{j\in S_g,\ j\ne i}R_{g,j},
+\qquad A_{g,i}=R_{g,i}-b_{g,-i}.
+$$
 
-![同一提示的多条奖励分别去掉当前回答后形成留一基线](../public/02_PyTorch_Algorithms/pt_rloo_leave_one_out.svg)
-## Step 2：外部奖励和 Reference KL 如何形成塑形奖励
+![每条回答分别与同组其他可评分奖励比较](../public/02_PyTorch_Algorithms/pt_rloo_leave_one_out.svg)
 
-外部奖励可以由多个分量加权得到。为限制采样策略远离固定 Reference，RLOO 先在回答 Token 上累加一阶对数比率，再从外部奖励中扣除 KL 惩罚：
+## Step 2：用固定参考分数调整回答奖励
 
-$$r_i^{ext}=\sum_m w_m r_{i,m},\qquad k_i=\sum_t m_{i,t}\left[\log\pi_{old}(y_{i,t})-\log\pi_{ref}(y_{i,t})\right],$$
+任务奖励来自规则、环境或奖励模型；多分量加权时，先确定各分量的方向和权重。为衡量采样策略相对参考策略的偏移，在有效回答词元上累加对数概率差，并乘约束系数后从任务奖励中扣除。把任务反馈与这项调整合在一起，称为奖励塑形。
 
-$$R_i=r_i^{ext}-\beta k_i,\qquad \beta\ge0.$$
+令 $r_{i,m}$ 为回答 $i$ 的第 $m$ 个奖励分量、 $w_m$ 为其权重， $m_{i,t}$ 标记有效回答词元； $\pi_{old}$ 是生成时的旧策略， $\pi_{ref}$ 是固定参考策略。外部奖励为 $r_i^{ext}$，采样对数概率差之和为 $k_i$，塑形奖励为 $R_i$，约束系数 $\beta\ge0$。单个样本的 $k_i$ 可为负，此时调整项增加奖励；它是采样估计，与全分布 KL 的非负性质应分开理解。
 
-$m_{i,t}$ 是回答有效位置， $\pi_{old}$ 是生成该回答的采样策略， $\pi_{ref}$ 是固定参考策略。这里的 $k_i$ 是一阶逐 Token 估计，单个样本上可能为负；它作为奖励塑形项使用，不应与 GRPO 目标中的非负 KL 近似混为一谈。
+$$
+r_i^{ext}=\sum_m w_m r_{i,m},\qquad
+k_i=\sum_t m_{i,t}\left[\log\pi_{old}(y_{i,t}\mid x_i,y_{i,<t})
+-\log\pi_{ref}(y_{i,t}\mid x_i,y_{i,<t})\right].
+$$
 
-GRPO 常用包含当前回答在内的组均值并可按组标准差缩放；RLOO 则在塑形奖励上排除当前回答。两者都依赖同提示多回答，但基线、KL 位置和归约方式不能互换。
+$$
+R_i=r_i^{ext}-\beta k_i.
+$$
 
-| 方法 | 基线 | 是否需要 Critic | 需要固定的条件 |
-|:---|:---|:---|:---|
-| PPO + GAE | 学习到的 $V_\phi(s_t)$ | 是 | 轨迹状态、价值目标与 GAE 参数 |
-| GRPO | 组均值，可选标准差缩放 | 否 | 组边界、标准差计算与零方差规则 |
-| RLOO | 塑形奖励的留一均值 | 否 | 每组可评分回答数、奖励权重、KL 系数与留一规则 |
-## Step 3：留一优势如何进入受约束更新
+| 方法 | 基线与比较单位 | 需明确的条件 |
+|:---|:---|:---|
+| PPO + GAE | 学习到的状态价值，逐动作计算 | 终止状态、价值预测和残差累计 |
+| GRPO 组内中心化 | 同题回答奖励的组均值，可按标准差缩放 | 组边界、标准差口径和同分处理 |
+| RLOO 留一中心化 | 同组其他可评分回答的均值 | 可评分数量、奖励分量和参考约束 |
 
-当前策略只在有效回答 Token 上求和得到序列得分，再与生成回答时保存的旧策略序列得分比较：
+## Step 3：用序列概率比构造裁剪目标
 
-$$\rho_i=\exp\left(\log\pi_\theta(y_i\mid x_i)-\log\pi_{old}(y_i\mid x_i)\right).$$
+新策略与生成时的旧策略，对同一回答的有效词元对数概率分别求和，得到整段回答分数。设两者分别为 $\log\pi_\theta(y_i\mid x_i)$、 $\log\pi_{old}(y_i\mid x_i)$，相减后取指数得到序列概率比 $\rho_i$。旧策略分数与留一优势固定，新策略分数保留梯度；例如序列对数概率增加 0.2，概率比约为 1.22。
 
-给定下侧裁剪 $\epsilon_l$ 与上侧裁剪 $\epsilon_h$，序列级目标为：
+$$
+\rho_i=\exp\left(\log\pi_\theta(y_i\mid x_i)-\log\pi_{old}(y_i\mid x_i)\right).
+$$
 
-$$L_i=-\min\left(\rho_iA_i,\mathrm{clip}(\rho_i,1-\epsilon_l,1+\epsilon_h)A_i\right).$$
+本页采用序列级裁剪版本，给定下侧范围 $\epsilon_l\in(0,1)$ 和上侧范围 $\epsilon_h>0$，将原目标与裁剪目标取较小值，再取负得到损失。正优势抑制超过上界后的额外奖励，负优势抑制低于下界后的额外奖励；概率比仍可能越界，裁剪约束的是目标收益。旧策略、奖励或组划分变化后，应重新构造对应优势。
 
-其中 $A_i$ 是塑形奖励产生的留一优势。 $A_i>0$ 时主要限制概率上升过快， $A_i<0$ 时主要限制概率下降过快。旧策略得分、Reference 得分和优势都应停止梯度；采样策略、奖励函数或组边界变化后，旧优势不能继续复用。
+$$
+L_i=-\min\left(\rho_iA_i,
+\mathrm{clip}(\rho_i,1-\epsilon_l,1+\epsilon_h)A_i\right).
+$$
 
-![奖励经过留一基线形成优势，再与序列策略比率组成裁剪目标](../public/02_PyTorch_Algorithms/pt_rloo_update_path.svg)
+![留一优势与序列概率比在裁剪损失处汇合](../public/02_PyTorch_Algorithms/pt_rloo_update_path.svg)
+
 <a id="mechanism-practice"></a>
 
 ## Step 4：实现留一优势与序列裁剪目标
 
-题目区使用 Token 对数概率、回答掩码、奖励和组标识复现 RLOO 更新。骨架提供输入校验和结果结构；学习者补全序列得分、KL 奖励塑形、缺失奖励感知的留一优势和非对称裁剪目标。测试覆盖变长回答、缺失奖励、单元素组、正负优势和梯度边界。
+题目用词元对数概率、回答掩码、奖励和组标识计算四个量。骨架提供输入检查与按组遍历；你将补全序列聚合、奖励塑形、留一基线和裁剪损失。缺失评分或单例组的优势置零，得到逐回答零损失；汇总时若按整个批次求均值，这些位置仍留在分母，和剔除后求均值有不同尺度。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 |:---|:---|:---|:---|
-| TODO 1：聚合有效回答 Token<br>`aggregate_sequence_logps` | 聚合有效回答 Token | mask 同形且每条回答非空 | 变长回答与 Padding 隔离 |
-| TODO 2：塑形回答级奖励<br>`shape_rloo_rewards` | 将 Reference KL 作为序列奖励惩罚 | 外部奖励同批；旧策略和 Reference 固定 | KL 手算值、缺失奖励与梯度隔离 |
-| TODO 3：计算缺失奖励感知的留一优势<br>`leave_one_out_advantages` | 只用可评分同组兄弟计算基线 | 单一可评分回答与缺失奖励不产生信号 | 组内手算值、零和性质与单例边界 |
-| TODO 4：构造非对称裁剪目标<br>`rloo_policy_loss` | 构造序列比率与非对称裁剪目标 | 上下裁剪为正；旧策略和优势固定 | 正负优势、有限损失与梯度边界 |
-
-```python
-import torch
-```
+| TODO 1：聚合回答词元<br>`aggregate_sequence_logps` | 对有效位置求序列分数 | 布尔掩码同形，每条回答非空 | 变长输入、含负无穷的填充位置被排除 |
+| TODO 2：调整回答奖励<br>`shape_rloo_rewards` | 累加参考对数概率差并塑形 | 旧／参考分数停止梯度，缺失值保留 | 手算 1.85、负采样差和梯度隔离 |
+| TODO 3：计算留一优势<br>`leave_one_out_advantages` | 排除自身与缺失评分后计算基线 | 同组不足两条时优势为零 | 两组手算值、组内零和、缺失与单例 |
+| TODO 4：构造裁剪损失<br>`rloo_policy_loss` | 计算序列比率与两个目标的较小值 | 旧分数和优势固定，上下界分别设置 | 正负优势、上下界、反向偏移与梯度 |
 
 
 ```python
 import math
+import torch
 
+```
+
+
+```python
 def aggregate_sequence_logps(token_logps, completion_mask):
     """在有效回答 Token 上聚合序列对数概率。"""
     if token_logps.ndim != 2 or token_logps.shape != completion_mask.shape:
@@ -188,6 +203,9 @@ def rloo_policy_loss(new_logps, old_logps, advantages, epsilon_low=0.2, epsilon_
 ```
 
 ## 测试
+
+先手算序列分数、塑形奖励和两组留一优势，再分别命中正优势上界、负优势下界及相反方向，核对损失与梯度。
+
 
 ```python
 def test_rloo_sequence_aggregation():
@@ -296,20 +314,16 @@ run_rloo_tests()
 ---
 
 🛑 **STOP HERE** 🛑
-<br><br><br><br><br><br><br><br><br><br>
-> 请先尝试自己完成代码并跑通测试。<br>
-> 如果你正在 Colab 中运行，并且遇到困难没有思路，可以向下滚动查看参考答案。
-<br><br><br><br><br><br><br><br><br><br>
+
+> 请先完成题目区并运行测试，再查看参考实现。
 
 ---
+
 ## 参考代码与解析
 
 ### 代码
 
 ```python
-import math
-
-
 def aggregate_sequence_logps(token_logps, completion_mask):
     """在有效回答 Token 上聚合序列对数概率。"""
     if token_logps.ndim != 2 or token_logps.shape != completion_mask.shape:
@@ -356,7 +370,6 @@ def leave_one_out_advantages(rewards, group_ids):
         raise ValueError("rewards 与 group_ids 必须是同形非空一维张量")
     if torch.isinf(rewards).any():
         raise ValueError("缺失奖励只能使用 NaN，不能使用无穷值")
-    # TODO 3：计算缺失奖励感知的留一优势。
     advantages = torch.zeros_like(rewards)
     for group_id in group_ids.unique(sorted=True):
         mask = group_ids == group_id
@@ -366,6 +379,7 @@ def leave_one_out_advantages(rewards, group_ids):
         if count < 2:
             continue
         group_sum = group_rewards[scorable].sum()
+        # TODO 3：计算缺失奖励感知的留一优势
         baselines = (group_sum - group_rewards[scorable]) / (count - 1)
         group_advantages = torch.zeros_like(group_rewards)
         group_advantages[scorable] = group_rewards[scorable] - baselines
@@ -392,35 +406,36 @@ def rloo_policy_loss(new_logps, old_logps, advantages, epsilon_low=0.2, epsilon_
 
 ### 解析
 
-#### TODO 1：聚合有效回答 Token
+#### TODO 1：聚合回答词元
 
-- **判断依据：** 序列比率只能覆盖回答 Token，Prompt、Padding 和占位值都不能进入分数。
-- **实现与证据：** 先要求输入为布尔掩码，再将无效位置清零后求和；变长回答测试同时放入 `-inf` Padding，证明无效值不会传播。
+- 整段回答的对数概率是有效位置之和；先掩码清零再求和，避免填充位置的负无穷参与乘法后产生非有限数。
+- 变长测试刻意放入负无穷占位值，期望两条序列分数分别为 −3 与 −3.5，用来检查掩码确实生效。
 
-#### TODO 2：塑形回答级奖励
+#### TODO 2：调整回答奖励
 
-- **判断依据：** KL 塑形使用生成回答时固定的旧策略与 Reference，缺失外部奖励不能被惩罚项伪装成有效奖励。
-- **实现与证据：** 在回答掩码内聚合已停止梯度的对数比率，再从外部奖励扣除惩罚；测试核对手算值、`NaN` 保留和梯度隔离。
+- 旧策略与参考策略是固定评分，差值只在回答范围累计；缺失任务反馈经调整后仍应缺失。
+- 测试中采样差为 0.3、系数为 0.5，奖励 2 调整为 1.85；同时核对负采样差、缺失值和停止梯度。
 
-#### TODO 3：计算缺失奖励感知的留一优势
+#### TODO 3：计算留一优势
 
-- **判断依据：** 当前回答不能进入自己的基线，不同提示也不能共享比较项；少于两个可评分回答时没有留一参照。
-- **实现与证据：** 按组过滤缺失奖励，用组和减去当前奖励构造兄弟均值；手算测试验证组内优势和为零，单例测试验证零信号规则。
+- 基线从同组其他可评分回答取得；组和减当前奖励后除以其他回答数量，少于两条时保留零优势。
+- 奖励 `[1,2,4]` 对应 `[-2,-0.5,2.5]`；另一组含缺失值，测试验证其不参与均值，单例返回零。
 
-#### TODO 4：构造非对称裁剪目标
+#### TODO 4：构造非对称裁剪损失
 
-- **判断依据：** 旧策略与优势都是采样后固定证据，只有新策略得分参与更新；正负优势必须共用同一保守裁剪规则。
-- **实现与证据：** 用序列对数概率差构造比率，并在非对称边界内裁剪后逐样本取较小代理目标；`test_rloo_asymmetric_clipping_boundaries` 用下界 0.9、上界 1.3 核对正优势上裁剪、负优势下裁剪和相反方向不裁剪的精确损失，并确认饱和侧梯度为零；另一个测试确认旧策略与优势不接收梯度。
+- 新旧序列分数差取指数形成比率，旧分数与优势停止梯度；原目标与裁剪目标逐回答取较小值。
+- 上下界 1.3 / 0.9 的测试分别命中饱和方向与反方向，并核对饱和侧零梯度；另测仅新策略得分接收梯度。
+
 <a id="framework-check"></a>
 
 ## 框架一致性核对（可选）
 
-下面向 TRL `RLOOTrainer._compute_loss` 提供受控的逐 Token 对数概率和留一优势，核对序列求和、策略比率与裁剪目标，不下载模型。
+向 TRL `RLOOTrainer._compute_loss` 的内部损失入口注入固定逐词元分数，并与本地逐回答损失的均值比较。该入口随 TRL 版本变化；替身提供单进程聚合与固定评分，核对中不会加载模型。序列求和的本地断言用于检查输入装配，框架等价判断来自最终批次损失。
 
-| 核对项 | 本节实现 | TRL 路径 | 通过条件 |
+| 核对对象 | Step 4 教学实现 | 成熟框架 CPU 路径 | 共同输入与通过条件 |
 |:---|:---|:---|:---|
-| 序列得分 | 回答 Token 对数概率求和 | Trainer 按 `completion_mask` 求和 | 受控序列得分一致 |
-| 裁剪目标 | 回答级优势与序列级策略比率 | `RLOOTrainer._compute_loss` | 相同优势与裁剪范围下 Batch 损失一致 |
+| 序列裁剪批次损失 | `rloo_policy_loss` 后取均值 | TRL `RLOOTrainer._compute_loss` | 四条回答、每条两词元、同一旧分数／优势／裁剪范围，损失在 1e-6 容差内一致 |
+
 
 ```python
 from collections import defaultdict
@@ -488,7 +503,8 @@ framework_check
 
 ## 相关阅读
 
-- [18 GRPO](./18_GRPO_Loss_Tutorial.md)
-- [PT-ROLLOUT-LIFECYCLE](./PT-ROLLOUT-LIFECYCLE_Rollout_and_Policy_Freshness.md)
-- [TRL RLOO Trainer](https://huggingface.co/docs/trl/rloo_trainer)
-- [Back to Basics: Revisiting REINFORCE Style Optimization for Learning from Human Feedback](https://arxiv.org/abs/2402.14740)
+对照原始动机与框架版本，再考察采样策略变化后怎样重算信号。
+
+- [RLOO 原论文](https://arxiv.org/abs/2402.14740)：阅读整段回答的 REINFORCE 目标与留一基线，区分其动机和本页裁剪版本。
+- [TRL RLOO Trainer](https://huggingface.co/docs/trl/rloo_trainer)：查看当前序列级目标、裁剪范围与奖励配置。
+- [轨迹生命周期与策略版本](./PT-ROLLOUT-LIFECYCLE_Rollout_and_Policy_Freshness.md)：检查采样记录何时需要重新生成或评分。

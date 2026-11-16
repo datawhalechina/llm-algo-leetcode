@@ -1,43 +1,57 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
-  <title id="title">通信时间重叠与暴露时间</title>
-  <desc id="desc">计算区间覆盖部分 all-reduce 通信，未覆盖部分构成暴露通信时间；多个计算区间需要合并后再按 collective 汇总。</desc>
-  <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
-    <style>
-      .title{font:700 27px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.sub{font:500 15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.lane{font:700 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.node{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.body{font:500 14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.tick{font:500 13px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#64748b}.arrow{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}.box{stroke-width:2.5;rx:13}
-    </style>
-  </defs>
-  <rect width="1200" height="620" fill="#f8fafc"/>
-  <text x="48" y="54" class="title">时间重叠如何变成可解释的通信热点</text>
-  <text x="48" y="82" class="sub">先在同一时间轴上计算覆盖区间，再用未覆盖的通信时间判断哪类 collective 优先处理。</text>
-
-  <text x="78" y="151" class="lane">时间线示例</text>
-  <line x1="240" y1="172" x2="925" y2="172" stroke="#94a3b8" stroke-width="2"/>
-  <text x="240" y="194" class="tick">t0</text><text x="445" y="194" class="tick">t1</text><text x="650" y="194" class="tick">t2</text><text x="850" y="194" class="tick">t3</text>
-  <text x="78" y="250" class="lane">compute</text>
-  <rect x="275" y="220" width="445" height="58" class="box" fill="#dbeafe" stroke="#3b82f6"/>
-  <text x="497" y="255" text-anchor="middle" class="node">forward / backward 的计算覆盖区间</text>
-  <text x="78" y="350" class="lane">collective</text>
-  <rect x="415" y="320" width="445" height="58" class="box" fill="#ffedd5" stroke="#f97316"/>
-  <rect x="415" y="320" width="305" height="58" class="box" fill="#dcfce7" stroke="#22c55e"/>
-  <rect x="720" y="320" width="140" height="58" class="box" fill="#fee2e2" stroke="#ef4444"/>
-  <text x="567" y="355" text-anchor="middle" class="node">被计算覆盖</text>
-  <text x="790" y="355" text-anchor="middle" class="node">暴露通信</text>
-  <text x="882" y="355" class="body">all-reduce</text>
-  <path d="M567 278V306" class="arrow"/>
-  <text x="582" y="299" class="body">重叠片段</text>
-
-  <rect x="95" y="456" width="280" height="95" class="box" fill="#f1f5f9" stroke="#64748b"/>
-  <text x="235" y="491" text-anchor="middle" class="node">合并计算覆盖范围</text>
-  <text x="235" y="519" text-anchor="middle" class="body">避免多段 compute 重复计时</text>
-  <rect x="460" y="456" width="280" height="95" class="box" fill="#f0fdf4" stroke="#22c55e"/>
-  <text x="600" y="491" text-anchor="middle" class="node">得到两类时间</text>
-  <text x="600" y="519" text-anchor="middle" class="body">可隐藏通信 · 暴露通信</text>
-  <rect x="825" y="456" width="280" height="95" class="box" fill="#f5f3ff" stroke="#8b5cf6"/>
-  <text x="965" y="491" text-anchor="middle" class="node">按 collective 归因</text>
-  <text x="965" y="519" text-anchor="middle" class="body">优先检查暴露时间最大的 op</text>
-  <path d="M497 278V420H235V456" class="arrow"/>
-  <path d="M860 349V420H600V456" class="arrow"/>
-  <path d="M375 503H460" class="arrow"/>
-  <path d="M740 503H825" class="arrow"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="620" viewBox="0 0 1500 620" role="img" aria-labelledby="title desc">
+<title id="title">通信总时长、时间交集与区间暴露的毫秒时间线</title><desc id="desc">CPU构造例的forward区间为0至2毫秒，backward为3至5毫秒。四条通信持续时间合计3.7毫秒，与计算覆盖并集交集合计2.3毫秒，剩余区间合计1.4毫秒。AllReduce两次的剩余合计1.0毫秒，是优先排查对象。这些和不是单轮关键路径时间。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto">
+<path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:26px;font-weight:700}.group{font-size:18px;font-weight:700}.head{font-size:17px;font-weight:700}.body{font-size:15px;font-weight:400}.sub{font-size:16px;fill:#475569}.flow{fill:none;stroke:#475569;stroke-width:2.5;marker-end:url(#arrow)}.support{fill:none;stroke:#64748b;stroke-width:2;stroke-dasharray:7 6;marker-end:url(#arrow)}</style></defs>
+<rect width="1500" height="620" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="55" y="48" class="title" text-anchor="start">通信时长合计3.7毫秒，哪些区间与计算重叠？</text>
+<text x="55" y="80" class="sub" text-anchor="start">CPU事件构造例：所有行共用毫秒刻度；按每条通信与计算覆盖并集的交集染色。</text>
+<rect x="270" y="103" width="18" height="18" fill="#dcfce7" stroke="#16a34a" data-layout-role="glyph-group"/>
+<text x="300" y="117" class="body" text-anchor="start">绿色：与计算区间相交</text>
+<rect x="570" y="103" width="18" height="18" fill="#fff1f2" stroke="#e11d48" data-layout-role="glyph-group"/>
+<text x="600" y="117" class="body" text-anchor="start">红色：计算覆盖之外的通信</text><line x1="270" y1="153" x2="1350" y2="153" stroke="#64748b" stroke-width="2"/><line x1="270" y1="153" x2="270" y2="512" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 5"/>
+<text x="270" y="145" class="body" text-anchor="middle">0</text><line x1="450" y1="153" x2="450" y2="512" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 5"/>
+<text x="450" y="145" class="body" text-anchor="middle">1</text><line x1="630" y1="153" x2="630" y2="512" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 5"/>
+<text x="630" y="145" class="body" text-anchor="middle">2</text><line x1="810" y1="153" x2="810" y2="512" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 5"/>
+<text x="810" y="145" class="body" text-anchor="middle">3</text><line x1="990" y1="153" x2="990" y2="512" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 5"/>
+<text x="990" y="145" class="body" text-anchor="middle">4</text><line x1="1170" y1="153" x2="1170" y2="512" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 5"/>
+<text x="1170" y="145" class="body" text-anchor="middle">5</text><line x1="1350" y1="153" x2="1350" y2="512" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 5"/>
+<text x="1350" y="145" class="body" text-anchor="middle">6</text>
+<text x="1390" y="158" class="body" text-anchor="middle">ms</text>
+<text x="55" y="212" class="head" text-anchor="start">计算事件</text>
+<g id="forward" data-layout-role="glyph-group">
+<rect x="270" y="185" width="360" height="42" rx="4" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5" data-layout-role="glyph-group"/>
+<text x="450" y="212" class="body" text-anchor="middle">forward [0,2]</text>
+</g>
+<g id="backward" data-layout-role="glyph-group">
+<rect x="810" y="185" width="360" height="42" rx="4" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5" data-layout-role="glyph-group"/>
+<text x="990" y="212" class="body" text-anchor="middle">backward [3,5]</text>
+</g>
+<text x="55" y="292" class="head" text-anchor="start">AllReduce · 128KiB</text>
+<g id="ar1-0" data-layout-role="glyph-group">
+<rect x="450" y="265" width="180" height="42" rx="4" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5" data-layout-role="glyph-group"/>
+</g>
+<g id="ar1-1" data-layout-role="glyph-group">
+<rect x="630" y="265" width="90" height="42" rx="4" fill="#fff1f2" stroke="#e11d48" stroke-width="1.5" data-layout-role="glyph-group"/>
+</g>
+<text x="732" y="292" class="body" text-anchor="start">[1,2.5] ms</text>
+<text x="55" y="362" class="head" text-anchor="start">Broadcast · 64KiB</text>
+<g id="bc-0" data-layout-role="glyph-group">
+<rect x="738" y="335" width="71.99999999999999" height="42" rx="4" fill="#fff1f2" stroke="#e11d48" stroke-width="1.5" data-layout-role="glyph-group"/>
+</g>
+<text x="822" y="362" class="body" text-anchor="start">[2.6,3] ms</text>
+<text x="55" y="432" class="head" text-anchor="start">ReduceScatter · 96KiB</text>
+<g id="rs-0" data-layout-role="glyph-group">
+<rect x="900" y="405" width="143.99999999999997" height="42" rx="4" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5" data-layout-role="glyph-group"/>
+</g>
+<text x="1056" y="432" class="body" text-anchor="start">[3.5,4.3] ms</text>
+<text x="55" y="502" class="head" text-anchor="start">AllReduce · 32KiB</text>
+<g id="ar2-0" data-layout-role="glyph-group">
+<rect x="1080" y="475" width="90" height="42" rx="4" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5" data-layout-role="glyph-group"/>
+</g>
+<g id="ar2-1" data-layout-role="glyph-group">
+<rect x="1170" y="475" width="90" height="42" rx="4" fill="#fff1f2" stroke="#e11d48" stroke-width="1.5" data-layout-role="glyph-group"/>
+</g>
+<text x="1272" y="502" class="body" text-anchor="start">[4.5,5.5] ms</text>
+<text x="270" y="557" class="group" text-anchor="start">逐事件合计：3.7ms＝交集2.3ms＋区间暴露1.4ms；其中AllReduce暴露1.0ms。</text>
+<text x="55" y="597" class="sub" text-anchor="start">这组区间统计用于确定排查顺序；实际等待与整轮收益还需结合依赖关系、同步点和完成时间验证。</text></svg>

@@ -1,6 +1,6 @@
-# 74. Profiling Driven End to End Optimization | profiling 驱动的候选准入与交接
+# 74. Profiling Driven End to End Optimization | 性能剖析与训练策略复核
 
-**难度：** Hard | **环境：** CPU 可完成报告收口；GPU 用于真实 trace 与候选复测 | **标签：** `性能优化`, `性能剖析`, `候选准入` | **目标人群：** 项目决策练习者
+**难度：** Hard | **环境：** CPU报告练习，GPU性能剖析与候选复测 | **标签：** `性能优化`、`性能剖析`、`策略比较` | **目标人群：** 具备训练与性能分析基础的读者
 
 > 🚀 **云端运行环境**
 >
@@ -14,65 +14,75 @@
 
 ## 本节导读
 
-当一次优化改变了训练时间或资源占用时，本节带你判断变化来自哪里，并用证据和复测决定候选能否进入综合项目。你将从已有结果提出瓶颈假设，再用针对性的证据和复测检查这个假设，最后生成供 Part 05 使用的性能优化交接包。
+重算让前向保存的激活变少，为什么训练峰值可能几乎不变？峰值也许出现在参数更新，此时优化器状态与临时缓冲仍在占用显存。若另一份实验去掉了优化器状态，就要分别查看两组的峰值阶段，并回到目标训练配置核对收益。
 
-**关键词：** `profiling`, `optimization`, `end-to-end`
+本节把训练对照、激活显存实验与性能剖析放在一起阅读：先核对每组实验怎样运行，再用时间线和阶段峰值解释差异，最后分别保留各组结论。这样既能判断当前策略是否满足目标，也能说明哪些观察值得继续验证。
+
+**关键词：** `profiling`、`activation checkpointing`、`training strategy`
 
 ---
 
 ## 前置阅读
 
-**导语：** 先了解 profiling 的基本观察方法，再结合训练测量、显存预算和策略比较结果，进入本节的端到端证据分析。
-- [P1: 13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
-- [73. Training Performance Analysis | 训练性能分析](./73_Training_Performance_Analysis.md)
-- [76. Activation Checkpoint Offload Benchmark | 显存策略与预算敏感性](./76_Activation_Checkpoint_Offload_Benchmark.md)
-- [76. Activation Checkpoint Offload Benchmark | Activation / Checkpoint / Offload 对比项目](./76_Activation_Checkpoint_Offload_Benchmark.md)
+先掌握训练测量和激活策略，再比较不同记录能回答什么问题。
+
+- [Part01·13 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)：从热点提出待验证解释。
+- [73. 训练性能分析](./73_Training_Performance_Analysis.md)：固定更新流程与计时范围。
+- [76. 激活重算、卸载与预算比较](./76_Activation_Checkpoint_Offload_Benchmark.md)：理解减少保存状态所付出的计算与搬运代价。
 
 ---
-### Step 1：按实验范围整理已有证据
-本项目把完整训练比较、激活显存隔离和 profiler 归因分开处理。先核对每份证据对应的模型、负载、优化器和运行条件，再判断它能支持哪一类结论：完整训练结果用于策略采用判断，激活显存结果只说明已测长度范围内的容量与吞吐变化，trace 用于解释阶段和算子代价。
 
-| 证据范围 | 核对内容 | 可支持的结论 |
+## Step 1：先弄清每组实验在比较什么
+
+训练对照包含前向、反向和优化器更新，用相同任务比较策略；激活显存实验则尽量减少其他状态的影响，观察长度增长后激活怎样占用容量。性能剖析（profiling）用分析器记录算子、阶段和内存活动，帮助解释两者的变化。这三类记录回答的问题不同，阅读时先确定模型、输入、优化器和测量方法。
+
+激活检查点（activation checkpointing，也称激活重算）减少前向保存的中间结果，反向时重新计算；它不是保存模型文件的训练检查点。激活卸载则把部分保存张量暂放主机内存，在反向需要时搬回。重算增加计算，卸载增加搬运，需要结合完整更新的收益比较。
+
+| 记录类型 | 主要保持什么一致 | 要回答的问题 |
 |:---|:---|:---|
-| 完整训练 | 固定 AdamW、`seq_len=768` 的 G0 配对测量 | 当前完整训练配置的策略门槛与采用结论 |
-| 激活显存隔离 | 无动量 SGD 长度阶梯及显存安全准入 | 已测长度范围内的激活容量与吞吐变化；不代表完整训练收益或 OOM 边界 |
-| Profiler 归因 | baseline/checkpoint 配对 trace 与阶段数据 | 解释热点、重算及阶段代价；不单独决定候选采用 |
+| 完整训练对照 | 模型、输入、优化器和更新流程 | 策略是否满足时间、显存与损失要求 |
+| 激活显存对照 | 固定模型，减少优化器状态干扰 | 在已测长度下，激活保存方式怎样影响容量 |
+| 算子与阶段剖析 | 比较双方使用相同采集方法 | 变化可能来自哪些计算、搬运或存活对象 |
 
-![74 性能证据范围与交接关系](../public/02_PyTorch_Algorithms/74_end_to_end_profile_loop.svg)
+![训练对照、激活实验与性能剖析分别回答什么](../public/02_PyTorch_Algorithms/74_end_to_end_profile_loop.svg)
 
-### Step 2：区分采用证据与归因证据
+## Step 2：解释峰值为什么没有随激活一起下降
 
-完整训练的重复测量用于判断 checkpoint、offload 等策略是否达到显存、吞吐和质量门槛；配对 trace 与阶段测量用于解释时间或显存变化来自哪里。两类数据配置并不完全相同，不能拼成同一组候选的端到端收益，也不能把 trace 归因当成独立的采用证据。
+设备峰值取决于同一时刻仍存活的对象。重算可能降低前向峰值，但优化器更新时参数、梯度、优化器状态和临时张量仍然同时存在，全局峰值就可能落在更新阶段。只比较前向结束时的占用，会遗漏这个变化。
 
-| 证据类型 | 观察内容 | 使用边界 |
+需要判断策略是否值得采用时，用不带分析器的重复测量比较完整更新；需要解释原因时，再看分析器中的算子活动和各阶段峰值。分析器本身会增加开销，采集结果用于解释执行过程；策略收益仍用关闭分析器后的重复计时比较。
+
+| 观察 | 继续核对什么 | 可以怎样解释 |
 |:---|:---|:---|
-| 完整训练重复测量 | 单步耗时、吞吐、峰值显存、验证损失与失败状态 | 用于 G0 的策略比较；仅对固定训练配置成立 |
-| 配对 trace | 阶段耗时、调用活动与重算路径 | 用于解释时间变化；不能替代无 profiler 的性能测量 |
-| 阶段显存与长度阶梯 | 不同训练阶段峰值和已运行长度 | 用于激活显存范围分析；优化器状态与完整训练结论需分开 |
-| 安全准入记录 | 更长序列运行前的可用显存余量 | 安全停止不等于 OOM，未测长度不作外推 |
+| 前向峰值下降，总峰值变化小 | 反向与更新阶段的最高占用 | 激活减少了，但另一阶段仍决定容量 |
+| 反向变长 | 重算事件与相关算子调用 | 少保存激活换来了更多计算 |
+| 卸载后出现搬运等待 | 主机—设备传输与使用时机 | 状态转移可能拖延后续计算 |
+| 长度增加前停止运行 | 可用显存与预留余量 | 只确定安全停止位置，实际显存不足点仍未知 |
 
+## Step 3：让结论跟着实验条件走
 
-### Step 3：按证据范围形成结论
+固定优化器和长度的训练对照，决定该配置下是否满足采用条件；更换优化器以突出激活影响后，结论只适用于新的条件。把两组结果与各自条件并列保留，可以解释策略在何种配置下有用。
 
-先按各自固定条件判断完整训练和激活显存专项，再用 trace 解释结果。完整训练的结论不能由隔离专项提升得到；激活显存专项即使在已测长度内通过，也不能说明更长序列可运行或已经找到 OOM 边界。
+例如无动量SGD（随机梯度下降）不保存动量或二阶矩状态，AdamW会保存这些状态。同一策略在长序列、无动量SGD对照中显著节省显存，却可能在短序列AdamW训练中节省很少，二者可以同时成立。下一步按目标任务的优化器、长度和批量复测，确认显存节省与时间代价是否符合要求。
 
-| 状态 | 触发条件 | 后续动作 |
+| 判断对象 | 满足什么才能继续 | 下一步 |
 |:---|:---|:---|
-| 完整训练 | G0 的 AdamW 固定配置；checkpoint 显存节省低于最低收益门槛 | 顶层结论为 `tune`，继续测试压力负载或卸载范围 |
-| 激活显存专项 | G1 在 `seq_len=1280` 时 checkpoint 满足容量收益和吞吐门槛 | 仅在已测专项范围内记为通过；更长长度未运行，未得到 OOM 边界 |
-| Profiler 归因 | trace 与阶段测量解释变化来源 | 作为解释证据，不独立产生 `accept` |
+| 完整训练配置 | 时间、容量、损失与运行状态均符合目标 | 固定该配置采用，或调整后再测 |
+| 激活显存对照 | 同长度双方完成，收益与额外代价满足要求 | 在该条件下记录结果，再选择目标任务复测 |
+| 算子与阶段解释 | 观察与策略增加、减少的工作相符 | 用同条件对照进一步检验原因 |
+| 尚未运行的长度 | 当前没有对应测量 | 满足安全余量后另行测量 |
 
-![74 激活显存专项的结论边界](../public/02_PyTorch_Algorithms/74_experiment_decision_flow.svg)
+![训练对照与激活显存对照分别判断](../public/02_PyTorch_Algorithms/74_experiment_decision_flow.svg)
 
-### Step 4：隔离证据范围并生成项目结论
+## Step 4：核对两组配置并保留各自结论
 
-下面给出一份精简的收口报告。请核对证据范围与配置是否匹配，分别保留各范围的结论，再根据完整训练范围形成项目总决策。
+输入是一份精简示例报告，已经给出完整训练、激活显存与剖析说明的结论。题目不重新计算GPU收益：先逐项比较预期配置，再保留各组状态和限制，最后以完整训练组决定项目结果。单组显存对照通过，不能覆盖完整训练组原有的判断。
 
 | 任务与目的 | 已知条件 | 完成标准 | 测试验证 |
 |:---|:---|:---|:---|
-| TODO 1：检查范围配置 | 必需范围及其优化器、长度等配置 | 报告缺范围或字段不匹配时返回具体问题 | 覆盖正确配置、错配配置和缺失范围 |
-| TODO 2：汇总范围结论 | 各范围的 decision、evidence status 与 limitations | 三类字段均保留，且不改写专项状态 | 验证 `blocked`、专项结论和限制均未丢失 |
-| TODO 3：生成项目总决策 | 完整训练范围结论与各范围摘要 | 从完整训练结论取总决策；缺少该范围时拒绝生成 | 顶层字段与完整训练结论冲突时仍以范围结论为准 |
+| TODO 1：检查实验配置 | 各组报告与预期优化器、长度等字段 | 逐项相等才通过，缺失组单独记录 | 配置正确、长度不同与缺少组 |
+| 已提供：复制各组摘要 | 决策、运行状态与限制 | 原样保留，并复制限制列表 | 保留停止状态且不修改输入 |
+| TODO 2：选择项目结论来源 | 完整训练组的既有决策 | 总结论沿用该组，缺失时停止 | 顶层旧值冲突与完整训练组缺失 |
 
 
 ```python
@@ -97,71 +107,98 @@ EXPECTED_SCOPE_CONFIG = {
 
 def validate_evidence_scopes(report, expected_config):
     """核对范围配置，防止把不同实验条件的结果拼在一起。"""
-    # TODO 1：逐个检查 expected_config 中的范围及字段；
-    # 缺少范围或值不一致时，将“范围名:字段名”加入 issues。
-    # 返回 {'valid': bool, 'issues': list}。
-    raise NotImplementedError('请先完成 TODO 代码！')
+    issues = []
+    scopes = report.get('decision_scopes', {})
+    for scope_name, expected in expected_config.items():
+        actual = scopes.get(scope_name)
+        if not isinstance(actual, dict):
+            issues.append(f'{scope_name}:missing')
+            continue
+        for field, expected_value in expected.items():
+            # ==========================================
+            # TODO 1：核对证据范围配置
+            # field_matches = ???  # bool；实际字段值与预期值一致时为 True
+            # ==========================================
+            raise NotImplementedError('TODO 1：请核对范围配置')
+            if not field_matches:
+                issues.append(f'{scope_name}:{field}_mismatch')
+    return {'valid': not issues, 'issues': issues}
 
 def summarize_scope_decisions(report):
-    """提取各范围结论、证据状态与限制，不提升专项结论。"""
-    # TODO 2：为每个范围建立摘要，只保留 decision、evidence_status、limitations；
-    # limitations 必须复制为新列表，避免改摘要时修改输入报告。
-    raise NotImplementedError('请先完成 TODO 代码！')
+    """保留各范围的结论、证据状态和限制，不提升专项结论。"""
+    summary = {}
+    for scope_name, scope in report.get('decision_scopes', {}).items():
+        summary[scope_name] = {
+            'decision': scope.get('decision'),
+            'evidence_status': scope.get('evidence_status'),
+            'limitations': list(scope.get('limitations', [])),
+        }
+    return summary
 
 def build_project_decision(report, scope_summary):
     """以完整训练结论为项目总决策，并附带其他范围摘要。"""
-    # TODO 3：从 scope_summary['full_training_adoption']['decision'] 读取总决策；
-    # 缺少完整训练范围时抛出 ValueError，并在结果中附上全部范围摘要。
-    raise NotImplementedError('请先完成 TODO 代码！')
+    full_training = scope_summary.get('full_training_adoption')
+    if not isinstance(full_training, dict) or not full_training.get('decision'):
+        raise ValueError('完整训练范围缺失，不能生成项目总决策')
+    # ==========================================
+    # TODO 2：采用完整训练范围作为项目总决策
+    # project_decision = ???  # str；取完整训练范围的决策，不采用报告顶层值
+    # ==========================================
+    raise NotImplementedError('TODO 2：请确定项目总决策')
+    return {'decision': project_decision, 'scopes': scope_summary}
 
 ```
 
-### 测试
+## 测试
 
 
 ```python
-def test_evidence_scope_exercise():
-    try:
-        valid = validate_evidence_scopes(REPORT, EXPECTED_SCOPE_CONFIG)
-        assert valid['valid'] is True and valid['issues'] == []
-        mixed = deepcopy(REPORT)
-        mixed['decision_scopes']['activation_memory_mechanism']['optimizer'] = 'AdamW'
-        assert validate_evidence_scopes(mixed, EXPECTED_SCOPE_CONFIG)['valid'] is False
-        missing = deepcopy(REPORT)
-        del missing['decision_scopes']['activation_memory_mechanism']
-        missing_check = validate_evidence_scopes(missing, EXPECTED_SCOPE_CONFIG)
-        assert missing_check['valid'] is False and 'activation_memory_mechanism:missing' in missing_check['issues']
-        wrong_length = deepcopy(REPORT)
-        wrong_length['decision_scopes']['activation_memory_mechanism']['seq_len'] = 1536
-        assert validate_evidence_scopes(wrong_length, EXPECTED_SCOPE_CONFIG)['valid'] is False
-        scopes = summarize_scope_decisions(REPORT)
-        assert scopes['activation_memory_mechanism']['decision'] == 'accept_for_activation_memory_scope'
-        assert scopes['activation_memory_mechanism']['evidence_status'] == 'blocked'
-        assert '未测得 OOM 边界' in scopes['activation_memory_mechanism']['limitations'][1]
-        scopes['activation_memory_mechanism']['limitations'].append('测试用本地修改')
-        assert '测试用本地修改' not in REPORT['decision_scopes']['activation_memory_mechanism']['limitations']
-        scopes = summarize_scope_decisions(REPORT)
-        result = build_project_decision(REPORT, scopes)
-        assert result['decision'] == 'tune'
-        assert result['scopes'] == scopes
-        contradictory = deepcopy(REPORT)
-        contradictory['decision'] = 'accept'
-        assert build_project_decision(contradictory, scopes)['decision'] == 'tune'
-        missing_full_training = {key: value for key, value in scopes.items() if key != 'full_training_adoption'}
-        try:
-            build_project_decision(REPORT, missing_full_training)
-        except ValueError:
-            pass
-        else:
-            raise AssertionError('缺少完整训练范围时必须拒绝生成总决策')
-        print('✅ 证据范围隔离与总决策测试通过。')
-    except NotImplementedError:
-        print('请先完成 TODO 代码！')
-        raise
-    except AssertionError as exc:
-        raise NotImplementedError('请先完成 TODO 代码！') from exc
+def test_evidence_scope_config_gate():
+    """正确配置通过，缺少范围或字段错配时拒绝使用证据。"""
+    valid = validate_evidence_scopes(REPORT, EXPECTED_SCOPE_CONFIG)
+    assert valid == {'valid': True, 'issues': []}
+    mixed = deepcopy(REPORT)
+    mixed['decision_scopes']['activation_memory_mechanism']['optimizer'] = 'AdamW'
+    assert not validate_evidence_scopes(mixed, EXPECTED_SCOPE_CONFIG)['valid']
+    missing = deepcopy(REPORT)
+    del missing['decision_scopes']['activation_memory_mechanism']
+    result = validate_evidence_scopes(missing, EXPECTED_SCOPE_CONFIG)
+    assert 'activation_memory_mechanism:missing' in result['issues']
+    wrong_length = deepcopy(REPORT)
+    wrong_length['decision_scopes']['activation_memory_mechanism']['seq_len'] = 1536
+    assert not validate_evidence_scopes(wrong_length, EXPECTED_SCOPE_CONFIG)['valid']
 
-test_evidence_scope_exercise()
+def test_scope_summary_preserves_status_and_copies_limits():
+    """摘要保留专项状态与限制，且修改摘要不影响原报告。"""
+    scopes = summarize_scope_decisions(REPORT)
+    activation = scopes['activation_memory_mechanism']
+    assert activation['decision'] == 'accept_for_activation_memory_scope'
+    assert activation['evidence_status'] == 'blocked'
+    assert '未测得 OOM 边界' in activation['limitations'][1]
+    activation['limitations'].append('测试用本地修改')
+    assert '测试用本地修改' not in REPORT['decision_scopes']['activation_memory_mechanism']['limitations']
+
+def test_project_decision_uses_full_training_scope():
+    """总决策服从完整训练范围，专项结论不能覆盖它。"""
+    scopes = summarize_scope_decisions(REPORT)
+    result = build_project_decision(REPORT, scopes)
+    assert result['decision'] == 'tune'
+    assert result['scopes'] == scopes
+    contradictory = deepcopy(REPORT)
+    contradictory['decision'] = 'accept'
+    assert build_project_decision(contradictory, scopes)['decision'] == 'tune'
+    missing_scope = {key: value for key, value in scopes.items() if key != 'full_training_adoption'}
+    try:
+        build_project_decision(REPORT, missing_scope)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError('缺少完整训练范围时必须拒绝生成项目总决策')
+
+test_evidence_scope_config_gate()
+test_scope_summary_preserves_status_and_copies_limits()
+test_project_decision_uses_full_training_scope()
+print('证据范围配置、专项状态保留与项目总决策测试通过。')
 
 ```
 
@@ -194,6 +231,7 @@ EXPECTED_SCOPE_CONFIG = {
 }
 
 def validate_evidence_scopes(report, expected_config):
+    """核对各证据范围的配置是否符合预期。"""
     issues = []
     scopes = report.get('decision_scopes', {})
     for scope_name, expected in expected_config.items():
@@ -202,11 +240,14 @@ def validate_evidence_scopes(report, expected_config):
             issues.append(f'{scope_name}:missing')
             continue
         for key, expected_value in expected.items():
-            if actual.get(key) != expected_value:
+            # TODO 1：核对证据范围配置
+            field_matches = actual.get(key) == expected_value
+            if not field_matches:
                 issues.append(f'{scope_name}:{key}_mismatch')
     return {'valid': not issues, 'issues': issues}
 
 def summarize_scope_decisions(report):
+    """保留各范围的结论、证据状态和限制，不提升专项结论。"""
     summary = {}
     for scope_name, scope in report.get('decision_scopes', {}).items():
         summary[scope_name] = {
@@ -217,35 +258,29 @@ def summarize_scope_decisions(report):
     return summary
 
 def build_project_decision(report, scope_summary):
+    """以完整训练范围形成项目总决策，并附带专项结论。"""
     full_training = scope_summary.get('full_training_adoption')
     if not isinstance(full_training, dict) or not full_training.get('decision'):
         raise ValueError('完整训练范围缺失，不能生成项目总决策')
-    return {'decision': full_training['decision'], 'scopes': scope_summary}
+    # TODO 2：采用完整训练范围作为项目总决策
+    project_decision = full_training['decision']
+    return {'decision': project_decision, 'scopes': scope_summary}
 
 ```
 
 ### 解析
 
-题目用缩小后的报告字段练习三项判断：配置是否仍属于声明的证据范围、专项结论是否保留原有状态和限制、项目总决策是否仍由完整训练范围控制。示例数据仅用于 CPU 逻辑测试，不是新增测量结果。
+#### TODO 1：逐项比较实验配置
 
-**1. 核对证据范围**
+- 对每个预期字段比较实际值；缺少整个实验组由骨架单独记录，长度或优化器不同则保留具体字段名。
+- 配置通过只说明示例字段一致，原始性能测量仍需单独复核。测试覆盖正常、长度不同与整组缺失。
 
-- 完整训练与激活显存专项采用不同优化器和序列长度，配置不匹配时不能沿用该范围的结论。
-- 测试覆盖合法报告和跨范围配置错配。
+#### TODO 2：沿用完整训练组的结论
 
-**2. 分别保留范围结论**
+- 总决策取自`full_training_adoption`，不取报告顶层可能残留的旧值。测试用冲突值检查是否选对来源，缺少完整训练组时应报错。
+- 已提供的摘要函数另外保留激活实验的范围内结论、停止状态与限制，并复制列表。这样后续修改摘要不会改写输入，也不会把局部通过当成完整训练通过。
 
-- 激活显存专项通过只说明已测范围内的结果；`blocked` 状态和未测 OOM 边界仍需保留。Profiler 归因只解释变化来源。
-- 测试确认专项结论不会覆盖完整训练结论，限制字段也不会丢失。
-
-**3. 形成项目总决策**
-
-- 本项目的总决策依据完整训练范围；专项结果作为范围内结论附带，不把 `accept_for_activation_memory_scope` 改写成全局 `accept`。
-- 测试确认示例总决策仍为 `tune`，且各证据状态原样输出。
-
-Profiler 的热点信息用于解释，完整训练数据用于采用判断，两类证据不可互换。
-
-### Step 5（项目实验）：核对性能证据并生成交接结果
+## Step 5：复核训练结果与性能剖析
 
 本实验核对两组结论：完整训练配置能否采用 checkpoint，以及 checkpoint 在激活显存占主导时是否有效。两组实验的优化器和序列长度不同，因此分别判断。
 
@@ -254,9 +289,9 @@ Profiler 的热点信息用于解释，完整训练数据用于采用判断，�
 | 完整训练 | 0.5B、FP32、AdamW、`seq_len=768` | `accept / tune / reject` |
 | 激活显存 | 0.5B、FP32、无动量 SGD、长度阶梯 | `accept_for_activation_memory_scope / tune` |
 
-#### 5.1 本次运行配置
+### 5.1 本次运行配置
 
-运行环境：`PERF-CUDA-MECHANISM`，单卡显存至少 8 GiB；环境创建与验证见[性能分析 Quickstart](../topic_discussion/performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart)。
+运行环境：`PERF-CUDA-MECHANISM`，单卡显存至少 8 GiB；环境创建与验证见[性能机制GPU环境](../topic_discussion/performance_optimization/gpu_quickstart.md#perf-cuda-mechanism-quickstart)。
 
 只需填写 `RUN_LABEL` 和 `RUN_STAGE`。模型、工作负载、门槛、上游路径及证据哈希从 5.2 的固定清单读取。
 
@@ -271,11 +306,11 @@ Profiler 的热点信息用于解释，完整训练数据用于采用判断，�
 ```python
 # ===== 学习者配置：本单元只声明本次运行意图 =====
 RUN_LABEL = 'replace_with_unique_label'  # 默认占位符；写入正式结果前改为本次唯一标签。
-RUN_STAGE = 'prepare'  # 默认 prepare 只读检查；profile=重采 trace；phase=重新测量；close=只读收口。
+RUN_STAGE = 'prepare'  # 默认 prepare 只读检查；profile=重采 trace；phase=重新测量；close=读取结果并保存复核报告。
 
 ```
 
-#### 5.2 固定实验配置与输入预检
+### 5.2 固定实验配置与输入预检
 
 本单元核对项目路径、固定证据清单、上游文件哈希和结果目录。`profile`、`phase` 还会检查训练依赖；`prepare`、`close` 不要求加载模型。
 
@@ -407,16 +442,16 @@ else:
 
 ```
 
-#### 5.3 输入合同与证据路径
+### 5.3 核对输入记录与来源路径
 
-从固定清单读取 73、76 的训练结果、预算摘要以及跟踪和阶段显存文件，核对模型、精度、批大小、随机种子和硬件。优化器与序列长度的差异作为两组实验的身份信息保留。
+从固定清单读取训练基线、策略比较、预算筛选和剖析文件。核对模型、精度、批量、随机种子与硬件；优化器和序列长度作为区分两组实验的条件保留。
 
-| 证据 | 用途 |
+| 来源 | 阅读用途 |
 | --- | --- |
-| 73/76 | 完整训练基线、策略候选与预算筛选；固定历史清单中的旧预算结果继续用于复现 |
-| 配对跟踪 | 定位算子耗时与重算开销 |
-| 阶段显存 | 比较前向、反向和优化器阶段峰值 |
-| 76 长度阶梯 | 判断激活显存范围内的收益 |
+| 73／76与历史预算摘要 | 比较完整训练更新、候选策略与资源条件 |
+| 成对执行轨迹 | 检查算子活动与重算开销 |
+| 阶段显存 | 比较前向、反向和更新阶段的峰值 |
+| 76长度对照 | 检查已测长度下的激活显存收益 |
 
 
 ```python
@@ -537,7 +572,7 @@ missing_candidates = [name for name in PROFILE_STRATEGIES if name not in strateg
 if missing_candidates:
     raise ValueError(f'76 节缺少配对候选：{missing_candidates}')
 if SCHEMA_VERSION != 'profiling-optimization-benchmark/v1':
-    raise ValueError('收口结果必须使用 profiling-optimization-benchmark/v1。')
+    raise ValueError('复核报告必须使用 profiling-optimization-benchmark/v1。')
 PROFILE_IDENTITY = {
     'model_id': PROFILE_MODEL_ID, 'batch_size': PROFILE_BATCH_SIZE,
     'seq_len': PROFILE_SEQ_LEN, 'strategies': list(PROFILE_STRATEGIES),
@@ -568,7 +603,7 @@ print(PROFILE_IDENTITY)
 
 ```
 
-#### 5.4 采集专项证据
+### 5.4 采集专项证据
 
 `profile` 采集配对跟踪，`phase` 采集阶段显存；`prepare` 和 `close` 跳过 GPU。完整训练的采用门槛仍使用无分析器的重复测量，跟踪和阶段数据只用于解释瓶颈。
 
@@ -737,7 +772,7 @@ if RUN_PHASE_MEMORY:
     source_candidates = {item.get('name'): item for item in strategy_result.get('candidates', [])}
     projected_peak_reserved_mb = source_candidates.get('baseline', {}).get('peak_reserved_mb')
     if not isinstance(projected_peak_reserved_mb, (int, float)) or projected_peak_reserved_mb <= 0:
-        raise ValueError('76 节缺少 baseline.peak_reserved_mb，无法执行显存安全准入。')
+        raise ValueError('76 节缺少 baseline.peak_reserved_mb，无法检查运行前的显存余量。')
     free_bytes, total_bytes = torch.cuda.mem_get_info(0)
     free_memory_mb = free_bytes / 1024**2
     total_memory_mb = total_bytes / 1024**2
@@ -839,7 +874,7 @@ if RUN_PHASE_MEMORY:
 
 ```
 
-#### 5.5 核对证据
+### 5.5 核对证据
 
 本单元读取并核对两组实验。`prepare` 展示证据计划；`profile`、`phase` 检查本次新增文件；`close` 使用固定清单中的完整证据。完整训练和激活显存分别计算，不互相替代。
 
@@ -1220,7 +1255,7 @@ elif RUN_STAGE in {'phase', 'close'}:
 
 if close_report_path.is_file():
     close_report = json.loads(close_report_path.read_text(encoding='utf-8'))
-    print('\n项目收口（采用门控来自上游无 profiler 重复测量）')
+    print('\n训练策略复核（采用条件依据未开启分析器的重复测量）')
     print(json.dumps({
         'top_level_decision': close_report.get('decision', {}),
         'decision_scopes': close_report.get('decision_scopes', {}),
@@ -1228,10 +1263,9 @@ if close_report_path.is_file():
 
 ```
 
-#### 5.6 形成决策与交接结果
+### 5.6 形成决策与交接结果
 
-`close` 在 5.5 核对通过后生成专项报告和交接文件。相同标签和相同证据可重复运行；同一路径已有不同内容时停止。
-登记回执核对标签、决策、报告与交接文件，并逐项检查来源文件存在且 SHA256 匹配。
+`close` 在 5.5 核对通过后生成专项报告和交接文件；相同证据可复用，证据冲突时停止。
 
 | 输出字段 | 适用范围 |
 | --- | --- |
@@ -1242,12 +1276,14 @@ if close_report_path.is_file():
 
 | 字段 | 登记内容 |
 | --- | --- |
-| 项目与标签 | 74 节 profiling 收口；`rtx5070ti_profiling_dual_scope_v7` |
-| 运行条件 | RTX 5070 Ti Laptop GPU；完整训练范围与 Activation 专项范围分开判断 |
+| 项目与标签 | 74节训练策略复核；`rtx5070ti_profiling_dual_scope_v7` |
+| 运行条件 | RTX 5070 Ti Laptop GPU；AdamW完整更新与无动量SGD激活实验分别判断 |
 | 原始证据 | [Profiler 摘要](../../benchmarks/results/74_real_gpu_profile_rtx5070ti_profiling_closure_v4.json)、[Activation 专项](../../benchmarks/results/74_phase_memory_rtx5070ti_profiling_closure_v5.json) |
-| 正式证据 | [收口报告](../../benchmarks/results/74_profiling_optimization_rtx5070ti_profiling_dual_scope_v7.json) |
+| 正式证据 | [策略复核报告](../../benchmarks/results/74_profiling_optimization_rtx5070ti_profiling_dual_scope_v7.json) |
+| 完整训练比较 | checkpoint节省16.43 MiB，低于512 MiB要求；吞吐为基线的0.847209 |
+| 激活显存比较 | 长度1280下节省2820.34 MiB，吞吐为基线的0.831477，损失差为0 |
 | 清单与交接 | [性能交接](../../benchmarks/results/74_profile/performance_handoff_rtx5070ti_profiling_dual_scope_v7.json) |
-| 结论 | 顶层 `tune`；`seq_len=1280` 的 activation 对照通过，但更长长度因安全准入未执行、未测出 OOM 边界；不可提升为完整训练采用结论 |
+| 结论 | 顶层 `tune`；`seq_len=1280` 的 activation 对照通过，但更长长度因显存余量不足而停止，实际显存不足点仍未知；完整训练结论继续为`tune` |
 
 ```python
 # 只根据 5.5 已读取并校验的证据形成决策；本单元不加载模型。
@@ -1329,10 +1365,10 @@ else:
 
 ```
 
----
 ## 相关阅读
 
-- [PyTorch Profiler 官方文档](https://pytorch.org/docs/stable/profiler.html)
-- [Perfetto 官方文档](https://perfetto.dev/docs/)
-- [Nsight Systems 官方文档](https://docs.nvidia.com/nsight-systems/)
-- [13. Profiling and Bottleneck Analysis | 性能分析与瓶颈定位](../01_Hardware_Math_and_Systems/13_Profiling_and_Bottleneck_Analysis.md)
+需要解释某一种观察时，选择对应机制；后续综合项目可按自己的任务选用已核对的结果，不以本节结论作为统一前置。
+
+- [PERF-TRACE. 执行轨迹依赖与关键路径](./PERF-TRACE_Trace_Dependencies_and_Critical_Path.md)：检查高耗时活动是否影响最终完成。
+- [PERF-MEMORY-TIMELINE. 显存驻留与峰值重叠](./PERF-MEMORY-TIMELINE_Memory_Residency_and_Peak_Overlap.md)：解释哪些对象在峰值时刻同时存活。
+- [76. 激活重算、卸载与预算比较](./76_Activation_Checkpoint_Offload_Benchmark.md)：回到具体策略的容量与时间对照。

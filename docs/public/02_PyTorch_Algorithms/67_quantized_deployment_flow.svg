@@ -1,52 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1240" height="600" viewBox="0 0 1240 600" role="img" aria-labelledby="title desc">
-  <title id="title">量化推理部署的统一对照与决策</title>
-  <desc id="desc">先固定模型、workload 和运行环境，在 CPU 项目模型中检查配对契约、指标账本与状态机，再比较浮点 baseline 和量化 candidate，最后依据质量、执行路径和资源证据形成部署判断。</desc>
-  <defs>
-    <style>
-      .title{font:700 28px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324d}.sub{font:15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#526b7d}.group{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#35526b}.h{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324d}.t{font:14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#526b7d}.frame{fill:#fff;stroke:#c7d9e7;stroke-width:1.5}.blue{fill:#e8f3fb;stroke:#3978a8;stroke-width:2}.purple{fill:#f1eafa;stroke:#8b6bb1;stroke-width:2}.green{fill:#eaf7ef;stroke:#4c9870;stroke-width:2}.orange{fill:#fff1df;stroke:#c78335;stroke-width:2}.flow{stroke:#3978a8;stroke-width:3;fill:none;marker-end:url(#arrow)}.optional{stroke:#8b6bb1;stroke-width:2.5;stroke-dasharray:8 6;fill:none;marker-end:url(#purpleArrow)}
-    </style>
-    <marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#3978a8"/></marker>
-    <marker id="purpleArrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7Z" fill="#8b6bb1"/></marker>
-  </defs>
-  <rect width="1240" height="600" rx="24" fill="#f8fbfd"/>
-  <text x="620" y="48" text-anchor="middle" class="title">量化部署：从统一对照到可复核的部署判断</text>
-  <text x="620" y="76" text-anchor="middle" class="sub">比较对象必须共享模型、workload 与运行环境，才能解释性能与质量的变化</text>
-
-  <rect x="370" y="110" width="500" height="68" rx="18" class="blue"/>
-  <text x="620" y="139" text-anchor="middle" class="h">统一比较条件</text>
-  <text x="620" y="162" text-anchor="middle" class="t">模型与分词器版本 · workload · backend · hardware · 缓存策略</text>
-
-  <rect x="45" y="245" width="250" height="128" rx="18" class="frame"/>
-  <text x="68" y="276" class="group">CPU 项目模型</text>
-  <rect x="68" y="300" width="204" height="48" rx="12" class="blue"/>
-  <text x="170" y="331" text-anchor="middle" class="h">配对契约 · 指标账本 · 状态机</text>
-
-  <rect x="345" y="245" width="250" height="128" rx="18" class="frame"/>
-  <text x="368" y="276" class="group">浮点 baseline</text>
-  <rect x="368" y="300" width="204" height="48" rx="12" class="green"/>
-  <text x="470" y="331" text-anchor="middle" class="h">延迟、吞吐、显存与质量</text>
-
-  <rect x="645" y="245" width="250" height="128" rx="18" class="frame"/>
-  <text x="668" y="276" class="group">量化 candidate</text>
-  <rect x="668" y="300" width="204" height="48" rx="12" class="orange"/>
-  <text x="770" y="331" text-anchor="middle" class="h">同一 workload 下的对照</text>
-
-  <rect x="945" y="245" width="250" height="128" rx="18" class="frame"/>
-  <text x="968" y="276" class="group">执行路径证据</text>
-  <rect x="968" y="300" width="204" height="48" rx="12" class="blue"/>
-  <text x="1070" y="331" text-anchor="middle" class="h">启动参数 · backend 日志 · fallback</text>
-
-  <path d="M620 178V205H170V245" class="flow"/>
-  <path d="M620 178V205H470V245" class="flow"/>
-  <path d="M620 178V205H770V245" class="flow"/>
-  <path d="M620 178V205H1070V245" class="flow"/>
-
-  <rect x="260" y="455" width="720" height="86" rx="18" class="green"/>
-  <text x="620" y="487" text-anchor="middle" class="h">统一结果表与部署判断</text>
-  <text x="620" y="513" text-anchor="middle" class="t">性能与显存 · 任务质量与兼容性 · artifact 与 evidence level</text>
-  <text x="620" y="533" text-anchor="middle" class="t">accept · tune · reject</text>
-  <path d="M170 373V415H440V455" class="flow"/>
-  <path d="M470 373V455" class="flow"/>
-  <path d="M770 373V455" class="flow"/>
-  <path d="M1070 373V415H800V455" class="flow"/>
+<title id="title">固定请求比较同源浮点与量化部署</title><desc id="desc">同一模型与请求分别在浮点和量化路径运行，合并请求结果、实际路径与上游质量记录，再按给定条件形成部署判断。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#52657a"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:15px;font-weight:400;fill:#334e68}.title{font-size:25px;font-weight:700;fill:#18324b}.h{font-size:18px;font-weight:600;fill:#18324b}.s{font-size:14px}.e{stroke:#52657a;stroke-width:2.5;fill:none;marker-end:url(#a)}.d{stroke:#7657a5;stroke-width:2;fill:none;stroke-dasharray:7 5;marker-end:url(#a)}</style></defs><rect width="1240" height="600" fill="#f8fafc"/><text x="620" y="43" text-anchor="middle" class="title">固定请求比较同源浮点与量化部署</text>
+<rect x="370" y="100" width="500" height="85" rx="13" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="620" y="132" text-anchor="middle" class="h">同一模型与请求条件</text><text x="620" y="159" text-anchor="middle">版本、分词、并发、生成规则、后端与硬件</text>
+<rect x="80" y="275" width="270" height="90" rx="13" fill="#e8f6f1" stroke="#3f8b72" stroke-width="2"/><text x="215" y="307" text-anchor="middle" class="h">浮点基线</text><text x="215" y="334" text-anchor="middle">每轮保存请求与运行记录</text>
+<rect x="485" y="275" width="270" height="90" rx="13" fill="#fff3df" stroke="#b7791f" stroke-width="2"/><text x="620" y="307" text-anchor="middle" class="h">量化候选</text><text x="620" y="334" text-anchor="middle">同源产物，相同请求</text>
+<rect x="890" y="275" width="270" height="90" rx="13" fill="#f1edfb" stroke="#7657a5" stroke-width="2"/><text x="1025" y="307" text-anchor="middle" class="h">实际执行核对</text><text x="1025" y="334" text-anchor="middle">量化路径与回退情况</text>
+<path d="M450 185V225H215V275" class="e"/>
+<path d="M620 185V275" class="e"/>
+<path d="M755 320H890" class="e"/>
+<rect x="80" y="465" width="270" height="90" rx="13" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="215" y="497" text-anchor="middle" class="h">来源质量记录</text><text x="215" y="524" text-anchor="middle">已有候选选择评测</text>
+<rect x="485" y="465" width="675" height="90" rx="13" fill="#f1edfb" stroke="#7657a5" stroke-width="2"/><text x="822.5" y="497" text-anchor="middle" class="h">配对指标与部署判断</text><text x="822.5" y="524" text-anchor="middle">先核对来源、执行与质量，再检查资源容许条件</text>
+<path d="M215 365V420H550V465" class="e"/>
+<path d="M620 365V465" class="e"/>
+<path d="M1025 365V465" class="e"/>
+<path d="M350 510H485" class="e"/>
+<text x="620" y="587" text-anchor="middle" class="s">运行先后多轮交换；是否加速由相对基线的实际变化判断</text>
 </svg>

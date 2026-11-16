@@ -1,29 +1,36 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1440" height="560" viewBox="0 0 1440 560" role="img" aria-labelledby="title desc">
-  <title id="title">延迟奖励在词元轨迹中的分配</title>
-  <desc id="desc">任务奖励通常在轨迹终点出现，采样对数概率比约束位于有效动作位置；折扣回报从终点向前累计，PPO 再与每个状态的价值估计比较。</desc>
-  <defs>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker>
-    <style>.title{font-family:"Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#0F172A}.subtitle{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;fill:#475569}.head{font-family:"Noto Sans CJK SC",sans-serif;font-size:17px;font-weight:700;fill:#172033}.copy{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;fill:#334155}.line{fill:none;stroke:#475569;stroke-width:2.3;marker-end:url(#arrow)}.drop{fill:none;stroke:#7C3AED;stroke-width:2.3;stroke-dasharray:7 5}</style>
-  </defs>
-  <rect width="1440" height="560" fill="#F8FAFC"/><rect x="28" y="24" width="1384" height="512" rx="26" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
-  <text x="62" y="70" class="title">延迟奖励怎样进入词元级更新</text>
-  <text x="62" y="102" class="subtitle">终局反馈与有效动作位置的采样对数概率比约束组成奖励序列，再从后向前计算回报。</text>
-  <text x="70" y="180" class="head">动作轨迹</text>
-  <rect x="202" y="142" width="160" height="72" rx="14" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/><text x="274" y="185" class="head">动作 a₀</text>
-  <rect x="420" y="142" width="160" height="72" rx="14" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/><text x="492" y="185" class="head">动作 a₁</text>
-  <rect x="638" y="142" width="160" height="72" rx="14" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/><text x="710" y="185" class="head">动作 a₂</text>
-  <rect x="856" y="142" width="160" height="72" rx="14" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/><text x="928" y="185" class="head">动作 a₃</text>
-  <rect x="1074" y="142" width="250" height="72" rx="14" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/><text x="1096" y="174" class="head">终止状态</text><text x="1096" y="199" class="copy">任务奖励在此确定</text>
-  <path d="M362 178H412" class="line"/><path d="M580 178H630" class="line"/><path d="M798 178H848" class="line"/><path d="M1016 178H1066" class="line"/>
-
-  <text x="70" y="316" class="head">奖励序列</text>
-  <path d="M282 224V304" class="drop"/><path d="M500 224V304" class="drop"/><path d="M718 224V304" class="drop"/><path d="M936 224V304" class="drop"/><path d="M1199 224V304" class="drop"/>
-  <text x="232" y="334" class="copy">−βΔlogp₀</text><text x="450" y="334" class="copy">−βΔlogp₁</text><text x="668" y="334" class="copy">−βΔlogp₂</text><text x="886" y="334" class="copy">−βΔlogp₃</text><text x="1076" y="334" class="copy">任务奖励 − βΔlogp</text>
-
-  <rect x="202" y="402" width="1122" height="82" rx="15" fill="#FFF7ED" stroke="#D97706" stroke-width="2"/>
-  <text x="226" y="432" class="head">从终点向前递推折扣回报</text>
-  <text x="226" y="456" class="copy">PPO：逐位置回报减状态价值；GRPO：同提示候选奖励减组内基线。</text>
-  <text x="226" y="478" class="copy">两条分支共享任务反馈，但优势的比较单位不同。</text>
-  <path d="M1199 344V374H1240V394" class="line"/>
-  <path d="M1070 443H290" fill="none" stroke="#D97706" stroke-width="2.3" marker-end="url(#arrow)"/>
+<title id="title">终局反馈放在最后动作，回报逐位置向前累计</title><desc id="desc">三个有效动作的奖励为0、0、1，折扣为0.5且参考约束系数为0，回报分别为0.25、0.5和1。</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC",sans-serif;fill:#172033}.title{font-size:28px;font-weight:700}.subtitle{font-size:16px;fill:#475569}.head{font-size:18px;font-weight:700}.copy{font-size:15px;fill:#334155}.edge{fill:none;stroke:#475569;stroke-width:2.8;marker-end:url(#arrow)}</style></defs>
+<rect width="1440" height="560" fill="#F8FAFC"/><rect x="28" y="24" width="1384" height="512" rx="26" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2" data-layout-role="panel"/>
+<text x="62" y="70" class="title">终局反馈放在最后动作，回报逐位置向前累计</text><text x="62" y="104" class="subtitle">手算例子：γ = 0.5，β = 0。箭头向左表示下一位置回报参与当前回报的递推。</text>
+<text x="70" y="193" class="head">生成动作</text><text x="70" y="307" class="head">该位置奖励</text><text x="70" y="435" class="head">累计回报</text>
+<rect id="action0" x="300" y="147" width="250" height="84" rx="14" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/>
+<text x="425" y="179" text-anchor="middle" class="head">动作 a₀</text>
+<rect id="reward0" x="300" y="265" width="250" height="84" rx="14" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
+<text x="425" y="297" text-anchor="middle" class="head">r₀ = 0</text>
+<rect id="return0" x="300" y="397" width="250" height="86" rx="14" fill="#FFF7ED" stroke="#D97706" stroke-width="2"/>
+<text x="425" y="429" text-anchor="middle" class="head">G₀ = 0.25</text><text x="425" y="455" text-anchor="middle" class="copy">0 + 0.5 × G₁</text>
+<path d="M425 231 V265" class="edge" data-source="action0" data-target="reward0"/>
+<path d="M425 349 V397" class="edge" data-source="reward0" data-target="return0"/>
+<rect id="action1" x="670" y="147" width="250" height="84" rx="14" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/>
+<text x="795" y="179" text-anchor="middle" class="head">动作 a₁</text>
+<rect id="reward1" x="670" y="265" width="250" height="84" rx="14" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
+<text x="795" y="297" text-anchor="middle" class="head">r₁ = 0</text>
+<rect id="return1" x="670" y="397" width="250" height="86" rx="14" fill="#FFF7ED" stroke="#D97706" stroke-width="2"/>
+<text x="795" y="429" text-anchor="middle" class="head">G₁ = 0.5</text><text x="795" y="455" text-anchor="middle" class="copy">0 + 0.5 × G₂</text>
+<path d="M795 231 V265" class="edge" data-source="action1" data-target="reward1"/>
+<path d="M795 349 V397" class="edge" data-source="reward1" data-target="return1"/>
+<rect id="action2" x="1040" y="147" width="250" height="84" rx="14" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+<text x="1165" y="179" text-anchor="middle" class="head">最后动作 a₂</text>
+<rect id="reward2" x="1040" y="265" width="250" height="84" rx="14" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+<text x="1165" y="297" text-anchor="middle" class="head">r₂ = 1</text>
+<rect id="return2" x="1040" y="397" width="250" height="86" rx="14" fill="#FFF7ED" stroke="#D97706" stroke-width="2"/>
+<text x="1165" y="429" text-anchor="middle" class="head">G₂ = 1</text><text x="1165" y="455" text-anchor="middle" class="copy">1 + 0.5 × 0</text>
+<path d="M1165 231 V265" class="edge" data-source="action2" data-target="reward2"/>
+<path d="M1165 349 V397" class="edge" data-source="reward2" data-target="return2"/>
+<path d="M550 183 H670" class="edge" data-source="action0" data-target="action1"/>
+<path d="M920 183 H1040" class="edge" data-source="action1" data-target="action2"/>
+<path d="M1040 440 H920" class="edge" data-source="return2" data-target="return1"/>
+<path d="M670 440 H550" class="edge" data-source="return1" data-target="return0"/>
 </svg>
