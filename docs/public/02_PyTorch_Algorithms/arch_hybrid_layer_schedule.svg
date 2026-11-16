@@ -1,8 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="470" viewBox="0 0 1120 470">
-  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#475569"/></marker></defs>
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="470" viewBox="0 0 1120 470" role="img" aria-labelledby="title desc">
+<title id="title">注意力与递推层的排列</title><desc id="desc">展示本节保存对象、配置或层间数据的关系，实际任务表现另行测试。</desc>
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L8,4 L0,8 Z" fill="#475569"/></marker></defs>
   <rect width="1120" height="470" rx="24" fill="#f8fafc"/>
-  <text x="56" y="54" font-size="28" font-family="sans-serif" font-weight="700" fill="#0f172a">混合记忆：按层分配检索与递推职责</text>
-  <g font-family="sans-serif" text-anchor="middle">
+  <text x="56" y="54" font-size="28" font-family="Noto Sans CJK SC, Microsoft YaHei, sans-serif" font-weight="700" fill="#0f172a">混合记忆：按顺序排列注意力与递推层</text>
+  <g font-family="Noto Sans CJK SC, Microsoft YaHei, sans-serif" text-anchor="middle">
     <rect x="56" y="88" width="160" height="150" rx="16" fill="#dbeafe" stroke="#60a5fa"/><text x="136" y="145" font-size="19" font-weight="700" fill="#1e3a8a">注意力</text><text x="136" y="185" font-size="15" fill="#334155">显式历史读取</text>
     <rect x="270" y="88" width="160" height="150" rx="16" fill="#dcfce7" stroke="#4ade80"/><text x="350" y="145" font-size="19" font-weight="700" fill="#166534">SSM</text><text x="350" y="185" font-size="15" fill="#334155">递推状态更新</text>
     <rect x="484" y="88" width="160" height="150" rx="16" fill="#dcfce7" stroke="#4ade80"/><text x="564" y="145" font-size="19" font-weight="700" fill="#166534">SSM</text><text x="564" y="185" font-size="15" fill="#334155">递推状态更新</text>
@@ -10,8 +11,7 @@
     <rect x="912" y="88" width="152" height="150" rx="16" fill="#dcfce7" stroke="#4ade80"/><text x="988" y="145" font-size="19" font-weight="700" fill="#166534">SSM</text><text x="988" y="185" font-size="15" fill="#334155">继续递推</text>
   </g>
   <path d="M216 163 H270" stroke="#475569" stroke-width="3" marker-end="url(#a)"/><path d="M430 163 H484" stroke="#475569" stroke-width="3" marker-end="url(#a)"/><path d="M644 163 H698" stroke="#475569" stroke-width="3" marker-end="url(#a)"/><path d="M858 163 H912" stroke="#475569" stroke-width="3" marker-end="url(#a)"/>
-  <rect x="144" y="292" width="832" height="104" rx="18" fill="#ede9fe" stroke="#a78bfa"/>
-  <text x="560" y="330" text-anchor="middle" font-size="20" font-family="sans-serif" font-weight="700" fill="#5b21b6">共享隐藏状态 / 残差接口</text>
-  <text x="560" y="362" text-anchor="middle" font-size="16" font-family="sans-serif" fill="#334155">层类型可以变化，隐藏维度、数据类型与残差契约必须连续</text>
-  <path d="M136 238 V270 H560 V292" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#a)"/>
+  <rect x="144" y="292" width="832" height="104" data-layout-role="panel" rx="18" fill="#ede9fe" stroke="#a78bfa"/>
+  <text x="560" y="330" text-anchor="middle" font-size="20" font-family="Noto Sans CJK SC, Microsoft YaHei, sans-serif" font-weight="700" fill="#5b21b6">连线说明：层间传递当前隐藏状态</text>
+  <text x="560" y="362" text-anchor="middle" font-size="16" font-family="Noto Sans CJK SC, Microsoft YaHei, sans-serif" fill="#334155">相邻层的形状与数据类型要匹配，各层分别保存自己的KV或递推状态</text>
 </svg>
