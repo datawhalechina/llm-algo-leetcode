@@ -7,7 +7,10 @@ from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
 
-import sync_docs_navigation as sync
+if __package__:
+    from . import sync_docs_navigation as sync
+else:
+    import sync_docs_navigation as sync
 
 
 class FoundationNavigationTests(unittest.TestCase):
@@ -83,6 +86,20 @@ class ScopedTopicPruningTests(unittest.TestCase):
         self.run_sync()
         self.assertTrue(stale.exists())
         self.assertEqual((self.target / "intro.md").read_text(), "# Example\n")
+
+    def test_whole_topic_part_uses_same_conversion_without_pruning(self):
+        """Whole-topic navigation must preserve stale files and normalize result links."""
+        (self.source / "intro.md").write_text("[result](../../benchmarks/results/example.json)\n")
+        (self.root / "topic_discussion/intro.md").write_text("[example](./example/intro.md)\n")
+        stale = self.target / "old.md"
+        stale.write_text("keep")
+        with redirect_stdout(io.StringIO()):
+            sync.sync_navigation(selected_part="topic_discussion")
+        expected = sync.normalize_generated_markdown(sync.normalize_markdown_links(
+            (self.source / "intro.md").read_text()))
+        self.assertEqual((self.target / "intro.md").read_text(), expected)
+        self.assertEqual(stale.read_text(), "keep")
+        self.assertTrue((self.docs / "topic_discussion/intro.md").is_file())
 
     def test_prune_removes_only_selected_stale_markdown(self):
         """Remove deleted pages and empty folders, preserving assets and siblings."""

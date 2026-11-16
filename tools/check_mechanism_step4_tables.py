@@ -8,21 +8,24 @@ import json
 import re
 from pathlib import Path
 
+if __package__:
+    from .project_contracts import load_project_registry
+else:
+    from project_contracts import load_project_registry
+
 
 EXPECTED_HEADER = "| TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |"
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PART02_ROOT = REPO_ROOT / "02_PyTorch_Algorithms"
-PROJECT_REGISTRY = REPO_ROOT / "benchmarks/project_registry.json"
 TODO_RE = re.compile(r"\bTODO\s*(\d+)\b")
 TEST_FUNCTION_RE = re.compile(r"`?(?:test|_assert)_[A-Za-z0-9_]+`?")
 
 
-def registered_project_paths(registry_path: Path = PROJECT_REGISTRY) -> set[Path]:
+def registered_project_paths() -> set[Path]:
     """Return project notebook paths declared by the project registry."""
-    payload = json.loads(registry_path.read_text(encoding="utf-8"))
     return {
-        Path(item["notebook"]).resolve()
-        for item in payload.get("projects", [])
+        (REPO_ROOT / item["notebook"]).resolve()
+        for item in load_project_registry().values()
         if item.get("notebook")
     }
 
