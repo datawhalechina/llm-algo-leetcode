@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
   <title id="title">预填充到解码的状态交接依赖</title><desc id="desc">KV写入和元数据冻结后才能传输；接收端验证身份、版本和完整性，再登记地址与所有权，最后启动解码。失败状态进入等待、重算或回退。</desc>
-  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#486581"/></marker><style>.t{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#203040}.h{font-size:22px;font-weight:700}.b{font-size:15px}.s{font-size:12px;fill:#526777}.l{fill:none;stroke:#486581;stroke-width:2;marker-end:url(#a)}</style></defs>
+  <defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#486581"/></marker><style>.t{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-weight:400;fill:#203040}.h{font-size:22px;font-weight:700}.b{font-size:15px}.s{font-size:12px;fill:#526777}.l{fill:none;stroke:#486581;stroke-width:2;marker-end:url(#a)}</style></defs>
   <rect width="1200" height="520" fill="#f7f9fc"/><text x="600" y="42" text-anchor="middle" class="t h">预填充到解码的状态交接依赖</text>
   <g>
     <rect x="35" y="105" width="180" height="92" rx="12" fill="#e8f2ff" stroke="#5b8def" stroke-width="2"/><text x="125" y="136" text-anchor="middle" class="t b">预填充收尾</text><text x="125" y="160" text-anchor="middle" class="t s">完成 KV 写入</text><text x="125" y="179" text-anchor="middle" class="t s">冻结块表与位置</text>
@@ -15,5 +15,5 @@
   <rect x="185" y="398" width="210" height="64" rx="12" fill="#fff4db" stroke="#d99b2b" stroke-width="2"/><text x="290" y="425" text-anchor="middle" class="t b">期限内等待</text><text x="290" y="447" text-anchor="middle" class="t s">状态预计及时到达</text>
   <rect x="495" y="398" width="210" height="64" rx="12" fill="#f1eaff" stroke="#8c6bc7" stroke-width="2"/><text x="600" y="425" text-anchor="middle" class="t b">重新计算</text><text x="600" y="447" text-anchor="middle" class="t s">身份或版本不兼容</text>
   <rect x="805" y="398" width="210" height="64" rx="12" fill="#ffecef" stroke="#cc6677" stroke-width="2"/><text x="910" y="425" text-anchor="middle" class="t b">拒绝或回退</text><text x="910" y="447" text-anchor="middle" class="t s">预计就绪时间超过期限</text>
-  <path d="M515 334V365H290V398" class="l"/><path d="M575 334V398" class="l"/><path d="M635 334V365H910V398" class="l"/>
+  <path d="M515 334V365H290V398" class="l"/><path d="M600 334V398" class="l"/><path d="M635 334V365H910V398" class="l"/>
 </svg>
