@@ -1,15 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="560" viewBox="0 0 1280 560" role="img" aria-labelledby="title desc">
   <title id="title">Agent 轨迹中的动作级奖励归因</title>
-  <desc id="desc">模型动作进入奖励账本并形成即时奖励，环境观察只保留为证据；终局反馈通过折扣回报沿模型动作反向传播。</desc>
+  <desc id="desc">模型动作进入奖励账本并形成即时奖励，环境观察只保留为证据；动作奖励按时间顺序从后向前累计。</desc>
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto" markerUnits="userSpaceOnUse">
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="10" markerHeight="10" orient="auto" markerUnits="userSpaceOnUse">
       <path d="M0 0 L10 5 L0 10 Z" fill="#475569"/>
     </marker>
     <style>
-      .title{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#0f172a}
-      .label{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:19px;font-weight:700;fill:#111827}
-      .small{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:500;fill:#334155}
-      .formula{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:17px;font-weight:700;fill:#0f172a}
+      .title{font-family:"Noto Sans CJK SC","Inter",sans-serif;font-size:28px;font-weight:700;fill:#0f172a}
+      .label{font-family:"Noto Sans CJK SC","Inter",sans-serif;font-size:19px;font-weight:700;fill:#111827}
+      .small{font-family:"Noto Sans CJK SC","Inter",sans-serif;font-size:15px;font-weight:500;fill:#334155}
+      .formula{font-family:"Noto Sans CJK SC","Inter",sans-serif;font-size:17px;font-weight:700;fill:#0f172a}
       .box{stroke-width:3;rx:16;ry:16}
       .flow{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}
       .credit{stroke:#7c3aed;stroke-width:3;fill:none;marker-end:url(#arrow)}
@@ -17,7 +17,7 @@
     </style>
   </defs>
   <rect width="1280" height="560" fill="#f8fafc"/>
-  <text x="50" y="54" class="title">只把环境反馈归因给实际模型动作</text>
+  <text x="50" y="54" class="title">动作奖励计算回报，环境观察进入下一轮决策</text>
 
   <rect x="50" y="105" width="235" height="105" class="box" fill="#fdf2f8" stroke="#db2777"/>
   <text x="168" y="143" text-anchor="middle" class="label">模型动作 aₜ</text>
@@ -50,14 +50,12 @@
   <text x="498" y="379" text-anchor="middle" class="small">工具输出 · 错误 · 下一状态</text>
 
   <rect x="710" y="310" width="520" height="105" class="box" fill="#ffffff" stroke="#64748b"/>
-  <text x="970" y="347" text-anchor="middle" class="label">不直接进入策略回报</text>
-  <text x="970" y="378" text-anchor="middle" class="small">观察参与下一步决策，但不能冒充模型生成位置</text>
+  <text x="970" y="347" text-anchor="middle" class="label">作为下轮决策上下文</text>
+  <text x="970" y="378" text-anchor="middle" class="small">保留工具结果，用于选择下一个模型动作</text>
 
   <path d="M285 363H355" class="muted"/>
   <path d="M640 363H710" class="muted"/>
 
-  <path d="M1120 225V270H825V210" class="credit"/>
-  <text x="972" y="260" text-anchor="middle" class="small">按时间反向累计，只经过动作位置</text>
 
-  <text x="50" y="495" class="small">结果：奖励分量可复算，动作与观察不混写，终局反馈通过 Gₜ 回到先前模型动作。</text>
+  <text x="50" y="495" class="small">例：查询奖励 0.15，提交奖励 0.95；γ = 0.5 时，查询动作回报为 0.625。</text>
 </svg>
