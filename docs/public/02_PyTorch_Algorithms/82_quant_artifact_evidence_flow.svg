@@ -1,62 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1120" height="540" viewBox="0 0 1120 540" role="img" aria-labelledby="title desc">
-  <title id="title">量化候选包到部署证据的项目链</title>
-  <desc id="desc">候选包依次经过静态契约、候选质量和真实加载门禁，通过后进入部署对照与多工作负载评测。</desc>
-  <style>
-    text{font-family:"Noto Sans SC","Microsoft YaHei",Arial,sans-serif;fill:#172033}
-    .title{font-size:24px;font-weight:700}.sub{font-size:14px;fill:#536174}
-    .group-title{font-size:15px;font-weight:700}.label{font-size:16px;font-weight:700}
-    .body{font-size:13px;fill:#45556d}.tiny{font-size:12px;fill:#536174}
-    .box{stroke:#93a3b8;stroke-width:1.5;rx:14}.group{fill:#f7f9fc;stroke:#cbd5e1;stroke-width:1.5;rx:18}
-    .arrow{fill:none;stroke:#52657d;stroke-width:2.2;marker-end:url(#arrow)}
-  </style>
-  <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse">
-      <path d="M0,0 L10,5 L0,10 Z" fill="#52657d"/>
-    </marker>
-  </defs>
-  <rect width="1120" height="540" fill="#ffffff"/>
-  <text x="48" y="48" class="title">量化候选先通过产物门禁，再进入性能比较</text>
-  <text x="48" y="75" class="sub">文件存在、质量达标和后端可加载是三类不同证据。</text>
-
-  <rect x="48" y="132" width="218" height="276" class="group"/>
-  <text x="68" y="163" class="group-title">标准候选包</text>
-  <rect x="72" y="184" width="170" height="54" class="box" fill="#e8f0ff"/>
-  <text x="157" y="207" class="label" text-anchor="middle">稳定身份</text>
-  <text x="157" y="226" class="tiny" text-anchor="middle">artifact · model revision</text>
-  <rect x="72" y="252" width="170" height="54" class="box" fill="#fff3d9"/>
-  <text x="157" y="275" class="label" text-anchor="middle">量化与数据</text>
-  <text x="157" y="294" class="tiny" text-anchor="middle">格式 · 校准 · 独立评测</text>
-  <rect x="72" y="320" width="170" height="54" class="box" fill="#eaf8f1"/>
-  <text x="157" y="343" class="label" text-anchor="middle">文件清单</text>
-  <text x="157" y="362" class="tiny" text-anchor="middle">角色 · 大小 · SHA256</text>
-
-  <path d="M266 270 H322" class="arrow"/>
-
-  <rect x="332" y="108" width="342" height="324" class="group"/>
-  <text x="354" y="140" class="group-title">量化产物准入</text>
-  <rect x="364" y="164" width="278" height="62" class="box" fill="#e8f0ff"/>
-  <text x="503" y="190" class="label" text-anchor="middle">静态契约</text>
-  <text x="503" y="211" class="body" text-anchor="middle">身份、角色、文件与哈希一致</text>
-  <path d="M503 226 V250" class="arrow"/>
-  <rect x="364" y="260" width="278" height="62" class="box" fill="#fff3d9"/>
-  <text x="503" y="286" class="label" text-anchor="middle">候选质量</text>
-  <text x="503" y="307" class="body" text-anchor="middle">数据隔离、指标方向与阈值</text>
-  <path d="M503 322 V346" class="arrow"/>
-  <rect x="364" y="356" width="278" height="62" class="box" fill="#f3ebff"/>
-  <text x="503" y="382" class="label" text-anchor="middle">真实加载</text>
-  <text x="503" y="403" class="body" text-anchor="middle">vLLM 加载、往返生成与显存</text>
-
-  <path d="M674 270 H730" class="arrow"/>
-
-  <rect x="740" y="132" width="332" height="276" class="group"/>
-  <text x="762" y="163" class="group-title">通过门禁后的证据升级</text>
-  <rect x="770" y="190" width="272" height="70" class="box" fill="#eaf8f1"/>
-  <text x="906" y="217" class="label" text-anchor="middle">部署对照</text>
-  <text x="906" y="239" class="body" text-anchor="middle">浮点基线 ↔ 量化候选</text>
-  <path d="M906 260 V290" class="arrow"/>
-  <rect x="770" y="300" width="272" height="70" class="box" fill="#eef4fa"/>
-  <text x="906" y="327" class="label" text-anchor="middle">多工作负载评测</text>
-  <text x="906" y="349" class="body" text-anchor="middle">并发 · 上下文 · 批处理边界</text>
-
-  <text x="560" y="492" class="tiny" text-anchor="middle">门禁通过只表示候选可以进入部署实验，不代表已经获得吞吐收益或命中目标量化 Kernel。</text>
+<title id="title">先核对同一份产物，再验证目标后端加载</title><desc id="desc">候选包经过文件与配置、候选质量检查，再实际加载；通过后生成可用于部署比较的引用。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#52657a"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:15px;font-weight:400;fill:#334e68}.title{font-size:25px;font-weight:700;fill:#18324b}.h{font-size:18px;font-weight:600;fill:#18324b}.s{font-size:14px}.e{stroke:#52657a;stroke-width:2.5;fill:none;marker-end:url(#a)}.d{stroke:#7657a5;stroke-width:2;fill:none;stroke-dasharray:7 5;marker-end:url(#a)}</style></defs><rect width="1120" height="540" fill="#f8fafc"/><text x="560" y="43" text-anchor="middle" class="title">先核对同一份产物，再验证目标后端加载</text>
+<rect x="40" y="125" width="250" height="90" rx="13" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="165" y="157" text-anchor="middle" class="h">候选包</text><text x="165" y="184" text-anchor="middle">模型、量化配置与文件清单</text>
+<rect x="420" y="125" width="270" height="90" rx="13" fill="#e8f6f1" stroke="#3f8b72" stroke-width="2"/><text x="555" y="157" text-anchor="middle" class="h">文件与配置</text><text x="555" y="184" text-anchor="middle">角色、大小与内容摘要</text>
+<rect x="800" y="125" width="270" height="90" rx="13" fill="#fff3df" stroke="#b7791f" stroke-width="2"/><text x="935" y="157" text-anchor="middle" class="h">已有质量记录</text><text x="935" y="184" text-anchor="middle">划分、指标方向与门槛</text>
+<path d="M290 170H420" class="e"/>
+<path d="M690 170H800" class="e"/>
+<rect x="800" y="335" width="270" height="90" rx="13" fill="#f1edfb" stroke="#7657a5" stroke-width="2"/><text x="935" y="367" text-anchor="middle" class="h">真实加载</text><text x="935" y="394" text-anchor="middle">读取产物并往返生成</text>
+<rect x="420" y="335" width="270" height="90" rx="13" fill="#e8f6f1" stroke="#3f8b72" stroke-width="2"/><text x="555" y="367" text-anchor="middle" class="h">形成产物引用</text><text x="555" y="394" text-anchor="middle">各项检查均通过</text>
+<rect x="40" y="335" width="250" height="90" rx="13" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="165" y="367" text-anchor="middle" class="h">进入部署比较</text><text x="165" y="394" text-anchor="middle">浮点与量化的实际请求</text>
+<path d="M935 215V335" class="e"/>
+<path d="M800 380H690" class="e"/>
+<path d="M420 380H290" class="e"/>
+<text x="560" y="487" text-anchor="middle" class="s">文件完整、选择质量和加载成功分别记录；部署性能通过后续请求比较测量</text>
 </svg>
