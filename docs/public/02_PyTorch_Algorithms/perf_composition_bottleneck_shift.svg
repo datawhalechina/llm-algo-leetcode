@@ -1,45 +1,87 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
-  <title id="title">阶段缩短后，下一轮需要检查的对象怎样变化</title>
-  <desc id="desc">构造串行阶段对照，基线计算40搬运30等待20毫秒，总计90；A计算15搬运30等待20，总计65；A加B计算15搬运10等待20，总计45。最长阶段由计算到搬运再到等待，但这只是受控排查线索，不是GPU实测瓶颈证明。</desc>
-  <defs><style>
-    .title{font-family:"Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#0f172a}
-    .subtitle{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;fill:#475569}
-    .head{font-family:"Noto Sans CJK SC",sans-serif;font-size:17px;font-weight:700;fill:#172033}
-    .body{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;fill:#334155}
-    .compute{fill:#ddd6fe;stroke:#7c3aed;stroke-width:2}
-    .transfer{fill:#fde68a;stroke:#d97706;stroke-width:2}
-    .wait{fill:#fecaca;stroke:#dc2626;stroke-width:2}
-  </style></defs>
-  <rect width="1200" height="620" rx="24" fill="#f8fafc"/>
-  <text x="600" y="48" text-anchor="middle" class="title">阶段变短后，最长阶段可能改变</text>
-  <text x="600" y="78" text-anchor="middle" class="subtitle">构造的串行时间线，非 GPU 实测；三行使用同一比例，最长阶段仍需依赖与对照验证</text>
-  <text x="55" y="180" class="head">基线</text>
-  <g text-anchor="middle">
-    <rect x="200" y="130" width="320" height="80" class="compute"/><text x="360" y="177" class="body">计算 40 ms</text>
-    <rect x="520" y="130" width="240" height="80" class="transfer"/><text x="640" y="177" class="body">搬运 30 ms</text>
-    <rect x="760" y="130" width="160" height="80" class="wait"/><text x="840" y="177" class="body">等待 20 ms</text>
-  </g>
-  <text x="1030" y="165" text-anchor="middle" class="head">总计 90 ms</text>
-  <text x="1030" y="193" text-anchor="middle" class="body">计算最长</text>
-  <text x="55" y="330" class="head">单项 A</text>
-  <g text-anchor="middle">
-    <rect x="200" y="280" width="120" height="80" class="compute"/><text x="260" y="327" class="body">计算 15 ms</text>
-    <rect x="320" y="280" width="240" height="80" class="transfer"/><text x="440" y="327" class="body">搬运 30 ms</text>
-    <rect x="560" y="280" width="160" height="80" class="wait"/><text x="640" y="327" class="body">等待 20 ms</text>
-  </g>
-  <text x="1030" y="315" text-anchor="middle" class="head">总计 65 ms</text>
-  <text x="1030" y="343" text-anchor="middle" class="body">搬运最长，等待时长未变</text>
-  <text x="55" y="480" class="head">组合 A＋B</text>
-  <g text-anchor="middle">
-    <rect x="200" y="430" width="120" height="80" class="compute"/><text x="260" y="477" class="body">计算 15 ms</text>
-    <rect x="320" y="430" width="80" height="80" class="transfer"/><text x="360" y="462" class="body">搬运</text><text x="360" y="487" class="body">10 ms</text>
-    <rect x="400" y="430" width="160" height="80" class="wait"/><text x="480" y="477" class="body">等待 20 ms</text>
-  </g>
-  <text x="1030" y="465" text-anchor="middle" class="head">总计 45 ms</text>
-  <text x="1030" y="493" text-anchor="middle" class="body">等待最长，但自身并未变慢</text>
-  <line x1="200" y1="550" x2="960" y2="550" stroke="#64748b" stroke-width="2"/>
-  <g class="body" text-anchor="middle">
-    <text x="200" y="575">0</text><text x="360" y="575">20</text><text x="520" y="575">40</text><text x="680" y="575">60</text><text x="840" y="575">80</text><text x="920" y="575">90</text>
-  </g>
-  <text x="1100" y="605" text-anchor="end" class="body">时间（ms）→</text>
-</svg>
+<title id="title">四组串行阶段对照与固定等待占比变化</title><desc id="desc">构造串行例：基线计算40搬运30等待20毫秒共90；A计算15搬运30等待20共65；B计算40搬运10等待20共70；组合计算15搬运10等待20共45。等待始终20毫秒，但占比依次22.2、30.8、28.6、44.4%。最长阶段为计算、搬运、计算、等待，仅作为下一轮排查线索。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto">
+<path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:26px;font-weight:700}.group{font-size:18px;font-weight:700}.head{font-size:17px;font-weight:700}.body{font-size:15px;font-weight:400}.sub{font-size:16px;fill:#475569}.flow{fill:none;stroke:#475569;stroke-width:2.5;marker-end:url(#arrow)}.support{fill:none;stroke:#64748b;stroke-width:2;stroke-dasharray:7 6;marker-end:url(#arrow)}.conflict{fill:none;stroke:#e11d48;stroke-width:2.5}</style></defs>
+<rect width="1200" height="620" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="45" y="48" class="title" text-anchor="start">计算和搬运变短，固定等待为何变得更显眼？</text>
+<text x="45" y="80" class="sub" text-anchor="start">构造串行例：A只缩短计算，B只缩短搬运；四行共用毫秒刻度，等待始终为20ms。</text>
+<rect x="200" y="103" width="18" height="18" fill="#ddd6fe" stroke="#7c3aed" data-layout-role="glyph-group"/>
+<text x="228" y="117" class="body" text-anchor="start">计算</text>
+<rect x="370" y="103" width="18" height="18" fill="#fde68a" stroke="#d97706" data-layout-role="glyph-group"/>
+<text x="398" y="117" class="body" text-anchor="start">搬运</text>
+<rect x="540" y="103" width="18" height="18" fill="#fecaca" stroke="#dc2626" data-layout-role="glyph-group"/>
+<text x="568" y="117" class="body" text-anchor="start">固定等待</text><line x1="200" y1="142" x2="920" y2="142" stroke="#64748b" stroke-width="2"/><line x1="200" y1="142" x2="200" y2="499" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 5"/>
+<text x="200" y="137" class="body" text-anchor="middle">0</text><line x1="360" y1="142" x2="360" y2="499" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 5"/>
+<text x="360" y="137" class="body" text-anchor="middle">20</text><line x1="520" y1="142" x2="520" y2="499" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 5"/>
+<text x="520" y="137" class="body" text-anchor="middle">40</text><line x1="680" y1="142" x2="680" y2="499" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 5"/>
+<text x="680" y="137" class="body" text-anchor="middle">60</text><line x1="840" y1="142" x2="840" y2="499" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 5"/>
+<text x="840" y="137" class="body" text-anchor="middle">80</text><line x1="920" y1="142" x2="920" y2="499" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 5"/>
+<text x="920" y="137" class="body" text-anchor="middle">90</text>
+<text x="952" y="146" class="body" text-anchor="middle">ms</text>
+<text x="45" y="204" class="head" text-anchor="start">基线</text>
+<g id="baseline-phase-0" data-ms="40" data-layout-role="glyph-group">
+<rect x="200" y="170" width="320" height="55" fill="#ddd6fe" stroke="#7c3aed" stroke-width="2" data-layout-role="glyph-group"/>
+<text x="360" y="204" class="body" text-anchor="middle">计算40ms</text>
+</g>
+<g id="baseline-phase-1" data-ms="30" data-layout-role="glyph-group">
+<rect x="520" y="170" width="240" height="55" fill="#fde68a" stroke="#d97706" stroke-width="2" data-layout-role="glyph-group"/>
+<text x="640" y="204" class="body" text-anchor="middle">搬运30ms</text>
+</g>
+<g id="baseline-phase-2" data-ms="20" data-layout-role="glyph-group">
+<rect x="760" y="170" width="160" height="55" fill="#fecaca" stroke="#dc2626" stroke-width="2" data-layout-role="glyph-group"/>
+<text x="840" y="204" class="body" text-anchor="middle">等待20ms</text>
+</g>
+<text x="1045" y="187" class="head" text-anchor="middle">总计90ms</text>
+<text x="1045" y="212" class="body" text-anchor="middle">等待占比22.2%</text>
+<text x="1045" y="236" class="body" text-anchor="middle">最长：计算</text>
+<text x="45" y="294" class="head" text-anchor="start">单项A</text>
+<g id="a-phase-0" data-ms="15" data-layout-role="glyph-group">
+<rect x="200" y="260" width="120" height="55" fill="#ddd6fe" stroke="#7c3aed" stroke-width="2" data-layout-role="glyph-group"/>
+<text x="260" y="294" class="body" text-anchor="middle">计算15ms</text>
+</g>
+<g id="a-phase-1" data-ms="30" data-layout-role="glyph-group">
+<rect x="320" y="260" width="240" height="55" fill="#fde68a" stroke="#d97706" stroke-width="2" data-layout-role="glyph-group"/>
+<text x="440" y="294" class="body" text-anchor="middle">搬运30ms</text>
+</g>
+<g id="a-phase-2" data-ms="20" data-layout-role="glyph-group">
+<rect x="560" y="260" width="160" height="55" fill="#fecaca" stroke="#dc2626" stroke-width="2" data-layout-role="glyph-group"/>
+<text x="640" y="294" class="body" text-anchor="middle">等待20ms</text>
+</g>
+<text x="1045" y="277" class="head" text-anchor="middle">总计65ms</text>
+<text x="1045" y="302" class="body" text-anchor="middle">等待占比30.8%</text>
+<text x="1045" y="326" class="body" text-anchor="middle">最长：搬运</text>
+<text x="45" y="384" class="head" text-anchor="start">单项B</text>
+<g id="b-phase-0" data-ms="40" data-layout-role="glyph-group">
+<rect x="200" y="350" width="320" height="55" fill="#ddd6fe" stroke="#7c3aed" stroke-width="2" data-layout-role="glyph-group"/>
+<text x="360" y="384" class="body" text-anchor="middle">计算40ms</text>
+</g>
+<g id="b-phase-1" data-ms="10" data-layout-role="glyph-group">
+<rect x="520" y="350" width="80" height="55" fill="#fde68a" stroke="#d97706" stroke-width="2" data-layout-role="glyph-group"/>
+<text x="560" y="384" class="body" text-anchor="middle">搬运10ms</text>
+</g>
+<g id="b-phase-2" data-ms="20" data-layout-role="glyph-group">
+<rect x="600" y="350" width="160" height="55" fill="#fecaca" stroke="#dc2626" stroke-width="2" data-layout-role="glyph-group"/>
+<text x="680" y="384" class="body" text-anchor="middle">等待20ms</text>
+</g>
+<text x="1045" y="367" class="head" text-anchor="middle">总计70ms</text>
+<text x="1045" y="392" class="body" text-anchor="middle">等待占比28.6%</text>
+<text x="1045" y="416" class="body" text-anchor="middle">最长：计算</text>
+<text x="45" y="474" class="head" text-anchor="start">组合A＋B</text>
+<g id="ab-phase-0" data-ms="15" data-layout-role="glyph-group">
+<rect x="200" y="440" width="120" height="55" fill="#ddd6fe" stroke="#7c3aed" stroke-width="2" data-layout-role="glyph-group"/>
+<text x="260" y="474" class="body" text-anchor="middle">计算15ms</text>
+</g>
+<g id="ab-phase-1" data-ms="10" data-layout-role="glyph-group">
+<rect x="320" y="440" width="80" height="55" fill="#fde68a" stroke="#d97706" stroke-width="2" data-layout-role="glyph-group"/>
+<text x="360" y="474" class="body" text-anchor="middle">搬运10ms</text>
+</g>
+<g id="ab-phase-2" data-ms="20" data-layout-role="glyph-group">
+<rect x="400" y="440" width="160" height="55" fill="#fecaca" stroke="#dc2626" stroke-width="2" data-layout-role="glyph-group"/>
+<text x="480" y="474" class="body" text-anchor="middle">等待20ms</text>
+</g>
+<text x="1045" y="457" class="head" text-anchor="middle">总计45ms</text>
+<text x="1045" y="482" class="body" text-anchor="middle">等待占比44.4%</text>
+<text x="1045" y="506" class="body" text-anchor="middle">最长：等待</text>
+<text x="45" y="552" class="body" text-anchor="start">等待占比提高来自总时长缩短，等待自身仍为20ms；最长阶段提示下一轮应结合依赖检查什么。</text>
+<text x="45" y="592" class="sub" text-anchor="start">若各项质量与资源均通过：组合比基线低50%，比最佳单项A再低30.8%（本图构造值）。</text></svg>
