@@ -1,99 +1,58 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1240" height="600" viewBox="0 0 1240 600" role="img" aria-labelledby="title desc">
-  <title id="title">损失产生梯度，激活函数门控梯度</title>
-  <desc id="desc">上半部分展示激活输入经过 ReLU、后续网络和 logits 得到损失；下半部分展示损失梯度依次经过输出端、后续网络和 ReLU 门控返回激活输入。</desc>
-  <defs>
-    <marker id="arrow-forward" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse">
-      <path d="M0,0 L12,6 L0,12 Z" fill="#334155"/>
-    </marker>
-    <marker id="arrow-backward" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse">
-      <path d="M0,0 L12,6 L0,12 Z" fill="#dc2626"/>
-    </marker>
-    <marker id="arrow-link" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="userSpaceOnUse">
-      <path d="M0,0 L10,5 L0,10 Z" fill="#94a3b8"/>
-    </marker>
-  </defs>
-
-  <rect width="1240" height="600" fill="#f6f8fb"/>
-  <text x="48" y="48" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#0f172a">反向训练信号：损失产生梯度，激活函数控制梯度通过</text>
-  <text x="48" y="78" font-family="Arial, sans-serif" font-size="15" fill="#475569">先沿前向路径找到损失，再沿反向路径区分梯度来源、后续网络回传与局部门控</text>
-
-  <text x="55" y="122" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#334155">前向：建立计算依赖</text>
-
-  <g font-family="Arial, sans-serif" text-anchor="middle">
-    <rect x="55" y="145" width="180" height="78" rx="16" fill="#e0f2fe" stroke="#0284c7" stroke-width="2.5"/>
-    <text x="145" y="178" font-size="18" font-weight="700" fill="#0f172a">激活输入 x</text>
-    <text x="145" y="204" font-size="14" fill="#475569">局部变换的前向状态</text>
-
-    <rect x="295" y="145" width="180" height="78" rx="16" fill="#ede9fe" stroke="#7c3aed" stroke-width="2.5"/>
-    <text x="385" y="178" font-size="18" font-weight="700" fill="#0f172a">ReLU</text>
-    <text x="385" y="204" font-size="14" fill="#475569">y = max(0, x)</text>
-
-    <rect x="535" y="145" width="180" height="78" rx="16" fill="#ecfccb" stroke="#65a30d" stroke-width="2.5"/>
-    <text x="625" y="178" font-size="18" font-weight="700" fill="#0f172a">激活输出 y</text>
-    <text x="625" y="204" font-size="14" fill="#475569">后续网络的输入</text>
-
-    <rect x="775" y="145" width="180" height="78" rx="16" fill="#dbeafe" stroke="#2563eb" stroke-width="2.5"/>
-    <text x="865" y="178" font-size="18" font-weight="700" fill="#0f172a">logits</text>
-    <text x="865" y="204" font-size="14" fill="#475569">模型输出分数</text>
-
-    <rect x="1015" y="145" width="170" height="78" rx="16" fill="#fff7ed" stroke="#ea580c" stroke-width="2.5"/>
-    <text x="1100" y="178" font-size="18" font-weight="700" fill="#0f172a">损失 L</text>
-    <text x="1100" y="204" font-size="14" fill="#475569">比较 logits 与目标</text>
-  </g>
-
-  <g fill="none" stroke="#334155" stroke-width="3" marker-end="url(#arrow-forward)">
-    <path d="M235 184 H295"/>
-    <path d="M475 184 H535"/>
-    <path d="M715 184 H775"/>
-    <path d="M955 184 H1015"/>
-  </g>
-  <text x="745" y="168" font-family="Arial, sans-serif" font-size="13" text-anchor="middle" fill="#475569">后续网络</text>
-
-  <text x="55" y="305" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#334155">反向：沿依赖关系返回梯度</text>
-
-  <g font-family="Arial, sans-serif" text-anchor="middle">
-    <rect x="55" y="355" width="180" height="82" rx="16" fill="#fff1f2" stroke="#e11d48" stroke-width="2.5"/>
-    <text x="145" y="388" font-size="18" font-weight="700" fill="#0f172a">∂L/∂x</text>
-    <text x="145" y="414" font-size="14" fill="#475569">返回激活输入</text>
-
-    <rect x="295" y="355" width="180" height="82" rx="16" fill="#ede9fe" stroke="#7c3aed" stroke-width="2.5"/>
-    <text x="385" y="388" font-size="18" font-weight="700" fill="#0f172a">ReLU 门控</text>
-    <text x="385" y="414" font-size="14" fill="#475569">由前向 x 决定</text>
-
-    <rect x="535" y="355" width="180" height="82" rx="16" fill="#ecfccb" stroke="#65a30d" stroke-width="2.5"/>
-    <text x="625" y="388" font-size="18" font-weight="700" fill="#0f172a">∂L/∂y</text>
-    <text x="625" y="414" font-size="14" fill="#475569">到达激活输出</text>
-
-    <rect x="775" y="355" width="180" height="82" rx="16" fill="#dbeafe" stroke="#2563eb" stroke-width="2.5"/>
-    <text x="865" y="388" font-size="18" font-weight="700" fill="#0f172a">∂L/∂logits</text>
-    <text x="865" y="414" font-size="14" fill="#475569">损失产生的输出梯度</text>
-
-    <rect x="1015" y="355" width="170" height="82" rx="16" fill="#fff1f2" stroke="#e11d48" stroke-width="2.5"/>
-    <text x="1100" y="388" font-size="18" font-weight="700" fill="#0f172a">目标比较</text>
-    <text x="1100" y="414" font-size="14" fill="#475569">确定误差方向与尺度</text>
-  </g>
-
-  <g fill="none" stroke="#dc2626" stroke-width="3" stroke-dasharray="9 7" marker-end="url(#arrow-backward)">
-    <path d="M1015 396 H955"/>
-    <path d="M775 396 H715"/>
-    <path d="M535 396 H475"/>
-    <path d="M295 396 H235"/>
-  </g>
-
-  <g fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 7" marker-end="url(#arrow-link)">
-    <path d="M1100 223 V355"/>
-    <path d="M865 223 V355"/>
-    <path d="M625 223 V355"/>
-    <path d="M385 223 V355"/>
-    <path d="M145 223 V355"/>
-  </g>
-
-  <g font-family="Arial, sans-serif" font-size="14" fill="#475569">
-    <line x1="70" y1="520" x2="110" y2="520" stroke="#334155" stroke-width="3"/>
-    <text x="122" y="525">前向数值流</text>
-    <line x1="335" y1="520" x2="375" y2="520" stroke="#dc2626" stroke-width="3" stroke-dasharray="9 7"/>
-    <text x="387" y="525">反向梯度流</text>
-    <line x1="620" y1="520" x2="660" y2="520" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 7"/>
-    <text x="672" y="525">前向状态与反向消费者</text>
-  </g>
+<title id="title">损失梯度经后续网络回到ReLU</title><desc id="desc">前向ReLU输出经后续网络形成logits并计算损失；反向经后续网络局部反向得到ReLU输出梯度，再用前向x形成的mask回传到输入。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker><marker id="blue" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#2563eb"/></marker><marker id="red" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#e11d48"/></marker><marker id="purple" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#7c3aed"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:26px;font-weight:700}.sub{font-size:17px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:17px}.small{font-size:15px;fill:#475569}.node{stroke-width:2;rx:12}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.read{stroke:#2563eb;stroke-width:2.5;fill:none;marker-end:url(#blue)}.grad{stroke:#e11d48;stroke-width:2.5;stroke-dasharray:7 5;fill:none;marker-end:url(#red)}.control{stroke:#7c3aed;stroke-width:2.5;stroke-dasharray:7 5;fill:none;marker-end:url(#purple)}</style></defs>
+<rect width="1240" height="600" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="45" y="45" class="title" text-anchor="start">损失产生梯度，后续网络回传，ReLU再按前向状态门控</text>
+<text x="45" y="78" class="sub" text-anchor="start">只把实际读取的mask连到ReLU反向；梯度沿各算子的局部依赖返回。</text>
+<rect x="45" y="135" width="190" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="140" y="164" class="head" text-anchor="middle">激活输入 x</text>
+<text x="140" y="191" class="body" text-anchor="middle">ReLU前的表示</text>
+<path id="forward-0" d="M235 175H290" class="flow"/>
+<rect x="290" y="135" width="190" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="385" y="164" class="head" text-anchor="middle">ReLU输出 y</text>
+<text x="385" y="191" class="body" text-anchor="middle">y = max(0, x)</text>
+<path id="forward-1" d="M480 175H535" class="flow"/>
+<rect x="535" y="135" width="190" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="630" y="164" class="head" text-anchor="middle">后续网络</text>
+<text x="630" y="191" class="body" text-anchor="middle">将y映射为logits</text>
+<path id="forward-2" d="M725 175H780" class="flow"/>
+<rect x="780" y="135" width="190" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="875" y="164" class="head" text-anchor="middle">logits z</text>
+<text x="875" y="191" class="body" text-anchor="middle">模型输出分数</text>
+<path id="forward-3" d="M970 175H1025" class="flow"/>
+<rect x="1025" y="135" width="170" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="1110" y="164" class="head" text-anchor="middle">损失 L</text>
+<text x="1110" y="191" class="body" text-anchor="middle">与目标比较</text>
+<rect x="290" y="300" width="190" height="80" class="node" fill="#dcfce7" stroke="#15803d"/>
+<text x="385" y="329" class="head" text-anchor="middle">mask = (x &gt; 0)</text>
+<text x="385" y="356" class="body" text-anchor="middle">由前向输入形成</text>
+<path id="x-to-mask" d="M140 215V340H290" class="control"/>
+<rect x="1025" y="285" width="170" height="80" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="1110" y="314" class="head" text-anchor="middle">目标标签</text>
+<text x="1110" y="341" class="body" text-anchor="middle">规定训练目标</text>
+<path id="label-to-loss" d="M1110 285V215" class="control"/>
+<rect x="1025" y="450" width="170" height="80" class="node" fill="#fee2e2" stroke="#e11d48"/>
+<text x="1110" y="479" class="head" text-anchor="middle">损失局部反向</text>
+<text x="1110" y="506" class="body" text-anchor="middle">产生G_z</text>
+<rect x="780" y="450" width="190" height="80" class="node" fill="#fee2e2" stroke="#e11d48"/>
+<text x="875" y="479" class="head" text-anchor="middle">后续网络局部反向</text>
+<text x="875" y="506" class="body" text-anchor="middle">G_y = Jᵀ G_z</text>
+<rect x="535" y="450" width="190" height="80" class="node" fill="#fee2e2" stroke="#e11d48"/>
+<text x="630" y="479" class="head" text-anchor="middle">上游梯度 G_y</text>
+<text x="630" y="506" class="body" text-anchor="middle">返回ReLU输出</text>
+<rect x="290" y="450" width="190" height="80" class="node" fill="#fef3c7" stroke="#d97706"/>
+<text x="385" y="479" class="head" text-anchor="middle">ReLU局部反向</text>
+<text x="385" y="506" class="body" text-anchor="middle">G_x = G_y ⊙ mask</text>
+<rect x="45" y="450" width="190" height="80" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="140" y="479" class="head" text-anchor="middle">输入梯度 G_x</text>
+<text x="140" y="506" class="body" text-anchor="middle">返回激活输入</text>
+<path id="loss-backward-start" d="M1195 175H1215V490H1195" class="grad"/>
+<path id="label-to-loss-backward" d="M1110 365V450" class="control"/>
+<path id="loss-grad-to-network" d="M1025 490H970" class="grad"/>
+<path id="network-grad-to-y" d="M780 490H725" class="grad"/>
+<path id="y-grad-to-relu" d="M535 490H480" class="grad"/>
+<path id="relu-grad-to-x" d="M290 490H235" class="grad"/>
+<path id="mask-to-relu-backward" d="M385 380V450" class="control"/>
+<text x="45" y="578" class="small" text-anchor="start">J表示后续网络对y的局部雅可比；紫色虚线标出目标输入或前向状态的读取。</text>
 </svg>

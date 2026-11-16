@@ -1,17 +1,46 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
-  <title id="title">同一批次的路由质量需要同时检查四类信号</title><desc id="desc">偏好概率、实际分配、容量溢出与均衡反馈共同区分集中路由和可接受路由。</desc>
-  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker><style>.t{font:700 27px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.s{font:500 15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.h{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#111827}.b{font:500 14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.box{stroke-width:2.3;rx:12}.f{stroke:#475569;stroke-width:2.3;fill:none;marker-end:url(#a)}</style></defs>
-  <rect width="1500" height="470" fill="#f8fafc"/><text x="50" y="48" class="t">路由质量不能只看“平均 token 数”：四类信号必须共同解释</text><text x="50" y="76" class="s">概率均匀不代表离散选择均匀；分配均匀也不代表容量和通信没有长尾。</text>
-  <text x="90" y="125" class="h">观察信号</text><text x="555" y="125" class="h">集中路由</text><text x="1090" y="125" class="h">可接受路由</text>
-  <rect x="55" y="150" width="190" height="64" class="box" fill="#e2e8f0" stroke="#64748b"/><text x="150" y="185" text-anchor="middle" class="h">偏好质量 Pᵢ</text>
-  <rect x="55" y="225" width="190" height="64" class="box" fill="#e2e8f0" stroke="#64748b"/><text x="150" y="260" text-anchor="middle" class="h">实际分配 fᵢ</text>
-  <rect x="55" y="300" width="190" height="64" class="box" fill="#e2e8f0" stroke="#64748b"/><text x="150" y="335" text-anchor="middle" class="h">容量 / 溢出</text>
-  <rect x="330" y="150" width="450" height="64" class="box" fill="#fee2e2" stroke="#dc2626"/><text x="555" y="185" text-anchor="middle" class="b">少数专家长期获得高概率质量</text>
-  <rect x="330" y="225" width="450" height="64" class="box" fill="#fee2e2" stroke="#dc2626"/><text x="555" y="260" text-anchor="middle" class="b">同一专家反复接收大量 token</text>
-  <rect x="330" y="300" width="450" height="64" class="box" fill="#fee2e2" stroke="#dc2626"/><text x="555" y="335" text-anchor="middle" class="b">热点专家先溢出，暴露通信与等待</text>
-  <rect x="865" y="150" width="450" height="64" class="box" fill="#dcfce7" stroke="#16a34a"/><text x="1090" y="185" text-anchor="middle" class="b">偏好分散，同时保留专家差异</text>
-  <rect x="865" y="225" width="450" height="64" class="box" fill="#dcfce7" stroke="#16a34a"/><text x="1090" y="260" text-anchor="middle" class="b">专家负载接近容量且不过度集中</text>
-  <rect x="865" y="300" width="450" height="64" class="box" fill="#dcfce7" stroke="#16a34a"/><text x="1090" y="335" text-anchor="middle" class="b">溢出受控，分发载荷更稳定</text>
-  <rect x="485" y="395" width="650" height="52" class="box" fill="#dbeafe" stroke="#2563eb"/><text x="810" y="427" text-anchor="middle" class="h">采用判断：任务质量 + 溢出率 + 负载长尾 + 通信暴露时间</text>
-  <path d="M555 358V382H700V395" class="f"/><path d="M1090 358V382H920V395" class="f"/>
+<title id="title">概率偏好与离散派发的差别</title><desc id="desc">四Token每行概率为0.26、0.25、0.25、0.24，Top1均选专家0。分配为4、0、0、0。构造容量2时专家0超额2次。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker><marker id="blue" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#2563eb"/></marker><marker id="red" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#e11d48"/></marker><marker id="purple" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#7c3aed"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:26px;font-weight:700}.sub{font-size:17px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:17px}.small{font-size:15px;fill:#475569}.node{stroke-width:2;rx:12}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.read{stroke:#2563eb;stroke-width:2.5;fill:none;marker-end:url(#blue)}.grad{stroke:#e11d48;stroke-width:2.5;stroke-dasharray:7 5;fill:none;marker-end:url(#red)}.control{stroke:#7c3aed;stroke-width:2.5;stroke-dasharray:7 5;fill:none;marker-end:url(#purple)}</style></defs>
+<rect width="1500" height="470" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="55" y="48" class="title" text-anchor="start">平均概率接近均匀，Top-1派发仍可能集中到同一专家</text>
+<text x="55" y="80" class="sub" text-anchor="start">构造例：4个Token、4个专家；每个Token的概率均为[0.26, 0.25, 0.25, 0.24]。</text>
+<rect x="55" y="120" width="420" height="285" rx="12" fill="#fff" stroke="#cbd5e1" data-layout-role="panel"/>
+<rect x="545" y="120" width="420" height="285" rx="12" fill="#fff" stroke="#cbd5e1" data-layout-role="panel"/>
+<rect x="1035" y="120" width="410" height="285" rx="12" fill="#fff" stroke="#cbd5e1" data-layout-role="panel"/>
+<text x="265" y="151" class="head" text-anchor="middle">平均概率 Pᵢ</text>
+<text x="755" y="151" class="head" text-anchor="middle">实际Top-1派发计数</text>
+<line x1="100" y1="340" x2="445" y2="340" stroke="#e2e8f0" data-layout-role="decoration"/><text x="84" y="345" class="small" text-anchor="middle">0.0</text>
+<line x1="100" y1="280" x2="445" y2="280" stroke="#e2e8f0" data-layout-role="decoration"/><text x="84" y="285" class="small" text-anchor="middle">0.1</text>
+<line x1="100" y1="220" x2="445" y2="220" stroke="#e2e8f0" data-layout-role="decoration"/><text x="84" y="225" class="small" text-anchor="middle">0.2</text>
+<line x1="100" y1="160" x2="445" y2="160" stroke="#e2e8f0" data-layout-role="decoration"/><text x="84" y="165" class="small" text-anchor="middle">0.3</text>
+<g data-layout-role="glyph-group"><rect data-expert="0" data-prob="0.26" x="120" y="184" width="50" height="156" fill="#dbeafe" stroke="#2563eb"/><text x="145" y="174" class="small" text-anchor="middle">0.26</text>
+<text x="145" y="369" class="body" text-anchor="middle">E0</text>
+</g>
+<g data-layout-role="glyph-group"><rect data-count="4" x="610" y="160" width="50" height="180" fill="#dbeafe" stroke="#2563eb"/><rect x="610" y="160" width="50" height="90" fill="#fee2e2" stroke="#e11d48"/></g>
+<text x="635" y="365" class="head" text-anchor="middle">4</text>
+<text x="635" y="390" class="body" text-anchor="middle">E0</text>
+<g data-layout-role="glyph-group"><rect data-expert="1" data-prob="0.25" x="205" y="190" width="50" height="150" fill="#dbeafe" stroke="#2563eb"/><text x="230" y="180" class="small" text-anchor="middle">0.25</text>
+<text x="230" y="369" class="body" text-anchor="middle">E1</text>
+</g>
+<line x1="695" y1="340" x2="745" y2="340" stroke="#2563eb" stroke-width="2" data-layout-role="decoration"/><text x="720" y="365" class="head" text-anchor="middle">0</text>
+<text x="720" y="390" class="body" text-anchor="middle">E1</text>
+<g data-layout-role="glyph-group"><rect data-expert="2" data-prob="0.25" x="290" y="190" width="50" height="150" fill="#dbeafe" stroke="#2563eb"/><text x="315" y="180" class="small" text-anchor="middle">0.25</text>
+<text x="315" y="369" class="body" text-anchor="middle">E2</text>
+</g>
+<line x1="780" y1="340" x2="830" y2="340" stroke="#2563eb" stroke-width="2" data-layout-role="decoration"/><text x="805" y="365" class="head" text-anchor="middle">0</text>
+<text x="805" y="390" class="body" text-anchor="middle">E2</text>
+<g data-layout-role="glyph-group"><rect data-expert="3" data-prob="0.24" x="375" y="196" width="50" height="144" fill="#dbeafe" stroke="#2563eb"/><text x="400" y="186" class="small" text-anchor="middle">0.24</text>
+<text x="400" y="369" class="body" text-anchor="middle">E3</text>
+</g>
+<line x1="865" y1="340" x2="915" y2="340" stroke="#2563eb" stroke-width="2" data-layout-role="decoration"/><text x="890" y="365" class="head" text-anchor="middle">0</text>
+<text x="890" y="390" class="body" text-anchor="middle">E3</text>
+<line x1="595" y1="250" x2="945" y2="250" stroke="#e11d48" stroke-dasharray="7 5" stroke-width="2" data-layout-role="decoration"/><text x="800" y="239" class="small" text-anchor="middle">构造容量线：每专家2次分配</text>
+<text x="1060" y="156" class="head" text-anchor="start">同一批次的三种读法</text>
+<text x="1060" y="202" class="body" text-anchor="start">P = [0.26, 0.25, 0.25, 0.24]</text>
+<text x="1060" y="247" class="body" text-anchor="start">分配计数 = [4, 0, 0, 0]</text>
+<text x="1060" y="292" class="body" text-anchor="start">f = [1, 0, 0, 0]</text>
+<text x="1060" y="337" class="body" text-anchor="start">容量设为2 → E₀超额2次</text>
+<text x="1060" y="379" class="small" text-anchor="start">红色部分表示构造例的超额分配</text>
+<text x="55" y="442" class="sub" text-anchor="start">Pᵢ描述概率偏好；fᵢ描述离散选择；容量线说明这些选择是否能被当前专家槽位接纳。</text>
 </svg>
