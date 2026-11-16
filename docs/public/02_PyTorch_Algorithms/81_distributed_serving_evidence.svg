@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+  <title id="title">成本估算与真实服务测量</title>
+  <desc id="desc">先用成本估算筛选复测配置，再测量真实请求并对照服务目标。</desc>
+  <defs>
+    <marker markerUnits="userSpaceOnUse" id="a" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker>
+    <style>.t{font-family:'Noto Sans CJK SC','Microsoft YaHei',sans-serif;font-size:24px;font-weight:500;fill:#0f172a}.s{font-family:'Noto Sans CJK SC','Microsoft YaHei',sans-serif;font-size:18px;font-weight:500;fill:#334155}.n{stroke:#64748b;stroke-width:2;rx:14}.e{fill:none;stroke:#475569;stroke-width:2.5;marker-end:url(#a)}</style>
+  </defs>
+  <rect width="1200" height="560" fill="#f8fafc"/>
+  <text x="600" y="48" text-anchor="middle" class="t">先估算成本，再比较真实服务</text>
+  <g class="n">
+    <rect x="55" y="160" width="210" height="140" fill="#dbeafe"/>
+    <rect x="330" y="160" width="210" height="140" fill="#dcfce7"/>
+    <rect x="605" y="160" width="240" height="140" fill="#fef3c7"/>
+    <rect x="920" y="160" width="220" height="140" fill="#f3e8ff"/>
+  </g>
+  <g text-anchor="middle">
+    <text x="160" y="202" class="t">成本估算</text><text x="160" y="240" class="s">阶段成本 · 任务分配</text><text x="160" y="272" class="s">筛选复测配置</text>
+    <text x="435" y="202" class="t">真实多卡后端</text><text x="435" y="240" class="s">副本 · TP/PP · PD</text><text x="435" y="272" class="s">固定请求与环境</text>
+    <text x="725" y="194" class="t">实际请求指标</text><text x="725" y="228" class="s">TTFT · TPOT · P99</text><text x="725" y="258" class="s">队列 · KV 交接 · 显存</text><text x="725" y="288" class="s">吞吐 · 成功率 · 失败</text>
+    <text x="1030" y="202" class="t">对照服务目标</text><text x="1030" y="240" class="s">质量 · 延迟 · 预算</text><text x="1030" y="272" class="s">判断是否值得采用</text>
+  </g>
+  <path class="e" d="M265 230H330"/><path class="e" d="M540 230H605"/><path class="e" d="M845 230H920"/>
+</svg>
