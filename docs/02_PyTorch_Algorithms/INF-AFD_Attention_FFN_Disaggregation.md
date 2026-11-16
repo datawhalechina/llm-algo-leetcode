@@ -1,6 +1,6 @@
 # INF-AFD. Attention FFN Disaggregation | Attention–FFN 解耦
 
-**难度：** Hard | **环境：** CPU-first，GPU/backend optional | **标签：** `推理优化`, `MoE`, `AFD`, `Serving` | **目标人群：** 分布式推理与 MoE Serving 学习者
+**难度：** Hard | **环境：** [CPU 主线，GPU 可选](#runtime-environment) | **标签：** `推理优化`、`MoE`、`AFD`、`服务执行` | **目标人群：** 理解 MoE 路由、需要分析跨设备执行的读者
 
 > 🚀 **云端运行环境**
 >
@@ -10,67 +10,81 @@
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
 
 
----
-
 ## 本节导读
 
-MoE 层中的 Attention 和 FFN / 专家共享同一层顺序，却承受不同的系统压力：Attention 保存请求状态和 KV Cache，专家侧处理动态路由、计算与 All-to-All。AFD 将两类角色部署到不同 worker 组，使其能够独立扩缩容；代价是每层都要维护跨角色载荷、请求身份和同步关系。
+长上下文请求增加 Attention 侧的缓存压力，大量词元同时命中少数专家又会让前馈计算排队。如果两类计算始终绑定在同一组设备上，扩容时可能一起增加资源，却只缓解其中一侧。
 
-本节先建立角色、数据流和时间线，再用 CPU 账本验证拓扑、载荷与暴露时间。真实收益必须在受支持的 AFD plugin、模型 wrapper 和多卡环境中验证。
+Attention–FFN 解耦（AFD）把两类工作交给不同执行组，分别安排设备与并行规模。它也增加了每层的激活传输和结果返回：先跟踪一层如何跨组执行，再计算载荷与可隐藏的等待，判断独立扩容能否抵消新增成本。
+
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 使用 [BASE-CPU](../guide.md#base-cpu)，运行载荷、拓扑与时间估算。
+- **可选后端对照：** 参考 [推理服务环境入口](../topic_discussion/inference_optimization/quickstart.md#inf-vllm-quickstart)；AFD 还需独立固定兼容的插件、模型和多设备拓扑，当前页尚无完成的真实对照。
 
 ## 前置阅读
 
-- [06. MoE Router](./06_MoE_Router.md)：理解 token 如何选择专家。
-- [46. MoE Expert Parallel](./46_MoE_Expert_Parallel.md)：理解 dispatch、combine 与 All-to-All。
-- [INF-SERVING-OVERLAP](./INF-SERVING-OVERLAP_Serving_Overlap_and_State_Handoff.md)：理解总传输时间和暴露时间的区别。
+先理解专家路由的重排与通信，再判断拆分角色后增加了哪一段等待。
 
-### Step 1：为什么拆分 Attention 与 FFN
+- [MoE 路由](./06_MoE_Router.md)：词元如何选择专家。
+- [MoE 专家并行](./46_MoE_Expert_Parallel.md)：分发、专家计算与合并。
+- [执行重叠与状态交接](./INF-SERVING-OVERLAP_Serving_Overlap_and_State_Handoff.md)：总传输时间与暴露时间。
 
-Attention 侧必须维护请求调度、KV 状态和生成顺序，其容量随并发、上下文和 Cache 压力变化；FFN / 专家侧的容量主要取决于 routed token 数、专家负载和计算吞吐。把两侧固定在同一组 rank 上，会迫使两类不同瓶颈使用同一扩缩容比例。
+## Step 1：Attention 与专家为何使用不同执行组
 
-| 角色 | 持有的状态或计算 | 主要容量压力 | 典型扩展维度 |
-|---|---|---|---|
-| Attention | Q/K/V、KV Cache、请求元数据、sampling | sequence、并发、Cache 容量 | DP / TP / CP、KV 容量 |
-| FFN / Experts | Router、Expert MLP、dispatch / combine | routed tokens、expert skew、算力 | EP、专家副本、FFN worker 数 |
-| Connector | activation、routing metadata、FFN output | payload、链路、同步频率 | 同步 / 异步、通信 backend |
+前馈网络（FFN）逐位置变换隐藏表示；在混合专家模型（MoE）中，路由器为词元选择少量专家。Attention 侧维护请求、历史键值缓存与生成顺序，专家侧处理路由后的词元及专家计算。两侧的压力可以不同：上下文变长主要增加历史状态，大量词元集中到少数专家则增加该侧排队。
 
-![Attention 与 FFN 解耦后的执行角色](../public/02_PyTorch_Algorithms/inf_afd_architecture.svg)
+执行进程在通信组中的编号称为 rank，若干进程组成一个角色组。AFD 将 Attention 与前馈工作分到不同组，由连接器传递激活、路由信息和返回结果；路由器放在哪一侧取决于具体实现。独立扩容使两类角色可以使用不同设备数量，也使层内计算增加跨组依赖。
 
-### Step 2：跨角色传输与执行时间线
+| 角色 | 处理的对象 | 常见压力 | 需要比较的变化 |
+| --- | --- | --- | --- |
+| Attention 组 | 注意力、KV 与请求状态 | 上下文、并发及状态容量 | 增加该组资源后，排队和缓存压力如何变化 |
+| FFN／专家组 | 选中词元、专家参数与计算 | 词元数量、专家负载不均 | 专家分布和计算等待如何变化 |
+| 连接器 | 激活、路由元数据与 FFN 输出 | 字节量、链路与同步 | 新增传输是否抵消计算收益 |
 
-每个被拆分的层都要把 Attention 后的 hidden state 送到 FFN 侧，再把 FFN 输出送回 Attention 侧继续 residual 路径。若 Router 位于 Attention 侧，还要附带 top-k expert id 和权重。AFD 不减少模型计算；它通过不同拓扑和重叠机会改变资源利用率与暴露等待。
+![Attention 与专家组之间的双向载荷](../public/02_PyTorch_Algorithms/inf_afd_architecture.svg)
 
-| 路径 | 执行关系 | 主要优点 | 主要风险 |
-|---|---|---|---|
-| 同步 AFD | A 发送 → F 计算 → A 等待返回 | 顺序清晰，适合正确性基线 | 通信与 FFN 时间直接暴露 |
-| 异步 AFD | 不同 uBatch 的 A/F 阶段重叠 | 有机会隐藏传输或专家计算 | 调度、buffer、顺序和 graph 兼容更复杂 |
-| 不拆分 | Attention 与 FFN 共用 worker | 无跨角色 connector | 两类资源不能独立扩缩容 |
+## Step 2：每层的双向传输怎样进入时间线
 
-![同步与异步 AFD 的执行时间线](../public/02_PyTorch_Algorithms/inf_afd_execution_timeline.svg)
+在被拆分的一层中，Attention 后的隐藏表示送往 FFN 组，专家计算并合并结果后，再送回 Attention 组继续残差连接。隐藏表示是每个词元的一行向量；若共有词元数、隐藏宽度、元素字节数和拆分层数分别为 N、H、B、L，双向激活共需 2 × N × H × B × L 字节。路由器位于 Attention 侧时，另附每词元选中的专家编号与权重。实际序列化、跨组复制和分发格式仍由连接器决定。
 
-### Step 3：AFD 候选必须通过哪些 Gate
+微批次是拆成较小执行单元的一组词元。一个微批次的 FFN 必须等自己的输入到达，但这段时间可以让 Attention 组处理另一个独立微批次。流水线可能减少整个窗口的空闲与排队；同一个微批次仍依次经历 Attention、发送、FFN 和返回。估算剩余窗口耗时时，要区分可被其他工作覆盖的部分与该请求自身的依赖。
 
-AFD 首先是部署候选，不是看到 MoE 就默认启用的优化。模型 wrapper、Attention/FFN 切分点、Router 所在侧、connector、rank topology、graph mode、量化和输出正确性必须形成同一份能力矩阵；任一条件不成立，都不能用吞吐结果掩盖语义或兼容性失败。
+| 执行方式 | 同一微批次的依赖 | 可隐藏什么 | 额外条件 |
+| --- | --- | --- | --- |
+| 同步拆分 | Attention → 发送 → FFN → 返回 | 当前组等待较多 | 适合先核对数值和顺序 |
+| 微批次流水 | 每个微批次仍遵循同一依赖 | 不同微批次的角色工作可并行 | 缓冲区独立、顺序匹配、连接器支持 |
+| 同组执行 | 两类计算在原部署内衔接 | 减少新增的跨角色传输 | 两侧资源比例仍相互绑定 |
 
-| Gate | 必须确认的问题 | 失败后的处理 |
-|---|---|---|
-| 模型 | checkpoint 架构是否有 AFD wrapper | 回到普通 MoE Serving |
-| 拓扑 | A/F rank 是否有效且资源足够 | 调整角色比例或拒绝候选 |
-| Connector | 硬件与通信 backend 是否支持 | 更换 connector，不跨环境外推 |
-| 执行模式 | prefill/decode、eager/graph、uBatch 是否兼容 | 使用已验证路径或关闭相应能力 |
-| 精度 | baseline 与 AFD 输出误差是否在阈值内 | reject，不进入性能排序 |
-| 性能 | transfer 是否被有效重叠，专家是否仍偏斜 | tune 角色比例、EP 或 overlap |
+![AFD 同步依赖与不同微批次的流水](../public/02_PyTorch_Algorithms/inf_afd_execution_timeline.svg)
 
-### Step 4：实现 AFD 拓扑、载荷与暴露时间账本
+## Step 3：怎样判断拆分候选能否运行并值得保留
 
-本题用角色拓扑、hidden state 形状和阶段时间复现 AFD 候选。输入校验、报告结构和压力参数已经给出；你将补全双向载荷、拓扑能力检查、有效重叠与 rank 分配。测试分别覆盖字节单调性、非法组合、时间上下界和 rank 守恒。
+插件为模型提供切分位置、角色执行器与通信适配。先固定支持的模型、路由器位置、连接器和角色数量，再确认预填充、解码、图执行及量化组合是否兼容。图执行指复用已捕获的设备操作依赖，分布式通信与缓冲区变化可能限制它的适用范围；兼容组合以固定版本的实现和验证记录为准。
+
+两组输出在相同输入下满足误差要求后，再用相同总设备预算比较延迟、吞吐和等待。按两侧压力比例分配进程只是初始方案：增加专家资源若仍不能分散热点，连接器等待和专家排队可能继续占据主要时间。
+
+| 检查对象 | 核对什么 | 不满足时的动作 |
+| --- | --- | --- |
+| 模型切分 | 权重架构、切分点与路由器所在侧 | 使用已支持模型或回到同组执行 |
+| 角色拓扑 | 两组均有进程，总数符合设备预算 | 调整比例并重新加载 |
+| 通信实现 | 硬件、链路与连接器版本 | 更换兼容连接器并复测 |
+| 执行组合 | 输入处理／解码、图执行、量化及微批次 | 选择已验证组合 |
+| 数值结果 | 同输入的输出误差与完成情况 | 定位顺序、路由或计算问题 |
+| 成本变化 | 跨组传输、专家排队与服务指标 | 调整角色比例或保留原部署 |
+
+## Step 4：实现双向载荷、拓扑与剩余耗时估算
+
+本题提供角色拓扑、隐藏表示形状和各阶段耗时，骨架负责输入检查与报告结构。请补全双向字节数、拓扑条件、可覆盖时间和角色数量分配。异步模式“预填充且关闭图执行”是本题给定的简化条件，用于练习组合检查；真实后端仍按固定插件版本的能力表验证。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 | --- | --- | --- | --- |
-| TODO 1 · `estimate_afd_payload_bytes` | 计算跨角色载荷 | 记录双向 activation 与可选 routing metadata；单位统一为字节 | 载荷分项与总量 |
-| TODO 2 · `validate_afd_topology` | 检查 Attention / FFN 拓扑能力 | 角色、rank、执行模式和异步条件必须一致 | 可行拓扑与逐项失败原因 |
-| TODO 3 · `estimate_afd_time_ms` | 计算暴露时间 | 有效 overlap 不得超过预算或可重叠区间 | 时间下界、上界与边界情况 |
-| TODO 4 · `allocate_afd_ranks` | 按压力分配角色 rank | 至少为两类角色各保留一个 rank；总数不变 | 不同压力比与非法 world size |
+| TODO 1：统计双向载荷<br>`estimate_afd_payload_bytes` | 合计激活与可选路由元数据 | 统计拆分层数，双向激活计两次，字节单位一致 | 双向激活字节与有／无路由元数据 |
+| TODO 2：核对角色与执行组合<br>`validate_afd_topology` | 判断两类角色和异步条件 | 两侧数量为正，总数等于通信组大小 | 可行组合、数量不符及异步阶段／图执行冲突 |
+| TODO 3：估算覆盖后的窗口耗时<br>`estimate_afd_time_ms` | 从串行时间扣除可覆盖部分 | 覆盖量不超过给定预算和非 Attention 阶段之和 | 零覆盖、部分覆盖与过大预算 |
+| TODO 4：分配角色数量<br>`allocate_afd_ranks` | 按压力比例构造初始拓扑 | 两侧各至少一个进程，总数不变 | 均衡与 Attention 压力增加时的分配 |
+
 
 ```python
 from dataclasses import dataclass
@@ -111,6 +125,7 @@ def estimate_afd_payload_bytes(
     # Router 在 A 侧时，每个 top-k 项暂按 int32 expert id + dtype 权重估算。
     # ==========================================
     # activation_bytes = ???  # 所有拆分层的双向 activation 字节数。
+    raise NotImplementedError("请完成 TODO 1 后再运行测试。")
     # routing_bytes = ???  # Router 位于 Attention 侧时附加的路由元数据字节数。
     return {
         'activation_bytes': activation_bytes,
@@ -124,6 +139,7 @@ def validate_afd_topology(topology: AFDTopology) -> List[str]:
     failures: List[str] = []
     # TODO 2（能力检查）：判断角色、rank、模式与异步执行条件。
     # roles_positive = ???  # Attention 与 FFN 两侧都至少有一个 rank。
+    raise NotImplementedError("请完成 TODO 2 后再运行测试。")
     # ranks_match = ???  # 两侧 rank 总数等于 world_size。
     # mode_supported = ???  # mode 只能是 sync 或 async。
     # async_contract_supported = ???  # async 仅在约定 stage 且未启用 graph 时为真。
@@ -156,6 +172,7 @@ def estimate_afd_time_ms(
     # 返回 exposed_ms 时不能小于 Attention 自身的依赖时间。
     # ==========================================
     # effective_overlap_ms = ???  # 不超过预算与可重叠区间的有效时间。
+    raise NotImplementedError("请完成 TODO 3 后再运行测试。")
     # exposed_ms = ???  # 串行总时间扣除有效重叠后的关键路径时间。
     return {
         'serial_ms': round(serial_ms, 4),
@@ -173,14 +190,15 @@ def allocate_afd_ranks(world_size: int, attention_pressure: float, ffn_pressure:
     # 注意：两侧至少各保留一个 rank，且二者之和必须等于 world_size。
     # ==========================================
     # attention_ranks = ???  # 按压力分配并裁剪到 [1, world_size - 1]。
+    raise NotImplementedError("请完成 TODO 4 后再运行测试。")
     # ffn_ranks = ???  # 剩余 rank，确保总数守恒。
     return AFDTopology(world_size, attention_ranks, ffn_ranks)
 
 ```
 
-### 测试
+## 测试
 
-测试分别检查载荷账本、能力 Gate、暴露时间和角色分配。失败时先定位对应机制，不要通过改输出格式绕过约束。
+分别核对传输字节、拓扑组合、窗口耗时与进程数量守恒；这些样例验证给定的简化规则。
 
 
 ```python
@@ -315,39 +333,45 @@ def allocate_afd_ranks(world_size, attention_pressure, ffn_pressure):
 
 ### 解析
 
-**TODO 1：载荷账本**
-- 基础载荷包含 A→F hidden state 与 F→A FFN output，因此 activation 是单向载荷的两倍。
-- Router 位于 Attention 侧时才附加 top-k id 与权重；这个估算用于比较候选，不替代 connector 的真实序列化字节数。
+#### TODO 1：统计双向载荷
 
-**TODO 2：能力 Gate**
-- A/F 两侧都必须拥有正数 rank，且角色总数与 world size 一致。
-- stage、graph 与 connector 限制必须来自当前能力矩阵；测试中的 async 规则是显式实验契约，不是永久 API 承诺。
+- Attention 后的隐藏表示发出一次，FFN 输出返回一次；各拆分层分别计入。Attention 侧路由时再加入专家编号与权重，编号在本题按 4 字节计算。
+- 答案先计算单向激活，再合计双向激活和可选元数据；测试对照是否在 Attention 侧附加路由信息，核对分项和总量。
 
-**TODO 3：暴露时间**
-- 有效 overlap 由预算和可重叠区间共同限制。
-- 即使 transfer 与 FFN 完全被其他工作覆盖，当前请求的 Attention 依赖仍构成时间下界。
+#### TODO 2：核对角色与执行组合
 
-**TODO 4：角色分配**
-- 按压力比例给出第一版 rank 计划，再通过真实利用率、排队和专家负载复测。
-- rank 计划不是性能结论；它只是进入 backend 实验的候选。
+- 两组数量均为正且总数等于通信组大小；模式还需属于允许集合，异步组合须满足题目给定的阶段与图执行条件。
+- 答案分开计算条件并保留失败原因。测试改变数量、异步阶段和图执行条件，检查失败分类。
 
-### Step 5：可选多 GPU/backend 实验
+#### TODO 3：估算覆盖后的窗口耗时
 
-| 学习问题 | CPU 已确认 | GPU 要确认与后续使用 |
+- 串行时间包括 Attention、双向传输和 FFN；从中扣除的时间受预算与非 Attention 阶段总量共同限制。
+- 答案取这两个覆盖上限的较小值再相减，测试核对零、部分及过量覆盖。返回的 `exposed_ms` 是该简化窗口的剩余耗时，仍包含 Attention；单个请求的完成时间需按自身依赖链计算。
+
+#### TODO 4：分配角色数量
+
+- 用两侧压力比例给出初始数量，并将 Attention 数量限制在 1 到总数减 1 之间；剩余进程分给 FFN。
+- 答案在比例取整后限制范围。测试改变压力比并检查数量守恒；真实配置还需比较角色排队与设备利用率。
+
+## Step 5：可选多设备后端对照
+
+CPU 练习比较载荷、拓扑和给定覆盖预算；真实对照需要已部署的普通 MoE 服务与 AFD 服务，再补插件执行、数值和通信记录。
+
+| 学习问题 | CPU 已核对 | 真实环境所需记录 |
 | --- | --- | --- |
-| A/F 拆分能否在同硬件预算下隐藏通信并改善服务指标 | 载荷、拓扑、暴露时间和 rank 守恒 | plugin 实际命中、输出正确性、transfer/exposed time、TTFT、TPOT 与吞吐 |
+| 拆分能否改善相同设备预算下的服务成本 | 双向字节、角色数量与窗口估算 | 目标插件执行、同输入输出、实际传输与请求延迟／吞吐 |
 
-#### 5.1 环境与固定工作负载
+### 5.1 环境与固定工作负载
 
-使用 `INF-VLLM-011-CU128` Serving Profile，并额外固定兼容的 AFD plugin、MoE checkpoint 与 connector。实验至少需要两个独立角色组；首次配置见[推理优化实验 Quickstart](../topic_discussion/inference_optimization/quickstart.md)，实验身份和当前证据见[推理优化实验资产表](../topic_discussion/inference_optimization/experiment_assets.md)。两个 endpoint 的健康检查、模型 revision 和输出正确性预检通过后，才能切换到 `real_gpu`。
+以[推理服务 Quickstart](../topic_discussion/inference_optimization/quickstart.md)为环境入口，另按固定 AFD 插件版本准备模型、连接器和角色组。普通服务与 AFD 服务分别对外提供请求地址；AFD 请求发送到 Attention 侧，FFN 组处理连接器工作。插件与依赖版本需要一起核对，现有 vLLM Profile 只提供环境参考，实际兼容性以所选插件的支持表为准。
 
-| 配置层 | 本实验固定口径 | 修改规则 |
+| 配置层 | 对照条件 | 核对动作 |
 | --- | --- | --- |
-| 运行环境 | 同一总 GPU 预算；普通 MoE 与 AFD 两个 endpoint | plugin、connector 或 GPU 数变化后不得合并旧结果 |
-| 模型 / 输入 | 同一 checkpoint revision、请求集、dtype 与输出约束 | 模型必须由当前 plugin 能力矩阵支持 |
-| 配对变量 | 普通 MoE → AFD sync/async | 只改变 A/F 拆分和对应执行模式 |
-| 测量 | 输出正确性、transfer/exposed time、TTFT、TPOT、吞吐 | 路径未确认或输出不一致时直接拒绝性能比较 |
-| 结果 | baseline/candidate JSON 与唯一运行标签 | 正式复测不得覆盖历史结果 |
+| 设备预算 | 两种部署使用相同设备类型与总数 | 记录两组角色及进程拓扑 |
+| 模型与输入 | 同一权重版本、精度和请求集 | 核对模型切分支持与生成规则 |
+| 比较变量 | 同组执行与 AFD 同步／流水配置 | 分别记录启动配置和实际路径 |
+| 测量 | 输出、传输、请求时间与吞吐 | 先数值核对，再比较性能 |
+| 保存 | 两份请求报告及插件运行清单 | 新标签保留原始运行与失败 |
 
 
 ```python
@@ -365,9 +389,9 @@ AFD_RESULT_DIR = 'benchmarks/results/inf_afd'  # 默认仓库相对结果目录�
 
 ```
 
-#### 5.2 执行并保存 JSON
+### 5.2 执行并保存 JSON
 
-按相同请求顺序依次运行普通 MoE 与 AFD endpoint。执行单元只消费 5.1 配置，并把失败、服务指标和规范化结果写入独立 JSON。
+当前单元调用两个已启动的服务，按相同请求集先后运行普通 MoE 与 AFD 请求测试，保存服务指标。插件部署、角色拓扑、传输测量和独立输出比较需要另备记录；通用请求报告提供其中的服务请求部分。
 
 
 ```python
@@ -399,16 +423,17 @@ else:
 
 ```
 
-#### 5.3 读取结果
+### 5.3 读取结果
 
-只读取 5.2 已保存的两份结果，先展示运行状态、失败、工作负载、核心指标、证据等级与决策。plugin revision、模型 wrapper、A/F ranks、connector、stage、graph 和量化状态必须存在于正式结果或 companion manifest；字段不全时不比较性能。
+读取两份服务报告，展示文件是否存在、所需字段、失败和请求指标。当前读取器检查工作负载、指标与规范化结果字段；插件版本、模型切分、角色数量和通信时间还需与运行清单逐项核对后，才能归因于 AFD。
 
 
 ```python
 import json
 from pathlib import Path
 
-result_dir = Path(AFD_RESULT_DIR)
+from tools.inference_project_runtime import locate_repo_root
+result_dir = locate_repo_root() / AFD_RESULT_DIR
 summaries = []
 for role, name in (
     ('baseline', f'{RUN_LABEL}_baseline.json'),
@@ -437,23 +462,22 @@ summaries
 
 ```
 
-#### 5.4 解释结果并作出决策
+### 5.4 解释结果与决定复测内容
 
-先检查两组结果是否成功且使用同一模型、输入、dtype 和总 GPU 预算，再确认 AFD plugin、connector 与角色拓扑真实命中。只有输出正确性通过后，才比较暴露传输、TTFT、TPOT 和吞吐。
+当前尚无登记的真实 AFD 对照。先固定插件与模型组合，保存相同总设备预算的普通服务和 AFD 输出；完成数值比较，再采集跨组通信及角色排队时间。CPU 分配比例和请求报告可用于准备候选，采用判断需要这些记录共同支持。
 
-当前页面尚无登记的真实多 GPU 快照，因此结论保持“待验证”。下一步是在固定 plugin 与 checkpoint 后生成唯一标签结果，并根据正确性和暴露时间决定保留、调参或淘汰。
-
-| 观察项 | 读取字段 | 当前结果 | 解释与动作 |
+| 观察项 | 所需字段或记录 | 当前状态 | 下一动作 |
 | --- | --- | --- | --- |
-| 运行与口径 | `failure`、workload、模型、总 GPU | 待验证 | 两组口径不一致时先重跑，不进入性能比较 |
-| 机制与路径 | plugin、wrapper、A/F ranks、connector、stage | 待验证 | 未命中 AFD 路径时拒绝候选 |
-| 正确性 | 输出误差、完成状态 | 待验证 | 超过阈值时停止，不用吞吐掩盖语义失败 |
-| 资源与性能 | transfer/exposed time、TTFT、TPOT、吞吐 | 待验证 | 观察通信是否真正被隐藏，以及瓶颈是否转移 |
-| 证据与决策 | `evidence_level`、`decision`、下一步 | `tune` | 固定环境后进入真实多 GPU 配对复测 |
+| 可比条件 | 模型版本、请求集、精度、总设备数 | 待验证 | 固定两组条件与启动配置 |
+| 执行路径 | 插件、切分点、角色组与连接器 | 待验证 | 保存实际加载和拓扑记录 |
+| 输出比较 | 同请求输出与误差门槛 | 待验证 | 核对路由、顺序和数值 |
+| 成本变化 | 传输、等待、TTFT、TPOT 与吞吐 | 待验证 | 比较同规模部署的收益及代价 |
+| 决策 | 正式对照报告 | 未形成实测决策 | 完成上述记录后再判断保留或调整 |
 
 ## 相关阅读
 
-- [vLLM AFD Plugin](https://github.com/vllm-project/afd-plugin)
-- [MegaScale-Infer: Serving Mixture-of-Experts at Scale with Disaggregated Expert Parallelism](https://arxiv.org/abs/2504.02263)
-- [39：异构 PD 与服务分层](./39_Hetero_PD_and_Serving_Tiers.md)
-- [48：通信热点归因与缓解](./48_Communication_Hotspots_and_Mitigation.md)
+从角色拆分继续查看实际插件如何连接两类工作，再比较其他跨阶段拆分方式。
+
+- [AFD Plugin 官方仓库](https://github.com/vllm-project/afd-plugin)：查看支持模型、连接器和部署步骤；按固定版本核对兼容组合。
+- [异构预填充／解码与服务分层](./39_Hetero_PD_and_Serving_Tiers.md)：比较按阶段拆分与按层内角色拆分。
+- [通信热点与缓解](./48_Communication_Hotspots_and_Mitigation.md)：定位新增传输和专家负载不均。

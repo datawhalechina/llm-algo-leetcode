@@ -1,30 +1,32 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1500" height="650" viewBox="0 0 1500 650" role="img" aria-labelledby="title desc">
-  <title id="title">同步与异步 AFD 的执行时间线</title>
-  <desc id="desc">同步路径串行等待激活传输、专家计算和结果返回；异步路径通过微批次重叠减少暴露时间，但不能消除数据依赖。</desc>
-  <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
-    <style>.title{font:700 29px "Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#0f172a}.sub{font:500 16px "Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#475569}.head{font:700 17px "Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#111827;text-anchor:middle}.body{font:500 14px "Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#334155;text-anchor:middle}.node{stroke-width:2.5;rx:14}.flow{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}.dash{stroke:#64748b;stroke-width:2.5;fill:none;stroke-dasharray:8 6;marker-end:url(#arrow)}</style>
-  </defs>
-  <rect width="1500" height="650" fill="#f8fafc"/>
-  <text x="55" y="58" class="title">AFD 时间线：减少的是暴露等待，不是 Attention–FFN 依赖</text>
-  <text x="55" y="88" class="sub">同步路径适合先建立正确性；异步与 uBatch 只有在载荷、计算和连接器可重叠时才可能提高吞吐。</text>
-
-  <text x="130" y="180" class="head">同步路径</text>
-  <rect x="230" y="135" width="210" height="82" class="node" fill="#dbeafe" stroke="#2563eb"/><text x="335" y="169" class="head">Attention</text><text x="335" y="194" class="body">A 侧计算</text>
-  <rect x="505" y="135" width="210" height="82" class="node" fill="#fef3c7" stroke="#d97706"/><text x="610" y="169" class="head">A → F</text><text x="610" y="194" class="body">activation / metadata</text>
-  <rect x="780" y="135" width="210" height="82" class="node" fill="#ede9fe" stroke="#7c3aed"/><text x="885" y="169" class="head">FFN / Experts</text><text x="885" y="194" class="body">dispatch + compute</text>
-  <rect x="1055" y="135" width="210" height="82" class="node" fill="#fef3c7" stroke="#d97706"/><text x="1160" y="169" class="head">F → A</text><text x="1160" y="194" class="body">return output</text>
-  <path d="M440 176H505" class="flow"/><path d="M715 176H780" class="flow"/><path d="M990 176H1055" class="flow"/>
-
-  <text x="130" y="395" class="head">异步 / uBatch</text>
-  <rect x="230" y="315" width="220" height="72" class="node" fill="#dbeafe" stroke="#2563eb"/><text x="340" y="345" class="head">A：uBatch 0</text><text x="340" y="369" class="body">Attention / send</text>
-  <rect x="505" y="395" width="220" height="72" class="node" fill="#ede9fe" stroke="#7c3aed"/><text x="615" y="425" class="head">F：uBatch 0</text><text x="615" y="449" class="body">expert compute</text>
-  <rect x="505" y="295" width="220" height="72" class="node" fill="#dbeafe" stroke="#2563eb"/><text x="615" y="325" class="head">A：uBatch 1</text><text x="615" y="349" class="body">与 F0 重叠</text>
-  <rect x="780" y="375" width="220" height="72" class="node" fill="#ede9fe" stroke="#7c3aed"/><text x="890" y="405" class="head">F：uBatch 1</text><text x="890" y="429" class="body">expert compute</text>
-  <rect x="1055" y="335" width="230" height="92" class="node" fill="#ecfccb" stroke="#65a30d"/><text x="1170" y="369" class="head">返回并继续层流水</text><text x="1170" y="394" class="body">顺序与请求身份必须匹配</text>
-  <path d="M450 351H505" class="flow"/><path d="M725 331H760V411H780" class="dash"/><path d="M725 431H755V381H1055" class="flow"/><path d="M1000 411H1055" class="flow"/>
-
-  <rect x="360" y="535" width="780" height="70" class="node" fill="#fff1f2" stroke="#e11d48"/>
-  <text x="750" y="564" class="head">进入真实实验前的 Gate</text>
-  <text x="750" y="589" class="body">模型 wrapper、connector、rank topology、graph / quantization 兼容性与输出正确性全部通过</text>
+<title id="title">每个微批次保持依赖，不同微批次寻找重叠</title><desc id="desc">同步与微批次流水均保持Attention到发送到FFN到返回的依赖；微批次1的Attention可与微批次0的FFN同时执行。</desc><defs>
+<marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#52657a"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:15px;font-weight:400;fill:#334e68}.title{font-size:26px;font-weight:700;fill:#18324b}.h{font-size:18px;font-weight:600;fill:#18324b}.s{font-size:14px}.edge{fill:none;stroke:#52657a;stroke-width:2.5;marker-end:url(#arrow)}.opt{fill:none;stroke:#7657a5;stroke-width:2;stroke-dasharray:7 5;marker-end:url(#arrow)}</style></defs><rect width="1500" height="650" fill="#f8fafc"/><text x="750" y="43" text-anchor="middle" class="title">每个微批次保持依赖，不同微批次寻找重叠</text>
+<text x="120" y="167" text-anchor="middle" class="h">单个微批次</text>
+<rect x="230" y="120" width="200" height="90" rx="13" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="330" y="153" text-anchor="middle" class="h">Attention 0</text><text x="330" y="181" text-anchor="middle">得到隐藏表示</text>
+<rect x="475" y="120" width="200" height="90" rx="13" fill="#fff3df" stroke="#b7791f" stroke-width="2"/><text x="575" y="153" text-anchor="middle" class="h">发送 0</text><text x="575" y="181" text-anchor="middle">隐藏表示与路由信息</text>
+<rect x="720" y="120" width="200" height="90" rx="13" fill="#f1edfb" stroke="#7657a5" stroke-width="2"/><text x="820" y="153" text-anchor="middle" class="h">FFN 0</text><text x="820" y="181" text-anchor="middle">专家计算与合并</text>
+<rect x="965" y="120" width="200" height="90" rx="13" fill="#fff3df" stroke="#b7791f" stroke-width="2"/><text x="1065" y="153" text-anchor="middle" class="h">返回 0</text><text x="1065" y="181" text-anchor="middle">结果送回继续原层</text>
+<path d="M430 165H475" class="edge"/>
+<path d="M675 165H720" class="edge"/>
+<path d="M920 165H965" class="edge"/>
+<text x="120" y="363" text-anchor="middle" class="h">微批次 0</text>
+<rect x="230" y="320" width="160" height="80" rx="13" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="310" y="366" text-anchor="middle" class="h">Attention 0</text>
+<rect x="435" y="320" width="130" height="80" rx="13" fill="#fff3df" stroke="#b7791f" stroke-width="2"/><text x="500" y="366" text-anchor="middle" class="h">发送 0</text>
+<rect x="610" y="320" width="180" height="80" rx="13" fill="#f1edfb" stroke="#7657a5" stroke-width="2"/><text x="700" y="366" text-anchor="middle" class="h">FFN 0</text>
+<rect x="835" y="320" width="130" height="80" rx="13" fill="#fff3df" stroke="#b7791f" stroke-width="2"/><text x="900" y="366" text-anchor="middle" class="h">返回 0</text>
+<path d="M390 360H435" class="edge"/>
+<path d="M565 360H610" class="edge"/>
+<path d="M790 360H835" class="edge"/>
+<text x="120" y="483" text-anchor="middle" class="h">微批次 1</text>
+<rect x="610" y="440" width="180" height="80" rx="13" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="700" y="486" text-anchor="middle" class="h">Attention 1</text>
+<rect x="835" y="440" width="130" height="80" rx="13" fill="#fff3df" stroke="#b7791f" stroke-width="2"/><text x="900" y="486" text-anchor="middle" class="h">发送 1</text>
+<rect x="1010" y="440" width="180" height="80" rx="13" fill="#f1edfb" stroke="#7657a5" stroke-width="2"/><text x="1100" y="486" text-anchor="middle" class="h">FFN 1</text>
+<rect x="1235" y="440" width="140" height="80" rx="13" fill="#fff3df" stroke="#b7791f" stroke-width="2"/><text x="1305" y="486" text-anchor="middle" class="h">返回 1</text>
+<path d="M790 480H835" class="edge"/>
+<path d="M965 480H1010" class="edge"/>
+<path d="M1190 480H1235" class="edge"/>
+<text x="700" y="425" text-anchor="middle" class="s">两类角色可并行</text>
+<path d="M230 570H1390" class="edge"/><text x="1390" y="598" text-anchor="middle" class="s">时间 →</text>
+<text x="750" y="620" text-anchor="middle" class="s">依赖与同时机会示意，非实测比例；收益还取决于缓冲区、链路争用、角色数量与实际排队</text>
 </svg>
