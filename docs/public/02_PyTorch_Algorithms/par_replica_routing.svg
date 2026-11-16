@@ -27,5 +27,5 @@
 <path id="exceeds-slack" d="M900 400V485H1135" class="flow"/>
 <text x="1000" y="468" class="head" text-anchor="middle">否</text>
 <text x="55" y="567" class="sub" text-anchor="start">δ是允许缓存命中副本比最早可用副本多等的时间；本例额外等待=14−11=3 ms。</text>
-<text x="55" y="605" class="sub" text-anchor="start">已有Session时先检查会话所属副本的等待门槛，再检查Prefix；本页CPU实现按这一顺序选择。</text>
+<text x="55" y="605" class="sub" text-anchor="start">已有会话时先检查会话所属副本的等待条件，再检查前缀命中副本。</text>
 </svg>

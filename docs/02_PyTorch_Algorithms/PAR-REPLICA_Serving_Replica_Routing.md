@@ -1,6 +1,6 @@
-# PAR-REPLICA. Serving Replica Routing | Serving 副本与请求路由
+# PAR-REPLICA. Serving Replica Routing | 服务副本与请求路由
 
-**难度：** Hard | **环境：** CPU-first | **标签：** `通信与并行`, `Serving Replica`, `请求路由` | **目标人群：** 推理与并行系统学习者
+**难度：** Hard | **环境：** [CPU基础练习，可选多GPU实验](#runtime-environment) | **标签：** `通信与并行`、`Serving Replica`、`请求路由` | **目标人群：** 具备推理与调度基础的读者
 
 > 🚀 **云端运行环境**
 >
@@ -14,72 +14,92 @@
 
 ## 本节导读
 
-训练 Data Parallelism 让多个副本处理不同数据，并在更新时同步梯度；Serving 副本同样复制模型，但主要任务是把彼此独立的请求分给合适实例。它通常不需要每轮梯度同步，却要处理队列偏斜、缓存局部性、会话连续性和尾延迟。
+同一模型启动多个服务副本后，请求该发往哪一个？选择较早空闲的副本可以少排队；选择已有相同输入前缀缓存的副本，则可能省去重复计算。两者并不总是同一个实例，为了复用缓存等待太久，也可能让响应更慢。
 
-本节比较 Round-Robin、Queue-Aware 与 Prefix / Session-Aware 路由。学习重点是路由目标之间的冲突：选择空闲副本可以缩短等待，选择已有缓存的副本可以减少重复 Prefill，但为了缓存命中等待过久同样会伤害 P95 / P99。
+本节比较轮询、队列感知与局部性感知三种路由。先追踪请求进入哪个队列，再用允许额外等待的时间限制缓存或会话偏好，最后对照排队等待、命中率和完成速率，判断路由选择带来了什么变化。
 
-**关键词：** `replica routing`, `queue wait`, `cache locality`, `sticky session`, `tail latency`
+**关键词：** `replica routing`、`queue wait`、`prefix locality`、`sticky session`
 
 ---
 
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
+- **多 GPU 实测：** 使用 `PAR-CUDA-MECHANISM`；环境、运行配置与固定工作负载见 [Step 5](#gpu-experiment)。
+
+---
 ## 前置阅读
 
-**导语：** 先理解请求级调度、Prefix Cache 和队列等待，再把这些信号提升到多副本路由层。
+先理解单个实例中的缓存复用与请求调度，再比较多个实例之间的请求分配。
 
-- [24. Prefix Cache Matching and Reuse | Prefix Cache 匹配与复用](./24_Prefix_Cache_Matching_and_Reuse.md)
-- [36. Decode Scheduling | Decode 调度](./36_Decode_Scheduling.md)
-- [70. Serving Scheduler Benchmark | Serving 调度基准](./70_Serving_Scheduler_Benchmark.md)
+- [24. 前缀缓存匹配与复用](./24_Prefix_Cache_Matching_and_Reuse.md)：确认相同前缀怎样省去重复预填充。
+- [36. 解码调度](./36_Decode_Scheduling.md)：区分实例内部的调度与实例之间的路由。
+- [70. 推理服务调度基准](./70_Serving_Scheduler_Benchmark.md)：理解到达过程、排队与延迟统计。
 
 ---
-### Step 1：区分训练数据并行与 Serving 副本
 
-两者都复制模型，但协同对象不同。训练副本需要共同完成一次参数更新；Serving 副本通常独立执行请求，由路由层决定请求进入哪个队列。
+## Step 1：区分训练副本与服务副本
 
-| 对比维度 | 训练 Data Parallel | Serving Replica |
+训练数据并行让多个进程处理不同训练数据，再同步梯度以共同更新参数；服务副本则是能够独立执行请求的一套模型实例，请求入口为它选择队列。一个服务副本自身也可以使用模型并行，因此“两个副本”并不总等于“两张GPU”。
+
+缓存局部性表示所需KV状态已经保存在某个实例附近，送往该实例可能减少重复计算或搬运；会话粘连则让同一会话优先使用原实例，方便复用其状态。两种偏好都要和排队时间一起考虑。
+
+| 对比对象 | 训练数据并行 | 服务副本 |
 |---|---|---|
-| 工作单元 | batch / micro-batch | 独立请求或会话 |
-| 跨副本协同 | 梯度归约、参数一致性 | 请求分发、状态与缓存定位 |
-| 主要均衡目标 | 每 rank 计算量接近 | 队列等待、吞吐与尾延迟 |
-| 状态局部性 | 优化器与训练状态 | Prefix Cache、会话与 adapter |
-| 主要失败模式 | straggler、同步等待 | 热点副本、缓存抖动、会话迁移 |
+| 工作单元 | 训练批次与微批次 | 请求或会话 |
+| 跨副本协作 | 梯度归约与参数更新 | 请求分发与状态定位 |
+| 均衡目标 | 减少进程间计算差异 | 缩短排队与响应时间 |
+| 本地状态 | 参数、梯度与优化器状态 | 模型、KV缓存与会话信息 |
+| 常见等待 | 慢进程拖延同步 | 热点实例积压请求 |
 
-![Serving Replica：从请求入口到多副本执行](../public/02_PyTorch_Algorithms/par_replica_overview.svg)
+![请求路由与各副本上报的状态](../public/02_PyTorch_Algorithms/par_replica_overview.svg)
 
-### Step 2：比较三种路由信号
+## Step 2：限制为缓存或会话多等的时间
 
-Round-Robin 不读取运行状态，适合作为低成本 baseline；Queue-Aware 选择预计最早可用的副本；Locality-Aware 优先复用会话或 Prefix Cache，但必须设置等待容忍度。若缓存副本的预计开始时间比最空闲副本晚得过多，应放弃局部性并回到队列优先。
+轮询（Round-Robin）按次序轮流分配；队列感知（Queue-Aware）比较各副本预计何时可用，而不只是比较排了几个请求；局部性感知（Locality-Aware）还读取前缀缓存与会话归属。允许额外等待时间 $\delta$ 限制后一种偏好：已有会话先检查原副本，随后检查命中前缀的副本，均超限时选择最早可用者。
 
-| 策略 | 使用的信号 | 主要收益 | 容易误判的场景 |
+令 $a$ 为到达时间、 $u_r$ 为副本 $r$ 的预计可用时间，预计开始时间为 $\max(a,u_r)$，队列感知选择 $r_q$。局部性候选 $r$ 还要满足下面的不等式。例如最早11ms可用、缓存副本14ms可用，缓存选择比基线多等3ms；容忍3ms时可选，容忍2ms时回退。
+
+$$
+r_q=\arg\min_r\max(a,u_r),\qquad
+\max(a,u_r)\le\max(a,u_{r_q})+\delta.
+$$
+
+| 策略 | 使用的信号 | 可能减少什么 | 可能增加什么 |
 |---|---|---|---|
-| Round-Robin | 请求序号 | 实现简单、无状态 | 请求成本不均时形成热点 |
-| Queue-Aware | `available_at`、arrival | 降低排队和负载偏斜 | 忽略 Prefix Cache 与会话迁移 |
-| Prefix / Session-Aware | 队列、prefix、session、slack | 复用状态并减少重复 Prefill | 为命中等待过久，反而增加尾延迟 |
+| 轮询 | 请求序号 | 路由器查询成本 | 长短请求不均导致排队 |
+| 队列感知 | 到达时间与预计可用时间 | 排队等待 | 重复预填充或状态迁移 |
+| 局部性感知 | 队列、前缀与会话 | 重复计算与状态搬运 | 为复用状态多等的时间 |
 
-![Serving Replica：队列与缓存局部性的路由决策](../public/02_PyTorch_Algorithms/par_replica_routing.svg)
+![缓存命中与额外等待阈值的具体例子](../public/02_PyTorch_Algorithms/par_replica_routing.svg)
 
-### Step 3：用负载、局部性与尾延迟共同判断
+## Step 3：把等待、命中与工作量分开看
 
-副本数增加不保证吞吐线性增长。路由结果至少要同时记录 Queue Wait、P95 / P99、吞吐、Cache Hit Rate 和副本负载偏斜；若只看平均延迟，少量被错误粘住的长等待请求会被掩盖。
+P95／P99是给定延迟分布的95%／99%分位值，反映较慢请求的等待或响应情况。排队 P95 统计从到达到开始执行的时间；端到端 P95 还包括执行与传输。记录分位数时，明确计时起止点，再分别比较。缓存命中率也要说明是请求命中还是复用词元比例，同样一次命中可能省去不同数量的计算。
 
-| 证据 | 回答的问题 | 典型风险 |
+长输入或长输出会占用更多执行时间，因此分配请求时要同时看请求数量与各副本的忙碌时间。比较路由时固定请求流与副本数，分别记录等待、完成速率、缓存复用和每实例忙碌时间，再判断减少的重复计算是否值得额外等待。
+
+| 观察对象 | 回答的问题 | 容易遗漏什么 |
 |---|---|---|
-| Queue Wait 与 P95 / P99 | 请求是否在入口长期等待 | 热点副本或 sticky session 过强 |
-| Cache Hit Rate | 路由是否保留状态局部性 | 命中高但队列更长 |
-| 每副本请求数与忙碌时间 | 负载是否均衡 | 仅按请求数均衡却忽略请求成本 |
-| Throughput | 固定 workload 内完成请求的速度 | 牺牲尾延迟换取总量 |
-| 路由原因 | 决策来自队列、prefix 还是 session | 无法解释策略为何退化 |
+| 排队与端到端分位数 | 慢请求在哪里花时间 | 只看平均值掩盖长等待 |
+| 缓存命中与复用长度 | 实际省去多少预填充 | 命中次数高但复用内容短 |
+| 请求数与忙碌时间 | 任务数量与计算是否均衡 | 少量长请求占满一个副本 |
+| 完成速率 | 同一观察窗口完成多少请求 | 为总量牺牲响应目标 |
+| 路由原因 | 为什么选择或放弃某副本 | 会话偏好与缓存偏好冲突 |
 
-### Step 4：CPU 实现——多副本路由与离散事件模拟
+<a id="mechanism-practice"></a>
 
-本题用带到达时间、服务时间、Prefix 与 Session 的请求流模拟多个副本。骨架已提供副本状态和事件字段；你将补全路由选择、队列时间推进、指标汇总和策略比较。
+## Step 4：选择副本并推进请求时间线
 
-测试区覆盖 Round-Robin 顺序、Queue-Aware 的最早可用选择、局部性 slack、时间线不变量和三种策略的统一 workload 对照。
+题目按到达顺序模拟请求，为每个副本保存预计可用时间、前缀键集合与会话归属。一个副本串行执行，前缀键相同即视为命中，命中后整个服务时间按固定比例缩短；这是题目的成本假设，没有模拟真实KV大小或缓存驱逐。先选择副本，再推进开始与结束时间，最后汇总排队指标并比较策略。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 |---|---|---|---|
-| TODO 1 · `select_replica` | 应用局部性等待门槛 | 只保留等待不超过 `shortest + slack` 的候选 | 三类策略与 fallback |
-| TODO 2 · `simulate_replica_routing` | 推进请求与副本时间线 | 计算开始、命中、有效服务时间并更新状态 | 时间线、命中与状态更新 |
-| TODO 3 · `summarize_replica_service` | 计算服务指标 | 统一观测窗口并保留空输入口径 | P95、吞吐与负载偏斜 |
+| TODO 1 · `select_replica` | 按会话、前缀顺序检查额外等待 | 超过最短等待加容忍时间时回退 | 三类策略与等待阈值 |
+| TODO 2 · `simulate_replica_routing` | 计算开始、命中与服务时间 | 到达前不执行，同一副本不重叠 | 时间线、命中与状态更新 |
+| TODO 3 · `summarize_replica_service` | 汇总统一窗口内的指标 | P95／P99按排队等待算，偏斜按请求数算 | 分位数、速率与请求数差异 |
 
 
 ```python
@@ -173,7 +193,7 @@ def simulate_replica_routing(
 
 
 def summarize_replica_service(records: List[Dict[str, Any]], num_replicas: int) -> Dict[str, Any]:
-    """汇总队列、尾延迟、吞吐、命中率与副本负载偏斜。"""
+    """汇总排队等待分位数、吞吐、请求命中率与请求数偏斜。"""
     if not records:
         return {'request_count': 0, 'mean_queue_wait_ms': 0.0, 'p95_queue_wait_ms': 0.0,
                 'p99_queue_wait_ms': 0.0, 'throughput_requests_per_s': 0.0,
@@ -206,7 +226,7 @@ def summarize_replica_service(records: List[Dict[str, Any]], num_replicas: int) 
 
 
 def compare_replica_strategies(requests: List[Dict[str, Any]], num_replicas: int, locality_slack_ms: float = 5.0) -> List[Dict[str, Any]]:
-    """在同一请求流上比较三种路由策略，并按 P95 后按吞吐排序。"""
+    """在同一请求流上比较三种路由策略，并按排队P95后按吞吐排序。"""
     comparisons = []
     for strategy in ('round_robin', 'queue_aware', 'locality_aware'):
         records = simulate_replica_routing(
@@ -222,9 +242,12 @@ def compare_replica_strategies(requests: List[Dict[str, Any]], num_replicas: int
     )
 ```
 
+## 测试
+
 
 ```python
 def _routing_requests():
+    """提供同一到达过程、长度成本、前缀与会话的测试请求。"""
     return [
         {'request_id': 'r0', 'arrival_ms': 0.0, 'service_ms': 20.0, 'prefix_key': 'a', 'session_id': 's0'},
         {'request_id': 'r1', 'arrival_ms': 1.0, 'service_ms': 8.0, 'prefix_key': 'b', 'session_id': 's1'},
@@ -263,7 +286,7 @@ def test_routing_timeline_contract():
 
 
 def test_service_metrics_and_strategy_comparison():
-    """所有策略必须使用同一 workload，并输出可比较的尾延迟与吞吐字段。"""
+    """所有策略必须使用同一 workload，并输出可比较的排队等待与吞吐字段。"""
     original = deepcopy(_routing_requests())
     comparisons = compare_replica_strategies(original, 2, locality_slack_ms=10.0)
     assert original == _routing_requests()
@@ -278,7 +301,26 @@ def test_service_metrics_and_strategy_comparison():
         assert metrics['throughput_requests_per_s'] > 0.0
 
 
+def test_queue_metric_meaning():
+    """用固定等待值核对分位数，并区分请求数偏斜与服务时间。"""
+    waits = [0.0, 1.0, 2.0, 100.0, 0.0]
+    finishes = [1.0, 2.0, 100.0, 101.0, 1.0]
+    records = [
+        {'arrival_ms': 0.0, 'finish_ms': finishes[index], 'queue_wait_ms': wait,
+         'replica_id': 0 if index < 4 else 1, 'cache_hit': index == 0}
+        for index, wait in enumerate(waits)
+    ]
+    metrics = summarize_replica_service(records, 2)
+    assert metrics['p95_queue_wait_ms'] == 100.0
+    assert metrics['p99_queue_wait_ms'] == 100.0
+    assert math.isclose(metrics['throughput_requests_per_s'], 5000.0 / 101.0)
+    assert metrics['cache_hit_rate'] == 0.2
+    assert metrics['load_skew_ratio'] == 1.2
+    assert summarize_replica_service([], 2)['request_count'] == 0
+
+
 test_replica_selection_contract()
+test_queue_metric_meaning()
 test_routing_timeline_contract()
 test_service_metrics_and_strategy_comparison()
 print('✅ Serving 副本选择、时间线与策略对照验证通过。')
@@ -367,7 +409,7 @@ def simulate_replica_routing(requests, num_replicas, strategy, locality_slack_ms
 
 
 def summarize_replica_service(records, num_replicas):
-    """汇总队列、尾延迟、吞吐、命中率与副本负载偏斜。"""
+    """汇总排队等待分位数、吞吐、请求命中率与请求数偏斜。"""
     if not records:
         return {'request_count': 0, 'mean_queue_wait_ms': 0.0, 'p95_queue_wait_ms': 0.0,
                 'p99_queue_wait_ms': 0.0, 'throughput_requests_per_s': 0.0,
@@ -411,37 +453,33 @@ def compare_replica_strategies(requests, num_replicas, locality_slack_ms=5.0):
 
 ### 解析
 
-**TODO 1：副本选择**
+#### TODO 1：先比较等待，再应用局部性偏好
 
-- Queue-Aware 比较的是预计等待，而不是简单请求数；Locality-Aware 还要检查缓存或会话归属。
-- `locality_slack_ms` 给局部性设置上限，避免为了命中把请求粘在长期拥塞的副本上。
+- 等待为“预计可用时间减到达时间”与0的较大值，队列感知选择等待最短者；它不是按队列请求数选择。
+- 会话或前缀候选的等待要不超过最短等待加`locality_slack_ms`。测试用同一缓存副本分别检查可选与超限回退。
 
-**TODO 2：时间线推进**
+#### TODO 2：沿副本队列推进时间
 
-- `start_ms` 同时受请求到达时间和副本可用时间约束，同一副本上的请求不能重叠。
-- 缓存命中只影响当前请求的有效服务时间；缓存和 Session 归属在请求完成路径中更新。
+- 开始时间取到达时间与副本可用时间的较大值；结束时间加上本次服务成本，再更新该副本可用时间。时间线测试检查同一副本上的请求不会重叠。
+- 命中时服务成本乘以`1-cache_hit_speedup`，默认示例相当于缩短30%；它是给定假设，不是测得的缓存加速比。前缀与会话状态随模拟更新，供后续排队请求使用。
 
-**TODO 3：指标汇总**
+#### TODO 3：按字段实际含义汇总
 
-- P95 / P99 揭示少量长等待请求，Cache Hit Rate 与负载偏斜解释这些等待可能来自哪里。
-- 吞吐必须使用统一观测窗口，不能把不同请求流的结果直接比较。
+- 排队等待排序后用最近秩法取分位数：P95取第`ceil(0.95×请求数)`个值。吞吐以最早到达到最后完成为窗口，换算为请求／秒。
+- `load_skew_ratio`用各副本请求数的最大值减最小值，再除以平均数；忙碌时间没有进入这个字段。策略比较骨架先按排队P95、再按吞吐排序，测试同时检查输入不被改写和三种策略齐全。
 
-**策略对照骨架**
+<a id="gpu-experiment"></a>
 
-- 三种策略必须复用相同请求流和副本数；排序先看尾延迟，再用吞吐打破并列。
-- CPU 模拟只验证路由和时间线机制；真实副本的模型执行、KV 占用和网络代价由分布式推理项目验证。
+## Step 5：多GPU比较固定工作量的分配
 
-### Step 5：可选多 GPU 复测——副本负载分配
+CPU部分模拟到达、等待和缓存偏好；这里把预先给定的成本列表分给两个GPU进程，每个成本单位执行一次矩阵乘法。比较轮询与最小累计负载分配：两者完成同一批计算，测量最慢进程何时结束。
 
-CPU 模拟能够解释队列和局部性；本实验把同一组不均匀请求成本分配给两个真实 GPU rank，比较 round-robin 与 least-loaded 的最大 rank 完成时间。它是副本负载机制实验，不是 vLLM 或 SGLang Serving benchmark。
+这里的最小负载选择使用已知成本，是静态分配，不是在线预测。它可以检验任务不均怎样影响整批完成时间；真实服务的缓存、请求到达与网络延迟则需服务后端测量。
 
-| CPU 机制价值 | GPU 实验价值 | 仍不能推出 |
-| --- | --- | --- |
-| 验证到达、排队、缓存与路由规则 | 验证不均匀 GPU workload 下的负载分配和 makespan | 模型 KV 命中、网络入口、真实 backend 调度和在线尾延迟 |
+### 5.1 环境与固定工作负载
 
-#### 5.1 环境与固定 workload
+使用[通信与并行实验Quickstart](../topic_discussion/communication_parallelism/quickstart.md)中的`PAR-CUDA-MECHANISM`双卡环境。固定成本列表、矩阵大小、精度、预热与重复次数，只改变分配策略。
 
-安装与双卡预检见[通信与并行实验 Quickstart](../topic_discussion/communication_parallelism/quickstart.md)。本单元固定请求成本序列和每个成本单位的计算量，只比较副本分配策略。
 
 ```python
 from tools.project_runtime import resolve_project_root
@@ -461,7 +499,7 @@ print({'run_mode': RUN_MODE, 'profile': ENVIRONMENT_PROFILE, 'replicas': WORLD_S
 
 ```
 
-#### 5.2 执行两种副本分配策略
+### 5.2 执行两种副本分配策略
 
 
 ```python
@@ -480,18 +518,20 @@ else:
 
 ```
 
-#### 5.3 读取结果
+### 5.3 读取结果
 
-#### 5.4 解释证据并形成决策
+### 5.4 解释时间与分配结果
 
-round-robin 与 least-loaded 使用同一请求成本序列和 GPU 计算。比较最大 rank 完成时间、每 rank 工作量和吞吐代理，可以验证负载分配机制；真实模型的 KV 命中、网络入口和在线 P99 仍需在 vLLM / SGLang 项目中复测。
+先确认两种分配处理了同一成本列表，再比较各进程的工作量和完成时间。吞吐代理值以8个计算任务除以整批耗时计算，对应这个矩阵实验的任务完成速率。
 
 | 观察项 | 读取字段 | 当前结果 | 解释与动作 |
 | --- | --- | --- | --- |
-| 运行状态 | `failure`、`environment_profile` | 运行后填写 | 失败时不比较路由策略 |
-| 负载分布 | `request_cost_units_per_rank`、`rank_elapsed_ms` | 运行后填写 | 判断路由是否降低最慢副本压力 |
-| 完成时间与容量 | `max_rank_makespan_ms`、`throughput_requests_per_s_proxy` | 运行后填写 | 判断均衡收益是否稳定 |
-| 证据出口 | `evidence_level`、`decision` | 运行后填写 | 机制通过后进入真实 Serving 项目 |
+| 运行状态 | `failure`、`environment_profile` | 运行后填写 | 先排除启动与计算失败 |
+| 分配数量 | `request_cost_units_per_rank` | 运行后填写 | 检查各进程累计成本是否更接近 |
+| 运行时间 | `rank_elapsed_ms`、`max_rank_makespan_ms` | 运行后填写 | 比较最慢进程的整批耗时 |
+| 完成速率 | `throughput_requests_per_s_proxy` | 运行后填写 | 只解释当前矩阵任务，不当作模型服务吞吐 |
+| 下一步 | 原始时间、分配与请求成本 | 运行后填写 | 在真实服务中加入到达、缓存与在线延迟对照 |
+
 
 ```python
 import json
@@ -511,7 +551,7 @@ else:
 
 ## 相关阅读
 
-- [SGLang：HiCache 与缓存感知调度](https://docs.sglang.ai/advanced_features/hicache_best_practices.html)
-- [vLLM：Production Metrics](https://docs.vllm.ai/en/latest/design/metrics.html)
-- [49. Parallelism Strategy Selection | 并行策略选型](./49_Parallelism_Strategy_Selection.md)
-- [81. Distributed Inference Project | 分布式推理项目](./81_Distributed_Inference_Project.md)
+需要检查缓存本身时回到前缀复用；需要比较真实服务形态时进入分布式推理项目。
+
+- [24. 前缀缓存匹配与复用](./24_Prefix_Cache_Matching_and_Reuse.md)：从前缀键匹配继续核对可复用的KV范围。
+- [81. 分布式推理逻辑验证](./81_Distributed_Inference_Project.md)：区分副本扩展、模型切分与预填充—解码分离。
