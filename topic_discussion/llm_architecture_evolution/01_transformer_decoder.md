@@ -1,5 +1,21 @@
 # 01 仅解码器主干（Decoder-only Backbone）
 
+## 先认识 Transformer 的两部分
+
+原始 Transformer 由两部分组成：**编码器（Encoder）**和**解码器（Decoder）**。以翻译为例，编码器读取原文，把它转换成一组表示；解码器结合这些表示和已有的译文，逐个预测后续词元。
+
+下图左侧是编码器，右侧橙色框中是解码器。我们先用这张图确定解码器在完整结构中的位置，再进入本节的讲解。
+
+![原始 Transformer 的编码器与解码器，右侧橙色框突出解码器部分](../../docs/public/topic_discussion/llm_architecture_evolution/encoder_decoder_overview.svg)
+
+**本节主要讲解解码器，更准确地说，是 GPT、LLaMA 这类模型采用的“仅解码器（Decoder-only）”结构。** 它与图中的原始解码器有所不同：没有独立的编码器，也没有读取编码器输出的交叉注意力，而是让提示词和已生成词元进入同一串解码器块，通过因果自注意力读取上下文，再预测下一个词元。下文将围绕这一结构展开，不展开讲解编码器。
+
+教程中已有配套 Notebook，可以结合阅读：
+
+- [Part 00 · 13 Transformer Block 数据流与残差通路](../../00_Prerequisites/13_Transformer_Block_Dataflow_and_Residual_Stream.ipynb)：从一个 Block 入手，理解注意力、前馈网络和残差连接如何组织在一起，建议先读这一节。
+- [Part 00 · 16 Attention 机制导论](../../00_Prerequisites/16_Attention_Mechanism_Intro.ipynb)：补充 Q/K/V、因果掩码，以及自注意力与交叉注意力的区别。
+- [Part 02 · 05 LLaMA3 Block 教程](../../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.ipynb)：进一步把归一化、注意力和前馈网络组装成现代解码器块。
+
 ## 学习问题
 
 给出一段文字，模型怎样逐个预测后续词元？仅解码器模型把词元编号变成隐状态，也就是每个位置的一组特征，再经过多个解码器块产生预测分数。因果掩码限制每个位置只能读取自身与此前允许的位置，避免训练时提前看到待预测内容。

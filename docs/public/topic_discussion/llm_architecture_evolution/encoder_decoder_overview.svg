@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="960" viewBox="0 0 1040 960" role="img" aria-labelledby="title desc">
+  <title id="title">原始 Transformer：左侧编码器，右侧解码器</title>
+  <desc id="desc">信息自上而下流动。编码器将原文转换为表示，供解码器的交叉注意力读取。右侧橙色框突出解码器。每个虚线框中的层重复堆叠。下方说明本节的仅解码器结构去掉编码器与交叉注意力。</desc>
+  <defs>
+    <style>
+      text { font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #1e293b; }
+      .title { font-size: 30px; font-weight: 700; }
+      .heading { font-size: 25px; font-weight: 700; }
+      .label { font-size: 21px; font-weight: 600; text-anchor: middle; }
+      .small { font-size: 17px; fill: #475569; text-anchor: middle; }
+      .arrow { fill: none; stroke: #64748b; stroke-width: 2.5; marker-end: url(#arrow); }
+      .cross { fill: none; stroke: #b45309; stroke-width: 3; marker-end: url(#cross-arrow); }
+      .box { stroke-width: 1.5; }
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 Z" fill="#64748b"/>
+    </marker>
+    <marker id="cross-arrow" viewBox="0 0 10 10" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 Z" fill="#b45309"/>
+    </marker>
+  </defs>
+
+  <rect width="1040" height="960" rx="20" fill="#ffffff"/>
+  <text x="40" y="52" class="title">先找到 Transformer 中的解码器</text>
+  <text x="40" y="85" font-size="18" fill="#475569">原始编码器—解码器结构 · 简化示意，信息自上而下流动</text>
+
+  <rect x="40" y="120" width="370" height="695" rx="20" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+  <rect x="600" y="120" width="400" height="695" rx="20" fill="#fff7ed" stroke="#ea580c" stroke-width="4"/>
+  <text x="225" y="163" class="heading" text-anchor="middle">编码器 Encoder</text>
+  <text x="800" y="163" class="heading" text-anchor="middle" style="fill:#c2410c">解码器 Decoder</text>
+  <text x="225" y="193" class="small">读取原文，形成上下文表示</text>
+  <text x="800" y="193" class="small" style="fill:#9a3412">右侧橙色框：解码器部分</text>
+
+  <text x="225" y="237" class="label">原文词元</text>
+  <text x="800" y="237" class="label">已有译文词元（含起始标记）</text>
+  <path d="M 225 249 V 273" class="arrow"/>
+  <path d="M 800 249 V 273" class="arrow"/>
+  <rect x="80" y="273" width="290" height="54" rx="10" fill="#ffffff" stroke="#94a3b8" class="box"/>
+  <rect x="645" y="273" width="310" height="54" rx="10" fill="#ffffff" stroke="#94a3b8" class="box"/>
+  <text x="225" y="307" class="label">词嵌入 + 位置编码</text>
+  <text x="800" y="307" class="label">词嵌入 + 位置编码</text>
+
+  <rect x="60" y="350" width="330" height="244" rx="12" fill="none" stroke="#94a3b8" stroke-dasharray="6 5"/>
+  <rect x="625" y="350" width="350" height="354" rx="12" fill="none" stroke="#d97706" stroke-dasharray="6 5"/>
+  <text x="74" y="376" class="small" style="text-anchor:start">编码器层 × N</text>
+  <text x="639" y="376" class="small" style="text-anchor:start">解码器层 × N</text>
+
+  <path d="M 225 327 V 401" class="arrow"/>
+  <path d="M 800 327 V 401" class="arrow"/>
+  <rect x="80" y="401" width="290" height="67" rx="10" fill="#eff6ff" stroke="#60a5fa" class="box"/>
+  <rect x="645" y="401" width="310" height="67" rx="10" fill="#eff6ff" stroke="#60a5fa" class="box"/>
+  <text x="225" y="429" class="label">自注意力</text>
+  <text x="225" y="454" class="small">可读取原文全部位置</text>
+  <text x="800" y="429" class="label">因果自注意力</text>
+  <text x="800" y="454" class="small">只读取当前位置及此前词元</text>
+
+  <path d="M 225 468 V 503" class="arrow"/>
+  <path d="M 800 468 V 503" class="arrow"/>
+  <rect x="80" y="503" width="290" height="67" rx="10" fill="#f0fdf4" stroke="#86b899" class="box"/>
+  <rect x="645" y="503" width="310" height="67" rx="10" fill="#ffedd5" stroke="#d97706" class="box"/>
+  <text x="225" y="531" class="label">前馈网络 FFN</text>
+  <text x="225" y="556" class="small">逐位置变换特征</text>
+  <text x="800" y="531" class="label">交叉注意力</text>
+  <text x="800" y="556" class="small">读取左侧编码器的输出</text>
+
+  <path d="M 225 570 V 613" class="arrow"/>
+  <path d="M 800 570 V 613" class="arrow"/>
+  <rect x="80" y="613" width="290" height="67" rx="10" fill="#e2e8f0" stroke="#94a3b8" class="box"/>
+  <rect x="645" y="613" width="310" height="67" rx="10" fill="#f0fdf4" stroke="#86b899" class="box"/>
+  <text x="225" y="641" class="label">编码器输出</text>
+  <text x="225" y="666" class="small">原文各位置的上下文表示</text>
+  <text x="800" y="641" class="label">前馈网络 FFN</text>
+  <text x="800" y="666" class="small">逐位置变换特征</text>
+
+  <path d="M 370 646 H 500 V 536 H 645" class="cross"/>
+  <text x="503" y="482" class="small" style="fill:#9a3412">编码器表示</text>
+  <text x="503" y="507" class="small" style="fill:#9a3412">供每层读取</text>
+
+  <path d="M 800 680 V 737" class="arrow"/>
+  <rect x="645" y="737" width="310" height="54" rx="10" fill="#ffffff" stroke="#d97706" class="box"/>
+  <text x="800" y="771" class="label">输出头 → 下一词元概率</text>
+  <text x="225" y="748" class="small">简化说明：每个注意力与 FFN</text>
+  <text x="225" y="774" class="small">子层均包含残差连接与归一化。</text>
+
+  <rect x="40" y="840" width="960" height="94" rx="14" fill="#fff7ed"/>
+  <text x="62" y="875" font-size="22" font-weight="700" fill="#9a3412">本节：仅解码器（Decoder-only）</text>
+  <text x="62" y="909" font-size="20">去掉左侧编码器和右侧交叉注意力，用提示词与已生成词元预测下一个词元。</text>
+</svg>
