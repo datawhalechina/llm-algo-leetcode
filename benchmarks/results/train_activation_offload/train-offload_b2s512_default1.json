@@ -1,0 +1,89 @@
+{
+  "schema_version": "training-mechanism-gpu/v4",
+  "semantic_id": "TRAIN-OFFLOAD",
+  "profile_id": "TRAIN-CUDA-MECHANISM",
+  "run_label": "b2s512_default1",
+  "model": {
+    "id": "Qwen/Qwen2.5-0.5B",
+    "requested_revision": "main",
+    "resolved_commit": "060db6499f32faf8b98477b0a26969ef7d8b9987",
+    "resolution_source": "local_cache_single_snapshot",
+    "tokenizer_class": "Qwen2Tokenizer"
+  },
+  "workload": {
+    "dtype": "bfloat16",
+    "batch_size": 2,
+    "seq_len": 512,
+    "warmup": 1,
+    "repeats": 20,
+    "min_memory_reduction_mb": 32.0,
+    "min_memory_reduction_ratio": 0.01,
+    "max_median_time_ratio": 2.0,
+    "seed": 42,
+    "prompts": [
+      "Explain activation offload between GPU and CPU."
+    ]
+  },
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "total_memory_bytes": 12328960000,
+    "compute_capability": [
+      12,
+      0
+    ],
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8",
+    "bf16_supported": true
+  },
+  "metrics": {
+    "baseline": {
+      "step_median_ms": 154.0076,
+      "step_p95_ms": 199.1069,
+      "peak_allocated_mb": 4222.0703,
+      "peak_reserved_mb": 4560.0,
+      "d2h_mb": 0.0,
+      "h2d_mb": 0.0,
+      "offloaded_tensors": 0,
+      "loss": 5.893578,
+      "gradient_l2_norm": 337.070526,
+      "gradient_is_finite": true
+    },
+    "candidate": {
+      "step_median_ms": 904.3341,
+      "step_p95_ms": 1196.4022,
+      "peak_allocated_mb": 2775.5977,
+      "peak_reserved_mb": 4200.0,
+      "d2h_mb": 2949.8828,
+      "h2d_mb": 2949.8828,
+      "offloaded_tensors": 584,
+      "loss": 5.893578,
+      "gradient_l2_norm": 337.070526,
+      "gradient_is_finite": true
+    }
+  },
+  "correctness": {
+    "loss_abs_diff": 0.0,
+    "gradient_norm_abs_diff": 0.0,
+    "gradient_norm_relative_diff": 0.0,
+    "passed": true
+  },
+  "transfer_gate": {
+    "offloaded_tensors": 584,
+    "d2h_mb": 2949.8828125,
+    "h2d_mb": 2949.8828125,
+    "passed": true
+  },
+  "resource_gate": {
+    "memory_reduction_mb": 1446.47265625,
+    "memory_reduction_ratio": 0.3425979553129481,
+    "passed": true
+  },
+  "performance_gate": {
+    "median_time_ratio": 5.872009563164416,
+    "max_median_time_ratio": 2.0,
+    "passed": false
+  },
+  "failure": null,
+  "evidence_level": "real_model_mechanism_benchmark",
+  "decision": "tune"
+}
