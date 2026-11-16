@@ -22,13 +22,15 @@
 
 环境工具的实现已迁入 [`environment/`](./environment/README.md)：`install_environment_profile.py`、`environment_preflight.py`、`register_notebook_runtime.py`。可使用 `python -m tools.environment.<模块名>`；安装、预检与路径注册仍是三个不同操作，迁移不改变环境Profile和注册位置。
 
+实验入口的实现已迁入 [`benchmarks/`](./benchmarks/README.md)：`aggregate_distributed_evidence.py`、`benchmark_inference_backend.py`。可使用 `python -m tools.benchmarks.<模块名>`；这里只存命令实现，实验配置、工作负载与结果仍位于根目录`benchmarks/`。
+
 ## 临时脚本
 
 一次性排查、批量迁移草稿放在 [`_scratch/`](./_scratch/README.md)，不再放到 `tools/` 根目录。该目录默认忽略本地内容，仅保留说明和忽略规则。正式测试、公共运行时、实验结果不放在这里。
 
 ## 长期分类方案
 
-下表列出分批迁移的目标。`tests/`已承载回归测试，`checks/`、`docs/`和`environment/`分别迁入上述四项检查器、四项文档工具及三项环境工具；其余条目的新命令路径尚未整体启用。按工具职责分类，不按教程小节编号建目录。
+下表列出分批迁移的目标。`tests/`已承载回归测试，`checks/`、`docs/`、`environment/`和`benchmarks/`已迁入上方列出的实现；其余条目的新命令路径尚未整体启用。按工具职责分类，不按教程小节编号建目录。
 
 | 目标目录 | 存放内容 | 现有例子 |
 |:---|:---|:---|
