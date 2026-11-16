@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import ast
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -36,6 +37,7 @@ def _producer() -> dict:
 
 
 def main() -> None:
+    test_visible_architecture_close_entries()
     producer = _producer()
     assert producer["schema_version"] == SCHEMA_VERSION
     assert producer["role"] == "producer"
@@ -140,6 +142,49 @@ def main() -> None:
     invalid.pop("cost")
     assert any("missing fields" in error for error in validate_record(invalid))
     print("architecture result schema: ok")
+
+
+def test_visible_architecture_close_entries() -> None:
+    """Check projects 60/71; projects 77/78 use full input-chain closure tests."""
+    root = Path(__file__).resolve().parents[1]
+    def cell(prefix, cell_id):
+        path = next((root / '02_PyTorch_Algorithms').glob(prefix + '*.ipynb'))
+        return ''.join(next(c for c in json.loads(path.read_text())['cells'] if c['id'] == cell_id)['source'])
+    tree = ast.parse(cell('60_', 'a67c0dac'))
+    scope = {}
+    exec(compile(ast.Module(body=[n for n in tree.body if isinstance(n, ast.FunctionDef)], type_ignores=[]), 'block_gate', 'exec'), scope)
+    review = scope['review_checkpoint_pair_for_close']
+    facts = {'runtime_loss': 1.0, 'grad_norm_first_parameter': 0.1,
+             'step_time_ms_median': 4.0, 'peak_memory_mb': 128.0,
+             'quality': {'validation_loss': 1.2}}
+    record = {'semantic_id': 'ARCH-BLOCK-STABILITY', 'run_label': 'fixture',
+              'baseline': facts, 'candidate': facts}
+    assert review(record, 'fixture')['decision'] == 'tune'
+    for bad in (float('nan'), float('inf'), -1, True):
+        invalid = {**record, 'candidate': {**facts, 'runtime_loss': bad}}
+        assert review(invalid, 'fixture')['decision'] == 'reject'
+    missing_quality = {**record, 'candidate': {**facts, 'quality': {}}}
+    assert not review(missing_quality, 'fixture')['quality_ready']
+    try:
+        review(record, 'another_run')
+    except ValueError:
+        pass
+    else:
+        raise AssertionError('wrong run accepted')
+    with TemporaryDirectory() as temporary:
+        directory = Path(temporary)
+        target = directory / 'evidence.json'
+        scope = {'RUN_STAGE': 'close', 'MLA_BACKEND_REPORTS': None, 'MLA_BACKEND_FAILURES': {},
+                 'mechanism_record': {'metrics': {'rows': []}}, 'MLA_ADMISSION': {'status': 'blocked', 'failures': ['missing_asset']},
+                 'MLA_REPOSITORY_ROOT': directory, 'MLA_MECHANISM_PATH': directory / 'mechanism.json',
+                 'MLA_RESULT_PATHS': {}, 'MLA_MODEL_ADMISSION': {'baseline': {}, 'candidate': {}},
+                 'SEMANTIC_ID': 'ARCH-MLA-KV', 'MLA_DTYPE': 'bfloat16', 'GPU_MEMORY_LIMIT_GB': 10.5,
+                 'RUN_LABEL': 'fixture', 'MLA_WORKLOAD': 'fixture.jsonl', 'MLA_BACKEND_WORKLOAD': {'num_prompts': 4},
+                 'mechanism_identity': {}, 'mechanism_ok': True, 'MLA_EVIDENCE_PATH': target, 'json': json}
+        exec(cell('71_', '71gpudec'), scope)
+        assert target.is_file(), 'close must publish, not test for measure again'
+        saved = json.loads(target.read_text())
+        assert saved['status'] == 'blocked' and saved['decision']['status'] == 'tune'
 
 
 if __name__ == "__main__":
