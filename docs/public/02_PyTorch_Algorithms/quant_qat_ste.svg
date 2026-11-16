@@ -1,17 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="360" viewBox="0 0 1080 360" role="img" aria-labelledby="title desc">
-  <title id="title">Fake quant 与 STE 的前向反向关系</title>
-  <desc id="desc">前向执行裁剪、缩放、舍入和恢复，反向在可表示区间传递近似梯度，在饱和区抑制梯度。</desc>
-  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#475569"/></marker><style>.b{fill:#fff;stroke:#64748b;stroke-width:2;rx:12}.q{fill:#f5f3ff;stroke:#7c3aed}.t{font:600 18px sans-serif;fill:#0f172a;text-anchor:middle}.s{font:14px sans-serif;fill:#334155;text-anchor:middle}.l{stroke:#475569;stroke-width:2;fill:none;marker-end:url(#a)}.r{stroke:#dc2626;stroke-width:2;fill:none;marker-end:url(#a);stroke-dasharray:7 5}</style></defs>
-  <rect width="1080" height="360" fill="#f8fafc"/>
-  <text x="35" y="42" class="t" text-anchor="start">前向：模拟部署离散化</text>
-  <rect x="55" y="70" width="150" height="72" class="b"/><text x="130" y="112" class="t">浮点张量</text>
-  <rect x="265" y="70" width="150" height="72" class="b q"/><text x="340" y="100" class="t">Clamp</text><text x="340" y="124" class="s">限制表示范围</text>
-  <rect x="475" y="70" width="150" height="72" class="b q"/><text x="550" y="100" class="t">Round</text><text x="550" y="124" class="s">映射整数码点</text>
-  <rect x="685" y="70" width="150" height="72" class="b q"/><text x="760" y="100" class="t">Dequant</text><text x="760" y="124" class="s">恢复浮点近似</text>
-  <rect x="895" y="70" width="130" height="72" class="b"/><text x="960" y="112" class="t">后续算子</text>
-  <path d="M205 106 H265" class="l"/><path d="M415 106 H475" class="l"/><path d="M625 106 H685" class="l"/><path d="M835 106 H895" class="l"/>
-  <text x="35" y="230" class="t" text-anchor="start">反向：使用近似梯度</text>
-  <rect x="180" y="252" width="270" height="70" class="b"/><text x="315" y="281" class="t">可表示区间</text><text x="315" y="306" class="s">梯度近似直通</text>
-  <rect x="630" y="252" width="270" height="70" class="b"/><text x="765" y="281" class="t">饱和区间</text><text x="765" y="306" class="s">裁剪阻止继续放大</text>
-  <path d="M760 142 V210 H315 V252" class="r"/><path d="M760 142 V252" class="r"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="460" viewBox="0 0 1080 460" role="img" aria-labelledby="title desc">
+<title id="title">前向保留离散值，反向使用近似梯度</title><desc id="desc">前向从浮点输入经裁剪、舍入和恢复到后续计算；反向从损失回到输入，绕过舍入导数，但保留裁剪的饱和梯度。</desc>
+<defs><marker id="a" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#52657a"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:15px;font-weight:400;fill:#334e68}.title{font-size:25px;font-weight:700;fill:#18324b}.h{font-size:18px;font-weight:600;fill:#18324b}.s{font-size:14px}.e{stroke:#52657a;stroke-width:2.5;fill:none;marker-end:url(#a)}.d{stroke:#7657a5;stroke-width:2;fill:none;stroke-dasharray:7 5;marker-end:url(#a)}</style></defs><rect width="1080" height="460" fill="#f8fafc"/><text x="540" y="43" text-anchor="middle" class="title">前向保留离散值，反向使用近似梯度</text>
+<rect x="35" y="95" width="150" height="80" rx="13" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="110" y="141" text-anchor="middle" class="h">浮点输入</text>
+<rect x="250" y="95" width="150" height="80" rx="13" fill="#f1edfb" stroke="#7657a5" stroke-width="2"/><text x="325" y="141" text-anchor="middle" class="h">裁剪到范围</text>
+<rect x="465" y="95" width="150" height="80" rx="13" fill="#f1edfb" stroke="#7657a5" stroke-width="2"/><text x="540" y="141" text-anchor="middle" class="h">缩放与舍入</text>
+<rect x="680" y="95" width="150" height="80" rx="13" fill="#f1edfb" stroke="#7657a5" stroke-width="2"/><text x="755" y="141" text-anchor="middle" class="h">恢复浮点近似</text>
+<rect x="895" y="95" width="150" height="80" rx="13" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="970" y="141" text-anchor="middle" class="h">后续计算</text>
+<path d="M185 135H250" class="e"/>
+<path d="M400 135H465" class="e"/>
+<path d="M615 135H680" class="e"/>
+<path d="M830 135H895" class="e"/>
+<rect x="35" y="310" width="230" height="85" rx="13" fill="#e8f6f1" stroke="#3f8b72" stroke-width="2"/><text x="150" y="342" text-anchor="middle" class="h">传回输入的梯度</text><text x="150" y="369" text-anchor="middle">区间内直通，饱和区为 0</text>
+<rect x="425" y="310" width="230" height="85" rx="13" fill="#f1edfb" stroke="#7657a5" stroke-width="2"/><text x="540" y="342" text-anchor="middle" class="h">保留裁剪梯度</text><text x="540" y="369" text-anchor="middle">绕过离散舍入的导数</text>
+<rect x="815" y="310" width="230" height="85" rx="13" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="930" y="342" text-anchor="middle" class="h">反向上游梯度</text><text x="930" y="369" text-anchor="middle">从后续损失传来</text>
+<path d="M970 175V310" class="d"/>
+<path d="M815 352H655" class="d"/>
+<path d="M425 352H265" class="d"/>
+<text x="540" y="438" text-anchor="middle" class="s">例：范围 −1 到 1，输入 0.5 继续传梯度，输入 2 在裁剪处截断</text>
 </svg>
