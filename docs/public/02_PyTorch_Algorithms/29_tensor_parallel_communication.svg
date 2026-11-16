@@ -1,15 +1,48 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="620" viewBox="0 0 1500 620">
-  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#475569"/></marker><style>.title{font:700 28px Arial,sans-serif;fill:#0f172a}.sub{font:15px Arial,sans-serif;fill:#475569}.h{font:700 16px Arial,sans-serif;fill:#172033}.t{font:13px Arial,sans-serif;fill:#334155}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}.dash{fill:none;stroke:#64748b;stroke-width:2.5;stroke-dasharray:7 6;marker-end:url(#arrow)}</style></defs>
-  <rect width="1500" height="620" rx="22" fill="#f4f7ff"/>
-  <text x="55" y="52" class="title">Attention TP：Query Head 分片与 KV Head 映射</text><text x="55" y="80" class="sub">Query Head 均匀落到 rank；KV Head 数量决定分片、复制以及 KV 状态开销</text>
-  <rect x="60" y="225" width="220" height="145" rx="17" fill="#fff7ed" stroke="#f59e0b" stroke-width="3"/><text x="170" y="265" text-anchor="middle" class="h">Head 配置</text><text x="170" y="305" text-anchor="middle" class="t">Q Heads · KV Heads</text><text x="170" y="337" text-anchor="middle" class="t">TP degree</text>
-  <rect x="360" y="125" width="260" height="145" rx="17" fill="#eaf3ff" stroke="#3b82f6" stroke-width="3"/><text x="490" y="165" text-anchor="middle" class="h">Query Head 分片</text><text x="490" y="205" text-anchor="middle" class="t">每个 rank 获得相同数量</text><text x="490" y="235" text-anchor="middle" class="t">本地完成对应 Query 计算</text>
-  <rect x="360" y="345" width="260" height="145" rx="17" fill="#f1edff" stroke="#8b5cf6" stroke-width="3"/><text x="490" y="385" text-anchor="middle" class="h">KV Head 映射</text><text x="490" y="425" text-anchor="middle" class="t">数量足够：均匀 shard</text><text x="490" y="455" text-anchor="middle" class="t">数量较少：跨 rank replicate</text>
-  <path d="M280 275 C320 275 320 197 360 197" class="edge"/><path d="M280 320 C320 320 320 417 360 417" class="edge"/>
-  <rect x="715" y="180" width="280" height="220" rx="17" fill="#ecfccb" stroke="#65a30d" stroke-width="3"/><text x="855" y="220" text-anchor="middle" class="h">Rank-local Attention</text><text x="745" y="265" class="t">Q：本 rank 的 Query Head</text><text x="745" y="305" class="t">K/V：本地分片或复制视图</text><text x="745" y="345" class="t">输出：Head 对应的局部特征</text><text x="745" y="375" class="t">状态代价随复制倍数增加</text>
-  <path d="M620 197 C665 197 670 245 715 245" class="edge"/><path d="M620 417 C665 417 670 345 715 345" class="edge"/>
-  <rect x="1090" y="180" width="300" height="105" rx="17" fill="#fff" stroke="#0ea5e9" stroke-width="3"/><text x="1240" y="220" text-anchor="middle" class="h">输出投影 Row Parallel</text><text x="1240" y="255" text-anchor="middle" class="t">局部部分和 → All-Reduce</text>
-  <rect x="1090" y="335" width="300" height="105" rx="17" fill="#fff1f2" stroke="#e11d48" stroke-width="3"/><text x="1240" y="375" text-anchor="middle" class="h">执行前契约检查</text><text x="1240" y="410" text-anchor="middle" class="t">不能均匀 shard / replicate 则拒绝</text>
-  <path d="M995 250 H1090" class="edge"/><path d="M995 345 C1040 345 1045 387 1090 387" class="dash"/>
-  <text x="855" y="520" text-anchor="middle" class="h">决策代价</text><text x="855" y="552" text-anchor="middle" class="t">分片减少 KV 状态副本；复制简化 Head 映射，但增加每卡 KV 占用。</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="620" viewBox="0 0 1500 620" role="img" aria-labelledby="title desc">
+<title id="title">先检查Head映射再执行Attention TP</title><desc id="desc">Q头数8，KV头数2，TP为4时，每rank分配2个Q头，KV头各复制到两个rank；各rank本地Attention及输出投影后归约。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:26px;font-weight:700}.sub{font-size:17px;fill:#475569}.head{font-size:20px;font-weight:700}.body{font-size:18px}.small{font-size:16px;fill:#475569}.node{stroke-width:2;rx:12}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.save{stroke:#15803d;stroke-width:2.5;stroke-dasharray:7 5;fill:none;marker-end:url(#arrow)}</style></defs>
+<rect width="1500" height="620" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="55" y="48" class="title" text-anchor="start">先确定Head能怎样分配，再进入本地Attention</text>
+<text x="55" y="80" class="sub" text-anchor="start">具体示例：8个Query Head、2个KV Head、4个TP rank。KV Head数小于rank数，采用复制映射。</text>
+<rect x="55" y="145" width="260" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="185" y="174" class="head" text-anchor="middle">检查Head数量</text>
+<text x="185" y="200" class="body" text-anchor="middle">Q可均分；KV可分片或复制</text>
+<rect x="405" y="145" width="310" height="80" class="node" fill="#dcfce7" stroke="#15803d"/>
+<text x="560" y="174" class="head" text-anchor="middle">本例映射通过</text>
+<text x="560" y="200" class="body" text-anchor="middle">每rank 2个Q头、1个KV头</text>
+<path id="validate-to-plan" d="M315 185H405" class="flow"/>
+<text x="55" y="263" class="small" text-anchor="start">无法均匀映射的配置在这里报错</text>
+<rect x="55" y="315" width="310" height="210" rx="12" fill="#fff" stroke="#cbd5e1" data-layout-role="panel"/>
+<text x="210" y="348" class="head" text-anchor="middle">rank 0</text>
+<text x="210" y="383" class="head" text-anchor="middle">Q0、Q1 → KV0</text>
+<text x="210" y="421" class="body" text-anchor="middle">本地Attention → 输出投影分片</text>
+<rect x="75" y="440" width="270" height="54" rx="8" fill="#dbeafe" stroke="#2563eb" data-layout-role="glyph-group"/>
+<text x="210" y="474" class="body" text-anchor="middle">局部输出部分和 Y₀</text>
+<rect x="415" y="315" width="310" height="210" rx="12" fill="#fff" stroke="#cbd5e1" data-layout-role="panel"/>
+<text x="570" y="348" class="head" text-anchor="middle">rank 1</text>
+<text x="570" y="383" class="head" text-anchor="middle">Q2、Q3 → KV0</text>
+<text x="570" y="421" class="body" text-anchor="middle">本地Attention → 输出投影分片</text>
+<rect x="435" y="440" width="270" height="54" rx="8" fill="#dbeafe" stroke="#2563eb" data-layout-role="glyph-group"/>
+<text x="570" y="474" class="body" text-anchor="middle">局部输出部分和 Y₁</text>
+<rect x="775" y="315" width="310" height="210" rx="12" fill="#fff" stroke="#cbd5e1" data-layout-role="panel"/>
+<text x="930" y="348" class="head" text-anchor="middle">rank 2</text>
+<text x="930" y="383" class="head" text-anchor="middle">Q4、Q5 → KV1</text>
+<text x="930" y="421" class="body" text-anchor="middle">本地Attention → 输出投影分片</text>
+<rect x="795" y="440" width="270" height="54" rx="8" fill="#dbeafe" stroke="#2563eb" data-layout-role="glyph-group"/>
+<text x="930" y="474" class="body" text-anchor="middle">局部输出部分和 Y₂</text>
+<rect x="1135" y="315" width="310" height="210" rx="12" fill="#fff" stroke="#cbd5e1" data-layout-role="panel"/>
+<text x="1290" y="348" class="head" text-anchor="middle">rank 3</text>
+<text x="1290" y="383" class="head" text-anchor="middle">Q6、Q7 → KV1</text>
+<text x="1290" y="421" class="body" text-anchor="middle">本地Attention → 输出投影分片</text>
+<rect x="1155" y="440" width="270" height="54" rx="8" fill="#dbeafe" stroke="#2563eb" data-layout-role="glyph-group"/>
+<text x="1290" y="474" class="body" text-anchor="middle">局部输出部分和 Y₃</text>
+<text x="850" y="275" class="small" text-anchor="middle">映射展开如下；同号KV在不同rank保存副本</text>
+<rect x="480" y="548" width="540" height="44" rx="8" fill="#ede9fe" stroke="#7c3aed" data-layout-role="glyph-group"/>
+<text x="750" y="578" class="head" text-anchor="middle">All-Reduce求和 → 每rank的完整输出</text>
+<path id="reduce-rank-0" d="M210 494V520H520V548" class="flow"/>
+<path id="reduce-rank-1" d="M570 494V520H670V548" class="flow"/>
+<path id="reduce-rank-2" d="M930 494V520H830V548" class="flow"/>
+<path id="reduce-rank-3" d="M1290 494V520H980V548" class="flow"/>
+<text x="750" y="616" class="small" text-anchor="middle">对照：KV头可均分时采用分片；复制倍数由TP大小与KV头数共同决定。</text>
 </svg>

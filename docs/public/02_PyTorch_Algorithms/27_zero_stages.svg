@@ -1,16 +1,57 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="620" viewBox="0 0 1500 620">
-  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#475569"/></marker><style>.title{font:700 28px Arial,sans-serif;fill:#0f172a}.sub{font:15px Arial,sans-serif;fill:#475569}.h{font:700 16px Arial,sans-serif;fill:#172033}.t{font:13px Arial,sans-serif;fill:#334155}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}.dash{fill:none;stroke:#64748b;stroke-width:2.5;stroke-dasharray:7 6;marker-end:url(#arrow)}</style></defs>
-  <rect width="1500" height="620" rx="22" fill="#f5f7ff"/>
-  <text x="60" y="52" class="title">ZeRO 一次更新中的状态生命周期</text><text x="60" y="80" class="sub">参数视图服务前向，梯度回到 owner，优化器只在 owner 更新长期状态</text>
-  <rect x="55" y="225" width="195" height="120" rx="17" fill="#eaf3ff" stroke="#3b82f6" stroke-width="3"/><text x="152" y="265" text-anchor="middle" class="h">参数分片</text><text x="152" y="300" text-anchor="middle" class="t">owner 长期保存</text><text x="152" y="325" text-anchor="middle" class="t">ZeRO-3 需要聚合</text>
-  <rect x="300" y="225" width="195" height="120" rx="17" fill="#fff" stroke="#0ea5e9" stroke-width="3"/><text x="397" y="265" text-anchor="middle" class="h">参数视图</text><text x="397" y="300" text-anchor="middle" class="t">All-Gather（按需）</text><text x="397" y="325" text-anchor="middle" class="t">供当前层计算</text>
-  <rect x="545" y="225" width="195" height="120" rx="17" fill="#ecfccb" stroke="#65a30d" stroke-width="3"/><text x="642" y="265" text-anchor="middle" class="h">前向与反向</text><text x="642" y="300" text-anchor="middle" class="t">生成局部梯度</text><text x="642" y="325" text-anchor="middle" class="t">释放临时参数视图</text>
-  <rect x="790" y="225" width="195" height="120" rx="17" fill="#f1edff" stroke="#8b5cf6" stroke-width="3"/><text x="887" y="265" text-anchor="middle" class="h">梯度归属</text><text x="887" y="300" text-anchor="middle" class="t">Reduce-Scatter</text><text x="887" y="325" text-anchor="middle" class="t">送到对应 owner</text>
-  <rect x="1035" y="225" width="195" height="120" rx="17" fill="#fff7ed" stroke="#f59e0b" stroke-width="3"/><text x="1132" y="265" text-anchor="middle" class="h">局部更新</text><text x="1132" y="300" text-anchor="middle" class="t">更新优化器状态</text><text x="1132" y="325" text-anchor="middle" class="t">写回参数分片</text>
-  <rect x="1280" y="225" width="165" height="120" rx="17" fill="#fff1f2" stroke="#e11d48" stroke-width="3"/><text x="1362" y="265" text-anchor="middle" class="h">下一步</text><text x="1362" y="300" text-anchor="middle" class="t">保留 owner 状态</text><text x="1362" y="325" text-anchor="middle" class="t">重新形成视图</text>
-  <path d="M250 285 H300" class="edge"/><path d="M495 285 H545" class="edge"/><path d="M740 285 H790" class="edge"/><path d="M985 285 H1035" class="edge"/><path d="M1230 285 H1280" class="edge"/>
-  <path d="M1362 345 V455 Q1362 485 1325 485 H170 Q130 485 130 445 V345" class="dash"/>
-  <text x="746" y="520" text-anchor="middle" class="t">下一次迭代只重复传输计算所需视图；长期状态仍由 owner 保存</text>
-  <rect x="250" y="110" width="225" height="65" rx="14" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/><text x="362" y="138" text-anchor="middle" class="h">ZeRO-1 / 2</text><text x="362" y="162" text-anchor="middle" class="t">参数复制时跳过首个 All-Gather</text>
-  <path d="M475 142 C540 142 540 205 590 225" class="dash"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="620" viewBox="0 0 1500 620" role="img" aria-labelledby="title desc">
+<title id="title">ZeRO各阶段的一次更新</title><desc id="desc">三条并列路径分别展示ZeRO-1、2、3的典型同步与参数更新。图示教学路径不代表CPU模拟已执行通信。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:26px;font-weight:700}.sub{font-size:17px;fill:#475569}.head{font-size:20px;font-weight:700}.body{font-size:18px}.small{font-size:16px;fill:#475569}.node{stroke-width:2;rx:12}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.save{stroke:#15803d;stroke-width:2.5;stroke-dasharray:7 5;fill:none;marker-end:url(#arrow)}</style></defs>
+<rect width="1500" height="620" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="55" y="48" class="title" text-anchor="start">梯度怎样到达owner，更新后的参数怎样可见</text>
+<text x="55" y="80" class="sub" text-anchor="start">教学通信路径；框内列出主要动作。owner是负责对应参数分片更新的rank。</text>
+<text x="55" y="190" class="head" text-anchor="start">ZeRO-1</text>
+<rect x="220" y="145" width="260" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="350" y="174" class="head" text-anchor="middle">完整参数计算</text>
+<text x="350" y="200" class="body" text-anchor="middle">各rank得到局部梯度</text>
+<path id="ZeRO-1-0" d="M480 185H530" class="flow"/>
+<rect x="530" y="145" width="260" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="660" y="174" class="head" text-anchor="middle">同步完整梯度</text>
+<text x="660" y="200" class="body" text-anchor="middle">例如 All-Reduce</text>
+<path id="ZeRO-1-1" d="M790 185H840" class="flow"/>
+<rect x="840" y="145" width="260" height="80" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="970" y="174" class="head" text-anchor="middle">owner局部更新</text>
+<text x="970" y="200" class="body" text-anchor="middle">只维护本地优化器状态</text>
+<path id="ZeRO-1-2" d="M1100 185H1150" class="flow"/>
+<rect x="1150" y="145" width="260" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="1280" y="174" class="head" text-anchor="middle">同步更新后分片</text>
+<text x="1280" y="200" class="body" text-anchor="middle">All-Gather → 完整参数</text>
+<text x="55" y="345" class="head" text-anchor="start">ZeRO-2</text>
+<rect x="220" y="300" width="260" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="350" y="329" class="head" text-anchor="middle">完整参数计算</text>
+<text x="350" y="355" class="body" text-anchor="middle">逐桶产生局部梯度</text>
+<path id="ZeRO-2-0" d="M480 340H530" class="flow"/>
+<rect x="530" y="300" width="260" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="660" y="329" class="head" text-anchor="middle">梯度 Reduce-Scatter</text>
+<text x="660" y="355" class="body" text-anchor="middle">owner保留同步后分片</text>
+<path id="ZeRO-2-1" d="M790 340H840" class="flow"/>
+<rect x="840" y="300" width="260" height="80" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="970" y="329" class="head" text-anchor="middle">owner局部更新</text>
+<text x="970" y="355" class="body" text-anchor="middle">更新本地参数及状态</text>
+<path id="ZeRO-2-2" d="M1100 340H1150" class="flow"/>
+<rect x="1150" y="300" width="260" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="1280" y="329" class="head" text-anchor="middle">同步更新后分片</text>
+<text x="1280" y="355" class="body" text-anchor="middle">All-Gather → 完整参数</text>
+<text x="55" y="500" class="head" text-anchor="start">ZeRO-3</text>
+<rect x="220" y="455" width="260" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="350" y="484" class="head" text-anchor="middle">按层收集参数</text>
+<text x="350" y="510" class="body" text-anchor="middle">All-Gather → 计算视图</text>
+<path id="ZeRO-3-0" d="M480 495H530" class="flow"/>
+<rect x="530" y="455" width="260" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="660" y="484" class="head" text-anchor="middle">计算与归约梯度</text>
+<text x="660" y="510" class="body" text-anchor="middle">Reduce-Scatter → owner</text>
+<path id="ZeRO-3-1" d="M790 495H840" class="flow"/>
+<rect x="840" y="455" width="260" height="80" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="970" y="484" class="head" text-anchor="middle">owner局部更新</text>
+<text x="970" y="510" class="body" text-anchor="middle">参数及状态继续分片</text>
+<path id="ZeRO-3-2" d="M1100 495H1150" class="flow"/>
+<rect x="1150" y="455" width="260" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="1280" y="484" class="head" text-anchor="middle">下一次按层取用</text>
+<text x="1280" y="510" class="body" text-anchor="middle">All-Gather → 计算视图</text>
+<text x="55" y="588" class="sub" text-anchor="start">ZeRO-3的计算视图按层收集、使用后释放；这里省略了桶划分与通信重叠。</text>
 </svg>

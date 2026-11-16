@@ -1,16 +1,48 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="620" viewBox="0 0 1500 620">
-  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#475569"/></marker><style>.title{font:700 28px Arial,sans-serif;fill:#0f172a}.sub{font:15px Arial,sans-serif;fill:#475569}.h{font:700 16px Arial,sans-serif;fill:#172033}.t{font:13px Arial,sans-serif;fill:#334155}.edge{fill:none;stroke:#475569;stroke-width:3;marker-end:url(#arrow)}.dash{fill:none;stroke:#64748b;stroke-width:2.5;stroke-dasharray:7 6;marker-end:url(#arrow)}</style></defs>
-  <rect width="1500" height="620" rx="22" fill="#f4f7ff"/>
-  <text x="55" y="52" class="title">Tensor Parallel：配对 MLP 保持 hidden 分片</text><text x="55" y="80" class="sub">第一层按输出维切分，第二层按匹配的输入维切分，中间 activation 不必先 All-Gather</text>
-  <rect x="55" y="240" width="165" height="105" rx="16" fill="#fff7ed" stroke="#f59e0b" stroke-width="3"/><text x="137" y="280" text-anchor="middle" class="h">输入 X</text><text x="137" y="315" text-anchor="middle" class="t">各 rank 可见</text>
-  <rect x="285" y="120" width="220" height="125" rx="16" fill="#eaf3ff" stroke="#3b82f6" stroke-width="3"/><text x="395" y="158" text-anchor="middle" class="h">Rank 0 · W1 列分片</text><text x="395" y="192" text-anchor="middle" class="t">生成 hidden H₀</text><text x="395" y="220" text-anchor="middle" class="t">只覆盖部分输出特征</text>
-  <rect x="285" y="360" width="220" height="125" rx="16" fill="#f1edff" stroke="#8b5cf6" stroke-width="3"/><text x="395" y="398" text-anchor="middle" class="h">Rank 1 · W1 列分片</text><text x="395" y="432" text-anchor="middle" class="t">生成 hidden H₁</text><text x="395" y="460" text-anchor="middle" class="t">只覆盖其余输出特征</text>
-  <path d="M220 292 C250 292 250 182 285 182" class="edge"/><path d="M220 292 C250 292 250 422 285 422" class="edge"/>
-  <rect x="575" y="120" width="220" height="125" rx="16" fill="#ecfccb" stroke="#65a30d" stroke-width="3"/><text x="685" y="158" text-anchor="middle" class="h">Rank 0 · W2 行分片</text><text x="685" y="192" text-anchor="middle" class="t">直接消费 H₀</text><text x="685" y="220" text-anchor="middle" class="t">得到局部部分和 Y₀</text>
-  <rect x="575" y="360" width="220" height="125" rx="16" fill="#ecfccb" stroke="#65a30d" stroke-width="3"/><text x="685" y="398" text-anchor="middle" class="h">Rank 1 · W2 行分片</text><text x="685" y="432" text-anchor="middle" class="t">直接消费 H₁</text><text x="685" y="460" text-anchor="middle" class="t">得到局部部分和 Y₁</text>
-  <path d="M505 182 H575" class="edge"/><path d="M505 422 H575" class="edge"/>
-  <rect x="875" y="240" width="235" height="105" rx="16" fill="#fff" stroke="#0ea5e9" stroke-width="3"/><text x="992" y="280" text-anchor="middle" class="h">All-Reduce（Sum）</text><text x="992" y="315" text-anchor="middle" class="t">Y = Y₀ + Y₁</text>
-  <path d="M795 182 C835 182 835 270 875 270" class="edge"/><path d="M795 422 C835 422 835 315 875 315" class="edge"/>
-  <rect x="1190" y="240" width="235" height="105" rx="16" fill="#fff1f2" stroke="#e11d48" stroke-width="3"/><text x="1307" y="280" text-anchor="middle" class="h">完整输出 Y</text><text x="1307" y="315" text-anchor="middle" class="t">供残差或下一布局使用</text><path d="M1110 292 H1190" class="edge"/>
-  <path d="M395 500 V550 H685 V500" class="dash"/><text x="540" y="582" text-anchor="middle" class="t">中间 hidden 始终留在对应 rank；通信集中在完整输出边界</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="620" viewBox="0 0 1500 620" role="img" aria-labelledby="title desc">
+<title id="title">配对MLP的张量并行</title><desc id="desc">两个rank保持相同输入，W1沿输出特征切分，局部激活直接进入匹配W2行分片，局部部分和经All-Reduce形成完整输出。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:26px;font-weight:700}.sub{font-size:17px;fill:#475569}.head{font-size:20px;font-weight:700}.body{font-size:18px}.small{font-size:16px;fill:#475569}.node{stroke-width:2;rx:12}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.save{stroke:#15803d;stroke-width:2.5;stroke-dasharray:7 5;fill:none;marker-end:url(#arrow)}</style></defs>
+<rect width="1500" height="620" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="55" y="48" class="title" text-anchor="start">W₁按列切、W₂按行切，中间激活留在原rank</text>
+<text x="55" y="80" class="sub" text-anchor="start">示例：X为B × 4，W₁为4 × 8，W₂为8 × 4；图中权重采用输入维 × 输出维。</text>
+<rect x="40" y="122" width="1400" height="190" rx="12" fill="#fff" stroke="#cbd5e1" data-layout-role="panel"/>
+<text x="65" y="152" class="head" text-anchor="start">rank 0</text>
+<rect x="65" y="175" width="210" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="170" y="204" class="head" text-anchor="middle">相同输入 X</text>
+<text x="170" y="230" class="body" text-anchor="middle">B × 4</text>
+<rect x="350" y="175" width="250" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="475" y="204" class="head" text-anchor="middle">W₁列分片 · 特征0–3</text>
+<text x="475" y="230" class="body" text-anchor="middle">4 × 4 → act → H0</text>
+<rect x="675" y="175" width="250" height="80" class="node" fill="#fef3c7" stroke="#d97706"/>
+<text x="800" y="204" class="head" text-anchor="middle">H0直接进入W₂行分片</text>
+<text x="800" y="230" class="body" text-anchor="middle">B × 4 乘 4 × 4</text>
+<rect x="1000" y="175" width="210" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="1105" y="204" class="head" text-anchor="middle">局部部分和 Y0</text>
+<text x="1105" y="230" class="body" text-anchor="middle">B × 4</text>
+<path id="input-0" d="M275 215H350" class="flow"/>
+<path id="local-hidden-0" d="M600 215H675" class="flow"/>
+<path id="partial-0" d="M925 215H1000" class="flow"/>
+<rect x="40" y="352" width="1400" height="190" rx="12" fill="#fff" stroke="#cbd5e1" data-layout-role="panel"/>
+<text x="65" y="382" class="head" text-anchor="start">rank 1</text>
+<rect x="65" y="405" width="210" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="170" y="434" class="head" text-anchor="middle">相同输入 X</text>
+<text x="170" y="460" class="body" text-anchor="middle">B × 4</text>
+<rect x="350" y="405" width="250" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="475" y="434" class="head" text-anchor="middle">W₁列分片 · 特征4–7</text>
+<text x="475" y="460" class="body" text-anchor="middle">4 × 4 → act → H1</text>
+<rect x="675" y="405" width="250" height="80" class="node" fill="#fef3c7" stroke="#d97706"/>
+<text x="800" y="434" class="head" text-anchor="middle">H1直接进入W₂行分片</text>
+<text x="800" y="460" class="body" text-anchor="middle">B × 4 乘 4 × 4</text>
+<rect x="1000" y="405" width="210" height="80" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="1105" y="434" class="head" text-anchor="middle">局部部分和 Y1</text>
+<text x="1105" y="460" class="body" text-anchor="middle">B × 4</text>
+<path id="input-1" d="M275 445H350" class="flow"/>
+<path id="local-hidden-1" d="M600 445H675" class="flow"/>
+<path id="partial-1" d="M925 445H1000" class="flow"/>
+<rect x="1255" y="273" width="190" height="80" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="1350" y="302" class="head" text-anchor="middle">All-Reduce</text>
+<text x="1350" y="328" class="body" text-anchor="middle">各rank得Y₀ + Y₁</text>
+<path id="rank0-reduce" d="M1210 215H1350V273" class="flow"/>
+<path id="rank1-reduce" d="M1210 445H1350V353" class="flow"/>
+<text x="55" y="590" class="sub" text-anchor="start">H₀与H₁覆盖不同hidden特征；它们分别留在本地，完整输出在末端求和恢复。</text>
 </svg>
