@@ -21,6 +21,15 @@ ZeRO、Pipeline Parallelism 和 Tensor Parallelism 都会让多个 rank 协同�
 
 ---
 
+<a id="runtime-environment"></a>
+
+## 运行环境
+
+- **基础练习：** 使用 [`BASE-CPU`](../guide.md#base-cpu)，运行 [Step 4 的题目与测试](#mechanism-practice)。
+- **框架核对：** 使用 [`PAR-CPU`](../topic_discussion/communication_parallelism/quickstart.md#par-cpu-quickstart)；完成 Step 4 后运行 [框架一致性核对](#framework-check)。
+- **多 GPU 实测：** 使用 `PAR-CUDA-MECHANISM`；环境、运行配置与固定工作负载见 [Step 5](#gpu-experiment)。
+
+---
 ## 前置阅读
 
 **导语：** 先了解常见 collective 如何在多卡间传输数据；阅读本节时，再把这些 collective 放回 compute—communication 时间线中观察。
@@ -30,7 +39,7 @@ ZeRO、Pipeline Parallelism 和 Tensor Parallelism 都会让多个 rank 协同�
 - [29. Tensor Parallelism Sim | Tensor 并行模拟（可选回顾）](./29_Tensor_Parallelism_Sim.md)
 
 ---
-### Step 1：通信为什么会进入关键路径
+## Step 1：通信为什么会进入关键路径
 
 多卡训练或推理中，单独观察 GPU 利用率不能判断系统是否被通信限制：某些 rank 可能在等待 collective 完成，另一些 rank 仍在计算。把计算与 collective 放到同一时间线上，才能判断通信是否正在延长一个训练 step 或请求的完成时间。
 
@@ -40,14 +49,13 @@ ZeRO、Pipeline Parallelism 和 Tensor Parallelism 都会让多个 rank 协同�
 - **时间与传输量**：每类 collective 花了多久、搬了多少 bytes，以及不同 rank 是否存在差异；
 - **关键路径位置**：通信与 forward / backward 等 compute 区间在时间线上如何相对出现。
 
-在进入时间线前，先用一个统一近似解释通信成本：
+在进入时间线前，先用 $\alpha$– $\beta$ 模型统一解释成本。令 $n$ 为单次有效载荷 byte 数， $\alpha$ 为启动延迟， $\beta$ 为每 byte 传输时间，重复 $K$ 次的简化成本为
 
-```text
-single_collective_time ≈ startup_latency + payload_bytes / effective_bandwidth
-total_communication_time ≈ sync_count × single_collective_time
-```
+$$
+T_{\mathrm{comm}}\approx K(\alpha+n\beta).
+$$
 
-`startup_latency` 表示启动一次 collective 的固定成本，`effective_bandwidth` 已包含拓扑、竞争和实现效率的影响。小 payload 更容易被启动延迟主导；大 payload 更容易被带宽主导；单次通信不慢但同步频率过高，同样会累积成关键路径。
+小载荷更容易被 $K\alpha$ 主导，大载荷更容易被 $Kn\beta$ 主导。真实 collective 还受算法、拓扑、竞争和进程到达时间影响，因此该式只用于提出剖析假设。
 
 | Collective | 常见 payload | 语义 | 首先检查 |
 |---|---|---|---|
@@ -58,7 +66,7 @@ total_communication_time ≈ sync_count × single_collective_time
 
 ![NCCL 通信分析总览](../public/02_PyTorch_Algorithms/47_nccl_profiling_overview.svg)
 
-### Step 2：通信时间线需要记录什么
+## Step 2：通信时间线需要记录什么
 
 真实 NCCL、PyTorch Profiler 或 Nsight Systems 的输出形式不同，但都能整理为统一的时间线事件。本节 CPU 事件的 `start / end / duration` 统一使用毫秒；接入真实 Trace 时必须先完成单位归一化。以下四类字段共同描述发生了什么、持续多久、传输了多少，以及哪些时间没有被计算隐藏。
 
@@ -69,7 +77,7 @@ total_communication_time ≈ sync_count × single_collective_time
 | 执行上下文 | `rank`、`stream`、同步点 | 辅助解释某个 rank 为什么等待或无法重叠 |
 | 聚合指标 | `count`、`time`、`exposed_time` | 比较各 collective 的频率、总成本和关键路径成本 |
 
-### Step 3：时间重叠、暴露通信时间与热点归因
+## Step 3：时间重叠、暴露通信时间与热点归因
 
 一段通信若完全位于计算区间左侧或右侧，就不会重叠；其余情况存在时间交集。真正用于性能判断的不是“是否重叠”这个布尔值，而是这段交集究竟覆盖了多少通信时间。
 
@@ -82,18 +90,30 @@ total_communication_time ≈ sync_count × single_collective_time
 
 有效重叠时间来自通信区间与计算区间的交集，暴露通信时间则是通信中未被覆盖的剩余部分。若多个计算区间相互重叠，不能重复累计同一段通信；因此要先合并覆盖范围，再判断可隐藏时间。
 
+令通信区间总长度为 $T_{\mathrm{comm}}$，其与合并后计算区间的交集长度为 $T_{\mathrm{overlap}}$，则
+
+$$
+T_{\mathrm{exposed}}=\max(0,T_{\mathrm{comm}}-T_{\mathrm{overlap}}),
+\qquad
+\rho_{\mathrm{overlap}}=\frac{T_{\mathrm{overlap}}}{\max(T_{\mathrm{comm}},\varepsilon)}.
+$$
+
+$\varepsilon>0$ 只用于空时间线的数值保护；多个计算区间必须先求并集，避免重复计算覆盖时长。
+
 ![通信事件如何读时间线](../public/02_PyTorch_Algorithms/47_collective_trace.svg)
 
-### Step 4：CPU 机制实现——从时间线到热点
+<a id="mechanism-practice"></a>
+
+## Step 4：CPU 机制实现——从时间线到热点
 
 题目区提供通信成本估算、事件记录和时间线导出的骨架。你需要完成四个机制判断：估算单类 collective 的理论成本、计算有效 overlap、按 collective 汇总暴露时间、从汇总结果找出优先热点。
 
-| TODO | 函数 / 机制 | 输入与关键变量 | 输出与不变量 | 测试关注点 |
-| --- | --- | --- | --- | --- |
-| 1 | `estimate_collective_time`：通信成本 | `payload_bytes`、`startup_latency`、`bandwidth`、`sync_count` | 返回启动与传输成本随同步次数累积的估算值 | 小 payload、零同步、非法带宽 |
-| 2 | `_overlap_duration`：有效 overlap | 通信 `start / end`、`compute_events`、交集区间 | 返回合并后的覆盖时长；同一时段不能被重复计入 | 多段 compute 覆盖同一通信区间 |
-| 3 | `summarize`：collective 归因 | `events`、`by_op`、`exposed_time` | 每个 op 聚合 `count / time / bytes / exposed_time` | 同一 op 的多次事件能否正确合并 |
-| 4 | `find_priority_hotspot`：热点选择 | `summary['by_op']`、各 op 暴露时间 | 返回暴露时间最大的 op 及其证据 | 热点是否由暴露时间而非总时间决定 |
+| TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
+|:---|:---|:---|:---|
+| TODO 1：估算通信成本<br>`NCCLProfilerSim.estimate_collective_time` | 合并启动、传输和同步次数成本 | 输入单位一致，非法带宽明确失败 | 检查小载荷、零同步与非法参数 |
+| TODO 2：合并覆盖区间<br>`NCCLProfilerSim._overlap_duration` | 计算通信被计算区间覆盖的并集时长 | 重叠计算区间不能重复计数 | 检查多段覆盖与无交集时间线 |
+| TODO 3：汇总 collective<br>`NCCLProfilerSim.summarize` | 按操作累计次数、时长、字节和暴露时间 | 总时长等于覆盖与暴露之和 | 检查同类多事件聚合与时间守恒 |
+| TODO 4：选择优先热点<br>`NCCLProfilerSim.find_priority_hotspot` | 找出暴露通信最大的操作 | 依据暴露时间而非通信总时长排序 | 检查热点操作及其证据字段 |
 
 
 ```python
@@ -487,6 +507,67 @@ class NCCLProfilerSim:
 - 从各 collective 的汇总结果中选择暴露时间最大的对象。
 - 时间线仍用于解释该对象为何暴露，例如缺少可重叠计算或某些 rank 到达较晚。
 
+<a id="framework-check"></a>
+
+## 框架一致性核对（可选）
+
+下面用 PyTorch Distributed 的 Gloo 后端执行两进程 `all_reduce`，并用 PyTorch Profiler 检查真实 collective 事件。该核对验证 API、跨进程归约与事件采集路径，不代表 NCCL、GPU 带宽或扩展效率。
+
+| 核对项 | 对比内容 | 通过条件 |
+|:---|:---|:---|
+| collective 语义 | 两进程 Gloo `all_reduce` 的输入与输出 | 两个进程都得到全局求和 |
+| Profiler 事件 | PyTorch Profiler 事件名 | 捕获到 All-Reduce 相关事件 |
+| 本节时间线 | `NCCLProfilerSim` 汇总 | 暴露时间与重叠关系满足不变量 |
+
+```python
+import torch
+import torch.distributed as dist
+from torch.profiler import ProfilerActivity, profile
+
+from tools.parallel_cpu_conformance import run_local_gloo_world
+
+
+def _collective_profiler_framework_worker(rank, world_size):
+    tensor = torch.tensor([float(rank + 1)])
+    with profile(activities=[ProfilerActivity.CPU]) as prof:
+        dist.all_reduce(tensor)
+    event_names = [event.key.lower() for event in prof.key_averages()]
+    return {"rank": rank, "sum": float(tensor.item()), "event_names": event_names}
+
+
+def check_communication_profiler_framework_conformance():
+    """核对两进程 Distributed collective、Profiler 事件与本节时间线不变量。"""
+    results = run_local_gloo_world(_collective_profiler_framework_worker, world_size=2)
+    simulator = NCCLProfilerSim()
+    simulator.add_compute("backward", 0.0, 6.0)
+    simulator.add_comm("all_reduce", 4.0, 10.0, 4)
+    summary = simulator.summarize()
+    checks = {
+        "collective_result_match": all(item["sum"] == 3.0 for item in results),
+        "profiler_captured_all_reduce": all(
+            any("allreduce" in name or "all_reduce" in name for name in item["event_names"])
+            for item in results
+        ),
+        "exposed_time_match": abs(summary["exposed_comm_time"] - 4.0) < 1e-8,
+        "overlap_time_match": abs(summary["overlap_time"] - 2.0) < 1e-8,
+        "time_conservation": abs(summary["total_comm_time"] - summary["overlap_time"] - summary["exposed_comm_time"]) < 1e-8,
+    }
+    failed = [name for name, passed in checks.items() if not passed]
+    if failed:
+        raise AssertionError(f"框架一致性核对失败：{failed}")
+    return {
+        "status": "passed", "versions": {"torch": torch.__version__},
+        "checks": checks, "world_size": 2,
+        "rank_results": results, "timeline_summary": summary,
+    }
+
+
+framework_check = check_communication_profiler_framework_conformance()
+framework_check
+```
+
+<a id="gpu-experiment"></a>
+
 ### Step 5：可选 GPU 复测——NCCL collective 规模基准
 
 先用 CPU 实验理解“什么时间会暴露在关键路径上”，再在真实多卡环境中比较 collective 随 payload 增长的时间与有效带宽，并区分请求的 NCCL 算法与日志中实际观察到的算法。
@@ -521,7 +602,8 @@ DTYPE = 'float32'  # 固定元素类型，避免 payload 字节数随候选变�
 PAYLOAD_ELEMENTS = [256 * 1024, 1024 * 1024, 4 * 1024 * 1024]  # 每 rank 的元素数梯度。
 WARMUP = 5  # 每个候选的预热轮数，不进入统计。
 REPEATS = 20  # 每个候选的正式重复轮数，用于 median / P95。
-RESULTS_DIR = Path('benchmarks/results/47_communication_profiling')
+from tools.project_runtime import resolve_project_root
+RESULTS_DIR = resolve_project_root() / 'benchmarks/results/47_communication_profiling'
 TRACE_PATHS = {name: RESULTS_DIR / f'gpu_nccl_{name.lower()}_{RUN_LABEL}.json' for name in NCCL_ALGORITHMS}
 LOG_PATHS = {name: RESULTS_DIR / f'gpu_nccl_{name.lower()}_{RUN_LABEL}.log' for name in NCCL_ALGORITHMS}
 TORCHRUN_BASE = [
