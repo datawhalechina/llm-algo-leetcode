@@ -1,74 +1,29 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="500" viewBox="0 0 1280 500">
-  <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="4" orient="auto">
-      <path d="M0,0 L10,4 L0,8 Z" fill="#64748b"/>
-    </marker>
-    <style>
-      text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#1f2937}
-      .title{font-size:28px;font-weight:700}.subtitle{font-size:15px;fill:#475569}
-      .group-title{font-size:17px;font-weight:700}.label{font-size:17px;font-weight:700}
-      .small{font-size:14px;fill:#475569}.group{stroke-width:2;rx:18}.node{stroke-width:2;rx:11}
-      .line{fill:none;stroke:#64748b;stroke-width:2.5;marker-end:url(#arrow)}
-    </style>
-  </defs>
-
-  <rect x="18" y="18" width="1244" height="464" rx="24" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
-  <text x="640" y="55" text-anchor="middle" class="title">显存策略：从对照指标到预算判定</text>
-  <text x="640" y="82" text-anchor="middle" class="subtitle">固定同一训练任务，比较显存收益、速度代价与可运行性</text>
-
-  <rect x="355" y="98" width="365" height="70" class="node" fill="#e0f2fe" stroke="#0284c7"/>
-  <text x="537.5" y="125" text-anchor="middle" class="label">核心问题</text>
-  <text x="537.5" y="147" text-anchor="middle" class="small">显存下降是否值得承担额外时间代价？</text>
-  <text x="537.5" y="164" text-anchor="middle" class="small">同时检查吞吐、质量和 OOM</text>
-
-  <rect x="55" y="205" width="260" height="220" class="group" fill="#ecfeff" stroke="#0891b2"/>
-  <text x="78" y="256" class="group-title">共同条件</text>
-  <rect x="78" y="270" width="214" height="31" class="node" fill="#ffffff" stroke="#22d3ee"/>
-  <text x="185" y="291" text-anchor="middle" class="small">模型与输入</text>
-  <rect x="78" y="309" width="214" height="31" class="node" fill="#ffffff" stroke="#22d3ee"/>
-  <text x="185" y="330" text-anchor="middle" class="small">dtype、batch、seq_len</text>
-  <rect x="78" y="348" width="214" height="31" class="node" fill="#ffffff" stroke="#22d3ee"/>
-  <text x="185" y="369" text-anchor="middle" class="small">optimizer、seed</text>
-  <rect x="78" y="387" width="214" height="31" class="node" fill="#ffffff" stroke="#22d3ee"/>
-  <text x="185" y="408" text-anchor="middle" class="small">baseline 作为参照</text>
-
-  <rect x="355" y="205" width="365" height="220" class="group" fill="#eff6ff" stroke="#2563eb"/>
-  <text x="380" y="237" class="group-title">并行对照：只改变激活策略</text>
-  <rect x="380" y="263" width="145" height="66" class="node" fill="#ffffff" stroke="#60a5fa"/>
-  <text x="452" y="291" text-anchor="middle" class="label">baseline</text>
-  <text x="452" y="312" text-anchor="middle" class="small">参照</text>
-  <rect x="545" y="263" width="145" height="66" class="node" fill="#ffffff" stroke="#60a5fa"/>
-  <text x="617" y="291" text-anchor="middle" class="label">checkpoint</text>
-  <text x="617" y="312" text-anchor="middle" class="small">重算换显存</text>
-  <rect x="380" y="345" width="145" height="66" class="node" fill="#ffffff" stroke="#60a5fa"/>
-  <text x="452" y="373" text-anchor="middle" class="label">offload</text>
-  <text x="452" y="394" text-anchor="middle" class="small">搬运换显存</text>
-  <rect x="545" y="345" width="145" height="66" class="node" fill="#ffffff" stroke="#60a5fa"/>
-  <text x="617" y="373" text-anchor="middle" class="label">hybrid</text>
-  <text x="617" y="394" text-anchor="middle" class="small">重算 + 搬运</text>
-
-  <rect x="770" y="205" width="250" height="220" class="group" fill="#f0fdf4" stroke="#16a34a"/>
-  <text x="795" y="237" class="group-title">统一指标</text>
-  <rect x="795" y="263" width="200" height="34" class="node" fill="#ffffff" stroke="#4ade80"/>
-  <text x="895" y="285" text-anchor="middle" class="small">峰值显存：allocated / reserved</text>
-  <rect x="795" y="307" width="200" height="34" class="node" fill="#ffffff" stroke="#4ade80"/>
-  <text x="895" y="329" text-anchor="middle" class="small">速度：step time / 吞吐</text>
-  <rect x="795" y="351" width="200" height="34" class="node" fill="#ffffff" stroke="#4ade80"/>
-  <text x="895" y="373" text-anchor="middle" class="small">质量：eval loss</text>
-  <rect x="795" y="395" width="200" height="34" class="node" fill="#ffffff" stroke="#4ade80"/>
-  <text x="895" y="417" text-anchor="middle" class="small">可运行性：OOM / evidence</text>
-
-  <rect x="1060" y="205" width="165" height="220" class="group" fill="#fff7ed" stroke="#f97316"/>
-  <text x="1082" y="237" class="group-title">预算判定</text>
-  <rect x="1082" y="263" width="121" height="38" class="node" fill="#ecfdf5" stroke="#22c55e"/>
-  <text x="1142" y="288" text-anchor="middle" class="label">accept</text>
-  <rect x="1082" y="317" width="121" height="38" class="node" fill="#fffbeb" stroke="#eab308"/>
-  <text x="1142" y="342" text-anchor="middle" class="label">tune</text>
-  <rect x="1082" y="371" width="121" height="38" class="node" fill="#fef2f2" stroke="#ef4444"/>
-  <text x="1142" y="396" text-anchor="middle" class="label">reject</text>
-
-  <path d="M537.5 168 V205" class="line"/>
-  <path d="M315 315 H355" class="line"/>
-  <path d="M720 315 H770" class="line"/>
-  <path d="M1020 315 H1060" class="line"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="660" viewBox="0 0 1200 660" role="img" aria-labelledby="title desc">
+<title id="title">同一批测量在多个预算下筛选</title>
+<desc id="desc">固定训练测量先检查运行与数值，再按显存上限、吞吐下限和损失要求筛选并排序。复用相同测量更改预算，分别记录选择一致、选择变化或某情景没有可行项。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" markerWidth="9" markerHeight="9" refX="10" refY="5" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#1f2937}.title{font-size:26px;font-weight:700}.head{font-size:18px;font-weight:700}.body{font-size:17px}.small{font-size:14px;fill:#475569}.node{stroke-width:2;rx:12}.edge{fill:none;stroke:#64748b;stroke-width:2.5;marker-end:url(#arrow)}</style></defs>
+<rect width="1200" height="660" fill="#f8fafc"/>
+<text x="600" y="42" text-anchor="middle" class="title">先按预算筛选，再看目标改变后是否仍选同一项</text>
+<text x="600" y="75" text-anchor="middle" class="small">阈值情景复用同一批测量；选择一致不代表测量置信度已经确认</text>
+<path d="M265 200H335" class="edge"/><path d="M555 200H625" class="edge"/><path d="M845 200H915" class="edge"/>
+<path d="M1035 250V300H600V345" class="edge"/>
+<path d="M480 435V480H200V520" class="edge"/><path d="M600 435V520" class="edge"/><path d="M720 435V480H1000V520" class="edge"/>
+<g text-anchor="middle">
+<rect x="45" y="150" width="220" height="100" class="node" fill="#e0f2fe" stroke="#0284c7"/>
+<text x="155" y="180" class="head">同条件测量</text><text x="155" y="210" class="body">基线与各策略</text><text x="155" y="235" class="small">显存、速度、损失与状态</text>
+<rect x="335" y="150" width="220" height="100" class="node" fill="#fef3c7" stroke="#d97706"/>
+<text x="445" y="180" class="head">检查比较条件</text><text x="445" y="210" class="body">运行与数值结果</text><text x="445" y="235" class="small">确认预期路径实际执行</text>
+<rect x="625" y="150" width="220" height="100" class="node" fill="#fef3c7" stroke="#d97706"/>
+<text x="735" y="180" class="head">按预算保留可行项</text><text x="735" y="210" class="body">容量上限、速度下限</text><text x="735" y="235" class="small">同时满足损失要求</text>
+<rect x="915" y="150" width="240" height="100" class="node" fill="#dcfce7" stroke="#16a34a"/>
+<text x="1035" y="180" class="head">记录当前选择</text><text x="1035" y="210" class="body">先比显存，再比吞吐</text><text x="1035" y="235" class="small">无可行项时记录为空</text>
+<rect x="380" y="345" width="440" height="90" class="node" fill="#eff6ff" stroke="#60a5fa"/>
+<text x="600" y="380" class="head">复用测量，改变预算后重新筛选</text><text x="600" y="412" class="body">显存上限／吞吐下限／损失上限</text>
+<rect x="55" y="520" width="290" height="90" class="node" fill="#dcfce7" stroke="#16a34a"/>
+<text x="200" y="553" class="head">选择一致</text><text x="200" y="585" class="small">所列情景都选中同一候选</text>
+<rect x="455" y="520" width="290" height="90" class="node" fill="#fef3c7" stroke="#d97706"/>
+<text x="600" y="553" class="head">选择改变</text><text x="600" y="585" class="small">各情景可行，但所选候选改变</text>
+<rect x="855" y="520" width="290" height="90" class="node" fill="#fff1f2" stroke="#e11d48"/>
+<text x="1000" y="553" class="head">某情景没有可行项</text><text x="1000" y="585" class="small">调整目标或增加可比较候选</text>
+</g></svg>
