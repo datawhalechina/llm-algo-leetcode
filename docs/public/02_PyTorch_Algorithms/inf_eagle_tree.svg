@@ -1,76 +1,43 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520">
-  <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-      <path d="M0 0 L10 5 L0 10 Z" fill="#486581"/>
-    </marker>
-    <style>
-      .title{font:700 25px sans-serif;fill:#102a43}.group{fill:#eef5fb;stroke:#9fb9cf;stroke-width:2}.node{fill:#fff;stroke:#477a9e;stroke-width:2}.selected{fill:#eaf7ef;stroke:#4e8a68;stroke-width:2}.rejected{fill:#fff0ea;stroke:#c56f43;stroke-width:2}.control{fill:#f2edfb;stroke:#8066b3;stroke-width:2}.label{font:700 16px sans-serif;fill:#17324d}.small{font:14px sans-serif;fill:#365269}.edge{fill:none;stroke:#486581;stroke-width:2.2;marker-end:url(#arrow)}.tree{fill:none;stroke:#6b879d;stroke-width:2}.pass{fill:none;stroke:#4e8a68;stroke-width:2.4;marker-end:url(#arrow)}.fail{fill:none;stroke:#c56f43;stroke-width:2.4;stroke-dasharray:7 5;marker-end:url(#arrow)}
-    </style>
-  </defs>
-  <rect x="0" y="0" width="1200" height="520" fill="#f8fafc"/>
-  <text x="600" y="38" text-anchor="middle" class="title">候选树分数决定组织顺序，目标模型验证决定可提交的连续路径</text>
-
-  <rect x="30" y="66" width="590" height="404" rx="18" class="group"/>
-  <text x="325" y="96" text-anchor="middle" class="label">候选树：父子关系与累计分数</text>
-
-  <rect x="50" y="228" width="122" height="58" rx="11" class="node"/>
-  <text x="111" y="252" text-anchor="middle" class="label">当前上下文</text>
-  <text x="111" y="273" text-anchor="middle" class="small">累计分数 0</text>
-
-  <rect x="204" y="128" width="122" height="58" rx="11" class="selected"/>
-  <text x="265" y="152" text-anchor="middle" class="label">候选 A</text>
-  <text x="265" y="173" text-anchor="middle" class="small">父分数 + 边分数</text>
-  <rect x="204" y="326" width="122" height="58" rx="11" class="node"/>
-  <text x="265" y="350" text-anchor="middle" class="label">候选 B</text>
-  <text x="265" y="371" text-anchor="middle" class="small">父分数 + 边分数</text>
-
-  <rect x="360" y="108" width="122" height="58" rx="11" class="selected"/>
-  <text x="421" y="132" text-anchor="middle" class="label">A → C</text>
-  <text x="421" y="153" text-anchor="middle" class="small">高分路径</text>
-  <rect x="360" y="194" width="122" height="58" rx="11" class="node"/>
-  <text x="421" y="218" text-anchor="middle" class="label">A → D</text>
-  <text x="421" y="239" text-anchor="middle" class="small">备选路径</text>
-  <rect x="360" y="326" width="122" height="58" rx="11" class="node"/>
-  <text x="421" y="350" text-anchor="middle" class="label">B → E</text>
-  <text x="421" y="371" text-anchor="middle" class="small">低分路径</text>
-  <rect x="506" y="108" width="98" height="58" rx="10" class="selected"/>
-  <text x="555" y="132" text-anchor="middle" class="label">C → F</text>
-  <text x="555" y="153" text-anchor="middle" class="small">最高分叶</text>
-
-  <path d="M172 246 L204 165" class="tree"/>
-  <path d="M172 268 L204 347" class="tree"/>
-  <path d="M326 150 L360 137" class="tree"/>
-  <path d="M326 170 L360 215" class="tree"/>
-  <path d="M326 355 H360" class="tree"/>
-  <path d="M482 137 H506" class="tree"/>
-
-  <rect x="654" y="104" width="216" height="152" rx="16" class="control"/>
-  <text x="762" y="134" text-anchor="middle" class="label">组织验证批次</text>
-  <text x="762" y="164" text-anchor="middle" class="small">沿父节点回溯完整路径</text>
-  <text x="762" y="190" text-anchor="middle" class="small">累计分数用于排序或裁剪</text>
-  <text x="762" y="216" text-anchor="middle" class="small">不把高分当作验证通过</text>
-  <path d="M604 137 H628 Q654 137 654 150" class="edge"/>
-  <path d="M482 223 H628 Q654 223 654 190" class="edge"/>
-  <path d="M482 355 H628 Q654 355 654 228" class="edge"/>
-
-  <rect x="904" y="76" width="266" height="394" rx="18" class="group"/>
-  <text x="1037" y="106" text-anchor="middle" class="label">目标模型逐位验证</text>
-  <rect x="948" y="134" width="178" height="54" rx="11" class="selected"/>
-  <text x="1037" y="167" text-anchor="middle" class="label">A：通过</text>
-  <rect x="948" y="218" width="178" height="54" rx="11" class="selected"/>
-  <text x="1037" y="251" text-anchor="middle" class="label">C：通过</text>
-  <rect x="948" y="302" width="178" height="54" rx="11" class="rejected"/>
-  <text x="1037" y="335" text-anchor="middle" class="label">F：首个拒绝</text>
-  <rect x="930" y="400" width="214" height="48" rx="11" class="node"/>
-  <text x="1037" y="421" text-anchor="middle" class="small">提交 A、C 与修正词元</text>
-  <text x="1037" y="440" text-anchor="middle" class="small">F 之后的后缀不提交</text>
-  <path d="M1037 188 V218" class="pass"/>
-  <path d="M1037 272 V302" class="pass"/>
-  <path d="M1037 356 V400" class="fail"/>
-  <path d="M870 180 H894 Q904 180 904 170 H948" class="edge"/>
-
-  <rect x="654" y="308" width="216" height="118" rx="16" class="node"/>
-  <text x="762" y="338" text-anchor="middle" class="label">两类证据不能混用</text>
-  <text x="762" y="367" text-anchor="middle" class="small">草稿分数：候选优先级</text>
-  <text x="762" y="394" text-anchor="middle" class="small">目标判定：接受与状态提交</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+<title id="title">候选树评分与连续提交</title><desc id="desc">教学候选树10到11到13的路径累计分数为负0.35，高于10到12的负1.10；示例目标验证接受10和11、拒绝13，因此提交10、11及修正词元。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:24px;font-weight:700}.sub{font-size:16px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:16px}.small{font-size:14px;fill:#475569}.node{stroke-width:2;rx:12}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.feedback{stroke:#7c3aed;stroke-width:2.5;stroke-dasharray:7 5;fill:none;marker-end:url(#arrow)}</style></defs><rect width="1200" height="520" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="40" y="40" class="title" text-anchor="start">候选分数用于排序，目标验证决定哪一段真正提交</text>
+<text x="40" y="70" class="sub" text-anchor="start">沿用本页CPU树例：节点分数 = 父路径累计分数 + 当前边log-score；验证结果为说明性示例。</text>
+<rect x="40" y="200" width="140" height="68" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="110" y="228" class="head" text-anchor="middle">上下文根</text>
+<text x="110" y="252" class="body" text-anchor="middle">累计 0</text>
+<rect x="225" y="200" width="150" height="68" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="300" y="228" class="head" text-anchor="middle">Token 10</text>
+<text x="300" y="252" class="body" text-anchor="middle">−0.10</text>
+<rect x="420" y="125" width="150" height="68" class="node" fill="#dcfce7" stroke="#15803d"/>
+<text x="495" y="153" class="head" text-anchor="middle">Token 11</text>
+<text x="495" y="177" class="body" text-anchor="middle">−0.30</text>
+<rect x="420" y="295" width="150" height="68" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="495" y="323" class="head" text-anchor="middle">Token 12</text>
+<text x="495" y="347" class="body" text-anchor="middle">−1.10</text>
+<rect x="615" y="125" width="150" height="68" class="node" fill="#dcfce7" stroke="#15803d"/>
+<text x="690" y="153" class="head" text-anchor="middle">Token 13</text>
+<text x="690" y="177" class="body" text-anchor="middle">−0.35</text>
+<path id="root-to-10" d="M180 234H225" class="flow"/>
+<path id="10-to-11" d="M375 220H395V159H420" class="flow"/>
+<path id="10-to-12" d="M375 250H395V329H420" class="flow"/>
+<path id="11-to-13" d="M570 159H615" class="flow"/>
+<text x="400" y="108" class="small" text-anchor="middle">边 −0.20</text>
+<text x="400" y="286" class="small" text-anchor="middle">边 −1.00</text>
+<text x="669" y="108" class="small" text-anchor="middle">边 −0.05</text>
+<rect x="850" y="125" width="300" height="72" class="node" fill="#dbeafe" stroke="#2563eb"/>
+<text x="1000" y="153" class="head" text-anchor="middle">组织目标模型验证</text>
+<text x="1000" y="177" class="body" text-anchor="middle">示例路径 [10, 11, 13]</text>
+<path id="ranked-path-to-verify" d="M765 159H850" class="flow"/>
+<rect x="850" y="270" width="300" height="72" class="node" fill="#fef3c7" stroke="#d97706"/>
+<text x="1000" y="298" class="head" text-anchor="middle">连续接受：10、11</text>
+<text x="1000" y="322" class="body" text-anchor="middle">13为首个拒绝位置</text>
+<path id="verify-to-result" d="M1000 197V270" class="flow"/>
+<rect x="850" y="400" width="300" height="72" class="node" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="1000" y="428" class="head" text-anchor="middle">提交并进入下一轮</text>
+<text x="1000" y="452" class="body" text-anchor="middle">10、11 ＋ 修正词元</text>
+<path id="result-to-commit" d="M1000 342V400" class="flow"/>
+<text x="40" y="444" class="body" text-anchor="start">叶路径10→11→13：−0.35；叶路径10→12：−1.10</text>
+<text x="40" y="479" class="small" text-anchor="start">树边表示父子依赖；验证和提交使用右侧流程。</text>
 </svg>
