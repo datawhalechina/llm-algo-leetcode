@@ -1,45 +1,83 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="600" viewBox="0 0 1320 600" role="img" aria-labelledby="title desc">
-  <title id="title">多 Token 解码的收益判断</title>
-  <desc id="desc">提议长度、连续接受长度和验证回退成本共同决定有效推进量以及最终收益。</desc>
-  <style>text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:29px;font-weight:700}.sub{font-size:15px;fill:#475569}.group{font-size:18px;font-weight:700;fill:#334155}.label{font-size:17px;font-weight:700}.small{font-size:13px;fill:#475569}.panel{stroke-width:2;rx:18;ry:18}.node{stroke-width:2;rx:14;ry:14}.line{stroke:#52606d;stroke-width:3;stroke-linecap:round;fill:none}.branch{stroke:#94a3b8;stroke-width:3;stroke-linecap:round;fill:none}</style>
-  <rect width="1320" height="600" fill="#f8fafc"/>
-  <text x="55" y="55" class="title">多 Token 解码：接受长度如何决定收益</text>
-  <text x="55" y="86" class="sub">提议长度决定尝试范围，连续接受长度决定有效推进，验证与回退成本决定净收益。</text>
-
-  <rect x="500" y="110" width="320" height="78" class="node" fill="#e0f2fe" stroke="#38bdf8"/>
-  <text x="660" y="143" text-anchor="middle" class="label">一轮收益判断</text>
-  <text x="660" y="169" text-anchor="middle" class="small">有效推进是否抵消额外成本</text>
-
-  <rect x="45" y="245" width="370" height="155" class="panel" fill="#eff6ff" stroke="#93c5fd"/>
-  <text x="70" y="282" text-anchor="start" class="group">提议规模</text>
-  <rect x="95" y="315" width="270" height="58" class="node" fill="#ffffff" stroke="#7b9bc7"/>
-  <text x="230" y="350" text-anchor="middle" class="label">提议长度 K</text>
-  <text x="230" y="369" text-anchor="middle" class="small">本轮最多检查多少候选</text>
-
-  <rect x="475" y="245" width="370" height="155" class="panel" fill="#f0fdf4" stroke="#86efac"/>
-  <text x="500" y="282" text-anchor="start" class="group">接受程度</text>
-  <rect x="525" y="315" width="270" height="58" class="node" fill="#ffffff" stroke="#79a889"/>
-  <text x="660" y="345" text-anchor="middle" class="label">接受长度 N</text>
-  <text x="660" y="367" text-anchor="middle" class="small">连续通过的候选数量</text>
-
-  <rect x="905" y="245" width="370" height="155" class="panel" fill="#fff7ed" stroke="#fdba74"/>
-  <text x="930" y="282" text-anchor="start" class="group">额外代价</text>
-  <rect x="955" y="315" width="270" height="58" class="node" fill="#ffffff" stroke="#c79a46"/>
-  <text x="1090" y="345" text-anchor="middle" class="label">验证与回退</text>
-  <text x="1090" y="367" text-anchor="middle" class="small">目标计算与后缀重生成</text>
-
-  <rect x="390" y="475" width="540" height="70" class="node" fill="#ede9fe" stroke="#9b8ab9"/>
-  <text x="660" y="506" text-anchor="middle" class="label">有效推进量与接受比例</text>
-  <text x="660" y="530" text-anchor="middle" class="small">accepted tokens / proposed tokens = N / K</text>
-  <rect x="990" y="475" width="270" height="70" class="node" fill="#fef3c7" stroke="#c79a46"/>
-  <text x="1125" y="506" text-anchor="middle" class="label">净收益判断</text>
-  <text x="1125" y="530" text-anchor="middle" class="small">采用、调参或放弃</text>
-
-  <line x1="660" y1="188" x2="660" y2="215" class="branch"/><line x1="230" y1="215" x2="1090" y2="215" class="branch"/>
-  <line x1="230" y1="215" x2="230" y2="315" class="line"/><path d="M222 307L230 315L238 307Z" fill="#52606d"/>
-  <line x1="660" y1="215" x2="660" y2="315" class="line"/><path d="M652 307L660 315L668 307Z" fill="#52606d"/>
-  <line x1="1090" y1="215" x2="1090" y2="315" class="line"/><path d="M1082 307L1090 315L1098 307Z" fill="#52606d"/>
-  <line x1="660" y1="373" x2="660" y2="475" class="line"/><path d="M652 467L660 475L668 467Z" fill="#52606d"/>
-  <line x1="1090" y1="373" x2="1090" y2="430" class="branch"/><line x1="1090" y1="430" x2="820" y2="430" class="branch"/><line x1="820" y1="430" x2="820" y2="475" class="line"/><path d="M812 467L820 475L828 467Z" fill="#52606d"/>
-  <line x1="930" y1="510" x2="990" y2="510" class="line"/><path d="M982 502L990 510L982 518Z" fill="#52606d"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="650" viewBox="0 0 1440 650" role="img" aria-labelledby="title desc">
+<title id="title">接受比例、实际输出数量与每Token完成耗时</title>
+<desc id="desc">两个贪心构造例均提议三个候选10、11、12。左例在第二位置遇到目标首选99，接受一个候选并输出10、99；右例全部接受并追加目标Token13，输出四个Token。接受比例分别为三分之一和一，实际输出为二和四。将各自本轮完整耗时除以实际输出数量，才得到单位输出成本。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto">
+<path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:29px;font-weight:700}.group{font-size:18px;font-weight:700}.head{font-size:17px;font-weight:700}.body{font-size:15px;font-weight:400}.sub{font-size:16px;fill:#475569}</style></defs>
+<rect x="0" y="0" width="1440" height="650" rx="12" fill="#f8fafc" stroke="#f8fafc" stroke-width="2" class="decoration" data-layout-role="decoration"/>
+<text x="45" y="49" class="title" text-anchor="start">同样提议3个候选，接受比例与实际输出数量分别是多少？</text>
+<text x="45" y="80" class="sub" text-anchor="start">贪心构造例：K=3，N表示连续接受数量；均未遇到EOS或长度上限，故本轮输出N+1个Token。</text>
+<rect x="45" y="110" width="650" height="345" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2" class="panel" data-layout-role="panel"/>
+<text x="65" y="142" class="group" text-anchor="start">案例A · 第二个候选不匹配</text>
+<text x="65" y="212" class="head" text-anchor="start">候选</text>
+<text x="65" y="292" class="head" text-anchor="start">目标首选</text>
+<text x="235" y="172" class="body" text-anchor="middle">位置1</text>
+<rect x="195" y="185" width="80" height="42" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="235" y="212" class="body" text-anchor="middle">10</text>
+<rect x="195" y="265" width="80" height="42" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="235" y="292" class="body" text-anchor="middle">10</text>
+<path id="a-compare-0" d="M235 227V265" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)"/>
+<path id="a-emit-0" d="M235 307V355" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="335" y="172" class="body" text-anchor="middle">位置2</text>
+<rect x="295" y="185" width="80" height="42" rx="12" fill="#fff1f2" stroke="#e11d48" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="335" y="212" class="body" text-anchor="middle">11</text>
+<rect x="295" y="265" width="80" height="42" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="335" y="292" class="body" text-anchor="middle">99</text>
+<path id="a-compare-1" d="M335 227V265" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)"/>
+<path id="a-emit-1" d="M335 307V355" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="435" y="172" class="body" text-anchor="middle">位置3</text>
+<rect x="395" y="185" width="80" height="42" rx="12" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="435" y="212" class="body" text-anchor="middle">12</text>
+<rect x="395" y="265" width="80" height="42" rx="12" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="435" y="292" class="body" text-anchor="middle">—</text>
+<text x="535" y="172" class="body" text-anchor="middle">额外位置</text>
+<rect x="495" y="185" width="80" height="42" rx="12" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="535" y="212" class="body" text-anchor="middle">—</text>
+<rect x="495" y="265" width="80" height="42" rx="12" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="535" y="292" class="body" text-anchor="middle">—</text>
+<rect x="190" y="355" width="400" height="80" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" class="node"/>
+<text x="390" y="383" class="head" text-anchor="middle">N=1，接受比例N/K=1/3</text>
+<text x="390" y="409" class="body" text-anchor="middle">输出[10,99]：接受10＋目标修正99</text>
+<path id="a-output-to-cost" d="M390 435V505" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)"/>
+<rect x="190" y="505" width="400" height="80" rx="12" fill="#e0f2fe" stroke="#0284c7" stroke-width="2" class="node"/>
+<text x="390" y="533" class="head" text-anchor="middle">每个输出Token的平均耗时：T_A / 2</text>
+<text x="390" y="560" class="body" text-anchor="middle">T_A为案例A的本轮完成耗时</text>
+<rect x="745" y="110" width="650" height="345" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2" class="panel" data-layout-role="panel"/>
+<text x="765" y="142" class="group" text-anchor="start">案例B · 三个候选全部通过</text>
+<text x="765" y="212" class="head" text-anchor="start">候选</text>
+<text x="765" y="292" class="head" text-anchor="start">目标首选</text>
+<text x="935" y="172" class="body" text-anchor="middle">位置1</text>
+<rect x="895" y="185" width="80" height="42" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="935" y="212" class="body" text-anchor="middle">10</text>
+<rect x="895" y="265" width="80" height="42" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="935" y="292" class="body" text-anchor="middle">10</text>
+<path id="b-compare-0" d="M935 227V265" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)"/>
+<path id="b-emit-0" d="M935 307V355" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="1035" y="172" class="body" text-anchor="middle">位置2</text>
+<rect x="995" y="185" width="80" height="42" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="1035" y="212" class="body" text-anchor="middle">11</text>
+<rect x="995" y="265" width="80" height="42" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="1035" y="292" class="body" text-anchor="middle">11</text>
+<path id="b-compare-1" d="M1035 227V265" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)"/>
+<path id="b-emit-1" d="M1035 307V355" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="1135" y="172" class="body" text-anchor="middle">位置3</text>
+<rect x="1095" y="185" width="80" height="42" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="1135" y="212" class="body" text-anchor="middle">12</text>
+<rect x="1095" y="265" width="80" height="42" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="1135" y="292" class="body" text-anchor="middle">12</text>
+<path id="b-compare-2" d="M1135 227V265" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)"/>
+<path id="b-emit-2" d="M1135 307V355" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="1235" y="172" class="body" text-anchor="middle">额外位置</text>
+<rect x="1195" y="185" width="80" height="42" rx="12" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="1235" y="212" class="body" text-anchor="middle">—</text>
+<rect x="1195" y="265" width="80" height="42" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="1235" y="292" class="body" text-anchor="middle">13</text>
+<path id="b-emit-3" d="M1235 307V355" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)"/>
+<rect x="890" y="355" width="400" height="80" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" class="node"/>
+<text x="1090" y="383" class="head" text-anchor="middle">N=3，接受比例N/K=3/3</text>
+<text x="1090" y="409" class="body" text-anchor="middle">输出[10,11,12,13]：接受3个＋追加13</text>
+<path id="b-output-to-cost" d="M1090 435V505" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)"/>
+<rect x="890" y="505" width="400" height="80" rx="12" fill="#e0f2fe" stroke="#0284c7" stroke-width="2" class="node"/>
+<text x="1090" y="533" class="head" text-anchor="middle">每个输出Token的平均耗时：T_B / 4</text>
+<text x="1090" y="560" class="body" text-anchor="middle">T_B为案例B的本轮完成耗时</text>
+<text x="45" y="623" class="sub" text-anchor="start">T计入提议、验证和状态整理的实际完成耗时；比较T_A/2与T_B/4，才能判断本轮单位输出成本。</text></svg>
