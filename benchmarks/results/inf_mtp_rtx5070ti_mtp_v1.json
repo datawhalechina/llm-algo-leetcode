@@ -1,0 +1,50 @@
+{
+  "schema_version": "inference-mechanism-gpu/v2",
+  "semantic_id": "INF-MTP",
+  "environment_profile": "INF-CUDA-MECHANISM",
+  "run_mode": "asset_check",
+  "run_label": "rtx5070ti_mtp_v1",
+  "framework": {
+    "python": "3.12.15",
+    "packages": {}
+  },
+  "workload": {
+    "id": "inf-native-mtp",
+    "version": "v1",
+    "mechanism": "native_mtp",
+    "required_assets": [
+      {
+        "name": "mtp_model_id",
+        "value": "",
+        "configured": false
+      },
+      {
+        "name": "mtp_model_revision",
+        "value": "",
+        "configured": false
+      },
+      {
+        "name": "mtp_backend",
+        "value": "",
+        "configured": false
+      }
+    ]
+  },
+  "asset_gate": {
+    "ready": false,
+    "missing_packages": [],
+    "missing_assets": [
+      "mtp_model_id",
+      "mtp_model_revision",
+      "mtp_backend"
+    ]
+  },
+  "baseline": null,
+  "candidates": [],
+  "failure": {
+    "type": "assets_not_ready",
+    "message": "真实模型或后端资产尚未配置；未执行替代性 GPU 探针。"
+  },
+  "evidence_level": "not_ready",
+  "decision": "not_ready"
+}
