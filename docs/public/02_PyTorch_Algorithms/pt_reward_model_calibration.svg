@@ -1,34 +1,61 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1440" height="620" viewBox="0 0 1440 620" role="img" aria-labelledby="title desc">
-  <title id="title">奖励校准与策略候选过度优化审计</title>
-  <desc id="desc">留出偏好对用于选择分数到概率的校准温度；策略候选同时接受校准后的代理奖励和独立隐藏质量评价，二者背离时拒绝继续追逐代理奖励。</desc>
-  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker><style>.title{font-family:"Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#0F172A}.subtitle{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;fill:#475569}.lane{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;font-weight:700;fill:#64748B;letter-spacing:1px}.head{font-family:"Noto Sans CJK SC",sans-serif;font-size:18px;font-weight:700;fill:#172033}.copy{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;fill:#334155}.line{fill:none;stroke:#475569;stroke-width:2.3;marker-end:url(#arrow)}</style></defs>
-  <rect width="1440" height="620" fill="#F8FAFC"/><rect x="28" y="24" width="1384" height="572" rx="26" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
-  <text x="62" y="70" class="title">校准修正置信尺度，隐藏评测约束优化方向</text><text x="62" y="102" class="subtitle">温度不会修复错误排序；代理奖励上升也不能证明策略候选的真实质量同步改善。</text>
-
-  <text x="62" y="150" class="lane">奖励校准</text>
-  <rect x="62" y="170" width="236" height="104" rx="15" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/>
-  <text x="84" y="204" class="head">留出偏好对</text><text x="84" y="232" class="copy">分数差 + 真实偏好标签</text><text x="84" y="256" class="copy">与训练数据隔离</text>
-  <rect x="360" y="170" width="236" height="104" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
-  <text x="382" y="204" class="head">温度候选</text><text x="382" y="232" class="copy">改变概率尺度</text><text x="382" y="256" class="copy">不改变分数排序</text>
-  <rect x="658" y="170" width="236" height="104" rx="15" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
-  <text x="680" y="204" class="head">校准报告</text><text x="680" y="232" class="copy">Brier / ECE · 排序准确率</text><text x="680" y="256" class="copy">选定温度与适用域</text>
-  <path d="M298 222H352" class="line"/><path d="M596 222H650" class="line"/>
-
-  <text x="62" y="348" class="lane">策略候选审计</text>
-  <rect x="62" y="368" width="236" height="104" rx="15" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2"/>
-  <text x="84" y="402" class="head">策略候选回答</text><text x="84" y="430" class="copy">固定提示与生成配置</text><text x="84" y="454" class="copy">保留候选身份</text>
-  <rect x="360" y="338" width="236" height="104" rx="15" fill="#FFE4E6" stroke="#E11D48" stroke-width="2"/>
-  <text x="382" y="372" class="head">校准后代理奖励</text><text x="382" y="400" class="copy">奖励模型分数与置信度</text><text x="382" y="424" class="copy">记录候选间奖励排序</text>
-  <rect x="360" y="474" width="236" height="104" rx="15" fill="#ECFDF5" stroke="#16A34A" stroke-width="2"/>
-  <text x="382" y="508" class="head">独立隐藏质量</text><text x="382" y="536" class="copy">绝对门槛 · 相对基线变化</text><text x="382" y="560" class="copy">独立于代理奖励计算</text>
-  <polygon points="786,370 900,458 786,546 672,458" fill="#FFF7ED" stroke="#EA580C" stroke-width="2"/>
-  <text x="728" y="450" class="head">三项检查通过？</text><text x="714" y="478" class="copy">质量 · 退化 · 排序背离</text>
-  <rect x="1000" y="338" width="300" height="104" rx="15" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
-  <text x="1022" y="372" class="head">继续受约束策略更新</text><text x="1022" y="400" class="copy">记录奖励、质量与版本</text><text x="1022" y="424" class="copy">进入下一轮候选复测</text>
-  <rect x="1000" y="474" width="300" height="104" rx="15" fill="#FEE2E2" stroke="#DC2626" stroke-width="2"/>
-  <text x="1022" y="508" class="head">停止、修复或回滚</text><text x="1022" y="536" class="copy">代理奖励与隐藏质量背离</text><text x="1022" y="560" class="copy">补充失败样本与约束</text>
-  <path d="M298 404H352" class="line"/><path d="M298 444H326V526H352" class="line"/>
-  <path d="M596 390H632V430H672" class="line"/><path d="M596 526H632V486H672" class="line"/>
-  <path d="M900 430H952V390H992" class="line"/><path d="M900 486H952V526H992" class="line"/>
-  <path d="M776 274V306H478V330" class="line"/>
+<title id="title">分别检查偏好概率与策略候选质量</title>
+<desc id="desc">上行以校准记录选择正温度并计算Brier误差，调整偏好概率而非原始奖励。下行将候选的代理奖励与另外计算的任务质量送入三项检查，分别决定继续复测或定位问题。</desc>
+<defs>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-weight:400;fill:#172033}.title{font-size:28px;font-weight:700}.h{font-size:18px;font-weight:700}.b{font-size:14px;fill:#334155}.small{font-size:16px;fill:#475569}.flow{fill:none;stroke:#475569;stroke-width:2.5;marker-end:url(#arrow)}</style>
+<marker id="arrow" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
+<path d="M0 0 L9 4.5 L0 9 Z" fill="#475569"/>
+</marker>
+</defs>
+<rect width="1440" height="620" fill="#F8FAFC"/>
+<rect x="28" y="24" width="1384" height="572" rx="26" fill="#FFF" stroke="#CBD5E1" stroke-width="2"/>
+<text x="720" y="68" text-anchor="middle" class="title">温度校准概率，任务质量另作检查</text>
+<text x="720" y="101" text-anchor="middle" class="small">两个不同问题：成对概率是否合适，以及追逐奖励后任务表现是否退化</text>
+<rect x="60" y="155" width="250" height="105" rx="15" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/>
+<text x="185" y="187" text-anchor="middle" class="h">留出校准记录</text>
+<text x="185" y="216" text-anchor="middle" class="b">回答 A／B 的分数差</text>
+<text x="185" y="239" text-anchor="middle" class="b">偏好标签 0／1</text>
+<rect x="390" y="155" width="250" height="105" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
+<text x="515" y="187" text-anchor="middle" class="h">正温度候选</text>
+<text x="515" y="216" text-anchor="middle" class="b">调整分数差到概率的尺度</text>
+<text x="515" y="239" text-anchor="middle" class="b">保持差值符号与排序</text>
+<rect x="720" y="155" width="250" height="105" rx="15" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
+<text x="845" y="187" text-anchor="middle" class="h">计算 Brier 误差</text>
+<text x="845" y="216" text-anchor="middle" class="b">概率与标签的均方差</text>
+<text x="845" y="239" text-anchor="middle" class="b">每个温度分别记录</text>
+<rect x="1050" y="155" width="310" height="105" rx="15" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+<text x="1205" y="187" text-anchor="middle" class="h">选定温度与误差</text>
+<text x="1205" y="216" text-anchor="middle" class="b">校准记录参与温度选择</text>
+<text x="1205" y="239" text-anchor="middle" class="b">最终概率效果可另留样本检查</text>
+<path class="flow" d="M310 207 H390"/>
+<path class="flow" d="M640 207 H720"/>
+<path class="flow" d="M970 207 H1050"/>
+<rect x="60" y="400" width="240" height="100" rx="15" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2"/>
+<text x="180" y="432" text-anchor="middle" class="h">策略候选</text>
+<text x="180" y="461" text-anchor="middle" class="b">同一组任务与规则</text>
+<text x="180" y="484" text-anchor="middle" class="b">记录候选及基线身份</text>
+<rect x="380" y="350" width="260" height="90" rx="15" fill="#FFE4E6" stroke="#E11D48" stroke-width="2"/>
+<text x="510" y="382" text-anchor="middle" class="h">代理奖励</text>
+<text x="510" y="411" text-anchor="middle" class="b">各候选的奖励及排序</text>
+<rect x="380" y="480" width="260" height="90" rx="15" fill="#ECFDF5" stroke="#16A34A" stroke-width="2"/>
+<text x="510" y="512" text-anchor="middle" class="h">另作任务评测</text>
+<text x="510" y="541" text-anchor="middle" class="b">质量分数与基线变化</text>
+<rect x="720" y="405" width="260" height="110" rx="15" fill="#FFF7ED" stroke="#EA580C" stroke-width="2"/>
+<text x="850" y="437" text-anchor="middle" class="h">分别检查三项</text>
+<text x="850" y="466" text-anchor="middle" class="b">质量下限、相对下降量</text>
+<text x="850" y="489" text-anchor="middle" class="b">无并列候选的两两排序背离</text>
+<rect x="1080" y="350" width="280" height="90" rx="15" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+<text x="1220" y="382" text-anchor="middle" class="h">保留候选继续复测</text>
+<text x="1220" y="411" text-anchor="middle" class="b">在新任务与更新后再检查</text>
+<rect x="1080" y="480" width="280" height="90" rx="15" fill="#FEE2E2" stroke="#DC2626" stroke-width="2"/>
+<text x="1220" y="512" text-anchor="middle" class="h">定位问题并调整</text>
+<text x="1220" y="541" text-anchor="middle" class="b">检查奖励漏洞或数据覆盖</text>
+<path class="flow" d="M300 425 H340 V395 H380"/>
+<path class="flow" d="M300 475 H330 V525 H380"/>
+<path class="flow" d="M640 395 H680 V435 H720"/>
+<path class="flow" d="M640 525 H680 V485 H720"/>
+<path class="flow" d="M980 435 H1030 V395 H1080"/>
+<path class="flow" d="M980 485 H1015 V525 H1080"/>
+<text x="1050" y="382" text-anchor="middle" class="b">通过</text>
+<text x="1047" y="513" text-anchor="middle" class="b">未通过</text>
 </svg>
