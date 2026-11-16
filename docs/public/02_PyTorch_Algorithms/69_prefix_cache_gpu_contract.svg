@@ -1,13 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="svg-title svg-desc">
-<title id="svg-title">前缀缓存真实后端配对与证据边界</title><desc id="svg-desc">相同共享前缀负载分别关闭和开启前缀缓存，直接观测命中与服务指标；容量和驱逐行为留给独立压力矩阵。</desc>
-<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#52657a"/></marker><style>.t{font-weight:700;font-size:26px;font-family:sans-serif;fill:#18324b}.h{font-weight:600;font-size:18px;font-family:sans-serif;fill:#18324b}.b{font-size:15px;font-family:sans-serif;fill:#334e68}.l{fill:none;stroke:#52657a;stroke-width:3;marker-end:url(#arrow)}.a{fill:#e8f1fb;stroke:#3f78a8;stroke-width:2}.g{fill:#e8f6f1;stroke:#3f8b72;stroke-width:2}.o{fill:#fff3df;stroke:#b7791f;stroke-width:2}.p{fill:#f1edfb;stroke:#7657a5;stroke-width:2}.r{fill:#fbeceb;stroke:#b85c57;stroke-width:2}</style></defs>
-<rect width="1500" height="470" fill="#f8fafc"/><text x="750" y="42" text-anchor="middle" class="t">前缀缓存项目只归因于缓存开关这一项变化</text>
-<rect x="40" y="165" width="235" height="105" rx="14" class="a"/><text x="158" y="202" text-anchor="middle" class="h">共享前缀负载</text><text x="158" y="232" text-anchor="middle" class="b">相同模型、顺序与生成长度</text>
-<rect x="345" y="90" width="240" height="105" rx="14" class="g"/><text x="465" y="127" text-anchor="middle" class="h">G0：关闭缓存</text><text x="465" y="157" text-anchor="middle" class="b">完整执行 Prefill</text>
-<rect x="345" y="260" width="240" height="105" rx="14" class="o"/><text x="465" y="297" text-anchor="middle" class="h">G1：开启缓存</text><text x="465" y="327" text-anchor="middle" class="b">复用连续完整块</text><path d="M275 218H310V143H345M310 218V313H345" class="l"/>
-<rect x="655" y="90" width="255" height="105" rx="14" class="p"/><text x="783" y="127" text-anchor="middle" class="h">直接命中证据</text><text x="783" y="157" text-anchor="middle" class="b">查询数、命中数与命中率</text>
-<rect x="655" y="260" width="255" height="105" rx="14" class="p"/><text x="783" y="297" text-anchor="middle" class="h">服务性能证据</text><text x="783" y="327" text-anchor="middle" class="b">TTFT、吞吐与输出完整性</text><path d="M585 143H655M585 313H655" class="l"/>
-<rect x="980" y="90" width="235" height="105" rx="14" class="r"/><text x="1098" y="127" text-anchor="middle" class="h">本轮不外推</text><text x="1098" y="157" text-anchor="middle" class="b">驱逐率与容量极限</text>
-<rect x="980" y="260" width="235" height="105" rx="14" class="g"/><text x="1098" y="297" text-anchor="middle" class="h">配对采用判断</text><text x="1098" y="327" text-anchor="middle" class="b">真实命中是否转化为收益</text><path d="M910 143H980M910 313H980" class="l"/>
-<rect x="1285" y="165" width="170" height="105" rx="14" class="o"/><text x="1370" y="202" text-anchor="middle" class="h">项目状态</text><text x="1370" y="232" text-anchor="middle" class="b">采用 / 补测 / 拒绝</text><path d="M1215 313H1250V218H1285" class="l"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">两组报告共同回答：复用是否带来净收益</title><desc id="desc">相同请求分别关闭和开启前缀缓存，两组汇总后核对输出、命中计数与性能，另以压力负载评估容量。</desc>
+<defs><marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#52657a"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:15px;font-weight:400;fill:#334e68}.title{font-size:25px;font-weight:700;fill:#18324b}.h{font-size:18px;font-weight:600;fill:#18324b}.small{font-size:14px}.edge{fill:none;stroke:#52657a;stroke-width:2.5;marker-end:url(#arrow)}.feedback{fill:none;stroke:#7657a5;stroke-width:2;stroke-dasharray:7 5;marker-end:url(#arrow)}</style></defs>
+<rect width="1500" height="470" fill="#f8fafc"/><text x="750" y="42" text-anchor="middle" class="title">两组报告共同回答：复用是否带来净收益</text>
+<rect x="35" y="185" width="245" height="100" rx="14" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="157.5" y="220" text-anchor="middle" class="h">相同共享前缀请求</text><text x="157.5" y="250" text-anchor="middle">固定模型、顺序与生成规则</text>
+<rect x="345" y="85" width="235" height="100" rx="14" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="462.5" y="120" text-anchor="middle" class="h">G0：关闭缓存</text><text x="462.5" y="150" text-anchor="middle">记录实际配置与请求</text>
+<rect x="345" y="285" width="235" height="100" rx="14" fill="#e8f6f1" stroke="#3f8b72" stroke-width="2"/><text x="462.5" y="320" text-anchor="middle" class="h">G1：开启缓存</text><text x="462.5" y="350" text-anchor="middle">记录实际配置与请求</text>
+<rect x="650" y="185" width="240" height="100" rx="14" fill="#f1edfb" stroke="#7657a5" stroke-width="2"/><text x="770" y="220" text-anchor="middle" class="h">汇总两组原始记录</text><text x="770" y="250" text-anchor="middle">按请求编号配对</text>
+<rect x="970" y="85" width="240" height="100" rx="14" fill="#e8f6f1" stroke="#3f8b72" stroke-width="2"/><text x="1090" y="120" text-anchor="middle" class="h">核对复用与输出</text><text x="1090" y="150" text-anchor="middle">命中单位、等价性与稳定性</text>
+<rect x="970" y="285" width="240" height="100" rx="14" fill="#fff3df" stroke="#b7791f" stroke-width="2"/><text x="1090" y="320" text-anchor="middle" class="h">比较延迟与吞吐</text><text x="1090" y="350" text-anchor="middle">同一客户端时间口径</text>
+<rect x="1270" y="185" width="195" height="100" rx="14" fill="#f1edfb" stroke="#7657a5" stroke-width="2"/><text x="1367.5" y="220" text-anchor="middle" class="h">形成项目决策</text><text x="1367.5" y="250" text-anchor="middle">采用／补测／拒绝</text>
+<path d="M280 210H310V135H345" class="edge"/>
+<path d="M280 260H320V335H345" class="edge"/>
+<path d="M580 135H610V215H650" class="edge"/>
+<path d="M580 335H625V255H650" class="edge"/>
+<path d="M890 215H930V135H970" class="edge"/>
+<path d="M890 255H945V335H970" class="edge"/>
+<path d="M1210 135H1235V215H1270" class="edge"/>
+<path d="M1210 335H1250V255H1270" class="edge"/>
+<text x="750" y="437" text-anchor="middle" class="small">容量压力另测：并发 × 上下文，读取峰值、驱逐与失败；命中率按后端实际计数单位解释</text>
 </svg>
