@@ -1,0 +1,120 @@
+{
+  "schema_version": "architecture-mechanism-gpu/v1",
+  "identity": {
+    "semantic_id": "ARCH-ATTENTION-ACCESS-MECHANISM",
+    "workload_id": "arch-window-sdpa-v2",
+    "run_label": "rtx5070ti_window_ladder_v2",
+    "profile_id": "ARCH-CUDA-MECHANISM"
+  },
+  "workload": {
+    "batch_size": 1,
+    "heads": 8,
+    "head_dim": 64,
+    "seq_lens": [
+      256,
+      512,
+      1024,
+      2048
+    ],
+    "window_size": 256,
+    "dtype": "float16",
+    "warmup": 10,
+    "repeats": 100,
+    "mask_representation": "explicit_boolean_mask"
+  },
+  "baseline": {
+    "name": "dense_causal_sdpa"
+  },
+  "candidates": [
+    "explicit_boolean_window_sdpa"
+  ],
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8"
+  },
+  "backend_note": {
+    "flash_sdp_enabled": true,
+    "mem_efficient_sdp_enabled": true,
+    "math_sdp_enabled": true,
+    "caveat": "\u8fd9\u4e9b\u5f00\u5173\u4e0d\u4fdd\u8bc1\u672c\u6b21\u8c03\u7528\u5b9e\u9645\u9009\u4e2d\u7684 backend\uff1b\u663e\u5f0f attn_mask \u53ef\u80fd\u6539\u53d8\u6267\u884c\u8def\u5f84\u3002"
+  },
+  "metrics": {
+    "comparison_type": "paired_explicit_mask_sdpa",
+    "rows": [
+      {
+        "seq_len": 256,
+        "dense_visible_pairs": 32896,
+        "window_visible_pairs": 32896,
+        "mask_storage_mb": 0.0625,
+        "last_token_can_read_first": true,
+        "baseline": {
+          "mean_ms": 0.016490559577941894,
+          "peak_allocated_mb": 1.3212890625,
+          "output_finite": true
+        },
+        "candidate": {
+          "mean_ms": 0.03560767889022827,
+          "peak_allocated_mb": 1.4375,
+          "output_finite": true
+        }
+      },
+      {
+        "seq_len": 512,
+        "dense_visible_pairs": 131328,
+        "window_visible_pairs": 98432,
+        "mask_storage_mb": 0.25,
+        "last_token_can_read_first": false,
+        "baseline": {
+          "mean_ms": 0.02838047981262207,
+          "peak_allocated_mb": 2.7666015625,
+          "output_finite": true
+        },
+        "candidate": {
+          "mean_ms": 0.049750719070434574,
+          "peak_allocated_mb": 3.25,
+          "output_finite": true
+        }
+      },
+      {
+        "seq_len": 1024,
+        "dense_visible_pairs": 524800,
+        "window_visible_pairs": 229504,
+        "mask_storage_mb": 1.0,
+        "last_token_can_read_first": false,
+        "baseline": {
+          "mean_ms": 0.051305599212646484,
+          "peak_allocated_mb": 6.0322265625,
+          "output_finite": true
+        },
+        "candidate": {
+          "mean_ms": 0.12714847564697265,
+          "peak_allocated_mb": 8.0,
+          "output_finite": true
+        }
+      },
+      {
+        "seq_len": 2048,
+        "dense_visible_pairs": 2098176,
+        "window_visible_pairs": 491648,
+        "mask_storage_mb": 4.0,
+        "last_token_can_read_first": false,
+        "baseline": {
+          "mean_ms": 0.14944928169250488,
+          "peak_allocated_mb": 14.0634765625,
+          "output_finite": true
+        },
+        "candidate": {
+          "mean_ms": 0.5263942337036133,
+          "peak_allocated_mb": 22.0,
+          "output_finite": true
+        }
+      }
+    ]
+  },
+  "failure": null,
+  "evidence_level": "single_gpu_explicit_mask_sdpa_microbenchmark",
+  "decision": "investigate_mask_backend",
+  "decision_reason": "\u663e\u5f0f\u5e03\u5c14 mask \u6ca1\u6709\u540c\u65f6\u6539\u5584\u65f6\u95f4\u548c\u5cf0\u503c\u663e\u5b58\uff1b\u5148\u68c0\u67e5 backend\u3001mask \u8868\u793a\u4e0e shape\u3002",
+  "note": "Random Q/K/V verify access and local SDPA cost only; they do not measure long-context task quality."
+}
