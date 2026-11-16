@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="650" viewBox="0 0 1500 650" role="img" aria-labelledby="title desc">
+  <title id="title">通信与并行学习路径</title>
+  <desc id="desc">训练状态、模型内部结构、专家和服务请求是四类切分对象，它们分别进入共同的通信建模、热点归因、策略选择和项目验证流程。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 4.5L0 9Z" fill="#475569"/></marker>
+    <style>
+      .title{font-family:"Noto Sans CJK SC",sans-serif;font-size:29px;font-weight:700;fill:#0F172A}.sub{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;fill:#475569}
+      .step{font-family:"Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:700;fill:#475569}.head{font-family:"Noto Sans CJK SC",sans-serif;font-size:18px;font-weight:700;fill:#172033}
+      .body{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;fill:#334155}.small{font-family:"Noto Sans CJK SC",sans-serif;font-size:13px;fill:#475569}
+      .line{fill:none;stroke:#475569;stroke-width:2.4;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1500" height="650" fill="#F8FAFC"/>
+  <rect x="28" y="24" width="1444" height="602" rx="26" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+  <text x="62" y="70" class="title">并行主线：先选择切分对象，再用同一通信证据链比较方案</text>
+  <text x="62" y="102" class="sub">四类分工入口彼此并列；按当前瓶颈回看通信分析、热点归因与策略选择，再进入对应项目。</text>
+
+  <text x="66" y="145" class="step">选择切分对象</text>
+  <rect x="60" y="162" width="390" height="90" rx="15" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/>
+  <text x="84" y="196" class="head">27 · 训练状态分片</text>
+  <text x="84" y="226" class="body">ZeRO：参数、梯度与优化器状态</text>
+
+  <rect x="60" y="272" width="390" height="90" rx="15" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2"/>
+  <text x="84" y="306" class="head">28 / 29 / PAR-CONTEXT · 模型内部切分</text>
+  <text x="84" y="336" class="body">层、张量与长序列状态</text>
+
+  <rect x="60" y="382" width="390" height="90" rx="15" fill="#FFF7ED" stroke="#EA580C" stroke-width="2"/>
+  <text x="84" y="416" class="head">46 · 专家分工</text>
+  <text x="84" y="446" class="body">MoE 路由、容量与 All-to-All</text>
+
+  <rect x="60" y="492" width="390" height="90" rx="15" fill="#ECFDF5" stroke="#059669" stroke-width="2"/>
+  <text x="84" y="526" class="head">PAR-REPLICA · Serving 请求分工</text>
+  <text x="84" y="556" class="body">队列、缓存局部性与副本路由</text>
+
+  <text x="510" y="145" class="step">通信分析步骤</text>
+  <rect x="504" y="162" width="242" height="420" rx="18" fill="#F0F9FF" stroke="#0284C7" stroke-width="2"/>
+  <text x="528" y="204" class="head">47 · 通信建模与观测</text>
+  <text x="528" y="240" class="body">collective 与 payload</text>
+  <text x="528" y="270" class="body">延迟、带宽与进程差异</text>
+  <text x="528" y="300" class="body">计算—通信时间线</text>
+  <path d="M528 328H722" stroke="#BAE6FD" stroke-width="2"/>
+  <text x="528" y="362" class="small">输出：</text>
+  <text x="528" y="390" class="body">每进程传输量</text>
+  <text x="528" y="420" class="body">最大进程时间</text>
+  <text x="528" y="450" class="body">暴露通信与重叠比例</text>
+
+  <path d="M450 207H504" class="line"/>
+  <path d="M450 317H504" class="line"/>
+  <path d="M450 427H504" class="line"/>
+  <path d="M450 537H504" class="line"/>
+
+  <rect x="800" y="240" width="210" height="190" rx="18" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
+  <text x="824" y="280" class="head">48 · 热点归因</text>
+  <text x="824" y="318" class="body">传输量与同步频率</text>
+  <text x="824" y="348" class="body">暴露通信与重叠</text>
+  <text x="824" y="378" class="body">负载与到达时间差异</text>
+  <text x="824" y="408" class="small">输出：优先处理的根因</text>
+
+  <rect x="1064" y="240" width="190" height="190" rx="18" fill="#FCE7F3" stroke="#DB2777" stroke-width="2"/>
+  <text x="1088" y="280" class="head">49 · 策略选择</text>
+  <text x="1088" y="318" class="body">容量是否可行</text>
+  <text x="1088" y="348" class="body">通信是否值得</text>
+  <text x="1088" y="378" class="body">组合网格是否成立</text>
+  <text x="1088" y="408" class="small">输出：候选与复测条件</text>
+
+  <rect x="1308" y="212" width="140" height="246" rx="18" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2"/>
+  <text x="1328" y="252" class="head">项目验证</text>
+  <text x="1328" y="292" class="body">79 · 状态并行</text>
+  <text x="1328" y="326" class="body">87 · 模型切分</text>
+  <text x="1328" y="360" class="body">80 · 专家并行</text>
+  <text x="1328" y="394" class="body">81 · 分布式推理</text>
+  <text x="1328" y="430" class="small">固定负载复测</text>
+
+  <path d="M746 335H800" class="line"/>
+  <path d="M1010 335H1064" class="line"/>
+  <path d="M1254 335H1308" class="line"/>
+</svg>
