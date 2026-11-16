@@ -1,73 +1,33 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620">
-  <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L10,3 L0,6 Z" fill="#52606d"/>
-    </marker>
-    <style>
-      .title{font:700 28px sans-serif;fill:#172b4d}
-      .section{font:700 20px sans-serif;fill:#172b4d}
-      .label{font:600 17px sans-serif;fill:#172b4d}
-      .small{font:15px sans-serif;fill:#344563}
-      .box{stroke:#52606d;stroke-width:2;rx:12}
-      .arrow{stroke:#52606d;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
-    </style>
-  </defs>
-  <rect width="1200" height="620" fill="#f7f9fc"/>
-  <text x="600" y="42" text-anchor="middle" class="title">训练显存账本：对象、因素与记录字段</text>
-
-  <g transform="translate(0,20)">
-
-  <text x="190" y="95" text-anchor="middle" class="section">训练中需要解释的对象</text>
-  <text x="600" y="95" text-anchor="middle" class="section">影响因素</text>
-  <text x="1000" y="95" text-anchor="middle" class="section">静态账本字段</text>
-
-  <rect x="45" y="120" width="290" height="72" class="box" fill="#e7f0ff"/>
-  <text x="190" y="150" text-anchor="middle" class="label">参数 / 梯度</text>
-  <text x="190" y="177" text-anchor="middle" class="small">权重、可训练参数、梯度</text>
-
-  <rect x="45" y="215" width="290" height="72" class="box" fill="#e7f0ff"/>
-  <text x="190" y="245" text-anchor="middle" class="label">优化器状态</text>
-  <text x="190" y="272" text-anchor="middle" class="small">动量、二阶矩等状态</text>
-
-  <rect x="45" y="310" width="290" height="72" class="box" fill="#e7f0ff"/>
-  <text x="190" y="340" text-anchor="middle" class="label">激活值</text>
-  <text x="190" y="367" text-anchor="middle" class="small">前向计算保存的中间状态</text>
-
-  <rect x="45" y="405" width="290" height="72" class="box" fill="#e7f0ff"/>
-  <text x="190" y="435" text-anchor="middle" class="label">临时张量 / workspace</text>
-  <text x="190" y="462" text-anchor="middle" class="small">短时分配与 loss 中间量</text>
-
-  <rect x="455" y="145" width="290" height="72" class="box" fill="#fff3d6"/>
-  <text x="600" y="175" text-anchor="middle" class="label">模型与数据类型</text>
-  <text x="600" y="202" text-anchor="middle" class="small">参数规模、精度、训练方式</text>
-
-  <rect x="455" y="255" width="290" height="72" class="box" fill="#fff3d6"/>
-  <text x="600" y="285" text-anchor="middle" class="label">工作负载</text>
-  <text x="600" y="312" text-anchor="middle" class="small">批次大小、序列长度、输入长度</text>
-
-  <rect x="455" y="365" width="290" height="72" class="box" fill="#fff3d6"/>
-  <text x="600" y="395" text-anchor="middle" class="label">实现与运行时</text>
-  <text x="600" y="422" text-anchor="middle" class="small">优化器、算子与分配方式</text>
-
-  <rect x="865" y="145" width="290" height="72" class="box" fill="#e3fcef"/>
-  <text x="1010" y="175" text-anchor="middle" class="label">对象字节数</text>
-  <text x="1010" y="202" text-anchor="middle" class="small">参数、梯度、optimizer state</text>
-
-  <rect x="865" y="255" width="290" height="72" class="box" fill="#e3fcef"/>
-  <text x="1010" y="285" text-anchor="middle" class="label">状态字节数</text>
-  <text x="1010" y="312" text-anchor="middle" class="small">参数、梯度、optimizer state</text>
-
-  <rect x="865" y="365" width="290" height="72" class="box" fill="#e3fcef"/>
-  <text x="1010" y="395" text-anchor="middle" class="label">对象说明</text>
-  <text x="1010" y="422" text-anchor="middle" class="small">生命周期与是否计入账本</text>
-
-  <path d="M335 156 C380 156 405 181 455 181" class="arrow"/>
-  <path d="M335 251 C385 251 410 291 455 291" class="arrow"/>
-  <path d="M335 346 C385 346 410 291 455 291" class="arrow"/>
-  <path d="M335 441 C385 441 410 401 455 401" class="arrow"/>
-  <path d="M745 181 C795 181 815 181 865 181" class="arrow"/>
-  <path d="M745 291 C795 291 815 291 865 291" class="arrow"/>
-  <path d="M745 401 C795 401 815 401 865 401" class="arrow"/>
-
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+<title id="title">训练状态字节与运行显存峰值</title>
+<desc id="desc">参数、梯度与优化器张量可以逐项计数字节；实测峰值由同一时刻存活的这些状态、激活和临时工作区共同决定，不能只用静态大小代替。</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" markerWidth="9" markerHeight="9" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#52606d"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172b4d}.title{font-size:28px;font-weight:700}.head{font-size:20px;font-weight:700}.body{font-size:17px}.small{font-size:15px;fill:#344563}.box{stroke-width:2;rx:12}.edge{stroke:#52606d;stroke-width:2.5;fill:none;marker-end:url(#arrow)}</style>
+</defs>
+<rect width="1200" height="620" fill="#f7f9fc"/>
+<text x="600" y="45" text-anchor="middle" class="title">状态张量有多大，与训练峰值有多高，分别记录</text>
+<text x="600" y="83" text-anchor="middle" class="small">先按元素数与类型计数，再沿训练时间观察哪些对象同时存活</text>
+<path d="M340 195H400V230H460" class="edge"/>
+<path d="M340 345H400V280H460" class="edge"/>
+<path d="M740 255H860" class="edge"/>
+<path d="M740 447H800V285H860" class="edge"/>
+<path d="M1000 405V305" class="edge"/>
+<g text-anchor="middle">
+<rect x="70" y="150" width="270" height="90" class="box" fill="#e7f0ff" stroke="#2563eb"/>
+<text x="205" y="187" class="head">参数与梯度</text><text x="205" y="217" class="body">权重张量、已有梯度张量</text>
+<rect x="70" y="300" width="270" height="90" class="box" fill="#e7f0ff" stroke="#2563eb"/>
+<text x="205" y="337" class="head">优化器状态</text><text x="205" y="367" class="body">动量、二阶矩等张量</text>
+<rect x="460" y="205" width="280" height="100" class="box" fill="#e3fcef" stroke="#16a34a"/>
+<text x="600" y="242" class="head">逐项统计状态字节</text><text x="600" y="275" class="body">元素数量 × 每元素字节数</text>
+<rect x="860" y="205" width="280" height="100" class="box" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="1000" y="242" class="head">测量训练显存峰值</text><text x="1000" y="275" class="body">窗口内同时占用的最高值</text>
+<rect x="460" y="405" width="280" height="85" class="box" fill="#fff3d6" stroke="#d97706"/>
+<text x="600" y="440" class="head">激活值</text><text x="600" y="470" class="body">随保存、反向与释放变化</text>
+<rect x="860" y="405" width="280" height="85" class="box" fill="#fff3d6" stroke="#d97706"/>
+<text x="1000" y="440" class="head">临时张量与工作区</text><text x="1000" y="470" class="body">随算子与更新阶段变化</text>
+<text x="800" y="237" class="small">参与占用</text>
+<text x="600" y="555" class="small">减少前向保存的激活后，更新阶段仍可能决定整步峰值</text>
+<text x="600" y="583" class="small">活跃张量占用与分配器预留分别报告，静态状态计数不等于实测峰值</text>
+</g>
 </svg>
