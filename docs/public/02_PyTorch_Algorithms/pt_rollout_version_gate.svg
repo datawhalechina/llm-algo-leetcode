@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
   <title id="title">策略版本发布门槛</title>
-  <desc id="desc">待发布策略先通过产物提交门槛，再通过全部必需工作进程的版本与哈希确认，成功后原子切换活动策略，失败时保持当前策略。</desc>
+  <desc id="desc">待发布策略先通过产物提交门槛，再通过全部必需工作进程的版本与哈希确认，成功后协调器切换活动策略，失败时保持当前策略。</desc>
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto">
       <path d="M0 0L10 5L0 10Z" fill="#64748b"/>
     </marker>
     <style>
@@ -15,7 +15,7 @@
   </defs>
 
   <rect width="1500" height="470" rx="24" fill="#f8fafc"/>
-  <text x="750" y="48" text-anchor="middle" class="title">策略发布必须依次通过两级门槛</text>
+  <text x="750" y="48" text-anchor="middle" class="title">提交产物与进程确认后切换活动策略</text>
 
   <rect x="40" y="155" width="220" height="150" rx="16" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
   <text x="150" y="218" text-anchor="middle" class="node-title">待发布策略</text>
@@ -23,15 +23,15 @@
 
   <rect x="330" y="155" width="250" height="150" rx="16" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/>
   <text x="455" y="218" text-anchor="middle" class="node-title">产物提交门槛</text>
-  <text x="455" y="250" text-anchor="middle" class="node-text">产物已提交且哈希冻结</text>
+  <text x="455" y="250" text-anchor="middle" class="node-text">已提交、哈希固定、版本递增</text>
 
   <rect x="650" y="155" width="270" height="150" rx="16" fill="#fffbeb" stroke="#f59e0b" stroke-width="2"/>
   <text x="785" y="218" text-anchor="middle" class="node-title">进程确认门槛</text>
   <text x="785" y="250" text-anchor="middle" class="node-text">必需进程确认相同版本与哈希</text>
 
   <rect x="1040" y="63" width="410" height="150" rx="16" fill="#ecfdf5" stroke="#22c55e" stroke-width="2"/>
-  <text x="1245" y="126" text-anchor="middle" class="node-title">原子切换活动策略</text>
-  <text x="1245" y="158" text-anchor="middle" class="node-text">新版本成为唯一活动指针</text>
+  <text x="1245" y="126" text-anchor="middle" class="node-title">协调器切换活动策略</text>
+  <text x="1245" y="158" text-anchor="middle" class="node-text">CPU 返回指针；实际发布需原子提交</text>
 
   <rect x="1040" y="266" width="410" height="150" rx="16" fill="#fef2f2" stroke="#ef4444" stroke-width="2"/>
   <text x="1245" y="329" text-anchor="middle" class="node-title">保持当前活动策略</text>
@@ -44,6 +44,6 @@
   <text x="974" y="156" text-anchor="middle" class="label">全部确认</text>
   <path d="M920 255L1040 319" class="flow"/>
   <text x="976" y="306" text-anchor="middle" class="label">缺失或不一致</text>
-  <path d="M455 285V370H1040" class="flow"/>
-  <text x="690" y="356" text-anchor="middle" class="label">未提交或哈希尚未冻结</text>
+  <path d="M455 305V370H1040" class="flow"/>
+  <text x="690" y="356" text-anchor="middle" class="label">未提交或版本未递增</text>
 </svg>
