@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="620" viewBox="0 0 1120 620" role="img" aria-labelledby="title desc">
+<title id="title">同一任务逐步加长，保留每一档的结果</title><desc id="desc">四个示例长度各自记录答案、预填充与单步解码耗时、显存和失败原因。该图为判读示例，不是已登记的GPU结果。</desc>
+<defs><style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#18324a}.title{font-size:25px;font-weight:700}.h{font-size:17px;font-weight:700;text-anchor:middle}.b{font-size:14px;text-anchor:middle}.small{font-size:14px;fill:#486275}.node{stroke-width:1.8;rx:12}.line{fill:none;stroke:#496580;stroke-width:2.5;marker-end:url(#arrow)}</style>
+<marker id="arrow" viewBox="0 0 10 10" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="10" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#496580"/></marker></defs>
+<rect width="1120" height="620" fill="#f7fafc"/>
+<text x="40" y="46" class="title">同一任务逐步加长，保留每一档的结果</text>
+<text x="40" y="77" class="small">判读示例：下列长度和结果用于说明怎样读表，实际档位由实验输入确定。</text>
+<path d="M245 155H335" class="line"/>
+<path d="M155 200V250" class="line"/>
+<path d="M155 370V450" class="line"/>
+<g><rect x="65" y="110" width="180" height="90" class="node" fill="#DBEAFE" stroke="#2563EB"/><text x="155" y="138" class="h">短输入</text><text x="155" y="162" class="b">2千词元</text></g>
+<g><rect x="45" y="250" width="220" height="120" class="node" fill="#EDE9FE" stroke="#7C3AED"/><text x="155" y="278" class="h">逐档记录</text><text x="155" y="302" class="b">答案是否找回</text><text x="155" y="323" class="b">预填充／单步解码耗时</text><text x="155" y="344" class="b">峰值显存与失败原因</text></g>
+<g><rect x="65" y="450" width="180" height="90" class="node" fill="#DCFCE7" stroke="#16A34A"/><text x="155" y="478" class="h">示例：达标</text><text x="155" y="502" class="b">保留本档记录</text></g>
+<path d="M515 155H605" class="line"/>
+<path d="M425 200V250" class="line"/>
+<path d="M425 370V450" class="line"/>
+<g><rect x="335" y="110" width="180" height="90" class="node" fill="#DBEAFE" stroke="#2563EB"/><text x="425" y="138" class="h">加长输入</text><text x="425" y="162" class="b">4千词元</text></g>
+<g><rect x="315" y="250" width="220" height="120" class="node" fill="#EDE9FE" stroke="#7C3AED"/><text x="425" y="278" class="h">逐档记录</text><text x="425" y="302" class="b">答案是否找回</text><text x="425" y="323" class="b">预填充／单步解码耗时</text><text x="425" y="344" class="b">峰值显存与失败原因</text></g>
+<g><rect x="335" y="450" width="180" height="90" class="node" fill="#DCFCE7" stroke="#16A34A"/><text x="425" y="478" class="h">示例：达标</text><text x="425" y="502" class="b">保留本档记录</text></g>
+<path d="M785 155H875" class="line"/>
+<path d="M695 200V250" class="line"/>
+<path d="M695 370V450" class="line"/>
+<g><rect x="605" y="110" width="180" height="90" class="node" fill="#DBEAFE" stroke="#2563EB"/><text x="695" y="138" class="h">继续加长</text><text x="695" y="162" class="b">8千词元</text></g>
+<g><rect x="585" y="250" width="220" height="120" class="node" fill="#EDE9FE" stroke="#7C3AED"/><text x="695" y="278" class="h">逐档记录</text><text x="695" y="302" class="b">答案是否找回</text><text x="695" y="323" class="b">预填充／单步解码耗时</text><text x="695" y="344" class="b">峰值显存与失败原因</text></g>
+<g><rect x="605" y="450" width="180" height="90" class="node" fill="#FFF1F2" stroke="#E11D48"/><text x="695" y="478" class="h">示例：答案未找回</text><text x="695" y="502" class="b">首次出现答题失败</text></g>
+<path d="M965 200V250" class="line"/>
+<path d="M965 370V450" class="line"/>
+<g><rect x="875" y="110" width="180" height="90" class="node" fill="#DBEAFE" stroke="#2563EB"/><text x="965" y="138" class="h">更长输入</text><text x="965" y="162" class="b">1.6万词元</text></g>
+<g><rect x="855" y="250" width="220" height="120" class="node" fill="#EDE9FE" stroke="#7C3AED"/><text x="965" y="278" class="h">逐档记录</text><text x="965" y="302" class="b">答案是否找回</text><text x="965" y="323" class="b">预填充／单步解码耗时</text><text x="965" y="344" class="b">峰值显存与失败原因</text></g>
+<g><rect x="875" y="450" width="180" height="90" class="node" fill="#FFF1F2" stroke="#E11D48"/><text x="965" y="478" class="h">示例：显存不足</text><text x="965" y="502" class="b">保留执行失败记录</text></g>
+<text x="40" y="590" class="small">逐档定位答题、耗时或显存问题；最大成功长度不能代替其他档位的失败记录。</text>
+</svg>
