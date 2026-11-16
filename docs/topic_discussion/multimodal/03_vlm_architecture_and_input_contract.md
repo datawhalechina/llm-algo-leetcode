@@ -1,10 +1,10 @@
 # 03 VLM 架构与图像输入契约
 
-## 页面目标
+## 学习问题
 
 图像不会直接进入语言模型。视觉编码器先把像素转换为视觉特征，连接器将其投影或压缩为语言模型可处理的 token 表示，随后视觉 token 与文本 token 一起参与后续上下文计算。理解这条数据流，才能解释多模态请求为什么会改变 Prefill、KV Cache 和显存预算。
 
-## 核心机制：从图像到语言模型上下文
+## 图像怎样进入语言模型上下文
 
 | 组件 | 输入与输出 | 主要设计选择 | 对 workload 的影响 |
 |:---|:---|:---|:---|
@@ -24,14 +24,14 @@
 | 模型 | VLM、视觉塔、连接器、processor、dtype | 影响图像到 token 的具体路径 |
 | 任务 | VQA、OCR、grounding 等任务与质量规则 | 防止只比较速度而忽略能力变化 |
 
-## 连接到现有专题
+## 视觉词元怎样改变语言模型计算
 
 | 需要补的能力 | 入口 | 本页如何使用 |
 |:---|:---|:---|
-| Attention 与 Block | [Part02 · 04 Attention](../../02_PyTorch_Algorithms/04_Attention_MHA_GQA.md)、[05 LLaMA3 Block](../../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.md) | 理解视觉 token 与文本 token 如何进入上下文计算 |
+| 注意力与模型块 | [Part 02 · 04 Attention](../../02_PyTorch_Algorithms/04_Attention_MHA_GQA.md)、[Part 02 · 05 LLaMA3 Block](../../02_PyTorch_Algorithms/05_LLaMA3_Block_Tutorial.md) | 理解视觉词元与文本词元如何进入上下文计算 |
 | 架构选择 | [大模型架构](../llm_architecture_evolution/intro.md) | 阅读视觉塔、连接器和融合形式的差异 |
 | 推理状态与服务指标 | [推理优化](../inference_optimization/intro.md) | 将视觉 token 的代价放入 Prefill、KV 与请求指标 |
 
-## 交付物
+## 什么输入身份可以支持 VLM 对照
 
-完成本页后，应能为一个 VLM 请求写出输入卡：图像处理规则、视觉 token 表示、文本模板、任务质量指标与模型版本。Task1 在同一输入卡下比较多模态与纯文本 workload。
+一个可比较的 VLM 请求需要记录图像处理规则、视觉词元表示、文本模板、任务质量指标和模型版本。后续多模态与纯文本对照必须复用这份输入身份，并明确两种请求承担的任务是否相同。

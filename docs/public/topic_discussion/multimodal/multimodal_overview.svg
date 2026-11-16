@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-labelledby="title desc">
-  <title id="title">多模态与视觉推理学习路线</title><desc id="desc">视觉基础分支从 CNN、ViT 到检测和实时 DETR，随后进入 VLM、服务、性能与项目决策；视频与动作理解作为后续扩展。</desc>
+  <title id="title">多模态与视觉推理学习路线</title><desc id="desc">Task0 图像表示分别通向 Task1–2 检测和 Task3–4 视觉语言模型，两条分支各自进入 Task5 性能归因与 Task6 交付判断。</desc>
   <style>.bg{fill:#f8fafc}.box{stroke-width:2;rx:16}.blue{fill:#eff6ff;stroke:#60a5fa}.green{fill:#ecfdf5;stroke:#34d399}.orange{fill:#fff7ed;stroke:#fb923c}.slate{fill:#f1f5f9;stroke:#94a3b8}.line{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a)}.dash{stroke:#94a3b8;stroke-width:2;stroke-dasharray:7 7;fill:none;marker-end:url(#a)}.title{font:700 25px sans-serif;fill:#0f172a}.h{font:700 18px sans-serif;fill:#0f172a}.s{font:14px sans-serif;fill:#475569}.tag{font:700 13px sans-serif;fill:#2563eb}</style>
   <defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0 0L10 3L0 6z" fill="#64748b"/></marker></defs>
-  <rect class="bg" width="1200" height="600" rx="20"/><text x="55" y="55" class="title">多模态与视觉推理：先建立视觉能力，再形成可复核的服务结论</text>
-  <text x="60" y="98" class="tag">视觉基础分支</text><text x="60" y="330" class="tag">多模态服务主分支</text>
+  <rect class="bg" width="1200" height="600" rx="20"/><text x="55" y="55" class="title">图像表示之后选择检测或 VLM，再分别核对质量与性能</text>
+  <text x="60" y="98" class="tag">共同基础</text><text x="475" y="98" class="tag">检测分支 · Task1–2</text><text x="180" y="330" class="tag">VLM 分支 · Task3–4</text><text x="750" y="330" class="tag">两条分支各自复测 · Task5–6</text>
   <rect class="box blue" x="55" y="120" width="260" height="105"/><text x="80" y="158" class="h">Task0 · CNN → ViT</text><text x="80" y="187" class="s">图像表示、尺度与 token</text><text x="80" y="211" class="s">像素 → 特征 / patch</text>
   <rect class="box green" x="470" y="120" width="260" height="105"/><text x="495" y="158" class="h">Task1 · YOLO → DETR</text><text x="495" y="187" class="s">密集预测与 object query</text><text x="495" y="211" class="s">标注、输出与 AP/AR</text>
   <rect class="box orange" x="885" y="120" width="260" height="105"/><text x="910" y="158" class="h">Task2 · 实时 DETR</text><text x="910" y="187" class="s">RT-DETR 的训练与部署演进</text><text x="910" y="211" class="s">质量—延迟—runtime</text>
@@ -11,8 +11,9 @@
   <rect class="box blue" x="55" y="350" width="210" height="110"/><text x="80" y="388" class="h">Task3 · VLM 输入</text><text x="80" y="417" class="s">视觉塔、连接器</text><text x="80" y="441" class="s">视觉 token</text>
   <rect class="box green" x="335" y="350" width="210" height="110"/><text x="360" y="388" class="h">Task4 · Workload</text><text x="360" y="417" class="s">编码、Prefill、KV</text><text x="360" y="441" class="s">配对 baseline</text>
   <rect class="box orange" x="615" y="350" width="210" height="110"/><text x="640" y="388" class="h">Task5 · Profiling</text><text x="640" y="417" class="s">预处理、编码、I/O</text><text x="640" y="441" class="s">artifact / runtime</text>
-  <rect class="box slate" x="895" y="350" width="250" height="110"/><text x="920" y="388" class="h">Task6 · 综合项目</text><text x="920" y="417" class="s">检测部署或 VLM 服务</text><text x="920" y="441" class="s">质量、成本与决策</text>
+  <rect class="box slate" x="895" y="350" width="250" height="110"/><text x="920" y="388" class="h">Task6 · 交付判断</text><text x="920" y="417" class="s">检测部署或 VLM 服务</text><text x="920" y="441" class="s">质量、成本与实践设计</text>
   <path class="line" d="M265 405H335"/><path class="line" d="M545 405H615"/><path class="line" d="M825 405H895"/>
-  <path class="dash" d="M1015 225V295H160V350"/><text x="310" y="285" class="s">实时视觉的表示、输入和部署经验进入 VLM 服务</text>
+  <path class="line" d="M160 225V350"/>
+  <path class="line" d="M1015 225V280H720V350"/><text x="740" y="267" class="s">检测候选进入阶段计时与归因</text>
   <text x="60" y="535" class="s">扩展：视频与视觉 Action 在图像主线稳定后加入，另行固定 clip、帧率、采样、时序标签与延迟口径。</text>
 </svg>
