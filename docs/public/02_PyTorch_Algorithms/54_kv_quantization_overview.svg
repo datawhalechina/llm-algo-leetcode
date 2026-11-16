@@ -1,7 +1,53 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="470" viewBox="0 0 1200 470">
- <defs><marker id="a" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#475569"/></marker></defs><rect width="1200" height="470" rx="20" fill="#f8fafc"/>
- <text x="52" y="52" font-family="Inter, Noto Sans CJK SC, Microsoft YaHei, sans-serif" font-size="27" font-weight="700" fill="#172554">KV Cache 量化：K 与 V 的分布不同，量化粒度也可以不同</text>
- <g font-family="Inter, Noto Sans CJK SC, Microsoft YaHei, sans-serif" text-anchor="middle" fill="#1e293b"><rect x="70" y="123" width="215" height="90" rx="14" fill="#dbeafe" stroke="#60a5fa"/><text x="178" y="160" font-size="20" font-weight="700">每次 Decode</text><text x="178" y="190" font-size="17">追加新的 K / V 状态</text><rect x="395" y="112" width="250" height="110" rx="14" fill="#ede9fe" stroke="#8b5cf6"/><text x="520" y="151" font-size="20" font-weight="700">Key：按通道观察</text><text x="520" y="181" font-size="17">跨 Token 共享通道范围</text><rect x="395" y="274" width="250" height="110" rx="14" fill="#fef3c7" stroke="#f59e0b"/><text x="520" y="313" font-size="20" font-weight="700">Value：按 Token 观察</text><text x="520" y="343" font-size="17">每个 Token 独立范围</text><rect x="770" y="193" width="210" height="94" rx="14" fill="#dcfce7" stroke="#4ade80"/><text x="875" y="231" font-size="20" font-weight="700">量化值 + 缩放因子</text><text x="875" y="260" font-size="17">降低每 Token 字节数</text><rect x="1040" y="193" width="118" height="94" rx="14" fill="#fff" stroke="#94a3b8"/><text x="1099" y="231" font-size="19" font-weight="700">Attention</text><text x="1099" y="260" font-size="17">读取恢复</text></g>
- <g stroke="#475569" stroke-width="3" fill="none" marker-end="url(#a)"><path d="M285 168 H340 V167 H395"/><path d="M285 168 H340 V329 H395"/><path d="M645 167 H705 V240 H770"/><path d="M645 329 H705 V240 H770"/><path d="M980 240 H1040"/></g>
- <text x="600" y="433" text-anchor="middle" font-family="Inter, Noto Sans CJK SC, Microsoft YaHei, sans-serif" font-size="17" fill="#475569">KIVI 是这种“按 K / V 分布选择不同粒度”的代表；实际执行后端仍需独立验证。</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+<title id="title">KV量化缓存的追加、分段与按序读取</title><desc id="desc">Decode新K/V追加到高精度尾部，超过窗口R的旧Token转存为K逐通道、V逐Token的量化段，保留已有量化段。读取时按历史顺序恢复前缀并连接高精度尾部，供Attention计算。名义低位码值、INT8容器、元数据和恢复临时区分别核对。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto">
+<path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:26px;font-weight:700}.group{font-size:18px;font-weight:700}.head{font-size:17px;font-weight:700}.body{font-size:15px;font-weight:400}.sub{font-size:16px;fill:#475569}.flow{fill:none;stroke:#475569;stroke-width:2.5;marker-end:url(#arrow)}</style></defs>
+<rect width="1200" height="560" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="45" y="48" class="title" text-anchor="start">KV Cache量化：旧状态怎样转存，新状态怎样保留和读取？</text>
+<text x="45" y="80" class="sub" text-anchor="start">本页增量分段路径：旧历史继续参与Attention；高精度残留窗口R只规定最新状态怎样保存。</text>
+<g id="new-kv">
+<rect x="45" y="230" width="190" height="120" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2" class="node"/>
+<text x="140" y="257" class="head" text-anchor="middle">Decode追加K/V</text>
+<text x="140" y="283" class="body" text-anchor="middle">新Token的高精度状态</text>
+</g>
+<g id="partition-window">
+<rect x="295" y="230" width="210" height="120" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" class="node"/>
+<text x="400" y="257" class="head" text-anchor="middle">追加并按R分段</text>
+<text x="400" y="283" class="body" text-anchor="middle">旧历史持续保留</text>
+<text x="400" y="308" class="body" text-anchor="middle">已有量化段不重写</text>
+</g>
+<g id="quantized-prefix">
+<rect x="650" y="105" width="220" height="120" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2" class="node"/>
+<text x="760" y="132" class="head" text-anchor="middle">量化历史段</text>
+<text x="760" y="158" class="body" text-anchor="middle">旧段：K逐通道，V逐Token</text>
+<text x="760" y="183" class="body" text-anchor="middle">码值＋对应恢复尺度</text>
+</g>
+<g id="high-precision-tail">
+<rect x="650" y="335" width="220" height="120" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2" class="node"/>
+<text x="760" y="362" class="head" text-anchor="middle">高精度尾部</text>
+<text x="760" y="388" class="body" text-anchor="middle">保留至多R个最新Token</text>
+<text x="760" y="413" class="body" text-anchor="middle">追加后按R重新分段</text>
+</g>
+<g id="restore-in-order">
+<rect x="945" y="230" width="210" height="120" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2" class="node"/>
+<text x="1050" y="257" class="head" text-anchor="middle">按历史顺序恢复</text>
+<text x="1050" y="283" class="body" text-anchor="middle">量化前缀接高精度尾部</text>
+<text x="1050" y="308" class="body" text-anchor="middle">显式恢复会产生临时区</text>
+</g>
+<g id="attention-read">
+<rect x="945" y="420" width="210" height="120" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" class="node"/>
+<text x="1050" y="447" class="head" text-anchor="middle">Attention读取K/V</text>
+<text x="1050" y="473" class="body" text-anchor="middle">QK匹配，再汇聚V</text>
+</g>
+<path id="append-to-partition" d="M235 290H295" class="flow"/>
+<path id="overflow-to-quantized" d="M505 260H570V165H650" class="flow"/>
+<text x="545" y="145" class="body" text-anchor="middle">有溢出时转存</text>
+<path id="retain-tail" d="M505 320H570V395H650" class="flow"/>
+<path id="prefix-to-read" d="M870 165H905V260H945" class="flow"/>
+<path id="tail-to-read" d="M870 395H905V320H945" class="flow"/>
+<path id="read-to-attention" d="M1050 350V420" class="flow"/>
+<text x="45" y="427" class="group" text-anchor="start">分别核对驻留与读取成本</text>
+<text x="45" y="458" class="body" text-anchor="start">持久状态：码值＋缩放元数据＋高精度尾部</text>
+<text x="45" y="490" class="body" text-anchor="start">读取阶段：恢复、拼接与临时浮点K/V</text>
+<text x="45" y="535" class="sub" text-anchor="start">教学码值使用INT8容器；名义位宽与实际驻留字节分别统计。</text></svg>
