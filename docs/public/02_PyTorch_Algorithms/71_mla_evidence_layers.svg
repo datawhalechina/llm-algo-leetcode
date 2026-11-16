@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+  <title id="title">MLA保存量估算与实际运行</title>
+  <desc id="desc">结构字段用于估算保存量，模型和后端运行取得实际表现，分别记录后用于方案判断。</desc>
+  <defs>
+    <marker viewBox="0 0 10 10" id="arrow2" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#52657a"/>
+    </marker>
+    <style>
+      .title{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-weight:700;font-size:24px;fill:#17324d}.label{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-weight:600;font-size:18px;fill:#17324d}.small{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-weight:500;font-size:15px;fill:#40566d}
+      .structure{fill:#e8f3ff;stroke:#4d86b8;stroke-width:2}.runtime{fill:#eef8ef;stroke:#57945d;stroke-width:2}.gate{fill:#fff4df;stroke:#b98332;stroke-width:2}.state{fill:#f2ecff;stroke:#7c62ad;stroke-width:2}
+      .line{fill:none;stroke:#52657a;stroke-width:2.5;marker-end:url(#arrow2)}.dash{fill:none;stroke:#8b98a6;stroke-width:2;stroke-dasharray:8 7}
+    </style>
+  </defs>
+  <rect width="1200" height="560" fill="#f8fafc"/>
+  <text x="600" y="48" text-anchor="middle" class="title">保存量由形状计算，运行表现由实际测试取得</text>
+
+  <rect x="70" y="105" width="230" height="92" rx="14" class="structure"/>
+  <text x="185" y="140" text-anchor="middle" class="label">结构字段</text>
+  <text x="185" y="169" text-anchor="middle" class="small">层数 · KV Head · 潜在维度</text>
+  <rect x="390" y="105" width="230" height="92" rx="14" class="structure"/>
+  <text x="505" y="140" text-anchor="middle" class="label">估算保存大小</text>
+  <text x="505" y="169" text-anchor="middle" class="small">每词元字节及长度增长</text>
+  <rect x="70" y="315" width="230" height="92" rx="14" class="runtime"/>
+  <text x="185" y="350" text-anchor="middle" class="label">真实模型与后端</text>
+  <text x="185" y="379" text-anchor="middle" class="small">模型版本／实现／硬件</text>
+  <rect x="390" y="315" width="230" height="92" rx="14" class="runtime"/>
+  <text x="505" y="350" text-anchor="middle" class="label">实际运行记录</text>
+  <text x="505" y="379" text-anchor="middle" class="small">得分／耗时／吞吐／显存</text>
+
+  <rect x="730" y="210" width="220" height="92" rx="14" class="gate"/>
+  <text x="840" y="245" text-anchor="middle" class="label">检查能否比较</text>
+  <text x="840" y="274" text-anchor="middle" class="small">条件、记录与指标要求</text>
+  <rect x="1010" y="105" width="140" height="72" rx="12" class="state"/>
+  <text x="1080" y="148" text-anchor="middle" class="label">排除</text>
+  <rect x="1010" y="220" width="140" height="72" rx="12" class="state"/>
+  <text x="1080" y="263" text-anchor="middle" class="label">继续测试</text>
+  <rect x="1010" y="335" width="140" height="72" rx="12" class="state"/>
+  <text x="1080" y="378" text-anchor="middle" class="label">采用</text>
+
+  <path d="M300 151 H390" class="line"/>
+  <path d="M300 361 H390" class="line"/>
+  <path d="M620 151 H675 V238 H730" class="line"/>
+  <path d="M620 361 H675 V274 H730" class="line"/>
+  <path d="M950 235 H980 V141 H1010" class="line"/>
+  <path d="M950 256 H1010" class="line"/>
+  <path d="M950 280 H980 V371 H1010" class="line"/>
+  <text x="70" y="493" class="small">把状态保存量与实际运行分别记录，再结合任务要求作出判断。</text>
+</svg>
