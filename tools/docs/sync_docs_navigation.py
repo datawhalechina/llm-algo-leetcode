@@ -1,0 +1,217 @@
+#!/usr/bin/env python3
+"""Sync navigation pages from source parts into docs/.
+
+This script mirrors each Part's intro page and group pages into docs/.
+It does not touch notebook part mirrors, which remain the job of
+tools/convert_notebook.py.
+"""
+
+from __future__ import annotations
+
+import shutil
+import argparse
+from pathlib import Path
+
+if __package__:
+    from .convert_notebook import normalize_generated_markdown, normalize_markdown_links
+else:
+    from convert_notebook import normalize_generated_markdown, normalize_markdown_links
+
+ROOT = Path(__file__).resolve().parents[2]
+DOCS = ROOT / "docs"
+
+
+NAV_FILES = {
+    "00_Prerequisites": ["intro.md", "0A.md", "0B.md", "0C.md", "0D.md", "0E.md"],
+    "01_Hardware_Math_and_Systems": ["intro.md", "1A.md", "1B.md", "1C.md", "1D.md", "1E.md", "1F.md"],
+    "02_PyTorch_Algorithms": [
+        "intro.md",
+        "2_1.md",
+        "2_2.md",
+        "2_3.md",
+        "2_4.md",
+        "2_5.md",
+        "2_6.md",
+        "2_7.md",
+        "2_8.md",
+        "2_9.md",
+        "2_10.md",
+    ],
+    "03_Triton_Kernels": ["intro.md", "3_1.md", "3_2.md", "3_3.md", "3_4.md", "3_5.md"],
+    "04_CUDA_and_System_Optimization": ["intro.md", "4_1.md", "4_2.md", "4_3.md", "4_4.md", "4_5.md"],
+    "05_Integrated_Projects_and_Decisions": [
+        "intro.md",
+        "01_Inference_Service_Integrated_Project.md",
+        "01_Inference_Service/index.md",
+        "01_Inference_Service/project_config.example.yaml",
+        "02_Post_Training_Delivery_Project.md",
+        "02_Post_Training_Delivery/index.md",
+        "02_Post_Training_Delivery/project_config.example.yaml",
+        "open_practice/_template/README.md",
+        "open_practice/_template/index.md",
+        "open_practice/_template/project_config.example.yaml",
+    ],
+    "topic_discussion": [
+        "intro.md",
+        "backpropagation_training_mechanism/intro.md",
+        "backpropagation_training_mechanism/casebook.md",
+        "backpropagation_training_mechanism/walkthrough.md",
+        "performance_analysis/intro.md",
+        "performance_analysis/casebook.md",
+        "performance_analysis/walkthrough.md",
+        "inference_optimization/intro.md",
+        "inference_optimization/casebook.md",
+        "inference_optimization/walkthrough.md",
+        "post_training_optimization/intro.md",
+        "post_training_optimization/casebook.md",
+        "post_training_optimization/walkthrough.md",
+        "post_training_optimization/01_sft_data_and_loss.md",
+        "post_training_optimization/02_lora_peft_design.md",
+        "post_training_optimization/03_training_control.md",
+        "post_training_optimization/04_end_to_end_experiment.md",
+        "post_training_optimization/05_dpo_and_preference_optimization.md",
+        "post_training_optimization/06_rlhf_and_ppo_system_cost.md",
+        "post_training_optimization/07_grpo_and_groupwise_alignment.md",
+        "post_training_optimization/08_trajectory_lifecycle_and_environment_interaction.md",
+        "post_training_optimization/09_rl_execution_system_and_efficiency.md",
+        "post_training_optimization/10_evaluation_and_adoption_decision.md",
+        "communication_parallelism/intro.md",
+        "communication_parallelism/casebook.md",
+        "communication_parallelism/walkthrough.md",
+        "memory_performance_tuning/intro.md",
+        "llm_architecture_evolution/intro.md",
+        "llm_architecture_evolution/casebook.md",
+        "llm_architecture_evolution/walkthrough.md",
+        # post_training_optimization entries are listed above, including the
+        # SFT foundation pages that replaced the old fine_tuning_training route.
+        "quantization_compression/intro.md",
+        "quantization_compression/casebook.md",
+        "quantization_compression/walkthrough.md",
+        "operator_optimization/intro.md",
+        "operator_optimization/01_optimization_targets_and_baselines.md",
+        "operator_optimization/02_graph_compilation_and_fusion.md",
+        "operator_optimization/03_kernel_semantics_and_memory.md",
+        "operator_optimization/04_attention_and_inference_data_paths.md",
+        "operator_optimization/05_measurement_profiling_and_autotuning.md",
+        "operator_optimization/06_cuda_execution_and_runtime_constraints.md",
+        "operator_optimization/07_integration_benchmarking_and_adoption.md",
+    ],
+    "team_study": [
+        "intro.md",
+        "part2_l1_202606/intro.md",
+        "part2_l1_202606/group_topic_1.md",
+        "part2_l1_202606/group_topic_2.md",
+        "part2_l1_202607/intro.md",
+        "part2_l2_202607/intro.md",
+    ],
+}
+
+
+def sync_topic(topic: str, *, prune: bool = False) -> None:
+    """Mirror one topic, optionally removing only its stale Markdown mirrors."""
+    if not topic or topic in {".", ".."} or Path(topic).name != topic or "\\" in topic:
+        raise ValueError("--topic must be a single topic directory name")
+    source_dir = ROOT / "topic_discussion" / topic
+    if not source_dir.is_dir() or source_dir.is_symlink():
+        raise ValueError(f"Source topic directory not found or is a symlink: {source_dir}")
+    sources = sorted(source_dir.rglob("*.md"))
+    if not sources:
+        raise ValueError(f"No Markdown source files found: {source_dir}")
+    target_dir = DOCS / "topic_discussion" / topic
+    stale_pages: list[Path] = []
+    if prune:
+        # Validate the entire deletion/write scope before changing any file.
+        if target_dir.is_symlink() or not target_dir.resolve().is_relative_to(DOCS.resolve()):
+            raise ValueError(f"Unsafe topic mirror directory: {target_dir}")
+        expected = {source.relative_to(source_dir) for source in sources}
+        existing = sorted(target_dir.rglob("*.md")) if target_dir.exists() else []
+        targets = [target_dir / relative for relative in expected]
+        for target in [*existing, *targets]:
+            if target.is_symlink() or not target.resolve().is_relative_to(target_dir.resolve()):
+                raise ValueError(f"Unsafe topic mirror path: {target}")
+        stale_pages = [path for path in existing if path.relative_to(target_dir) not in expected]
+    for source in sources:
+        target = DOCS / source.relative_to(ROOT)
+        mirrored = normalize_generated_markdown(
+            normalize_markdown_links(source.read_text(encoding="utf-8"))
+        )
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(mirrored, encoding="utf-8")
+    for stale in stale_pages:
+        stale.unlink()
+    # Remove only directories made empty by these Markdown deletions.
+    parents = {parent for stale in stale_pages for parent in stale.parents if parent.is_relative_to(target_dir) and parent != target_dir}
+    for parent in sorted(parents, key=lambda path: len(path.parts), reverse=True):
+        if parent.is_dir() and not any(parent.iterdir()):
+            parent.rmdir()
+    print(f"Synced {len(sources)} Markdown files for topic={topic}; pruned {len(stale_pages)} stale Markdown mirrors; other topics untouched")
+
+
+def sync_navigation(selected_part: str | None = None) -> None:
+    copied = 0
+    for part, files in NAV_FILES.items():
+        if selected_part and part != selected_part:
+            continue
+        src_dir = ROOT / part
+        dst_dir = DOCS / part
+        dst_dir.mkdir(parents=True, exist_ok=True)
+        if part == "topic_discussion":
+            # Reuse the scoped topic converter, including benchmark links.
+            # Stale mirrors are removed only by explicit --topic ... --prune.
+            for topic_dir in sorted(src_dir.iterdir()):
+                if topic_dir.is_dir() and not topic_dir.is_symlink() and any(topic_dir.rglob("*.md")):
+                    sync_topic(topic_dir.name)
+            files = sorted(
+                path.relative_to(src_dir).as_posix()
+                for path in src_dir.glob("*.md")
+            )
+        for name in files:
+            src = src_dir / name
+            if not src.exists():
+                continue
+            dst = dst_dir / name
+            text = src.read_text(encoding="utf-8")
+            if part == "topic_discussion":
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                dst.write_text(normalize_generated_markdown(normalize_markdown_links(text)), encoding="utf-8")
+                copied += 1
+                continue
+            mirrored = text.replace(".ipynb)", ".md)")
+            # Source topic pages may link to docs/guide.md. Once mirrored
+            # inside docs/topic_discussion, guide.md is already at the docs
+            # root, so remove the extra docs/ segment in the mirror only.
+            mirrored = mirrored.replace("../../docs/guide.md", "../../guide.md")
+            mirrored = mirrored.replace("../docs/guide.md", "../guide.md")
+            mirrored = mirrored.replace("../docs/", "../")
+            mirrored = mirrored.replace(
+                "../../tools/",
+                "https://github.com/datawhalechina/llm-algo-leetcode/blob/main/tools/",
+            )
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            dst.write_text(mirrored, encoding="utf-8")
+            copied += 1
+    print(f"Synced {copied} navigation files into docs/")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--topic", help="Sync one topic_discussion subdirectory; preserve stale mirrors unless --prune is set.")
+    parser.add_argument("--part", choices=sorted(NAV_FILES), help="Sync one Part navigation tree only.")
+    parser.add_argument("--prune", action="store_true", help="With --topic, remove stale Markdown mirrors only in that topic.")
+    args = parser.parse_args()
+    if args.topic and args.part:
+        parser.error("--topic and --part cannot be combined")
+    if args.prune and not args.topic:
+        parser.error("--prune requires --topic")
+    if args.topic:
+        try:
+            sync_topic(args.topic, prune=args.prune)
+        except ValueError as exc:
+            parser.error(str(exc))
+    else:
+        sync_navigation(selected_part=args.part)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
