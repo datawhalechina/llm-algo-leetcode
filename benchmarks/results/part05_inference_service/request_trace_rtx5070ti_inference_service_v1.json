@@ -1,0 +1,50 @@
+{
+  "schema_version": "historical-request-trace/v1",
+  "run_label": "rtx5070ti_inference_service_v1",
+  "evidence_scope": "requests_observed_in_saved_reports",
+  "source_reports": [
+    {
+      "role": "baseline",
+      "path": "benchmarks/results/part05_inference_service/baseline_rtx5070ti_inference_service_v1.json",
+      "sha256": "29d5ac4726d9afe731f64266a59d0333bc327304d131225735b70389adf71f5c"
+    },
+    {
+      "role": "candidate",
+      "path": "benchmarks/results/part05_inference_service/candidate_rtx5070ti_inference_service_v1.json",
+      "sha256": "be2e2d310ef8ea6defae95c37a4f201de88bf5d25927f79ff332da7fd037082f"
+    }
+  ],
+  "requests": [
+    {
+      "request_id": "shared-1",
+      "prompt": "You are a concise math assistant. Solve the arithmetic problem and give the result in one short sentence. Context: A shop records the same delivery fee of 7 dollars for every order. The following questions use that fee. Question: An order costs 35 dollars before delivery. What is the total?",
+      "priority": 0
+    },
+    {
+      "request_id": "shared-3",
+      "prompt": "You are a concise math assistant. Solve the arithmetic problem and give the result in one short sentence. Context: A shop records the same delivery fee of 7 dollars for every order. The following questions use that fee. Question: An order costs 19 dollars before delivery. What is the total?",
+      "priority": 0
+    },
+    {
+      "request_id": "shared-4",
+      "prompt": "You are a concise math assistant. Solve the arithmetic problem and give the result in one short sentence. Context: A shop records the same delivery fee of 7 dollars for every order. The following questions use that fee. Question: An order costs 28 dollars before delivery. What is the total?",
+      "priority": 0
+    },
+    {
+      "request_id": "shared-2",
+      "prompt": "You are a concise math assistant. Solve the arithmetic problem and give the result in one short sentence. Context: A shop records the same delivery fee of 7 dollars for every order. The following questions use that fee. Question: An order costs 42 dollars before delivery. What is the total?",
+      "priority": 0
+    },
+    {
+      "request_id": "shared-5",
+      "prompt": "You are a concise math assistant. Solve the arithmetic problem and give the result in one short sentence. Context: A shop records the same delivery fee of 7 dollars for every order. The following questions use that fee. Question: An order costs 56 dollars before delivery. What is the total?",
+      "priority": 0
+    }
+  ],
+  "occurrences_per_identity_per_condition": 12,
+  "missing_fields": [
+    "expected_answer",
+    "original_chat_template_kwargs"
+  ],
+  "note": "从保存的请求结果提取五种请求身份与文本；不是找回的原始工作负载文件，不推定原始输入行顺序或质量答案。"
+}
