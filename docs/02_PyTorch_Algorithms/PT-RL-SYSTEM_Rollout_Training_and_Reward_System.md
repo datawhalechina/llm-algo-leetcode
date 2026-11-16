@@ -1,6 +1,6 @@
 # PT-RL-SYSTEM. Rollout Training and Reward System | 采样、训练与奖励系统
 
-**难度：** Hard | **环境：** [CPU 主线，GPU 可选](#runtime-environment) | **标签：** `后训练`, `强化学习系统`, `资源调度` | **目标人群：** 理解策略更新、需要检查轨迹版本与系统状态的学习者
+**难度：** Hard | **环境：** [CPU 主线，GPU 可选](#runtime-environment) | **标签：** `后训练`, `强化学习系统`, `资源调度` | **目标人群：** 理解策略更新、需要比较阶段容量与资源安排的读者
 
 > 🚀 **云端运行环境**
 >
@@ -14,11 +14,12 @@
 
 ## 本节导读
 
-在线后训练把轨迹生成、参考策略计算、奖励或验证、参数更新和权重分发连接成循环。单个角色跑得快不代表系统稳定：候选展开比例、批量聚合、队列增长、状态驻留和同步失败都会改变端到端容量。
+生成器每秒产出 24 组回答，奖励器每秒处理 80 条，看起来后者更快；若每组有四条回答，奖励器实际上只能处理 20 组，队列仍会增长。比较系统阶段之前，要先弄清每个数字数的是提示组、回答还是更新。
 
-系统比较先把轨迹生成、奖励和学习器的处理率换算成相同的工作单位，再检查各资源池的状态驻留、共享链路占用、版本确认和恢复条件。账本通过表示候选可以进入真实多工作进程实验，不表示已经获得吞吐收益。
+本节先统一工作量单位，再比较角色共置与分离时的显存和传输开销。结合单卡生成引擎释放／保留的阶段记录，观察资源什么时候被谁占用，哪些判断还需要持续流量或多资源池测量。
 
-**关键词：** 轨迹生成器、学习器、共置、分离部署、流水线瓶颈
+**关键词：** `阶段容量`、`共置`、`资源池`、`传输载荷`、`状态驻留`
+
 <a id="runtime-environment"></a>
 
 ## 运行环境
@@ -30,74 +31,76 @@
 ---
 ## 前置阅读
 
-**导语：** 先理解轨迹身份和策略同步，再把算法角色放入多阶段系统。
+先认识训练角色与权重同步，再比较它们的资源安排。
 
-- [Part 02 · PT-ROLLOUT-LIFECYCLE Rollout 与策略新鲜度](./PT-ROLLOUT-LIFECYCLE_Rollout_and_Policy_Freshness.md)
-- [Part 02 · 16 PPO 资源与状态](./16_RLHF_PPO_Memory.md)
+- [16 PPO 的模型与状态](./16_RLHF_PPO_Memory.md)：区分策略、参考、奖励和价值模型持有的状态。
+- [轨迹生命周期与策略版本](./PT-ROLLOUT-LIFECYCLE_Rollout_and_Policy_Freshness.md)：理解生成端确认新版本的条件。
+
 ## Step 1：一条提示会在各角色之间产生多少工作量
 
 角色可以共享 GPU，也可以拆到不同资源池。选择拓扑前，要同时明确每个角色持有的状态、输入输出和阶段倍率。例如一个提示可能生成 `G` 条候选轨迹，奖励阶段处理 `G` 个回答，而学习器等待若干提示及其候选聚合成一次更新；这些对象不能都笼统记作一个“样本”。
 
-因此系统账本先选定统一工作单位，例如“每个提示组”或“每条轨迹”，再把各阶段处理率换算到同一单位。例如每个提示生成 4 条轨迹时，奖励器每秒处理 80 条轨迹，只相当于每秒处理 20 个提示组；若提示组到达率为每秒 24 组，奖励队列仍会持续增长。表格列出逻辑角色的状态与倍率，图中继续展示轨迹、奖励、参考概率和新权重怎样流动；逻辑角色并不限定物理部署方式。
+因此系统账本先选定统一工作单位，例如“每个提示组”或“每条轨迹”，再把各阶段处理率换算到同一单位。例如每个提示生成 4 条轨迹时，奖励器每秒处理 80 条轨迹，只相当于每秒处理 20 个提示组；若提示组到达率为每秒 24 组，奖励队列仍会持续增长。资源池是共用一套显存或计算预算的设备集合；角色之间交换哪些对象，决定共置时的争用和分离时的传输。
 
 | 角色 | 主要驻留状态 | 输入与输出 | 数量关系 |
 | --- | --- | --- | --- |
 | 轨迹生成器 | 当前策略、KV Cache、采样状态 | 提示 → 回答、行为对数概率与策略版本 | 每个提示生成 `G` 条候选 |
 | 奖励 / 验证器 | 奖励模型或规则版本 | 轨迹 → 奖励、验证状态 | 通常逐轨迹处理 |
 | 参考策略服务 | 冻结参考策略 | 轨迹 → 参考对数概率 | 按算法需要逐轨迹处理 |
-| 学习器 | 策略、优化器、梯度与训练状态 | 合格批次 → 新检查点 | 聚合多个提示组后更新 |
+| 学习器 | 策略、优化器、梯度与训练状态 | 满足更新条件的批次 → 新检查点 | 聚合多个提示组后更新 |
 | 产物协调器 | 版本、队列、哈希与恢复状态 | 新产物 → 分发确认与活动版本 | 每次更新触发一次同步 |
 
 ![后训练系统角色与数据流](../public/02_PyTorch_Algorithms/pt_rl_system_topology.svg)
-## Step 2：共置与分离部署分别增加哪些状态和传输
+## Step 2：共置减少跨池传输，分离增加独立扩容空间
 
-共置减少跨池边，但会让策略、参考模型、奖励模型和优化器状态竞争同一资源池；分离允许角色独立扩缩容，却新增轨迹、对数概率和权重传输。混合拓扑只在明确哪些高频边需要共置、哪些重状态必须拆分后才有意义。
+共置是多个角色共享资源池，分离是把角色安排到不同资源池。共置可减少跨池搬运，但生成侧 KV Cache 与训练侧优化器、梯度和激活会竞争显存；释放生成状态后再更新，可能用恢复耗时换取更新阶段的容量。应沿时间记录各状态是否同时驻留，而非直接把各角色单独峰值相加。
 
-| 候选 | 状态驻留 | 新增传输与同步 | 故障与调度代价 | 首先验证 |
-| --- | --- | --- | --- | --- |
-| 共置 | 多类模型与训练状态共享资源池 | 跨池传输少，仍需阶段间状态交接 | 显存争用、阶段切换和故障域扩大 | 分阶段峰值显存、切换空转时间 |
-| 分离 | 各角色独立驻留并可分别扩缩容 | 轨迹、对数概率、奖励和权重跨池 | 队列积压、版本滞后和跨池恢复 | 每条边的载荷率、确认延迟与积压 |
-| 混合 | 高频交互角色共置，重状态拆分 | 只保留选定跨池边 | 配置复杂，局部争用与传输同时存在 | 状态副本、关键跨池边和失败切换 |
-## Step 3：如何用统一处理率、传输占用和硬门槛筛选拓扑
+分离后可以独立调整生成和学习资源，却增加回答、概率、奖励及新权重的传输，并引入队列与版本滞后。混合方案按交互频率和状态大小选择哪些角色放在一起；同池数据交换仍有本地开销，跨池账本只统计跨池部分。
 
-先依据阶段倍率，把采样、奖励和学习阶段的原始处理率换算为统一工作单位。令 $q_j$ 是阶段 $j$ 的原始对象处理率，$m_j$ 是每个统一工作单位需要处理的对象数，$\lambda$ 是统一工作单位到达率。阶段等价处理率 $c_j$、流水线容量 $C_{pipe}$ 和队列余量 $s_j$ 为：
+| 方案 | 主要收益 | 主要代价 | 先测什么 |
+| --- | --- | --- | --- |
+| 共置 | 少一部分跨池搬运 | 显存争用、切换与恢复 | 状态驻留时间线、阶段峰值与恢复耗时 |
+| 分离 | 角色可独立扩缩容 | 跨池传输、队列和版本滞后 | 链路载荷、确认延迟与队列变化 |
+| 混合 | 有选择地减少高频传输 | 同时面对局部争用和跨池开销 | 关键交互边、状态副本与失败处理 |
 
-$$
-c_j=\frac{q_j}{m_j}, \qquad C_{pipe}=\min_j c_j, \qquad s_j=c_j-\lambda.
-$$
+## Step 3：统一容量与传输单位，再筛选资源安排
 
-例如以提示组为单位时，逐轨迹阶段的处理率需要除以每组候选数 $G$，学习阶段则按每次更新消费的提示组数换算。$s_j<0$ 表示到达率超过阶段容量；$s_j=0$ 仅表示理想流量平衡，没有吸收随机波动的余量，不能证明随机队列稳定。
-
-对跨池边 $e$，令 $z_e$ 是单个对象的字节数，$m_e$ 是每个工作单位包含的对象数，$\lambda_e$ 是该边的工作单位频率，$B_e$ 是有效带宽，$o_e\in[0,1]$ 是可重叠比例。传输载荷、带宽占用和暴露占用分别为：
+在各阶段可按给定速率持续服务的近似下，先用同一资源安排下的速率比较；共用设备时，将轮转占用计入阶段速率。令阶段 $j$ 每秒处理 $q_j$ 个对象，每个统一工作单位需要 $m_j$ 个该对象，到达率为 $\lambda$ 个工作单位每秒。等价处理率为 $c_j=q_j/m_j$，流水线容量取最慢阶段，余量为该阶段容量减到达率。例如每组四条回答时，80 条／秒对应 20 组／秒。余量为零表示理想流量刚好平衡，随机到达时还需预留缓冲。
 
 $$
-b_e=z_e m_e\lambda_e, \qquad u_e=\frac{b_e}{B_e}, \qquad x_e=u_e(1-o_e).
+C_{pipe}=\min_j c_j,\qquad s_j=c_j-\lambda.
 $$
 
-共享同一互连域 $f$ 的边会争用带宽，因此域内暴露占用需要相加；不同互连域可以并行，关键互连预算取各域聚合值的最大值：
+对跨池边 $e$，单对象大小为 $z_e$ 字节，每个工作单位有 $m_e$ 个对象，每秒工作单位数为 $\lambda_e$，有效带宽为 $B_e$ 字节／秒，可隐藏的传输比例为 $o_e$。载荷 $b_e$ 的单位是字节／秒；除以带宽得到每秒所需的传输秒数 $u_e$，未隐藏部分记为 $x_e$。同一链路域指共享带宽的边集合，其值相加，不同域取最大值。
 
 $$
-X_f=\sum_{e\in f}x_e, \qquad X_{critical}=\max_f X_f.
+b_e=z_em_e\lambda_e,\qquad
+u_e=b_e/B_e,\qquad x_e=u_e(1-o_e).
 $$
 
-$X_{critical}$ 仍是扣除可重叠部分后的传输暴露预算代理，不能直接当作端到端关键路径时间。
+$$
+X_f=\sum_{e\in f}x_e,\qquad X_{critical}=\max_fX_f.
+$$
 
-候选部署先形成资源池显存、阶段处理率和跨池传输三类账本，再执行两层判断：显存超限、版本未确认或恢复路径缺失属于硬失败；队列增长或传输暴露过高说明需要调优。账本全部通过只表示该部署值得进入真实多工作进程实验，不代表已经获得吞吐收益。
+$X_{critical}$ 是暴露占用预算代理，单位为秒／秒；例如 0.2 表示每秒有约 0.2 秒等价传输未被隐藏，不是某个请求延迟 0.2 秒。重叠隐藏等待却仍消耗链路带宽，物理可行性还需检查原始总载荷。候选判断先检查显存、版本确认和恢复条件，再按阶段余量及暴露预算决定继续测量或调整。
 
-![候选拓扑的准入与瓶颈判断](../public/02_PyTorch_Algorithms/pt_rl_system_decision.svg)
+![容量、显存与跨池账本分别进入候选判断](../public/02_PyTorch_Algorithms/pt_rl_system_decision.svg)
+
 <a id="mechanism-practice"></a>
 
-## Step 4：实现系统账本与候选准入
+## Step 4：实现容量、传输账本与候选判断
 
-题目区把阶段速率换算为统一工作单位，保留各阶段队列余量；随后逐边建立跨池传输账本并按互连域聚合；最后用结构化原因记录硬失败与调优压力。骨架保留输入和报告形状，学习者补全会改变容量、传输与准入结论的计算。
+题目给出阶段速率、对象倍率、角色到资源池的映射和跨池边参数。你将完成容量换算、共享链路聚合以及拒绝／调整／接受的判断；当前函数骨架仅提供接口，输入检查和报告计算也需实现。测试覆盖并列瓶颈、同池边、共享域与多项失败，采用条件通过后再安排真实测量。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 | --- | --- | --- | --- |
-| TODO 1：定位流水线瓶颈<br>`pipeline_capacity` | 换算阶段等价处理率，并报告容量、瓶颈、余量和积压阶段 | 阶段集合一致；速率和倍率为正；到达率非负 | 倍率归一、并列瓶颈、稳定与积压阶段，以及非法阶段映射 |
-| TODO 2：建立跨池传输账本<br>`transfer_ledger` | 计算逐边载荷与暴露占用，再按共享互连域聚合 | 同池边传输为零；同域相加；独立域取最大值；重叠比例属于 0–1 | 同池排除、共享域累加、独立域并行、关键互连域与非法重叠比例 |
-| TODO 3：执行拓扑准入<br>`evaluate_topology` | 汇总显存、版本、恢复、队列和通信触发原因 | 硬失败优先于调优；同级原因不能被首个分支吞掉 | 接受、队列与链路调优，以及显存、同步、恢复的组合硬失败 |
+| TODO 1：换算流水线容量<br>`pipeline_capacity` | 统一处理单位，计算余量和瓶颈 | 速率及倍率为正，到达率非负 | 倍率换算、并列瓶颈、零余量与积压 |
+| TODO 2：建立跨池传输账本<br>`transfer_ledger` | 逐边算载荷，再按链路域聚合 | 同域带宽口径一致，同池边排除 | 共享域相加、独立域取最大、非法重叠值 |
+| TODO 3：形成候选判断<br>`evaluate_topology` | 先检查执行条件，再记录预算压力 | 拒绝优先，同级失败项全部保留 | 接受、同时调优、多项拒绝原因 |
+
 
 ```python
+import math
 from typing import Dict, List
 
 ```
@@ -223,11 +226,12 @@ print('✅ 后训练系统机制测试通过')
 
 ---
 ## 参考代码与解析
+### 代码
+
 
 ```python
 def pipeline_capacity(stage_rates, arrival_rate, items_per_work_unit):
-    import math
-
+    """换算同一工作单位下的阶段容量与余量。"""
     rates = [float(rate) for rate in stage_rates.values()]
     multipliers = [float(value) for value in items_per_work_unit.values()]
     arrival_rate = float(arrival_rate)
@@ -237,6 +241,7 @@ def pipeline_capacity(stage_rates, arrival_rate, items_per_work_unit):
         raise ValueError('arrival_rate 必须是非负有限数')
     if set(stage_rates) != set(items_per_work_unit) or any(not math.isfinite(value) or value <= 0 for value in multipliers):
         raise ValueError('每个阶段都必须提供正有限工作单位倍率')
+    # TODO 1：换算流水线容量
     effective_rates = {name: float(rate) / float(items_per_work_unit[name]) for name, rate in stage_rates.items()}
     capacity = min(effective_rates.values())
     bottlenecks = sorted(name for name, rate in effective_rates.items() if math.isclose(rate, capacity, rel_tol=1e-9, abs_tol=1e-12))
@@ -246,8 +251,8 @@ def pipeline_capacity(stage_rates, arrival_rate, items_per_work_unit):
             'unstable_stages': unstable_stages, 'queue_stable': not unstable_stages}
 
 def transfer_ledger(edges, placement):
-    import math
-
+    """计算跨池载荷并按共享链路域汇总暴露占用。"""
+    # TODO 2：建立跨池传输账本
     rows, total_bytes, fabric_exposed, fabric_bandwidths = [], 0.0, {}, {}
     for edge in edges:
         source, target = edge['source'], edge['target']
@@ -284,8 +289,7 @@ def transfer_ledger(edges, placement):
             'critical_exposed_seconds_per_s': critical_exposed, 'critical_fabrics': critical_fabrics, 'rows': rows}
 
 def evaluate_topology(capacity_report, memory_by_pool, memory_limits, transfer_report, version_sync_ok, recovery_ok, max_exposed_s_per_s=0.1):
-    import math
-
+    """按拒绝、调整、接受优先级保留对应原因。"""
     max_exposed_s_per_s = float(max_exposed_s_per_s)
     memory_values = [float(value) for value in memory_by_pool.values()] + [float(value) for value in memory_limits.values()]
     transfer_values = [float(value) for value in transfer_report.get('fabric_exposed_seconds_per_s', {}).values()]
@@ -293,6 +297,7 @@ def evaluate_topology(capacity_report, memory_by_pool, memory_limits, transfer_r
         raise ValueError('传输暴露预算必须是非负有限数')
     if any(not math.isfinite(value) or value < 0 for value in memory_values + transfer_values):
         raise ValueError('显存与传输账本必须是非负有限数')
+    # TODO 3：形成候选判断
     over_limit_pools = sorted(pool for pool, used in memory_by_pool.items()
                               if pool not in memory_limits or used > memory_limits[pool])
     hard_failures = []
@@ -322,23 +327,20 @@ def evaluate_topology(capacity_report, memory_by_pool, memory_limits, transfer_r
 
 ### 解析
 
-#### TODO 1：计算流水线容量与队列余量
+#### TODO 1：换算流水线容量
 
-- **机制：** 用每工作单位对象数把各阶段处理率归一到同一工作单位，再由最慢阶段决定流水线容量。
-- **不变量：** 到达率必须与阶段容量使用同一单位；任一阶段的等价处理率低于到达率都会造成积压；代码中的 queue_stable 仅表示确定性流量未超容量。
-- **测试证据：** 测试覆盖倍率归一、并列瓶颈、积压阶段和阶段映射不一致。
+- 各阶段先除以每工作单位所需对象数，再比较最小等价速率；相同最小值可以对应多个瓶颈。
+- 测试将三种原始速率换算成相同的 80，再用到达率 90 找出积压阶段。零余量用例说明 `queue_stable` 在此仅表示给定流量未超容量。
 
 #### TODO 2：建立跨池传输账本
 
-- **机制：** 只为跨资源池边建立传输账本，并按共享互连域聚合扣除重叠后的暴露占用。
-- **不变量：** 同一互连域的边竞争带宽，需要相加；独立互连域可以并行，关键值取最繁忙互连域而不是全边总和。
-- **测试证据：** 测试核对同池边排除、共享域累加、独立域并行、关键互连域和非法重叠比例。
+- 角色落在不同池时计算载荷及暴露占用；共享链路的值相加，独立域的最大值表示最繁忙域。
+- 测试将同池边排除，两个共享域边得到 0.75，另一独立域得到 0.25；还核对并列最大值及同域带宽不一致的拒绝行为。
 
-#### TODO 3：执行拓扑准入
+#### TODO 3：形成候选判断
 
-- **机制：** 汇总分池显存、版本确认和恢复能力的硬失败，再记录队列与互连域的调优压力。
-- **不变量：** `reject` 优先于 `tune`；同一级别的多个触发原因必须全部保留。
-- **测试证据：** 测试覆盖接受、队列与链路同时调优，以及显存、同步、恢复同时失败。
+- 显存超限、版本未确认或恢复不可用时拒绝；这些条件通过后，队列或传输压力决定是否调整。
+- 测试同时触发两项调整原因和三项拒绝原因，核对返回项不被第一个分支吞掉。当前 `reasons` 保存最高优先级的原因，详细积压和链路字段另行保留。
 
 <a id="gpu-experiment"></a>
 
@@ -354,12 +356,12 @@ CPU 练习换算各角色工作量并检查容量、资源池和链路；verl �
 
 ### 5.1 环境与固定工作负载
 
-使用已有的 [`PT-VERL-CUDA`](../topic_discussion/post_training_optimization/quickstart.md#pt-verl-cuda-quickstart)。与轨迹生命周期页共用运行标签；显式填写历史 v2 标签后，可运行 5.1、5.3 只读已有结果。尚未运行时，先 `dry_run` 预检，再改为 `real_gpu` 运行 5.1–5.3。本轮只确认初始参数一致的配对，不新增训练或性能搜索。 若仅提示缺少模型缓存，其他环境检查已通过，可改为 `real_gpu` 自动准备固定版本；CPU 核对通过后才开始训练。
+使用已有的 [`PT-VERL-CUDA`](../topic_discussion/post_training_optimization/quickstart.md#pt-verl-cuda-quickstart)。与轨迹生命周期页共用运行标签；显式填写历史 v2 标签后，可运行 5.1、5.3 只读已有结果。尚未运行时，先 `dry_run` 预检，再改为 `real_gpu` 运行 5.1–5.3。两组要求初始参数一致。 若仅提示缺少模型缓存，其他环境检查已通过，可改为 `real_gpu` 自动准备固定版本；CPU 核对通过后才开始训练。
 
 | 配置 | 固定内容与操作 |
 |:---|:---|
 | 学习者配置 | 仅设置模式、共同标签和已有 verl 目录，结果路径自动推导 |
-| 模型与更新 | Qwen2.5-0.5B-Instruct、LoRA rank 16；verl 内置监督损失，一次更新，与轨迹页相同 |
+| 模型与更新 | Qwen2.5-0.5B-Instruct、LoRA rank 16；verl 内置监督损失，一次更新，与轨迹生命周期实验相同 |
 | 配对变量 | 仅改变 `free_cache_engine`；保留组训练前必须匹配释放组的初始 LoRA 哈希，其余配置与阈值不变 |
 | 采集范围 | 事件使用单机单调时钟；每 0.25 秒尝试采样整卡与整机占用，短阶段漏采峰值记为 null |
 | 结果目标 | 检查真实生成、评分、更新、同步与状态恢复，不以节省显存或提高吞吐作为通过前提 |
@@ -383,7 +385,7 @@ print({"run_mode": RUN_MODE, "run_label": RUN_LABEL, "result_path": str(RESULT_P
 
 ### 5.2 执行释放与保留对照
 
-两组各自初始化 verl actor 和生成引擎，完成一次受控更新及同步。记录实际恢复调用与状态标签，并把控制端阶段事件和资源采样按单调时钟对应；边界时刻的 actor 显存与持续采样的整卡峰值分开保存。
+两组各自初始化 verl actor 和生成引擎，完成一次监督更新及同步。记录实际恢复调用与状态标签，并把控制端阶段事件和资源采样按单调时钟对应；边界时刻的 actor 显存与持续采样的整卡峰值分开保存。
 
 | 对照 | 固定或改变 | 必须保留的证据 |
 |:---|:---|:---|
@@ -421,7 +423,7 @@ else:
 
 ### 5.3 读取阶段与状态结果
 
-从共同结果读取本页判断：两组是否完成更新和同步、是否保留实际阶段与恢复事件，以及采样覆盖情况。逐阶段峰值为 null 表示该阶段没有可用样本，不记为零；本轮不报告稳态加速比。
+从共同结果读取本页判断：两组是否完成更新和同步、是否保留实际阶段与恢复事件，以及采样覆盖情况。逐阶段峰值为 null 表示该阶段没有可用样本，不记为零；重复测量稳态性能时需另设测量窗口。
 
 
 ```python
@@ -440,9 +442,9 @@ else:
 
 ### 5.4 解释阶段与引擎状态证据
 
-[受控更新 v2](../../benchmarks/results/pt_verl_closure/rtx5070ti_verl_mechanism_closure_v2.json) 的两组初始参数及更新后参数哈希分别一致，更新与同步、阶段事件、恢复调用、配置配对及资源采样检查全部通过。本机单卡的阶段与引擎状态验证完成；监督更新阶段整卡采样峰值为释放组 6392 MiB、保留组 10489 MiB。
+[监督更新 v2](../../benchmarks/results/pt_verl_closure/rtx5070ti_verl_mechanism_closure_v2.json) 的两组初始参数及更新后参数哈希分别一致，更新与同步、阶段事件、恢复调用、配置配对及资源采样检查全部通过。该记录保留了本机单卡的阶段与引擎状态；监督更新阶段整卡采样峰值为释放组 6392 MiB、保留组 10489 MiB。
 
-释放组整段峰值为 10086 MiB，出现在初次同步阶段，不能用整段峰值代替更新阶段占用。短阶段未采到资源时继续保留 null；整卡与整机采样包含其他应用，单次配对不证明稳态加速，显存差也不等于纯 KV Cache 大小。当前实验可收尾，[v1](../../benchmarks/results/pt_verl_closure/rtx5070ti_verl_mechanism_closure_v1.json) 作为未通过严格配对的历史记录保留，无需追加性能搜索。
+释放组整段峰值为 10086 MiB，出现在初次同步阶段，不能用整段峰值代替更新阶段占用。短阶段未采到资源时继续保留 null；整卡与整机采样包含其他应用，单次配对不证明稳态加速，显存差也不等于纯 KV Cache 大小。[v1](../../benchmarks/results/pt_verl_closure/rtx5070ti_verl_mechanism_closure_v1.json) 作为未通过严格配对的历史记录保留，新性能比较按相同负载另设重复测量。
 
 | 观察项 | 读取字段 | 当前结果 | 解释与动作 |
 |:---|:---|:---|:---|
@@ -454,8 +456,8 @@ else:
 
 ## 相关阅读
 
-- [Part 02 · 85 GRPO 组级对齐项目](./85_GRPO_Groupwise_Alignment_Project.md)
-- [Part 02 · 86 在线后训练生命周期与采用决策](./86_DPO_Online_Benchmark.md)
-- [verl](https://github.com/volcengine/verl)
-- [OpenRLHF](https://github.com/OpenRLHF/OpenRLHF)
-- [TRL](https://github.com/huggingface/trl)
+进一步核对候选恢复与实际执行框架。
+
+- [86 候选来源与恢复](./86_DPO_Online_Benchmark.md)：区分恢复动作选择和真实检查点恢复。
+- [85 组内奖励项目](./85_GRPO_Groupwise_Alignment_Project.md)：查看生成成本、有效奖励组与候选评测。
+- [verl](https://github.com/volcengine/verl)：沿实验固定版本查看生成引擎释放、恢复与权重同步。

@@ -2,9 +2,9 @@
   <title id="title">在线后训练系统的逻辑角色与对象流</title>
   <desc id="desc">提示经轨迹生成器形成带行为概率和策略版本的轨迹包；轨迹包同时送往奖励验证、参考策略和学习器，学习器汇合训练输入后产生新检查点，协调器确认版本与哈希后再分发给生成器。</desc>
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker>
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 5 L0 10 Z" fill="#475569"/></marker>
     <style>
-      .title{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:30px;font-weight:700;fill:#0f172a}.subtitle{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:16px;font-weight:500;fill:#475569}.label{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:19px;font-weight:700}.body{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:500}.edge-label{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:13px;font-weight:600;fill:#475569}.node{stroke-width:2.5;rx:18;ry:18}.edge{stroke:#475569;stroke-width:3.5;fill:none;marker-end:url(#arrow)}
+      .title{font-family:"Noto Sans CJK SC","Inter",sans-serif;font-size:30px;font-weight:700;fill:#0f172a}.subtitle{font-family:"Noto Sans CJK SC","Inter",sans-serif;font-size:16px;font-weight:500;fill:#475569}.label{font-family:"Noto Sans CJK SC","Inter",sans-serif;font-size:19px;font-weight:700}.body{font-family:"Noto Sans CJK SC","Inter",sans-serif;font-size:15px;font-weight:500}.edge-label{font-family:"Noto Sans CJK SC","Inter",sans-serif;font-size:13px;font-weight:600;fill:#475569}.node{stroke-width:2.5;rx:18;ry:18}.edge{stroke:#475569;stroke-width:3.5;fill:none;marker-end:url(#arrow)}
     </style>
   </defs>
   <rect width="1400" height="620" rx="28" fill="#f8fafc"/>
@@ -22,8 +22,8 @@
   <path d="M190 280 H245" class="edge" data-source="prompt" data-target="rollout-worker"/>
 
   <rect id="trajectory-batch" x="535" y="215" width="250" height="130" class="node" fill="#ffffff" stroke="#64748b"/>
-  <text x="660" y="255" text-anchor="middle" class="label" fill="#1e293b">版本化轨迹包</text>
-  <text x="660" y="286" text-anchor="middle" class="body" fill="#475569">回答 Token · 动作掩码</text>
+  <text x="660" y="255" text-anchor="middle" class="label" fill="#1e293b">带版本的轨迹包</text>
+  <text x="660" y="286" text-anchor="middle" class="body" fill="#475569">回答词元 · 动作掩码</text>
   <text x="660" y="312" text-anchor="middle" class="body" fill="#475569">行为概率 · 策略版本</text>
   <path d="M475 280 H535" class="edge" data-source="rollout-worker" data-target="trajectory-batch"/>
 
@@ -49,7 +49,7 @@
   <text x="1240" y="493" text-anchor="middle" class="label" fill="#4c1d95">产物协调器</text>
   <text x="1240" y="524" text-anchor="middle" class="body" fill="#5b21b6">提交 · 哈希确认 · 活动版本</text>
   <path d="M1240 345 V455" class="edge" data-source="learner" data-target="artifact-coordinator"/>
-  <text x="1254" y="405" class="edge-label">checkpoint + 版本</text>
+  <text x="1254" y="405" class="edge-label">检查点 + 版本</text>
   <path d="M1125 503 H1090 V570 H360 V345" class="edge" data-source="artifact-coordinator" data-target="rollout-worker"/>
   <text x="650" y="592" text-anchor="middle" class="edge-label">确认分发后，生成器激活新策略版本</text>
 </svg>
