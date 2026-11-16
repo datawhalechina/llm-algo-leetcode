@@ -10,14 +10,14 @@
   <rect x="325" y="255" width="225" height="82" fill="#eef6ff" class="box main"/><text x="437" y="286" text-anchor="middle" class="head">性能优化</text><text x="437" y="312" text-anchor="middle" class="body">分析、显存、系统决策</text>
   <rect x="580" y="255" width="225" height="82" fill="#eef6ff" class="box main"/><text x="692" y="286" text-anchor="middle" class="head">算子优化</text><text x="692" y="312" text-anchor="middle" class="body">访存、kernel、fusion</text>
   <rect x="835" y="255" width="225" height="82" fill="#eef6ff" class="box main"/><text x="947" y="286" text-anchor="middle" class="head">后训练优化</text><text x="947" y="312" text-anchor="middle" class="body">SFT、偏好、RL</text>
-  <rect x="1090" y="255" width="225" height="82" fill="#eef6ff" class="box main"/><text x="1202" y="286" text-anchor="middle" class="head">架构演进</text><text x="1202" y="312" text-anchor="middle" class="body">Attention、MoE、SSM</text>
+  <rect x="1090" y="255" width="225" height="82" fill="#eef6ff" class="box main"/><text x="1202" y="286" text-anchor="middle" class="head">模型架构与训练</text><text x="1202" y="312" text-anchor="middle" class="body">结构、反向与训练状态</text>
   <path d="M182 375V420" class="dash"/><path d="M437 375V420" class="dash"/><path d="M692 375V420" class="dash"/><path d="M947 375V420" class="dash"/><path d="M1202 375V420" class="dash"/>
   <rect x="45" y="420" width="835" height="170" fill="#f5f1ff" class="box support"/><text x="75" y="452" class="group">横向工程专题：跨路线复用的方法与证据</text>
   <text x="90" y="494" class="head">量化与低比特适配</text><text x="90" y="520" class="body">表示、误差、artifact、Serving</text><text x="455" y="494" class="head">通信与并行</text><text x="455" y="520" class="body">切分、拓扑、overlap、扩展</text>
   <text x="90" y="560" class="head">数据工程</text><text x="90" y="584" class="body">生命周期、质量、合成、血缘</text><text x="455" y="560" class="head">部署与异构</text><text x="455" y="584" class="body">artifact、runtime、设备、服务</text>
   <rect x="920" y="420" width="435" height="170" fill="#fff7ed" class="box domain"/><text x="950" y="452" class="group">领域专题：共享工程底座，保留领域质量协议</text><text x="970" y="500" class="head">Agent Infra</text><text x="970" y="526" class="body">工具轨迹、沙盒、调度与评测</text><text x="970" y="565" class="head">多模态</text><text x="970" y="589" class="body">视觉 token、VLM Serving 与评测</text>
   <path d="M700 590V645" class="line"/>
-  <rect x="45" y="645" width="1310" height="105" fill="#f0fdf4" class="box base"/><text x="75" y="678" class="group">按需回补：Part 00 / Part 01、反向传播与训练机制、性能分析</text><text x="75" y="710" class="body">SFT / LoRA 已并入后训练 Task1–2；图级编译已并入算子优化 Task1；显存内容进入性能优化</text>
+  <rect x="45" y="645" width="1310" height="105" fill="#f0fdf4" class="box base"/><text x="75" y="678" class="group">基础支撑：模型架构演进、反向传播与训练机制；Part 00 / Part 01 按需回补</text><text x="75" y="710" class="body">模型架构与训练组织共同主线；测量诊断属于性能优化；基础专题可独立阅读</text>
   <path d="M700 750V795" class="line"/>
-  <rect x="250" y="795" width="900" height="85" fill="#fff4e6" class="box"/><text x="700" y="830" text-anchor="middle" class="group">Part 05：综合项目与架构决策</text><text x="700" y="858" text-anchor="middle" class="body">组合候选、汇总质量与系统证据，输出交付方案、成本与 accept / tune / reject</text>
+  <rect x="250" y="795" width="900" height="85" fill="#fff4e6" class="box"/><text x="700" y="830" text-anchor="middle" class="group">Part 05：综合项目与决策收口</text><text x="700" y="858" text-anchor="middle" class="body">组合候选、汇总质量与系统证据，输出交付方案、成本与 accept / tune / reject</text>
 </svg>
