@@ -19,7 +19,7 @@
 
 ### 用同一时间口径比较通信与重叠
 
-一次集合通信的时间可以先用启动延迟与载荷传输近似：$T_{comm} \approx \alpha + \beta \cdot bytes$。多次调用还要乘以频率，但这些时间不能直接全部加到 step time 上。真正影响端到端时间的是未被独立计算覆盖的区间。
+一次集合通信的时间可以先用启动延迟与载荷传输近似： $T_{comm} \approx \alpha + \beta \cdot bytes$。多次调用还要乘以频率，但这些时间不能直接全部加到 step time 上。真正影响端到端时间的是未被独立计算覆盖的区间。
 
 令 `step_time_ms` 为最慢 rank 的完整步骤时间，`comm_total_ms` 为通信 Kernel 区间之和，`exposed_comm_ms` 为落在关键路径且没有被有效计算覆盖的通信区间，则暴露通信比例为：
 
