@@ -1,0 +1,12 @@
+default_stage:
+  default_modifiers:
+    GPTQModifier:
+      targets: [Linear]
+      ignore: [lm_head]
+      scheme: W4A16
+      bypass_divisibility_checks: false
+      requires_calibration_data: true
+      block_size: 128
+      dampening_frac: 0.01
+      actorder: static
+      batched_quantization: auto

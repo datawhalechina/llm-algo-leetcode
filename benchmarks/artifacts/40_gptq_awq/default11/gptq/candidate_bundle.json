@@ -1,0 +1,94 @@
+{
+  "schema_version": "quantization-artifact-candidate/v1",
+  "artifact_id": "gptq-3ed557d1e1dfab4c",
+  "artifact_path": "benchmarks/artifacts/40_gptq_awq/default11/gptq",
+  "model": {
+    "id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "revision": "7ae557604adf67be50417f59c2c2f167def9a775"
+  },
+  "quantization": {
+    "method": "gptq",
+    "format": "pack-quantized",
+    "bits": 4,
+    "group_size": 128,
+    "scheme": "W4A16",
+    "tool": "compressed-tensors",
+    "tool_version": "0.19.0"
+  },
+  "calibration": {
+    "dataset": "Salesforce/wikitext",
+    "config": "wikitext-2-raw-v1",
+    "revision": "f776294184f13b8ff2337b3841cf9269a6216d1e",
+    "split": "train",
+    "sample_count": 64,
+    "sample_ids_hash": "520877b3c3a34d8a782f51761e5f029e13acae01f590f47ee327d5401679e198"
+  },
+  "evaluation": {
+    "dataset": "Salesforce/wikitext",
+    "config": "wikitext-2-raw-v1",
+    "revision": "f776294184f13b8ff2337b3841cf9269a6216d1e",
+    "split": "validation",
+    "sample_count": 64,
+    "sample_ids_hash": "70d78bb1102023439a95093bf4921135670a8f3d5f1222969fe7858fae08ea30",
+    "metric_name": "token_weighted_nll",
+    "direction": "lower_is_better",
+    "baseline_value": 3.39392034654966,
+    "candidate_value": 3.5269215430667558,
+    "ratio_vs_baseline": 1.0391880724756277,
+    "max_degradation_ratio": 1.1,
+    "passed": true
+  },
+  "files": {
+    "weights": [
+      "model.safetensors"
+    ],
+    "config": "config.json",
+    "tokenizer": [
+      "tokenizer.json",
+      "tokenizer_config.json"
+    ],
+    "inventory": [
+      {
+        "path": "chat_template.jinja",
+        "bytes": 2507,
+        "sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f"
+      },
+      {
+        "path": "config.json",
+        "bytes": 1604,
+        "sha256": "46c5d7b24545bda5dcad64d7f8c1769cebfa4d475293effe8bf4eab2603a3649"
+      },
+      {
+        "path": "generation_config.json",
+        "bytes": 242,
+        "sha256": "e694a23c4adabaa1177508c9407bee789ff55f3d5908dfe6755d93a6af55f71d"
+      },
+      {
+        "path": "model.safetensors",
+        "bytes": 456988896,
+        "sha256": "0111b9fbc3e51f595574fc71a25d174ab7b9e597f0f7464e40fefaa3bb0fb5a3"
+      },
+      {
+        "path": "recipe.yaml",
+        "bytes": 305,
+        "sha256": "fd8c2baf23a7bc9e162dcdd21e4d02ca4cafd87eac61c17b7ec98f0b7c07a0cd"
+      },
+      {
+        "path": "tokenizer.json",
+        "bytes": 11421990,
+        "sha256": "716ec13e363ec927a345aa1d39bb8ed88a0ce7fadcdef14509b1f2afd64a8bee"
+      },
+      {
+        "path": "tokenizer_config.json",
+        "bytes": 694,
+        "sha256": "04b1682c59acbd057f4c9072297faa73d56fc9de053094c659cdb4c464f58f86"
+      }
+    ]
+  },
+  "evidence": {
+    "evidence_level": "artifact_generation",
+    "failure": null,
+    "producer_semantic_id": "QUANT-WEIGHT-PTQ",
+    "source_result_path": "benchmarks/results/40_llmcompressor_gptq_awq_default11.json"
+  }
+}
