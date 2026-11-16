@@ -117,7 +117,7 @@ def process_markdown_file(md_path, out_path):
     # 对于 md 文件，提取方式和 ipynb 略有不同（后缀不同）
     name = filename.replace('.md', '')
     parts = name.split('_')
-    if len(parts) < 2:
+    if len(parts) < 2 or not parts[0].isdigit():
         with open(md_path, "r", encoding="utf-8") as f:
             source_text = f.read()
 

@@ -1,0 +1,48 @@
+{
+  "checked_at": "2026-11-16T05:43:05.231786+00:00",
+  "selected_image": "ubuntu22.04-cuda12.1.0-py312-torch2.3.1-tf2.16.1-1.40.1",
+  "python": "3.11.11",
+  "executable": "/usr/local/bin/python3",
+  "torch": "2.3.1+cu121",
+  "torch_path": "/usr/local/lib/python3.11/site-packages/torch/__init__.py",
+  "cuda_build": "12.1",
+  "cuda_available": true,
+  "gpu": "NVIDIA A10",
+  "vram_gib": 22.07,
+  "gpu_matmul": "PASS",
+  "forward_backward_optimizer": "PASS",
+  "loss": 0.7681529521942139,
+  "isolated_python": {
+    "python": "3.11.11",
+    "torch": "2.3.1+cu121",
+    "torch_path": "/usr/local/lib/python3.11/site-packages/torch/__init__.py",
+    "cuda": "12.1",
+    "gpu": "NVIDIA A10",
+    "device": "cuda:0",
+    "isolated": true,
+    "no_site": true,
+    "gpu_matmul": "PASS"
+  },
+  "packages_installed_during_check": false,
+  "workspace_files_mounted_but_not_used_as_python_environment": true,
+  "verification_method": {
+    "official_gpu_image_switched": true,
+    "runtime_instance_identity_changed": true,
+    "persistent_workspace_kept": true,
+    "existing_workspace_venv_not_activated": true,
+    "isolated_check": "Fresh empty working directory; Python -I -S; only system purelib/platlib added; no user site, PYTHONPATH or .pth initialization."
+  },
+  "file_verification": {
+    "checked_entries": 58640,
+    "baseline_files": 52065,
+    "hashed_files": 20866,
+    "non_platform_changed_or_missing": 0,
+    "platform_state_missing_entries": 46,
+    "platform_state_changed_entries": 11,
+    "scope": "Original project, data, archive and .venv unchanged by recorded metadata and selected content hashes; editor configuration, cache, logs and this check notebook virtual document excluded from unchanged claim."
+  },
+  "shutdown_verified": {
+    "gpu_stopped": true,
+    "cpu_stopped": true
+  }
+}

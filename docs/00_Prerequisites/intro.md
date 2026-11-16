@@ -34,3 +34,5 @@
 ## 环境说明
 
 使用 [`BASE-CPU`](../guide.md#base-cpu) 运行本部分的参考代码与验证。后续 GPU、编译工具链或多卡实验，按目标页面的环境说明准备。
+
+希望直接使用云端环境时，可参考[ModelScope Notebook 环境搭建指南](./ModelScope_Notebook_GPU_Setup.md)，完成账号绑定、进入 JupyterLab、运行现成 Notebook，以及保存文件和停止实例。

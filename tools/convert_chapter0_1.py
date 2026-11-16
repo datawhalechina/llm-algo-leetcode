@@ -85,7 +85,7 @@ def process_markdown_file(md_path, out_path):
     filename = os.path.basename(md_path)
     name = filename.replace('.md', '')
     parts = name.split('_')
-    if len(parts) < 2:
+    if len(parts) < 2 or not parts[0].isdigit():
         with open(md_path, "r", encoding="utf-8") as f:
             source_text = f.read()
 
