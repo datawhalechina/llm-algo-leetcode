@@ -1,14 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="540" viewBox="0 0 1120 540" role="img" aria-labelledby="title desc">
-  <title id="title">架构候选的证据决策矩阵</title><desc id="desc">从结构差分、资源账本、性能证据和质量证据四个方面判断架构候选进入下一轮、调整变量或停止。</desc>
-  <style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#1e293b}.title{font-size:25px;font-weight:700}.h{font-size:18px;font-weight:700}.b{font-size:15px;fill:#334155}.head{font-size:16px;font-weight:700;fill:#fff}.cell{fill:#fff;stroke:#cbd5e1;stroke-width:1.5}.good{fill:#ecfdf5;stroke:#34d399}.warn{fill:#fffbeb;stroke:#f59e0b}.stop{fill:#fff1f2;stroke:#fb7185}</style>
-  <rect width="1120" height="540" fill="#f8fafc"/><text x="560" y="42" text-anchor="middle" class="title">架构候选：从差分到可复查决策</text>
-  <rect x="70" y="80" width="980" height="52" fill="#2563eb" rx="10"/><text x="180" y="113" text-anchor="middle" class="head">检查顺序</text><text x="395" y="113" text-anchor="middle" class="head">结构差分</text><text x="610" y="113" text-anchor="middle" class="head">资源账本</text><text x="825" y="113" text-anchor="middle" class="head">性能与质量</text><text x="975" y="113" text-anchor="middle" class="head">动作</text>
-  <rect x="70" y="132" width="220" height="82" class="cell"/><text x="180" y="165" text-anchor="middle" class="h">先说明改了什么</text><text x="180" y="191" text-anchor="middle" class="b">层数、头数、路由或连接</text>
-  <rect x="290" y="132" width="220" height="82" class="cell"/><text x="400" y="165" text-anchor="middle" class="h">参数 / FLOPs</text><text x="400" y="191" text-anchor="middle" class="b">与 baseline 的差分</text>
-  <rect x="510" y="132" width="220" height="82" class="cell"/><text x="620" y="165" text-anchor="middle" class="h">显存 / 带宽</text><text x="620" y="191" text-anchor="middle" class="b">预算是否仍可行</text>
-  <rect x="730" y="132" width="200" height="82" class="cell"/><text x="830" y="165" text-anchor="middle" class="h">步时 / 质量</text><text x="830" y="191" text-anchor="middle" class="b">证据等级是否足够</text>
-  <rect x="930" y="132" width="120" height="82" class="cell"/><text x="990" y="177" text-anchor="middle" class="h">进入</text><text x="990" y="198" text-anchor="middle" class="b">下一轮</text>
-  <rect x="70" y="240" width="980" height="75" class="good" rx="10"/><text x="180" y="284" text-anchor="middle" class="h">约束满足</text><text x="480" y="284" text-anchor="middle" class="b">结构差分可解释，资源和质量均达到设定门槛</text><text x="990" y="284" text-anchor="middle" class="h">接受</text>
-  <rect x="70" y="325" width="980" height="75" class="warn" rx="10"/><text x="180" y="369" text-anchor="middle" class="h">部分有潜力</text><text x="480" y="369" text-anchor="middle" class="b">方向成立，但某个变量、预算或证据仍需调整</text><text x="990" y="369" text-anchor="middle" class="h">调整</text>
-  <rect x="70" y="410" width="980" height="75" class="stop" rx="10"/><text x="180" y="454" text-anchor="middle" class="h">约束不满足</text><text x="480" y="454" text-anchor="middle" class="b">质量、资源或可复现性无法达到最低要求</text><text x="990" y="454" text-anchor="middle" class="h">停止</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="330" viewBox="0 0 1100 330" role="img" aria-labelledby="title desc">
+<title id="title">按结构改动查找测试结果</title><desc id="desc">Decoder层、KV保存方式、历史状态和访问范围分别需要对应的任务与运行测试；四条关系独立，不表示顺序依赖。</desc>
+<defs><style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:24px;font-weight:700}.h{font-size:16px;font-weight:700;text-anchor:middle}.b{font-size:13px;text-anchor:middle;fill:#475569}.node{stroke-width:1.8;rx:12}.edge{fill:none;stroke:#475569;stroke-width:2.5;marker-end:url(#arrow)}</style>
+<marker id="arrow" viewBox="0 0 10 10" markerUnits="userSpaceOnUse" refX="10" refY="5" markerWidth="9" markerHeight="9" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker></defs>
+<rect width="1100" height="330" fill="#f8fafc"/><text x="40" y="38" class="title">按结构改动查找需要的测试结果</text>
+<path d="M140 168V210" class="edge"/>
+<rect x="20" y="78" width="240" height="90" class="node" fill="#DBEAFE" stroke="#2563EB"/><text x="140" y="114" class="h">Decoder层结构</text><text x="140" y="140" class="b">层数与前馈宽度</text>
+<rect x="20" y="210" width="240" height="100" class="node" fill="#DCFCE7" stroke="#16A34A"/><text x="140" y="250" class="h">块级任务测试</text><text x="140" y="280" class="b">得分、耗时与失败原因</text>
+<path d="M415 168V210" class="edge"/>
+<rect x="295" y="78" width="240" height="90" class="node" fill="#DBEAFE" stroke="#2563EB"/><text x="415" y="114" class="h">KV保存方式</text><text x="415" y="140" class="b">头数或低维表示</text>
+<rect x="295" y="210" width="240" height="100" class="node" fill="#DCFCE7" stroke="#16A34A"/><text x="415" y="250" class="h">状态与运行测试</text><text x="415" y="280" class="b">保存量、实际显存与耗时</text>
+<path d="M685 168V210" class="edge"/>
+<rect x="565" y="78" width="240" height="90" class="node" fill="#DBEAFE" stroke="#2563EB"/><text x="685" y="114" class="h">历史状态</text><text x="685" y="140" class="b">逐词KV、递推或混合</text>
+<rect x="565" y="210" width="240" height="100" class="node" fill="#DCFCE7" stroke="#16A34A"/><text x="685" y="250" class="h">逐长度任务测试</text><text x="685" y="280" class="b">答案、耗时与失败长度</text>
+<path d="M960 168V210" class="edge"/>
+<rect x="840" y="78" width="240" height="90" class="node" fill="#DBEAFE" stroke="#2563EB"/><text x="960" y="114" class="h">允许读取的位置</text><text x="960" y="140" class="b">窗口、分块或全局</text>
+<rect x="840" y="210" width="240" height="100" class="node" fill="#DCFCE7" stroke="#16A34A"/><text x="960" y="250" class="h">访问与后端测试</text><text x="960" y="280" class="b">可见位置、内核与回退</text>
 </svg>

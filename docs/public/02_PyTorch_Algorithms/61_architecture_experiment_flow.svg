@@ -1,13 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="300" viewBox="0 0 1100 300">
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="300" viewBox="0 0 1100 300" role="img" aria-labelledby="title desc">
+<title id="title">从配置改动到大小估算与后续测试</title><desc id="desc">展示本节保存对象、配置或层间数据的关系，实际任务表现另行测试。</desc>
   <rect width="1100" height="300" fill="#f8fafc"/>
   <style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#1e293b} .box{fill:#fff;stroke:#2563eb;stroke-width:2;rx:14} .arrow{stroke:#64748b;stroke-width:3;marker-end:url(#m)}</style>
-  <defs><marker id="m" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L9,3 L0,6 Z" fill="#64748b"/></marker></defs>
-  <text x="550" y="38" text-anchor="middle" font-size="24" font-weight="700">架构候选的受控比较</text>
-  <rect class="box" x="35" y="105" width="190" height="100"/><text x="130" y="145" text-anchor="middle" font-size="20">提出问题</text><text x="130" y="177" text-anchor="middle" font-size="16">只改一个结构变量</text>
-  <rect class="box" x="270" y="105" width="190" height="100"/><text x="365" y="145" text-anchor="middle" font-size="20">读取 config</text><text x="365" y="177" text-anchor="middle" font-size="16">组件与合法性检查</text>
-  <rect class="box" x="505" y="105" width="190" height="100"/><text x="600" y="145" text-anchor="middle" font-size="20">建立账本</text><text x="600" y="177" text-anchor="middle" font-size="16">参数与理论权重字节</text>
-  <rect class="box" x="740" y="105" width="150" height="100"/><text x="815" y="145" text-anchor="middle" font-size="20">做差分</text><text x="815" y="177" text-anchor="middle" font-size="16">收益与代价</text>
-  <rect class="box" x="935" y="105" width="130" height="100"/><text x="1000" y="145" text-anchor="middle" font-size="20">决策</text><text x="1000" y="177" text-anchor="middle" font-size="16">接着验证</text>
-  <path class="arrow" d="M225 155 H265"/><path class="arrow" d="M460 155 H500"/><path class="arrow" d="M695 155 H735"/><path class="arrow" d="M890 155 H930"/>
-  <text x="550" y="255" text-anchor="middle" font-size="16" fill="#475569">CPU 先验证结构逻辑；真实吞吐、显存和 kernel 行为交给 GPU 对照</text>
+  <defs><marker id="m" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L9,3 L0,6 Z" fill="#64748b"/></marker></defs>
+  <text x="550" y="38" text-anchor="middle" font-size="24" font-weight="700">从配置改动到大小估算与后续测试</text>
+  <rect class="box" x="35" y="105" width="190" height="100"/><text x="130" y="145" text-anchor="middle" font-size="20">提出问题</text><text x="130" y="177" text-anchor="middle" font-size="16">指定一个结构改动</text>
+  <rect class="box" x="270" y="105" width="190" height="100"/><text x="365" y="145" text-anchor="middle" font-size="20">读取配置</text><text x="365" y="177" text-anchor="middle" font-size="16">检查字段与形状</text>
+  <rect class="box" x="505" y="105" width="190" height="100"/><text x="600" y="145" text-anchor="middle" font-size="20">估算大小</text><text x="600" y="177" text-anchor="middle" font-size="16">参数、权重与KV</text>
+  <rect class="box" x="740" y="105" width="150" height="100"/><text x="815" y="145" text-anchor="middle" font-size="20">比较前后</text><text x="815" y="177" text-anchor="middle" font-size="16">哪些部分增减</text>
+  <rect class="box" x="935" y="105" width="130" height="100"/><text x="1000" y="145" text-anchor="middle" font-size="20">选择测试</text><text x="1000" y="177" text-anchor="middle" font-size="16">实测任务表现</text>
+  <path class="arrow" d="M225 155 H270"/><path class="arrow" d="M460 155 H505"/><path class="arrow" d="M695 155 H740"/><path class="arrow" d="M890 155 H935"/>
+  <text x="550" y="255" text-anchor="middle" font-size="16" fill="#475569">配置比较给出大小变化；答案、耗时和显存从对应模型的实际运行取得</text>
 </svg>
