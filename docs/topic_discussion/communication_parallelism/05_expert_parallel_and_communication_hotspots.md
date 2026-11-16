@@ -52,7 +52,7 @@ Serving Replica 不执行专家 All-to-All，也不需要训练梯度同步。�
 | 理解 Router 与均衡目标 | [Part 02 · 06 MoE Router](../../02_PyTorch_Algorithms/06_MoE_Router.md)、[07 Load Balancing](../../02_PyTorch_Algorithms/07_MoE_Load_Balancing_Loss.md) |
 | 验证 dispatch / combine | [Part 02 · 46 Expert Parallel](../../02_PyTorch_Algorithms/46_MoE_Expert_Parallel.md) |
 | 比较请求路由与副本负载 | [PAR-REPLICA](../../02_PyTorch_Algorithms/PAR-REPLICA_Serving_Replica_Routing.md) |
-| 定位通信热点 | [06 通信 Profiling 与 Overlap](./06_communication_profiling_and_overlap.md) |
+| 定位通信热点 | [06 通信剖析与通信—计算重叠](./06_communication_profiling_and_overlap.md) |
 
 ## 相关阅读
 
