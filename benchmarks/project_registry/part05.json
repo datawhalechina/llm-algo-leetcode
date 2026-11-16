@@ -36,7 +36,7 @@
       "primary_owner": "integrated_projects",
       "project_type": "integrated_delivery",
       "topic_order": 4,
-      "target_contract": "quantization-delivery/v1"
+      "target_contract": "part05-quantization-delivery/v1"
     },
     {
       "semantic_id": "OP-INTEGRATED-DELIVERY",
@@ -45,7 +45,7 @@
       "primary_owner": "integrated_projects",
       "project_type": "integrated_delivery",
       "topic_order": 5,
-      "target_contract": "operator-optimization-delivery/v1"
+      "target_contract": "part05-operator-delivery-decision/v1"
     }
   ]
 }

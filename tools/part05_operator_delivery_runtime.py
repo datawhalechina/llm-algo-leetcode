@@ -13,6 +13,7 @@ from typing import Any, Mapping
 
 
 SEMANTIC_ID = "OP-INTEGRATED-DELIVERY"
+RESULT_SCHEMA = "part05-operator-delivery-decision/v1"
 SEQUENCE_LENGTHS = (128, 512, 1024, 2048)
 VARIANTS = ("torch_sdpa_auto", "triton_flash_attention")
 RESULT_ROOT = "benchmarks/results/part05_operator_delivery"
@@ -314,7 +315,7 @@ def evaluate_measurements(record: Mapping[str, Any], protocol: Mapping[str, Any]
     else:
         decision = "tune"
     return {
-        "schema_version": "part05-operator-delivery-decision/v1",
+        "schema_version": RESULT_SCHEMA,
         "semantic_id": SEMANTIC_ID,
         "run_label": record.get("run_label"),
         "decision": decision,

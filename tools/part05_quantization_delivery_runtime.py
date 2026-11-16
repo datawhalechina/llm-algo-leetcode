@@ -12,6 +12,7 @@ from typing import Any, Mapping
 
 
 SEMANTIC_ID = "QUANT-INTEGRATED-DELIVERY"
+RESULT_SCHEMA = "part05-quantization-delivery/v1"
 RESULT_ROOT = "benchmarks/results/part05_quantization_delivery"
 
 
@@ -583,7 +584,7 @@ def decide_quantization_delivery(project_root: str | Path, run_label: str, proto
     else:
         decision = "tune"
     result = {
-        "schema_version": "part05-quantization-delivery/v1",
+        "schema_version": RESULT_SCHEMA,
         "semantic_id": SEMANTIC_ID,
         "run_label": run_label,
         "decision": decision,
