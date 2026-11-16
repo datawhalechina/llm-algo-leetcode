@@ -1,6 +1,6 @@
 # 智能体基础设施（Agent Infrastructure）
 
-> 专题类型：领域专题　主服务目标：让模型从单次生成走向可观测、可评估、可复现的多步任务执行。
+> 专题类型：领域专题　学习目标：让模型从单次生成走向可观测、可评估、可复现的多步任务执行。
 
 推理优化关注一次模型调用怎样更快、更省；智能体基础设施关注多步任务怎样可靠完成。一次智能体任务需要模型调用、工具调用、上下文管理、执行环境、轨迹日志与最终评估协同工作，其工作负载是可能失败、回退和分支的动态调用图。
 
@@ -18,7 +18,7 @@
 | Task3 · 轨迹感知调度与上下文管理 | 多阶段、可失败任务怎样调度和复用状态？ | 核心：[推理优化](../inference_optimization/intro.md)；项目：[Part 02 · 70 服务调度](../../02_PyTorch_Algorithms/70_Serving_Scheduler_Benchmark.ipynb) | 依赖状态 → 就绪队列 → 调度 → 重试与上下文复用 | [多步任务怎样调度和恢复](./walkthrough.md#多步任务怎样调度和恢复) |
 | Task4 · 任务评估与可观测性 | 完成率、工具正确性、轨迹质量、延迟与成本怎样对应同一次任务？ | 核心：[性能优化](../performance_optimization/intro.md)；扩展：[Part 02 · 50 偏好数据与评测](../../02_PyTorch_Algorithms/50_Preference_Data_and_Evaluation.ipynb) | 任务身份 → 轨迹事件 → 错误分类 → 质量与成本报告 | [怎样同时评估质量、可靠性和成本](./walkthrough.md#怎样同时评估质量可靠性和成本) |
 | Task5 · 框架与工具协议 | 工具能力、协作方式和运行约束怎样决定编排方案？ | 核心：[00 智能体工作负载与执行链](./00_agent_workload_and_trace.md)；项目：[Part 05 综合项目](../../05_Integrated_Projects_and_Decisions/intro.md) | 能力需求 → 工具契约 → 编排候选 → 失败与成本对照 | [什么时候需要改变协议或编排框架](./walkthrough.md#什么时候需要改变协议或编排框架) |
-| Task6 · Agentic RL 与综合交付 | 数据、沙盒、轨迹采样、奖励和评估怎样形成可恢复的训练闭环？ | 核心：[后训练优化](../post_training_optimization/intro.md)；项目：[Part 05 · 后训练交付综合项目](../../05_Integrated_Projects_and_Decisions/02_Post_Training_Delivery_Project.md#小模型-agentic-rl-扩展) | 固定任务 → 轨迹采样 → 奖励与更新 → 独立评测 → 采用决策 | [什么时候才进入 Agentic RL](./walkthrough.md#什么时候才进入-agentic-rl) |
+| Task6 · Agentic RL 与综合交付 | 数据、沙盒、轨迹采样、奖励和评估怎样形成可恢复的训练闭环？ | 机制：[Part 02 · Agentic RL 环境轨迹与奖励归因](../../02_PyTorch_Algorithms/PT-AGENTIC-RL_Environment_Trajectory_and_Credit_Assignment.ipynb)；核心：[后训练优化](../post_training_optimization/intro.md)；开放实践：[Part 05 实践模板](../../05_Integrated_Projects_and_Decisions/open_practice/_template/README.md) | 固定任务 → 轨迹采样 → 奖励与更新 → 独立评测 → 采用决策 | [什么时候才进入 Agentic RL](./walkthrough.md#什么时候才进入-agentic-rl) |
 
 ![智能体基础设施学习路线：从任务轨迹到训练与交付](../../docs/public/topic_discussion/agent/agent_infrastructure_roadmap.svg)
 
