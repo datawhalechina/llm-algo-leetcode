@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1500" height="600" viewBox="0 0 1500 600" role="img" aria-labelledby="title desc">
   <title id="title">监督微调从问题准入到训练交付的学习路径</title>
-  <desc id="desc">主线依次经过微调就绪判断、数据准入、监督标签和训练闭环；参数高效适配、长上下文和低显存训练按约束进入。</desc>
+  <desc id="desc">主线依次经过微调就绪判断、数据准入、监督标签和训练闭环；真实示范不足时先生成并验证合成候选，参数高效适配、长上下文和项目实践按约束进入。</desc>
   <defs>
     <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 4.5L0 9Z" fill="#475569"/></marker>
     <style>
@@ -50,12 +50,20 @@
   <path d="M352 261H426" class="line"/><path d="M718 261H792" class="line"/><path d="M1084 261H1158" class="line"/>
 
   <text x="62" y="394" class="step">按约束进入的分支</text>
+  <path d="M206 348V430" class="branch"/>
+  <text x="220" y="404" class="small">真实示范不足</text>
   <path d="M572 348V430" class="branch"/>
   <text x="586" y="404" class="small">长度或拼接约束</text>
   <path d="M938 348V430" class="branch"/>
   <text x="952" y="404" class="small">参数更新预算受限</text>
   <path d="M1299 348V430" class="branch"/>
   <text x="1313" y="404" class="small">进入项目实践</text>
+
+  <rect x="60" y="430" width="292" height="124" rx="16" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2"/>
+  <text x="84" y="466" class="head">合成候选生成与验证</text>
+  <text x="84" y="498" class="body">生成身份、相似度、污染与验证器</text>
+  <text x="84" y="526" class="small">接纳记录返回 32 执行最终切分审计</text>
+  <path d="M352 492H386V261H426" class="branch"/>
 
   <rect x="426" y="430" width="292" height="124" rx="16" fill="#F0F9FF" stroke="#0284C7" stroke-width="2"/>
   <text x="450" y="466" class="head">30 · 长上下文处理</text>
