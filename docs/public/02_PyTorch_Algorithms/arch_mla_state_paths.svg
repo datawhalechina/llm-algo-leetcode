@@ -1,20 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="500" viewBox="0 0 1120 500">
-  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#475569"/></marker></defs>
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="500" viewBox="0 0 1120 500" role="img" aria-labelledby="title desc">
+<title id="title">MLA内容与位置的保存和读取</title><desc id="desc">展示本节保存对象、配置或层间数据的关系，实际任务表现另行测试。</desc>
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L8,4 L0,8 Z" fill="#475569"/></marker></defs>
   <rect width="1120" height="500" rx="24" fill="#f8fafc"/>
-  <text x="56" y="54" font-size="28" font-family="sans-serif" font-weight="700" fill="#0f172a">MLA：写入、保存与读取是三段不同路径</text>
-  <g font-family="sans-serif" text-anchor="middle">
+  <text x="56" y="54" font-size="28" font-family="Noto Sans CJK SC, Microsoft YaHei, sans-serif" font-weight="700" fill="#0f172a">MLA：内容与位置分别写入，再用于当前查询</text>
+  <g font-family="Noto Sans CJK SC, Microsoft YaHei, sans-serif" text-anchor="middle">
     <rect x="56" y="112" width="230" height="98" rx="16" fill="#dbeafe" stroke="#60a5fa"/>
     <text x="171" y="150" font-size="20" font-weight="700" fill="#1e3a8a">隐藏状态</text><text x="171" y="180" font-size="16" fill="#334155">当前词元表示</text>
     <rect x="350" y="86" width="270" height="124" rx="16" fill="#dcfce7" stroke="#4ade80"/>
-    <text x="485" y="126" font-size="20" font-weight="700" fill="#166534">潜在状态投影</text><text x="485" y="157" font-size="16" fill="#334155">压缩内容状态</text><text x="485" y="184" font-size="16" fill="#334155">写入潜在状态缓存</text>
+    <text x="485" y="126" font-size="20" font-weight="700" fill="#166534">低维内容投影</text><text x="485" y="157" font-size="16" fill="#334155">得到低维内容向量</text><text x="485" y="184" font-size="16" fill="#334155">写入潜在状态缓存</text>
     <rect x="350" y="260" width="270" height="124" rx="16" fill="#fef3c7" stroke="#fbbf24"/>
     <text x="485" y="300" font-size="20" font-weight="700" fill="#92400e">位置分量</text><text x="485" y="331" font-size="16" fill="#334155">保留 RoPE 所需状态</text><text x="485" y="358" font-size="16" fill="#334155">独立追加到缓存</text>
     <rect x="706" y="156" width="358" height="150" rx="18" fill="#ede9fe" stroke="#a78bfa"/>
-    <text x="885" y="200" font-size="21" font-weight="700" fill="#5b21b6">读取与注意力</text><text x="885" y="235" font-size="16" fill="#334155">投影、矩阵吸收或重建</text><text x="885" y="265" font-size="16" fill="#334155">与当前查询形成输出</text>
+    <text x="885" y="200" font-size="21" font-weight="700" fill="#5b21b6">读取与注意力</text><text x="885" y="235" font-size="16" fill="#334155">先恢复K/V，或合并投影计算</text><text x="885" y="265" font-size="16" fill="#334155">与当前查询形成输出</text>
   </g>
-  <path d="M286 161 H350" stroke="#475569" stroke-width="3" fill="none" marker-end="url(#a)"/>
-  <path d="M286 161 H318 V322 H350" stroke="#475569" stroke-width="3" fill="none" marker-end="url(#a)"/>
+  <path d="M286 146 H350" stroke="#475569" stroke-width="3" fill="none" marker-end="url(#a)"/>
+  <path d="M286 180 H318 V322 H350" stroke="#475569" stroke-width="3" fill="none" marker-end="url(#a)"/>
   <path d="M620 148 H662 V205 H706" stroke="#475569" stroke-width="3" fill="none" marker-end="url(#a)"/>
   <path d="M620 322 H662 V258 H706" stroke="#475569" stroke-width="3" fill="none" marker-end="url(#a)"/>
-  <text x="56" y="446" font-size="17" font-family="sans-serif" fill="#64748b">理论缓存变小只说明表示改变；真实收益仍取决于加载器、计算内核与执行后端。</text>
+  <text x="56" y="446" font-size="17" font-family="Noto Sans CJK SC, Microsoft YaHei, sans-serif" fill="#64748b">保存字节数与读取耗时分别测量，完整模型还要检查答案。</text>
 </svg>
