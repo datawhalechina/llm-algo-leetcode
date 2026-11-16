@@ -1,32 +1,32 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
-  <title id="title">从观测指标到关键路径判别</title>
-  <desc id="desc">先固定指标和事件身份，再建立依赖图、计算关键路径、定位暴露等待，最后通过单变量干预验证瓶颈。</desc>
+  <title id="title">从事件与依赖重建完成链</title>
+  <desc id="desc">对齐事件与时间，补充已知依赖后回溯本次完成链，找出待解释间隔，再改变一个条件复测。</desc>
   <defs>
     <marker id="arrow" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L9 4.5L0 9Z" fill="#334155"/></marker>
     <style>
       .title{font-family:"Noto Sans CJK SC",sans-serif;font-size:28px;font-weight:700;fill:#0f172a}.subtitle{font-family:"Noto Sans CJK SC",sans-serif;font-size:16px;fill:#475569}
       .head{font-family:"Noto Sans CJK SC",sans-serif;font-size:18px;font-weight:700;fill:#172033}.body{font-family:"Noto Sans CJK SC",sans-serif;font-size:14px;fill:#475569}
-      .edge{fill:none;stroke:#334155;stroke-width:4;marker-end:url(#arrow)}
+      .edge{fill:none;stroke:#334155;stroke-width:2.5;marker-end:url(#arrow)}
     </style>
   </defs>
   <rect width="1200" height="620" rx="24" fill="#f8fafc"/>
-  <text x="600" y="48" text-anchor="middle" class="title">执行轨迹如何收敛为可验证的关键路径</text>
-  <text x="600" y="78" text-anchor="middle" class="subtitle">先确认时钟与执行通道，再用依赖和受控对照解释完成时间</text>
+  <text x="600" y="48" text-anchor="middle" class="title">从事件与依赖找到本次完成链</text>
+  <text x="600" y="78" text-anchor="middle" class="subtitle">先对齐时间与通道，再用已知依赖和单条件对照解释完成时间</text>
 
   <g text-anchor="middle">
     <rect id="metric" x="70" y="132" width="280" height="104" rx="16" fill="#dbeafe" stroke="#2563eb" stroke-width="2.5"/>
     <text x="210" y="169" class="head">观测指标</text><text x="210" y="199" class="body">延迟 · 吞吐 · 设备空闲</text><text x="210" y="222" class="body">确认异常发生在哪个阶段</text>
     <rect id="events" x="460" y="132" width="280" height="104" rx="16" fill="#e0f2fe" stroke="#0284c7" stroke-width="2.5"/>
-    <text x="600" y="169" class="head">规范化事件</text><text x="600" y="199" class="body">开始 · 结束 · 线程或串行流</text><text x="600" y="222" class="body">统一 CPU、搬运与 GPU 时间线</text>
+    <text x="600" y="169" class="head">对齐事件时间</text><text x="600" y="199" class="body">开始 · 结束 · 线程或串行流</text><text x="600" y="222" class="body">统一 CPU、搬运与 GPU 时间线</text>
     <rect id="dag" x="850" y="132" width="280" height="104" rx="16" fill="#cffafe" stroke="#0891b2" stroke-width="2.5"/>
     <text x="990" y="169" class="head">事件依赖图</text><text x="990" y="199" class="body">数据依赖 · 资源串行</text><text x="990" y="222" class="body">区分先后相邻与真实等待</text>
 
     <rect id="path" x="850" y="370" width="280" height="104" rx="16" fill="#dcfce7" stroke="#16a34a" stroke-width="2.5"/>
-    <text x="990" y="407" class="head">关键路径</text><text x="990" y="437" class="body">前驱完成 + 就绪后间隔 + 执行</text><text x="990" y="460" class="body">回溯本次最终完成的事件链</text>
+    <text x="990" y="407" class="head">本次完成链</text><text x="990" y="437" class="body">前驱完成 + 就绪后间隔 + 执行</text><text x="990" y="460" class="body">回溯本次最终完成的事件链</text>
     <rect id="wait" x="460" y="370" width="280" height="104" rx="16" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/>
-    <text x="600" y="407" class="head">暴露等待</text><text x="600" y="437" class="body">就绪到实际开始的残余间隔</text><text x="600" y="460" class="body">链外间隔不直接计入完成时间</text>
+    <text x="600" y="407" class="head">就绪后间隔</text><text x="600" y="437" class="body">就绪到实际开始的残余间隔</text><text x="600" y="460" class="body">链外间隔不直接计入完成时间</text>
     <rect id="test" x="70" y="370" width="280" height="104" rx="16" fill="#f3e8ff" stroke="#9333ea" stroke-width="2.5"/>
-    <text x="210" y="407" class="head">判别实验</text><text x="210" y="437" class="body">只改变一个等待或工作量条件</text><text x="210" y="460" class="body">关键路径与目标指标应同时变化</text>
+    <text x="210" y="407" class="head">单条件复测</text><text x="210" y="437" class="body">只改变一个等待或工作量条件</text><text x="210" y="460" class="body">检查最终完成是否更早</text>
   </g>
   <path d="M350 184H460" class="edge" data-source="metric" data-target="events" marker-end="url(#arrow)"/><path d="M740 184H850" class="edge" data-source="events" data-target="dag" marker-end="url(#arrow)"/>
   <path d="M990 236V370" class="edge" data-source="dag" data-target="path" marker-end="url(#arrow)"/><path d="M850 422H740" class="edge" data-source="path" data-target="wait" marker-end="url(#arrow)"/><path d="M460 422H350" class="edge" data-source="wait" data-target="test" marker-end="url(#arrow)"/>
