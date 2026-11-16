@@ -1,0 +1,112 @@
+{
+  "schema_version": "inference-mechanism-gpu/v2",
+  "semantic_id": "INF-SERVING-OVERLAP",
+  "run_mode": "real_gpu",
+  "run_label": "rtx5070ti_overlap_v2",
+  "environment_profile": "INF-CUDA-MECHANISM",
+  "framework": {
+    "torch": "2.11.0+cu128"
+  },
+  "hardware": {
+    "cuda_available": true,
+    "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "cuda": "12.8",
+    "async_engine_count": null
+  },
+  "workload": {
+    "id": "inference-serving-overlap",
+    "version": "v2",
+    "payload_mib": [
+      16,
+      64,
+      128
+    ],
+    "matrix_size": 2048,
+    "dtype": "auto",
+    "warmup_steps": 5,
+    "repeat_steps": 20,
+    "seed": 42,
+    "minimum_gain_ratio": 0.02,
+    "maximum_p95_ratio": 1.05,
+    "resolved_dtype": "torch.bfloat16"
+  },
+  "cases": [
+    {
+      "payload_mib": 16,
+      "serial_median_ms": 1.4998079538345337,
+      "serial_p95_ms": 1.5137280225753784,
+      "overlap_median_ms": 1.1813600063323975,
+      "overlap_p95_ms": 1.1876800060272217,
+      "copy_median_ms": 1.1671040058135986,
+      "compute_median_ms": 0.3211999982595444,
+      "theoretical_lower_bound_ms": 1.1671040058135986,
+      "latency_ratio": 0.7876741840927262,
+      "p95_ratio": 0.7846059452652296,
+      "hidden_ms": 0.31844794750213623,
+      "overlap_efficiency": 0.9571510930254973,
+      "copy_correct": true,
+      "compute_correct": true,
+      "path_evidence": {
+        "host_memory_pinned": true,
+        "distinct_streams": true,
+        "non_blocking_copy": true
+      },
+      "path_confirmed": true,
+      "benefit_gate_passed": true
+    },
+    {
+      "payload_mib": 64,
+      "serial_median_ms": 4.9991841316223145,
+      "serial_p95_ms": 5.013887882232666,
+      "overlap_median_ms": 4.666863918304443,
+      "overlap_p95_ms": 4.67299222946167,
+      "copy_median_ms": 4.6526079177856445,
+      "compute_median_ms": 0.34147199988365173,
+      "theoretical_lower_bound_ms": 4.6526079177856445,
+      "latency_ratio": 0.9335251103843563,
+      "p95_ratio": 0.932009717652642,
+      "hidden_ms": 0.3323202133178711,
+      "overlap_efficiency": 0.9588661888795484,
+      "copy_correct": true,
+      "compute_correct": true,
+      "path_evidence": {
+        "host_memory_pinned": true,
+        "distinct_streams": true,
+        "non_blocking_copy": true
+      },
+      "path_confirmed": true,
+      "benefit_gate_passed": true
+    },
+    {
+      "payload_mib": 128,
+      "serial_median_ms": 9.647392272949219,
+      "serial_p95_ms": 9.664928436279297,
+      "overlap_median_ms": 9.314432144165039,
+      "overlap_p95_ms": 9.320511817932129,
+      "copy_median_ms": 9.306400299072266,
+      "compute_median_ms": 0.33612799644470215,
+      "theoretical_lower_bound_ms": 9.306400299072266,
+      "latency_ratio": 0.9654870332454727,
+      "p95_ratio": 0.96436428674895,
+      "hidden_ms": 0.3329601287841797,
+      "overlap_efficiency": 0.9764456476747698,
+      "copy_correct": true,
+      "compute_correct": true,
+      "path_evidence": {
+        "host_memory_pinned": true,
+        "distinct_streams": true,
+        "non_blocking_copy": true
+      },
+      "path_confirmed": true,
+      "benefit_gate_passed": true
+    }
+  ],
+  "failure": null,
+  "evidence_level": "local_mechanism_benchmark",
+  "decision": "accept_physical_overlap",
+  "summary": {
+    "correctness_passed": true,
+    "accepted_cases": 3,
+    "total_cases": 3
+  }
+}
