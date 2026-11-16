@@ -46,8 +46,14 @@ jobs:
         pip install -r requirements.txt
         pip install nbconvert termcolor
         
-    - name: Check Part 05 project structure and final contracts (CPU-only)
-      run: python -m unittest tools.tests.test_part05_integrated_projects
+    - name: Check shared contracts and project structure (CPU-only)
+      run: >-
+        python -m unittest
+        tools.tests.test_project_contracts
+        tools.tests.test_part02_project_structure
+        tools.tests.test_quantization_project_contracts
+        tools.tests.test_project_contract_entrypoints
+        tools.tests.test_part05_integrated_projects
 
     - name: Run notebook verification (CPU-only, skip GPU-dependent notebooks)
       run: |
