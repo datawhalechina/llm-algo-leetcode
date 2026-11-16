@@ -1,44 +1,77 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 690" role="img" aria-labelledby="title desc">
-  <title id="title">通信热点到缓解动作与复测</title>
-  <desc id="desc">优先通信热点按传输路由压力、暴露通信压力或 rank 不均衡分类；每种模式对应不同的候选动作和复测指标，最后在固定 workload 下形成决策。</desc>
-  <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
-    <style>.title{font:700 27px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.sub{font:500 15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.group{font:700 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.node{font:700 17px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.body{font:500 13px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.box{stroke-width:2.5;rx:14}.shell{stroke-width:2.5;stroke-dasharray:7 6;rx:18}.arrow{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
-  </defs>
-  <rect width="1200" height="690" fill="#f8fafc"/>
-  <text x="48" y="54" class="title">缓解动作：把热点假设变成可复测对照</text>
-  <text x="48" y="82" class="sub">先按热点模式选择一个主要动作，再在不改变 workload 的前提下比较收益与新代价。</text>
-  <rect x="415" y="112" width="370" height="70" class="box" fill="#eef2ff" stroke="#6366f1"/>
-  <text x="600" y="143" text-anchor="middle" class="node">优先 collective 热点</text>
-  <text x="600" y="167" text-anchor="middle" class="body">暴露时间 · payload · overlap · rank 差异</text>
-
-  <rect x="50" y="245" width="330" height="248" class="shell" fill="#fff7ed" stroke="#f97316"/>
-  <text x="74" y="274" class="group">传输量 / 路由压力</text>
-  <rect x="76" y="294" width="278" height="62" class="box" fill="#fff" stroke="#f97316"/>
-  <text x="215" y="331" text-anchor="middle" class="node">payload 大的 all-to-all</text>
-  <rect x="76" y="385" width="278" height="74" class="box" fill="#fff" stroke="#f97316"/>
-  <text x="215" y="416" text-anchor="middle" class="node">减少跨 rank 路由流量</text>
-  <text x="215" y="440" text-anchor="middle" class="body">复测：payload · token 比例 · 吞吐</text>
-
-  <rect x="435" y="245" width="330" height="248" class="shell" fill="#eff6ff" stroke="#3b82f6"/>
-  <text x="459" y="274" class="group">暴露通信压力</text>
-  <rect x="461" y="294" width="278" height="62" class="box" fill="#fff" stroke="#3b82f6"/>
-  <text x="600" y="331" text-anchor="middle" class="node">暴露高且 overlap 低</text>
-  <rect x="461" y="385" width="278" height="74" class="box" fill="#fff" stroke="#3b82f6"/>
-  <text x="600" y="416" text-anchor="middle" class="node">调整同步与 overlap</text>
-  <text x="600" y="440" text-anchor="middle" class="body">复测：暴露时间 · overlap · step time</text>
-
-  <rect x="820" y="245" width="330" height="248" class="shell" fill="#fdf2f8" stroke="#db2777"/>
-  <text x="844" y="274" class="group">rank 不均衡</text>
-  <rect x="846" y="294" width="278" height="62" class="box" fill="#fff" stroke="#db2777"/>
-  <text x="985" y="331" text-anchor="middle" class="node">个别 rank 明显滞后</text>
-  <rect x="846" y="385" width="278" height="74" class="box" fill="#fff" stroke="#db2777"/>
-  <text x="985" y="416" text-anchor="middle" class="node">重平衡切分或专家负载</text>
-  <text x="985" y="440" text-anchor="middle" class="body">复测：max rank · 负载偏斜 · P95</text>
-
-  <rect x="390" y="568" width="420" height="82" class="box" fill="#f5f3ff" stroke="#8b5cf6"/>
-  <text x="600" y="600" text-anchor="middle" class="node">固定 workload 复测并形成决策</text>
-  <text x="600" y="625" text-anchor="middle" class="body">accept · tune · collect more evidence</text>
-  <path d="M600 182V214H215V245M600 214V245M600 214H985V245" class="arrow"/>
-  <path d="M215 459V528H500V568M600 459V568M985 459V528H700V568" class="arrow"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="620" viewBox="0 0 1500 620" role="img" aria-labelledby="title desc">
+<title id="title">通信线索如何进入单项调整与同负载复测</title><desc id="desc">三条并列路径分别解释rank滞后、通信暴露和跨rank路由压力。每条路径选择一个候选动作并记录可能的新代价，再在同模型和负载下配对复测完成时间、质量与容量，决定保留、继续调整或补采信息。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto">
+<path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:26px;font-weight:700}.group{font-size:18px;font-weight:700}.head{font-size:17px;font-weight:700}.body{font-size:15px;font-weight:400}.sub{font-size:16px;fill:#475569}.flow{fill:none;stroke:#475569;stroke-width:2.5;marker-end:url(#arrow)}</style></defs>
+<rect width="1500" height="620" fill="#f8fafc" data-layout-role="decoration"/>
+<text x="55" y="48" class="title" text-anchor="start">缓解通信热点：选一个动作，同时检查它引入了什么代价</text>
+<text x="55" y="80" class="sub" text-anchor="start">下面三行是不同线索的候选方向；每轮选一个动作，在同模型、同负载下做配对比较。</text>
+<text x="55" y="117" class="group" text-anchor="start">观察到的线索</text>
+<text x="405" y="117" class="group" text-anchor="start">单项候选动作</text>
+<text x="755" y="117" class="group" text-anchor="start">一起检查的新代价</text>
+<g id="signal-0">
+<rect x="55" y="135" width="280" height="80" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2" class="node"/>
+<text x="195" y="164" class="head" text-anchor="middle">rank到达／完成时间不同</text>
+<text x="195" y="190" class="body" text-anchor="middle">已采集各rank耗时</text>
+</g>
+<g id="action-0">
+<rect x="405" y="135" width="280" height="80" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2" class="node"/>
+<text x="545" y="164" class="head" text-anchor="middle">调整切分或专家放置</text>
+<text x="545" y="190" class="body" text-anchor="middle">优先平衡最慢rank</text>
+</g>
+<g id="cost-0">
+<rect x="755" y="135" width="280" height="80" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2" class="node"/>
+<text x="895" y="164" class="head" text-anchor="middle">跨rank载荷可能增加</text>
+<text x="895" y="190" class="body" text-anchor="middle">检查额外搬运与容量</text>
+</g>
+<path id="signal-to-action-0" d="M335 175H405" class="flow"/>
+<path id="action-to-cost-0" d="M685 175H755" class="flow"/>
+<g id="signal-1">
+<rect x="55" y="290" width="280" height="80" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2" class="node"/>
+<text x="195" y="319" class="head" text-anchor="middle">暴露高、重叠比例低</text>
+<text x="195" y="345" class="body" text-anchor="middle">通信落在计算空档</text>
+</g>
+<g id="action-1">
+<rect x="405" y="290" width="280" height="80" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2" class="node"/>
+<text x="545" y="319" class="head" text-anchor="middle">调整同步时点或bucket</text>
+<text x="545" y="345" class="body" text-anchor="middle">选一项改变调度粒度</text>
+</g>
+<g id="cost-1">
+<rect x="755" y="290" width="280" height="80" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2" class="node"/>
+<text x="895" y="319" class="head" text-anchor="middle">驻留与同步次数可能变化</text>
+<text x="895" y="345" class="body" text-anchor="middle">检查峰值显存和同步</text>
+</g>
+<path id="signal-to-action-1" d="M335 330H405" class="flow"/>
+<path id="action-to-cost-1" d="M685 330H755" class="flow"/>
+<g id="signal-2">
+<rect x="55" y="445" width="280" height="80" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2" class="node"/>
+<text x="195" y="474" class="head" text-anchor="middle">All-to-All路由流量大</text>
+<text x="195" y="500" class="body" text-anchor="middle">跨rank比例与bytes较高</text>
+</g>
+<g id="action-2">
+<rect x="405" y="445" width="280" height="80" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2" class="node"/>
+<text x="545" y="474" class="head" text-anchor="middle">调整专家放置或分组</text>
+<text x="545" y="500" class="body" text-anchor="middle">尝试增加本地命中</text>
+</g>
+<g id="cost-2">
+<rect x="755" y="445" width="280" height="80" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2" class="node"/>
+<text x="895" y="474" class="head" text-anchor="middle">专家负载可能更偏斜</text>
+<text x="895" y="500" class="body" text-anchor="middle">核对overflow与任务质量</text>
+</g>
+<path id="signal-to-action-2" d="M335 485H405" class="flow"/>
+<path id="action-to-cost-2" d="M685 485H755" class="flow"/>
+<g id="paired-retest">
+<rect x="1175" y="290" width="270" height="80" rx="12" fill="#e0f2fe" stroke="#0284c7" stroke-width="2" class="node"/>
+<text x="1310" y="319" class="head" text-anchor="middle">同模型、同负载配对复测</text>
+<text x="1310" y="345" class="body" text-anchor="middle">完成时间、质量／容量及新代价</text>
+</g>
+<path id="rank-path-to-retest" d="M1035 175H1105V310H1175" class="flow"/>
+<path id="overlap-path-to-retest" d="M1035 330H1175" class="flow"/>
+<path id="routing-path-to-retest" d="M1035 485H1105V350H1175" class="flow"/>
+<g id="followup">
+<rect x="1175" y="445" width="270" height="80" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" class="node"/>
+<text x="1310" y="474" class="head" text-anchor="middle">保留、继续调整或补采数据</text>
+<text x="1310" y="500" class="body" text-anchor="middle">按完整收益与约束判断</text>
+</g>
+<path id="retest-to-followup" d="M1310 370V445" class="flow"/>
+<text x="55" y="588" class="sub" text-anchor="start">把暴露时间、payload与各rank耗时带回对照；同时检查整轮完成时间和结果是否满足原任务要求。</text></svg>

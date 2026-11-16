@@ -1,47 +1,135 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620" role="img" aria-labelledby="t d">
-<title id="t">并行策略选型总览</title>
-<desc id="d">训练压力信号与模型和集群约束共同决定 DP加ZeRO、张量并行、流水线并行和专家并行的候选优先级。</desc>
-<defs>
-  <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
-  <style>
-    .title{font:700 27px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.sub{font:500 15px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#475569}.group{font:700 16px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.head{font:700 18px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}.body{font:500 14px "Noto Sans SC","Microsoft YaHei",sans-serif;fill:#334155}.box{stroke-width:2.5;rx:14}.line{stroke:#475569;stroke-width:3;fill:none;marker-end:url(#arrow)}.soft{stroke:#94a3b8;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
-  </style>
-</defs>
-<rect width="1200" height="620" fill="#f8fafc"/>
-<text x="54" y="55" class="title">并行策略：压力信号与约束共同决定候选</text>
-<text x="54" y="83" class="sub">先定位训练 step 的主要压力，再检查模型结构与集群条件，最后进入可复测的并行候选。</text>
-
-<rect x="48" y="120" width="330" height="380" rx="20" fill="#eff6ff" stroke="#93c5fd" stroke-width="2"/>
-<text x="72" y="153" class="group">训练压力信号</text>
-<rect x="78" y="180" width="270" height="72" class="box" fill="#fff" stroke="#3b82f6"/>
-<text x="213" y="211" text-anchor="middle" class="head">状态 / 激活显存</text><text x="213" y="235" text-anchor="middle" class="body">参数、优化器、激活是否装得下</text>
-<rect x="78" y="278" width="270" height="72" class="box" fill="#fff" stroke="#3b82f6"/>
-<text x="213" y="309" text-anchor="middle" class="head">通信暴露 / 流水线气泡</text><text x="213" y="333" text-anchor="middle" class="body">collective 是否阻塞、stage 是否空转</text>
-<rect x="78" y="376" width="270" height="72" class="box" fill="#fff" stroke="#3b82f6"/>
-<text x="213" y="407" text-anchor="middle" class="head">专家负载偏斜</text><text x="213" y="431" text-anchor="middle" class="body">token 是否集中到少数专家</text>
-
-<rect x="438" y="160" width="320" height="300" rx="20" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/>
-<text x="462" y="193" class="group">模型与集群约束</text>
-<rect x="472" y="221" width="252" height="56" class="box" fill="#fff" stroke="#d97706"/>
-<text x="598" y="256" text-anchor="middle" class="head">能否放入单卡</text>
-<rect x="472" y="300" width="252" height="56" class="box" fill="#fff" stroke="#d97706"/>
-<text x="598" y="335" text-anchor="middle" class="head">互联是否足够强</text>
-<rect x="472" y="379" width="252" height="56" class="box" fill="#fff" stroke="#d97706"/>
-<text x="598" y="414" text-anchor="middle" class="head">大线性层 / MoE 是否存在</text>
-
-<rect x="818" y="120" width="334" height="380" rx="20" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="2"/>
-<text x="842" y="153" class="group">并行候选</text>
-<rect x="848" y="180" width="126" height="104" class="box" fill="#fff" stroke="#8b5cf6"/>
-<text x="911" y="218" text-anchor="middle" class="head">DP + ZeRO</text><text x="911" y="245" text-anchor="middle" class="body">分片状态</text>
-<rect x="996" y="180" width="126" height="104" class="box" fill="#fff" stroke="#8b5cf6"/>
-<text x="1059" y="218" text-anchor="middle" class="head">TP</text><text x="1059" y="245" text-anchor="middle" class="body">拆分矩阵</text>
-<rect x="848" y="334" width="126" height="104" class="box" fill="#fff" stroke="#8b5cf6"/>
-<text x="911" y="372" text-anchor="middle" class="head">PP</text><text x="911" y="399" text-anchor="middle" class="body">分段放层</text>
-<rect x="996" y="334" width="126" height="104" class="box" fill="#fff" stroke="#8b5cf6"/>
-<text x="1059" y="372" text-anchor="middle" class="head">EP</text><text x="1059" y="399" text-anchor="middle" class="body">分配专家</text>
-
-<path d="M378 232H438" class="line"/><path d="M378 314H438" class="line"/><path d="M378 412H438" class="line"/>
-<path d="M758 310H790V232H848" class="soft"/><path d="M790 232H996" class="soft"/>
-<path d="M758 310H790V386H848" class="soft"/><path d="M790 386H996" class="soft"/>
-<text x="600" y="545" text-anchor="middle" class="sub">候选不是结论：进入下一步前，需要对容量、step time、通信暴露时间与负载分布做统一 workload 复测。</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="620" viewBox="0 0 1500 620" role="img" aria-labelledby="title desc">
+<title id="title">按切分对象区分六类并行候选</title><desc id="desc">六个并列面板分别展示训练状态、层内张量、模型层、专家、上下文位置和独立请求的分配。DP加ZeRO、TP、PP、EP、CP和Serving副本是候选方向，不是执行顺序；每类候选还需检查实际模型与设备约束。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto">
+<path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:26px;font-weight:700}.group{font-size:18px;font-weight:700}.head{font-size:17px;font-weight:700}.body{font-size:15px;font-weight:400}.sub{font-size:16px;fill:#475569}.flow{fill:none;stroke:#475569;stroke-width:2.5;marker-end:url(#arrow)}</style></defs>
+<rect x="0" y="0" width="1500" height="620" rx="12" fill="#f8fafc" stroke="#f8fafc" stroke-width="2" class="decoration" data-layout-role="decoration"/>
+<text x="55" y="48" class="title" text-anchor="start">并行策略先问切什么：状态、张量、层、专家、上下文，还是请求？</text>
+<text x="55" y="80" class="sub" text-anchor="start">下面六类是并列候选；根据主要压力与模型约束选择，可在条件允许时组合。</text>
+<g id="candidate-card-0">
+<rect x="55" y="125" width="430" height="195" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2" class="panel" data-layout-role="panel"/>
+<text x="75" y="156" class="group" text-anchor="start">训练状态显存压力</text>
+<g id="candidate-0">
+<rect x="75" y="180" width="180" height="80" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" class="node"/>
+<text x="165" y="209" class="head" text-anchor="middle">DP＋ZeRO</text>
+<text x="165" y="235" class="body" text-anchor="middle">训练状态按rank分片</text>
+</g>
+<g id="partition-0-0" data-layout-role="glyph-group">
+<rect x="305" y="180" width="70" height="80" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="340" y="207" class="body" text-anchor="middle">rank0</text>
+<text x="340" y="234" class="body" text-anchor="middle">S₀</text>
+</g>
+<g id="partition-0-1" data-layout-role="glyph-group">
+<rect x="395" y="180" width="70" height="80" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="430" y="207" class="body" text-anchor="middle">rank1</text>
+<text x="430" y="234" class="body" text-anchor="middle">S₁</text>
+</g>
+<path id="candidate-to-partition-0" d="M255 220H305" class="flow"/>
+<text x="75" y="296" class="body" text-anchor="start">按ZeRO阶段核对分片对象与同步</text>
+</g>
+<g id="candidate-card-1">
+<rect x="535" y="125" width="430" height="195" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2" class="panel" data-layout-role="panel"/>
+<text x="555" y="156" class="group" text-anchor="start">单层矩阵容量／计算压力</text>
+<g id="candidate-1">
+<rect x="555" y="180" width="180" height="80" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" class="node"/>
+<text x="645" y="209" class="head" text-anchor="middle">TP</text>
+<text x="645" y="235" class="body" text-anchor="middle">层内张量维度拆分</text>
+</g>
+<g id="partition-1-0" data-layout-role="glyph-group">
+<rect x="785" y="180" width="70" height="80" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="820" y="207" class="body" text-anchor="middle">rank0</text>
+<text x="820" y="234" class="body" text-anchor="middle">列0–3</text>
+</g>
+<g id="partition-1-1" data-layout-role="glyph-group">
+<rect x="875" y="180" width="70" height="80" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="910" y="207" class="body" text-anchor="middle">rank1</text>
+<text x="910" y="234" class="body" text-anchor="middle">列4–7</text>
+</g>
+<path id="candidate-to-partition-1" d="M735 220H785" class="flow"/>
+<text x="555" y="296" class="body" text-anchor="start">核对矩阵／Head划分与互联条件</text>
+</g>
+<g id="candidate-card-2">
+<rect x="1015" y="125" width="430" height="195" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2" class="panel" data-layout-role="panel"/>
+<text x="1035" y="156" class="group" text-anchor="start">模型层容量与stage压力</text>
+<g id="candidate-2">
+<rect x="1035" y="180" width="180" height="80" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" class="node"/>
+<text x="1125" y="209" class="head" text-anchor="middle">PP</text>
+<text x="1125" y="235" class="body" text-anchor="middle">模型层分段放置</text>
+</g>
+<g id="partition-2-0" data-layout-role="glyph-group">
+<rect x="1265" y="180" width="70" height="80" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="1300" y="207" class="body" text-anchor="middle">stage0</text>
+<text x="1300" y="234" class="body" text-anchor="middle">层0–3</text>
+</g>
+<g id="partition-2-1" data-layout-role="glyph-group">
+<rect x="1355" y="180" width="70" height="80" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="1390" y="207" class="body" text-anchor="middle">stage1</text>
+<text x="1390" y="234" class="body" text-anchor="middle">层4–7</text>
+</g>
+<path id="candidate-to-partition-2" d="M1215 220H1265" class="flow"/>
+<text x="1035" y="296" class="body" text-anchor="start">核对stage平衡、micro-batch与气泡</text>
+</g>
+<g id="candidate-card-3">
+<rect x="55" y="355" width="430" height="195" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2" class="panel" data-layout-role="panel"/>
+<text x="75" y="386" class="group" text-anchor="start">MoE专家容量与路由压力</text>
+<g id="candidate-3">
+<rect x="75" y="410" width="180" height="80" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" class="node"/>
+<text x="165" y="439" class="head" text-anchor="middle">EP</text>
+<text x="165" y="465" class="body" text-anchor="middle">专家分配到不同rank</text>
+</g>
+<g id="partition-3-0" data-layout-role="glyph-group">
+<rect x="305" y="410" width="70" height="80" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="340" y="437" class="body" text-anchor="middle">rank0</text>
+<text x="340" y="464" class="body" text-anchor="middle">E0 E1</text>
+</g>
+<g id="partition-3-1" data-layout-role="glyph-group">
+<rect x="395" y="410" width="70" height="80" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="430" y="437" class="body" text-anchor="middle">rank1</text>
+<text x="430" y="464" class="body" text-anchor="middle">E2 E3</text>
+</g>
+<path id="candidate-to-partition-3" d="M255 450H305" class="flow"/>
+<text x="75" y="526" class="body" text-anchor="start">核对专家负载与All-to-All载荷</text>
+</g>
+<g id="candidate-card-4">
+<rect x="535" y="355" width="430" height="195" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2" class="panel" data-layout-role="panel"/>
+<text x="555" y="386" class="group" text-anchor="start">长上下文状态压力</text>
+<g id="candidate-4">
+<rect x="555" y="410" width="180" height="80" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" class="node"/>
+<text x="645" y="439" class="head" text-anchor="middle">CP</text>
+<text x="645" y="465" class="body" text-anchor="middle">上下文位置分配</text>
+</g>
+<g id="partition-4-0" data-layout-role="glyph-group">
+<rect x="785" y="410" width="70" height="80" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="820" y="437" class="body" text-anchor="middle">rank0</text>
+<text x="820" y="464" class="body" text-anchor="middle">位0–3</text>
+</g>
+<g id="partition-4-1" data-layout-role="glyph-group">
+<rect x="875" y="410" width="70" height="80" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="910" y="437" class="body" text-anchor="middle">rank1</text>
+<text x="910" y="464" class="body" text-anchor="middle">位4–7</text>
+</g>
+<path id="candidate-to-partition-4" d="M735 450H785" class="flow"/>
+<text x="555" y="526" class="body" text-anchor="start">核对序列切分语义与Attention通信</text>
+</g>
+<g id="candidate-card-5">
+<rect x="1015" y="355" width="430" height="195" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2" class="panel" data-layout-role="panel"/>
+<text x="1035" y="386" class="group" text-anchor="start">请求队列与缓存分布压力</text>
+<g id="candidate-5">
+<rect x="1035" y="410" width="180" height="80" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" class="node"/>
+<text x="1125" y="439" class="head" text-anchor="middle">Serving副本</text>
+<text x="1125" y="465" class="body" text-anchor="middle">独立请求到完整实例</text>
+</g>
+<g id="partition-5-0" data-layout-role="glyph-group">
+<rect x="1265" y="410" width="70" height="80" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="1300" y="437" class="body" text-anchor="middle">副本0</text>
+<text x="1300" y="464" class="body" text-anchor="middle">M＋q₀</text>
+</g>
+<g id="partition-5-1" data-layout-role="glyph-group">
+<rect x="1355" y="410" width="70" height="80" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2" class="glyph-group" data-layout-role="glyph-group"/>
+<text x="1390" y="437" class="body" text-anchor="middle">副本1</text>
+<text x="1390" y="464" class="body" text-anchor="middle">M＋q₁</text>
+</g>
+<path id="candidate-to-partition-5" d="M1215 450H1265" class="flow"/>
+<text x="1035" y="526" class="body" text-anchor="start">核对队列、缓存局部性与请求尾延迟</text>
+</g>
+<text x="55" y="592" class="sub" text-anchor="start">切分示意用于区分对象；具体分片、复制、进程组与通信方式由模型结构和后端实现共同决定。</text></svg>
