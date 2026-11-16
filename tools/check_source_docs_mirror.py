@@ -1,100 +1,18 @@
 #!/usr/bin/env python3
-"""Check that source chapter files have matching docs mirror files.
+"""Compatibility entry; implementation lives in tools.checks.check_source_docs_mirror."""
 
-This repo keeps prose and notebook content in the source tree, and the docs
-tree is expected to mirror prose pages and learner-facing example configs.
-Notebook files are validated by separate notebook tests.
-
-Usage:
-    python3 tools/check_source_docs_mirror.py
-"""
-
-from __future__ import annotations
-
-import argparse
+from importlib import import_module
 from pathlib import Path
+import sys
 
+if __package__ in (None, ""):
+    root = str(Path(__file__).resolve().parents[1])
+    if root not in sys.path:
+        sys.path.insert(0, root)
 
-ROOT = Path(__file__).resolve().parents[1]
-SOURCE_DIRS = [
-    ROOT / "00_Prerequisites",
-    ROOT / "01_Hardware_Math_and_Systems",
-    ROOT / "02_PyTorch_Algorithms",
-    ROOT / "03_Triton_Kernels",
-    ROOT / "04_CUDA_and_System_Optimization",
-    ROOT / "05_Integrated_Projects_and_Decisions",
-]
-DOCS_DIR = ROOT / "docs"
-MIRROR_ASSET_NAMES = {"project_config.example.yaml"}
-
-
-def is_mirrored_source(path: Path) -> bool:
-    return path.suffix == ".md" or path.name in MIRROR_ASSET_NAMES
-
-
-def is_generated_path(path: Path) -> bool:
-    """Skip local/generated artifacts that are not tutorial source pages."""
-    parts = path.parts
-    return (
-        any(part.startswith(".") for part in parts)
-        or "benchmarks" in parts
-        or "model_cache" in parts
-        or "__pycache__" in parts
-        or ".ipynb_checkpoints" in parts
-    )
-
-
-def iter_source_pages() -> set[Path]:
-    expected: set[Path] = set()
-    for base in SOURCE_DIRS:
-        if not base.exists():
-            continue
-        for path in base.rglob("*"):
-            if is_generated_path(path):
-                continue
-            if not path.is_file() or not is_mirrored_source(path):
-                continue
-            rel = path.relative_to(ROOT)
-            expected.add(Path("docs") / rel)
-    return expected
-
-
-def iter_docs_pages() -> set[Path]:
-    actual: set[Path] = set()
-    for base in SOURCE_DIRS:
-        docs_base = DOCS_DIR / base.name
-        if not docs_base.exists():
-            continue
-        for path in docs_base.rglob("*"):
-            if is_generated_path(path):
-                continue
-            if not path.is_file() or not is_mirrored_source(path):
-                continue
-            actual.add(path.relative_to(ROOT))
-    return actual
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Check that source chapter files have matching docs mirror pages."
-    )
-    _ = parser.parse_args()
-
-    expected = iter_source_pages()
-    actual = iter_docs_pages()
-
-    missing = sorted(expected - actual)
-    if not missing:
-        print("Source/docs mirror check passed.")
-        return 0
-
-    if missing:
-        print("Missing docs mirror pages:")
-        for path in missing:
-            print(f"  - {path.as_posix()}")
-
-    return 1
-
+_implementation = import_module("tools.checks.check_source_docs_mirror")
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(_implementation.main())
+else:
+    sys.modules[__name__] = _implementation
