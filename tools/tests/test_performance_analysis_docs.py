@@ -7,10 +7,11 @@ import unittest
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "tools"))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-from convert_notebook import normalize_generated_markdown, normalize_markdown_links
-from check_svg_arrows import audit as audit_svg_arrows
+from tools.convert_notebook import normalize_generated_markdown, normalize_markdown_links
+from tools.check_svg_arrows import audit as audit_svg_arrows
 
 TOPIC = ROOT / "topic_discussion/performance_optimization"
 LEGACY_TOPIC = ROOT / "topic_discussion/performance_analysis"
