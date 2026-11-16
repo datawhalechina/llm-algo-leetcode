@@ -9,7 +9,7 @@
       "primary_owner": "integrated_projects",
       "project_type": "integrated_delivery",
       "topic_order": 1,
-      "target_contract": "inference-service-delivery/v1"
+      "target_contract": "inference-service-delivery/v2"
     },
     {
       "semantic_id": "PT-INTEGRATED-DELIVERY",
