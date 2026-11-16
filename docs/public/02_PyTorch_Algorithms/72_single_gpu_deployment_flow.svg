@@ -1,14 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="svg-title svg-desc">
-<title id="svg-title">单卡部署候选形成与失败分流</title><desc id="svg-desc">固定模型资产通过容量准入后进入真实服务执行，再汇总专项证据并生成部署交接；容量失败、执行失败和证据缺失分别处理。</desc>
-<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#52657a"/></marker><style>.t{font-weight:700;font-size:26px;font-family:sans-serif;fill:#18324b}.h{font-weight:600;font-size:18px;font-family:sans-serif;fill:#18324b}.b{font-size:15px;font-family:sans-serif;fill:#334e68}.l{fill:none;stroke:#52657a;stroke-width:3;marker-end:url(#arrow)}.a{fill:#e8f1fb;stroke:#3f78a8;stroke-width:2}.g{fill:#e8f6f1;stroke:#3f8b72;stroke-width:2}.o{fill:#fff3df;stroke:#b7791f;stroke-width:2}.p{fill:#f1edfb;stroke:#7657a5;stroke-width:2}.r{fill:#fbeceb;stroke:#b85c57;stroke-width:2}</style></defs>
-<rect width="1500" height="470" fill="#f8fafc"/><text x="750" y="42" text-anchor="middle" class="t">从固定资产形成可执行、可回滚的单卡部署候选</text>
-<rect x="45" y="105" width="230" height="105" rx="14" class="a"/><text x="160" y="142" text-anchor="middle" class="h">固定模型资产</text><text x="160" y="172" text-anchor="middle" class="b">版本、分词器与产物摘要</text>
-<rect x="325" y="105" width="230" height="105" rx="14" class="g"/><text x="440" y="142" text-anchor="middle" class="h">单卡容量准入</text><text x="440" y="172" text-anchor="middle" class="b">权重、KV Cache 与余量</text>
-<rect x="605" y="105" width="230" height="105" rx="14" class="o"/><text x="720" y="142" text-anchor="middle" class="h">真实服务执行</text><text x="720" y="172" text-anchor="middle" class="b">固定负载与请求证据</text>
-<rect x="885" y="105" width="230" height="105" rx="14" class="p"/><text x="1000" y="142" text-anchor="middle" class="h">专项证据汇总</text><text x="1000" y="172" text-anchor="middle" class="b">低精度、投机、缓存与调度</text>
-<rect x="1165" y="105" width="290" height="105" rx="14" class="a"/><text x="1310" y="142" text-anchor="middle" class="h">部署交接清单</text><text x="1310" y="172" text-anchor="middle" class="b">采用配置、风险与回滚入口</text>
-<path d="M275 158H325M555 158H605M835 158H885M1115 158H1165" class="l"/>
-<rect x="325" y="315" width="230" height="85" rx="14" class="r"/><text x="440" y="348" text-anchor="middle" class="h">拒绝执行</text><text x="440" y="376" text-anchor="middle" class="b">身份或容量不满足</text><path d="M440 210V315" class="l"/>
-<rect x="605" y="315" width="230" height="85" rx="14" class="r"/><text x="720" y="348" text-anchor="middle" class="h">修复后复测</text><text x="720" y="376" text-anchor="middle" class="b">启动、请求或输出失败</text><path d="M720 210V315" class="l"/>
-<rect x="885" y="315" width="230" height="85" rx="14" class="o"/><text x="1000" y="348" text-anchor="middle" class="h">补齐证据</text><text x="1000" y="376" text-anchor="middle" class="b">质量、服务目标或资源缺失</text><path d="M1000 210V315" class="l"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="470" viewBox="0 0 1500 470" role="img" aria-labelledby="title desc">
+<title id="title">部署判断从固定模型与请求开始</title><desc id="desc">浮点服务可独立评估，按需加入实际启用策略的结果；可复用测量或重新执行，联合质量和资源条件后交接。</desc><defs>
+<marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#52657a"/></marker>
+<style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;font-size:15px;font-weight:400;fill:#334e68}.title{font-size:26px;font-weight:700;fill:#18324b}.h{font-size:18px;font-weight:600;fill:#18324b}.s{font-size:14px}.edge{fill:none;stroke:#52657a;stroke-width:2.5;marker-end:url(#arrow)}.opt{fill:none;stroke:#7657a5;stroke-width:2;stroke-dasharray:7 5;marker-end:url(#arrow)}</style></defs><rect width="1500" height="470" fill="#f8fafc"/><text x="750" y="43" text-anchor="middle" class="title">部署判断从固定模型与请求开始</text>
+<rect x="35" y="105" width="240" height="100" rx="13" fill="#e8f1fb" stroke="#3f78a8" stroke-width="2"/><text x="155" y="138" text-anchor="middle" class="h">固定输入</text><text x="155" y="166" text-anchor="middle">模型版本、模板与请求集</text>
+<rect x="330" y="105" width="240" height="100" rx="13" fill="#e8f6f1" stroke="#3f8b72" stroke-width="2"/><text x="450" y="138" text-anchor="middle" class="h">检查单卡容量</text><text x="450" y="166" text-anchor="middle">权重、KV、工作区与余量</text>
+<rect x="625" y="105" width="240" height="100" rx="13" fill="#fff3df" stroke="#b7791f" stroke-width="2"/><text x="745" y="138" text-anchor="middle" class="h">取得服务记录</text><text x="745" y="166" text-anchor="middle">复用原测量或重新执行</text>
+<rect x="920" y="105" width="240" height="100" rx="13" fill="#f1edfb" stroke="#7657a5" stroke-width="2"/><text x="1040" y="138" text-anchor="middle" class="h">联合评估</text><text x="1040" y="166" text-anchor="middle">任务质量、服务与资源</text>
+<rect x="1215" y="105" width="240" height="100" rx="13" fill="#e8f6f1" stroke="#3f8b72" stroke-width="2"/><text x="1335" y="138" text-anchor="middle" class="h">采用后交接</text><text x="1335" y="166" text-anchor="middle">配置、结果与回滚基线</text>
+<path d="M275 155H330" class="edge"/>
+<path d="M570 155H625" class="edge"/>
+<path d="M865 155H920" class="edge"/>
+<path d="M1160 155H1215" class="edge"/>
+<rect x="330" y="320" width="240" height="90" rx="13" fill="#fff3df" stroke="#b7791f" stroke-width="2"/><text x="450" y="353" text-anchor="middle" class="h">容量不够</text><text x="450" y="381" text-anchor="middle">减少长度／并发后重测</text>
+<rect x="625" y="320" width="240" height="90" rx="13" fill="#fbeceb" stroke="#b85c57" stroke-width="2"/><text x="745" y="353" text-anchor="middle" class="h">启动或请求失败</text><text x="745" y="381" text-anchor="middle">保存失败原因并修复</text>
+<rect x="920" y="320" width="240" height="90" rx="13" fill="#f1edfb" stroke="#7657a5" stroke-width="2"/><text x="1040" y="353" text-anchor="middle" class="h">按启用加入专项结果</text><text x="1040" y="381" text-anchor="middle">量化、投机、缓存或调度</text>
+<path d="M450 205V320" class="edge"/>
+<path d="M745 205V320" class="edge"/>
+<path d="M1040 320V205" class="opt"/>
+<text x="750" y="450" text-anchor="middle" class="s">默认浮点路径：模型与共享基线；专项策略作为条件分支，实际开启后再比较组合结果</text>
 </svg>
