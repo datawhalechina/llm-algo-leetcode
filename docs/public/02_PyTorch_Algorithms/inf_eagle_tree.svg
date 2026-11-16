@@ -3,7 +3,7 @@
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
 <style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#172033}.title{font-size:24px;font-weight:700}.sub{font-size:16px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:16px}.small{font-size:14px;fill:#475569}.node{stroke-width:2;rx:12}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.feedback{stroke:#7c3aed;stroke-width:2.5;stroke-dasharray:7 5;fill:none;marker-end:url(#arrow)}</style></defs><rect width="1200" height="520" fill="#f8fafc" data-layout-role="decoration"/>
 <text x="40" y="40" class="title" text-anchor="start">候选分数用于排序，目标验证决定哪一段真正提交</text>
-<text x="40" y="70" class="sub" text-anchor="start">沿用本页CPU树例：节点分数 = 父路径累计分数 + 当前边log-score；验证结果为说明性示例。</text>
+<text x="40" y="70" class="sub" text-anchor="start">构造候选树：节点分数 = 父路径累计分数 + 当前边log-score；右侧给出一次示例验证结果。</text>
 <rect x="40" y="200" width="140" height="68" class="node" fill="#dbeafe" stroke="#2563eb"/>
 <text x="110" y="228" class="head" text-anchor="middle">上下文根</text>
 <text x="110" y="252" class="body" text-anchor="middle">累计 0</text>
