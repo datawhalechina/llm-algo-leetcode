@@ -331,7 +331,7 @@
       "evidence_scope": "local_mechanism_benchmark",
       "documentation": {
         "global": "docs/gpu_environment_assets.md#perf-cuda-mechanism",
-        "topic": "topic_discussion/performance_analysis/quickstart.md#perf-cuda-mechanism-quickstart"
+        "topic": "topic_discussion/performance_optimization/gpu_quickstart.md#perf-cuda-mechanism-quickstart"
       }
     },
     "PERF-DELIVERY": {
@@ -502,7 +502,7 @@
     },
     "PT-DELIVERY-CUDA": {
       "title": "后训练综合交付单卡环境",
-      "purpose": "读取 Part 02 生命周期交接清单，在冻结评测协议下复测 SFT、DPO 与 GRPO/RLVR 候选并形成交付决策",
+      "purpose": "保留供历史候选冻结复测方案使用；当前 Part 05 MiniMind 独立后训练项目使用 PT-SFT-CUDA，不读取 Part 02 生命周期交接清单",
       "python": {"minimum": "3.11", "maximum_exclusive": "3.13"},
       "requirements": ["requirements/torch-cu128.txt", "requirements/post-training-delivery.txt"],
       "constraint_files": ["requirements/post-training-cu128-constraints.txt"],
