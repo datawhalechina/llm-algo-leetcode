@@ -6,8 +6,8 @@
   <rect class="box blue" x="60" y="125" width="210" height="110"/><text x="85" y="163" class="h">异构来源</text><text x="85" y="192" class="s">PDF · HTML · Markdown</text><text x="85" y="216" class="s">API · image / audio</text>
   <rect class="box green" x="340" y="125" width="210" height="110"/><text x="365" y="163" class="h">内容检测</text><text x="365" y="192" class="s">type · encoding · language</text><text x="365" y="216" class="s">size · extractability</text>
   <rect class="box orange" x="620" y="125" width="210" height="110"/><text x="645" y="163" class="h">解析路由</text><text x="645" y="192" class="s">text / table / OCR</text><text x="645" y="216" class="s">parser · fallback</text>
-  <rect class="box slate" x="900" y="125" width="210" height="110"/><text x="925" y="163" class="h">统一结构化对象</text><text x="925" y="192" class="s">text · structure · metadata</text><text x="925" y="216" class="s">status · error · lineage</text>
+  <rect class="box slate" x="900" y="125" width="210" height="110"/><text x="925" y="163" class="h">正文与结构记录</text><text x="925" y="192" class="s">text · structure · metadata</text><text x="925" y="216" class="s">status · error · lineage</text>
   <path class="line" d="M270 180H340"/><path class="line" d="M550 180H620"/><path class="line" d="M830 180H900"/>
-  <rect class="box slate" x="300" y="335" width="600" height="80"/><text x="330" y="368" class="h">来源与处理契约</text><text x="330" y="394" class="s">source id · content type · parser version · route · parse status · retry / review</text>
+  <rect class="box slate" x="300" y="335" width="600" height="80"/><text x="330" y="368" class="h">来源与解析记录</text><text x="330" y="394" class="s">source id · content type · parser version · route · parse status · retry / review</text>
   <path class="line" d="M1005 235V335H900"/>
 </svg>
