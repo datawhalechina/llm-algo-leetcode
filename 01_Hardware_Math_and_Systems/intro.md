@@ -37,9 +37,9 @@
 | 数据类型、训练状态字节和训练计算量 | [模型架构与训练](../topic_discussion/model_architecture_and_training/intro.md) | 单独回查[反向传播与训练机制](../topic_discussion/backpropagation_training_mechanism/intro.md)；应用于[后训练优化](../topic_discussion/post_training_optimization/intro.md) |
 | 参数量、活跃计算、KV 状态和稀疏结构账本 | [大模型架构演进](../topic_discussion/llm_architecture_evolution/intro.md) | [推理优化](../topic_discussion/inference_optimization/intro.md)、[通信与并行](../topic_discussion/communication_parallelism/intro.md) |
 | 计算、带宽、容量和关键路径假设 | [性能优化·测量与诊断方法](../topic_discussion/performance_optimization/methods/intro.md) | [性能优化](../topic_discussion/performance_optimization/intro.md)中的候选比较与组合复测 |
-| 量化表示、累加精度和低精度执行条件 | [量化与压缩](../topic_discussion/quantization_compression/intro.md) | [推理优化](../topic_discussion/inference_optimization/intro.md)、[部署与异构系统](../topic_discussion/deployment_heterogeneous/intro.md) |
+| 量化表示、累加精度和低精度执行条件 | [量化与压缩](../topic_discussion/quantization_compression/intro.md) | [推理优化](../topic_discussion/inference_optimization/intro.md)、[模型部署与异构执行](../topic_discussion/deployment_heterogeneous/intro.md) |
 | 执行层级、矩阵路径、片上复用和图变换条件 | [算子优化](../topic_discussion/operator_optimization/intro.md) | [性能优化](../topic_discussion/performance_optimization/intro.md) |
-| 设备能力、后端支持、隔离和成本约束 | [部署与异构系统](../topic_discussion/deployment_heterogeneous/intro.md) | 目标设备上的加载、服务与回归验证 |
+| 设备能力、后端支持、隔离和成本约束 | [模型部署与异构执行](../topic_discussion/deployment_heterogeneous/intro.md) | 目标设备上的加载、服务与回归验证 |
 
 ## Environment Notes | 环境说明
 

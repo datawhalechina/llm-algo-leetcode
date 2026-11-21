@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="460" viewBox="0 0 1200 460" role="img" aria-labelledby="title desc">
-  <title id="title">部署与异构系统学习路线</title><desc id="desc">默认从候选契约、单机执行进入回归与选择；设备路径异常或单实例不足时，再经设备路径、多设备与服务分层返回回归验证。</desc>
+  <title id="title">模型部署与异构执行学习路线</title><desc id="desc">默认从候选契约、单机执行进入回归与选择；设备路径异常或单实例不足时，再经设备路径、多设备与服务分层返回回归验证。</desc>
   <defs><marker id="a" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9z" fill="#476a95"/></marker><style>text{font-family:Arial,'Noto Sans SC',sans-serif;fill:#17324d}.h{font-size:18px;font-weight:700}.s{font-size:14px}.cap{font-size:13px;fill:#55708a}</style></defs>
   <rect width="1200" height="460" rx="20" fill="#f5f9fd"/>
   <text x="52" y="50" class="h">部署与异构：从可加载候选到可交付服务</text>

@@ -36,7 +36,7 @@ Task0–1 建立多设备切分、拓扑、数据并行和集合通信基础；T
 
 ### 跨专题入口
 
-请求排队、连续批处理和 Prefill / Decode 路由进入[推理优化](../inference_optimization/intro.md)；容量、关键路径和扩展效率归因进入[性能分析](../performance_optimization/methods/intro.md)与[性能优化](../performance_optimization/intro.md)；设备、通信后端和运行时兼容性进入[部署与异构系统](../deployment_heterogeneous/intro.md)。
+请求排队、连续批处理和 Prefill / Decode 路由进入[推理优化](../inference_optimization/intro.md)；容量、关键路径和扩展效率归因进入[性能分析](../performance_optimization/methods/intro.md)与[性能优化](../performance_optimization/intro.md)；设备、通信后端和运行时兼容性进入[模型部署与异构执行](../deployment_heterogeneous/intro.md)。
 
 ## 实验与项目出口
 

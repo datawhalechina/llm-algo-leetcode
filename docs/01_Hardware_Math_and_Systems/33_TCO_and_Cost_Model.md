@@ -256,4 +256,4 @@ print(f"只将利用率减半、费用固定：每繁忙小时 {lower_use['cost_
 把构造输入换成同一工作负载的测量与费用记录，再比较部署方案。
 
 - [性能优化专题](../topic_discussion/performance_optimization/intro.md)：固定负载、测量范围与结果比较。
-- [部署与异构系统专题](../topic_discussion/deployment_heterogeneous/intro.md)：核对可执行性、部署路径与迁移条件。
+- [模型部署与异构执行专题](../topic_discussion/deployment_heterogeneous/intro.md)：核对可执行性、部署路径与迁移条件。

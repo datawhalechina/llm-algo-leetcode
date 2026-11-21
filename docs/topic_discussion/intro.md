@@ -33,7 +33,7 @@
 | [量化与压缩](./quantization_compression/intro.md) | 推理、后训练、部署 | 覆盖对象、校准、PTQ、QLoRA、运行时低精度、产物与 Serving 决策；蒸馏已有机制页与 88 项目，剪枝与结构稀疏以正文讲解为主。 |
 | [通信与并行](./communication_parallelism/intro.md) | 训练、推理、MoE、性能 | 覆盖通信原语、状态切分、并行、EP hotspot、overlap 与 benchmark；真实多卡项目提供最终证据。 |
 | [数据工程](./data_engineering/intro.md) | 后训练、RAG、性能 | 已覆盖生命周期、解析、清洗、去重、配比、合成验证、后训练接口、血缘与下游采用。 |
-| [部署与异构系统](./deployment_heterogeneous/intro.md) | 推理、量化、通信、领域服务 | 把 artifact、backend、设备兼容、数据路径、服务分层、端边云、发布与成本收束为可交付部署方案。 |
+| [模型部署与异构执行](./deployment_heterogeneous/intro.md) | 推理、量化、通信、领域服务 | 把 artifact、backend、设备兼容、数据路径、服务分层、端边云、发布与成本收束为可交付部署方案。 |
 
 量化专题输出可复测的 artifact、质量与 Serving 候选；部署专题继续验证其目标设备、runtime、服务拓扑和成本。通信专题解释多设备机制；性能专题负责采集、归因和复测它们的系统代价。
 
@@ -68,7 +68,7 @@ SFT／LoRA 从[后训练优化](./post_training_optimization/intro.md) Task1–2
 | 模型结构、上下文、MoE 或 Attention 选择 | [模型架构与训练](./model_architecture_and_training/intro.md) | 模型结构审计、推理优化、通信与并行 |
 | 量化 artifact、dtype、质量或低比特 Serving 问题 | 量化与压缩 | 部署与异构、性能优化 |
 | 多卡扩展、NCCL、EP 或通信等待 | 通信与并行 | 性能优化、部署与异构 |
-| 模型无法加载、目标设备不兼容、端边云放置 | 部署与异构系统 | 量化、通信与并行、Part 05 |
+| 模型无法加载、目标设备不兼容、端边云放置 | 模型部署与异构执行 | 量化、通信与并行、Part 05 |
 
 ## 模型评测与决策的跨专题分工
 
@@ -80,7 +80,7 @@ SFT／LoRA 从[后训练优化](./post_training_optimization/intro.md) Task1–2
 | [后训练优化](./post_training_optimization/intro.md) | 任务质量、安全、有用性、鲁棒性、judge 一致性与在线回滚 | 数据工程保证评测可信；性能优化解释资源代价 |
 | [量化与压缩](./quantization_compression/intro.md) | 复用质量门槛，检查低比特表示造成的质量回归 | 性能与部署记录 artifact、延迟、显存和 backend 路径 |
 | [通信与并行](./communication_parallelism/intro.md) | 复用质量门槛，检查数值一致性和训练回归 | 性能优化记录通信、overflow 与扩展代价 |
-| [部署与异构系统](./deployment_heterogeneous/intro.md) | 复用固定质量集，检查跨 backend / 设备输出一致性 | Part05 收束兼容性、成本和交付选择 |
+| [模型部署与异构执行](./deployment_heterogeneous/intro.md) | 复用固定质量集，检查跨 backend / 设备输出一致性 | Part05 收束兼容性、成本和交付选择 |
 | [性能优化](./performance_optimization/intro.md) | 保证性能收益不以降低质量条件为代价 | 后训练或任务页定义质量指标 |
 
 ## 统一模型角色与结果可比性

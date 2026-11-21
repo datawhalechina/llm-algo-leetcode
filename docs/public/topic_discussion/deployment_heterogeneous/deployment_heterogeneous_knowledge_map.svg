@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="550" viewBox="0 0 1200 550" role="img" aria-labelledby="title desc">
-<title id="title">部署与异构系统知识地图</title><desc id="desc">模型和 artifact 经过 runtime、设备与服务拓扑，使用 workload 和质量协议产生部署证据和决策。</desc>
+<title id="title">模型部署与异构执行知识地图</title><desc id="desc">模型和 artifact 经过 runtime、设备与服务拓扑，使用 workload 和质量协议产生部署证据和决策。</desc>
 <defs><marker id="a" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9z" fill="#536f8c"/></marker><style>text{font-family:Arial,'Noto Sans SC',sans-serif;fill:#193650}.h{font-size:18px;font-weight:700}.s{font-size:15px}.n{font-size:13px;fill:#607a90}</style></defs>
 <rect width="1200" height="550" rx="20" fill="#f7fafc"/><text x="55" y="53" class="h">部署证据如何形成</text><text x="55" y="79" class="n">左侧定义候选，中间决定执行，右侧用共同 workload 与质量协议形成结论。</text>
 <g fill="#fff" stroke="#a9c5dc" stroke-width="2"><rect x="60" y="145" width="220" height="112" rx="14"/><rect x="350" y="145" width="220" height="112" rx="14"/><rect x="640" y="145" width="220" height="112" rx="14"/><rect x="930" y="145" width="210" height="112" rx="14"/><rect x="350" y="355" width="220" height="112" rx="14"/><rect x="640" y="355" width="220" height="112" rx="14"/></g>

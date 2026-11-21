@@ -189,4 +189,4 @@ print('admission results:', candidates)
 
 - [34 异构加速器与运行时约束](./34_Heterogeneous_Accelerators_and_Runtime_Constraints.md)：逐阶段需求、输入转换、搬运与同时驻留。
 - [33 TCO与成本](./33_TCO_and_Cost_Model.md)：将迁移工时与运行记录接到单位成功请求成本。
-- [部署与异构系统专题](../topic_discussion/deployment_heterogeneous/intro.md)：完成目标设备上的产物加载与执行验证。
+- [模型部署与异构执行专题](../topic_discussion/deployment_heterogeneous/intro.md)：完成目标设备上的产物加载与执行验证。

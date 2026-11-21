@@ -36,4 +36,4 @@
 
 蒸馏从 [DISTILL-OPD 在策略蒸馏与 GKD](../../02_PyTorch_Algorithms/DISTILL-OPD_On_Policy_Distillation_and_GKD.md) 开始核对轨迹来源、教师—学生分布和完成区掩码，再由 [88 蒸馏学生交付项目](../../02_PyTorch_Algorithms/88_Distilled_Student_Delivery_Project.md) 比较学生基线、固定轨迹 KD 与 on-policy 蒸馏；OPSD 作为“教师额外看到特权上下文”的扩展保留在机制页。
 
-剪枝与结构稀疏先按本页比较连接模式、数据布局与目标内核，再到[算子优化](../operator_optimization/intro.md)核对实际执行。教师反馈与训练质量进入[后训练优化](../post_training_optimization/intro.md)，资源归因进入[性能优化](../performance_optimization/intro.md)，目标设备与加载兼容性进入[部署与异构系统](../deployment_heterogeneous/intro.md)。
+剪枝与结构稀疏先按本页比较连接模式、数据布局与目标内核，再到[算子优化](../operator_optimization/intro.md)核对实际执行。教师反馈与训练质量进入[后训练优化](../post_training_optimization/intro.md)，资源归因进入[性能优化](../performance_optimization/intro.md)，目标设备与加载兼容性进入[模型部署与异构执行](../deployment_heterogeneous/intro.md)。

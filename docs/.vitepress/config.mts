@@ -180,7 +180,7 @@ export default defineConfig({
               { text: '量化与压缩', link: '/topic_discussion/quantization_compression/intro' },
               { text: '通信与并行', link: '/topic_discussion/communication_parallelism/intro' },
               { text: '数据工程', link: '/topic_discussion/data_engineering/intro' },
-              { text: '部署与异构系统', link: '/topic_discussion/deployment_heterogeneous/intro' }
+              { text: '模型部署与异构执行', link: '/topic_discussion/deployment_heterogeneous/intro' }
             ]
           },
           {
