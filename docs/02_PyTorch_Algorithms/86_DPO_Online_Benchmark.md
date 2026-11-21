@@ -4,7 +4,7 @@
 
 > 🚀 **云端运行环境**
 >
-> 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
+> 可用以下链接在云端Notebook平台打开；设备和依赖要求以本节运行环境说明为准：
 >
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/86_DPO_Online_Benchmark.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
@@ -67,15 +67,16 @@
 
 ## Step 3：选择恢复动作并决定哪些候选继续评测
 
-失败发生在哪个阶段，决定优先查找哪些保存状态。奖励计算失败时，先找已保存回答，仍可用就重新评分；回答也丢失时，再从问题队列生成。更新失败时，优先使用更新前检查点，其次回退已验证基线；两者都没有时停止更新。这里选择动作，实际恢复还要加载状态并核对优化器、随机状态和消费记录。
+失败发生在哪个阶段，决定优先查找哪些保存状态。奖励计算失败时，先找已保存回答，仍可用就重新评分；回答也丢失时，再从问题队列生成。更新失败时先核对提交状态：确认未提交，再优先使用更新前检查点，其次回退已验证基线；提交未知时先隔离本批次并查提交日志与检查点，已提交则核对已完成记录。这里选择动作，实际恢复还要加载状态并核对优化器、随机状态和消费记录。
 
 候选的上游状态与本页条件共同决定后续操作：来源、产物或回退检查失败则拒绝；检查通过但上游仍在调整则保留调整状态；上游接受且本页条件通过则进入后续评测。多个候选同时通过时，各自保留，不把偏好边际与数学题得分直接排序。
 
 | 情况 | 可复用状态或触发条件 | 动作 |
 |:---|:---|:---|
+| 提交状态未知／已提交 | 提交日志、检查点与消费记录 | 暂停重试并核查／核对已完成更新 |
 | 采样失败 | 问题队列仍可用 | 从队列重试；队列缺失则重建 |
 | 奖励失败 | 回答或问题队列仍可用 | 重算奖励，或重新生成 |
-| 更新失败 | 更新前检查点或已验证基线 | 恢复检查点，或回退基线；都缺失则停止 |
+| 更新失败且确认未提交 | 更新前检查点或已验证基线 | 恢复检查点，或回退基线；都缺失则停止 |
 | 产物校验失败 | 已验证基线 | 回退；基线缺失则停止发布 |
 | 来源、产物或回退失败，或上游拒绝 | 任一拒绝条件成立 | `reject`，修复失败项 |
 | 本页通过，上游需要调整 | 已有候选仍可追查 | `tune`，继续分支实验 |
@@ -85,12 +86,12 @@
 
 ## Step 4：实现记录检查、恢复选择与候选状态
 
-题目使用候选摘要、失败阶段和状态可用性标记。骨架已给出共同字段检查与恢复优先表；你将补分支条件、选择第一个可用恢复点，再传播拒绝、调整或待评测状态。CPU 测试检查判断逻辑，磁盘目录哈希在 Step 5 核对。
+题目使用候选摘要、失败阶段、提交状态和可用状态标记。更新失败先区分 not_committed（确认未提交）、committed（已提交）、unknown（待核查），省略时按 unknown 处理。骨架提供提交检查与恢复优先表；你将补分支条件，在确认未提交时选择恢复点，再传播候选状态。CPU 测试检查判断逻辑，磁盘目录哈希在 Step 5 核对。
 
 | 任务与目的 | 已知条件 | 完成标准 | 测试验证 |
 |:---|:---|:---|:---|
 | TODO 1：检查候选来源与分支记录 | 源策略、非空标识、分支版本及窗口年龄 | 共同来源与对应分支条件都满足 | 源基线不符、缺少标识、窗口过期与验证器缺失 |
-| TODO 2：按阶段选择恢复点 | 优先表与可用状态标记 | 选第一个可用状态；否则执行阶段回退 | 回答可用、仅队列可用、检查点与基线都缺失 |
+| TODO 2：按阶段选择恢复点 | 提交状态、优先表与可用状态标记 | 未知先核查，已提交查记录，确认未提交才选择恢复点 | 提交状态缺失／未知／已提交、回答可用、检查点与基线都缺失 |
 | TODO 3：形成待评测状态 | 上游决定、记录、文件及回退检查 | 拒绝条件优先，其后保留调整或待评测 | 上游三态、来源失配与回退缺失 |
 
 
@@ -148,6 +149,14 @@ def choose_recovery_action(failure: Dict[str, Any]) -> Dict[str, str]:
     }
     if stage not in recovery_candidates_by_stage:
         raise ValueError(f"未知失败阶段：{stage}")
+    if stage == "update":
+        commit_state = failure.get("commit_state", "unknown")
+        if commit_state not in {"not_committed", "committed", "unknown"}:
+            raise ValueError("更新提交状态须为 not_committed、committed 或 unknown")
+        if commit_state != "not_committed":
+            action = ("inspect_committed_update" if commit_state == "committed"
+                      else "quarantine_and_reconcile_commit")
+            return {"stage": stage, "recovery_state": None, "reused_state": False, "action": action}
     # recovery_state = ???  # 按候选顺序选择第一个当前可用的可信状态；都不可用时为 None。
     # action = ???  # 有可信状态时执行对应的最小恢复动作，否则执行阶段回退动作。
     raise NotImplementedError("TODO 2：请搜索最晚可信恢复点并选择对应动作")
@@ -207,14 +216,14 @@ def test_recovery_actions():
     reward_recovery = choose_recovery_action({"stage": "reward", "available": {"trajectories": True}})
     assert reward_recovery["action"] == "resume_reward_from_saved_trajectories"
     assert reward_recovery["recovery_state"] == "trajectories" and reward_recovery["reused_state"]
-    assert choose_recovery_action({"stage": "update", "available": {"pre_update_checkpoint": True}})["action"] == "restore_pre_update_checkpoint"
+    assert choose_recovery_action({"stage": "update", "commit_state": "not_committed", "available": {"pre_update_checkpoint": True}})["action"] == "restore_pre_update_checkpoint"
     assert choose_recovery_action({"stage": "artifact_validation", "available": {"verified_baseline": True}})["action"] == "rollback_to_verified_baseline"
     reward_fallback = choose_recovery_action({"stage": "reward", "available": {"trajectories": False, "prompt_queue": True}})
     assert reward_fallback["recovery_state"] == "prompt_queue"
     assert reward_fallback["action"] == "restart_sampling_from_prompt_queue"
     assert choose_recovery_action({"stage": "reward", "available": {}})["action"] == "restart_sampling"
-    assert choose_recovery_action({"stage": "update", "available": {}})["action"] == "block_update"
-    assert choose_recovery_action({"stage": "update", "available": {"verified_baseline": True}})["action"] == "rollback_to_verified_baseline"
+    assert choose_recovery_action({"stage": "update", "commit_state": "not_committed", "available": {}})["action"] == "block_update"
+    assert choose_recovery_action({"stage": "update", "commit_state": "not_committed", "available": {"verified_baseline": True}})["action"] == "rollback_to_verified_baseline"
 
 
 def test_lifecycle_handoff():
@@ -229,6 +238,28 @@ def test_lifecycle_handoff():
     assert decide_lifecycle_handoff("accept", freshness, {**evidence, "rollback_ready": False})["handoff_status"] == "reject"
 
 
+def test_uncertain_or_completed_update_is_not_replayed():
+    """提交未知先核查，已提交查记录，只有确认未提交才选择恢复点。"""
+    available = {"pre_update_checkpoint": True, "verified_baseline": True}
+    before = dict(available)
+    for state in (None, "unknown", "committed"):
+        failure = {"stage": "update", "available": available}
+        if state is not None:
+            failure["commit_state"] = state
+        result = choose_recovery_action(failure)
+        expected = ("inspect_committed_update" if state == "committed"
+                    else "quarantine_and_reconcile_commit")
+        assert result["action"] == expected
+        assert result["recovery_state"] is None and result["reused_state"] is False
+    assert available == before
+    try:
+        choose_recovery_action({"stage": "update", "commit_state": "maybe", "available": available})
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("非法提交状态应明确失败")
+
+test_uncertain_or_completed_update_is_not_replayed()
 test_candidate_freshness()
 test_recovery_actions()
 test_lifecycle_handoff()
@@ -287,6 +318,14 @@ def choose_recovery_action(failure: Dict[str, Any]) -> Dict[str, str]:
     }
     if stage not in recovery_candidates_by_stage:
         raise ValueError(f"未知失败阶段：{stage}")
+    if stage == "update":
+        commit_state = failure.get("commit_state", "unknown")
+        if commit_state not in {"not_committed", "committed", "unknown"}:
+            raise ValueError("更新提交状态须为 not_committed、committed 或 unknown")
+        if commit_state != "not_committed":
+            action = ("inspect_committed_update" if commit_state == "committed"
+                      else "quarantine_and_reconcile_commit")
+            return {"stage": stage, "recovery_state": None, "reused_state": False, "action": action}
     recovery_state = next((state for state in recovery_candidates_by_stage[stage] if available.get(state)), None)
     action = action_by_stage_and_state[(stage, recovery_state)] if recovery_state is not None else fallback_action_by_stage[stage]
     return {"stage": stage, "recovery_state": recovery_state, "reused_state": recovery_state is not None, "action": action}
@@ -322,8 +361,8 @@ def decide_lifecycle_handoff(upstream_decision: str, freshness: Dict[str, Any], 
 
 #### TODO 2：选择恢复动作
 
-- 同一失败阶段可能有不同可用状态，应按优先表逐项找，而不是仅凭阶段名称返回固定动作。
-- 奖励失败时优先复用回答，其次复用问题队列；测试另设两者都缺失的情况，核对重新采样动作。更新状态都不可用时则停止更新。
+- 更新失败先检查提交状态；未知时暂停重试并核查日志与检查点，已提交则查已完成记录，确认未提交才按优先表选择恢复点。其他阶段按已有状态选择动作。
+- 测试验证省略提交状态按 unknown 处理，未知与已提交均不直接回退；确认未提交而检查点和基线都缺失时停止更新。奖励失败另比较回答、队列与两者都缺失的情况。
 
 #### TODO 3：形成候选状态
 
@@ -433,6 +472,14 @@ def choose_recovery_action_for_run(failure):
                 "update": "block_update", "artifact_validation": "block_release"}
     if stage not in candidates:
         raise ValueError(f"未知失败阶段：{stage}")
+    if stage == "update":
+        commit_state = failure.get("commit_state", "unknown")
+        if commit_state not in {"not_committed", "committed", "unknown"}:
+            raise ValueError("更新提交状态须为 not_committed、committed 或 unknown")
+        if commit_state != "not_committed":
+            action = ("inspect_committed_update" if commit_state == "committed"
+                      else "quarantine_and_reconcile_commit")
+            return {"stage": stage, "required_state": None, "reused_state": False, "action": action}
     state, action = next(((state, action) for state, action in candidates[stage]
                           if available.get(state) is True), (None, fallback[stage]))
     return {"stage": stage, "required_state": state,
@@ -455,7 +502,8 @@ def decide_lifecycle_handoff_for_run(upstream_decision, freshness, evidence):
 FAILURE_SCENARIOS = [
     {"stage": "sampling", "available": {"prompt_queue": True}},
     {"stage": "reward", "available": {"trajectories": True}},
-    {"stage": "update", "available": {"pre_update_checkpoint": True}},
+    {"stage": "update", "commit_state": "not_committed", "available": {"pre_update_checkpoint": True}},
+    {"stage": "update", "commit_state": "unknown", "available": {"pre_update_checkpoint": True}},
     {"stage": "artifact_validation", "available": {"verified_baseline": True}},
 ]
 print([choose_recovery_action_for_run(scenario) for scenario in FAILURE_SCENARIOS])

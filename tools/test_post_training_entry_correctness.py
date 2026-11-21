@@ -53,12 +53,23 @@ class EntryCorrectnessTests(unittest.TestCase):
         exec(compile(ast.Module(body=[function], type_ignores=[]), "86-real-recovery", "exec"), env)
         choose = env[function.name]
         for available in ({}, {"pre_update_checkpoint": False, "verified_baseline": False}, {"verified_baseline": "missing"}):
-            row = choose({"stage": "update", "available": available})
+            row = choose({"stage": "update", "commit_state": "not_committed", "available": available})
             self.assertEqual(row["action"], "block_update")
             self.assertIsNone(row["required_state"])
             self.assertFalse(row["reused_state"])
-        self.assertEqual(choose({"stage": "update", "available": {"verified_baseline": True}})["action"], "rollback_to_verified_baseline")
-        self.assertEqual(choose({"stage": "update", "available": {"pre_update_checkpoint": True, "verified_baseline": True}})["action"], "restore_pre_update_checkpoint")
+        self.assertEqual(choose({"stage": "update", "commit_state": "not_committed", "available": {"verified_baseline": True}})["action"], "rollback_to_verified_baseline")
+        self.assertEqual(choose({"stage": "update", "commit_state": "not_committed", "available": {"pre_update_checkpoint": True, "verified_baseline": True}})["action"], "restore_pre_update_checkpoint")
+        for commit_state in (None, "unknown", "committed"):
+            failure = {"stage": "update", "available": {"pre_update_checkpoint": True}}
+            if commit_state is not None:
+                failure["commit_state"] = commit_state
+            result = choose(failure)
+            expected = "inspect_committed_update" if commit_state == "committed" else "quarantine_and_reconcile_commit"
+            self.assertEqual(result["action"], expected)
+            self.assertIsNone(result["required_state"])
+            self.assertFalse(result["reused_state"])
+        with self.assertRaises(ValueError):
+            choose({"stage": "update", "commit_state": "invalid", "available": {}})
         self.assertEqual(choose({"stage": "artifact_validation", "available": {}})["action"], "block_release")
 
     def summary_inputs(self):

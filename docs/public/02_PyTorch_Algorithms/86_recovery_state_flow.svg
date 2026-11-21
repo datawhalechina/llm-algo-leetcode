@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-labelledby="title desc">
-  <title id="title">后训练失败阶段、可信状态与恢复动作</title><desc id="desc">采样、奖励、更新和产物校验失败分别复用问题队列、保存轨迹、更新前检查点和已验证基线；可信状态缺失时扩大回退范围。</desc>
+  <title id="title">后训练失败阶段、可信状态与恢复动作</title><desc id="desc">采样、奖励和产物校验失败分别检查问题队列、保存轨迹和已验证基线；更新失败先核查提交情况，确认未提交后才选择恢复点。</desc>
   <defs><marker id="red" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#dc2626"/></marker><marker id="teal" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#0f766e"/></marker><style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#0f172a}.title{font-size:27px;font-weight:700}.row{font-size:16px;font-weight:700;fill:#475569}.head{font-size:17px;font-weight:700}.body{font-size:14px;fill:#334155}.red,.teal{fill:none;stroke-width:3}.red{stroke:#dc2626;marker-end:url(#red)}.teal{stroke:#0f766e;marker-end:url(#teal)}</style></defs>
   <rect width="1200" height="600" fill="#f8fafc"/><text x="600" y="42" text-anchor="middle" class="title">按失败阶段与可用状态选择恢复动作</text>
   <text x="25" y="126" class="row">失败阶段</text><text x="25" y="301" class="row">可信状态</text><text x="25" y="476" class="row">恢复动作</text>
   <rect x="135" y="80" width="220" height="78" rx="14" fill="#fee2e2" stroke="#f87171" stroke-width="2"/><text x="245" y="126" text-anchor="middle" class="head">采样失败</text>
   <rect x="390" y="80" width="220" height="78" rx="14" fill="#fee2e2" stroke="#f87171" stroke-width="2"/><text x="500" y="126" text-anchor="middle" class="head">奖励失败</text>
-  <rect x="645" y="80" width="220" height="78" rx="14" fill="#fee2e2" stroke="#f87171" stroke-width="2"/><text x="755" y="126" text-anchor="middle" class="head">更新失败</text>
+  <rect x="645" y="80" width="220" height="78" rx="14" fill="#fee2e2" stroke="#f87171" stroke-width="2"/><text x="755" y="114" text-anchor="middle" class="head">更新失败</text><text x="755" y="140" text-anchor="middle" class="body">先核查提交记录</text>
   <rect x="900" y="80" width="220" height="78" rx="14" fill="#fee2e2" stroke="#f87171" stroke-width="2"/><text x="1010" y="126" text-anchor="middle" class="head">产物校验失败</text>
   <rect x="135" y="255" width="220" height="78" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="245" y="287" text-anchor="middle" class="head">问题队列</text><text x="245" y="313" text-anchor="middle" class="body">待采样输入仍有效</text>
   <rect x="390" y="255" width="220" height="78" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="500" y="287" text-anchor="middle" class="head">已保存轨迹</text><text x="500" y="313" text-anchor="middle" class="body">无需再次生成</text>
@@ -16,5 +16,7 @@
   <rect x="645" y="430" width="220" height="78" rx="14" fill="#ccfbf1" stroke="#14b8a6" stroke-width="2"/><text x="755" y="462" text-anchor="middle" class="head">建议恢复后重做更新</text><text x="755" y="488" text-anchor="middle" class="body">都缺失时停止更新</text>
   <rect x="900" y="430" width="220" height="78" rx="14" fill="#f0fdfa" stroke="#14b8a6" stroke-width="2"/><text x="1010" y="462" text-anchor="middle" class="head">回滚并阻断发布</text><text x="1010" y="488" text-anchor="middle" class="body">保留已验证基线</text>
   <path class="red" d="M245 158 V255"/><path class="red" d="M500 158 V255"/><path class="red" d="M755 158 V255"/><path class="red" d="M1010 158 V255"/>
+  <text x="768" y="208" class="body">确认未提交</text>
   <path class="teal" d="M245 333 V430"/><path class="teal" d="M500 333 V430"/><path class="teal" d="M755 333 V430"/><path class="teal" d="M1010 333 V430"/>
+  <text x="600" y="560" text-anchor="middle" class="body">提交未知：先隔离并核对日志与检查点；已提交：核对已完成更新。图中恢复均为动作建议。</text>
 </svg>
