@@ -2,12 +2,12 @@
   <title id="title">数据清洗与质量证据链</title><desc id="desc">规范化、去重、质量过滤和评测隔离逐层记录规则与证据，最后用下游验证确认数据质量。</desc>
   <style>.bg{fill:#f8fafc}.box{stroke-width:2;rx:16}.blue{fill:#eff6ff;stroke:#60a5fa}.green{fill:#ecfdf5;stroke:#34d399}.orange{fill:#fff7ed;stroke:#fb923c}.slate{fill:#f1f5f9;stroke:#94a3b8}.line{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#a)}.title{font:700 24px sans-serif;fill:#0f172a}.h{font:700 18px sans-serif;fill:#0f172a}.s{font:14px sans-serif;fill:#475569}.tag{font:700 13px sans-serif;fill:#2563eb}</style>
   <defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0 0L10 3L0 6z" fill="#64748b"/></marker></defs>
-  <rect class="bg" width="1200" height="500" rx="20"/><text x="55" y="55" class="title">质量证据链：逐层减少风险，并把规则带到下游验证</text>
+  <rect class="bg" width="1200" height="500" rx="20"/><text x="55" y="55" class="title">清洗、重复分组与评测隔离分别检查</text>
   <rect class="box blue" x="55" y="125" width="200" height="115"/><text x="80" y="163" class="h">规范化</text><text x="80" y="192" class="s">空值、乱码、HTML</text><text x="80" y="216" class="s">编码与格式修复</text>
   <rect class="box green" x="325" y="125" width="200" height="115"/><text x="350" y="163" class="h">去重</text><text x="350" y="192" class="s">exact · near · semantic</text><text x="350" y="216" class="s">重复组与代表样本</text>
   <rect class="box orange" x="595" y="125" width="200" height="115"/><text x="620" y="163" class="h">质量过滤</text><text x="620" y="192" class="s">score · threshold</text><text x="620" y="216" class="s">抽样复核与原因</text>
   <rect class="box slate" x="865" y="125" width="200" height="115"/><text x="890" y="163" class="h">隔离与切分</text><text x="890" y="192" class="s">decontaminate</text><text x="890" y="216" class="s">train / eval version</text>
   <path class="line" d="M255 182H325"/><path class="line" d="M525 182H595"/><path class="line" d="M795 182H865"/>
-  <rect class="box slate" x="325" y="340" width="550" height="85"/><text x="355" y="374" class="h">下游验证与失败样本回流</text><text x="355" y="401" class="s">误删率 · 泄漏检查 · 训练 / RAG / 评测质量 · 规则版本</text>
+  <rect class="box slate" x="325" y="340" width="550" height="85"/><text x="355" y="374" class="h">处理失败样本与复查规则</text><text x="355" y="401" class="s">误删率 · 泄漏检查 · 训练 / RAG / 评测质量 · 规则版本</text>
   <path class="line" d="M965 240V340H875"/>
 </svg>
