@@ -4,7 +4,7 @@
 
 > 🚀 **云端运行环境**
 >
-> 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
+> 可用以下链接在云端Notebook平台打开；设备和依赖要求以本节运行环境说明为准：
 >
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/PT-AGENTIC-RL_Environment_Trajectory_and_Credit_Assignment.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
@@ -87,7 +87,7 @@ $$
 
 ## Step 4：实现查询—提交环境与动作回报
 
-题目用预先给定的动作字符串驱动确定性环境。骨架提供查询／提交效果、奖励分量与记录检查；你将补全结束标记、首个结束后的停止条件、回报递推和阶段选择。记录摘要由实际执行动作生成，相同动作内容会得到相同摘要；真实独立采样事件还需单独标识。
+题目用给定动作驱动确定性环境，并按本例规则将自然终止与预算截断互斥记录；成功提交恰好到达步数上限时仍按自然终止。回报累计前检查标记与动作边界。assess_agentic_update只检查版本、奖励和消费记录，实际策略更新还需行为概率、采样设置以及算法的截断处理。轨迹ID含执行内容摘要，相同内容可以得到相同值，独立采样事件应另设唯一标识。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 |:---|:---|:---|:---|
@@ -184,6 +184,12 @@ def compute_action_returns(trajectory, gamma=1.0):
     transitions = trajectory.get('transitions', [])
     if not transitions:
         raise ValueError('轨迹不能为空')
+    if any(type(item.get(key)) is not bool for item in transitions for key in ('terminated', 'truncated')):
+        raise ValueError('结束标记必须是布尔值')
+    if transitions[-1]['terminated'] == transitions[-1]['truncated']:
+        raise ValueError('本例最后动作必须且只能有一种结束原因')
+    if any(item['terminated'] or item['truncated'] for item in transitions[:-1]):
+        raise ValueError('结束后不能继续累计动作')
     rewards = []
     for transition in transitions:
         components = transition.get('reward_components', {})
@@ -221,6 +227,10 @@ def assess_agentic_update(trajectory, expected_environment_version, current_poli
     if trajectory.get('consumed_by') is not None:
         return {'eligible': False, 'reason': 'already_consumed', 'policy_lag': lag}
     transitions = trajectory.get('transitions', [])
+    if any(type(item.get(key)) is not bool for item in transitions for key in ('terminated', 'truncated')):
+        return {'eligible': False, 'reason': 'invalid_end_flags', 'policy_lag': lag}
+    if transitions and transitions[-1]['terminated'] and transitions[-1]['truncated']:
+        return {'eligible': False, 'reason': 'invalid_end_flags', 'policy_lag': lag}
     if not transitions or not (transitions[-1].get('terminated') or transitions[-1].get('truncated')):
         return {'eligible': False, 'reason': 'missing_terminal_evidence', 'policy_lag': lag}
     if any(item.get('terminated') or item.get('truncated') for item in transitions[:-1]):
@@ -337,15 +347,26 @@ def test_stage_decision():
         raise AssertionError('非法轨迹身份或阶段指标必须被拒绝')
 
 
-try:
-    test_success_and_failure_trajectories()
-    test_timeout_and_action_exhaustion()
-    test_reward_attribution()
-    test_update_admission()
-    test_stage_decision()
-    print('✅ Agentic RL 环境轨迹、奖励归因与阶段准入测试通过。')
-except (AttributeError, KeyError, NameError, TypeError, ValueError, AssertionError) as error:
-    raise NotImplementedError('请先完成 TODO 代码！') from error
+def test_end_flag_boundaries():
+    success = build_agent_trajectory('end-test', 'env-v1', 3, ['lookup', 'submit:4'], max_steps=2)
+    assert success['transitions'][-1]['terminated'] and not success['transitions'][-1]['truncated']
+    for key, value in [('truncated', True), ('terminated', 1)]:
+        invalid = deepcopy(success)
+        invalid['transitions'][-1][key] = value
+        assert not assess_agentic_update(invalid, 'env-v1', 3)['eligible']
+        try:
+            compute_action_returns(invalid)
+        except ValueError:
+            continue
+        raise AssertionError('矛盾或非布尔结束标记应拒绝')
+
+test_end_flag_boundaries()
+test_success_and_failure_trajectories()
+test_timeout_and_action_exhaustion()
+test_reward_attribution()
+test_update_admission()
+test_stage_decision()
+print('✅ Agentic RL 环境轨迹、奖励归因与阶段准入测试通过。')
 
 ```
 
@@ -435,6 +456,12 @@ def compute_action_returns(trajectory, gamma=1.0):
     transitions = trajectory.get('transitions', [])
     if not transitions:
         raise ValueError('轨迹不能为空')
+    if any(type(item.get(key)) is not bool for item in transitions for key in ('terminated', 'truncated')):
+        raise ValueError('结束标记必须是布尔值')
+    if transitions[-1]['terminated'] == transitions[-1]['truncated']:
+        raise ValueError('本例最后动作必须且只能有一种结束原因')
+    if any(item['terminated'] or item['truncated'] for item in transitions[:-1]):
+        raise ValueError('结束后不能继续累计动作')
     rewards = []
     for transition in transitions:
         components = transition.get('reward_components', {})
@@ -469,6 +496,10 @@ def assess_agentic_update(trajectory, expected_environment_version, current_poli
     if trajectory.get('consumed_by') is not None:
         return {'eligible': False, 'reason': 'already_consumed', 'policy_lag': lag}
     transitions = trajectory.get('transitions', [])
+    if any(type(item.get(key)) is not bool for item in transitions for key in ('terminated', 'truncated')):
+        return {'eligible': False, 'reason': 'invalid_end_flags', 'policy_lag': lag}
+    if transitions and transitions[-1]['terminated'] and transitions[-1]['truncated']:
+        return {'eligible': False, 'reason': 'invalid_end_flags', 'policy_lag': lag}
     if not transitions or not (transitions[-1].get('terminated') or transitions[-1].get('truncated')):
         return {'eligible': False, 'reason': 'missing_terminal_evidence', 'policy_lag': lag}
     if any(item.get('terminated') or item.get('truncated') for item in transitions[:-1]):

@@ -4,7 +4,7 @@
 
 > 🚀 **云端运行环境**
 >
-> 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
+> 可用以下链接在云端Notebook平台打开；设备和依赖要求以本节运行环境说明为准：
 >
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/PT-RL-SYSTEM_Rollout_Training_and_Reward_System.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
@@ -119,7 +119,7 @@ def transfer_ledger(edges, placement):
     """建立逐边账本，并按共享互连域汇总暴露占用。"""
     # ==========================================
     # TODO 2：同池边载荷记零；跨池边计算 traffic、transfer 与 exposed。
-    # 同一 fabric 的 exposed 相加，critical_fabrics 保留最大值对应的全部互连域。
+    # 同一fabric分别累计原始transfer和暴露exposed；报告fabric_raw_seconds_per_s与暴露字段。
     # ==========================================
     raise NotImplementedError("TODO 2：建立跨池传输账本")
 
@@ -127,7 +127,7 @@ def evaluate_topology(capacity_report, memory_by_pool, memory_limits, transfer_r
     """按 reject > tune > accept 的优先级返回全部触发原因。"""
     # ==========================================
     # TODO 3：汇总 hard_failures 与 tuning_pressures，再决定 decision。
-    # 报告同时保留超限资源池、积压阶段与过载互连域。
+    # 原始链路占用缺失时报错，大于1时以link_capacity拒绝；暴露预算另作调优判断。
     # ==========================================
     raise NotImplementedError("TODO 3：执行系统拓扑准入")
 ```
@@ -197,8 +197,8 @@ def test_gate():
     balanced = pipeline_capacity({'reward': 80}, 80, {'reward': 1})
     assert balanced['queue_margins'] == {'reward': 0.0} and balanced['queue_stable'] is True
     unstable = pipeline_capacity({'rollout': 120, 'reward': 80}, 90, multipliers)
-    low_transfer = {'fabric_exposed_seconds_per_s': {'pcie-0': 0.05}, 'critical_exposed_seconds_per_s': 0.05}
-    high_transfer = {'fabric_exposed_seconds_per_s': {'pcie-0': 0.20}, 'critical_exposed_seconds_per_s': 0.20}
+    low_transfer = {'fabric_raw_seconds_per_s': {'pcie-0': 0.1}, 'fabric_exposed_seconds_per_s': {'pcie-0': 0.05}, 'critical_exposed_seconds_per_s': 0.05}
+    high_transfer = {'fabric_raw_seconds_per_s': {'pcie-0': 0.4}, 'fabric_exposed_seconds_per_s': {'pcie-0': 0.20}, 'critical_exposed_seconds_per_s': 0.20}
     accepted = evaluate_topology(stable, {'A': 30}, {'A': 40}, low_transfer, True, True)
     assert accepted['decision'] == 'accept' and accepted['reasons'] == []
     tuned = evaluate_topology(unstable, {'A': 30}, {'A': 40}, high_transfer, True, True)
@@ -214,6 +214,26 @@ def test_gate():
     except ValueError:
         pass
 
+def test_raw_bandwidth_cannot_be_hidden():
+    placement = {'a': 'A', 'b': 'B'}
+    edge = {'source': 'a', 'target': 'b', 'bytes_per_item': 600, 'items_per_work_unit': 1, 'work_units_per_second': 1, 'bandwidth_bytes_per_s': 1000, 'overlap_fraction': 1.0, 'fabric_id': 'shared'}
+    report = transfer_ledger([edge, edge], placement)
+    assert report['fabric_raw_seconds_per_s']['shared'] == 1.2
+    assert report['critical_exposed_seconds_per_s'] == 0.0
+    capacity = pipeline_capacity({'learner': 10}, 1, {'learner': 1})
+    decision = evaluate_topology(capacity, {'A': 1}, {'A': 2}, report, True, True)
+    assert decision['decision'] == 'reject' and 'link_capacity' in decision['reasons']
+    boundary = transfer_ledger([dict(edge, bytes_per_item=1000)], placement)
+    assert evaluate_topology(capacity, {'A': 1}, {'A': 2}, boundary, True, True)['decision'] == 'accept'
+    missing = dict(report)
+    del missing['fabric_raw_seconds_per_s']
+    try:
+        evaluate_topology(capacity, {'A': 1}, {'A': 2}, missing, True, True)
+    except ValueError:
+        return
+    raise AssertionError('缺少原始链路占用时不能接受方案')
+
+test_raw_bandwidth_cannot_be_hidden()
 test_capacity(); test_transfer(); test_gate()
 print('✅ 后训练系统机制测试通过')
 ```
@@ -254,6 +274,7 @@ def transfer_ledger(edges, placement):
     """计算跨池载荷并按共享链路域汇总暴露占用。"""
     # TODO 2：建立跨池传输账本
     rows, total_bytes, fabric_exposed, fabric_bandwidths = [], 0.0, {}, {}
+    fabric_raw = {}
     for edge in edges:
         source, target = edge['source'], edge['target']
         if source not in placement or target not in placement:
@@ -281,11 +302,12 @@ def transfer_ledger(edges, placement):
             if not math.isclose(previous_bandwidth, bandwidth, rel_tol=1e-9, abs_tol=1e-12):
                 raise ValueError('同一 fabric_id 必须使用同一有效带宽口径')
             fabric_exposed[fabric_id] = fabric_exposed.get(fabric_id, 0.0) + exposed
+            fabric_raw[fabric_id] = fabric_raw.get(fabric_id, 0.0) + transfer
         rows.append(edge | {'cross_pool': cross_pool, 'traffic_bytes_per_s': traffic,
                             'transfer_seconds_per_s': transfer, 'exposed_seconds_per_s': exposed})
     critical_exposed = max(fabric_exposed.values(), default=0.0)
     critical_fabrics = sorted(name for name, value in fabric_exposed.items() if value == critical_exposed) if fabric_exposed else []
-    return {'cross_pool_bytes_per_s': total_bytes, 'fabric_exposed_seconds_per_s': fabric_exposed,
+    return {'fabric_raw_seconds_per_s': fabric_raw, 'cross_pool_bytes_per_s': total_bytes, 'fabric_exposed_seconds_per_s': fabric_exposed,
             'critical_exposed_seconds_per_s': critical_exposed, 'critical_fabrics': critical_fabrics, 'rows': rows}
 
 def evaluate_topology(capacity_report, memory_by_pool, memory_limits, transfer_report, version_sync_ok, recovery_ok, max_exposed_s_per_s=0.1):
@@ -293,6 +315,13 @@ def evaluate_topology(capacity_report, memory_by_pool, memory_limits, transfer_r
     max_exposed_s_per_s = float(max_exposed_s_per_s)
     memory_values = [float(value) for value in memory_by_pool.values()] + [float(value) for value in memory_limits.values()]
     transfer_values = [float(value) for value in transfer_report.get('fabric_exposed_seconds_per_s', {}).values()]
+    raw = transfer_report.get('fabric_raw_seconds_per_s')
+    if not isinstance(raw, dict) or set(raw) != set(transfer_report.get('fabric_exposed_seconds_per_s', {})):
+        raise ValueError('原始与暴露链路占用必须包含相同互连域')
+    if any(not math.isfinite(float(value)) or float(value) < 0 for value in raw.values()):
+        raise ValueError('原始链路占用必须有限且非负')
+    if any(float(transfer_report['fabric_exposed_seconds_per_s'][name]) > float(raw[name]) for name in raw):
+        raise ValueError('暴露占用不能超过原始占用')
     if not math.isfinite(max_exposed_s_per_s) or max_exposed_s_per_s < 0:
         raise ValueError('传输暴露预算必须是非负有限数')
     if any(not math.isfinite(value) or value < 0 for value in memory_values + transfer_values):
@@ -301,6 +330,8 @@ def evaluate_topology(capacity_report, memory_by_pool, memory_limits, transfer_r
     over_limit_pools = sorted(pool for pool, used in memory_by_pool.items()
                               if pool not in memory_limits or used > memory_limits[pool])
     hard_failures = []
+    if any(float(value) > 1.0 for value in raw.values()):
+        hard_failures.append('link_capacity')
     if over_limit_pools:
         hard_failures.append('memory_limit')
     if not version_sync_ok:
