@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1500" height="600" viewBox="0 0 1500 600" role="img" aria-labelledby="title desc">
   <title id="title">窗口准入与边界隔离序列拼接</title>
-  <desc id="desc">完整词元账本先与窗口比较；完整放入与截断样本均须通过监督保留量和损失比例门槛，再进入起点监督屏蔽及注意力隔离的序列拼接。</desc>
+  <desc id="desc">完整输入先与窗口比较；完整保留与尾部裁剪两条路径都检查最低保留监督量和最大监督丢失比例。通过后按容量拼接、屏蔽样本起点并隔离注意力；默认监督丢失比例上限为零，回答语义完整性另按任务检查。</desc>
   <defs>
     <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
       <stop offset="0%" stop-color="#F8FAFC"/>
@@ -20,66 +20,67 @@
     </style>
   </defs>
   <rect width="1500" height="600" rx="24" fill="url(#bg)"/>
-  <text x="55" y="58" class="title">先决定样本如何进入窗口，再进行序列拼接</text>
-  <text x="55" y="90" class="sub">序列拼接只组织已通过窗口检查的样本，不能补回截断时丢失的监督目标。</text>
+  <text x="55" y="58" class="title">先核对输入长度和监督保留量，再拼接样本</text>
+  <text x="55" y="90" class="sub">本例：非空模板与提示前缀 + 连续监督尾段；输入占位与监督标签分别计数。</text>
 
   <rect x="55" y="130" width="255" height="110" rx="17" class="box" fill="#EFF6FF" stroke="#3B82F6"/>
   <text x="182" y="168" text-anchor="middle" class="label">单样本 Token 账本</text>
   <text x="182" y="198" text-anchor="middle" class="small">模板 + 提示 + 回答 + EOS</text>
-  <text x="182" y="222" text-anchor="middle" class="small">记录原始监督 Token 数</text>
+  <text x="182" y="222" text-anchor="middle" class="small">输入占位与有效监督分别计数</text>
 
   <path d="M365 185L455 120L545 185L455 250Z" fill="#F5F3FF" stroke="#8B5CF6" stroke-width="2.5"/>
   <text x="455" y="179" text-anchor="middle" class="label">完整长度</text>
   <text x="455" y="206" text-anchor="middle" class="small">是否不超过窗口 C？</text>
 
-  <rect x="620" y="125" width="220" height="100" rx="17" class="box" fill="#ECFDF5" stroke="#10B981"/>
-  <text x="730" y="164" text-anchor="middle" class="label">完整放入窗口</text>
-  <text x="730" y="194" text-anchor="middle" class="small">输入与监督均不截断</text>
+  <rect x="680" y="135" width="220" height="100" rx="17" class="box" fill="#ECFDF5" stroke="#10B981"/>
+  <text x="790" y="174" text-anchor="middle" class="label">完整保留</text>
+  <text x="790" y="204" text-anchor="middle" class="small">保留原监督量，丢失比例为0</text>
 
-  <rect x="385" y="315" width="260" height="105" rx="17" class="box" fill="#FFF7ED" stroke="#F59E0B"/>
-  <text x="515" y="353" text-anchor="middle" class="label">计算截断后的监督</text>
-  <text x="515" y="382" text-anchor="middle" class="small">保留 Token 数与损失比例</text>
-  <text x="515" y="405" text-anchor="middle" class="small">两项门槛分别记录</text>
+  <rect x="325" y="315" width="260" height="105" rx="17" class="box" fill="#FFF7ED" stroke="#F59E0B"/>
+  <text x="455" y="353" text-anchor="middle" class="label">计算尾部裁剪后的监督</text>
+  <text x="455" y="382" text-anchor="middle" class="small">保留监督量与监督丢失比例</text>
+  <text x="455" y="405" text-anchor="middle" class="small">尾部EOS可能随裁剪删除</text>
 
-  <path d="M700 367L790 302L880 367L790 432Z" fill="#FEF3C7" stroke="#D97706" stroke-width="2.5"/>
-  <text x="790" y="361" text-anchor="middle" class="label">两项门槛</text>
-  <text x="790" y="388" text-anchor="middle" class="small">是否同时满足？</text>
+  <path d="M680 367.5L790 302.5L900 367.5L790 432.5Z" fill="#FEF3C7" stroke="#D97706" stroke-width="2.5"/>
+  <text x="790" y="352" text-anchor="middle" class="label">两项都满足？</text>
+  <text x="790" y="375" text-anchor="middle" class="small">保留监督量 ≥ 下限</text>
+  <text x="790" y="394" text-anchor="middle" class="small">丢失比例 ≤ 上限</text>
 
-  <rect x="930" y="295" width="220" height="105" rx="17" class="box" fill="#ECFDF5" stroke="#10B981"/>
-  <text x="1040" y="334" text-anchor="middle" class="label">样本准入</text>
-  <text x="1040" y="363" text-anchor="middle" class="small">完整保留或受控截断</text>
-  <text x="1040" y="386" text-anchor="middle" class="small">记录原始与保留监督量</text>
+  <rect x="930" y="315" width="220" height="105" rx="17" class="box" fill="#ECFDF5" stroke="#10B981"/>
+  <text x="1040" y="353" text-anchor="middle" class="label">窗口与监督量通过</text>
+  <text x="1040" y="382" text-anchor="middle" class="small">完整保留／允许范围内裁剪</text>
+  <text x="1040" y="405" text-anchor="middle" class="small">记录原始与保留监督量</text>
 
-  <rect x="930" y="445" width="220" height="100" rx="17" class="box" fill="#FEF2F2" stroke="#EF4444"/>
-  <text x="1040" y="484" text-anchor="middle" class="label">拒绝当前样本</text>
-  <text x="1040" y="514" text-anchor="middle" class="small">不进入当前训练窗口</text>
+  <rect x="680" y="470" width="220" height="80" rx="17" class="box" fill="#FEF2F2" stroke="#EF4444"/>
+  <text x="790" y="503" text-anchor="middle" class="label">拒绝当前样本</text>
+  <text x="790" y="530" text-anchor="middle" class="small">调整窗口或样本处理策略</text>
 
-  <rect x="1205" y="120" width="240" height="100" rx="17" class="box" fill="#ECFEFF" stroke="#0891B2"/>
-  <text x="1325" y="159" text-anchor="middle" class="label">通过检查的样本</text>
-  <text x="1325" y="189" text-anchor="middle" class="small">固定样本身份与监督标签</text>
+  <rect x="1030" y="130" width="415" height="105" rx="17" fill="#ECFEFF" stroke="#0891B2" stroke-width="1.5"/>
+  <text x="1050" y="160" class="small">默认监督丢失比例上限为0，裁掉监督则拒绝。</text>
+  <text x="1050" y="188" class="small">长度检查核对数量；回答语义完整性按任务另查。</text>
+  <text x="1050" y="216" class="small">EOS标签、位置重置与注意力隔离各有职责。</text>
 
-  <rect x="1205" y="295" width="240" height="105" rx="17" class="box" fill="#EDE9FE" stroke="#7C3AED"/>
-  <text x="1325" y="334" text-anchor="middle" class="label">边界隔离序列拼接</text>
-  <text x="1325" y="363" text-anchor="middle" class="small">在容量内组合多条样本</text>
-  <text x="1325" y="386" text-anchor="middle" class="small">保留内部标签，屏蔽起点</text>
+  <rect x="1205" y="315" width="240" height="105" rx="17" class="box" fill="#EDE9FE" stroke="#7C3AED"/>
+  <text x="1325" y="353" text-anchor="middle" class="label">边界隔离序列拼接</text>
+  <text x="1325" y="382" text-anchor="middle" class="small">在容量内组合多条样本</text>
+  <text x="1325" y="405" text-anchor="middle" class="small">保留内部标签，屏蔽起点</text>
 
-  <rect x="1205" y="440" width="240" height="105" rx="17" class="box" fill="#FFFFFF" stroke="#64748B"/>
-  <text x="1325" y="477" text-anchor="middle" class="label">拼接结果检查</text>
-  <text x="1325" y="506" text-anchor="middle" class="small">容量、标签与位置正确</text>
-  <text x="1325" y="529" text-anchor="middle" class="small">跨样本注意力不可见</text>
+  <rect x="1205" y="470" width="240" height="90" rx="17" class="box" fill="#FFFFFF" stroke="#64748B"/>
+  <text x="1325" y="500" text-anchor="middle" class="label">拼接结果检查</text>
+  <text x="1325" y="525" text-anchor="middle" class="small">容量、标签与位置正确</text>
+  <text x="1325" y="548" text-anchor="middle" class="small">跨样本注意力不可见</text>
 
   <path d="M310 185H365" class="arrow"/>
-  <path d="M545 185H580V175H620" class="arrow"/>
-  <text x="577" y="152" text-anchor="middle" class="branch">是</text>
+  <path d="M545 185H680" class="arrow"/>
+  <text x="610" y="167" text-anchor="middle" class="branch">是</text>
   <path d="M455 250V315" class="arrow"/>
   <text x="475" y="286" class="branch">否</text>
-  <path d="M645 367H700" class="arrow"/>
-  <path d="M880 367H905V347.5H930" class="arrow"/>
-  <text x="900" y="330" text-anchor="middle" class="branch">是</text>
-  <path d="M790 432V495H930" class="arrow"/>
-  <text x="812" y="477" class="branch">否</text>
-  <path d="M730 225V270H790V302" class="arrow"/>
-  <path d="M1150 347.5H1180V170H1205" class="arrow"/>
-  <path d="M1325 220V295" class="arrow"/>
-  <path d="M1325 400V440" class="arrow"/>
+  <path d="M585 367.5H680" class="arrow"/>
+  <path d="M900 367.5H930" class="arrow"/>
+  <text x="915" y="349" text-anchor="middle" class="branch">是</text>
+  <path d="M790 432.5V470" class="arrow"/>
+  <text x="811" y="458" class="branch">否</text>
+  <path d="M790 235V302.5" class="arrow"/>
+  <path d="M1150 367.5H1205" class="arrow"/>
+  <path d="M1325 420V470" class="arrow"/>
 </svg>

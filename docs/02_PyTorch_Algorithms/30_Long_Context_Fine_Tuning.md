@@ -3,7 +3,7 @@
 
 > 🚀 **云端运行环境**
 >
-> 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
+> 可用以下链接在云端Notebook平台打开；设备和依赖要求以本节运行环境说明为准：
 >
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/30_Long_Context_Fine_Tuning.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
@@ -40,23 +40,23 @@
 
 长度统计需要回答两个问题：一条样本实际占用多少 Token，以及数据集中有多少样本超过目标窗口。前者决定单条样本能否完整保留，后者描述当前窗口对数据主体和长尾的覆盖程度。长度必须从“固定分词器 + 固定对话模板”渲染出的完整序列中测量：先统一分词，再根据对齐后的 Token 区间统计模板、提示和监督部分，不能把几段文本分别分词后直接相加。
 
-对样本 $i$，回答与参与监督的结束标记共同构成监督长度：
+对样本 $i$，本例采用仅回答监督，并把回答末尾的结束标记计入目标；此时监督长度为：
 
 $$
 L_{\text{sup},i}=L_{\text{response},i}+L_{\text{EOS},i}.
 $$
 
-完整序列长度及数据集溢出比例为：
+令 $T_i$ 为样本填充前的实际输入词元数，完整序列长度及数据集溢出比例为：
 
 $$
 L_{\text{total},i}
-=L_{\text{template},i}+L_{\text{prompt},i}+L_{\text{sup},i},
+=T_i,
 \qquad
 r_{\text{overflow}}
-=\frac{\left|\left\{i\in\{1,\ldots,N\}:L_{\text{total},i}>C\right\}\right|}{N}.
+=\frac{1}{N}\sum_{i=1}^{N}\mathbf{1}[L_{\text{total},i}>C].
 $$
 
-其中，$i$ 是样本编号，$N$ 是参与统计的有效样本数，$|\{\cdot\}|$ 表示满足条件的样本数量，$C$ 是目标上下文窗口；$L_{\text{template},i}$、$L_{\text{prompt},i}$ 和 $L_{\text{sup},i}$ 分别表示模板 Token、非监督输入 Token 和监督 Token。若 EOS 被标签掩码排除，则 $L_{\text{EOS},i}=0$。P50和P95分别描述至少50%与95%的样本不长于哪个长度，用来观察数据主体与长尾；本例按排序后的最近秩分位数计算。
+其中， $i$ 是样本编号， $N$ 是有效样本数， $C$ 是目标窗口，指示函数在样本超长时取1。完整长度按填充前的实际输入统计；监督量按移位后有前驱预测且标签有效的位置统计。EOS被标签屏蔽时仍占输入位置，只是不计入监督。本例把非空模板和提示作为非监督前缀，后接全部受监督的回答与结束标记，因此可以用前缀长度加监督长度计算总长；多轮或稀疏标签应另外记录实际输入长度。P50和P95描述样本长度的主体与长尾，本例按最近秩分位数计算。
 
 | 观察项 | 如何计算或比较 | 对训练设计的影响 |
 |:---|:---|:---|
@@ -67,10 +67,11 @@ $$
 | 监督 Token 分布 | 统计 $L_{\text{sup},i}=L_{\text{response},i}+L_{\text{EOS},i}$ | 判断截断可能损失多少训练目标 |
 | 长度分桶 | 按 $L_{\text{total},i}$ 统计各长度区间的样本数 | 设计 Packing 和分阶段采样比例 |
 
-![长上下文微调机制链](../public/02_PyTorch_Algorithms/30_long_context_flow.svg)
+![统一分词后分别统计输入长度、有效监督量与数据集长度分布](../public/02_PyTorch_Algorithms/30_long_context_flow.svg)
 ## Step 2：如何处理溢出样本并安全拼接合格样本
 
-记录每条样本的模板、提示和回答长度后，先逐条检查能否完整放入窗口。若 `模板 + 提示 + 监督` 超过目标窗口，固定保留模板和提示，只在监督尾部执行既定截断；无论是否截断，保留监督量和监督损失比例都必须同时通过门槛，否则拒绝该样本。序列拼接（packing）把多条短样本放入同一窗口，以减少填充（padding）。它只接收通过窗口策略的样本，并同时保留监督与注意力边界。例如两条样本各占3个词元，拼成长度6后，第二条的第一个词元仍没有本样本的前驱输出可用，其标签必须屏蔽；位置索引重置或隔离注意力，都不能代替这项监督处理。
+本例选择保留模板和提示、从回答尾部裁剪的策略，并同时检查最低监督量和最大损失比例。例如 `[p1,p2,a1,a2,EOS]` 放入长度4的窗口，得到 `[p1,p2,a1,a2]`，原EOS随尾部删除；在不完整回答后补EOS会改变结束位置的训练目标。要求完整回答时，可拒绝溢出样本、增加窗口，或按任务允许的方式裁剪提示。本例默认允许的监督损失比例为0，发生监督丢失时会拒绝样本。
+序列拼接（packing）把通过检查的短样本放进同一窗口，减少填充。各样本仍保留独立的注意力和监督边界：第二条样本的首词元没有本样本的前驱输出，其标签要屏蔽；EOS、位置重置和注意力隔离分别承担结束、位置与可见范围的职责。
 
 | 处理环节 | 必须保持的不变量 | 违反后的结果 |
 |:---|:---|:---|
@@ -79,7 +80,7 @@ $$
 | Packing 容量 | 只拼接已准入样本，容器总 Token 不超过目标窗口 | 训练序列越界或混入已拒绝样本 |
 | 样本边界 | 标签对齐且样本起点屏蔽，位置语义正确，跨样本注意力隔离 | 上下文泄漏或监督污染 |
 
-![长上下文微调预算](../public/02_PyTorch_Algorithms/30_long_context_budget.svg)
+![窗口与监督保留量检查后进行边界隔离拼接](../public/02_PyTorch_Algorithms/30_long_context_budget.svg)
 ## Step 3：何时扩大长样本比例和目标窗口
 
 逐阶段提高中长样本比例或目标窗口，称为序列长度课程。比较新阶段与短窗口基线时，保持模型、优化器、评测集和每次参数更新的有效监督词元数相同。只有长上下文得分的提升达到下限、短任务回退未超限，且损失与梯度有限、失败次数和资源占用未超预算，才进入新阶段。
@@ -96,7 +97,7 @@ $$
 
 ## Step 4：实现窗口策略与边界隔离序列拼接
 
-代码接收已经完成分词与区间对齐的长度账本：`supervised_tokens` 包含回答和受监督 EOS。它先根据监督保留量执行窗口策略，再构造边界隔离的序列拼接。骨架屏蔽各样本起点标签，避免下一词元损失跨越边界。序列长度课程的阶段门槛作为完整比较契约提供，用于验证两项机制产生的数据能否进入更长窗口训练。
+代码采用本例的连续监督尾段：非空模板／提示前缀后接回答及受监督EOS。`supervised_tokens`是该尾段的长度；截断后的保留量只统计留下的位置，EOS被删时不再计入。长度审计不读取词元内容，回答完整性和EOS是否留下需另外检查实际序列。骨架屏蔽拼接样本的起点标签，阶段门槛再比较更长窗口的质量与资源。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 |:---|:---|:---|:---|
@@ -147,7 +148,7 @@ def audit_context_fit(
         # ==========================================
         # TODO 1：计算监督保留量并执行窗口门槛
         # ==========================================
-        # kept_supervised_tokens = ???  # 整数；窗口内保留的监督词元数，包含受监督结束标记。
+        # kept_supervised_tokens = ???  # 整数；截断后实际留下的监督位置数，结束标记仅在留下时计入。
         # loss_ratio = ???  # [0, 1]；被截断的监督量占原始监督量的比例。
         # admitted = ???  # bool；保留量和损失比例同时通过各自门槛。
         raise NotImplementedError("TODO 1：执行窗口策略")
@@ -379,6 +380,18 @@ def test_invalid_discrete_lengths_and_nonfinite_evidence():
 
 
 test_context_fit_preserves_supervision()
+def test_eos_truncation_and_masked_occupancy():
+    # 回答末尾EOS随右侧截断删除；长度审计不会把它补回。
+    ids = [11, 12, 21, 22, 2]
+    report = audit_context_fit([{"name": "eos-tail", "prompt_tokens": 2, "supervised_tokens": 3}], 4, 0, max_supervision_loss_ratio=0.5)
+    assert ids[:4] == [11, 12, 21, 22]
+    assert report["records"][0]["kept_supervised_tokens"] == 2
+    # EOS标签被屏蔽，输入长度仍为5；移位后的有效监督仅两个回答词元。
+    labels = [-100, -100, 21, 22, -100]
+    assert len(ids) == 5
+    assert sum(label != -100 for label in labels[1:]) == 2
+
+test_eos_truncation_and_masked_occupancy()
 test_controlled_truncation()
 test_packing_preserves_capacity_and_samples()
 test_boundary_isolated_packing()
@@ -544,7 +557,7 @@ def evaluate_length_curriculum_stage(
 
 #### TODO 1：执行窗口策略
 
-- 监督长度包含回答及受监督的结束标记。剩余窗口决定最多保留多少目标，再同时检查最低保留量与最大截断比例；即使样本完整放入窗口，监督量不足仍要拒绝。
+- 本例原监督尾段包含回答及结束标记。右侧裁剪可能删掉EOS，保留量按实际留下的位置计数；长度计算检查两个门槛，回答完整性另外检查词元序列。
 - 答案计算保留量、损失比例与准入条件。受控截断测试核对两个门槛，完整保留反例验证不能跳过最低监督量；被拒记录沿用窗口审计的 `overflow` 状态。
 
 #### TODO 2：隔离样本边界

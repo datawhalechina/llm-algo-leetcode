@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1500" height="560" viewBox="0 0 1500 560" role="img" aria-labelledby="title desc">
-  <title id="title">从真实 Token 长度判断窗口压力</title>
-  <desc id="desc">样本经过固定模板和分词器后形成完整 Token 账本，与目标窗口比较并记录完整容纳或溢出状态，最后汇总长度分位数、溢出比例与监督 Token 分布。</desc>
+  <title id="title">先统一分词，再统计输入长度与有效监督量</title>
+  <desc id="desc">每条原始样本套用固定模板并对完整文本统一分词，分别统计填充前输入长度和移位后的有效监督目标数，保存样本记录。全部样本汇总为长度分布、与窗口C比较的溢出比例及监督量分布。裁剪后的监督保留量由下一张图说明。</desc>
   <defs>
     <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
       <stop offset="0%" stop-color="#F8FAFC"/>
@@ -16,51 +16,47 @@
       .small{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:500;fill:#334155}
       .box{stroke-width:2.5}
       .arrow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
-      .branch{font-family:"Inter","Noto Sans CJK SC",sans-serif;font-size:15px;font-weight:700;fill:#475569}
     </style>
   </defs>
   <rect width="1500" height="560" rx="24" fill="url(#bg)"/>
-  <text x="55" y="58" class="title">从真实 Token 长度判断窗口压力</text>
-  <text x="55" y="90" class="sub">先记录单条样本是否溢出，再汇总数据集的主体、长尾和监督风险。</text>
+  <text x="55" y="58" class="title">先统一分词，再统计输入长度与有效监督量</text>
+  <text x="55" y="90" class="sub">对每条样本重复测量，保存长度记录；汇总全部样本后，观察数据主体、长尾与窗口覆盖。</text>
 
-  <rect x="55" y="135" width="210" height="110" rx="17" class="box" fill="#FFF7ED" stroke="#F59E0B"/>
-  <text x="160" y="174" text-anchor="middle" class="label">原始样本</text>
-  <text x="160" y="205" text-anchor="middle" class="small">提示、回答与来源信息</text>
-  <text x="160" y="229" text-anchor="middle" class="small">尚未得到真实 Token 长度</text>
+  <rect x="55" y="140" width="220" height="120" rx="17" class="box" fill="#FFF7ED" stroke="#F59E0B"/>
+  <text x="165" y="178" text-anchor="middle" class="label">原始样本</text>
+  <text x="165" y="211" text-anchor="middle" class="small">提示、回答与来源信息</text>
+  <text x="165" y="239" text-anchor="middle" class="small">保留样本标识</text>
 
-  <rect x="320" y="135" width="250" height="110" rx="17" class="box" fill="#EFF6FF" stroke="#3B82F6"/>
-  <text x="445" y="174" text-anchor="middle" class="label">固定模板与分词器</text>
-  <text x="445" y="205" text-anchor="middle" class="small">模型版本、对话模板</text>
-  <text x="445" y="229" text-anchor="middle" class="small">特殊 Token 规则保持不变</text>
+  <rect x="335" y="140" width="320" height="120" rx="17" class="box" fill="#EFF6FF" stroke="#3B82F6"/>
+  <text x="495" y="178" text-anchor="middle" class="label">套用模板并统一分词</text>
+  <text x="495" y="211" text-anchor="middle" class="small">固定分词器、模板与特殊词元规则</text>
+  <text x="495" y="239" text-anchor="middle" class="small">渲染完整文本，再对齐监督标签</text>
 
-  <rect x="625" y="125" width="335" height="130" rx="17" class="box" fill="#ECFEFF" stroke="#0891B2"/>
-  <text x="792" y="164" text-anchor="middle" class="label">完整 Token 账本</text>
-  <text x="792" y="197" text-anchor="middle" class="small">模板 + 提示 + 回答 + EOS</text>
-  <text x="792" y="225" text-anchor="middle" class="small">同时记录回答与 EOS 的监督 Token</text>
+  <rect x="715" y="140" width="360" height="120" rx="17" class="box" fill="#ECFEFF" stroke="#0891B2"/>
+  <text x="895" y="178" text-anchor="middle" class="label">分别统计两种数量</text>
+  <text x="895" y="211" text-anchor="middle" class="small">输入长度 T：填充前的实际词元数</text>
+  <text x="895" y="239" text-anchor="middle" class="small">有效监督量：移位后标签有效的目标数</text>
 
-  <path d="M1025 190L1115 125L1205 190L1115 255Z" fill="#F5F3FF" stroke="#8B5CF6" stroke-width="2.5"/>
-  <text x="1115" y="184" text-anchor="middle" class="label">完整长度</text>
-  <text x="1115" y="211" text-anchor="middle" class="small">是否不超过窗口 C？</text>
+  <rect x="1135" y="140" width="310" height="120" rx="17" class="box" fill="#F5F3FF" stroke="#8B5CF6"/>
+  <text x="1290" y="178" text-anchor="middle" class="label">保存逐样本记录</text>
+  <text x="1290" y="211" text-anchor="middle" class="small">样本标识、输入长度、监督量</text>
+  <text x="1290" y="239" text-anchor="middle" class="small">关联分词器与模板版本</text>
 
-  <rect x="1260" y="115" width="185" height="100" rx="17" class="box" fill="#ECFDF5" stroke="#10B981"/>
-  <text x="1352" y="154" text-anchor="middle" class="label">完整容纳</text>
-  <text x="1352" y="184" text-anchor="middle" class="small">记录长度未溢出</text>
+  <rect x="335" y="345" width="1110" height="160" rx="18" class="box" fill="#FFFFFF" stroke="#64748B"/>
+  <text x="365" y="380" class="label">汇总全部样本的长度记录（共 N 条）</text>
+  <path d="M690 397V480M1045 397V480" stroke="#CBD5E1" stroke-width="1.5"/>
+  <text x="365" y="416" class="label">输入长度分布</text>
+  <text x="365" y="446" class="small">P50 / P95 / 最大值、长度分桶</text>
+  <text x="365" y="474" class="small">观察主体长度与长尾</text>
+  <text x="720" y="416" class="label">窗口 C 的溢出比例</text>
+  <text x="720" y="446" class="small">逐条比较 T 与目标窗口 C</text>
+  <text x="720" y="474" class="small">T 大于 C 的样本数 / N</text>
+  <text x="1075" y="416" class="label">有效监督量分布</text>
+  <text x="1075" y="446" class="small">按样本统计训练目标的数量</text>
+  <text x="1075" y="474" class="small">裁剪后的保留量见下一张图</text>
 
-  <rect x="1260" y="275" width="185" height="100" rx="17" class="box" fill="#FEF2F2" stroke="#EF4444"/>
-  <text x="1352" y="314" text-anchor="middle" class="label">发生溢出</text>
-  <text x="1352" y="344" text-anchor="middle" class="small">记录受影响监督量</text>
-
-  <rect x="500" y="430" width="760" height="88" rx="18" class="box" fill="#FFFFFF" stroke="#64748B"/>
-  <text x="880" y="467" text-anchor="middle" class="label">数据集长度统计</text>
-  <text x="880" y="496" text-anchor="middle" class="small">P50 / P95 / 最大值　·　溢出比例　·　监督 Token 分布　·　长度分桶</text>
-
-  <path d="M265 190H320" class="arrow"/>
-  <path d="M570 190H625" class="arrow"/>
-  <path d="M960 190H1025" class="arrow"/>
-  <path d="M1205 190H1235V165H1260" class="arrow"/>
-  <text x="1227" y="153" text-anchor="middle" class="branch">是</text>
-  <path d="M1115 255V325H1260" class="arrow"/>
-  <text x="1140" y="305" class="branch">否</text>
-  <path d="M1445 165H1470V400H1180V430" class="arrow"/>
-  <path d="M1395 375V408H1110V430" class="arrow"/>
+  <path d="M275 200H335" class="arrow"/>
+  <path d="M655 200H715" class="arrow"/>
+  <path d="M1075 200H1135" class="arrow"/>
+  <path d="M1290 260V345" class="arrow"/>
 </svg>
