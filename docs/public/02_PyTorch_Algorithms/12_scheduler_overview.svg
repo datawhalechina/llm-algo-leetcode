@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1240" height="600" viewBox="0 0 1240 600" role="img" aria-labelledby="title desc">
   <title id="title">参数更新与学习率调度时钟</title>
-  <desc id="desc">梯度形成后先检查有效性，成功写回参数才推进调度时钟，跳过更新则保持当前步。</desc>
+  <desc id="desc">梯度形成后检查有效性，优化器步骤实际执行才推进本页调度时钟；参数在零学习率下可保持不变，跳过执行则保持计数。</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
     <style>text{font-family:"Noto Sans CJK SC","Microsoft YaHei",Arial,sans-serif;fill:#172033}.title{font-size:30px;font-weight:700}.sub{font-size:16px;fill:#475569}.head{font-size:18px;font-weight:700}.body{font-size:14px;fill:#334155}.label{font-size:13px;font-weight:700}.node{stroke-width:2;rx:14}.flow{stroke:#475569;stroke-width:2.5;fill:none;marker-end:url(#arrow)}</style>
@@ -19,7 +19,7 @@
   <rect x="586" y="178" width="68" height="27" rx="7" fill="#f8fafc"/>
   <text x="620" y="197" text-anchor="middle" class="label" fill="#047857">通过</text>
   <rect x="665" y="160" width="220" height="104" fill="#ecfdf5" stroke="#34d399" class="node"/>
-  <text x="775" y="201" text-anchor="middle" class="head">写回参数</text><text x="775" y="230" text-anchor="middle" class="body">发生一次有效参数变化</text>
+  <text x="775" y="201" text-anchor="middle" class="head">执行优化器步骤</text><text x="775" y="230" text-anchor="middle" class="body">零学习率时参数可不变</text>
   <path d="M885 212H970" class="flow"/>
   <rect x="970" y="160" width="220" height="104" fill="#f5f3ff" stroke="#a78bfa" class="node"/>
   <text x="1080" y="201" text-anchor="middle" class="head">推进调度时钟</text><text x="1080" y="230" text-anchor="middle" class="body">为下一次更新准备学习率</text>

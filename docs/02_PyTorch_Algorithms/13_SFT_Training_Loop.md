@@ -4,7 +4,7 @@
 
 > 🚀 **云端运行环境**
 >
-> 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
+> 可用以下链接在云端Notebook平台打开；设备和依赖要求以本节运行环境说明为准：
 >
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/13_SFT_Training_Loop.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
@@ -44,7 +44,7 @@
 
 SFT 用“输入—回答”样本继续训练预训练模型。它与语言模型预训练共享下一词元预测和反向传播链路，但两者的数据来源、监督范围与训练目标并不相同。对话模板（chat template）将角色、消息和分隔标记排列成模型约定的序列：训练序列包含助手（assistant）的回答，推理输入则停在助手回答的起始提示处。结束标记（EOS）标识回答结束，填充（padding）用于补齐批内不同样本的长度。对话模板、分词器配置和监督边界必须属于同一个模型版本，否则监督位置可能发生偏移。
 
-对模板化后的词元序列 $x_{1:T}$，因果语言模型把联合概率分解为逐位置条件概率。这里，$T$ 是序列长度，$t$ 是当前预测位置，$\theta$ 表示模型参数。模型在位置 $t$ 的输出用于预测 $x_{t+1}$；SFT 沿用这条概率链，但只选择回答范围内的目标计算损失。
+对模板化后的词元序列 $x_{1:T}$，因果语言模型把联合概率分解为逐位置条件概率。这里， $T$ 是序列长度， $t$ 是当前预测位置， $\theta$ 表示模型参数。概率分解中的首词元由初始条件描述；本页代码在输入序列内部移位，使用位置 $t$ 的输出预测 $x_{t+1}$，实际可配对的位置为1到T−1，再选择回答范围计算损失。
 
 $$
 p_\theta(x_{1:T})=\prod_{t=0}^{T-1}p_\theta(x_{t+1}\mid x_{\le t})
@@ -65,10 +65,10 @@ $$
 
 模板化序列同时包含上下文、回答、可选结束标记和填充位置。上下文帮助模型理解任务，但通常不作为 SFT 的目标；回答和结束标记提供监督；填充只负责让不同长度样本组成一批数据。助手回答的起点必须从模板化序列中确定，不能用固定字符长度猜测。
 
-令 $b$ 表示样本索引，$j$ 表示目标词元位置，$\mathbf{1}[\cdot]$ 表示指示函数，$\text{attention}_{b,j}$ 表示注意力掩码。掩码（mask）是逐位置的选择标记：注意力掩码区分真实输入与填充，监督掩码决定哪些目标计入损失。监督掩码 $m_{b,j}$ 表示该位置是否参与监督：回答与可选结束标记取 1，提示和填充位置取 0。目标位置 $j$ 对应模型位置 $j-1$ 的预测；因此标签的有效位置必须在完成下一词元位移后与预测对齐。
+令 $b$ 表示样本索引， $j$ 表示目标词元位置， $\mathbf{1}[\cdot]$ 表示条件成立时取1的指示函数， $\text{attention}_{b,j}$ 表示有效输入掩码。注意力规则决定可见上下文，监督掩码决定哪些目标计入损失；本例的二维输入掩码区分真实输入与填充，模型另用因果规则限制未来位置。目标位置 $j$ 对应前一位置的预测，下面的监督掩码只定义在有前驱预测的位置上。
 
 $$
-m_{b,j}=\mathbf{1}[j\in\text{response/EOS}]\,\mathbf{1}[\text{attention}_{b,j}=1]
+m_{b,j}=\mathbf{1}[j\in\text{response/EOS}]\cdot\mathbf{1}[\text{attention}_{b,j}=1]
 $$
 
 | 位置 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
@@ -146,7 +146,7 @@ def build_sft_data(
     # TODO 1：建立截断后的监督边界
     # ==========================================
     # labels = ???  # 与 input_ids 等长；prompt 忽略，response / EOS 保留目标 token。
-    # valid_supervised = ???  # 截断后仍参与监督的 token 数。
+    # valid_supervised = ???  # 统计labels[1:]中的有效目标，索引0没有前驱预测。
     raise NotImplementedError("TODO 1：建立监督边界并统计有效监督 token")
     if valid_supervised < min_response_tokens:
         raise ValueError("截断后没有足够的 response token 参与监督")
@@ -322,7 +322,29 @@ def test_sft_pipeline():
     print("✅ SFT 监督边界、有效词元分母与梯度归约测试通过。")
 
 
+def test_eos_padding_and_truncation():
+    # EOS和PAD共用ID，通过真实位置而不是词元值区分。
+    ids, mask, labels = build_sft_data([10], [20], pad_id=2, eos_id=2, max_len=5)
+    assert ids.tolist() == [10, 20, 2, 2, 2]
+    assert mask.tolist() == [1, 1, 1, 0, 0]
+    assert labels.tolist() == [-100, 20, 2, -100, -100]
+    _, count = compute_sft_loss_terms(torch.zeros(1, 5, 32), labels[None], mask[None])
+    assert count.item() == 2
+    # 先附加EOS再右侧截断，保留回答前缀但EOS可以被删除。
+    ids, mask, labels = build_sft_data([10, 11], [20, 21], eos_id=2, max_len=4)
+    assert ids.tolist() == [10, 11, 20, 21]
+    assert labels.tolist() == [-100, -100, 20, 21]
+    _, count = compute_sft_loss_terms(torch.zeros(1, 4, 32), labels[None], mask[None])
+    assert count.item() == 2
+
 test_sft_pipeline()
+test_eos_padding_and_truncation()
+try:
+    build_sft_data([], [20], eos_id=None, max_len=1)
+except ValueError:
+    pass
+else:
+    raise AssertionError("移位后零目标应在构造阶段拒绝")
 
 ```
 
@@ -363,7 +385,7 @@ def build_sft_data(
 
     # TODO 1：建立截断后的监督边界。
     labels = ([-100] * len(prompt_ids) + response_with_eos)[:max_len]
-    valid_supervised = sum(label != -100 for label in labels)
+    valid_supervised = sum(label != -100 for label in labels[1:])
     if valid_supervised < min_response_tokens:
         raise ValueError("截断后没有足够的 response token 参与监督，请调大 max_len 或过滤该样本。")
 
@@ -424,7 +446,7 @@ def compute_sft_loss(logits: torch.Tensor, labels: torch.Tensor, attention_mask:
 #### TODO 1：建立监督边界
 
 - 提示提供上下文，回答和可选结束标记提供目标。标签与输入使用相同截断范围，截断后仍须保留足够的有效监督位置。
-- 答案先构造标签再统计保留量；数据契约和截断测试分别验证提示忽略、回答保留及监督不足时拒绝。
+- 答案先构造标签，从索引1起统计有前驱预测的有效目标；测试验证EOS截断、EOS与PAD共用ID，以及空提示时移位后零目标的拒绝。
 
 #### TODO 2：同步右侧填充
 
