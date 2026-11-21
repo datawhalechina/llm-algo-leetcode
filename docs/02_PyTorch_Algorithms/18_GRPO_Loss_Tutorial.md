@@ -4,7 +4,7 @@
 
 > 🚀 **云端运行环境**
 >
-> 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
+> 可用以下链接在云端Notebook平台打开；设备和依赖要求以本节运行环境说明为准：
 >
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/18_GRPO_Loss_Tutorial.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
@@ -51,7 +51,7 @@ GRPO 为同一个输入或任务采样多个候选回答；在工具场景中，
 
 ## Step 2：组内优势、策略裁剪与参考策略如何共同限制更新
 
-每个候选组先以组内平均奖励建立比较基线，再用组内尺度归一化相对差异。组内优势决定“提高还是降低”候选概率，当前策略与采样策略的比率限制单次更新幅度，参考策略 KL 则限制策略长期偏离稳定基线。采样策略和参考策略可能来自同一快照，但承担的职责不同。
+每个候选组先以组内平均奖励建立比较基线，再用组内尺度归一化相对差异。组内优势决定“提高还是降低”候选概率，当前策略与采样策略的比率参与裁剪目标，但裁剪不保证实际比率始终处于区间内，参考策略 KL 则限制策略长期偏离稳定基线。采样策略和参考策略可能来自同一快照，但承担的职责不同。
 
 对组 $g$ 中候选 $i$，先计算候选级优势：
 
@@ -90,7 +90,7 @@ $$
 | 约束 | 比较对象 | 机制作用 | 失效时的风险 |
 | --- | --- | --- | --- |
 | 组内优势 | 同一提示的候选奖励 | 去除任务间共同基线 | 跨任务奖励尺度主导更新 |
-| 策略裁剪 | 当前策略与采样策略 | 限制一次更新的概率比率 | 单步更新过强 |
+| 策略裁剪 | 当前策略与采样策略 | 裁剪目标对比率变化的激励 | 单步更新过强 |
 | Reference KL | 当前策略与参考策略 | 限制长期漂移 | 奖励投机或能力退化 |
 | Response mask | 有效回答 Token | 排除提示词与 Padding | 无效位置污染目标 |
 
@@ -178,6 +178,8 @@ def compute_grpo_loss(log_probs_new, log_probs_old, rewards, group_ids, response
         raise ValueError("clip_range 与 beta 必须是非负有限数")
     if not torch.isfinite(log_probs_new).all() or not torch.isfinite(log_probs_old).all():
         raise ValueError("新旧策略 log_probs 必须为有限数")
+    if beta > 0 and log_probs_ref is None:
+        raise ValueError("beta>0需要固定参考策略分数")
     if log_probs_ref is not None and log_probs_ref.shape != log_probs_new.shape:
         raise ValueError("参考策略 log_probs 必须与当前策略同形")
     if response_mask is None:
@@ -299,6 +301,24 @@ def run_grpo_tests():
     test_grpo_input_contract()
     print("✅ GRPO 组内优势、裁剪、Reference KL、候选等权与输入契约测试通过。")
 
+def test_masked_extreme_scores_and_required_reference():
+    new = torch.tensor([[-1.0, -10000.0], [-1.0, -10000.0]], requires_grad=True)
+    old = torch.tensor([[-1.0, -20000.0], [-1.0, -20000.0]], requires_grad=True)
+    ref = torch.tensor([[-1.0, 0.0], [-1.0, 0.0]], requires_grad=True)
+    mask = torch.tensor([[True, False], [True, False]])
+    rewards, groups = torch.tensor([0.0, 1.0]), torch.tensor([0, 0])
+    loss, _ = compute_grpo_loss(new, old, rewards, groups, mask, log_probs_ref=ref, beta=0.1)
+    assert torch.isfinite(loss)
+    loss.backward()
+    assert torch.isfinite(new.grad).all() and torch.all(new.grad[:, 1] == 0)
+    assert old.grad is None and ref.grad is None
+    try:
+        compute_grpo_loss(new, old, rewards, groups, mask, beta=0.1)
+    except ValueError:
+        return
+    raise AssertionError("启用KL约束时缺少参考分数应报错")
+
+test_masked_extreme_scores_and_required_reference()
 run_grpo_tests()
 
 ```
@@ -356,6 +376,8 @@ def compute_grpo_loss(log_probs_new, log_probs_old, rewards, group_ids, response
         raise ValueError("clip_range 与 beta 必须是非负有限数")
     if not torch.isfinite(log_probs_new).all() or not torch.isfinite(log_probs_old).all():
         raise ValueError("新旧策略 log_probs 必须为有限数")
+    if beta > 0 and log_probs_ref is None:
+        raise ValueError("beta>0需要固定参考策略分数")
     if log_probs_ref is not None and log_probs_ref.shape != log_probs_new.shape:
         raise ValueError("参考策略 log_probs 必须与当前策略同形")
     if response_mask is None:
@@ -368,7 +390,7 @@ def compute_grpo_loss(log_probs_new, log_probs_old, rewards, group_ids, response
     advantages = compute_group_advantages(rewards, group_ids, eps=eps)
 
     # TODO 2：当前策略与采样策略形成 token 级比率。
-    ratio = torch.exp(log_probs_new - log_probs_old.detach())
+    ratio = torch.exp((log_probs_new - log_probs_old.detach()).masked_fill(~response_mask, 0.0))
     clipped_ratio = torch.clamp(ratio, 1.0 - clip_range, 1.0 + clip_range)
 
     # TODO 3：候选优势广播到 Token；可选 Reference KL 限制长期漂移。
@@ -378,7 +400,7 @@ def compute_grpo_loss(log_probs_new, log_probs_old, rewards, group_ids, response
     conservative = torch.minimum(surrogate, clipped_surrogate)
     per_token_loss = -conservative
     if log_probs_ref is not None and beta > 0:
-        ref_delta = log_probs_ref.detach() - log_probs_new
+        ref_delta = (log_probs_ref.detach() - log_probs_new).masked_fill(~response_mask, 0.0)
         per_token_kl = torch.exp(ref_delta) - ref_delta - 1.0
         per_token_loss = per_token_loss + beta * per_token_kl
 

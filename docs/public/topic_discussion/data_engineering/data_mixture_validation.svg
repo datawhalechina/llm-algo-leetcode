@@ -14,7 +14,7 @@
     </style>
   </defs>
   <rect width="1200" height="500" fill="#f8fafc" rx="24"/>
-  <text x="600" y="48" text-anchor="middle" class="title">数据配方必须在固定预算下接受下游验证</text>
+  <text x="600" y="48" text-anchor="middle" class="title">固定预算，比较实际采样、质量与成本</text>
 
   <rect x="80" y="120" width="220" height="90" class="node" fill="#dbeafe" stroke="#2563eb"/>
   <text x="190" y="156" text-anchor="middle" class="label">固定数据池</text>
@@ -30,7 +30,7 @@
 
   <rect x="700" y="315" width="220" height="90" class="node" fill="#fef3c7" stroke="#d97706"/>
   <text x="810" y="351" text-anchor="middle" class="label">固定预算对照</text>
-  <text x="810" y="379" text-anchor="middle" class="note">模型、词元、评测集</text>
+  <text x="810" y="379" text-anchor="middle" class="note">模型、主预算、评测集</text>
 
   <rect x="970" y="315" width="190" height="90" class="node" fill="#dcfce7" stroke="#16a34a"/>
   <text x="1065" y="351" text-anchor="middle" class="label">采用判断</text>

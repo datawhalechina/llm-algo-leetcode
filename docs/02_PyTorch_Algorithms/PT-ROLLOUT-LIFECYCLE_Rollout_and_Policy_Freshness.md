@@ -4,7 +4,7 @@
 
 > 🚀 **云端运行环境**
 >
-> 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
+> 可用以下链接在云端Notebook平台打开；设备和依赖要求以本节运行环境说明为准：
 >
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/PT-ROLLOUT-LIFECYCLE_Rollout_and_Policy_Freshness.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
@@ -40,9 +40,9 @@
 
 ## Step 1：把生成记录与使用状态分开保存
 
-轨迹是一次生成得到的回答或交互过程。行为策略是生成当时使用的策略；其版本、词元及动作概率，使后来能在相同回答上重新评分。还应保存任务、分词器、采样设置和奖励规则，区分“内容相同”和“同一次生成”。
+轨迹是一次生成得到的回答或交互过程。行为策略是生成当时使用的策略；其版本、词元及动作概率，使后来能在相同回答上重新评分。还应保存任务、分词器、采样设置和奖励规则，区分“内容相同”和“同一次生成”。对原回答重试评分时沿用采样事件，另记评分尝试、结果与失败原因；评分超时先保留待评分状态，已确认答错的0分则表示评分完成。
 
-使用状态描述这条记录当前走到哪里：已生成、已奖励、已预留、已消费。预留把记录绑定到一个更新，提交后确认该绑定已完成；更新中止时释放或隔离。一个更新内部可以按算法规定多次使用同一批数据，跨更新的再次使用则需要明确规则。多个学习器申请同一记录时，检查状态与写入预留需要在同一事务或锁内完成。
+使用状态区分已生成、已奖励、已预留、已消费与待核查。调用方确认评分完成后发出 reward_ready，状态表只检查事件顺序，评分可靠性由调用方另行核对。预留把轨迹绑定到指定更新；确认更新尚未执行时，abort才释放预留。更新可能已经执行而提交结果不明时，commit_uncertain进入quarantined，暂停重新预留，等待检查点与提交记录核对。一次更新内部可按算法重复使用轨迹；多个学习器的状态检查与预留写入仍需锁或事务保证原子性。
 
 | 记录类别 | 需要保存什么 | 用途 |
 | --- | --- | --- |
@@ -112,6 +112,7 @@ LIFECYCLE_TRANSITIONS = {
     ('rewarded', 'reserve'): 'reserved',
     ('reserved', 'commit'): 'consumed',
     ('reserved', 'abort'): 'rewarded',
+    ('reserved', 'commit_uncertain'): 'quarantined',
 }
 
 
@@ -293,6 +294,38 @@ def test_version_activation():
     assert active == {'version': 3, 'artifact_hash': 'policy-3'}
 
 
+def test_score_retry_before_reservation():
+    """评分未完成时保持已生成；对原回答补评分后再预留。"""
+    ledger = {'r-timeout': {
+        'lifecycle_state': 'generated', 'revision': 0, 'reserved_by': None,
+        'sampling_event_id': 'sample-1', 'behavior_version': 3,
+        'reward_status': 'timeout', 'score': None, 'score_attempt': 1,
+    }}
+    denied = compare_and_reserve(ledger, 'r-timeout', 0, 'update-a')
+    assert not denied['reserved'] and denied['reason'] == 'not_rewarded'
+    # 由调用方确认评分成功；这里只模拟该结果，不执行评分服务。
+    record = ledger['r-timeout']
+    record.update(reward_status='completed', score=0.0, score_attempt=2)
+    record['lifecycle_state'] = transition_lifecycle(record['lifecycle_state'], 'reward_ready')
+    record['revision'] += 1
+    assert record['sampling_event_id'] == 'sample-1' and record['behavior_version'] == 3
+    assert record['score'] == 0.0  # 已评分的0分可进入后续算法判断。
+    reserved = compare_and_reserve(ledger, 'r-timeout', 1, 'update-a')
+    assert reserved['reserved'] and ledger['r-timeout']['revision'] == 2
+
+def test_uncertain_commit_is_quarantined():
+    state = transition_lifecycle('reserved', 'commit_uncertain')
+    assert state == 'quarantined'
+    ledger = {'r1': {'lifecycle_state': state, 'revision': 8}}
+    assert not compare_and_reserve(ledger, 'r1', 8, 'retry')['reserved']
+    try:
+        transition_lifecycle(state, 'abort')
+    except ValueError:
+        return
+    raise AssertionError("提交状态不明时不能直接释放重试")
+
+test_score_retry_before_reservation()
+test_uncertain_commit_is_quarantined()
 test_lifecycle_transitions(); test_policy_compatibility(); test_compare_and_reserve(); test_version_activation()
 print('✅ 轨迹状态迁移、策略兼容性、竞争预留与版本激活测试通过')
 ```
@@ -314,6 +347,7 @@ LIFECYCLE_TRANSITIONS = {
     ('rewarded', 'reserve'): 'reserved',
     ('reserved', 'commit'): 'consumed',
     ('reserved', 'abort'): 'rewarded',
+    ('reserved', 'commit_uncertain'): 'quarantined',
 }
 
 

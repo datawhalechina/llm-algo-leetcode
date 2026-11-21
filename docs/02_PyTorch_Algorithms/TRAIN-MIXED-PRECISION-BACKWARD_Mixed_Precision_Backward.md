@@ -4,7 +4,7 @@
 
 > 🚀 **云端运行环境**
 >
-> 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
+> 可用以下链接在云端Notebook平台打开；设备和依赖要求以本节运行环境说明为准：
 >
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/TRAIN-MIXED-PRECISION-BACKWARD_Mixed_Precision_Backward.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
@@ -303,14 +303,27 @@ def check_amp_framework_conformance():
     local_plan = plan_mixed_precision_update(
         [overflow_parameter.grad.detach().clone()], overflow_scaler.get_scale(), max_norm=1.0
     )
+    executed_steps = []
+    hook = overflow_optimizer.register_step_post_hook(lambda *args: executed_steps.append(True))
     overflow_scaler.step(overflow_optimizer)
+    hook.remove()
     overflow_scaler.update()
     checks = {
         'unscaled_gradient_match': bool(torch.allclose(local_gradient, framework_gradient)),
         'local_overflow_skips': local_plan['should_step'] is False,
-        'framework_overflow_skips': bool(torch.equal(before, overflow_parameter.detach())),
+        'framework_overflow_skips': not executed_steps and bool(torch.equal(before, overflow_parameter.detach())),
         'scale_backoff_match': overflow_scaler.get_scale() == local_plan['next_scale'],
     }
+    zero_parameter = torch.nn.Parameter(torch.tensor([1.0]))
+    zero_optimizer = torch.optim.SGD([zero_parameter], lr=0.0)
+    zero_scaler = torch.amp.GradScaler('cpu', init_scale=8.0)
+    executed = []
+    zero_hook = zero_optimizer.register_step_post_hook(lambda *args: executed.append(True))
+    zero_scaler.scale(zero_parameter.square().sum()).backward()
+    zero_scaler.step(zero_optimizer)
+    zero_scaler.update()
+    zero_hook.remove()
+    checks['zero_lr_step_executed'] = len(executed) == 1 and zero_parameter.item() == 1.0
     failed = [name for name, passed in checks.items() if not passed]
     if failed:
         raise AssertionError(f'框架一致性核对失败：{failed}')
@@ -358,6 +371,7 @@ MODEL_ID = 'Qwen/Qwen2.5-0.5B'  # 默认真实模型；四节共用同一 checkp
 MODEL_REVISION = 'main'  # 默认请求主分支；5.2 会解析并记录不可变 commit。
 LOCAL_FILES_ONLY = False  # 默认允许首次下载；完成缓存后可改为 True 做离线复测。
 GPU_CONFIG = {
+    'execution_protocol': 'sgd-step-hook-finite-gate/v1',  # 新协议；使用新运行标签，历史探针记录保持原解释。
     'candidate_dtype': 'float16',  # 默认值 float16；可改为 bfloat16，后者不启用 GradScaler。
     'batch_size': 1,               # 默认值 1；12 GiB 单卡机制基线。
     'seq_len': 128,                # 默认值 128 Token；增大会提高激活显存。
@@ -375,9 +389,9 @@ RESULTS_RELATIVE_DIR = 'benchmarks/results/train_mixed_precision_backward'  # �
 
 ### 5.2 执行并保存 JSON
 
-按相同模型和输入依次执行 FP32、AMP、人工 FP16 溢出三条路径，优化器为 SGD。当前顺序固定；每条正常路径预热后收集 20 次有限梯度且探针参数发生变化的更新。CUDA Event 计时覆盖前向至优化器更新，探针复制在计时前执行；峰值分配显存还包括预热、回退尝试和该副本。
+按相同模型和输入执行FP32、AMP、人工FP16溢出路径，使用普通SGD。当前仍是固定顺序测量；正常路径预热后采集20次梯度及范数有限且优化器实际执行的步骤。CUDA Event覆盖前向至更新，计时也包含新增门控；峰值包含预热与回退尝试。当前协议需用新标签实测，不能直接与历史计时归因为精度收益。
 
-探针是一个注意力投影权重，变化说明该张量发生了更新。FP16 由 GradScaler 记录非有限梯度并跳步；BF16 关闭缩放后，现有程序仍直接调用优化器，因此下一轮 BF16 验证应先补显式跳步检查。人工溢出只用于观察 FP16 参数保持和缩放回退。
+本页通过优化器步骤钩子记录普通SGD是否执行，参数探针差值独立保存。FP16非有限梯度由GradScaler跳过；BF16和FP32在调用优化器前显式检查梯度与范数。范数非有限时也跳过，但它与GradScaler检测到元素溢出的回退分别解释。融合优化器的内部跳步另查框架信号。
 
 
 ```python
@@ -415,6 +429,8 @@ if RUN_MODE == 'real_gpu':
         model.train()
         batch = move_batch(prepared, device)
         optimizer = torch.optim.SGD(model.parameters(), lr=GPU_CONFIG['learning_rate'])
+        executed_steps = []
+        step_hook = optimizer.register_step_post_hook(lambda *args: executed_steps.append(True))
         use_amp = amp_dtype is not None
         use_scaler = amp_dtype == torch.float16
         scaler = torch.amp.GradScaler(
@@ -455,17 +471,21 @@ if RUN_MODE == 'real_gpu':
             scale_before = float(scaler.get_scale())
             scaler.scale(loss).backward()
             scaler.unscale_(optimizer)
-            grad_norm_tensor = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            raw_finite = all(bool(torch.isfinite(p.grad).all().item()) for p in model.parameters() if p.grad is not None)
+            grad_norm_tensor = (torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+                                if raw_finite else torch.tensor(float('inf'), device=device))
             last_grad_is_finite = bool(torch.isfinite(grad_norm_tensor).item())
             last_grad_norm = float(grad_norm_tensor) if last_grad_is_finite else None
-            scaler.step(optimizer)
+            previous_steps = len(executed_steps)
+            if last_grad_is_finite or (use_scaler and not raw_finite):
+                scaler.step(optimizer)
             scaler.update()
             scale_after = float(scaler.get_scale())
             end.record()
             torch.cuda.synchronize()
             elapsed_ms = start.elapsed_time(end)
             last_parameter_delta = float((probe_parameter.detach() - before).abs().max())
-            update_applied = last_parameter_delta > 0.0
+            update_applied = len(executed_steps) > previous_steps
 
             if inject_overflow:
                 measured_updates.append(update_applied)
@@ -502,6 +522,7 @@ if RUN_MODE == 'real_gpu':
             'successful_steps': successful_steps,
             'step_applied': bool(measured_updates) and all(measured_updates),
         }
+        step_hook.remove()
         del optimizer, model, batch
         gc.collect()
         torch.cuda.empty_cache()
@@ -560,7 +581,7 @@ else:
 
 ### 5.4 解释更新检查、时间与显存
 
-程序的 `accept` 要求两条正常路径完成更新、末次梯度范数有限、测量窗口的探针均变化，以及人工 FP16 溢出时探针保持且缩放值降低。这一决定用于更新检查；速度和显存收益另行读取，质量还需在训练任务中评测。
+当前程序的accept要求两条正常路径完成规定数量的有限梯度步骤，并由普通SGD步骤钩子确认实际执行；人工FP16溢出路径应不执行优化器且缩放值降低。参数探针差值作为独立观察。这些修订尚待GPU验证，下面历史default14仍按原探针协议解释。
 
 历史标签 `default14` 在 20 次成功测量中记录中位步时 96.50 → 94.21 ms，峰值约 4841 → 4322 MiB，降低约 10.7%。它提供了当前负载的显存观察；固定先后顺序的单组测量可作为后续交替配对复测的起点。
 

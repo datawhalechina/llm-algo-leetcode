@@ -4,7 +4,7 @@
 
 > 🚀 **云端运行环境**
 >
-> 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
+> 可用以下链接在云端Notebook平台打开；设备和依赖要求以本节运行环境说明为准：
 >
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/PT-REWARD-SIGNAL_Reward_Model_Value_and_Advantage.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
@@ -16,9 +16,9 @@
 
 一句回答到最后才知道对错，更新时却要决定哪些生成位置应增加或降低概率。任务奖励怎样传到前面的词元？同样的回报，为什么换一个比较基线就会改变更新方向？
 
-本节从回答的任务反馈出发，跟踪词元奖励、未来累计回报、价值估计与优势。用短序列比较折扣的作用，再区分 PPO 的状态价值基线和 GRPO 的同题回答组基线，解释每种数值在更新中承担的角色。
+本节从回答的任务反馈出发，跟踪词元奖励、未来累计回报、价值估计与优势。用短序列比较折扣、自然结束与采集截断的作用，再区分 PPO 的状态价值基线和 GRPO 的同题回答组基线，解释每种数值在更新中承担的角色。
 
-**关键词：** `奖励`、`折扣回报`、`价值估计`、`优势`、`组内基线`
+**关键词：** `奖励`、`折扣回报`、`价值估计`、`优势`、`GAE`、`组内基线`
 
 ---
 
@@ -63,7 +63,7 @@ $$
 
 最终答案决定任务奖励时，把该反馈放在最后一个有效动作；有过程奖励时，放到对应动作。折扣因子 $\gamma\in[0,1]$ 控制远期反馈的权重： $\gamma=1$ 保留后续奖励，较小值使较远奖励衰减。这里的“从后向前”是数值递推，与损失对参数求导的反向传播是两个步骤。
 
-令 $r_k$ 为动作位置 $k$ 的奖励，最后动作位置为 $T$。位置 $t$ 的回报 $G_t$ 汇总后续奖励，终点之后取零。例如奖励为 $[0,0,1]$、折扣为 $0.5$，回报依次为 $[0.25,0.5,1]$。掩码先排除提示与填充；本页按连续有效动作的位置累计，内部若保留非动作位置，折扣时间单位也应随之明确。
+令 $r_k$ 为动作位置 $k$ 的奖励，最后动作位置为 $T$。先看零末值例子：奖励为 $[0,0,1]$、折扣0.5时，回报为 $[0.25,0.5,1]$。自然结束（terminated）表示按任务定义已到终态，最后动作之后的价值取零；采集截断（truncated）表示外部限制使记录停止、任务仍可继续，此时可用同一轨迹重置前末状态的价值估计补足后续回报，称为 bootstrap。例如最后奖励0.2、折扣1：自然结束的一步目标为0.2，采集截断且末状态价值0.5时为0.7。若时间限制本身定义了任务终点，则按自然结束处理。下面公式和图先展示零末值累计；掩码排除提示与填充，工具观察另明确折扣时间单位。
 
 $$
 G_t=\sum_{k=t}^{T}\gamma^{k-t}r_k
@@ -74,7 +74,7 @@ $$
 
 ## Step 3：比较状态价值与同题回答组基线
 
-PPO 的价值模型预测“当前上下文通常能得到多少回报”，将实际回报 $G_t$ 减去状态价值 $V_\phi(s_t)$，得到逐位置优势 $A_t=G_t-V_\phi(s_t)$。例如回报为 1，价值预测为 0.7 或 1.2，优势分别为 0.3 或 −0.2。完整 PPO 常用广义优势估计（GAE）：通过折扣累积时序差分残差，调节偏差与方差；终止状态的后续价值取零，其中 $\delta_t$ 是残差， $\lambda\in[0,1]$ 控制残差的衰减。
+PPO 的价值模型预测“当前上下文通常能得到多少回报”，将实际回报 $G_t$ 减去状态价值 $V_\phi(s_t)$，得到逐位置优势 $A_t=G_t-V_\phi(s_t)$。例如回报为 1，价值预测为 0.7 或 1.2，优势分别为 0.3 或 −0.2。广义优势估计（GAE）先计算时序差分残差 $\delta_t$，即“即时奖励加折扣后的下一状态价值”减当前价值，再向前累计这些残差。参数 $\lambda\in[0,1]$ 调节后续残差的权重；取0时只保留一步残差，取1时累计本段全部残差。一段记录结束后，残差累计也在此停止，后续新任务另算；价值目标取优势加本次采样时的价值估计，计算出的优势与目标作为固定更新输入。
 
 $$
 \delta_t=r_t+\gamma V_\phi(s_{t+1})-V_\phi(s_t),\qquad
@@ -99,16 +99,18 @@ $$
 
 <a id="mechanism-practice"></a>
 
-## Step 4：实现 Token 奖励、回报与两类优势
+## Step 4：实现奖励、回报、GAE 与组内优势
 
-题目区先在动作掩码范围内组合终局任务反馈与采样 Token 对数概率比，再从后向前计算折扣回报。最后分别实现 PPO 的逐 Token 价值基线和 GRPO 的组内回答基线，避免把两种优势估计混成同一个公式。
+题目区先在动作掩码范围内组合终局任务反馈与采样 Token 对数概率比，再从后向前计算折扣回报。再比较逐 Token 价值基线与 GRPO 的组内回答基线，最后补全 GAE。GAE 输入限定为一段连续有效动作，先移除提示、填充位置并按任务切段；本练习以自然结束或采集截断之一结束，多段轨迹分别计算。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 |:---|:---|:---|:---|
-| TODO 1：组合动作奖励<br>`build_token_rewards` | 在有效动作上组合任务奖励与采样对数概率比约束 | 对数概率与动作掩码同形；任务奖励只加入有效终止位置 | 约束符号、掩码、终止位置、输入契约 |
+| TODO 1：组合动作奖励<br>`build_token_rewards` | 在有效动作上组合任务奖励与采样对数概率比约束 | 对数概率与动作掩码同形；任务反馈加入声明的最后有效动作位置 | 约束符号、掩码、终止位置、输入契约 |
 | TODO 2：反向累计回报<br>`discounted_returns` | 从后向前累计未来奖励 | `gamma` 位于 `[0, 1]` | 递推方向与折扣值 |
 | TODO 3：扣除价值基线<br>`compute_advantages` | 用逐 Token 价值估计构造相对更新信号 | 回报与价值估计同形 | 基线相减与可选标准化 |
 | TODO 4：计算组内相对优势<br>`group_relative_advantages` | 用同提示候选组的奖励统计形成回答级优势 | 奖励为非空一维张量；标准差修正量必须合法；近零方差时保持有限 | 平移不变性、两种标准差口径与退化组 |
+| TODO 5：累计 GAE 残差<br>`generalized_advantages` | 用下一状态价值构造残差，再从后向前累计 | 自然结束取零末值；采集截断须提供末状态价值；优势和目标固定，不对其求导 | 一步目标0.2／0.7、两步递推、折扣与 lambda 边界、输入检查 |
+
 
 ```python
 import math
@@ -133,7 +135,7 @@ def build_token_rewards(task_reward, actor_log_probs, reference_log_probs, beta_
     if not torch.isfinite(actor_log_probs).all() or not torch.isfinite(reference_log_probs).all():
         raise ValueError("actor/reference 对数概率必须为有限数")
     task_reward_tensor = torch.as_tensor(task_reward, dtype=actor_log_probs.dtype, device=actor_log_probs.device)
-    if task_reward_tensor.numel() != 1 or not torch.isfinite(task_reward_tensor):
+    if task_reward_tensor.ndim != 0 or not torch.isfinite(task_reward_tensor):
         raise ValueError("task_reward 必须是有限标量")
     beta_kl = float(beta_kl)
     if not math.isfinite(beta_kl) or beta_kl < 0:
@@ -207,11 +209,48 @@ def group_relative_advantages(group_rewards, eps=1e-8, correction=0):
     # advantages = ???  # 与组奖励同形；近零标准差时为零。
     raise NotImplementedError("TODO 4：计算 GRPO 组内优势")
     return advantages
+
+@torch.no_grad()
+def generalized_advantages(token_rewards, values, *, terminated, truncated,
+                           bootstrap_value=None, gamma=1.0, gae_lambda=0.95):
+    """对单段连续有效动作计算固定 GAE 和价值目标；段内不含重置或填充。"""
+    if (token_rewards.ndim != 1 or token_rewards.numel() == 0
+            or values.shape != token_rewards.shape):
+        raise ValueError("奖励与价值必须是同形非空一维张量")
+    if (not token_rewards.is_floating_point() or not values.is_floating_point()
+            or values.dtype != token_rewards.dtype or values.device != token_rewards.device):
+        raise ValueError("奖励与价值必须使用相同浮点类型和设备")
+    if not torch.isfinite(token_rewards).all() or not torch.isfinite(values).all():
+        raise ValueError("奖励与价值必须有限")
+    if type(terminated) is not bool or type(truncated) is not bool or terminated == truncated:
+        raise ValueError("本练习的一段轨迹须以自然结束或采集截断之一结束")
+    gamma, gae_lambda = float(gamma), float(gae_lambda)
+    if not (math.isfinite(gamma) and math.isfinite(gae_lambda)
+            and 0 <= gamma <= 1 and 0 <= gae_lambda <= 1):
+        raise ValueError("gamma 与 gae_lambda 必须位于 [0, 1]")
+    if truncated and bootstrap_value is None:
+        raise ValueError("采集截断需要同一轨迹末状态的价值")
+    next_value = torch.as_tensor(
+        0.0 if bootstrap_value is None else bootstrap_value,
+        dtype=values.dtype, device=values.device,
+    )
+    if next_value.ndim != 0 or not torch.isfinite(next_value):
+        raise ValueError("末状态价值必须为有限标量")
+    if terminated:
+        next_value = torch.zeros_like(next_value)
+    # ==========================================
+    # TODO 5：GAE 残差累计与价值目标
+    # ==========================================
+    # delta = ???  # 当前奖励、折扣后的下一价值与当前价值的差。
+    # running_advantage = ???  # 当前残差加衰减后的后续优势。
+    # value_targets = ???  # 固定优势加采样时的价值估计。
+    raise NotImplementedError("TODO 5：计算 GAE 与价值目标")
+
 ```
 
 ## 测试
 
-测试聚焦四类机制：终局奖励与采样对数概率比约束的位置、回报的反向递推、PPO 对价值基线的响应，以及 GRPO 组内优势的平移不变性。
+测试覆盖终局奖励与采样对数概率比约束的位置、回报的反向递推、PPO 对价值基线的响应，GRPO 组内优势的平移不变性，以及 GAE 的末状态价值、残差递推和固定目标。
 
 ```python
 def test_token_reward_placement():
@@ -286,12 +325,95 @@ def test_signal_input_contracts():
             raise AssertionError("非有限信号、非布尔掩码或非法 eps 必须被拒绝")
 
 
+def test_scalar_reward_and_zero_tail_return():
+    assert torch.allclose(discounted_returns(torch.tensor([0.2]), gamma=1.0), torch.tensor([0.2]))
+    for reward in (torch.tensor([1.0]), torch.tensor([[1.0]])):
+        try:
+            build_token_rewards(reward, torch.zeros(2), torch.zeros(2), 0.1)
+        except ValueError:
+            continue
+        raise AssertionError("任务奖励要求零维标量")
+
+test_scalar_reward_and_zero_tail_return()
 test_token_reward_placement()
 test_discounted_return_direction()
 test_advantage_baseline_and_normalization()
 test_group_relative_advantage()
 test_signal_input_contracts()
-print("All reward-signal tests passed.")
+def test_gae_endings_and_targets():
+    """相同即时奖励，末状态是否还有价值会改变目标。"""
+    for dtype in (torch.float32, torch.float64):
+        rewards = torch.tensor([0.2], dtype=dtype, requires_grad=True)
+        values = torch.tensor([0.4], dtype=dtype, requires_grad=True)
+        tail = torch.tensor(0.5, dtype=dtype, requires_grad=True)
+        ended, terminal_targets = generalized_advantages(
+            rewards, values, terminated=True, truncated=False, bootstrap_value=tail)
+        cut, cut_targets = generalized_advantages(
+            rewards, values, terminated=False, truncated=True, bootstrap_value=tail)
+        torch.testing.assert_close(ended, torch.tensor([-0.2], dtype=dtype))
+        torch.testing.assert_close(terminal_targets, torch.tensor([0.2], dtype=dtype))
+        torch.testing.assert_close(cut, torch.tensor([0.3], dtype=dtype))
+        torch.testing.assert_close(cut_targets, torch.tensor([0.7], dtype=dtype))
+        for output in (ended, terminal_targets, cut, cut_targets):
+            assert not output.requires_grad and output.dtype == dtype
+
+
+def test_gae_recurrence_and_limits():
+    rewards, values = torch.tensor([0.0, 1.0]), torch.tensor([0.2, 0.4])
+    kwargs = dict(terminated=False, truncated=True, bootstrap_value=0.6, gamma=0.5)
+    advantages, targets = generalized_advantages(rewards, values, gae_lambda=0.5, **kwargs)
+    torch.testing.assert_close(advantages, torch.tensor([0.225, 0.9]))
+    torch.testing.assert_close(targets, torch.tensor([0.425, 1.3]))
+    one_step, _ = generalized_advantages(rewards, values, gae_lambda=0.0, **kwargs)
+    torch.testing.assert_close(one_step, torch.tensor([0.0, 0.9]))
+    full, full_targets = generalized_advantages(rewards, values, gae_lambda=1.0, **kwargs)
+    torch.testing.assert_close(full_targets, torch.tensor([0.65, 1.3]))
+    torch.testing.assert_close(full, full_targets - values)
+    ended, ended_targets = generalized_advantages(
+        rewards, values, terminated=True, truncated=False, gamma=0.5, gae_lambda=1.0)
+    torch.testing.assert_close(ended_targets, discounted_returns(rewards, gamma=0.5))
+    torch.testing.assert_close(ended, ended_targets - values)
+    immediate, immediate_targets = generalized_advantages(
+        rewards, values, terminated=True, truncated=False, gamma=0.0)
+    torch.testing.assert_close(immediate_targets, rewards)
+    torch.testing.assert_close(immediate, rewards - values)
+
+
+def test_gae_input_boundaries():
+    rewards, values = torch.zeros(2), torch.zeros(2)
+    base = dict(terminated=False, truncated=True, bootstrap_value=0.5)
+    invalid = [
+        dict(terminated=True, truncated=True),
+        dict(terminated=False, truncated=False),
+        dict(terminated=1), dict(bootstrap_value=None),
+        dict(bootstrap_value=torch.tensor([0.5])), dict(bootstrap_value=float("nan")),
+        dict(gamma=-0.1), dict(gae_lambda=1.1), dict(gae_lambda=float("nan")),
+    ]
+    for change in invalid:
+        try:
+            generalized_advantages(rewards, values, **(base | change))
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"应拒绝非法 GAE 输入：{change}")
+    for r, v in ((torch.zeros(0), torch.zeros(0)),
+                 (rewards, torch.zeros(3)),
+                 (rewards, torch.tensor([float("inf"), 0.])),
+                 (rewards.long(), values.long()),
+                 (rewards, values.double())):
+        try:
+            generalized_advantages(r, v, **base)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("应拒绝空段、形状错配或非法数值类型")
+
+
+test_gae_endings_and_targets()
+test_gae_recurrence_and_limits()
+test_gae_input_boundaries()
+
+print("All reward-signal tests passed, including GAE and ending boundaries.")
 ```
 
 ---
@@ -314,7 +436,7 @@ def build_token_rewards(task_reward, actor_log_probs, reference_log_probs, beta_
     if not torch.isfinite(actor_log_probs).all() or not torch.isfinite(reference_log_probs).all():
         raise ValueError("actor/reference 对数概率必须为有限数")
     task_reward_tensor = torch.as_tensor(task_reward, dtype=actor_log_probs.dtype, device=actor_log_probs.device)
-    if task_reward_tensor.numel() != 1 or not torch.isfinite(task_reward_tensor):
+    if task_reward_tensor.ndim != 0 or not torch.isfinite(task_reward_tensor):
         raise ValueError("task_reward 必须是有限标量")
     beta_kl = float(beta_kl)
     if not math.isfinite(beta_kl) or beta_kl < 0:
@@ -387,6 +509,46 @@ def group_relative_advantages(group_rewards, eps=1e-8, correction=0):
     centered = group_rewards - group_rewards.mean()
     scale = group_rewards.std(correction=correction)
     return centered / (scale + eps) if scale > eps else torch.zeros_like(centered)
+
+@torch.no_grad()
+def generalized_advantages(token_rewards, values, *, terminated, truncated,
+                           bootstrap_value=None, gamma=1.0, gae_lambda=0.95):
+    """对单段连续有效动作计算固定 GAE 和价值目标；段内不含重置或填充。"""
+    if (token_rewards.ndim != 1 or token_rewards.numel() == 0
+            or values.shape != token_rewards.shape):
+        raise ValueError("奖励与价值必须是同形非空一维张量")
+    if (not token_rewards.is_floating_point() or not values.is_floating_point()
+            or values.dtype != token_rewards.dtype or values.device != token_rewards.device):
+        raise ValueError("奖励与价值必须使用相同浮点类型和设备")
+    if not torch.isfinite(token_rewards).all() or not torch.isfinite(values).all():
+        raise ValueError("奖励与价值必须有限")
+    if type(terminated) is not bool or type(truncated) is not bool or terminated == truncated:
+        raise ValueError("本练习的一段轨迹须以自然结束或采集截断之一结束")
+    gamma, gae_lambda = float(gamma), float(gae_lambda)
+    if not (math.isfinite(gamma) and math.isfinite(gae_lambda)
+            and 0 <= gamma <= 1 and 0 <= gae_lambda <= 1):
+        raise ValueError("gamma 与 gae_lambda 必须位于 [0, 1]")
+    if truncated and bootstrap_value is None:
+        raise ValueError("采集截断需要同一轨迹末状态的价值")
+    next_value = torch.as_tensor(
+        0.0 if bootstrap_value is None else bootstrap_value,
+        dtype=values.dtype, device=values.device,
+    )
+    if next_value.ndim != 0 or not torch.isfinite(next_value):
+        raise ValueError("末状态价值必须为有限标量")
+    if terminated:
+        next_value = torch.zeros_like(next_value)
+    # TODO 5：从后向前累计残差，构造固定优势和价值目标。
+    advantages = torch.empty_like(values)
+    running_advantage = torch.zeros_like(next_value)
+    for index in range(values.numel() - 1, -1, -1):
+        delta = token_rewards[index] + gamma * next_value - values[index]
+        running_advantage = delta + gamma * gae_lambda * running_advantage
+        advantages[index] = running_advantage
+        next_value = values[index]
+    value_targets = advantages + values
+    return advantages, value_targets
+
 ```
 
 ### 解析
@@ -404,12 +566,17 @@ def group_relative_advantages(group_rewards, eps=1e-8, correction=0):
 #### TODO 3：扣除价值基线
 
 - 优势为回报减价值估计；相同回报下，更高的价值基线会减小优势。可选标准化使用总体标准差，近零时保留中心化结果。
-- 测试核对三个位置的原始差值，并检查标准化后均值接近零；完整 GAE 的残差累计需另行实现。
+- 测试核对三个位置的原始差值，并检查标准化后均值接近零；GAE 的残差累计在 TODO 5 中单独计算。
 
 #### TODO 4：计算组内相对优势
 
 - 先扣组均值，再按指定标准差缩放；总体与样本标准差的分母不同。奖励整组平移后中心化结果不变，同分组返回零。
 - 测试分别核对奖励平移、样本标准差口径和全同分支，确认缩放约定及零方差行为。
+
+#### TODO 5：累计 GAE 残差
+
+- 从最后动作开始，以末状态价值构造残差，再按 gamma × lambda 累计到前一动作。自然结束忽略末状态补值，采集截断要求提供重置前末状态的价值；本段之后的残差累计从零开始，避免串入新任务。
+- 返回优势与“优势加原价值”构成的价值目标；no_grad 使两者作为固定更新输入。测试分别核对一步结束／截断、两步数值、lambda 为0与1、gamma 为0、浮点类型，以及非法边界。
 
 <a id="framework-check"></a>
 
@@ -671,7 +838,7 @@ else:
 
 ### 5.4 解释结果与下一步
 
-`rtx5070ti_reward_signal_v3` 记录了非零策略分数偏移、终局奖励放置检查和完整六组矩阵。当前自动判断依据这三项返回 `accept_mechanism`，支持固定回答上的信号构造检查；这些回答的分数差决定本次参数扫描的方向。
+`rtx5070ti_reward_signal_v3` 记录了非零策略分数偏移、终局奖励放置检查和完整六组矩阵。Step 5 沿用零末值折扣回报与直接价值基线，新增 GAE 练习由 Step 4 的 CPU 测试验证。当前自动判断依据这三项返回 `accept_mechanism`，支持固定回答上的信号构造检查；这些回答的分数差决定本次参数扫描的方向。
 
 | 观察项 | 读取字段 | 当前结果 | 解释与动作 |
 |:---|:---|:---|:---|

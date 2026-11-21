@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
+  <title id="title">回答生成与逐样本评分的完成状态</title>
+  <desc id="desc">正常路径从固定问题经过生成和评分得到逐题分数。生成超时与评分超时分别保留失败阶段；评分超时时仍保留已经生成的回答。四道题的构造例子区分评分覆盖与已评分正确率。</desc>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#506882"/></marker></defs>
+  <style>text{font-family:'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#22344b}.head{font-size:30px;font-weight:700}.label{font-size:24px;font-weight:700}.body{font-size:21px}.note{font-size:22px}.normal{fill:#edf5ff;stroke:#6c93bc;stroke-width:2}.missing{fill:#fff5e9;stroke:#b18b53;stroke-width:2}.edge{fill:none;stroke:#506882;stroke-width:2.5;marker-end:url(#arrow)}.failure{stroke-dasharray:7 5}</style>
+  <rect width="1200" height="500" rx="16" fill="#f8fafc"/>
+  <text x="40" y="48" class="head">先保留逐题状态，再汇总分数</text>
+  <text x="40" y="84" class="body">实线：完成的处理步骤　虚线：未完成时保留的记录</text>
+  <rect x="40" y="115" width="220" height="90" rx="12" class="normal"/><text x="150" y="151" text-anchor="middle" class="label">固定问题</text><text x="150" y="185" text-anchor="middle" class="body">输入与参考依据</text>
+  <rect x="340" y="115" width="220" height="90" rx="12" class="normal"/><text x="450" y="151" text-anchor="middle" class="label">模型生成</text><text x="450" y="185" text-anchor="middle" class="body">回答与结束原因</text>
+  <rect x="640" y="115" width="220" height="90" rx="12" class="normal"/><text x="750" y="151" text-anchor="middle" class="label">按规则评分</text><text x="750" y="185" text-anchor="middle" class="body">检查回答与依据</text>
+  <rect x="940" y="115" width="220" height="90" rx="12" class="normal"/><text x="1050" y="151" text-anchor="middle" class="label">已评分记录</text><text x="1050" y="185" text-anchor="middle" class="body">逐题分数与理由</text>
+  <path d="M260 160H340 M560 160H640 M860 160H940" class="edge"/>
+  <rect x="340" y="315" width="220" height="90" rx="12" class="missing"/><text x="450" y="351" text-anchor="middle" class="label">生成未完成</text><text x="450" y="385" text-anchor="middle" class="body">超时或执行错误</text>
+  <rect x="640" y="315" width="220" height="90" rx="12" class="missing"/><text x="750" y="351" text-anchor="middle" class="label">评分未完成</text><text x="750" y="385" text-anchor="middle" class="body">保留已有回答</text>
+  <rect x="940" y="315" width="220" height="90" rx="12" class="missing"/><text x="1050" y="351" text-anchor="middle" class="label">未完成记录</text><text x="1050" y="385" text-anchor="middle" class="body">阶段、原因与重试</text>
+  <path d="M450 205V315 M750 205V315 M860 360H940 M450 405V435H1050V405" class="edge failure"/>
+  <text x="40" y="477" class="note">构造例子：4题中2对、1错、1生成超时 → 评分覆盖3/4；已评分正确率2/3</text>
+</svg>

@@ -47,6 +47,7 @@
 | PPO 模型角色 | policy / reference / reward / value models | 当前策略负责生成与更新，参考策略约束漂移，奖励模型提供反馈，价值模型估计回报基线 | 旧策略通常是采样时的策略快照，不必长期作为第五个独立模型驻留 |
 | 优势 | advantage | 回报相对基线的更新信号 | PPO 可用 value 基线，GRPO 可用组内基线 |
 | 广义优势估计 | generalized advantage estimation / GAE | 将奖励和相邻状态价值形成的时序差分残差衰减加权，估计各动作的优势 | 真实终止与采集截断的后续价值处理不同；不是奖励模型的评分 |
+| 末状态价值补值 | bootstrap | 记录停止而任务仍可继续时，用末状态价值估计未记录的后续回报 | 使用同一轨迹重置前的末状态；自然结束取零，采集截断按任务协议处理。见[奖励信号 Step 4](../../02_PyTorch_Algorithms/PT-REWARD-SIGNAL_Reward_Model_Value_and_Advantage.md#mechanism-practice) |
 | 组内基线 | group baseline | 用同一提示下候选奖励的组内统计量构造相对优势 | 组内奖励方差接近零时，更新信号会退化 |
 
 ## 轨迹、环境与在线状态

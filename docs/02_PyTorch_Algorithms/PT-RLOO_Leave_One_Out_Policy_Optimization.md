@@ -4,7 +4,7 @@
 
 > 🚀 **云端运行环境**
 >
-> 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
+> 可用以下链接在云端Notebook平台打开；设备和依赖要求以本节运行环境说明为准：
 >
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/PT-RLOO_Leave_One_Out_Policy_Optimization.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
@@ -39,7 +39,7 @@
 
 ## Step 1：为每条回答计算同组其他奖励的均值
 
-对同一提示 $x_g$，从固定采样策略生成至少两条回答，并使用同一奖励定义评分。组标识把这些回答归到一起；采样策略与奖励函数版本帮助核对比较条件。若某条回答没有可用评分，用缺失值标记，并从其他回答的基线计算中排除。组内只剩一个可评分回答时，本页将其优势置零。
+对同一提示 $x_g$，从固定采样策略生成至少两条回答，并使用同一奖励定义评分。组标识把这些回答归到一起；采样策略与奖励函数版本帮助核对比较条件。若某条回答没有可用评分，用缺失值标记，并从其他回答的基线计算中排除。组内只剩一个可评分回答时，本页将其优势置零。例如奖励为 `[0, NaN, 3]`，排除未评分回答后优势为 `[-3, 0, 3]`，中间的0仅作占位；若对原回答重试评分后得到1分，应按 `[0, 1, 3]` 重算整组优势，得到 `[-2, -0.5, 2.5]`。重试沿用原采样事件与组标识；重新生成则另记采样事件。
 
 设 $S_g$ 为组内可评分回答的索引集合， $R_{g,i}$ 为回答 $i$ 经参考约束调整后的奖励， $b_{g,-i}$ 为排除当前回答的均值， $A_{g,i}$ 为留一优势。对 $i\in S_g$ 且 $|S_g|\ge2$，基线和优势如下；奖励 $[1,2,4]$ 对应基线 $[3,2.5,1.5]$、优势 $[-2,-0.5,2.5]$。相同可评分数量 $n$ 下，留一优势也等于 $n/(n-1)$ 倍的“奖励减含自身组均值”。
 
@@ -80,7 +80,7 @@ $$
 \rho_i=\exp\left(\log\pi_\theta(y_i\mid x_i)-\log\pi_{old}(y_i\mid x_i)\right).
 $$
 
-本页采用序列级裁剪版本，给定下侧范围 $\epsilon_l\in(0,1)$ 和上侧范围 $\epsilon_h>0$，将原目标与裁剪目标取较小值，再取负得到损失。正优势抑制超过上界后的额外奖励，负优势抑制低于下界后的额外奖励；概率比仍可能越界，裁剪约束的是目标收益。旧策略、奖励或组划分变化后，应重新构造对应优势。
+本页采用序列级裁剪，下侧范围为 $\epsilon_l\in(0,1)$，上侧范围为 $\epsilon_h>0$；旧分数与优势固定。概率比可能越界，裁剪约束的是目标收益；即使新旧对数概率有限，指数仍可能溢出，此时显式报错，返回检查偏移与数值精度，而不是继续参数更新。正优势限制上界以外的额外收益，负优势限制下界以外的额外收益。序列长度会累加对数比，不能把这一粒度与逐词元比率直接互换。
 
 $$
 L_i=-\min\left(\rho_iA_i,
@@ -93,13 +93,13 @@ $$
 
 ## Step 4：实现留一优势与序列裁剪目标
 
-题目用词元对数概率、回答掩码、奖励和组标识计算四个量。骨架提供输入检查与按组遍历；你将补全序列聚合、奖励塑形、留一基线和裁剪损失。缺失评分或单例组的优势置零，得到逐回答零损失；汇总时若按整个批次求均值，这些位置仍留在分母，和剔除后求均值有不同尺度。
+题目用词元对数概率、回答掩码、奖励和组标识计算四个量。骨架提供输入检查与按组遍历；你将补全序列聚合、奖励塑形、留一基线和裁剪损失。缺失评分或单例组的优势置零，得到逐回答零损失；本函数返回逐回答损失；汇总时若按整个批次求均值，零占位仍留在分母。测试另比较只对可评分且组内至少两条回答求均值的结果；选择哪种归约随训练配置记录，成功评分但优势为0的回答仍计入可比较数量。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 |:---|:---|:---|:---|
 | TODO 1：聚合回答词元<br>`aggregate_sequence_logps` | 对有效位置求序列分数 | 布尔掩码同形，每条回答非空 | 变长输入、含负无穷的填充位置被排除 |
 | TODO 2：调整回答奖励<br>`shape_rloo_rewards` | 累加参考对数概率差并塑形 | 旧／参考分数停止梯度，缺失值保留 | 手算 1.85、负采样差和梯度隔离 |
-| TODO 3：计算留一优势<br>`leave_one_out_advantages` | 排除自身与缺失评分后计算基线 | 同组不足两条时优势为零 | 两组手算值、组内零和、缺失与单例 |
+| TODO 3：计算留一优势<br>`leave_one_out_advantages` | 排除自身与缺失评分后计算基线 | 同组不足两条时优势为零 | 两组手算值、缺失与零分区分、评分补回、单例和全缺失 |
 | TODO 4：构造裁剪损失<br>`rloo_policy_loss` | 计算序列比率与两个目标的较小值 | 旧分数和优势固定，上下界分别设置 | 正负优势、上下界、反向偏移与梯度 |
 
 
@@ -296,18 +296,63 @@ def test_rloo_input_checks():
         raise AssertionError("非法 RLOO 数值、裁剪范围或掩码必须被拒绝")
 
 
+def test_missing_score_retry_and_denominators():
+    """区分未评分与零奖励，并核对评分补回后的整组重算与损失分母。"""
+    groups = torch.zeros(3, dtype=torch.long)
+    rewards = torch.tensor([0.0, float("nan"), 3.0])
+    advantages = leave_one_out_advantages(rewards, groups)
+    torch.testing.assert_close(advantages, torch.tensor([-3.0, 0.0, 3.0]))
+    zero_filled = leave_one_out_advantages(torch.tensor([0.0, 0.0, 3.0]), groups)
+    torch.testing.assert_close(zero_filled, torch.tensor([-1.5, -1.5, 3.0]))
+    rescored = rewards.clone()
+    rescored[1] = 1.0  # 同一回答的评分重试完成；组内其他回答也要重算。
+    updated = leave_one_out_advantages(rescored, groups)
+    torch.testing.assert_close(updated, torch.tensor([-2.0, -0.5, 2.5]))
+    assert not torch.equal(updated[[0, 2]], advantages[[0, 2]])
+
+    old = torch.full((3,), -1.0)
+    ratios = torch.tensor([1.0, 1.0, 1.1])
+    losses, _ = rloo_policy_loss(old + ratios.log(), old, advantages)
+    torch.testing.assert_close(losses, torch.tensor([3.0, 0.0, -3.3]))
+    scorable = torch.isfinite(rewards)
+    eligible = torch.zeros_like(scorable)
+    for group_id in groups.unique():
+        members = (groups == group_id) & scorable
+        if int(members.sum()) >= 2:
+            eligible |= members
+    assert int(eligible.sum()) == 2
+    torch.testing.assert_close(losses.mean(), torch.tensor(-0.1))
+    torch.testing.assert_close(losses[eligible].mean(), torch.tensor(-0.15))
+    # 可比较数量按评分与分组决定，不能按优势是否为0决定。
+    fully_scored = torch.tensor([0.0, 1.0, 2.0])
+    centered = leave_one_out_advantages(fully_scored, groups)
+    assert centered[1] == 0 and int(torch.isfinite(fully_scored).sum()) == 3
+    assert int((centered != 0).sum()) == 2
+    for partial in (torch.tensor([float("nan"), 1.0, float("nan")]),
+                    torch.full((3,), float("nan"))):
+        torch.testing.assert_close(leave_one_out_advantages(partial, groups), torch.zeros(3))
+
 def run_rloo_tests():
     """运行 RLOO 序列聚合、奖励塑形、留一优势和策略目标测试。"""
     test_rloo_sequence_aggregation()
     test_rloo_reward_shaping()
     test_leave_one_out_advantages()
     test_leave_one_out_contract()
+    test_missing_score_retry_and_denominators()
     test_rloo_policy_loss()
     test_rloo_asymmetric_clipping_boundaries()
     test_rloo_input_checks()
     print("✅ RLOO 序列聚合、奖励塑形、缺失奖励、留一优势与非对称裁剪通过。")
 
 
+def test_ratio_overflow_is_rejected():
+    try:
+        rloo_policy_loss(torch.tensor([0.0]), torch.tensor([-10000.0]), torch.tensor([0.0]))
+    except ValueError:
+        return
+    raise AssertionError("溢出比率应明确失败，不能返回零优势乘无穷的NaN")
+
+test_ratio_overflow_is_rejected()
 run_rloo_tests()
 ```
 
@@ -398,6 +443,8 @@ def rloo_policy_loss(new_logps, old_logps, advantages, epsilon_low=0.2, epsilon_
         raise ValueError("策略得分与优势必须为有限数")
     # TODO 4：构造非对称裁剪目标。
     ratios = torch.exp(new_logps - old_logps.detach())
+    if not torch.isfinite(ratios).all():
+        raise ValueError("序列概率比溢出，请检查新旧策略偏移与数值精度")
     fixed_advantages = advantages.detach()
     clipped = ratios.clamp(1.0 - epsilon_low, 1.0 + epsilon_high)
     losses = -torch.minimum(ratios * fixed_advantages, clipped * fixed_advantages)
@@ -418,13 +465,13 @@ def rloo_policy_loss(new_logps, old_logps, advantages, epsilon_low=0.2, epsilon_
 
 #### TODO 3：计算留一优势
 
-- 基线从同组其他可评分回答取得；组和减当前奖励后除以其他回答数量，少于两条时保留零优势。
-- 奖励 `[1,2,4]` 对应 `[-2,-0.5,2.5]`；另一组含缺失值，测试验证其不参与均值，单例返回零。
+- 基线从同组其他可评分回答取得；组和减当前奖励后除以其他回答数量，少于两条时保留零优势。缺失值与已评分的0分分别处理；评分补回后对尚未提交的整个组重算。
+- 奖励 `[1,2,4]` 对应 `[-2,-0.5,2.5]`；缺失值不参与均值，单例和全缺失组返回零。另将 `[0, NaN, 3]` 与错误填零对照，再把原回答评分补为1，核对整组优势变化。
 
 #### TODO 4：构造非对称裁剪损失
 
 - 新旧序列分数差取指数形成比率，旧分数与优势停止梯度；原目标与裁剪目标逐回答取较小值。
-- 上下界 1.3 / 0.9 的测试分别命中饱和方向与反方向，并核对饱和侧零梯度；另测仅新策略得分接收梯度。
+- 上下界 1.3 / 0.9 的测试核对饱和方向、反方向与梯度隔离。逐回答损失 `[3, 0, -3.3]` 分别对3个原始位置和2条可比较回答求均值，得到 −0.1 与 −0.15；实际训练同时记录评分状态和归约分母。
 
 <a id="framework-check"></a>
 

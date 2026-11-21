@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
-  <title id="title">同一数据身份分流为三类后训练接口</title>
-  <desc id="desc">合格数据保留共同身份后，分别进入监督微调、偏好优化和在线强化学习接口，并接受各自的信号检查。</desc>
+  <title id="title">SFT样本、偏好对与在线轨迹的检查</title>
+  <desc id="desc">不同学习目标的记录保留来源和版本，SFT检查标签，偏好检查候选可比性，在线轨迹检查终态、奖励和采样策略版本。</desc>
   <defs>
     <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
       <path d="M0,0 L8,4 L0,8 Z" fill="#475569"/>
@@ -15,11 +15,11 @@
     </style>
   </defs>
   <rect width="1200" height="560" fill="#f8fafc" rx="24"/>
-  <text x="600" y="46" text-anchor="middle" class="title">共同数据身份保留，监督信号分别检查</text>
+  <text x="600" y="46" text-anchor="middle" class="title">分别检查SFT样本、偏好对与在线轨迹</text>
 
   <rect x="45" y="205" width="220" height="110" class="node" fill="#dbeafe" stroke="#2563eb"/>
-  <text x="155" y="247" text-anchor="middle" class="label">合格数据版本</text>
-  <text x="155" y="276" text-anchor="middle" class="note">来源、去污染、评测隔离</text>
+  <text x="155" y="247" text-anchor="middle" class="label">训练输入记录</text>
+  <text x="155" y="276" text-anchor="middle" class="note">来源、版本、评测隔离</text>
 
   <path d="M265 260 H320" class="branch"/>
   <path d="M320 120 V400" class="branch"/>
@@ -49,7 +49,7 @@
 
   <rect x="700" y="350" width="220" height="100" class="node" fill="#ffffff" stroke="#d97706"/>
   <text x="810" y="391" text-anchor="middle" class="label">轨迹有效性检查</text>
-  <text x="810" y="419" text-anchor="middle" class="note">终态、奖励、新鲜度</text>
+  <text x="810" y="419" text-anchor="middle" class="note">终态、奖励、策略版本</text>
 
   <path d="M610 120 H700" class="line"/>
   <path d="M610 260 H700" class="line"/>

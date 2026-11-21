@@ -4,7 +4,7 @@
 
 > 🚀 **云端运行环境**
 >
-> 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
+> 可用以下链接在云端Notebook平台打开；设备和依赖要求以本节运行环境说明为准：
 >
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/15_End_to_End_Fine_Tuning_Experiment.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
@@ -117,7 +117,7 @@ def build_sft_batch(prompt_ids, response_ids, pad_id=0, eos_id=2, max_len=10):
     if len(input_ids) > max_len:
         input_ids = input_ids[:max_len]
         labels = labels[:max_len]
-    if not any(label != -100 for label in labels):
+    if not any(label != -100 for label in labels[1:]):
         raise ValueError("截断后没有有效监督 token")
 
     attention_mask = [1] * len(input_ids)
@@ -427,6 +427,14 @@ def test_end_to_end_finetuning():
     print("PASSED: 有效词元加权、评估隔离及更新时钟核对通过。")
 
 
+def test_no_shifted_target_is_rejected():
+    try:
+        build_sft_batch([], [20], max_len=1)
+    except ValueError:
+        return
+    raise AssertionError("构造时应拒绝移位后零有效目标")
+
+test_no_shifted_target_is_rejected()
 test_end_to_end_finetuning()
 
 ```
@@ -471,7 +479,7 @@ def build_sft_batch(prompt_ids, response_ids, pad_id=0, eos_id=2, max_len=10):
     if len(input_ids) > max_len:
         input_ids = input_ids[:max_len]
         labels = labels[:max_len]
-    if not any(label != -100 for label in labels):
+    if not any(label != -100 for label in labels[1:]):
         raise ValueError("截断后没有有效监督 token")
 
     attention_mask = [1] * len(input_ids)

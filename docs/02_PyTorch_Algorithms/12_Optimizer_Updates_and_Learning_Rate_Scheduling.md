@@ -4,7 +4,7 @@
 
 > 🚀 **云端运行环境**
 >
-> 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
+> 可用以下链接在云端Notebook平台打开；设备和依赖要求以本节运行环境说明为准：
 >
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/12_Optimizer_Updates_and_Learning_Rate_Scheduling.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
@@ -35,13 +35,13 @@
 ---
 ## Step 1：参数更新如何形成调度时钟
 
-一次训练更新包含梯度形成、有效性判断、参数写回和下一步学习率准备。调度时钟不按前向或反向次数推进，而按成功的参数变化事件推进；这样梯度累积和跳步都不会让学习率提前消耗。
+本页选择按未被跳过的优化器步骤推进学习率。一次步骤先形成梯度、检查是否允许更新，再执行优化器并准备下一步学习率。学习率为0或梯度为0时，参数可能保持不变，优化器仍可能更新内部状态并完成一步；因此计步依据是实际执行，而不是参数差值。按样本数或词元数调度属于另一种约定，需单独定义。
 
 | 事件 | 参数是否变化 | 调度时钟 | 作用 |
 |:---|:---|:---|:---|
 | 梯度形成 | 否 | 不推进 | 为一次候选更新汇总方向 |
 | 有效性判断 | 否 | 不推进 | 决定本轮是否允许写回参数 |
-| 成功参数更新 | 是 | 推进一步 | 消耗当前学习率并进入下一更新步 |
+| 优化器步骤实际执行 | 不保证；零学习率时可不变 | 推进一步 | 完成本步并为下一步准备学习率 |
 | 跳过更新 | 否 | 保持不变 | 避免学习率进度领先于真实参数状态 |
 
 ![学习率调度总览](../public/02_PyTorch_Algorithms/12_scheduler_overview.svg)
@@ -69,13 +69,13 @@ $$
 ![WSD 阶段判断](../public/02_PyTorch_Algorithms/12_scheduler_phase_logic.svg)
 ## Step 3：为什么只有成功更新才能推进调度
 
-令 $u$ 表示尝试更新次数，$s(u)=\sum_{j=1}^{u}\mathbf 1[\text{第 }j\text{ 次更新成功}]$ 表示成功更新计数。调度器读取的是 $s(u)$，而不是 $u$。一个微批次只贡献一次前向、损失和反向；只有累积完成且梯度通过有效性检查，参数才真正改变。调度器应与成功的参数变化事件绑定，否则梯度累积或混合精度溢出会让学习率曲线比实际参数更新更快走完。混合精度下的缩放、有限值检查和跳步顺序可继续阅读 [TRAIN-MIXED-PRECISION-BACKWARD](./TRAIN-MIXED-PRECISION-BACKWARD_Mixed_Precision_Backward.md)。
+令 $u$ 表示尝试更新次数， $s(u)=\sum_{j=1}^{u}\mathbf{1}[\text{第 }j\text{ 次优化器步骤实际执行}]$ 表示未被跳过的优化器步数。本页调度器跟随这一计数，微批次反向和被跳过的候选更新均不推进。混合精度训练应使用所选框架的跳步状态判断是否推进，不能用参数差值或优化器返回值猜测；具体缩放与跳步机制见[混合精度反向](./TRAIN-MIXED-PRECISION-BACKWARD_Mixed_Precision_Backward.md)。
 
 | 对象 | 发生频率 | 作用 | 是否推进 WSD 阶段 |
 |:---|:---|:---|:---|
 | 微批次 | 每个计算批次 | 前向、损失、反向并累积梯度 | 否 |
 | 有效批次完成 | 若干微批次后 | 形成一次候选更新所需的梯度 | 否 |
-| 成功参数更新 | 梯度有效且允许写回时 | 改变参数，并为下一步准备学习率 | 是 |
+| 优化器步骤实际执行 | 累积完成且未被跳过时 | 更新参数或内部状态，并准备下一步学习率 | 是 |
 | 溢出或跳步 | 梯度无效时 | 保持参数与学习率阶段不变 | 否 |
 <a id="mechanism-practice"></a>
 
@@ -247,6 +247,39 @@ def test_scheduler_update_clock():
     assert abs(optimizer.param_groups[0]["lr"] - 1.0) < 1e-8, "一次有效更新后应推进到下一 WSD 阶段位置"
 
 
+def test_zero_lr_skip_and_resume():
+    import copy
+    parameter = torch.nn.Parameter(torch.tensor([1.0]))
+    optimizer = torch.optim.AdamW([parameter], lr=1.0)
+    scheduler = WSD_Scheduler(optimizer, 2, 2, 3)
+    original = parameter.detach().clone()
+    parameter.grad = torch.ones_like(parameter)
+    optimizer.step()  # 当前学习率为0，Adam状态仍推进。
+    assert torch.equal(parameter, original)
+    assert optimizer.state[parameter]["step"].item() == 1
+    scheduler.step()
+    saved = copy.deepcopy((optimizer.state_dict(), scheduler.state_dict()))
+    # 模拟已决定跳过的更新：不调用optimizer或scheduler，不冒充AMP溢出测试。
+    before = (scheduler.last_epoch, optimizer.param_groups[0]["lr"])
+    skipped = True
+    if not skipped:
+        optimizer.step()
+        scheduler.step()
+    assert before == (scheduler.last_epoch, optimizer.param_groups[0]["lr"])
+    restored = torch.nn.Parameter(parameter.detach().clone())
+    other_optimizer = torch.optim.AdamW([restored], lr=1.0)
+    other_scheduler = WSD_Scheduler(other_optimizer, 2, 2, 3)
+    other_optimizer.load_state_dict(saved[0])
+    other_scheduler.load_state_dict(saved[1])
+    for _ in range(3):
+        for p, opt, sched in [(parameter, optimizer, scheduler), (restored, other_optimizer, other_scheduler)]:
+            p.grad = torch.ones_like(p)
+            opt.step()
+            sched.step()
+        assert torch.equal(parameter, restored)
+        assert scheduler.get_last_lr() == other_scheduler.get_last_lr()
+
+test_zero_lr_skip_and_resume()
 test_wsd_input_contract()
 test_warmup_and_stable()
 test_cosine_decay()

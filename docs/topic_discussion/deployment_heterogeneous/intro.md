@@ -1,4 +1,4 @@
-# 部署与异构系统（Deployment and Heterogeneous Systems）
+# 模型部署与异构执行（Model Deployment and Heterogeneous Execution）
 
 > 专题类型：横向工程专题　学习目标：把模型产物、推理后端、设备能力和服务约束转化为可复测的部署方案。
 

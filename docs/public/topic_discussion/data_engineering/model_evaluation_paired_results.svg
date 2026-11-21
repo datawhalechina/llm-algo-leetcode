@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
+  <title id="title">基线与候选按题目配对后保留胜负、平局与缺失</title>
+  <desc id="desc">同一批六题分别保存基线与候选分数，按题目与内容配对。其中五题两侧齐全，两胜一负两平，一题候选缺失。配对覆盖为五分之六，有明确胜负的候选胜率为三分之二。</desc>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10Z" fill="#506882"/></marker></defs>
+  <style>text{font-family:'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#22344b}.head{font-size:30px;font-weight:700}.label{font-size:24px;font-weight:700}.body{font-size:21px}.note{font-size:22px}.box{fill:#edf5ff;stroke:#6c93bc;stroke-width:2}.edge{fill:none;stroke:#506882;stroke-width:2.5;marker-end:url(#arrow)}.line{stroke:#d3dfeb;stroke-width:1.5}</style>
+  <rect width="1200" height="500" rx="16" fill="#f8fafc"/>
+  <text x="40" y="48" class="head">同题比较：完整配对、平局与缺失各自保留</text>
+  <text x="40" y="84" class="body">构造的0/1任务分数；两侧使用相同问题、参考依据与评分规则</text>
+  <rect x="40" y="110" width="220" height="90" rx="12" class="box"/><text x="150" y="146" text-anchor="middle" class="label">基线结果</text><text x="150" y="180" text-anchor="middle" class="body">当前比较起点</text>
+  <rect x="40" y="300" width="220" height="90" rx="12" class="box"/><text x="150" y="336" text-anchor="middle" class="label">候选结果</text><text x="150" y="370" text-anchor="middle" class="body">准备比较的模型</text>
+  <rect x="360" y="205" width="240" height="100" rx="12" class="box"/><text x="480" y="245" text-anchor="middle" class="label">按题目与内容配对</text><text x="480" y="282" text-anchor="middle" class="body">核对两侧评分条件</text>
+  <path d="M260 155H310V230H360 M260 345H330V280H360 M600 255H700" class="edge"/>
+  <rect x="700" y="110" width="460" height="290" rx="12" fill="white" stroke="#6c93bc" stroke-width="2"/>
+  <path d="M700 155H1160 M700 195H1160 M700 235H1160 M700 275H1160 M700 315H1160 M700 355H1160" class="line"/>
+  <g text-anchor="middle" class="body"><text x="750" y="140">题目</text><text x="850" y="140">基线</text><text x="960" y="140">候选</text><text x="1080" y="140">结果</text>
+  <text x="750" y="182">1</text><text x="850" y="182">0</text><text x="960" y="182">1</text><text x="1080" y="182">胜</text>
+  <text x="750" y="222">2</text><text x="850" y="222">0</text><text x="960" y="222">1</text><text x="1080" y="222">胜</text>
+  <text x="750" y="262">3</text><text x="850" y="262">1</text><text x="960" y="262">0</text><text x="1080" y="262">负</text>
+  <text x="750" y="302">4</text><text x="850" y="302">1</text><text x="960" y="302">1</text><text x="1080" y="302">平</text>
+  <text x="750" y="342">5</text><text x="850" y="342">0</text><text x="960" y="342">0</text><text x="1080" y="342">平</text>
+  <text x="750" y="382">6</text><text x="850" y="382">1</text><text x="960" y="382">—</text><text x="1080" y="382">缺失</text></g>
+  <text x="40" y="443" class="note">6题中5题形成完整配对：2胜、1负、2平；另一题等待补齐候选结果。</text>
+  <text x="40" y="480" class="note">配对覆盖＝5/6　　有明确胜负的候选胜率＝2/(2+1)＝2/3</text>
+</svg>

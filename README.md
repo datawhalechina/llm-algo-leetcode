@@ -90,7 +90,7 @@
 | 横切支撑专题 | [`量化与压缩（Quantization and Compression）`](./topic_discussion/quantization_compression/intro.md) | PTQ、QAT、GPTQ、AWQ、FP8 与部署决策。 | 想同时考虑精度、显存、吞吐和部署取舍的学习者。 | ✅ 持续优化 |
 | 横切支撑专题 | [`通信与并行（Communication and Parallelism）`](./topic_discussion/communication_parallelism/intro.md) | NCCL、AllReduce、ZeRO、PP、TP 和并行验证。 | 想理解多卡训练和通信边界的学习者。 | ✅ 持续优化 |
 | 横切支撑专题（建设中） | [`数据工程（Data Engineering）`](./topic_discussion/data_engineering/intro.md) | 数据生命周期、解析、清洗、去重、配比、合成、血缘与工程化。 | 想同时服务训练、RAG 与数据质量治理的学习者。 | 🛠 建设中 |
-| 横切支撑专题（建设中） | [`部署与异构系统（Deployment and Heterogeneous Systems）`](./topic_discussion/deployment_heterogeneous/intro.md) | 模型产物、推理 backend、CPU/GPU/NPU 协同、资源编排和部署验证。 | 想理解模型如何从文件进入可交付服务的学习者。 | 🛠 建设中 |
+| 横切支撑专题（建设中） | [`模型部署与异构执行（Model Deployment and Heterogeneous Execution）`](./topic_discussion/deployment_heterogeneous/intro.md) | 模型产物、推理 backend、CPU/GPU/NPU 协同、资源编排和部署验证。 | 想理解模型如何从文件进入可交付服务的学习者。 | 🛠 建设中 |
 | 领域专题（建设中） | [`Agent 基础设施（Agent Infrastructure）`](./topic_discussion/agent/intro.md) | 工具轨迹、沙盒执行、任务调度、可观测性与 Agentic RL。 | 想让模型可靠完成多步工具任务的学习者。 | 🛠 建设中 |
 | 领域专题（建设中） | [`多模态与视觉推理（Multimodal and Vision Inference）`](./topic_discussion/multimodal/intro.md) | 以多模态推理为主线，覆盖视觉表示、对齐、视觉 token、推理成本和任务评测；训练作为共享前置。 | 想进入视觉语言模型、文档理解或图文推理的学习者。 | 🛠 建设中 |
 
@@ -225,7 +225,7 @@ You do not need to start from `00` in strict order. `00` is the prerequisite lan
 | Cross-Cutting Topic | [Quantization and Compression Topic](./topic_discussion/quantization_compression/intro.md) | PTQ, QAT, GPTQ, AWQ, FP8, and deployment decisions. | Learners balancing accuracy, memory, throughput, and deployment cost. | ✅ Ongoing |
 | Cross-Cutting Topic | [Communication and Parallelism Topic](./topic_discussion/communication_parallelism/intro.md) | NCCL, AllReduce, ZeRO, PP, TP, and validation. | Learners who want to understand multi-GPU scaling and communication cost. | ✅ Ongoing |
 | Cross-Cutting Topic (In Progress) | [Data Engineering Topic](./topic_discussion/data_engineering/intro.md) | Data lifecycle, parsing, cleaning, deduplication, mixtures, synthesis, lineage, and production pipelines. | Learners building reliable data paths for training, RAG, and evaluation. | 🛠 In progress |
-| Cross-Cutting Topic (In Progress) | [Deployment and Heterogeneous Systems Topic](./topic_discussion/deployment_heterogeneous/intro.md) | Model artifacts, inference backends, CPU/GPU/NPU coordination, resource orchestration, and deployment validation. | Learners who want to understand how models become deployable services. | 🛠 In progress |
+| Cross-Cutting Topic (In Progress) | [Model Deployment and Heterogeneous Execution Topic](./topic_discussion/deployment_heterogeneous/intro.md) | Model artifacts, inference backends, CPU/GPU/NPU coordination, resource orchestration, and deployment validation. | Learners who want to understand how models become deployable services. | 🛠 In progress |
 | Domain Topic (In Progress) | [Agent Infrastructure Topic](./topic_discussion/agent/intro.md) | Tool trajectories, sandboxed execution, task scheduling, observability, and agentic RL. | Learners building reliable multi-step tool-using systems. | 🛠 In progress |
 | Domain Topic (In Progress) | [Multimodal and Vision Inference Topic](./topic_discussion/multimodal/intro.md) | Multimodal inference as the main line: visual representations, alignment, visual tokens, inference cost, and task evaluation; training is shared prerequisite. | Learners entering vision-language models, document understanding, or multimodal reasoning. | 🛠 In progress |
 

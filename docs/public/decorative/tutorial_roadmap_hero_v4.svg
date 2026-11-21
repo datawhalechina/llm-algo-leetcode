@@ -198,8 +198,8 @@
       </g>
       <g transform="translate(372 158)">
         <rect width="324" height="62" rx="13" fill="#122f42"/>
-        <text x="18" y="27" class="cn chip">部署与异构系统</text>
-        <text x="18" y="46" class="en chipEn">DEPLOYMENT AND HETEROGENEOUS SYSTEMS</text>
+        <text x="18" y="27" class="cn chip">模型部署与异构执行</text>
+        <text x="18" y="46" class="en chipEn">MODEL DEPLOYMENT AND HETEROGENEOUS EXECUTION</text>
       </g>
     </g>
 

@@ -4,7 +4,7 @@
 
 > 🚀 **云端运行环境**
 >
-> 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
+> 可用以下链接在云端Notebook平台打开；设备和依赖要求以本节运行环境说明为准：
 >
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/11_Gradient_Accumulation.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
@@ -63,7 +63,7 @@ $$
 \nabla L = \sum_{i=1}^{K} \frac{n_i}{N}\nabla L_i,\qquad N=\sum_{i=1}^{K}n_i.
 $$
 
-当所有微批次等长，即 $n_i=N/K$ 时，上式化为 $\nabla L=\frac{1}{K}\sum_{i=1}^{K}\nabla L_i$。这里 $L_i$ 是第 $i$ 个微批次的样本平均损失， $n_i/N$ 才是它在完整批次平均梯度中的权重。
+当微批次样本数相等，即 $n_i=N/K$ 时，上式化为 $\nabla L=\frac{1}{K}\sum_{i=1}^{K}\nabla L_i$。本例固定形状MSE的每条样本含相同数量的目标元素，因此按样本数加权成立。SFT若按有效词元平均，权重应改为各微批次有效目标数占比；例如两个微批次各含一条样本，却分别有2与6个目标，权重为1/4与3/4，而不是各1/2。有效目标在移位和标签屏蔽后统计，实际更新见[15节](./15_End_to_End_Fine_Tuning_Experiment.md)。
 
 | 对齐条件 | 做法 | 不满足时的结果 |
 |:---|:---|:---|

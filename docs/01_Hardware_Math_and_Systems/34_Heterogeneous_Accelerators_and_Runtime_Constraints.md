@@ -1,10 +1,10 @@
 # 34. Heterogeneous Accelerators and Runtime Constraints | 异构加速器与运行时约束
 
-**难度：** Medium | **环境：** CPU-first | **标签：** `异构系统`, `运行时`, `部署约束` | **目标人群：** 需要比较不同加速器执行条件的学习者
+**难度：** Medium | **环境：** CPU-first | **标签：** `异构系统`, `运行时`, `部署约束` | **目标人群：** 理解设备与显存的学习者
 
 > 🚀 **云端运行环境**
 >
-> 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
+> 可用以下链接在云端Notebook平台打开；设备和依赖要求以本节运行环境说明为准：
 >
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/01_Hardware_Math_and_Systems/34_Heterogeneous_Accelerators_and_Runtime_Constraints.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
@@ -16,7 +16,7 @@
 
 模型迁移不要求所有阶段都使用同一种设备。文本预处理可能只需少量主机内存，生成阶段却要容纳权重、缓存和工作区；若把生成阶段的需求套给预处理，就可能错误排除本来可用的 CPU。
 
-本节把任务拆成阶段，分别比较容量、精度、操作和运行时要求，再计算输入转换、跨设备搬运与同时驻留。完成后，你应能区分“声明匹配”“真实路径能够执行”和“性能满足要求”；这些判断接到部署与异构系统专题中的加载与执行验证。
+本节把任务拆成阶段，分别比较容量、精度、操作和运行时要求，再计算输入转换、跨设备搬运与同时驻留。完成后，你应能区分“声明匹配”“真实路径能够执行”和“性能满足要求”。这些关系用于模型部署与异构执行；进一步比较候选时，再到[单卡部署比较](../02_PyTorch_Algorithms/72_Multi_Model_Deployment_Comparison.md)观察真实加载与请求。
 
 **关键词：** 阶段需求、数据交接、格式转换、同时驻留、运行时
 
@@ -33,8 +33,7 @@
 
 以“主机分词 → 加速器生成”为例，前者需要词元编号与少量处理缓冲，后者需要权重、KV缓存和工作区。将整模型40 GB预算套给预处理，会错误排除小内存设备；只检查总容量，又可能遗漏生成阶段所需的精度、操作或执行框架。运行时是加载产物、组织操作执行的软件环境，名称相同也还需核对具体版本与路径。
 
-下面给出构造的CPU、GPU、NPU能力和两阶段需求。每阶段分别记录预计峰值、数值类型、所需操作、运行时及是否使用集合通信，再从同一份声明中读取字段。实际设备支持情况由目标规格与功能验证补充。
-
+下面给出构造的CPU、GPU、NPU能力和两阶段需求。每阶段分别记录预计峰值、数值类型、所需操作、运行时及是否使用集合通信，再从同一份声明中读取字段。字段未填写或值为None时保留“待核对”；空能力集合则表示这份声明没有列出支持项。实际设备支持情况由目标规格与功能验证补充。
 
 ```python
 import math
@@ -48,14 +47,17 @@ DEVICE_PROFILES = {
 
 
 def summarize_device_profile(profile):
-    """把设备 profile 转成便于比较的基础账本。"""
+    """读取能力声明；缺失集合的数量保留None，空集合的数量为零。"""
+    counts = {name: None if profile.get(name) is None else len(profile[name])
+              for name in ("precisions", "ops", "runtimes")}
     return {
-        "memory_gb": profile["memory_gb"],
-        "precision_count": len(profile["precisions"]),
-        "operator_count": len(profile["ops"]),
-        "runtime_count": len(profile["runtimes"]),
-        "collective": profile["collective"],
-        "operators": sorted(profile["ops"]), "runtimes": sorted(profile["runtimes"]),
+        "memory_gb": profile.get("memory_gb"),
+        "precision_count": counts["precisions"],
+        "operator_count": counts["ops"],
+        "runtime_count": counts["runtimes"],
+        "collective": profile.get("collective"),
+        "operators": None if profile.get("ops") is None else sorted(profile["ops"]),
+        "runtimes": None if profile.get("runtimes") is None else sorted(profile["runtimes"]),
     }
 
 
@@ -86,66 +88,98 @@ assert REQUEST_PLAN["stages"]["generate"]["estimated_peak_gb"] == 40
 print("GPU声明中的操作：", summarize_device_profile(DEVICE_PROFILES["gpu"])["operators"])
 print("预处理与生成预算：", [
     stage["estimated_peak_gb"] for stage in REQUEST_PLAN["stages"].values()])
-
 ```
 
-## Q2：哪些设备声明满足生成阶段的需求？
+## Q2：声明匹配、明确冲突与信息待核对怎样区分？
 
-生成要求BF16、40 GB预计峰值、预填充／解码／注意力操作及vLLM运行时。给定GPU声明全部满足；NPU虽有64 GB和BF16，却没有声明vLLM，因而不能直接采用同一执行路径。若改用它支持的运行时，还需重新准备匹配产物并验证结果，不能仅替换一个名称便视为已经迁移。
+生成要求BF16、40 GB预计峰值、预填充／解码／注意力操作及vLLM运行时。给定GPU声明全部满足；NPU虽有64 GB和BF16，但其已填写的运行时集合只有厂商运行时，与当前要求不匹配。若另一份GPU记录尚未填写运行时集合，就应先补充信息，而不是判定这条路径已可运行或已确定不支持。
 
-下面逐项比较需求与声明，容量按十进制GB计。集合通信只在当前阶段需要时检查；阶段候选确定后，再计算它与相邻阶段之间新增的工作。
+下面把已填写的能力集合视为这份声明的支持范围，缺字段或值为`None`表示尚未核对，空集合则表示没有声明支持项。容量按十进制GB计；集合通信仅在该阶段需要时参与判断。若已发现容量不足等确定冲突，即使其他字段待补，也先保留这项冲突及尚缺信息。
 
+| 给定记录 | 判断 | 接下来做什么 |
+| --- | --- | --- |
+| 已知要求逐项满足 | 声明匹配 | 准备对应模型与运行时的功能检查 |
+| 容量不足，或已填写的支持范围不包含需求 | 声明不满足 | 调整阶段配置、执行栈或设备候选 |
+| 相关能力缺字段或为`None`，其余要求满足 | 信息待核对 | 补齐指出的字段，再继续比较 |
 
 ```python
 def check_device_feasibility(profile, plan):
-    """比较一个阶段与给定设备声明，不探测设备或执行模型。"""
+    """比较阶段与能力声明；None表示未知，已知冲突优先，GB按十进制计。"""
     required = ("estimated_peak_gb", "precision", "required_ops",
                 "runtime", "requires_collective")
-    if any(key not in plan for key in required):
-        raise ValueError('阶段需求缺少必要字段')
-    if (type(profile["memory_gb"]) not in (int, float)
-            or not math.isfinite(profile["memory_gb"]) or profile["memory_gb"] <= 0
-            or type(plan["estimated_peak_gb"]) not in (int, float)
-            or not math.isfinite(plan["estimated_peak_gb"])
-            or plan["estimated_peak_gb"] < 0):
-        raise ValueError('设备容量须为有限正数，阶段预算须为有限非负数')
+    if any(key not in plan or plan[key] is None for key in required):
+        raise ValueError("阶段需求缺少必要字段")
+    peak = plan["estimated_peak_gb"]
+    memory = profile.get("memory_gb")
+    if (type(peak) not in (int, float) or not math.isfinite(peak) or peak < 0
+            or (memory is not None and (
+                type(memory) not in (int, float) or not math.isfinite(memory) or memory <= 0))):
+        raise ValueError("设备容量须为有限正数，阶段预算须为有限非负数")
     if (type(plan["requires_collective"]) is not bool
-            or type(profile["collective"]) is not bool):
-        raise ValueError('集合通信需求和支持状态必须是布尔值')
-    memory_ok = profile["memory_gb"] >= plan["estimated_peak_gb"]
-    precision_ok = plan["precision"] in profile["precisions"]
-    missing_ops = sorted(set(plan["required_ops"]) - set(profile["ops"]))
-    runtime_ok = plan["runtime"] in profile["runtimes"]
-    collective_ok = not plan["requires_collective"] or profile["collective"]
+            or (profile.get("collective") is not None
+                and type(profile["collective"]) is not bool)):
+        raise ValueError("集合通信需求须为布尔值，支持状态可为布尔值或None")
+    precisions, operators, runtimes = (
+        profile.get(name) for name in ("precisions", "ops", "runtimes"))
+    if any(value is not None and not isinstance(value, (set, frozenset, list, tuple))
+           for value in (precisions, operators, runtimes)):
+        raise ValueError("已填写的支持范围须为集合或列表")
+    memory_ok = None if memory is None else memory >= peak
+    precision_ok = None if precisions is None else plan["precision"] in precisions
+    missing_ops = None if operators is None else sorted(set(plan["required_ops"]) - set(operators))
+    if not plan["required_ops"]:
+        missing_ops = []
+    runtime_ok = None if runtimes is None else plan["runtime"] in runtimes
+    collective_ok = profile.get("collective") if plan["requires_collective"] else True
+    checks = {
+        "memory_gb": memory_ok, "precisions": precision_ok,
+        "ops": None if missing_ops is None else not missing_ops,
+        "runtimes": runtime_ok, "collective": collective_ok,
+    }
+    unknown_fields = [name for name, result in checks.items() if result is None]
+    failed_fields = [name for name, result in checks.items() if result is False]
+    if failed_fields:
+        met, status = False, "mismatch"
+    elif unknown_fields:
+        met, status = None, "needs_profile_check"
+    else:
+        met, status = True, "matched"
     return {
-        "declared_requirements_met": bool(
-            memory_ok and precision_ok and not missing_ops
-            and runtime_ok and collective_ok),
+        "declared_requirements_met": met, "declaration_status": status,
+        "unknown_fields": unknown_fields, "failed_fields": failed_fields,
         "memory_ok": memory_ok, "precision_ok": precision_ok,
         "missing_ops": missing_ops, "runtime_ok": runtime_ok,
         "collective_ok": collective_ok,
     }
 
 
-assert check_device_feasibility(DEVICE_PROFILES["gpu"], REQUEST_PLAN)["declared_requirements_met"]
-assert not check_device_feasibility(DEVICE_PROFILES["npu"], REQUEST_PLAN)["runtime_ok"]
-
+gpu_match = check_device_feasibility(DEVICE_PROFILES["gpu"], REQUEST_PLAN)
+npu_mismatch = check_device_feasibility(DEVICE_PROFILES["npu"], REQUEST_PLAN)
+partial_gpu = {**DEVICE_PROFILES["gpu"], "runtimes": None}
+gpu_pending = check_device_feasibility(partial_gpu, REQUEST_PLAN)
+assert gpu_match["declared_requirements_met"] is True
+assert npu_mismatch["failed_fields"] == ["runtimes"]
+assert gpu_pending["declared_requirements_met"] is None
+assert gpu_pending["unknown_fields"] == ["runtimes"]
+for name, report in (("GPU完整声明", gpu_match), ("NPU给定运行时", npu_mismatch),
+                     ("GPU运行时待核对", gpu_pending)):
+    print(name, report["declaration_status"],
+          "待核对：", report["unknown_fields"], "冲突：", report["failed_fields"])
 ```
 
-## Q3：阶段都能执行，交接还增加哪些搬运与内存？
+## Q3：筛出声明匹配设备后，交接还增加哪些搬运与内存？
 
 沿用主机分词到GPU生成的路径，假设4096个词元编号由32位整数存储，消费端要求64位整数。转换前为16384 B，转换后为32768 B；先在主机产生转换缓冲、再传输时，两份编号暂时同时存在，主机载荷为49152 B。带宽按16 GB/s计算，32768 B的纯传输估算为0.002048 ms；类型转换、固定提交和等待时间另计。
 
-这里转换改变存储位宽，编号数值、顺序和有效长度仍应保持。加速器若已有40000000000 B状态，同时还要接收32768 B输入，容量恰好40 GB便不足，48 GB则允许这两项共同驻留。共同驻留只对本例明确同时存活的对象求和；已有阶段峰值若包含该输入，就不再重复加入。下面先筛选阶段，再复现这组交接账目。
+这里转换改变存储位宽，编号数值、顺序和有效长度仍应保持。加速器若已有40000000000 B状态，同时还要接收32768 B输入，容量恰好40 GB便不足，48 GB则允许这两项共同驻留。共同驻留只对本例明确同时存活的对象求和；已有阶段峰值若包含该输入，就不再重复加入。下面分别保存匹配、待核对和不匹配的名单，再复现这组交接账目。
 
 ![4096个编号转换为int64后，主机两份缓冲同时存在，传输与GPU新增输入各为32768字节](../public/01_Hardware_Math_and_Systems/34_handoff_memory_and_transfer.svg)
 
-
 ```python
 def assign_stages(profiles, plan):
-    """按显式阶段配置逐项筛选声明，不决定实际放置或验证交接。"""
+    """按阶段分开保存声明匹配、待核对与不匹配的设备名单。"""
     if not isinstance(plan.get("stages"), dict) or not plan["stages"]:
-        raise ValueError('必须提供非空阶段需求')
+        raise ValueError("必须提供非空阶段需求")
     stage_trace = {}
     for stage, stage_plan in plan["stages"].items():
         checks = {
@@ -153,10 +187,12 @@ def assign_stages(profiles, plan):
             for name, profile in profiles.items()
         }
         stage_trace[stage] = {
-            "candidate_devices": [
-                name for name, check in checks.items()
-                if check["declared_requirements_met"]
-            ],
+            "candidate_devices": [name for name, check in checks.items()
+                                  if check["declared_requirements_met"] is True],
+            "pending_devices": [name for name, check in checks.items()
+                                if check["declared_requirements_met"] is None],
+            "rejected_devices": [name for name, check in checks.items()
+                                 if check["declared_requirements_met"] is False],
             "checks": checks,
         }
     return stage_trace
@@ -165,6 +201,13 @@ def assign_stages(profiles, plan):
 STAGE_TRACE = assign_stages(DEVICE_PROFILES, REQUEST_PLAN)
 assert "cpu" in STAGE_TRACE["prepare"]["candidate_devices"]
 assert STAGE_TRACE["generate"]["candidate_devices"] == ["gpu"]
+PENDING_TRACE = assign_stages(
+    {"cpu": DEVICE_PROFILES["cpu"], "gpu_pending": partial_gpu}, REQUEST_PLAN)
+assert PENDING_TRACE["generate"]["candidate_devices"] == []
+assert PENDING_TRACE["generate"]["pending_devices"] == ["gpu_pending"]
+print("生成阶段匹配与待核对：",
+      STAGE_TRACE["generate"]["candidate_devices"],
+      PENDING_TRACE["generate"]["pending_devices"])
 
 
 def handoff_ledger(num_tokens: int, source_dtype: str, target_dtype: str,
@@ -215,42 +258,54 @@ assert capacity_ok["fits"]
 assert placement_memory_check(40_000_000_000, 32768, 40_000_032_768)["fits"]
 print("主机转换与传输账目：", handoff)
 print("同时驻留检查：", capacity_miss, capacity_ok)
-
 ```
 
-## Q4：已有功能与质量检查结果，下一步应做什么？
+## Q4：声明和实际检查分别通过到哪一步？
 
-前面的阶段候选与交接账目提供估算条件，模型加载、编号类型与顺序、输入就绪依赖以及最终输出仍需在实际路径上检查。例如，异步传输的源缓冲要保留到搬运结束，消费端要等待输入就绪；单凭容量足够无法确认这些行为。
+前面的阶段候选与交接账目提供估算条件，模型加载、编号类型与顺序、输入就绪依赖以及最终输出仍需在实际路径上检查。例如，异步传输的源缓冲要保留到搬运结束，消费端要等待输入就绪；容量声明匹配后，还要观察这些动作能否正确完成。
 
-下面接收已经给出的功能与质量检查结论，再选择下一动作：阶段缺失或没有候选时补齐需求，质量未通过时先定位输出问题，功能路径尚未核对时先做加载与执行测试，两项检查均通过后才进入性能测量。代码消费外部结论，不执行模型或重新检查缓冲寿命；这里的输入都是构造场景。将同一份阶段候选固定下来，只改变检查结果，可以看到“还要做功能测试”与“可以开始测量”的区别。
-
+先补齐必需阶段与设备声明，再读取实际功能和质量检查结果：`None`表示尚未检查，`False`表示已经检查但未通过，`True`表示通过。已知失败先定位原因；功能尚未检查时先做最小加载与请求，质量尚未检查时再使用固定评测集。只有各必需阶段已有声明匹配的设备、两项检查都通过，才进入性能测量。下面只改变构造的检查结果，观察下一步动作；实际检查由对应运行路径完成。
 
 ```python
 def benchmark_admission(stage_trace, required_stages, quality_gate_passed,
                         runtime_smoke_passed):
-    """读取阶段候选与外部功能、质量结论，只选择下一动作；不执行模型。"""
-    if (type(quality_gate_passed) is not bool
-            or type(runtime_smoke_passed) is not bool):
-        raise ValueError('质量与路径检查结果必须是布尔值')
+    """消费声明筛选及外部检查：None待查、False失败、True通过，不执行模型。"""
+    if any(value is not None and type(value) is not bool
+           for value in (quality_gate_passed, runtime_smoke_passed)):
+        raise ValueError("质量与路径检查结果须为布尔值或None")
     if (not isinstance(required_stages, (list, tuple, set)) or not required_stages
             or any(not isinstance(name, str) or not name for name in required_stages)):
-        raise ValueError('必须显式给出非空的必需阶段名称集合')
+        raise ValueError("必须显式给出非空的必需阶段名称集合")
     missing = sorted(set(required_stages) - set(stage_trace))
     if missing:
         return {"status": "blocked", "reason": "缺少必需阶段", "missing": missing}
-    if any(not stage_trace[name].get("candidate_devices")
-           for name in required_stages):
-        return {"status": "blocked", "reason": "必需阶段没有声明匹配的设备"}
-    if not quality_gate_passed:
+    no_option = [name for name in required_stages
+                 if not stage_trace[name].get("candidate_devices")
+                 and not stage_trace[name].get("pending_devices")]
+    if no_option:
+        return {"status": "blocked", "reason": "必需阶段没有可继续核对的设备",
+                "stages": sorted(no_option)}
+    if quality_gate_passed is False:
         return {"status": "blocked", "reason": "质量检查未通过"}
-    if not runtime_smoke_passed:
+    if runtime_smoke_passed is False:
+        return {"status": "blocked", "reason": "真实功能检查未通过"}
+    pending = [name for name in required_stages
+               if not stage_trace[name].get("candidate_devices")]
+    if pending:
+        return {"status": "needs_profile_check", "reason": "先补齐设备声明",
+                "stages": sorted(pending)}
+    if runtime_smoke_passed is None:
         return {"status": "needs_runtime_check", "reason": "需要整条路径的真实功能测试"}
-    return {"status": "benchmark_ready", "reason": "已声明必要检查通过，可进入性能测量"}
+    if quality_gate_passed is None:
+        return {"status": "needs_quality_check", "reason": "需要固定评测集上的质量检查"}
+    return {"status": "benchmark_ready", "reason": "给定的声明、功能与质量检查均通过，可开始测量"}
 
 
 required_stages = list(REQUEST_PLAN["stages"])
 given_results = {
-    "待做功能测试": dict(quality_gate_passed=True, runtime_smoke_passed=False),
+    "待做功能测试": dict(quality_gate_passed=True, runtime_smoke_passed=None),
+    "功能未通过": dict(quality_gate_passed=True, runtime_smoke_passed=False),
+    "待做质量检查": dict(quality_gate_passed=None, runtime_smoke_passed=True),
     "质量未通过": dict(quality_gate_passed=False, runtime_smoke_passed=True),
     "可以开始测量": dict(quality_gate_passed=True, runtime_smoke_passed=True),
 }
@@ -261,9 +316,13 @@ next_actions = {
     for name, checks in given_results.items()
 }
 assert next_actions["待做功能测试"]["status"] == "needs_runtime_check"
+assert next_actions["功能未通过"]["reason"] == "真实功能检查未通过"
+assert next_actions["待做质量检查"]["status"] == "needs_quality_check"
 assert next_actions["质量未通过"]["status"] == "blocked"
-assert next_actions["质量未通过"]["reason"] == "质量检查未通过"
 assert next_actions["可以开始测量"]["status"] == "benchmark_ready"
+assert benchmark_admission(
+    PENDING_TRACE, required_stages, **given_results["可以开始测量"],
+)["status"] == "needs_profile_check"
 missing_stage = benchmark_admission(
     stage_trace={}, required_stages=required_stages,
     **given_results["可以开始测量"],
@@ -272,13 +331,12 @@ assert missing_stage["status"] == "blocked"
 assert missing_stage["missing"] == sorted(required_stages)
 for name, action in next_actions.items():
     print(f"给定场景：{name}；下一步：{action['reason']}")
-
 ```
 
 ## 相关阅读
 
 把阶段账目用于真实加载与请求执行，再比较完整方案。
 
-- [部署与异构系统专题](../topic_discussion/deployment_heterogeneous/intro.md)：检查目标设备、产物、交接与回退路径。
+- [模型部署与异构执行专题](../topic_discussion/deployment_heterogeneous/intro.md)：检查目标设备、产物、交接与回退路径。
 - [Part02·72 多模型部署比较](../02_PyTorch_Algorithms/72_Multi_Model_Deployment_Comparison.md)：在共同负载下比较运行方案。
 - [33 TCO与成本](./33_TCO_and_Cost_Model.md)：使用实际吞吐、可用时间与共同成功标准计算成本。

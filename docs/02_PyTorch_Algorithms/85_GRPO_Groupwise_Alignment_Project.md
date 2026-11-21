@@ -4,7 +4,7 @@
 
 > 🚀 **云端运行环境**
 >
-> 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
+> 可用以下链接在云端Notebook平台打开；设备和依赖要求以本节运行环境说明为准：
 >
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/85_GRPO_Groupwise_Alignment_Project.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
@@ -54,7 +54,7 @@
 
 ## Step 2：把生成成本与可用奖励信号联系起来
 
-设生成了 N 个问题组，每组 K 条回答，其中 M 个完整组的奖励并非全部相同。本项目把这 M 组称为有效组，有效组比例为 M/N，有效轨迹数为 M×K。例如四组、每组四条回答，若只有两组同时含 0 分和 1 分回答，则有效轨迹数为 8；其余八条回答也花费了生成和评分时间。有效组表示存在相对奖励差异，实际优化效果仍取决于梯度、步长和后续评测。
+设生成了 N 个问题组，每组保留预定的 K 条回答，评分缺失或异常时先补齐，再计算组内优势。评分完成且有限后，其中 M 个完整组的奖励并非全部相同，本项目把这 M 组称为有效组，有效组比例为 M/N，有效轨迹数为 M×K。例如四组、每组四条回答，若只有两组同时含 0 分和 1 分回答，则有效轨迹数为 8；其余八条回答也花费了生成和评分时间。
 
 有效轨迹吞吐用有效轨迹数除以完整训练循环耗时，包含生成、验证、旧策略及参考策略评分、反向传播和参数更新，评测与产物保存另记。当前更新以回答平均词元对数概率构造新旧分数比，并加入与参考分数差的平方惩罚；这是回答级代理目标，与标准逐词元 GRPO 的概率比及 KL 估计有区别。
 
@@ -84,16 +84,17 @@
 
 ## Step 4：实现生成组检查、信号统计与候选决定
 
-题目使用生成组标识、奖励列表和候选摘要。骨架已给出版本、组大小、标识重复等原子检查；你将组合这些条件，统计奖励有差异的完整组，并选择拒绝、调整或保留候选。CPU 吞吐按输入中的采样与更新耗时相加计算，测试核对统计和门槛，真实测量的计时范围在 Step 5 中核对。
+题目使用生成组标识、奖励列表和候选摘要。骨架已给出版本、组大小、标识重复和评分有限性检查；你将组合这些条件，统计奖励有差异的完整组，并选择拒绝、调整或保留候选。CPU 吞吐按输入中的采样与更新耗时相加计算，测试核对统计和门槛，真实测量的计时范围在 Step 5 中核对。
 
 | 任务与目的 | 已知条件 | 完成标准 | 测试验证 |
 |:---|:---|:---|:---|
 | TODO 1：检查生成组记录 | 问题、轨迹、策略和验证器标识 | 非空组通过全部记录检查 | 空组、空问题标识、版本不符、重复标识和不完整组 |
-| TODO 2：统计相对信号与候选门槛 | 奖励列表、组规模、给定耗时及指标 | 仅计完整且奖励有差异的组，再检查得分、长度与显存 | 全同奖励、不完整组、长度超限和显存越界 |
+| TODO 2：统计相对信号与候选门槛 | 奖励列表、组规模、给定耗时及指标 | 仅计完整且奖励有差异的组，再检查得分、长度与显存 | 评分缺失／非有限、全同奖励、不完整组、长度超限和显存越界 |
 | TODO 3：选择候选状态 | 生成组、候选指标和适配器记录 | 数据／执行／产物失败拒绝，其他门槛失败调整 | 缺产物、执行失败和候选需调整 |
 
 
 ```python
+import math
 from typing import Any, Dict, List
 ```
 
@@ -124,6 +125,11 @@ def evaluate_grpo_candidate(evidence: Dict[str, Any], gates: Dict[str, float]) -
     elapsed_seconds = rollout["rollout_seconds"] + update["update_seconds"]
     reward_groups = rollout["reward_groups"]
     group_size = rollout["group_size"]
+    if type(group_size) is not int or group_size < 2:
+        raise ValueError("组规模必须是至少为2的整数")
+    if any(value is None or type(value) not in (int, float) or not math.isfinite(value)
+           for rewards in reward_groups for value in rewards):
+        raise ValueError("候选统计需要完整且有限的评分；补齐评分后再重算整组")
     complete_groups = [rewards for rewards in reward_groups if len(rewards) == group_size]
     valid_groups = [rewards for rewards in complete_groups if max(rewards) > min(rewards)]
     # ==========================================
@@ -236,6 +242,23 @@ def test_grpo_execution_failure_rejected():
     assert decide_grpo_delivery({"admitted": True}, candidate, {"path": "adapter", "sha256": "abc"})["decision"] == "reject"
 
 
+def test_unfinished_scores_block_candidate_statistics():
+    """固定组先补齐评分，避免 NaN 进入有效组和吞吐统计。"""
+    for bad_score in (None, float("nan"), float("inf"), -float("inf")):
+        evidence, gates = _grpo_candidate_fixture()
+        evidence["rollout"]["reward_groups"] = [[0.0, bad_score, 1.0, 1.0]] * 4
+        try:
+            evaluate_grpo_candidate(evidence, gates)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("评分未完成或非有限时应停止候选计算")
+    evidence, gates = _grpo_candidate_fixture()
+    evidence["rollout"]["reward_groups"] = [[0.0, 0.0, 1.0, 1.0]] * 4
+    complete = evaluate_grpo_candidate(evidence, gates)
+    assert complete["eligible"] and complete["effective_trajectory_count"] == 16
+
+test_unfinished_scores_block_candidate_statistics()
 test_rollout_contract()
 test_grpo_candidate_gates()
 test_grpo_delivery_decision()
@@ -272,6 +295,11 @@ def evaluate_grpo_candidate(evidence: Dict[str, Any], gates: Dict[str, float]) -
     elapsed_seconds = rollout["rollout_seconds"] + update["update_seconds"]
     reward_groups = rollout["reward_groups"]
     group_size = rollout["group_size"]
+    if type(group_size) is not int or group_size < 2:
+        raise ValueError("组规模必须是至少为2的整数")
+    if any(value is None or type(value) not in (int, float) or not math.isfinite(value)
+           for rewards in reward_groups for value in rewards):
+        raise ValueError("候选统计需要完整且有限的评分；补齐评分后再重算整组")
     complete_groups = [rewards for rewards in reward_groups if len(rewards) == group_size]
     valid_groups = [rewards for rewards in complete_groups if max(rewards) > min(rewards)]
     # TODO 2：统计有效组与候选指标
@@ -318,8 +346,8 @@ def decide_grpo_delivery(rollout: Dict[str, Any], candidate: Dict[str, Any], art
 
 #### TODO 2：统计有效组与候选指标
 
-- 固定组规模下，完整且奖励有差异的组才贡献相对信号。用有效组数计算比例和回答数，再除以给定的采样与更新秒数；全部生成回答数会高估这项吞吐。
-- 测试中的四组只有两组有奖励差异；全零奖励和不完整组均不计入，长度及显存超限各自使候选需要调整。CPU 算术通过后，实测仍须核对计时包含哪些阶段。
+- 先确认评分已完成且有限；缺失、NaN和无穷值停止候选统计，补齐后重算。固定组规模下，完整且奖励有差异的组才贡献相对信号。用有效组数计算比例和回答数，再除以给定的采样与更新秒数；全部生成回答数会高估这项吞吐。
+- 测试中的四组只有两组有奖励差异；全零奖励和不完整组均不计入，长度及显存超限各自使候选需要调整。新增用例核对缺失与非有限评分会停止计算，已确认的0分正常参与；实测另核对计时范围。
 
 #### TODO 3：选择候选状态
 
