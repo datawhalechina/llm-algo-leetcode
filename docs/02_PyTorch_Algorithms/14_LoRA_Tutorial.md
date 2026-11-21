@@ -4,7 +4,7 @@
 
 > 🚀 **云端运行环境**
 >
-> 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
+> 可用以下链接在云端Notebook平台打开；设备和依赖要求以本节运行环境说明为准：
 >
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/14_LoRA_Tutorial.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
@@ -55,7 +55,7 @@ SFT的标签和损失决定模型学什么，LoRA决定训练时更新哪些参�
 
 挂载位置确定后，还需要回答三个问题：低秩旁路能否保持原层的输入输出维度、训练开始时是否扰动冻结基座，以及不同秩下怎样控制增量幅度。矩阵的秩可理解为独立方向的数量；LoRA用较少方向描述权重变化，配置的秩给出增量秩的上限。下面先由维度确定A/B的形状，再引入缩放与零初始化。
 
-设层输入为 $x\in\mathbb{R}^{d_{in}}$，层输出为 $h\in\mathbb{R}^{d_{out}}$，冻结权重为 $W_0\in\mathbb{R}^{d_{out}\times d_{in}}$。LoRA 在主变换旁并联两个小矩阵：$A$ 将输入映射到秩 $r$，$B$ 再映射回输出空间；$\Delta W$ 表示低秩权重增量，$\alpha$ 是控制增量幅度的缩放超参数。标准缩放取 $s=\alpha/r$，因此权重增量与前向输出分别为：
+设层输入为 $x\in\mathbb{R}^{d_{in}}$，层输出为 $h\in\mathbb{R}^{d_{out}}$，冻结权重为 $W_0\in\mathbb{R}^{d_{out}\times d_{in}}$。LoRA 在主变换旁并联两个小矩阵： $A$ 将输入映射到秩 $r$， $B$ 再映射回输出空间； $\Delta W$ 表示低秩权重增量， $\alpha$ 是控制增量幅度的缩放超参数。标准缩放取 $s=\alpha/r$，因此权重增量与前向输出分别为：
 
 $$\Delta W=sBA, \qquad h=W_0x+\Delta Wx=W_0x+\frac{\alpha}{r}BAx$$
 
@@ -63,7 +63,7 @@ $$\Delta W=sBA, \qquad h=W_0x+\Delta Wx=W_0x+\frac{\alpha}{r}BAx$$
 
 $$N_{\mathrm{LoRA}}=r d_{in}+d_{out}r=r(d_{in}+d_{out})$$
 
-训练开始时令 $B=0$，因此 $\Delta W=0$，模块输出与冻结基座一致。此时 $B$ 可以在第一个反向传播步骤获得梯度，而 $A$ 的梯度因乘有 $B$ 暂时为零；当 $B$ 离开零点后，$A$ 才开始接收非零梯度。这是零初始化带来的预期更新顺序，不代表梯度链路断开。旁路还可使用随机失活（Dropout）：训练时随机屏蔽部分输入特征以减轻过拟合，评估与合并核对时关闭。
+训练开始时令 $B=0$，因此 $\Delta W=0$，模块输出与冻结基座一致。此时 $B$ 可以在第一个反向传播步骤获得梯度，而 $A$ 的梯度因乘有 $B$ 暂时为零；当 $B$ 离开零点后， $A$ 才开始接收非零梯度。这是零初始化带来的预期更新顺序，不代表梯度链路断开。旁路还可使用随机失活（Dropout）：训练时随机屏蔽部分输入特征以减轻过拟合，评估与合并核对时关闭。
 
 | 对象 | 形状或定义 | 训练时的作用 |
 | --- | --- | --- |
@@ -82,7 +82,7 @@ $$N_{\mathrm{LoRA}}=r d_{in}+d_{out}r=r(d_{in}+d_{out})$$
 
 $$W_{\mathrm{merged}}=W_0+\frac{\alpha}{r}BA, \qquad W_{\mathrm{merged}}x=W_0x+\frac{\alpha}{r}BAx$$
 
-这样部署时不再额外执行两次旁路矩阵乘法。合并等价性应在评估模式或旁路随机失活关闭时核对；训练模式下的随机失活会使逐次输出不同，不能直接作为合并误差。实现还必须保证同一增量只写回一次。
+这样部署时可用一个普通线性层执行合并权重。等价检查使用评估模式，并保证同一增量只写回一次。本例merged是普通Python标记，不随默认state_dict保存：未合并时按相同秩与缩放配置重载LoRA；合并后保存linear的权重并加载普通线性层，避免新适配器再次叠加旁路。完整模型的导出与重载另由实际框架检查。
 
 | 路径 | 计算 | 需要验证的事实 |
 | --- | --- | --- |
@@ -99,7 +99,7 @@ $$W_{\mathrm{merged}}=W_0+\frac{\alpha}{r}BA, \qquad W_{\mathrm{merged}}x=W_0x+\
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 | --- | --- | --- | --- |
-| TODO 1：建立低秩参数路径<br>`LoRALinear.__init__` | 创建冻结基座与可训练 A/B 参数 | 参数形状匹配 rank，$\alpha/r$ 缩放明确，基座冻结且 A/B 可训练 | 检查基座冻结、A/B 形状、可训练参数量以及初始权重增量为零 |
+| TODO 1：建立低秩参数路径<br>`LoRALinear.__init__` | 创建冻结基座与可训练 A/B 参数 | 参数形状匹配 rank， $\alpha/r$ 缩放明确，基座冻结且 A/B 可训练 | 检查基座冻结、A/B 形状、可训练参数量以及初始权重增量为零 |
 | TODO 2：计算旁路增量<br>`LoRALinear.forward` | 在未合并状态叠加低秩旁路 | 主分支与旁路使用同一输入，缩放规则一致 | 检查旁路公式数值一致，并验证首步梯度沿预期路径进入 A/B |
 | TODO 3：生成合并增量<br>`LoRALinear.merge_weights` | 根据 A/B 和缩放得到待写回权重 | 增量形状与基座一致，只在未合并状态写回 | 检查合并增量正确、合并前后输出一致，且重复合并不再改变权重 |
 
@@ -293,6 +293,29 @@ def test_lora():
     print("PASSED: LoRA参数、梯度路径和合并不变量核对通过。")
 
 
+def test_lora_reload_paths():
+    import io
+    layer = LoRALinear(4, 3, r=2, lora_alpha=8).eval()
+    with torch.no_grad():
+        layer.lora_B.fill_(0.1)
+    x = torch.randn(2, 4)
+    expected = layer(x).detach()
+    stream = io.BytesIO()
+    torch.save(layer.state_dict(), stream)
+    stream.seek(0)
+    restored = LoRALinear(4, 3, r=2, lora_alpha=8).eval()
+    restored.load_state_dict(torch.load(stream, weights_only=True))
+    torch.testing.assert_close(restored(x), expected)
+    assert not restored.linear.weight.requires_grad and not restored.merged
+    layer.merge_weights()
+    stream = io.BytesIO()
+    torch.save(layer.linear.state_dict(), stream)
+    stream.seek(0)
+    plain = nn.Linear(4, 3, bias=False).eval()
+    plain.load_state_dict(torch.load(stream, weights_only=True))
+    torch.testing.assert_close(plain(x), expected)
+
+test_lora_reload_paths()
 test_lora()
 
 ```
