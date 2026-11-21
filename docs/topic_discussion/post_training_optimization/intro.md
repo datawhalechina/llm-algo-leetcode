@@ -20,11 +20,13 @@
 | Task5 · 轨迹管理、在线执行与恢复 | 轨迹怎样被接纳、更新并在中断后恢复？ | 核心：[Part 02 · PT-ROLLOUT-LIFECYCLE 轨迹新鲜度](../../02_PyTorch_Algorithms/PT-ROLLOUT-LIFECYCLE_Rollout_and_Policy_Freshness.md) → [Part 02 · PT-RL-SYSTEM 采样、训练与奖励系统](../../02_PyTorch_Algorithms/PT-RL-SYSTEM_Rollout_Training_and_Reward_System.md)；项目：[Part 02 · 86 生命周期与恢复](../../02_PyTorch_Algorithms/86_DPO_Online_Benchmark.md)；扩展：[Part 02 · PT-AGENTIC-RL 环境轨迹与归因](../../02_PyTorch_Algorithms/PT-AGENTIC-RL_Environment_Trajectory_and_Credit_Assignment.md) / [Part 02 · 51 在线 DPO](../../02_PyTorch_Algorithms/51_Online_DPO.md) | 身份、奖励与消费准入 → [09 执行系统](./09_rl_execution_system_and_efficiency.md)中的队列、同步与恢复 | [08 轨迹生命周期与环境交互](./08_trajectory_lifecycle_and_environment_interaction.md) |
 | Task6 · 独立评测与采用决策 | 候选是否达到预设能力或压缩目标？ | 核心：[Part 02 · 50 独立评测](../../02_PyTorch_Algorithms/50_Preference_Data_and_Evaluation.md) / [Part 02 · 51 回滚判断](../../02_PyTorch_Algorithms/51_Online_DPO.md)；项目：[Part 02 · 62 SFT 交付](../../02_PyTorch_Algorithms/62_Instruction_Fine_Tuning_Project.md) / [Part 02 · 86 候选交接](../../02_PyTorch_Algorithms/86_DPO_Online_Benchmark.md)，或独立进入 [Part 05 · 02 MiniMind](../../05_Integrated_Projects_and_Decisions/02_Post_Training_Delivery/index.md)；扩展：[Part 02 · 88 蒸馏学生交付](../../02_PyTorch_Algorithms/88_Distilled_Student_Delivery_Project.md) | 冻结任务与评分 → 目标收益、能力保持及资源检查 → 采用、调整或拒绝 | [10 独立评测、能力回归与采用决策](./10_evaluation_and_adoption_decision.md) |
 
-### 监督目标、参数方案与学生分支怎样连接
+### 监督、偏好、在线奖励与学生蒸馏怎样选择
+
+Task 编号安排阅读顺序，实际训练按已有基线和反馈选择分支。DPO 使用偏好对构造更新目标，PPO、GRPO、RLOO 使用采样结果和优势更新策略；Agentic RL 描述模型与工具或环境多轮交互的任务形态，可以采用这些在线更新方法。学生在策略蒸馏（OPD）则让学生生成回答，再用教师反馈训练学生。这些方法并不是 DPO → PPO → GRPO → Agentic RL → OPD 的升级阶梯。
 
 Task1 确定样本和标签，Task2 确定更新范围；首次实践先选能在预算内运行的参数方案，不必完成全部变体选型。[03 训练控制](./03_training_control.md)将两者汇合，可结合[Part 02 · 15 SFT 有效更新与训练闭环](../../02_PyTorch_Algorithms/15_End_to_End_Fine_Tuning_Experiment.md)核对实际更新，再按[04 基线与交付](./04_end_to_end_experiment.md)检查重载和恢复。满足任务要求的基线可直接进入 Task6；已有合适指令模型也可先复测，再根据剩余失败选择 Task3 或 Task4。
 
-Task4 先用[06 奖励、价值与 PPO](./06_rlhf_and_ppo_system_cost.md)区分奖励和优势，选择组内方法时再读[07 GRPO / RLOO](./07_grpo_and_groupwise_alignment.md)。Task5 先在[08 轨迹生命周期](./08_trajectory_lifecycle_and_environment_interaction.md)跟踪一条轨迹的准入与提交，再到[09 执行系统](./09_rl_execution_system_and_efficiency.md)观察队列、资源竞争和权重同步；Task3 的离线候选可直接评测，持续采样的在线偏好分支则同样需要这些状态管理。
+Task4 先用[06 奖励、价值与 PPO](./06_rlhf_and_ppo_system_cost.md)区分奖励和优势，选择组内方法时再读[07 GRPO / RLOO](./07_grpo_and_groupwise_alignment.md)。准备在线训练时，先按[04 的试跑检查](./04_end_to_end_experiment.md#online-update-readiness)核对评分和一次更新，再结合 Task5 的[08 轨迹生命周期](./08_trajectory_lifecycle_and_environment_interaction.md)记录采样版本、评分和消费状态；扩大采样或拆分工作进程时，进入[09 执行系统](./09_rl_execution_system_and_efficiency.md)分析队列、资源竞争和权重同步。Task3 的离线候选可直接评测，持续采样的在线偏好分支则同样需要这些状态管理。
 
 需要迁移教师能力时，从 [Part 02 · DISTILL-OPD](../../02_PyTorch_Algorithms/DISTILL-OPD_On_Policy_Distillation_and_GKD.md)理解固定轨迹与学生在策略轨迹，再进入 [Part 02 · 88 蒸馏学生交付](../../02_PyTorch_Algorithms/88_Distilled_Student_Delivery_Project.md)比较训练路线。该分支从共同学生起点出发，与偏好和奖励分支一样进入[独立评测](./10_evaluation_and_adoption_decision.md)，不要求先完成 DPO 或 GRPO。
 
@@ -40,7 +42,7 @@ Task4 先用[06 奖励、价值与 PPO](./06_rlhf_and_ppo_system_cost.md)区分�
 | 来源、清洗、合成验证与切分 | [数据工程](../data_engineering/intro.md) / [后训练数据接口](../data_engineering/05_post_training_data_interfaces.md) | 数据版本、去重与污染检查、样本来源和切分清单 |
 | 训练峰值、采样吞吐与阶段等待 | [性能分析](../performance_optimization/methods/intro.md) / [性能优化](../performance_optimization/intro.md) | 时间线、同时驻留的对象、配对测量与资源代价 |
 | QLoRA、学生压缩与部署格式 | [量化与压缩](../quantization_compression/intro.md) / [蒸馏与结构压缩](../quantization_compression/07_pruning_distillation_and_structured_sparsity.md) | 低比特执行路径、学生产物、质量保持与部署成本 |
-| 多卡状态切分与通信 | [通信与并行](../communication_parallelism/intro.md) | 并行配置、通信等待、状态分片和恢复记录 |
+| 多卡状态切分与通信 | [分布式与并行](../communication_parallelism/intro.md) | 并行配置、通信等待、状态分片和恢复记录 |
 | 工具调用、轨迹回放与沙盒权限 | [Agent 工作负载](../agent/00_agent_workload_and_trace.md) / [轨迹数据](../agent/01_agent_trajectory_data.md) / [沙盒环境](../agent/02_agent_sandbox_environment.md) | 环境版本、模型动作、工具观察、重试和终止记录 |
 
 ## 实验与项目出口

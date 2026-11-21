@@ -34,9 +34,9 @@
 | 偏好共同基础 | [Part 02 · 50 偏好数据与评测](../../02_PyTorch_Algorithms/50_Preference_Data_and_Evaluation.md) | `PT-CPU`；题目、答案测试与框架核对 | 固定偏好对、数据隔离和独立评测协议 | CPU |
 | 离线偏好分支 | [Part 02 · 17 DPO](../../02_PyTorch_Algorithms/17_DPO_Loss_Tutorial.md)<br>`pt-dpo-real-model-update` | `PT-RL-CUDA`；Qwen2.5-0.5B；4 组偏好对、4 次更新 | β 为 0.05 / 0.10 / 0.30 | [结果 JSON](../../../benchmarks/results/pt_dpo/pt-dpo-real-model-update_rtx5070ti_dpo_v1.json)；`rtx5070ti_dpo_v1` 已通过；最高峰值分配约 3.19 GiB，`accept_mechanism` |
 | 离线反馈分支 | [Part 02 · PT-KTO 二元反馈对齐](../../02_PyTorch_Algorithms/PT-KTO_Binary_Feedback_Alignment.md) | `PT-CPU`；题目、答案测试与框架核对 | 二元标签、KL 比较对与类别加权；比较对可由批内错配构造 | CPU 练习与 TRL 批次损失核对；未登记独立 GPU 结果 |
-| 在线奖励分支 | [Part 02 · PT-RLOO 留一基线策略优化](../../02_PyTorch_Algorithms/PT-RLOO_Leave_One_Out_Policy_Optimization.md) | `PT-CPU`；题目、答案测试与框架核对 | 可评分组、留一优势与序列裁剪 | CPU 练习与 TRL 批次裁剪损失核对；未登记独立 GPU 结果 |
+| 在线奖励分支 | [Part 02 · PT-RLOO 留一基线策略优化](../../02_PyTorch_Algorithms/PT-RLOO_Leave_One_Out_Policy_Optimization.md) | `PT-CPU`；题目、答案测试与框架核对 | 可评分组、留一优势与序列裁剪 | CPU 练习通过，新增缺失与零分区分、评分补回重算、归约分母测试；既有 TRL 核对针对批次裁剪损失，新增评分重试例子未做真实服务验证；未登记独立 GPU 结果 |
 | 学习型奖励分支 | [Part 02 · PT-REWARD-MODEL 奖励模型训练、校准与过度优化](../../02_PyTorch_Algorithms/PT-REWARD-MODEL_Reward_Model_Training_and_Calibration.md)<br>`pt-reward-model-head-calibration` | `PT-RL-CUDA`；Qwen2.5-0.5B 冻结表征，只训练线性奖励头；6 组训练、4 组校准、4 组隐藏偏好对 | 正确标签 / 50% 错标负对照 | [结果 JSON](../../../benchmarks/results/pt_reward_model/pt-reward-model-head-calibration_rtx5070ti_reward_model_v1.json)；`rtx5070ti_reward_model_v1` 的自动检查通过，`accept_mechanism`；4 组隐藏偏好对的排序准确率分别为 1.0 / 0.5；全流程峰值分配约 0.95 GiB。温度按校准集 Brier 误差选择，最终通过条件未设置该误差阈值；任务质量需另行评测 |
-| 奖励优化共同基础 | [Part 02 · PT-REWARD-SIGNAL 奖励、价值与优势信号](../../02_PyTorch_Algorithms/PT-REWARD-SIGNAL_Reward_Model_Value_and_Advantage.md)<br>`pt-reward-signal-matrix` | `PT-RL-CUDA`；3 条预先给定的提示／回答与奖励，两步 LoRA 监督更新 | 固定回答上的概率差、终止奖励和回报；6 组参数 | [结果 JSON](../../../benchmarks/results/pt_reward_signal/pt-reward-signal-matrix_rtx5070ti_reward_signal_v3.json)；`rtx5070ti_reward_signal_v3` 的偏移、矩阵及终局放置检查通过；信号矩阵在 CPU 计算，未执行在线采样；峰值分配约 2.01 GiB，`accept_mechanism` |
+| 奖励优化共同基础 | [Part 02 · PT-REWARD-SIGNAL 奖励、价值与优势信号](../../02_PyTorch_Algorithms/PT-REWARD-SIGNAL_Reward_Model_Value_and_Advantage.md)<br>`pt-reward-signal-matrix` | `PT-RL-CUDA`；3 条预先给定的提示／回答与奖励，两步 LoRA 监督更新；Step 4 为 CPU 练习 | 固定回答上的概率差、终止奖励和零末值回报；6 组参数；CPU 另测 GAE 与结束边界 | [结果 JSON](../../../benchmarks/results/pt_reward_signal/pt-reward-signal-matrix_rtx5070ti_reward_signal_v3.json)；历史偏移、矩阵及终局放置检查通过；信号矩阵在 CPU 计算，未执行在线采样；峰值约 2.01 GiB，`accept_mechanism`。新增 GAE、末状态补值与固定目标的 CPU 测试通过，历史 GPU 结果未覆盖这些新增计算 |
 | PPO 分支 | [Part 02 · 16 PPO](../../02_PyTorch_Algorithms/16_RLHF_PPO_Memory.md) | `PT-CPU`；题目、答案测试与框架核对 | 解释策略、参考策略、奖励模型、价值模型与资源状态 | CPU 练习与 TRL 核对；尚无本页完整 PPO GPU 更新结果登记 |
 | GRPO / RLVR 分支 | [Part 02 · 18 GRPO 与可验证奖励](../../02_PyTorch_Algorithms/18_GRPO_Loss_Tutorial.md)<br>`pt-grpo-real-model-update_default3` | `PT-RL-CUDA`；Qwen2.5-0.5B；2 个提示、4 次更新 | 最小 / 扩展候选覆盖；integer-answer-v1 | [结果 JSON](../../../benchmarks/results/pt_grpo/pt-grpo-real-model-update_default3.json)；v3 `default3` 已通过；最高峰值分配约 3.06 GiB，`accept_mechanism`；扩展候选组暴露较高裁剪率，不用于自动选择组规模 |
 | 在线系统共同基础 | [Part 02 · PT-ROLLOUT-LIFECYCLE 轨迹与策略新鲜度](../../02_PyTorch_Algorithms/PT-ROLLOUT-LIFECYCLE_Rollout_and_Policy_Freshness.md) | `PT-VERL-CUDA`；共同算术轨迹与一次监督更新 | 管理轨迹身份、策略版本、新鲜度与准入 | 读取[共享系统记录](#verl-共享系统记录) |
@@ -77,6 +77,8 @@ Part 02 的监督、偏好与奖励项目按表中前置衔接；Part 05 · 02 M
 ## 结果版本与复现
 
 读取结果时使用上表链接和对应标签；独立复现使用新的唯一标签，先按 Notebook 的安全预检阶段检查，再执行真实阶段。改变模型、输入或训练剂量时保留旧记录并重新说明比较范围。当前标签表示所选正式记录，不表示历史上所有方案都通过。
+
+85节新增的 CPU 检查要求固定组评分完整且有限，缺失评分先补齐再重算。86节新增提交状态判断：未知时暂停重试并核查，已提交时核对完成记录，确认未提交才选择恢复点；历史四类恢复建议保持原记录。两项新增规则通过 CPU 测试，真实评分重试与训练进程恢复分别待验证。
 
 共享系统实验由轨迹页执行，系统页读取同一份结果。原生接口检查使用[只读工具](../../../tools/verl_mechanism_audit.py)，一次监督更新及同步使用[共同入口](../../../tools/verl_mechanism_closure.py)与[工作进程实现](../../../tools/verl_mechanism_worker.py)；释放组失败时停止，不自动追加训练。资源漏采记为缺失。历史 GSM8K 路径的数据准备与筛查入口留在下方历史记录，不属于当前算术任务复现前置。
 
