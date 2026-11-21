@@ -388,11 +388,118 @@ class FoundationHardwareConstraintsTests(unittest.TestCase):
     def test_smoke_test_precedes_benchmark_but_no_benchmark_is_required(self):
         check = self.runtime['benchmark_admission']
         stages = {'prepare': {'candidate_devices': ['cpu']}}
-        self.assertEqual(check(stages, ['prepare'], True, False)['status'], 'needs_runtime_check')
+        self.assertEqual(check(stages, ['prepare'], True, None)['status'], 'needs_runtime_check')
+        self.assertEqual(check(stages, ['prepare'], True, False)['status'], 'blocked')
         self.assertEqual(check(stages, ['prepare'], False, True)['status'], 'blocked')
         self.assertEqual(check(stages, ['prepare'], True, True)['status'], 'benchmark_ready')
         with self.assertRaises(ValueError):
             check(stages, ['prepare'], 'passed', True)
+
+    def test_profile_summary_preserves_unknown_counts(self):
+        """An absent support collection is not a measured zero."""
+        summarize = self.runtime['summarize_device_profile']
+        self.assertIsNone(summarize({})['runtime_count'])
+        self.assertIsNone(summarize({'ops': None})['operator_count'])
+        empty = summarize({'ops': set(), 'runtimes': set()})
+        self.assertEqual(empty['operators'], [])
+        self.assertEqual(empty['runtime_count'], 0)
+
+    def test_missing_profile_fields_remain_pending(self):
+        """Vary each required declaration while all known checks pass."""
+        check = self.runtime['check_device_feasibility']
+        profile = self.cpu_profile() | {'collective': True}
+        plan = self.prepare_plan() | {'requires_collective': True}
+        for field in ('memory_gb', 'precisions', 'ops', 'runtimes', 'collective'):
+            for kind in ('missing', 'null'):
+                partial = dict(profile)
+                if kind == 'missing':
+                    partial.pop(field)
+                else:
+                    partial[field] = None
+                with self.subTest(field=field, kind=kind):
+                    result = check(partial, plan)
+                    self.assertIsNone(result['declared_requirements_met'])
+                    self.assertEqual(result['declaration_status'], 'needs_profile_check')
+                    self.assertEqual(result['unknown_fields'], [field])
+                    self.assertEqual(result['failed_fields'], [])
+
+    def test_empty_support_is_mismatch_not_unknown(self):
+        """An explicitly empty collection rules out the requested item."""
+        check = self.runtime['check_device_feasibility']
+        for field in ('precisions', 'ops', 'runtimes'):
+            with self.subTest(field=field):
+                report = check(self.cpu_profile() | {field: set()}, self.prepare_plan())
+                self.assertIs(report['declared_requirements_met'], False)
+                self.assertEqual(report['declaration_status'], 'mismatch')
+                self.assertEqual(report['failed_fields'], [field])
+                self.assertEqual(report['unknown_fields'], [])
+        with self.assertRaises(ValueError):
+            check(self.cpu_profile() | {'runtimes': 'python'}, self.prepare_plan())
+
+    def test_known_conflict_takes_priority_over_unknown_fields(self):
+        """Keep missing information while exposing an already known conflict."""
+        report = self.runtime['check_device_feasibility'](
+            self.cpu_profile() | {'memory_gb': 0.25, 'runtimes': None},
+            self.prepare_plan())
+        self.assertIs(report['declared_requirements_met'], False)
+        self.assertEqual(report['declaration_status'], 'mismatch')
+        self.assertEqual(report['failed_fields'], ['memory_gb'])
+        self.assertEqual(report['unknown_fields'], ['runtimes'])
+
+    def test_unneeded_collective_declaration_does_not_block(self):
+        """No communication requirement means no communication support is needed."""
+        profile = self.cpu_profile()
+        profile.pop('collective')
+        report = self.runtime['check_device_feasibility'](profile, self.prepare_plan())
+        self.assertIs(report['collective_ok'], True)
+        self.assertIs(report['declared_requirements_met'], True)
+
+    def test_empty_operator_requirement_needs_no_operator_declaration(self):
+        """An empty demand adds no unknown operator constraint."""
+        profile = self.cpu_profile()
+        profile.pop('ops')
+        result = self.runtime['check_device_feasibility'](
+            profile, self.prepare_plan() | {'required_ops': set()})
+        self.assertEqual(result['missing_ops'], [])
+        self.assertEqual(result['unknown_fields'], [])
+        self.assertIs(result['declared_requirements_met'], True)
+
+    def test_stage_lists_separate_matches_pending_and_mismatches(self):
+        """Pending declarations must never enter the matched-device list."""
+        profiles = {
+            'ready': self.cpu_profile(),
+            'pending': self.cpu_profile() | {'runtimes': None},
+            'unsupported': self.cpu_profile() | {'runtimes': set()},
+        }
+        stage = self.runtime['assign_stages'](
+            profiles, {'stages': {'prepare': self.prepare_plan()}})['prepare']
+        self.assertEqual(stage['candidate_devices'], ['ready'])
+        self.assertEqual(stage['pending_devices'], ['pending'])
+        self.assertEqual(stage['rejected_devices'], ['unsupported'])
+
+    def test_pending_stage_prevents_benchmark_readiness(self):
+        """External pass flags cannot replace a missing device declaration."""
+        check = self.runtime['benchmark_admission']
+        pending = {'prepare': {'candidate_devices': [], 'pending_devices': ['cpu']}}
+        report = check(pending, ['prepare'], True, True)
+        self.assertEqual(report['status'], 'needs_profile_check')
+        self.assertEqual(report['stages'], ['prepare'])
+        ready = {'prepare': {'candidate_devices': ['cpu'], 'pending_devices': ['other']}}
+        self.assertEqual(check(ready, ['prepare'], True, True)['status'], 'benchmark_ready')
+
+    def test_unchecked_and_failed_external_checks_have_different_actions(self):
+        """None is unchecked; False is an observed failure."""
+        check = self.runtime['benchmark_admission']
+        stages = {'prepare': {'candidate_devices': ['cpu']}}
+        self.assertEqual(check(stages, ['prepare'], None, True)['status'], 'needs_quality_check')
+        self.assertEqual(check(stages, ['prepare'], True, None)['status'], 'needs_runtime_check')
+        self.assertEqual(check(stages, ['prepare'], None, None)['status'], 'needs_runtime_check')
+        self.assertEqual(check(stages, ['prepare'], False, None)['status'], 'blocked')
+        failed = check(stages, ['prepare'], True, False)
+        self.assertEqual(failed['status'], 'blocked')
+        self.assertEqual(failed['reason'], '真实功能检查未通过')
+        pending = {'prepare': {'candidate_devices': [], 'pending_devices': ['cpu']}}
+        self.assertEqual(check(pending, ['prepare'], False, True)['status'], 'blocked')
 
 
 if __name__ == '__main__':
