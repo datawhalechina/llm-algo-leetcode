@@ -4,7 +4,7 @@
 
 > 🚀 **云端运行环境**
 >
-> 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
+> 可用以下链接在云端Notebook平台打开；设备和依赖要求以本节运行环境说明为准：
 >
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/16_RLHF_PPO_Memory.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
@@ -84,7 +84,7 @@ $$
 | 奖励约束 | 任务奖励、策略与参考模型的差异 | 受约束奖励 | KL 方向与奖励方向一致 |
 | 回报与价值 | 奖励序列、价值估计 | 优势 | 延迟奖励仍归属于正确状态 |
 | 策略比率 | 当前策略、行为策略 | 相对更新幅度 | 行为策略在本轮保持固定 |
-| 裁剪目标 | 策略比率、优势 | 保守更新目标 | 正负优势都不能放大越界更新 |
+| 裁剪目标 | 策略比率、优势 | 保守更新目标 | 按优势符号核对裁剪方向；不保证实际比率留在区间 |
 
 ## Step 3：哪些状态决定 PPO 的峰值与吞吐
 
@@ -103,7 +103,7 @@ PPO 的资源压力取决于哪些模型和轨迹状态同时驻留，而不是�
 
 ## Step 4：实现 PPO Actor Loss 的裁剪机制
 
-题目区使用新旧策略对数概率、优势和回答掩码复现 PPO 裁剪目标。骨架提供输入校验和指标结构；学习者补全策略比率、双侧裁剪、Token / 序列两种归约，以及近似 KL 与裁剪比例。测试覆盖正负优势、上下裁剪边界、变长回答、梯度路径和非法掩码。
+题目区使用新旧策略对数概率、优势和回答掩码复现 PPO 裁剪目标。优势作为已计算并固定的输入，其 GAE 计算与结束边界见[奖励信号页 Step 4](./PT-REWARD-SIGNAL_Reward_Model_Value_and_Advantage.md#mechanism-practice)；价值模型拟合使用自己的目标，本节练习聚焦 Actor 损失。骨架提供输入校验和指标结构；学习者补全策略比率、双侧裁剪、Token / 序列两种归约，以及近似 KL 与裁剪比例。测试覆盖正负优势、上下裁剪边界、变长回答、梯度路径和非法掩码。
 
 | TODO / 函数 | 学习者完成的机制 | 必须满足的约束 | 测试证据 |
 | --- | --- | --- | --- |
@@ -285,6 +285,18 @@ def test_ppo_actor_loss():
         print(f"❌ 测试失败: {e}")
         raise NotImplementedError("请先完成 TODO 部分的代码！") from e
 
+def test_masked_extreme_scores():
+    for reduction in ("token_mean", "sequence_mean"):
+        new = torch.tensor([[-1.0, -10000.0]], requires_grad=True)
+        old = torch.tensor([[-1.0, -20000.0]], requires_grad=True)
+        mask = torch.tensor([[True, False]])
+        loss, metrics = compute_actor_loss(new, old, torch.ones_like(new), mask, reduction=reduction)
+        assert torch.isfinite(loss)
+        loss.backward()
+        assert torch.isfinite(new.grad).all() and new.grad[0, 1] == 0
+        assert old.grad is None
+
+test_masked_extreme_scores()
 test_ppo_actor_loss()
 
 ```
@@ -343,7 +355,7 @@ def compute_actor_loss(
 
     # ==========================================
     # TODO 1：当前 / 旧策略在同一 token 位置上的概率比率。
-    ratio = torch.exp(log_probs_new - log_probs_old.detach())
+    ratio = torch.exp((log_probs_new - log_probs_old.detach()).masked_fill(~response_mask, 0.0))
     # ==========================================
 
     # ==========================================
@@ -366,7 +378,7 @@ def compute_actor_loss(
 
     # ==========================================
     # TODO 4：诊断当前更新相对旧策略的偏移与裁剪覆盖率。
-    log_ratio = log_probs_new.detach() - log_probs_old.detach()
+    log_ratio = (log_probs_new.detach() - log_probs_old.detach()).masked_fill(~response_mask, 0.0)
     approx_kl = ((ratio.detach() - 1.0) - log_ratio)[mask].mean()
     clip_fraction = ((ratio.detach() - 1.0).abs() > clip_range)[mask].float().mean()
     metrics = {

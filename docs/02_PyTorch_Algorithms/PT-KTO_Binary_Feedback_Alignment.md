@@ -4,7 +4,7 @@
 
 > 🚀 **云端运行环境**
 >
-> 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
+> 可用以下链接在云端Notebook平台打开；设备和依赖要求以本节运行环境说明为准：
 >
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/PT-KTO_Binary_Feedback_Alignment.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
@@ -54,7 +54,7 @@
 
 ## Step 2：用策略偏移和 KL 比较基线构造损失
 
-先累加回答范围内的词元对数概率。 $\pi_\theta$ 是当前策略， $y_{<t}$ 是此前回答前缀， $m_t$ 标记有效回答位置；提示、填充和结束标记之后的位置忽略。固定参考策略在相同位置得到 $s_{ref}$，两者之差 $d_\theta$ 表示当前策略相对参考对这条回答的偏移：
+先按下一词元预测把分数与目标对齐，再用回答掩码累加对数概率。当前策略和参考策略使用同一输入、保留区间与结束规则。本页处理单个回答片段：提示与填充不计分，真实结束标记按模板纳入；多轮中的回合结束另按任务切分。输入函数的分数已经对齐，函数本身不检查分词或移位是否正确。
 
 $$
 s_\theta(x,y)=\sum_t m_t\log\pi_\theta(y_t\mid x,y_{<t}),\qquad
@@ -154,7 +154,7 @@ def kto_loss(policy_logps, reference_logps, desirable, kl_baseline=0.0, beta=0.1
     labels = desirable.bool()
     # TODO 3：计算停止梯度的比较量、隐式奖励和逐样本加权损失。
     # log_ratios = ???  # Policy—Reference 序列得分差，Reference 不接收梯度。
-    # baseline = ???  # 与 log_ratios 同设备同类型的标量，且不接收梯度。
+    # baseline = ???  # 非负有限的零维标量，与log_ratios同设备同类型且不接收梯度。
     # implicit_rewards = ???  # beta 缩放后的逐样本策略偏移。
     # losses = ???  # 按 labels 选择方向相反的 sigmoid 目标并应用双侧权重。
     raise NotImplementedError("TODO 3：构造 KTO 损失")
@@ -234,6 +234,8 @@ def test_kto_direction_weights_and_gradients():
     assert torch.allclose(rewards, expected_rewards)
     assert torch.allclose(losses, expected_losses)
     assert torch.allclose(losses.mean(), expected_losses.mean())
+    weight_sum = (labels * positive_weight + (1 - labels) * negative_weight).sum()
+    assert not torch.allclose(losses.mean(), losses.sum() / weight_sum)
     no_baseline = kto_loss(
         policy, reference, labels, kl_baseline=0.0, beta=beta,
         desirable_weight=positive_weight, undesirable_weight=negative_weight,
@@ -243,6 +245,8 @@ def test_kto_direction_weights_and_gradients():
     assert losses[1] > kto_loss(policy + torch.tensor([0.0, -1.0, 0.0, 0.0]), reference, labels, kl_baseline=baseline, beta=beta, desirable_weight=positive_weight, undesirable_weight=negative_weight)[0][1]
     losses.mean().backward()
     assert policy.grad is not None and reference.grad is None and baseline.grad is None
+    assert torch.all(policy.grad[labels.bool()] < 0)
+    assert torch.all(policy.grad[~labels.bool()] > 0)
 
 
 def test_kto_batch_summary():
@@ -273,6 +277,9 @@ def test_kto_input_checks():
         raise AssertionError("非二元标签必须被拒绝")
     invalid_calls = [
         lambda: kto_loss(values, values, torch.tensor([1, 0]), beta=0.0),
+        lambda: kto_loss(values, values, torch.tensor([1, 0]), kl_baseline=-0.1),
+        lambda: kto_loss(values, values, torch.tensor([1, 0]), kl_baseline=torch.tensor([[0.1]])),
+        lambda: kto_loss(values, values, torch.tensor([1, 0]), kl_baseline=torch.tensor([0.1])),
         lambda: kto_loss(values, values, torch.tensor([1, 0]), kl_baseline=torch.tensor([0.0, 0.1])),
         lambda: kto_loss(torch.tensor([float("nan"), 0.0]), values, torch.tensor([1, 0])),
         lambda: estimate_kl_baseline(torch.tensor([float("inf")]), torch.zeros(1)),
@@ -351,8 +358,8 @@ def kto_loss(policy_logps, reference_logps, desirable, kl_baseline=0.0, beta=0.1
     labels = desirable.bool()
     log_ratios = policy_logps - reference_logps.detach()
     baseline = torch.as_tensor(kl_baseline, dtype=log_ratios.dtype, device=log_ratios.device).detach()
-    if baseline.numel() != 1 or not torch.isfinite(baseline):
-        raise ValueError("kl_baseline 必须是有限标量")
+    if baseline.ndim != 0 or not torch.isfinite(baseline) or baseline < 0:
+        raise ValueError("kl_baseline 必须是非负有限的零维标量")
     implicit_rewards = beta * log_ratios
     losses = torch.where(
         labels,

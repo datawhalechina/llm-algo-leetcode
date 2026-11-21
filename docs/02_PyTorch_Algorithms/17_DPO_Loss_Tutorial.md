@@ -4,7 +4,7 @@
 
 > 🚀 **云端运行环境**
 >
-> 本章节的实战代码可以点击以下链接在免费 GPU 算力平台上直接运行：
+> 可用以下链接在云端Notebook平台打开；设备和依赖要求以本节运行环境说明为准：
 >
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/datawhalechina/llm-algo-leetcode/blob/main/02_PyTorch_Algorithms/17_DPO_Loss_Tutorial.ipynb)
 > [![Open In Studio](https://img.shields.io/badge/Open%20In-ModelScope-blueviolet?logo=alibabacloud)](https://modelscope.cn/my/mynotebook) *(国内推荐：魔搭社区免费实例)*
@@ -70,7 +70,7 @@ DPO 先在回答范围聚合 Token 对数概率，再比较当前策略相对参
 
 $$s_{\pi}(y\mid x)=\sum_{t=1}^{T}m_t\log \pi(y_t\mid x,y_{<t})$$
 
-长度归一化形式为 $\bar s_\pi=\frac{s_\pi}{\sum_t m_t}$。总和与均值定义了不同的比较口径；当前策略、参考策略以及优选、非优选回答必须使用同一种口径。
+标准sigmoid DPO使用回答对数概率的总和。长度归一化形式 $\bar s_\pi=\frac{s_\pi}{\sum_t m_t}$ 则改变了目标，可能改变偏好间隔的符号，并非仅改变显示单位。比较时记录求和或均值，当前与参考策略、优选与非优选均保持同一规则；84节使用均值变体，不能与本页标准求和结果混读。
 
 参考策略只提供固定比较锚点。 $\mathrm{sg}$ 表示停止梯度：
 
@@ -292,6 +292,20 @@ def run_dpo_tests():
     test_dpo_input_contract()
     print("✅ DPO 回复聚合、隐式奖励、偏好方向、梯度隔离、稳定性与输入契约测试通过。")
 
+def test_length_normalization_changes_objective():
+    mask = torch.tensor([[True, True], [True, False]])
+    policy = torch.tensor([[-0.5, -0.5], [-0.25, -99.0]])
+    reference = torch.tensor([[-1.0, -1.0], [-1.0, -99.0]])
+    sums = aggregate_response_logps(policy, mask) - aggregate_response_logps(reference, mask)
+    means = aggregate_response_logps(policy, mask, normalize=True) - aggregate_response_logps(reference, mask, normalize=True)
+    assert sums[0] > sums[1]  # 1.0 > 0.75
+    assert means[0] < means[1]  # 0.5 < 0.75
+    tokens = policy.clone().requires_grad_(True)
+    aggregate_response_logps(tokens, mask).sum().backward()
+    assert tokens.grad[1, 1] == 0
+    assert torch.all(tokens.grad[mask] == 1)
+
+test_length_normalization_changes_objective()
 run_dpo_tests()
 
 ```
